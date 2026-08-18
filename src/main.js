@@ -50,13 +50,9 @@ class App {
     });
 
     document.getElementById('btn-calibrate').addEventListener('click', () => this.startCalibration());
-    document.getElementById('btn-resetcams').addEventListener('click', () => {
-      this.ui.resetCams();
-      note('Camera map set to the built-in one. Your control positions are untouched — hit Save to make this the code default.');
-    });
-    document.getElementById('btn-resetctrls').addEventListener('click', () => {
-      this.ui.resetControls();
-      note('Controls reset to shipped defaults. Your camera map is untouched.');
+    document.getElementById('btn-resetmap').addEventListener('click', () => {
+      this.ui.resetMap();
+      note('Layout reset to the shipped defaults.');
     });
     document.getElementById('btn-savemap').addEventListener('click', () => this.saveLayout());
     const snd = document.getElementById('opt-sound');

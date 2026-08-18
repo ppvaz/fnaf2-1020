@@ -409,24 +409,15 @@ export class UI {
     this.root.addEventListener('pointercancel', end, true);
   }
 
-  // Reset the two halves independently: adopting a new camera map shipped in
-  // code shouldn't cost you the control positions you calibrated by hand.
-  resetCams() {
+  resetMap() {
     this.map = clone(C.DEFAULT_MAP);
+    this.widgets = clone(C.DEFAULT_WIDGETS);
     saveLayout(this.map, this.widgets);
     this.buildMap();
     this.fitMap();
-    if (this.calibrating) this.enableCalibration(true);
-  }
-
-  resetControls() {
-    this.widgets = clone(C.DEFAULT_WIDGETS);
-    saveLayout(this.map, this.widgets);
     this.applyWidgets();
     if (this.calibrating) this.enableCalibration(true);
   }
-
-  resetMap() { this.resetCams(); this.resetControls(); }
 }
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
