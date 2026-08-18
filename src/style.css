@@ -185,11 +185,17 @@ header p,.panel>p{color:var(--dim);font-size:13.5px}
 /* Touch controls are absolutely positioned from the calibrated geometry in
    config.js, so their placement can be matched to the real game. */
 .btn{position:absolute;z-index:50;border-radius:12px;border:1px solid var(--line);background:#12151d}
-.btn.light{display:grid;place-items:center;font-weight:700;letter-spacing:.06em;font-size:13px}
+/* The lights sit over the middle of the screen, so they are see-through:
+   outline only, no fill. The pressed state still has to read instantly, so it
+   flashes a bright rim instead of blocking the view with a solid block. */
+.btn.light{display:grid;place-items:center;font-weight:700;letter-spacing:.06em;font-size:13px;
+  background:transparent;border-color:rgba(255,255,255,.22);color:rgba(232,234,240,.6);
+  transition:border-color .05s,color .05s,box-shadow .05s,background .05s}
 .btn.camlight{font-size:11px}
 .unpositioned{outline:2px dashed var(--bad)!important}
 #stage.calibrating .btn.camlight{outline:1px dashed var(--cyan);outline-offset:-4px}
-.btn.light.is-down{background:#f7f2d8;color:#12141a;border-color:#f7f2d8}
+.btn.light.is-down{background:rgba(247,242,216,.16);color:#f7f2d8;border-color:#f7f2d8;
+  box-shadow:0 0 0 2px rgba(247,242,216,.4) inset}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;gap:2px}
 .tab{gap:0}
 .tab span{font-size:13px;line-height:1} .tab em{font-style:normal;font-size:8px;color:var(--dim);letter-spacing:.1em}

@@ -99,18 +99,18 @@ export const BOX_CAM = 11;
 export const MAP_AR = 268 / 199;
 
 export const DEFAULT_MAP = {
-  8:  { x: 0.030, y: 0.140, w: 0.160, h: 0.145 },
-  7:  { x: 0.385, y: 0.165, w: 0.160, h: 0.145 },
-  9:  { x: 0.775, y: 0.060, w: 0.160, h: 0.145 },
-  3:  { x: 0.030, y: 0.310, w: 0.160, h: 0.145 },
-  4:  { x: 0.385, y: 0.355, w: 0.160, h: 0.145 },
-  11: { x: 0.820, y: 0.285, w: 0.160, h: 0.145 },
-  10: { x: 0.680, y: 0.420, w: 0.160, h: 0.145 },
   1:  { x: 0.030, y: 0.485, w: 0.160, h: 0.145 },
   2:  { x: 0.385, y: 0.555, w: 0.160, h: 0.145 },
-  12: { x: 0.795, y: 0.585, w: 0.160, h: 0.145 },
+  3:  { x: 0.030, y: 0.310, w: 0.160, h: 0.145 },
+  4:  { x: 0.385, y: 0.355, w: 0.160, h: 0.145 },
   5:  { x: 0.100, y: 0.845, w: 0.160, h: 0.145 },
   6:  { x: 0.340, y: 0.845, w: 0.160, h: 0.145 },
+  7:  { x: 0.385, y: 0.165, w: 0.160, h: 0.145 },
+  8:  { x: 0.030, y: 0.140, w: 0.160, h: 0.145 },
+  9:  { x: 0.775, y: 0.060, w: 0.160, h: 0.145 },
+  10: { x: 0.680, y: 0.420, w: 0.160, h: 0.145 },
+  11: { x: 0.820, y: 0.285, w: 0.160, h: 0.145 },
+  12: { x: 0.795, y: 0.585, w: 0.160, h: 0.145 },
 };
 
 
@@ -119,16 +119,13 @@ export const DEFAULT_MAP = {
 // to the real game. `space` is the box the fractions are relative to: the whole
 // stage, or the camera feed panel.
 export const DEFAULT_WIDGETS = {
-  // Two separate lights, because the game has two, in two different places:
-  // the office flashlight (cams down) and the camera light (cams up). Only one
-  // is ever on screen. Both are see-through so they don't block the view.
-  light:    { space: 'stage', x: 0.020, y: 0.730, w: 0.190, h: 0.190 },
-  camlight: { space: 'stage', x: 0.020, y: 0.480, w: 0.150, h: 0.150 },
-  mask:     { space: 'stage', x: 0.300, y: 0.880, w: 0.300, h: 0.082 },
-  monitor:  { space: 'stage', x: 0.630, y: 0.880, w: 0.300, h: 0.082 },
-  ventL:    { space: 'stage', x: 0.014, y: 0.300, w: 0.048, h: 0.140 },
-  ventR:    { space: 'stage', x: 0.938, y: 0.300, w: 0.048, h: 0.140 },
-  wind:     { space: 'feed',  x: 0.040, y: 0.660, w: 0.280, h: 0.170 },
+  camlight: { space: 'stage', x: 0.112, y: 0.200, w: 0.252, h: 0.425 },
+  light:    { space: 'stage', x: 0.378, y: 0.285, w: 0.235, h: 0.359 },
+  mask:     { space: 'stage', x: 0.051, y: 0.934, w: 0.399, h: 0.065 },
+  monitor:  { space: 'stage', x: 0.525, y: 0.932, w: 0.400, h: 0.068 },
+  ventL:    { space: 'stage', x: 0.013, y: 0.524, w: 0.044, h: 0.093 },
+  ventR:    { space: 'stage', x: 0.946, y: 0.544, w: 0.042, h: 0.093 },
+  wind:     { space: 'feed',  x: 0.402, y: 0.704, w: 0.311, h: 0.157 },
 };
 
 
