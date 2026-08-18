@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#08090c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Minus 7 Trainer</title>
+<link rel="stylesheet" href="src/style.css">
+</head>
+<body>
+
+<div id="menu" class="panel shown">
+  <header>
+    <h1>Minus&nbsp;7 <span>trainer</span></h1>
+    <p>Touch-input drills for the FNaF&nbsp;2 10/20 Minus&nbsp;7 routine. Built for Android timing (1.00&times;).
+       Turn your phone sideways.</p>
+  </header>
+  <div id="mode-list" class="modes"></div>
+  <nav class="menu-nav">
+    <button data-ui="settings">Settings</button>
+    <button data-ui="about">How it works</button>
+    <button id="btn-resetprogress" class="danger">Reset progress</button>
+  </nav>
+</div>
+
+<div id="settings" class="panel">
+  <header><h2>Settings</h2><button data-close>Done</button></header>
+  <div class="rows">
+    <label class="row"><span>Sound</span><input type="checkbox" id="opt-sound"></label>
+    <label class="row"><span>Show coach hints</span><input type="checkbox" id="opt-coach"></label>
+    <div class="row"><span>Calibrate layout
+      <em>drag every control &mdash; cameras, light, mask, monitor, vents, wind &mdash; to match your thumbs</em></span>
+      <button id="btn-calibrate">Open</button></div>
+    <div class="row"><span>Adopt the built-in camera map
+      <em>takes the shipped CAM positions, keeps your calibrated controls</em></span>
+      <button id="btn-resetcams">Cameras</button></div>
+    <div class="row"><span>Reset the controls
+      <em>light, mask, monitor, vents, wind &mdash; back to shipped defaults</em></span>
+      <button id="btn-resetctrls">Controls</button></div>
+    <div class="row"><span>Save this layout as the code default
+      <em>writes src/config.js when served from tools/serve.py</em></span>
+      <button id="btn-savemap">Save</button></div>
+  </div>
+  <p id="savemap-note" class="note"></p>
+  <textarea id="map-json" class="mapjson" readonly hidden></textarea>
+  <div class="rows">
+  </div>
+
+  <h3>Your own sounds</h3>
+  <p class="note">This trainer ships with synthesised cues only. If you own FNaF&nbsp;2 you can load audio
+     from your own copy into these slots. Files stay in this browser on this device &mdash; they are never
+     uploaded and are not part of the page.</p>
+  <div id="sound-slots" class="slots"></div>
+  <button id="btn-clear-sounds" class="danger">Remove all loaded sounds</button>
+</div>
+
+<div id="about" class="panel">
+  <header><h2>How it works</h2><button data-close>Done</button></header>
+  <div class="prose">
+    <p><b>The routine.</b> At every <code>:X2</code> and <code>:X7</code>: cams down, mask flick for
+       Golden Freddy, flash the hall for Foxy, cams up, flash <b>CAM&nbsp;10</b>, <b>CAM&nbsp;04</b>,
+       <b>CAM&nbsp;07</b>, then CAM&nbsp;11 and wind until the next anchor.</p>
+    <p><b>Why it works.</b> A camera flash freezes everyone in that room for 6.66&nbsp;s, and all seven
+       stallable animatronics have to pass through those three rooms. Flashes 5&nbsp;s apart never let the
+       stun lapse. Foxy, Golden Freddy and Balloon Boy cannot be stalled.</p>
+    <p><b>The stun bars are the game.</b> Three bars, top of the screen, each draining from 6.66&nbsp;s.
+       If one hits zero while somebody is standing in that room, they move.</p>
+    <p><b>Light budget.</b> 50&nbsp;s of flashlight has to cover a 420&nbsp;s night &mdash; 119&nbsp;ms of
+       light per second survived. The HUD shows your running rate; over budget turns red.</p>
+    <p><b>Balloon Boy.</b> Third laugh: keep the cams <i>down</i> across every 5&nbsp;s interval. Fourth
+       laugh: flash all three cams and mask up, then react to his leaving bang. A full-length attack
+       leaves about 0.7&nbsp;s to un-mask, raise the cams and re-flash.</p>
+    <p class="fine">The camera map geometry is a reconstruction, not an extraction &mdash; use
+       Settings&nbsp;&rarr;&nbsp;Calibrate to match your device. Simulation constants come from the
+       community AI breakdowns; a few are calibrated rather than sourced and are marked as such in
+       <code>src/config.js</code>. This is a practice tool, not the game.</p>
+  </div>
+</div>
+
+<div id="brief" class="panel">
+  <header><h2 id="brief-title"></h2><span id="brief-step" class="step"></span></header>
+  <p id="brief-goal" class="brief-goal"></p>
+  <p id="brief-teach" class="brief-teach"></p>
+  <div id="brief-controls" class="brief-controls"></div>
+  <nav class="report-nav">
+    <button id="btn-brief-go" class="primary">Start</button>
+    <button id="btn-brief-back">Back</button>
+  </nav>
+</div>
+
+<div id="passed" class="panel">
+  <header><h2 id="passed-title"></h2></header>
+  <p id="passed-body" class="brief-teach"></p>
+  <nav class="report-nav">
+    <button id="btn-next-lesson" class="primary">Next lesson</button>
+    <button id="btn-retry-lesson">Practise again</button>
+    <button id="btn-passed-menu">Menu</button>
+  </nav>
+</div>
+
+<div id="run" class="panel">
+  <div id="stage"></div>
+  <button id="btn-quit" class="quit">Quit</button>
+</div>
+
+<div id="report" class="panel">
+  <header><h2 id="rep-head"></h2></header>
+  <p id="rep-why" class="why"></p>
+  <canvas id="rep-canvas"></canvas>
+  <div id="rep-stats" class="stats"></div>
+  <h3>Flagged</h3>
+  <ul id="rep-mistakes" class="mistakes"></ul>
+  <nav class="report-nav">
+    <button id="btn-again">Run it again</button>
+    <button id="btn-menu">Menu</button>
+  </nav>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
