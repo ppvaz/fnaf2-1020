@@ -92,7 +92,9 @@ def main():
     (out / 'index.html').write_text(html)
     kb = len(html.encode()) / 1024
     print(f'dist/index.html  {kb:.0f} KB  ({len(order)} modules)')
-    leftover = re.findall(r'(?:src|href)="(?!https?:|#)[^"]*"', html)
+    # data: URIs are self-contained -- they are the point of inlining, not a
+    # dangling reference.
+    leftover = re.findall(r'(?:src|href)="(?!https?:|data:|#)[^"]*"', html)
     if leftover:
         print(f'WARNING: unresolved local reference(s): {leftover}', file=sys.stderr)
 
