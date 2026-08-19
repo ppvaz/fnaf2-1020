@@ -1,8 +1,16 @@
 # Derivation, tiers 2–3: a structurally new strategy
 
-**Status:** not started. **Depends on:** plan 01 (to judge novelty against the meta)
-and benefits from plan 04's search harness. The riskiest and most speculative plan —
-do last.
+**Status:** first derivation pass complete (2026-08-19). `tools/strategysearch.mjs`
+enumerated the minimal camera covers of the modeled route graph and found a unique
+two-camera structure, **CAM 06/07**. It clears 200/200 modeled seeds and 100/100
+worst-luck seeds while retaining the 167 ms all-survive jitter ceiling. The full
+result and its dependency audit are in `CAM-6-7-STRATEGY.md`.
+
+This satisfies the plan's simulator-result branch, but not the stretch goal: CAM
+06/07 remains a **sim-derived experiment awaiting real-game/decompile validation**.
+Its key dependency, Toy Bonnie's special CAM 06 → blind-spot timer, is not represented
+faithfully enough to call the routine real or zero-RNG. No trainer mode should ship
+before Pedro validates that transition on the Android build.
 
 ## Goal
 
@@ -76,14 +84,18 @@ Two conclusions baked into this plan:
 
 ## Work
 
-1. Extract the route graph from `STALLED` into an analysable form; enumerate camera
-   covers and hybrid stall/tank partitions.
-2. Compile candidates to scripts; evaluate with the plan 04 harness; keep survivors.
-3. Source the approximated mechanics each survivor depends on; re-evaluate.
-4. Compare survivors against the meta doc for novelty; write up the best one with its
-   full dependency list and caveats.
-5. Only then, if one is worth teaching: a trainer mode for it (reuse plan 02's
-   strategy-picker machinery).
+1. ~~Extract the route graph and enumerate camera covers~~ — done in
+   `tools/strategysearch.mjs`; five minimal grounded covers, with CAM 06/07 the unique
+   two-camera cover. Hybrid tanking was unnecessary once a full two-camera cover
+   survived, and remains a possible later search branch.
+2. ~~Compile and evaluate candidates~~ — done; CAM 06/07 passed the clean,
+   worst-luck and jitter sweeps recorded in `CAM-6-7-STRATEGY.md`.
+3. ~~Audit the approximated mechanics~~ — done far enough to identify the decisive
+   gate: Toy Bonnie's special CAM 06 → blind-spot timer is missing from the model.
+   Re-evaluation against exact mechanics awaits the Android decompile/real-game test.
+4. ~~Compare against documented prior art and write up the result~~ — done; no CAM
+   06/07 match found, but novelty is explicitly not claimed.
+5. Trainer mode: intentionally not started. It is gated on real-game validation.
 
 ## Done when
 

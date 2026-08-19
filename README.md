@@ -138,6 +138,7 @@ node tools/caltest.mjs           # calibration, drag vs. press, layout saving
 node tools/lightcheck.mjs        # the two lights swap with the monitor
 node tools/browsertest.mjs       # load, input, report
 node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
+node tools/strategysearch.mjs    # enumerate route-graph camera covers (--quick for a smoke pass)
 ```
 
 What they establish:

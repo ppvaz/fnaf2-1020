@@ -10,5 +10,6 @@ in any later session. Suggested order and dependencies:
 3. [02-minus-3-mode.md](02-minus-3-mode.md) — Minus 3 as a second trainer mode.
 4. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
    needs a reactive coaching model, the biggest piece.
-5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — derive a new strategy via
-   the simulator; most speculative, do last.
+5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — first derivation pass
+   produced the sim-verified CAM 06/07 candidate; real-game validation is still
+   required before it is a strategy or trainer mode.

@@ -27,8 +27,15 @@ const A = (f) => { // next frame landing on a :X2 / :X7 second boundary
 };
 
 export class Bot {
-  constructor(sim, table = DEFAULT_CYCLE) {
+  constructor(sim, table = DEFAULT_CYCLE, targets = null) {
     this.sim = sim; this.table = table;
+    // The BB attack/recovery path has to refresh the same camera set as the
+    // regular cycle.  Derive it from the table by default so search tools can
+    // evaluate structurally different cycles without silently falling back to
+    // Minus 7's 10/04/07 sweep.
+    this.targets = targets || [...new Set(table
+      .filter(([, , act]) => act.startsWith('cam:') && act !== `cam:${C.BOX_CAM}`)
+      .map(([, , act]) => +act.slice(4)))];
     this.plan = []; this.waiting = null; this.kind = 'start';
     this.plan = [[2, 'tap', 'monitor'], [20, 'tap', 'cam:11'], [24, 'down', 'wind']];
     this.nextAt = C.s(7);
@@ -50,21 +57,24 @@ export class Bot {
 
   // BB is in the opening: flash everything, drop, mask, and wait for his bang.
   attack(a) {
-    return [
-      [a + 0, 'down', 'light'],
-      [a + 3, 'tap', 'cam:10'], [a + 9, 'tap', 'cam:4'], [a + 15, 'tap', 'cam:7'],
-      [a + 22, 'tap', 'monitor'], [a + 34, 'tap', 'mask'],
-      [a + 36, 'wait', 'bbgone'],
-    ];
+    const p = [[a, 'down', 'light']];
+    this.targets.forEach((cam, i) => p.push([a + 3 + i * 6, 'tap', `cam:${cam}`]));
+    const drop = a + 4 + this.targets.length * 6;
+    p.push([drop, 'tap', 'monitor'], [drop + 12, 'tap', 'mask'],
+      [drop + 14, 'wait', 'bbgone']);
+    return p;
   }
 
   recover(f) {
-    return [
-      [f + 2, 'tap', 'mask'], [f + 5, 'tap', 'monitor'],
-      [f + 22, 'tap', 'cam:10'], [f + 26, 'tap', 'cam:4'],
-      [f + 30, 'up', 'light'],
-      [f + 34, 'tap', 'cam:11'], [f + 37, 'down', 'wind'],
-    ];
+    // Raising the monitor re-exposes the final camera from attack() while the
+    // light is still held, so only the preceding cameras need explicit taps.
+    const p = [[f + 2, 'tap', 'mask'], [f + 5, 'tap', 'monitor']];
+    this.targets.slice(0, -1).forEach((cam, i) =>
+      p.push([f + 22 + i * 4, 'tap', `cam:${cam}`]));
+    const lightUp = f + 22 + Math.max(1, this.targets.length - 1) * 4;
+    p.push([lightUp, 'up', 'light'], [lightUp + 4, 'tap', `cam:${C.BOX_CAM}`],
+      [lightUp + 7, 'down', 'wind']);
+    return p;
   }
 
   step() {
@@ -100,7 +110,7 @@ export class Bot {
 export function run(opts = {}) {
   const jitter = opts.jitter || 0;
   const sim = new Sim(Object.assign({ seed: 999 }, opts));
-  const bot = new Bot(sim, opts.cycle || DEFAULT_CYCLE);
+  const bot = new Bot(sim, opts.cycle || DEFAULT_CYCLE, opts.targets || null);
   if (jitter) {
     // Human sloppiness: the whole cycle lands late by a random amount, with a
     // little spread inside it. Order is preserved -- this models a late player,
