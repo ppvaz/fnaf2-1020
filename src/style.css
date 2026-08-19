@@ -11,6 +11,30 @@
   --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
   --sans:'Chakra Petch',-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
   --tap:56px;
+
+  /* Motion. Three rules hold everywhere inside a run:
+     1. A game state reaches its lit state on the press frame -- every on-edge
+        is 0s, only the off-edge decays. An eased fade-in would teach a latency
+        the game does not have.
+     2. Anything decaying in a colour or position a mechanic also uses is gone
+        inside C.TOL_GOOD (150 ms), so an afterglow can never be read as a
+        state that lasted long enough to be graded.
+     3. Nothing transforms an ancestor of a [data-act] control: that moves the
+        hit rectangle under a thumb already in flight, and re-resolves every
+        calibrated left/top percentage. Additive motion lives on #fx or on
+        pseudo-elements, which never affect their parent's hit test. */
+  --t-instant:0s;
+  --t-tap:.12s;        /* touch confirmation decay      (< TOL_GOOD) */
+  --t-glow:.11s;       /* light / mask decay            (< TOL_GOOD) */
+  --t-fx:.22s;         /* additive feedback on #fx */
+  --t-swap:.25s;       /* == C.MONITOR_ANIM, 15 frames */
+  --t-panel:.18s;
+  --e-out:cubic-bezier(.2,.8,.3,1);
+  --e-in:cubic-bezier(.4,0,1,1);
+  --e-crt:cubic-bezier(.16,1,.3,1);
+  /* One colour per control, on the ring as on the lane and the brief chips. */
+  --ring-cam:#4FD2EE; --ring-light:#FFB020; --ring-mask:#FF5449;
+  --ring-mon:#EAEFE3; --ring-wind:#C983F5; --ring-vent:#8A9483;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--fg);
@@ -26,6 +50,14 @@ code{font-family:var(--mono);font-size:.9em;color:var(--fg3)}
 .panel{position:fixed;inset:0;display:none;flex-direction:column;gap:12px;overflow-y:auto;
   padding:max(18px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
 .panel.shown{display:flex}
+/* Entries animate, exits hard-cut. `display` cannot transition anyway, and a
+   console should change channel instantly and then let the tube settle -- any
+   timed exit between "Start" and the run being live is time not spent
+   training. */
+.panel.shown:not(#run){animation:consoleBoot var(--t-panel) var(--e-crt) both}
+@keyframes consoleBoot{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panel.shown:not(#run)>header{animation:tubeWiden .14s var(--e-crt) both}
+@keyframes tubeWiden{from{transform:scaleX(.96);opacity:0}to{transform:none;opacity:1}}
 #run{padding:0}
 h1{font:700 clamp(28px,7vw,38px)/1 var(--sans);letter-spacing:.01em}
 h1 span{color:var(--amber)}
@@ -86,7 +118,28 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 .mode.next .mode-best{color:var(--amber)}
 .mode.next .mode-goal{color:var(--dim)}
 .mode.later{opacity:.48}
-.mode:active{border-color:var(--dim)}
+/* Menu only. Scaling a control under a held thumb can push the contact point
+   outside the element, which inside a run risks a pointercancel mid-hold. */
+.mode{position:relative;overflow:hidden;
+  transition:transform .09s var(--e-out),border-color .09s var(--e-out)}
+.mode:active{border-color:var(--dim);transform:scale(.985)}
+/* Deal the ladder top-down, so its ordering reads as a progression and the eye
+   lands on the .next card last. */
+#menu.shown .mode{animation:cardDeal .24s var(--e-out) backwards;
+  animation-delay:calc(min(var(--i,0),9) * 26ms)}
+@keyframes cardDeal{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* One unambiguous "you are here" that survives peripheral vision. */
+.mode.next::after{content:'';position:absolute;inset:-1px;border-radius:12px;pointer-events:none;
+  box-shadow:0 0 0 1px var(--amber),0 0 18px -4px var(--amber);opacity:.35;
+  animation:armedBreath 2.6s ease-in-out infinite alternate}
+@keyframes armedBreath{to{opacity:.9}}
+/* Coming back to the ladder after a pass, the reward used to be invisible -- a
+   card silently changed class. This is the one moment to say "this just opened". */
+.mode[data-unlock]::before{content:'';position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(105deg,#0000 40%,rgba(255,176,32,.5) 50%,#0000 60%);
+  animation:unlockSheen .9s var(--e-out) both}
+@keyframes unlockSheen{0%{opacity:0;transform:translateX(-40%)}
+  25%{opacity:1}100%{opacity:0;transform:translateX(130%)}}
 
 /* ---------------------------------------------------------------- settings */
 .rows{display:grid;gap:2px}
@@ -129,6 +182,11 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 .brief-pass{font:500 9.5px var(--mono);color:var(--dimmer);letter-spacing:.04em}
 .report-nav{display:flex;gap:10px;margin-top:auto;padding-top:6px}
 #passed-title{color:var(--good)}
+#passed.shown #passed-title{animation:phosphorOn .6s var(--e-out) both}
+@keyframes phosphorOn{
+  0%{opacity:0;text-shadow:0 0 24px var(--good)}
+  40%{opacity:1;text-shadow:0 0 18px var(--good)}
+  100%{opacity:1;text-shadow:0 0 0 #57DC6E00}}
 
 /* --------------------------------------------------------- strategy board */
 #about{gap:24px}
@@ -194,6 +252,17 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 #stage::after{content:'';position:absolute;inset:0;z-index:28;pointer-events:none;
   background:repeating-linear-gradient(rgba(255,255,255,.035) 0 1px,transparent 1px 3px),
              radial-gradient(90% 90% at 50% 50%,transparent 60%,rgba(0,0,0,.42) 100%)}
+/* Additive feedback layer. Above the controls so a wash reads over them,
+   below .quit, and pointer-events:none so it can never swallow an input.
+   contain:strict keeps its animations from invalidating anything outside it. */
+#fx{position:absolute;inset:0;z-index:55;pointer-events:none;contain:strict;overflow:hidden}
+#fx>i{position:absolute;inset:0;opacity:0;will-change:opacity,transform}
+/* Edge-only: never over the timer, the lane, the coach strip or a control face. */
+.fx-vignette{box-shadow:inset 0 0 0 2px var(--fxc,#FFB020),inset 0 0 46px -10px var(--fxc,#FFB020)}
+.fx-wipe{background:linear-gradient(#0000 0%,rgba(255,176,32,.10) 44%,
+  rgba(234,239,227,.5) 50%,rgba(255,176,32,.10) 56%,#0000 100%)}
+.fx-scan{background:repeating-linear-gradient(#EAEFE3 0 1px,transparent 1px 4px)}
+
 .quit{position:absolute;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));
   z-index:60;padding:5px 11px;border-radius:7px;background:rgba(16,19,15,.85);
   border:1px solid var(--line);font:600 9px var(--mono);letter-spacing:.1em;color:var(--dim)}
@@ -201,8 +270,15 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 #hud{position:absolute;top:0;left:0;right:0;height:46px;z-index:40;display:flex;align-items:center;
   gap:18px;padding:6px max(56px,env(safe-area-inset-right)) 6px max(14px,env(safe-area-inset-left));
   background:linear-gradient(rgba(7,9,8,.96),rgba(7,9,8,0))}
-.hud-timer{font:700 21px var(--mono);font-variant-numeric:tabular-nums;
+.hud-timer{position:relative;font:700 21px var(--mono);font-variant-numeric:tabular-nums;
   padding:1px 9px;border-radius:8px;border:1px solid transparent;flex:0 0 auto}
+/* :X2 / :X7 is the metronome of the whole strategy, and the border used to
+   just switch on. The digits themselves are never moved or scaled -- the
+   readout is ground truth and stays pin-sharp and stationary. */
+.hud-timer::after{content:'';position:absolute;inset:-2px;border-radius:9px;pointer-events:none;
+  box-shadow:0 0 0 1px var(--good),0 0 16px -4px var(--good);opacity:0}
+.hud-timer.is-anchor::after{animation:anchorStrike .18s var(--e-out) both}
+@keyframes anchorStrike{from{opacity:1;transform:scale(.97)}to{opacity:0;transform:scale(1.05)}}
 .hud-timer #t-dec{color:var(--dimmer);font-size:15px}
 .hud-timer.is-anchor{border-color:rgba(87,220,110,.55);color:var(--good)}
 .hud-timer.is-anchor #t-dec{color:#3E6E4A}
@@ -212,14 +288,22 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 .stuns{display:flex;gap:7px}
 .stun{display:flex;align-items:center;gap:4px}
 .stun-name{font:500 9px var(--mono);color:var(--dim)}
-.stun-track{width:42px;height:7px;border-radius:4px;background:#161C16;overflow:hidden}
+.stun-track{position:relative;width:42px;height:7px;border-radius:4px;background:#161C16;overflow:hidden}
 .stun-track i{display:block;height:100%;background:var(--cyan);width:0}
 .stun.is-low .stun-track i{background:var(--amber)}
-.stun.is-empty .stun-track{background:var(--bad);animation:pulse .5s infinite}
+/* Pulse the track, not the row: fading the whole row took the CAM number with
+   it, making the label hardest to read at the exact moment it matters most. */
+.stun.is-empty .stun-track{background:var(--bad)}
+.stun.is-empty .stun-track::after{content:'';position:absolute;inset:0;background:var(--bad);
+  animation:stunAlarm .5s ease-in-out infinite alternate}
+@keyframes stunAlarm{from{opacity:.25}to{opacity:1}}
 .stun.is-vacant{opacity:.35}
 .meter{width:80px;height:7px;border-radius:4px;background:#161C16;overflow:hidden}
 .meter i{display:block;height:100%;background:var(--violet);width:100%}
-.meter.is-low i{background:var(--bad)}
+/* Slower than the stun alarm on purpose: the box is a much longer fuse, and a
+   fast pulse here would compete for the same peripheral channel. */
+.meter.is-low i{background:var(--bad);animation:boxBreath 1.2s ease-in-out infinite alternate}
+@keyframes boxBreath{from{opacity:.55}to{opacity:1}}
 .bars{display:flex;gap:3px}
 .bars i{width:11px;height:8px;border-radius:2px;background:#1E241D}
 .bars i.on{background:var(--amber)}
@@ -234,6 +318,10 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 
 #lane{position:absolute;top:46px;left:0;width:100%;height:54px;z-index:41;pointer-events:none;
   background:rgba(8,10,9,.94);border-top:1px solid #1B221B;border-bottom:1px solid #1B221B}
+#lane.pass{animation:laneRim .42s var(--e-out) both}
+@keyframes laneRim{
+  from{box-shadow:inset 0 0 0 1px var(--good),0 0 22px -6px var(--good)}
+  to{box-shadow:inset 0 0 0 1px #57DC6E00,0 0 22px -6px #57DC6E00}}
 #coach{position:absolute;top:104px;left:0;right:0;height:20px;z-index:41;display:flex;
   align-items:center;justify-content:center;gap:14px;pointer-events:none}
 #coach-next{font:600 13px var(--sans);color:var(--dim)}
@@ -247,33 +335,92 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 #coach-bar.now i{background:var(--good)}
 #coach-bar.over i{background:var(--bad)}
 
+/* ------------------------------------------------------- touch confirmation
+   On glass you cannot feel a button, and a press you did not notice landing is
+   the worst failure mode in the app. Both effects fire on `.is-down`, which
+   input.js adds synchronously in pointerdown before anything else -- so they
+   confirm ARRIVAL, identically for a perfect input and a 400 ms late one, and
+   can never be mistaken for a grade. Everything is on a pseudo-element, which
+   never affects the parent's hit rectangle. */
+[data-act]{--ring:var(--ring-mon)}
+[data-act^="cam:"]{--ring:var(--ring-cam)}
+[data-act="light"]{--ring:var(--ring-light)}
+[data-act="mask"]{--ring:var(--ring-mask)}
+[data-act="wind"]{--ring:var(--ring-wind)}
+[data-act^="vent"]{--ring:var(--ring-vent)}
+
+.btn::after,.camb::after,.vent::after,.wind::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:var(--ring);opacity:0;transition:opacity var(--t-tap) var(--e-out)}
+.is-down::after{opacity:.2;transition-duration:var(--t-instant)}
+
+.btn::before,.camb::before,.vent::before,.wind::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  border:1.5px solid var(--ring);opacity:0}
+.btn.is-down::before,.vent.is-down::before,.wind.is-down::before{
+  animation:tapRingOut .22s var(--e-out) forwards}
+/* .camb clips its overflow, so its ring has to collapse inward to be seen. */
+.camb.is-down::before{animation:tapRingIn .22s var(--e-out) forwards}
+@keyframes tapRingOut{from{transform:scale(1);opacity:.85}to{transform:scale(1.32);opacity:0}}
+@keyframes tapRingIn{from{transform:scale(1);opacity:.85}to{transform:scale(.8);opacity:0}}
+
 /* the control the player should reach for next */
-.cue{outline:2px solid var(--amber);outline-offset:2px;transition:outline-color .08s}
-.cue-now{outline-color:var(--good);animation:cuepulse .9s ease-out infinite}
-@keyframes cuepulse{0%{box-shadow:0 0 0 0 rgba(87,220,110,.5)}100%{box-shadow:0 0 0 12px rgba(87,220,110,0)}}
+.cue{outline:2px solid var(--ring,var(--amber));outline-offset:2px;transition:outline-color .08s}
+.cue-now{outline-color:var(--good)}
+/* Composited pulse on the pseudo, not a box-shadow spread loop on the live
+   control the thumb is about to land on. The .is-down ring overrides it while
+   pressed, which is right: arrival beats invitation. */
+.cue-now::before{border-color:var(--good);border-width:2px;
+  animation:cueBeat .5s var(--e-out) infinite}
+@keyframes cueBeat{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.28);opacity:0}}
 .hidden-ctrl{display:none!important}
 .map.dim-cams .camb{opacity:.28;pointer-events:none}
 
 .view{position:absolute;inset:0}
 #office{background:radial-gradient(120% 90% at 50% 42%,#141A1B 0%,#07090B 72%)}
-#office.dimmed{filter:brightness(.35)}
+/* Cross-fade an overlay rather than animating filter:brightness() on a
+   full-screen radial gradient -- that re-rasters every frame, inside the one
+   loop that has to hold 60 fps on a phone. */
+/* z-index 5 is load-bearing: the hallway and the desk are positioned children
+   at auto, so an un-indexed pseudo would paint beneath them and leave them
+   undimmed; anything >= 20 would cover the monitor, which is the only thing on
+   screen while this is on. */
+#office::before{content:'';position:absolute;inset:0;z-index:5;background:#0A0C0A;opacity:0;
+  pointer-events:none;transition:opacity var(--t-swap) var(--e-out)}
+#office.dimmed::before{opacity:.66}
 #office.ambience::after{content:'';position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(60% 46% at 50% 20%,rgba(255,159,10,.10),transparent 72%)}
 .hallway{position:absolute;left:50%;top:17%;transform:translateX(-50%);width:34%;height:46%;
   background:linear-gradient(#0D1116,#05070A);
   clip-path:polygon(16% 0,84% 0,100% 100%,0 100%);display:grid;place-items:center}
-.hall-glow{position:absolute;inset:0;opacity:0;transition:opacity .05s;
+/* The hall light is metered -- 119 ms of light per second survived. Both the
+   fill and the bloom decay well inside TOL_GOOD, so an afterglow can never
+   read as "still on, still costing me". The bloom expands as it fades: light
+   that is thinning outward is light that has stopped. */
+.hall-glow{position:absolute;inset:0;opacity:0;transition:opacity var(--t-glow) var(--e-out);
   background:radial-gradient(62% 72% at 50% 28%,rgba(255,246,214,.55),transparent 72%)}
-.hall-glow.on{opacity:1}
-.hall-who{position:relative;font:700 12px var(--mono);letter-spacing:.1em;color:#0A0B10}
+.hall-glow.on{opacity:1;transition-duration:var(--t-instant)}
+.hall-glow::after{content:'';position:absolute;inset:-30% -50%;border-radius:50%;
+  pointer-events:none;opacity:0;transform:scale(1.18);
+  background:radial-gradient(closest-side,rgba(255,248,220,.38),transparent 72%);
+  transition:opacity .12s var(--e-out),transform .12s var(--e-out)}
+.hall-glow.on::after{opacity:1;transform:scale(1);transition-duration:var(--t-instant)}
+/* Whoever the flash reveals must be there, not fade in. */
+.hall-who{position:relative;font:700 12px var(--mono);letter-spacing:.1em;color:#0A0B10;
+  transition:none}
 .desk{position:absolute;left:0;right:0;bottom:0;height:26%;
   background:linear-gradient(#0D1013,#07080C);border-top:1px solid #1B2124}
 .vent{position:absolute;z-index:50;display:grid;place-items:center;border-radius:8px;
   background:#0D1013;border:1px solid #1C2328;color:var(--dimmer);font:600 9px var(--mono)}
 .vent.is-down{background:#2A3227;color:var(--fg)}
+/* Raising the monitor with Golden Freddy present is an instant kill and the
+   mask is the only counter, so it must read as on the frame the sim thinks it
+   is on. The exit gets 110 ms because un-masking starts the Balloon Boy duel's
+   ~0.7 s window, and a lingering mask would eat perceived reaction time. */
 .mask-overlay{position:absolute;inset:0;background:#05060A;opacity:0;pointer-events:none;
-  transition:opacity .06s;clip-path:polygon(0 0,100% 0,100% 100%,0 100%);z-index:30}
-.mask-overlay.shown{opacity:.93;
+  transition:opacity var(--t-glow) var(--e-out);
+  clip-path:polygon(0 0,100% 0,100% 100%,0 100%);z-index:30}
+.mask-overlay.shown{opacity:.93;transition-duration:var(--t-instant);
   clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 0,18% 34%,34% 30%,34% 52%,18% 56%,0 0,100% 0,82% 34%,66% 30%,66% 52%,82% 56%)}
 .blackout{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:29}
 .blackout.shown{opacity:.82;animation:flick .12s steps(2) infinite}
@@ -281,6 +428,12 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 
 #monitor{display:none;z-index:20;background:#080B0C;padding:130px 10px 50px}
 #monitor.shown{display:flex;gap:10px}
+/* Sim.press drops cam: actions for the 15 frames the monitor is raising, and
+   nothing on screen used to distinguish "map visible" from "map live". Opacity
+   only -- no transform -- so every camera button's hit rectangle is exactly
+   where the calibrated layout put it from the first millisecond. */
+#monitor .map,#monitor .feed-body{opacity:1;transition:opacity var(--t-swap) linear}
+#monitor.arming .map,#monitor.arming .feed-body{opacity:.55;transition-duration:var(--t-instant)}
 .feed{position:relative;flex:1.35;border:1px solid var(--line);border-radius:12px;
   background:linear-gradient(#11171A,#0A0D0F);padding:12px;display:flex;flex-direction:column;gap:9px;
   overflow:hidden}
@@ -361,13 +514,21 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 /* ----------------------------------------------------------------- report */
 .rep-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
 #rep-head{font:700 30px/1 var(--sans)}
-#rep-head.win{color:var(--good)} #rep-head.loss{color:var(--bad)}
+#rep-head.win{color:var(--good);--good:#57DC6E} #rep-head.loss{color:var(--bad);--good:#FF5449}
 .why{font:400 11.5px var(--sans);color:var(--dim);max-width:380px}
 .rep-head .report-nav{margin:0 0 0 auto;padding:0}
 .rep-body{flex:1;display:flex;gap:16px;min-height:0;flex-wrap:wrap}
 .rep-plot{flex:1.35;min-width:280px;border:1px solid var(--line);border-radius:12px;
   background:#0B0E0A;padding:14px 16px;display:flex;flex-direction:column;gap:8px}
-#rep-canvas{flex:1;width:100%;min-height:170px;display:block}
+/* Linear and left to right: the timeline replaying itself at ~13x, so the red
+   lapse columns arrive in the order they happened and the death marker at the
+   right edge is the destination rather than just an end. */
+#rep-canvas{flex:1;width:100%;min-height:170px;display:block;animation:sweepIn .52s linear both}
+@keyframes sweepIn{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+#rep-head{animation:phosphorOn .6s var(--e-out) both}
+#report.shown #rep-stats div,#report.shown #rep-mistakes li{
+  animation:consoleBoot .2s var(--e-out) backwards;
+  animation-delay:calc(520ms + (var(--i,0) * 40ms))}
 .rep-side{flex:1;min-width:250px;display:flex;flex-direction:column}
 .stats div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;
   border-bottom:1px solid var(--line2)}
@@ -379,9 +540,48 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
 .mistakes code{font:600 9.5px var(--mono);color:var(--amber);margin-right:8px}
 .mistakes .none{color:var(--dimmer)}
 
+/* Run entry: the CHROME settles, never the stage. #stage, the controls and the
+   lane are live on frame one -- Coach.nextAnchor() leaves at least ~1 s before
+   the first graded input, so this costs the player nothing. */
+#run.shown #hud,#run.shown #coach{animation:chromeIn .22s var(--e-out) both}
+@keyframes chromeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+
+/* Only ever on screen while the run is already in the degraded state it is
+   complaining about, and one tap away from gone. z-index below .quit so
+   quitting is never blocked. */
+.fsnag{display:none;position:absolute;left:50%;bottom:max(6px,env(safe-area-inset-bottom));
+  transform:translateX(-50%);z-index:59;padding:7px 14px;border-radius:8px;
+  background:rgba(51,39,10,.94);border:1px solid var(--amber);color:var(--amber);
+  font:600 9.5px var(--mono);letter-spacing:.06em;white-space:nowrap;
+  animation:armedBreath 1.6s ease-in-out infinite alternate}
+#run.shown.windowed .fsnag{display:block}
+
 body.in-run{background:#07090B}
 @media (orientation:portrait) and (max-width:900px){
   #run::after{content:'Rotate your phone to landscape';position:absolute;inset:0;z-index:99;
     display:grid;place-items:center;background:var(--bg);color:var(--dim);font-size:15px;
     text-align:center;padding:30px}
+}
+
+/* ------------------------------------------------------------ reduced motion
+   Remove movement, never information. Every state colour and every opacity
+   that encodes a game state is handed back below; only travel, scale and
+   looping pulses go. `.is-down` still lands instantly -- its on-edge is 0s by
+   construction, not by animation. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .cue-now{outline-color:var(--good);outline-width:3px}
+  .cue-now::before{animation:none;opacity:.7;transform:none;border-color:var(--good)}
+  .stun.is-empty .stun-track::after{animation:none;opacity:1}
+  .meter.is-low i{animation:none;opacity:1}
+  .bars i.blink{animation:none;opacity:.5}
+  .blackout.shown{animation:none;opacity:.82}   /* a game state, not decoration */
+  .feed-rec::before{animation:none;opacity:1}
+  .hud-timer.is-anchor::after{animation:none;opacity:1;transform:none}
+  #rep-canvas{animation:none;clip-path:none}
+  /* The one thing that must never lag, reduced motion or not. */
+  .is-down::after{transition-duration:0s!important;opacity:.2}
+  .fsnag{animation:none;opacity:1}
 }

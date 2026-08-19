@@ -30,9 +30,11 @@ export function glyphFor(step) {
   }
 }
 
-// A static picture of a lesson's pattern, for the briefing screen: the shape of
-// the routine laid out on a timeline before you have to play it.
-export function drawPattern(canvas, script) {
+// A picture of a lesson's pattern, for the briefing screen: the shape of the
+// routine laid out on a timeline before you have to play it. With `head` set,
+// a playhead is drawn at that offset and the glyphs it has already passed are
+// lit -- see sweepPattern below for why that is worth the extra parameter.
+export function drawPattern(canvas, script, head = null) {
   const ctx = canvas.getContext('2d');
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   const W = canvas.clientWidth, H = canvas.clientHeight;
@@ -70,6 +72,13 @@ export function drawPattern(canvas, script) {
   ctx.fillStyle = '#FFB020';
   ctx.fillText(':X2 / :X7', xOf(0) + 6, padT + 2);
 
+  if (head != null) {
+    const x = xOf(Math.min(head, span));
+    ctx.strokeStyle = '#FFB020'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+    ctx.lineWidth = 1;
+  }
+
   ctx.font = `600 10px ${MONO}`;
   const rowEnd = new Array(nRows).fill(-1e9);
   for (const step of script) {
@@ -88,6 +97,9 @@ export function drawPattern(canvas, script) {
       ctx.strokeStyle = 'rgba(201,131,245,0.5)';
       roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
     }
+    // Dim until the playhead reaches it, so the sweep reads as the routine
+    // being performed rather than a line sliding over a finished picture.
+    ctx.globalAlpha = head != null && step.at > head ? 0.4 : 1;
     ctx.fillStyle = bg;
     roundRect(ctx, x - tw / 2, y - 8, tw, 16, 5); ctx.fill();
     ctx.strokeStyle = fg;
@@ -95,7 +107,34 @@ export function drawPattern(canvas, script) {
     ctx.fillStyle = fg;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(g.text, x, y + 1);
+    ctx.globalAlpha = 1;
   }
+}
+
+// Play the pattern through once at 1.00x, then leave it drawn.
+//
+// This is the only place the tempo of the routine can be shown before a single
+// tap is graded: the brief used to teach the ORDER of ten inputs but nothing
+// about them landing inside 1.5 seconds. Linear is not a stylistic choice --
+// any easing here would teach a tempo the game does not have.
+export function sweepPattern(canvas, script, isLive) {
+  if (!script?.length) return;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    requestAnimationFrame(() => drawPattern(canvas, script));
+    return;
+  }
+  const last = script[script.length - 1];
+  const span = last.at + (last.hold || 0) + 0.4;
+  let t0 = null;
+  const step = (now) => {
+    if (!isLive()) return;
+    if (t0 == null) t0 = now;
+    const head = (now - t0) / 1000;
+    drawPattern(canvas, script, Math.min(head, span));
+    if (head < span) requestAnimationFrame(step);
+    else drawPattern(canvas, script);
+  };
+  requestAnimationFrame(step);
 }
 
 export class Lane {
@@ -115,6 +154,7 @@ export class Lane {
   }
 
   cleanPass(t) { this.flash = t; }
+  milestone(t) { this.comboFlash = t; }
 
   // Phase B has no script to follow, so the lane shows the thing that actually
   // matters there: how much stun is left before the animatronics break loose.
@@ -171,11 +211,20 @@ export class Lane {
     const hitX = Math.round(W * 0.12);
     const mid = H / 2 + 2;
 
-    // clean-pass flash
+    // Clean-pass phosphor sweep. A clean pass is the unit of progress in eight
+    // of ten lessons and used to be a flat wash you would not notice while
+    // looking at CAM 07; a directional sweep reads from the corner of the eye.
     const since = t - this.flash;
-    if (since >= 0 && since < 0.45) {
-      ctx.fillStyle = `rgba(87,220,110,${0.18 * (1 - since / 0.45)})`;
+    if (since >= 0 && since < 0.42) {
+      const k = since / 0.42;
+      ctx.fillStyle = `rgba(87,220,110,${0.16 * (1 - k)})`;
       ctx.fillRect(0, 0, W, H);
+      const cx = -60 + k * (W + 120);
+      const g = ctx.createLinearGradient(cx - 60, 0, cx + 60, 0);
+      g.addColorStop(0, 'rgba(87,220,110,0)');
+      g.addColorStop(0.5, `rgba(87,220,110,${0.3 * (1 - k)})`);
+      g.addColorStop(1, 'rgba(87,220,110,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     }
 
     // rail
@@ -238,26 +287,38 @@ export class Lane {
       }
     }
 
-    // judgement pops, rising and fading just past the hit line
+    // Judgement pops, striking and falling away just past the hit line. Held at
+    // full for the first quarter so the text is readable, then eased out; 0.7s
+    // rather than 0.85 because at ten inputs per cycle the old window stacked
+    // up to eight of these on top of each other.
     for (let i = this.pops.length - 1; i >= 0; i--) {
       const p = this.pops[i];
       const age = t - p.born;
-      if (age > 0.85) { this.pops.splice(i, 1); continue; }
-      const a = 1 - age / 0.85;
-      ctx.globalAlpha = a;
+      if (age > 0.7) { this.pops.splice(i, 1); continue; }
+      const k = age / 0.7;
+      ctx.globalAlpha = k < 0.25 ? 1 : 1 - ((k - 0.25) / 0.75) ** 1.6;
       ctx.font = `700 12px ${MONO}`;
       ctx.fillStyle = p.grade === 'good' ? INK.good : p.grade === 'ok' ? INK.ok : INK.bad;
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(p.label, hitX - 8, mid - age * 10);
+      ctx.fillText(p.label, hitX - 8, mid - (1 - (1 - k) ** 2) * 12);
       ctx.globalAlpha = 1;
     }
 
-    // combo
+    // Combo. The app's only continuous reward, and crossing 10 or 20 used to be
+    // a silent colour change. It sits in the far corner of the lane, so scaling
+    // it disturbs nothing.
     if (coach?.combo > 2) {
+      const k = this.comboFlash != null ? Math.min(1, (t - this.comboFlash) / 0.36) : 1;
+      const col = coach.combo >= 20 ? INK.violet : coach.combo >= 10 ? INK.good : INK.dim;
+      ctx.save();
+      ctx.translate(W - 8, mid);
+      ctx.scale(1 + 0.6 * (1 - k) ** 2, 1 + 0.6 * (1 - k) ** 2);
       ctx.font = `700 13px ${MONO}`;
-      ctx.fillStyle = coach.combo >= 20 ? INK.violet : coach.combo >= 10 ? INK.good : INK.dim;
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(`${coach.combo}x`, W - 8, mid);
+      if (k < 1) { ctx.shadowColor = col; ctx.shadowBlur = 14 * (1 - k); }
+      ctx.fillStyle = col;
+      ctx.fillText(`${coach.combo}x`, 0, 0);
+      ctx.restore();
     }
   }
 }

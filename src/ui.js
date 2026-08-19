@@ -4,6 +4,11 @@ import { Lane } from './lane.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
+const GRADE_FX = {
+  good: '#57DC6E', ok: '#FFB020', late: '#FF5449',
+  missed: '#FF5449', skipped: '#FF5449', 'no-flash': '#FF5449',
+};
+
 export class UI {
   constructor(root) {
     this.root = root;
@@ -11,6 +16,7 @@ export class UI {
     this.map = saved.map;
     this.widgets = saved.widgets;
     this.calibrating = false;
+    this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
     this.build();
   }
 
@@ -75,6 +81,8 @@ export class UI {
       <button class="btn tab mon" data-act="monitor" data-mode="tap" data-widget="monitor"><span id="mon-arrow">▲</span><em>MONITOR</em></button>
       <button class="vent" data-act="ventL" data-mode="hold" data-widget="ventL"><span>L</span></button>
       <button class="vent" data-act="ventR" data-mode="hold" data-widget="ventR"><span>R</span></button>
+
+      <div id="fx" aria-hidden="true"><i class="fx-vignette"></i><i class="fx-wipe"></i><i class="fx-scan"></i></div>
     `;
     this.el = {
       tMain: this.root.querySelector('#t-main'),
@@ -106,6 +114,11 @@ export class UI {
       coachBarFill: this.root.querySelector('#coach-bar i'),
       lane: this.root.querySelector('#lane'),
       monArrow: this.root.querySelector('#mon-arrow'),
+      fx: {
+        vignette: this.root.querySelector('.fx-vignette'),
+        wipe: this.root.querySelector('.fx-wipe'),
+        scan: this.root.querySelector('.fx-scan'),
+      },
       timer: this.root.querySelector('.hud-timer'),
     };
     this.lane = new Lane(this.el.lane);
@@ -215,14 +228,39 @@ export class UI {
       // The MONITOR tab is the same button either way, so its arrow has to say
       // which way it will move the cams -- up when they are down, down when up.
       this.el.monArrow.textContent = up ? '▼' : '▲';
+      // A CRT wipe in the direction the view is moving, on #fx. Cross-fading
+      // the two views instead would double full-screen paint and, for 250 ms,
+      // make "which view am I in" ambiguous -- the one question the whole
+      // routine is built on.
+      this.fx(this.el.fx.wipe, [
+        { opacity: 0, transform: `translateY(${up ? '110%' : '-110%'})` },
+        { opacity: 1, offset: 0.35 },
+        { opacity: 0, transform: `translateY(${up ? '-110%' : '110%'})` },
+      ], { duration: 220, easing: 'cubic-bezier(.16,1,.3,1)' });
     }
     this.el.monitor.classList.toggle('shown', up);
+    this.el.monitor.classList.toggle('arming', sim.monitor === 'raising');
     this.el.office.classList.toggle('dimmed', up);
     this.el.maskOv.classList.toggle('shown', sim.maskOn);
     this.el.blackoutOv.classList.toggle('shown', sim.blackout.active);
     this.el.hallGlow.classList.toggle('on', sim.hallLightOn);
+    if (sim.maskOn !== this._maskWas) {
+      this._maskWas = sim.maskOn;
+      if (sim.maskOn) {
+        this.el.fx.vignette.style.setProperty('--fxc', '#FF5449');
+        this.fx(this.el.fx.vignette, [{ opacity: .5 }, { opacity: 0 }], { duration: 130 });
+      }
+    }
     const hallOccupant = sim.foxy.loc === 'hall' ? 'FOXY' : sim.gf.inHall ? '???' : '';
-    this.el.hallWho.textContent = sim.hallLightOn ? hallOccupant : '';
+    const who = sim.hallLightOn ? hallOccupant : '';
+    // The difference between an empty hall and FOXY is a life, and it used to
+    // be a text node quietly appearing for as long as a tap lasts.
+    if (who && who !== this._whoWas) {
+      this.fx(this.el.hallWho,
+        [{ transform: 'scale(1.4)' }, { transform: 'scale(1)' }], { duration: 140 });
+    }
+    this._whoWas = who;
+    this.el.hallWho.textContent = who;
     this.el.office.classList.toggle('ambience', sim.foxy.loc === 'hall');
 
     // monitor contents
@@ -285,6 +323,14 @@ export class UI {
           : `${last.delta > 0 ? '+' : ''}${Math.round(last.delta * 1000)}ms`;
         this.el.coachFb.textContent = `${last.label} ${txt}`;
         this.el.coachFb.className = last.grade;
+        // The number swapped silently before, so two consecutive lates looked
+        // exactly like one stale one. Restriking makes each judgement countable.
+        const bad = !(last.grade === 'good' || last.grade === 'ok');
+        this.fx(this.el.coachFb, bad
+          ? [{ transform: 'translateX(0)' }, { transform: 'translateX(-3px)', offset: .25 },
+             { transform: 'translateX(3px)', offset: .6 }, { transform: 'translateX(0)' }]
+          : [{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }],
+          { duration: bad ? 200 : 180 });
       }
     }
   }
@@ -326,7 +372,68 @@ export class UI {
     cam.classList.toggle('hidden-ctrl', !(this.useCamLight ?? true) || !camsUp);
   }
 
-  setStreak(text) { this.el.coachStreak.textContent = text || ''; }
+  // One-shot additive effect on the #fx layer or on a pointer-events-free strip.
+  // WAAPI rather than a class toggle: no forced reflow read per input, and
+  // transform/opacity stay off the main thread. Cancels anything in flight so
+  // rapid inputs restart cleanly instead of queueing.
+  fx(el, frames, opts = {}) {
+    if (this.reduce.matches || !el) return;
+    for (const a of el.getAnimations()) a.cancel();
+    el.animate(frames, { easing: 'cubic-bezier(.2,.8,.3,1)', fill: 'none', ...opts });
+  }
+
+  // A grade is currently readable only in the coach strip and the lane -- two
+  // places the eye is not, because it is on the button. A screen-edge wash is
+  // legible in peripheral vision and, being edge-only, hides nothing.
+  grade(g) {
+    const el = this.el.fx.vignette;
+    el.style.setProperty('--fxc', GRADE_FX[g] || '#FF5449');
+    const peak = g === 'good' ? 0.28 : g === 'ok' ? 0.34 : 0.62;
+    this.fx(el, [{ opacity: 0 }, { opacity: peak, offset: 0.12 }, { opacity: 0 }],
+      { duration: 260, easing: 'ease-out' });
+  }
+
+  // A scanline sweep as the console comes up. The stage and every control are
+  // already live underneath it.
+  runEntry() {
+    this.fx(this.el.fx.scan, [
+      { opacity: 0, transform: 'translateY(-100%)' },
+      { opacity: .09, offset: .5 },
+      { opacity: 0, transform: 'translateY(100%)' },
+    ], { duration: 320, easing: 'linear' });
+  }
+
+  cleanPass(t) {
+    this.lane.cleanPass(t);
+    const el = this.el.lane;
+    el.classList.remove('pass');
+    for (const a of el.getAnimations()) a.cancel();
+    if (!this.reduce.matches) el.classList.add('pass');
+  }
+
+  death() {
+    const el = this.el.fx.vignette;
+    el.style.setProperty('--fxc', '#FF5449');
+    this.fx(el, [{ opacity: 0 }, { opacity: .9, offset: .22 }, { opacity: .75 }],
+      { duration: 320, fill: 'forwards', easing: 'cubic-bezier(.4,0,1,1)' });
+  }
+
+  win() {
+    this.el.fx.wipe.style.setProperty('--fxc', '#FFB020');
+    this.fx(this.el.fx.wipe, [
+      { opacity: 0, transform: 'translateY(110%)' },
+      { opacity: 1, offset: .4 },
+      { opacity: 0, transform: 'translateY(-110%)' },
+    ], { duration: 420, easing: 'cubic-bezier(.16,1,.3,1)' });
+  }
+
+  setStreak(text) {
+    if (text && text !== this.el.coachStreak.textContent) {
+      this.fx(this.el.coachStreak,
+        [{ transform: 'scale(1.35)' }, { transform: 'scale(1)' }], { duration: 200 });
+    }
+    this.el.coachStreak.textContent = text || '';
+  }
 
   // Wipe the coach strip between lessons: text from the last one bleeding into
   // a lesson that has no coach reads as live instruction.
@@ -340,6 +447,11 @@ export class UI {
     this.el.coachBar.classList.remove('now', 'over');
     this._lastShown = null;
     this.lane.pops.length = 0;
+    this.lane.comboFlash = null;
+    // The death wash holds its final frame, so it has to be cleared explicitly
+    // or it bleeds into the next run.
+    for (const el of Object.values(this.el.fx)) for (const a of el.getAnimations()) a.cancel();
+    this.el.lane.classList.remove('pass');
   }
 
   // Put a pulsing ring on whatever the player should touch next.

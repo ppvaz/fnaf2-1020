@@ -3,9 +3,9 @@ import { Sim } from './engine.js';
 import { Coach, DuelTimer } from './coach.js';
 import { Audio } from './audio.js';
 import { UI } from './ui.js';
-import { bindInputs, keepAwake, goFullscreen, buzz } from './input.js';
+import { bindInputs, keepAwake, goFullscreen, isFullscreen, buzz } from './input.js';
 import { drawTimeline, buildSummary, fmtTime } from './report.js';
-import { drawPattern } from './lane.js';
+import { sweepPattern } from './lane.js';
 import * as Assets from './assets.js';
 import { LESSONS, byId, loadProgress, saveProgress, markPassed, recordCombo, unlockedIndex } from './curriculum.js';
 
@@ -35,6 +35,7 @@ class App {
     this.last = 0;
     this.settings = loadSettings();
     this.bindUI();
+    this.bindFullscreen();
     bindInputs(this.stage, (a) => this.onPress(a), (a) => this.onRelease(a));
     requestAnimationFrame((t) => this.frame(t));
   }
@@ -86,6 +87,30 @@ class App {
     document.getElementById('btn-clear-sounds').addEventListener('click', async () => {
       await Assets.clearAll(); this.audio.samples = {}; this.buildSoundSlots();
     });
+  }
+
+  // Insist on full screen for the length of a run. Three ways in, because a
+  // single request at start-up is the one thing that reliably does not work:
+  // it is refused if the gesture has been spent, and the player can leave with
+  // a swipe or the Escape key at any time afterwards.
+  bindFullscreen() {
+    const nag = document.getElementById('btn-fs');
+    // Calibration is exempt: it runs with `running` true but is a layout
+    // session, and a viewport resize mid-drag would move the thing being
+    // dragged. Control geometry is stored as a fraction of the stage, so it
+    // does not care what size the viewport was when it was set.
+    const sync = () => document.getElementById('run')
+      .classList.toggle('windowed', this.running && !this.ui.calibrating && !isFullscreen());
+    this.syncFullscreen = sync;
+    nag.addEventListener('click', () => { goFullscreen().then(sync); });
+    document.addEventListener('fullscreenchange', sync);
+    document.addEventListener('webkitfullscreenchange', sync);
+    // Every touch on the stage is a fresh user gesture, so a run that dropped
+    // out of full screen climbs back in on the next input the player makes
+    // anyway -- without costing them one.
+    this.stage.addEventListener('pointerdown', () => {
+      if (this.running && !this.ui.calibrating && !isFullscreen()) goFullscreen().then(sync);
+    }, { capture: true, passive: true });
   }
 
   // Push the calibrated map back into src/config.js as the new DEFAULT_MAP.
@@ -155,6 +180,7 @@ class App {
     this.running = true;
     this.acc = 0; this.last = performance.now();
     showPanel('run');
+    this.syncFullscreen();
     note('');
   }
 
@@ -185,7 +211,10 @@ class App {
     const cv = document.getElementById('brief-lane');
     cv.parentElement.style.display = l.script ? '' : 'none';
     showPanel('brief');
-    if (l.script) requestAnimationFrame(() => drawPattern(cv, l.script));
+    if (l.script) {
+      sweepPattern(cv, l.script,
+        () => this.pendingLesson === id && document.getElementById('brief').classList.contains('shown'));
+    }
   }
 
   // ------------------------------------------------------------------ run
@@ -224,15 +253,19 @@ class App {
     this.running = true;
     this.acc = 0; this.last = performance.now();
     showPanel('run');
+    this.ui.runEntry();
+    // Before the await: requestFullscreen only succeeds while the browser still
+    // counts us as inside the Start tap's gesture, and awaiting spends it.
+    goFullscreen().then(() => this.syncFullscreen());
     this.wake = await keepAwake();
-    goFullscreen(document.documentElement);
+    this.syncFullscreen();
   }
 
   onCycle(ok, streak) {
     const l = this.mode;
     if (!l || l.fullNight || this.passed) return;
     this.ui.setStreak(`${streak} / ${l.target}`);
-    if (ok) { this.audio.good(); this.ui.lane.cleanPass(this.sim.t); this.buzz([10, 30, 14]); }
+    if (ok) { this.audio.good(); this.ui.cleanPass(this.sim.t); this.buzz([10, 30, 14]); }
     else { this.audio.bad(); this.buzz(24); }
     if (streak >= l.target) this.pass(`${l.target} clean passes in a row.`);
   }
@@ -241,26 +274,30 @@ class App {
     if (this.passed) return;
     this.passed = true;
     this.running = false;
+    this.syncFullscreen();
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);
     this.audio.win();
     this.buzz([20, 60, 20, 60, 45]);
     markPassed(this.mode.id, this.coach?.bestCombo || 0);
-    buildMenu();
     const i = LESSONS.indexOf(this.mode);
     const nxt = LESSONS[i + 1];
+    pendingUnlock = nxt?.id || null;
+    buildMenu();
     document.getElementById('passed-title').textContent = `${this.mode.title} — passed`;
     document.getElementById('passed-body').textContent =
       `${detail}${nxt ? ` Next up: ${nxt.title} — ${nxt.goal}` : ' That is the whole ladder.'}`;
     const b = document.getElementById('btn-next-lesson');
     b.style.display = nxt ? '' : 'none';
     b.dataset.next = nxt?.id || '';
+    this.ui.win();
     showPanel('passed');
   }
 
   stop() {
     if (this.mode?.id && this.coach) recordCombo(this.mode.id, this.coach.bestCombo);
     this.running = false;
+    this.syncFullscreen();
     this.ui.enableCalibration(false);
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);
@@ -277,10 +314,12 @@ class App {
     this.coach?.onInput(act);
     if (this.coach && this.coach.last !== beforeLast) {
       const g = this.coach.last.grade;
+      this.ui.grade(g);
       this.audio.judge(g);
       if (g !== 'good' && g !== 'ok') this.buzz(28);
       else if (this.coach.combo > beforeCombo && this.coach.combo % 10 === 0) {
         this.audio.milestone(this.coach.combo);
+        this.ui.lane.milestone(this.sim.t);
         this.buzz([10, 40, 10]);
       }
     }
@@ -385,7 +424,7 @@ class App {
         case 'laugh': this.audio.laugh(); break;
         case 'vent-bang': this.audio.ventBang(ev.data?.leaving); this.buzz(ev.data?.leaving ? [14, 30, 14] : 30); break;
         case 'gf-appear': case 'gf-hall': this.audio.gfAppear(); break;
-        case 'death': this.audio.death(); this.buzz([60, 40, 120]); break;
+        case 'death': this.audio.death(); this.buzz([60, 40, 120]); this.ui.death(); break;
         case 'win': this.audio.win(); break;
         default: break;
       }
@@ -402,12 +441,19 @@ class App {
 
   finish() {
     this.running = false;
+    this.syncFullscreen();
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);
     if (this.sim.won && this.mode?.fullNight) { this.pass('Cleared 6 AM.'); return; }
     const sum = buildSummary(this.sim, this.coach);
-    showPanel('report');
-    renderReport(sum, this.sim, this.duel, this.modeKey);
+    // Hold the final frame for a beat before the report covers it. The run is
+    // already over -- `running` is false and frame() early-returns -- so this
+    // costs no clock, and it is the cheapest diagnostic in the app.
+    const hold = this.sim.death && !this.ui.reduce.matches ? 320 : 0;
+    setTimeout(() => {
+      showPanel('report');
+      renderReport(sum, this.sim, this.duel, this.modeKey);
+    }, hold);
   }
 }
 
@@ -430,12 +476,14 @@ function renderReport(sum, sim, duel, modeKey) {
     `${g.gaps}${g.gaps ? ` (worst ${g.worstSec.toFixed(2)}s)` : ''}`, g.gaps ? 'bad' : 'good']);
   if (modeKey === 'phaseB' && duel.best) stats.push(['Best duel', `${Math.round(duel.best * 1000)}ms`]);
   document.getElementById('rep-stats').innerHTML =
-    stats.map(([k, v, cls]) => `<div><b>${k}</b><span class="${cls || ''}">${v}</span></div>`).join('');
+    stats.map(([k, v, cls], i) =>
+      `<div style="--i:${i}"><b>${k}</b><span class="${cls || ''}">${v}</span></div>`).join('');
 
   const seen = new Set();
   document.getElementById('rep-mistakes').innerHTML = sum.mistakes
     .filter(m => { const k = m.code + m.detail; if (seen.has(k)) return false; seen.add(k); return true; })
-    .map(m => `<li><code>${fmtTime(m.t)}</code> ${m.detail || m.code}</li>`).join('') || '<li class="none">No flagged mistakes.</li>';
+    .map((m, i) => `<li style="--i:${i}"><code>${fmtTime(m.t)}</code> ${m.detail || m.code}</li>`)
+    .join('') || '<li class="none">No flagged mistakes.</li>';
 
   requestAnimationFrame(() => drawTimeline(document.getElementById('rep-canvas'), sim));
 }
@@ -458,10 +506,15 @@ function loadSettings() {
 }
 function saveSettings(s) { try { localStorage.setItem('m7.settings', JSON.stringify(s)); } catch { /* ignore */ } }
 
+// Set by pass() so the lesson it opened can announce itself exactly once, the
+// next time the ladder is drawn.
+let pendingUnlock = null;
+
 function buildMenu() {
   const prog = loadProgress();
   const open = unlockedIndex(prog);
   const cleared = LESSONS.filter(l => prog[l.id]?.passed).length;
+  const justUnlocked = pendingUnlock; pendingUnlock = null;
   document.getElementById('mode-pips').innerHTML = LESSONS
     .map((l, i) => `<i class="${prog[l.id]?.passed ? 'done' : i === open ? 'next' : ''}"></i>`).join('');
   document.getElementById('mode-cleared').textContent = `${cleared} / ${LESSONS.length} CLEARED`;
@@ -470,7 +523,8 @@ function buildMenu() {
     const next = i === open && !done;
     const state = done ? 'done' : next ? 'next' : i < open ? 'done' : 'later';
     const best = prog[l.id]?.best;
-    return `<button class="mode ${state}" data-mode="${l.id}">
+    return `<button class="mode ${state}" data-mode="${l.id}" style="--i:${i}"${
+      l.id === justUnlocked ? ' data-unlock' : ''}>
       <span class="mode-n">${done ? '✓' : i + 1}</span>
       <b>${l.title}</b>${next ? '<span class="mode-best">▶ GO</span>'
         : best ? `<span class="mode-best">✓ ${best}×</span>` : ''}
