@@ -5,7 +5,7 @@ The trainer has no dependencies and no build step for development (just serve
 the folder). This exists so the page can be opened from a phone or published as
 a single file.
 """
-import re, pathlib, sys
+import base64, re, pathlib, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / 'src'
@@ -58,9 +58,23 @@ def resolve(entry=ENTRY):
     return order
 
 
+FONT_URL = re.compile(r"url\(\.\./([^)]+\.woff2)\)")
+
+
+def inline_fonts(css):
+    """Turn the @font-face file references into data URIs.
+
+    The dev page loads the woff2 files straight off disk; dist/index.html has to
+    be one file, so the bytes come along inside the CSS."""
+    def sub(m):
+        data = base64.b64encode((ROOT / m.group(1)).read_bytes()).decode()
+        return f"url(data:font/woff2;base64,{data})"
+    return FONT_URL.sub(sub, css)
+
+
 def main():
     html = (ROOT / 'index.html').read_text()
-    css = (SRC / 'style.css').read_text()
+    css = inline_fonts((SRC / 'fonts.css').read_text()) + '\n' + (SRC / 'style.css').read_text()
 
     shim = ("const __m={};const __def=(n,f)=>__m[n]={f,x:null};"
             "const __req=(n)=>{const m=__m[n];"
@@ -69,6 +83,7 @@ def main():
     order = resolve()
     bundle = shim + ''.join(transform(n, (SRC / f'{n}.js').read_text()) for n in order) + f"__req('{ENTRY}');\n"
 
+    html = html.replace('<link rel="stylesheet" href="src/fonts.css">\n', '')
     html = html.replace('<link rel="stylesheet" href="src/style.css">', f'<style>\n{css}\n</style>')
     html = html.replace('<script type="module" src="src/main.js"></script>', f'<script>\n{bundle}\n</script>')
 
