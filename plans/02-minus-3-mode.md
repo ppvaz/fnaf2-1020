@@ -1,6 +1,16 @@
 # Trainer mode: Minus 3
 
-**Status:** not started. **Depends on:** plan 01 (the `MINUS-3-STRATEGY.md` doc it produces).
+**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Implementation not
+started.
+
+**Research verdict:** the mode should teach **Minus Toys** (Zach_Scream, 2025), the
+family's state of the art and the second-ever zero-RNG strategy; the 2023 original is
+historical. It is still a fixed clock-anchored cycle (good lane fit, two-branch
+blackout decision), but it is *not* pure data: cam-stall, the double camera glitch,
+CAM 08/09 flash immunity, GF interval avoidance, RVC mask timing and the right-vent
+light stall are all engine mechanics Minus 7 never needed — see the doc's §5 gap list.
+The glitch also carries a legitimacy caveat the mode must surface; glitchless
+"Minus Two" is the natural sibling mode if its CAM 03 stall can be sourced.
 
 ## Goal
 

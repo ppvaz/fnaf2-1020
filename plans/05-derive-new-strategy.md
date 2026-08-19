@@ -36,6 +36,11 @@ strategy. What exists:
   [kalebwbishop/FNAF_Bot](https://github.com/kalebwbishop/FNAF_Bot) (FNaF 1 4/20 —
   uses a CNN, but only for recognising animatronics in camera feeds; the strategy is a
   fixed hand-coded sequence). ML as eyes, never as the strategist.
+- The closest methodological precedent: Shooter25's in-game bot mod (2024) plays
+  brayden's strategy perfectly to *measure its consistency* (104 wins / 1 death —
+  see `MINUS-3-STRATEGY.md` §4). Hand-coded execution of a human-derived strategy;
+  the same remove-the-human validation idea as this repo's simulator, but not search
+  and not learning.
 - All strategy innovation, Minus 7 included, comes from humans reasoning over the
   decompiled mechanics
   ([TheBones5's FNaF 2 AI breakdown](https://steamcommunity.com/sharedfiles/filedetails/?id=2996224710),
