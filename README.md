@@ -6,6 +6,8 @@ reimplementation of the mechanics the strategy actually depends on.
 
 Open it on a phone, turn sideways, and work down the lessons.
 
+**[Play it →](https://ppvaz.github.io/fnaf2-minus7-practice/)**
+
 ![lesson brief](docs/brief.png)
 
 ## What Minus 7 is
@@ -92,6 +94,10 @@ assets are distributed here.**
 
 ## Running it
 
+The published copy is at **<https://ppvaz.github.io/fnaf2-minus7-practice/>** — served straight from
+`master`, because the source runs as ES modules with nothing to build. Being https it is a secure
+context, so wake lock and vibration work there; the LAN URL below is plain http and they do not.
+
 No dependencies, no build step for development:
 
 ```sh
@@ -112,6 +118,11 @@ python3 tools/build.py           # -> dist/index.html
 no list to be updated.
 
 Note that a plain-`http` LAN URL is not a secure context, so wake lock and vibration are disabled.
+
+A run insists on full screen: browser chrome appearing or disappearing resizes the viewport, and
+every control is placed as a percentage of it, so the buttons you calibrated would move under your
+thumbs mid-run. If the request is refused or you leave full screen, a bar says so and the next touch
+on the stage asks again.
 
 ## Tests
 
