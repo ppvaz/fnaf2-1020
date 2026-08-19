@@ -51,6 +51,16 @@ Each needs N clean passes in a row to unlock the next. A rhythm lane shows the u
 scrolling toward a hit line with their tolerance windows, the control you should touch next gets a
 ring, and every input is graded in milliseconds.
 
+Every screen is a night-shift console: phosphor amber on warm black, and anything you are timed on
+— clock, offsets, stun bars, the lane — set in mono with tabular figures, so a digit never shifts
+under your eye. Each control keeps one colour everywhere it appears: the chip on the lesson brief,
+the glyph on the rhythm lane and the button under your thumb all agree. `How it works` is the whole
+strategy on one board — the ten-input pass, why the 6.66 s stun never lapses, the three rooms, and
+what has to be handled by hand.
+
+The two faces, **Chakra Petch** and **IBM Plex Mono**, ship with the repo as latin-subset woff2 in
+`assets/fonts/` (both SIL OFL), so the trainer looks right on a phone with no internet.
+
 **Timing is never slowed down.** The whole skill is absolute timing, so practising at 0.8× would
 build the wrong reflexes. Lessons get easier by removing controls and threats, never by distorting
 the clock — only the grading tolerance is loosened early on.
@@ -91,7 +101,8 @@ python3 tools/serve.py 8731      # serves the repo, and accepts saved layouts
 Then open `http://<your-ip>:8731/index.html` on your phone, on the same network. The source runs
 directly as ES modules — there is nothing to build for development.
 
-For a single self-contained file (one HTML with every module and the CSS inlined, nothing external):
+For a single self-contained file (one HTML with every module, the CSS and the fonts inlined,
+nothing external):
 
 ```sh
 python3 tools/build.py           # -> dist/index.html
@@ -132,4 +143,5 @@ an approximation: it only runs once you have already broken the stun loop.
 
 ## Licence
 
-MIT, for this code. *Five Nights at Freddy's 2* is © Scott Cawthon; no game assets are included.
+MIT, for this code. The bundled fonts are under the SIL Open Font License 1.1 — see
+`assets/fonts/`. *Five Nights at Freddy's 2* is © Scott Cawthon; no game assets are included.
