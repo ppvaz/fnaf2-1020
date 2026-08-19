@@ -1,8 +1,9 @@
 # Research pass: the 10/20 strategy landscape
 
-**Status:** Minus 3 done — `MINUS-3-STRATEGY.md` (2026-08-19) covers the whole
-family lineage through Minus Toys / Minus Two (2025). Right vent camp still to do
-(partially covered en route: RVC mask timing, brayden's 2024 timer strategy).
+**Status:** done — `MINUS-3-STRATEGY.md` and `VENT-CAMP-STRATEGY.md` (both
+2026-08-19) cover the two lineages to their state of the art (Minus Toys / Minus Two
+2025; brayden's timer strategy 2024). Nothing newer surfaced in the sweep. Remaining
+research is per-mechanic verification, tracked in each doc's engine-gap list.
 **Depends on:** nothing — this is the prerequisite for every other plan in this directory.
 
 ## Goal

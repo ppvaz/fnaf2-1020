@@ -1,7 +1,15 @@
 # Trainer mode: right vent camp
 
-**Status:** not started. **Depends on:** plan 01 (the `VENT-CAMP-STRATEGY.md` doc).
-Do after plan 02 — it reuses the strategy-picker work and is the biggest single piece.
+**Status:** research done — see `VENT-CAMP-STRATEGY.md` (2026-08-19). Implementation
+not started. Do after plan 02 — it reuses the strategy-picker work.
+
+**Research verdict:** teach **brayden's 2024 timer strategy**, the lineage's end
+state — it is far more clock-anchored than this plan assumed. The reactive-coach
+redesign shrinks to grading a four-way decision fork on monitor-down plus Toy Bonnie
+episodes; the rhythm lane carries the rest. The RNG premise below stands (~99%
+win rate under perfect play, bot-measured 104–1 — a calibration target for the sim).
+First engine task: reconcile Foxy's kill-check cadence (10 s per every RVC source vs
+the engine's 5 s intervals) — see the doc's §4 gap list.
 
 ## Goal
 
