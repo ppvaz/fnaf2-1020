@@ -50,11 +50,26 @@ export async function keepAwake() {
   try { return await navigator.wakeLock?.request('screen'); } catch { return null; }
 }
 
-export async function goFullscreen(el) {
-  try {
-    if (!document.fullscreenElement) await el.requestFullscreen?.({ navigationUI: 'hide' });
-    await screen.orientation?.lock?.('landscape').catch(() => {});
-  } catch { /* not fatal */ }
+export function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+// Browser chrome is not cosmetic here: an address bar showing or hiding resizes
+// the viewport, and every control is placed as a percentage of it, so the
+// buttons you calibrated move under your thumbs mid-run. Hence the insisting.
+//
+// Must NOT be awaited-into: requestFullscreen only succeeds while the browser
+// still considers itself inside a user gesture, and awaiting anything first
+// spends that. Call it synchronously from the handler and let it settle later.
+export function goFullscreen(el = document.documentElement) {
+  if (isFullscreen()) return Promise.resolve(true);
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return Promise.resolve(false);
+  let p;
+  try { p = req.call(el, { navigationUI: 'hide' }); } catch { return Promise.resolve(false); }
+  return Promise.resolve(p)
+    .then(() => { screen.orientation?.lock?.('landscape')?.catch(() => {}); return true; })
+    .catch(() => false);
 }
 
 export function buzz(ms) { try { navigator.vibrate?.(ms); } catch { /* ignore */ } }
