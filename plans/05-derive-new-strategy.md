@@ -2,12 +2,14 @@
 
 **Status:** first derivation pass complete (2026-08-19). `tools/strategysearch.mjs`
 enumerated the minimal camera covers of the modeled route graph and found a unique
-two-camera structure, **CAM 06/07**. It clears 200/200 modeled seeds and 100/100
+two-camera structure, the **Six-Seven Strat** (also **CAM 67** / **Deep 7**). It
+clears 200/200 modeled seeds and 100/100
 worst-luck seeds while retaining the 167 ms all-survive jitter ceiling. The full
 result and its dependency audit are in `CAM-6-7-STRATEGY.md`.
 
-This satisfies the plan's simulator-result branch, but not the stretch goal: CAM
-06/07 remains a **sim-derived experiment awaiting real-game/decompile validation**.
+This satisfies the plan's simulator-result branch, but not the stretch goal: the
+Six-Seven Strat remains a **sim-derived experiment awaiting real-game/decompile
+validation**.
 Its key dependency, Toy Bonnie's special CAM 06 → blind-spot timer, is not represented
 faithfully enough to call the routine real or zero-RNG. No trainer mode should ship
 before Pedro validates that transition on the Android build.
@@ -85,11 +87,12 @@ Two conclusions baked into this plan:
 ## Work
 
 1. ~~Extract the route graph and enumerate camera covers~~ — done in
-   `tools/strategysearch.mjs`; five minimal grounded covers, with CAM 06/07 the unique
+   `tools/strategysearch.mjs`; five minimal grounded covers, with Six-Seven's CAM
+   06/07 the unique
    two-camera cover. Hybrid tanking was unnecessary once a full two-camera cover
    survived, and remains a possible later search branch.
-2. ~~Compile and evaluate candidates~~ — done; CAM 06/07 passed the clean,
-   worst-luck and jitter sweeps recorded in `CAM-6-7-STRATEGY.md`.
+2. ~~Compile and evaluate candidates~~ — done; Six-Seven (CAM 67 / Deep 7) passed
+   the clean, worst-luck and jitter sweeps recorded in `CAM-6-7-STRATEGY.md`.
 3. ~~Audit the approximated mechanics~~ — done far enough to identify the decisive
    gate: Toy Bonnie's special CAM 06 → blind-spot timer is missing from the model.
    Re-evaluation against exact mechanics awaits the Android decompile/real-game test.

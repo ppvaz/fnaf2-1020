@@ -1,4 +1,4 @@
-# FNaF 2 10/20 — the CAM 06/07 candidate
+# FNaF 2 10/20 — Six-Seven Strat
 
 ### Simulator-derived research result (plan 05), 2026-08-19
 
@@ -7,6 +7,17 @@
 > Minus 7, but it makes post-chokepoint mechanics load-bearing. Those are the least
 > trustworthy part of this simulator. Do not teach or call this zero-RNG until it
 > survives the real Android game (and ideally the Android decompile).
+
+## Names
+
+- **Six-Seven Strat** — primary name; the memorable community-facing name.
+- **CAM 67** — compact codename, referring directly to the two-camera loop.
+- **Deep 7** — descriptive alternate: it stalls the same seven animatronics as
+  Minus 7, but catches them deeper in their routes.
+
+All three names currently mean the same **untested, sim-derived CAM 06/07
+candidate**. They must not be presented as a proven strategy until the validation
+gate below is cleared.
 
 ## The candidate
 
@@ -44,7 +55,7 @@ The current route table has five minimal grounded covers:
 - `04/07/12`
 - `06/07` — the only two-camera cover
 
-For CAM 06 → 07:
+For the Six-Seven Strat's CAM 06 → 07 order:
 
 | Check | Result |
 |---|---:|
@@ -115,7 +126,8 @@ Before building a trainer mode:
 1. On a nonlethal/low-AI setup, let Toy Bonnie reach CAM 06 and flash it once per five
    seconds for long enough to prove he never enters the blind spot. Repeat for Mangle
    and Withered Chica.
-2. Run CAM 06/07 on 10/20 and record the first escape, including the character, clock
+2. Run the Six-Seven Strat (CAM 06/07) on 10/20 and record the first escape,
+   including the character, clock
    digit, selected camera and whether the flash visibly registered.
 3. If an escape occurs, inspect that exact transition in the owned Android decompile;
    update the engine before changing the routine.
