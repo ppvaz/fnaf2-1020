@@ -133,3 +133,7 @@ Before building a trainer mode:
    update the engine before changing the routine.
 4. Only after repeated full-night clears should this become a trainer mode. Until
    then its honest label is **sim-derived experiment**.
+
+Further derivation beyond full camera covers is tracked in
+[`plans/06-hybrid-strategy-search.md`](plans/06-hybrid-strategy-search.md), beginning
+with the CAM 06-only “Minus Right” hypothesis.

@@ -13,3 +13,6 @@ in any later session. Suggested order and dependencies:
 5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — first derivation pass
    produced the sim-verified **Six-Seven Strat** (CAM 67 / Deep 7) candidate;
    real-game validation is still required before it is a strategy or trainer mode.
+6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — search the space
+   beyond static covers, starting with **Minus Right**: CAM 06 as a FNaF 1 4B-style
+   strategic anchor while the hall-side threats are handled reactively.
