@@ -88,10 +88,17 @@ No dependencies, no build step for development:
 python3 tools/serve.py 8731      # serves the repo, and accepts saved layouts
 ```
 
-Then open `http://<your-ip>:8731/dist/index.html` on your phone, on the same network.
+Then open `http://<your-ip>:8731/index.html` on your phone, on the same network. The source runs
+directly as ES modules — there is nothing to build for development.
 
-`python3 tools/build.py` inlines every module and the CSS into a single self-contained
-`dist/index.html`. Module order is derived from the imports, so adding a file needs no list update.
+For a single self-contained file (one HTML with every module and the CSS inlined, nothing external):
+
+```sh
+python3 tools/build.py           # -> dist/index.html
+```
+
+`dist/` is not committed. The bundler derives module order from the imports, so adding a file needs
+no list to be updated.
 
 Note that a plain-`http` LAN URL is not a secure context, so wake lock and vibration are disabled.
 
