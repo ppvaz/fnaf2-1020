@@ -1,5 +1,6 @@
 import * as C from './config.js';
 import { fmtTime } from './report.js';
+import { Lane } from './lane.js';
 
 const pad2 = (n) => String(n).padStart(2, '0');
 
@@ -42,8 +43,10 @@ export class UI {
         </div>
       </div>
 
+      <canvas id="lane"></canvas>
       <div id="coach">
         <div id="coach-next">—</div>
+        <div id="coach-bar"><i></i></div>
         <div id="coach-fb"></div>
         <div id="coach-streak"></div>
       </div>
@@ -98,8 +101,12 @@ export class UI {
       coachNext: this.root.querySelector('#coach-next'),
       coachFb: this.root.querySelector('#coach-fb'),
       coachStreak: this.root.querySelector('#coach-streak'),
+      coachBar: this.root.querySelector('#coach-bar'),
+      coachBarFill: this.root.querySelector('#coach-bar i'),
+      lane: this.root.querySelector('#lane'),
       timer: this.root.querySelector('.hud-timer'),
     };
+    this.lane = new Lane(this.el.lane);
     this.buildMap();
     this.applyWidgets();
     this.bindCalibration();
@@ -245,12 +252,23 @@ export class UI {
         this.el.coachNext.className = dt < -0.35 ? 'late' : dt < 0.15 ? 'now' : '';
       }
       const cue = coach.cue;
+      const e0 = coach.expected;
       if (cue && coach.cycleStart != null) {
-        const e = coach.expected;
-        const due = e ? coach.cycleStart + e.at : t;
+        const due = e0 ? coach.cycleStart + e0.at : t;
         cue.now = (due - t) <= 0.18;
       }
+      // Countdown to the moment the next input is due, so "when" is visible
+      // rather than something you are expected to already feel.
+      if (e0 && coach.cycleStart != null) {
+        const dt = (coach.cycleStart + e0.at) - t;
+        const LEAD = 2;
+        const frac = Math.max(0, Math.min(1, 1 - dt / LEAD));
+        this.el.coachBarFill.style.width = `${frac * 100}%`;
+        this.el.coachBar.classList.toggle('now', dt <= 0.12 && dt > -0.5);
+        this.el.coachBar.classList.toggle('over', dt < -0.5);
+      }
       this.setCue(this.showCues ? cue : null);
+      this.lane.draw(coach, sim);
       const last = coach.last;
       if (last && last !== this._lastShown) {
         this._lastShown = last;
@@ -262,7 +280,10 @@ export class UI {
     }
   }
 
-  setCoachVisible(v) { this.root.querySelector('#coach').style.display = v ? '' : 'none'; }
+  setCoachVisible(v) {
+    this.root.querySelector('#coach').style.display = v ? '' : 'none';
+    this.el.lane.style.display = v ? '' : 'none';
+  }
 
   // Show only the controls a lesson actually uses. Fewer things on screen is
   // the main lever for making an early lesson learnable.

@@ -90,9 +90,9 @@ async function main() {
   await ev('document.getElementById("btn-passed-menu").click()'); await sleep(200);
   await ev('document.querySelector(\'[data-mode="cycle"]\').click()'); await sleep(200);
   await ev('document.getElementById("btn-brief-go").click()'); await sleep(400);
-  await expect('all controls up', `[...document.querySelectorAll('[data-widget]')]
+  await expect('controls (cams up)', `[...document.querySelectorAll('[data-widget]')]
      .filter(e=>!e.classList.contains('hidden-ctrl')).map(e=>e.dataset.widget).sort().join()`,
-     'light,mask,monitor,wind');
+     'camlight,mask,monitor,wind');
   await ev(AUTOPLAYER); await sleep(58000);
   await show('cycle streak', 'document.getElementById("coach-streak").textContent');
   await show('cycles run', 'window.app.coach.cycles');

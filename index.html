@@ -30,6 +30,10 @@
   <div class="rows">
     <label class="row"><span>Sound</span><input type="checkbox" id="opt-sound"></label>
     <label class="row"><span>Show coach hints</span><input type="checkbox" id="opt-coach"></label>
+    <label class="row"><span>Haptics <em>a tick on every input, a buzz when one is late</em></span>
+      <input type="checkbox" id="opt-haptics"></label>
+    <label class="row"><span>Metronome <em>clicks the :X2 / :X7 anchors</em></span>
+      <input type="checkbox" id="opt-metronome"></label>
     <div class="row"><span>Calibrate layout
       <em>drag every control &mdash; cameras, light, mask, monitor, vents, wind &mdash; to match your thumbs</em></span>
       <button id="btn-calibrate">Open</button></div>
@@ -78,6 +82,8 @@
   <header><h2 id="brief-title"></h2><span id="brief-step" class="step"></span></header>
   <p id="brief-goal" class="brief-goal"></p>
   <p id="brief-teach" class="brief-teach"></p>
+  <p id="brief-when" class="brief-when"></p>
+  <canvas id="brief-lane"></canvas>
   <div id="brief-controls" class="brief-controls"></div>
   <nav class="report-nav">
     <button id="btn-brief-go" class="primary">Start</button>

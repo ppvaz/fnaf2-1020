@@ -5,8 +5,9 @@ import { Audio } from './audio.js';
 import { UI } from './ui.js';
 import { bindInputs, keepAwake, goFullscreen, buzz } from './input.js';
 import { drawTimeline, buildSummary, fmtTime } from './report.js';
+import { drawPattern } from './lane.js';
 import * as Assets from './assets.js';
-import { LESSONS, byId, loadProgress, saveProgress, markPassed, unlockedIndex } from './curriculum.js';
+import { LESSONS, byId, loadProgress, saveProgress, markPassed, recordCombo, unlockedIndex } from './curriculum.js';
 
 const HUGE = C.NIGHT_FRAMES * 10;
 
@@ -58,6 +59,12 @@ class App {
     const snd = document.getElementById('opt-sound');
     snd.checked = this.settings.sound;
     snd.addEventListener('change', () => { this.settings.sound = snd.checked; this.audio.enabled = snd.checked; saveSettings(this.settings); });
+    const hp = document.getElementById('opt-haptics');
+    hp.checked = this.settings.haptics;
+    hp.addEventListener('change', () => { this.settings.haptics = hp.checked; saveSettings(this.settings); if (hp.checked) buzz(20); });
+    const mt = document.getElementById('opt-metronome');
+    mt.checked = this.settings.metronome;
+    mt.addEventListener('change', () => { this.settings.metronome = mt.checked; saveSettings(this.settings); });
     const co = document.getElementById('opt-coach');
     co.checked = this.settings.coach;
     co.addEventListener('change', () => { this.settings.coach = co.checked; saveSettings(this.settings); });
@@ -146,12 +153,16 @@ class App {
     document.getElementById('brief-step').textContent = `${i + 1} of ${LESSONS.length}`;
     document.getElementById('brief-goal').textContent = l.goal;
     document.getElementById('brief-teach').textContent = l.teach;
+    document.getElementById('brief-when').textContent = l.when ? `When: ${l.when}` : '';
     const need = l.fullNight ? 'Clear the night.'
       : l.drill === 'phaseB' ? `Beat ${l.duelTarget * 1000 | 0}ms on ${l.target} attacks.`
       : `${l.target} clean passes in a row.`;
     document.getElementById('brief-controls').textContent = `To pass: ${need}`;
     document.getElementById('btn-brief-go').textContent = LESSONS.indexOf(l) === 0 ? 'Start' : 'Start lesson';
+    const cv = document.getElementById('brief-lane');
+    cv.style.display = l.script ? '' : 'none';
     showPanel('brief');
+    if (l.script) requestAnimationFrame(() => drawPattern(cv, l.script));
   }
 
   // ------------------------------------------------------------------ run
@@ -171,6 +182,8 @@ class App {
     this.coach = new Coach(this.sim, {
       enabled: coached,
       script: mode.script || undefined,
+      tolGood: mode.tol?.tolGood,
+      tolOk: mode.tol?.tolOk,
       onCycle: (ok, streak) => this.onCycle(ok, streak),
     });
     this.ui.setCoachVisible(true);
@@ -193,7 +206,8 @@ class App {
     const l = this.mode;
     if (!l || l.fullNight || this.passed) return;
     this.ui.setStreak(`${streak} / ${l.target}`);
-    if (ok) this.audio.good(); else { this.audio.bad(); buzz(18); }
+    if (ok) { this.audio.good(); this.ui.lane.cleanPass(this.sim.t); this.buzz([10, 30, 14]); }
+    else { this.audio.bad(); this.buzz(24); }
     if (streak >= l.target) this.pass(`${l.target} clean passes in a row.`);
   }
 
@@ -204,7 +218,8 @@ class App {
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);
     this.audio.win();
-    markPassed(this.mode.id, this.coach?.bestStreak || 0);
+    this.buzz([20, 60, 20, 60, 45]);
+    markPassed(this.mode.id, this.coach?.bestCombo || 0);
     buildMenu();
     const i = LESSONS.indexOf(this.mode);
     const nxt = LESSONS[i + 1];
@@ -218,6 +233,7 @@ class App {
   }
 
   stop() {
+    if (this.mode?.id && this.coach) recordCombo(this.mode.id, this.coach.bestCombo);
     this.running = false;
     this.ui.enableCalibration(false);
     this.wake?.release?.().catch(() => {});
@@ -227,23 +243,34 @@ class App {
 
   onPress(act) {
     if (!this.running || !this.sim || this.ui.calibrating) return;
+    // Confirm the tap landed before anything else: on glass you cannot feel a
+    // button, and a missed press you did not notice is the worst failure mode.
+    this.feedbackFor(act);
+    const beforeCombo = this.coach?.combo ?? 0;
+    const beforeLast = this.coach?.last;
     this.coach?.onInput(act);
+    if (this.coach && this.coach.last !== beforeLast) {
+      const g = this.coach.last.grade;
+      this.audio.judge(g);
+      if (g !== 'good' && g !== 'ok') this.buzz(28);
+      else if (this.coach.combo > beforeCombo && this.coach.combo % 10 === 0) {
+        this.audio.milestone(this.coach.combo);
+        this.buzz([10, 40, 10]);
+      }
+    }
     if (this.mode.drill === 'phaseB') this.duelInput(act);
     this.sim.press(act);
   }
   onRelease(act) { if (this.running && this.sim && !this.ui.calibrating) this.sim.release(act); }
 
-  judgeMetronome() {
-    const t = this.sim.t, d = t % 5;
-    const target = d < 2.5 ? 2 : 7 - 5; // nearest anchor offset within the 5s block
-    const delta = d - (target < 0 ? target + 5 : target);
-    const ms = Math.round(delta * 1000);
-    const grade = Math.abs(delta) <= C.TOL_GOOD ? 'good' : Math.abs(delta) <= C.TOL_OK ? 'ok' : 'late';
-    const el = document.getElementById('coach-fb');
-    el.textContent = `${ms > 0 ? '+' : ''}${ms}ms`;
-    el.className = grade;
-    if (grade === 'good') this.audio.good(); else { this.audio.bad(); buzz(20); }
+  feedbackFor(act) {
+    if (act.startsWith('cam:')) this.audio.tap('cam', +act.slice(4));
+    else this.audio.tap(act);
+    this.buzz(8);
   }
+
+  buzz(pattern) { if (this.settings.haptics) buzz(pattern); }
+
 
   duelInput(act) {
     if (act === 'mask' && this.sim.maskOn) this.duel.begin(this.sim.t);
@@ -291,12 +318,20 @@ class App {
       this.coach?.update();
       this.drive();
       this.drainEvents();
-      // The box ticks twice a second while winding; on the beat lesson there is
-      // nothing to wind, so give the player the pulse directly.
-      if (this.mode.id === 'beat' && this.sim.frame % C.FPS === 0) {
+      const last = this.coach?.last;
+      if (last && last !== this._popped) {
+        this._popped = last;
+        const txt = last.delta == null ? last.grade.toUpperCase()
+          : Math.abs(last.delta) <= this.coach.tolGood ? 'PERFECT'
+          : `${last.delta > 0 ? 'LATE ' : 'EARLY '}${Math.abs(Math.round(last.delta * 1000))}ms`;
+        this.ui.lane.pop(txt, last.grade, this.sim.t);
+      }
+      // The 5-second pulse, always available to lock on to: a strong click on
+      // the :X2/:X7 anchors and a quiet one on the 5s intervals between them.
+      if (this.settings.metronome && this.sim.frame % C.FPS === 0) {
         const d = Math.floor(this.sim.t) % 10;
-        if (d === 2 || d === 7) this.audio.metronome(true);
-        else if (d === 0 || d === 5) this.audio.metronome(false);
+        if (d === 2 || d === 7) this.audio.anchorTick(true);
+        else if (d === 0 || d === 5) this.audio.anchorTick(false);
       }
       if (!this.sim.alive || this.sim.won) { this.finish(); break; }
     }
@@ -308,9 +343,9 @@ class App {
     for (const ev of s.events) {
       switch (ev.type) {
         case 'laugh': this.audio.laugh(); break;
-        case 'vent-bang': this.audio.ventBang(ev.data?.leaving); buzz(ev.data?.leaving ? 12 : 25); break;
+        case 'vent-bang': this.audio.ventBang(ev.data?.leaving); this.buzz(ev.data?.leaving ? [14, 30, 14] : 30); break;
         case 'gf-appear': case 'gf-hall': this.audio.gfAppear(); break;
-        case 'death': this.audio.death(); buzz([60, 40, 120]); break;
+        case 'death': this.audio.death(); this.buzz([60, 40, 120]); break;
         case 'win': this.audio.win(); break;
         default: break;
       }
@@ -376,7 +411,7 @@ function note(msg) {
 }
 
 function loadSettings() {
-  let s = { sound: true, coach: true, speed: 1 };
+  let s = { sound: true, coach: true, speed: 1, haptics: true, metronome: true };
   try { Object.assign(s, JSON.parse(localStorage.getItem('m7.settings') || '{}')); } catch { /* defaults */ }
   return s;
 }
@@ -389,9 +424,11 @@ function buildMenu() {
     const done = !!prog[l.id]?.passed;
     const next = i === open && !done;
     const state = done ? 'done' : next ? 'next' : i < open ? 'done' : 'later';
+    const best = prog[l.id]?.best;
     return `<button class="mode ${state}" data-mode="${l.id}">
       <span class="mode-n">${done ? '✓' : i + 1}</span>
-      <b>${l.title}</b><span class="mode-goal">${l.goal}</span>
+      <b>${l.title}</b>${best ? `<span class="mode-best">best ${best}x</span>` : ''}
+      <span class="mode-goal">${l.goal}</span>
     </button>`;
   }).join('');
 }

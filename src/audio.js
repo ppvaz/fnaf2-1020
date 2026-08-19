@@ -79,6 +79,37 @@ export class Audio {
     this.noise(t + 0.09, 0.12, 0.34, leaving ? 300 : 200, 1.4);
   }
 
+  // Each control gets its own pitch, so a correct cycle has a recognisable
+  // tune. Hearing the routine go wrong is faster than reading that it did.
+  tap(kind, cam) {
+    const f = kind === 'cam' ? ({ 10: 660, 4: 740, 7: 830, 11: 560 }[cam] || 700)
+      : kind === 'light' ? 990
+      : kind === 'mask' ? 440
+      : kind === 'monitor' ? 350
+      : kind === 'wind' ? 520 : 700;
+    this.tone(f, this.t, 0.028, 0.10, 'square');
+  }
+
+  judge(grade) {
+    const t = this.t;
+    if (grade === 'good') { this.tone(1320, t, 0.045, 0.13, 'triangle'); return; }
+    if (grade === 'ok') { this.tone(880, t, 0.05, 0.11, 'triangle'); return; }
+    this.noise(t, 0.11, 0.3, 150, 0.7);
+    this.tone(160, t, 0.1, 0.16, 'sawtooth');
+  }
+
+  // Milestones climb, so a long combo audibly builds.
+  milestone(n) {
+    const t = this.t;
+    const base = 520 + Math.min(6, n / 10) * 90;
+    [0, 1, 2].forEach(i => this.tone(base * (1 + i * 0.26), t + i * 0.06, 0.1, 0.16, 'triangle'));
+  }
+
+  // A quiet click on every anchor: the 5-second pulse, always there to lock on to.
+  anchorTick(strong) {
+    this.tone(strong ? 1500 : 1000, this.t, 0.022, strong ? 0.13 : 0.06, 'square');
+  }
+
   boxTick() { if (!this.play('boxTick', 0.5)) this.tone(1800, this.t, 0.012, 0.05, 'square'); }
   metronome(strong) { this.tone(strong ? 1400 : 900, this.t, 0.03, strong ? 0.2 : 0.1, 'square'); }
   good() { this.tone(1250, this.t, 0.035, 0.09, 'triangle'); }

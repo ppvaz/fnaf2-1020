@@ -1,0 +1,200 @@
+import * as C from './config.js';
+
+// A rhythm lane. The routine is a timing pattern, so show it as one: upcoming
+// inputs scroll toward a hit line, each with its tolerance window drawn around
+// it. This is what makes "when" visible instead of something you are expected
+// to already feel.
+
+const COLORS = {
+  cam:     ['#5ac8fa', '#0d2f3f'],
+  light:   ['#ffd60a', '#3a3208'],
+  mask:    ['#ff453a', '#3a1113'],
+  monitor: ['#c7ccd8', '#23262f'],
+  wind:    ['#bf5af2', '#2a1140'],
+};
+
+export function glyphFor(step) {
+  switch (step.action) {
+    case 'monitor': return { text: step.want === 'up' ? 'CAMS ▲' : 'CAMS ▼', kind: 'monitor' };
+    case 'mask': return { text: 'MASK', kind: 'mask' };
+    case 'light': return { text: 'FLASH', kind: 'light' };
+    case 'wind': return { text: 'WIND', kind: 'wind' };
+    case 'cam':
+    case 'camflash': return { text: String(step.cam).padStart(2, '0'), kind: 'cam' };
+    default: return { text: '?', kind: 'monitor' };
+  }
+}
+
+// A static picture of a lesson's pattern, for the briefing screen: the shape of
+// the routine laid out on a timeline before you have to play it.
+export function drawPattern(canvas, script) {
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H || !script?.length) return;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const span = Math.max(2, script[script.length - 1].at + 0.5);
+  const padL = 34, padR = 14;
+  const xOf = (at) => padL + (at / span) * (W - padL - padR);
+  const mid = H / 2 + 4;
+
+  // second gridlines
+  ctx.font = '9px ui-monospace, monospace';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let sec = 0; sec <= span; sec += 0.5) {
+    const x = xOf(sec);
+    ctx.strokeStyle = sec % 1 === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)';
+    ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, H - 12); ctx.stroke();
+    if (sec % 1 === 0) { ctx.fillStyle = '#8e939f'; ctx.fillText(`+${sec}s`, x, H - 11); }
+  }
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#8e939f';
+  ctx.fillText('anchor', padL - 4, mid);
+
+  ctx.font = '600 10px ui-monospace, monospace';
+  const ROWS = [-14, 0, 14];
+  const rowEnd = [-1e9, -1e9, -1e9];
+  for (const step of script) {
+    const g = glyphFor(step);
+    const [fg, bg] = COLORS[g.kind];
+    const x = xOf(step.at);
+    const tw = ctx.measureText(g.text).width + 12;
+    let row = 0;
+    while (row < ROWS.length - 1 && x - tw / 2 < rowEnd[row] + 4) row++;
+    rowEnd[row] = x + tw / 2;
+    const y = mid + ROWS[row];
+    ctx.fillStyle = bg;
+    roundRect(ctx, x - tw / 2, y - 8, tw, 16, 5); ctx.fill();
+    ctx.strokeStyle = fg;
+    roundRect(ctx, x - tw / 2, y - 8, tw, 16, 5); ctx.stroke();
+    ctx.fillStyle = fg;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(g.text, x, y + 1);
+  }
+}
+
+export class Lane {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.pops = [];           // floating judgement text
+    this.flash = 0;           // whole-lane flash on a clean pass
+    // Lookahead must exceed one 5s cycle, or the lane sits empty between
+    // passes and stops telling you anything.
+    this.pps = 105;
+  }
+
+  pop(label, grade, t) {
+    this.pops.push({ label, grade, t, born: t });
+    if (this.pops.length > 8) this.pops.shift();
+  }
+
+  cleanPass(t) { this.flash = t; }
+
+  draw(coach, sim) {
+    const cv = this.canvas, ctx = this.ctx;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const t = sim.t;
+    const hitX = Math.round(W * 0.12);
+    const mid = H / 2 + 2;
+
+    // clean-pass flash
+    const since = t - this.flash;
+    if (since >= 0 && since < 0.45) {
+      ctx.fillStyle = `rgba(48,209,88,${0.18 * (1 - since / 0.45)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // rail
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.beginPath(); ctx.moveTo(0, mid); ctx.lineTo(W, mid); ctx.stroke();
+
+    // hit line
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(hitX, 4); ctx.lineTo(hitX, H - 4); ctx.stroke();
+    ctx.lineWidth = 1;
+
+    if (coach?.enabled) {
+      const notes = coach.upcoming(Math.max(5.6, (W - hitX) / this.pps));
+      ctx.font = '600 11px ui-monospace, monospace';
+
+      // Steps 0.2s apart would draw on top of each other, so lay them out in
+      // rows: a note drops to the next row if it would collide with the last
+      // one placed there.
+      const ROWS = [-15, 0, 15];
+      const rowEnd = [-1e9, -1e9, -1e9];
+      const placed = [];
+      for (const n of notes) {
+        const x = hitX + (n.due - t) * this.pps;
+        if (x < -60 || x > W + 60) continue;
+        const g = glyphFor(n.step);
+        const tw = ctx.measureText(g.text).width + 14;
+        let row = 0;
+        while (row < ROWS.length - 1 && x - tw / 2 < rowEnd[row] + 4) row++;
+        rowEnd[row] = x + tw / 2;
+        placed.push({ n, x, g, tw, y: mid + ROWS[row] });
+      }
+
+      const wTol = coach.tolOk * this.pps;
+      for (const { n, x, g, tw, y } of placed) {
+        const [fg, bg] = COLORS[g.kind];
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(x - wTol, y - 10, wTol * 2, 20);
+
+        ctx.globalAlpha = n.due < t - 0.05 ? 0.45 : 1;
+        ctx.fillStyle = bg;
+        roundRect(ctx, x - tw / 2, y - 9, tw, 18, 5); ctx.fill();
+        ctx.strokeStyle = fg;
+        roundRect(ctx, x - tw / 2, y - 9, tw, 18, 5); ctx.stroke();
+        ctx.fillStyle = fg;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(g.text, x, y + 1);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // judgement pops, rising and fading just past the hit line
+    for (let i = this.pops.length - 1; i >= 0; i--) {
+      const p = this.pops[i];
+      const age = t - p.born;
+      if (age > 0.85) { this.pops.splice(i, 1); continue; }
+      const a = 1 - age / 0.85;
+      ctx.globalAlpha = a;
+      ctx.font = '700 12px ui-monospace, monospace';
+      ctx.fillStyle = p.grade === 'good' ? '#30d158' : p.grade === 'ok' ? '#ffd60a' : '#ff453a';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.label, hitX - 8, mid - age * 10);
+      ctx.globalAlpha = 1;
+    }
+
+    // combo
+    if (coach?.combo > 2) {
+      ctx.font = '700 15px ui-monospace, monospace';
+      ctx.fillStyle = coach.combo >= 20 ? '#bf5af2' : coach.combo >= 10 ? '#30d158' : '#8e939f';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(`${coach.combo}x`, W - 8, mid);
+    }
+  }
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+export { C };

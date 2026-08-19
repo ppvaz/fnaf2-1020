@@ -8,6 +8,8 @@ export class Coach {
     this.script = opts.script || C.CYCLE_SCRIPT;
     this.enabled = opts.enabled !== false;
     this.anchorDigits = opts.anchorDigits || [2, 7];
+    this.tolGood = opts.tolGood ?? C.TOL_GOOD;
+    this.tolOk = opts.tolOk ?? C.TOL_OK;
     this.cycleStart = null;
     this.idx = 0;
     this.results = [];       // {stepId, delta, grade, t}
@@ -15,6 +17,8 @@ export class Coach {
     this.suspended = false;   // BB attacks run off-script
     this.onCycle = opts.onCycle || null;
     this.cycleOk = true;      // did every step of the current pass land?
+    this.combo = 0;           // consecutive inputs that landed in tolerance
+    this.bestCombo = 0;
     this.streak = 0;          // consecutive clean passes
     this.bestStreak = 0;
     this.cycles = 0;
@@ -39,7 +43,7 @@ export class Coach {
 
   grade(delta) {
     const a = Math.abs(delta);
-    return a <= C.TOL_GOOD ? 'good' : a <= C.TOL_OK ? 'ok' : 'late';
+    return a <= this.tolGood ? 'good' : a <= this.tolOk ? 'ok' : 'late';
   }
 
   // called every frame
@@ -73,7 +77,25 @@ export class Coach {
     if (this.results.length > 400) this.results.shift();
     this.last = this.results[this.results.length - 1];
     // 'good' and 'ok' both count: a lesson should not demand frame perfection.
-    if (grade !== 'good' && grade !== 'ok') this.cycleOk = false;
+    if (grade !== 'good' && grade !== 'ok') { this.cycleOk = false; this.combo = 0; }
+    else { this.combo++; this.bestCombo = Math.max(this.bestCombo, this.combo); }
+  }
+
+  // The next few inputs, for the rhythm lane. Anchors are 5s apart, so future
+  // cycles are just this one shifted.
+  upcoming(horizon = 3) {
+    if (this.cycleStart == null || !this.script?.length) return [];
+    const t = this.sim.t, out = [];
+    for (let c = 0; c < 3; c++) {
+      const base = this.cycleStart + c * 5;
+      for (let i = 0; i < this.script.length; i++) {
+        if (c === 0 && i < this.idx) continue;
+        const due = base + this.script[i].at;
+        if (due < t - 0.35 || due > t + horizon) continue;
+        out.push({ step: this.script[i], due, done: false });
+      }
+    }
+    return out;
   }
 
   // Called when the script wraps: one complete pass of the routine.
