@@ -25,6 +25,36 @@ Search: enumerate candidate structures from the route graph, compile each into a
 script (or decision table), evaluate with the plan 04 harness — seed sweep, worst-luck
 sweep, jitter curve.
 
+## Prior art (searched 2026-08-19)
+
+No public project uses machine learning — or any automated search — to *derive* FNaF
+strategy. What exists:
+
+- Screen-automation bots with hand-coded strategy:
+  [kevvit/fnafbot](https://github.com/kevvit/fnafbot) (FNaF 1 Night 7, sprite matching
+  + scripted responses) and
+  [kalebwbishop/FNAF_Bot](https://github.com/kalebwbishop/FNAF_Bot) (FNaF 1 4/20 —
+  uses a CNN, but only for recognising animatronics in camera feeds; the strategy is a
+  fixed hand-coded sequence). ML as eyes, never as the strategist.
+- All strategy innovation, Minus 7 included, comes from humans reasoning over the
+  decompiled mechanics
+  ([TheBones5's FNaF 2 AI breakdown](https://steamcommunity.com/sharedfiles/filedetails/?id=2996224710),
+  the [10/20 guide videos](https://www.youtube.com/watch?v=FizTzjyGP3U),
+  the [Max Mode list](https://sites.google.com/view/maxmodelist/main-list/ml-primary)
+  community).
+
+Two conclusions baked into this plan:
+
+- **The niche is open.** Simulator-driven strategy search over the known mechanics has
+  no published precedent, which raises the odds a survivor here is genuinely new —
+  though the novelty check against the plan 01 meta doc still stands.
+- **Search over learning, deliberately.** The mechanics are fully known, discrete and
+  low-dimensional — the regime where explicit simulation + enumeration beats a learned
+  policy. RL would spend millions of episodes rediscovering what the route graph says
+  for free, and a learned policy is a black box that can't be turned into a teachable
+  human routine. A trainer needs human-executable scripts, so this plan searches; it
+  does not train an agent.
+
 ## The honest caveats (write them into any result)
 
 1. **Model coverage.** The engine models the mechanics *Minus 7* depends on.
