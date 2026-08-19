@@ -137,6 +137,7 @@ node tools/lessontest.mjs        # drives the lesson ladder to a pass
 node tools/caltest.mjs           # calibration, drag vs. press, layout saving
 node tools/lightcheck.mjs        # the two lights swap with the monitor
 node tools/browsertest.mjs       # load, input, report
+node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
 ```
 
 What they establish:

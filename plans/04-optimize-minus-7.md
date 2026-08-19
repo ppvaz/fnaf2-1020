@@ -1,6 +1,24 @@
 # Derivation, tier 1: slack-maximised Minus 7
 
-**Status:** not started. **Depends on:** nothing — runnable today with the existing sim.
+**Status: search done (2026-08-19) — the shipped cycle already sits at the slack
+ceiling.** `tools/cyclesearch.mjs` (camera-order sweep + coordinate hill-climb over
+11 timing knobs, fitness = largest uniform jitter with a 100% seed sweep):
+
+- **Ceiling unchanged:** every camera order and every knob neighbourhood tops out at
+  10 frames (167 ms) of all-survive jitter — the current routine is already optimal
+  at the ceiling.
+- **Tail fattened:** the best variant (order **4-10-7**, mask 1 frame earlier, hall
+  flash 1 frame shorter, 3-frame cam flashes) survives 33% at 200 ms vs the current
+  19%, 3% vs 0% at 250 ms; validated 200/200 clean and 100/100 worst-luck.
+- **Recommendation: keep the shipped script.** The gains live past the death cliff
+  and the timing deltas are single frames — below the trainer's own `TOL_GOOD`
+  (150 ms) grading resolution, so teaching them would churn muscle memory for
+  nothing measurable. The camera-order swap (4 before 10) is the only
+  human-executable difference; worth revisiting only with the per-step jitter
+  profiles below, where "which step is most often late" could favour it. Pedro
+  decides if it ever ships.
+
+Remaining (optional) work: the per-step-jitter fitness pass below.
 
 ## Goal
 
@@ -29,13 +47,10 @@ duel window must stay handleable, wind must keep the box off empty on worst luck
 
 ## Work
 
-1. A search harness in `tools/` (grid or hill-climb — the space is small) with fitness
-   = maximum uniform jitter at which the seed sweep still clears, tie-broken by
-   survival rate at fixed jitter levels.
-2. Validate winners the way the README validates the current script: 200-seed sweep,
-   worst-luck sweep, jitter curve.
-3. If a meaningfully better script exists, decide with Pedro: replace the default or
-   offer both. Update `CYCLE_SCRIPT`, lesson briefs, and the README numbers.
+1. ~~A search harness in `tools/`~~ done — `tools/cyclesearch.mjs`.
+2. ~~Validate winners~~ done — see status above.
+3. Decision on shipping the 4-10-7 variant: parked with Pedro (recommendation: no,
+   for now — see status).
 
 ## Markiplier's suspicion, tested against the model (2026-08-19)
 
