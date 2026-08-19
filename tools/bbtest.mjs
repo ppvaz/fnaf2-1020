@@ -1,8 +1,22 @@
 // Reactive "perfect player" including Balloon Boy. This is the real test of the
 // model: if a correctly-played Minus 7 cannot clear the night here, either the
 // routine in MINUS-7-STRATEGY.md is wrong or the engine is.
+import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
+
+// The scripted half of the routine, as frame offsets from the cycle anchor.
+// tools/cyclesearch.mjs optimises alternatives to this table; everything the
+// bot does reactively (BB phases, recovery) is built around whichever table
+// is in use.
+export const DEFAULT_CYCLE = [
+  [0, 'tap', 'monitor'], [18, 'tap', 'mask'], [27, 'tap', 'mask'],
+  [30, 'down', 'light'], [32, 'up', 'light'], [36, 'tap', 'monitor'],
+  [55, 'tap', 'cam:10'], [57, 'down', 'light'], [59, 'up', 'light'],
+  [67, 'tap', 'cam:4'], [69, 'down', 'light'], [71, 'up', 'light'],
+  [79, 'tap', 'cam:7'], [81, 'down', 'light'], [83, 'up', 'light'],
+  [90, 'tap', 'cam:11'], [93, 'down', 'wind'],
+];
 
 const A = (f) => { // next frame landing on a :X2 / :X7 second boundary
   for (let k = 0; k < 12 * C.FPS; k++) {
@@ -12,22 +26,16 @@ const A = (f) => { // next frame landing on a :X2 / :X7 second boundary
   return f;
 };
 
-class Bot {
-  constructor(sim) {
-    this.sim = sim; this.plan = []; this.waiting = null; this.kind = 'start';
+export class Bot {
+  constructor(sim, table = DEFAULT_CYCLE) {
+    this.sim = sim; this.table = table;
+    this.plan = []; this.waiting = null; this.kind = 'start';
     this.plan = [[2, 'tap', 'monitor'], [20, 'tap', 'cam:11'], [24, 'down', 'wind']];
     this.nextAt = C.s(7);
   }
 
   cycle(a) {
-    return [
-      [a + 0, 'tap', 'monitor'], [a + 18, 'tap', 'mask'], [a + 27, 'tap', 'mask'],
-      [a + 30, 'down', 'light'], [a + 32, 'up', 'light'], [a + 36, 'tap', 'monitor'],
-      [a + 55, 'tap', 'cam:10'], [a + 57, 'down', 'light'], [a + 59, 'up', 'light'],
-      [a + 67, 'tap', 'cam:4'], [a + 69, 'down', 'light'], [a + 71, 'up', 'light'],
-      [a + 79, 'tap', 'cam:7'], [a + 81, 'down', 'light'], [a + 83, 'up', 'light'],
-      [a + 90, 'tap', 'cam:11'], [a + 93, 'down', 'wind'],
-    ];
+    return this.table.map(([o, k, act]) => [a + o, k, act]);
   }
 
   // BB is in the vent camera: same cycle, but the cams must be DOWN across the
@@ -92,7 +100,7 @@ class Bot {
 export function run(opts = {}) {
   const jitter = opts.jitter || 0;
   const sim = new Sim(Object.assign({ seed: 999 }, opts));
-  const bot = new Bot(sim);
+  const bot = new Bot(sim, opts.cycle || DEFAULT_CYCLE);
   if (jitter) {
     // Human sloppiness: the whole cycle lands late by a random amount, with a
     // little spread inside it. Order is preserved -- this models a late player,
@@ -114,6 +122,7 @@ export function run(opts = {}) {
   return { sim, minBox };
 }
 
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 const n = +(process.argv[2] || 200);
 const fails = {}; let minB = 1, minP = C.POWER_FRAMES, lapses = 0;
 for (let i = 0; i < n; i++) {
@@ -133,3 +142,4 @@ const failed = Object.values(fails).reduce((a, b) => a + b, 0);
 console.log(`${n - failed}/${n} survived${process.argv.includes('--worst') ? ' (worst luck)' : ''}`);
 for (const [k, v] of Object.entries(fails)) console.log(`  ${v}x  ${k}`);
 console.log(`min box ${(minB * 100).toFixed(0)}% | min power ${minP} | stun lapses total ${lapses}`);
+}
