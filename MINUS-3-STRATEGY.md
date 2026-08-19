@@ -96,10 +96,16 @@ Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Min
    checking against `MASK_LEAVE_FRAMES` / cumulative-mask-time modelling.
 6. **Right vent light stalls Toy Bonnie** (Shooter25) — vent lights are widgets only;
    they have no stalling effect in the engine.
-7. **CAM 03 stalling Toy Bonnie + Withered Freddy** — Withered Freddy's route in
-   `STALLED` never passes room 3; either the route approximation is wrong for this
-   case or the stall works on a different basis. Must be resolved before Minus Two
-   could be simulated.
+7. **CAM 03 stalling Toy Bonnie + Withered Freddy** — confirmed by the
+   Technical-FNaF wiki's flashlight page (source 8), whose strategy table lists
+   Minus 2 as "Camera Light, Cam 3, Toy Bonnie and Withered Freddy, glitchless".
+   What remains open is only *our route table*: Withered Freddy's `STALLED` path
+   never passes room 3, so the engine's post-chokepoint routing must be wrong for
+   him. The same page also confirms the stun-immunity exceptions (Withereds in
+   Parts/Service, Toys on the stage sans glitch, Mangle in the prize corner) and
+   endorses the zero-RNG claim: the camera-light strats are "the only ones to have
+   a hypothetical 100% consistency", all by stalling Toy Bonnie, "the source of
+   all RNG".
 
 ## 6. Implications for plan 02
 
