@@ -65,6 +65,34 @@ Best second-hand source: the Technical-FNaF wiki (decompile-derived per-animatro
 pages). Fandom blocks plain fetches but its MediaWiki API works:
 `curl "https://technicalfnaf.fandom.com/api.php?action=parse&page=<Title>&format=json&prop=wikitext"`.
 
+## What the decompile buys the trainer itself (checklist for that session)
+
+Beyond strategy research — things that would change what the trainer teaches or how
+it grades:
+
+1. **Exact animation lengths.** `MONITOR_ANIM` / `MASK_ANIM` are `[CALIBRATED]`
+   guesses (15 frames), yet every `CYCLE_SCRIPT` offset and every millisecond grade
+   is built on them. If the real animations are 13 or 17 frames, the whole lane is
+   teaching offsets ~33–66 ms off. Highest-value single lookup.
+2. **Android-port timing.** The trainer is a phone trainer and Pedro plays the
+   Android build — the decompile of *that APK* gives its real tick rate and interval
+   timing (the iOS port is overclocked; Android differences are unverified) plus the
+   exact window of the Android-only Golden Freddy bug (`GF_UNFAIR_WINDOW`, currently
+   a calibrated 18 frames). Could justify per-platform timing profiles.
+3. **Grading-relevant mechanics now approximated:** `BLACKOUT_MASK_GRACE` (45),
+   the mask consecutive-vs-cumulative question (drives lessons 7–8), forcedown
+   pacing, Toy Bonnie's wait rolls, the D-offset quirk's exact form, and Withered
+   Freddy's route (known wrong — Minus Two stalls him on CAM 03).
+4. **Audio cue truth.** The duel lesson's ~0.7 s reaction window and every
+   synthesised cue (BB's leaving bang, vent bangs, Mangle static) could be tied to
+   the exact frame the game triggers its sounds.
+5. **Exact RNG call structure** — makes worst-luck mode exactly adversarial and
+   lets the published claims ("no unwinnable RNG", jitter tolerances) rest on the
+   real distributions rather than modelled ones.
+6. **Exact glitch/bug windows** (the double camera glitch's same-frame input, the
+   1-frame blackout flash) — determines whether Minus Toys is even drillable on a
+   touch screen and what tolerance to teach if so.
+
 ## Done when
 
 Each strategy doc is complete enough that plan 02/03 could be implemented from the doc
