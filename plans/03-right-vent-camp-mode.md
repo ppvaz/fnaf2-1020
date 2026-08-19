@@ -1,0 +1,51 @@
+# Trainer mode: right vent camp
+
+**Status:** not started. **Depends on:** plan 01 (the `VENT-CAMP-STRATEGY.md` doc).
+Do after plan 02 — it reuses the strategy-picker work and is the biggest single piece.
+
+## Goal
+
+Right vent camp as a trainer mode. This is the pre-Minus 7 classic: reactive play built
+on watching/listening and conditional mask decisions, not a fixed input loop.
+
+## Why it's a design change, not just data
+
+The current coaching model assumes a fixed timeline: the rhythm lane scrolls scripted
+inputs toward a hit line, offsets are measured from a `:X2`/`:X7` anchor, grading is
+"how late was this scripted input." Vent camp has no script — it has *situations* and
+correct *responses*. Two structural consequences:
+
+1. **A second coaching mode is needed:** reaction prompts and decision grading
+   (did you mask for the right animatronic, was the reaction inside the window)
+   instead of beat grading. The lane either gets a reactive variant or is replaced by
+   a different display for this mode.
+2. **Losable RNG breaks the trainer's core premise.** Minus 7 has no unwinnable rolls,
+   so every loss is a mechanical mistake and pass/fail is meaningful. Vent camp can
+   lose to RNG played perfectly. Pass criteria must change: grade the *decisions*, not
+   survival — a death after correct play is a pass, a survival after a wrong mask call
+   is flagged.
+
+## Engine risk
+
+Vent camp makes currently-approximate mechanics load-bearing: post-chokepoint routing
+(explicitly an approximation today — Minus 7 never lets anyone get that far), vent
+light behaviour details, and any `[CALIBRATED]` constants on the vent/mask path. These
+need proper sourcing (plan 01 flags them) before the sim's verdicts can be trusted.
+
+## Work
+
+1. Source and implement the engine mechanics the strategy doc flagged; promote the
+   relevant constants to `[SOURCED]`.
+2. Design the reactive coach: situation detection, expected response, reaction window,
+   decision grading, and how mistakes are replayed/explained.
+3. Encode the strategy's decision table; lesson ladder that introduces one situation
+   class at a time.
+4. Simulate to characterise (not prove) it: loss rate over seeds under perfect play,
+   so the trainer can tell the player what "good" looks like statistically.
+5. Tests: decision-grading unit tests, seeded scenario tests per situation class.
+
+## Done when
+
+Vent camp is playable through its ladder, grading is decision-based with RNG deaths
+not counted as failures, the load-bearing mechanics are sourced, and the README
+explains how this mode's premise differs from Minus 7's.
