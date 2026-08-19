@@ -8,8 +8,10 @@ state — it is far more clock-anchored than this plan assumed. The reactive-coa
 redesign shrinks to grading a four-way decision fork on monitor-down plus Toy Bonnie
 episodes; the rhythm lane carries the rest. The RNG premise below stands (~99%
 win rate under perfect play, bot-measured 104–1 — a calibration target for the sim).
-First engine task: reconcile Foxy's kill-check cadence (10 s per every RVC source vs
-the engine's 5 s intervals) — see the doc's §4 gap list.
+The Foxy cadence conflict is resolved (doc §2/§4 gap 1): equation checked at 5 s,
+GOT-YOU kill executed at 10 s or on a hall flash, blackout-gated — and the engine
+already implements both halves. Remaining gaps are §4 items 2–7 plus the residual
+Foxy nuances listed in gap 1.
 
 ## Goal
 

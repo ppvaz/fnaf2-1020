@@ -36,10 +36,20 @@
   at 5 consecutive seconds. Practical play holds the mask ~0.5–0.75 s past the
   blackout to cover the vents. Toy Bonnie is the exception: masked, he waits a
   *random* delay before a fixed 5 s attack animation — the strategy's main RNG.
-- **Foxy's checks.** Kill opportunities only at 10 s multiples ("major checks");
-  denied during a blackout or if flashed within the last ~50 frames. Foxy also has a
-  light-exposure meter: 100 × night-number frames of flash forces a retreat for
-  500–999 frames.
+- **Foxy's checks** *(resolved 2026-08-19 against the Technical-FNaF wiki's
+  decompile-derived page — see source 6)*. Two cadences coexist, which is why the
+  sources seemed to conflict. His equation `21 + random(0–4) − D < AI` is **checked
+  every 5 s interval**: true in Parts/Service → he enters the hall; true again in
+  the hall → he is marked "GOT YOU". Once GOT YOU, the jumpscare **executes on your
+  next hall flash or at the next 10 s interval — unless a blackout covers it**. The
+  RVC sources describe the execution half; the Minus 7 material describes the check
+  half. D rises ~1/s (2/s masked with no threats, paused during blackouts), resets
+  to 0 on a hall flash while he's in the hall, and drops 1 per 0.5 s of flash while
+  he's in Parts/Service. He also has the exposure meter: 100 × night-number frames
+  of flash forces a retreat for 500–999 frames. The wiki adds a Clickteam quirk —
+  each blackout shifts D's tick 1 frame earlier ("D offset", ~0.5 s over an RVC
+  night) — and claims this accident is "the only reason 10/20 is even possible
+  without very modern strats".
 - **Forcedown pacing.** Blackout animatronics can only force the monitor down at
   10 s intervals — the metronome "in-phase" play locks onto.
 - **Small print** (DJ Sterf): ~16 frames after mask-off where the flashlight won't
@@ -78,12 +88,17 @@ branch-prompt problem.
 
 Gaps and conflicts in `src/engine.js` / `src/config.js`:
 
-1. **Foxy's check cadence** — the RVC sources are unanimous on kill checks at **10 s
-   multiples** (denied by blackout or a ≤50-frame-old flash). The Minus 7 doc and
-   engine work off 5 s movement intervals. These must be reconciled against the
-   decompile before any RVC simulation — it is the strategy's load-bearing fact.
-2. **Blackout denies Foxy** and **forcedowns only at 10 s multiples** — neither rule
-   exists in the engine.
+1. **Foxy's check cadence** — ~~conflict~~ **RESOLVED** (see §2): the equation runs
+   at 5 s intervals, the GOT-YOU kill executes at 10 s intervals or on a hall flash,
+   blackout-gated. The engine already implements both halves (`engine.js:203-208`,
+   flash-triggered kill at `engine.js:146`). Residual nuances to verify: the wiki's
+   equation is strict `<` where the engine uses `<=` (one second of D difference);
+   D pausing during blackouts and dropping 1 per 0.5 s of flash while in
+   Parts/Service are not obviously modelled; the D-offset Clickteam quirk is not
+   modelled at all.
+2. **Forcedowns only at 10 s multiples** — TheBones5's dissect confirms the office
+   queue attacks at most every 10 s; whether the engine enforces that pacing needs
+   checking.
 3. **Toy Bonnie's unique behaviour** — random pre-attack delay, fixed 5 s animation,
    the 2-cycle post-attack immunity, and the right-vent-light stall: none modelled
    (vent lights are currently widgets with no effect).
@@ -125,3 +140,11 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
    bot stats; right-vent-light Toy Bonnie stall)
 5. Eerier Fish — *FNAF 2 10/20 Mode With Base Right Vent Camp Strategy*, 2025-03-19:
    <https://www.youtube.com/watch?v=X-JUh9dzCto> (base RVC still current)
+6. Technical-FNaF wiki — *Withered Foxy (Fnaf 2)*
+   <https://technicalfnaf.fandom.com/wiki/Withered_Foxy_(Fnaf_2)> (decompile-derived;
+   the D variable, the GOT-YOU model, the D-offset quirk). Note for future research:
+   Fandom blocks plain fetches, but the MediaWiki API works —
+   `curl "https://technicalfnaf.fandom.com/api.php?action=parse&page=<Title>&format=json&prop=wikitext"`.
+7. TheBones5 — *How FNAF 2 Works: Complete Guide/AI Breakdown*, 2023-10-25:
+   <https://www.youtube.com/watch?v=FizTzjyGP3U> (office queue pacing, Toy Bonnie's
+   50%-per-0.5 s / 1-in-3-per-s wait rolls, the RVC mask-timing rationale)

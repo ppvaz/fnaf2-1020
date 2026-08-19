@@ -38,6 +38,20 @@ Minimum coverage:
 3. Write one doc per strategy (`MINUS-3-STRATEGY.md`, `VENT-CAMP-STRATEGY.md`, …) in
    the style of `MINUS-7-STRATEGY.md`, with sources inline.
 
+## Primary sources: the decompilation itself
+
+There is no public repository of decompiled FNaF 2 — it would contain the whole
+game's assets, so distributing it is straight copyright infringement. The community
+pipeline is: own a legal copy, run **CTFAK 2.0** (<https://github.com/CTFAK/CTFAK2.0>,
+the Clickteam Fusion Army Knife) on the game executable, and read the dumped MFA
+event sheets — Clickteam events are close to readable pseudocode. Doing this against
+Pedro's own copy would give us decompile-grade ground truth for every `[CALIBRATED]`
+constant and every engine-gap question, instead of relying on second-hand write-ups.
+
+Best second-hand source: the Technical-FNaF wiki (decompile-derived per-animatronic
+pages). Fandom blocks plain fetches but its MediaWiki API works:
+`curl "https://technicalfnaf.fandom.com/api.php?action=parse&page=<Title>&format=json&prop=wikitext"`.
+
 ## Done when
 
 Each strategy doc is complete enough that plan 02/03 could be implemented from the doc
