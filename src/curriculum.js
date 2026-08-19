@@ -56,14 +56,17 @@ export const LESSONS = [
   },
   {
     id: 'wind',
-    when: 'Sweep on :X2 / :X7, then wind until the next one.',
+    when: 'Sweep on :X2 / :X7, then hold WIND until the next one — about 4 seconds.',
     title: 'Sweep, then wind',
     goal: 'Sweep the three cameras, then go to CAM 11 and hold WIND.',
     teach: 'After every sweep you go home to CAM 11 and wind the box until the next anchor. ' +
-           'Hold your finger down as you move from the CAM 11 button to WIND — that drag is the habit ' +
-           'that stops you fat-fingering CAM 12 at 4 AM.',
+           'WIND is a HELD input, not a tap: the purple bar on the lane is how long your finger stays ' +
+           'down. A tap scores nothing and the box drains — the box is one of the three things that ' +
+           'kill you. Hold your finger down as you move from the CAM 11 button to WIND, too; that drag ' +
+           'is the habit that stops you fat-fingering CAM 12 at 4 AM.',
     controls: ['camlight', 'cams', 'wind'],
-    script: [...sweep(0), S('cam-11', 0.60, 'CAM 11', 'cam', { cam: 11 }), S('wind', 0.70, 'Hold WIND', 'wind')],
+    script: [...sweep(0), S('cam-11', 0.60, 'CAM 11', 'cam', { cam: 11 }),
+             S('wind', 0.70, 'Hold WIND', 'wind', { hold: 4.0 })],
     sim: { ...INERT, stalledEnabled: true, boxEnabled: true },
     start: { monitor: 'up', cam: 10 },
     tol: EASY, target: 8,

@@ -98,6 +98,9 @@ export class Sim {
   get camLightOn() { return this.lightLogical && this.monitor === MON_UP; }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
   get storedMask() { return this.maskCum % C.MASK_LEAVE_FRAMES; }
+  // Holding the wind button only winds when you are actually on the box camera.
+  // Anything else -- cams down, wrong camera -- is a finger doing nothing.
+  get isWinding() { return this.winding && this.monitor === MON_UP && this.cam === C.BOX_CAM; }
 
   emit(type, data) { this.events.push({ f: this.frame, type, data }); }
   flag(code, detail) { this.mistakes.push({ f: this.frame, t: this.t, code, detail }); }
@@ -441,7 +444,7 @@ export class Sim {
 
   tickBox() {
     if (!this.opts.boxEnabled) return;
-    if (this.winding && this.monitor === MON_UP && this.cam === C.BOX_CAM) {
+    if (this.isWinding) {
       this.box = Math.min(1, this.box + 1 / C.BOX_WIND_FRAMES);
     } else {
       this.box = Math.max(0, this.box - 1 / C.BOX_DRAIN_FRAMES);

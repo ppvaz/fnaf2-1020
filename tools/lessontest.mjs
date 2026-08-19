@@ -19,7 +19,13 @@ const rpc = (ws, m, p = {}) => new Promise((res, rej) => { const mid = ++id;
 const errs = [], fails = [];
 
 // tapped as soon as each step falls due — a metronomically perfect player
-const AUTOPLAYER = `window.__auto && clearInterval(window.__auto);
+// `hold` decides whether the bot lets go: a held input stays down until the
+// next control is pressed, which is what the wind step now demands.
+const player = (hold) => `window.__auto && clearInterval(window.__auto);
+window.__held = null;
+window.__release = () => { if (window.__held) {
+  window.__held.dispatchEvent(new PointerEvent('pointerup', {bubbles:true, pointerId:31}));
+  window.__held = null; } };
 window.__auto = setInterval(() => {
   const app = window.app;
   if (!app || !app.running || !app.coach || !app.coach.enabled) return;
@@ -28,9 +34,12 @@ window.__auto = setInterval(() => {
   if (app.sim.t < c.cycleStart + e.at) return;
   const cue = c.cue; if (!cue) return;
   const el = document.querySelector(cue.sel); if (!el) return;
+  window.__release();
   el.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true, pointerId:31}));
-  el.dispatchEvent(new PointerEvent('pointerup', {bubbles:true, pointerId:31}));
+  if (${hold ? 'true' : 'false'} && e.hold) { window.__held = el; }
+  else el.dispatchEvent(new PointerEvent('pointerup', {bubbles:true, pointerId:31}));
 }, 8); true`;
+const AUTOPLAYER = player(true);
 
 async function main() {
   for (let i = 0; i < 60; i++) { try { await fetch(`http://127.0.0.1:${PORT}/json`); break; } catch { await sleep(200); } }
@@ -86,8 +95,22 @@ async function main() {
   await expect('sweep passed', 'document.getElementById("passed").classList.contains("shown")', true);
   await show('stun held', 'Math.max(0,...window.app.sim.units.filter(u=>[10,4,7].includes(u.path[u.idx])).map(u=>u.stunUntil-window.app.sim.frame))');
 
-  console.log('\n— jump to the full cycle —');
+  console.log('\n— winding must be HELD, not tapped —');
   await ev('document.getElementById("btn-passed-menu").click()'); await sleep(200);
+  await ev('document.querySelector(\'[data-mode="wind"]\').click()'); await sleep(200);
+  await ev('document.getElementById("btn-brief-go").click()'); await sleep(400);
+  await ev(player(false));            // taps the wind button instead of holding
+  await sleep(16000);
+  await expect('tapping wind never passes', 'window.app.coach.streak', 0);
+  await show('flagged', 'window.app.coach.results.slice(-4).map(r=>r.grade).join()');
+  await ev(AUTOPLAYER);               // now actually hold it
+  await sleep(24000);
+  await show('holding: streak', 'document.getElementById("coach-streak").textContent');
+  await show('held seconds', 'window.app.coach.lastHeld?.toFixed(2)');
+  await expect('holding builds a streak', 'window.app.coach.streak > 0', true);
+
+  console.log('\n— jump to the full cycle —');
+  await ev('document.getElementById("btn-quit").click()'); await sleep(200);
   await ev('document.querySelector(\'[data-mode="cycle"]\').click()'); await sleep(200);
   await ev('document.getElementById("btn-brief-go").click()'); await sleep(400);
   await expect('controls (cams up)', `[...document.querySelectorAll('[data-widget]')]

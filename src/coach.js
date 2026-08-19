@@ -17,6 +17,7 @@ export class Coach {
     this.suspended = false;   // BB attacks run off-script
     this.onCycle = opts.onCycle || null;
     this.cycleOk = true;      // did every step of the current pass land?
+    this.windFrames = 0;      // frames actually spent winding this pass
     this.combo = 0;           // consecutive inputs that landed in tolerance
     this.bestCombo = 0;
     this.streak = 0;          // consecutive clean passes
@@ -46,9 +47,14 @@ export class Coach {
     return a <= this.tolGood ? 'good' : a <= this.tolOk ? 'ok' : 'late';
   }
 
+  // The wind step is graded on how long the box was actually being wound, not
+  // on the press: a tap would otherwise score full marks while the box drains.
+  get windStep() { return this.script.find(st => st.hold); }
+
   // called every frame
   update() {
     if (!this.enabled || this.suspended) return null;
+    if (this.sim.isWinding) this.windFrames++;
     const t = this.sim.t;
     if (this.cycleStart == null) { this.start(t); return null; }
     // a camflash needs its light within 0.4s of the cam tap
@@ -100,6 +106,16 @@ export class Coach {
 
   // Called when the script wraps: one complete pass of the routine.
   completeCycle() {
+    const w = this.windStep;
+    if (w) {
+      const held = this.windFrames / C.FPS;
+      this.lastHeld = held;
+      // 80% of the window is enough: you have to let go to drop the cams.
+      if (held < w.hold * 0.8) {
+        this.push(w, null, held < w.hold * 0.35 ? 'no-wind' : 'wind-short');
+      }
+    }
+    this.windFrames = 0;
     this.cycles++;
     if (this.cycleOk) { this.streak++; this.bestStreak = Math.max(this.bestStreak, this.streak); }
     else this.streak = 0;

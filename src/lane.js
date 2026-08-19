@@ -36,7 +36,8 @@ export function drawPattern(canvas, script) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, W, H);
 
-  const span = Math.max(2, script[script.length - 1].at + 0.5);
+  const last = script[script.length - 1];
+  const span = Math.max(2, last.at + (last.hold || 0) + 0.4);
   const padL = 34, padR = 14;
   const xOf = (at) => padL + (at / span) * (W - padL - padR);
   const mid = H / 2 + 4;
@@ -66,6 +67,13 @@ export function drawPattern(canvas, script) {
     while (row < ROWS.length - 1 && x - tw / 2 < rowEnd[row] + 4) row++;
     rowEnd[row] = x + tw / 2;
     const y = mid + ROWS[row];
+    if (step.hold) {
+      const x2 = xOf(Math.min(span, step.at + step.hold));
+      ctx.fillStyle = 'rgba(191,90,242,0.16)';
+      roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.fill();
+      ctx.strokeStyle = 'rgba(191,90,242,0.5)';
+      roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
+    }
     ctx.fillStyle = bg;
     roundRect(ctx, x - tw / 2, y - 8, tw, 16, 5); ctx.fill();
     ctx.strokeStyle = fg;
@@ -148,6 +156,17 @@ export class Lane {
       const wTol = coach.tolOk * this.pps;
       for (const { n, x, g, tw, y } of placed) {
         const [fg, bg] = COLORS[g.kind];
+
+        // A held input draws as a bar for as long as it must be held down.
+        if (n.step.hold) {
+          const x2 = x + n.step.hold * this.pps;
+          const live = sim.isWinding && t >= n.due && t <= n.due + n.step.hold;
+          ctx.fillStyle = live ? 'rgba(191,90,242,0.30)' : 'rgba(191,90,242,0.12)';
+          roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.fill();
+          ctx.strokeStyle = live ? fg : 'rgba(191,90,242,0.45)';
+          roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
+        }
+
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
         ctx.fillRect(x - wTol, y - 10, wTol * 2, 20);
 

@@ -161,7 +161,7 @@ export const CYCLE_SCRIPT = [
   { id: 'cam-4',        at: 1.00, label: 'CAM 04 + light',  action: 'camflash', cam: 4      },
   { id: 'cam-7',        at: 1.20, label: 'CAM 07 + light',  action: 'camflash', cam: 7      },
   { id: 'cam-11',       at: 1.40, label: 'CAM 11',          action: 'cam',     cam: 11      },
-  { id: 'wind',         at: 1.50, label: 'Wind',            action: 'wind',    want: 'on'   },
+  { id: 'wind',         at: 1.50, label: 'Hold WIND',       action: 'wind',    want: 'on', hold: 3.5 },
 ];
 
 export const TOL_GOOD = 0.15;  // seconds
