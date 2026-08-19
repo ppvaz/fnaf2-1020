@@ -2,8 +2,10 @@
 
 **Status:** done — `MINUS-3-STRATEGY.md` and `VENT-CAMP-STRATEGY.md` (both
 2026-08-19) cover the two lineages to their state of the art (Minus Toys / Minus Two
-2025; brayden's timer strategy 2024). Nothing newer surfaced in the sweep. Remaining
-research is per-mechanic verification, tracked in each doc's engine-gap list.
+2025; brayden's timer strategy 2024), and `STRATEGY-HISTORY.md` consolidates the
+whole timeline including Markiplier's July 2026 independent Minus 7 rediscovery
+(timer-less, Foxy retired via the exposure meter). Remaining research is
+per-mechanic verification, tracked in each doc's engine-gap list.
 **Depends on:** nothing — this is the prerequisite for every other plan in this directory.
 
 ## Goal

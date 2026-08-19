@@ -1,0 +1,120 @@
+# FNaF 2 — 10/20 Mode: A History of the Strategies
+### Consolidated from `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md` and `VENT-CAMP-STRATEGY.md`, plus the 2026 Markiplier material. Researched 2026-08-19.
+
+One night, 7 minutes, ten animatronics at maximum AI. Every strategy below is an
+answer to the same question: how much of 10/20 mode's chaos can be converted into
+schedule? The history runs from pure reaction play to two independent proofs that
+the answer is *all of it*.
+
+## The eras
+
+**Reaction era (2014–~2020).** Camera-heavy play (DJ Sterf's "T Path" and kin):
+watch, react, hope. Wins existed but were luck-shaped. This era also produced the
+period's most famous win — Markiplier's December 2014 10/20 completion — which
+turned out to matter to this history twice (see the saga below).
+
+**Right Vent Camp (~2020–2023).** The "Tactical Crew" (Random FNaF Player, Ambience,
+Tru3P1ay3r, Chezzball34, ZombieGabriel, Toy Bonnie 360 — credited by DJ Sterf)
+found the load-bearing mask fact: 5 consecutive masked seconds clears everyone, so
+the left side never needs checking. DJ Sterf systematised it (2021, in-phase /
+out-of-phase); Shooter25 made it clock-driven (2021) by timing blackouts across
+Foxy's kill checks. RVC turned 10/20 from a reflex test into a routine with a few
+RNG leaks — Toy Bonnie chief among them.
+
+**Stall era (2023–2025).** Two simultaneous discoveries converted "handle the
+animatronics" into "never let them move at all":
+
+- *Cam-stall* (Minus 3, insstaa + Yunivers, July 2023): the double camera glitch
+  keeps Parts/Service selected all night, so the three stallable Withereds never
+  leave. Easy, but glitch-based and not RNG-proof.
+- *Flash-loop* (**Minus 7**, Niko Frost, December 2023): the three-camera flash
+  sweep holds all seven stallable animatronics forever — the **first zero-RNG
+  strategy**, glitchless, and the hardest to execute. The strategy this repo's
+  trainer teaches.
+
+**Synthesis era (2024–2026).** The threads merged and specialised:
+
+- *brayden's timer strategy* (June 2024, with Shooter25): RVC + Foxy blackout
+  manipulation + Golden Freddy interval avoidance + the right-vent-light Toy Bonnie
+  stall. Not zero-RNG (~99%, bot-measured) but the best consistency-per-unit-skill —
+  the pragmatist's strategy.
+- *Minus Toys* (Zach_Scream, May 2025): the glitch aimed at CAM 09 instead, freezing
+  the three Toys; the **second zero-RNG strategy**, far easier than Minus 7.
+  *Minus Two* (a day later): the same plan glitchless via CAM 03 — zero-RNG,
+  legitimate, but slack-starved.
+- *Markiplier's rediscovery* (July 2026): see the saga.
+
+## The Markiplier saga
+
+- **2014-12-14** — Markiplier's original *10/20 Mode COMPLETE!!*, the era-defining
+  win.
+- **2025-11-14** — TheBones5 publishes a 41-minute technical analysis alleging the
+  run was cheated; community debate follows.
+- **2026-07-15** — Markiplier confesses on stream (*Markiplier's Redemption*, 4h23):
+  the 2014 run was not legitimate.
+- **2026-07-31** — *Five Nights at Freddy's 2: 10/20 COMPLETE (no cheats)*: he beats
+  it for real, having deliberately avoided existing strategies and derived his own
+  from mechanics — then discovers on finishing that he had **independently
+  reinvented Minus 7** ("I realised this is a strategy called minus seven, or a
+  modified version of it" — community verdict the same: "he really reinvented the
+  minus 7 strat", TheBon).
+
+His variant differs from Niko Frost's in three ways worth recording:
+
+1. **No external timer.** Every prior clock-anchored strategy requires one; Mark
+   counts 5-second cycles using the music box itself as the metronome (each wind
+   tick is 0.5 s — "five, wind four, three winds…").
+2. **Foxy is retired, not managed.** Instead of per-cycle hall flashes, he fills
+   Foxy's exposure meter (700 units on night 7) in three flash rounds
+   (≈5 s + 3.5 s + 3.5 s ≈ 11 s of light), deliberately *aligning Foxy's retreat
+   with Balloon Boy's arrival* so both are dealt with in one window.
+3. **Freeze-in-place at night start** — flashing CAM 7 / CAM 4 / CAM 10 from the
+   opening (he notes CAM 4 beats CAM 2 because no phone ring masks Foxy's audio
+   cues).
+
+He is candid that his run had luck in it (it is not played as zero-RNG) and that the
+method has optimisation headroom. Two details matter to this repo: he verified
+Foxy's internals against **Shooter25's FNaF 2 practice mod** (the same bot lineage
+in plan 05's prior-art note), and his on-camera measurements — the 6.66 s freeze,
+the 700-unit meter, exposure accruing ~50–60 units per second with proportional
+partial-second credit — are fresh independent confirmations of constants in
+`src/config.js`, plus one refinement (sub-second exposure granularity) the engine
+doesn't model.
+
+## The scoreboard
+
+| Strategy | Year | RNG-proof | Glitchless | Timer needed | Difficulty (community verdict) |
+|---|---|---|---|---|---|
+| Reaction / T Path | 2014– | no | yes | no | luck-shaped |
+| Right Vent Camp | ~2020 | no | yes | no (yes once timed) | moderate |
+| Minus 3 | 2023 | no | **no** | yes | easy |
+| **Minus 7** | 2023 | **yes** | yes | yes | hardest |
+| brayden's timer strat | 2024 | no (~99%) | yes | yes | moderate-easy |
+| **Minus Toys** | 2025 | **yes** | **no** | yes | much easier than Minus 7 |
+| Minus Two | 2025 | **yes** | yes | yes | moderate, slack-starved |
+| Markiplier's Minus 7 | 2026 | no (as played) | yes | **no** | hard |
+
+## A meta-thread: removing the human
+
+The community keeps independently inventing the same validation idea this repo's
+simulator embodies: Shooter25's practice mod / bot played brayden's strategy
+perfectly for 105 nights to measure its true consistency (104–1), and Markiplier
+used the same mod to read Foxy's internals. Nobody has yet used a simulator to
+*search* for a strategy — that gap is plan 05.
+
+## Sources
+
+Primary docs in this repo: `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md`,
+`VENT-CAMP-STRATEGY.md` (each with full per-claim citations). Additional to those:
+
+1. Markiplier — *10/20 Mode COMPLETE!!*, 2014-12-14:
+   <https://www.youtube.com/watch?v=A9qPj-YJcN8>
+2. TheBones5 — *Did Markiplier CHEAT his FNAF 2 10/20 Win? | Full Technical
+   Analysis*, 2025-11-14: <https://www.youtube.com/watch?v=SjK7M0LRbqw>
+3. Markiplier — *Five Nights at Freddy's 2: Markiplier's Redemption* (stream),
+   2026-07-15: <https://www.youtube.com/watch?v=AH5jwKkCS7M>
+4. Markiplier — *Five Nights at Freddy's 2: 10/20 COMPLETE (no cheats)*,
+   2026-07-31: <https://www.youtube.com/watch?v=M3H8u3Y0S-s> (transcript is the
+   source for the variant details above)
+5. TheBon — "He really reinvented the minus 7 strat for it lmao":
+   <https://x.com/the_bonbon/status/2083344947386662925>
