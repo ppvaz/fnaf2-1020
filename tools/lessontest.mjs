@@ -71,7 +71,7 @@ async function main() {
   console.log('\n— lesson 1: the beat —');
   await ev('document.querySelector(\'[data-mode="beat"]\').click()'); await sleep(250);
   await expect('brief shown', 'document.getElementById("brief").classList.contains("shown")', true);
-  await show('pass criterion', 'document.getElementById("brief-controls").textContent');
+  await show('pass criterion', 'document.getElementById("brief-pass").textContent');
   await ev('document.getElementById("btn-brief-go").click()'); await sleep(500);
   await expect('only LIGHT visible', `[...document.querySelectorAll('[data-widget]')]
      .filter(e=>!e.classList.contains('hidden-ctrl')).map(e=>e.dataset.widget).sort().join()`, 'light');

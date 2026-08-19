@@ -60,7 +60,8 @@ export class UI {
 
       <div id="monitor" class="view">
         <div class="feed">
-          <div class="feed-title"><span id="feed-cam">CAM 11</span><em id="feed-name">Prize Corner</em></div>
+          <div class="feed-title"><span id="feed-cam">CAM 11</span><em id="feed-name">Prize Corner</em>
+            <i class="feed-rec">REC</i></div>
           <div class="feed-body" id="feed-body"></div>
           <div class="feed-stun" id="feed-stun"></div>
           <button class="wind" data-act="wind" data-mode="hold" data-widget="wind" id="windbtn">WIND</button>
@@ -71,7 +72,7 @@ export class UI {
       <button class="btn light" data-act="light" data-mode="hold" data-widget="light"><span>LIGHT</span></button>
       <button class="btn light camlight" data-act="light" data-mode="hold" data-widget="camlight"><span>CAM LIGHT</span></button>
       <button class="btn tab mask" data-act="mask" data-mode="tap" data-widget="mask"><span>▲</span><em>MASK</em></button>
-      <button class="btn tab mon" data-act="monitor" data-mode="tap" data-widget="monitor"><span>▲</span><em>MONITOR</em></button>
+      <button class="btn tab mon" data-act="monitor" data-mode="tap" data-widget="monitor"><span id="mon-arrow">▲</span><em>MONITOR</em></button>
       <button class="vent" data-act="ventL" data-mode="hold" data-widget="ventL"><span>L</span></button>
       <button class="vent" data-act="ventR" data-mode="hold" data-widget="ventR"><span>R</span></button>
     `;
@@ -104,6 +105,7 @@ export class UI {
       coachBar: this.root.querySelector('#coach-bar'),
       coachBarFill: this.root.querySelector('#coach-bar i'),
       lane: this.root.querySelector('#lane'),
+      monArrow: this.root.querySelector('#mon-arrow'),
       timer: this.root.querySelector('.hud-timer'),
     };
     this.lane = new Lane(this.el.lane);
@@ -199,7 +201,7 @@ export class UI {
     this.el.budget.textContent = `${Math.round(perSec * 1000)}ms/s`;
     this.el.budget.className = perSec > C.POWER_FRAMES / C.NIGHT_FRAMES ? 'over' : '';
 
-    this.el.foxy.textContent = sim.foxy.loc === 'hall' ? `HALL  D=${sim.foxy.D}` : 'away';
+    this.el.foxy.textContent = sim.foxy.loc === 'hall' ? `HALL D=${sim.foxy.D}` : 'AWAY';
     this.el.foxy.parentElement.className = `threat ${sim.foxy.gotYou ? 'crit' : sim.foxy.loc === 'hall' && sim.foxy.D >= 3 ? 'warn' : ''}`;
     this.el.bb.textContent = sim.bb.inOpening ? 'IN VENT' : `${sim.bb.stage}/4`;
     this.el.bb.parentElement.className = `threat ${sim.bb.inOpening ? 'crit' : sim.bb.stage >= 3 ? 'warn' : ''}`;
@@ -208,7 +210,12 @@ export class UI {
 
     // views
     const up = sim.monitor === 'up' || sim.monitor === 'raising';
-    if (up !== this.lastCamsUp) this.applyLightVisibility(up);
+    if (up !== this.lastCamsUp) {
+      this.applyLightVisibility(up);
+      // The MONITOR tab is the same button either way, so its arrow has to say
+      // which way it will move the cams -- up when they are down, down when up.
+      this.el.monArrow.textContent = up ? '▼' : '▲';
+    }
     this.el.monitor.classList.toggle('shown', up);
     this.el.office.classList.toggle('dimmed', up);
     this.el.maskOv.classList.toggle('shown', sim.maskOn);

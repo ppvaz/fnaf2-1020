@@ -11,6 +11,19 @@ import { LESSONS, byId, loadProgress, saveProgress, markPassed, recordCombo, unl
 
 const HUGE = C.NIGHT_FRAMES * 10;
 
+// The brief's "ON SCREEN" row: what a lesson's `controls` list looks like to
+// the player, colour-coded the same way the rhythm lane codes those inputs.
+const CONTROL_CHIPS = {
+  light:    { label: 'LIGHT',     kind: 'k-light' },
+  camlight: { label: 'CAM LIGHT', kind: 'k-light' },
+  mask:     { label: 'MASK',      kind: 'k-mask' },
+  monitor:  { label: 'MONITOR',   kind: '' },
+  cams:     { label: 'CAMS',      kind: 'k-cams' },
+  wind:     { label: 'WIND',      kind: 'k-wind' },
+  vents:    { label: 'VENTS',     kind: '' },
+};
+const ALL_CONTROLS = Object.keys(CONTROL_CHIPS);
+
 class App {
   constructor() {
     this.audio = new Audio();
@@ -152,17 +165,25 @@ class App {
     this.pendingLesson = id;
     const i = LESSONS.indexOf(l);
     document.getElementById('brief-title').textContent = l.title;
-    document.getElementById('brief-step').textContent = `${i + 1} of ${LESSONS.length}`;
+    document.getElementById('brief-step').textContent =
+      `LESSON ${String(i + 1).padStart(2, '0')} / ${LESSONS.length}`;
     document.getElementById('brief-goal').textContent = l.goal;
     document.getElementById('brief-teach').textContent = l.teach;
-    document.getElementById('brief-when').textContent = l.when ? `When: ${l.when}` : '';
-    const need = l.fullNight ? 'Clear the night.'
-      : l.drill === 'phaseB' ? `Beat ${l.duelTarget * 1000 | 0}ms on ${l.target} attacks.`
-      : `${l.target} clean passes in a row.`;
-    document.getElementById('brief-controls').textContent = `To pass: ${need}`;
+    document.getElementById('brief-when').textContent = l.when ? `WHEN — ${l.when}` : '';
+    const need = l.fullNight ? 'clear the night'
+      : l.drill === 'phaseB' ? `beat ${l.duelTarget * 1000 | 0} ms on ${l.target} attacks`
+      : `${l.target} clean passes in a row`;
+    const tol = l.tol ? ` · graded ±${l.tol.tolGood * 1000 | 0} ms GOOD / ±${l.tol.tolOk * 1000 | 0} ms OK` : '';
+    document.getElementById('brief-pass').textContent =
+      `PASS — ${need}${tol} · never slowed down`;
+    document.getElementById('brief-controls').innerHTML =
+      (l.controls || ALL_CONTROLS).map(c => {
+        const d = CONTROL_CHIPS[c];
+        return d ? `<span class="chip-ctrl ${d.kind}">${d.label}</span>` : '';
+      }).join('');
     document.getElementById('btn-brief-go').textContent = LESSONS.indexOf(l) === 0 ? 'Start' : 'Start lesson';
     const cv = document.getElementById('brief-lane');
-    cv.style.display = l.script ? '' : 'none';
+    cv.parentElement.style.display = l.script ? '' : 'none';
     showPanel('brief');
     if (l.script) requestAnimationFrame(() => drawPattern(cv, l.script));
   }
@@ -404,11 +425,12 @@ function renderReport(sum, sim, duel, modeKey) {
     stats.push(['Mean error', `${Math.round(sum.coach.meanAbs * 1000)}ms`]);
   }
   stats.push(['Light used', `${sum.lightUsedSec.toFixed(1)}s of 50s`]);
-  stats.push(['Light rate', `${Math.round(sum.lightPerSec * 1000)}ms/s ${sum.lightBudgetOk ? '✓' : '✗ over budget'}`]);
-  for (const g of sum.gaps) stats.push([`CAM ${String(g.cam).padStart(2, '0')} lapses`, `${g.gaps}${g.gaps ? ` (worst ${g.worstSec.toFixed(2)}s)` : ''}`]);
+  stats.push(['Light rate', `${Math.round(sum.lightPerSec * 1000)}ms/s`, sum.lightBudgetOk ? 'good' : 'bad']);
+  for (const g of sum.gaps) stats.push([`CAM ${String(g.cam).padStart(2, '0')} lapses`,
+    `${g.gaps}${g.gaps ? ` (worst ${g.worstSec.toFixed(2)}s)` : ''}`, g.gaps ? 'bad' : 'good']);
   if (modeKey === 'phaseB' && duel.best) stats.push(['Best duel', `${Math.round(duel.best * 1000)}ms`]);
   document.getElementById('rep-stats').innerHTML =
-    stats.map(([k, v]) => `<div><b>${k}</b><span>${v}</span></div>`).join('');
+    stats.map(([k, v, cls]) => `<div><b>${k}</b><span class="${cls || ''}">${v}</span></div>`).join('');
 
   const seen = new Set();
   document.getElementById('rep-mistakes').innerHTML = sum.mistakes
@@ -439,6 +461,10 @@ function saveSettings(s) { try { localStorage.setItem('m7.settings', JSON.string
 function buildMenu() {
   const prog = loadProgress();
   const open = unlockedIndex(prog);
+  const cleared = LESSONS.filter(l => prog[l.id]?.passed).length;
+  document.getElementById('mode-pips').innerHTML = LESSONS
+    .map((l, i) => `<i class="${prog[l.id]?.passed ? 'done' : i === open ? 'next' : ''}"></i>`).join('');
+  document.getElementById('mode-cleared').textContent = `${cleared} / ${LESSONS.length} CLEARED`;
   document.getElementById('mode-list').innerHTML = LESSONS.map((l, i) => {
     const done = !!prog[l.id]?.passed;
     const next = i === open && !done;
@@ -446,7 +472,8 @@ function buildMenu() {
     const best = prog[l.id]?.best;
     return `<button class="mode ${state}" data-mode="${l.id}">
       <span class="mode-n">${done ? '✓' : i + 1}</span>
-      <b>${l.title}</b>${best ? `<span class="mode-best">best ${best}x</span>` : ''}
+      <b>${l.title}</b>${next ? '<span class="mode-best">▶ GO</span>'
+        : best ? `<span class="mode-best">✓ ${best}×</span>` : ''}
       <span class="mode-goal">${l.goal}</span>
     </button>`;
   }).join('');

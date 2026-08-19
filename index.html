@@ -3,30 +3,42 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#08090c">
+<meta name="theme-color" content="#0A0C0A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Minus 7 Trainer</title>
+<link rel="stylesheet" href="src/fonts.css">
 <link rel="stylesheet" href="src/style.css">
 </head>
 <body>
 
 <div id="menu" class="panel shown">
-  <header>
-    <h1>Minus&nbsp;7 <span>trainer</span></h1>
-    <p>Touch-input drills for the FNaF&nbsp;2 10/20 Minus&nbsp;7 routine. Built for Android timing (1.00&times;).
+  <aside class="rail">
+    <div class="eyebrow">10/20 MODE &middot; INPUT TRAINER</div>
+    <h1>MINUS <span>7</span></h1>
+    <p>Touch drills for the FNaF&nbsp;2 Minus&nbsp;7 routine. Built for Android timing (1.00&times;).
        Turn your phone sideways.</p>
-  </header>
-  <div id="mode-list" class="modes"></div>
-  <nav class="menu-nav">
-    <button data-ui="settings">Settings</button>
-    <button data-ui="about">How it works</button>
-    <button id="btn-resetprogress" class="danger">Reset progress</button>
-  </nav>
+    <div class="anchor-badge"><b>:X2 / :X7</b><span>one pass every<br>five seconds</span></div>
+    <div class="rail-spacer"></div>
+    <nav class="menu-nav">
+      <button data-ui="settings">Settings</button>
+      <button data-ui="about">How it works</button>
+      <button id="btn-resetprogress" class="danger">Reset</button>
+    </nav>
+  </aside>
+  <section class="work">
+    <div class="ladder-head">
+      <span class="eyebrow">LESSONS</span>
+      <div class="pips" id="mode-pips"></div>
+      <span class="cleared" id="mode-cleared"></span>
+    </div>
+    <div id="mode-list" class="modes"></div>
+  </section>
 </div>
 
 <div id="settings" class="panel">
-  <header><h2>Settings</h2><button data-close>Done</button></header>
+  <header class="rep-head"><h2>Settings</h2>
+    <nav class="report-nav" style="margin:0 0 0 auto"><button data-close>Done</button></nav></header>
   <div class="rows">
     <label class="row"><span>Sound</span><input type="checkbox" id="opt-sound"></label>
     <label class="row"><span>Show coach hints</span><input type="checkbox" id="opt-coach"></label>
@@ -44,8 +56,6 @@
   </div>
   <p id="savemap-note" class="note"></p>
   <textarea id="map-json" class="mapjson" readonly hidden></textarea>
-  <div class="rows">
-  </div>
 
   <h3>Your own sounds</h3>
   <p class="note">This trainer ships with synthesised cues only. If you own FNaF&nbsp;2 you can load audio
@@ -55,22 +65,78 @@
   <button id="btn-clear-sounds" class="danger">Remove all loaded sounds</button>
 </div>
 
+<!-- The strategy, on one board: everything the routine rests on, in the order
+     you need it. Replaces the old wall of prose. -->
 <div id="about" class="panel">
-  <header><h2>How it works</h2><button data-close>Done</button></header>
-  <div class="prose">
-    <p><b>The routine.</b> At every <code>:X2</code> and <code>:X7</code>: cams down, mask flick for
-       Golden Freddy, flash the hall for Foxy, cams up, flash <b>CAM&nbsp;10</b>, <b>CAM&nbsp;04</b>,
-       <b>CAM&nbsp;07</b>, then CAM&nbsp;11 and wind until the next anchor.</p>
-    <p><b>Why it works.</b> A camera flash freezes everyone in that room for 6.66&nbsp;s, and all seven
-       stallable animatronics have to pass through those three rooms. Flashes 5&nbsp;s apart never let the
-       stun lapse. Foxy, Golden Freddy and Balloon Boy cannot be stalled.</p>
-    <p><b>The stun bars are the game.</b> Three bars, top of the screen, each draining from 6.66&nbsp;s.
-       If one hits zero while somebody is standing in that room, they move.</p>
-    <p><b>Light budget.</b> 50&nbsp;s of flashlight has to cover a 420&nbsp;s night &mdash; 119&nbsp;ms of
-       light per second survived. The HUD shows your running rate; over budget turns red.</p>
-    <p><b>Balloon Boy.</b> Third laugh: keep the cams <i>down</i> across every 5&nbsp;s interval. Fourth
-       laugh: flash all three cams and mask up, then react to his leaving bang. A full-length attack
-       leaves about 0.7&nbsp;s to un-mask, raise the cams and re-flash.</p>
+  <header class="board-head">
+    <div class="eyebrow">FNAF 2 &middot; 10/20 MODE &middot; STRATEGY BY NIKO FROST</div>
+    <h2>The Minus 7 loop</h2>
+    <p>A camera flash freezes that room for 6.66 seconds, and every stallable animatronic passes
+       through one of three rooms. Sweep those rooms every five seconds and nothing ever reaches you.
+       Ten inputs, then breathe.</p>
+    <nav class="report-nav"><button data-close>Done</button></nav>
+  </header>
+
+  <div class="board">
+    <div class="board-title amber">THE PASS &mdash; TEN INPUTS IN ~1.5 S, THEN WIND</div>
+    <div class="pass-steps">
+      <div class="pass-step"><span class="at">+0.00</span><span class="what">1 &middot; CAMS &#9660;</span></div>
+      <div class="pass-step k-mask"><span class="at">+0.20</span><span class="what">2 &middot; MASK &#9650;</span></div>
+      <div class="pass-step k-mask"><span class="at">+0.35</span><span class="what">3 &middot; MASK &#9660;</span></div>
+      <div class="pass-step k-light"><span class="at">+0.42</span><span class="what">4 &middot; FLASH HALL</span></div>
+      <div class="pass-step"><span class="at">+0.60</span><span class="what">5 &middot; CAMS &#9650;</span></div>
+      <div class="pass-step k-cam"><span class="at">+0.80</span><span class="what">6 &middot; CAM 10 + LIGHT</span></div>
+      <div class="pass-step k-cam"><span class="at">+1.00</span><span class="what">7 &middot; CAM 04 + LIGHT</span></div>
+      <div class="pass-step k-cam"><span class="at">+1.20</span><span class="what">8 &middot; CAM 07 + LIGHT</span></div>
+      <div class="pass-step k-wind"><span class="at">+1.40</span><span class="what">9 &middot; CAM 11</span></div>
+      <div class="pass-step k-hold"><span class="at">+1.50 &rarr; +5.0</span><span class="what">10 &middot; HOLD WIND</span></div>
+    </div>
+    <div class="pass-ends">
+      <b>THE BURST &mdash; DRAG YOUR THUMB, DON'T HUNT</b>
+      <i>THE BREATH &mdash; WIND UNTIL THE NEXT ANCHOR</i>
+    </div>
+  </div>
+
+  <div class="board-grid">
+    <div class="board">
+      <div class="board-title">WHY IT NEVER LAPSES</div>
+      <div class="overlap">
+        <i class="a">FLASH @ 0 s &mdash; stun 6.66 s</i>
+        <i class="b">FLASH @ 5 s</i>
+        <u></u>
+        <span>+1.66 s MARGIN</span>
+      </div>
+      <p>A flash stuns for 6.66&nbsp;s; the next lands 5&nbsp;s later. The overlap absorbs a late
+         sweep &mdash; up to ~1.6&nbsp;s &mdash; before anyone gets a move.</p>
+    </div>
+
+    <div class="board">
+      <div class="board-title">THREE ROOMS HOLD ALL SEVEN</div>
+      <div class="room"><b>CAM 10</b><em>Game Area</em><span>TOY FREDDY &middot; MANGLE</span></div>
+      <div class="room"><b>CAM 04</b><em>Party Room 4</em><span>TOY BONNIE &middot; W. CHICA</span></div>
+      <div class="room"><b>CAM 07</b><em>Main Hall</em><span>W. BONNIE &middot; W. FREDDY &middot; TOY CHICA</span></div>
+      <p>Every route's first move lands in one of these rooms. Flash them on cadence and nobody
+         ever takes a second step.</p>
+    </div>
+
+    <div class="board">
+      <div class="board-title amber">HANDLED BY HAND</div>
+      <div class="byhand"><b>FOXY</b><span>The hall flash in every cycle resets his exposure before
+        it matters.</span></div>
+      <div class="byhand gf"><b>G.F.</b><span>Mask flick before the flash &mdash; flashing the hall
+        with him in the office is lethal.</span></div>
+      <div class="byhand bb"><b>B.B.</b><span>Third laugh: cams down across every 5&nbsp;s interval.
+        Fourth: the duel &mdash; ~0.7&nbsp;s to un-mask, raise and re-flash.</span></div>
+    </div>
+  </div>
+
+  <div class="board">
+    <div class="budget">
+      <span class="board-title amber">LIGHT BUDGET</span>
+      <div class="budget-track"><i></i><u></u><b>119 ms/s &mdash; the ceiling</b></div>
+      <p style="flex:0 1 420px">50&nbsp;s of flashlight must cover a 420&nbsp;s night. The HUD shows
+         your live rate; over budget turns red.</p>
+    </div>
     <p class="fine">The camera map geometry is a reconstruction, not an extraction &mdash; use
        Settings&nbsp;&rarr;&nbsp;Calibrate to match your device. Simulation constants come from the
        community AI breakdowns; a few are calibrated rather than sourced and are marked as such in
@@ -79,20 +145,31 @@
 </div>
 
 <div id="brief" class="panel">
-  <header><h2 id="brief-title"></h2><span id="brief-step" class="step"></span></header>
-  <p id="brief-goal" class="brief-goal"></p>
-  <p id="brief-teach" class="brief-teach"></p>
-  <p id="brief-when" class="brief-when"></p>
-  <canvas id="brief-lane"></canvas>
-  <div id="brief-controls" class="brief-controls"></div>
-  <nav class="report-nav">
-    <button id="btn-brief-go" class="primary">Start</button>
-    <button id="btn-brief-back">Back</button>
-  </nav>
+  <aside class="rail">
+    <div class="eyebrow" id="brief-step"></div>
+    <h2 id="brief-title"></h2>
+    <p class="brief-goal" id="brief-goal"></p>
+    <p class="brief-teach" id="brief-teach"></p>
+    <p class="brief-when" id="brief-when"></p>
+    <div class="rail-spacer"></div>
+    <div class="eyebrow">ON SCREEN</div>
+    <div class="chips" id="brief-controls"></div>
+  </aside>
+  <section class="work">
+    <div class="pattern-box">
+      <div class="eyebrow">THE PATTERN</div>
+      <canvas id="brief-lane"></canvas>
+    </div>
+    <p class="brief-pass" id="brief-pass"></p>
+    <nav class="report-nav">
+      <button id="btn-brief-go" class="primary">Start</button>
+      <button id="btn-brief-back">Back</button>
+    </nav>
+  </section>
 </div>
 
 <div id="passed" class="panel">
-  <header><h2 id="passed-title"></h2></header>
+  <h2 id="passed-title"></h2>
   <p id="passed-body" class="brief-teach"></p>
   <nav class="report-nav">
     <button id="btn-next-lesson" class="primary">Next lesson</button>
@@ -103,20 +180,29 @@
 
 <div id="run" class="panel">
   <div id="stage"></div>
-  <button id="btn-quit" class="quit">Quit</button>
+  <button id="btn-quit" class="quit">QUIT</button>
 </div>
 
 <div id="report" class="panel">
-  <header><h2 id="rep-head"></h2></header>
-  <p id="rep-why" class="why"></p>
-  <canvas id="rep-canvas"></canvas>
-  <div id="rep-stats" class="stats"></div>
-  <h3>Flagged</h3>
-  <ul id="rep-mistakes" class="mistakes"></ul>
-  <nav class="report-nav">
-    <button id="btn-again">Run it again</button>
-    <button id="btn-menu">Menu</button>
-  </nav>
+  <header class="rep-head">
+    <h2 id="rep-head"></h2>
+    <p id="rep-why" class="why"></p>
+    <nav class="report-nav">
+      <button id="btn-again" class="primary">Run it again</button>
+      <button id="btn-menu">Menu</button>
+    </nav>
+  </header>
+  <div class="rep-body">
+    <div class="rep-plot">
+      <div class="eyebrow">NIGHT TIMELINE</div>
+      <canvas id="rep-canvas"></canvas>
+    </div>
+    <div class="rep-side">
+      <div id="rep-stats" class="stats"></div>
+      <h3>Flagged</h3>
+      <ul id="rep-mistakes" class="mistakes"></ul>
+    </div>
+  </div>
 </div>
 
 <script type="module" src="src/main.js"></script>
