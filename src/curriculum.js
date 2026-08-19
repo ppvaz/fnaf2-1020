@@ -21,6 +21,22 @@ const sweep = (t0) => [
 const EASY = { tolGood: 0.30, tolOk: 0.55 };
 const FIRM = { tolGood: 0.22, tolOk: 0.45 };
 
+// Phase A is a different cycle, not the main one. The cams must be DOWN across
+// every 5s interval so Balloon Boy cannot take his fourth move -- which also
+// means Golden Freddy never gets a roll, so there is no mask flick here.
+const PHASE_A_SCRIPT = [
+  S('monitor-down', 0.00, 'Cams down', 'monitor', { want: 'down' }),
+  S('flash-hall', 0.15, 'Flash the hall', 'light'),
+  S('monitor-up', 0.40, 'Cams up', 'monitor', { want: 'up' }),
+  S('cam-10', 0.60, 'CAM 10, then LIGHT', 'camflash', { cam: 10 }),
+  S('cam-4', 0.80, 'CAM 04, then LIGHT', 'camflash', { cam: 4 }),
+  S('cam-7', 1.00, 'CAM 07, then LIGHT', 'camflash', { cam: 7 }),
+  S('cam-11', 1.20, 'CAM 11', 'cam', { cam: 11 }),
+  S('wind', 1.30, 'Hold WIND', 'wind', { hold: 1.2 }),
+  S('drop-for-bb', 2.60, 'Cams DOWN for BB', 'monitor', { want: 'down' }),
+  S('back-up', 3.30, 'Cams back up', 'monitor', { want: 'up' }),
+];
+
 const INERT = {
   bbEnabled: false, foxyEnabled: false, gfEnabled: false, boxEnabled: false,
   stalledEnabled: false, powerEnabled: false, lethal: false,
@@ -120,14 +136,16 @@ export const LESSONS = [
   },
   {
     id: 'phaseA',
-    when: 'Normal cycle on :X2 / :X7, plus cams down across every :X0 and :X5.',
+    when: 'Cycle on :X2 / :X7, then cams down by :X4 / :X9 and back up after :X5 / :X0.',
     title: 'Hearing Balloon Boy',
     goal: 'On his third laugh, get the cams DOWN across every 5-second interval.',
     teach: 'BB laughs on each move. The third laugh — with a vent bang — means he is in the vent camera. ' +
            'His fourth move can only happen while your cams are UP, so from then on you drop them before ' +
-           'every 5-second interval and raise them after. That is the whole defence.',
+           'every 5-second interval and raise them after. That is the whole defence. Note there is no ' +
+           'mask flick in this cycle: with the cams down across every interval, Golden Freddy never gets ' +
+           'a roll. You also get much less winding time, which is the real cost of a BB approach.',
     controls: ['light', 'camlight', 'mask', 'monitor', 'cams', 'wind'],
-    script: C.CYCLE_SCRIPT,
+    script: PHASE_A_SCRIPT,
     sim: { lethal: false },
     drill: 'phaseA',
     start: { monitor: 'up', cam: 11 },

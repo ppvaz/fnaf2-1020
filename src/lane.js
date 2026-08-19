@@ -102,6 +102,48 @@ export class Lane {
 
   cleanPass(t) { this.flash = t; }
 
+  // Phase B has no script to follow, so the lane shows the thing that actually
+  // matters there: how much stun is left before the animatronics break loose.
+  drawDuel(sim, duel) {
+    const cv = this.canvas, ctx = this.ctx;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = cv.clientWidth, H = cv.clientHeight;
+    if (!W || !H) return;
+    if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    const pad = 12, barW = W - pad * 2, mid = H / 2;
+    let least = C.STUN_FRAMES, occupied = false;
+    for (const cam of C.TARGET_CAMS) {
+      for (const u of sim.units) {
+        if (u.done || u.path[u.idx] !== cam) continue;
+        occupied = true;
+        least = Math.min(least, Math.max(0, u.stunUntil - sim.frame));
+      }
+    }
+    const frac = occupied ? least / C.STUN_FRAMES : 1;
+
+    ctx.font = '600 11px ui-monospace, monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#8e939f';
+    const label = sim.bb.inOpening ? 'BB IS IN THE VENT — mask on, wait for the bang'
+      : sim.maskOn ? 'masked — react the instant he leaves'
+      : 'stun remaining before they break loose';
+    ctx.fillText(label, pad, mid - 13);
+
+    ctx.fillStyle = '#1b1e26';
+    roundRect(ctx, pad, mid, barW, 12, 6); ctx.fill();
+    ctx.fillStyle = frac > 0.4 ? '#30d158' : frac > 0.15 ? '#ffd60a' : '#ff453a';
+    roundRect(ctx, pad, mid, Math.max(3, barW * frac), 12, 6); ctx.fill();
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#8e939f';
+    const last = duel?.lastResult != null ? `${Math.round(duel.lastResult * 1000)}ms` : '—';
+    const best = duel?.best != null ? `${Math.round(duel.best * 1000)}ms` : '—';
+    ctx.fillText(`last ${last}   best ${best}`, W - pad, mid - 13);
+  }
+
   draw(coach, sim) {
     const cv = this.canvas, ctx = this.ctx;
     const dpr = Math.min(2, window.devicePixelRatio || 1);

@@ -133,7 +133,9 @@ class App {
     this.coach = null;
     this.sim.monitor = 'up';
     this.sim.cam = C.BOX_CAM;
+    this.ui.clearCoach();
     this.ui.setCoachVisible(false);
+    this.ui.duelMode = false;
     this.ui.setControls(null);
     this.ui.showCues = false;
     this.ui.enableCalibration(true);
@@ -186,7 +188,10 @@ class App {
       tolOk: mode.tol?.tolOk,
       onCycle: (ok, streak) => this.onCycle(ok, streak),
     });
+    this.ui.clearCoach();
     this.ui.setCoachVisible(true);
+    this.ui.duelMode = mode.drill === 'phaseB';
+    this.ui.duel = this.duel;
     this.ui.setControls(mode.controls);
     this.ui.showCues = this.settings.coach;
     this.ui.setStreak('');
@@ -293,8 +298,22 @@ class App {
   drive() {
     const s = this.sim;
     if (this.mode.drill === 'phaseA') {
-      if (s.bb.stage < 2 && !s.bb.inOpening) s.bb.stage = 2;
-      if (s.bb.inOpening && s.maskOn && s.maskCum > 30) { s.bbLeave(); s.bb.stage = 2; }
+      // The measurable skill: were the cams DOWN when the 5s interval landed?
+      // Reaching the vent opening is not a failure -- he gets there the moment
+      // you raise the cams, by design. Phase A decides *when* he arrives.
+      if (s.frame % C.MO_FRAMES === 0) {
+        const up = s.monitor === 'up' || s.monitor === 'raising';
+        if (up) {
+          if (this.coach) { this.coach.cycleOk = false; this.coach.streak = 0; this.coach.combo = 0; }
+          this.ui.setStreak(`0 / ${this.mode.target}`);
+          this.ui.lane.pop('CAMS WERE UP', 'late', s.t);
+          this.audio.bad(); this.buzz(30);
+        } else {
+          this.ui.lane.pop('SAFE', 'good', s.t);
+        }
+      }
+      if (!s.bb.inOpening && s.bb.stage !== 3) s.bb.stage = 3;
+      if (s.bb.inOpening) { s.bbLeave(); s.bb.stage = 3; }   // re-arm, no penalty
     }
     if (this.mode.drill === 'phaseB') {
       if (!s.bb.inOpening) {

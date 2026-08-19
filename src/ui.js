@@ -160,6 +160,8 @@ export class UI {
   }
 
   render(sim, coach) {
+    // Phase B runs without a script; its lane shows the stun deadline instead.
+    if (this.duelMode) this.lane.drawDuel(sim, this.duel);
     if (this._mapW !== this.el.map.parentElement.clientWidth ||
         this._mapH !== this.el.map.parentElement.clientHeight) {
       this._mapW = this.el.map.parentElement.clientWidth;
@@ -318,6 +320,20 @@ export class UI {
   }
 
   setStreak(text) { this.el.coachStreak.textContent = text || ''; }
+
+  // Wipe the coach strip between lessons: text from the last one bleeding into
+  // a lesson that has no coach reads as live instruction.
+  clearCoach() {
+    this.el.coachNext.textContent = '';
+    this.el.coachNext.className = '';
+    this.el.coachFb.textContent = '';
+    this.el.coachFb.className = '';
+    this.el.coachStreak.textContent = '';
+    this.el.coachBarFill.style.width = '0%';
+    this.el.coachBar.classList.remove('now', 'over');
+    this._lastShown = null;
+    this.lane.pops.length = 0;
+  }
 
   // Put a pulsing ring on whatever the player should touch next.
   setCue(cue) {

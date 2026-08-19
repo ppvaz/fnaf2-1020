@@ -85,6 +85,9 @@ async function main() {
 
   console.log('\n— start a full night —');
   await evalJs('document.querySelector(\'[data-mode="night"]\').click()');
+  await sleep(250);
+  await step('brief shown', 'document.getElementById("brief").classList.contains("shown")');
+  await evalJs('document.getElementById("btn-brief-go").click()');
   await sleep(600);
   await step('run panel shown', 'document.getElementById("run").classList.contains("shown")');
   await step('stage has hud', '!!document.querySelector("#hud .hud-timer")');
@@ -112,7 +115,10 @@ async function main() {
   await sleep(120);
   await step('light held', 'window.app.sim.lightHeld');
   // Flash a room that actually has somebody in it this early in the night.
-  await evalJs('const s=window.app.sim; window.__busy = s.units[0].path[s.units[0].idx]; window.__tap(`[data-act="cam:${window.__busy}"]`)');
+  await evalJs('(() => { const s = window.app.sim; if (s.monitor !== "up") { s.monitor = "up"; s.monAnim = 0; } return true; })()');
+  await sleep(120);
+  await evalJs('(() => { const s = window.app.sim; window.__busy = s.units[0].path[s.units[0].idx];'
+    + ' window.__tap(`[data-act="cam:${window.__busy}"]`); return window.__busy; })()');
   await sleep(150);
   await step('flashed cam', 'window.__busy');
   await step('stun applied (frames)', 'Math.max(0,...window.app.sim.units.filter(u=>u.path[u.idx]===window.__busy).map(u=>u.stunUntil-window.app.sim.frame))');
