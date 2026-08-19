@@ -5,13 +5,18 @@ import * as C from './config.js';
 // it. This is what makes "when" visible instead of something you are expected
 // to already feel.
 
+// [border, fill] per input kind, matching the chips on the lesson brief and
+// the strategy board -- one colour per control, everywhere it appears.
 const COLORS = {
-  cam:     ['#5ac8fa', '#0d2f3f'],
-  light:   ['#ffd60a', '#3a3208'],
-  mask:    ['#ff453a', '#3a1113'],
-  monitor: ['#c7ccd8', '#23262f'],
-  wind:    ['#bf5af2', '#2a1140'],
+  cam:     ['#4FD2EE', '#0C2833'],
+  light:   ['#FFB020', '#33270A'],
+  mask:    ['#FF5449', '#331110'],
+  monitor: ['#C9D2C3', '#20261F'],
+  wind:    ['#C983F5', '#2A1140'],
 };
+const INK = { dim: '#8A9483', dimmer: '#5C6656', line: '#161C16',
+              good: '#57DC6E', ok: '#FFB020', bad: '#FF5449', violet: '#C983F5' };
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
 
 export function glyphFor(step) {
   switch (step.action) {
@@ -38,40 +43,49 @@ export function drawPattern(canvas, script) {
 
   const last = script[script.length - 1];
   const span = Math.max(2, last.at + (last.hold || 0) + 0.4);
-  const padL = 34, padR = 14;
+  const padL = 20, padR = 14, padB = 20, padT = 14;
   const xOf = (at) => padL + (at / span) * (W - padL - padR);
-  const mid = H / 2 + 4;
+
+  // Ten inputs land inside 1.5 s, so three rows is not enough to lay them out
+  // without collisions -- take as many as the box is tall enough to hold.
+  const ROW_H = 20, headBand = 24;   // headBand keeps row 0 clear of the anchor label
+  const nRows = Math.max(3, Math.min(6, Math.floor((H - padT - padB - headBand) / ROW_H)));
+  const yOf = (row) => padT + headBand + 10 + row * ROW_H;
 
   // second gridlines
-  ctx.font = '9px ui-monospace, monospace';
+  ctx.font = `9px ${MONO}`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   for (let sec = 0; sec <= span; sec += 0.5) {
     const x = xOf(sec);
-    ctx.strokeStyle = sec % 1 === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.06)';
-    ctx.beginPath(); ctx.moveTo(x, 12); ctx.lineTo(x, H - 12); ctx.stroke();
-    if (sec % 1 === 0) { ctx.fillStyle = '#8e939f'; ctx.fillText(`+${sec}s`, x, H - 11); }
+    ctx.strokeStyle = sec % 1 === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.moveTo(x, padT); ctx.lineTo(x, H - padB); ctx.stroke();
+    if (sec % 1 === 0) { ctx.fillStyle = INK.dimmer; ctx.fillText(`+${sec}s`, x, H - padB + 5); }
   }
-  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#8e939f';
-  ctx.fillText('anchor', padL - 4, mid);
+  // the anchor itself, marked on the timeline rather than labelled beside it
+  ctx.strokeStyle = 'rgba(255,176,32,0.75)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(xOf(0), padT); ctx.lineTo(xOf(0), H - padB); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.font = `700 9px ${MONO}`;
+  ctx.fillStyle = '#FFB020';
+  ctx.fillText(':X2 / :X7', xOf(0) + 6, padT + 2);
 
-  ctx.font = '600 10px ui-monospace, monospace';
-  const ROWS = [-14, 0, 14];
-  const rowEnd = [-1e9, -1e9, -1e9];
+  ctx.font = `600 10px ${MONO}`;
+  const rowEnd = new Array(nRows).fill(-1e9);
   for (const step of script) {
     const g = glyphFor(step);
     const [fg, bg] = COLORS[g.kind];
     const x = xOf(step.at);
     const tw = ctx.measureText(g.text).width + 12;
     let row = 0;
-    while (row < ROWS.length - 1 && x - tw / 2 < rowEnd[row] + 4) row++;
+    while (row < nRows - 1 && x - tw / 2 < rowEnd[row] + 4) row++;
     rowEnd[row] = x + tw / 2;
-    const y = mid + ROWS[row];
+    const y = yOf(row);
     if (step.hold) {
       const x2 = xOf(Math.min(span, step.at + step.hold));
-      ctx.fillStyle = 'rgba(191,90,242,0.16)';
+      ctx.fillStyle = 'rgba(201,131,245,0.16)';
       roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.fill();
-      ctx.strokeStyle = 'rgba(191,90,242,0.5)';
+      ctx.strokeStyle = 'rgba(201,131,245,0.5)';
       roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
     }
     ctx.fillStyle = bg;
@@ -124,21 +138,21 @@ export class Lane {
     }
     const frac = occupied ? least / C.STUN_FRAMES : 1;
 
-    ctx.font = '600 11px ui-monospace, monospace';
+    ctx.font = `600 11px ${MONO}`;
     ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#8e939f';
+    ctx.fillStyle = INK.dim;
     const label = sim.bb.inOpening ? 'BB IS IN THE VENT — mask on, wait for the bang'
       : sim.maskOn ? 'masked — react the instant he leaves'
       : 'stun remaining before they break loose';
     ctx.fillText(label, pad, mid - 13);
 
-    ctx.fillStyle = '#1b1e26';
+    ctx.fillStyle = INK.line;
     roundRect(ctx, pad, mid, barW, 12, 6); ctx.fill();
-    ctx.fillStyle = frac > 0.4 ? '#30d158' : frac > 0.15 ? '#ffd60a' : '#ff453a';
+    ctx.fillStyle = frac > 0.4 ? INK.good : frac > 0.15 ? INK.ok : INK.bad;
     roundRect(ctx, pad, mid, Math.max(3, barW * frac), 12, 6); ctx.fill();
 
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#8e939f';
+    ctx.fillStyle = INK.dim;
     const last = duel?.lastResult != null ? `${Math.round(duel.lastResult * 1000)}ms` : '—';
     const best = duel?.best != null ? `${Math.round(duel.best * 1000)}ms` : '—';
     ctx.fillText(`last ${last}   best ${best}`, W - pad, mid - 13);
@@ -160,7 +174,7 @@ export class Lane {
     // clean-pass flash
     const since = t - this.flash;
     if (since >= 0 && since < 0.45) {
-      ctx.fillStyle = `rgba(48,209,88,${0.18 * (1 - since / 0.45)})`;
+      ctx.fillStyle = `rgba(87,220,110,${0.18 * (1 - since / 0.45)})`;
       ctx.fillRect(0, 0, W, H);
     }
 
@@ -176,7 +190,7 @@ export class Lane {
 
     if (coach?.enabled) {
       const notes = coach.upcoming(Math.max(5.6, (W - hitX) / this.pps));
-      ctx.font = '600 11px ui-monospace, monospace';
+      ctx.font = `600 11px ${MONO}`;
 
       // Steps 0.2s apart would draw on top of each other, so lay them out in
       // rows: a note drops to the next row if it would collide with the last
@@ -203,9 +217,9 @@ export class Lane {
         if (n.step.hold) {
           const x2 = x + n.step.hold * this.pps;
           const live = sim.isWinding && t >= n.due && t <= n.due + n.step.hold;
-          ctx.fillStyle = live ? 'rgba(191,90,242,0.30)' : 'rgba(191,90,242,0.12)';
+          ctx.fillStyle = live ? 'rgba(201,131,245,0.30)' : 'rgba(201,131,245,0.12)';
           roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.fill();
-          ctx.strokeStyle = live ? fg : 'rgba(191,90,242,0.45)';
+          ctx.strokeStyle = live ? fg : 'rgba(201,131,245,0.45)';
           roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
         }
 
@@ -231,8 +245,8 @@ export class Lane {
       if (age > 0.85) { this.pops.splice(i, 1); continue; }
       const a = 1 - age / 0.85;
       ctx.globalAlpha = a;
-      ctx.font = '700 12px ui-monospace, monospace';
-      ctx.fillStyle = p.grade === 'good' ? '#30d158' : p.grade === 'ok' ? '#ffd60a' : '#ff453a';
+      ctx.font = `700 12px ${MONO}`;
+      ctx.fillStyle = p.grade === 'good' ? INK.good : p.grade === 'ok' ? INK.ok : INK.bad;
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(p.label, hitX - 8, mid - age * 10);
       ctx.globalAlpha = 1;
@@ -240,8 +254,8 @@ export class Lane {
 
     // combo
     if (coach?.combo > 2) {
-      ctx.font = '700 15px ui-monospace, monospace';
-      ctx.fillStyle = coach.combo >= 20 ? '#bf5af2' : coach.combo >= 10 ? '#30d158' : '#8e939f';
+      ctx.font = `700 13px ${MONO}`;
+      ctx.fillStyle = coach.combo >= 20 ? INK.violet : coach.combo >= 10 ? INK.good : INK.dim;
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
       ctx.fillText(`${coach.combo}x`, W - 8, mid);
     }

@@ -1,5 +1,7 @@
 import * as C from './config.js';
 
+const MONO = "'IBM Plex Mono', ui-monospace, monospace";
+
 // The post-run view. The important row is stun coverage: three bars that must
 // never touch zero. Everything else explains why they did.
 export function drawTimeline(canvas, sim) {
@@ -13,11 +15,11 @@ export function drawTimeline(canvas, sim) {
   const rec = sim.rec;
   const n = rec.n;
   if (!n) return;
-  const pad = 46, plotW = W - pad - 10;
+  const pad = 52, plotW = W - pad - 10;
   const stunRow = (k) => ({
     label: `CAM ${String(C.TARGET_CAMS[k]).padStart(2, '0')}`,
     get: i => rec.stun[k][i] / C.STUN_FRAMES,
-    color: '#5ac8fa',
+    color: '#4FD2EE',
     // Red only when somebody is standing in that room with no stun left.
     // An empty room is not a mistake.
     danger: i => (rec.occ[i] & (1 << k)) !== 0 && rec.stun[k][i] === 0,
@@ -25,16 +27,16 @@ export function drawTimeline(canvas, sim) {
   });
   const rows = [
     stunRow(0), stunRow(1), stunRow(2),
-    { label: 'Foxy D', get: i => Math.min(1, rec.d[i] / 8), color: '#ff9f0a', danger: i => rec.d[i] >= 4 },
-    { label: 'Power',  get: i => rec.power[i] / C.POWER_FRAMES, color: '#30d158' },
-    { label: 'Box',    get: i => rec.box[i] / 255, color: '#bf5af2' },
+    { label: 'FOXY D', get: i => Math.min(1, rec.d[i] / 8), color: '#FFB020', danger: i => rec.d[i] >= 4 },
+    { label: 'POWER',  get: i => rec.power[i] / C.POWER_FRAMES, color: '#57DC6E' },
+    { label: 'BOX',    get: i => rec.box[i] / 255, color: '#C983F5' },
   ];
   const rowH = Math.floor((H - 26) / rows.length);
 
-  ctx.font = '11px ui-monospace, monospace';
+  ctx.font = `500 8.5px ${MONO}`;
   rows.forEach((row, r) => {
     const y0 = r * rowH + 4, h = rowH - 8;
-    ctx.fillStyle = '#8e8e93';
+    ctx.fillStyle = '#8A9483';
     ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
     ctx.fillText(row.label, pad - 8, y0 + h / 2);
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -45,7 +47,7 @@ export function drawTimeline(canvas, sim) {
       const danger = row.danger ? row.danger(i) : v <= 0.001;
       const idle = row.idle ? row.idle(i) : false;
       if (idle && v <= 0.001) { ctx.fillStyle = 'rgba(255,255,255,0.09)'; ctx.fillRect(pad + x, y0 + h - 1, 1, 1); continue; }
-      ctx.fillStyle = danger ? '#ff453a' : row.color;
+      ctx.fillStyle = danger ? '#FF5449' : row.color;
       const bh = danger ? h : Math.max(1, v * h);
       ctx.fillRect(pad + x, y0 + h - bh, 1, bh);
     }
@@ -53,7 +55,7 @@ export function drawTimeline(canvas, sim) {
 
   // Ticks: in-game hours for a real night, seconds for a short drill run.
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillStyle = '#8e8e93'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  ctx.fillStyle = '#5C6656'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   const useHours = n >= C.HOUR_FRAMES;
   const stepF = useHours ? C.HOUR_FRAMES : Math.max(C.FPS * 5, Math.round(n / 6 / C.FPS) * C.FPS);
   for (let k = 0; k * stepF <= n; k++) {
@@ -65,7 +67,7 @@ export function drawTimeline(canvas, sim) {
   // death marker
   if (sim.death) {
     const x = pad + (sim.death.frame / n) * plotW;
-    ctx.strokeStyle = '#ff453a'; ctx.lineWidth = 2;
+    ctx.strokeStyle = '#FF5449'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H - 20); ctx.stroke();
   }
 }
