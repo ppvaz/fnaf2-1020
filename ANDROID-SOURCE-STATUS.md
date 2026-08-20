@@ -63,6 +63,23 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: the mask kills every office light
+
+`lit?` is set by g75 (hall, `viewing = 0`) and g84 (its touch twin), and both
+require `mask` = 0; the vent-light clicks (g302/304) carry the same condition.
+The camera light (g76/77/85/86) has no mask condition because the mask and a
+raised monitor are mutually exclusive anyway. So on this build **a masked
+player can do nothing but take the mask off** — there is no holding the light
+through a mask.
+
+That contradicts the PC Phase B technique quoted in `MINUS-7-STRATEGY.md` §6
+("keep CTRL held: the flashlight costs no power while the mask is on"). The
+engine had modelled the *power* half of that claim and not the effect; it now
+gates `hallLightOn`, `lightLogical` and `anyOfficeLightHeld` on the mask being
+off. Consequence for any Balloon Boy defence: the five-second mask window is a
+five-second hole in Foxy cover, which is exactly why Markiplier's variant
+evicts Foxy before letting BB arrive (§9.3).
+
 ## 2026-08-20: Balloon Boy approach pipeline, re-sourced
 
 Prompted by a strategy claim that keeping the cameras down across the 5 s

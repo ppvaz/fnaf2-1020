@@ -255,6 +255,11 @@ On the bang  Mouse off the mask tab            → mask off
   and the monitor-raise animation (~0.25 s). Leaving the monitor parked on CAM 07 with CTRL held is
   what buys you the third flash for free.
 
+> **Android caveat [SOURCED — g75/g84/g302/g304]:** the held-CTRL trick above is PC-only. On the
+> modern Android build every office light — hall and both vents — is gated on `mask = 0`, so the
+> mask turns the flashlight off outright and a masked player can do nothing but unmask. Budget the
+> whole mask window as time Foxy is uncovered.
+
 > TheBones5's description of this moment: *"think of Balloon Boy's attacks like one of those
 > western cowboy duels where they have to wait until someone says fire — it's a battle of pure
 > reaction time and speed under insane pressure."*

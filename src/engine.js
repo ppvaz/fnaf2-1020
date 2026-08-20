@@ -113,10 +113,15 @@ export class Sim {
   get hallView() { return this.monitor !== MON_UP; }
   // `white button` follows the physical hold. `new bonnie`, the office-light
   // movement latch, survives release until the next one-second scheduler tick.
-  get lightLogical() { return this.lightHeld; }
+  get lightLogical() { return this.lightHeld && !this.maskOn; }
+  // [SOURCED] g75/g84 (hall light) and g302/304 (vent lights) all require
+  // `mask` = 0: wearing the mask turns every office light off outright. A
+  // masked player can only take the mask off.
   get lightStallOn() { return this.frame < this.lightLogicalUntil; }
-  get anyOfficeLightHeld() { return this.lightHeld || this.ventLightL || this.ventLightR; }
-  get hallLightOn() { return this.lightHeld && this.hallView; }
+  get anyOfficeLightHeld() {
+    return !this.maskOn && (this.lightHeld || this.ventLightL || this.ventLightR);
+  }
+  get hallLightOn() { return this.lightHeld && this.hallView && !this.maskOn; }
   get camLightOn() { return this.lightHeld && this.monitor === MON_UP; }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
   get storedMask() { return this.maskCum % C.MASK_LEAVE_FRAMES; }

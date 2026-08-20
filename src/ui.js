@@ -221,6 +221,15 @@ export class UI {
     this.el.gf.textContent = sim.gf.present ? 'OFFICE' : sim.gf.inHall ? 'HALL' : '—';
     this.el.gf.parentElement.className = `threat ${sim.gf.present || sim.gf.inHall ? 'crit' : ''}`;
 
+    // A masked player has no other move: hide every control but MASK while it
+    // is on (or going on), so the trainer never invites an input the game
+    // discards. See ANDROID-SOURCE-STATUS.md, "the mask kills every office
+    // light".
+    if (sim.maskOn !== this.lastMaskOn) {
+      this.lastMaskOn = sim.maskOn;
+      this.root.classList.toggle('masked', !!sim.maskOn);
+    }
+
     // views
     const up = sim.monitor === 'up' || sim.monitor === 'raising';
     if (up !== this.lastCamsUp) {

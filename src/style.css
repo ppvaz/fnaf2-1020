@@ -374,6 +374,13 @@ h3{font:600 9px var(--mono);text-transform:uppercase;letter-spacing:.2em;color:v
   animation:cueBeat .5s var(--e-out) infinite}
 @keyframes cueBeat{0%{transform:scale(1);opacity:.55}100%{transform:scale(1.28);opacity:0}}
 .hidden-ctrl{display:none!important}
+/* Sourced (g75/g84/g302/g304, and the monitor cannot come up through a mask):
+   a masked player can do nothing but take the mask off. Everything else leaves
+   the screen so the trainer cannot teach an input the game would ignore. */
+.masked .btn:not([data-widget="mask"]),
+.masked [data-widget="wind"],
+.masked [data-widget="ventL"],
+.masked [data-widget="ventR"]{display:none!important}
 .map.dim-cams .camb{opacity:.28;pointer-events:none}
 
 .view{position:absolute;inset:0}
