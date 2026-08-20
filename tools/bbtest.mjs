@@ -50,7 +50,7 @@ export class Bot {
   phaseA(a) {
     const p = this.cycle(a);
     const drop = a + 150;                     // :X4.5 — before the interval
-    const back = a + 150 + C.MONITOR_ANIM * 3; // safely after it
+    const back = a + 150 + C.MONITOR_ANIM_DOWN * 3; // safely after it
     p.push([drop, 'tap', 'monitor'], [back, 'tap', 'monitor']);
     return p;
   }

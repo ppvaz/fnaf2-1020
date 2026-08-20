@@ -64,9 +64,14 @@ export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding [SOURC
 export const PUPPET_AI = 15;
 export const PUPPET_STAGES = 4;
 
-// Animation lengths [CALIBRATED to the ~0.25s figures players quote]
-export const MONITOR_ANIM = 15;
-export const MASK_ANIM = 15;
+// Animation lengths [SOURCED: decompiled Android build 296 animation bank —
+// mmonitorUp 11fr@speed90, mmonitorDown 11fr@speed50, mmaskOn 9fr@speed75,
+// mmaskOff 11fr@speed75; duration = frames*100/(speed*60fps). The flips are
+// asymmetric: lowering the monitor is ~1.8x slower than raising it.]
+export const MONITOR_ANIM_UP = 12;    // 0.204s
+export const MONITOR_ANIM_DOWN = 22;  // 0.367s
+export const MASK_ANIM_ON = 12;       // 0.200s
+export const MASK_ANIM_OFF = 15;      // 0.244s
 
 // --- Cameras ---------------------------------------------------------------
 export const CAMS = {

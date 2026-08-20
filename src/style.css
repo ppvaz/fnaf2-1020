@@ -27,7 +27,7 @@
   --t-tap:.12s;        /* touch confirmation decay      (< TOL_GOOD) */
   --t-glow:.11s;       /* light / mask decay            (< TOL_GOOD) */
   --t-fx:.22s;         /* additive feedback on #fx */
-  --t-swap:.25s;       /* == C.MONITOR_ANIM, 15 frames */
+  --t-swap:.25s;       /* UI feel only; real flips are asymmetric, see config MONITOR_ANIM_* */
   --t-panel:.18s;
   --e-out:cubic-bezier(.2,.8,.3,1);
   --e-in:cubic-bezier(.4,0,1,1);

@@ -150,7 +150,7 @@ export class Sim {
   setMask(on) {
     if (this.maskOn === on) return;
     this.maskOn = on;
-    this.maskAnim = C.MASK_ANIM;
+    this.maskAnim = on ? C.MASK_ANIM_ON : C.MASK_ANIM_OFF;
     if (on) {
       if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
       if (this.blackout.active) this.blackout.masked = true;
@@ -166,7 +166,7 @@ export class Sim {
     if (!up && (this.monitor === MON_DOWN || this.monitor === MON_LOWERING)) return;
     if (up) {
       if (this.gf.present) { this.kill('golden-freddy', 'Raised the monitor with Golden Freddy in the office'); return; }
-      this.monitor = MON_RAISING; this.monAnim = C.MONITOR_ANIM;
+      this.monitor = MON_RAISING; this.monAnim = C.MONITOR_ANIM_UP;
       this.raiseStartedFrame = this.frame;
       // Android: starting the raise just before a 5s interval hands Golden
       // Freddy a free kill.
@@ -175,7 +175,7 @@ export class Sim {
         if (toInterval <= C.GF_UNFAIR_WINDOW) this.flag('android-gf', `Monitor raised ${(toInterval / C.FPS).toFixed(2)}s before a 5s interval`);
       }
     } else {
-      this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM;
+      this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
       this.winding = false;
       // Blackout animatronics waiting in the office trigger when the cams drop.
       if (this.officeQueue.length && !this.blackout.active) this.startBlackout(this.officeQueue.shift());
