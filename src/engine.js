@@ -100,9 +100,13 @@ export class Sim {
   get t() { return this.frame / C.FPS; }
   get camsUp() { return this.monitor === MON_UP; }
   get hallView() { return this.monitor !== MON_UP; }
-  get lightLogical() { return this.lightHeld || this.frame < this.lightLogicalUntil; }
-  get hallLightOn() { return this.lightLogical && this.hallView; }
-  get camLightOn() { return this.lightLogical && this.monitor === MON_UP; }
+  // `white button` follows the physical hold. `new bonnie`, the office-light
+  // movement latch, survives release until the next one-second scheduler tick.
+  get lightLogical() { return this.lightHeld; }
+  get lightStallOn() { return this.frame < this.lightLogicalUntil; }
+  get anyOfficeLightHeld() { return this.lightHeld || this.ventLightL || this.ventLightR; }
+  get hallLightOn() { return this.lightHeld && this.hallView; }
+  get camLightOn() { return this.lightHeld && this.monitor === MON_UP; }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
   get storedMask() { return this.maskCum % C.MASK_LEAVE_FRAMES; }
   // Holding the wind button only winds when you are actually on the box camera.
@@ -124,7 +128,6 @@ export class Sim {
     if (!this.alive) return;
     if (action === 'light') {
       this.lightHeld = true;
-      this.lightLogicalUntil = Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
       this.onLightPress();
     } else if (action === 'mask') {
       this.setMask(!this.maskOn);
@@ -161,6 +164,14 @@ export class Sim {
     if (on) {
       if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
       if (this.blackout.active) this.blackout.masked = true;
+      // Marker 122 is the office threshold, not the inside-office vent state.
+      // In the source, a timely mask immediately sends an unarmed threshold
+      // attacker away (groups 538-555). Mangle is the exception represented by
+      // the park rule; BB and occupants already in 123 use the cumulative mask
+      // timer instead.
+      for (const u of this.units) {
+        if (this.maskRepelsThreshold(u)) this.unitLeave(u);
+      }
     } else {
       // Whole seconds of mask time are spent; the sub-second remainder is what
       // gets "stored" for the next vent attack.
@@ -241,13 +252,19 @@ export class Sim {
   }
 
   tickLight() {
-    if (this.lightHeld && this.opts.powerEnabled && !this.blackout.active && !this.maskOn) {
+    if (this.anyOfficeLightHeld && this.opts.powerEnabled && !this.blackout.active && !this.maskOn) {
       this.power--;
-      if (this.power <= 0) { this.power = 0; this.lightHeld = false; this.flag('power-out', 'Flashlight is dead'); }
+      if (this.power <= 0) {
+        this.power = 0;
+        this.lightHeld = this.ventLightL = this.ventLightR = false;
+        this.flag('power-out', 'Flashlight is dead');
+      }
     }
-    // the sourced light stall (`new bonnie`) is re-zeroed only once a second,
-    // so its blocking effect outlives the tap by up to a second
-    if (this.lightLogical && !this.camsUp) this.lightStallUntil = this.frame + C.FPS;
+    // `new bonnie` is reset on each global one-second event and immediately
+    // asserted again if the office light is still held. A released tap thus
+    // remains a movement blocker only until the next scheduler boundary.
+    if (this.anyOfficeLightHeld && !this.camsUp)
+      this.lightLogicalUntil = Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
     // Holding the camera light stuns whoever is in the room being viewed.
     if (this.camLightOn) this.stunCam(this.cam);
     // Withereds stall from being looked at at all.
@@ -348,6 +365,11 @@ export class Sim {
     this.emit('vent-bang', { who: u.id, leaving: true });
   }
 
+  maskRepelsThreshold(u) {
+    if (!this.maskOn || !u.atOpening || u.openingRule === 'park') return false;
+    return !(u.openingRule === 'mask' && this.frame >= u.openingReadyAt);
+  }
+
   onCamsUp() {
     this.camsUpCount++;
     // BB steps into the opening the moment the cams come up if he was waiting
@@ -366,7 +388,15 @@ export class Sim {
 
   tickBB() {
     if (!this.opts.bbEnabled) return;
-    // vent-opening kill for the toys is handled in tickUnits; BB is handled on cams-up
+    // BB's source transitions through the right-side blind marker also require
+    // the office-light latch to be zero. Preserve his successful movement roll
+    // while the latch is closed, just as the regular units preserve state 2.
+    if (this.bb.pending && this.bb.stage < 3 && !this.lightStallOn) {
+      this.bb.pending = false;
+      this.bb.stage++;
+      this.emit('laugh');
+      if (this.bb.stage === 3) this.emit('vent-bang', { who: 'bb', leaving: false, cam: true });
+    }
   }
 
   // Sourced hop gates: a unit whose movement roll has passed still waits at
@@ -380,8 +410,8 @@ export class Sim {
       if (u.entryGate === 'camsUp' && !this.camsUp) return false;
       if (u.entryGate === 'camsDown' && this.camsUp) return false;
       if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
-    } else if (u.lightStall && !this.camsUp && this.frame < (this.lightStallUntil || 0)) {
-      return false; // office light with cams down re-arms the stall counter
+    } else if (u.lightStallAt.includes(u.idx) && !this.camsUp && this.lightStallOn) {
+      return false; // only source edges guarded by `new bonnie = 0`
     }
     return true;
   }
@@ -423,6 +453,11 @@ export class Sim {
       if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false });
       this.flag('broke-loose', `${u.name} reached a vent opening`);
+      // Groups 538-555 test marker 122 and the mask every event pass. The
+      // attacker therefore leaves even if the mask was already down before
+      // it arrived; handling this only in setMask() created a false lethal
+      // edge on the next monitor raise.
+      if (this.maskRepelsThreshold(u)) this.unitLeave(u);
     } else {
       this.flag('broke-loose', `${u.name} moved to CAM ${String(node).padStart(2, '0')}`);
     }
@@ -464,6 +499,8 @@ export class Sim {
         if (this.bb.stage === 3) {
           if (this.monitor === MON_UP) this.bbEnterOpening();
           else this.bb.pending = true;
+        } else if (!this.camsUp && this.lightStallOn) {
+          this.bb.pending = true;
         } else {
           this.bb.stage++;
           this.emit('laugh');
@@ -531,7 +568,7 @@ export class Sim {
     r.d[i] = Math.min(255, this.foxy.D);
     r.power[i] = this.power;
     r.box[i] = Math.round(this.box * 255);
-    r.flags[i] = (this.maskOn ? 1 : 0) | (this.camsUp ? 2 : 0) | (this.lightLogical ? 4 : 0) |
+    r.flags[i] = (this.maskOn ? 1 : 0) | (this.camsUp ? 2 : 0) | (this.anyOfficeLightHeld ? 4 : 0) |
                  (this.bb.inOpening ? 8 : 0) | (this.gf.present ? 16 : 0) | (this.gf.inHall ? 32 : 0);
   }
 }

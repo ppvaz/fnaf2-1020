@@ -1,8 +1,10 @@
 // ---------------------------------------------------------------------------
 // FNaF 2 "Minus 7" trainer — tuning constants.
 //
-// Values marked [SOURCED] come from the community AI breakdowns (see
-// MINUS-7-STRATEGY.md). Values marked [CALIBRATED] are not published numbers;
+// Values marked [SOURCED] come from either attributed community PC reverse
+// engineering or the owned Android event-sheet extraction; the nearby comment
+// must say which. PC/Android parity is tracked in PC-DECOMP-CHECKLIST.md.
+// Values marked [CALIBRATED] are not published numbers;
 // they are chosen so the simulation behaves the way the documented gameplay
 // behaves, and are safe to tune.
 // ---------------------------------------------------------------------------
@@ -185,22 +187,24 @@ export const DEFAULT_WIDGETS = {
 //                          fires while the monitor is UP,
 //   entryGate 'camsDown' — Withered Bonnie inverts it: he enters only while
 //                          the monitor is DOWN,
-//   lightStall true      — office light held with cams down blocks mid-route
-//                          hops (the `new bonnie` counter, re-armed each
-//                          second). Toy Chica is exempt at the source level.
+//   lightStallAt [...]   — source-route indices whose outgoing hop explicitly
+//                          requires the office-light latch (`new bonnie`) to be
+//                          zero. The latch clears on the global one-second tick,
+//                          not when the player releases the light. Toy Chica and
+//                          Withered Bonnie have no such gated edge.
 //   mutex true           — shares the `chicalookatyou` one-attacker-at-a-time
 //                          lock on the final hop.
 // Not yet modeled from the same extraction: the Puppet roams on mobile, and
 // Toy Bonnie/Toy Chica's final hops also test an `old chica` counter whose
 // meaning is undecoded.
 export const STALLED = [
-  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStall: true,  mutex: true  },
-  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStall: true,  mutex: false },
-  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStall: false, mutex: false },
-  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStall: true, mutex: true },
-  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStall: false, mutex: true  },
-  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStall: true,  mutex: true  },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'park', lightStall: true, mutex: false },
+  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [1, 2], mutex: true  },
+  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStallAt: [1, 2], mutex: false },
+  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStallAt: [],     mutex: false },
+  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true },
+  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true  },
+  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true  },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'park', lightStallAt: [3, 4], mutex: false },
 ];
 // The blind transit rooms break the old "nobody passes through an unflashed
 // room" property: several routes now contain a stretch no camera can touch.

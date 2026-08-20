@@ -139,6 +139,7 @@ node tools/lightcheck.mjs        # the two lights swap with the monitor
 node tools/browsertest.mjs       # load, input, report
 node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
 node tools/strategysearch.mjs    # enumerate route-graph camera covers (--quick for a smoke pass)
+node tools/rvctest.mjs 200       # PC-Brayden beats vs Android model (diagnostic, not odds)
 ```
 
 What they establish:
@@ -149,10 +150,13 @@ What they establish:
 
 ## Accuracy
 
-Mechanics come from the FNaF max-mode community's reverse engineering, not from the game's files —
-constants are marked `[SOURCED]` or `[CALIBRATED]` in `src/config.js`, and the modelling
-assumptions are called out in [MINUS-7-STRATEGY.md](MINUS-7-STRATEGY.md). Post-chokepoint routing is
-an approximation: it only runs once you have already broken the stun loop.
+Mechanics now combine community PC reverse engineering with an owned modern-Android
+event-sheet extraction. Those are not interchangeable platforms. Constants are marked
+`[SOURCED]`, `[CALIBRATED]`, or `[INFERRED]` in `src/config.js`, and modelling assumptions are
+called out in [MINUS-7-STRATEGY.md](MINUS-7-STRATEGY.md). The living
+[PC decomp confirmation ledger](PC-DECOMP-CHECKLIST.md) lists every Android-backed rule that must
+be rechecked before this simulator can claim source-level fidelity to PC 1.033. Post-chokepoint
+routing remains an approximation: it only runs once you have already broken the stun loop.
 
 ## Licence
 

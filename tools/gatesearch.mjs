@@ -220,7 +220,7 @@ if (isMain) {
   const searchN = QUICK ? 16 : 40;
   const validN = QUICK ? 40 : 150;
   console.log('gate-aware search: reactive winding + documented hybrid candidates (night 7)');
-  console.log('caveat: model claims only; camera-flash stall is still unlocated in the mobile source\n');
+  console.log('caveat: Android-backed model claims only; PC 1.033 parity remains unconfirmed\n');
 
   for (const structure of structures) {
     let best = null;

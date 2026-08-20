@@ -66,7 +66,9 @@ From the author's video (transcript) — the cycle, condensed:
 - At :X9.5: hold flash, drop the monitor and mask *simultaneously* — the held flash
   hits Foxy through the blackout without risking Golden Freddy. Mask off just after
   :X5, flash Foxy just after :X7, then **hold the right vent light to stall Toy
-  Bonnie**; cams at :X0, wind to :X4.5. Repeat all night.
+  Bonnie**; cams at :X0, wind to :X4.5. Repeat all night. Read as a complete loop,
+  those phases total **15 seconds** (4.5 s wind + ~5.5 s mask + ~2 s recovery +
+  ~3 s vent stall), not 10 or 20.
 - Toy Bonnie in the vent anyway: wait for the next :X9, flash hall, mask, ride his
   blackout; afterwards wind flat-out (skip the vent light) until the box is full —
   optimally two cycles — then resume stalling.
@@ -80,6 +82,12 @@ Minus 7 — the residual RNG is real but rare — and that its value is
 consistency-per-unit-skill, not perfection.
 
 ## 4. What the trainer's engine does and doesn't model
+
+The published strategy and its 104–1 bot result target PC, while the local decompile
+is modern Android. The cross-port questions are tracked centrally in
+[`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md). Until its P0 RVC items are
+PC-confirmed, this simulator is a diagnostic instrument, not a reproduction of the
+bot's odds.
 
 The 2024 strategy is far more clock-anchored than plan 03 assumed — a fixed cycle
 with a *decision fork* on monitor-down (blackout / Toy Bonnie / vent guest / nobody),
@@ -96,12 +104,15 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
    D pausing during blackouts and dropping 1 per 0.5 s of flash while in
    Parts/Service are not obviously modelled; the D-offset Clickteam quirk is not
    modelled at all.
-2. **Forcedowns only at 10 s multiples** — TheBones5's dissect confirms the office
-   queue attacks at most every 10 s; whether the engine enforces that pacing needs
-   checking.
+2. **Forcedown/office queue** — community PC sources and the Android event sheet
+   expose related 10 s events, but the exact trigger ordering across monitor drop,
+   threshold occupants and queued blackouts is not reconstructed. The engine's
+   immediate start is provisional.
 3. **Toy Bonnie's unique behaviour** — random pre-attack delay, fixed 5 s animation,
-   the 2-cycle post-attack immunity, and the right-vent-light stall: none modelled
-   (vent lights are currently widgets with no effect).
+   the 2-cycle post-attack immunity, and the PC right-vent-light stall are not yet
+   reproduced. The Android audit now confirms that office lights feed a shared
+   one-second movement latch on selected route edges, but that must not be assumed
+   identical to the PC RVC mechanic.
 4. **Mask-leave rules** — engine has cumulative mask time (`MASK_LEAVE_FRAMES`) with
    a 10%/s early-leave chance; sources describe *consecutive* seconds with a
    guaranteed leave at 5 s and a reset on unmask. Needs verification which is right.
@@ -112,6 +123,11 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
    DJ Sterf's 100 × night figure); the RVC-specific "hold rather than tap" exposure
    accounting should be checked.
 
+`tools/rvctest.mjs` now encodes the opening and this 15-second backbone as a
+calibration diagnostic. It deliberately does not encode the post-wind decision
+tree yet. Its failures must be read as missing-platform/mechanic reports, never as
+a measured win rate for brayden's PC strategy.
+
 ## 5. Implications for plan 03
 
 - Teach **brayden's 2024 strategy**, not classic reactive RVC — it is the lineage's
@@ -121,8 +137,9 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
 - The "RNG deaths are not failures" grading premise in plan 03 stands: ~1% of
   perfectly-played nights lose. The bot's 104–1 gives a calibration target for the
   simulator once the engine gaps close.
-- Gap 1 (Foxy 5 s vs 10 s) is the first thing to resolve — it is cheap to check
-  against the community AI breakdowns and everything else hangs off it.
+- The next hard gate is the P0 PC confirmation pass: Toy Bonnie, office queue,
+  Foxy/Golden Freddy, and vent-light battery semantics. Tuning the Android model
+  to 104–1 before those checks would only hide port differences.
 
 ## Sources
 

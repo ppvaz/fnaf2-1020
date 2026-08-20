@@ -20,6 +20,56 @@ import { Sim } from '../src/engine.js';
   if (!tb.atOpening || tb.pending)
     throw new Error('pending Toy Bonnie did not advance when the cams-up gate opened');
 
+  // A short office-light tap latches through the next global second tick, but
+  // only blocks the two route edges that test `new bonnie = 0` in the source.
+  const lightGate = new Sim({ seed: 3, worst: true, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const litTb = lightGate.units.find(u => u.id === 'toybonnie');
+  litTb.idx = 1; // source marker 62 -> 120 is light-gated
+  lightGate.press('light'); lightGate.tick(); lightGate.release('light');
+  litTb.pending = true;
+  lightGate.tickUnits(lightGate.frame);
+  if (!litTb.pending || litTb.idx !== 1)
+    throw new Error('Toy Bonnie crossed a sourced light-gated edge while latch was active');
+  while (lightGate.frame < C.FPS) lightGate.tick();
+  if (litTb.pending || litTb.idx !== 2)
+    throw new Error('Toy Bonnie did not cross after the office-light latch cleared');
+
+  const ungated = new Sim({ seed: 4, worst: true, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const lateTb = ungated.units.find(u => u.id === 'toybonnie');
+  lateTb.idx = 3; lateTb.pending = true; // marker 56 -> 60 has no light gate
+  ungated.press('light'); ungated.tick(); ungated.release('light');
+  ungated.tickUnits(ungated.frame);
+  if (lateTb.pending || lateTb.idx !== 4)
+    throw new Error('office light incorrectly blocked an ungated Toy Bonnie edge');
+
+  const ventLight = new Sim({ seed: 5, worst: true, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, record: false });
+  const ventTb = ventLight.units.find(u => u.id === 'toybonnie');
+  ventTb.idx = 1; ventTb.pending = true;
+  ventLight.press('ventR'); ventLight.tick(); ventLight.release('ventR');
+  if (!ventTb.pending || ventLight.power !== C.POWER_FRAMES - 1)
+    throw new Error('right vent light did not share the sourced light latch and battery');
+
+  const threshold = new Sim({ seed: 6, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const wc = threshold.units.find(u => u.id === 'withchica');
+  wc.idx = wc.path.length - 1; wc.atOpening = true;
+  wc.openingReadyAt = threshold.frame + C.WITHERED_CHICA_OPENING_FRAMES;
+  threshold.press('mask');
+  if (wc.atOpening || wc.idx !== 0)
+    throw new Error('timely mask did not immediately repel an unarmed threshold attacker');
+
+  const maskedArrival = new Sim({ seed: 7, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const arrivingWc = maskedArrival.units.find(u => u.id === 'withchica');
+  arrivingWc.idx = arrivingWc.path.length - 2;
+  maskedArrival.press('mask');
+  maskedArrival.advance(arrivingWc);
+  if (arrivingWc.atOpening || arrivingWc.idx !== 0)
+    throw new Error('mask already on did not repel a newly arrived threshold attacker');
+
   const endgame = new Sim({ seed: 2, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
   const wb = endgame.units.find(u => u.id === 'withbonnie');

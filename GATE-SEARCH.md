@@ -8,6 +8,11 @@
 > their own opening timers and cannot be parked behind the Toys' six-second
 > continuous-cams-up rule. With those rules separated, every searched fixed and
 > clock-phased policy drains the music box to zero. Minus 7 remains 200/200.
+>
+> **Platform scope:** this closes the searched family on the modern Android
+> route graph. PC 1.033 parity is explicitly pending in
+> [`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md); absence of that decompile
+> does not count as evidence for a PC candidate.
 
 ## What was searched
 
@@ -78,7 +83,8 @@ fund the repeated five-second masks and the music box at the same time.
 
 ## What this closes—and what it does not
 
-- **Six-Seven stays refuted.** No two-camera cover exists in the sourced graph.
+- **Six-Seven stays refuted on Android.** No two-camera cover exists in the
+  extracted Android graph; the PC graph is not yet source-confirmed.
   CAM 06+07 as a gate-aware hybrid also loses every clean validation seed.
 - **Naive and reactive monitor denial are closed under the current model.** Their
   apparent clean result depended entirely on applying the wrong endgame to the
@@ -88,10 +94,10 @@ fund the repeated five-second masks and the music box at the same time.
 - **Clock-phased camera combinations were searched.** The best of 125 schedules
   degenerates to CAM 07 in all three phases and survives only 12%; switching sets
   never improves on the best fixed member of the family.
-- **This is not a proof over every possible policy.** A future branch could model
-  a sourced right-vent-light Toy Bonnie stall or reproduce brayden's RVC policy
-  exactly. It should begin from the corrected per-unit endgames here, not the old
-  shared six-second approximation.
+- **This is not a proof over every possible policy.** The Android office-light
+  latch is now partially modeled, but brayden's PC-specific Toy Bonnie sequence
+  and reactive RVC policy are not. That branch must clear the P0 items in the PC
+  confirmation ledger rather than tune the Android model to a PC win rate.
 
 Reproduce with `node tools/gatesearch.mjs`; use `--quick` for the smaller smoke
 sweep. The Minus 7 control is `node tools/bbtest.mjs 200`.
