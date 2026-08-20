@@ -40,12 +40,24 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - `find-events.py <mp4>` — frame-diff event locator (stdlib only): prints
   timestamp ranges with sharp visual change (overlays, flips, jumpscares) so
   clears can be timed without scrubbing video.
+- `trial-minus7.sh <name> [cycles]` — experimental Night 5 Minus 7 runner.
+  It gates only the start of the night, then executes one absolute-time
+  device-side schedule; screenshots never participate in the live loop. It
+  enables ADB touch/pointer overlays and grades the pulled recording by
+  default (`DEBUG_OVERLAYS=0` and `GRADE_RUN=0` are the opt-outs).
+- `grade-minus7.py <mp4>` — post-run classifier for Minus 7 screenrecords.
+  It reports stable camera, office, and mask intervals and flags masks that
+  remain latched for more than one second.
 
 ## Hard-won harness rules
 
 - **The Fusion runtime polls touch by frame: zero-duration `input tap` is
   dropped roughly half the time.** Every touch must be a duration press —
   `input swipe x y x y 120`. This explained all the "did nothing" ghost runs.
+- Concurrent `input swipe` processes are not independent fingers. Holding the
+  camera light while launching camera-button swipes corrupted the input stream:
+  a three-cycle trial produced two multi-second mask latches and entered the
+  cameras only twice. Keep injected gestures non-overlapping.
 - **Interactive driving is impossible**: inference/command latency between
   actions is a game over. Trials are single pre-scripted wall-clock
   sequences; analysis is post-hoc on the recording. A human watching the
@@ -108,19 +120,40 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   the in-app "Unlocks" menu is paid cheats, not night selection. Character
   isolation therefore waits until 6th Night is beaten (a bot playing Minus 7
   on-device is the fun route to that).
+- **Minus 7 timing calibration is now post-hoc.** A four-cycle asynchronous
+  120 ms swipe run completed every office/mask/camera transition with zero
+  latched masks, but its serial three-camera flow was visibly too slow. Plain
+  taps removed command drift but dropped critical transitions. A held-light
+  shortcut kept the five-second anchors but caused overlapping-touch failures.
+  The replacement cadence keeps reliable 120 ms swipes, spaces the seven camera
+  actions 230 ms apart (1.38 s from CAM 10 to CAM 11), and does not wind at
+  night start while the box is full.
+- **The replacement cadence passed its three-cycle Night 5 validation.** The
+  21.83 s `m7n5-spaced1` recording contains all four expected camera intervals,
+  three clean office/mask/camera transitions, and zero masks latched longer
+  than one second. Every sweep visibly followed CAM 10 → 04 → 07 → 11. Holds
+  began with room in the box and ended high/near-full, so the revised runner
+  also avoids wasting its opening and cycle time against an already full box.
+  Absolute anchors landed within roughly 25-100 ms without accumulating drift.
+- **Shooter25's bot establishes the in-game alternative for reactive work.** A
+  Debian-patched CTFAK extraction of the official PC practice executable shows
+  a direct-state Clickteam controller, not a vision bot. See
+  [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md) for the comparison
+  and the staged recommendation for a separate instrumented APK.
 
 ## Next steps
 
-1. Replace blind mask camping with a short-slice survival schedule (or the
-   Minus 7 bot) that keeps CAM 11 safe, allows BB's cameras-up-only final hop,
-   and can mask immediately on a forced monitor drop. More no-wind seeds are
-   low yield and should not be the default next experiment.
+1. Extend the validated 1.38 s sweep from three cycles toward a full Night 5
+   run, keeping the stock game as the oracle. Do not restore the held-light
+   shortcut.
 2. Grab the frame before the static to auto-identify the killer. The
    `gameover` state (red face + bright lower-center text) is implemented.
 3. `windpct.py`: percent-fill of the pie gauge so wind holds stop exactly at
-   full (coords above).
-4. Longer term: a Minus 7 bot on-device to beat 6th Night and unlock Custom
-   Night for character-isolated experiments.
+   full for diagnostic/interactive tools. Do not put it in the live Minus 7
+   loop unless the policy actually needs a branch.
+4. Longer term: beat 6th Night and unlock Custom Night, then use character-
+   isolated stock runs. For reactive strategies, compare live CV against a
+   separately signed, direct-state instrumentation build.
 
 ## Bookkeeping
 

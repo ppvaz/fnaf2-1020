@@ -4,6 +4,13 @@
 FNaF 2 Android decompile opened. Context: could the Minus 7 trainer's features
 be embedded in the game itself via the decompiled MFA?*
 
+> **2026-08-20 precedent found:** CTFAK extraction of Shooter25's official PC
+> practice executable confirms that its bot and diagnostics are implemented as
+> direct-state Clickteam event logic. That validates this architecture, but not
+> Android rebuild fidelity. See
+> [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md) for the evidence,
+> comparison, and staged recommendation.
+
 In theory yes — but as a **reimplementation**, not a transplant. Two important
 clarifications:
 
@@ -45,8 +52,11 @@ overlay we discussed — the overlay is the minimal version of exactly this idea
 
 ## Where it fits
 
-For validation purposes, the sweet spot is probably the modest version — the
-state/AI overlay plus maybe an input-timestamp logger — used together with the
-adb-driven bot. Full trainer-in-game is a fun endgame project, but it's the
-most expensive path to information we can mostly get cheaper. And as always:
+For validation purposes, the sweet spot is still the modest version — a
+separately signed/package-named state/AI overlay plus an input-timestamp logger
+— used together with the ADB runner. Minus 7 itself should stay open-loop; its
+schedule does not need state classification during a run. Full trainer-in-game
+becomes worthwhile for scenario forcing and reactive policies, but it remains
+the most expensive path to information we can mostly get cheaper. Revalidate
+instrumented-build conclusions against the untouched stock app. And as always:
 personal use on your own copy only, never distributed.

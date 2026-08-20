@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""Grade a recorded Minus 7 run without participating in the live loop.
+
+The device harness deliberately runs open-loop. This tool decodes a pulled
+screenrecord afterward and reports stable office, mask, and camera intervals.
+The thresholds are calibrated for the 1280x576 recordings made by the local
+Moto g56 harness, but frames are scaled before classification so the report is
+independent of the recording resolution.
+
+Usage: grade-minus7.py captures/run.mp4
+"""
+
+import argparse
+import subprocess
+import sys
+
+
+WIDTH = 160
+HEIGHT = 72
+FPS = 12
+FRAME_SIZE = WIDTH * HEIGHT
+
+
+def mean_region(frame, left, top, right, bottom):
+    total = 0
+    count = 0
+    for y in range(top, bottom):
+        start = y * WIDTH + left
+        row = frame[start:y * WIDTH + right]
+        total += sum(row)
+        count += len(row)
+    return total / count
+
+
+def classify(frame):
+    overall = sum(frame) / FRAME_SIZE
+    map_area = mean_region(frame, 70, 22, 155, 65)
+    center = mean_region(frame, 40, 17, 120, 58)
+    bottom_left = mean_region(frame, 0, 62, 90, 71)
+
+    # The camera map/static lifts both the whole frame and the right-side map.
+    if overall > 36 and map_area > 24:
+        return "camera"
+    # The mask is almost black, apart from its persistent pink lower-left tab.
+    if overall < 10 and bottom_left > 14:
+        return "mask"
+    # The office has a dark center and the bright mask tab, unlike flip/static.
+    if 21 < overall < 37 and center < 15 and bottom_left > 30:
+        return "office"
+    return "transition"
+
+
+def runs(states):
+    start = 0
+    for i in range(1, len(states) + 1):
+        if i == len(states) or states[i] != states[start]:
+            yield states[start], start, i
+            start = i
+
+
+def smooth(states):
+    states = list(states)
+    # A short noisy/static gap inside one stable view is still that view.
+    for state, start, end in list(runs(states)):
+        if state != "transition" or end - start > round(FPS * 0.5):
+            continue
+        before = states[start - 1] if start else None
+        after = states[end] if end < len(states) else None
+        if before == after and before != "transition":
+            states[start:end] = [before] * (end - start)
+    return states
+
+
+def decode(path):
+    command = [
+        "ffmpeg", "-v", "error", "-i", path,
+        "-vf", f"fps={FPS},scale={WIDTH}:{HEIGHT}",
+        "-f", "rawvideo", "-pix_fmt", "gray", "-",
+    ]
+    result = subprocess.run(command, capture_output=True)
+    if result.returncode:
+        sys.stderr.buffer.write(result.stderr)
+        raise SystemExit(result.returncode)
+    if not result.stdout:
+        raise SystemExit(f"no video frames decoded from {path}")
+    return [
+        result.stdout[i:i + FRAME_SIZE]
+        for i in range(0, len(result.stdout) - FRAME_SIZE + 1, FRAME_SIZE)
+    ]
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("video")
+    args = parser.parse_args()
+
+    states = smooth(classify(frame) for frame in decode(args.video))
+    stable = []
+    minimum = round(FPS * 0.25)
+    for state, start, end in runs(states):
+        if state != "transition" and end - start >= minimum:
+            stable.append((state, start / FPS, end / FPS))
+
+    print(f"{args.video}: {len(states) / FPS:.2f}s sampled at {FPS} fps")
+    for state, start, end in stable:
+        duration = end - start
+        warning = "  <-- latched mask" if state == "mask" and duration > 1.0 else ""
+        print(f"  {state:6s} {start:6.2f}s -> {end:6.2f}s  ({duration:4.2f}s){warning}")
+
+    camera_entries = sum(1 for state, _, _ in stable if state == "camera")
+    long_masks = sum(1 for state, start, end in stable if state == "mask" and end - start > 1.0)
+    print(f"summary: {camera_entries} camera intervals, {long_masks} latched-mask intervals")
+
+
+if __name__ == "__main__":
+    main()

@@ -38,10 +38,10 @@ The split, in one place:
 
 ## Entries
 
-### 1. CTFAK Linux port — **candidate**
+### 1. CTFAK Debian/Linux port — **candidate**
 
 - **Target:** [CTFAK/CTFAK2.0](https://github.com/CTFAK/CTFAK2.0) (GitHub)
-- **What it is:** Linux port of CTFAK 2.2 as an 8-file patch:
+- **What it is:** Debian/Linux port of CTFAK 2.2 as an 8-file patch:
   - csproj retarget `net6.0-windows` → `net6.0`.
   - Platform-guarded `CTFAKCore.Init`: system libz via Joveler instead of
     `x64\zlibwapi.dll`; skip the `CTFAK-Native.dll` preload — its `TranslateTo*`
@@ -53,7 +53,13 @@ The split, in one place:
   - `DrawArt2` divide-by-zero fix (`Console.WindowWidth`/`WindowHeight` are 0 on
     headless terminals; the `coeff` was unused).
   - `Console.Title` guards.
-- **Artifact today:** `~/fnaf-apks/ctfak-linux-port.patch` (source of truth)
+- **Artifact today:** `~/fnaf-apks/ctfak-linux-port.patch` is the source of
+  truth on the original Debian workstation; it is not present on the current
+  Mac. A clean reconstruction was successfully built in a Debian .NET 6
+  container on 2026-08-20 and parsed Shooter25's Windows build-295 executable.
+  That EXE path exposed one additional upstreamable guard: skip Windows-only
+  PE icon extraction on non-Windows hosts. This is not a macOS port; native
+  macOS execution remains untested and may need separate patches.
 - **Disposition:** upstream PR to CTFAK/CTFAK2.0 — small, defensible diffs.
   Caveat: upstream's last push was 2024-11; if the PR sits unreviewed, fall
   back to a maintained fork (e.g. `github.com/<pedro>/CTFAK2.0`, branch
@@ -256,3 +262,22 @@ The split, in one place:
   1's caveat), a section in the entry-5 tool repo README, and a short
   technical writeup for the datamining community — this affects **every**
   Clickteam Android title with a nonzero K, not just FNaF.
+
+### 9. Shooter25 practice-mod architecture audit — **candidate**
+
+- **Target:** this project's strategy/tooling documentation and, once cleaned,
+  a technical note for the FNaF challenge-strategy community.
+- **What it is:** a CTFAK inspection and successful 27-frame MFA export of the
+  official build-295 `FNaF 2 Practice Mod` executable. It establishes that
+  Shooter25's bot is an in-frame, direct-state Clickteam controller—not computer
+  vision or external input automation—and inventories the practice modes,
+  diagnostics, state labels, and long-run result counters without publishing
+  game content.
+  It also gives this project a clean architecture boundary: fixed Minus 7 uses
+  an open-loop clock plus post-run classification; reactive stock-game policies
+  use live CV; a personal instrumented build may instead read direct state.
+- **Artifact today:** [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md).
+  The downloaded executable, 223 MB MFA, and 8,182-line raw event dump remain
+  temporary and uncommitted.
+- **Disposition:** derived-knowledge writeup only. Do not publish the binary,
+  extracted assets, or raw decompiled event sheet.

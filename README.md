@@ -173,6 +173,12 @@ states and the 45-frame defense / 300-frame resolution chain. The
 Post-chokepoint routing remains an approximation: it only runs once you have already
 broken the stun loop.
 
+The forensic comparison with Shooter25's embedded PC practice bot—and why
+Minus 7 stays time-driven while reactive policies need vision or direct game
+state—is in [Shooter25 practice mod](SHOOTER25-PRACTICE-MOD.md). The staged
+Android instrumentation proposal is in that note and
+[Trainer-in-game](TRAINER-IN-GAME.md).
+
 ## Licence
 
 MIT, for this code. The bundled fonts are under the SIL Open Font License 1.1 — see
