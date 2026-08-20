@@ -62,9 +62,13 @@ export const BLACKOUT_MASK_GRACE = MASK_GRACE_BY_NIGHT[7]; // night-7 value; UI 
 // until 2AM night 2. Exposure is per-frame (v9 vs 100*night) with a B=50
 // hall pin while lit; retreat writes B = 500+Random(500). GOT-YOU: 10 s
 // clock in either monitor state, or instant on a monitor-down hall flash.
-// The masked +1/s acceleration and night-1 dormancy are not modeled yet.
+// Fully modeled as of 2026-08-20 (second pass): dormancy, the masked +1/s
+// acceleration, per-frame exposure vs 100*night, and the B = 50 hall pin
+// that holds both his eviction and his rolls until 50 frames after the
+// light comes off.
 export const FOXY_AI = 17;
-export const FOXY_EXPOSURE_TO_RETREAT = 700;   // 100 * night number
+export const foxyExposureFrames = night => 100 * night;
+export const FOXY_HALL_PIN_FRAMES = 50;
 export const FOXY_RETURN_MIN = 500;
 export const FOXY_RETURN_MAX = 999;
 export const FOXY_ENTER_MIN = s(5);

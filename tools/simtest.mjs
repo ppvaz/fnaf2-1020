@@ -261,6 +261,57 @@ import { Sim } from '../src/engine.js';
   if (!timerTb.inside)
     throw new Error('Toy Bonnie with B = 0 and cameras up did not cross to marker 123');
 
+  // Foxy: per-frame exposure vs 100*night, with the B = 50 hall pin holding
+  // his eviction until 50 frames after the light release (g745/846/855).
+  const foxyPin = new Sim({ seed: 18, bbEnabled: false, gfEnabled: false,
+    boxEnabled: false, powerEnabled: false, stalledEnabled: false, record: false });
+  const fx = foxyPin.foxy;
+  fx.loc = 'hall';
+  foxyPin.press('light');
+  const lit = C.foxyExposureFrames(7) + 1;
+  for (let i = 0; i < lit; i++) foxyPin.tick();
+  if (fx.loc !== 'hall' || fx.exposure !== lit)
+    throw new Error('Foxy retreated while the hall light was still held');
+  foxyPin.release('light');
+  for (let i = 0; i < C.FOXY_HALL_PIN_FRAMES - 1; i++) foxyPin.tick();
+  if (fx.loc !== 'hall')
+    throw new Error('Foxy retreated before his pinned B = 50 drained');
+  foxyPin.tick();
+  if (fx.loc !== 'parts')
+    throw new Error('over-exposed Foxy did not retreat once lights were off and B = 0');
+
+  // The pin also blocks his 5-second roll: B must be 0 before he can lock on.
+  const pinnedRoll = new Sim({ seed: 21, bbEnabled: false, gfEnabled: false,
+    boxEnabled: false, powerEnabled: false, stalledEnabled: false, record: false });
+  const pfx = pinnedRoll.foxy;
+  pfx.loc = 'hall'; pfx.D = 10;
+  pfx.pinUntil = C.MO_FRAMES + 10;
+  pinnedRoll.rng.int = () => 0; // 21 + 0 - 10 <= 17: the roll would pass
+  pinnedRoll.frame = C.MO_FRAMES;
+  pinnedRoll.onFiveSecond();
+  if (pfx.gotYou)
+    throw new Error('Foxy locked on while his pinned B was still draining');
+  pinnedRoll.frame = pfx.pinUntil;
+  pinnedRoll.onFiveSecond();
+  if (!pfx.gotYou)
+    throw new Error('Foxy with B = 0 did not lock on when his roll passed');
+
+  // D is zeroed all of night 1 and until 2 AM on night 2 (g872-874).
+  const dormant = new Sim({ seed: 19, night: 1, bbEnabled: false, gfEnabled: false,
+    boxEnabled: false, powerEnabled: false, stalledEnabled: false, record: false });
+  for (let i = 0; i < C.FPS * 3; i++) dormant.tick();
+  if (dormant.foxy.D !== 0)
+    throw new Error('Foxy D accumulated during the sourced night-1 dormancy');
+  const night2 = new Sim({ seed: 20, night: 2, bbEnabled: false, gfEnabled: false,
+    boxEnabled: false, powerEnabled: false, stalledEnabled: false, record: false });
+  for (let i = 0; i < C.FPS * 3; i++) night2.tick();
+  if (night2.foxy.D !== 0)
+    throw new Error('Foxy D accumulated on night 2 before 2 AM');
+  night2.frame = 2 * C.HOUR_FRAMES;
+  for (let i = 0; i < C.FPS * 3; i++) night2.tick();
+  if (night2.foxy.D !== 3)
+    throw new Error('Foxy D did not resume its +1/s accrual at 2 AM on night 2');
+
   const mutex = new Sim({ seed: 15, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
   const mutexWb = mutex.units.find(u => u.id === 'withbonnie');

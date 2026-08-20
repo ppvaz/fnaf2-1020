@@ -60,7 +60,7 @@ export class Sim {
     this.box = 1;
 
     // --- Foxy
-    this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false,
+    this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false, pinUntil: -1,
                   readyAt: this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
     this.maskDAccum = 0;
 
@@ -393,14 +393,22 @@ export class Sim {
     }
   }
 
+  // D is held at zero for all of night 1 and until 2 AM on night 2
+  // (groups 872-874).
+  get foxyDormant() {
+    const n = this.opts.night;
+    return n === 1 || (n === 2 && this.frame < 2 * C.HOUR_FRAMES);
+  }
+
   tickFoxy(f) {
     if (!this.opts.foxyEnabled) return;
     const fx = this.foxy;
+    if (this.foxyDormant) fx.D = 0;
 
     // D runs all night, not just while Foxy is in the hall: the same variable
     // decides when he *arrives* and when he kills.
     const dTick = ((f + this.blackoutCount) % C.FPS) === 0;
-    if (dTick && !this.blackout.active) fx.D++;
+    if (dTick && !this.blackout.active && !this.foxyDormant) fx.D++;
 
     if (fx.loc === 'parts') {
       // Light still reaches him: it pushes D back down and delays his return.
@@ -410,13 +418,15 @@ export class Sim {
 
     if (this.hallLightOn) {
       fx.exposure++;
-      if (fx.exposure >= C.FOXY_EXPOSURE_TO_RETREAT) {
-        fx.loc = 'parts'; fx.gotYou = false; fx.exposure = 0; fx.D = 0;
-        fx.readyAt = f + this.rng.int(C.FOXY_RETURN_MIN, C.FOXY_RETURN_MAX, C.FOXY_RETURN_MIN);
-        this.emit('foxy-leave');
-        return;
-      }
       fx.D = 0; // the hall light zeroes it outright while he is standing there
+      // While lit at hall stage 1 his B is pinned to 50 (group 855): eviction
+      // and his rolls both wait for it to drain after the light comes off.
+      fx.pinUntil = f + C.FOXY_HALL_PIN_FRAMES;
+    } else if (fx.exposure > C.foxyExposureFrames(this.opts.night) && f >= fx.pinUntil) {
+      // Retreat needs both lights off and B = 0 (group 846).
+      fx.loc = 'parts'; fx.gotYou = false; fx.exposure = 0; fx.D = 0;
+      fx.readyAt = f + this.rng.int(C.FOXY_RETURN_MIN, C.FOXY_RETURN_MAX, C.FOXY_RETURN_MIN);
+      this.emit('foxy-leave');
     }
   }
 
@@ -426,7 +436,7 @@ export class Sim {
     // Mask time also feeds Foxy's D when nobody is in a vent opening
     const someoneInOpening = this.bb.inOpening || this.units.some(u => u.atOpening);
     if (!this.blackout.active && !someoneInOpening) {
-      if (++this.maskDAccum >= C.FPS) { this.maskDAccum = 0; this.foxy.D++; }
+      if (++this.maskDAccum >= C.FPS) { this.maskDAccum = 0; if (!this.foxyDormant) this.foxy.D++; }
     }
     // The retained cumulative-mask mechanic applies to BB. Android's seven
     // marker-122 attackers have distinct endgame branches handled in
@@ -625,7 +635,7 @@ export class Sim {
           fx.loc = 'hall'; fx.exposure = 0;
           this.emit('foxy-arrive');
         }
-      } else if (!fx.gotYou && eq()) {
+      } else if (!fx.gotYou && this.frame >= fx.pinUntil && eq()) {
         fx.gotYou = true;
         this.emit('foxy-lock');
         this.flag('foxy-lock', `Foxy locked on with D = ${fx.D}`);
