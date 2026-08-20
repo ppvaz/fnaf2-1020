@@ -142,8 +142,27 @@ All headless, all dependency-free — the browser ones drive Chrome over the Dev
 (Node 22's built-in WebSocket), no Puppeteer.
 
 ```sh
+node tools/test.mjs              # the whole suite
+node tools/test.mjs --engine     # engine checks only — about a second
+node tools/test.mjs --browser    # Chrome checks only — about four minutes
+node tools/test.mjs --reports    # also print the diagnostic tools
+```
+
+The engine checks are the ones to run on every edit. The browser checks are slow
+for a reason that will not go away: the trainer never slows the clock, so driving
+a lesson to a pass costs that lesson's real duration. They run concurrently, so
+the suite costs its slowest member rather than the sum.
+
+Chrome is found at the macOS bundle path or on `PATH`; `$CHROME` overrides. The
+runner builds `dist/` and starts `tools/serve.py` itself unless one is already
+answering on 8731.
+
+The individual tools, when you want one of them:
+
+```sh
 node tools/simtest.mjs --sweep   # a perfect cycle vs. 200 seeds
 node tools/bbtest.mjs 200        # ...including Balloon Boy; --worst for worst-luck
+                                 # --assert to fail rather than just print
 node tools/bbtest.mjs 60 --jitter=200   # how much lateness is survivable
 node tools/lessontest.mjs        # drives the lesson ladder to a pass
 node tools/caltest.mjs           # calibration, drag vs. press, layout saving
@@ -151,8 +170,12 @@ node tools/lightcheck.mjs        # the two lights swap with the monitor
 node tools/browsertest.mjs       # load, input, report
 node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
 node tools/strategysearch.mjs    # enumerate route-graph camera covers (--quick for a smoke pass)
+node tools/gatesearch.mjs        # gate-aware policy search (--quick for a smoke pass)
 node tools/rvctest.mjs 200       # probe a PC-origin RVC policy against Android (not published odds)
 ```
+
+The three search tools spread their nights across worker threads (`tools/pool.mjs`);
+`--serial` pins them to one, which must produce identical output.
 
 What they establish:
 
