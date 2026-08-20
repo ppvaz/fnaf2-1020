@@ -16,6 +16,9 @@ An Android event proves what Android does; it is only a hypothesis about PC.
   source-level proof.
 - **Community-derived** — attributed reverse engineering of PC 1.033; strong lead
   for locating the event, not a substitute for seeing it.
+- **Mod-derived** — read from Shooter25's modified PC build. Useful for locating
+  stock-looking logic and reconstructing the practice bot, but not proof that an
+  event is unchanged from PC 1.033.
 - **Android-confirmed** — read from our Android event sheet. Never silently promote
   this to PC-confirmed.
 - **Model-only** — a simulator approximation or calibration value.
@@ -25,14 +28,29 @@ the executable version/hash and extraction tool revision before checking boxes.
 Store derived mechanics and event references here; do not commit game assets or
 decompiled event dumps.
 
-> **Tooling warning (2026-08-20):** modern Clickteam runtimes may XOR object
-> handles with a per-build constant (`OI/COI.loadHeader` in the bundled
-> runtime; 28 on the owned Android build, 0 on FNaF 1 Android). Before reading
-> ANY new decompile — PC included — extract that constant and dump with it,
-> or every object name in the dump may be silently attached to the wrong
-> object. Android rows below that predate 2026-08-20 used the scrambled
-> names; character-identity claims among them are being re-audited (see
-> `ANDROID-SOURCE-STATUS.md`).
+> **Tooling warning (2026-08-20):** the modern Android runtime may XOR object
+> handles with a per-build constant (`OI/COI.loadHeader`; 28 on the owned FNaF
+> 2 Android build and 0 on FNaF 1 Android). Shooter25's PC build-295 extraction
+> resolves coherently with an effective correction of 0; do not apply Android's
+> 28 to it. Any new target still needs its own handle-map sanity check, or object
+> names can be silently attached to the wrong events. See
+> `ANDROID-SOURCE-STATUS.md`.
+
+## Shooter25-mod coverage
+
+Shooter25's practice executable is the full gameplay event sheet with mod and
+bot changes, not a bot-only shell. It therefore contains search targets for
+nearly every P0/P1 mechanic below: movement scheduling and routes, camera
+stalls and mappings, office gates/queue, BB/Toy Bonnie/Foxy/Golden Freddy,
+mask and panel timing, music box, battery, lights, and sound events. Its `#AI`
+conditions are visibly spliced into ordinary input groups; see
+[`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md).
+
+No checklist box is checked from that artifact alone. Its base PC version is
+not independently established and relevant events may be modified. Because
+Android is this project's canonical mechanics target, use the mod primarily
+to recover policy and instrumentation ideas; label any mechanical comparison
+**Mod-derived** unless an untouched PC executable later confirms it.
 
 ## P0 — claims that can change strategy validity
 

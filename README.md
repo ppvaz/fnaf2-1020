@@ -175,8 +175,10 @@ broken the stun loop.
 
 The forensic comparison with Shooter25's embedded PC practice bot—and why
 Minus 7 stays time-driven while reactive policies need vision or direct game
-state—is in [Shooter25 practice mod](SHOOTER25-PRACTICE-MOD.md). The staged
-Android instrumentation proposal is in that note and
+state—is in [Shooter25 practice mod](SHOOTER25-PRACTICE-MOD.md). Its extracted
+controller registers, actuator mapping, and state transitions are in the
+[Shooter25 bot state machine](SHOOTER25-BOT-STATE-MACHINE.md). The staged
+Android instrumentation proposal is in those notes and
 [Trainer-in-game](TRAINER-IN-GAME.md).
 
 ## Licence

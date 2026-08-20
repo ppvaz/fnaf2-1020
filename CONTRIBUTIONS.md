@@ -276,7 +276,9 @@ The split, in one place:
   It also gives this project a clean architecture boundary: fixed Minus 7 uses
   an open-loop clock plus post-run classification; reactive stock-game policies
   use live CV; a personal instrumented build may instead read direct state.
-- **Artifact today:** [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md).
+- **Artifact today:** [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md)
+  and the derived controller/actuator ledger in
+  [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md).
   The downloaded executable, 223 MB MFA, and 8,182-line raw event dump remain
   temporary and uncommitted.
 - **Disposition:** derived-knowledge writeup only. Do not publish the binary,

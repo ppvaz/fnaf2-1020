@@ -59,13 +59,40 @@ The extracted object and event metadata proves that the mod includes:
 
 That combination rules out computer vision and external input automation for
 the bot itself. It is deterministic controller logic living beside the game
-logic. Some complex CTFAK expressions did not render textually, so the exact
-meaning of every one of the controller's eight values is not claimed here.
+logic. A second expression-token pass reconstructed its output layer and major
+transitions: three countdowns drive the left vent, hall, and right vent lights;
+flags raise/drop the camera, select CAM 11 and wind, raise/lower the mask, and
+pan the office. The complete derived transition ledger is in
+[`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md). One complex
+countdown expression was subsequently decoded from Clickteam's operator table;
+the exact meaning of one accumulator and a few long OR groups remain unresolved.
 
 Shooter25 and brayden's public guide describes the bot as playing the strategy
 perfectly and reports 104 wins and one death, including its first 100 wins in
 a row. That is a measurement of the PC strategy/mod combination, not an
 Android win-rate claim.
+
+## Is it only the mod, or also the PC game?
+
+It is the full PC gameplay event sheet plus Shooter25's changes, not a detached
+bot payload. The strongest proof is structural: `#AI` conditions are added as
+alternate triggers inside the same later event groups that process normal
+panel, mask, winding, panning, and light input. The extraction also contains
+the underlying character routes, scheduler, office queue, Foxy, music box,
+battery, animations, and sound events.
+
+That means the artifact contains enough material to *locate* almost every item
+in [`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md). It cannot by itself make
+those items stock-PC-confirmed: the base version has not been independently
+established and any relevant event may have been modified. This project now
+uses Android as its mechanics source of truth anyway, so the practical use of
+the PC extraction is narrower and cleaner: recover Shooter25's policy and
+practice-tool architecture, and record apparent parity only as supporting
+evidence.
+
+For this build, event handles map directly and semantically to the extracted
+objects; the effective correction is XOR 0. The confirmed XOR-28 behavior is
+from the Android runtime and must not be copied onto this PC dump.
 
 ## Comparison
 
