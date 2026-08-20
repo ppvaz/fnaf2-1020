@@ -306,6 +306,13 @@ reaches you 20–25 s after a full box runs dry.
 
 ## 8. Advanced variant — the "Mask Storage" cycle
 
+> **Android caveat [SOURCED — g293/g907]:** on the modern Android build the vent-occupant mask
+> counter is zeroed every time you re-enter the fully-on mask state, so nothing is banked between
+> flicks — Balloon Boy, Toy Chica and Mangle each need their five ticks inside **one continuous
+> hold**. Five ticks span four boundaries, so a well-phased hold clears in a little over 4.0 s
+> rather than 5.0 s. Treat the storage cycle below as PC-only.
+
+
 Discovered by chudbud / Regi (2025), used for Worst-Luck Minus 7. Full BB attacks actually last
 **4.017 – 5.000 s**, because up to 59 frames of mask time can be *stored* from earlier mask use.
 The classic cycle can't track that, which is why some attacks feel impossible. This variant keeps

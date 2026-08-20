@@ -68,10 +68,9 @@ export class Sim {
     this.gf = { present: false, inHall: false, hallExposure: 0 };
 
     // --- Balloon Boy
-    this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1 };
+    this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
+                maskTicks: 0 };
 
-    // --- cumulative mask counter (drives vent departures + mask storage)
-    this.maskCum = 0;
 
     // --- blackout
     this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
@@ -124,7 +123,6 @@ export class Sim {
   get hallLightOn() { return this.lightHeld && this.hallView && !this.maskOn; }
   get camLightOn() { return this.lightHeld && this.monitor === MON_UP; }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
-  get storedMask() { return this.maskCum % C.MASK_LEAVE_FRAMES; }
   // Holding the wind button only winds when you are actually on the box camera.
   // Anything else -- cams down, wrong camera -- is a finger doing nothing.
   get isWinding() { return this.winding && this.monitor === MON_UP && this.cam === C.BOX_CAM; }
@@ -187,9 +185,6 @@ export class Sim {
         if (u.inside && u.openingRule === 'streak')
           this.armInsideAttack(u, 'mask was removed with an attacker inside the office');
       }
-      // Whole seconds of mask time are spent; the sub-second remainder is what
-      // gets "stored" for the next vent attack.
-      this.maskCum = this.maskCum % C.FPS;
     }
   }
 
@@ -292,6 +287,7 @@ export class Sim {
       for (const u of this.units) {
         if (u.id === 'toychica' || u.id === 'mangle') u.maskExposureTicks = 0;
       }
+      this.bb.maskTicks = 0;   // g293 names Balloon Boy alongside the two toys
     }
 
     // --- 5-second interval: Foxy's kill check runs before anything else
@@ -438,30 +434,28 @@ export class Sim {
 
   tickMask() {
     if (!this.maskOn) { this.maskDAccum = 0; return; }
-    this.maskCum++;
     // Mask time also feeds Foxy's D when nobody is in a vent opening
     const someoneInOpening = this.bb.inOpening || this.units.some(u => u.atOpening);
     if (!this.blackout.active && !someoneInOpening) {
       if (++this.maskDAccum >= C.FPS) { this.maskDAccum = 0; if (!this.foxyDormant) this.foxy.D++; }
     }
-    // The retained cumulative-mask mechanic applies to BB. Android's seven
-    // marker-122 attackers have distinct endgame branches handled in
-    // tickUnits(): office sequence, Toy Bonnie overlay, Toy Chica mask ticks,
-    // or Mangle's monitor-raise branch.
-    if (this.maskCum >= C.MASK_LEAVE_FRAMES) {
-      this.clearVents('mask');
-      this.maskCum = 0;
-    } else if (this.maskCum % C.FPS === 0) {
-      if (this.bb.inOpening && this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) this.bbLeave();
+    // [SOURCED] BB is on the same counter as Toy Chica and Mangle: g907 adds
+    // one to v12 per one-second event while the mask is fully on, g294 forces
+    // him back to CAM 10 at v12 >= 5, and g292 is the 10%/s early leave. The
+    // counter is a continuous hold, not storage -- g293 zeroes it on every
+    // entry into the fully-on state (see setMask/maskAnim). The old cumulative
+    // MASK_LEAVE_FRAMES path let separate flicks add up, which the source
+    // does not do for any of the three.
+    if (this.bb.inOpening && this.maskFullyOn && this.frame % C.FPS === 0) {
+      this.bb.maskTicks++;
+      if (this.bb.maskTicks >= C.VENT_MASK_TICKS ||
+          this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) this.bbLeave();
     }
-  }
-
-  clearVents() {
-    if (this.bb.inOpening) this.bbLeave();
   }
 
   bbLeave() {
     this.bb.inOpening = false; this.bb.stage = 0; this.bb.pending = false;
+    this.bb.maskTicks = 0;
     this.emit('vent-bang', { who: 'bb', leaving: true });
   }
 

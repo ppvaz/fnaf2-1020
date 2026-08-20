@@ -76,7 +76,11 @@ export const FOXY_ENTER_MAX = s(10);
 
 // Retained BB mask-storage abstraction. The seven marker-122 attackers now use
 // their character-specific Android endgames instead of this generic counter.
-export const MASK_LEAVE_FRAMES = 300;      // 5s cumulative mask time
+// [SOURCED: g294 (BB), g401 (Mangle), and Toy Chica's twin] five one-second
+// ticks with the mask fully on force a vent occupant back to their route.
+// g907 counts them and g293 zeroes the counter on every entry into the fully-on
+// state, so this is a continuous hold: there is no mask storage on this build.
+export const VENT_MASK_TICKS = 5;
 export const MASK_STORAGE_CAP = 59;        // storable sub-second mask time
 export const VENT_EARLY_LEAVE_CHANCE = 0.1; // per cumulative second
 

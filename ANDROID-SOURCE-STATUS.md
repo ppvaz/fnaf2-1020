@@ -63,6 +63,27 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: no mask storage — the counter resets on every re-mask
+
+`v12` is incremented once per one-second event while `mask` = 2 (g907) for Toy
+Chica, Mangle **and** Balloon Boy, and g294 forces BB back to CAM 10 at
+`v12 >= 5`. The reset is g293, whose second condition is the system "only one
+action when event loops" — so entering the fully-on mask state zeroes the
+counter once, every time.
+
+Two consequences:
+
+- **No storage.** The community "mask storage" cycle (chudbud / Regi 2025,
+  `MINUS-7-STRATEGY.md` §8) banks unused mask time across separate flicks. For
+  the three vent occupants this build does not: the five ticks have to happen
+  inside one continuous hold. The engine's cumulative `MASK_LEAVE_FRAMES` path
+  for BB was the last surviving piece of that abstraction and is now replaced
+  by the same per-tick counter Toy Chica and Mangle already used.
+- **The hold is shorter than five seconds.** Five ticks span four boundaries,
+  so a hold that goes fully on just before a whole second clears him in a
+  little over **4.0 s**; the worst phase is just under 5.0 s. Any defence
+  budget built on "five seconds of mask" is up to a second pessimistic.
+
 ## 2026-08-20: the mask kills every office light
 
 `lit?` is set by g75 (hall, `viewing = 0`) and g84 (its touch twin), and both
@@ -153,7 +174,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | P0 | ~~Toy Bonnie Android endgame~~ **Implemented 2026-08-20** | B-as-opening-timer unified with the flash-stun/cooldown field; repels land on CAM 03 with the sourced B cooldowns (see Implemented table) |
 | P0 | ~~Foxy~~ **Implemented 2026-08-20** | All backlog-item-12 nuances are in the engine: night-1 / pre-2AM-night-2 dormancy, per-frame exposure vs 100*night, and the B=50 hall pin gating both eviction and his lock-on roll (see Implemented table) |
 | P0 | Golden Freddy | **Mostly decoded 2026-08-20 (backlog item 11)**: cams-up spawn roll, fractional AI seeds, mask fade-out, lethal raise AND lethal hall-light with GF present, empty-hall exposure. Still open: hall kill threshold group and the sourced raise-window replacement |
-| P0 | Mask counter semantics | **Decoded 2026-08-20 (backlog items 5, 17, 21)**: consecutive-tick counters for TC/Mangle/BB, 10%/s rolls, auxiliary counters all named. BB storage abstraction remains engine-only [MODEL] |
+| P0 | ~~Mask counter semantics~~ **Sourced 2026-08-20** | Consecutive-tick counters for TC/Mangle/BB (g907 counts, g294 forces the leave at 5, g292 is the 10%/s early roll). The BB storage abstraction is **gone**: g293's condition is Fusion's "only one action when event loops", so the counter is zeroed on every entry into the fully-on mask state. There is no mask storage on this build |
 | P0 | ~~Selected-camera movement gate~~ **Implemented 2026-08-20** | Post-XOR: the `your view` marker holds pending rolls for the three Withereds (344-348, no monitor condition — persists monitor-down via the parked marker) and monitor-up Mangle (357). Toys have Show Stage leave-order gates instead (350-356). Engine default `selectedCameraGate: true`. |
 | P0 | ~~Dormant camera-light countdown~~ **Resolved 2026-08-20: live** | Groups 450-457 feed B from `stun time` = 400 (never written); the pre-XOR audit was reading the wrong counter. `STUN_FRAMES = 400` is Android-sourced, with per-group camera exclusions (8/9/11) and the Paper-Pals `- night*50` variant. See [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md). |
 | P1 | Display-camera mapping | Replace the two route-fitted low-confidence room mappings with direct Android UI/object anchors |

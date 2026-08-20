@@ -168,8 +168,12 @@ export function run(opts = {}) {
     checks++;
     if (!sim.bb.inOpening) return false;
     responses++;
-    const k = Math.ceil((f - cycleAt(0)) / ms(5000));
-    takeOver(f, cycleAt(k + 2), RESPONSE);
+    // Resume on the first cycle boundary at or after the response's last
+    // action: reserving a whole extra cycle leaves the stall cameras dark for
+    // 5 s of dead air, which is not a cost of the defence itself.
+    const end = f + ms(RESPONSE[RESPONSE.length - 1][0]) + ms(1400);
+    const k = Math.ceil((end - cycleAt(0)) / ms(5000));
+    takeOver(f, cycleAt(k), RESPONSE);
     return true;
   };
 
