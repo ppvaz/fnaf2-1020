@@ -63,6 +63,30 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: Golden Freddy, both of him
+
+The office figure (`yellowbear`) and the hallway one (`golden`) are separate
+objects with separate rules, and both are now fully in the ledger:
+
+| Group | Rule |
+| --- | --- |
+| 336 | office spawn: 5 s interval, `viewing > 0` **and the raise finished**, `Random(20) < Golden Freddy AI`, none already present |
+| 830 / 804 | that AI is capped at **10** (the others cap at 15), and is zero below night 6 — so 10/20 is exactly a coin flip |
+| 776 | mask fully on → he dims and stops counting |
+| 777 / 778 | starting a monitor raise, or the hall light latch, with him present → `got you box` |
+| 781 | hallway: every one-second event **with the hall light off**, `golden` v1 = `Random(10)`; v1 = 1 is the frame that draws him (g203/204) |
+| 779 | exposure +1 per frame while the light is on him and no one is at `hall stage 1`/`hall stage 2` |
+| 780 / 865 | above 100 → kill; not present → counter zeroed |
+
+Two corrections fall out. The hallway roll is **1 in 10**, not 1 in 11, and it
+is **re-rolled every second rather than latched** — holding the hall light
+freezes whatever is there, which is why he seems to "stay" while you look.
+And the `[CALIBRATED]` "unfair raise" window is gone: g336 requires the raise
+to have *finished*, so there is no 0.3 s bug to model. g779's empty-hall test
+names exactly the characters routed through markers 120/121, which the engine
+already calls `blindA`/`blindB`, so that condition is now exact rather than an
+approximation over CAM 07.
+
 ## 2026-08-20: no mask storage — the counter resets on every re-mask
 
 `v12` is incremented once per one-second event while `mask` = 2 (g907) for Toy
@@ -173,7 +197,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | P0 | Office queue pacing | The four-attacker mutex and shared encounter latch are anchored; determine exact ordering when W. Bonnie, W. Chica, or Mangle coexist with them |
 | P0 | ~~Toy Bonnie Android endgame~~ **Implemented 2026-08-20** | B-as-opening-timer unified with the flash-stun/cooldown field; repels land on CAM 03 with the sourced B cooldowns (see Implemented table) |
 | P0 | ~~Foxy~~ **Implemented 2026-08-20** | All backlog-item-12 nuances are in the engine: night-1 / pre-2AM-night-2 dormancy, per-frame exposure vs 100*night, and the B=50 hall pin gating both eviction and his lock-on roll (see Implemented table) |
-| P0 | Golden Freddy | **Mostly decoded 2026-08-20 (backlog item 11)**: cams-up spawn roll, fractional AI seeds, mask fade-out, lethal raise AND lethal hall-light with GF present, empty-hall exposure. Still open: hall kill threshold group and the sourced raise-window replacement |
+| P0 | ~~Golden Freddy~~ **Sourced 2026-08-20** | Office: g336 spawn (5 s interval, monitor fully up, `Random(20) < Golden Freddy AI`, none present), g830 caps that AI at 10 so 10/20 is exactly 1/2, g804 zeroes it below night 6, g776 mask clear, g777 kill on a raise, g778 kill on a hall flash. Hallway: g781 re-rolls `golden` v1 = Random(10) every second **while the hall light is off**, g779 accumulates exposure per frame with the hall otherwise empty, g780 kills above 100, g865 resets. The `[CALIBRATED]` unfair-raise window is deleted — no group backs it |
 | P0 | ~~Mask counter semantics~~ **Sourced 2026-08-20** | Consecutive-tick counters for TC/Mangle/BB (g907 counts, g294 forces the leave at 5, g292 is the 10%/s early roll). The BB storage abstraction is **gone**: g293's condition is Fusion's "only one action when event loops", so the counter is zeroed on every entry into the fully-on mask state. There is no mask storage on this build |
 | P0 | ~~Selected-camera movement gate~~ **Implemented 2026-08-20** | Post-XOR: the `your view` marker holds pending rolls for the three Withereds (344-348, no monitor condition — persists monitor-down via the parked marker) and monitor-up Mangle (357). Toys have Show Stage leave-order gates instead (350-356). Engine default `selectedCameraGate: true`. |
 | P0 | ~~Dormant camera-light countdown~~ **Resolved 2026-08-20: live** | Groups 450-457 feed B from `stun time` = 400 (never written); the pre-XOR audit was reading the wrong counter. `STUN_FRAMES = 400` is Android-sourced, with per-group camera exclusions (8/9/11) and the Paper-Pals `- night*50` variant. See [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md). |

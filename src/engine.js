@@ -45,7 +45,6 @@ export class Sim {
     // frame the current cams-up session started (-1 = monitor down); the
     // sourced entry timer counts against this streak, not time-in-opening
     this.camsUpSince = -1;
-    this.raiseStartedFrame = -999;
     this.cam = C.BOX_CAM;
     this.maskOn = false;
     this.maskAnim = 0;
@@ -199,14 +198,7 @@ export class Sim {
       for (const u of this.units) {
         if (u.id === 'mangle' && u.atOpening) u.raiseSeen = true;
       }
-      this.raiseStartedFrame = this.frame;
       this.camsUpSince = this.frame; // the source counter runs from the tap
-      // Android: starting the raise just before a 5s interval hands Golden
-      // Freddy a free kill.
-      if (this.opts.android) {
-        const toInterval = C.MO_FRAMES - (this.frame % C.MO_FRAMES);
-        if (toInterval <= C.GF_UNFAIR_WINDOW) this.flag('android-gf', `Monitor raised ${(toInterval / C.FPS).toFixed(2)}s before a 5s interval`);
-      }
     } else {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
       this.winding = false;
@@ -378,19 +370,30 @@ export class Sim {
   // empty, which in Minus 7 means the windows where Foxy has been evicted.
   tickGoldenHall(f) {
     if (!this.opts.gfEnabled) return;
+    // g779's empty-hall test names exactly the characters whose routes pass
+    // through the two off-camera transit markers: `hall stage 1` (120) is
+    // blindA and `hall stage 2` (121) is blindB, plus W. Foxy in the hall.
     const hallOccupied = this.foxy.loc === 'hall' ||
-      this.units.some(u => !u.done && u.path[u.idx] === 7);
-    if (!this.gf.inHall) {
-      if (f % C.FPS === 0 && !hallOccupied && this.rng.int(0, C.GF_HALL_ROLL - 1, 1) === 1) {
-        this.gf.inHall = true; this.gf.hallExposure = 0;
-        this.emit('gf-hall');
+      this.units.some(u => !u.done &&
+        (u.path[u.idx] === 'blindA' || u.path[u.idx] === 'blindB'));
+
+    // g781: his presence is not a latch. Every one-second event with the hall
+    // light off re-rolls it, so holding the light freezes whatever is there.
+    if (f % C.FPS === 0 && !this.hallLightOn) {
+      const there = this.rng.int(0, C.GF_HALL_ROLL - 1, 1) === 1;
+      if (there !== this.gf.inHall) {
+        this.gf.inHall = there;
+        this.gf.hallExposure = 0;   // g865 zeroes it whenever he is not there
+        if (there) this.emit('gf-hall');
       }
-      return;
     }
-    if (hallOccupied) { this.gf.inHall = false; return; }
-    if (this.hallLightOn) {
-      if (++this.gf.hallExposure >= C.GF_HALL_KILL_FRAMES) {
-        this.kill('golden-freddy-hall', 'Held the light on Golden Freddy in the hallway for 100 frames');
+    if (!this.gf.inHall) return;
+    // g779 also requires the `hall movement` latch to be zero; that latch is
+    // not modelled, which can only ever make the engine stricter than source.
+    if (this.hallLightOn && !hallOccupied) {
+      if (++this.gf.hallExposure > C.GF_HALL_KILL_FRAMES) {
+        this.kill('golden-freddy-hall',
+          `Held the light on Golden Freddy in the hallway past ${C.GF_HALL_KILL_FRAMES} frames`);
       }
     }
   }
@@ -676,12 +679,12 @@ export class Sim {
     }
     // 4. Golden Freddy
     if (this.opts.gfEnabled && !this.gf.present && !this.maskOn) {
-      const raising = this.monitor === MON_RAISING;
-      const androidUnfair = this.opts.android && raising &&
-        (this.frame - this.raiseStartedFrame) <= C.GF_UNFAIR_WINDOW;
-      if ((this.monitor === MON_UP || androidUnfair) && this.rng.chance(C.GF_SPAWN_CHANCE, true)) {
+      // g336 needs the raise *finished* -- `viewing > 0` with the monitor-up
+      // animation complete. The old 0.3 s "unfair raise" window was a
+      // [CALIBRATED] guess at an Android bug and has no group behind it.
+      if (this.monitor === MON_UP && this.rng.chance(C.GF_SPAWN_CHANCE, true)) {
         this.gf.present = true;
-        this.emit('gf-appear', { unfair: androidUnfair });
+        this.emit('gf-appear');
       }
     }
     // 5. Puppet, once the box is dry

@@ -110,7 +110,7 @@ Because Toy Bonnie is stunned all night, the one source of unwinnable RNG in 10/
 | Foxy: safe flash window | within **3 s** after a 5s interval (1.0 s – 4.9 s is safe; **:X2 / :X7 is standard**) |
 | Foxy: leaves the hall after | **700 frames** (11.67 s) of cumulative light exposure |
 | Golden Freddy (office) | 1/2 chance to appear on **every 5s interval the cams are up**; mask instantly removes him; **flashing the hall while he's in the office kills you** |
-| Golden Freddy (hallway) | every 1 s the game rolls 0–10; on a **1**, and **only if nobody else is in the hall**, he appears there. Hall light on him accumulates 1 per frame — at **100 frames (1.67 s) he kills you** |
+| Golden Freddy (hallway) | every 1 s **with the hall light off** the game rolls 0–9; on a **1** he is there. The roll repeats every second, so holding the light freezes whatever is in the hall. Light on him accumulates 1 per frame **only if nobody else is in the hall** — past **100 frames (1.67 s) he kills you** [SOURCED: g781/g779/g780] |
 | Blackout mask grace (Night 7) | **0.75 s** (45 frames) — the tightest of any night |
 | Mangle, if she reaches the office | **5% chance to kill per second the cams are up** |
 | Balloon Boy, if he reaches the office | cannot kill you himself — he **disables your flashlight**, and Foxy does the rest |

@@ -138,15 +138,20 @@ export const BB_STAGES = 5;
 // Hops 1..BB_SILENT_HOPS make no sound; the first one (CAM 10 -> 07) is silent.
 export const BB_SILENT_HOPS = 1;
 
-// Golden Freddy [SOURCED]
+// Golden Freddy — office [SOURCED: g336 spawn, g776 mask clear, g777 kill on
+// a monitor raise, g778 kill on a hall flash]. g336 rolls `Random(20) <
+// Golden Freddy AI` on a 5 s interval with the monitor fully up and no
+// `yellowbear` already present; g830 caps his AI at 10 (the others cap at 15),
+// so 10/20 is exactly one in two. g804 zeroes his AI below night 6.
 export const GF_SPAWN_CHANCE = 0.5;
-// Hallway Golden Freddy: rolls 0..10 every second, appears on a 1 but only if
-// nobody else is in the hall; then 100 frames of hall light on him is lethal.
-export const GF_HALL_ROLL = 11;
+// Golden Freddy — hallway [SOURCED: g781 roll, g779 exposure, g780 kill,
+// g865 reset]. g781 re-rolls `golden` v1 = Random(10) every one-second event
+// while the hall light is OFF; v1 = 1 is the frame that draws him (g204). So
+// his presence is re-decided each second, and holding the light freezes it.
+export const GF_HALL_ROLL = 10;
+// g779 adds one per frame while the light is on him and the hall is otherwise
+// empty; g780 kills above 100, so 101 frames.
 export const GF_HALL_KILL_FRAMES = 100;
-// Android-only bug: raising the monitor immediately before a 5s interval gives
-// Golden Freddy an "unfair" kill. Window is [CALIBRATED].
-export const GF_UNFAIR_WINDOW = 18; // 0.3s
 
 // Stalled animatronics: everyone is capped at 15 AI in 10/20 [SOURCED]
 export const STALLED_AI = 15;
