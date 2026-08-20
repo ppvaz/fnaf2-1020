@@ -8,6 +8,7 @@ export class Sim {
     this.opts = Object.assign({
       seed: (Math.random() * 4294967295) >>> 0,
       worst: false,
+      night: 7,             // sourced tables index by night; 7 = 10/20 mode
       android: true,        // Android build quirks (chosen platform)
       speed: 1.0,
       record: true,
@@ -32,6 +33,9 @@ export class Sim {
     this.monitor = MON_DOWN;
     this.monAnim = 0;
     this.camsUpCount = 0;
+    // frame the current cams-up session started (-1 = monitor down); the
+    // sourced entry timer counts against this streak, not time-in-opening
+    this.camsUpSince = -1;
     this.raiseStartedFrame = -999;
     this.cam = C.BOX_CAM;
     this.maskOn = false;
@@ -43,7 +47,7 @@ export class Sim {
     this.ventLightR = false;
 
     // --- resources
-    this.power = C.POWER_FRAMES;
+    this.power = C.powerFrames(this.opts.night);
     this.box = 1;
 
     // --- Foxy
@@ -170,6 +174,7 @@ export class Sim {
       if (this.gf.present) { this.kill('golden-freddy', 'Raised the monitor with Golden Freddy in the office'); return; }
       this.monitor = MON_RAISING; this.monAnim = C.MONITOR_ANIM_UP;
       this.raiseStartedFrame = this.frame;
+      this.camsUpSince = this.frame; // the source counter runs from the tap
       // Android: starting the raise just before a 5s interval hands Golden
       // Freddy a free kill.
       if (this.opts.android) {
@@ -179,6 +184,7 @@ export class Sim {
     } else {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
       this.winding = false;
+      this.camsUpSince = -1; // the source resets the streak on lowering
       // Blackout animatronics waiting in the office trigger when the cams drop.
       if (this.officeQueue.length && !this.blackout.active) this.startBlackout(this.officeQueue.shift());
     }
@@ -186,7 +192,7 @@ export class Sim {
 
   startBlackout(by) {
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
-                      masked: this.maskOn, deadline: this.frame + C.BLACKOUT_MASK_GRACE };
+                      masked: this.maskOn, deadline: this.frame + C.maskGraceFrames(this.opts.night) };
     this.blackoutCount++;
     this.emit('blackout', by);
   }
@@ -380,8 +386,9 @@ export class Sim {
     for (const u of this.units) {
       if (u.done) continue;
       if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
-      if (u.atOpening && u.openingSince > 0 && this.camsUp && f - u.openingSince >= C.VENT_KILL_FRAMES) {
-        this.kill('vent', `${u.name} got you from the vent opening`);
+      if (u.atOpening && this.camsUpSince >= 0 &&
+          f - this.camsUpSince >= C.entryStreakFrames(this.opts.night)) {
+        this.kill('vent', `${u.name} walked in: cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`);
         return;
       }
     }

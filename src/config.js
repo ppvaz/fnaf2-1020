@@ -16,7 +16,15 @@ export const HOUR_FRAMES = s(70);     // 1:10 per in-game hour [SOURCED]
 export const STUN_FRAMES = 400;       // 6.66s camera-light stun [SOURCED]
 export const MO_FRAMES = s(5);        // movement opportunity every 5s [SOURCED]
 export const BLACKOUT_FRAMES = s(5);  // [SOURCED]
-export const BLACKOUT_MASK_GRACE = 45; // ~45 frames to get the mask on [SOURCED]
+
+// Mask grace before an office attack arms, in frames, indexed by night
+// [SOURCED: decompile — the `stun time` -> `mute call` fuse. It starts when
+// an attacker engages at the office entry; masking while it burns defuses
+// the attack, expiry arms it and the mask stops repelling. The old flat 45
+// was only ever the night-7 value; night 1 gives more than double.]
+export const MASK_GRACE_BY_NIGHT = { 1: 100, 2: 80, 3: 60, 4: 55, 5: 50, 6: 50, 7: 45 };
+export const maskGraceFrames = (night) => MASK_GRACE_BY_NIGHT[night] ?? MASK_GRACE_BY_NIGHT[7];
+export const BLACKOUT_MASK_GRACE = MASK_GRACE_BY_NIGHT[7]; // night-7 value; UI copy uses this
 
 // Foxy [SOURCED]
 export const FOXY_AI = 17;
@@ -30,7 +38,14 @@ export const FOXY_ENTER_MAX = s(10);
 export const MASK_LEAVE_FRAMES = 300;      // 5s cumulative mask time
 export const MASK_STORAGE_CAP = 59;        // storable sub-second mask time
 export const VENT_EARLY_LEAVE_CHANCE = 0.1; // per cumulative second
-export const VENT_KILL_FRAMES = 300;       // 5s in the opening with cams up
+
+// An attacker waiting at the office entry walks in once the CURRENT
+// continuous cams-up session reaches 20 - 2*night seconds; the counter
+// resets the moment the monitor starts coming down. Replaces the old
+// flat "5s in the opening with cams up" (VENT_KILL_FRAMES) model.
+// [SOURCED: decompile — the `value25` cams-up-session second counter
+// against the 20 - 2*night threshold]
+export const entryStreakFrames = (night) => s(20 - 2 * night);
 
 // Balloon Boy [SOURCED]
 export const BB_MOVE_CHANCE = 0.75;
@@ -54,8 +69,15 @@ export const STALLED_AI = 15;
 export const MO_CHANCE = (ai) => ai / 20;
 
 // Power [SOURCED]
-export const POWER_FRAMES = 3000;
-export const POWER_PER_BAR = 600;
+// [SOURCED: decompile — the battery counter (`cam 9`) is set per night at
+// night start and drains 1 per frame while the light is on, office or
+// cams. Night 5+ is 3000 frames = 50s of light, which both Markiplier's
+// on-camera measurement and this file's old calibrated value already had
+// exactly right; earlier nights get more.]
+export const POWER_BY_NIGHT = { 1: 7000, 2: 6000, 3: 5000, 4: 4000, 5: 3000, 6: 3000, 7: 3000 };
+export const powerFrames = (night) => POWER_BY_NIGHT[night] ?? POWER_BY_NIGHT[7];
+export const POWER_FRAMES = POWER_BY_NIGHT[7]; // night-7 value; tools report against this
+export const POWER_PER_BAR = POWER_FRAMES / 5;
 export const POWER_BLINK = 500;   // indicator starts blinking [SOURCED]
 
 // Music box [SOURCED]
