@@ -74,6 +74,10 @@ export class Sim {
     // --- blackout
     this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
     this.blackoutCount = 0;
+    // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
+    // g574; executed on the monitor by g262 and on the mask by g274, then
+    // cleared by g612.
+    this.dropEverything = false;
 
     // --- the seven
     this.units = C.STALLED.map(u => ({
@@ -260,13 +264,33 @@ export class Sim {
   armInsideAttack(u, why) {
     if (u.insideDangerAt >= 0) return;
     u.insideDangerAt = this.frame + C.INSIDE_ATTACK_FRAMES;
+    this.dropEverything = true;   // g624: any attack start forces everything down
     this.emit('inside-armed', { who: u.id, why });
+  }
+
+  // g262 lowers the monitor and zeroes `viewing`, g274 takes the mask off, and
+  // g612 clears the flag -- all in the same frame it was set. The player's own
+  // presses that frame are read at g254-270, i.e. after the monitor forcedown
+  // and before the mask one, so running this at the top of the tick reproduces
+  // the order: neither a monitor nor a mask press survives a forcedown.
+  tickForcedown() {
+    if (!this.dropEverything) return;
+    this.dropEverything = false;
+    if (this.monitor === MON_UP || this.monitor === MON_RAISING) this.setMonitor(false);
+    if (this.maskOn) this.setMask(false);
+    this.emit('forcedown');
   }
 
   // ------------------------------------------------------------------- tick
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
+
+    // g262/g274 execute the forcedown near the top of the sheet, while
+    // g612 clears it and g624/g718-721 set it near the bottom -- so a flag
+    // raised this frame is spent on the next one. Running it first keeps that
+    // one-frame latency and the ordering against the player's own presses.
+    this.tickForcedown();
 
     if (this.monAnim > 0 && --this.monAnim === 0) {
       if (this.monitor === MON_RAISING) {
@@ -292,6 +316,13 @@ export class Sim {
 
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (f % C.MO_FRAMES === 0) this.onFiveSecond();
+
+    // --- 10-second interval: g718-721 slam everything down while one of the
+    // four streak attackers is waiting at marker 122 with the cameras up.
+    if (f % (C.MO_FRAMES * 2) === 0 && this.camsUp &&
+        this.units.some(u => u.atOpening && u.openingRule === 'streak')) {
+      this.dropEverything = true;
+    }
 
     // --- 10-second interval: locked-on Foxy strikes if no blackout is covering
     if (f % (C.MO_FRAMES * 2) === 0 && this.foxy.gotYou && !this.blackout.active) {

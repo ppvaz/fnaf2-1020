@@ -63,6 +63,36 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: same-frame input order, and the forcedown the engine never had
+
+Group order *is* the input order. Every group that reads a touch and writes
+player state, in sequence:
+
+| Groups | What |
+| --- | --- |
+| 16-27 | camera selection (`viewing`) |
+| 75-89 | the flashlight (`lit?`) — hall needs `mask` = 0, `in danger` = 0 and no BB at 123 |
+| 254-258 | the monitor button (`flip panel button` → `mmonitorUp`) |
+| **262** | **forcedown executes on the monitor**: lowers it and zeroes `viewing` |
+| 267-270 | the mask (`mask` → `mmaskOn`) |
+| **274** | **forcedown executes on the mask**: takes it off |
+| 301-320 | the vent lights |
+| 612 | the forcedown flag is cleared |
+| 614-619 / 624 / 718-721 | …and re-set, so it is always spent one frame later |
+
+The ordering has a real consequence: a monitor press and a mask press made in
+the same frame as a forcedown are both undone — the monitor before the mask
+press is even read, the mask immediately after.
+
+**`drop everything` was decoded in the earlier sweep but never implemented.**
+It is set every 10 s while W. Freddy, W. Bonnie, W. Chica or Toy Freddy waits
+at marker 122 **with the cameras up** (g718-721), on any attack start (g624),
+and by the Puppet reaching 123 (g574). So the game slams the monitor down and
+rips the mask off while one of the four is queued at the threshold. Minus 7
+never sees it — the four are stun-locked and never reach 122 — which is why
+its absence went unnoticed, but it is a live mechanic for every other line of
+play and for recovery after a lapse.
+
 ## 2026-08-20: the office encounter, end to end
 
 The shared encounter is five counters and one strict priority list.
@@ -228,7 +258,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 
 | Priority | Mechanic | What remains |
 | --- | --- | --- |
-| P0 | Office threshold/inside state machine | Core marker-122/123 behavior is implemented and the encounter fuse is fully decoded (g528-537 below). Remaining: the same-frame visual/input ordering around attack transitions, which is the same reading pass as the P2 input-ordering row |
+| P0 | ~~Office threshold/inside state machine~~ **Sourced 2026-08-20** | Marker-122/123 behaviour, the encounter fuse (g528-537), the resolution priority (g538-555) and the input/forcedown ordering are all cited. The `drop everything` forcedown is now implemented rather than only decoded |
 | P0 | ~~Office queue pacing~~ **Sourced 2026-08-20** | g537 raises `check and move` when the 300-frame office sequence ends; g538-555 then run in group order and the first match zeroes it, so **exactly one occupant of 122 resolves per encounter**, chosen by group index rather than by who triggered it. Defended order (`got you stage` 0): WF, WB, WC, TF, TB, TC. Failed order (stage 2): WF, WB, WC, TB, TC, TF. Mangle never appears in the table — her 122 edge is g402/403 |
 | P0 | ~~Toy Bonnie Android endgame~~ **Implemented 2026-08-20** | B-as-opening-timer unified with the flash-stun/cooldown field; repels land on CAM 03 with the sourced B cooldowns (see Implemented table) |
 | P0 | ~~Foxy~~ **Implemented 2026-08-20** | All backlog-item-12 nuances are in the engine: night-1 / pre-2AM-night-2 dormancy, per-frame exposure vs 100*night, and the B=50 hall pin gating both eviction and his lock-on roll (see Implemented table) |
@@ -240,7 +270,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | P1 | ~~In-office auxiliary mover~~ **Resolved 2026-08-20** | The pre-XOR "`in office` object" is Balloon Boy himself (dump oi 102 = `balloon boy`); his 122/123 monitor-raise branch is BB's office behavior, not an extra mover |
 | P1 | ~~Puppet~~ **Sourced 2026-08-20** | Post-box route is g404-411: CAM 11 → 10 → 07, then his own `decide path` value picks 1 → 03 → 01 or 2 → 04 → 02, both arriving at marker 122 (g574 turns that into the encounter). Five hops on the ordinary movement roll replace the old flat 5-20 s timer, so a dry box is slower to kill than the engine assumed. (The supposed CAM 11 flash-stall event, group 457, actually targets Paper Pals with `stun time - night*50`; the Puppet has no flash group.) |
 | P1 | ~~Balloon Boy inside-office behavior~~ **Sourced 2026-08-20** | Roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Inside: g96 forces `lit?` to zero every frame, g301/303 stop the vent lights answering, g75/g85 exclude him while g77/g86 do not — so CAM 10 keeps its light — and **no group moves him out of 123**. He never attacks; the engine no longer kills on entry, it takes the lights away and lets Foxy finish |
-| P2 | Input event ordering | Establish same-frame order for monitor, mask, hall light, and vent-light touch objects |
+| P2 | ~~Input event ordering~~ **Sourced 2026-08-20** | Group order is the answer: camera select (g16-27) → flashlight (g75-89) → monitor button (g254-258) → **forcedown on the monitor (g262)** → mask (g267-270) → **forcedown on the mask (g274)** → vent lights (g301-320). The forcedown flag is cleared at g612 and re-set at g624/g718-721, so it is always spent one frame after it is raised |
 | P2 | Sound cue frames | Tie bangs, laughs, static, and blackout cues to source state transitions for reaction training |
 | P2 | Auxiliary counters | The office encounter latch is literally named `in danger`; `Active 21` is really `decide path` (route-branch selector, used by W. Freddy g376-377, Mangle g396-397, and the Puppet's own v2 in g406/407). `Sockpuppet AI` is the Puppet's movement AI, read by the route above; `time of the night` gates the mid-night AI bumps (g676 night 2 at 1 AM, g684 night 6 at 2 AM). Remaining: the leftover display/animation counters |
 
