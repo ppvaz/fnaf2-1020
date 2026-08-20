@@ -193,8 +193,9 @@ The split, in one place:
   two-camera candidate ("Six-Seven Strat"), the same day's decompile of the
   Android build refuted it (no two-camera cover exists under that extracted
   graph), and the search re-run over the Android graph independently
-  re-derived Minus 7's 4-7-10 flash loop as a robust minimal cover. PC 1.033
-  route parity and uniqueness remain on `PC-DECOMP-CHECKLIST.md`.
+  re-derived Minus 7's 4-7-10 flash loop as a robust minimal cover. Android is
+  now the canonical project target; PC comparison is explicitly deferred in
+  `PC-DECOMP-CHECKLIST.md`.
   Methodological takeaway for the community: sim-derived candidates
   are hypotheses, and decompile-grade route graphs are the cheap first
   validation gate.

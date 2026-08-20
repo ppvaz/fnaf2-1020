@@ -4,6 +4,10 @@ A touch-first browser trainer for the **Minus 7** strategy in *Five Nights at Fr
 10/20 mode. It is not a clone of the game: it is a drill machine for the input routine, built on a
 reimplementation of the mechanics the strategy actually depends on.
 
+**Canonical target:** the modern Android release-7 build (Fusion build 296,
+August 2025). PC/community material is supporting research, not the simulator's
+fidelity target.
+
 Open it on a phone, turn sideways, and work down the lessons.
 
 **[Play it →](https://ppvaz.github.io/fnaf2-minus7-practice/)**
@@ -139,7 +143,7 @@ node tools/lightcheck.mjs        # the two lights swap with the monitor
 node tools/browsertest.mjs       # load, input, report
 node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
 node tools/strategysearch.mjs    # enumerate route-graph camera covers (--quick for a smoke pass)
-node tools/rvctest.mjs 200       # PC-Brayden beats vs Android model (diagnostic, not odds)
+node tools/rvctest.mjs 200       # probe a PC-origin RVC policy against Android (not published odds)
 ```
 
 What they establish:
@@ -150,13 +154,14 @@ What they establish:
 
 ## Accuracy
 
-Mechanics now combine community PC reverse engineering with an owned modern-Android
-event-sheet extraction. Those are not interchangeable platforms. Constants are marked
-`[SOURCED]`, `[CALIBRATED]`, or `[INFERRED]` in `src/config.js`, and modelling assumptions are
-called out in [MINUS-7-STRATEGY.md](MINUS-7-STRATEGY.md). The living
-[PC decomp confirmation ledger](PC-DECOMP-CHECKLIST.md) lists every Android-backed rule that must
-be rechecked before this simulator can claim source-level fidelity to PC 1.033. Post-chokepoint
-routing remains an approximation: it only runs once you have already broken the stun loop.
+The canonical mechanics source is the owned modern-Android event-sheet extraction.
+Community PC reverse engineering is retained as attributed supporting research, not
+silently merged into Android rules. Constants are marked `[SOURCED]`, `[CALIBRATED]`,
+or `[INFERRED]` in `src/config.js`; the live implementation gaps are tracked in
+[Android source status](ANDROID-SOURCE-STATUS.md). The
+[PC confirmation ledger](PC-DECOMP-CHECKLIST.md) is deferred and non-blocking.
+Post-chokepoint routing remains an approximation: it only runs once you have already
+broken the stun loop.
 
 ## Licence
 

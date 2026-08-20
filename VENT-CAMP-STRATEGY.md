@@ -83,11 +83,12 @@ consistency-per-unit-skill, not perfection.
 
 ## 4. What the trainer's engine does and doesn't model
 
-The published strategy and its 104–1 bot result target PC, while the local decompile
-is modern Android. The cross-port questions are tracked centrally in
-[`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md). Until its P0 RVC items are
-PC-confirmed, this simulator is a diagnostic instrument, not a reproduction of the
-bot's odds.
+The published strategy and its 104–1 bot result target PC. This project targets
+modern Android instead, so RVC is treated as a **policy hypothesis**, not a porting
+contract: retain the useful clock/branch structure, then source every depended-on
+mechanic from Android. The live work is tracked in
+[`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md). The historical PC odds are
+not a target for this simulator.
 
 The 2024 strategy is far more clock-anchored than plan 03 assumed — a fixed cycle
 with a *decision fork* on monitor-down (blackout / Toy Bonnie / vent guest / nobody),
@@ -96,7 +97,8 @@ branch-prompt problem.
 
 Gaps and conflicts in `src/engine.js` / `src/config.js`:
 
-1. **Foxy's check cadence** — ~~conflict~~ **RESOLVED** (see §2): the equation runs
+1. **Foxy's check cadence** — **community model, Android audit incomplete**: the
+   imported equation runs
    at 5 s intervals, the GOT-YOU kill executes at 10 s intervals or on a hall flash,
    blackout-gated. The engine already implements both halves (`engine.js:203-208`,
    flash-triggered kill at `engine.js:146`). Residual nuances to verify: the wiki's
@@ -108,11 +110,11 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
    expose related 10 s events, but the exact trigger ordering across monitor drop,
    threshold occupants and queued blackouts is not reconstructed. The engine's
    immediate start is provisional.
-3. **Toy Bonnie's unique behaviour** — random pre-attack delay, fixed 5 s animation,
-   the 2-cycle post-attack immunity, and the PC right-vent-light stall are not yet
-   reproduced. The Android audit now confirms that office lights feed a shared
-   one-second movement latch on selected route edges, but that must not be assumed
-   identical to the PC RVC mechanic.
+3. **Toy Bonnie's unique behaviour** — the PC random delay, fixed animation,
+   immunity, and named right-vent-light stall are historical leads, not rules to
+   import. Android independently confirms that office lights feed a shared
+   one-second latch on selected route edges; its complete marker-120→122→123 state
+   machine still needs decoding.
 4. **Mask-leave rules** — engine has cumulative mask time (`MASK_LEAVE_FRAMES`) with
    a 10%/s early-leave chance; sources describe *consecutive* seconds with a
    guaranteed leave at 5 s and a reset on unmask. Needs verification which is right.
@@ -123,23 +125,19 @@ Gaps and conflicts in `src/engine.js` / `src/config.js`:
    DJ Sterf's 100 × night figure); the RVC-specific "hold rather than tap" exposure
    accounting should be checked.
 
-`tools/rvctest.mjs` now encodes the opening and this 15-second backbone as a
-calibration diagnostic. It deliberately does not encode the post-wind decision
-tree yet. Its failures must be read as missing-platform/mechanic reports, never as
-a measured win rate for brayden's PC strategy.
+`tools/rvctest.mjs` encodes the opening and 15-second backbone as an Android policy
+probe. It deliberately does not encode the post-wind decision tree yet. Its
+failures identify missing Android mechanics or missing decisions; they are not a
+measured win rate for brayden's original strategy.
 
 ## 5. Implications for plan 03
 
-- Teach **brayden's 2024 strategy**, not classic reactive RVC — it is the lineage's
-  end state and mostly clock-anchored, so the rhythm lane carries more of the load
-  than plan 03 feared. The reactive part reduces to grading a four-way decision on
-  monitor-down plus Toy Bonnie episodes.
-- The "RNG deaths are not failures" grading premise in plan 03 stands: ~1% of
-  perfectly-played nights lose. The bot's 104–1 gives a calibration target for the
-  simulator once the engine gaps close.
-- The next hard gate is the P0 PC confirmation pass: Toy Bonnie, office queue,
-  Foxy/Golden Freddy, and vent-light battery semantics. Tuning the Android model
-  to 104–1 before those checks would only hide port differences.
+- Do not add an RVC lesson yet. First reconstruct Android Toy Bonnie, office queue,
+  Foxy/Golden Freddy, and mask semantics; then search for the best Android policy.
+- Brayden's four-way post-wind decision is a strong controller shape to test, but
+  Android may produce different branches, timings, resource limits, and odds.
+- The next hard gate is the P0 Android office endgame audit. Tuning the model to
+  104–1 would now be an explicit error because PC is not the target.
 
 ## Sources
 

@@ -1,6 +1,10 @@
 # PC 1.033 decomp confirmation ledger
 
-This is the platform boundary for the project. The executable used by the classic
+> **Deferred as of 2026-08-20.** PC is not the current project target and this
+> ledger is not a blocker. It is preserved for a future port-comparison pass.
+> Canonical work now follows [`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md).
+
+This is the archived cross-platform boundary. The executable used by the classic
 10/20 community, Minus 7, and brayden's bot is the **PC 1.033 build**. Our owned
 decompile is the modern Android release-7 build (Fusion build 296, August 2025).
 An Android event proves what Android does; it is only a hypothesis about PC.
@@ -92,4 +96,3 @@ For each checked item:
 - **Brayden's 104–1 result is a PC behavioral calibration target.** A mismatch from
   the Android-backed simulator diagnoses a platform/model gap; it does not refute
   the strategy.
-

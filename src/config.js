@@ -3,7 +3,8 @@
 //
 // Values marked [SOURCED] come from either attributed community PC reverse
 // engineering or the owned Android event-sheet extraction; the nearby comment
-// must say which. PC/Android parity is tracked in PC-DECOMP-CHECKLIST.md.
+// must say which. Android is canonical; gaps are tracked in
+// ANDROID-SOURCE-STATUS.md. PC parity work is deferred.
 // Values marked [CALIBRATED] are not published numbers;
 // they are chosen so the simulation behaves the way the documented gameplay
 // behaves, and are safe to tune.

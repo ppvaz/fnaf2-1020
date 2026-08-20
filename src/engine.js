@@ -9,7 +9,7 @@ export class Sim {
       seed: (Math.random() * 4294967295) >>> 0,
       worst: false,
       night: 7,             // sourced tables index by night; 7 = 10/20 mode
-      android: true,        // Android build quirks (chosen platform)
+      android: true,        // canonical target; flag retained only for old test modes
       speed: 1.0,
       record: true,
       bbEnabled: true,

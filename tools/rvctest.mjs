@@ -1,10 +1,10 @@
 // Diagnostic skeleton of brayden's timer strategy.
 //
 // This is deliberately a calibration bot, not yet a trainer mode. It encodes
-// the published clock beats against the Android-backed Sim so disagreements
-// become concrete engine/platform work instead of being tuned away. Brayden's
-// published strategy and 104-1 bot result target PC; a mismatch here is not a
-// strategy refutation. The reactive post-wind branches are not encoded yet.
+// the published clock beats against the canonical Android Sim so they can be
+// tested as a policy hypothesis on this platform. Brayden's published 104-1 bot
+// result is PC history, not an Android calibration target. The reactive post-wind
+// branches are not encoded yet, so a mismatch is not a strategy refutation.
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
@@ -84,8 +84,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     else deaths[r.sim.death.reason] = (deaths[r.sim.death.reason] || 0) + 1;
   }
   console.log(`brayden timer diagnostic (${ventStall ? 'right-vent stall' : 'no vent stall'})`);
-  console.log('PC calibration target; current runner is an Android-backed, non-reactive skeleton');
-  console.log(`${wins}/${n} survived on the current Android-backed model`);
+  console.log('Android policy probe; current runner is a non-reactive RVC skeleton');
+  console.log(`${wins}/${n} survived on the current Android model`);
   for (const [reason, count] of Object.entries(deaths)) console.log(`  ${count}x ${reason}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower}`);
   console.log(`first power-out ${Number.isFinite(firstPowerOut) ? (firstPowerOut / C.FPS).toFixed(1) + 's' : 'never'}`);

@@ -1,18 +1,19 @@
 # FNaF 2 10/20 — Gate-aware hybrid search
 
-### Simulator research report, 2026-08-19
+### Simulator research report, 2026-08-19; reopened 2026-08-20
 
-> **Verdict: no new strategy survived the sourced endgame audit.** Monitor denial
-> produced a tempting 150/150 result under an over-broad office-entry rule. The
-> event sheets then falsified that result: Withered Bonnie and Withered Chica have
-> their own opening timers and cannot be parked behind the Toys' six-second
-> continuous-cams-up rule. With those rules separated, every searched fixed and
-> clock-phased policy drains the music box to zero. Minus 7 remains 200/200.
+> **Current verdict: reopened as an Android lead, not yet a strategy.** A later
+> source correction changed the result again: groups 538–555 poll the mask while
+> an attacker is at marker 122, so an unarmed attacker arriving while the mask is
+> *already on* must leave immediately. The old engine checked only on the mask-on
+> input frame. With continuous polling represented, the perfect-information gate
+> bot now survives 150/150 clean and 150/150 pinned seeds under monitor denial.
+> It reads hidden arming timers and the marker-122 identities/state machine remain
+> partly decoded, so this is not yet a human-playable or source-closed result.
 >
-> **Platform scope:** this closes the searched family on the modern Android
-> route graph. PC 1.033 parity is explicitly pending in
-> [`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md); absence of that decompile
-> does not count as evidence for a PC candidate.
+> **Platform scope:** modern Android release 7 is the canonical target, so this
+> closes the searched family on the target route graph. Remaining source/model
+> gaps are tracked in [`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md).
 
 ## What was searched
 
@@ -61,7 +62,34 @@ The engine now represents those endgames separately. The Withered Chica model us
 a conservative five-second arming edge because six global scheduler ticks can span
 only just over five wall-clock seconds.
 
-## Final sweep
+### 2026-08-20 correction: continuous mask polling
+
+The previous pass still encoded the timely-mask rule incorrectly. Source groups
+538–555 are ordinary event conditions, not a one-shot “mask was just pressed”
+handler: while the mask state is valid, an unarmed marker-122 occupant is returned
+to its route. Therefore an occupant that reaches 122 during an existing mask hold
+must be repelled on arrival. `engine.js` now applies the same predicate both when
+the mask goes on and when a unit enters the threshold; `simtest.mjs` covers both.
+
+This removes the repeated five-second-mask cost that supported the closure below.
+At the fixed `0.90/1.00` box thresholds, a focused 150-seed probe currently gives:
+
+| Policy | Clean | Pinned | Minimum box (clean) |
+|---|---:|---:|---:|
+| Monitor denial | 150/150 | 150/150 | 31% |
+| CAM 06 | 150/150 | 150/150 | 0% |
+| CAM 07 | 150/150 | 150/150 | 24% |
+| CAM 03 | 150/150 | 150/150 | 24% |
+| CAM 06+07 | 150/150 | 150/150 | 0% |
+
+Monitor denial is the important row: it preserves box slack without depending on
+a camera-cover claim. But the controller performs roughly 16–26 hidden-state threat
+reactions per night, including masks timed one frame before an unseen Withered arms.
+Until those reactions are replaced by Android-observable cues or a conservative
+fixed rhythm—and the 122/123 office state machine is fully decoded—the numbers are
+an optimistic existence hint only.
+
+## Superseded 2026-08-19 sweep
 
 Each fixed row below uses 150 clean seeds after a threshold search. `Pinned` is the
 engine's diagnostic mode that pins hostile rolls; it is **not** a mathematical
@@ -76,28 +104,24 @@ worst-case bound because synchronized attackers can be easier than independent R
 | CAM 06+07 hybrid | 0% | 0% | 0% | 0% | 0% | Puppet |
 | Best clock-phased set: `07 → 07 → 07` | **12%** | 0% | 16% | 11% | 0% | Puppet |
 
-The timer-aware controller is an optimistic upper bound: it reads the exact hidden
-frame at which each Withered arms and masks one frame before it. A human would need
-vent observations or a more conservative cutoff. Even this privileged policy cannot
-fund the repeated five-second masks and the music box at the same time.
+This table is retained as provenance, not as the current result. Its resource
+contradiction depended on missing the continuous-mask-on-arrival rule.
 
 ## What this closes—and what it does not
 
-- **Six-Seven stays refuted on Android.** No two-camera cover exists in the
-  extracted Android graph; the PC graph is not yet source-confirmed.
-  CAM 06+07 as a gate-aware hybrid also loses every clean validation seed.
-- **Naive and reactive monitor denial are closed under the current model.** Their
-  apparent clean result depended entirely on applying the wrong endgame to the
-  Withereds.
-- **The fixed documented candidates were worth revisiting.** CAM 07 and CAM 03 buy
-  small tails, but none approaches Minus 7 and every one hits an empty box.
-- **Clock-phased camera combinations were searched.** The best of 125 schedules
-  degenerates to CAM 07 in all three phases and survives only 12%; switching sets
-  never improves on the best fixed member of the family.
+- **Six-Seven stays refuted on Android as a two-camera cover.** Reopening monitor
+  denial does not create a two-camera cover and does not rehabilitate that theory.
+- **Monitor denial is open again.** The current 150/150 result is a privileged-model
+  upper bound; the next question is whether an observable or fixed Android policy
+  can replace its hidden timer reads.
+- **The 2026-08-19 fixed/phase percentages are superseded.** They must be rerun only
+  after the Android office endgame is decoded; doing a wider sweep now would spend
+  compute on the dominant uncertainty instead of resolving it.
 - **This is not a proof over every possible policy.** The Android office-light
-  latch is now partially modeled, but brayden's PC-specific Toy Bonnie sequence
-  and reactive RVC policy are not. That branch must clear the P0 items in the PC
-  confirmation ledger rather than tune the Android model to a PC win rate.
+  latch is now partially modeled, but the exact Android Toy Bonnie and office
+  endgames are not. Those P0 source gaps must be decoded before widening the
+  search or adapting RVC; a PC win rate is not a calibration target.
 
-Reproduce with `node tools/gatesearch.mjs`; use `--quick` for the smaller smoke
-sweep. The Minus 7 control is `node tools/bbtest.mjs 200`.
+Reproduce the current model with `node tools/gatesearch.mjs`; use `--quick` for a
+smoke sweep. The focused 150-seed rows above use `runPolicy` at thresholds
+`0.90/1.00`. The Minus 7 control is `node tools/bbtest.mjs 200`.

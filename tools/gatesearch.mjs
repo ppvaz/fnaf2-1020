@@ -8,8 +8,8 @@
 //
 // The controller is deliberately a short, human-readable policy, not a learned
 // agent. It reacts to visible office threats, Balloon Boy and the box gauge.
-// Results remain model claims: camera-light stalling is still not located in
-// the mobile source, and several office/vent details are approximated.
+// Results remain model claims: the Android marker-122/123 office state machine,
+// Toy Bonnie and several vent details are only partially decoded.
 //
 //   node tools/gatesearch.mjs [--quick]
 import { pathToFileURL } from 'node:url';
@@ -220,7 +220,8 @@ if (isMain) {
   const searchN = QUICK ? 16 : 40;
   const validN = QUICK ? 40 : 150;
   console.log('gate-aware search: reactive winding + documented hybrid candidates (night 7)');
-  console.log('caveat: Android-backed model claims only; PC 1.033 parity remains unconfirmed\n');
+  console.log('caveat: Android is canonical; unresolved source/model gaps still bound these claims\n');
+  console.log('controller caveat: threat masks read hidden arming frames (optimistic upper bound)\n');
 
   for (const structure of structures) {
     let best = null;

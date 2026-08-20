@@ -111,13 +111,15 @@ decompile is now the first validation gate they must clear.
 
 A second search pass tested the obvious escape hatch after Six-Seven: stop asking
 cameras to cover every route and exploit the decompiled monitor-entry gates instead.
-Reactive monitor denial briefly scored 150/150, then its own source audit retracted
-the result: the simulator had incorrectly given Withered Bonnie and Withered Chica
-the Toys' six-second office-entry grace. Their separate timers force repeated long
-masks, which exhaust the music box. Fixed CAM 06/07/03 hybrids and all 125
-clock-phased combinations failed with the same resource contradiction
-(`GATE-SEARCH.md`). This is the second instance of the search/decompile loop doing
-its job by killing its most exciting output.
+Reactive monitor denial first scored 150/150, then was retracted when separate
+Withered timers were decoded. A further source correction reopened it on 2026-08-20:
+mask conditions are continuously polled, so an unarmed marker-122 attacker arriving
+during an existing mask hold leaves immediately. The corrected perfect-information
+bot again scores 150/150 with box slack, but reads hidden arming frames and rests on
+an incompletely decoded office state machine. It is now an Android research lead,
+not a strategy or a closed theory (`GATE-SEARCH.md`). The methodological lesson got
+sharper: source validation is iterative, and neither exciting nor negative simulator
+results get promoted while a depended-on state machine is still approximate.
 
 ## Sources
 
