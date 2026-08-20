@@ -81,7 +81,7 @@ The split, in one place:
 - **Disposition:** fold into the same upstream PR as entries 1–2, or a
   follow-up docs PR.
 
-### 4. Anaconda/mmfparser mobile-CCN patches — **prepared** (working, needs export from scratchpad)
+### 4. Anaconda/mmfparser mobile-CCN patches — **prepared**
 
 - **Target:** Anaconda/mmfparser lineage
   ([fnmwolf/Anaconda](https://github.com/fnmwolf/Anaconda) and
@@ -103,23 +103,36 @@ The split, in one place:
     14 extension, 16 flags, 18 createFlags, 20 qualifiers[8], 36 animations,
     40 strings, 42 newFlags, 44 preferences, 46 identifier, 50 backColour,
     54 fadeIn, 58 fadeOut).
-- **Artifact today:** patches live only in the session scratchpad copy of the
-  fnmwolf/Anaconda clone — **still need to be exported to a durable patch file**.
+  - `parameters/loaders.py` Group parameter: builds >= 293 scramble group
+    names; substitute "Group N" the way CTFAK does instead of erroring.
+- **Artifact today:** exported to `~/fnaf-apks/mmfparser-mobile-ccn.patch`
+  (75 lines, 5 files); the patched, built, working clone lives durably in
+  `~/fnaf-tools/anaconda` with its py27 build environment alongside.
 - **Disposition:** Pedro's own fork, **not** a PR — both forks are
   dormant/personal and the original matpow2 repo is gone; there is no live
   upstream to PR against.
 
-### 5. CCN event dumper — **candidate**
+### 5. CCN datamining tool suite — **candidate**
 
 - **Target:** Pedro's own new tool repo (suggested name: `ccn-mobile-datamine`
   or similar)
-- **What it is:** `dump_events.py` — Python 2.7 tool that drives the patched
-  mmfparser and dumps per-frame readable event sheets plus the object list
-  from an Android Clickteam CCN. Proven on FNaF 2: 33/33 frames, 25k lines of
-  events.
-- **Artifact today:** `~/fnaf-apks/dump_events.py`
+- **What it is:** a three-tool suite driving the patched mmfparser against
+  Android Clickteam CCNs, proven on both FNaF 2 (33/33 frames, 25k event
+  lines) and FNaF 1 (25/25 frames):
+  - `dump_events.py` — per-frame readable event sheets plus the object list.
+    Renders comparison operators, resolves object handles to names inside
+    parameters, prints event-group and section flags, prefers the
+    authoritative float slot over the garbage double slot in mobile
+    expression literals, and labels unknown mobile parameter codes instead
+    of crashing.
+  - `dump_animations.py` — per-object animation timings (frames, speeds,
+    loop points) with derived durations from the Fusion tick model.
+  - `group_tree.py` — Clickteam section-activation tree from a frame dump
+    (nesting, inactive flags, ActivateGroup edges; `--find`/`--members`).
+- **Artifact today:** all three in `~/fnaf-apks/`, plus the durable toolchain
+  in `~/fnaf-tools/`.
 - **Disposition:** new MIT-licensed tool repo bundling: the mmfparser fork as
-  a git submodule or vendored subtree, `dump_events.py`, the build recipe
+  a git submodule or vendored subtree, the three tools, the build recipe
   (micromamba py27 + cython 0.29), and a README documenting the Android CCN
   format findings. Hard rule: the repo ships tooling and format documentation
   only — zero game assets or dumped game content.
@@ -136,11 +149,55 @@ The split, in one place:
   `D:\Work\+Clickteam\+ProfessionalServices\...\release 7\FNaF2_mobile_20250825.mfa`,
   Fusion build 296), meaning PC-sourced strategy claims must be re-verified
   against mobile.
-- **First confirmed extraction result:** the Office frame contains the
-  movement-opportunity check as "every 5000ms: `Random(20)+1` vs
-  `CounterValue[new Freddy AI]`" — decompile-grade confirmation of the
-  community's 5-second-cycle claim, from the mobile build.
-- **Artifact today:** the 5000ms check is confirmed; the rest is pending the
-  full constants-extraction pass. The release-7 provenance finding is already
-  established.
+- **Extraction pass complete (2026-08-19).** Confirmed and novel findings
+  ready to write up, all derived mechanics only:
+  - Movement: every 5000 ms, `Random(20)+1 <= AI` per animatronic; AI
+    counters hard-capped at 15; mid-night hourly escalation tables.
+  - The full route graph for all movers, with three gate mechanics no
+    community doc describes: nearly every final approach requires the
+    monitor UP; Withered Bonnie's is inverted (monitor DOWN); the office
+    light with cams down stalls most mid-route hops (Toy Chica exempt);
+    a one-attacker-at-a-time mutex.
+  - Office endgame: per-night mask-grace fuse of 100/80/60/55/50/50/45
+    frames (the community's ~0.75 s figure is the night-7 value only);
+    entry-to-inside triggers at `20 - 2*night` seconds of *continuous*
+    cams-up time; mask-repel cooldown `Random(500)/night`; armed attacks
+    ignore the mask; masked intruders leave at 1/10 per second.
+  - Resources: flashlight battery is a per-night table — 7000/6000/5000/
+    4000 frames on nights 1-4, 3000 (50 s of light) from night 5, warning
+    blink at 500; the community's 50 s figure is the night-5+ value.
+    Music box capacity 2000, wind +300/s, drain 40..120/s by night — and
+    on night 1 the box does not drain until 2 AM.
+  - Timing: clock advances via a global ticker at 1000 ms/tick, 70 ticks
+    per hour; a global flag halves the tick to 500 ms — the mechanism
+    behind the known iOS overclock. The music-box wind sound is a literal
+    `Every 500ms` scheduler event, phase-locked to the movement-check
+    clock — Markiplier's wind-tick metronome technique is exact, not
+    approximate.
+  - Port differences: the Puppet roams on mobile (rare-event tier); Mangle
+    approaches through the opposite vent; the monitor's opening camera
+    changes on night 7.
+  - Verified against Markiplier's on-camera measurements where they
+    overlap (mask grace, box drain at night 7).
+- **Artifact today:** everything above is established from the Office-frame
+  event sheets and folded into this repo's simulator as `[SOURCED]`
+  constants; the writeup itself is not yet drafted.
 - **Disposition:** wiki edits / talk-page writeups, not a repo.
+
+### 7. Six-Seven post-mortem and Minus 7 re-derivation — **candidate**
+
+- **Target:** the FNaF challenge-strategy community (the brayden/Shooter25
+  lineage circles), distinct audience from the technical wiki.
+- **What it is:** the first documented full cycle of simulator-derived
+  strategy research: a search over a modeled route graph produced a
+  two-camera candidate ("Six-Seven Strat"), the same day's decompile of the
+  Android build refuted it (no two-camera cover exists under the real
+  graph), and the search re-run over the sourced graph independently
+  re-derived Minus 7's 4-7-10 flash loop as the unique robust minimal
+  cover. Methodological takeaway for the community: sim-derived candidates
+  are hypotheses, and decompile-grade route graphs are the cheap first
+  validation gate.
+- **Artifact today:** `CAM-6-7-STRATEGY.md` (refutation header + preserved
+  candidate doc) and the `STRATEGY-HISTORY.md` meta-thread entry.
+- **Disposition:** community writeup (video-description-style doc or forum
+  post) once the real-game validation of the rebuilt model lands.
