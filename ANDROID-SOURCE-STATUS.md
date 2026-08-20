@@ -52,8 +52,10 @@ Consequences for this ledger:
 - **Subsystem re-reads completed in the 2026-08-20 backlog sweep:** Foxy,
   BB, Puppet/music box, Paper Pals, forcedown queue, vent lights, and most
   of Golden Freddy — findings recorded in the extraction backlog below.
-  Still open: `ANDROID-OFFICE-ENDGAME.md`'s prose rewrite and the hall-GF
-  kill-threshold group.
+  The `ANDROID-OFFICE-ENDGAME.md` prose rewrite is done (item 19); still
+  open: the hall-GF kill-threshold group, same-frame input ordering (item 7)
+  and the display-map artwork closure (item 23) — the latter two need the
+  local `~/fnaf-apks` extraction, which is not present on this machine.
 
 ## Labels
 
@@ -220,8 +222,9 @@ each resolved item records the finding. Remaining open items are marked OPEN.
     is seeded at 1 with P=1/100 per night (g822), rolls on the shared 5 s
     clock, and has a single office hop (g412) plus the `- night*50` flash
     variant. The 1/1000-style fractional seeds belong to Golden Freddy's AI.
-19. OPEN — `ANDROID-OFFICE-ENDGAME.md` prose rewrite against true names
-    (sim-facing bindings already corrected; banner marks the rest).
+19. ~~`ANDROID-OFFICE-ENDGAME.md` prose rewrite against true names~~ — done
+    (the 2026-08-20 rewrite landed with the handle-scramble commit; verified
+    free of pre-XOR names, ledger closed 2026-08-20 second pass).
 
 **Minor threads:**
 
