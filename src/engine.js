@@ -69,6 +69,8 @@ export class Sim {
     this.units = C.STALLED.map(u => ({
       ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false, openingSince: -1, done: false,
     }));
+    // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
+    this.engagedToy = null;
 
     // --- puppet
     this.puppet = { stage: 0, out: false, killAt: -1 };
@@ -356,11 +358,28 @@ export class Sim {
     // vent-opening kill for the toys is handled in tickUnits; BB is handled on cams-up
   }
 
+  // Sourced hop gates: a unit whose movement roll has passed still waits at
+  // its room until every gate on the next hop is open (mirrors the state-2
+  // transition groups, which retry continuously until their conditions hold).
+  canAdvance(u, f) {
+    if (f < u.stunUntil) return false;
+    const next = u.path[u.idx + 1];
+    const entry = next === 'ventL' || next === 'ventR' || next === 'office';
+    if (entry) {
+      if (u.entryGate === 'camsUp' && !this.camsUp) return false;
+      if (u.entryGate === 'camsDown' && this.camsUp) return false;
+      if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
+    } else if (u.lightStall && !this.camsUp && this.lightLogical) {
+      return false; // office light with cams down re-arms the stall counter
+    }
+    return true;
+  }
+
   tickUnits(f) {
     if (!this.opts.stalledEnabled) return;
     for (const u of this.units) {
       if (u.done) continue;
-      if (u.pending && f >= u.stunUntil) { u.pending = false; this.advance(u); }
+      if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
       if (u.atOpening && u.openingSince > 0 && this.camsUp && f - u.openingSince >= C.VENT_KILL_FRAMES) {
         this.kill('vent', `${u.name} got you from the vent opening`);
         return;
@@ -373,11 +392,13 @@ export class Sim {
     const node = u.path[u.idx];
     if (node === 'office') {
       u.done = true;
+      if (u.mutex) this.engagedToy = u.id;
       this.officeQueue.push(u.name);
       this.flag('broke-loose', `${u.name} reached the office and is queued for a blackout`);
       if (!this.camsUp && !this.blackout.active) this.startBlackout(u.name);
     } else if (node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame;
+      if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false });
       this.flag('broke-loose', `${u.name} reached a vent opening`);
     } else {

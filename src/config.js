@@ -136,21 +136,42 @@ export const DEFAULT_WIDGETS = {
 
 
 // --- Animatronic routes ----------------------------------------------------
-// `choke` is the index in `path` of the room the Minus 7 flash loop holds them
-// in. Routing after the chokepoint is a reasonable approximation: it only ever
-// runs if you have already broken the stun loop, and it exists so a mistake
-// costs you a few seconds of scramble rather than an instant loss.
+// [SOURCED: decompiled Android build 296 Office-frame events; the raw edge
+// list with per-hop gate conditions lives in the datamine's route-graph
+// export. Internal camera numbers were mapped to display labels via the
+// anchored bijection {8->9 Show Stage, 9->8 Parts/Service, 11->11 Prize
+// Corner, 12->12 Kid's Cove, 5->6, 6->5, 4->7, 2->1, 7->4, 10->10} with
+// 1->3 and 3->2 pinned by route-fitting (flagged: lower confidence).]
+//
+// 'blindA'/'blindB' are the mobile build's off-camera transit rooms (markers
+// 120/121): no camera shows them, so no flash can reach a unit standing there.
+// `choke` is the index in `path` of the room the Minus 7 flash loop holds
+// them in.
+//
+// Sourced gate semantics (all new relative to the PC-derived model):
+//   entryGate 'camsUp'  — the final hop into the vent opening / office only
+//                          fires while the monitor is UP,
+//   entryGate 'camsDown' — Withered Bonnie inverts it: he enters only while
+//                          the monitor is DOWN,
+//   lightStall true      — office light held with cams down blocks mid-route
+//                          hops (the `new bonnie` counter, re-armed each
+//                          second). Toy Chica is exempt at the source level.
+//   mutex true           — shares the `chicalookatyou` one-attacker-at-a-time
+//                          lock on the final hop.
+// Not yet modeled from the same extraction: the Puppet roams on mobile, and
+// Toy Bonnie/Toy Chica's final hops also test an `old chica` counter whose
+// meaning is undecoded.
 export const STALLED = [
-  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 3, 6, 'ventR'],  choke: 1, kind: 'vent' },
-  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 2, 6, 'ventR'],  choke: 1, kind: 'vent' },
-  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 7, 2, 5, 'ventL'],  choke: 1, kind: 'vent' },
-  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 7, 'hall', 'office'], choke: 1, kind: 'blackout' },
-  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],  choke: 1, kind: 'vent' },
-  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 10, 7, 'office'],   choke: 1, kind: 'blackout' },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 10, 2, 6, 'ventR'], choke: 1, kind: 'vent' },
+  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   lightStall: true,  mutex: true  },
+  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       lightStall: true,  mutex: false },
+  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', lightStall: false, mutex: false },
+  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', lightStall: true, mutex: true },
+  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   lightStall: false, mutex: true  },
+  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   lightStall: true,  mutex: true  },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', lightStall: true, mutex: false },
 ];
-// Every chokepoint sits one move from the start room, which is exactly why the
-// three-camera loop can hold all seven: nobody passes through an unflashed room.
+// The blind transit rooms break the old "nobody passes through an unflashed
+// room" property: several routes now contain a stretch no camera can touch.
 
 export const WITHEREDS = new Set(['withchica', 'withbonnie', 'withfreddy']);
 
