@@ -283,3 +283,49 @@ The split, in one place:
   temporary and uncommitted.
 - **Disposition:** derived-knowledge writeup only. Do not publish the binary,
   extracted assets, or raw decompiled event sheet.
+
+### 10. Chowdren CCN-recompile path for an in-engine pilot — **candidate**
+
+- **Target:** the Anaconda/Chowdren lineage ([Xanfre/anaconda](https://github.com/Xanfre/anaconda),
+  `FNAFSource/AnacondaDecompiler`) and this project's tooling docs.
+- **What it is:** the recompile-based route to an in-engine, closed-loop pilot,
+  scoped and de-risked 2026-08-20. Chowdren reads `application.ccn` directly and
+  recompiles events → native C++ (no Fusion license, no PAIRIP), so the pilot can be
+  injected as C++. Reusable findings:
+  - Chowdren builds and runs on **arm64 in Docker** (`python:2.7-slim` +
+    archive.debian.org apt + `Cython<3` / `Pillow<7`); the `build.py`
+    `Options.directive_defaults` → `get_directive_defaults()` fix (same as entry 4's
+    first item) applies to Chowdren's bundled mmfparser too.
+  - **The mmfparser mobile-CCN patch (entry 4) is what unblocks the Chowdren
+    converter, not a separate bridge.** Confirmed this session: stock Chowdren dies in
+    exactly the image-bank / events / objects spots entry 4 patches. Because Chowdren
+    sits on mmfparser, the CTFAK→JSON→adapter bridge originally scoped is redundant —
+    once mmfparser parses, the converter consumes the game directly.
+  - Confirmed CTFAK's event dump and mmfparser's model are the **same** Fusion-native
+    ACE encoding `(objectType, num, objectInfo, typed-params)`, which is *why* the
+    bridge is unnecessary.
+- **Artifact today:** plan + phased build in
+  [`IN-ENGINE-PILOT-RECOMPILE.md`](IN-ENGINE-PILOT-RECOMPILE.md); working arm64
+  Chowdren build recipe + logs in the session scratchpad. The one-line Cython fix and
+  the arm64/Docker recipe are the upstreamable bits.
+- **Disposition:** fold the Cython fix + arm64 recipe into Pedro's mmfparser/Chowdren
+  fork (entry 4's fork; no live upstream). The recompile *method* is a
+  derived-knowledge note, not a repo.
+
+### 11. Modern FNaF-mobile PAIRIP anti-tamper finding — **candidate**
+
+- **Target:** the technical FNaF / Clickteam-mobile datamining community.
+- **What it is:** the shipped `com.scottgames.fnaf2` v2.0.7 (release-7, Fusion build
+  296) is wrapped in **Google Play PAIRIP** — `com.pairip.VMRunner`,
+  `com.pairip.licensecheck.*` in the dex, `libpairipcore.so` in the arm64 split. It
+  validates Play-install provenance + app signature and virtualizes protected
+  methods, so **any repackage/re-sign of the retail APK crashes**. Consequence for
+  datamining/modding modern Clickteam-on-Android titles: in-APK mods are not viable
+  without anti-tamper circumvention; the tamper-free study path is **recompile from
+  the extracted CCN** (entry 10), which never touches the signed binary. Derived
+  knowledge only — no assets, no bypass tooling published.
+- **Artifact today:** recorded in
+  [`IN-ENGINE-PILOT-RECOMPILE.md`](IN-ENGINE-PILOT-RECOMPILE.md) (Route A).
+- **Disposition:** short community/wiki note alongside entry 6's mobile-build
+  divergences; affects every recent PAIRIP-wrapped Clickteam Android title, not just
+  FNaF.
