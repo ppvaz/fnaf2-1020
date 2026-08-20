@@ -36,6 +36,10 @@ const ENGINE = [
   ['simtest', ['simtest.mjs', '--sweep']],
   ['bbtest', ['bbtest.mjs', '200', '--assert']],
   ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
+  // The pilot asserts one narrow claim, not survival: Balloon Boy never
+  // reaches the office, and no Foxy death follows him taking the lights.
+  ['pilottest', ['pilottest.mjs', '200', '--vent', '--sync', '--assert']],
+  ['pilottest --worst', ['pilottest.mjs', '100', '--vent', '--sync', '--worst', '--assert']],
 ];
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],
@@ -49,7 +53,9 @@ const REPORTS = [
   ['minus6test', ['minus6test.mjs']],
   ['rvctest', ['rvctest.mjs', '200']],
   ['androidstalltest', ['androidstalltest.mjs']],
-  ['pilottest', ['pilottest.mjs']],
+  // The blind schedule, still unjudged: it is what the phone runs today, and
+  // it fails the assertion above by construction (200/200 BB->Foxy).
+  ['pilottest blind', ['pilottest.mjs']],
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;

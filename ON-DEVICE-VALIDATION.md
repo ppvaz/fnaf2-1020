@@ -257,17 +257,32 @@ disagrees. It is device-legal — the look can be taken a second early and the
 decision is a skip, not a timed reaction, so it does not need the reaction
 budget that rules out interactive driving.
 
-| Schedule | Result | Median depth |
-| --- | --- | ---: |
-| blind, as shipped | 0/200, all Foxy | 48 s |
-| + vent check | 0/200; 87 Golden Freddy, 113 inside | 54 s |
-| + vent check + `--sync` | 0/200, **every death now one mode**: the seven inside | 58 s |
+The Balloon Boy -> Foxy chain is the thing being broken here, and it is worth
+stating exactly: BB reaches the office (marker 123), g96 and g301/303 take
+every light away, the hall can no longer be flashed, Foxy's D runs past 3 and
+he collects. Foxy is the killer; BB is the cause. Over 1000 nights per row:
 
-So BB, Golden Freddy and Foxy are all handled, and the whole failure has
-collapsed onto a single mechanism: during the response's 6.4 s cams-down
-window the seven's entry timers run to completion and they walk in. Best
-single night rose 92 s -> 98 s of 420. That is real progress and nowhere near
-a win — the response buys BB at a price the seven collect.
+| Schedule | Foxy deaths | BB reached the office | BB->Foxy chain | Median depth |
+| --- | ---: | ---: | ---: | ---: |
+| blind, as shipped | 1000/1000 | 1000 | **1000** | 48 s |
+| + vent check | 2/1000 | 1 | 0 | 54 s |
+| + vent check + `--sync` | **0/1000** | **0** | **0** | 58 s |
+| + vent + `--sync`, worst-luck | **0/1000** | **0** | **0** | 48 s |
+
+The chain is gone, under pinned worst-luck RNG as well as normal seeds: Balloon
+Boy never reaches the office, so Foxy never collects a run because of him. The
+blind schedule's Foxy deaths were never really Foxy's.
+
+`node tools/pilottest.mjs 200 --vent --sync --assert` guards exactly that
+claim and nothing more — it asserts BB never gets in and no Foxy death follows
+him, and deliberately does **not** assert survival. It runs in
+`tools/test.mjs --engine`, normal and `--worst`. The blind schedule fails it
+200/200 by construction, which is the check working.
+
+What is left is one mode. Every remaining death is the seven walking in during
+the response's 6.4 s cams-down window, where their entry timers run to
+completion. Best single night rose 92 s -> 98 s of 420. Real progress, and
+nowhere near a win: the response buys Balloon Boy at a price the seven collect.
 
 **The device script is deliberately untouched.** `--sync` costs a screenshot
 per monitor action, and whether the phone can classify office-vs-camera view

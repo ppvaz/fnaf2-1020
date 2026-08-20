@@ -227,16 +227,27 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sync = process.argv.includes('--sync');
   const cyclesArg = (process.argv.find(a => a.startsWith('--cycles=')) || '').split('=')[1];
   const cycles = cyclesArg ? +cyclesArg : 80;
+  const assert = process.argv.includes('--assert');
+  const worst = process.argv.includes('--worst');
   const fails = {};
   let survived = 0, minBox = 1, minPower = Infinity, checks = 0, responses = 0, evictions = 0;
+  // The Balloon Boy -> Foxy chain, which is what the vent check exists to
+  // break: BB reaches the office, g96 and g301/303 take every light away, the
+  // hall can no longer be flashed, and Foxy collects. Counted separately from
+  // plain Foxy deaths because only this one is BB's fault.
+  let foxyDeaths = 0, bbInOffice = 0, chain = 0;
   for (let i = 0; i < n; i++) {
-    const r = run({ vent, evict, cycles, lateFlash, sync, sim: { seed: (i * 2246822519) >>> 0 } });
+    const r = run({ vent, evict, cycles, lateFlash, sync,
+      sim: { seed: (i * 2246822519) >>> 0, worst } });
     checks += r.checks; responses += r.responses; evictions += r.evictions;
     minBox = Math.min(minBox, r.sim.box); minPower = Math.min(minPower, r.sim.power);
     if (r.sim.won) survived++;
     else {
       const key = `${r.sim.death.reason}: ${r.sim.death.detail}`;
       fails[key] = (fails[key] || 0) + 1;
+      if (r.sim.death.reason === 'foxy') foxyDeaths++;
+      if (r.sim.bb.inside) bbInOffice++;
+      if (r.sim.bb.inside && r.sim.death.reason === 'foxy') chain++;
     }
   }
   const mode = `${lateFlash ? ' (late flash)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
@@ -245,4 +256,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower}` +
     (vent ? ` | ${responses} responses in ${checks} checks` : '') +
     (evict ? ` | ${evictions} evictions` : ''));
+  console.log(`Balloon Boy: ${bbInOffice} reached the office | ` +
+    `Foxy: ${foxyDeaths} deaths | BB->Foxy chain: ${chain}`);
+
+  if (assert) {
+    // The claim under guard is narrow and is the whole point of the vent
+    // check: Balloon Boy must never reach the office, and Foxy must never
+    // collect a run because he did. Survival is deliberately NOT asserted --
+    // the pilot still loses to the seven, and pretending otherwise is how the
+    // last set of stale numbers got written.
+    const problems = [];
+    if (bbInOffice) problems.push(`${bbInOffice} nights let Balloon Boy into the office`);
+    if (chain) problems.push(`${chain} Foxy deaths followed BB taking the lights`);
+    if (problems.length) {
+      for (const p of problems) console.log(`  FAIL  ${p}`);
+      process.exit(1);
+    }
+    console.log('  PASS  Balloon Boy never reached the office, and no Foxy death followed him');
+  }
 }
