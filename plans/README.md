@@ -11,8 +11,9 @@ in any later session. Suggested order and dependencies:
 4. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
    needs a reactive coaching model, the biggest piece.
 5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — first derivation pass
-   produced the sim-verified **Six-Seven Strat** (CAM 67 / Deep 7) candidate;
-   real-game validation is still required before it is a strategy or trainer mode.
-6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — search the space
-   beyond static covers, starting with **Minus Right**: CAM 06 as a FNaF 1 4B-style
-   strategic anchor while the hall-side threats are handled reactively.
+   produced **Six-Seven**, then the sourced route graph refuted it and independently
+   re-derived Minus 7 as the only robust minimal cover.
+6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — first gate-aware
+   pass complete: Minus Right, monitor denial and 125 clock-phased combinations all
+   fail after the sourced per-unit Withered endgames are modeled. See
+   [`GATE-SEARCH.md`](../GATE-SEARCH.md).

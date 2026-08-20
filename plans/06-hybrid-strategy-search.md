@@ -1,9 +1,25 @@
 # Derivation, tier 4: hybrid and phase-based strategies
 
-**Status:** planned, not started. **Depends on:** plan 05's camera-cover search and
-its CAM 06/Toy Bonnie validation gate. This work can produce simulator hypotheses
-before the Android decompile is available, but cannot prove that they transfer to the
-game.
+**Status:** first gate-aware pass complete; no survivor (`GATE-SEARCH.md`). The
+Android decompile is available and is now the validation gate. The search corrected
+two simulator errors, retracted an apparent 150/150 monitor-denial result, and closed
+the fixed/clock-phased policy family below under the current sourced model.
+
+## 2026-08-19 result
+
+`tools/gatesearch.mjs` now covers reactive box thresholds, fixed CAM 06 / CAM 07 /
+CAM 03 / CAM 06+07 anchors, and all 125 three-phase schedules that switch among
+those sets (or no camera) at 2 AM and 4 AM. A perfect-information timer policy was
+also tested as an upper bound.
+
+The first monitor-denial result appeared clean because the engine incorrectly gave
+every office-opening occupant the Toys' six-second continuous-cams-up grace. The
+event sheets show separate endgames: Withered Bonnie's night-7 per-unit cooldown is
+300 frames before a later cams-up entry; Withered Chica arms after six scheduler
+ticks. Once those are modeled and masked, the music-box economy collapses. Final
+clean survival: denial 10%, CAM 06 0%, CAM 07 12%, CAM 03 7%, CAM 06+07 0%; the
+best phase schedule is simply `07 → 07 → 07` at 12%. Every row reaches 0% box.
+Minus 7 remains 200/200. Full audit and reproducible table: `GATE-SEARCH.md`.
 
 ## Goal
 
@@ -17,7 +33,10 @@ does not exist. The remaining room for novelty is therefore in **hybrids, unequa
 cadences, phase changes and compact decision policies**, not another permutation of
 three permanently flashed rooms.
 
-## Lead candidate: “Minus Right”
+## Former lead candidate: “Minus Right”
+
+> **Search result:** 0/150 clean after the sourced per-unit office endgames were
+> folded in. Retained below as the hypothesis that motivated this plan.
 
 Flash only **CAM 06** every five seconds, permanently stalling the three modeled
 right-route occupants:
@@ -80,18 +99,19 @@ FNaF 1 references:
 
 ## Work
 
-1. Generalize the bot from a fixed camera-cover script to a fixed backbone plus
-   reactive blackout/vent decisions. First reproduce a known reactive strategy so
-   its behavior can be checked against the published consistency rate.
-2. Evaluate Minus Right before widening the space: clean seeds, worst luck, jitter,
-   music-box floor, power use, and deaths grouped by escaped character/transition.
-3. Enumerate CAM 07/right-vent-light and hybrid partitions, then unequal cadences and
-   phase changes.
-4. Rank survivors by consistency first, then human cost: inputs per ten seconds,
-   number of conditional branches, tightest reaction window and layout travel.
-5. Compare each survivor against Minus Two, Minus Toys, RVC and Six-Seven before
-   making any novelty claim.
-6. Produce a real-game test protocol for every survivor's unsupported mechanics.
+1. ~~Generalize the bot from a fixed camera-cover script to a fixed backbone plus
+   reactive blackout/vent decisions.~~ Done for the gate-aware family; reproducing
+   published RVC remains separate future work.
+2. ~~Evaluate Minus Right before widening the space.~~ Done; 0/150 clean.
+3. ~~Enumerate CAM 07, hybrid partitions and clock phases.~~ Fixed CAM 07 and all
+   125 three-phase schedules done. Right-vent-light control remains unmodeled.
+4. ~~Rank survivors by consistency first, then human cost.~~ Done; no row clears
+   the consistency gate, and every row reaches an empty box.
+5. ~~Compare against the documented frontier.~~ Done; Minus 7 remains 200/200,
+   while the CAM 03/06/07 branches and phase schedules all fail.
+6. No real-game protocol was produced because no simulator survivor exists. Any
+   future branch must first beat the corrected model and audit its unsupported
+   mechanics.
 
 ## Model gates
 
@@ -109,4 +129,3 @@ Either a second compact candidate exists with full simulator metrics, prior-art
 comparison, dependency audit and real-game protocol — or the searched hybrid/policy
 space is recorded well enough to show why Six-Seven and the known strategies remain
 the useful frontier.
-

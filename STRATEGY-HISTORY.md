@@ -109,6 +109,16 @@ re-derived from source (`CAM-6-7-STRATEGY.md` carries the full post-mortem).
 The lesson is the method: sim-derived candidates are hypotheses, and the
 decompile is now the first validation gate they must clear.
 
+A second search pass tested the obvious escape hatch after Six-Seven: stop asking
+cameras to cover every route and exploit the decompiled monitor-entry gates instead.
+Reactive monitor denial briefly scored 150/150, then its own source audit retracted
+the result: the simulator had incorrectly given Withered Bonnie and Withered Chica
+the Toys' six-second office-entry grace. Their separate timers force repeated long
+masks, which exhaust the music box. Fixed CAM 06/07/03 hybrids and all 125
+clock-phased combinations failed with the same resource contradiction
+(`GATE-SEARCH.md`). This is the second instance of the search/decompile loop doing
+its job by killing its most exciting output.
+
 ## Sources
 
 Primary docs in this repo: `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md`,

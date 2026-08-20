@@ -71,7 +71,8 @@ export class Sim {
 
     // --- the seven
     this.units = C.STALLED.map(u => ({
-      ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false, openingSince: -1, done: false,
+      ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false,
+      openingSince: -1, openingReadyAt: -1, done: false,
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
@@ -342,7 +343,8 @@ export class Sim {
   }
 
   unitLeave(u) {
-    u.atOpening = false; u.idx = 0; u.openingSince = -1;
+    u.atOpening = false; u.idx = 0; u.openingSince = -1; u.openingReadyAt = -1;
+    if (this.engagedToy === u.id) this.engagedToy = null;
     this.emit('vent-bang', { who: u.id, leaving: true });
   }
 
@@ -389,9 +391,15 @@ export class Sim {
     for (const u of this.units) {
       if (u.done) continue;
       if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
-      if (u.atOpening && this.camsUpSince >= 0 &&
-          f - this.camsUpSince >= C.entryStreakFrames(this.opts.night)) {
-        this.kill('vent', `${u.name} walked in: cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`);
+      const streakKill = u.atOpening && u.openingRule === 'streak' && this.camsUpSince >= 0 &&
+        f - this.camsUpSince >= C.entryStreakFrames(this.opts.night);
+      const armedKill = u.atOpening && u.openingRule === 'mask' && this.camsUp &&
+        f >= u.openingReadyAt;
+      if (streakKill || armedKill) {
+        const why = streakKill
+          ? `cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`
+          : 'their sourced opening timer armed before the next cams-up trip';
+        this.kill('vent', `${u.name} walked in: ${why}`);
         return;
       }
     }
@@ -408,6 +416,10 @@ export class Sim {
       if (!this.camsUp && !this.blackout.active) this.startBlackout(u.name);
     } else if (node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame;
+      if (u.id === 'withbonnie')
+        u.openingReadyAt = this.frame + C.witheredBonnieOpeningFrames(this.opts.night);
+      else if (u.id === 'withchica')
+        u.openingReadyAt = this.frame + C.WITHERED_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false });
       this.flag('broke-loose', `${u.name} reached a vent opening`);
@@ -437,8 +449,12 @@ export class Sim {
       for (const u of this.units) {
         if (u.done || u.atOpening) continue;
         if (this.rng.chance(C.MO_CHANCE(C.STALLED_AI), true)) {
-          if (this.frame < u.stunUntil) u.pending = true;
-          else this.advance(u);
+          // A successful roll enters the source's retrying transition state.
+          // Stun is only one of the reasons that transition may be closed:
+          // monitor polarity, the office-light stall and the one-toy mutex are
+          // equally load-bearing. Keep the move pending until every gate opens.
+          if (this.canAdvance(u, this.frame)) this.advance(u);
+          else u.pending = true;
         }
       }
     }

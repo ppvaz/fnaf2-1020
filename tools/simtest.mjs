@@ -3,6 +3,33 @@
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 
+// Regression for the sourced hop gates: a fresh successful movement roll must
+// wait behind a closed gate just like an already-stunned pending move. This was
+// easy to miss because the retry path and the initial-roll path are separate.
+{
+  const gate = new Sim({ seed: 1, worst: true, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const tb = gate.units.find(u => u.id === 'toybonnie');
+  tb.idx = tb.path.length - 2; // CAM 06 -> right opening requires cams up
+  gate.frame = C.MO_FRAMES;
+  gate.onFiveSecond();
+  if (tb.atOpening || !tb.pending)
+    throw new Error('closed cams-up entry gate did not retain Toy Bonnie as pending');
+  gate.monitor = 'up';
+  gate.tickUnits(gate.frame);
+  if (!tb.atOpening || tb.pending)
+    throw new Error('pending Toy Bonnie did not advance when the cams-up gate opened');
+
+  const endgame = new Sim({ seed: 2, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const wb = endgame.units.find(u => u.id === 'withbonnie');
+  wb.idx = wb.path.length - 1; wb.atOpening = true; wb.openingReadyAt = 0;
+  endgame.monitor = 'up'; endgame.camsUpSince = endgame.frame;
+  endgame.tickUnits(endgame.frame);
+  if (endgame.alive)
+    throw new Error('armed Withered Bonnie incorrectly received the shared cams-up streak grace');
+}
+
 const CYCLE = [
   [0,  'tap',  'monitor'],   // cams down
   [18, 'tap',  'mask'],      // mask on  (clears Golden Freddy)

@@ -39,13 +39,23 @@ export const MASK_LEAVE_FRAMES = 300;      // 5s cumulative mask time
 export const MASK_STORAGE_CAP = 59;        // storable sub-second mask time
 export const VENT_EARLY_LEAVE_CHANCE = 0.1; // per cumulative second
 
-// An attacker waiting at the office entry walks in once the CURRENT
-// continuous cams-up session reaches 20 - 2*night seconds; the counter
-// resets the moment the monitor starts coming down. Replaces the old
+// The Toys and Withered Freddy walk in once the CURRENT continuous cams-up
+// session reaches 20 - 2*night seconds; the counter resets the moment the
+// monitor starts coming down. Replaces the old
 // flat "5s in the opening with cams up" (VENT_KILL_FRAMES) model.
 // [SOURCED: decompile — the `value25` cams-up-session second counter
 // against the 20 - 2*night threshold]
 export const entryStreakFrames = (night) => s(20 - 2 * night);
+// The shared value25 streak applies to the Toys and Withered Freddy, not every
+// occupant of marker 122. Withered Bonnie instead gets a per-unit cooldown of
+// 1000-100*night frames and Withered Chica arms after six scheduler ticks.
+// Both must be masked before a later cams-up trip. Mangle's 122->123 edge is
+// driven by the right-vent light object's visible->invisible transition, so an
+// unchecked Mangle can remain parked at 122 in this model [INFERRED]. The
+// Chica timer can complete in just over five wall-clock seconds depending on
+// scheduler phase, so the model uses the conservative five-second edge.
+export const witheredBonnieOpeningFrames = night => 1000 - 100 * night;
+export const WITHERED_CHICA_OPENING_FRAMES = s(5);
 
 // Balloon Boy [SOURCED]
 export const BB_MOVE_CHANCE = 0.75;
@@ -184,13 +194,13 @@ export const DEFAULT_WIDGETS = {
 // Toy Bonnie/Toy Chica's final hops also test an `old chica` counter whose
 // meaning is undecoded.
 export const STALLED = [
-  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   lightStall: true,  mutex: true  },
-  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       lightStall: true,  mutex: false },
-  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', lightStall: false, mutex: false },
-  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', lightStall: true, mutex: true },
-  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   lightStall: false, mutex: true  },
-  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   lightStall: true,  mutex: true  },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', lightStall: true, mutex: false },
+  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStall: true,  mutex: true  },
+  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStall: true,  mutex: false },
+  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStall: false, mutex: false },
+  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStall: true, mutex: true },
+  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStall: false, mutex: true  },
+  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStall: true,  mutex: true  },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'park', lightStall: true, mutex: false },
 ];
 // The blind transit rooms break the old "nobody passes through an unflashed
 // room" property: several routes now contain a stretch no camera can touch.
