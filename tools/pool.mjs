@@ -87,7 +87,7 @@ export class SimPool {
 
 async function runSerial(mod, fn, optsList) {
   const m = await import(mod);
-  return optsList.map(m[fn]);
+  return optsList.map(o => m[fn](o));
 }
 
 // The process-wide pool the search tools share. `--serial` forces one thread,

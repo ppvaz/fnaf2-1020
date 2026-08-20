@@ -12,7 +12,7 @@ parentPort.on('message', async ({ id, mod, fn, batch }) => {
     const task = m[fn];
     if (typeof task !== 'function')
       throw new Error(`${mod} does not export a function named ${fn}`);
-    parentPort.postMessage({ id, values: batch.map(task) });
+    parentPort.postMessage({ id, values: batch.map(o => task(o)) });
   } catch (err) {
     parentPort.postMessage({ id, error: err.stack || String(err) });
   }

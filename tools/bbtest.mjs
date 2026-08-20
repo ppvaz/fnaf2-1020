@@ -2,6 +2,7 @@
 // model: if a correctly-played Minus 7 cannot clear the night here, either the
 // routine in MINUS-7-STRATEGY.md is wrong or the engine is.
 import { pathToFileURL } from 'node:url';
+import { isMainThread } from 'node:worker_threads';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 
@@ -141,7 +142,10 @@ export function summarize(opts) {
   return { won: sim.won, reason: sim.death?.reason || 'unknown', minBox, power: sim.power };
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// isMainThread: a pool worker inherits process.argv from its parent, so
+// without it this CLI block would re-run inside every worker that imports
+// bbtest as its task module.
+if (isMainThread && process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 const n = +(process.argv[2] || 200);
 const fails = {}; let minB = 1, minP = C.POWER_FRAMES, lapses = 0;
 for (let i = 0; i < n; i++) {

@@ -14,186 +14,29 @@
 //   node tools/gatesearch.mjs [--quick]
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import { pool, closePool } from './pool.mjs';
+
+// The controller itself lives in gatebot.mjs so the pool can import it as a
+// task module. Every night goes through the pool; `--serial` pins it to one
+// thread and must produce identical output.
+const GATEBOT = new URL('./gatebot.mjs', import.meta.url).href;
+const sweep = (optsList) => pool().map(GATEBOT, 'summarizePolicy', optsList);
 
 const F = C.FPS;
 const QUICK = process.argv.includes('--quick');
 const SEED = i => (i * 2246822519) >>> 0;
 
-// A decision cycle starts at :X2/:X7 and is back down before the movement
-// check three seconds later. Camera anchors are refreshed on every cycle;
-// winding is conditional on the box crossing the low/high thresholds.
-export class GateBot {
-  constructor(sim, policy) {
-    this.sim = sim;
-    this.policy = policy;
-    this.nextAnchor = C.s(2);
-    this.plan = [];
-    this.busyUntil = -1;
-    this.windMode = false;
-    this.reactiveMask = false;
-    this.inputs = 0;
-    this.branches = { wind: 0, skip: 0, threat: 0, gfHold: 0 };
-  }
-
-  queue(anchor) {
-    const s = this.sim, p = this.policy;
-    const targets = typeof p.targets === 'function' ? p.targets(anchor, s) : p.targets;
-    if (s.box <= p.windLow) this.windMode = true;
-    else if (s.box >= p.windHigh) this.windMode = false;
-    const wind = this.windMode;
-    this.branches[wind ? 'wind' : 'skip']++;
-
-    const rows = [
-      [0, 'set-down', 'monitor'],
-      [18, 'tap', 'mask'], [27, 'tap', 'mask'],
-      [30, 'down', 'light'], [32, 'up', 'light'],
-    ];
-    // A camera anchor must be refreshed every five seconds, even in a cycle
-    // where the box is healthy enough to skip winding.
-    if (wind || targets.length) {
-      rows.push([42, 'set-up', 'monitor']);
-      let t = 57;
-      for (const cam of targets) {
-        rows.push([t, 'tap', `cam:${cam}`], [t + 2, 'down', 'light'], [t + 4, 'up', 'light']);
-        t += 10;
-      }
-      if (wind) {
-        // A low box earns two bounded excursions across a ten-second recovery
-        // phase. The split resets both the sourced cams-up entry streak and
-        // Foxy's D; one nearly-six-second trip proved entry-safe but left Foxy
-        // enough uninterrupted time to lock on.
-        rows.push([t, 'tap', `cam:${C.BOX_CAM}`], [t + 3, 'down', 'wind']);
-        rows.push([155, 'up', 'wind'], [157, 'set-down', 'monitor'],
-          [168, 'down', 'light'], [170, 'up', 'light'],
-          [195, 'set-up', 'monitor'], [210, 'tap', `cam:${C.BOX_CAM}`],
-          [213, 'down', 'wind']);
-        let mid = 305;
-        for (const cam of targets) {
-          rows.push([mid, 'tap', `cam:${cam}`], [mid + 2, 'down', 'light'], [mid + 4, 'up', 'light']);
-          mid += 10;
-        }
-        if (targets.length) rows.push([mid, 'tap', `cam:${C.BOX_CAM}`], [mid + 3, 'down', 'wind']);
-        rows.push([438, 'up', 'wind'], [440, 'set-down', 'monitor'],
-          [450, 'down', 'light'], [452, 'up', 'light']);
-        this.busyUntil = anchor + 455;
-      } else {
-        rows.push([t + 2, 'set-down', 'monitor']);
-      }
-    }
-    // Optional second pulse lands just before the movement check. Besides
-    // Foxy duty, it re-arms the sourced office-light route stall.
-    if (p.lightPulse && !wind) rows.push([168, 'down', 'light'], [170, 'up', 'light']);
-
-    const base = p.jitter ? Math.floor(s.rng.next() * p.jitter) : 0;
-    const spread = p.jitter ? Math.max(1, Math.round(p.jitter / 3)) : 0;
-    this.plan.push(...rows.map(([o, kind, act]) =>
-      [anchor + o + base + (spread ? Math.floor(s.rng.next() * spread) : 0), kind, act])
-      .sort((a, b) => a[0] - b[0]));
-  }
-
-  act(kind, action) {
-    const s = this.sim;
-    if (kind === 'set-down') {
-      if (s.monitor === 'up' || s.monitor === 'raising') { s.press('monitor'); this.inputs++; }
-      return;
-    }
-    if (kind === 'set-up') {
-      if (!this.reactiveMask && s.monitor !== 'up' && s.monitor !== 'raising') {
-        s.press('monitor'); this.inputs++;
-      }
-      return;
-    }
-    // Hall Golden Freddy is visible when the office light comes on. Holding
-    // fire is a real observable branch, and Foxy's arrival evicts him.
-    if (action === 'light' && kind === 'down' && s.hallView && s.gf.inHall) {
-      this.branches.gfHold++;
-      return;
-    }
-    if (kind === 'up') s.release(action);
-    else s.press(action);
-    this.inputs++;
-  }
-
-  step() {
-    const s = this.sim;
-    while (this.nextAnchor <= s.frame) {
-      if (this.nextAnchor >= this.busyUntil) this.queue(this.nextAnchor);
-      this.nextAnchor += C.MO_FRAMES;
-    }
-
-    // Toys use the shared continuous cams-up streak and Mangle is parkable in
-    // the current vent-light interpretation. The Withereds are exceptions:
-    // their per-unit timers require a mask even when every box trip is short.
-    // BB and office Golden Freddy are harmless for the remainder of the
-    // *current* continuous cams-up session. Finish the bounded wind, then mask
-    // them as soon as the planned drop begins; reacting while still up merely
-    // throws away safe box time.
-    // React only to represented observable state. An earlier diagnostic read
-    // the hidden Withered openingReadyAt and masked one frame before it armed;
-    // Android source shows W. Bonnie cannot be cleared until his separate
-    // office overlay appears, so that privileged shortcut was invalid.
-    const threat = s.blackout.active ||
-      (!s.camsUp && (s.bb.inOpening || s.gf.present));
-    if (threat) {
-      if (!this.reactiveMask) this.branches.threat++;
-      this.reactiveMask = true;
-      this.busyUntil = s.frame;
-      // Threat handling preempts a box trip. Lower first, then bank mask time
-      // until every visible office/vent threat has resolved.
-      this.plan = this.plan.filter(([, kind, act]) =>
-        kind === 'set-down' || (act !== 'monitor' && act !== 'wind' && !act.startsWith('cam:')));
-      if (s.winding) { s.release('wind'); this.inputs++; }
-      if (s.monitor === 'up' || s.monitor === 'raising') { s.press('monitor'); this.inputs++; }
-      if (!s.maskOn) { s.press('mask'); this.inputs++; }
-    } else if (this.reactiveMask) {
-      if (s.maskOn) { s.press('mask'); this.inputs++; }
-      this.reactiveMask = false;
-      // A long BB/blackout mask hold feeds Foxy's D. Pay the hall flash back
-      // immediately on mask-off instead of waiting for the next clock anchor.
-      if (s.foxy.loc === 'hall' && !s.foxy.gotYou && !s.gf.inHall) {
-        s.press('light'); s.release('light'); this.inputs += 2;
-      }
-    }
-
-    while (this.plan.length && this.plan[0][0] <= s.frame) {
-      const [, kind, act] = this.plan.shift();
-      // Scripted mask flicks and camera raises never override an emergency hold.
-      if (this.reactiveMask && (act === 'mask' || kind === 'set-up')) continue;
-      this.act(kind, act);
-    }
-  }
-}
-
-export function runPolicy(opts = {}) {
-  const sim = new Sim({ seed: opts.seed ?? 999, worst: !!opts.worst, record: false });
-  const bot = new GateBot(sim, {
-    targets: opts.targets || [],
-    windLow: opts.windLow ?? 0.55,
-    windHigh: opts.windHigh ?? 0.85,
-    lightPulse: !!opts.lightPulse,
-    jitter: opts.jitter || 0,
-  });
-  let minBox = 1;
-  while (sim.alive && !sim.won) {
-    bot.step(); sim.tick(); minBox = Math.min(minBox, sim.box);
-  }
-  return { sim, bot, minBox };
-}
-
-function sample(policy, n, extras = {}) {
+async function sample(policy, n, extras = {}) {
+  const nights = await sweep(Array.from({ length: n },
+    (_, i) => ({ ...policy, ...extras, seed: SEED(i) })));
   let survived = 0, minBox = 1, minPower = C.POWER_FRAMES, inputs = 0;
   const deaths = {};
-  for (let i = 0; i < n; i++) {
-    const r = runPolicy({ ...policy, ...extras, seed: SEED(i) });
+  for (const r of nights) {
     minBox = Math.min(minBox, r.minBox);
-    minPower = Math.min(minPower, r.sim.power);
-    inputs += r.bot.inputs;
-    if (r.sim.won) survived++;
-    else {
-      const reason = r.sim.death?.reason || 'unknown';
-      deaths[reason] = (deaths[reason] || 0) + 1;
-    }
+    minPower = Math.min(minPower, r.power);
+    inputs += r.inputs;
+    if (r.won) survived++;
+    else deaths[r.reason] = (deaths[r.reason] || 0) + 1;
   }
   return { survived, n, minBox, minPower, inputs: Math.round(inputs / n), deaths };
 }
@@ -227,15 +70,15 @@ if (isMain) {
     for (const [windLow, windHigh] of thresholds) {
       for (const lightPulse of [false, true]) {
         const policy = { ...structure, windLow, windHigh, lightPulse };
-        const clean = sample(policy, searchN);
+        const clean = await sample(policy, searchN);
         const score = clean.survived * 1e6 + clean.minBox * 1e3 - clean.inputs;
         if (!best || score > best.score) best = { policy, clean, score };
       }
     }
-    const clean = sample(best.policy, validN);
-    const pinned = sample(best.policy, validN, { worst: true });
-    const j100 = sample(best.policy, validN, { jitter: Math.round(0.100 * F) });
-    const j200 = sample(best.policy, validN, { jitter: Math.round(0.200 * F) });
+    const clean = await sample(best.policy, validN);
+    const pinned = await sample(best.policy, validN, { worst: true });
+    const j100 = await sample(best.policy, validN, { jitter: Math.round(0.100 * F) });
+    const j200 = await sample(best.policy, validN, { jitter: Math.round(0.200 * F) });
     const p = best.policy;
     console.log(`  ${structure.name.padEnd(24)} low/high ${p.windLow.toFixed(2)}/${p.windHigh.toFixed(2)}${p.lightPulse ? ' +light' : '       '}`);
     console.log(`    clean ${pct(clean).padStart(4)}  pinned ${pct(pinned).padStart(4)}  j100 ${pct(j100).padStart(4)}  j200 ${pct(j200).padStart(4)}  box ${(clean.minBox * 100).toFixed(0)}%  pw ${clean.minPower}  inputs ${clean.inputs}`);
@@ -249,21 +92,22 @@ if (isMain) {
   const phaseN = QUICK ? 10 : 24;
   let phaseBest = null;
   for (const a of phaseSets) for (const b of phaseSets) for (const c of phaseSets) {
-    const targets = anchor => [a, b, c][Math.min(2, Math.floor(anchor / (140 * F)))].cams;
-    const policy = { targets, windLow: 0.65, windHigh: 0.90, lightPulse: false };
-    const clean = sample(policy, phaseN);
-    const j200 = sample(policy, phaseN, { jitter: Math.round(0.200 * F) });
+    const policy = { phases: [a.cams, b.cams, c.cams], phaseSplit: 140 * F,
+                     windLow: 0.65, windHigh: 0.90, lightPulse: false };
+    const clean = await sample(policy, phaseN);
+    const j200 = await sample(policy, phaseN, { jitter: Math.round(0.200 * F) });
     const score = [clean.survived, j200.survived, Math.round(clean.minBox * 1000), -clean.inputs];
     if (!phaseBest || score.some((v, i) => v !== phaseBest.score[i] &&
         v > phaseBest.score[i] && score.slice(0, i).every((x, j) => x === phaseBest.score[j]))) {
       phaseBest = { labels: [a.label, b.label, c.label], policy, score };
     }
   }
-  const phaseClean = sample(phaseBest.policy, validN);
-  const phasePinned = sample(phaseBest.policy, validN, { worst: true });
-  const phaseJ100 = sample(phaseBest.policy, validN, { jitter: Math.round(0.100 * F) });
-  const phaseJ200 = sample(phaseBest.policy, validN, { jitter: Math.round(0.200 * F) });
+  const phaseClean = await sample(phaseBest.policy, validN);
+  const phasePinned = await sample(phaseBest.policy, validN, { worst: true });
+  const phaseJ100 = await sample(phaseBest.policy, validN, { jitter: Math.round(0.100 * F) });
+  const phaseJ200 = await sample(phaseBest.policy, validN, { jitter: Math.round(0.200 * F) });
   console.log(`\n  best clock-phased set      ${phaseBest.labels.join(' -> ')}`);
   console.log(`    clean ${pct(phaseClean).padStart(4)}  pinned ${pct(phasePinned).padStart(4)}  j100 ${pct(phaseJ100).padStart(4)}  j200 ${pct(phaseJ200).padStart(4)}  box ${(phaseClean.minBox * 100).toFixed(0)}%  pw ${phaseClean.minPower}  inputs ${phaseClean.inputs}`);
   console.log('\nMinus 7 regression: node tools/bbtest.mjs 200');
+  await closePool();
 }
