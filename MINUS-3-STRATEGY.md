@@ -105,8 +105,9 @@ Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Min
    flash on monitor-down, or the 1-frame blackout flash window.
 5. **RVC mask timing** — the extra ~0.5 s mask hold clearing vent animatronics needs
    checking against `MASK_LEAVE_FRAMES` / cumulative-mask-time modelling.
-6. **Right vent light stalls Toy Bonnie** (Shooter25) — vent lights are widgets only;
-   they have no stalling effect in the engine.
+6. **Right vent light stalls Toy Bonnie** (Shooter25) — ~~vent lights are widgets
+   only~~ **sourced & implemented 2026-08-20 (second pass)**: group 428 requires
+   `right light` = 0 on his vent hop; `canAdvance` now enforces it.
 7. **CAM 03 stalling Toy Bonnie + Withered Freddy** — confirmed by the
    Technical-FNaF wiki's flashlight page (source 8), whose strategy table lists
    Minus 2 as "Camera Light, Cam 3, Toy Bonnie and Withered Freddy, glitchless".

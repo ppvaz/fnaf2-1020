@@ -261,6 +261,22 @@ import { Sim } from '../src/engine.js';
   if (!timerTb.inside)
     throw new Error('Toy Bonnie with B = 0 and cameras up did not cross to marker 123');
 
+  // Toy Bonnie's vent hop (group 428) needs the right vent light OFF as well
+  // as cameras down — holding it stalls his entry (the Shooter25 stall).
+  const rightLight = new Sim({ seed: 22, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const stallTb = rightLight.units.find(u => u.id === 'toybonnie');
+  for (const u of rightLight.units) if (u !== stallTb) u.done = true;
+  stallTb.idx = stallTb.path.length - 2; stallTb.pending = true;
+  rightLight.press('ventR');
+  rightLight.tickUnits(0);
+  if (stallTb.atOpening || !stallTb.pending)
+    throw new Error('held right vent light did not stall Toy Bonnie\'s vent entry');
+  rightLight.release('ventR');
+  rightLight.tickUnits(0);
+  if (!stallTb.atOpening)
+    throw new Error('Toy Bonnie did not enter once the right vent light was released');
+
   // Foxy: per-frame exposure vs 100*night, with the B = 50 hall pin holding
   // his eviction until 50 frames after the light release (g745/846/855).
   const foxyPin = new Sim({ seed: 18, bbEnabled: false, gfEnabled: false,

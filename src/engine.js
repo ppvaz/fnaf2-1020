@@ -525,7 +525,9 @@ export class Sim {
     const entry = next === 'ventL' || next === 'ventR' || next === 'office';
     if (entry) {
       if (u.entryGate === 'camsUp' && !this.camsUp) return false;
-      if (u.entryGate === 'camsDown' && this.camsUp) return false;
+      // Toy Bonnie's vent hop (group 428) also needs the right vent light off
+      // — holding it stalls his entry (the Shooter25 stall).
+      if (u.entryGate === 'camsDown' && (this.camsUp || this.ventLightR)) return false;
       if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
     } else if (u.lightStallAt.includes(u.idx) && !this.camsUp && this.lightStallOn) {
       return false; // only source edges guarded by `new bonnie = 0`
