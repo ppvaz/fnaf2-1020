@@ -2,13 +2,13 @@
 // the coach is currently cueing. Checks control gating, cueing, streaks and the
 // pass screen.
 import { spawn } from 'node:child_process';
+import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync } from 'node:fs'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
 
 const BASE = process.argv[2] || 'http://localhost:8731/dist/index.html';
 const PORT = 9337;
-const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${mkdtempSync(join(tmpdir(), 'm7l-'))}`, '--no-first-run', '--disable-gpu',
-  '--window-size=880,420', 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(chromeBinary(),
+  chromeArgs(PORT, mkdtempSync(join(tmpdir(), 'm7l-'))), { stdio: 'ignore' });
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 let id = 0;
 const rpc = (ws, m, p = {}) => new Promise((res, rej) => { const mid = ++id;

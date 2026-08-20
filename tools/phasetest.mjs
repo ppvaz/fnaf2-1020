@@ -1,14 +1,14 @@
 // Drives lessons 7 (Phase A) and 8 (Phase B) in a real browser. These are the
 // two lessons that have only ever been checked headlessly.
 import { spawn } from 'node:child_process';
+import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os'; import { join } from 'node:path';
 
 const BASE = process.argv[2] || 'http://localhost:8731/dist/index.html';
 const PORT = 9345;
-const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${mkdtempSync(join(tmpdir(), 'm7p-'))}`, '--no-first-run', '--disable-gpu',
-  '--window-size=880,420', 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(chromeBinary(),
+  chromeArgs(PORT, mkdtempSync(join(tmpdir(), 'm7p-'))), { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let id = 0;
 const rpc = (ws, m, p = {}) => new Promise((res, rej) => { const mid = ++id;

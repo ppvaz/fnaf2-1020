@@ -1,6 +1,7 @@
 // Headless smoke test over the Chrome DevTools Protocol. No dependencies:
 // Node 22 ships a global WebSocket.
 import { spawn } from 'node:child_process';
+import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,11 +10,7 @@ const URL_ = process.argv[2] || 'http://localhost:8731/dist/index.html';
 const PORT = 9333;
 const profile = mkdtempSync(join(tmpdir(), 'm7-chrome-'));
 
-const chrome = spawn('google-chrome', [
-  '--headless=new', `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
-  '--no-first-run', '--no-default-browser-check', '--disable-gpu',
-  '--window-size=880,420', 'about:blank',
-], { stdio: 'ignore' });
+const chrome = spawn(chromeBinary(), chromeArgs(PORT, profile), { stdio: 'ignore' });
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 

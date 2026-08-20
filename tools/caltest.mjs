@@ -1,6 +1,7 @@
 // Calibration smoke test: dragging a control must reposition it and must NOT
 // register as a game input, and the saved layout must reach src/config.js.
 import { spawn } from 'node:child_process';
+import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
@@ -23,9 +24,8 @@ const restore = () => {
 };
 process.on('exit', restore);
 const PORT = 9334;
-const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${mkdtempSync(join(tmpdir(), 'm7c-'))}`, '--no-first-run', '--disable-gpu',
-  '--window-size=880,420', 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(chromeBinary(),
+  chromeArgs(PORT, mkdtempSync(join(tmpdir(), 'm7c-'))), { stdio: 'ignore' });
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 let id = 0;

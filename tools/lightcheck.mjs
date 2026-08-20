@@ -2,11 +2,11 @@
 // places; exactly one must be on screen at a time, and the coach must cue the
 // one that is actually visible.
 import { spawn } from 'node:child_process';
+import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync } from 'node:fs'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
 const PORT = 9339;
-const chrome = spawn('google-chrome', ['--headless=new', `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${mkdtempSync(join(tmpdir(), 'm7g-'))}`, '--no-first-run', '--disable-gpu',
-  '--window-size=880,420', 'about:blank'], { stdio: 'ignore' });
+const chrome = spawn(chromeBinary(),
+  chromeArgs(PORT, mkdtempSync(join(tmpdir(), 'm7g-'))), { stdio: 'ignore' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let id = 0;
 const rpc = (ws, m, p = {}) => new Promise((res, rej) => { const mid = ++id;
