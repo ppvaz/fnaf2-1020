@@ -165,6 +165,11 @@ export const GF_HALL_ROLL = 10;
 // g779 adds one per frame while the light is on him and the hall is otherwise
 // empty; g780 kills above 100, so 101 frames.
 export const GF_HALL_KILL_FRAMES = 100;
+// `hall movement` [SOURCED: g875-880 set it to 300 the moment any of the
+// hall-routed characters overlaps it, g881 drains it per frame]. g779 needs it
+// at zero, so for five seconds after anyone passes through the hallway Golden
+// Freddy cannot accumulate exposure there at all.
+export const HALL_MOVEMENT_FRAMES = 300;
 
 // Stalled animatronics: everyone is capped at 15 AI in 10/20 [SOURCED]
 export const STALLED_AI = 15;

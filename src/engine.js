@@ -65,6 +65,9 @@ export class Sim {
 
     // --- Golden Freddy (office) + the separate hallway version
     this.gf = { present: false, inHall: false, hallExposure: 0 };
+    // `hall movement`: refreshed to 300 frames whenever someone transits the
+    // hall, and Golden Freddy's hall exposure is blocked while it runs.
+    this.hallMovementUntil = -1;
 
     // --- Balloon Boy
     this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
@@ -417,9 +420,12 @@ export class Sim {
     // g779's empty-hall test names exactly the characters whose routes pass
     // through the two off-camera transit markers: `hall stage 1` (120) is
     // blindA and `hall stage 2` (121) is blindB, plus W. Foxy in the hall.
-    const hallOccupied = this.foxy.loc === 'hall' ||
+    const inTransit = this.foxy.loc === 'hall' ||
       this.units.some(u => !u.done &&
         (u.path[u.idx] === 'blindA' || u.path[u.idx] === 'blindB'));
+    // g875-880 refresh the latch while anyone is in the hall; g881 drains it.
+    if (inTransit) this.hallMovementUntil = f + C.HALL_MOVEMENT_FRAMES;
+    const hallOccupied = inTransit || f < this.hallMovementUntil;
 
     // g781: his presence is not a latch. Every one-second event with the hall
     // light off re-rolls it, so holding the light freezes whatever is there.

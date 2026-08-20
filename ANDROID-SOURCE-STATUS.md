@@ -63,6 +63,30 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: coverage, measured
+
+Every pass before this one was a targeted lookup: it answered its own question
+and said nothing about what had not been read. `tools/dump/coverage.py` now
+classifies all 1332 office-frame groups by what they can change and diffs that
+against every group number cited in the repo. Current state: **72% of the
+state-writing groups and 86% of the input groups are cited**, with 87 unread
+groups that could in principle move something, clustered into 19 blocks. The
+full map is [`ANDROID-GROUP-MAP.md`](ANDROID-GROUP-MAP.md); regenerate it after
+each sourcing pass.
+
+Running down the two largest blocks immediately paid for the exercise:
+
+- **`g875-881` — `hall movement`.** Any hall-routed character overlapping it
+  sets it to 300 frames and g881 drains it. g779 requires it at zero, so for
+  five seconds after anyone transits the hallway Golden Freddy cannot
+  accumulate exposure there at all. Flagged as unmodelled during the Golden
+  Freddy pass; now implemented.
+- **`g458-477` — inert.** A per-character drain of the `C` counter. Nothing
+  anywhere gates on `C` except the Puppet's branch selector (g406/407), so it
+  is bookkeeping, not a mechanic.
+
+That is the honest shape of the risk: not zero, bounded, and now enumerated.
+
 ## 2026-08-20: same-frame input order, and the forcedown the engine never had
 
 Group order *is* the input order. Every group that reads a touch and writes
