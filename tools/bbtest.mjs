@@ -166,4 +166,17 @@ const failed = Object.values(fails).reduce((a, b) => a + b, 0);
 console.log(`${n - failed}/${n} survived${process.argv.includes('--worst') ? ' (worst luck)' : ''}`);
 for (const [k, v] of Object.entries(fails)) console.log(`  ${v}x  ${k}`);
 console.log(`min box ${(minB * 100).toFixed(0)}% | min power ${minP} | stun lapses total ${lapses}`);
+
+// --assert turns the README's headline claim -- Minus 7 has no unwinnable RNG,
+// and a correct cycle never lets a stun lapse -- into something a test runner
+// can fail on. Without it this file only ever printed numbers and exited 0.
+if (process.argv.includes('--assert')) {
+  const problems = [];
+  if (failed) problems.push(`${failed}/${n} seeds died`);
+  if (lapses) problems.push(`${lapses} stun lapses`);
+  if (problems.length) {
+    console.error(`FAIL: ${problems.join(', ')}`);
+    process.exitCode = 1;
+  }
+}
 }
