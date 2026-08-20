@@ -5,8 +5,12 @@ in any later session. Suggested order and dependencies:
 
 Current triage (2026-08-20):
 
-- **Most product juice:** Plan 02. Android behavior has now cleared its camera-stall
-  dependency; the static initializer gap is provenance work, not a product gate.
+- **Plan 02 is blocked on a framing decision (2026-08-20 second pass):** the
+  sim-verify step ran and the Minus 3 family is NOT zero-RNG on Android
+  (Minus Toys can't transfer; adapted Minus Two probes 16/200 — see
+  `MINUS-3-STRATEGY.md` §7). The mode is only worth building as best-odds
+  practice or PC history, or after on-device validation of the
+  consecutive-tick mask clears.
 - **Most untouched work:** Plan 03, a real reactive-grading mode; it is larger than
   a script addition and still needs its Android vent/endgame rules sourced.
 - **Smallest runnable experiment:** Plan 04's optional per-step human-jitter pass.

@@ -132,6 +132,39 @@ Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Min
 - The trainer should surface the legitimacy caveat, and Minus Two is the natural
   "legit rules" sibling mode if the CAM 03 stall (item 7) can be sourced.
 
+## 7. 2026-08-20 Android probe verdict (plan 02 step 2)
+
+`tools/minus2test.mjs` encodes the family's only Android-viable member —
+glitchless Minus Two, adapted with every available trick (sourced right-vent
+Toy Bonnie stall, boundary-aligned Foxy flashes during holds, reactive
+mask-hold branches, observable-only controller) — against the corrected
+Android model:
+
+- **Minus Toys cannot transfer**: the double-camera glitch has no Android
+  data-model state (§5 item 2) and CAM 09 is unconditionally flash-excluded
+  (§5 item 3).
+- **Minus Two: 16/200 normal seeds** (deaths inside-office via Toy Chica);
+  the pin-all-six `--cams=3,5,6` extension scores 0/200. The pinned
+  worst-luck 100/100 is a diagnostic artifact (pinning freezes the escape
+  RNG too), not a proof.
+- **Why it fails structurally on Android**: Foxy's lock rolls land on the
+  5 s boundaries and demand a hall flash roughly every cycle; each flash
+  resets the sourced *consecutive* mask counters (group 293), so Toy Chica's
+  five-tick guaranteed clear cannot complete before her five-second opening
+  timer arms, and any later monitor raise admits her to marker 123. On PC
+  the mask repels vent animatronics near-instantly, which is why the
+  published family works there; the Android consecutive-tick semantics are
+  the transfer-breaker. Adding flash depth to protect Toy Chica re-derives
+  Minus 7's {4,7,10} cut set.
+- **Caveat**: this closes the probed policy shape on the *current model*.
+  The consecutive-tick mask-clear semantics are the single highest-value
+  target for on-device validation — if the real device clears vent
+  animatronics faster, the family reopens.
+
+For plan 02 this means a "Minus 3 family" trainer mode on Android is either
+a best-odds practice mode (~8% even played perfectly, per the probe) or PC
+history — not a zero-RNG drill like Minus 7.
+
 ## Sources
 
 1. insstaa — *Completing Golden Freddy With a Brand New Strategy (Minus 3 strat)*,

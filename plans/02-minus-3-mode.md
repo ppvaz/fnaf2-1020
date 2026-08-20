@@ -1,12 +1,15 @@
 # Trainer mode: Minus 3
 
-**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Implementation
-not started. 2026-08-20 unblock: the camera-light stall is Android-sourced
-after all (400 frames from `stun time`; the "disabled countdown" reading was
-the pre-XOR handle scramble — see
-[`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md)). Engine work for this
-mode now waits only on the character-identity re-audit of routes/endgame
-bindings, not on a missing stall mechanism.
+**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Step 2
+(sim-verify before teaching) **done 2026-08-20 (second pass)**: the family is
+NOT zero-RNG on the canonical Android model. Minus Toys cannot transfer (no
+glitch state, CAM 09 flash-excluded); the adapted glitchless Minus Two probe
+(`tools/minus2test.mjs`) scores 16/200 with a structural Toy Chica failure —
+see `MINUS-3-STRATEGY.md` §7. Before building the mode, decide the framing:
+best-odds practice mode, PC-history mode, or park the plan pending on-device
+validation of the consecutive-tick mask-clear semantics (the transfer-breaker).
+Engine gaps from §5 that were load-bearing are now closed (camera stall,
+right-vent Toy Bonnie stall, vent-light battery).
 
 **Research verdict:** the mode should teach **Minus Toys** (Zach_Scream, 2025), the
 family's state of the art and the second-ever zero-RNG strategy; the 2023 original is
