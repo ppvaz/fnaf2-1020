@@ -163,7 +163,10 @@ What they establish:
 ## Accuracy
 
 The canonical mechanics source is the owned modern-Android event-sheet extraction.
-Community PC reverse engineering is retained as attributed supporting research, not
+[Reading the source dump](SOURCE-DUMP-GUIDE.md) explains what that extraction is,
+how it is organised, the XOR-28 handle scramble that makes it readable, and the
+`tools/dump/` commands used to source a rule from it — read it before citing a
+group number. Community PC reverse engineering is retained as attributed supporting research, not
 silently merged into Android rules. Constants are marked `[SOURCED]`, `[CALIBRATED]`,
 or `[INFERRED]` in `src/config.js`; the live implementation gaps are tracked in
 [Android source status](ANDROID-SOURCE-STATUS.md). The
