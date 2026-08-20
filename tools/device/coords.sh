@@ -4,7 +4,7 @@
 # band belongs to Android gesture navigation and can swallow taps.
 TAP_CONTINUE="400 730"     # title: Continue
 TAP_NEWGAME="400 640"
-TAP_6TH="400 880"      # title: 6th Night      # title: New Game
+TAP_6TH="400 880"          # title: 6th Night
 TAP_MUTE="545 78"          # in night: MUTE CALL
 TAP_MONITOR="1780 1015"    # monitor toggle bar (right, white)
 TAP_MASK="600 1015"        # mask toggle bar (left, pink)
