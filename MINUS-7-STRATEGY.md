@@ -191,6 +191,16 @@ BB laughs on every successful movement. Laughs 1 and 2: **do nothing, keep the m
 Goal: **have the cams DOWN across every 5s interval**, because BB's 4th movement can only execute
 while the cams are up.
 
+> **What the source actually does** [SOURCED — g342/g359/g417, see
+> `ANDROID-SOURCE-STATUS.md`]: the 5 s movement roll is never blocked, and a passed roll is
+> *latched* (`A = 2`) until it can be spent. Only the hop into the vent opening checks the
+> monitor. So cams-down across the interval **defers** BB's move rather than preventing it — he
+> takes it the moment your next monitor raise completes. The procedure below is still right,
+> because the deferral hands you the *timing*: he arrives when you choose to come up, prepared,
+> instead of mid-cycle. What does not work is the tempting extrapolation — "stay down across
+> every interval forever and he can never move." You have to raise to wind the box, and he is
+> waiting when you do.
+
 ```
 :X2 or :X7   Drop cams → mask flick → tap CTRL (Foxy) → cams up
              → flash 10, 4, 7 → CAM 11 → wind

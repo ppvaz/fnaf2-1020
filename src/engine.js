@@ -479,7 +479,9 @@ export class Sim {
 
   onCamsUp() {
     this.camsUpCount++;
-    // BB steps into the opening the moment the cams come up if he was waiting
+    // BB steps into the opening the moment the cams come up if he was waiting.
+    // [SOURCED] g417 is his only monitor-gated edge and it consumes a latched
+    // A = 2, so cameras down defer the hop instead of cancelling it.
     if (this.bb.pending && this.bb.stage === 3) { this.bb.pending = false; this.bbEnterOpening(); return; }
     // and walks in if he is already sitting in the opening
     if (this.bb.inOpening && this.bb.openingAtCamsUp !== this.camsUpCount) {

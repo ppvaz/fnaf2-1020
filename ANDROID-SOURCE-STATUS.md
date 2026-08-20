@@ -54,8 +54,35 @@ Consequences for this ledger:
   of Golden Freddy — findings recorded in the extraction backlog below.
   The `ANDROID-OFFICE-ENDGAME.md` prose rewrite is done (item 19); still
   open: the hall-GF kill-threshold group, same-frame input ordering (item 7)
-  and the display-map artwork closure (item 23) — the latter two need the
-  local `~/fnaf-apks` extraction, which is not present on this machine.
+  and the display-map artwork closure (item 23).
+- **The dump is reproducible on this machine (2026-08-20).** The extracted
+  `application.ccn` plus a CTFAK build carrying our own `EventTextDumper`
+  regenerate the true-name event sheet locally in about six seconds; see
+  [`SOURCE-DUMP-GUIDE.md`](SOURCE-DUMP-GUIDE.md) and `tools/dump/`. Group
+  numbering matches the citations already in this ledger. Item 7 (same-frame
+  ordering) is therefore answerable here; item 23 still needs image export,
+  which this logic-only dumper does not do.
+
+## 2026-08-20: Balloon Boy approach pipeline, re-sourced
+
+Prompted by a strategy claim that keeping the cameras down across the 5 s
+boundary *prevents* BB's last move. The event sheet says it defers it:
+
+| Group | Rule |
+| --- | --- |
+| 342 | Every 5000 ms, `Random(20) < Balloon Boy AI` → `A = 1`. **No monitor, camera or light condition** — the roll is never blocked |
+| 359 | `A = 1` and `B = 0` → `A = 2`, `C = 10` (look-hold row already in `ANDROID-CAMERA-STALL.md`: BB has no camera exclusion) |
+| 413-416, 418 | `A = 2` + current marker → hop, `A = 0`. Route is **CAM 10 → 07 → 03 → 01 → 05**, no monitor gate anywhere |
+| 417 | `A = 2` + on `cam 5` + `viewing > 0` + monitor-up complete → `in office` (122) |
+| 290/291 | at 122, raise seen → `v6 = 1`; raise completes → `got you box` (123) |
+| 292/294 | at 122 + mask fully on: 10%/s roll, or `v12 >= 5` consecutive ticks → back to `cam 10` |
+
+`A = 2` is a **latch, not a moment**: only group 417 gates on the monitor, and
+nothing clears the latch while the cameras are down, so a cameras-down 5 s
+boundary postpones the hop into the vent opening until the next completed
+monitor raise — which the music box forces you to perform. This confirms the
+engine's `bb.pending` model (`src/engine.js`) rather than the "cams down = no
+move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 
 ## Labels
 
@@ -102,7 +129,7 @@ Consequences for this ledger:
 | P1 | Display-camera mapping | Replace the two route-fitted low-confidence room mappings with direct Android UI/object anchors |
 | P1 | ~~In-office auxiliary mover~~ **Resolved 2026-08-20** | The pre-XOR "`in office` object" is Balloon Boy himself (dump oi 102 = `balloon boy`); his 122/123 monitor-raise branch is BB's office behavior, not an extra mover |
 | P1 | Puppet | Implement Android's post-box roaming route. (The supposed CAM 11 flash-stall event, group 457, actually targets Paper Pals with `stun time - night*50`; the Puppet has no flash group.) |
-| P1 | Balloon Boy inside-office behavior | Route/latch/opening behavior is modeled; flashlight disable and eventual departure after a failed defense are not |
+| P1 | Balloon Boy inside-office behavior | ~~Route/latch/opening behavior is modeled~~ **Sourced 2026-08-20**: roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Still open: flashlight disable and eventual departure after a failed defense |
 | P2 | Input event ordering | Establish same-frame order for monitor, mask, hall light, and vent-light touch objects |
 | P2 | Sound cue frames | Tie bangs, laughs, static, and blackout cues to source state transitions for reaction training |
 | P2 | Auxiliary counters | The office encounter latch is literally named `in danger`; `Active 21` is really `decide path` (route-branch selector, used by W. Freddy g376-377 and Mangle g396-397); decode `Sockpuppet AI`, `time of the night` edge cases, and remaining counters |
