@@ -33,11 +33,11 @@ const OPENING = [
 ];
 
 const CYCLE = [
-  [0, 'tap', 'monitor'],                       // cams down
+  [0, 'down'],                                 // cams down (see `--sync`)
   [450, 'tap', 'mask'], [800, 'tap', 'mask'],  // Golden Freddy flick
   [950, 'hold', 'light', 200],                 // hall, two attempts
   [1300, 'hold', 'light', 150],
-  [1550, 'tap', 'monitor'],                    // cams up
+  [1550, 'up'],                                // cams up
   [2050, 'tap', 'cam:10'], [2240, 'hold', 'light', 60],
   [2430, 'tap', 'cam:4'], [2620, 'hold', 'light', 60],
   [2810, 'tap', 'cam:7'], [3000, 'hold', 'light', 60],
@@ -49,11 +49,11 @@ const CYCLE = [
 // a Balloon Boy mask hold survivable: the 400-frame stun has to cover the whole
 // masked window, and the human Phase B buys that margin the same way.
 const CYCLE_LATE_FLASH = [
-  [0, 'tap', 'monitor'],                       // cams down
+  [0, 'down'],                                 // cams down (see `--sync`)
   [450, 'tap', 'mask'], [800, 'tap', 'mask'],  // Golden Freddy flick
   [950, 'hold', 'light', 200],
   [1300, 'hold', 'light', 150],
-  [1550, 'tap', 'monitor'],                    // cams up
+  [1550, 'up'],                                // cams up
   [1800, 'tap', 'cam:11'], [1990, 'hold', 'wind', 1400],
   [3500, 'tap', 'cam:10'], [3690, 'hold', 'light', 60],
   [3880, 'tap', 'cam:4'], [4070, 'hold', 'light', 60],
@@ -81,7 +81,7 @@ const RESPONSE = [
   // cameras, whose 400-frame stun expires just before the next 5 s interval.
   [6000, 'tap', 'mask'],
   [6200, 'hold', 'light', 250],                // repay Foxy immediately
-  [6400, 'tap', 'monitor'],
+  [6400, 'up'],
   // All three stall cameras must be refreshed before that interval, which
   // lands at +7700. At the device's 190 ms launch spacing this finishes at
   // +7650 -- the whole margin the response has.
@@ -144,7 +144,7 @@ export function run(opts = {}) {
     queue.push([t0 + ms(o), kind, act, dur ? ms(dur) : 0]));
 
   at(0, OPENING);
-  let checks = 0, responses = 0, evictions = 0;
+  let checks = 0, responses = 0, evictions = 0, syncs = 0;
   const cycleAt = (k) => ms(7000 + k * 5000);
   const cycleTable = opts.lateFlash ? CYCLE_LATE_FLASH : CYCLE;
   for (let k = 0; k < cycles; k++) at(cycleAt(k), cycleTable);
@@ -196,6 +196,18 @@ export function run(opts = {}) {
     while (queue.length && queue[0][0] <= f) {
       const [, kind, act, dur] = queue.shift();
       if (kind === 'check') { if (ventCheck(f)) break; }
+      // `down`/`up` are monitor *intents*, not presses. Blind, they are the
+      // old unconditional toggle. With --sync the pilot spends one screenshot
+      // on the monitor state first and presses only if the state disagrees --
+      // the one input the phone can take without a reaction deadline, since
+      // the look can happen a second early and the decision is a skip, not a
+      // timed response.
+      else if (kind === 'down' || kind === 'up') {
+        const want = kind === 'up';
+        if (!opts.sync) { sim.press('monitor'); continue; }
+        syncs++;
+        if (sim.camsUp !== want) sim.press('monitor');
+      }
       else if (kind === 'tap') sim.press(act);
       else { sim.press(act); releases.push([f + dur, act]); }
     }
@@ -204,7 +216,7 @@ export function run(opts = {}) {
 
     sim.tick();
   }
-  return { sim, checks, responses, evictions };
+  return { sim, checks, responses, evictions, syncs };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -212,12 +224,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const vent = process.argv.includes('--vent');
   const evict = process.argv.includes('--evict');
   const lateFlash = process.argv.includes('--late-flash');
+  const sync = process.argv.includes('--sync');
   const cyclesArg = (process.argv.find(a => a.startsWith('--cycles=')) || '').split('=')[1];
   const cycles = cyclesArg ? +cyclesArg : 80;
   const fails = {};
   let survived = 0, minBox = 1, minPower = Infinity, checks = 0, responses = 0, evictions = 0;
   for (let i = 0; i < n; i++) {
-    const r = run({ vent, evict, cycles, lateFlash, sim: { seed: (i * 2246822519) >>> 0 } });
+    const r = run({ vent, evict, cycles, lateFlash, sync, sim: { seed: (i * 2246822519) >>> 0 } });
     checks += r.checks; responses += r.responses; evictions += r.evictions;
     minBox = Math.min(minBox, r.sim.box); minPower = Math.min(minPower, r.sim.power);
     if (r.sim.won) survived++;
@@ -226,7 +239,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       fails[key] = (fails[key] || 0) + 1;
     }
   }
-  const mode = `${lateFlash ? ' (late flash)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}`;
+  const mode = `${lateFlash ? ' (late flash)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
   console.log(`${survived}/${n} survived a full night — device schedule${mode}`);
   for (const [k, v] of Object.entries(fails).sort((a, b) => b[1] - a[1])) console.log(`  ${v}x  ${k}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower}` +

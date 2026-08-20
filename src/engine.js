@@ -157,6 +157,23 @@ export class Sim {
   // ------------------------------------------------------------------ input
   press(action) {
     if (!this.alive) return;
+    // Two input gates the engine had never enforced, both about reachability
+    // rather than effect:
+    //
+    // 1. The mask cannot go on with the monitor up. There is no state in which
+    //    both are raised, so a mask press while the cams are up is not a
+    //    toggle -- it is an input the player cannot make.
+    // 2. While the mask is on, the only control that answers is the mask
+    //    itself. This is the input-side half of the g75/g84 lockout the light
+    //    getters already model: a masked player can only take the mask off.
+    //
+    // Both matter for an open-loop pilot, whose table presses buttons without
+    // checking what state the game is actually in: presses that the device
+    // silently drops must be dropped here too, or the simulation flatters a
+    // schedule that the phone would not execute.
+    if (this.maskOn && action !== 'mask') return;
+    if (action === 'mask' && !this.maskOn &&
+        (this.monitor === MON_UP || this.monitor === MON_RAISING)) return;
     if (action === 'light') {
       this.lightHeld = true;
       this.onLightPress();

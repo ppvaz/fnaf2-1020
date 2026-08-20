@@ -234,6 +234,46 @@ consecutive masked ticks:
 | + vent check | 0/200 — **no BB or Golden Freddy deaths left**; 72 Foxy, 108 the seven |
 | + Markiplier eviction | 0/200 — **worse**: 75 Foxy, more office deaths, min power 2253 vs 2583 |
 
+### Teaching the pilot Balloon Boy (2026-08-20)
+
+Two input gates were missing from the engine, both about *reachability* rather
+than effect, and both flattering the pilot: the mask could go on with the
+monitor up (a state the game has no way to reach), and while masked every
+other control still answered, when g75/g84 leave a masked player nothing but
+taking the mask off. `press()` now drops both, and the human control is
+unaffected — `bbtest` never used either, which is the point.
+
+With those in place the vent check's 87 Golden Freddy deaths turned out not to
+be a Golden Freddy problem at all. Every one of them landed on the *first*
+press of a cycle, the one the table means as "cams down". A sourced forcedown
+(g141, executed on the monitor by g262) had already dropped the monitor
+underneath the schedule, so that press — a bare toggle — **raised** the cams
+instead, into an office where Golden Freddy was waiting, and g777 killed. The
+schedule was desynced from the game and had no way to notice.
+
+`--sync` makes the two monitor actions *intents* rather than presses: the
+pilot spends one screenshot on the monitor state and presses only if the state
+disagrees. It is device-legal — the look can be taken a second early and the
+decision is a skip, not a timed reaction, so it does not need the reaction
+budget that rules out interactive driving.
+
+| Schedule | Result | Median depth |
+| --- | --- | ---: |
+| blind, as shipped | 0/200, all Foxy | 48 s |
+| + vent check | 0/200; 87 Golden Freddy, 113 inside | 54 s |
+| + vent check + `--sync` | 0/200, **every death now one mode**: the seven inside | 58 s |
+
+So BB, Golden Freddy and Foxy are all handled, and the whole failure has
+collapsed onto a single mechanism: during the response's 6.4 s cams-down
+window the seven's entry timers run to completion and they walk in. Best
+single night rose 92 s -> 98 s of 420. That is real progress and nowhere near
+a win — the response buys BB at a price the seven collect.
+
+**The device script is deliberately untouched.** `--sync` costs a screenshot
+per monitor action, and whether the phone can classify office-vs-camera view
+fast enough to keep the cadence is a device question this simulation cannot
+answer.
+
 **The eviction does not transfer to an open-loop pilot.** Spending the sourced
 700 frames of hall light only evicts Foxy if he is actually in the hall while
 it runs, and it only pays for itself if BB's forced mask window lands inside

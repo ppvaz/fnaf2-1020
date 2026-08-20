@@ -29,6 +29,10 @@ const PORT = 8731;
 const PAGE = `http://localhost:${PORT}/dist/index.html`;
 
 const ENGINE = [
+  // First, because it is the only check that fails on a wrong *rule* rather
+  // than a wrong *outcome*: the population checks below all pass with a
+  // corrupted sourced constant.
+  ['sourcetest', ['sourcetest.mjs']],
   ['simtest', ['simtest.mjs', '--sweep']],
   ['bbtest', ['bbtest.mjs', '200', '--assert']],
   ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
