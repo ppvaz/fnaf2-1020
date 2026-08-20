@@ -72,7 +72,8 @@ export class Sim {
     this.units = C.STALLED.map(u => ({
       ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false,
       openingSince: -1, openingReadyAt: -1, officeCue: false,
-      maskExposureTicks: 0, done: false,
+      maskExposureTicks: 0, raiseSeen: false, inside: false,
+      insideArmed: false, insideDangerAt: -1, done: false,
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
@@ -165,6 +166,13 @@ export class Sim {
     if (on) {
       if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
     } else {
+      // For the four shared office attackers, taking the mask back off after
+      // they have reached marker 123 immediately raises `danger 2`
+      // (Android groups 560-563).
+      for (const u of this.units) {
+        if (u.inside && u.openingRule === 'streak')
+          this.armInsideAttack(u, 'mask was removed with an attacker inside the office');
+      }
       // Whole seconds of mask time are spent; the sub-second remainder is what
       // gets "stored" for the next vent attack.
       this.maskCum = this.maskCum % C.FPS;
@@ -177,6 +185,11 @@ export class Sim {
     if (up) {
       if (this.gf.present) { this.kill('golden-freddy', 'Raised the monitor with Golden Freddy in the office'); return; }
       this.monitor = MON_RAISING; this.monAnim = C.MONITOR_ANIM_UP;
+      // Mangle's marker-122 flag is set while the monitor-raise object is
+      // visible (group 402), then consumed when that object disappears.
+      for (const u of this.units) {
+        if (u.id === 'mangle' && u.atOpening) u.raiseSeen = true;
+      }
       this.raiseStartedFrame = this.frame;
       this.camsUpSince = this.frame; // the source counter runs from the tap
       // Android: starting the raise just before a 5s interval hands Golden
@@ -189,6 +202,17 @@ export class Sim {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
       this.winding = false;
       this.camsUpSince = -1; // the source resets the streak on lowering
+      // The monitor-lowering object (`blip`) raises `danger 2` for the six
+      // regular marker-123 occupants (groups 564-569). Mangle instead needs
+      // her separate cameras-up random arm from groups 730-731.
+      for (const u of this.units) {
+        if (!u.inside) continue;
+        if (u.id === 'mangle') {
+          if (u.insideArmed) this.armInsideAttack(u, 'Mangle armed while the cameras were up');
+        } else {
+          this.armInsideAttack(u, 'lowered the monitor with an attacker inside the office');
+        }
+      }
     }
   }
 
@@ -207,16 +231,49 @@ export class Sim {
     this.emit('office-cue', u.id);
   }
 
+  unitEnterInside(u, why) {
+    u.atOpening = false;
+    u.inside = true;
+    u.officeCue = false;
+    u.raiseSeen = false;
+    u.openingSince = -1;
+    u.openingReadyAt = -1;
+    if (this.engagedToy === u.id) this.engagedToy = null;
+    this.emit('office-entry', { who: u.id, why });
+    this.flag('inside-office', `${u.name} reached marker 123: ${why}`);
+  }
+
+  armInsideAttack(u, why) {
+    if (u.insideDangerAt >= 0) return;
+    u.insideDangerAt = this.frame + C.INSIDE_ATTACK_FRAMES;
+    this.emit('inside-armed', { who: u.id, why });
+  }
+
   // ------------------------------------------------------------------- tick
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
 
     if (this.monAnim > 0 && --this.monAnim === 0) {
-      if (this.monitor === MON_RAISING) { this.monitor = MON_UP; this.onCamsUp(); }
+      if (this.monitor === MON_RAISING) {
+        this.monitor = MON_UP;
+        this.onCamsUp();
+        // Active 18 has just become invisible: a Mangle that saw this raise
+        // crosses 122 -> 123 now (groups 402-403).
+        for (const u of this.units) {
+          if (u.id === 'mangle' && u.atOpening && u.raiseSeen)
+            this.unitEnterInside(u, 'completed a monitor raise after Mangle reached marker 122');
+        }
+      }
       else if (this.monitor === MON_LOWERING) this.monitor = MON_DOWN;
     }
-    if (this.maskAnim > 0) this.maskAnim--;
+    if (this.maskAnim > 0 && --this.maskAnim === 0 && this.maskOn) {
+      // Group 293 resets the local mask-duration counters on each transition
+      // into the fully-on mask state. They are continuous holds, not storage.
+      for (const u of this.units) {
+        if (u.id === 'withchica' || u.id === 'mangle') u.maskExposureTicks = 0;
+      }
+    }
 
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (f % C.MO_FRAMES === 0) this.onFiveSecond();
@@ -238,13 +295,15 @@ export class Sim {
       if (f >= this.blackout.until) {
         const ended = this.blackout;
         this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
-        if (!ended.masked) {
-          this.kill('blackout', `${ended.by} got you: the mask was not fully on within 0.75s`);
-          return;
-        }
         if (ended.unitId) {
           const u = this.units.find(x => x.id === ended.unitId);
-          if (u?.atOpening) this.unitLeave(u);
+          if (u?.atOpening) {
+            if (ended.masked) this.unitLeave(u);
+            else this.unitEnterInside(u, 'missed the 45-frame office-defense fuse');
+          }
+        } else if (!ended.masked) {
+          this.kill('blackout', `${ended.by} got you: the mask was not fully on within 0.75s`);
+          return;
         }
       }
     }
@@ -349,7 +408,7 @@ export class Sim {
     // The retained cumulative-mask mechanic applies to BB. Android's seven
     // marker-122 attackers have distinct endgame branches handled in
     // tickUnits(): office sequence, W. Bonnie overlay, W. Chica mask ticks,
-    // or Mangle's parked branch.
+    // or Mangle's monitor-raise branch.
     if (this.maskCum >= C.MASK_LEAVE_FRAMES) {
       this.clearVents('mask');
       this.maskCum = 0;
@@ -368,8 +427,12 @@ export class Sim {
   }
 
   unitLeave(u) {
-    u.atOpening = false; u.idx = 0; u.openingSince = -1; u.openingReadyAt = -1;
-    u.officeCue = false; u.maskExposureTicks = 0;
+    u.atOpening = false; u.inside = false; u.idx = 0;
+    u.openingSince = -1; u.openingReadyAt = -1;
+    u.officeCue = false; u.maskExposureTicks = 0; u.raiseSeen = false;
+    u.insideArmed = false;
+    // Do not clear insideDangerAt: `danger 2` is global in the source, so a
+    // same-tick route return cannot cancel an attack that was already raised.
     if (this.engagedToy === u.id) this.engagedToy = null;
     this.emit('vent-bang', { who: u.id, leaving: true });
   }
@@ -424,6 +487,32 @@ export class Sim {
     if (!this.opts.stalledEnabled) return;
     for (const u of this.units) {
       if (u.done) continue;
+      if (u.insideDangerAt >= 0 && f >= u.insideDangerAt) {
+        this.kill('inside-office', `${u.name} completed the sourced 40-frame marker-123 attack`);
+        return;
+      }
+      if (u.inside) {
+        if (u.id === 'mangle') {
+          if (this.camsUp && f % C.FPS === 0 &&
+              this.rng.chance(C.MANGLE_INSIDE_ARM_CHANCE, true))
+            u.insideArmed = true;
+          if (!this.camsUp && u.insideArmed)
+            this.armInsideAttack(u, 'Mangle armed while the cameras were up');
+        } else if (u.id === 'withbonnie') {
+          // In addition to the shared monitor-lowering trigger, W. Bonnie at
+          // marker 123 raises danger every ten seconds spent cameras-up
+          // (group 722).
+          if (this.camsUp && f % (C.FPS * 10) === 0)
+            this.armInsideAttack(u, 'Withered Bonnie remained inside with cameras up');
+        } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0) {
+          // Groups 556-559 precede the 10% return groups 747-750. Preserve
+          // that order: a simultaneous attack roll is not cancelled by leave.
+          if (this.rng.chance(C.INSIDE_MASK_ATTACK_CHANCE, true))
+            this.armInsideAttack(u, 'inside-office mask attack roll');
+          if (this.rng.chance(C.INSIDE_MASK_LEAVE_CHANCE, false)) this.unitLeave(u);
+        }
+        continue;
+      }
       if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
       // Toys and W. Freddy start the shared office sequence as soon as marker
       // 122 is evaluated with the cameras down (groups 445-447 and 490).
@@ -438,10 +527,11 @@ export class Sim {
         this.startOfficeEncounter(u);
       }
 
-      // W. Chica has no generic immediate repel. With the mask fully on she
-      // gets a 10% leave roll per one-second event and is forced out after five
-      // accumulated mask ticks (groups 439-440 and 907).
-      if (u.id === 'withchica' && u.atOpening && this.maskFullyOn && f % C.FPS === 0) {
+      // W. Chica and Mangle have no generic immediate repel. With the mask
+      // fully on they get a 10% leave roll per one-second event and are forced
+      // out after five continuous mask ticks (groups 292-294, 400-401, 907).
+      if ((u.id === 'withchica' || u.id === 'mangle') && u.atOpening &&
+          this.maskFullyOn && f % C.FPS === 0) {
         u.maskExposureTicks++;
         if (u.maskExposureTicks >= 5 || this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) {
           this.unitLeave(u);
@@ -456,8 +546,7 @@ export class Sim {
         const why = streakKill
           ? `cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`
           : 'their sourced opening timer armed before the next cams-up trip';
-        this.kill('vent', `${u.name} walked in: ${why}`);
-        return;
+        this.unitEnterInside(u, why);
       }
     }
   }

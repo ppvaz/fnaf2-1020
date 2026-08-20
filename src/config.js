@@ -67,6 +67,14 @@ export const WITHERED_CHICA_OPENING_FRAMES = s(5);
 export const WITHERED_BONNIE_CUE_FRAMES = s(0.5);
 export const WITHERED_BONNIE_CUE_CHANCE = 0.5;
 
+// Marker 123 / inside-office branches [SOURCED: Android groups 556-569,
+// 729-731, 747-750]. `danger 2` starts a 40-frame attack transition. Mangle
+// arms on a 1-in-20 cameras-up second and attacks on a later cameras-down edge.
+export const INSIDE_ATTACK_FRAMES = 40;
+export const INSIDE_MASK_ATTACK_CHANCE = 0.5;
+export const INSIDE_MASK_LEAVE_CHANCE = 0.1;
+export const MANGLE_INSIDE_ARM_CHANCE = 0.05;
+
 // Balloon Boy [SOURCED]
 export const BB_MOVE_CHANCE = 0.75;
 export const BB_STAGES = 4;
@@ -212,7 +220,7 @@ export const STALLED = [
   { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true },
   { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true  },
   { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true  },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'park', lightStallAt: [3, 4], mutex: false },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'raise', lightStallAt: [3, 4], mutex: false },
 ];
 // The blind transit rooms break the old "nobody passes through an unflashed
 // room" property: several routes now contain a stretch no camera can touch.

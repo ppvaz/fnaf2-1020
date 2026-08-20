@@ -45,8 +45,8 @@ separate marker-122 rules:
   after it expires.
 - Withered Chica has a separate scheduler counter and cameras-up failure after
   five-plus seconds.
-- Mangle's located 122→123 edge is tied to the right-vent-light visibility
-  transition, not the shared streak.
+- Mangle reaches 122 cameras-up; five continuous fully-masked scheduler ticks
+  clear her, while completing the next monitor raise sends her to marker 123.
 
 A second apparent correction then reopened monitor denial at 150/150. It was also
 wrong. Misleading export names had led us to treat `monitorFrame = 2` as cameras
@@ -60,8 +60,9 @@ up. The surrounding UI events establish the opposite:
 Therefore those groups do **not** instantly return every unarmed marker-122
 attacker whenever the mask happens to be on. The false implementation removed the
 actual office cost and let a privileged controller erase attackers on hidden timer
-edges. The engine now models the shared encounter plus W. Bonnie's overlay and
-W. Chica's separate mask-tick branch.
+edges. The engine now models the shared encounter, the four-attacker threshold
+mutex, W. Bonnie's overlay/timer, W. Chica and Mangle's continuous mask counters,
+Mangle's monitor-raise transition, and the located marker-123 attack branches.
 
 ## Corrected sweep
 
@@ -71,12 +72,12 @@ shown amount.
 
 | Policy | Clean | Pinned | 100 ms jitter | 200 ms jitter | Main death |
 | --- | ---: | ---: | ---: | ---: | --- |
-| Monitor denial | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
-| Minus Right / CAM 06 | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
-| CAM 07 only | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
-| Minus Two / CAM 03 | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
-| CAM 06+07 hybrid | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
-| Best clock-phased set (`none → none → none`) | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| Monitor denial | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
+| Minus Right / CAM 06 | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
+| CAM 07 only | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
+| Minus Two / CAM 03 | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
+| CAM 06+07 hybrid | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
+| Best clock-phased set (`none → none → none`) | 0/150 | 0/150 | 0/150 | 0/150 | inside-office |
 
 The earlier 10-12% fixed-policy table and both 150/150 tables are retained in Git
 history as provenance, but are superseded because each depended on a known model
@@ -89,10 +90,11 @@ error.
 - **Observable monitor denial is closed in this searched family.** Its resource
   advantage disappears once the source-shaped office cost and character-specific
   endgames are restored.
-- **This is not a proof over every possible policy.** Mangle's full endgame,
-  marker-123 behavior and exact multi-occupant arbitration remain open mechanics.
-  A future source correction could justify a focused rerun, but blind enlargement
-  of the policy grid is not warranted now.
+- **This is not a proof over every possible policy.** Exact same-frame ordering
+  among non-mutex office occupants, W. Chica's unexplained state-99 branch, and
+  auxiliary office objects remain open mechanics. A future source correction
+  could justify a focused rerun, but blind enlargement of the policy grid is not
+  warranted now.
 - **Minus 7 remains the control.** It still survives 200/200 normal seeds and
   100/100 pinned worst-luck seeds with zero stun lapses in the current Android
   model.

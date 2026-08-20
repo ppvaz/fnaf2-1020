@@ -122,6 +122,15 @@ lesson got sharper: source validation is iterative, and neither exciting nor
 negative simulator results get promoted while a depended-on state machine is still
 approximate.
 
+The next Android pass closed most of that endgame uncertainty rather than
+reopening the strategy. Mangle's supposed right-light parking behavior was a
+misidentified monitor-raise animation: at marker 122 she must be cleared by five
+continuous fully-masked scheduler ticks or the next completed monitor raise
+advances her to marker 123. The source also exposes the marker-123 family attacks and the
+four-attacker `chicalookatyou` entry mutex. Re-running the same search still leaves
+every family at 0/150; the surviving source gaps are narrow ordering and
+auxiliary-object questions, not a missing broad defensive branch.
+
 ## Sources
 
 Primary docs in this repo: `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md`,
