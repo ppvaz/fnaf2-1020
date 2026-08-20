@@ -106,6 +106,6 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 
 - Captures live in `captures/` (gitignored); delete failed runs immediately —
   raw screenrecords are large.
-- Developer toggles left ON on the device: `show_touches`,
-  `pointer_location`. Turn off when done:
-  `adb shell settings put system show_touches 0; adb shell settings put system pointer_location 0`.
+- Developer toggles (`show_touches`, `pointer_location`) were turned OFF at
+  session end; re-enable for live observation with
+  `adb shell settings put system show_touches 1` (and `pointer_location 1`).
