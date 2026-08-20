@@ -86,7 +86,7 @@ export class Sim {
     this.engagedToy = null;
 
     // --- puppet
-    this.puppet = { stage: 0, out: false, killAt: -1 };
+    this.puppet = { stage: 0, out: false, route: null, idx: -1 };
 
     // --- recording for the post-run report
     if (this.opts.record) {
@@ -703,12 +703,9 @@ export class Sim {
       }
     }
     // 5. Puppet, once the box is dry
-    if (this.opts.boxEnabled && this.box <= 0 && !this.puppet.out) this.tickPuppetInterval();
+    if (this.opts.boxEnabled) this.tickPuppetRoute();
   }
 
-  tickPuppetInterval() {
-    // Puppet actually rolls every 1s while the box is empty; handled in tickBox.
-  }
 
   tickBox() {
     if (!this.opts.boxEnabled) return;
@@ -725,13 +722,26 @@ export class Sim {
           this.emit('puppet-stage', this.puppet.stage);
           if (this.puppet.stage >= C.PUPPET_STAGES) {
             this.puppet.out = true;
-            this.puppet.killAt = this.frame + this.rng.int(C.FPS * 5, C.FPS * 20, C.FPS * 5);
+            // g406/407 branch on his own `decide path` value.
+            this.puppet.route = this.rng.chance(0.5, true)
+              ? C.PUPPET_ROUTE.left : C.PUPPET_ROUTE.right;
+            this.puppet.idx = -1;
             this.emit('puppet-out');
           }
         }
       }
     }
-    if (this.puppet.out && this.frame >= this.puppet.killAt) this.kill('puppet', 'The Puppet reached the office');
+  }
+
+  // g404-411: off CAM 11 he hops his route on the ordinary movement roll, and
+  // only the arrival at marker 122 ends the run (g574).
+  tickPuppetRoute() {
+    if (!this.puppet.out || !this.puppet.route) return;
+    if (!this.rng.chance(C.MO_CHANCE(C.PUPPET_AI), true)) return;
+    this.puppet.idx++;
+    const at = this.puppet.route[this.puppet.idx];
+    this.emit('puppet-move', { at });
+    if (at === 'office') this.kill('puppet', 'The Puppet reached the office');
   }
 
   record() {

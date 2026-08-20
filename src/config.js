@@ -182,6 +182,15 @@ export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty
 export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding
 export const PUPPET_AI = 15;
 export const PUPPET_STAGES = 4;
+// Once he is off CAM 11 he walks a real route like everyone else
+// [SOURCED: g404-411]. CAM 11 -> 10 -> 07, then his own `decide path` value
+// picks a side: 1 sends him 03 -> 01, 2 sends him 04 -> 02. Both arrive at
+// marker 122, and g574 turns that into the encounter. Five hops on the normal
+// 5 s movement roll, not the old flat 5-20 s timer.
+export const PUPPET_ROUTE = {
+  left:  [10, 7, 3, 1, 'office'],
+  right: [10, 7, 4, 2, 'office'],
+};
 
 // Animation lengths [SOURCED: decompiled Android build 296 animation bank —
 // mmonitorUp 11fr@speed90, mmonitorDown 11fr@speed50, mmaskOn 9fr@speed75,
