@@ -384,7 +384,7 @@ export function run(opts = {}) {
   return { sim, minBox, maxD };
 }
 
-const r = run();
+const r = run({ record: true });   // this single diagnostic run reads sim.rec
 const s = r.sim;
 console.log(`result        : ${s.won ? 'SURVIVED to 6 AM' : 'DIED ' + s.death.reason}`);
 if (s.death) console.log(`               ${s.death.detail} @ ${(s.death.t).toFixed(2)}s`);

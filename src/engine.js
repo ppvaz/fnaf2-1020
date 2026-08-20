@@ -11,7 +11,10 @@ export class Sim {
       night: 7,             // sourced tables index by night; 7 = 10/20 mode
       android: true,        // canonical target; flag retained only for old test modes
       speed: 1.0,
-      record: true,
+      // Off by default: the per-frame report channels cost about half of a
+      // headless night, and only the in-app report reads them. Callers that
+      // want `sim.rec` opt in.
+      record: false,
       bbEnabled: true,
       foxyEnabled: true,
       gfEnabled: true,

@@ -139,7 +139,8 @@ const fails = {}; let minB = 1, minP = C.POWER_FRAMES, lapses = 0;
 for (let i = 0; i < n; i++) {
   const jf = (process.argv.find(a => a.startsWith('--jitter=')) || '').split('=')[1];
   const r = run({ seed: (i * 2246822519) >>> 0, worst: process.argv.includes('--worst'),
-                  jitter: jf ? Math.round(+jf / 1000 * C.FPS) : 0 });
+                  jitter: jf ? Math.round(+jf / 1000 * C.FPS) : 0,
+                  record: true });   // the stun-lapse count below reads sim.rec
   minB = Math.min(minB, r.minBox); minP = Math.min(minP, r.sim.power);
   for (let k = 0; k < 3; k++)
     for (let j = 1; j < r.sim.rec.n; j++)

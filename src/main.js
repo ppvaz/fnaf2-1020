@@ -227,7 +227,7 @@ class App {
     this.audio.unlock();
     this.audio.enabled = this.settings.sound;
     await Assets.loadInto(this.audio).catch(() => {});
-    this.sim = new Sim(Object.assign({ android: true }, mode.sim,
+    this.sim = new Sim(Object.assign({ android: true, record: true }, mode.sim,
       mode.fullNight ? {} : { durationFrames: HUGE }));
     if (mode.start) Object.assign(this.sim, mode.start);
     const coached = !!mode.script;
