@@ -40,6 +40,17 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - `find-events.py <mp4>` — frame-diff event locator (stdlib only): prints
   timestamp ranges with sharp visual change (overlays, flips, jumpscares) so
   clears can be timed without scrubbing video.
+- `camtrace.py [--expected N] <mp4>` — post-run selected-camera trace from
+  the map's lime highlight. It verifies that printed ADB commands became real
+  `10 -> 04 -> 07 -> 11` sweeps and can fail a trial when any expected sweep
+  is absent.
+- `windpct.py [--samples] <mp4>` — post-run CAM 11 pie-gauge meter. It uses
+  the presence of the lime winding button to reject other feeds, then measures
+  the solid white gauge interior. It does not participate in the timed loop.
+- `grade-minus7.py <mp4>` — stable office/mask/camera state report plus visible
+  hall-beam pulses. Its hall rule runs before the broad camera/static rule and
+  rejects beam-like frames that begin inside an existing camera interval, so
+  camera-light flashes do not become false Foxy resets.
 - `trial-minus7.sh <name> [cycles]` — selectable-night Minus 7 interaction
   runner (`NIGHT=6th` by default; `NIGHT=continue` is the override). It gates
   the start, then executes one absolute-time device-side schedule. Independent
@@ -85,6 +96,20 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   default to `6th`; set `NIGHT=continue` explicitly to use the campaign cursor.
 - The bottom ~40 px belong to Android gesture navigation — keep game taps at
   y <= 1020.
+- The light input is view-dependent. `(350,615)` activates the camera light
+  while the monitor is up, but activates the **left vent light** in the office;
+  it does not flash Foxy. The office hall light is `(1200,540)` on this device,
+  well inside the hallway hit region; the initially tested `(1400,330)` sat
+  near its upper edge and intermittently placed the pointer without a beam.
+  A five-coordinate recording (`hall-coordinate-cal`) visibly distinguished
+  the green/blue vent light from the circular hall beam. Keep separate
+  `TAP_CAM_LIGHT` and `TAP_HALL` coordinates. The hall actuator also needs a
+  real hold: a 60 ms swipe placed the debug pointer correctly but produced no
+  beam. Neither a longer hold nor a later single attempt cured every
+  intermittent in-game lockout. The runner therefore makes two separated
+  200 ms and 150 ms attempts across the office window. Together with three
+  60 ms camera flashes per five seconds, the worst case is about 106 ms/s
+  against the 119 ms/s light budget.
 - A locked phone presents `NotificationShade` as the focused window even
   when the game activity is underneath it. The harness wakes the display and
   asks Android to dismiss an unsecured keyguard, but a secure keyguard must
@@ -135,21 +160,45 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   the in-app "Unlocks" menu is paid cheats, not night selection. Character
   isolation therefore waits until 6th Night is beaten (a bot playing Minus 7
   on-device is the fun route to that).
-- **Minus 7 timing calibration is now post-hoc.** A four-cycle asynchronous
-  120 ms swipe run completed every office/mask/camera transition with zero
-  latched masks, but its serial three-camera flow was visibly too slow. Plain
-  taps removed command drift but dropped critical transitions. A held-light
-  shortcut kept the five-second anchors but caused overlapping-touch failures.
-  The replacement cadence keeps reliable 120 ms swipes, spaces the seven camera
-  actions 230 ms apart (1.38 s from CAM 10 to CAM 11), and does not wind at
-  night start while the box is full.
-- **The replacement cadence passed its three-cycle Night 5 validation.** The
-  21.83 s `m7n5-spaced1` recording contains all four expected camera intervals,
-  three clean office/mask/camera transitions, and zero masks latched longer
-  than one second. Every sweep visibly followed CAM 10 → 04 → 07 → 11. Holds
-  began with room in the box and ended high/near-full, so the revised runner
-  also avoids wasting its opening and cycle time against an already full box.
-  Absolute anchors landed within roughly 25-100 ms without accumulating drift.
+- **Minus 7 timing calibration is post-hoc.** Plain taps removed command drift
+  but dropped critical transitions. A held-light shortcut caused overlapping-
+  touch failures. The first 40 ms asynchronous trial missed a later CAM 10;
+  at 60 ms, a late light helper made the next absolute slot catch up only 79 ms
+  later and overlap, dropping CAM 04. Direct `/dev/input/event8` injection is
+  denied by SELinux despite the shell user's `input` group, and separate
+  `motionevent DOWN`/`UP` helpers were slower than one swipe.
+- **The default is now a synchronous 60 ms swipe.** On this Moto g56 the helper
+  takes about 170 ms, so 190 ms action slots cannot overlap. CAM 10 to CAM 11
+  takes 1.14 s instead of the old reliable cadence's 1.38 s. The monitor-down
+  animation still gets a dedicated delay before the mask. CAM 10 also waits
+  500 ms after monitor-up: shorter gaps were visibly swallowed by the flip and
+  left the feed on CAM 11. Shortening either gap trades away input acceptance,
+  not camera overhead.
+- **The fast default passed a four-cycle 6th Night validation.** The 26.75 s
+  `fast-sync60-6th-4c` recording contains all five expected
+  `10 -> 04 -> 07 -> 11` sweeps (opening plus four cycles), five camera
+  intervals, four momentary mask sequences, and no latched mask. An earlier
+  two-cycle run also passed 3/3 sweeps and both mask sequences.
+- **The first six-cycle extension exposed a pre-existing hall-coordinate bug.**
+  Its first five camera sweeps and box holds were clean, but the supposed hall
+  flashes were actually left-vent flashes. W. Foxy attacked at about 28.3 s,
+  matching the repeated short-run failure the device owner observed. This was
+  an actuator-mapping failure, not evidence against the sweep cadence; the
+  runner now sends office flashes to the separately calibrated hall control.
+- **The corrected six-cycle default crossed the old failure window.** The
+  37.75 s `validated-default-6th-6c` run completed 7/7 selected-camera sweeps
+  and all six scheduled monitor/mask cycles, with no Foxy attack or safety
+  abort. Five hall beams were visible; both redundant attempts landed during
+  some windows, while one whole window remained dark from the game's transient
+  light lockout. The post-run gauge stayed in a 52-78% band. This is a bounded
+  validation, not yet a full-night clear.
+- **Winding is now rate-balanced instead of capacity-seeking.** Nights 6-7
+  drain 120 box units/s when not winding and add 300/s while held, so net-zero
+  over a five-second cycle is `120*5/(300+120) = 1.429 s`. The fast runner uses
+  1400 ms, within one 30 Hz Fusion update of that balance point. Offline gauge
+  measurements in the final six-cycle validation stayed around 52-78% and
+  never reached 100%.
+  By contrast, the old 1700 ms holds reached 100% partway through later holds.
 - **The hardened runner passed its 6th Night safety validation.** An exact-PID
   test killed a harmless remote process and its host ADB session. Controlled
   game force-stops then established both failure paths: the raw-scanline guard
@@ -159,7 +208,7 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   pulled its capture, graded it, and left the launcher focused after cleanup.
   That same run reconfirmed that `PRESS_MODE=tap` is observably unreliable: the
   command log was complete, but the recording contained only the opening camera
-  interval and one later mask. Keep `async-swipe` as the default.
+  interval and one later mask. Keep synchronous `fast-swipe` as the default.
 - **Shooter25's bot establishes the in-game alternative for reactive work.** A
   Debian-patched CTFAK extraction of the official PC practice executable shows
   a direct-state Clickteam controller, not a vision bot. See
@@ -169,15 +218,16 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 
 ## Next steps
 
-1. Before another long schedule, improve input efficacy and eliminate wasted
-   full-box time; do not treat printed `tap` commands as accepted game input.
-   `Continue` currently points to Night 1, while 6th Night is the authorized
-   quick testing ground. Do not restore the held-light shortcut.
+1. Extend the validated synchronous cadence beyond six main cycles before
+   treating it as a full-night bot. Keep grading the selected-camera trace and
+   gauge; do not treat printed commands as accepted game input. `Continue`
+   currently points to Night 1, while 6th Night is the authorized quick testing
+   ground. Do not restore the held-light shortcut or asynchronous short swipes.
 2. Grab the frame before the static to auto-identify the killer. The
    `gameover` state (red face + bright lower-center text) is implemented.
-3. `windpct.py`: percent-fill of the pie gauge so wind holds stop exactly at
-   full for diagnostic/interactive tools. Do not put it in the live Minus 7
-   loop unless the policy actually needs a branch.
+3. Calibrate `windpct.py` against a deliberately empty-to-full capture if its
+   approximate percentages will drive an interactive policy. Keep it out of
+   the live Minus 7 loop unless the policy actually needs a branch.
 4. Longer term: beat 6th Night and unlock Custom Night, then use character-
    isolated stock runs. For reactive strategies, compare live CV against a
    separately signed, direct-state instrumentation build.

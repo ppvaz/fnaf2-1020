@@ -14,7 +14,7 @@ CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-1}"
 GRADE_RUN="${GRADE_RUN:-1}"
-PRESS_MODE="${PRESS_MODE:-async-swipe}"
+PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
 WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
 FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
@@ -58,8 +58,8 @@ case "$GRADE_RUN" in
   *) echo "GRADE_RUN must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
-  swipe|tap|async-swipe) ;;
-  *) echo "PRESS_MODE must be swipe, tap, or async-swipe"; exit 2 ;;
+  swipe|tap|async-swipe|fast-swipe) ;;
+  *) echo "PRESS_MODE must be swipe, tap, async-swipe, or fast-swipe"; exit 2 ;;
 esac
 for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL; do
   setting_value="${!setting}"
@@ -241,7 +241,7 @@ RECORDING_STARTED=1
 
 # Positional coordinates keep this remote program literal and auditable.
 adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
-  $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_LIGHT $WIND \
+  $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 <<'REMOTE' &
 set -eu
 PIDFILE=$1; shift
@@ -250,7 +250,8 @@ PRESS_MODE=$1; shift
 MUTE_X=$1; MUTE_Y=$2; shift 2
 MONITOR_X=$1; MONITOR_Y=$2; shift 2
 MASK_X=$1; MASK_Y=$2; shift 2
-LIGHT_X=$1; LIGHT_Y=$2; shift 2
+CAM_LIGHT_X=$1; CAM_LIGHT_Y=$2; shift 2
+HALL_X=$1; HALL_Y=$2; shift 2
 WIND_X=$1; WIND_Y=$2; shift 2
 CAM10_X=$1; CAM10_Y=$2; shift 2
 CAM04_X=$1; CAM04_Y=$2; shift 2
@@ -294,6 +295,12 @@ press_at() {
     input tap "$x" "$y"
   elif [ "$PRESS_MODE" = "async-swipe" ]; then
     input swipe "$x" "$y" "$x" "$y" 120 >/dev/null 2>&1 &
+  elif [ "$PRESS_MODE" = "fast-swipe" ]; then
+    # Sixty milliseconds crosses at least one 30 Hz Fusion update with margin.
+    # Keep this synchronous: the helper finishes in about 170 ms on this
+    # device, leaving roughly 20 ms before the next 190 ms slot and making a
+    # late action delay the next one instead of overlapping it.
+    input swipe "$x" "$y" "$x" "$y" 60
   else
     input swipe "$x" "$y" "$x" "$y" 120
   fi
@@ -313,34 +320,71 @@ hold_at() {
 press_at     0 "$MUTE_X"    "$MUTE_Y"    mute
 press_at   180 "$MONITOR_X" "$MONITOR_Y" monitor-up
 press_at   460 "$CAM11_X"   "$CAM11_Y"   cam-11
-press_at  4000 "$CAM10_X"   "$CAM10_Y"   cam-10
-press_at  4230 "$LIGHT_X"   "$LIGHT_Y"   light-10
-press_at  4460 "$CAM04_X"   "$CAM04_Y"   cam-04
-press_at  4690 "$LIGHT_X"   "$LIGHT_Y"   light-04
-press_at  4920 "$CAM07_X"   "$CAM07_Y"   cam-07
-press_at  5150 "$LIGHT_X"   "$LIGHT_Y"   light-07
-press_at  5380 "$CAM11_X"   "$CAM11_Y"   cam-11
-hold_at   5620 "$WIND_X"    "$WIND_Y"    1250 wind-to-anchor
+if [ "$PRESS_MODE" = "fast-swipe" ]; then
+  press_at 4000 "$CAM10_X" "$CAM10_Y" cam-10
+  press_at 4190 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+  press_at 4380 "$CAM04_X" "$CAM04_Y" cam-04
+  press_at 4570 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+  press_at 4760 "$CAM07_X" "$CAM07_Y" cam-07
+  press_at 4950 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+  press_at 5140 "$CAM11_X" "$CAM11_Y" cam-11
+  hold_at  5330 "$WIND_X"  "$WIND_Y"  1250 wind-to-anchor
+else
+  press_at 4000 "$CAM10_X" "$CAM10_Y" cam-10
+  press_at 4230 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+  press_at 4460 "$CAM04_X" "$CAM04_Y" cam-04
+  press_at 4690 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+  press_at 4920 "$CAM07_X" "$CAM07_Y" cam-07
+  press_at 5150 "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+  press_at 5380 "$CAM11_X" "$CAM11_Y" cam-11
+  hold_at  5620 "$WIND_X"  "$WIND_Y"  1250 wind-to-anchor
+fi
 
 cycle=0
 while [ "$cycle" -lt "$CYCLES" ]; do
   base=$((7000 + cycle * 5000))
   press_at $((base +    0)) "$MONITOR_X" "$MONITOR_Y" monitor-down
-  press_at $((base +  320)) "$MASK_X"    "$MASK_Y"    mask-on
-  press_at $((base +  700)) "$MASK_X"    "$MASK_Y"    mask-off
-  press_at $((base + 1000)) "$LIGHT_X"   "$LIGHT_Y"   flash-hall
-  press_at $((base + 1250)) "$MONITOR_X" "$MONITOR_Y" monitor-up
-  # Stock `adb shell input` cannot express a two-thumb hold-light-and-tap
-  # gesture. Separate 120 ms presses are reliable; 230 ms launch spacing is
-  # the shortest non-overlapping cadence supported by the calibration runs.
-  press_at $((base + 1500)) "$CAM10_X"   "$CAM10_Y"   cam-10
-  press_at $((base + 1730)) "$LIGHT_X"   "$LIGHT_Y"   light-10
-  press_at $((base + 1960)) "$CAM04_X"   "$CAM04_Y"   cam-04
-  press_at $((base + 2190)) "$LIGHT_X"   "$LIGHT_Y"   light-04
-  press_at $((base + 2420)) "$CAM07_X"   "$CAM07_Y"   cam-07
-  press_at $((base + 2650)) "$LIGHT_X"   "$LIGHT_Y"   light-07
-  press_at $((base + 2880)) "$CAM11_X"   "$CAM11_Y"   cam-11
-  hold_at  $((base + 3120)) "$WIND_X"    "$WIND_Y"    1700 wind
+  if [ "$PRESS_MODE" = "fast-swipe" ]; then
+    # The monitor-down animation needs more room than a normal press. From
+    # CAM 10 onward, 60 ms presses launch every 190 ms: the full sweep takes
+    # 1.14 s instead of 1.38 s. A 1.4 s hold nearly balances one five-second
+    # cycle at the sourced Night-6/7 drain and wind rates.
+    press_at $((base +  450)) "$MASK_X"    "$MASK_Y"    mask-on
+    press_at $((base +  800)) "$MASK_X"    "$MASK_Y"    mask-off
+    # The hall light is a held actuator: a 60 ms camera-style swipe reaches
+    # the control but produces no visible beam. One attempt can also coincide
+    # with a transient in-game light lockout, so use two attempts across the
+    # office window. Their 350 ms worst-case light cost plus three 60 ms camera
+    # pulses is 106 ms/s, under the sourced 119 ms/s budget. CAM 10 waits a full
+    # 500 ms after monitor-up; shorter gaps were swallowed by the flip animation.
+    hold_at  $((base +  950)) "$HALL_X"    "$HALL_Y"    200 flash-hall-1
+    hold_at  $((base + 1300)) "$HALL_X"    "$HALL_Y"    150 flash-hall-2
+    press_at $((base + 1550)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+    press_at $((base + 2050)) "$CAM10_X"   "$CAM10_Y"   cam-10
+    press_at $((base + 2240)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+    press_at $((base + 2430)) "$CAM04_X"   "$CAM04_Y"   cam-04
+    press_at $((base + 2620)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+    press_at $((base + 2810)) "$CAM07_X"   "$CAM07_Y"   cam-07
+    press_at $((base + 3000)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+    press_at $((base + 3190)) "$CAM11_X"   "$CAM11_Y"   cam-11
+    hold_at  $((base + 3380)) "$WIND_X"    "$WIND_Y"    1400 wind
+  else
+    press_at $((base +  320)) "$MASK_X"    "$MASK_Y"    mask-on
+    press_at $((base +  700)) "$MASK_X"    "$MASK_Y"    mask-off
+    hold_at  $((base + 1300)) "$HALL_X"    "$HALL_Y"    300 flash-hall
+    press_at $((base + 1700)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+    # Stock `adb shell input` cannot express a two-thumb hold-light-and-tap
+    # gesture. Separate 120 ms presses are reliable; 230 ms launch spacing is
+    # the shortest non-overlapping cadence supported by the calibration runs.
+    press_at $((base + 1950)) "$CAM10_X"   "$CAM10_Y"   cam-10
+    press_at $((base + 2180)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+    press_at $((base + 2410)) "$CAM04_X"   "$CAM04_Y"   cam-04
+    press_at $((base + 2640)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+    press_at $((base + 2870)) "$CAM07_X"   "$CAM07_Y"   cam-07
+    press_at $((base + 3100)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+    press_at $((base + 3330)) "$CAM11_X"   "$CAM11_Y"   cam-11
+    hold_at  $((base + 3570)) "$WIND_X"    "$WIND_Y"    1330 wind
+  fi
   cycle=$((cycle + 1))
 done
 wait
@@ -374,4 +418,6 @@ adb shell rm -f "$REMOTE_VIDEO"
 echo "saved captures/$OUT.mp4"
 if [ "$GRADE_RUN" = 1 ]; then
   python3 "$HERE/grade-minus7.py" "$LOCAL_VIDEO"
+  python3 "$HERE/camtrace.py" --expected "$((CYCLES + 1))" "$LOCAL_VIDEO"
+  python3 "$HERE/windpct.py" "$LOCAL_VIDEO"
 fi

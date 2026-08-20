@@ -37,6 +37,13 @@ def classify(frame):
     map_area = mean_region(frame, 70, 22, 155, 65)
     center = mean_region(frame, 40, 17, 120, 58)
     bottom_left = mean_region(frame, 0, 62, 90, 71)
+    hall_core = mean_region(frame, 105, 22, 145, 50)
+
+    # The office hall beam brightens the right half but leaves the center much
+    # darker than a camera-feed flash/static frame. Detect it before the broad
+    # camera rule so a verified Foxy reset is reported as an actuator event.
+    if 25 < overall < 48 and center < 30 and bottom_left > 30 and hall_core > 25:
+        return "hall-candidate"
 
     # The camera map/static lifts both the whole frame and the right-side map.
     if overall > 36 and map_area > 24:
@@ -71,6 +78,25 @@ def smooth(states):
     return states
 
 
+def resolve_hall(states):
+    """Separate office hall beams from visually similar camera-light frames."""
+    states = list(states)
+    lookback = round(FPS * 0.5)
+    for state, start, end in list(runs(states)):
+        if state != "hall-candidate":
+            continue
+        # A camera-light pulse has the same broad brightness signature, but it
+        # starts directly inside a camera interval. A real office beam follows
+        # the monitor-down/mask phase, leaving at least half a second since the
+        # previous stable camera sample.
+        recent_camera = "camera" in states[max(0, start - lookback):start]
+        replacement = "camera" if recent_camera else "hall"
+        if start == 0:
+            replacement = "transition"
+        states[start:end] = [replacement] * (end - start)
+    return states
+
+
 def decode(path):
     command = [
         "ffmpeg", "-v", "error", "-i", path,
@@ -94,11 +120,12 @@ def main():
     parser.add_argument("video")
     args = parser.parse_args()
 
-    states = smooth(classify(frame) for frame in decode(args.video))
+    states = smooth(resolve_hall(classify(frame) for frame in decode(args.video)))
     stable = []
     minimum = round(FPS * 0.25)
     for state, start, end in runs(states):
-        if state != "transition" and end - start >= minimum:
+        state_minimum = 2 if state == "hall" else minimum
+        if state != "transition" and end - start >= state_minimum:
             stable.append((state, start / FPS, end / FPS))
 
     print(f"{args.video}: {len(states) / FPS:.2f}s sampled at {FPS} fps")
@@ -108,8 +135,12 @@ def main():
         print(f"  {state:6s} {start:6.2f}s -> {end:6.2f}s  ({duration:4.2f}s){warning}")
 
     camera_entries = sum(1 for state, _, _ in stable if state == "camera")
+    hall_flashes = sum(1 for state, _, _ in stable if state == "hall")
     long_masks = sum(1 for state, start, end in stable if state == "mask" and end - start > 1.0)
-    print(f"summary: {camera_entries} camera intervals, {long_masks} latched-mask intervals")
+    print(
+        f"summary: {camera_entries} camera intervals, {hall_flashes} visible hall flashes, "
+        f"{long_masks} latched-mask intervals"
+    )
 
 
 if __name__ == "__main__":

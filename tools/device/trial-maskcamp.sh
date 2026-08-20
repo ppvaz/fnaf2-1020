@@ -116,7 +116,7 @@ sleep 0.4
 adb shell input swipe $TAP_MONITOR $TAP_MONITOR 120      # cams down
 sleep 0.3
 if [ "$PROTOCOL" = "nowind-flash" ]; then
-  adb shell input swipe $TAP_LIGHT $TAP_LIGHT 2000       # one pre-mask Foxy reset
+  adb shell input swipe $TAP_HALL $TAP_HALL 2000         # one pre-mask Foxy reset
   sleep 0.2
 fi
 adb shell input swipe $TAP_MASK $TAP_MASK 150            # mask ON, beat the fuse
