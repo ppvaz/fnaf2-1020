@@ -37,7 +37,8 @@ export const FOXY_RETURN_MAX = 999;
 export const FOXY_ENTER_MIN = s(5);
 export const FOXY_ENTER_MAX = s(10);
 
-// Vent animatronics [SOURCED]
+// Retained BB mask-storage abstraction. The seven marker-122 attackers now use
+// their character-specific Android endgames instead of this generic counter.
 export const MASK_LEAVE_FRAMES = 300;      // 5s cumulative mask time
 export const MASK_STORAGE_CAP = 59;        // storable sub-second mask time
 export const VENT_EARLY_LEAVE_CHANCE = 0.1; // per cumulative second
@@ -59,6 +60,12 @@ export const entryStreakFrames = (night) => s(20 - 2 * night);
 // scheduler phase, so the model uses the conservative five-second edge.
 export const witheredBonnieOpeningFrames = night => 1000 - 100 * night;
 export const WITHERED_CHICA_OPENING_FRAMES = s(5);
+// At marker 122, Withered Bonnie does not accept a generic direct mask repel.
+// While the mask is fully on he rolls Random(2)=1 every 500 ms to create his
+// office overlay. That overlay starts the shared 45-frame defence fuse and
+// 300-frame office sequence (Android groups 436, 443, 530-553).
+export const WITHERED_BONNIE_CUE_FRAMES = s(0.5);
+export const WITHERED_BONNIE_CUE_CHANCE = 0.5;
 
 // Balloon Boy [SOURCED]
 export const BB_MOVE_CHANCE = 0.75;

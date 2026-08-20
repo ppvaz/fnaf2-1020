@@ -26,7 +26,9 @@ experiment, or an explicitly labeled approximation supports it.
 | Office-light movement latch | Physical light state is immediate; `new bonnie` persists to the next one-second event and guards only specific route edges |
 | Shared office-light battery behavior | Office/vent light inputs use the shared battery model; night 5+ capacity is 3000 frames |
 | Camera and hall light separation | A short physical tap no longer produces a fake one-second Foxy/GF exposure |
-| Threshold mask polling | Mask is tested continuously; a newly arriving unarmed marker-122 attacker is repelled even when the mask was already on |
+| UI state identity | `Multiple Touch` is camera selection/up state; `monitorFrame` is the four-state Freddy-mask animation, despite its exported name |
+| Shared office defense sequence | Marker-122 encounter starts a 45-frame Night-7 fuse and resolves after 300 frames; only a fully-on mask before fuse expiry defends it |
+| Character-specific threshold branches | Toys/W. Freddy, W. Bonnie, and W. Chica now use separate sourced marker-122 rules instead of a generic instant mask repel |
 | Monitor and mask animation durations | Derived from the Android animation bank and represented as asymmetric frame counts |
 | Minus 7 control policy | 200/200 normal seeds and 100/100 pinned worst-luck seeds in the current model, with zero stun lapses |
 
@@ -34,12 +36,12 @@ experiment, or an explicitly labeled approximation supports it.
 
 | Priority | Mechanic | What remains |
 | --- | --- | --- |
-| P0 | Office threshold/inside state machine | Map each exported object identity at markers 122/123; reproduce the `danger 2`, `music button`, mask-fuse, and monitor forcedown ordering |
-| P0 | Office queue pacing | Determine exactly when a threshold occupant forces the monitor down, how one-at-a-time arbitration works, and when the next occupant may act |
-| P0 | Toy Bonnie Android endgame | Decode marker 120 timer reset, 60→122 gate, 122→123 transition, masked leave rolls, attack animation, and return immunity as one state machine |
+| P0 | Office threshold/inside state machine | Core fuse and 300-frame resolution are implemented; finish exact `danger 2`, attack-animation, and marker-123 behavior |
+| P0 | Office queue pacing | Determine exact multi-occupant arbitration and when a second marker-122 occupant may start after the active sequence |
+| P0 | Toy Bonnie Android endgame | Integrate the marker-120 timer reset, exact office cue/animation, marker-123 masked leave, and return immunity as one state machine |
 | P0 | Foxy | Reconcile the Android equation operator and event order; implement D reduction in Parts/Service, exact light-on reset/stun behavior, GOT-YOU execution, and any scheduler offset |
 | P0 | Golden Freddy | Decode the office/hall object identities and exact monitor-animation interaction; replace the calibrated 18-frame Android raise window |
-| P0 | Mask counter semantics | Separate threshold repel, marker-123 occupants, cumulative partial-second storage, early-leave rolls, and guaranteed leave without applying one generic rule to everyone |
+| P0 | Mask counter semantics | Threshold branches are separated; finish BB/marker-123 storage, early-leave, and guaranteed-leave semantics |
 | P1 | Camera-light stun event | Pin the exact Android event group, refresh timing, multi-occupant targeting, and immunity exceptions rather than inheriting the community abstraction |
 | P1 | Display-camera mapping | Replace the two route-fitted low-confidence room mappings with direct Android UI/object anchors |
 | P1 | Mangle | Decode the right-light visibility transition, office park/kill behavior, and Android vent direction completely |
@@ -47,7 +49,7 @@ experiment, or an explicitly labeled approximation supports it.
 | P1 | Balloon Boy inside-office behavior | Route/latch/opening behavior is modeled; flashlight disable and eventual departure after a failed defense are not |
 | P2 | Input event ordering | Establish same-frame order for monitor, mask, hall light, and vent-light touch objects |
 | P2 | Sound cue frames | Tie bangs, laughs, static, and blackout cues to source state transitions for reaction training |
-| P2 | Auxiliary counters | Decode `old chica`, `Active 21`, and remaining route mutex/branch counters |
+| P2 | Auxiliary counters | `old chica` is anchored as the office encounter latch; decode `Active 21` and remaining route mutex/branch counters |
 
 ## Research rules
 
@@ -67,10 +69,11 @@ experiment, or an explicitly labeled approximation supports it.
   surviving regression control.
 - Six-Seven has no two-camera cover on the extracted Android route graph and stays
   refuted for the target platform.
-- Monitor denial has **reopened at the privileged-model level**: after implementing
-  continuous mask polling on threshold arrival, the hidden-state GateBot survives
-  150/150 clean and pinned seeds with 31% minimum box. This is not yet a playable
-  strategy because it reads unseen arming frames 16–26 times per night.
-- The next useful work is source decoding of the Android office endgame, not a wider
-  brute-force policy sweep. That state machine is the main uncertainty shared by
-  RVC-style and gate-aware candidates.
+- The apparent 150/150 monitor-denial reopening is **retracted**. It came from
+  reading groups 538-555 as continuous mask polling; they actually resolve the
+  latched defense state at the end of the 300-frame office sequence. The corrected
+  observable controller scores 0/150 across every tested gate-aware family.
+- The office audit is documented in
+  [`ANDROID-OFFICE-ENDGAME.md`](ANDROID-OFFICE-ENDGAME.md). Remaining useful work
+  is targeted Android source decoding (especially Mangle, marker 123, and
+  multi-occupant ordering), not blind policy brute force.

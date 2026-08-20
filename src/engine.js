@@ -65,14 +65,14 @@ export class Sim {
     this.maskCum = 0;
 
     // --- blackout
-    this.blackout = { active: false, until: 0, by: null, masked: false, deadline: 0 };
+    this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
     this.blackoutCount = 0;
-    this.officeQueue = [];
 
     // --- the seven
     this.units = C.STALLED.map(u => ({
       ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false,
-      openingSince: -1, openingReadyAt: -1, done: false,
+      openingSince: -1, openingReadyAt: -1, officeCue: false,
+      maskExposureTicks: 0, done: false,
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
@@ -99,6 +99,7 @@ export class Sim {
   // ---------------------------------------------------------------- helpers
   get t() { return this.frame / C.FPS; }
   get camsUp() { return this.monitor === MON_UP; }
+  get maskFullyOn() { return this.maskOn && this.maskAnim === 0; }
   get hallView() { return this.monitor !== MON_UP; }
   // `white button` follows the physical hold. `new bonnie`, the office-light
   // movement latch, survives release until the next one-second scheduler tick.
@@ -163,15 +164,6 @@ export class Sim {
     this.maskAnim = on ? C.MASK_ANIM_ON : C.MASK_ANIM_OFF;
     if (on) {
       if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
-      if (this.blackout.active) this.blackout.masked = true;
-      // Marker 122 is the office threshold, not the inside-office vent state.
-      // In the source, a timely mask immediately sends an unarmed threshold
-      // attacker away (groups 538-555). Mangle is the exception represented by
-      // the park rule; BB and occupants already in 123 use the cumulative mask
-      // timer instead.
-      for (const u of this.units) {
-        if (this.maskRepelsThreshold(u)) this.unitLeave(u);
-      }
     } else {
       // Whole seconds of mask time are spent; the sub-second remainder is what
       // gets "stored" for the next vent attack.
@@ -197,16 +189,22 @@ export class Sim {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
       this.winding = false;
       this.camsUpSince = -1; // the source resets the streak on lowering
-      // Blackout animatronics waiting in the office trigger when the cams drop.
-      if (this.officeQueue.length && !this.blackout.active) this.startBlackout(this.officeQueue.shift());
     }
   }
 
-  startBlackout(by) {
+  startBlackout(by, unitId = null) {
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
-                      masked: this.maskOn, deadline: this.frame + C.maskGraceFrames(this.opts.night) };
+                      unitId, masked: this.maskFullyOn,
+                      deadline: this.frame + C.maskGraceFrames(this.opts.night) };
     this.blackoutCount++;
     this.emit('blackout', by);
+  }
+
+  startOfficeEncounter(u) {
+    if (this.blackout.active || !u.atOpening) return;
+    u.officeCue = true;
+    this.startBlackout(u.name, u.id);
+    this.emit('office-cue', u.id);
   }
 
   // ------------------------------------------------------------------- tick
@@ -231,12 +229,24 @@ export class Sim {
 
     // --- blackout resolution
     if (this.blackout.active) {
-      if (!this.blackout.masked && this.maskOn) this.blackout.masked = true;
-      if (!this.blackout.masked && f > this.blackout.deadline) {
-        this.kill('blackout', `${this.blackout.by} got you: mask was not on within 0.75s of the blackout`);
-        return;
+      // Android group 533 only defuses while the 45-frame fuse is still in
+      // state 1, and only once the mask animation has reached state 2.
+      if (!this.blackout.masked && this.maskFullyOn && f < this.blackout.deadline)
+        this.blackout.masked = true;
+      // Fuse expiry arms the attack, but groups 538-555 do not resolve it
+      // until the 300-frame office sequence ends.
+      if (f >= this.blackout.until) {
+        const ended = this.blackout;
+        this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
+        if (!ended.masked) {
+          this.kill('blackout', `${ended.by} got you: the mask was not fully on within 0.75s`);
+          return;
+        }
+        if (ended.unitId) {
+          const u = this.units.find(x => x.id === ended.unitId);
+          if (u?.atOpening) this.unitLeave(u);
+        }
       }
-      if (f >= this.blackout.until) this.blackout = { active: false, until: 0, by: null, masked: false, deadline: 0 };
     }
 
     this.tickLight();
@@ -336,22 +346,20 @@ export class Sim {
     if (!this.blackout.active && !someoneInOpening) {
       if (++this.maskDAccum >= C.FPS) { this.maskDAccum = 0; this.foxy.D++; }
     }
-    // 5 cumulative seconds clears every vent animatronic
+    // The retained cumulative-mask mechanic applies to BB. Android's seven
+    // marker-122 attackers have distinct endgame branches handled in
+    // tickUnits(): office sequence, W. Bonnie overlay, W. Chica mask ticks,
+    // or Mangle's parked branch.
     if (this.maskCum >= C.MASK_LEAVE_FRAMES) {
       this.clearVents('mask');
       this.maskCum = 0;
     } else if (this.maskCum % C.FPS === 0) {
-      // per-cumulative-second early-leave rolls
       if (this.bb.inOpening && this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) this.bbLeave();
-      for (const u of this.units) {
-        if (u.atOpening && this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) this.unitLeave(u);
-      }
     }
   }
 
   clearVents() {
     if (this.bb.inOpening) this.bbLeave();
-    for (const u of this.units) if (u.atOpening) this.unitLeave(u);
   }
 
   bbLeave() {
@@ -361,13 +369,9 @@ export class Sim {
 
   unitLeave(u) {
     u.atOpening = false; u.idx = 0; u.openingSince = -1; u.openingReadyAt = -1;
+    u.officeCue = false; u.maskExposureTicks = 0;
     if (this.engagedToy === u.id) this.engagedToy = null;
     this.emit('vent-bang', { who: u.id, leaving: true });
-  }
-
-  maskRepelsThreshold(u) {
-    if (!this.maskOn || !u.atOpening || u.openingRule === 'park') return false;
-    return !(u.openingRule === 'mask' && this.frame >= u.openingReadyAt);
   }
 
   onCamsUp() {
@@ -421,6 +425,29 @@ export class Sim {
     for (const u of this.units) {
       if (u.done) continue;
       if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
+      // Toys and W. Freddy start the shared office sequence as soon as marker
+      // 122 is evaluated with the cameras down (groups 445-447 and 490).
+      if (u.atOpening && u.openingRule === 'streak' && !this.camsUp && !u.officeCue)
+        this.startOfficeEncounter(u);
+
+      // W. Bonnie creates his separate visible overlay on a 500 ms / 50% roll
+      // while the Freddy mask is fully on (groups 436 and 443).
+      if (u.id === 'withbonnie' && u.atOpening && this.maskFullyOn && !u.officeCue &&
+          !this.blackout.active && f % C.WITHERED_BONNIE_CUE_FRAMES === 0 &&
+          this.rng.chance(C.WITHERED_BONNIE_CUE_CHANCE, false)) {
+        this.startOfficeEncounter(u);
+      }
+
+      // W. Chica has no generic immediate repel. With the mask fully on she
+      // gets a 10% leave roll per one-second event and is forced out after five
+      // accumulated mask ticks (groups 439-440 and 907).
+      if (u.id === 'withchica' && u.atOpening && this.maskFullyOn && f % C.FPS === 0) {
+        u.maskExposureTicks++;
+        if (u.maskExposureTicks >= 5 || this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) {
+          this.unitLeave(u);
+          continue;
+        }
+      }
       const streakKill = u.atOpening && u.openingRule === 'streak' && this.camsUpSince >= 0 &&
         f - this.camsUpSince >= C.entryStreakFrames(this.opts.night);
       const armedKill = u.atOpening && u.openingRule === 'mask' && this.camsUp &&
@@ -438,13 +465,7 @@ export class Sim {
   advance(u) {
     u.idx++;
     const node = u.path[u.idx];
-    if (node === 'office') {
-      u.done = true;
-      if (u.mutex) this.engagedToy = u.id;
-      this.officeQueue.push(u.name);
-      this.flag('broke-loose', `${u.name} reached the office and is queued for a blackout`);
-      if (!this.camsUp && !this.blackout.active) this.startBlackout(u.name);
-    } else if (node === 'ventL' || node === 'ventR') {
+    if (node === 'office' || node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame;
       if (u.id === 'withbonnie')
         u.openingReadyAt = this.frame + C.witheredBonnieOpeningFrames(this.opts.night);
@@ -452,12 +473,8 @@ export class Sim {
         u.openingReadyAt = this.frame + C.WITHERED_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false });
-      this.flag('broke-loose', `${u.name} reached a vent opening`);
-      // Groups 538-555 test marker 122 and the mask every event pass. The
-      // attacker therefore leaves even if the mask was already down before
-      // it arrived; handling this only in setMask() created a false lethal
-      // edge on the next monitor raise.
-      if (this.maskRepelsThreshold(u)) this.unitLeave(u);
+      this.flag('broke-loose', `${u.name} reached office threshold marker 122`);
+      if (u.openingRule === 'streak' && !this.camsUp) this.startOfficeEncounter(u);
     } else {
       this.flag('broke-loose', `${u.name} moved to CAM ${String(node).padStart(2, '0')}`);
     }

@@ -111,15 +111,16 @@ decompile is now the first validation gate they must clear.
 
 A second search pass tested the obvious escape hatch after Six-Seven: stop asking
 cameras to cover every route and exploit the decompiled monitor-entry gates instead.
-Reactive monitor denial first scored 150/150, then was retracted when separate
-Withered timers were decoded. A further source correction reopened it on 2026-08-20:
-mask conditions are continuously polled, so an unarmed marker-122 attacker arriving
-during an existing mask hold leaves immediately. The corrected perfect-information
-bot again scores 150/150 with box slack, but reads hidden arming frames and rests on
-an incompletely decoded office state machine. It is now an Android research lead,
-not a strategy or a closed theory (`GATE-SEARCH.md`). The methodological lesson got
-sharper: source validation is iterative, and neither exciting nor negative simulator
-results get promoted while a depended-on state machine is still approximate.
+Reactive monitor denial twice appeared to score 150/150 and was twice retracted.
+The second false positive came from swapping two misleading exported UI states and
+then reading groups 538-555 as live mask polling. The Android audit now anchors
+`Multiple Touch` as the camera state and `monitorFrame` as the mask state; those
+groups resolve a previously latched 45-frame defense decision only after the
+300-frame office sequence. With that corrected, every tested observable gate-aware
+family is 0/150 (`GATE-SEARCH.md`, `ANDROID-OFFICE-ENDGAME.md`). The methodological
+lesson got sharper: source validation is iterative, and neither exciting nor
+negative simulator results get promoted while a depended-on state machine is still
+approximate.
 
 ## Sources
 

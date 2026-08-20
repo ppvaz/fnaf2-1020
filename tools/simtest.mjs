@@ -58,8 +58,15 @@ import { Sim } from '../src/engine.js';
   wc.idx = wc.path.length - 1; wc.atOpening = true;
   wc.openingReadyAt = threshold.frame + C.WITHERED_CHICA_OPENING_FRAMES;
   threshold.press('mask');
+  if (!wc.atOpening)
+    throw new Error('W. Chica incorrectly received an immediate marker-122 mask repel');
+  threshold.maskAnim = 0;
+  for (let n = 1; n <= 5; n++) {
+    threshold.frame = n * C.FPS;
+    threshold.tickUnits(threshold.frame);
+  }
   if (wc.atOpening || wc.idx !== 0)
-    throw new Error('timely mask did not immediately repel an unarmed threshold attacker');
+    throw new Error('five sourced W. Chica mask ticks did not clear marker 122');
 
   const maskedArrival = new Sim({ seed: 7, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
@@ -67,8 +74,55 @@ import { Sim } from '../src/engine.js';
   arrivingWc.idx = arrivingWc.path.length - 2;
   maskedArrival.press('mask');
   maskedArrival.advance(arrivingWc);
-  if (arrivingWc.atOpening || arrivingWc.idx !== 0)
-    throw new Error('mask already on did not repel a newly arrived threshold attacker');
+  if (!arrivingWc.atOpening)
+    throw new Error('mask already on incorrectly erased a newly arrived threshold attacker');
+
+  const wbCue = new Sim({ seed: 1, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const cueWb = wbCue.units.find(u => u.id === 'withbonnie');
+  cueWb.idx = cueWb.path.length - 1; cueWb.atOpening = true;
+  cueWb.openingReadyAt = C.s(5);
+  wbCue.press('mask');
+  if (!cueWb.atOpening)
+    throw new Error('mask directly repelled Withered Bonnie before his office cue existed');
+  wbCue.maskAnim = 0;
+  wbCue.frame = C.WITHERED_BONNIE_CUE_FRAMES;
+  wbCue.tickUnits(wbCue.frame);
+  if (!cueWb.atOpening || !wbCue.blackout.active || wbCue.blackout.unitId !== 'withbonnie')
+    throw new Error('Withered Bonnie mask cue did not start the sourced office sequence');
+
+  const toyEncounter = new Sim({ seed: 8, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const encounterTb = toyEncounter.units.find(u => u.id === 'toybonnie');
+  encounterTb.idx = encounterTb.path.length - 1; encounterTb.atOpening = true;
+  toyEncounter.tickUnits(0);
+  if (!toyEncounter.blackout.active || toyEncounter.blackout.unitId !== 'toybonnie')
+    throw new Error('cams-down Toy Bonnie did not start the shared office sequence');
+  toyEncounter.press('mask');
+  while (toyEncounter.frame < C.BLACKOUT_FRAMES) toyEncounter.tick();
+  if (!toyEncounter.alive || encounterTb.atOpening || toyEncounter.blackout.active)
+    throw new Error('timely fully-on mask did not survive and resolve the office sequence');
+
+  const missedEncounter = new Sim({ seed: 9, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const missedTb = missedEncounter.units.find(u => u.id === 'toybonnie');
+  missedTb.idx = missedTb.path.length - 1; missedTb.atOpening = true;
+  missedEncounter.tickUnits(0);
+  while (missedEncounter.alive && missedEncounter.frame < C.BLACKOUT_FRAMES)
+    missedEncounter.tick();
+  if (missedEncounter.alive || missedEncounter.death?.reason !== 'blackout')
+    throw new Error('missed 45-frame fuse did not resolve lethally at the 300-frame endpoint');
+
+  const fuseEdge = new Sim({ seed: 10, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const edgeTb = fuseEdge.units.find(u => u.id === 'toybonnie');
+  edgeTb.idx = edgeTb.path.length - 1; edgeTb.atOpening = true;
+  fuseEdge.tickUnits(0);
+  while (fuseEdge.frame < C.maskGraceFrames(7) - C.MASK_ANIM_ON) fuseEdge.tick();
+  fuseEdge.press('mask'); // becomes fully on exactly as group 532 arms the attack
+  while (fuseEdge.alive && fuseEdge.frame < C.BLACKOUT_FRAMES) fuseEdge.tick();
+  if (fuseEdge.alive)
+    throw new Error('mask completion on the fuse-expiry frame incorrectly defused the encounter');
 
   const endgame = new Sim({ seed: 2, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });

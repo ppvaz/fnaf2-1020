@@ -159,6 +159,8 @@ Community PC reverse engineering is retained as attributed supporting research, 
 silently merged into Android rules. Constants are marked `[SOURCED]`, `[CALIBRATED]`,
 or `[INFERRED]` in `src/config.js`; the live implementation gaps are tracked in
 [Android source status](ANDROID-SOURCE-STATUS.md). The
+[office endgame audit](ANDROID-OFFICE-ENDGAME.md) pins the exported camera/mask
+states and the 45-frame defense / 300-frame resolution chain. The
 [PC confirmation ledger](PC-DECOMP-CHECKLIST.md) is deferred and non-blocking.
 Post-chokepoint routing remains an approximation: it only runs once you have already
 broken the stun loop.

@@ -129,12 +129,11 @@ export class GateBot {
     // *current* continuous cams-up session. Finish the bounded wind, then mask
     // them as soon as the planned drop begins; reacting while still up merely
     // throws away safe box time.
-    // Perfect-information upper bound: finish any safe winding before a
-    // Withered's individual opening timer arms, then drop/mask one frame early.
-    // A human version would need vent cues or a conservative earlier cutoff.
-    const maskRequired = s.units.some(u => u.atOpening && u.openingRule === 'mask' &&
-      s.frame + 1 >= u.openingReadyAt);
-    const threat = s.blackout.active || maskRequired ||
+    // React only to represented observable state. An earlier diagnostic read
+    // the hidden Withered openingReadyAt and masked one frame before it armed;
+    // Android source shows W. Bonnie cannot be cleared until his separate
+    // office overlay appears, so that privileged shortcut was invalid.
+    const threat = s.blackout.active ||
       (!s.camsUp && (s.bb.inOpening || s.gf.present));
     if (threat) {
       if (!this.reactiveMask) this.branches.threat++;
@@ -221,7 +220,7 @@ if (isMain) {
   const validN = QUICK ? 40 : 150;
   console.log('gate-aware search: reactive winding + documented hybrid candidates (night 7)');
   console.log('caveat: Android is canonical; unresolved source/model gaps still bound these claims\n');
-  console.log('controller caveat: threat masks read hidden arming frames (optimistic upper bound)\n');
+  console.log('controller: reacts only to represented visible blackouts/office threats\n');
 
   for (const structure of structures) {
     let best = null;

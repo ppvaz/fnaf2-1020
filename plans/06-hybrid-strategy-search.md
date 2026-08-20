@@ -1,9 +1,10 @@
 # Derivation, tier 4: hybrid and phase-based strategies
 
-**Status:** first gate-aware pass complete; no survivor (`GATE-SEARCH.md`). The
-Android decompile is available and is now the validation gate. The search corrected
-two simulator errors, retracted an apparent 150/150 monitor-denial result, and closed
-the fixed/clock-phased policy family below under the current sourced model.
+**Status:** gate-aware pass complete; no survivor (`GATE-SEARCH.md`). The Android
+event sheet is the validation gate. The search ultimately corrected the office UI
+state identities and 45/300-frame encounter sequence, retracted two apparent
+150/150 monitor-denial results, and closed the fixed/clock-phased policy family
+below under the current sourced model.
 
 ## 2026-08-19 result
 
@@ -13,13 +14,14 @@ those sets (or no camera) at 2 AM and 4 AM. A perfect-information timer policy w
 also tested as an upper bound.
 
 The first monitor-denial result appeared clean because the engine incorrectly gave
-every office-opening occupant the Toys' six-second continuous-cams-up grace. The
-event sheets show separate endgames: Withered Bonnie's night-7 per-unit cooldown is
-300 frames before a later cams-up entry; Withered Chica arms after six scheduler
-ticks. Once those are modeled and masked, the music-box economy collapses. Final
-clean survival: denial 10%, CAM 06 0%, CAM 07 12%, CAM 03 7%, CAM 06+07 0%; the
-best phase schedule is simply `07 → 07 → 07` at 12%. Every row reaches 0% box.
-Minus 7 remains 200/200. Full audit and reproducible table: `GATE-SEARCH.md`.
+every office-opening occupant the Toys' six-second continuous-cams-up grace. A
+second false reopening treated endpoint resolution groups as instant live-mask
+polling after swapping the exported camera and mask states. The event sheet instead
+shows character-specific marker-122 branches plus a shared 45-frame defense fuse
+resolved at the end of a 300-frame office sequence. Once represented, every fixed,
+pinned, jittered, and clock-phased row scores 0/150. Minus 7 remains 200/200 normal
+and 100/100 pinned. Full audit and reproducible table: `GATE-SEARCH.md` and
+`ANDROID-OFFICE-ENDGAME.md`.
 
 ## Goal
 
@@ -102,11 +104,11 @@ FNaF 1 references:
 1. ~~Generalize the bot from a fixed camera-cover script to a fixed backbone plus
    reactive blackout/vent decisions.~~ Done for the gate-aware family; reproducing
    published RVC remains separate future work.
-2. ~~Evaluate Minus Right before widening the space.~~ Done; 0/150 clean.
+2. ~~Evaluate Minus Right before widening the space.~~ Done; 0/150 in every cohort.
 3. ~~Enumerate CAM 07, hybrid partitions and clock phases.~~ Fixed CAM 07 and all
    125 three-phase schedules done. Right-vent-light control remains unmodeled.
 4. ~~Rank survivors by consistency first, then human cost.~~ Done; no row clears
-   the consistency gate, and every row reaches an empty box.
+   the consistency gate under the corrected office model.
 5. ~~Compare against the documented frontier.~~ Done; Minus 7 remains 200/200,
    while the CAM 03/06/07 branches and phase schedules all fail.
 6. No real-game protocol was produced because no simulator survivor exists. Any

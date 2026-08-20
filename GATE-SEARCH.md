@@ -1,19 +1,18 @@
 # FNaF 2 10/20 — Gate-aware hybrid search
 
-### Simulator research report, 2026-08-19; reopened 2026-08-20
+### Simulator research report, 2026-08-19; final Android correction 2026-08-20
 
-> **Current verdict: reopened as an Android lead, not yet a strategy.** A later
-> source correction changed the result again: groups 538–555 poll the mask while
-> an attacker is at marker 122, so an unarmed attacker arriving while the mask is
-> *already on* must leave immediately. The old engine checked only on the mask-on
-> input frame. With continuous polling represented, the perfect-information gate
-> bot now survives 150/150 clean and 150/150 pinned seeds under monitor denial.
-> It reads hidden arming timers and the marker-122 identities/state machine remain
-> partly decoded, so this is not yet a human-playable or source-closed result.
+> **Current verdict: closed for the searched observable policy family.** The
+> apparent 150/150 monitor-denial reopening was a model error. The Android UI
+> audit proves that `monitorFrame` is the mask state, not the camera state, and
+> groups 538-555 resolve a defense decision latched earlier in a 45-frame fuse;
+> they are not continuous instant-mask repel events. With the 300-frame office
+> sequence represented, every tested gate-aware family scores 0/150.
 >
-> **Platform scope:** modern Android release 7 is the canonical target, so this
-> closes the searched family on the target route graph. Remaining source/model
-> gaps are tracked in [`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md).
+> **Platform scope:** modern Android release 7 is the canonical target. Exact
+> source evidence is in
+> [`ANDROID-OFFICE-ENDGAME.md`](ANDROID-OFFICE-ENDGAME.md); remaining gaps are in
+> [`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md).
 
 ## What was searched
 
@@ -23,7 +22,7 @@ agent:
 - keep the monitor down across movement checks where possible;
 - wind reactively when the visible box gauge crosses low/high thresholds;
 - split recovery into two short cams-up bursts with a down/flash reset between;
-- mask BB, blackouts and the two timer-armed Withereds;
+- react only to represented visible blackouts/office threats;
 - optionally flash a fixed camera set: none, CAM 06 (Minus Right), CAM 07,
   CAM 03 (Minus Two), or CAM 06+07;
 - enumerate all 125 three-phase schedules over those sets, switching at 2 AM
@@ -32,96 +31,71 @@ agent:
 The split recovery was the best form found: a single long trip stayed under the
 office-entry streak but gave Foxy's D enough uninterrupted time to lock on.
 
-## The source correction
+## Correction history
 
-The first gate-aware engine pass contained a real bug: a fresh successful movement
-roll advanced immediately, while monitor/light/mutex gates were checked only on a
-later pending retry. The event groups put every successful roll into the same
-state-2 retry transition, so `src/engine.js` now calls `canAdvance` on the initial
-roll too.
+The first gate-aware pass let a fresh successful movement roll ignore the monitor,
+light and mutex gates. Fixing that made pure monitor denial look extraordinary:
+150/150 clean with box slack. That result was retracted when the source showed
+separate marker-122 rules:
 
-Fixing that bug initially made pure monitor denial look extraordinary: 150/150
-clean, 150/150 with 100 ms jitter, 30% minimum box. That result is **retracted**.
-The next event-sheet audit found that the engine also gave every marker-122 occupant
-the Toys' shared `value25` rule:
+- Toy Freddy, Toy Bonnie, Toy Chica and Withered Freddy use the shared
+  `value25 >= 20-2N` cameras-up streak. Night 7 therefore gives six seconds.
+- Withered Bonnie enters 122 only with cameras down, gets a
+  `1000-100N`-frame timer (300 on Night 7), and fails on a later cameras-up state
+  after it expires.
+- Withered Chica has a separate scheduler counter and cameras-up failure after
+  five-plus seconds.
+- Mangle's located 122→123 edge is tied to the right-vent-light visibility
+  transition, not the shared streak.
 
-- Toy Freddy, Toy Bonnie, Toy Chica and Withered Freddy use `value25 >= 20-2N`;
-  on night 7, six continuous seconds of cams up advances 122→123. Cams down resets
-  `value25` (groups 542–545 and 785–786).
-- Withered Bonnie enters 122 only with cams down, receives a
-  `1000-100N`-frame per-unit cooldown (300 frames on night 7), then advances on a
-  later cams-up state when that timer reaches zero (groups 428 and 546).
-- Withered Chica has a separate counter at 122, incremented by the one-second
-  scheduler, and advances while cams are up after it exceeds five (groups 903–905).
-- Mangle's 122→123 transition is tied to the right-vent light object becoming
-  visible and then invisible (groups 402–403). Treating an entirely unchecked
-  Mangle as parkable remains an inference, but it cannot rescue the search because
-  the two Withereds already bind the box economy.
+A second apparent correction then reopened monitor denial at 150/150. It was also
+wrong. Misleading export names had led us to treat `monitorFrame = 2` as cameras
+up. The surrounding UI events establish the opposite:
 
-The engine now represents those endgames separately. The Withered Chica model uses
-a conservative five-second arming edge because six global scheduler ticks can span
-only just over five wall-clock seconds.
+- `Multiple Touch = 0` is office/cameras down and `> 0` is a selected camera.
+- `monitorFrame = 2` is the Freddy mask fully on.
+- `old chica` starts the office encounter, a 45-frame defense fuse is latched,
+  and groups 538-555 use that latched result at the 300-frame endpoint.
 
-### 2026-08-20 correction: continuous mask polling
+Therefore those groups do **not** instantly return every unarmed marker-122
+attacker whenever the mask happens to be on. The false implementation removed the
+actual office cost and let a privileged controller erase attackers on hidden timer
+edges. The engine now models the shared encounter plus W. Bonnie's overlay and
+W. Chica's separate mask-tick branch.
 
-The previous pass still encoded the timely-mask rule incorrectly. Source groups
-538–555 are ordinary event conditions, not a one-shot “mask was just pressed”
-handler: while the mask state is valid, an unarmed marker-122 occupant is returned
-to its route. Therefore an occupant that reaches 122 during an existing mask hold
-must be repelled on arrival. `engine.js` now applies the same predicate both when
-the mask goes on and when a unit enters the threshold; `simtest.mjs` covers both.
+## Corrected sweep
 
-This removes the repeated five-second-mask cost that supported the closure below.
-At the fixed `0.90/1.00` box thresholds, a focused 150-seed probe currently gives:
+Each row uses 150 seeds. `Pinned` pins hostile RNG choices for diagnostics; it is
+not a formal worst-case proof. Jitter columns delay controller inputs by up to the
+shown amount.
 
-| Policy | Clean | Pinned | Minimum box (clean) |
-|---|---:|---:|---:|
-| Monitor denial | 150/150 | 150/150 | 31% |
-| CAM 06 | 150/150 | 150/150 | 0% |
-| CAM 07 | 150/150 | 150/150 | 24% |
-| CAM 03 | 150/150 | 150/150 | 24% |
-| CAM 06+07 | 150/150 | 150/150 | 0% |
+| Policy | Clean | Pinned | 100 ms jitter | 200 ms jitter | Main death |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Monitor denial | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| Minus Right / CAM 06 | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| CAM 07 only | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| Minus Two / CAM 03 | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| CAM 06+07 hybrid | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
+| Best clock-phased set (`none → none → none`) | 0/150 | 0/150 | 0/150 | 0/150 | vent/threshold |
 
-Monitor denial is the important row: it preserves box slack without depending on
-a camera-cover claim. But the controller performs roughly 16–26 hidden-state threat
-reactions per night, including masks timed one frame before an unseen Withered arms.
-Until those reactions are replaced by Android-observable cues or a conservative
-fixed rhythm—and the 122/123 office state machine is fully decoded—the numbers are
-an optimistic existence hint only.
-
-## Superseded 2026-08-19 sweep
-
-Each fixed row below uses 150 clean seeds after a threshold search. `Pinned` is the
-engine's diagnostic mode that pins hostile rolls; it is **not** a mathematical
-worst-case bound because synchronized attackers can be easier than independent RNG.
-
-| Policy | Clean | Pinned | 100 ms jitter | 200 ms jitter | Minimum box | Main death |
-|---|---:|---:|---:|---:|---:|---|
-| Monitor denial | 10% | 100% | 10% | 7% | **0%** | Puppet |
-| Minus Right / CAM 06 | 0% | 0% | 0% | 0% | 0% | Puppet |
-| CAM 07 only | **12%** | 0% | 16% | 11% | 0% | Puppet |
-| Minus Two / CAM 03 | 7% | 0% | 15% | 5% | 0% | Puppet |
-| CAM 06+07 hybrid | 0% | 0% | 0% | 0% | 0% | Puppet |
-| Best clock-phased set: `07 → 07 → 07` | **12%** | 0% | 16% | 11% | 0% | Puppet |
-
-This table is retained as provenance, not as the current result. Its resource
-contradiction depended on missing the continuous-mask-on-arrival rule.
+The earlier 10-12% fixed-policy table and both 150/150 tables are retained in Git
+history as provenance, but are superseded because each depended on a known model
+error.
 
 ## What this closes—and what it does not
 
-- **Six-Seven stays refuted on Android as a two-camera cover.** Reopening monitor
-  denial does not create a two-camera cover and does not rehabilitate that theory.
-- **Monitor denial is open again.** The current 150/150 result is a privileged-model
-  upper bound; the next question is whether an observable or fixed Android policy
-  can replace its hidden timer reads.
-- **The 2026-08-19 fixed/phase percentages are superseded.** They must be rerun only
-  after the Android office endgame is decoded; doing a wider sweep now would spend
-  compute on the dominant uncertainty instead of resolving it.
-- **This is not a proof over every possible policy.** The Android office-light
-  latch is now partially modeled, but the exact Android Toy Bonnie and office
-  endgames are not. Those P0 source gaps must be decoded before widening the
-  search or adapting RVC; a PC win rate is not a calibration target.
+- **Six-Seven stays refuted on Android as a two-camera cover.** The extracted
+  route graph has no such cover.
+- **Observable monitor denial is closed in this searched family.** Its resource
+  advantage disappears once the source-shaped office cost and character-specific
+  endgames are restored.
+- **This is not a proof over every possible policy.** Mangle's full endgame,
+  marker-123 behavior and exact multi-occupant arbitration remain open mechanics.
+  A future source correction could justify a focused rerun, but blind enlargement
+  of the policy grid is not warranted now.
+- **Minus 7 remains the control.** It still survives 200/200 normal seeds and
+  100/100 pinned worst-luck seeds with zero stun lapses in the current Android
+  model.
 
-Reproduce the current model with `node tools/gatesearch.mjs`; use `--quick` for a
-smoke sweep. The focused 150-seed rows above use `runPolicy` at thresholds
-`0.90/1.00`. The Minus 7 control is `node tools/bbtest.mjs 200`.
+Reproduce with `node tools/gatesearch.mjs`; use `--quick` for a smoke sweep. The
+Minus 7 control is `node tools/bbtest.mjs 200`.
