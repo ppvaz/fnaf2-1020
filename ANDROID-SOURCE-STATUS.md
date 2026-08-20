@@ -76,6 +76,19 @@ boundary *prevents* BB's last move. The event sheet says it defers it:
 | 417 | `A = 2` + on `cam 5` + `viewing > 0` + monitor-up complete → `in office` (122) |
 | 290/291 | at 122, raise seen → `v6 = 1`; raise completes → `got you box` (123) |
 | 292/294 | at 122 + mask fully on: 10%/s roll, or `v12 >= 5` consecutive ticks → back to `cam 10` |
+| 907/293 | `v12` counts fully-masked seconds for Toy Chica, Mangle and BB; re-entering the mask state resets it |
+
+**He is five moves away, not four, and the first one is silent.** Only
+g414-416 write his vocal selector (`cam 01` v6 = `Random(3)+1`, played and
+re-rolled by g608-611 from samples 21/24/23); g413 (CAM 10 → 07) writes
+nothing, and g417 plays only sample 17, the movement thud *every* character's
+hop shares (g691-694). So the community's "three laughs then he is in the vent
+camera" counts his 2nd, 3rd and 4th moves, and his 5th is the one that needs
+your cameras up. The engine previously modelled four moves, making him arrive
+sooner than the real game. The vocal is picked at random per move — it does not
+depend on which camera he is on. His in-office taunt is a **different** sample
+(16), played on every input he blocks while at 123: flashlight key (g78),
+flashlight hitbox (g88), the vent-light clicks (g302/304), and g311.
 
 `A = 2` is a **latch, not a moment**: only group 417 gates on the monitor, and
 nothing clears the latch while the cameras are down, so a cameras-down 5 s

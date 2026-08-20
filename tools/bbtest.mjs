@@ -46,7 +46,8 @@ export class Bot {
   }
 
   // BB is in the vent camera: same cycle, but the cams must be DOWN across the
-  // next 5s interval so he cannot take his fourth movement.
+  // next 5s interval. That defers his last movement rather than denying it
+  // (g417 latches), which is what buys a prepared arrival instead of a random one.
   phaseA(a) {
     const p = this.cycle(a);
     const drop = a + 150;                     // :X4.5 — before the interval
@@ -102,7 +103,7 @@ export class Bot {
 
     const a = A(f + 1);
     if (s.bb.inOpening) { this.kind = 'attack'; this.plan = this.attack(a); }
-    else if (s.bb.stage >= 3) { this.kind = 'phaseA'; this.plan = this.phaseA(a); }
+    else if (s.bb.stage >= C.BB_STAGES - 1) { this.kind = 'phaseA'; this.plan = this.phaseA(a); }
     else { this.kind = 'cycle'; this.plan = this.cycle(a); }
   }
 }

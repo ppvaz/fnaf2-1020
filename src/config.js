@@ -123,9 +123,16 @@ export const INSIDE_MASK_ATTACK_CHANCE = 0.5;
 export const INSIDE_MASK_LEAVE_CHANCE = 0.1;
 export const MANGLE_INSIDE_ARM_CHANCE = 0.05;
 
-// Balloon Boy [SOURCED]
+// Balloon Boy [SOURCED: Android groups 342 (roll), 359 (look-hold), 413-418
+// (route hops), 417 (the hop into the opening)]. His route is
+// CAM 10 -> 07 -> 03 -> 01 -> 05 -> vent opening: five moves, not four. Only
+// the last one is monitor-gated, and only the middle three play his laugh
+// (g414-416 write the laugh sample bank read by g608-611), so the community's
+// "third laugh, he is in the vent camera" is move 4 arriving on CAM 05.
 export const BB_MOVE_CHANCE = 0.75;
-export const BB_STAGES = 4;
+export const BB_STAGES = 5;
+// Hops 1..BB_SILENT_HOPS make no sound; the first one (CAM 10 -> 07) is silent.
+export const BB_SILENT_HOPS = 1;
 
 // Golden Freddy [SOURCED]
 export const GF_SPAWN_CHANCE = 0.5;

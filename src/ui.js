@@ -216,8 +216,8 @@ export class UI {
 
     this.el.foxy.textContent = sim.foxy.loc === 'hall' ? `HALL D=${sim.foxy.D}` : 'AWAY';
     this.el.foxy.parentElement.className = `threat ${sim.foxy.gotYou ? 'crit' : sim.foxy.loc === 'hall' && sim.foxy.D >= 3 ? 'warn' : ''}`;
-    this.el.bb.textContent = sim.bb.inOpening ? 'IN VENT' : `${sim.bb.stage}/4`;
-    this.el.bb.parentElement.className = `threat ${sim.bb.inOpening ? 'crit' : sim.bb.stage >= 3 ? 'warn' : ''}`;
+    this.el.bb.textContent = sim.bb.inOpening ? 'IN VENT' : `${sim.bb.stage}/${C.BB_STAGES}`;
+    this.el.bb.parentElement.className = `threat ${sim.bb.inOpening ? 'crit' : sim.bb.stage >= C.BB_STAGES - 1 ? 'warn' : ''}`;
     this.el.gf.textContent = sim.gf.present ? 'OFFICE' : sim.gf.inHall ? 'HALL' : '—';
     this.el.gf.parentElement.className = `threat ${sim.gf.present || sim.gf.inHall ? 'crit' : ''}`;
 
@@ -270,7 +270,7 @@ export class UI {
       const here = sim.units.filter(u => !u.done && u.path[u.idx] === sim.cam);
       const extra = [];
       if (sim.cam === 10 && sim.bb.stage === 0) extra.push('BB');
-      if (sim.cam === 5 && sim.bb.stage === 3) extra.push('BB');
+      if (sim.cam === 5 && sim.bb.stage === C.BB_STAGES - 1) extra.push('BB');
       if (sim.cam === 11) extra.push(`PUPPET ${sim.puppet.stage}/4`);
       this.el.feedBody.innerHTML = here.map(u => {
         const st = Math.max(0, u.stunUntil - sim.frame) / C.STUN_FRAMES;

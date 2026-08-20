@@ -330,7 +330,6 @@ export class Sim {
     this.tickFoxy(f);
     this.tickMask();
     this.tickUnits(f);
-    this.tickBB();
     this.tickBox();
     if (this.opts.record) this.record();
 
@@ -482,30 +481,31 @@ export class Sim {
     // BB steps into the opening the moment the cams come up if he was waiting.
     // [SOURCED] g417 is his only monitor-gated edge and it consumes a latched
     // A = 2, so cameras down defer the hop instead of cancelling it.
-    if (this.bb.pending && this.bb.stage === 3) { this.bb.pending = false; this.bbEnterOpening(); return; }
+    if (this.bb.pending && this.bb.stage === C.BB_STAGES - 1) {
+      this.bb.pending = false; this.bbEnterOpening(); return;
+    }
     // and walks in if he is already sitting in the opening
     if (this.bb.inOpening && this.bb.openingAtCamsUp !== this.camsUpCount) {
       this.kill('balloon-boy', 'Balloon Boy walked in — the flashlight is gone');
     }
   }
 
-  bbEnterOpening() {
-    this.bb.stage = 4; this.bb.inOpening = true; this.bb.openingAtCamsUp = this.camsUpCount;
-    this.emit('laugh');
-    this.emit('vent-bang', { who: 'bb', leaving: false });
+  // One route hop along CAM 10 -> 07 -> 03 -> 01 -> 05 (g413-416). The first
+  // hop is silent in the source; the next three play his vocal bank, which is
+  // the "laugh" a player counts. Reaching CAM 05 is the vent-camera cue.
+  bbHop() {
+    this.bb.stage++;
+    if (this.bb.stage > C.BB_SILENT_HOPS) this.emit('laugh');
+    if (this.bb.stage === C.BB_STAGES - 1) {
+      this.emit('vent-bang', { who: 'bb', leaving: false, cam: true });
+    }
   }
 
-  tickBB() {
-    if (!this.opts.bbEnabled) return;
-    // BB's source transitions through the right-side blind marker also require
-    // the office-light latch to be zero. Preserve his successful movement roll
-    // while the latch is closed, just as the regular units preserve state 2.
-    if (this.bb.pending && this.bb.stage < 3 && !this.lightStallOn) {
-      this.bb.pending = false;
-      this.bb.stage++;
-      this.emit('laugh');
-      if (this.bb.stage === 3) this.emit('vent-bang', { who: 'bb', leaving: false, cam: true });
-    }
+  bbEnterOpening() {
+    this.bb.stage = C.BB_STAGES; this.bb.inOpening = true;
+    this.bb.openingAtCamsUp = this.camsUpCount;
+    // g417 plays only the movement sample every hop shares -- no laugh here.
+    this.emit('vent-bang', { who: 'bb', leaving: false });
   }
 
   // Sourced hop gates: a unit whose movement roll has passed still waits at
@@ -661,18 +661,17 @@ export class Sim {
         }
       }
     }
-    // 3. Balloon Boy
+    // 3. Balloon Boy. His roll (g342) carries no monitor, camera or light
+    // condition, and his look-hold row (g359) has no exclusion, so every route
+    // hop resolves on the spot. Only the hop into the opening (g417) waits for
+    // the monitor: that roll latches until the next raise completes.
     if (this.opts.bbEnabled && !this.bb.inOpening) {
       if (this.rng.chance(C.BB_MOVE_CHANCE, true)) {
-        if (this.bb.stage === 3) {
+        if (this.bb.stage === C.BB_STAGES - 1) {
           if (this.monitor === MON_UP) this.bbEnterOpening();
           else this.bb.pending = true;
-        } else if (!this.camsUp && this.lightStallOn) {
-          this.bb.pending = true;
         } else {
-          this.bb.stage++;
-          this.emit('laugh');
-          if (this.bb.stage === 3) this.emit('vent-bang', { who: 'bb', leaving: false, cam: true });
+          this.bbHop();
         }
       }
     }

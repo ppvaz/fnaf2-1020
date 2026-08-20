@@ -117,9 +117,9 @@ Because Toy Bonnie is stunned all night, the one source of unwinnable RNG in 10/
 | Movement opportunity roll | `random(1..20) ≤ AI level`. At the 15 AI cap that is **75%**, for every regular animatronic — exactly BB's documented 3/4 |
 | Pathing | animatronics never roam: each walks a **direct path to your office**. Only Mangle and Withered Freddy branch (one 50/50 each). This is *why* three chokepoint rooms are enough to hold seven of them |
 | Office animatronic queue | several can wait in your office at once, but **only one blackout can fire per 10 s** |
-| BB: movements needed to reach your vent | **4** (3/4 chance each, on 5s intervals) |
-| BB: 3rd laugh | enters the **left vent camera** — first vent-bang cue |
-| BB: 4th laugh | enters the **vent opening / blind spot** — second vent-bang cue. **Only possible while the cams are up.** |
+| BB: movements needed to reach your vent | **5** (3/4 chance each, on 5s intervals) — CAM 10 → 07 → 03 → 01 → 05 → opening. His first move is **silent** [SOURCED: g413-417], which is why it is counted as four |
+| BB: 3rd laugh | he is in the **left vent camera** (CAM 05) — first vent-bang cue; source-wise this is his 4th move |
+| BB: 4th laugh | enters the **vent opening / blind spot** — second vent-bang cue. **Only possible while the cams are up** — and a roll passed with the cams down is banked, not lost, so it lands on your next raise |
 | BB: leaves the vent | guaranteed after **5 s cumulative mask time**; ~1/10 chance per cumulative second to leave early (~34% chance of an early leave) |
 | Your reaction window on a full-length BB attack | **~0.7 s** to un-mask, raise cams and re-flash |
 | Total flashlight budget on Night 7 | **3000 frames = exactly 50 seconds of light** (each power bar = 600 frames; at 0 bars you still have 600). The indicator starts blinking rapidly at **500 left** |
@@ -195,7 +195,9 @@ while the cams are up.
 > `ANDROID-SOURCE-STATUS.md`]: the 5 s movement roll is never blocked, and a passed roll is
 > *latched* (`A = 2`) until it can be spent. Only the hop into the vent opening checks the
 > monitor. So cams-down across the interval **defers** BB's move rather than preventing it — he
-> takes it the moment your next monitor raise completes. The procedure below is still right,
+> takes it the moment your next monitor raise completes. Counting is also off by one: his first
+> move (CAM 10 → 07) is silent, so "three laughs" is his *fourth* move landing on CAM 05 and the
+> monitor-gated one is his fifth. The procedure below is still right,
 > because the deferral hands you the *timing*: he arrives when you choose to come up, prepared,
 > instead of mid-cycle. What does not work is the tempting extrapolation — "stay down across
 > every interval forever and he can never move." You have to raise to wind the box, and he is

@@ -372,8 +372,9 @@ class App {
           this.ui.lane.pop('SAFE', 'good', s.t);
         }
       }
-      if (!s.bb.inOpening && s.bb.stage !== 3) s.bb.stage = 3;
-      if (s.bb.inOpening) { s.bbLeave(); s.bb.stage = 3; }   // re-arm, no penalty
+      const vent = C.BB_STAGES - 1;                            // on CAM 05
+      if (!s.bb.inOpening && s.bb.stage !== vent) s.bb.stage = vent;
+      if (s.bb.inOpening) { s.bbLeave(); s.bb.stage = vent; }   // re-arm, no penalty
     }
     if (this.mode.drill === 'phaseB') {
       if (!s.bb.inOpening) {

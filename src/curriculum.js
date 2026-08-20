@@ -21,9 +21,11 @@ const sweep = (t0) => [
 const EASY = { tolGood: 0.30, tolOk: 0.55 };
 const FIRM = { tolGood: 0.22, tolOk: 0.45 };
 
-// Phase A is a different cycle, not the main one. The cams must be DOWN across
-// every 5s interval so Balloon Boy cannot take his fourth move -- which also
-// means Golden Freddy never gets a roll, so there is no mask flick here.
+// Phase A is a different cycle, not the main one. The cams are DOWN across
+// every 5s interval, which defers Balloon Boy's last move (g417 latches the
+// passed roll until a raise completes) so he arrives when you are ready for
+// him. It also means Golden Freddy never gets a roll, so there is no mask
+// flick here.
 const PHASE_A_SCRIPT = [
   S('monitor-down', 0.00, 'Cams down', 'monitor', { want: 'down' }),
   S('flash-hall', 0.15, 'Flash the hall', 'light'),
@@ -139,11 +141,13 @@ export const LESSONS = [
     when: 'Cycle on :X2 / :X7, then cams down by :X4 / :X9 and back up after :X5 / :X0.',
     title: 'Hearing Balloon Boy',
     goal: 'On his third laugh, get the cams DOWN across every 5-second interval.',
-    teach: 'BB laughs on each move. The third laugh — with a vent bang — means he is in the vent camera. ' +
-           'His fourth move can only happen while your cams are UP, so from then on you drop them before ' +
-           'every 5-second interval and raise them after. That is the whole defence. Note there is no ' +
-           'mask flick in this cycle: with the cams down across every interval, Golden Freddy never gets ' +
-           'a roll. You also get much less winding time, which is the real cost of a BB approach.',
+    teach: 'BB is silent on his first move and calls out on the next three. The third call — with a vent ' +
+           'bang — means he is in the vent camera, one move from your vent. That last move is the only ' +
+           'one that needs your cams UP, so you drop them before every 5-second interval and raise them ' +
+           'after. Careful: that defers the move, it does not cancel it. He banks the roll and takes it ' +
+           'the moment your next raise finishes — the point is that you choose when, and you are ready. ' +
+           'Note there is no mask flick in this cycle: with the cams down across every interval, Golden ' +
+           'Freddy never gets a roll. You also get much less winding time, which is the real cost.',
     controls: ['light', 'camlight', 'mask', 'monitor', 'cams', 'wind'],
     script: PHASE_A_SCRIPT,
     sim: { lethal: false },
