@@ -68,7 +68,7 @@ export class Sim {
 
     // --- Balloon Boy
     this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
-                maskTicks: 0 };
+                maskTicks: 0, inside: false };
 
 
     // --- blackout
@@ -111,16 +111,24 @@ export class Sim {
   get hallView() { return this.monitor !== MON_UP; }
   // `white button` follows the physical hold. `new bonnie`, the office-light
   // movement latch, survives release until the next one-second scheduler tick.
-  get lightLogical() { return this.lightHeld && !this.maskOn; }
+  get lightLogical() { return this.lightHeld && !this.maskOn && !this.bb.inside; }
   // [SOURCED] g75/g84 (hall light) and g302/304 (vent lights) all require
   // `mask` = 0: wearing the mask turns every office light off outright. A
   // masked player can only take the mask off.
   get lightStallOn() { return this.frame < this.lightLogicalUntil; }
   get anyOfficeLightHeld() {
-    return !this.maskOn && (this.lightHeld || this.ventLightL || this.ventLightR);
+    return !this.maskOn && !this.bb.inside &&
+      (this.lightHeld || this.ventLightL || this.ventLightR);
   }
-  get hallLightOn() { return this.lightHeld && this.hallView && !this.maskOn; }
-  get camLightOn() { return this.lightHeld && this.monitor === MON_UP; }
+  get hallLightOn() {
+    return this.lightHeld && this.hallView && !this.maskOn && !this.bb.inside;
+  }
+  // g76/g85 exclude a BB at 123, but g77/g86 -- the `viewing = 10` pair -- do
+  // not, so CAM 10 is the one camera he leaves you.
+  get camLightOn() {
+    return this.lightHeld && this.monitor === MON_UP &&
+      (!this.bb.inside || this.cam === 10);
+  }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
   // Holding the wind button only winds when you are actually on the box camera.
   // Anything else -- cams down, wrong camera -- is a finger doing nothing.
@@ -486,9 +494,16 @@ export class Sim {
     if (this.bb.pending && this.bb.stage === C.BB_STAGES - 1) {
       this.bb.pending = false; this.bbEnterOpening(); return;
     }
-    // and walks in if he is already sitting in the opening
+    // and walks in if he is already sitting in the opening. He does not kill:
+    // g96 forces `lit?` to zero every frame while he is at 123, g301/303 stop
+    // the vent lights answering, and no group ever moves him back out. Foxy
+    // finishes the job, which is what actually ends the run.
     if (this.bb.inOpening && this.bb.openingAtCamsUp !== this.camsUpCount) {
-      this.kill('balloon-boy', 'Balloon Boy walked in — the flashlight is gone');
+      this.bb.inside = true;
+      this.bb.inOpening = false;
+      this.lightHeld = this.ventLightL = this.ventLightR = false;
+      this.flag('bb-inside', 'Balloon Boy walked in — the flashlight is gone for the rest of the night');
+      this.emit('bb-inside');
     }
   }
 

@@ -216,8 +216,10 @@ export class UI {
 
     this.el.foxy.textContent = sim.foxy.loc === 'hall' ? `HALL D=${sim.foxy.D}` : 'AWAY';
     this.el.foxy.parentElement.className = `threat ${sim.foxy.gotYou ? 'crit' : sim.foxy.loc === 'hall' && sim.foxy.D >= 3 ? 'warn' : ''}`;
-    this.el.bb.textContent = sim.bb.inOpening ? 'IN VENT' : `${sim.bb.stage}/${C.BB_STAGES}`;
-    this.el.bb.parentElement.className = `threat ${sim.bb.inOpening ? 'crit' : sim.bb.stage >= C.BB_STAGES - 1 ? 'warn' : ''}`;
+    this.el.bb.textContent = sim.bb.inside ? 'IN OFFICE'
+      : sim.bb.inOpening ? 'IN VENT' : `${sim.bb.stage}/${C.BB_STAGES}`;
+    this.el.bb.parentElement.className = `threat ${sim.bb.inside || sim.bb.inOpening ? 'crit'
+      : sim.bb.stage >= C.BB_STAGES - 1 ? 'warn' : ''}`;
     this.el.gf.textContent = sim.gf.present ? 'OFFICE' : sim.gf.inHall ? 'HALL' : '—';
     this.el.gf.parentElement.className = `threat ${sim.gf.present || sim.gf.inHall ? 'crit' : ''}`;
 

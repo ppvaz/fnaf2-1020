@@ -96,8 +96,9 @@ export const entryStreakFrames = (night) => s(20 - 2 * night);
 // occupant of marker 122. Toy Bonnie instead gets a per-unit cooldown of
 // 1000-100*night frames and Toy Chica arms after six scheduler ticks.
 // Both must be masked before a later cams-up trip. Mangle's 122->123 edge is
-// driven by the right-vent light object's visible->invisible transition, so an
-// unchecked Mangle can remain parked at 122 in this model [INFERRED]. The
+// the same shape as Balloon Boy's [SOURCED: g402 flags her when the raise
+// starts, g403 moves her to 123 when it finishes], so an unchecked Mangle
+// does not sit at 122 -- the next completed raise takes her in. The
 // Chica timer can complete in just over five wall-clock seconds depending on
 // scheduler phase, so the model uses the conservative five-second edge.
 // (Pre-XOR these were labeled Withered Bonnie / Withered Chica.)
