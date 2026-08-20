@@ -6,6 +6,33 @@ August 2025. Community PC mechanics and strategies are useful leads, but a rule
 enters the Android simulator only when the Android event sheet, an Android
 experiment, or an explicitly labeled approximation supports it.
 
+## The ledger is enforced by `tools/sourcetest.mjs` (2026-08-20)
+
+A rule entering this ledger used to be an assertion about the engine that
+nothing checked. The engine's other checks are population statistics —
+`simtest` sweeps seeds, `bbtest` says the Minus 7 bot survives 200/200 — and
+they pass or fail on aggregate survival, so a corrupted mechanism hides behind
+a healthy outcome.
+
+That gap is measured, not assumed. Ten sourced values were corrupted one at a
+time and both suites run against each:
+
+| | mutations caught |
+| --- | ---: |
+| `sourcetest` | **10 / 10** |
+| `simtest` + `bbtest 200 --assert` | 2 / 10 |
+
+The eight the old suite missed include `FOXY_AI` 17→15, `VENT_MASK_TICKS` 5→4,
+`GF_HALL_KILL_FRAMES` 100→200, the night-7 mask fuse 45→90, Balloon Boy's route
+losing a hop, and both input gates being deleted outright. Each of those is a
+load-bearing sourced rule, and every one of them passed the whole engine suite.
+
+`sourcetest` asserts the mechanisms directly against a hand-driven `Sim`, one
+case per group citation, and runs first in `node tools/test.mjs --engine`. A
+failure names the group rather than the symptom. **When a row in this ledger
+changes, add or update its case there** — otherwise the row is documentation,
+not a constraint.
+
 ## 2026-08-20: handle-scramble correction pass
 
 The APK's runtime XORs every object handle with 28 at load

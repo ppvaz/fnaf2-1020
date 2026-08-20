@@ -199,6 +199,167 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   ok('stun time', 'a camera flash loads a 400-frame stun', C.STUN_FRAMES === 400);
 }
 
+// ------------------------------------------------- sourced constant values
+//
+// Cheap, and exactly the failure mode the population checks cannot see: a
+// sourced number silently edited. Each line names the group or dump the value
+// came from, so a failure points at the claim rather than at the symptom.
+const eq = (group, what, got, want) =>
+  ok(group, `${what} = ${want} (got ${got})`, got === want);
+
+// clock
+eq('decompile', 'the night is 420 s', C.NIGHT_FRAMES, C.s(420));
+eq('decompile', 'an in-game hour is 70 s', C.HOUR_FRAMES, C.s(70));
+eq('g450-457', 'one flash stuns for 400 frames', C.STUN_FRAMES, 400);
+eq('decompile', 'movement opportunities are 5 s apart', C.MO_FRAMES, C.s(5));
+eq('decompile', 'a blackout lasts 5 s', C.BLACKOUT_FRAMES, C.s(5));
+
+// endpoint resolution order -- group index decides, not arrival
+ok('g537/g538-555', 'the defended resolve order is by group index',
+  C.RESOLVE_ORDER_DEFENDED.join() ===
+  'withfreddy,withbonnie,withchica,toyfreddy,toybonnie,toychica');
+ok('g532/g533', 'the failed order moves Toy Freddy last',
+  C.RESOLVE_ORDER_FAILED.join() ===
+  'withfreddy,withbonnie,withchica,toybonnie,toychica,toyfreddy');
+ok('g402/403', 'Mangle is absent from the resolve table',
+  !C.RESOLVE_ORDER_DEFENDED.includes('mangle') &&
+  !C.RESOLVE_ORDER_FAILED.includes('mangle'));
+
+// the `time allowed` -> `time left` fuse, by night
+eq('time allowed', 'the night-7 mask fuse is 45 frames', C.maskGraceFrames(7), 45);
+eq('time allowed', 'the night-1 fuse is 100 frames', C.maskGraceFrames(1), 100);
+ok('time allowed', 'the fuse shortens every night up to 7', (() => {
+  for (let n = 2; n <= 7; n++)
+    if (C.maskGraceFrames(n) > C.maskGraceFrames(n - 1)) return false;
+  return true;
+})());
+
+// Foxy
+eq('g829', "Foxy's AI caps at 17, not the shared 15", C.FOXY_AI, 17);
+eq('g824/825', 'his exposure threshold is 100*night', C.foxyExposureFrames(7), 700);
+eq('g872-874', 'the lit hall pins him for 50 frames', C.FOXY_HALL_PIN_FRAMES, 50);
+eq('g846', 'a retreat writes B = 500 + Random(500), min', C.FOXY_RETURN_MIN, 500);
+eq('g846', '...and max', C.FOXY_RETURN_MAX, 999);
+ok('g337', 'he first enters between 5 s and 10 s',
+  C.FOXY_ENTER_MIN === C.s(5) && C.FOXY_ENTER_MAX === C.s(10));
+
+// Balloon Boy
+eq('g294', 'five masked ticks send him back', C.VENT_MASK_TICKS, 5);
+eq('g292', 'the early leave is 10%/s', C.VENT_EARLY_LEAVE_CHANCE, 0.1);
+eq('g342', 'his move roll is 3/4', C.BB_MOVE_CHANCE, 0.75);
+eq('g413-418', 'his route is five moves, not four', C.BB_STAGES, 5);
+eq('g414-416', 'only the first hop is silent', C.BB_SILENT_HOPS, 1);
+
+// the shared cams-up entry streak and the two per-unit timers
+eq('value25', 'the night-7 entry streak is 6 s', C.entryStreakFrames(7), C.s(6));
+eq('value25', 'the night-1 streak is 18 s', C.entryStreakFrames(1), C.s(18));
+eq('decompile', "Toy Bonnie's night-7 cooldown is 300 frames",
+  C.toyBonnieOpeningFrames(7), 300);
+eq('decompile', "Toy Chica's opening edge is 5 s", C.TOY_CHICA_OPENING_FRAMES, C.s(5));
+eq('g436-441', "Toy Bonnie's overlay rolls every 500 ms", C.TOY_BONNIE_CUE_FRAMES, C.s(0.5));
+eq('g436-441', '...at 1 in 2', C.TOY_BONNIE_CUE_CHANCE, 0.5);
+
+// marker 123
+eq('g556-569', '`danger 2` is a 40-frame transition', C.INSIDE_ATTACK_FRAMES, 40);
+eq('g729-731', 'Mangle arms on a 1-in-20 cams-up second', C.MANGLE_INSIDE_ARM_CHANCE, 0.05);
+eq('g747-750', 'a marker-123 leave writes B = 500 flat', C.INSIDE_LEAVE_COOLDOWN, 500);
+eq('g538-555', 'a defended repel rolls Random(500)/night', C.REPEL_COOLDOWN_ROLL, 500);
+
+// Golden Freddy
+eq('g830', 'his office roll is 1 in 2 at the 10 cap', C.GF_SPAWN_CHANCE, 0.5);
+eq('g875-880', '`hall movement` blocks him for 300 frames', C.HALL_MOVEMENT_FRAMES, 300);
+
+// the shared cap and the movement roll
+eq('g830', 'everyone else caps at 15 AI', C.STALLED_AI, 15);
+eq('MO', 'AI 15 is a 75% movement roll', C.MO_CHANCE(15), 0.75);
+
+// power and box
+eq('battery life', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);
+eq('battery life', 'night 1 gives 7000', C.powerFrames(1), 7000);
+eq('battery life', 'the indicator blinks at 500', C.POWER_BLINK, 500);
+eq('decompile', 'a full box drains in 16.67 s', C.BOX_DRAIN_FRAMES, C.s(16.67));
+eq('g638-645', 'empty to full takes 5.66 s', C.BOX_WIND_FRAMES, C.s(5.66));
+eq('g404-411', 'the Puppet walks five hops', C.PUPPET_STAGES, 4);
+ok('g404-411', "the Puppet's two routes are the sourced ones",
+  C.PUPPET_ROUTE.left.join() === '10,7,3,1,office' &&
+  C.PUPPET_ROUTE.right.join() === '10,7,4,2,office');
+
+// animation bank -- the asymmetry is the load-bearing part
+ok('build 296', 'lowering the monitor is slower than raising it',
+  C.MONITOR_ANIM_DOWN > C.MONITOR_ANIM_UP);
+ok('build 296', 'taking the mask off is slower than putting it on',
+  C.MASK_ANIM_OFF > C.MASK_ANIM_ON);
+
+// the seven's sourced routes and gates
+{
+  const by = Object.fromEntries(C.STALLED.map(u => [u.id, u]));
+  ok('route graph', 'seven stalled characters', C.STALLED.length === 7);
+  ok('g875-880', 'Toy Freddy owns the uncovered 9 -> 10 -> blind -> office route',
+    by.toyfreddy.path.join() === '9,10,blindA,blindB,office');
+  ok('route graph', 'Withered Freddy is held at CAM 07',
+    by.withfreddy.path.includes(7));
+  ok('value25', 'the four mutex holders are the streak users',
+    C.STALLED.filter(u => u.mutex).map(u => u.id).join() ===
+    'withfreddy,withbonnie,withchica,toyfreddy' &&
+    C.STALLED.filter(u => u.mutex).every(u => u.openingRule === 'streak'));
+  ok('g402/403', "Mangle's opening rule is the monitor raise",
+    by.mangle.openingRule === 'raise');
+  ok('g428', 'Toy Bonnie enters from the cams-down state',
+    by.toybonnie.entryGate === 'camsDown');
+  ok('g456', 'Mangle transits CAM 11, where the flash stun is excluded',
+    by.mangle.path.includes(11));
+}
+
+// ------------------------------------------------------- driven behaviours
+{
+  // `battery life` drains 1 per frame while any light is on, and not
+  // otherwise.
+  const s = bare({ powerEnabled: true });
+  const p0 = s.power;
+  step(s, 60);
+  ok('battery life', 'no drain with every light off', s.power === p0);
+  s.press('light');
+  step(s, 60);
+  ok('battery life', 'the office light drains 1/frame', p0 - s.power === 60);
+}
+{
+  // The box drains full -> empty in 16.67 s with nobody winding.
+  const s = bare({ boxEnabled: true });
+  ok('box', 'the box starts full', s.box === 1);
+  step(s, C.BOX_DRAIN_FRAMES);
+  ok('box', 'and is empty after the sourced drain', s.box <= 0.001);
+}
+{
+  // Winding only counts on the box camera: a finger anywhere else does
+  // nothing, which is what makes CAM 11 part of the cycle.
+  const s = bare({ boxEnabled: true });
+  step(s, C.FPS * 5);
+  const low = s.box;
+  s.press('monitor'); settle(s);
+  s.press('cam:10');
+  s.press('wind');
+  step(s, C.FPS);
+  ok('box', 'winding off CAM 11 does nothing', s.box < low);
+  s.press('cam:11');
+  const before = s.box;
+  step(s, C.FPS);
+  ok('g638-645', 'winding on CAM 11 refills', s.box > before);
+}
+{
+  // The cams-up entry streak resets the moment the monitor starts down --
+  // it is a *current session* counter, not a running total.
+  const s = bare();
+  s.press('monitor'); settle(s);
+  step(s, C.FPS * 3);
+  ok('value25', 'the cams-up session is running', s.camsUpSince >= 0);
+  s.press('monitor'); settle(s);
+  ok('value25', 'lowering the monitor ends the session', !s.camsUp);
+  s.press('monitor'); settle(s);
+  const restarted = s.frame - s.camsUpSince;
+  ok('value25', 'and the next raise starts a fresh one',
+    restarted < C.FPS * 3);
+}
+
 // ------------------------------------------------------------------- report
 const total = pass + fails.length;
 if (fails.length) {
