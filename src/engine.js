@@ -244,6 +244,9 @@ export class Sim {
       this.power--;
       if (this.power <= 0) { this.power = 0; this.lightHeld = false; this.flag('power-out', 'Flashlight is dead'); }
     }
+    // the sourced light stall (`new bonnie`) is re-zeroed only once a second,
+    // so its blocking effect outlives the tap by up to a second
+    if (this.lightLogical && !this.camsUp) this.lightStallUntil = this.frame + C.FPS;
     // Holding the camera light stuns whoever is in the room being viewed.
     if (this.camLightOn) this.stunCam(this.cam);
     // Withereds stall from being looked at at all.
@@ -375,7 +378,7 @@ export class Sim {
       if (u.entryGate === 'camsUp' && !this.camsUp) return false;
       if (u.entryGate === 'camsDown' && this.camsUp) return false;
       if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
-    } else if (u.lightStall && !this.camsUp && this.lightLogical) {
+    } else if (u.lightStall && !this.camsUp && this.frame < (this.lightStallUntil || 0)) {
       return false; // office light with cams down re-arms the stall counter
     }
     return true;
