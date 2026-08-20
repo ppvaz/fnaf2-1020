@@ -99,8 +99,15 @@ doesn't model.
 The community keeps independently inventing the same validation idea this repo's
 simulator embodies: Shooter25's practice mod / bot played brayden's strategy
 perfectly for 105 nights to measure its true consistency (104–1), and Markiplier
-used the same mod to read Foxy's internals. Nobody has yet used a simulator to
-*search* for a strategy — that gap is plan 05.
+used the same mod to read Foxy's internals. Nobody had used a simulator to
+*search* for a strategy — that gap was plan 05, and it has now been walked
+end-to-end once: the search derived the CAM 06/07 "Six-Seven Strat" from the
+modeled route graph (2026-08-19), and the same day's decompile of the Android
+build refuted it — the sourced route graph admits no two-camera cover, and the
+only robust minimal cover is 4-7-10, Minus 7's own loop, independently
+re-derived from source (`CAM-6-7-STRATEGY.md` carries the full post-mortem).
+The lesson is the method: sim-derived candidates are hypotheses, and the
+decompile is now the first validation gate they must clear.
 
 ## Sources
 

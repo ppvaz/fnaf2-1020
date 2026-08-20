@@ -2,11 +2,21 @@
 
 ### Simulator-derived research result (plan 05), 2026-08-19
 
-> **Status:** a structurally new, simulator-verified candidate — **not yet a game-
-> verified strategy**. It clears the current model cleanly and is simpler than
-> Minus 7, but it makes post-chokepoint mechanics load-bearing. Those are the least
-> trustworthy part of this simulator. Do not teach or call this zero-RNG until it
-> survives the real Android game (and ideally the Android decompile).
+> **Status: REFUTED by the decompile, 2026-08-19 (same day).** The validation
+> gate this document demanded was cleared the hard way: the Android build was
+> decompiled, the real route graph was extracted from the Office-frame event
+> sheets, and the simulator was rebuilt on it (commit `eea7afd`). Under the
+> sourced graph **no two-camera cover exists** — Withered Freddy's actual
+> route runs through Game Area and two off-camera transit rooms that CAM
+> 06/07 never see, and the modeled routes this strategy stood on were wrong
+> in exactly the way the "What is still unproved" section feared. The
+> strategy search over the sourced graph finds three minimal three-camera
+> covers, of which only **4-7-10 — Minus 7's own flash loop — survives
+> clean**. Six-Seven's death independently re-derived Minus 7 from source.
+>
+> The document below is preserved as written, as a record of a sim-derived
+> candidate that was correctly quarantined until validation and did not
+> survive it. The name is hereby freed for the next candidate worth memeing.
 
 ## Names
 
