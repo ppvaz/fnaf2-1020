@@ -8,7 +8,14 @@
 //   node tools/cyclesearch.mjs --curve    # just print jitter curves for the
 //                                         # current cycle (no search)
 import * as C from '../src/config.js';
-import { run, DEFAULT_CYCLE } from './bbtest.mjs';
+import { DEFAULT_CYCLE } from './bbtest.mjs';
+import { pool, closePool } from './pool.mjs';
+
+// Every night this file simulates goes through the pool, so the hill-climb
+// spreads across cores instead of one. `--serial` pins it to a single worker,
+// which must produce identical output.
+const BBTEST = new URL('./bbtest.mjs', import.meta.url).href;
+const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 
 // The current cycle, expressed as knobs. genCycle(KNOBS0) reproduces
 // DEFAULT_CYCLE exactly (asserted below).
@@ -61,28 +68,27 @@ export function genCycle(k, order = ORDER0) {
 
 const SEED = (i) => (i * 2246822519) >>> 0;
 
-function survivors(cycle, jitter, n) {
-  let ok = 0;
-  for (let i = 0; i < n; i++)
-    if (run({ seed: SEED(i), jitter, cycle }).sim.won) ok++;
-  return ok;
+async function survivors(cycle, jitter, n) {
+  const nights = await sweep(Array.from({ length: n },
+    (_, i) => ({ seed: SEED(i), jitter, cycle })));
+  return nights.reduce((ok, r) => ok + (r.won ? 1 : 0), 0);
 }
 
 // Lexicographic fitness: (largest all-survive jitter, survivors just past it).
 const J_CAP = 30;
-function fitness(cycle, n) {
+async function fitness(cycle, n) {
   let j = 0;
-  while (j <= J_CAP && survivors(cycle, j, n) === n) j++;
+  while (j <= J_CAP && await survivors(cycle, j, n) === n) j++;
   const maxJ = j - 1;
   let tie = 0;
-  for (let d = 0; d < 3; d++) tie += survivors(cycle, j + d, n);
+  for (let d = 0; d < 3; d++) tie += await survivors(cycle, j + d, n);
   return { maxJ, tie };
 }
 const better = (a, b) => a.maxJ > b.maxJ || (a.maxJ === b.maxJ && a.tie > b.tie);
 
-function hillClimb(knobs, order, n, log) {
+async function hillClimb(knobs, order, n, log) {
   let best = { ...knobs };
-  let bestFit = fitness(genCycle(best, order), n);
+  let bestFit = await fitness(genCycle(best, order), n);
   log(`start: maxJ ${bestFit.maxJ} frames (${Math.round(bestFit.maxJ / C.FPS * 1000)}ms), tie ${bestFit.tie}`);
   for (let pass = 0; ; pass++) {
     let improved = false;
@@ -90,7 +96,7 @@ function hillClimb(knobs, order, n, log) {
       for (const step of [-4, -2, -1, 1, 2, 4]) {
         const cand = { ...best, [key]: best[key] + step };
         if (cand[key] < MIN[key]) continue;
-        const fit = fitness(genCycle(cand, order), n);
+        const fit = await fitness(genCycle(cand, order), n);
         if (better(fit, bestFit)) {
           best = cand; bestFit = fit; improved = true;
           log(`  pass ${pass}: ${key} ${knobs[key]}->${cand[key]} => maxJ ${fit.maxJ}, tie ${fit.tie}`);
@@ -102,11 +108,11 @@ function hillClimb(knobs, order, n, log) {
   return { knobs: best, fit: bestFit };
 }
 
-function curve(cycle, n) {
+async function curve(cycle, n) {
   const out = [];
   for (const ms of [0, 50, 100, 120, 150, 200, 250, 300]) {
     const j = Math.round(ms / 1000 * C.FPS);
-    out.push(`${ms}ms:${(survivors(cycle, j, n) / n * 100).toFixed(0)}%`);
+    out.push(`${ms}ms:${(await survivors(cycle, j, n) / n * 100).toFixed(0)}%`);
   }
   return out.join('  ');
 }
@@ -116,27 +122,28 @@ const isMain = process.argv[1] &&
 if (isMain) {
   const N_SEARCH = 48, N_VALID = 200;
   console.log(`current cycle jitter curve (${N_VALID} seeds):`);
-  console.log(`  ${curve(DEFAULT_CYCLE, N_VALID)}`);
+  console.log(`  ${await curve(DEFAULT_CYCLE, N_VALID)}`);
   if (!process.argv.includes('--curve')) {
     // Camera order first (cheap, discrete), then knobs (hill-climb).
     const orders = [[10, 4, 7], [10, 7, 4], [4, 10, 7], [4, 7, 10], [7, 10, 4], [7, 4, 10]];
-    let bestOrder = ORDER0, bestOrderFit = fitness(genCycle(KNOBS0, ORDER0), N_SEARCH);
+    let bestOrder = ORDER0, bestOrderFit = await fitness(genCycle(KNOBS0, ORDER0), N_SEARCH);
     for (const o of orders) {
-      const fit = fitness(genCycle(KNOBS0, o), N_SEARCH);
+      const fit = await fitness(genCycle(KNOBS0, o), N_SEARCH);
       console.log(`order ${o.join('-')}: maxJ ${fit.maxJ}, tie ${fit.tie}`);
       if (better(fit, bestOrderFit)) { bestOrder = o; bestOrderFit = fit; }
     }
     console.log(`searching knobs with order ${bestOrder.join('-')} (${N_SEARCH} seeds)...`);
-    const { knobs, fit } = hillClimb(KNOBS0, bestOrder, N_SEARCH, (m) => console.log(m));
+    const { knobs, fit } = await hillClimb(KNOBS0, bestOrder, N_SEARCH, (m) => console.log(m));
     const cycle = genCycle(knobs, bestOrder);
     console.log(`\nbest knobs: ${JSON.stringify(knobs)}`);
     console.log(`best order: ${bestOrder.join('-')}  (search fitness: maxJ ${fit.maxJ} = ${Math.round(fit.maxJ / C.FPS * 1000)}ms)`);
     console.log(`\nvalidation (${N_VALID} seeds):`);
-    console.log(`  clean sweep : ${survivors(cycle, 0, N_VALID)}/${N_VALID}`);
-    let worst = 0;
-    for (let i = 0; i < 100; i++) if (run({ seed: SEED(i), cycle, worst: true }).sim.won) worst++;
-    console.log(`  worst luck  : ${worst}/100`);
-    console.log(`  jitter curve: ${curve(cycle, N_VALID)}`);
+    console.log(`  clean sweep : ${await survivors(cycle, 0, N_VALID)}/${N_VALID}`);
+    const pinned = await sweep(Array.from({ length: 100 },
+      (_, i) => ({ seed: SEED(i), cycle, worst: true })));
+    console.log(`  worst luck  : ${pinned.filter(r => r.won).length}/100`);
+    console.log(`  jitter curve: ${await curve(cycle, N_VALID)}`);
     console.log(`\ncycle table:\n${cycle.map(r => JSON.stringify(r)).join('\n')}`);
   }
+  await closePool();
 }

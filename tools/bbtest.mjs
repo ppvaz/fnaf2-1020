@@ -133,6 +133,14 @@ export function run(opts = {}) {
   return { sim, minBox };
 }
 
+// Pool task (tools/pool.mjs): one night reduced to a structured-cloneable
+// summary. A worker cannot hand back a Sim, so everything the search tools
+// rank on has to come through here.
+export function summarize(opts) {
+  const { sim, minBox } = run(opts);
+  return { won: sim.won, reason: sim.death?.reason || 'unknown', minBox, power: sim.power };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 const n = +(process.argv[2] || 200);
 const fails = {}; let minB = 1, minP = C.POWER_FRAMES, lapses = 0;

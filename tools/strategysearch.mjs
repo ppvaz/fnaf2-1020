@@ -11,7 +11,13 @@
 //   node tools/strategysearch.mjs --quick
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
-import { DEFAULT_CYCLE, run } from './bbtest.mjs';
+import { DEFAULT_CYCLE } from './bbtest.mjs';
+import { pool, closePool } from './pool.mjs';
+
+// Every night goes through the worker pool; `--serial` pins it to one thread
+// and must produce identical output.
+const BBTEST = new URL('./bbtest.mjs', import.meta.url).href;
+const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 
 const ALL_CAMS = Object.keys(C.CAMS).map(Number).filter(n => n !== C.BOX_CAM);
 const GROUNDED_CAMS = ALL_CAMS.filter(n => n !== 8 && n !== 9);
@@ -70,26 +76,27 @@ export function buildCycle(order) {
 if (JSON.stringify(buildCycle(C.TARGET_CAMS)) !== JSON.stringify(DEFAULT_CYCLE))
   throw new Error('buildCycle(TARGET_CAMS) no longer reproduces DEFAULT_CYCLE');
 
-function sample(order, jitter, n, worst = false) {
+async function sample(order, jitter, n, worst = false) {
   const cycle = buildCycle(order);
+  const nights = await sweep(Array.from({ length: n },
+    (_, i) => ({ seed: SEED(i), cycle, targets: order, jitter, worst })));
   let survived = 0, minBox = 1, minPower = C.POWER_FRAMES;
   const deaths = {};
-  for (let i = 0; i < n; i++) {
-    const r = run({ seed: SEED(i), cycle, targets: order, jitter, worst });
+  for (const r of nights) {
     minBox = Math.min(minBox, r.minBox);
-    minPower = Math.min(minPower, r.sim.power);
-    if (r.sim.won) survived++;
-    else deaths[r.sim.death?.reason || 'unknown'] = (deaths[r.sim.death?.reason || 'unknown'] || 0) + 1;
+    minPower = Math.min(minPower, r.power);
+    if (r.won) survived++;
+    else deaths[r.reason] = (deaths[r.reason] || 0) + 1;
   }
   return { survived, n, minBox, minPower, deaths };
 }
 
-export function evaluate(order, n = 16) {
+export async function evaluate(order, n = 16) {
   return {
     order,
-    clean: sample(order, 0, n),
-    j10: sample(order, 10, n),
-    j12: sample(order, 12, n),
+    clean: await sample(order, 0, n),
+    j10: await sample(order, 10, n),
+    j12: await sample(order, 12, n),
   };
 }
 
@@ -106,11 +113,13 @@ const better = (a, b) => {
 };
 
 function pct(r) { return `${Math.round(r.survived / r.n * 100)}%`; }
-function curve(order, n) {
-  return [0, 50, 100, 120, 150, 167, 200, 250, 300].map(ms => {
+async function curve(order, n) {
+  const out = [];
+  for (const ms of [0, 50, 100, 120, 150, 167, 200, 250, 300]) {
     const j = Math.round(ms / 1000 * C.FPS);
-    return `${ms}ms:${pct(sample(order, j, n))}`;
-  }).join('  ');
+    out.push(`${ms}ms:${pct(await sample(order, j, n))}`);
+  }
+  return out.join('  ');
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
@@ -133,7 +142,7 @@ if (isMain) {
   for (const cover of covers) {
     let best = null;
     for (const order of permutations(cover)) {
-      const r = evaluate(order, N_SEARCH);
+      const r = await evaluate(order, N_SEARCH);
       if (!best || better(r, best)) best = r;
     }
     if (best.clean.survived === N_SEARCH) winners.push(best);
@@ -152,28 +161,30 @@ if (isMain) {
     // The small search sweep is intentionally cheap and noisy past the hard
     // ceiling. Re-rank the permutations of the winning cover on the full
     // validation set so a one-seed tail difference does not pick its order.
-    const finalists = permutations(best.order).map(order => ({
-      order,
-      clean: sample(order, 0, N_VALID),
-      j12: sample(order, 12, N_VALID),
-    }));
+    const finalists = [];
+    for (const order of permutations(best.order))
+      finalists.push({ order, clean: await sample(order, 0, N_VALID),
+                       j12: await sample(order, 12, N_VALID) });
     finalists.sort((a, b) => b.j12.survived - a.j12.survived ||
       a.order.join('-').localeCompare(b.order.join('-')));
     best = finalists[0];
     console.log(`\nbest structurally new model candidate: CAM ${best.order.join(' -> CAM ')}`);
     const valid = best.clean;
-    const worst = sample(best.order, 0, N_WORST, true);
+    const worst = await sample(best.order, 0, N_WORST, true);
     console.log(`  clean validation: ${valid.survived}/${valid.n} (min box ${Math.round(valid.minBox * 100)}%, min power ${valid.minPower})`);
     console.log(`  worst luck      : ${worst.survived}/${worst.n} (min box ${Math.round(worst.minBox * 100)}%, min power ${worst.minPower})`);
-    console.log(`  jitter curve    : ${curve(best.order, N_VALID)}`);
-    console.log(`  Minus 7 baseline: ${[0, 50, 100, 120, 150, 167, 200, 250, 300].map(ms => {
+    console.log(`  jitter curve    : ${await curve(best.order, N_VALID)}`);
+    const baseline = [];
+    for (const ms of [0, 50, 100, 120, 150, 167, 200, 250, 300]) {
       const j = Math.round(ms / 1000 * C.FPS);
-      let ok = 0;
-      for (let i = 0; i < N_VALID; i++) if (run({ seed: SEED(i), cycle: DEFAULT_CYCLE, jitter: j }).sim.won) ok++;
-      return `${ms}ms:${Math.round(ok / N_VALID * 100)}%`;
-    }).join('  ')}`);
+      const nights = await sweep(Array.from({ length: N_VALID },
+        (_, i) => ({ seed: SEED(i), cycle: DEFAULT_CYCLE, jitter: j })));
+      baseline.push(`${ms}ms:${Math.round(nights.filter(r => r.won).length / N_VALID * 100)}%`);
+    }
+    console.log(`  Minus 7 baseline: ${baseline.join('  ')}`);
     console.log('\nCAVEAT: this candidate depends on approximate post-chokepoint routes and has not been validated against the game/decompile.');
     console.log('cycle table:');
     console.log(buildCycle(best.order).map(r => JSON.stringify(r)).join('\n'));
   }
+  await closePool();
 }
