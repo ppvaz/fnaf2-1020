@@ -149,3 +149,13 @@ Further derivation beyond full camera covers is tracked in
 gate-aware pass is now complete: CAM 06-only “Minus Right” scored 0/150, CAM 06+07
 as a reactive hybrid also scored 0/150, and the full post-mortem is in
 [`GATE-SEARCH.md`](GATE-SEARCH.md).
+
+**Minus 6 (2026-08-20): also refuted.** The last revival idea — keep the
+06/07 cover and *tolerate* the one uncovered route through the sourced office
+encounter — scored 0/200 (`node tools/minus6test.mjs`). Post-XOR correction
+along the way: the route 06/07 never sees is Toy Freddy's, not Withered
+Freddy's as the pre-XOR refutation above phrased it; W. Freddy is held at
+CAM 07. The covered six never broke the stall — Toy Freddy's encounter
+traffic (5 s of forced cams-down per visit, every ~25-30 s) leaked the others
+past the single CAM 07 choke into the blind left tail. Details in
+[`GATE-SEARCH.md`](GATE-SEARCH.md).

@@ -83,10 +83,51 @@ The earlier 10-12% fixed-policy table and both 150/150 tables are retained in Gi
 history as provenance, but are superseded because each depended on a known model
 error.
 
+## Minus 6: tolerating the uncovered route (2026-08-20)
+
+A follow-up probe asked whether Six-Seven revives once the office endgame is
+modeled: run the Minus 7 cycle shape with the flash pass cut to CAM 06/07 and
+*tolerate* the one route that cover never sees, defending its office visits
+through the sourced encounter. Two premise corrections from the post-XOR
+graph first: the uncovered route belongs to **Toy Freddy** (9 → 10 → blindA →
+blindB → office), not to Withered Freddy as the pre-XOR refutation text had
+it — W. Freddy is held at CAM 07 like the rest. And W. Freddy is the one with
+the still-undecoded `decide path` fork (g376-377), which is unmodeled here;
+if a branch bypasses CAM 07 it would only make this result worse.
+
+`tools/minus6test.mjs` drives an observable-only controller: the bbtest bot
+with a 06/07/11 table, a full-cost encounter defense (mask inside the
+45-frame fuse, the whole 300-frame sequence spent cams-down), minus2test's
+held-mask cycles for leaked vent threats with the in-hold Foxy flash, and the
+permanent right-vent-light stall. Four controller iterations, 200 normal
+seeds each:
+
+| Controller | Clean | Dominant deaths |
+| --- | ---: | --- |
+| Scripted cycle only | 0/200 | Foxy locks, Toy Bonnie inside |
+| + reactive holds, post-encounter recovery | 0/200 | Toy Bonnie 111x |
+| + permanent right vent light | 0/200 | Toy Chica 113x, Foxy 74x, Puppet 13x |
+
+(The pinned worst-luck sweep runs 100/100 — a diagnostic artifact: lockstep
+pinned movement never produces the overlapping arrivals that kill.)
+
+The failure is structural and mirrors the monitor-denial closure. Toy Freddy
+returns every ~25-30 s; each defended encounter is 5 s of forced cams-down
+during which stuns lapse, so W. Bonnie, Toy Chica and Mangle leak past the
+single CAM 07 choke into the blind tail (blindA → 1 → 5 → ventL) that 06/07
+physically cannot reach. The death traces then show two-sided binds — Toy
+Chica armed at a vent while BB stands in the opening: raising the monitor is
+her marker-123 entry, staying down is Foxy's 10 s interval or the box.
+Encounters chained up to 26 per night and the box hit 0%. Notably the six
+covered routes never broke the stall itself — the cover works; the tolerance
+traffic destroys it from behind. Reproduce with `node tools/minus6test.mjs
+200` (add `--worst` for the pinned sweep).
+
 ## What this closes—and what it does not
 
 - **Six-Seven stays refuted on Android as a two-camera cover.** The extracted
-  route graph has no such cover.
+  route graph has no such cover, and the Minus 6 probe above closes the
+  tolerate-the-seventh variant for its searched policy family too.
 - **Observable monitor denial is closed in this searched family.** Its resource
   advantage disappears once the source-shaped office cost and character-specific
   endgames are restored.
