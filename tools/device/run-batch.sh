@@ -4,8 +4,8 @@
 set -euo pipefail
 N="${1:-3}"; NIGHT="${2:-6th}"; PREFIX="${3:-mc}"
 for i in $(seq 1 "$N"); do
-  "$(dirname "$0")/trial-maskcamp.sh" "$PREFIX$i" 120 "$NIGHT"
-  sleep 8   # let the game-over screen settle back to the title
+  "$(dirname "$0")/trial-maskcamp.sh" "$PREFIX$i" 170 "$NIGHT"
+  sleep 2
 done
 for i in $(seq 1 "$N"); do
   echo "--- $PREFIX$i"

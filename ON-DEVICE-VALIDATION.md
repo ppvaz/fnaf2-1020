@@ -62,6 +62,19 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 
 ## Findings so far
 
+- **W. Foxy behaves as modeled (qualitative #2).** Three closed-loop 6th
+  Night mask-camp trials died at 29/31/31 s to the W. Foxy office lunge
+  (killer identified from the jumpscare frame) with the mask continuously on
+  from ~11 s — the mask does not deter him, his D grows unflashed, and the
+  10 s GOT-YOU cadence lands exactly in the predicted window. This also sets
+  the protocol's observation ceiling: ~15-20 s of masked window per trial
+  unless the hall is flashed (which breaks mask continuity).
+- The closed loop works: `screenstate.py` gates every phase (wait-for-night
+  before any tap fixed the too-early MUTE press; death detection ends the
+  recording within ~6 s), and a 5 s wind hold fills the box to ~95% (pie
+  gauge center ≈ (740, 840), radius ≈ 95 at 2400x1080 — a fill-percent
+  meter is a planned upgrade).
+
 - **Office-defense fuse behaves as modeled (qualitative).** Trial 4's mask
   landed ~3 s after the monitor drop — far past the sourced 50-frame night-5
   fuse — and the run died ~6 s after the drop, matching fuse expiry plus the
@@ -75,6 +88,19 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   the in-app "Unlocks" menu is paid cheats, not night selection. Character
   isolation therefore waits until 6th Night is beaten (a bot playing Minus 7
   on-device is the fun route to that).
+
+## Next steps
+
+1. More trials until vent visitors land inside a masked window — that is
+   still the target-#1 measurement. A no-wind variant (drop + mask at ~2 s)
+   lengthens the window and overlaps the earliest vent arrivals.
+2. Teach `screenstate.py` a `gameover` state (red face + "Game Over" band)
+   for cleaner death timestamps, and grab the frame before the static to
+   auto-identify the killer.
+3. `windpct.py`: percent-fill of the pie gauge so wind holds stop exactly at
+   full (coords above).
+4. Longer term: a Minus 7 bot on-device to beat 6th Night and unlock Custom
+   Night for character-isolated experiments.
 
 ## Bookkeeping
 
