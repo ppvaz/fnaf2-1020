@@ -311,7 +311,12 @@ export class Sim {
         const ended = this.blackout;
         this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
         if (ended.unitId) {
-          const u = this.units.find(x => x.id === ended.unitId);
+          // The source does not resolve whoever started the encounter: g538-555
+          // run in group order and the first match consumes `check and move`,
+          // so the queue drains one occupant per encounter by fixed priority.
+          const order = ended.masked ? C.RESOLVE_ORDER_DEFENDED : C.RESOLVE_ORDER_FAILED;
+          const u = order.map(id => this.units.find(x => x.id === id && x.atOpening))
+                         .find(Boolean) || this.units.find(x => x.id === ended.unitId);
           if (u?.atOpening) {
             // Endpoint resolution (groups 538-555): a defended occupant is
             // repelled to their sourced mid-route room with a fresh approach

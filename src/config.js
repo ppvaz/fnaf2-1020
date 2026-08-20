@@ -43,6 +43,18 @@ export const HOUR_FRAMES = s(70);     // 1:10 per in-game hour [SOURCED]
 export const STUN_FRAMES = 400;
 export const MO_FRAMES = s(5);        // movement opportunity every 5s [SOURCED]
 export const BLACKOUT_FRAMES = s(5);  // [SOURCED]
+// Endpoint resolution order [SOURCED: g537 raises `check and move` when the
+// 300-frame office sequence ends, then g538-555 are evaluated in group order
+// and the FIRST match sets it back to 0]. So exactly one occupant of marker
+// 122 resolves per encounter no matter how many are queued there, and which
+// one is fixed by group index rather than by who triggered it. The global
+// `got you stage` decides which half of the table runs: 0 is a defended
+// encounter (g533, mask fully on before the fuse expired), 2 is a failed one
+// (g532). Mangle is absent from the whole table -- her 122 edge is g402/403.
+export const RESOLVE_ORDER_DEFENDED =
+  ['withfreddy', 'withbonnie', 'withchica', 'toyfreddy', 'toybonnie', 'toychica'];
+export const RESOLVE_ORDER_FAILED =
+  ['withfreddy', 'withbonnie', 'withchica', 'toybonnie', 'toychica', 'toyfreddy'];
 
 // Mask grace before an office attack arms, in frames, indexed by night
 // [SOURCED: decompile — the `time allowed` -> `time left` fuse (post-XOR

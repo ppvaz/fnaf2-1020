@@ -63,6 +63,41 @@ Consequences for this ledger:
   ordering) is therefore answerable here; item 23 still needs image export,
   which this logic-only dumper does not do.
 
+## 2026-08-20: the office encounter, end to end
+
+The shared encounter is five counters and one strict priority list.
+
+| Group | Rule |
+| --- | --- |
+| 528/529 | `time allowed` = 50 frames on night 6, 45 on night 7+ |
+| 530 | `in danger` goes above zero → `time left` = `time allowed`, `got you stage` = 1 |
+| 531 | `time left` counts down per frame |
+| 533 | mask reaches fully-on while stage is 1 → **stage 0, defended** |
+| 532 | `time left` hits zero while stage is 1 → **stage 2, failed** |
+| 534-536 | the `blackout` object plays the ~300-frame visible sequence either way |
+| 537 | that sequence ending raises `check and move` |
+| 538-555 | the resolution table: first match wins and zeroes `check and move` |
+
+**One occupant resolves per encounter.** That is the queue pacing the ledger
+was missing: with three of the four stacked at marker 122, defending clears
+exactly one of them and the rest stay queued for the next encounter. Which one
+is decided by group index, not by who triggered the encounter:
+
+- defended (stage 0): **W. Freddy → W. Bonnie → W. Chica → Toy Freddy → Toy Bonnie → Toy Chica**
+- failed (stage 2): **W. Freddy → W. Bonnie → W. Chica → Toy Bonnie → Toy Chica → Toy Freddy**
+
+Toy Freddy swaps ends between the two halves — he is resolved before the two
+toys on a success and after them on a failure. Defended occupants go to the
+rooms the engine already used (WF CAM 08, WB CAM 07, WC CAM 04, TF CAM 09,
+TB CAM 03, TC CAM 07) with `B = Random(500)/night`.
+
+Mangle is **not in the table at all**, which answers the other half of the
+question: she never joins the shared queue, because her 122 edge is the
+private raise pair g402/403.
+
+The engine resolved whichever unit started the encounter. It now applies the
+sourced priority, so a queue drains in the real order.
+
 ## 2026-08-20: Golden Freddy, both of him
 
 The office figure (`yellowbear`) and the hallway one (`golden`) are separate
@@ -193,8 +228,8 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 
 | Priority | Mechanic | What remains |
 | --- | --- | --- |
-| P0 | Office threshold/inside state machine | Core marker-122/123 behavior is implemented; finish exact same-frame visual and input ordering around attack transitions |
-| P0 | Office queue pacing | The four-attacker mutex and shared encounter latch are anchored; determine exact ordering when W. Bonnie, W. Chica, or Mangle coexist with them |
+| P0 | Office threshold/inside state machine | Core marker-122/123 behavior is implemented and the encounter fuse is fully decoded (g528-537 below). Remaining: the same-frame visual/input ordering around attack transitions, which is the same reading pass as the P2 input-ordering row |
+| P0 | ~~Office queue pacing~~ **Sourced 2026-08-20** | g537 raises `check and move` when the 300-frame office sequence ends; g538-555 then run in group order and the first match zeroes it, so **exactly one occupant of 122 resolves per encounter**, chosen by group index rather than by who triggered it. Defended order (`got you stage` 0): WF, WB, WC, TF, TB, TC. Failed order (stage 2): WF, WB, WC, TB, TC, TF. Mangle never appears in the table — her 122 edge is g402/403 |
 | P0 | ~~Toy Bonnie Android endgame~~ **Implemented 2026-08-20** | B-as-opening-timer unified with the flash-stun/cooldown field; repels land on CAM 03 with the sourced B cooldowns (see Implemented table) |
 | P0 | ~~Foxy~~ **Implemented 2026-08-20** | All backlog-item-12 nuances are in the engine: night-1 / pre-2AM-night-2 dormancy, per-frame exposure vs 100*night, and the B=50 hall pin gating both eviction and his lock-on roll (see Implemented table) |
 | P0 | ~~Golden Freddy~~ **Sourced 2026-08-20** | Office: g336 spawn (5 s interval, monitor fully up, `Random(20) < Golden Freddy AI`, none present), g830 caps that AI at 10 so 10/20 is exactly 1/2, g804 zeroes it below night 6, g776 mask clear, g777 kill on a raise, g778 kill on a hall flash. Hallway: g781 re-rolls `golden` v1 = Random(10) every second **while the hall light is off**, g779 accumulates exposure per frame with the hall otherwise empty, g780 kills above 100, g865 resets. The `[CALIBRATED]` unfair-raise window is deleted — no group backs it |
