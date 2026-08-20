@@ -273,7 +273,9 @@ each resolved item records the finding. Remaining open items are marked OPEN.
   glitchless Minus Two probe scores 16/200 normal seeds with a structural
   Toy Chica failure (`tools/minus2test.mjs`, `MINUS-3-STRATEGY.md` §7). The
   consecutive-tick mask-clear semantics are the highest-value on-device
-  validation target — they are what breaks the whole imported family.
+  validation target — they are what breaks the whole imported family. The
+  adb harness and first results live in
+  [`ON-DEVICE-VALIDATION.md`](ON-DEVICE-VALIDATION.md).
 - The apparent 150/150 monitor-denial reopening is **retracted**. It came from
   reading groups 538-555 as continuous mask polling; they actually resolve the
   latched defense state at the end of the 300-frame office sequence. The corrected
