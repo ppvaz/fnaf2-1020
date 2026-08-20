@@ -117,6 +117,14 @@ FNaF 1 references:
 
 ## Model gates
 
+- 2026-08-20 correction: groups 450-457 are a **live** light stall — 400
+  frames from the never-rewritten `stun time` counter (the "fixed at zero"
+  reading was the pre-XOR handle scramble). The look-hold covers the
+  Withereds (persisting monitor-down via the parked marker) and monitor-up
+  Mangle, not the Toys. Camera-hybrid searches can treat the flash stall as
+  Android-sourced again, but should wait for the character-identity re-audit
+  of routes/endgame bindings before promoting new candidates; see
+  [`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md).
 - Toy Bonnie's special CAM 06 → blind-spot timer remains the first gate for Minus
   Right, just as it is for Six-Seven.
 - The engine's post-chokepoint routes, blackout forcing and vent departures are

@@ -123,8 +123,9 @@ The split, in one place:
     Renders comparison operators, resolves object handles to names inside
     parameters, prints event-group and section flags, prefers the
     authoritative float slot over the garbage double slot in mobile
-    expression literals, and labels unknown mobile parameter codes instead
-    of crashing.
+    expression literals, labels unknown mobile parameter codes instead
+    of crashing, and applies the per-build handle-XOR (entry 8) so names
+    land on the objects the runtime actually resolves.
   - `dump_animations.py` — per-object animation timings (frames, speeds,
     loop points) with derived durations from the Fusion tick model.
   - `group_tree.py` — Clickteam section-activation tree from a frame dump
@@ -149,8 +150,21 @@ The split, in one place:
   `D:\Work\+Clickteam\+ProfessionalServices\...\release 7\FNaF2_mobile_20250825.mfa`,
   Fusion build 296), meaning PC-sourced strategy claims must be re-verified
   against mobile.
-- **Extraction pass complete (2026-08-19).** Confirmed and novel findings
-  ready to write up, all derived mechanics only:
+- **Extraction pass complete (2026-08-19); identity re-audit opened
+  (2026-08-20).** The handle-scramble discovery (entry 8) revealed that the
+  2026-08-19 dump carried bijectively swapped object names, including every
+  Toy↔Withered pair. All numeric values below are safe (they come from event
+  parameters); every *character-identity* claim (who owns which gate, route,
+  or endgame branch) must be re-verified against the regenerated true-name
+  dump before publication. Already re-verified post-fix: the camera-light
+  stall is **live** — 400 frames (6.67 s) per flash from the never-rewritten
+  `stun time` counter, with home-camera exclusions (8/9/11) and a
+  `400 - 50*night` Paper Pals variant; the look-hold covers the Withereds
+  (and monitor-up Mangle) and persists monitor-down because the
+  selected-camera marker stays parked; Toys leave the Show Stage in
+  Bonnie→Chica→Freddy order via co-occupancy gates. The community's 6.66 s
+  stall figure is now decompile-confirmed on Android.
+  Findings as originally extracted (identity claims pending re-audit):
   - Movement: every 5000 ms, `Random(20)+1 <= AI` per animatronic; AI
     counters hard-capped at 15; mid-night hourly escalation tables.
   - The full route graph for all movers, with three gate mechanics no
@@ -179,9 +193,12 @@ The split, in one place:
     changes on night 7.
   - Verified against Markiplier's on-camera measurements where they
     overlap (mask grace, box drain at night 7).
-- **Artifact today:** everything above is established from the Office-frame
-  event sheets and folded into this repo's simulator as `[SOURCED]`
-  constants; the writeup itself is not yet drafted.
+- **Artifact today:** the rules above are established from the Office-frame event
+  sheets, with implemented subsets tracked in `ANDROID-SOURCE-STATUS.md`. The
+  camera-mechanism audit (including the retraction of the short-lived
+  "disabled light-countdown" reading and the confirmed 400-frame stall) is
+  recorded in `ANDROID-CAMERA-STALL.md`. The external writeup itself is not
+  yet drafted; it should not go out before the identity re-audit closes.
 - **Disposition:** wiki edits / talk-page writeups, not a repo.
 
 ### 7. Six-Seven post-mortem and Minus 7 re-derivation — **candidate**
@@ -203,3 +220,39 @@ The split, in one place:
   candidate doc) and the `STRATEGY-HISTORY.md` meta-thread entry.
 - **Disposition:** community writeup (video-description-style doc or forum
   post) once the real-game validation of the rebuilt model lands.
+
+### 8. Clickteam mobile handle-scramble discovery — **candidate**
+
+- **Target:** three audiences — [CTFAK/CTFAK2.0](https://github.com/CTFAK/CTFAK2.0)
+  (issue + patch), the mmfparser/Anaconda fork (entry 4), and the technical
+  FNaF/Clickteam datamining community (writeup).
+- **What it is:** modern Clickteam Android runtimes XOR every FRAMEITEMS
+  object handle with a **per-build constant** at load
+  (`OI/COI.loadHeader`: `oiHandle = readAShort() ^ K`). Event bytecode,
+  expression tokens, and frame instances address objects in the *post-XOR*
+  space. No public decompiler applies this XOR, so every dump/MFA produced
+  from an affected APK carries bijectively swapped object names — internally
+  consistent, silently wrong. Known constants: FNaF 2 Android 2.0.7
+  (Aug 2025) K=28; FNaF 1 Android (Aug 2025) K=0 (unaffected).
+  - **Impact demonstrated:** the swap concealed FNaF 2's camera-light stall
+    (`stun time` = 400 frames read as the zero-valued `time allowed`),
+    inverted the Toy/Withered identities of every extracted rule, and
+    survived two full audits — including raw-byte checks — because the
+    stored bytes are genuinely at those handles; only the runtime remap was
+    missing.
+  - **Detection recipe for any APK:** decompile `OI/COI.loadHeader` from the
+    bundled runtime and read K off the XOR; or heuristically, look for
+    type-mismatched event targets (counter-typed events aimed at items the
+    FrameItems table calls Actives) — a bijective scramble produces them, a
+    correct map does not.
+  - **Fix:** key the handle→name map by `storedHandle ^ K`
+    (`dump_events.py` now takes K as an argument); CTFAK needs the same
+    remap before FTDecompile name assignment.
+- **Artifact today:** runtime proof chain + pair table in
+  [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md); fixed dumper in
+  `~/fnaf-apks/dump_events.py`; regenerated true-name dump
+  (`~/fnaf-apks/fnaf2/events/`, pre-fix copy preserved alongside).
+- **Disposition:** CTFAK upstream issue with patch (or fork branch per entry
+  1's caveat), a section in the entry-5 tool repo README, and a short
+  technical writeup for the datamining community — this affects **every**
+  Clickteam Android title with a nonzero K, not just FNaF.

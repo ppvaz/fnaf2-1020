@@ -1,18 +1,13 @@
 # Derivation, tiers 2–3: a structurally new strategy
 
-**Status:** first derivation pass complete (2026-08-19). `tools/strategysearch.mjs`
-enumerated the minimal camera covers of the modeled route graph and found a unique
-two-camera structure, the **Six-Seven Strat** (also **CAM 67** / **Deep 7**). It
-clears 200/200 modeled seeds and 100/100
-worst-luck seeds while retaining the 167 ms all-survive jitter ceiling. The full
-result and its dependency audit are in `CAM-6-7-STRATEGY.md`.
-
-This satisfies the plan's simulator-result branch, but not the stretch goal: the
-Six-Seven Strat remains a **sim-derived experiment awaiting real-game/decompile
-validation**.
-Its key dependency, Toy Bonnie's special CAM 06 → blind-spot timer, is not represented
-faithfully enough to call the routine real or zero-RNG. No trainer mode should ship
-before Pedro validates that transition on the Android build.
+**Status:** closed for the Android target. The first model-only pass (2026-08-19)
+found the **Six-Seven Strat** (also **CAM 67** / **Deep 7**) and it cleared the old
+simulator sweeps. The subsequently extracted Android route graph refuted CAM 06/07
+as a full cover: several routes cross off-camera transit markers and escape it.
+`CAM-6-7-STRATEGY.md` is retained as the derivation record, not as an awaiting
+candidate. The Android light countdown is disabled and a separate camera-overlap
+gate is active. That correction does not reopen the route-graph refutation, but
+future Android policy searches must use the corrected gate.
 
 ## Goal
 
@@ -86,19 +81,20 @@ Two conclusions baked into this plan:
 
 ## Work
 
-1. ~~Extract the route graph and enumerate camera covers~~ — done in
-   `tools/strategysearch.mjs`; five minimal grounded covers, with Six-Seven's CAM
+1. ~~Extract the route graph and enumerate camera covers~~ — done first against
+   the original modeled graph in `tools/strategysearch.mjs`; five minimal grounded
+   covers, with Six-Seven's CAM
    06/07 the unique
    two-camera cover. Hybrid tanking was unnecessary once a full two-camera cover
    survived, and remains a possible later search branch.
-2. ~~Compile and evaluate candidates~~ — done; Six-Seven (CAM 67 / Deep 7) passed
-   the clean, worst-luck and jitter sweeps recorded in `CAM-6-7-STRATEGY.md`.
-3. ~~Audit the approximated mechanics~~ — done far enough to identify the decisive
-   gate: Toy Bonnie's special CAM 06 → blind-spot timer is missing from the model.
-   Re-evaluation against exact mechanics awaits the Android decompile/real-game test.
+2. ~~Compile and evaluate candidates~~ — done against the original modeled graph;
+   Six-Seven passed those historical clean, worst-luck and jitter sweeps.
+3. ~~Audit the approximated mechanics~~ — done. The Android extraction added the
+   blind transit routes that invalidate the candidate as a full cover; this is a
+   refutation for the target build, not a request for more seed search.
 4. ~~Compare against documented prior art and write up the result~~ — done; no CAM
    06/07 match found, but novelty is explicitly not claimed.
-5. Trainer mode: intentionally not started. It is gated on real-game validation.
+5. Trainer mode: intentionally not started; the Android graph refuted its candidate.
 
 ## Done when
 

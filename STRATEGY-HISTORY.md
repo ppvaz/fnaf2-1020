@@ -131,6 +131,22 @@ four-attacker `chicalookatyou` entry mutex. Re-running the same search still lea
 every family at 0/150; the surviving source gaps are narrow ordering and
 auxiliary-object questions, not a missing broad defensive branch.
 
+Then the decompile itself got audited. A one-night crisis — the Android event
+sheets appeared to prove the camera-light stall *disabled* (its source counter
+read as zero), which would have made every mobile Minus 7 completion
+inexplicable — ended with the discovery that the APK's runtime XORs every
+object handle with a per-build constant (28 here) and both decompilers were
+naming objects by the pre-XOR handle. Every object name in every prior dump
+was a bijective mislabel: Toys and Withereds swapped, `stun time` (400,
+never rewritten — the community's exact 6.66 s figure) masquerading as the
+zero-valued `time allowed`. The corrected decode confirms Minus 7's whole
+mechanical basis on Android — the 400-frame flash stall, the Withered
+look-hold (which even persists monitor-down via the parked camera marker) —
+and reopened a project-wide identity re-audit of route and endgame claims.
+Methodological lesson, again sharper: a decompile is only as truthful as the
+loader you validate it against; the runtime that ships in the APK is the
+ground truth for how its own data is addressed.
+
 ## Sources
 
 Primary docs in this repo: `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md`,

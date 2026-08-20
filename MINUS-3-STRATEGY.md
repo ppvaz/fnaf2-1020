@@ -85,10 +85,21 @@ a fixed cycle with two branches (blackout / no blackout).
 
 Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Minus 7):
 
-1. **Cam-stall** — "selected camera prevents leaving" does not exist in the engine.
-2. **Double camera glitch** — no concept of two selected cameras, nor of the
-   flash-redirect that makes CAM 08/09 flashable.
-3. **CAM 08/09 custom-night flash immunity** — the rule the glitch bypasses.
+1. **Cam-stall** — ~~does not exist in the engine~~ **sourced & implemented
+   2026-08-20**: the marker look-hold (groups 344-360) pins the Withereds
+   (persisting monitor-down via the parked marker) and monitor-up Mangle.
+   Note it does NOT cover the Toys — Minus Toys' cam-stall claims need
+   re-checking against that set.
+2. **Double camera glitch** — **checked against source 2026-08-20**: no
+   two-camera state exists in the Android data model (one `viewing` counter,
+   one marker, set atomically per touch; the light input is blocked while
+   masked). The PC glitch is an input-layer artifact that does not visibly
+   transfer to this build; glitch-dependent Minus Toys steps need on-device
+   confirmation before being assumed possible on Android.
+3. **CAM 08/09 custom-night flash immunity** — **sourced 2026-08-20**: the
+   flash groups carry unconditional `viewing <> 8` (Withereds), `<> 9`
+   (Toys), `<> 11` (Mangle) exclusions; whether night 7 changes anything
+   remains to confirm (the groups look night-independent).
 4. **Golden Freddy interval avoidance** — the engine has `GF_UNFAIR_WINDOW`, but not
    the full "never enter cams during an interval" spawn model, the first-frame hall
    flash on monitor-down, or the 1-frame blackout flash window.
@@ -99,9 +110,10 @@ Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Min
 7. **CAM 03 stalling Toy Bonnie + Withered Freddy** — confirmed by the
    Technical-FNaF wiki's flashlight page (source 8), whose strategy table lists
    Minus 2 as "Camera Light, Cam 3, Toy Bonnie and Withered Freddy, glitchless".
-   What remains open is only *our route table*: Withered Freddy's `STALLED` path
-   never passes room 3, so the engine's post-chokepoint routing must be wrong for
-   him. The same page also confirms the stun-immunity exceptions (Withereds in
+   ~~What remains open is only *our route table*~~ **Resolved 2026-08-20**: the
+   post-XOR re-derived routes put CAM 03 on both — Toy Bonnie's first hop and
+   Withered Freddy's second — exactly matching this claim. (The old table was
+   built on scrambled identities.) The same page also confirms the stun-immunity exceptions (Withereds in
    Parts/Service, Toys on the stage sans glitch, Mangle in the prize corner) and
    endorses the zero-RNG claim: the camera-light strats are "the only ones to have
    a hypothetical 100% consistency", all by stalling Toy Bonnie, "the source of

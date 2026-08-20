@@ -25,12 +25,21 @@ the executable version/hash and extraction tool revision before checking boxes.
 Store derived mechanics and event references here; do not commit game assets or
 decompiled event dumps.
 
+> **Tooling warning (2026-08-20):** modern Clickteam runtimes may XOR object
+> handles with a per-build constant (`OI/COI.loadHeader` in the bundled
+> runtime; 28 on the owned Android build, 0 on FNaF 1 Android). Before reading
+> ANY new decompile — PC included — extract that constant and dump with it,
+> or every object name in the dump may be silently attached to the wrong
+> object. Android rows below that predate 2026-08-20 used the scrambled
+> names; character-identity claims among them are being re-audited (see
+> `ANDROID-SOURCE-STATUS.md`).
+
 ## P0 — claims that can change strategy validity
 
 | Done | Mechanic to locate in PC 1.033 | What Android currently says | Why a PC difference matters |
 | --- | --- | --- | --- |
 | [ ] | Global movement-opportunity scheduler and RNG expression | Every 5000 ms; `Random(20)+1 <= AI`; relevant AI capped at 15 | Changes every survival probability and phase search |
-| [ ] | Camera-light stun duration, refresh rule, and target selection | 400 frames (6.66 s); a lit camera refreshes occupants even when another character is the rendered sprite | Minus 7's central invariant |
+| [ ] | Camera-light stun duration, refresh rule, and target selection | **Android-confirmed (2026-08-20, post-XOR decode):** groups 450-457 load B = `stun time` = 400 frames per flash, home-camera exclusions 8/9/11, Paper Pals gets `400 - 50*night`; the separate look-hold pins Withereds and monitor-up Mangle and persists monitor-down via the parked marker | PC comparison is now about parity (does PC share the 400, the exclusions, and the parked-marker hold?), no longer about rescuing the mechanic |
 | [ ] | Complete route graph for all seven stallable characters | Extracted Android routes include invisible transit markers and differ from old community diagrams | Determines camera covers; could reopen or close Six-Seven and other covers on PC |
 | [ ] | Display-camera ↔ internal-room mapping | Android mapping is partly anchored and partly route-fitted | A wrong room label invalidates the claimed `10/04/07` cover |
 | [ ] | Every per-edge gate: monitor polarity, office-light latch, mutex, and auxiliary counters | Android has `camsUp` finals, Withered Bonnie's inverted final, route-specific `new bonnie` gates, and `chicalookatyou` | These gates are the entire hybrid-strategy search space |

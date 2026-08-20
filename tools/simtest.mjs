@@ -9,109 +9,110 @@ import { Sim } from '../src/engine.js';
 {
   const gate = new Sim({ seed: 1, worst: true, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const tb = gate.units.find(u => u.id === 'toybonnie');
-  tb.idx = tb.path.length - 2; // CAM 06 -> right opening requires cams up
+  const wbGate = gate.units.find(u => u.id === 'withbonnie');
+  wbGate.idx = wbGate.path.length - 2; // CAM 05 -> left opening requires cams up
   gate.frame = C.MO_FRAMES;
   gate.onFiveSecond();
-  if (tb.atOpening || !tb.pending)
-    throw new Error('closed cams-up entry gate did not retain Toy Bonnie as pending');
+  if (wbGate.atOpening || !wbGate.pending)
+    throw new Error('closed cams-up entry gate did not retain W. Bonnie as pending');
   gate.monitor = 'up';
   gate.tickUnits(gate.frame);
-  if (!tb.atOpening || tb.pending)
-    throw new Error('pending Toy Bonnie did not advance when the cams-up gate opened');
+  if (!wbGate.atOpening || wbGate.pending)
+    throw new Error('pending W. Bonnie did not advance when the cams-up gate opened');
 
   // A short office-light tap latches through the next global second tick, but
-  // only blocks the two route edges that test `new bonnie = 0` in the source.
+  // only blocks the route edges that test `viewing hall light` = 0 in the
+  // source.
   const lightGate = new Sim({ seed: 3, worst: true, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const litTb = lightGate.units.find(u => u.id === 'toybonnie');
-  litTb.idx = 1; // source marker 62 -> 120 is light-gated
+  const litWb = lightGate.units.find(u => u.id === 'withbonnie');
+  litWb.idx = 1; // source CAM 07 -> hall stage 1 (g381) is light-gated
   lightGate.press('light'); lightGate.tick(); lightGate.release('light');
-  litTb.pending = true;
+  litWb.pending = true;
   lightGate.tickUnits(lightGate.frame);
-  if (!litTb.pending || litTb.idx !== 1)
-    throw new Error('Toy Bonnie crossed a sourced light-gated edge while latch was active');
+  if (!litWb.pending || litWb.idx !== 1)
+    throw new Error('W. Bonnie crossed a sourced light-gated edge while latch was active');
   while (lightGate.frame < C.FPS) lightGate.tick();
-  if (litTb.pending || litTb.idx !== 2)
-    throw new Error('Toy Bonnie did not cross after the office-light latch cleared');
+  if (litWb.pending || litWb.idx !== 2)
+    throw new Error('W. Bonnie did not cross after the office-light latch cleared');
 
   const ungated = new Sim({ seed: 4, worst: true, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const lateTb = ungated.units.find(u => u.id === 'toybonnie');
-  lateTb.idx = 3; lateTb.pending = true; // marker 56 -> 60 has no light gate
+  const lateWb = ungated.units.find(u => u.id === 'withbonnie');
+  lateWb.idx = 3; lateWb.pending = true; // CAM 01 -> CAM 05 (g383) has no light gate
   ungated.press('light'); ungated.tick(); ungated.release('light');
   ungated.tickUnits(ungated.frame);
-  if (lateTb.pending || lateTb.idx !== 4)
-    throw new Error('office light incorrectly blocked an ungated Toy Bonnie edge');
+  if (lateWb.pending || lateWb.idx !== 4)
+    throw new Error('office light incorrectly blocked an ungated W. Bonnie edge');
 
   const ventLight = new Sim({ seed: 5, worst: true, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, record: false });
-  const ventTb = ventLight.units.find(u => u.id === 'toybonnie');
-  ventTb.idx = 1; ventTb.pending = true;
+  const ventWb = ventLight.units.find(u => u.id === 'withbonnie');
+  ventWb.idx = 1; ventWb.pending = true;
   ventLight.press('ventR'); ventLight.tick(); ventLight.release('ventR');
-  if (!ventTb.pending || ventLight.power !== C.POWER_FRAMES - 1)
+  if (!ventWb.pending || ventLight.power !== C.POWER_FRAMES - 1)
     throw new Error('right vent light did not share the sourced light latch and battery');
 
   const threshold = new Sim({ seed: 6, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const wc = threshold.units.find(u => u.id === 'withchica');
-  wc.idx = wc.path.length - 1; wc.atOpening = true;
-  wc.openingReadyAt = threshold.frame + C.WITHERED_CHICA_OPENING_FRAMES;
+  const tc = threshold.units.find(u => u.id === 'toychica');
+  tc.idx = tc.path.length - 1; tc.atOpening = true;
+  tc.openingReadyAt = threshold.frame + C.TOY_CHICA_OPENING_FRAMES;
   threshold.press('mask');
-  if (!wc.atOpening)
-    throw new Error('W. Chica incorrectly received an immediate marker-122 mask repel');
+  if (!tc.atOpening)
+    throw new Error('Toy Chica incorrectly received an immediate marker-122 mask repel');
   threshold.maskAnim = 0;
   for (let n = 1; n <= 5; n++) {
     threshold.frame = n * C.FPS;
     threshold.tickUnits(threshold.frame);
   }
-  if (wc.atOpening || wc.idx !== 0)
-    throw new Error('five sourced W. Chica mask ticks did not clear marker 122');
+  if (tc.atOpening || tc.idx !== 0)
+    throw new Error('five sourced Toy Chica mask ticks did not clear marker 122');
 
   const maskedArrival = new Sim({ seed: 7, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const arrivingWc = maskedArrival.units.find(u => u.id === 'withchica');
-  arrivingWc.idx = arrivingWc.path.length - 2;
+  const arrivingTc = maskedArrival.units.find(u => u.id === 'toychica');
+  arrivingTc.idx = arrivingTc.path.length - 2;
   maskedArrival.press('mask');
-  maskedArrival.advance(arrivingWc);
-  if (!arrivingWc.atOpening)
+  maskedArrival.advance(arrivingTc);
+  if (!arrivingTc.atOpening)
     throw new Error('mask already on incorrectly erased a newly arrived threshold attacker');
 
-  const wbCue = new Sim({ seed: 1, bbEnabled: false, foxyEnabled: false,
+  const tbCue = new Sim({ seed: 1, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const cueWb = wbCue.units.find(u => u.id === 'withbonnie');
-  cueWb.idx = cueWb.path.length - 1; cueWb.atOpening = true;
-  cueWb.openingReadyAt = C.s(5);
-  wbCue.press('mask');
-  if (!cueWb.atOpening)
-    throw new Error('mask directly repelled Withered Bonnie before his office cue existed');
-  wbCue.maskAnim = 0;
-  wbCue.frame = C.WITHERED_BONNIE_CUE_FRAMES;
-  wbCue.tickUnits(wbCue.frame);
-  if (!cueWb.atOpening || !wbCue.blackout.active || wbCue.blackout.unitId !== 'withbonnie')
-    throw new Error('Withered Bonnie mask cue did not start the sourced office sequence');
+  const cueTb = tbCue.units.find(u => u.id === 'toybonnie');
+  cueTb.idx = cueTb.path.length - 1; cueTb.atOpening = true;
+  cueTb.openingReadyAt = C.s(5);
+  tbCue.press('mask');
+  if (!cueTb.atOpening)
+    throw new Error('mask directly repelled Toy Bonnie before his office cue existed');
+  tbCue.maskAnim = 0;
+  tbCue.frame = C.TOY_BONNIE_CUE_FRAMES;
+  tbCue.tickUnits(tbCue.frame);
+  if (!cueTb.atOpening || !tbCue.blackout.active || tbCue.blackout.unitId !== 'toybonnie')
+    throw new Error('Toy Bonnie mask cue did not start the sourced office sequence');
 
-  const toyEncounter = new Sim({ seed: 8, bbEnabled: false, foxyEnabled: false,
+  const streakEncounter = new Sim({ seed: 8, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const encounterTb = toyEncounter.units.find(u => u.id === 'toybonnie');
-  encounterTb.idx = encounterTb.path.length - 1; encounterTb.atOpening = true;
-  toyEncounter.tickUnits(0);
-  if (!toyEncounter.blackout.active || toyEncounter.blackout.unitId !== 'toybonnie')
-    throw new Error('cams-down Toy Bonnie did not start the shared office sequence');
-  toyEncounter.press('mask');
-  while (toyEncounter.frame < C.BLACKOUT_FRAMES) toyEncounter.tick();
-  if (!toyEncounter.alive || encounterTb.atOpening || toyEncounter.blackout.active)
+  const encounterWb = streakEncounter.units.find(u => u.id === 'withbonnie');
+  encounterWb.idx = encounterWb.path.length - 1; encounterWb.atOpening = true;
+  streakEncounter.tickUnits(0);
+  if (!streakEncounter.blackout.active || streakEncounter.blackout.unitId !== 'withbonnie')
+    throw new Error('cams-down W. Bonnie did not start the shared office sequence');
+  streakEncounter.press('mask');
+  while (streakEncounter.frame < C.BLACKOUT_FRAMES) streakEncounter.tick();
+  if (!streakEncounter.alive || encounterWb.atOpening || streakEncounter.blackout.active)
     throw new Error('timely fully-on mask did not survive and resolve the office sequence');
 
   const missedEncounter = new Sim({ seed: 9, worst: true, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const missedTb = missedEncounter.units.find(u => u.id === 'toybonnie');
-  for (const u of missedEncounter.units) if (u !== missedTb) u.done = true;
-  missedTb.idx = missedTb.path.length - 1; missedTb.atOpening = true;
+  const missedWb = missedEncounter.units.find(u => u.id === 'withbonnie');
+  for (const u of missedEncounter.units) if (u !== missedWb) u.done = true;
+  missedWb.idx = missedWb.path.length - 1; missedWb.atOpening = true;
   missedEncounter.tickUnits(0);
   while (missedEncounter.alive && missedEncounter.frame < C.BLACKOUT_FRAMES)
     missedEncounter.tick();
-  if (!missedEncounter.alive || !missedTb.inside || missedTb.atOpening)
+  if (!missedEncounter.alive || !missedWb.inside || missedWb.atOpening)
     throw new Error('missed 45-frame fuse did not send the attacker to marker 123');
   missedEncounter.press('mask');
   while (missedEncounter.alive && missedEncounter.frame < C.BLACKOUT_FRAMES + C.FPS * 2)
@@ -121,27 +122,27 @@ import { Sim } from '../src/engine.js';
 
   const fuseEdge = new Sim({ seed: 10, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const edgeTb = fuseEdge.units.find(u => u.id === 'toybonnie');
-  edgeTb.idx = edgeTb.path.length - 1; edgeTb.atOpening = true;
+  const edgeWb = fuseEdge.units.find(u => u.id === 'withbonnie');
+  edgeWb.idx = edgeWb.path.length - 1; edgeWb.atOpening = true;
   fuseEdge.tickUnits(0);
   while (fuseEdge.frame < C.maskGraceFrames(7) - C.MASK_ANIM_ON) fuseEdge.tick();
   fuseEdge.press('mask'); // becomes fully on exactly as group 532 arms the attack
   while (fuseEdge.alive && fuseEdge.frame < C.BLACKOUT_FRAMES) fuseEdge.tick();
-  if (!fuseEdge.alive || !edgeTb.inside)
+  if (!fuseEdge.alive || !edgeWb.inside)
     throw new Error('mask completion on the fuse-expiry frame incorrectly defused the encounter');
 
   const endgame = new Sim({ seed: 2, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const wb = endgame.units.find(u => u.id === 'withbonnie');
-  wb.idx = wb.path.length - 1; wb.atOpening = true; wb.openingReadyAt = 0;
+  const armedTb = endgame.units.find(u => u.id === 'toybonnie');
+  armedTb.idx = armedTb.path.length - 1; armedTb.atOpening = true; armedTb.openingReadyAt = 0;
   endgame.monitor = 'up'; endgame.camsUpSince = endgame.frame;
   endgame.tickUnits(endgame.frame);
-  if (!endgame.alive || !wb.inside)
-    throw new Error('armed Withered Bonnie incorrectly received the shared cams-up streak grace');
+  if (!endgame.alive || !armedTb.inside)
+    throw new Error('armed Toy Bonnie incorrectly received the shared cams-up streak grace');
   endgame.setMonitor(false);
   while (endgame.alive && endgame.frame < C.INSIDE_ATTACK_FRAMES) endgame.tick();
   if (endgame.alive || endgame.death?.reason !== 'inside-office')
-    throw new Error('W. Bonnie at marker 123 did not attack on monitor lowering');
+    throw new Error('Toy Bonnie at marker 123 did not attack on monitor lowering');
 
   const mangleRaise = new Sim({ seed: 11, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
@@ -182,16 +183,16 @@ import { Sim } from '../src/engine.js';
   // must survive that return.
   const orderedInside = new Sim({ seed: 13, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const insideTb = orderedInside.units.find(u => u.id === 'toybonnie');
-  for (const u of orderedInside.units) if (u !== insideTb) u.done = true;
-  insideTb.inside = true;
+  const orderedTb = orderedInside.units.find(u => u.id === 'withbonnie');
+  for (const u of orderedInside.units) if (u !== orderedTb) u.done = true;
+  orderedTb.inside = true;
   orderedInside.maskOn = true; orderedInside.maskAnim = 0;
   orderedInside.rng.chance = () => true;
   orderedInside.frame = C.FPS;
   orderedInside.tickUnits(orderedInside.frame);
-  if (insideTb.inside || insideTb.insideDangerAt !== C.FPS + C.INSIDE_ATTACK_FRAMES)
+  if (orderedTb.inside || orderedTb.insideDangerAt !== C.FPS + C.INSIDE_ATTACK_FRAMES)
     throw new Error('same-tick marker-123 leave incorrectly cancelled danger 2');
-  orderedInside.frame = insideTb.insideDangerAt;
+  orderedInside.frame = orderedTb.insideDangerAt;
   orderedInside.tickUnits(orderedInside.frame);
   if (orderedInside.alive || orderedInside.death?.reason !== 'inside-office')
     throw new Error('persisted marker-123 danger did not complete after 40 frames');
@@ -199,20 +200,20 @@ import { Sim } from '../src/engine.js';
   const insideTriggers = new Sim({ seed: 14, worst: true, bbEnabled: false,
     foxyEnabled: false, gfEnabled: false, boxEnabled: false, powerEnabled: false,
     record: false });
-  const insideWb = insideTriggers.units.find(u => u.id === 'withbonnie');
+  const insideTb = insideTriggers.units.find(u => u.id === 'toybonnie');
   const insideMg = insideTriggers.units.find(u => u.id === 'mangle');
   for (const u of insideTriggers.units)
-    if (u !== insideWb && u !== insideMg) u.done = true;
-  insideWb.inside = true;
+    if (u !== insideTb && u !== insideMg) u.done = true;
+  insideTb.inside = true;
   insideTriggers.monitor = 'up';
   insideTriggers.frame = C.FPS * 10;
   insideTriggers.tickUnits(insideTriggers.frame);
-  if (insideWb.insideDangerAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
-    throw new Error('W. Bonnie marker-123 ten-second cameras-up trigger was not modeled');
+  if (insideTb.insideDangerAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
+    throw new Error('Toy Bonnie marker-123 ten-second cameras-up trigger was not modeled');
 
-  // Isolate Mangle after checking W. Bonnie: her 1-in-20 cameras-up roll arms
+  // Isolate Mangle after checking Toy Bonnie: her 1-in-20 cameras-up roll arms
   // a later cameras-down edge rather than raising danger immediately.
-  insideWb.done = true; insideWb.insideDangerAt = -1;
+  insideTb.done = true; insideTb.insideDangerAt = -1;
   insideMg.inside = true;
   insideTriggers.frame = C.FPS * 11;
   insideTriggers.tickUnits(insideTriggers.frame);
@@ -224,14 +225,14 @@ import { Sim } from '../src/engine.js';
 
   const mutex = new Sim({ seed: 15, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
-  const mutexTb = mutex.units.find(u => u.id === 'toybonnie');
+  const mutexWb = mutex.units.find(u => u.id === 'withbonnie');
   const mutexTf = mutex.units.find(u => u.id === 'toyfreddy');
   mutex.monitor = 'up';
-  mutexTb.idx = mutexTb.path.length - 2;
-  mutex.advance(mutexTb);
+  mutexWb.idx = mutexWb.path.length - 2;
+  mutex.advance(mutexWb);
   mutexTf.idx = mutexTf.path.length - 2;
   if (mutex.canAdvance(mutexTf, mutex.frame))
-    throw new Error('chicalookatyou mutex admitted two shared attackers to marker 122');
+    throw new Error('`office occupied` mutex admitted two shared attackers to marker 122');
 }
 
 const CYCLE = [

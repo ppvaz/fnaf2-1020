@@ -6,6 +6,19 @@
 > and Balloon Boy to be handled manually. It is the only human-executable strategy with
 > **zero unwinnable RNG** — every loss is a mechanical mistake, not bad luck.
 >
+> **Android provenance (2026-08-20, corrected same day):** the strategy's core
+> number is now **decompile-confirmed on the owned release-7 Android build**: a
+> camera flash loads a 400-frame (6.67 s) stall from the never-rewritten
+> `stun time` counter (Office groups 450-457). An earlier same-week audit
+> declared that path inert; it was reading the wrong counter through the
+> runtime's XOR-scrambled handle table. Bonuses from the corrected decode: the
+> look-hold pins Withereds (and monitor-up Mangle) while their camera is
+> selected — and the marker stays parked when the monitor drops, so ending a
+> sweep on a Withered's room keeps holding them monitor-down. No stun works
+> while viewing a group's home camera (8 for Withereds, 9 for Toys, 11 for
+> Mangle) — irrelevant to the 4-7-10 loop, which never flashes those. Details:
+> [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md).
+>
 > **Created by:** Niko Frost, 13 December 2023 (~220 attempts to land the first completion).
 >
 > **Not for a first 10/20 win.** Niko Frost himself: *"this strat requires a lot of skill and

@@ -16,14 +16,22 @@ Open it on a phone, turn sideways, and work down the lessons.
 
 ## What Minus 7 is
 
-Flashing a camera freezes everyone in that room for 6.66 seconds. All seven stallable animatronics
-have to pass through **CAM 10**, **CAM 04** or **CAM 07**, so a flash sweep every five seconds holds
-all of them for the whole night. Foxy, Golden Freddy and Balloon Boy can't be stalled and are
-handled by hand.
+The classic strategy flashes **CAM 10**, **CAM 04** and **CAM 07** every five
+seconds to hold seven animatronics on their routes. Foxy, Golden Freddy and
+Balloon Boy are handled by hand.
 
 The core loop, on every time ending in **2** or **7**:
 
 > cams down → mask flick → flash the hall → cams up → CAM 10 → CAM 04 → CAM 07 → CAM 11 → wind
+
+> **Android provenance (2026-08-20):** the 400-frame (6.67 s) camera-flash
+> stall is **decompile-confirmed on the owned release-7 binary** — the flash
+> groups load it from a `stun time` counter that nothing ever rewrites. A
+> same-week audit briefly declared it disabled; that reading came from the
+> runtime's XOR-scrambled object-handle table, now corrected in the tooling
+> (a discovery that affects every Clickteam Android decompile). The corrected
+> source model passes the shipped schedule 200/200; see
+> [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md).
 
 Ten inputs in about 1.5 seconds, then three and a half seconds of winding. Full mechanical detail,
 with sources, is in [MINUS-7-STRATEGY.md](MINUS-7-STRATEGY.md).

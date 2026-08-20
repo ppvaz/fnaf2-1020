@@ -20,6 +20,15 @@ export class Sim {
       stalledEnabled: true,
       lethal: true,
       durationFrames: C.NIGHT_FRAMES,
+      // The two sourced Android camera mechanisms (post-XOR decode):
+      // flashes load a 400-frame B countdown from `stun time`, and the
+      // selected-camera marker holds Withered (and monitor-up Mangle)
+      // pending rolls while it overlaps them. The old passive 400-frame
+      // "look timer" on Withereds was a pre-XOR model of the hold; keep it
+      // as a legacy diagnostic knob, default off.
+      cameraLightStunFrames: C.STUN_FRAMES,
+      passiveWitheredLookStunFrames: 0,
+      selectedCameraGate: true,
     }, opts);
 
     this.rng = new Rng(this.opts.seed, this.opts.worst);
@@ -271,7 +280,7 @@ export class Sim {
       // Group 293 resets the local mask-duration counters on each transition
       // into the fully-on mask state. They are continuous holds, not storage.
       for (const u of this.units) {
-        if (u.id === 'withchica' || u.id === 'mangle') u.maskExposureTicks = 0;
+        if (u.id === 'toychica' || u.id === 'mangle') u.maskExposureTicks = 0;
       }
     }
 
@@ -334,18 +343,24 @@ export class Sim {
     // remains a movement blocker only until the next scheduler boundary.
     if (this.anyOfficeLightHeld && !this.camsUp)
       this.lightLogicalUntil = Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
-    // Holding the camera light stuns whoever is in the room being viewed.
-    if (this.camLightOn) this.stunCam(this.cam);
-    // Withereds stall from being looked at at all.
-    if (this.monitor === MON_UP) {
+    // Holding the camera light stuns whoever is in the room being viewed
+    // (sourced groups 450-457; `stun time` = 400 frames).
+    if (this.camLightOn && this.opts.cameraLightStunFrames > 0)
+      this.stunCam(this.cam, this.opts.cameraLightStunFrames);
+    // Legacy diagnostic model only: a 400-frame timer refreshed by looking
+    // at a Withered. The sourced look effect is the marker hold in
+    // canAdvance, which releases the moment the marker leaves; this knob
+    // stays for A/B comparisons against the old trainer behavior.
+    if (this.monitor === MON_UP && this.opts.passiveWitheredLookStunFrames > 0) {
       for (const u of this.units) {
-        if (C.WITHEREDS.has(u.id) && u.path[u.idx] === this.cam) u.stunUntil = this.frame + C.STUN_FRAMES;
+        if (C.WITHEREDS.has(u.id) && u.path[u.idx] === this.cam)
+          u.stunUntil = this.frame + this.opts.passiveWitheredLookStunFrames;
       }
     }
   }
 
-  stunCam(n) {
-    for (const u of this.units) if (u.path[u.idx] === n && !u.done) u.stunUntil = this.frame + C.STUN_FRAMES;
+  stunCam(n, frames = C.STUN_FRAMES) {
+    for (const u of this.units) if (u.path[u.idx] === n && !u.done) u.stunUntil = this.frame + frames;
     if (n === C.BOX_CAM) this.puppet.lightHeldThisSecond = true;
   }
 
@@ -407,7 +422,7 @@ export class Sim {
     }
     // The retained cumulative-mask mechanic applies to BB. Android's seven
     // marker-122 attackers have distinct endgame branches handled in
-    // tickUnits(): office sequence, W. Bonnie overlay, W. Chica mask ticks,
+    // tickUnits(): office sequence, Toy Bonnie overlay, Toy Chica mask ticks,
     // or Mangle's monitor-raise branch.
     if (this.maskCum >= C.MASK_LEAVE_FRAMES) {
       this.clearVents('mask');
@@ -471,6 +486,18 @@ export class Sim {
   // transition groups, which retry continuously until their conditions hold).
   canAdvance(u, f) {
     if (f < u.stunUntil) return false;
+    // Android Office groups 344-348 and 357 (post-XOR decode): the
+    // selected-camera marker holds a Withered's pending roll while it
+    // overlaps their room, with NO monitor condition — and lowering the
+    // monitor leaves the marker parked on the last-selected camera (group
+    // 262 zeroes `viewing` but never moves `your view`), so the Withered
+    // hold persists monitor-down. Mangle's marker gate (357) applies only
+    // while the monitor is up; her monitor-down block is the office hall
+    // light (358), modeled by the lightStall path below.
+    if (this.opts.selectedCameraGate &&
+        C.SELECTED_CAMERA_GATED.has(u.id) && u.path[u.idx] === this.cam &&
+        (C.WITHEREDS.has(u.id) || this.camsUp))
+      return false;
     const next = u.path[u.idx + 1];
     const entry = next === 'ventL' || next === 'ventR' || next === 'office';
     if (entry) {
@@ -498,12 +525,12 @@ export class Sim {
             u.insideArmed = true;
           if (!this.camsUp && u.insideArmed)
             this.armInsideAttack(u, 'Mangle armed while the cameras were up');
-        } else if (u.id === 'withbonnie') {
-          // In addition to the shared monitor-lowering trigger, W. Bonnie at
+        } else if (u.id === 'toybonnie') {
+          // In addition to the shared monitor-lowering trigger, Toy Bonnie at
           // marker 123 raises danger every ten seconds spent cameras-up
           // (group 722).
           if (this.camsUp && f % (C.FPS * 10) === 0)
-            this.armInsideAttack(u, 'Withered Bonnie remained inside with cameras up');
+            this.armInsideAttack(u, 'Toy Bonnie remained inside with cameras up');
         } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0) {
           // Groups 556-559 precede the 10% return groups 747-750. Preserve
           // that order: a simultaneous attack roll is not cancelled by leave.
@@ -519,18 +546,18 @@ export class Sim {
       if (u.atOpening && u.openingRule === 'streak' && !this.camsUp && !u.officeCue)
         this.startOfficeEncounter(u);
 
-      // W. Bonnie creates his separate visible overlay on a 500 ms / 50% roll
+      // Toy Bonnie creates his separate visible overlay on a 500 ms / 50% roll
       // while the Freddy mask is fully on (groups 436 and 443).
-      if (u.id === 'withbonnie' && u.atOpening && this.maskFullyOn && !u.officeCue &&
-          !this.blackout.active && f % C.WITHERED_BONNIE_CUE_FRAMES === 0 &&
-          this.rng.chance(C.WITHERED_BONNIE_CUE_CHANCE, false)) {
+      if (u.id === 'toybonnie' && u.atOpening && this.maskFullyOn && !u.officeCue &&
+          !this.blackout.active && f % C.TOY_BONNIE_CUE_FRAMES === 0 &&
+          this.rng.chance(C.TOY_BONNIE_CUE_CHANCE, false)) {
         this.startOfficeEncounter(u);
       }
 
-      // W. Chica and Mangle have no generic immediate repel. With the mask
+      // Toy Chica and Mangle have no generic immediate repel. With the mask
       // fully on they get a 10% leave roll per one-second event and are forced
       // out after five continuous mask ticks (groups 292-294, 400-401, 907).
-      if ((u.id === 'withchica' || u.id === 'mangle') && u.atOpening &&
+      if ((u.id === 'toychica' || u.id === 'mangle') && u.atOpening &&
           this.maskFullyOn && f % C.FPS === 0) {
         u.maskExposureTicks++;
         if (u.maskExposureTicks >= 5 || this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) {
@@ -556,10 +583,10 @@ export class Sim {
     const node = u.path[u.idx];
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame;
-      if (u.id === 'withbonnie')
-        u.openingReadyAt = this.frame + C.witheredBonnieOpeningFrames(this.opts.night);
-      else if (u.id === 'withchica')
-        u.openingReadyAt = this.frame + C.WITHERED_CHICA_OPENING_FRAMES;
+      if (u.id === 'toybonnie')
+        u.openingReadyAt = this.frame + C.toyBonnieOpeningFrames(this.opts.night);
+      else if (u.id === 'toychica')
+        u.openingReadyAt = this.frame + C.TOY_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false });
       this.flag('broke-loose', `${u.name} reached office threshold marker 122`);

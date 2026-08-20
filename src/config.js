@@ -5,9 +5,19 @@
 // engineering or the owned Android event-sheet extraction; the nearby comment
 // must say which. Android is canonical; gaps are tracked in
 // ANDROID-SOURCE-STATUS.md. PC parity work is deferred.
+// Values marked [MODEL] retain a useful community behavior that the Android
+// extraction has not confirmed (or currently contradicts).
 // Values marked [CALIBRATED] are not published numbers;
 // they are chosen so the simulation behaves the way the documented gameplay
 // behaves, and are safe to tune.
+//
+// [MAPPING AUDIT 2026-08-20] The Android runtime XOR-scrambles object handles
+// (^28); every pre-2026-08-20 event dump therefore carried systematically
+// swapped object NAMES (Toy<->Withered pairs included). Numeric values below
+// came from event constants and are unaffected. Identity-derived rules
+// (which character owns which route/gate/endgame branch) are being re-audited
+// against the corrected dump; entries verified post-XOR say so in their
+// comment. See ANDROID-CAMERA-STALL.md.
 // ---------------------------------------------------------------------------
 
 export const FPS = 60;
@@ -16,20 +26,43 @@ export const s = (sec) => Math.round(sec * FPS); // seconds -> frames
 export const NIGHT_FRAMES = s(420);   // 7:00 [SOURCED]
 export const HOUR_FRAMES = s(70);     // 1:10 per in-game hour [SOURCED]
 
-export const STUN_FRAMES = 400;       // 6.66s camera-light stun [SOURCED]
+// [SOURCED: Android decompile — Office groups 450-457.] With the monitor up
+// (`viewing` > 0) and the camera light on (`lit?` = 1), the selected-camera
+// marker (`your view`) overlapping a character sets its alterable B from the
+// `stun time` counter: initial 400, and no event in the entire program ever
+// writes it. B drains ~1 per 60 FPS frame (group 1236 delta scale) and the
+// movement pipeline requires B = 0, so one flash = 400 frames = 6.67 s. The
+// community's 6.66 s figure is exact on Android. Per-group exclusions: no
+// stun while `viewing` = 8 (Withereds), 9 (Toys), or 11 (Mangle, group 456);
+// Paper Pals gets 400 - 50*night (group 457).
+// An earlier audit declared this subsystem dormant ("Counter 152 `time
+// allowed` = 0"). That was the pre-XOR handle scramble: the runtime XORs
+// every object handle with 28 (COI.loadHeader), so expression handle 152 is
+// really the counter stored as 132 — `stun time` = 400. See
+// ANDROID-CAMERA-STALL.md.
+export const STUN_FRAMES = 400;
 export const MO_FRAMES = s(5);        // movement opportunity every 5s [SOURCED]
 export const BLACKOUT_FRAMES = s(5);  // [SOURCED]
 
 // Mask grace before an office attack arms, in frames, indexed by night
-// [SOURCED: decompile — the `stun time` -> `mute call` fuse. It starts when
-// an attacker engages at the office entry; masking while it burns defuses
-// the attack, expiry arms it and the mask stops repelling. The old flat 45
-// was only ever the night-7 value; night 1 gives more than double.]
+// [SOURCED: decompile — the `time allowed` -> `time left` fuse (post-XOR
+// names; the pre-XOR dump called these `stun time` -> `mute call`). It
+// starts when an attacker engages at the office entry; masking while it
+// burns defuses the attack, expiry arms it and the mask stops repelling. The
+// old flat 45 was only ever the night-7 value; night 1 gives more than
+// double.]
 export const MASK_GRACE_BY_NIGHT = { 1: 100, 2: 80, 3: 60, 4: 55, 5: 50, 6: 50, 7: 45 };
 export const maskGraceFrames = (night) => MASK_GRACE_BY_NIGHT[night] ?? MASK_GRACE_BY_NIGHT[7];
 export const BLACKOUT_MASK_GRACE = MASK_GRACE_BY_NIGHT[7]; // night-7 value; UI copy uses this
 
-// Foxy [SOURCED]
+// Foxy [SOURCED: post-XOR decode 2026-08-20, groups 337/389-390/745/824-825/
+// 846/855/864/872-874]. Roll every 5 s: (21+Random(5)) - D <= `old Foxy AI`
+// (his AI caps at 17, group 829, unlike the shared 15). D (+1/s unengaged,
+// +1/s MORE while masked with the threshold clear) is zeroed all night 1 and
+// until 2AM night 2. Exposure is per-frame (v9 vs 100*night) with a B=50
+// hall pin while lit; retreat writes B = 500+Random(500). GOT-YOU: 10 s
+// clock in either monitor state, or instant on a monitor-down hall flash.
+// The masked +1/s acceleration and night-1 dormancy are not modeled yet.
 export const FOXY_AI = 17;
 export const FOXY_EXPOSURE_TO_RETREAT = 700;   // 100 * night number
 export const FOXY_RETURN_MIN = 500;
@@ -43,29 +76,32 @@ export const MASK_LEAVE_FRAMES = 300;      // 5s cumulative mask time
 export const MASK_STORAGE_CAP = 59;        // storable sub-second mask time
 export const VENT_EARLY_LEAVE_CHANCE = 0.1; // per cumulative second
 
-// The Toys and Withered Freddy walk in once the CURRENT continuous cams-up
-// session reaches 20 - 2*night seconds; the counter resets the moment the
-// monitor starts coming down. Replaces the old
-// flat "5s in the opening with cams up" (VENT_KILL_FRAMES) model.
-// [SOURCED: decompile — the `value25` cams-up-session second counter
-// against the 20 - 2*night threshold]
+// The Withereds and Toy Freddy (the four `office occupied` mutex holders)
+// walk in once the CURRENT continuous cams-up session reaches 20 - 2*night
+// seconds; the counter resets the moment the monitor starts coming down.
+// Replaces the old flat "5s in the opening with cams up" (VENT_KILL_FRAMES)
+// model. [SOURCED: decompile — the `value25` cams-up-session second counter
+// against the 20 - 2*night threshold. Identity re-bound 2026-08-20 after the
+// XOR fix: pre-fix notes attributed this to "the Toys and W. Freddy".]
 export const entryStreakFrames = (night) => s(20 - 2 * night);
-// The shared value25 streak applies to the Toys and Withered Freddy, not every
-// occupant of marker 122. Withered Bonnie instead gets a per-unit cooldown of
-// 1000-100*night frames and Withered Chica arms after six scheduler ticks.
+// The shared value25 streak applies to the four mutex holders, not every
+// occupant of marker 122. Toy Bonnie instead gets a per-unit cooldown of
+// 1000-100*night frames and Toy Chica arms after six scheduler ticks.
 // Both must be masked before a later cams-up trip. Mangle's 122->123 edge is
 // driven by the right-vent light object's visible->invisible transition, so an
 // unchecked Mangle can remain parked at 122 in this model [INFERRED]. The
 // Chica timer can complete in just over five wall-clock seconds depending on
 // scheduler phase, so the model uses the conservative five-second edge.
-export const witheredBonnieOpeningFrames = night => 1000 - 100 * night;
-export const WITHERED_CHICA_OPENING_FRAMES = s(5);
-// At marker 122, Withered Bonnie does not accept a generic direct mask repel.
+// (Pre-XOR these were labeled Withered Bonnie / Withered Chica.)
+export const toyBonnieOpeningFrames = night => 1000 - 100 * night;
+export const TOY_CHICA_OPENING_FRAMES = s(5);
+// At marker 122, Toy Bonnie does not accept a generic direct mask repel.
 // While the mask is fully on he rolls Random(2)=1 every 500 ms to create his
-// office overlay. That overlay starts the shared 45-frame defence fuse and
-// 300-frame office sequence (Android groups 436, 443, 530-553).
-export const WITHERED_BONNIE_CUE_FRAMES = s(0.5);
-export const WITHERED_BONNIE_CUE_CHANCE = 0.5;
+// office overlay (the iconic Toy Bonnie mask slide, `Active 19`). That
+// overlay starts the shared defence fuse and 300-frame office sequence
+// (Android groups 436-441, 530-553).
+export const TOY_BONNIE_CUE_FRAMES = s(0.5);
+export const TOY_BONNIE_CUE_CHANCE = 0.5;
 
 // Marker 123 / inside-office branches [SOURCED: Android groups 556-569,
 // 729-731, 747-750]. `danger 2` starts a 40-frame attack transition. Mangle
@@ -97,11 +133,12 @@ export const STALLED_AI = 15;
 export const MO_CHANCE = (ai) => ai / 20;
 
 // Power [SOURCED]
-// [SOURCED: decompile — the battery counter (`cam 9`) is set per night at
-// night start and drains 1 per frame while the light is on, office or
-// cams. Night 5+ is 3000 frames = 50s of light, which both Markiplier's
-// on-camera measurement and this file's old calibrated value already had
-// exactly right; earlier nights get more.]
+// [SOURCED: decompile — the battery counter (true name `battery life`; the
+// pre-XOR dump called it `cam 9`) is set per night at night start and drains
+// 1 per frame while the light is on, office or cams. Night 5+ is 3000 frames
+// = 50s of light, which both Markiplier's on-camera measurement and this
+// file's old calibrated value already had exactly right; earlier nights get
+// more.]
 export const POWER_BY_NIGHT = { 1: 7000, 2: 6000, 3: 5000, 4: 4000, 5: 3000, 6: 3000, 7: 3000 };
 export const powerFrames = (night) => POWER_BY_NIGHT[night] ?? POWER_BY_NIGHT[7];
 export const POWER_FRAMES = POWER_BY_NIGHT[7]; // night-7 value; tools report against this
@@ -110,7 +147,10 @@ export const POWER_BLINK = 500;   // indicator starts blinking [SOURCED]
 
 // Music box [SOURCED]
 export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty
-export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding [SOURCED: Markiplier]
+// [SOURCED: decompile + Markiplier agree — winding below 300 snaps to 300
+// (groups 639/645), then +5/frame (+300/s, groups 638/643); empty -> full is
+// (2000-300)/300 = 5.67 s. The old "6.67 s gross" note forgot the snap-up.]
+export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding
 export const PUPPET_AI = 15;
 export const PUPPET_STAGES = 4;
 
@@ -186,46 +226,70 @@ export const DEFAULT_WIDGETS = {
 
 
 // --- Animatronic routes ----------------------------------------------------
-// [SOURCED: decompiled Android build 296 Office-frame events; the raw edge
-// list with per-hop gate conditions lives in the datamine's route-graph
-// export. Internal camera numbers were mapped to display labels via the
-// anchored bijection {8->9 Show Stage, 9->8 Parts/Service, 11->11 Prize
-// Corner, 12->12 Kid's Cove, 5->6, 6->5, 4->7, 2->1, 7->4, 10->10} with
-// 1->3 and 3->2 pinned by route-fitting (flagged: lower confidence).]
+// [SOURCED: decompiled Android build 296 Office-frame events, RE-DERIVED
+// 2026-08-20 from the post-XOR true-name dump (movement groups 374-435,
+// 389-418; per-hop conditions in the regenerated route-graph export).
+// Internal camera ids equal the display CAM labels 1:1 — anchored by five
+// independent identities (Withereds start CAM 08 Parts/Service, Toys CAM 09
+// Show Stage, Mangle CAM 12 Kid's Cove, BB CAM 10 Game Area, Puppet CAM 11
+// Prize Corner) and by every vent assignment matching the known game (TB/WC/
+// Mangle right vent via CAM 06, TC/WB/BB left vent via CAM 05). The previous
+// fitted bijection (8<->9 etc.) was an artifact of the scrambled names.]
 //
-// 'blindA'/'blindB' are the mobile build's off-camera transit rooms (markers
-// 120/121): no camera shows them, so no flash can reach a unit standing there.
-// `choke` is the index in `path` of the room the Minus 7 flash loop holds
-// them in.
+// 'blindA'/'blindB' are the off-camera transit rooms `hall stage 1`/`hall
+// stage 2` (markers 120/121): no camera shows them, so no flash can reach a
+// unit standing there. `choke` is the index in `path` of the room the
+// Minus 7 flash loop holds them in ({4,7,10} is a cut set: every route
+// crosses it within two hops, so the 4-7-10 cover re-derives from the
+// corrected graph).
 //
-// Sourced gate semantics (all new relative to the PC-derived model):
-//   entryGate 'camsUp'  — the final hop into the vent opening / office only
-//                          fires while the monitor is UP,
-//   entryGate 'camsDown' — Withered Bonnie inverts it: he enters only while
-//                          the monitor is DOWN,
-//   lightStallAt [...]   — source-route indices whose outgoing hop explicitly
-//                          requires the office-light latch (`new bonnie`) to be
-//                          zero. The latch clears on the global one-second tick,
-//                          not when the player releases the light. Toy Chica and
-//                          Withered Bonnie have no such gated edge.
-//   mutex true           — shares the `chicalookatyou` one-attacker-at-a-time
-//                          lock on the final hop.
-// Not yet modeled from the same extraction: the Puppet roams on mobile, and
-// Toy Bonnie/Toy Chica's final hops also test an `old chica` counter whose
-// meaning is undecoded.
+// Sourced gate semantics (post-XOR names):
+//   entryGate 'camsUp'  — the final hop (`in office`, marker 122) fires only
+//                          while the monitor is UP (`viewing` > 0),
+//   entryGate 'camsDown' — Toy Bonnie inverts it: his vent hop needs the
+//                          monitor DOWN plus the `right light` state,
+//   entryGate null       — Toy Chica's final hop carries no monitor condition,
+//   lightStallAt [...]   — indices whose outgoing hop requires the office
+//                          hall-light latch (`viewing hall light`) to be zero.
+//                          The latch clears on the global one-second tick, not
+//                          when the player releases the light. Withered Chica
+//                          and Toy Bonnie have no such gated edge.
+//   mutex true           — shares the `office occupied` one-attacker lock on
+//                          the final hop (W. Freddy, W. Bonnie, W. Chica,
+//                          Toy Freddy).
+// The W. Bonnie / W. Chica final hops also require the `in danger`
+// attacker-engaged latch to be clear. The Puppet roams on mobile
+// (rare-event tier) and Paper Pals has its own single office hop; neither is
+// in this table.
 export const STALLED = [
-  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [1, 2], mutex: true  },
-  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 'blindA', 3, 6, 'ventR'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStallAt: [1, 2], mutex: false },
-  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 2, 7, 1, 5, 'ventL'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStallAt: [],     mutex: false },
-  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true },
-  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 1, 5, 'ventL'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true  },
-  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 4, 2, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true  },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 4, 'blindA', 1, 5, 'ventL'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'raise', lightStallAt: [3, 4], mutex: false },
+  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 7, 3, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true  },
+  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 7, 'blindA', 1, 5, 'ventL'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [1, 2], mutex: true  },
+  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 2, 6, 'ventR'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true  },
+  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true },
+  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 3, 4, 2, 6, 'ventR'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStallAt: [],     mutex: false },
+  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 'blindA', 1, 5, 'ventL'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStallAt: [1, 2], mutex: false },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 7, 'blindA', 2, 6, 'ventR'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'raise', lightStallAt: [3, 4], mutex: false },
 ];
 // The blind transit rooms break the old "nobody passes through an unflashed
 // room" property: several routes now contain a stretch no camera can touch.
+// Mangle additionally transits CAM 11 (Prize Corner), where the flash stun is
+// source-excluded (group 456, `viewing <> 11`); her pin room is CAM 10.
 
 export const WITHEREDS = new Set(['withchica', 'withbonnie', 'withfreddy']);
+// [SOURCED: Android decompile, post-XOR names — Office groups 344-348 & 357.]
+// The look-hold: while the selected-camera marker (`your view`) overlaps the
+// character, their pending movement roll (A=1) cannot resolve to A=2. It
+// applies to the three Withereds (344-348) and, monitor-up only, to Mangle
+// (357); Mangle's monitor-down resolution is instead blocked by the office
+// hall light (358, `viewing hall light` = 0 required). Toys have no look
+// gate at all — their resolutions are ordered by Show Stage co-occupancy
+// (350-356: Bonnie leaves before Chica before Freddy). The Withered groups
+// carry NO monitor condition, and lowering the monitor zeroes `viewing`
+// without moving the marker (group 262), so the Withered hold persists
+// monitor-down on the last-selected camera ("parking").
+// (The pre-XOR audit had this set exactly inverted: Toys instead of
+// Withereds. See ANDROID-CAMERA-STALL.md.)
+export const SELECTED_CAMERA_GATED = new Set(['withfreddy', 'withbonnie', 'withchica', 'mangle']);
 
 // --- The routine the trainer teaches ---------------------------------------
 // Offsets in seconds from the cycle anchor (:X2 / :X7).

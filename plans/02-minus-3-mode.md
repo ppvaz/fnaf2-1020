@@ -1,7 +1,12 @@
 # Trainer mode: Minus 3
 
-**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Implementation not
-started.
+**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Implementation
+not started. 2026-08-20 unblock: the camera-light stall is Android-sourced
+after all (400 frames from `stun time`; the "disabled countdown" reading was
+the pre-XOR handle scramble — see
+[`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md)). Engine work for this
+mode now waits only on the character-identity re-audit of routes/endgame
+bindings, not on a missing stall mechanism.
 
 **Research verdict:** the mode should teach **Minus Toys** (Zach_Scream, 2025), the
 family's state of the art and the second-ever zero-RNG strategy; the 2023 original is

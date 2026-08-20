@@ -20,18 +20,29 @@ ceiling.** `tools/cyclesearch.mjs` (camera-order sweep + coordinate hill-climb o
 
 Remaining (optional) work: the per-step-jitter fitness pass below.
 
+**Android evidence (2026-08-20, corrected same day):** the 400-frame flash
+stall is Android-sourced after all — groups 450-457 load it from the
+never-rewritten `stun time` counter; the earlier "source Counter fixed at
+zero" reading was the pre-XOR handle scramble (see
+[`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md)). The corrected
+sourced model (flash stun + Withered/Mangle look-hold) passes the shipped
+schedule 200/200, so the published optimization result stands on a sourced
+mechanism. Rerunning the jitter pass is worthwhile only after the open
+character-identity re-audit (routes/endgame bindings) settles.
+
 ## Goal
 
 Search the neighbourhood of the existing `CYCLE_SCRIPT` for the variant with the most
 timing slack: same stall guarantee, most forgiving offsets. Ship it either as the new
 default script or as an alternative "forgiving" script, whichever the numbers justify.
 
-## Why this is the safe tier
+## Why this is the model-local tier
 
 It stays entirely inside the well-modelled region of the engine — the same mechanics
-Minus 7 already exercises and the tests already validate — so sim results transfer to
-the real game. The known baseline from the README: survivable to ~120 ms late, ~35 %
-at 200 ms, dead past 300 ms (`tools/bbtest.mjs --jitter`).
+Minus 7 already exercises and the tests already validate — so comparisons between
+cycle variants are controlled inside the simulator. The known model baseline from the
+README: survivable to ~120 ms late, ~35 % at 200 ms, dead past 300 ms
+(`tools/bbtest.mjs --jitter`).
 
 ## Search space
 
@@ -59,13 +70,14 @@ better pattern with which to flash Foxy", and rebinding flash to a mouse button 
 "use less flashlight". Checked against the Technical-FNaF wiki's flashlight page
 (fetched via the API) and our engine:
 
-- **Ground truth:** flashlight power is tracked per *frame held* — hall flash and
+- **Community/PC-derived rule:** flashlight power is tracked per *frame held* — hall flash and
   camera light share the 3000-frame (50 s) custom-night budget, vent lights are
   free. Foxy's eviction exposure is also per-frame. But the flash's *effects* (the
-  6.66 s stun, resetting it, zeroing Foxy's D) trigger per event. The wiki states
+  6.66 s stall, resetting it, zeroing Foxy's D) trigger per event. The wiki states
   the consequence outright: "spamming the flashlight is more power efficient than
   holding it down." The engine models all of this faithfully (`engine.js:235`,
-  `stunCam`, `tickFoxy`).
+  `stunCam`, `tickFoxy`). Android behavior confirms the same stall duration; its
+  static initializer provenance is still open.
 - **His flash-pattern hope is a dead end in-model:** exposure is linear in lit
   frames, so evicting Foxy costs exactly 700 lit frames — 23% of the night's power —
   regardless of pattern, and he returns 13–27 s later. Minus 7's per-cycle handling

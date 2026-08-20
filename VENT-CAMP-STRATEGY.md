@@ -95,7 +95,21 @@ with a *decision fork* on monitor-down (blackout / Toy Bonnie / vent guest / nob
 not free-form reaction play. The reactive-coach redesign shrinks to a
 branch-prompt problem.
 
-Gaps and conflicts in `src/engine.js` / `src/config.js`:
+> **2026-08-20 backlog sweep:** every numbered gap below is now decoded from
+> the post-XOR dump — see `ANDROID-SOURCE-STATUS.md`'s extraction backlog
+> (items 4-6, 12-16, 21) for the sourced rules. Headlines: Foxy's operator is
+> `<=`, D gains +1/s (+2/s while masked with the threshold clear), night 1 is
+> Foxy-dormant, his exposure meter is per-frame v9 vs 100*night with a B=50
+> hall pin and a 500+Random(500) return cooldown, and GOT-YOU fires on the
+> 10 s clock in either monitor state or instantly on a monitor-down hall
+> flash; the mask-leave counters are consecutive-tick with a guaranteed
+> 5-tick leave (TC/Mangle/BB); the Puppet's rise IS flash-stallable on
+> CAM 11; the post-mask flash lockout is the mask-off animation itself; the
+> right vent light blocks Toy Bonnie's vent hop and vent lights cost no
+> battery. Engine implementation of the new nuances is the remaining work.
+
+Gaps and conflicts in `src/engine.js` / `src/config.js` (as researched
+2026-08-19, pre-decode):
 
 1. **Foxy's check cadence** — **community model, Android audit incomplete**: the
    imported equation runs
