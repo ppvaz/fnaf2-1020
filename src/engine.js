@@ -252,6 +252,11 @@ export class Sim {
     this.flag('inside-office', `${u.name} reached marker 123: ${why}`);
   }
 
+  // Worst luck for the player is the shortest immunity, so the roll pins to 0.
+  repelCooldown() {
+    return Math.floor(this.rng.int(0, C.REPEL_COOLDOWN_ROLL - 1, 0) / this.opts.night);
+  }
+
   armInsideAttack(u, why) {
     if (u.insideDangerAt >= 0) return;
     u.insideDangerAt = this.frame + C.INSIDE_ATTACK_FRAMES;
@@ -307,7 +312,10 @@ export class Sim {
         if (ended.unitId) {
           const u = this.units.find(x => x.id === ended.unitId);
           if (u?.atOpening) {
-            if (ended.masked) this.unitLeave(u);
+            // Endpoint resolution (groups 538-555): a defended occupant is
+            // repelled to their sourced mid-route room with a fresh approach
+            // cooldown B = Random(500)/night.
+            if (ended.masked) this.unitLeave(u, { cooldown: this.repelCooldown() });
             else this.unitEnterInside(u, 'missed the 45-frame office-defense fuse');
           }
         } else if (!ended.masked) {
@@ -441,8 +449,13 @@ export class Sim {
     this.emit('vent-bang', { who: 'bb', leaving: true });
   }
 
-  unitLeave(u) {
-    u.atOpening = false; u.inside = false; u.idx = 0;
+  unitLeave(u, opts = {}) {
+    u.atOpening = false; u.inside = false;
+    u.idx = opts.idx ?? u.repelIdx ?? 0;
+    // Repels write the unit's B: the movement pipeline requires B = 0, so the
+    // cooldown is the same counter as the flash stun (and Toy Bonnie's
+    // opening timer).
+    if (opts.cooldown) u.stunUntil = this.frame + opts.cooldown;
     u.openingSince = -1; u.openingReadyAt = -1;
     u.officeCue = false; u.maskExposureTicks = 0; u.raiseSeen = false;
     u.insideArmed = false;
@@ -536,7 +549,10 @@ export class Sim {
           // that order: a simultaneous attack roll is not cancelled by leave.
           if (this.rng.chance(C.INSIDE_MASK_ATTACK_CHANCE, true))
             this.armInsideAttack(u, 'inside-office mask attack roll');
-          if (this.rng.chance(C.INSIDE_MASK_LEAVE_CHANCE, false)) this.unitLeave(u);
+          // A marker-123 leave returns to the route start with B = 500
+          // (groups 747-750).
+          if (this.rng.chance(C.INSIDE_MASK_LEAVE_CHANCE, false))
+            this.unitLeave(u, { idx: 0, cooldown: C.INSIDE_LEAVE_COOLDOWN });
         }
         continue;
       }
@@ -568,7 +584,7 @@ export class Sim {
       const streakKill = u.atOpening && u.openingRule === 'streak' && this.camsUpSince >= 0 &&
         f - this.camsUpSince >= C.entryStreakFrames(this.opts.night);
       const armedKill = u.atOpening && u.openingRule === 'mask' && this.camsUp &&
-        f >= u.openingReadyAt;
+        f >= (u.id === 'toybonnie' ? u.stunUntil : u.openingReadyAt);
       if (streakKill || armedKill) {
         const why = streakKill
           ? `cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`
@@ -583,8 +599,11 @@ export class Sim {
     const node = u.path[u.idx];
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame;
+      // Toy Bonnie's opening timer IS his B counter (group 428 writes
+      // B = 1000-100*night on arrival; g546 needs B = 0 plus a monitor
+      // raise), so it shares the flash-stun/repel-cooldown field.
       if (u.id === 'toybonnie')
-        u.openingReadyAt = this.frame + C.toyBonnieOpeningFrames(this.opts.night);
+        u.stunUntil = this.frame + C.toyBonnieOpeningFrames(this.opts.night);
       else if (u.id === 'toychica')
         u.openingReadyAt = this.frame + C.TOY_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;

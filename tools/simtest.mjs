@@ -66,8 +66,8 @@ import { Sim } from '../src/engine.js';
     threshold.frame = n * C.FPS;
     threshold.tickUnits(threshold.frame);
   }
-  if (tc.atOpening || tc.idx !== 0)
-    throw new Error('five sourced Toy Chica mask ticks did not clear marker 122');
+  if (tc.atOpening || tc.idx !== 1 || tc.path[tc.idx] !== 7)
+    throw new Error('five sourced Toy Chica mask ticks did not return her to CAM 07');
 
   const maskedArrival = new Sim({ seed: 7, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
@@ -82,7 +82,7 @@ import { Sim } from '../src/engine.js';
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
   const cueTb = tbCue.units.find(u => u.id === 'toybonnie');
   cueTb.idx = cueTb.path.length - 1; cueTb.atOpening = true;
-  cueTb.openingReadyAt = C.s(5);
+  cueTb.stunUntil = C.s(5); // his B opening timer, still draining
   tbCue.press('mask');
   if (!cueTb.atOpening)
     throw new Error('mask directly repelled Toy Bonnie before his office cue existed');
@@ -134,7 +134,7 @@ import { Sim } from '../src/engine.js';
   const endgame = new Sim({ seed: 2, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
   const armedTb = endgame.units.find(u => u.id === 'toybonnie');
-  armedTb.idx = armedTb.path.length - 1; armedTb.atOpening = true; armedTb.openingReadyAt = 0;
+  armedTb.idx = armedTb.path.length - 1; armedTb.atOpening = true; armedTb.stunUntil = 0;
   endgame.monitor = 'up'; endgame.camsUpSince = endgame.frame;
   endgame.tickUnits(endgame.frame);
   if (!endgame.alive || !armedTb.inside)
@@ -192,6 +192,8 @@ import { Sim } from '../src/engine.js';
   orderedInside.tickUnits(orderedInside.frame);
   if (orderedTb.inside || orderedTb.insideDangerAt !== C.FPS + C.INSIDE_ATTACK_FRAMES)
     throw new Error('same-tick marker-123 leave incorrectly cancelled danger 2');
+  if (orderedTb.idx !== 0 || orderedTb.stunUntil !== C.FPS + C.INSIDE_LEAVE_COOLDOWN)
+    throw new Error('marker-123 leave did not write the sourced B = 500 route cooldown');
   orderedInside.frame = orderedTb.insideDangerAt;
   orderedInside.tickUnits(orderedInside.frame);
   if (orderedInside.alive || orderedInside.death?.reason !== 'inside-office')
@@ -222,6 +224,42 @@ import { Sim } from '../src/engine.js';
   insideTriggers.setMonitor(false);
   if (insideMg.insideDangerAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
     throw new Error('cameras-down edge did not convert Mangle arm into danger 2');
+
+  // Endpoint resolution (groups 538-555): a defended encounter repels the
+  // occupant to their sourced mid-route room with B = Random(500)/night.
+  const repel = new Sim({ seed: 16, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const repelWb = repel.units.find(u => u.id === 'withbonnie');
+  for (const u of repel.units) if (u !== repelWb) u.done = true;
+  repelWb.idx = repelWb.path.length - 1; repelWb.atOpening = true;
+  repel.rng.int = () => 499; // pin Random(500) to its max
+  repel.tickUnits(0);
+  repel.press('mask');
+  while (repel.frame < C.BLACKOUT_FRAMES) repel.tick();
+  if (repelWb.atOpening || repelWb.path[repelWb.idx] !== 7)
+    throw new Error('defended W. Bonnie was not repelled to the sourced CAM 07');
+  if (repelWb.stunUntil !== repel.frame + Math.floor(499 / 7))
+    throw new Error('endpoint repel did not write the Random(500)/night B cooldown');
+
+  // Toy Bonnie's opening timer is his own B counter: written on arrival at
+  // marker 122, and B = 0 plus cameras up crosses him to 123 (group 546).
+  const tbTimer = new Sim({ seed: 17, bbEnabled: false, foxyEnabled: false,
+    gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
+  const timerTb = tbTimer.units.find(u => u.id === 'toybonnie');
+  for (const u of tbTimer.units) if (u !== timerTb) u.done = true;
+  timerTb.idx = timerTb.path.length - 2; timerTb.pending = true;
+  tbTimer.tickUnits(0); // cams down + right vent light off: his gate is open
+  if (!timerTb.atOpening || timerTb.stunUntil !== C.toyBonnieOpeningFrames(7))
+    throw new Error('Toy Bonnie arrival did not write B = 1000-100*night as the opening timer');
+  tbTimer.monitor = 'up';
+  tbTimer.frame = timerTb.stunUntil - 1;
+  tbTimer.tickUnits(tbTimer.frame);
+  if (timerTb.inside)
+    throw new Error('Toy Bonnie crossed to marker 123 while his B was still draining');
+  tbTimer.frame = timerTb.stunUntil;
+  tbTimer.tickUnits(tbTimer.frame);
+  if (!timerTb.inside)
+    throw new Error('Toy Bonnie with B = 0 and cameras up did not cross to marker 123');
 
   const mutex = new Sim({ seed: 15, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });

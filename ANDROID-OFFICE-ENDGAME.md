@@ -92,10 +92,10 @@ with a mutex holder. `in danger` serializes the shared visible encounter.
 The engine represents the by-night fuse, 300-frame encounter, mask-animation
 completion requirement, the four-attacker mutex, Toy Bonnie's cue/cooldown,
 Toy Chica's continuous mask counter, Mangle's next-raise branch, and the
-marker-123 attack/leave branches. Not yet unified from the backlog decode:
-Toy Bonnie's B-as-opening-timer, the mid-route repel destinations, BB's
-light-disable at 123 (and his permanence), Foxy's masked D acceleration, and
-exact same-frame ordering among non-mutex occupants.
+marker-123 attack/leave branches, Toy Bonnie's B-as-opening-timer, and the
+mid-route repel destinations with their B cooldowns. Not yet unified from the
+backlog decode: BB's light-disable at 123 (and his permanence) and exact
+same-frame ordering among non-mutex occupants.
 
 The original audit's falsification of the "continuous marker-122 mask
 polling" reading and its 150/150 monitor-denial result stands: with an

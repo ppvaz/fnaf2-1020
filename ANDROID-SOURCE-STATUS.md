@@ -80,6 +80,7 @@ Consequences for this ledger:
 | Character-specific threshold branches | The streak four (Withereds + Toy Freddy), Toy Bonnie, and Toy Chica use separate sourced marker-122 rules instead of a generic instant mask repel |
 | Mangle office endgame | Marker 122 clears after five continuous fully-masked scheduler ticks, while completing the next monitor raise sends her to marker 123 |
 | Marker-123 attacks | Per-family Android attack triggers and the shared 40-frame `danger 2` transition are represented |
+| Toy Bonnie endgame + repel destinations | Implemented 2026-08-20 (second pass): his B is the unified opening timer / flash stun / repel cooldown; endpoint resolution repels land on the sourced rooms (WB CAM 07, WC CAM 04, TB CAM 03, TC CAM 07) with B = Random(500)/night, and marker-123 leaves write B = 500 |
 | Threshold mutex | `office occupied` (ex-`chicalookatyou`) serializes final entry for the four shared-streak attackers: W. Freddy, W. Bonnie, W. Chica, Toy Freddy |
 | Monitor and mask animation durations | Derived from the Android animation bank and represented as asymmetric frame counts |
 
@@ -89,7 +90,7 @@ Consequences for this ledger:
 | --- | --- | --- |
 | P0 | Office threshold/inside state machine | Core marker-122/123 behavior is implemented; finish exact same-frame visual and input ordering around attack transitions |
 | P0 | Office queue pacing | The four-attacker mutex and shared encounter latch are anchored; determine exact ordering when W. Bonnie, W. Chica, or Mangle coexist with them |
-| P0 | Toy Bonnie Android endgame | **Decoded 2026-08-20 (backlog item 4)**: his own B is the 1000-100*night opening timer; overlay/repel rolls and per-repel B cooldowns sourced. Engine unification of B-as-timer and the CAM 03 repel destination still pending |
+| P0 | ~~Toy Bonnie Android endgame~~ **Implemented 2026-08-20** | B-as-opening-timer unified with the flash-stun/cooldown field; repels land on CAM 03 with the sourced B cooldowns (see Implemented table) |
 | P0 | Foxy | **Decoded 2026-08-20 (backlog item 12)**: `<=` operator, D +1/s (+2/s masked), night-1 dormancy, AI cap 17, per-frame exposure v9 vs 100*night, B=50 hall pin, 500+Random(500) return, GOT-YOU 10 s / instant hall-flash. Engine implementation of the new nuances pending |
 | P0 | Golden Freddy | **Mostly decoded 2026-08-20 (backlog item 11)**: cams-up spawn roll, fractional AI seeds, mask fade-out, lethal raise AND lethal hall-light with GF present, empty-hall exposure. Still open: hall kill threshold group and the sourced raise-window replacement |
 | P0 | Mask counter semantics | **Decoded 2026-08-20 (backlog items 5, 17, 21)**: consecutive-tick counters for TC/Mangle/BB, 10%/s rolls, auxiliary counters all named. BB storage abstraction remains engine-only [MODEL] |
@@ -126,8 +127,9 @@ each resolved item records the finding. Remaining open items are marked OPEN.
    danger on monitor-lowering (g568) or every 10 s cams-up (g722).
    Return immunity = the B cooldown written on every repel
    (Random(500)/night at 122 endpoints, 500 on a 123 leave).
-   *Engine: partially implemented (cooldown, cue, 10 s trigger); the
-   B-as-opening-timer unification and CAM 03 repel destination are pending.*
+   *Engine: fully implemented 2026-08-20 (second pass) — B is one unified
+   counter (opening timer / flash stun / repel cooldown) and repels land on
+   the sourced mid-route rooms.*
 5. ~~Mask-leave semantics~~ — decoded: at 123 the streak four leave on a
    masked 10%/s roll (g747-750, engine matches). At 122 the five-continuous-
    masked-tick guaranteed leave belongs to Toy Chica, Mangle AND Balloon Boy
