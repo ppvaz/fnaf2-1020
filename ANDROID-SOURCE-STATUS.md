@@ -75,7 +75,7 @@ Consequences for this ledger:
 | Main route graph | Re-extracted 2026-08-20 from the true-name dump, including the off-camera `hall stage 1`/`hall stage 2` transit markers (120/121) |
 | Per-edge monitor gates | Final approaches use cams-up conditions; Toy Bonnie's polarity is inverted (monitor DOWN + `right light`); Toy Chica's final hop is unconditioned |
 | Office-light movement latch | Physical light state is immediate; the `viewing hall light` latch persists to the next one-second event and guards only specific route edges (W. Chica and Toy Bonnie exempt) |
-| Shared office-light battery behavior | Office/vent light inputs use the shared battery model; night 5+ capacity is 3000 frames |
+| Shared office-light battery behavior | Only `lit?` drains `battery life` (g284, backlog item 16) — vent lights are free; night 5+ capacity is 3000 frames. (An earlier version of this row had vent lights sharing the drain; corrected 2026-08-20 second pass.) The vent lights still share the engine's movement-latch model [MODEL] |
 | Camera and hall light separation | A short physical tap no longer produces a fake one-second Foxy/GF exposure |
 | UI state identity | The camera selection/up counter is literally named `viewing`, and the four-state Freddy-mask object is literally named `mask` — the pre-XOR inferences were correct and are now nominal |
 | Shared office defense sequence | Marker-122 encounter starts a 45-frame Night-7 fuse and resolves after 300 frames; only a fully-on mask before fuse expiry defends it |

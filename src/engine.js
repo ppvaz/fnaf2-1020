@@ -338,7 +338,9 @@ export class Sim {
   }
 
   tickLight() {
-    if (this.anyOfficeLightHeld && this.opts.powerEnabled && !this.blackout.active && !this.maskOn) {
+    // Only `lit?` — the office/camera flashlight — drains the battery
+    // (group 284). Vent lights are free.
+    if (this.lightHeld && this.opts.powerEnabled && !this.blackout.active && !this.maskOn) {
       this.power--;
       if (this.power <= 0) {
         this.power = 0;

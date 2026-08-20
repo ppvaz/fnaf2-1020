@@ -50,8 +50,11 @@ import { Sim } from '../src/engine.js';
   const ventWb = ventLight.units.find(u => u.id === 'withbonnie');
   ventWb.idx = 1; ventWb.pending = true;
   ventLight.press('ventR'); ventLight.tick(); ventLight.release('ventR');
-  if (!ventWb.pending || ventLight.power !== C.POWER_FRAMES - 1)
-    throw new Error('right vent light did not share the sourced light latch and battery');
+  if (!ventWb.pending)
+    throw new Error('right vent light did not share the sourced light latch');
+  // Only `lit?` drains the battery (g284); vent lights are free.
+  if (ventLight.power !== C.POWER_FRAMES)
+    throw new Error('vent light incorrectly drained the sourced battery counter');
 
   const threshold = new Sim({ seed: 6, bbEnabled: false, foxyEnabled: false,
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
