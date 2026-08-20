@@ -40,11 +40,15 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - `find-events.py <mp4>` — frame-diff event locator (stdlib only): prints
   timestamp ranges with sharp visual change (overlays, flips, jumpscares) so
   clears can be timed without scrubbing video.
-- `trial-minus7.sh <name> [cycles]` — experimental Night 5 Minus 7 runner.
-  It gates only the start of the night, then executes one absolute-time
-  device-side schedule; screenshots never participate in the live loop. It
-  enables ADB touch/pointer overlays and grades the pulled recording by
-  default (`DEBUG_OVERLAYS=0` and `GRADE_RUN=0` are the opt-outs).
+- `trial-minus7.sh <name> [cycles]` — selectable-night Minus 7 interaction
+  runner (`NIGHT=6th` by default; `NIGHT=continue` is the override). It gates
+  the start, then executes one absolute-time device-side schedule. Independent
+  safety guards cancel the exact remote driver immediately if the game loses
+  focus or after three consecutive non-night screenshots. The fast screenshot
+  path captures raw on-device and transfers only HUD scanlines. Neither guard
+  chooses or retimes an action. The runner enables ADB touch/pointer overlays
+  and grades the pulled recording by default (`DEBUG_OVERLAYS=0` and
+  `GRADE_RUN=0` are the opt-outs).
 - `grade-minus7.py <mp4>` — post-run classifier for Minus 7 screenrecords.
   It reports stable camera, office, and mask intervals and flags masks that
   remain latched for more than one second.
@@ -68,6 +72,17 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   `mCurrentFocus` before any input: one unguarded run landed 150 s of taps
   in the Clock app and opened a real alarm's edit dialog (cancelled,
   nothing changed).
+- A completed timed input list is not evidence that the game is still alive.
+  The 12-cycle endurance attempt died around 38 s, after which its uncancelled
+  inputs reached the title and selected New Game. `Continue` was reset to
+  Night 1, although the star and 6th Night unlock remained. The Minus 7 runner
+  now records the remote shell PID, kills its input children after three
+  consecutive non-night screenshots (or one lost-focus sample), force-stops
+  the game on every exit, refuses to overwrite captures, and saves a partial
+  `-aborted.mp4` when possible.
+- The device owner subsequently authorized 6th Night as the available quick
+  testing ground. Mask-camp, batch, and Minus 7 interaction tests therefore
+  default to `6th`; set `NIGHT=continue` explicitly to use the campaign cursor.
 - The bottom ~40 px belong to Android gesture navigation — keep game taps at
   y <= 1020.
 - A locked phone presents `NotificationShade` as the focused window even
@@ -135,17 +150,29 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   began with room in the box and ended high/near-full, so the revised runner
   also avoids wasting its opening and cycle time against an already full box.
   Absolute anchors landed within roughly 25-100 ms without accumulating drift.
+- **The hardened runner passed its 6th Night safety validation.** An exact-PID
+  test killed a harmless remote process and its host ADB session. Controlled
+  game force-stops then established both failure paths: the raw-scanline guard
+  cancels on persistent non-night state, while the independent 70-100 ms focus
+  poll prevents queued input from reaching another app if the game process
+  disappears outright. A normal two-cycle run completed without false abort,
+  pulled its capture, graded it, and left the launcher focused after cleanup.
+  That same run reconfirmed that `PRESS_MODE=tap` is observably unreliable: the
+  command log was complete, but the recording contained only the opening camera
+  interval and one later mask. Keep `async-swipe` as the default.
 - **Shooter25's bot establishes the in-game alternative for reactive work.** A
   Debian-patched CTFAK extraction of the official PC practice executable shows
   a direct-state Clickteam controller, not a vision bot. See
   [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md) for the comparison
-  and the staged recommendation for a separate instrumented APK.
+  and [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md) for
+  its controller, office-pan, and actuator reconstruction.
 
 ## Next steps
 
-1. Extend the validated 1.38 s sweep from three cycles toward a full Night 5
-   run, keeping the stock game as the oracle. Do not restore the held-light
-   shortcut.
+1. Before another long schedule, improve input efficacy and eliminate wasted
+   full-box time; do not treat printed `tap` commands as accepted game input.
+   `Continue` currently points to Night 1, while 6th Night is the authorized
+   quick testing ground. Do not restore the held-light shortcut.
 2. Grab the frame before the static to auto-identify the killer. The
    `gameover` state (red face + bright lower-center text) is implemented.
 3. `windpct.py`: percent-fill of the pie gauge so wind holds stop exactly at

@@ -1,24 +1,54 @@
 #!/bin/bash
-# Run the canonical timed Minus 7 main loop on Night 5.
+# Run the canonical timed Minus 7 interaction loop on a selectable night.
 #
 # This is intentionally open-loop once the office appears: Minus 7 is clocked,
 # not visual-reactive. All actions run inside one adb shell against Android's
 # monotonic wall clock so host/USB round trips cannot accumulate cycle drift.
+# Host-side guards are strategy-independent: they stop the remote input program
+# on lost focus or after three consecutive screenshots outside the night.
 # The default is six main cycles (about 37 seconds including the opening).
 set -euo pipefail
 
-OUT="${1:-minus7-n5}"
+OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
+NIGHT="${NIGHT:-6th}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-1}"
 GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-async-swipe}"
+WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
+WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
+FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
+CAPTURE_DIR="$HERE/../../captures"
+LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
+LOCAL_ABORT_VIDEO="$CAPTURE_DIR/$OUT-aborted.mp4"
+REMOTE_VIDEO="/sdcard/$OUT.mp4"
+REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
+RUN_TMP=""
+WATCHDOG_RESULT=""
 REC=""
+DRIVER_PID=""
+WATCHDOG_PID=""
+FOCUS_WATCHDOG_PID=""
+GAME_LAUNCHED=0
+RECORDING_STARTED=0
+CAPTURE_PULLED=0
 
+case "$OUT" in
+  ''|.*|*..*|*[!A-Za-z0-9._-]*)
+    echo "name must be a plain basename using letters, numbers, dot, dash, or underscore"
+    exit 2
+    ;;
+esac
+[ "${#OUT}" -le 80 ] || { echo "name must be at most 80 characters"; exit 2; }
 case "$CYCLES" in
   ''|*[!0-9]*) echo "cycles must be a positive integer"; exit 2 ;;
 esac
 [ "$CYCLES" -gt 0 ] || { echo "cycles must be a positive integer"; exit 2; }
+case "$NIGHT" in
+  continue|6th) ;;
+  *) echo "NIGHT must be continue or 6th"; exit 2 ;;
+esac
 case "$DEBUG_OVERLAYS" in
   0|1) ;;
   *) echo "DEBUG_OVERLAYS must be 0 or 1"; exit 2 ;;
@@ -31,6 +61,33 @@ case "$PRESS_MODE" in
   swipe|tap|async-swipe) ;;
   *) echo "PRESS_MODE must be swipe, tap, or async-swipe"; exit 2 ;;
 esac
+for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL; do
+  setting_value="${!setting}"
+  case "$setting_value" in
+    ''|*[!0-9.]*) echo "$setting must be a positive number"; exit 2 ;;
+  esac
+  awk -v n="$setting_value" 'BEGIN {
+    exit !(n ~ /^([0-9]+([.][0-9]+)?|[.][0-9]+)$/ && n + 0 > 0)
+  }' || {
+    echo "$setting must be a positive number"
+    exit 2
+  }
+done
+mkdir -p "$CAPTURE_DIR"
+[ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
+[ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
+RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
+WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
+
+state_once() {
+  local result
+  if result=$(python3 "$HERE/screenstate.py" \
+    --adb-fast "$WATCHDOG_CAPTURE_TIMEOUT" 2>/dev/null); then
+    printf '%s\n' "$result"
+  else
+    printf '%s\n' "unavailable"
+  fi
+}
 
 state() {
   local attempt result
@@ -45,6 +102,30 @@ state() {
   printf '%s\n' "unavailable"
 }
 
+stop_remote_driver() {
+  local local_pid
+  # The remote parent records its exact PID. Kill its direct input-swipe
+  # children first, then the parent; never use a device-wide `pkill input`.
+  adb shell "pidfile=$REMOTE_PIDFILE; if [ -f \"\$pidfile\" ]; then pid=\$(cat \"\$pidfile\" 2>/dev/null); case \"\$pid\" in ''|*[!0-9]*) ;; *) children=\$(cat /proc/\$pid/task/\$pid/children 2>/dev/null || true); [ -z \"\$children\" ] || kill -TERM \$children 2>/dev/null || true; kill -TERM \$pid 2>/dev/null || true ;; esac; rm -f \"\$pidfile\"; fi" >/dev/null 2>&1 || true
+  local_pid="$DRIVER_PID"
+  if [ -n "$local_pid" ] && kill -0 "$local_pid" 2>/dev/null; then
+    kill -TERM "$local_pid" 2>/dev/null || true
+    wait "$local_pid" 2>/dev/null || true
+  fi
+}
+
+stop_watchdogs() {
+  local local_pid
+  for local_pid in "$WATCHDOG_PID" "$FOCUS_WATCHDOG_PID"; do
+    if [ -n "$local_pid" ] && kill -0 "$local_pid" 2>/dev/null; then
+      kill -TERM "$local_pid" 2>/dev/null || true
+      wait "$local_pid" 2>/dev/null || true
+    fi
+  done
+  WATCHDOG_PID=""
+  FOCUS_WATCHDOG_PID=""
+}
+
 stop_recording() {
   [ -n "$REC" ] || return 0
   adb shell pkill -INT screenrecord 2>/dev/null || true
@@ -52,10 +133,75 @@ stop_recording() {
   REC=""
 }
 
-trap stop_recording EXIT
+watch_night() {
+  local misses=0 screen_state
+  while kill -0 "$DRIVER_PID" 2>/dev/null; do
+    sleep "$WATCHDOG_INTERVAL"
+    screen_state=$(state_once)
+    case "$screen_state" in
+      night)
+        misses=0
+        ;;
+      *)
+        misses=$((misses + 1))
+        printf 'watchdog: %s (%d/3)\n' "$screen_state" "$misses"
+        ;;
+    esac
+    if [ "$misses" -ge 3 ]; then
+      printf 'abort: game left night state (%s)\n' "$screen_state" > "$WATCHDOG_RESULT"
+      stop_remote_driver
+      return 0
+    fi
+  done
+}
+
+watch_focus() {
+  local focus
+  while kill -0 "$DRIVER_PID" 2>/dev/null; do
+    sleep "$FOCUS_WATCHDOG_INTERVAL"
+    focus=$(adb shell dumpsys window 2>/dev/null |
+      grep -m1 mCurrentFocus || true)
+    case "$focus" in
+      *com.scottgames.fnaf2*) ;;
+      *)
+        printf 'focus watchdog: game not focused\n'
+        if [ ! -s "$WATCHDOG_RESULT" ]; then
+          printf 'abort: game lost focus (%s)\n' "$focus" > "$WATCHDOG_RESULT"
+        fi
+        stop_remote_driver
+        return 0
+        ;;
+    esac
+  done
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT INT TERM
+  set +e
+  stop_watchdogs
+  stop_remote_driver
+  stop_recording
+  if [ "$status" -ne 0 ] && [ "$RECORDING_STARTED" -eq 1 ] && [ "$CAPTURE_PULLED" -eq 0 ]; then
+    sleep 1
+    if adb pull "$REMOTE_VIDEO" "$LOCAL_ABORT_VIDEO" >/dev/null 2>&1; then
+      echo "saved partial capture captures/$OUT-aborted.mp4"
+    fi
+  fi
+  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" >/dev/null 2>&1 || true
+  if [ "$GAME_LAUNCHED" -eq 1 ]; then
+    adb shell am force-stop com.scottgames.fnaf2 >/dev/null 2>&1 || true
+  fi
+  rm -f "$WATCHDOG_RESULT"
+  rmdir "$RUN_TMP" 2>/dev/null || true
+  exit "$status"
+}
+
+trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+adb get-state >/dev/null
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
 sleep 1
@@ -65,6 +211,7 @@ adb shell settings put system pointer_location "$DEBUG_OVERLAYS"
 adb shell am force-stop com.scottgames.fnaf2
 sleep 1
 adb shell am start -n com.scottgames.fnaf2/.Main >/dev/null
+GAME_LAUNCHED=1
 sleep 7
 FOCUS=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
 case "$FOCUS" in
@@ -73,26 +220,31 @@ case "$FOCUS" in
 esac
 
 source "$HERE/coords.sh"
-adb shell input swipe $TAP_CONTINUE $TAP_CONTINUE 120
+NIGHT_TAP=$TAP_CONTINUE
+[ "$NIGHT" = "6th" ] && NIGHT_TAP=$TAP_6TH
+adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
 
-# Loading is variable. The timed program begins only after the office HUD is
-# visible; no screenshot/classification occurs after this gate.
+# Loading is variable. The timed strategy begins only after the office HUD is
+# visible. Later screenshots belong only to the stop-on-exit safety watchdog;
+# they never choose or retime a strategy action.
 for i in $(seq 1 40); do
   [ "$(state)" = "night" ] && break
   sleep 1
-  [ "$i" = 40 ] && { echo "abort: Night 5 never started"; exit 1; }
+  [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
 done
-echo "Night 5 detected; starting timed Minus 7 opening + $CYCLES cycles ($PRESS_MODE presses)"
+echo "$NIGHT night detected; starting timed Minus 7 interaction loop + $CYCLES cycles ($PRESS_MODE presses)"
 
 MAXDUR=$((25 + CYCLES * 5))
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR /sdcard/$OUT.mp4" &
+adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
 REC=$!
+RECORDING_STARTED=1
 
 # Positional coordinates keep this remote program literal and auditable.
-adb shell sh -s -- "$CYCLES" "$PRESS_MODE" \
+adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_LIGHT $WIND \
-  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 <<'REMOTE'
+  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 <<'REMOTE' &
 set -eu
+PIDFILE=$1; shift
 CYCLES=$1; shift
 PRESS_MODE=$1; shift
 MUTE_X=$1; MUTE_Y=$2; shift 2
@@ -104,6 +256,17 @@ CAM10_X=$1; CAM10_Y=$2; shift 2
 CAM04_X=$1; CAM04_Y=$2; shift 2
 CAM07_X=$1; CAM07_Y=$2; shift 2
 CAM11_X=$1; CAM11_Y=$2
+
+printf '%s\n' "$$" > "$PIDFILE"
+cleanup_remote() {
+  children=$(cat "/proc/$$/task/$$/children" 2>/dev/null || true)
+  [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
+  rm -f "$PIDFILE"
+}
+trap cleanup_remote EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 T0=$(date +%s%3N)
 
@@ -144,7 +307,7 @@ hold_at() {
   input swipe "$x" "$y" "$x" "$y" "$duration"
 }
 
-# Night 5 calibration opening: the box begins full, so wait for real drain
+# Calibration opening: the box begins full, so wait for real drain
 # instead of holding the wind button immediately. The first camera sweep ends
 # just before a short top-up and the first seven-second cycle anchor.
 press_at     0 "$MUTE_X"    "$MUTE_Y"    mute
@@ -182,13 +345,33 @@ while [ "$cycle" -lt "$CYCLES" ]; do
 done
 wait
 REMOTE
+DRIVER_PID=$!
+watch_night &
+WATCHDOG_PID=$!
+watch_focus &
+FOCUS_WATCHDOG_PID=$!
+
+set +e
+wait "$DRIVER_PID"
+DRIVER_STATUS=$?
+set -e
+DRIVER_PID=""
+stop_watchdogs
+if [ -s "$WATCHDOG_RESULT" ]; then
+  cat "$WATCHDOG_RESULT"
+  exit 1
+fi
+if [ "$DRIVER_STATUS" -ne 0 ]; then
+  echo "abort: timed input driver exited with status $DRIVER_STATUS"
+  exit "$DRIVER_STATUS"
+fi
 
 stop_recording
 sleep 2
-adb pull "/sdcard/$OUT.mp4" "$HERE/../../captures/$OUT.mp4" >/dev/null
-adb shell rm "/sdcard/$OUT.mp4"
-adb shell am force-stop com.scottgames.fnaf2
+adb pull "$REMOTE_VIDEO" "$LOCAL_VIDEO" >/dev/null
+CAPTURE_PULLED=1
+adb shell rm -f "$REMOTE_VIDEO"
 echo "saved captures/$OUT.mp4"
 if [ "$GRADE_RUN" = 1 ]; then
-  python3 "$HERE/grade-minus7.py" "$HERE/../../captures/$OUT.mp4"
+  python3 "$HERE/grade-minus7.py" "$LOCAL_VIDEO"
 fi

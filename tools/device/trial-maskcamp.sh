@@ -38,6 +38,10 @@ case "$DEBUG_OVERLAYS" in
   0|1) ;;
   *) echo "DEBUG_OVERLAYS must be 0 or 1"; exit 2 ;;
 esac
+case "$NIGHT" in
+  continue|6th) ;;
+  *) echo "night must be continue or 6th"; exit 2 ;;
+esac
 
 state() {
   local attempt result
