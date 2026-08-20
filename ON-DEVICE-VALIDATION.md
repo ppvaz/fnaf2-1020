@@ -216,6 +216,40 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   and [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
 
+## Simulating the pilot (2026-08-20)
+
+`tools/pilottest.mjs` replays `trial-minus7.sh`'s millisecond table in the
+sourced engine with no state reads, so schedule changes can be judged without
+spending a night on the phone. It reproduces the real failure exactly: the
+shipped blind schedule dies **200/200 to Balloon Boy walking in**.
+
+Adding the one observation the phone can actually make — flash the left vent
+light with the cams down and classify one screenshot (g289 draws BB at the
+opening, g287 draws it empty) — plus a mask hold long enough for g294's five
+consecutive masked ticks:
+
+| Schedule | Result |
+| --- | --- |
+| blind, as shipped | 0/200 — every death is BB walking in |
+| + vent check | 0/200 — **no BB or Golden Freddy deaths left**; 72 Foxy, 108 the seven |
+| + Markiplier eviction | 0/200 — **worse**: 75 Foxy, more office deaths, min power 2253 vs 2583 |
+
+**The eviction does not transfer to an open-loop pilot.** Spending the sourced
+700 frames of hall light only evicts Foxy if he is actually in the hall while
+it runs, and it only pays for itself if BB's forced mask window lands inside
+the 500-999 frame nap. Markiplier can arrange both because he hears BB's
+laughs and reads the hall; a pilot holding one vent screenshot per cycle knows
+neither, so it burns the power and takes the exposure anyway.
+
+What remains is structural, not a timing bug. Clearing BB costs about 8 s with
+the monitor down (Golden Freddy flick, hall flash, five masked ticks, raise,
+re-sweep), and the three stall cameras only stay held for 6.67 s — so one 5 s
+interval always lands uncovered. On PC the canonical strategy pays for this
+with the held flashlight straight through the mask; g75/g84 make that
+impossible here. Closing it needs a **second** observation rather than better
+timing: a CAM 05 peek during the sweep would see BB one move out (his 5th move
+is the only monitor-gated one) and let the pilot prepare instead of react.
+
 ## Next steps
 
 1. Extend the validated synchronous cadence beyond six main cycles before
