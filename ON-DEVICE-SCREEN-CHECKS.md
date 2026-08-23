@@ -211,11 +211,18 @@ Build separate models because each view has different lighting and safe actions:
 
 | Model/view | Required labels | Conservative live handling |
 |---|---|---|
-| `bb-cam05` | `empty`, `bb`, other occupants/static | Treat `bb` or `unknown` as a threat; schedule the left-opening defense check. |
+| `bb-cam05` | `empty`, `bb`, other occupants/static | Treat `bb` or `unknown` as a threat; schedule the left-opening defense check. A miss lets him permanently remove every light and causes the BB→Foxy chain. |
 | `bb-left` | `empty`, `bb`, other vent views | Treat `bb` or `unknown` as present: monitor stays down and mask remains on for the sourced five continuous scheduler ticks. |
 | `gf-office` | `empty`, `golden`, blackout/other | `golden` or `unknown` must mask; never raise the monitor or flash the hall. A prophylactic mask flick is cheaper and safer than vision in the normal Minus 7 cycle. |
 | `gf-hall` | `empty`, `foxy`, `golden`/other | `golden` or `unknown` releases/avoids the hall light immediately; never spend the full 1.67 s exposure fuse. |
 | `tb-right` | `empty`, `toy-bonnie`, other vent occupants | `toy-bonnie` or `unknown` keeps the right light/defense branch active. If a fixed light stall is acceptable, holding the right light is cheaper than classifying. |
+
+The owned Night-6 AI table constrains collection: Toy Bonnie is AI 0 until
+2 AM, then becomes 5. Golden Freddy is rarer but not impossible before 2 AM:
+one night start in ten assigns him AI 1 (the other nine assign 0), and 2 AM
+overwrites that result with AI 3. BB is active from 12 AM and rises from AI 5
+to 9 at the 2 AM cliff, so his two views remain the easiest first calibration
+targets. Custom Night/10/20 remains locked on the current save.
 
 For each view:
 

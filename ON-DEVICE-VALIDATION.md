@@ -60,9 +60,12 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   chooses or retimes an action. The runner enables ADB touch/pointer overlays
   and grades the pulled recording by default (`DEBUG_OVERLAYS=0` and
   `GRADE_RUN=0` are the opt-outs).
-- `grade-minus7.py <mp4>` — post-run classifier for Minus 7 screenrecords.
-  It reports stable camera, office, and mask intervals and flags masks that
-  remain latched for more than one second.
+- `screencheck.c` plus `build-screencheck.sh` — static device-local raw-frame
+  feature/template classifier. `capture-screen-sample.sh`,
+  `build-screen-model.py`, `replay-screen-model.py`, and
+  `bench-screencheck.sh` cover labeled capture, model calibration, independent
+  holdout replay, and real device latency. See `ON-DEVICE-SCREEN-CHECKS.md` for
+  the invocation and safety contract.
 
 ## Hard-won harness rules
 
@@ -73,12 +76,13 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   camera light while launching camera-button swipes corrupted the input stream:
   a three-cycle trial produced two multi-second mask latches and entered the
   cameras only twice. Keep injected gestures non-overlapping.
-- **Interactive driving is impossible**: inference/command latency between
-  actions is a game over. Trials are single pre-scripted wall-clock
-  sequences; analysis is post-hoc on the recording. A human watching the
-  device is the best live observer. Trials enable `show_touches` and
-  `pointer_location` by default for a visible touch dot and crosshair; run
-  with `DEBUG_OVERLAYS=0` to disable both.
+- **Host-round-trip interactive driving is impossible**: transferring a frame,
+  classifying it on the host, and starting a second ADB command exceeds the
+  reaction/cadence budget. The stock-device exception is a branch computed
+  entirely inside the runner's existing device shell with `screencheck`; its
+  measured cost and remaining calibration gates are below. Trials enable
+  `show_touches` and `pointer_location` by default for a visible touch dot and
+  crosshair; run with `DEBUG_OVERLAYS=0` to disable both.
 - **Never tap blind.** The script force-foregrounds the game and checks
   `mCurrentFocus` before any input: one unguarded run landed 150 s of taps
   in the Clock app and opened a real alarm's edit dialog (cancelled,
@@ -215,13 +219,34 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md) for the comparison
   and [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
+- **A minimal stock-device visual path now exists.**
+  [`tools/device/screencheck.c`](tools/device/screencheck.c) builds to a
+  12,680-byte static ARM64 helper and reduces raw `screencap` to color features,
+  `match`/`clear`, or a compact nearest-template class entirely inside one
+  device shell. No frame crosses USB and no APK/root/runtime dependency is
+  added. On this Moto in the 2400x1080 landscape game, 30 interleaved samples
+  measured **225 ms combined p95** (206 ms capture, 42 ms classification p95).
+  With the existing roughly 170 ms duration press, the estimated visual-plus-
+  action path is 395 ms, leaving about 305 ms against the shortest 700 ms BB
+  window. This proves feasibility, not threat accuracy: real BB, Golden Freddy,
+  and Toy Bonnie calibration/holdouts remain open. Full build, model, replay,
+  benchmark, invocation, and conservative-branch rules are in
+  [`ON-DEVICE-SCREEN-CHECKS.md`](ON-DEVICE-SCREEN-CHECKS.md).
 
 ## Simulating the pilot (2026-08-20)
 
 `tools/pilottest.mjs` replays `trial-minus7.sh`'s millisecond table in the
 sourced engine with no state reads, so schedule changes can be judged without
-spending a night on the phone. It reproduces the real failure exactly: the
-shipped blind schedule dies **200/200 to Balloon Boy walking in**.
+spending a night on the phone. The shipped blind schedule dies **200/200 to
+Foxy**, with Balloon Boy as the cause rather than the recorded killer.
+
+> **Corrected 2026-08-20.** BB has no direct office death. At marker 123, g96
+> forces `lit?` to zero every frame and g301/303 stop the vent lights answering.
+> He permanently removes every flashlight; Foxy's unreset D then ends the run.
+> An 80-cycle phone trial reproduced the chain at ~138 s: BB was visible in the
+> office, the scheduled mask flick and hall presses still landed, no beam
+> appeared, and W. Foxy attacked. The older “BB walking in kills” wording
+> confused cause with death event.
 
 Adding the one observation the phone can actually make — flash the left vent
 light with the cams down and classify one screenshot (g289 draws BB at the
@@ -230,9 +255,15 @@ consecutive masked ticks:
 
 | Schedule | Result |
 | --- | --- |
-| blind, as shipped | 0/200 — every death is BB walking in |
-| + vent check | 0/200 — **no BB or Golden Freddy deaths left**; 72 Foxy, 108 the seven |
-| + Markiplier eviction | 0/200 — **worse**: 75 Foxy, more office deaths, min power 2253 vs 2583 |
+| blind, as shipped | 0/200 — 200 Foxy deaths after BB removes the lights; min box 59%, min power 2460 |
+| + vent check | 0/200 — BB/Foxy chain removed, but 87 desynced-raise Golden Freddy deaths and 113 deaths to the seven; min box 0% |
+| + vent check + monitor sync | 0/200 — BB/Foxy chain remains removed; remaining deaths are the seven during the response window |
+| + Markiplier eviction | 0/200 — worse: 177 Foxy deaths and 200 unnecessary evictions; min power 2252 |
+
+The vent observation is mechanically useful but not a complete strategy. It
+removes BB and the Foxy chain; the long response then exposes another failure
+mode. The monitor-sync row also depends on an observation that the current
+phone runner does not yet make.
 
 ### Teaching the pilot Balloon Boy (2026-08-20)
 
@@ -253,9 +284,9 @@ schedule was desynced from the game and had no way to notice.
 
 `--sync` makes the two monitor actions *intents* rather than presses: the
 pilot spends one screenshot on the monitor state and presses only if the state
-disagrees. It is device-legal — the look can be taken a second early and the
-decision is a skip, not a timed reaction, so it does not need the reaction
-budget that rules out interactive driving.
+disagrees. The look can be taken early and the decision is a skip, not a timed
+reaction. `screencheck` makes its cost feasible, but no device runner currently
+implements or validates this state-sync branch.
 
 The Balloon Boy -> Foxy chain is the thing being broken here, and it is worth
 stating exactly: BB reaches the office (marker 123), g96 and g301/303 take
@@ -284,10 +315,10 @@ the response's 6.4 s cams-down window, where their entry timers run to
 completion. Best single night rose 92 s -> 98 s of 420. Real progress, and
 nowhere near a win: the response buys Balloon Boy at a price the seven collect.
 
-**The device script is deliberately untouched.** `--sync` costs a screenshot
-per monitor action, and whether the phone can classify office-vs-camera view
-fast enough to keep the cadence is a device question this simulation cannot
-answer.
+**The device script is deliberately untouched.** The phone can now classify a
+frame within the timing budget, but the exact monitor-state model, holdouts,
+and capture-to-skip/press integration have not been validated. A simulator
+result is not authority to edit the proven open-loop runner.
 
 **The eviction does not transfer to an open-loop pilot.** Spending the sourced
 700 frames of hall light only evicts Foxy if he is actually in the hall while
@@ -296,14 +327,17 @@ the 500-999 frame nap. Markiplier can arrange both because he hears BB's
 laughs and reads the hall; a pilot holding one vent screenshot per cycle knows
 neither, so it burns the power and takes the exposure anyway.
 
-What remains is structural, not a timing bug. Clearing BB costs about 8 s with
-the monitor down (Golden Freddy flick, hall flash, five masked ticks, raise,
-re-sweep), and the three stall cameras only stay held for 6.67 s — so one 5 s
-interval always lands uncovered. On PC the canonical strategy pays for this
-with the held flashlight straight through the mask; g75/g84 make that
-impossible here. Closing it needs a **second** observation rather than better
-timing: a CAM 05 peek during the sweep would see BB one move out (his 5th move
-is the only monitor-gated one) and let the pilot prepare instead of react.
+The old “clearing BB costs about 8 s” argument is withdrawn. It priced five
+mask ticks as a flat five seconds, but g907 increments on one-second event
+boundaries: five ticks span 4.017-5.000 s depending on phase. The response's
+monitor-down portion is 6.4 s against a 6.67 s stall, so the previous claim
+that one interval *must* be uncovered does not follow. The current table pays
+the worst phase and has not been aligned to recover that possible second.
+
+What *is* measured is narrower: the vent check removes BB and the Foxy chain,
+yet all 200 modeled runs still die to the seven during the long cams-down
+response. A CAM 05 check one move earlier may give the policy time to prepare,
+but it is a separate visual model and still needs real positive/negative frames.
 
 ### The night the phone actually plays (2026-08-23)
 
@@ -356,21 +390,66 @@ So the answer to "does the night the device selects rescue the shipped
 schedule" is no. It buys about two extra minutes and hands the remaining
 problem to the 2 AM step-up, where the three Toys switch on at once.
 
+## Superseded visual prototype and retained negative searches
+
+The remote research branch first tried to average a few screenshot rows with
+device shell processes. It established the correct architecture but not a live
+solution: host `screenstate --adb-fast` took 692-785 ms, pulling/averaging a
+rectangle took ~3.3 s, file-based on-device shell averaging took 404 ms, and a
+streamed `dd | od | awk` form reached 230 ms with a ~245 ms screencap floor.
+In a live trial all fourteen probes returned unavailable and the unpinned form
+pushed the schedule about 500 ms late. Those region scripts are intentionally
+not merged; the single-process native `screencheck` supersedes them while
+retaining their useful “capture and branch locally” boundary.
+
+Three pure simulator reports are retained so the unsuccessful policy ideas are
+not repeated:
+
+- `phasesweep.mjs`: cams-down phase can defer BB's latched final hop but no
+  200 ms alignment eliminates office arrivals (best was 61/200 overall and
+  66/200 among phases where the interval lands cams-down).
+- `periodicsweep.mjs`: a blind full response every third/fourth cycle keeps BB
+  out, but the mask blocks the hall and the policy dies sooner (about 30 s
+  median versus 48 s).
+- `flicksweep.mjs`: blindly dropping the Golden Freddy flick loses 199/200 at
+  a 13 s median, so a blind schedule cannot buy time that way. A visual policy
+  may skip it only on a proven-empty office frame.
+
+## Availability of calibration targets
+
+`tools/dump/aimap.py` on the owned canonical Office sheet makes a prior null
+Golden Freddy recording unsurprising, but does not prove he was unavailable.
+At the start of Night 6, one run in ten assigns him AI 1 and the other nine
+assign 0; 2 AM overwrites either result with AI 3. Even on the enabled early
+run, each office-spawn check is only AI/20. Custom Night applies the dial and
+g830 caps him at 10, making 10/20's office roll 1/2, but Custom Night remains
+locked on this save. Night 6 also raises Toy Bonnie from 0 to 5 and BB from 5
+to 9 at 2 AM. Toy Bonnie cannot supply an early positive; Golden Freddy can,
+but sparsely. BB remains the practical first calibration target.
+
 ## Next steps
 
-1. Extend the validated synchronous cadence beyond six main cycles before
-   treating it as a full-night bot. Keep grading the selected-camera trace and
-   gauge; do not treat printed commands as accepted game input. `Continue`
-   currently points to Night 1, while 6th Night is the authorized quick testing
-   ground. Do not restore the held-light shortcut or asynchronous short swipes.
-2. Grab the frame before the static to auto-identify the killer. The
-   `gameover` state (red face + bright lower-center text) is implemented.
-3. Calibrate `windpct.py` against a deliberately empty-to-full capture if its
-   approximate percentages will drive an interactive policy. Keep it out of
-   the live Minus 7 loop unless the policy actually needs a branch.
-4. Longer term: beat 6th Night and unlock Custom Night, then use character-
-   isolated stock runs. For reactive strategies, compare live CV against a
-   separately signed, direct-state instrumentation build.
+1. Collect several **BB CAM 05 and left-opening** raw positives/negatives at the
+   exact pan/light state; split calibration from untouched holdouts before ROI
+   tuning. BB is active before 2 AM, so this is the first reachable target.
+2. Calibrate the right-vent-light coordinate and collect **Toy Bonnie** only
+   after 2 AM on Night 6. Include other right-vent occupants and transitions;
+   holding the free right light remains cheaper than vision where the policy
+   can tolerate a fixed stall.
+3. For **Golden Freddy** positives, either repeat Night-6 starts knowing only
+   one in ten enables AI 1 before 2 AM, survive beyond 2 AM for the stable AI 3,
+   or beat 6th Night and use 10/20. Keep the normal prophylactic office mask
+   flick until a model has independent holdouts; a hallway `unknown` must
+   release the light.
+4. For each target, build an `SCM1` model, require leave-one-out separation and
+   zero holdout false negatives, then benchmark that exact model. Measure the
+   complete `screencap | classify -> input/skip` branch inside one device shell.
+5. Add visual branches only to an experimental runner. Preserve the open-loop
+   runner until screenrecord grading, selected-camera trace, focus/night aborts,
+   and actual capture-to-action p95 all pass.
+6. Independently, phase the BB response's mask hold to the one-second tick
+   boundary and re-measure; it may recover up to roughly one second but does
+   not replace the missing visual evidence.
 
 ## Bookkeeping
 

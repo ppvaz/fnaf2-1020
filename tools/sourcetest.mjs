@@ -278,7 +278,7 @@ eq('g494-497', "the Puppet's bare <= roll is 16/20 at AI 15",
 // the AI table, by night and hour
 {
   // Night 6 is the on-device target, and it is the only night the pilot has
-  // ever been run on: two rows, twelve hours apart in game time.
+  // ever been run on: two rows, two in-game hours apart.
   const s = bare({ night: 6, stalledEnabled: true });
   ok('g683', 'night 6 opens the three Withereds at 5',
     s.ai.withfreddy === 5 && s.ai.withbonnie === 5 && s.ai.withchica === 5);

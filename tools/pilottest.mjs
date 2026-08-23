@@ -146,8 +146,19 @@ export function run(opts = {}) {
 
   at(0, OPENING);
   let checks = 0, responses = 0, evictions = 0, syncs = 0;
-  const cycleAt = (k) => ms(7000 + k * 5000);
-  const cycleTable = opts.lateFlash ? CYCLE_LATE_FLASH : CYCLE;
+  // Cycle phase can defer Balloon Boy's monitor-gated final hop, but g417
+  // consumes a latched A=2 later rather than cancelling it. `phasesweep.mjs`
+  // varies this base to quantify that limited benefit; no phase eliminates
+  // his arrival.
+  const base = opts.base ?? 7000;
+  const cycleAt = (k) => ms(base + k * 5000);
+  let cycleTable = opts.lateFlash ? CYCLE_LATE_FLASH : CYCLE;
+  // The per-cycle Golden Freddy mask flick is blind insurance. g336 spawns
+  // him only with the monitor up, g776 makes the mask the only clear, and
+  // g777/g778 kill on a raise or hall flash while he is present. A visual
+  // policy could skip it on confirmed-empty frames; flicksweep prices what a
+  // blind schedule loses when it simply removes the two mask events.
+  if (opts.noFlick) cycleTable = cycleTable.filter(event => event[2] !== 'mask');
   for (let k = 0; k < cycles; k++) at(cycleAt(k), cycleTable);
 
   const releases = [];
@@ -184,7 +195,17 @@ export function run(opts = {}) {
     const k = Math.floor((f - cycleAt(0)) / ms(5000));
     const phase = f - cycleAt(k);
 
-    if (opts.vent && f > busyUntil && phase === ms(VENT_CHECK_AT) && k >= 0) {
+    // A clocked alternative to vision: pay the full Balloon Boy response every
+    // N cycles. It can keep BB out but blinds the hall long enough for other
+    // threats to dominate; periodicsweep.mjs retains that negative result.
+    // Never respond on cycle zero, before the opening sweep establishes cover.
+    if (opts.periodic && f > busyUntil && phase === 0 && k >= opts.periodic &&
+        k % opts.periodic === 0) {
+      responses++;
+      const end = f + ms(RESPONSE[RESPONSE.length - 1][0]) + ms(1400);
+      const kk = Math.ceil((end - cycleAt(0)) / ms(5000));
+      takeOver(f, cycleAt(kk), RESPONSE);
+    } else if (opts.vent && f > busyUntil && phase === ms(VENT_CHECK_AT) && k >= 0) {
       ventCheck(f);
     } else if (opts.evict && f > busyUntil && phase === ms(CAM5_PEEK_AT) && k >= 0
                && sim.camsUp && sim.bb.stage === C.BB_STAGES - 1) {

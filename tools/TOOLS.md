@@ -54,21 +54,25 @@ Paths in the tables are relative to the repository root.
 |---|---|---|
 | `tools/sourcetest.mjs` | check | Direct assertions for sourced engine rules and reachable input states, keyed to event-sheet groups. Runs first in the engine suite so a wrong mechanism cannot hide behind unchanged population statistics. |
 | `tools/simtest.mjs` | check | Canonical headless engine/mechanics regressions. `--sweep` also drives perfect Minus 7 over 200 seeds. |
-| `tools/bbtest.mjs [n]` | report/check | BB-aware reactive Minus 7 bot and reusable worker task. Supports `--worst`, `--jitter=MS`, and `--assert`; only `--assert` turns the survival result into a failing check. |
+| `tools/bbtest.mjs [n]` | report/check | BB-aware reactive Minus 7 bot and reusable worker task. Supports `--worst`, `--jitter=MS`, and `--assert`; only `--assert` turns the survival result into a failing check, and it also guards the step model (ids matching `CYCLE_SCRIPT`, and both per-step paths being identities when asked for nothing). As a worker task it additionally accepts `profile` (per-step error weights, see `PROFILES`) and `stepShift` (move one step by a fixed number of frames). |
 | `tools/androidstalltest.mjs` | report | Controlled comparison of sourced, legacy, no-stall, and gate-only Android camera-stall models. |
 | `tools/minus2test.mjs [n]` | report | Android probe of the glitchless Minus Two policy family. Supports `--worst` and `--cams=3,5,6`-style camera sets. |
 | `tools/minus6test.mjs [n]` | report | Android-model probe of a two-camera Minus 6 candidate that tolerates defended office encounters. Supports `--worst`. |
 | `tools/rvctest.mjs [n]` | report | Diagnostic skeleton of the PC-origin RVC timer policy on the Android model. `--no-vent-stall` disables its free right-vent-light stall. |
-| `tools/pilottest.mjs [n]` | report | Replays the exact phone pilot schedule in the simulator before spending a real night. Options include `--vent`, `--evict`, `--late-flash`, and `--cycles=N`. |
+| `tools/pilottest.mjs [n]` | report/check | Replays the phone pilot schedule in the simulator. Options include `--vent`, `--sync`, `--evict`, `--late-flash`, `--cycles=N`, `--night=N`, and `--worst`; `--assert` guards the narrow BB→Foxy claim rather than full survival. `--night=6` is the night the device actually plays. |
+| `tools/phasesweep.mjs [n] [--sync]` | report | Retained negative search over every 200 ms pilot-cycle phase: delaying BB's latched final hop reduces but never eliminates office arrivals. |
+| `tools/periodicsweep.mjs [n]` | report | Prices a blind full BB response every N cycles; it can exclude BB but loses earlier to the hall/office trade. |
+| `tools/flicksweep.mjs [n]` | report | Prices removing the blind Golden Freddy mask flick, alone and with periodic BB responses. |
 
-The canonical runner judges `simtest` and `bbtest --assert`. It deliberately
-prints the other five under an unjudged reports heading.
+The canonical runner judges only the explicit engine-check invocations in
+`tools/test.mjs`, including the `--assert` forms of `bbtest` and `pilottest`.
+Policy scripts remain reports when invoked without an assertion contract.
 
 ## Strategy search and worker infrastructure
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
-| `tools/cyclesearch.mjs` | search/report | Hill-climbs timing variants around the shipped Minus 7 cycle. `--curve` prints only the baseline jitter curve; `--serial` disables worker parallelism. |
+| `tools/cyclesearch.mjs` | search/report | Hill-climbs timing variants around the shipped Minus 7 cycle. `--curve` prints only the baseline jitter curve; `--steps` prints the per-step tolerance window (what the model tolerates on each input on its own, no randomness) and takes `--order=10-4-7`; `--profile=NAME` scores against per-step human error weights instead of uniform jitter, which are `[INFERRED]` and make the result a sensitivity analysis rather than a measurement; `--serial` disables worker parallelism. |
 | `tools/strategysearch.mjs` | search/report | Enumerates fixed camera-cover strategies over the modeled route graph. `--quick` is a smoke-sized search; `--serial` checks deterministic equivalence. Non-Minus-7 results are model claims. |
 | `tools/gatesearch.mjs` | search/report | Searches short gate-aware, visible-state policies. Supports `--quick` and `--serial`; results retain the model's office-state caveats. |
 | `tools/gatebot.mjs` | internal module | The reusable controller and worker task searched by `gatesearch`; do not point the pool at the CLI itself. |
@@ -85,7 +89,7 @@ accept a page URL when a focused run is useful.
 |---|---|---|
 | `tools/browsertest.mjs [url] [screenshot]` | check | General load/input smoke check; writes `/tmp/m7-report.png` by default. |
 | `tools/caltest.mjs [url]` | check | Exercises drag-versus-press and layout saving. It snapshots and restores `src/config.js` because saving is a real write. |
-| `tools/lessontest.mjs [url]` | check | Drives the lesson ladder with an in-page perfect player and checks gating, cues, streaks, and pass screens. It takes real lesson time. |
+| `tools/lessontest.mjs [url]` | check | Drives the lesson ladder with an in-page perfect player and checks gating, cues, streaks, and pass screens. It takes real lesson time; `--wind-only` is the focused held-input regression. |
 | `tools/lightcheck.mjs [url]` | check | Verifies that office and camera lights swap with monitor state and remain independently calibratable. |
 | `tools/phasetest.mjs [url]` | check | Drives the BB-focused Phase A and Phase B lessons and asserts their browser behavior. |
 

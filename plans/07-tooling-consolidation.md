@@ -1,6 +1,6 @@
 # Tooling consolidation and contract cleanup
 
-**Status:** correctness-contract pass partly complete, audited 2026-08-23.
+**Status:** correctness-contract pass complete, audited 2026-08-23.
 Remaining shared-infrastructure refactors are queued for an opportune change in
 their subsystem. The canonical current inventory is
 [`tools/TOOLS.md`](../tools/TOOLS.md).
@@ -14,6 +14,38 @@ plus repeated infrastructure that could make later agents fix or recreate only
 one copy. This file records that debt without presenting planned interfaces as
 if they already exist.
 
+## Remote branch consolidation (2026-08-23)
+
+`origin/worktree-bb-cost-recheck` was audited commit by commit rather than
+merged wholesale. Its isolated engine suite passed before selection.
+
+Preserved:
+
+- the reachable input gates, 97 direct sourced-rule assertions, and narrow
+  BB→Foxy `pilottest --assert` regression;
+- the Puppet's sourced 16/20 roll, with a new direct assertion the remote
+  commit itself lacked;
+- the external AI-table mapper and its Night-6 2-AM calibration constraint;
+- `phasesweep`, `periodicsweep`, and `flicksweep` as explicit negative reports,
+  with stale conclusions/comments corrected.
+
+Deliberately not merged:
+
+- `regionmean*`, `regiontime*`, `regionbench`, `ventcal`, and `ventregion`: the
+  multi-process shell classifier failed all fourteen live probes and is
+  superseded by the bounded native `screencheck` pipeline;
+- `goldenscan.py`: it had no known-positive frame and therefore no validated
+  decision boundary; the `SCM1` calibration/holdout pipeline replaces it;
+- `inputtest.sh`: it depends on the omitted region scripts and has weaker focus/
+  lifecycle guards than the current device harness;
+- `nightsweep.mjs`: it labels a run Night 6 without modeling the extracted
+  per-hour AI table, so its comparison is not authoritative;
+- the remote `trial-minus7.sh` change: it passes an unused `BB_PERIOD` argument
+  into the device shell and implements no response.
+
+These exclusions are conclusions, not a backlog. Reopen one only if a future
+need is not served by the retained tools and its stated flaw is fixed first.
+
 ## Priority 0: correctness and documentation contracts
 
 ### 1. Make `phasetest` capable of failing
@@ -22,35 +54,34 @@ if they already exist.
 console failures, matching the other browser checks. A browser-suite run remains
 the verification gate before the consolidation branch is pushed.
 
-`tools/test.mjs` includes `phasetest.mjs` in the judged browser-check group, and
-`phasetest` records failed expectations in `fails`. Its normal completion path
-nevertheless calls `process.exit(0)`, so the suite can report a pass after printed
-`FAILURES`.
+The audit found `phasetest.mjs` in the judged browser-check group while its
+normal completion path always called `process.exit(0)`, allowing printed
+`FAILURES` to pass the suite.
 
-Change the exit contract to match `lessontest`, `caltest`, and `lightcheck`, then
-deliberately force one expectation to fail once to prove the runner observes a
-nonzero exit. Do not treat output text matching as the test mechanism.
+The exit contract now matches `lessontest`, `caltest`, and `lightcheck`; the
+runner uses the process status rather than treating output text as a verdict.
 
 ### 2. Correct the browser concurrency documentation
 
 **Completed 2026-08-23:** the README now distinguishes concurrent engine checks
 from serial-by-default browser checks and documents `--parallel` as the opt-in.
 
-The README says browser checks run concurrently. The canonical runner executes
+The README said browser checks run concurrently. The canonical runner executes
 them serially by default because real-time grading becomes unreliable under
 contention; only `--parallel` opts in. Keep `tools/test.mjs` authoritative and
 make the README describe that behavior.
 
 ### 3. Bring device-visual documentation up to current evidence
 
-**In progress 2026-08-23:** `ON-DEVICE-SCREEN-CHECKS.md` now describes the
+**Completed 2026-08-23:** `ON-DEVICE-SCREEN-CHECKS.md` describes the
 12,680-byte classifier/model pipeline and measured latency. The broader
-`ON-DEVICE-VALIDATION.md` narrative still needs consolidation with the remote
-BB-cost research before this item is complete.
+`ON-DEVICE-VALIDATION.md` now consolidates the remote BB-cost research,
+superseded shell prototype, corrected BB→Foxy chain, Night-6 target
+availability, and current native path.
 
 `ON-DEVICE-SCREEN-CHECKS.md` and the corresponding section of
 `ON-DEVICE-VALIDATION.md` predate the connected-phone and model-classifier work.
-They currently retain several contradicted statements:
+At audit time they retained several contradicted statements:
 
 - the helper is described as 6.6 KB; the classifier-enabled ARM64 build measured
   12,680 bytes;
@@ -71,10 +102,9 @@ real BB, Golden Freddy, and Toy Bonnie labeled/holdout calibration.
 **Completed 2026-08-23:** Pillow is now imported only after `--adb-fast` has
 exited, so the raw-scanline watchdog no longer depends on it.
 
-`screenstate.py` imports Pillow at module load, including in `--adb-fast` mode,
-even though the raw-scanline path does not decode PNG. Either lazy-import Pillow
-only for stdin PNG mode or document it as an unconditional dependency. Prefer
-the lazy import so the safety watchdog has fewer dependencies.
+The audit found that `screenstate.py` imported Pillow at module load, including
+in `--adb-fast` mode, even though the raw-scanline path does not decode PNG.
+The lazy import leaves that safety watchdog with fewer dependencies.
 
 ## Priority 1: consolidation that prevents drift
 
@@ -83,10 +113,9 @@ the lazy import so the safety watchdog has fewer dependencies.
 **Completed 2026-08-23:** the README retains the suite and common focused runs,
 then delegates complete command discovery to `tools/TOOLS.md`.
 
-The README still contains a partial per-tool command catalog. It now duplicates
-the canonical index and will omit new device/dump tools unless maintained in
-parallel. Leave the suite entry points and a few common examples in the README;
-move detailed command discovery exclusively to `tools/TOOLS.md`.
+The audit found a partial per-tool command catalog in the README that duplicated
+the canonical index and would omit new device/dump tools unless maintained in
+parallel. The README now keeps only suite entry points and common examples.
 
 ### 6. Extract the repeated Chrome DevTools harness
 
@@ -143,8 +172,8 @@ Extract it only after another analyzer needs the same exact decode/run primitive
 
 ## Suggested execution order
 
-1. Fix the `phasetest` verdict and contradictory docs in one correctness pass.
-2. Trim the README's duplicate catalog after the canonical index has settled.
+1. ~~Fix the `phasetest` verdict and contradictory docs.~~
+2. ~~Trim the README's duplicate catalog after the canonical index settles.~~
 3. Extract the browser session helper during the next browser-test change.
 4. Extract device lifecycle helpers only alongside watchdog tests.
 5. Share model input parsing when the model format or accepted inputs next evolve.
