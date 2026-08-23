@@ -32,11 +32,12 @@ Regenerate with:
 tools/dump/regen-dump.sh /path/to/application.ccn
 ```
 
-The separate `tools/dump/aimap.py` report accepts CTFAK's older rendered
-`03-04-Office.txt` form and reconstructs the cumulative AI counter table by
-night/hour. That rendered sheet also remains external game content; set
-`$FNAF2_OFFICE_DUMP` or pass its path explicitly. General rule queries should
-use the canonical tabular dump and `readdump.py` below.
+The separate `tools/dump/aimap.py` report reconstructs the AI counter table by
+night and hour from the same canonical dump; it also still reads CTFAK's older
+rendered `03-04-Office.txt` form, chosen by content, for archived sheets. Set
+`$FNAF2_OFFICE_DUMP` or pass a path to use one of those. `tools/dump/test-aimap.py`
+checks it against a synthetic sheet, so that path stays covered without game
+content. General rule queries should use `readdump.py` below.
 
 CTFAK is .NET 6 and this Mac has no `dotnet`, so the script runs it in the
 `mcr.microsoft.com/dotnet/sdk:6.0` image. `tools/dump/EventTextDumper.cs` is our

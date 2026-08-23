@@ -1,3 +1,4 @@
 dist/
 captures/
 /tools/device/fnaf-screencheck
+__pycache__/

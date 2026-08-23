@@ -144,7 +144,8 @@ event dump are copyrighted game content and must remain outside the repo.
 | `tools/dump/EventTextDumper.cs` | CTFAK plugin source | CTFAK `IFusionTool` used by `regen-dump.sh` to serialize objects, frames, conditions, actions, and parameters. It is not a standalone command. |
 | `tools/dump/readdump.py` | query | Resolves Android's XOR-28 object handles and provides `frames`, `objects`, `group`, `find`, `object`, and `writes` queries. Use `--xor 0` for old PC dumps and `--dump`/`FNAF2_DUMP` for the source file. |
 | `tools/dump/coverage.py` | report | Classifies all event groups and cross-references citations to expose unread state/setup/input clusters. `--map` prints the full Markdown map; `--dump` and `--frame` select input. |
-| `tools/dump/aimap.py [Office-sheet]` | report | Replays the cumulative per-night/per-hour AI counter tables from CTFAK's separately rendered `03-04-Office.txt`. `--json` emits structured output; `$FNAF2_OFFICE_DUMP` selects the external game-content input. |
+| `tools/dump/aimap.py [event-sheet]` | report | Replays the per-night/per-hour AI counter table. Reads the canonical tabular dump (`$FNAF2_DUMP`) or an archived rendered `03-04-Office.txt` (`$FNAF2_OFFICE_DUMP`), detected by content. `--json` emits structured output; `--xor 0` reads PC dumps. |
+| `tools/dump/test-aimap.py` | check | Runs `aimap.py` over a synthetic sheet in both forms: night-start zeroing, per-hour carry-forward, `<`/`>` night comparisons, Random assignments, and the Custom Night dial copy. Needs no game content. |
 
 ## Generated files and dependencies
 
