@@ -61,6 +61,14 @@ export class Sim {
     this.power = C.powerFrames(this.opts.night);
     this.box = 1;
 
+    // --- AI levels (g673-684 and the caps). Every roll below reads this map
+    // rather than a 10/20 constant, because nights below 7 change level by the
+    // hour: night 6 alone switches the three Toys on and takes Balloon Boy
+    // from 5 to 9 at 2 AM. Starting from zero is g673, which clears every
+    // counter on any night but Custom -- and Custom writes every dial anyway.
+    this.ai = Object.fromEntries(C.AI_IDS.map(id => [id, 0]));
+    this.applyAiHour(0);
+
     // --- Foxy
     this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false, pinUntil: -1,
                   readyAt: this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
@@ -115,6 +123,21 @@ export class Sim {
   }
 
   // ---------------------------------------------------------------- helpers
+  // The rows that fire as `hour` begins, capped as g829/g830/g856-863 cap them.
+  applyAiHour(hour) {
+    for (const row of C.aiUpdates(this.opts.night, hour)) {
+      for (const [id, level] of Object.entries(row.set)) {
+        const value = typeof level === 'number' ? level : this.rollAi(level.oneIn);
+        this.ai[id] = Math.min(value, C.aiCap(id));
+      }
+    }
+  }
+
+  // `(Random(N) + 1) / N` under integer division: one only on the top draw.
+  rollAi(oneIn) {
+    return this.rng.int(0, oneIn - 1, oneIn - 1) === oneIn - 1 ? 1 : 0;
+  }
+
   get t() { return this.frame / C.FPS; }
   get camsUp() { return this.monitor === MON_UP; }
   get maskFullyOn() { return this.maskOn && this.maskAnim === 0; }
@@ -392,6 +415,11 @@ export class Sim {
     this.tickUnits(f);
     this.tickBox();
     if (this.opts.record) this.record();
+
+    // The table groups sit at g673-684, below every group that reads an AI
+    // counter (g333-342 and g494-496), so a new hour's levels reach the rolls
+    // on the frame after the hour ticks over, not on it.
+    if (f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);
 
     if (f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
   }
@@ -714,7 +742,7 @@ export class Sim {
     // 1. Foxy. The same equation decides his arrival and his kill.
     if (this.opts.foxyEnabled) {
       const fx = this.foxy;
-      const eq = () => 21 + this.rng.int(0, 4, 0) - fx.D <= C.FOXY_AI;
+      const eq = () => 21 + this.rng.int(0, 4, 0) - fx.D <= this.ai.foxy;
       if (fx.loc === 'parts') {
         if (this.frame >= fx.readyAt && eq()) {
           fx.loc = 'hall'; fx.exposure = 0;
@@ -730,7 +758,7 @@ export class Sim {
     if (this.opts.stalledEnabled) {
       for (const u of this.units) {
         if (u.done || u.atOpening) continue;
-        if (this.rng.chance(C.MO_CHANCE(C.STALLED_AI), true)) {
+        if (this.rng.chance(C.MO_CHANCE(this.ai[u.id]), true)) {
           // A successful roll enters the source's retrying transition state.
           // Stun is only one of the reasons that transition may be closed:
           // monitor polarity, the office-light stall and the one-toy mutex are
@@ -745,7 +773,7 @@ export class Sim {
     // hop resolves on the spot. Only the hop into the opening (g417) waits for
     // the monitor: that roll latches until the next raise completes.
     if (this.opts.bbEnabled && !this.bb.inOpening) {
-      if (this.rng.chance(C.BB_MOVE_CHANCE, true)) {
+      if (this.rng.chance(C.MO_CHANCE(this.ai.bb), true)) {
         if (this.bb.stage === C.BB_STAGES - 1) {
           if (this.monitor === MON_UP) this.bbEnterOpening();
           else this.bb.pending = true;
@@ -759,7 +787,7 @@ export class Sim {
       // g336 needs the raise *finished* -- `viewing > 0` with the monitor-up
       // animation complete. The old 0.3 s "unfair raise" window was a
       // [CALIBRATED] guess at an Android bug and has no group behind it.
-      if (this.monitor === MON_UP && this.rng.chance(C.GF_SPAWN_CHANCE, true)) {
+      if (this.monitor === MON_UP && this.rng.chance(C.MO_CHANCE(this.ai.golden), true)) {
         this.gf.present = true;
         this.emit('gf-appear');
       }
@@ -779,7 +807,7 @@ export class Sim {
     if (this.frame % C.FPS === 0) {
       if (this.box <= 0 && !this.puppet.out) {
         const protectedByLight = this.camLightOn && this.cam === C.BOX_CAM;
-        if (!protectedByLight && this.rng.chance(C.PUPPET_MO_CHANCE(C.PUPPET_AI), true)) {
+        if (!protectedByLight && this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true)) {
           this.puppet.stage++;
           this.emit('puppet-stage', this.puppet.stage);
           if (this.puppet.stage >= C.PUPPET_STAGES) {
@@ -799,7 +827,7 @@ export class Sim {
   // only the arrival at marker 122 ends the run (g574).
   tickPuppetRoute() {
     if (!this.puppet.out || !this.puppet.route) return;
-    if (!this.rng.chance(C.PUPPET_MO_CHANCE(C.PUPPET_AI), true)) return;
+    if (!this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true)) return;
     this.puppet.idx++;
     const at = this.puppet.route[this.puppet.idx];
     this.emit('puppet-move', { at });

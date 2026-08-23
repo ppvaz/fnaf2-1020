@@ -275,6 +275,57 @@ eq('MO', 'AI 15 is a 75% movement roll', C.MO_CHANCE(15), 0.75);
 eq('g494-497', "the Puppet's bare <= roll is 16/20 at AI 15",
   C.PUPPET_MO_CHANCE(15), 0.8);
 
+// the AI table, by night and hour
+{
+  // Night 6 is the on-device target, and it is the only night the pilot has
+  // ever been run on: two rows, twelve hours apart in game time.
+  const s = bare({ night: 6, stalledEnabled: true });
+  ok('g683', 'night 6 opens the three Withereds at 5',
+    s.ai.withfreddy === 5 && s.ai.withbonnie === 5 && s.ai.withchica === 5);
+  eq('g683', '...W. Foxy at 10', s.ai.foxy, 10);
+  eq('g683', '...Mangle at 3', s.ai.mangle, 3);
+  eq('g683', '...and Balloon Boy at 5', s.ai.bb, 5);
+  ok('g683', 'the three Toys are switched off until 2 AM',
+    s.ai.toyfreddy === 0 && s.ai.toybonnie === 0 && s.ai.toychica === 0);
+  eq('g820', 'the Puppet is at 15 from midnight', s.ai.puppet, 15);
+  eq('g683', 'Golden Freddy opens on a one-in-ten roll',
+    bare({ night: 6, worst: true }).ai.golden, 1);
+
+  step(s, C.HOUR_FRAMES * 2 - 1);
+  eq('g673-684', 'the midnight levels hold through the frame before 2 AM', s.ai.bb, 5);
+  // g333-342 read the counters above g673-684, so the new hour reaches the
+  // rolls on the following frame rather than on the boundary itself.
+  step(s, 1);
+  eq('g684', '2 AM takes Balloon Boy to 9', s.ai.bb, 9);
+  ok('g684', '...switches all three Toys on at 5',
+    s.ai.toyfreddy === 5 && s.ai.toybonnie === 5 && s.ai.toychica === 5);
+  eq('g684', '...W. Foxy to 15', s.ai.foxy, 15);
+  eq('g684', '...and Golden Freddy to a real 3', s.ai.golden, 3);
+}
+{
+  // g804 zeroes Golden Freddy below night 6, but it runs once at night start,
+  // so it only cancels the rows written in that same instant.
+  eq('g804', 'night 3 writes him at midnight and loses it',
+    bare({ night: 3, worst: true }).ai.golden, 0);
+  const s = bare({ night: 2, worst: true });
+  eq('g804', 'night 2 is also zero at midnight', s.ai.golden, 0);
+  step(s, C.HOUR_FRAMES);
+  eq('g676', "...but its 1 AM row lands after g804's one shot", s.ai.golden, 1);
+}
+{
+  // 10/20 is the same table with the dials copied in, so the levels the rest
+  // of this file asserts have to fall out of it.
+  const s = bare({ night: 7 });
+  eq('g787', 'every 10/20 dial is 20', C.AI_BY_NIGHT[7][0].set.bb, C.AI_10_20);
+  eq('g856-863', '...held at 15 for the seven', s.ai.toychica, C.STALLED_AI);
+  eq('g829', '...at 17 for Foxy', s.ai.foxy, C.FOXY_AI);
+  eq('g830', '...and at 10 for Golden Freddy',
+    C.MO_CHANCE(s.ai.golden), C.GF_SPAWN_CHANCE);
+  eq('g342', 'the capped Balloon Boy level is the 3/4 roll',
+    C.MO_CHANCE(s.ai.bb), C.BB_MOVE_CHANCE);
+  eq('g821', 'the Puppet has no dial and stays at 15', s.ai.puppet, C.PUPPET_AI);
+}
+
 // power and box
 eq('battery life', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);
 eq('battery life', 'night 1 gives 7000', C.powerFrames(1), 7000);

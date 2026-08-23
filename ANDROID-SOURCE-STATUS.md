@@ -289,7 +289,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | Mechanic | Evidence / implementation status |
 | --- | --- |
 | Night clock and movement cadence | Global 1000 ms ticker, 70 ticks/hour, movement opportunity every 5000 ms |
-| Movement RNG and Night-7 AI cap | `Random(20)+1 <= AI`; stalled movers capped at 15 |
+| Movement RNG and the AI table | `Random(20)+1 <= AI`, with the Puppet's bare `<=` variant (g494-497). The per-night/per-hour levels are implemented 2026-08-23 from g673-684 (table), g787 (Custom Night dials), g804 (Golden Freddy below night 6), g815-821 (Puppet) and the caps g829/g830/g856-863. Rebuild the table from the dump with `tools/dump/aimap.py` |
 | Main route graph | Re-extracted 2026-08-20 from the true-name dump, including the off-camera `hall stage 1`/`hall stage 2` transit markers (120/121) |
 | Per-edge monitor gates | Final approaches use cams-up conditions; Toy Bonnie's polarity is inverted (monitor DOWN + `right light`); Toy Chica's final hop is unconditioned |
 | Office-light movement latch | Physical light state is immediate; the `viewing hall light` latch persists to the next one-second event and guards only specific route edges (W. Chica and Toy Bonnie exempt) |
@@ -323,7 +323,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | P1 | ~~Balloon Boy inside-office behavior~~ **Sourced 2026-08-20** | Roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Inside: g96 forces `lit?` to zero every frame, g301/303 stop the vent lights answering, g75/g85 exclude him while g77/g86 do not — so CAM 10 keeps its light — and **no group moves him out of 123**. He never attacks; the engine no longer kills on entry, it takes the lights away and lets Foxy finish |
 | P2 | ~~Input event ordering~~ **Sourced 2026-08-20** | Group order is the answer: camera select (g16-27) → flashlight (g75-89) → monitor button (g254-258) → **forcedown on the monitor (g262)** → mask (g267-270) → **forcedown on the mask (g274)** → vent lights (g301-320). The forcedown flag is cleared at g612 and re-set at g624/g718-721, so it is always spent one frame after it is raised |
 | P2 | Sound cue frames | Tie bangs, laughs, static, and blackout cues to source state transitions for reaction training |
-| P2 | Auxiliary counters | The office encounter latch is literally named `in danger`; `Active 21` is really `decide path` (route-branch selector, used by W. Freddy g376-377, Mangle g396-397, and the Puppet's own v2 in g406/407). `Sockpuppet AI` is the Puppet's movement AI, read by the route above; `time of the night` gates the mid-night AI bumps (g676 night 2 at 1 AM, g684 night 6 at 2 AM). Remaining: the leftover display/animation counters |
+| P2 | Auxiliary counters | The office encounter latch is literally named `in danger`; `Active 21` is really `decide path` (route-branch selector, used by W. Freddy g376-377, Mangle g396-397, and the Puppet's own v2 in g406/407). `Sockpuppet AI` is the Puppet's movement AI, read by the route above; `time of the night` gates the mid-night AI bumps (g676 night 2 at 1 AM, g684 night 6 at 2 AM) and **is implemented as of 2026-08-23** (see the Implemented table). Remaining: the leftover display/animation counters |
 
 ## Decompile extraction backlog — what unblocks each plan
 

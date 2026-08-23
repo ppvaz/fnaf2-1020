@@ -183,6 +183,75 @@ export const MO_CHANCE = (ai) => ai / 20;
 // roll is therefore 16/20, not 15/20.
 export const PUPPET_MO_CHANCE = (ai) => (ai + 1) / 20;
 
+// AI levels, by night and hour [SOURCED: g673 zeroes every counter at the
+// start of any night but Custom; g674-684 are the per-night table, each row
+// naming only the characters it changes; g787 copies the ten Custom Night
+// dials on night 7; g804 zeroes Golden Freddy below night 6; g815-821 set the
+// Puppet, who has no dial and no cap group]. `time of the night` is the hour
+// counter and hour 0 is 12 AM, so a row with no hour fires at night start and
+// a later row overwrites only what it names. Rebuild the whole table from the
+// dump with `tools/dump/aimap.py`.
+//
+// The caps run every frame: g829 holds Foxy at 17, g830 holds Golden Freddy
+// at 10 (which is what makes his 10/20 office roll exactly one in two), and
+// g856-863 hold everyone else at 15.
+export const AI_10_20 = 20;                 // every dial at 20
+export const AI_CAPS = { foxy: FOXY_AI, golden: 10 };
+export const AI_CAP_DEFAULT = STALLED_AI;
+export const aiCap = (id) =>
+  id === 'puppet' ? Infinity : (AI_CAPS[id] ?? AI_CAP_DEFAULT);
+
+// Every counter g673 zeroes at night start. The Puppet is not among the ten
+// Custom Night dials, which is why he is listed apart from them.
+export const AI_DIALS = ['withfreddy', 'withbonnie', 'withchica', 'foxy',
+  'toyfreddy', 'toybonnie', 'toychica', 'mangle', 'bb', 'golden'];
+export const AI_IDS = [...AI_DIALS, 'puppet'];
+const TEN_TWENTY = Object.fromEntries(AI_DIALS.map(id => [id, AI_10_20]));
+
+// `{ oneIn: N }` is the source's `(Random(N) + 1) / N` under integer division:
+// 1 with probability 1/N and 0 otherwise, rolled when the row fires. Golden
+// Freddy is the only character written that way. g804 zeroes him below night
+// 6, but it runs once, at night start, so it only cancels the rows that share
+// that instant: nights 3, 4 and 5 write him at 12 AM and lose it, while night
+// 2 writes him at 1 AM and keeps it. Night 2 is therefore the one night below
+// 6 where he can appear at all, at one in a thousand.
+export const AI_BY_NIGHT = {
+  1: [{ hour: 0, set: { puppet: 1 } },                                    // g815
+      { hour: 2, set: { toybonnie: 2, toychica: 2 } },                    // g674
+      { hour: 3, set: { toybonnie: 3, toyfreddy: 2 } }],                  // g675
+  2: [{ hour: 0, set: { puppet: 5 } },                                    // g816
+      { hour: 1, set: { toyfreddy: 2, toybonnie: 3, toychica: 3,          // g676
+                        mangle: 3, bb: 3, foxy: 1,
+                        golden: { oneIn: 1000 } } }],
+  3: [{ hour: 0, set: { withbonnie: 1, withchica: 1, foxy: 2, bb: 1,      // g677
+                        puppet: 8 } },                                    // g817
+      { hour: 1, set: { withfreddy: 2, withbonnie: 3, withchica: 2,       // g678
+                        foxy: 3, toybonnie: 1, toychica: 1, bb: 2 } }],
+  4: [{ hour: 0, set: { withbonnie: 1, foxy: 7, mangle: 5, bb: 3,         // g679
+                        puppet: 9 } },                                    // g818
+      { hour: 2, set: { withfreddy: 3, withbonnie: 4, withchica: 4,       // g680
+                        toybonnie: 1 } }],
+  5: [{ hour: 0, set: { withfreddy: 2, withbonnie: 2, withchica: 2,       // g681
+                        foxy: 5, toyfreddy: 5, toybonnie: 2, toychica: 2,
+                        mangle: 1, bb: 5, puppet: 10 } },                 // g819
+      { hour: 1, set: { withfreddy: 5, withbonnie: 5, withchica: 5,       // g682
+                        foxy: 7, toyfreddy: 1, mangle: 10 } }],
+  // Night 6 is two rows, and the second is the 2 AM cliff: the three Toys
+  // switch on there, Balloon Boy goes 5 -> 9, and Golden Freddy stops being a
+  // one-in-ten coin flip and becomes a real 3.
+  6: [{ hour: 0, set: { withfreddy: 5, withbonnie: 5, withchica: 5,       // g683
+                        foxy: 10, mangle: 3, bb: 5, golden: { oneIn: 10 },
+                        puppet: 15 } },                                   // g820
+      { hour: 2, set: { withfreddy: 10, withbonnie: 10, withchica: 10,    // g684
+                        foxy: 15, toyfreddy: 5, toybonnie: 5, toychica: 5,
+                        mangle: 10, bb: 9, golden: 3 } }],
+  7: [{ hour: 0, set: { ...TEN_TWENTY, puppet: 15 } }],                   // g787, g821
+};
+
+// The rows that fire as this hour begins.
+export const aiUpdates = (night, hour) =>
+  (AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]).filter(row => row.hour === hour);
+
 // Power [SOURCED]
 // [SOURCED: decompile — the battery counter (true name `battery life`; the
 // pre-XOR dump called it `cam 9`) is set per night at night start and drains
