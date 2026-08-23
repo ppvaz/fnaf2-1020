@@ -779,7 +779,7 @@ export class Sim {
     if (this.frame % C.FPS === 0) {
       if (this.box <= 0 && !this.puppet.out) {
         const protectedByLight = this.camLightOn && this.cam === C.BOX_CAM;
-        if (!protectedByLight && this.rng.chance(C.MO_CHANCE(C.PUPPET_AI), true)) {
+        if (!protectedByLight && this.rng.chance(C.PUPPET_MO_CHANCE(C.PUPPET_AI), true)) {
           this.puppet.stage++;
           this.emit('puppet-stage', this.puppet.stage);
           if (this.puppet.stage >= C.PUPPET_STAGES) {
@@ -799,7 +799,7 @@ export class Sim {
   // only the arrival at marker 122 ends the run (g574).
   tickPuppetRoute() {
     if (!this.puppet.out || !this.puppet.route) return;
-    if (!this.rng.chance(C.MO_CHANCE(C.PUPPET_AI), true)) return;
+    if (!this.rng.chance(C.PUPPET_MO_CHANCE(C.PUPPET_AI), true)) return;
     this.puppet.idx++;
     const at = this.puppet.route[this.puppet.idx];
     this.emit('puppet-move', { at });

@@ -272,6 +272,8 @@ eq('g875-880', '`hall movement` blocks him for 300 frames', C.HALL_MOVEMENT_FRAM
 // the shared cap and the movement roll
 eq('g830', 'everyone else caps at 15 AI', C.STALLED_AI, 15);
 eq('MO', 'AI 15 is a 75% movement roll', C.MO_CHANCE(15), 0.75);
+eq('g494-497', "the Puppet's bare <= roll is 16/20 at AI 15",
+  C.PUPPET_MO_CHANCE(15), 0.8);
 
 // power and box
 eq('battery life', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);

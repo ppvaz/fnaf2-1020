@@ -52,6 +52,7 @@ Paths in the tables are relative to the repository root.
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
+| `tools/sourcetest.mjs` | check | Direct assertions for sourced engine rules and reachable input states, keyed to event-sheet groups. Runs first in the engine suite so a wrong mechanism cannot hide behind unchanged population statistics. |
 | `tools/simtest.mjs` | check | Canonical headless engine/mechanics regressions. `--sweep` also drives perfect Minus 7 over 200 seeds. |
 | `tools/bbtest.mjs [n]` | report/check | BB-aware reactive Minus 7 bot and reusable worker task. Supports `--worst`, `--jitter=MS`, and `--assert`; only `--assert` turns the survival result into a failing check. |
 | `tools/androidstalltest.mjs` | report | Controlled comparison of sourced, legacy, no-stall, and gate-only Android camera-stall models. |
@@ -143,6 +144,7 @@ event dump are copyrighted game content and must remain outside the repo.
 | `tools/dump/EventTextDumper.cs` | CTFAK plugin source | CTFAK `IFusionTool` used by `regen-dump.sh` to serialize objects, frames, conditions, actions, and parameters. It is not a standalone command. |
 | `tools/dump/readdump.py` | query | Resolves Android's XOR-28 object handles and provides `frames`, `objects`, `group`, `find`, `object`, and `writes` queries. Use `--xor 0` for old PC dumps and `--dump`/`FNAF2_DUMP` for the source file. |
 | `tools/dump/coverage.py` | report | Classifies all event groups and cross-references citations to expose unread state/setup/input clusters. `--map` prints the full Markdown map; `--dump` and `--frame` select input. |
+| `tools/dump/aimap.py [Office-sheet]` | report | Replays the cumulative per-night/per-hour AI counter tables from CTFAK's separately rendered `03-04-Office.txt`. `--json` emits structured output; `$FNAF2_OFFICE_DUMP` selects the external game-content input. |
 
 ## Generated files and dependencies
 

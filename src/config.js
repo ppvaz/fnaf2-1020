@@ -177,6 +177,11 @@ export const STALLED_AI = 15;
 // 3/4 rate. (One written guide states (AI+1)/20; TheBones5 and jerakaigamez both
 // state 75% at 15 AI, so this is the formula used here.)
 export const MO_CHANCE = (ai) => ai / 20;
+// The Puppet is the exception [SOURCED: g494-497]. The shared rolls use
+// Random(20)+1 <= AI or Random(20) < AI, both AI/20. `Sockpuppet AI` uses
+// bare Random(20) <= AI, which succeeds for 0..AI: (AI+1)/20. At AI 15 his
+// roll is therefore 16/20, not 15/20.
+export const PUPPET_MO_CHANCE = (ai) => (ai + 1) / 20;
 
 // Power [SOURCED]
 // [SOURCED: decompile — the battery counter (true name `battery life`; the
