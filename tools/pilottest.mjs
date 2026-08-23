@@ -14,6 +14,7 @@
 //   node tools/pilottest.mjs 200            # blind, as the device runs today
 //   node tools/pilottest.mjs 200 --vent     # with the once-a-cycle vent check
 //   node tools/pilottest.mjs 200 --vent --cycles=80
+//   node tools/pilottest.mjs 200 --night=6  # 6th Night, the night the phone runs
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
@@ -227,6 +228,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sync = process.argv.includes('--sync');
   const cyclesArg = (process.argv.find(a => a.startsWith('--cycles=')) || '').split('=')[1];
   const cycles = cyclesArg ? +cyclesArg : 80;
+  // The device runs 6th Night, whose AI table is lower than 10/20 until 2 AM
+  // and still below it afterwards. 7 stays the default because the trainer,
+  // the strategy and every other tool here target 10/20.
+  const nightArg = (process.argv.find(a => a.startsWith('--night=')) || '').split('=')[1];
+  const night = nightArg ? +nightArg : 7;
   const assert = process.argv.includes('--assert');
   const worst = process.argv.includes('--worst');
   const fails = {};
@@ -238,7 +244,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   let foxyDeaths = 0, bbInOffice = 0, chain = 0;
   for (let i = 0; i < n; i++) {
     const r = run({ vent, evict, cycles, lateFlash, sync,
-      sim: { seed: (i * 2246822519) >>> 0, worst } });
+      sim: { seed: (i * 2246822519) >>> 0, worst, night } });
     checks += r.checks; responses += r.responses; evictions += r.evictions;
     minBox = Math.min(minBox, r.sim.box); minPower = Math.min(minPower, r.sim.power);
     if (r.sim.won) survived++;
@@ -251,7 +257,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
   }
   const mode = `${lateFlash ? ' (late flash)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
-  console.log(`${survived}/${n} survived a full night — device schedule${mode}`);
+  const label = night === 7 ? 'a full 10/20 night' : `a full night ${night}`;
+  console.log(`${survived}/${n} survived ${label} — device schedule${mode}`);
   for (const [k, v] of Object.entries(fails).sort((a, b) => b[1] - a[1])) console.log(`  ${v}x  ${k}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower}` +
     (vent ? ` | ${responses} responses in ${checks} checks` : '') +

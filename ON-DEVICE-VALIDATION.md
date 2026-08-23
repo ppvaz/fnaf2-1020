@@ -305,6 +305,57 @@ impossible here. Closing it needs a **second** observation rather than better
 timing: a CAM 05 peek during the sweep would see BB one move out (his 5th move
 is the only monitor-gated one) and let the pilot prepare instead of react.
 
+### The night the phone actually plays (2026-08-23)
+
+Every table above was measured on 10/20, because that was the only night the
+engine had: it read one 15-AI cap for the seven and a 17 for Foxy. The AI table
+is now sourced per night *and* per hour — g673 zeroes the counters, g674-684
+write the table, g787 copies the Custom Night dials, g804 zeroes Golden Freddy
+below night 6, g815-821 set the Puppet, and g829/g830/g856-863 cap the result.
+Rebuild it from the dump with `tools/dump/aimap.py`; `pilottest --night=6`
+replays the same schedule against the night the runner actually selects.
+
+6th Night is two rows, and only the second is 10/20-like:
+
+| | 12 AM | 2 AM |
+| --- | ---: | ---: |
+| W. Freddy / W. Bonnie / W. Chica | 5 | 10 |
+| W. Foxy | 10 | 15 |
+| Toy Freddy / Toy Bonnie / Toy Chica | **0** | 5 |
+| Mangle | 3 | 10 |
+| Balloon Boy | 5 | 9 |
+| Puppet | 15 | 15 |
+| Golden Freddy | 1 in 10 | 3 |
+
+400 nights per row; 2 AM lands 140 s into a 420 s night:
+
+| Schedule | Cleared | Median | p95 | Best |
+| --- | ---: | ---: | ---: | ---: |
+| night 6, blind (what the phone runs) | 0/400 | 118 s | 180 s | 228 s |
+| night 6, + vent check | 0/400 | 149 s | 194 s | 254 s |
+| night 6, + vent + `--sync` | 0/400 | 158 s | 220 s | 265 s |
+| 10/20, + vent + `--sync`, for comparison | 0/400 | 58 s | 78 s | 98 s |
+
+**The model and the phone now agree on a number.** 388 of the blind schedule's
+400 night-6 deaths are the Balloon Boy -> Foxy chain, and the retained 80-cycle
+device trial died to exactly that chain at about 138 s — inside this
+distribution, one second under its p75. That is the first quantitative
+agreement between the simulator and a recorded night on the device, and it was
+not available while the engine could only play 10/20, where the same schedule
+dies at a 48 s median.
+
+**6th Night is deeper, not winnable.** The lower early AI roughly triples how
+far the schedule gets, and it moves the failure across the 2 AM cliff: blind,
+286/400 nights end before 2 AM; with the vent check and `--sync`, 248/400 end
+after it. What kills those runs is the seven at marker 123 (358 of 400) and the
+Puppet (42) — and the Puppet is new. He is the price of a 6.4 s cams-down
+response that does not wind, which 10/20 never charged because nothing survived
+long enough to run out of box.
+
+So the answer to "does the night the device selects rescue the shipped
+schedule" is no. It buys about two extra minutes and hands the remaining
+problem to the 2 AM step-up, where the three Toys switch on at once.
+
 ## Next steps
 
 1. Extend the validated synchronous cadence beyond six main cycles before

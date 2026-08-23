@@ -56,6 +56,9 @@ const REPORTS = [
   // The blind schedule, still unjudged: it is what the phone runs today, and
   // it fails the assertion above by construction (200/200 BB->Foxy).
   ['pilottest blind', ['pilottest.mjs']],
+  // ...and on the night the device actually selects, where the same schedule
+  // reaches about 118 s instead of 48 s and still loses.
+  ['pilottest 6th night', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync']],
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
