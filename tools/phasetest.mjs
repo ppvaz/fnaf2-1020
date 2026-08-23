@@ -134,6 +134,6 @@ async function main() {
   console.log(`\nconsole errors: ${errs.length}`);
   errs.slice(0, 5).forEach(e => console.log('  ! ' + String(e).split('\n')[0]));
   console.log(fails.length ? `FAILURES: ${fails.join(', ')}` : 'no hard failures');
-  ws.close(); chrome.kill(); process.exit(0);
+  ws.close(); chrome.kill(); process.exit(fails.length || errs.length ? 1 : 0);
 }
 main().catch(e => { console.error(e); chrome.kill(); process.exit(2); });

@@ -141,6 +141,10 @@ on the stage asks again.
 All headless, all dependency-free — the browser ones drive Chrome over the DevTools Protocol
 (Node 22's built-in WebSocket), no Puppeteer.
 
+Before adding a new script, check the canonical [tool index](tools/TOOLS.md).
+It covers every maintained developer, simulator, browser, device, and
+source-dump tool, including which commands assert and which only report.
+
 ```sh
 node tools/test.mjs              # the whole suite
 node tools/test.mjs --engine     # engine checks only — about a second
@@ -150,32 +154,28 @@ node tools/test.mjs --reports    # also print the diagnostic tools
 
 The engine checks are the ones to run on every edit. The browser checks are slow
 for a reason that will not go away: the trainer never slows the clock, so driving
-a lesson to a pass costs that lesson's real duration. They run concurrently, so
-the suite costs its slowest member rather than the sum.
+a lesson to a pass costs that lesson's real duration. Engine checks run concurrently,
+so that group costs its slowest member rather than the sum. Browser checks run
+serially by default so CPU contention cannot corrupt timing grades; `--parallel`
+opts into a faster but less isolated run.
 
 Chrome is found at the macOS bundle path or on `PATH`; `$CHROME` overrides. The
 runner builds `dist/` and starts `tools/serve.py` itself unless one is already
 answering on 8731.
 
-The individual tools, when you want one of them:
+Two common focused runs are:
 
 ```sh
 node tools/simtest.mjs --sweep   # a perfect cycle vs. 200 seeds
 node tools/bbtest.mjs 200        # ...including Balloon Boy; --worst for worst-luck
                                  # --assert to fail rather than just print
 node tools/bbtest.mjs 60 --jitter=200   # how much lateness is survivable
-node tools/lessontest.mjs        # drives the lesson ladder to a pass
-node tools/caltest.mjs           # calibration, drag vs. press, layout saving
-node tools/lightcheck.mjs        # the two lights swap with the monitor
-node tools/browsertest.mjs       # load, input, report
-node tools/cyclesearch.mjs       # search cycle variants for timing slack (--curve: just baseline)
-node tools/strategysearch.mjs    # enumerate route-graph camera covers (--quick for a smoke pass)
-node tools/gatesearch.mjs        # gate-aware policy search (--quick for a smoke pass)
-node tools/rvctest.mjs 200       # probe a PC-origin RVC policy against Android (not published odds)
 ```
 
-The three search tools spread their nights across worker threads (`tools/pool.mjs`);
-`--serial` pins them to one, which must produce identical output.
+The [tool index](tools/TOOLS.md) is the complete command catalog, including the
+search, browser, Android-device, visual-classification, and source-dump tools.
+The three strategy-search tools share `tools/pool.mjs`; `--serial` pins them to
+one worker, which must produce identical output.
 
 What they establish:
 

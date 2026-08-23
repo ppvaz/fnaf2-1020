@@ -15,7 +15,6 @@ import os
 import subprocess
 import sys
 import warnings
-from PIL import Image, UnidentifiedImageError
 
 warnings.simplefilter("ignore")
 
@@ -80,6 +79,12 @@ if len(sys.argv) > 1 and sys.argv[1] == "--adb-fast":
         raise SystemExit(2)
     fast_adb_state(capture_timeout)
     raise SystemExit(0)
+
+try:
+    from PIL import Image, UnidentifiedImageError
+except ImportError:
+    print("PNG screenshot mode requires Pillow", file=sys.stderr)
+    raise SystemExit(2)
 
 try:
     im = Image.open(sys.stdin.buffer).convert("RGB")
