@@ -13,8 +13,9 @@ Current triage (2026-08-20):
   consecutive-tick mask clears.
 - **Most untouched work:** Plan 03, a real reactive-grading mode; it is larger than
   a script addition and still needs its Android vent/endgame rules sourced.
-- **Smallest runnable experiment:** Plan 04's optional per-step human-jitter pass.
-  Its likely payoff is modest.
+- **Plan 04's runnable experiment is complete:** per-step model windows and an
+  explicitly inferred human-error profile now exist. The next useful input is
+  measured trainer timing by step, not another invented profile.
 - **No blind-search juice:** Plans 05 and 06 have completed/closed their defined
   Android search families. Reopen them only when a corrected source rule changes
   the reachable policy space.

@@ -181,7 +181,12 @@ What they establish:
 
 - A correctly played cycle clears **200/200 seeds**, and **100/100 on worst luck**, with zero stun
   lapses — matching the community's claim that Minus 7 has no unwinnable RNG.
-- The difficulty curve is real: survivable up to ~120 ms late, ~35% at 200 ms, dead past 300 ms.
+- The difficulty curve is real: 100% survival up to **50 ms** late, 45% at 100-120 ms, and
+  **0% from 150 ms** (`bbtest --jitter`, 200 seeds, re-measured 2026-08-23; the older
+  "~35% at 200 ms" predates the sourced office endgame and no longer holds).
+- Lateness is not one budget. The per-step windows (`cyclesearch --steps`) range from
+  267 ms wide on `monitor-up` to over 1.2 s on `wind`, and they are lopsided: the hall
+  flash cannot go **50 ms early** and the mask cannot come off **50 ms late**.
 
 ## Accuracy
 

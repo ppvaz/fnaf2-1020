@@ -1,24 +1,40 @@
 # Derivation, tier 1: slack-maximised Minus 7
 
-**Status: search done (2026-08-19) — the shipped cycle already sits at the slack
-ceiling.** `tools/cyclesearch.mjs` (camera-order sweep + coordinate hill-climb over
-11 timing knobs, fitness = largest uniform jitter with a 100% seed sweep):
+**Status: clean guarantee current; 2026-08-19 slack ranking superseded on
+2026-08-23.** The shipped cycle still clears 200/200 seeds and 100/100 pinned
+luck, but the old uniform-jitter curve no longer reproduces after the sourced
+route/endgame, Puppet-roll, and per-night AI corrections. On the current engine
+the legacy row-by-row probe is 89/200 at 100-120 ms and 0/200 at 150 ms. Its old
+“167 ms ceiling” and 4-10-7 ranking are historical results, not current claims.
 
-- **Ceiling unchanged:** every camera order and every knob neighbourhood tops out at
-  10 frames (167 ms) of all-survive jitter — the current routine is already optimal
-  at the ceiling.
-- **Tail fattened:** the best variant (order **4-10-7**, mask 1 frame earlier, hall
-  flash 1 frame shorter, 3-frame cam flashes) survives 33% at 200 ms vs the current
-  19%, 3% vs 0% at 250 ms; validated 200/200 clean and 100/100 worst-luck.
-- **Recommendation: keep the shipped script.** The gains live past the death cliff
-  and the timing deltas are single frames — below the trainer's own `TOL_GOOD`
-  (150 ms) grading resolution, so teaching them would churn muscle memory for
-  nothing measurable. The camera-order swap (4 before 10) is the only
-  human-executable difference; worth revisiting only with the per-step jitter
-  profiles below, where "which step is most often late" could favour it. Pedro
-  decides if it ever ships.
+The optional per-step instrumentation is now implemented:
 
-Remaining (optional) work: the per-step-jitter fitness pass below.
+- `cyclesearch --steps` shifts one motor step at a time, with no timing
+  randomness, and finds these first-failure windows over 200 seeds:
+
+  | Step | Earliest | Latest |
+  |---|---:|---:|
+  | monitor down | -450 ms | +300 ms |
+  | mask on | -300 ms | +200 ms |
+  | mask off | -450 ms | +50 ms |
+  | hall flash | -50 ms | +267 ms |
+  | monitor up | -150 ms | +117 ms |
+  | CAM 10 | -117 ms | +150 ms |
+  | CAM 04 | -150 ms | +150 ms |
+  | CAM 07 | -150 ms | +133 ms |
+  | CAM 11 | -133 ms | +517 ms |
+  | WIND | at least -750 ms | +467 ms |
+
+- `cyclesearch --curve --profile=human` keeps press/release rows together and
+  applies explicitly `[INFERRED]` weights. Its baseline is 100% through 120 ms,
+  13% at 150 ms, 1% at 200 ms, and 0% at 250 ms. This is a sensitivity analysis,
+  not evidence about Pedro: replace the weights with per-step `Coach.results`
+  timing before using it to rank a routine for a person.
+
+**Recommendation: keep the shipped script.** No current evidence supports the
+old candidate over it, and the only human-executable difference was the camera
+order. Rerun the candidate search only after measured player timing supplies the
+profile; do not optimize harder against another invented distribution.
 
 **Android evidence (2026-08-20, corrected same day):** the 400-frame flash
 stall is Android-sourced after all — groups 450-457 load it from the
@@ -26,9 +42,9 @@ never-rewritten `stun time` counter; the earlier "source Counter fixed at
 zero" reading was the pre-XOR handle scramble (see
 [`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md)). The corrected
 sourced model (flash stun + Withered/Mangle look-hold) passes the shipped
-schedule 200/200, so the published optimization result stands on a sourced
-mechanism. Rerunning the jitter pass is worthwhile only after the open
-character-identity re-audit (routes/endgame bindings) settles.
+schedule 200/200, so the clean guarantee stands on a sourced mechanism. Later
+route/endgame corrections changed the jitter curve, so the old optimization
+ranking does not.
 
 ## Goal
 
@@ -40,9 +56,10 @@ default script or as an alternative "forgiving" script, whichever the numbers ju
 
 It stays entirely inside the well-modelled region of the engine — the same mechanics
 Minus 7 already exercises and the tests already validate — so comparisons between
-cycle variants are controlled inside the simulator. The known model baseline from the
-README: survivable to ~120 ms late, ~35 % at 200 ms, dead past 300 ms
-(`tools/bbtest.mjs --jitter`).
+cycle variants are controlled inside the simulator. The current legacy baseline is
+100% at 50 ms, 45% at 100-120 ms, and 0% from 150 ms (`cyclesearch --curve`).
+Because it jitters press/release rows independently, use the grouped per-step
+profile for human sensitivity work.
 
 ## Search space
 
@@ -58,10 +75,12 @@ duel window must stay handleable, wind must keep the box off empty on worst luck
 
 ## Work
 
-1. ~~A search harness in `tools/`~~ done — `tools/cyclesearch.mjs`.
-2. ~~Validate winners~~ done — see status above.
-3. Decision on shipping the 4-10-7 variant: parked with Pedro (recommendation: no,
-   for now — see status).
+1. ~~Build the search and per-step sensitivity harness~~ — done in
+   `tools/cyclesearch.mjs`.
+2. ~~Revalidate the shipped cycle and publish current per-step windows~~ — done;
+   see the dated status above.
+3. Re-run candidate ranking only after a measured per-step player profile exists.
+   Until then the decision is no ship; the old 4-10-7 result is superseded.
 
 ## Markiplier's suspicion, tested against the model (2026-08-19)
 
@@ -93,12 +112,13 @@ better pattern with which to flash Foxy", and rebinding flash to a mouse button 
 
 ## Caveat to carry into the write-up
 
-Human slack is not uniform jitter — real lateness correlates across steps and clusters
-on specific inputs (the duel, the wind drag). Worth a second fitness pass with
-per-step jitter profiles before claiming the variant is better *for humans*.
+Human slack is not uniform jitter — real lateness correlates across steps and
+clusters on specific inputs (the duel, the wind drag). The new profile mechanism
+can express that, but its shipped `human` weights are deliberately `[INFERRED]`.
+Do not claim a variant is better *for humans* until trainer traces replace them.
 
 ## Done when
 
-The search harness is in `tools/` and reproducible, the jitter curves of old vs. new
-script are documented, and either the script changed with tests updated, or the plan
-records that the current script is already (near-)optimal — a legitimate result.
+If reopened, the measured profile is in `tools/` and reproducible, current old-vs-
+new curves are documented, and either the script changes with tests updated or
+the plan records that the shipped script remains best under that evidence.

@@ -7,8 +7,20 @@
 //   node tools/cyclesearch.mjs            # hill-climb from the current cycle
 //   node tools/cyclesearch.mjs --curve    # just print jitter curves for the
 //                                         # current cycle (no search)
+//   node tools/cyclesearch.mjs --steps    # per-step tolerance window (no search)
+//   node tools/cyclesearch.mjs --profile=human   # score with a per-step human
+//                                         # error profile instead of uniform
+//
+// Two different questions live here, and they must not be confused:
+//
+//   --steps asks what the *game* tolerates on each input while the rest of the
+//     pass stays perfect. It shifts one step by a fixed number of frames and
+//     uses no randomness, so it is a measurement of the model.
+//   --profile asks whether a cycle survives a *player* whose error is
+//     distributed unevenly across the steps. The weights are inferred, not
+//     sourced (see PROFILES in bbtest.mjs); this is a sensitivity analysis.
 import * as C from '../src/config.js';
-import { DEFAULT_CYCLE } from './bbtest.mjs';
+import { DEFAULT_CYCLE, labelCycle } from './bbtest.mjs';
 import { pool, closePool } from './pool.mjs';
 
 // Every night this file simulates goes through the pool, so the hill-climb
@@ -68,9 +80,13 @@ export function genCycle(k, order = ORDER0) {
 
 const SEED = (i) => (i * 2246822519) >>> 0;
 
+// Set once from --profile; null keeps the original uniform model so a plain
+// run reproduces the published numbers.
+let PROFILE = null;
+
 async function survivors(cycle, jitter, n) {
   const nights = await sweep(Array.from({ length: n },
-    (_, i) => ({ seed: SEED(i), jitter, cycle })));
+    (_, i) => ({ seed: SEED(i), jitter, cycle, profile: PROFILE })));
   return nights.reduce((ok, r) => ok + (r.won ? 1 : 0), 0);
 }
 
@@ -84,6 +100,35 @@ async function fitness(cycle, n) {
   for (let d = 0; d < 3; d++) tie += await survivors(cycle, j + d, n);
   return { maxJ, tie };
 }
+
+// ------------------------------------------------------ per-step sensitivity
+// How far one step can be moved, on its own, before some seed dies. Expanding
+// outward one frame at a time rather than bisecting: survival is not
+// guaranteed monotone in the shift (a late camera tap can land inside a
+// different 5s interval), so the first failure is the honest answer and a
+// bisection could step straight over it.
+const SHIFT_CAP = 45; // 0.75s either way; past that the pass has left its anchor
+
+async function edge(cycle, id, dir, n) {
+  for (let k = 1; k <= SHIFT_CAP; k++) {
+    const nights = await sweep(Array.from({ length: n },
+      (_, i) => ({ seed: SEED(i), cycle, stepShift: { id, frames: dir * k } })));
+    if (nights.some(r => !r.won)) return dir * (k - 1);
+  }
+  return dir * SHIFT_CAP;
+}
+
+async function stepWindows(cycle, n) {
+  const ids = [...new Set(labelCycle(cycle))];
+  const out = [];
+  for (const id of ids) {
+    const early = await edge(cycle, id, -1, n);
+    const late = await edge(cycle, id, +1, n);
+    out.push({ id, early, late });
+  }
+  return out;
+}
+
 const better = (a, b) => a.maxJ > b.maxJ || (a.maxJ === b.maxJ && a.tie > b.tie);
 
 async function hillClimb(knobs, order, n, log) {
@@ -108,6 +153,8 @@ async function hillClimb(knobs, order, n, log) {
   return { knobs: best, fit: bestFit };
 }
 
+const msOf = (f) => `${(f / C.FPS * 1000).toFixed(0)}ms`;
+
 async function curve(cycle, n) {
   const out = [];
   for (const ms of [0, 50, 100, 120, 150, 200, 250, 300]) {
@@ -121,6 +168,30 @@ const isMain = process.argv[1] &&
   import.meta.url === (await import('node:url')).pathToFileURL(process.argv[1]).href;
 if (isMain) {
   const N_SEARCH = 48, N_VALID = 200;
+  const profileArg = (process.argv.find(a => a.startsWith('--profile=')) || '').split('=')[1];
+  if (profileArg) {
+    PROFILE = profileArg;
+    console.log(`error model: per-step profile "${profileArg}" (weights are [INFERRED])\n`);
+  }
+
+  // --steps is a property of the table, not of the search, so it runs alone.
+  if (process.argv.includes('--steps')) {
+    const orderArg = (process.argv.find(a => a.startsWith('--order=')) || '').split('=')[1];
+    const order = orderArg ? orderArg.split('-').map(Number) : ORDER0;
+    const cycle = orderArg ? genCycle(KNOBS0, order) : DEFAULT_CYCLE;
+    console.log(`per-step tolerance window, order ${order.join('-')} (${N_VALID} seeds,`);
+    console.log('one step moved at a time, the rest of the pass perfect):\n');
+    console.log('step           earliest    target    latest     window');
+    for (const w of await stepWindows(cycle, N_VALID)) {
+      const cap = (v) => (Math.abs(v) === SHIFT_CAP ? '*' : ' ');
+      console.log(
+        `${w.id.padEnd(14)} ${msOf(w.early).padStart(8)}${cap(w.early)} ` +
+        `${'0ms'.padStart(8)}  ${msOf(w.late).padStart(8)}${cap(w.late)}  ` +
+        `${msOf(w.late - w.early).padStart(8)}`);
+    }
+    console.log('\n* the sweep hit its +-0.75s cap without a death; the real edge is further out.');
+    await closePool();
+  } else {
   console.log(`current cycle jitter curve (${N_VALID} seeds):`);
   console.log(`  ${await curve(DEFAULT_CYCLE, N_VALID)}`);
   if (!process.argv.includes('--curve')) {
@@ -136,7 +207,7 @@ if (isMain) {
     const { knobs, fit } = await hillClimb(KNOBS0, bestOrder, N_SEARCH, (m) => console.log(m));
     const cycle = genCycle(knobs, bestOrder);
     console.log(`\nbest knobs: ${JSON.stringify(knobs)}`);
-    console.log(`best order: ${bestOrder.join('-')}  (search fitness: maxJ ${fit.maxJ} = ${Math.round(fit.maxJ / C.FPS * 1000)}ms)`);
+    console.log(`best order: ${bestOrder.join('-')}  (search fitness: maxJ ${fit.maxJ} = ${msOf(fit.maxJ)})`);
     console.log(`\nvalidation (${N_VALID} seeds):`);
     console.log(`  clean sweep : ${await survivors(cycle, 0, N_VALID)}/${N_VALID}`);
     const pinned = await sweep(Array.from({ length: 100 },
@@ -146,4 +217,5 @@ if (isMain) {
     console.log(`\ncycle table:\n${cycle.map(r => JSON.stringify(r)).join('\n')}`);
   }
   await closePool();
+  }
 }
