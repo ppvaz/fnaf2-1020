@@ -1,5 +1,13 @@
 # Handover — iteration-time work, 2026-08-20
 
+> **Historical snapshot.** The 2026-08-23 consolidation added direct
+> `sourcetest` assertions, narrow `pilottest --assert` checks, a real failing
+> `phasetest` exit contract, and the canonical [`tools/TOOLS.md`](tools/TOOLS.md)
+> inventory. Use the current runner/index for present behavior; the measurements
+> below remain the point of this handover. The held-WIND autoplay bug described
+> below was fixed on 2026-08-23 by keeping a current held cue down across poll
+> iterations; the full serial browser suite is the regression gate.
+
 Answering "would the project benefit from faster iteration if we refactor the
 engine?" The measured answer was **no, not the engine** — and then three things
 that do pay, all shipped, plus one real bug found on the way out.

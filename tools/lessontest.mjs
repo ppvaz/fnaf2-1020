@@ -5,7 +5,8 @@ import { spawn } from 'node:child_process';
 import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync } from 'node:fs'; import { tmpdir } from 'node:os'; import { join } from 'node:path';
 
-const BASE = process.argv[2] || 'http://localhost:8731/dist/index.html';
+const BASE = process.argv.find(arg => /^https?:\/\//.test(arg)) ||
+  'http://localhost:8731/dist/index.html';
 const PORT = 9337;
 const chrome = spawn(chromeBinary(),
   chromeArgs(PORT, mkdtempSync(join(tmpdir(), 'm7l-'))), { stdio: 'ignore' });
@@ -34,6 +35,9 @@ window.__auto = setInterval(() => {
   if (app.sim.t < c.cycleStart + e.at) return;
   const cue = c.cue; if (!cue) return;
   const el = document.querySelector(cue.sel); if (!el) return;
+  // A held cue remains current until its minimum duration has elapsed. Do not
+  // turn the 8 ms poll into repeated pointerup/pointerdown pairs.
+  if (window.__held === el) return;
   window.__release();
   el.dispatchEvent(new PointerEvent('pointerdown', {bubbles:true, pointerId:31}));
   if (${hold ? 'true' : 'false'} && e.hold) { window.__held = el; }
@@ -62,6 +66,43 @@ async function main() {
 
   await ev('localStorage.removeItem("m7.progress")');
   await ev('location.reload()'); await sleep(1200);
+
+  // Fast focused regression for the only held coach input. This keeps the
+  // normal ladder's full target counts intact while making hold-plumbing bugs
+  // debuggable without waiting through the earlier lessons.
+  if (process.argv.includes('--wind-only')) {
+    console.log('\n— focused WIND hold —');
+    await ev('document.querySelector(\'[data-mode="wind"]\').click()'); await sleep(200);
+    await ev('document.getElementById("btn-brief-go").click()'); await sleep(500);
+    await ev(player(false));
+    await sleep(16000);
+    await show('after tap bot', `(()=>{const a=window.app; return {
+      winding: a.sim.winding, expected: a.coach.expected?.id || null,
+      monitor: a.sim.monitor, cam: a.sim.cam, dropEverything: a.sim.dropEverything,
+      windFrames: a.coach.windFrames, lastHeld: a.coach.lastHeld || 0,
+      streak: a.coach.streak, cycles: a.coach.cycles,
+      mistakes: a.sim.mistakes.slice(-4).map(m=>m.code).join()
+    };})()`);
+    await ev(`clearInterval(window.__auto); window.__release && window.__release();
+      window.app.start("wind").then(() => { window.app.sim.opts.stalledEnabled = false; })`);
+    await sleep(500);
+    await ev(AUTOPLAYER);
+    await sleep(24000);
+    await show('state', `(()=>{const a=window.app; return {
+      held: window.__held?.dataset.act || null,
+      winding: a.sim.winding, isWinding: a.sim.isWinding,
+      monitor: a.sim.monitor, cam: a.sim.cam,
+      expected: a.coach.expected?.id || null,
+      windFrames: a.coach.windFrames, lastHeld: a.coach.lastHeld || 0,
+      streak: a.coach.streak, cycles: a.coach.cycles,
+      tail: a.coach.results.slice(-6).map(r=>r.grade).join()
+    };})()`);
+    await expect('holding builds a streak', 'window.app.coach.streak > 0', true);
+    await ev('clearInterval(window.__auto); window.__release && window.__release()');
+    console.log(`\nconsole errors: ${errs.length}`);
+    console.log(fails.length ? `FAILURES: ${fails.join(', ')}` : 'all assertions passed');
+    ws.close(); chrome.kill(); process.exit(fails.length || errs.length ? 1 : 0);
+  }
 
   console.log('\n— menu is a ladder —');
   await expect('lesson count', 'document.querySelectorAll("#mode-list .mode").length', 10);
@@ -103,6 +144,12 @@ async function main() {
   await sleep(16000);
   await expect('tapping wind never passes', 'window.app.coach.streak', 0);
   await show('flagged', 'window.app.coach.results.slice(-4).map(r=>r.grade).join()');
+  // The deliberately bad phase can let a nonlethal stalled unit reach its
+  // opening and trigger the sourced monitor forcedown. Test correct holding
+  // from a clean lesson rather than asking the bot to repair that state.
+  await ev(`clearInterval(window.__auto); window.__release && window.__release();
+    window.app.start("wind").then(() => { window.app.sim.opts.stalledEnabled = false; })`);
+  await sleep(500);
   await ev(AUTOPLAYER);               // now actually hold it
   await sleep(24000);
   await show('holding: streak', 'document.getElementById("coach-streak").textContent');
@@ -110,9 +157,14 @@ async function main() {
   await expect('holding builds a streak', 'window.app.coach.streak > 0', true);
 
   console.log('\n— jump to the full cycle —');
+  await ev('clearInterval(window.__auto); window.__release && window.__release()');
   await ev('document.getElementById("btn-quit").click()'); await sleep(200);
   await ev('document.querySelector(\'[data-mode="cycle"]\').click()'); await sleep(200);
   await ev('document.getElementById("btn-brief-go").click()'); await sleep(400);
+  // This is a browser/coach contract check. Threat dynamics have their own
+  // deterministic engine tests; a random nonlethal forcedown must not make a
+  // metronomically correct input sequence flaky here.
+  await ev('window.app.sim.opts.stalledEnabled = false');
   await expect('controls (cams up)', `[...document.querySelectorAll('[data-widget]')]
      .filter(e=>!e.classList.contains('hidden-ctrl')).map(e=>e.dataset.widget).sort().join()`,
      'camlight,mask,monitor,wind');

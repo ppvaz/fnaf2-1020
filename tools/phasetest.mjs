@@ -27,6 +27,7 @@ window.__auto=setInterval(()=>{const app=window.app;
  const c=app.coach,e=c.expected; if(!e||c.cycleStart==null)return;
  if(app.sim.t<c.cycleStart+e.at)return;
  const cue=c.cue; if(!cue)return; const el=document.querySelector(cue.sel); if(!el)return;
+ if(window.__held===el)return;
  window.__rel();
  el.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerId:31}));
  if(e.hold)window.__held=el; else el.dispatchEvent(new PointerEvent('pointerup',{bubbles:true,pointerId:31}));
