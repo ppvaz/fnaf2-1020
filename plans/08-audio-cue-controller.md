@@ -1,9 +1,12 @@
 # On-device audio-cue controller
 
 **Status:** recovered from the interrupted 2026-08-24 `/btw` thread; design and
-promotion gates recorded. The unified capture probe and its authenticated `GET`
-snapshot are implemented and validated on the target device; cue arming,
-classification, and action control are not.
+promotion gates recorded. **Gate 0 is closed (2026-08-24) and it cost the plan
+its highest-payoff action: early unmasking is out of scope, because BB's
+departure plays the sample 18 edges across seven characters share.** The
+unified capture probe and its authenticated `GET` snapshot are implemented and
+validated on the target device; cue arming, classification, and action control
+are not.
 
 ## Decision
 
@@ -85,13 +88,21 @@ The current Android source mapping says:
 - after BB reaches marker 122, a fully-on mask gives a 10% leave roll each
   second and forces departure after five consecutive masked ticks.
 
-That mapping does **not** yet prove which recorded waveform, if any, uniquely
-announces the early-leave branch. The trainer's synthesized `laugh` and
-`vent-bang` labels are teaching abstractions, not evidence that those exact
-sounds occur at every corresponding Android state transition. Resolve the open
-sound-cue item in
-[`ANDROID-SOURCE-STATUS.md`](../docs/android/ANDROID-SOURCE-STATUS.md) before
-writing an action rule.
+That mapping is now resolved, and the answer is negative. Sounds are dispatched
+through registers on the `cam 01` object rather than played inline, which is why
+an earlier pass over the play actions alone read BB's departure as silent. It is
+not silent: g292 and g294 write `cam 01` v21, and g691-694 turn any value 1-4
+into **sample 17** — the same handle written by 18 edges across seven
+characters, including Toy Chica's, Toy Foxy's, and W. Bonnie/W. Chica's own
+mask-clears under the identical `mask fully on` condition.
+
+So **no waveform uniquely announces the early-leave branch**, and the trainer's
+`vent-bang` label is confirmed to be a teaching abstraction. The full map,
+including the correction that BB's hop 4 plays a vocal *and* a thud and that
+arrival at 122 is a thud/sample-21 pair, is in
+[`ANDROID-SOURCE-STATUS.md`](../docs/android/ANDROID-SOURCE-STATUS.md); the
+constants and their assertions are `THUD_SAMPLE`, `BB_VOCAL_SAMPLES`, and
+`BB_ARRIVAL_SAMPLE`.
 
 The target phone adds a separate complication: internal recordings contain the
 music-box winding loop and Mangle's static even when the operator cannot hear
@@ -170,7 +181,7 @@ voice-activity detector:
 | --- | --- | --- | --- |
 | BB movement | Around the sourced five-second opportunity | Update an uncertainty set for vocal hops 2–4 | Pre-roll plus the measured sample tail |
 | BB final approach | A prior cue/state makes hop 5 possible and the monitor will rise | Prepare the BB/Foxy response; shared thud alone cannot identify BB | Until the monitor-gated edge is resolved |
-| BB masked | BB at marker 122 is independently established and the mask is fully on | Detect only a source-proven departure cue | One contiguous interval through the fifth masked tick |
+| ~~BB masked~~ | *Removed 2026-08-24 by gate 0* | No source-proven departure cue exists: the branch plays the shared thud | — |
 | Music-box tick | Controller is already winding | Optional clock/phase cross-check | A short expected-tick window |
 
 Do not begin with Mangle static or general hall ambience. The captured static is
@@ -215,9 +226,11 @@ Audio is an observation, not permission to bypass defenses.
   the silent first hop.
 - Use a shared thud only as corroboration of a transition that controller state
   already makes possible.
-- Unmask before the fifth tick only after a unique departure cue is tied to the
-  source transition, passes held-out device tests, and survives the controller
-  simulator's error injection.
+- ~~Unmask before the fifth tick only after a unique departure cue is tied to
+  the source transition~~ — **withdrawn 2026-08-24.** The departure cue exists
+  but is sample 17, shared with four other characters' mask-clears that fire
+  under the same condition. A rule keyed on it unmasks on someone else's
+  departure while BB is still at 122. Hold the mask to the fifth tick.
 - On `MISS`, `UNKNOWN`, projection loss, control-channel loss, or deadline
   expiry, use the existing visual/full-duration behavior. Disable audio for the
   rest of the night after a capture-path failure rather than repeatedly
@@ -248,6 +261,21 @@ failure.
 **Gate:** no cue can control an action until its state edge and uniqueness are
 documented. If the early-leave branch has no unique playback event, remove early
 unmasking from scope.
+
+**Closed 2026-08-24.** `readdump.py sounds 3` indexes all 40 sample handles in
+the Office frame; the register-bank indirection is documented in the ledger.
+Verdict by cue:
+
+| Cue | Uniqueness | Consequence |
+| --- | --- | --- |
+| Departure (g292/294) | Sample 17, shared by 18 edges / 7 characters | **Early unmasking removed from scope** |
+| BB vocals (g414-416) | 23 is sole-trigger; 21 and 24 have non-BB triggers that all require someone at 122/123 | Usable as corroboration given controller state, not as identification |
+| Hop 5 into the office (g417) | Sample 17 | Not identifying on its own |
+| Arrival at 122 (g607) | Adds sample 21 to the thud | The one edge with a two-sound signature |
+| BB footsteps (g702) | `Random(5)+1` from a bank 8 characters share | No unique vent cue |
+
+Every vocal hop sets channel 14 to the same volume, so amplitude carries no
+range information — a detector cannot infer distance from loudness.
 
 ### 1. Prove playback capture on the target build
 
@@ -356,6 +384,17 @@ plumbing—not the actuator measurement or the simulator rejection.
 The next simulator iteration must ingest actual cue latency/error distributions;
 the perfect-event mode and forced single miss now provide the upper and lower
 regression anchors.
+
+**Correction (2026-08-24, from gate 0).** That upper bound is further out of
+reach than recorded above. `--vocal-cam5` resets its count on
+`vent-bang who === 'bb' && leaving`, and `tools/minus6test.mjs` counts threats
+with `who !== 'bb'`. Both read an identity the source does not put in the
+audio: every one of those events is sample 17. The 3,000/3,000 figure therefore
+assumes a perfectly attributed departure cue that no detector can produce, on
+top of the perfect vocal delivery already noted. It does not change the
+rejection — that policy was already rejected — but any successor must derive
+identity from controller state. The events now carry a `sample` field so a
+policy can be held to what the phone can hear.
 
 ### 5. Shadow on the real device
 

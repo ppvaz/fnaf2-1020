@@ -583,7 +583,7 @@ export class Sim {
   bbLeave() {
     this.bb.inOpening = false; this.bb.stage = 0; this.bb.pending = false;
     this.bb.maskTicks = 0;
-    this.emit('vent-bang', { who: 'bb', leaving: true });
+    this.emit('vent-bang', { who: 'bb', leaving: true, sample: C.THUD_SAMPLE });
   }
 
   unitLeave(u, opts = {}) {
@@ -599,7 +599,7 @@ export class Sim {
     // Do not clear insideDangerAt: `danger 2` is global in the source, so a
     // same-tick route return cannot cancel an attack that was already raised.
     if (this.engagedToy === u.id) this.engagedToy = null;
-    this.emit('vent-bang', { who: u.id, leaving: true });
+    this.emit('vent-bang', { who: u.id, leaving: true, sample: C.THUD_SAMPLE });
   }
 
   onCamsUp() {
@@ -628,17 +628,22 @@ export class Sim {
   // the "laugh" a player counts. Reaching CAM 05 is the vent-camera cue.
   bbHop() {
     this.bb.stage++;
-    if (this.bb.stage > C.BB_SILENT_HOPS) this.emit('laugh');
+    if (this.bb.stage > C.BB_SILENT_HOPS)
+      this.emit('laugh', { samples: C.BB_VOCAL_SAMPLES });
     if (this.bb.stage === C.BB_STAGES - 1) {
-      this.emit('vent-bang', { who: 'bb', leaving: false, cam: true });
+      this.emit('vent-bang', {
+        who: 'bb', leaving: false, cam: true, sample: C.THUD_SAMPLE });
     }
   }
 
   bbEnterOpening() {
     this.bb.stage = C.BB_STAGES; this.bb.inOpening = true;
     this.bb.openingAtCamsUp = this.camsUpCount;
-    // g417 plays only the movement sample every hop shares -- no laugh here.
-    this.emit('vent-bang', { who: 'bb', leaving: false });
+    // g417 plays only the movement sample every hop shares -- no laugh here,
+    // but g607 adds sample 21 once on arrival, so this edge is a pair.
+    this.emit('vent-bang', {
+      who: 'bb', leaving: false, sample: C.THUD_SAMPLE,
+      arrival: C.BB_ARRIVAL_SAMPLE });
   }
 
   // Sourced hop gates: a unit whose movement roll has passed still waits at
@@ -756,7 +761,7 @@ export class Sim {
       else if (u.id === 'toychica')
         u.openingReadyAt = this.frame + C.TOY_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;
-      this.emit('vent-bang', { who: u.id, leaving: false });
+      this.emit('vent-bang', { who: u.id, leaving: false, sample: C.THUD_SAMPLE });
       this.flag('broke-loose', `${u.name} reached office threshold marker 122`);
       if (u.openingRule === 'streak' && !this.camsUp) this.startOfficeEncounter(u);
     } else {

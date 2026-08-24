@@ -151,6 +151,22 @@ export const BB_STAGES = 5;
 // Hops 1..BB_SILENT_HOPS make no sound; the first one (CAM 10 -> 07) is silent.
 export const BB_SILENT_HOPS = 1;
 
+// Sample handles, so a controller can be held to what a microphone could
+// actually recover. Sounds are dispatched through registers on `cam 01`, not
+// played inline: v6 -> g608-611, v21 -> g691-694.
+// [SOURCED: Android decompile — Office frame.]
+// THUD is the movement sample 18 edges across 7 characters share, including
+// BB's two mask-clears (g292/294) and every other character's (g400/401,
+// g439/440, g748/749). Nothing in the audio distinguishes them, which is why
+// plan 08 removed early unmasking from scope.
+export const THUD_SAMPLE = 17;
+// The three vocals g414-416 select at random. Every vocal hop sets channel 14
+// to the same volume, so amplitude carries no range information.
+export const BB_VOCAL_SAMPLES = [21, 24, 23];
+// g607 adds this on arrival at marker 122, so reaching the opening is a pair
+// (thud + 21) rather than a bare thud. Sample 21 is also one of the vocals.
+export const BB_ARRIVAL_SAMPLE = 21;
+
 // Golden Freddy — office [SOURCED: g336 spawn, g776 mask clear, g777 kill on
 // a monitor raise, g778 kill on a hall flash]. g336 rolls `Random(20) <
 // Golden Freddy AI` on a 5 s interval with the monitor fully up and no

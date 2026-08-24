@@ -205,6 +205,39 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   ok('g292', 'the early leave is a 10%/s roll', C.VENT_EARLY_LEAVE_CHANCE === 0.1);
 }
 {
+  // g691-694: sounds are dispatched through `cam 01` v21, and 18 edges across
+  // seven characters write it. So BB's departure and a Toy's departure are the
+  // same sample, and no detector can tell them apart. Plan 08 removed early
+  // unmasking from scope on exactly this fact; the assertion exists so a
+  // future controller cannot quietly start trusting the `who` field again.
+  const leaveSample = (id) => {
+    const s = bare({ bbEnabled: true, stalledEnabled: true });
+    if (id === 'bb') {
+      s.bb.inOpening = true;
+    } else {
+      const u = s.units.find(x => x.id === id);
+      u.atOpening = true; u.openingSince = s.frame;
+    }
+    s.press('mask'); step(s, C.MASK_ANIM_ON + 1);
+    for (let i = 0; i < C.FPS * 8 && !s.events.some(
+      e => e.type === 'vent-bang' && e.data?.leaving); i++) s.tick();
+    return s.events.find(
+      e => e.type === 'vent-bang' && e.data?.leaving)?.data?.sample;
+  };
+  const fromBb = leaveSample('bb');
+  const fromToy = leaveSample('toychica');
+  ok('g292/294', 'BB leaving the opening plays the shared thud',
+    fromBb === C.THUD_SAMPLE);
+  ok('g439/440', 'Toy Chica leaving plays the same handle',
+    fromToy === C.THUD_SAMPLE);
+  ok('g691-694', 'so departure identity is not audible',
+    fromBb !== undefined && fromBb === fromToy);
+  ok('g608-611', 'the vocal bank is the three sourced handles',
+    C.BB_VOCAL_SAMPLES.join(',') === '21,24,23');
+  ok('g607', 'arrival at 122 adds a sample the departure never has',
+    C.BB_ARRIVAL_SAMPLE === 21 && C.BB_ARRIVAL_SAMPLE !== C.THUD_SAMPLE);
+}
+{
   // e8fcf2f / g96 / g301 / g303: BB inside the office is permanent and takes
   // the lights away -- he is not a death, and nothing moves him back out.
   const s = bare({ bbEnabled: true });

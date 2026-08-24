@@ -331,6 +331,119 @@ monitor raise — which the music box forces you to perform. This confirms the
 engine's `bb.pending` model (`src/engine.js`) rather than the "cams down = no
 move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 
+## 2026-08-24: every sound in the Office frame, and who can claim it
+
+Gate 0 of the [on-device audio-cue controller plan](../../plans/08-audio-cue-controller.md)
+asks one question: does any cue uniquely announce a state edge? Frame 3 has 40
+distinct sample handles across 161 play actions. `readdump.py sounds 3` indexes
+them; the answer for the edges the controller cares about is mostly *no*, and
+that removes a planned action from scope.
+
+### Sounds are played through a register bank, not directly
+
+Almost no group calls "play sample" itself. They write a value into an
+alterable on the `cam 01` object, and a small bank of dispatch groups turns
+that value into a sound:
+
+| Register | Dispatch | Samples | Written by |
+| --- | --- | --- | --- |
+| `cam 01` v6 | g608-611 | 21, 24, 23 (v6=4 re-rolls) | BB hops 2-4 (g414-416) |
+| `cam 01` v21 | g691-694 | 17, on any value 1-4 | 18 groups, see below |
+| `cam 01` v5 | g704-708 | 25-29 | 8 characters at marker 149 `hear footsteps` (g695-702) |
+| `cam 01` v12 | g709-711 | 30-32 | Toy Foxy only (g703, g741) |
+
+Reading only the play actions hides this indirection completely, and it is the
+reason a naive pass concludes that BB's departure is silent. It is not.
+
+### Sample 17 is the movement thud, and 18 transitions fire it
+
+`writes 3 "cam 01" 21` lists every writer. Excluding the four dispatch groups
+that reset the register:
+
+| Group | Edge |
+| --- | --- |
+| 292 | **BB mask-clear, 10%/s roll at marker 122** |
+| 294 | **BB mask-clear, forced on the 5th masked tick** |
+| 387 | W. Chica hop to CAM 2 |
+| 400 / 401 | Toy Foxy mask-clear, roll and forced |
+| 416 | BB hop 4, CAM 01 → CAM 05 |
+| 417 | BB hop 5, CAM 05 → office, the monitor-gated edge |
+| 439 / 440 | Toy Chica mask-clear, roll and forced |
+| 685-690 | W. Chica, W. Bonnie, Toy Bonnie, W. Chica, Toy Foxy, Puppet arriving at CAM 5/6 |
+| 739 | Toy Foxy at 123, 5%/s |
+| 748 / 749 | W. Bonnie and W. Chica at 123 while masked, 10%/s |
+
+Seven characters share one sample. Worse for the plan's highest-payoff idea:
+g292/294 (BB leaving) fire under the *same* `mask fully on` condition as
+g400/401, g439/440, g748/749. While you sit masked waiting for BB to go, four
+other characters can produce a byte-identical sound.
+
+### The Balloon Boy pipeline, sound by sound
+
+| Group | Hop | Sound |
+| --- | --- | --- |
+| 413 | CAM 10 → 07 | **silent** |
+| 414 | CAM 07 → 03 | vocal 21/24/23, channel 14 volume 25 |
+| 415 | CAM 03 → 01 | vocal 21/24/23, channel 14 volume 25 |
+| 416 | CAM 01 → 05 | vocal 21/24/23 **and** thud 17 |
+| 417 | CAM 05 → office (122) | thud 17 |
+| 607 | on arrival at 122, once | sample 21 |
+| 292 / 294 | leaves 122 | thud 17 |
+
+Two corrections to the 2026-08-20 entry above. g416 writes *both* registers, so
+the third counted laugh arrives with a thud under it, and arrival at the
+opening is a **pair** — thud 17 from g417 plus sample 21 from g607 — not a
+single sound. Every vocal hop sets channel 14 to the same volume 25, so
+amplitude does **not** encode distance; a detector cannot read range off the
+vocal.
+
+### Uniqueness verdict
+
+| Sample | Groups | Unique to one edge? |
+| --- | --- | --- |
+| 23 | 610 | **Yes** — the only sole-trigger BB vocal |
+| 21 | 607, 608 | No, but both triggers are BB |
+| 24 | 609, 743, 814 | No — also Toy Foxy at 123 and BB at 123 |
+| 17 | 691-694 | No — 18 edges, 7 characters |
+| 25-29 | 704-708 | No — `Random(5)+1` shared by 8 characters incl. BB |
+| 30-32 | 709-711 | Toy Foxy only |
+
+BB's own footstep sound at marker 149 is `Random(5)+1` from the same bank the
+other seven draw from (g702 is identical to g695-701), so there is no unique
+BB vent cue either. Toy Foxy is the only character with a private bank.
+
+### What this costs the plan
+
+**Early unmasking is removed from scope.** Plan 08 gate 0 says so explicitly:
+"If the early-leave branch has no unique playback event, remove early
+unmasking from scope." The branch has a playback event, and it is the most
+shared sample in the game. An unmask rule keyed on it would fire on Toy
+Chica's or Toy Foxy's departure while BB is still at 122, which is the exact
+error the plan calls unacceptable.
+
+The approach cues survive, with a condition. Samples 21/24/23 are jointly
+diagnostic of a BB hop **given controller state**, because every non-BB
+trigger for 21 and 24 requires someone to be at 122/123 — states the
+controller already tracks. That is corroboration, not identification, and it
+is what the surviving "vocal arms a lit CAM-05 visual check" architecture
+already assumed.
+
+### The simulator has been reading a field the phone cannot hear
+
+`src/engine.js` emits `vent-bang` with a `who`, and two controllers consume it:
+`tools/minus6test.mjs` counts threats with `e.data?.who !== 'bb'`, and
+`tools/hidpilottest.mjs --vocal-cam5` resets its vocal count on
+`who === 'bb' && leaving`. The source says every one of those events is sample
+17. No audio detector can recover `who`, so both controllers are using a sensor
+that does not exist.
+
+This does not rescue or sink the §4 rejection of the counted-vocal controller —
+that policy was already rejected — but it means the 3,000/3,000 perfect-vocal
+upper bound is unattainable for a second, independent reason, and any future
+policy must derive identity from controller state rather than from the cue.
+The events now carry a `sample` field so a controller can be held to what the
+phone can actually hear.
+
 ## Labels
 
 - **Implemented** — Android source rule is represented and regression-tested.
@@ -378,7 +491,7 @@ move" reading in the community write-ups; see `MINUS-7-STRATEGY.md` §6.
 | P1 | ~~Puppet~~ **Sourced 2026-08-20** | Post-box route is g404-411: CAM 11 → 10 → 07, then his own `decide path` value picks 1 → 03 → 01 or 2 → 04 → 02, both arriving at marker 122 (g574 turns that into the encounter). Five hops on the ordinary movement roll replace the old flat 5-20 s timer, so a dry box is slower to kill than the engine assumed. (The supposed CAM 11 flash-stall event, group 457, actually targets Paper Pals with `stun time - night*50`; the Puppet has no flash group.) |
 | P1 | ~~Balloon Boy inside-office behavior~~ **Sourced 2026-08-20** | Roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Inside: g96 forces `lit?` to zero every frame, g301/303 stop the vent lights answering, g75/g85 exclude him while g77/g86 do not — so CAM 10 keeps its light — and **no group moves him out of 123**. He never attacks; the engine no longer kills on entry, it takes the lights away and lets Foxy finish |
 | P2 | ~~Input event ordering~~ **Sourced 2026-08-20** | Group order is the answer: camera select (g16-27) → flashlight (g75-89) → monitor button (g254-258) → **forcedown on the monitor (g262)** → mask (g267-270) → **forcedown on the mask (g274)** → vent lights (g301-320). The forcedown flag is cleared at g612 and re-set at g624/g718-721, so it is always spent one frame after it is raised |
-| P2 | Sound cue frames | Tie bangs, laughs, static, and blackout cues to source state transitions for reaction training; this is gate 0 of the [on-device audio-cue controller plan](../../plans/08-audio-cue-controller.md) |
+| P2 | ~~Sound cue frames~~ **Resolved 2026-08-24** | Every Office-frame sample mapped to its state edge through the `cam 01` register bank; see the section above. Gate 0 of the [on-device audio-cue controller plan](../../plans/08-audio-cue-controller.md) is closed, and its early-unmask action is removed from scope because sample 17 is shared by 18 edges across 7 characters |
 | P2 | Auxiliary counters | The office encounter latch is literally named `in danger`; `Active 21` is really `decide path` (route-branch selector, used by W. Freddy g376-377, Mangle g396-397, and the Puppet's own v2 in g406/407). `Sockpuppet AI` is the Puppet's movement AI, read by the route above; `time of the night` gates the mid-night AI bumps (g676 night 2 at 1 AM, g684 night 6 at 2 AM) and **is implemented as of 2026-08-23** (see the Implemented table). Remaining: the leftover display/animation counters |
 
 ## Decompile extraction backlog — what unblocks each plan

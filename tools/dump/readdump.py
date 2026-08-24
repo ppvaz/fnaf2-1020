@@ -18,6 +18,8 @@ $FNAF2_DUMP) at it; regenerate it with tools/dump/regen-dump.sh.
   readdump.py find 3 "balloon boy"       groups whose text matches
   readdump.py object 3 "balloon boy"     groups referencing an object
   readdump.py writes 3 "balloon boy" 0   groups whose actions write its value 0
+  readdump.py sounds 3                   sample handles played, and by which groups
+  readdump.py sounds 3 21                the groups that play one sample handle
 
 PC dumps (Fusion builds before the Android scramble) need --xor 0.
 """
@@ -29,6 +31,8 @@ import sys
 DEFAULT_DUMP = os.environ.get(
     "FNAF2_DUMP", "/private/tmp/fnaf2-android-dump/events-android.txt")
 
+# "6:Sample:Sample '<obfuscated name>' handle: N" is a play-sample action.
+SAMPLE_RE = re.compile(r"Sample:Sample .*? handle: (\d+)")
 POSITION_RE = re.compile(r"Object Info: (\d+)")
 # ParamObject renders as "Object <oil> <handle> <type>" (see ParamObject.cs).
 PARAMOBJECT_RE = re.compile(r"Object (\d+) (\d+) (\d+)")
@@ -92,6 +96,13 @@ class Dump:
         print(self.text(group))
         print()
 
+    def samples(self, group):
+        """Sample handles this group plays, in action order."""
+        played = []
+        for _, line in self.actions(group):
+            played.extend(int(h) for h in SAMPLE_RE.findall(line))
+        return played
+
     def actions(self, group):
         for line in group["lines"]:
             if line.startswith(" A"):
@@ -106,7 +117,7 @@ def main():
     parser.add_argument("--xor", type=int, default=28,
                         help="handle scramble; 28 on Android, 0 on PC builds")
     parser.add_argument("command", choices=["frames", "objects", "group", "find",
-                                            "object", "writes"])
+                                            "object", "writes", "sounds"])
     parser.add_argument("args", nargs="*")
     opts = parser.parse_args()
 
@@ -154,6 +165,26 @@ def main():
                                   .get("OI", "0"))).lower() == target
                    for l in group["lines"]):
                 dump.show(frame_index, group)
+        return
+
+    if opts.command == "sounds":
+        wanted = int(opts.args[1]) if len(opts.args) > 1 else None
+        index = {}
+        for group in frame["groups"]:
+            for handle in dump.samples(group):
+                index.setdefault(handle, []).append(group["idx"])
+        if wanted is not None:
+            for group in frame["groups"]:
+                if wanted in dump.samples(group):
+                    dump.show(frame_index, group)
+            return
+        # A sample played by one group is a candidate cue; a sample played by
+        # many is shared, and cannot identify a state edge on its own.
+        for handle in sorted(index):
+            groups = index[handle]
+            print("sample %3d  %2d group(s)  %s%s" % (
+                handle, len(groups), ", ".join(str(g) for g in groups[:12]),
+                " ..." if len(groups) > 12 else ""))
         return
 
     if opts.command == "writes":
