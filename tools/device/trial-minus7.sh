@@ -1018,6 +1018,14 @@ classify_left_and_queue_mask_at() {
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
   hid_release
+  # Fusion polls touch once per frame, so releasing the vent light and pressing
+  # the mask in the same instant can be seen as one finger *moving* between
+  # them -- and a button that fires on press then never fires. A dropped mask
+  # press leaves the mask stuck on, which makes every later left read dark;
+  # the classifier reports that as a confident `inside`, the schedule blind
+  # toggles, and the night is lost from that cycle. Give the game one poll of
+  # released time to observe.
+  hid_delay 40
   hid_down "$MASK_X" "$MASK_Y"
   hid_delay 100
   hid_release
@@ -1043,7 +1051,7 @@ pulsed_cam_burst() {
   hid_cam_down "$x" "$y"
   hid_delay 10
   hid_cam_light_down "$x" "$y"
-  hid_delay 100
+  hid_delay 90
   hid_cam_light_up "$x" "$y"
 }
 
@@ -1062,10 +1070,13 @@ pulsed_sweep_at() {
   # mixing a wall-timed start with hid-side contact delays gave 105-112 ms
   # because the hid delays elapse concurrently with the shell's wait instead
   # of adding to it. Each camera costs 10 + 100 + 10 = 120 ms of hid time.
+  # 10 + 90 + 20: a 100 ms select, a 90 ms light pulse inside it, and 20 ms of
+  # released time before the next select -- the exact geometry
+  # hid-sweep-probe.sh landed 4/4 at this spacing.
   pulsed_cam_burst "$CAM10_X" "$CAM10_Y"
-  hid_delay 10
+  hid_delay 20
   pulsed_cam_burst "$CAM04_X" "$CAM04_Y"
-  hid_delay 10
+  hid_delay 20
   pulsed_cam_burst "$CAM07_X" "$CAM07_Y"
 }
 

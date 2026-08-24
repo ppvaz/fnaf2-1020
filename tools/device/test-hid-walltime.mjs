@@ -41,13 +41,26 @@ const perCam = (burst.match(/hid_delay (\d+)/g) || [])
   .map(m => +m.split(' ')[1]).reduce((a, b) => a + b, 0);
 const between = (sweep.match(/hid_delay (\d+)/g) || [])
   .map(m => +m.split(' ')[1]);
-check(between.length === 2 && between.every(v => v === 10),
-  `pulsed_sweep_at separates its cameras by ${between.join(',')} ms of hid time`);
+check(between.length === 2 && between.every(v => v >= 20),
+  `pulsed_sweep_at leaves ${between.join(',')} ms of released time between ` +
+  'selects; Fusion polls touch per frame, so back-to-back contacts can read as ' +
+  'one finger moving between two buttons rather than two presses');
 check(perCam + between[0] === 120,
   `each camera costs ${perCam + between[0]} ms of hid time; the phone has only ` +
   'landed 120 ms spacing, and shorter renders CAM 07 alone');
-check(perCam - 10 >= 100,
-  `the camera contact is ${perCam - 10} ms, under the phone's 100 ms floor`);
+check(perCam >= 100,
+  `the camera contact is ${perCam} ms, under the phone's 100 ms floor`);
+
+// Same hazard, the place it actually bit: the classifier releases the vent
+// light and presses the mask. With no gap the game can see one finger moving
+// between them, the mask press is lost, the mask sticks on, and every later
+// read is dark.
+const classify = body('classify_left_and_queue_mask_at');
+const maskSeq = classify.slice(classify.indexOf('hid_release'));
+const gap = /hid_release\s*\n\s*hid_delay (\d+)\s*\n\s*hid_down "\$MASK_X"/.exec(maskSeq);
+check(gap && +gap[1] >= 33,
+  'classify_left_and_queue_mask_at must leave at least one 30 Hz Fusion poll ' +
+  '(33 ms) of released time between the vent light and the mask press');
 
 // press_at's own down/delay/release is the proven single-contact form and is
 // deliberately exempt: it has one contact and no spacing to preserve.
