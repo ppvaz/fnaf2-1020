@@ -138,6 +138,21 @@ for (const [name, lines] of Object.entries(plan)) {
     }
   }
   check(sweeps >= 1, `${name}: no camera sweep, so nothing refreshes the stalls`);
+
+  // Sweeps follow a wind hold, and the phone needs released time between the
+  // two. A recorded run's own HID trace measured 0 ms between the WIND release
+  // and the CAM 10 press: Fusion polls touch per frame, so that reads as one
+  // finger dragging from the wind button onto the camera, and the sweep's
+  // first select is the one that disappears.
+  const timed = lines.map(l => l.split(' ')).map(([at, kind, ...rest]) => ({ at: +at, kind, rest }));
+  for (const sweep of timed.filter(e => e.kind === 'sweep')) {
+    const wind = timed.filter(e => e.kind === 'hold' && e.rest[0] === 'wind' && e.at < sweep.at).pop();
+    if (!wind) continue;
+    const released = sweep.at - (wind.at + +wind.rest[1]);
+    check(released >= 33,
+      `${name}: only ${released} ms between the wind release and the sweep at ` +
+      `+${sweep.at} ms; one 30 Hz Fusion poll is 33 ms`);
+  }
 }
 
 // The branch is only known after the read, so both steady cycles must begin

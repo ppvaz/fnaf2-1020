@@ -658,6 +658,16 @@ hid_emit() {
   [ -z "$HID_TRACE" ] || printf '%s\n' "$1" >> "$HID_TRACE"
 }
 
+# Snap the trace's clock to the real one. Only the hid-side `delay` commands
+# are recoverable from the report stream itself, so a sequence spaced by
+# wait_until looks instantaneous to a reader -- which made the first version of
+# the auditor report every wall-timed action as a zero-gap button change. The
+# helpers already fork `date` once for their own log line, so reusing that
+# value costs nothing.
+hid_mark() {
+  [ -z "$HID_TRACE" ] || printf '{"command":"mark","ms":%s}\n' "$1" >> "$HID_TRACE"
+}
+
 hid_release() {
   [ "$HID_FD_OPEN" -eq 1 ] || return 0
   # Report both inactive contact IDs. A count of zero makes hid-multitouch
@@ -903,6 +913,7 @@ press_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s\n' "$actual" "$label"
+  hid_mark "$actual"
   if [ "$PRESS_MODE" = "tap" ]; then
     input tap "$x" "$y"
   elif [ "$HID_MODE" -eq 1 ]; then
@@ -930,6 +941,7 @@ hold_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (%d ms)\n' "$actual" "$label" "$duration"
+  hid_mark "$actual"
   if [ "$HID_MODE" -eq 1 ]; then
     hid_down "$x" "$y"
     hid_delay "$duration"
@@ -944,6 +956,7 @@ light_down_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (contact 0 down)\n' "$actual" "$label"
+  hid_mark "$actual"
   hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
 }
 
@@ -952,6 +965,7 @@ light_cam_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (contact 1 tap)\n' "$actual" "$label"
+  hid_mark "$actual"
   hid_two_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$x" "$y"
   hid_delay 100
   hid_second_up "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$x" "$y"
@@ -962,6 +976,7 @@ light_up_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (contacts up)\n' "$actual" "$label"
+  hid_mark "$actual"
   hid_release
 }
 
@@ -970,6 +985,7 @@ capture_lit_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  capture-%s %s\n' "$actual" "$label" "$name"
+  hid_mark "$actual"
   # Keep the view light down across the screencap without putting a host round
   # trip between the actuator and frame. The game needs about 350 ms to draw a
   # visibly lit office vent; the measured raw capture p95 is another 206 ms.
@@ -994,6 +1010,7 @@ capture_unlit_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  capture-%s-unlit %s\n' "$actual" "$label" "$name"
+  hid_mark "$actual"
   screencap > "$SAMPLE_DIR/$name.raw"
 }
 
@@ -1025,6 +1042,7 @@ classify_left_and_queue_mask_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s start snapshot\n' "$actual" "$label" >&2
+  hid_mark "$actual"
 
   # `screencap` does not latch the SurfaceFlinger frame when the process starts:
   # fixed 80 ms overlap produced both a literal mask frame and an unlit office
@@ -1047,6 +1065,7 @@ classify_left_and_queue_mask_at() {
   done
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
+  hid_mark "$actual"
   hid_release
   # Fusion polls touch once per frame, so releasing the vent light and pressing
   # the mask in the same instant can be seen as one finger *moving* between
@@ -1066,6 +1085,7 @@ classify_left_and_queue_mask_at() {
   rm -f "$CAPTURE_LOCK"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  classify-bb-left %s\n' "$actual" "$classification" >&2
+  hid_mark "$actual"
 }
 
 # One camera of the sweep, written into the macro the hid process is already
@@ -1091,6 +1111,7 @@ pulsed_sweep_at() {
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (three selects, 120 ms apart, light pulsed after each)\n' \
     "$actual" "$sweep_label"
+  hid_mark "$actual"
   # The whole sweep is one uninterrupted macro, exactly as hid-sweep-probe.sh
   # replays it -- and that probe landed 4/4 complete traces at this spacing.
   # The shell only positions the start. Two other arrangements were measured
@@ -1115,6 +1136,7 @@ hall_reset_and_raise_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (hall pulse under the raise)\n' "$actual" "$label"
+  hid_mark "$actual"
   # The table presses the hall light and the monitor on the same frame. Doing
   # them sequentially would push the raise 90 ms late and the following sweep
   # inside MONITOR_ANIM_UP, so hold the light on contact 0 and tap the monitor
@@ -1156,14 +1178,15 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
     press_at "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
     light_down_at $((base + 367)) left-vent-light
-    # Start the capture 300 ms after light-down, not 100. screencap latches
-    # 163-348 ms after it starts on this phone, and the vent needs about
-    # 270 ms to be drawn: at +100 the earliest latch is 263 ms and catches an
-    # unlit opening, which the classifier reads as a confident `inside`
-    # because BB in the office is exactly what a dark opening looks like. At
-    # +300 the latch lands 463-648 ms after the light, inside the 700 ms the
-    # exact simulator still survives.
-    classify_left_and_queue_mask_at $((base + 667)) left-view
+    # Start the capture 200 ms after light-down. screencap latches 163-348 ms
+    # after it starts, so this puts the frame 363-548 ms past the light -- past
+    # the ~270 ms the vent needs to draw, so a read cannot catch an unlit
+    # opening and report it as a confident `inside`, and early enough that the
+    # classifier answers before the +1300 ms cut-off. At +300 it answered at
+    # base+1276 against that cut-off and the second cycle missed it.
+    # runtime-gh.scm covers this window: its empty class was rebuilt from
+    # frames captured through this loop at both the +100 and +300 latches.
+    classify_left_and_queue_mask_at $((base + 567)) left-view
 
     case "$classification" in
       empty\ *) branch=clear ;;
@@ -1177,6 +1200,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         unknowns=$((unknowns + 1))
         printf '%6d ms  left-view %s; failing closed\n' \
           "$(( $(date +%s%3N) - T0 ))" "$classification"
+        hid_mark "$actual"
         [ "$unknowns" -le 6 ] || {
           echo 'too many unclassified left reads; the BB branch is blind' >&2
           exit 45
@@ -1213,6 +1237,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       attacks=$((attacks + 1))
       printf '%6d ms  left-view BB; holding the mask through five ticks\n' \
         "$(( $(date +%s%3N) - T0 ))"
+      hid_mark "$actual"
       press_at $((base + 5917)) "$MASK_X"  "$MASK_Y" mask-off-after-bb
       hall_reset_and_raise_at $((base + 6167)) reset-foxy-after-bb
       pulsed_sweep_at $((base + 6383)) response-sweep
@@ -1294,6 +1319,7 @@ if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
         # the hold; two device sweeps would then restore the ten-second anchor.
         printf '%6d ms  left-view BB; aligned five-tick response\n' \
           "$(( $(date +%s%3N) - T0 ))"
+        hid_mark "$actual"
         press_at  $((base + 6020)) "$MASK_X"    "$MASK_Y"    mask-off-after-bb
         hold_at   $((base + 6270)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-after-bb
         press_at  $((base + 6270)) "$MONITOR_X" "$MONITOR_Y" monitor-up-after-bb
@@ -1408,6 +1434,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         settings put system show_touches 1
         printf '%6d ms  touch-overlay on-after-capture\n' \
           "$(( $(date +%s%3N) - T0 ))"
+        hid_mark "$actual"
       fi
       threat=0
       gf_exact_empty=0
@@ -1415,6 +1442,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         classification=$("$CHECKER" classify "$BB_MODEL" < "$SAMPLE_DIR/$sample.raw")
         printf '%6d ms  classify-bb-left %s\n' \
           "$(( $(date +%s%3N) - T0 ))" "$classification"
+        hid_mark "$actual"
         case "$classification" in
           empty\ *) ;;
           *) threat=1 ;;
@@ -1424,6 +1452,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         classification=$("$CHECKER" classify "$GF_MODEL" < "$SAMPLE_DIR/$sample.raw")
         printf '%6d ms  classify-gf-office %s\n' \
           "$(( $(date +%s%3N) - T0 ))" "$classification"
+        hid_mark "$actual"
         case "$classification" in
           empty\ score=0\ *) gf_exact_empty=1 ;;
           empty\ *) ;;
@@ -1445,6 +1474,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         # behavior for every nonzero, unknown, Golden, or malformed result.
         printf '%6d ms  skip-gf-mask exact-empty\n' \
           "$(( $(date +%s%3N) - T0 ))"
+        hid_mark "$actual"
         # Hall-movement darkness is visual only: g489 still asserts the
         # logical hall-light latch and g745/g855 still reset and pin Foxy.
         # Retrying merely because no beam was rendered wastes power.
@@ -1500,6 +1530,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
           classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
           printf '%6d ms  classify-bb-cam05 %s\n' \
             "$(( $(date +%s%3N) - T0 ))" "$classification"
+          hid_mark "$actual"
           if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
             case "$classification" in
               bb\ *) exit 42 ;;
@@ -1545,6 +1576,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
           classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
           printf '%6d ms  classify-bb-cam05 %s\n' \
             "$(( $(date +%s%3N) - T0 ))" "$classification"
+          hid_mark "$actual"
           if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
             case "$classification" in
               bb\ *) exit 42 ;;

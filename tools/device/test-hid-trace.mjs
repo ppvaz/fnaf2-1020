@@ -34,6 +34,10 @@ export function audit(text) {
   let now = 0, lastReleaseAt = null, lastReleaseXy = null;
 
   for (const event of events) {
+    // A mark is the runner's real clock at an action boundary. Without them
+    // only hid-side delays advance the timeline, and every wall-timed pair of
+    // actions reads as a zero-gap button change.
+    if (event.command === 'mark') { now = Math.max(now, event.ms); continue; }
     if (event.command === 'delay') { now += event.duration; continue; }
     if (event.command !== 'report') continue;
     const report = event.report;
@@ -119,7 +123,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const file = process.argv[2];
   if (!file) { selfTest(); }
   else {
-    const { problems, spanMs, reports } = audit(readFileSync(file, 'utf8'));
+    const text = readFileSync(file, 'utf8');
+  if (!/"command":"mark"/.test(text))
+    throw new Error(`${file} has no marks: it was recorded before the runner ` +
+      'emitted them, and without a real clock every wall-timed action reads ' +
+      'as a zero-gap button change');
+  const { problems, spanMs, reports } = audit(text);
     console.log(`${file}: ${reports} reports over ${spanMs} ms of scheduled hid time`);
     for (const p of problems) console.log('  ' + p);
     console.log(problems.length ? `${problems.length} problems` : 'no problems');

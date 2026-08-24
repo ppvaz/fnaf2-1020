@@ -62,6 +62,8 @@ class HidPilot {
     // Pulsed profile: the camera is selected first and the light is pulsed
     // afterwards, so there is no leading settle and the span is only the two
     // inter-camera gaps plus one 100 ms contact.
+    // Sweeps are preceded by a wind hold, and the phone needs released time
+    // between the two: see WIND_LEAD_FRAMES.
     this.sweepFrames = !deviceSweep ? 16
       : pulseLight ? s((2 * sweepSlotMs + 100) / 1000)
         : s((70 + 3 * sweepSlotMs) / 1000);
@@ -124,7 +126,7 @@ class HidPilot {
     this.tap(e + s(0.46), 'cam:11');
     const openingSweep = this.deviceSweep
       ? e + s(6.5) - this.sweepFrames : e + s(6.25);
-    const openingWindEnd = this.deviceSweep ? openingSweep - 1 : e + s(6.10);
+    const openingWindEnd = this.deviceSweep ? openingSweep - 3 : e + s(6.10);
     this.hold(e + s(0.52), openingWindEnd - (e + s(0.52)), 'wind');
     // The left-opening cycle deliberately flashes late. Put the opening
     // sweep late as well so its stun cannot expire before cycle zero's sweep.
@@ -281,7 +283,7 @@ class HidPilot {
       this.hold(a + s(3.10), this.hallPulse, 'light');
       this.tap(a + s(3.22), 'monitor');
       this.tap(a + s(3.45), 'cam:11');
-      this.hold(a + s(3.57), Math.max(1, only - 1 - (a + s(3.57))), 'wind');
+      this.hold(a + s(3.57), Math.max(1, only - 3 - (a + s(3.57))), 'wind');
       this.flashTargets(only);
       return;
     }
@@ -297,7 +299,7 @@ class HidPilot {
     // 790 ms actuator that pulls its start back over this wind window, which
     // is the point of measuring the device profile on this route.
     const sweepStart = a + s(5) - this.sweepFrames;
-    const windEnd = this.deviceSweep ? sweepStart - 1 : a + s(4.68);
+    const windEnd = this.deviceSweep ? sweepStart - 3 : a + s(4.68);
     this.hold(a + s(4.20), Math.max(1, windEnd - (a + s(4.20))), 'wind');
     this.flashTargets(sweepStart);
   }
@@ -332,7 +334,7 @@ class HidPilot {
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
     const lateSweepStart = a + s(10) - this.sweepFrames;
-    const windEnd = this.deviceSweep ? lateSweepStart - 1 : a + s(9.46);
+    const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
     this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
     this.flashTargets(lateSweepStart);
     this.nextAnchor = a + s(10);
@@ -351,7 +353,7 @@ class HidPilot {
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
-    const windEnd = this.deviceSweep ? lateSweepStart - 1 : a + s(9.46);
+    const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
     this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
     this.flashTargets(lateSweepStart);
     // BB can leave on the first masked scheduler tick. Twenty-five seconds
