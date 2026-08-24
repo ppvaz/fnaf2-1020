@@ -62,11 +62,16 @@ Fusion build 296, August 2025.
 
 ## On-device
 
+- [`android/cue-helper/README.md`](../android/cue-helper/README.md) — the unified
+  MediaProjection APK, its build/run procedure, and first target-device soak.
 - [`ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) — the adb harness,
   its hard-won safety rules, and findings against the real build.
 - [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the
   libc-free on-phone classifier, its model-building discipline, and measured
   latency.
+- [`ONE-PIXEL-VISION.md`](device/ONE-PIXEL-VISION.md) — an educational case
+  study in reducing a visual bot sensor from a full screenshot to one tested
+  logical pixel, with Android capture and audio analogues.
 - [`ANDROID-AUDIO-CAPTURE.md`](device/ANDROID-AUDIO-CAPTURE.md) — the mobile
   recording bug that exposes normally inaudible Mangle/music-box loops, its
   evidence boundary, and the implications for an audio-cue detector.

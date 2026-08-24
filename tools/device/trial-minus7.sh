@@ -17,6 +17,7 @@ GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
+DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
 WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
 FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
@@ -36,6 +37,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
 LOCAL_ABORT_VIDEO="$CAPTURE_DIR/$OUT-aborted.mp4"
+LOCAL_EPOCH="$CAPTURE_DIR/$OUT-epoch.txt"
 SAMPLE_VIEW=""
 SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
@@ -43,6 +45,7 @@ REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
 REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
+REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
 REMOTE_CAPTURE_LOCK="$REMOTE_PIDFILE.capture"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
@@ -104,6 +107,10 @@ esac
 case "$HID_LEFT_SURVIVAL" in
   0|1) ;;
   *) echo "HID_LEFT_SURVIVAL must be 0 or 1"; exit 2 ;;
+esac
+case "$DEVICE_EPOCH_LATCH" in
+  0|1) ;;
+  *) echo "DEVICE_EPOCH_LATCH must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
   swipe|tap|async-swipe|fast-swipe|hid|hid-multi) ;;
@@ -213,7 +220,16 @@ if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
     echo "HID_LEFT_SURVIVAL=1 classifies a stream; disable BB_LEFT_CAPTURE_EVERY" >&2
     exit 2
   }
-  echo "warning: HID_LEFT_SURVIVAL is an experimental staged controller, not a validated full-night route" >&2
+  [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
+    echo "HID_LEFT_SURVIVAL=1 requires DEVICE_EPOCH_LATCH=1" >&2
+    exit 2
+  }
+  [ "$CYCLES" -le 4 ] || {
+    echo "HID_LEFT_SURVIVAL is limited to four pre-read sweep-probe cycles" >&2
+    echo "the device-accepted 790 ms sweep makes the sparse Night 7 policy lose 100% of exact simulations" >&2
+    exit 2
+  }
+  echo "warning: HID_LEFT_SURVIVAL is a bounded epoch/sweep probe; it will not make a BB decision" >&2
 fi
 if [ -n "$GF_OFFICE_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
@@ -255,6 +271,9 @@ done
 mkdir -p "$CAPTURE_DIR"
 [ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
+if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
+  [ ! -e "$LOCAL_EPOCH" ] || { echo "refusing to overwrite $LOCAL_EPOCH"; exit 2; }
+fi
 . "$HERE/select-adb.sh"
 RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
@@ -376,7 +395,7 @@ watch_focus() {
   while kill -0 "$DRIVER_PID" 2>/dev/null; do
     sleep "$FOCUS_WATCHDOG_INTERVAL"
     focus=$(adb shell dumpsys window 2>/dev/null |
-      grep -m1 mCurrentFocus || true)
+      grep -m1 'mCurrentFocus=.*com\.scottgames\.fnaf2' || true)
     case "$focus" in
       *com.scottgames.fnaf2*) ;;
       *)
@@ -415,7 +434,7 @@ cleanup() {
       echo "saved partial capture captures/$OUT-aborted.mp4"
     fi
   fi
-  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
+  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
     adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_CAM05_MODEL" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
@@ -434,7 +453,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 adb get-state >/dev/null
-if [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
+if [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
   CHECKER_INSTALLED=1
   "$HERE/build-screencheck.sh" "$RUN_TMP/fnaf-screencheck" >/dev/null
   adb push "$RUN_TMP/fnaf-screencheck" "$REMOTE_CHECKER" >/dev/null
@@ -464,7 +483,8 @@ sleep 1
 adb shell am start -n com.scottgames.fnaf2/.Main >/dev/null
 GAME_LAUNCHED=1
 sleep 7
-FOCUS=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
+FOCUS=$(adb shell dumpsys window 2>/dev/null |
+  grep -m1 'mCurrentFocus=.*com\.scottgames\.fnaf2' || true)
 case "$FOCUS" in
   *com.scottgames.fnaf2*) ;;
   *) echo "abort: game is not focused ($FOCUS)"; exit 1 ;;
@@ -489,7 +509,8 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 [ "$MAXDUR" -le 180 ] || MAXDUR=180
 
 # Positional coordinates keep this remote program literal and auditable.
-adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_CAPTURE_LOCK" \
+adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
+  "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
@@ -502,7 +523,9 @@ set -eu
 PIDFILE=$1; shift
 READYFILE=$1; shift
 STARTFILE=$1; shift
+EPOCHFILE=$1; shift
 CAPTURE_LOCK=$1; shift
+DEVICE_EPOCH_LATCH=$1; shift
 CYCLES=$1; shift
 PRESS_MODE=$1; shift
 HID_LEFT_SURVIVAL=$1; shift
@@ -598,7 +621,8 @@ cleanup_remote() {
   fi
   children=$(cat "/proc/$$/task/$$/children" 2>/dev/null || true)
   [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
-  rm -f "$PIDFILE" "$READYFILE" "$STARTFILE" "$CAPTURE_LOCK" "$PIDFILE.left.raw"
+  rm -f "$PIDFILE" "$READYFILE" "$STARTFILE" "$EPOCHFILE" \
+    "$CAPTURE_LOCK" "$PIDFILE.left.raw" "$PIDFILE.epoch.raw"
 }
 trap cleanup_remote EXIT
 trap 'exit 129' HUP
@@ -629,15 +653,98 @@ if [ "$HID_MODE" -eq 1 ]; then
 fi
 
 # Preload the slow virtual-device registration while the title screen is
-# harmless. The host starts the night only after InputReader is ready, then
-# creates STARTFILE as soon as it sees the office HUD.
+# harmless. In the legacy mode the host creates STARTFILE after its screenshot
+# gate. The phase experiment instead timestamps the first immutable device-side
+# frame whose top-right clock is present and never crosses USB to choose T0.
 : > "$READYFILE"
-while [ ! -e "$STARTFILE" ]; do
-  sleep 0.02
-done
-rm -f "$READYFILE" "$STARTFILE"
-
-T0=$(date +%s%3N)
+if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
+  [ "$CHECKER" != "-" ] || {
+    echo 'device epoch latch requires screencheck' >&2
+    exit 44
+  }
+  epoch_raw="$PIDFILE.epoch.raw"
+  epoch_deadline=$(( $(date +%s) + 45 ))
+  epoch_previous_clear=""
+  epoch_first_match=""
+  epoch_confirmations=0
+  epoch_attempts=0
+  while :; do
+    rm -f "$epoch_raw"
+    : > "$CAPTURE_LOCK"
+    screencap > "$epoch_raw" &
+    epoch_capture_pid=$!
+    while [ ! -s "$epoch_raw" ]; do
+      kill -0 "$epoch_capture_pid" 2>/dev/null || break
+      sleep 0.002
+    done
+    epoch_latch=$(date +%s%3N)
+    wait "$epoch_capture_pid" || {
+      rm -f "$CAPTURE_LOCK" "$epoch_raw"
+      echo 'device epoch screencap failed' >&2
+      exit 44
+    }
+    rm -f "$CAPTURE_LOCK"
+    epoch_attempts=$((epoch_attempts + 1))
+    epoch_clock=$("$CHECKER" match \
+      1960 20 2380 180 4 180 255 180 255 180 255 400 \
+      < "$epoch_raw" 2>/dev/null) || epoch_clock=error
+    epoch_flash_stats=$("$CHECKER" stats 95 40 260 95 4 \
+      < "$epoch_raw" 2>/dev/null) || epoch_flash_stats=error
+    epoch_flash_mean=${epoch_flash_stats#*mean_rgb=}
+    epoch_flash_mean=${epoch_flash_mean%%,*}
+    case "$epoch_flash_mean" in
+      ''|*[!0-9]*) epoch_detection=error ;;
+      *)
+        if [ "$epoch_clock" = match ] && [ "$epoch_flash_mean" -gt 90 ]; then
+          epoch_detection=match
+        else
+          epoch_detection=clear
+        fi
+        ;;
+    esac
+    case "$epoch_detection" in
+      match)
+        if [ "$epoch_confirmations" -eq 0 ]; then
+          epoch_first_match=$epoch_latch
+          epoch_confirmations=1
+          continue
+        fi
+        epoch_confirmations=$((epoch_confirmations + 1))
+        if [ -n "$epoch_previous_clear" ]; then
+          epoch_bracket=$((epoch_first_match - epoch_previous_clear))
+        else
+          epoch_bracket=-1
+        fi
+        T0=$epoch_first_match
+        epoch_confirmation_delay=$((epoch_latch - T0))
+        printf 'epoch_ms=%s previous_clear_ms=%s bracket_ms=%s confirmation_ms=%s confirmation_delay_ms=%s attempts=%s detector=clock+flash-2f\n' \
+          "$T0" "${epoch_previous_clear:--1}" "$epoch_bracket" "$epoch_latch" \
+          "$epoch_confirmation_delay" "$epoch_attempts" > "$EPOCHFILE"
+        break
+        ;;
+      clear)
+        epoch_previous_clear=$epoch_latch
+        epoch_first_match=""
+        epoch_confirmations=0
+        ;;
+      *)
+        echo "device epoch detector failed: $epoch_detection" >&2
+        exit 44
+        ;;
+    esac
+    [ "$(date +%s)" -lt "$epoch_deadline" ] || {
+      echo 'device epoch detector timed out waiting for the office clock' >&2
+      exit 44
+    }
+  done
+  rm -f "$epoch_raw" "$READYFILE"
+else
+  while [ ! -e "$STARTFILE" ]; do
+    sleep 0.02
+  done
+  rm -f "$READYFILE" "$STARTFILE"
+  T0=$(date +%s%3N)
+fi
 
 wait_until() {
   target=$((T0 + $1))
@@ -762,6 +869,20 @@ hid_sweep_at() {
   light_up_at   $((start + 340)) "$label-light-up"
 }
 
+device_sweep_at() {
+  sweep_start=$1; sweep_label=$2
+  # This is the shortest primitive with repeated complete phone traces. Keep
+  # each call wall-timed: sending all `delay` commands in one burst lets hid's
+  # Handler coalesce/reorder the intermediate reports. The 70 ms light settle,
+  # 100 ms contacts, 240 ms feed starts, and 790 ms total match the validated
+  # default HID path rather than the rejected 267/357/477/597 ms batches.
+  light_down_at "$sweep_start" "$sweep_label-light-down"
+  light_cam_at  $((sweep_start +  70)) "$CAM10_X" "$CAM10_Y" "$sweep_label-cam-10"
+  light_cam_at  $((sweep_start + 310)) "$CAM04_X" "$CAM04_Y" "$sweep_label-cam-04"
+  light_cam_at  $((sweep_start + 550)) "$CAM07_X" "$CAM07_Y" "$sweep_label-cam-07"
+  light_up_at   $((sweep_start + 790)) "$sweep_label-light-up"
+}
+
 classify_left_and_queue_mask_at() {
   offset=$1; label=$2
   wait_until "$offset"
@@ -803,83 +924,92 @@ classify_left_and_queue_mask_at() {
 }
 
 if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
-  # Experimental staging branch. The first-byte screencap readiness boundary
-  # has device evidence, but this 340 ms sweep/response table predates the
-  # compact phase-safe simulator policy and has not survived a complete night.
-  # Keep it separate from the slow BB_LEFT_CAPTURE calibration path below.
-  press_at    0 "$MUTE_X"    "$MUTE_Y"    mute
-  press_at  180 "$MONITOR_X" "$MONITOR_Y" monitor-up
-  press_at  460 "$CAM11_X"   "$CAM11_Y"   cam-11
-  hold_at   520 "$WIND_X"    "$WIND_Y"    5580 opening-wind
-  hid_sweep_at 6250 opening-late-sweep
+  # Bounded translation of the policy's pre-read cycles. The device-accepted
+  # 790 ms sweep invalidates the complete sparse policy in the exact model, so
+  # validation caps this branch before the first possible BB observation.
+  # DEVICE_EPOCH_LATCH still exercises the real scheduler-phase acquisition.
+  press_at          0 "$MUTE_X"    "$MUTE_Y"    mute
+  press_at        180 "$MONITOR_X" "$MONITOR_Y" monitor-up
+  press_at        460 "$CAM11_X"   "$CAM11_Y"   cam-11
+  hold_at         520 "$WIND_X"    "$WIND_Y"    5130 opening-wind
+  device_sweep_at 5700 opening-late-sweep
+  press_at      6540 "$CAM11_X"   "$CAM11_Y"   opening-cam-11
+  hold_at       6620 "$WIND_X"    "$WIND_Y"    120 opening-top-up
 
   cycle=0
+  left_safe_at=27000
   while [ "$cycle" -lt "$CYCLES" ]; do
     base=$((7000 + cycle * 5000))
-    press_at      "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
-    light_down_at $((base + 330)) left-view-light-down
-    # SurfaceFlinger's 300-370 ms acquisition runs in parallel with the vent's
-    # ~350 ms draw. Starting both together yields a fully drawn frame at the
-    # first-byte readiness boundary without paying those delays serially.
-    classify_left_and_queue_mask_at $((base + 380)) left-view
-
-    case "$classification" in
-      empty\ *) threat=0 ;;
-      *) threat=1 ;;
-    esac
-
-    if [ "$threat" -eq 1 ]; then
-      # Fail closed on BB, unknown, static, another occupant, or malformed
-      # output. The mask was already put on at +780 ms while classification
-      # finished; keep it through ticks +1..+5, recover Foxy/cameras, bank the
-      # box, and refresh once more just before the +10 s resync anchor.
-      printf '%6d ms  left-view threat; five-tick response\n' \
-        "$(( $(date +%s%3N) - T0 ))"
-      press_at    $((base + 5020)) "$MASK_X"    "$MASK_Y"    mask-off-after-bb
-      hold_at     $((base + 5280)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-after-bb
-      press_at    $((base + 5400)) "$MONITOR_X" "$MONITOR_Y" monitor-up-after-bb
-      hid_sweep_at $((base + 5650)) response-sweep
-      press_at    $((base + 6060)) "$CAM11_X"   "$CAM11_Y"   cam-11-after-bb
-      hold_at     $((base + 6180)) "$WIND_X"    "$WIND_Y"    3280 wind-after-bb
-      hid_sweep_at $((base + 9500)) response-late-sweep
-      cycle=$((cycle + 2))
+    if [ "$base" -lt "$left_safe_at" ]; then
+      press_at          "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down-idle
+      press_at   $((base + 400)) "$MASK_X"    "$MASK_Y"    mask-on-idle
+      press_at   $((base + 700)) "$MASK_X"    "$MASK_Y"    mask-off-idle
+      hold_at   $((base + 1100)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-idle
+      press_at  $((base + 1300)) "$MONITOR_X" "$MONITOR_Y" monitor-up-idle
+      press_at  $((base + 1620)) "$CAM11_X"   "$CAM11_Y"   cam-11-idle
+      hold_at   $((base + 1740)) "$WIND_X"    "$WIND_Y"    2460 wind-idle
+      device_sweep_at $((base + 4210)) idle-late-sweep
+      cycle=$((cycle + 1))
       continue
     fi
 
-    # Empty result: turn the prophylactic Golden-Freddy mask back off. Base
-    # the first office sequence on the actual classifier completion so a slow
-    # capture cannot make the hall press land inside the mask-off animation.
-    now=$(( $(date +%s%3N) - T0 ))
-    mask_off=$((base + 1000))
-    [ "$now" -lt "$mask_off" ] || mask_off=$((now + 20))
-    if [ $((mask_off + 780)) -ge $((base + 2680)) ]; then
-      # An implausibly late empty is safer as a false positive than as a cycle
-      # with no box wind. Keep the already-on mask and use the response path on
-      # the next loop iteration by finishing this one as a bounded abort.
-      echo "left classifier missed the normal-cycle deadline" >&2
-      exit 43
-    fi
-    press_at "$mask_off" "$MASK_X" "$MASK_Y" mask-off-empty
-    hold_at  $((mask_off + 280)) "$HALL_X" "$HALL_Y" 80 reset-foxy
-    press_at $((mask_off + 400)) "$MONITOR_X" "$MONITOR_Y" monitor-up
-    press_at $((mask_off + 640)) "$CAM11_X" "$CAM11_Y" cam-11
-    hold_at  $((mask_off + 760)) "$WIND_X" "$WIND_Y" \
-      $((base + 2680 - (mask_off + 760))) wind-a
+    # Validation above makes this unreachable. Keep the rejected response
+    # translation below as executable documentation for future re-optimization,
+    # but never let a phone trial cross the known simulator failure boundary.
 
-    # This second down/mask/hall beat covers the absolute five-second movement
-    # opportunity, clears a late Golden Freddy, and resets Foxy only ~1.3 s
-    # before the next possible BB response. Its final sweep is deliberately
-    # late enough to span that response's five mask ticks.
-    press_at     $((base + 2720)) "$MONITOR_X" "$MONITOR_Y" monitor-down-gate
-    press_at     $((base + 3100)) "$MASK_X"    "$MASK_Y"    gate-mask-on
-    press_at     $((base + 3450)) "$MASK_X"    "$MASK_Y"    gate-mask-off
-    hold_at      $((base + 3730)) "$HALL_X"    "$HALL_Y"    80 gate-reset-foxy
-    press_at     $((base + 3850)) "$MONITOR_X" "$MONITOR_Y" gate-monitor-up
-    hid_sweep_at $((base + 4070)) late-sweep
-    press_at     $((base + 4480)) "$CAM11_X"   "$CAM11_Y"   late-cam-11
-    hold_at      $((base + 4600)) "$WIND_X"    "$WIND_Y"    380 wind-b
-    cycle=$((cycle + 1))
+    # Clear Golden Freddy and reset Foxy before observing the battery-free left
+    # vent. Start screencap 100 ms after light-down; the observed first-byte
+    # readiness then lands at +1393..1467 ms while the fully drawn vent is held.
+    press_at          "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down-check
+    press_at   $((base + 383)) "$MASK_X"    "$MASK_Y"    precheck-mask-on
+    press_at   $((base + 600)) "$MASK_X"    "$MASK_Y"    precheck-mask-off
+    hold_at    $((base + 867)) "$HALL_X"    "$HALL_Y"    80 precheck-reset-foxy
+    light_down_at $((base + 983)) left-view-light-down
+    classify_left_and_queue_mask_at $((base + 1083)) left-view
+
+    case "$classification" in
+      empty\ *)
+        # The classifier completed under the prophylactic mask. Release it now,
+        # then use the simulator table's fixed wind and late sweep deadlines.
+        now=$(( $(date +%s%3N) - T0 ))
+        [ "$now" -lt $((base + 1950)) ] || {
+          echo 'left classifier missed the sparse empty deadline' >&2
+          exit 43
+        }
+        press_at   $((now + 17)) "$MASK_X"    "$MASK_Y"    mask-off-empty
+        press_at  $((base + 1983)) "$MONITOR_X" "$MONITOR_Y" monitor-up-empty
+        press_at  $((base + 2250)) "$CAM11_X"   "$CAM11_Y"   cam-11-empty
+        hold_at   $((base + 2333)) "$WIND_X"    "$WIND_Y"    1867 wind-empty
+        device_sweep_at $((base + 4210)) empty-late-sweep
+        cycle=$((cycle + 1))
+        ;;
+      bb\ *)
+        # A true positive keeps the already-on mask across the aligned five
+        # scheduler ticks. The prior late sweep and pre-read Foxy pulse cover
+        # the hold; two device sweeps would then restore the ten-second anchor.
+        printf '%6d ms  left-view BB; aligned five-tick response\n' \
+          "$(( $(date +%s%3N) - T0 ))"
+        press_at  $((base + 6020)) "$MASK_X"    "$MASK_Y"    mask-off-after-bb
+        hold_at   $((base + 6270)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-after-bb
+        press_at  $((base + 6270)) "$MONITOR_X" "$MONITOR_Y" monitor-up-after-bb
+        device_sweep_at $((base + 6470)) response-sweep
+        press_at  $((base + 7310)) "$CAM11_X"   "$CAM11_Y"   cam-11-after-bb
+        hold_at   $((base + 7390)) "$WIND_X"    "$WIND_Y"    1810 wind-after-bb
+        device_sweep_at $((base + 9210)) response-late-sweep
+        left_safe_at=$((base + 25000))
+        cycle=$((cycle + 2))
+        ;;
+      *)
+        # A false positive is not conservative here: the unnecessary six-second
+        # mask response kills Foxy in the exact Night 7 model. Stay masked and
+        # let host cleanup force-stop rather than translating unknown to BB.
+        echo "left classifier refused live branch: $classification" >&2
+        exit 42
+        ;;
+    esac
   done
+  final_anchor=$((7000 + cycle * 5000))
+  press_at $((final_anchor + 100)) "$CAM11_X" "$CAM11_Y" terminal-cam-11-for-trace
   sleep 1
   exit 0
 fi
@@ -1170,22 +1300,46 @@ for i in $(seq 1 200); do
   [ "$i" = 200 ] && { echo "abort: input driver readiness timed out" >&2; exit 1; }
 done
 
+if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
+  # Record the visual transition itself during phase trials. The detector is
+  # still entirely device-local; this recorder is evidence, not part of T0.
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
+  REC=$!
+  RECORDING_STARTED=1
+  sleep 0.5
+fi
+
 adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
 
 # Loading is variable. Start both the strategy clock and its diagnostic video
 # only after the office HUD is visible. Later screenshots are safety checks;
 # they never choose or retime an action.
-for i in $(seq 1 40); do
-  [ "$(state)" = "night" ] && break
-  sleep 1
-  [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
-done
+if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
+  for i in $(seq 1 500); do
+    adb shell "[ -s '$REMOTE_EPOCHFILE' ]" >/dev/null 2>&1 && break
+    kill -0 "$DRIVER_PID" 2>/dev/null || {
+      wait "$DRIVER_PID" || true
+      echo "abort: device epoch input driver exited before finding the office clock" >&2
+      exit 1
+    }
+    sleep 0.1
+    [ "$i" = 500 ] && { echo "abort: $NIGHT device epoch latch timed out"; exit 1; }
+  done
+  adb pull "$REMOTE_EPOCHFILE" "$LOCAL_EPOCH" >/dev/null
+  EPOCH_REPORT=$(tr -d '\r\n' < "$LOCAL_EPOCH")
+  echo "$NIGHT night device epoch: $EPOCH_REPORT"
+else
+  for i in $(seq 1 40); do
+    [ "$(state)" = "night" ] && break
+    sleep 1
+    [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
+  done
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
+  REC=$!
+  RECORDING_STARTED=1
+  adb shell "touch '$REMOTE_STARTFILE'"
+fi
 echo "$NIGHT night detected; starting timed Minus 7 interaction loop + $CYCLES cycles ($PRESS_MODE presses)"
-
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
-REC=$!
-RECORDING_STARTED=1
-adb shell "touch '$REMOTE_STARTFILE'"
 
 watch_night &
 WATCHDOG_PID=$!

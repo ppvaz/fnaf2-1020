@@ -53,6 +53,22 @@ game sounds”:
 The second question has the highest potential payoff and the highest safety
 burden. An incorrect early unmask is not an acceptable classifier error.
 
+The 2026-08-24 device run removes scheduler phase as the reason to build audio.
+Two consecutive device-local frames containing both the clock and flashlight
+meter acquired the HUD epoch, and the first `1 AM` transition landed 69,950 ms
+later against the source-derived 70,000 ms interval. A MediaProjection image
+stream can replace that screencap classifier if it preserves monotonic frame
+timestamps, but audio is no longer needed to establish the epoch.
+
+More importantly, phase acquisition did not promote the phase-windowed
+sparse-left route. The idealized 267 ms sweep survives only inside its narrow
+epoch window; the repeatable stock-HID primitive takes 790 ms, and modeling
+that measured actuator produced zero survivors in both ordinary and pinned
+worst-case Night 7 cohorts. A vocal onset may still corroborate the visual
+clock or arm an occasional visual CAM-05 check, but it cannot rescue that
+policy by itself. Reopen the phase use only after proving a faster actuator or
+a new exact-simulator policy built around the measured one.
+
 ## Facts the controller must not blur together
 
 The current Android source mapping says:
@@ -180,6 +196,10 @@ Audio is an observation, not permission to bypass defenses.
 
 - Track an uncertainty set for BB's possible route position using the known
   initial state, five-second opportunities, monitor state, and accepted cues.
+- Track scheduler phase separately from route position. The visual HUD latch
+  owns the current epoch estimate; a vocal may corroborate it only when its
+  measured onset/IPC latency leaves the entire confidence interval inside a
+  simulator-derived safe epoch window.
 - Let a strong vocal cue narrow that set or arm a visual check; do not invent
   the silent first hop.
 - Use a shared thud only as corroboration of a transition that controller state
@@ -191,6 +211,10 @@ Audio is an observation, not permission to bypass defenses.
   expiry, use the existing visual/full-duration behavior. Disable audio for the
   rest of the night after a capture-path failure rather than repeatedly
   restarting it mid-run.
+- Do not promote the phase-windowed sparse-left table on the stock-HID
+  actuator: it is simulator-rejected even with a known epoch. Any future table
+  still needs an unambiguous fresh epoch; an old/stale one is not a
+  conservative observation.
 - Never translate an unknown cue into “threat present” blindly. On Night 7,
   unnecessary mask time can itself be lethal through Foxy, so fallback must be
   the simulator-proven non-audio policy or a bounded visual check.
@@ -268,8 +292,8 @@ that does not excuse measuring the helper's CPU and scheduling cost.
 
 - Model each cue's onset, measured latency distribution, confusion matrix,
   missing-window probability, and control-channel timeout.
-- Test cue-assisted policy changes independently: approach scheduling first,
-  early departure last.
+- Test cue-assisted policy changes independently: CAM-05 check arming first,
+  scheduler-phase corroboration second, early departure last.
 - Include persistent/background false triggers and shared-thud ambiguity.
 - Run at least the repository's current 10,000 ordinary and 3,000 worst-case
   seed classes, plus targeted boundary sweeps around five-second movement,
@@ -281,6 +305,46 @@ that does not excuse measuring the helper's CPU and scheduling cost.
 remain safe on timeout/unknown. The simulator sets the detector error budget;
 do not choose a convenient accuracy target first and rationalize the policy
 around it.
+
+#### Perfect-vocal upper bound (2026-08-24)
+
+`tools/hidpilottest.mjs --night=7 --vocal-cam5` now counts the three sourced
+vocal events and arms the existing lit CAM-05 confirmation only after the third.
+It is an upper bound with zero capture latency and perfect cue delivery, not a
+detector claim:
+
+| Cohort | Survival | BB reads/night | Minimum power |
+|---|---:|---:|---:|
+| 3,000 ordinary | **3,000/3,000** | 25.0 | 218/3000 |
+| 1,000 pinned worst | **1,000/1,000** | 28.0 | 373/3000 |
+
+This halves the ordinary sparse-CAM-05 read count and makes the current 520 ms
+lit-read model fit, but its direct error budget is unacceptable. Forcing any
+one of vocals 1, 2, or 3 to be missed produced **0/1000** survival: the counted
+third cue never arrives, BB reaches the office, and Foxy collects. Prefixing one
+to three false vocal counts remained mechanically safe behind CAM-05 visual
+confirmation, but reduced the minimum power to 187, 125, and 94 frames. That is
+only a bounded false-positive diagnostic, not a false-positive-rate model.
+
+Therefore the pure counted-vocal controller is rejected for promotion. The
+useful architectures left are:
+
+- use a strongly accepted vocal to arm an occasional lit CAM-05 visual check,
+  while a timeout or ambiguity falls back to the explicitly modeled scan; or
+- maintain a route uncertainty set and fall back to visual scanning on any cue
+  ambiguity, with the resulting power cost tested from measured detector
+  errors; or
+- independently search for a unique, source-proven departure cue, whose early
+  unmask action remains behind the stricter gates above.
+
+Scheduler-phase audio is now diagnostic only. A working MediaProjection path
+is still valuable because the same approved session can provide lower-overhead
+visual observations and eligible playback PCM, but it supersedes the observer
+plumbing—not the actuator measurement or the simulator rejection.
+
+The next simulator iteration must ingest actual cue latency/error distributions;
+the perfect-event mode and forced single miss now provide the upper and lower
+regression anchors.
 
 ### 5. Shadow on the real device
 

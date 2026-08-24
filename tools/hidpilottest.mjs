@@ -21,26 +21,50 @@ const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
 class HidPilot {
   constructor(sim, { bbMode = 'left', cam5Light = true, phaseSafeMask = true,
                      alwaysThreat = false, sparseCam5 = false,
-                     cam5Hold = s(0.52) } = {}) {
+                     sparseLeft = false, cam5Hold = s(0.52),
+                     pilotOffset = 0, vocalCam5 = false, dropVocal = 0,
+                     vocalFalseCount = 0, deviceSweep = false,
+                     sweepSlotMs = 240 } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
     this.cam5Light = cam5Light;
     this.sparseCam5 = sparseCam5;
+    this.sparseLeft = sparseLeft;
+    this.vocalCam5 = vocalCam5;
+    this.deviceSweep = deviceSweep;
+    this.sweepSlotMs = sweepSlotMs;
+    this.sweepFrames = deviceSweep ? s((70 + 3 * sweepSlotMs) / 1000) : 16;
+    this.sweepOffsets = deviceSweep
+      ? [s(0.070), s((70 + sweepSlotMs) / 1000),
+        s((70 + 2 * sweepSlotMs) / 1000)]
+      : TARGET_OFFSETS.map(offset => s(offset));
     this.cam5Hold = cam5Hold;
+    this.epoch = pilotOffset;
     this.phaseSafeMask = phaseSafeMask;
     this.alwaysThreat = alwaysThreat;
     this.queue = [];
     this.mode = 'normal';
-    this.nextAnchor = s(7);
+    this.nextAnchor = this.epoch + s(7);
     // BB starts at CAM 10. Four successful five-second rolls are needed to
     // reach CAM 05, so a pre-boundary sensor cannot first be useful until the
     // fifth boundary at 25 s (the read itself completes at 24.7 s).
-    this.cam5SafeAt = sparseCam5 ? s(24.7) : 0;
+    this.cam5SafeAt = vocalCam5 ? Infinity
+      : sparseCam5 ? this.epoch + s(24.7) : 0;
+    // A perfect BB reaches the opening on the fifth five-second opportunity.
+    // The first five-second pilot anchor after that edge is 27 s. Unlike the
+    // CAM-05 bound, this sensor is the battery-free left vent light.
+    this.leftSafeAt = sparseLeft ? this.epoch + s(27) : 0;
     this.checks = 0;
     this.detections = 0;
     this.attacks = 0;
     this.missed = 0;
+    this.eventCursor = 0;
+    this.trueVocals = 0;
+    this.vocalsSeen = vocalFalseCount;
+    this.dropVocal = dropVocal;
+    this.audioMisses = 0;
+    if (vocalCam5 && this.vocalsSeen >= 3) this.cam5SafeAt = this.epoch;
     this.minBox = 1;
     this.opening();
   }
@@ -57,12 +81,16 @@ class HidPilot {
   }
 
   opening() {
-    this.tap(s(0.18), 'monitor');
-    this.tap(s(0.46), 'cam:11');
-    this.hold(s(0.52), s(5.58), 'wind');
+    const e = this.epoch;
+    this.tap(e + s(0.18), 'monitor');
+    this.tap(e + s(0.46), 'cam:11');
+    const openingSweep = this.deviceSweep
+      ? e + s(6.5) - this.sweepFrames : e + s(6.25);
+    const openingWindEnd = this.deviceSweep ? openingSweep - 1 : e + s(6.10);
+    this.hold(e + s(0.52), openingWindEnd - (e + s(0.52)), 'wind');
     // The left-opening cycle deliberately flashes late. Put the opening
     // sweep late as well so its stun cannot expire before cycle zero's sweep.
-    const end = this.flashTargets(s(6.25));
+    const end = this.flashTargets(openingSweep);
     this.tap(end + s(0.05), 'cam:11');
     this.hold(end + s(0.13), s(0.12), 'wind');
   }
@@ -74,10 +102,10 @@ class HidPilot {
     // previous 400-frame stuns expire after a phase-safe BB mask; CAM 07 stays
     // selected and parks the two Withereds on that choke while cameras are
     // down. 83 ms spans more than two 30 Hz Fusion polls on the phone.
-    this.hold(start, 16, 'light');
+    this.hold(start, this.sweepFrames, 'light');
     for (const [i, cam] of targets.entries())
-      this.tap(start + s(TARGET_OFFSETS[i]), `cam:${cam}`);
-    return start + 16;
+      this.tap(start + this.sweepOffsets[i], `cam:${cam}`);
+    return start + this.sweepFrames;
   }
 
   // Drop, clear a possible office Golden Freddy, reset Foxy, then raise.
@@ -94,7 +122,12 @@ class HidPilot {
 
   normal(a) {
     if (this.bbMode === 'left') {
-      this.leftNormal(a);
+      if (this.sparseLeft) {
+        if (a < this.leftSafeAt) this.leftIdle(a);
+        else this.sparseLeftNormal(a);
+      } else {
+        this.leftNormal(a);
+      }
       return;
     }
     this.normalFront(a);
@@ -107,6 +140,36 @@ class HidPilot {
       this.tap(a + s(2.12), 'cam:11');
       this.hold(a + s(2.20), s(2.75), 'wind');
     }
+  }
+
+  // Night 7's cheap steady cycle while BB provably cannot be in the opening.
+  // The sweep finishes on the next anchor, retaining the same five-second
+  // refresh cadence as the ordinary left route while maximizing box time.
+  leftIdle(a) {
+    const sweepStart = a + s(5) - this.sweepFrames;
+    this.tap(a, 'monitor');
+    this.tap(a + s(0.40), 'mask');
+    this.tap(a + s(0.70), 'mask');
+    this.hold(a + s(1.10), s(0.08), 'light');
+    this.tap(a + s(1.30), 'monitor');
+    this.tap(a + s(1.62), 'cam:11');
+    this.hold(a + s(1.74), sweepStart - 1 - (a + s(1.74)), 'wind');
+    this.flashTargets(sweepStart);
+  }
+
+  // Phase-windowed Night 7 candidate. Clear a possible office Golden Freddy
+  // and reset Foxy before paying for the free left-opening observation. The
+  // 28-frame vent hold exceeds the three observed immutable-buffer latches
+  // (360/434/431 ms from light-down) but remains a device promotion gate, not
+  // a claim that this exact table has run on the phone.
+  sparseLeftNormal(a) {
+    this.tap(a, 'monitor');
+    this.tap(a + 23, 'mask');
+    this.tap(a + 36, 'mask');
+    this.hold(a + 52, 5, 'light');
+    this.hold(a + 59, 28, 'ventL');
+    this.at(a + 86, 'left-snapshot', a);
+    this.tap(a + 88, 'mask');
   }
 
   // The selected Night 6 route. Lower first, then hold the free left vent
@@ -154,6 +217,18 @@ class HidPilot {
     this.flashTargets(a + s(4.733));
   }
 
+  // A negative sparse read rules out the opening at this instant. The monitor
+  // may stay up across the next movement opportunity: BB can at most move onto
+  // CAM 05 there, and the following sparse read catches a final hop.
+  sparseLeftClear(a, resultAt) {
+    const sweepStart = a + s(5) - this.sweepFrames;
+    this.tap(resultAt + 1, 'mask');
+    this.tap(a + 119, 'monitor');
+    this.tap(a + 135, 'cam:11');
+    this.hold(a + 140, sweepStart - 1 - (a + 140), 'wind');
+    this.flashTargets(sweepStart);
+  }
+
   // A positive left-opening frame was captured before the prophylactic mask.
   // Keep that same mask down through ticks +1..+5. The late hall beat in the
   // previous cycle makes Foxy's +3 s roll safe; the previous late camera
@@ -175,14 +250,38 @@ class HidPilot {
     this.nextAnchor = a + s(10);
   }
 
+  // The pre-read hall pulse makes the aligned five-tick hold affordable on
+  // Night 7. This is deliberately phase-windowed: extending the mask by the
+  // one-second phase-independent margin lets the previous camera stuns expire.
+  // `--pilot-offset-ms` prices that dependency against the game's scheduler.
+  sparseLeftAttack(a) {
+    this.attacks++;
+    const lateSweepStart = a + s(10) - this.sweepFrames;
+    const off = a + s(6.02);
+    this.tap(off, 'mask');
+    this.hold(off + s(0.25), s(0.08), 'light');
+    this.tap(off + s(0.25), 'monitor');
+    const end = this.flashTargets(off + s(0.45));
+    this.tap(end + s(0.05), 'cam:11');
+    const windEnd = this.deviceSweep ? lateSweepStart - 1 : a + s(9.46);
+    this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
+    this.flashTargets(lateSweepStart);
+    // BB can leave on the first masked scheduler tick. Twenty-five seconds
+    // from this anchor is therefore the conservative next useful read.
+    this.leftSafeAt = a + s(25);
+    this.nextAnchor = a + s(10);
+  }
+
   onLeftResult(sample) {
     if (!sample.bb) {
       if (sample.inside) this.missed++;
-      this.leftClear(sample.a, this.sim.frame);
+      if (this.sparseLeft) this.sparseLeftClear(sample.a, this.sim.frame);
+      else this.leftClear(sample.a, this.sim.frame);
       return;
     }
     this.detections++;
-    this.leftAttack(sample.a);
+    if (this.sparseLeft) this.sparseLeftAttack(sample.a);
+    else this.leftAttack(sample.a);
   }
 
   // BB has already been seen on CAM 05. Refresh the normal defences, lower
@@ -230,7 +329,8 @@ class HidPilot {
     // In sparse mode, resume just before the fifth following movement
     // boundary: four successful rolls may have put him back on CAM 05, but a
     // final hop cannot have occurred yet.
-    this.cam5SafeAt = this.sparseCam5 ? a + s(22.7) : a + s(10);
+    this.cam5SafeAt = this.vocalCam5 ? Infinity
+      : this.sparseCam5 ? a + s(22.7) : a + s(10);
     this.mode = 'normal';
     this.nextAnchor = a + s(10);
   }
@@ -282,8 +382,36 @@ class HidPilot {
     this.nextAnchor = a + s(5);
   }
 
+  // Perfect-cue upper bound for plan 08. The third sourced vocal means BB has
+  // just reached CAM 05, so the next pre-boundary visual read can confirm him
+  // once instead of scanning every possible movement boundary. `dropVocal`
+  // deliberately removes one true vocal per approach to expose the policy's
+  // false-negative tolerance; it is not a detector model.
+  processAudioEvents() {
+    if (!this.vocalCam5) return;
+    while (this.eventCursor < this.sim.events.length) {
+      const event = this.sim.events[this.eventCursor++];
+      if (event.type === 'laugh') {
+        this.trueVocals++;
+        if (this.dropVocal === this.trueVocals) {
+          this.audioMisses++;
+          continue;
+        }
+        this.vocalsSeen++;
+        if (this.vocalsSeen >= 3)
+          this.cam5SafeAt = Math.min(this.cam5SafeAt, this.sim.frame);
+      } else if (event.type === 'vent-bang' && event.data?.who === 'bb' &&
+                 event.data.leaving) {
+        this.trueVocals = 0;
+        this.vocalsSeen = 0;
+        this.cam5SafeAt = Infinity;
+      }
+    }
+  }
+
   step() {
     const f = this.sim.frame;
+    this.processAudioEvents();
     if (f === this.nextAnchor) this.scheduleAnchor(f);
     while (this.queue.length && this.queue[0][0] <= f) {
       const [, kind, act] = this.queue.shift();
@@ -309,25 +437,67 @@ export function run(opts = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const n = +(process.argv[2] || 500);
-  const worst = process.argv.includes('--worst');
-  const sparseCam5 = process.argv.includes('--sparse-cam5');
-  const bbMode = process.argv.includes('--cam5') || sparseCam5 ? 'cam5'
-    : (process.argv.includes('--no-bb') || process.argv.includes('--no-cam5')) ? 'none'
+  const cliArgs = process.argv.slice(2);
+  const n = cliArgs[0] && !cliArgs[0].startsWith('--') ? +cliArgs.shift() : 500;
+  const exactArgs = new Set(['--worst', '--sparse-cam5', '--sparse-left',
+    '--vocal-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
+    '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
+    '--assert', '--assert-rejected']);
+  const valuedArgs = ['--sweep-slot-ms=', '--cam5-light-ms=',
+    '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=', '--night='];
+  const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
+    !valuedArgs.some(prefix => arg.startsWith(prefix)));
+  if (unknownArgs.length) throw new Error(`unknown argument: ${unknownArgs.join(', ')}`);
+  const worst = cliArgs.includes('--worst');
+  const sparseCam5 = cliArgs.includes('--sparse-cam5');
+  const sparseLeft = cliArgs.includes('--sparse-left');
+  const vocalCam5 = cliArgs.includes('--vocal-cam5');
+  const sweepSlotArg = (cliArgs.find(v => v.startsWith('--sweep-slot-ms=')) || '').split('=')[1];
+  const deviceSweep = cliArgs.includes('--device-sweep') || Boolean(sweepSlotArg);
+  const sweepSlotMs = sweepSlotArg ? +sweepSlotArg : 240;
+  const bbMode = cliArgs.includes('--cam5') || sparseCam5 || vocalCam5 ? 'cam5'
+    : (cliArgs.includes('--no-bb') || cliArgs.includes('--no-cam5')) ? 'none'
       : 'left';
-  const cam5Light = !process.argv.includes('--hypothetical-unlit');
-  const cam5MsArg = (process.argv.find(v => v.startsWith('--cam5-light-ms=')) || '').split('=')[1];
+  const cam5Light = !cliArgs.includes('--hypothetical-unlit');
+  const cam5MsArg = (cliArgs.find(v => v.startsWith('--cam5-light-ms=')) || '').split('=')[1];
   const cam5Hold = cam5MsArg ? s(+cam5MsArg / 1000) : s(0.52);
-  const phaseSafeMask = !process.argv.includes('--tick-aligned-mask');
-  const alwaysThreat = process.argv.includes('--always-threat');
-  const nightArg = (process.argv.find(v => v.startsWith('--night=')) || '').split('=')[1];
+  const offsetMsArg = (cliArgs.find(v => v.startsWith('--pilot-offset-ms=')) || '').split('=')[1];
+  const pilotOffset = offsetMsArg ? s(+offsetMsArg / 1000) : 0;
+  const dropVocalArg = (cliArgs.find(v => v.startsWith('--drop-vocal=')) || '').split('=')[1];
+  const dropVocal = dropVocalArg ? +dropVocalArg : 0;
+  const falseVocalArg = (cliArgs.find(v => v.startsWith('--vocal-false-count=')) || '').split('=')[1];
+  const vocalFalseCount = falseVocalArg ? +falseVocalArg : 0;
+  const phaseSafeMask = !cliArgs.includes('--tick-aligned-mask');
+  const alwaysThreat = cliArgs.includes('--always-threat');
+  const assertSurvival = cliArgs.includes('--assert');
+  const assertRejected = cliArgs.includes('--assert-rejected');
+  const nightArg = (cliArgs.find(v => v.startsWith('--night=')) || '').split('=')[1];
   const night = nightArg ? +nightArg : 6;
+  if (!Number.isInteger(n) || n <= 0 || !Number.isFinite(pilotOffset) || pilotOffset < 0 ||
+      !Number.isFinite(sweepSlotMs) || sweepSlotMs < 100 || sweepSlotMs > 500 ||
+      !Number.isFinite(cam5Hold) || cam5Hold < 0)
+    throw new Error('runs and timing controls must be finite and in their documented ranges');
+  if (![0, 1, 2, 3].includes(dropVocal) || ![0, 1, 2, 3].includes(vocalFalseCount))
+    throw new Error('--drop-vocal and --vocal-false-count must be integers from 0 to 3');
+  if ([sparseLeft, sparseCam5, vocalCam5].filter(Boolean).length > 1)
+    throw new Error('--sparse-left, --sparse-cam5, and --vocal-cam5 are exclusive');
+  if (sparseLeft && bbMode !== 'left')
+    throw new Error('--sparse-left cannot be combined with a CAM-05 or no-BB mode');
+  if (deviceSweep && !sparseLeft)
+    throw new Error('--device-sweep requires --sparse-left');
+  if (!vocalCam5 && (dropVocal || vocalFalseCount))
+    throw new Error('vocal error controls require --vocal-cam5');
+  if (assertSurvival && assertRejected)
+    throw new Error('--assert and --assert-rejected are exclusive');
+  if (assertRejected && !deviceSweep)
+    throw new Error('--assert-rejected requires a device sweep profile');
   let wins = 0, minBox = 1, minPower = Infinity, checks = 0, detections = 0;
-  let attacks = 0, missed = 0;
+  let attacks = 0, missed = 0, audioMisses = 0;
   const fails = {};
   for (let i = 0; i < n; i++) {
-    const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, cam5Hold,
-      phaseSafeMask, alwaysThreat,
+    const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
+      vocalCam5, dropVocal, vocalFalseCount, cam5Hold, pilotOffset,
+      phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
@@ -335,21 +505,28 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     detections += bot.detections;
     attacks += bot.attacks;
     missed += bot.missed;
+    audioMisses += bot.audioMisses;
     if (sim.won) wins++;
     else {
       const key = `${sim.death.reason}: ${sim.death.detail}`;
       fails[key] = (fails[key] || 0) + 1;
     }
   }
-  const mode = bbMode === 'left' ? 'lit left-opening detection'
-    : bbMode === 'cam5' ? `${sparseCam5 ? 'sparse phase-aligned ' : ''}CAM 05 tracking ` +
+  const mode = bbMode === 'left' ?
+      `${sparseLeft ? 'sparse phase-windowed ' : ''}lit left-opening detection`
+    : bbMode === 'cam5' ? `${vocalCam5 ? 'third-vocal-armed ' :
+        sparseCam5 ? 'sparse phase-aligned ' : ''}CAM 05 tracking ` +
         `(${cam5Light ? `${cam5Hold}f lit` : 'unlit'})`
       : 'blind cycle';
   console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${mode}` +
-    `, ${phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask` +
+    `, ${sparseLeft ? `${pilotOffset}f pilot offset${deviceSweep ? `, ${sweepSlotMs}ms device feed slots` : ''}` :
+      `${phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask`}` +
     (worst ? ' (worst luck)' : ''));
   for (const [key, count] of Object.entries(fails).sort((a, b) => b[1] - a[1]))
     console.log(`  ${count}x  ${key}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower} | ` +
-    `${checks} BB reads, ${detections} detections, ${attacks} attacks, ${missed} missed states`);
+    `${checks} BB reads, ${detections} detections, ${attacks} attacks, ${missed} missed states` +
+    (vocalCam5 ? `, ${audioMisses} forced vocal misses` : ''));
+  if (assertSurvival && (wins !== n || missed !== 0)) process.exitCode = 1;
+  if (assertRejected && wins !== 0) process.exitCode = 1;
 }

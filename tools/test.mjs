@@ -42,6 +42,16 @@ const ENGINE = [
   ['pilottest', ['pilottest.mjs', '200', '--vent', '--sync', '--assert']],
   ['pilottest --worst', ['pilottest.mjs', '100', '--vent', '--sync', '--worst', '--assert']],
   ['pilottest --guard', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync', '--assert-guard']],
+  // The sparse-left Night 7 candidate is an aligned simulator contract, not a
+  // device clear. Its explicit pilot offset keeps the phase dependency visible.
+  ['hidpilot sparse-left', ['hidpilottest.mjs', '500', '--night=7', '--sparse-left', '--assert']],
+  ['hidpilot sparse worst', ['hidpilottest.mjs', '200', '--night=7', '--sparse-left', '--worst', '--assert']],
+  // The phone-accepted 790 ms sweep invalidates that idealized table. Preserve
+  // the rejection until a different policy is consciously modeled and proven.
+  ['hidpilot device reject', ['hidpilottest.mjs', '200', '--night=7', '--sparse-left', '--device-sweep', '--assert-rejected']],
+  // Perfect sourced events only: this guards the visual policy upper bound,
+  // while plan 08's forced-miss report explicitly rejects promotion as-is.
+  ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],
 ];
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],

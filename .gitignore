@@ -1,4 +1,7 @@
 dist/
 captures/
+.DS_Store
 /tools/device/fnaf-screencheck
 __pycache__/
+/android/cue-helper/build/
+/android/cue-helper/debug.keystore

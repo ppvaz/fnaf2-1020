@@ -39,11 +39,11 @@ Night 6 runs, with no missed BB state, a minimum 56% box, and a compact 267 ms
 three-camera sweep. Its all-threat negative control fails, so the classifier
 cannot safely fail closed on every cycle.
 
-The device runner's `HID_LEFT_SURVIVAL=1` branch is still an **experimental
-staging controller**, not that finished policy. It proves the capture boundary
-described below, but retains an older 340 ms sweep and a tick-aligned BB
-response. It must be retimed to match the phase-safe simulator and exercise a
-real positive BB response before any full-night attempt.
+The 267 ms sweep in that result is an **idealized simulator actuator**, not a
+phone result. Device trials below now prove that this distinction is
+load-bearing. `HID_LEFT_SURVIVAL=1` is consequently capped at four pre-read
+epoch/sweep-probe cycles; it cannot reach a BB decision or be used for a
+full-night attempt.
 
 ## Night 7 sparse CAM 05 probe
 
@@ -76,6 +76,82 @@ about 350 ms merely to draw a visibly lit vent, before screencap readiness, so
 controller claim. Sparse CAM 05 becomes viable only if an on-device immutable-
 buffer test proves that acquisition bound with margin, or the base flashlight
 cycle is made cheaper. Music-box time is not the limiting resource here.
+
+### Cheaper phase-windowed left-opening candidate
+
+CAM 05 is not the architecture floor. A sparse left-opening controller can use
+the battery-free vent light, provided it controls the scheduler phase tightly:
+
+1. Wait until BB can first have reached the opening.
+2. Lower, clear a possible office Golden Freddy, and reset Foxy.
+3. Acquire the free lit-left frame, then put on the prophylactic mask while the
+   classifier finishes.
+4. On an empty result, wind and land the normal late three-camera sweep. On BB,
+   retain that mask through the aligned five ticks and recover before the prior
+   camera stuns expire.
+
+`tools/hidpilottest.mjs --night=7 --sparse-left` makes the dependency explicit.
+At zero pilot offset it survived **10000/10000 ordinary and 3000/3000 pinned-
+worst** nights with no missed BB state, a minimum 57% box, and **1257/3000**
+flashlight frames remaining. A 340 ms offset survived another **1000/1000**;
+345 ms survived only **1/1000**, overwhelmingly failing to Foxy. The useful
+epoch window is therefore bounded between those measurements, not described as
+generic timing tolerance.
+
+That is a useful architecture upper bound, but it is **rejected for the stock
+HID phone pilot**. Two independent device gates were measured rather than
+inferred.
+
+#### Scheduler phase: acquired
+
+`DEVICE_EPOCH_LATCH=1` now detects the first immutable frame containing both
+the top-right clock and full top-left flashlight meter entirely on-device. It
+requires the signature on two consecutive frames but preserves the first
+matching timestamp as T0. The two-part predicate matters: the first clock-only
+version falsely triggered once on the bright title animation after four
+captures, and the night watchdog correctly aborted it.
+
+The confirmed detector produced last-clear → first-HUD brackets of **252, 312,
+331, and 305 ms**. The asymmetric simulator phase sweep tolerates delayed T0
+through about 340 ms but almost no early T0, so the conservative first-positive
+edge is correct; midpoint interpolation is not. A 94-second recorded trial put
+1 AM **69,950 ms** after the first office HUD, within the analyzer's 50 ms
+resolution of the sourced 70,000 ms hour edge. `tools/device/clocktrace.mjs`
+turns that relationship into an assertion.
+
+MediaProjection can tighten this observation and replace the screencap loop,
+but scheduler phase is no longer the unresolved blocker. Any replacement must
+retain the originating image timestamp and the two-part false-positive gate.
+
+#### Camera actuator: rejected
+
+The ideal table needs CAM 10, CAM 04, and CAM 07 inside a 267 ms lit sweep.
+Phone recordings rejected batched 267, 357, 477, and 597 ms gestures: early
+forms rendered only CAM 07, wider forms accepted inconsistent subsets, and a
+burst of `hid delay` commands did not behave as a cumulative macro. The
+shortest repeatedly proven primitive remains wall-timed: 70 ms light settle,
+100 ms contacts starting 240 ms apart, and **790 ms total**. A corrected staging
+recording showed **2/2 complete 10 → 04 → 07 → 11 traces**.
+
+`tools/hidpilottest.mjs --night=7 --sparse-left --device-sweep` models that
+exact 70/240/240/240 ms device profile, shifts the late sweeps earlier, prevents
+wind/contact overlap, and prices the later BB recovery. It survived **0/3,000
+ordinary and 0/1,000 pinned-worst** nights; Golden Freddy, inside-office, and
+Foxy failures show that the longer sweep destroys the stun bridge rather than
+merely costing box time. `--assert-rejected` preserves this negative contract.
+
+Therefore MediaProjection alone does not promote sparse-left: it improves the
+observer, while the disproven component is now the actuator/policy combination.
+The branch reopens only with a separately verified faster camera actuator or a
+new exact-simulator policy built around the 790 ms sweep.
+
+The perfect-vocal comparison is useful but not a fallback by itself. Counting
+three source events before enabling the 520 ms CAM-05 path survived 3000
+ordinary and 1000 worst-luck simulations, leaving at least 218 and 373 power
+frames respectively. Forcing any single counted vocal to be missed made the
+same policy survive 0/1000. Plan 08 therefore retains vocals as an occasional
+visual-check arm or measured research signal, not as the now-unneeded primary
+phase source and not as an audio-only route counter.
 
 ### Screencap readiness is observable
 
