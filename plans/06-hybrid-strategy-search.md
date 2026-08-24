@@ -124,7 +124,7 @@ FNaF 1 references:
   Mangle, not the Toys. Camera-hybrid searches can treat the flash stall as
   Android-sourced again, but should wait for the character-identity re-audit
   of routes/endgame bindings before promoting new candidates; see
-  [`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md).
+  [`ANDROID-CAMERA-STALL.md`](../docs/android/ANDROID-CAMERA-STALL.md).
 - Toy Bonnie's special CAM 06 → blind-spot timer remains the first gate for Minus
   Right, just as it is for Six-Seven.
 - The engine's post-chokepoint routes, blackout forcing and vent departures are

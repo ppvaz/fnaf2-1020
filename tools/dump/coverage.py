@@ -127,7 +127,7 @@ def main():
     opts = parser.parse_args()
 
     if not os.path.exists(opts.dump):
-        sys.exit('no dump at %s -- see SOURCE-DUMP-GUIDE.md' % opts.dump)
+        sys.exit('no dump at %s -- see docs/android/SOURCE-DUMP-GUIDE.md' % opts.dump)
     dump = Dump(opts.dump)
     frame = dump.frames[opts.frame]
     cited = cited_groups()

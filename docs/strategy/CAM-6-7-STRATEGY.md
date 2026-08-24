@@ -145,7 +145,7 @@ Before building a trainer mode:
    then its honest label is **sim-derived experiment**.
 
 Further derivation beyond full camera covers is tracked in
-[`plans/06-hybrid-strategy-search.md`](plans/06-hybrid-strategy-search.md). Its first
+[`plans/06-hybrid-strategy-search.md`](../../plans/06-hybrid-strategy-search.md). Its first
 gate-aware pass is now complete: CAM 06-only “Minus Right” scored 0/150, CAM 06+07
 as a reactive hybrid also scored 0/150, and the full post-mortem is in
 [`GATE-SEARCH.md`](GATE-SEARCH.md).

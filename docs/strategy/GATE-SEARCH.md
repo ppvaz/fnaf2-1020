@@ -11,8 +11,8 @@
 >
 > **Platform scope:** modern Android release 7 is the canonical target. Exact
 > source evidence is in
-> [`ANDROID-OFFICE-ENDGAME.md`](ANDROID-OFFICE-ENDGAME.md); remaining gaps are in
-> [`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md).
+> [`ANDROID-OFFICE-ENDGAME.md`](../android/ANDROID-OFFICE-ENDGAME.md); remaining gaps are in
+> [`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md).
 
 ## What was searched
 

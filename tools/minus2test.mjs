@@ -23,7 +23,7 @@
 // the sourced consecutive-mask counters, so Toy Chica's five-tick clear
 // cannot finish before her five-second opening timer arms, and the next
 // monitor raise admits her to marker 123. Adding flash depth to fix that
-// re-derives Minus 7's {4,7,10} cut set. See MINUS-3-STRATEGY.md §7.
+// re-derives Minus 7's {4,7,10} cut set. See docs/strategy/MINUS-3-STRATEGY.md §7.
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';

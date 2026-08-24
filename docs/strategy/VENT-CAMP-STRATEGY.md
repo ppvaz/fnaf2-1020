@@ -87,7 +87,7 @@ The published strategy and its 104–1 bot result target PC. This project target
 modern Android instead, so RVC is treated as a **policy hypothesis**, not a porting
 contract: retain the useful clock/branch structure, then source every depended-on
 mechanic from Android. The live work is tracked in
-[`ANDROID-SOURCE-STATUS.md`](ANDROID-SOURCE-STATUS.md). The historical PC odds are
+[`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md). The historical PC odds are
 not a target for this simulator.
 
 The 2024 strategy is far more clock-anchored than plan 03 assumed — a fixed cycle

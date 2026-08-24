@@ -253,7 +253,7 @@ def main():
     args = parser.parse_args()
     path = Path(args.path)
     if not path.exists():
-        raise SystemExit(f"no event sheet at {path} -- see SOURCE-DUMP-GUIDE.md")
+        raise SystemExit(f"no event sheet at {path} -- see docs/android/SOURCE-DUMP-GUIDE.md")
 
     nights = build(parse(path, args.xor))
     if args.json:

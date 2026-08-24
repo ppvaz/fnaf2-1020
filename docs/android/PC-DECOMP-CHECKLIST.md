@@ -44,7 +44,7 @@ nearly every P0/P1 mechanic below: movement scheduling and routes, camera
 stalls and mappings, office gates/queue, BB/Toy Bonnie/Foxy/Golden Freddy,
 mask and panel timing, music box, battery, lights, and sound events. Its `#AI`
 conditions are visibly spliced into ordinary input groups; see
-[`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md).
+[`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md).
 
 No checklist box is checked from that artifact alone. Its base PC version is
 not independently established and relevant events may be modified. Because

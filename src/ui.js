@@ -225,7 +225,7 @@ export class UI {
 
     // A masked player has no other move: hide every control but MASK while it
     // is on (or going on), so the trainer never invites an input the game
-    // discards. See ANDROID-SOURCE-STATUS.md, "the mask kills every office
+    // discards. See docs/android/ANDROID-SOURCE-STATUS.md, "the mask kills every office
     // light".
     if (sim.maskOn !== this.lastMaskOn) {
       this.lastMaskOn = sim.maskOn;

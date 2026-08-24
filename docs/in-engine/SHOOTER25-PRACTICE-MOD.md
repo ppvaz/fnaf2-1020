@@ -82,7 +82,7 @@ the underlying character routes, scheduler, office queue, Foxy, music box,
 battery, animations, and sound events.
 
 That means the artifact contains enough material to *locate* almost every item
-in [`PC-DECOMP-CHECKLIST.md`](PC-DECOMP-CHECKLIST.md). It cannot by itself make
+in [`PC-DECOMP-CHECKLIST.md`](../android/PC-DECOMP-CHECKLIST.md). It cannot by itself make
 those items stock-PC-confirmed: the base version has not been independently
 established and any relevant event may have been modified. This project now
 uses Android as its mechanics source of truth anyway, so the practical use of

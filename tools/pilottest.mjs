@@ -93,7 +93,7 @@ const RESPONSE = [
   // Ends with the monitor up, which is what the normal cycle expects.
 ];
 
-// Markiplier's eviction (MINUS-7-STRATEGY.md 9.3): spend the sourced
+// Markiplier's eviction (docs/strategy/MINUS-7-STRATEGY.md 9.3): spend the sourced
 // 100*night frames of hall light -- 11.67 s on night 7 -- in segments shorter
 // than the 400-frame camera stun, so Foxy retreats to Parts & Service without
 // the stall sweep ever lapsing. Each cams-down segment also latches Balloon

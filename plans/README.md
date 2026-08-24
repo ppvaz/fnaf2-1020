@@ -33,7 +33,7 @@ Current triage (2026-08-20):
 6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — first gate-aware
    pass complete: Minus Right, monitor denial and 125 clock-phased combinations all
    fail after the sourced per-unit Withered endgames are modeled. See
-   [`GATE-SEARCH.md`](../GATE-SEARCH.md).
+   [`GATE-SEARCH.md`](../docs/strategy/GATE-SEARCH.md).
 7. [07-tooling-consolidation.md](07-tooling-consolidation.md) — queued tooling
    correctness fixes and consolidation opportunities found by the 2026-08-23
    all-tools audit; take the contract fixes first and refactor opportunistically.

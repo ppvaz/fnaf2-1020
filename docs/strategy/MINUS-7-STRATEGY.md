@@ -17,7 +17,7 @@
 > sweep on a Withered's room keeps holding them monitor-down. No stun works
 > while viewing a group's home camera (8 for Withereds, 9 for Toys, 11 for
 > Mangle) — irrelevant to the 4-7-10 loop, which never flashes those. Details:
-> [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md).
+> [`ANDROID-CAMERA-STALL.md`](../android/ANDROID-CAMERA-STALL.md).
 >
 > **Created by:** Niko Frost, 13 December 2023 (~220 attempts to land the first completion).
 >

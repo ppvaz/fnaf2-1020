@@ -4,7 +4,7 @@
 // Values marked [SOURCED] come from either attributed community PC reverse
 // engineering or the owned Android event-sheet extraction; the nearby comment
 // must say which. Android is canonical; gaps are tracked in
-// ANDROID-SOURCE-STATUS.md. PC parity work is deferred.
+// docs/android/ANDROID-SOURCE-STATUS.md. PC parity work is deferred.
 // Values marked [MODEL] retain a useful community behavior that the Android
 // extraction has not confirmed (or currently contradicts).
 // Values marked [CALIBRATED] are not published numbers;
@@ -17,7 +17,7 @@
 // came from event constants and are unaffected. Identity-derived rules
 // (which character owns which route/gate/endgame branch) are being re-audited
 // against the corrected dump; entries verified post-XOR say so in their
-// comment. See ANDROID-CAMERA-STALL.md.
+// comment. See docs/android/ANDROID-CAMERA-STALL.md.
 // ---------------------------------------------------------------------------
 
 export const FPS = 60;
@@ -39,7 +39,7 @@ export const HOUR_FRAMES = s(70);     // 1:10 per in-game hour [SOURCED]
 // allowed` = 0"). That was the pre-XOR handle scramble: the runtime XORs
 // every object handle with 28 (COI.loadHeader), so expression handle 152 is
 // really the counter stored as 132 — `stun time` = 400. See
-// ANDROID-CAMERA-STALL.md.
+// docs/android/ANDROID-CAMERA-STALL.md.
 export const STUN_FRAMES = 400;
 export const MO_FRAMES = s(5);        // movement opportunity every 5s [SOURCED]
 export const BLACKOUT_FRAMES = s(5);  // [SOURCED]
@@ -421,7 +421,7 @@ export const WITHEREDS = new Set(['withchica', 'withbonnie', 'withfreddy']);
 // without moving the marker (group 262), so the Withered hold persists
 // monitor-down on the last-selected camera ("parking").
 // (The pre-XOR audit had this set exactly inverted: Toys instead of
-// Withereds. See ANDROID-CAMERA-STALL.md.)
+// Withereds. See docs/android/ANDROID-CAMERA-STALL.md.)
 export const SELECTED_CAMERA_GATED = new Set(['withfreddy', 'withbonnie', 'withchica', 'mangle']);
 
 // --- The routine the trainer teaches ---------------------------------------

@@ -255,7 +255,7 @@ The split, in one place:
     (`dump_events.py` now takes K as an argument); CTFAK needs the same
     remap before FTDecompile name assignment.
 - **Artifact today:** runtime proof chain + pair table in
-  [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md); fixed dumper in
+  [`ANDROID-CAMERA-STALL.md`](docs/android/ANDROID-CAMERA-STALL.md); fixed dumper in
   `~/fnaf-apks/dump_events.py`; regenerated true-name dump
   (`~/fnaf-apks/fnaf2/events/`, pre-fix copy preserved alongside).
 - **Disposition:** CTFAK upstream issue with patch (or fork branch per entry
@@ -276,9 +276,9 @@ The split, in one place:
   It also gives this project a clean architecture boundary: fixed Minus 7 uses
   an open-loop clock plus post-run classification; reactive stock-game policies
   use live CV; a personal instrumented build may instead read direct state.
-- **Artifact today:** [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md)
+- **Artifact today:** [`SHOOTER25-PRACTICE-MOD.md`](docs/in-engine/SHOOTER25-PRACTICE-MOD.md)
   and the derived controller/actuator ledger in
-  [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md).
+  [`SHOOTER25-BOT-STATE-MACHINE.md`](docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md).
   The downloaded executable, 223 MB MFA, and 8,182-line raw event dump remain
   temporary and uncommitted.
 - **Disposition:** derived-knowledge writeup only. Do not publish the binary,
@@ -305,7 +305,7 @@ The split, in one place:
     ACE encoding `(objectType, num, objectInfo, typed-params)`, which is *why* the
     bridge is unnecessary.
 - **Artifact today:** plan + phased build in
-  [`IN-ENGINE-PILOT-RECOMPILE.md`](IN-ENGINE-PILOT-RECOMPILE.md); working arm64
+  [`IN-ENGINE-PILOT-RECOMPILE.md`](docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md); working arm64
   Chowdren build recipe + logs in the session scratchpad. The one-line Cython fix and
   the arm64/Docker recipe are the upstreamable bits.
 - **Disposition:** fold the Cython fix + arm64 recipe into Pedro's mmfparser/Chowdren
@@ -325,7 +325,7 @@ The split, in one place:
   the extracted CCN** (entry 10), which never touches the signed binary. Derived
   knowledge only — no assets, no bypass tooling published.
 - **Artifact today:** recorded in
-  [`IN-ENGINE-PILOT-RECOMPILE.md`](IN-ENGINE-PILOT-RECOMPILE.md) (Route A).
+  [`IN-ENGINE-PILOT-RECOMPILE.md`](docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md) (Route A).
 - **Disposition:** short community/wiki note alongside entry 6's mobile-build
   divergences; affects every recent PAIRIP-wrapped Clickteam Android title, not just
   FNaF.

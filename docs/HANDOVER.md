@@ -2,7 +2,7 @@
 
 > **Historical snapshot.** The 2026-08-23 consolidation added direct
 > `sourcetest` assertions, narrow `pilottest --assert` checks, a real failing
-> `phasetest` exit contract, and the canonical [`tools/TOOLS.md`](tools/TOOLS.md)
+> `phasetest` exit contract, and the canonical [`tools/TOOLS.md`](../tools/TOOLS.md)
 > inventory. Use the current runner/index for present behavior; the measurements
 > below remain the point of this handover. The held-WIND autoplay bug described
 > below was fixed on 2026-08-23 by keeping a current held cue down across poll

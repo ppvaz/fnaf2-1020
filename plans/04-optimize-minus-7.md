@@ -132,7 +132,7 @@ script — not to loosen the grade back onto a lethal input.
 stall is Android-sourced after all — groups 450-457 load it from the
 never-rewritten `stun time` counter; the earlier "source Counter fixed at
 zero" reading was the pre-XOR handle scramble (see
-[`ANDROID-CAMERA-STALL.md`](../ANDROID-CAMERA-STALL.md)). The corrected
+[`ANDROID-CAMERA-STALL.md`](../docs/android/ANDROID-CAMERA-STALL.md)). The corrected
 sourced model (flash stun + Withered/Mangle look-hold) passes the shipped
 schedule 200/200, so the clean guarantee stands on a sourced mechanism. Later
 route/endgame corrections changed the jitter curve, so the old optimization

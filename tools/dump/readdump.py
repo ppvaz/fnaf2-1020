@@ -6,7 +6,7 @@ address objects *after* that XOR, so a raw dump labels every event with the
 wrong object name. This reader resolves each handle through the XOR before
 looking the name up, which is the only way the dump means anything.
 
-Read SOURCE-DUMP-GUIDE.md first -- it explains the file format, the handle
+Read docs/android/SOURCE-DUMP-GUIDE.md first -- it explains the file format, the handle
 scramble, and the alterable-value vocabulary these commands print.
 
 The dump itself is game content: it lives outside the repo. Point --dump (or
@@ -111,7 +111,7 @@ def main():
     opts = parser.parse_args()
 
     if not os.path.exists(opts.dump):
-        sys.exit("no dump at %s -- see SOURCE-DUMP-GUIDE.md" % opts.dump)
+        sys.exit("no dump at %s -- see docs/android/SOURCE-DUMP-GUIDE.md" % opts.dump)
     dump = Dump(opts.dump, opts.xor)
 
     if opts.command == "frames":

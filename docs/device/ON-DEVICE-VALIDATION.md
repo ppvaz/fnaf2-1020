@@ -216,11 +216,11 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - **Shooter25's bot establishes the in-game alternative for reactive work.** A
   Debian-patched CTFAK extraction of the official PC practice executable shows
   a direct-state Clickteam controller, not a vision bot. See
-  [`SHOOTER25-PRACTICE-MOD.md`](SHOOTER25-PRACTICE-MOD.md) for the comparison
-  and [`SHOOTER25-BOT-STATE-MACHINE.md`](SHOOTER25-BOT-STATE-MACHINE.md) for
+  [`SHOOTER25-PRACTICE-MOD.md`](../in-engine/SHOOTER25-PRACTICE-MOD.md) for the comparison
+  and [`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
 - **A minimal stock-device visual path now exists.**
-  [`tools/device/screencheck.c`](tools/device/screencheck.c) builds to a
+  [`tools/device/screencheck.c`](../../tools/device/screencheck.c) builds to a
   12,680-byte static ARM64 helper and reduces raw `screencap` to color features,
   `match`/`clear`, or a compact nearest-template class entirely inside one
   device shell. No frame crosses USB and no APK/root/runtime dependency is

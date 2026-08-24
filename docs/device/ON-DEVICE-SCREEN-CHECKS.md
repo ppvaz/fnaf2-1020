@@ -14,7 +14,7 @@ stock SurfaceFlinger -> screencap -> 12.4 KiB native helper -> local branch
                                        no image leaves phone
 ```
 
-The helper is [`tools/device/screencheck.c`](tools/device/screencheck.c). It is
+The helper is [`tools/device/screencheck.c`](../../tools/device/screencheck.c). It is
 a static, libc-free ARM64/Linux executable, so it does not need an APK, root,
 an Android permission prompt, Python, an NDK runtime, or a writable game
 package. It consumes Android's native 16-byte raw-screencap header and RGBA
@@ -277,3 +277,9 @@ Freddy source frame duplicated only to exercise leave-one-out mechanics, plus
 eight independent run-K negative frames. It may stop on `golden` or `unknown`,
 but it is not evidence for skipping the prophylactic mask. A distinct positive
 animation frame must pass as an untouched holdout first.
+
+`GF_SKIP_MASK_ON_EXACT_EMPTY=1` exists only to collect that missing evidence
+without repeating run K's box deficit. It accepts the narrower literal result
+`empty score=0`, moves the fail-closed hall branch ahead of the omitted mask,
+and expands the wind from 1.3 s to 2.0 s. It is off by default and must not be
+described as validated GF defense until it stops on a new positive frame.

@@ -1,7 +1,7 @@
 # In-engine pilot via CCN recompile — findings and plan
 
 *Investigation 2026-08-20. Extends [`TRAINER-IN-GAME.md`](TRAINER-IN-GAME.md).
-Sibling to the on-device adb work in [`ON-DEVICE-VALIDATION.md`](ON-DEVICE-VALIDATION.md).*
+Sibling to the on-device adb work in [`ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md).*
 
 ## The question
 

@@ -1,6 +1,6 @@
 // Reactive "perfect player" including Balloon Boy. This is the real test of the
 // model: if a correctly-played Minus 7 cannot clear the night here, either the
-// routine in MINUS-7-STRATEGY.md is wrong or the engine is.
+// routine in docs/strategy/MINUS-7-STRATEGY.md is wrong or the engine is.
 import { pathToFileURL } from 'node:url';
 import { isMainThread } from 'node:worker_threads';
 import * as C from '../src/config.js';
@@ -63,7 +63,7 @@ export function labelCycle(rows) {
 //
 // [INFERRED] These weights are a model of the player, not of the game, so
 // nothing in the event sheet can source them. They encode three claims from
-// MINUS-7-STRATEGY.md that are defensible but unmeasured:
+// docs/strategy/MINUS-7-STRATEGY.md that are defensible but unmeasured:
 //
 //   - a rehearsed tap in a memorised sweep is the cheapest input (weight 1);
 //   - the Golden Freddy flick is a 0.1-0.2 s *duration* held under time
