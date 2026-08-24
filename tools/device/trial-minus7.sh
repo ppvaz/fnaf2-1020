@@ -17,7 +17,8 @@ GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
 NIGHT6_LEFT="${NIGHT6_LEFT:-0}"
-PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-167}"
+# The centre of the measured 83-267 ms scheduler-phase window.
+PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
 DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
@@ -762,11 +763,21 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
     }
     rm -f "$CAPTURE_LOCK"
     epoch_attempts=$((epoch_attempts + 1))
-    epoch_clock=$("$CHECKER" match \
-      1960 20 2380 180 4 180 255 180 255 180 255 400 \
-      < "$epoch_raw" 2>/dev/null) || epoch_clock=error
-    epoch_flash_stats=$("$CHECKER" stats 95 40 260 95 4 \
-      < "$epoch_raw" 2>/dev/null) || epoch_flash_stats=error
+    # Both checks read the same frame, so run them concurrently: the bracket
+    # is the sampling period, and the sampling period is what decides whether
+    # the pilot's scheduler phase lands inside its window at all.
+    "$CHECKER" match 1960 20 2380 180 4 180 255 180 255 180 255 400 \
+      < "$epoch_raw" > "$epoch_raw.clock" 2>/dev/null &
+    epoch_clock_pid=$!
+    "$CHECKER" stats 95 40 260 95 4 \
+      < "$epoch_raw" > "$epoch_raw.flash" 2>/dev/null &
+    epoch_flash_pid=$!
+    wait "$epoch_clock_pid" || true
+    wait "$epoch_flash_pid" || true
+    epoch_clock=$(cat "$epoch_raw.clock" 2>/dev/null) || epoch_clock=error
+    epoch_flash_stats=$(cat "$epoch_raw.flash" 2>/dev/null) || epoch_flash_stats=error
+    [ -n "$epoch_clock" ] || epoch_clock=error
+    [ -n "$epoch_flash_stats" ] || epoch_flash_stats=error
     epoch_flash_mean=${epoch_flash_stats#*mean_rgb=}
     epoch_flash_mean=${epoch_flash_mean%%,*}
     case "$epoch_flash_mean" in
@@ -793,6 +804,17 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
           epoch_bracket=-1
         fi
         T0=$epoch_first_match
+        # The published route's phase window is one-sided -- it tolerates a
+        # late T0 and almost no early one -- so the conservative first-positive
+        # edge is right for it. Minus 7 Left-Read's window is 83-267 ms, which
+        # is centred, so the edge is the wrong estimator: the true HUD frame is
+        # uniform inside the bracket, and taking the edge throws away half of
+        # it. Centring roughly doubles how often a run lands in phase.
+        if [ "$NIGHT6_LEFT" -eq 1 ] && [ "$epoch_bracket" -gt 0 ]; then
+          T0=$((epoch_first_match - epoch_bracket / 2))
+          printf 'epoch centred: first match %s, bracket %s, T0 %s\n' \
+            "$epoch_first_match" "$epoch_bracket" "$T0"
+        fi
         epoch_confirmation_delay=$((epoch_latch - T0))
         printf 'epoch_ms=%s previous_clear_ms=%s bracket_ms=%s confirmation_ms=%s confirmation_delay_ms=%s attempts=%s detector=clock+flash-2f\n' \
           "$T0" "${epoch_previous_clear:--1}" "$epoch_bracket" "$epoch_latch" \
@@ -814,7 +836,7 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
       exit 44
     }
   done
-  rm -f "$epoch_raw" "$READYFILE"
+  rm -f "$epoch_raw" "$epoch_raw.clock" "$epoch_raw.flash" "$READYFILE"
 else
   while [ ! -e "$STARTFILE" ]; do
     sleep 0.02
@@ -1008,11 +1030,10 @@ classify_left_and_queue_mask_at() {
   printf '%6d ms  classify-bb-left %s\n' "$actual" "$classification" >&2
 }
 
-pulsed_cam_at() {
-  offset=$1; x=$2; y=$3; label=$4
-  wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
-  printf '%6d ms  %s (contact 1 select, contact 0 pulse)\n' "$actual" "$label"
+# One camera of the sweep, written into the macro the hid process is already
+# executing. No wait_until: see pulsed_sweep_at.
+pulsed_cam_burst() {
+  x=$1; y=$2
   # `stunCam` refreshes on every frame the light is on while that camera is
   # selected, so contact 0 does not have to be held across the sweep: select
   # first, then pulse. That is 90 ms of flashlight per camera instead of a
@@ -1028,11 +1049,24 @@ pulsed_cam_at() {
 
 pulsed_sweep_at() {
   sweep_start=$1; sweep_label=$2
-  # 120 ms feed starts, 340 ms span. Keep each call wall-timed: a burst of
-  # `delay` commands lets hid's Handler coalesce the intermediate reports.
-  pulsed_cam_at  "$sweep_start"          "$CAM10_X" "$CAM10_Y" "$sweep_label-cam-10"
-  pulsed_cam_at $((sweep_start + 120))   "$CAM04_X" "$CAM04_Y" "$sweep_label-cam-04"
-  pulsed_cam_at $((sweep_start + 240))   "$CAM07_X" "$CAM07_Y" "$sweep_label-cam-07"
+  wait_until "$sweep_start"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (three selects, 120 ms apart, light pulsed after each)\n' \
+    "$actual" "$sweep_label"
+  # The whole sweep is one uninterrupted macro, exactly as hid-sweep-probe.sh
+  # replays it -- and that probe landed 4/4 complete traces at this spacing.
+  # The shell only positions the start. Two other arrangements were measured
+  # and both put the spacing under the 120 ms the phone accepts, after which
+  # the game renders CAM 07 alone: wall-timing every report inside the sweep
+  # jittered it to 90-160 ms because wait_until forks `date` per poll, and
+  # mixing a wall-timed start with hid-side contact delays gave 105-112 ms
+  # because the hid delays elapse concurrently with the shell's wait instead
+  # of adding to it. Each camera costs 10 + 100 + 10 = 120 ms of hid time.
+  pulsed_cam_burst "$CAM10_X" "$CAM10_Y"
+  hid_delay 10
+  pulsed_cam_burst "$CAM04_X" "$CAM04_Y"
+  hid_delay 10
+  pulsed_cam_burst "$CAM07_X" "$CAM07_Y"
 }
 
 hall_reset_and_raise_at() {
@@ -1044,10 +1078,11 @@ hall_reset_and_raise_at() {
   # them sequentially would push the raise 90 ms late and the following sweep
   # inside MONITOR_ANIM_UP, so hold the light on contact 0 and tap the monitor
   # on contact 1 -- the verified two-contact primitive.
+  # Wall-timed for the same reason as pulsed_cam_at.
   hid_down "$HALL_X" "$HALL_Y"
-  hid_delay 10
+  wait_until $((offset + 10))
   hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
-  hid_delay 120
+  wait_until $((offset + 130))
   hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
   hid_release
 }

@@ -100,6 +100,10 @@ const ENGINE = [
   // cycle, wind above break-even, the flashlight inside night 6's 3000 frames,
   // and the monitor/mask polarity invariants.
   ['recipe', ['device/test-recipe.mjs']],
+  // The runner's sweep primitives must be wall-timed. A hid_delay inside them
+  // elapses in the hid process instead of adding to the shell's wait, which
+  // silently shortened the camera spacing below what the phone accepts.
+  ['hid walltime', ['device/test-hid-walltime.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];

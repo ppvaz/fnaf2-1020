@@ -245,6 +245,85 @@ export function devicePlan(recipe) {
   return out;
 }
 
+// Feed the device plan back through the engine.
+//
+// The plan is generated from the simulator, so it is tempting to trust it --
+// but "generated" only means the emitter ran, not that it emitted the policy.
+// An emitter bug (a sweep whose spacing was looked up by camera name and found
+// the wrong one) or a hand edit to the plan would both survive every check
+// that reads the recipe, because they all read the same side of the loop.
+// This runs the plan itself, instruction by instruction, and asks the engine
+// whether the night still survives.
+export function replay(plan, { night = 6, seed = 1, worst = false,
+                               pilotOffset = 10, readLatencyMs = 550,
+                               classifyMs = 250 } = {}) {
+  const sim = new Sim({ seed, night, worst });
+  const f = msv => Math.round(msv * 60 / 1000);
+  const queue = [];
+  const at = (frame, kind, act) => queue.push([frame, queue.length, kind, act]);
+
+  const parse = (lines, base) => {
+    for (const line of lines) {
+      const [offs, kind, ...rest] = line.split(' ');
+      const t = base + f(+offs);
+      if (kind === 'tap') {
+        at(t, 'press', rest[0] === 'monitor' ? 'monitor' : rest[0] === 'mask' ? 'mask'
+          : 'cam:' + rest[0].slice(3));
+      } else if (kind === 'hold') {
+        at(t, 'press', 'wind'); at(t + f(+rest[1]), 'release', 'wind');
+      } else if (kind === 'hall' || kind === 'hallraise') {
+        at(t, 'press', 'light'); at(t + f(+rest[0]), 'release', 'light');
+        if (kind === 'hallraise') at(t, 'press', 'monitor');
+      } else if (kind === 'sweep') {
+        const [spacing, , cams] = rest;
+        cams.split(',').forEach((n, i) => {
+          const st = t + f(i * +spacing);
+          at(st, 'press', 'cam:' + n);
+          at(st + 1, 'press', 'light');
+          at(st + 1 + f(100), 'release', 'light');
+        });
+      } else if (kind === 'read') {
+        at(t, 'press', 'ventL');
+        at(t + f(+rest[0]), 'release', 'ventL');
+        at(t + f(readLatencyMs), 'snapshot', base);
+      } else throw new Error(`unknown instruction ${kind}`);
+    }
+  };
+
+  // The opening, then a steady cycle whose kind the read chooses -- exactly
+  // the branch the phone makes.
+  parse(plan.opening, pilotOffset);
+  let base = pilotOffset + f(7000);
+  let pending = null;
+  parse(plan.clear.slice(0, 3), base);      // the shared prefix, up to the read
+  let missed = 0, detections = 0;
+
+  while (sim.alive && !sim.won) {
+    while (queue.length && queue[0][0] <= sim.frame) {
+      queue.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      const [, , kind, act] = queue.shift();
+      if (kind === 'press') sim.press(act);
+      else if (kind === 'release') sim.release(act);
+      else if (kind === 'snapshot') {
+        pending = { base: act, bb: sim.bb.inOpening, inside: sim.bb.inside,
+                    resolveAt: sim.frame + f(classifyMs) };
+      }
+    }
+    if (pending && sim.frame >= pending.resolveAt) {
+      const { base: b, bb, inside } = pending;
+      pending = null;
+      if (!bb && inside) missed++;
+      if (bb) detections++;
+      const lines = bb ? plan.attack : plan.clear;
+      parse(lines.slice(3), b);             // the branch, after the read
+      base = b + f(bb ? 10000 : 5000);
+      parse(plan.clear.slice(0, 3), base);
+    }
+    sim.tick();
+  }
+  return { sim, missed, detections };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (name, def) => {
     const v = (process.argv.find(a => a.startsWith(`--${name}=`)) || '').split('=')[1];
