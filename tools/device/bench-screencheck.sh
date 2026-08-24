@@ -10,6 +10,11 @@ REMOTE_BINARY="/data/local/tmp/fnaf-screencheck"
 REMOTE_FRAME="/data/local/tmp/fnaf-screencheck-benchmark-$$.raw"
 REMOTE_MODEL="-"
 
+cleanup() {
+  rm -f "$LOCAL_BINARY"
+}
+trap cleanup EXIT HUP INT TERM
+
 case "$SAMPLES" in
   ''|*[!0-9]*) echo "samples must be a positive integer" >&2; exit 2 ;;
 esac
@@ -72,7 +77,7 @@ while [ "$i" -lt "$samples" ]; do
   i=$((i + 1))
 done
 REMOTE
-awk '
+awk -v expected="$SAMPLES" '
   {
     label = $1
     count[label]++
@@ -89,6 +94,13 @@ awk '
     for (which = 1; which <= 3; which++) {
       label = labels[which]
       n = count[label]
+      if (n == 0) {
+        printf "%-9s %3d %6s %6s %6s %6s %7s\n", \
+          label, 0, "-", "-", "-", "-", "-"
+        incomplete = 1
+        continue
+      }
+      if (n != expected) incomplete = 1
       for (i = 1; i <= n; i++) sorted[i] = value[label, i]
       for (i = 2; i <= n; i++) {
         held = sorted[i]
@@ -104,6 +116,10 @@ awk '
       printf "%-9s %3d %6d %6d %6d %6d %7.1f\n", \
         label, n, minimum[label], p50, p95, maximum[label], sum[label] / n
       for (i = 1; i <= n; i++) delete sorted[i]
+    }
+    if (incomplete) {
+      print "benchmark incomplete: every path must produce " expected " samples" > "/dev/stderr"
+      exit 1
     }
   }
 '
