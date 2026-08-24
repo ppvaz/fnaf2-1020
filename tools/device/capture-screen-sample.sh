@@ -10,7 +10,10 @@ NAME="${3:-}"
 HOLD_X="${4:-}"
 HOLD_Y="${5:-}"
 HOLD_MS="${6:-900}"
-CAPTURE_DELAY="${CAPTURE_DELAY:-0.18}"
+# The raw screencap itself is fast enough at 180 ms, but the Android game does
+# not finish drawing a newly lit office vent by then. At 350 ms the light is
+# visibly stable on the calibrated Moto while a 900 ms hold still has margin.
+CAPTURE_DELAY="${CAPTURE_DELAY:-0.35}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT="$HERE/../../captures/screencheck/$VIEW/$LABEL/$NAME.raw"
 REMOTE="/data/local/tmp/fnaf-screen-sample-$$.raw"
