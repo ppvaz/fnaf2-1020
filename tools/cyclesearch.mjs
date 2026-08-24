@@ -177,24 +177,6 @@ if (isMain) {
     console.log(`error model: per-step profile "${profileArg}" (weights are [INFERRED])\n`);
   }
 
-  // --steps is a property of the table, not of the search, so it runs alone.
-  if (process.argv.includes('--steps')) {
-    const orderArg = (process.argv.find(a => a.startsWith('--order=')) || '').split('=')[1];
-    const order = orderArg ? orderArg.split('-').map(Number) : ORDER0;
-    const cycle = orderArg ? genCycle(KNOBS0, order) : DEFAULT_CYCLE;
-    console.log(`per-step tolerance window, order ${order.join('-')} (${N_VALID} seeds,`);
-    console.log('one step moved at a time, the rest of the pass perfect):\n');
-    console.log('step           earliest    target    latest     window');
-    for (const w of await stepWindows(cycle, N_VALID)) {
-      const cap = (v) => (Math.abs(v) === SHIFT_CAP ? '*' : ' ');
-      console.log(
-        `${w.id.padEnd(14)} ${msOf(w.early).padStart(8)}${cap(w.early)} ` +
-        `${'0ms'.padStart(8)}  ${msOf(w.late).padStart(8)}${cap(w.late)}  ` +
-        `${msOf(w.late - w.early).padStart(8)}`);
-    }
-    console.log('\n* the sweep hit its +-0.75s cap without a death; the real edge is further out.');
-    await closePool();
-  } else {
   // A search prints its winner as a knob set; --knobs feeds one back in so the
   // published curve for a variant can be reproduced without a scratch script.
   const knobArg = (process.argv.find(a => a.startsWith('--knobs=')) || '').split('=').slice(1).join('=');
@@ -209,6 +191,22 @@ if (isMain) {
   const baseCycle = knobArg || baseOrderArg ? genCycle(knobs0, baseOrder) : DEFAULT_CYCLE;
   if (knobArg) console.log(`knobs: ${JSON.stringify(knobs0)}  order ${baseOrder.join('-')}`);
 
+  // --steps is a property of the table, not of the search, so it runs alone.
+  if (process.argv.includes('--steps')) {
+    const cycle = baseCycle;
+    console.log(`per-step tolerance window, order ${baseOrder.join('-')} (${N_VALID} seeds,`);
+    console.log('one step moved at a time, the rest of the pass perfect):\n');
+    console.log('step           earliest    target    latest     window');
+    for (const w of await stepWindows(cycle, N_VALID)) {
+      const cap = (v) => (Math.abs(v) === SHIFT_CAP ? '*' : ' ');
+      console.log(
+        `${w.id.padEnd(14)} ${msOf(w.early).padStart(8)}${cap(w.early)} ` +
+        `${'0ms'.padStart(8)}  ${msOf(w.late).padStart(8)}${cap(w.late)}  ` +
+        `${msOf(w.late - w.early).padStart(8)}`);
+    }
+    console.log('\n* the sweep hit its +-0.75s cap without a death; the real edge is further out.');
+    await closePool();
+  } else {
   console.log(`current cycle jitter curve (${N_VALID} seeds):`);
   console.log(`  ${await curve(baseCycle, N_VALID)}`);
   if (process.argv.includes('--curve')) {
