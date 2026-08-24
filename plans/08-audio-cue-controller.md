@@ -408,6 +408,14 @@ to **59 ms**, and roughly 22 ms of what remains is the shell forking `date` and
 `nc` rather than the socket. That is the strongest argument yet for the
 projection path, and it is a measurement of the *observer*, not of a decision.
 
+What that buys the controller is arithmetic on measured parts, recorded in
+[`ON-DEVICE-VALIDATION.md`](../docs/device/ON-DEVICE-VALIDATION.md): the
+visual-plus-action path falls from 395 ms to 229 ms, slack against the shortest
+700 ms BB window rises from 305 ms to 471 ms, and the night-6 cycle recovers
+about 664 ms -- the same magnitude as the entire three-cut schedule
+optimisation, but by changing the sensor instead of removing checks. This is
+the observer plumbing the §4 note anticipated, now priced.
+
 The other legs of this package are not measured. Arm-to-first-PCM-frame,
 cue-onset-to-classification, and window-close-to-`MISS` all need the `ARM`/`HIT`/
 `MISS` window protocol, which does not exist yet -- only `GET`, `CAL`, and `REC`

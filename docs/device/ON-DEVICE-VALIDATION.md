@@ -249,7 +249,33 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   measured **225 ms combined p95** (206 ms capture, 42 ms classification p95).
   With the existing roughly 170 ms duration press, the estimated visual-plus-
   action path is 395 ms, leaving about 305 ms against the shortest 700 ms BB
-  window. BB now has independent holdout and live-branch evidence; Golden
+  window.
+- **The projection path measures 59 ms for the same observation (2026-08-24).**
+  The cue helper holds one consented `MediaProjection` producing a 20x9 virtual
+  display and answers a device-local socket with the already-classified pixel,
+  so a reader pays neither the full-display compose nor the classification. 60
+  samples inside one device shell: p50 48.8 ms, **p95 59.5 ms**, p99 60.8 ms,
+  max 66.9 ms; the same loop with the socket call removed costs 22.5 ms at p50,
+  so the exchange itself is about 26 ms and the rest is the shell forking `date`
+  and `nc`. Reproduce with `tools/device/query-cue-helper.sh latency`.
+
+  The consequences are arithmetic on measured parts, not an end-to-end result.
+  The visual-plus-action path becomes 59 + 170 = **229 ms**, leaving about
+  **471 ms** against the shortest 700 ms BB window instead of 305 ms. On the
+  shipped night-6 cycle, whose four observations cost 900 ms of the 5000 ms
+  budget, they would cost 236 ms -- about **664 ms/cycle recovered**, which is
+  the same magnitude as the entire three-cut schedule optimisation but obtained
+  by changing the sensor rather than by removing checks. A `--sync` monitor
+  intent that disagrees falls from 415 ms to about 249 ms.
+
+  Two things this does not buy. The read returns the freshest projected frame
+  rather than one captured on demand, so its age is reported and a stale frame
+  is `UNKNOWN` rather than an observation; and the classifier threshold on this
+  path is **not calibrated** -- the luma separation in
+  [`ONE-PIXEL-VISION.md`](ONE-PIXEL-VISION.md) comes from `screencap` frames and
+  an offline bilinear simulation, not from Android's own VirtualDisplay scaler.
+  It also adds a dependency the screencheck path does not have: a consented
+  helper that can die mid-night. BB now has independent holdout and live-branch evidence; Golden
   Freddy still lacks an independent positive holdout. Toy Bonnie vision is
   deliberately excluded from the Minus 7 path because its CAM 04 stall already
   controls it. Full build, model, replay, benchmark, invocation, and
