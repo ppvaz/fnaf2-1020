@@ -539,6 +539,55 @@ locked on this save. Night 6 also raises BB from 5 to 9 at 2 AM. Golden Freddy
 can supply positives, but sparsely. Toy Bonnie needs no capture for this Minus
 7 branch because the selected CAM 04 stall already controls him.
 
+## The classifier has to be trained on the loop that will run it (2026-08-24)
+
+Four Night 6 attempts read `inside` or `unknown` on cycles where Balloon Boy
+provably could not be present -- he needs five five-second rolls, so nothing
+before 25 s is him. None of those reads were the game. Measuring the ROI of the
+frames the classifier actually saw separates the two populations cleanly:
+
+| frames | LIGHT button mean luma | vent-opening mean luma |
+| --- | ---: | ---: |
+| the model's templates, and every `empty` read | ~103 | ~30 |
+| every `unknown` read | 33-60 | 37-63 |
+
+`candidate-runs-gh.scm` was built from `capture_lit_at`, which issues
+`screencap` a fixed 350 ms after light-down. The live loop instead starts the
+capture at a chosen offset and latches on the first output byte, 163-348 ms
+later, so the capture start is the only control over where in the vent-light
+ramp the frame lands. Moving it to avoid one failure moved the frame out the
+other side of the distribution and produced the other:
+
+- start +100 ms -> latch 263-448 ms; mostly `empty score=0`, but the early tail
+  catches an unlit opening, and an unlit opening is what BB *in the office*
+  looks like, so it reads as a confident `inside`;
+- start +300 ms -> latch 550-650 ms; past the ramp, and reads go `unknown`.
+
+The fix is not a third offset. `runtime-gh.scm` adds seven frames captured
+through the live loop itself, at both latch windows, to the `empty` class.
+Leave-one-out separation holds at `--max-score 16` (empty same-class 0..15,
+margin 6..19), and both models classify **all 32 independent holdout frames
+correctly, including all three BB positives**, so the widened class costs
+nothing measurable. Only frames from before 25 s were used, so the label is
+certain rather than assumed.
+
+`--max-score` moved from 12 to 16, which makes the model more permissive in
+absolute distance. `--min-margin` is unchanged at 6, and the margin is what
+separates the classes; the score bound only decides what is far enough from
+everything to be `unknown`.
+
+Rebuild it with:
+
+```sh
+tools/device/build-screen-model.py --roi 80,600,500,1060 --grid 10x10 --step 2 \
+  --max-score 16 --min-margin 6 \
+  --output captures/screencheck/bb-left/models/runtime-gh.scm \
+  empty=captures/screencheck/bb-left/calibration/run-gh/empty \
+  empty=captures/screencheck/bb-left/runtime-empty \
+  bb=captures/screencheck/bb-left/calibration/run-gh/bb \
+  inside=captures/screencheck/bb-left/calibration/run-gh/inside
+```
+
 ## Next steps
 
 1. Preserve the validated **BB left-opening** model boundary while recovering
