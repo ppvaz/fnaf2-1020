@@ -369,6 +369,15 @@ movement is established by another modality -- the pilot's own CAM-05 read, or
 labeling the recorded video -- or Custom Night's AI 20, which night 6 cannot
 reach because it starts him at 5 and only reaches 9 at 2 AM.
 
+One audio-internal shortcut was tried and came back negative. g814 replays
+sample 24 every 2000 ms while BB sits at marker 123, and that periodicity is
+detectable even where a single quiet vocal is not, so finding it would prove he
+had completed the whole route. Scanning all three recordings for a 2 s-spaced
+sample-24 pair, the only strong hit (0.747) falls at 54.9 s in the mask-camp
+recording -- roughly twenty seconds *after* that run's game over at 36 s. It is
+menu audio. No run so far has evidence that BB reached the office at all, which
+is consistent with him barely moving at AI 5 and leaves the confound intact.
+
 The detector's own design is implicated. `tools/cue/features.py` removes each
 frame's mean to be level-invariant, which is right for robustness to capture
 gain and which discards the one quantity that separates a route hop from
