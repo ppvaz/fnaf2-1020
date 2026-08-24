@@ -45,6 +45,38 @@ described below, but retains an older 340 ms sweep and a tick-aligned BB
 response. It must be retimed to match the phase-safe simulator and exercise a
 real positive BB response before any full-night attempt.
 
+## Night 7 sparse CAM 05 probe
+
+Phase-aligning CAM 05 checks removes many unnecessary reads, but does not make
+the measured lit-capture path affordable on 10/20 by itself. BB starts at CAM
+10 and needs four successful five-second rolls to reach CAM 05, so 20.0 s is
+the absolute arrival bound. A check immediately *before* that boundary is too
+early: the first useful pre-boundary read completes just before 25 s (or it can
+run immediately after 20 s). After a negative, every following five-second
+boundary still needs coverage until BB is found.
+
+A CAM 05 positive also does not guarantee that one raise will put BB in the
+opening. His final hop retains the Night 7 75% movement roll. The controller
+must lower across the opportunity, raise and read again, and repeat when he is
+still on CAM 05; otherwise the nominal one-raise response silently fails one
+time in four.
+
+`tools/hidpilottest.mjs --night=7 --sparse-cam5` preserves those constraints.
+With the current 520 ms lit-read model it survived **0/5000** ordinary and
+**0/1000** pinned-worst nights: the battery reached zero and the resulting
+failures were overwhelmingly Foxy. The same schedule with hypothetical unlit,
+free reads survived **3000/3000** ordinary and **1000/1000** worst-luck nights,
+with no missed BB states, proving that timing rather than route logic is the
+barrier. It averaged 48.8 reads per ordinary night and 41 in worst luck.
+
+A diagnostic 370 ms light hold survived **3000/3000 + 1000/1000**, but its
+minimum remaining power was only 9 frames in the ordinary set. The phone needs
+about 350 ms merely to draw a visibly lit vent, before screencap readiness, so
+370 ms is an unvalidated and operationally fragile threshold—not a Night 7
+controller claim. Sparse CAM 05 becomes viable only if an on-device immutable-
+buffer test proves that acquisition bound with margin, or the base flashlight
+cycle is made cheaper. Music-box time is not the limiting resource here.
+
 ### Screencap readiness is observable
 
 Starting `screencap` and masking after a fixed delay does not identify which

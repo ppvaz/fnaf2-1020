@@ -20,17 +20,23 @@ const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
 
 class HidPilot {
   constructor(sim, { bbMode = 'left', cam5Light = true, phaseSafeMask = true,
-                     alwaysThreat = false } = {}) {
+                     alwaysThreat = false, sparseCam5 = false,
+                     cam5Hold = s(0.52) } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
     this.cam5Light = cam5Light;
+    this.sparseCam5 = sparseCam5;
+    this.cam5Hold = cam5Hold;
     this.phaseSafeMask = phaseSafeMask;
     this.alwaysThreat = alwaysThreat;
     this.queue = [];
     this.mode = 'normal';
     this.nextAnchor = s(7);
-    this.cam5SafeAt = 0;
+    // BB starts at CAM 10. Four successful five-second rolls are needed to
+    // reach CAM 05, so a pre-boundary sensor cannot first be useful until the
+    // fifth boundary at 25 s (the read itself completes at 24.7 s).
+    this.cam5SafeAt = sparseCam5 ? s(24.7) : 0;
     this.checks = 0;
     this.detections = 0;
     this.attacks = 0;
@@ -95,7 +101,7 @@ class HidPilot {
     const shouldCheck = this.cam5 && a + s(2.70) >= this.cam5SafeAt;
     if (shouldCheck) {
       this.tap(a + s(2.10), 'cam:5');
-      if (this.cam5Light) this.hold(a + s(2.18), s(0.52), 'light');
+      if (this.cam5Light) this.hold(a + s(2.18), this.cam5Hold, 'light');
       this.at(a + s(2.70), 'cam5-before', a);
     } else {
       this.tap(a + s(2.12), 'cam:11');
@@ -190,7 +196,7 @@ class HidPilot {
     this.tap(a + s(2.70), 'monitor');
     this.tap(a + s(3.15), 'monitor');
     this.tap(a + s(3.38), 'cam:5');
-    if (this.cam5Light) this.hold(a + s(3.45), s(0.52), 'light');
+    if (this.cam5Light) this.hold(a + s(3.45), this.cam5Hold, 'light');
     this.at(a + s(3.97), 'cam5-after', a);
   }
 
@@ -220,7 +226,11 @@ class HidPilot {
     // timing created a small blind window when fresh Night-6 rolls lined up
     // with the recovery boundary. `cam5Light=false` is retained only as a
     // hypothetical bound: the 2026-08-24 phone run rejected unlit vision.
-    this.cam5SafeAt = a + s(10);
+    // A fully phased attack can expel BB at the first one-second mask tick.
+    // In sparse mode, resume just before the fifth following movement
+    // boundary: four successful rolls may have put him back on CAM 05, but a
+    // final hop cannot have occurred yet.
+    this.cam5SafeAt = this.sparseCam5 ? a + s(22.7) : a + s(10);
     this.mode = 'normal';
     this.nextAnchor = a + s(10);
   }
@@ -238,7 +248,7 @@ class HidPilot {
     this.tap(this.sim.frame + 2, 'monitor');
     this.tap(a + s(3.15), 'monitor');
     this.tap(a + s(3.38), 'cam:5');
-    if (this.cam5Light) this.hold(a + s(3.45), s(0.52), 'light');
+    if (this.cam5Light) this.hold(a + s(3.45), this.cam5Hold, 'light');
     this.at(a + s(3.97), 'cam5-after', a);
   }
 
@@ -301,10 +311,13 @@ export function run(opts = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const n = +(process.argv[2] || 500);
   const worst = process.argv.includes('--worst');
-  const bbMode = process.argv.includes('--cam5') ? 'cam5'
+  const sparseCam5 = process.argv.includes('--sparse-cam5');
+  const bbMode = process.argv.includes('--cam5') || sparseCam5 ? 'cam5'
     : (process.argv.includes('--no-bb') || process.argv.includes('--no-cam5')) ? 'none'
       : 'left';
   const cam5Light = !process.argv.includes('--hypothetical-unlit');
+  const cam5MsArg = (process.argv.find(v => v.startsWith('--cam5-light-ms=')) || '').split('=')[1];
+  const cam5Hold = cam5MsArg ? s(+cam5MsArg / 1000) : s(0.52);
   const phaseSafeMask = !process.argv.includes('--tick-aligned-mask');
   const alwaysThreat = process.argv.includes('--always-threat');
   const nightArg = (process.argv.find(v => v.startsWith('--night=')) || '').split('=')[1];
@@ -313,7 +326,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   let attacks = 0, missed = 0;
   const fails = {};
   for (let i = 0; i < n; i++) {
-    const { sim, bot } = run({ bbMode, cam5Light, phaseSafeMask, alwaysThreat,
+    const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, cam5Hold,
+      phaseSafeMask, alwaysThreat,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
@@ -328,7 +342,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     }
   }
   const mode = bbMode === 'left' ? 'lit left-opening detection'
-    : bbMode === 'cam5' ? `CAM 05 tracking (${cam5Light ? 'lit' : 'unlit'})`
+    : bbMode === 'cam5' ? `${sparseCam5 ? 'sparse phase-aligned ' : ''}CAM 05 tracking ` +
+        `(${cam5Light ? `${cam5Hold}f lit` : 'unlit'})`
       : 'blind cycle';
   console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${mode}` +
     `, ${phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask` +
