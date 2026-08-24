@@ -444,14 +444,42 @@ BB's own footstep sound at marker 149 is `Random(5)+1` from the same bank the
 other seven draw from (g702 is identical to g695-701), so there is no unique
 BB vent cue either. Toy Foxy is the only character with a private bank.
 
-### What this costs the plan
+### What this costs the plan — and what it does not
 
-**Early unmasking is removed from scope.** Plan 08 gate 0 says so explicitly:
-"If the early-leave branch has no unique playback event, remove early
-unmasking from scope." The branch has a playback event, and it is the most
-shared sample in the game. An unmask rule keyed on it would fire on Toy
-Chica's or Toy Foxy's departure while BB is still at 122, which is the exact
-error the plan calls unacceptable.
+The sample is shared. Whether that makes it *ambiguous* is a question about the
+run, not about the game, and the answer differs.
+
+**In the general case, early unmasking is out.** An unmask rule keyed on sample
+17 would fire on Toy Chica's or Mangle's departure while BB is still at 122,
+which is the exact error plan 08 calls unacceptable.
+
+**Under Minus 7 it is not ambiguous at all.** Cross the thud's sources against
+the strategy's roster and the overlap vanishes:
+
+| Thud source | Groups | Minus 7 |
+| --- | --- | --- |
+| Balloon Boy | 292, 294, 416, 417 | **not stalled — the whole difficulty of the strategy** |
+| W. Chica | 387, 688, 749 | stun-locked all night |
+| Toy Chica | 439, 440, 685 | stun-locked all night |
+| Mangle | 400, 401, 689, 739 | stun-locked all night |
+| W. Bonnie | 686, 748 | stun-locked all night |
+| Toy Bonnie | 687 | stun-locked all night |
+| The Puppet | 690 | only leaves CAM 11 if the music box empties |
+
+[`MINUS-7-STRATEGY.md`](../strategy/MINUS-7-STRATEGY.md) keeps **seven of the
+ten permanently stun-locked**, leaving W. Foxy, Golden Freddy and Balloon Boy —
+and neither W. Foxy nor Golden Freddy writes the thud register at all. Every
+other writer is either one of those seven or the Puppet, whom a wound box keeps
+in place.
+
+So while the stalls are current and the box is wound, **a vent bang is Balloon
+Boy**, and it is the *loud* cue: the thud plays on channel 15 at volume 50,
+where his vocals play on channel 14 at 25. This is exactly the case plan 08's
+controller semantics anticipated — "use a shared thud only as corroboration of a
+transition that controller state already makes possible" — and the controller is
+the thing maintaining the stalls, so it can assert that state rather than assume
+it. A lapsed stall breaks the uniqueness, which is precisely why it has to be
+asserted per-decision and not once per night.
 
 The approach cues survive, with a condition. Samples 21/24/23 are jointly
 diagnostic of a BB hop **given controller state**, because every non-BB

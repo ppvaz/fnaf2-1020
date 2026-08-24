@@ -238,14 +238,16 @@ in the mask for a full 5 s.
 
 Then, **react to the vent-bang cue that means BB left**:
 
-> **Source correction, 2026-08-24.** There is no such cue as a distinguishable
-> sound. BB's departure plays sample 17, the movement thud that 18 state edges
-> across seven characters share — including Toy Chica's, Toy Foxy's, and
-> W. Bonnie/W. Chica's own mask-clears, which fire under the identical
-> `mask fully on` condition. The reasoning below is kept because it is how the
-> line was practised and it still describes the *timing*, but "the bang that
-> means BB left" is a bang that may mean someone else left. Treat the fifth
-> masked tick as the reliable release; see
+> **Source note, 2026-08-24 (revised same day).** BB's departure plays sample
+> 17, the movement thud that 18 state edges across seven characters share. A
+> first pass concluded from that alone that the cue is ambiguous — which is true
+> of the game in general and **false of this strategy**. Every other writer of
+> that sample is one of the seven this line keeps stun-locked, or the Puppet,
+> whom a wound box keeps in Prize Corner; W. Foxy and Golden Freddy never write
+> it at all. So while the stalls are current and the box is wound, the bang is
+> Balloon Boy, exactly as practised. The dependency is worth stating explicitly:
+> it is the *stall discipline* that makes the cue readable, so a lapsed stall
+> costs you the cue as well as the flash. See
 > [`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md).
 
 ```
@@ -339,8 +341,8 @@ after the 5s interval → repeat.
 
 **2nd vent bang:** after raising the cams and hearing the cue, flash the 3 cams fast and mask up,
 flashing the hall while masking. Flashing at `:X1` or `:X6` is 100% safe. React to BB's leaving
-cue (see the 2026-08-24 correction above: that bang is not uniquely his, so the
-fifth masked tick is the dependable release) → un-mask, flash the cams → wind over the 5s interval → drop cams at `:X5.5` → mask flick for
+cue (see the 2026-08-24 note above: the bang is his *while the stalls hold*) →
+un-mask, flash the cams → wind over the 5s interval → drop cams at `:X5.5` → mask flick for
 Golden Freddy (**only 0.1–0.2 s**) → flash the hall at `:X1`/`:X6` → cams up → flash the 3 cams →
 wind → drop before the 5s interval → restart the main cycle.
 

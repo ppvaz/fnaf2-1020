@@ -1,59 +1,60 @@
 # On-device audio-cue controller
 
-**Status: stopped at gate 1 (2026-08-24). The controller is not viable on this
-phone and build, and the plan's own rule says so.**
+**Status: gate 1 passes for the cue set this strategy needs (2026-08-24,
+after a correction).**
 
-Gate 0 closed first, and it cost the highest-payoff action: early unmasking is
-out of scope because BB's departure plays the sample that 18 edges across seven
-characters share. Gate 1 then failed outright. Balloon Boy's approach vocals are
-played at **half the channel default** (g414-416 set channel 14 to 25 against
-g60's 50), and at that level, injected into real target-device night background,
-this detector cannot find them:
+An earlier reading of this plan stopped it at gate 1. That reading was wrong,
+and the way it was wrong is worth more than the conclusion was: it reasoned from
+the event sheet in isolation and never crossed it against
+[`MINUS-7-STRATEGY.md`](../docs/strategy/MINUS-7-STRATEGY.md). The source says
+sample 17 is shared by seven characters, so it declared the cue ambiguous and
+withdrew early unmasking. But this strategy keeps **seven of the ten permanently
+stun-locked**, and those seven are exactly the other writers of that sample. The
+sharing is a fact about the game, not about the run.
 
-| | played level | detected | needs |
-| --- | ---: | ---: | ---: |
-| sample 17 thud, positive control | -0.1 / -4.4 dB | 1/5, 1/5 | — |
-| sample 21 BB vocal | -8.9 / -13.2 dB | 0/5, 0/5 | +11 / +10 dB |
-| sample 23 BB vocal | -9.0 / -13.3 dB | 0/5, 0/5 | +9 / +11 dB |
-| sample 24 BB vocal | -8.0 / -12.3 dB | 0/5, 0/5 | +6 / +16 dB |
+Cross the two and the cue map is clean rather than ambiguous. The strategy
+leaves three animatronics live:
 
-Two independent 20-second stretches of real night audio, with the level anchored
-to the measured level of actual thud detections in the same recordings, and the
-vocal offset derived from the source channel volumes. Reproduce with
-`tools/cue/evaluate.py BACKGROUND --anchor <dB>`.
+| Threat | Cue | Channel / volume | Detected in real night audio |
+| --- | --- | --- | --- |
+| Balloon Boy | sample 17, the vent bang | 15 / 50 | **2.9-4.6 per minute**, best 0.85 |
+| W. Foxy | samples 25-29, the footsteps | 15 / 50 | **8.4-11.1 per minute**, best 0.83 |
+| Golden Freddy | none — he has no sound-producing group at all | — | — |
 
-Gate 1's text is explicit about this branch: *"every candidate cue needed by the
-policy must be visible and repeatable in target-device PCM. Otherwise stop."*
-The cue is 6-16 dB short. So the remaining packages are closed as unreachable
-rather than left open:
+Both live cues are on channel 15 at volume 50, the loud channel. W. Foxy's only
+sound-producing group is g698, which writes the footstep register; and no group
+anywhere moves Balloon Boy to marker 149, so his branch into that bank is dead
+code and the steps are Foxy's alone. That is why a player hears "bang = BB,
+steps = Foxy" and is right to.
+
+The earlier failure tested BB's *vocals* — channel 14 at volume 25, half the
+default — and correctly found them 6-16 dB below detectability. That result
+stands and is still recorded below. It is simply about cues the policy does not
+need: the vocals distinguish which hop, and the controller only needs to know a
+hop happened, which the bang already says.
+
+**The dependency this creates, and it is load-bearing.** The bang is Balloon Boy
+only while the stalls are current and the music box is wound, because a lapsed
+stall or an empty box puts another writer back in play. The controller is the
+thing maintaining both, so it can assert that state rather than assume it -- but
+it must assert it per decision, not once per night. A lapsed stall costs the cue
+as well as the flash.
 
 | Package | State |
 | --- | --- |
-| 0. Source-map candidate cues | **Closed.** Every Office sample mapped to its state edge; early unmasking withdrawn |
-| 1. Prove playback capture | **Failed.** Capture path works; the cue is 6-16 dB below detectability at the level the game plays it |
-| 2. Offline detector | **Unreachable.** Built and characterised, but there is no recoverable cue to hold out |
-| 3. Window and action latency | **Partly banked.** The result-receipt leg is measured and kept (225 ms to 59 ms); the audio legs are moot |
-| 4. Simulator cue injection | **Unreachable.** Already rejected the counted-vocal policy; the cue cannot be delivered at all |
-| 5. Shadow on the real device | **Unreachable.** Nothing to shadow |
-| 6. Enable one bounded action | **Unreachable.** Nothing to enable |
+| 0. Source-map candidate cues | **Closed.** Every Office sample mapped to its state edge, and crossed against the stall roster |
+| 1. Prove playback capture | **Passes for the needed cues.** Bang and steps both found repeatedly in target-device PCM; the vocals do not clear and are not needed |
+| 2. Offline detector | Open. Front end built; needs a session-split holdout and confusion matrix against the *bang*, with the false-positive rate the real unknown |
+| 3. Window and action latency | Observation leg measured (225 ms to 59 ms). The audio legs need the `ARM`/`HIT`/`MISS` protocol |
+| 4. Simulator cue injection | Open, and now worth doing: a bang-driven policy is not the counted-vocal policy §4 rejected |
+| 5. Shadow on the real device | Open |
+| 6. Enable one bounded action | Open. Early unmasking is back in scope, conditional on asserted stall state |
 
-**What the verdict is not.** It is not "audio cannot work in principle". It is
-measured against the front end this plan specified -- log-band cosine on the
-reference's transient core, with a per-run background profile subtracted -- and
-that front end is marginal even for the loud cue, finding the thud only 1/5 at
-its own measured level. Anyone reopening this has an explicit target rather than
-a research question: close a **6-16 dB detectability gap** against this phone's
-internal mix, which ANDROID-AUDIO-CAPTURE.md shows carries the music-box loop and
-Mangle's static regardless of what the operator hears. A matched filter at full
-sample rate, or a longer background estimate, are the obvious first attempts.
-
-**What the plan banked anyway.** The observer plumbing it built is the result
-worth keeping, and it is independent of audio: one consented `MediaProjection`
-answers a device-local socket with an already-classified pixel in **59 ms p95
-against the screencheck path's 225 ms**, which moves the visual-plus-action path
-from 395 ms to 229 ms and recovers about 664 ms on the night-6 cycle. Plus the
-source map itself, which corrected the Balloon Boy pipeline in three places and
-withdrew an unsafe action from the strategy documents.
+**What is genuinely unverified.** The detection counts above have no held-out
+labels, so the false-positive rate is unknown -- 11 footstep detections a minute
+is high enough to suspect some are background. Nothing yet confirms that a
+detected bang coincides with a real BB hop rather than a stall lapse. And the
+projection classifier threshold is still uncalibrated.
 
 ## Decision
 

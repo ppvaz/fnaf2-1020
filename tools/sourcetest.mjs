@@ -230,7 +230,11 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
     fromBb === C.THUD_SAMPLE);
   ok('g439/440', 'Toy Chica leaving plays the same handle',
     fromToy === C.THUD_SAMPLE);
-  ok('g691-694', 'so departure identity is not audible',
+  // True of the sample in isolation. Minus 7 stun-locks every other writer and
+  // a wound box holds the Puppet, so a controller that can assert those states
+  // may still read the bang as BB -- see ANDROID-SOURCE-STATUS.md. What must
+  // never come back is identity inferred from the *audio alone*.
+  ok('g691-694', 'the audio alone cannot separate the two departures',
     fromBb !== undefined && fromBb === fromToy);
   ok('g608-611', 'the vocal bank is the three sourced handles',
     C.BB_VOCAL_SAMPLES.join(',') === '21,24,23');
