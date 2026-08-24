@@ -25,7 +25,8 @@ class HidPilot {
                      pilotOffset = 0, vocalCam5 = false, dropVocal = 0,
                      vocalFalseCount = 0, bangCam5 = false, dropBang = 0,
                      bangFalseCount = 0, deviceSweep = false,
-                     sweepSlotMs = 240 } = {}) {
+                     sweepSlotMs = 240, pulseLight = false,
+                     secondBeat = false, maskMarginMs = null } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
@@ -36,11 +37,28 @@ class HidPilot {
     this.bangCam5 = bangCam5;
     this.deviceSweep = deviceSweep;
     this.sweepSlotMs = sweepSlotMs;
-    this.sweepFrames = deviceSweep ? s((70 + 3 * sweepSlotMs) / 1000) : 16;
-    this.sweepOffsets = deviceSweep
-      ? [s(0.070), s((70 + sweepSlotMs) / 1000),
-        s((70 + 2 * sweepSlotMs) / 1000)]
-      : TARGET_OFFSETS.map(offset => s(offset));
+    this.pulseLight = pulseLight;
+    // The phase-safe second is generous because the pilot did not know the
+    // game's one-second tick phase. `DEVICE_EPOCH_LATCH` now brackets T0 to
+    // about 80 ms, so the margin can be sized to that instead -- which is the
+    // only place the 790 ms sweep's extra stun gap can be paid from.
+    this.maskMargin = maskMarginMs === null ? null : s(maskMarginMs / 1000);
+    // The device sweep's second monitor-down beat is replaced by winding
+    // unless this asks for the ideal route's shape back.
+    this.secondBeat = secondBeat;
+    // Held-light device profile: contact 0 goes down first and needs a 70 ms
+    // settle, and the hold runs a full slot past the last camera.
+    // Pulsed profile: the camera is selected first and the light is pulsed
+    // afterwards, so there is no leading settle and the span is only the two
+    // inter-camera gaps plus one 100 ms contact.
+    this.sweepFrames = !deviceSweep ? 16
+      : pulseLight ? s((2 * sweepSlotMs + 100) / 1000)
+        : s((70 + 3 * sweepSlotMs) / 1000);
+    this.sweepOffsets = !deviceSweep ? TARGET_OFFSETS.map(offset => s(offset))
+      : pulseLight
+        ? [0, s(sweepSlotMs / 1000), s(2 * sweepSlotMs / 1000)]
+        : [s(0.070), s((70 + sweepSlotMs) / 1000),
+          s((70 + 2 * sweepSlotMs) / 1000)];
     this.cam5Hold = cam5Hold;
     this.epoch = pilotOffset;
     this.phaseSafeMask = phaseSafeMask;
@@ -106,6 +124,19 @@ class HidPilot {
 
   flashTargets(f, targets = TARGETS) {
     const start = f;
+    if (this.pulseLight) {
+      // `stunCam` refreshes on every frame the camera light is on while that
+      // camera is selected, so contact 0 does not have to stay down across
+      // the whole 790 ms phone sweep. Pulsing it around each camera contact
+      // keeps the same stun for 30 frames of battery instead of 47 -- and at
+      // 47 the three-camera sweep alone outspends night 6's 3000 frames.
+      for (const [i, cam] of targets.entries()) {
+        const at = start + this.sweepOffsets[i];
+        this.tap(at, `cam:${cam}`);
+        this.hold(at + 1, s(0.100), 'light');
+      }
+      return start + this.sweepFrames;
+    }
     // Three 5-frame camera contacts fit in the final 16 frames before the next
     // drop. CAM 10 and CAM 04 are then refreshed on the exact frame their
     // previous 400-frame stuns expire after a phase-safe BB mask; CAM 07 stays
@@ -214,6 +245,25 @@ class HidPilot {
     this.hold(a + s(1.28), s(0.08), 'light');
     this.tap(a + s(1.38), 'monitor');
     this.tap(a + s(1.62), 'cam:11');
+    if (this.deviceSweep && !this.secondBeat) {
+      // The phone's 790 ms sweep leaves the second wind window below one
+      // frame, so the cycle drains. Spend the second monitor-down beat on
+      // winding instead: one hall reset and one prophylactic mask per cycle
+      // remain, and the sweep still lands on the anchor.
+      const only = a + s(5) - this.sweepFrames;
+      this.hold(a + s(1.74), a + s(2.68) - (a + s(1.74)), 'wind');
+      // The second Foxy reset still needs the monitor down, but not the
+      // second Golden Freddy flick -- beat one's prophylactic mask already
+      // covers this cycle. Dropping the flick shortens the beat from 1.48 s
+      // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
+      this.tap(a + s(2.72), 'monitor');
+      this.hold(a + s(3.10), s(0.08), 'light');
+      this.tap(a + s(3.22), 'monitor');
+      this.tap(a + s(3.45), 'cam:11');
+      this.hold(a + s(3.57), Math.max(1, only - 1 - (a + s(3.57))), 'wind');
+      this.flashTargets(only);
+      return;
+    }
     this.hold(a + s(1.74), a + s(2.68) - (a + s(1.74)), 'wind');
 
     this.tap(a + s(2.72), 'monitor');
@@ -222,8 +272,13 @@ class HidPilot {
     this.hold(a + s(3.73), s(0.08), 'light');
     this.tap(a + s(3.85), 'monitor');
     this.tap(a + s(4.08), 'cam:11');
-    this.hold(a + s(4.20), s(0.48), 'wind');
-    this.flashTargets(a + s(4.733));
+    // The sweep must land on the anchor, not overrun it. With the phone's
+    // 790 ms actuator that pulls its start back over this wind window, which
+    // is the point of measuring the device profile on this route.
+    const sweepStart = a + s(5) - this.sweepFrames;
+    const windEnd = this.deviceSweep ? sweepStart - 1 : a + s(4.68);
+    this.hold(a + s(4.20), Math.max(1, windEnd - (a + s(4.20))), 'wind');
+    this.flashTargets(sweepStart);
   }
 
   // A negative sparse read rules out the opening at this instant. The monitor
@@ -244,7 +299,8 @@ class HidPilot {
   // sweep remains live until this response refreshes it after tick five.
   leftAttack(a) {
     this.attacks++;
-    const phaseMargin = this.phaseSafeMask ? s(1) : 0;
+    const phaseMargin = this.maskMargin !== null ? this.maskMargin
+      : this.phaseSafeMask ? s(1) : 0;
     const off = a + s(5.02) + phaseMargin;
     this.tap(off, 'mask');
     // The hall press is queued before the simultaneous monitor raise. It
@@ -254,8 +310,10 @@ class HidPilot {
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
-    this.hold(end + s(0.13), Math.max(1, a + s(9.46) - (end + s(0.13))), 'wind');
-    this.flashTargets(a + s(9.733));
+    const lateSweepStart = a + s(10) - this.sweepFrames;
+    const windEnd = this.deviceSweep ? lateSweepStart - 1 : a + s(9.46);
+    this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
+    this.flashTargets(lateSweepStart);
     this.nextAnchor = a + s(10);
   }
 
@@ -495,8 +553,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const exactArgs = new Set(['--worst', '--sparse-cam5', '--sparse-left',
     '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
-    '--assert', '--assert-rejected']);
-  const valuedArgs = ['--sweep-slot-ms=', '--cam5-light-ms=',
+    '--assert', '--assert-rejected', '--pulse-light', '--second-beat']);
+  const valuedArgs = ['--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
     '--drop-bang=', '--false-bang=', '--night='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
@@ -510,6 +568,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sweepSlotArg = (cliArgs.find(v => v.startsWith('--sweep-slot-ms=')) || '').split('=')[1];
   const deviceSweep = cliArgs.includes('--device-sweep') || Boolean(sweepSlotArg);
   const sweepSlotMs = sweepSlotArg ? +sweepSlotArg : 240;
+  const pulseLight = cliArgs.includes('--pulse-light');
+  const maskMarginArg = (cliArgs.find(v => v.startsWith('--mask-margin-ms=')) || '').split('=')[1];
+  const maskMarginMs = maskMarginArg === undefined ? null : +maskMarginArg;
+  const secondBeat = cliArgs.includes('--second-beat');
   const bbMode = cliArgs.includes('--cam5') || sparseCam5 || vocalCam5 || bangCam5 ? 'cam5'
     : (cliArgs.includes('--no-bb') || cliArgs.includes('--no-cam5')) ? 'none'
       : 'left';
@@ -546,8 +608,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error('bang error controls require --bang-cam5');
   if (sparseLeft && bbMode !== 'left')
     throw new Error('--sparse-left cannot be combined with a CAM-05 or no-BB mode');
-  if (deviceSweep && !sparseLeft)
-    throw new Error('--device-sweep requires --sparse-left');
+  if (deviceSweep && bbMode !== 'left')
+    throw new Error('--device-sweep requires a left-opening route');
+  if (maskMarginMs !== null && (!Number.isFinite(maskMarginMs) || maskMarginMs < 0 || maskMarginMs > 1000))
+    throw new Error('--mask-margin-ms must be between 0 and 1000');
+  if (maskMarginMs !== null && !phaseSafeMask)
+    throw new Error('--mask-margin-ms and --tick-aligned-mask are exclusive');
+  if ((pulseLight || secondBeat) && !deviceSweep)
+    throw new Error('--pulse-light and --second-beat require a device sweep profile');
   if (!vocalCam5 && (dropVocal || vocalFalseCount))
     throw new Error('vocal error controls require --vocal-cam5');
   if (assertSurvival && assertRejected)
@@ -561,7 +629,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
       vocalCam5, dropVocal, vocalFalseCount, bangCam5, dropBang,
       bangFalseCount, cam5Hold, pilotOffset,
-      phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs,
+      phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
+      secondBeat, maskMarginMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
@@ -583,8 +652,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         `(${cam5Light ? `${cam5Hold}f lit` : 'unlit'})`
       : 'blind cycle';
   console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${mode}` +
-    `, ${sparseLeft ? `${pilotOffset}f pilot offset${deviceSweep ? `, ${sweepSlotMs}ms device feed slots` : ''}` :
-      `${phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask`}` +
+    `, ${sparseLeft ? `${pilotOffset}f pilot offset` :
+      `${maskMarginMs !== null ? `${maskMarginMs}ms-margin` :
+        phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask`}` +
+    (deviceSweep ? `, ${sweepSlotMs}ms device feed slots` +
+      `${pulseLight ? ', pulsed light' : ''}${secondBeat ? ', second beat' : ''}` : '') +
     (worst ? ' (worst luck)' : ''));
   for (const [key, count] of Object.entries(fails).sort((a, b) => b[1] - a[1]))
     console.log(`  ${count}x  ${key}`);

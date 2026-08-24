@@ -32,6 +32,12 @@ document contradicting how the line is actually played.
   read costs **59 ms** and now covers both the left opening and the CAM 05
   region from the same 20×9 frame. Adding a screencap every four cycles was
   enough to truncate the wind and collapse the box from 52% to 10%.
+- **Price a policy against `--device-sweep`, not the ideal actuator.** The
+  published 10000/10000 Night 6 figure uses a 267 ms three-camera sweep the
+  phone has never produced. At the proven 240 ms spacing the same route is
+  0/1000, and a held 790 ms lit sweep alone outspends the whole 3000-frame
+  night-6 flashlight. See `HID-MULTITOUCH.md` §"The Night 6 route, priced
+  against the phone's actuator".
 - **Short taps get dropped** — Fusion polls touch per frame. Use duration
   presses (`input swipe x y x y 120`), which is why `PRESS_MODE=fast-swipe`
   exists and is not merely legacy.

@@ -49,6 +49,27 @@ const ENGINE = [
   // The phone-accepted 790 ms sweep invalidates that idealized table. Preserve
   // the rejection until a different policy is consciously modeled and proven.
   ['hidpilot device reject', ['hidpilottest.mjs', '200', '--night=7', '--sparse-left', '--device-sweep', '--assert-rejected']],
+  // The selected Night 6 left-opening route, priced against the actuator the
+  // phone actually has. Held at 790 ms it dies -- and not only on stalls: a
+  // 47-frame lit sweep 84 times over spends more than night 6's whole 3000
+  // frame flashlight. Pulsing the light around each contact fixes the power,
+  // but at the phone's proven 240 ms spacing the stun bridge across the
+  // five-tick BB mask still lapses. Both rejections stay until a faster
+  // camera actuator is measured on a phone.
+  ['hidpilot n6 device reject', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--assert-rejected']],
+  ['hidpilot n6 pulse reject', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=240',
+    '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert-rejected']],
+  // What a 160 ms spacing would buy: a real Night 6 clear with a 100 ms wide
+  // scheduler-phase window, which is the first device-shaped policy that
+  // survives at all. The explicit offset keeps that dependency visible.
+  ['hidpilot n6 160ms', ['hidpilottest.mjs', '500', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=160',
+    '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert']],
+  ['hidpilot n6 160ms worst', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=160',
+    '--mask-margin-ms=800', '--pilot-offset-ms=217', '--worst', '--assert']],
   // Perfect sourced events only: this guards the visual policy upper bound,
   // while plan 08's forced-miss report explicitly rejects promotion as-is.
   ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],

@@ -171,6 +171,81 @@ longer treats a transient unavailable watchdog capture as evidence that the
 night ended. This validates the empty capture path only—not BB response timing
 or a complete night.
 
+## The Night 6 route, priced against the phone's actuator (2026-08-24)
+
+Everything above prices the *Night 7* sparse-left candidate against the
+790 ms device sweep. The **selected Night 6 route was never priced against it
+at all**: `--device-sweep` refused to run outside `--sparse-left`, so the
+10000/10000 Night 6 figure was always an idealized 267 ms actuator. It now
+runs on the left route, and the route does not survive its own phone:
+
+| Night 6 left-opening route | Result |
+| --- | ---: |
+| ideal 267 ms sweep (the published figure) | 1000/1000 |
+| phone-proven 790 ms held-light sweep | **0/1000** |
+
+Two independent things break, and the second is arithmetic rather than policy.
+
+**The wind collapses.** The sweep has to land on the anchor, so a 47-frame
+hold eats the clear's second wind window down to nothing; 838 of the first
+1000 deaths were the Puppet at a 0% box.
+
+**The flashlight cannot pay for the sweep at all.** A 790 ms lit sweep is 47
+frames of light, 84 times in a night. That is 3948 frames against night 6's
+sourced **3000**, before a single hall flash. No schedule containing it can
+finish a night, whatever else it does.
+
+### Pulsing the light instead of holding it
+
+`stunCam` refreshes on *every frame* the camera light is on while that camera
+is selected, so contact 0 does not have to stay down across the sweep. Select
+the camera with contact 1, then pulse contact 0 for one 100 ms contact. Two
+things follow: the sweep costs 18 frames of battery instead of 47, and the
+70 ms leading light settle leaves the span, because the light no longer has to
+be up before the first selection. The span becomes `2 * spacing + 100 ms`.
+
+`--pulse-light` models this, with `--sweep-slot-ms=` for the spacing and
+`--mask-margin-ms=` for the BB mask's phase margin. The device clear also drops
+the second Golden Freddy flick — beat one's prophylactic mask already covers
+the cycle — which is where the wind the longer sweep costs comes back from.
+
+### It still fails at the spacing the phone has proven
+
+With the pulsed light the route survives night 6 at 240 ms spacing, but only at
+**one scheduler frame**. The ideal route's window is 18 frames (about 300 ms);
+`DEVICE_EPOCH_LATCH` brackets T0 to about 80 ms. A one-frame island is not a
+schedule anyone can land.
+
+The mechanism is a single inequality. Across the five-tick BB mask no camera
+can be refreshed, so the same camera's stun must bridge from the pre-mask sweep
+to the recovery sweep. That gap is `mask window + 27 frames + sweep span`, the
+27 being mask-off plus monitor-raise. The stun is 400 frames and the movement
+grid grants a few more. A five-tick mask that is robust to *any* tick phase
+needs about 300 frames on its own, which leaves the sweep span about 18 frames
+— **300 ms, for all three cameras**. The phone's proven 240 ms spacing spans
+580 ms even with the settle removed.
+
+Measured windows, 1000 ordinary and 300 pinned-worst nights per offset, min box
+56%, min power 726:
+
+| Camera spacing | Span | Mask margin | Perfect-phase window |
+| ---: | ---: | ---: | --- |
+| 240 ms (proven on this phone) | 580 ms | 600 ms | 2 frames — not landable |
+| 160 ms | 420 ms | 800 ms | **6 frames (100 ms)**, offsets 11-16 |
+| 120 ms | 340 ms | 900 ms | **12 frames (200 ms)**, offsets 5-16 |
+
+So the blocker for a Night 6 device clear is now named and singular: **the
+camera actuator's inter-selection spacing**. `tools/test.mjs --engine` keeps
+both rejections (`hidpilot n6 device reject`, `hidpilot n6 pulse reject`) and
+both 160 ms survivals so neither half can drift.
+
+The open device gate is narrow enough to test directly: drive CAM 10, CAM 04
+and CAM 07 at 160 ms spacing with the light pulsed *after* each selection, and
+confirm with `camtrace.py` that all three feeds are selected. The existing
+evidence does not answer it — the rejected forms were *batched* `hid delay`
+macros, and the accepted 240 ms figure was the first wall-timed spacing tried,
+not a measured floor.
+
 ## Trap 1: UHID open is earlier than Android input readiness
 
 The `hid` command returns from registration after the kernel sends
