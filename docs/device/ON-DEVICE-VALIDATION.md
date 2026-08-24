@@ -290,14 +290,28 @@ ended it. It is recorded because the failure is informative even though the run
 was badly configured -- it carried no BB check, and `hid-multi` had not been
 validated for this loop.
 
-The box trace from the same evening's runs is the measurable part, via
-`windpct.py` on the saved capture. Winds ran a full 1.5 s and held the box
-between 52% and 75% for the first seven cycles, then began truncating to 0.67 s
-on a roughly 20-second cadence -- exactly the `BB_CAM05_CAPTURE_EVERY=4` period
--- after which the baseline fell 52% to 42%, 29%, 25%, 18%, 14%, and 10%,
-never recovering. A 206 ms screencap against a cycle with about 680 ms free is
-enough to starve the wind, and the loss compounds because a short wind leaves
-less box for the next cycle to protect.
+**The wind was the one thing that worked.** `windpct.py` on that run's capture
+shows the box climbing past 80% by 20 s and sitting at 80-100% for the rest of
+it. So the failure was not a starved box, and the first reading of this run --
+which blamed the box -- was wrong.
+
+What separates the two is press duration. Winding is a ~1.5 s hold and it
+landed every cycle. The camera stalls and the hall flash are brief presses, and
+both failed: a Withered reached the office and Foxy ended the night. That is the
+same shape as the harness's oldest rule, that a short `input tap` is dropped
+about half the time because Fusion polls touch per frame, which is why the
+device tools use a duration press. **`hid-multi` appears to deliver holds and
+drop short presses**, and until that is measured directly it should not be used
+for a loop whose defence is flashes.
+
+A *different* run the same evening -- `PRESS_MODE=fast-swipe` with
+`BB_CAM05_CAPTURE_EVERY=4` -- did starve, and its trace is the clean measurement
+of the overhead cost. Full 1.5 s winds held 52-75% for seven cycles, then
+truncated to 0.67 s on a roughly 20-second cadence, exactly the capture period,
+after which the baseline fell 52, 42, 29, 25, 18, 14, 10 percent and never
+recovered. A 206 ms screencap against a cycle with about 680 ms free starves the
+wind, and the loss compounds because a short wind leaves less box for the next
+cycle to protect.
 
 Two consequences worth carrying. Adding an observation to this loop is not free
 and must be priced before it is scheduled; and the cue helper's device-local

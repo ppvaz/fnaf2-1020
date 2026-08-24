@@ -719,14 +719,15 @@ captures had been dropped to save budget. So the failure has two live
 explanations, the strategy's stalls or the actuator, and this run separates
 neither.
 
-What it does establish is that the simulator's 300/300 is not a device result.
-The simulator prices no press and no observation
-([`ON-DEVICE-VALIDATION.md`](../docs/device/ON-DEVICE-VALIDATION.md)), and the
-same evening's box trace shows what that hides: winds truncated from 1.5 s to
-0.67 s on exactly the cadence of the added screencap, and the box baseline
-falling 52% to 10% over two minutes and never recovering. Treat every survival
-figure above as a statement about the model until a clean device run with the
-validated actuator says otherwise. That is a design conclusion the device work can act on
+The likeliest reading is the actuator, not the strategy. That run's box sat at
+80-100% throughout -- the 1.5 s wind hold landed every cycle -- while the brief
+presses that carry the camera stalls and the hall flash did not. Holds work,
+short presses appear to drop, which is the harness's oldest known failure mode.
+
+Either way the simulator's 300/300 is not a device result: it prices no press
+and no observation, so it cannot see this at all. Treat every survival figure
+above as a statement about the model until a clean device run with a
+flash-validated actuator says otherwise. That is a design conclusion the device work can act on
 directly, and it is only reachable because the bang is the loud cue — the one
 measured at 2.9-4.6 detections per minute on the phone, where the vocals were
 6-16 dB short.
