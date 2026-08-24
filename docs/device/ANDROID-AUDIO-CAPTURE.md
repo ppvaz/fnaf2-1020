@@ -84,6 +84,12 @@ negative windows with Mangle present and with the music box winding. The first
 acceptance test is whether BB laughs remain distinguishable under the captured
 background; end-to-end timing is a separate test after that.
 
+The proposed on-device boundary, window schedule, failure semantics, and
+promotion gates are preserved in
+[`plans/08-audio-cue-controller.md`](../../plans/08-audio-cue-controller.md).
+That plan keeps PCM and detection on the phone and does not assume that the
+helper must read continuously.
+
 ## Practical recording workarounds
 
 For a clip intended to match what the player heard, record the physical output

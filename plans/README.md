@@ -37,3 +37,7 @@ Current triage (2026-08-20):
 7. [07-tooling-consolidation.md](07-tooling-consolidation.md) — queued tooling
    correctness fixes and consolidation opportunities found by the 2026-08-23
    all-tools audit; take the contract fixes first and refactor opportunistically.
+8. [08-audio-cue-controller.md](08-audio-cue-controller.md) — recovered plan for
+   windowed, fully on-device Android playback capture and cue classification;
+   source mapping, target-phone calibration, timing, simulation, and shadow-mode
+   gates precede any Night 7 action.
