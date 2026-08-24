@@ -1,12 +1,26 @@
 # On-device audio-cue controller
 
-**Status:** recovered from the interrupted 2026-08-24 `/btw` thread; design and
-promotion gates recorded. **Gate 0 is closed (2026-08-24) and it cost the plan
-its highest-payoff action: early unmasking is out of scope, because BB's
-departure plays the sample 18 edges across seven characters share.** The
-unified capture probe and its authenticated `GET` snapshot are implemented and
-validated on the target device; cue arming, classification, and action control
-are not.
+**Status (2026-08-24).** Gate 0 is closed, and it cost the plan its
+highest-payoff action: early unmasking is out of scope, because BB's departure
+plays the sample 18 edges across seven characters share. Everything else is
+instrumented but ungated.
+
+| Package | State |
+| --- | --- |
+| 0. Source-map candidate cues | **Closed.** Every Office sample mapped to its state edge; early unmasking withdrawn |
+| 1. Prove playback capture | Capture path built and proven on the target; the gate needs labeled windows from real gameplay |
+| 2. Offline detector | Front end built and characterised against real contaminated background; the gate needs a session-split holdout, confusion matrix, and binomial bounds |
+| 3. Window and action latency | The result-receipt leg is measured (225 ms to 59 ms). The rest needs the `ARM`/`HIT`/`MISS` protocol, which does not exist |
+| 4. Simulator cue injection | Not advanced. Still has only the perfect-event upper bound and the forced-miss lower bound |
+| 5. Shadow on the real device | Not started |
+| 6. Enable one bounded action | Not started |
+
+**The single blocker for 1, 2 and 5 is the same:** labeled positive windows from
+nights where BB actually moves. Every offline result below is an injection study
+or a source fact; none of them is held-out device evidence, and none of the
+gates that need device evidence has been closed. The helper, the recorder, the
+detector, and the latency harness exist so that collecting it is now a matter of
+running nights rather than building tools.
 
 ## Decision
 
@@ -369,6 +383,17 @@ gameplay where BB actually moves — which needs nights on the phone with
 contains the game's own concurrent voices, not a scaled reference over ambience.
 Do not read the table above as a detector result. It says only that the cue set
 is separable in principle and that background subtraction is required.
+
+The projection classifier threshold is unvalidated for the same reason. Pairing
+a raw `screencap` with a projection snapshot cannot settle whether Android's
+VirtualDisplay scaler matches the offline bilinear simulation that
+[`ONE-PIXEL-VISION.md`](../docs/device/ONE-PIXEL-VISION.md) derived its luma
+separation from, because the two captures are not simultaneous and the title
+screen animates: three attempts gave projection values of 0, 1 and 47 against
+box averages of 67, 40 and 37. It needs a static, labeled view -- which means
+the calibrated lit left opening during a night, captured with
+`capture-screen-sample.sh` alongside a snapshot. Until then the 59 ms read is a
+cheap *observation*, not a validated *decision*.
 
 One bug worth keeping: the first front end floored band energies at an absolute
 epsilon, so dropping a signal 20 dB pinned its quiet bands while its loud bands
