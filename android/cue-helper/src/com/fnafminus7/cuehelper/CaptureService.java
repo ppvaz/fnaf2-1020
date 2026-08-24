@@ -71,6 +71,16 @@ public final class CaptureService extends Service {
     private static final int VISUAL_HEIGHT = 9;
     private static final int VISUAL_X = 3;
     private static final int VISUAL_Y = 6;
+    // The CAM 05 feed region, as a block of the same 20x9 frame. The screen
+    // model's ROI is (600,180)-(1120,500) of 2400x1080, and at 120 px per cell
+    // that is x 5..9, y 1..4. Reading it costs twenty pixels of an image the
+    // service already has -- the reason CAM 05 needed a 206 ms screencap was
+    // that this service sampled exactly one hardcoded point, not any limit of
+    // the capture.
+    private static final int CAM5_X0 = 5;
+    private static final int CAM5_X1 = 9;
+    private static final int CAM5_Y0 = 1;
+    private static final int CAM5_Y1 = 4;
     private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
     private static final long MAX_AUDIO_READ_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
@@ -148,6 +158,7 @@ public final class CaptureService extends Service {
     private int snapshotGreen;
     private int snapshotBlue;
     private int snapshotLuma;
+    private int snapshotCam5;
     private long snapshotAudioFrames;
     private long snapshotAudioReadNs;
     private int snapshotAudioRms;
@@ -319,6 +330,8 @@ public final class CaptureService extends Service {
             int green = buffer.get(offset + 1) & 0xff;
             int blue = buffer.get(offset + 2) & 0xff;
             int luma = (77 * red + 150 * green + 29 * blue) >> 8;
+            int cam5Luma = blockLuma(plane, buffer,
+                    CAM5_X0, CAM5_Y0, CAM5_X1, CAM5_Y1);
             long callbackNs = System.nanoTime();
             long timestampNs = image.getTimestamp();
             long ageUs = timestampNs > 0 ? (callbackNs - timestampNs) / 1_000L : -1;
@@ -333,6 +346,7 @@ public final class CaptureService extends Service {
                 snapshotGreen = green;
                 snapshotBlue = blue;
                 snapshotLuma = luma;
+                snapshotCam5 = cam5Luma;
             }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
@@ -352,8 +366,9 @@ public final class CaptureService extends Service {
                 if (invalidReason == null) {
                     lastVisual = String.format(Locale.US,
                             "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
-                                    + "ageUs=%d content=%s",
-                            visualSequence, red, green, blue, luma, ageUs, content);
+                                    + "cam5=%d ageUs=%d content=%s",
+                            visualSequence, red, green, blue, luma, cam5Luma,
+                            ageUs, content);
                 } else {
                     lastVisual = String.format(Locale.US,
                             "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%s",
@@ -370,6 +385,28 @@ public final class CaptureService extends Service {
                 image.close();
             }
         }
+    }
+
+    /** Mean luma over an inclusive cell block, or -1 if it does not fit. */
+    private static int blockLuma(Image.Plane plane, ByteBuffer buffer,
+            int x0, int y0, int x1, int y1) {
+        long total = 0;
+        int count = 0;
+        for (int y = y0; y <= y1; y++) {
+            int row = y * plane.getRowStride();
+            for (int x = x0; x <= x1; x++) {
+                int at = row + x * plane.getPixelStride();
+                if (at < 0 || at + 2 >= buffer.limit()) {
+                    return -1;
+                }
+                int r = buffer.get(at) & 0xff;
+                int g = buffer.get(at + 1) & 0xff;
+                int b = buffer.get(at + 2) & 0xff;
+                total += (77 * r + 150 * g + 29 * b) >> 8;
+                count++;
+            }
+        }
+        return count == 0 ? -1 : (int) (total / count);
     }
 
     private String capturedContentInvalidReason() {
@@ -926,6 +963,7 @@ public final class CaptureService extends Service {
         int green;
         int blue;
         int luma;
+        int cam5;
         long audioFrames;
         long audioReadNs;
         int audioRms;
@@ -937,6 +975,7 @@ public final class CaptureService extends Service {
             green = snapshotGreen;
             blue = snapshotBlue;
             luma = snapshotLuma;
+            cam5 = snapshotCam5;
             audioFrames = snapshotAudioFrames;
             audioReadNs = snapshotAudioReadNs;
             audioRms = snapshotAudioRms;
@@ -954,9 +993,9 @@ public final class CaptureService extends Service {
         String visual;
         if (invalidReason == null) {
             visual = String.format(Locale.US,
-                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d ageUs=%d "
-                            + "content=%dx%d visible=%d",
-                    visualSequenceSnapshot, red, green, blue, luma, visualAgeUs,
+                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam5=%d "
+                            + "ageUs=%d content=%dx%d visible=%d",
+                    visualSequenceSnapshot, red, green, blue, luma, cam5, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility);
         } else {

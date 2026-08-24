@@ -706,7 +706,27 @@ what it never looks at.
 That inverts the detector's operating point. The usual instinct is to raise the
 threshold until false positives vanish; here false positives are nearly free and
 misses are lethal, so the correct setting is the **most sensitive threshold the
-power budget tolerates**. That is a design conclusion the device work can act on
+power budget tolerates**.
+
+**Its premise is unverified on device, and one run went against it (2026-08-24.)**
+The bang is Balloon Boy's alone only while the seven are stun-locked. In a
+device run that evening, Withered Bonnie *and* Balloon Boy both reached the
+office and Foxy took the night: the stall discipline the uniqueness rests on
+did not hold. That run cannot settle it -- it used `PRESS_MODE=hid-multi`, the
+newest and least-proven actuator, chosen mid-session without checking it was
+validated for this loop, and it carried no BB check at all because the CAM 05
+captures had been dropped to save budget. So the failure has two live
+explanations, the strategy's stalls or the actuator, and this run separates
+neither.
+
+What it does establish is that the simulator's 300/300 is not a device result.
+The simulator prices no press and no observation
+([`ON-DEVICE-VALIDATION.md`](../docs/device/ON-DEVICE-VALIDATION.md)), and the
+same evening's box trace shows what that hides: winds truncated from 1.5 s to
+0.67 s on exactly the cadence of the added screencap, and the box baseline
+falling 52% to 10% over two minutes and never recovering. Treat every survival
+figure above as a statement about the model until a clean device run with the
+validated actuator says otherwise. That is a design conclusion the device work can act on
 directly, and it is only reachable because the bang is the loud cue — the one
 measured at 2.9-4.6 detections per minute on the phone, where the vocals were
 6-16 dB short.

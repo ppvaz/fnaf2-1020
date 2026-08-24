@@ -282,6 +282,29 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   conservative-branch rules are in
   [`ON-DEVICE-SCREEN-CHECKS.md`](ON-DEVICE-SCREEN-CHECKS.md).
 
+## 2026-08-24: a device run where the stalls did not hold
+
+One `PRESS_MODE=hid-multi` pilot run on 6th Night failed on every axis at once:
+Withered Bonnie reached the office, Balloon Boy reached the office, and Foxy
+ended it. It is recorded because the failure is informative even though the run
+was badly configured -- it carried no BB check, and `hid-multi` had not been
+validated for this loop.
+
+The box trace from the same evening's runs is the measurable part, via
+`windpct.py` on the saved capture. Winds ran a full 1.5 s and held the box
+between 52% and 75% for the first seven cycles, then began truncating to 0.67 s
+on a roughly 20-second cadence -- exactly the `BB_CAM05_CAPTURE_EVERY=4` period
+-- after which the baseline fell 52% to 42%, 29%, 25%, 18%, 14%, and 10%,
+never recovering. A 206 ms screencap against a cycle with about 680 ms free is
+enough to starve the wind, and the loss compounds because a short wind leaves
+less box for the next cycle to protect.
+
+Two consequences worth carrying. Adding an observation to this loop is not free
+and must be priced before it is scheduled; and the cue helper's device-local
+read at 59 ms exists precisely so an observation need not cost a screencap. The
+helper now also reports the CAM 05 feed region as a block of the same 20x9
+frame it already captures, so that path no longer requires one.
+
 ## Simulating the pilot (2026-08-20)
 
 `tools/pilottest.mjs` replays `trial-minus7.sh`'s millisecond table in the

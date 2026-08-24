@@ -20,6 +20,7 @@ import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import correlate  # noqa: E402
 import features  # noqa: E402
 
 DEFAULT_REFS = "/private/tmp/fnaf2-cue-refs"
@@ -264,6 +265,9 @@ def main():
     parser.add_argument("--threshold", type=float, default=0.45)
     parser.add_argument("--prominence", type=float, default=0.05,
                         help="how far a peak must stand above its neighbourhood")
+    parser.add_argument("--confirm", type=float, default=0.35,
+                        help="minimum waveform correlation to accept a band "
+                             "candidate; 0 disables the confirming stage")
     parser.add_argument("--core", type=int, default=CORE_FRAMES,
                         help="match only the reference's N most energetic frames "
                              "(0 matches the whole sample, which is far less sensitive)")
@@ -297,17 +301,30 @@ def main():
                      len(excluded), len(frames),
                      100.0 * len(excluded) / max(1, len(frames))))
             hits = []
+            raw = {}
             for handle, template in sorted(refs.items()):
                 curve = score_curve(frames, template)
                 gap = max(1, len(template))
                 for index in peaks(curve, opts.threshold, gap, excluded,
                                    opts.prominence):
-                    hits.append((index * features.HOP / float(features.RATE),
-                                 handle, curve[index],
-                                 level_above_background(levels, index, gap)))
-            for when, handle, score, level in sorted(hits):
-                print("    %7.2fs  sample %-3d score %.3f  level %+5.1f dB"
-                      % (when, handle, score, level))
+                    when = index * features.HOP / float(features.RATE)
+                    # The band stage proposes, the waveform stage confirms.
+                    # Band agreement alone calls menu audio a thud at 0.900.
+                    conf, onset = 1.0, when
+                    if opts.confirm > 0:
+                        if handle not in raw:
+                            raw[handle] = features.load_window(
+                                pathlib.Path(opts.refs) / ("s%04d.wav" % handle))
+                        conf, onset = correlate.best_match(samples, raw[handle], when)
+                    hits.append((onset, handle, curve[index],
+                                 level_above_background(levels, index, gap), conf))
+            kept = [h for h in hits if h[4] >= opts.confirm]
+            for when, handle, score, level, conf in sorted(kept):
+                print("    %7.2fs  sample %-3d band %.3f  corr %.3f  level %+5.1f dB"
+                      % (when, handle, score, conf, level))
+            if opts.confirm > 0:
+                print("    (%d of %d band candidates confirmed at corr >= %.2f)"
+                      % (len(kept), len(hits), opts.confirm))
             if not hits:
                 print("    (nothing above threshold)")
         return
