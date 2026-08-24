@@ -3,6 +3,7 @@
 #
 #   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
 #   query-cue-helper.sh record PRE POST [label]   pull one calibration window
+#   query-cue-helper.sh latency [count]           time device-local snapshot reads
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -27,6 +28,7 @@ TRANSPORT="${CUE_HELPER_TRANSPORT:-loopback}"
 case "${1:-}" in
   loopback|forward) TRANSPORT="$1" ;;
   record) VERB=record; shift ;;
+  latency) VERB=latency; shift ;;
   '') ;;
   *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
 esac
@@ -34,6 +36,15 @@ case "$TRANSPORT" in
   loopback|forward) ;;
   *) echo "unknown transport: $TRANSPORT (use loopback or forward)" >&2; exit 2 ;;
 esac
+
+if [ "$VERB" = latency ]; then
+  COUNT="${1:-50}"
+  case "$COUNT" in *[!0-9]*) echo "count must be a whole number" >&2; exit 2 ;; esac
+  if [ "$TRANSPORT" != loopback ]; then
+    echo "latency measures the device-local path; use the loopback transport" >&2
+    exit 2
+  fi
+fi
 
 if [ "$VERB" = record ]; then
   PRE="${1:?record needs PRE seconds}"
@@ -127,6 +138,69 @@ if [ "$VERB" = snapshot ]; then
     'OK '*) echo "cue helper returned a fail-closed observation" >&2; exit 1 ;;
     *) echo "cue helper control query failed" >&2; exit 1 ;;
   esac
+  exit 0
+fi
+
+if [ "$VERB" = latency ]; then
+  # Plan 08 package 3, the "result receipt" leg. Everything is timed inside one
+  # device shell against the device's own clock, so no adb round trip is
+  # measured. The baseline pass times the same loop with the socket call
+  # removed, because a forked `date` costs real milliseconds here and that cost
+  # is part of what a shell-based controller would actually pay.
+  samples="$(adb shell sh -s -- "$port" "$COUNT" "$token" <<'REMOTE' | tr -d '\r'
+set -eu
+port=$1
+count=$2
+token=$3
+i=0
+while [ "$i" -lt "$count" ]; do
+  start=$(date +%s%N)
+  printf 'GET %s\n' "$token" | toybox nc -w 2 127.0.0.1 "$port" >/dev/null 2>&1
+  end=$(date +%s%N)
+  echo "read $(( (end - start) / 1000 ))"
+  i=$((i + 1))
+done
+i=0
+while [ "$i" -lt "$count" ]; do
+  start=$(date +%s%N)
+  end=$(date +%s%N)
+  echo "base $(( (end - start) / 1000 ))"
+  i=$((i + 1))
+done
+REMOTE
+)"
+  printf '%s\n' "$samples" | python3 -c '
+import sys
+
+groups = {"read": [], "base": []}
+for line in sys.stdin:
+    parts = line.split()
+    if len(parts) == 2 and parts[0] in groups:
+        try:
+            groups[parts[0]].append(int(parts[1]))
+        except ValueError:
+            pass
+
+def pct(values, q):
+    if not values:
+        return float("nan")
+    ordered = sorted(values)
+    index = min(len(ordered) - 1, int(round(q * (len(ordered) - 1))))
+    return ordered[index]
+
+for name, label in (("read", "snapshot read"), ("base", "shell baseline")):
+    values = groups[name]
+    if not values:
+        print("%-14s no samples" % label)
+        continue
+    print("%-14s n=%-4d p50 %6.2f ms  p95 %6.2f ms  p99 %6.2f ms  max %6.2f ms"
+          % (label, len(values), pct(values, 0.50) / 1000.0,
+             pct(values, 0.95) / 1000.0, pct(values, 0.99) / 1000.0,
+             max(values) / 1000.0))
+if groups["read"] and groups["base"]:
+    net = pct(groups["read"], 0.50) - pct(groups["base"], 0.50)
+    print("socket cost at p50: %.2f ms" % (net / 1000.0))
+'
   exit 0
 fi
 

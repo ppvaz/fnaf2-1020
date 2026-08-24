@@ -108,6 +108,34 @@ clear: capture dominates. Replacing the integer template distance with a still
 smaller classifier cannot recover most of the 225 ms while `screencap` continues
 to compose a 2.59-million-pixel display.
 
+### The projection path, measured (2026-08-24)
+
+The prediction above has now been tested. The cue helper keeps one consented
+`MediaProjection` producing a 20x9 virtual display and answers a device-local
+socket with the already-classified pixel, so a reader pays neither the
+full-display compose nor the classification. On the same handset, 60
+interleaved samples taken entirely inside one device shell:
+
+| Work | p50 | p95 | p99 | max |
+|---|---:|---:|---:|---:|
+| snapshot read, shell client | 48.8 ms | **59.5 ms** | 60.8 ms | 66.9 ms |
+| the same loop with the socket call removed | 22.5 ms | 31.6 ms | 32.2 ms | 32.6 ms |
+
+So the observation costs **59 ms at p95 against 225 ms**, a 3.8x reduction, and
+less than half of what remains is the socket: the exchange itself is about
+26 ms at p50, and the other 22 ms is the shell forking `date` and `nc`. A
+device-local C client on the same socket would pay close to the 26 ms, because
+the expensive part of the old path -- composing 2.59 million pixels -- is no
+longer performed at read time at all. The projection does that work
+continuously at 60 fps in another process, and the reader collects a value.
+
+Two caveats. The read returns the *freshest* frame rather than a frame captured
+on demand, so its age is reported in the snapshot (`ageUs`) and a stale frame
+is `UNKNOWN`; and this measures the read, not a decision, because the classifier
+threshold on this path is not yet calibrated -- the luma figures in this
+document come from `screencap` frames and an offline bilinear simulation, not
+from Android's own VirtualDisplay scaler.
+
 This is a general profiling lesson: optimize the earliest expensive stage that
 cannot be skipped. A one-pixel decision downstream of a full-resolution
 screenshot still pays for a full-resolution screenshot.
@@ -239,6 +267,7 @@ game-frame behavior over a full night.
 | Path | What it offers | Why it is not the production default |
 |---|---|---|
 | stock shell `screencap` | simple, already validated prototype | composes the full display; measured capture p95 is 206 ms |
+| `MediaProjection` virtual display | one consent session, 20x9 output, no per-read compose; measured read p95 is 59 ms | this *is* the intended production path as of 2026-08-24; it needs a consented session and a running helper, and its classifier threshold is not yet calibrated |
 | `PixelCopy` | can crop a `Window` or `Surface` the caller can access | it does not grant access to an arbitrary other app's window; see [`PixelCopy`](https://developer.android.com/reference/android/view/PixelCopy) |
 | `AccessibilityService.takeScreenshot()` | public full-display/window hardware-buffer screenshot | full screenshot, rate-limit failure mode, and an accessibility service should exist for an accessibility purpose; see [`AccessibilityService`](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService) |
 | private SurfaceFlinger/`ScreenCapture` helper | AOSP has hidden layer-capture arguments with a `sourceCrop` | `@hide`, privileged/version-sensitive, and OEM-fragile; useful only as a benchmark unless the deployment environment deliberately accepts that boundary |

@@ -391,6 +391,33 @@ windows to report p50, p95, p99, maximum, overruns, and late-result count, then
 repeat through a full seven-minute thermal/GC soak with the game active. Disable
 disk writes and verbose logging for the production measurement.
 
+#### First leg measured (2026-08-24): result receipt
+
+`tools/device/query-cue-helper.sh latency` times snapshot reads entirely inside
+one device shell, against the device's own clock, so no adb round trip is
+included. 60 samples on the target:
+
+| | p50 | p95 | p99 | max |
+|---|---:|---:|---:|---:|
+| snapshot read | 48.8 ms | 59.5 ms | 60.8 ms | 66.9 ms |
+| same loop, socket call removed | 22.5 ms | 31.6 ms | 32.2 ms | 32.6 ms |
+
+The observation the controller pays drops from the harness's measured **225 ms**
+combined screencap p95 ([`ONE-PIXEL-VISION.md`](../docs/device/ONE-PIXEL-VISION.md))
+to **59 ms**, and roughly 22 ms of what remains is the shell forking `date` and
+`nc` rather than the socket. That is the strongest argument yet for the
+projection path, and it is a measurement of the *observer*, not of a decision.
+
+The other legs of this package are not measured. Arm-to-first-PCM-frame,
+cue-onset-to-classification, and window-close-to-`MISS` all need the `ARM`/`HIT`/
+`MISS` window protocol, which does not exist yet -- only `GET`, `CAL`, and `REC`
+do. One number is worth recording in advance as a warning: the offline detector
+in `tools/cue/` scores a five-second window against ten templates in about two
+seconds of host Python. That is fine for calibration and hopeless for a live
+window, so the on-device classifier is a reimplementation, not a port, and its
+cost has to be measured on the phone before any deadline arithmetic means
+anything.
+
 **Gate:** p99 completion plus the existing mask/monitor/input sequence and an
 explicit margin must land before the simulator-derived action deadline. Also
 show that the helper does not add unacceptable frame, input, audio, or thermal
