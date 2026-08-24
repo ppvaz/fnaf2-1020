@@ -3,6 +3,23 @@
 **Status:** research done — see `VENT-CAMP-STRATEGY.md` (2026-08-19). Implementation
 not started. Do after plan 02 — it reuses the strategy-picker work.
 
+**Engine sourcing: DONE (2026-08-24).** Work item 1 is complete. §4 gaps 1-7 were
+decoded in the 2026-08-20 sweep; the four that were still unmodelled are now
+implemented and asserted in `tools/sourcetest.mjs` (118 -> 130 cases): the
+post-mask flash lockout (gap 6 — `mask` reaches 0 only when the mmaskOff
+animation ends, g10/g11, and Foxy's reset runs through it via g489 -> g745),
+the `in danger` gate on every light (g75/g76/g77, g83/g88), the per-frame vent
+light re-test that makes a held vent light die on the mask (g299 + g301/g303/
+g320), and the mask press needing `being attacked by` = 0 (g267/g270). See
+`ANDROID-SOURCE-STATUS.md` "2026-08-24: `mask = 0` means the animation, not the
+press". Implementing gap 6 retimed the Minus 7 cycle — the old table's hall
+flash never lit — so `DEFAULT_CYCLE` was re-derived by `cyclesearch`.
+
+Items 2-5 (the reactive coach, the decision table, the lesson ladder, the
+grading tests) are untouched. The "Engine risk" section below is now answered
+for the vent/mask/light path; post-chokepoint routing remains the approximation
+it always was.
+
 **Research verdict:** teach **brayden's 2024 timer strategy**, the lineage's end
 state — it is far more clock-anchored than this plan assumed. The reactive-coach
 redesign shrinks to grading a four-way decision fork on monitor-down plus Toy Bonnie

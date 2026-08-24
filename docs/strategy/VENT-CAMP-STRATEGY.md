@@ -108,6 +108,17 @@ branch-prompt problem.
 > right vent light blocks Toy Bonnie's vent hop and vent lights cost no
 > battery. Engine implementation of the new nuances is the remaining work.
 
+> **2026-08-24 implementation pass:** the four rules the sweep left decoded but
+> unmodelled are now in the engine and asserted per group in
+> `tools/sourcetest.mjs`. Gap 4 (consecutive mask ticks) and gap 5 (the Puppet
+> flash-stall) were already implemented; gaps 2 and 7 were already sourced.
+> **Gap 6 was the expensive one** and its own parenthetical predicted why: the
+> lockout is the mask-off animation itself, and Foxy's D reset runs through
+> `lit?` (g489 -> g745), so the shipped cycle's flash — 3 frames after the
+> mask-off tap — never lit. `DEFAULT_CYCLE` was re-derived accordingly.
+> Gap 1's residual `<=` question is settled (the operator is `<=`, sourced);
+> the D-offset Clickteam quirk remains unmodelled and is the last open item.
+
 Gaps and conflicts in `src/engine.js` / `src/config.js` (as researched
 2026-08-19, pre-decode):
 
