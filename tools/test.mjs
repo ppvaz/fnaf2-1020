@@ -61,15 +61,25 @@ const ENGINE = [
   ['hidpilot n6 pulse reject', ['hidpilottest.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=240',
     '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert-rejected']],
-  // What a 160 ms spacing would buy: a real Night 6 clear with a 100 ms wide
-  // scheduler-phase window, which is the first device-shaped policy that
-  // survives at all. The explicit offset keeps that dependency visible.
-  ['hidpilot n6 160ms', ['hidpilottest.mjs', '500', '--night=6',
-    '--device-sweep', '--pulse-light', '--sweep-slot-ms=160',
-    '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert']],
-  ['hidpilot n6 160ms worst', ['hidpilottest.mjs', '200', '--night=6',
-    '--device-sweep', '--pulse-light', '--sweep-slot-ms=160',
-    '--mask-margin-ms=800', '--pilot-offset-ms=217', '--worst', '--assert']],
+  // The shipped device target: 120 ms spacing (measured on the phone), the
+  // pessimistic 480 ms lit-frame latch, and the centre of the 83-267 ms
+  // scheduler-phase window. Both the offset and the latch are explicit so the
+  // two device dependencies cannot drift out of the contract silently.
+  ['hidpilot n6 target', ['hidpilottest.mjs', '500', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
+    '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
+    '--assert']],
+  ['hidpilot n6 target worst', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
+    '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
+    '--worst', '--assert']],
+  // Just past the window's upper edge (83-267 ms), so the window is a
+  // measurement and not a hope. Below the edge survival is a 1-in-400
+  // straggler rather than a clean zero, which is why this control sits above.
+  ['hidpilot n6 off-phase', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
+    '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=300',
+    '--assert-rejected']],
   // Perfect sourced events only: this guards the visual policy upper bound,
   // while plan 08's forced-miss report explicitly rejects promotion as-is.
   ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],

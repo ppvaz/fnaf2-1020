@@ -26,7 +26,8 @@ class HidPilot {
                      vocalFalseCount = 0, bangCam5 = false, dropBang = 0,
                      bangFalseCount = 0, deviceSweep = false,
                      sweepSlotMs = 240, pulseLight = false,
-                     secondBeat = false, maskMarginMs = null } = {}) {
+                     secondBeat = false, maskMarginMs = null,
+                     readLatencyMs = 360 } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
@@ -43,6 +44,11 @@ class HidPilot {
     // about 80 ms, so the margin can be sized to that instead -- which is the
     // only place the 790 ms sweep's extra stun gap can be paid from.
     this.maskMargin = maskMarginMs === null ? null : s(maskMarginMs / 1000);
+    // Light-down to an immutable captured frame. 360 ms is the optimistic end
+    // of the phone's measured 360/434/431 ms latches; the live runner has also
+    // seen ~410-480 ms. Everything after the read -- the prophylactic mask and
+    // so the whole five-tick window -- is pushed back by this.
+    this.readLatency = s(readLatencyMs / 1000);
     // The device sweep's second monitor-down beat is replaced by winding
     // unless this asks for the ideal route's shape back.
     this.secondBeat = secondBeat;
@@ -219,10 +225,12 @@ class HidPilot {
   // before the +1 s scheduler event if the result is BB, while an empty result
   // simply turns the ordinary Golden-Freddy flick back off.
   leftNormal(a) {
+    const lightDown = a + s(0.36);
+    const latch = lightDown + this.readLatency;
     this.tap(a, 'monitor');
-    this.hold(a + s(0.36), s(0.40), 'ventL');
-    this.at(a + s(0.72), 'left-snapshot', a);
-    this.tap(a + s(0.78), 'mask');
+    this.hold(lightDown, latch + 3 - lightDown, 'ventL');
+    this.at(latch, 'left-snapshot', a);
+    this.tap(latch + s(0.06), 'mask');
   }
 
   onLeftSnapshot(a) {
@@ -241,8 +249,16 @@ class HidPilot {
   // camera sweep as late as possible. Two short winding windows still exceed
   // the sourced box break-even rate.
   leftClear(a, resultAt) {
-    this.tap(resultAt + s(0.02), 'mask');
-    this.hold(a + s(1.28), s(0.08), 'light');
+    const maskOff = resultAt + s(0.02);
+    this.tap(maskOff, 'mask');
+    // hallLightOn needs maskFullyOff and MASK_ANIM_OFF is 250 ms, so when the
+    // phone's read latency pushes this press late the pulse below sits
+    // entirely inside that animation and reaches nobody -- 420 frames of
+    // flashlight a night spent on nothing. The second beat's pulse is the
+    // cycle's real Foxy reset either way; skipping this one when it cannot
+    // land takes the night's power floor from 716 frames to 1111.
+    if (maskOff + C.MASK_ANIM_OFF <= a + s(1.28))
+      this.hold(a + s(1.28), s(0.08), 'light');
     this.tap(a + s(1.38), 'monitor');
     this.tap(a + s(1.62), 'cam:11');
     if (this.deviceSweep && !this.secondBeat) {
@@ -554,7 +570,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
     '--assert', '--assert-rejected', '--pulse-light', '--second-beat']);
-  const valuedArgs = ['--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
+  const valuedArgs = ['--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
     '--drop-bang=', '--false-bang=', '--night='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
@@ -569,6 +585,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const deviceSweep = cliArgs.includes('--device-sweep') || Boolean(sweepSlotArg);
   const sweepSlotMs = sweepSlotArg ? +sweepSlotArg : 240;
   const pulseLight = cliArgs.includes('--pulse-light');
+  const readLatencyArg = (cliArgs.find(v => v.startsWith('--read-latency-ms=')) || '').split('=')[1];
+  const readLatencyMs = readLatencyArg ? +readLatencyArg : 360;
   const maskMarginArg = (cliArgs.find(v => v.startsWith('--mask-margin-ms=')) || '').split('=')[1];
   const maskMarginMs = maskMarginArg === undefined ? null : +maskMarginArg;
   const secondBeat = cliArgs.includes('--second-beat');
@@ -610,6 +628,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error('--sparse-left cannot be combined with a CAM-05 or no-BB mode');
   if (deviceSweep && bbMode !== 'left')
     throw new Error('--device-sweep requires a left-opening route');
+  if (!Number.isFinite(readLatencyMs) || readLatencyMs < 100 || readLatencyMs > 900)
+    throw new Error('--read-latency-ms must be between 100 and 900');
   if (maskMarginMs !== null && (!Number.isFinite(maskMarginMs) || maskMarginMs < 0 || maskMarginMs > 1000))
     throw new Error('--mask-margin-ms must be between 0 and 1000');
   if (maskMarginMs !== null && !phaseSafeMask)
@@ -630,7 +650,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       vocalCam5, dropVocal, vocalFalseCount, bangCam5, dropBang,
       bangFalseCount, cam5Hold, pilotOffset,
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
-      secondBeat, maskMarginMs,
+      secondBeat, maskMarginMs, readLatencyMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
