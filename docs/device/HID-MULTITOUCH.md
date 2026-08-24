@@ -239,12 +239,17 @@ camera actuator's inter-selection spacing**. `tools/test.mjs --engine` keeps
 both rejections (`hidpilot n6 device reject`, `hidpilot n6 pulse reject`) and
 both 160 ms survivals so neither half can drift.
 
-The open device gate is narrow enough to test directly: drive CAM 10, CAM 04
-and CAM 07 at 160 ms spacing with the light pulsed *after* each selection, and
-confirm with `camtrace.py` that all three feeds are selected. The existing
-evidence does not answer it — the rejected forms were *batched* `hid delay`
-macros, and the accepted 240 ms figure was the first wall-timed spacing tried,
-not a measured floor.
+The open device gate is narrow enough to test directly, and
+[`tools/device/hid-sweep-probe.sh`](../../tools/device/hid-sweep-probe.sh) is
+that test: it drives CAM 10, CAM 04 and CAM 07 at each requested spacing with
+the light pulsed *after* each selection, and grades the recording with
+`camtrace.py`. The existing evidence does not answer the question — the
+rejected forms were *batched* `hid delay` macros, and the accepted 240 ms
+figure was the first wall-timed spacing tried, not a measured floor.
+
+**Not yet run.** The phone was locked on a secure keyguard when the probe was
+written, and the probe refuses to act on a locked device. Nothing below 240 ms
+is claimed until it has.
 
 ## Trap 1: UHID open is earlier than Android input readiness
 

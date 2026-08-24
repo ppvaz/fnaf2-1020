@@ -82,6 +82,9 @@ const ENGINE = [
     '--false-bang=2', '--assert']],
   // The cue detector's front end, on synthesised signals: the reference
   // samples are game content and live outside the repository.
+  // The sweep probe is a device action, but its report stream is not: the
+  // trap-2 contact discipline and the pulsed light are checked without a phone.
+  ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
   ['cuetest', ['cue/test-cue.py']],
 ];
 const BROWSER = [
