@@ -225,6 +225,22 @@ needs about 300 frames on its own, which leaves the sweep span about 18 frames
 — **300 ms, for all three cameras**. The phone's proven 240 ms spacing spans
 580 ms even with the settle removed.
 
+Nothing else in the cycle can pay for the span, because the rest of it is
+already at the sourced animation lengths (`MONITOR_ANIM_DOWN` 22, `MASK_ANIM_ON`
+12, `MASK_ANIM_OFF` 15, `MONITOR_ANIM_UP` 12):
+
+- the read cannot start before **a+22** — that is the monitor-down flip;
+- the phone needs about 350 ms to draw a lit vent, so the frame is not there
+  before **a+43**, and the prophylactic mask cannot precede it;
+- the recovery's 27 frames are exactly mask-off plus monitor-up.
+
+Nor can the mask be split across a sweep. g293 zeroes the counter on every
+entry into the fully-on state, so the five ticks are a continuous hold, not
+cumulative storage (`src/engine.js:380`, `tickMask`). The sparse Night 7 shape
+is worse here, not better: it masks at a+88 instead of a+47, so its bridge only
+fits the ideal 267 ms sweep — on night 6 it survives 21 phase frames ideal and
+**no phase at all** at any device spacing.
+
 Measured windows, 1000 ordinary and 300 pinned-worst nights per offset, min box
 56%, min power 726:
 
