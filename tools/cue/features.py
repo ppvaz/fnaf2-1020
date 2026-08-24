@@ -160,6 +160,26 @@ def band_frames(samples, frame=FRAME, hop=HOP):
     return out
 
 
+def frame_levels(samples, frame=FRAME, hop=HOP):
+    """Per-frame loudness in dB, deliberately *not* level-invariant.
+
+    band_frames() removes each frame's mean so a cue matches at any volume.
+    That is the right default and it discards real information: the game plays
+    the same three Balloon Boy samples at channel-14 volume 25 on a route hop
+    and 60 when he is on the camera being watched (g414-416 against g906), so
+    level is what separates those two meanings. A policy that needs both reads
+    the shape score from band_frames and the loudness from here.
+    """
+    out = []
+    for start in range(0, max(0, len(samples) - frame + 1), hop):
+        energy = 0.0
+        for i in range(frame):
+            value = samples[start + i] * _WINDOW[i]
+            energy += value * value
+        out.append(10.0 * math.log10(energy / frame + 1e-20))
+    return out
+
+
 def rms(samples):
     if not samples:
         return 0.0

@@ -137,6 +137,18 @@ def peaks(curve, threshold, min_gap_frames, excluded=(), prominence=0.05):
     return chosen
 
 
+def level_above_background(levels, start, length):
+    """How far a match stands above the recording's own median loudness, in dB."""
+    if not levels:
+        return 0.0
+    span = levels[start:start + length]
+    if not span:
+        return 0.0
+    ordered = sorted(levels)
+    baseline = ordered[len(ordered) // 2]
+    return sum(span) / len(span) - baseline
+
+
 def background_profile(frames):
     """Per-band median across time: the stationary part of the recording."""
     if not frames:
@@ -239,6 +251,7 @@ def main():
                 print("%s  UNKNOWN (empty or silent)" % pathlib.Path(target).name)
                 continue
             frames = features.band_frames(samples)
+            levels = features.frame_levels(samples)
             excluded = clipped_frames(samples)
             if opts.subtract:
                 frames = subtract(frames, background_profile(frames))
@@ -255,9 +268,11 @@ def main():
                 for index in peaks(curve, opts.threshold, gap, excluded,
                                    opts.prominence):
                     hits.append((index * features.HOP / float(features.RATE),
-                                 handle, curve[index]))
-            for when, handle, score in sorted(hits):
-                print("    %7.2fs  sample %-3d score %.3f" % (when, handle, score))
+                                 handle, curve[index],
+                                 level_above_background(levels, index, gap)))
+            for when, handle, score, level in sorted(hits):
+                print("    %7.2fs  sample %-3d score %.3f  level %+5.1f dB"
+                      % (when, handle, score, level))
             if not hits:
                 print("    (nothing above threshold)")
         return

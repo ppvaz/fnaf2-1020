@@ -106,6 +106,24 @@ plain_score, _ = detect.best_alignment(
 ok("background alone scores below the injected cue (%.3f < %.3f)"
    % (plain_score, sub_score), plain_score < sub_score)
 
+# ------------------------------------------------------------- level feature
+# The source plays the same samples at two volumes to mean two different
+# things, so loudness has to survive a round trip that the shape score
+# deliberately discards.
+loud_mix = evaluate.inject(background, signal, onset, 12.0)
+quiet_mix = evaluate.inject(background, signal, onset, 0.0)
+gap = len(frames_ref)
+loud_level = detect.level_above_background(
+    features.frame_levels(loud_mix), int(onset * features.RATE / features.HOP), gap)
+quiet_level = detect.level_above_background(
+    features.frame_levels(quiet_mix), int(onset * features.RATE / features.HOP), gap)
+ok("a louder cue reports a higher level (%.1f > %.1f dB)" % (loud_level, quiet_level),
+   loud_level > quiet_level + 3.0)
+shape_loud, _ = detect.best_alignment(features.band_frames(loud_mix), frames_ref)
+shape_quiet, _ = detect.best_alignment(features.band_frames(quiet_mix), frames_ref)
+ok("while the shape score stays a shape score (%.3f vs %.3f)"
+   % (shape_loud, shape_quiet), abs(shape_loud - shape_quiet) < 0.35)
+
 # --------------------------------------------------------------- class mapping
 ok("the three vocals share one class",
    len({evaluate.class_of(h) for h in (21, 23, 24)}) == 1)
