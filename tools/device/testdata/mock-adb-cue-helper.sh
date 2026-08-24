@@ -19,7 +19,21 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = thermalservi
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = window ]; then
   echo 'mCurrentFocus=Window{123 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.Main}'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
-  echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000'
+  cat >/dev/null
+  # args: shell sh -s -- PORT VERB TOKEN [ARG]
+  case "${6:-}/${8:-}" in
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000' ;;
+    CAL/on) echo 'OK cal=on' ;;
+    CAL/off) echo 'OK cal=off' ;;
+    REC/*) echo 'OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044' ;;
+    *) echo 'ERROR unknown-verb' ;;
+  esac
+elif [ "${1:-}" = exec-out ] && [ "${2:-}" = run-as ]; then
+  # 44-byte header plus a little payload, so the size guard is exercised.
+  printf 'RIFF____WAVEfmt _________________________data____'
+  printf '\0\0\1\0\2\0\3\0'
+elif [ "${1:-}" = shell ] && [ "${2:-}" = run-as ]; then
+  :
 elif [ "${1:-}" = forward ] && [ "${2:-}" = --remove ]; then
   :
 elif [ "${1:-}" = forward ]; then

@@ -1,23 +1,46 @@
 #!/bin/bash
-# Query the freshest in-memory MediaProjection snapshot from the cue helper.
-# This is read-only and never moves focus.
+# Talk to the cue helper's authenticated snapshot socket.
+#
+#   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
+#   query-cue-helper.sh record PRE POST [label]   pull one calibration window
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
 #             inside one adb shell, so it models what the on-device controller
 #             will do without an adb round trip. Default.
-#   forward   host-side nc over `adb forward` to the helper's abstract socket.
-#             Cable-bound: nothing on the device has to open a port.
+#   forward   host-side client over `adb forward` to the helper's abstract
+#             socket. Cable-bound: nothing on the device has to open a port.
+#             Select with CUE_HELPER_TRANSPORT=forward.
+#
+# `record` is a device action: it turns calibration capture on, waits for the
+# ring to hold PRE seconds of pre-roll, captures PRE+POST seconds around now,
+# turns calibration back off, and pulls the WAV into an ignored local
+# directory. Raw game audio never enters the repository.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 PACKAGE="com.fnafminus7.cuehelper"
-TRANSPORT="${1:-${CUE_HELPER_TRANSPORT:-loopback}}"
+OUT_DIR="${CUE_HELPER_CALIBRATION:-captures/cue-helper/calibration}"
 
+VERB=snapshot
+TRANSPORT="${CUE_HELPER_TRANSPORT:-loopback}"
+case "${1:-}" in
+  loopback|forward) TRANSPORT="$1" ;;
+  record) VERB=record; shift ;;
+  '') ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
+esac
 case "$TRANSPORT" in
   loopback|forward) ;;
   *) echo "unknown transport: $TRANSPORT (use loopback or forward)" >&2; exit 2 ;;
 esac
+
+if [ "$VERB" = record ]; then
+  PRE="${1:?record needs PRE seconds}"
+  POST="${2:?record needs POST seconds}"
+  LABEL="${3:-window}"
+  case "$PRE$POST" in *[!0-9]*) echo "PRE and POST must be whole seconds" >&2; exit 2 ;; esac
+fi
 
 . "$HERE/select-adb.sh"
 adb get-state >/dev/null
@@ -35,7 +58,8 @@ fi
 
 control="$(adb logcat -d --pid="$pid" -v brief -s FnafCueHelper:I '*:S' 2>/dev/null | \
   tr -d '\r' | awk '/control=(READY|DEGRADED)/ { line=$0 } END { print line }')"
-port="$(printf '%s\n' "$control" | sed -n 's/.*control=[A-Z][A-Z]* port=\([^ ]*\).*/\1/p')"
+port="$(printf '%s\n' "$control" | sed -n 's/.*control=[A-Z][A-Z]* [a-z]*=[^ ]* port=\([^ ]*\).*/\1/p')"
+[ -n "$port" ] || port="$(printf '%s\n' "$control" | sed -n 's/.* port=\([^ ]*\).*/\1/p')"
 socket="$(printf '%s\n' "$control" | sed -n 's/.* socket=\([^ ]*\).*/\1/p')"
 token="$(printf '%s\n' "$control" | sed -n 's/.*token=\([0-9a-f][0-9a-f]*\).*/\1/p')"
 if [ "${#token}" -ne 32 ]; then
@@ -43,17 +67,14 @@ if [ "${#token}" -ne 32 ]; then
   exit 1
 fi
 
+host_port=""
+cleanup() { [ -n "$host_port" ] && adb forward --remove "tcp:$host_port" >/dev/null 2>&1 || true; }
+trap cleanup EXIT HUP INT TERM
+
 if [ "$TRANSPORT" = loopback ]; then
   case "$port" in
     ''|*[!0-9]*) echo "cue helper has no live loopback port" >&2; exit 1 ;;
   esac
-  response="$(adb shell sh -s -- "$token" "$port" <<'REMOTE' | tr -d '\r'
-set -eu
-token=$1
-port=$2
-printf 'GET %s\n' "$token" | toybox nc -w 2 127.0.0.1 "$port"
-REMOTE
-)"
 else
   case "$socket" in
     ''|none) echo "cue helper has no live abstract control socket" >&2; exit 1 ;;
@@ -62,14 +83,31 @@ else
   case "$host_port" in
     ''|*[!0-9]*) echo "adb forward did not return a host port" >&2; exit 1 ;;
   esac
-  trap 'adb forward --remove "tcp:$host_port" >/dev/null 2>&1 || true' EXIT HUP INT TERM
-  # Not netcat: macOS BSD nc returns an empty body for this exchange even
-  # though the forward itself is healthy.
-  response="$(python3 - "$host_port" "$token" <<'CLIENT' | tr -d '\r'
+fi
+
+# One request, one bounded line back. REC holds the socket for its post-roll,
+# so the client timeout has to clear the longest window this script asks for.
+exchange() {
+  if [ "$TRANSPORT" = loopback ]; then
+    # $1 is deliberately unquoted: adb shell concatenates its arguments and
+    # re-splits them on the device, so a quoted request with spaces arrives as
+    # separate words anyway. Passing the port first and reassembling the rest
+    # with "$*" is the only form that survives that round trip.
+    # shellcheck disable=SC2086
+    adb shell sh -s -- "$port" $1 <<'REMOTE' | tr -d '\r'
+set -eu
+port=$1
+shift
+printf '%s\n' "$*" | toybox nc -w 20 127.0.0.1 "$port"
+REMOTE
+  else
+    # Not netcat: macOS BSD nc returns an empty body for this exchange even
+    # though the forward itself is healthy.
+    python3 - "$host_port" "$1" <<'CLIENT' | tr -d '\r'
 import socket, sys
-port, token = int(sys.argv[1]), sys.argv[2]
-with socket.create_connection(("127.0.0.1", port), timeout=4) as client:
-    client.sendall(("GET " + token + "\n").encode("ascii"))
+port, request = int(sys.argv[1]), sys.argv[2]
+with socket.create_connection(("127.0.0.1", port), timeout=25) as client:
+    client.sendall((request + "\n").encode("ascii"))
     chunks = []
     while b"\n" not in b"".join(chunks):
         block = client.recv(4096)
@@ -78,12 +116,51 @@ with socket.create_connection(("127.0.0.1", port), timeout=4) as client:
         chunks.append(block)
 sys.stdout.write(b"".join(chunks).decode("ascii", "replace").strip())
 CLIENT
-)"
+  fi
+}
+
+if [ "$VERB" = snapshot ]; then
+  response="$(exchange "GET $token")"
+  printf '%s\n' "$response"
+  case "$response" in
+    'OK '*"visual=OBSERVED"*) ;;
+    'OK '*) echo "cue helper returned a fail-closed observation" >&2; exit 1 ;;
+    *) echo "cue helper control query failed" >&2; exit 1 ;;
+  esac
+  exit 0
 fi
 
+# --- record -----------------------------------------------------------------
+calibration_off() { exchange "CAL $token off" >/dev/null 2>&1 || true; }
+trap 'calibration_off; cleanup' EXIT HUP INT TERM
+
+on="$(exchange "CAL $token on")"
+case "$on" in
+  'OK cal=on') ;;
+  *) echo "could not enable calibration capture: $on" >&2; exit 1 ;;
+esac
+# The ring only fills while calibration is on, so the pre-roll has to elapse.
+sleep "$((PRE + 1))"
+
+response="$(exchange "REC $token $PRE $POST")"
 printf '%s\n' "$response"
 case "$response" in
-  'OK '*"visual=OBSERVED"*) ;;
-  'OK '*) echo "cue helper returned a fail-closed observation" >&2; exit 1 ;;
-  *) echo "cue helper control query failed" >&2; exit 1 ;;
+  'OK rec='*) ;;
+  *) echo "calibration capture failed" >&2; exit 1 ;;
 esac
+name="$(printf '%s\n' "$response" | sed -n 's/.*rec=\([^ ]*\).*/\1/p')"
+
+mkdir -p "$OUT_DIR"
+target="$OUT_DIR/${LABEL}-${name}"
+if [ -e "$target" ]; then
+  echo "refusing to overwrite $target" >&2
+  exit 1
+fi
+adb exec-out run-as "$PACKAGE" cat "files/calibration/$name" > "$target"
+adb shell run-as "$PACKAGE" rm -f "files/calibration/$name" >/dev/null 2>&1 || true
+bytes="$(wc -c < "$target" | tr -d ' ')"
+if [ "$bytes" -lt 45 ]; then
+  echo "pulled window is empty ($bytes bytes)" >&2
+  exit 1
+fi
+echo "wrote $target ($bytes bytes)"

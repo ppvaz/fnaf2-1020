@@ -33,5 +33,27 @@ if PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" carrier-pigeon 2>/dev/
   exit 1
 fi
 
+# record: both transports, into a scratch directory. PRE=0 keeps the pre-roll
+# wait to one second.
+for transport in loopback forward; do
+  out="$TEMP_DIR/cal-$transport"
+  result="$(CUE_HELPER_TRANSPORT="$transport" CUE_HELPER_CALIBRATION="$out" \
+    PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" record 0 1 "$transport")"
+  case "$result" in
+    *"OK rec=cue-"*"wrote $out/$transport-cue-"*) ;;
+    *) echo "unexpected $transport record result: $result" >&2; exit 1 ;;
+  esac
+  [ -s "$out/$transport-cue-1700000000000-p0-q1.wav" ] || {
+    echo "$transport record pulled no window" >&2; exit 1; }
+done
+
+# A second record with the same label must not clobber the first window.
+out="$TEMP_DIR/cal-loopback"
+if CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" record 0 1 loopback 2>/dev/null; then
+  echo "record must refuse to overwrite an existing window" >&2
+  exit 1
+fi
+
 echo "cue-helper query tests passed"
 

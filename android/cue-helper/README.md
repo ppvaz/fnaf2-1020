@@ -85,10 +85,22 @@ screencheck/HID path until independent holdouts and a full-night soak pass.
 ## Snapshot boundary
 
 One protocol, served on two channels. A fresh 128-bit token is created per
-consented run and published in the helper's own log. `GET <token>` returns one
-bounded ASCII line with the current monotonic snapshot; malformed, oversized,
-or incorrectly authenticated requests receive an error and no sensor data.
-Audio never crosses as PCM, and visual frames never cross as images.
+consented run and published in the helper's own log. Every request is one
+bounded ASCII line, and malformed, oversized, or incorrectly authenticated
+requests receive an error and no sensor data.
+
+| Request | Response | Notes |
+|---|---|---|
+| `GET <token>` | `OK <snapshot>` | The current monotonic visual/audio snapshot. Never PCM, never an image. |
+| `CAL <token> on\|off` | `OK cal=on\|off` | Arms or disarms the calibration ring. Off at start and on every teardown. |
+| `REC <token> <pre> <post>` | `OK rec=<file> frames=… rate=… bytes=…` | Writes one window to app-private storage. Requires `cal=on`. |
+
+`GET` is the controller path and never touches disk. `REC` exists for plan 08
+package 1, which needs labeled windows around a cue that is only recognised
+*after* it starts — so a ring holds up to 12 seconds and `REC` copies backwards
+from the request, giving `pre` seconds of context plus `post` seconds captured
+live. The ring only fills while `cal=on`; the status line always prints that
+state, so a controller run can be shown to have been unable to write PCM.
 
 | Channel | Endpoint | For |
 |---|---|---|
@@ -100,8 +112,9 @@ downgrades the status line to `control=DEGRADED` with the dead endpoint printed
 as `none`; one dead listener never silences the other.
 
 ```sh
-tools/device/query-cue-helper.sh            # loopback, the default
-tools/device/query-cue-helper.sh forward    # cable-bound abstract socket
+tools/device/query-cue-helper.sh                    # loopback, the default
+tools/device/query-cue-helper.sh forward            # cable-bound abstract socket
+tools/device/query-cue-helper.sh record 2 3 bb-hop  # pull a 5 s window
 ```
 
 Both resolve the current helper PID/token, require an FNaF-focused physical
@@ -111,7 +124,16 @@ controller will do on the phone; `forward` allocates an ephemeral host port and
 removes it again on exit. Either way this is a bridge for calibration and
 timing work, not a live host-driven controller.
 
-Two device details cost real time here, both fixed in the code but worth
+`record` arms calibration, waits for the pre-roll to accumulate, captures,
+disarms, pulls the WAV out through `run-as`, and deletes the device-side copy.
+Windows land in ignored `captures/cue-helper/calibration/` and it refuses to
+overwrite one. Raw game audio never enters the repository — only scripts,
+schemas, and aggregate reports do.
+
+First real window, 2026-08-24: 80,000 frames at 16 kHz mono, peak 26,371 of
+32,767 with no clipping and per-second RMS between 4,274 and 6,270.
+
+Three device details cost real time here, all fixed in the code but worth
 knowing:
 
 - `InetAddress.getLoopbackAddress()` resolves to `::1` on this target, so the
@@ -120,6 +142,9 @@ knowing:
   `::ffff:127.0.0.1` — Java's v4-mapped form, not an IPv6 bind.
 - macOS BSD `nc` returns an empty body for the forwarded exchange even when
   `adb forward` is healthy. The host client is `python3`, not netcat.
+- `adb shell` concatenates its arguments and re-splits them on the device, so a
+  quoted request containing spaces does not survive the round trip. The port is
+  passed first and the rest reassembled with `"$*"`.
 
 ### Consent without a tap
 

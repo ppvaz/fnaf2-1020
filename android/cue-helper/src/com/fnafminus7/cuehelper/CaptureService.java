@@ -35,6 +35,8 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -77,6 +79,13 @@ public final class CaptureService extends Service {
     private static final String CONTROL_SOCKET_NAME =
             "com.fnafminus7.cuehelper.control";
     private static final int CONTROL_LINE_LIMIT = 256;
+    // Calibration ring. Package 1 of plan 08 needs labeled windows around a cue
+    // that is only recognised after it starts, so the ring keeps a pre-roll and
+    // REC copies backwards from the request.
+    private static final int CAL_RING_SECONDS = 12;
+    private static final int CAL_MAX_PRE_SECONDS = 8;
+    private static final int CAL_MAX_POST_SECONDS = 8;
+    private static final String CAL_DIR = "calibration";
     private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
 
     private final AtomicBoolean stopping = new AtomicBoolean(false);
@@ -110,6 +119,16 @@ public final class CaptureService extends Service {
     private volatile String lastVisual = "visual=UNAVAILABLE";
     private volatile String lastAudio = "audio=UNAVAILABLE";
     private volatile String lastControl = "control=UNAVAILABLE";
+    // Off unless an operator turns it on over the authenticated channel, and
+    // always printed in the status line: controller mode must be provably
+    // unable to write PCM to disk.
+    private volatile boolean calibrationEnabled;
+    private final Object calLock = new Object();
+    private volatile int audioSampleRate;
+    private short[] calRing;
+    private int calRingWrite;
+    private long calRingFrames;
+    private int calRingRate;
 
     private long snapshotVisualSequence;
     private long snapshotVisualTimestampNs;
@@ -393,6 +412,7 @@ public final class CaptureService extends Service {
         }
 
         audioRunning.set(true);
+        audioSampleRate = activeSampleRate;
         lastAudio = "audio=STARTING(rate=" + activeSampleRate + ",mono,pcm16)";
         Log.i(TAG, lastAudio + " uid=" + game.uid);
         audioThread = new Thread(
@@ -476,6 +496,7 @@ public final class CaptureService extends Service {
             }
             int rms = (int) Math.sqrt((double) energy / count);
             totalFrames += count;
+            appendCalibration(samples, count, sampleRate);
             synchronized (snapshotLock) {
                 snapshotAudioFrames = totalFrames;
                 snapshotAudioReadNs = System.nanoTime();
@@ -548,6 +569,7 @@ public final class CaptureService extends Service {
                 ? "READY"
                 : tcpControlUp || localControlUp ? "DEGRADED" : "UNAVAILABLE";
         lastControl = "control=" + state
+                + " cal=" + (calibrationEnabled ? "on" : "off")
                 + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
                 + " socket=" + (localControlUp ? CONTROL_SOCKET_NAME : "none")
                 + " token=" + (controlToken == null ? "none" : controlToken);
@@ -621,13 +643,173 @@ public final class CaptureService extends Service {
         String response;
         if (request == null) {
             response = "ERROR request-too-long";
-        } else if (!request.equals("GET " + controlToken)) {
-            response = "ERROR unauthorized";
         } else {
-            response = "OK " + currentSnapshot();
+            String[] field = request.split(" ");
+            String token = controlToken;
+            if (field.length < 2 || token == null || !token.equals(field[1])) {
+                response = "ERROR unauthorized";
+            } else {
+                response = dispatchControl(field);
+            }
         }
         output.write((response + "\n").getBytes(StandardCharsets.US_ASCII));
         output.flush();
+    }
+
+    private String dispatchControl(String[] field) {
+        switch (field[0]) {
+            case "GET":
+                return "OK " + currentSnapshot();
+            case "CAL":
+                if (field.length != 3) {
+                    return "ERROR cal-usage";
+                }
+                if ("on".equals(field[2])) {
+                    synchronized (calLock) {
+                        // Allocate here, never on the audio thread.
+                        if (calRing == null && audioSampleRate > 0) {
+                            calRingRate = audioSampleRate;
+                            calRing = new short[calRingRate * CAL_RING_SECONDS];
+                            calRingWrite = 0;
+                            calRingFrames = 0;
+                        }
+                    }
+                    calibrationEnabled = true;
+                } else if ("off".equals(field[2])) {
+                    calibrationEnabled = false;
+                } else {
+                    return "ERROR cal-usage";
+                }
+                publishControlStatus();
+                publishCombinedStatus("RUNNING");
+                return "OK cal=" + (calibrationEnabled ? "on" : "off");
+            case "REC":
+                if (field.length != 4) {
+                    return "ERROR rec-usage";
+                }
+                return recordCalibrationWindow(field[2], field[3]);
+            default:
+                return "ERROR unknown-verb";
+        }
+    }
+
+    private void appendCalibration(short[] samples, int count, int sampleRate) {
+        if (!calibrationEnabled) {
+            return;
+        }
+        synchronized (calLock) {
+            if (calRing == null || calRingRate != sampleRate) {
+                return;
+            }
+            for (int i = 0; i < count; i++) {
+                calRing[calRingWrite] = samples[i];
+                calRingWrite = (calRingWrite + 1) % calRing.length;
+            }
+            calRingFrames += count;
+            calLock.notifyAll();
+        }
+    }
+
+    private String recordCalibrationWindow(String preText, String postText) {
+        if (!calibrationEnabled) {
+            return "ERROR calibration-disabled";
+        }
+        int pre;
+        int post;
+        try {
+            pre = Integer.parseInt(preText);
+            post = Integer.parseInt(postText);
+        } catch (NumberFormatException error) {
+            return "ERROR rec-usage";
+        }
+        if (pre < 0 || pre > CAL_MAX_PRE_SECONDS
+                || post < 1 || post > CAL_MAX_POST_SECONDS) {
+            return "ERROR rec-range";
+        }
+
+        int rate;
+        long target;
+        short[] window;
+        synchronized (calLock) {
+            if (calRing == null || calRingRate <= 0) {
+                return "ERROR rec-no-audio";
+            }
+            rate = calRingRate;
+            target = calRingFrames + (long) post * rate;
+            // The post-roll is real time; cap the wait so a stalled capture
+            // fails the request instead of holding the control thread forever.
+            long deadline = SystemClock.elapsedRealtime()
+                    + (long) post * 1_000L + 2_000L;
+            while (calRingFrames < target) {
+                long remaining = deadline - SystemClock.elapsedRealtime();
+                if (remaining <= 0) {
+                    return "ERROR rec-stalled";
+                }
+                try {
+                    calLock.wait(remaining);
+                } catch (InterruptedException error) {
+                    Thread.currentThread().interrupt();
+                    return "ERROR rec-interrupted";
+                }
+            }
+            int wanted = (int) Math.min(
+                    (long) (pre + post) * rate,
+                    Math.min(calRingFrames, calRing.length));
+            window = new short[wanted];
+            int start = ((calRingWrite - wanted) % calRing.length + calRing.length)
+                    % calRing.length;
+            for (int i = 0; i < wanted; i++) {
+                window[i] = calRing[(start + i) % calRing.length];
+            }
+        }
+        // Outside the lock: a 400 KB write must not stall the audio thread.
+        return writeCalibrationWav(window, rate, pre, post);
+    }
+
+    private String writeCalibrationWav(short[] window, int rate, int pre, int post) {
+        File directory = new File(getFilesDir(), CAL_DIR);
+        if (!directory.isDirectory() && !directory.mkdirs()) {
+            return "ERROR rec-mkdir";
+        }
+        String name = String.format(Locale.US, "cue-%d-p%d-q%d.wav",
+                System.currentTimeMillis(), pre, post);
+        File target = new File(directory, name);
+        int dataBytes = window.length * 2;
+        try (FileOutputStream out = new FileOutputStream(target)) {
+            out.write(wavHeader(dataBytes, rate));
+            byte[] payload = new byte[dataBytes];
+            for (int i = 0; i < window.length; i++) {
+                payload[i * 2] = (byte) (window[i] & 0xff);
+                payload[i * 2 + 1] = (byte) ((window[i] >> 8) & 0xff);
+            }
+            out.write(payload);
+        } catch (IOException error) {
+            Log.w(TAG, "calibration write failed", error);
+            return "ERROR rec-write";
+        }
+        return String.format(Locale.US,
+                "OK rec=%s frames=%d rate=%d bytes=%d",
+                name, window.length, rate, dataBytes + 44);
+    }
+
+    private static byte[] wavHeader(int dataBytes, int rate) {
+        int byteRate = rate * 2;
+        byte[] header = new byte[44];
+        ByteBuffer buffer = ByteBuffer.wrap(header)
+                .order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        buffer.put("RIFF".getBytes(StandardCharsets.US_ASCII));
+        buffer.putInt(36 + dataBytes);
+        buffer.put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII));
+        buffer.putInt(16);
+        buffer.putShort((short) 1);      // PCM
+        buffer.putShort((short) 1);      // mono
+        buffer.putInt(rate);
+        buffer.putInt(byteRate);
+        buffer.putShort((short) 2);      // block align
+        buffer.putShort((short) 16);     // bits per sample
+        buffer.put("data".getBytes(StandardCharsets.US_ASCII));
+        buffer.putInt(dataBytes);
+        return header;
     }
 
     private String readBoundedControlLine(InputStream input) throws IOException {
@@ -764,6 +946,7 @@ public final class CaptureService extends Service {
         localControlThread = null;
         tcpControlUp = false;
         localControlUp = false;
+        calibrationEnabled = false;
         controlToken = null;
 
         audioRunning.set(false);
