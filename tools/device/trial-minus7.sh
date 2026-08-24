@@ -24,6 +24,7 @@ BB_LEFT_CAPTURE_EVERY="${BB_LEFT_CAPTURE_EVERY:-0}"
 BB_LEFT_CAPTURE_START="${BB_LEFT_CAPTURE_START:-0}"
 CALIBRATION_INPUT_DEBUG="${CALIBRATION_INPUT_DEBUG:-0}"
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-}"
+GF_OFFICE_MODEL="${GF_OFFICE_MODEL:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
@@ -35,7 +36,11 @@ REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
-REMOTE_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
+REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
+REMOTE_GF_MODEL="/data/local/tmp/fnaf2-gf-office-model-$$-$(date +%s).scm"
+REMOTE_CHECKER_ARG="-"
+REMOTE_BB_MODEL_ARG="-"
+REMOTE_GF_MODEL_ARG="-"
 RUN_TMP=""
 WATCHDOG_RESULT=""
 REC=""
@@ -137,6 +142,20 @@ if [ -n "$BB_LEFT_MODEL" ]; then
   }
   [ -f "$BB_LEFT_MODEL" ] || {
     echo "BB_LEFT_MODEL does not exist: $BB_LEFT_MODEL" >&2
+    exit 2
+  }
+fi
+if [ -n "$GF_OFFICE_MODEL" ]; then
+  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
+    echo "GF_OFFICE_MODEL requires BB_LEFT_CAPTURE_EVERY > 0" >&2
+    exit 2
+  }
+  [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ] || {
+    echo "GF_OFFICE_MODEL requires clean capture without input-debug overlays" >&2
+    exit 2
+  }
+  [ -f "$GF_OFFICE_MODEL" ] || {
+    echo "GF_OFFICE_MODEL does not exist: $GF_OFFICE_MODEL" >&2
     exit 2
   }
 fi
@@ -303,7 +322,7 @@ cleanup() {
   fi
   adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
-    adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_MODEL" >/dev/null 2>&1 || true
+    adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
   if [ "$SAMPLES_PULLED" -eq 1 ]; then
     adb shell "rm -rf '$REMOTE_SAMPLE_DIR'" >/dev/null 2>&1 || true
@@ -320,12 +339,20 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 adb get-state >/dev/null
-if [ -n "$BB_LEFT_MODEL" ]; then
+if [ -n "$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
   CHECKER_INSTALLED=1
   "$HERE/build-screencheck.sh" "$RUN_TMP/fnaf-screencheck" >/dev/null
   adb push "$RUN_TMP/fnaf-screencheck" "$REMOTE_CHECKER" >/dev/null
   adb shell chmod 755 "$REMOTE_CHECKER"
-  adb push "$BB_LEFT_MODEL" "$REMOTE_MODEL" >/dev/null
+  REMOTE_CHECKER_ARG=$REMOTE_CHECKER
+fi
+if [ -n "$BB_LEFT_MODEL" ]; then
+  adb push "$BB_LEFT_MODEL" "$REMOTE_BB_MODEL" >/dev/null
+  REMOTE_BB_MODEL_ARG=$REMOTE_BB_MODEL
+fi
+if [ -n "$GF_OFFICE_MODEL" ]; then
+  adb push "$GF_OFFICE_MODEL" "$REMOTE_GF_MODEL" >/dev/null
+  REMOTE_GF_MODEL_ARG=$REMOTE_GF_MODEL
 fi
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
@@ -380,7 +407,7 @@ RECORDING_STARTED=1
 adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
-  "${BB_LEFT_MODEL:+$REMOTE_CHECKER}" "${BB_LEFT_MODEL:+$REMOTE_MODEL}" \
+  "$REMOTE_CHECKER_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 <<'REMOTE' &
 set -eu
@@ -393,7 +420,8 @@ BB_LEFT_CAPTURE_EVERY=$1; shift
 BB_LEFT_CAPTURE_START=$1; shift
 SAMPLE_DIR=$1; shift
 CHECKER=${1:--}; shift
-MODEL=${1:--}; shift
+BB_MODEL=${1:--}; shift
+GF_MODEL=${1:--}; shift
 MUTE_X=$1; MUTE_Y=$2; shift 2
 MONITOR_X=$1; MONITOR_Y=$2; shift 2
 MASK_X=$1; MASK_Y=$2; shift 2
@@ -474,7 +502,9 @@ capture_lit_at() {
   # Keep the view light down across the screencap without putting a host round
   # trip between the actuator and frame. The game needs about 350 ms to draw a
   # visibly lit office vent; the measured raw capture p95 is another 206 ms.
-  input swipe "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$CAM_LIGHT_X" "$CAM_LIGHT_Y" 700 >/dev/null 2>&1 &
+  # A 600 ms hold still covers the 350 ms draw delay plus the measured 206 ms
+  # raw-capture p95, without needlessly delaying the classifier and mask.
+  input swipe "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$CAM_LIGHT_X" "$CAM_LIGHT_Y" 600 >/dev/null 2>&1 &
   light_pid=$!
   sleep 0.35
   screencap > "$SAMPLE_DIR/$name.raw"
@@ -543,37 +573,52 @@ while [ "$cycle" -lt "$CYCLES" ]; do
        [ "$cycle" -ge "$BB_LEFT_CAPTURE_START" ] &&
        [ $(((cycle - BB_LEFT_CAPTURE_START) % BB_LEFT_CAPTURE_EVERY)) -eq 0 ]; then
       sample=$(printf 'cycle-%03d' "$cycle")
-      # Flash the hall, then observe the left vent, both before the mask flick.
-      # Lights remain disabled briefly after mask-off, and switching directly
-      # from a held left light to the hall swallowed the hall press.
-      hold_at        $((base +  600)) "$HALL_X"    "$HALL_Y"    300 flash-hall
-      capture_lit_at $((base + 1100)) "$sample" bb-left
-      if [ "$MODEL" != "-" ]; then
-        classification=$("$CHECKER" classify "$MODEL" < "$SAMPLE_DIR/$sample.raw")
+      # The left vent light is safe while Golden Freddy occupies the office;
+      # the hall light is not. Capture and classify both regions from this one
+      # frame before deciding whether the normal mask-then-hall sequence is safe.
+      capture_lit_at $((base +  600)) "$sample" bb-left
+      threat=0
+      if [ "$BB_MODEL" != "-" ]; then
+        classification=$("$CHECKER" classify "$BB_MODEL" < "$SAMPLE_DIR/$sample.raw")
         printf '%6d ms  classify-bb-left %s\n' \
           "$(( $(date +%s%3N) - T0 ))" "$classification"
         case "$classification" in
           empty\ *) ;;
-          *)
-            # Only a confidently empty frame may continue. Mask immediately
-            # on BB, another class, unknown, or malformed output, then return a
-            # dedicated status so host cleanup force-stops before slow pulls.
-            press_at $((base + 1950)) "$MASK_X" "$MASK_Y" mask-on-threat
-            exit 42
-            ;;
+          *) threat=1 ;;
         esac
       fi
-      press_at       $((base + 1950)) "$MASK_X"    "$MASK_Y"    mask-on
-      press_at       $((base + 2300)) "$MASK_X"    "$MASK_Y"    mask-off
-      press_at       $((base + 2750)) "$MONITOR_X" "$MONITOR_Y" monitor-up
-      press_at       $((base + 3250)) "$CAM10_X"   "$CAM10_Y"   cam-10
-      press_at       $((base + 3440)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
-      press_at       $((base + 3630)) "$CAM04_X"   "$CAM04_Y"   cam-04
-      press_at       $((base + 3820)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
-      press_at       $((base + 4010)) "$CAM07_X"   "$CAM07_Y"   cam-07
-      press_at       $((base + 4200)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
-      press_at       $((base + 4390)) "$CAM11_X"   "$CAM11_Y"   cam-11
-      hold_at        $((base + 4580)) "$WIND_X"    "$WIND_Y"   1780 wind-after-capture
+      if [ "$GF_MODEL" != "-" ]; then
+        classification=$("$CHECKER" classify "$GF_MODEL" < "$SAMPLE_DIR/$sample.raw")
+        printf '%6d ms  classify-gf-office %s\n' \
+          "$(( $(date +%s%3N) - T0 ))" "$classification"
+        case "$classification" in
+          empty\ *) ;;
+          *) threat=1 ;;
+        esac
+      fi
+      if [ "$threat" -eq 1 ]; then
+        # Only two confidently empty reads may continue. Mask immediately on
+        # BB, Golden Freddy, another class, unknown, or malformed output, then
+        # stop before the lethal hall press and before slow host transfers.
+        press_at $((base + 1450)) "$MASK_X" "$MASK_Y" mask-on-threat
+        exit 42
+      fi
+      press_at       $((base + 1450)) "$MASK_X"    "$MASK_Y"    mask-on
+      # Classification can make mask-on late. Give the mask a fixed fully-down
+      # interval, then two hall attempts after its release animation; run J's
+      # earlier attempts were both swallowed on the fatal Foxy cycle.
+      press_at       $((base + 2000)) "$MASK_X"    "$MASK_Y"    mask-off
+      hold_at        $((base + 2500)) "$HALL_X"    "$HALL_Y"    200 flash-hall-1
+      hold_at        $((base + 2850)) "$HALL_X"    "$HALL_Y"    150 flash-hall-2
+      press_at       $((base + 3200)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+      press_at       $((base + 3700)) "$CAM10_X"   "$CAM10_Y"   cam-10
+      press_at       $((base + 3890)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+      press_at       $((base + 4080)) "$CAM04_X"   "$CAM04_Y"   cam-04
+      press_at       $((base + 4270)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+      press_at       $((base + 4460)) "$CAM07_X"   "$CAM07_Y"   cam-07
+      press_at       $((base + 4650)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+      press_at       $((base + 4840)) "$CAM11_X"   "$CAM11_Y"   cam-11
+      hold_at        $((base + 5030)) "$WIND_X"    "$WIND_Y"   1300 wind-after-capture
       cycle=$((cycle + 1))
       continue
     fi

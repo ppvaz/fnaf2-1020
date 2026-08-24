@@ -127,7 +127,7 @@ tools/device/capture-screen-sample.sh gf-hall empty empty-01 1200 540 900
 ```
 
 The optional coordinates hold a light/control on-device and capture after
-`CAPTURE_DELAY` (default 180 ms), without inserting a host round trip between
+`CAPTURE_DELAY` (default 350 ms), without inserting a host round trip between
 the press and screenshot. Keep a hall hold below Golden Freddy's 1.67 s exposure
 fuse. The capture tool checks game focus and refuses overwrite, but the operator
 is still responsible for proving the label.
@@ -205,9 +205,10 @@ specific model followed by the actual action in one device-side driver.
 
 ## Threat models and conservative branches
 
-The execution path and cost are solved; real threat decision boundaries are not
-yet calibrated. Do not put an invented threshold/model into `trial-minus7.sh`.
-Build separate models because each view has different lighting and safe actions:
+The execution path and cost are solved. BB now has independent holdout and live
+branch evidence; Golden Freddy remains a provisional tripwire, and Toy Bonnie
+is uncalibrated. Build separate models because each view has different lighting
+and safe actions:
 
 | Model/view | Required labels | Conservative live handling |
 |---|---|---|
@@ -243,3 +244,36 @@ The retained camera-button experiment produced a separated four-template model
 on a tight 1280x576 CAM 10 button ROI and classified a later CAM 10 frame as
 `cam10 score=7 margin=25`. That is a real visual/model-path proof, but it is UI
 evidence—not evidence for any threat class.
+
+## Live BB checkpoint (2026-08-23)
+
+The `bb-left` candidate was built from runs G/H with 19 templates (15 empty,
+two independent BB-opening frames, and two BB-inside negatives). Its untouched
+run-I holdout contained 17 empty frames plus the difficult simultaneous frame:
+BB in the lit left opening while a translucent Golden Freddy covered the
+office. All 18 classified correctly; the BB frame was `score=0 margin=18`.
+
+Run K then exercised the complete device-local branch on new live frames. One
+raw screencap was reused for the BB-left and GF-office classifiers before any
+hall input. Cycles 0–6 were BB `empty score=0 margin=19`; cycle 7 visibly showed
+BB and returned `bb score=0 margin=18`. The provisional GF classifier returned
+`empty score=0 margin=3` on all eight. The mask began 42 ms after the second
+classification, and the dedicated status made host cleanup stop the game before
+any hall input or capture pull. Offline replay of the untouched run-K split
+reproduced all eight BB results.
+
+This is a **detection-and-safe-stop checkpoint**, not yet a survivable response
+loop. The seven completed cycles produced eight complete camera sweeps and 11
+visible Foxy hall flashes, but the box fell from full to 9.5% before cycle 7's
+wind. The added clean capture, prophylactic GF mask, post-mask hall gate, and
+two classifications leave only a 1.3 s wind in each 6.5 s cycle. A preceding
+run that delayed sampling until cycle 8 died to Foxy around 42 s; its first raw
+sample was already full static and correctly rejected as `unknown`. Do not
+extend the current branch or implement the five-tick BB clear/resynchronization
+until the per-cycle wind deficit is recovered without weakening the hall gate.
+
+The GF model used in run K is intentionally provisional: it has one real Golden
+Freddy source frame duplicated only to exercise leave-one-out mechanics, plus
+eight independent run-K negative frames. It may stop on `golden` or `unknown`,
+but it is not evidence for skipping the prophylactic mask. A distinct positive
+animation frame must pass as an untouched holdout first.

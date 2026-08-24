@@ -415,6 +415,25 @@ not repeated:
   a 13 s median, so a blind schedule cannot buy time that way. A visual policy
   may skip it only on a proven-empty office frame.
 
+### Device-local BB branch checkpoint (2026-08-23)
+
+The native left-opening model has now passed two untouched live holdouts,
+including simultaneous translucent Golden Freddy interference. In run K the
+device captured one safely lit left-vent frame per cycle before the hall,
+classified BB and a provisional GF model from that same raw frame, and masked
+42 ms after the second classifier reported the cycle-7 BB positive. The saved
+frame visibly contains BB; offline native replay reproduced seven empty results
+and the positive at the original `score=0 margin=18`. Cleanup force-stopped the
+game before the hall or any large transfer.
+
+The run also prices the unfinished response: eight complete selected-camera
+sweeps and 11 visible hall flashes kept Foxy controlled, but 1.3 s winds in the
+6.5 s visual cycles drove the music box from full to 9.5% by cycle 7. The branch
+therefore remains a safe detection/collection path, not a full BB clear and
+resynchronization policy. An earlier run that waited until cycle 8 to sample
+died to Foxy around 42 s and captured only post-kill static (`unknown`), which
+is why threat sampling now begins at cycle 0 during validation runs.
+
 ## Availability of calibration targets
 
 `tools/dump/aimap.py` on the owned canonical Office sheet makes a prior null
@@ -429,18 +448,19 @@ but sparsely. BB remains the practical first calibration target.
 
 ## Next steps
 
-1. Collect several **BB CAM 05 and left-opening** raw positives/negatives at the
-   exact pan/light state; split calibration from untouched holdouts before ROI
-   tuning. BB is active before 2 AM, so this is the first reachable target.
+1. Preserve the validated **BB left-opening** model boundary while recovering
+   enough wind for a five-tick mask clear and timed resynchronization. The
+   current 1.3 s/6.5 s wind reaches 9.5% by cycle 7 and is not extendable.
 2. Calibrate the right-vent-light coordinate and collect **Toy Bonnie** only
    after 2 AM on Night 6. Include other right-vent occupants and transitions;
    holding the free right light remains cheaper than vision where the policy
    can tolerate a fixed stall.
 3. For **Golden Freddy** positives, either repeat Night-6 starts knowing only
    one in ten enables AI 1 before 2 AM, survive beyond 2 AM for the stable AI 3,
-   or beat 6th Night and use 10/20. Keep the normal prophylactic office mask
-   flick until a model has independent holdouts; a hallway `unknown` must
-   release the light.
+   or beat 6th Night and use 10/20. One translucent source frame now supports a
+   provisional stop-only model, and eight independent negatives pass, but it
+   still lacks an independent positive animation frame. Keep the normal
+   prophylactic office mask flick; a hallway `unknown` must release the light.
 4. For each target, build an `SCM1` model, require leave-one-out separation and
    zero holdout false negatives, then benchmark that exact model. Measure the
    complete `screencap | classify -> input/skip` branch inside one device shell.
