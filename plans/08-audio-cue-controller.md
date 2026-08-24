@@ -719,15 +719,16 @@ captures had been dropped to save budget. So the failure has two live
 explanations, the strategy's stalls or the actuator, and this run separates
 neither.
 
-The likeliest reading is the actuator, not the strategy. That run's box sat at
-80-100% throughout -- the 1.5 s wind hold landed every cycle -- while the brief
-presses that carry the camera stalls and the hall flash did not. Holds work,
-short presses appear to drop, which is the harness's oldest known failure mode.
+It is not evidence against the stalls at all, which a later pass established:
+`HID-MULTITOUCH.md` already records that this exact configuration -- an HID
+schedule with no BB read or response -- survives **0/3000** in the exact
+simulator, "predominantly through the BB-to-Foxy failure chain". The run
+reproduced that chain rather than discovering anything. Its box sat at 80-100%
+throughout, so the wind was never the problem either.
 
-Either way the simulator's 300/300 is not a device result: it prices no press
-and no observation, so it cannot see this at all. Treat every survival figure
-above as a statement about the model until a clean device run with a
-flash-validated actuator says otherwise. That is a design conclusion the device work can act on
+The simulator's 300/300 still is not a device result -- it prices no press and
+no observation -- but the bang policy's premise remains **untested** on device
+rather than contradicted. That is a design conclusion the device work can act on
 directly, and it is only reachable because the bang is the loud cue — the one
 measured at 2.9-4.6 detections per minute on the phone, where the vocals were
 6-16 dB short.

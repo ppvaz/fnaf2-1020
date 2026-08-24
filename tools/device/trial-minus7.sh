@@ -189,6 +189,18 @@ if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ] && [ -z "$BB_CAM05_MODEL" ]; then
   echo "BB_CAM05_STOP_ON_BB=1 requires BB_CAM05_MODEL" >&2
   exit 2
 fi
+# A run with no Balloon Boy read is a known-dead configuration, not a variant.
+# HID-MULTITOUCH.md records 0/3000 for it in the exact simulator, through the
+# BB-to-Foxy chain, and a 2026-08-24 device run reproduced that chain exactly:
+# BB walked in, took the lights, Foxy finished it. Say so out loud, because the
+# defaults do not, and the failure looks like bad luck if you have not read the
+# note.
+if [ -z "$BB_LEFT_MODEL" ] && [ -z "$BB_CAM05_MODEL" ]; then
+  echo "warning: no BB read configured (BB_LEFT_MODEL / BB_CAM05_MODEL unset)." >&2
+  echo "         HID-MULTITOUCH.md records 0/3000 Night 6 for this, via BB->Foxy." >&2
+  echo "         The validated check is the lit left opening; CAM 05 is not the" >&2
+  echo "         Night 6 checkpoint, and the left vent light costs no flashlight." >&2
+fi
 if [ -n "$BB_LEFT_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || [ "$HID_LEFT_SURVIVAL" -eq 1 ] || {
     echo "BB_LEFT_MODEL requires BB_LEFT_CAPTURE_EVERY > 0 or HID_LEFT_SURVIVAL=1" >&2

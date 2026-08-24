@@ -295,14 +295,19 @@ shows the box climbing past 80% by 20 s and sitting at 80-100% for the rest of
 it. So the failure was not a starved box, and the first reading of this run --
 which blamed the box -- was wrong.
 
-What separates the two is press duration. Winding is a ~1.5 s hold and it
-landed every cycle. The camera stalls and the hall flash are brief presses, and
-both failed: a Withered reached the office and Foxy ended the night. That is the
-same shape as the harness's oldest rule, that a short `input tap` is dropped
-about half the time because Fusion polls touch per frame, which is why the
-device tools use a duration press. **`hid-multi` appears to deliver holds and
-drop short presses**, and until that is measured directly it should not be used
-for a loop whose defence is flashes.
+**The run failed exactly as this repository already predicted.**
+[`HID-MULTITOUCH.md`](HID-MULTITOUCH.md) records that the HID schedule *with no
+BB read or response* survives **0/3000** Night 6 runs, "predominantly through
+the BB-to-Foxy failure chain". That is the configuration this run used: the BB
+check had been dropped to save budget. Balloon Boy reached the office, took the
+lights, and Foxy ended it -- the documented chain, start to finish.
+
+Two intermediate diagnoses were recorded here and both were wrong: a starved
+box (its box was at 80-100%) and a short-press actuator failure (`hid-multi` is
+smoke-tested for two-finger tap sequences). Neither was needed. The same page
+also says CAM 05 is *not* the Night 6 checkpoint -- the device-validated
+classifier is the lit left opening, which does not consume flashlight battery --
+so the run chose the wrong check as well as removing it.
 
 A *different* run the same evening -- `PRESS_MODE=fast-swipe` with
 `BB_CAM05_CAPTURE_EVERY=4` -- did starve, and its trace is the clean measurement
