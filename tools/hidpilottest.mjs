@@ -23,7 +23,8 @@ class HidPilot {
                      alwaysThreat = false, sparseCam5 = false,
                      sparseLeft = false, cam5Hold = s(0.52),
                      pilotOffset = 0, vocalCam5 = false, dropVocal = 0,
-                     vocalFalseCount = 0, deviceSweep = false,
+                     vocalFalseCount = 0, bangCam5 = false, dropBang = 0,
+                     bangFalseCount = 0, deviceSweep = false,
                      sweepSlotMs = 240 } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
@@ -32,6 +33,7 @@ class HidPilot {
     this.sparseCam5 = sparseCam5;
     this.sparseLeft = sparseLeft;
     this.vocalCam5 = vocalCam5;
+    this.bangCam5 = bangCam5;
     this.deviceSweep = deviceSweep;
     this.sweepSlotMs = sweepSlotMs;
     this.sweepFrames = deviceSweep ? s((70 + 3 * sweepSlotMs) / 1000) : 16;
@@ -49,7 +51,7 @@ class HidPilot {
     // BB starts at CAM 10. Four successful five-second rolls are needed to
     // reach CAM 05, so a pre-boundary sensor cannot first be useful until the
     // fifth boundary at 25 s (the read itself completes at 24.7 s).
-    this.cam5SafeAt = vocalCam5 ? Infinity
+    this.cam5SafeAt = (vocalCam5 || bangCam5) ? Infinity
       : sparseCam5 ? this.epoch + s(24.7) : 0;
     // A perfect BB reaches the opening on the fifth five-second opportunity.
     // The first five-second pilot anchor after that edge is 27 s. Unlike the
@@ -64,6 +66,13 @@ class HidPilot {
     this.vocalsSeen = vocalFalseCount;
     this.dropVocal = dropVocal;
     this.audioMisses = 0;
+    // The bang policy counts, because counting is all the phone supports: a
+    // Balloon Boy cycle is exactly three bangs (g416 reaches CAM 05, g417
+    // enters the opening, g292/294 leaves) and his first three hops are silent.
+    this.dropBang = dropBang;
+    this.trueBangs = 0;
+    this.bangs = 0;
+    this.falseBangs = bangFalseCount;
     if (vocalCam5 && this.vocalsSeen >= 3) this.cam5SafeAt = this.epoch;
     this.minBox = 1;
     this.opening();
@@ -329,7 +338,7 @@ class HidPilot {
     // In sparse mode, resume just before the fifth following movement
     // boundary: four successful rolls may have put him back on CAM 05, but a
     // final hop cannot have occurred yet.
-    this.cam5SafeAt = this.vocalCam5 ? Infinity
+    this.cam5SafeAt = (this.vocalCam5 || this.bangCam5) ? Infinity
       : this.sparseCam5 ? a + s(22.7) : a + s(10);
     this.mode = 'normal';
     this.nextAnchor = a + s(10);
@@ -338,12 +347,19 @@ class HidPilot {
   onCam5Before(a) {
     this.checks++;
     if (this.sim.bb.stage !== C.BB_STAGES - 1) {
+      // The read is the ground truth the bang count is not. He is not on
+      // CAM 05, so whatever armed this was wrong: drop the count and wait for
+      // a fresh first bang rather than carrying a corrupted phase all night.
+      if (this.bangCam5) { this.bangs = 0; this.cam5SafeAt = Infinity; }
       if (this.sim.bb.inOpening || this.sim.bb.inside) this.missed++;
       this.tap(this.sim.frame + 2, 'cam:11');
       this.hold(this.sim.frame + 6, a + s(5) - (this.sim.frame + 8), 'wind');
       return;
     }
     this.detections++;
+    // Confirmed on CAM 05: that is bang one of the cycle, whatever the count
+    // said before.
+    if (this.bangCam5) this.bangs = 1;
     this.mode = 'tracking-inline';
     this.tap(this.sim.frame + 2, 'monitor');
     this.tap(a + s(3.15), 'monitor');
@@ -387,7 +403,44 @@ class HidPilot {
   // once instead of scanning every possible movement boundary. `dropVocal`
   // deliberately removes one true vocal per approach to expose the policy's
   // false-negative tolerance; it is not a detector model.
+  // The bang is the loud cue (channel 15 at volume 50) and, while Minus 7's
+  // stalls hold and the box is wound, Balloon Boy is its only source -- every
+  // other writer of that register is one of the seven stun-locked, and W. Foxy
+  // and Golden Freddy never write it. So this reads *only* that a bang
+  // happened. It deliberately ignores `who`, `cam` and `leaving`: none of them
+  // is recoverable from audio, and a controller that consulted them would be
+  // modelling a sensor that does not exist. A bang from a unit whose stall
+  // lapsed therefore corrupts the count here exactly as it would on device.
+  processBangEvents() {
+    // A cycle is exactly three bangs -- reaches CAM 05, enters the opening,
+    // leaves -- and his first three hops are silent. The count alone is as
+    // brittle as the vocal count it replaces, so the CAM 05 read re-syncs it:
+    // the read is ground truth about where he is, and the bang only decides
+    // when to spend one. There is no cheaper fallback to degrade to, because
+    // reading on a fixed schedule is itself 0/300 on power.
+    if (this.falseBangs > 0) {
+      this.falseBangs--;
+      this.bangs++;
+      if (this.bangs === 1) this.cam5SafeAt = Math.min(this.cam5SafeAt, this.sim.frame);
+    }
+    while (this.eventCursor < this.sim.events.length) {
+      const event = this.sim.events[this.eventCursor++];
+      if (event.type !== 'vent-bang' || event.data?.sample !== C.THUD_SAMPLE)
+        continue;
+      this.trueBangs++;
+      if (this.dropBang === this.trueBangs) { this.audioMisses++; continue; }
+      this.bangs++;
+      if (this.bangs === 1) {
+        this.cam5SafeAt = Math.min(this.cam5SafeAt, this.sim.frame);
+      } else if (this.bangs >= 3) {
+        this.bangs = 0;
+        this.cam5SafeAt = Infinity;
+      }
+    }
+  }
+
   processAudioEvents() {
+    if (this.bangCam5) return this.processBangEvents();
     if (!this.vocalCam5) return;
     while (this.eventCursor < this.sim.events.length) {
       const event = this.sim.events[this.eventCursor++];
@@ -440,11 +493,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const cliArgs = process.argv.slice(2);
   const n = cliArgs[0] && !cliArgs[0].startsWith('--') ? +cliArgs.shift() : 500;
   const exactArgs = new Set(['--worst', '--sparse-cam5', '--sparse-left',
-    '--vocal-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
+    '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
     '--assert', '--assert-rejected']);
   const valuedArgs = ['--sweep-slot-ms=', '--cam5-light-ms=',
-    '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=', '--night='];
+    '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
+    '--drop-bang=', '--false-bang=', '--night='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
     !valuedArgs.some(prefix => arg.startsWith(prefix)));
   if (unknownArgs.length) throw new Error(`unknown argument: ${unknownArgs.join(', ')}`);
@@ -452,10 +506,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const sparseCam5 = cliArgs.includes('--sparse-cam5');
   const sparseLeft = cliArgs.includes('--sparse-left');
   const vocalCam5 = cliArgs.includes('--vocal-cam5');
+  const bangCam5 = cliArgs.includes('--bang-cam5');
   const sweepSlotArg = (cliArgs.find(v => v.startsWith('--sweep-slot-ms=')) || '').split('=')[1];
   const deviceSweep = cliArgs.includes('--device-sweep') || Boolean(sweepSlotArg);
   const sweepSlotMs = sweepSlotArg ? +sweepSlotArg : 240;
-  const bbMode = cliArgs.includes('--cam5') || sparseCam5 || vocalCam5 ? 'cam5'
+  const bbMode = cliArgs.includes('--cam5') || sparseCam5 || vocalCam5 || bangCam5 ? 'cam5'
     : (cliArgs.includes('--no-bb') || cliArgs.includes('--no-cam5')) ? 'none'
       : 'left';
   const cam5Light = !cliArgs.includes('--hypothetical-unlit');
@@ -467,6 +522,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const dropVocal = dropVocalArg ? +dropVocalArg : 0;
   const falseVocalArg = (cliArgs.find(v => v.startsWith('--vocal-false-count=')) || '').split('=')[1];
   const vocalFalseCount = falseVocalArg ? +falseVocalArg : 0;
+  const dropBangArg = (cliArgs.find(v => v.startsWith('--drop-bang=')) || '').split('=')[1];
+  const dropBang = dropBangArg ? +dropBangArg : 0;
+  const falseBangArg = (cliArgs.find(v => v.startsWith('--false-bang=')) || '').split('=')[1];
+  const bangFalseCount = falseBangArg ? +falseBangArg : 0;
   const phaseSafeMask = !cliArgs.includes('--tick-aligned-mask');
   const alwaysThreat = cliArgs.includes('--always-threat');
   const assertSurvival = cliArgs.includes('--assert');
@@ -479,8 +538,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error('runs and timing controls must be finite and in their documented ranges');
   if (![0, 1, 2, 3].includes(dropVocal) || ![0, 1, 2, 3].includes(vocalFalseCount))
     throw new Error('--drop-vocal and --vocal-false-count must be integers from 0 to 3');
-  if ([sparseLeft, sparseCam5, vocalCam5].filter(Boolean).length > 1)
-    throw new Error('--sparse-left, --sparse-cam5, and --vocal-cam5 are exclusive');
+  if ([sparseLeft, sparseCam5, vocalCam5, bangCam5].filter(Boolean).length > 1)
+    throw new Error('--sparse-left, --sparse-cam5, --vocal-cam5 and --bang-cam5 are exclusive');
+  if (![0, 1, 2, 3].includes(dropBang) || ![0, 1, 2].includes(bangFalseCount))
+    throw new Error('--drop-bang= must be 0-3 and --false-bang= 0-2');
+  if (!bangCam5 && (dropBang || bangFalseCount))
+    throw new Error('bang error controls require --bang-cam5');
   if (sparseLeft && bbMode !== 'left')
     throw new Error('--sparse-left cannot be combined with a CAM-05 or no-BB mode');
   if (deviceSweep && !sparseLeft)
@@ -496,7 +559,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const fails = {};
   for (let i = 0; i < n; i++) {
     const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
-      vocalCam5, dropVocal, vocalFalseCount, cam5Hold, pilotOffset,
+      vocalCam5, dropVocal, vocalFalseCount, bangCam5, dropBang,
+      bangFalseCount, cam5Hold, pilotOffset,
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
@@ -514,7 +578,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const mode = bbMode === 'left' ?
       `${sparseLeft ? 'sparse phase-windowed ' : ''}lit left-opening detection`
-    : bbMode === 'cam5' ? `${vocalCam5 ? 'third-vocal-armed ' :
+    : bbMode === 'cam5' ? `${bangCam5 ? 'bang-armed ' : vocalCam5 ? 'third-vocal-armed ' :
         sparseCam5 ? 'sparse phase-aligned ' : ''}CAM 05 tracking ` +
         `(${cam5Light ? `${cam5Hold}f lit` : 'unlit'})`
       : 'blind cycle';
@@ -526,7 +590,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`  ${count}x  ${key}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower} | ` +
     `${checks} BB reads, ${detections} detections, ${attacks} attacks, ${missed} missed states` +
-    (vocalCam5 ? `, ${audioMisses} forced vocal misses` : ''));
+    (vocalCam5 ? `, ${audioMisses} forced vocal misses` : '') +
+    (bangCam5 ? `, ${audioMisses} forced bang misses` : ''));
   if (assertSurvival && (wins !== n || missed !== 0)) process.exitCode = 1;
   if (assertRejected && wins !== 0) process.exitCode = 1;
 }

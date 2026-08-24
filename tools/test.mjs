@@ -52,6 +52,13 @@ const ENGINE = [
   // Perfect sourced events only: this guards the visual policy upper bound,
   // while plan 08's forced-miss report explicitly rejects promotion as-is.
   ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],
+  // The bang-armed policy, and the property that makes it worth having: the
+  // CAM 05 read re-syncs the count, so false positives are absorbed. Guard
+  // both, because the false-tolerance is the whole argument for it over the
+  // counted-vocal policy plan 08 rejected.
+  ['hidpilot bang', ['hidpilottest.mjs', '200', '--night=7', '--bang-cam5', '--assert']],
+  ['hidpilot bang false', ['hidpilottest.mjs', '200', '--night=7', '--bang-cam5',
+    '--false-bang=2', '--assert']],
   // The cue detector's front end, on synthesised signals: the reference
   // samples are game content and live outside the repository.
   ['cuetest', ['cue/test-cue.py']],

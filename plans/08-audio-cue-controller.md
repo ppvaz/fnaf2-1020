@@ -46,7 +46,7 @@ as well as the flash.
 | 1. Prove playback capture | **Passes for the needed cues.** Bang and steps both found repeatedly in target-device PCM; the vocals do not clear and are not needed |
 | 2. Offline detector | Open. Front end built; needs a session-split holdout and confusion matrix against the *bang*, with the false-positive rate the real unknown |
 | 3. Window and action latency | Observation leg measured (225 ms to 59 ms). The audio legs need the `ARM`/`HIT`/`MISS` protocol |
-| 4. Simulator cue injection | Open, and now worth doing: a bang-driven policy is not the counted-vocal policy §4 rejected |
+| 4. Simulator cue injection | **Advanced.** The bang-armed policy survives 300/300 clean, 200/200 worst, and 300/300 with false cues; misses stay fatal. The error budget is one-sided, so the detector wants its most sensitive threshold |
 | 5. Shadow on the real device | Open |
 | 6. Enable one bounded action | Open. Early unmasking is back in scope, conditional on asserted stall state |
 
@@ -628,6 +628,54 @@ plumbing—not the actuator measurement or the simulator rejection.
 The next simulator iteration must ingest actual cue latency/error distributions;
 the perfect-event mode and forced single miss now provide the upper and lower
 regression anchors.
+
+#### Bang-armed CAM 05 (2026-08-24): a one-sided error budget
+
+With the cue map corrected, the policy worth testing is not the counted vocal.
+It is the **bang**: loud, and Balloon Boy's alone while the stalls hold.
+`tools/hidpilottest.mjs --night=7 --bang-cam5` reads only that a bang happened —
+never `who`, `cam` or `leaving`, none of which audio can recover — and the run
+is a three-bang cycle (reaches CAM 05, enters the opening, leaves) because his
+first three hops are silent.
+
+Two things had to be got right before it beat the vocal policy.
+
+**Counting alone is no better.** A bare three-bang counter survives 300/300
+clean and dies 0/300 on a single miss *or* a single false positive, exactly as
+the vocal count did: one error shifts the phase for the rest of the night.
+
+**There is no cheaper fallback to degrade to.** The obvious fix — let a bang
+only pull the read earlier than a scheduled scan — fails because the scan is
+itself fatal: `--cam5` is **0/300** and `--sparse-cam5` is **0/300** on night 7.
+Reading on a schedule loses on power, which is why the vocal policy's rarity was
+doing more work than it looked.
+
+So the read re-syncs the count instead. The CAM 05 read is ground truth about
+where he is; the bang only decides when to spend one. Confirmed on CAM 05 sets
+the count to one whatever it was; a read that finds nothing drops the count and
+waits for a fresh first bang rather than carrying a corrupted phase.
+
+| | survival | min power |
+|---|---|---:|
+| clean | **300/300** | 280 |
+| pinned worst | **200/200** | — |
+| one false bang | **300/300** | 249 |
+| two false bangs | **300/300** | 249 |
+| any one dropped bang | 0/300 | — |
+
+False positives are absorbed and their cost **saturates** — the second one is
+free — where the counted-vocal policy fell to 187, 125 and 94 on one, two and
+three. Misses stay fatal, and that is structural rather than fixable in policy:
+a missed first bang means no read is ever armed, so the visual cannot rescue
+what it never looks at.
+
+That inverts the detector's operating point. The usual instinct is to raise the
+threshold until false positives vanish; here false positives are nearly free and
+misses are lethal, so the correct setting is the **most sensitive threshold the
+power budget tolerates**. That is a design conclusion the device work can act on
+directly, and it is only reachable because the bang is the loud cue — the one
+measured at 2.9-4.6 detections per minute on the phone, where the vocals were
+6-16 dB short.
 
 **Correction (2026-08-24, from gate 0).** That upper bound is further out of
 reach than recorded above. `--vocal-cam5` resets its count on
