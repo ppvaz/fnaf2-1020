@@ -25,6 +25,7 @@ BB_LEFT_CAPTURE_START="${BB_LEFT_CAPTURE_START:-0}"
 CALIBRATION_INPUT_DEBUG="${CALIBRATION_INPUT_DEBUG:-0}"
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-}"
 GF_OFFICE_MODEL="${GF_OFFICE_MODEL:-}"
+GF_SKIP_MASK_ON_EXACT_EMPTY="${GF_SKIP_MASK_ON_EXACT_EMPTY:-0}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
@@ -79,6 +80,10 @@ esac
 case "$GRADE_RUN" in
   0|1) ;;
   *) echo "GRADE_RUN must be 0 or 1"; exit 2 ;;
+esac
+case "$GF_SKIP_MASK_ON_EXACT_EMPTY" in
+  0|1) ;;
+  *) echo "GF_SKIP_MASK_ON_EXACT_EMPTY must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
   swipe|tap|async-swipe|fast-swipe) ;;
@@ -158,6 +163,10 @@ if [ -n "$GF_OFFICE_MODEL" ]; then
     echo "GF_OFFICE_MODEL does not exist: $GF_OFFICE_MODEL" >&2
     exit 2
   }
+fi
+if [ "$GF_SKIP_MASK_ON_EXACT_EMPTY" -eq 1 ] && [ -z "$GF_OFFICE_MODEL" ]; then
+  echo "GF_SKIP_MASK_ON_EXACT_EMPTY=1 requires GF_OFFICE_MODEL" >&2
+  exit 2
 fi
 for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL; do
   setting_value="${!setting}"
@@ -408,6 +417,7 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
   "$REMOTE_CHECKER_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
+  "$GF_SKIP_MASK_ON_EXACT_EMPTY" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 <<'REMOTE' &
 set -eu
@@ -422,6 +432,7 @@ SAMPLE_DIR=$1; shift
 CHECKER=${1:--}; shift
 BB_MODEL=${1:--}; shift
 GF_MODEL=${1:--}; shift
+GF_SKIP_MASK_ON_EXACT_EMPTY=$1; shift
 MUTE_X=$1; MUTE_Y=$2; shift 2
 MONITOR_X=$1; MONITOR_Y=$2; shift 2
 MASK_X=$1; MASK_Y=$2; shift 2
@@ -578,6 +589,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
       # frame before deciding whether the normal mask-then-hall sequence is safe.
       capture_lit_at $((base +  600)) "$sample" bb-left
       threat=0
+      gf_exact_empty=0
       if [ "$BB_MODEL" != "-" ]; then
         classification=$("$CHECKER" classify "$BB_MODEL" < "$SAMPLE_DIR/$sample.raw")
         printf '%6d ms  classify-bb-left %s\n' \
@@ -592,6 +604,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         printf '%6d ms  classify-gf-office %s\n' \
           "$(( $(date +%s%3N) - T0 ))" "$classification"
         case "$classification" in
+          empty\ score=0\ *) gf_exact_empty=1 ;;
           empty\ *) ;;
           *) threat=1 ;;
         esac
@@ -602,6 +615,30 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         # stop before the lethal hall press and before slow host transfers.
         press_at $((base + 1450)) "$MASK_X" "$MASK_Y" mask-on-threat
         exit 42
+      fi
+      if [ "$GF_SKIP_MASK_ON_EXACT_EMPTY" -eq 1 ] &&
+         [ "$gf_exact_empty" -eq 1 ]; then
+        # Experimental collection path: the strict exact-empty GF result is
+        # the only state allowed to omit the blind mask. This recovers enough
+        # CAM 11 time to keep the box healthy while retaining fail-closed
+        # behavior for every nonzero, unknown, Golden, or malformed result.
+        printf '%6d ms  skip-gf-mask exact-empty\n' \
+          "$(( $(date +%s%3N) - T0 ))"
+        # Hall-movement darkness is visual only: g489 still asserts the
+        # logical hall-light latch and g745/g855 still reset and pin Foxy.
+        # Retrying merely because no beam was rendered wastes power.
+        hold_at  $((base + 1600)) "$HALL_X"    "$HALL_Y"    200 flash-hall
+        press_at $((base + 2500)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+        press_at $((base + 3000)) "$CAM10_X"   "$CAM10_Y"   cam-10
+        press_at $((base + 3190)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
+        press_at $((base + 3380)) "$CAM04_X"   "$CAM04_Y"   cam-04
+        press_at $((base + 3570)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-04
+        press_at $((base + 3760)) "$CAM07_X"   "$CAM07_Y"   cam-07
+        press_at $((base + 3950)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-07
+        press_at $((base + 4140)) "$CAM11_X"   "$CAM11_Y"   cam-11
+        hold_at  $((base + 4330)) "$WIND_X"    "$WIND_Y"   2000 wind-after-exact-empty
+        cycle=$((cycle + 1))
+        continue
       fi
       press_at       $((base + 1450)) "$MASK_X"    "$MASK_Y"    mask-on
       # Classification can make mask-on late. Give the mask a fixed fully-down
