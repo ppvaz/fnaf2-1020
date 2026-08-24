@@ -1166,10 +1166,10 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   [ "$mon" -le 1200 ] || { echo 'epoch latch left no room for the opening' >&2; exit 46; }
   press_at "$mon" "$MONITOR_X" "$MONITOR_Y" monitor-up
   press_at $((mon + 284)) "$CAM11_X" "$CAM11_Y" opening-cam-11
-  hold_at  $((mon + 334)) "$WIND_X" "$WIND_Y" $((6150 - mon - 334)) opening-wind
+  hold_at  $((mon + 417)) "$WIND_X" "$WIND_Y" $((6117 - mon - 417)) opening-wind
   pulsed_sweep_at 6167 opening-sweep
   press_at 6550 "$CAM11_X" "$CAM11_Y" opening-cam-11-back
-  hold_at  6633 "$WIND_X" "$WIND_Y" 117 opening-top-up
+  hold_at  6683 "$WIND_X" "$WIND_Y" 117 opening-top-up
 
   base=7000
   cycle=0
@@ -1222,15 +1222,15 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       press_at $((now + 33)) "$MASK_X"    "$MASK_Y"    mask-off-empty
       press_at $((base + 1383)) "$MONITOR_X" "$MONITOR_Y" monitor-up
       press_at $((base + 1617)) "$CAM11_X"   "$CAM11_Y"   cam-11
-      hold_at  $((base + 1733)) "$WIND_X"    "$WIND_Y"    950 wind-a
+      hold_at  $((base + 1767)) "$WIND_X"    "$WIND_Y"    916 wind-a
       press_at $((base + 2717)) "$MONITOR_X" "$MONITOR_Y" monitor-down-2
       # 130 ms, not the table's 83. The simulator counts frames of light; the
       # phone needs a contact Fusion's per-frame poll cannot miss, and a graded
       # run that scheduled ten 83 ms pulses produced zero visible beams.
-      hold_at  $((base + 3100)) "$HALL_X"    "$HALL_Y"    130 reset-foxy
-      press_at $((base + 3217)) "$MONITOR_X" "$MONITOR_Y" monitor-up-2
-      press_at $((base + 3450)) "$CAM11_X"   "$CAM11_Y"   cam-11-2
-      hold_at  $((base + 3567)) "$WIND_X"    "$WIND_Y"    1083 wind-b
+      hold_at  $((base + 3100)) "$HALL_X"    "$HALL_Y"    133 reset-foxy
+      press_at $((base + 3267)) "$MONITOR_X" "$MONITOR_Y" monitor-up-2
+      press_at $((base + 3500)) "$CAM11_X"   "$CAM11_Y"   cam-11-2
+      hold_at  $((base + 3633)) "$WIND_X"    "$WIND_Y"    984 wind-b
       pulsed_sweep_at $((base + 4667)) late-sweep
       base=$((base + 5000))
     else
@@ -1240,9 +1240,9 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       hid_mark "$actual"
       press_at $((base + 5917)) "$MASK_X"  "$MASK_Y" mask-off-after-bb
       hall_reset_and_raise_at $((base + 6167)) reset-foxy-after-bb
-      pulsed_sweep_at $((base + 6383)) response-sweep
+      pulsed_sweep_at $((base + 6367)) response-sweep
       press_at $((base + 6750)) "$CAM11_X" "$CAM11_Y" cam-11-after-bb
-      hold_at  $((base + 6833)) "$WIND_X"  "$WIND_Y" 2817 wind-after-bb
+      hold_at  $((base + 6883)) "$WIND_X"  "$WIND_Y" 2734 wind-after-bb
       pulsed_sweep_at $((base + 9667)) response-late-sweep
       base=$((base + 10000))
     fi

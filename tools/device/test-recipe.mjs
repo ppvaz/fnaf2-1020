@@ -135,9 +135,42 @@ for (const [name, lines] of Object.entries(plan)) {
       check(+rest[0] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
     } else {
       check(kind === 'read', `${name}: unknown device instruction "${kind}"`);
+      check(+rest[1] >= 33,
+        `${name}: the read leaves ${rest[1]} ms between the vent light and the ` +
+        'mask; one 30 Hz Fusion poll is 33 ms and a lost mask press sticks the ' +
+        'mask on, which blinds every later read');
     }
   }
   check(sweeps >= 1, `${name}: no camera sweep, so nothing refreshes the stalls`);
+
+  // No two contacts at different controls may abut. Fusion polls touch once
+  // per frame, so a release and a press inside one 33 ms poll can read as a
+  // single finger moving between two buttons, and the second button never
+  // fires. A recorded run measured 0 ms between the WIND release and the
+  // CAM 10 press, and 0 ms between the hall pulse and the monitor raise it
+  // was supposed to precede.
+  const span = e => {
+    if (e.kind === 'sweep') return [e.at, e.at + 2 * +e.rest[0] + +e.rest[1]];
+    // A read owns its prophylactic mask: light, released gap, mask contact.
+    if (e.kind === 'read') return [e.at, e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS];
+    if (e.kind === 'hold') return [e.at, e.at + +e.rest[1]];
+    return [e.at, e.at + +e.rest[e.rest.length - 1]];
+  };
+  const control = e => e.kind === 'tap' || e.kind === 'hold' ? e.rest[0] : e.kind;
+  const acts = lines.map(l => l.split(' '))
+    .map(([at, kind, ...rest]) => ({ at: +at, kind, rest }))
+    .sort((a, b) => a.at - b.at);
+  for (let i = 1; i < acts.length; i++) {
+    // hallraise deliberately taps the monitor on a second contact while the
+    // hall light is held; that is one gesture, not two buttons in sequence.
+    if (acts[i - 1].kind === 'hallraise' || acts[i].kind === 'hallraise') continue;
+    if (control(acts[i - 1]) === control(acts[i])) continue;
+    const released = acts[i].at - span(acts[i - 1])[1];
+    check(released >= 33,
+      `${name}: only ${released} ms between ${control(acts[i - 1])} ending ` +
+      `+${span(acts[i - 1])[1]} ms and ${control(acts[i])} at +${acts[i].at} ms; ` +
+      'one 30 Hz Fusion poll is 33 ms');
+  }
 
   // Sweeps follow a wind hold, and the phone needs released time between the
   // two. A recorded run's own HID trace measured 0 ms between the WIND release
@@ -157,7 +190,7 @@ for (const [name, lines] of Object.entries(plan)) {
 
 // The branch is only known after the read, so both steady cycles must begin
 // with the identical prefix: lower, read, mask.
-const prefix = lines => lines.slice(0, 3).join('|');
+const prefix = lines => lines.slice(0, 2).join('|');
 check(prefix(plan.clear) === prefix(plan.attack),
   `clear and attack disagree before the classifier answers:\n  ${prefix(plan.clear)}\n  ${prefix(plan.attack)}`);
 

@@ -109,6 +109,9 @@ const ENGINE = [
   // buttons, and the trap-2 release discipline. Its self-test runs here; point
   // it at a captured trace to audit a real run.
   ['hid trace', ['device/test-hid-trace.mjs']],
+  // The runner must schedule the plan the simulator emits. The table lived in
+  // two places and a fix to one silently missed the other.
+  ['runner plan', ['device/test-runner-plan.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];

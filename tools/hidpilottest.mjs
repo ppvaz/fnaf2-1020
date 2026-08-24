@@ -127,12 +127,13 @@ class HidPilot {
     const openingSweep = this.deviceSweep
       ? e + s(6.5) - this.sweepFrames : e + s(6.25);
     const openingWindEnd = this.deviceSweep ? openingSweep - 3 : e + s(6.10);
-    this.hold(e + s(0.52), openingWindEnd - (e + s(0.52)), 'wind');
+    const openingWindStart = e + (this.deviceSweep ? s(0.60) : s(0.52));
+    this.hold(openingWindStart, openingWindEnd - openingWindStart, 'wind');
     // The left-opening cycle deliberately flashes late. Put the opening
     // sweep late as well so its stun cannot expire before cycle zero's sweep.
     const end = this.flashTargets(openingSweep);
     this.tap(end + s(0.05), 'cam:11');
-    this.hold(end + s(0.13), s(0.12), 'wind');
+    this.hold(end + (this.deviceSweep ? s(0.19) : s(0.13)), s(0.12), 'wind');
   }
 
   flashTargets(f, targets = TARGETS) {
@@ -274,16 +275,19 @@ class HidPilot {
       // winding instead: one hall reset and one prophylactic mask per cycle
       // remain, and the sweep still lands on the anchor.
       const only = a + s(5) - this.sweepFrames;
-      this.hold(a + s(1.74), a + s(2.68) - (a + s(1.74)), 'wind');
+      this.hold(a + s(1.77), a + s(2.68) - (a + s(1.77)), 'wind');
       // The second Foxy reset still needs the monitor down, but not the
       // second Golden Freddy flick -- beat one's prophylactic mask already
       // covers this cycle. Dropping the flick shortens the beat from 1.48 s
       // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
       this.tap(a + s(2.72), 'monitor');
       this.hold(a + s(3.10), this.hallPulse, 'light');
-      this.tap(a + s(3.22), 'monitor');
-      this.tap(a + s(3.45), 'cam:11');
-      this.hold(a + s(3.57), Math.max(1, only - 3 - (a + s(3.57))), 'wind');
+      // The hall pulse is a 130 ms contact on the phone, so the raise it is
+      // meant to precede has to clear it, and CAM 11 has to clear the raise's
+      // 204 ms animation after that.
+      this.tap(a + s(3.27), 'monitor');
+      this.tap(a + s(3.50), 'cam:11');
+      this.hold(a + s(3.64), Math.max(1, only - 3 - (a + s(3.64))), 'wind');
       this.flashTargets(only);
       return;
     }
@@ -333,9 +337,10 @@ class HidPilot {
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
+    const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
     const lateSweepStart = a + s(10) - this.sweepFrames;
     const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
-    this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
+    this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
     this.flashTargets(lateSweepStart);
     this.nextAnchor = a + s(10);
   }

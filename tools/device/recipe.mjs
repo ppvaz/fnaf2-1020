@@ -205,11 +205,15 @@ export function track(cycle) {
 // performs as one gesture (a camera select and its light pulse; a hall pulse
 // under a simultaneous monitor raise) so the shell executes a table instead of
 // re-deriving one. Contact lengths are device lengths, never simulator frames.
+// The released time the runner leaves between the vent light and the mask.
+export const MASK_GAP_MS = 40;
+
 export function devicePlan(recipe) {
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
     const lines = [];
     const ev = cycle.events;
+    let skipMask = null;
     for (let i = 0; i < ev.length; i++) {
       const e = ev[i];
       if (e.act === 'camlight') continue;            // merged into its select
@@ -236,7 +240,17 @@ export function devicePlan(recipe) {
         continue;
       }
       if (e.act === 'monitor' && ev.some(x => x.act === 'hall' && x.at === e.at)) continue;
-      if (e.act === 'ventl') { lines.push(`${e.at} read ${e.dur}`); continue; }
+      if (e.act === 'ventl') {
+        // The runner performs the read and the prophylactic mask as one step:
+        // it releases the vent light the instant the capture latches and
+        // presses the mask 40 ms later, one Fusion poll, so the game sees an
+        // unpressed frame between two different buttons. The plan says so,
+        // rather than listing a mask the schedule does not separately time.
+        skipMask = ev.find(x => x.act === 'mask' && x.at >= e.at);
+        lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS}`);
+        continue;
+      }
+      if (e === skipMask) continue;
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${e.dur}`);
     }
@@ -285,6 +299,7 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       } else if (kind === 'read') {
         at(t, 'press', 'ventL');
         at(t + f(+rest[0]), 'release', 'ventL');
+        at(t + f(+rest[0]) + f(+rest[1]), 'press', 'mask');
         at(t + f(readLatencyMs), 'snapshot', base);
       } else throw new Error(`unknown instruction ${kind}`);
     }
@@ -295,7 +310,7 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
   parse(plan.opening, pilotOffset);
   let base = pilotOffset + f(7000);
   let pending = null;
-  parse(plan.clear.slice(0, 3), base);      // the shared prefix, up to the read
+  parse(plan.clear.slice(0, 2), base);      // the shared prefix, up to the read
   let missed = 0, detections = 0;
 
   while (sim.alive && !sim.won) {
@@ -315,9 +330,9 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       if (!bb && inside) missed++;
       if (bb) detections++;
       const lines = bb ? plan.attack : plan.clear;
-      parse(lines.slice(3), b);             // the branch, after the read
+      parse(lines.slice(2), b);             // the branch, after the read
       base = b + f(bb ? 10000 : 5000);
-      parse(plan.clear.slice(0, 3), base);
+      parse(plan.clear.slice(0, 2), base);
     }
     sim.tick();
   }
