@@ -133,6 +133,11 @@ public final class CaptureService extends Service {
     private short[] logBuffer;
     private int logWrite;
     private boolean logRunning;
+    // nanoTime of the first frame written to the log. Without it a pulled WAV
+    // is a sound with no place on the clock, and it cannot be aligned to the
+    // visual snapshots that label it.
+    private long logStartNs;
+    private long logStartFrames;
     private int calRingWrite;
     private long calRingFrames;
     private int calRingRate;
@@ -728,6 +733,13 @@ public final class CaptureService extends Service {
             }
             calRingFrames += count;
             if (logRunning && logBuffer != null) {
+                if (logWrite == 0) {
+                    // This read's frames end at `now`, so the first one began
+                    // `count` frames earlier.
+                    logStartNs = System.nanoTime()
+                            - (count * 1_000_000_000L) / sampleRate;
+                    logStartFrames = calRingFrames - count;
+                }
                 int room = Math.min(count, logBuffer.length - logWrite);
                 System.arraycopy(samples, 0, logBuffer, logWrite, room);
                 logWrite += room;
@@ -756,6 +768,7 @@ public final class CaptureService extends Service {
                 logBuffer = new short[calRingRate * LOG_MAX_SECONDS];
             }
             logWrite = 0;
+            logStartNs = 0;
             logRunning = true;
         }
         return "OK log=started max=" + LOG_MAX_SECONDS;
@@ -764,6 +777,7 @@ public final class CaptureService extends Service {
     private String stopContinuousLog() {
         int rate;
         short[] window;
+        long startNs;
         synchronized (calLock) {
             if (logBuffer == null || logWrite <= 0) {
                 logRunning = false;
@@ -774,8 +788,14 @@ public final class CaptureService extends Service {
             System.arraycopy(logBuffer, 0, window, 0, logWrite);
             logRunning = false;
             logWrite = 0;
+            startNs = logStartNs;
         }
-        return writeCalibrationWav(window, rate, 0, window.length / rate);
+        String result = writeCalibrationWav(window, rate, 0, window.length / rate);
+        // The anchor is what makes the recording labelable: every visual
+        // snapshot carries the same monotonic clock, so a frame index in this
+        // file maps to a snapshotNs and back.
+        return result.startsWith("OK ")
+                ? result + " startNs=" + startNs : result;
     }
 
     private String recordCalibrationWindow(String preText, String postText) {

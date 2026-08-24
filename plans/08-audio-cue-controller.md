@@ -56,6 +56,40 @@ is high enough to suspect some are background. Nothing yet confirms that a
 detected bang coincides with a real BB hop rather than a stall lapse. And the
 projection classifier threshold is still uncalibrated.
 
+#### How the miss rate gets collected
+
+§4 showed the error budget is one-sided: false positives are absorbed, misses
+are fatal. So the miss rate is the number that decides this, and it cannot be
+measured with the detector under test. Two sources, and the cheap one does most
+of the work:
+
+1. **Injection, no gameplay.** Real night background plus the true reference at
+   a known level and time, swept across levels. Arbitrary N, no device time.
+   Gives miss rate as a function of level. `tools/cue/evaluate.py --anchor`.
+2. **Visually labeled arrivals, to pin where real bangs sit on that curve.** BB
+   entering the lit left opening *is* g417, and it is exactly what the one-pixel
+   classifier reads: bright when empty, black when he is in it. So a
+   bright->dark transition is a real bang, labeled by the other modality.
+
+The second needs the two streams on one clock, which they now are: `log stop`
+reports `startNs` for the first audio frame, `watch` logs `snapshotNs` with each
+luma at ~11 Hz, and both come from the same `System.nanoTime()` inside the
+helper. `tools/cue/label-misses.py` joins them.
+
+Two things that protect the number from being nonsense. The luma split is
+derived from each recording rather than assumed, because the projection scaler
+has never been calibrated against the offline simulation the published values
+came from -- so this run also produces that calibration. And a dwell filter
+requires both states to hold for seconds either side of a transition: run the
+tool against a menu and the screen's own flicker crosses any threshold several
+times a second, which it will otherwise report as arrivals and score
+confidently.
+
+Cost: a night yields roughly 5-8 arrivals if he is masked out and allowed to
+re-route. With zero misses observed the 95% upper bound is 3/N, so bounding the
+rate under 5% needs about 60 events -- roughly ten nights, near 70 minutes of
+device time.
+
 ## Decision
 
 Build this only as a measured, fail-safe experiment. Android can expose eligible

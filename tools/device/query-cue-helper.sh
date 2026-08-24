@@ -6,6 +6,7 @@
 #   query-cue-helper.sh latency [count]           time device-local snapshot reads
 #   query-cue-helper.sh log start                 begin a night-length capture
 #   query-cue-helper.sh log stop [label]          end it and pull the WAV
+#   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -32,6 +33,7 @@ case "${1:-}" in
   record) VERB=record; shift ;;
   latency) VERB=latency; shift ;;
   log) VERB=log; shift ;;
+  watch) VERB=watch; shift ;;
   '') ;;
   *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
 esac
@@ -45,6 +47,16 @@ if [ "$VERB" = latency ]; then
   case "$COUNT" in *[!0-9]*) echo "count must be a whole number" >&2; exit 2 ;; esac
   if [ "$TRANSPORT" != loopback ]; then
     echo "latency measures the device-local path; use the loopback transport" >&2
+    exit 2
+  fi
+fi
+
+if [ "$VERB" = watch ]; then
+  WATCH_SECONDS="${1:?watch needs a duration in seconds}"
+  case "$WATCH_SECONDS" in *[!0-9]*) echo "seconds must be whole" >&2; exit 2 ;; esac
+  WATCH_OUT="${2:-}"
+  if [ "$TRANSPORT" != loopback ]; then
+    echo "watch polls the device-local path; use the loopback transport" >&2
     exit 2
   fi
 fi
@@ -77,7 +89,7 @@ esac
 # starting a recording is not a reading, and requiring focus there strands a
 # capture whenever a run ends with the game no longer in front.
 case "$VERB" in
-  snapshot|record)
+  snapshot|record|watch)
     if ! adb shell dumpsys window 2>/dev/null | \
         awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
       echo "FNaF is not the focused physical-display window" >&2
@@ -220,6 +232,29 @@ if groups["read"] and groups["base"]:
     net = pct(groups["read"], 0.50) - pct(groups["base"], 0.50)
     print("socket cost at p50: %.2f ms" % (net / 1000.0))
 '
+  exit 0
+fi
+
+if [ "$VERB" = watch ]; then
+  # Ground truth for a cue has to come from somewhere other than the cue
+  # detector. Every snapshot carries snapshotNs from the same monotonic clock
+  # the audio log is anchored to, so a bright->black transition on the lit left
+  # opening timestamps a real g417 arrival independently of any audio.
+  # Polling inside one device shell keeps it near the 49 ms read cost.
+  deadline=$(( $(date +%s) + WATCH_SECONDS ))
+  {
+    printf 'snapshot_ns	seq	luma	state
+'
+    while [ "$(date +%s)" -lt "$deadline" ]; do
+      line="$(exchange "GET $token")"
+      ns="$(printf '%s' "$line" | sed -n 's/.*snapshotNs=\([0-9]*\).*/\1/p')"
+      seq="$(printf '%s' "$line" | sed -n 's/.*seq=\([0-9]*\).*/\1/p')"
+      luma="$(printf '%s' "$line" | sed -n 's/.*luma=\([0-9-]*\).*/\1/p')"
+      state="$(printf '%s' "$line" | sed -n 's/.*visual=\([A-Z]*\).*/\1/p')"
+      [ -n "$ns" ] && printf '%s\t%s\t%s\t%s\n' "$ns" "${seq:-}" "${luma:-}" "${state:-}"
+    done
+  } | { if [ -n "$WATCH_OUT" ]; then tee "$WATCH_OUT"; else cat; fi; }
+  [ -n "$WATCH_OUT" ] && echo "wrote $WATCH_OUT" >&2
   exit 0
 fi
 
