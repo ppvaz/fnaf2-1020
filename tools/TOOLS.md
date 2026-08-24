@@ -124,7 +124,8 @@ accept a page URL when a focused run is useful.
 | Tool | Kind | Purpose and interface |
 |---|---|---|
 | `tools/device/grade-minus7.py VIDEO` | report | Post-run office/mask/camera/hall interval grading for a recorded trial. Supports assertion options shown by `--help`; requires ffmpeg. |
-| `tools/device/camtrace.py VIDEO` | report/check | Finds stable `10 -> 04 -> 07 -> 11` selected-camera sweeps. `--expected N` makes a missing-sweep result fail. Requires ffmpeg. |
+| `tools/device/camtrace.py VIDEO` | report/check | Finds stable `10 -> 04 -> 07 -> 11` selected-camera sweeps. `--expected N` makes a missing-sweep result fail. `--fps`/`--min-ms` set the decode rate and the shortest run counted as a selection: **the 30 fps / 100 ms defaults cannot resolve a sweep faster than about 200 ms spacing** and will report its selections as dropped. screenrecord captures at 60 fps on this phone, so pass `--fps 60 --min-ms 50` for any short-sweep measurement. Requires ffmpeg. |
+| `tools/device/test-camtrace.py` | check | Guards that resolution gate on synthetic sample runs; no video or device needed. |
 | `tools/device/windpct.py [--samples] VIDEO` | report | Measures the CAM 11 music-box gauge in recordings; `--samples` includes roughly half-second samples. Requires ffmpeg. |
 | `tools/device/find-events.py VIDEO` | report | Stdlib wrapper around ffmpeg frame differencing that locates sharp visual changes in mask-camp videos. |
 

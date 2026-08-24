@@ -16,6 +16,7 @@ import sys
 WIDTH = 430
 HEIGHT = 110
 FPS = 30
+MIN_MS = 100
 FRAME_SIZE = WIDTH * HEIGHT * 3
 CROP_X = 850
 CROP_Y = 300
@@ -67,19 +68,28 @@ def stable_runs(states):
     start = 0
     for i in range(1, len(states) + 1):
         if i == len(states) or states[i] != states[start]:
-            if states[start] is not None and i - start >= round(FPS * 0.10):
+            if states[start] is not None and i - start >= max(2, round(FPS * MIN_MS / 1000)):
                 yield states[start], start, i
             start = i
 
 
 def main():
+    global FPS, MIN_MS
     parser = argparse.ArgumentParser()
     parser.add_argument("video")
+    # screenrecord captures at the panel rate (60 fps on the Moto g56), so the
+    # default 30 fps decode plus a 100 ms floor cannot resolve a sweep whose
+    # cameras are only selected for ~160 ms: every dwell reports as exactly the
+    # floor. Raise the decode rate before concluding a selection was dropped.
+    parser.add_argument("--fps", type=int, default=30)
+    parser.add_argument("--min-ms", type=int, default=100,
+                        help="shortest run counted as a stable selection")
     parser.add_argument(
         "--expected", type=int,
         help="expected number of complete sweeps; exit nonzero if fewer appear",
     )
     args = parser.parse_args()
+    FPS, MIN_MS = args.fps, args.min_ms
 
     frames = decode(args.video)
     detected = list(stable_runs([classify(frame) for frame in frames]))

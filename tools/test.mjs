@@ -85,6 +85,7 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
+  ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];
 const BROWSER = [

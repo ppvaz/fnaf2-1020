@@ -263,9 +263,30 @@ the light pulsed *after* each selection, and grades the recording with
 rejected forms were *batched* `hid delay` macros, and the accepted 240 ms
 figure was the first wall-timed spacing tried, not a measured floor.
 
-**Not yet run.** The phone was locked on a secure keyguard when the probe was
-written, and the probe refuses to act on a locked device. Nothing below 240 ms
-is claimed until it has.
+### Answered: the phone accepts 120 ms spacing (2026-08-24)
+
+Three probe runs on the Moto g56, graded at the recording's native rate:
+
+| Run | Spacings | Complete `10-04-07-11` sweeps |
+| --- | --- | ---: |
+| `hid-sweep-probe-1` | 240 / 200 / 160 / 120 ms | **4/4** |
+| `hid-sweep-probe-160x4` | 160 ms x4, 100 ms contacts | **4/4** |
+| `hid-sweep-160x4-c120` | 160 ms x4, 120 ms contacts | **4/4** |
+
+So 120 ms spacing works, which is better than the 160 ms the policy needs and
+gives the wider 200 ms phase window rather than the 100 ms one.
+
+**The 240 ms figure was a measurement artifact, and so were the first readings
+here.** `camtrace.py` decoded at 30 fps and required a 100 ms stable run, but
+`screenrecord` captures at the panel's 60 fps. At 160 ms spacing every dwell
+therefore reported as exactly 0.10 s — the floor — and any dwell that straddled
+frame edges fell under it and read as a dropped selection. The same three
+recordings scored 3/4, 1/4 and 2/4 at the default resolution and 4/4 at
+`--fps 60 --min-ms 50`. Nothing about the input changed.
+
+Treat "the shortest repeatedly proven primitive is 240 ms" as withdrawn: it was
+established with the same 30 fps grader and never separated the actuator from
+the detector. `tools/device/test-camtrace.py` now guards the gate that hid it.
 
 ## Trap 1: UHID open is earlier than Android input readiness
 

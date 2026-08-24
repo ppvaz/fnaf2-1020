@@ -37,7 +37,8 @@ const record = (flags, point) => {
   return [flags, lo(x), hi(x), lo(y), hi(y)];
 };
 
-export function stream(spacings, { readyMs = 7000, introMs = 8000 } = {}) {
+export function stream(spacings, { readyMs = 7000, introMs = 8000,
+                                   contactMs = 100 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -67,9 +68,9 @@ export function stream(spacings, { readyMs = 7000, introMs = 8000 } = {}) {
       report([...record(0x00, COORDS.light), ...record(0x07, COORDS[cam])]);
       delay(10);
       report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
-      delay(90);
+      delay(contactMs - 10);
       report([...record(0x00, COORDS.light), ...record(0x04, COORDS[cam])]);
-      delay(Math.max(1, spacing - 100));
+      delay(Math.max(1, spacing - contactMs));
     }
     // camtrace.py reads a sweep as 10 -> 04 -> 07 -> 11, so park on the box
     // camera between spacings and leave it there long enough to be stable.
@@ -86,9 +87,14 @@ const DESCRIPTOR = [5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,1
   5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,192,192];
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const contactMs = Number(process.env.CONTACT_MS || 100);
+  if (!Number.isInteger(contactMs) || contactMs < 40 || contactMs > 200)
+    throw new Error('CONTACT_MS must be an integer between 40 and 200');
   const spacings = process.argv.slice(2).map(Number);
   if (spacings.some(v => !Number.isInteger(v) || v < 110 || v > 500))
     throw new Error('spacings must be integers between 110 and 500 ms');
-  for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120]))
+  if (spacings.some(v => v <= contactMs))
+    throw new Error('each spacing must exceed CONTACT_MS');
+  for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120], { contactMs }))
     console.log(JSON.stringify(event));
 }
