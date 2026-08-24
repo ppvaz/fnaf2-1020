@@ -18,6 +18,10 @@ PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
 NIGHT6_LEFT="${NIGHT6_LEFT:-0}"
 HID_TRACE_RUN="${HID_TRACE_RUN:-0}"
+# The sweep geometry the plan specifies; `recipe.mjs --device-plan` prints it
+# and tools/device/test-runner-plan.mjs checks these against it.
+PLAN_SPACING_MS="${PLAN_SPACING_MS:-120}"
+PLAN_CONTACT_MS="${PLAN_CONTACT_MS:-100}"
 # The centre of the measured 83-267 ms scheduler-phase window.
 PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
@@ -51,7 +55,10 @@ REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
 REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
 REMOTE_CAPTURE_LOCK="$REMOTE_PIDFILE.capture"
-REMOTE_HID_TRACE=""
+# `adb shell` joins its arguments into one command string and the device shell
+# re-parses it, so an empty argument disappears and every parameter after it
+# shifts by one. Use the same "-" placeholder the checker and model paths use.
+REMOTE_HID_TRACE="-"
 [ "$HID_TRACE_RUN" -eq 0 ] || REMOTE_HID_TRACE="$REMOTE_PIDFILE.hid"
 LOCAL_HID_TRACE="$CAPTURE_DIR/$OUT-hid.jsonl"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
@@ -480,7 +487,7 @@ watch_focus() {
 }
 
 pull_hid_trace() {
-  [ -n "$REMOTE_HID_TRACE" ] || return 0
+  [ "$REMOTE_HID_TRACE" != "-" ] || return 0
   adb pull "$REMOTE_HID_TRACE" "$LOCAL_HID_TRACE" >/dev/null 2>&1 &&
     echo "hid trace: $LOCAL_HID_TRACE" || true
   adb shell "rm -f $REMOTE_HID_TRACE" >/dev/null 2>&1 || true
@@ -589,6 +596,7 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$R
   "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
   "$NIGHT6_LEFT" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
+  "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
@@ -610,6 +618,9 @@ HID_LEFT_DEBUG_RAW=$1; shift
 NIGHT6_LEFT=$1; shift
 PILOT_OFFSET_MS=$1; shift
 HID_TRACE=$1; shift
+[ "$HID_TRACE" != "-" ] || HID_TRACE=""
+PLAN_SPACING_MS=$1; shift
+PLAN_CONTACT_MS=$1; shift
 HID_MODE=0
 case "$PRESS_MODE" in
   hid|hid-multi) HID_MODE=1 ;;
@@ -894,6 +905,10 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
 fi
 
 wait_until() {
+  # Every wall-timed boundary advances the trace's clock. Without this only
+  # hid-side delays do, and a helper that spaces its reports with wait_until
+  # reads back as a burst of zero-length contacts.
+  hid_mark "$1"
   target=$((T0 + $1))
   while :; do
     now=$(date +%s%3N)
@@ -908,19 +923,27 @@ wait_until() {
   done
 }
 
+# The time of the last press, so a following action can be scheduled from
+# when the game actually received it rather than from where the table put it.
+LAST_PRESS_MS=0
+
 press_at() {
   offset=$1; x=$2; y=$3; label=$4
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
+  LAST_PRESS_MS=$actual
   printf '%6d ms  %s\n' "$actual" "$label"
   hid_mark "$actual"
   if [ "$PRESS_MODE" = "tap" ]; then
     input tap "$x" "$y"
   elif [ "$HID_MODE" -eq 1 ]; then
+    # The contact is timed inside the hid process. That is not a convenience:
+    # `sleep` and `date` are fork+exec on this phone, and timing the release
+    # from the shell instead cost one fork per press and drifted the cycle
+    # anchor 434 ms -- the schedule fell apart within the opening. hid_delay
+    # also measures from when the press is *delivered*, so a backlogged stream
+    # still produces a full-length contact.
     hid_down "$x" "$y"
-    # A 60 ms HID contact occasionally fits between two Fusion touch polls.
-    # The persistent transport removes helper overhead, so 100 ms remains
-    # comfortably inside the calibrated 190 ms action slots.
     hid_delay 100
     hid_release
   elif [ "$PRESS_MODE" = "async-swipe" ]; then
@@ -1090,27 +1113,49 @@ classify_left_and_queue_mask_at() {
 
 # One camera of the sweep, written into the macro the hid process is already
 # executing. No wait_until: see pulsed_sweep_at.
+# The select leads the light so the camera is already the selected feed when
+# the light lands on it. hid-sweep-probe.sh proved this geometry 4/4.
+SWEEP_LIGHT_LEAD_MS=10
+
+# Resolve a plan control name to this device's calibrated coordinates.
+plan_control_xy() {
+  case "$1" in
+    monitor) PX=$MONITOR_X;   PY=$MONITOR_Y ;;
+    mask)    PX=$MASK_X;      PY=$MASK_Y ;;
+    wind)    PX=$WIND_X;      PY=$WIND_Y ;;
+    hall)    PX=$HALL_X;      PY=$HALL_Y ;;
+    ventl)   PX=$CAM_LIGHT_X; PY=$CAM_LIGHT_Y ;;
+    cam10)   PX=$CAM10_X;     PY=$CAM10_Y ;;
+    cam4)    PX=$CAM04_X;     PY=$CAM04_Y ;;
+    cam7)    PX=$CAM07_X;     PY=$CAM07_Y ;;
+    cam11)   PX=$CAM11_X;     PY=$CAM11_Y ;;
+    cam5)    PX=$CAM05_X;     PY=$CAM05_Y ;;
+    *) echo "unknown plan control: $1" >&2; exit 47 ;;
+  esac
+}
+
 pulsed_cam_burst() {
-  x=$1; y=$2
+  x=$1; y=$2; contact=$3
   # `stunCam` refreshes on every frame the light is on while that camera is
   # selected, so contact 0 does not have to be held across the sweep: select
-  # first, then pulse. That is 90 ms of flashlight per camera instead of a
-  # 790 ms hold, which is the difference between fitting night 6's 3000-frame
-  # budget and outspending it. This 10/90 split at 100 ms contacts is the
-  # geometry hid-sweep-probe.sh proved at 120 ms spacing.
+  # first, then pulse. That is one contact of flashlight per camera instead of
+  # a 790 ms hold, which is the difference between fitting night 6's
+  # 3000-frame budget and outspending it. The select leads the light by
+  # SWEEP_LIGHT_LEAD_MS; hid-sweep-probe.sh proved this geometry 4/4.
   hid_cam_down "$x" "$y"
-  hid_delay 10
+  hid_delay "$SWEEP_LIGHT_LEAD_MS"
   hid_cam_light_down "$x" "$y"
-  hid_delay 90
+  hid_delay $((contact - SWEEP_LIGHT_LEAD_MS))
   hid_cam_light_up "$x" "$y"
 }
 
+# `spacing` and `contact` are the plan's; `cams` is its comma-separated list.
 pulsed_sweep_at() {
-  sweep_start=$1; sweep_label=$2
+  sweep_start=$1; spacing=$2; contact=$3; cams=$4; sweep_label=$5
   wait_until "$sweep_start"
   actual=$(( $(date +%s%3N) - T0 ))
-  printf '%6d ms  %s (three selects, 120 ms apart, light pulsed after each)\n' \
-    "$actual" "$sweep_label"
+  printf '%6d ms  %s (%s, %d ms apart, light pulsed after each)\n' \
+    "$actual" "$sweep_label" "$cams" "$spacing"
   hid_mark "$actual"
   # The whole sweep is one uninterrupted macro, exactly as hid-sweep-probe.sh
   # replays it -- and that probe landed 4/4 complete traces at this spacing.
@@ -1120,15 +1165,32 @@ pulsed_sweep_at() {
   # jittered it to 90-160 ms because wait_until forks `date` per poll, and
   # mixing a wall-timed start with hid-side contact delays gave 105-112 ms
   # because the hid delays elapse concurrently with the shell's wait instead
-  # of adding to it. Each camera costs 10 + 100 + 10 = 120 ms of hid time.
-  # 10 + 90 + 20: a 100 ms select, a 90 ms light pulse inside it, and 20 ms of
-  # released time before the next select -- the exact geometry
-  # hid-sweep-probe.sh landed 4/4 at this spacing.
-  pulsed_cam_burst "$CAM10_X" "$CAM10_Y"
-  hid_delay 20
-  pulsed_cam_burst "$CAM04_X" "$CAM04_Y"
-  hid_delay 20
-  pulsed_cam_burst "$CAM07_X" "$CAM07_Y"
+  # of adding to it. Each camera costs `spacing` ms of hid time: a `contact` ms
+  # select with the light pulsed inside it, then the remainder released before
+  # the next select.
+  sweep_rest=$cams
+  sweep_first=1
+  while [ -n "$sweep_rest" ]; do
+    sweep_cam=${sweep_rest%%,*}
+    case "$sweep_rest" in
+      *,*) sweep_rest=${sweep_rest#*,} ;;
+      *)   sweep_rest= ;;
+    esac
+    [ "$sweep_first" -eq 1 ] || hid_delay $((spacing - contact))
+    sweep_first=0
+    plan_control_xy "cam$sweep_cam"
+    pulsed_cam_burst "$PX" "$PY" "$contact"
+  done
+  # Resynchronise the shell with the hid stream. The macro is scheduled to end
+  # on the next cycle's anchor, and the simulator will not let it end earlier:
+  # one frame of tail costs 272 of 400 nights, because this stun has to bridge
+  # the five-tick mask with nothing to spare. So the anchor's monitor press is
+  # written while the macro is still draining, is delivered late, and -- since
+  # its contact is measured from when the shell wrote it -- gets released
+  # early. A 73 ms contact is dropped, the cams stay up, and the frame the
+  # classifier is then handed is the CAM 11 feed. Waiting out the macro costs
+  # the press a few milliseconds and buys it a real contact.
+  wait_until $((sweep_start + 2 * spacing + contact))
 }
 
 hall_reset_and_raise_at() {
@@ -1145,7 +1207,9 @@ hall_reset_and_raise_at() {
   hid_down "$HALL_X" "$HALL_Y"
   wait_until $((offset + 10))
   hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
-  wait_until $((offset + 130))
+  # 130 ms of monitor contact, not 120: wait_until forks `date` to poll, so it
+  # can return a little late, and a measured run held it 83 ms.
+  wait_until $((offset + 140))
   hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
   hid_release
 }
@@ -1167,7 +1231,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   press_at "$mon" "$MONITOR_X" "$MONITOR_Y" monitor-up
   press_at $((mon + 284)) "$CAM11_X" "$CAM11_Y" opening-cam-11
   hold_at  $((mon + 417)) "$WIND_X" "$WIND_Y" $((6117 - mon - 417)) opening-wind
-  pulsed_sweep_at 6167 opening-sweep
+  pulsed_sweep_at 6167 "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 opening-sweep
   press_at 6550 "$CAM11_X" "$CAM11_Y" opening-cam-11-back
   hold_at  6683 "$WIND_X" "$WIND_Y" 117 opening-top-up
 
@@ -1177,7 +1241,16 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   attacks=0
   while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
     press_at "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
-    light_down_at $((base + 367)) left-vent-light
+    # MONITOR_ANIM_DOWN is 367 ms and the table puts the vent light exactly on
+    # that boundary, so a monitor press that lands even a few milliseconds late
+    # -- which it does, because the previous cycle's sweep macro is still
+    # draining -- puts the light press inside the flip, where the office is not
+    # yet interactive. The light then never comes on and the classifier is
+    # handed a dark opening, which is what BB in the office looks like. Follow
+    # the press that actually happened.
+    light_at=$((base + 367))
+    [ "$light_at" -ge $((LAST_PRESS_MS + 380)) ] || light_at=$((LAST_PRESS_MS + 380))
+    light_down_at "$light_at" left-vent-light
     # Start the capture 200 ms after light-down. screencap latches 163-348 ms
     # after it starts, so this puts the frame 363-548 ms past the light -- past
     # the ~270 ms the vent needs to draw, so a read cannot catch an unlit
@@ -1186,7 +1259,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     # base+1276 against that cut-off and the second cycle missed it.
     # runtime-gh.scm covers this window: its empty class was rebuilt from
     # frames captured through this loop at both the +100 and +300 latches.
-    classify_left_and_queue_mask_at $((base + 567)) left-view
+    classify_left_and_queue_mask_at $((light_at + 200)) left-view
 
     case "$classification" in
       empty\ *) branch=clear ;;
@@ -1215,7 +1288,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       # requirement is landing before the monitor raise at +1383 -- which is
       # also where the exact simulator stops surviving (a 700 ms latch).
       now=$(( $(date +%s%3N) - T0 ))
-      [ "$now" -lt $((base + 1300)) ] || {
+      [ "$now" -lt $((base + 1349)) ] || {
         echo 'left classifier missed the empty deadline' >&2
         exit 43
       }
@@ -1231,7 +1304,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       press_at $((base + 3267)) "$MONITOR_X" "$MONITOR_Y" monitor-up-2
       press_at $((base + 3500)) "$CAM11_X"   "$CAM11_Y"   cam-11-2
       hold_at  $((base + 3633)) "$WIND_X"    "$WIND_Y"    984 wind-b
-      pulsed_sweep_at $((base + 4667)) late-sweep
+      pulsed_sweep_at $((base + 4667)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 late-sweep
       base=$((base + 5000))
     else
       attacks=$((attacks + 1))
@@ -1240,10 +1313,10 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       hid_mark "$actual"
       press_at $((base + 5917)) "$MASK_X"  "$MASK_Y" mask-off-after-bb
       hall_reset_and_raise_at $((base + 6167)) reset-foxy-after-bb
-      pulsed_sweep_at $((base + 6367)) response-sweep
+      pulsed_sweep_at $((base + 6367)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 response-sweep
       press_at $((base + 6750)) "$CAM11_X" "$CAM11_Y" cam-11-after-bb
       hold_at  $((base + 6883)) "$WIND_X"  "$WIND_Y" 2734 wind-after-bb
-      pulsed_sweep_at $((base + 9667)) response-late-sweep
+      pulsed_sweep_at $((base + 9667)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 response-late-sweep
       base=$((base + 10000))
     fi
     cycle=$((cycle + 1))

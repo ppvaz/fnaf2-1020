@@ -208,6 +208,17 @@ export function track(cycle) {
 // The released time the runner leaves between the vent light and the mask.
 export const MASK_GAP_MS = 40;
 
+// The sweep is the one instruction whose numbers are the *actuator's*, not the
+// simulator's. hid-sweep-probe.sh landed 4/4 at exactly this geometry: a 100 ms
+// select, 20 ms released, the next select 120 ms after the last. The simulator
+// quantises the same slot to frames and reports 116 ms, and shipping that to
+// the phone shortens both the spacing and the released time between selects --
+// the collapse to ~105 ms is what rendered CAM 07 alone. Emit the device's
+// numbers and let `replay` ask the engine whether the night still survives at
+// the actuator the phone actually has.
+export const SWEEP_SELECT_MS = MIN_CONTACT_MS;
+export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
+
 export function devicePlan(recipe) {
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
@@ -229,8 +240,17 @@ export function devicePlan(recipe) {
         // Spacing comes from this sweep's own selects. Looking the camera up
         // by name found the first one in the cycle instead, which produced a
         // negative spacing on a second sweep.
-        const spacing = ats.length > 1 ? ats[1] - ats[0] : DEVICE_SPACING_MS;
-        lines.push(`${e.at} sweep ${spacing} ${MIN_CONTACT_MS + 10} ${cams.join(',')}`);
+        const modelled = ats.length > 1 ? ats[1] - ats[0] : DEVICE_SPACING_MS;
+        // The emitted spacing is the actuator's, not the model's: the phone has
+        // only landed 120 ms, and the model's frame quantisation reports the
+        // same slot as 116. Refuse rather than silently retime if the recipe
+        // was built for a sweep the phone has not been shown to perform -- one
+        // frame of rounding is quantisation, anything more is a different route.
+        if (Math.abs(modelled - DEVICE_SPACING_MS) > 17)
+          throw new Error(`the recipe models a ${modelled} ms sweep spacing but ` +
+            `the device plan can only express the ${DEVICE_SPACING_MS} ms the ` +
+            'phone has landed');
+        lines.push(`${e.at} sweep ${DEVICE_SPACING_MS} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
         i = j - 1;
         continue;
       }

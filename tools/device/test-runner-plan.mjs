@@ -34,7 +34,9 @@ for (const m of block.matchAll(/pulsed_sweep_at \$\(\(base \+ (\d+)\)\)/g))
   add(+m[1], 'sweep', true);
 for (const m of block.matchAll(/hall_reset_and_raise_at \$\(\(base \+ (\d+)\)\)/g))
   add(+m[1], 'hallraise', true);
-for (const m of block.matchAll(/light_down_at \$\(\(base \+ (\d+)\)\)/g))
+// The read follows the monitor press that actually happened, so its offset is
+// a floor rather than a literal: light_at = max(base + N, last press + 380).
+for (const m of block.matchAll(/light_at=\$\(\(base \+ (\d+)\)\)/g))
   add(+m[1], 'read', true);
 
 const recipe = build({ night: 6, sweepSlotMs: 120, maskMarginMs: 900,

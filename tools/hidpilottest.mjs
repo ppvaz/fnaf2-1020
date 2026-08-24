@@ -64,6 +64,12 @@ class HidPilot {
     // inter-camera gaps plus one 100 ms contact.
     // Sweeps are preceded by a wind hold, and the phone needs released time
     // between the two: see WIND_LEAD_FRAMES.
+    // The sweep ends exactly on its anchor and cannot be moved: one frame of
+    // tail costs 272 of 400 nights, because the stun it refreshes has to
+    // bridge the five-tick mask with nothing to spare. The phone's problem
+    // with that -- the next cycle's monitor press arriving while the sweep
+    // macro is still draining -- is solved in the runner, not here.
+    this.sweepTail = 0;
     this.sweepFrames = !deviceSweep ? 16
       : pulseLight ? s((2 * sweepSlotMs + 100) / 1000)
         : s((70 + 3 * sweepSlotMs) / 1000);
@@ -125,7 +131,7 @@ class HidPilot {
     this.tap(e + s(0.18), 'monitor');
     this.tap(e + s(0.46), 'cam:11');
     const openingSweep = this.deviceSweep
-      ? e + s(6.5) - this.sweepFrames : e + s(6.25);
+      ? e + s(6.5) - this.sweepFrames - this.sweepTail : e + s(6.25);
     const openingWindEnd = this.deviceSweep ? openingSweep - 3 : e + s(6.10);
     const openingWindStart = e + (this.deviceSweep ? s(0.60) : s(0.52));
     this.hold(openingWindStart, openingWindEnd - openingWindStart, 'wind');
@@ -200,7 +206,7 @@ class HidPilot {
   // The sweep finishes on the next anchor, retaining the same five-second
   // refresh cadence as the ordinary left route while maximizing box time.
   leftIdle(a) {
-    const sweepStart = a + s(5) - this.sweepFrames;
+    const sweepStart = a + s(5) - this.sweepFrames - this.sweepTail;
     this.tap(a, 'monitor');
     this.tap(a + s(0.40), 'mask');
     this.tap(a + s(0.70), 'mask');
@@ -233,7 +239,7 @@ class HidPilot {
   // before the +1 s scheduler event if the result is BB, while an empty result
   // simply turns the ordinary Golden-Freddy flick back off.
   leftNormal(a) {
-    const lightDown = a + s(0.36);
+      const lightDown = a + s(0.36);
     const latch = lightDown + this.readLatency;
     this.tap(a, 'monitor');
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
@@ -274,7 +280,7 @@ class HidPilot {
       // frame, so the cycle drains. Spend the second monitor-down beat on
       // winding instead: one hall reset and one prophylactic mask per cycle
       // remain, and the sweep still lands on the anchor.
-      const only = a + s(5) - this.sweepFrames;
+      const only = a + s(5) - this.sweepFrames - this.sweepTail;
       this.hold(a + s(1.77), a + s(2.68) - (a + s(1.77)), 'wind');
       // The second Foxy reset still needs the monitor down, but not the
       // second Golden Freddy flick -- beat one's prophylactic mask already
@@ -302,7 +308,7 @@ class HidPilot {
     // The sweep must land on the anchor, not overrun it. With the phone's
     // 790 ms actuator that pulls its start back over this wind window, which
     // is the point of measuring the device profile on this route.
-    const sweepStart = a + s(5) - this.sweepFrames;
+    const sweepStart = a + s(5) - this.sweepFrames - this.sweepTail;
     const windEnd = this.deviceSweep ? sweepStart - 3 : a + s(4.68);
     this.hold(a + s(4.20), Math.max(1, windEnd - (a + s(4.20))), 'wind');
     this.flashTargets(sweepStart);
@@ -312,7 +318,7 @@ class HidPilot {
   // may stay up across the next movement opportunity: BB can at most move onto
   // CAM 05 there, and the following sparse read catches a final hop.
   sparseLeftClear(a, resultAt) {
-    const sweepStart = a + s(5) - this.sweepFrames;
+    const sweepStart = a + s(5) - this.sweepFrames - this.sweepTail;
     this.tap(resultAt + 1, 'mask');
     this.tap(a + 119, 'monitor');
     this.tap(a + 135, 'cam:11');
@@ -338,7 +344,7 @@ class HidPilot {
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
-    const lateSweepStart = a + s(10) - this.sweepFrames;
+    const lateSweepStart = a + s(10) - this.sweepFrames - this.sweepTail;
     const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
     this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
     this.flashTargets(lateSweepStart);
@@ -351,7 +357,7 @@ class HidPilot {
   // `--pilot-offset-ms` prices that dependency against the game's scheduler.
   sparseLeftAttack(a) {
     this.attacks++;
-    const lateSweepStart = a + s(10) - this.sweepFrames;
+    const lateSweepStart = a + s(10) - this.sweepFrames - this.sweepTail;
     const off = a + s(6.02);
     this.tap(off, 'mask');
     this.hold(off + s(0.25), this.hallPulse, 'light');
