@@ -104,6 +104,11 @@ const ENGINE = [
   // elapses in the hid process instead of adding to the shell's wait, which
   // silently shortened the camera spacing below what the phone accepts.
   ['hid walltime', ['device/test-hid-walltime.mjs']],
+  // The microroutine oracle: the runner can record every report it sends, and
+  // this audits that artifact for contact length, released time between two
+  // buttons, and the trap-2 release discipline. Its self-test runs here; point
+  // it at a captured trace to audit a real run.
+  ['hid trace', ['device/test-hid-trace.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];

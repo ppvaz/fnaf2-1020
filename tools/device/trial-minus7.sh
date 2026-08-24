@@ -17,6 +17,7 @@ GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
 NIGHT6_LEFT="${NIGHT6_LEFT:-0}"
+HID_TRACE_RUN="${HID_TRACE_RUN:-0}"
 # The centre of the measured 83-267 ms scheduler-phase window.
 PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
@@ -50,6 +51,9 @@ REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
 REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
 REMOTE_CAPTURE_LOCK="$REMOTE_PIDFILE.capture"
+REMOTE_HID_TRACE=""
+[ "$HID_TRACE_RUN" -eq 0 ] || REMOTE_HID_TRACE="$REMOTE_PIDFILE.hid"
+LOCAL_HID_TRACE="$CAPTURE_DIR/$OUT-hid.jsonl"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
 REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
@@ -114,6 +118,10 @@ esac
 case "$NIGHT6_LEFT" in
   0|1) ;;
   *) echo "NIGHT6_LEFT must be 0 or 1"; exit 2 ;;
+esac
+case "$HID_TRACE_RUN" in
+  0|1) ;;
+  *) echo "HID_TRACE_RUN must be 0 or 1"; exit 2 ;;
 esac
 case "$PILOT_OFFSET_MS" in
   ''|*[!0-9]*) echo "PILOT_OFFSET_MS must be a non-negative integer"; exit 2 ;;
@@ -471,10 +479,18 @@ watch_focus() {
   done
 }
 
+pull_hid_trace() {
+  [ -n "$REMOTE_HID_TRACE" ] || return 0
+  adb pull "$REMOTE_HID_TRACE" "$LOCAL_HID_TRACE" >/dev/null 2>&1 &&
+    echo "hid trace: $LOCAL_HID_TRACE" || true
+  adb shell "rm -f $REMOTE_HID_TRACE" >/dev/null 2>&1 || true
+}
+
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
   set +e
+  pull_hid_trace
   stop_watchdogs
   stop_remote_driver
   if [ "$GAME_LAUNCHED" -eq 1 ]; then
@@ -572,7 +588,7 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
-  "$NIGHT6_LEFT" "$PILOT_OFFSET_MS" \
+  "$NIGHT6_LEFT" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
@@ -593,6 +609,7 @@ HID_LEFT_SURVIVAL=$1; shift
 HID_LEFT_DEBUG_RAW=$1; shift
 NIGHT6_LEFT=$1; shift
 PILOT_OFFSET_MS=$1; shift
+HID_TRACE=$1; shift
 HID_MODE=0
 case "$PRESS_MODE" in
   hid|hid-multi) HID_MODE=1 ;;
@@ -629,11 +646,23 @@ fi
 HID_PID=""
 HID_FD_OPEN=0
 
+# Every report the runner sends, appended verbatim. The routine level has an
+# oracle -- the device plan replays through the engine -- but the microroutine
+# level had none but a phone, and every input bug this project has hit lives
+# there: contact lengths, select spacing, and released time between two
+# buttons. The stream carries its own `delay` commands, so the intended timing
+# is fully recoverable from it without timestamping each line, which would put
+# a `date` fork in the hot path.
+hid_emit() {
+  print -p -- "$1"
+  [ -z "$HID_TRACE" ] || printf '%s\n' "$1" >> "$HID_TRACE"
+}
+
 hid_release() {
   [ "$HID_FD_OPEN" -eq 1 ] || return 0
   # Report both inactive contact IDs. A count of zero makes hid-multitouch
   # stop after the first collection and can leave contact 1 stuck down.
-  print -p -- '{"id":92,"command":"report","report":[1,2,0,0,0,0,0,4,0,0,0,0]}'
+  hid_emit '{"id":92,"command":"report","report":[1,2,0,0,0,0,0,4,0,0,0,0]}'
 }
 
 hid_down() {
@@ -643,14 +672,14 @@ hid_down() {
   # system touch overlay: rawX=(1080-screenY)*20/9, rawY=screenX*9/20.
   rx=$(((1080 - y) * 20 / 9))
   ry=$((x * 9 / 20))
-  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,1,3,$((rx % 256)),$((rx / 256)),$((ry % 256)),$((ry / 256)),0,0,0,0,0]}"
+  hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,1,3,$((rx % 256)),$((rx / 256)),$((ry % 256)),$((ry / 256)),0,0,0,0,0]}"
 }
 
 hid_two_down() {
   x1=$1; y1=$2; x2=$3; y2=$4
   rx1=$(((1080 - y1) * 20 / 9)); ry1=$((x1 * 9 / 20))
   rx2=$(((1080 - y2) * 20 / 9)); ry2=$((x2 * 9 / 20))
-  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),7,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
+  hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),7,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
 }
 
 hid_second_up() {
@@ -660,7 +689,7 @@ hid_second_up() {
   # Contact Count is the number of records in this hybrid packet, not the
   # number still touching. Count 2 makes the kernel consume ID 1's explicit
   # inactive record and emit ACTION_POINTER_UP while preserving ID 0.
-  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),4,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
+  hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),4,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
 }
 
 # The pulsed-light sweep needs the inverse of hid_two_down: contact 1 selects
@@ -671,7 +700,7 @@ hid_cam_report() {
   f0=$1; f1=$2; x=$3; y=$4
   rx0=$(((1080 - CAM_LIGHT_Y) * 20 / 9)); ry0=$((CAM_LIGHT_X * 9 / 20))
   rx1=$(((1080 - y) * 20 / 9)); ry1=$((x * 9 / 20))
-  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,$f0,$((rx0 % 256)),$((rx0 / 256)),$((ry0 % 256)),$((ry0 / 256)),$f1,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256))]}"
+  hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,2,$f0,$((rx0 % 256)),$((rx0 / 256)),$((ry0 % 256)),$((ry0 / 256)),$f1,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256))]}"
 }
 
 hid_cam_down()       { hid_cam_report 0 7 "$1" "$2"; }
@@ -679,7 +708,7 @@ hid_cam_light_down() { hid_cam_report 3 7 "$1" "$2"; }
 hid_cam_light_up()   { hid_cam_report 0 4 "$1" "$2"; }
 
 hid_delay() {
-  print -p -- "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
+  hid_emit "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
 }
 
 sleep_ms() {
@@ -699,6 +728,7 @@ cleanup_remote() {
   fi
   children=$(cat "/proc/$$/task/$$/children" 2>/dev/null || true)
   [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
+  # The trace is evidence; the host pulls it after the driver stops.
   rm -f "$PIDFILE" "$READYFILE" "$STARTFILE" "$EPOCHFILE" \
     "$CAPTURE_LOCK" "$PIDFILE.left.raw" "$PIDFILE.epoch.raw"
 }
@@ -711,7 +741,7 @@ if [ "$HID_MODE" -eq 1 ]; then
   /system/bin/hid - |&
   HID_PID=$!
   HID_FD_OPEN=1
-  print -p -- '{"id":92,"command":"register","name":"FNAF Timed Touch","vid":6353,"pid":61959,"bus":"usb","descriptor":[5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,177,2,9,84,129,2,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,192,192]}'
+  hid_emit '{"id":92,"command":"register","name":"FNAF Timed Touch","vid":6353,"pid":61959,"bus":"usb","descriptor":[5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,177,2,9,84,129,2,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,192,192]}'
   # UHID_OPEN only means the kernel is ready. On this phone InputReader adds
   # the resulting touchscreen about five seconds later; every report sent in
   # that gap is silently lost. Gate the strategy clock on the framework-level
