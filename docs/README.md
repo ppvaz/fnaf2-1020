@@ -1,0 +1,87 @@
+# Documentation index
+
+Research notes for [fnaf2-1020](../README.md). The repository's claims live here;
+the code only implements them.
+
+Two conventions run through everything below. **Evidence labels** — `[SOURCED]`,
+`[CALIBRATED]`, `[INFERRED]`, `[MODEL]` — say where a number came from, and a
+rule enters the simulator only when it earns one. **Retractions stay put**: when
+a result is refuted, the document keeps its original reasoning and gains a
+correction at the top, because the wrong turn is usually the useful part.
+
+## Start here
+
+| If you want to… | Read |
+|---|---|
+| Learn the strategy the trainer teaches | [`strategy/MINUS-7-STRATEGY.md`](strategy/MINUS-7-STRATEGY.md) |
+| See how 10/20 was solved, historically | [`strategy/STRATEGY-HISTORY.md`](strategy/STRATEGY-HISTORY.md) |
+| Judge whether the simulator can be trusted | [`android/ANDROID-SOURCE-STATUS.md`](android/ANDROID-SOURCE-STATUS.md) |
+| Read the game's event sheet yourself | [`android/SOURCE-DUMP-GUIDE.md`](android/SOURCE-DUMP-GUIDE.md) |
+| Decompile a Clickteam Android game | [`android/SOURCE-DUMP-GUIDE.md` §4](android/SOURCE-DUMP-GUIDE.md) — the handle scramble |
+| Run something against a real phone | [`device/ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) |
+| Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
+| Pick up unfinished work | [`../plans/`](../plans/) |
+
+## Android source and fidelity
+
+The canonical target is `com.scottgames.fnaf2` v2.0.7 — modern Android release-7,
+Fusion build 296, August 2025.
+
+- [`ANDROID-SOURCE-STATUS.md`](android/ANDROID-SOURCE-STATUS.md) — the accuracy
+  ledger, and the project's most load-bearing document. Enforced by
+  `tools/sourcetest.mjs` so a corrupted mechanism cannot hide behind unchanged
+  survival statistics.
+- [`SOURCE-DUMP-GUIDE.md`](android/SOURCE-DUMP-GUIDE.md) — chain of custody from
+  APK to readable event sheet, the file format, and **the XOR-28 handle
+  scramble**. Read §4 before citing any group number; every dump produced before
+  2026-08-20 had Toy↔Withered pairs silently swapped.
+- [`ANDROID-CAMERA-STALL.md`](android/ANDROID-CAMERA-STALL.md) — the 400-frame
+  (6.67 s) camera-flash stun that Minus 7 stands on, and the audit that first got
+  it wrong.
+- [`ANDROID-OFFICE-ENDGAME.md`](android/ANDROID-OFFICE-ENDGAME.md) — the 45-frame
+  defense fuse and 300-frame resolution chain.
+- [`ANDROID-GROUP-MAP.md`](android/ANDROID-GROUP-MAP.md) — coverage of all 1332
+  office-frame groups, so blind spots stay a list rather than a feeling.
+- [`PC-DECOMP-CHECKLIST.md`](android/PC-DECOMP-CHECKLIST.md) — the PC 1.033
+  cross-platform boundary. Deferred, non-blocking.
+
+## Strategy
+
+- [`STRATEGY-HISTORY.md`](strategy/STRATEGY-HISTORY.md) — the whole 10/20 lineage,
+  from reaction play to two independent zero-RNG proofs.
+- [`MINUS-7-STRATEGY.md`](strategy/MINUS-7-STRATEGY.md) — exact input sequence for
+  the strategy the trainer drills.
+- [`MINUS-3-STRATEGY.md`](strategy/MINUS-3-STRATEGY.md) — the cam-stall family.
+  **Does not transfer to Android**; §7 has the probe.
+- [`VENT-CAMP-STRATEGY.md`](strategy/VENT-CAMP-STRATEGY.md) — the right-vent-camp
+  lineage up to brayden's timer strategy.
+- [`CAM-6-7-STRATEGY.md`](strategy/CAM-6-7-STRATEGY.md) — a strategy this project
+  derived and then **refuted**, kept as the derivation record.
+- [`GATE-SEARCH.md`](strategy/GATE-SEARCH.md) — gate-aware policy search. Closed
+  at 0/150, including two retracted false positives.
+
+## On-device
+
+- [`ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) — the adb harness,
+  its hard-won safety rules, and findings against the real build.
+- [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the
+  libc-free on-phone classifier, its model-building discipline, and measured
+  latency.
+
+## In-engine and prior art
+
+- [`TRAINER-IN-GAME.md`](in-engine/TRAINER-IN-GAME.md) — could the trainer live
+  inside the game?
+- [`IN-ENGINE-PILOT-RECOMPILE.md`](in-engine/IN-ENGINE-PILOT-RECOMPILE.md) — APK
+  injection is blocked by PAIRIP; the CCN→Chowdren recompile path is the
+  alternative.
+- [`SHOOTER25-PRACTICE-MOD.md`](in-engine/SHOOTER25-PRACTICE-MOD.md) — forensic
+  comparison with the closest existing precedent.
+- [`SHOOTER25-BOT-STATE-MACHINE.md`](in-engine/SHOOTER25-BOT-STATE-MACHINE.md) —
+  its controller reconstructed as a state machine.
+
+## Project
+
+- [`HANDOVER.md`](HANDOVER.md) — historical snapshot of the iteration-time work.
+- [`../CONTRIBUTIONS.md`](../CONTRIBUTIONS.md) — give-back ledger: what this
+  project owes upstream, and where each item stands.
