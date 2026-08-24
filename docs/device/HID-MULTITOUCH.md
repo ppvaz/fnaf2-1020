@@ -33,10 +33,35 @@ once-per-cycle left-opening read, and start the five-tick mask response only
 when that read is non-empty. CAM 05 remains useful for calibration or strategy
 comparison, not as a required step in the intended Night 6 controller.
 
-This is a route decision, not a claimed clear. The current left-opening branch
-in `trial-minus7.sh` is still the deliberately slow 6.5 s capture/safe-stop
-calibration path. It must be retimed around the 340 ms HID camera sweep and the
-full BB response must pass simulation before another full-night device attempt.
+This is a route decision, not a claimed clear. The phase-independent simulator
+policy now survives **10000/10000** ordinary and **3000/3000** pinned-worst
+Night 6 runs, with no missed BB state, a minimum 56% box, and a compact 267 ms
+three-camera sweep. Its all-threat negative control fails, so the classifier
+cannot safely fail closed on every cycle.
+
+The device runner's `HID_LEFT_SURVIVAL=1` branch is still an **experimental
+staging controller**, not that finished policy. It proves the capture boundary
+described below, but retains an older 340 ms sweep and a tick-aligned BB
+response. It must be retimed to match the phase-safe simulator and exercise a
+real positive BB response before any full-night attempt.
+
+### Screencap readiness is observable
+
+Starting `screencap` and masking after a fixed delay does not identify which
+frame SurfaceFlinger captured. On this phone, a fixed 80 ms overlap returned
+both a literal mask frame and an unlit-office frame. The useful boundary is the
+first output byte: start `screencap` into a file while the left vent light is
+held, poll until the file becomes non-empty, then release the light and put on
+the mask while capture and classification finish. At that point the captured
+buffer is immutable.
+
+A three-cycle Night 6 staging run started capture in parallel with the vent
+draw. The first byte arrived at +690 ms, +764 ms, and +761 ms from each cycle
+anchor; all three retained frames classified as confident `empty` results.
+The runner also locks its strategy capture against the safety watchdog and no
+longer treats a transient unavailable watchdog capture as evidence that the
+night ended. This validates the empty capture path only—not BB response timing
+or a complete night.
 
 ## Trap 1: UHID open is earlier than Android input readiness
 
@@ -160,5 +185,8 @@ different resolution or orientation.
 - Omitting every BB read/response is also rejected (0/3000 exact Night 6
   simulations). The intended replacement for CAM 05 is the validated lit
   left-opening read, not a blind cycle.
+- The phase-safe left-opening policy passes 10000 ordinary and 3000 worst-luck
+  exact Night 6 simulations. Device evidence currently covers only three empty
+  classifier cycles; the older staged response table is not a clear claim.
 - It does not imply the same flashlight-power budget is affordable on 10/20
   Night 7. The current scope is Night 6.

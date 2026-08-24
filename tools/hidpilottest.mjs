@@ -15,13 +15,18 @@ import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 
 const s = C.s;
-const TARGETS = [7, 4, 10];
+const TARGETS = [10, 4, 7];
+const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
 
 class HidPilot {
-  constructor(sim, { cam5 = true, cam5Light = true } = {}) {
+  constructor(sim, { bbMode = 'left', cam5Light = true, phaseSafeMask = true,
+                     alwaysThreat = false } = {}) {
     this.sim = sim;
-    this.cam5 = cam5;
+    this.bbMode = bbMode;
+    this.cam5 = bbMode === 'cam5';
     this.cam5Light = cam5Light;
+    this.phaseSafeMask = phaseSafeMask;
+    this.alwaysThreat = alwaysThreat;
     this.queue = [];
     this.mode = 'normal';
     this.nextAnchor = s(7);
@@ -48,21 +53,25 @@ class HidPilot {
   opening() {
     this.tap(s(0.18), 'monitor');
     this.tap(s(0.46), 'cam:11');
-    this.hold(s(0.52), s(2.90), 'wind');
-    this.flashTargets(s(3.50));
-    this.tap(s(4.23), 'cam:11');
-    this.hold(s(4.30), s(2.65), 'wind');
+    this.hold(s(0.52), s(5.58), 'wind');
+    // The left-opening cycle deliberately flashes late. Put the opening
+    // sweep late as well so its stun cannot expire before cycle zero's sweep.
+    const end = this.flashTargets(s(6.25));
+    this.tap(end + s(0.05), 'cam:11');
+    this.hold(end + s(0.13), s(0.12), 'wind');
   }
 
-  flashTargets(f) {
+  flashTargets(f, targets = TARGETS) {
     const start = f;
-    // One 340 ms light hold covers three independent contact-1 taps. Each
-    // selected feed receives at least 100 ms (> the sourced 60 ms pulse),
-    // while one persistent light contact eliminates the helper gaps.
-    this.hold(start, s(0.34), 'light');
-    for (const [i, cam] of TARGETS.entries())
-      this.tap(start + s(0.03 + i * 0.10), `cam:${cam}`);
-    return start + s(0.36);
+    // Three 5-frame camera contacts fit in the final 16 frames before the next
+    // drop. CAM 10 and CAM 04 are then refreshed on the exact frame their
+    // previous 400-frame stuns expire after a phase-safe BB mask; CAM 07 stays
+    // selected and parks the two Withereds on that choke while cameras are
+    // down. 83 ms spans more than two 30 Hz Fusion polls on the phone.
+    this.hold(start, 16, 'light');
+    for (const [i, cam] of targets.entries())
+      this.tap(start + s(TARGET_OFFSETS[i]), `cam:${cam}`);
+    return start + 16;
   }
 
   // Drop, clear a possible office Golden Freddy, reset Foxy, then raise.
@@ -78,6 +87,10 @@ class HidPilot {
   }
 
   normal(a) {
+    if (this.bbMode === 'left') {
+      this.leftNormal(a);
+      return;
+    }
     this.normalFront(a);
     const shouldCheck = this.cam5 && a + s(2.70) >= this.cam5SafeAt;
     if (shouldCheck) {
@@ -88,6 +101,82 @@ class HidPilot {
       this.tap(a + s(2.12), 'cam:11');
       this.hold(a + s(2.20), s(2.75), 'wind');
     }
+  }
+
+  // The selected Night 6 route. Lower first, then hold the free left vent
+  // light across the phone's measured 350 ms draw delay. The raw frame is
+  // immutable once screencap starts, so HID can put the mask on while the
+  // ~206 ms capture/analysis tail finishes. That makes the mask fully on
+  // before the +1 s scheduler event if the result is BB, while an empty result
+  // simply turns the ordinary Golden-Freddy flick back off.
+  leftNormal(a) {
+    this.tap(a, 'monitor');
+    this.hold(a + s(0.36), s(0.40), 'ventL');
+    this.at(a + s(0.72), 'left-snapshot', a);
+    this.tap(a + s(0.78), 'mask');
+  }
+
+  onLeftSnapshot(a) {
+    this.checks++;
+    const sample = { a, bb: this.alwaysThreat || this.sim.bb.inOpening,
+                     inside: this.sim.bb.inside };
+    // Measured raw capture plus both classifiers is about 250 ms after the
+    // frame becomes available. The result deliberately arrives after the
+    // prophylactic mask press above.
+    this.at(this.sim.frame + s(0.26), 'left-result', sample);
+  }
+
+  // Empty-frame continuation. A second down/mask/hall beat straddles the next
+  // five-second movement opportunity. It clears any late Golden Freddy,
+  // resets Foxy only ~1.3 s before the following BB check, and leaves the
+  // camera sweep as late as possible. Two short winding windows still exceed
+  // the sourced box break-even rate.
+  leftClear(a, resultAt) {
+    this.tap(resultAt + s(0.02), 'mask');
+    this.hold(a + s(1.28), s(0.08), 'light');
+    this.tap(a + s(1.38), 'monitor');
+    this.tap(a + s(1.62), 'cam:11');
+    this.hold(a + s(1.74), a + s(2.68) - (a + s(1.74)), 'wind');
+
+    this.tap(a + s(2.72), 'monitor');
+    this.tap(a + s(3.10), 'mask');
+    this.tap(a + s(3.45), 'mask');
+    this.hold(a + s(3.73), s(0.08), 'light');
+    this.tap(a + s(3.85), 'monitor');
+    this.tap(a + s(4.08), 'cam:11');
+    this.hold(a + s(4.20), s(0.48), 'wind');
+    this.flashTargets(a + s(4.733));
+  }
+
+  // A positive left-opening frame was captured before the prophylactic mask.
+  // Keep that same mask down through ticks +1..+5. The late hall beat in the
+  // previous cycle makes Foxy's +3 s roll safe; the previous late camera
+  // sweep remains live until this response refreshes it after tick five.
+  leftAttack(a) {
+    this.attacks++;
+    const phaseMargin = this.phaseSafeMask ? s(1) : 0;
+    const off = a + s(5.02) + phaseMargin;
+    this.tap(off, 'mask');
+    // The hall press is queued before the simultaneous monitor raise. It
+    // therefore resets Foxy during the raise frame without spending another
+    // 120 ms before the recovery sweep.
+    this.hold(off + s(0.25), s(0.08), 'light');
+    this.tap(off + s(0.25), 'monitor');
+    const end = this.flashTargets(off + s(0.45));
+    this.tap(end + s(0.05), 'cam:11');
+    this.hold(end + s(0.13), Math.max(1, a + s(9.46) - (end + s(0.13))), 'wind');
+    this.flashTargets(a + s(9.733));
+    this.nextAnchor = a + s(10);
+  }
+
+  onLeftResult(sample) {
+    if (!sample.bb) {
+      if (sample.inside) this.missed++;
+      this.leftClear(sample.a, this.sim.frame);
+      return;
+    }
+    this.detections++;
+    this.leftAttack(sample.a);
   }
 
   // BB has already been seen on CAM 05. Refresh the normal defences, lower
@@ -188,7 +277,9 @@ class HidPilot {
     if (f === this.nextAnchor) this.scheduleAnchor(f);
     while (this.queue.length && this.queue[0][0] <= f) {
       const [, kind, act] = this.queue.shift();
-      if (kind === 'cam5-before') this.onCam5Before(act);
+      if (kind === 'left-snapshot') this.onLeftSnapshot(act);
+      else if (kind === 'left-result') this.onLeftResult(act);
+      else if (kind === 'cam5-before') this.onCam5Before(act);
       else if (kind === 'cam5-after') this.onCam5After(act);
       else if (kind === 'up') this.sim.release(act);
       else this.sim.press(act);
@@ -210,15 +301,19 @@ export function run(opts = {}) {
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const n = +(process.argv[2] || 500);
   const worst = process.argv.includes('--worst');
-  const cam5 = !process.argv.includes('--no-cam5');
+  const bbMode = process.argv.includes('--cam5') ? 'cam5'
+    : (process.argv.includes('--no-bb') || process.argv.includes('--no-cam5')) ? 'none'
+      : 'left';
   const cam5Light = !process.argv.includes('--hypothetical-unlit');
+  const phaseSafeMask = !process.argv.includes('--tick-aligned-mask');
+  const alwaysThreat = process.argv.includes('--always-threat');
   const nightArg = (process.argv.find(v => v.startsWith('--night=')) || '').split('=')[1];
   const night = nightArg ? +nightArg : 6;
   let wins = 0, minBox = 1, minPower = Infinity, checks = 0, detections = 0;
   let attacks = 0, missed = 0;
   const fails = {};
   for (let i = 0; i < n; i++) {
-    const { sim, bot } = run({ cam5, cam5Light,
+    const { sim, bot } = run({ bbMode, cam5Light, phaseSafeMask, alwaysThreat,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
@@ -232,10 +327,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       fails[key] = (fails[key] || 0) + 1;
     }
   }
-  console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${cam5 ? `CAM 05 tracking (${cam5Light ? 'lit' : 'unlit'})` : 'blind cycle'}` +
+  const mode = bbMode === 'left' ? 'lit left-opening detection'
+    : bbMode === 'cam5' ? `CAM 05 tracking (${cam5Light ? 'lit' : 'unlit'})`
+      : 'blind cycle';
+  console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${mode}` +
+    `, ${phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask` +
     (worst ? ' (worst luck)' : ''));
   for (const [key, count] of Object.entries(fails).sort((a, b) => b[1] - a[1]))
     console.log(`  ${count}x  ${key}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower} | ` +
-    `${checks} CAM 05 reads, ${detections} detections, ${attacks} attacks, ${missed} missed states`);
+    `${checks} BB reads, ${detections} detections, ${attacks} attacks, ${missed} missed states`);
 }

@@ -275,6 +275,24 @@ classification, and the dedicated status made host cleanup stop the game before
 any hall input or capture pull. Offline replay of the untouched run-K split
 reproduced all eight BB results.
 
+An HID staging run on 2026-08-24 resolved the remaining capture/action overlap.
+A fixed delay from starting `screencap` was unreliable: an 80 ms release/mask
+sometimes yielded the mask itself and sometimes an unlit office. The runner
+now writes capture to a device-local file while holding the vent light, waits
+for the first output byte (the observed immutable-buffer boundary), and only
+then releases the light and masks. Starting capture at about +380 ms in parallel
+with vent drawing produced first bytes at +690, +764, and +761 ms across three
+cycles; all retained frames were confident `empty` classifications. A capture
+lock prevents the safety watchdog from competing for SurfaceFlinger, and a
+single unavailable watchdog read no longer counts as a lost-night frame.
+
+That run validates only capture readiness and the empty branch. The
+`HID_LEFT_SURVIVAL=1` device table remains explicitly experimental: its sweep
+and positive response still lag the compact phase-safe schedule that passed
+10000 ordinary and 3000 worst-luck exact Night 6 simulations. Do not use it as
+a full-night controller until those timings are ported and a real positive BB
+response is observed.
+
 This is a **detection-and-safe-stop checkpoint**, not yet a survivable response
 loop. The seven completed cycles produced eight complete camera sweeps and 11
 rendered hall-beam intervals, but that visual count is only a lower bound on

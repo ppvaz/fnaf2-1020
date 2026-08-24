@@ -15,6 +15,8 @@ NIGHT="${NIGHT:-6th}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-1}"
 GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-fast-swipe}"
+HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
+HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
 WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
 FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
@@ -41,6 +43,7 @@ REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
 REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
+REMOTE_CAPTURE_LOCK="$REMOTE_PIDFILE.capture"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
 REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
@@ -97,6 +100,10 @@ esac
 case "$GF_SKIP_MASK_ON_EXACT_EMPTY" in
   0|1) ;;
   *) echo "GF_SKIP_MASK_ON_EXACT_EMPTY must be 0 or 1"; exit 2 ;;
+esac
+case "$HID_LEFT_SURVIVAL" in
+  0|1) ;;
+  *) echo "HID_LEFT_SURVIVAL must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
   swipe|tap|async-swipe|fast-swipe|hid|hid-multi) ;;
@@ -176,8 +183,8 @@ if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ] && [ -z "$BB_CAM05_MODEL" ]; then
   exit 2
 fi
 if [ -n "$BB_LEFT_MODEL" ]; then
-  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
-    echo "BB_LEFT_MODEL requires BB_LEFT_CAPTURE_EVERY > 0" >&2
+  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || [ "$HID_LEFT_SURVIVAL" -eq 1 ] || {
+    echo "BB_LEFT_MODEL requires BB_LEFT_CAPTURE_EVERY > 0 or HID_LEFT_SURVIVAL=1" >&2
     exit 2
   }
   [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ] || {
@@ -188,6 +195,25 @@ if [ -n "$BB_LEFT_MODEL" ]; then
     echo "BB_LEFT_MODEL does not exist: $BB_LEFT_MODEL" >&2
     exit 2
   }
+fi
+if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
+  [ "$PRESS_MODE" = "hid-multi" ] || {
+    echo "HID_LEFT_SURVIVAL=1 requires PRESS_MODE=hid-multi" >&2
+    exit 2
+  }
+  [ -n "$BB_LEFT_MODEL" ] || {
+    echo "HID_LEFT_SURVIVAL=1 requires BB_LEFT_MODEL" >&2
+    exit 2
+  }
+  [ "$DEBUG_OVERLAYS" -eq 0 ] || {
+    echo "HID_LEFT_SURVIVAL=1 requires DEBUG_OVERLAYS=0" >&2
+    exit 2
+  }
+  [ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ] || {
+    echo "HID_LEFT_SURVIVAL=1 classifies a stream; disable BB_LEFT_CAPTURE_EVERY" >&2
+    exit 2
+  }
+  echo "warning: HID_LEFT_SURVIVAL is an experimental staged controller, not a validated full-night route" >&2
 fi
 if [ -n "$GF_OFFICE_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
@@ -313,10 +339,21 @@ watch_night() {
   local misses=0 screen_state
   while kill -0 "$DRIVER_PID" 2>/dev/null; do
     sleep "$WATCHDOG_INTERVAL"
+    # The survival classifier and safety watchdog both call SurfaceFlinger's
+    # screencap path. Concurrent captures more than doubled the measured frame
+    # latency and produced false `unavailable` aborts. The strategy owns the
+    # short capture window; focus monitoring continues independently.
+    if adb shell "[ -e '$REMOTE_CAPTURE_LOCK' ]" >/dev/null 2>&1; then
+      continue
+    fi
     screen_state=$(state_once)
     case "$screen_state" in
       night)
         misses=0
+        ;;
+      unavailable)
+        # Transport/capture contention is not evidence that gameplay ended.
+        printf 'watchdog: unavailable (ignored)\n'
         ;;
       *)
         misses=$((misses + 1))
@@ -378,7 +415,7 @@ cleanup() {
       echo "saved partial capture captures/$OUT-aborted.mp4"
     fi
   fi
-  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" >/dev/null 2>&1 || true
+  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
     adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_CAM05_MODEL" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
@@ -452,8 +489,8 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 [ "$MAXDUR" -le 180 ] || MAXDUR=180
 
 # Positional coordinates keep this remote program literal and auditable.
-adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" \
-  "$CYCLES" "$PRESS_MODE" \
+adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_CAPTURE_LOCK" \
+  "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
@@ -465,8 +502,11 @@ set -eu
 PIDFILE=$1; shift
 READYFILE=$1; shift
 STARTFILE=$1; shift
+CAPTURE_LOCK=$1; shift
 CYCLES=$1; shift
 PRESS_MODE=$1; shift
+HID_LEFT_SURVIVAL=$1; shift
+HID_LEFT_DEBUG_RAW=$1; shift
 HID_MODE=0
 case "$PRESS_MODE" in
   hid|hid-multi) HID_MODE=1 ;;
@@ -558,7 +598,7 @@ cleanup_remote() {
   fi
   children=$(cat "/proc/$$/task/$$/children" 2>/dev/null || true)
   [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
-  rm -f "$PIDFILE" "$READYFILE" "$STARTFILE"
+  rm -f "$PIDFILE" "$READYFILE" "$STARTFILE" "$CAPTURE_LOCK" "$PIDFILE.left.raw"
 }
 trap cleanup_remote EXIT
 trap 'exit 129' HUP
@@ -712,6 +752,137 @@ capture_unlit_at() {
   printf '%6d ms  capture-%s-unlit %s\n' "$actual" "$label" "$name"
   screencap > "$SAMPLE_DIR/$name.raw"
 }
+
+hid_sweep_at() {
+  start=$1; label=$2
+  light_down_at "$start" "$label-light-down"
+  light_cam_at  $((start + 30))  "$CAM10_X" "$CAM10_Y" "$label-cam-10"
+  light_cam_at  $((start + 130)) "$CAM04_X" "$CAM04_Y" "$label-cam-04"
+  light_cam_at  $((start + 230)) "$CAM07_X" "$CAM07_Y" "$label-cam-07"
+  light_up_at   $((start + 340)) "$label-light-up"
+}
+
+classify_left_and_queue_mask_at() {
+  offset=$1; label=$2
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s start snapshot\n' "$actual" "$label" >&2
+
+  # `screencap` does not latch the SurfaceFlinger frame when the process starts:
+  # fixed 80 ms overlap produced both a literal mask frame and an unlit office
+  # frame on this phone. It writes nothing until the compositor has returned an
+  # immutable buffer. Keep the vent lit until the first output byte appears,
+  # then mask immediately while the remaining 10 MB write/classification tail
+  # proceeds. This is an observed readiness boundary, not another sleep guess.
+  if [ "$HID_LEFT_DEBUG_RAW" != "-" ]; then
+    capture_raw="$HID_LEFT_DEBUG_RAW.$offset.raw"
+  else
+    capture_raw="$PIDFILE.left.raw"
+    rm -f "$capture_raw"
+  fi
+  : > "$CAPTURE_LOCK"
+  screencap > "$capture_raw" &
+  capture_pid=$!
+  while [ ! -s "$capture_raw" ]; do
+    kill -0 "$capture_pid" 2>/dev/null || break
+    sleep 0.002
+  done
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
+  hid_release
+  hid_down "$MASK_X" "$MASK_Y"
+  hid_delay 100
+  hid_release
+  wait "$capture_pid" || true
+  classification=$("$CHECKER" classify "$BB_MODEL" < "$capture_raw" 2>/dev/null) || \
+    classification='unknown capture-or-classifier-error'
+  [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw"
+  rm -f "$CAPTURE_LOCK"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  classify-bb-left %s\n' "$actual" "$classification" >&2
+}
+
+if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
+  # Experimental staging branch. The first-byte screencap readiness boundary
+  # has device evidence, but this 340 ms sweep/response table predates the
+  # compact phase-safe simulator policy and has not survived a complete night.
+  # Keep it separate from the slow BB_LEFT_CAPTURE calibration path below.
+  press_at    0 "$MUTE_X"    "$MUTE_Y"    mute
+  press_at  180 "$MONITOR_X" "$MONITOR_Y" monitor-up
+  press_at  460 "$CAM11_X"   "$CAM11_Y"   cam-11
+  hold_at   520 "$WIND_X"    "$WIND_Y"    5580 opening-wind
+  hid_sweep_at 6250 opening-late-sweep
+
+  cycle=0
+  while [ "$cycle" -lt "$CYCLES" ]; do
+    base=$((7000 + cycle * 5000))
+    press_at      "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
+    light_down_at $((base + 330)) left-view-light-down
+    # SurfaceFlinger's 300-370 ms acquisition runs in parallel with the vent's
+    # ~350 ms draw. Starting both together yields a fully drawn frame at the
+    # first-byte readiness boundary without paying those delays serially.
+    classify_left_and_queue_mask_at $((base + 380)) left-view
+
+    case "$classification" in
+      empty\ *) threat=0 ;;
+      *) threat=1 ;;
+    esac
+
+    if [ "$threat" -eq 1 ]; then
+      # Fail closed on BB, unknown, static, another occupant, or malformed
+      # output. The mask was already put on at +780 ms while classification
+      # finished; keep it through ticks +1..+5, recover Foxy/cameras, bank the
+      # box, and refresh once more just before the +10 s resync anchor.
+      printf '%6d ms  left-view threat; five-tick response\n' \
+        "$(( $(date +%s%3N) - T0 ))"
+      press_at    $((base + 5020)) "$MASK_X"    "$MASK_Y"    mask-off-after-bb
+      hold_at     $((base + 5280)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-after-bb
+      press_at    $((base + 5400)) "$MONITOR_X" "$MONITOR_Y" monitor-up-after-bb
+      hid_sweep_at $((base + 5650)) response-sweep
+      press_at    $((base + 6060)) "$CAM11_X"   "$CAM11_Y"   cam-11-after-bb
+      hold_at     $((base + 6180)) "$WIND_X"    "$WIND_Y"    3280 wind-after-bb
+      hid_sweep_at $((base + 9500)) response-late-sweep
+      cycle=$((cycle + 2))
+      continue
+    fi
+
+    # Empty result: turn the prophylactic Golden-Freddy mask back off. Base
+    # the first office sequence on the actual classifier completion so a slow
+    # capture cannot make the hall press land inside the mask-off animation.
+    now=$(( $(date +%s%3N) - T0 ))
+    mask_off=$((base + 1000))
+    [ "$now" -lt "$mask_off" ] || mask_off=$((now + 20))
+    if [ $((mask_off + 780)) -ge $((base + 2680)) ]; then
+      # An implausibly late empty is safer as a false positive than as a cycle
+      # with no box wind. Keep the already-on mask and use the response path on
+      # the next loop iteration by finishing this one as a bounded abort.
+      echo "left classifier missed the normal-cycle deadline" >&2
+      exit 43
+    fi
+    press_at "$mask_off" "$MASK_X" "$MASK_Y" mask-off-empty
+    hold_at  $((mask_off + 280)) "$HALL_X" "$HALL_Y" 80 reset-foxy
+    press_at $((mask_off + 400)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+    press_at $((mask_off + 640)) "$CAM11_X" "$CAM11_Y" cam-11
+    hold_at  $((mask_off + 760)) "$WIND_X" "$WIND_Y" \
+      $((base + 2680 - (mask_off + 760))) wind-a
+
+    # This second down/mask/hall beat covers the absolute five-second movement
+    # opportunity, clears a late Golden Freddy, and resets Foxy only ~1.3 s
+    # before the next possible BB response. Its final sweep is deliberately
+    # late enough to span that response's five mask ticks.
+    press_at     $((base + 2720)) "$MONITOR_X" "$MONITOR_Y" monitor-down-gate
+    press_at     $((base + 3100)) "$MASK_X"    "$MASK_Y"    gate-mask-on
+    press_at     $((base + 3450)) "$MASK_X"    "$MASK_Y"    gate-mask-off
+    hold_at      $((base + 3730)) "$HALL_X"    "$HALL_Y"    80 gate-reset-foxy
+    press_at     $((base + 3850)) "$MONITOR_X" "$MONITOR_Y" gate-monitor-up
+    hid_sweep_at $((base + 4070)) late-sweep
+    press_at     $((base + 4480)) "$CAM11_X"   "$CAM11_Y"   late-cam-11
+    hold_at      $((base + 4600)) "$WIND_X"    "$WIND_Y"    380 wind-b
+    cycle=$((cycle + 1))
+  done
+  sleep 1
+  exit 0
+fi
 
 # Calibration opening: the box begins full, so wait for real drain
 # instead of holding the wind button immediately. The first camera sweep ends
