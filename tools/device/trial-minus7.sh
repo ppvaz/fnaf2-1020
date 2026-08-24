@@ -23,6 +23,7 @@ BB_CAM05_CAPTURE_START="${BB_CAM05_CAPTURE_START:-0}"
 BB_LEFT_CAPTURE_EVERY="${BB_LEFT_CAPTURE_EVERY:-0}"
 BB_LEFT_CAPTURE_START="${BB_LEFT_CAPTURE_START:-0}"
 CALIBRATION_INPUT_DEBUG="${CALIBRATION_INPUT_DEBUG:-0}"
+POST_CAPTURE_TOUCHES="${POST_CAPTURE_TOUCHES:-1}"
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-}"
 GF_OFFICE_MODEL="${GF_OFFICE_MODEL:-}"
 GF_SKIP_MASK_ON_EXACT_EMPTY="${GF_SKIP_MASK_ON_EXACT_EMPTY:-0}"
@@ -42,6 +43,7 @@ REMOTE_GF_MODEL="/data/local/tmp/fnaf2-gf-office-model-$$-$(date +%s).scm"
 REMOTE_CHECKER_ARG="-"
 REMOTE_BB_MODEL_ARG="-"
 REMOTE_GF_MODEL_ARG="-"
+POST_CAPTURE_TOUCHES_EFFECTIVE=0
 RUN_TMP=""
 WATCHDOG_RESULT=""
 REC=""
@@ -76,6 +78,10 @@ esac
 case "$CALIBRATION_INPUT_DEBUG" in
   0|1) ;;
   *) echo "CALIBRATION_INPUT_DEBUG must be 0 or 1"; exit 2 ;;
+esac
+case "$POST_CAPTURE_TOUCHES" in
+  0|1) ;;
+  *) echo "POST_CAPTURE_TOUCHES must be 0 or 1"; exit 2 ;;
 esac
 case "$GRADE_RUN" in
   0|1) ;;
@@ -167,6 +173,13 @@ fi
 if [ "$GF_SKIP_MASK_ON_EXACT_EMPTY" -eq 1 ] && [ -z "$GF_OFFICE_MODEL" ]; then
   echo "GF_SKIP_MASK_ON_EXACT_EMPTY=1 requires GF_OFFICE_MODEL" >&2
   exit 2
+fi
+if [ "$POST_CAPTURE_TOUCHES" -eq 1 ] &&
+   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] &&
+   [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ]; then
+  # The remote driver enables the touch dot only after saving each clean raw
+  # frame, then disables it before the next sampled frame.
+  POST_CAPTURE_TOUCHES_EFFECTIVE=1
 fi
 for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL; do
   setting_value="${!setting}"
@@ -322,6 +335,9 @@ cleanup() {
     GAME_LAUNCHED=0
   fi
   stop_recording
+  # A clean classifier run may temporarily enable touch dots only after each
+  # raw frame. Restore the requested global debug setting on every exit.
+  adb shell settings put system show_touches "$DEBUG_OVERLAYS" >/dev/null 2>&1 || true
   pull_samples || true
   if [ "$status" -ne 0 ] && [ "$RECORDING_STARTED" -eq 1 ] && [ "$CAPTURE_PULLED" -eq 0 ]; then
     sleep 1
@@ -417,7 +433,7 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
   "$REMOTE_CHECKER_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
-  "$GF_SKIP_MASK_ON_EXACT_EMPTY" \
+  "$GF_SKIP_MASK_ON_EXACT_EMPTY" "$POST_CAPTURE_TOUCHES_EFFECTIVE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 <<'REMOTE' &
 set -eu
@@ -433,6 +449,7 @@ CHECKER=${1:--}; shift
 BB_MODEL=${1:--}; shift
 GF_MODEL=${1:--}; shift
 GF_SKIP_MASK_ON_EXACT_EMPTY=$1; shift
+POST_CAPTURE_TOUCHES=$1; shift
 MUTE_X=$1; MUTE_Y=$2; shift 2
 MONITOR_X=$1; MONITOR_Y=$2; shift 2
 MASK_X=$1; MASK_Y=$2; shift 2
@@ -584,10 +601,23 @@ while [ "$cycle" -lt "$CYCLES" ]; do
        [ "$cycle" -ge "$BB_LEFT_CAPTURE_START" ] &&
        [ $(((cycle - BB_LEFT_CAPTURE_START) % BB_LEFT_CAPTURE_EVERY)) -eq 0 ]; then
       sample=$(printf 'cycle-%03d' "$cycle")
+      if [ "$POST_CAPTURE_TOUCHES" -eq 1 ]; then
+        # A touch dot at (350,615) overlaps the BB-left model ROI. Hide it
+        # before the lit raw frame; the preceding monitor touch has more than
+        # 350 ms to fade before screencap reads the display.
+        settings put system show_touches 0
+      fi
       # The left vent light is safe while Golden Freddy occupies the office;
       # the hall light is not. Capture and classify both regions from this one
       # frame before deciding whether the normal mask-then-hall sequence is safe.
       capture_lit_at $((base +  600)) "$sample" bb-left
+      if [ "$POST_CAPTURE_TOUCHES" -eq 1 ]; then
+        # The classifier input is now immutable. Expose every subsequent touch
+        # in the screenrecord so hall coordinates remain visually auditable.
+        settings put system show_touches 1
+        printf '%6d ms  touch-overlay on-after-capture\n' \
+          "$(( $(date +%s%3N) - T0 ))"
+      fi
       threat=0
       gf_exact_empty=0
       if [ "$BB_MODEL" != "-" ]; then
@@ -642,11 +672,10 @@ while [ "$cycle" -lt "$CYCLES" ]; do
       fi
       press_at       $((base + 1450)) "$MASK_X"    "$MASK_Y"    mask-on
       # Classification can make mask-on late. Give the mask a fixed fully-down
-      # interval, then two hall attempts after its release animation; run J's
-      # earlier attempts were both swallowed on the fatal Foxy cycle.
+      # interval, then wait out its sourced release animation before one hall
+      # hold. A dark hall-movement frame still resets and pins Foxy.
       press_at       $((base + 2000)) "$MASK_X"    "$MASK_Y"    mask-off
-      hold_at        $((base + 2500)) "$HALL_X"    "$HALL_Y"    200 flash-hall-1
-      hold_at        $((base + 2850)) "$HALL_X"    "$HALL_Y"    150 flash-hall-2
+      hold_at        $((base + 2500)) "$HALL_X"    "$HALL_Y"    200 flash-hall
       press_at       $((base + 3200)) "$MONITOR_X" "$MONITOR_Y" monitor-up
       press_at       $((base + 3700)) "$CAM10_X"   "$CAM10_Y"   cam-10
       press_at       $((base + 3890)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10
@@ -661,14 +690,13 @@ while [ "$cycle" -lt "$CYCLES" ]; do
     fi
     press_at $((base +  450)) "$MASK_X"    "$MASK_Y"    mask-on
     press_at $((base +  800)) "$MASK_X"    "$MASK_Y"    mask-off
-    # The hall light is a held actuator: a 60 ms camera-style swipe reaches
-    # the control but produces no visible beam. One attempt can also coincide
-    # with a transient in-game light lockout, so use two attempts across the
-    # office window. Their 350 ms worst-case light cost plus three 60 ms camera
-    # pulses is 106 ms/s, under the sourced 119 ms/s budget. CAM 10 waits a full
-    # 500 ms after monitor-up; shorter gaps were swallowed by the flip animation.
-    hold_at  $((base +  950)) "$HALL_X"    "$HALL_Y"    200 flash-hall-1
-    hold_at  $((base + 1300)) "$HALL_X"    "$HALL_Y"    150 flash-hall-2
+    # Wait out the sourced 15-frame mask-off animation, then hold the hall
+    # actuator once. Hall-movement darkness affects only rendering: the same
+    # logical light still resets Foxy's D and pins B. One 200 ms hall hold plus
+    # three 60 ms camera pulses costs 76 ms/s, under the sourced 119 ms/s budget.
+    # CAM 10 waits a full 500 ms after monitor-up; shorter gaps were swallowed
+    # by the flip animation.
+    hold_at  $((base + 1200)) "$HALL_X"    "$HALL_Y"    200 flash-hall
     press_at $((base + 1550)) "$MONITOR_X" "$MONITOR_Y" monitor-up
     press_at $((base + 2050)) "$CAM10_X"   "$CAM10_Y"   cam-10
     press_at $((base + 2240)) "$CAM_LIGHT_X" "$CAM_LIGHT_Y" light-10

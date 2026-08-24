@@ -50,7 +50,9 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - `grade-minus7.py <mp4>` — stable office/mask/camera state report plus visible
   hall-beam pulses. Its hall rule runs before the broad camera/static rule and
   rejects beam-like frames that begin inside an existing camera interval, so
-  camera-light flashes do not become false Foxy resets.
+  camera-light flashes do not become false visible-hall intervals. The count
+  is explicitly a rendering lower bound: sourced hall-movement darkness can
+  hide a logically accepted Foxy flash.
 - `trial-minus7.sh <name> [cycles]` — selectable-night Minus 7 interaction
   runner (`NIGHT=6th` by default; `NIGHT=continue` is the override). It gates
   the start, then executes one absolute-time device-side schedule. Independent
@@ -59,7 +61,10 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   path captures raw on-device and transfers only HUD scanlines. Neither guard
   chooses or retimes an action. The runner enables ADB touch/pointer overlays
   and grades the pulled recording by default (`DEBUG_OVERLAYS=0` and
-  `GRADE_RUN=0` are the opt-outs).
+  `GRADE_RUN=0` are the opt-outs). Clean BB/GF classifier runs must disable the
+  global overlays; `POST_CAPTURE_TOUCHES=1` then turns only the touch dot on
+  after each raw capture and off before the next, so later hall presses remain
+  visible in the recording without contaminating the model input.
 - `screencheck.c` plus `build-screencheck.sh` — static device-local raw-frame
   feature/template classifier. `capture-screen-sample.sh`,
   `build-screen-model.py`, `replay-screen-model.py`, and
@@ -108,11 +113,14 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   A five-coordinate recording (`hall-coordinate-cal`) visibly distinguished
   the green/blue vent light from the circular hall beam. Keep separate
   `TAP_CAM_LIGHT` and `TAP_HALL` coordinates. The hall actuator also needs a
-  real hold: a 60 ms swipe placed the debug pointer correctly but produced no
-  beam. Neither a longer hold nor a later single attempt cured every
-  intermittent in-game lockout. The runner therefore makes two separated
-  200 ms and 150 ms attempts across the office window. Together with three
-  60 ms camera flashes per five seconds, the worst case is about 106 ms/s
+  real hold: a 60 ms swipe placed the debug pointer correctly but was too short
+  to establish a useful visible beam. Later dark windows were initially
+  misread as intermittent input lockout. The owned Android event sheet instead
+  shows a sourced visual blackout: g875-880 set `hall movement` to 300 frames,
+  g202 renders the held hall light dark while it drains, and g489/g745/g855
+  still assert Foxy's logical light, reset D, and pin B without consulting that
+  counter. The runner therefore waits out the mask-off animation and makes one
+  200 ms hall hold. With three 60 ms camera flashes, that is about 76 ms/s
   against the 119 ms/s light budget.
 - A locked phone presents `NotificationShade` as the focused window even
   when the game activity is underneath it. The harness wakes the display and
@@ -192,9 +200,10 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 - **The corrected six-cycle default crossed the old failure window.** The
   37.75 s `validated-default-6th-6c` run completed 7/7 selected-camera sweeps
   and all six scheduled monitor/mask cycles, with no Foxy attack or safety
-  abort. Five hall beams were visible; both redundant attempts landed during
-  some windows, while one whole window remained dark from the game's transient
-  light lockout. The post-run gauge stayed in a 52-78% band. This is a bounded
+  abort. Five hall beams were visible. The other scheduled holds can have been
+  hidden by the sourced 300-frame hall-movement rendering blackout, so beam
+  count is a lower bound and cannot diagnose input acceptance or Foxy
+  protection. The post-run gauge stayed in a 52-78% band. This is a bounded
   validation, not yet a full-night clear.
 - **Winding is now rate-balanced instead of capacity-seeking.** Nights 6-7
   drain 120 box units/s when not winding and add 300/s while held, so net-zero
@@ -228,9 +237,11 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   measured **225 ms combined p95** (206 ms capture, 42 ms classification p95).
   With the existing roughly 170 ms duration press, the estimated visual-plus-
   action path is 395 ms, leaving about 305 ms against the shortest 700 ms BB
-  window. This proves feasibility, not threat accuracy: real BB, Golden Freddy,
-  and Toy Bonnie calibration/holdouts remain open. Full build, model, replay,
-  benchmark, invocation, and conservative-branch rules are in
+  window. BB now has independent holdout and live-branch evidence; Golden
+  Freddy still lacks an independent positive holdout. Toy Bonnie vision is
+  deliberately excluded from the Minus 7 path because its CAM 04 stall already
+  controls it. Full build, model, replay, benchmark, invocation, and
+  conservative-branch rules are in
   [`ON-DEVICE-SCREEN-CHECKS.md`](ON-DEVICE-SCREEN-CHECKS.md).
 
 ## Simulating the pilot (2026-08-20)
@@ -427,8 +438,10 @@ and the positive at the original `score=0 margin=18`. Cleanup force-stopped the
 game before the hall or any large transfer.
 
 The run also prices the unfinished response: eight complete selected-camera
-sweeps and 11 visible hall flashes kept Foxy controlled, but 1.3 s winds in the
-6.5 s visual cycles drove the music box from full to 9.5% by cycle 7. The branch
+sweeps and 11 rendered hall-beam intervals accompanied a run in which Foxy
+remained controlled, but the decomp proves that count under-reports logically
+accepted flashes during hall movement. Meanwhile, 1.3 s winds in the 6.5 s
+visual cycles drove the music box from full to 9.5% by cycle 7. The branch
 therefore remains a safe detection/collection path, not a full BB clear and
 resynchronization policy. An earlier run that waited until cycle 8 to sample
 died to Foxy around 42 s and captured only post-kill static (`unknown`), which
@@ -442,32 +455,28 @@ At the start of Night 6, one run in ten assigns him AI 1 and the other nine
 assign 0; 2 AM overwrites either result with AI 3. Even on the enabled early
 run, each office-spawn check is only AI/20. Custom Night applies the dial and
 g830 caps him at 10, making 10/20's office roll 1/2, but Custom Night remains
-locked on this save. Night 6 also raises Toy Bonnie from 0 to 5 and BB from 5
-to 9 at 2 AM. Toy Bonnie cannot supply an early positive; Golden Freddy can,
-but sparsely. BB remains the practical first calibration target.
+locked on this save. Night 6 also raises BB from 5 to 9 at 2 AM. Golden Freddy
+can supply positives, but sparsely. Toy Bonnie needs no capture for this Minus
+7 branch because the selected CAM 04 stall already controls him.
 
 ## Next steps
 
 1. Preserve the validated **BB left-opening** model boundary while recovering
    enough wind for a five-tick mask clear and timed resynchronization. The
    current 1.3 s/6.5 s wind reaches 9.5% by cycle 7 and is not extendable.
-2. Calibrate the right-vent-light coordinate and collect **Toy Bonnie** only
-   after 2 AM on Night 6. Include other right-vent occupants and transitions;
-   holding the free right light remains cheaper than vision where the policy
-   can tolerate a fixed stall.
-3. For **Golden Freddy** positives, either repeat Night-6 starts knowing only
+2. For **Golden Freddy** positives, either repeat Night-6 starts knowing only
    one in ten enables AI 1 before 2 AM, survive beyond 2 AM for the stable AI 3,
    or beat 6th Night and use 10/20. One translucent source frame now supports a
    provisional stop-only model, and eight independent negatives pass, but it
    still lacks an independent positive animation frame. Keep the normal
    prophylactic office mask flick; a hallway `unknown` must release the light.
-4. For each target, build an `SCM1` model, require leave-one-out separation and
+3. For each target, build an `SCM1` model, require leave-one-out separation and
    zero holdout false negatives, then benchmark that exact model. Measure the
    complete `screencap | classify -> input/skip` branch inside one device shell.
-5. Add visual branches only to an experimental runner. Preserve the open-loop
+4. Add visual branches only to an experimental runner. Preserve the open-loop
    runner until screenrecord grading, selected-camera trace, focus/night aborts,
    and actual capture-to-action p95 all pass.
-6. Independently, phase the BB response's mask hold to the one-second tick
+5. Independently, phase the BB response's mask hold to the one-second tick
    boundary and re-measure; it may recover up to roughly one second but does
    not replace the missing visual evidence.
 

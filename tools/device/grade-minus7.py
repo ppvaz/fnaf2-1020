@@ -41,7 +41,9 @@ def classify(frame):
 
     # The office hall beam brightens the right half but leaves the center much
     # darker than a camera-feed flash/static frame. Detect it before the broad
-    # camera rule so a verified Foxy reset is reported as an actuator event.
+    # camera rule so a visibly rendered office beam is reported. The Android
+    # source deliberately renders the hall dark during the 300-frame movement
+    # latch even though the same logical light still affects Foxy.
     if 25 < overall < 48 and center < 30 and bottom_left > 30 and hall_core > 25:
         return "hall-candidate"
 
@@ -140,6 +142,10 @@ def main():
     print(
         f"summary: {camera_entries} camera intervals, {hall_flashes} visible hall flashes, "
         f"{long_masks} latched-mask intervals"
+    )
+    print(
+        "note: visible hall flashes are only a rendering lower bound; the sourced "
+        "movement blackout can hide logically accepted Foxy flashes"
     )
 
 

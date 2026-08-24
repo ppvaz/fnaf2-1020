@@ -94,8 +94,10 @@ At audit time they retained several contradicted statements:
   which remains true for host round trips but not for the measured device-local
   `screencap | classify` branch.
 
-Replace these with the dated measurements and preserve the still-open evidence:
-real BB, Golden Freddy, and Toy Bonnie labeled/holdout calibration.
+Replace these with the dated measurements and preserve the still-open evidence.
+BB now has labeled/holdout and live-branch evidence; Golden Freddy still needs
+an independent positive holdout. Do not add Toy Bonnie calibration to the
+Minus 7 path: CAM 04 already stalls him, so that visual check is redundant.
 
 ### 4. Align the `screenstate.py` Pillow contract
 

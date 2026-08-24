@@ -206,9 +206,11 @@ specific model followed by the actual action in one device-side driver.
 ## Threat models and conservative branches
 
 The execution path and cost are solved. BB now has independent holdout and live
-branch evidence; Golden Freddy remains a provisional tripwire, and Toy Bonnie
-is uncalibrated. Build separate models because each view has different lighting
-and safe actions:
+branch evidence, while Golden Freddy remains a provisional tripwire. Toy Bonnie
+does **not** need a visual model in the Minus 7 branch: the CAM 04 selection
+already stalls him all night, so classifying the right vent would add latency
+without changing the response. The `tb-right` row remains relevant only to
+non-Minus-7 strategies. Build separate models where vision changes an action:
 
 | Model/view | Required labels | Conservative live handling |
 |---|---|---|
@@ -218,8 +220,8 @@ and safe actions:
 | `gf-hall` | `empty`, `foxy`, `golden`/other | `golden` or `unknown` releases/avoids the hall light immediately; never spend the full 1.67 s exposure fuse. |
 | `tb-right` | `empty`, `toy-bonnie`, other vent occupants | `toy-bonnie` or `unknown` keeps the right light/defense branch active. If a fixed light stall is acceptable, holding the right light is cheaper than classifying. |
 
-The owned Night-6 AI table constrains collection: Toy Bonnie is AI 0 until
-2 AM, then becomes 5. Golden Freddy is rarer but not impossible before 2 AM:
+The owned Night-6 AI table constrains collection. Golden Freddy is rare but not
+impossible before 2 AM:
 one night start in ten assigns him AI 1 (the other nine assign 0), and 2 AM
 overwrites that result with AI 3. BB is active from 12 AM and rises from AI 5
 to 9 at the 2 AM cliff, so his two views remain the easiest first calibration
@@ -264,8 +266,11 @@ reproduced all eight BB results.
 
 This is a **detection-and-safe-stop checkpoint**, not yet a survivable response
 loop. The seven completed cycles produced eight complete camera sweeps and 11
-visible Foxy hall flashes, but the box fell from full to 9.5% before cycle 7's
-wind. The added clean capture, prophylactic GF mask, post-mask hall gate, and
+rendered hall-beam intervals, but that visual count is only a lower bound on
+logical Foxy flashes: g202 hides the beam during the sourced 300-frame hall
+movement latch while g489/g745/g855 still apply it. The box fell from full to
+9.5% before cycle 7's wind. The added clean capture, prophylactic GF mask,
+post-mask hall gate, and
 two classifications leave only a 1.3 s wind in each 6.5 s cycle. A preceding
 run that delayed sampling until cycle 8 died to Foxy around 42 s; its first raw
 sample was already full static and correctly rejected as `unknown`. Do not
@@ -283,3 +288,8 @@ without repeating run K's box deficit. It accepts the narrower literal result
 `empty score=0`, moves the fail-closed hall branch ahead of the omitted mask,
 and expands the wind from 1.3 s to 2.0 s. It is off by default and must not be
 described as validated GF defense until it stops on a new positive frame.
+
+Clean classifier frames require `DEBUG_OVERLAYS=0`. The runner's default
+`POST_CAPTURE_TOUCHES=1` enables only Android's touch dot after each raw frame
+has been saved and disables it before the next one. The recording therefore
+shows the later hall/control coordinates while the BB/GF inputs remain clean.
