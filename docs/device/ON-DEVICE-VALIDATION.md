@@ -65,6 +65,10 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   global overlays; `POST_CAPTURE_TOUCHES=1` then turns only the touch dot on
   after each raw capture and off before the next, so later hall presses remain
   visible in the recording without contaminating the model input.
+- `hid-multitouch-smoke.json` — guarded only by the operator, not a shell
+  wrapper: a direct `hid FILE` regression fixture that selects 6th Night and
+  verifies hold-light-while-switching-camera reports. Read
+  [`HID-MULTITOUCH.md`](HID-MULTITOUCH.md) before using it.
 - `screencheck.c` plus `build-screencheck.sh` — static device-local raw-frame
   feature/template classifier. `capture-screen-sample.sh`,
   `build-screen-model.py`, `replay-screen-model.py`, and
@@ -73,6 +77,14 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   the invocation and safety contract.
 
 ## Hard-won harness rules
+
+- **UHID readiness and hybrid contact release are separate gates.** On this
+  phone InputReader attaches about 5.1 s after kernel registration; reports
+  sent earlier vanish. In a two-contact report, an inactive ID 1 record still
+  requires `contact_count=2`, or Linux stops after ID 0 and leaves ID 1 stuck.
+  The resulting camera inputs become moves rather than fresh taps. The
+  diagnosis, correct packets, kernel trace, and verified two-finger camera
+  sweep are preserved in [`HID-MULTITOUCH.md`](HID-MULTITOUCH.md).
 
 - **The Fusion runtime polls touch by frame: zero-duration `input tap` is
   dropped roughly half the time.** Every touch must be a duration press —

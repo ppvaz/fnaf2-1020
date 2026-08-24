@@ -34,12 +34,14 @@ const ENGINE = [
   // corrupted sourced constant.
   ['sourcetest', ['sourcetest.mjs']],
   ['simtest', ['simtest.mjs', '--sweep']],
+  ['hidreporttest', ['hidreporttest.mjs']],
   ['bbtest', ['bbtest.mjs', '200', '--assert']],
   ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
   // The pilot asserts one narrow claim, not survival: Balloon Boy never
   // reaches the office, and no Foxy death follows him taking the lights.
   ['pilottest', ['pilottest.mjs', '200', '--vent', '--sync', '--assert']],
   ['pilottest --worst', ['pilottest.mjs', '100', '--vent', '--sync', '--worst', '--assert']],
+  ['pilottest --guard', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync', '--assert-guard']],
 ];
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],

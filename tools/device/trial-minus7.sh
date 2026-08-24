@@ -20,6 +20,9 @@ WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
 FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
 BB_CAM05_CAPTURE_EVERY="${BB_CAM05_CAPTURE_EVERY:-0}"
 BB_CAM05_CAPTURE_START="${BB_CAM05_CAPTURE_START:-0}"
+BB_CAM05_UNLIT="${BB_CAM05_UNLIT:-0}"
+BB_CAM05_MODEL="${BB_CAM05_MODEL:-}"
+BB_CAM05_STOP_ON_BB="${BB_CAM05_STOP_ON_BB:-0}"
 BB_LEFT_CAPTURE_EVERY="${BB_LEFT_CAPTURE_EVERY:-0}"
 BB_LEFT_CAPTURE_START="${BB_LEFT_CAPTURE_START:-0}"
 CALIBRATION_INPUT_DEBUG="${CALIBRATION_INPUT_DEBUG:-0}"
@@ -36,12 +39,16 @@ SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
 REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
+REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
+REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
 REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
+REMOTE_CAM05_MODEL="/data/local/tmp/fnaf2-bb-cam05-model-$$-$(date +%s).scm"
 REMOTE_GF_MODEL="/data/local/tmp/fnaf2-gf-office-model-$$-$(date +%s).scm"
 REMOTE_CHECKER_ARG="-"
 REMOTE_BB_MODEL_ARG="-"
+REMOTE_CAM05_MODEL_ARG="-"
 REMOTE_GF_MODEL_ARG="-"
 POST_CAPTURE_TOUCHES_EFFECTIVE=0
 RUN_TMP=""
@@ -92,13 +99,19 @@ case "$GF_SKIP_MASK_ON_EXACT_EMPTY" in
   *) echo "GF_SKIP_MASK_ON_EXACT_EMPTY must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
-  swipe|tap|async-swipe|fast-swipe) ;;
-  *) echo "PRESS_MODE must be swipe, tap, async-swipe, or fast-swipe"; exit 2 ;;
+  swipe|tap|async-swipe|fast-swipe|hid|hid-multi) ;;
+  *) echo "PRESS_MODE must be swipe, tap, async-swipe, fast-swipe, hid, or hid-multi"; exit 2 ;;
 esac
 for setting in BB_CAM05_CAPTURE_EVERY BB_CAM05_CAPTURE_START BB_LEFT_CAPTURE_EVERY BB_LEFT_CAPTURE_START; do
   setting_value="${!setting}"
   case "$setting_value" in
     ''|*[!0-9]*) echo "$setting must be a non-negative integer"; exit 2 ;;
+  esac
+done
+for setting in BB_CAM05_UNLIT BB_CAM05_STOP_ON_BB; do
+  case "${!setting}" in
+    0|1) ;;
+    *) echo "$setting must be 0 or 1"; exit 2 ;;
   esac
 done
 if [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] && [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
@@ -133,14 +146,34 @@ if [ -n "$SAMPLE_VIEW" ]; then
     }
   fi
   LOCAL_SAMPLE_DIR="$CAPTURE_DIR/screencheck/$SAMPLE_VIEW/$SAMPLE_BUCKET/$OUT"
-  [ "$PRESS_MODE" = "fast-swipe" ] || {
-    echo "$SAMPLE_VIEW capture is calibrated only for PRESS_MODE=fast-swipe"
-    exit 2
-  }
+  case "$PRESS_MODE" in
+    fast-swipe|hid|hid-multi) ;;
+    *) echo "$SAMPLE_VIEW capture is calibrated only for PRESS_MODE=fast-swipe or hid"; exit 2 ;;
+  esac
   [ ! -e "$LOCAL_SAMPLE_DIR" ] || {
     echo "refusing to overwrite $LOCAL_SAMPLE_DIR"
     exit 2
   }
+fi
+if [ "$BB_CAM05_UNLIT" -eq 1 ]; then
+  [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] || {
+    echo "BB_CAM05_UNLIT=1 requires BB_CAM05_CAPTURE_EVERY > 0" >&2
+    exit 2
+  }
+fi
+if [ -n "$BB_CAM05_MODEL" ]; then
+  [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] || {
+    echo "BB_CAM05_MODEL requires BB_CAM05_CAPTURE_EVERY > 0" >&2
+    exit 2
+  }
+  [ -f "$BB_CAM05_MODEL" ] || {
+    echo "BB_CAM05_MODEL does not exist: $BB_CAM05_MODEL" >&2
+    exit 2
+  }
+fi
+if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ] && [ -z "$BB_CAM05_MODEL" ]; then
+  echo "BB_CAM05_STOP_ON_BB=1 requires BB_CAM05_MODEL" >&2
+  exit 2
 fi
 if [ -n "$BB_LEFT_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
@@ -345,9 +378,9 @@ cleanup() {
       echo "saved partial capture captures/$OUT-aborted.mp4"
     fi
   fi
-  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" >/dev/null 2>&1 || true
+  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
-    adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
+    adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_CAM05_MODEL" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
   if [ "$SAMPLES_PULLED" -eq 1 ]; then
     adb shell "rm -rf '$REMOTE_SAMPLE_DIR'" >/dev/null 2>&1 || true
@@ -364,12 +397,16 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 adb get-state >/dev/null
-if [ -n "$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
+if [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
   CHECKER_INSTALLED=1
   "$HERE/build-screencheck.sh" "$RUN_TMP/fnaf-screencheck" >/dev/null
   adb push "$RUN_TMP/fnaf-screencheck" "$REMOTE_CHECKER" >/dev/null
   adb shell chmod 755 "$REMOTE_CHECKER"
   REMOTE_CHECKER_ARG=$REMOTE_CHECKER
+fi
+if [ -n "$BB_CAM05_MODEL" ]; then
+  adb push "$BB_CAM05_MODEL" "$REMOTE_CAM05_MODEL" >/dev/null
+  REMOTE_CAM05_MODEL_ARG=$REMOTE_CAM05_MODEL
 fi
 if [ -n "$BB_LEFT_MODEL" ]; then
   adb push "$BB_LEFT_MODEL" "$REMOTE_BB_MODEL" >/dev/null
@@ -399,17 +436,6 @@ esac
 source "$HERE/coords.sh"
 NIGHT_TAP=$TAP_CONTINUE
 [ "$NIGHT" = "6th" ] && NIGHT_TAP=$TAP_6TH
-adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
-
-# Loading is variable. The timed strategy begins only after the office HUD is
-# visible. Later screenshots belong only to the stop-on-exit safety watchdog;
-# they never choose or retime a strategy action.
-for i in $(seq 1 40); do
-  [ "$(state)" = "night" ] && break
-  sleep 1
-  [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
-done
-echo "$NIGHT night detected; starting timed Minus 7 interaction loop + $CYCLES cycles ($PRESS_MODE presses)"
 
 # A left-opening calibration cycle spends about 1.5 seconds on the lit raw
 # capture. Give each sampled cycle that time back so its box wind is not
@@ -424,28 +450,36 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 # Android's screenrecord rejects limits above 180 s. Raw calibration capture is
 # independent of screenrecord, so cap only the diagnostic video.
 [ "$MAXDUR" -le 180 ] || MAXDUR=180
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
-REC=$!
-RECORDING_STARTED=1
 
 # Positional coordinates keep this remote program literal and auditable.
-adb shell sh -s -- "$REMOTE_PIDFILE" "$CYCLES" "$PRESS_MODE" \
+adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" \
+  "$CYCLES" "$PRESS_MODE" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
+  "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
-  "$REMOTE_CHECKER_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
+  "$REMOTE_CHECKER_ARG" "$REMOTE_CAM05_MODEL_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
   "$GF_SKIP_MASK_ON_EXACT_EMPTY" "$POST_CAPTURE_TOUCHES_EFFECTIVE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 <<'REMOTE' &
 set -eu
 PIDFILE=$1; shift
+READYFILE=$1; shift
+STARTFILE=$1; shift
 CYCLES=$1; shift
 PRESS_MODE=$1; shift
+HID_MODE=0
+case "$PRESS_MODE" in
+  hid|hid-multi) HID_MODE=1 ;;
+esac
 BB_CAM05_CAPTURE_EVERY=$1; shift
 BB_CAM05_CAPTURE_START=$1; shift
+BB_CAM05_UNLIT=$1; shift
+BB_CAM05_STOP_ON_BB=$1; shift
 BB_LEFT_CAPTURE_EVERY=$1; shift
 BB_LEFT_CAPTURE_START=$1; shift
 SAMPLE_DIR=$1; shift
 CHECKER=${1:--}; shift
+CAM05_MODEL=${1:--}; shift
 BB_MODEL=${1:--}; shift
 GF_MODEL=${1:--}; shift
 GF_SKIP_MASK_ON_EXACT_EMPTY=$1; shift
@@ -466,16 +500,102 @@ if [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] || [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; th
   mkdir -p "$SAMPLE_DIR"
 fi
 
+HID_PID=""
+HID_FD_OPEN=0
+
+hid_release() {
+  [ "$HID_FD_OPEN" -eq 1 ] || return 0
+  # Report both inactive contact IDs. A count of zero makes hid-multitouch
+  # stop after the first collection and can leave contact 1 stuck down.
+  print -p -- '{"id":92,"command":"report","report":[1,2,0,0,0,0,0,4,0,0,0,0]}'
+}
+
+hid_down() {
+  x=$1; y=$2
+  # InputReader rotates the virtual device's 2400x1080 natural axes into the
+  # phone's landscape viewport. This is the inverse mapping measured with the
+  # system touch overlay: rawX=(1080-screenY)*20/9, rawY=screenX*9/20.
+  rx=$(((1080 - y) * 20 / 9))
+  ry=$((x * 9 / 20))
+  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,1,3,$((rx % 256)),$((rx / 256)),$((ry % 256)),$((ry / 256)),0,0,0,0,0]}"
+}
+
+hid_two_down() {
+  x1=$1; y1=$2; x2=$3; y2=$4
+  rx1=$(((1080 - y1) * 20 / 9)); ry1=$((x1 * 9 / 20))
+  rx2=$(((1080 - y2) * 20 / 9)); ry2=$((x2 * 9 / 20))
+  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),7,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
+}
+
+hid_second_up() {
+  x1=$1; y1=$2; x2=$3; y2=$4
+  rx1=$(((1080 - y1) * 20 / 9)); ry1=$((x1 * 9 / 20))
+  rx2=$(((1080 - y2) * 20 / 9)); ry2=$((x2 * 9 / 20))
+  # Contact Count is the number of records in this hybrid packet, not the
+  # number still touching. Count 2 makes the kernel consume ID 1's explicit
+  # inactive record and emit ACTION_POINTER_UP while preserving ID 0.
+  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),4,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
+}
+
+hid_delay() {
+  print -p -- "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
+}
+
+sleep_ms() {
+  ms=$1
+  sleep "$((ms / 1000)).$(printf '%03d' "$((ms % 1000))")"
+}
+
 printf '%s\n' "$$" > "$PIDFILE"
 cleanup_remote() {
+  if [ "$HID_FD_OPEN" -eq 1 ]; then
+    hid_release 2>/dev/null || true
+    HID_FD_OPEN=0
+    if [ -n "$HID_PID" ]; then
+      kill "$HID_PID" 2>/dev/null || true
+      wait "$HID_PID" 2>/dev/null || true
+    fi
+  fi
   children=$(cat "/proc/$$/task/$$/children" 2>/dev/null || true)
   [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
-  rm -f "$PIDFILE"
+  rm -f "$PIDFILE" "$READYFILE" "$STARTFILE"
 }
 trap cleanup_remote EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+if [ "$HID_MODE" -eq 1 ]; then
+  /system/bin/hid - |&
+  HID_PID=$!
+  HID_FD_OPEN=1
+  print -p -- '{"id":92,"command":"register","name":"FNAF Timed Touch","vid":6353,"pid":61959,"bus":"usb","descriptor":[5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,177,2,9,84,129,2,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,5,13,9,34,161,2,9,66,21,0,37,1,117,1,129,2,9,50,129,2,9,81,37,63,117,6,129,2,5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,192,192]}'
+  # UHID_OPEN only means the kernel is ready. On this phone InputReader adds
+  # the resulting touchscreen about five seconds later; every report sent in
+  # that gap is silently lost. Gate the strategy clock on the framework-level
+  # device entry AOSP requires instead of guessing a fixed startup delay.
+  hid_ready_deadline=$(( $(date +%s) + 12 ))
+  until dumpsys input 2>/dev/null | grep -q 'FNAF Timed Touch'; do
+    kill -0 "$HID_PID" 2>/dev/null || {
+      echo 'HID transport exited before InputReader attached it' >&2
+      exit 1
+    }
+    [ "$(date +%s)" -lt "$hid_ready_deadline" ] || {
+      echo 'timed out waiting for InputReader to attach HID touchscreen' >&2
+      exit 1
+    }
+    sleep 0.1
+  done
+fi
+
+# Preload the slow virtual-device registration while the title screen is
+# harmless. The host starts the night only after InputReader is ready, then
+# creates STARTFILE as soon as it sees the office HUD.
+: > "$READYFILE"
+while [ ! -e "$STARTFILE" ]; do
+  sleep 0.02
+done
+rm -f "$READYFILE" "$STARTFILE"
 
 T0=$(date +%s%3N)
 
@@ -501,6 +621,13 @@ press_at() {
   printf '%6d ms  %s\n' "$actual" "$label"
   if [ "$PRESS_MODE" = "tap" ]; then
     input tap "$x" "$y"
+  elif [ "$HID_MODE" -eq 1 ]; then
+    hid_down "$x" "$y"
+    # A 60 ms HID contact occasionally fits between two Fusion touch polls.
+    # The persistent transport removes helper overhead, so 100 ms remains
+    # comfortably inside the calibrated 190 ms action slots.
+    hid_delay 100
+    hid_release
   elif [ "$PRESS_MODE" = "async-swipe" ]; then
     input swipe "$x" "$y" "$x" "$y" 120 >/dev/null 2>&1 &
   elif [ "$PRESS_MODE" = "fast-swipe" ]; then
@@ -519,7 +646,39 @@ hold_at() {
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (%d ms)\n' "$actual" "$label" "$duration"
-  input swipe "$x" "$y" "$x" "$y" "$duration"
+  if [ "$HID_MODE" -eq 1 ]; then
+    hid_down "$x" "$y"
+    hid_delay "$duration"
+    hid_release
+  else
+    input swipe "$x" "$y" "$x" "$y" "$duration"
+  fi
+}
+
+light_down_at() {
+  offset=$1; label=$2
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (contact 0 down)\n' "$actual" "$label"
+  hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+}
+
+light_cam_at() {
+  offset=$1; x=$2; y=$3; label=$4
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (contact 1 tap)\n' "$actual" "$label"
+  hid_two_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$x" "$y"
+  hid_delay 100
+  hid_second_up "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$x" "$y"
+}
+
+light_up_at() {
+  offset=$1; label=$2
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (contacts up)\n' "$actual" "$label"
+  hid_release
 }
 
 capture_lit_at() {
@@ -532,11 +691,26 @@ capture_lit_at() {
   # visibly lit office vent; the measured raw capture p95 is another 206 ms.
   # A 600 ms hold still covers the 350 ms draw delay plus the measured 206 ms
   # raw-capture p95, without needlessly delaying the classifier and mask.
-  input swipe "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$CAM_LIGHT_X" "$CAM_LIGHT_Y" 600 >/dev/null 2>&1 &
-  light_pid=$!
-  sleep 0.35
+  if [ "$HID_MODE" -eq 1 ]; then
+    hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+    sleep 0.35
+    screencap > "$SAMPLE_DIR/$name.raw"
+    hid_release
+  else
+    input swipe "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$CAM_LIGHT_X" "$CAM_LIGHT_Y" 600 >/dev/null 2>&1 &
+    light_pid=$!
+    sleep 0.35
+    screencap > "$SAMPLE_DIR/$name.raw"
+    wait "$light_pid"
+  fi
+}
+
+capture_unlit_at() {
+  offset=$1; name=$2; label=$3
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  capture-%s-unlit %s\n' "$actual" "$label" "$name"
   screencap > "$SAMPLE_DIR/$name.raw"
-  wait "$light_pid"
 }
 
 # Calibration opening: the box begins full, so wait for real drain
@@ -545,7 +719,18 @@ capture_lit_at() {
 press_at     0 "$MUTE_X"    "$MUTE_Y"    mute
 press_at   180 "$MONITOR_X" "$MONITOR_Y" monitor-up
 press_at   460 "$CAM11_X"   "$CAM11_Y"   cam-11
-if [ "$PRESS_MODE" = "fast-swipe" ]; then
+if [ "$PRESS_MODE" = "hid-multi" ] && [ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ]; then
+  # Contact 0 stays on the camera light while contact 1 switches feeds. The
+  # 240 ms feed intervals are four times the sourced 60 ms stun pulse and buy
+  # roughly half a second of additional CAM 11 winding over sequential taps.
+  light_down_at 4000 light-sweep-down
+  light_cam_at  4070 "$CAM10_X" "$CAM10_Y" cam-10-lit
+  light_cam_at  4310 "$CAM04_X" "$CAM04_Y" cam-04-lit
+  light_cam_at  4550 "$CAM07_X" "$CAM07_Y" cam-07-lit
+  light_up_at   4790 light-sweep-up
+  press_at      4890 "$CAM11_X" "$CAM11_Y" cam-11
+  hold_at       5010 "$WIND_X"  "$WIND_Y"  1880 wind-to-anchor
+elif [ "$PRESS_MODE" = "fast-swipe" ] || [ "$HID_MODE" -eq 1 ]; then
   if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
     # The calibration cycle cannot reach its normal wind before the opening
     # box would empty. Bank two winds here while preserving a 10/04/07 sweep
@@ -592,7 +777,7 @@ while [ "$cycle" -lt "$CYCLES" ]; do
     base=$((base + prior_left_samples * 1500))
   fi
   press_at $((base +    0)) "$MONITOR_X" "$MONITOR_Y" monitor-down
-  if [ "$PRESS_MODE" = "fast-swipe" ]; then
+  if [ "$PRESS_MODE" = "fast-swipe" ] || [ "$HID_MODE" -eq 1 ]; then
     # The monitor-down animation needs more room than a normal press. From
     # CAM 10 onward, 60 ms presses launch every 190 ms: the full sweep takes
     # 1.14 s instead of 1.38 s. A 1.4 s hold nearly balances one five-second
@@ -688,6 +873,42 @@ while [ "$cycle" -lt "$CYCLES" ]; do
       cycle=$((cycle + 1))
       continue
     fi
+    if [ "$PRESS_MODE" = "hid-multi" ] &&
+       { [ "$BB_CAM05_CAPTURE_EVERY" -eq 0 ] || [ "$BB_CAM05_UNLIT" -eq 1 ]; }; then
+      press_at $((base +  450)) "$MASK_X"    "$MASK_Y"    mask-on
+      press_at $((base +  800)) "$MASK_X"    "$MASK_Y"    mask-off
+      hold_at  $((base + 1200)) "$HALL_X"    "$HALL_Y"    200 flash-hall
+      press_at $((base + 1550)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+      light_down_at $((base + 2050)) light-sweep-down
+      light_cam_at  $((base + 2120)) "$CAM10_X" "$CAM10_Y" cam-10-lit
+      light_cam_at  $((base + 2360)) "$CAM04_X" "$CAM04_Y" cam-04-lit
+      light_cam_at  $((base + 2600)) "$CAM07_X" "$CAM07_Y" cam-07-lit
+      light_up_at   $((base + 2840)) light-sweep-up
+      if [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] &&
+         [ "$cycle" -ge "$BB_CAM05_CAPTURE_START" ] &&
+         [ $(((cycle - BB_CAM05_CAPTURE_START) % BB_CAM05_CAPTURE_EVERY)) -eq 0 ]; then
+        sample=$(printf 'cycle-%03d' "$cycle")
+        press_at $((base + 2940)) "$CAM05_X" "$CAM05_Y" cam-05-calibration
+        capture_unlit_at $((base + 3120)) "$sample" cam-05
+        if [ "$CAM05_MODEL" != "-" ]; then
+          classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
+          printf '%6d ms  classify-bb-cam05 %s\n' \
+            "$(( $(date +%s%3N) - T0 ))" "$classification"
+          if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
+            case "$classification" in
+              bb\ *) exit 42 ;;
+            esac
+          fi
+        fi
+        press_at $((base + 3400)) "$CAM11_X" "$CAM11_Y" cam-11
+        hold_at  $((base + 3480)) "$WIND_X"  "$WIND_Y"  1380 wind-after-unlit-capture
+      else
+        press_at $((base + 2940)) "$CAM11_X" "$CAM11_Y" cam-11
+        hold_at  $((base + 3060)) "$WIND_X"  "$WIND_Y"  1800 wind
+      fi
+      cycle=$((cycle + 1))
+      continue
+    fi
     press_at $((base +  450)) "$MASK_X"    "$MASK_Y"    mask-on
     press_at $((base +  800)) "$MASK_X"    "$MASK_Y"    mask-off
     # Wait out the sourced 15-frame mask-off animation, then hold the hall
@@ -709,9 +930,28 @@ while [ "$cycle" -lt "$CYCLES" ]; do
        [ $(((cycle - BB_CAM05_CAPTURE_START) % BB_CAM05_CAPTURE_EVERY)) -eq 0 ]; then
       sample=$(printf 'cycle-%03d' "$cycle")
       press_at $((base + 3190)) "$CAM05_X" "$CAM05_Y" cam-05-calibration
-      capture_lit_at $((base + 3380)) "$sample" cam-05
-      press_at $((base + 4060)) "$CAM11_X" "$CAM11_Y" cam-11
-      hold_at  $((base + 4250)) "$WIND_X"  "$WIND_Y"  600 wind-after-capture
+      if [ "$BB_CAM05_UNLIT" -eq 1 ]; then
+        # Negative-control/calibration path only. A 25-frame, 130-second phone
+        # run on 2026-08-24 confirmed that unlit CAM 05 is not visually usable
+        # for BB detection. Never enable this in a survival controller.
+        capture_unlit_at $((base + 3380)) "$sample" cam-05
+        if [ "$CAM05_MODEL" != "-" ]; then
+          classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
+          printf '%6d ms  classify-bb-cam05 %s\n' \
+            "$(( $(date +%s%3N) - T0 ))" "$classification"
+          if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
+            case "$classification" in
+              bb\ *) exit 42 ;;
+            esac
+          fi
+        fi
+        press_at $((base + 3650)) "$CAM11_X" "$CAM11_Y" cam-11
+        hold_at  $((base + 3730)) "$WIND_X"  "$WIND_Y"  1200 wind-after-unlit-capture
+      else
+        capture_lit_at $((base + 3380)) "$sample" cam-05
+        press_at $((base + 4060)) "$CAM11_X" "$CAM11_Y" cam-11
+        hold_at  $((base + 4250)) "$WIND_X"  "$WIND_Y"  600 wind-after-capture
+      fi
     else
       press_at $((base + 3190)) "$CAM11_X"   "$CAM11_Y"   cam-11
       hold_at  $((base + 3380)) "$WIND_X"    "$WIND_Y"    1400 wind
@@ -735,9 +975,47 @@ while [ "$cycle" -lt "$CYCLES" ]; do
   fi
   cycle=$((cycle + 1))
 done
-wait
+if [ "$HID_MODE" -eq 1 ]; then
+  # `delay` schedules reports on hid's Handler thread without blocking this
+  # shell. Let the final queued hold/up drain before EXIT closes the device.
+  sleep 3.2
+else
+  wait
+fi
 REMOTE
 DRIVER_PID=$!
+
+# The remote driver pre-registers HID at the title screen and waits here. This
+# avoids spending InputReader's five-second attach latency inside the live
+# night. Non-HID modes signal readiness immediately through the same gate.
+for i in $(seq 1 200); do
+  adb shell "[ -e '$REMOTE_READYFILE' ]" >/dev/null 2>&1 && break
+  kill -0 "$DRIVER_PID" 2>/dev/null || {
+    wait "$DRIVER_PID" || true
+    echo "abort: input driver exited before becoming ready" >&2
+    exit 1
+  }
+  sleep 0.1
+  [ "$i" = 200 ] && { echo "abort: input driver readiness timed out" >&2; exit 1; }
+done
+
+adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
+
+# Loading is variable. Start both the strategy clock and its diagnostic video
+# only after the office HUD is visible. Later screenshots are safety checks;
+# they never choose or retime an action.
+for i in $(seq 1 40); do
+  [ "$(state)" = "night" ] && break
+  sleep 1
+  [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
+done
+echo "$NIGHT night detected; starting timed Minus 7 interaction loop + $CYCLES cycles ($PRESS_MODE presses)"
+
+adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
+REC=$!
+RECORDING_STARTED=1
+adb shell "touch '$REMOTE_STARTFILE'"
+
 watch_night &
 WATCHDOG_PID=$!
 watch_focus &

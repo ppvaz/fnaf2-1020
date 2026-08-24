@@ -249,6 +249,17 @@ evidence—not evidence for any threat class.
 
 ## Live BB checkpoint (2026-08-23)
 
+> **Unlit CAM 05 rejected (2026-08-24).** A HID-multitouch calibration stayed
+> alive for 130 seconds and collected 25 clean CAM 05 frames without the
+> flashlight. The room/BB state is not visually distinguishable in that feed.
+> The hypothesis came from ambiguous timing in an earlier lit-positive video,
+> not from the source, and must not be used by a survival controller. If CAM 05
+> is sampled it needs a lit frame, but it is not the selected Night 6 checkpoint:
+> spend HID's recovered cycle time on the validated, battery-free lit-left-opening
+> read instead. Omitting BB handling altogether is also invalid (0/3000 in the
+> exact Night 6 simulator). Do not generalize the Night 6 HID budget to 10/20
+> Night 7.
+
 The `bb-left` candidate was built from runs G/H with 19 templates (15 empty,
 two independent BB-opening frames, and two BB-inside negatives). Its untouched
 run-I holdout contained 17 empty frames plus the difficult simultaneous frame:
