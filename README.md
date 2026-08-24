@@ -1,18 +1,40 @@
-# Minus 7 Trainer
+# fnaf2-1020
 
-A touch-first browser trainer for the **Minus 7** strategy in *Five Nights at Freddy's 2*'s
-10/20 mode. It is not a clone of the game: it is a drill machine for the input routine, built on a
-reimplementation of the mechanics the strategy actually depends on.
+Everything needed to understand, derive, and execute a winning strategy in *Five
+Nights at Freddy's 2*'s **10/20 mode** — built on a decompile of the modern
+Android release rather than on folklore.
 
-**Canonical target:** the modern Android release-7 build (Fusion build 296,
-August 2025). PC/community material is supporting research, not the simulator's
-fidelity target.
+**Canonical target:** `com.scottgames.fnaf2` v2.0.7, the modern Android release-7
+build (Fusion build 296, August 2025). PC and community material is kept as
+attributed supporting research, never silently merged into Android rules.
 
-Open it on a phone, turn sideways, and work down the lessons.
+The visible output is a touch trainer that drills the **Minus 7** strategy on a
+phone. Behind it sit four things that took longer: a simulator whose every
+constant carries its evidence, a search lab that has refuted more strategies than
+it has confirmed, a harness that tests the model against the real binary on real
+hardware, and a written record of how each claim was established — including the
+ones that turned out to be wrong.
 
-**[Play it →](https://ppvaz.github.io/fnaf2-1020/)**
+**[Play the trainer →](https://ppvaz.github.io/fnaf2-1020/)**
 
 ![lesson brief](docs/brief.png)
+
+## What's here
+
+- **[The trainer](#the-trainer)** — ten-lesson drill ladder for Minus 7,
+  touch-first, graded in milliseconds against measured lopsided windows.
+- **[The model](docs/android/ANDROID-SOURCE-STATUS.md)** — the Android night loop
+  in `src/engine.js`, every constant labelled `[SOURCED]`, `[CALIBRATED]` or
+  `[INFERRED]`, with the ledger enforced by `tools/sourcetest.mjs` rather than
+  merely asserted in prose.
+- **[The decompile](docs/android/SOURCE-DUMP-GUIDE.md)** — how the event sheet was
+  extracted and read, including the **XOR-28 object-handle scramble** that
+  silently corrupts every naive Clickteam Fusion Android dump.
+- **[Strategy research](#strategy-research)** — the 10/20 meta from 2014 onward,
+  the searches this repo ran, and what they closed.
+- **[On-device validation](#on-device-validation)** — adb harness, recorded-trial
+  grading, and a libc-free on-phone classifier.
+- **[Docs index](docs/README.md)** — all of the above, routed by question.
 
 ## What Minus 7 is
 
@@ -31,20 +53,22 @@ The core loop, on every time ending in **2** or **7**:
 > runtime's XOR-scrambled object-handle table, now corrected in the tooling
 > (a discovery that affects every Clickteam Android decompile). The corrected
 > source model passes the shipped schedule 200/200; see
-> [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md).
+> [`ANDROID-CAMERA-STALL.md`](docs/android/ANDROID-CAMERA-STALL.md).
 
 Ten inputs in about 1.5 seconds, then three and a half seconds of winding. Full mechanical detail,
-with sources, is in [MINUS-7-STRATEGY.md](MINUS-7-STRATEGY.md).
+with sources, is in [MINUS-7-STRATEGY.md](docs/strategy/MINUS-7-STRATEGY.md).
 
 Strategy by **Niko Frost** (13 December 2023). This repo is a practice tool, not the strategy.
 
-## Why a trainer
+## The trainer
+
+### Why a trainer
 
 Minus 7 has no unwinnable RNG — every loss is a mechanical mistake. That makes it exactly the kind
 of skill a drill machine can teach, and exactly the kind that is miserable to learn inside a
 7-minute run where one slip ends the night.
 
-## The lessons
+### The lessons
 
 Ten steps, each adding one thing and hiding every control it doesn't need:
 
@@ -88,7 +112,7 @@ tolerance is a ceiling on that, never a licence: no drill calls an input safe th
 says ends the night. The numbers come from `cyclesearch --steps`; see
 [plan 04](plans/04-optimize-minus-7.md).
 
-## Calibration
+### Calibration
 
 Button placement is the point of a touch trainer, so every control — all 12 cameras, both lights,
 mask, monitor, vents and wind — can be dragged to move and resized by its corner handle.
@@ -103,7 +127,7 @@ it into `src/config.js` and rebuilds. Anywhere else, it hands you the JSON.
 The shipped camera map is traced from a screenshot of the real in-game map and sized to that
 image's aspect ratio, so the thumb path between 11 / 10 / 04 / 07 matches the game.
 
-## Sound
+### Sound
 
 Cues are synthesised — no audio files ship with this repo. Each control has its own pitch, so a
 correct cycle has a recognisable tune and a wrong one is audibly wrong. There is an optional
@@ -113,7 +137,7 @@ If you own FNaF 2 you can load sounds from your own copy into `Settings → Your
 stored in IndexedDB on your device, are never uploaded, and are not part of the page. **No game
 assets are distributed here.**
 
-## Running it
+### Running it
 
 The published copy is at **<https://ppvaz.github.io/fnaf2-1020/>** — served straight from
 `master`, because the source runs as ES modules with nothing to build. Being https it is a secure
@@ -144,6 +168,72 @@ A run insists on full screen: browser chrome appearing or disappearing resizes t
 every control is placed as a percentage of it, so the buttons you calibrated would move under your
 thumbs mid-run. If the request is refused or you leave full screen, a bar says so and the next touch
 on the stage asks again.
+
+## The model and its evidence
+
+The canonical mechanics source is the owned modern-Android event-sheet extraction.
+[Reading the source dump](docs/android/SOURCE-DUMP-GUIDE.md) explains what that extraction is,
+how it is organised, the XOR-28 handle scramble that makes it readable, and the
+`tools/dump/` commands used to source a rule from it — read it before citing a
+group number. Community PC reverse engineering is retained as attributed supporting research, not
+silently merged into Android rules. Constants are marked `[SOURCED]`, `[CALIBRATED]`,
+or `[INFERRED]` in `src/config.js`; the live implementation gaps are tracked in
+[Android source status](docs/android/ANDROID-SOURCE-STATUS.md). The
+[office endgame audit](docs/android/ANDROID-OFFICE-ENDGAME.md) pins the exported camera/mask
+states and the 45-frame defense / 300-frame resolution chain. The
+[PC confirmation ledger](docs/android/PC-DECOMP-CHECKLIST.md) is deferred and non-blocking.
+Post-chokepoint routing remains an approximation: it only runs once you have already
+broken the stun loop.
+
+The forensic comparison with Shooter25's embedded PC practice bot—and why
+Minus 7 stays time-driven while reactive policies need vision or direct game
+state—is in [Shooter25 practice mod](docs/in-engine/SHOOTER25-PRACTICE-MOD.md). Its extracted
+controller registers, actuator mapping, and state transitions are in the
+[Shooter25 bot state machine](docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md). The staged
+Android instrumentation proposal is in those notes and
+[Trainer-in-game](docs/in-engine/TRAINER-IN-GAME.md).
+
+## Strategy research
+
+The simulator exists to answer questions the game cannot be asked directly. Three
+searches run against the sourced model over a shared worker pool: `cyclesearch`
+hill-climbs timing variants around the shipped cycle (and produces the per-step
+windows the trainer grades against), `strategysearch` enumerates fixed
+camera-cover strategies over the sourced route graph, and `gatesearch` searches
+short policies that react to visible state.
+
+What they have established is mostly **negative**, and that is kept on purpose:
+
+- **Six-Seven** (CAM 06/07) was derived by the search and then refuted by the
+  extracted route graph — Withered Freddy transits rooms those cameras never see.
+  [`CAM-6-7-STRATEGY.md`](docs/strategy/CAM-6-7-STRATEGY.md)
+- **The Minus 3 family does not transfer to Android.** Minus Toys depends on a
+  glitch state the mobile build lacks, and the glitchless Minus Two probe scores
+  16/200. [`MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md)
+- **Every gate-aware policy family searched scores 0/150** once the 45-frame
+  defense fuse and 300-frame resolution chain are modeled — including two
+  apparent 150/150 results that were retracted as model errors.
+  [`GATE-SEARCH.md`](docs/strategy/GATE-SEARCH.md)
+- Searching the sourced graph **independently re-derived Minus 7** as the only
+  robust minimal three-camera cover.
+
+The full lineage, from 2014 reaction play to two independent zero-RNG proofs, is
+in [`STRATEGY-HISTORY.md`](docs/strategy/STRATEGY-HISTORY.md).
+
+## On-device validation
+
+An event sheet says what the code intends; only the phone says what it does.
+[`ON-DEVICE-VALIDATION.md`](docs/device/ON-DEVICE-VALIDATION.md) covers the adb
+harness — guarded, recorded, aborting on lost focus or wrong night state — and the
+video tools that grade a recorded trial for camera sweeps, mask intervals and
+music-box level.
+
+The unusual piece is
+[`screencheck`](docs/device/ON-DEVICE-SCREEN-CHECKS.md): a freestanding, static,
+libc-free AArch64 binary that runs nearest-template classification *on the phone*,
+so only a verdict crosses adb rather than a frame. Models are gated on
+leave-one-out separation and replayed through the real native classifier before
+anything is allowed to act on them.
 
 ## Tests
 
@@ -200,29 +290,15 @@ What they establish:
   267 ms wide on `monitor-up` to over 1.2 s on `wind`, and they are lopsided: the hall
   flash cannot go **50 ms early** and the mask cannot come off **50 ms late**.
 
-## Accuracy
+## Contributing
 
-The canonical mechanics source is the owned modern-Android event-sheet extraction.
-[Reading the source dump](SOURCE-DUMP-GUIDE.md) explains what that extraction is,
-how it is organised, the XOR-28 handle scramble that makes it readable, and the
-`tools/dump/` commands used to source a rule from it — read it before citing a
-group number. Community PC reverse engineering is retained as attributed supporting research, not
-silently merged into Android rules. Constants are marked `[SOURCED]`, `[CALIBRATED]`,
-or `[INFERRED]` in `src/config.js`; the live implementation gaps are tracked in
-[Android source status](ANDROID-SOURCE-STATUS.md). The
-[office endgame audit](ANDROID-OFFICE-ENDGAME.md) pins the exported camera/mask
-states and the 45-frame defense / 300-frame resolution chain. The
-[PC confirmation ledger](PC-DECOMP-CHECKLIST.md) is deferred and non-blocking.
-Post-chokepoint routing remains an approximation: it only runs once you have already
-broken the stun loop.
+See [CONTRIBUTING.md](CONTRIBUTING.md). One rule outranks the rest: **no game
+assets and no decompiled content, ever** — this repository publishes derived
+knowledge only.
 
-The forensic comparison with Shooter25's embedded PC practice bot—and why
-Minus 7 stays time-driven while reactive policies need vision or direct game
-state—is in [Shooter25 practice mod](SHOOTER25-PRACTICE-MOD.md). Its extracted
-controller registers, actuator mapping, and state transitions are in the
-[Shooter25 bot state machine](SHOOTER25-BOT-STATE-MACHINE.md). The staged
-Android instrumentation proposal is in those notes and
-[Trainer-in-game](TRAINER-IN-GAME.md).
+Findings that belong to somebody else's project are tracked for upstreaming in
+[CONTRIBUTIONS.md](CONTRIBUTIONS.md), including the Clickteam handle-scramble
+discovery, the CTFAK patches, and the PAIRIP anti-tamper finding.
 
 ## Licence
 
