@@ -1,0 +1,231 @@
+// Emit the device pilot's cycle recipes from the exact simulator, with their
+// budgets, as one artifact both the runner and its checks read.
+//
+// Why this exists: the cycle table used to live twice -- as JS here and as
+// hand-typed millisecond literals inside trial-minus7.sh -- with nothing
+// checking that they agreed and nothing tracking what a cycle spends. A hall
+// pulse transcribed as the simulator's 83 ms reached the phone three times and
+// `grade-minus7.py` found zero visible beams, because 83 ms is under the
+// contact length Fusion's per-frame touch poll reliably sees.
+//
+// Usage: node tools/device/recipe.mjs [--night=6] [--slot-ms=120] ... [--json]
+import { pathToFileURL } from 'node:url';
+import * as C from '../../src/config.js';
+import { Sim } from '../../src/engine.js';
+import { run } from '../hidpilottest.mjs';
+
+// The phone's proven floor for a contact Fusion cannot miss, and the shortest
+// camera spacing hid-sweep-probe.sh has landed 4/4. Both are device
+// measurements; see docs/device/HID-MULTITOUCH.md.
+export const MIN_CONTACT_MS = 100;
+export const DEVICE_SPACING_MS = 120;
+export const NIGHT_MS = 420_000;
+export const CYCLE_MS = 5_000;
+
+const ms = f => Math.round(f * 1000 / 60);
+
+// Which physical control a press means depends on the monitor: `light` is the
+// camera light with the cams up and the hallway light with them down.
+function controlFor(act, camsUp) {
+  if (act === 'light') return camsUp ? 'camlight' : 'hall';
+  if (act === 'ventL') return 'ventl';
+  if (act.startsWith('cam:')) return 'cam' + act.slice(4);
+  return act;
+}
+
+export function capture(opts) {
+  const log = [];
+  const patched = [];
+  for (const m of ['press', 'release']) {
+    const orig = Sim.prototype[m];
+    patched.push([m, orig]);
+    Sim.prototype[m] = function (act) {
+      const camsUp = this.camsUp;
+      const result = orig.call(this, act);
+      // Record the state the engine actually reached, never a toggle count.
+      // Monitor and mask are toggles at the button and states everywhere else,
+      // and every time a schedule has inferred the state by counting presses
+      // it has eventually counted wrong -- that is what `pilottest --sync`
+      // exists to repair. A recipe carries the state the engine reports.
+      log.push({ f: this.frame, kind: m, act, camsUp,
+                 monitor: this.monitor, maskOn: this.maskOn });
+      return result;
+    };
+  }
+  try {
+    run({ ...opts, sim: { seed: opts.seed ?? 7, night: opts.night ?? 6 } });
+  } finally {
+    for (const [m, orig] of patched) Sim.prototype[m] = orig;
+  }
+  return log;
+}
+
+// Pair each press with its release; a bare press is a tap the device must
+// still hold for MIN_CONTACT_MS.
+function events(log, from, to) {
+  const open = new Map();
+  const out = [];
+  for (const e of log) {
+    if (e.f < from || e.f >= to) continue;
+    if (e.kind === 'press') {
+      const rec = { at: ms(e.f - from), act: controlFor(e.act, e.camsUp),
+                    dur: MIN_CONTACT_MS, tap: true };
+      // MON_RAISING/MON_LOWERING are the animation; the intent is the endpoint.
+      rec.camsUp = e.camsUp;
+      if (e.act === 'monitor') rec.want = e.monitor === 'up' || e.monitor === 'raising' ? 'up' : 'down';
+      if (e.act === 'mask') rec.want = e.maskOn ? 'on' : 'off';
+      open.set(e.act, rec);
+      out.push(rec);
+    } else {
+      const rec = open.get(e.act);
+      if (!rec) continue;            // release of a press from the prior slice
+      rec.dur = ms(e.f - from) - rec.at;
+      rec.tap = false;
+      open.delete(e.act);
+    }
+  }
+  return out;
+}
+
+// A budget is what the cycle spends, not what it intends: light-on time is the
+// flashlight, wind time is the box, cams-down time is everything the schedule
+// cannot do while it is reading.
+export function budget(cycle, lengthMs) {
+  const lit = cycle.filter(e => e.act === 'camlight' || e.act === 'hall')
+    .reduce((sum, e) => sum + e.dur, 0);
+  const wind = cycle.filter(e => e.act === 'wind').reduce((sum, e) => sum + e.dur, 0);
+  const cams = cycle.filter(e => e.act.startsWith('cam') && e.act !== 'camlight');
+  const sweeps = [];
+  for (const e of cams) {
+    if (e.act === 'cam11') continue;
+    const last = sweeps[sweeps.length - 1];
+    if (last && e.at - last[last.length - 1].at <= 400) last.push(e);
+    else sweeps.push([e]);
+  }
+  const spacings = sweeps.flatMap(s => s.slice(1).map((e, i) => e.at - s[i].at));
+  // Nights 6-7 drain 120 box units/s and add 300/s while winding, so a cycle
+  // is net-neutral at 120/(300+120) of its length.
+  const windBreakEven = Math.round(lengthMs * 120 / 420);
+  return {
+    lengthMs,
+    litMs: lit,
+    windMs: wind,
+    windBreakEvenMs: windBreakEven,
+    windMarginMs: wind - windBreakEven,
+    sweepSpanMs: sweeps.length ? sweeps[0][sweeps[0].length - 1].at - sweeps[0][0].at : 0,
+    maxSpacingMs: spacings.length ? Math.max(...spacings) : 0,
+    minContactMs: Math.min(...cycle.map(e => e.dur)),
+  };
+}
+
+export function build(opts = {}) {
+  const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
+              sweepSlotMs: 120, maskMarginMs: 900, readLatencyMs: 550,
+              hallPulseMs: 130, pilotOffset: 10, ...opts };
+  const log = capture(o);
+  const epoch = o.pilotOffset;
+  const s = sec => epoch + Math.round(sec * 60);
+
+  // The attack is the only cycle with no monitor press for seconds after the
+  // prophylactic mask: the mask blocks every other control while it is held.
+  const masks = log.filter(e => e.kind === 'press' && e.act === 'mask').map(e => e.f);
+  const monitors = log.filter(e => e.kind === 'press' && e.act === 'monitor').map(e => e.f);
+  const attackMask = masks.find(f => !monitors.some(g => g > f && g < f + 180));
+  if (attackMask === undefined) throw new Error('no attack cycle in the sampled night');
+  const attackAnchor = monitors.filter(f => f < attackMask).pop();
+
+  const opening = events(log, epoch, s(7));
+  const clear = events(log, s(7) + 300, s(7) + 600);
+  const attack = events(log, attackAnchor, attackAnchor + 600);
+
+  const cycles = {
+    opening: { lengthMs: 7000, events: opening },
+    clear: { lengthMs: 5000, events: clear },
+    attack: { lengthMs: 10000, events: attack },
+  };
+  for (const [, c] of Object.entries(cycles)) c.budget = budget(c.events, c.lengthMs);
+
+  // A night is mostly clear cycles; price the flashlight against the sourced
+  // per-night budget rather than against a single cycle.
+  const clearCycles = Math.floor((NIGHT_MS - 7000) / CYCLE_MS);
+  const nightLitMs = cycles.opening.budget.litMs + clearCycles * cycles.clear.budget.litMs;
+  return {
+    options: o,
+    powerFramesAvailable: C.POWER_BY_NIGHT[o.night ?? 6],
+    powerFramesSpentIfAllClear: Math.round(nightLitMs * 60 / 1000),
+    minContactMs: MIN_CONTACT_MS,
+    deviceSpacingMs: DEVICE_SPACING_MS,
+    cycles,
+  };
+}
+
+// The same recipe as a trainer track. `src/config.js`'s CYCLE_SCRIPT is the
+// canonical Minus 7 cycle a human drills against; a device recipe is a
+// derivative of it, and rendering both in one shape is what makes the
+// differences reviewable instead of buried in two unrelated files.
+// `ventlight` is the one action canonical Minus 7 has no step for -- the BB
+// read is exactly what this variant adds -- so a trainer that wants to drill
+// this track has to grow that step type first.
+export function track(cycle) {
+  const steps = [];
+  for (const e of cycle.events) {
+    const at = +(e.at / 1000).toFixed(3);
+    if (e.act === 'camlight') {
+      const prev = steps[steps.length - 1];
+      if (prev && prev.action === 'cam') { prev.action = 'camflash'; prev.label += ' + light'; }
+      continue;
+    }
+    if (e.act === 'monitor') {
+      steps.push({ id: `monitor-${e.want}`, at,
+                   label: e.want === 'up' ? 'Cams up' : 'Cams down',
+                   action: 'monitor', want: e.want });
+    } else if (e.act === 'mask') {
+      steps.push({ id: `mask-${e.want}`, at, label: `Mask ${e.want}`,
+                   action: 'mask', want: e.want });
+    } else if (e.act === 'hall') {
+      steps.push({ id: 'flash-hall', at, label: 'Flash hall', action: 'light',
+                   want: 'tap', hold: +(e.dur / 1000).toFixed(3) });
+    } else if (e.act === 'ventl') {
+      steps.push({ id: 'vent-read', at, label: 'Left vent light + read',
+                   action: 'ventlight', want: 'tap', hold: +(e.dur / 1000).toFixed(3) });
+    } else if (e.act === 'wind') {
+      steps.push({ id: 'wind', at, label: 'Hold WIND', action: 'wind', want: 'on',
+                   hold: +(e.dur / 1000).toFixed(3) });
+    } else if (e.act.startsWith('cam')) {
+      const n = +e.act.slice(3);
+      steps.push({ id: `cam-${n}`, at, label: `CAM ${String(n).padStart(2, '0')}`,
+                   action: 'cam', cam: n });
+    }
+  }
+  return steps;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const arg = (name, def) => {
+    const v = (process.argv.find(a => a.startsWith(`--${name}=`)) || '').split('=')[1];
+    return v === undefined ? def : +v;
+  };
+  const recipe = build({
+    night: arg('night', 6), sweepSlotMs: arg('slot-ms', 120),
+    maskMarginMs: arg('mask-margin-ms', 900), readLatencyMs: arg('read-latency-ms', 550),
+    hallPulseMs: arg('hall-pulse-ms', 130), pilotOffset: arg('offset-frames', 10),
+  });
+  if (process.argv.includes('--track')) {
+    for (const [name, c] of Object.entries(recipe.cycles)) {
+      console.log(`// ${name}`);
+      for (const step of track(c)) console.log('  ' + JSON.stringify(step) + ',');
+    }
+  } else if (process.argv.includes('--json')) {
+    console.log(JSON.stringify(recipe, null, 2));
+  } else {
+    console.log(`power ${recipe.powerFramesSpentIfAllClear}/${recipe.powerFramesAvailable} frames if every cycle is a clear`);
+    for (const [name, c] of Object.entries(recipe.cycles)) {
+      const b = c.budget;
+      console.log(`\n${name}  ${b.lengthMs} ms` +
+        `  lit ${b.litMs} ms  wind ${b.windMs}/${b.windBreakEvenMs} ms (${b.windMarginMs >= 0 ? '+' : ''}${b.windMarginMs})` +
+        `  sweep span ${b.sweepSpanMs} ms  spacing ${b.maxSpacingMs} ms  shortest contact ${b.minContactMs} ms`);
+      for (const e of c.events)
+        console.log(`  +${String(e.at).padStart(6)} ms  ${e.act.padEnd(9)} ${e.dur} ms${e.tap ? ' (tap)' : ''}`);
+    }
+  }
+}

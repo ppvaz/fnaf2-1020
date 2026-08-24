@@ -27,7 +27,7 @@ class HidPilot {
                      bangFalseCount = 0, deviceSweep = false,
                      sweepSlotMs = 240, pulseLight = false,
                      secondBeat = false, maskMarginMs = null,
-                     readLatencyMs = 360 } = {}) {
+                     readLatencyMs = 360, hallPulseMs = 83 } = {}) {
     this.sim = sim;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
@@ -49,6 +49,11 @@ class HidPilot {
     // seen ~410-480 ms. Everything after the read -- the prophylactic mask and
     // so the whole five-tick window -- is pushed back by this.
     this.readLatency = s(readLatencyMs / 1000);
+    // The table's 83 ms hall pulse is a simulator duration. On the phone it is
+    // a bare contact, and Fusion polls touch per frame: a graded run scheduled
+    // ten of them and `grade-minus7.py` found *zero* visible beams. The device
+    // profile therefore pays for a contact above the proven 100-120 ms floor.
+    this.hallPulse = s(hallPulseMs / 1000);
     // The device sweep's second monitor-down beat is replaced by winding
     // unless this asks for the ideal route's shape back.
     this.secondBeat = secondBeat;
@@ -161,7 +166,7 @@ class HidPilot {
     this.tap(a, 'monitor');
     this.tap(a + s(0.40), 'mask');
     this.tap(a + s(0.70), 'mask');
-    this.hold(a + s(1.10), s(0.08), 'light');
+    this.hold(a + s(1.10), this.hallPulse, 'light');
     this.tap(a + s(1.30), 'monitor');
     this.flashTargets(a + s(1.60));
   }
@@ -196,7 +201,7 @@ class HidPilot {
     this.tap(a, 'monitor');
     this.tap(a + s(0.40), 'mask');
     this.tap(a + s(0.70), 'mask');
-    this.hold(a + s(1.10), s(0.08), 'light');
+    this.hold(a + s(1.10), this.hallPulse, 'light');
     this.tap(a + s(1.30), 'monitor');
     this.tap(a + s(1.62), 'cam:11');
     this.hold(a + s(1.74), sweepStart - 1 - (a + s(1.74)), 'wind');
@@ -258,7 +263,7 @@ class HidPilot {
     // cycle's real Foxy reset either way; skipping this one when it cannot
     // land takes the night's power floor from 716 frames to 1111.
     if (maskOff + C.MASK_ANIM_OFF <= a + s(1.28))
-      this.hold(a + s(1.28), s(0.08), 'light');
+      this.hold(a + s(1.28), this.hallPulse, 'light');
     this.tap(a + s(1.38), 'monitor');
     this.tap(a + s(1.62), 'cam:11');
     if (this.deviceSweep && !this.secondBeat) {
@@ -273,7 +278,7 @@ class HidPilot {
       // covers this cycle. Dropping the flick shortens the beat from 1.48 s
       // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
       this.tap(a + s(2.72), 'monitor');
-      this.hold(a + s(3.10), s(0.08), 'light');
+      this.hold(a + s(3.10), this.hallPulse, 'light');
       this.tap(a + s(3.22), 'monitor');
       this.tap(a + s(3.45), 'cam:11');
       this.hold(a + s(3.57), Math.max(1, only - 1 - (a + s(3.57))), 'wind');
@@ -285,7 +290,7 @@ class HidPilot {
     this.tap(a + s(2.72), 'monitor');
     this.tap(a + s(3.10), 'mask');
     this.tap(a + s(3.45), 'mask');
-    this.hold(a + s(3.73), s(0.08), 'light');
+    this.hold(a + s(3.73), this.hallPulse, 'light');
     this.tap(a + s(3.85), 'monitor');
     this.tap(a + s(4.08), 'cam:11');
     // The sweep must land on the anchor, not overrun it. With the phone's
@@ -322,7 +327,7 @@ class HidPilot {
     // The hall press is queued before the simultaneous monitor raise. It
     // therefore resets Foxy during the raise frame without spending another
     // 120 ms before the recovery sweep.
-    this.hold(off + s(0.25), s(0.08), 'light');
+    this.hold(off + s(0.25), this.hallPulse, 'light');
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
@@ -342,7 +347,7 @@ class HidPilot {
     const lateSweepStart = a + s(10) - this.sweepFrames;
     const off = a + s(6.02);
     this.tap(off, 'mask');
-    this.hold(off + s(0.25), s(0.08), 'light');
+    this.hold(off + s(0.25), this.hallPulse, 'light');
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
@@ -394,11 +399,11 @@ class HidPilot {
     this.tap(start + s(0.45), 'monitor');
     this.tap(start + s(0.85), 'mask');
     this.tap(start + s(1.08), 'mask');
-    this.hold(start + s(1.38), s(0.08), 'light');
+    this.hold(start + s(1.38), this.hallPulse, 'light');
     this.tap(start + s(1.50), 'mask');
 
     this.tap(start + s(5.95), 'mask');
-    this.hold(start + s(6.25), s(0.08), 'light');
+    this.hold(start + s(6.25), this.hallPulse, 'light');
     this.tap(start + s(6.38), 'monitor');
     const end = this.flashTargets(start + s(6.62));
     this.tap(end, 'cam:11');
@@ -570,7 +575,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
     '--assert', '--assert-rejected', '--pulse-light', '--second-beat']);
-  const valuedArgs = ['--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
+  const valuedArgs = ['--hall-pulse-ms=', '--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
     '--drop-bang=', '--false-bang=', '--night='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
@@ -585,6 +590,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const deviceSweep = cliArgs.includes('--device-sweep') || Boolean(sweepSlotArg);
   const sweepSlotMs = sweepSlotArg ? +sweepSlotArg : 240;
   const pulseLight = cliArgs.includes('--pulse-light');
+  const hallPulseArg = (cliArgs.find(v => v.startsWith('--hall-pulse-ms=')) || '').split('=')[1];
+  const hallPulseMs = hallPulseArg ? +hallPulseArg : 83;
   const readLatencyArg = (cliArgs.find(v => v.startsWith('--read-latency-ms=')) || '').split('=')[1];
   const readLatencyMs = readLatencyArg ? +readLatencyArg : 360;
   const maskMarginArg = (cliArgs.find(v => v.startsWith('--mask-margin-ms=')) || '').split('=')[1];
@@ -628,6 +635,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error('--sparse-left cannot be combined with a CAM-05 or no-BB mode');
   if (deviceSweep && bbMode !== 'left')
     throw new Error('--device-sweep requires a left-opening route');
+  if (!Number.isFinite(hallPulseMs) || hallPulseMs < 50 || hallPulseMs > 300)
+    throw new Error('--hall-pulse-ms must be between 50 and 300');
   if (!Number.isFinite(readLatencyMs) || readLatencyMs < 100 || readLatencyMs > 900)
     throw new Error('--read-latency-ms must be between 100 and 900');
   if (maskMarginMs !== null && (!Number.isFinite(maskMarginMs) || maskMarginMs < 0 || maskMarginMs > 1000))
@@ -650,7 +659,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       vocalCam5, dropVocal, vocalFalseCount, bangCam5, dropBang,
       bangFalseCount, cam5Hold, pilotOffset,
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
-      secondBeat, maskMarginMs, readLatencyMs,
+      secondBeat, maskMarginMs, readLatencyMs, hallPulseMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);

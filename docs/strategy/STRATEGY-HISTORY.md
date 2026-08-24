@@ -147,6 +147,43 @@ Methodological lesson, again sharper: a decompile is only as truthful as the
 loader you validate it against; the runtime that ships in the APK is the
 ground truth for how its own data is addressed.
 
+## Minus 7 Left-Read: the first deliberate deviation (2026-08-24)
+
+Everything above is about *which* strategy. This is the first entry about a
+strategy the project changed on purpose, and it is recorded here because it was
+briefly changed by accident instead — the device pilot drifted several steps
+away from Minus 7's cycle with no note anywhere saying so.
+
+**Minus 7 Left-Read** is a Night 6 derivative of Minus 7 for a bot on a stock
+Android phone. It keeps Minus 7's entire premise: the 4-7-10 flash loop, the
+five-tick mask, the box, and the hall pulse for W. Foxy. It differs in five
+places, each forced by something the phone measurably cannot do:
+
+| | canonical Minus 7 | Minus 7 Left-Read | forced by |
+|---|---|---|---|
+| Balloon Boy | heard and reacted to | a lit left-opening read every cycle | a bot has no ears; the vocal is 6-16 dB too quiet (plan 08) |
+| camera sweep | early, 0.80-1.20 s | **late, 4.67-4.90 s** | its stun has to bridge the five-tick mask, and the phone's sweep is longer |
+| camera light | held across the sweep | **pulsed per camera** | a held 790 ms sweep alone outspends night 6's 3000 flashlight frames |
+| hall flash | 0.42 s, one beat | **3.10 s, a second monitor-down beat** | the read owns the first beat |
+| wind | one 3.5 s hold | **two holds, 0.95 s + 1.08 s** | the two beats split it |
+
+It is not a claimed clear. Its gate is `hidpilot n6 target` in
+`tools/test.mjs --engine` (3000/3000 ordinary, 3000/3000 pinned-worst, no
+missed BB state), and its recipe, budgets and input-shape invariants are
+gated by `tools/device/test-recipe.mjs`. `node tools/device/recipe.mjs --track`
+renders it in the trainer's `CYCLE_SCRIPT` shape so the differences above can
+be read side by side rather than inferred from two unrelated files.
+
+The methodological lesson is a new one for this page, and it is about the
+*harness* rather than the strategy: a duration that is correct as simulator
+frames can be wrong as an Android contact. Minus 7's hall flash is five frames,
+83 ms; transcribed literally it is under the length Fusion's per-frame touch
+poll reliably sees, and a graded device run that scheduled ten of them produced
+**zero visible beams** while dying to the Foxy those flashes were meant to
+reset. Three device nights were spent before the recording was graded. The
+recipe now carries device contact lengths, and the gate refuses anything under
+100 ms.
+
 ## Sources
 
 Primary docs in this repo: `MINUS-7-STRATEGY.md`, `MINUS-3-STRATEGY.md`,

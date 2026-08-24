@@ -16,6 +16,8 @@ DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-1}"
 GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-fast-swipe}"
 HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
+NIGHT6_LEFT="${NIGHT6_LEFT:-0}"
+PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-167}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
 DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
@@ -107,6 +109,13 @@ esac
 case "$HID_LEFT_SURVIVAL" in
   0|1) ;;
   *) echo "HID_LEFT_SURVIVAL must be 0 or 1"; exit 2 ;;
+esac
+case "$NIGHT6_LEFT" in
+  0|1) ;;
+  *) echo "NIGHT6_LEFT must be 0 or 1"; exit 2 ;;
+esac
+case "$PILOT_OFFSET_MS" in
+  ''|*[!0-9]*) echo "PILOT_OFFSET_MS must be a non-negative integer"; exit 2 ;;
 esac
 case "$DEVICE_EPOCH_LATCH" in
   0|1) ;;
@@ -202,8 +211,9 @@ if [ -z "$BB_LEFT_MODEL" ] && [ -z "$BB_CAM05_MODEL" ]; then
   echo "         Night 6 checkpoint, and the left vent light costs no flashlight." >&2
 fi
 if [ -n "$BB_LEFT_MODEL" ]; then
-  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || [ "$HID_LEFT_SURVIVAL" -eq 1 ] || {
-    echo "BB_LEFT_MODEL requires BB_LEFT_CAPTURE_EVERY > 0 or HID_LEFT_SURVIVAL=1" >&2
+  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || [ "$HID_LEFT_SURVIVAL" -eq 1 ] ||
+    [ "$NIGHT6_LEFT" -eq 1 ] || {
+    echo "BB_LEFT_MODEL needs BB_LEFT_CAPTURE_EVERY > 0, HID_LEFT_SURVIVAL=1, or NIGHT6_LEFT=1" >&2
     exit 2
   }
   [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ] || {
@@ -212,6 +222,43 @@ if [ -n "$BB_LEFT_MODEL" ]; then
   }
   [ -f "$BB_LEFT_MODEL" ] || {
     echo "BB_LEFT_MODEL does not exist: $BB_LEFT_MODEL" >&2
+    exit 2
+  }
+fi
+if [ "$NIGHT6_LEFT" -eq 1 ]; then
+  # The contract this run reproduces is `hidpilot n6 target` in
+  # `tools/test.mjs --engine`. Every gate below is one of its explicit
+  # dependencies; without them the phone runs a policy nobody measured.
+  [ "$HID_LEFT_SURVIVAL" -eq 0 ] || {
+    echo "NIGHT6_LEFT and HID_LEFT_SURVIVAL are exclusive" >&2
+    exit 2
+  }
+  [ "$PRESS_MODE" = "hid-multi" ] || {
+    echo "NIGHT6_LEFT=1 requires PRESS_MODE=hid-multi" >&2
+    exit 2
+  }
+  [ -n "$BB_LEFT_MODEL" ] || {
+    echo "NIGHT6_LEFT=1 requires BB_LEFT_MODEL; the route is 0/3000 blind" >&2
+    exit 2
+  }
+  [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
+    echo "NIGHT6_LEFT=1 requires DEVICE_EPOCH_LATCH=1 for the scheduler phase" >&2
+    exit 2
+  }
+  [ "$DEBUG_OVERLAYS" -eq 0 ] || {
+    echo "NIGHT6_LEFT=1 requires DEBUG_OVERLAYS=0 for a clean classifier frame" >&2
+    exit 2
+  }
+  [ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ] || {
+    echo "NIGHT6_LEFT=1 classifies a stream; disable BB_LEFT_CAPTURE_EVERY" >&2
+    exit 2
+  }
+  [ "$NIGHT" = "6th" ] || {
+    echo "NIGHT6_LEFT=1 is a 6th Night policy" >&2
+    exit 2
+  }
+  { [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
+    echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
     exit 2
   }
 fi
@@ -524,6 +571,7 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
+  "$NIGHT6_LEFT" "$PILOT_OFFSET_MS" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
   "$BB_LEFT_CAPTURE_EVERY" "$BB_LEFT_CAPTURE_START" "$REMOTE_SAMPLE_DIR" \
@@ -542,6 +590,8 @@ CYCLES=$1; shift
 PRESS_MODE=$1; shift
 HID_LEFT_SURVIVAL=$1; shift
 HID_LEFT_DEBUG_RAW=$1; shift
+NIGHT6_LEFT=$1; shift
+PILOT_OFFSET_MS=$1; shift
 HID_MODE=0
 case "$PRESS_MODE" in
   hid|hid-multi) HID_MODE=1 ;;
@@ -611,6 +661,21 @@ hid_second_up() {
   # inactive record and emit ACTION_POINTER_UP while preserving ID 0.
   print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,3,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256)),4,$((rx2 % 256)),$((rx2 / 256)),$((ry2 % 256)),$((ry2 / 256))]}"
 }
+
+# The pulsed-light sweep needs the inverse of hid_two_down: contact 1 selects
+# the camera and contact 0 is pulsed afterwards. Both records are always
+# present so Linux consumes contact 1's release -- a report promising one
+# record leaves it latched down (trap 2 in docs/device/HID-MULTITOUCH.md).
+hid_cam_report() {
+  f0=$1; f1=$2; x=$3; y=$4
+  rx0=$(((1080 - CAM_LIGHT_Y) * 20 / 9)); ry0=$((CAM_LIGHT_X * 9 / 20))
+  rx1=$(((1080 - y) * 20 / 9)); ry1=$((x * 9 / 20))
+  print -p -- "{\"id\":92,\"command\":\"report\",\"report\":[1,2,$f0,$((rx0 % 256)),$((rx0 / 256)),$((ry0 % 256)),$((ry0 / 256)),$f1,$((rx1 % 256)),$((rx1 / 256)),$((ry1 % 256)),$((ry1 / 256))]}"
+}
+
+hid_cam_down()       { hid_cam_report 0 7 "$1" "$2"; }
+hid_cam_light_down() { hid_cam_report 3 7 "$1" "$2"; }
+hid_cam_light_up()   { hid_cam_report 0 4 "$1" "$2"; }
 
 hid_delay() {
   print -p -- "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
@@ -756,6 +821,14 @@ else
   done
   rm -f "$READYFILE" "$STARTFILE"
   T0=$(date +%s%3N)
+fi
+
+if [ "$NIGHT6_LEFT" -eq 1 ]; then
+  # T0 is the first office-HUD frame. The exact simulator's phase window for
+  # this route is 83-267 ms after the night's start, so the pilot's epoch is
+  # deliberately offset from the latch rather than equal to it.
+  T0=$((T0 + PILOT_OFFSET_MS))
+  printf 'pilot epoch = latch + %s ms\n' "$PILOT_OFFSET_MS"
 fi
 
 wait_until() {
@@ -935,8 +1008,152 @@ classify_left_and_queue_mask_at() {
   printf '%6d ms  classify-bb-left %s\n' "$actual" "$classification" >&2
 }
 
+pulsed_cam_at() {
+  offset=$1; x=$2; y=$3; label=$4
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (contact 1 select, contact 0 pulse)\n' "$actual" "$label"
+  # `stunCam` refreshes on every frame the light is on while that camera is
+  # selected, so contact 0 does not have to be held across the sweep: select
+  # first, then pulse. That is 90 ms of flashlight per camera instead of a
+  # 790 ms hold, which is the difference between fitting night 6's 3000-frame
+  # budget and outspending it. This 10/90 split at 100 ms contacts is the
+  # geometry hid-sweep-probe.sh proved at 120 ms spacing.
+  hid_cam_down "$x" "$y"
+  hid_delay 10
+  hid_cam_light_down "$x" "$y"
+  hid_delay 100
+  hid_cam_light_up "$x" "$y"
+}
+
+pulsed_sweep_at() {
+  sweep_start=$1; sweep_label=$2
+  # 120 ms feed starts, 340 ms span. Keep each call wall-timed: a burst of
+  # `delay` commands lets hid's Handler coalesce the intermediate reports.
+  pulsed_cam_at  "$sweep_start"          "$CAM10_X" "$CAM10_Y" "$sweep_label-cam-10"
+  pulsed_cam_at $((sweep_start + 120))   "$CAM04_X" "$CAM04_Y" "$sweep_label-cam-04"
+  pulsed_cam_at $((sweep_start + 240))   "$CAM07_X" "$CAM07_Y" "$sweep_label-cam-07"
+}
+
+hall_reset_and_raise_at() {
+  offset=$1; label=$2
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  printf '%6d ms  %s (hall pulse under the raise)\n' "$actual" "$label"
+  # The table presses the hall light and the monitor on the same frame. Doing
+  # them sequentially would push the raise 90 ms late and the following sweep
+  # inside MONITOR_ANIM_UP, so hold the light on contact 0 and tap the monitor
+  # on contact 1 -- the verified two-contact primitive.
+  hid_down "$HALL_X" "$HALL_Y"
+  hid_delay 10
+  hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+  hid_delay 120
+  hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+  hid_release
+}
+
+if [ "$NIGHT6_LEFT" -eq 1 ]; then
+  # Transcribed from the exact simulator, not re-derived here: the tables below
+  # are `hidpilottest --night=6 --device-sweep --pulse-light --sweep-slot-ms=120
+  # --mask-margin-ms=900 --read-latency-ms=480 --pilot-offset-ms=167`, which is
+  # 3000/3000 ordinary and 3000/3000 pinned-worst with no missed BB state.
+  press_at 0 "$MUTE_X" "$MUTE_Y" mute
+  # The epoch detector needs one more confirming capture after T0, so the
+  # opening's first press can already be due. Let the raise slip rather than
+  # firing the cam-11 select inside MONITOR_ANIM_UP; the wind still ends on
+  # the table's absolute deadline, which is what the sweep is anchored to.
+  now=$(( $(date +%s%3N) - T0 ))
+  mon=$((now + 20))
+  [ "$mon" -ge 183 ] || mon=183
+  [ "$mon" -le 1200 ] || { echo 'epoch latch left no room for the opening' >&2; exit 46; }
+  press_at "$mon" "$MONITOR_X" "$MONITOR_Y" monitor-up
+  press_at $((mon + 284)) "$CAM11_X" "$CAM11_Y" opening-cam-11
+  hold_at  $((mon + 334)) "$WIND_X" "$WIND_Y" $((6150 - mon - 334)) opening-wind
+  pulsed_sweep_at 6167 opening-sweep
+  press_at 6550 "$CAM11_X" "$CAM11_Y" opening-cam-11-back
+  hold_at  6633 "$WIND_X" "$WIND_Y" 117 opening-top-up
+
+  base=7000
+  cycle=0
+  unknowns=0
+  attacks=0
+  while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
+    press_at "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
+    light_down_at $((base + 367)) left-vent-light
+    # Start the capture 300 ms after light-down, not 100. screencap latches
+    # 163-348 ms after it starts on this phone, and the vent needs about
+    # 270 ms to be drawn: at +100 the earliest latch is 263 ms and catches an
+    # unlit opening, which the classifier reads as a confident `inside`
+    # because BB in the office is exactly what a dark opening looks like. At
+    # +300 the latch lands 463-648 ms after the light, inside the 700 ms the
+    # exact simulator still survives.
+    classify_left_and_queue_mask_at $((base + 667)) left-view
+
+    case "$classification" in
+      empty\ *) branch=clear ;;
+      bb\ *)    branch=attack ;;
+      *)
+        # A single unreadable frame fails closed, because an unseen BB costs
+        # the night. Failing closed on *every* cycle is the simulator's
+        # all-threat negative control and it dies, so a run that cannot see is
+        # not running this policy and should stop rather than pretend.
+        branch=attack
+        unknowns=$((unknowns + 1))
+        printf '%6d ms  left-view %s; failing closed\n' \
+          "$(( $(date +%s%3N) - T0 ))" "$classification"
+        [ "$unknowns" -le 6 ] || {
+          echo 'too many unclassified left reads; the BB branch is blind' >&2
+          exit 45
+        }
+        ;;
+    esac
+
+    if [ "$branch" = clear ]; then
+      # The table takes the mask off 33 ms after the classifier answers, not
+      # at a fixed offset: the later capture start moves the answer with it.
+      # Everything after this is anchored to `base` again, so the only hard
+      # requirement is landing before the monitor raise at +1383 -- which is
+      # also where the exact simulator stops surviving (a 700 ms latch).
+      now=$(( $(date +%s%3N) - T0 ))
+      [ "$now" -lt $((base + 1300)) ] || {
+        echo 'left classifier missed the empty deadline' >&2
+        exit 43
+      }
+      press_at $((now + 33)) "$MASK_X"    "$MASK_Y"    mask-off-empty
+      press_at $((base + 1383)) "$MONITOR_X" "$MONITOR_Y" monitor-up
+      press_at $((base + 1617)) "$CAM11_X"   "$CAM11_Y"   cam-11
+      hold_at  $((base + 1733)) "$WIND_X"    "$WIND_Y"    950 wind-a
+      press_at $((base + 2717)) "$MONITOR_X" "$MONITOR_Y" monitor-down-2
+      # 130 ms, not the table's 83. The simulator counts frames of light; the
+      # phone needs a contact Fusion's per-frame poll cannot miss, and a graded
+      # run that scheduled ten 83 ms pulses produced zero visible beams.
+      hold_at  $((base + 3100)) "$HALL_X"    "$HALL_Y"    130 reset-foxy
+      press_at $((base + 3217)) "$MONITOR_X" "$MONITOR_Y" monitor-up-2
+      press_at $((base + 3450)) "$CAM11_X"   "$CAM11_Y"   cam-11-2
+      hold_at  $((base + 3567)) "$WIND_X"    "$WIND_Y"    1083 wind-b
+      pulsed_sweep_at $((base + 4667)) late-sweep
+      base=$((base + 5000))
+    else
+      attacks=$((attacks + 1))
+      printf '%6d ms  left-view BB; holding the mask through five ticks\n' \
+        "$(( $(date +%s%3N) - T0 ))"
+      press_at $((base + 5917)) "$MASK_X"  "$MASK_Y" mask-off-after-bb
+      hall_reset_and_raise_at $((base + 6167)) reset-foxy-after-bb
+      pulsed_sweep_at $((base + 6383)) response-sweep
+      press_at $((base + 6750)) "$CAM11_X" "$CAM11_Y" cam-11-after-bb
+      hold_at  $((base + 6833)) "$WIND_X"  "$WIND_Y" 2817 wind-after-bb
+      pulsed_sweep_at $((base + 9667)) response-late-sweep
+      base=$((base + 10000))
+    fi
+    cycle=$((cycle + 1))
+  done
+  hid_release
+  printf 'night6-left finished: %d cycles, %d BB responses, %d unclassified\n' \
+    "$cycle" "$attacks" "$unknowns"
+  exit 0
+fi
 if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
-  # Bounded translation of the policy's pre-read cycles. The device-accepted
+  # Bounded translation of the policy\'s pre-read cycles. The device-accepted
   # 790 ms sweep invalidates the complete sparse policy in the exact model, so
   # validation caps this branch before the first possible BB observation.
   # DEVICE_EPOCH_LATCH still exercises the real scheduler-phase acquisition.

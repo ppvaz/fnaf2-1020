@@ -73,7 +73,10 @@ sleep 2
 adb pull "$REMOTE_VIDEO" "$LOCAL_VIDEO" >/dev/null
 adb shell "rm -f $REMOTE_VIDEO" >/dev/null || true
 echo
-"$HERE/camtrace.py" "$LOCAL_VIDEO"
+# screenrecord captures at the panel's 60 fps; camtrace's 30 fps / 100 ms
+# defaults cannot resolve a sweep this short and report its selections as
+# dropped. See docs/device/HID-MULTITOUCH.md.
+"$HERE/camtrace.py" --fps 60 --min-ms 50 "$LOCAL_VIDEO"
 echo
 echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
 echo "requested: ${SPACINGS[*]} ms"

@@ -95,6 +95,11 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
+  // The device pilot's cycle recipes and their budgets: contact lengths above
+  // the phone's floor, camera spacing it has actually landed, a hall flash per
+  // cycle, wind above break-even, the flashlight inside night 6's 3000 frames,
+  // and the monitor/mask polarity invariants.
+  ['recipe', ['device/test-recipe.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];
