@@ -236,6 +236,15 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
     C.BB_VOCAL_SAMPLES.join(',') === '21,24,23');
   ok('g607', 'arrival at 122 adds a sample the departure never has',
     C.BB_ARRIVAL_SAMPLE === 21 && C.BB_ARRIVAL_SAMPLE !== C.THUD_SAMPLE);
+  // g60 defaults channel 14 to 50; g414-416 play a route hop at 25; g906 plays
+  // at 60 when he is on the viewed camera. Level, not sample identity, is what
+  // separates those two meanings, and a 285 s device recording found no vocal
+  // above threshold precisely because the approach cue is the quiet one.
+  ok('g414-416', 'a route-hop vocal is played below the channel default',
+    C.BB_VOCAL_VOLUME === 25 && C.BB_VOCAL_VOLUME < C.BB_VOCAL_CHANNEL_DEFAULT);
+  ok('g906', 'a vocal on the viewed camera is played above it',
+    C.BB_VIEW_VOCAL_VOLUME === 60
+      && C.BB_VIEW_VOCAL_VOLUME > C.BB_VOCAL_CHANNEL_DEFAULT);
 }
 {
   // e8fcf2f / g96 / g301 / g303: BB inside the office is permanent and takes

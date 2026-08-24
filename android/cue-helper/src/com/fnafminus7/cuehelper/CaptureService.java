@@ -86,6 +86,10 @@ public final class CaptureService extends Service {
     private static final int CAL_MAX_PRE_SECONDS = 8;
     private static final int CAL_MAX_POST_SECONDS = 8;
     private static final String CAL_DIR = "calibration";
+    // A whole night is seven minutes. Buffering it in memory keeps every write
+    // off the audio thread, which matters more than the 15 MB: a stalled write
+    // would drop exactly the frames the run exists to collect.
+    private static final int LOG_MAX_SECONDS = 480;
     private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
 
     private final AtomicBoolean stopping = new AtomicBoolean(false);
@@ -126,6 +130,9 @@ public final class CaptureService extends Service {
     private final Object calLock = new Object();
     private volatile int audioSampleRate;
     private short[] calRing;
+    private short[] logBuffer;
+    private int logWrite;
+    private boolean logRunning;
     private int calRingWrite;
     private long calRingFrames;
     private int calRingRate;
@@ -677,12 +684,26 @@ public final class CaptureService extends Service {
                     calibrationEnabled = true;
                 } else if ("off".equals(field[2])) {
                     calibrationEnabled = false;
+                    synchronized (calLock) {
+                        logRunning = false;
+                    }
                 } else {
                     return "ERROR cal-usage";
                 }
                 publishControlStatus();
                 publishCombinedStatus("RUNNING");
                 return "OK cal=" + (calibrationEnabled ? "on" : "off");
+            case "LOG":
+                if (field.length != 3) {
+                    return "ERROR log-usage";
+                }
+                if ("start".equals(field[2])) {
+                    return startContinuousLog();
+                }
+                if ("stop".equals(field[2])) {
+                    return stopContinuousLog();
+                }
+                return "ERROR log-usage";
             case "REC":
                 if (field.length != 4) {
                     return "ERROR rec-usage";
@@ -706,8 +727,55 @@ public final class CaptureService extends Service {
                 calRingWrite = (calRingWrite + 1) % calRing.length;
             }
             calRingFrames += count;
+            if (logRunning && logBuffer != null) {
+                int room = Math.min(count, logBuffer.length - logWrite);
+                System.arraycopy(samples, 0, logBuffer, logWrite, room);
+                logWrite += room;
+                if (logWrite >= logBuffer.length) {
+                    // Full is a stop, not a wrap: a night that overran its
+                    // buffer must not silently overwrite its own beginning.
+                    logRunning = false;
+                }
+            }
             calLock.notifyAll();
         }
+    }
+
+    private String startContinuousLog() {
+        if (!calibrationEnabled) {
+            return "ERROR calibration-disabled";
+        }
+        synchronized (calLock) {
+            if (logRunning) {
+                return "ERROR log-already-running";
+            }
+            if (calRingRate <= 0) {
+                return "ERROR log-no-audio";
+            }
+            if (logBuffer == null || logBuffer.length != calRingRate * LOG_MAX_SECONDS) {
+                logBuffer = new short[calRingRate * LOG_MAX_SECONDS];
+            }
+            logWrite = 0;
+            logRunning = true;
+        }
+        return "OK log=started max=" + LOG_MAX_SECONDS;
+    }
+
+    private String stopContinuousLog() {
+        int rate;
+        short[] window;
+        synchronized (calLock) {
+            if (logBuffer == null || logWrite <= 0) {
+                logRunning = false;
+                return "ERROR log-empty";
+            }
+            rate = calRingRate;
+            window = new short[logWrite];
+            System.arraycopy(logBuffer, 0, window, 0, logWrite);
+            logRunning = false;
+            logWrite = 0;
+        }
+        return writeCalibrationWav(window, rate, 0, window.length / rate);
     }
 
     private String recordCalibrationWindow(String preText, String postText) {
@@ -947,6 +1015,7 @@ public final class CaptureService extends Service {
         tcpControlUp = false;
         localControlUp = false;
         calibrationEnabled = false;
+        logRunning = false;
         controlToken = null;
 
         audioRunning.set(false);

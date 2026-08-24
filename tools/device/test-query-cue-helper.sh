@@ -47,6 +47,21 @@ for transport in loopback forward; do
     echo "$transport record pulled no window" >&2; exit 1; }
 done
 
+# log: start then stop, pulling a night-length capture.
+out="$TEMP_DIR/cal-log"
+start="$(CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \
+  "$HERE/query-cue-helper.sh" log start)"
+case "$start" in
+  *"OK log=started"*) ;;
+  *) echo "unexpected log start: $start" >&2; exit 1 ;;
+esac
+stop="$(CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \
+  "$HERE/query-cue-helper.sh" log stop night6)"
+case "$stop" in
+  *"wrote $out/night6-cue-"*) ;;
+  *) echo "unexpected log stop: $stop" >&2; exit 1 ;;
+esac
+
 # A second record with the same label must not clobber the first window.
 out="$TEMP_DIR/cal-loopback"
 if CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \

@@ -305,6 +305,48 @@ range information — a detector cannot infer distance from loudness.
 in target-device PCM. Otherwise stop; microphone capture is suitable for
 post-run research, not this controller's timing loop.
 
+#### First collection run (2026-08-24): the cue is quiet by design
+
+`tools/device/collect-cue-audio.sh` and `query-cue-helper.sh log` now capture a
+whole night in one pass, and 285 seconds of real night audio were collected
+across mask-camp and pilot runs. The result is a clean negative with a source
+explanation.
+
+Best score over the whole recording, background-subtracted, against each
+reference:
+
+| Sample | Best | Background p99 | |
+| --- | ---: | ---: | --- |
+| 17 shared thud | **0.606** | 0.476 | positive control: every character's hop plays it |
+| 21 BB vocal | 0.486 | 0.367 | |
+| 23 BB vocal | 0.437 | 0.335 | |
+| 24 BB vocal | 0.347 | 0.249 | |
+
+The thud is found repeatedly during nights at 5-8 second spacings, which is the
+movement roll, so the capture and the detector both work. No BB vocal cleared
+threshold.
+
+The event sheet says why, and it is not bad luck. Channel 14's start-of-frame
+default is 50; g414-416 play every route hop at **25**; g906 plays at **60**
+when BB is on the camera you are currently watching. The cue the controller
+needs is deliberately the quiet one, at half the channel default, which is
+exactly where the injection sweep showed margins collapsing (0.033 at -6 dB).
+
+Two consequences.
+
+The gate is **not closed**, and the honest reading is that the approach vocal
+may not be recoverable from this phone's contaminated mix at the level the game
+plays it. That has to be settled with runs where BB demonstrably moves --
+which needs either a much longer night sample or Custom Night's higher AI, since
+night 6 starts him at AI 5 and only reaches 9 at 2 AM.
+
+The detector's own design is implicated. `tools/cue/features.py` removes each
+frame's mean to be level-invariant, which is right for robustness to capture
+gain and which discards the one quantity that separates a route hop from
+`your view`. A detector wanting both needs a separately calibrated level
+feature beside the shape score; that is now the first change to make, ahead of
+any more collection.
+
 ### 2. Build and evaluate the offline detector
 
 - Split calibration and holdout by complete run/session, never by adjacent

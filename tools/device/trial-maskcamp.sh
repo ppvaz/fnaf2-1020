@@ -80,7 +80,15 @@ adb shell am force-stop com.scottgames.fnaf2
 sleep 1
 adb shell am start -n com.scottgames.fnaf2/.Main >/dev/null
 sleep 7
-FOCUS=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
+# dumpsys prints more than one mCurrentFocus line and the first is often `null`
+# during the cold-start transition, so match the package rather than the first
+# line. Taking -m1 aborted runs where the game was correctly focused.
+for _attempt in $(seq 1 20); do
+  FOCUS=$(adb shell dumpsys window 2>/dev/null |
+    grep -m1 'mCurrentFocus=.*com\.scottgames\.fnaf2' || true)
+  [ -n "$FOCUS" ] && break
+  sleep 1
+done
 case "$FOCUS" in
   *com.scottgames.fnaf2*) ;;
   *) echo "abort: game is not focused ($FOCUS)"; exit 1 ;;

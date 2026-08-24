@@ -4,6 +4,8 @@
 #   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
 #   query-cue-helper.sh record PRE POST [label]   pull one calibration window
 #   query-cue-helper.sh latency [count]           time device-local snapshot reads
+#   query-cue-helper.sh log start                 begin a night-length capture
+#   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -29,6 +31,7 @@ case "${1:-}" in
   loopback|forward) TRANSPORT="$1" ;;
   record) VERB=record; shift ;;
   latency) VERB=latency; shift ;;
+  log) VERB=log; shift ;;
   '') ;;
   *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
 esac
@@ -46,6 +49,15 @@ if [ "$VERB" = latency ]; then
   fi
 fi
 
+if [ "$VERB" = log ]; then
+  LOG_ACTION="${1:?log needs start or stop}"
+  case "$LOG_ACTION" in
+    start|stop) ;;
+    *) echo "log takes start or stop" >&2; exit 2 ;;
+  esac
+  LABEL="${2:-night}"
+fi
+
 if [ "$VERB" = record ]; then
   PRE="${1:?record needs PRE seconds}"
   POST="${2:?record needs POST seconds}"
@@ -61,11 +73,18 @@ case "$pid" in
   ''|*[!0-9]*) echo "cue helper is not running" >&2; exit 1 ;;
 esac
 
-if ! adb shell dumpsys window 2>/dev/null | \
-    awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
-  echo "FNaF is not the focused physical-display window" >&2
-  exit 1
-fi
+# The focus guard exists so that a reading is *about the game*. Retrieving or
+# starting a recording is not a reading, and requiring focus there strands a
+# capture whenever a run ends with the game no longer in front.
+case "$VERB" in
+  snapshot|record)
+    if ! adb shell dumpsys window 2>/dev/null | \
+        awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
+      echo "FNaF is not the focused physical-display window" >&2
+      exit 1
+    fi
+    ;;
+esac
 
 control="$(adb logcat -d --pid="$pid" -v brief -s FnafCueHelper:I '*:S' 2>/dev/null | \
   tr -d '\r' | awk '/control=(READY|DEGRADED)/ { line=$0 } END { print line }')"
@@ -201,6 +220,48 @@ if groups["read"] and groups["base"]:
     net = pct(groups["read"], 0.50) - pct(groups["base"], 0.50)
     print("socket cost at p50: %.2f ms" % (net / 1000.0))
 '
+  exit 0
+fi
+
+if [ "$VERB" = log ]; then
+  if [ "$LOG_ACTION" = start ]; then
+    on="$(exchange "CAL $token on")"
+    case "$on" in
+      'OK cal=on') ;;
+      *) echo "could not enable calibration capture: $on" >&2; exit 1 ;;
+    esac
+    started="$(exchange "LOG $token start")"
+    printf '%s\n' "$started"
+    case "$started" in
+      'OK log=started'*) ;;
+      *) exchange "CAL $token off" >/dev/null 2>&1 || true; exit 1 ;;
+    esac
+    echo "capturing; stop with: tools/device/query-cue-helper.sh log stop [label]"
+    exit 0
+  fi
+
+  response="$(exchange "LOG $token stop")"
+  printf '%s\n' "$response"
+  exchange "CAL $token off" >/dev/null 2>&1 || true
+  case "$response" in
+    'OK rec='*) ;;
+    *) echo "continuous capture failed" >&2; exit 1 ;;
+  esac
+  name="$(printf '%s\n' "$response" | sed -n 's/.*rec=\([^ ]*\).*/\1/p')"
+  mkdir -p "$OUT_DIR"
+  target="$OUT_DIR/${LABEL}-${name}"
+  if [ -e "$target" ]; then
+    echo "refusing to overwrite $target" >&2
+    exit 1
+  fi
+  adb exec-out run-as "$PACKAGE" cat "files/calibration/$name" > "$target"
+  adb shell run-as "$PACKAGE" rm -f "files/calibration/$name" >/dev/null 2>&1 || true
+  bytes="$(wc -c < "$target" | tr -d ' ')"
+  if [ "$bytes" -lt 45 ]; then
+    echo "pulled capture is empty ($bytes bytes)" >&2
+    exit 1
+  fi
+  echo "wrote $target ($bytes bytes)"
   exit 0
 fi
 

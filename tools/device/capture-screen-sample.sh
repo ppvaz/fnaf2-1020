@@ -47,7 +47,8 @@ mkdir -p "$(dirname "$OUTPUT")"
 [ ! -e "$OUTPUT" ] || { echo "refusing to overwrite $OUTPUT" >&2; exit 2; }
 . "$HERE/select-adb.sh"
 adb get-state >/dev/null
-FOCUS=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
+FOCUS=$(adb shell dumpsys window 2>/dev/null |
+  grep -m1 'mCurrentFocus=.*com\.scottgames\.fnaf2' || true)
 case "$FOCUS" in
   *com.scottgames.fnaf2*) ;;
   *) echo "abort: game is not focused ($FOCUS)" >&2; exit 1 ;;

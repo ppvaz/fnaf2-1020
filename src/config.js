@@ -166,6 +166,13 @@ export const BB_VOCAL_SAMPLES = [21, 24, 23];
 // g607 adds this on arrival at marker 122, so reaching the opening is a pair
 // (thud + 21) rather than a bare thud. Sample 21 is also one of the vocals.
 export const BB_ARRIVAL_SAMPLE = 21;
+// Channel 14 volume. The same three samples mean two different things and the
+// level is what separates them: g60 defaults the channel to 50, g414-416 play
+// a route hop at 25, and g906 plays at 60 when he is on the camera you are
+// watching. A detector that normalises level away cannot tell them apart.
+export const BB_VOCAL_VOLUME = 25;
+export const BB_VIEW_VOCAL_VOLUME = 60;
+export const BB_VOCAL_CHANNEL_DEFAULT = 50;
 
 // Golden Freddy — office [SOURCED: g336 spawn, g776 mask clear, g777 kill on
 // a monitor raise, g778 kill on a hall flash]. g336 rolls `Random(20) <

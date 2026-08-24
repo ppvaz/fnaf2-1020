@@ -393,9 +393,41 @@ other characters can produce a byte-identical sound.
 Two corrections to the 2026-08-20 entry above. g416 writes *both* registers, so
 the third counted laugh arrives with a thud under it, and arrival at the
 opening is a **pair** — thud 17 from g417 plus sample 21 from g607 — not a
-single sound. Every vocal hop sets channel 14 to the same volume 25, so
-amplitude does **not** encode distance; a detector cannot read range off the
-vocal.
+single sound.
+
+### Loudness is state, and it is why the vocals are hard to hear
+
+Every vocal hop sets channel 14 to volume 25, so amplitude cannot separate hop 2
+from hop 3 from hop 4. It does something more useful. The channel's start-of-
+frame default is **50** (g60), the hops drop it to **25**, and one group raises
+it to **60**:
+
+| Group | Condition | Channel 14 volume |
+| --- | --- | ---: |
+| 60 | start of frame | 50 |
+| 414-416 | BB hops 2-4 along the route | **25** |
+| 906 | BB at marker 126 `your view`, monitor up, every 5 s, `Random(20)=1` | **60** |
+
+g906 is worth its own line: when Balloon Boy is on **the camera you are
+currently watching**, he has a 5%-per-second chance of vocalising, and the game
+plays it at more than twice the volume of an approach hop. So the same three
+samples carry two different meanings, and level is what separates them —
+quiet means "he moved somewhere on his route", loud means "he is on the feed in
+front of you".
+
+That has a direct cost. Approach vocals — the ones a controller actually needs
+— are played at **half the channel default**, which is why a 285-second
+device recording over several pilot runs produced no vocal detection above
+threshold while the shared thud (played by every character's hop) reached 0.606.
+Best scores over that recording: sample 17 **0.606**, sample 21 0.486, sample 23
+0.437, sample 24 0.347, against per-sample p99 background of 0.476/0.367/0.335/
+0.249. The cue is quiet by design, not missing by accident.
+
+It also indicts the detector's own design. `tools/cue/features.py` removes each
+frame's mean precisely to be level-invariant, which is right for robustness to
+capture gain — and which throws away exactly the quantity that separates
+`your view` from a route hop. A detector that wants both must carry a separately
+calibrated level feature beside the shape score.
 
 ### Uniqueness verdict
 

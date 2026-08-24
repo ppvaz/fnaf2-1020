@@ -24,6 +24,11 @@ def answer(request):
         return SNAPSHOT
     if field[0] == "CAL" and len(field) == 3:
         return "OK cal=" + field[2]
+    if field[0] == "LOG" and len(field) == 3:
+        if field[2] == "start":
+            return "OK log=started max=480"
+        return ("OK rec=cue-1700000000001-p0-q7.wav frames=112000 rate=16000 "
+                "bytes=224044")
     if field[0] == "REC":
         return "OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044"
     return "ERROR unknown-verb"

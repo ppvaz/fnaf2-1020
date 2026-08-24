@@ -6,6 +6,7 @@ a score margin rather than a bare threshold, and `UNKNOWN` for any window the
 front end cannot vouch for. It reports onsets; it does not decide anything.
 
   tools/cue/detect.py captures/cue-helper/calibration/*.wav
+  tools/cue/detect.py --scan --subtract night.wav      # onsets over a long file
   tools/cue/detect.py --refs /private/tmp/fnaf2-cue-refs window.wav
 
 A match is the mean per-frame cosine similarity between a reference's
@@ -69,6 +70,94 @@ def _cosine(a, b):
     return dot / ((na ** 0.5) * (nb ** 0.5))
 
 
+def score_curve(window_frames, template):
+    """Mean-cosine score at every alignment."""
+    span = len(window_frames) - len(template) + 1
+    if span <= 0:
+        return []
+    out = [0.0] * span
+    for offset in range(span):
+        total = 0.0
+        for i, row in enumerate(template):
+            total += _cosine(window_frames[offset + i], row)
+        out[offset] = total / len(template)
+    return out
+
+
+def clipped_frames(samples, frame=None, hop=None):
+    """Frame indices whose source samples contain a clipped sample.
+
+    A long collection recording is not one observation, so a clipped burst
+    should cost the frames it touches rather than the whole file. The game's
+    internal mix sums hot enough to reach full scale, and per
+    ANDROID-AUDIO-CAPTURE.md the capture level does not follow device volume,
+    so this cannot be turned down -- only excluded.
+    """
+    frame = frame or features.FRAME
+    hop = hop or features.HOP
+    bad = set()
+    span = range(0, max(0, len(samples) - frame + 1), hop)
+    for index, start in enumerate(span):
+        for i in range(start, start + frame):
+            if abs(samples[i]) >= CLIP_LEVEL:
+                bad.add(index)
+                break
+    return bad
+
+
+def peaks(curve, threshold, min_gap_frames, excluded=(), prominence=0.05):
+    """Prominent local maxima above `threshold`.
+
+    Thresholding alone is not enough. A broad region of mediocre agreement sits
+    above any useful threshold for many consecutive alignments, and picking the
+    best point every `min_gap_frames` chops that plateau into evenly spaced
+    "events" with near-identical scores -- which is exactly what a first pass
+    over a real recording produced. A cue is a *peak*: strictly the maximum of
+    its neighbourhood, and standing clear of the surrounding baseline.
+    """
+    chosen = []
+    span = len(curve)
+    for index in range(span):
+        value = curve[index]
+        if value < threshold:
+            continue
+        low = max(0, index - min_gap_frames)
+        high = min(span, index + min_gap_frames + 1)
+        window = curve[low:high]
+        if value < max(window):
+            continue
+        # Ties inside a plateau: keep only the first.
+        if index > low and curve[index - 1] == value:
+            continue
+        if value - min(window) < prominence:
+            continue
+        if any(low <= bad < high for bad in excluded):
+            continue
+        chosen.append(index)
+    return chosen
+
+
+def background_profile(frames):
+    """Per-band median across time: the stationary part of the recording."""
+    if not frames:
+        return []
+    bands = len(frames[0])
+    out = []
+    for b in range(bands):
+        column = sorted(f[b] for f in frames)
+        out.append(column[len(column) // 2])
+    return out
+
+
+def subtract(frames, profile):
+    out = []
+    for frame in frames:
+        row = [v - p for v, p in zip(frame, profile)]
+        mean = sum(row) / len(row)
+        out.append([v - mean for v in row])
+    return out
+
+
 def best_alignment(window_frames, template):
     """Best mean-cosine score and its onset frame, over all alignments."""
     span = len(window_frames) - len(template) + 1
@@ -124,12 +213,54 @@ def main():
     parser.add_argument("windows", nargs="+")
     parser.add_argument("--refs", default=DEFAULT_REFS)
     parser.add_argument("--top", type=int, default=4)
+    parser.add_argument("--scan", action="store_true",
+                        help="report every onset over time, not one best match")
+    parser.add_argument("--subtract", action="store_true",
+                        help="remove the per-run background profile first")
+    parser.add_argument("--threshold", type=float, default=0.45)
+    parser.add_argument("--prominence", type=float, default=0.05,
+                        help="how far a peak must stand above its neighbourhood")
+    parser.add_argument("--only", type=int, nargs="+",
+                        help="restrict to these sample handles")
     opts = parser.parse_args()
 
     refs = load_references(opts.refs)
     if not refs:
         sys.exit("no reference samples in %s -- run tools/dump/extract-samples.sh"
                  % opts.refs)
+
+    if opts.only:
+        refs = {h: v for h, v in refs.items() if h in opts.only}
+
+    if opts.scan:
+        for target in opts.windows:
+            samples = features.load_window(target)
+            if not samples or features.rms(samples) < SILENCE_RMS:
+                print("%s  UNKNOWN (empty or silent)" % pathlib.Path(target).name)
+                continue
+            frames = features.band_frames(samples)
+            excluded = clipped_frames(samples)
+            if opts.subtract:
+                frames = subtract(frames, background_profile(frames))
+            print("%s  %.1fs  threshold %.2f%s  clipped frames %d/%d (%.1f%%)"
+                  % (pathlib.Path(target).name,
+                     len(samples) / float(features.RATE), opts.threshold,
+                     "  background-subtracted" if opts.subtract else "",
+                     len(excluded), len(frames),
+                     100.0 * len(excluded) / max(1, len(frames))))
+            hits = []
+            for handle, template in sorted(refs.items()):
+                curve = score_curve(frames, template)
+                gap = max(1, len(template))
+                for index in peaks(curve, opts.threshold, gap, excluded,
+                                   opts.prominence):
+                    hits.append((index * features.HOP / float(features.RATE),
+                                 handle, curve[index]))
+            for when, handle, score in sorted(hits):
+                print("    %7.2fs  sample %-3d score %.3f" % (when, handle, score))
+            if not hits:
+                print("    (nothing above threshold)")
+        return
 
     for target in opts.windows:
         result = analyse(target, refs)
