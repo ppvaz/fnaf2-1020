@@ -48,11 +48,55 @@ adb logcat -s FnafCueHelper:I '*:S'
 A healthy line contains both observations:
 
 ```text
-RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... audio=OBSERVED rate=... rms=... peak=... ageUs=...
+RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=OBSERVED rate=... rms=... peak=... ageUs=...
 ```
+
+On API 34+, the helper also consumes `onCapturedContentResize()` and
+`onCapturedContentVisibilityChanged()`. Content the callback reports as hidden,
+not yet sized, stale, or aspect-mismatched is `visual=UNKNOWN`; its sampled
+pixel is never reported as a usable observation. API 29–33 can still prove
+playback capture, but the visual probe remains `UNKNOWN` because those content
+invariants are not available. Game focus remains a separate invariant enforced
+by the device harness and soak command.
+
+`content=` and `visible=` are `[CALIBRATED]` on the API-36 Moto g56
+(2026-08-24). The platform documents both callbacks only by example, for a
+captured *task*, and the helper consents through
+`MediaProjectionConfig.createConfigForDefaultDisplay()` — a whole-display
+session. That session does emit both, immediately after capture begins:
+
+```text
+captured content resized: 1080x2400
+captured content visible=true
+```
+
+The aspect gate then earns its keep straight away. With the phone in portrait
+the same run reports `visual=UNKNOWN reason=aspect-mismatch content=1080x2400
+visible=1`, because sampling pixel (3,6) of a portrait frame letterboxed into
+the 20x9 surface would be meaningless. It flips to `visual=OBSERVED
+content=2400x1080` the moment FNaF takes the display in landscape. A capture
+that never reported geometry would show `reason=visibility-pending` in the
+first second, not 40 minutes into a soak.
 
 This is measurement plumbing, not a promoted controller. Preserve the existing
 screencheck/HID path until independent holdouts and a full-night soak pass.
+
+## Consent without a tap
+
+`MediaProjection` consent normally needs a human tap, which makes repeatable
+soak runs awkward. On this dev phone the app op short-circuits the dialog:
+
+```sh
+adb shell appops set com.fnafminus7.cuehelper PROJECT_MEDIA allow
+adb shell appops set com.fnafminus7.cuehelper PROJECT_MEDIA default   # undo
+```
+
+Leave it on `default` unless a harness run needs it. It removes the screen
+capture prompt for this app only.
+
+One harness note: `uiautomator dump` returned a stale layout for this
+activity's buttons once the status text grew, and presses landed on nothing.
+`adb exec-out screencap -p` is the reliable way to locate them.
 
 ## First target-device result (2026-08-24)
 
@@ -81,3 +125,18 @@ was formatting a new visual status string on every 60 fps frame despite logging
 only periodically. The implementation now formats only once per second and
 reduces status/log cadence, but this optimized build has not yet repeated the
 40-minute soak. Do not call memory stability proven until it does.
+
+With capture already running and FNaF visible in calibrated landscape, the
+repeatable gate is:
+
+```sh
+tools/device/soak-cue-helper.sh
+```
+
+It takes 41 one-minute samples (40 minutes endpoint-to-endpoint) into ignored
+`captures/cue-helper/`, fails on a helper restart, lost game focus, stalled
+visual/audio stream, stale status, or fail-closed visual status, and records
+PSS, RSS, thread count, frame ages, captured-content geometry/visibility, and
+thermal status. It does not launch, focus, or press the game. Use shorter
+explicit sample/interval arguments only for plumbing checks; they do not close
+the long-soak gate.

@@ -57,6 +57,7 @@ public final class CaptureService extends Service {
     private static final int VISUAL_HEIGHT = 9;
     private static final int VISUAL_X = 3;
     private static final int VISUAL_Y = 6;
+    private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
     private static final long AUDIO_REPORT_INTERVAL_MS = 1_000L;
 
@@ -74,6 +75,11 @@ public final class CaptureService extends Service {
 
     private long visualSequence;
     private long lastVisualReportNs;
+    private volatile int capturedContentWidth;
+    private volatile int capturedContentHeight;
+    // -1 is unknown, 0 is hidden, 1 is visible. The API-36 target must not
+    // turn a letterboxed or hidden capture into a confident pixel reading.
+    private volatile int capturedContentVisibility = -1;
     private volatile String lastVisual = "visual=UNAVAILABLE";
     private volatile String lastAudio = "audio=UNAVAILABLE";
 
@@ -124,6 +130,19 @@ public final class CaptureService extends Service {
             MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
             projection = manager.getMediaProjection(resultCode, resultData);
             projectionCallback = new MediaProjection.Callback() {
+                @Override
+                public void onCapturedContentResize(int width, int height) {
+                    capturedContentWidth = width;
+                    capturedContentHeight = height;
+                    Log.i(TAG, "captured content resized: " + width + "x" + height);
+                }
+
+                @Override
+                public void onCapturedContentVisibilityChanged(boolean isVisible) {
+                    capturedContentVisibility = isVisible ? 1 : 0;
+                    Log.i(TAG, "captured content visible=" + isVisible);
+                }
+
                 @Override
                 public void onStop() {
                     Log.w(TAG, "projection callback: stopped");
@@ -242,9 +261,25 @@ public final class CaptureService extends Service {
                 // Keep the 60 fps hot path allocation-free. Formatting every
                 // frame made the first long-running probe accumulate avoidable
                 // heap/RSS pressure even though Image buffers were closed.
-                lastVisual = String.format(Locale.US,
-                        "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d ageUs=%d",
-                        visualSequence, red, green, blue, luma, ageUs);
+                String content = String.format(Locale.US, "%dx%d visible=%d",
+                        capturedContentWidth,
+                        capturedContentHeight,
+                        capturedContentVisibility);
+                String invalidReason = ageUs < 0
+                        ? "timestamp-invalid"
+                        : ageUs > MAX_VISUAL_FRAME_AGE_US
+                                ? "frame-stale"
+                                : capturedContentInvalidReason();
+                if (invalidReason == null) {
+                    lastVisual = String.format(Locale.US,
+                            "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
+                                    + "ageUs=%d content=%s",
+                            visualSequence, red, green, blue, luma, ageUs, content);
+                } else {
+                    lastVisual = String.format(Locale.US,
+                            "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%s",
+                            visualSequence, invalidReason, ageUs, content);
+                }
                 publishCombinedStatus("RUNNING");
             }
         } catch (Throwable error) {
@@ -256,6 +291,31 @@ public final class CaptureService extends Service {
                 image.close();
             }
         }
+    }
+
+    private String capturedContentInvalidReason() {
+        if (Build.VERSION.SDK_INT < 34) {
+            return "content-invariants-unavailable";
+        }
+        if (capturedContentVisibility != 1) {
+            return capturedContentVisibility == 0 ? "content-hidden" : "visibility-pending";
+        }
+        int width = capturedContentWidth;
+        int height = capturedContentHeight;
+        if (width <= 0 || height <= 0) {
+            return "size-pending";
+        }
+        // The fixed 20x9 sensor maps to the calibrated 2400x1080 landscape
+        // display. Permit 2% aspect drift for compositor rounding, but reject
+        // portrait, split-screen, or another capture region before sampling is
+        // ever allowed to influence a controller.
+        long scaledWidth = (long) width * VISUAL_HEIGHT;
+        long scaledHeight = (long) height * VISUAL_WIDTH;
+        long error = Math.abs(scaledWidth - scaledHeight);
+        if (error * 50L > Math.max(scaledWidth, scaledHeight)) {
+            return "aspect-mismatch";
+        }
+        return null;
     }
 
     private void startAudioCapture() throws PackageManager.NameNotFoundException {
@@ -458,6 +518,9 @@ public final class CaptureService extends Service {
             }
         }
         projectionCallback = null;
+        capturedContentWidth = 0;
+        capturedContentHeight = 0;
+        capturedContentVisibility = -1;
 
         lastVisual = "visual=UNAVAILABLE(" + reason + ")";
         lastAudio = "audio=UNAVAILABLE(" + reason + ")";
