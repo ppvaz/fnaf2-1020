@@ -31,10 +31,63 @@ The optional per-step instrumentation is now implemented:
   not evidence about Pedro: replace the weights with per-step `Coach.results`
   timing before using it to rank a routine for a person.
 
-**Recommendation: keep the shipped script.** No current evidence supports the
-old candidate over it, and the only human-executable difference was the camera
-order. Rerun the candidate search only after measured player timing supplies the
-profile; do not optimize harder against another invented distribution.
+### The searches were re-run on the current engine (2026-08-23)
+
+**First, the error model itself was the confound.** The legacy `--jitter` path
+draws a fresh offset for *every row*, so a light's press and its release move
+independently and every flash comes out a random length. Flash duration drives
+the stall and the power budget, so that is not a model of a late player. Holding
+press and release together and changing nothing else (`--profile=flat`, all
+weights 1) moves the **shipped** cycle from 0% at 150 ms to **100% at 200 ms**.
+Most of the published difficulty curve was the model corrupting flash lengths,
+not the strategy being tight. Treat every legacy jitter number, including the
+one in the README, as an upper bound on difficulty.
+
+**Both searches found real variants, and they disagree.** Neither changes the
+camera order; all six orders still tie, as they did in 2026-08-19.
+
+| | knob change from shipped | fitness |
+|---|---|---|
+| uniform-best | `hallDelay` 3->4, `hallHold` 2->5, `flashHold` 2->3 | maxJ 4 -> 7 frames (117 ms) |
+| profile-best | `maskDelay` 18->20, `hallDelay` 3->10, `hallHold` 2->6 | maxJ 7 -> 13 frames (217 ms) |
+
+**Cross-validated against all three error models**, 200 seeds each
+(`cyclesearch --curve --knobs=... [--profile=...]`):
+
+| cycle | legacy row jitter | flat, grouped | human, grouped | min power left | min box |
+|---|---|---|---|---:|---:|
+| shipped | 45% @120, 0% @150 | 100% @200, 10% @250 | 13% @150, 1% @200 | 57% | 21% |
+| uniform-best | 100% @120, 66% @150 | 100% @250, 22% @300 | 100% @150, 14% @200 | 43% | 10% |
+| profile-best | 56% @120, 0% @150 | 100% @300 | 100% @200, 86% @300 | 47% | **1%** |
+
+**Recommendation: `uniform-best` is the only defensible candidate, and shipping
+it is Pedro's call.** It is the one variant that beats the shipped cycle under
+*every* error model, including the one with no inferred parameters. `profile-best`
+scores higher wherever press and release are grouped, but it is worse than the
+shipped cycle under the legacy model and it buys its slack with the music box:
+1% margin on the worst clean seed, against 21% shipped. Box margin is measured
+without any assumed human distribution, which makes it the one cost in this table
+that is not a modelling choice.
+
+What `uniform-best` actually asks of a player is teachable, which the 2026-08-19
+winner was not: hold the hall flash **83 ms instead of 33 ms** and each camera
+light **50 ms instead of 33 ms**. The old objection — that the deltas were single
+frames, below the trainer's own `TOL_GOOD` grading resolution — does not apply to
+a change in how long a control is held. The price is 14 points of the flashlight
+budget (57% -> 43% left) and 11 points of box margin.
+
+### Follow-up this measurement opens
+
+The trainer grades all ten steps against one symmetric pair of tolerances
+(`TOL_GOOD` 150 ms, `TOL_OK` 350 ms), but the windows above are lopsided and
+range from 267 ms wide to over 1.2 s. On the current numbers a 150 ms-late
+`mask-off`, a 100 ms-early `flash-hall`, a 150 ms-late `monitor-up` and a 117 ms-early
+`cam-10` are all graded **good** while dying in the model, and `TOL_OK` is wider
+than the entire survivable window on six of the ten steps. Per-step asymmetric
+tolerances are the obvious fix. They must be tightened from the combined budget,
+not set at these single-step edges: each window is measured with the rest of the
+pass perfect, which is why the whole-cycle ceiling (4 frames) is far below any
+individual step's slack.
 
 **Android evidence (2026-08-20, corrected same day):** the 400-frame flash
 stall is Android-sourced after all — groups 450-457 load it from the
@@ -79,8 +132,11 @@ duel window must stay handleable, wind must keep the box off empty on worst luck
    `tools/cyclesearch.mjs`.
 2. ~~Revalidate the shipped cycle and publish current per-step windows~~ — done;
    see the dated status above.
-3. Re-run candidate ranking only after a measured per-step player profile exists.
-   Until then the decision is no ship; the old 4-10-7 result is superseded.
+3. ~~Re-run candidate ranking on the current engine~~ — done 2026-08-23; see the
+   cross-validation above. `uniform-best` is a live candidate awaiting Pedro's
+   decision, `profile-best` is not. The old 4-10-7 result is superseded.
+4. Replace the `[INFERRED]` profile weights with measured per-step `Coach.results`
+   timing before any ranking is claimed to hold *for a person*.
 
 ## Markiplier's suspicion, tested against the model (2026-08-19)
 

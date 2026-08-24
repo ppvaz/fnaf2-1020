@@ -8,6 +8,9 @@
 //   node tools/cyclesearch.mjs --curve    # just print jitter curves for the
 //                                         # current cycle (no search)
 //   node tools/cyclesearch.mjs --steps    # per-step tolerance window (no search)
+//   node tools/cyclesearch.mjs --curve --knobs=hallHold=5,flashHold=3
+//                                         # curve for one named variant, so a
+//                                         # search winner stays reproducible
 //   node tools/cyclesearch.mjs --profile=human   # score with a per-step human
 //                                         # error profile instead of uniform
 //
@@ -192,19 +195,45 @@ if (isMain) {
     console.log('\n* the sweep hit its +-0.75s cap without a death; the real edge is further out.');
     await closePool();
   } else {
+  // A search prints its winner as a knob set; --knobs feeds one back in so the
+  // published curve for a variant can be reproduced without a scratch script.
+  const knobArg = (process.argv.find(a => a.startsWith('--knobs=')) || '').split('=').slice(1).join('=');
+  const knobs0 = { ...KNOBS0 };
+  for (const pair of knobArg ? knobArg.split(',') : []) {
+    const [k, v] = pair.split('=');
+    if (!(k in KNOBS0)) throw new Error(`unknown knob: ${k} (have ${Object.keys(KNOBS0).join(', ')})`);
+    knobs0[k] = +v;
+  }
+  const baseOrderArg = (process.argv.find(a => a.startsWith('--order=')) || '').split('=')[1];
+  const baseOrder = baseOrderArg ? baseOrderArg.split('-').map(Number) : ORDER0;
+  const baseCycle = knobArg || baseOrderArg ? genCycle(knobs0, baseOrder) : DEFAULT_CYCLE;
+  if (knobArg) console.log(`knobs: ${JSON.stringify(knobs0)}  order ${baseOrder.join('-')}`);
+
   console.log(`current cycle jitter curve (${N_VALID} seeds):`);
-  console.log(`  ${await curve(DEFAULT_CYCLE, N_VALID)}`);
+  console.log(`  ${await curve(baseCycle, N_VALID)}`);
+  if (process.argv.includes('--curve')) {
+    // The costs a jitter curve cannot show: a variant can buy timing slack by
+    // spending the music box or the flashlight, and both are what actually end
+    // a real run.
+    const clean = await sweep(Array.from({ length: N_VALID }, (_, i) => ({ seed: SEED(i), cycle: baseCycle })));
+    const worst = await sweep(Array.from({ length: 100 }, (_, i) => ({ seed: SEED(i), cycle: baseCycle, worst: true })));
+    const minPower = Math.min(...clean.map(r => r.power));
+    const minBox = Math.min(...clean.map(r => r.minBox));
+    console.log(`  clean ${clean.filter(r => r.won).length}/${N_VALID}  worst ${worst.filter(r => r.won).length}/100  ` +
+      `min power left ${minPower}/${C.POWER_FRAMES} (${(minPower / C.POWER_FRAMES * 100).toFixed(0)}%)  ` +
+      `min box ${(minBox * 100).toFixed(0)}%`);
+  }
   if (!process.argv.includes('--curve')) {
     // Camera order first (cheap, discrete), then knobs (hill-climb).
     const orders = [[10, 4, 7], [10, 7, 4], [4, 10, 7], [4, 7, 10], [7, 10, 4], [7, 4, 10]];
-    let bestOrder = ORDER0, bestOrderFit = await fitness(genCycle(KNOBS0, ORDER0), N_SEARCH);
+    let bestOrder = baseOrder, bestOrderFit = await fitness(genCycle(knobs0, baseOrder), N_SEARCH);
     for (const o of orders) {
-      const fit = await fitness(genCycle(KNOBS0, o), N_SEARCH);
+      const fit = await fitness(genCycle(knobs0, o), N_SEARCH);
       console.log(`order ${o.join('-')}: maxJ ${fit.maxJ}, tie ${fit.tie}`);
       if (better(fit, bestOrderFit)) { bestOrder = o; bestOrderFit = fit; }
     }
     console.log(`searching knobs with order ${bestOrder.join('-')} (${N_SEARCH} seeds)...`);
-    const { knobs, fit } = await hillClimb(KNOBS0, bestOrder, N_SEARCH, (m) => console.log(m));
+    const { knobs, fit } = await hillClimb(knobs0, bestOrder, N_SEARCH, (m) => console.log(m));
     const cycle = genCycle(knobs, bestOrder);
     console.log(`\nbest knobs: ${JSON.stringify(knobs)}`);
     console.log(`best order: ${bestOrder.join('-')}  (search fitness: maxJ ${fit.maxJ} = ${msOf(fit.maxJ)})`);
