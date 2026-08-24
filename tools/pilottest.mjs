@@ -45,6 +45,27 @@ const CYCLE = [
   [3190, 'tap', 'cam:11'], [3380, 'hold', 'wind', 1400],
 ];
 
+// The same cycle plus an answer to the sourced 10 s forcedown (g718-721), which
+// slams the monitor down whenever one of the four streak attackers is waiting at
+// marker 122 with the cameras up. It fires at absolute `f % 600 == 0`, and every
+// Minus 7 cycle is anchored on :X2/:X7, so it always lands at cycle phase
+// 3000 ms -- mid-sweep, cams up, where a blind schedule keeps tapping cameras
+// into a lowered monitor while the 50-frame office-defense fuse burns.
+//
+// The guard costs nothing. `press()` drops a mask press while the monitor is up
+// (there is no state in which both are raised), so the flick is a no-op unless
+// the forcedown actually happened; when it did, the monitor is already down and
+// the mask lands well inside the fuse. The `up` is a `--sync` intent for the
+// same reason: after a forcedown the monitor otherwise stays down for the rest
+// of the cycle, and that cycle's winding is lost -- which is what turns the
+// rescued nights into Puppet deaths instead.
+const CYCLE_GUARDED = [
+  ...CYCLE,
+  [3200, 'tap', 'mask'], [3550, 'tap', 'mask'],   // defuse; dropped if the cams are up
+  [3750, 'up'],                                   // sync intent: no-op unless forced down
+  [3950, 'tap', 'cam:11'], [4140, 'hold', 'wind', 860],
+].sort((a, b) => a[0] - b[0]);
+
 // Same cycle with the box wound first and the three stall cameras refreshed
 // last, so the newest flash is ~1 s old when the cams drop. That is what makes
 // a Balloon Boy mask hold survivable: the 400-frame stun has to cover the whole
@@ -91,6 +112,24 @@ const RESPONSE = [
   [7460, 'tap', 'cam:7'], [7650, 'hold', 'light', 60],
   [7840, 'tap', 'cam:11'], [8030, 'hold', 'wind', 1400],
   // Ends with the monitor up, which is what the normal cycle expects.
+];
+
+// A left-opening response for the phone's simultaneous BB/GF office read.
+// The first sustained mask both clears an office Golden Freddy and starts
+// BB's five-tick counter, so the older flick-then-flash preamble only burns
+// camera-stun margin. CYCLE_LATE_FLASH leaves the newest target flash less
+// than a second old at VENT_CHECK_AT; the 5.2 s hold is therefore still
+// covered by the sourced 400-frame stuns in the worst one-second tick phase.
+// Recover Foxy's hall reset before raising, then refresh the three targets.
+const RESPONSE_FAST = [
+  [0, 'tap', 'mask'],
+  [5200, 'tap', 'mask'],
+  [5500, 'hold', 'light', 250],
+  [5800, 'up'],
+  [6100, 'tap', 'cam:10'], [6290, 'hold', 'light', 60],
+  [6480, 'tap', 'cam:4'], [6670, 'hold', 'light', 60],
+  [6860, 'tap', 'cam:7'], [7050, 'hold', 'light', 60],
+  [7240, 'tap', 'cam:11'], [7430, 'hold', 'wind', 1800],
 ];
 
 // Markiplier's eviction (docs/strategy/MINUS-7-STRATEGY.md 9.3): spend the sourced
@@ -141,6 +180,7 @@ export function run(opts = {}) {
   const cycles = opts.cycles ?? 80;
   const sim = new Sim(Object.assign({ seed: 1 }, opts.sim));
   let queue = [];
+  const responseTable = opts.fastResponse ? RESPONSE_FAST : RESPONSE;
   const at = (t0, table) => table.forEach(([o, kind, act, dur]) =>
     queue.push([t0 + ms(o), kind, act, dur ? ms(dur) : 0]));
 
@@ -152,7 +192,8 @@ export function run(opts = {}) {
   // his arrival.
   const base = opts.base ?? 7000;
   const cycleAt = (k) => ms(base + k * 5000);
-  let cycleTable = opts.lateFlash ? CYCLE_LATE_FLASH : CYCLE;
+  let cycleTable = opts.lateFlash ? CYCLE_LATE_FLASH
+    : opts.guard ? CYCLE_GUARDED : CYCLE;
   // The per-cycle Golden Freddy mask flick is blind insurance. g336 spawns
   // him only with the monitor up, g776 makes the mask the only clear, and
   // g777/g778 kill on a raise or hall flash while he is present. A visual
@@ -183,9 +224,10 @@ export function run(opts = {}) {
     // Resume on the first cycle boundary at or after the response's last
     // action: reserving a whole extra cycle leaves the stall cameras dark for
     // 5 s of dead air, which is not a cost of the defence itself.
-    const end = f + ms(RESPONSE[RESPONSE.length - 1][0]) + ms(1400);
+    const last = responseTable[responseTable.length - 1];
+    const end = f + ms(last[0]) + (last[3] ? ms(last[3]) : 0);
     const k = Math.ceil((end - cycleAt(0)) / ms(5000));
-    takeOver(f, cycleAt(k), RESPONSE);
+    takeOver(f, cycleAt(k), responseTable);
     return true;
   };
 
@@ -202,9 +244,10 @@ export function run(opts = {}) {
     if (opts.periodic && f > busyUntil && phase === 0 && k >= opts.periodic &&
         k % opts.periodic === 0) {
       responses++;
-      const end = f + ms(RESPONSE[RESPONSE.length - 1][0]) + ms(1400);
+      const last = responseTable[responseTable.length - 1];
+      const end = f + ms(last[0]) + (last[3] ? ms(last[3]) : 0);
       const kk = Math.ceil((end - cycleAt(0)) / ms(5000));
-      takeOver(f, cycleAt(kk), RESPONSE);
+      takeOver(f, cycleAt(kk), responseTable);
     } else if (opts.vent && f > busyUntil && phase === ms(VENT_CHECK_AT) && k >= 0) {
       ventCheck(f);
     } else if (opts.evict && f > busyUntil && phase === ms(CAM5_PEEK_AT) && k >= 0
@@ -241,11 +284,28 @@ export function run(opts = {}) {
   return { sim, checks, responses, evictions, syncs };
 }
 
+// Counts night-6 deaths whose last office entry was the forcedown's fuse
+// expiring. This is the one claim `--guard` makes, and it is checked as a
+// ratio rather than a threshold so it stays meaningful if the schedule moves.
+function fuseMisses(n, guard) {
+  let misses = 0;
+  for (let i = 0; i < n; i++) {
+    const r = run({ vent: true, sync: true, guard,
+                    sim: { seed: (i * 2246822519) >>> 0, night: 6 } });
+    if (r.sim.won) continue;
+    const entry = r.sim.events.filter(e => e.type === 'office-entry').pop();
+    if (entry && /45-frame office-defense fuse/.test(entry.data.why)) misses++;
+  }
+  return misses;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const n = +(process.argv[2] || 200);
   const vent = process.argv.includes('--vent');
   const evict = process.argv.includes('--evict');
   const lateFlash = process.argv.includes('--late-flash');
+  const guard = process.argv.includes('--guard');
+  const fastResponse = process.argv.includes('--fast-response');
   const sync = process.argv.includes('--sync');
   const cyclesArg = (process.argv.find(a => a.startsWith('--cycles=')) || '').split('=')[1];
   const cycles = cyclesArg ? +cyclesArg : 80;
@@ -264,7 +324,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // plain Foxy deaths because only this one is BB's fault.
   let foxyDeaths = 0, bbInOffice = 0, chain = 0;
   for (let i = 0; i < n; i++) {
-    const r = run({ vent, evict, cycles, lateFlash, sync,
+    const r = run({ vent, evict, cycles, lateFlash, fastResponse, guard, sync,
       sim: { seed: (i * 2246822519) >>> 0, worst, night } });
     checks += r.checks; responses += r.responses; evictions += r.evictions;
     minBox = Math.min(minBox, r.sim.box); minPower = Math.min(minPower, r.sim.power);
@@ -277,7 +337,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (r.sim.bb.inside && r.sim.death.reason === 'foxy') chain++;
     }
   }
-  const mode = `${lateFlash ? ' (late flash)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
+  const mode = `${guard ? ' (forcedown guard)' : ''}${lateFlash ? ' (late flash)' : ''}${fastResponse ? ' (fast response)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
   const label = night === 7 ? 'a full 10/20 night' : `a full night ${night}`;
   console.log(`${survived}/${n} survived ${label} — device schedule${mode}`);
   for (const [k, v] of Object.entries(fails).sort((a, b) => b[1] - a[1])) console.log(`  ${v}x  ${k}`);
@@ -286,6 +346,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     (evict ? ` | ${evictions} evictions` : ''));
   console.log(`Balloon Boy: ${bbInOffice} reached the office | ` +
     `Foxy: ${foxyDeaths} deaths | BB->Foxy chain: ${chain}`);
+
+  if (process.argv.includes('--assert-guard')) {
+    // g718-721 lands at cycle phase 3000 ms for any :X2/:X7 anchor, and the
+    // blind schedule has no answer to it. The guard flick is free -- the mask
+    // press is dropped while the monitor is up -- so it may only ever help.
+    const plain = fuseMisses(n, false), guarded = fuseMisses(n, true);
+    console.log(`forcedown fuse misses over ${n} night-6 runs: ` +
+      `${plain} unguarded -> ${guarded} guarded`);
+    if (guarded * 5 > plain) {
+      console.log('  FAIL  the forcedown guard did not cut fuse misses fivefold');
+      process.exit(1);
+    }
+    console.log('  PASS  the forcedown guard defuses the g718-721 monitor drop');
+  }
 
   if (assert) {
     // The claim under guard is narrow and is the whole point of the vent

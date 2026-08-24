@@ -65,6 +65,71 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   ok('g302/304', 'no office light reads as held while masked', !s.anyOfficeLightHeld);
 }
 
+// ------------------------------------------------------- the office light gate
+// Every light in the office resolves through `lit?` (g75 hall, g76/g77 camera)
+// and the vent pair (g301/g303/g320), and all of them carry the same two
+// conditions: `mask` = 0 and `in danger` = 0.
+{
+  // g10/g11: `mask` returns to 0 only when the mmaskOff animation completes,
+  // so the post-mask flash lockout IS that animation. Taking the mask off does
+  // not restore the light -- finishing the animation does.
+  const s = bare();
+  s.press('mask'); settle(s);
+  s.press('mask');                       // mask off: `mask` enters state 3
+  s.lightHeld = true;
+  ok('g10/g11', 'the mask-off press alone does not restore the light', !s.hallLightOn);
+  step(s, C.MASK_ANIM_OFF - 1);
+  ok('g10/g11', 'still dark one frame short of the animation', !s.hallLightOn);
+  step(s, 2);
+  ok('g75', 'the hall light returns the frame `mask` reaches 0', s.hallLightOn);
+}
+{
+  // g489 -> g745: the reset Foxy actually depends on runs through `lit?`, so
+  // the lockout gates it too. This is the rule that retimed the Minus 7 cycle:
+  // a hall flash inside the mask-off animation resets nothing.
+  const s = bare({ foxyEnabled: true });
+  s.foxy.loc = 'hall'; s.foxy.D = 9;
+  s.press('mask'); settle(s);
+  s.press('mask'); s.lightHeld = true;
+  step(s, C.MASK_ANIM_OFF - 1);
+  ok('g489/g745', 'a flash inside the lockout does not zero Foxy D', s.foxy.D >= 9);
+  step(s, 3);
+  ok('g489/g745', 'the flash zeroes Foxy D once the mask clears', s.foxy.D === 0);
+}
+{
+  // g75/g76/g77 and g83/g88: `in danger` -- the office-encounter latch raised
+  // by g443-447/g490 and cleared by the endpoint resolutions g538-555 -- kills
+  // every light, and the flashlight hitbox does not even register the touch.
+  const s = bare();
+  s.lightHeld = true;
+  ok('g75', 'the hall light works with no encounter running', s.hallLightOn);
+  s.startBlackout('test', null);
+  ok('g75', 'no hall light while `in danger` is set', !s.hallLightOn);
+  s.press('monitor'); settle(s);
+  ok('g76/g77', 'no camera light while `in danger` is set', !s.camLightOn);
+}
+{
+  // g299 clears both vent lights on a 200 ms timer and only g301/g303/g320
+  // re-assert them, each requiring `mask` = 0 -- so a vent light already held
+  // goes out the moment the mask starts going on. Toy Bonnie's g428 stall
+  // reads the light, not the finger.
+  const s = bare();
+  s.press('ventR');
+  ok('g303/g320', 'the right vent light is live with the mask off', s.ventLightROn);
+  s.press('mask');
+  ok('g299/g303', 'a held vent light dies the instant the mask goes on', !s.ventLightROn);
+  ok('g284', 'the finger is still down -- it is the light that went out', s.ventLightR);
+}
+{
+  // g267/g270: the mask press itself needs `being attacked by` = 0.
+  const s = bare({ stalledEnabled: true });
+  const u = s.units.find(x => x.id === 'withfreddy');
+  u.inside = true;
+  s.armInsideAttack(u, 'test');
+  s.press('mask');
+  ok('g267/g270', 'the mask will not go on once an attack is executing', !s.maskOn);
+}
+
 // ------------------------------------------------------------- Golden Freddy
 {
   // g336: he spawns only on a 5 s interval with the monitor fully up.

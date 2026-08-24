@@ -141,6 +141,8 @@ export class Sim {
   get t() { return this.frame / C.FPS; }
   get camsUp() { return this.monitor === MON_UP; }
   get maskFullyOn() { return this.maskOn && this.maskAnim === 0; }
+  // `being attacked by` (g560-562 set it per unit at marker 123).
+  get attackExecuting() { return this.units.some(u => u.insideDangerAt >= 0); }
   get hallView() { return this.monitor !== MON_UP; }
   // `white button` follows the physical hold. `new bonnie`, the office-light
   // movement latch, survives release until the next one-second scheduler tick.
@@ -150,16 +152,37 @@ export class Sim {
   // masked player can only take the mask off.
   get lightStallOn() { return this.frame < this.lightLogicalUntil; }
   get anyOfficeLightHeld() {
-    return !this.maskOn && !this.bb.inside &&
+    return this.maskFullyOff && !this.bb.inside && !this.blackout.active &&
       (this.lightHeld || this.ventLightL || this.ventLightR);
   }
+  // [SOURCED: g75 (hall), g76/g77 (camera), g301/g303/g320 (vent)] Every light
+  // in the office is gated on `mask` = 0 and `in danger` = 0. The mask counter
+  // is a four-state animation -- 0 off, 1 raising (g267/g270), 2 fully on (g9),
+  // 3 lowering (g274) -- so "mask off" is not the press, it is the end of the
+  // mask-off animation: the post-mask flash lockout IS that animation. And
+  // `in danger` is the office-encounter latch, raised by g443-447/g490 and
+  // cleared by the endpoint resolutions g538-555, so no light answers at all
+  // while an encounter is running (g83/g88 do not even register the touch).
+  get maskFullyOff() { return !this.maskOn && this.maskAnim === 0; }
   get hallLightOn() {
-    return this.lightHeld && this.hallView && !this.maskOn && !this.bb.inside;
+    return this.lightHeld && this.hallView && this.maskFullyOff &&
+      !this.bb.inside && !this.blackout.active;
+  }
+  // The vent lights carry the same gate, re-tested every frame: g299 clears
+  // both on a 200 ms timer and only g301/g303/g320 re-assert them, so a vent
+  // light already held goes out the moment the mask starts going on.
+  get ventLightLOn() {
+    return this.ventLightL && this.hallView && this.maskFullyOff &&
+      !this.bb.inside && !this.blackout.active;
+  }
+  get ventLightROn() {
+    return this.ventLightR && this.hallView && this.maskFullyOff &&
+      !this.bb.inside && !this.blackout.active;
   }
   // g76/g85 exclude a BB at 123, but g77/g86 -- the `viewing = 10` pair -- do
   // not, so CAM 10 is the one camera he leaves you.
   get camLightOn() {
-    return this.lightHeld && this.monitor === MON_UP &&
+    return this.lightHeld && this.monitor === MON_UP && !this.blackout.active &&
       (!this.bb.inside || this.cam === 10);
   }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
@@ -197,6 +220,9 @@ export class Sim {
     if (this.maskOn && action !== 'mask') return;
     if (action === 'mask' && !this.maskOn &&
         (this.monitor === MON_UP || this.monitor === MON_RAISING)) return;
+    // g267/g270 also require `being attacked by` = 0: once a marker-123
+    // occupant has started its 40-frame attack the mask no longer goes on.
+    if (action === 'mask' && !this.maskOn && this.attackExecuting) return;
     if (action === 'light') {
       this.lightHeld = true;
       this.onLightPress();
@@ -638,7 +664,7 @@ export class Sim {
       if (u.entryGate === 'camsUp' && !this.camsUp) return false;
       // Toy Bonnie's vent hop (group 428) also needs the right vent light off
       // — holding it stalls his entry (the Shooter25 stall).
-      if (u.entryGate === 'camsDown' && (this.camsUp || this.ventLightR)) return false;
+      if (u.entryGate === 'camsDown' && (this.camsUp || this.ventLightROn)) return false;
       if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
     } else if (u.lightStallAt.includes(u.idx) && !this.camsUp && this.lightStallOn) {
       return false; // only source edges guarded by `new bonnie = 0`

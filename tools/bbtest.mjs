@@ -11,13 +11,18 @@ import { Rng } from '../src/rng.js';
 // tools/cyclesearch.mjs optimises alternatives to this table; everything the
 // bot does reactively (BB phases, recovery) is built around whichever table
 // is in use.
+// Retimed 2026-08-24 for the sourced post-mask flash lockout: `mask` returns
+// to 0 only when the mmaskOff animation finishes (g10/g11), and the hall flash
+// resets Foxy through `lit?` (g489 -> g745), so a flash inside those 15 frames
+// resets nothing. The old table flashed 3 frames after the mask-off tap and
+// therefore never lit at all. Re-derived by `cyclesearch`, not by hand.
 export const DEFAULT_CYCLE = [
-  [0, 'tap', 'monitor'], [18, 'tap', 'mask'], [27, 'tap', 'mask'],
-  [30, 'down', 'light'], [32, 'up', 'light'], [36, 'tap', 'monitor'],
-  [55, 'tap', 'cam:10'], [57, 'down', 'light'], [59, 'up', 'light'],
-  [67, 'tap', 'cam:4'], [69, 'down', 'light'], [71, 'up', 'light'],
-  [79, 'tap', 'cam:7'], [81, 'down', 'light'], [83, 'up', 'light'],
-  [90, 'tap', 'cam:11'], [93, 'down', 'wind'],
+  [0, 'tap', 'monitor'], [15, 'tap', 'mask'], [24, 'tap', 'mask'],
+  [40, 'down', 'light'], [42, 'up', 'light'], [46, 'tap', 'monitor'],
+  [65, 'tap', 'cam:10'], [67, 'down', 'light'], [69, 'up', 'light'],
+  [77, 'tap', 'cam:4'], [79, 'down', 'light'], [81, 'up', 'light'],
+  [89, 'tap', 'cam:7'], [91, 'down', 'light'], [93, 'up', 'light'],
+  [100, 'tap', 'cam:11'], [103, 'down', 'wind'],
 ];
 
 const A = (f) => { // next frame landing on a :X2 / :X7 second boundary
@@ -172,10 +177,17 @@ export class Bot {
   recover(f) {
     // Raising the monitor re-exposes the final camera from attack() while the
     // light is still held, so only the preceding cameras need explicit taps.
-    const p = [[f + 2, 'tap', 'mask'], [f + 5, 'tap', 'monitor']];
+    //
+    // The raise has to wait out the mask-off animation. The light is still
+    // held here, and g75 only lights it once `mask` returns to 0 (g10/g11) --
+    // so those frames are the pass's Foxy reset (g489 -> g745). Raising early
+    // spends them with the monitor already up, where the same held light is
+    // the camera light instead and Foxy's D is never zeroed.
+    const up = f + 2 + C.MASK_ANIM_OFF + 2;
+    const p = [[f + 2, 'tap', 'mask'], [up, 'tap', 'monitor']];
     this.targets.slice(0, -1).forEach((cam, i) =>
-      p.push([f + 22 + i * 4, 'tap', `cam:${cam}`]));
-    const lightUp = f + 22 + Math.max(1, this.targets.length - 1) * 4;
+      p.push([up + 17 + i * 4, 'tap', `cam:${cam}`]));
+    const lightUp = up + 17 + Math.max(1, this.targets.length - 1) * 4;
     p.push([lightUp, 'up', 'light'], [lightUp + 4, 'tap', `cam:${C.BOX_CAM}`],
       [lightUp + 7, 'down', 'wind']);
     return p;

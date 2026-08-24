@@ -241,6 +241,62 @@ off. Consequence for any Balloon Boy defence: the five-second mask window is a
 five-second hole in Foxy cover, which is exactly why Markiplier's variant
 evicts Foxy before letting BB arrive (§9.3).
 
+## 2026-08-24: `mask = 0` means the animation, not the press
+
+The section above gated the lights on "the mask being off". The dump is
+stricter than that, and the difference retimes the cycle.
+
+`mask` is a four-state animation counter, not a flag: **0** off, **1** raising
+(g267/g270 on the press), **2** fully on (g9, at mmaskOn frame 12), **3**
+lowering (g274). It returns to 0 only at g11, behind g10's "mmaskOff frame
+>= 14" — so *the post-mask flash lockout is the mask-off animation itself*
+(`MASK_ANIM_OFF`, 15 frames). Taking the mask off does not restore the light;
+finishing the animation does. This is `VENT-CAMP-STRATEGY.md` §4 gap 6, and its
+own parenthetical called the consequence correctly: it "matters for the
+mask-off -> Foxy-flash beat the cycle depends on."
+
+It does, because Foxy's reset runs through the same flag: **g489** (`viewing`
+= 0, `battery life` > 0, `lit?` = 1 -> `viewing hall light` = 1) feeds
+**g745** (Foxy at marker 120 + that latch -> D = 0, exposure += 1) and **g855**
+(the B = 50 hall pin). A hall flash inside the lockout resets nothing at all.
+
+Three more conditions on the same groups, all previously unmodelled:
+
+- **`in danger` = 0** gates every light — g75 (hall), g76/g77 (camera) — and
+  g83/g88 mean the flashlight hitbox does not even register the touch. The
+  latch is raised by g443-447/g490 (an office encounter starting) and cleared
+  by the endpoint resolutions g538-555, so it is exactly the engine's blackout.
+- **The vent lights are re-tested every frame.** g299 clears both on a 200 ms
+  timer and only g301/g303/g320 re-assert them, each requiring `mask` = 0 and
+  `viewing` = 0. A vent light already held therefore goes out the moment the
+  mask starts going on — so Toy Bonnie's g428 stall reads the light, not the
+  finger.
+- **The mask press needs `being attacked by` = 0** (g267/g270): once a
+  marker-123 occupant has started its 40-frame attack, the mask no longer goes
+  on. g560-562 set that counter per unit.
+
+**Measured consequence.** Only the first of the four costs anything: with the
+lockout implemented, the shipped Minus 7 cycle's hall flash (3 frames after the
+mask-off tap) never lights, and `bbtest` falls 200/200 -> 0/200, every loss to
+Foxy with D at 14. The other three gates are free — the reference bot is
+unchanged by them.
+
+The cycle is recoverable, but only by respecting the rule in two places:
+
+1. the cycle's `hallDelay` must be >= `MASK_ANIM_OFF` (it was 3), and
+2. `bbtest`'s `recover()` must wait out the mask-off animation before raising.
+   It holds the light continuously through the attack, so those frames are the
+   pass's Foxy reset; raising early spends them with the monitor already up,
+   where the same held light is the *camera* light and D is never zeroed.
+
+With both, `bbtest` is 200/200 again. The retimed cycle is materially tighter
+than the old one (min box ~1%, min power 1528 vs 2976), so the published
+per-step windows in `MINUS-7-STRATEGY.md` and the trainer's `CYCLE_SCRIPT` are
+re-derived from a `cyclesearch` pass rather than by moving one knob.
+
+`sourcetest` covers all four gates (g10/g11, g489/g745, g75/g76/g77, g299/g303/
+g320, g267/g270): 118 -> 130 cases.
+
 ## 2026-08-20: Balloon Boy approach pipeline, re-sourced
 
 Prompted by a strategy claim that keeping the cameras down across the 5 s

@@ -35,9 +35,9 @@ const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 // The current cycle, expressed as knobs. genCycle(KNOBS0) reproduces
 // DEFAULT_CYCLE exactly (asserted below).
 const KNOBS0 = {
-  maskDelay: 18, // monitor down -> mask on (covers the monitor animation)
+  maskDelay: 15, // monitor down -> mask on (covers the monitor animation)
   maskHold: 9,   // mask on -> mask off
-  hallDelay: 3,  // mask off -> hall flash on
+  hallDelay: 16, // mask off -> hall flash on (>= MASK_ANIM_OFF, see MIN)
   hallHold: 2,   // hall flash duration
   upDelay: 4,    // hall flash off -> monitor up
   camDelay: 19,  // monitor up -> first camera tap (covers the animation)
@@ -49,8 +49,11 @@ const KNOBS0 = {
 };
 const ORDER0 = [10, 4, 7];
 
-const MIN = { maskDelay: 15, maskHold: 1, hallDelay: 1, hallHold: 1, upDelay: 1,
-              camDelay: 15, flashDelay: 1, flashHold: 1, camGap: 1,
+// hallDelay's floor is sourced, not chosen: `mask` reaches 0 only when the
+// mmaskOff animation ends (g10/g11), and `lit?` needs `mask` = 0 (g75), so a
+// hall flash any earlier produces no light and no Foxy reset (g489 -> g745).
+const MIN = { maskDelay: 15, maskHold: 1, hallDelay: C.MASK_ANIM_OFF, hallHold: 1,
+              upDelay: 1, camDelay: 15, flashDelay: 1, flashHold: 1, camGap: 1,
               homeDelay: 1, windDelay: 1 };
 
 export function genCycle(k, order = ORDER0) {
