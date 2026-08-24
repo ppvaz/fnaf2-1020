@@ -334,11 +334,40 @@ exactly where the injection sweep showed margins collapsing (0.033 at -6 dB).
 
 Two consequences.
 
-The gate is **not closed**, and the honest reading is that the approach vocal
-may not be recoverable from this phone's contaminated mix at the level the game
-plays it. That has to be settled with runs where BB demonstrably moves --
-which needs either a much longer night sample or Custom Night's higher AI, since
-night 6 starts him at AI 5 and only reaches 9 at 2 AM.
+The gate is **not closed**, and a second collection run sharpened why.
+
+The first pass could not tell "the cue is undetectable" from "the cue never
+happened", because the detector was missing almost everything. The positive
+control gave it away: the shared thud is played by every character's hop and
+hops come every five seconds, yet whole-sample matching found it **0.4 times a
+minute**. Matching the reference's most energetic 0.40 s instead of its whole
+length found it **7.6 times a minute** at a higher peak score. Averaging a
+one-to-three-second template over a mix where other sounds dominate most of its
+span scores like background even when the cue is plainly there, so the template
+is now its transient core by default.
+
+With that corrected detector, over 559 s of night audio in two independent
+runs:
+
+| Sample | Best | p99 | Detections |
+| --- | ---: | ---: | ---: |
+| 17 shared thud | 0.850 / 0.819 | 0.751 / 0.728 | **4.6 and 2.9 per minute** |
+| 21 BB vocal | 0.581 / 0.597 | 0.426 / 0.444 | 0 |
+| 23 BB vocal | 0.527 / 0.567 | 0.430 / 0.427 | 0 |
+| 24 BB vocal | 0.586 / 0.631 | 0.431 / 0.477 | 0 |
+
+The same detector, on the same recordings, finds the thud several times a
+minute and never finds a Balloon Boy vocal. That is a much stronger negative
+than the first pass, and combined with the source fact that his vocals play at
+half the channel default it points at gate 1's "otherwise stop" branch.
+
+It is not yet that verdict, and the reason is specific: nothing in these runs
+independently confirms that BB moved. Absence of the cue and absence of the
+event remain confounded, and the thud cannot separate them because BB's own
+hops 4 and 5 play the same shared sample. Settling it needs a run where his
+movement is established by another modality -- the pilot's own CAM-05 read, or
+labeling the recorded video -- or Custom Night's AI 20, which night 6 cannot
+reach because it starts him at 5 and only reaches 9 at 2 AM.
 
 The detector's own design is implicated. `tools/cue/features.py` removes each
 frame's mean to be level-invariant, which is right for robustness to capture

@@ -124,6 +124,22 @@ shape_quiet, _ = detect.best_alignment(features.band_frames(quiet_mix), frames_r
 ok("while the shape score stays a shape score (%.3f vs %.3f)"
    % (shape_loud, shape_quiet), abs(shape_loud - shape_quiet) < 0.35)
 
+# ------------------------------------------------------------ template core
+# Whole-sample matching averages a template over frames where other sounds
+# dominate, which measurably lost most real cues on device. The core has to be
+# the energetic part of the reference, and it has to still find the cue.
+levels_ref = features.frame_levels(signal)
+core = detect.core_of(frames_ref, levels_ref, 25)
+ok("the core is the requested length", len(core) == 25)
+mid = len(levels_ref) // 2
+ok("the core is drawn from the loud part, not the edges",
+   sum(levels_ref[:8]) / 8 < sum(levels_ref[mid - 4:mid + 4]) / 8)
+core_score, core_at = detect.best_alignment(
+    features.band_frames(evaluate.inject(background, signal, onset, 6.0)), core)
+ok("a core template still finds the cue (%.3f)" % core_score, core_score > 0.6)
+ok("a core longer than the reference is the reference",
+   len(detect.core_of(frames_ref, levels_ref, 10_000)) == len(frames_ref))
+
 # --------------------------------------------------------------- class mapping
 ok("the three vocals share one class",
    len({evaluate.class_of(h) for h in (21, 23, 24)}) == 1)

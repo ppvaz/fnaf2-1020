@@ -28,18 +28,50 @@ DEFAULT_REFS = "/private/tmp/fnaf2-cue-refs"
 CLIP_LEVEL = 0.995
 CLIP_FRACTION = 0.001
 SILENCE_RMS = 1e-4
+# Match the reference's transient core, not the whole sample. Measured on 286 s
+# of device audio: whole-sample templates found the shared thud 0.4 times a
+# minute, a 0.40 s core found it 7.6 times a minute with a higher peak score.
+# Characters hop every five seconds, so the whole-sample rate was plainly wrong.
+CORE_FRAMES = 25
 
 
-def load_references(refdir):
+def core_of(frames, levels, count):
+    """The reference's most energetic contiguous run of `count` frames.
+
+    Matching a whole sample is what made the first device pass insensitive: a
+    three-second template averaged over a mix where other sounds dominate most
+    of its span scores like background even when the cue is plainly there. The
+    transient core is the part that is actually distinctive, and it is the part
+    that survives being mixed with everything else.
+    """
+    if count <= 0 or count >= len(frames):
+        return frames
+    best_at = 0
+    best_sum = None
+    running = sum(levels[:count])
+    best_sum = running
+    for start in range(1, len(levels) - count + 1):
+        running += levels[start + count - 1] - levels[start - 1]
+        if running > best_sum:
+            best_sum = running
+            best_at = start
+    return frames[best_at:best_at + count]
+
+
+def load_references(refdir, core=CORE_FRAMES):
     root = pathlib.Path(refdir)
     refs = {}
     for path in sorted(root.glob("s*.wav")):
         match = re.fullmatch(r"s(\d+)\.wav", path.name)
         if not match:
             continue
-        frames = features.band_frames(features.load_window(path))
-        if frames:
-            refs[int(match.group(1))] = frames
+        samples = features.load_window(path)
+        frames = features.band_frames(samples)
+        if not frames:
+            continue
+        if core:
+            frames = core_of(frames, features.frame_levels(samples), core)
+        refs[int(match.group(1))] = frames
     return refs
 
 
@@ -232,11 +264,14 @@ def main():
     parser.add_argument("--threshold", type=float, default=0.45)
     parser.add_argument("--prominence", type=float, default=0.05,
                         help="how far a peak must stand above its neighbourhood")
+    parser.add_argument("--core", type=int, default=CORE_FRAMES,
+                        help="match only the reference's N most energetic frames "
+                             "(0 matches the whole sample, which is far less sensitive)")
     parser.add_argument("--only", type=int, nargs="+",
                         help="restrict to these sample handles")
     opts = parser.parse_args()
 
-    refs = load_references(opts.refs)
+    refs = load_references(opts.refs, opts.core)
     if not refs:
         sys.exit("no reference samples in %s -- run tools/dump/extract-samples.sh"
                  % opts.refs)
