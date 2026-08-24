@@ -1115,7 +1115,11 @@ classify_left_and_queue_mask_at() {
 # executing. No wait_until: see pulsed_sweep_at.
 # The select leads the light so the camera is already the selected feed when
 # the light lands on it. hid-sweep-probe.sh proved this geometry 4/4.
-SWEEP_LIGHT_LEAD_MS=10
+# Zero: the light goes down in the same report as the camera select, so both
+# contacts get the full `contact` ms. HID-MULTITOUCH.md's verified sequence
+# holds the light for at least 100-120 ms "so the 30 Hz Fusion runtime sees
+# it"; leading by 10 ms left the light at 90 and put it under that floor.
+SWEEP_LIGHT_LEAD_MS=0
 
 # Resolve a plan control name to this device's calibrated coordinates.
 plan_control_xy() {

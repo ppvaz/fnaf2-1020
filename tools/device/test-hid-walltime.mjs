@@ -72,12 +72,16 @@ const leadMs = +(/^SWEEP_LIGHT_LEAD_MS=(\d+)$/m.exec(src) || [])[1];
 check(spacingMs <= 120,
   `the sweep spaces selects ${spacingMs} ms apart; hid-sweep-probe.sh has ` +
   'landed 120 ms and nothing shorter');
-check(contactMs >= 90,
-  `the sweep's select is ${contactMs} ms, under every contact the phone has accepted`);
+check(contactMs >= 100,
+  `the sweep's select is ${contactMs} ms; HID-MULTITOUCH.md's verified sequence ` +
+  'requires 100-120 ms so the 30 Hz Fusion runtime sees the contact');
+check(leadMs === 0 || contactMs - leadMs >= 100,
+  `leading the light by ${leadMs} ms leaves it ${contactMs - leadMs} ms, under ` +
+  'the same 100 ms floor the select has to clear');
 check(spacingMs - contactMs >= 20,
   `only ${spacingMs - contactMs} ms released between selects; Fusion polls ` +
   'touch per frame, so back-to-back contacts can read as one finger moving');
-check(leadMs > 0 && leadMs < contactMs,
+check(leadMs >= 0 && leadMs < contactMs,
   `the light lead is ${leadMs} ms, which does not fall inside the select`);
 
 // Same hazard, the place it actually bit: the classifier releases the vent

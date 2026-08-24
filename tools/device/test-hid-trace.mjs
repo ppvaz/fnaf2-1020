@@ -14,14 +14,12 @@ import { pathToFileURL } from 'node:url';
 
 // Both from device measurement; see docs/device/HID-MULTITOUCH.md.
 //
-// 90 ms is the shortest contact anything on this phone has been observed to
-// accept: it is the light pulse inside the sweep geometry hid-sweep-probe.sh
-// landed 4/4. It is deliberately *not* the 100 ms floor quoted for a fresh
-// button tap -- this is the "below all evidence" line, not the recommended
-// one. It still catches what shipped: the hall flash transcribed from the
-// simulator's five frames as an 83 ms contact, which produced zero visible
-// beams across a graded night.
-export const MIN_CONTACT_MS = 90;
+// HID-MULTITOUCH.md's verified report sequence: "Hold for at least 100-120 ms
+// so the 30 Hz Fusion runtime sees it." This floor was briefly lowered to 90
+// to accommodate a light pulse that had been built under it -- which is the
+// wrong direction to move a documented device threshold, and is recorded here
+// so it is not done again.
+export const MIN_CONTACT_MS = 100;
 // Fusion polls touch once per frame, so two different buttons with no released
 // time between them can read as one finger moving from one to the other. The
 // mask press lost that way stuck the mask on and blinded every later read.
@@ -89,12 +87,13 @@ const D = ms => JSON.stringify({ id: 92, command: 'delay', duration: ms });
 
 function selfTest() {
   const rec = (flags, x, y) => [flags, x & 255, x >> 8, y & 255, y >> 8];
-  // A clean pulsed camera select: 100 ms contact, both contacts named on release.
-  const good = [R(2, rec(0, 100, 200), rec(7, 300, 400)), D(10),
-                R(2, rec(3, 100, 200), rec(7, 300, 400)), D(90),
+  // Two clean camera selects at 120 ms spacing: the light goes down in the
+  // same report as the select so both contacts get the full 100 ms
+  // HID-MULTITOUCH.md's verified sequence requires, and 20 ms of released time
+  // separates them. Both contacts are named on every release (trap 2).
+  const good = [R(2, rec(3, 100, 200), rec(7, 300, 400)), D(100),
                 R(2, rec(0, 100, 200), rec(4, 300, 400)), D(20),
-                R(2, rec(0, 100, 200), rec(7, 500, 600)), D(10),
-                R(2, rec(3, 100, 200), rec(7, 500, 600)), D(90),
+                R(2, rec(3, 100, 200), rec(7, 500, 600)), D(100),
                 R(2, rec(0, 100, 200), rec(4, 500, 600))].join('\n');
   const clean = audit(good);
   if (clean.problems.length) throw new Error('self-test: a clean stream was rejected: ' +
