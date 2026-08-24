@@ -10,7 +10,7 @@ fidelity target.
 
 Open it on a phone, turn sideways, and work down the lessons.
 
-**[Play it →](https://ppvaz.github.io/fnaf2-minus7-practice/)**
+**[Play it →](https://ppvaz.github.io/fnaf2-1020/)**
 
 ![lesson brief](docs/brief.png)
 
@@ -115,7 +115,7 @@ assets are distributed here.**
 
 ## Running it
 
-The published copy is at **<https://ppvaz.github.io/fnaf2-minus7-practice/>** — served straight from
+The published copy is at **<https://ppvaz.github.io/fnaf2-1020/>** — served straight from
 `master`, because the source runs as ES modules with nothing to build. Being https it is a secure
 context, so wake lock and vibration work there; the LAN URL below is plain http and they do not.
 
