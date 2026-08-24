@@ -6,7 +6,7 @@
 // perfectly valid there; on the phone Fusion polls touch per frame and a
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
-import { build, track, MIN_CONTACT_MS, DEVICE_SPACING_MS } from './recipe.mjs';
+import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS } from './recipe.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
@@ -113,6 +113,38 @@ for (const [name, cycle] of Object.entries(recipe.cycles)) {
     check(want === got, `${name}: track ${act} states are ${got}, recipe says ${want}`);
   }
 }
+
+// The device plan is what the phone executes, so it gets the same scrutiny as
+// the recipe it comes from -- including every sweep, not just the first.
+const plan = devicePlan(recipe);
+for (const [name, lines] of Object.entries(plan)) {
+  let sweeps = 0;
+  for (const line of lines) {
+    const [at, kind, ...rest] = line.split(' ');
+    check(Number.isInteger(+at) && +at >= 0, `${name}: bad offset in "${line}"`);
+    if (kind === 'sweep') {
+      sweeps++;
+      const [spacing, contact, cams] = rest;
+      check(+spacing > 0 && +spacing <= DEVICE_SPACING_MS,
+        `${name}: sweep spacing ${spacing} ms is not a landed device spacing`);
+      check(+contact >= MIN_CONTACT_MS, `${name}: sweep contact ${contact} ms is under the floor`);
+      check(cams === '10,4,7', `${name}: sweep covers ${cams}, not Minus 7's 10,4,7`);
+    } else if (kind === 'tap' || kind === 'hold') {
+      check(+rest[1] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
+    } else if (kind === 'hall' || kind === 'hallraise') {
+      check(+rest[0] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
+    } else {
+      check(kind === 'read', `${name}: unknown device instruction "${kind}"`);
+    }
+  }
+  check(sweeps >= 1, `${name}: no camera sweep, so nothing refreshes the stalls`);
+}
+
+// The branch is only known after the read, so both steady cycles must begin
+// with the identical prefix: lower, read, mask.
+const prefix = lines => lines.slice(0, 3).join('|');
+check(prefix(plan.clear) === prefix(plan.attack),
+  `clear and attack disagree before the classifier answers:\n  ${prefix(plan.clear)}\n  ${prefix(plan.attack)}`);
 
 console.log('recipe checks passed: ' + Object.entries(recipe.cycles)
   .map(([n, c]) => `${n} ${c.budget.windMarginMs >= 0 ? '+' : ''}${c.budget.windMarginMs} ms wind`)

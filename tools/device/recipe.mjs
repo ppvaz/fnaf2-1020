@@ -200,6 +200,51 @@ export function track(cycle) {
   return steps;
 }
 
+// The recipe as device instructions. The runner used to carry these as
+// hand-typed millisecond literals; emitting them merges the pairs the phone
+// performs as one gesture (a camera select and its light pulse; a hall pulse
+// under a simultaneous monitor raise) so the shell executes a table instead of
+// re-deriving one. Contact lengths are device lengths, never simulator frames.
+export function devicePlan(recipe) {
+  const out = {};
+  for (const [name, cycle] of Object.entries(recipe.cycles)) {
+    const lines = [];
+    const ev = cycle.events;
+    for (let i = 0; i < ev.length; i++) {
+      const e = ev[i];
+      if (e.act === 'camlight') continue;            // merged into its select
+      if (/^cam(10|4|7)$/.test(e.act)) {
+        const cams = [];
+        const ats = [];
+        let j = i;
+        while (j < ev.length && /^cam(10|4|7)$/.test(ev[j].act)) {
+          cams.push(ev[j].act.slice(3));
+          ats.push(ev[j].at);
+          j += ev[j + 1] && ev[j + 1].act === 'camlight' ? 2 : 1;
+        }
+        // Spacing comes from this sweep's own selects. Looking the camera up
+        // by name found the first one in the cycle instead, which produced a
+        // negative spacing on a second sweep.
+        const spacing = ats.length > 1 ? ats[1] - ats[0] : DEVICE_SPACING_MS;
+        lines.push(`${e.at} sweep ${spacing} ${MIN_CONTACT_MS + 10} ${cams.join(',')}`);
+        i = j - 1;
+        continue;
+      }
+      if (e.act === 'hall') {
+        const twin = ev.find(x => x.act === 'monitor' && x.at === e.at);
+        lines.push(`${e.at} ${twin ? 'hallraise' : 'hall'} ${e.dur}`);
+        continue;
+      }
+      if (e.act === 'monitor' && ev.some(x => x.act === 'hall' && x.at === e.at)) continue;
+      if (e.act === 'ventl') { lines.push(`${e.at} read ${e.dur}`); continue; }
+      if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
+      lines.push(`${e.at} tap ${e.act} ${e.dur}`);
+    }
+    out[name] = lines;
+  }
+  return out;
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const arg = (name, def) => {
     const v = (process.argv.find(a => a.startsWith(`--${name}=`)) || '').split('=')[1];
@@ -210,7 +255,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     maskMarginMs: arg('mask-margin-ms', 900), readLatencyMs: arg('read-latency-ms', 550),
     hallPulseMs: arg('hall-pulse-ms', 130), pilotOffset: arg('offset-frames', 10),
   });
-  if (process.argv.includes('--track')) {
+  if (process.argv.includes('--device-plan')) {
+    const plan = devicePlan(recipe);
+    for (const [name, lines] of Object.entries(plan)) {
+      console.log(`#cycle ${name} ${recipe.cycles[name].lengthMs}`);
+      for (const line of lines) console.log(line);
+    }
+  } else if (process.argv.includes('--track')) {
     for (const [name, c] of Object.entries(recipe.cycles)) {
       console.log(`// ${name}`);
       for (const step of track(c)) console.log('  ' + JSON.stringify(step) + ',');
