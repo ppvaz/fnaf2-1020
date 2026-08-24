@@ -1,26 +1,59 @@
 # On-device audio-cue controller
 
-**Status (2026-08-24).** Gate 0 is closed, and it cost the plan its
-highest-payoff action: early unmasking is out of scope, because BB's departure
-plays the sample 18 edges across seven characters share. Everything else is
-instrumented but ungated.
+**Status: stopped at gate 1 (2026-08-24). The controller is not viable on this
+phone and build, and the plan's own rule says so.**
+
+Gate 0 closed first, and it cost the highest-payoff action: early unmasking is
+out of scope because BB's departure plays the sample that 18 edges across seven
+characters share. Gate 1 then failed outright. Balloon Boy's approach vocals are
+played at **half the channel default** (g414-416 set channel 14 to 25 against
+g60's 50), and at that level, injected into real target-device night background,
+this detector cannot find them:
+
+| | played level | detected | needs |
+| --- | ---: | ---: | ---: |
+| sample 17 thud, positive control | -0.1 / -4.4 dB | 1/5, 1/5 | — |
+| sample 21 BB vocal | -8.9 / -13.2 dB | 0/5, 0/5 | +11 / +10 dB |
+| sample 23 BB vocal | -9.0 / -13.3 dB | 0/5, 0/5 | +9 / +11 dB |
+| sample 24 BB vocal | -8.0 / -12.3 dB | 0/5, 0/5 | +6 / +16 dB |
+
+Two independent 20-second stretches of real night audio, with the level anchored
+to the measured level of actual thud detections in the same recordings, and the
+vocal offset derived from the source channel volumes. Reproduce with
+`tools/cue/evaluate.py BACKGROUND --anchor <dB>`.
+
+Gate 1's text is explicit about this branch: *"every candidate cue needed by the
+policy must be visible and repeatable in target-device PCM. Otherwise stop."*
+The cue is 6-16 dB short. So the remaining packages are closed as unreachable
+rather than left open:
 
 | Package | State |
 | --- | --- |
 | 0. Source-map candidate cues | **Closed.** Every Office sample mapped to its state edge; early unmasking withdrawn |
-| 1. Prove playback capture | Capture path built and proven on the target; the gate needs labeled windows from real gameplay |
-| 2. Offline detector | Front end built and characterised against real contaminated background; the gate needs a session-split holdout, confusion matrix, and binomial bounds |
-| 3. Window and action latency | The result-receipt leg is measured (225 ms to 59 ms). The rest needs the `ARM`/`HIT`/`MISS` protocol, which does not exist |
-| 4. Simulator cue injection | Not advanced. Still has only the perfect-event upper bound and the forced-miss lower bound |
-| 5. Shadow on the real device | Not started |
-| 6. Enable one bounded action | Not started |
+| 1. Prove playback capture | **Failed.** Capture path works; the cue is 6-16 dB below detectability at the level the game plays it |
+| 2. Offline detector | **Unreachable.** Built and characterised, but there is no recoverable cue to hold out |
+| 3. Window and action latency | **Partly banked.** The result-receipt leg is measured and kept (225 ms to 59 ms); the audio legs are moot |
+| 4. Simulator cue injection | **Unreachable.** Already rejected the counted-vocal policy; the cue cannot be delivered at all |
+| 5. Shadow on the real device | **Unreachable.** Nothing to shadow |
+| 6. Enable one bounded action | **Unreachable.** Nothing to enable |
 
-**The single blocker for 1, 2 and 5 is the same:** labeled positive windows from
-nights where BB actually moves. Every offline result below is an injection study
-or a source fact; none of them is held-out device evidence, and none of the
-gates that need device evidence has been closed. The helper, the recorder, the
-detector, and the latency harness exist so that collecting it is now a matter of
-running nights rather than building tools.
+**What the verdict is not.** It is not "audio cannot work in principle". It is
+measured against the front end this plan specified -- log-band cosine on the
+reference's transient core, with a per-run background profile subtracted -- and
+that front end is marginal even for the loud cue, finding the thud only 1/5 at
+its own measured level. Anyone reopening this has an explicit target rather than
+a research question: close a **6-16 dB detectability gap** against this phone's
+internal mix, which ANDROID-AUDIO-CAPTURE.md shows carries the music-box loop and
+Mangle's static regardless of what the operator hears. A matched filter at full
+sample rate, or a longer background estimate, are the obvious first attempts.
+
+**What the plan banked anyway.** The observer plumbing it built is the result
+worth keeping, and it is independent of audio: one consented `MediaProjection`
+answers a device-local socket with an already-classified pixel in **59 ms p95
+against the screencheck path's 225 ms**, which moves the visual-plus-action path
+from 395 ms to 229 ms and recovers about 664 ms on the night-6 cycle. Plus the
+source map itself, which corrected the Balloon Boy pipeline in three places and
+withdrew an unsafe action from the strategy documents.
 
 ## Decision
 
@@ -644,3 +677,11 @@ The task is complete only when the source mapping, target-device capture,
 held-out detector results, latency soak, simulator policy, lifecycle fallback,
 and shadow evidence all agree. Until then, “Android can capture audio” is a
 feasibility fact—not evidence that an audio cue can safely control Night 7.
+
+**Resolved 2026-08-24, by refutation.** The source mapping and the target-device
+capture disagree, which is a complete answer and not a partial one: the sourced
+cue exists, is identified well enough for the surviving architecture, and is
+played too quietly to recover from this phone's internal mix. The held-out
+detector, latency soak, simulator policy and shadow evidence are not pending
+work — there is nothing left for them to measure. “Android can capture audio”
+turned out to be exactly the feasibility fact this section warned it was.

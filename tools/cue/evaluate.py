@@ -113,6 +113,48 @@ def report(label, scores, truth):
                top_at * features.HOP / float(features.RATE), verdict))
 
 
+# Channel volumes from the event sheet: g60 defaults channel 15 (the thud) to
+# 50, and g414-416 play a Balloon Boy route hop on channel 14 at 25. Played
+# amplitude is the reference times volume/100, so the cue the controller needs
+# is inherently quieter than the cue we can already find on device.
+THUD_HANDLE = 17
+THUD_VOLUME = 0.50
+VOCAL_VOLUME = 0.25
+
+
+def played_offset_db(refdir, handle):
+    """How far below the thud this sample is played, in dB."""
+    import math
+    root = pathlib.Path(refdir)
+    thud = THUD_VOLUME * features.rms(
+        features.load_window(root / ("s%04d.wav" % THUD_HANDLE)))
+    cue = VOCAL_VOLUME * features.rms(
+        features.load_window(root / ("s%04d.wav" % handle)))
+    if thud <= 0 or cue <= 0:
+        return 0.0
+    return 20.0 * math.log10(cue / thud)
+
+
+def anchored_trial(background, refdir, refs, handle, level_db, offsets,
+                   threshold):
+    """Inject at an absolute level above background and count detections."""
+    source = features.load_window(
+        pathlib.Path(refdir) / ("s%04d.wav" % handle))
+    found = 0
+    best = 0.0
+    for offset in offsets:
+        mixed = inject(background, source, offset, level_db)
+        frames = features.band_frames(mixed)
+        frames = subtract(frames, background_profile(frames))
+        curve = detect.score_curve(frames, refs[handle])
+        want = int(offset * features.RATE / features.HOP)
+        near = max(curve[max(0, want - 40):want + 120]) if curve else 0.0
+        best = max(best, near)
+        if near >= threshold:
+            found += 1
+    return found, best
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -122,6 +164,12 @@ def main():
     parser.add_argument("--snr", type=float, nargs="+", default=DEFAULT_SNR)
     parser.add_argument("--offset", type=float, default=1.5,
                         help="seconds into the window to place the cue")
+    parser.add_argument("--anchor", type=float,
+                        help="gate 1 mode: treat this dB level above background "
+                             "as the measured level of a real thud detection, "
+                             "and test each vocal at its own played level "
+                             "relative to it")
+    parser.add_argument("--threshold", type=float, default=0.60)
     opts = parser.parse_args()
 
     refs = detect.load_references(opts.refs)
@@ -131,6 +179,41 @@ def main():
     bad = detect.window_quality(background)
     if bad:
         sys.exit("background window is unusable: %s" % bad)
+
+    if opts.anchor is not None:
+        refs = detect.load_references(opts.refs)
+        offsets = [3.0, 6.0, 9.0, 12.0, 15.0]
+        offsets = [o for o in offsets
+                   if o * features.RATE < len(background) - features.RATE]
+        print("background %s  %.1fs  anchor %+.1f dB  threshold %.2f"
+              % (pathlib.Path(opts.background).name,
+                 len(background) / float(features.RATE), opts.anchor,
+                 opts.threshold))
+        found, best = anchored_trial(background, opts.refs, refs, THUD_HANDLE,
+                                     opts.anchor, offsets, opts.threshold)
+        print("  sample %-3d %+6.1f dB  positive control      %d/%d  best %.3f"
+              % (THUD_HANDLE, opts.anchor, found, len(offsets), best))
+        for handle in opts.cues:
+            if handle == THUD_HANDLE or handle not in refs:
+                continue
+            drop = played_offset_db(opts.refs, handle)
+            level = opts.anchor + drop
+            found, best = anchored_trial(background, opts.refs, refs, handle,
+                                         level, offsets, opts.threshold)
+            # How much louder would it have to be played to be found?
+            need = None
+            for boost in range(0, 25):
+                hit, _ = anchored_trial(background, opts.refs, refs, handle,
+                                        level + boost, offsets[:2],
+                                        opts.threshold)
+                if hit == len(offsets[:2]):
+                    need = boost
+                    break
+            print("  sample %-3d %+6.1f dB  at its played level   %d/%d  best %.3f"
+                  "  needs %s"
+                  % (handle, level, found, len(offsets), best,
+                     ("+%d dB" % need) if need is not None else ">+24 dB"))
+        return
 
     base_frames = features.band_frames(background)
     profile = background_profile(base_frames)
