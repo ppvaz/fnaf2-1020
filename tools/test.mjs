@@ -52,6 +52,9 @@ const ENGINE = [
   // Perfect sourced events only: this guards the visual policy upper bound,
   // while plan 08's forced-miss report explicitly rejects promotion as-is.
   ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],
+  // The cue detector's front end, on synthesised signals: the reference
+  // samples are game content and live outside the repository.
+  ['cuetest', ['cue/test-cue.py']],
 ];
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],
@@ -78,7 +81,10 @@ const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 function runTool(argv) {
   return new Promise((resolve) => {
     const started = Date.now();
-    const child = spawn(process.execPath, [join(TOOLS, argv[0]), ...argv.slice(1)],
+    // Most checks are node; the cue front end is stdlib Python, like the rest
+    // of the device tooling, so dispatch on the extension.
+    const runner = argv[0].endsWith('.py') ? 'python3' : process.execPath;
+    const child = spawn(runner, [join(TOOLS, argv[0]), ...argv.slice(1)],
       { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     child.stdout.on('data', d => { out += d; });

@@ -306,6 +306,76 @@ post-run research, not this controller's timing loop.
 by the controller simulator. A good aggregate accuracy cannot hide a dangerous
 departure false positive.
 
+#### Front end built and characterised (2026-08-24); the gate is still open
+
+`tools/cue/` implements the detector shape above in stdlib Python: 32 ms
+frames, 16 log-spaced bands from 120 Hz to 7 kHz, each frame's own mean
+removed so a score is a *shape* agreement rather than a level, and `UNKNOWN`
+for empty, silent, clipped, or too-short windows. `tools/dump/extract-samples.sh`
+pulls the reference waveforms out of the APK by handle — outside the repository,
+always — so cues are matched against ground truth instead of memory of the
+audible mix.
+
+**Reference separability, before any device noise.** This is the ceiling:
+
+| | 21 | 23 | 24 | 17 | 25-29 |
+|---|---|---|---|---|---|
+| 21 | 1.00 | 0.92 | 0.61 | -0.20 | 0.17-0.26 |
+| 23 | 0.92 | 1.00 | 0.60 | -0.31 | -0.01-0.08 |
+| 24 | 0.61 | 0.60 | 1.00 | **-0.61** | -0.09-0.02 |
+| 17 | -0.20 | -0.31 | -0.61 | 1.00 | **0.76-0.83** |
+
+The three vocals cluster and are anti-correlated with the thud, so
+vocal-versus-thud is the easy discrimination. The footstep bank is effectively
+one sound (pairwise ~1.00) sitting in the thud's spectral region, so it adds
+nothing separable.
+
+**Against the real contaminated background.** `tools/cue/evaluate.py` injects a
+reference into a captured device window at a swept ratio.
+[`ANDROID-AUDIO-CAPTURE.md`](../docs/device/ANDROID-AUDIO-CAPTURE.md) records
+that internal capture always carries the music-box loop and Mangle's static;
+this measures what that costs. Scored at the *class* level, because gate 0 left
+the controller needing "a BB vocal happened" rather than which one:
+
+| Condition | Raw features | Per-run background subtracted |
+|---|---|---|
+| background only, no cue | **thud 0.835** — a confident false positive | bb-vocal 0.421, margin 0.084 — no confident call |
+| vocal at +12 dB | thud wins, vocal 0.13 | **hit**, margin 0.312 |
+| vocal at +6 dB | thud wins | **hit**, margin 0.256 |
+| vocal at 0 dB | thud wins | **hit**, margin 0.168 |
+| vocal at -6 dB | thud wins | hit, margin 0.033 — below the no-cue margin |
+| thud injected | hit 0.945-0.967 | not detected |
+
+Raw, the detector is a noise detector: sample 17 is a 3.2 s broadband template
+and the contamination alone scores 0.835 on a window that cannot contain it.
+The contamination does not merely add noise, it manufactures thud detections.
+
+So the operating rule is fixed by measurement, not preference:
+
+1. subtract a per-run background profile (per-band median across the window)
+   before scoring — the contamination is stationary and the cues are transient,
+   which is the only property that separates them;
+2. decide on the class margin, not the raw score, and return `UNKNOWN` below
+   it — at -6 dB the margin falls under the no-cue margin, so that is the floor;
+3. never attempt to detect the thud. Gate 0 rejected it from the source side;
+   the signal evidence rejects it independently.
+
+**What is still missing, and it is the gate itself.** This is an injection
+study against one 5-second background, not held-out evidence. It has no
+calibration/holdout split by session, no cue-by-cue confusion matrix, and no
+95% binomial bounds, because those need labeled positive windows from real
+gameplay where BB actually moves — which needs nights on the phone with
+`query-cue-helper.sh record`. The injected ratio is also a proxy: the true mix
+contains the game's own concurrent voices, not a scaled reference over ambience.
+Do not read the table above as a detector result. It says only that the cue set
+is separable in principle and that background subtraction is required.
+
+One bug worth keeping: the first front end floored band energies at an absolute
+epsilon, so dropping a signal 20 dB pinned its quiet bands while its loud bands
+moved, and the "level-invariant" features changed shape purely because the sound
+got quieter. The floor is now relative to each frame's loudest band.
+`tools/cue/test-cue.py` asserts the invariance that mistake broke.
+
 ### 3. Measure window and action latency
 
 Timestamp, with `elapsedRealtimeNanos()` or the native monotonic clock:
