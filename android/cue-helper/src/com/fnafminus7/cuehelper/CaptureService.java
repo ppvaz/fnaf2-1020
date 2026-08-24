@@ -24,6 +24,8 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.LocalServerSocket;
+import android.net.LocalSocket;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -33,7 +35,17 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -58,12 +70,19 @@ public final class CaptureService extends Service {
     private static final int VISUAL_X = 3;
     private static final int VISUAL_Y = 6;
     private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
+    private static final long MAX_AUDIO_READ_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
     private static final long AUDIO_REPORT_INTERVAL_MS = 1_000L;
+    private static final int CONTROL_PORT = 49_707;
+    private static final String CONTROL_SOCKET_NAME =
+            "com.fnafminus7.cuehelper.control";
+    private static final int CONTROL_LINE_LIMIT = 256;
+    private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
 
     private final AtomicBoolean stopping = new AtomicBoolean(false);
     private final AtomicBoolean audioRunning = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Object snapshotLock = new Object();
 
     private MediaProjection projection;
     private MediaProjection.Callback projectionCallback;
@@ -72,6 +91,14 @@ public final class CaptureService extends Service {
     private HandlerThread visualThread;
     private AudioRecord audioRecord;
     private Thread audioThread;
+    private ServerSocket controlServer;
+    private LocalServerSocket localControlServer;
+    private Thread controlThread;
+    private Thread localControlThread;
+    private volatile boolean controlRunning;
+    private volatile boolean tcpControlUp;
+    private volatile boolean localControlUp;
+    private String controlToken;
 
     private long visualSequence;
     private long lastVisualReportNs;
@@ -82,6 +109,18 @@ public final class CaptureService extends Service {
     private volatile int capturedContentVisibility = -1;
     private volatile String lastVisual = "visual=UNAVAILABLE";
     private volatile String lastAudio = "audio=UNAVAILABLE";
+    private volatile String lastControl = "control=UNAVAILABLE";
+
+    private long snapshotVisualSequence;
+    private long snapshotVisualTimestampNs;
+    private int snapshotRed;
+    private int snapshotGreen;
+    private int snapshotBlue;
+    private int snapshotLuma;
+    private long snapshotAudioFrames;
+    private long snapshotAudioReadNs;
+    private int snapshotAudioRms;
+    private int snapshotAudioPeak;
 
     @Override
     public void onCreate() {
@@ -153,6 +192,7 @@ public final class CaptureService extends Service {
             projection.registerCallback(projectionCallback, mainHandler);
             startVisualCapture();
             startAudioCapture();
+            startControlServer();
             publishCombinedStatus("RUNNING");
         } catch (Throwable error) {
             Log.e(TAG, "capture startup failed", error);
@@ -255,6 +295,14 @@ public final class CaptureService extends Service {
                 ageUs = -1;
             }
             visualSequence++;
+            synchronized (snapshotLock) {
+                snapshotVisualSequence = visualSequence;
+                snapshotVisualTimestampNs = timestampNs;
+                snapshotRed = red;
+                snapshotGreen = green;
+                snapshotBlue = blue;
+                snapshotLuma = luma;
+            }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
                 lastVisualReportNs = callbackNs;
@@ -428,6 +476,12 @@ public final class CaptureService extends Service {
             }
             int rms = (int) Math.sqrt((double) energy / count);
             totalFrames += count;
+            synchronized (snapshotLock) {
+                snapshotAudioFrames = totalFrames;
+                snapshotAudioReadNs = System.nanoTime();
+                snapshotAudioRms = rms;
+                snapshotAudioPeak = peak;
+            }
             long nowMs = SystemClock.elapsedRealtime();
             if (nowMs >= nextReportMs) {
                 nextReportMs = nowMs + AUDIO_REPORT_INTERVAL_MS;
@@ -450,8 +504,217 @@ public final class CaptureService extends Service {
         audioRunning.set(false);
     }
 
+    private void startControlServer() throws IOException {
+        byte[] tokenBytes = new byte[16];
+        new SecureRandom().nextBytes(tokenBytes);
+        char[] tokenChars = new char[tokenBytes.length * 2];
+        final char[] hex = "0123456789abcdef".toCharArray();
+        for (int i = 0; i < tokenBytes.length; i++) {
+            int value = tokenBytes[i] & 0xff;
+            tokenChars[i * 2] = hex[value >>> 4];
+            tokenChars[i * 2 + 1] = hex[value & 0xf];
+        }
+        controlToken = new String(tokenChars);
+
+        ServerSocket server = new ServerSocket();
+        server.setReuseAddress(true);
+        // Bind the IPv4 loopback explicitly. getLoopbackAddress() resolved to
+        // ::1 on the API-36 target, and the device shell's nc reaches the
+        // documented 127.0.0.1:49707 contract over IPv4 only.
+        server.bind(new InetSocketAddress(
+                InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), CONTROL_PORT), 1);
+        controlServer = server;
+        tcpControlUp = true;
+
+        // The abstract socket is the cable-bound channel: `adb forward` reaches
+        // it without the app opening a port any other process can probe. The
+        // loopback port stays for the on-device controller, whose whole point
+        // is deciding without an adb round trip.
+        localControlServer = new LocalServerSocket(CONTROL_SOCKET_NAME);
+        localControlUp = true;
+
+        controlRunning = true;
+        publishControlStatus();
+        Log.i(TAG, lastControl);
+
+        controlThread = new Thread(this::controlLoop, "cue-control");
+        controlThread.start();
+        localControlThread = new Thread(this::localControlLoop, "cue-control-local");
+        localControlThread.start();
+    }
+
+    private void publishControlStatus() {
+        String state = tcpControlUp && localControlUp
+                ? "READY"
+                : tcpControlUp || localControlUp ? "DEGRADED" : "UNAVAILABLE";
+        lastControl = "control=" + state
+                + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
+                + " socket=" + (localControlUp ? CONTROL_SOCKET_NAME : "none")
+                + " token=" + (controlToken == null ? "none" : controlToken);
+    }
+
+    private void controlLoop() {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        while (controlRunning) {
+            try {
+                Socket accepted = controlServer.accept();
+                try (Socket client = accepted) {
+                    client.setSoTimeout(CONTROL_READ_TIMEOUT_MS);
+                    serveControlRequest(client.getInputStream(), client.getOutputStream());
+                } catch (IOException error) {
+                    if (controlRunning) {
+                        // A slow, disconnected, or malformed client loses only
+                        // its own request. It cannot tear down the listener.
+                        Log.w(TAG, "control client failed", error);
+                    }
+                }
+            } catch (SocketException error) {
+                // One dead listener must not silence the other channel, so the
+                // shared shutdown flag is left alone here.
+                if (controlRunning) {
+                    Log.e(TAG, "control socket failed", error);
+                    tcpControlUp = false;
+                    publishControlStatus();
+                    publishCombinedStatus("RUNNING");
+                }
+                break;
+            } catch (Throwable error) {
+                if (controlRunning) {
+                    Log.w(TAG, "control request failed", error);
+                }
+            }
+        }
+    }
+
+    private void localControlLoop() {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        while (controlRunning) {
+            try {
+                LocalSocket accepted = localControlServer.accept();
+                try (LocalSocket client = accepted) {
+                    client.setSoTimeout(CONTROL_READ_TIMEOUT_MS);
+                    serveControlRequest(client.getInputStream(), client.getOutputStream());
+                } catch (IOException error) {
+                    if (controlRunning) {
+                        Log.w(TAG, "local control client failed", error);
+                    }
+                }
+            } catch (IOException error) {
+                if (controlRunning) {
+                    Log.e(TAG, "local control socket failed", error);
+                    localControlUp = false;
+                    publishControlStatus();
+                    publishCombinedStatus("RUNNING");
+                }
+                break;
+            } catch (Throwable error) {
+                if (controlRunning) {
+                    Log.w(TAG, "local control request failed", error);
+                }
+            }
+        }
+    }
+
+    private void serveControlRequest(InputStream input, OutputStream output)
+            throws IOException {
+        String request = readBoundedControlLine(input);
+        String response;
+        if (request == null) {
+            response = "ERROR request-too-long";
+        } else if (!request.equals("GET " + controlToken)) {
+            response = "ERROR unauthorized";
+        } else {
+            response = "OK " + currentSnapshot();
+        }
+        output.write((response + "\n").getBytes(StandardCharsets.US_ASCII));
+        output.flush();
+    }
+
+    private String readBoundedControlLine(InputStream input) throws IOException {
+        byte[] bytes = new byte[CONTROL_LINE_LIMIT];
+        int length = 0;
+        while (length < bytes.length) {
+            int value = input.read();
+            if (value == -1 || value == '\n') {
+                return new String(bytes, 0, length, StandardCharsets.US_ASCII);
+            }
+            if (value == '\r') {
+                continue;
+            }
+            if (value < 0x20 || value > 0x7e) {
+                return "";
+            }
+            bytes[length++] = (byte) value;
+        }
+        return null;
+    }
+
+    private String currentSnapshot() {
+        long visualSequenceSnapshot;
+        long visualTimestampNs;
+        int red;
+        int green;
+        int blue;
+        int luma;
+        long audioFrames;
+        long audioReadNs;
+        int audioRms;
+        int audioPeak;
+        synchronized (snapshotLock) {
+            visualSequenceSnapshot = snapshotVisualSequence;
+            visualTimestampNs = snapshotVisualTimestampNs;
+            red = snapshotRed;
+            green = snapshotGreen;
+            blue = snapshotBlue;
+            luma = snapshotLuma;
+            audioFrames = snapshotAudioFrames;
+            audioReadNs = snapshotAudioReadNs;
+            audioRms = snapshotAudioRms;
+            audioPeak = snapshotAudioPeak;
+        }
+
+        long nowNs = System.nanoTime();
+        long visualAgeUs = visualTimestampNs > 0
+                ? (nowNs - visualTimestampNs) / 1_000L : -1;
+        String invalidReason = visualAgeUs < 0
+                ? "timestamp-invalid"
+                : visualAgeUs > MAX_VISUAL_FRAME_AGE_US
+                        ? "frame-stale"
+                        : capturedContentInvalidReason();
+        String visual;
+        if (invalidReason == null) {
+            visual = String.format(Locale.US,
+                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d ageUs=%d "
+                            + "content=%dx%d visible=%d",
+                    visualSequenceSnapshot, red, green, blue, luma, visualAgeUs,
+                    capturedContentWidth, capturedContentHeight,
+                    capturedContentVisibility);
+        } else {
+            visual = String.format(Locale.US,
+                    "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d",
+                    visualSequenceSnapshot, invalidReason, visualAgeUs,
+                    capturedContentWidth, capturedContentHeight,
+                    capturedContentVisibility);
+        }
+
+        long audioReadAgeUs = audioReadNs > 0 ? (nowNs - audioReadNs) / 1_000L : -1;
+        String audio;
+        if (audioReadAgeUs < 0 || audioReadAgeUs > MAX_AUDIO_READ_AGE_US) {
+            audio = String.format(Locale.US,
+                    "audio=UNKNOWN reason=%s frames=%d readAgeUs=%d",
+                    audioReadAgeUs < 0 ? "read-pending" : "read-stale",
+                    audioFrames, audioReadAgeUs);
+        } else {
+            audio = String.format(Locale.US,
+                    "audio=OBSERVED frames=%d rms=%d peak=%d readAgeUs=%d",
+                    audioFrames, audioRms, audioPeak, audioReadAgeUs);
+        }
+        return "snapshotNs=" + nowNs + " " + visual + " " + audio;
+    }
+
     private void publishCombinedStatus(String lifecycle) {
-        publishStatus(lifecycle + "\n" + lastVisual + "\n" + lastAudio);
+        publishStatus(lifecycle + "\n" + lastVisual + "\n" + lastAudio
+                + "\n" + lastControl);
     }
 
     private void publishStatus(String status) {
@@ -472,6 +735,36 @@ public final class CaptureService extends Service {
             return;
         }
         Log.w(TAG, "stopping capture: " + reason);
+
+        controlRunning = false;
+        ServerSocket server = controlServer;
+        controlServer = null;
+        if (server != null) {
+            try {
+                server.close();
+            } catch (IOException ignored) {
+                // Closing an already-failed local server is still stopped.
+            }
+        }
+        LocalServerSocket localServer = localControlServer;
+        localControlServer = null;
+        if (localServer != null) {
+            try {
+                localServer.close();
+            } catch (IOException ignored) {
+                // Closing an already-failed local server is still stopped.
+            }
+        }
+        for (Thread worker : new Thread[] {controlThread, localControlThread}) {
+            if (worker != null && worker != Thread.currentThread()) {
+                worker.interrupt();
+            }
+        }
+        controlThread = null;
+        localControlThread = null;
+        tcpControlUp = false;
+        localControlUp = false;
+        controlToken = null;
 
         audioRunning.set(false);
         AudioRecord record = audioRecord;
@@ -524,6 +817,7 @@ public final class CaptureService extends Service {
 
         lastVisual = "visual=UNAVAILABLE(" + reason + ")";
         lastAudio = "audio=UNAVAILABLE(" + reason + ")";
+        lastControl = "control=UNAVAILABLE(" + reason + ")";
         publishCombinedStatus("UNAVAILABLE");
         stopForeground(STOP_FOREGROUND_REMOVE);
     }

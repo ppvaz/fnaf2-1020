@@ -15,9 +15,10 @@ The audio path reports only RMS/peak plumbing evidence; cue templates and
 window arming remain behind the gates in
 [`plans/08-audio-cue-controller.md`](../../plans/08-audio-cue-controller.md).
 
-Any projection, display, image, or audio failure marks the corresponding sensor
-unavailable. Projection stop tears both paths down. The service is deliberately
-`START_NOT_STICKY`: it never tries to reuse consent after process death.
+Any projection, display, image, audio, or local-control failure marks the
+corresponding path unavailable. Projection stop tears every path down. The
+service is deliberately `START_NOT_STICKY`: it never tries to reuse consent
+after process death.
 
 ## Build and install
 
@@ -48,7 +49,7 @@ adb logcat -s FnafCueHelper:I '*:S'
 A healthy line contains both observations:
 
 ```text
-RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=OBSERVED rate=... rms=... peak=... ageUs=...
+RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=OBSERVED rate=... rms=... peak=... ageUs=... control=READY port=49707 socket=... token=...
 ```
 
 On API 34+, the helper also consumes `onCapturedContentResize()` and
@@ -81,7 +82,46 @@ first second, not 40 minutes into a soak.
 This is measurement plumbing, not a promoted controller. Preserve the existing
 screencheck/HID path until independent holdouts and a full-night soak pass.
 
-## Consent without a tap
+## Snapshot boundary
+
+One protocol, served on two channels. A fresh 128-bit token is created per
+consented run and published in the helper's own log. `GET <token>` returns one
+bounded ASCII line with the current monotonic snapshot; malformed, oversized,
+or incorrectly authenticated requests receive an error and no sensor data.
+Audio never crosses as PCM, and visual frames never cross as images.
+
+| Channel | Endpoint | For |
+|---|---|---|
+| loopback TCP | `127.0.0.1:49707` | the on-device controller, which must decide without an adb round trip |
+| abstract unix | `@com.fnafminus7.cuehelper.control` | host tooling over `adb forward`, with nothing on the device opening a port |
+
+Both are `[CALIBRATED]` on the target (2026-08-24). Either channel failing
+downgrades the status line to `control=DEGRADED` with the dead endpoint printed
+as `none`; one dead listener never silences the other.
+
+```sh
+tools/device/query-cue-helper.sh            # loopback, the default
+tools/device/query-cue-helper.sh forward    # cable-bound abstract socket
+```
+
+Both resolve the current helper PID/token, require an FNaF-focused physical
+display, and fail if the returned visual snapshot is `UNKNOWN`. `loopback`
+performs the exchange entirely inside one `adb shell`, so it models what the
+controller will do on the phone; `forward` allocates an ephemeral host port and
+removes it again on exit. Either way this is a bridge for calibration and
+timing work, not a live host-driven controller.
+
+Two device details cost real time here, both fixed in the code but worth
+knowing:
+
+- `InetAddress.getLoopbackAddress()` resolves to `::1` on this target, so the
+  documented `127.0.0.1:49707` contract was refused until the bind was pinned
+  to the IPv4 loopback. The listener correctly appears in `/proc/net/tcp6` as
+  `::ffff:127.0.0.1` — Java's v4-mapped form, not an IPv6 bind.
+- macOS BSD `nc` returns an empty body for the forwarded exchange even when
+  `adb forward` is healthy. The host client is `python3`, not netcat.
+
+### Consent without a tap
 
 `MediaProjection` consent normally needs a human tap, which makes repeatable
 soak runs awkward. On this dev phone the app op short-circuits the dialog:

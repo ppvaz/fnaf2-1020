@@ -4,6 +4,8 @@
     <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="36" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Required by Android even though the control server binds only loopback. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

@@ -1,7 +1,9 @@
 # On-device audio-cue controller
 
 **Status:** recovered from the interrupted 2026-08-24 `/btw` thread; design and
-promotion gates recorded, implementation not started.
+promotion gates recorded. The unified capture probe and its authenticated `GET`
+snapshot are implemented and validated on the target device; cue arming,
+classification, and action control are not.
 
 ## Decision
 
@@ -149,6 +151,15 @@ bound every field, and close the service when the trial harness exits. The
 controller must use monotonic timestamps and must never block its HID schedule
 waiting for a reply. A result arriving after its action deadline is `UNKNOWN`,
 not a late command.
+
+The first protocol slice now exists in `android/cue-helper`: a per-run 128-bit
+token protects a length-bounded `GET` request, and the response contains a
+fresh monotonic visual/audio snapshot without PCM or image payloads. It is
+served on two channels — a `127.0.0.1:49707` loopback port for the on-device
+controller, and an abstract unix socket reachable over `adb forward` for host
+tooling. `tools/device/query-cue-helper.sh` proves both boundaries against the
+real device. This does not implement `ARM`/`HIT`/`MISS`, detector windows, or
+live HID decisions; those remain behind the measurement gates below.
 
 ### Window schedule
 
