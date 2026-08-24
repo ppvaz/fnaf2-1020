@@ -67,6 +67,9 @@ Fusion build 296, August 2025.
 - [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the
   libc-free on-phone classifier, its model-building discipline, and measured
   latency.
+- [`ANDROID-AUDIO-CAPTURE.md`](device/ANDROID-AUDIO-CAPTURE.md) — the mobile
+  recording bug that exposes normally inaudible Mangle/music-box loops, its
+  evidence boundary, and the implications for an audio-cue detector.
 
 ## In-engine and prior art
 
