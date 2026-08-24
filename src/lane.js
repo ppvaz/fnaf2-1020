@@ -258,7 +258,6 @@ export class Lane {
         placed.push({ n, x, g, tw, y: mid + ROWS[row] });
       }
 
-      const wTol = coach.tolOk * this.pps;
       for (const { n, x, g, tw, y } of placed) {
         const [fg, bg] = COLORS[g.kind];
 
@@ -272,8 +271,13 @@ export class Lane {
           roundRect(ctx, x, y - 7, Math.max(4, x2 - x), 14, 5); ctx.stroke();
         }
 
+        // Lopsided on purpose: a step's early and late tolerances differ, and
+        // the shape is the lesson -- the mask cannot be late, the hall flash
+        // cannot be early.
+        const tol = coach.tolFor(n.step);
+        const wl = tol.okEarly * this.pps, wr = tol.okLate * this.pps;
         ctx.fillStyle = 'rgba(255,255,255,0.05)';
-        ctx.fillRect(x - wTol, y - 10, wTol * 2, 20);
+        ctx.fillRect(x - wl, y - 10, wl + wr, 20);
 
         ctx.globalAlpha = n.due < t - 0.05 ? 0.45 : 1;
         ctx.fillStyle = bg;

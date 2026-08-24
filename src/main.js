@@ -200,8 +200,14 @@ class App {
       : l.drill === 'phaseB' ? `beat ${l.duelTarget * 1000 | 0} ms on ${l.target} attacks`
       : `${l.target} clean passes in a row`;
     const tol = l.tol ? ` · graded ±${l.tol.tolGood * 1000 | 0} ms GOOD / ±${l.tol.tolOk * 1000 | 0} ms OK` : '';
+    // A lesson's tolerance is a ceiling: steps with a measured window are held
+    // to it instead, so say so rather than letting the header read as a promise.
+    const tight = (l.script || []).some(st => st.win &&
+      (C.stepTol(st, l.tol?.tolGood, l.tol?.tolOk).okLate < (l.tol?.tolOk ?? C.TOL_OK) ||
+       C.stepTol(st, l.tol?.tolGood, l.tol?.tolOk).okEarly < (l.tol?.tolOk ?? C.TOL_OK)));
+    const tightNote = tight ? ' · tighter on the steps that need it' : '';
     document.getElementById('brief-pass').textContent =
-      `PASS — ${need}${tol} · never slowed down`;
+      `PASS — ${need}${tol}${tightNote} · never slowed down`;
     document.getElementById('brief-controls').innerHTML =
       (l.controls || ALL_CONTROLS).map(c => {
         const d = CONTROL_CHIPS[c];
@@ -402,7 +408,7 @@ class App {
       if (last && last !== this._popped) {
         this._popped = last;
         const txt = last.delta == null ? last.grade.toUpperCase()
-          : Math.abs(last.delta) <= this.coach.tolGood ? 'PERFECT'
+          : last.grade === 'good' ? 'PERFECT'
           : `${last.delta > 0 ? 'LATE ' : 'EARLY '}${Math.abs(Math.round(last.delta * 1000))}ms`;
         this.ui.lane.pop(txt, last.grade, this.sim.t);
       }

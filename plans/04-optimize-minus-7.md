@@ -76,18 +76,57 @@ frames, below the trainer's own `TOL_GOOD` grading resolution — does not apply
 a change in how long a control is held. The price is 14 points of the flashlight
 budget (57% -> 43% left) and 11 points of box margin.
 
-### Follow-up this measurement opens
+### The two 50 ms edges are one constraint, and it is structural
 
-The trainer grades all ten steps against one symmetric pair of tolerances
-(`TOL_GOOD` 150 ms, `TOL_OK` 350 ms), but the windows above are lopsided and
-range from 267 ms wide to over 1.2 s. On the current numbers a 150 ms-late
-`mask-off`, a 100 ms-early `flash-hall`, a 150 ms-late `monitor-up` and a 117 ms-early
-`cam-10` are all graded **good** while dying in the model, and `TOL_OK` is wider
-than the entire survivable window on six of the ten steps. Per-step asymmetric
-tolerances are the obvious fix. They must be tightened from the combined budget,
-not set at these single-step edges: each window is measured with the rest of the
-pass perfect, which is why the whole-cycle ceiling (4 frames) is far below any
-individual step's slack.
+`mask-off` late and `flash-hall` early are not two findings. On Android every
+office light is gated on `mask = 0` (g75/g84), so a mask still on when the hall
+flash is due swallows the flash and Foxy is never reset. The shipped cycle
+leaves three frames between the two steps, and that gap *is* both windows.
+
+Re-measuring the per-step windows on `uniform-best`
+(`--steps --knobs=hallDelay=4,hallHold=5,flashHold=3`) prices the lever exactly:
+
+| step | shipped | uniform-best |
+|---|---:|---:|
+| mask-off, late | +50 ms | +67 ms |
+| flash-hall, early | -50 ms | -67 ms |
+| monitor-up, early | -150 ms | -217 ms |
+| cam-11, late | +517 ms | +400 ms |
+| wind, late | +467 ms | +350 ms |
+
+`hallDelay` buys exactly one frame of cliff per frame spent, which is why the
+profile search pushed it 3 -> 10. It is a real lever and a linear one, but it is
+not free: `profile-best` spends it down to 1% box margin. Widening the gap is
+the only way to make that moment humanly reliable, and how far to widen it is
+the same open decision as shipping a variant at all.
+
+### Follow-up this measurement opens — done 2026-08-23
+
+The trainer graded all ten steps against one symmetric pair of tolerances
+(`TOL_GOOD` 150 ms, `TOL_OK` 350 ms), so a 150 ms-late `mask-off`, a 100 ms-early
+`flash-hall`, a 150 ms-late `monitor-up` and a 117 ms-early `cam-10` were all
+graded **good** while dying in the model, and `TOL_OK` was wider than the entire
+survivable window on six of the ten steps.
+
+Now `C.STEP_WINDOWS` carries the measured edges, `C.stepTol` derives a lopsided
+GOOD/OK band from them (half the window and four fifths of it), and `Coach.grade`
+takes the step as well as the delta. A lesson's tolerance became a ceiling rather
+than the rule: it can forgive less than the window, never more. The rhythm lane
+draws the real asymmetric shape, and `simtest` fails if any of that regresses.
+
+Two things this deliberately does not do. The bands are a fraction of a
+*single-step* measurement, not a share of a combined budget — real play is wrong
+on every step at once, which is why the whole-cycle ceiling (4 frames) sits far
+below any individual step's slack, and why the fractions are conservative rather
+than set at the edge. And a window belongs to a geometry, not to a name: only
+`CYCLE_SCRIPT` and lesson 4's office half carry them, because Phase A reuses
+`flash-hall` with no mask in front of it and the sweep drills sit elsewhere in
+the 5 s interval.
+
+The cost to the player is real and is the point: `mask-off` now passes only
+within about 40 ms late, and `flash-hall` within about 40 ms early. If that
+proves untrainable on a phone, the answer is to widen `hallDelay` in the shipped
+script — not to loosen the grade back onto a lethal input.
 
 **Android evidence (2026-08-20, corrected same day):** the 400-frame flash
 stall is Android-sourced after all — groups 450-457 load it from the

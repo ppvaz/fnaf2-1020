@@ -42,9 +42,17 @@ export class Coach {
 
   start(t) { this.cycleStart = this.nextAnchor(t); this.idx = 0; }
 
-  grade(delta) {
+  // The tolerance for one step, as separate early/late magnitudes. A step that
+  // carries a measured window is graded against that; anything else falls back
+  // to the lesson's own symmetric pair.
+  tolFor(step) { return C.stepTol(step, this.tolGood, this.tolOk); }
+
+  grade(step, delta) {
+    const t = this.tolFor(step);
     const a = Math.abs(delta);
-    return a <= this.tolGood ? 'good' : a <= this.tolOk ? 'ok' : 'late';
+    const good = delta > 0 ? t.goodLate : t.goodEarly;
+    const ok = delta > 0 ? t.okLate : t.okEarly;
+    return a <= good ? 'good' : a <= ok ? 'ok' : 'late';
   }
 
   // The wind step is graded on how long the box was actually being wound, not
@@ -152,7 +160,7 @@ export class Coach {
     // resolve a pending camera flash
     if (this.pendingFlash && act === 'light') {
       const p = this.pendingFlash; this.pendingFlash = null;
-      this.push(p.step, p.delta, this.grade(p.delta));
+      this.push(p.step, p.delta, this.grade(p.step, p.delta));
       this.advance(this.sim.t);
       return;
     }
@@ -170,7 +178,7 @@ export class Coach {
     // Hold position on a camflash until its light tap lands, so the grade is
     // attributed to this cycle rather than the next one.
     if (e.action === 'camflash') { this.pendingFlash = { step: e, t, delta }; return; }
-    this.push(e, delta, this.grade(delta));
+    this.push(e, delta, this.grade(e, delta));
     this.advance(t);
   }
 

@@ -77,7 +77,16 @@ The two faces, **Chakra Petch** and **IBM Plex Mono**, ship with the repo as lat
 
 **Timing is never slowed down.** The whole skill is absolute timing, so practising at 0.8× would
 build the wrong reflexes. Lessons get easier by removing controls and threats, never by distorting
-the clock — only the grading tolerance is loosened early on.
+the clock — only the grading tolerance is loosened early on, and only as far as the routine allows.
+
+Each step is graded against its own **measured, lopsided** window rather than one symmetric number.
+The mask has 450 ms of room early and about 50 ms late, because on Android the mask blocks the
+flashlight (g75/g84) and a mask still on when the hall flash is due swallows the flash that resets
+Foxy — the hall flash is the mirror image, 50 ms early and 267 ms late. The rhythm lane draws those
+windows at their real shape, so the asymmetry is visible before you are graded on it. A lesson's own
+tolerance is a ceiling on that, never a licence: no drill calls an input safe that the simulator
+says ends the night. The numbers come from `cyclesearch --steps`; see
+[plan 04](plans/04-optimize-minus-7.md).
 
 ## Calibration
 

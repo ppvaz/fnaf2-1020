@@ -441,3 +441,60 @@ export const CYCLE_SCRIPT = [
 
 export const TOL_GOOD = 0.15;  // seconds
 export const TOL_OK   = 0.35;
+
+// How far each step of the cycle can be moved on its own, in seconds, as a
+// magnitude either side of its scheduled time.
+//
+// [CALIBRATED 2026-08-23 — `node tools/cyclesearch.mjs --steps`: each step was
+// shifted alone, with the rest of the pass played perfectly, until one of 200
+// seeds died. WIND's early edge hit the sweep's 0.75 s cap without a death, so
+// that entry is a lower bound.]
+//
+// They are lopsided, and two of them are cliffs rather than slopes. On Android
+// every office light is gated on `mask = 0` (g75/g84), so a mask still on when
+// the hall flash is due swallows the flash and Foxy is never reset. Only about
+// three frames separate the two steps, which is the whole reason `mask-off`
+// cannot be late and `flash-hall` cannot be early. Both search winners in
+// plan 04 widened exactly that gap.
+//
+// A window is what the game tolerates on ONE input while everything else is
+// perfect. Real play is wrong on every step at once, so grading takes a
+// fraction of it rather than the edge.
+export const STEP_WINDOWS = {
+  'monitor-down': { early: 0.450, late: 0.300 },
+  'mask-on':      { early: 0.300, late: 0.200 },
+  'mask-off':     { early: 0.450, late: 0.050 },
+  'flash-hall':   { early: 0.050, late: 0.267 },
+  'monitor-up':   { early: 0.150, late: 0.117 },
+  'cam-10':       { early: 0.117, late: 0.150 },
+  'cam-4':        { early: 0.150, late: 0.150 },
+  'cam-7':        { early: 0.150, late: 0.133 },
+  'cam-11':       { early: 0.133, late: 0.517 },
+  'wind':         { early: 0.750, late: 0.467 },
+};
+
+// GOOD takes half a step's window, OK four fifths. Both are judgement calls,
+// and both can only tighten a lesson's own tolerance, never loosen it: a drill
+// may be more forgiving than the routine, but it must never call an input safe
+// when the model says it ends the night.
+export const TOL_GOOD_FRAC = 0.5;
+export const TOL_OK_FRAC   = 0.8;
+
+// Steps carry their window on the step itself rather than being looked up by
+// id, because a window belongs to a *geometry*, not to a name: Phase A reuses
+// `flash-hall` with no mask before it, so the cliff that caps it here does not
+// exist there. A step with no window is graded on the lesson's tolerance.
+for (const st of CYCLE_SCRIPT) {
+  if (STEP_WINDOWS[st.id]) st.win = STEP_WINDOWS[st.id];
+}
+
+export function stepTol(step, tolGood = TOL_GOOD, tolOk = TOL_OK) {
+  const w = step?.win;
+  if (!w) return { goodEarly: tolGood, goodLate: tolGood, okEarly: tolOk, okLate: tolOk };
+  return {
+    goodEarly: Math.min(tolGood, w.early * TOL_GOOD_FRAC),
+    goodLate:  Math.min(tolGood, w.late  * TOL_GOOD_FRAC),
+    okEarly:   Math.min(tolOk,   w.early * TOL_OK_FRAC),
+    okLate:    Math.min(tolOk,   w.late  * TOL_OK_FRAC),
+  };
+}

@@ -16,8 +16,18 @@ const sweep = (t0) => [
   S('cam-7', t0 + 0.40, 'CAM 07, then LIGHT', 'camflash', { cam: 7 }),
 ];
 
+// A step's measured window belongs to the canonical geometry, so only scripts
+// that reproduce it may carry one. Lesson 4's office half is CYCLE_SCRIPT's
+// office half at the same offsets, so it does; the sweep drills sit at a
+// different point in the 5 s interval and Phase A has no mask before its hall
+// flash, so neither does.
+const withWindows = (steps) => steps.map(st =>
+  C.STEP_WINDOWS[st.id] ? { ...st, win: C.STEP_WINDOWS[st.id] } : st);
+
 // Early lessons are graded loosely: you are learning where the buttons are,
-// not shaving milliseconds. The last lessons use the real tolerances.
+// not shaving milliseconds. The last lessons use the real tolerances. A window
+// still caps that looseness -- a drill may forgive, but never past the point
+// where the model says the night ends.
 const EASY = { tolGood: 0.30, tolOk: 0.55 };
 const FIRM = { tolGood: 0.22, tolOk: 0.45 };
 
@@ -99,13 +109,13 @@ export const LESSONS = [
            'and it must come BEFORE the flash: flashing the hall with him in the office kills you. ' +
            'The flash then resets Foxy.',
     controls: ['light', 'mask', 'monitor'],
-    script: [
+    script: withWindows([
       S('monitor-down', 0.00, 'Cams down', 'monitor', { want: 'down' }),
       S('mask-on', 0.20, 'Mask on', 'mask'),
       S('mask-off', 0.35, 'Mask off', 'mask'),
       S('flash-hall', 0.42, 'Flash the hall', 'light'),
       S('monitor-up', 0.60, 'Cams up', 'monitor', { want: 'up' }),
-    ],
+    ]),
     sim: { ...INERT, foxyEnabled: true, gfEnabled: true },
     start: { monitor: 'up' },
     tol: EASY, target: 8,
