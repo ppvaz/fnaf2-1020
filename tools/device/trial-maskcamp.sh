@@ -43,6 +43,8 @@ case "$NIGHT" in
   *) echo "night must be continue or 6th"; exit 2 ;;
 esac
 
+. "$HERE/select-adb.sh"
+
 state() {
   local attempt result
   for attempt in 1 2 3; do

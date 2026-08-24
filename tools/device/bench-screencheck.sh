@@ -19,6 +19,7 @@ esac
   exit 2
 }
 
+. "$HERE/select-adb.sh"
 adb get-state >/dev/null
 "$HERE/build-screencheck.sh" "$LOCAL_BINARY" >/dev/null
 adb push "$LOCAL_BINARY" "$REMOTE_BINARY" >/dev/null

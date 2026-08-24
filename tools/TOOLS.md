@@ -99,6 +99,8 @@ accept a page URL when a focused run is useful.
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
+| `tools/device/select-adb.sh` | sourced transport guard | Honors an explicit `ANDROID_SERIAL`; otherwise selects exactly one ready USB device, falling back to exactly one wireless device only when USB is absent. Ambiguous preferred transports fail before a trial starts. Direct-ADB shell entry points source it. |
+| `tools/device/test-select-adb.sh` | check | Regression coverage for explicit selection, USB preference, wireless fallback, ambiguity, and missing-device failures. Uses a shell-local ADB mock and does not touch a real device. |
 | `tools/device/coords.sh` | sourced config | Moto g56 5G, 2400x1080 landscape touch coordinates used by the trial scripts. Source it; do not execute it. Recalibrate before using another layout/device. |
 | `tools/device/screenstate.py` | classifier | Reads an ADB PNG on stdin and prints `night`, `gameover`, or `other`. `--adb-fast [timeout]` transfers only sampled raw scanlines for watchdog polling. Requires Pillow in PNG mode. |
 | `tools/device/trial-minus7.sh [name] [cycles]` | **device action** | Guarded, recorded canonical timed loop. Environment controls include `NIGHT=continue|6th`, `DEBUG_OVERLAYS=0|1`, `GRADE_RUN=0|1`, `PRESS_MODE=...`, and watchdog intervals. It refuses capture overwrite and stops on lost focus/night state. |

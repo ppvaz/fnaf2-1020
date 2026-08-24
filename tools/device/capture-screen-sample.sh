@@ -45,6 +45,7 @@ esac
 
 mkdir -p "$(dirname "$OUTPUT")"
 [ ! -e "$OUTPUT" ] || { echo "refusing to overwrite $OUTPUT" >&2; exit 2; }
+. "$HERE/select-adb.sh"
 adb get-state >/dev/null
 FOCUS=$(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus || true)
 case "$FOCUS" in

@@ -155,6 +155,7 @@ done
 mkdir -p "$CAPTURE_DIR"
 [ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
+. "$HERE/select-adb.sh"
 RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
