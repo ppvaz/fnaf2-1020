@@ -144,16 +144,14 @@ export function budget(cycle, lengthMs) {
 }
 
 export function build(opts = {}) {
-  // Golden Freddy is IGNORED on night 6, deliberately and temporarily.
+  // Golden Freddy is cleared on every cycle by the canonical prophylactic
+  // mask flick.
   //
   // The always-taken mask flick is not a Balloon Boy precaution -- it is the
   // Golden Freddy clear that MINUS-7-STRATEGY.md's order rule demands before
   // the hall flash ("Golden Freddy must be cleared *before* you press CTRL, or
-  // the flash kills you"). But it is a GUESS: two blind mask toggles every
-  // cycle in a runner that cannot see the mask's state. On the phone that is
-  // the dominant failure -- a dropped toggle latches the mask on, every later
-  // left read comes back dark, and the model scores it a confident `inside`.
-  // Nights 6-30 and 6-31 both died exactly that way.
+  // the flash kills you"). It was dropped temporarily because nights 6-30 and
+  // 6-31 stayed masked and every later left read came back dark.
   //
   // Priced in the exact simulator over 1000 night-6 runs, after the simulator's
   // invented xorshift stream was replaced by the APK runtime's sourced LCG:
@@ -165,15 +163,16 @@ export function build(opts = {}) {
   // produces a loss at 8.55 s in the same 1000-seed census. The causal claim
   // (all losses are Golden Freddy) survived; the timing rationale did not.
   //
-  // So this temporary trade is no longer justified by a late risk. It is NOT a
-  // route decision and must be revisited: Golden Freddy should be
-  // identified, not guessed, and building that classifier needs positives that
-  // night 6 supplies only one run in ten before 2 AM. Restore the flick, or
-  // replace it with a real detection, before any attempt that expects to pass
-  // 2 AM.
+  // That retraction exposed the actual phone failure. The HID/recording census
+  // found that the lost input was the MONITOR press after the mask, not the
+  // mask toggle: 9/14 desyncs were that seam, with 9/15 monitor presses lost
+  // below 180 ms and 0/17 lost at or above it. The device plan now restores
+  // the flick and folds mask-off + raise into one HID macro whose internal
+  // press-to-press gap is 180 ms. See foldMaskRaise() and
+  // ON-DEVICE-VALIDATION.md, "Which press desyncs, and why".
   const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
               sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, readLatencyMs: 550,
-              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: false, ...opts };
+              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true, ...opts };
   const log = capture(o);
   const epoch = o.pilotOffset;
   const s = sec => epoch + Math.round(sec * 60);
@@ -259,6 +258,15 @@ export function track(cycle) {
 // re-deriving one. Contact lengths are device lengths, never simulator frames.
 // The released time the runner leaves between the vent light and the mask.
 export const MASK_GAP_MS = 40;
+
+// A monitor press following a mask press was lost 9/15 times below 180 ms and
+// 0/17 times at or above 180 ms in the retained device census. Keep the two
+// actions in one HID macro so shell launch spread cannot compress that seam.
+// Starting the compound 60 ms before the policy's mask-off row preserves the
+// following monitor-animation margin; replay is 100/100 exact and 46/100 under
+// the model gate's +/-60 ms human slack at this geometry.
+export const MASK_RAISE_GAP_MS = 180;
+export const MASK_RAISE_SHIFT_MS = 60;
 
 // The sweep is the one instruction whose numbers are the *actuator's*, not the
 // simulator's. hid-sweep-probe.sh landed 4/4 at exactly this geometry: a 100 ms
@@ -385,6 +393,32 @@ function makeRoom(name, lines) {
   return ins.map(e => [e.at, e.kind, ...e.rest].join(' '));
 }
 
+// Merge the mask-off tap with the immediately following monitor raise. This
+// is an actuator instruction, like `sweep`: the policy still contains the two
+// sourced game inputs, while the phone receives one report stream with the
+// measured-safe gap held inside it.
+function foldMaskRaise(name, lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const cur = lines[i].split(' ');
+    const next = lines[i + 1]?.split(' ');
+    const isMask = cur[1] === 'tap' && cur[2] === 'mask';
+    const isPlainRaise = next?.[1] === 'tap' && next[2] === 'monitor';
+    const isHallRaise = next?.[1] === 'hallraise';
+    if (!isMask || (!isPlainRaise && !isHallRaise)) {
+      out.push(lines[i]);
+      continue;
+    }
+    const at = +cur[0] - MASK_RAISE_SHIFT_MS;
+    if (at < 0) throw new Error(`${name}: folding mask + raise starts before the cycle`);
+    out.push(isHallRaise
+      ? `${at} maskraise ${MASK_RAISE_GAP_MS} hall ${next[2]}`
+      : `${at} maskraise ${MASK_RAISE_GAP_MS} up 0`);
+    i++;
+  }
+  return out;
+}
+
 export function devicePlan(recipe) {
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
@@ -447,7 +481,7 @@ export function devicePlan(recipe) {
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${e.dur}`);
     }
-    out[name] = makeRoom(name, clearTheRaise(name, lines));
+    out[name] = foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)));
   }
   return out;
 }
@@ -481,6 +515,14 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       } else if (kind === 'hall' || kind === 'hallraise') {
         at(t, 'press', 'light'); at(t + f(+rest[0]), 'release', 'light');
         if (kind === 'hallraise') at(t, 'press', 'monitor');
+      } else if (kind === 'maskraise') {
+        const [gap, mode, duration] = rest;
+        at(t, 'press', 'mask');
+        if (mode === 'hall') {
+          at(t + f(+gap), 'press', 'light');
+          at(t + f(+gap) + f(+duration), 'release', 'light');
+        }
+        at(t + f(+gap), 'press', 'monitor');
       } else if (kind === 'sweep') {
         const [spacing, , cams] = rest;
         cams.split(',').forEach((n, i) => {
@@ -492,8 +534,9 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       } else if (kind === 'read') {
         at(t, 'press', 'ventL');
         at(t + f(+rest[0]), 'release', 'ventL');
-        // No mask here: the Golden Freddy flick is dropped on night 6 and the
-        // mask is pressed on the classifier's answer instead, below.
+        // The read owns the prophylactic mask-on press. Its release-to-press
+        // gap is the phone's measured one-frame acceptance boundary.
+        at(t + f(+rest[0]) + f(+rest[1]), 'press', 'mask');
         at(t + f(readLatencyMs), 'snapshot', base);
       } else throw new Error(`unknown instruction ${kind}`);
     }
@@ -523,10 +566,6 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       pending = null;
       if (!bb && inside) missed++;
       if (bb) detections++;
-      // The runner masks off the answer, not off the anchor, so the model has
-      // to as well -- otherwise the five-tick hold starts in a different place
-      // than the phone starts it.
-      if (bb) at(sim.frame + f(FUSION_POLL_MS), 'press', 'mask');
       const lines = bb ? plan.attack : plan.clear;
       parse(lines.slice(2), b);             // the branch, after the read
       base = b + f(bb ? 10000 : 5000);

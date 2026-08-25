@@ -41,9 +41,9 @@ cannot safely fail closed on every cycle.
 
 The 267 ms sweep in that result is an **idealized simulator actuator**, not a
 phone result. Device trials below now prove that this distinction is
-load-bearing. `HID_LEFT_SURVIVAL=1` is consequently capped at four pre-read
-epoch/sweep-probe cycles; it cannot reach a BB decision or be used for a
-full-night attempt.
+load-bearing. The former `HID_LEFT_SURVIVAL=1` pre-read probe was capped at four
+cycles and is now retired from the device runner; it remains below only as a
+historical measurement, not a selectable route.
 
 ## Night 7 sparse CAM 05 probe
 
@@ -205,22 +205,25 @@ things follow: the sweep costs 18 frames of battery instead of 47, and the
 be up before the first selection. The span becomes `2 * spacing + 100 ms`.
 
 `--pulse-light` models this, with `--sweep-slot-ms=` for the spacing and
-`--mask-margin-ms=` for the BB mask's phase margin. The device clear also drops
-the second Golden Freddy flick — beat one's prophylactic mask already covers
-the cycle — which is where the wind the longer sweep costs comes back from.
+`--mask-margin-ms=` for the BB mask's phase margin. The device route briefly
+dropped the Golden Freddy flick to recover wind, then restored it after the
+input/video census identified the actual fault: the following monitor press,
+not the mask toggle. `maskraise` now holds that seam at the measured-safe
+180 ms inside one HID macro.
 
 > **2026-08-25: every route on this page is grounded by the model gate.**
 > Nothing reaches the phone unless locally proven: before its first adb
 > command, the runner replays the plan through the exact engine under ±60 ms
 > of human slack (the measured plans/04 bracket floor) and refuses below the
-> 40% replay contract — this plan replays 10/100 with the sourced Fusion LCG
-> (`tools/device/human-gate.mjs`;
-> absolute, no override). A gap floor was the first form of this rule and was
+> 40% replay contract. The restored Golden Freddy flick, emitted as the
+> measured-safe `maskraise` compound, replays **46/100** with the sourced Fusion
+> LCG and therefore passes (`tools/device/human-gate.mjs`; absolute, no
+> override). A gap floor was the first form of this rule and was
 > retired the same day: gap width never separated human from machine —
 > precision does, which is exactly what error-injected replay measures. The
 > pricing below remains correct and worth keeping: it establishes what the
 > *machine* route costs, and that even the machine cannot land the ideal
-> figures. `test-human-gate.mjs` asserts the refusal.
+> figures. `test-human-gate.mjs` asserts the pass.
 >
 > Priced the obvious follow-up the same day: the route at the floor's own
 > 350 ms slots is **0/200 in the exact simulator at every offset tried**

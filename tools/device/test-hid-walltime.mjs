@@ -103,17 +103,15 @@ for (const [name, lines] of Object.entries(plan)) {
 // read is dark.
 const classify = body('classify_left_and_queue_mask_at');
 const maskSeq = classify.slice(classify.indexOf('hid_release'));
-// The read releases the vent light, waits the plan's mask gap, and then does
-// NOT press the mask: Golden Freddy is ignored on night 6 for now (see
-// recipe.mjs), so the only mask in the common path is gone. Two blind toggles a
-// cycle in a runner that cannot see the mask's state is how it latched on and
-// blinded the classifier. What must hold is that the mask is now pressed off
-// the classifier's answer instead.
+// The read releases the vent light, waits the plan's mask gap, and presses the
+// prophylactic mask. The HID/video census showed the lost input was the later
+// monitor raise, not this mask press; mask-off + raise is now one macro with a
+// measured-safe internal gap.
 const readBody = body('classify_left_and_queue_mask_at');
-check(/hid_delay "\$mask_gap"/.test(readBody) && !/hid_down "\$MASK_X"/.test(readBody),
-  'the read must wait the plan\'s mask gap and press no mask of its own');
-check(/press_at \$\(\(actual \+ FUSION_POLL_MS\)\) "\$MASK_X" "\$MASK_Y" mask-on-bb/.test(src),
-  'the BB branch must put the mask on off the classifier\'s answer');
+check(/hid_delay "\$mask_gap"[\s\S]*hid_down "\$MASK_X"/.test(readBody),
+  'the read must wait the plan\'s mask gap before pressing the prophylactic mask');
+check(!/mask-on-bb/.test(src),
+  'the BB branch must keep the read\'s mask on, not toggle it off');
 check(MASK_GAP_MS >= 33,
   `the plan leaves ${MASK_GAP_MS} ms between the vent light and the mask; one ` +
   '30 Hz Fusion poll is 33 ms, and a lost mask press sticks the mask on, which ' +

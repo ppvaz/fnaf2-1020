@@ -12,11 +12,9 @@ set -euo pipefail
 OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
-DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-1}"
+DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-0}"
 GRADE_RUN="${GRADE_RUN:-1}"
-PRESS_MODE="${PRESS_MODE:-fast-swipe}"
-HID_LEFT_SURVIVAL="${HID_LEFT_SURVIVAL:-0}"
-NIGHT6_LEFT="${NIGHT6_LEFT:-0}"
+PRESS_MODE="${PRESS_MODE:-hid-multi}"
 HID_TRACE_RUN="${HID_TRACE_RUN:-0}"
 # The sweep geometry the plan specifies; `recipe.mjs --device-plan` prints it
 # and tools/device/test-runner-plan.mjs checks these against it.
@@ -25,7 +23,7 @@ PLAN_CONTACT_MS="${PLAN_CONTACT_MS:-100}"
 # The centre of the measured 83-267 ms scheduler-phase window.
 PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
-DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
+DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-1}"
 # The safety capture itself costs 0.7-1.2 s, so polling every 0.25 s meant the
 # watchdog was capturing essentially continuously, competing with the
 # classifier's own screencap for the same SurfaceFlinger path. Night 6-23 read
@@ -147,14 +145,6 @@ case "$GF_SKIP_MASK_ON_EXACT_EMPTY" in
   0|1) ;;
   *) echo "GF_SKIP_MASK_ON_EXACT_EMPTY must be 0 or 1"; exit 2 ;;
 esac
-case "$HID_LEFT_SURVIVAL" in
-  0|1) ;;
-  *) echo "HID_LEFT_SURVIVAL must be 0 or 1"; exit 2 ;;
-esac
-case "$NIGHT6_LEFT" in
-  0|1) ;;
-  *) echo "NIGHT6_LEFT must be 0 or 1"; exit 2 ;;
-esac
 case "$HID_TRACE_RUN" in
   0|1) ;;
   *) echo "HID_TRACE_RUN must be 0 or 1"; exit 2 ;;
@@ -167,8 +157,8 @@ case "$DEVICE_EPOCH_LATCH" in
   *) echo "DEVICE_EPOCH_LATCH must be 0 or 1"; exit 2 ;;
 esac
 case "$PRESS_MODE" in
-  swipe|tap|async-swipe|fast-swipe|hid|hid-multi) ;;
-  *) echo "PRESS_MODE must be swipe, tap, async-swipe, fast-swipe, hid, or hid-multi"; exit 2 ;;
+  hid-multi) ;;
+  *) echo "trial-minus7.sh now executes only the gated HID plan; PRESS_MODE must be hid-multi"; exit 2 ;;
 esac
 for setting in BB_CAM05_CAPTURE_EVERY BB_CAM05_CAPTURE_START BB_LEFT_CAPTURE_EVERY BB_LEFT_CAPTURE_START; do
   setting_value="${!setting}"
@@ -256,11 +246,6 @@ if [ -z "$BB_LEFT_MODEL" ] && [ -z "$BB_CAM05_MODEL" ]; then
   echo "         Night 6 checkpoint, and the left vent light costs no flashlight." >&2
 fi
 if [ -n "$BB_LEFT_MODEL" ]; then
-  [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || [ "$HID_LEFT_SURVIVAL" -eq 1 ] ||
-    [ "$NIGHT6_LEFT" -eq 1 ] || {
-    echo "BB_LEFT_MODEL needs BB_LEFT_CAPTURE_EVERY > 0, HID_LEFT_SURVIVAL=1, or NIGHT6_LEFT=1" >&2
-    exit 2
-  }
   [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ] || {
     echo "BB_LEFT_MODEL requires clean capture without input-debug overlays" >&2
     exit 2
@@ -270,71 +255,34 @@ if [ -n "$BB_LEFT_MODEL" ]; then
     exit 2
   }
 fi
-if [ "$NIGHT6_LEFT" -eq 1 ]; then
-  # The contract this run reproduces is `hidpilot n6 target` in
-  # `tools/test.mjs --engine`. Every gate below is one of its explicit
-  # dependencies; without them the phone runs a policy nobody measured.
-  [ "$HID_LEFT_SURVIVAL" -eq 0 ] || {
-    echo "NIGHT6_LEFT and HID_LEFT_SURVIVAL are exclusive" >&2
-    exit 2
-  }
-  [ "$PRESS_MODE" = "hid-multi" ] || {
-    echo "NIGHT6_LEFT=1 requires PRESS_MODE=hid-multi" >&2
-    exit 2
-  }
-  [ -n "$BB_LEFT_MODEL" ] || {
-    echo "NIGHT6_LEFT=1 requires BB_LEFT_MODEL; the route is 0/3000 blind" >&2
-    exit 2
-  }
-  [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
-    echo "NIGHT6_LEFT=1 requires DEVICE_EPOCH_LATCH=1 for the scheduler phase" >&2
-    exit 2
-  }
-  [ "$DEBUG_OVERLAYS" -eq 0 ] || {
-    echo "NIGHT6_LEFT=1 requires DEBUG_OVERLAYS=0 for a clean classifier frame" >&2
-    exit 2
-  }
-  [ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ] || {
-    echo "NIGHT6_LEFT=1 classifies a stream; disable BB_LEFT_CAPTURE_EVERY" >&2
-    exit 2
-  }
-  [ "$NIGHT" = "6th" ] || {
-    echo "NIGHT6_LEFT=1 is a 6th Night policy" >&2
-    exit 2
-  }
-  { [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
-    echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
-    exit 2
-  }
-fi
-if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
-  [ "$PRESS_MODE" = "hid-multi" ] || {
-    echo "HID_LEFT_SURVIVAL=1 requires PRESS_MODE=hid-multi" >&2
-    exit 2
-  }
-  [ -n "$BB_LEFT_MODEL" ] || {
-    echo "HID_LEFT_SURVIVAL=1 requires BB_LEFT_MODEL" >&2
-    exit 2
-  }
-  [ "$DEBUG_OVERLAYS" -eq 0 ] || {
-    echo "HID_LEFT_SURVIVAL=1 requires DEBUG_OVERLAYS=0" >&2
-    exit 2
-  }
-  [ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ] || {
-    echo "HID_LEFT_SURVIVAL=1 classifies a stream; disable BB_LEFT_CAPTURE_EVERY" >&2
-    exit 2
-  }
-  [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
-    echo "HID_LEFT_SURVIVAL=1 requires DEVICE_EPOCH_LATCH=1" >&2
-    exit 2
-  }
-  [ "$CYCLES" -le 4 ] || {
-    echo "HID_LEFT_SURVIVAL is limited to four pre-read sweep-probe cycles" >&2
-    echo "the device-accepted 790 ms sweep makes the sparse Night 7 policy lose 100% of exact simulations" >&2
-    exit 2
-  }
-  echo "warning: HID_LEFT_SURVIVAL is a bounded epoch/sweep probe; it will not make a BB decision" >&2
-fi
+
+# This runner has one policy: the emitted, model-gated Night 6 HID plan. The
+# old swipe table and sparse pre-read probe were inline schedules the model
+# gate could not price, so they are no longer selectable device routes.
+[ -n "$BB_LEFT_MODEL" ] || {
+  echo "trial-minus7.sh requires BB_LEFT_MODEL; the Night 6 route is 0/3000 blind" >&2
+  exit 2
+}
+[ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
+  echo "the gated HID plan requires DEVICE_EPOCH_LATCH=1" >&2
+  exit 2
+}
+[ "$DEBUG_OVERLAYS" -eq 0 ] || {
+  echo "the gated HID plan requires DEBUG_OVERLAYS=0 for a clean classifier frame" >&2
+  exit 2
+}
+[ "$BB_LEFT_CAPTURE_EVERY" -eq 0 ] || {
+  echo "the gated HID plan classifies its stream; disable BB_LEFT_CAPTURE_EVERY" >&2
+  exit 2
+}
+[ "$NIGHT" = "6th" ] || {
+  echo "trial-minus7.sh now executes only the 6th Night plan" >&2
+  exit 2
+}
+{ [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
+  echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
+  exit 2
+}
 if [ -n "$GF_OFFICE_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
     echo "GF_OFFICE_MODEL requires BB_LEFT_CAPTURE_EVERY > 0" >&2
@@ -383,20 +331,11 @@ RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 # The model gate is a precondition for touching the device at all (2026-08-25,
 # no override): the plan must clear the engine under measured human slack
 # BEFORE the first adb command, so a run that would be refused never wakes the
-# phone, launches the game, or records anything. A mode whose schedule lives
-# inline in this script cannot be priced by the gate, and "not priceable" is
-# not a pass -- port the table to `recipe.mjs --device-plan` to run it. The
-# live HUMAN_FLOOR_MS check in press_at stays behind this as the backstop for
-# whatever actually executes, branch arms included.
-if [ "$NIGHT6_LEFT" -eq 1 ]; then
-  node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
-  node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
-else
-  echo "this mode's schedule is inline and cannot be priced by the model gate" >&2
-  echo "(tools/device/human-gate.mjs); the device runs nothing the gate has not" >&2
-  echo "passed -- port the schedule to recipe.mjs --device-plan first" >&2
-  exit 44
-fi
+# phone, launches the game, or records anything. There is no inline fallback:
+# the only device route is the artifact that passes this check. The live
+# HUMAN_FLOOR_MS check remains the backstop for recovery presses outside it.
+node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
+node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
 
 . "$HERE/select-adb.sh"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
@@ -693,11 +632,9 @@ fi
 # and the remote program interprets it. It used to live here as millisecond
 # literals too, and the two drifted -- a wind lead corrected in the model still
 # reached the phone as the old value.
-if [ "$NIGHT6_LEFT" -eq 1 ]; then
-  # Emitted and model-gated at the top of this script, before any adb command.
-  adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
-  echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
-fi
+# Emitted and model-gated at the top of this script, before any adb command.
+adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
+echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
 
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
@@ -836,8 +773,8 @@ fi
 # Positional coordinates keep this remote program literal and auditable.
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
-  "$CYCLES" "$PRESS_MODE" "$HID_LEFT_SURVIVAL" "$HID_LEFT_DEBUG_RAW" \
-  "$NIGHT6_LEFT" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
+  "$CYCLES" "$PRESS_MODE" "0" "$HID_LEFT_DEBUG_RAW" \
+  "1" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
   "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
@@ -1469,17 +1406,17 @@ classify_left_and_queue_mask_at() {
   printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
   hid_mark "$actual"
   hid_release
-  # No mask here. Golden Freddy is ignored on night 6 for now -- see the block
-  # in recipe.mjs: the always-taken flick is a *guess*, two blind toggles a
-  # cycle in a runner that cannot see the mask's state, and a dropped toggle
-  # latches it on and makes every later left read dark (nights 6-30 and 6-31 both
-  # ended as a confident `inside` at a moment BB provably could not be there).
-  # Ignoring him is 1000/1000 to 2 AM in the exact simulator with the earliest
-  # loss at 149 s; the device has never passed 73 s. The mask now goes on only
-  # when the classifier says BB.
-  #
-  # $mask_gap stays the released time the plan budgets after the vent light.
+  # Restore the prophylactic Golden Freddy flick. The earlier diagnosis blamed
+  # a dropped mask toggle for the stuck-mask nights, but the HID/video census
+  # identified the press the game lost: the MONITOR raise after mask-off, 9/15
+  # below 180 ms and 0/17 at or above it. The branch macro now owns that safe
+  # mask-off -> raise seam. Here the plan's one-poll release still separates
+  # the vent light from mask-on so Fusion cannot read one finger moving between
+  # buttons.
   hid_delay "$mask_gap"
+  hid_down "$MASK_X" "$MASK_Y"
+  hid_delay "$TAP_CONTACT_MS"
+  hid_release
   wait "$capture_pid" || true
   classification=$("$CHECKER" classify "$BB_MODEL" < "$capture_raw" 2>/dev/null) || \
     classification='unknown capture-or-classifier-error'
@@ -1750,6 +1687,41 @@ hall_reset_and_raise_at() {
   hid_release
 }
 
+# Mask off, then raise after the measured-safe press-to-press gap. Keeping both
+# boundaries inside one hid report stream prevents shell launch spread from
+# compressing the seam back into the 9/15 loss band. MODE is `up` or `hall`;
+# the latter performs the usual two-contact hall pulse under the raise.
+mask_and_raise_at() {
+  offset=$1; gap=$2; mode=$3; duration=$4; label=$5
+  [ "$gap" -ge "$TAP_CONTACT_MS" ] || {
+    echo "maskraise gap $gap ms is shorter than its $TAP_CONTACT_MS ms mask contact" >&2
+    exit 47
+  }
+  wait_until "$offset"
+  actual=$(( $(date +%s%3N) - T0 ))
+  human_floor_check "$actual" "$label"
+  printf '%6d ms  %s (mask off, %d ms to raise)\n' "$actual" "$label" "$gap"
+  hid_mark "$actual"
+  hid_down "$MASK_X" "$MASK_Y"
+  hid_delay "$TAP_CONTACT_MS"
+  hid_release
+  hid_delay $((gap - TAP_CONTACT_MS))
+  LAST_MONITOR_PRESS_MS=$((offset + gap))
+  if [ "$mode" = hall ]; then
+    hid_down "$HALL_X" "$HALL_Y"
+    [ "$SWEEP_LIGHT_LEAD_MS" -le 0 ] || hid_delay "$SWEEP_LIGHT_LEAD_MS"
+    hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+    hid_delay "$duration"
+    hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+    hid_release
+  else
+    [ "$mode" = up ] || { echo "unknown maskraise mode: $mode" >&2; exit 47; }
+    hid_down "$MONITOR_X" "$MONITOR_Y"
+    hid_delay "$TAP_CONTACT_MS"
+    hid_release
+  fi
+}
+
 # --- the plan interpreter -----------------------------------------------------
 #
 # recipe.mjs emits the cycle table from the exact simulator and the host pushes
@@ -1796,6 +1768,9 @@ plan_step() {
     hallraise)
       hall_reset_and_raise_at "$ps_when" "$ps_a" hall-raise
       ;;
+    maskraise)
+      mask_and_raise_at "$ps_when" "$ps_a" "$ps_b" "$ps_c" mask-raise
+      ;;
     sweep)
       pulsed_sweep_at "$ps_when" "$ps_a" "$ps_b" "$ps_c" sweep
       ;;
@@ -1829,11 +1804,18 @@ plan_step() {
 # The hid time one instruction consumes, so the next one's delay can be
 # computed from the plan's offsets rather than re-derived.
 plan_span() {
-  pn_kind=$1; pn_a=$2; pn_b=$3
+  pn_kind=$1; pn_a=$2; pn_b=$3; pn_c=${4:-0}
   case "$pn_kind" in
     tap|hold)  PLAN_SPAN=$pn_b ;;
     hall)      PLAN_SPAN=$pn_a ;;
     hallraise) PLAN_SPAN=$((SWEEP_LIGHT_LEAD_MS + pn_a)) ;;
+    maskraise)
+      if [ "$pn_b" = hall ]; then
+        PLAN_SPAN=$((pn_a + SWEEP_LIGHT_LEAD_MS + pn_c))
+      else
+        PLAN_SPAN=$((pn_a + TAP_CONTACT_MS))
+      fi
+      ;;
     sweep)     PLAN_SPAN=$((2 * pn_a + pn_b)) ;;
     *) echo "the plan names an instruction with no known span: $pn_kind" >&2
        exit 47 ;;
@@ -1866,6 +1848,36 @@ plan_emit() {
       hid_delay "$pe_a"
       hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
       hid_release
+      ;;
+    maskraise)
+      # Recovery may know from the retained frame that the mask is already off
+      # (a mask press cannot land with the cams up). Preserve the compound's
+      # timing in that case, but omit the toggle that would put it on.
+      [ "$pe_a" -gt "$TAP_CONTACT_MS" ] || {
+        echo "maskraise gap $pe_a ms leaves no released time after its mask contact" >&2
+        exit 47
+      }
+      if [ "${MASK_ALREADY_OFF:-0}" -eq 0 ]; then
+        hid_down "$MASK_X" "$MASK_Y"
+        hid_delay "$TAP_CONTACT_MS"
+        hid_release
+        hid_delay $((pe_a - TAP_CONTACT_MS))
+      else
+        hid_delay "$pe_a"
+      fi
+      if [ "$pe_b" = hall ]; then
+        hid_down "$HALL_X" "$HALL_Y"
+        [ "$SWEEP_LIGHT_LEAD_MS" -le 0 ] || hid_delay "$SWEEP_LIGHT_LEAD_MS"
+        hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+        hid_delay "$pe_c"
+        hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+        hid_release
+      else
+        [ "$pe_b" = up ] || { echo "unknown maskraise mode: $pe_b" >&2; exit 47; }
+        hid_down "$MONITOR_X" "$MONITOR_Y"
+        hid_delay "$TAP_CONTACT_MS"
+        hid_release
+      fi
       ;;
     sweep)
       pe_rest=$pe_c
@@ -1954,7 +1966,7 @@ run_macro() {
       hid_delay $((c1 - rm_cursor))
     fi
     plan_emit "$c2" "$c3" "$c4" "$c5"
-    plan_span "$c2" "$c3" "$c4"
+    plan_span "$c2" "$c3" "$c4" "$c5"
     rm_cursor=$((c1 + PLAN_SPAN))
   done 9< "$PLAN_FILE"
   # Wait the macro out, and then leave the next anchor its released time.
@@ -2090,13 +2102,15 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
           press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-resync-2
         fi
       fi
-      # 2, not 3. Dropping the Golden Freddy flick removed the clear cycle's mask
-      # instruction, so instruction 3 is the monitor RAISE. Skipping it made this
-      # "recovery" lower the cams and never raise them again -- it inverted the
-      # parity it was supposed to repair, which is why night 6-33 desynced harder
-      # after each attempt.
+      # The retained frame proves the mask is off: a mask press cannot land
+      # while the cams are up. Instruction 3 is the maskraise compound, so run
+      # its raise at the same internal offset without toggling the mask on.
+      # The flag is scoped around this one macro and the interpreter regression
+      # asserts both the omitted toggle and the preserved delay.
+      MASK_ALREADY_OFF=1
       run_macro clear "$base" 2 999 \
         $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS + FUSION_POLL_MS))
+      MASK_ALREADY_OFF=0
       base=$((base + 5000))
       cycle=$((cycle + 1))
       continue
@@ -2177,13 +2191,9 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     esac
 
     if [ "$branch" = clear ]; then
-      # Nothing to undo: the read no longer masks, so an empty opening just
-      # carries on. The mask-off press and its base+1300 ms deadline are gone
-      # with the flick that needed them -- that deadline ended night 6-29.
-      #
-      # The branch resumes at instruction 3, not 4: dropping the flick removed
-      # the clear cycle's mask instruction, so instruction 3 is now the monitor
-      # raise. Skipping to 4 would skip the raise itself.
+      # The read put the prophylactic mask on. Instruction 3 is the compound
+      # mask-off + monitor raise, with the phone-measured 180 ms seam held
+      # inside one HID macro.
       #
       # Floored at now, like the recovery, because the resume offset is usually
       # already stale: the capture pipeline finishes 30-900 ms past the plan's
@@ -2200,17 +2210,15 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     else
       attacks=$((attacks + 1))
       actual=$(( $(date +%s%3N) - T0 ))
-      # The mask goes on HERE, off the classifier's answer, because nothing puts
-      # it on before the answer any more. g293 zeroes the tick counter on every
-      # entry into the fully-on state, so the five ticks are one continuous hold
-      # that the plan's own mask instruction ends -- not cumulative storage.
-      printf '%6d ms  left-view BB; masking now, holding through five ticks\n' "$actual"
-      press_at $((actual + FUSION_POLL_MS)) "$MASK_X" "$MASK_Y" mask-on-bb
+      # The read already put the mask on before classification completed, so a
+      # true positive keeps that same continuous hold through five ticks. g293
+      # zeroes the counter on every new fully-on entry; pressing again here
+      # would turn the mask off and destroy the response.
+      printf '%6d ms  left-view BB; keeping prophylactic mask through five ticks\n' "$actual"
       hid_mark "$actual"
-      # Floored past the mask press for the same reason the clear branch floors
-      # at now: a stale resume offset must become rm_shift, not compression.
-      run_macro attack "$base" 2 999 \
-        $((LAST_PRESS_MS + TAP_CONTACT_MS + FUSION_POLL_MS))
+      # Floored past classification for the same reason the clear branch is: a
+      # stale resume offset must become rm_shift, not compression.
+      run_macro attack "$base" 2 999 $((actual + FUSION_POLL_MS))
       base=$((base + 10000))
     fi
     cycle=$((cycle + 1))

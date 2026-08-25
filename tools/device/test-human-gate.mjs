@@ -3,13 +3,13 @@
 // Four claims: the plan text round-trips into replay()'s shape; the error
 // injection is deterministic, bounded, and touches only offsets (a hold's
 // release shares its press's draw by construction -- the duration column is
-// untouched); the verdict thresholds exactly; and the shipped Night 6 plan is
-// REFUSED under measured human slack -- the 2026-08-25 grounding as a
-// recorded fact, which a future human-executable route flips deliberately.
-// Plus the precondition: the runner gates BEFORE its first adb command, and
-// refuses modes whose schedules the gate cannot price.
+// untouched); the verdict thresholds exactly; and the shipped Night 6 plan
+// PASSES under measured human slack -- the 2026-08-25 grounding after the
+// Golden Freddy mask-off + raise became one measured-safe compound row.
+// Plus the precondition: the runner gates BEFORE its first adb command and has
+// no inline schedule fallback around the gated artifact.
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -66,29 +66,28 @@ check('exactly the bar passes', atBar.ok && atBar.survived === Math.ceil(runs * 
 const underBar = modelGate(text, { runs, replayFn: stub([true, true, true, false, false, false, false, false, false, false]) });
 check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1);
 
-// ------------------------------------------- the decision, recorded: refused
+// -------------------------------------------- the decision, recorded: passes
 const real = modelGate(text);
-check('shipped n6 plan is refused under human slack', !real.ok,
-  `${real.survived}/${real.runs} -- if a human-executable route shipped, update this check and the CLAUDE.md grounding note together`);
+check('shipped n6 plan passes under human slack', real.ok,
+  `${real.survived}/${real.runs} -- the route must clear ${Math.ceil(real.runs * GATE_MIN_SURVIVAL)}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
-// Nothing reaches the phone unless locally proven: both invocations must
-// refuse before the runner's first adb command, so these run with no device
-// attached and TMPDIR sandboxed.
+// The priced invocation passes the gate, then reaches a mock adb and stops;
+// this proves the ordering without touching a phone.
 {
   const tmp = mkdtempSync(join(tmpdir(), 'fnaf2-gate-test-'));
   try {
-    const classic = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), 'gate-test', '1'],
-      { encoding: 'utf8', env: { ...process.env, TMPDIR: tmp } });
-    check('classic invocation refused pre-flight', classic.status === 44 &&
-      /cannot be priced by the model gate/.test(classic.stderr + classic.stdout),
-      `status=${classic.status}`);
-    const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), 'gate-test', '90'],
-      { encoding: 'utf8', env: { ...process.env, TMPDIR: tmp, DEBUG_OVERLAYS: '0',
-        PRESS_MODE: 'hid-multi', NIGHT6_LEFT: '1', DEVICE_EPOCH_LATCH: '1',
-        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
-    check('plan invocation model-gated pre-flight', n6.status === 44 &&
-      /model gate: \d+\/\d+ nights/.test(n6.stderr + n6.stdout), `status=${n6.status}`);
+    const bin = join(tmp, 'bin');
+    mkdirSync(bin);
+    const mockAdb = join(bin, 'adb');
+    writeFileSync(mockAdb, '#!/bin/sh\necho MOCK_ADB_REACHED >&2\nexit 1\n');
+    chmodSync(mockAdb, 0o755);
+    const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), `gate-test-${process.pid}`, '90'],
+      { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
+        TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
+    check('passing plan reaches adb only after its model gate', n6.status !== 44 &&
+      /model gate: \d+\/\d+ nights/.test(n6.stderr + n6.stdout) &&
+      /MOCK_ADB_REACHED/.test(n6.stderr + n6.stdout), `status=${n6.status}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
@@ -97,9 +96,10 @@ const runner = readFileSync(join(HERE, 'trial-minus7.sh'), 'utf8');
 const gateAt = runner.indexOf('human-gate.mjs');
 const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
 check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
-check('unpriceable modes are refused, not backstopped',
-  /cannot be priced by the model gate/.test(runner));
+check('runner has no inline schedule fallback around the gate',
+  /node "\$HERE\/recipe\.mjs" --device-plan/.test(runner) &&
+  !/cannot be priced by the model gate/.test(runner));
 check('live floor stays as the backstop', /^HUMAN_FLOOR_MS=\d+$/m.test(runner));
 
 if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
-console.log(`model gate: verified; shipped plan refused at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);
+console.log(`model gate: verified; shipped plan passes at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

@@ -57,14 +57,14 @@ document contradicting how the line is actually played.
   120 ms gaps need a one-frame phase island): precision separates human from
   machine, so the gate asks the engine, not a ruler. The live `HUMAN_FLOOR_MS`
   check in `press_at` stays only as the backstop for what actually executes.
-  This grounds **every current device route** — the shipped plan replays
-  10/100 under human slack with the sourced Fusion LCG; `test-human-gate.mjs`
-  asserts the refusal, and
-  whoever ships a human-executable route flips that assertion and this note
-  together.
-- **Short taps get dropped** — Fusion polls touch per frame. Use duration
-  presses (`input swipe x y x y 120`), which is why `PRESS_MODE=fast-swipe`
-  exists and is not merely legacy.
+  This grounds **every current device route** — after restoring the Golden
+  Freddy flick as a measured-safe 180 ms `maskraise` compound, the shipped
+  plan replays 46/100 under human slack with the sourced Fusion LCG;
+  `test-human-gate.mjs` asserts that pass.
+- **Short taps get dropped** — Fusion polls touch per frame. The device runner
+  now has one gated `hid-multi` route; its plan holds every bare contact for at
+  least 100 ms. `fast-swipe` survives only in the historical run record and
+  the staged `pilottest.mjs` research model, not as a selectable device mode.
 - **A legal input stream is not an accepted one.** `test-hid-trace.mjs` audits
   what the phone was *sent*; only `desync-scan.py` says what the game *did*.
   Presses that pass the auditor's 20 ms floor were still dropped: a monitor

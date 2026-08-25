@@ -90,6 +90,7 @@ light_down_at() {
 classify_left_and_queue_mask_at() { printf '%s classify gap=%s\n' "$1" "$2"; }
 pulsed_sweep_at()                 { printf '%s sweep %s %s %s\n' "$1" "$2" "$3" "$4"; }
 hall_reset_and_raise_at()         { printf '%s hallraise %s\n' "$1" "$2"; }
+mask_and_raise_at()               { printf '%s maskraise %s %s %s\n' "$1" "$2" "$3" "$4"; }
 
 # Macro stubs. CLOCK is the hid process's own timeline: only hid_delay moves
 # it, which is exactly the property the macro exists to exploit.
@@ -137,30 +138,23 @@ got="$(run 'run_cycle clear 7000 0 2')"
 want="$(printf '%s\n' '7000 tap monitor' '7367 light' '7567 classify gap=40')"
 [ "$got" = "$want" ] || fail "shared prefix:\n$got\n--- want ---\n$want"
 
-# The clear branch resumes after the plan's mask instruction, so the mask the
-# driver presses off the classifier's answer is not pressed twice.
+# The clear branch resumes at the compound that takes the prophylactic mask off
+# and raises after the measured-safe seam.
 got="$(run 'run_cycle clear 7000 2 999')"
-case "$got" in
-  *"tap mask"*) fail "the clear branch re-pressed the mask:\n$got" ;;
-esac
-[ "$(printf '%s\n' "$got" | head -1)" = '8383 tap monitor' ] ||
-  fail "clear branch starts at $(printf '%s\n' "$got" | head -1), want 8383 tap monitor"
+clear_maskraise="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && $2=="maskraise"{print; exit}' "$TMP/plan.txt")"
+set -- $clear_maskraise
+[ "$(printf '%s\n' "$got" | head -1)" = "$((7000 + $1)) maskraise $3 $4 $5" ] ||
+  fail "clear branch lost the maskraise compound:\n$got"
 printf '%s\n' "$got" | grep -q '10100 hold flash-hall 133' ||
   fail "the clear branch lost its hall flash:\n$got"
 
-# The attack branch keeps its own mask, which is anchored rather than classifier-
-# driven, so it resumes one instruction earlier.
+# The attack branch keeps the read's mask through five ticks, then resumes at
+# its mask-off + hall-raise compound.
 got="$(run 'run_cycle attack 7000 2 999')"
-[ "$(printf '%s\n' "$got" | head -1)" = '12917 tap mask' ] ||
-  fail "attack branch starts at $(printf '%s\n' "$got" | head -1), want 12917 tap mask"
-# Derived, not pinned: the emitter slides a raise earlier so the select after it
-# clears MONITOR_ANIM_UP, so a literal here would break every time that
-# relaxation does its job. What must hold is that the instruction survives the
-# window with its hall pulse intact and at the offset the plan actually carries.
-hallraise_at="$(awk '/^#cycle attack/{a=1;next} /^#cycle/{a=0} a && $2=="hallraise"{print $1; exit}' "$TMP/plan.txt")"
-[ -n "$hallraise_at" ] || fail "the attack cycle has no hallraise in the plan"
-printf '%s\n' "$got" | grep -q "$((7000 + hallraise_at)) hallraise 133" ||
-  fail "the attack branch lost its two-contact hall raise (plan puts it at +$hallraise_at ms):\n$got"
+attack_maskraise="$(awk '/^#cycle attack/{a=1;next} /^#cycle/{a=0} a && $2=="maskraise"{print; exit}' "$TMP/plan.txt")"
+set -- $attack_maskraise
+[ "$(printf '%s\n' "$got" | head -1)" = "$((7000 + $1)) maskraise $3 $4 $5" ] ||
+  fail "attack branch lost the maskraise + hall compound:\n$got"
 
 # The epoch slip moves the opening's start but not the deadline its sweep is
 # anchored to: the wind absorbs it, and the sweep stays put.
@@ -202,7 +196,12 @@ expected_starts() {
                                     readLatencyMs: 550, hallPulseMs: 130, pilotOffset: 10 }));
     const lines = plan[process.argv[1]].slice(+process.argv[2]);
     const base = +lines[0].split(" ")[0];
-    for (const l of lines) console.log(+l.split(" ")[0] - base);
+    for (const l of lines) {
+      const p = l.split(" ");
+      const at = +p[0] - base;
+      console.log(at);
+      if (p[1] === "maskraise") console.log(at + +p[2]);
+    }
   ' "$1" "$2"
 }
 
@@ -242,7 +241,7 @@ first_wait="$(printf '%s\n' "$out" | grep -m1 '^wait ' | awk '{print $2}')"
 [ "$first_wait" = 9000 ] ||
   fail "the floor did not move the window: first wait_until was $first_wait, want 9000"
 last_wait="$(printf '%s\n' "$out" | grep '^wait ' | tail -1 | awk '{print $2}')"
-# The 617 ms shift must carry through to the resync, or the shell writes the
+# The floor's derived shift must carry through to the resync, or the shell writes the
 # next anchor while the macro drains, and the resync adds FUSION_POLL_MS on top
 # so the anchor's monitor press does not land on the sweep's final camera
 # release -- two different buttons with no released time between them read as
@@ -256,17 +255,29 @@ cycle_end="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF {
     if ($2 == "sweep") e = $1 + 2*$3 + $4;
     else if ($2 == "tap" || $2 == "hold") e = $1 + $4;
     else if ($2 == "hall" || $2 == "hallraise") e = $1 + $3;
+    else if ($2 == "maskraise") e = $1 + $3 + ($4 == "hall" ? $5 : 100);
     else if ($2 == "read") e = $1 + $3 + $4 + 100;
   } END { print e }' "$TMP/plan.txt")"
-want_resync=$((7000 + cycle_end + 617 + FUSION_POLL_MS))
+first_branch_at="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF { n++; if (n == 3) { print $1; exit } }' "$TMP/plan.txt")"
+macro_shift=$((9000 - 7000 - first_branch_at))
+want_resync=$((7000 + cycle_end + macro_shift + FUSION_POLL_MS))
 [ "$last_wait" = "$want_resync" ] ||
   fail "the floor did not carry to the resync: last wait_until was $last_wait, want $want_resync"
 
 # Without a floor the window opens where the plan says.
 out="$(run 'run_macro clear 7000 2 999')"
 first_wait="$(printf '%s\n' "$out" | grep -m1 '^wait ' | awk '{print $2}')"
-[ "$first_wait" = 8383 ] ||
-  fail "an unfloored window opened at $first_wait, want 8383"
+want_first=$((7000 + first_branch_at))
+[ "$first_wait" = "$want_first" ] ||
+  fail "an unfloored window opened at $first_wait, want $want_first"
+
+# A desync frame proves the mask press inside the read was rejected while the
+# cams were up. Recovery keeps the maskraise row's 180 ms internal timing but
+# must omit its first contact, or it would put the mask on and lose the raise.
+out="$(run 'MASK_ALREADY_OFF=1; run_macro clear 7000 2 3')"
+first_down="$(printf '%s\n' "$out" | awk '/^[0-9]+ down$/{print $1; exit}')"
+[ "$first_down" = 180 ] ||
+  fail "mask-already-off recovery pressed before the compound raise at 180 ms:\n$out"
 
 # A macro must refuse the read rather than skip it: the classifier lives in the
 # shell, and a silently dropped read blinds the BB branch.

@@ -53,17 +53,17 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   camera-light flashes do not become false visible-hall intervals. The count
   is explicitly a rendering lower bound: sourced hall-movement darkness can
   hide a logically accepted Foxy flash.
-- `trial-minus7.sh <name> [cycles]` — selectable-night Minus 7 interaction
-  runner (`NIGHT=6th` by default; `NIGHT=continue` is the override). It gates
-  the start, then executes one absolute-time device-side schedule. Independent
+- `trial-minus7.sh <name> [cycles]` — the sole current device controller: the
+  emitted, model-gated Night 6 HID plan. It requires the runtime left-opening
+  model, gates the start, then executes one absolute-time device-side schedule. Independent
   safety guards cancel the exact remote driver immediately if the game loses
   focus or after three consecutive non-night screenshots. The fast screenshot
   path captures raw on-device and transfers only HUD scanlines. Neither guard
   chooses or retimes an action. The runner enables ADB touch/pointer overlays
-  and grades the pulled recording by default (`DEBUG_OVERLAYS=0` and
-  `GRADE_RUN=0` are the opt-outs). Clean BB/GF classifier runs must disable the
-  global overlays; `POST_CAPTURE_TOUCHES=1` then turns only the touch dot on
-  after each raw capture and off before the next, so later hall presses remain
+  and grades the pulled recording by default (`DEBUG_OVERLAYS=0` is now the
+  only accepted input setting; `GRADE_RUN=0` is the grading opt-out).
+  `POST_CAPTURE_TOUCHES=1` turns only the touch dot on after each raw capture
+  and off before the next, so later hall presses remain
   visible in the recording without contaminating the model input.
 - `hid-multitouch-smoke.json` — guarded only by the operator, not a shell
   wrapper: a direct `hid FILE` regression fixture that selects 6th Night and
@@ -677,7 +677,20 @@ verdict. The runner calls it. See CLAUDE.md, "Instruments are not a pipeline".
   tolerates 140 with the sweep's end anchored, 400/400, and collapses at 160)
   but 120 remains what ships.
 
-### Golden Freddy is ignored on night 6, deliberately and temporarily
+### Golden Freddy is ignored on night 6 — withdrawn 2026-08-25
+
+**Correction:** this temporary plan was withdrawn before another device run.
+Sourcing Fusion's RNG invalidated its timing premise: in the same 1000-seed
+census, ignoring Golden Freddy clears 465/1000 and the first loss can arrive at
+8.55 s, not 149 s. More importantly, the HID/video census below found that the
+stuck-mask nights lost the *monitor press after mask-off*, not the mask toggle.
+The flick is restored; `recipe.mjs` emits mask-off + raise as one `maskraise`
+macro with a 180 ms internal gap, where the retained device census is 0/17
+losses. It is 100/100 exact and 46/100 under the model gate's ±60 ms slack.
+
+The original reasoning is retained below because it motivated the census that
+found the real seam. Its figures used the simulator's old invented xorshift
+stream and are not current results.
 
 The always-taken mask flick is not a Balloon Boy precaution -- it is the Golden
 Freddy clear that the strategy's order rule demands before the hall flash. But
@@ -784,12 +797,12 @@ It does flag nights 6-22 and 6-28 at exactly the blamed press ("only 0 ms releas
 between 144,270 and 144,801"), which is the auditor working. A legal stream is
 not an accepted one, and the two floors are answering different questions.
 
-Two thirds of this exposure is already gone by accident rather than by
-decision: dropping the Golden Freddy flick removed the clear cycle's mask
-instruction, so the pair that cost nights 6-10 to 6-28 is no longer scheduled. What
-the shipped plan still has is `attack`'s `5917 tap mask` followed by
-`6127 hallraise` -- **210 ms**, inside the band that has not lost a press yet
-but only 30 ms above one that has.
+At the time of this census, two thirds of the exposure was gone by accident
+rather than by decision: dropping the Golden Freddy flick removed the clear
+cycle's mask instruction. The then-shipped plan still had attack's
+`5917 tap mask` followed by `6127 hallraise` -- **210 ms**, inside the band
+that had not lost a press yet but only 30 ms above one that had. The correction
+above supersedes that layout: both branches now use one 180 ms compound.
 
 The other two live seams are smaller and both real:
 

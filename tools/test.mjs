@@ -143,12 +143,11 @@ const ENGINE = [
   // Nothing reaches the phone unless locally proven (2026-08-25, absolute,
   // no override). The model gate replays the plan through the engine under
   // measured human slack before the runner's first adb command, and refuses
-  // inline-schedule modes as unpriceable; the live press floor stays as the
-  // backstop for what actually executes. These checks verify both layers
-  // against mocks, exercise both runner invocations end-to-end with no
-  // device, and assert the shipped Night 6 plan is REFUSED (10/100 with the
-  // sourced Fusion LCG) -- the
-  // grounding is a recorded fact until a human-executable route ships.
+  // old inline-schedule modes are no longer selectable; the live press floor
+  // stays as the backstop for recovery actions outside the artifact. These
+  // checks verify both layers against mocks, exercise the sole runner path
+  // with a fake adb, and assert the shipped Night 6 plan PASSES (46/100 with the
+  // sourced Fusion LCG and measured-safe maskraise compound).
   ['human gate', ['device/test-human-gate.mjs']],
   ['human floor', ['device/test-human-floor.sh']],
   // The interpreter is the only part of the runner that decides *what*

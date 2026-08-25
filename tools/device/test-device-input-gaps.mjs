@@ -78,8 +78,9 @@ function violations(name, lines) {
   for (const e of ins) {
     const isCamera = e.kind === 'sweep' ||
       (e.kind === 'tap' && /^cam\d+$/.test(e.rest[0]));
-    const isMonitor = e.kind === 'hallraise' ||
+    const isMonitor = e.kind === 'hallraise' || e.kind === 'maskraise' ||
       (e.kind === 'tap' && e.rest[0] === 'monitor');
+    const monitorAt = e.kind === 'maskraise' ? e.at + +e.rest[0] : e.at;
 
     if (isCamera && raisedAt !== null) {
       // Press to press: the animation starts when the raise is registered.
@@ -105,8 +106,8 @@ function violations(name, lines) {
 
     if (isMonitor) {
       up = !up;
-      if (up) { raisedAt = e.at; loweredAt = null; }
-      else { loweredAt = e.at; raisedAt = null; }
+      if (up) { raisedAt = monitorAt; loweredAt = null; }
+      else { loweredAt = monitorAt; raisedAt = null; }
     }
   }
   return found;

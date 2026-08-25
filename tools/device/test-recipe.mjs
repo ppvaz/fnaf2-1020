@@ -20,6 +20,8 @@ for (const [key, want] of Object.entries(PINNED))
     `recipe option ${key} is ${recipe.options[key]}, but the verified contract pins ${want}`);
 check(recipe.options.deviceSweep && recipe.options.pulseLight,
   'the device recipe must use the device sweep and the pulsed light');
+check(recipe.options.prophylacticMask,
+  'the device recipe must clear Golden Freddy with the prophylactic mask');
 
 for (const [name, cycle] of Object.entries(recipe.cycles)) {
   const b = cycle.budget;
@@ -133,6 +135,14 @@ for (const [name, lines] of Object.entries(plan)) {
       check(+rest[1] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
     } else if (kind === 'hall' || kind === 'hallraise') {
       check(+rest[0] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
+    } else if (kind === 'maskraise') {
+      const [gap, mode, duration] = rest;
+      check(+gap >= 180,
+        `${name}: maskraise puts the monitor ${gap} ms after the mask; the device ` +
+        'lost 9/15 below 180 ms and 0/17 at or above it');
+      check(mode === 'up' || mode === 'hall', `${name}: unknown maskraise mode "${mode}"`);
+      if (mode === 'hall')
+        check(+duration >= MIN_CONTACT_MS, `${name}: maskraise hall contact is under the floor`);
     } else {
       check(kind === 'read', `${name}: unknown device instruction "${kind}"`);
       check(+rest[1] >= 33,
@@ -153,6 +163,8 @@ for (const [name, lines] of Object.entries(plan)) {
     if (e.kind === 'sweep') return [e.at, e.at + 2 * +e.rest[0] + +e.rest[1]];
     // A read owns its prophylactic mask: light, released gap, mask contact.
     if (e.kind === 'read') return [e.at, e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS];
+    if (e.kind === 'maskraise')
+      return [e.at, e.at + +e.rest[0] + (e.rest[1] === 'hall' ? +e.rest[2] : MIN_CONTACT_MS)];
     if (e.kind === 'hold') return [e.at, e.at + +e.rest[1]];
     return [e.at, e.at + +e.rest[e.rest.length - 1]];
   };
@@ -215,6 +227,7 @@ const instrSpan = (kind, rest) =>
   kind === 'sweep' ? 2 * +rest[0] + +rest[1]
   : kind === 'tap' || kind === 'hold' ? +rest[1]
   : kind === 'hall' || kind === 'hallraise' ? +rest[0]
+  : kind === 'maskraise' ? +rest[0] + (rest[1] === 'hall' ? +rest[2] : MIN_CONTACT_MS)
   : +rest[0] + +rest[1] + MIN_CONTACT_MS;
 
 for (const [name, lines] of Object.entries(plan)) {

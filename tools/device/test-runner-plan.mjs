@@ -30,22 +30,14 @@ check(!literals.length,
   literals.map(m => m[0].trim()).join('\n  ') +
   '\nThose belong in the plan recipe.mjs emits.');
 
-// The two departures from the plan that are real, so they are named rather
-// than merely absent: the mute press precedes the plan's first cycle, and the
-// clear cycle's mask comes off the classifier's answer instead of the anchor.
+// The one departure from the plan that is real, so it is named rather than
+// merely absent: the mute press precedes the plan's first cycle.
 check(/press_at 0 "\$MUTE_X"/.test(block),
   'the driver must still mute before the opening; the plan does not carry it');
-// Golden Freddy is ignored on night 6 for now, so the clear cycle carries no
-// mask at all and the runner's one departure from the plan is the BB mask-on.
-check(/press_at \$\(\(actual \+ FUSION_POLL_MS\)\) "\$MASK_X" "\$MASK_Y" mask-on-bb/.test(block),
-  "the BB branch must put the mask on off the classifier's answer");
+check(!/mask-on-bb/.test(block),
+  'the BB branch must keep the read\'s prophylactic mask, not toggle it off');
 check(/run_macro clear "\$base" 2 999/.test(block),
-  'the clear branch must resume at instruction 3, the monitor raise');
-// The floor that used to guard the clear branch's mask contact is gone with the
-// mask: night 6-22's trace measured 0 ms released between that mask and the
-// monitor raise, and the fix was to floor the macro past it. There is no mask
-// in the clear cycle now, so the macro opens where the plan says. The BB branch
-// keeps a mask and is the only place that ordering still matters.
+  'the clear branch must resume at instruction 3, the maskraise compound');
 
 // A detector that recognises one way of being dead must never be the thing
 // that says you are alive.
@@ -82,24 +74,28 @@ const recipe = build({ night: 6, sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900,
                        readLatencyMs: 550, hallPulseMs: 130, pilotOffset: 10 });
 const plan = devicePlan(recipe);
 
-check(!plan.clear.some(l => l.includes('tap mask')),
-  'the clear cycle must carry no mask while Golden Freddy is ignored');
+check(plan.clear[2].split(' ')[1] === 'maskraise' &&
+      plan.clear[2].split(' ')[3] === 'up',
+  `clear instruction 3 must be mask-off + raise, but it is "${plan.clear[2]}"`);
+check(plan.attack[2].split(' ')[1] === 'maskraise' &&
+      plan.attack[2].split(' ')[3] === 'hall',
+  `attack instruction 3 must be mask-off + hall raise, but it is "${plan.attack[2]}"`);
 
 check(plan.clear.slice(0, 2).join('|') === plan.attack.slice(0, 2).join('|'),
   'the driver runs two instructions before branching, but the cycles differ there');
 check(/run_cycle clear "\$base" 0 2/.test(block),
   'the driver must run the shared prefix from the clear cycle');
 // Both the clear branch and the desync recovery resume at instruction 3, the
-// monitor raise. There is no mask instruction in the clear cycle to skip any
-// more, and skipping one anyway drops the raise itself: that inverted the very
-// parity the recovery exists to repair and made night 6-33 desync harder on every
-// attempt. Assert that no clear-cycle window starts at 3.
+// maskraise compound. The recovery's retained camera frame proves its mask is
+// already off, so it omits that toggle while preserving the compound's delay.
 check(!/run_macro clear "\$base" 3 /.test(block),
-  'no clear-cycle macro may skip instruction 3; that is the monitor raise');
+  'no clear-cycle macro may skip instruction 3; that is the maskraise compound');
 check((block.match(/run_macro clear "\$base" 2 999/g) || []).length === 2,
-  'the clear branch and the desync recovery must both resume at the monitor raise');
+  'the clear branch and the desync recovery must both resume at maskraise');
+check(/MASK_ALREADY_OFF=1\s+run_macro clear "\$base" 2 999[\s\S]*?MASK_ALREADY_OFF=0/.test(block),
+  'desync recovery must omit the mask toggle its camera frame proves is already off');
 check(/run_macro attack "\$base" 2 999/.test(block),
-  'the attack branch must resume at its own mask instruction');
+  'the attack branch must resume at its maskraise compound');
 
 // Both branch macros must be floored. The resume offset is usually stale by
 // the time the classifier answers (30-900 ms, worse after a flip-gate
@@ -110,8 +106,8 @@ check(/run_macro attack "\$base" 2 999/.test(block),
 check(/run_macro clear "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(block),
   'the clear branch macro has no floor: a stale resume offset becomes ' +
   'compression at the seam instead of rm_shift');
-check(/run_macro attack "\$base" 2 999 \\\n\s*\$\(\(LAST_PRESS_MS \+ TAP_CONTACT_MS \+ FUSION_POLL_MS\)\)/.test(block),
-  'the attack branch macro has no floor past the mask press');
+check(/run_macro attack "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(block),
+  'the attack branch macro has no floor past classification');
 
 // A dark vent lamp is not an observation, so it must not be a verdict.
 //
@@ -148,14 +144,10 @@ check(/run_cycle clear "\$base" 0 2/.test(block),
   'the shared prefix must be stepped: it contains the read');
 check(/run_cycle opening 0 0 999/.test(block),
   'the opening must be stepped: a macro cannot absorb the epoch slip');
-// With the Golden Freddy flick dropped, instruction 3 of the clear cycle is the
-// monitor raise, not a mask -- which is exactly why the branch resumes at 2 and
-// not 3. Asserting the shape here keeps the two in step: if the flick ever
-// comes back, this fails before the runner silently skips the raise.
-check(plan.clear[2].split(' ').slice(1).join(' ') === 'tap monitor 100',
-  `the clear branch resumes at instruction 3, which must be the monitor raise, but it is "${plan.clear[2]}"`);
-check(plan.attack[2].split(' ')[1] === 'tap',
-  `the attack branch resumes at instruction 3, but it is "${plan.attack[2]}"`);
+// The flick is one actuator row so human jitter shifts the two game inputs
+// together and the HID macro preserves the measured-safe seam.
+check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === '180',
+  'maskraise must preserve the 180 ms device-safe press-to-press gap');
 
 // The desync recovery must close its loop, because the cause is the engine.
 //
@@ -201,34 +193,20 @@ check(/^FUSION_POLL_MS=33$/m.test(src),
 // still survives -- an emitter bug and a hand edit both survive every check
 // that reads the recipe, because they all read the same side of the loop.
 let survived = 0, missedTotal = 0, detections = 0;
-const deathReasons = new Set();
 const RUNS = 300;
 for (let seed = 1; seed <= RUNS; seed++) {
   const { sim, missed, detections: d } = replay(plan, { night: 6, seed });
   if (sim.won) survived++;
-  else deathReasons.add(`${sim.death.reason}: ${sim.death.detail}`);
   missedTotal += missed;
   detections += d;
 }
 
-// This deliberately no longer asserts a full clear.
-//
-// Golden Freddy is ignored on night 6 (see recipe.mjs), so the plan loses the
-// runs where he is in the office at a monitor raise. That is a priced trade,
-// not a regression: with the flick the plan is 1000/1000, without it 465/1000,
-// and EVERY loss is "raised the monitor with Golden Freddy in the office".
-// Correction 2026-08-25: the sourced Fusion LCG invalidated the old xorshift
-// sample's claim that every loss arrived after 2 AM; one now arrives at 129 s
-// in this 300-seed gate (and at 8.55 s in the 1000-seed census). Pin the causal
-// boundary instead of a sample-dependent first-arrival time.
+// Restoring the Golden Freddy flick must restore the full exact-model clear.
+// The human gate prices timing error separately; this gate says the emitted
+// instruction semantics still reproduce the policy they came from.
 check(missedTotal === 0, `the plan missed BB ${missedTotal} times`);
-check(deathReasons.size === 1 &&
-  deathReasons.has('golden-freddy: Raised the monitor with Golden Freddy in the office'),
-  `ignoring Golden Freddy introduced deaths outside its priced cause: ${[...deathReasons].join('; ')}`);
-// And the clear rate must not quietly rot below what the trade was priced at.
-check(survived >= RUNS * 0.40,
-  `the plan clears ${survived}/${RUNS}; ignoring Golden Freddy was priced at ` +
-  'about 465/1000, so anything under 40% is a different failure');
+check(survived === RUNS,
+  `the restored Golden Freddy plan clears ${survived}/${RUNS}, not every exact run`);
 
 console.log(`runner interprets the plan: no schedule literals in the driver; ` +
   `the plan replays ${survived}/${RUNS} with ${detections} BB responses and no misses`);

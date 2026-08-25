@@ -286,12 +286,11 @@ cycles; all retained frames were confident `empty` classifications. A capture
 lock prevents the safety watchdog from competing for SurfaceFlinger, and a
 single unavailable watchdog read no longer counts as a lost-night frame.
 
-That run validates only capture readiness and the empty branch. The
-`HID_LEFT_SURVIVAL=1` device table remains explicitly experimental: its sweep
-and positive response still lag the compact phase-safe schedule that passed
-10000 ordinary and 3000 worst-luck exact Night 6 simulations. Do not use it as
-a full-night controller until those timings are ported and a real positive BB
-response is observed.
+That run validates only capture readiness and the empty branch. The former
+`HID_LEFT_SURVIVAL=1` device table was explicitly experimental and is now
+retired from the runner: its sweep and positive response lagged the compact
+phase-safe schedule. It remains documented here as evidence, not as a
+full-night controller.
 
 This is a **detection-and-safe-stop checkpoint**, not yet a survivable response
 loop. The seven completed cycles produced eight complete camera sweeps and 11

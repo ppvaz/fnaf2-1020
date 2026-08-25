@@ -11,7 +11,9 @@
 // Mechanically it is the test-runner-plan.mjs replay with human error
 // injected: every scheduled press row is shifted by an independent draw in
 // +/-HUMAN_SLACK_MS before recipe.replay() runs the plan, over GATE_RUNS
-// seeds, and the plan must clear GATE_MIN_SURVIVAL of them.
+// seeds, and the plan must clear GATE_MIN_SURVIVAL of them. Compound actuator
+// rows (`sweep`, `maskraise`) shift as units, preserving their measured
+// internal report spacing.
 //
 // The provisional numbers, until the trainer trace census supersedes them:
 // - HUMAN_SLACK_MS = 60: the measured floor of the human-slack bracket
@@ -57,7 +59,7 @@ export function parsePlanText(text) {
       continue;
     }
     if (!cur) throw new Error(`plan row before any #cycle header: "${line}"`);
-    if (!/^\d+ (tap|hold|sweep|read|hall|hallraise)\b/.test(line))
+    if (!/^\d+ (tap|hold|sweep|read|hall|hallraise|maskraise)\b/.test(line))
       throw new Error(`instruction this gate cannot price: "${line}"`);
     plan[cur].push(line);
   }
