@@ -56,6 +56,10 @@ BB_LEFT_CAPTURE_EVERY="${BB_LEFT_CAPTURE_EVERY:-0}"
 BB_LEFT_CAPTURE_START="${BB_LEFT_CAPTURE_START:-0}"
 CALIBRATION_INPUT_DEBUG="${CALIBRATION_INPUT_DEBUG:-0}"
 POST_CAPTURE_TOUCHES="${POST_CAPTURE_TOUCHES:-1}"
+# Defaulted here with the others, not beside the audio logic: the validation
+# block below reads it under `set -u`, so a late default crashes every run
+# that does not set it in the environment.
+CUE_AUDIO="${CUE_AUDIO:-0}"
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-}"
 GF_OFFICE_MODEL="${GF_OFFICE_MODEL:-}"
 GF_SKIP_MASK_ON_EXACT_EMPTY="${GF_SKIP_MASK_ON_EXACT_EMPTY:-0}"
@@ -739,7 +743,6 @@ CUE_HELPER="${CUE_HELPER:-0}"
 # recording it -- `screenrecord` is video-only and no night run has ever kept
 # audio, so "no bang was heard" has never once been a measurement. The helper
 # buffers the night in memory and writes on stop, so this costs the run nothing.
-CUE_AUDIO="${CUE_AUDIO:-0}"
 CUE_AUDIO_STARTED=0
 CUE_PORT="-"
 CUE_TOKEN="-"
