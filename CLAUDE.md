@@ -62,6 +62,13 @@ document contradicting how the line is actually played.
   caused the desync it was looking for.
 - `dumpsys window` prints several `mCurrentFocus` lines and the first is often
   `null` mid-transition. Match the package across all of them, never `-m1`.
+- **`cmd | tr ... | grep -q` is a broken guard under `set -o pipefail`.** `grep -q`
+  exits on the first match, `tr` dies of SIGPIPE, and the pipeline reports 141 --
+  so the `if` reads false precisely when the pattern *did* match. It skipped the
+  Bluetooth-audio guard twice and let two nights record silence. Measured: only
+  a raw streaming filter is affected -- `adb | grep -q` and `adb | grep | grep -q`
+  are fine, because `grep` handles SIGPIPE and exits cleanly. Use a herestring
+  (`grep -q PAT <<<"$captured"`), and don't "fix" the pipelines that are fine.
 
 ## The simulator prices nothing
 
