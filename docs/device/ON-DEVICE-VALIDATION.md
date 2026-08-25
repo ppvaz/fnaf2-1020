@@ -893,6 +893,53 @@ spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
 exactly what made nights 6-36 and 6-37 read as records.
 
+### The second mechanism, and the validation night (2026-08-25)
+
+The forcedown explained night 6-43 and could not explain night 6-45, whose
+inversion began at the **first steady-cycle anchor, 7 s in** -- nothing can be
+at marker 122 that early -- and whose correction then fired **every cycle**,
+faster than the 10 s cadence. The mark-true trace exonerated the emitter at the
+onset (102 ms after the wind, 354 ms after the sweep tail), so the loss was in
+neither the spacing nor the engine.
+
+It was in the launch. The capture pipeline finishes 30-900 ms past the plan's
+resume cut-off -- worse when the flip gate corrected first -- and the
+clear/attack branches launched `run_macro` with no floor. An unfloored macro
+replays uniformly late with `rm_shift=0`, so the shell's seam wait
+(`base + cursor + rm_shift + one poll`) undershoots the still-running sweep and
+the next cycle's anchor is written into the hid coprocess while the sweep's
+tail is still executing. The queue serializes them back to back: **a real
+zero-gap at the seam that no trace clock can see**, because marks record the
+host's intent and the queue depth is invisible. Fusion reads the pair as one
+finger moving off the camera; the anchor never fires; the cycle enters
+inverted. (The auditor's retracted "0 ms released" flags were artifacts -- but
+they pointed at a seam that a different clock really was collapsing. The
+retraction stands; the seam was real for a reason the trace could not show.)
+
+`run_macro` already had the fix -- `rm_floor` shifts the whole macro,
+preserving every plan gap, and `rm_shift` feeds the seam wait -- and the
+recovery path already used it. The branches now floor too: clear at now + one
+poll, attack past its own mask press.
+
+**Night 6-46 is the validation.** Same route, both fixes live:
+
+| | 6-43 | 6-45 | **6-46** |
+| --- | ---: | ---: | ---: |
+| in-cycle corrections | 1 | 4 | **0** |
+| desync recoveries | 4 | 1 | **0** |
+| `desync-scan.py` verdict | inverted from 26.02 s | inverted from 13.75 s | **"the pilot's model of the monitor held for the whole graded interval"** |
+
+The run ended at ~41 s to a real attack (the death static is on film; the last
+read was an `unknown` the mask answered too late), which is the game, not the
+pilot. And its 26 s `nolight` read was followed by a lit `empty` read -- the
+encounter-vs-marker-123 discriminator behaving exactly as specified.
+
+What remains true: the forcedown will still invert parity whenever it fires --
+it is the engine -- and the correction plus the verified recovery are the
+mitigation that now bounds it to one cycle. One anchor drop (6-45's at 7.37 s,
+102 ms clean gap) stays unexplained; it was recovered in-cycle, which is the
+design working.
+
 ### Diagnosis: the desync is the engine's forcedown (2026-08-25)
 
 Night 6-43 closes the question the last three sessions kept reopening. The
