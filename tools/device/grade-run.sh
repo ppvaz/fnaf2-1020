@@ -80,6 +80,19 @@ else
     python3 "$HERE/grade-night.py" "$VIDEO"
 fi
 
+# 1b. The clock, as an independent control on that interval: the HUD's first
+#     frame and the 1 AM digit change, measured from the pixels. A run that
+#     legitimately dies before 1 AM reports "1 AM was not found" (exit 3) --
+#     that is information about the run, not an instrument failure. At 60 fps
+#     for the same reason camtrace runs at 60: the 30 fps-class defaults are
+#     what produced the withdrawn spacing figure.
+echo
+echo "--- clock transitions (HUD first frame, 1 AM) ---"
+node "$HERE/clocktrace.mjs" "$VIDEO" --fps=60 || {
+  status=$?
+  [ "$status" -eq 3 ] || { echo "  ^ FAILED"; fail=1; }
+}
+
 # 2. What did the phone actually receive? The trace auditor is the only oracle
 #    that reads a real artefact rather than a model of one.
 if [ -f "$TRACE" ]; then
