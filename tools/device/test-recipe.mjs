@@ -196,7 +196,7 @@ for (const [name, lines] of Object.entries(plan)) {
 // sweep's last camera release. Fusion reads that as one finger moving from the
 // camera onto the monitor button and the monitor press never fires.
 //
-// Everything else followed from that one lost press, and it cost nights 22-24:
+// Everything else followed from that one lost press, and it cost nights 6-22 to 6-24:
 // the cams stay up, the monitor toggle desyncs permanently because nothing
 // reads the state back, the vent-light press with cams up is the *camera*
 // light so the classifier is handed a camera frame and answers `unknown`, the

@@ -42,7 +42,7 @@ check(/press_at \$\(\(actual \+ FUSION_POLL_MS\)\) "\$MASK_X" "\$MASK_Y" mask-on
 check(/run_macro clear "\$base" 2 999/.test(block),
   'the clear branch must resume at instruction 3, the monitor raise');
 // The floor that used to guard the clear branch's mask contact is gone with the
-// mask: night 22's trace measured 0 ms released between that mask and the
+// mask: night 6-22's trace measured 0 ms released between that mask and the
 // monitor raise, and the fix was to floor the macro past it. There is no mask
 // in the clear cycle now, so the macro opens where the plan says. The BB branch
 // keeps a mask and is the only place that ordering still matters.
@@ -92,7 +92,7 @@ check(/run_cycle clear "\$base" 0 2/.test(block),
 // Both the clear branch and the desync recovery resume at instruction 3, the
 // monitor raise. There is no mask instruction in the clear cycle to skip any
 // more, and skipping one anyway drops the raise itself: that inverted the very
-// parity the recovery exists to repair and made night 33 desync harder on every
+// parity the recovery exists to repair and made night 6-33 desync harder on every
 // attempt. Assert that no clear-cycle window starts at 3.
 check(!/run_macro clear "\$base" 3 /.test(block),
   'no clear-cycle macro may skip instruction 3; that is the monitor raise');
@@ -101,19 +101,19 @@ check((block.match(/run_macro clear "\$base" 2 999/g) || []).length === 2,
 check(/run_macro attack "\$base" 2 999/.test(block),
   'the attack branch must resume at its own mask instruction');
 
-// `inside` is not a threat the response addresses, so it must not reach the
+// `bbinside` is not a threat the response addresses, so it must not reach the
 // response. The mask returns Balloon Boy from the opening (marker 122); once he
 // is at 123 the sourced engine is explicit -- "no group ever moves him back
 // out" -- and `bb.inside` is never cleared, so the flashlight is gone, the hall
 // can never be flashed again, and Foxy collects. Masking there spends wind and
 // exposure on a state the mask cannot change, and keeps a dead night recording.
-const insideCase = block.match(/^\s*inside\\ \*\)([\s\S]*?)^\s*;;/m);
-check(insideCase, 'the driver has no branch for an `inside` read; it would ' +
+const insideCase = block.match(/^\s*bbinside\\ \*\)([\s\S]*?)^\s*;;/m);
+check(insideCase, 'the driver has no branch for a `bbinside` read; it would ' +
   'fall through to the catch-all and mask a night that is already lost');
 check(/\bexit \d+/.test(insideCase[1]),
-  'an `inside` read must stop the run, not respond to it');
+  'a `bbinside` read must stop the run, not respond to it');
 check(!/press_at/.test(insideCase[1]),
-  'an `inside` read must press nothing: the mask does not move Balloon Boy ' +
+  'a `bbinside` read must press nothing: the mask does not move Balloon Boy ' +
   'back out of the office');
 
 // The steady cycles' post-read windows carry the night: they run 83 times

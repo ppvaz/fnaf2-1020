@@ -28,7 +28,7 @@ HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
 DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
 # The safety capture itself costs 0.7-1.2 s, so polling every 0.25 s meant the
 # watchdog was capturing essentially continuously, competing with the
-# classifier's own screencap for the same SurfaceFlinger path. Night 23 read
+# classifier's own screencap for the same SurfaceFlinger path. Night 6-23 read
 # `unknown` on 7 of 8 cycles under that contention and went blind to BB; the
 # same schedule with the watchdog quieted read `empty score=0 margin=19` on
 # 4 of 4. A death is not a subtle signal and does not need 4 Hz: at this
@@ -36,7 +36,7 @@ DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.8}"
 # The safety capture costs 0.72-0.85 s idle on this phone (12 samples), and
 # the code below records that concurrent captures "more than doubled" it. A
-# 0.8 s budget was therefore under its own idle maximum: night 23 printed
+# 0.8 s budget was therefore under its own idle maximum: night 6-23 printed
 # "watchdog: unavailable (ignored)" on every single poll for 73 s, never saw
 # the death, and left the pilot pressing into the title menu.
 WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-2.5}"
@@ -376,7 +376,7 @@ WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
 # The death signature, measured rather than guessed.
 #
-# A device-side poller sampled the cue helper at ~14 Hz across night 34's death.
+# A device-side poller sampled the cue helper at ~14 Hz across night 6-34's death.
 # Alive, the snapshot alternates luma 2-80, cam5 23-44, with audio rms 2800-4100
 # and peak 5000-16500. At the death it goes flat and stays there:
 #
@@ -388,7 +388,7 @@ WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 # pinning high agree with it. This costs one loopback exchange (~70 ms measured)
 # against the screencap path's 0.7-2.5 s, so the watchdog stops being both slow
 # and a competitor for SurfaceFlinger -- it was the screencap contention that
-# blinded the classifier for seven of eight cycles on night 23.
+# blinded the classifier for seven of eight cycles on night 6-23.
 CUE_DEAD_LUMA=200
 CUE_DEAD_CAM5=200
 
@@ -409,7 +409,7 @@ state_once() {
           return 0
         fi
         # NOT "night". This signature was measured on one death and it matches
-        # the static screen only. Night 37 died, played the "Take cake to the
+        # the static screen only. Night 6-37 died, played the "Take cake to the
         # children" minigame, and restarted to "12:00 AM 6th Night" -- none of
         # which are bright-and-silent, so this returned "night" for 60+ seconds
         # of a dead game and the pilot kept pressing into it. The elapsed time
@@ -521,7 +521,7 @@ watch_night() {
         # Transport/capture contention is not evidence that gameplay ended --
         # but it is not evidence that it continues, either, and a watchdog that
         # ignores every unreadable poll forever is not a watchdog at all. That
-        # is precisely how night 23 ran blind for its whole length. Ignore a
+        # is precisely how night 6-23 ran blind for its whole length. Ignore a
         # blip; stop the run on sustained blindness, because an unwatched
         # pilot is the documented way taps reach another app.
         blind_now=$(date +%s)
@@ -908,7 +908,7 @@ hid_delay() {
   # nothing everywhere, and the failure is fatal and silent at every emitter.
   # SWEEP_LIGHT_LEAD_MS is 0 in the shipped geometry and reaches this from more
   # than one place; pulsed_cam_burst happened to guard it and plan_emit's
-  # hallraise did not, which cost night 22 at 18 s.
+  # hallraise did not, which cost night 6-22 at 18 s.
   [ "$1" -gt 0 ] || return 0
   hid_emit "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
 }
@@ -1166,7 +1166,7 @@ hold_at() {
 
 # The cams-up luma, measured on this phone.
 #
-# Across night 34's poller trace the snapshot sits at 225-229 for the whole
+# Across night 6-34's poller trace the snapshot sits at 225-229 for the whole
 # cams-up stretch of every cycle and drops to 0-107 for the office window. The
 # two populations do not overlap anywhere in 1818 samples, so the line goes
 # between them rather than near either.
@@ -1190,13 +1190,13 @@ light_down_at() {
     #
     # The plan reads at exactly MONITOR_ANIM_DOWN from the cycle base while the
     # anchor's press lands 110-180 ms into the cycle, so without this the
-    # sample always falls inside the animation it is checking. Night 38 sampled
+    # sample always falls inside the animation it is checking. Night 6-38 sampled
     # 214 ms in, believed the camera feed still on screen, and "corrected" a
     # monitor that was already coming down -- and that press was dropped by the
     # same flip, so the run spent its remaining 58 s inverted. The corrector
     # caused the desync it was looking for.
     #
-    # The gate is measured, not assumed. Across nights 36-38 the cue helper
+    # The gate is measured, not assumed. Across nights 6-36 to 6-38 the cue helper
     # still reported luma >= CUE_CAMS_UP_LUMA up to 202 ms after a lowering
     # press and never later, so one MONITOR_ANIM_DOWN leaves about 165 ms of
     # margin. It costs the read the press's own lateness, which the plan's
@@ -1331,7 +1331,7 @@ classify_left_and_queue_mask_at() {
   # No mask here. Golden Freddy is ignored on night 6 for now -- see the block
   # in recipe.mjs: the always-taken flick is a *guess*, two blind toggles a
   # cycle in a runner that cannot see the mask's state, and a dropped toggle
-  # latches it on and makes every later left read dark (nights 30 and 31 both
+  # latches it on and makes every later left read dark (nights 6-30 and 6-31 both
   # ended as a confident `inside` at a moment BB provably could not be there).
   # Ignoring him is 1000/1000 to 2 AM in the exact simulator with the earliest
   # loss at 149 s; the device has never passed 73 s. The mask now goes on only
@@ -1345,7 +1345,7 @@ classify_left_and_queue_mask_at() {
   # Was the monitor actually down when this frame was taken?
   #
   # Every `unknown` this run has produced scored 20-35, and the frames rendered
-  # out of nights 22-27 show why: they are the CAMERA FEED, not the office. The
+  # out of nights 6-22 to 6-27 show why: they are the CAMERA FEED, not the office. The
   # anchor's monitor press did not take effect, so the vent light press was the
   # camera light and the classifier was handed CAM 11 or the map. Nothing
   # observed that, so the pilot never recovered.
@@ -1353,7 +1353,7 @@ classify_left_and_queue_mask_at() {
   # This costs no extra capture: it is the same raw frame, asked a different
   # question. The camera map's lime selection highlight lives on the right of
   # the screen; the office's own green LIGHT button is at x~350 and outside this
-  # ROI. Measured on the frames from nights 25-26: office 0-1 bps, camera feed
+  # ROI. Measured on the frames from nights 6-25 to 6-26: office 0-1 bps, camera feed
   # 70-140 bps. The threshold sits two orders of magnitude from both.
   #
   # Reported, not yet acted on -- the intermittency is what needs measuring
@@ -1362,7 +1362,7 @@ classify_left_and_queue_mask_at() {
   # Only asked when it can change the decision. A confident `empty` or `bb` is
   # an office frame by construction -- the model's classes are office frames --
   # and the clear branch's mask-off press has a hard deadline at base+1300 ms
-  # that a second checker invocation blew by about 100 ms on night 29.
+  # that a second checker invocation blew by about 100 ms on night 6-29.
   monitor_seen='cams=office-by-classification'
   case "$classification" in
     empty\ *|bb\ *) ;;
@@ -1774,7 +1774,7 @@ run_macro() {
       rm_started=1
     else
       # A non-positive gap here means the plan overlaps itself, and hid_delay's
-      # guard would swallow it silently -- the same silence that cost night 22.
+      # guard would swallow it silently -- the same silence that cost night 6-22.
       # A zero *lead* is legitimate; a zero *gap between two instructions* is a
       # defect, and only the caller can tell those apart.
       [ $((c1 - rm_cursor)) -gt 0 ] || {
@@ -1799,7 +1799,7 @@ run_macro() {
   # here observes the monitor's state. Every later anchor then flips the wrong
   # way: the vent read photographs the camera feed and scores `unknown`, the
   # hall press lands on the camera map and pans it, the box stops being wound.
-  # That is the whole of nights 22-24, and the reason cycle 1 always survived
+  # That is the whole of nights 6-22 to 6-24, and the reason cycle 1 always survived
   # it is that the opening ends 200 ms clear of its anchor while these end -7.
   [ "$rm_started" -eq 0 ] || \
     wait_until $((rm_base + rm_cursor + rm_shift + FUSION_POLL_MS))
@@ -1866,7 +1866,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     #
     # The anchor's monitor press did not take effect, so the vent light press
     # was the *camera* light and the classifier was handed CAM 11 or the map.
-    # Confirmed in-run on night 28: cams=down, cams=down, then cams=UP-DESYNCED
+    # Confirmed in-run on night 6-28: cams=down, cams=down, then cams=UP-DESYNCED
     # at cycle 3 and never again down. Nothing observed it, so a single lost
     # press ended every night from 22 to 27.
     #
@@ -1895,7 +1895,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       # 2, not 3. Dropping the Golden Freddy flick removed the clear cycle's mask
       # instruction, so instruction 3 is the monitor RAISE. Skipping it made this
       # "recovery" lower the cams and never raise them again -- it inverted the
-      # parity it was supposed to repair, which is why night 33 desynced harder
+      # parity it was supposed to repair, which is why night 6-33 desynced harder
       # after each attempt.
       run_macro clear "$base" 2 999 \
         $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS + FUSION_POLL_MS))
@@ -1907,7 +1907,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     case "$classification" in
       empty\ *) branch=clear; blind_streak=0 ;;
       bb\ *)    branch=attack; blind_streak=0 ;;
-      inside\ *)
+      bbinside\ *)
         # `inside` is not a threat to respond to. It is the night already lost.
         #
         # The mask returns Balloon Boy from the *opening* (marker 122). Once he
@@ -1921,7 +1921,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         # So masking here spends the wind and the exposure on a state the mask
         # does not address. Stop instead: the capture and the classifier frames
         # are the evidence, and pressing on only buys a longer recording of a
-        # dead night -- the exact thing that made nights 36 and 37 read as
+        # dead night -- the exact thing that made nights 6-36 and 6-37 read as
         # records.
         actual=$(( $(date +%s%3N) - T0 ))
         printf '%6d ms  left-view %s: Balloon Boy is in the office\n' \
@@ -1946,7 +1946,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         #
         # The cap is meant to stop a run that cannot see -- "a run that cannot
         # see is not running this policy and should stop rather than pretend".
-        # A total counter does not measure that. Night 36 reached 163 s, past
+        # A total counter does not measure that. Night 6-36 reached 163 s, past
         # 2 AM and past every previous run, and was then killed by its seventh
         # unknown of the night rather than by the game: the reads were spread
         # across 163 s, each one got the correct response (the five-tick mask is
@@ -1967,7 +1967,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     if [ "$branch" = clear ]; then
       # Nothing to undo: the read no longer masks, so an empty opening just
       # carries on. The mask-off press and its base+1300 ms deadline are gone
-      # with the flick that needed them -- that deadline ended night 29.
+      # with the flick that needed them -- that deadline ended night 6-29.
       #
       # The branch resumes at instruction 3, not 4: dropping the flick removed
       # the clear cycle's mask instruction, so instruction 3 is now the monitor

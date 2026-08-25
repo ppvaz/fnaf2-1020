@@ -2,7 +2,7 @@
 """How long was the run actually ALIVE, and what ended it?
 
 This exists because a run length was reported that the run did not achieve.
-Night 37 was published at 153 s and night 36 at 163 s -- a new record -- and the
+Night 6-37 was published at 153 s and night 6-36 at 163 s -- a new record -- and the
 retained classifier frames showed what those seconds contained: a monitor flip,
 then a "12:00 AM 6th Night" restart screen, then static, then the "Take cake to
 the children" death minigame. The game had died around 70 s and the pilot kept

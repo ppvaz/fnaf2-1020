@@ -470,7 +470,7 @@ until the *next* write, which fails with `print: -p: no coprocess`. Everything
 the current action still had to send -- the rest of its hold, its release --
 is never written.
 
-This cost night 22 at 18 s, and its signature on the phone was not a timing
+This cost night 6-22 at 18 s, and its signature on the phone was not a timing
 error but a dead control. `plan_emit`'s `hallraise` branch emitted the light
 lead with `hid_delay "$SWEEP_LIGHT_LEAD_MS"`, and that lead is **0** in the
 shipped zero-lead sweep geometry. So the hall light went down, the delay killed

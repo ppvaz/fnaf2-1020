@@ -490,7 +490,7 @@ The whole input sequence in §4–§6 is otherwise identical — the same `:X2` 
 
 ## 12. Suggested practice ladder
 
-1. **Custom Night 9/20 with BB off** — pure main-cycle drilling. This is how Niko Frost first
+1. **Custom Night 6-9/20 with BB off** — pure main-cycle drilling. This is how Niko Frost first
    validated the strategy; a clean run should have **zero blackouts**.
 2. Add BB back at low AI to practise Phase A (cams down across the 5s interval) in isolation.
 3. **FNaF 2 Practice Mod** (Shooter25) — <https://gamejolt.com/games/Shooter25Mods/826595> —

@@ -5,7 +5,7 @@
 // visibly swallowed by the flip and left the feed on CAM 11" -- but that was
 // measured on the `input swipe` path, whose helper alone costs about 170 ms.
 // The shipped plan asks for 133-184 ms on the HID path and the classifier
-// frames from nights 22-25 show the feed stuck exactly as that note describes.
+// frames from nights 6-22 to 6-25 show the feed stuck exactly as that note describes.
 //
 // One of those two things is wrong and neither can be settled by argument:
 // either the plan violates a real floor, or the floor belongs to a different

@@ -98,7 +98,7 @@ CLOCK=0
 # invalid duration" at Event$Builder.build -- and then *exits*. mksh loses the
 # co-process, the next `print -p` fails, and the run aborts mid-cycle with the
 # contacts it had already put down never released. That is a 0 ms two-contact
-# touch that changes coordinates and vanishes: a drag, which is why night 22
+# touch that changes coordinates and vanishes: a drag, which is why night 6-22
 # showed up as "fails to press hall light and moves the vision instead".
 # A zero delay is not a no-op on the wire, so the emitter must never write one.
 hid_delay() {
@@ -295,7 +295,7 @@ want="$(printf '%s\n' '7000 tap monitor' '7767 light' "$((7767 + READ_CAPTURE_DE
 #
 # light_down_at samples the cue helper to check the anchor's monitor press
 # landed. The sample is only worth anything once the flip it is checking has
-# finished: night 38 sampled 214 ms into a 367 ms animation, believed the
+# finished: night 6-38 sampled 214 ms into a 367 ms animation, believed the
 # camera feed still on screen, pressed a monitor that was already coming down,
 # and lost that press to the same flip -- the corrector caused the desync.
 MONITOR_ANIM_DOWN_MS="$(runner_const MONITOR_ANIM_DOWN_MS)"
@@ -337,7 +337,7 @@ LIGHT_DOWN_MS=0
 CUE_HONEST=1
 # The phone, as measured: while the flip is still running the helper reports
 # the camera feed that is still on screen, and only afterwards the office.
-# Across nights 36-38 the last such sample after a lowering press was +202 ms.
+# Across nights 6-36 to 6-38 the last such sample after a lowering press was +202 ms.
 cue_snapshot() {
   printf '%s\n' "$NOW" >> "$CUE_LOG"
   if [ "$CUE_HONEST" -eq 1 ] && [ "$NOW" -ge $((LAST_MONITOR_PRESS_MS + 202)) ]; then
@@ -356,7 +356,7 @@ light_run() {
     "source '$TMP/light-harness.sh'; CUE_LOG='$CUE_LOG'; source '$TMP/light.sh'; $1"
 }
 
-# The anchor's press lands 132 ms late, as night 38's did, and the plan reads at
+# The anchor's press lands 132 ms late, as night 6-38's did, and the plan reads at
 # +367 from the base. The sample must wait the flip out before it is believed,
 # and then there is nothing to correct.
 got="$(light_run 'NOW=12132; press_at 12000 2 2 monitor; light_down_at 12367 vent')"

@@ -8,6 +8,10 @@ happened, and the fix is always the same: read the page that already knows.
 **Commit on `master`.** This repository does not use branches — overriding the
 global agreement's "if on the default branch, branch first".
 
+**`Night 6` is the game's night; `night 6-34` is the 34th device run on it.**
+The runs are named `n6-night-34` on disk, and writing them as "night 34" reads
+as a night the game does not have.
+
 ## Read these before concluding, not after
 
 | Before you claim… | Read |
@@ -54,7 +58,7 @@ document contradicting how the line is actually played.
   run notices: the vent read photographs the camera feed, the hall press pans
   the map, the box stops being wound, and the log still reads like a schedule.
   Never observe the monitor inside `MONITOR_ANIM_DOWN` (367 ms) of a monitor
-  press — night 38's "correction" was a false positive taken 247 ms in, and it
+  press — night 6-38's "correction" was a false positive taken 247 ms in, and it
   caused the desync it was looking for.
 - `dumpsys window` prints several `mCurrentFocus` lines and the first is often
   `null` mid-transition. Match the package across all of them, never `-m1`.
@@ -81,7 +85,7 @@ second signature that fails differently.
 against one run and prints one verdict. Run it before quoting any number off a
 device run, and quote the interval it reports.
 
-The reason is a worked example. Nights 36 and 37 were reported at **163 s** and
+The reason is a worked example. Nights 6-36 and 6-37 were reported at **163 s** and
 **153 s**, "past 2 AM", a new record. Graded, they were **26.0 s** and **72.2 s**
 alive. The rest was the pilot pressing into a dead game: the retained classifier
 frames show the death static, the "Take cake to the children" minigame, and a

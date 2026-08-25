@@ -23,7 +23,7 @@ monitor desync does: with the cams up, the hall press lands on the camera map.
 The device owner saw exactly that before any log did ("haven't seen any hall
 light", "started panning view instead of flashing").
 
-The one death where the chain IS the story is night 34, the longest run at
+The one death where the chain IS the story is night 6-34, the longest run at
 120 s: Foxy's face and Balloon Boy's balloon in the same frame.
 
 So this exists to keep the distinction visible. A census of faces alone would
@@ -63,7 +63,7 @@ for v in vids:
     # last frame of the FIRST alive run
     # The HUD legitimately disappears for ~300 ms on every monitor flip, so the
     # end needs the same settle the start does. Breaking on the first absent
-    # frame reported a flip as a death and put night 34 at 30 s against its
+    # frame reported a flip as a death and put night 6-34 at 30 s against its
     # graded 120.5 s.
     start=None; end=None; s=0; miss=0
     for i,x in enumerate(fl):

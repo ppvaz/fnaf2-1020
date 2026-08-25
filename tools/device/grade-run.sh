@@ -8,7 +8,7 @@
 # that runs them. So each has to be remembered, and what is not remembered is
 # not checked.
 #
-# It cost a false record. Night 36 was reported at 163 s and night 37 at 153 s,
+# It cost a false record. Night 6-36 was reported at 163 s and night 6-37 at 153 s,
 # both "past 2 AM". The retained frames later showed a restart card, the death
 # static and the "Take cake to the children" minigame inside those intervals:
 # the game had died around 70 s and the pilot kept pressing. screenstate.py

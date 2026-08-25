@@ -33,7 +33,7 @@ class HidPilot {
     // Mask on the classifier's answer instead of before it. The device runner
     // cannot see the mask's state, so every unconditional toggle is a chance to
     // latch it on -- and a latched mask makes every later left read dark, which
-    // the model reports as a confident `inside`.
+    // the model reports as a confident `bbinside`.
     this.prophylacticMask = prophylacticMask;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';

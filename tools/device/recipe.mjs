@@ -19,7 +19,7 @@ import { run } from '../hidpilottest.mjs';
 // docs/device/HID-MULTITOUCH.md.
 export const MIN_CONTACT_MS = 100;
 // 120 ms is what hid-sweep-probe.sh lands 4/4, and what a real night lands too:
-// sweepcheck.py on night 26 reports "11/11 sweeps flashed all of 10,4,7", every
+// sweepcheck.py on night 6-26 reports "11/11 sweeps flashed all of 10,4,7", every
 // camera lit while it was the selected feed. So the stun is being applied at
 // this spacing and there is no measured reason to widen it.
 //
@@ -153,7 +153,7 @@ export function build(opts = {}) {
   // cycle in a runner that cannot see the mask's state. On the phone that is
   // the dominant failure -- a dropped toggle latches the mask on, every later
   // left read comes back dark, and the model scores it a confident `inside`.
-  // Nights 30 and 31 both died exactly that way.
+  // Nights 6-30 and 6-31 both died exactly that way.
   //
   // Priced in the exact simulator over 1000 night-6 runs:
   //     with the flick      1000/1000 clears
@@ -281,7 +281,7 @@ export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 // completes. On the phone the macro's anchor is wall-timed and lands 49-93 ms
 // late, so the same instruction arrives *inside* the animation and sets
 // nothing -- the feed stays where it was, the pilot winds on the wrong camera,
-// and the sweep that bridges the five-tick mask never happens. Nights 22-25
+// and the sweep that bridges the five-tick mask never happens. Nights 6-22 to 6-25
 // died that way and the rendered classifier frame is CAM 11, unchanged.
 //
 // Move the RAISE earlier rather than the select later: HID-MULTITOUCH.md

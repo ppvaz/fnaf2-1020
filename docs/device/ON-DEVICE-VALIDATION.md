@@ -541,7 +541,7 @@ can supply positives, but sparsely. Toy Bonnie needs no capture for this Minus
 
 ## The classifier has to be trained on the loop that will run it (2026-08-24)
 
-Four Night 6 attempts read `inside` or `unknown` on cycles where Balloon Boy
+Four Night 6 attempts read `bbinside` or `unknown` on cycles where Balloon Boy
 provably could not be present -- he needs five five-second rolls, so nothing
 before 25 s is him. None of those reads were the game. Measuring the ROI of the
 frames the classifier actually saw separates the two populations cleanly:
@@ -560,7 +560,7 @@ other side of the distribution and produced the other:
 
 - start +100 ms -> latch 263-448 ms; mostly `empty score=0`, but the early tail
   catches an unlit opening, and an unlit opening is what BB *in the office*
-  looks like, so it reads as a confident `inside`;
+  looks like, so it reads as a confident `bbinside`;
 - start +300 ms -> latch 550-650 ms; past the ramp, and reads go `unknown`.
 
 The fix is not a third offset. `runtime-gh.scm` adds seven frames captured
@@ -591,13 +591,13 @@ tools/device/build-screen-model.py --roi 80,600,500,1060 --grid 10x10 --step 2 \
 ## 2026-08-24, second session: what was found, and one retraction
 
 Forty device runs. The honest result is **no night 6 clear and no new record**:
-the longest graded survival was **120.5 s** (night 34) against the 138 s already
+the longest graded survival was **120.5 s** (night 6-34) against the 138 s already
 on file. Read that first, because two numbers from this session were published
 before they were graded and they were wrong.
 
 ### Retraction: the 163 s and 153 s "records"
 
-Nights 36 and 37 were reported at **163 s** and **153 s**, both "past 2 AM", the
+Nights 6-36 and 6-37 were reported at **163 s** and **153 s**, both "past 2 AM", the
 first past the standing 138 s record. Graded with `grade-night.py` they are
 **26.0 s** and **72.2 s** alive. The remainder was the pilot pressing into a
 dead game. The retained classifier frames show it directly: the death static,
@@ -608,7 +608,7 @@ Two independent failures let that through, and neither was subtle:
 
 - **The watchdog's fast path could only recognise one way of being dead.** A cue
   helper snapshot with `rms=0`, `luma>=200`, `cam5>=200` is the static screen,
-  measured across night 34's death. Wired as `if (static) gameover else night`
+  measured across night 6-34's death. Wired as `if (static) gameover else night`
   it answered "night" to the minigame, the restart card and the title menu. A
   detector that knows one way to be dead must never be the thing that says you
   are alive; it may only *add* a detection. `screenstate.py`'s HUD predicate --
@@ -643,7 +643,7 @@ verdict. The runner calls it. See CLAUDE.md, "Instruments are not a pipeline".
   even then). Sustained blindness now aborts rather than being ignored forever.
 - **The watchdog was starving the classifier.** Polling every 0.25 s while each
   poll costs ~1 s meant it captured almost continuously, competing with the
-  classifier's own `screencap`. Night 23 read `unknown` on 7 of 8 cycles under
+  classifier's own `screencap`. Night 6-23 read `unknown` on 7 of 8 cycles under
   that contention; the same schedule with the watchdog quieted read
   `empty score=0 margin=19` on 4 of 4.
 - **The plan overran its own cycle boundary.** Both steady cycles ended on a
@@ -683,7 +683,7 @@ The always-taken mask flick is not a Balloon Boy precaution -- it is the Golden
 Freddy clear that the strategy's order rule demands before the hall flash. But
 it is a *guess*: two blind mask toggles every cycle in a runner that cannot see
 the mask's state, and a dropped toggle latches the mask on and makes every later
-left read dark, which the model scores a confident `inside`. Priced over 1000
+left read dark, which the model scores a confident `bbinside`. Priced over 1000
 night-6 runs: **1000/1000 with the flick, 478/1000 without**, and every one of
 those 522 losses is "raised the monitor with Golden Freddy in the office" with
 the earliest at **149 s** -- after the 2 AM step-up. Ignoring him is free for
@@ -731,7 +731,7 @@ never down again.
 
 So the ordering of causes is: **desync -> no hall flash -> Foxy at ~30 s**, and
 the BB->Foxy chain is the *later* failure that only the runs which outlive the
-Foxy window ever reach. Night 34 is the one that reached it: 120 s, and its
+Foxy window ever reach. Night 6-34 is the one that reached it: 120 s, and its
 death frame has Foxy's face and Balloon Boy's balloon in the same shot.
 
 The 3 Puppet deaths are box starvation. The 2 Golden Freddy deaths are the risk
@@ -778,16 +778,15 @@ animation running as decoration, so `press()` accepts a monitor press the phone
 throws away. The simulator cannot fail this way; only the phone can.
 
 **The emitter's contract passed every one of these presses.** That is the
-control, and it is the part worth keeping: `test-hid-trace.mjs` audits nights
-10, 12 and 14 and reports no defect at 8.41 s, 8.41 s and 8.47 s -- 35, 76 and
+control, and it is the part worth keeping: `test-hid-trace.mjs` audits nights 6-10, 6-12 and 6-14 and reports no defect at 8.41 s, 8.41 s and 8.47 s -- 35, 76 and
 78 ms released, all above `MIN_RELEASED_MS` -- and the game ignored all three.
-It does flag nights 22 and 28 at exactly the blamed press ("only 0 ms released
+It does flag nights 6-22 and 6-28 at exactly the blamed press ("only 0 ms released
 between 144,270 and 144,801"), which is the auditor working. A legal stream is
 not an accepted one, and the two floors are answering different questions.
 
 Two thirds of this exposure is already gone by accident rather than by
 decision: dropping the Golden Freddy flick removed the clear cycle's mask
-instruction, so the pair that cost nights 10-28 is no longer scheduled. What
+instruction, so the pair that cost nights 6-10 to 6-28 is no longer scheduled. What
 the shipped plan still has is `attack`'s `5917 tap mask` followed by
 `6127 hallraise` -- **210 ms**, inside the band that has not lost a press yet
 but only 30 ms above one that has.
@@ -797,7 +796,7 @@ The other two live seams are smaller and both real:
 - **34 ms is the plan's spacing before the hall-flash pair** (`2717 tap monitor`
   after a wind hold ending at 2683, `3267 tap monitor` after a hall hold ending
   at 3233), which is one Fusion poll and the floor `test-recipe.mjs` asserts.
-  Three of the fourteen desyncs are there -- nights 33, 35 and 37. Most of
+  Three of the fourteen desyncs are there -- nights 6-33, 6-35 and 6-37. Most of
   those windows cannot be graded -- 550 ms is shorter than the flip animation
   inside it -- so the rate is not measurable from these runs; what *is*
   measurable is that the office rendered in 109 of 113 scheduled hall-flash
@@ -805,7 +804,7 @@ The other two live seams are smaller and both real:
   failures cluster there. (Night 6's loss is the same disease in a geometry the
   runner no longer uses: its monitor press went down while the wind contact was
   still held.)
-- **The in-cycle correction can cause the desync it looks for.** Night 38:
+- **The in-cycle correction can cause the desync it looks for.** Night 6-38:
   the anchor's monitor press at 12.132 s, the cue helper's read 247 ms later
   reporting the cams still up -- which they visibly were, because
   `MONITOR_ANIM_DOWN` is 367 ms and the flip was still running -- and a
@@ -815,7 +814,7 @@ The other two live seams are smaller and both real:
   not an observation of anything.
 
   **Fixed 2026-08-25**, and the gate is measured rather than assumed. The
-  retained cue traces already contained the answer: across nights 36-38, after
+  retained cue traces already contained the answer: across nights 6-36 to 6-38, after
   a lowering press the helper still reported `luma >= CUE_CAMS_UP_LUMA` up to
   **+202 ms** and never later, so `light_down_at` now waits
   `LAST_MONITOR_PRESS_MS + MONITOR_ANIM_DOWN_MS` before it samples -- about
@@ -825,7 +824,7 @@ The other two live seams are smaller and both real:
 
   Two things had to move with it. `READ_CAPTURE_DELAY_MS` is a position in the
   vent-light ramp -- the only control over where the classifier's frame lands,
-  and moving it is what produced the `inside` and `unknown` misreads -- so the
+  and moving it is what produced the `bbinside` and `unknown` misreads -- so the
   capture is now placed from when the light actually went down rather than from
   the plan's offset. It was not: with the correction pushing the light 467 ms
   late, the capture had been firing *before the light was down*. And
@@ -840,9 +839,9 @@ claimed to: among runs alive 20 s or longer the median is 30.5 s desynced and
 30.2 s held. What separates them is what the run was still capable of -- an
 inverted pilot flashes the camera map instead of the hall, reads the feed
 instead of the vent, and stops winding -- and the longest run on disk
-(night 34, 120.5 s) is one whose model held.
+(night 6-34, 120.5 s) is one whose model held.
 
-### Night 40: the gate on the phone, and what is left (2026-08-25)
+### Night 6-40: the gate on the phone, and what is left (2026-08-25)
 
 The flip gate's first device run. **110.5 s alive, and `desync-scan.py` reports
 the pilot's model of the monitor held for the whole graded interval** -- the
@@ -857,23 +856,31 @@ starved -- `windpct` has it between 80% and 100% the whole way, 71.9% at 115 s.
 
 The one correction that did fire is the fix working rather than the bug: at
 97.57 s the post-gate sample read `luma 255`, the classifier agreed
-(`cams=UP-DESYNCED`), and the recovery put the cams back down. Compare night
-38, where the same code sampled 214 ms into a flip and invented the desync.
+(`cams=UP-DESYNCED`), and the recovery put the cams back down. Compare night 6-38, where the same code sampled 214 ms into a flip and invented the desync.
 
 What caused it is the seam this session did not touch. `test-hid-trace.mjs`
 flags **three 0 ms released cam7 -> monitor presses** in this run, at 22.16 s,
 37.20 s and 97.14 s: the sweep's final camera release and the next anchor's
 monitor press in the same instant. Two landed, the third did not. That is the
-same overrun as nights 22-24 in a different place, and it is now the largest
+same overrun as nights 6-22 to 6-24 in a different place, and it is now the largest
 remaining source: the mask seam that cost nine nights is no longer scheduled,
 and the flip gate has taken the corrector out.
 
 The run then died the way the census says these runs die. At 105 s the
-classifier read `inside`, and the game left the night state at 113 s.
+classifier read `bbinside`, and the game left the night state at 113 s.
 
-### `inside` is not a threat to respond to
+### `bbinside` is not a threat to respond to
 
-Until night 40 an `inside` read fell through to the catch-all, failed closed,
+The class was called `inside` until 2026-08-25, which is what every run log and
+retained frame before night 6-40 says. It was renamed because the name has to
+survive the next occupant: a dark left opening is the only thing the sensor
+sees, and any future blackout will land in the same class. The label is ours,
+not sourced -- the event sheet speaks in markers (122 at the opening, 123 in the
+office) and never says "inside" -- so it lives in the `.scm` models, which are
+untracked. The three bb-left models were relabelled in place and the holdout
+replay is byte-identical: 32/32 correct at the same scores and margins.
+
+Until night 6-40 a `bbinside` read fell through to the catch-all, failed closed,
 and spent the five-tick mask on it. That is wrong, and the sourced engine says
 so plainly: the mask returns Balloon Boy from the *opening* (marker 122), but
 once he is at 123 "g96 forces `lit?` to zero every frame ... and **no group ever
@@ -881,10 +888,10 @@ moves him back out**. Foxy finishes the job." `bb.inside` is set once and never
 cleared, so the flashlight is gone for the rest of the night, the hall can never
 be flashed again, and the run is already lost when the read comes back.
 
-So the runner now stops on `inside` (exit 49) instead of masking. Masking there
+So the runner now stops on `bbinside` (exit 49) instead of masking. Masking there
 spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
-exactly what made nights 36 and 37 read as records.
+exactly what made nights 6-36 and 6-37 read as records.
 
 ### The one problem that is still open
 

@@ -13,7 +13,7 @@
 // CAM 11. The pilot then winds on a camera that is not CAM 11, sweeps cameras
 // that never got selected, and reads a vent that is not on screen -- and
 // because nothing observes the result, it never recovers. Rendered classifier
-// frames from nights 22-25 show exactly that: CAM 11 with the music box gauge,
+// frames from nights 6-22 to 6-25 show exactly that: CAM 11 with the music box gauge,
 // captured at a moment the schedule believed was the office.
 import { pathToFileURL } from 'node:url';
 import * as C from '../../src/config.js';
@@ -129,7 +129,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       'refuses a camera select until it finishes. A plan that clears it by zero is\n' +
       'deterministic in the engine -- the select lands on the completing frame -- and\n' +
       "a coin flip on the phone, because the macro's anchor is wall-timed and lands\n" +
-      '49-93 ms late. Nights 22-25 lost the sweep that bridges the five-tick mask\n' +
+      '49-93 ms late. Nights 6-22 to 6-25 lost the sweep that bridges the five-tick mask\n' +
       'exactly this way; the rendered classifier frame is CAM 11, unchanged.\n\n' +
       'Fix it by moving the RAISE earlier, not the sweep later: HID-MULTITOUCH.md\n' +
       'records that one frame of sweep tail costs 272 of 400 nights. Re-validate the\n' +
