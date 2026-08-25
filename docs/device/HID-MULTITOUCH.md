@@ -288,6 +288,92 @@ Treat "the shortest repeatedly proven primitive is 240 ms" as withdrawn: it was
 established with the same 30 fps grader and never separated the actuator from
 the detector. `tools/device/test-camtrace.py` now guards the gate that hid it.
 
+### The shell's clock is 25x looser than the actuator's (2026-08-24)
+
+Measured with a separate HID touchscreen aimed at empty wallpaper, no game
+running, reading the kernel's own `getevent -lt` timestamps across 60 contacts
+at an intended 120 ms period:
+
+| | want | median | min | max | stdev |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| DOWN->DOWN period | 120 ms | 120.1 | 116.4 | 121.9 | 0.76 |
+| contact length | 100 ms | 99.9 | 97.0 | 101.5 | 0.80 |
+| released gap | 20 ms | 19.6 | 18.5 | 22.1 | 0.66 |
+
+`hid_delay` holds to about +/-2 ms. `wait_until` overshoots **49-93 ms** every
+time, because `sleep` and `date` are fork+exec here: `sleep 0.02` costs 75 ms
+wall and one `date` fork about 25 ms, so it sleeps to target-20 and then
+busy-polls past it.
+
+This matters more than the raw numbers suggest. Shifting the whole route late
+is nearly free -- it survives 300/300 up to 100 ms and then falls off a cliff
+to 0/300 at 110 -- but **jitter is what costs nights**: +/-10 ms around any mean
+drops it to 204/300, and the phone's measured spread scores 152/300 against
+282-300/300 for the hid clock. The mean can be dialled out with
+`PILOT_OFFSET_MS`; the spread cannot.
+
+So the steady cycles' post-read windows now run as a **single hid macro**: the
+shell wall-times only the window's start and waits it out, and every boundary
+inside is a `hid_delay`. That is one wall-timed boundary per 5 s cycle instead
+of one per action. The window is capped at one cycle deliberately -- a macro
+cannot be interrupted, so a longer one means input keeps landing on whatever is
+in front for longer if the game dies mid-macro, and no simulator can price
+that.
+
+Two windows stay stepped, for reasons that are not performance: the shared
+prefix contains the vent read, whose classifier lives in the shell, and the
+opening has to absorb the epoch latch's slip out of a wind hold whose end must
+not move. `run_macro` refuses both rather than running them wrong.
+
+Note the released gap's own minimum was 18.5 ms against a 20 ms floor. The
+sweep geometry below sits on its constraints with zero slack, and that is the
+first place to look if a select goes missing.
+
+### The shipped burst no longer matches the probed one (2026-08-24)
+
+The probes above ran a burst that led the light pulse by 10 ms inside a 100 ms
+select, leaving the pulse itself 90 ms. That is under the 100-120 ms this
+document's own verified report sequence requires, and the contact floor in
+`tools/device/test-hid-trace.mjs` was briefly lowered to 90 to accommodate it —
+the wrong direction to move a device threshold.
+
+Four constraints cannot all hold at once:
+
+| Constraint | Source |
+| --- | --- |
+| selects 120 ms apart | the probe table above |
+| 20 ms released between selects | Fusion polls touch per frame |
+| select contact >= 100 ms | "Verified report sequence", above |
+| light pulse >= 100 ms | same |
+
+The first two fix the select at exactly 100 ms, so **any** positive light lead
+puts the pulse under the floor. The runner therefore ships `SWEEP_LIGHT_LEAD_MS=0`:
+the select and its light land in one report and both contacts get the full
+100 ms. This is arithmetic, not a measurement — **the 4/4 result above does not
+cover it.** Re-run `hid-sweep-probe.sh` before trusting a device run, and if a
+zero lead turns out to miss selections, the conflict is real and one of the four
+constraints has to be retracted with evidence rather than quietly shaved.
+
+**Probed, and it holds (2026-08-24, same day).** `LIGHT_LEAD_MS=0 CONTACT_MS=100
+hid-sweep-probe.sh 120 120 120 120`, graded on both signals:
+
+| Grader | Answers | Result |
+| --- | --- | --- |
+| `camtrace.py` | was the select missing? | 4 complete `10-04-07-11` sweeps, 0 incomplete starts |
+| `sweepcheck.py` | was the select present but unlit? | 4/4 flashed all of 10, 04, 07 |
+
+Neither fired, and the lit-frame counts (5-6 / 5 / 4-6) are healthier than the
+10 ms lead runs, which is what a 100 ms pulse instead of a 90 ms one should look
+like. The two failure modes are graded separately on purpose: a dropped select
+and a dark select point at different fixes.
+
+The paragraph above stands as written rather than being deleted, because the
+reasoning that produced it is still the reason the geometry has zero slack.
+**Twelve selects is not eighty.** A night runs roughly 80 sweeps, and the
+released gap's measured minimum is 18.5 ms against a 20 ms floor, so this
+probe fails to reproduce the concern at its sample size rather than retiring
+it. The night recording is the larger sample and grades the same two ways.
+
 ## Trap 1: UHID open is earlier than Android input readiness
 
 The `hid` command returns from registration after the kernel sends
@@ -365,6 +451,66 @@ report. It also matches mature automation interfaces such as
 [`minitouch`](https://github.com/DeviceFarmer/minitouch), which model every
 contact's down/up lifecycle explicitly and warn that a lost touch-end corrupts
 the stream.
+
+## Trap 3: a zero-length delay is a fatal command, not a no-op
+
+`hid` does not treat `{"command":"delay","duration":0}` as "wait for nothing".
+It rejects the duration outright, and the rejection kills the whole process:
+
+```text
+E HID: HID injection failed.
+E HID: java.lang.IllegalStateException: Delay has missing or invalid duration
+E HID:   at com.android.commands.hid.Event$Builder.build(Event.java:220)
+E HID:   at com.android.commands.hid.Event$Reader.getNextEvent(Event.java:298)
+E HID:   at com.android.commands.hid.Hid.run(Hid.java:76)
+```
+
+Because the runner drives `hid` as an mksh co-process, the death is silent
+until the *next* write, which fails with `print: -p: no coprocess`. Everything
+the current action still had to send -- the rest of its hold, its release --
+is never written.
+
+This cost night 22 at 18 s, and its signature on the phone was not a timing
+error but a dead control. `plan_emit`'s `hallraise` branch emitted the light
+lead with `hid_delay "$SWEEP_LIGHT_LEAD_MS"`, and that lead is **0** in the
+shipped zero-lead sweep geometry. So the hall light went down, the delay killed
+`hid`, and the hall's own 133 ms hold and release never arrived. The device
+owner watching the phone reported it before any log was read: *"fails to press
+hall light and moves the vision instead"* -- a two-contact touch that changes
+coordinates and vanishes in the same frame is a drag, so the office view panned
+instead of the light coming on. The trace auditor found both halves:
+
+```text
+contact 0 at 1200,540 held 0 ms (floor 100)     <- the hall light
+contact 1 at 144,801 held 0 ms (floor 100)      <- the monitor raise
+```
+
+Note what made this reachable: `pulsed_cam_burst` already guarded the same
+variable with `if [ "$SWEEP_LIGHT_LEAD_MS" -gt 0 ]` and `hallraise` did not.
+One guarded call site and one unguarded, on the same value. It also needed both
+of two independent changes to appear at all -- the macro emitter, which turns
+scheduler gaps into `hid_delay` commands, and the zero light lead. Neither
+alone emits a zero delay, which is why two green test suites missed it.
+
+### Four gates, because one is not enough
+
+- **The call site** refuses to write it: `[ "$SWEEP_LIGHT_LEAD_MS" -le 0 ] || hid_delay ...`.
+  The emitter is the only place that knows a zero is *legitimate* (a zero lead)
+  rather than a *defect* (a zero gap between two different buttons, which is
+  the 0 ms released failure this document spends its length on).
+- **`hid_delay` itself** returns early on a non-positive duration. A fatal,
+  silent, co-process-killing failure deserves a backstop even so.
+- **`tools/device/test-plan-interpreter.sh`** fails on any emitted
+  `hid_delay <= 0`, and was verified to fail on the pre-fix code before it was
+  fixed, so the assertion is not passing vacuously.
+- **`tools/device/test-hid-trace.mjs`** reports a zero-length delay as a
+  problem, and its self-test requires that it be caught alongside the short
+  contact, the zero-gap button change and the latched contact.
+
+The last one is the one that matters most, and the reason is general: a
+stubbed interpreter advances a *virtual* clock by 0 quite happily, so no model
+of the phone can see this class. Only the artifact can. A delay is a command
+that can be rejected, not merely an interval.
 
 ## Verified report sequence
 

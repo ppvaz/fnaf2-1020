@@ -6,7 +6,7 @@ const check = (ok, message) => { if (!ok) throw new Error(message); };
 const key = (point) => toRaw(point).join(',');
 
 const SPACINGS = [240, 160, 120];
-const events = stream(SPACINGS);
+const events = stream(SPACINGS);   // the shipped geometry: no light lead
 check(events[0].command === 'register', 'must register first');
 check(events[1].command === 'delay' && events[1].duration >= 6000,
   'must wait for framework-level input attachment, not just UHID open');
@@ -63,6 +63,30 @@ for (const [down, up, cam] of litPulses) {
   check(up - down <= 100, `each light pulse must be at most 100 ms, got ${up - down}`);
   check(wanted.includes(cam), 'the light must only be on while a target camera is selected');
 }
+
+// The default geometry gives the light the same contact the select gets. A
+// lead spends the light's own contact: at the 120 ms spacing this route needs,
+// the select is pinned at 100 ms by the 20 ms released gap, so a 10 ms lead
+// leaves the pulse at 90 -- under the floor HID-MULTITOUCH.md's verified
+// sequence asks for, which is why 9a9d2fb moved the light into the select's
+// own report rather than lowering the auditor to match it.
+for (const [down, up] of litPulses)
+  check(up - down === 100,
+    `the shipped zero-lead pulse must hold the full 100 ms, got ${up - down}`);
+// The 10 ms lead stays reachable so recordings taken under it stay
+// reproducible, and it must still be the shorter pulse it always was.
+const led = stream([120], { lightLeadMs: 10 });
+let lt = 0, ldown = null, ledPulses = [];
+for (const event of led) {
+  if (event.command === 'delay') { lt += event.duration; continue; }
+  if (event.command !== 'report') continue;
+  const r = event.report.slice(2, 7);
+  if ((r[0] >> 2) !== 0) continue;
+  if ((r[0] & 1) !== 0) { if (ldown === null) ldown = lt; }
+  else if (ldown !== null) { ledPulses.push(lt - ldown); ldown = null; }
+}
+check(ledPulses.filter(d => d === 90).length === 3,
+  `a 10 ms lead must leave three 90 ms pulses, got ${ledPulses.join('/')}`);
 // The point of the pulse: 90 ms of light per camera instead of a hold that
 // would outspend night 6's 3000-frame flashlight.
 const litMs = litPulses.reduce((sum, [down, up]) => sum + (up - down), 0) / SPACINGS.length;

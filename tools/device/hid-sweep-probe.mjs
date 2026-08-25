@@ -38,7 +38,7 @@ const record = (flags, point) => {
 };
 
 export function stream(spacings, { readyMs = 7000, introMs = 8000,
-                                   contactMs = 100 } = {}) {
+                                   contactMs = 100, lightLeadMs = 0 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -65,10 +65,19 @@ export function stream(spacings, { readyMs = 7000, introMs = 8000,
 
   for (const spacing of spacings) {
     for (const cam of ['cam10', 'cam4', 'cam7']) {
-      report([...record(0x00, COORDS.light), ...record(0x07, COORDS[cam])]);
-      delay(10);
+      // A lead puts the light down *inside* the select, which costs the light
+      // exactly that much of its own contact: at the 120 ms spacing the route
+      // needs, the select is pinned at 100 ms and 20 ms is the released gap,
+      // so any positive lead drops the pulse under the 100 ms floor
+      // HID-MULTITOUCH.md's verified sequence asks for. The runner ships a
+      // zero lead for that reason and this defaults to it; the old 10 ms form
+      // is kept reachable so the recordings taken under it stay reproducible.
+      if (lightLeadMs > 0) {
+        report([...record(0x00, COORDS.light), ...record(0x07, COORDS[cam])]);
+        delay(lightLeadMs);
+      }
       report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
-      delay(contactMs - 10);
+      delay(contactMs - lightLeadMs);
       report([...record(0x00, COORDS.light), ...record(0x04, COORDS[cam])]);
       delay(Math.max(1, spacing - contactMs));
     }
@@ -88,13 +97,17 @@ const DESCRIPTOR = [5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,1
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const contactMs = Number(process.env.CONTACT_MS || 100);
-  if (!Number.isInteger(contactMs) || contactMs < 40 || contactMs > 200)
-    throw new Error('CONTACT_MS must be an integer between 40 and 200');
+  if (!Number.isInteger(contactMs) || contactMs < 20 || contactMs > 200)
+    throw new Error('CONTACT_MS must be an integer between 20 and 200');
   const spacings = process.argv.slice(2).map(Number);
-  if (spacings.some(v => !Number.isInteger(v) || v < 110 || v > 500))
-    throw new Error('spacings must be integers between 110 and 500 ms');
+  if (spacings.some(v => !Number.isInteger(v) || v < 40 || v > 500))
+    throw new Error('spacings must be integers between 40 and 500 ms');
   if (spacings.some(v => v <= contactMs))
     throw new Error('each spacing must exceed CONTACT_MS');
-  for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120], { contactMs }))
+  const lightLeadMs = Number(process.env.LIGHT_LEAD_MS || 0);
+  if (!Number.isInteger(lightLeadMs) || lightLeadMs < 0 || lightLeadMs >= contactMs)
+    throw new Error('LIGHT_LEAD_MS must be an integer in [0, CONTACT_MS)');
+  for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
+                             { contactMs, lightLeadMs }))
     console.log(JSON.stringify(event));
 }

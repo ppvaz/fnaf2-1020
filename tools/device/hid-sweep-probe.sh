@@ -9,9 +9,17 @@
 # been tried, so the floor is unmeasured rather than known.
 #
 # This starts 6th Night, raises the monitor, runs one sweep per requested
-# spacing with the camera light pulsed after each selection, and grades the
-# recording with camtrace.py. It defends nothing: the night is expected to end
-# to W. Foxy shortly after the sweeps, which is why the sweeps run first.
+# spacing with the camera light pulsed inside each selection, and grades the
+# recording twice: camtrace.py for which camera was selected, sweepcheck.py for
+# whether the light actually flashed on it.
+#
+# CONTACT_MS and LIGHT_LEAD_MS set the burst geometry. The runner ships a zero
+# lead so the select and the light share one 100 ms contact; a positive lead
+# spends the light's own contact and is kept only to reproduce older
+# recordings.
+#
+# It defends nothing: the night is expected to end to W. Foxy shortly after the
+# sweeps, which is why the sweeps run first.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -76,7 +84,19 @@ echo
 # screenrecord captures at the panel's 60 fps; camtrace's 30 fps / 100 ms
 # defaults cannot resolve a sweep this short and report its selections as
 # dropped. See docs/device/HID-MULTITOUCH.md.
-"$HERE/camtrace.py" --fps 60 --min-ms 50 "$LOCAL_VIDEO"
+"$HERE/camtrace.py" --fps 60 --min-ms 50 "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
+echo
+# camtrace answers "which camera was selected". A Minus 7 sweep exists to apply
+# the camera-light stun, which needs the light on *while* that camera is the
+# selected feed, so a trace of selections alone cannot tell a working sweep
+# from three selections in the dark -- the same distinction HID-MULTITOUCH.md
+# draws when it says two Android pointer dots are not sufficient evidence.
+# Grade both signals; they fail differently and that is the point.
+"$HERE/sweepcheck.py" --fps 60 "$LOCAL_VIDEO" || SWEEPCHECK_FAILED=1
 echo
 echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
 echo "requested: ${SPACINGS[*]} ms"
+echo "light lead ${LIGHT_LEAD_MS:-0} ms, contact ${CONTACT_MS:-100} ms"
+[ -z "${CAMTRACE_FAILED:-}" ] || echo "camtrace reported a missing selection"
+[ -z "${SWEEPCHECK_FAILED:-}" ] || echo "sweepcheck reported a sweep that did not flash"
+[ -z "${CAMTRACE_FAILED:-}${SWEEPCHECK_FAILED:-}" ] || exit 1
