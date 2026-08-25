@@ -101,20 +101,31 @@ check((block.match(/run_macro clear "\$base" 2 999/g) || []).length === 2,
 check(/run_macro attack "\$base" 2 999/.test(block),
   'the attack branch must resume at its own mask instruction');
 
-// `bbinside` is not a threat the response addresses, so it must not reach the
-// response. The mask returns Balloon Boy from the opening (marker 122); once he
-// is at 123 the sourced engine is explicit -- "no group ever moves him back
-// out" -- and `bb.inside` is never cleared, so the flashlight is gone, the hall
-// can never be flashed again, and Foxy collects. Masking there spends wind and
-// exposure on a state the mask cannot change, and keeps a dead night recording.
-const insideCase = block.match(/^\s*bbinside\\ \*\)([\s\S]*?)^\s*;;/m);
-check(insideCase, 'the driver has no branch for a `bbinside` read; it would ' +
-  'fall through to the catch-all and mask a night that is already lost');
-check(/\bexit \d+/.test(insideCase[1]),
-  'a `bbinside` read must stop the run, not respond to it');
-check(!/press_at/.test(insideCase[1]),
-  'a `bbinside` read must press nothing: the mask does not move Balloon Boy ' +
-  'back out of the office');
+// A dark vent lamp is not an observation, so it must not be a verdict.
+//
+// The class was called `inside` and it ended the run. It was the vent light
+// being off: across every labelled frame the LIGHT lamp inside the model's own
+// ROI reads green-excess 104.0 on all 49 `empty`/`bb` frames and 0.2 on both
+// frames the `inside` class was trained from, and night 6-41 died on it at
+// 13.7 s -- before Balloon Boy's five five-second rolls could possibly have put
+// him at 123. One frame cannot separate a dropped light press from marker 123,
+// because g96/g301/g303 stop the vent lights answering once he is inside too.
+// So the read fails closed like any other unreadable frame and the *streak*
+// decides: a dropped press recovers on the next cycle, marker 123 never does.
+const noLightCase = block.match(/^\s*nolight\\ \*\)([\s\S]*?)^\s*;;/m);
+check(noLightCase, 'the driver has no branch for a `nolight` read; an unlit ' +
+  'opening would fall through to the catch-all with no streak of its own');
+check(/branch=attack/.test(noLightCase[1]),
+  'a `nolight` read must fail closed to the mask: the opening might have him ' +
+  'in it and the frame does not say');
+check(/nolight_streak/.test(noLightCase[1]),
+  'a `nolight` read must count consecutively; a single one is a dropped press');
+check(/BB_EARLIEST_INSIDE_MS/.test(noLightCase[1]),
+  'concluding Balloon Boy is at 123 must be gated on the earliest he could ' +
+  'possibly be there, or a dropped press reads as the office again');
+check(!/^\s*bbinside\\ \*\)/m.test(block),
+  'the `bbinside` branch must be gone: no frame of Balloon Boy in the office ' +
+  'was ever captured, so the class had no training data but unlit openings');
 
 // The steady cycles' post-read windows carry the night: they run 83 times
 // against the opening's once, and each wall-timed boundary re-rolls a 49-93 ms

@@ -1451,6 +1451,17 @@ MONITOR_ANIM_DOWN_MS=367
 # unlit opening could be read as a confident `inside`, and early enough that
 # the classifier still answers before the cycle's cut-off.
 READ_CAPTURE_DELAY_MS=200
+# Balloon Boy needs five five-second rolls to reach the office, so nothing
+# before this is him. It is the only thing that separates a dropped vent-light
+# press from marker 123 on a dark frame, because the two look identical: g96
+# forces `lit?` to zero and g301/g303 stop the vent lights answering once he is
+# inside, so "the lamp is dark" is a *consequence* of him being there as well as
+# of the press being lost.
+BB_EARLIEST_INSIDE_MS=25000
+# How many consecutive unlit reads mean the light is never coming back rather
+# than one press being dropped. A dropped press recovers on the retry; marker
+# 123 never does.
+NOLIGHT_STREAK_MAX=3
 
 # Which physical control the plan means. A name the runner cannot press is a
 # plan it must not half-execute.
@@ -1851,6 +1862,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   base=7000
   cycle=0
   unknowns=0
+  nolights=0
+  nolight_streak=0
   attacks=0
   desyncs=0
   blind_streak=0
@@ -1905,30 +1918,42 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     fi
 
     case "$classification" in
-      empty\ *) branch=clear; blind_streak=0 ;;
-      bb\ *)    branch=attack; blind_streak=0 ;;
-      bbinside\ *)
-        # `inside` is not a threat to respond to. It is the night already lost.
+      empty\ *) branch=clear; blind_streak=0; nolight_streak=0 ;;
+      bb\ *)    branch=attack; blind_streak=0; nolight_streak=0 ;;
+      nolight\ *)
+        # The lamp is dark, so this frame is not an observation of the opening.
         #
-        # The mask returns Balloon Boy from the *opening* (marker 122). Once he
-        # has walked in, engine.js is explicit and sourced: "g96 forces `lit?`
-        # to zero every frame while he is at 123, g301/303 stop the vent lights
-        # answering, and no group ever moves him back out. Foxy finishes the
-        # job." `bb.inside` is set once and never cleared, so the flashlight is
-        # gone for the rest of the night, the hall can never be flashed again,
-        # and W. Foxy's D runs out on a pilot that cannot do anything about it.
+        # It was called `inside` and it ended the run (exit 49). It is not
+        # Balloon Boy: measured across every labelled frame, the LIGHT lamp
+        # inside the model's own ROI reads green-excess 104.0 on all 49
+        # `empty`/`bb` frames and 0.2 on both frames the `inside` class was
+        # trained from. The class was the vent light being off. Night 6-41 died
+        # on it at 13.7 s -- before BB_EARLIEST_INSIDE_MS, so it could not have
+        # been him -- and the run video shows the lamp lit exactly once in 20 s.
         #
-        # So masking here spends the wind and the exposure on a state the mask
-        # does not address. Stop instead: the capture and the classifier frames
-        # are the evidence, and pressing on only buys a longer recording of a
-        # dead night -- the exact thing that made nights 6-36 and 6-37 read as
-        # records.
+        # Three things make the lamp dark and one frame cannot separate them:
+        # the light press was dropped; `in danger` is latched, so no light
+        # answers at all (g75/g76/g77); or he really is at 123 and g301/g303
+        # have stopped the vent lights answering. So fail closed like any other
+        # unreadable frame -- the mask is the right answer to an opening that
+        # might have him in it -- and let the *streak* decide, because a dropped
+        # press recovers on the next cycle and marker 123 never does.
+        branch=attack
+        nolights=$((nolights + 1))
+        nolight_streak=$((nolight_streak + 1))
+        blind_streak=0
         actual=$(( $(date +%s%3N) - T0 ))
-        printf '%6d ms  left-view %s: Balloon Boy is in the office\n' \
-          "$actual" "$classification" >&2
+        printf '%6d ms  left-view %s: the vent lamp is dark; masking and retrying (%d in a row, %d total)\n' \
+          "$actual" "$classification" "$nolight_streak" "$nolights"
         hid_mark "$actual"
-        echo 'the flashlight is gone for the rest of the night and no group moves him back out; giving up' >&2
-        exit 49
+        if [ "$nolight_streak" -ge "$NOLIGHT_STREAK_MAX" ]; then
+          if [ "$actual" -ge "$BB_EARLIEST_INSIDE_MS" ]; then
+            echo "the vent light has not answered for $nolight_streak consecutive reads past ${BB_EARLIEST_INSIDE_MS} ms; Balloon Boy is at 123 and no group moves him back out" >&2
+            exit 49
+          fi
+          echo "the vent light has not answered for $nolight_streak consecutive reads, and it is too early for Balloon Boy to be inside; the light press is not reaching the game" >&2
+          exit 44
+        fi
         ;;
       *)
         # A single unreadable frame fails closed, because an unseen BB costs

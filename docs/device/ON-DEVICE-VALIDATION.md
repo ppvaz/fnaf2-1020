@@ -893,15 +893,64 @@ spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
 exactly what made nights 6-36 and 6-37 read as records.
 
+### Retraction: `bbinside` was the vent light being off (2026-08-25)
+
+**The class was never Balloon Boy.** Everything above this line about him
+reaching the office rests on frames where the vent lamp was dark, and the lamp
+is *inside the model's own ROI*, so it could have been read at any point.
+Measured across every labelled frame:
+
+| class | frames | lamp green-excess |
+| --- | ---: | ---: |
+| `empty` + `bb`, calibration and holdout | 49 | **104.0**, every frame |
+| `bbinside` (the whole training set) | 2 | **0.2** |
+| the frame that ended night 6-41 | 1 | **0.2** |
+| the frame that ended night 6-40 | 1 | **-0.9** |
+
+Both exemplars the class was ever built from are unlit openings. There is no
+photograph of Balloon Boy in the office anywhere in this repository, so the
+class had no positive training data at all -- it was trained on the absence of
+the light and then given the authority to end a run.
+
+Night 6-41 is the proof. It died at **13.7 s** on a `bbinside` read, and he
+needs five five-second rolls, so nothing before 25 s can be him. Its recording
+settles the mechanism independently: across the whole 20 s run **the lamp lit
+exactly once, for 531 ms** -- the first read, which returned `empty` -- and the
+second vent-light press never lit it at all. Same coordinate, same held contact,
+same phase after the monitor animation. The press was simply not accepted, which
+is the seam this document already names: a legal input stream is not an accepted
+one.
+
+The fix is not a better threshold, because one frame genuinely cannot separate
+the three things that darken the lamp -- a dropped press; `in danger` latched so
+no light answers (g75/g76/g77); or him really at 123, where g96/g301/g303 stop
+the vent lights answering. **Being inside makes the lamp dark, so darkness can
+never be the evidence for it.** What separates them is the retry: a dropped
+press recovers on the next cycle and marker 123 never does. So the class is now
+`nolight`, it fails closed to the mask like any other unreadable frame, and only
+a streak of them past `BB_EARLIEST_INSIDE_MS` concludes he is inside. The
+rebuilt model keeps the validated boundary exactly: **32/32 holdout, same scores
+and margins** (bb 0/18, empty 0/19).
+
+`rejected-dark/` had been a `nolight` bucket all along -- 15 of its 17 frames
+have a dark lamp -- and supplied the class its training data.
+
 ### The one problem that is still open
 
-Balloon Boy reaches the office. The classifier is not at fault -- offline replay
-puts all 19 holdout frames correct including both BB positives -- and neither is
-the response. The pilot looks **once per five-second cycle**, and he is not at
-the opening when it looks. Detection is gated on the vent light, and the light
-is gated on a 3000-frame night-6 power budget, so "read more often" is not free.
-That is the next question, and the cue helper at 42 ms is the reason it is now
-worth asking.
+~~Balloon Boy reaches the office.~~ **Withdrawn 2026-08-25** -- see the
+retraction above. The reads that said so were unlit openings, so the premise is
+gone and the "read more often" question it motivated is not yet earned. What is
+open is the thing underneath it: **the vent-light press is dropped often enough
+to matter**, and until a read is known to be an observation, nothing about
+Balloon Boy can be concluded from it either way.
+
+The original reasoning is kept because it was right about everything except the
+cause: the pilot does look only once per five-second cycle, and the cue helper
+at 42 ms is still the reason a cheaper read is worth asking about. One claim in
+it was wrong on its own terms and is corrected here -- the vent light is **not**
+gated on the flashlight budget. Only `lit?` drains `battery life` (g284); vent
+lights are free, corrected in `ANDROID-SOURCE-STATUS.md` on 2026-08-20 and
+missed here.
 
 ## Next steps
 
