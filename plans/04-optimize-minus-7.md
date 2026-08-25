@@ -219,6 +219,14 @@ Do not claim a variant is better *for humans* until trainer traces replace them.
 > stay `[INFERRED]` until that report has enough runs to argue with —
 > the measured profile this section asks for is now a matter of playing,
 > not of building.
+>
+> **2026-08-25, the uniform-error bracket:** reactive Minus 7 (`bbtest`)
+> survives 200/200 at ±60 ms iid per-input error, 89/200 at ±100, 0/200 at
+> ±150 (`bbtest jitter 60` holds the floor of that bracket in the suite).
+> Humans clear the strategy while the trainer grades ±150 as `good`, which is
+> only consistent if real error correlates the way this section's caveat says
+> — so the bracket is also indirect evidence that the census, when it exists,
+> must be fit as correlated per-step bands, not one iid width.
 
 ## Done when
 

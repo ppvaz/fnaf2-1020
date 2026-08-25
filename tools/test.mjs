@@ -37,6 +37,12 @@ const ENGINE = [
   ['hidreporttest', ['hidreporttest.mjs']],
   ['bbtest', ['bbtest.mjs', '200', '--assert']],
   ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
+  // The human-slack budget, measured 2026-08-25: reactive Minus 7 holds
+  // 200/200 at +/-60 ms uniform per-input error, 89/200 at +/-100, 0/200 at
+  // +/-150. The strategy's human-executability rests on this margin (and on
+  // human error correlating rather than being iid -- plans/04), so hold the
+  // floor of the bracket. If this flips, the human-viability picture changed.
+  ['bbtest jitter 60', ['bbtest.mjs', '200', '--jitter=60', '--assert']],
   // The pilot asserts one narrow claim, not survival: Balloon Boy never
   // reaches the office, and no Foxy death follows him taking the lights.
   ['pilottest', ['pilottest.mjs', '200', '--vent', '--sync', '--assert']],
