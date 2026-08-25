@@ -138,7 +138,9 @@ remembered is not run. `screenstate.py` could have refuted the 163 s claim from
 any single frame of that recording; nobody invoked it.
 
 So: do not add an instrument without adding it to `grade-run.sh`. An instrument
-nobody runs is a comment.
+nobody runs is a comment. This is now enforced: `test-grade-run-coverage.mjs`
+fails the engine suite on any `tools/device` script that is neither invoked by
+`grade-run.sh` nor consciously excluded, with a reason, in its exclusion list.
 
 ## Retractions stay
 

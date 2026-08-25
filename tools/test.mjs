@@ -157,6 +157,9 @@ const ENGINE = [
   // no browser involved.
   ['trainer trace', ['tracetest.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
+  // The drawer itself: every tools/device script is either invoked by
+  // grade-run.sh, a test- gate, or consciously excluded with a reason.
+  ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
   ['cuetest', ['cue/test-cue.py']],
 ];
 const BROWSER = [
