@@ -38,6 +38,12 @@ for candidate in "$CAPTURES/$RUN.mp4" "$CAPTURES/$RUN-aborted.mp4"; do
   [ -f "$candidate" ] && VIDEO="$candidate"
 done
 TRACE="$CAPTURES/$RUN-hid.jsonl"
+# The night's PCM, if the run kept any. Written by CUE_AUDIO=1 through the
+# helper's log capture, and named by the helper rather than by the run.
+AUDIO=""
+for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
+  [ -f "$candidate" ] && AUDIO="$candidate"
+done
 CUE="$CAPTURES/$RUN-cue.txt"
 KEEP="$CAPTURES/screencheck-keep/$RUN"
 
@@ -52,6 +58,7 @@ done
 echo "capture: ${VIDEO##*/}"
 [ -f "$TRACE" ] && echo "hid trace: ${TRACE##*/}" || echo "hid trace: MISSING (run with HID_TRACE_RUN=1)"
 [ -f "$CUE" ] && echo "cue trace: ${CUE##*/}" || echo "cue trace: none (run with CUE_HELPER=1)"
+[ -n "$AUDIO" ] && echo "night audio: ${AUDIO##*/}" || echo "night audio: none (run with CUE_AUDIO=1)"
 [ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
 
 fail=0
@@ -104,6 +111,27 @@ step "keyframes (what the run contained)" \
 # 5. The box, and the office/mask/camera state intervals.
 step "music box" python3 "$HERE/windpct.py" "$VIDEO"
 step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
+
+# 6. Did Balloon Boy's vent bang reach the capture at all?
+#
+#    This is the instrument the drawer was missing. tools/cue/ has had a working
+#    detector the whole time and grade-run.sh never called it, which is the
+#    "instrument nobody runs is a comment" failure in its purest form: the
+#    question "how many bangs were in that night" had never once been answered
+#    with a measurement, because no run recorded any audio to answer it from.
+#
+#    Read the zero carefully. scan-night.sh denoises first because that takes
+#    recall from 6% to 52% on injected controls, and its floor is about -12 dB
+#    relative to background -- so "0 confirmed" means no bang above that, not no
+#    bang. It is a bound, not a verdict.
+if [ -n "$AUDIO" ]; then
+  step "Balloon Boy's vent bang (sample 17; 52% recall, floor about -12 dB)" \
+    bash "$HERE/../cue/scan-night.sh" "$AUDIO"
+else
+  echo
+  echo "--- Balloon Boy's vent bang ---"
+  echo "  no audio kept for $RUN; nothing was listening. Run with CUE_AUDIO=1."
+fi
 
 echo
 echo "=============================================================="

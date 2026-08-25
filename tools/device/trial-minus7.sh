@@ -131,6 +131,10 @@ case "$POST_CAPTURE_TOUCHES" in
   0|1) ;;
   *) echo "POST_CAPTURE_TOUCHES must be 0 or 1"; exit 2 ;;
 esac
+case "$CUE_AUDIO" in
+  0|1) ;;
+  *) echo "CUE_AUDIO must be 0 or 1"; exit 2 ;;
+esac
 case "$GRADE_RUN" in
   0|1) ;;
   *) echo "GRADE_RUN must be 0 or 1"; exit 2 ;;
@@ -612,6 +616,10 @@ cleanup() {
     fi
     adb shell "rm -rf $REMOTE_KEEP_DIR" >/dev/null 2>&1 || true
   fi
+  if [ "${CUE_AUDIO_STARTED:-0}" -eq 1 ]; then
+    CUE_AUDIO_STARTED=0
+    "$HERE/query-cue-helper.sh" log stop "$OUT" 2>&1 | sed 's/^/  audio: /' || true
+  fi
   if [ "${CUE_TRACE_REMOTE:-}" != "" ]; then
     adb pull "$CUE_TRACE_REMOTE" "$CAPTURE_DIR/$OUT-cue.txt" >/dev/null 2>&1 &&
       echo "cue trace: $CAPTURE_DIR/$OUT-cue.txt" || true
@@ -716,6 +724,16 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 # screencheck class that is already trusted, which is exactly the labelled data
 # the threshold needs. Switch only once that data says where the line is.
 CUE_HELPER="${CUE_HELPER:-0}"
+# Keep the night's PCM, not just the scalar snapshots.
+#
+# The cue trace records rms and peak per sample, which cannot carry a transient:
+# measured over night 6-40 the peak is pinned at full-scale int16 on 55% of the
+# live stretch. The bang detector needs the waveform, and nothing was ever
+# recording it -- `screenrecord` is video-only and no night run has ever kept
+# audio, so "no bang was heard" has never once been a measurement. The helper
+# buffers the night in memory and writes on stop, so this costs the run nothing.
+CUE_AUDIO="${CUE_AUDIO:-0}"
+CUE_AUDIO_STARTED=0
 CUE_PORT="-"
 CUE_TOKEN="-"
 if [ "$CUE_HELPER" -eq 1 ]; then
@@ -728,6 +746,15 @@ if [ "$CUE_HELPER" -eq 1 ]; then
   case "$CUE_PORT" in ''|*[!0-9]*) echo 'the cue helper has no live loopback port' >&2; exit 2 ;; esac
   [ "${#CUE_TOKEN}" -eq 32 ] || { echo 'no valid per-run cue-helper token' >&2; exit 2; }
   echo "cue helper: port $CUE_PORT, logging snapshots beside each left read"
+  if [ "$CUE_AUDIO" -eq 1 ]; then
+    if "$HERE/query-cue-helper.sh" log start >/dev/null 2>&1; then
+      CUE_AUDIO_STARTED=1
+      echo "cue helper: recording the night's audio for the bang detector"
+    else
+      echo 'CUE_AUDIO=1 but the helper would not start a capture' >&2
+      exit 2
+    fi
+  fi
   # And a continuous device-side trace of the same socket, for the events we
   # cannot schedule. Golden Freddy is one run in ten before 2 AM; the box-low
   # warning only appears when the box is nearly empty; a death happens once.
