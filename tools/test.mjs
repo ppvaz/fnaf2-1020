@@ -121,6 +121,10 @@ const ENGINE = [
   // The engine cannot price an input the port refuses, so the plan is checked
   // against the phone's measured input-acceptance gaps separately.
   ['device input gaps', ['device/test-device-input-gaps.mjs']],
+  // The measured actuator as a simulator layer -- launch lateness and the
+  // mask-seam monitor drop. This gates that the model reproduces the desync
+  // census's band rates, keeps hold lengths, and replays under a seed.
+  ['device actuator', ['device/test-actuator.mjs']],
   // The interpreter is the only part of the runner that decides *what*
   // happens. This runs the shipped functions against the real plan with the
   // device primitives stubbed, so a branch window off by one fails here
