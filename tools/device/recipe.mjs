@@ -155,18 +155,18 @@ export function build(opts = {}) {
   // left read comes back dark, and the model scores it a confident `inside`.
   // Nights 6-30 and 6-31 both died exactly that way.
   //
-  // Priced in the exact simulator over 1000 night-6 runs:
-  //     with the flick      1000/1000 clears
-  //     ignoring Golden Freddy 478/1000 clears
-  // Every one of those 522 deaths is "raised the monitor with Golden Freddy in
-  // the office", and the EARLIEST is at 149 s -- after the 2 AM step-up at
-  // 140 s, where his AI goes from "1 in ten runs" to a flat 3. Ignoring him is
-  // free for 1000/1000 runs up to 2 AM, and the device has never survived past
-  // 73 s.
+  // Priced in the exact simulator over 1000 night-6 runs, after the simulator's
+  // invented xorshift stream was replaced by the APK runtime's sourced LCG:
+  //     with the flick           1000/1000 clears
+  //     ignoring Golden Freddy    465/1000 clears
+  // Every one of those 535 deaths is "raised the monitor with Golden Freddy in
+  // the office". Correction 2026-08-25: the old xorshift sample put the first
+  // loss at 149 s and made ignoring him look free until 2 AM. The real stream
+  // produces a loss at 8.55 s in the same 1000-seed census. The causal claim
+  // (all losses are Golden Freddy) survived; the timing rationale did not.
   //
-  // So this trades a certainty (the mask latches and blinds the classifier) for
-  // a risk that does not arrive until long past anything reached so far. It is
-  // NOT a route decision and must be revisited: Golden Freddy should be
+  // So this temporary trade is no longer justified by a late risk. It is NOT a
+  // route decision and must be revisited: Golden Freddy should be
   // identified, not guessed, and building that classifier needs positives that
   // night 6 supplies only one run in ten before 2 AM. Restore the flick, or
   // replace it with a real detection, before any attempt that expects to pass

@@ -1,19 +1,28 @@
 // Seeded RNG so a run can be replayed, and so "worst luck" mode can pin every
 // roll to the value that hurts most.
+//
+// [SOURCED: APK runtime decompile 2026-08-25 — jadx on base.apk classes.dex,
+// RunLoop/CRun.java. Every event-sheet Random(N) goes through EXP_RANDOM →
+// CRun.random(N): graine = (graine * 31415 + 1) mod 2^16, result
+// (graine * N) >> 16. Seeding: no frame in application.ccn carries the seed
+// chunk (13124), so m_wRandomSeed stays -1 and every frame load takes
+// (short) System.currentTimeMillis() — 16 bits of wall clock, re-seeded each
+// night start. The map splits the 65,536 states into 4 disjoint cycles of
+// 16,384, so a night's luck has period 16,384 and there are only 65,536
+// possible streams. `next()` returns graine/65536, an exact power-of-two
+// float, which makes int(0, N-1) bit-exact to the source's Random(N) and
+// chance(k/N) bit-exact to `Random(N) < k` for any event-sheet-sized N.]
 export class Rng {
   constructor(seed = Date.now() >>> 0, worst = false) {
-    this.seed = seed >>> 0;
-    this.state = this.seed || 1;
+    this.seed = seed & 0xffff;
+    this.state = this.seed;
     this.worst = worst;
   }
   next() {
-    // xorshift32
-    let x = this.state;
-    x ^= x << 13; x >>>= 0;
-    x ^= x >> 17;
-    x ^= x << 5;  x >>>= 0;
-    this.state = x;
-    return x / 4294967296;
+    // Fusion's LCG (CRun.random). state * 31415 stays under 2^31, so plain
+    // multiplication is exact.
+    this.state = (this.state * 31415 + 1) & 0xffff;
+    return this.state / 65536;
   }
   // chance(p): does this roll succeed? In worst-luck mode the animatronic
   // always gets what it wants.

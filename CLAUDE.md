@@ -58,7 +58,8 @@ document contradicting how the line is actually played.
   machine, so the gate asks the engine, not a ruler. The live `HUMAN_FLOOR_MS`
   check in `press_at` stays only as the backstop for what actually executes.
   This grounds **every current device route** — the shipped plan replays
-  23/100 under human slack; `test-human-gate.mjs` asserts the refusal, and
+  10/100 under human slack with the sourced Fusion LCG; `test-human-gate.mjs`
+  asserts the refusal, and
   whoever ships a human-executable route flips that assertion and this note
   together.
 - **Short taps get dropped** — Fusion polls touch per frame. Use duration

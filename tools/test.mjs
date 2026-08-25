@@ -146,7 +146,8 @@ const ENGINE = [
   // inline-schedule modes as unpriceable; the live press floor stays as the
   // backstop for what actually executes. These checks verify both layers
   // against mocks, exercise both runner invocations end-to-end with no
-  // device, and assert the shipped Night 6 plan is REFUSED (23/100) -- the
+  // device, and assert the shipped Night 6 plan is REFUSED (10/100 with the
+  // sourced Fusion LCG) -- the
   // grounding is a recorded fact until a human-executable route ships.
   ['human gate', ['device/test-human-gate.mjs']],
   ['human floor', ['device/test-human-floor.sh']],

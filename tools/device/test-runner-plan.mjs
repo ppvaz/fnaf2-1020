@@ -200,12 +200,13 @@ check(/^FUSION_POLL_MS=33$/m.test(src),
 // through the engine, instruction by instruction, and ask whether the night
 // still survives -- an emitter bug and a hand edit both survive every check
 // that reads the recipe, because they all read the same side of the loop.
-let survived = 0, missedTotal = 0, detections = 0, earliestDeath = Infinity;
+let survived = 0, missedTotal = 0, detections = 0;
+const deathReasons = new Set();
 const RUNS = 300;
 for (let seed = 1; seed <= RUNS; seed++) {
   const { sim, missed, detections: d } = replay(plan, { night: 6, seed });
   if (sim.won) survived++;
-  else earliestDeath = Math.min(earliestDeath, sim.death.t);
+  else deathReasons.add(`${sim.death.reason}: ${sim.death.detail}`);
   missedTotal += missed;
   detections += d;
 }
@@ -214,20 +215,20 @@ for (let seed = 1; seed <= RUNS; seed++) {
 //
 // Golden Freddy is ignored on night 6 (see recipe.mjs), so the plan loses the
 // runs where he is in the office at a monitor raise. That is a priced trade,
-// not a regression: with the flick the plan is 1000/1000, without it 478/1000,
-// and EVERY loss is "raised the monitor with Golden Freddy in the office" after
-// the 2 AM step-up. What must still hold is the part the trade did not buy.
+// not a regression: with the flick the plan is 1000/1000, without it 465/1000,
+// and EVERY loss is "raised the monitor with Golden Freddy in the office".
+// Correction 2026-08-25: the sourced Fusion LCG invalidated the old xorshift
+// sample's claim that every loss arrived after 2 AM; one now arrives at 129 s
+// in this 300-seed gate (and at 8.55 s in the 1000-seed census). Pin the causal
+// boundary instead of a sample-dependent first-arrival time.
 check(missedTotal === 0, `the plan missed BB ${missedTotal} times`);
-// 2 AM is 140 s in. Nothing may die before it: if something does, the loss is
-// no longer Golden Freddy's step-up and the trade has stopped being the one
-// that was measured.
-check(earliestDeath > 140,
-  `a run died at ${earliestDeath.toFixed(0)} s, before the 2 AM step-up at 140 s; ` +
-  'ignoring Golden Freddy was priced on every loss arriving after it');
+check(deathReasons.size === 1 &&
+  deathReasons.has('golden-freddy: Raised the monitor with Golden Freddy in the office'),
+  `ignoring Golden Freddy introduced deaths outside its priced cause: ${[...deathReasons].join('; ')}`);
 // And the clear rate must not quietly rot below what the trade was priced at.
 check(survived >= RUNS * 0.40,
   `the plan clears ${survived}/${RUNS}; ignoring Golden Freddy was priced at ` +
-  'about 478/1000, so anything under 40% is a different failure');
+  'about 465/1000, so anything under 40% is a different failure');
 
 console.log(`runner interprets the plan: no schedule literals in the driver; ` +
   `the plan replays ${survived}/${RUNS} with ${detections} BB responses and no misses`);

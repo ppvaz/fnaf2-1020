@@ -18,6 +18,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
+import { Rng } from '../src/rng.js';
 
 let pass = 0;
 const fails = [];
@@ -522,6 +523,56 @@ ok('build 296', 'taking the mask off is slower than putting it on',
   const restarted = s.frame - s.camsUpSince;
   ok('value25', 'and the next raise starts a fresh one',
     restarted < C.FPS * 3);
+}
+
+// ------------------------------------------------------------ the generator
+// [SOURCED: RunLoop/CRun.java in base.apk classes.dex — see src/rng.js.]
+// The stream itself, not just the rolls: graine = (graine*31415 + 1) & 0xFFFF,
+// Random(N) = (graine*N) >> 16. The reference below is that Java, transcribed.
+{
+  const ref = { g: 0, random(n) { this.g = (this.g * 31415 + 1) & 0xffff; return (this.g * n) >>> 16; } };
+  // First states and Random(20) draws from seed 0, precomputed from the
+  // decompiled source. If either line drifts, the port is no longer the game.
+  const r = new Rng(0);
+  const states = [], draws = [];
+  for (let i = 0; i < 8; i++) { draws.push(r.int(0, 19)); states.push(r.state); }
+  ok('CRun.random', 'the LCG state sequence matches the decompile',
+    states.join() === '1,31416,27017,47856,401,14504,36889,60384');
+  ok('CRun.random', 'Random(20) scaling matches the decompile',
+    draws.join() === '0,9,8,14,0,4,11,18');
+  // int(0, N-1) stays bit-exact to CRun.random(N) across ranges the sheet
+  // uses, for a full period from an arbitrary seed.
+  let exact = true;
+  for (const n of [2, 4, 5, 10, 20, 500]) {
+    const a = new Rng(12345); ref.g = 12345;
+    for (let i = 0; i < 20000; i++) if (a.int(0, n - 1) !== ref.random(n)) { exact = false; break; }
+  }
+  ok('CRun.random', 'int(0, N-1) is bit-exact to CRun.random(N)', exact);
+  // chance(k/N) is bit-exact to the sheet's `Random(N) < k` comparison,
+  // boundary states included.
+  let cmp = true;
+  {
+    const a = new Rng(0); ref.g = 0;
+    for (let i = 0; i < 20000; i++) if (a.chance(15 / 20) !== (ref.random(20) < 15)) { cmp = false; break; }
+  }
+  ok('CRun.random', 'chance(k/N) is bit-exact to Random(N) < k', cmp);
+  // The map's complete structure: every one of the 65,536 seeds belongs to
+  // one of four disjoint 16,384-state cycles.
+  const unseen = new Set(Array.from({ length: 65536 }, (_, i) => i));
+  const periods = [];
+  while (unseen.size) {
+    const start = unseen.values().next().value;
+    const p = new Rng(start);
+    let period = 0;
+    do { unseen.delete(p.state); p.next(); period++; } while (p.state !== start);
+    periods.push(period);
+  }
+  ok('CRun.random', 'the state space is four disjoint 16,384-state cycles',
+    periods.length === 4 && periods.every(n => n === 16384));
+  // Seeding truncates to 16 bits, as (short) System.currentTimeMillis() does.
+  const a = new Rng(0x1beef), b = new Rng(0xbeef);
+  ok('CRun.random', 'seeds collapse to their low 16 bits like the runtime',
+    a.next() === b.next());
 }
 
 // ------------------------------------------------------------------- report

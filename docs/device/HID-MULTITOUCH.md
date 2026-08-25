@@ -213,7 +213,8 @@ the cycle — which is where the wind the longer sweep costs comes back from.
 > Nothing reaches the phone unless locally proven: before its first adb
 > command, the runner replays the plan through the exact engine under ±60 ms
 > of human slack (the measured plans/04 bracket floor) and refuses below the
-> 40% replay contract — this plan replays 23/100 (`tools/device/human-gate.mjs`;
+> 40% replay contract — this plan replays 10/100 with the sourced Fusion LCG
+> (`tools/device/human-gate.mjs`;
 > absolute, no override). A gap floor was the first form of this rule and was
 > retired the same day: gap width never separated human from machine —
 > precision does, which is exactly what error-injected replay measures. The
