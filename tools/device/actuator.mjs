@@ -51,6 +51,13 @@ export const SEAM_SAFE_MS = 180; // 0 lost in 17 tries at or past this
 // traces, ~300 ms on night 6-40. The branch macro can be worse -- the capture
 // pipeline has finished 30-900 ms past the plan's cut-off -- so this default
 // is the optimistic end for that beat, and it is overridable where it is used.
+//
+// Provenance caveat (2026-08-25): every night since the cue-trace feature ran
+// under the orphaned-loop parasite (ON-DEVICE-VALIDATION.md "pricing the
+// stream as the classifier's capture"), which stalled 1-3% of cue reads ~1 s
+// and may account for part of the 30-900 ms pipeline tail. The upper end of
+// this band therefore needs a clean-phone re-measure before it is treated as
+// the device's own lateness; the first post-fix night can re-source it.
 export const LAUNCH_LATE_MIN_MS = 110;
 export const LAUNCH_LATE_MAX_MS = 300;
 
