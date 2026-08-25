@@ -2111,7 +2111,18 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       # The branch resumes at instruction 3, not 4: dropping the flick removed
       # the clear cycle's mask instruction, so instruction 3 is now the monitor
       # raise. Skipping to 4 would skip the raise itself.
-      run_macro clear "$base" 2 999
+      #
+      # Floored at now, like the recovery, because the resume offset is usually
+      # already stale: the capture pipeline finishes 30-900 ms past the plan's
+      # cut-off (worse when the flip gate corrected first). Launched without a
+      # floor the macro runs uniformly late with rm_shift=0, so the seam wait
+      # undershoots the still-running sweep and the next cycle's anchor is
+      # queue-serialized straight onto the sweep's tail -- a real zero-gap the
+      # marks cannot see, and night 6-45 lost a monitor press to it every
+      # corrected cycle. The floor turns that lateness into rm_shift, which
+      # keeps every plan gap *and* holds the next anchor back the same amount.
+      actual=$(( $(date +%s%3N) - T0 ))
+      run_macro clear "$base" 2 999 $((actual + FUSION_POLL_MS))
       base=$((base + 5000))
     else
       attacks=$((attacks + 1))
@@ -2123,7 +2134,10 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       printf '%6d ms  left-view BB; masking now, holding through five ticks\n' "$actual"
       press_at $((actual + FUSION_POLL_MS)) "$MASK_X" "$MASK_Y" mask-on-bb
       hid_mark "$actual"
-      run_macro attack "$base" 2 999
+      # Floored past the mask press for the same reason the clear branch floors
+      # at now: a stale resume offset must become rm_shift, not compression.
+      run_macro attack "$base" 2 999 \
+        $((LAST_PRESS_MS + TAP_CONTACT_MS + FUSION_POLL_MS))
       base=$((base + 10000))
     fi
     cycle=$((cycle + 1))

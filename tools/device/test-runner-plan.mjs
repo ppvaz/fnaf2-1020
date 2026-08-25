@@ -101,6 +101,18 @@ check((block.match(/run_macro clear "\$base" 2 999/g) || []).length === 2,
 check(/run_macro attack "\$base" 2 999/.test(block),
   'the attack branch must resume at its own mask instruction');
 
+// Both branch macros must be floored. The resume offset is usually stale by
+// the time the classifier answers (30-900 ms, worse after a flip-gate
+// correction), and an unfloored macro runs uniformly late with rm_shift=0 --
+// so the seam wait undershoots the still-running sweep and the next cycle's
+// anchor is queue-serialized onto the sweep's tail, a real zero-gap no trace
+// clock can see. Night 6-45 lost a monitor press to it every corrected cycle.
+check(/run_macro clear "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(block),
+  'the clear branch macro has no floor: a stale resume offset becomes ' +
+  'compression at the seam instead of rm_shift');
+check(/run_macro attack "\$base" 2 999 \\\n\s*\$\(\(LAST_PRESS_MS \+ TAP_CONTACT_MS \+ FUSION_POLL_MS\)\)/.test(block),
+  'the attack branch macro has no floor past the mask press');
+
 // A dark vent lamp is not an observation, so it must not be a verdict.
 //
 // The class was called `inside` and it ended the run. It was the vent light
