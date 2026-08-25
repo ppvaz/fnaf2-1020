@@ -588,6 +588,125 @@ tools/device/build-screen-model.py --roi 80,600,500,1060 --grid 10x10 --step 2 \
   inside=captures/screencheck/bb-left/calibration/run-gh/inside
 ```
 
+## 2026-08-24, second session: what was found, and one retraction
+
+Forty device runs. The honest result is **no night 6 clear and no new record**:
+the longest graded survival was **120.5 s** (night 34) against the 138 s already
+on file. Read that first, because two numbers from this session were published
+before they were graded and they were wrong.
+
+### Retraction: the 163 s and 153 s "records"
+
+Nights 36 and 37 were reported at **163 s** and **153 s**, both "past 2 AM", the
+first past the standing 138 s record. Graded with `grade-night.py` they are
+**26.0 s** and **72.2 s** alive. The remainder was the pilot pressing into a
+dead game. The retained classifier frames show it directly: the death static,
+the "Take cake to the children" minigame, and a "12:00 AM 6th Night" restart
+card, all inside the interval that was quoted as survival.
+
+Two independent failures let that through, and neither was subtle:
+
+- **The watchdog's fast path could only recognise one way of being dead.** A cue
+  helper snapshot with `rms=0`, `luma>=200`, `cam5>=200` is the static screen,
+  measured across night 34's death. Wired as `if (static) gameover else night`
+  it answered "night" to the minigame, the restart card and the title menu. A
+  detector that knows one way to be dead must never be the thing that says you
+  are alive; it may only *add* a detection. `screenstate.py`'s HUD predicate --
+  flashlight meter or mask bar -- correctly rejects all three, and is the
+  authority again. `test-runner-plan.mjs` now fails if the helper branch of
+  `state_once` can print "night".
+- **The grading step had been running against a file that does not exist.**
+  `GRADE_RUN=1` graded `"$OUT.mp4"`; every run that ends in an abort saves
+  `"$OUT-aborted.mp4"`. So for the whole session it printed nothing and looked,
+  in the log, exactly like grading. `screenstate.py` could have refuted the
+  163 s claim from any single frame of that recording. Nobody ran it.
+
+`tools/device/grade-run.sh` exists because of this: one pipeline that finds
+whichever capture exists and runs every instrument -- survival, the HID trace
+auditor, camtrace at 60 fps, sweepcheck, windpct, grade-minus7 -- and prints one
+verdict. The runner calls it. See CLAUDE.md, "Instruments are not a pipeline".
+
+### Defects found and fixed, each with its evidence
+
+- **`hid` rejects a zero-length delay outright.**
+  `IllegalStateException: Delay has missing or invalid duration`, the process
+  exits, mksh loses the co-process, the night ends at the next write.
+  `plan_emit`'s `hallraise` emitted the light lead unguarded and that lead is 0
+  in the shipped geometry, so the hall light was pressed for 0 ms and released.
+  The device owner saw it before any log did: "fails to press hall light and
+  moves the vision instead". Written up as Trap 3 in `HID-MULTITOUCH.md`, gated
+  four ways.
+- **The watchdog was blind by construction.** Its capture budget was 0.8 s
+  against a measured idle cost of 0.72-0.85 s, so it timed out on essentially
+  every poll and printed `unavailable (ignored)` for a whole night. Raised to
+  2.5 s and validated under recording load (6/6, where the old budget failed
+  even then). Sustained blindness now aborts rather than being ignored forever.
+- **The watchdog was starving the classifier.** Polling every 0.25 s while each
+  poll costs ~1 s meant it captured almost continuously, competing with the
+  classifier's own `screencap`. Night 23 read `unknown` on 7 of 8 cycles under
+  that contention; the same schedule with the watchdog quieted read
+  `empty score=0 margin=19` on 4 of 4.
+- **The plan overran its own cycle boundary.** Both steady cycles ended on a
+  sweep finishing 5007 ms into a 5000 ms cycle, so the next anchor's monitor
+  press landed on the sweep's final camera release. Anchoring the sweep's *end*
+  in the emitter removed the overrun entirely.
+- **Camera selects were arriving inside `MONITOR_ANIM_UP`.** `engine.js` drops a
+  select unless the monitor has finished raising, and the attack cycle asked for
+  one exactly 200 ms after the raise -- zero margin against a 204 ms sourced
+  animation, deterministic in the engine and a coin flip on a phone whose
+  wall-timed anchors land 49-93 ms late. `test-device-input-gaps.mjs` gates it
+  against the sourced constant, derived rather than restated.
+
+### Measurements worth keeping
+
+- **`wait_until` overshoots by 49-93 ms**, median 77, because `sleep` and `date`
+  are fork+exec here (`sleep 0.02` costs 75 ms wall; one `date` fork ~25 ms).
+- **`hid_delay` holds +/-2 ms**, stdev 0.76, measured from the kernel's own
+  `getevent` timestamps over 60 contacts. That 25x gap is why the macro exists.
+- **The cue helper answers in 42 ms p50 / 57 ms p95**, against ~225 ms for
+  `screencap` + `fnaf-screencheck`. The runner had *no* helper integration at
+  all until this session; every read was the expensive path, which is why it can
+  only afford one read per five-second cycle -- and why Balloon Boy is only ever
+  seen once he is already inside.
+- **Sweeps are landing.** `sweepcheck.py` reports 11/11 sweeps flashing all of
+  CAM 10/04/07 in a real night. camtrace disagreed with "4 complete, 4
+  incomplete", but at a *finer* dwell floor it reported more incomplete starts,
+  not fewer -- it grades the ordered sequence, not whether the stun was applied.
+  A 140 ms spacing was built on the strength of camtrace's reading and then
+  withdrawn when the control refuted it; the emitter can still widen (the route
+  tolerates 140 with the sweep's end anchored, 400/400, and collapses at 160)
+  but 120 remains what ships.
+
+### Golden Freddy is ignored on night 6, deliberately and temporarily
+
+The always-taken mask flick is not a Balloon Boy precaution -- it is the Golden
+Freddy clear that the strategy's order rule demands before the hall flash. But
+it is a *guess*: two blind mask toggles every cycle in a runner that cannot see
+the mask's state, and a dropped toggle latches the mask on and makes every later
+left read dark, which the model scores a confident `inside`. Priced over 1000
+night-6 runs: **1000/1000 with the flick, 478/1000 without**, and every one of
+those 522 losses is "raised the monitor with Golden Freddy in the office" with
+the earliest at **149 s** -- after the 2 AM step-up. Ignoring him is free for
+1000/1000 runs up to 2 AM and the device has never survived past 121 s.
+
+This must be revisited before any attempt that expects to pass 2 AM. Golden
+Freddy should be identified, not guessed. The provisional model classifies 22/22
+correctly but at a margin of **3** where Balloon Boy's is 18-21, and both its
+positives come from a single appearance. Runs now retain every non-empty
+classifier frame under `captures/screencheck-keep/<run>/` plus a continuous
+~14 Hz cue trace, because he is one run in ten before 2 AM and cannot be
+requested, only caught.
+
+### The one problem that is still open
+
+Balloon Boy reaches the office. The classifier is not at fault -- offline replay
+puts all 19 holdout frames correct including both BB positives -- and neither is
+the response. The pilot looks **once per five-second cycle**, and he is not at
+the opening when it looks. Detection is gated on the vent light, and the light
+is gated on a 3000-frame night-6 power budget, so "read more often" is not free.
+That is the next question, and the cue helper at 42 ms is the reason it is now
+worth asking.
+
 ## Next steps
 
 1. Preserve the validated **BB left-opening** model boundary while recovering

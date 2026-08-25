@@ -60,6 +60,41 @@ cross-correlation showed **all 22 were false positives**. The controls that
 would have caught it were cheap: a recording that cannot contain the cue, and a
 second signature that fails differently.
 
+## A run length is a graded interval, not wall clock
+
+`tools/device/grade-run.sh RUN_NAME` runs every instrument this repository owns
+against one run and prints one verdict. Run it before quoting any number off a
+device run, and quote the interval it reports.
+
+The reason is a worked example. Nights 36 and 37 were reported at **163 s** and
+**153 s**, "past 2 AM", a new record. Graded, they were **26.0 s** and **72.2 s**
+alive. The rest was the pilot pressing into a dead game: the retained classifier
+frames show the death static, the "Take cake to the children" minigame, and a
+"12:00 AM 6th Night" restart card. Two independent failures produced that:
+
+- The watchdog's fast path recognised exactly one way of being dead (a bright,
+  silent static screen) and answered "night" to everything else. A detector that
+  knows one way to be dead must never be what says you are alive. It may only
+  *add* a detection; `screenstate.py` stays the authority.
+- `GRADE_RUN=1` graded `"$OUT.mp4"`, and every run ending in an abort saves
+  `"$OUT-aborted.mp4"`. So the grading step ran against a file that did not
+  exist, printed nothing, and looked exactly like grading in the log.
+
+**A pipeline that silently grades nothing is worse than no pipeline**, because
+it reads as coverage. If a step cannot find its input, it must say so and fail.
+
+## Instruments are not a pipeline
+
+This repository is full of instruments -- `camtrace.py`, `sweepcheck.py`,
+`windpct.py`, `grade-minus7.py`, `screenstate.py`, `grade-night.py`,
+`test-hid-trace.mjs`, `replay-screen-model.py` -- and the failure mode is never
+that one is missing. It is that each has to be *remembered*, and what is not
+remembered is not run. `screenstate.py` could have refuted the 163 s claim from
+any single frame of that recording; nobody invoked it.
+
+So: do not add an instrument without adding it to `grade-run.sh`. An instrument
+nobody runs is a comment.
+
 ## Retractions stay
 
 When a result turns out wrong, correct it in place and keep the original
