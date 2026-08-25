@@ -30,7 +30,8 @@ export function audit(text) {
   const problems = [];
   const active = new Map();          // id -> {at, xy}
   let now = 0, lastReleaseAt = null, lastReleaseXy = null;
-  let discardedMarks = 0, worstDriftMs = 0, totalMarks = 0;
+  let rebasedMarks = 0, worstDriftMs = 0, totalMarks = 0;
+  let contestedBoundaries = 0, worstContestMs = 0;
 
   for (const event of events) {
     // A mark is the runner's real clock at an action boundary. Without them
@@ -38,26 +39,38 @@ export function audit(text) {
     // actions reads as a zero-gap button change.
     if (event.command === 'mark') {
       totalMarks += 1;
-      // `max` means the delay clock can never be pulled back, and it does run
-      // ahead: the runner spends host-side `wait_until` time between actions,
-      // which emits no delay record, while every emitted delay still advances
-      // this clock. Night 6-42 drifted 2742 ms and discarded 56 of its 130
-      // marks, which silently compressed every host-waited boundary to zero and
-      // produced "0 ms released" and "held 0 ms" flags for gaps the runner
-      // really did leave -- 218 ms at the cycle seam, measured from the marks.
+      // Marks are the runner's real clock at an action boundary; emitted delays
+      // are the timing *inside* an action. Mixing them with `max` let the delay
+      // clock run ahead and then swallow every correcting mark -- 56 of 130 in
+      // night 6-42, drifting 2742 ms -- because the runner also spends host-side
+      // `wait_until` time between actions, and that emits no delay record. Every
+      // boundary it waited through then read as zero released time, which is
+      // where the "0 ms released" cycle seam came from; measured from the marks
+      // those same seams had 112-282 ms.
       //
-      // Those artifacts are load-bearing: they are the evidence behind
-      // "the sweep's final camera release and the next anchor's monitor press
-      // in the same instant" being called the largest remaining source.
-      //
-      // Re-basing the timeline is a bigger change than this audit should make
-      // on its own, so for now it refuses to pretend: a discarded mark means
-      // the timing numbers below it are not measurements.
-      if (event.ms < now) {
-        discardedMarks += 1;
-        worstDriftMs = Math.max(worstDriftMs, now - event.ms);
+      // So each source is believed where it is authoritative: between actions
+      // the mark re-bases the clock even if that moves it backwards, and inside
+      // an action the delays win.
+      if (active.size) {
+        now = Math.max(now, event.ms);
+      } else if (lastReleaseAt !== null && event.ms < lastReleaseAt) {
+        // The runner marked the next action before the emitter finished the
+        // previous contact. That is routine -- the mark is the host's intent,
+        // the delay clock is where the emitter actually is -- and the trace
+        // cannot say which one the game saw. Counted, and reported once as
+        // context, because per-occurrence it is noise: nights 6-40 to 6-42 have
+        // dozens each, 19-117 ms, and an instrument that cries wolf gets
+        // ignored. Where it matters is that a released-time figure measured
+        // across such a boundary has two candidate values, not one.
+        contestedBoundaries += 1;
+        worstContestMs = Math.max(worstContestMs, lastReleaseAt - event.ms);
+      } else {
+        if (event.ms < now) {
+          rebasedMarks += 1;
+          worstDriftMs = Math.max(worstDriftMs, now - event.ms);
+        }
+        now = event.ms;
       }
-      now = Math.max(now, event.ms);
       continue;
     }
     if (event.command === 'delay') {
@@ -113,16 +126,16 @@ export function audit(text) {
   }
   for (const [id, c] of active)
     problems.push(`contact ${id} at ${c.xy} never released (down since ${c.at} ms)`);
-  // Say it before any of the numbers, because it decides what they are worth.
-  if (discardedMarks)
-    problems.unshift(`the timeline is not trustworthy: ${discardedMarks} of ` +
-      `${totalMarks} marks were discarded because the delay clock had already ` +
-      `run past them, worst drift ${worstDriftMs} ms. Marks are the runner's ` +
-      'real clock and host-side waits emit no delay record, so every boundary ' +
-      'the runner waited through reads as zero released time. Released and ' +
-      'held figures at those boundaries are artifacts, not measurements.');
+  // Context, not defects. Re-basing is the normal case; a contested boundary is
+  // the two clocks disagreeing about where the emitter had got to, which the
+  // trace cannot settle on its own.
+  const notes = [];
+  if (rebasedMarks)
+    notes.push(`${rebasedMarks}/${totalMarks} marks re-based the clock (worst ${worstDriftMs} ms of delay-clock drift)`);
+  if (contestedBoundaries)
+    notes.push(`${contestedBoundaries} boundaries where the runner's mark preceded the emitter's release by up to ${worstContestMs} ms -- released figures there have two candidate values`);
   return { problems, spanMs: now, reports: events.filter(e => e.command === 'report').length,
-           discardedMarks, worstDriftMs, totalMarks };
+           rebasedMarks, worstDriftMs, totalMarks, contestedBoundaries, notes };
 }
 
 const R = (count, ...recs) => JSON.stringify({ id: 92, command: 'report',
@@ -168,28 +181,36 @@ function selfTest() {
   const drifted = audit([
     JSON.stringify({ command: 'mark', ms: 0 }),
     R(1, rec(3, 100, 200)), D(100), R(1, rec(0, 100, 200)),
-    // the runner now waits host-side: 500 ms of real time, no delay record
+    // The runner now waits host-side: 500 ms of real time, no delay record. The
+    // delay clock says 100 ms; the mark says 600. Between actions the mark wins,
+    // so the released gap is 500 ms and not the 0 ms `max` used to report.
     JSON.stringify({ command: 'mark', ms: 600 }),
     R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900)),
-    // and here the delay clock has run past the next boundary mark
-    JSON.stringify({ command: 'mark', ms: 400 }),
   ].join('\n'));
-  if (!drifted.discardedMarks)
-    throw new Error('self-test: a mark behind the delay clock was not noticed');
-  if (!drifted.problems.some(p => /not trustworthy/.test(p)))
-    throw new Error('self-test: a drifted timeline was not declared untrustworthy');
-  const honest = audit([
+  if (drifted.problems.length)
+    throw new Error('self-test: a host-waited boundary was reported as a defect: ' +
+      drifted.problems.join('; '));
+  if (drifted.spanMs !== 700)
+    throw new Error(`self-test: the timeline did not re-base on the mark (span ${drifted.spanMs} ms, expected 700)`);
+
+  // A mark that claims the next action started before the previous contact came
+  // up is the two clocks genuinely disagreeing, and must be reported.
+  const backwards = audit([
     JSON.stringify({ command: 'mark', ms: 0 }),
     R(1, rec(3, 100, 200)), D(100), R(1, rec(0, 100, 200)),
-    JSON.stringify({ command: 'mark', ms: 600 }),
-    R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900)),
+    JSON.stringify({ command: 'mark', ms: 40 }),
+    // 30 ms of emitted delay after the contested mark, so this fixture tests the
+    // contested boundary alone and not a genuine zero-gap change on top of it.
+    D(30), R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900)),
   ].join('\n'));
-  if (honest.problems.length)
-    throw new Error('self-test: marks that only move forward were rejected: ' +
-      honest.problems.join('; '));
+  if (backwards.problems.length)
+    throw new Error('self-test: a contested boundary was reported as a defect: ' +
+      backwards.problems.join('; '));
+  if (backwards.contestedBoundaries !== 1)
+    throw new Error('self-test: a mark behind the previous release was not counted');
 
   console.log('HID trace auditor self-test passed (clean stream accepted; ' +
-    'short contact, zero-gap change, zero-length delay and latched contact all caught; \n  a mark behind the delay clock invalidates the timeline)');
+    'short contact, zero-gap change, zero-length delay and latched contact all caught; \n  the timeline re-bases on marks and a contested boundary is counted, not cried)');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -201,8 +222,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error(`${file} has no marks: it was recorded before the runner ` +
       'emitted them, and without a real clock every wall-timed action reads ' +
       'as a zero-gap button change');
-  const { problems, spanMs, reports } = audit(text);
+  const { problems, spanMs, reports, notes } = audit(text);
     console.log(`${file}: ${reports} reports over ${spanMs} ms of scheduled hid time`);
+    for (const n of notes) console.log('  note: ' + n);
     for (const p of problems) console.log('  ' + p);
     console.log(problems.length ? `${problems.length} problems` : 'no problems');
     if (problems.length) process.exitCode = 1;
