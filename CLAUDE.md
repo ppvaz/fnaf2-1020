@@ -143,5 +143,9 @@ tools/device/test-query-cue-helper.sh
 tools/device/test-soak-cue-helper.sh
 ```
 
+CI (`.github/workflows/ci.yml`) runs these three on every push to `master`.
+The `--browser` checks stay local: they are graded in real-time milliseconds,
+and a loaded shared runner fails them without saying anything about the code.
+
 Device tooling has mock-ADB regressions that never touch a phone. Use them —
 they are how a device tool gets tested without a device.
