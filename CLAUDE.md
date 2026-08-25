@@ -41,6 +41,18 @@ document contradicting how the line is actually played.
 - **Short taps get dropped** — Fusion polls touch per frame. Use duration
   presses (`input swipe x y x y 120`), which is why `PRESS_MODE=fast-swipe`
   exists and is not merely legacy.
+- **A legal input stream is not an accepted one.** `test-hid-trace.mjs` audits
+  what the phone was *sent*; only `desync-scan.py` says what the game *did*.
+  Presses that pass the auditor's 20 ms floor were still dropped: a monitor
+  press within 180 ms of a mask press is lost about half the time, because the
+  monitor bar is not drawn while the mask is up. 9 of 14 catalogued desyncs are
+  that one seam. See `ON-DEVICE-VALIDATION.md` §"Which press desyncs, and why".
+- **One lost monitor press inverts the rest of the night**, and nothing in the
+  run notices: the vent read photographs the camera feed, the hall press pans
+  the map, the box stops being wound, and the log still reads like a schedule.
+  Never observe the monitor inside `MONITOR_ANIM_DOWN` (367 ms) of a monitor
+  press — night 38's "correction" was a false positive taken 247 ms in, and it
+  caused the desync it was looking for.
 - `dumpsys window` prints several `mCurrentFocus` lines and the first is often
   `null` mid-transition. Match the package across all of them, never `-m1`.
 

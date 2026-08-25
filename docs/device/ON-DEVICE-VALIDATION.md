@@ -737,6 +737,90 @@ death frame has Foxy's face and Balloon Boy's balloon in the same shot.
 The 3 Puppet deaths are box starvation. The 2 Golden Freddy deaths are the risk
 being knowingly carried while he is ignored.
 
+### Which press desyncs, and why (2026-08-25)
+
+The paragraph above says a desync is what happens; it does not say which press
+is lost or how often, because until now nothing measured that. The artifacts
+already on disk do: the HID trace is what the phone was sent, and the recording
+is what the game then did. `tools/device/desync-scan.py RUN` lines the two up
+and grades the intervals between presses. It is in `grade-run.sh`, so it runs
+on every graded run from now on.
+
+Across the 28 nights that have both a trace and a readable capture, **14
+desynced and 14 held**. Every one of the 14 is a single monitor press the game
+did not act on, and they are not spread evenly over the schedule:
+
+| the monitor press followed | landed | lost | not readable |
+| --- | ---: | ---: | ---: |
+| **a mask press** | 23 | **9** | 0 |
+| a wind hold | 29 | 3 | 56 |
+| a hall hold | 67 | 1 | 2 |
+| the vent light | 97 | 0 | 3 |
+| the mute press | 28 | 0 | 0 |
+| **another monitor press** (the in-cycle correction) | 0 | **1** | 0 |
+
+The mask seam has a threshold, and the runner was scheduling under it:
+
+| monitor press, after the mask press | landed | lost |
+| --- | ---: | ---: |
+| under 140 ms | 2 | 5 |
+| 140-180 ms | 4 | 4 |
+| 180-220 ms | 11 | 0 |
+| over 220 ms | 6 | 0 |
+
+Nine of fourteen desyncs are that one instruction pair, at 100-178 ms. Nothing
+at or past 180 ms was lost in 17 tries. The reason is visible in any retained
+mask frame: **while the mask is up the monitor bar is not drawn.** Only the
+pink mask bar occupies the bottom strip, so a monitor press during the mask-off
+animation has no control under it. `MASK_ANIM_OFF` is 15 frames (244 ms), and
+the engine's `setMask(false)` clears `maskOn` on the press and leaves the
+animation running as decoration, so `press()` accepts a monitor press the phone
+throws away. The simulator cannot fail this way; only the phone can.
+
+**The emitter's contract passed every one of these presses.** That is the
+control, and it is the part worth keeping: `test-hid-trace.mjs` audits nights
+10, 12 and 14 and reports no defect at 8.41 s, 8.41 s and 8.47 s -- 35, 76 and
+78 ms released, all above `MIN_RELEASED_MS` -- and the game ignored all three.
+It does flag nights 22 and 28 at exactly the blamed press ("only 0 ms released
+between 144,270 and 144,801"), which is the auditor working. A legal stream is
+not an accepted one, and the two floors are answering different questions.
+
+Two thirds of this exposure is already gone by accident rather than by
+decision: dropping the Golden Freddy flick removed the clear cycle's mask
+instruction, so the pair that cost nights 10-28 is no longer scheduled. What
+the shipped plan still has is `attack`'s `5917 tap mask` followed by
+`6127 hallraise` -- **210 ms**, inside the band that has not lost a press yet
+but only 30 ms above one that has.
+
+The other two live seams are smaller and both real:
+
+- **34 ms is the plan's spacing before the hall-flash pair** (`2717 tap monitor`
+  after a wind hold ending at 2683, `3267 tap monitor` after a hall hold ending
+  at 3233), which is one Fusion poll and the floor `test-recipe.mjs` asserts.
+  Three of the fourteen desyncs are there -- nights 33, 35 and 37. Most of
+  those windows cannot be graded -- 550 ms is shorter than the flip animation
+  inside it -- so the rate is not measurable from these runs; what *is*
+  measurable is that the office rendered in 109 of 113 scheduled hall-flash
+  windows, so the pair usually lands. Designing to the floor is what makes the
+  failures cluster there. (Night 6's loss is the same disease in a geometry the
+  runner no longer uses: its monitor press went down while the wind contact was
+  still held.)
+- **The in-cycle correction can cause the desync it looks for.** Night 38:
+  the anchor's monitor press at 12.132 s, the cue helper's read 247 ms later
+  reporting the cams still up -- which they visibly were, because
+  `MONITOR_ANIM_DOWN` is 367 ms and the flip was still running -- and a
+  "corrective" press at 12.379 s that the port dropped for the same reason.
+  One press, one desync, and the run spent its remaining 58 s inverted. A
+  monitor observation taken inside `MONITOR_ANIM_DOWN` of a monitor press is
+  not an observation of anything.
+
+Survival does not separate the two groups in this sample and should not be
+claimed to: among runs alive 20 s or longer the median is 30.5 s desynced and
+30.2 s held. What separates them is what the run was still capable of -- an
+inverted pilot flashes the camera map instead of the hall, reads the feed
+instead of the vent, and stops winding -- and the longest run on disk
+(night 34, 120.5 s) is one whose model held.
+
 ### The one problem that is still open
 
 Balloon Boy reaches the office. The classifier is not at fault -- offline replay
