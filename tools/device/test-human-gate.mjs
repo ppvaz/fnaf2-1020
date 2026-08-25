@@ -1,16 +1,21 @@
-// Mock regression for the human gate. No phone, no adb.
+// Mock regression for the model gate. No phone, no adb.
 //
-// Three claims: the plan auditor prices presses the way the runner delivers
-// them (sweep slots expanded, reads ignored, unknown verbs refused, cycle
-// wraparound included); the shipped Night 6 plan is REFUSED -- the 2026-08-25
-// grounding is a recorded fact, and this line flips only when a
-// human-executable route ships; and the two copies of the floor (this gate's
-// and the runner's live one) cannot drift apart silently.
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+// Four claims: the plan text round-trips into replay()'s shape; the error
+// injection is deterministic, bounded, and touches only offsets (a hold's
+// release shares its press's draw by construction -- the duration column is
+// untouched); the verdict thresholds exactly; and the shipped Night 6 plan is
+// REFUSED under measured human slack -- the 2026-08-25 grounding as a
+// recorded fact, which a future human-executable route flips deliberately.
+// Plus the precondition: the runner gates BEFORE its first adb command, and
+// refuses modes whose schedules the gate cannot price.
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { audit, pressOnsets, HUMAN_GAP_FLOOR_MS } from './human-gate.mjs';
+import { parsePlanText, jitterPlan, modelGate, HUMAN_SLACK_MS, GATE_MIN_SURVIVAL }
+  from './human-gate.mjs';
+import { build, devicePlan } from './recipe.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 let failed = 0;
@@ -18,75 +23,83 @@ const check = (name, cond, detail = '') => {
   if (!cond) { failed++; console.error(`FAIL ${name}${detail ? ` -- ${detail}` : ''}`); }
 };
 
-// A humanly spaced plan passes, wraparound included.
-const humane = `#cycle calm 5000
-0 tap monitor 100
-400 tap cam11 100
-800 hold wind 1000
-2000 read 600 40
-4600 tap monitor 100
-`;
-check('humane plan passes', audit(humane).length === 0, JSON.stringify(audit(humane)));
-
-// Two taps 200 ms apart are named, with the offending pair.
-const tight = `#cycle rush 5000
-0 tap monitor 100
-200 tap cam11 100
-`;
-const tv = audit(tight);
-check('tight taps refused', tv.length === 1 && tv[0].gapMs === 200 &&
-  tv[0].a === 'tap monitor' && tv[0].b === 'tap cam11', JSON.stringify(tv));
-
-// A sweep is one press per slot: 120 ms spacing yields slot-to-slot gaps.
-const sweep = `#cycle swept 10000
-0 tap monitor 100
-5000 sweep 120 100 10,4,7
-`;
-const sv = audit(sweep);
-check('sweep slots expanded and refused', sv.length === 2 &&
-  sv.every(v => v.gapMs === 120 && v.cycle === 'swept'), JSON.stringify(sv));
-
-// The wraparound gap: last press near the period end, next repetition's first
-// press near zero.
-const wrap = `#cycle wrapped 5000
-100 tap monitor 100
-4900 tap mask 100
-`;
-const wv = audit(wrap);
-check('wraparound gap refused', wv.length === 1 && wv[0].gapMs === 200, JSON.stringify(wv));
-
-// A verb the gate cannot price is a plan it must not pass.
+// ------------------------------------------------- parse: text -> plan shape
+const recipe = build({ night: 6 });
+const plan = devicePlan(recipe);
+const text = Object.entries(plan).map(([name, lines]) =>
+  `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}`).join('\n') + '\n';
+const parsed = parsePlanText(text);
+check('round-trips the emitted plan', JSON.stringify(parsed) === JSON.stringify(plan));
 let threw = false;
-try { audit('#cycle x 1000\n0 teleport monitor 100\n'); } catch { threw = true; }
-check('unknown verb refused', threw);
+try { parsePlanText('#cycle x 1000\n0 teleport monitor 100\n'); } catch { threw = true; }
+check('unknown instruction refused', threw);
 
-// read rows are observations, not inputs.
-check('reads are not presses',
-  pressOnsets('#cycle r 1000\n0 read 600 40\n')[0].onsets.length === 0);
+// -------------------------------------------------------- the error injection
+const j1 = jitterPlan(parsed, 7);
+const j2 = jitterPlan(parsed, 7);
+const j3 = jitterPlan(parsed, 8);
+check('deterministic per seed', JSON.stringify(j1) === JSON.stringify(j2));
+check('seeds differ', JSON.stringify(j1) !== JSON.stringify(j3));
+let bounded = true, tailsIntact = true, moved = 0, offsets = 0;
+for (const name of Object.keys(parsed)) {
+  for (let i = 0; i < parsed[name].length; i++) {
+    const [o0, ...rest0] = parsed[name][i].split(' ');
+    const [o1, ...rest1] = j1[name][i].split(' ');
+    offsets++;
+    if (+o1 !== +o0) moved++;
+    if (+o1 < 0 || Math.abs(+o1 - +o0) > HUMAN_SLACK_MS) bounded = false;
+    if (rest0.join(' ') !== rest1.join(' ')) tailsIntact = false;
+  }
+}
+check('draws bounded by the slack and clamped', bounded);
+check('only offsets move (hold durations, sweep spacing untouched)', tailsIntact);
+check('draws actually move rows', moved > offsets / 2, `${moved}/${offsets}`);
 
-// The two copies of the floor: the runner's live constant and this gate's.
-const runner = readFileSync(join(HERE, 'trial-minus7.sh'), 'utf8');
-const m = runner.match(/^HUMAN_FLOOR_MS=(\d+)$/m);
-check('runner floor pinned to the gate', m && Number(m[1]) === HUMAN_GAP_FLOOR_MS,
-  `runner=${m?.[1]} gate=${HUMAN_GAP_FLOOR_MS}`);
+// ------------------------------------------------------- verdict thresholding
+const stub = (survivals) => {
+  let i = 0;
+  return () => ({ sim: { won: survivals[i++ % survivals.length], death: { reason: 'x', detail: 'y' } } });
+};
+const runs = 10;
+const atBar = modelGate(text, { runs, replayFn: stub([true, true, true, true, false, false, false, false, false, false]) });
+check('exactly the bar passes', atBar.ok && atBar.survived === Math.ceil(runs * GATE_MIN_SURVIVAL));
+const underBar = modelGate(text, { runs, replayFn: stub([true, true, true, false, false, false, false, false, false, false]) });
+check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1);
 
-// The runner actually invokes the gate on the plan path, and the live check
-// sits inside the delivering primitives -- a silently removed guard is the
-// graded-nothing pipeline again.
-check('runner pre-flights the plan', /human-gate\.mjs" "\$RUN_TMP\/device-plan\.txt"/.test(runner));
-for (const fn of ['press_at', 'hold_at', 'pulsed_sweep_at', 'hall_reset_and_raise_at']) {
-  const body = runner.split(new RegExp(`^${fn}\\(\\) \\{`, 'm'))[1]?.split('\n}')[0] || '';
-  check(`${fn} enforces the floor`, /human_floor_(check|abort)/.test(body));
+// ------------------------------------------- the decision, recorded: refused
+const real = modelGate(text);
+check('shipped n6 plan is refused under human slack', !real.ok,
+  `${real.survived}/${real.runs} -- if a human-executable route shipped, update this check and the CLAUDE.md grounding note together`);
+
+// ---------------------------------- the precondition, exercised end-to-end
+// Nothing reaches the phone unless locally proven: both invocations must
+// refuse before the runner's first adb command, so these run with no device
+// attached and TMPDIR sandboxed.
+{
+  const tmp = mkdtempSync(join(tmpdir(), 'fnaf2-gate-test-'));
+  try {
+    const classic = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), 'gate-test', '1'],
+      { encoding: 'utf8', env: { ...process.env, TMPDIR: tmp } });
+    check('classic invocation refused pre-flight', classic.status === 44 &&
+      /cannot be priced by the model gate/.test(classic.stderr + classic.stdout),
+      `status=${classic.status}`);
+    const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), 'gate-test', '90'],
+      { encoding: 'utf8', env: { ...process.env, TMPDIR: tmp, DEBUG_OVERLAYS: '0',
+        PRESS_MODE: 'hid-multi', NIGHT6_LEFT: '1', DEVICE_EPOCH_LATCH: '1',
+        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
+    check('plan invocation model-gated pre-flight', n6.status === 44 &&
+      /model gate: \d+\/\d+ nights/.test(n6.stderr + n6.stdout), `status=${n6.status}`);
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
-// The shipped plan is refused. This is the decision, recorded: the 120 ms
-// route stays grounded until a human-executable route replaces it, and
-// whoever ships that route flips this assertion deliberately.
-const shipped = execFileSync(process.execPath, [join(HERE, 'recipe.mjs'), '--device-plan'],
-  { encoding: 'utf8' });
-const shippedViolations = audit(shipped);
-check('shipped n6 plan is refused', shippedViolations.length > 0,
-  'the shipped plan now passes the human floor -- if a human-executable route shipped, update this check and the CLAUDE.md grounding note together');
+// ------------------------------------------------------- runner precondition
+const runner = readFileSync(join(HERE, 'trial-minus7.sh'), 'utf8');
+const gateAt = runner.indexOf('human-gate.mjs');
+const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
+check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
+check('unpriceable modes are refused, not backstopped',
+  /cannot be priced by the model gate/.test(runner));
+check('live floor stays as the backstop', /^HUMAN_FLOOR_MS=\d+$/m.test(runner));
 
-if (failed) { console.error(`${failed} human-gate check(s) failed`); process.exit(1); }
-console.log(`human gate: auditor verified; shipped plan refused (${shippedViolations.length} gaps under ${HUMAN_GAP_FLOOR_MS} ms)`);
+if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
+console.log(`model gate: verified; shipped plan refused at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

@@ -378,8 +378,27 @@ mkdir -p "$CAPTURE_DIR"
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   [ ! -e "$LOCAL_EPOCH" ] || { echo "refusing to overwrite $LOCAL_EPOCH"; exit 2; }
 fi
-. "$HERE/select-adb.sh"
 RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
+
+# The model gate is a precondition for touching the device at all (2026-08-25,
+# no override): the plan must clear the engine under measured human slack
+# BEFORE the first adb command, so a run that would be refused never wakes the
+# phone, launches the game, or records anything. A mode whose schedule lives
+# inline in this script cannot be priced by the gate, and "not priceable" is
+# not a pass -- port the table to `recipe.mjs --device-plan` to run it. The
+# live HUMAN_FLOOR_MS check in press_at stays behind this as the backstop for
+# whatever actually executes, branch arms included.
+if [ "$NIGHT6_LEFT" -eq 1 ]; then
+  node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
+  node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
+else
+  echo "this mode's schedule is inline and cannot be priced by the model gate" >&2
+  echo "(tools/device/human-gate.mjs); the device runs nothing the gate has not" >&2
+  echo "passed -- port the schedule to recipe.mjs --device-plan first" >&2
+  exit 44
+fi
+
+. "$HERE/select-adb.sh"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
 # The death signature, measured rather than guessed.
@@ -675,11 +694,7 @@ fi
 # literals too, and the two drifted -- a wind lead corrected in the model still
 # reached the phone as the old value.
 if [ "$NIGHT6_LEFT" -eq 1 ]; then
-  node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
-  # Pre-flight human gate: refuse an inhumanly timed plan here, before the
-  # game is launched, rather than at the first violating press on the phone.
-  # The live press_at gate still stands behind this for branch arms.
-  node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
+  # Emitted and model-gated at the top of this script, before any adb command.
   adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
   echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
 fi

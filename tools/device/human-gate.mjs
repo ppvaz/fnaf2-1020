@@ -1,123 +1,123 @@
-// The pilot must not deliver inhumanly timed inputs to the device.
+// The model gate: the pilot may not deliver inhumanly timed inputs.
 //
-// Decision 2026-08-25: absolute, no override. The device exists to validate
-// strategies a human can transfer to, and a run cleared with 120 ms camera
-// sweeps proves nothing about human play -- so a plan scheduling press gaps
-// below the human floor is refused before the game is even launched. This
-// deliberately grounds the shipped Night 6 left-opening route (120 ms sweep
-// slots) until a human-executable route exists; test-human-gate.mjs asserts
-// that refusal so the grounding is a recorded fact, not an accident.
+// Decision 2026-08-25 (block, no override), semantics reworked the same day:
+// a static press-gap floor was the wrong model of "inhuman" -- the canonical
+// Minus 7 cycle lands a 70 ms chord while the machine route's comfortable
+// 120 ms gaps need a one-frame phase island no hand can hit. What separates
+// human from machine is precision, not speed. So the gate stops asking "how
+// wide are the gaps?" and asks the engine: does this plan still clear the
+// night when a modeled human executes it?
 //
-// The floor itself is provisional. 350 ms press-to-press is [INFERRED] from
-// the trainer's duel pass gate: 700 ms for the two-gap un-mask -> CAM 10 ->
-// CAM 04 motion (src/curriculum.js, duelTarget). Recorded tension: the
-// trainer's own rehearsed sweep schedules 200 ms gaps and humans pass those
-// lessons, so this floor also calls classic Minus 7's sweep inhuman. The
-// trainer trace census (tools/tracereport.mjs, inter-press spacing) supersedes
-// this number as soon as it has runs; argue with the census, not here.
+// Mechanically it is the test-runner-plan.mjs replay with human error
+// injected: every scheduled press row is shifted by an independent draw in
+// +/-HUMAN_SLACK_MS before recipe.replay() runs the plan, over GATE_RUNS
+// seeds, and the plan must clear GATE_MIN_SURVIVAL of them.
 //
-// The same floor lives as HUMAN_FLOOR_MS in trial-minus7.sh, where press_at/
-// hold_at enforce it live on-device for the schedules that never pass through
-// a plan file. test-human-gate.mjs pins the two copies equal.
+// The provisional numbers, until the trainer trace census supersedes them:
+// - HUMAN_SLACK_MS = 60: the measured floor of the human-slack bracket
+//   (2026-08-25, plans/04): reactive Minus 7 holds 200/200 at +/-60 ms iid,
+//   89/200 at +/-100, 0/200 at +/-150. A plan that clears under +/-60 is at
+//   least as slack-tolerant as the human-proven strategy. The census must be
+//   fit as CORRELATED per-step bands (iid is the wrong shape -- humans clear
+//   at per-step error the iid model calls fatal), which will replace this.
+// - GATE_MIN_SURVIVAL = 0.40: the replay contract test-runner-plan.mjs
+//   already holds, for the same reason (the plan family eats a priced Golden
+//   Freddy loss rate rather than model his flick).
 //
-//   node tools/device/human-gate.mjs plan.txt    # exit 44 on violation
+// Known v1 simplifications, deliberate and documented: a sweep is shifted as
+// one unit (its internal spacing stays the plan's), a hold's release shares
+// its press's draw (plans/04: independent draws price nothing), and the
+// read->branch reaction path keeps the machine's classifier latency -- this
+// gate prices scheduled presses, not reactivity. The live HUMAN_FLOOR_MS
+// check inside trial-minus7.sh remains the backstop for schedules that never
+// pass through a plan file.
+//
+//   node tools/device/human-gate.mjs plan.txt    # exit 44 when the gate refuses
 
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { replay } from './recipe.mjs';
+import { Rng } from '../../src/rng.js';
 
-export const HUMAN_GAP_FLOOR_MS = 350;
+export const HUMAN_SLACK_MS = 60;
+export const GATE_RUNS = 100;
+export const GATE_MIN_SURVIVAL = 0.40;
+const JITTER_SALT = 0x68756d61; // "huma"; its own stream, never the sim's rolls
 
-// One press onset per finger action the plan schedules. `read` observes and
-// is not an input; a sweep is one onset per camera slot (the light pulsed
-// inside a slot shares the slot's chord); `hallraise` is the verified
-// two-contact chord and counts once. A verb this parser does not know is a
-// press it cannot price, and a plan it must not pass -- same rule as the
-// runner's plan_control_xy.
-export function pressOnsets(planText) {
-  const cycles = [];
+// The emitted plan text, back into replay()'s {name: [lines]} shape.
+export function parsePlanText(text) {
+  const plan = {};
   let cur = null;
-  for (const raw of planText.split('\n')) {
+  for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
     if (line.startsWith('#cycle')) {
-      const [, name, period] = line.split(/\s+/);
-      cur = { name, periodMs: Number(period), onsets: [] };
-      cycles.push(cur);
+      cur = line.split(/\s+/)[1];
+      plan[cur] = [];
       continue;
     }
     if (!cur) throw new Error(`plan row before any #cycle header: "${line}"`);
-    const parts = line.split(/\s+/);
-    const t = Number(parts[0]);
-    const verb = parts[1];
-    if (!Number.isFinite(t)) throw new Error(`unreadable offset in "${line}"`);
-    switch (verb) {
-      case 'tap':
-      case 'hold':
-        cur.onsets.push({ t, what: `${verb} ${parts[2]}` });
-        break;
-      case 'hall':
-      case 'hallraise':
-        cur.onsets.push({ t, what: verb });
-        break;
-      case 'sweep': {
-        const spacing = Number(parts[2]);
-        const cams = (parts[4] || '').split(',').filter(Boolean);
-        if (!Number.isFinite(spacing) || !cams.length)
-          throw new Error(`unreadable sweep in "${line}"`);
-        cams.forEach((cam, i) =>
-          cur.onsets.push({ t: t + i * spacing, what: `sweep cam${cam}` }));
-        break;
-      }
-      case 'read':
-        break;
-      default:
-        throw new Error(`verb this gate cannot price: "${line}"`);
-    }
+    if (!/^\d+ (tap|hold|sweep|read|hall|hallraise)\b/.test(line))
+      throw new Error(`instruction this gate cannot price: "${line}"`);
+    plan[cur].push(line);
   }
-  return cycles;
+  if (!Object.keys(plan).length) throw new Error('empty plan');
+  return plan;
 }
 
-// Successive onsets within a cycle, plus the cycle's own wraparound (last
-// press to the first press of its next repetition). Cross-cycle transitions
-// between different cycle types are not modelled here; the live press_at gate
-// in the runner covers whatever sequence actually executes.
-export function audit(planText, floorMs = HUMAN_GAP_FLOOR_MS) {
-  const violations = [];
-  for (const c of pressOnsets(planText)) {
-    const on = [...c.onsets].sort((a, b) => a.t - b.t);
-    for (let i = 1; i < on.length; i++) {
-      const gap = on[i].t - on[i - 1].t;
-      if (gap < floorMs) violations.push({
-        cycle: c.name, gapMs: gap, a: on[i - 1].what, b: on[i].what, atMs: on[i].t,
-      });
-    }
-    if (on.length && Number.isFinite(c.periodMs)) {
-      const wrap = on[0].t + c.periodMs - on[on.length - 1].t;
-      if (wrap < floorMs) violations.push({
-        cycle: c.name, gapMs: wrap, a: on[on.length - 1].what,
-        b: `${on[0].what} (next ${c.name})`, atMs: on[0].t,
-      });
+// One modeled execution: every row's offset shifted by an iid draw, clamped
+// at zero. Row order is preserved -- replay()'s queue sorts by frame, so a
+// draw that swaps two tight presses swaps them there, exactly as a human's
+// hands would have.
+export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS) {
+  const rng = new Rng((((seed >>> 0) ^ JITTER_SALT) >>> 0));
+  const out = {};
+  for (const [name, lines] of Object.entries(plan)) {
+    out[name] = lines.map(line => {
+      const sp = line.indexOf(' ');
+      const offs = Math.max(0, +line.slice(0, sp) + rng.int(-slackMs, slackMs));
+      return `${offs}${line.slice(sp)}`;
+    });
+  }
+  return out;
+}
+
+export function modelGate(planText, {
+  runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
+  night = 6, replayFn = replay,
+} = {}) {
+  const plan = parsePlanText(planText);
+  let survived = 0;
+  const deaths = new Map();
+  for (let seed = 1; seed <= runs; seed++) {
+    const { sim } = replayFn(jitterPlan(plan, seed, slackMs), { night, seed });
+    if (sim.won) survived++;
+    else if (sim.death) {
+      const k = `${sim.death.reason}: ${sim.death.detail}`;
+      deaths.set(k, (deaths.get(k) || 0) + 1);
     }
   }
-  return violations;
+  return {
+    survived, runs, slackMs, minSurvival,
+    ok: survived >= runs * minSurvival,
+    deaths: [...deaths.entries()].sort((a, b) => b[1] - a[1]),
+  };
 }
 
 function main() {
   const file = process.argv[2];
   if (!file) { console.error('usage: human-gate.mjs plan.txt'); process.exit(2); }
-  const text = readFileSync(file, 'utf8');
-  let violations;
-  try { violations = audit(text); }
-  catch (e) { console.error(`human gate: ${e.message}`); process.exit(44); }
-  if (violations.length) {
-    console.error(`human gate: ${violations.length} press gap(s) under ${HUMAN_GAP_FLOOR_MS} ms -- refusing to run this plan`);
-    for (const v of violations)
-      console.error(`  ${v.cycle}: ${v.a} -> ${v.b} is ${v.gapMs} ms (at ${v.atMs} ms)`);
+  let r;
+  try { r = modelGate(readFileSync(file, 'utf8')); }
+  catch (e) { console.error(`model gate: ${e.message}`); process.exit(44); }
+  const need = Math.ceil(r.runs * r.minSurvival);
+  if (!r.ok) {
+    console.error(`model gate: ${r.survived}/${r.runs} nights under +/-${r.slackMs} ms human slack (need ${need}) -- refusing to run this plan`);
+    for (const [k, v] of r.deaths.slice(0, 4)) console.error(`  ${v}x  ${k}`);
     console.error('the pilot may not deliver inhumanly timed inputs (2026-08-25, no override)');
     process.exit(44);
   }
-  const n = pressOnsets(text).reduce((a, c) => a + c.onsets.length, 0);
-  console.log(`human gate: all gaps between ${n} presses are >= ${HUMAN_GAP_FLOOR_MS} ms`);
+  console.log(`model gate: ${r.survived}/${r.runs} nights under +/-${r.slackMs} ms human slack (need ${need})`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();
