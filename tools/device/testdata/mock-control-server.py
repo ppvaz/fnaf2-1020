@@ -22,6 +22,11 @@ def answer(request):
         return "ERROR unknown-verb"
     if field[0] == "GET":
         return SNAPSHOT
+    if field[0] == "GRID":
+        cells = "".join(
+            "ffffff" if i == 123 else f"10{i % 256:02x}{(i * 7) % 256:02x}"
+            for i in range(180))
+        return "OK grid=20x9 seq=121 " + cells
     if field[0] == "CAL" and len(field) == 3:
         return "OK cal=" + field[2]
     if field[0] == "LOG" and len(field) == 3:

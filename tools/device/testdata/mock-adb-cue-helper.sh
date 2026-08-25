@@ -23,6 +23,15 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   # args: shell sh -s -- PORT VERB TOKEN [ARG]
   case "${6:-}/${8:-}" in
     GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000' ;;
+    GRID/*)
+      # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
+      printf 'OK grid=20x9 seq=121 '
+      i=0
+      while [ "$i" -lt 180 ]; do
+        if [ "$i" -eq 123 ]; then printf 'ffffff'; else printf '10%02x%02x' "$((i % 256))" "$(( (i * 7) % 256 ))"; fi
+        i=$((i + 1))
+      done
+      echo ;;
     CAL/on) echo 'OK cal=on' ;;
     CAL/off) echo 'OK cal=off' ;;
     REC/*) echo 'OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044' ;;

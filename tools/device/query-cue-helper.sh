@@ -45,45 +45,7 @@ case "$TRANSPORT" in
 esac
 
 if [ "$VERB" = grid ]; then
-  # What the helper actually sees, as a picture.
-  #
-  # It renders a 20x9 virtual display every frame and was reporting one pixel of
-  # it (3,6) plus one block mean. Nothing downstream could therefore tell a
-  # Withered Freddy jumpscare from a dark office -- during one the snapshot read
-  # luma 0-37 and a neutral grey triple, because that single pixel sits
-  # somewhere dark. GRID returns all 180 cells; this draws them.
-  line="$(exchange "GRID $token")"
-  case "$line" in
-    OK\ grid=*) ;;
-    *) echo "$line" >&2; exit 1 ;;
-  esac
-  out="${1:-cue-grid.png}"
-  printf '%s\n' "$line" | python3 -c '
-import sys, re
-line = sys.stdin.read().strip()
-m = re.match(r"OK grid=(\d+)x(\d+) seq=(\d+) ([0-9a-f]+)", line)
-if not m:
-    print("unparseable grid response", file=sys.stderr); raise SystemExit(1)
-w, h, seq, body = int(m.group(1)), int(m.group(2)), m.group(3), m.group(4)
-cells = [int(body[i:i+6], 16) for i in range(0, w*h*6, 6)]
-print(f"grid {w}x{h} seq={seq}")
-for y in range(h):
-    row = ""
-    for x in range(w):
-        v = cells[y*w + x]
-        lum = ((v>>16 & 255)*77 + (v>>8 & 255)*150 + (v & 255)*29) >> 8
-        row += " .:-=+*#%@"[min(9, lum*10//256)]
-    print("   " + row)
-try:
-    from PIL import Image
-except ImportError:
-    print("(install Pillow for the PNG)", file=sys.stderr); raise SystemExit(0)
-im = Image.new("RGB", (w, h))
-im.putdata([((v>>16)&255, (v>>8)&255, v&255) for v in cells])
-im.resize((w*40, h*40), Image.NEAREST).save(sys.argv[1])
-print(f"wrote {sys.argv[1]}")
-' "$out"
-  exit 0
+  GRID_OUT="${1:-cue-grid.png}"
 fi
 
 if [ "$VERB" = latency ]; then
@@ -213,6 +175,47 @@ if [ "$VERB" = snapshot ]; then
     'OK '*) echo "cue helper returned a fail-closed observation" >&2; exit 1 ;;
     *) echo "cue helper control query failed" >&2; exit 1 ;;
   esac
+  exit 0
+fi
+
+if [ "$VERB" = grid ]; then
+  # What the helper actually sees, as a picture.
+  #
+  # It renders a 20x9 virtual display every frame and was reporting one pixel of
+  # it (3,6) plus one block mean. Nothing downstream could therefore tell a
+  # Withered Freddy jumpscare from a dark office -- during one the snapshot read
+  # luma 0-37 and a neutral grey triple, because that single pixel sits
+  # somewhere dark. GRID returns all 180 cells; this draws them.
+  line="$(exchange "GRID $token")"
+  case "$line" in
+    OK\ grid=*) ;;
+    *) echo "$line" >&2; exit 1 ;;
+  esac
+  printf '%s\n' "$line" | python3 -c '
+import sys, re
+line = sys.stdin.read().strip()
+m = re.match(r"OK grid=(\d+)x(\d+) seq=(\d+) ([0-9a-f]+)", line)
+if not m:
+    print("unparseable grid response", file=sys.stderr); raise SystemExit(1)
+w, h, seq, body = int(m.group(1)), int(m.group(2)), m.group(3), m.group(4)
+cells = [int(body[i:i+6], 16) for i in range(0, w*h*6, 6)]
+print(f"grid {w}x{h} seq={seq}")
+for y in range(h):
+    row = ""
+    for x in range(w):
+        v = cells[y*w + x]
+        lum = ((v>>16 & 255)*77 + (v>>8 & 255)*150 + (v & 255)*29) >> 8
+        row += " .:-=+*#%@"[min(9, lum*10//256)]
+    print("   " + row)
+try:
+    from PIL import Image
+except ImportError:
+    print("(install Pillow for the PNG)", file=sys.stderr); raise SystemExit(0)
+im = Image.new("RGB", (w, h))
+im.putdata([((v>>16)&255, (v>>8)&255, v&255) for v in cells])
+im.resize((w*40, h*40), Image.NEAREST).save(sys.argv[1])
+print(f"wrote {sys.argv[1]}")
+' "$GRID_OUT"
   exit 0
 fi
 

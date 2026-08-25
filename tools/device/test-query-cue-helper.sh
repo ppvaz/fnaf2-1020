@@ -33,6 +33,24 @@ if PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" carrier-pigeon 2>/dev/
   exit 1
 fi
 
+# grid: both transports. The verb once called exchange before it existed and
+# died on the unbound token under set -u, so this guards that it parses and
+# renders at all. Cell (3,6) is the mock's one bright cell; every other cell is
+# dark, so its glyph must differ from its row's.
+for transport in loopback forward; do
+  rendered="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" grid "$TEMP_DIR/grid-$transport.png" 2>/dev/null)"
+  case "$rendered" in
+    *"grid 20x9 seq=121"*) ;;
+    *) echo "unexpected $transport grid render: $rendered" >&2; exit 1 ;;
+  esac
+  bright_row="$(printf '%s\n' "$rendered" | sed -n '8p')"
+  case "$bright_row" in
+    *@*) ;;
+    *) echo "$transport grid render lost the bright sampled cell: $bright_row" >&2; exit 1 ;;
+  esac
+done
+
 # record: both transports, into a scratch directory. PRE=0 keeps the pre-roll
 # wait to one second.
 for transport in loopback forward; do
