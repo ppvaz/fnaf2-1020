@@ -5,6 +5,9 @@ cost here is not writing code — it is drawing a conclusion the repository had
 already answered, and then building on it. Every item below exists because that
 happened, and the fix is always the same: read the page that already knows.
 
+**Commit on `master`.** This repository does not use branches — overriding the
+global agreement's "if on the default branch, branch first".
+
 ## Read these before concluding, not after
 
 | Before you claim… | Read |
