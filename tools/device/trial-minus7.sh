@@ -1907,6 +1907,29 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     case "$classification" in
       empty\ *) branch=clear; blind_streak=0 ;;
       bb\ *)    branch=attack; blind_streak=0 ;;
+      inside\ *)
+        # `inside` is not a threat to respond to. It is the night already lost.
+        #
+        # The mask returns Balloon Boy from the *opening* (marker 122). Once he
+        # has walked in, engine.js is explicit and sourced: "g96 forces `lit?`
+        # to zero every frame while he is at 123, g301/303 stop the vent lights
+        # answering, and no group ever moves him back out. Foxy finishes the
+        # job." `bb.inside` is set once and never cleared, so the flashlight is
+        # gone for the rest of the night, the hall can never be flashed again,
+        # and W. Foxy's D runs out on a pilot that cannot do anything about it.
+        #
+        # So masking here spends the wind and the exposure on a state the mask
+        # does not address. Stop instead: the capture and the classifier frames
+        # are the evidence, and pressing on only buys a longer recording of a
+        # dead night -- the exact thing that made nights 36 and 37 read as
+        # records.
+        actual=$(( $(date +%s%3N) - T0 ))
+        printf '%6d ms  left-view %s: Balloon Boy is in the office\n' \
+          "$actual" "$classification" >&2
+        hid_mark "$actual"
+        echo 'the flashlight is gone for the rest of the night and no group moves him back out; giving up' >&2
+        exit 49
+        ;;
       *)
         # A single unreadable frame fails closed, because an unseen BB costs
         # the night. Failing closed on *every* cycle is the simulator's

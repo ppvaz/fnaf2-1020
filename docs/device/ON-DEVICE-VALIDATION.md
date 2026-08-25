@@ -842,6 +842,50 @@ inverted pilot flashes the camera map instead of the hall, reads the feed
 instead of the vent, and stops winding -- and the longest run on disk
 (night 34, 120.5 s) is one whose model held.
 
+### Night 40: the gate on the phone, and what is left (2026-08-25)
+
+The flip gate's first device run. **110.5 s alive, and `desync-scan.py` reports
+the pilot's model of the monitor held for the whole graded interval** -- the
+second-longest run on disk and the first long one with no divergence at any
+readable interval. Nineteen consecutive reads came back `empty score=0
+margin=19` with `cue[luma=0..102]`, the office, and no `cams still up at the
+read` line fired for 97 s. The gate costs more than predicted: the read's light
+now goes down about 700-810 ms into the cycle against the plan's 367, because
+the anchor press lands ~300 ms in rather than the 130-180 the older traces
+suggested. It still clears the next instruction by ~380 ms, and the box never
+starved -- `windpct` has it between 80% and 100% the whole way, 71.9% at 115 s.
+
+The one correction that did fire is the fix working rather than the bug: at
+97.57 s the post-gate sample read `luma 255`, the classifier agreed
+(`cams=UP-DESYNCED`), and the recovery put the cams back down. Compare night
+38, where the same code sampled 214 ms into a flip and invented the desync.
+
+What caused it is the seam this session did not touch. `test-hid-trace.mjs`
+flags **three 0 ms released cam7 -> monitor presses** in this run, at 22.16 s,
+37.20 s and 97.14 s: the sweep's final camera release and the next anchor's
+monitor press in the same instant. Two landed, the third did not. That is the
+same overrun as nights 22-24 in a different place, and it is now the largest
+remaining source: the mask seam that cost nine nights is no longer scheduled,
+and the flip gate has taken the corrector out.
+
+The run then died the way the census says these runs die. At 105 s the
+classifier read `inside`, and the game left the night state at 113 s.
+
+### `inside` is not a threat to respond to
+
+Until night 40 an `inside` read fell through to the catch-all, failed closed,
+and spent the five-tick mask on it. That is wrong, and the sourced engine says
+so plainly: the mask returns Balloon Boy from the *opening* (marker 122), but
+once he is at 123 "g96 forces `lit?` to zero every frame ... and **no group ever
+moves him back out**. Foxy finishes the job." `bb.inside` is set once and never
+cleared, so the flashlight is gone for the rest of the night, the hall can never
+be flashed again, and the run is already lost when the read comes back.
+
+So the runner now stops on `inside` (exit 49) instead of masking. Masking there
+spends wind and exposure on a state the mask does not address, and the only
+thing the extra cycles produce is a longer recording of a dead night -- which is
+exactly what made nights 36 and 37 read as records.
+
 ### The one problem that is still open
 
 Balloon Boy reaches the office. The classifier is not at fault -- offline replay

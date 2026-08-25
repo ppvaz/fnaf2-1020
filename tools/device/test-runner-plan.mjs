@@ -101,6 +101,21 @@ check((block.match(/run_macro clear "\$base" 2 999/g) || []).length === 2,
 check(/run_macro attack "\$base" 2 999/.test(block),
   'the attack branch must resume at its own mask instruction');
 
+// `inside` is not a threat the response addresses, so it must not reach the
+// response. The mask returns Balloon Boy from the opening (marker 122); once he
+// is at 123 the sourced engine is explicit -- "no group ever moves him back
+// out" -- and `bb.inside` is never cleared, so the flashlight is gone, the hall
+// can never be flashed again, and Foxy collects. Masking there spends wind and
+// exposure on a state the mask cannot change, and keeps a dead night recording.
+const insideCase = block.match(/^\s*inside\\ \*\)([\s\S]*?)^\s*;;/m);
+check(insideCase, 'the driver has no branch for an `inside` read; it would ' +
+  'fall through to the catch-all and mask a night that is already lost');
+check(/\bexit \d+/.test(insideCase[1]),
+  'an `inside` read must stop the run, not respond to it');
+check(!/press_at/.test(insideCase[1]),
+  'an `inside` read must press nothing: the mask does not move Balloon Boy ' +
+  'back out of the office');
+
 // The steady cycles' post-read windows carry the night: they run 83 times
 // against the opening's once, and each wall-timed boundary re-rolls a 49-93 ms
 // overshoot the route has only ~100 ms of total margin for. They go on the hid
