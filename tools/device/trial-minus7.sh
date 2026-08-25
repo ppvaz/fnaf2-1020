@@ -672,6 +672,10 @@ fi
 # reached the phone as the old value.
 if [ "$NIGHT6_LEFT" -eq 1 ]; then
   node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
+  # Pre-flight human gate: refuse an inhumanly timed plan here, before the
+  # game is launched, rather than at the first violating press on the phone.
+  # The live press_at gate still stands behind this for branch arms.
+  node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
   adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
   echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
 fi
@@ -1182,10 +1186,36 @@ LAST_MONITOR_PRESS_MS=-100000
 # once anything above moves it.
 LIGHT_DOWN_MS=0
 
+# The human floor (2026-08-25 decision: absolute, no override -- deliberately
+# not env-overridable). The pilot may not deliver inputs a human could not:
+# 350 ms press-to-press, [INFERRED] from the trainer's duel pass gate until
+# the trainer trace census (tools/tracereport.mjs) supersedes it. The same
+# number lives in tools/device/human-gate.mjs, which refuses a plan file
+# before launch; this pair of functions is the live gate for every press the
+# remote program actually delivers, branch arms included. test-human-gate.mjs
+# pins the two copies equal and test-human-floor.sh exercises this one.
+HUMAN_FLOOR_MS=350
+# Tracked apart from LAST_PRESS_MS, whose zero start and receipt-time uses
+# belong to scheduling; a gate must not change what schedules.
+HF_LAST_PRESS_MS=-100000
+
+human_floor_abort() {
+  echo "HUMAN FLOOR: $2 lands $1 ms after the previous press (< $HUMAN_FLOOR_MS ms)" >&2
+  echo "refusing: the pilot may not deliver inhumanly timed inputs (2026-08-25, no override)" >&2
+  exit 44
+}
+
+human_floor_check() {
+  hf_gap=$(($1 - HF_LAST_PRESS_MS))
+  [ "$hf_gap" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$hf_gap" "$2"
+  HF_LAST_PRESS_MS=$1
+}
+
 press_at() {
   offset=$1; x=$2; y=$3; label=$4
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
+  human_floor_check "$actual" "$label"
   LAST_PRESS_MS=$actual
   case "$label" in monitor*) LAST_MONITOR_PRESS_MS=$actual ;; esac
   printf '%6d ms  %s\n' "$actual" "$label"
@@ -1219,6 +1249,7 @@ hold_at() {
   offset=$1; x=$2; y=$3; duration=$4; label=$5
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
+  human_floor_check "$actual" "$label"
   printf '%6d ms  %s (%d ms)\n' "$actual" "$label" "$duration"
   hid_mark "$actual"
   if [ "$HID_MODE" -eq 1 ]; then
@@ -1627,8 +1658,15 @@ pulsed_cam_burst() {
 # `spacing` and `contact` are the plan's; `cams` is its comma-separated list.
 pulsed_sweep_at() {
   sweep_start=$1; spacing=$2; contact=$3; cams=$4; sweep_label=$5
+  # A sweep is successive presses at $spacing, so the floor applies inside it
+  # as well as at its edges. Checked before waiting: an inhuman sweep is known
+  # from its arguments, and refusing early beats refusing mid-macro.
+  [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
   wait_until "$sweep_start"
   actual=$(( $(date +%s%3N) - T0 ))
+  human_floor_check "$actual" "$sweep_label"
+  hf_slots=$(printf '%s' "$cams" | tr -cd , | wc -c | tr -d ' ')
+  HF_LAST_PRESS_MS=$((actual + hf_slots * spacing))
   printf '%6d ms  %s (%s, %d ms apart, light pulsed after each)\n' \
     "$actual" "$sweep_label" "$cams" "$spacing"
   hid_mark "$actual"
@@ -1672,6 +1710,7 @@ hall_reset_and_raise_at() {
   offset=$1; duration=$2; label=$3
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
+  human_floor_check "$actual" "$label"
   printf '%6d ms  %s (hall pulse under the raise)\n' "$actual" "$label"
   hid_mark "$actual"
   # The table presses the hall light and the monitor on the same frame. Doing

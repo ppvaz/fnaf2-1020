@@ -45,6 +45,17 @@ document contradicting how the line is actually played.
   0/1000, and a held 790 ms lit sweep alone outspends the whole 3000-frame
   night-6 flashlight. See `HID-MULTITOUCH.md` §"The Night 6 route, priced
   against the phone's actuator".
+- **The pilot may not deliver inhumanly timed inputs — absolute, no override
+  (2026-08-25).** The device validates strategies a human can transfer to, so
+  `trial-minus7.sh` refuses any press within `HUMAN_FLOOR_MS` (350 ms,
+  `[INFERRED]` from the trainer's duel gate until the trace census in
+  `tools/tracereport.mjs` supersedes it) of the previous one — pre-flight for
+  plan files (`tools/device/human-gate.mjs`), live in `press_at`/`hold_at`/
+  `pulsed_sweep_at` for everything else. This deliberately grounds **every
+  current device route**, the shipped 120 ms Night 6 plan and the classic
+  190 ms swipe cycle alike; `test-human-gate.mjs` asserts the refusal, and
+  whoever ships a human-executable route flips that assertion and this note
+  together.
 - **Short taps get dropped** — Fusion polls touch per frame. Use duration
   presses (`input swipe x y x y 120`), which is why `PRESS_MODE=fast-swipe`
   exists and is not merely legacy.

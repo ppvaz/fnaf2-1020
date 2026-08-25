@@ -300,10 +300,13 @@ want="$(printf '%s\n' '7000 tap monitor' '7767 light' "$((7767 + READ_CAPTURE_DE
 # and lost that press to the same flip -- the corrector caused the desync.
 MONITOR_ANIM_DOWN_MS="$(runner_const MONITOR_ANIM_DOWN_MS)"
 CUE_CAMS_UP_LUMA="$(runner_const CUE_CAMS_UP_LUMA)"
+HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
 
 {
   echo 'set -eu'
-  for fn in press_at light_down_at; do
+  # The human floor ships inside press_at, so the shipped gate runs here too:
+  # a monitor-verify the corrector schedules must clear it like any press.
+  for fn in human_floor_abort human_floor_check press_at light_down_at; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"
@@ -311,7 +314,8 @@ CUE_CAMS_UP_LUMA="$(runner_const CUE_CAMS_UP_LUMA)"
 } > "$TMP/light.sh"
 
 {
-  for c in FUSION_POLL_MS TAP_CONTACT_MS MONITOR_ANIM_DOWN_MS CUE_CAMS_UP_LUMA; do
+  for c in FUSION_POLL_MS TAP_CONTACT_MS MONITOR_ANIM_DOWN_MS CUE_CAMS_UP_LUMA \
+           HUMAN_FLOOR_MS; do
     eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
   done
 } > "$TMP/light-harness.sh"
@@ -332,6 +336,7 @@ CAM_LIGHT_X=1 CAM_LIGHT_Y=1 MONITOR_X=2 MONITOR_Y=2
 LAST_PRESS_MS=0
 LAST_MONITOR_PRESS_MS=-100000
 LIGHT_DOWN_MS=0
+HF_LAST_PRESS_MS=-100000
 # 1 = the phone as measured below; 0 = the cams really are still up, because
 # the press was lost.
 CUE_HONEST=1

@@ -209,6 +209,15 @@ be up before the first selection. The span becomes `2 * spacing + 100 ms`.
 the second Golden Freddy flick — beat one's prophylactic mask already covers
 the cycle — which is where the wind the longer sweep costs comes back from.
 
+> **2026-08-25: every route on this page is grounded by the human floor.** The
+> pilot now refuses to deliver any press within 350 ms of the previous one —
+> absolute, no override (`tools/device/human-gate.mjs`, and the live gate in
+> `trial-minus7.sh`). The pricing below remains correct and worth keeping: it
+> establishes what the *machine* route costs, and that even the machine cannot
+> land the ideal figures. But none of these schedules may run on the phone
+> again until a human-executable route exists; `test-human-gate.mjs` asserts
+> the refusal.
+
 ### It still fails at the spacing the phone has proven
 
 With the pulsed light the route survives night 6 at 240 ms spacing, but only at

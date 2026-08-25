@@ -125,6 +125,14 @@ const ENGINE = [
   // mask-seam monitor drop. This gates that the model reproduces the desync
   // census's band rates, keeps hold lengths, and replays under a seed.
   ['device actuator', ['device/test-actuator.mjs']],
+  // The pilot may not deliver inhumanly timed inputs (2026-08-25, absolute,
+  // no override). The gate audits plan files pre-flight and the runner's
+  // press primitives live; these two checks pin the floor's copies equal,
+  // verify both layers against mocks, and assert the shipped 120 ms Night 6
+  // plan is REFUSED -- the grounding is a recorded fact until a
+  // human-executable route ships.
+  ['human gate', ['device/test-human-gate.mjs']],
+  ['human floor', ['device/test-human-floor.sh']],
   // The interpreter is the only part of the runner that decides *what*
   // happens. This runs the shipped functions against the real plan with the
   // device primitives stubbed, so a branch window off by one fails here
