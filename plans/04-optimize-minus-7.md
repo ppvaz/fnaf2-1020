@@ -212,6 +212,14 @@ clusters on specific inputs (the duel, the wind drag). The new profile mechanism
 can express that, but its shipped `human` weights are deliberately `[INFERRED]`.
 Do not claim a variant is better *for humans* until trainer traces replace them.
 
+> **2026-08-25: collection now exists.** Every coached trainer run posts its
+> per-step census (graded rows by cycle, wind holds, the raw press/release
+> stream, and its conditions) to `serve.py`'s `/save-trace`;
+> `tools/tracereport.mjs` bands whatever has accumulated. The weights above
+> stay `[INFERRED]` until that report has enough runs to argue with —
+> the measured profile this section asks for is now a matter of playing,
+> not of building.
+
 ## Done when
 
 If reopened, the measured profile is in `tools/` and reproducible, current old-vs-

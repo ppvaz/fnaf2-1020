@@ -16,6 +16,8 @@ Current triage (2026-08-20):
 - **Plan 04's runnable experiment is complete:** per-step model windows and an
   explicitly inferred human-error profile now exist. The next useful input is
   measured trainer timing by step, not another invented profile.
+  *(2026-08-25: the collection pipeline for exactly that now exists —
+  `/save-trace` + `tools/tracereport.mjs`. What remains is practice runs.)*
 - **No blind-search juice:** Plans 05 and 06 have completed/closed their defined
   Android search families. Reopen them only when a corrected source rule changes
   the reachable policy space.

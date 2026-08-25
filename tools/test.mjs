@@ -173,6 +173,9 @@ const REPORTS = [
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--device-actuator']],
+  // The measured human bands, from whatever trainer runs have been recorded.
+  // Empty until practice sessions accumulate under /save-trace.
+  ['tracereport', ['tracereport.mjs']],
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;

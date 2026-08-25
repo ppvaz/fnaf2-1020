@@ -11,6 +11,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Coach } from '../src/coach.js';
 import * as C from '../src/config.js';
+import { summarize } from './tracereport.mjs';
 
 const TOOLS = dirname(fileURLToPath(import.meta.url));
 let failed = 0;
@@ -59,6 +60,37 @@ check('hold 1 is empty', coach.holds[1]?.cycle === 1 && coach.holds[1]?.heldSec 
 // The UI's rolling window must not be the census: the trace is a different,
 // uncapped array, so trimming results cannot drop early cycles from it.
 check('trace is not the rolling results array', coach.trace !== coach.results);
+
+// ------------------------------------------------------- summarizer banding
+{
+  const censusTrace = {
+    speed: 1, env: { webdriver: false }, settings: { coach: true }, commit: 'abc1234',
+    steps: [
+      { stepId: 'x', delta: 0.05, grade: 'good' },
+      { stepId: 'x', delta: -0.10, grade: 'good' },
+      { stepId: 'x', delta: null, grade: 'missed' },
+    ],
+    holds: [{ stepId: 'wind', heldSec: 0.5, targetSec: 1.0 }],
+    events: [{ kind: 'press', t: 1.0 }, { kind: 'release', t: 1.2 },
+             { kind: 'press', t: 1.3 }, { kind: 'press', t: 2.0 }],
+  };
+  // The two exclusions are controls, not filters of convenience: a webdriver
+  // run is perfectly timed and a slowed clock distorts every interval, so a
+  // census containing either would report bands no human produced.
+  const botTrace = { env: { webdriver: true }, steps: [{ stepId: 'x', delta: 0, grade: 'good' }] };
+  const slowTrace = { speed: 0.5, env: {}, steps: [{ stepId: 'x', delta: 0, grade: 'good' }] };
+  const s = summarize([censusTrace, botTrace, slowTrace]);
+  check('census partitions', s.runs === 1 && s.botRuns === 1 && s.offSpeedRuns === 1,
+    JSON.stringify([s.runs, s.botRuns, s.offSpeedRuns]));
+  const x = s.bands.find(b => b.stepId === 'x');
+  check('band counts misses', x?.n === 3 && x?.misses === 1);
+  check('band quantiles', near(x?.p50, 0.10) && near(x?.worstLate, 0.05) &&
+    near(x?.worstEarly, -0.10) && near(x?.earlyShare, 0.5), JSON.stringify(x));
+  check('spacing from presses only', s.spacing.n === 2 && near(s.spacing.min, 0.3),
+    JSON.stringify(s.spacing));
+  check('hold coverage', near(s.holds.p50Frac, 0.5) && near(s.holds.shortFrac, 1));
+  check('commit provenance surfaces', s.commits.some(([c, n]) => c === 'abc1234' && n === 1));
+}
 
 // ------------------------------------------------------- serve.py /save-trace
 const PORT = 8747;
