@@ -217,6 +217,13 @@ the cycle — which is where the wind the longer sweep costs comes back from.
 > land the ideal figures. But none of these schedules may run on the phone
 > again until a human-executable route exists; `test-human-gate.mjs` asserts
 > the refusal.
+>
+> Priced the obvious follow-up the same day: the route at the floor's own
+> 350 ms slots is **0/200 in the exact simulator at every offset tried**
+> (0/83/167/250/300), dying to stun-lapse office attacks — the sweep-span
+> inequality below, not a tuning miss. The left-opening architecture cannot be
+> slowed into human compliance; a human-executable night 6 needs a different
+> route shape. `hidpilot n6 human reject` preserves the rejection.
 
 ### It still fails at the spacing the phone has proven
 

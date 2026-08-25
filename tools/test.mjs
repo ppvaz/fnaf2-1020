@@ -61,6 +61,15 @@ const ENGINE = [
   ['hidpilot n6 pulse reject', ['hidpilottest.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=240',
     '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert-rejected']],
+  // The route at the human floor's 350 ms slots: 0/200 at every offset tried
+  // (0/83/167/250/300, 2026-08-25), dying to stun-lapse office attacks -- the
+  // sweep span cannot bridge the five-tick mask. The left-opening architecture
+  // cannot be slowed into human compliance; a human-executable night 6 needs a
+  // different route shape. If this check ever flips, that is a finding.
+  ['hidpilot n6 human reject', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=350',
+    '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
+    '--assert-rejected']],
   // The shipped device target: 120 ms spacing (measured on the phone), the
   // pessimistic 480 ms lit-frame latch, and the centre of the 83-267 ms
   // scheduler-phase window. Both the offset and the latch are explicit so the
