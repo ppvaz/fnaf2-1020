@@ -893,6 +893,58 @@ spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
 exactly what made nights 6-36 and 6-37 read as records.
 
+### Retraction: the "0 ms released" cycle seam was the auditor's clock (2026-08-25)
+
+**`test-hid-trace.mjs` cannot time a boundary the runner waits through, and its
+zero-gap flags at the cycle seam are artifacts.** Everything above that blames
+"the sweep's final camera release and the next anchor's monitor press in the
+same instant" -- including calling it *the largest remaining source* -- rests on
+those flags.
+
+The auditor advances its clock on emitted `delay` records and takes
+`now = max(now, mark)` on a mark, so the clock can never be pulled back. It does
+run ahead, because the runner spends host-side `wait_until` time between actions
+and that emits no delay record while every emitted delay still advances the
+clock. Once it is ahead, every corrective mark is discarded:
+
+| run | marks discarded | worst drift |
+| --- | ---: | ---: |
+| night 6-40 | 68 of 252 | 1637 ms |
+| night 6-41 | 10 of 36 | 178 ms |
+| night 6-42 | 56 of 130 | 2742 ms |
+
+Measured from the marks instead -- the runner's real clock -- the flagged seams
+are not close calls:
+
+| flagged as | real released time |
+| --- | ---: |
+| night 6-40 @ 22164 ms | **157 ms** |
+| night 6-40 @ 37205 ms | **187 ms** |
+| night 6-40 @ 97142 ms | **112 ms** |
+| night 6-42 @ 12499 ms | **282 ms** |
+| night 6-42 @ 52353 ms | **218 ms** |
+
+All are far above the 33 ms Fusion poll the plan is designed to. `run_macro`'s
+`FUSION_POLL_MS` seam delay works exactly as `test-runner-plan.mjs` asserts; the
+auditor simply cannot see it. The same defect produced the `contact 0 at
+1033,157 held 0 ms` vent-light flags, which were briefly taken as the cause of
+night 6-41's dark lamp.
+
+Why it survived: **every fixture in the auditor's self-test was delays-only**,
+so `max(now, mark)` was never exercised against a mark arriving behind an
+over-advanced clock. There is now a case for it, and a trace with a discarded
+mark reports its timeline as untrustworthy before any of its numbers.
+
+What this does *not* retract: night 6-41's lamp really was dark, measured from
+the recording rather than the trace -- lit exactly once for 531 ms across 20 s.
+And night 6-42 really did desync; `desync-scan.py` reads the screen, not the
+trace, and it stands. **The desync's mechanism is open again**, and the live
+evidence points elsewhere: the runner's own cue-helper read saw the cams up at
+17.876 s (`luma 255`) and corrected in-cycle, then resynced twice more before
+`desync-scan.py` calls it permanently inverted at 30.38 s. The auditor's timing
+numbers cannot be used to choose between candidates until the timeline is
+re-based.
+
 ### Retraction: `bbinside` was the vent light being off (2026-08-25)
 
 **The class was never Balloon Boy.** Everything above this line about him

@@ -30,12 +30,36 @@ export function audit(text) {
   const problems = [];
   const active = new Map();          // id -> {at, xy}
   let now = 0, lastReleaseAt = null, lastReleaseXy = null;
+  let discardedMarks = 0, worstDriftMs = 0, totalMarks = 0;
 
   for (const event of events) {
     // A mark is the runner's real clock at an action boundary. Without them
     // only hid-side delays advance the timeline, and every wall-timed pair of
     // actions reads as a zero-gap button change.
-    if (event.command === 'mark') { now = Math.max(now, event.ms); continue; }
+    if (event.command === 'mark') {
+      totalMarks += 1;
+      // `max` means the delay clock can never be pulled back, and it does run
+      // ahead: the runner spends host-side `wait_until` time between actions,
+      // which emits no delay record, while every emitted delay still advances
+      // this clock. Night 6-42 drifted 2742 ms and discarded 56 of its 130
+      // marks, which silently compressed every host-waited boundary to zero and
+      // produced "0 ms released" and "held 0 ms" flags for gaps the runner
+      // really did leave -- 218 ms at the cycle seam, measured from the marks.
+      //
+      // Those artifacts are load-bearing: they are the evidence behind
+      // "the sweep's final camera release and the next anchor's monitor press
+      // in the same instant" being called the largest remaining source.
+      //
+      // Re-basing the timeline is a bigger change than this audit should make
+      // on its own, so for now it refuses to pretend: a discarded mark means
+      // the timing numbers below it are not measurements.
+      if (event.ms < now) {
+        discardedMarks += 1;
+        worstDriftMs = Math.max(worstDriftMs, now - event.ms);
+      }
+      now = Math.max(now, event.ms);
+      continue;
+    }
     if (event.command === 'delay') {
       // A zero-length delay is not a no-op on the device: `hid` rejects the
       // duration outright and the process exits, so a trace containing one is
@@ -89,7 +113,16 @@ export function audit(text) {
   }
   for (const [id, c] of active)
     problems.push(`contact ${id} at ${c.xy} never released (down since ${c.at} ms)`);
-  return { problems, spanMs: now, reports: events.filter(e => e.command === 'report').length };
+  // Say it before any of the numbers, because it decides what they are worth.
+  if (discardedMarks)
+    problems.unshift(`the timeline is not trustworthy: ${discardedMarks} of ` +
+      `${totalMarks} marks were discarded because the delay clock had already ` +
+      `run past them, worst drift ${worstDriftMs} ms. Marks are the runner's ` +
+      'real clock and host-side waits emit no delay record, so every boundary ' +
+      'the runner waited through reads as zero released time. Released and ' +
+      'held figures at those boundaries are artifacts, not measurements.');
+  return { problems, spanMs: now, reports: events.filter(e => e.command === 'report').length,
+           discardedMarks, worstDriftMs, totalMarks };
 }
 
 const R = (count, ...recs) => JSON.stringify({ id: 92, command: 'report',
@@ -129,8 +162,34 @@ function selfTest() {
   if (!latched.problems.some(p => /never released|unnamed/.test(p)))
     throw new Error('self-test: a latched contact 1 was not caught');
 
+  // Marks were never in a fixture, which is how the drift survived: every case
+  // above is delays-only, so `now = max(now, mark)` was never exercised against
+  // a mark that arrives behind an over-advanced delay clock.
+  const drifted = audit([
+    JSON.stringify({ command: 'mark', ms: 0 }),
+    R(1, rec(3, 100, 200)), D(100), R(1, rec(0, 100, 200)),
+    // the runner now waits host-side: 500 ms of real time, no delay record
+    JSON.stringify({ command: 'mark', ms: 600 }),
+    R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900)),
+    // and here the delay clock has run past the next boundary mark
+    JSON.stringify({ command: 'mark', ms: 400 }),
+  ].join('\n'));
+  if (!drifted.discardedMarks)
+    throw new Error('self-test: a mark behind the delay clock was not noticed');
+  if (!drifted.problems.some(p => /not trustworthy/.test(p)))
+    throw new Error('self-test: a drifted timeline was not declared untrustworthy');
+  const honest = audit([
+    JSON.stringify({ command: 'mark', ms: 0 }),
+    R(1, rec(3, 100, 200)), D(100), R(1, rec(0, 100, 200)),
+    JSON.stringify({ command: 'mark', ms: 600 }),
+    R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900)),
+  ].join('\n'));
+  if (honest.problems.length)
+    throw new Error('self-test: marks that only move forward were rejected: ' +
+      honest.problems.join('; '));
+
   console.log('HID trace auditor self-test passed (clean stream accepted; ' +
-    'short contact, zero-gap change, zero-length delay and latched contact all caught)');
+    'short contact, zero-gap change, zero-length delay and latched contact all caught; \n  a mark behind the delay clock invalidates the timeline)');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
