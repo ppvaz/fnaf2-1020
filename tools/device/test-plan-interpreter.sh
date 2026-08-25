@@ -335,11 +335,28 @@ LIGHT_DOWN_MS=0
 # 1 = the phone as measured below; 0 = the cams really are still up, because
 # the press was lost.
 CUE_HONEST=1
+# 1 = the first sample is a saturated flash and the next one is the office, which
+# is what every correction on file actually saw.
+CUE_TRANSIENT=0
 # The phone, as measured: while the flip is still running the helper reports
 # the camera feed that is still on screen, and only afterwards the office.
 # Across nights 6-36 to 6-38 the last such sample after a lowering press was +202 ms.
 cue_snapshot() {
   printf '%s\n' "$NOW" >> "$CUE_LOG"
+  if [ "$CUE_TRANSIENT" -eq 1 ]; then
+    # A camera light pulse or a hall flash saturates the sensor pixel for one
+    # sample. Steady cams-up is 225-250; 255 is the flash.
+    #
+    # The call count has to come off the log: the runner reads this through a
+    # command substitution, so a shell variable incremented here dies with the
+    # subshell and every call would look like the first.
+    if [ "$(wc -l < "$CUE_LOG" | tr -d ' ')" -gt 1 ]; then
+      printf 'OK luma=20 cam5=30 ageUs=1500\n'
+    else
+      printf 'OK luma=255 cam5=30 ageUs=1500\n'
+    fi
+    return 0
+  fi
   if [ "$CUE_HONEST" -eq 1 ] && [ "$NOW" -ge $((LAST_MONITOR_PRESS_MS + 202)) ]; then
     printf 'OK luma=20 cam5=30 ageUs=1500\n'
   else
@@ -380,10 +397,24 @@ light_at="$(printf '%s\n' "$got" | awk '/light-down/{print $1}')"
 [ "$light_at" -ge $((verify_at + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS)) ] ||
   fail "the vent light went down $((light_at - verify_at)) ms after the corrective press, inside its flip"
 
+# A saturated single sample is a flash, not the cams. Steady cams-up sits at
+# 225-250 (median 227 across nights 6-40 to 6-42) while 255 lasts one or two
+# samples, and every correction on file fired on a 255. One reading cannot tell
+# them apart, so the correction has to confirm before it spends a press.
+got="$(light_run 'CUE_TRANSIENT=1; NOW=12132; press_at 12000 2 2 monitor
+                  light_down_at 12367 vent')"
+case "$got" in
+  *monitor-verify*) fail "a one-sample flash was corrected as a desync:\n$got" ;;
+esac
+case "$got" in
+  *"not correcting"*) ;;
+  *) fail "the rejected transient was not reported:\n$got" ;;
+esac
+
 # With no monitor press yet -- the first read of a run -- there is no flip to
 # wait for, and the read must not be held back by one.
 got="$(light_run 'NOW=300; light_down_at 367 vent')"
 [ "$(printf '%s\n' "$got" | awk '/light-down/{print $1}')" = 367 ] ||
   fail "the first read waited for a flip that never happened:\n$got"
 
-echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan; the cue read waits out the monitor flip)'
+echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan; the cue read waits out the monitor flip and confirms it before correcting)'

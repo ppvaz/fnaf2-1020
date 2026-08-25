@@ -893,6 +893,39 @@ spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
 exactly what made nights 6-36 and 6-37 read as records.
 
+### The in-cycle correction fires on a flash (2026-08-25)
+
+With the seam refuted, the desync's live evidence points at the corrector again
+-- and this time the number is in the traces rather than in the auditor.
+
+The gate added earlier fixed *when* the correction samples. It did not fix that
+**one sample decides**. Steady cams-up is a tight band and saturation is a
+separate, short-lived population:
+
+| | nights 6-40, 6-41, 6-42 |
+| --- | --- |
+| steady cams-up band | **225-250**, median 227 |
+| saturated `luma 255` | runs of 1-2 samples; 24-36% are already below 180 by the next sample |
+
+Both clear `CUE_CAMS_UP_LUMA` (180), so the correction cannot tell them apart.
+**Every correction on file triggered on 255**, and 255 never appears beside a
+classifier read -- the reads carry 0, 102, 226, 227. That is the shape of a
+camera light pulse or a hall flash washing the sensor pixel, not a monitor that
+is up.
+
+Night 6-42 is the sequence: correction at 17.876 s on a `luma 255`, resync at
+20.098 s, resync at 29.875 s, and `desync-scan.py` calls it permanently inverted
+at 30.38 s. Night 6-38 died the same way and the fix then was the timing gate.
+
+So the correction now takes a second reading and only spends a press if that one
+is high too. It costs 59 ms against the ~416 ms of slack the plan leaves before
+the next instruction, and a transient does not survive it; a rejected transient
+is logged rather than silently dropped. `test-plan-interpreter.sh` covers it --
+a one-sample flash must not be corrected, a genuine desync still must be.
+
+This is a hypothesis with a mechanism and a control, not a confirmed cause: it
+has not yet run on the phone. The next night is the test.
+
 ### Retraction: the "0 ms released" cycle seam was the auditor's clock (2026-08-25)
 
 **`test-hid-trace.mjs` cannot time a boundary the runner waits through, and its

@@ -1253,6 +1253,32 @@ light_down_at() {
     # 416 ms of slack before the next instruction absorbs.
     wait_until $((LAST_MONITOR_PRESS_MS + MONITOR_ANIM_DOWN_MS))
     cue_luma=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
+    # Confirm before correcting: one sample cannot tell a flash from the cams.
+    #
+    # The gate above fixed *when* this samples. It did not fix that a single
+    # reading decides. Steady cams-up is a tight band -- 225-250, median 227
+    # across nights 6-40, 6-41 and 6-42 -- while saturated `luma 255` is a
+    # separate and short-lived population: runs of one or two samples, and a
+    # third of them are already below the threshold by the very next sample.
+    # Both clear CUE_CAMS_UP_LUMA, so the correction cannot distinguish them.
+    #
+    # Every correction on file triggered on 255, and 255 never appears beside a
+    # classifier read. That is the shape of a flash -- a camera light pulse or a
+    # hall flash washing the sensor pixel -- not a monitor that is up. Night
+    # 6-38's correction invented the desync it was looking for this way, and
+    # night 6-42 corrected at 17.876 s on a 255 and was inverted by 30.38 s.
+    #
+    # A second read costs 59 ms against the ~416 ms of slack the plan leaves
+    # before the next instruction, and a transient does not survive it.
+    if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
+      cue_luma_confirm=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
+      if [ -z "$cue_luma_confirm" ] || [ "$cue_luma_confirm" -lt "$CUE_CAMS_UP_LUMA" ]; then
+        actual=$(( $(date +%s%3N) - T0 ))
+        printf '%6d ms  cue read %s then %s; a transient, not the cams -- not correcting\n' \
+          "$actual" "$cue_luma" "${cue_luma_confirm:-unreadable}"
+        cue_luma=0
+      fi
+    fi
     if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
       actual=$(( $(date +%s%3N) - T0 ))
       printf '%6d ms  cams still up at the read (luma %s); correcting in-cycle\n' \
