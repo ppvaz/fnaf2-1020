@@ -747,6 +747,29 @@ if [ "$CUE_HELPER" -eq 1 ]; then
   [ "${#CUE_TOKEN}" -eq 32 ] || { echo 'no valid per-run cue-helper token' >&2; exit 2; }
   echo "cue helper: port $CUE_PORT, logging snapshots beside each left read"
   if [ "$CUE_AUDIO" -eq 1 ]; then
+    # Refuse the night rather than record silence through it.
+    #
+    # AudioPlaybackCapture taps the phone's mix. A2DP offload does not go
+    # through that mix, so with Bluetooth audio connected the helper returns
+    # zero-filled buffers -- and keeps reporting `audio=OBSERVED` with an
+    # advancing frame counter, which is indistinguishable from working. Night
+    # 6-42 recorded 71 s of exact zeros across a night that had Balloon Boy on
+    # camera, and only the sample values said so. Checking costs one dumpsys.
+    # A herestring, because `grep -q` must not be on the right of a pipe here.
+    #
+    # It exits the instant it matches, the writer takes SIGPIPE, and under
+    # `set -o pipefail` the pipeline reports 141 -- so the `if` reads false no
+    # matter how well the pattern matched. That skipped this guard twice and let
+    # nights 6-43 and 6-guardtest record 66 s and 63 s of silence anyway. Piping
+    # into `grep -c` and comparing hides it, because -c reads to the end.
+    audio_route="$(adb shell dumpsys audio 2>/dev/null | tr -d '\r')"
+    if grep -q 'Devices: *bt_a2dp' <<<"$audio_route"; then
+      echo 'CUE_AUDIO=1 but this phone is playing to Bluetooth, and A2DP offload' >&2
+      echo 'bypasses the mix the helper captures: the recording would be silent and' >&2
+      echo 'the bang scan would report a meaningless zero. Disconnect Bluetooth audio' >&2
+      echo '(or set CUE_AUDIO=0 to run the night without it).' >&2
+      exit 2
+    fi
     if "$HERE/query-cue-helper.sh" log start >/dev/null 2>&1; then
       CUE_AUDIO_STARTED=1
       echo "cue helper: recording the night's audio for the bang detector"

@@ -90,6 +90,43 @@ promotion gates are preserved in
 That plan keeps PCM and detection on the phone and does not assume that the
 helper must read continuously.
 
+## Bluetooth silently empties the capture (2026-08-25)
+
+`AudioPlaybackCapture` taps the phone's mix. **A2DP offload does not go through
+that mix**, so with Bluetooth headphones connected the helper receives
+zero-filled buffers -- and reports itself healthy while doing it.
+
+Night 6-42 is the worked example. It recorded **71 s of a live Night 6 in which
+Balloon Boy was visibly on the Game Area camera at 19.4 s**, and every one of
+its 1142784 samples was exactly zero. Throughout, the helper logged
+`audio=OBSERVED rate=16000 frames=... rms=0 peak=0` with the frame counter
+advancing normally, and the run's cue trace carried `rms max 0, peak max 0`
+across all 561 samples. `dumpsys audio` said `Devices: bt_a2dp(80)` on every
+stream. Nothing in the pipeline could tell that from a quiet night.
+
+This is the same shape as every other failure in this repository: a sensor that
+knows one way to be working must not be what says the capture is fine. So:
+
+- `trial-minus7.sh` refuses to start with `CUE_AUDIO=1` while audio is routed to
+  A2DP, rather than recording silence through the night;
+- `scan-night.sh` fails (exit 3) on an all-zero capture instead of reporting a
+  clean scan, because **silence is not "no bangs", it is no observation**.
+
+Two traps found while wiring that guard, both worth keeping:
+
+- **`grep -q` must not be on the right of a pipe under `set -o pipefail`.** It
+  exits the instant it matches, the writer takes SIGPIPE, and the pipeline
+  reports 141 -- so the `if` reads false however well the pattern matched. This
+  skipped the Bluetooth guard twice, and two nights recorded silence anyway
+  before it was noticed. Piping into `grep -c` and comparing hides the bug,
+  because `-c` reads to the end; a herestring avoids it entirely.
+- **The helper does not release its control socket when its capture restarts.**
+  Asking a running instance to start capture again fails with
+  `java.io.IOException: Address already in use`, and it then reports
+  `visual/audio/control=UNAVAILABLE(startup-IOException)` -- which reads as a
+  broken helper rather than a stale one. `adb shell am force-stop
+  com.fnafminus7.cuehelper` and relaunch; the consent has to be granted again.
+
 ## Practical recording workarounds
 
 For a clip intended to match what the player heard, record the physical output
