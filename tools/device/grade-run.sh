@@ -78,6 +78,14 @@ fi
 if [ -f "$TRACE" ]; then
   step "input defects (contact lengths, released time, latched contacts, zero delays)" \
     node "$HERE/test-hid-trace.mjs" "$TRACE"
+
+  # 2b. Did the game act on the presses? The auditor above reads the stream the
+  #     phone was sent; this reads the stream against what the screen then did.
+  #     A monitor press the game drops inverts every later cycle and nothing in
+  #     the run notices, so a desynced run keeps producing plausible-looking
+  #     schedule output for as long as the pilot keeps pressing.
+  step "monitor desync (does the game agree with the pilot about the cams?)" \
+    python3 "$HERE/desync-scan.py" "$RUN" --strips
 fi
 
 # 3. Did the sweeps select, and did they flash? Two independent signals that

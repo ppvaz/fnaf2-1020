@@ -109,6 +109,12 @@ const ENGINE = [
   // buttons, and the trap-2 release discipline. Its self-test runs here; point
   // it at a captured trace to audit a real run.
   ['hid trace', ['device/test-hid-trace.mjs']],
+  // The other half of that oracle: the trace says what the phone was sent, and
+  // this says whether the game acted on it. A monitor press the port drops
+  // inverts every later cycle silently, so the run keeps producing schedule
+  // output that reads like a working night. Self-test only here; point the
+  // tool at a run name to grade one.
+  ['desync scan', ['device/desync-scan.py', '--self-test']],
   // The runner must schedule the plan the simulator emits. The table lived in
   // two places and a fix to one silently missed the other.
   ['runner plan', ['device/test-runner-plan.mjs']],
