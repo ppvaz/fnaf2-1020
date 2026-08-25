@@ -7,6 +7,7 @@
 #   query-cue-helper.sh log start                 begin a night-length capture
 #   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
+#   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -34,6 +35,7 @@ case "${1:-}" in
   latency) VERB=latency; shift ;;
   log) VERB=log; shift ;;
   watch) VERB=watch; shift ;;
+  grid) VERB=grid; shift ;;
   '') ;;
   *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
 esac
@@ -41,6 +43,48 @@ case "$TRANSPORT" in
   loopback|forward) ;;
   *) echo "unknown transport: $TRANSPORT (use loopback or forward)" >&2; exit 2 ;;
 esac
+
+if [ "$VERB" = grid ]; then
+  # What the helper actually sees, as a picture.
+  #
+  # It renders a 20x9 virtual display every frame and was reporting one pixel of
+  # it (3,6) plus one block mean. Nothing downstream could therefore tell a
+  # Withered Freddy jumpscare from a dark office -- during one the snapshot read
+  # luma 0-37 and a neutral grey triple, because that single pixel sits
+  # somewhere dark. GRID returns all 180 cells; this draws them.
+  line="$(exchange "GRID $token")"
+  case "$line" in
+    OK\ grid=*) ;;
+    *) echo "$line" >&2; exit 1 ;;
+  esac
+  out="${1:-cue-grid.png}"
+  printf '%s\n' "$line" | python3 -c '
+import sys, re
+line = sys.stdin.read().strip()
+m = re.match(r"OK grid=(\d+)x(\d+) seq=(\d+) ([0-9a-f]+)", line)
+if not m:
+    print("unparseable grid response", file=sys.stderr); raise SystemExit(1)
+w, h, seq, body = int(m.group(1)), int(m.group(2)), m.group(3), m.group(4)
+cells = [int(body[i:i+6], 16) for i in range(0, w*h*6, 6)]
+print(f"grid {w}x{h} seq={seq}")
+for y in range(h):
+    row = ""
+    for x in range(w):
+        v = cells[y*w + x]
+        lum = ((v>>16 & 255)*77 + (v>>8 & 255)*150 + (v & 255)*29) >> 8
+        row += " .:-=+*#%@"[min(9, lum*10//256)]
+    print("   " + row)
+try:
+    from PIL import Image
+except ImportError:
+    print("(install Pillow for the PNG)", file=sys.stderr); raise SystemExit(0)
+im = Image.new("RGB", (w, h))
+im.putdata([((v>>16)&255, (v>>8)&255, v&255) for v in cells])
+im.resize((w*40, h*40), Image.NEAREST).save(sys.argv[1])
+print(f"wrote {sys.argv[1]}")
+' "$out"
+  exit 0
+fi
 
 if [ "$VERB" = latency ]; then
   COUNT="${1:-50}"
@@ -89,7 +133,7 @@ esac
 # starting a recording is not a reading, and requiring focus there strands a
 # capture whenever a run ends with the game no longer in front.
 case "$VERB" in
-  snapshot|record|watch)
+  snapshot|record|watch|grid)
     if ! adb shell dumpsys window 2>/dev/null | \
         awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
       echo "FNaF is not the focused physical-display window" >&2

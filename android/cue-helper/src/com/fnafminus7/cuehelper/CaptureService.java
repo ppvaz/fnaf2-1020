@@ -159,6 +159,20 @@ public final class CaptureService extends Service {
     private int snapshotBlue;
     private int snapshotLuma;
     private int snapshotCam5;
+    // The whole 20x9 sensor, packed 0xRRGGBB per cell.
+    //
+    // The service already renders this grid every frame and was reporting one
+    // pixel of it (3,6) plus one block mean. Everything else was discarded, so
+    // nothing downstream could tell a Withered Freddy jumpscare from a dark
+    // office: during one, the snapshot read luma 0-37 and a neutral grey
+    // triple, because the single reported pixel happens to sit somewhere dark.
+    // 180 cells is small enough to send on one line and is the whole picture
+    // the helper has.
+    //
+    // Preallocated and filled in place: the 60 fps callback must not allocate,
+    // which is why the first long-running probe accumulated heap pressure.
+    private final int[] snapshotGrid = new int[VISUAL_WIDTH * VISUAL_HEIGHT];
+    private boolean snapshotGridValid;
     private long snapshotAudioFrames;
     private long snapshotAudioReadNs;
     private int snapshotAudioRms;
@@ -347,6 +361,27 @@ public final class CaptureService extends Service {
                 snapshotBlue = blue;
                 snapshotLuma = luma;
                 snapshotCam5 = cam5Luma;
+                int rowStride = plane.getRowStride();
+                int pixelStride = plane.getPixelStride();
+                int limit = buffer.limit();
+                boolean complete = true;
+                for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
+                    for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
+                        int at = gy * rowStride + gx * pixelStride;
+                        if (at < 0 || at + 2 >= limit) {
+                            complete = false;
+                            break;
+                        }
+                        snapshotGrid[gy * VISUAL_WIDTH + gx] =
+                                ((buffer.get(at) & 0xff) << 16)
+                                        | ((buffer.get(at + 1) & 0xff) << 8)
+                                        | (buffer.get(at + 2) & 0xff);
+                    }
+                    if (!complete) {
+                        break;
+                    }
+                }
+                snapshotGridValid = complete;
             }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
@@ -386,6 +421,26 @@ public final class CaptureService extends Service {
             }
         }
     }
+
+    /** The whole 20x9 sensor as hex, for classifying what a single pixel cannot. */
+    private String currentGrid() {
+        StringBuilder out = new StringBuilder(16 + snapshotGrid.length * 6);
+        synchronized (snapshotLock) {
+            if (!snapshotGridValid) {
+                return "ERROR grid-unavailable";
+            }
+            out.append("OK grid=").append(VISUAL_WIDTH).append('x').append(VISUAL_HEIGHT)
+                    .append(" seq=").append(snapshotVisualSequence).append(' ');
+            for (int cell : snapshotGrid) {
+                out.append(HEX[(cell >> 20) & 0xf]).append(HEX[(cell >> 16) & 0xf])
+                        .append(HEX[(cell >> 12) & 0xf]).append(HEX[(cell >> 8) & 0xf])
+                        .append(HEX[(cell >> 4) & 0xf]).append(HEX[cell & 0xf]);
+            }
+        }
+        return out.toString();
+    }
+
+    private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     /** Mean luma over an inclusive cell block, or -1 if it does not fit. */
     private static int blockLuma(Image.Plane plane, ByteBuffer buffer,
@@ -709,6 +764,11 @@ public final class CaptureService extends Service {
         switch (field[0]) {
             case "GET":
                 return "OK " + currentSnapshot();
+            case "GRID":
+                // The full sensor, 0xRRGGBB per cell, row-major, as hex. One
+                // line, no allocation on the capture thread -- the string is
+                // built here, on the control thread, only when asked for.
+                return currentGrid();
             case "CAL":
                 if (field.length != 3) {
                     return "ERROR cal-usage";
