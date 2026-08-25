@@ -814,6 +814,27 @@ The other two live seams are smaller and both real:
   monitor observation taken inside `MONITOR_ANIM_DOWN` of a monitor press is
   not an observation of anything.
 
+  **Fixed 2026-08-25**, and the gate is measured rather than assumed. The
+  retained cue traces already contained the answer: across nights 36-38, after
+  a lowering press the helper still reported `luma >= CUE_CAMS_UP_LUMA` up to
+  **+202 ms** and never later, so `light_down_at` now waits
+  `LAST_MONITOR_PRESS_MS + MONITOR_ANIM_DOWN_MS` before it samples -- about
+  165 ms of margin over the worst observed case. It was never going to be free:
+  the read slips by the anchor press's own lateness, 110-180 ms, which the
+  plan's 416 ms of slack before the next instruction absorbs.
+
+  Two things had to move with it. `READ_CAPTURE_DELAY_MS` is a position in the
+  vent-light ramp -- the only control over where the classifier's frame lands,
+  and moving it is what produced the `inside` and `unknown` misreads -- so the
+  capture is now placed from when the light actually went down rather than from
+  the plan's offset. It was not: with the correction pushing the light 467 ms
+  late, the capture had been firing *before the light was down*. And
+  `light_down_at`'s own `offset`/`label` came back clobbered from `press_at`,
+  because the runner's functions share one scope, so the vent light's log line
+  read `monitor-verify (contact 0 down)`. `test-plan-interpreter.sh` covers all
+  three: the gate, a genuine desync still being corrected, and the first read of
+  a run not waiting for a flip that never happened.
+
 Survival does not separate the two groups in this sample and should not be
 claimed to: among runs alive 20 s or longer the median is 30.5 s desynced and
 30.2 s held. What separates them is what the run was still capable of -- an

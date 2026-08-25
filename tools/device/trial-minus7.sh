@@ -1107,12 +1107,21 @@ wait_until() {
 # The time of the last press, so a following action can be scheduled from
 # when the game actually received it rather than from where the table put it.
 LAST_PRESS_MS=0
+# The last press that started a monitor flip, tracked apart from LAST_PRESS_MS
+# because what it gates is the flip's animation and not the press before the
+# read. A large negative start means "no flip is running", so the first cycle
+# does not wait for one.
+LAST_MONITOR_PRESS_MS=-100000
+# When the vent light actually went down, which the plan's offset stops being
+# once anything above moves it.
+LIGHT_DOWN_MS=0
 
 press_at() {
   offset=$1; x=$2; y=$3; label=$4
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   LAST_PRESS_MS=$actual
+  case "$label" in monitor*) LAST_MONITOR_PRESS_MS=$actual ;; esac
   printf '%6d ms  %s\n' "$actual" "$label"
   hid_mark "$actual"
   if [ "$PRESS_MODE" = "tap" ]; then
@@ -1163,8 +1172,11 @@ hold_at() {
 # between them rather than near either.
 CUE_CAMS_UP_LUMA=180
 
+# ld_ prefixes because this calls press_at, and the runner's functions share one
+# global scope: plain `offset` and `label` came back clobbered, so the vent
+# light's own log line was printed as "monitor-verify (contact 0 down)".
 light_down_at() {
-  offset=$1; label=$2
+  ld_offset=$1; ld_label=$2
   # Verify the anchor's monitor press actually landed, before spending the vent
   # light on a frame that would be the camera feed.
   #
@@ -1174,6 +1186,22 @@ light_down_at() {
   # same question in 42 ms, which is affordable here, and a correction now costs
   # the flip instead of the cycle.
   if [ "$CUE_PORT" != "-" ]; then
+    # Never sample the monitor inside its own flip.
+    #
+    # The plan reads at exactly MONITOR_ANIM_DOWN from the cycle base while the
+    # anchor's press lands 110-180 ms into the cycle, so without this the
+    # sample always falls inside the animation it is checking. Night 38 sampled
+    # 214 ms in, believed the camera feed still on screen, and "corrected" a
+    # monitor that was already coming down -- and that press was dropped by the
+    # same flip, so the run spent its remaining 58 s inverted. The corrector
+    # caused the desync it was looking for.
+    #
+    # The gate is measured, not assumed. Across nights 36-38 the cue helper
+    # still reported luma >= CUE_CAMS_UP_LUMA up to 202 ms after a lowering
+    # press and never later, so one MONITOR_ANIM_DOWN leaves about 165 ms of
+    # margin. It costs the read the press's own lateness, which the plan's
+    # 416 ms of slack before the next instruction absorbs.
+    wait_until $((LAST_MONITOR_PRESS_MS + MONITOR_ANIM_DOWN_MS))
     cue_luma=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
     if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
       actual=$(( $(date +%s%3N) - T0 ))
@@ -1181,12 +1209,14 @@ light_down_at() {
         "$actual" "$cue_luma"
       hid_mark "$actual"
       press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-verify
-      offset=$((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
+      ld_offset=$((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
     fi
   fi
-  wait_until "$offset"
+  wait_until "$ld_offset"
   actual=$(( $(date +%s%3N) - T0 ))
-  printf '%6d ms  %s (contact 0 down)\n' "$actual" "$label"
+  # The capture is placed from here, not from the plan's offset: see plan_step.
+  LIGHT_DOWN_MS=$actual
+  printf '%6d ms  %s (contact 0 down)\n' "$actual" "$ld_label"
   hid_mark "$actual"
   hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
 }
@@ -1539,6 +1569,9 @@ hall_reset_and_raise_at() {
   # Wall-timed for the same reason as pulsed_cam_at.
   hid_down "$HALL_X" "$HALL_Y"
   wait_until $((offset + 10))
+  # This is a monitor press too, and it starts a flip like any other, so a read
+  # after it must wait the animation out. See light_down_at.
+  LAST_MONITOR_PRESS_MS=$((offset + 10))
   hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
   # The monitor gets the plan's full contact; the hall light keeps it plus the
   # lead. wait_until forks `date` to poll and can return a little late, and a
@@ -1607,8 +1640,15 @@ plan_step() {
         exit 47
       }
       light_down_at "$ps_when" left-vent-light
+      # From when the light actually went down, not from where the plan put it.
+      # READ_CAPTURE_DELAY_MS is a position in the vent-light ramp -- the only
+      # control over where the classifier's frame lands, and moving it is what
+      # produced the `inside` and `unknown` misreads -- so it has to follow the
+      # light. Both the flip gate above and the in-cycle correction can move it,
+      # and the correction moves it far enough that this used to capture before
+      # the light was even down.
       classify_left_and_queue_mask_at \
-        $((ps_when + READ_CAPTURE_DELAY_MS)) "$ps_b" left-view
+        $((LIGHT_DOWN_MS + READ_CAPTURE_DELAY_MS)) "$ps_b" left-view
       ;;
     *)
       echo "the plan names an instruction this runner cannot execute: $ps_kind" >&2

@@ -78,7 +78,15 @@ CAM10_X=10 CAM10_Y=10 CAM11_X=11 CAM11_Y=11 HALL_X=99 HALL_Y=99
 
 press_at()   { printf '%s tap %s\n' "$1" "$4"; }
 hold_at()    { printf '%s hold %s %s\n' "$1" "$5" "$4"; }
-light_down_at()                  { printf '%s light\n' "$1"; }
+# The real one records when the light actually went down, and plan_step places
+# the capture from that rather than from the plan's offset. LIGHT_DOWN_SLIP
+# stands in for the flip gate and the in-cycle correction, both of which move
+# the light off its scheduled offset.
+LIGHT_DOWN_SLIP=0
+light_down_at() {
+  LIGHT_DOWN_MS=$(($1 + LIGHT_DOWN_SLIP))
+  printf '%s light\n' "$LIGHT_DOWN_MS"
+}
 classify_left_and_queue_mask_at() { printf '%s classify gap=%s\n' "$1" "$2"; }
 pulsed_sweep_at()                 { printf '%s sweep %s %s %s\n' "$1" "$2" "$3" "$4"; }
 hall_reset_and_raise_at()         { printf '%s hallraise %s\n' "$1" "$2"; }
@@ -273,4 +281,109 @@ if bash -c "source '$TMP/harness.sh' '$TMP/plan.txt'; source '$TMP/interp.sh'; \
   fail 'a macro ran with a nonzero epoch slip'
 fi
 
-echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan)'
+# The capture is placed from the light, not from the plan. READ_CAPTURE_DELAY_MS
+# is where in the vent-light ramp the classifier's frame lands, and moving it is
+# what produced the `inside` and `unknown` misreads, so anything that moves the
+# light has to carry the capture with it. With the correction moving the light
+# by 400 ms this used to capture before the light was down.
+got="$(run 'LIGHT_DOWN_SLIP=400; run_cycle clear 7000 0 2')"
+want="$(printf '%s\n' '7000 tap monitor' '7767 light' "$((7767 + READ_CAPTURE_DELAY_MS)) classify gap=40")"
+[ "$got" = "$want" ] || fail "a moved light did not carry its capture:\n$got\n--- want ---\n$want"
+
+
+# --- the monitor-flip gate on the cue read -----------------------------------
+#
+# light_down_at samples the cue helper to check the anchor's monitor press
+# landed. The sample is only worth anything once the flip it is checking has
+# finished: night 38 sampled 214 ms into a 367 ms animation, believed the
+# camera feed still on screen, pressed a monitor that was already coming down,
+# and lost that press to the same flip -- the corrector caused the desync.
+MONITOR_ANIM_DOWN_MS="$(runner_const MONITOR_ANIM_DOWN_MS)"
+CUE_CAMS_UP_LUMA="$(runner_const CUE_CAMS_UP_LUMA)"
+
+{
+  echo 'set -eu'
+  for fn in press_at light_down_at; do
+    body="$(extract "$fn")"
+    [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
+    printf '%s\n' "$body"
+  done
+} > "$TMP/light.sh"
+
+{
+  for c in FUSION_POLL_MS TAP_CONTACT_MS MONITOR_ANIM_DOWN_MS CUE_CAMS_UP_LUMA; do
+    eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
+  done
+} > "$TMP/light-harness.sh"
+cat >> "$TMP/light-harness.sh" <<'HARNESS'
+T0=0
+NOW=0
+# A clock the test drives. wait_until only ever moves it forward, which is the
+# one property of the real one this depends on.
+date() { echo "$NOW"; }
+wait_until() { [ "$1" -le "$NOW" ] || NOW=$1; }
+hid_mark() { :; }
+hid_down() { printf '%s light-down\n' "$NOW"; }
+input() { :; }
+PRESS_MODE=tap
+HID_MODE=0
+CUE_PORT=1
+CAM_LIGHT_X=1 CAM_LIGHT_Y=1 MONITOR_X=2 MONITOR_Y=2
+LAST_PRESS_MS=0
+LAST_MONITOR_PRESS_MS=-100000
+LIGHT_DOWN_MS=0
+# 1 = the phone as measured below; 0 = the cams really are still up, because
+# the press was lost.
+CUE_HONEST=1
+# The phone, as measured: while the flip is still running the helper reports
+# the camera feed that is still on screen, and only afterwards the office.
+# Across nights 36-38 the last such sample after a lowering press was +202 ms.
+cue_snapshot() {
+  printf '%s\n' "$NOW" >> "$CUE_LOG"
+  if [ "$CUE_HONEST" -eq 1 ] && [ "$NOW" -ge $((LAST_MONITOR_PRESS_MS + 202)) ]; then
+    printf 'OK luma=20 cam5=30 ageUs=1500\n'
+  else
+    printf 'OK luma=228 cam5=30 ageUs=1500\n'
+  fi
+}
+HARNESS
+
+light_run() {
+  CUE_LOG="$TMP/cue.log"
+  : > "$CUE_LOG"
+  # shellcheck disable=SC1090
+  CUE_LOG="$CUE_LOG" bash -c \
+    "source '$TMP/light-harness.sh'; CUE_LOG='$CUE_LOG'; source '$TMP/light.sh'; $1"
+}
+
+# The anchor's press lands 132 ms late, as night 38's did, and the plan reads at
+# +367 from the base. The sample must wait the flip out before it is believed,
+# and then there is nothing to correct.
+got="$(light_run 'NOW=12132; press_at 12000 2 2 monitor; light_down_at 12367 vent')"
+sampled="$(cat "$TMP/cue.log")"
+[ "$sampled" -ge $((12132 + MONITOR_ANIM_DOWN_MS)) ] ||
+  fail "the cue was sampled at $sampled ms, inside the flip that started at 12132 ms"
+case "$got" in
+  *monitor-verify*) fail "a flip still rendering was corrected as a desync:\n$got" ;;
+esac
+
+# A real desync -- the cams are still up after the flip would have finished --
+# is still corrected, and the light waits out the corrective flip.
+got="$(light_run 'CUE_HONEST=0; NOW=12132; press_at 12000 2 2 monitor
+                  light_down_at 12367 vent')"
+case "$got" in
+  *monitor-verify*) ;;
+  *) fail "a genuine desync was not corrected:\n$got" ;;
+esac
+verify_at="$(printf '%s\n' "$got" | awk '/monitor-verify/{print $1}')"
+light_at="$(printf '%s\n' "$got" | awk '/light-down/{print $1}')"
+[ "$light_at" -ge $((verify_at + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS)) ] ||
+  fail "the vent light went down $((light_at - verify_at)) ms after the corrective press, inside its flip"
+
+# With no monitor press yet -- the first read of a run -- there is no flip to
+# wait for, and the read must not be held back by one.
+got="$(light_run 'NOW=300; light_down_at 367 vent')"
+[ "$(printf '%s\n' "$got" | awk '/light-down/{print $1}')" = 367 ] ||
+  fail "the first read waited for a flip that never happened:\n$got"
+
+echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan; the cue read waits out the monitor flip)'
