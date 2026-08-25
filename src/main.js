@@ -37,6 +37,7 @@ class App {
     this.bindUI();
     this.bindFullscreen();
     bindInputs(this.stage, (a) => this.onPress(a), (a) => this.onRelease(a));
+    this.flushTraces();
     requestAnimationFrame((t) => this.frame(t));
   }
 
@@ -254,6 +255,9 @@ class App {
     this.duel.reset();
     this.duelWins = 0;
     this.passed = false;
+    this.traceEvents = [];
+    this.tracePosted = false;
+    this.startedAt = new Date().toISOString();
     this.lastBoxTick = -1;
     this.ambOn = false;
     this.running = true;
@@ -280,6 +284,7 @@ class App {
     if (this.passed) return;
     this.passed = true;
     this.running = false;
+    this.postTrace();
     this.syncFullscreen();
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);
@@ -303,6 +308,7 @@ class App {
   stop() {
     if (this.mode?.id && this.coach) recordCombo(this.mode.id, this.coach.bestCombo);
     this.running = false;
+    this.postTrace();
     this.syncFullscreen();
     this.ui.enableCalibration(false);
     this.wake?.release?.().catch(() => {});
@@ -312,6 +318,7 @@ class App {
 
   onPress(act) {
     if (!this.running || !this.sim || this.ui.calibrating) return;
+    this.logEvent('press', act);
     // Confirm the tap landed before anything else: on glass you cannot feel a
     // button, and a missed press you did not notice is the worst failure mode.
     this.feedbackFor(act);
@@ -332,7 +339,83 @@ class App {
     if (this.mode.drill === 'phaseB') this.duelInput(act);
     this.sim.press(act);
   }
-  onRelease(act) { if (this.running && this.sim && !this.ui.calibrating) this.sim.release(act); }
+  onRelease(act) {
+    if (!this.running || !this.sim || this.ui.calibrating) return;
+    this.logEvent('release', act);
+    this.sim.release(act);
+  }
+
+  // The raw input stream, alongside the coach's graded rows: hold lengths and
+  // inter-press spacing live here, and neither is recoverable from grades.
+  logEvent(kind, act) {
+    if (!this.coach?.enabled || !this.traceEvents) return;
+    this.traceEvents.push({ t: this.sim.t, now: performance.now(), kind, act });
+  }
+
+  // One trace per coached run, sent when the run ends however it ends. The
+  // bands a HumanActuator needs are measurements, so the trace carries its
+  // conditions: speed and cue settings, the device, and whether an automated
+  // browser drove the inputs -- a bot's perfectly timed presses must be
+  // excludable from the human census (they post dry so test runs also never
+  // land in captures/).
+  postTrace() {
+    if (this.tracePosted || !this.coach?.enabled || !this.coach.trace.length) return;
+    this.tracePosted = true;
+    const sim = this.sim, coach = this.coach;
+    const body = {
+      v: 1,
+      lesson: this.modeKey,
+      startedAt: this.startedAt,
+      speed: this.settings.speed || 1,
+      settings: { coach: this.settings.coach, metronome: this.settings.metronome,
+                  sound: this.settings.sound, haptics: this.settings.haptics },
+      tol: { good: coach.tolGood, ok: coach.tolOk },
+      env: { userAgent: navigator.userAgent, webdriver: !!navigator.webdriver,
+             touch: 'ontouchstart' in window, w: innerWidth, h: innerHeight },
+      outcome: { reason: sim.death ? 'death' : sim.won ? 'won' : 'stopped',
+                 survivedSec: sim.frame / C.FPS, detail: sim.death?.detail || null },
+      steps: coach.trace,
+      holds: coach.holds,
+      events: this.traceEvents,
+    };
+    if (body.env.webdriver) body.dry = true;
+    this.sendTrace(body).catch(() => this.queueTrace(body));
+  }
+
+  async sendTrace(body) {
+    const res = await fetch('/save-trace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  }
+
+  // A trace that fails to save must not vanish silently -- a practice session
+  // believed collected and actually lost is the graded-nothing pipeline again.
+  // Park it and retry on the next launch, when the dev server may be back.
+  queueTrace(body) {
+    try {
+      const q = JSON.parse(localStorage.getItem('m7.pendingTraces') || '[]');
+      q.push(body);
+      localStorage.setItem('m7.pendingTraces', JSON.stringify(q.slice(-8)));
+      console.warn('save-trace failed; trace queued for the next launch');
+    } catch (e) {
+      console.warn(`save-trace failed and the trace could not be queued: ${e.message}`);
+    }
+  }
+
+  async flushTraces() {
+    let q;
+    try { q = JSON.parse(localStorage.getItem('m7.pendingTraces') || '[]'); } catch { return; }
+    if (!q.length) return;
+    const left = [];
+    for (const body of q) {
+      try { await this.sendTrace(body); } catch { left.push(body); }
+    }
+    try { localStorage.setItem('m7.pendingTraces', JSON.stringify(left)); } catch { /* full */ }
+    if (left.length < q.length) console.log(`flushed ${q.length - left.length} queued trace(s)`);
+  }
 
   feedbackFor(act) {
     if (act.startsWith('cam:')) this.audio.tap('cam', +act.slice(4));
@@ -448,6 +531,7 @@ class App {
 
   finish() {
     this.running = false;
+    this.postTrace();
     this.syncFullscreen();
     this.wake?.release?.().catch(() => {});
     this.audio.ambience(false);

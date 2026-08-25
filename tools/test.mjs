@@ -134,6 +134,11 @@ const ENGINE = [
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
   ['cue trace loop', ['device/test-cue-trace-loop.sh']],
+  // The trainer's per-step lateness census -- the raw material for a future
+  // HumanActuator's measured bands (plans/04). Checks the Coach's trace rows
+  // against known lateness and the /save-trace endpoint against a temp dir,
+  // no browser involved.
+  ['trainer trace', ['tracetest.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];

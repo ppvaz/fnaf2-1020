@@ -12,7 +12,13 @@ export class Coach {
     this.tolOk = opts.tolOk ?? C.TOL_OK;
     this.cycleStart = null;
     this.idx = 0;
-    this.results = [];       // {stepId, delta, grade, t}
+    this.results = [];       // {stepId, delta, grade, t} — rolling, for the UI
+    // The full run, uncapped: `results` is trimmed to 400 for the lane, which
+    // silently drops the early cycles of a long run — exactly the rows a
+    // lateness census needs. Rows carry the cycle index so per-step lateness
+    // can be correlated within a pass (plans/04: human slack clusters).
+    this.trace = [];         // {cycle, stepId, action, at, delta, grade, t}
+    this.holds = [];         // {cycle, stepId, heldSec, targetSec}
     this.pendingFlash = null; // camflash step awaiting its light tap
     this.suspended = false;   // BB attacks run off-script
     this.onCycle = opts.onCycle || null;
@@ -87,6 +93,8 @@ export class Coach {
   }
 
   push(step, delta, grade) {
+    this.trace.push({ cycle: this.cycles, stepId: step.id, action: step.action,
+                      at: step.at, delta, grade, t: this.sim.t });
     this.results.push({ stepId: step.id, label: step.label, delta, grade, t: this.sim.t });
     if (this.results.length > 400) this.results.shift();
     this.last = this.results[this.results.length - 1];
@@ -118,6 +126,7 @@ export class Coach {
     if (w) {
       const held = this.windFrames / C.FPS;
       this.lastHeld = held;
+      this.holds.push({ cycle: this.cycles, stepId: w.id, heldSec: held, targetSec: w.hold });
       // 80% of the window is enough: you have to let go to drop the cams.
       if (held < w.hold * 0.8) {
         this.push(w, null, held < w.hold * 0.35 ? 'no-wind' : 'wind-short');

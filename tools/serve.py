@@ -7,11 +7,15 @@ the new DEFAULT_MAP. Rebuilds dist/ afterwards so a reload picks it up.
 
     python3 tools/serve.py [port]
 """
-import json, re, subprocess, sys, pathlib
+import datetime, json, os, re, subprocess, sys, pathlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 CONFIG = ROOT / 'src' / 'config.js'
+# Where POST /save-trace lands. captures/ is ignored, like every other run
+# artifact; the env override exists so tests can exercise the real write
+# without littering the repository.
+TRACES = pathlib.Path(os.environ.get('FNAF_TRACE_DIR', ROOT / 'captures' / 'traces'))
 MAP_BLOCK = re.compile(r"export const DEFAULT_MAP = \{.*?\n\};\n", re.S)
 WID_BLOCK = re.compile(r"export const DEFAULT_WIDGETS = \{.*?\n\};\n", re.S)
 VALID = set(range(1, 13))
@@ -70,6 +74,51 @@ def write_config(m, w):
     CONFIG.write_text(src)
 
 
+def validate_trace(data):
+    if data.get('v') != 1:
+        raise ValueError(f"unknown trace version {data.get('v')!r}")
+    lesson = str(data.get('lesson') or '')
+    if not re.fullmatch(r'[a-zA-Z0-9_-]{1,40}', lesson):
+        raise ValueError(f'bad lesson id {lesson!r}')
+    steps = data.get('steps')
+    if not isinstance(steps, list) or not steps:
+        raise ValueError('steps must be a non-empty list')
+    for s in steps:
+        if not isinstance(s, dict) or 'stepId' not in s or 'grade' not in s:
+            raise ValueError('every step row needs stepId and grade')
+    return lesson
+
+
+def repo_commit():
+    try:
+        head = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'], cwd=ROOT,
+                              capture_output=True, text=True, check=True).stdout.strip()
+        dirty = subprocess.run(['git', 'status', '--porcelain'], cwd=ROOT,
+                               capture_output=True, text=True, check=True).stdout.strip()
+        return head + ('+' if dirty else '')
+    except Exception:
+        return 'unknown'
+
+
+def write_trace(data, lesson):
+    # Provenance is stamped at save time, not left to the client: the lateness
+    # band that needed a retroactive parasite-era caveat was measured under
+    # conditions nobody recorded. Never again.
+    data['savedAt'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    data['commit'] = repo_commit()
+    TRACES.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d-%H%M%S')
+    for n in range(100):
+        path = TRACES / f"{stamp}-{lesson}{f'-{n}' if n else ''}.json"
+        try:
+            with open(path, 'x') as f:
+                json.dump(data, f)
+            return path
+        except FileExistsError:
+            continue
+    raise RuntimeError('could not find a free trace filename')
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(ROOT), **kw)
@@ -84,6 +133,8 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_POST(self):
+        if self.path == '/save-trace':
+            return self.save_trace()
         if self.path != '/save-layout':
             return self._json(404, {'error': 'not found'})
         try:
@@ -105,12 +156,32 @@ class Handler(SimpleHTTPRequestHandler):
             print(f'save-layout failed: {e}')
             self._json(400, {'error': str(e)})
 
+    def save_trace(self):
+        try:
+            n = int(self.headers.get('Content-Length', 0))
+            if n > 4_000_000:
+                raise ValueError(f'trace too large ({n} bytes)')
+            data = json.loads(self.rfile.read(n) or b'{}')
+            lesson = validate_trace(data)
+            if data.get('dry'):
+                # Validation without a write: automated browser runs post dry
+                # so a bot's perfectly timed presses never enter the census.
+                print(f'save-trace: dry run ok ({lesson})')
+                return self._json(200, {'ok': True, 'dry': True})
+            path = write_trace(data, lesson)
+            print(f'saved trace -> {path.relative_to(ROOT) if path.is_relative_to(ROOT) else path}')
+            self._json(200, {'ok': True, 'file': path.name})
+        except Exception as e:
+            print(f'save-trace failed: {e}')
+            self._json(400, {'error': str(e)})
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store')
         super().end_headers()
 
     def log_message(self, fmt, *args):
-        if 'save-layout' in (args[0] if args else ''):
+        first = args[0] if args else ''
+        if 'save-layout' in first or 'save-trace' in first:
             super().log_message(fmt, *args)
 
 
