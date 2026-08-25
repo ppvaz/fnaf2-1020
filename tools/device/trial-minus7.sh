@@ -621,6 +621,9 @@ cleanup() {
     "$HERE/query-cue-helper.sh" log stop "$OUT" 2>&1 | sed 's/^/  audio: /' || true
   fi
   if [ "${CUE_TRACE_REMOTE:-}" != "" ]; then
+    # Stop the writer first: the loop only reads the sentinel, so this rm
+    # cannot be resurrected, and the pull then copies a quiescent file.
+    adb shell "rm -f ${CUE_TRACE_SENTINEL:-}" >/dev/null 2>&1 || true
     adb pull "$CUE_TRACE_REMOTE" "$CAPTURE_DIR/$OUT-cue.txt" >/dev/null 2>&1 &&
       echo "cue trace: $CAPTURE_DIR/$OUT-cue.txt" || true
     adb shell "rm -f $CUE_TRACE_REMOTE" >/dev/null 2>&1 || true
@@ -785,10 +788,23 @@ if [ "$CUE_HELPER" -eq 1 ]; then
   # whole run and keep it. One adb shell for the run, a loopback exchange per
   # sample, about 14 Hz measured -- it never touches SurfaceFlinger, so unlike
   # the old screencap watchdog it cannot compete with the classifier.
+  #
+  # The sentinel must be a file the loop never writes. The first form used one
+  # file as both kill switch and output, so cleanup's rm was resurrected by the
+  # loop's own appends unless it landed in the sliver between the last append
+  # and the next -e test: nine orphaned loops accumulated, each spamming the
+  # helper with a stale token at ~14 Hz forever. Seven at once put 1-3% of all
+  # legitimate cue reads into a ~1 s TCP SYN-retransmit stall (accept backlog
+  # overflow, confirmed against /proc/net/netstat counters); on a clean socket
+  # the same read never exceeded 84 ms in 240 samples. The sweep below reaps
+  # anything a killed host process left behind; no two runs share the phone.
+  adb shell 'rm -f /data/local/tmp/fnaf2-cue-*.run /data/local/tmp/fnaf2-cue-*.txt' >/dev/null 2>&1 || true
+  CUE_TRACE_SENTINEL="/data/local/tmp/fnaf2-cue-$$.run"
   CUE_TRACE_REMOTE="/data/local/tmp/fnaf2-cue-$$.txt"
   adb shell "nohup sh -c '
+    : > $CUE_TRACE_SENTINEL
     : > $CUE_TRACE_REMOTE
-    while [ -e $CUE_TRACE_REMOTE ]; do
+    while [ -e $CUE_TRACE_SENTINEL ]; do
       printf \"%s \" \"\$(date +%s%3N)\" >> $CUE_TRACE_REMOTE
       printf \"GET $CUE_TOKEN\n\" | toybox nc -w 1 127.0.0.1 $CUE_PORT >> $CUE_TRACE_REMOTE 2>/dev/null
       printf \"\n\" >> $CUE_TRACE_REMOTE

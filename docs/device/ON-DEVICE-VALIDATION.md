@@ -1136,6 +1136,67 @@ gated on the flashlight budget. Only `lit?` drains `battery life` (g284); vent
 lights are free, corrected in `ANDROID-SOURCE-STATUS.md` on 2026-08-20 and
 missed here.
 
+## 2026-08-25: pricing the stream as the classifier's capture, and the parasite it flushed out
+
+The question was whether a "capture stream" method can replace the last
+screencap consumer -- the BB left-opening read at 225 ms. Host-side streamers
+(scrcpy, minicap, adbnativeblitz) are the wrong endpoint: their advertised
+latency is to the *host's* memory, and the host round trip is already measured
+as disqualifying above (692-785 ms per classification, ~500 ms schedule slip).
+The device-local stream already exists -- the cue helper's 60 fps projection --
+and the `GRID` verb already carries the whole 20x9 frame. What it did not have
+was a price. `query-cue-helper.sh latency` now times GET, GRID, and the
+forked-shell baseline in one device loop:
+
+| read, device-local, n=120 | p50 | p95 | max |
+|---|---:|---:|---:|
+| GET (pixel + cam5 block) | 52.9 ms | 70.2 ms | 83.8 ms |
+| GRID (all 180 cells) | 52.7 ms | 68.3 ms | 73.6 ms |
+| shell baseline (no socket) | 24.3 ms | 29.1 ms | 37.9 ms |
+
+**The full sensor frame costs the same as the single pixel.** The socket
+exchange and the shell's forks dominate; the 1080-character payload is noise.
+So if the BB classes separate at 20x9 -- unknown, and `screencap`-frame models
+cannot answer it because the VirtualDisplay scaler is a different sensor --
+the BB read drops from 225 ms to the ~59 ms path with zero helper changes.
+The rung ladder in `ONE-PIXEL-VISION.md` §8 applies from rung D upward;
+calibration frames must come through `GRID` on the live loop.
+
+### The 1 s read stall, and the orphaned loops that caused it
+
+The first pricing runs showed something the repository had never measured:
+**1-3% of cue-helper reads stalled ~1060 ms**, in both GET and GRID, and
+spacing the reads 100 ms apart did not remove it (3 of 120 spaced reads
+stalled). The signature -- a normal read plus almost exactly 1000 ms -- is a
+TCP SYN retransmission, and `/proc/net/netstat` confirmed it: one measurement
+run moved `ListenOverflows`/`ListenDrops` by +33 and `TCPSynRetrans` by +7.
+
+The load overflowing the helper's backlog-1 accept queue was ours. `ss` caught
+live `SYN-SENT` sockets and unread requests while nothing legitimate was
+running, and `ps` found **seven orphaned cue-trace loops from previous runs**
+still polling `GET` with stale tokens at ~14 Hz each -- roughly 100 stale
+requests/second, answered `ERROR unauthorized` into `/data/local/tmp` files up
+to 13.8 MB. The runner's cleanup does `rm -f` the trace file, but the loop
+used **the same file as kill switch and output**, so the rm was resurrected by
+the loop's own appends unless it landed in the sliver between the last append
+and the next `-e` test. Nine sentinel files had accumulated; every night since
+the trace feature landed ran under some number of these parasites, so any
+in-run cue read -- the flip gate, the desync correction -- carried a 1-3%
+chance of a ~1 s stall, and part of the documented 30-900 ms capture-pipeline
+lateness may be exactly this.
+
+The control closes it: with the loops killed and the files removed, 240 reads
+moved the netstat counters by **zero** and the worst read was 83.8 ms. The
+loop now gates on a `.run` sentinel it never writes, cleanup removes the
+sentinel before pulling the output, the runner sweeps stale
+`fnaf2-cue-*.{run,txt}` at spawn, and `test-cue-trace-loop.sh` (in
+`test.mjs --engine`) extracts the shipped loop and asserts the rm sticks.
+
+Two lessons worth their space. A background loop's kill switch must be a file
+the loop never writes. And a read that is scheduled against a slack budget has
+a *distribution*, not a cost -- the 59 ms p95 was true and useless the moment
+a 1% tail was thirty times the slack; price the tail, not the median.
+
 ## Next steps
 
 1. Preserve the validated **BB left-opening** model boundary while recovering

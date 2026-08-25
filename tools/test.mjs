@@ -130,6 +130,10 @@ const ENGINE = [
   // device primitives stubbed, so a branch window off by one fails here
   // instead of on the phone.
   ['plan interpreter', ['device/test-plan-interpreter.sh']],
+  // The cue-trace loop's kill switch must be a file the loop never writes:
+  // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
+  // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
+  ['cue trace loop', ['device/test-cue-trace-loop.sh']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];
@@ -156,6 +160,14 @@ const REPORTS = [
   // a statement about the model.
   ['pilottest device actuator', ['pilottest.mjs', '200', '--night=6', '--vent',
     '--sync', '--device-actuator']],
+  // The shipped n6 target under the same actuator. The death mix is the
+  // forcedown parity cascade the device recovery loop exists for -- this
+  // pilot has no recovery, so read it as the price of open-loop monitor
+  // toggling at measured lateness, not as a verdict on the live runner.
+  ['hidpilot n6 target actuator', ['hidpilottest.mjs', '200', '--night=6',
+    '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
+    '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
+    '--device-actuator']],
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
