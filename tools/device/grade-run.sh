@@ -86,7 +86,14 @@ fi
 step "camera selections" python3 "$HERE/camtrace.py" --fps 60 --min-ms 50 "$VIDEO"
 step "camera light actually flashing" python3 "$HERE/sweepcheck.py" --fps 60 "$VIDEO"
 
-# 4. The box, and the office/mask/camera state intervals.
+# 4. What did this run actually contain? A dozen maximally-different frames,
+#    tiled. The one time the frames were looked at, the whole failure was
+#    obvious at a glance -- and everything needed to see it had been on disk for
+#    hours. Cheap enough to do every time, so nobody has to decide to.
+step "keyframes (what the run contained)" \
+  python3 "$HERE/keyframes.py" "$VIDEO" --count 12
+
+# 5. The box, and the office/mask/camera state intervals.
 step "music box" python3 "$HERE/windpct.py" "$VIDEO"
 step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
 
