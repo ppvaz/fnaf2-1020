@@ -697,6 +697,46 @@ classifier frame under `captures/screencheck-keep/<run>/` plus a continuous
 ~14 Hz cue trace, because he is one run in ten before 2 AM and cannot be
 requested, only caught.
 
+### What actually killed the forty runs, and a corrected cause
+
+`tools/device/death-census.py` pulls the death frame out of every recording on
+disk and tiles them. Across 33 nights with an identifiable ending:
+
+| killer | count |
+| --- | ---: |
+| Withered Foxy | 19 |
+| Puppet | 3 |
+| Golden Freddy | 2 |
+| no jumpscare (aborted on cams, or masked) | 9 |
+
+**The obvious reading of that is wrong, and the clock is what refutes it.** Foxy
+at 79% invites the documented BB->Foxy chain -- BB reaches the office, g96 takes
+every light, the hall cannot be flashed, Foxy's D runs out. But the alive times
+cluster hard: median 30 s, and **12 of 33 die between 28 and 32 s**. Balloon Boy
+cannot reach the left opening before 25 s and needs at least another five-second
+roll to be inside, so he has not taken anything yet.
+
+29-31 s is a constant this page already recorded, long before the pilot existed:
+"Three closed-loop 6th Night mask-camp trials died at 29/31/31 s to the W. Foxy
+office lunge ... the mask does not deter him, his D grows unflashed." A death
+there is Foxy killing **unflashed, from the start** -- the hall flash never
+reached him.
+
+Which is what a monitor desync does. With the cams up, the hall press at
+(1200,540) lands on the camera map, not the office. The device owner reported
+that directly before any log showed it -- "haven't seen any hall light",
+"started panning view instead of flashing" -- and the desync detector added this
+session confirmed it in-run: cams=down, cams=down, then cams=UP-DESYNCED and
+never down again.
+
+So the ordering of causes is: **desync -> no hall flash -> Foxy at ~30 s**, and
+the BB->Foxy chain is the *later* failure that only the runs which outlive the
+Foxy window ever reach. Night 34 is the one that reached it: 120 s, and its
+death frame has Foxy's face and Balloon Boy's balloon in the same shot.
+
+The 3 Puppet deaths are box starvation. The 2 Golden Freddy deaths are the risk
+being knowingly carried while he is ignored.
+
 ### The one problem that is still open
 
 Balloon Boy reaches the office. The classifier is not at fault -- offline replay
