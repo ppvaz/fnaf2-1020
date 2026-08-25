@@ -893,6 +893,58 @@ spends wind and exposure on a state the mask does not address, and the only
 thing the extra cycles produce is a longer recording of a dead night -- which is
 exactly what made nights 6-36 and 6-37 read as records.
 
+### Diagnosis: the desync is the engine's forcedown (2026-08-25)
+
+Night 6-43 closes the question the last three sessions kept reopening. The
+monitor desync is **not an input defect**. It is the sourced `drop everything`
+forcedown doing exactly what the engine dump says it does:
+
+> set every 10 s while a streak-four attacker waits at marker 122 with the cams
+> up (g718-721), on any attack start (g624), by the Puppet's arrival at 123
+> (g574) ... g262 executes it on the monitor: lowers it and zeroes `viewing`.
+> (`ANDROID-SOURCE-STATUS.md`, sourced 2026-08-20)
+
+The pilot models the monitor as a toggle of its own presses. The engine revokes
+it unilaterally. Any press-counting model must invert on every forcedown, and
+every candidate that blamed the input side is now closed:
+
+- the **cycle seam** "0 ms released" flags were the trace auditor's clock
+  (retracted below; the real gaps were 112-282 ms);
+- the **corrector** firing on flashes is real but secondary -- it worsens an
+  inversion, it does not start one;
+- the "**dropped**" monitor press that begins night 6-43's inversion at
+  26.02 s had **352 ms of clean released time**. Nothing was dropped: the raise
+  landed and the forcedown spent it one frame later.
+
+What the run's own instruments recorded, against the mechanism's predictions:
+
+| prediction | night 6-43 |
+| --- | --- |
+| ~10 s forcedown cadence while a 122 camper waits under raised cams | recoveries at **15.8, 25.9, 36.7, 43.1 s** |
+| inversion persists through open-loop recoveries (the camper persists) | `desync-scan.py`: DIVERGED 26.02 s -> 47.5 s across four recoveries |
+| agreement returns when the monitor stays down (mask held) | re-agrees at 50.17 s and 58.13 s, during the mask holds |
+| the encounter itself: occupant enters, `in danger` blocks all lights | Mangle's overlay on film at ~56 s; three `nolight` reads; lamp dark |
+| the mask resolves the encounter | office empty again on the following frames, night still running |
+
+Two consequences were fixed with it:
+
+- **The recovery now closes its loop.** After the resync press it reads the
+  cams back through the cue helper (59 ms) and presses once more if they are
+  still up, bounded at one retry. An unverified resync is the same open-loop
+  mistake at one remove, and it is why 6-43 stayed inverted through four of
+  them.
+- **Exit 49 needed a longer memory.** Night 6-43's three dark reads spanned one
+  masked encounter, were concluded to be "BB inside", and aborted a night whose
+  final frames show a live Party Room 4 feed. An encounter darkens the lamp for
+  two to three attack cycles at most; only marker 123 never relights. The
+  streak is now 5.
+
+What "solved" means here, precisely: the forcedown cannot be prevented -- it is
+the game -- so the permanent fix is a model that expects revocation. The
+checkpoint read at each cycle plus a verified recovery bounds any inversion to
+one cycle's remainder, instead of the run's remainder. The residual cost is the
+cycles an attack eats, which is the game being played, not a defect.
+
 ### The in-cycle correction fires on a flash (2026-08-25)
 
 With the seam refuted, the desync's live evidence points at the corrector again

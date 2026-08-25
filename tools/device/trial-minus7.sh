@@ -1534,10 +1534,19 @@ READ_CAPTURE_DELAY_MS=200
 # inside, so "the lamp is dark" is a *consequence* of him being there as well as
 # of the press being lost.
 BB_EARLIEST_INSIDE_MS=25000
-# How many consecutive unlit reads mean the light is never coming back rather
-# than one press being dropped. A dropped press recovers on the retry; marker
-# 123 never does.
-NOLIGHT_STREAK_MAX=3
+# How many consecutive unlit reads mean the light is never coming back.
+#
+# Three ways the lamp goes dark, and only one of them ends the night: a dropped
+# light press (recovers on the next read); `in danger` latched by an office
+# encounter (g443-447 -- g75/g76/g77 block every light until the mask resolves
+# it, seconds); and Balloon Boy at 123 (permanent, g96/g301/g303). Night 6-43
+# hit the second: Mangle's overlay slid through the office, the fail-closed
+# mask cleared her exactly as the strategy says, and three dark reads --
+# spanning one encounter -- were read as "BB inside" and aborted a night whose
+# final frames show a live camera feed. An encounter's darkness spans two to
+# three 10 s attack cycles at most, so the streak that means marker 123 has to
+# be longer than any encounter can account for.
+NOLIGHT_STREAK_MAX=5
 
 # Which physical control the plan means. A name the runner cannot press is a
 # plan it must not half-execute.
@@ -1981,6 +1990,33 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         exit 48
       }
       press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-resync
+      # Verify the press worked before resuming the schedule on top of it.
+      #
+      # The cause of the inversion is the engine, not the input: `drop
+      # everything` is set every 10 s while an attacker waits at marker 122
+      # with the cams up (g718-721), on any attack start (g624) and on the
+      # Puppet's arrival (g574), and g262 then lowers the monitor without a
+      # press. Night 6-43 shows the cadence directly -- recoveries at 15.8 s,
+      # 25.9 s, 36.7 s and 43.1 s -- and its "dropped" monitor press at
+      # 26.02 s had 352 ms of clean released time: nothing was dropped, the
+      # raise was spent by the forcedown one frame later.
+      #
+      # A recovery that assumes its own press landed is therefore the same
+      # open-loop mistake at one remove, and it is why 6-43 stayed inverted
+      # through four recoveries. Read the cams back (59 ms) and press again
+      # once if they are still up; past that, let the next cycle's checkpoint
+      # catch it rather than fighting the engine over the toggle.
+      if [ "$CUE_PORT" != "-" ]; then
+        wait_until $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
+        rs_luma=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
+        if [ -n "$rs_luma" ] && [ "$rs_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
+          actual=$(( $(date +%s%3N) - T0 ))
+          printf '%6d ms  cams still up after the resync (luma %s); pressing once more\n' \
+            "$actual" "$rs_luma"
+          hid_mark "$actual"
+          press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-resync-2
+        fi
+      fi
       # 2, not 3. Dropping the Golden Freddy flick removed the clear cycle's mask
       # instruction, so instruction 3 is the monitor RAISE. Skipping it made this
       # "recovery" lower the cams and never raise them again -- it inverted the
@@ -2012,8 +2048,10 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         # answers at all (g75/g76/g77); or he really is at 123 and g301/g303
         # have stopped the vent lights answering. So fail closed like any other
         # unreadable frame -- the mask is the right answer to an opening that
-        # might have him in it -- and let the *streak* decide, because a dropped
-        # press recovers on the next cycle and marker 123 never does.
+        # might have him in it, and it is also the thing that resolves an
+        # `in danger` encounter -- and let the *streak* decide: a dropped press
+        # recovers next cycle, an encounter clears under the mask within two to
+        # three cycles (night 6-43, Mangle), and only marker 123 never relights.
         branch=attack
         nolights=$((nolights + 1))
         nolight_streak=$((nolight_streak + 1))

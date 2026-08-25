@@ -145,6 +145,33 @@ check(plan.clear[2].split(' ').slice(1).join(' ') === 'tap monitor 100',
 check(plan.attack[2].split(' ')[1] === 'tap',
   `the attack branch resumes at instruction 3, but it is "${plan.attack[2]}"`);
 
+// The desync recovery must close its loop, because the cause is the engine.
+//
+// `drop everything` is set every 10 s while an attacker waits at marker 122
+// with the cams up (g718-721), on any attack start (g624) and on the Puppet's
+// arrival (g574); g262 then lowers the monitor without a press. A recovery
+// that assumes its own press landed is the same open-loop mistake at one
+// remove -- night 6-43 stayed inverted through four recoveries at exactly the
+// 10 s cadence. So after the resync press the runner reads the cams back
+// through the cue helper and presses once more if they are still up, bounded
+// at one retry so it never fights the engine over the toggle.
+const resyncCase = src.match(/monitor-resync\b[\s\S]*?run_macro clear/);
+check(resyncCase, 'the UP-DESYNCED recovery is gone');
+check(/CUE_CAMS_UP_LUMA/.test(resyncCase[0]),
+  'the resync press is not verified: a forcedown can spend it and the ' +
+  'recovery resumes the schedule inverted');
+check(/monitor-resync-2/.test(resyncCase[0]),
+  'a resync that reads the cams still up must press once more');
+check((resyncCase[0].match(/monitor-resync-2/g) || []).length === 1,
+  'the resync retry must be bounded at one press');
+
+// An office encounter darkens the lamp for two to three cycles while the mask
+// clears it (night 6-43, Mangle). Only marker 123 never relights, so the
+// streak that concludes BB is inside must outlast any encounter.
+check(/^NOLIGHT_STREAK_MAX=5$/m.test(src),
+  'NOLIGHT_STREAK_MAX must be 5: three dark reads span a single masked ' +
+  'encounter and aborted a live night as "BB inside"');
+
 // The seam. Both steady cycles end past their own length, so the runner has to
 // leave the released gap before it writes the next cycle's anchor -- otherwise
 // the anchor lands on the sweep's last camera release and the monitor press is
