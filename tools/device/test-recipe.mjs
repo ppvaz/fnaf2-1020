@@ -6,14 +6,14 @@
 // perfectly valid there; on the phone Fusion polls touch per frame and a
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
-import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS } from './recipe.mjs';
+import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
 // These are the options `tools/test.mjs --engine` pins as `hidpilot n6 target`
 // (3000/3000 ordinary, 3000/3000 pinned-worst). The recipe must be built from
 // the policy that was actually verified, not a neighbouring one.
-const PINNED = { night: 6, sweepSlotMs: 120, maskMarginMs: 900, pilotOffset: 10 };
+const PINNED = { night: 6, sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, pilotOffset: 10 };
 const recipe = build({ ...PINNED, readLatencyMs: 550, hallPulseMs: 130 });
 for (const [key, want] of Object.entries(PINNED))
   check(recipe.options[key] === want,
@@ -188,12 +188,59 @@ for (const [name, lines] of Object.entries(plan)) {
   }
 }
 
+// The cycle seam.
+//
+// Every released-time check above measures *within* one cycle. This pair
+// straddles two, and nothing was looking: both steady cycles finish 7 ms past
+// their own length, so the next cycle's anchor press lands on top of the
+// sweep's last camera release. Fusion reads that as one finger moving from the
+// camera onto the monitor button and the monitor press never fires.
+//
+// Everything else followed from that one lost press, and it cost nights 22-24:
+// the cams stay up, the monitor toggle desyncs permanently because nothing
+// reads the state back, the vent-light press with cams up is the *camera*
+// light so the classifier is handed a camera frame and answers `unknown`, the
+// schedule fails closed into an attack every cycle, attack cycles do not wind,
+// and the box empties. Cycle 1 was clean in every run because it follows the
+// opening, which ends 200 ms clear of its anchor.
+//
+// The sweep is deliberately not moved earlier: HID-MULTITOUCH.md records that
+// one frame of tail costs 272 of 400 nights, because that stun has to bridge
+// the five-tick mask with nothing to spare. The runner instead delays the next
+// anchor, spending phase-window slack. This asserts the overrun stays small
+// enough for that to be a compensation rather than a reschedule.
+const FUSION_POLL_MS = 33;
+const needsSeamDelay = [];
+const instrSpan = (kind, rest) =>
+  kind === 'sweep' ? 2 * +rest[0] + +rest[1]
+  : kind === 'tap' || kind === 'hold' ? +rest[1]
+  : kind === 'hall' || kind === 'hallraise' ? +rest[0]
+  : +rest[0] + +rest[1] + MIN_CONTACT_MS;
+
+for (const [name, lines] of Object.entries(plan)) {
+  const [at, kind, ...rest] = lines[lines.length - 1].split(' ');
+  const end = +at + instrSpan(kind, rest);
+  const overrun = end - recipe.cycles[name].lengthMs;
+  check(overrun <= FUSION_POLL_MS,
+    `${name}: the last instruction ends ${overrun} ms past the cycle's own ` +
+    `${recipe.cycles[name].lengthMs} ms length. Past one Fusion poll the next ` +
+    "anchor cannot be delayed into a released gap -- that is a reschedule, not " +
+    'a compensation, and the route has to change instead.');
+  // Report which cycles depend on the runner's seam delay. This is the link
+  // between the two halves of the check: test-runner-plan.mjs asserts the
+  // runner leaves that gap, and this names the cycles that would be broken
+  // without it rather than asserting something vacuous here.
+  if (overrun > -FUSION_POLL_MS)
+    needsSeamDelay.push(`${name} (${overrun >= 0 ? '+' : ''}${overrun} ms)`);
+}
+
 // The branch is only known after the read, so both steady cycles must begin
 // with the identical prefix: lower, read, mask.
 const prefix = lines => lines.slice(0, 2).join('|');
 check(prefix(plan.clear) === prefix(plan.attack),
   `clear and attack disagree before the classifier answers:\n  ${prefix(plan.clear)}\n  ${prefix(plan.attack)}`);
 
+console.log(`  seam: ${needsSeamDelay.length ? needsSeamDelay.join(', ') + ' rely on the runner delaying the next anchor' : 'every cycle clears its own boundary'}`);
 console.log('recipe checks passed: ' + Object.entries(recipe.cycles)
   .map(([n, c]) => `${n} ${c.budget.windMarginMs >= 0 ? '+' : ''}${c.budget.windMarginMs} ms wind`)
   .join(', ') + `; ${recipe.powerFramesSpentIfAllClear}/${recipe.powerFramesAvailable} power`);

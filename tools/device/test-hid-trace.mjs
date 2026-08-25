@@ -36,7 +36,18 @@ export function audit(text) {
     // only hid-side delays advance the timeline, and every wall-timed pair of
     // actions reads as a zero-gap button change.
     if (event.command === 'mark') { now = Math.max(now, event.ms); continue; }
-    if (event.command === 'delay') { now += event.duration; continue; }
+    if (event.command === 'delay') {
+      // A zero-length delay is not a no-op on the device: `hid` rejects the
+      // duration outright and the process exits, so a trace containing one is
+      // a trace whose run was already over. It advances a virtual clock by 0,
+      // which is why a stubbed interpreter cannot see this and only the
+      // artifact can.
+      if (!(event.duration > 0))
+        problems.push(`delay of ${event.duration} ms at ${now} ms: hid rejects ` +
+          'a non-positive duration and exits, taking the co-process with it');
+      now += event.duration;
+      continue;
+    }
     if (event.command !== 'report') continue;
     const report = event.report;
     if (report.length !== 12 || report[0] !== 1 || report[1] > 2) {
@@ -109,13 +120,17 @@ function selfTest() {
   if (!nogap.problems.some(p => /released between/.test(p)))
     throw new Error('self-test: a zero-gap button change was not caught');
 
+  const zero = audit([R(1, rec(3, 100, 200)), D(0), R(1, rec(0, 100, 200))].join('\n'));
+  if (!zero.problems.some(p => /hid rejects/.test(p)))
+    throw new Error('self-test: a zero-length delay was not caught');
+
   const latched = audit([R(2, rec(3, 100, 200), rec(7, 300, 400)), D(100),
                          R(1, rec(0, 100, 200))].join('\n'));
   if (!latched.problems.some(p => /never released|unnamed/.test(p)))
     throw new Error('self-test: a latched contact 1 was not caught');
 
-  console.log('HID trace auditor self-test passed ' +
-    '(clean stream accepted; short contact, zero-gap change and latched contact all caught)');
+  console.log('HID trace auditor self-test passed (clean stream accepted; ' +
+    'short contact, zero-gap change, zero-length delay and latched contact all caught)');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

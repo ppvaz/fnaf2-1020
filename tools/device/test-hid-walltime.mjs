@@ -18,6 +18,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { build, devicePlan, MASK_GAP_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
+import { MIN_CONTACT_MS, MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, 'trial-minus7.sh'), 'utf8');
@@ -61,28 +63,39 @@ check(/hid_delay "\$SWEEP_LIGHT_LEAD_MS"/.test(burst) &&
 check(/hid_delay \$\(\(spacing - contact\)\)/.test(sweep),
   'pulsed_sweep_at must release for `spacing - contact` between selects');
 
-// The defaults the runner ships with, against what the phone has landed.
-const def = name => {
-  const m = new RegExp(`${name}="\\$\\{${name}:-(\\d+)\\}"`).exec(src);
-  check(m, `${name} has no default`);
-  return +m[1];
-};
-const spacingMs = def('PLAN_SPACING_MS'), contactMs = def('PLAN_CONTACT_MS');
+// The numbers themselves are the plan's, not the shell's: the runner reads
+// them from the file recipe.mjs emits. Check what will actually reach the
+// phone rather than a default that no longer decides anything.
 const leadMs = +(/^SWEEP_LIGHT_LEAD_MS=(\d+)$/m.exec(src) || [])[1];
-check(spacingMs <= 120,
-  `the sweep spaces selects ${spacingMs} ms apart; hid-sweep-probe.sh has ` +
-  'landed 120 ms and nothing shorter');
-check(contactMs >= 100,
-  `the sweep's select is ${contactMs} ms; HID-MULTITOUCH.md's verified sequence ` +
-  'requires 100-120 ms so the 30 Hz Fusion runtime sees the contact');
-check(leadMs === 0 || contactMs - leadMs >= 100,
-  `leading the light by ${leadMs} ms leaves it ${contactMs - leadMs} ms, under ` +
-  'the same 100 ms floor the select has to clear');
-check(spacingMs - contactMs >= 20,
-  `only ${spacingMs - contactMs} ms released between selects; Fusion polls ` +
-  'touch per frame, so back-to-back contacts can read as one finger moving');
-check(leadMs >= 0 && leadMs < contactMs,
-  `the light lead is ${leadMs} ms, which does not fall inside the select`);
+check(Number.isInteger(leadMs), 'SWEEP_LIGHT_LEAD_MS is not defined in the runner');
+
+const plan = devicePlan(build({ night: 6, sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900,
+                                readLatencyMs: 550, hallPulseMs: 130, pilotOffset: 10 }));
+for (const [name, lines] of Object.entries(plan)) {
+  for (const line of lines) {
+    const [at, kind, ...rest] = line.split(' ');
+    if (kind !== 'sweep') continue;
+    const spacingMs = +rest[0], contactMs = +rest[1];
+    check(spacingMs === DEVICE_SPACING_MS,
+      `${name}: the sweep at +${at} ms spaces selects ${spacingMs} ms apart; ` +
+      'hid-sweep-probe.sh has landed 120 ms and nothing else');
+    check(contactMs >= 100,
+      `${name}: the sweep's select is ${contactMs} ms; HID-MULTITOUCH.md's ` +
+      'verified sequence requires 100-120 ms so the 30 Hz Fusion runtime sees it');
+    check(spacingMs - contactMs >= MIN_RELEASED_MS,
+      `${name}: only ${spacingMs - contactMs} ms released between selects; Fusion ` +
+      'polls touch per frame, so back-to-back contacts can read as one finger moving');
+    check(leadMs >= 0 && leadMs < contactMs,
+      `the light lead is ${leadMs} ms, which does not fall inside the select`);
+    // The pulse inside a held select is deliberately not held to the 100 ms
+    // floor a fresh button press has to clear: 90 ms is the light pulse in the
+    // exact geometry hid-sweep-probe.sh landed 4/4, and test-hid-trace.mjs
+    // records it as the shortest contact this phone has been seen to accept.
+    check(contactMs - leadMs >= MIN_CONTACT_MS,
+      `${name}: leading the light by ${leadMs} ms leaves it ${contactMs - leadMs} ms, ` +
+      `under the ${MIN_CONTACT_MS} ms hid-sweep-probe.sh landed`);
+  }
+}
 
 // Same hazard, the place it actually bit: the classifier releases the vent
 // light and presses the mask. With no gap the game can see one finger moving
@@ -90,23 +103,60 @@ check(leadMs >= 0 && leadMs < contactMs,
 // read is dark.
 const classify = body('classify_left_and_queue_mask_at');
 const maskSeq = classify.slice(classify.indexOf('hid_release'));
-const gap = /hid_release\s*\n\s*hid_delay (\d+)\s*\n\s*hid_down "\$MASK_X"/.exec(maskSeq);
-check(gap && +gap[1] >= 33,
-  'classify_left_and_queue_mask_at must leave at least one 30 Hz Fusion poll ' +
-  '(33 ms) of released time between the vent light and the mask press');
+// The read releases the vent light, waits the plan's mask gap, and then does
+// NOT press the mask: Golden Freddy is ignored on night 6 for now (see
+// recipe.mjs), so the only mask in the common path is gone. Two blind toggles a
+// cycle in a runner that cannot see the mask's state is how it latched on and
+// blinded the classifier. What must hold is that the mask is now pressed off
+// the classifier's answer instead.
+const readBody = body('classify_left_and_queue_mask_at');
+check(/hid_delay "\$mask_gap"/.test(readBody) && !/hid_down "\$MASK_X"/.test(readBody),
+  'the read must wait the plan\'s mask gap and press no mask of its own');
+check(/press_at \$\(\(actual \+ FUSION_POLL_MS\)\) "\$MASK_X" "\$MASK_Y" mask-on-bb/.test(src),
+  'the BB branch must put the mask on off the classifier\'s answer');
+check(MASK_GAP_MS >= 33,
+  `the plan leaves ${MASK_GAP_MS} ms between the vent light and the mask; one ` +
+  '30 Hz Fusion poll is 33 ms, and a lost mask press sticks the mask on, which ' +
+  'blinds every later read');
 
-// Contacts are timed inside the hid process, never from the shell. `sleep`
-// and `date` are fork+exec on this phone: timing releases from the shell cost
-// one fork per press and drifted the cycle anchor 434 ms, which took the
-// schedule apart inside the opening. hid_delay also measures from when the
-// press is delivered, so a backlogged stream still makes a full contact.
-for (const name of ['press_at', 'hold_at']) {
-  const text = body(name);
-  const hid = text.slice(text.indexOf('HID_MODE'));
-  check(/hid_delay/.test(hid),
-    `${name} must time its contact with hid_delay; timing it from the shell ` +
-    'costs a fork per press and drifts the whole schedule');
-  check(!/sleep_ms|wait_until/.test(hid),
-    `${name} times its release from the shell; that is a fork per press`);
-}
+// The macro exists to take the shell's clock out of the loop, so nothing
+// inside it may consult that clock. `getevent` measured hid_delay holding a
+// 120 ms period to a 0.76 ms stdev against wait_until's 49-93 ms overshoot;
+// one stray wait_until inside a macro re-rolls that spread and gives the
+// difference back.
+check(!/wait_until/.test(body('plan_emit')),
+  'plan_emit must not wall-time: inside a macro the hid process owns every ' +
+  'boundary, which is the only reason a macro is worth having');
+const macro = body('run_macro');
+const macroWaits = (macro.match(/wait_until/g) || []).length;
+check(macroWaits === 2,
+  `run_macro wall-times ${macroWaits} boundaries; it may anchor its start and ` +
+  'wait itself out, and nothing else');
+check(/\[ "\$SLIP" -eq 0 \]/.test(macro),
+  'run_macro must refuse a nonzero epoch slip rather than run the window late: ' +
+  'the slip comes out of a wind hold whose end must not move, and a macro\'s ' +
+  'offsets are relative');
+check(/\[ "\$c2" != read \]/.test(macro),
+  'run_macro must refuse a window containing the read, which needs the classifier');
+
+// Every instruction the emitter can produce must have an arm in the
+// interpreter, and every control it can name must have a coordinate. A plan
+// the runner half-executes is worse than one it refuses.
+const step = body('plan_step');
+const kinds = new Set(Object.values(plan).flatMap(ls => ls.map(l => l.split(' ')[1])));
+for (const kind of kinds)
+  check(new RegExp(`^\\s*${kind}\\)`, 'm').test(step),
+    `the emitter produces "${kind}" instructions and plan_step has no arm for it`);
+
+const controls = body('plan_control_xy');
+const named = new Set(Object.values(plan).flatMap(ls => ls.flatMap(l => {
+  const [, kind, ...rest] = l.split(' ');
+  if (kind === 'tap' || kind === 'hold') return [rest[0]];
+  if (kind === 'sweep') return rest[2].split(',').map(n => 'cam' + n);
+  return [];
+})));
+for (const control of named)
+  check(new RegExp(`^\\s*${control}\\)`, 'm').test(controls),
+    `the emitter names the control "${control}" and plan_control_xy cannot press it`);
+
 console.log('HID wall-timing checks passed');

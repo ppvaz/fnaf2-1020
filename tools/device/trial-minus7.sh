@@ -26,8 +26,26 @@ PLAN_CONTACT_MS="${PLAN_CONTACT_MS:-100}"
 PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
 HID_LEFT_DEBUG_RAW="${HID_LEFT_DEBUG_RAW:--}"
 DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-0}"
-WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.25}"
-WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-0.8}"
+# The safety capture itself costs 0.7-1.2 s, so polling every 0.25 s meant the
+# watchdog was capturing essentially continuously, competing with the
+# classifier's own screencap for the same SurfaceFlinger path. Night 23 read
+# `unknown` on 7 of 8 cycles under that contention and went blind to BB; the
+# same schedule with the watchdog quieted read `empty score=0 margin=19` on
+# 4 of 4. A death is not a subtle signal and does not need 4 Hz: at this
+# interval three consecutive misses still stop the run inside ~5 s.
+WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.8}"
+# The safety capture costs 0.72-0.85 s idle on this phone (12 samples), and
+# the code below records that concurrent captures "more than doubled" it. A
+# 0.8 s budget was therefore under its own idle maximum: night 23 printed
+# "watchdog: unavailable (ignored)" on every single poll for 73 s, never saw
+# the death, and left the pilot pressing into the title menu.
+WATCHDOG_CAPTURE_TIMEOUT="${WATCHDOG_CAPTURE_TIMEOUT:-2.5}"
+# How long the night watchdog may see nothing at all before it stops the run.
+# Being unable to look is not the same as looking and finding the night, and
+# a run that cannot be watched is exactly the one that must not keep tapping.
+# One poll can now span its interval plus a 2.5 s budget, so this has to clear
+# two or three consecutive failures to mean "sustained" rather than "slow".
+WATCHDOG_BLIND_ABORT_MS="${WATCHDOG_BLIND_ABORT_MS:-8000}"
 FOCUS_WATCHDOG_INTERVAL="${FOCUS_WATCHDOG_INTERVAL:-0.10}"
 BB_CAM05_CAPTURE_EVERY="${BB_CAM05_CAPTURE_EVERY:-0}"
 BB_CAM05_CAPTURE_START="${BB_CAM05_CAPTURE_START:-0}"
@@ -51,6 +69,7 @@ SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
 REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_PIDFILE="/data/local/tmp/fnaf2-minus7-$$-$(date +%s).pid"
+REMOTE_PLAN="$REMOTE_PIDFILE.plan"
 REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
 REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
@@ -62,6 +81,8 @@ REMOTE_HID_TRACE="-"
 [ "$HID_TRACE_RUN" -eq 0 ] || REMOTE_HID_TRACE="$REMOTE_PIDFILE.hid"
 LOCAL_HID_TRACE="$CAPTURE_DIR/$OUT-hid.jsonl"
 REMOTE_SAMPLE_DIR="/data/local/tmp/fnaf2-screen-calibration-$$-$(date +%s)"
+# Non-empty classifier frames, kept for labelling. See the read.
+REMOTE_KEEP_DIR="/data/local/tmp/fnaf2-keep-$$-$(date +%s)"
 REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
 REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
 REMOTE_CAM05_MODEL="/data/local/tmp/fnaf2-bb-cam05-model-$$-$(date +%s).scm"
@@ -331,7 +352,7 @@ if [ "$POST_CAPTURE_TOUCHES" -eq 1 ] &&
   # frame, then disables it before the next sampled frame.
   POST_CAPTURE_TOUCHES_EFFECTIVE=1
 fi
-for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL; do
+for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL WATCHDOG_BLIND_ABORT_MS; do
   setting_value="${!setting}"
   case "$setting_value" in
     ''|*[!0-9.]*) echo "$setting must be a positive number"; exit 2 ;;
@@ -353,8 +374,58 @@ fi
 RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
+# The death signature, measured rather than guessed.
+#
+# A device-side poller sampled the cue helper at ~14 Hz across night 34's death.
+# Alive, the snapshot alternates luma 2-80, cam5 23-44, with audio rms 2800-4100
+# and peak 5000-16500. At the death it goes flat and stays there:
+#
+#     t=158.3   luma  71  cam5  44   rms 2919   peak 5691
+#     t=158.5   luma 214  cam5 250   rms 2286   peak 5761
+#     t=158.6   luma 214  cam5 250   rms    0   peak    0     <- and never moves again
+#
+# Audio falling to exactly zero is the sharpest edge; the two visual channels
+# pinning high agree with it. This costs one loopback exchange (~70 ms measured)
+# against the screencap path's 0.7-2.5 s, so the watchdog stops being both slow
+# and a competitor for SurfaceFlinger -- it was the screencap contention that
+# blinded the classifier for seven of eight cycles on night 23.
+CUE_DEAD_LUMA=200
+CUE_DEAD_CAM5=200
+
 state_once() {
-  local result
+  local result snap luma cam5 rms
+  if [ "$CUE_PORT" != "-" ]; then
+    snap=$(printf 'GET %s\n' "$CUE_TOKEN" |
+      adb shell "toybox nc -w 1 127.0.0.1 $CUE_PORT" 2>/dev/null | tr -d '\r')
+    case "$snap" in
+      OK\ *)
+        luma=$(printf '%s\n' "$snap" | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
+        cam5=$(printf '%s\n' "$snap" | sed -n 's/.* cam5=\([0-9]*\).*/\1/p')
+        rms=$(printf '%s\n' "$snap" | sed -n 's/.* rms=\([0-9]*\).*/\1/p')
+        if [ -n "$luma" ] && [ -n "$cam5" ] && [ -n "$rms" ] &&
+           [ "$rms" -eq 0 ] && [ "$luma" -ge "$CUE_DEAD_LUMA" ] &&
+           [ "$cam5" -ge "$CUE_DEAD_CAM5" ]; then
+          printf '%s\n' "gameover"
+          return 0
+        fi
+        # NOT "night". This signature was measured on one death and it matches
+        # the static screen only. Night 37 died, played the "Take cake to the
+        # children" minigame, and restarted to "12:00 AM 6th Night" -- none of
+        # which are bright-and-silent, so this returned "night" for 60+ seconds
+        # of a dead game and the pilot kept pressing into it. The elapsed time
+        # was then reported as run length, which is how a 163 s "record" got
+        # published without checking the run was alive.
+        #
+        # A detector that can only recognise ONE way of being dead must not be
+        # the thing that decides you are alive. Fall through to screenstate,
+        # which classifies night/gameover/other from the frame itself; the
+        # helper's job here is to catch the static case fast, never to vouch
+        # for gameplay.
+        ;;
+    esac
+    # Anything else -- helper refused, or a reading that is not the static
+    # signature -- goes to the authority below.
+  fi
   if result=$(python3 "$HERE/screenstate.py" \
     --adb-fast "$WATCHDOG_CAPTURE_TIMEOUT" 2>/dev/null); then
     printf '%s\n' "$result"
@@ -430,7 +501,7 @@ pull_samples() {
 }
 
 watch_night() {
-  local misses=0 screen_state
+  local misses=0 screen_state blind_since=0 blind_now
   while kill -0 "$DRIVER_PID" 2>/dev/null; do
     sleep "$WATCHDOG_INTERVAL"
     # The survival classifier and safety watchdog both call SurfaceFlinger's
@@ -444,17 +515,33 @@ watch_night() {
     case "$screen_state" in
       night)
         misses=0
+        blind_since=0
         ;;
       unavailable)
-        # Transport/capture contention is not evidence that gameplay ended.
+        # Transport/capture contention is not evidence that gameplay ended --
+        # but it is not evidence that it continues, either, and a watchdog that
+        # ignores every unreadable poll forever is not a watchdog at all. That
+        # is precisely how night 23 ran blind for its whole length. Ignore a
+        # blip; stop the run on sustained blindness, because an unwatched
+        # pilot is the documented way taps reach another app.
+        blind_now=$(date +%s)
+        [ "$blind_since" -ne 0 ] || blind_since="$blind_now"
         printf 'watchdog: unavailable (ignored)\n'
+        if [ $(( (blind_now - blind_since) * 1000 )) -ge "$WATCHDOG_BLIND_ABORT_MS" ]; then
+          printf 'abort: watchdog saw nothing for %s ms; stopping rather than pressing unseen\n' \
+            "$WATCHDOG_BLIND_ABORT_MS" > "$WATCHDOG_RESULT"
+          adb shell am force-stop com.scottgames.fnaf2 >/dev/null 2>&1 || true
+          stop_remote_driver
+          return 0
+        fi
         ;;
       *)
+        blind_since=0
         misses=$((misses + 1))
-        printf 'watchdog: %s (%d/3)\n' "$screen_state" "$misses"
+        printf 'watchdog: %s (%d/2)\n' "$screen_state" "$misses"
         ;;
     esac
-    if [ "$misses" -ge 3 ]; then
+    if [ "$misses" -ge 2 ]; then
       printf 'abort: game left night state (%s)\n' "$screen_state" > "$WATCHDOG_RESULT"
       # Stop the game before any recording/sample transfer. A queued office
       # attack can finish during those comparatively slow host operations.
@@ -517,7 +604,20 @@ cleanup() {
       echo "saved partial capture captures/$OUT-aborted.mp4"
     fi
   fi
-  adb shell rm -f "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
+  if adb shell "[ -d '$REMOTE_KEEP_DIR' ]" >/dev/null 2>&1; then
+    mkdir -p "$CAPTURE_DIR/screencheck-keep/$OUT"
+    if adb pull "$REMOTE_KEEP_DIR/." "$CAPTURE_DIR/screencheck-keep/$OUT/" >/dev/null 2>&1; then
+      echo "kept $(find "$CAPTURE_DIR/screencheck-keep/$OUT" -name '*.raw' | wc -l | tr -d ' ')" \
+           "non-empty classifier frames under captures/screencheck-keep/$OUT"
+    fi
+    adb shell "rm -rf $REMOTE_KEEP_DIR" >/dev/null 2>&1 || true
+  fi
+  if [ "${CUE_TRACE_REMOTE:-}" != "" ]; then
+    adb pull "$CUE_TRACE_REMOTE" "$CAPTURE_DIR/$OUT-cue.txt" >/dev/null 2>&1 &&
+      echo "cue trace: $CAPTURE_DIR/$OUT-cue.txt" || true
+    adb shell "rm -f $CUE_TRACE_REMOTE" >/dev/null 2>&1 || true
+  fi
+  adb shell rm -f "$REMOTE_PLAN" "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
     adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_CAM05_MODEL" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
@@ -555,6 +655,16 @@ if [ -n "$GF_OFFICE_MODEL" ]; then
   adb push "$GF_OFFICE_MODEL" "$REMOTE_GF_MODEL" >/dev/null
   REMOTE_GF_MODEL_ARG=$REMOTE_GF_MODEL
 fi
+# The cycle table has one copy: recipe.mjs emits it from the exact simulator
+# and the remote program interprets it. It used to live here as millisecond
+# literals too, and the two drifted -- a wind lead corrected in the model still
+# reached the phone as the old value.
+if [ "$NIGHT6_LEFT" -eq 1 ]; then
+  node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
+  adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
+  echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
+fi
+
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard >/dev/null 2>&1 || true
 sleep 1
@@ -591,6 +701,50 @@ MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 # independent of screenrecord, so cap only the diagnostic video.
 [ "$MAXDUR" -le 180 ] || MAXDUR=180
 
+# The cue helper's device-local snapshot, logged beside the classifier.
+#
+# The runner's own read is a `screencap` plus `fnaf-screencheck`: about 225 ms,
+# which is why it can afford exactly one per five-second cycle and why Balloon
+# Boy is only ever seen once he is already inside. The helper answers the same
+# question from a held MediaProjection in 42 ms p50 / 57 ms p95 (measured on
+# this phone, 20 samples), which would make several reads a cycle affordable.
+#
+# ON-DEVICE-VALIDATION.md is explicit that the classifier threshold on that path
+# is NOT calibrated -- the luma separation came from screencap frames and an
+# offline bilinear simulation, not Android's own VirtualDisplay scaler. So this
+# does not switch the sensor. It records the helper's reading next to the
+# screencheck class that is already trusted, which is exactly the labelled data
+# the threshold needs. Switch only once that data says where the line is.
+CUE_HELPER="${CUE_HELPER:-0}"
+CUE_PORT="-"
+CUE_TOKEN="-"
+if [ "$CUE_HELPER" -eq 1 ]; then
+  cue_pid="$(adb shell pidof com.fnafminus7.cuehelper 2>/dev/null | tr -d '\r' | awk '{print $1}')"
+  [ -n "$cue_pid" ] || { echo 'CUE_HELPER=1 but the helper is not running' >&2; exit 2; }
+  cue_control="$(adb logcat -d --pid="$cue_pid" -v brief -s FnafCueHelper:I '*:S' 2>/dev/null |
+    tr -d '\r' | awk '/control=(READY|DEGRADED)/ { line=$0 } END { print line }')"
+  CUE_PORT="$(printf '%s\n' "$cue_control" | sed -n 's/.* port=\([^ ]*\).*/\1/p')"
+  CUE_TOKEN="$(printf '%s\n' "$cue_control" | sed -n 's/.*token=\([0-9a-f][0-9a-f]*\).*/\1/p')"
+  case "$CUE_PORT" in ''|*[!0-9]*) echo 'the cue helper has no live loopback port' >&2; exit 2 ;; esac
+  [ "${#CUE_TOKEN}" -eq 32 ] || { echo 'no valid per-run cue-helper token' >&2; exit 2; }
+  echo "cue helper: port $CUE_PORT, logging snapshots beside each left read"
+  # And a continuous device-side trace of the same socket, for the events we
+  # cannot schedule. Golden Freddy is one run in ten before 2 AM; the box-low
+  # warning only appears when the box is nearly empty; a death happens once.
+  # None of them can be captured by asking at a chosen moment, so sample the
+  # whole run and keep it. One adb shell for the run, a loopback exchange per
+  # sample, about 14 Hz measured -- it never touches SurfaceFlinger, so unlike
+  # the old screencap watchdog it cannot compete with the classifier.
+  CUE_TRACE_REMOTE="/data/local/tmp/fnaf2-cue-$$.txt"
+  adb shell "nohup sh -c '
+    : > $CUE_TRACE_REMOTE
+    while [ -e $CUE_TRACE_REMOTE ]; do
+      printf \"%s \" \"\$(date +%s%3N)\" >> $CUE_TRACE_REMOTE
+      printf \"GET $CUE_TOKEN\n\" | toybox nc -w 1 127.0.0.1 $CUE_PORT >> $CUE_TRACE_REMOTE 2>/dev/null
+      printf \"\n\" >> $CUE_TRACE_REMOTE
+    done' >/dev/null 2>&1 &" >/dev/null 2>&1
+fi
+
 # Positional coordinates keep this remote program literal and auditable.
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
@@ -603,9 +757,13 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$R
   "$REMOTE_CHECKER_ARG" "$REMOTE_CAM05_MODEL_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
   "$GF_SKIP_MASK_ON_EXACT_EMPTY" "$POST_CAPTURE_TOUCHES_EFFECTIVE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
-  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 <<'REMOTE' &
+  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 \
+  "$CUE_PORT" "$CUE_TOKEN" "$REMOTE_KEEP_DIR" <<'REMOTE' &
 set -eu
 PIDFILE=$1; shift
+# The plan travels beside the pidfile rather than as another positional: the
+# host pushes it to the same name with a .plan suffix.
+PLAN_FILE="$PIDFILE.plan"
 READYFILE=$1; shift
 STARTFILE=$1; shift
 EPOCHFILE=$1; shift
@@ -648,7 +806,9 @@ CAM10_X=$1; CAM10_Y=$2; shift 2
 CAM04_X=$1; CAM04_Y=$2; shift 2
 CAM07_X=$1; CAM07_Y=$2; shift 2
 CAM11_X=$1; CAM11_Y=$2; shift 2
-CAM05_X=$1; CAM05_Y=$2
+CAM05_X=$1; CAM05_Y=$2; shift 2
+CUE_PORT=$1; CUE_TOKEN=$2; shift 2
+KEEP_DIR=${1:-}
 
 if [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] || [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
   mkdir -p "$SAMPLE_DIR"
@@ -675,6 +835,16 @@ hid_emit() {
 # the auditor report every wall-timed action as a zero-gap button change. The
 # helpers already fork `date` once for their own log line, so reusing that
 # value costs nothing.
+# One device-local cue-helper snapshot. Loopback nc inside this same shell, so
+# it costs no adb round trip -- the whole point of the helper. Returns the
+# response line, or an empty string if the helper is absent or slow; a missing
+# snapshot must never be able to stall the schedule, so the timeout is short and
+# the caller ignores failures.
+cue_snapshot() {
+  [ "$CUE_PORT" != "-" ] || return 0
+  printf 'GET %s\n' "$CUE_TOKEN" | toybox nc -w 1 127.0.0.1 "$CUE_PORT" 2>/dev/null | tr -d '\r'
+}
+
 hid_mark() {
   [ -z "$HID_TRACE" ] || printf '{"command":"mark","ms":%s}\n' "$1" >> "$HID_TRACE"
 }
@@ -729,6 +899,17 @@ hid_cam_light_down() { hid_cam_report 3 7 "$1" "$2"; }
 hid_cam_light_up()   { hid_cam_report 0 4 "$1" "$2"; }
 
 hid_delay() {
+  # `hid` does not treat a zero duration as "no delay": Event$Builder.build
+  # throws IllegalStateException("Delay has missing or invalid duration"), the
+  # process exits, mksh loses the co-process, and the next `print -p` ends the
+  # night. Reproduced in isolation on this phone with no game running.
+  #
+  # Guarded here rather than at the call site because a zero duration means
+  # nothing everywhere, and the failure is fatal and silent at every emitter.
+  # SWEEP_LIGHT_LEAD_MS is 0 in the shipped geometry and reaches this from more
+  # than one place; pulsed_cam_burst happened to guard it and plan_emit's
+  # hallraise did not, which cost night 22 at 18 s.
+  [ "$1" -gt 0 ] || return 0
   hid_emit "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
 }
 
@@ -751,7 +932,7 @@ cleanup_remote() {
   [ -z "$children" ] || kill -TERM $children 2>/dev/null || true
   # The trace is evidence; the host pulls it after the driver stops.
   rm -f "$PIDFILE" "$READYFILE" "$STARTFILE" "$EPOCHFILE" \
-    "$CAPTURE_LOCK" "$PIDFILE.left.raw" "$PIDFILE.epoch.raw"
+    "$CAPTURE_LOCK" "$PIDFILE.left.raw" "$PIDFILE.epoch.raw" "$PLAN_FILE"
 }
 trap cleanup_remote EXIT
 trap 'exit 129' HUP
@@ -944,7 +1125,7 @@ press_at() {
     # also measures from when the press is *delivered*, so a backlogged stream
     # still produces a full-length contact.
     hid_down "$x" "$y"
-    hid_delay 100
+    hid_delay "$TAP_CONTACT_MS"
     hid_release
   elif [ "$PRESS_MODE" = "async-swipe" ]; then
     input swipe "$x" "$y" "$x" "$y" 120 >/dev/null 2>&1 &
@@ -974,8 +1155,35 @@ hold_at() {
   fi
 }
 
+# The cams-up luma, measured on this phone.
+#
+# Across night 34's poller trace the snapshot sits at 225-229 for the whole
+# cams-up stretch of every cycle and drops to 0-107 for the office window. The
+# two populations do not overlap anywhere in 1818 samples, so the line goes
+# between them rather than near either.
+CUE_CAMS_UP_LUMA=180
+
 light_down_at() {
   offset=$1; label=$2
+  # Verify the anchor's monitor press actually landed, before spending the vent
+  # light on a frame that would be the camera feed.
+  #
+  # A lost monitor press desyncs the toggle for the rest of the night, and the
+  # only thing that ever noticed was the classifier one full cycle later -- so
+  # every desync cost a cycle even once recovery existed. The helper answers the
+  # same question in 42 ms, which is affordable here, and a correction now costs
+  # the flip instead of the cycle.
+  if [ "$CUE_PORT" != "-" ]; then
+    cue_luma=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
+    if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
+      actual=$(( $(date +%s%3N) - T0 ))
+      printf '%6d ms  cams still up at the read (luma %s); correcting in-cycle\n' \
+        "$actual" "$cue_luma"
+      hid_mark "$actual"
+      press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-verify
+      offset=$((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
+    fi
+  fi
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (contact 0 down)\n' "$actual" "$label"
@@ -1061,7 +1269,7 @@ device_sweep_at() {
 }
 
 classify_left_and_queue_mask_at() {
-  offset=$1; label=$2
+  offset=$1; mask_gap=$2; label=$3
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s start snapshot\n' "$actual" "$label" >&2
@@ -1090,25 +1298,144 @@ classify_left_and_queue_mask_at() {
   printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
   hid_mark "$actual"
   hid_release
-  # Fusion polls touch once per frame, so releasing the vent light and pressing
-  # the mask in the same instant can be seen as one finger *moving* between
-  # them -- and a button that fires on press then never fires. A dropped mask
-  # press leaves the mask stuck on, which makes every later left read dark;
-  # the classifier reports that as a confident `inside`, the schedule blind
-  # toggles, and the night is lost from that cycle. Give the game one poll of
-  # released time to observe.
-  hid_delay 40
-  hid_down "$MASK_X" "$MASK_Y"
-  hid_delay 100
-  hid_release
+  # No mask here. Golden Freddy is ignored on night 6 for now -- see the block
+  # in recipe.mjs: the always-taken flick is a *guess*, two blind toggles a
+  # cycle in a runner that cannot see the mask's state, and a dropped toggle
+  # latches it on and makes every later left read dark (nights 30 and 31 both
+  # ended as a confident `inside` at a moment BB provably could not be there).
+  # Ignoring him is 1000/1000 to 2 AM in the exact simulator with the earliest
+  # loss at 149 s; the device has never passed 73 s. The mask now goes on only
+  # when the classifier says BB.
+  #
+  # $mask_gap stays the released time the plan budgets after the vent light.
+  hid_delay "$mask_gap"
   wait "$capture_pid" || true
   classification=$("$CHECKER" classify "$BB_MODEL" < "$capture_raw" 2>/dev/null) || \
     classification='unknown capture-or-classifier-error'
-  [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw"
+  # Was the monitor actually down when this frame was taken?
+  #
+  # Every `unknown` this run has produced scored 20-35, and the frames rendered
+  # out of nights 22-27 show why: they are the CAMERA FEED, not the office. The
+  # anchor's monitor press did not take effect, so the vent light press was the
+  # camera light and the classifier was handed CAM 11 or the map. Nothing
+  # observed that, so the pilot never recovered.
+  #
+  # This costs no extra capture: it is the same raw frame, asked a different
+  # question. The camera map's lime selection highlight lives on the right of
+  # the screen; the office's own green LIGHT button is at x~350 and outside this
+  # ROI. Measured on the frames from nights 25-26: office 0-1 bps, camera feed
+  # 70-140 bps. The threshold sits two orders of magnitude from both.
+  #
+  # Reported, not yet acted on -- the intermittency is what needs measuring
+  # first, and a schedule that reacts to a signal nobody has watched is how this
+  # runner acquired most of its scars.
+  # Only asked when it can change the decision. A confident `empty` or `bb` is
+  # an office frame by construction -- the model's classes are office frames --
+  # and the clear branch's mask-off press has a hard deadline at base+1300 ms
+  # that a second checker invocation blew by about 100 ms on night 29.
+  monitor_seen='cams=office-by-classification'
+  case "$classification" in
+    empty\ *|bb\ *) ;;
+    *)
+      monitor_seen=$("$CHECKER" match 1300 350 2300 950 4 100 255 100 255 0 99 30 \
+        < "$capture_raw" 2>/dev/null) || monitor_seen=unreadable
+      case "$monitor_seen" in
+        match) monitor_seen='cams=UP-DESYNCED' ;;
+        clear) monitor_seen='cams=down' ;;
+        *)     monitor_seen='cams=unreadable' ;;
+      esac
+      ;;
+  esac
+  # Keep the frames that are worth labelling, and only those.
+  #
+  # Golden Freddy is one run in ten before 2 AM and his office appearance is a
+  # translucent figure, which is why the provisional model separates him by a
+  # margin of 3 where Balloon Boy's is 18-21 -- it was built from a single
+  # appearance. More positives cannot be requested; they have to be caught. A
+  # confident `empty` is the one class we already have plenty of, so retaining
+  # every non-empty read costs a few frames a night and turns each rare event
+  # into training data instead of a line in a log.
+  #
+  # The screenrecord capture cannot do this job: it is downscaled to 1280x576
+  # and h264-compressed, while every model here is built on 2400x1080 raw
+  # screencaps. A frame extracted from the video is not the same measurement.
+  case "$classification" in
+    empty\ *) [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw" ;;
+    *)
+      if [ -n "$KEEP_DIR" ]; then
+        mkdir -p "$KEEP_DIR"
+        cp "$capture_raw" "$KEEP_DIR/$(printf '%06d' "$actual")-${classification%% *}.raw" \
+          2>/dev/null || true
+      fi
+      [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw"
+      ;;
+  esac
   rm -f "$CAPTURE_LOCK"
   actual=$(( $(date +%s%3N) - T0 ))
-  printf '%6d ms  classify-bb-left %s\n' "$actual" "$classification" >&2
+  # Logged, never acted on: this is the labelled data the helper's own threshold
+  # needs before anything can be read from it. `luma` is its left-opening
+  # value and `ageUs` says how stale the projected frame was.
+  cue_line=""
+  [ "$CUE_PORT" = "-" ] || cue_line=" cue[$(cue_snapshot | sed -n 's/.*luma=\([0-9]*\).*cam5=\([0-9]*\).*ageUs=\([0-9]*\).*/luma=\1 cam5=\2 age=\3us/p')]"
+  printf '%6d ms  classify-bb-left %s %s%s\n' "$actual" "$classification" "$monitor_seen" "$cue_line" >&2
   hid_mark "$actual"
+}
+
+# Device constants. The plan carries the schedule; these are properties of the
+# phone that no simulator can emit, so they stay here and are named.
+#
+# The select leads its light pulse by this much inside a sweep burst.
+#
+# Zero, and not by preference: at the 120 ms spacing hid-sweep-probe.sh landed,
+# 20 ms has to stay released between selects, which fixes the select at 100 ms
+# -- exactly the floor HID-MULTITOUCH.md's verified sequence requires. Any
+# positive lead spends that budget twice and puts the light pulse under the
+# same floor, which is how it came to be 90 ms. With no lead the select and its
+# light land in one report and both contacts get the full 100 ms.
+#
+# This is not the geometry hid-sweep-probe.sh proved 4/4 -- that one had the
+# 10 ms lead and the 90 ms pulse. Re-probe before trusting a device run.
+SWEEP_LIGHT_LEAD_MS=0
+# A tap's contact. Named because the driver has to reason about when a tap
+# *finishes*, not just when it starts.
+TAP_CONTACT_MS=100
+# Fusion polls touch once per frame, so two different controls with no released
+# time between them can read as one finger moving from one to the other and the
+# second never fires. Mirrors MIN_RELEASED_MS in test-hid-trace.mjs.
+#
+# This is the floor below which the auditor calls a trace defective. It is not
+# the number to *design* to: the plan is built to a full 30 Hz Fusion poll and
+# test-recipe.mjs asserts 33 ms between every pair of controls inside a cycle.
+# Where the runner chooses a gap rather than checks one, it uses FUSION_POLL_MS,
+# so the seam between two cycles gets the same guarantee as everything within
+# one. Designing to the floor is how a 20 and a 33 end up meaning the same
+# thing in two files and then quietly stop agreeing.
+MIN_RELEASED_MS=20
+FUSION_POLL_MS=33
+# src/config.js MONITOR_ANIM_DOWN = 22 frames. The office is not interactive
+# until the flip finishes, so a corrective lower has to be waited out.
+MONITOR_ANIM_DOWN_MS=367
+# The vent read starts its capture this long after the light goes down.
+# screencap latches 163-348 ms after it starts and the vent needs ~270 ms to
+# draw, so this puts the frame 363-548 ms past the light: past the point an
+# unlit opening could be read as a confident `inside`, and early enough that
+# the classifier still answers before the cycle's cut-off.
+READ_CAPTURE_DELAY_MS=200
+
+# Which physical control the plan means. A name the runner cannot press is a
+# plan it must not half-execute.
+plan_control_xy() {
+  case "$1" in
+    monitor) PX=$MONITOR_X; PY=$MONITOR_Y ;;
+    mask)    PX=$MASK_X;    PY=$MASK_Y ;;
+    wind)    PX=$WIND_X;    PY=$WIND_Y ;;
+    cam4)    PX=$CAM04_X;   PY=$CAM04_Y ;;
+    cam5)    PX=$CAM05_X;   PY=$CAM05_Y ;;
+    cam7)    PX=$CAM07_X;   PY=$CAM07_Y ;;
+    cam10)   PX=$CAM10_X;   PY=$CAM10_Y ;;
+    cam11)   PX=$CAM11_X;   PY=$CAM11_Y ;;
+    *) echo "the plan names a control this runner cannot press: $1" >&2; exit 47 ;;
+  esac
 }
 
 # One camera of the sweep, written into the macro the hid process is already
@@ -1146,8 +1473,10 @@ pulsed_cam_burst() {
   # a 790 ms hold, which is the difference between fitting night 6's
   # 3000-frame budget and outspending it. The select leads the light by
   # SWEEP_LIGHT_LEAD_MS; hid-sweep-probe.sh proved this geometry 4/4.
-  hid_cam_down "$x" "$y"
-  hid_delay "$SWEEP_LIGHT_LEAD_MS"
+  if [ "$SWEEP_LIGHT_LEAD_MS" -gt 0 ]; then
+    hid_cam_down "$x" "$y"
+    hid_delay "$SWEEP_LIGHT_LEAD_MS"
+  fi
   hid_cam_light_down "$x" "$y"
   hid_delay $((contact - SWEEP_LIGHT_LEAD_MS))
   hid_cam_light_up "$x" "$y"
@@ -1198,7 +1527,7 @@ pulsed_sweep_at() {
 }
 
 hall_reset_and_raise_at() {
-  offset=$1; label=$2
+  offset=$1; duration=$2; label=$3
   wait_until "$offset"
   actual=$(( $(date +%s%3N) - T0 ))
   printf '%6d ms  %s (hall pulse under the raise)\n' "$actual" "$label"
@@ -1211,63 +1540,333 @@ hall_reset_and_raise_at() {
   hid_down "$HALL_X" "$HALL_Y"
   wait_until $((offset + 10))
   hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
-  # 130 ms of monitor contact, not 120: wait_until forks `date` to poll, so it
-  # can return a little late, and a measured run held it 83 ms.
-  wait_until $((offset + 140))
+  # The monitor gets the plan's full contact; the hall light keeps it plus the
+  # lead. wait_until forks `date` to poll and can return a little late, and a
+  # measured run held this 83 ms.
+  wait_until $((offset + SWEEP_LIGHT_LEAD_MS + duration))
   hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
   hid_release
 }
 
+# --- the plan interpreter -----------------------------------------------------
+#
+# recipe.mjs emits the cycle table from the exact simulator and the host pushes
+# it here. Everything above this line is a device primitive; everything the
+# schedule says arrives in the file. There is one copy of the table, and it is
+# not this one.
+
+# The offset of a cycle's first instruction, so the opening can be slipped
+# relative to whatever the plan actually starts with.
+plan_first_offset() {
+  pf_cycle=$1; pf_in=0
+  while read -r c1 c2 _rest <&9; do
+    if [ "$c1" = '#cycle' ]; then
+      if [ "$c2" = "$pf_cycle" ]; then pf_in=1; else pf_in=0; fi
+      continue
+    fi
+    [ "$pf_in" -eq 1 ] || continue
+    printf '%s\n' "$c1"
+    return 0
+  done 9< "$PLAN_FILE"
+  echo "the plan has no cycle named $pf_cycle" >&2
+  exit 47
+}
+
+# One instruction. SLIP is the epoch latch's cost; it is absorbed by the first
+# wind hold, whose start moves but whose end does not -- the sweep after it is
+# anchored to that end, not to the wind's start.
+plan_step() {
+  ps_base=$1; ps_at=$2; ps_kind=$3; ps_a=$4; ps_b=$5; ps_c=$6
+  ps_when=$((ps_base + ps_at + SLIP))
+  case "$ps_kind" in
+    tap)
+      plan_control_xy "$ps_a"
+      press_at "$ps_when" "$PX" "$PY" "$ps_a"
+      ;;
+    hold)
+      plan_control_xy "$ps_a"
+      hold_at "$ps_when" "$PX" "$PY" $((ps_b - SLIP)) "$ps_a"
+      SLIP=0
+      ;;
+    hall)
+      hold_at "$ps_when" "$HALL_X" "$HALL_Y" "$ps_a" flash-hall
+      ;;
+    hallraise)
+      hall_reset_and_raise_at "$ps_when" "$ps_a" hall-raise
+      ;;
+    sweep)
+      pulsed_sweep_at "$ps_when" "$ps_a" "$ps_b" "$ps_c" sweep
+      ;;
+    read)
+      # The light's end is a device readiness boundary -- screencap's first
+      # output byte -- not a schedule value, so the plan's nominal duration is
+      # a budget the capture has to fit inside rather than a time to obey.
+      [ "$ps_a" -ge $((READ_CAPTURE_DELAY_MS + 348)) ] || {
+        echo "the plan budgets ${ps_a} ms of vent light; the capture needs " \
+             "$((READ_CAPTURE_DELAY_MS + 348))" >&2
+        exit 47
+      }
+      light_down_at "$ps_when" left-vent-light
+      classify_left_and_queue_mask_at \
+        $((ps_when + READ_CAPTURE_DELAY_MS)) "$ps_b" left-view
+      ;;
+    *)
+      echo "the plan names an instruction this runner cannot execute: $ps_kind" >&2
+      exit 47
+      ;;
+  esac
+}
+
+# The hid time one instruction consumes, so the next one's delay can be
+# computed from the plan's offsets rather than re-derived.
+plan_span() {
+  pn_kind=$1; pn_a=$2; pn_b=$3
+  case "$pn_kind" in
+    tap|hold)  PLAN_SPAN=$pn_b ;;
+    hall)      PLAN_SPAN=$pn_a ;;
+    hallraise) PLAN_SPAN=$((SWEEP_LIGHT_LEAD_MS + pn_a)) ;;
+    sweep)     PLAN_SPAN=$((2 * pn_a + pn_b)) ;;
+    *) echo "the plan names an instruction with no known span: $pn_kind" >&2
+       exit 47 ;;
+  esac
+}
+
+# One instruction as hid reports only. No wait_until anywhere: inside a macro
+# the hid process owns every boundary, which is the entire point of one.
+plan_emit() {
+  pe_kind=$1; pe_a=$2; pe_b=$3; pe_c=$4
+  case "$pe_kind" in
+    tap|hold)
+      plan_control_xy "$pe_a"
+      hid_down "$PX" "$PY"
+      hid_delay "$pe_b"
+      hid_release
+      ;;
+    hall)
+      hid_down "$HALL_X" "$HALL_Y"
+      hid_delay "$pe_a"
+      hid_release
+      ;;
+    hallraise)
+      hid_down "$HALL_X" "$HALL_Y"
+      # Guarded exactly as pulsed_cam_burst guards the same value. The lead is
+      # legitimately zero; a zero *gap* would be a defect, and hid_delay cannot
+      # tell them apart, so the call site that knows does the guarding.
+      [ "$SWEEP_LIGHT_LEAD_MS" -le 0 ] || hid_delay "$SWEEP_LIGHT_LEAD_MS"
+      hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_delay "$pe_a"
+      hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_release
+      ;;
+    sweep)
+      pe_rest=$pe_c
+      pe_first=1
+      while [ -n "$pe_rest" ]; do
+        pe_cam=${pe_rest%%,*}
+        case "$pe_rest" in
+          *,*) pe_rest=${pe_rest#*,} ;;
+          *)   pe_rest= ;;
+        esac
+        [ "$pe_first" -eq 1 ] || hid_delay $((pe_a - pe_b))
+        pe_first=0
+        plan_control_xy "cam$pe_cam"
+        pulsed_cam_burst "$PX" "$PY" "$pe_b"
+      done
+      ;;
+    *)
+      echo "the plan names an instruction that cannot go in a macro: $pe_kind" >&2
+      exit 47
+      ;;
+  esac
+}
+
+# A contiguous window of one cycle, delivered as a single hid macro.
+#
+# The shell wall-times only the window's start and then waits it out; every
+# boundary inside is a hid_delay. `getevent` on this phone measured hid_delay
+# holding the intended period to a 0.76 ms stdev, 116.4-121.9 ms across 60
+# contacts at a 120 ms period, where wait_until overshoots 49-93 ms. The route
+# has about 100 ms of total lateness margin, and the exact simulator prices the
+# difference at 152/300 nights against 282-300/300: it is the spread that costs
+# nights, not the mean, and a wall-timed boundary re-rolls the spread at every
+# single action.
+#
+# The window is capped at one cycle so the shell re-syncs at each anchor. That
+# is one wall-timed boundary per cycle instead of one per action, and it bounds
+# how long input keeps landing on whatever is in front if the game dies inside
+# a macro -- a class no simulator can price, so it is bounded rather than
+# reasoned about.
+run_macro() {
+  rm_cycle=$1; rm_base=$2; rm_skip=$3; rm_limit=$4; rm_floor=${5:-0}
+  # A macro cannot absorb the epoch slip: the slip is taken out of a wind hold
+  # whose *end* must not move, and inside a macro the offsets are relative.
+  [ "$SLIP" -eq 0 ] || {
+    echo 'a macro cannot absorb the epoch slip; step that cycle instead' >&2
+    exit 47
+  }
+  rm_idx=0; rm_in=0; rm_started=0; rm_cursor=0; rm_shift=0
+  while read -r c1 c2 c3 c4 c5 <&9; do
+    if [ "$c1" = '#cycle' ]; then
+      if [ "$c2" = "$rm_cycle" ]; then rm_in=1; else rm_in=0; fi
+      continue
+    fi
+    [ "$rm_in" -eq 1 ] || continue
+    [ -n "$c1" ] || continue
+    rm_idx=$((rm_idx + 1))
+    [ "$rm_idx" -gt "$rm_skip" ] || continue
+    [ "$rm_idx" -le "$rm_limit" ] || continue
+    # The read needs a screencap and the classifier, which live in the shell.
+    # A window containing one is a programming error, not a runtime condition.
+    [ "$c2" != read ] || {
+      echo 'a read cannot go in a macro: it needs the classifier' >&2
+      exit 47
+    }
+    if [ "$rm_started" -eq 0 ]; then
+      # The window may not open inside a contact the shell is still holding.
+      # Shifting the whole macro keeps every released gap the plan guarantees;
+      # shifting only its first instruction would eat the next one.
+      rm_start=$((rm_base + c1))
+      [ "$rm_start" -ge "$rm_floor" ] || rm_start=$rm_floor
+      rm_shift=$((rm_start - rm_base - c1))
+      wait_until "$rm_start"
+      actual=$(( $(date +%s%3N) - T0 ))
+      printf '%6d ms  macro %s[%d..%d]\n' "$actual" "$rm_cycle" "$rm_skip" "$rm_limit"
+      rm_started=1
+    else
+      # A non-positive gap here means the plan overlaps itself, and hid_delay's
+      # guard would swallow it silently -- the same silence that cost night 22.
+      # A zero *lead* is legitimate; a zero *gap between two instructions* is a
+      # defect, and only the caller can tell those apart.
+      [ $((c1 - rm_cursor)) -gt 0 ] || {
+        echo "the plan overlaps itself: instruction at +$c1 ms starts $((rm_cursor - c1)) ms" \
+             "before the previous one ends" >&2
+        exit 47
+      }
+      hid_delay $((c1 - rm_cursor))
+    fi
+    plan_emit "$c2" "$c3" "$c4" "$c5"
+    plan_span "$c2" "$c3" "$c4"
+    rm_cursor=$((c1 + PLAN_SPAN))
+  done 9< "$PLAN_FILE"
+  # Wait the macro out, and then leave the next anchor its released time.
+  #
+  # Both steady cycles end on a sweep that finishes *past* the cycle boundary:
+  # 4667 + 2*120 + 100 = 5007 against a 5000 ms cycle, and 10007 against 10000.
+  # So the anchor's monitor press was being written on top of the sweep's final
+  # camera release. Fusion polls touch per frame, so that reads as one finger
+  # moving from the camera button to the monitor and the press never fires --
+  # and a lost monitor press desyncs the toggle permanently, because nothing
+  # here observes the monitor's state. Every later anchor then flips the wrong
+  # way: the vent read photographs the camera feed and scores `unknown`, the
+  # hall press lands on the camera map and pans it, the box stops being wound.
+  # That is the whole of nights 22-24, and the reason cycle 1 always survived
+  # it is that the opening ends 200 ms clear of its anchor while these end -7.
+  [ "$rm_started" -eq 0 ] || \
+    wait_until $((rm_base + rm_cursor + rm_shift + FUSION_POLL_MS))
+}
+
+# Run instructions (skip, limit] of one cycle, anchored at `base`. The window
+# exists because the phone does not know which cycle it is in until the
+# classifier answers: both steady cycles share a prefix, and the branch picks
+# up after it. recipe.mjs's replay() splits at the same instruction.
+run_cycle() {
+  rc_cycle=$1; rc_base=$2; rc_skip=$3; rc_limit=$4
+  rc_idx=0; rc_in=0
+  while read -r c1 c2 c3 c4 c5 <&9; do
+    if [ "$c1" = '#cycle' ]; then
+      if [ "$c2" = "$rc_cycle" ]; then rc_in=1; else rc_in=0; fi
+      continue
+    fi
+    [ "$rc_in" -eq 1 ] || continue
+    [ -n "$c1" ] || continue
+    rc_idx=$((rc_idx + 1))
+    [ "$rc_idx" -gt "$rc_skip" ] || continue
+    [ "$rc_idx" -le "$rc_limit" ] || continue
+    plan_step "$rc_base" "$c1" "$c2" "$c3" "$c4" "$c5"
+  done 9< "$PLAN_FILE"
+}
+
+
 if [ "$NIGHT6_LEFT" -eq 1 ]; then
-  # Transcribed from the exact simulator, not re-derived here: the tables below
-  # are `hidpilottest --night=6 --device-sweep --pulse-light --sweep-slot-ms=120
-  # --mask-margin-ms=900 --read-latency-ms=480 --pilot-offset-ms=167`, which is
-  # 3000/3000 ordinary and 3000/3000 pinned-worst with no missed BB state.
+  [ -s "$PLAN_FILE" ] || {
+    echo 'night6-left needs the device plan, and none was pushed' >&2
+    exit 47
+  }
   press_at 0 "$MUTE_X" "$MUTE_Y" mute
   # The epoch detector needs one more confirming capture after T0, so the
-  # opening's first press can already be due. Let the raise slip rather than
-  # firing the cam-11 select inside MONITOR_ANIM_UP; the wind still ends on
-  # the table's absolute deadline, which is what the sweep is anchored to.
+  # opening's first instruction can already be due. Let it slip rather than
+  # firing the cam-11 select inside MONITOR_ANIM_UP; the opening's wind absorbs
+  # the slip, so the sweep after it still lands on the absolute deadline the
+  # route is anchored to.
+  opening_at=$(plan_first_offset opening)
   now=$(( $(date +%s%3N) - T0 ))
-  mon=$((now + 20))
-  [ "$mon" -ge 183 ] || mon=183
-  [ "$mon" -le 1200 ] || { echo 'epoch latch left no room for the opening' >&2; exit 46; }
-  press_at "$mon" "$MONITOR_X" "$MONITOR_Y" monitor-up
-  press_at $((mon + 284)) "$CAM11_X" "$CAM11_Y" opening-cam-11
-  hold_at  $((mon + 417)) "$WIND_X" "$WIND_Y" $((6117 - mon - 417)) opening-wind
-  pulsed_sweep_at 6167 "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 opening-sweep
-  press_at 6550 "$CAM11_X" "$CAM11_Y" opening-cam-11-back
-  hold_at  6683 "$WIND_X" "$WIND_Y" 117 opening-top-up
+  SLIP=$((now + 20 - opening_at))
+  [ "$SLIP" -ge 0 ] || SLIP=0
+  [ "$SLIP" -le 1017 ] || {
+    echo 'epoch latch left no room for the opening' >&2
+    exit 46
+  }
+  run_cycle opening 0 0 999
 
   base=7000
   cycle=0
   unknowns=0
   attacks=0
+  desyncs=0
+  blind_streak=0
   while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
-    press_at "$base" "$MONITOR_X" "$MONITOR_Y" monitor-down
-    # MONITOR_ANIM_DOWN is 367 ms and the table puts the vent light exactly on
-    # that boundary, so a monitor press that lands even a few milliseconds late
-    # -- which it does, because the previous cycle's sweep macro is still
-    # draining -- puts the light press inside the flip, where the office is not
-    # yet interactive. The light then never comes on and the classifier is
-    # handed a dark opening, which is what BB in the office looks like. Follow
-    # the press that actually happened.
-    light_at=$((base + 367))
-    [ "$light_at" -ge $((LAST_PRESS_MS + 380)) ] || light_at=$((LAST_PRESS_MS + 380))
-    light_down_at "$light_at" left-vent-light
-    # Start the capture 200 ms after light-down. screencap latches 163-348 ms
-    # after it starts, so this puts the frame 363-548 ms past the light -- past
-    # the ~270 ms the vent needs to draw, so a read cannot catch an unlit
-    # opening and report it as a confident `inside`, and early enough that the
-    # classifier answers before the +1300 ms cut-off. At +300 it answered at
-    # base+1276 against that cut-off and the second cycle missed it.
-    # runtime-gh.scm covers this window: its empty class was rebuilt from
-    # frames captured through this loop at both the +100 and +300 latches.
-    classify_left_and_queue_mask_at $((light_at + 200)) left-view
+    SLIP=0
+    # The shared prefix: lower the monitor, light the vent, read it. Both
+    # steady cycles begin with these two instructions and test-recipe.mjs
+    # asserts they stay identical, because the branch is not known until the
+    # classifier has answered.
+    run_cycle clear "$base" 0 2
+
+    # The monitor desynced: this frame is the camera feed, not the office.
+    #
+    # The anchor's monitor press did not take effect, so the vent light press
+    # was the *camera* light and the classifier was handed CAM 11 or the map.
+    # Confirmed in-run on night 28: cams=down, cams=down, then cams=UP-DESYNCED
+    # at cycle 3 and never again down. Nothing observed it, so a single lost
+    # press ended every night from 22 to 27.
+    #
+    # A camera frame carries no information about Balloon Boy, so failing closed
+    # on it is not safety, it is noise -- and the 10 s attack cycle it buys does
+    # not wind, which is what turned one lost press into a starved box. It does
+    # tell us two things exactly: the cams are up, and the mask is off, because
+    # the game has no state with both raised (engine.js press(): a mask press
+    # with the monitor up is an input the player cannot make).
+    #
+    # So put the cams back down and run the cycle's remainder from a floor that
+    # clears MONITOR_ANIM_DOWN. The mask-off press is skipped: there is no mask
+    # on to take off, and pressing it would put one ON and blind every later
+    # read.
+    if [ "$monitor_seen" = 'cams=UP-DESYNCED' ]; then
+      desyncs=$((desyncs + 1))
+      actual=$(( $(date +%s%3N) - T0 ))
+      printf '%6d ms  monitor desynced; lowering and resuming the cycle (%d)\n' \
+        "$actual" "$desyncs"
+      hid_mark "$actual"
+      [ "$desyncs" -le 12 ] || {
+        echo 'the monitor desynced repeatedly; the schedule is not reaching the game' >&2
+        exit 48
+      }
+      press_at $((actual + FUSION_POLL_MS)) "$MONITOR_X" "$MONITOR_Y" monitor-resync
+      # 2, not 3. Dropping the Golden Freddy flick removed the clear cycle's mask
+      # instruction, so instruction 3 is the monitor RAISE. Skipping it made this
+      # "recovery" lower the cams and never raise them again -- it inverted the
+      # parity it was supposed to repair, which is why night 33 desynced harder
+      # after each attempt.
+      run_macro clear "$base" 2 999 \
+        $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS + FUSION_POLL_MS))
+      base=$((base + 5000))
+      cycle=$((cycle + 1))
+      continue
+    fi
 
     case "$classification" in
-      empty\ *) branch=clear ;;
-      bb\ *)    branch=attack ;;
+      empty\ *) branch=clear; blind_streak=0 ;;
+      bb\ *)    branch=attack; blind_streak=0 ;;
       *)
         # A single unreadable frame fails closed, because an unseen BB costs
         # the night. Failing closed on *every* cycle is the simulator's
@@ -1275,52 +1874,54 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         # not running this policy and should stop rather than pretend.
         branch=attack
         unknowns=$((unknowns + 1))
-        printf '%6d ms  left-view %s; failing closed\n' \
-          "$(( $(date +%s%3N) - T0 ))" "$classification"
+        blind_streak=$((blind_streak + 1))
+        actual=$(( $(date +%s%3N) - T0 ))
+        printf '%6d ms  left-view %s; failing closed (%d in a row, %d total)\n' \
+          "$actual" "$classification" "$blind_streak" "$unknowns"
         hid_mark "$actual"
-        [ "$unknowns" -le 6 ] || {
-          echo 'too many unclassified left reads; the BB branch is blind' >&2
+        # Consecutive, not cumulative.
+        #
+        # The cap is meant to stop a run that cannot see -- "a run that cannot
+        # see is not running this policy and should stop rather than pretend".
+        # A total counter does not measure that. Night 36 reached 163 s, past
+        # 2 AM and past every previous run, and was then killed by its seventh
+        # unknown of the night rather than by the game: the reads were spread
+        # across 163 s, each one got the correct response (the five-tick mask is
+        # what repels a vent visitor as well as Balloon Boy), and the schedule
+        # recovered every time.
+        #
+        # What actually means blind is several in a row. The retained frames say
+        # why a single one happens: an animatronic filling the office view is
+        # none of empty/bb/inside, so the model has no class for it and returns
+        # `unknown` -- a correct refusal to guess, not a broken sensor.
+        [ "$blind_streak" -le 4 ] || {
+          echo 'four consecutive unclassified left reads; the BB branch is blind' >&2
           exit 45
         }
         ;;
     esac
 
     if [ "$branch" = clear ]; then
-      # The table takes the mask off 33 ms after the classifier answers, not
-      # at a fixed offset: the later capture start moves the answer with it.
-      # Everything after this is anchored to `base` again, so the only hard
-      # requirement is landing before the monitor raise at +1383 -- which is
-      # also where the exact simulator stops surviving (a 700 ms latch).
-      now=$(( $(date +%s%3N) - T0 ))
-      [ "$now" -lt $((base + 1349)) ] || {
-        echo 'left classifier missed the empty deadline' >&2
-        exit 43
-      }
-      press_at $((now + 33)) "$MASK_X"    "$MASK_Y"    mask-off-empty
-      press_at $((base + 1383)) "$MONITOR_X" "$MONITOR_Y" monitor-up
-      press_at $((base + 1617)) "$CAM11_X"   "$CAM11_Y"   cam-11
-      hold_at  $((base + 1767)) "$WIND_X"    "$WIND_Y"    916 wind-a
-      press_at $((base + 2717)) "$MONITOR_X" "$MONITOR_Y" monitor-down-2
-      # 130 ms, not the table's 83. The simulator counts frames of light; the
-      # phone needs a contact Fusion's per-frame poll cannot miss, and a graded
-      # run that scheduled ten 83 ms pulses produced zero visible beams.
-      hold_at  $((base + 3100)) "$HALL_X"    "$HALL_Y"    133 reset-foxy
-      press_at $((base + 3267)) "$MONITOR_X" "$MONITOR_Y" monitor-up-2
-      press_at $((base + 3500)) "$CAM11_X"   "$CAM11_Y"   cam-11-2
-      hold_at  $((base + 3633)) "$WIND_X"    "$WIND_Y"    984 wind-b
-      pulsed_sweep_at $((base + 4667)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 late-sweep
+      # Nothing to undo: the read no longer masks, so an empty opening just
+      # carries on. The mask-off press and its base+1300 ms deadline are gone
+      # with the flick that needed them -- that deadline ended night 29.
+      #
+      # The branch resumes at instruction 3, not 4: dropping the flick removed
+      # the clear cycle's mask instruction, so instruction 3 is now the monitor
+      # raise. Skipping to 4 would skip the raise itself.
+      run_macro clear "$base" 2 999
       base=$((base + 5000))
     else
       attacks=$((attacks + 1))
-      printf '%6d ms  left-view BB; holding the mask through five ticks\n' \
-        "$(( $(date +%s%3N) - T0 ))"
+      actual=$(( $(date +%s%3N) - T0 ))
+      # The mask goes on HERE, off the classifier's answer, because nothing puts
+      # it on before the answer any more. g293 zeroes the tick counter on every
+      # entry into the fully-on state, so the five ticks are one continuous hold
+      # that the plan's own mask instruction ends -- not cumulative storage.
+      printf '%6d ms  left-view BB; masking now, holding through five ticks\n' "$actual"
+      press_at $((actual + FUSION_POLL_MS)) "$MASK_X" "$MASK_Y" mask-on-bb
       hid_mark "$actual"
-      press_at $((base + 5917)) "$MASK_X"  "$MASK_Y" mask-off-after-bb
-      hall_reset_and_raise_at $((base + 6167)) reset-foxy-after-bb
-      pulsed_sweep_at $((base + 6367)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 response-sweep
-      press_at $((base + 6750)) "$CAM11_X" "$CAM11_Y" cam-11-after-bb
-      hold_at  $((base + 6883)) "$WIND_X"  "$WIND_Y" 2734 wind-after-bb
-      pulsed_sweep_at $((base + 9667)) "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" 10,4,7 response-late-sweep
+      run_macro attack "$base" 2 999
       base=$((base + 10000))
     fi
     cycle=$((cycle + 1))
@@ -1372,7 +1973,10 @@ if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
     press_at   $((base + 600)) "$MASK_X"    "$MASK_Y"    precheck-mask-off
     hold_at    $((base + 867)) "$HALL_X"    "$HALL_Y"    80 precheck-reset-foxy
     light_down_at $((base + 983)) left-view-light-down
-    classify_left_and_queue_mask_at $((base + 1083)) left-view
+    # This branch is still hand-typed (see the note above): it is the rejected
+    # night-7 translation, kept as executable documentation, and the recipe
+    # does not emit a plan for it. The mask gap is the plan's MASK_GAP_MS.
+    classify_left_and_queue_mask_at $((base + 1083)) 40 left-view
 
     case "$classification" in
       empty\ *)
@@ -1792,7 +2396,14 @@ if [ -n "$SAMPLE_VIEW" ]; then
   pull_samples
 fi
 if [ "$GRADE_RUN" = 1 ]; then
-  python3 "$HERE/grade-minus7.py" "$LOCAL_VIDEO"
-  python3 "$HERE/camtrace.py" --expected "$((CYCLES + 1))" "$LOCAL_VIDEO"
-  python3 "$HERE/windpct.py" "$LOCAL_VIDEO"
+  # One pipeline, and it finds the capture itself.
+  #
+  # This used to name "$LOCAL_VIDEO" directly. Every run that ends in an abort
+  # saves "$LOCAL_ABORT_VIDEO" instead, so for a whole session of aborted runs
+  # this step graded a file that did not exist and printed nothing -- while
+  # looking, in the log, exactly like grading. A false 163 s record survived
+  # because of it. grade-run.sh takes the run name, finds whichever capture
+  # exists, and runs every instrument including the survival grader that would
+  # have caught it.
+  "$HERE/grade-run.sh" "$OUT" || true
 fi

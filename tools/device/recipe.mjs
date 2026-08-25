@@ -14,11 +14,36 @@ import * as C from '../../src/config.js';
 import { Sim } from '../../src/engine.js';
 import { run } from '../hidpilottest.mjs';
 
-// The phone's proven floor for a contact Fusion cannot miss, and the shortest
-// camera spacing hid-sweep-probe.sh has landed 4/4. Both are device
-// measurements; see docs/device/HID-MULTITOUCH.md.
+// The phone's proven floor for a contact Fusion cannot miss, and the camera
+// spacing the shipped route uses. Both are device measurements; see
+// docs/device/HID-MULTITOUCH.md.
 export const MIN_CONTACT_MS = 100;
+// 120 ms is what hid-sweep-probe.sh lands 4/4, and what a real night lands too:
+// sweepcheck.py on night 26 reports "11/11 sweeps flashed all of 10,4,7", every
+// camera lit while it was the selected feed. So the stun is being applied at
+// this spacing and there is no measured reason to widen it.
+//
+// A widening to 140 ms was built and then withdrawn. The case for it was
+// camtrace reporting "4 complete sweeps, 4 incomplete sweep starts" on that
+// same night -- but camtrace grades the ordered 10-04-07-11 *sequence*, and at
+// a finer dwell floor it reported MORE incomplete starts (7), not fewer, so it
+// is measuring sequence shape rather than dropped selections. The independent
+// signal disagreed with it and the independent signal has a negative control.
+// This repo has already withdrawn one spacing figure that turned out to be a
+// camtrace artifact; it is not going to adopt one.
+//
+// The emitter can still widen -- see the sweep branch, which anchors the END so
+// the stun bridge does not move -- and the route tolerates up to 140 ms that
+// way (400/400 at 140, 3/400 at 160, holding the end fixed). That headroom is
+// measured and recorded here so a future change has a ceiling, but it is not
+// taken without a device measurement that asks for it.
 export const DEVICE_SPACING_MS = 120;
+// The slot the POLICY is validated at. It is deliberately not the device
+// spacing: widening the actuator is a device compensation applied by the
+// emitter, not a new route. Rebuilding the policy at 140 moves its sweeps
+// 50 ms earlier and the plan then replays 11/300 -- that is the tail this
+// route cannot give up, not a rounding difference.
+export const MODEL_SLOT_MS = 120;
 export const NIGHT_MS = 420_000;
 export const CYCLE_MS = 5_000;
 
@@ -119,9 +144,36 @@ export function budget(cycle, lengthMs) {
 }
 
 export function build(opts = {}) {
+  // Golden Freddy is IGNORED on night 6, deliberately and temporarily.
+  //
+  // The always-taken mask flick is not a Balloon Boy precaution -- it is the
+  // Golden Freddy clear that MINUS-7-STRATEGY.md's order rule demands before
+  // the hall flash ("Golden Freddy must be cleared *before* you press CTRL, or
+  // the flash kills you"). But it is a GUESS: two blind mask toggles every
+  // cycle in a runner that cannot see the mask's state. On the phone that is
+  // the dominant failure -- a dropped toggle latches the mask on, every later
+  // left read comes back dark, and the model scores it a confident `inside`.
+  // Nights 30 and 31 both died exactly that way.
+  //
+  // Priced in the exact simulator over 1000 night-6 runs:
+  //     with the flick      1000/1000 clears
+  //     ignoring Golden Freddy 478/1000 clears
+  // Every one of those 522 deaths is "raised the monitor with Golden Freddy in
+  // the office", and the EARLIEST is at 149 s -- after the 2 AM step-up at
+  // 140 s, where his AI goes from "1 in ten runs" to a flat 3. Ignoring him is
+  // free for 1000/1000 runs up to 2 AM, and the device has never survived past
+  // 73 s.
+  //
+  // So this trades a certainty (the mask latches and blinds the classifier) for
+  // a risk that does not arrive until long past anything reached so far. It is
+  // NOT a route decision and must be revisited: Golden Freddy should be
+  // identified, not guessed, and building that classifier needs positives that
+  // night 6 supplies only one run in ten before 2 AM. Restore the flick, or
+  // replace it with a real detection, before any attempt that expects to pass
+  // 2 AM.
   const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
-              sweepSlotMs: 120, maskMarginMs: 900, readLatencyMs: 550,
-              hallPulseMs: 130, pilotOffset: 10, ...opts };
+              sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, readLatencyMs: 550,
+              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: false, ...opts };
   const log = capture(o);
   const epoch = o.pilotOffset;
   const s = sec => epoch + Math.round(sec * 60);
@@ -219,6 +271,120 @@ export const MASK_GAP_MS = 40;
 export const SWEEP_SELECT_MS = MIN_CONTACT_MS;
 export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 
+// MONITOR_ANIM_UP is 12 sourced frames and `engine.js` drops a camera select
+// outright until the raise finishes:
+//
+//     if (this.monitor === MON_UP && C.CAMS[n]) this.cam = n;
+//
+// The policy emits selects that clear that animation by 0-30 ms. In the engine
+// that is fine, because the select lands exactly on the frame the animation
+// completes. On the phone the macro's anchor is wall-timed and lands 49-93 ms
+// late, so the same instruction arrives *inside* the animation and sets
+// nothing -- the feed stays where it was, the pilot winds on the wrong camera,
+// and the sweep that bridges the five-tick mask never happens. Nights 22-25
+// died that way and the rendered classifier frame is CAM 11, unchanged.
+//
+// Move the RAISE earlier rather than the select later: HID-MULTITOUCH.md
+// records that one frame of sweep tail costs 272 of 400 nights, so the sweep's
+// end is the one thing in this cycle that must not move. Each instruction may
+// slide back to one Fusion poll after the one before it, and the relaxation
+// runs backwards so freeing a raise can free the hall pulse ahead of it.
+export const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / 60);
+export const RAISE_MARGIN_MS = 33;
+
+function clearTheRaise(name, lines) {
+  const ins = lines.map(line => {
+    const [at, kind, ...rest] = line.split(' ');
+    return { at: +at, kind, rest };
+  });
+  const spanOf = e =>
+    e.kind === 'tap' || e.kind === 'hold' ? +e.rest[1] :
+    e.kind === 'hall' ? +e.rest[0] :
+    e.kind === 'hallraise' ? +e.rest[0] :
+    e.kind === 'sweep' ? 2 * +e.rest[0] + +e.rest[1] :
+    e.kind === 'read' ? +e.rest[0] : MIN_CONTACT_MS;
+  const isCamera = e => e.kind === 'sweep' ||
+    (e.kind === 'tap' && /^cam\d+$/.test(e.rest[0]));
+  const isRaise = (e, up) => !up &&
+    (e.kind === 'hallraise' || (e.kind === 'tap' && e.rest[0] === 'monitor'));
+
+  // Which monitor presses are raises depends on where the cycle starts: a
+  // steady cycle is entered with the cams up and its anchor lowers them.
+  let up = name !== 'opening';
+  const raises = [];
+  for (const e of ins) {
+    if (e.kind === 'hallraise' || (e.kind === 'tap' && e.rest[0] === 'monitor')) {
+      if (isRaise(e, up)) raises.push(e);
+      up = !up;
+    }
+  }
+
+  for (const raise of raises) {
+    const i = ins.indexOf(raise);
+    const select = ins.slice(i + 1).find(isCamera);
+    if (!select) continue;
+    const want = select.at - (MONITOR_ANIM_UP_MS + RAISE_MARGIN_MS);
+    if (raise.at <= want) continue;
+    // Slide the raise and, if it runs into what precedes it, that too.
+    let moving = i, target = want;
+    while (moving >= 0) {
+      const e = ins[moving];
+      if (e.at <= target) break;
+      e.at = target;
+      const prev = ins[moving - 1];
+      if (!prev) break;
+      target = e.at - RAISE_MARGIN_MS - spanOf(prev);
+      moving -= 1;
+    }
+    if (raise.at > want)
+      throw new Error(`${name}: the raise at +${raise.at} ms cannot clear ` +
+        `MONITOR_ANIM_UP before the select at +${select.at} ms without moving the ` +
+        'select, and the sweep\'s end is what bridges the five-tick mask');
+    if (ins.some((e, k) => k > 0 && e.at < ins[k - 1].at))
+      throw new Error(`${name}: relaxing the raise reordered the cycle`);
+  }
+  return ins.map(e => [e.at, e.kind, ...e.rest].join(' '));
+}
+
+// Widening the sweep moves its START earlier, which eats the released time the
+// instruction before it was given. Pay for that out of the wind, which is the
+// only elastic thing in the cycle: the clear cycle runs a +471 ms wind margin,
+// so 30-50 ms is free, while every other gap here is a device constraint.
+//
+// Fusion polls touch once per frame, so two different controls closer than one
+// poll can read as a single finger moving between them and the second never
+// fires. That is the same rule test-recipe.mjs enforces; this keeps it true
+// after the emitter has retimed anything.
+export const FUSION_POLL_MS = 33;
+
+function makeRoom(name, lines) {
+  const ins = lines.map(line => {
+    const [at, kind, ...rest] = line.split(' ');
+    return { at: +at, kind, rest };
+  });
+  const endOf = e =>
+    e.kind === 'tap' ? e.at + +e.rest[1] :
+    e.kind === 'hold' ? e.at + +e.rest[1] :
+    e.kind === 'hall' || e.kind === 'hallraise' ? e.at + +e.rest[0] :
+    e.kind === 'sweep' ? e.at + 2 * +e.rest[0] + +e.rest[1] :
+    e.kind === 'read' ? e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS :
+    e.at + MIN_CONTACT_MS;
+  for (let i = 0; i + 1 < ins.length; i++) {
+    const a = ins[i], b = ins[i + 1];
+    const gap = b.at - endOf(a);
+    if (gap >= FUSION_POLL_MS) continue;
+    if (a.kind !== 'hold')
+      throw new Error(`${name}: only ${gap} ms between ${a.kind} at +${a.at} ms and ` +
+        `${b.kind} at +${b.at} ms, and the earlier one is not a wind to shorten`);
+    const want = +a.rest[1] - (FUSION_POLL_MS - gap);
+    if (want < MIN_CONTACT_MS)
+      throw new Error(`${name}: shortening the wind at +${a.at} ms to clear ${b.kind} ` +
+        `at +${b.at} ms would leave ${want} ms, under the ${MIN_CONTACT_MS} ms contact floor`);
+    a.rest[1] = String(want);
+  }
+  return ins.map(e => [e.at, e.kind, ...e.rest].join(' '));
+}
+
 export function devicePlan(recipe) {
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
@@ -241,16 +407,23 @@ export function devicePlan(recipe) {
         // by name found the first one in the cycle instead, which produced a
         // negative spacing on a second sweep.
         const modelled = ats.length > 1 ? ats[1] - ats[0] : DEVICE_SPACING_MS;
-        // The emitted spacing is the actuator's, not the model's: the phone has
-        // only landed 120 ms, and the model's frame quantisation reports the
-        // same slot as 116. Refuse rather than silently retime if the recipe
-        // was built for a sweep the phone has not been shown to perform -- one
-        // frame of rounding is quantisation, anything more is a different route.
-        if (Math.abs(modelled - DEVICE_SPACING_MS) > 17)
-          throw new Error(`the recipe models a ${modelled} ms sweep spacing but ` +
-            `the device plan can only express the ${DEVICE_SPACING_MS} ms the ` +
-            'phone has landed');
-        lines.push(`${e.at} sweep ${DEVICE_SPACING_MS} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
+        // The emitted spacing is the actuator's, not the model's, and the phone
+        // needs a wider one than the model quantises to. Widen by starting the
+        // sweep EARLIER so its end does not move: that end is the stun bridge
+        // across the five-tick mask, and HID-MULTITOUCH.md records that one
+        // frame of tail costs 272 of 400 nights. Anchoring the end is what makes
+        // 140 ms free (400/400) where rebuilding the policy at 140 is not
+        // (11/300) -- the difference is entirely which end of the sweep moves.
+        if (DEVICE_SPACING_MS < modelled)
+          throw new Error(`the device spacing ${DEVICE_SPACING_MS} ms is narrower ` +
+            `than the ${modelled} ms the recipe models; this emitter only widens`);
+        const modelledEnd = ats[ats.length - 1] + MIN_CONTACT_MS;
+        const deviceSpan = (cams.length - 1) * DEVICE_SPACING_MS + SWEEP_SELECT_MS;
+        const start = modelledEnd - deviceSpan;
+        if (start < 0)
+          throw new Error(`widening the sweep to ${DEVICE_SPACING_MS} ms starts it ` +
+            `at ${start} ms, before the cycle begins`);
+        lines.push(`${start} sweep ${DEVICE_SPACING_MS} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
         i = j - 1;
         continue;
       }
@@ -274,7 +447,7 @@ export function devicePlan(recipe) {
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${e.dur}`);
     }
-    out[name] = lines;
+    out[name] = makeRoom(name, clearTheRaise(name, lines));
   }
   return out;
 }
@@ -319,7 +492,8 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       } else if (kind === 'read') {
         at(t, 'press', 'ventL');
         at(t + f(+rest[0]), 'release', 'ventL');
-        at(t + f(+rest[0]) + f(+rest[1]), 'press', 'mask');
+        // No mask here: the Golden Freddy flick is dropped on night 6 and the
+        // mask is pressed on the classifier's answer instead, below.
         at(t + f(readLatencyMs), 'snapshot', base);
       } else throw new Error(`unknown instruction ${kind}`);
     }
@@ -349,6 +523,10 @@ export function replay(plan, { night = 6, seed = 1, worst = false,
       pending = null;
       if (!bb && inside) missed++;
       if (bb) detections++;
+      // The runner masks off the answer, not off the anchor, so the model has
+      // to as well -- otherwise the five-tick hold starts in a different place
+      // than the phone starts it.
+      if (bb) at(sim.frame + f(FUSION_POLL_MS), 'press', 'mask');
       const lines = bb ? plan.attack : plan.clear;
       parse(lines.slice(2), b);             // the branch, after the read
       base = b + f(bb ? 10000 : 5000);
@@ -365,7 +543,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     return v === undefined ? def : +v;
   };
   const recipe = build({
-    night: arg('night', 6), sweepSlotMs: arg('slot-ms', 120),
+    night: arg('night', 6), sweepSlotMs: arg('slot-ms', MODEL_SLOT_MS),
     maskMarginMs: arg('mask-margin-ms', 900), readLatencyMs: arg('read-latency-ms', 550),
     hallPulseMs: arg('hall-pulse-ms', 130), pilotOffset: arg('offset-frames', 10),
   });

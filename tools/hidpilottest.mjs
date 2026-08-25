@@ -27,8 +27,14 @@ class HidPilot {
                      bangFalseCount = 0, deviceSweep = false,
                      sweepSlotMs = 240, pulseLight = false,
                      secondBeat = false, maskMarginMs = null,
-                     readLatencyMs = 360, hallPulseMs = 83 } = {}) {
+                     readLatencyMs = 360, hallPulseMs = 83,
+                     prophylacticMask = true } = {}) {
     this.sim = sim;
+    // Mask on the classifier's answer instead of before it. The device runner
+    // cannot see the mask's state, so every unconditional toggle is a chance to
+    // latch it on -- and a latched mask makes every later left read dark, which
+    // the model reports as a confident `inside`.
+    this.prophylacticMask = prophylacticMask;
     this.bbMode = bbMode;
     this.cam5 = bbMode === 'cam5';
     this.cam5Light = cam5Light;
@@ -244,7 +250,7 @@ class HidPilot {
     this.tap(a, 'monitor');
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
     this.at(latch, 'left-snapshot', a);
-    this.tap(latch + s(0.06), 'mask');
+    if (this.prophylacticMask) this.tap(latch + s(0.06), 'mask');
   }
 
   onLeftSnapshot(a) {
@@ -263,8 +269,10 @@ class HidPilot {
   // camera sweep as late as possible. Two short winding windows still exceed
   // the sourced box break-even rate.
   leftClear(a, resultAt) {
+    // With no prophylactic mask there is nothing to take off; the press would
+    // put one ON and blind every later read.
     const maskOff = resultAt + s(0.02);
-    this.tap(maskOff, 'mask');
+    if (this.prophylacticMask) this.tap(maskOff, 'mask');
     // hallLightOn needs maskFullyOff and MASK_ANIM_OFF is 250 ms, so when the
     // phone's read latency pushes this press late the pulse below sits
     // entirely inside that animation and reaches nobody -- 420 frames of
@@ -330,10 +338,16 @@ class HidPilot {
   // Keep that same mask down through ticks +1..+5. The late hall beat in the
   // previous cycle makes Foxy's +3 s roll safe; the previous late camera
   // sweep remains live until this response refreshes it after tick five.
-  leftAttack(a) {
+  leftAttack(a, resultAt) {
     this.attacks++;
     const phaseMargin = this.maskMargin !== null ? this.maskMargin
       : this.phaseSafeMask ? s(1) : 0;
+    // Without a prophylactic mask the response has to put one on itself, off
+    // the classifier's answer. g293 zeroes the tick counter on every entry into
+    // the fully-on state, so the five ticks are one continuous hold starting
+    // here rather than cumulative storage.
+    if (!this.prophylacticMask && resultAt !== undefined)
+      this.tap(resultAt + s(0.02), 'mask');
     const off = a + s(5.02) + phaseMargin;
     this.tap(off, 'mask');
     // The hall press is queued before the simultaneous monitor raise. It
@@ -382,7 +396,7 @@ class HidPilot {
     }
     this.detections++;
     if (this.sparseLeft) this.sparseLeftAttack(sample.a);
-    else this.leftAttack(sample.a);
+    else this.leftAttack(sample.a, this.sim.frame);
   }
 
   // BB has already been seen on CAM 05. Refresh the normal defences, lower

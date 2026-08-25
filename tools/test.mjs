@@ -112,6 +112,14 @@ const ENGINE = [
   // The runner must schedule the plan the simulator emits. The table lived in
   // two places and a fix to one silently missed the other.
   ['runner plan', ['device/test-runner-plan.mjs']],
+  // The engine cannot price an input the port refuses, so the plan is checked
+  // against the phone's measured input-acceptance gaps separately.
+  ['device input gaps', ['device/test-device-input-gaps.mjs']],
+  // The interpreter is the only part of the runner that decides *what*
+  // happens. This runs the shipped functions against the real plan with the
+  // device primitives stubbed, so a branch window off by one fails here
+  // instead of on the phone.
+  ['plan interpreter', ['device/test-plan-interpreter.sh']],
   ['camtrace', ['device/test-camtrace.py']],
   ['cuetest', ['cue/test-cue.py']],
 ];
@@ -142,7 +150,8 @@ function runTool(argv) {
     const started = Date.now();
     // Most checks are node; the cue front end is stdlib Python, like the rest
     // of the device tooling, so dispatch on the extension.
-    const runner = argv[0].endsWith('.py') ? 'python3' : process.execPath;
+    const runner = argv[0].endsWith('.py') ? 'python3'
+      : argv[0].endsWith('.sh') ? 'bash' : process.execPath;
     const child = spawn(runner, [join(TOOLS, argv[0]), ...argv.slice(1)],
       { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
