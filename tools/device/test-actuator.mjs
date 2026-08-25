@@ -8,6 +8,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../../src/config.js';
 import { DeviceActuator, SEAM_SAFE_MS } from './actuator.mjs';
+import { run as pilotRun } from '../pilottest.mjs';
 
 // The actuator only reads sim.frame and sim.maskOn, and writes press/release.
 function stubSim() {
@@ -125,6 +126,28 @@ function seamRate(gapFrames, trials, worst = false) {
   };
   if (runOnce(42) !== runOnce(42)) problems.push('the same seed produced two different nights');
   if (runOnce(42) === runOnce(43)) problems.push('two seeds produced the same lateness draws');
+}
+
+// The wiring itself: at zero lateness the actuator delivers on the scheduled
+// frame in the scheduled order, its draws never touch sim.rng, and the shipped
+// schedule keeps every mask -> monitor pair at or past SEAM_SAFE_MS -- so a
+// wrapped pilottest night must be frame-identical to its unwrapped twin. Any
+// divergence here is the wrapper changing the model, not the phone.
+{
+  for (let i = 0; i < 40 && !problems.length; i++) {
+    const sim = { seed: (i * 2246822519) >>> 0, night: 6 };
+    const plain = pilotRun({ vent: true, sync: true, sim });
+    const wrapped = pilotRun({ vent: true, sync: true, sim,
+      deviceActuator: { lateMinMs: 0, lateMaxMs: 0 } });
+    const key = (r) => JSON.stringify([r.sim.won, r.sim.frame,
+      r.sim.death && r.sim.death.reason, r.sim.death && r.sim.death.detail]);
+    if (key(plain) !== key(wrapped))
+      problems.push(`seed ${sim.seed}: a zero-lateness actuator changed the night ` +
+        `(${key(plain)} vs ${key(wrapped)})`);
+    if (wrapped.actuator.seamDrops)
+      problems.push(`seed ${sim.seed}: the schedule seam-dropped at zero lateness -- ` +
+        'a mask -> monitor pair is under SEAM_SAFE_MS');
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

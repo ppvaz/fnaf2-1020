@@ -18,6 +18,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
+import { DeviceActuator } from './device/actuator.mjs';
 
 const ms = (v) => Math.round(v / 1000 * C.FPS);
 
@@ -179,6 +180,17 @@ const VENT_CHECK_AT = 300;
 export function run(opts = {}) {
   const cycles = opts.cycles ?? 80;
   const sim = new Sim(Object.assign({ seed: 1 }, opts.sim));
+  // The measured phone between the table and the game: per-press launch
+  // lateness (this runner fires one wall-timed helper per table row) and the
+  // mask-seam monitor drop. Off by default so every published simulator
+  // figure keeps meaning what it meant; `--device-actuator` opts a run in.
+  const actuator = opts.deviceActuator
+    ? new DeviceActuator(sim, Object.assign(
+        { seed: (opts.sim && opts.sim.seed) ?? 1, worst: opts.sim && opts.sim.worst },
+        opts.deviceActuator === true ? {} : opts.deviceActuator))
+    : null;
+  const press = (a) => actuator ? actuator.press(a) : sim.press(a);
+  const release = (a) => actuator ? actuator.release(a) : sim.release(a);
   let queue = [];
   const responseTable = opts.fastResponse ? RESPONSE_FAST : RESPONSE;
   const at = (t0, table) => table.forEach(([o, kind, act, dur]) =>
@@ -269,19 +281,21 @@ export function run(opts = {}) {
       // timed response.
       else if (kind === 'down' || kind === 'up') {
         const want = kind === 'up';
-        if (!opts.sync) { sim.press('monitor'); continue; }
+        if (!opts.sync) { press('monitor'); continue; }
         syncs++;
-        if (sim.camsUp !== want) sim.press('monitor');
+        if (sim.camsUp !== want) press('monitor');
       }
-      else if (kind === 'tap') sim.press(act);
-      else { sim.press(act); releases.push([f + dur, act]); }
+      else if (kind === 'tap') press(act);
+      else { press(act); releases.push([f + dur, act]); }
     }
     for (let i = releases.length - 1; i >= 0; i--)
-      if (releases[i][0] <= f) { sim.release(releases[i][1]); releases.splice(i, 1); }
+      if (releases[i][0] <= f) { release(releases[i][1]); releases.splice(i, 1); }
+    if (actuator) actuator.deliver();
 
     sim.tick();
   }
-  return { sim, checks, responses, evictions, syncs };
+  return { sim, checks, responses, evictions, syncs,
+           actuator: actuator && { sent: actuator.sent, seamDrops: actuator.seamDrops } };
 }
 
 // Counts night-6 deaths whose last office entry was the forcedown's fuse
@@ -314,6 +328,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // the strategy and every other tool here target 10/20.
   const nightArg = (process.argv.find(a => a.startsWith('--night=')) || '').split('=')[1];
   const night = nightArg ? +nightArg : 7;
+  const lateArg = (process.argv.find(a => a.startsWith('--press-late-ms=')) || '').split('=')[1];
+  let deviceActuator = process.argv.includes('--device-actuator');
+  if (lateArg !== undefined) {
+    if (!deviceActuator) throw new Error('--press-late-ms= does nothing without --device-actuator');
+    const [lo, hi] = lateArg.split(',').map(Number);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo < 0 || hi < lo)
+      throw new Error('--press-late-ms=MIN,MAX needs 0 <= MIN <= MAX');
+    deviceActuator = { lateMinMs: lo, lateMaxMs: hi };
+  }
   const assert = process.argv.includes('--assert');
   const worst = process.argv.includes('--worst');
   const fails = {};
@@ -323,10 +346,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // hall can no longer be flashed, and Foxy collects. Counted separately from
   // plain Foxy deaths because only this one is BB's fault.
   let foxyDeaths = 0, bbInOffice = 0, chain = 0;
+  let actSent = 0, actDrops = 0, actDropNights = 0;
   for (let i = 0; i < n; i++) {
     const r = run({ vent, evict, cycles, lateFlash, fastResponse, guard, sync,
-      sim: { seed: (i * 2246822519) >>> 0, worst, night } });
+      deviceActuator, sim: { seed: (i * 2246822519) >>> 0, worst, night } });
     checks += r.checks; responses += r.responses; evictions += r.evictions;
+    if (r.actuator) {
+      actSent += r.actuator.sent; actDrops += r.actuator.seamDrops;
+      if (r.actuator.seamDrops) actDropNights++;
+    }
     minBox = Math.min(minBox, r.sim.box); minPower = Math.min(minPower, r.sim.power);
     if (r.sim.won) survived++;
     else {
@@ -337,7 +365,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (r.sim.bb.inside && r.sim.death.reason === 'foxy') chain++;
     }
   }
-  const mode = `${guard ? ' (forcedown guard)' : ''}${lateFlash ? ' (late flash)' : ''}${fastResponse ? ' (fast response)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}`;
+  const mode = `${guard ? ' (forcedown guard)' : ''}${lateFlash ? ' (late flash)' : ''}${fastResponse ? ' (fast response)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}${deviceActuator ? ' + device actuator' : ''}`;
   const label = night === 7 ? 'a full 10/20 night' : `a full night ${night}`;
   console.log(`${survived}/${n} survived ${label} — device schedule${mode}`);
   for (const [k, v] of Object.entries(fails).sort((a, b) => b[1] - a[1])) console.log(`  ${v}x  ${k}`);
@@ -346,6 +374,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     (evict ? ` | ${evictions} evictions` : ''));
   console.log(`Balloon Boy: ${bbInOffice} reached the office | ` +
     `Foxy: ${foxyDeaths} deaths | BB->Foxy chain: ${chain}`);
+  if (deviceActuator)
+    console.log(`actuator: ${actDrops} seam-dropped monitor presses in ${actSent} sent` +
+      ` (${actDropNights}/${n} nights lost at least one)`);
 
   if (process.argv.includes('--assert-guard')) {
     // g718-721 lands at cycle phase 3000 ms for any :X2/:X7 anchor, and the

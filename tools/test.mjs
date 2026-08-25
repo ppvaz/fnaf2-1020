@@ -151,6 +151,11 @@ const REPORTS = [
   // ...and on the night the device actually selects, where the same schedule
   // reaches about 118 s instead of 48 s and still loses.
   ['pilottest 6th night', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync']],
+  // The same night through the measured actuator (launch lateness plus the
+  // mask-seam drop). A report, not a check: survival under the model is still
+  // a statement about the model.
+  ['pilottest device actuator', ['pilottest.mjs', '200', '--night=6', '--vent',
+    '--sync', '--device-actuator']],
 ];
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
