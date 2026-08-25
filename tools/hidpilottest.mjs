@@ -13,6 +13,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
+import { DeviceActuator } from './device/actuator.mjs';
 
 const s = C.s;
 const TARGETS = [10, 4, 7];
@@ -28,8 +29,14 @@ class HidPilot {
                      sweepSlotMs = 240, pulseLight = false,
                      secondBeat = false, maskMarginMs = null,
                      readLatencyMs = 360, hallPulseMs = 83,
-                     prophylacticMask = true } = {}) {
+                     prophylacticMask = true, actuator = null } = {}) {
     this.sim = sim;
+    // The measured phone between this table and the game. The HID runner
+    // wall-times one boundary per macro and spaces the inside with hid_delay
+    // (+/-2 ms), so lateness here is one draw per beat, not per press --
+    // per-press draws would jitter the sweep spacing the coprocess queue
+    // actually preserves, and double-count what --sweep-slot-ms models.
+    this.act = actuator;
     // Mask on the classifier's answer instead of before it. The device runner
     // cannot see the mask's state, so every unconditional toggle is a chance to
     // latch it on -- and a latched mask makes every later left read dark, which
@@ -132,7 +139,15 @@ class HidPilot {
     this.at(f + frames, 'up', act);
   }
 
+  // One wall-timed launch. Everything scheduled until the next beat shares one
+  // lateness draw, and the capture events shift with it below, because the
+  // flip-gate runner places the capture from the light-down that happened
+  // rather than the one the plan scheduled.
+  beat() { if (this.act) this.act.beat(); }
+  beatShift() { return this.act ? this.act.beatLateFrames() : 0; }
+
   opening() {
+    this.beat();
     const e = this.epoch;
     this.tap(e + s(0.18), 'monitor');
     this.tap(e + s(0.46), 'cam:11');
@@ -234,7 +249,7 @@ class HidPilot {
     this.tap(a + 36, 'mask');
     this.hold(a + 52, 5, 'light');
     this.hold(a + 59, 28, 'ventL');
-    this.at(a + 86, 'left-snapshot', a);
+    this.at(a + 86 + this.beatShift(), 'left-snapshot', a);
     this.tap(a + 88, 'mask');
   }
 
@@ -249,7 +264,7 @@ class HidPilot {
     const latch = lightDown + this.readLatency;
     this.tap(a, 'monitor');
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
-    this.at(latch, 'left-snapshot', a);
+    this.at(latch + this.beatShift(), 'left-snapshot', a);
     if (this.prophylacticMask) this.tap(latch + s(0.06), 'mask');
   }
 
@@ -268,7 +283,18 @@ class HidPilot {
   // resets Foxy only ~1.3 s before the following BB check, and leaves the
   // camera sweep as late as possible. Two short winding windows still exceed
   // the sourced box break-even rate.
+  // The branch is one floored macro on the phone: rm_floor launches it off the
+  // read that happened and preserves every plan gap. So when the read chain
+  // ran late (the actuator shifts the snapshot by its beat), the whole branch
+  // shifts with it -- scheduling it at plan time would compress the branch's
+  // own gaps against the result, a geometry the runner does not have. Zero
+  // whenever the read landed on plan, so the exact routes are untouched.
+  branchShift(a, resultAt) {
+    return Math.max(0, resultAt - (a + s(0.36) + this.readLatency + s(0.26)));
+  }
+
   leftClear(a, resultAt) {
+    const b = a + this.branchShift(a, resultAt);
     // With no prophylactic mask there is nothing to take off; the press would
     // put one ON and blind every later read.
     const maskOff = resultAt + s(0.02);
@@ -279,46 +305,46 @@ class HidPilot {
     // flashlight a night spent on nothing. The second beat's pulse is the
     // cycle's real Foxy reset either way; skipping this one when it cannot
     // land takes the night's power floor from 716 frames to 1111.
-    if (maskOff + C.MASK_ANIM_OFF <= a + s(1.28))
-      this.hold(a + s(1.28), this.hallPulse, 'light');
-    this.tap(a + s(1.38), 'monitor');
-    this.tap(a + s(1.62), 'cam:11');
+    if (maskOff + C.MASK_ANIM_OFF <= b + s(1.28))
+      this.hold(b + s(1.28), this.hallPulse, 'light');
+    this.tap(b + s(1.38), 'monitor');
+    this.tap(b + s(1.62), 'cam:11');
     if (this.deviceSweep && !this.secondBeat) {
       // The phone's 790 ms sweep leaves the second wind window below one
       // frame, so the cycle drains. Spend the second monitor-down beat on
       // winding instead: one hall reset and one prophylactic mask per cycle
       // remain, and the sweep still lands on the anchor.
-      const only = a + s(5) - this.sweepFrames - this.sweepTail;
-      this.hold(a + s(1.77), a + s(2.68) - (a + s(1.77)), 'wind');
+      const only = b + s(5) - this.sweepFrames - this.sweepTail;
+      this.hold(b + s(1.77), b + s(2.68) - (b + s(1.77)), 'wind');
       // The second Foxy reset still needs the monitor down, but not the
       // second Golden Freddy flick -- beat one's prophylactic mask already
       // covers this cycle. Dropping the flick shortens the beat from 1.48 s
       // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
-      this.tap(a + s(2.72), 'monitor');
-      this.hold(a + s(3.10), this.hallPulse, 'light');
+      this.tap(b + s(2.72), 'monitor');
+      this.hold(b + s(3.10), this.hallPulse, 'light');
       // The hall pulse is a 130 ms contact on the phone, so the raise it is
       // meant to precede has to clear it, and CAM 11 has to clear the raise's
       // 204 ms animation after that.
-      this.tap(a + s(3.27), 'monitor');
-      this.tap(a + s(3.50), 'cam:11');
-      this.hold(a + s(3.64), Math.max(1, only - 3 - (a + s(3.64))), 'wind');
+      this.tap(b + s(3.27), 'monitor');
+      this.tap(b + s(3.50), 'cam:11');
+      this.hold(b + s(3.64), Math.max(1, only - 3 - (b + s(3.64))), 'wind');
       this.flashTargets(only);
       return;
     }
-    this.hold(a + s(1.74), a + s(2.68) - (a + s(1.74)), 'wind');
+    this.hold(b + s(1.74), b + s(2.68) - (b + s(1.74)), 'wind');
 
-    this.tap(a + s(2.72), 'monitor');
-    this.tap(a + s(3.10), 'mask');
-    this.tap(a + s(3.45), 'mask');
-    this.hold(a + s(3.73), this.hallPulse, 'light');
-    this.tap(a + s(3.85), 'monitor');
-    this.tap(a + s(4.08), 'cam:11');
+    this.tap(b + s(2.72), 'monitor');
+    this.tap(b + s(3.10), 'mask');
+    this.tap(b + s(3.45), 'mask');
+    this.hold(b + s(3.73), this.hallPulse, 'light');
+    this.tap(b + s(3.85), 'monitor');
+    this.tap(b + s(4.08), 'cam:11');
     // The sweep must land on the anchor, not overrun it. With the phone's
     // 790 ms actuator that pulls its start back over this wind window, which
     // is the point of measuring the device profile on this route.
-    const sweepStart = a + s(5) - this.sweepFrames - this.sweepTail;
-    const windEnd = this.deviceSweep ? sweepStart - 3 : a + s(4.68);
-    this.hold(a + s(4.20), Math.max(1, windEnd - (a + s(4.20))), 'wind');
+    const sweepStart = b + s(5) - this.sweepFrames - this.sweepTail;
+    const windEnd = this.deviceSweep ? sweepStart - 3 : b + s(4.68);
+    this.hold(b + s(4.20), Math.max(1, windEnd - (b + s(4.20))), 'wind');
     this.flashTargets(sweepStart);
   }
 
@@ -326,11 +352,14 @@ class HidPilot {
   // may stay up across the next movement opportunity: BB can at most move onto
   // CAM 05 there, and the following sparse read catches a final hop.
   sparseLeftClear(a, resultAt) {
-    const sweepStart = a + s(5) - this.sweepFrames - this.sweepTail;
+    // The sparse read's plan-time result lands at a+86 plus the classify tail;
+    // the branch floors off the result that happened, like leftClear's.
+    const b = a + Math.max(0, resultAt - (a + 86 + s(0.26)));
+    const sweepStart = b + s(5) - this.sweepFrames - this.sweepTail;
     this.tap(resultAt + 1, 'mask');
-    this.tap(a + 119, 'monitor');
-    this.tap(a + 135, 'cam:11');
-    this.hold(a + 140, sweepStart - 1 - (a + 140), 'wind');
+    this.tap(b + 119, 'monitor');
+    this.tap(b + 135, 'cam:11');
+    this.hold(b + 140, sweepStart - 1 - (b + 140), 'wind');
     this.flashTargets(sweepStart);
   }
 
@@ -340,6 +369,7 @@ class HidPilot {
   // sweep remains live until this response refreshes it after tick five.
   leftAttack(a, resultAt) {
     this.attacks++;
+    const b = resultAt === undefined ? a : a + this.branchShift(a, resultAt);
     const phaseMargin = this.maskMargin !== null ? this.maskMargin
       : this.phaseSafeMask ? s(1) : 0;
     // Without a prophylactic mask the response has to put one on itself, off
@@ -348,7 +378,9 @@ class HidPilot {
     // here rather than cumulative storage.
     if (!this.prophylacticMask && resultAt !== undefined)
       this.tap(resultAt + s(0.02), 'mask');
-    const off = a + s(5.02) + phaseMargin;
+    // The shift moves the mask-off later, never earlier -- rm_floor floors the
+    // attack past its own mask press, so a late read extends the hold.
+    const off = b + s(5.02) + phaseMargin;
     this.tap(off, 'mask');
     // The hall press is queued before the simultaneous monitor raise. It
     // therefore resets Foxy during the raise frame without spending another
@@ -358,8 +390,8 @@ class HidPilot {
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
-    const lateSweepStart = a + s(10) - this.sweepFrames - this.sweepTail;
-    const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
+    const lateSweepStart = b + s(10) - this.sweepFrames - this.sweepTail;
+    const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46);
     this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
     this.flashTargets(lateSweepStart);
     this.nextAnchor = a + s(10);
@@ -369,16 +401,18 @@ class HidPilot {
   // Night 7. This is deliberately phase-windowed: extending the mask by the
   // one-second phase-independent margin lets the previous camera stuns expire.
   // `--pilot-offset-ms` prices that dependency against the game's scheduler.
-  sparseLeftAttack(a) {
+  sparseLeftAttack(a, resultAt) {
     this.attacks++;
-    const lateSweepStart = a + s(10) - this.sweepFrames - this.sweepTail;
-    const off = a + s(6.02);
+    const b = resultAt === undefined ? a
+      : a + Math.max(0, resultAt - (a + 86 + s(0.26)));
+    const lateSweepStart = b + s(10) - this.sweepFrames - this.sweepTail;
+    const off = b + s(6.02);
     this.tap(off, 'mask');
     this.hold(off + s(0.25), this.hallPulse, 'light');
     this.tap(off + s(0.25), 'monitor');
     const end = this.flashTargets(off + s(0.45));
     this.tap(end + s(0.05), 'cam:11');
-    const windEnd = this.deviceSweep ? lateSweepStart - 3 : a + s(9.46);
+    const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46);
     this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
     this.flashTargets(lateSweepStart);
     // BB can leave on the first masked scheduler tick. Twenty-five seconds
@@ -388,6 +422,7 @@ class HidPilot {
   }
 
   onLeftResult(sample) {
+    this.beat(); // the branch macro is its own floored launch (rm_floor)
     if (!sample.bb) {
       if (sample.inside) this.missed++;
       if (this.sparseLeft) this.sparseLeftClear(sample.a, this.sim.frame);
@@ -395,7 +430,7 @@ class HidPilot {
       return;
     }
     this.detections++;
-    if (this.sparseLeft) this.sparseLeftAttack(sample.a);
+    if (this.sparseLeft) this.sparseLeftAttack(sample.a, this.sim.frame);
     else this.leftAttack(sample.a, this.sim.frame);
   }
 
@@ -451,6 +486,7 @@ class HidPilot {
   }
 
   onCam5Before(a) {
+    this.beat();
     this.checks++;
     if (this.sim.bb.stage !== C.BB_STAGES - 1) {
       // The read is the ground truth the bang count is not. He is not on
@@ -475,6 +511,7 @@ class HidPilot {
   }
 
   onCam5After(a) {
+    this.beat();
     this.checks++;
     if (this.sim.bb.inOpening) {
       this.mode = 'attack-pending';
@@ -491,6 +528,7 @@ class HidPilot {
   }
 
   scheduleAnchor(a) {
+    this.beat();
     if (this.mode === 'attack-pending') {
       this.attack(a);
       return;
@@ -578,21 +616,28 @@ class HidPilot {
       else if (kind === 'left-result') this.onLeftResult(act);
       else if (kind === 'cam5-before') this.onCam5Before(act);
       else if (kind === 'cam5-after') this.onCam5After(act);
-      else if (kind === 'up') this.sim.release(act);
-      else this.sim.press(act);
+      else if (kind === 'up') this.act ? this.act.release(act) : this.sim.release(act);
+      else this.act ? this.act.press(act) : this.sim.press(act);
     }
+    if (this.act) this.act.deliver();
     this.minBox = Math.min(this.minBox, this.sim.box);
   }
 }
 
 export function run(opts = {}) {
   const sim = new Sim(Object.assign({ seed: 1, night: 6 }, opts.sim));
-  const bot = new HidPilot(sim, opts);
+  const actuator = opts.deviceActuator
+    ? new DeviceActuator(sim, Object.assign(
+        { seed: (opts.sim && opts.sim.seed) ?? 1, worst: opts.sim && opts.sim.worst,
+          perPress: false },
+        opts.deviceActuator === true ? {} : opts.deviceActuator))
+    : null;
+  const bot = new HidPilot(sim, Object.assign({}, opts, { actuator }));
   while (sim.alive && !sim.won) {
     bot.step();
     sim.tick();
   }
-  return { sim, bot };
+  return { sim, bot, actuator };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -601,10 +646,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const exactArgs = new Set(['--worst', '--sparse-cam5', '--sparse-left',
     '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
-    '--assert', '--assert-rejected', '--pulse-light', '--second-beat']);
+    '--assert', '--assert-rejected', '--pulse-light', '--second-beat',
+    '--device-actuator']);
   const valuedArgs = ['--hall-pulse-ms=', '--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
-    '--drop-bang=', '--false-bang=', '--night='];
+    '--drop-bang=', '--false-bang=', '--night=', '--press-late-ms='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
     !valuedArgs.some(prefix => arg.startsWith(prefix)));
   if (unknownArgs.length) throw new Error(`unknown argument: ${unknownArgs.join(', ')}`);
@@ -646,6 +692,15 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const assertRejected = cliArgs.includes('--assert-rejected');
   const nightArg = (cliArgs.find(v => v.startsWith('--night=')) || '').split('=')[1];
   const night = nightArg ? +nightArg : 6;
+  const lateArg = (cliArgs.find(v => v.startsWith('--press-late-ms=')) || '').split('=')[1];
+  let deviceActuator = cliArgs.includes('--device-actuator');
+  if (lateArg !== undefined) {
+    if (!deviceActuator) throw new Error('--press-late-ms= does nothing without --device-actuator');
+    const [lo, hi] = lateArg.split(',').map(Number);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo < 0 || hi < lo)
+      throw new Error('--press-late-ms=MIN,MAX needs 0 <= MIN <= MAX');
+    deviceActuator = { lateMinMs: lo, lateMaxMs: hi };
+  }
   if (!Number.isInteger(n) || n <= 0 || !Number.isFinite(pilotOffset) || pilotOffset < 0 ||
       !Number.isFinite(sweepSlotMs) || sweepSlotMs < 100 || sweepSlotMs > 500 ||
       !Number.isFinite(cam5Hold) || cam5Hold < 0)
@@ -680,14 +735,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     throw new Error('--assert-rejected requires a device sweep profile');
   let wins = 0, minBox = 1, minPower = Infinity, checks = 0, detections = 0;
   let attacks = 0, missed = 0, audioMisses = 0;
+  let actSent = 0, actDrops = 0, actDropNights = 0;
   const fails = {};
   for (let i = 0; i < n; i++) {
-    const { sim, bot } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
+    const { sim, bot, actuator } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
       vocalCam5, dropVocal, vocalFalseCount, bangCam5, dropBang,
       bangFalseCount, cam5Hold, pilotOffset,
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
-      secondBeat, maskMarginMs, readLatencyMs, hallPulseMs,
+      secondBeat, maskMarginMs, readLatencyMs, hallPulseMs, deviceActuator,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
+    if (actuator) {
+      actSent += actuator.sent; actDrops += actuator.seamDrops;
+      if (actuator.seamDrops) actDropNights++;
+    }
     minBox = Math.min(minBox, bot.minBox);
     minPower = Math.min(minPower, sim.power);
     checks += bot.checks;
@@ -713,6 +773,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask`}` +
     (deviceSweep ? `, ${sweepSlotMs}ms device feed slots` +
       `${pulseLight ? ', pulsed light' : ''}${secondBeat ? ', second beat' : ''}` : '') +
+    (deviceActuator ? ', device actuator' : '') +
     (worst ? ' (worst luck)' : ''));
   for (const [key, count] of Object.entries(fails).sort((a, b) => b[1] - a[1]))
     console.log(`  ${count}x  ${key}`);
@@ -720,6 +781,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     `${checks} BB reads, ${detections} detections, ${attacks} attacks, ${missed} missed states` +
     (vocalCam5 ? `, ${audioMisses} forced vocal misses` : '') +
     (bangCam5 ? `, ${audioMisses} forced bang misses` : ''));
+  if (deviceActuator)
+    console.log(`actuator: ${actDrops} seam-dropped monitor presses in ${actSent} sent` +
+      ` (${actDropNights}/${n} nights lost at least one)`);
   if (assertSurvival && (wins !== n || missed !== 0)) process.exitCode = 1;
   if (assertRejected && wins !== 0) process.exitCode = 1;
 }

@@ -77,6 +77,14 @@ so **any survival figure is a statement about the model**, not the device. Do
 not promote a policy on simulator survival alone, and say "in the simulator"
 when quoting one.
 
+`--device-actuator` narrows that gap without closing it: it prices a run
+through the measured phone (launch lateness, the mask-seam monitor drop —
+`tools/device/actuator.mjs`). Under it the shipped n6 target goes 500/500 →
+0/200, dying to the forcedown parity cascade — which is a statement about
+these pilots' *open-loop* monitor model: the live runner's checkpoint read
+and verified recovery are not modeled. Survival under the actuator is still
+survival in a model.
+
 ## Numbers need their control
 
 A favourable number is not a result until something that *should not* produce it
