@@ -51,6 +51,16 @@ for transport in loopback forward; do
   esac
 done
 
+# latency: the mock answers the device-side sample loop with fixed values, so
+# this covers the reporter -- all three groups must survive to the summary.
+summary="$(PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" latency 5)"
+for label in "snapshot read" "grid read" "shell baseline"; do
+  case "$summary" in
+    *"$label"*"n=5"*) ;;
+    *) echo "latency summary lost the $label group: $summary" >&2; exit 1 ;;
+  esac
+done
+
 # record: both transports, into a scratch directory. PRE=0 keeps the pre-roll
 # wait to one second.
 for transport in loopback forward; do

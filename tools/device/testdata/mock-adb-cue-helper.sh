@@ -20,6 +20,21 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = window ]; th
   echo 'mCurrentFocus=Window{123 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.Main}'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   cat >/dev/null
+  # The latency verb sends PORT COUNT TOKEN, so an all-digit $6 is a sample
+  # loop, not an exchange. Emit COUNT samples per group for the reporter.
+  case "${6:-}" in
+    [0-9]*)
+      if ! printf '%s' "${6:-}" | grep -q '[^0-9]'; then
+        i=0
+        while [ "$i" -lt "$6" ]; do
+          echo "read $((48000 + i))"
+          echo "grid $((52000 + i))"
+          echo "base $((22000 + i))"
+          i=$((i + 1))
+        done
+        exit 0
+      fi ;;
+  esac
   # args: shell sh -s -- PORT VERB TOKEN [ARG]
   case "${6:-}/${8:-}" in
     GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000' ;;

@@ -3,7 +3,7 @@
 #
 #   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
 #   query-cue-helper.sh record PRE POST [label]   pull one calibration window
-#   query-cue-helper.sh latency [count]           time device-local snapshot reads
+#   query-cue-helper.sh latency [count]           time device-local snapshot and grid reads
 #   query-cue-helper.sh log start                 begin a night-length capture
 #   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
@@ -241,6 +241,14 @@ done
 i=0
 while [ "$i" -lt "$count" ]; do
   start=$(date +%s%N)
+  printf 'GRID %s\n' "$token" | toybox nc -w 2 127.0.0.1 "$port" >/dev/null 2>&1
+  end=$(date +%s%N)
+  echo "grid $(( (end - start) / 1000 ))"
+  i=$((i + 1))
+done
+i=0
+while [ "$i" -lt "$count" ]; do
+  start=$(date +%s%N)
   end=$(date +%s%N)
   echo "base $(( (end - start) / 1000 ))"
   i=$((i + 1))
@@ -250,7 +258,7 @@ REMOTE
   printf '%s\n' "$samples" | python3 -c '
 import sys
 
-groups = {"read": [], "base": []}
+groups = {"read": [], "grid": [], "base": []}
 for line in sys.stdin:
     parts = line.split()
     if len(parts) == 2 and parts[0] in groups:
@@ -266,7 +274,8 @@ def pct(values, q):
     index = min(len(ordered) - 1, int(round(q * (len(ordered) - 1))))
     return ordered[index]
 
-for name, label in (("read", "snapshot read"), ("base", "shell baseline")):
+for name, label in (("read", "snapshot read"), ("grid", "grid read"),
+                    ("base", "shell baseline")):
     values = groups[name]
     if not values:
         print("%-14s no samples" % label)
