@@ -156,16 +156,42 @@ export const TEMPLATE_SEED = 7;
 // not a property of the night, and it must not be answered by borrowing.
 export const ATTACK_SEEDS = [7, 1, 2, 3, 4, 5, 6, 8, 9, 10];
 
+// The attack cycle is 10 s long, and `build()` cuts exactly that much log
+// from the anchor. A sample that does not RUN for that long cannot supply one.
+export const ATTACK_WINDOW_FRAMES = 600;
+
 // The attack is the only cycle with no monitor press for seconds after the
 // prophylactic mask: the mask blocks every other control while it is held.
 // Returns the monitor press that anchors it, or null when this sample has no
 // attack cycle at all.
+//
+// "No monitor press within 180 frames" is also true of the LAST mask flick of
+// a night that simply ended, and that false positive shipped: on 2026-08-26 the
+// sourced Puppet rework (g494-497/g623/g774) shifted the shared LCG enough that
+// night 3 seed 7 stopped rolling a Balloon Boy attack, `resolveAttack` reseeded
+// to seed 1, and seed 1's final prophylactic flick at frame 25089 -- 111 frames
+// before the 25200-frame end of the night -- was read as an attack. The cut was
+// 59 frames of log, so the plan's attack branch became `tap monitor` + `read`
+// and nothing else: on every Balloon Boy detection the pilot masked and then
+// sat still for ten seconds. Foxy's D climbs 2/s there (1/s in tickFoxy, 1/s
+// more in tickMask), which clears night 3's lock equation inside one cycle, and
+// the replay fell to 13/100 with all 87 losses `foxy`.
+//
+// So a candidate is only an attack cycle if the sample kept running long enough
+// to contain one. Scan every candidate rather than taking the first: an early
+// end-of-night false positive must not hide a real attack later in the log.
 export function attackAnchor(log) {
   const masks = log.filter(e => e.kind === 'press' && e.act === 'mask').map(e => e.f);
   const monitors = log.filter(e => e.kind === 'press' && e.act === 'monitor').map(e => e.f);
-  const attackMask = masks.find(f => !monitors.some(g => g > f && g < f + 180));
-  if (attackMask === undefined) return null;
-  return monitors.filter(f => f < attackMask).pop();
+  const end = log.length ? log[log.length - 1].f : -1;
+  for (const f of masks) {
+    if (monitors.some(g => g > f && g < f + 180)) continue;
+    const anchor = monitors.filter(g => g < f).pop();
+    if (anchor === undefined) continue;
+    if (end - anchor < ATTACK_WINDOW_FRAMES) continue;   // the night ended, not an attack
+    return anchor;
+  }
+  return null;
 }
 
 // Which sample the attack branch is cut from, and whether the branch is
@@ -262,7 +288,14 @@ export function build(opts = {}) {
 
   const opening = events(log, epoch, s(7));
   const clear = events(log, s(7) + 300, s(7) + 600);
-  const attack = events(bb.log, bb.anchor, bb.anchor + 600);
+  const attack = events(bb.log, bb.anchor, bb.anchor + ATTACK_WINDOW_FRAMES);
+  // Fail closed on a branch that is present but empty. An attack cycle that
+  // never raises the monitor again is not a cycle, it is a ten-second hole, and
+  // the pilot spends it masked and blind. Nothing checked this before.
+  if (!attack.some(e => e.act === 'monitor' && e.at > 0))
+    throw new Error(`the attack branch cut from night ${bb.from.night} seed ${bb.from.seed} ` +
+      `(${bb.source}) has no monitor press after the read: it is ${attack.length} events of ` +
+      'a 10 s cycle, which would leave the pilot masked and idle on every Balloon Boy read');
 
   const cycles = {
     opening: { lengthMs: 7000, events: opening },

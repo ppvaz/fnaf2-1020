@@ -85,32 +85,35 @@ for (const night of NIGHTS) {
 
   rows.push({ night, recipe, plan, attack, won, missed, detections, deaths, gate });
 
-  // Every night must build and replay from a fixed seed, exactly -- except
-  // NIGHT 3, which the 2026-08-26 sourcing pass broke and which is recorded
-  // rather than papered over.
+  // Every night must build and replay from a fixed seed, exactly.
   //
-  // That pass corrected two things the route had been tuned against: the
-  // starting camera (g3/g4, g486-487 -- cam 9 below night 7, cam 10/7 on it)
-  // and the hall-light B pin (g848-854, 40 frames for five named characters).
-  // Both were verified against the dump before being accepted. Night 3 then
-  // fell from 100/100 to 13/100, dying to Foxy 87 times, and its gate from
-  // 78.8% to 13.4%. Every other night is unchanged at 100/100.
+  // RETRACTED 2026-08-26, same day, and the original is kept because the
+  // mistake is the lesson. This block briefly carried a KNOWN_BROKEN exemption
+  // for night 3 (13/100, 87 Foxy deaths) and attributed it to that day's
+  // camera (g3/g4, g486-487) and hall-light-pin (g848-854) sourcing. **Both
+  // were provably innocent**: isolated in a worktree, removing either left
+  // night 3 at 13/100, and removing the Puppet rework alone restored 100/100.
   //
-  // The model is not bent back to make this pass. The same thing happened to
-  // Night 6 when GATE_RUNS widened, and the answer was to repair the ROUTE --
-  // its lost Foxy reset -- not the gate. Night 3 now owes the same repair, and
-  // the shape of its deaths says where to look: it is a Foxy problem, on the
-  // night whose route just had its camera-stun timing shifted underneath it.
-  const KNOWN_BROKEN = { 3: 'route not re-tuned after the 2026-08-26 camera/hall-pin sourcing' };
-  if (KNOWN_BROKEN[night]) {
-    check(`night ${night} is the known-broken route, and still broken`,
-      won < EXACT_RUNS,
-      `${won}/${EXACT_RUNS} -- if this now replays exactly, the route was ` +
-      'repaired and this exemption must be deleted, not widened');
-  } else {
-    check(`night ${night} replays exactly`, won === EXACT_RUNS,
-      `${won}/${EXACT_RUNS}, deaths ${JSON.stringify([...deaths])}`);
-  }
+  // The real cause was `attackAnchor`. It identifies an attack cycle as a mask
+  // press with no monitor press within 180 frames after it -- which is also
+  // true of the LAST prophylactic flick of a night that simply ENDED, because
+  // nothing follows it. Night 3 seed 1's final mask press sits 111 frames
+  // before the night's end, so `build()` cut a 600-frame window from 59 frames
+  // of log and emitted a two-line attack cycle. The pilot masked and then sat
+  // still for ten seconds: Foxy's D climbs 2/s while masked, and every one of
+  // the 87 deaths is "Foxy had locked on and no blackout covered the 10s
+  // interval".
+  //
+  // The Puppet rework only *revealed* it, by adding per-second draws to the
+  // single shared LCG and reshuffling which seed night 3 samples. That will
+  // happen again on the next sourced change that alters draw counts, which is
+  // why the fix is a fail-closed check in the emitter and not a re-pin.
+  //
+  // The lesson worth keeping: an exemption is a claim about a cause, and this
+  // one named the wrong cause with real evidence available. Do not write a
+  // KNOWN_BROKEN entry from the shape of a diff.
+  check(`night ${night} replays exactly`, won === EXACT_RUNS,
+    `${won}/${EXACT_RUNS}, deaths ${JSON.stringify([...deaths])}`);
   // ...and receive a verdict priced against ITS AI table, not night 6's.
   check(`night ${night} gated against its own night`, gate.night === night);
   // Corrected 2026-08-26 when GATE_RUNS moved from 100 to 1200: the old
@@ -121,8 +124,7 @@ for (const night of NIGHTS) {
   // to 99.1, 68.9, 78.8, 73.2, 63.9 and 56.1 per cent: all six now pass.
   // Night 3 is REFUSED by the gate, and that is the gate working. A route that
   // does not clear its night must not reach a phone.
-  check(`night ${night} ${KNOWN_BROKEN[night] ? 'is refused by' : 'passes'} the model gate`,
-    KNOWN_BROKEN[night] ? !gate.ok : gate.ok,
+  check(`night ${night} passes the model gate`, gate.ok,
     `${gate.survived}/${gate.runs} under +/-${HUMAN_SLACK_MS} ms ` +
     `(need ${Math.ceil(gate.runs * GATE_MIN_SURVIVAL)})`);
   // A plan that spends more flashlight than the night owns is not a plan.
