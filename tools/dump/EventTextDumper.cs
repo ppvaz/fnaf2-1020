@@ -5,6 +5,7 @@ using System.Linq;
 using CTFAK.CCN;
 using CTFAK.CCN.Chunks.Frame;
 using CTFAK.CCN.Chunks.Objects;
+using CTFAK.Core.CCN.Chunks.Banks.ImageBank;
 using CTFAK.FileReaders;
 using CTFAK.MMFParser.EXE.Loaders.Events.Expressions;
 using CTFAK.MMFParser.EXE.Loaders.Events.Parameters;
@@ -44,6 +45,7 @@ namespace CTFAK.Tools
                 Frame frame = game.frames[frameIndex];
                 int groupCount = frame.events?.Items.Count ?? 0;
                 writer.WriteLine($"FRAME\t{frameIndex}\t{Clean(frame.name)}\tGROUPS\t{groupCount}");
+                WriteFrameGeometry(writer, game, frame);
                 if (frame.events == null) continue;
 
                 for (int groupIndex = 0; groupIndex < frame.events.Items.Count; groupIndex++)
@@ -57,6 +59,85 @@ namespace CTFAK.Tools
                 }
             }
             Console.WriteLine($"Event text written to {output}");
+        }
+
+        /// <summary>
+        /// Frame scene geometry: the frame's own size, its layers (with their
+        /// parallax coefficients) and every placed object instance.
+        ///
+        /// Purely additive -- every existing line type is untouched, and the
+        /// three new types (" F", " L", " I") are ignored by readers that only
+        /// know GAME/OBJECTS/OBJECT/FRAME/GROUP/" C"/" A".
+        ///
+        /// OI is emitted RAW, exactly as the CCN stores it, the same contract
+        /// the event lines' OI follows. On Android it is scrambled; the reader
+        /// unscrambles (see docs/android/SOURCE-DUMP-GUIDE.md 4).
+        ///
+        /// W/H/HOTX/HOTY are the extents of animation 0, direction 0, frame 0 --
+        /// the object's *default* appearance, which for a static hitbox or
+        /// marker is its only one. An object whose current animation frame
+        /// differs at runtime is NOT described by these numbers, and an object
+        /// with no image bank entry emits them empty rather than guessing.
+        /// </summary>
+        private static void WriteFrameGeometry(StreamWriter writer, GameData game, Frame frame)
+        {
+            int layerCount = frame.layers?.Items?.Count ?? 0;
+            int instanceCount = frame.objects?.Count ?? 0;
+            writer.WriteLine($" F\tWIDTH\t{frame.width}\tHEIGHT\t{frame.height}\tLAYERS\t{layerCount}\tINSTANCES\t{instanceCount}");
+
+            for (int layerIndex = 0; layerIndex < layerCount; layerIndex++)
+            {
+                Layer layer = frame.layers.Items[layerIndex];
+                writer.WriteLine($" L\tIDX\t{layerIndex}\tNAME\t{Clean(layer.Name)}\tXC\t{layer.XCoeff}\tYC\t{layer.YCoeff}");
+            }
+
+            if (frame.objects == null) return;
+            foreach (ObjectInstance instance in frame.objects)
+            {
+                string w = "", h = "", hotX = "", hotY = "";
+                FusionImage image = FirstImage(game, instance.objectInfo);
+                if (image != null)
+                {
+                    w = image.Width.ToString();
+                    h = image.Height.ToString();
+                    hotX = image.HotspotX.ToString();
+                    hotY = image.HotspotY.ToString();
+                }
+                writer.WriteLine(
+                    $" I\tINST\t{instance.handle}\tOI\t{instance.objectInfo}" +
+                    $"\tNAME\t{ObjectName(game, instance.objectInfo)}" +
+                    $"\tX\t{instance.x}\tY\t{instance.y}\tLAYER\t{instance.layer}" +
+                    $"\tPTYPE\t{instance.parentType}\tPARENT\t{instance.parentHandle}" +
+                    $"\tINSTNUM\t{instance.instance}" +
+                    $"\tW\t{w}\tH\t{h}\tHOTX\t{hotX}\tHOTY\t{hotY}");
+            }
+        }
+
+        /// <summary>
+        /// The image behind animation 0 / direction 0 / frame 0 of an object,
+        /// or null when the object has no animation, no frames, or the image
+        /// bank was not loaded (CTFAK -noimg).
+        /// </summary>
+        private static FusionImage FirstImage(GameData game, int handle)
+        {
+            if (!game.frameitems.TryGetValue(handle, out ObjectInfo info)) return null;
+            if (info.properties is not ObjectCommon common) return null;
+            var animations = common.Animations?.AnimationDict;
+            if (animations == null || animations.Count == 0) return null;
+            foreach (var animation in animations.OrderBy(pair => pair.Key))
+            {
+                var directions = animation.Value?.DirectionDict;
+                if (directions == null) continue;
+                foreach (var direction in directions.OrderBy(pair => pair.Key))
+                {
+                    var frames = direction.Value?.Frames;
+                    if (frames == null || frames.Count == 0) continue;
+                    if (game.Images.Items.TryGetValue(frames[0], out FusionImage image))
+                        return image;
+                    return null;
+                }
+            }
+            return null;
         }
 
         private static string ObjectName(GameData game, int handle)

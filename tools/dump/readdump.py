@@ -20,6 +20,7 @@ $FNAF2_DUMP) at it; regenerate it with tools/dump/regen-dump.sh.
   readdump.py writes 3 "balloon boy" 0   groups whose actions write its value 0
   readdump.py sounds 3                   sample handles played, and by which groups
   readdump.py sounds 3 21                the groups that play one sample handle
+  readdump.py instances 3 [pattern]      placed scene objects: X, Y, layer, extent
 
 PC dumps (Fusion builds before the Android scramble) need --xor 0.
 """
@@ -42,7 +43,7 @@ class Dump:
     def __init__(self, path, xor=28):
         self.xor = xor
         self.objects = {}          # stored handle -> name as the item table has it
-        self.frames = []           # [{idx, name, groups: [{idx, header, lines}]}]
+        self.frames = []           # [{idx, name, size, layers, instances, groups}]
         frame = group = None
         with open(path, errors="replace") as handle:
             for raw in handle:
@@ -51,8 +52,15 @@ class Dump:
                 if field[0] == "OBJECT":
                     self.objects[int(field[1])] = field[5]
                 elif field[0] == "FRAME":
-                    frame = {"idx": int(field[1]), "name": field[2], "groups": []}
+                    frame = {"idx": int(field[1]), "name": field[2], "groups": [],
+                             "size": {}, "layers": [], "instances": []}
                     self.frames.append(frame)
+                elif field[0] == " F":
+                    frame["size"] = dict(zip(field[1::2], field[2::2]))
+                elif field[0] == " L":
+                    frame["layers"].append(dict(zip(field[1::2], field[2::2])))
+                elif field[0] == " I":
+                    frame["instances"].append(dict(zip(field[1::2], field[2::2])))
                 elif field[0] == "GROUP":
                     group = {"idx": int(field[1]), "header": dict(zip(field[2::2], field[3::2])),
                              "lines": []}
@@ -63,6 +71,30 @@ class Dump:
     def name(self, handle):
         """True name of the object an event addresses by `handle`."""
         return self.objects.get(handle ^ self.xor, "?%d" % handle)
+
+    def placed(self, instance):
+        """True name of a placed scene object.
+
+        Frame instances are NOT scrambled: the XOR-28 rule applies to event
+        handles only (see docs/android/SOURCE-DUMP-GUIDE.md section 4). Proven
+        against the item table's own TYPE column -- every Active instance
+        resolves to an object that has an image and every non-Active one to an
+        object that has none, 914/914, where the XOR reading scores 52%.
+        """
+        return self.objects.get(int(instance["OI"]), "?%s" % instance["OI"])
+
+    def extent(self, instance):
+        """(left, top, right, bottom) in scene units, or None with no image.
+
+        Fusion draws an image with its hotspot on the object's position, so the
+        box is the position minus the hotspot. This is animation 0 / direction 0
+        / frame 0 -- the default appearance, not whatever is showing at runtime.
+        """
+        if not instance["W"]:
+            return None
+        x, y = int(instance["X"]), int(instance["Y"])
+        left, top = x - int(instance["HOTX"]), y - int(instance["HOTY"])
+        return (left, top, left + int(instance["W"]), top + int(instance["H"]))
 
     def render(self, line):
         field = line.split("\t")
@@ -117,7 +149,7 @@ def main():
     parser.add_argument("--xor", type=int, default=28,
                         help="handle scramble; 28 on Android, 0 on PC builds")
     parser.add_argument("command", choices=["frames", "objects", "group", "find",
-                                            "object", "writes", "sounds"])
+                                            "object", "writes", "sounds", "instances"])
     parser.add_argument("args", nargs="*")
     opts = parser.parse_args()
 
@@ -185,6 +217,24 @@ def main():
             print("sample %3d  %2d group(s)  %s%s" % (
                 handle, len(groups), ", ".join(str(g) for g in groups[:12]),
                 " ..." if len(groups) > 12 else ""))
+        return
+
+    if opts.command == "instances":
+        pattern = opts.args[1].lower() if len(opts.args) > 1 else ""
+        size = frame["size"]
+        print("frame %d  %s  %sx%s  %s layers  %s instances" % (
+            frame_index, frame["name"], size.get("WIDTH"), size.get("HEIGHT"),
+            size.get("LAYERS"), size.get("INSTANCES")))
+        for instance in frame["instances"]:
+            name = dump.placed(instance)
+            if pattern and pattern not in name.lower():
+                continue
+            box = dump.extent(instance)
+            print("  %-30s ev=%-5d stored=%-5s X=%-6s Y=%-6s layer=%-3s %s" % (
+                name[:30], int(instance["OI"]) ^ opts.xor, instance["OI"],
+                instance["X"], instance["Y"], instance["LAYER"],
+                "box x[%d..%d] y[%d..%d]" % (box[0], box[2], box[1], box[3])
+                if box else "(no image)"))
         return
 
     if opts.command == "writes":

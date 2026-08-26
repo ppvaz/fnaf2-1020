@@ -91,6 +91,19 @@ Seven line types, all tab-separated:
 | `GROUP g FLAGS f RESTRICT r CONDS c ACTS a` | one event group |
 | ` C OT … NUM … OI … NAME … OIL … CFLAGS … COTHER … PARAMS …` | a condition of the group above |
 | ` A OT … NUM … OI … NAME … OIL … PARAMS …` | an action of the group above |
+| ` F WIDTH … HEIGHT … LAYERS … INSTANCES …` | the frame's scene size (**added 2026-08-26**) |
+| ` L IDX … NAME … XC … YC …` | one layer and its parallax coefficients |
+| ` I INST … OI … NAME … X … Y … LAYER … PTYPE … PARENT … INSTNUM … W … H … HOTX … HOTY …` | one **placed scene object** |
+
+The ` F` / ` L` / ` I` lines sit between a `FRAME` line and its first `GROUP`.
+They are purely additive — stripping them reproduces the pre-2026-08-26 dump
+byte for byte, which is how the change was checked.
+
+On an ` I` line, `W`/`H`/`HOTX`/`HOTY` are the extents of **animation 0,
+direction 0, frame 0** — the object's default appearance. They are empty for an
+object with no image (every counter, string and extension). Fusion draws an
+image with its **hotspot on the object's position**, so the scene box is
+`X - HOTX … X - HOTX + W`, not `X … X + W`.
 
 Field meanings:
 
@@ -147,6 +160,35 @@ survived the correction while every *character identity* had to be redone.
 
 PC builds (e.g. the Shooter25 practice mod, build 295) are **not** scrambled:
 pass `--xor 0`.
+
+### …but frame instances are not scrambled at all (2026-08-26)
+
+The XOR applies to **event** handles. The `OI` on an ` I` line is the **raw
+item-table handle** and must be looked up directly. The same integer therefore
+names two different objects depending on which line type it came from — `66` is
+`left light` as an instance and `cam 11` as an event handle, and `94` is the
+reverse. Applying the XOR to an instance silently renames every placed object,
+which is §4's original failure running backwards.
+
+This is not a guess. The item table's own `TYPE` column decides it: an Active
+(`TYPE 2`) has an animation and therefore an image-bank entry, and a counter,
+string or extension does not. Across all 33 frames:
+
+| Reading | instances whose TYPE matches image-presence |
+| --- | ---: |
+| `OI` is the raw handle | **914 / 914 (100%)** |
+| `OI` is post-XOR | 477 / 914 (52%) |
+
+52% is a coin flip. `readdump.py`'s `placed()` uses the raw handle and
+`name()` keeps the XOR; `tools/dump/test-instances.py` asserts they disagree.
+
+Weaker controls were tried first and could not separate the two readings —
+name plausibility, and overlap with the objects a frame's events address (frame
+3 scored 132 both ways). XOR-28 only flips bits 2-4, so it maps a handle to a
+neighbour inside the same 32-aligned block, and Fusion allocates a frame's
+objects in contiguous blocks. **Any control that stays inside one frame's
+handle block will look ambiguous.** Reach for a property of the object (its
+type, its image) rather than its identity.
 
 ---
 
@@ -231,7 +273,11 @@ tools/dump/readdump.py object 3 "balloon boy"    # every group touching him
 tools/dump/readdump.py writes 3 "balloon boy" 0  # who sets his movement state
 tools/dump/readdump.py group  3 413-418          # read the range
 tools/dump/readdump.py find   3 "in office"      # text search over rendered groups
+tools/dump/readdump.py instances 3 light         # placed scene objects: X, Y, layer, box
 ```
+
+`tools/dump/test-instances.py` and `tools/dump/test-aimap.py` check the reader
+against synthetic sheets, so both stay covered without game content.
 
 The productive order is almost always: **find who writes the state → read the
 group that consumes it → check its extra conditions.** `writes` answers "how
@@ -251,9 +297,16 @@ Then, before it enters the simulator:
 
 ## 8. What the dump does *not* contain
 
-- **No images, sounds, or animations** — this dumper emits logic only, by
-  design. Artwork questions (the display-camera map) need a different CTFAK
-  tool.
+- **No images, sounds, or animations** — the dumper emits logic plus scene
+  *geometry*; the pixels themselves need a different CTFAK tool. Since
+  2026-08-26 it does emit each frame's size, layers and placed-object list
+  (§3), which is where the office's 1600×768 came from.
+- **No guarantee that a placed position is a runtime position.** The instance
+  list is what the *editor* holds. The Android port creates and moves part of
+  its HUD from code — `hudFlashlightHitbox.Active` has no frame-3 instance at
+  all, yet groups 1072-1081 position objects relative to it — so an off-canvas
+  parked object may still be on screen at run time. See
+  `ANDROID-SOURCE-STATUS.md` §"the vent-light anchors contradict the phone".
 - **No group comments or names.** Fusion's event-sheet comments are not in the
   CCN, so intent is always inferred.
 - **No expression tree.** `ExpressionParameter` items are flattened to a linear
@@ -262,6 +315,22 @@ Then, before it enters the simulator:
 - **Nothing about the shipped runtime's frame pacing** beyond what the groups
   say — the 60 fps assumption and the `min(4, frameDelta/16.666)` drain in
   group 1236 are the only handles on it.
+
+---
+
+---
+
+## 9. `awk` silently truncates this file
+
+The dump contains **NUL bytes** inside rendered parameter values (a Fusion
+`GlobalValue` name renders as `GlobalValue\x00`). BSD `awk` ends a record at
+the NUL, so `awk '{print}' events-android.txt` returns a file that is the right
+*length* and quietly 58 lines shorter in content — which reads exactly like a
+real difference. This cost a full bisect: an `awk`-stripped diff "proved" the
+2026-08-26 dumper change had altered 77 event lines, and it had altered none.
+
+Compare dumps with `python3` (or `cmp`), never `awk`. `grep`, `diff` and `sed`
+are fine.
 
 ---
 
