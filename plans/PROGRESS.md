@@ -10,17 +10,20 @@ packages are closed.
 ## Very next step
 
 **Resume point, written 2026-08-26.** The tree is **clean** and the engine suite
-is **green at 50 checks**. A large uncommitted body from two prior sessions has
-been verified and landed as three commits: the `desync-scan.py` alignment
-refusal, the Night 6 route repair with the runner's evidence fixes, and the cue
-helper's shadow-only detector.
+is **green at 50 checks**. A large uncommitted body from two prior sessions was
+verified and landed, and the session's own findings landed with it — eleven
+commits, `ea1f9f1`..`ab8d70c`. Nothing below is half-applied.
 
-Two real defects were found and fixed while landing it, both of which had the
-suite red: `test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` — the new
+Two defects were found and fixed while landing it, both of which had the suite
+**red**: `test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` — the new
 human-floor bypass shipped with neither arm tested, and both are now pinned —
 and `android/cue-helper/test.sh`, the only check that exercises the live audio
 detector, ran nowhere and resolved its JDK by hardcoding one laptop's Homebrew
-prefix. It is in the suite now.
+prefix. It is in the suite now, and CI pins a JDK for it.
+
+**No package closed.** The headline stays 29/88: everything below either repaired
+something already counted, or recorded what a package still needs. An honest
+percentage that does not move is worth more than a flattering one.
 
 ### The single most important thing learned today
 
