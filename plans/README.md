@@ -3,6 +3,9 @@
 Future work beyond the Minus 7 trainer, one file per ask, written to be picked up cold
 in any later session. Suggested order and dependencies:
 
+**Current completion and the single next action:**
+[`PROGRESS.md`](PROGRESS.md).
+
 Current triage (2026-08-20):
 
 - **Plan 02 is blocked on a framing decision (2026-08-20 second pass):** the
@@ -21,6 +24,17 @@ Current triage (2026-08-20):
 - **No blind-search juice:** Plans 05 and 06 have completed/closed their defined
   Android search families. Reopen them only when a corrected source rule changes
   the reachable policy space.
+
+Bot-research roadmap added 2026-08-26:
+
+- **Plan 09 defines the shared evidence substrate.** Build its schema/replay
+  contract before collecting another unstructured detector corpus.
+- **Plan 10 closes the stock-device controller loop.** Start in shadow over the
+  current runner; it is an incremental extraction, not a big-bang rewrite.
+- **Plan 11 makes simulator policy comparisons fair.** It can proceed beside
+  Plan 09 after their observation record is agreed, and does not require RL.
+- **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
+  bounded action, full Night 6, reliability cohort, and only then 10/20.
 
 1. [01-research-pass.md](01-research-pass.md) — sourced docs for the 10/20 meta.
    Prerequisite for 02, 03 and the novelty check in 05.
@@ -43,3 +57,15 @@ Current triage (2026-08-20):
    windowed, fully on-device Android playback capture and cue classification;
    source mapping, target-phone calibration, timing, simulation, and shadow-mode
    gates precede any Night 7 action.
+9. [09-observation-corpus.md](09-observation-corpus.md) — versioned multimodal
+   session, holdout, and replay contract for lifecycle, actuator-state, visual,
+   and audio observations.
+10. [10-stock-device-controller.md](10-stock-device-controller.md) — explicit
+    observation/belief/policy/action/verification controller, extracted in
+    shadow from the existing device route.
+11. [11-policy-interface-and-baselines.md](11-policy-interface-and-baselines.md)
+    — exact-engine policy adapter, measured fault injection, and independently
+    reimplemented Jason/Shooter25/Couraeel-style baselines.
+12. [12-end-to-end-evidence-campaign.md](12-end-to-end-evidence-campaign.md) —
+    claim ladder and promotion gates from offline replay through a Night 6
+    cohort and, only after separate qualification, 10/20.

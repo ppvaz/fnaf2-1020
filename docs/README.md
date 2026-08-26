@@ -78,6 +78,12 @@ Fusion build 296, August 2025.
 
 ## In-engine and prior art
 
+- [`research/FNAF-BOT-CENSUS.md`](research/FNAF-BOT-CENSUS.md) — franchise-wide
+  census of public stock-game bots, modified/in-engine controllers, simulations,
+  RL agents, TAS, chat control, and verified false positives.
+- [`research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`](research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md)
+  — source-level comparison with every substantive scope in this repository,
+  including its simulator, trainer, Android sensing/actuation, and evidence gaps.
 - [`TRAINER-IN-GAME.md`](in-engine/TRAINER-IN-GAME.md) — could the trainer live
   inside the game?
 - [`IN-ENGINE-PILOT-RECOMPILE.md`](in-engine/IN-ENGINE-PILOT-RECOMPILE.md) — APK
