@@ -135,15 +135,17 @@ Each of these was an "Open" item here as recently as this morning:
 - **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
   cycle, and no schedule prices it. Plan 03 depends on it.
 - **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings. **1, 2 and 4 are
-  resolved**; the rest are not. **Finding 8 is the mission-critical one** — the
-  claim CLAUDE.md states as absolute, "the device runs nothing the model gate
-  has not passed", is *false*, and it is the claim that authorizes every device
-  run on the Plan 12 ladder. `trial-maskcamp.sh` is a second runner that never
-  calls the gate; ~370 lines of inline `press_at` literals remain in
-  `trial-minus7.sh` with no test asserting them; and the "no inline schedule
-  fallback" check tested for the absence of a *prose phrase* until this session
-  made it structural. The reactive-press gap noted above is a fourth item on
-  that list. Fixing finding 8 is worth more than another simulator number.
+  resolved, and 8 is mostly resolved**; the rest are not. Finding 8 was the
+  mission-critical one, because the claim CLAUDE.md stated as absolute — "the
+  device runs nothing the model gate has not passed" — was *false*, and it is
+  what authorizes every device run on the Plan 12 ladder. Now: the 378 dead
+  inline `press_at` lines are deleted, `test-runner-plan.mjs` scans the whole
+  driver instead of a slice that ended where they began (verified by positive
+  control against the old file), the prose-absence check is structural, and
+  CLAUDE.md's rule is scoped to what is actually enforced. **Two things still
+  sit outside the gate**: `trial-maskcamp.sh`, which needs a decision rather
+  than one session's judgement — gate it, port its table, or retire it — and
+  the reactive presses noted above, which are now priced by nothing.
 - `docs/device/RUN-TELEMETRY.md` ranks ten diagnostic signals by value per
   millisecond. Items 3–6 total ~23 ms of a 5000 ms cycle and belong in the
   plan's ~416 ms post-read slack; re-check placement with `windpct.py

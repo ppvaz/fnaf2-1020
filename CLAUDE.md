@@ -45,8 +45,8 @@ document contradicting how the line is actually played.
   0/1000, and a held 790 ms lit sweep alone outspends the whole 3000-frame
   night-6 flashlight. See `HID-MULTITOUCH.md` §"The Night 6 route, priced
   against the phone's actuator".
-- **The device runs nothing the model gate has not passed — absolute, no
-  override (2026-08-25).** Before its first adb command, `trial-minus7.sh`
+- **The controller route runs nothing the model gate has not passed — absolute,
+  no override (2026-08-25).** Before its first adb command, `trial-minus7.sh`
   replays the emitted plan through the exact engine under measured human slack
   (±60 ms iid, the floor of the plans/04 bracket, until the trace census in
   `tools/tracereport.mjs` supersedes it with correlated bands) and refuses
@@ -55,8 +55,38 @@ document contradicting how the line is actually played.
   port the table to `recipe.mjs --device-plan` to run it. A gap floor is the
   wrong model of "inhuman" (Minus 7 lands a 70 ms chord; the machine route's
   120 ms gaps need a one-frame phase island): precision separates human from
-  machine, so the gate asks the engine, not a ruler. The live `HUMAN_FLOOR_MS`
-  check in `press_at` stays only as the backstop for what actually executes.
+  machine, so the gate asks the engine, not a ruler.
+
+  **Scoped 2026-08-26, because the unscoped sentence was false** and it is the
+  claim that authorizes the Plan 12 ladder — a claim that is false in prose is
+  worse than one that is merely narrow (`ARCHITECTURE-AUDIT.md` finding 8).
+  What the gate actually covers, and what it does not:
+
+  - **Covered:** every *scheduled* press of the sole controller route. The
+    ~370 lines of inline `press_at` literals that used to sit unreachable in
+    `trial-minus7.sh` are deleted, and `test-runner-plan.mjs` now scans the
+    **whole** driver rather than a slice that ended exactly where they began.
+  - **Not covered, legitimately, and now named rather than glossed:** the
+    runtime *reactive* presses — `monitor-verify`, `monitor-resync`,
+    `monitor-resync-2`, and the opening `mute`. These are not in the plan, so
+    no plan gate can price them. On the gated route the live `HUMAN_FLOOR_MS`
+    check no longer prices them either: it stands down when `NIGHT6_LEFT=1`,
+    because its 350 ms scalar aborted the accepted plan at its own deliberate
+    120/180 ms compound boundaries (a real device run died exactly this way —
+    `RUN-TELEMETRY.md` §10). **So reactive presses are currently priced by
+    nothing.** They inherit `MONITOR_ANIM_DOWN` (367 ms) of forced wait, which
+    happens to clear the old floor, but that is a coincidence of the corrector's
+    design and not a check.
+  - **Not covered, and unresolved:** `trial-maskcamp.sh` is a second device
+    runner that presses via `adb shell input swipe` from a hand-written inline
+    schedule, with no gate and no floor. It is a mask-camp *experiment* harness
+    rather than a policy pilot, and `run-batch.sh` plus four documents depend on
+    it, so it has not been retired on one session's judgement. Decide: gate it,
+    port its table, or retire it.
+
+  The live `HUMAN_FLOOR_MS` check in `press_at` remains only as the backstop for
+  dormant unpriced branches (`NIGHT6_LEFT=0`). Both arms are pinned by
+  `test-plan-interpreter.sh` — the bypass originally shipped with neither.
   **Corrected twice on 2026-08-26; both halves are the lesson.** First: the
   shipped Night 6 plan did NOT pass. It had been quoted as "46/100 under human
   slack" from 2026-08-25, but that was seeds 1..100, and 100 draws cannot

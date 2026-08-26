@@ -16,19 +16,55 @@ const here = dirname(fileURLToPath(import.meta.url));
 const src = readFileSync(join(here, 'trial-minus7.sh'), 'utf8');
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
+// The whole remote program, not a slice of it.
+//
+// Corrected 2026-08-26 (ARCHITECTURE-AUDIT finding 8). This check used to end
+// exactly where the retired routes began -- `slice(start, indexOf('if [
+// "$HID_LEFT_SURVIVAL" ...'))` -- so it ran on the one block that has no
+// schedule literals and said nothing about the ~370 lines that did. Those
+// routes were unreachable only because the host hardcodes two positional
+// arguments, and nothing asserted even that. They are deleted now, and the
+// literal scan runs over the entire driver so they cannot come back unnoticed.
+const REMOTE_OPEN = "<<'REMOTE'";
+const driverStart = src.indexOf('\n', src.indexOf(REMOTE_OPEN));
+const driverEnd = src.indexOf('\nREMOTE\n', driverStart);
+check(driverStart > 0 && driverEnd > driverStart, 'could not delimit the remote driver');
+const driver = src.slice(driverStart, driverEnd);
+
 // The guard for this mode and the driver for it are both `if NIGHT6_LEFT`;
 // the driver is the later one, after the hid helpers.
 const start = src.lastIndexOf('if [ "$NIGHT6_LEFT" -eq 1 ]; then');
-const block = src.slice(start, src.indexOf('if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then', start));
+const block = src.slice(start, driverEnd);
 check(block.includes('run_cycle'), 'could not find the NIGHT6_LEFT driver block');
 
-// No schedule literals. The driver positions cycles; it does not time actions
-// inside them. `base + N` is what a second copy of the table looks like.
-const literals = [...block.matchAll(/^\s*(press_at|hold_at|pulsed_sweep_at|hall_reset_and_raise_at|light_down_at|classify_left_and_queue_mask_at)\s+\$\(\(base \+ \d+\)\)/gm)];
-check(!literals.length,
+// No schedule literals, anywhere in the driver. It positions cycles; it does
+// not time actions inside them. `base + N` is what a second copy of the table
+// looks like, and a literal offset is what a whole retired route looks like.
+const SCHEDULERS = 'press_at|hold_at|pulsed_sweep_at|hall_reset_and_raise_at|light_down_at|light_cam_at|light_up_at|device_sweep_at|classify_left_and_queue_mask_at';
+const literals = [...driver.matchAll(
+  new RegExp(String.raw`^\s*(${SCHEDULERS})\s+(\$\(\(base \+ \d+\)\)|\d+)\b`, 'gm'))];
+// The mute is the one scheduled-by-literal action that is real: it precedes
+// the plan's first cycle, and the plan does not carry it. Named here so it is
+// an exception on the record rather than a hole in the pattern.
+const unexpected = literals.filter(m => !/press_at\s+0\b/.test(m[0]));
+check(!unexpected.length,
   'the driver still schedules actions from its own millisecond literals:\n  ' +
-  literals.map(m => m[0].trim()).join('\n  ') +
+  unexpected.map(m => m[0].trim()).join('\n  ') +
   '\nThose belong in the plan recipe.mjs emits.');
+
+// The retired route cannot return by restoring one hardcoded argument. The
+// positional is still PARSED -- both sides must stay aligned on the wire -- so
+// this forbids the branch, not the assignment.
+check(!/\[ "\$HID_LEFT_SURVIVAL" -eq 1 \]/.test(driver),
+  'the HID_LEFT_SURVIVAL route is retired; it must not branch in the driver again');
+
+// Deliberately NOT asserted here: `press_at`/`hold_at` still carry dead
+// `async-swipe`/`fast-swipe` actuator arms, unreachable because the host pins
+// PRESS_MODE=hid-multi (trial-minus7.sh:194-196). Those are a different
+// concern from this file's subject -- they decide HOW a press is delivered,
+// not WHEN, so they are not a second copy of the schedule and removing them is
+// its own change. Recorded in ARCHITECTURE-AUDIT finding 8 rather than
+// silently tolerated.
 
 // The one departure from the plan that is real, so it is named rather than
 // merely absent: the mute press precedes the plan's first cycle.

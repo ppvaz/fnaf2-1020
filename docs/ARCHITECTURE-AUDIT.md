@@ -390,6 +390,45 @@ Then restate CLAUDE.md's rule to match what is enforced — the live-press
 exceptions (`monitor-verify`, `monitor-resync`, mute) are legitimate and should
 be named rather than glossed.
 
+**Partly resolved 2026-08-26.** Three of the five are done:
+
+- **The dead inline routes are deleted** — 378 lines, `trial-minus7.sh` 3174 →
+  2796. They were doubly unreachable: the host hardcodes `HID_LEFT_SURVIVAL=0`
+  *and* the `NIGHT6_LEFT` block above them ends in `exit 0`. Nothing in the
+  deleted region defined a function, so it was pure straight-line schedule.
+- **`test-runner-plan.mjs` now scans the whole driver**, delimited by the
+  heredoc rather than by `indexOf` of the block it was supposed to be checking.
+  Verified as a positive control: run against the pre-deletion file, the widened
+  scan reports the literals the old slice missed. It also forbids the
+  `HID_LEFT_SURVIVAL` *branch* from returning, while leaving the positional
+  parsed so both sides stay aligned on the wire.
+- **The prose-absence check is structural**, matching the emitted
+  `--device-plan "--night=$STORY_NIGHT"` invocation rather than the absence of a
+  sentence that deleting a comment would have satisfied.
+
+**Two remain, and one is new.**
+
+- `trial-maskcamp.sh` is still ungated. It is an experiment harness rather than
+  a policy pilot, and `run-batch.sh` plus four documents depend on it, so it was
+  not retired on one session's judgement. It needs a decision: gate, port, or
+  retire.
+- `press_at`/`hold_at` still carry dead `async-swipe`/`fast-swipe` actuator
+  arms, unreachable because the host pins `PRESS_MODE=hid-multi`
+  (`trial-minus7.sh:194-196`). They decide *how* a press is delivered rather
+  than *when*, so they are not a second copy of the schedule; removing them is
+  its own change, deliberately not bundled with the schedule deletion.
+- **New, and it makes this finding worse rather than better:** the live floor
+  now stands down on the gated route (`NIGHT6_LEFT=1`), because its 350 ms
+  scalar aborted the accepted plan at its own 120 ms compound boundary — a real
+  device run died exactly that way (`RUN-TELEMETRY.md` §10). The scheduled
+  presses are priced by the model gate, so that is defensible. But the
+  *reactive* presses — `monitor-verify`, `monitor-resync`, `monitor-resync-2` —
+  are in no plan, and are now priced by **nothing at all**. They inherit
+  `MONITOR_ANIM_DOWN` (367 ms) of forced wait, which clears the old 350 ms floor
+  by coincidence of the corrector's design rather than by any check.
+
+CLAUDE.md's rule is restated to say all of this, which was the fifth item.
+
 ---
 
 ## Note: the tick rate is asserted twice and measured never
