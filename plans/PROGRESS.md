@@ -9,8 +9,49 @@ packages are closed.
 
 ## Very next step
 
-**Resume point, written 2026-08-26.** The tree is **clean** and the engine suite
-is **green at 51 checks**.
+**Resume point, written 2026-08-26 19:58 BRT.** Four scoped changes landed on
+`master` this pass:
+
+- `e04924c` makes the session producer use an OS monotonic clock shared across
+  its separate Python processes. In this environment `time.monotonic()` is
+  process-relative; it produced negative, out-of-order manifest events. The
+  end-to-end session producer gate now passes.
+- `98eb7ff` removes the runner's duplicate sweep-light constant and incomplete
+  coordinate resolver, and structurally gates every remaining HID timestamp
+  against a freshly frozen value.
+- `d5cb725` resolves the deliberately red cycle-seam check. The emitted sweep
+  ends on the nominal boundary, but the runner delivers the next anchor after
+  a drift-aware **33 ms** released gap. The plan did not need to move.
+- `ff8fc00` adds and gates a generic, fractional intro-card classifier. It says
+  `intro`, never guesses the night ordinal. On local real evidence it accepts
+  5/5 Night 1 card frames, rejects 21/21 non-card frames and all 17/17 6 AM
+  frames, and the cleared Night 1 timelines from intro through a positive 6 AM.
+
+**The working tree is not clean.** Concurrent, uncommitted changes exist in
+`src/config.js`, `src/engine.js`, `tools/sourcetest.mjs`, and
+`tools/dump/coverage.py`; they were present outside the scoped commits above
+and are being preserved. The full engine run passed **52 of 53 checks** and
+failed only `simtest`: those edits reinterpret marker 123's 40-frame
+`being attacked by` countdown as the by-night mask fuse, while the sourced
+office audit says they are separate and the by-night fuse is already modeled
+at marker 122. Resolve that ownership/mechanic conflict before touching the
+phone; a route priced by an internally contradictory engine is not gate-clean.
+
+**The hardware ladder is Night 2, not Night 6.** The live title observer reads
+`items=continue,newGame`, so Sixth Night is not unlocked. The device owner
+directly confirmed the open game's Continue label says **Night 2**. Once the
+suite is green, run the bounded fork-free-clock check with a trace:
+
+```sh
+BB_LEFT_MODEL=captures/screencheck/bb-left/models/runtime-gh.scm \
+NIGHT=continue CALIBRATION_STORY_NIGHT=2 STORY_CURSOR_OBSERVED=2 \
+HID_TRACE_RUN=1 GRADE_RUN=1 \
+tools/device/trial-minus7.sh n2-clock-cycle-20260826 1
+```
+
+If its real-cycle log proves the clock and delivered seam, attempt the full
+Night 2 immediately with a fresh run name and `90` cycles. A clear must be
+proved by positive 6 AM **and** the title/save cursor advancing to Night 3.
 
 # NIGHT 1 IS CLEARED ON THE DEVICE.
 
@@ -41,10 +82,11 @@ in the game and has 4192 frames of flashlight headroom; the same faults on
 Night 5 or 6, which have 192, are unlikely to be survivable. **This is a floor,
 not a ceiling.**
 
-**No package closed.** The headline stays 29/88. Plan 13 package 3 still has no
-6 AM or intro classifier, so the manifest for a night that was *won* correctly
-reads `lifecycle=unknown` — nothing in the pipeline can tell a win from a death.
-An honest percentage that does not move is worth more than a flattering one.
+**No package closed.** The headline stays 29/88. Plan 13 package 3 is advanced,
+not closed: 6 AM and the generic intro are now classified, but the intro's night
+ordinal, minigames, save advancement, committed real holdouts, and media-PTS ↔
+runner-clock alignment remain open. An honest percentage that does not move is
+worth more than a flattering one.
 
 ### The single most important thing learned today
 
@@ -70,47 +112,11 @@ if headroom reaches zero, but nothing warns on approach.
 
 ### The next concrete action
 
-**Attempt a graded Night 6 run.** This is newly unblocked: Night 6 is the only
-night `trial-minus7.sh` can play end to end (`NIGHT=6th` → `sixthNight`), and it
-is now gate-clean. Nights 1–5 are reachable only through the bounded
-`CALIBRATION_STORY_NIGHT=1..5` path, which is Continue-only and refuses more
-than **one cycle** (`trial-minus7.sh:320`) — a full lower-night run needs Plan
-13 package 5, and no lower night has ever been attempted on the device.
-
-Do it in this order, because the first step is cheap and invalidates the second
-if it fails:
-
-1. Verify the fork-free clock **on hardware inside a real cycle**. `date` cost
-   21 ms per fork+exec and `wait_until` busy-waited on it; the runner now reads
-   `/proc/uptime` fork-free, which landed 0 ms late on 15/15 with a live night
-   running — but that was a **bare shell loop**, not the real cycle with
-   `hid_mark`, HID writes and the classifier in it. Priced through
-   `actuator.mjs` the change takes Nights 1–5 to 200/200 and Night 6 to 171/200
-   **in the simulator**. The knee is a frame count: free to 41 ms, gone at 42.
-
-   **This was attempted once today and answered nothing** — `n1-clock-cycle-`
-   `20260826`, graded at **alive ≥1.5 s** of an 8.8 s recording, died four lines
-   in. Both things that killed it are now fixed, and the run is worth reading
-   before the next attempt: its five-line driver log is the whole story, and it
-   is written up in `RUN-TELEMETRY.md` §10. Briefly — the scalar human floor
-   aborted the plan at its own accepted 120 ms compound boundary, **and** the
-   epoch centring silently wrapped 32-bit, putting T0 exactly 2^32 ms low, an
-   origin wrong by 20,679 days. They masked each other: the abort is the only
-   reason a whole night was not then timed against that origin. The log ranked
-   first of ten signals in that survey at 0 ms cost, landed the same day, and
-   caught two unknown defects on its first run.
-2. Then run Night 6 graded. The run will now produce evidence whether it wins or
-   loses — see the items closed below.
-
-**If the phone is not available, there is now real work that does not need it.**
-Plan 13 package 3's intro classifier is unblocked: the fixture exists, its
-signature is measured, and its negative control is written down (plan 13,
-"The intro card's signature"). Build it with fractional boxes rather than in
-`lifecycle-observe.py`'s sensor-bound model, and gate the *decision* with
-synthetic fixtures from a committed generator, following
-`testdata/make-title-fixture.py`. That closes half of package 3. The other half
-needs a 6 AM, and no 6 AM frame exists anywhere — which is what step 2 above is
-for.
+**Superseded by the resume point at the top of this file.** This section used
+to call for Night 6, but the live title now proves Sixth Night is not unlocked
+and the device owner read the Continue cursor as Night 2. The fork-free-clock
+question remains first, now as a bounded Night 2 cycle; a passing result is
+followed by a full graded Night 2 attempt.
 
 ### Closed and committed this session
 
@@ -221,64 +227,25 @@ caching its buffer, filtering layers, and never leaving SurfaceFlinger. Our
 59 ms for 180 pixels is ~20× that, which points at fixed per-read entry cost
 rather than pixels.
 
-### THE SUITE IS RED, deliberately, and this is why
+### The cycle seam is resolved; the current red check is unrelated
 
-`node tools/test.mjs --engine` fails one check — `recipe` — and the failure is
-the finding. Do not "fix" it by relaxing the check.
+The deliberately red `recipe` check was comparing the emitted plan's nominal
+clock with the runner's delivered wall clock. The sweep does end exactly on the
+nominal boundary, but `run_macro` waits through `rm_shift + FUSION_POLL_MS`
+before writing the next anchor. That delivers **33 ms released**, clears the
+HID auditor's 20 ms floor, and carries lateness forward rather than compressing
+later seams. `test-recipe.mjs`, `test-runner-plan.mjs`, and the real shell
+interpreter now prove the complete path.
 
-**Every cycle's last instruction ends exactly on the next cycle's first press.**
-`test-recipe.mjs` now checks the wrap-around between cycles and reports:
+The 4660 → 4640 counterfactual was still priced, 1200 seeds per cell. Under the
+measured actuator both shipped and candidate were 0/1200 on Nights 5 and 6 for
+an unrelated lateness cliff, with **zero seam drops** in roughly 1.25 million
+sent actions. With lateness zeroed, both were 1200/1200. Moving the sweep offers
+no seam benefit, so the recipe stays at 4660.
 
-> `clear: its last instruction ("4660 sweep 120 100 10,4,7") ends at 5000 ms of
-> a 5000 ms cycle, leaving 0 ms before the next cycle's monitor press — under
-> the 20 ms the HID auditor requires between two different buttons.`
-
-Both cycle types, from the emitter, systematically. Every other check in that
-file reads a cycle in isolation, which is how this survived: cycles repeat, so
-the instant after a cycle's final instruction is the *next* cycle's `0 tap
-monitor`, and a camera contact butts straight against it.
-
-**Why it is the prime suspect for the Night 1 desyncs.** The 2026-08-25 desync
-census tabulated what each lost monitor press followed — a mask press (9 lost),
-a wind hold (3), a hall hold (1), the vent light (0), the mute (0), another
-monitor press (1 of 1) — and has **no row for a sweep**, because within a cycle
-a sweep never precedes a monitor press. The wrap is the only place it does, and
-it is therefore the one transition never measured. The cleared Night 1 desynced
-about eight times with the mask seam already fixed at 180 ms.
-
-**Both candidate fixes are priced through the model gate, 1200 seeds, SE ≈1.4
-points at n=1200:**
-
-| variant | night 6 | night 5 |
-|---|---:|---:|
-| shipped (0 ms released) | 56.1% | 63.9% |
-| **sweep 20 ms earlier** | 55.8% | **64.5%** |
-| sweep 33 ms earlier | **52.6%** | 61.8% |
-| monitor +20 ms | 55.8% | 64.1% |
-| monitor +33 ms | 55.6% | 64.2% |
-
-So the documented rule holds — *"the sweep's end is the one thing in this cycle
-that must not move"*, one full frame costs **−3.5 points** — but **20 ms is
-free**, and `sweep 4660 → 4640` gives 23 ms released after the wind and exactly
-20 ms before the next monitor press in both cycles.
-
-**Two traps found while pricing, both worth keeping:**
-
-- `monitor +33` scores well and is **invalid**: it moves the monitor press
-  without the read, putting the read 334 ms after it — *inside*
-  `MONITOR_ANIM_DOWN` (367 ms), which CLAUDE.md forbids outright. The gate
-  passed it because the gate does not model that seam. A good score from a
-  variant that violates a device rule is exactly what the gate cannot catch.
-- **The model gate is not enough to promote this.** CLAUDE.md: price a policy
-  against `--device-sweep`, not the ideal actuator. The next action is the
-  actuator pricing, not the edit.
-
-**The device test that would settle attribution costs one run:** re-run with
-`HID_TRACE_RUN=1`, and `desync-scan.py` lines the trace against the recording
-and names the lost press, while `test-hid-trace.mjs` flags the 0 ms released
-time directly. The cleared Night 1 had **no HID trace** — our most instrumented
-night could not answer its own most important question. `HID_TRACE_RUN=1` should
-probably be the default for a graded attempt.
+The suite is currently red only because of the separate uncommitted marker-123
+engine edits named in the top resume point. Do not confuse that source-model
+conflict with the resolved cycle boundary.
 
 ### Open, with what is known
 
@@ -288,25 +255,15 @@ probably be the default for a graded attempt.
   drain groups have not been located in the dump; the wind side is sourced
   (g652 sets 2000, g638/g643 add +5/tick, g645 snaps to 300). Do not change the
   constant until the drain is sourced.
-- **A 6 AM still cannot be graded, and the fixtures say why.** The
-  `screenrecord` cap that used to sit beside this item is gone, so a 6 AM can now
-  be *recorded* — but nothing classifies the intro card, the 6 AM transition, or
-  a minigame. Plan 13 package 3, inventoried 2026-08-26 and now **half
-  startable without a phone**:
-  - **Present:** `captures/lifecycle/n1-intro-cal-20260826.mp4` holds the
-    `12:00 AM / 1st Night` card *and* the intro→night transition, with the
-    boundary labelled by `screenstate.py` itself (`other` through the card,
-    `night` from ~8 s). That is the intro classifier's material, today.
-  - **Absent:** **no 6 AM frame exists anywhere in the repository.** Package 3
-    can build and gate the intro half and cannot close on the other.
-  - **Was a trap, now fixed:** `captures/lifecycle/n1-clear/` contained a
-    *death* — `screenstate.py` reads its `final.png` as `gameover`. Renamed
-    `n1-clear-attempt-died/` with a README. Nothing referenced it, but it was
-    aimed exactly at this package: whoever built 6 AM fixtures would have found
-    a directory called `n1-clear` and fitted the classifier to a Game Over.
-  - **Outranks all of it:** **`captures/` is gitignored.** Every fixture above
-    exists on one laptop and in no clone, so package 3's holdout set needs
-    somewhere to live before it can be a gate anyone else can run.
+- **Lifecycle package 3 is advanced, not closed.** A positive 6 AM is recognised
+  by `run-timeline.py`, and the new fractional intro-card classifier is gated by
+  a committed synthetic generator. Against local real media: intro 5/5,
+  non-card 21/21 rejected, 6 AM 17/17 rejected as intro and accepted as 6 AM;
+  `n1-full-1640` reports intro at 3.0–5.5 s and clear at 428.5 s. Still absent:
+  minigame fixtures/classification, Night 2–6 intro evidence and ordinal
+  recognition, a committed real holdout corpus, media-PTS ↔ runner-clock
+  alignment, and save-advancement classification. Those gaps keep the package
+  open.
 - **The controller desyncs far more than it detects, and pan is the tell.**
   Measured on the cleared Night 1: 16 of 16 `empty` vent reads sit at 0–6 px of
   office pan, and 6 of 7 false `inside` reads at **64–178 px**, with the
@@ -383,7 +340,7 @@ probably be the default for a graded attempt.
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26**; package 3 **advanced, not closed** — a 6 AM is now recognised (`run-timeline.py`, wired into `grade-run.sh`) so a win is no longer indistinguishable from a death, but no minigame fixture exists, the intro card's *night number* is unread, and media-PTS alignment is still a hand-derived offset. (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2) — the first full-night stock-device clear. All six nights pass the human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%). A full story night is now runnable via `CALIBRATION_STORY_NIGHT` + `STORY_CURSOR_OBSERVED`. **But the clear was not graded as one**: no 6 AM classifier exists, so the manifest reads `lifecycle=unknown` for a night that was won | Classify the intro card and 6 AM (package 3) — until then a win and a death are indistinguishable to every instrument here |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), but the current uncommitted marker-123 edits leave the full suite red and must be reconciled before hardware | Reconcile the marker-123 source model, then one traced Night 2 cycle and a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 
