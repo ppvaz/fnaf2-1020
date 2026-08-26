@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 """Classify an adb screencap: prints night, gameover, or other.
 
+Correction 2026-08-26: the night predicate had a false positive. The "HELP
+WANTED" newspaper -- the cutscene FNaF 2 plays when a New Game starts -- read as
+`night`, because it is bright everywhere and the flashlight-meter box therefore
+clears the > 90 test (measured 154.6 against the office's 165.6). The original
+reasoning was sound for every screen it had been shown: a lit meter means the
+office. It had simply never been shown a screen that is bright all over, because
+no route had ever pressed New Game. plans/13 needs that route for the fresh-save
+ladder, so the gap became reachable.
+
+The fix is a global-brightness guard, and it is the safe direction: it can only
+take `night` away, never grant it. Measured over every office frame available --
+plain, hall lit, vent lit, and under the first-run tutorial overlay -- rows 500
+and 700 mean 14.5-35.1, against the newspaper's 112.5. The threshold sits at 80,
+roughly a factor of two from either side. The same two scanlines are added to the
+--adb-fast path so both paths answer alike; without them the fast path cannot see
+global brightness at all.
+
 night = the office HUD is on screen: flashlight meter lit top-left, or the
 pink mask bar bottom-left (still visible in the masked view). Title, game
 over, jumpscare and static otherwise read "other". `gameover` additionally
@@ -19,6 +36,12 @@ import warnings
 warnings.simplefilter("ignore")
 
 
+# Above this mean the frame is bright all over, which the office never is and a
+# cutscene is. Office frames measure 14.5-35.1 on rows 500/700; the New Game
+# newspaper measures 112.5.
+GLOBAL_BRIGHT_MAX = 80.0
+
+
 def channel_mean(rows, x0, x1):
     total = [0, 0, 0]
     count = 0
@@ -35,7 +58,8 @@ def channel_mean(rows, x0, x1):
 def fast_adb_state(timeout):
     width = 2400
     stride = width * 4
-    ys = (45, 55, 65, 75, 85, 1004, 1014, 1024, 1034, 1044)
+    # The last two are the global-brightness guard; see the module docstring.
+    ys = (45, 55, 65, 75, 85, 1004, 1014, 1024, 1034, 1044, 500, 700)
     remote = f"/data/local/tmp/fnaf2-watch-{os.getpid()}.raw"
     reads = "; ".join(
         f"dd if=$raw bs=1 skip={16 + y * stride} count={stride} 2>/dev/null"
@@ -63,9 +87,10 @@ def fast_adb_state(timeout):
         for index in range(0, expected, stride)
     ]
     flash = channel_mean(rows[:5], 95, 260)
-    maskbar = channel_mean(rows[5:], 70, 1180)
-    night = flash[0] > 90 or (
-        maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3
+    maskbar = channel_mean(rows[5:10], 70, 1180)
+    overall = channel_mean(rows[10:], 0, width)
+    night = sum(overall) / 3 < GLOBAL_BRIGHT_MAX and (
+        flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
     )
     print("night" if night else "other")
 
@@ -106,7 +131,12 @@ def fraction(box, predicate):
 
 flash = mean((95, 40, 260, 95))
 maskbar = mean((70, 1000, 1180, 1045))
-night = flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
+# The same guard as the fast path, over the same two scanlines.
+overall = mean((0, 500, 2400, 501)), mean((0, 700, 2400, 701))
+overall_mean = sum(sum(o) for o in overall) / 6
+night = overall_mean < GLOBAL_BRIGHT_MAX and (
+    flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
+)
 red_face = fraction(
     (650, 450, 1750, 920),
     lambda r, g, b: r > 80 and r > g * 1.5 and r > b * 1.3,

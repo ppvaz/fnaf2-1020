@@ -39,6 +39,7 @@ const EXCLUDED = new Map([
   ['pan-shift.py', 'measuring stick for pan-probe.sh; the scroll is better read from the dump'],
   ['region-probe.sh', 'device probe -- maps what a touch does by screen region'],
   ['region-classify.py', 'the interaction classifier region-probe.sh decides with, gated by test-region-classify.py'],
+  ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
   ['hid-sweep-probe.sh', 'device probe'],
   ['capture-screen-sample.sh', 'capture helper'],

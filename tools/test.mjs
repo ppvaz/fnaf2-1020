@@ -169,6 +169,10 @@ const ENGINE = [
   // contact and from a pan. Two nights were lost to a finger that missed a
   // light hitbox and landed in the pan band, and nothing in the run noticed.
   ['interaction classifier', ['device/test-region-classify.py']],
+  // The alive/dead authority, and the regression that made it one: the New Game
+  // newspaper cutscene read as `night` because it is bright everywhere, and no
+  // route had ever pressed New Game so the gap had never been reachable.
+  ['screenstate', ['device/test-screenstate.py']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
