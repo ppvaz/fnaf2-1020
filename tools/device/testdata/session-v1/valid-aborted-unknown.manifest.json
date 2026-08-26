@@ -1,0 +1,120 @@
+{
+  "schema": "fnaf2.session-manifest",
+  "schema_version": 1,
+  "event_stream": "valid-aborted-unknown.events.jsonl",
+  "notes": "Synthetic fixture: an aborted session with no cross-clock event, no model, and therefore no alignment edges. It exists so the win rules cannot be shown to pass only because nothing was ever terminal.",
+  "session": {
+    "session_id": "synthetic-abort-0002",
+    "cohort_id": null,
+    "started_at_utc": "2026-08-26T11:00:00Z",
+    "ended_at_utc": "2026-08-26T11:00:41Z",
+    "origin_clock": "runner_wall_ms"
+  },
+  "producer": {
+    "command": "tools/device/trial-minus7.sh",
+    "tool_version": "synthetic-1",
+    "repo_commit": "0000000",
+    "dirty_tree": true,
+    "environment": {
+      "GRADE_RUN": "1"
+    }
+  },
+  "target": {
+    "game_package": "com.synthetic.fixture",
+    "game_version": "0.0-synthetic",
+    "game_build": "synthetic-build-1",
+    "night": 1,
+    "configuration": "n1-hid-multi",
+    "device_model": "synthetic-device",
+    "display": {
+      "width": 2400,
+      "height": 1080,
+      "orientation": "landscape"
+    },
+    "sensor_path": "screencap-raw"
+  },
+  "clocks": [
+    {
+      "domain": "runner_wall_ms",
+      "kind": "wall",
+      "units": "ms",
+      "origin_note": "date +%s%3N latched at T0",
+      "valid_from": 0,
+      "valid_until": 41000
+    }
+  ],
+  "alignment_edges": [],
+  "artifacts": [
+    {
+      "artifact_id": "video",
+      "role": "aborted-run-video",
+      "authority": "primary-observation",
+      "path": "captures/synthetic-abort-0002-aborted.mp4",
+      "format": "video/mp4",
+      "bytes": 204800,
+      "sha256": "3ba265ba89ad86bc0170c54f98bc08234480b0c606654ece2143ad93dd0d8fce",
+      "complete": false,
+      "truncated": true,
+      "retention": "local-only",
+      "clock_domain": null,
+      "game_build": "synthetic-build-1",
+      "redaction": {
+        "contains_game_media": true,
+        "contains_audio": false,
+        "commit_safe": false
+      }
+    },
+    {
+      "artifact_id": "epoch",
+      "role": "epoch-report",
+      "authority": "operational-metadata",
+      "path": "captures/synthetic-abort-0002-epoch.txt",
+      "format": "text/plain",
+      "bytes": 158,
+      "sha256": "c13823e9569123f4b2d5da2381a5c66edf0d29c9b8eb98e64d6cdd745133ce8a",
+      "complete": true,
+      "truncated": false,
+      "retention": "local-only",
+      "clock_domain": "runner_wall_ms",
+      "game_build": "synthetic-build-1",
+      "redaction": {
+        "contains_game_media": false,
+        "contains_audio": false,
+        "commit_safe": false
+      }
+    }
+  ],
+  "models": [],
+  "controller": {
+    "policy_version": "synthetic-n1-route-1",
+    "plan_id": "n1-hid-multi",
+    "plan_sha256": "9ff0f3e1718e52599257989c756f1a53435b8df1586bef248bd158ab76208ed2",
+    "actuator": "hid-multi",
+    "emitted_action_trace": null
+  },
+  "outcome": {
+    "lifecycle": "aborted",
+    "terminal": true,
+    "evidence": [
+      {
+        "kind": "runner-abort-record",
+        "supports": "aborted",
+        "positive": true,
+        "artifact_id": "epoch",
+        "note": "operator interrupt latched before the first hour edge"
+      }
+    ]
+  },
+  "helper": {
+    "process_identity": null,
+    "restarts": 0,
+    "revocations": 1,
+    "focus_faults": 1,
+    "token_present": false
+  },
+  "redaction": {
+    "commit_safe": true,
+    "raw_media_committed": false,
+    "notes": "truncated recording stays local"
+  }
+}

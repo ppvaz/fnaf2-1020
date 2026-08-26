@@ -46,6 +46,7 @@ for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
 done
 CUE="$CAPTURES/$RUN-cue.txt"
 KEEP="$CAPTURES/screencheck-keep/$RUN"
+MANIFEST="$CAPTURES/$RUN-session.json"
 
 echo "=============================================================="
 echo "run: $RUN"
@@ -60,6 +61,7 @@ echo "capture: ${VIDEO##*/}"
 [ -f "$CUE" ] && echo "cue trace: ${CUE##*/}" || echo "cue trace: none (run with CUE_HELPER=1)"
 [ -n "$AUDIO" ] && echo "night audio: ${AUDIO##*/}" || echo "night audio: none (run with CUE_AUDIO=1)"
 [ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
+[ -f "$MANIFEST" ] && echo "session manifest: ${MANIFEST##*/}" || echo "session manifest: none (unmanifested run)"
 
 fail=0
 step() {
@@ -68,6 +70,26 @@ step() {
   shift
   "$@" || { echo "  ^ FAILED"; fail=1; }
 }
+
+# 0. Does the run describe itself? A manifest is what turns a pile of
+#    same-basename files into one session: which game build, which model
+#    hashes, which clocks, which terminal outcome and on what evidence. The
+#    v1 contract lives in tools/device/schema/ and is enforced here.
+#
+#    No producer writes one yet (Plan 09 package 2 ships the contract; package
+#    2's producer integration is a later slice). So the absent case says so in
+#    as many words rather than passing quietly -- a step that grades a file
+#    that is not there is the exact failure grade-run.sh was written for.
+if [ -f "$MANIFEST" ]; then
+  step "session manifest (v1 provenance contract)" \
+    python3 "$HERE/validate-session.py" "$MANIFEST"
+else
+  echo
+  echo "--- session manifest (v1 provenance contract) ---"
+  echo "  no ${RUN}-session.json: this run is unmanifested, so nothing below can"
+  echo "  name its game build, model hashes, clock alignment or win evidence."
+  echo "  Nothing was validated. (No producer emits one yet.)"
+fi
 
 # 1. Was it alive, and for how long? This one decides what the run *means*, so
 #    it goes first: every other number below is only interesting for the

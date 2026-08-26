@@ -1,0 +1,254 @@
+{
+  "schema": "fnaf2.session-manifest",
+  "schema_version": 1,
+  "supported_versions": [1],
+  "root": "manifest",
+  "description": "v1 stock-device session manifest. The twelve field groups below are the minimum facts enumerated in docs/device/OBSERVATION-CORPUS-INVENTORY.md section 'Fields demanded of the v1 schemas'. This file is the machine-readable contract that tools/device/validate-session.py interprets; it is not JSON Schema, because the validator is standard-library only.",
+  "field_groups": [
+    {
+      "group": 1,
+      "name": "session and cohort identity",
+      "manifest_paths": ["session.session_id", "session.cohort_id", "session.started_at_utc", "session.ended_at_utc"]
+    },
+    {
+      "group": 2,
+      "name": "artifact role and authority class",
+      "manifest_paths": ["artifacts[].role", "artifacts[].authority"]
+    },
+    {
+      "group": 3,
+      "name": "producer command, tool version, commit, dirty status",
+      "manifest_paths": ["producer.command", "producer.tool_version", "producer.repo_commit", "producer.dirty_tree"]
+    },
+    {
+      "group": 4,
+      "name": "game build, night configuration, device and sensor path",
+      "manifest_paths": ["target.game_package", "target.game_version", "target.game_build", "target.night", "target.configuration", "target.device_model", "target.display.width", "target.display.height", "target.sensor_path"]
+    },
+    {
+      "group": 5,
+      "name": "artifact path, format, size, hash, completeness, retention",
+      "manifest_paths": ["artifacts[].path", "artifacts[].format", "artifacts[].bytes", "artifacts[].sha256", "artifacts[].complete", "artifacts[].truncated", "artifacts[].retention"]
+    },
+    {
+      "group": 6,
+      "name": "named clock domains, origins, units, validity, alignment edges",
+      "manifest_paths": ["clocks[].domain", "clocks[].kind", "clocks[].units", "clocks[].origin_note", "clocks[].valid_from", "clocks[].valid_until", "alignment_edges"],
+      "event_paths": ["clock", "t"]
+    },
+    {
+      "group": 7,
+      "name": "label value, supplier, confidence or unknown reason, split role",
+      "event_paths": ["label_provenance.source", "label_provenance.supplied_by", "label_provenance.split_role"]
+    },
+    {
+      "group": 8,
+      "name": "model hash and the reports authorizing it",
+      "manifest_paths": ["models[].sha256", "models[].authorized_for", "models[].authorized_for_game_build", "models[].calibration_report", "models[].holdout_report"]
+    },
+    {
+      "group": 9,
+      "name": "controller, policy, plan, actuator and emitted-action trace",
+      "manifest_paths": ["controller.policy_version", "controller.plan_id", "controller.plan_sha256", "controller.actuator", "controller.emitted_action_trace"]
+    },
+    {
+      "group": 10,
+      "name": "lifecycle or terminal outcome and its independent evidence",
+      "manifest_paths": ["outcome.lifecycle", "outcome.terminal", "outcome.evidence[].kind", "outcome.evidence[].supports", "outcome.evidence[].positive", "outcome.evidence[].artifact_id"]
+    },
+    {
+      "group": 11,
+      "name": "helper or projection process identity and its faults",
+      "manifest_paths": ["helper.process_identity", "helper.restarts", "helper.revocations", "helper.focus_faults", "helper.token_present"]
+    },
+    {
+      "group": 12,
+      "name": "redaction, sensitivity, and the raw-media git prohibition",
+      "manifest_paths": ["redaction.commit_safe", "redaction.raw_media_committed", "artifacts[].redaction.contains_game_media", "artifacts[].redaction.commit_safe"],
+      "event_paths": ["redaction.commit_safe"]
+    }
+  ],
+  "objects": {
+    "manifest": {
+      "required": {
+        "schema": {"const": "fnaf2.session-manifest"},
+        "schema_version": "int",
+        "event_stream": "string",
+        "session": {"object": "session"},
+        "producer": {"object": "producer"},
+        "target": {"object": "target"},
+        "clocks": {"array": {"object": "clock"}, "min_items": 1},
+        "alignment_edges": {"array": {"object": "alignment_edge"}},
+        "artifacts": {"array": {"object": "artifact"}, "min_items": 1},
+        "models": {"array": {"object": "model"}},
+        "controller": {"object": "controller"},
+        "outcome": {"object": "outcome"},
+        "helper": {"object": "helper"},
+        "redaction": {"object": "redaction"}
+      },
+      "optional": {
+        "notes": "string"
+      }
+    },
+    "session": {
+      "required": {
+        "session_id": "string",
+        "cohort_id": {"nullable": "string"},
+        "started_at_utc": "iso8601",
+        "ended_at_utc": "iso8601",
+        "origin_clock": "string"
+      },
+      "optional": {}
+    },
+    "producer": {
+      "required": {
+        "command": "string",
+        "tool_version": "string",
+        "repo_commit": "string",
+        "dirty_tree": "bool",
+        "environment": {"map": "string"}
+      },
+      "optional": {}
+    },
+    "target": {
+      "required": {
+        "game_package": "string",
+        "game_version": "string",
+        "game_build": "string",
+        "night": "int",
+        "configuration": "string",
+        "device_model": "string",
+        "display": {"object": "display"},
+        "sensor_path": "string"
+      },
+      "optional": {}
+    },
+    "display": {
+      "required": {
+        "width": "int",
+        "height": "int",
+        "orientation": {"enum": ["portrait", "landscape"]}
+      },
+      "optional": {"projection_width": "int", "projection_height": "int"}
+    },
+    "clock": {
+      "required": {
+        "domain": "string",
+        "kind": {"enum": ["monotonic", "wall", "media-pts", "scheduled", "sample-offset"]},
+        "units": {"enum": ["ns", "ms", "s", "samples"]},
+        "origin_note": "string",
+        "valid_from": "number",
+        "valid_until": "number"
+      },
+      "optional": {}
+    },
+    "alignment_edge": {
+      "required": {
+        "from_domain": "string",
+        "to_domain": "string",
+        "offset": "number",
+        "offset_units": {"enum": ["ns", "ms", "s", "samples"]},
+        "method": "string",
+        "residual": "number"
+      },
+      "optional": {}
+    },
+    "artifact": {
+      "required": {
+        "artifact_id": "string",
+        "role": "string",
+        "authority": {"enum": ["primary-observation", "emitted-action-record", "derived-evidence", "model-artifact", "operational-metadata"]},
+        "path": "string",
+        "format": "string",
+        "bytes": "int",
+        "complete": "bool",
+        "truncated": "bool",
+        "retention": {"enum": ["local-only", "commit-safe", "deleted"]},
+        "redaction": {"object": "artifact_redaction"}
+      },
+      "optional": {
+        "sha256": {"nullable": "sha256"},
+        "clock_domain": {"nullable": "string"},
+        "game_build": {"nullable": "string"}
+      }
+    },
+    "artifact_redaction": {
+      "required": {
+        "contains_game_media": "bool",
+        "contains_audio": "bool",
+        "commit_safe": "bool"
+      },
+      "optional": {}
+    },
+    "model": {
+      "required": {
+        "model_id": "string",
+        "kind": "string",
+        "sha256": "sha256",
+        "built_from_commit": "string",
+        "authorized_for": {"enum": ["live-decision", "shadow", "fail-safe", "none"]},
+        "authorized_for_game_build": "string",
+        "calibration_report": {"nullable": {"object": "report"}},
+        "holdout_report": {"nullable": {"object": "report"}}
+      },
+      "optional": {}
+    },
+    "report": {
+      "required": {
+        "samples": "int",
+        "sessions": "int",
+        "errors": "int",
+        "unknowns": "int",
+        "report_sha256": "sha256"
+      },
+      "optional": {}
+    },
+    "controller": {
+      "required": {
+        "policy_version": "string",
+        "plan_id": "string",
+        "plan_sha256": "sha256",
+        "actuator": "string",
+        "emitted_action_trace": {"nullable": "string"}
+      },
+      "optional": {}
+    },
+    "outcome": {
+      "required": {
+        "lifecycle": {"enum": ["win", "death", "aborted", "focus-loss", "unknown"]},
+        "terminal": "bool",
+        "evidence": {"array": {"object": "evidence"}, "min_items": 1}
+      },
+      "optional": {}
+    },
+    "evidence": {
+      "required": {
+        "kind": "string",
+        "supports": {"enum": ["win", "death", "aborted", "focus-loss", "unknown"]},
+        "positive": "bool",
+        "artifact_id": "string",
+        "note": "string"
+      },
+      "optional": {}
+    },
+    "helper": {
+      "required": {
+        "process_identity": {"nullable": "string"},
+        "restarts": "int",
+        "revocations": "int",
+        "focus_faults": "int",
+        "token_present": "bool"
+      },
+      "optional": {}
+    },
+    "redaction": {
+      "required": {
+        "commit_safe": "bool",
+        "raw_media_committed": "bool",
+        "notes": "string"
+      },
+      "optional": {}
+    }
+  },
+  "win_evidence_kinds": ["six-am-hud", "six-am-transition", "win-card", "night-complete-screen"]
+}

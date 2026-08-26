@@ -5,7 +5,9 @@
 accounts for every current producer and retained artifact family. It found only
 three files in the local capture root, no manifest, no durable PCM `startNs`
 sidecar, and no retained source/holdout frames for the operational BB model.
-Package 2—the versioned manifest/event schemas and validator—is next.
+**Package 2's contract slice landed 2026-08-26**—versioned schemas, a
+standard-library validator, and synthetic fixtures. Package 2 itself stays
+open: no producer emits a manifest yet, so no real session has been validated.
 
 The repository has useful labeled visual sets, night recordings, HID traces,
 projection snapshots, and PCM captures, but they
@@ -108,7 +110,7 @@ read but not renamed or rewritten. `tools/device/index-observations.py` makes
 the path/authority/family inventory reproducible; synthetic tests enforce its
 strict-mode and read-only contracts.
 
-### 2. Introduce the manifest and event schema
+### 2. Introduce the manifest and event schema — contract slice landed 2026-08-26; package open
 
 - Add schema validation and synthetic fixtures.
 - Give `trial-minus7.sh`, cue-helper capture, SCM1 collection, and `grade-run.sh`
@@ -118,6 +120,38 @@ strict-mode and read-only contracts.
 
 **Gate:** a deliberately malformed, mixed-build, stale-model, or cross-clock
 session fails validation.
+
+**Result (partial — no completion credit).** The gate as written is met, and
+nothing else in this package is.
+
+Shipped: [`schema/session-manifest-v1.json`](../tools/device/schema/session-manifest-v1.json)
+and [`schema/session-events-v1.json`](../tools/device/schema/session-events-v1.json)
+carry all twelve minimum field groups from the inventory, including named clock
+domains with explicit alignment edges, authority class, artifact hash, label
+provenance and split role, model authorization with its holdout report,
+lifecycle outcome with independent evidence, helper identity and faults, and
+redaction. [`validate-session.py`](../tools/device/validate-session.py) is
+standard-library only and interprets those schema files rather than restating
+them, so a field added to a schema cannot go unchecked.
+[`test-validate-session.py`](../tools/device/test-validate-session.py) proves
+two synthetic sessions pass and that nine defects each fail with their *own*
+reason: `schema-version-unsupported`, `mixed-game-builds`,
+`artifact-hash-missing`, `model-stale`, `model-unauthorized`,
+`clock-alignment-missing`, `false-win-evidence`,
+`secret-in-commit-safe-metadata`, and `event-out-of-order`. A validator that
+rejects everything with one generic error is indistinguishable from one that
+rejects everything, so distinctness is the assertion, not rejection.
+`grade-run.sh` calls it, and says in as many words when a run has no manifest
+rather than grading a file that is not there.
+
+Not done, and therefore the package is not closed: no producer writes a
+manifest. `trial-minus7.sh`, cue-helper capture, SCM1 collection, and
+`grade-run.sh` still have no shared session ID or monotonic origin; model
+hashes are recorded in the schema but nothing emits them; and no real capture
+has been validated. The secret check is a commit-safety lint against the shapes
+the inventory names (credential-shaped keys, absolute private paths, a live
+helper token), not a general secret scanner — it makes no claim about shapes
+it was not told about.
 
 ### 3. Build one replay entry point
 

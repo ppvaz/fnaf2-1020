@@ -1,0 +1,86 @@
+{
+  "schema": "fnaf2.session-events",
+  "schema_version": 1,
+  "supported_versions": [1],
+  "root": "event",
+  "description": "v1 ordered observation/decision record, one JSON object per line. Every record names the clock domain its timestamp belongs to; nothing here is called 'timestamp', because the inventory's eight clock domains are not interchangeable.",
+  "kind_required": {
+    "observation": ["sensor", "requested_labels", "label_provenance", "valid_from", "valid_until"],
+    "decision": ["decision", "controller_state"],
+    "action-result": ["action_result"],
+    "lifecycle": ["outcome"],
+    "fault": ["fault"]
+  },
+  "objects": {
+    "event": {
+      "required": {
+        "seq": "int",
+        "clock": "string",
+        "t": "number",
+        "kind": {"enum": ["observation", "decision", "action-result", "lifecycle", "fault"]},
+        "redaction": {"object": "event_redaction"}
+      },
+      "optional": {
+        "sensor": {"nullable": "string"},
+        "model_id": {"nullable": "string"},
+        "model_sha256": {"nullable": "sha256"},
+        "requested_labels": {"array": "string", "min_items": 1},
+        "value": {"nullable": "any"},
+        "score": {"nullable": "number"},
+        "unknown_reason": {"nullable": "string"},
+        "valid_from": {"nullable": "number"},
+        "valid_until": {"nullable": "number"},
+        "label_provenance": {"nullable": {"object": "label_provenance"}},
+        "controller_state": {"map": "string"},
+        "decision": {"nullable": {"object": "decision"}},
+        "action_result": {"nullable": {"object": "action_result"}},
+        "fault": {"nullable": {"object": "fault"}},
+        "outcome": {"nullable": {"enum": ["title", "menu", "night", "death", "win", "aborted", "focus-loss", "unknown"]}},
+        "terminal": "bool",
+        "source_artifact": {"nullable": "string"},
+        "source_clock": {"nullable": "string"},
+        "source_t": {"nullable": "number"},
+        "game_build": {"nullable": "string"},
+        "note": "string"
+      }
+    },
+    "event_redaction": {
+      "required": {"commit_safe": "bool"},
+      "optional": {"contains_game_media": "bool"}
+    },
+    "label_provenance": {
+      "required": {
+        "source": {"enum": ["model", "operator", "independent-visual", "game-source", "filename", "simulator"]},
+        "supplied_by": "string",
+        "split_role": {"enum": ["calibration", "holdout", "shadow", "live-decision"]},
+        "confidence": {"nullable": "number"}
+      },
+      "optional": {}
+    },
+    "decision": {
+      "required": {
+        "action": "string",
+        "deadline_clock": "string",
+        "deadline_t": "number"
+      },
+      "optional": {"influenced_by_seq": "int"}
+    },
+    "action_result": {
+      "required": {
+        "action": "string",
+        "accepted": {"nullable": "bool"},
+        "evidence": "string"
+      },
+      "optional": {}
+    },
+    "fault": {
+      "required": {
+        "fault_kind": "string",
+        "detail": "string",
+        "degraded_to": {"nullable": "string"}
+      },
+      "optional": {}
+    }
+  },
+  "terminal_outcomes": ["death", "win", "aborted", "focus-loss", "unknown"]
+}

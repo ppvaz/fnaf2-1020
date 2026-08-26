@@ -1,0 +1,220 @@
+{
+  "schema": "fnaf2.session-manifest",
+  "schema_version": 1,
+  "event_stream": "valid-night6-win.events.jsonl",
+  "notes": "Synthetic fixture. No game imagery, no audio, no device identity: every hash, path and count below is invented so the contract can be tested without a phone.",
+  "session": {
+    "session_id": "synthetic-n6-0001",
+    "cohort_id": "synthetic-cohort-a",
+    "started_at_utc": "2026-08-26T10:00:00Z",
+    "ended_at_utc": "2026-08-26T10:07:30Z",
+    "origin_clock": "runner_wall_ms"
+  },
+  "producer": {
+    "command": "tools/device/trial-minus7.sh",
+    "tool_version": "synthetic-1",
+    "repo_commit": "0000000",
+    "dirty_tree": false,
+    "environment": {
+      "HID_TRACE_RUN": "1",
+      "CUE_HELPER": "1",
+      "GRADE_RUN": "1"
+    }
+  },
+  "target": {
+    "game_package": "com.synthetic.fixture",
+    "game_version": "0.0-synthetic",
+    "game_build": "synthetic-build-1",
+    "night": 6,
+    "configuration": "n6-hid-multi",
+    "device_model": "synthetic-device",
+    "display": {
+      "width": 2400,
+      "height": 1080,
+      "orientation": "landscape"
+    },
+    "sensor_path": "screencap-raw"
+  },
+  "clocks": [
+    {
+      "domain": "runner_wall_ms",
+      "kind": "wall",
+      "units": "ms",
+      "origin_note": "date +%s%3N latched at T0; wall semantics, not monotonic",
+      "valid_from": 0,
+      "valid_until": 450000
+    },
+    {
+      "domain": "media_pts_ms",
+      "kind": "media-pts",
+      "units": "ms",
+      "origin_note": "screenrecord presentation time from the first encoded frame",
+      "valid_from": 0,
+      "valid_until": 450000
+    },
+    {
+      "domain": "helper_mono_ns",
+      "kind": "monotonic",
+      "units": "ns",
+      "origin_note": "System.nanoTime inside one cue-helper process lifetime",
+      "valid_from": 0,
+      "valid_until": 450000000000
+    }
+  ],
+  "alignment_edges": [
+    {
+      "from_domain": "runner_wall_ms",
+      "to_domain": "media_pts_ms",
+      "offset": -300,
+      "offset_units": "ms",
+      "method": "synthetic-hud-first-frame",
+      "residual": 8
+    },
+    {
+      "from_domain": "runner_wall_ms",
+      "to_domain": "helper_mono_ns",
+      "offset": 12,
+      "offset_units": "ms",
+      "method": "synthetic-loopback-round-trip-midpoint",
+      "residual": 14
+    }
+  ],
+  "artifacts": [
+    {
+      "artifact_id": "video",
+      "role": "run-video",
+      "authority": "primary-observation",
+      "path": "captures/synthetic-n6-0001.mp4",
+      "format": "video/mp4",
+      "bytes": 1456756,
+      "sha256": "11b7a09935b612b1fca9178c71a4c917128a3371b35bfaa1a6d05912cfb4b66f",
+      "complete": true,
+      "truncated": false,
+      "retention": "local-only",
+      "clock_domain": "media_pts_ms",
+      "game_build": "synthetic-build-1",
+      "redaction": {
+        "contains_game_media": true,
+        "contains_audio": false,
+        "commit_safe": false
+      }
+    },
+    {
+      "artifact_id": "hid-trace",
+      "role": "hid-trace",
+      "authority": "emitted-action-record",
+      "path": "captures/synthetic-n6-0001-hid.jsonl",
+      "format": "application/x-ndjson",
+      "bytes": 40312,
+      "sha256": "fa9a4d159ddbbbdbe6c5a2edb15bd331ef55232db130ed5f875f275b9ce9da68",
+      "complete": true,
+      "truncated": false,
+      "retention": "local-only",
+      "clock_domain": "runner_wall_ms",
+      "game_build": "synthetic-build-1",
+      "redaction": {
+        "contains_game_media": false,
+        "contains_audio": false,
+        "commit_safe": false
+      }
+    },
+    {
+      "artifact_id": "holdout-report",
+      "role": "model-holdout-report",
+      "authority": "derived-evidence",
+      "path": "reports/synthetic-bb-left-holdout.txt",
+      "format": "text/plain",
+      "bytes": 812,
+      "sha256": "2a8f685536a8f706e79e327a5ab2ec9a3acdac7a1c9e39c6e8126129be51bc14",
+      "complete": true,
+      "truncated": false,
+      "retention": "commit-safe",
+      "clock_domain": null,
+      "game_build": "synthetic-build-1",
+      "redaction": {
+        "contains_game_media": false,
+        "contains_audio": false,
+        "commit_safe": true
+      }
+    }
+  ],
+  "models": [
+    {
+      "model_id": "bb-left",
+      "kind": "scm1",
+      "sha256": "79816c38ae2663befe1ca6c7406475e6a8acdbced22d8ccf278ade7ec9e0905a",
+      "built_from_commit": "0000000",
+      "authorized_for": "live-decision",
+      "authorized_for_game_build": "synthetic-build-1",
+      "calibration_report": {
+        "samples": 1200,
+        "sessions": 6,
+        "errors": 3,
+        "unknowns": 11,
+        "report_sha256": "d8147e61ced9eae58ed72a8d2621115130644d6a6186dcb4e2dc8814577cc7f6"
+      },
+      "holdout_report": {
+        "samples": 400,
+        "sessions": 2,
+        "errors": 0,
+        "unknowns": 4,
+        "report_sha256": "84dc89202e92c4ea010bc02fe7fb9ac40eb16e76ae7381f4ec1fded549479eff"
+      }
+    },
+    {
+      "model_id": "gf-guard",
+      "kind": "grid-signature",
+      "sha256": "d6e5ad93dd71c11cec7e88e7aad012b4e951d55c95ae747aac6e0c844ac4c910",
+      "built_from_commit": "0000000",
+      "authorized_for": "shadow",
+      "authorized_for_game_build": "synthetic-build-1",
+      "calibration_report": {
+        "samples": 90,
+        "sessions": 1,
+        "errors": 4,
+        "unknowns": 20,
+        "report_sha256": "386aaee4a8a37848af2c7c85a36e11dad3ad9bf950b67f7cb24c74dc6a95e9d3"
+      },
+      "holdout_report": null
+    }
+  ],
+  "controller": {
+    "policy_version": "synthetic-n6-route-1",
+    "plan_id": "n6-hid-multi",
+    "plan_sha256": "57692958dbf47eba36e5e586a42a424fec86225d6903404b144fb8bd7c261f42",
+    "actuator": "hid-multi",
+    "emitted_action_trace": "hid-trace"
+  },
+  "outcome": {
+    "lifecycle": "win",
+    "terminal": true,
+    "evidence": [
+      {
+        "kind": "six-am-hud",
+        "supports": "win",
+        "positive": true,
+        "artifact_id": "video",
+        "note": "synthetic 6 AM HUD frames read directly from the primary recording"
+      },
+      {
+        "kind": "runner-exit-status",
+        "supports": "win",
+        "positive": true,
+        "artifact_id": "hid-trace",
+        "note": "emitted-action record only; corroborating, never sufficient on its own"
+      }
+    ]
+  },
+  "helper": {
+    "process_identity": "synthetic-helper-1",
+    "restarts": 1,
+    "revocations": 0,
+    "focus_faults": 0,
+    "token_present": false
+  },
+  "redaction": {
+    "commit_safe": true,
+    "raw_media_committed": false,
+    "notes": "manifest is commit-safe; the video and HID trace it names are not"
+  }
+}
