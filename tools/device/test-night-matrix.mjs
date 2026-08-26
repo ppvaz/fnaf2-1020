@@ -29,7 +29,8 @@ import { fileURLToPath } from 'node:url';
 import * as C from '../../src/config.js';
 import { build, capture, devicePlan, replay, resolveAttack, TEMPLATE_NIGHT }
   from './recipe.mjs';
-import { modelGate, GATE_MIN_SURVIVAL, HUMAN_SLACK_MS } from './human-gate.mjs';
+import { modelGate, GATE_MIN_SURVIVAL, HUMAN_SLACK_MS, GATE_RUNS } from './human-gate.mjs';
+import { pool, closePool } from '../pool.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NIGHTS = [1, 2, 3, 4, 5, 6];
@@ -43,6 +44,22 @@ const check = (name, cond, detail = '') => {
 const planText = (recipe, plan) =>
   `#night ${recipe.night}\n` + Object.entries(plan).map(([name, lines]) =>
     `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}`).join('\n') + '\n';
+
+// The gate over six nights is 7200 simulated nights and was the whole wall
+// time of the engine suite. It is embarrassingly parallel, so it goes through
+// the pool -- named seeds in fixed chunks, so a chunk boundary cannot change
+// which seeds ran and the result stays bit-identical to the serial gate.
+const WORKER = new URL('./gate-worker.mjs', import.meta.url).href;
+const CHUNK = 150;
+const chunks = [];
+for (const night of NIGHTS)
+  for (let from = 1; from <= GATE_RUNS; from += CHUNK)
+    chunks.push({ night, from, to: Math.min(from + CHUNK - 1, GATE_RUNS),
+                  slackMs: HUMAN_SLACK_MS });
+const gateParts = await pool().map(WORKER, 'survivors', chunks);
+const gateSurvivors = new Map(NIGHTS.map(n => [n, 0]));
+for (const part of gateParts)
+  gateSurvivors.set(part.night, gateSurvivors.get(part.night) + part.won);
 
 // ------------------------------------------------------------- the matrix
 const rows = [];
@@ -60,7 +77,10 @@ for (const night of NIGHTS) {
     missed += r.missed;
     detections += r.detections;
   }
-  const gate = modelGate(planText(recipe, plan));
+  const survived = gateSurvivors.get(night);
+  const gate = { night, survived, runs: GATE_RUNS, slackMs: HUMAN_SLACK_MS,
+                 minSurvival: GATE_MIN_SURVIVAL,
+                 ok: survived >= GATE_RUNS * GATE_MIN_SURVIVAL };
 
   rows.push({ night, recipe, plan, attack, won, missed, detections, deaths, gate });
 
@@ -182,5 +202,6 @@ for (const { night, recipe, attack, won, detections, gate } of rows) {
     `  reads ${detections}`);
 }
 
+closePool();
 if (failed) { console.error(`${failed} night-matrix check(s) failed`); process.exit(1); }
 console.log(`night matrix: nights ${NIGHTS.join(', ')} build, replay and gate`);
