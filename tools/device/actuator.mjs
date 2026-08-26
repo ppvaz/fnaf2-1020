@@ -113,11 +113,22 @@ export class DeviceActuator {
   // runner wall-times one boundary per macro and spaces the inside with
   // hid_delay (+/-2 ms), so a whole beat shares one draw (perPress: false,
   // re-rolled by beat()).
+  //
+  // `lateWhen` is an ABLATION CONTROL, never a device model: it decides which
+  // actions draw lateness at all, so a sweep can ask "which press's lateness
+  // costs the night" instead of only "how much lateness costs the night". The
+  // phone is late on every boundary it wall-times, so the default says yes to
+  // everything and a `lateWhen` figure is a diagnostic, not a phone result.
+  // The queue still serializes: an on-time press behind a late one is still
+  // pushed, because that is what the coprocess pipe does.
   constructor(sim, { seed = 1, worst = false, lateMinMs = LAUNCH_LATE_MIN_MS,
                      lateMaxMs = LAUNCH_LATE_MAX_MS, perPress = true,
-                     closedLoop = null } = {}) {
+                     closedLoop = null, lateWhen = null } = {}) {
     if (!(lateMinMs >= 0) || !(lateMaxMs >= lateMinMs))
       throw new Error('lateness band must satisfy 0 <= min <= max');
+    if (lateWhen !== null && typeof lateWhen !== 'function')
+      throw new Error('lateWhen must be a predicate on the action name');
+    this.lateWhen = lateWhen;
     this.sim = sim;
     // Its own stream, never sim.rng: a lateness draw must not move the game's
     // rolls, or no run is comparable to its unwrapped twin (bbtest.mjs keeps
@@ -165,6 +176,9 @@ export class DeviceActuator {
       this.holdLateMs.delete(act);
     } else {
       lateMs = this.perPress ? this.sampleLateMs() : this.beatLateMs;
+      // The draw happens either way, so an ablation does not shift the
+      // lateness stream and every cell of a sweep stays comparable.
+      if (this.lateWhen && !this.lateWhen(act)) lateMs = 0;
       if (kind === 'press') this.holdLateMs.set(act, lateMs);
     }
     // The queue serializes: order in is order out, and a backlog delays what

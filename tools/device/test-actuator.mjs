@@ -90,6 +90,44 @@ const problems = [];
   }
 }
 
+// `lateWhen` ablates one action's lateness and nothing else's, and it must not
+// move the lateness stream: a sweep that compares cells needs every cell to
+// have drawn the same numbers. The queue's serialization is deliberately still
+// in force, so an ablated press behind a late one is still pushed.
+{
+  const late = (a) => a === 'b';
+  for (let seed = 0; seed < 100; seed++) {
+    const plain = stubSim(), ablated = stubSim();
+    const events = [[0, 'press', 'a'], [40, 'press', 'b'], [80, 'press', 'c']];
+    runSchedule(plain, new DeviceActuator(plain,
+      { seed, lateMinMs: 110, lateMaxMs: 300 }), events, 400);
+    runSchedule(ablated, new DeviceActuator(ablated,
+      { seed, lateMinMs: 110, lateMaxMs: 300, lateWhen: late }), events, 400);
+    const at = (sim, name) => sim.delivered.find(d => d[2] === name)[0];
+    if (at(ablated, 'a') !== 0 || at(ablated, 'c') !== 80) {
+      problems.push(`seed ${seed}: lateWhen left a/c at ${at(ablated, 'a')}/${at(ablated, 'c')}, not 0/80`);
+      break;
+    }
+    if (at(ablated, 'b') !== at(plain, 'b')) {
+      problems.push(`seed ${seed}: ablating a and c moved b's draw ` +
+        `(${at(plain, 'b')} -> ${at(ablated, 'b')}); the cells are not comparable`);
+      break;
+    }
+  }
+  // A hold whose press is ablated must not have its release drawn late either.
+  const sim = stubSim();
+  const act = new DeviceActuator(sim, { seed: 1, lateMinMs: 110, lateMaxMs: 300,
+                                        lateWhen: (a) => a !== 'light' });
+  runSchedule(sim, act, [[0, 'press', 'light'], [90, 'release', 'light']], 300);
+  const [down, up] = ['press', 'release'].map(k =>
+    sim.delivered.find(d => d[2] === 'light' && d[1] === k)[0]);
+  if (down !== 0 || up !== 90)
+    problems.push(`an ablated hold landed ${down}..${up}, not 0..90`);
+  let threw = false;
+  try { new DeviceActuator(stubSim(), { lateWhen: 'monitor' }); } catch { threw = true; }
+  if (!threw) problems.push('lateWhen accepted a non-predicate');
+}
+
 // Order in is order out, whatever each press draws.
 {
   for (let seed = 0; seed < 200; seed++) {
