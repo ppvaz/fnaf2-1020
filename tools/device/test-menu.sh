@@ -24,10 +24,14 @@ python3 "$HERE/testdata/make-title-fixture.py" "$TMP/frames" >/dev/null
 
 cat > "$TMP/bin/adb" <<'MOCK'
 #!/bin/bash
+case "${1:-} ${2:-} ${3:-}" in
+  "exec-out screencap -p")   cat "$MOCK_FRAME"; exit 0 ;;
+  "shell pm list")           printf '%s\n' "$MOCK_PACKAGES"; exit 0 ;;
+  "shell dumpsys window")    printf '%s\n' "$MOCK_FOCUS"; exit 0 ;;
+  "shell dumpsys package")   printf '    versionName=%s\n' "$MOCK_VERSION"; exit 0 ;;
+esac
 case "${1:-} ${2:-}" in
-  "exec-out screencap") cat "$MOCK_FRAME"; exit 0 ;;
-  "shell dumpsys")      printf '%s\n' "$MOCK_FOCUS"; exit 0 ;;
-  "shell input")        shift; printf '%s\n' "$*" >> "$MOCK_TAPS"; exit 0 ;;
+  "shell input") shift; printf '%s\n' "$*" >> "$MOCK_TAPS"; exit 0 ;;
 esac
 echo "unexpected mock adb invocation: $*" >&2
 exit 1
@@ -39,6 +43,12 @@ export PATH="$TMP/bin:$PATH"
 # mid-transition. The mock reproduces that, so a future `grep -m1` fails here.
 FOCUS_OK=$'  mCurrentFocus=null\n  mCurrentFocus=Window{a1b2 u0 com.scottgames.fnaf2/com.unity3d.player.UnityPlayerActivity}'
 FOCUS_LOST=$'  mCurrentFocus=Window{c3d4 u0 com.android.launcher/com.android.launcher.Launcher}'
+
+# The device state the guards read. The wrong-game case is not hypothetical:
+# on 2026-08-26 the target phone had com.scottgames.fnaf2 missing and FNaF *1*
+# installed instead, and both games report versionName 2.0.7.
+PACKAGES_OK=$'package:org.fossify.home\npackage:com.scottgames.fnaf2'
+PACKAGES_WRONG_GAME=$'package:org.fossify.home\npackage:com.scottgames.fivenightsatfreddys'
 
 MODEL="$TMP/frames/synthetic-title-model.json"
 TAPS="$TMP/taps"
@@ -53,6 +63,7 @@ attempt() {
     set +e
     export MOCK_FRAME="$TMP/frames/$frame.png" MOCK_TAPS="$TAPS"
     export MOCK_FOCUS="${FOCUS:-$FOCUS_OK}" TITLE_MODEL="$MODEL"
+    export MOCK_PACKAGES="${PACKAGES:-$PACKAGES_OK}" MOCK_VERSION="${VERSION:-2.0.7}"
     local kv
     for kv in "$@"; do export "${kv?}"; done
     # shellcheck source=/dev/null
@@ -127,6 +138,18 @@ attempt unknown-layout continue
 expect 'an unrecognised screen refuses' 'no-items-visible'
 expect_no_tap 'an unrecognised screen refuses'
 
+# The wrong game, and the trap that makes it hard to see: FNaF 1 also reports
+# versionName 2.0.7, so only the package name identifies the game.
+PACKAGES="$PACKAGES_WRONG_GAME" attempt sixth-unlocked sixthNight
+expect 'the wrong game refuses' 'com.scottgames.fnaf2 is not installed'
+expect 'the wrong game names what it found' 'fivenightsatfreddys'
+expect 'the wrong game warns that the version matches anyway' 'both report versionName 2.0.7'
+expect_no_tap 'the wrong game refuses'
+
+VERSION="1.9.0" attempt sixth-unlocked sixthNight
+expect 'an uncalibrated build refuses' 'not the calibrated'
+expect_no_tap 'an uncalibrated build refuses'
+
 FOCUS="$FOCUS_LOST" attempt sixth-unlocked sixthNight
 expect 'lost focus refuses' 'is not the focused window'
 expect_no_tap 'lost focus refuses'
@@ -144,6 +167,7 @@ expect_no_tap 'an unknown MenuTarget refuses'
 (
   set +e
   export MOCK_FRAME="$TMP/frames/sixth-unlocked.png" MOCK_TAPS="$TAPS" MOCK_FOCUS="$FOCUS_OK"
+  export MOCK_PACKAGES="$PACKAGES_OK" MOCK_VERSION=2.0.7
   : > "$TAPS"
   unset TITLE_MODEL
   # shellcheck source=/dev/null
@@ -179,4 +203,4 @@ for runner in trial-minus7.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-au
 done
 
 [ "$failed" -eq 0 ] || { echo 'menu selector checks failed'; exit 1; }
-echo 'menu selector: 6 save states, 6 refusals, New Game gated by capability, no second title table'
+echo 'menu selector: 6 save states, 8 refusals, New Game gated by capability, no second title table'

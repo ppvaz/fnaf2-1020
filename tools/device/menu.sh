@@ -32,6 +32,10 @@ MENU_STALE_MS="${MENU_STALE_MS:-2000}"
 # not a fallback.
 MENU_ALLOW_SAVE_RESET="${MENU_ALLOW_SAVE_RESET:-0}"
 MENU_PACKAGE="${MENU_PACKAGE:-com.scottgames.fnaf2}"
+# The canonical target build (README: v2.0.7, Fusion build 296). The version is
+# checked, but it cannot identify the game on its own -- see the comment on
+# menu_require_target_build.
+MENU_TARGET_VERSION="${MENU_TARGET_VERSION:-2.0.7}"
 
 MENU_ITEMS=""
 MENU_UNKNOWN=""
@@ -81,6 +85,45 @@ menu_has_item() {
   grep -qx "$1" <<<"$(tr ',' '\n' <<<"$MENU_ITEMS")"
 }
 
+# The target game must be installed, and must be the target GAME.
+#
+# Found the hard way on 2026-08-26: the phone had `com.scottgames.fnaf2`
+# missing entirely and `com.scottgames.fivenightsatfreddys` -- Five Nights at
+# Freddy's *1* -- installed that morning instead. What the plans recorded as
+# "the target-device save was lost" was the FNaF 2 app being gone.
+#
+# The trap worth guarding is that **both games ship as versionName 2.0.7** on
+# Android, so a version check alone passes on the wrong game. The package name
+# is what identifies it; the version only says which build of it.
+#
+# Without this, the first symptom is "game is not focused", which reads as a
+# transient and sends you looking at window state instead of at the fact that
+# there is nothing to focus.
+menu_require_target_build() {
+  local packages version others
+  packages=$(adb shell pm list packages 2>/dev/null || true)
+  if ! grep -qx "package:$MENU_PACKAGE" <<<"$packages"; then
+    echo "menu: $MENU_PACKAGE is not installed on this device" >&2
+    others=$(grep -i 'scottgames' <<<"$packages" || true)
+    if [ -n "$others" ]; then
+      echo 'menu: these Scott Games packages are present instead:' >&2
+      sed 's/^/      /' <<<"$others" >&2
+      echo 'menu: note that FNaF 1 and FNaF 2 both report versionName 2.0.7,' >&2
+      echo '      so the package name is the only thing that identifies the game.' >&2
+    fi
+    echo "menu: install the canonical target build and re-run; nothing here" >&2
+    echo '      applies to another game or another build.' >&2
+    return 3
+  fi
+  version=$(adb shell dumpsys package "$MENU_PACKAGE" 2>/dev/null     | sed -n 's/.*versionName=\([^ ]*\).*/\1/p' | head -1)
+  [ "$version" = "$MENU_TARGET_VERSION" ] || {
+    echo "menu: $MENU_PACKAGE is version ${version:-unknown}, not the calibrated" >&2
+    echo "      $MENU_TARGET_VERSION -- coordinates, screen models and the sourced" >&2
+    echo '      event model are all pinned to that build' >&2
+    return 3
+  }
+}
+
 # The game must be the focused window before anything is pressed. dumpsys
 # prints several mCurrentFocus lines and the first is often null mid-transition,
 # so match the package across all of them rather than taking -m1.
@@ -97,6 +140,8 @@ menu_focused() {
 menu_select() {
   local target=$1 xy age
   xy=$(menu_coord "$target") || return 3
+
+  menu_require_target_build || return 3
 
   menu_focused || {
     echo "menu: $MENU_PACKAGE is not the focused window; refusing to press $target" >&2

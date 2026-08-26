@@ -25,7 +25,7 @@ only when exact simulation and device evidence support it.
 | Scope | Simulator | Device workflow | Gap |
 |---|---|---|---|
 | Night 1 | AI table, resources, fuses, and lifecycle duration modeled | `New Game` coordinate exists but no gated route may select it | New Game resets progress; no save-state/night-card verification (recipe construction fixed by package 1) |
-| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | `Continue` can be tapped, but the runner refuses it | The title button does not say which night the save cursor owns; no positive identity or clear/advance proof |
+| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | `Continue` can be tapped, but the runner refuses it | ~~The title button does not say which night the save cursor owns~~ — **wrong, corrected 2026-08-26: it does.** A real title frame prints the cursor as a sub-label under Continue ("Night 1"). No clear/advance proof yet |
 | Night 6 | Exact plan, human gate, runner, sensors, and graders exist | Current sole supported route through the `6th Night` title item | Still lacks a positive win classifier and manifested lifecycle record |
 | Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | No unlocked-menu setup or dial verification | Must distinguish Custom Night configuration from story progression and verify all ten dials before input |
 
@@ -38,6 +38,60 @@ is a template-extraction bug: a low-threat night may legitimately have no such
 cycle. These numbers are local design evidence, not device clears.
 *(Package 1 closed that construction bug on 2026-08-26; Nights 1 and 3 now
 build and gate. The paragraph stays as the evidence that opened the package.)*
+
+## What the device actually held, 2026-08-26
+
+Two corrections found by looking instead of reasoning, both of which this plan
+had assumed the other way round.
+
+**The target game was not installed at all.** `com.scottgames.fnaf2` was absent,
+with no leftover data directory, and `com.scottgames.fivenightsatfreddys` —
+Five Nights at Freddy's **1** — had been installed that morning instead. What
+this plan opened by calling "the target-device save was lost" was the FNaF 2 app
+being gone. The trap that makes this hard to see is that **both games report
+`versionName=2.0.7`**, so a version check passes on the wrong game; only the
+package name identifies it. `menu.sh`'s `menu_require_target_build` now refuses
+before anything else, and says which Scott Games packages it found instead.
+Without it the first symptom is "game is not focused", which reads as a
+transient.
+
+**The title screen says more than this plan credited it with.** A retained
+2026-08-25 recording (`captures/gate-test-aborted.mp4`, 6.6 s) contains a real
+6th-Night-unlocked title, and it shows:
+
+- **five items, not four** — New Game, Continue, 6th Night on the left, and
+  **Options** and **Unlocks** on the right. A classifier that knows only the
+  four `MenuTarget` values will not be surprised by these, but a layout check
+  that expects four will be;
+- **Continue carries the save cursor as a sub-label** — "Night 1" printed
+  directly beneath it. `SaveState.storyCursor` is therefore *directly
+  observable*, not something to be inferred from progression bookkeeping, which
+  is what the gap table above assumed. Note the state that frame captured: the
+  cursor was Night 1 while 6th Night was already unlocked, so the two facts are
+  independent and must stay separate records;
+- **`v 2.0.7` printed bottom-left**, a build check readable from the frame;
+- and the same recording's office frames print **`Night 6` and `12 AM` in the
+  top-right HUD**, so night identity and the clock are readable during play and
+  not only from an intro card. That is a better anchor for package 3 than the
+  intro card alone.
+
+Measured band values, from that recording through `title-observe.py --measure`
+(bright fraction, `min(r,g,b) > 150`, 660×76 band on each measured tap point):
+
+| Frame | newGame | continue | sixthNight |
+|---|---:|---:|---:|
+| title, 6th unlocked (3 frames) | 0.069–0.072 | 0.031–0.033 | 0.067–0.069 |
+| office HUD (the control) | 0.0000 | 0.0000 | 0.0000 |
+
+The control matters: an office frame reads exactly zero on all three bands, so
+the predicate separates "a title item is here" from "this is not the title
+screen" cleanly. It does **not** yet separate "6th Night is absent from a title
+screen" from "6th Night is present" — that needs a fresh-save title, which a
+reinstall produces. Two further caveats: these frames are 1280×576
+`screenrecord` output upscaled to 2400×1080, which is a different sensor from a
+`screencap`, and `continue` reads about half the others because its measured tap
+point sits above its glyph centre. Neither is a reason to distrust the geometry;
+both are reasons not to promote these numbers into a device model unchanged.
 
 ## Identity contract
 
