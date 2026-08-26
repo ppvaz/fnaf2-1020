@@ -220,6 +220,10 @@ def edges(seq):
     return out
 
 
+class AlignmentUnknown(ValueError):
+    """The recording and input trace do not support a measured offset."""
+
+
 def align(seq, monitor_times, anchor, reach=0.4):
     """Offset from pilot time to recording time.
 
@@ -229,8 +233,13 @@ def align(seq, monitor_times, anchor, reach=0.4):
     hide the very divergence this looks for.
     """
     found = edges(seq)
+    if not monitor_times:
+        raise AlignmentUnknown("the HID trace has no monitor presses")
+    if not found:
+        raise AlignmentUnknown("the recording has no confident monitor-state edges")
     best = None
-    for step in range(-int(reach * FPS), int(reach * FPS) + 1):
+    limit = int(reach * FPS)
+    for step in range(-limit, limit + 1):
         off = anchor + step / FPS
         hits, err = 0, 0.0
         for t in monitor_times:
@@ -239,7 +248,14 @@ def align(seq, monitor_times, anchor, reach=0.4):
                 hits += 1
                 err += min(near)
         if best is None or (hits, -err) > (best[0], -best[1]):
-            best = (hits, err, off)
+            best = (hits, err, off, step)
+    if best[0] == 0:
+        raise AlignmentUnknown("no monitor press matches a recording edge")
+    # A best fit on either limit is not a measured optimum: it says only that
+    # the answer lies at or beyond the range searched. Returning the boundary
+    # used to turn a failed alignment into an apparently precise T0.
+    if abs(best[3]) == limit:
+        raise AlignmentUnknown("the best offset saturates the alignment search bound")
     return best[2]
 
 
@@ -304,7 +320,10 @@ def blame(rows, first, seq, off):
         if lags:
             landed.add(lags[0][1])
     missing = [r for i, r in enumerate(suspects) if i not in landed]
-    return missing[0] if missing else suspects[0]
+    # A divergence is still real when every suspect has a matching edge, but
+    # these artifacts cannot say which input caused it. Naming the first press
+    # anyway turns list order into evidence.
+    return missing[0] if missing else None
 
 
 # --- reporting ------------------------------------------------------------
@@ -370,7 +389,11 @@ def scan(run, want_strips=False, all_intervals=False):
     classes, seq = state_frames(video)
     onset = hud_onset(video, hud0)
     anchor = (onset if onset is not None else hud0) + PILOT_OFFSET
-    off = align(seq, [a["t"] for a in acts if a["what"] == "monitor"], anchor)
+    try:
+        off = align(seq, [a["t"] for a in acts if a["what"] == "monitor"], anchor)
+    except AlignmentUnknown as exc:
+        print(f"{run}: alignment UNKNOWN ({exc}); refusing to attribute monitor state")
+        return 2
     rows, first = walk(acts, seq, off, hud1 - off)
     lost = blame(rows, first, seq, off)
 
@@ -394,6 +417,8 @@ def scan(run, want_strips=False, all_intervals=False):
         gap = "overlapping" if lost["gap"] is None else f"{lost['gap']} ms"
         print(f"  the press the game did not act on: monitor at {lost['t']:.2f}s, "
               f"{gap} released after {lost['after']}")
+    else:
+        print("  the divergence is real, but the available edges cannot attribute it to one press")
     if want_strips:
         lo = max(rows[max(first - 3, 0)]["t"] - 0.5, 0)
         hi = min(at["until"] + 2.0, hud1 - off)
@@ -460,6 +485,31 @@ def self_test():
     assert cams("camera") == UP and cams("office") == DOWN and cams("mask") == DOWN
     # the trace decoder resolves the runner's rotated coordinates
     assert CONTROLS[(144, 801)] == "monitor" and CONTROLS[(144, 270)] == "mask"
+
+    # Alignment must abstain instead of presenting its own search limit as a
+    # measurement. These are the three ways a real run can provide no fit.
+    for bad_seq, times, reason in (
+            (frame(DOWN, 120), [1.0], "no confident monitor-state edges"),
+            (frame(DOWN, 90) + frame(UP, 30), [1.0], "no monitor press matches"),
+            # The only match is at +0.4 s, exactly the upper search bound.
+            (frame(DOWN, 62) + frame(UP, 30), [1.0], "saturates")):
+        try:
+            align(bad_seq, times, 0.0)
+        except AlignmentUnknown as exc:
+            assert reason in str(exc), (reason, str(exc))
+        else:
+            raise AssertionError(f"alignment invented an offset for {reason}")
+
+    # A genuine interior match remains usable.
+    fitted = align(frame(DOWN, 42) + frame(UP, 60), [1.0], 0.0)
+    assert -0.4 < fitted < 0.4, fitted
+
+    # If every suspect has a plausible edge, the divergence is unattributable;
+    # list order is not evidence that the first press was lost.
+    rows = [{"t": 1.0, "what": "monitor", "verdict": "unreadable"},
+            {"t": 2.0, "what": "monitor", "verdict": "DIVERGED"}]
+    seq = frame(DOWN, 42) + frame(UP, 30) + frame(DOWN, 30)
+    assert blame(rows, 1, seq, 0.0) is None
     print("desync-scan self-test: ok")
     return 0
 
