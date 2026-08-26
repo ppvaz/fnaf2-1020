@@ -310,8 +310,49 @@ export const POWER_FRAMES = POWER_BY_NIGHT[7]; // night-7 value; tools report ag
 export const POWER_PER_BAR = POWER_FRAMES / 5;
 export const POWER_BLINK = 500;   // indicator starts blinking [SOURCED]
 
-// Music box [SOURCED]
-export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty
+// Music box [SOURCED for the counter and the wind; the DRAIN RATE IS DISPUTED]
+//
+// The counter is sourced: g652 sets `music button` AlterableValue0 to 2000 at
+// frame start, g638/g643 add +5 per tick while the button is held, and g645
+// snaps anything below 300 up to 300.
+//
+// The drain is not, and 2026-08-26 device measurement contradicts this
+// constant. 16.67 s is 2000 units at 120 units/s, and `recipe.mjs` states that
+// 120/s figure as **"Nights 6-7"** -- yet it is applied here to every night.
+//
+// Measured on the phone, Night 1, never winding, sampling the CAM 11 pie every
+// ~9 s (captures are local-only; the pie is the white ellipse right of the wind
+// button, roughly x 640-850, y 770-900 at 2400x1080):
+//
+//     t+114s  0.626   t+142s  0.551   t+170s  0.180
+//     t+123s  0.625   t+151s  0.427   t+179s  0.054
+//     t+133s  0.628   t+160s  0.304   t+188s  0.000
+//
+// Two disagreements with this file, both mattering to the campaign nights:
+//
+//   1. The box does not start draining at night start. It held flat for the
+//      first ~133 s of Night 1 and only then began falling. The engine has no
+//      activation term at all -- `tickBox` drains whenever `opts.boxEnabled`,
+//      which is a global option and not a per-night rule.
+//   2. Full -> empty took about **55 s**, not 16.67 s -- roughly 36 units/s,
+//      a factor of 3.3 slower than this constant.
+//
+// So Night 1 (and plausibly 2-5) is priced here with a night-6/7 drain running
+// from a night-6/7 start time. The direction is pessimistic -- the simulator
+// demands more winding than the game does -- which is the safer direction but
+// still wrong, and it makes any wind-budget claim below Night 6 unsound.
+//
+// Caveats on the measurement, so it is not over-read: the pie fraction is not
+// known to be linear in counter units, 0.626 may be a saturated "full" rather
+// than the true maximum, and the activation time is bracketed only to
+// 133-142 s at a 9 s sampling interval. What is not in doubt is the sign and
+// the rough magnitude of both disagreements.
+//
+// NOT YET FIXED. The per-night drain groups have not been located in the dump;
+// until they are, changing this constant would swap a sourced-but-wrong number
+// for a measured-but-unsourced one, and every survival figure in the repository
+// is computed against it.
+export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty; night 6/7 rate
 // [SOURCED: decompile + Markiplier agree — winding below 300 snaps to 300
 // (groups 639/645), then +5/frame (+300/s, groups 638/643); empty -> full is
 // (2000-300)/300 = 5.67 s. The old "6.67 s gross" note forgot the snap-up.]
