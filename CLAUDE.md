@@ -40,11 +40,30 @@ document contradicting how the line is actually played.
   region from the same 20×9 frame. Adding a screencap every four cycles was
   enough to truncate the wind and collapse the box from 52% to 10%.
 - **Price a policy against `--device-sweep`, not the ideal actuator.** The
-  published 10000/10000 Night 6 figure uses a 267 ms three-camera sweep the
-  phone has never produced. At the proven 240 ms spacing the same route is
-  0/1000, and a held 790 ms lit sweep alone outspends the whole 3000-frame
-  night-6 flashlight. See `HID-MULTITOUCH.md` §"The Night 6 route, priced
-  against the phone's actuator".
+  published 10000/10000 Night 6 figure uses a 267 ms three-camera sweep, and a
+  held 790 ms lit sweep alone outspends the whole 3000-frame night-6 flashlight.
+  See `HID-MULTITOUCH.md` §"The Night 6 route, priced against the phone's
+  actuator".
+
+  **This bullet said "at the proven 240 ms spacing the same route is 0/1000"
+  until 2026-08-26, and that was stale by two days.** `HID-MULTITOUCH.md`
+  §"Answered: the phone accepts 120 ms spacing (2026-08-24)" **withdrew** the
+  240 ms figure as a *measurement artifact*: `camtrace.py` decoded at 30 fps and
+  required a 100 ms stable run, so at 160 ms spacing every dwell reported as
+  exactly the 0.10 s floor and read as a dropped selection. Re-graded at the
+  recording's native 60 fps, the same three probe runs are **4/4 at 240, 160 and
+  120 ms**. Nothing about the input changed.
+
+  The consequence is not cosmetic. That page's own table prices the phase window
+  by spacing — 240 ms → 2 frames ("not landable"), 160 ms → 6, **120 ms → 12
+  frames (200 ms), against a `DEVICE_EPOCH_LATCH` bracket of about 80 ms**. So
+  the blocker it names as "singular" — the camera actuator's inter-selection
+  spacing — **was answered, in the phone's favour**. `DEVICE_SPACING_MS` is 120
+  in `recipe.mjs` and `test-recipe.mjs` gates against it; only this file still
+  said 240. An independent 2026-08-26 literature survey reached the same place
+  from the other side: nothing in Android, evdev, uinput or InputDispatcher
+  imposes any such floor (§"Input injection and sequential budgets"). Do not
+  quote 240 ms as a device limit again.
 - **The controller route runs nothing the model gate has not passed — absolute,
   no override (2026-08-25).** Before its first adb command, `trial-minus7.sh`
   replays the emitted plan through the exact engine under measured human slack

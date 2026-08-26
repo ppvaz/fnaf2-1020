@@ -152,6 +152,48 @@ timing** — only by input identity. That does not license relaxing the human ga
 whose justification is evidential rather than ban-avoidance, but it does mean the
 gate should stop being argued for on detection grounds.
 
+### The stale claim that mattered most, corrected 2026-08-26
+
+**`CLAUDE.md` was asserting a device limit the repository had withdrawn two days
+earlier.** Its `--device-sweep` bullet said *"at the proven 240 ms spacing the
+same route is 0/1000"*, and used it to argue the 267 ms three-camera sweep is
+unproducible. But `HID-MULTITOUCH.md` §"Answered: the phone accepts 120 ms
+spacing (2026-08-24)" had already **withdrawn 240 ms as a measurement artifact**
+— `camtrace.py` decoded at 30 fps and demanded a 100 ms stable run, so at 160 ms
+every dwell reported as exactly the 0.10 s floor and read as a dropped
+selection. Re-graded at the recording's native 60 fps, the same three probe runs
+are **4/4 at 240, 160 and 120 ms**. Nothing about the input changed.
+
+That page's own table prices the phase window by spacing: 240 ms → 2 frames
+("not landable"), 160 ms → 6, **120 ms → 12 frames (200 ms)** against an ~80 ms
+`DEVICE_EPOCH_LATCH` bracket. So the blocker it calls *singular* — the camera
+actuator's inter-selection spacing — **was answered in the phone's favour.**
+
+**Scope it honestly: this unlocks nothing new.** `DEVICE_SPACING_MS` is already
+120 in `recipe.mjs`, `test-recipe.mjs` already gates against it, and the shipped
+route already spends it. The engine absorbed the finding on the day it was made;
+only the always-loaded instructions file lagged. What the correction prevents is
+a *future* session reading CLAUDE.md, believing the sweep route is dead, and
+re-deriving a conclusion the repository had already overturned — which is
+precisely the cost this project's front page says it exists to stop.
+
+A 2026-08-26 literature pass reached the same conclusion from the other side:
+**nothing in Android, evdev, uinput, InputReader or InputDispatcher imposes any
+inter-press floor.** AOSP's own synthesised swipe runs at 120 Hz; RERAN replays
+raw event streams on real phones at 3.87 ms median. Full write-up in
+`HID-MULTITOUCH.md` §"Input injection and sequential budgets", which also
+corroborates three of our numbers, corrects two more, and names two silent
+failure modes we have not guarded — the evdev ring overflowing to `SYN_DROPPED`
+(whole-frame drop in `EventHub`), and the kernel dropping unchanged `EV_ABS`
+after fuzz.
+
+**The one with a lever attached:** on `screencap`'s path `sourceCrop` is
+*ignored in source* and every layer is composited regardless of region, while
+AOSP's own small-region sampler budgets **3 ms** for the same shape of work by
+caching its buffer, filtering layers, and never leaving SurfaceFlinger. Our
+59 ms for 180 pixels is ~20× that, which points at fixed per-read entry cost
+rather than pixels.
+
 ### Open, with what is known
 
 - **The music box contradicts `src/config.js` and is not fixed.** Measured on

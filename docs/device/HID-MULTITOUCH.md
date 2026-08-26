@@ -861,3 +861,180 @@ person who tried it stopped for a reason that does not apply to us, and that the
 part of the problem he could not solve is the part this project has spent most
 of its effort on. The survey read public code and docs; it ran nothing on a
 phone, and no number above is a measurement of this handset.
+
+---
+
+## Input injection and sequential budgets, against the platform source (2026-08-26)
+
+A second literature pass, companion to the prior-art section above. Nothing here
+was run on this phone. Where a claim is read out of AOSP or kernel source it is
+labelled **SOURCE** — a fact about the implementation, not a timing measurement;
+**MEASURED** carries a method; **COMMUNITY** is a forum or vendor assertion;
+`UNKNOWN(reason)` means the number does not exist in public.
+
+Its purpose was to test whether this project's actuator numbers are physics or
+local artifacts. Three are corroborated, three are corrections, and one is a
+number the platform does not impose at all.
+
+### Corroborated — do not spend effort re-litigating these
+
+- **The ≥100 ms contact is an *engine* constraint, and this repository already
+  states it correctly.** Unity, first-party: *"If a touch is shorter-lived than a
+  single input update, `Touchscreen` may overwrite it"* and *"If you read out
+  touch state from `Touchscreen` directly inside of `Update` or `FixedUpdate`,
+  your app will miss changes in touch state."* libGDX: *"If you rely on polling,
+  you might miss events, e.g. a fast paced key down/key up."* Godot has the same
+  issue filed twice. CLAUDE.md's "Fusion polls touch per frame" is the right
+  justification. **[SOURCE/first-party docs]**
+- **The mask-seam diagnosis is right, and the framework rules out the
+  alternative.** Only `ACTION_MOVE` and `ACTION_HOVER_MOVE` are batched —
+  `InputTransport.cpp` starts a batch on those actions alone and `canAddSample()`
+  refuses a differing action. **`ACTION_DOWN` and `ACTION_UP` are never coalesced
+  or dropped by Android.** Two events 10 ms apart both arrive. So the 9-of-14
+  desyncs from "a monitor press within 180 ms of a mask press" cannot be
+  framework coalescing; it is the hit-testing/visibility problem this repository
+  already concluded it was — the monitor bar is not drawn, so the press is
+  delivered to whatever window *is* there. **[SOURCE]**
+- **Observation costs far more than action, structurally.** Mobile-Env
+  ([arXiv:2305.08144](https://arxiv.org/abs/2305.08144), rig fully specified)
+  measured `TOUCH` at **410 µs**, `LIFT` at **412 µs**, a screenshot at **19.9
+  ms**, a view-hierarchy read at **2.53 s** — a screenshot is ~48× a touch and a
+  hierarchy read ~6,200×, over the *same* transport, which isolates the
+  asymmetry cleanly. scrcpy's author: *"The time to forward the event is
+  insignificant"* — its entire advertised latency budget is observation.
+  **The corollary is a correction to folklore worth carrying: "acting is
+  expensive on Android" is an artifact of `adb shell input`'s process startup,
+  not of injection.** Against a resident actuator, acting collapses to
+  sub-millisecond; observation does not collapse the same way. The asymmetry
+  this project is built around is *wider* than assumed, which argues for the
+  design. **[MEASURED, emulator]**
+
+### Correction 1 — the 240 ms spacing has no platform basis either
+
+Independent of this repository's own 2026-08-24 retraction (§"Answered: the
+phone accepts 120 ms spacing"), the survey found **nothing in Android, evdev,
+uinput, InputReader or InputDispatcher that imposes any inter-press floor.**
+
+`drivers/input/evdev.c`: a userspace write lands in `input_inject_event()` in a
+tight loop with `cond_resched()`; there is no rate limit and no per-event delay,
+only a 4096-byte cap per write. AOSP's *own* synthesised swipe runs at
+`SWIPE_EVENT_HZ_DEFAULT = 120` — 8.33 ms between MOVE events. RERAN
+([ICSE 2013](https://ieeexplore.ieee.org/document/6606553/)) replays raw event
+streams on real phones at **3.87 ms median, microsecond-accurate**.
+
+Two independent lines therefore agree the 240 ms was never a device limit. The
+repository's engine already uses `DEVICE_SPACING_MS = 120`; **CLAUDE.md was the
+last place asserting 240 as proven and is corrected.** **[SOURCE + MEASURED]**
+
+### Correction 2 — the `input tap` rationale is true only up to Android 11
+
+`SOURCE`, verified per release branch. Up to Android 11, `cmds/input/input` is
+`exec app_process ... com.android.commands.input.Input` — a full ART start per
+invocation, which is rom1v's *"the main delay is step 6 (starting the Java
+process)"*. From Android 12 it is `input.sh` → `cmd input` → binder into
+`InputShellCommand`, **already running in system_server**. The JVM cost is gone.
+
+`input` is still unusable here, for reasons that do not depend on the version:
+it injects with `INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH` (synchronous, coupling
+the injector to the target's frame loop) and **has no multitouch verb at all**.
+But if any page justifies the HID route by JVM startup, it is citing a fact
+about Android ≤11. The post-rewrite cost is `UNKNOWN(never re-measured)`.
+
+Related myth, also false and worth never repeating: **"Android 12/13 blocked
+shell injection."** It was scrcpy v1.23 falling back to a 3-arg
+`injectInputEvent` overload and passing `0` as `targetUid`, making every event a
+targeted injection at a uid owning no window → `TARGET_MISMATCH`. Fixed in
+[PR #3190](https://github.com/Genymobile/scrcpy/pull/3190). `INJECT_EVENTS` for
+shell has never been removed on any Android version.
+
+### Correction 3 — the 59 ms sampler is paying overhead, not pixels
+
+Two source findings that bear directly on the cue helper's design:
+
+- **On `screencap`'s path, `sourceCrop` is ignored.**
+  `SurfaceFlinger::captureDisplay(DisplayId, ...)` — the overload
+  `ScreenshotClient::captureDisplay` reaches — hard-codes `Rect()` as the crop
+  and sizes from `getLayerStackSpaceRect()`; only `frameScaleX/Y` is honoured.
+  It also passes `snapshotFilterFn = nullptr`, so **every layer is composited
+  regardless of region.** A 20×9 read on that path is free only in *transfer*;
+  the composite and readback are full-frame. The crop-honouring path is
+  `captureLayers`, reachable from shell via `UiAutomation.takeScreenshot(Rect)`.
+- **AOSP does this exact job in a 3 ms budget.**
+  `RegionSamplingThread.cpp` — SurfaceFlinger's own small-region luma sampler —
+  sets `defaultRegionSamplingWorkDuration = 3ms` at a 100 ms period. It allocates
+  the GraphicBuffer at exactly `sampledBounds` and **caches it across samples**,
+  passes a layer filter so composition shrinks too, and runs *inside*
+  SurfaceFlinger: no process spawn, no binder round trip, no encode, no adb.
+
+**59 ms for 180 pixels is ~20× that budget**, which points at fixed per-read
+entry cost rather than pixels. `INFERENCE` from source, not a measurement of
+this phone — but `RegionSamplingThread.cpp` is the worked example of removing
+it, and "go resident, stop re-entering SurfaceFlinger per read" is a concrete
+lever. Frames are produced **only on change** since Android 4.2, so a resident
+consumer can be *woken* rather than polled — which would retire the "price every
+observation before scheduling it" rule rather than optimise it.
+
+For scale on the other end: scrcpy reaches **33–67 ms for a whole 1080p frame**
+on a Nexus 5 (rom1v, photographed counter method, [PR #646](https://github.com/Genymobile/scrcpy/pull/646))
+and 8–12 ms on a modern phone, via VirtualDisplay → MediaCodec **input surface**
+with no readback anywhere.
+
+### Two failure modes this project has not guarded, both cheap to test
+
+- **The evdev ring buffer is the real sequential ceiling, and overflow is
+  silent.** Each `open()` gets a buffer sized `roundup_pow_of_two(events_per_packet * 8)`,
+  derived from **how the device declares its MT slots and axes**; overflow
+  queues `SYN_DROPPED`, and Android's `EventHub` responds by **dropping the whole
+  frame and re-querying device state**. AOSP's uinput README says it outright:
+  *"This will likely fill the kernel's event buffers, causing events to be
+  dropped."* Testable with the control this repository's own rule demands:
+  declare the virtual device two ways, few vs many MT slots, and confirm the drop
+  threshold moves — checking `getevent` for `SYN_DROPPED`, **never the writer's
+  own success count**. **[SOURCE]**
+- **The kernel silently drops unchanged `EV_ABS` after fuzz.**
+  `input_get_disposition()` returns `INPUT_IGNORE_EVENT` when a defuzzed axis
+  value equals the previous one. Two presses at an *identical* coordinate lose
+  the second `ABS_MT_POSITION_X/Y`; the tap still registers because
+  `ABS_MT_TRACKING_ID` and `BTN_TOUCH` change, but re-asserting position does not
+  work. **Declare `fuzz = 0` on the virtual device** — worth checking ours does.
+  **[SOURCE]**
+
+Also worth one control experiment: `ViewConfiguration.DOUBLE_TAP_TIMEOUT = 300`
+with `DOUBLE_TAP_MIN_TIME = 40`. Two taps at the same location 240 ms apart sit
+squarely inside the double-tap window. Most game runtimes do not consume
+double-tap, but this is exactly the class of silent reclassification that
+produces a log that "reads like a schedule".
+
+### Where the human gate stands, honestly
+
+**There is no external corroboration available for the ±60 ms iid slack, because
+the bot-detection literature reports *means* and never variance.** The papers
+that would give real human tap-interval distributions are paywalled or
+non-extractable, and one frequently-cited one is **retracted** (Tsaur et al.
+2022, Wiley 10.1155/2022/9429475 — do not cite it). Vendor claims of the
+"humans >100 ms variance, bots SD <5 ms" shape are marketing with no method.
+
+The one public route to first-hand numbers is
+**[HuMIdb](https://arxiv.org/abs/2005.13655)** — 600 users, 179 device models,
+freely available. That is the dataset `tools/tracereport.mjs`'s correlated-band
+census could be fitted against if the trainer traces prove too thin.
+
+### What is genuinely absent
+
+Recorded so nobody searches for it twice: no measured closed-loop latency for a
+*reactive* bot on a *physical* Android handset exists in public — **this project
+is past the published record.** Nor does any latency figure in minitouch,
+minicap, STF, Airtest/Poco or scrcpy-OTG documentation; any published
+`screencap` vs minicap vs scrcpy vs MediaProjection comparison in milliseconds;
+any controlled `input tap` vs `sendevent` vs uinput comparison; any crop-vs-full-frame
+capture measurement; `dispatchGesture` measured throughput; or Android/ARM64
+Frida hook overhead.
+
+One consequence for our own numbers: **the 225 ms `screencap` is faster than
+every published physical-device figure** (2.60 s on a Samsung A41 over USB;
+782 ms on BlueStacks; ~350 ms on an accelerated emulator). That is not
+implausible — a small display, raw rather than `-p`, `exec-out` — but it sits
+outside the public record, so **the methodology is the finding**. Per this
+repository's own "say which clock, which sensor" rule, that bracket should be
+written down: resolution, `-p` vs raw, `exec-out` vs `shell`, USB generation,
+and exactly what the stopwatch enclosed.
