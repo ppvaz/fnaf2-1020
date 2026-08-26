@@ -31,6 +31,7 @@ assets.
 | See non-asserting policy diagnostics too | `node tools/test.mjs --reports` |
 | Serve or make the self-contained trainer | `tools/serve.py`, `tools/build.py` |
 | Test the canonical or BB-aware strategy | `tools/simtest.mjs`, `tools/bbtest.mjs` |
+| Compare policy families under execution error | `tools/policytest.mjs` |
 | Explore a strategy or cycle | `tools/cyclesearch.mjs`, `tools/strategysearch.mjs`, `tools/gatesearch.mjs` |
 | Run a guarded phone trial | `tools/device/trial-minus7.sh`, `tools/device/trial-maskcamp.sh` |
 | Analyze a recorded phone trial | `grade-minus7.py`, `camtrace.py`, `windpct.py`, `find-events.py` |
@@ -55,6 +56,9 @@ Paths in the tables are relative to the repository root.
 | `tools/sourcetest.mjs` | check | Direct assertions for sourced engine rules and reachable input states, keyed to event-sheet groups. Runs first in the engine suite so a wrong mechanism cannot hide behind unchanged population statistics. |
 | `tools/simtest.mjs` | check | Canonical headless engine/mechanics regressions, plus the coach's per-step grading contract (a measured window may only tighten a lesson's tolerance, and must grade lopsidedly). `--sweep` also drives perfect Minus 7 over 200 seeds. |
 | `tools/bbtest.mjs [n]` | report/check | BB-aware reactive Minus 7 bot and reusable worker task. Supports `--worst`, `--jitter=MS`, and `--assert`; only `--assert` turns the survival result into a failing check, and it also guards the step model (ids matching `CYCLE_SCRIPT`, and both per-step paths being identities when asked for nothing). As a worker task it additionally accepts `profile` (per-step error weights, see `PROFILES`) and `stepShift` (move one step by a fixed number of frames). |
+| `tools/policy.mjs` | internal module | The plans/11 exact-engine policy adapter: one observation/action contract over `src/engine.js`'s `Sim`, with `truth`/`belief` observation modes, three execution-error shapes (`iid`, `correlated`, `common`), and an optional `tools/device/actuator.mjs` layer. It creates no second simulator and prices nothing; reuse it instead of adding another run loop. |
+| `tools/policybaselines.mjs` | internal module | The policies compared through `policy.mjs`: the local Minus 7 control (literally `bbtest.mjs`'s `Bot`, driven through the adapter), Jason-, Shooter25- and Couraeel-style reimplementations from this repository's own reconstructions, and the five deliberate controls. Every guessed detail is marked `[GUESS]` in place. |
+| `tools/policytest.mjs` | report/check | Prints the plans/11 comparison -- `--nights`, `--deaths`, `--slack`, `--actuator` -- and `--assert` is the regression: the adapter must reproduce `bbtest.mjs` night-for-night, zero error must be an identity in all three shapes, belief mode must not leak a truth-only field, all five controls must score zero on night 7, and the baselines must still clear night 1. `POLICY_RUNS` sets the seeds per cell. |
 | `tools/androidstalltest.mjs` | report | Controlled comparison of sourced, legacy, no-stall, and gate-only Android camera-stall models. |
 | `tools/minus2test.mjs [n]` | report | Android probe of the glitchless Minus Two policy family. Supports `--worst` and `--cams=3,5,6`-style camera sets. |
 | `tools/minus6test.mjs [n]` | report | Android-model probe of a two-camera Minus 6 candidate that tolerates defended office encounters. Supports `--worst`. |
