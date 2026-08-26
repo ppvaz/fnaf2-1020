@@ -11,8 +11,12 @@ user-approved `MediaProjection` owns:
 The visual path currently reports `OBSERVED` values rather than making an
 empty/threat claim. The offline pixel rule must be recalibrated against frames
 produced by this exact target-device compositor before it may control an action.
-The audio path reports only RMS/peak plumbing evidence; cue templates and
-window arming remain behind the gates in
+The audio path reports RMS/peak plumbing evidence and, since 2026-08-26, carries
+a bounded cue matcher (`CueDetector`) with its own `MODEL`/`ARM`/`RESULT`
+vocabulary. That matcher is **shadow-only and consumed by nothing**: the
+templates live outside git, a `control`-mode window is refused unless the
+installed model is labelled `evidence=heldout`, and no runner sends any of the
+three verbs. Promotion stays behind the gates in
 [`plans/08-audio-cue-controller.md`](../../plans/08-audio-cue-controller.md).
 
 Any projection, display, image, audio, or local-control failure marks the
@@ -33,6 +37,23 @@ adb shell am start -n com.fnafminus7.cuehelper/.MainActivity
 
 If the SDK or JDK is elsewhere, set `ANDROID_SDK_ROOT` or `JAVA_HOME`. Generated
 build output and the local debug keystore are ignored.
+
+`android/cue-helper/test.sh` compiles and runs `CueDetector` against its unit
+suite with a JDK alone — no SDK, no phone — because that class imports nothing
+from `android.*`. It runs in `tools/test.mjs --engine`.
+
+**One latent API-level mismatch, unresolved.** `AndroidManifest.xml` declares
+`minSdkVersion="29"` and `build.sh` passes `--min-sdk-version 29` and
+`d8 --min-api 29` with no core-library desugaring, but `CueDetector.java:185`
+and `:453` call `java.util.Set.of()`, which Android added at **API 30**. On the
+API-36 target this is fine and every result on this page was produced there. On
+a genuine Android 10 handset the field initialiser would be expected to throw
+`NoSuchMethodError` — but that is a reading of the API level, not an
+observation: `UNKNOWN(never run on an API-29 device)`. Nothing in the build
+lints for it. Resolving it is cheap in either direction — raise the manifest to
+30 and say so, or swap the two call sites for `Collections.emptySet()` — and it
+is left open rather than guessed, because asserting a break nobody has seen is
+the failure mode this repository keeps recording.
 
 On the phone:
 
@@ -94,6 +115,10 @@ requests receive an error and no sensor data.
 | `GET <token>` | `OK <snapshot>` | The current monotonic visual/audio snapshot. Never PCM, never an image. |
 | `CAL <token> on\|off` | `OK cal=on\|off` | Arms or disarms the calibration ring. Off at start and on every teardown. |
 | `REC <token> <pre> <post>` | `OK rec=<file> frames=… rate=… bytes=…` | Writes one window to app-private storage. Requires `cal=on`. |
+| `LOG <token> start\|stop` | `OK log=started max=…` / `OK rec=<file> …` | Records a whole night into the ring in one pass, for `query-cue-helper.sh log`. |
+| `MODEL <token> status\|reload` | `OK detector=…` / `ERROR detector-model-…` | Reports or re-reads the app-private cue model. |
+| `ARM <token> <window-id> <cue-set> <open-ns>\|now <close-ns>\|<ms> <shadow\|control>` | `OK armed=… cues=… mode=… openNs=… closeNs=… calibration=…` | Opens exactly one bounded detection window. |
+| `RESULT <token> <window-id>` | `PENDING …` / `HIT …` / `MISS …` / `UNKNOWN … reason=…` | Polls that window. |
 
 `GET` is the controller path and never touches disk. `REC` exists for plan 08
 package 1, which needs labeled windows around a cue that is only recognised
@@ -101,6 +126,50 @@ package 1, which needs labeled windows around a cue that is only recognised
 from the request, giving `pre` seconds of context plus `post` seconds captured
 live. The ring only fills while `cal=on`; the status line always prints that
 state, so a controller run can be shown to have been unable to write PCM.
+
+### The cue detector's half of the protocol (2026-08-26)
+
+`MODEL`, `ARM` and `RESULT` are the live matcher. They are **shadow-only**: no
+runner sends them. `trial-minus7.sh` speaks exactly one verb to this helper,
+`GET`, and reads only the visual `luma`/`cam5` fields out of it, so nothing the
+detector concludes can reach a press today.
+
+**The model is data, not code, and it is never in git.** The APK ships no game
+audio and no threshold. `tools/cue/export-model.py` writes a `cue-model-v1`
+text file into ignored `captures/cue-helper/models/`, and
+`tools/device/provision-cue-model.sh` installs it into
+`files/cue-model-v1.txt` in app-private storage. The service reads it once when
+capture starts; `MODEL reload` re-reads it without restarting the session.
+
+**Every failure is a refusal, not a value.** A missing model answers
+`detector=UNAVAILABLE reason=model-missing` in both `MODEL status` and the
+trailing field of every `GET` snapshot. A malformed one is refused by reason —
+`model-header`, `model-metadata`, `model-margin`, `model-threshold`,
+`model-base64`, `model-pcm-alignment`, `model-template-length`,
+`model-silent-template`, `model-too-many-templates`, `model-empty` — and leaves
+the detector unset rather than half-loaded. A window whose audio was absent,
+clipped, silent, discontinuous, delivered at an unsupported rate, or cut short
+by a dead read or a revoked projection resolves `UNKNOWN <reason>`, never
+`MISS`. `shadow` and `control` are separate modes and a `control` window is
+refused outright unless the installed model is labelled `evidence=heldout`.
+
+**What this shape does not provide, and it matters for plan 08 package 3.**
+Results are **pulled, not pushed**. Plan 08's protocol sketch has the helper
+emit `HIT`/`MISS`/`UNKNOWN` at the window's deadline; the implementation
+resolves a window only inside `RESULT`, or when the next audio chunk arrives
+and drives the same expiry check. So nothing fires at window close, and the
+package's "window close to `MISS`/`UNKNOWN`" leg cannot be measured against
+this shape without adding a timer. Recorded here rather than assumed away.
+
+The state machine — control refused for a shadow model, a real signal producing
+a timestamped `HIT`, usable-but-unmatched audio producing `MISS`, silence and an
+unsupported rate producing `UNKNOWN`, and each malformed-model reason — is
+covered by `android/cue-helper/test.sh`, which runs in `tools/test.mjs
+--engine`. It needs a JDK but no Android SDK and no phone, because `CueDetector`
+imports nothing from `android.*`. The mock-ADB regression
+(`tools/device/test-query-cue-helper.sh`) covers only the shell wrapper's
+argument handling and the *shape* of the reply lines: the mocks fabricate the
+answers, so they cannot and do not test the matcher.
 
 | Channel | Endpoint | For |
 |---|---|---|
