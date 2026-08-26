@@ -62,6 +62,19 @@ PRIVATE_PATH = re.compile(r"^(?:/Users/|/home/|/root/)")
 
 ORIGIN_CLOCK = "host_monotonic_ms"
 
+
+def host_monotonic():
+    """Return one OS monotonic clock shared by separate producer processes.
+
+    Every manifest operation is a fresh Python process.  Some instrumented
+    runtimes expose ``time.monotonic()`` relative to process start, which makes
+    independently recorded events run backwards.  CLOCK_MONOTONIC is the
+    clock-domain contract we actually need; retain the portable wrapper only
+    on platforms that do not expose it explicitly.
+    """
+    clock = getattr(time, "CLOCK_MONOTONIC", None)
+    return time.clock_gettime(clock) if clock is not None else time.monotonic()
+
 # op -> (schema file, root object, manifest destination)
 OPS = {
     "producer":   ("manifest", "producer",       ("producer",)),
@@ -298,7 +311,7 @@ def cmd_start(run, argv):
         "repo_commit": commit,
         "dirty_tree": bool(dirty) if dirty is not None else True,
         "started_at_utc": f"{datetime.now(timezone.utc):%Y-%m-%dT%H:%M:%SZ}",
-        "origin_monotonic": time.monotonic(),
+        "origin_monotonic": host_monotonic(),
         "origin_wall_ms": int(time.time() * 1000),
     }
     append(spool, record)
@@ -407,7 +420,7 @@ def cmd_event(run, argv, spool_rows=None):
     record = {"seq": seq}
     record["clock"] = fields.pop("clock", ORIGIN_CLOCK)
     record["t"] = fields.pop("t", round(
-        (time.monotonic() - start["origin_monotonic"]) * 1000, 1))
+        (host_monotonic() - start["origin_monotonic"]) * 1000, 1))
     record["kind"] = fields.pop("kind", "lifecycle")
     redaction = fields.pop("redaction", {})
     redaction.setdefault("commit_safe", True)
@@ -420,7 +433,7 @@ def cmd_event(run, argv, spool_rows=None):
 # ------------------------------------------------------------------ finalize
 
 def elapsed_ms(start):
-    return round((time.monotonic() - start["origin_monotonic"]) * 1000, 1)
+    return round((host_monotonic() - start["origin_monotonic"]) * 1000, 1)
 
 
 def assemble(run, rows, closing):
