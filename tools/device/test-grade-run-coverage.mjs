@@ -39,6 +39,7 @@ const EXCLUDED = new Map([
   ['pan-shift.py', 'measuring stick for pan-probe.sh; the scroll is better read from the dump'],
   ['region-probe.sh', 'device probe -- maps what a touch does by screen region'],
   ['region-classify.py', 'the interaction classifier region-probe.sh decides with, gated by test-region-classify.py'],
+  ['nightpredicate.py', 'the one definition of the alive/dead rule that screenstate.py and grade-night.py both evaluate; a library, gated by test-screenstate.py'],
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
   ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
