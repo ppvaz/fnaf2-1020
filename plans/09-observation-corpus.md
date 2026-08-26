@@ -6,8 +6,12 @@ accounts for every current producer and retained artifact family. It found only
 three files in the local capture root, no manifest, no durable PCM `startNs`
 sidecar, and no retained source/holdout frames for the operational BB model.
 **Package 2's contract slice landed 2026-08-26**—versioned schemas, a
-standard-library validator, and synthetic fixtures. Package 2 itself stays
-open: no producer emits a manifest yet, so no real session has been validated.
+standard-library validator, and synthetic fixtures—and its **producer slice
+landed the same day**: `trial-minus7.sh`, cue-helper collection and the
+calibration capture helper now share one session id and one monotonic origin,
+and every exit path emits a manifest. Package 2 stays open on one item only:
+no manifest from a real phone run has been validated yet, because the device
+was in use by another stream when the producers were written.
 
 The repository has useful labeled visual sets, night recordings, HID traces,
 projection snapshots, and PCM captures, but they
@@ -110,7 +114,7 @@ read but not renamed or rewritten. `tools/device/index-observations.py` makes
 the path/authority/family inventory reproducible; synthetic tests enforce its
 strict-mode and read-only contracts.
 
-### 2. Introduce the manifest and event schema — contract slice landed 2026-08-26; package open
+### 2. Introduce the manifest and event schema — contract and producer slices landed 2026-08-26; package open on one item
 
 - Add schema validation and synthetic fixtures.
 - Give `trial-minus7.sh`, cue-helper capture, SCM1 collection, and `grade-run.sh`
@@ -144,14 +148,67 @@ rejects everything, so distinctness is the assertion, not rejection.
 `grade-run.sh` calls it, and says in as many words when a run has no manifest
 rather than grading a file that is not there.
 
-Not done, and therefore the package is not closed: no producer writes a
-manifest. `trial-minus7.sh`, cue-helper capture, SCM1 collection, and
-`grade-run.sh` still have no shared session ID or monotonic origin; model
-hashes are recorded in the schema but nothing emits them; and no real capture
-has been validated. The secret check is a commit-safety lint against the shapes
-the inventory names (credential-shaped keys, absolute private paths, a live
-helper token), not a general secret scanner — it makes no claim about shapes
-it was not told about.
+The secret check is a commit-safety lint against the shapes the inventory names
+(credential-shaped keys, absolute private paths, a live helper token), not a
+general secret scanner — it makes no claim about shapes it was not told about.
+
+**Result (producer slice, 2026-08-26).** Every producer now writes one.
+
+[`session-manifest.py`](../tools/device/session-manifest.py) is the emitter and
+[`session.sh`](../tools/device/session.sh) is the threading: `fnaf_session_begin`
+latches one id and one `time.monotonic()` origin, exports them, and every later
+call — including a helper started *inside* a run — reads them back rather than
+deriving a second identity from a filename. `trial-minus7.sh` begins the session
+before the game is launched and closes it from `cleanup`, which is trapped on
+`EXIT` with `INT`/`TERM` routed through it, so a watchdog abort, a classifier
+threat stop, a menu failure and an operator's Ctrl-C all finalize. The outcome
+on the success path is `unknown`, never `win`: completing the planned cycles
+says nothing about whether the game was alive, and only `grade-run.sh` can
+answer that. `grade-run.sh` now runs from inside `cleanup`, after the manifest
+exists — grading before it would have reported every successful run as
+unmanifested.
+
+Three properties the emitter enforces rather than documents:
+
+- **hashes, not filenames.** `record artifact file=…` and `record model file=…`
+  hash the bytes on disk; a path that does not exist becomes an
+  `artifact-absent` fault event, never an entry. Frame sets are directories, so
+  they are hashed as the sorted `(name, sha256)` listing.
+- **raw clocks kept raw.** The device epoch latch is stamped on the host clock
+  and carries the device's own `epoch_ms` verbatim as `source_t`; a measured
+  `device_shell_wall_ms → host_monotonic_ms` edge, bracketed by the host clock
+  and carrying its round-trip as `residual`, is what relates them. Without that
+  edge the same event is refused. Where no origin exists — the helper's PCM has
+  no `startNs` sidecar — the artifact declares no clock domain at all instead of
+  asserting one.
+- **models are `fail-safe`, not `live-decision`.** BB-left, CAM 05 and
+  Golden-Freddy classifiers can only stop a run, never cause an action, and none
+  has a retained holdout report — which is what keeps them out of
+  `live-decision` until package 4 gives them one. `authorized_for_game_build` is
+  the build `coords.sh` was calibrated on, so a phone carrying another build
+  makes every model stale, loudly, in the manifest.
+
+[`test-session-manifest.sh`](../tools/device/test-session-manifest.sh) drives
+the real shell entry points under a mock adb: a session validates end to end;
+its artifact digests match independently computed ones; an absent capture is a
+fault; an aborted session finalizes with exactly one matching terminal event;
+credential-shaped keys, absolute private paths and keys the schema does not
+define are refused at record time; and finalize keeps the spool when the
+manifest does not validate, which is how `grade-run.sh` can now report a
+session that failed to describe itself instead of one that was never started.
+Two controls keep the clock claim honest: with no device-clock read the domain
+is undeclared and the cross-clock event fails `unknown-clock-domain`, and
+deleting only the alignment edge from the manifest that *did* pass breaks it
+with `clock-alignment-missing`.
+
+Still open, and the only reason this package is not closed: **no manifest from
+a real device run has been validated.** The producers were written while the
+phone belonged to another stream, so everything above is proven against a mock
+adb and synthetic artifacts. The next run on hardware closes it — the manifest
+is emitted unconditionally and `grade-run.sh` validates it as step 0, so the
+confirmation costs nothing extra. Also not done here: the event stream records
+lifecycle transitions and faults only. Per-press observation and decision
+records are device-side and belong with package 3's replay entry point.
 
 ### 3. Build one replay entry point
 

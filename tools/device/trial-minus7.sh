@@ -338,6 +338,10 @@ node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
 node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
 
 . "$HERE/select-adb.sh"
+# The session recorder. Sourced before the EXIT trap is installed, so cleanup
+# can always finalize -- a manifest written only on the success path is worse
+# than none, because an aborted run then looks like it was never attempted.
+source "$HERE/session.sh"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
 # The death signature, measured rather than guessed.
@@ -546,10 +550,130 @@ pull_hid_trace() {
   adb shell "rm -f $REMOTE_HID_TRACE" >/dev/null 2>&1 || true
 }
 
+# Record what this run actually produced, then close the session -- on whatever
+# path got here.
+#
+# Every artifact below is recorded by hashing the file that exists, never by
+# naming one that should. A capture the run failed to pull becomes a fault
+# event instead of an artifact entry, because "the manifest lists it" and "the
+# bytes are on disk" have to mean the same thing for a replay to be possible.
+#
+# The outcome is deliberately `unknown` on the success path. Completing six
+# cycles is not surviving to 6 AM and the runner has graded nothing; only
+# grade-run.sh's instruments can say what the interval was. A runner that wrote
+# `win` here would be the 163 s record all over again, in machine-readable form.
+session_close() {                               # STATUS WATCHDOG_TEXT
+  local status=$1 watchdog=$2 lifecycle reason candidate
+  fnaf_session_active || return 0
+
+  if [ -f "$LOCAL_VIDEO" ] || [ -f "$LOCAL_ABORT_VIDEO" ]; then
+    fnaf_session_record clock domain=video_media_pts_s kind=media-pts units=s \
+      "origin_note=screenrecord MP4 presentation timestamps. The origin is the first encoded frame and no mapping to the runner clock has been measured, so no alignment edge is claimed for it" \
+      valid_from=0 "valid_until=${MAXDUR:-0}"
+  fi
+  if [ -f "$LOCAL_VIDEO" ]; then
+    fnaf_session_artifact "$LOCAL_VIDEO" artifact_id=video role=night-recording \
+      authority=primary-observation format=video/mp4 complete=true truncated=false \
+      retention=local-only clock_domain=video_media_pts_s \
+      redaction.contains_game_media=true redaction.contains_audio=false \
+      redaction.commit_safe=false
+  elif [ -f "$LOCAL_ABORT_VIDEO" ]; then
+    fnaf_session_artifact "$LOCAL_ABORT_VIDEO" artifact_id=video \
+      role=aborted-run-recording authority=primary-observation format=video/mp4 \
+      complete=false truncated=true retention=local-only \
+      clock_domain=video_media_pts_s redaction.contains_game_media=true \
+      redaction.contains_audio=false redaction.commit_safe=false
+  fi
+  if [ -f "$LOCAL_EPOCH" ]; then
+    fnaf_session_artifact "$LOCAL_EPOCH" artifact_id=epoch role=epoch-latch-report \
+      authority=operational-metadata format=text/plain complete=true truncated=false \
+      retention=local-only clock_domain=device_shell_wall_ms \
+      redaction.contains_game_media=false redaction.contains_audio=false \
+      redaction.commit_safe=true
+  fi
+  if [ "$HID_TRACE_RUN" -eq 1 ]; then
+    fnaf_session_artifact "$LOCAL_HID_TRACE" artifact_id=hid-trace \
+      role=emitted-input-trace authority=emitted-action-record \
+      format=application/x-ndjson complete=true truncated=false retention=local-only \
+      clock_domain=hid_scheduled_ms redaction.contains_game_media=false \
+      redaction.contains_audio=false redaction.commit_safe=true
+    if [ -f "$LOCAL_HID_TRACE" ]; then
+      fnaf_session_record clock domain=hid_scheduled_ms kind=scheduled units=ms \
+        "origin_note=the hid process's own report timeline: mark rebases host waits while delay advances hid-internal time, so a contested boundary has two candidates and this domain is not the shell's" \
+        valid_from=0 "valid_until=${MAXDUR_MS:-0}"
+    fi
+  fi
+  if [ -f "$CAPTURE_DIR/$OUT-cue.txt" ]; then
+    fnaf_session_artifact "$CAPTURE_DIR/$OUT-cue.txt" artifact_id=cue-trace \
+      role=cue-helper-scalar-trace authority=primary-observation format=text/plain \
+      complete=true truncated=false retention=local-only \
+      clock_domain=device_shell_wall_ms redaction.contains_game_media=false \
+      redaction.contains_audio=false redaction.commit_safe=true
+  fi
+  if [ -d "$CAPTURE_DIR/screencheck-keep/$OUT" ]; then
+    fnaf_session_artifact "$CAPTURE_DIR/screencheck-keep/$OUT" artifact_id=kept-frames \
+      role=classifier-frames authority=primary-observation \
+      format=application/x-android-screencap-raw-set complete=true truncated=false \
+      retention=local-only clock_domain=null redaction.contains_game_media=true \
+      redaction.contains_audio=false redaction.commit_safe=false
+  fi
+  if [ "$SAMPLES_PULLED" -eq 1 ] && [ -d "$LOCAL_SAMPLE_DIR" ]; then
+    fnaf_session_artifact "$LOCAL_SAMPLE_DIR" artifact_id=calibration-frames \
+      "role=$SAMPLE_VIEW-$SAMPLE_BUCKET-frames" authority=primary-observation \
+      format=application/x-android-screencap-raw-set complete=true truncated=false \
+      retention=local-only clock_domain=null redaction.contains_game_media=true \
+      redaction.contains_audio=false redaction.commit_safe=false
+  fi
+  local audio=""
+  for candidate in "$CAPTURE_DIR/cue-helper/calibration/$OUT"-cue-*.wav; do
+    [ -f "$candidate" ] && audio="$candidate"
+  done
+  if [ -n "$audio" ]; then
+    # clock_domain is null, not `helper_nanotime_ns`. The helper's nanoTime
+    # origin for this PCM is printed by `log stop` and never saved beside the
+    # WAV -- the sidecar the inventory names as missing. Declaring the domain
+    # here would assert an origin nothing on disk can supply.
+    fnaf_session_artifact "$audio" artifact_id=night-audio role=night-pcm \
+      authority=primary-observation format=audio/wav complete=true truncated=false \
+      retention=local-only clock_domain=null \
+      redaction.contains_game_media=true redaction.contains_audio=true \
+      redaction.commit_safe=false
+    fnaf_session_record note \
+      "text=night PCM has no startNs sidecar, so it carries no clock domain and cannot be aligned to the recording or the runner"
+  fi
+
+  local focus_faults=0
+  case "$watchdog" in *"lost focus"*) focus_faults=1 ;; esac
+  fnaf_session_record helper "restarts=0" "revocations=0" \
+    "focus_faults=$focus_faults" \
+    "token_present=$([ "${CUE_TOKEN:--}" != "-" ] && echo true || echo false)" \
+    "process_identity=$([ "${CUE_PORT:--}" != "-" ] && echo "cue-helper-loopback-$CUE_PORT" || echo null)"
+
+  case "$status" in
+    0)   lifecycle=unknown
+         reason="planned $CYCLES cycles completed. The runner grades nothing: whether the game was alive for that interval is grade-run.sh's answer, not this one" ;;
+    42)  lifecycle=aborted; reason="classifier read a threat and stopped before the hall press" ;;
+    47)  lifecycle=aborted; reason="could not select ${MENU_TARGET:-the night} on the title screen" ;;
+    129) lifecycle=aborted; reason="hangup (SIGHUP)" ;;
+    130) lifecycle=aborted; reason="interrupted (SIGINT)" ;;
+    143) lifecycle=aborted; reason="terminated (SIGTERM)" ;;
+    *)   lifecycle=aborted; reason="runner exited with status $status" ;;
+  esac
+  if [ -n "$watchdog" ]; then
+    reason=$watchdog
+    lifecycle=aborted
+    [ "$focus_faults" -eq 0 ] || lifecycle=focus-loss
+  fi
+  fnaf_session_finalize "$lifecycle" "$reason"
+}
+
 cleanup() {
   local status=$?
   trap - EXIT INT TERM
   set +e
+  local watchdog_text=""
+  [ -z "${WATCHDOG_RESULT:-}" ] || [ ! -s "$WATCHDOG_RESULT" ] ||
+    watchdog_text=$(tr -d '\r\n' < "$WATCHDOG_RESULT")
   pull_hid_trace
   stop_watchdogs
   stop_remote_driver
@@ -599,6 +723,26 @@ cleanup() {
   elif [ -n "$SAMPLE_VIEW" ]; then
     echo "$SAMPLE_VIEW samples, if any, remain at $REMOTE_SAMPLE_DIR on-device" >&2
   fi
+  # Last, so every artifact above is on disk and hashable by the time the
+  # manifest names it -- and unconditional, so an abort produces a described
+  # session rather than an unexplained pile of files.
+  session_close "$status" "$watchdog_text"
+  if [ "$status" -eq 0 ] && [ "$GRADE_RUN" = 1 ]; then
+    # One pipeline, and it finds the capture itself.
+    #
+    # This used to name "$LOCAL_VIDEO" directly. Every run that ends in an abort
+    # saves "$LOCAL_ABORT_VIDEO" instead, so for a whole session of aborted runs
+    # this step graded a file that did not exist and printed nothing -- while
+    # looking, in the log, exactly like grading. A false 163 s record survived
+    # because of it. grade-run.sh takes the run name, finds whichever capture
+    # exists, and runs every instrument including the survival grader that would
+    # have caught it.
+    #
+    # Still success-only, as before: an operator's Ctrl-C must stay a Ctrl-C
+    # and not turn into a minute of analysis. An aborted run is graded by
+    # calling `grade-run.sh RUN` directly, which is what it is for.
+    "$HERE/grade-run.sh" "$OUT" || true
+  fi
   rm -f "$WATCHDOG_RESULT"
   rmdir "$RUN_TMP" 2>/dev/null || true
   exit "$status"
@@ -609,6 +753,65 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 adb get-state >/dev/null
+
+# One session id and one monotonic origin, latched here and threaded through
+# everything this run touches -- including helpers started inside it, which
+# read FNAF2_SESSION_RUN from the environment rather than inventing a second
+# identity. This happens before the game is launched, so a run that dies during
+# launch is still a described session and not three files sharing a basename.
+fnaf_session_begin "$OUT" "tools/device/trial-minus7.sh"
+SESSION_NIGHT=6
+if [ "$NIGHT" != 6th ]; then
+  # NIGHT=continue resumes whatever the save holds and the runner never reads
+  # which night that is. 0 says "not known", which is the truth; a guess here
+  # would put a night number on evidence that cannot support one.
+  SESSION_NIGHT=0
+  fnaf_session_record note \
+    "text=NIGHT=continue: the night is whatever the save resumed and the runner does not read it, so target.night is 0 for 'not known'"
+fi
+fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
+  "screencap-raw+screenrecord"
+fnaf_session_record env \
+  "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
+  "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \
+  "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
+  "CUE_HELPER=${CUE_HELPER:-0}" "CUE_AUDIO=$CUE_AUDIO" \
+  "PLAN_SPACING_MS=$PLAN_SPACING_MS" "PLAN_CONTACT_MS=$PLAN_CONTACT_MS" \
+  "PILOT_OFFSET_MS=$PILOT_OFFSET_MS" \
+  "BB_LEFT_CAPTURE_EVERY=$BB_LEFT_CAPTURE_EVERY" \
+  "BB_CAM05_CAPTURE_EVERY=$BB_CAM05_CAPTURE_EVERY" \
+  "GF_SKIP_MASK_ON_EXACT_EMPTY=$GF_SKIP_MASK_ON_EXACT_EMPTY"
+# The plan is identified by its bytes, not its name: it is emitted per run into
+# a temporary directory that is gone before anyone reads the manifest.
+fnaf_session_record controller \
+  "policy_version=trial-minus7/$NIGHT/$PRESS_MODE" \
+  "plan_id=recipe.mjs --device-plan" \
+  "plan_file=$RUN_TMP/device-plan.txt" \
+  "actuator=$PRESS_MODE" \
+  "emitted_action_trace=$([ "$HID_TRACE_RUN" -eq 1 ] && echo hid-trace || echo null)"
+# Model hashes, not model filenames. authorized_for is `fail-safe` for all
+# three because that is what they are wired to do: any read that is not
+# confidently empty masks and stops the run. None of them can cause an action,
+# only prevent one, and none has a retained holdout report -- which is
+# precisely what keeps them out of `live-decision` until plan 09 package 4
+# gives them one. authorized_for_game_build is the build coords.sh and the
+# screen models were calibrated on; a phone carrying a different build makes
+# every one of them stale, loudly, in the manifest.
+session_record_model() {                        # MODEL_ID KIND PATH
+  [ -n "$3" ] || return 0
+  fnaf_session_record model "model_id=$1" "kind=$2" "file=$3" \
+    "built_from_commit=unknown" authorized_for=fail-safe \
+    "authorized_for_game_build=$FNAF2_CALIBRATED_BUILD" \
+    calibration_report=null holdout_report=null
+}
+session_record_model bb-left scm1-left-opening "$BB_LEFT_MODEL"
+session_record_model bb-cam05 scm1-cam05 "$BB_CAM05_MODEL"
+session_record_model gf-office scm1-golden-freddy-office "$GF_OFFICE_MODEL"
+if [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
+  fnaf_session_record note \
+    "text=model built_from_commit is 'unknown': SCM1 binaries are gitignored and carry no provenance of their own, so the hash above is the only thing that identifies them"
+fi
+
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
   CHECKER_INSTALLED=1
   "$HERE/build-screencheck.sh" "$RUN_TMP/fnaf-screencheck" >/dev/null
@@ -653,6 +856,8 @@ case "$FOCUS" in
   *com.scottgames.fnaf2*) ;;
   *) echo "abort: game is not focused ($FOCUS)"; exit 1 ;;
 esac
+fnaf_session_event kind=lifecycle outcome=title terminal=false \
+  sensor=window-manager "note=game launched and holding focus"
 
 source "$HERE/coords.sh"
 # The title item is selected, not assumed. `NIGHT` used to be four facts at
@@ -2651,6 +2856,23 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   adb pull "$REMOTE_EPOCHFILE" "$LOCAL_EPOCH" >/dev/null
   EPOCH_REPORT=$(tr -d '\r\n' < "$LOCAL_EPOCH")
   echo "$NIGHT night device epoch: $EPOCH_REPORT"
+  # T0 is a device-shell reading and stays one. The event is stamped on the
+  # host's own clock and carries the device value verbatim as source_t; the
+  # manifest's measured alignment edge is what relates the two. Rewriting the
+  # device number into host time here is exactly the silent reinterpretation
+  # the v1 contract forbids.
+  EPOCH_T0_MS=$(awk -F'epoch_ms=' '/epoch_ms=/{split($2,a,/ /); print a[1]; exit}' \
+    <<<"$EPOCH_REPORT")
+  if [ -n "${EPOCH_T0_MS:-}" ] && [ -n "${FNAF2_SESSION_DEVICE_OFFSET:-}" ]; then
+    fnaf_session_event kind=lifecycle outcome=night terminal=false \
+      sensor=screencheck source_clock=device_shell_wall_ms \
+      "source_t=$EPOCH_T0_MS" "note=device epoch latched: $EPOCH_REPORT"
+  else
+    # No measured offset means the two clocks are not comparable, and an
+    # unalignable source_t would only look like provenance.
+    fnaf_session_event kind=lifecycle outcome=night terminal=false \
+      sensor=screencheck "note=device epoch latched, unaligned: $EPOCH_REPORT"
+  fi
 else
   for i in $(seq 1 40); do
     [ "$(state)" = "night" ] && break
@@ -2677,10 +2899,20 @@ DRIVER_PID=""
 stop_watchdogs
 if [ -s "$WATCHDOG_RESULT" ]; then
   cat "$WATCHDOG_RESULT"
+  # Recorded here rather than inside the watchdog subshell: the fault is one
+  # event whichever watchdog produced it, and both funnel through this file.
+  fnaf_session_event kind=fault sensor=watchdog \
+    "fault.fault_kind=watchdog-abort" \
+    "fault.detail=$(tr -d '\r\n' < "$WATCHDOG_RESULT")" \
+    "fault.degraded_to=aborted"
   exit 1
 fi
 if [ "$DRIVER_STATUS" -ne 0 ]; then
   echo "abort: timed input driver exited with status $DRIVER_STATUS"
+  fnaf_session_event kind=fault sensor=runner \
+    "fault.fault_kind=driver-exit" \
+    "fault.detail=timed input driver exited with status $DRIVER_STATUS" \
+    "fault.degraded_to=aborted"
   exit "$DRIVER_STATUS"
 fi
 
@@ -2700,15 +2932,8 @@ echo "saved captures/$OUT.mp4"
 if [ -n "$SAMPLE_VIEW" ]; then
   pull_samples
 fi
-if [ "$GRADE_RUN" = 1 ]; then
-  # One pipeline, and it finds the capture itself.
-  #
-  # This used to name "$LOCAL_VIDEO" directly. Every run that ends in an abort
-  # saves "$LOCAL_ABORT_VIDEO" instead, so for a whole session of aborted runs
-  # this step graded a file that did not exist and printed nothing -- while
-  # looking, in the log, exactly like grading. A false 163 s record survived
-  # because of it. grade-run.sh takes the run name, finds whichever capture
-  # exists, and runs every instrument including the survival grader that would
-  # have caught it.
-  "$HERE/grade-run.sh" "$OUT" || true
-fi
+# Grading now happens inside cleanup, after the session is finalized: the first
+# thing grade-run.sh checks is the manifest, and the manifest cannot exist
+# until the cue trace and the kept classifier frames have been pulled -- which
+# cleanup does. Grading here would have reported every successful run as
+# unmanifested.

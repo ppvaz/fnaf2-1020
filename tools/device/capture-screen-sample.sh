@@ -78,3 +78,20 @@ fi
 
 adb pull "$REMOTE" "$OUTPUT" >/dev/null
 echo "saved ${OUTPUT#"$HERE/../../"}"
+
+# If this ran inside a session, the frame belongs to that session. Joining is
+# the whole point of the id: a calibration frame captured during a run and the
+# run's own recording are otherwise related by nothing but a basename, which is
+# how Plan 09 package 1 found frames it could not attribute to a build.
+# FNAF2_SESSION_RUN is exported by the runner; nothing is re-derived here.
+if [ -n "${FNAF2_SESSION_RUN:-}" ]; then
+  # shellcheck source=/dev/null
+  source "$HERE/session.sh"
+  fnaf_session_artifact "$OUTPUT" \
+    "artifact_id=sample-$VIEW-$LABEL-$NAME" \
+    "role=$VIEW-$LABEL-frame" authority=primary-observation \
+    format=application/x-android-screencap-raw complete=true truncated=false \
+    retention=local-only clock_domain=null \
+    redaction.contains_game_media=true redaction.contains_audio=false \
+    redaction.commit_safe=false
+fi

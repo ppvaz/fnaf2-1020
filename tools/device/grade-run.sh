@@ -76,10 +76,15 @@ step() {
 #    hashes, which clocks, which terminal outcome and on what evidence. The
 #    v1 contract lives in tools/device/schema/ and is enforced here.
 #
-#    No producer writes one yet (Plan 09 package 2 ships the contract; package
-#    2's producer integration is a later slice). So the absent case says so in
-#    as many words rather than passing quietly -- a step that grades a file
-#    that is not there is the exact failure grade-run.sh was written for.
+#    trial-minus7.sh writes one on every exit path, so an absent manifest now
+#    means either a run from before 2026-08-26 or a producer that has not been
+#    wired up. Either way the absent case says so in as many words rather than
+#    passing quietly -- a step that grades a file that is not there is the
+#    exact failure grade-run.sh was written for.
+#
+#    A leftover *-session.spool.jsonl is not clutter: finalize deletes the
+#    spool only once the manifest validates, so its presence is the record of
+#    a session that could not describe itself.
 if [ -f "$MANIFEST" ]; then
   step "session manifest (v1 provenance contract)" \
     python3 "$HERE/validate-session.py" "$MANIFEST"
@@ -88,7 +93,14 @@ else
   echo "--- session manifest (v1 provenance contract) ---"
   echo "  no ${RUN}-session.json: this run is unmanifested, so nothing below can"
   echo "  name its game build, model hashes, clock alignment or win evidence."
-  echo "  Nothing was validated. (No producer emits one yet.)"
+  echo "  Nothing was validated."
+  if [ -f "$CAPTURES/$RUN-session.spool.jsonl" ]; then
+    echo "  A spool IS present ($RUN-session.spool.jsonl): the session was started"
+    echo "  and its manifest was refused or never finalized. Read the spool."
+    fail=1
+  else
+    echo "  Run under tools/device/trial-minus7.sh, which emits one."
+  fi
 fi
 
 # 1. Was it alive, and for how long? This one decides what the run *means*, so
