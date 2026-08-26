@@ -161,6 +161,31 @@ nobody runs is a comment. This is now enforced: `test-grade-run-coverage.mjs`
 fails the engine suite on any `tools/device` script that is neither invoked by
 `grade-run.sh` nor consciously excluded, with a reason, in its exclusion list.
 
+## Who this is for: agents, humans, and humans working with agents
+
+Today the main developer and consumer of this project is an LLM agent picking
+the work up cold, reading what the last session left behind, and reconstructing
+what happened. That will not necessarily always be true. **The project must be
+ergonomic for all three audiences at once**, and where they pull in different
+directions the resolution is usually the same:
+
+- **Prefer rich, self-describing records over narrow schemas.** Every expensive
+  surprise here was a question nobody had thought to ask -- a cutscene reading
+  as a night, a music box draining 3.3x slower than its constant, a gate passing
+  on its seed block. A format that captures only the anticipated fields would
+  have missed all three. Latitude in shape; none in honesty.
+- **Say which clock, which sensor, which night, which build.** A number an agent
+  cannot place is a number it must re-measure. This is why `UNKNOWN(reason)` is
+  worth more than a plausible value: an agent can reason about the first and is
+  actively misled by the second.
+- **Write the why, not just the what.** Most of this file exists because a
+  future reader needed the reasoning, not the conclusion. That serves a human
+  successor and an agent identically.
+- **Do not make it agent-only.** Prose that only a model will parse, or records
+  with no human-legible summary, lock out the audience that has to make the
+  judgement calls. A `grade-run.sh` verdict a person can read in five seconds is
+  not a legacy concession.
+
 ## A finding that is not in the repository does not exist
 
 Every finding lands in the repository in the session that produced it — as code,

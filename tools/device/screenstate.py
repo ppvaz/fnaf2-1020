@@ -33,13 +33,15 @@ import subprocess
 import sys
 import warnings
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nightpredicate  # noqa: E402
+
 warnings.simplefilter("ignore")
 
 
-# Above this mean the frame is bright all over, which the office never is and a
-# cutscene is. Office frames measure 14.5-35.1 on rows 500/700; the New Game
-# newspaper measures 112.5.
-GLOBAL_BRIGHT_MAX = 80.0
+# The fast path keeps its own arithmetic because it only has ten scanlines to
+# work with, but the threshold and the rule are nightpredicate's.
+GLOBAL_BRIGHT_MAX = nightpredicate.GLOBAL_BRIGHT_MAX
 
 
 def channel_mean(rows, x0, x1):
@@ -129,14 +131,15 @@ def fraction(box, predicate):
     data = list(im.crop(box).resize((32, 32)).getdata())
     return sum(1 for pixel in data if predicate(*pixel)) / len(data)
 
-flash = mean((95, 40, 260, 95))
-maskbar = mean((70, 1000, 1180, 1045))
-# The same guard as the fast path, over the same two scanlines.
-overall = mean((0, 500, 2400, 501)), mean((0, 700, 2400, 701))
-overall_mean = sum(sum(o) for o in overall) / 6
-night = overall_mean < GLOBAL_BRIGHT_MAX and (
-    flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
-)
+# One definition, in nightpredicate.py. This file used to state the rule and
+# grade-night.py used to restate it; only one of the two got the global
+# brightness guard, and the copy that missed it is the one that produces run
+# lengths. The boxes are fractions there, so a 2400x1080 caller and a 1280x576
+# one evaluate the same rule rather than two rules that agree by inspection.
+night = nightpredicate.is_night(
+    lambda fx0, fy0, fx1, fy1: mean((round(fx0 * 2400), round(fy0 * 1080),
+                                     max(round(fx1 * 2400), round(fx0 * 2400) + 1),
+                                     max(round(fy1 * 1080), round(fy0 * 1080) + 1))))
 red_face = fraction(
     (650, 450, 1750, 920),
     lambda r, g, b: r > 80 and r > g * 1.5 and r > b * 1.3,

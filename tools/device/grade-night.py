@@ -25,6 +25,11 @@ Usage: grade-night.py VIDEO [--fps 4] [--require-seconds 420]
 Exit status is non-zero when the run did not reach --require-seconds, so this
 can gate a claim rather than merely describe one.
 """
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nightpredicate  # noqa: E402
 import argparse
 import subprocess
 import sys
@@ -64,10 +69,17 @@ def channel_mean(frame, box, step=2):
 
 
 def is_night(frame):
-    """screenstate.py's live predicate, frame for frame."""
-    flash = channel_mean(frame, FLASH)
-    maskbar = channel_mean(frame, MASKBAR)
-    return flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
+    """The shared predicate, evaluated at this file's video geometry.
+
+    Until 2026-08-26 this was a hand copy whose docstring said "screenstate.py's
+    live predicate, frame for frame" -- and it stopped being that the moment
+    screenstate gained its global-brightness guard and this did not. It is now
+    the same rule, sampled here rather than restated."""
+    def sample(fx0, fy0, fx1, fy1):
+        return channel_mean(frame, (max(0, int(fx0 * WIDTH)), max(0, int(fy0 * HEIGHT)),
+                                    min(WIDTH, max(int(fx1 * WIDTH), int(fx0 * WIDTH) + 1)),
+                                    min(HEIGHT, max(int(fy1 * HEIGHT), int(fy0 * HEIGHT) + 1))))
+    return nightpredicate.is_night(sample)
 
 
 def describe_end(frame):

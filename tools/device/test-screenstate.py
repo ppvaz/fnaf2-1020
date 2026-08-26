@@ -123,11 +123,50 @@ def main():
                 if got != want:
                     print(f"FAIL lifecycle {name}: expected {want!r}, got {got!r}")
                     failed += 1
+        # --- the two callers must agree, at their two geometries.
+        #
+        # This is the control that would have caught the drift. grade-night.py
+        # carried a hand copy of the predicate whose docstring said "frame for
+        # frame" -- and stopped being that the moment screenstate gained the
+        # global-brightness guard and the copy did not. It is the tool that
+        # produces the only number that is a run length.
+        sys.path.insert(0, str(HERE))
+        import nightpredicate
+
+        def video_frame(rgb, meter=False):
+            """A raw 1280x576 RGB buffer, the geometry grade-night.py reads."""
+            w, h = 1280, 576
+            buf = bytearray(bytes(rgb) * (w * h))
+            if meter:
+                fx0, fy0, fx1, fy1 = nightpredicate.FLASH
+                for y in range(int(fy0 * h), int(fy1 * h)):
+                    for x in range(int(fx0 * w), int(fx1 * w)):
+                        i = (y * w + x) * 3
+                        buf[i:i + 3] = bytes((230, 230, 230))
+            return bytes(buf)
+
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gn", HERE / "grade-night.py")
+        gn = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gn)
+
+        for name, rgb, meter, want in (
+                ("dark office with a lit meter", (14, 14, 16), True, "night"),
+                ("a dark screen", (14, 14, 16), False, "other"),
+                ("a uniformly bright cutscene", (200, 200, 198), True, "other")):
+            got_video = "night" if gn.is_night(video_frame(rgb, meter)) else "other"
+            got_png = verdict(frame(rgb, flash=meter), tmp)
+            if got_video != want or got_png != want:
+                print(f"FAIL callers disagree on {name}: "
+                      f"screenstate={got_png!r} grade-night={got_video!r} want={want!r}")
+                failed += 1
+
     if failed:
         print(f"{failed} screenstate check(s) failed")
         return 1
     print("screenstate: a lit meter and a mask bar are nights, a frame bright all "
-          "over is not; lifecycle names static, newspaper, title, dialog, options")
+          "over is not; both callers agree at both geometries; lifecycle names "
+          "static, newspaper, title, dialog, options")
     return 0
 
 
