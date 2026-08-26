@@ -10,20 +10,41 @@ packages are closed.
 ## Very next step
 
 **Resume point, written 2026-08-26.** The tree is **clean** and the engine suite
-is **green at 50 checks**. A large uncommitted body from two prior sessions was
-verified and landed, and the session's own findings landed with it — eleven
-commits, `ea1f9f1`..`ab8d70c`. Nothing below is half-applied.
+is **green at 51 checks**.
 
-Two defects were found and fixed while landing it, both of which had the suite
-**red**: `test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` — the new
-human-floor bypass shipped with neither arm tested, and both are now pinned —
-and `android/cue-helper/test.sh`, the only check that exercises the live audio
-detector, ran nowhere and resolved its JDK by hardcoding one laptop's Homebrew
-prefix. It is in the suite now, and CI pins a JDK for it.
+# NIGHT 1 IS CLEARED ON THE DEVICE.
 
-**No package closed.** The headline stays 29/88: everything below either repaired
-something already counted, or recorded what a package still needs. An honest
-percentage that does not move is worth more than a flattering one.
+The first full-night stock-device clear this project has recorded. Run
+`n1-full-1640`, 2026-08-26.
+
+**The proof is the save, not a classifier.** The label under `Continue` read
+**Night 1** before the run — checked twice at full resolution — and reads
+**Night 2** after it. The device owner watched the 6 AM screen. The driver
+printed `night6-left finished: 74 cycles` at **417.9 s** of a 420 s night, and
+the capture saved as `n1-full-1640.mp4`, not `-aborted`. Re-graded after the
+fix below, `grade-night.py` reports **420.2 s alive**.
+
+**The save cursor now sits at Night 2**, so a repeat of this command plays
+Night 2, not Night 1. `STORY_CURSOR_OBSERVED` must be set to what is actually
+on screen; it is checked against the requested night and refuses on mismatch.
+
+```sh
+BB_LEFT_MODEL=captures/screencheck/bb-left/models/runtime-gh.scm \
+NIGHT=continue CALIBRATION_STORY_NIGHT=2 STORY_CURSOR_OBSERVED=2 \
+tools/device/trial-minus7.sh NAME 90
+```
+
+**Read this before celebrating it.** The run desynced roughly **eight times and
+the runner noticed once**, and every one of its 9 "Balloon Boy responses" was
+false — BB's AI is 0 on Night 1 and he cannot act. Night 1 is the easiest night
+in the game and has 4192 frames of flashlight headroom; the same faults on
+Night 5 or 6, which have 192, are unlikely to be survivable. **This is a floor,
+not a ceiling.**
+
+**No package closed.** The headline stays 29/88. Plan 13 package 3 still has no
+6 AM or intro classifier, so the manifest for a night that was *won* correctly
+reads `lifecycle=unknown` — nothing in the pipeline can tell a win from a death.
+An honest percentage that does not move is worth more than a flattering one.
 
 ### The single most important thing learned today
 
@@ -227,6 +248,21 @@ rather than pixels.
   - **Outranks all of it:** **`captures/` is gitignored.** Every fixture above
     exists on one laptop and in no clone, so package 3's holdout set needs
     somewhere to live before it can be a gate anyone else can run.
+- **The controller desyncs far more than it detects, and pan is the tell.**
+  Measured on the cleared Night 1: 16 of 16 `empty` vent reads sit at 0–6 px of
+  office pan, and 6 of 7 false `inside` reads at **64–178 px**, with the
+  classifier's margin tracking pan monotonically (0 px → 19, 6 px → 20,
+  displaced → 18, which is the `inside` boundary). Per the device owner,
+  unexpected pan during a run *means* desync. So that run desynced roughly
+  **eight times and the runner noticed once** — and its one correction failed:
+  the resync at 93089 ms was followed five seconds later by a read that still
+  photographed the Main Hall camera feed. Two consequences: every `inside` on
+  that night was false (BB's AI is 0), and a panned office means every press in
+  that cycle lands on coordinates calibrated for an unpanned one. Pan is a
+  better desync detector than the luma check and is **unpriced inside the
+  cycle** — a full-frame correlation, so price it before scheduling it.
+  `ON-DEVICE-SCREEN-CHECKS.md` §"The left-opening classifier measures camera
+  pan" has the frames and the method.
 - **Nights 5 and 6 have 192 frames of flashlight headroom, down from 852.** The
   Night 6 route repair paid for its gate margin in light. Nothing warns as that
   approaches zero; `test-night-matrix.mjs` only fails once it crosses. Price any
@@ -288,7 +324,7 @@ rather than pixels.
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **All six nights now pass the human gate** (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%) after the Night 6 route repair; title observed; a real death classifies with no unknown. But only Night 6 is *runnable* end to end — Nights 1–5 are one-cycle calibration only (package 5) | Classify the intro card and 6 AM (package 3); a recording that reaches 6 AM still cannot be graded as a clear |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2) — the first full-night stock-device clear. All six nights pass the human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%). A full story night is now runnable via `CALIBRATION_STORY_NIGHT` + `STORY_CURSOR_OBSERVED`. **But the clear was not graded as one**: no 6 AM classifier exists, so the manifest reads `lifecycle=unknown` for a night that was won | Classify the intro card and 6 AM (package 3) — until then a win and a death are indistinguishable to every instrument here |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 
