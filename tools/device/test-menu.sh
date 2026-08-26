@@ -1,0 +1,182 @@
+#!/bin/bash
+# Gate for the title/menu selector. Mock adb, synthetic frames, no phone.
+#
+# The hazard this closes is not hypothetical. `TAP_NEWGAME` has sat in
+# coords.sh since 2026-08-20 next to the two coordinates the runners do press,
+# unguarded, and four separate scripts decided which title item to tap with
+# their own copy of `NIGHT_TAP=$TAP_CONTINUE; [ "$NIGHT" = 6th ] &&
+# NIGHT_TAP=$TAP_6TH` -- without ever looking at the screen. One edit away from
+# erasing a save nobody can restore, which is exactly what happened to the
+# target device before this was written.
+#
+# So there are two halves here. The behavioural half drives menu_select through
+# every save state and every way of not knowing. The structural half proves no
+# other path exists: nothing outside this module may name the New Game
+# coordinate, and no runner may keep its own title table.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-menu-test-XXXXXX")"
+trap 'rm -rf "$TMP"' EXIT
+
+mkdir -p "$TMP/bin" "$TMP/frames"
+python3 "$HERE/testdata/make-title-fixture.py" "$TMP/frames" >/dev/null
+
+cat > "$TMP/bin/adb" <<'MOCK'
+#!/bin/bash
+case "${1:-} ${2:-}" in
+  "exec-out screencap") cat "$MOCK_FRAME"; exit 0 ;;
+  "shell dumpsys")      printf '%s\n' "$MOCK_FOCUS"; exit 0 ;;
+  "shell input")        shift; printf '%s\n' "$*" >> "$MOCK_TAPS"; exit 0 ;;
+esac
+echo "unexpected mock adb invocation: $*" >&2
+exit 1
+MOCK
+chmod +x "$TMP/bin/adb"
+export PATH="$TMP/bin:$PATH"
+
+# dumpsys prints several mCurrentFocus lines and the first is often null
+# mid-transition. The mock reproduces that, so a future `grep -m1` fails here.
+FOCUS_OK=$'  mCurrentFocus=null\n  mCurrentFocus=Window{a1b2 u0 com.scottgames.fnaf2/com.unity3d.player.UnityPlayerActivity}'
+FOCUS_LOST=$'  mCurrentFocus=Window{c3d4 u0 com.android.launcher/com.android.launcher.Launcher}'
+
+MODEL="$TMP/frames/synthetic-title-model.json"
+TAPS="$TMP/taps"
+OUT="$TMP/out"
+failed=0
+
+# frame target [KEY=VALUE ...] -- runs one guarded selection in a subshell.
+attempt() {
+  local frame=$1 target=$2; shift 2
+  : > "$TAPS"
+  (
+    set +e
+    export MOCK_FRAME="$TMP/frames/$frame.png" MOCK_TAPS="$TAPS"
+    export MOCK_FOCUS="${FOCUS:-$FOCUS_OK}" TITLE_MODEL="$MODEL"
+    local kv
+    for kv in "$@"; do export "${kv?}"; done
+    # shellcheck source=/dev/null
+    source "$HERE/coords.sh"
+    # shellcheck source=/dev/null
+    source "$HERE/menu.sh"
+    menu_select "$target"
+    echo "menu_select_exit=$?"
+  ) > "$OUT" 2>&1
+}
+
+expect() {                                  # name pattern
+  grep -q -- "$2" "$OUT" || {
+    echo "FAIL $1 -- expected /$2/ in:"; sed 's/^/    /' "$OUT"; failed=1; }
+}
+expect_no_tap() {                           # name
+  [ ! -s "$TAPS" ] || {
+    echo "FAIL $1 -- pressed something: $(cat "$TAPS")"; failed=1; }
+}
+expect_tap() {                              # name "x y"
+  grep -q "^input swipe $2 $2 120$" "$TAPS" || {
+    echo "FAIL $1 -- expected a tap at $2, got: $(cat "$TAPS")"; failed=1; }
+}
+
+# ------------------------------------------------- the item has to be there
+attempt fresh-save continue
+expect 'fresh save refuses Continue' 'continue is not on the title screen'
+expect_no_tap 'fresh save refuses Continue'
+
+attempt fresh-save sixthNight
+expect 'fresh save refuses Sixth Night' 'sixthNight is not on the title screen'
+expect_no_tap 'fresh save refuses Sixth Night'
+
+attempt story-progress continue
+expect_tap 'story progress presses Continue' '400 730'
+
+attempt sixth-unlocked sixthNight
+expect_tap 'sixth unlocked presses Sixth Night' '400 880'
+
+# Observed, and still refused: the Custom Night item has never been on a
+# calibrated screen, so no coordinate for it has been measured. Seeing an item
+# is not the same as knowing where it is.
+attempt custom-unlocked customNight
+expect 'custom night has no measured coordinate' 'no measured coordinate'
+expect_no_tap 'custom night has no measured coordinate'
+
+# ------------------------------------------------------- New Game capability
+attempt fresh-save newGame
+expect 'New Game refused without the capability' 'needs MENU_ALLOW_SAVE_RESET=1'
+expect_no_tap 'New Game refused without the capability'
+
+# It is a capability, not a fallback: a title with no Continue does not make
+# New Game the answer.
+attempt fresh-save newGame MENU_ALLOW_SAVE_RESET=0
+expect_no_tap 'a missing Continue does not authorize New Game'
+
+attempt fresh-save newGame MENU_ALLOW_SAVE_RESET=1
+expect 'authorized New Game is logged' 'New Game authorized for this run'
+expect_tap 'authorized New Game presses' '400 640'
+# The authorization line must say what it authorized and nothing about the
+# device. Plan 09's provenance rules apply to a log line too.
+if grep -qiE 'serial|/Users/|ANDROID_SERIAL|[0-9]{1,3}(\.[0-9]{1,3}){3}' "$OUT"; then
+  echo "FAIL the authorization log leaks device data:"; sed 's/^/    /' "$OUT"; failed=1
+fi
+
+# --------------------------------------------------- every way of not knowing
+attempt ambiguous continue
+expect 'an undecided band refuses' 'ambiguous:continue'
+expect_no_tap 'an undecided band refuses'
+
+attempt unknown-layout continue
+expect 'an unrecognised screen refuses' 'no-items-visible'
+expect_no_tap 'an unrecognised screen refuses'
+
+FOCUS="$FOCUS_LOST" attempt sixth-unlocked sixthNight
+expect 'lost focus refuses' 'is not the focused window'
+expect_no_tap 'lost focus refuses'
+
+attempt sixth-unlocked sixthNight MENU_STALE_MS=0
+expect 'a stale observation refuses' 'ms old (limit 0 ms)'
+expect_no_tap 'a stale observation refuses'
+
+attempt sixth-unlocked bogusTarget
+expect 'an unknown MenuTarget refuses' 'not a MenuTarget'
+expect_no_tap 'an unknown MenuTarget refuses'
+
+# No model is the state the project is actually in: the save was lost before
+# any title frame was captured. It must refuse, and it must say how to fix it.
+(
+  set +e
+  export MOCK_FRAME="$TMP/frames/sixth-unlocked.png" MOCK_TAPS="$TAPS" MOCK_FOCUS="$FOCUS_OK"
+  : > "$TAPS"
+  unset TITLE_MODEL
+  # shellcheck source=/dev/null
+  source "$HERE/coords.sh"
+  # shellcheck source=/dev/null
+  source "$HERE/menu.sh"
+  menu_select sixthNight
+) > "$OUT" 2>&1 || true
+expect 'no title model refuses' 'no-title-model'
+expect 'no title model says how to build one' 'title-observe.py --measure'
+expect_no_tap 'no title model refuses'
+
+# ------------------------------------------------------- the structural half
+# Nothing but this module may name the save-destructive coordinate.
+offenders=$(grep -rl 'TAP_NEWGAME' "$HERE" --include='*.sh' 2>/dev/null \
+  | grep -vE '/(menu|coords|test-menu)\.sh$' || true)
+[ -z "$offenders" ] || {
+  echo "FAIL these scripts name the New Game coordinate outside the selector:"
+  printf '    %s\n' $offenders
+  echo "    Route them through menu_select, which requires MENU_ALLOW_SAVE_RESET=1."
+  failed=1
+}
+
+# And no runner may keep its own copy of the title table.
+for runner in trial-minus7.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-audio.sh; do
+  [ -f "$HERE/$runner" ] || continue
+  if grep -qE 'NIGHT_TAP|input swipe \$TAP_(6TH|CONTINUE|NEWGAME)' "$HERE/$runner"; then
+    echo "FAIL $runner still resolves a title item itself; use menu_select"
+    failed=1
+  fi
+  grep -q 'menu.sh' "$HERE/$runner" || {
+    echo "FAIL $runner presses a title item without sourcing the selector"; failed=1; }
+done
+
+[ "$failed" -eq 0 ] || { echo 'menu selector checks failed'; exit 1; }
+echo 'menu selector: 6 save states, 6 refusals, New Game gated by capability, no second title table'

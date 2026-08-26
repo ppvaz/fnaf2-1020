@@ -149,6 +149,47 @@ claim that one policy is right for every night. That decision is package 4's.
 Sixth Night unlocked, Custom Night unlocked, unknown layouts, and stale/focus
 loss. A test proves that no unapproved path can press New Game.
 
+**Result (partial — no completion credit), 2026-08-26.** The selector, the
+capability and the refusals exist; the classifier for the real build does not,
+and cannot until a title frame is captured.
+
+What landed. `tools/device/menu.sh` is now the only place a title item is
+pressed. Four scripts — `trial-minus7.sh`, `trial-maskcamp.sh`,
+`watch-vent-cue.sh`, `collect-cue-audio.sh` — each carried their own
+`NIGHT_TAP=$TAP_CONTINUE; [ "$NIGHT" = 6th ] && NIGHT_TAP=$TAP_6TH` and tapped
+it without looking at the screen; they now call `menu_select`, which refuses
+unless it has positively seen the item it is about to press. `MenuTarget` is a
+separate record from the night: `NIGHT=continue` used to be a menu action, a
+night identity, a claim about the save cursor and a policy selection at once.
+
+New Game is behind a one-run `MENU_ALLOW_SAVE_RESET=1` capability and logs its
+authorization without recording anything about the device. It is never a
+fallback for a missing Continue, and `test-menu.sh` asserts both the behaviour
+and the structure — no script outside the selector may name `TAP_NEWGAME`, and
+no runner may keep a second title table. That coordinate had sat unguarded in
+`coords.sh` since 2026-08-20 beside the two the runners did press.
+
+`title-observe.py` refuses six ways: no model, an unreadable or unrecognised
+screen, a measurement inside the model's undecided band, lost focus, a stale
+observation, and an item that is on screen but has no measured coordinate —
+which is Custom Night's actual state, so it is observed and still refused.
+
+What did not land, and why the package stays open. **There is no title model
+for the target build.** The bullet "classify the title items actually visible
+on the target build" needs labelled title frames, the local capture root holds
+none, and the save that would have produced them was lost before anything
+captured it. So the observer answers `no-title-model` on a real device and the
+selector refuses — correct behaviour, not a placeholder, but it means **no
+route can currently select a night on the phone.** That is a deliberate
+consequence of this plan's own invariant ("a missing expected title item aborts
+before any gameplay tap"): the previous behaviour was a blind tap at a
+coordinate for an item that a fresh save no longer shows.
+
+The fixtures are synthetic and prove the plumbing only. They say nothing about
+where the real items are or how bright they are; `title-observe.py --measure`
+over captured frames is how the first real model gets built, and the refusal
+message says so. Unblocking this is one capture session, not code.
+
 ### 3. Identify night start, win, death, and save advancement
 
 - Add positive classifiers for the `12:00 AM / Nth Night` intro cards and 6 AM

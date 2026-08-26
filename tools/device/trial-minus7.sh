@@ -655,8 +655,13 @@ case "$FOCUS" in
 esac
 
 source "$HERE/coords.sh"
-NIGHT_TAP=$TAP_CONTINUE
-[ "$NIGHT" = "6th" ] && NIGHT_TAP=$TAP_6TH
+# The title item is selected, not assumed. `NIGHT` used to be four facts at
+# once -- a night identity, a menu action, a claim about the save cursor, and
+# the policy that would run -- resolved here by a two-line coordinate lookup
+# that never looked at the screen. plans/13 splits them; menu.sh owns the
+# press and refuses anything it cannot see.
+source "$HERE/menu.sh"
+MENU_TARGET=sixthNight
 
 # A left-opening calibration cycle spends about 1.5 seconds on the lit raw
 # capture. Give each sampled cycle that time back so its box wind is not
@@ -2624,7 +2629,10 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   sleep 0.5
 fi
 
-adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
+menu_select "$MENU_TARGET" || {
+  echo "abort: could not select $MENU_TARGET on the title screen" >&2
+  exit 47
+}
 
 # Loading is variable. Start both the strategy clock and its diagnostic video
 # only after the office HUD is visible. Later screenshots are safety checks;

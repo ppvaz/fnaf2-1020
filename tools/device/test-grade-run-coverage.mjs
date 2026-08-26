@@ -40,6 +40,8 @@ const EXCLUDED = new Map([
   ['capture-screen-sample.sh', 'capture helper'],
   ['collect-cue-audio.sh', 'capture helper'],
   ['coords.sh', 'coordinate helper'],
+  ['menu.sh', 'the title/menu selector runners source, mock-gated by test-menu.sh'],
+  ['title-observe.py', 'live title observer, mock-gated by test-menu.sh -- it classifies a menu, not a run'],
   ['query-cue-helper.sh', 'live helper, mock-gated by test-query-cue-helper.sh'],
   ['soak-cue-helper.sh', 'live helper, mock-gated by test-soak-cue-helper.sh'],
   ['select-adb.sh', 'transport helper, gated by test-select-adb.sh'],

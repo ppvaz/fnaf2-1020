@@ -160,6 +160,11 @@ const ENGINE = [
   // device primitives stubbed, so a branch window off by one fails here
   // instead of on the phone.
   ['plan interpreter', ['device/test-plan-interpreter.sh']],
+  // Nothing is pressed on the title screen that was not seen there, and New
+  // Game -- which erases a save that cannot be restored -- needs a capability
+  // the caller sets for one run. The structural half proves no second title
+  // table exists to route around this.
+  ['menu selector', ['device/test-menu.sh']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.

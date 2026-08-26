@@ -95,8 +95,15 @@ case "$FOCUS" in
 esac
 
 source "$HERE/coords.sh"
-NIGHT_TAP=$TAP_CONTINUE; [ "$NIGHT" = "6th" ] && NIGHT_TAP=$TAP_6TH
-adb shell input swipe $NIGHT_TAP $NIGHT_TAP 120
+source "$HERE/menu.sh"
+# `NIGHT=continue` named a menu action, not a night. Continue does not say
+# which night the save cursor owns, so this route asks for the item it means.
+MENU_TARGET=sixthNight
+[ "$NIGHT" = "6th" ] || MENU_TARGET=continue
+menu_select "$MENU_TARGET" || {
+  echo "abort: could not select $MENU_TARGET on the title screen" >&2
+  exit 1
+}
 
 # Wait for the office HUD (intro + load takes a variable ~10-20 s).
 for i in $(seq 1 40); do

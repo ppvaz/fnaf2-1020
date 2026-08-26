@@ -95,7 +95,11 @@ while [ "$round" -le "$ROUNDS" ]; do
   done
   [ -n "$focused" ] || { echo "abort: game never took focus" >&2; exit 1; }
   sleep 4
-  adb shell input swipe $TAP_6TH $TAP_6TH 120
+  source "$HERE/menu.sh"
+  menu_select sixthNight || {
+    echo "abort: could not select sixthNight on the title screen" >&2
+    exit 1
+  }
 
   night=""
   for i in $(seq 1 40); do
