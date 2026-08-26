@@ -6,9 +6,9 @@
 // perfectly valid there; on the phone Fusion polls touch per frame and a
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
-import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
+import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS,
+         MODEL_SLOT_MS, FUSION_POLL_MS } from './recipe.mjs';
 import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
-const SWEEP_LIGHT_LEAD_MS = 0;   // the emitter's lead; see trial-minus7.sh
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
@@ -126,48 +126,6 @@ check(clearMaskRaise?.split(' ')[3] === 'hall',
   `the post-read clear raise must carry its first Foxy reset, got "${clearMaskRaise}"`);
 check(+clearMaskRaise.split(' ')[4] >= MIN_CONTACT_MS,
   `the post-read Foxy reset is under the ${MIN_CONTACT_MS} ms contact floor`);
-// --- the wrap-around: a cycle's last contact against the next cycle's first.
-//
-// Every check below reads a cycle in isolation, and that is how a seam nobody
-// measured got into the shipped plan. Cycles repeat, so the instant after a
-// cycle's final instruction is the NEXT cycle's first press -- and both cycles
-// open with `0 tap monitor`. The emitter left zero released time there.
-//
-// This is not a hypothetical. The 2026-08-25 desync census tabulated what the
-// lost monitor press followed -- a mask press, a wind hold, a hall hold, the
-// vent light, the mute, another monitor press -- and has NO ROW for a sweep,
-// because a sweep never preceded a monitor press within a cycle. The wrap is
-// the only place it does, and it is the one transition never measured.
-//
-// The spans are the runner's own (`plan_span` in trial-minus7.sh), restated
-// here rather than imported because that function lives inside a heredoc.
-const SPAN = (kind, rest) => {
-  const n = rest.map(Number);
-  switch (kind) {
-    case 'tap': case 'hold':   return n[1];
-    case 'hall':               return n[0];
-    case 'hallraise':          return SWEEP_LIGHT_LEAD_MS + n[0];
-    case 'maskraise':          return rest[1] === 'hall'
-      ? n[0] + SWEEP_LIGHT_LEAD_MS + n[2] : n[0] + MIN_CONTACT_MS;
-    case 'sweep':              return 2 * n[0] + n[1];
-    case 'read':               return n[0];
-    default: throw new Error(`no span for "${kind}"`);
-  }
-};
-const CYCLE_LEN = { opening: 7000, clear: 5000, attack: 10000 };
-for (const [name, lines] of Object.entries(plan)) {
-  if (name === 'opening') continue;          // the opening runs once, then a cycle
-  const last = lines[lines.length - 1].split(' ');
-  const ends = +last[0] + SPAN(last[1], last.slice(2));
-  const released = CYCLE_LEN[name] - ends;
-  check(released >= MIN_RELEASED_MS,
-    `${name}: its last instruction ("${last.join(' ')}") ends at ${ends} ms of a ` +
-    `${CYCLE_LEN[name]} ms cycle, leaving ${released} ms before the next cycle's ` +
-    `monitor press -- under the ${MIN_RELEASED_MS} ms the HID auditor requires ` +
-    'between two different buttons. A press with no released time before it is ' +
-    'the defect test-hid-trace.mjs exists to catch, and the desync census has ' +
-    'no row for a sweep because the wrap is the only place one precedes a monitor.');
-}
 
 for (const [name, lines] of Object.entries(plan)) {
   let sweeps = 0;
@@ -253,25 +211,26 @@ for (const [name, lines] of Object.entries(plan)) {
 // The cycle seam.
 //
 // Every released-time check above measures *within* one cycle. This pair
-// straddles two, and nothing was looking: both steady cycles finish 7 ms past
-// their own length, so the next cycle's anchor press lands on top of the
-// sweep's last camera release. Fusion reads that as one finger moving from the
-// camera onto the monitor button and the monitor press never fires.
+// straddles two: both steady cycles' sweeps finish exactly on their nominal
+// boundary, so the plan alone has no released time before the next anchor.
+// The runner deliberately waits one Fusion poll after the macro's derived end
+// before it writes that anchor (asserted in test-runner-plan.mjs and exercised
+// in test-plan-interpreter.sh). The wait is relative to `rm_shift`, so a late
+// macro moves the boundary with it instead of accumulating compression.
 //
-// Everything else followed from that one lost press, and it cost nights 6-22 to 6-24:
-// the cams stay up, the monitor toggle desyncs permanently because nothing
-// reads the state back, the vent-light press with cams up is the *camera*
-// light so the classifier is handed a camera frame and answers `unknown`, the
-// schedule fails closed into an attack every cycle, attack cycles do not wind,
-// and the box empties. Cycle 1 was clean in every run because it follows the
-// opening, which ends 200 ms clear of its anchor.
+// Before that runner compensation existed, one lost press cost nights 6-22 to
+// 6-24: the cams stayed up, the monitor toggle desynced permanently, and the
+// box emptied. Cycle 1 stayed clean because the opening ends 200 ms clear of
+// its anchor. Keep checking the delivered seam here, but do not mistake the
+// nominal plan clock for the runner's later wall-clock delivery; the trace
+// auditor made exactly that mistake and its zero-gap finding was retracted.
 //
 // The sweep is deliberately not moved earlier: HID-MULTITOUCH.md records that
 // one frame of tail costs 272 of 400 nights, because that stun has to bridge
 // the five-tick mask with nothing to spare. The runner instead delays the next
-// anchor, spending phase-window slack. This asserts the overrun stays small
-// enough for that to be a compensation rather than a reschedule.
-const FUSION_POLL_MS = 33;
+// anchor, spending phase-window slack. This asserts both that the overrun stays
+// small enough for that to be a compensation rather than a reschedule and that
+// the delivered boundary (not the trace auditor's plan clock) has a legal gap.
 const needsSeamDelay = [];
 const instrSpan = (kind, rest) =>
   kind === 'sweep' ? 2 * +rest[0] + +rest[1]
@@ -289,6 +248,12 @@ for (const [name, lines] of Object.entries(plan)) {
     `${recipe.cycles[name].lengthMs} ms length. Past one Fusion poll the next ` +
     "anchor cannot be delayed into a released gap -- that is a reschedule, not " +
     'a compensation, and the route has to change instead.');
+  const nominalReleased = -overrun;
+  const deliveredReleased = name === 'opening'
+    ? nominalReleased : Math.max(nominalReleased, FUSION_POLL_MS);
+  check(deliveredReleased >= MIN_RELEASED_MS,
+    `${name}: the runner delivers only ${deliveredReleased} ms before the next ` +
+    `cycle's monitor press, under the HID auditor's ${MIN_RELEASED_MS} ms floor`);
   // Report which cycles depend on the runner's seam delay. This is the link
   // between the two halves of the check: test-runner-plan.mjs asserts the
   // runner leaves that gap, and this names the cycles that would be broken

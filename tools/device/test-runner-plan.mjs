@@ -212,12 +212,14 @@ check(/^NOLIGHT_STREAK_MAX=5$/m.test(src),
   'NOLIGHT_STREAK_MAX must be 5: three dark reads span a single masked ' +
   'encounter and aborted a live night as "BB inside"');
 
-// The seam. Both steady cycles end past their own length, so the runner has to
-// leave the released gap before it writes the next cycle's anchor -- otherwise
-// the anchor lands on the sweep's last camera release and the monitor press is
-// read as a drag off the camera. test-recipe.mjs asserts the overrun is small
-// enough to compensate; this asserts the runner actually compensates, and by a
-// full Fusion poll rather than the auditor's bare floor.
+// The seam. Both steady cycles end exactly on their nominal boundary, so the
+// runner has to leave the released gap before it writes the next cycle's
+// anchor -- otherwise the anchor lands on the sweep's last camera release and
+// the monitor press is read as a drag off the camera. test-recipe.mjs checks
+// the delivered gap; this asserts the runner actually compensates, relative to
+// any macro shift, and by a full Fusion poll rather than the auditor's bare
+// floor. Because rm_shift is included on every cycle, lateness cannot erode the
+// next seam or accumulate as compression.
 check(/wait_until \$\(\(rm_base \+ rm_cursor \+ rm_shift \+ FUSION_POLL_MS\)\)/.test(src),
   "run_macro must leave a full Fusion poll after the macro before the shell " +
   'writes the next anchor; without it the cycle seam has no released time');

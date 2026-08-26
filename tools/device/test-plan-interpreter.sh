@@ -260,8 +260,8 @@ first_wait="$(printf '%s\n' "$out" | grep -m1 '^wait ' | awk '{print $2}')"
 [ "$first_wait" = 9000 ] ||
   fail "the floor did not move the window: first wait_until was $first_wait, want 9000"
 last_wait="$(printf '%s\n' "$out" | grep '^wait ' | tail -1 | awk '{print $2}')"
-# The floor's derived shift must carry through to the resync, or the shell writes the
-# next anchor while the macro drains, and the resync adds FUSION_POLL_MS on top
+# The floor's derived shift must carry through to the seam wait, or the shell writes the
+# next anchor while the macro drains. The wait adds FUSION_POLL_MS on top
 # so the anchor's monitor press does not land on the sweep's final camera
 # release -- two different buttons with no released time between them read as
 # one finger moving, and the press never fires.
@@ -279,9 +279,9 @@ cycle_end="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF {
   } END { print e }' "$TMP/plan.txt")"
 first_branch_at="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF { n++; if (n == 3) { print $1; exit } }' "$TMP/plan.txt")"
 macro_shift=$((9000 - 7000 - first_branch_at))
-want_resync=$((7000 + cycle_end + macro_shift + FUSION_POLL_MS))
-[ "$last_wait" = "$want_resync" ] ||
-  fail "the floor did not carry to the resync: last wait_until was $last_wait, want $want_resync"
+want_seam=$((7000 + cycle_end + macro_shift + FUSION_POLL_MS))
+[ "$last_wait" = "$want_seam" ] ||
+  fail "the floor did not carry to the seam: last wait_until was $last_wait, want $want_seam"
 
 # Without a floor the window opens where the plan says.
 out="$(run 'run_macro clear 7000 2 999')"
