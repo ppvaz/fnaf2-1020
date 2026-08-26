@@ -733,9 +733,14 @@ different resolution or orientation.
 
 ## Prior art: is any of this a solved problem elsewhere? (2026-08-26)
 
-A literature survey, not a measurement. Nothing here was run on the phone. It
-exists because this project had never checked whether its central architectural
-bet — a **physical, stock, unrooted handset driven by raw HID touch injection,
+A literature survey, not a measurement. Nothing here was run on the phone.
+**The integral report this section distils is retained at
+[`docs/research/ANDROID-BOT-LANDSCAPE.md`](../research/ANDROID-BOT-LANDSCAPE.md)**
+— 24 named projects with their see-with/act-with/alive-dead, the per-family
+analysis, and the closest analogues. Read that before re-asking any of this.
+
+It exists because this project had never checked whether its central
+architectural bet — a **physical, stock, unrooted handset driven by raw HID touch injection,
 reacting in real time** — is a normal thing to do or an unusual one. It is
 unusual. Sources are cited so the claims can be re-checked; where the evidence is
 a forum post rather than code it says so, and where nothing was found it says
@@ -743,13 +748,27 @@ that instead of guessing.
 
 ### The short answer
 
-**The combination has one public precedent, and it is archived.**
+**The combination has one public precedent, and it is archived — but be precise
+about how much of a precedent it is.**
 [`kvarenzn/phisap`](https://github.com/kvarenzn/phisap) drove Phigros and Arcaea
-on an unrooted physical handset in hard real time, through a 10-contact
-**AOAv2** HID touchscreen it wrote itself (report descriptor documented in its
-`hid.md`). It worked on Android 10, its HID backend broke on Android 13 —
-AOAv2 multitouch registration simply fails — was never fixed, and the repository
-was archived on 2024-03-07.
+on an unrooted physical handset in hard real time. Its **default** transport was
+scrcpy's control protocol, and that is what its setup instructions require. The
+HID path was **opt-in and late**: added in v0.18 (2023-08-12) as backend
+`otg/hid`, a 10-contact **AOAv2** touchscreen it wrote itself with the report
+descriptor documented in its `hid.md`. Its stated reason was not speed but
+avoiding USB debugging — 可以一定程度上避免某些游戏的作弊检测, "to some degree
+avoid some games' cheat detection".
+
+Its author pointedly did **not** claim a latency win from it: 或许可以一定程度上
+提升触控事件发送效率（？待确认） — *"may somewhat improve touch-event send
+efficiency (? to be confirmed)."* **The only person who has built this never
+confirmed HID was faster.** That is the single most useful sentence in the
+survey, and it is a caution against assuming the actuator is where our wins are.
+
+The HID backend broke on Android 13 — AOAv2 multitouch registration simply fails
+— roughly 13 months after it was added, was never fixed, and the repository was
+archived on 2024-03-07. The project's real-time results predate the HID backend
+entirely.
 
 Everything else in the field is one of: emulator + adb; physical device + adb
 for a *turn-based* game; an on-device accessibility service (also turn-based); a
@@ -762,8 +781,15 @@ tablet's own framebuffer fast enough was not on the table.
 
 ### The one result that changes how we should think about `hid-multi`
 
-Android **deliberately** stamps injected input with `deviceId = -1`. The AOSP
-comment in `InputDispatcher.cpp` says so in as many words, and
+Android **deliberately** stamps injected input with `deviceId = -1`. The claim
+carries weight, so here is the source rather than a paraphrase:
+`InputDispatcher.cpp:4847` — *"For all injected events, set device id =
+VIRTUAL_KEYBOARD_ID. The only exception is events that have gone through the
+InputFilter"* — with `DeviceId resolvedDeviceId = VIRTUAL_KEYBOARD_ID;` on
+:4853, overridden only under `POLICY_FLAG_FILTERED`. `VIRTUAL_KEYBOARD_ID = -1`
+is at [`include/input/InputDevice.h:426`](https://android.googlesource.com/platform/frameworks/native/+/main/include/input/InputDevice.h),
+and the same convention shows twice more: `InputDevice.isVirtual()` is
+`return mId < 0`, and `KeyCharacterMap.VIRTUAL_KEYBOARD = -1`.
 `InputEvent.getDeviceId()` is public API. Accessibility-injected gestures
 additionally carry `FLAG_IS_ACCESSIBILITY_EVENT = 0x800`; `getFlags()` is public,
 so `(ev.getFlags() & 0x800) != 0` is a one-line, permissionless bot check.
@@ -781,14 +807,25 @@ and `input` costs a fork), but it is a real second reason to keep it.
 
 **And the portability warning does not transfer — checked, not assumed.** phisap
 died of **AOAv2**, a USB-accessory gadget negotiated over the cable from a host;
-its failures trace to vendor kernels omitting `raw_request()` in
-`f_accessory.c`, which scrcpy's author maintains a whole repository about
-([rom1v/aoa-hid-bug](https://github.com/rom1v/aoa-hid-bug)). This project does
+its author never diagnosed that Android 13 failure — the sticky notice says he
+was still investigating and there are no later entries. A *separate* and
+well-documented class of AOA-HID failure does trace to vendor kernels omitting
+`raw_request()` in `f_accessory.c`, which scrcpy's author maintains a whole
+repository about ([rom1v/aoa-hid-bug](https://github.com/rom1v/aoa-hid-bug)).
+Two independent ways for the same transport to fail; joining them into one
+diagnosis would assert something nobody established. This project does
 not use AOAv2. `trial-minus7.sh:1351` runs **`/system/bin/hid`**, which creates a
 **uhid** virtual device *on the device itself* — the same mechanism behind Trap 1
 above, where `UHID_OPEN` returns before `InputReader` enumerates the touchscreen
 five seconds later. uhid gets the same real-`deviceId` property without the
-USB-gadget dependency that killed phisap's backend. That is a better position
+USB-gadget dependency that killed phisap's backend.
+
+One difference worth knowing, since it is not the identity property: phisap's
+descriptor declared **ten** contacts; ours at `trial-minus7.sh:1351` declares
+**two** Finger collections. Two is what the route needs — every compound row in
+the plan is at most a two-finger chord — but if a future route ever wants a
+third simultaneous contact, the descriptor is where that is decided, not the
+schedule. That is a better position
 than the one public precedent had, and it is worth knowing we are not standing
 where it fell.
 
@@ -815,15 +852,15 @@ Corroboration, not validation — these are other people's devices:
 |---|---|---|
 | `screencap` **225 ms** | `adb screencap` **~350 ms** on an accelerated emulator with "pretty beefy hardware"; an MJPEG server ~150 ms | [appiumpro](https://appiumpro.com/editions/83-speeding-up-android-screenshots-with-mjpeg-servers) [V] |
 | cue helper **59 ms** device-local | nothing published for a physical handset beats it; minicap self-reports 10–40 fps and "one to a few frames behind" | [DeviceFarmer/minicap](https://github.com/DeviceFarmer/minicap) [V] |
-| ≥**100 ms** bare contact | Unity's own manual: *"If you read out touch state from `Touchscreen` directly inside of `Update`... your app will miss changes in touch state."* | Unity Input System docs [V] |
-| ~680 ms free per cycle | Alas grades a click <100 ms and a screenshot <300 ms as "Fast", and treats a combined **350 ms** budget as enough to *"run a little faster than human"* | [Alas benchmark.py](https://github.com/LmeSzinc/AzurLaneAutoScript/blob/master/module/daemon/benchmark.py) [V] |
+| ≥**100 ms** bare contact | Unity's own manual: *"If you read out touch state from `Touchscreen` directly inside of `Update`... your app will miss changes in touch state."* | [Unity Input System 1.7, "Touch support"](https://docs.unity3d.com/Packages/com.unity.inputsystem@1.7/manual/Touch.html) [V] |
+| ~680 ms free per cycle | Alas grades a click <100 ms and a screenshot <300 ms as "Fast"; its scale only reaches "Insane Fast" below 25 ms | [Alas benchmark.py](https://github.com/LmeSzinc/AzurLaneAutoScript/blob/master/module/daemon/benchmark.py) [V] |
 
 The 225 ms figure landing where the literature says it should is a small
 independent check that this project's measurement rig is honest.
 
 ### The negative analogue, in its own words
 
-**Alas — the most engineered bot in the field, 9.5k stars — abandoned physical
+**Alas — one of the most engineered bots in the field — abandoned physical
 handsets in writing.** Its wiki: 在安卓真机运行 Alas 的方案已经被放弃 ("the scheme
 for running Alas on a real Android device has been abandoned"), and of the
 split-device variant: 真机截图也是非常慢 ("screenshotting a real device is also
@@ -867,7 +904,10 @@ phone, and no number above is a measurement of this handset.
 ## Input injection and sequential budgets, against the platform source (2026-08-26)
 
 A second literature pass, companion to the prior-art section above. Nothing here
-was run on this phone. Where a claim is read out of AOSP or kernel source it is
+was run on this phone. **The integral report is retained at
+[`docs/research/ANDROID-INPUT-AND-OBSERVATION.md`](../research/ANDROID-INPUT-AND-OBSERVATION.md)**
+— the full injection ladder, the sequential-budget analysis against kernel and
+AOSP source, the observation-cost decomposition, and the ranked verdict. Where a claim is read out of AOSP or kernel source it is
 labelled **SOURCE** — a fact about the implementation, not a timing measurement;
 **MEASURED** carries a method; **COMMUNITY** is a forum or vendor assertion;
 `UNKNOWN(reason)` means the number does not exist in public.
@@ -1038,3 +1078,183 @@ outside the public record, so **the methodology is the finding**. Per this
 repository's own "say which clock, which sensor" rule, that bracket should be
 written down: resolution, `-p` vs raw, `exec-out` vs `shell`, USB generation,
 and exactly what the stopwatch enclosed.
+
+## Addendum: what the platform survey adds beyond the section above (2026-08-26)
+
+Landed by a second agent working the same brief concurrently. The section above
+("Input injection and sequential budgets, against the platform source") reached
+the same conclusions from the same sources and is the canonical version —
+**this addendum carries only what it does not, and does not restate it.** Same
+labelling: **[SOURCE]** = read out of AOSP or kernel code, a fact about the
+implementation rather than a timing; **[MEASURED]** = someone else's device with
+a stated method; **[COMMUNITY]** = forum or vendor assertion; **[INFERENCE]** =
+mine. Nothing here was run on this phone, and **no number below is a measurement
+of this handset.**
+
+### The stale pair, and the half of it nobody has corrected yet
+
+I was briefed with "~240 ms proven spacing" **and** "a 267 ms three-camera sweep
+the phone has never produced" as a matched pair of current facts. The section
+above corrects the first. The second half is the one still circulating
+uncorrected, and this file already contains its answer:
+
+- The ideal **267 ms** actuator is indeed still unproduced, and this addendum
+  does not claim otherwise.
+- But per the spacing table in "It still fails at the spacing the phone has
+  proven", the route **no longer needs it**. At the withdrawn 240 ms the span
+  was 580 ms against a 600 ms mask margin — a two-frame island. At the proven
+  120 ms it is **340 ms with a 12-frame (200 ms) window**. What was unlandable
+  at the stale figure is landable at the measured one.
+
+Quoting "the phone has never produced 267 ms" without the spacing table attached
+reads as *the route is blocked*, when what the table says is *the route needs
+120 ms spacing and the phone does 120 ms spacing*. **[INFERENCE]** — the
+arithmetic is this document's, not mine; only the observation that the pair is
+still quoted together is new.
+
+### A doubt of mine that the on-device measurement already answers
+
+I flagged `date +%s%3N` at 21 ms as high for a bare `fork+exec` against the
+1–4 ms that is typical on desktop Linux. **Withdraw the doubt, not the number.**
+"The fix is the fork" above records 100 calls in 2126 ms with a consecutive-gap
+max of 35 ms, and a `/proc/uptime` control at 0.36 ms — a better-controlled
+figure than anything published. AOSP ships the benchmark that would price this
+(`bionic-spawn-benchmarks`, which measures Toybox `true` and `sh -c true`) and
+**publishes no results at all**: `UNKNOWN(AOSP publishes the harness, not the
+numbers)`. Recorded so the doubt is not re-raised.
+
+### Which device node is writable is version-gated — and `hid-multi` picked the best one
+
+Not covered above, and operationally the most useful thing in this addendum.
+**[SOURCE]**, per-tag `ueventd.rc` plus sepolicy:
+
+| Android | `/dev/uhid` | `/dev/uinput` | shell can open |
+|---|---|---|---|
+| ≤ 8.0 | `0660 system bluetooth` | `0660 system bluetooth` | neither |
+| **8.1 – 9** | `0660 uhid uhid` | `0660 system bluetooth` | **uhid only** |
+| **10+** | `0660 uhid uhid` | `0660 uhid uhid` | **both** |
+
+(commits [`0729dd1edb1e`](https://android.googlesource.com/platform/system/core/+/0729dd1edb1e392f60f9a2ad5cc06a84df2ab1f6) → 8.1,
+[`e615b2aa76af`](https://android.googlesource.com/platform/system/core/+/e615b2aa76afd80291c189c292b0118c8f6664d9) → 10)
+
+Meanwhile **shell's write access to `/dev/input` was deliberately removed** by
+sepolicy commit `51156264b4b9` (2018-08-28, Bug 30861057): *"Shell access to
+existing input devices is an abuse vector… Remove the write ability for shell
+users, and add a neverallow assertion (which is also a CTS test) to prevent
+regressions."* **[MEASURED]** corroboration from minitouch's own author on a
+Pixel/Android Q preview — the AVC denial fires while `id` still shows shell in
+group `1004(input)`, proving DAC was untouched and SELinux alone is the blocker
+([openstf/minitouch#41](https://github.com/openstf/minitouch/issues/41)).
+
+**So the three candidate nodes are not interchangeable, and `/system/bin/hid`
+took the one that has been open longest.** `trial-minus7.sh:1351` creates a
+**uhid** device — writable by shell since **8.1**, versus 10 for `/dev/uinput`
+and, for `/dev/input`, closed since 2018 behind a neverallow assertion that a
+CTS test enforces. That is a second portability argument for
+the route, independent of the `deviceId` one in "Prior art" above.
+
+**Keeping the distinction sharp, because these two get conflated constantly:**
+**uhid** is a kernel HID device created locally *on the phone*; **AOAv2** is a
+USB-accessory gadget negotiated over the cable *from a host*. phisap died of the
+latter. Nothing in this addendum transfers AOA's `f_accessory.c` /
+`raw_request()` portability problems to this project's route — they do not apply.
+
+Worth knowing as a fallback rather than a recommendation: `adb shell uinput -`
+is a **first-party AOSP command** that registers arbitrary `ABS_*` axes with a
+full `input_absinfo` and replays evemu recordings, with a shipped multitouch
+example (`cmds/uinput/examples/test-touchpad.evemu`). `EventHub` classifies any
+node declaring `ABS_MT_POSITION_X/Y` + `BTN_TOUCH` as `TOUCH|TOUCH_MT`. That is
+a non-root multitouch actuator with no report descriptor to hand-roll, on
+Android 10+. **[SOURCE]**
+
+### Do not justify the 100 ms contact with digitizer physics
+
+The section above establishes that ≥100 ms is an **engine** constraint and that
+the repository states it correctly. The complementary point: the numbers people
+usually reach for to justify it — the widely repeated *"20 to 50 milliseconds to
+reliably register the touch"*, and the touch-latency literature generally —
+describe the **physical capacitive digitizer**, and an injected event never
+touches it. `evdev_write()` calls `input_inject_event()` *below* the driver.
+**[INFERENCE]**, from the call path already cited above.
+
+What that bypasses, for the record:
+
+| Source | Device | physical → kernel (ACTION_DOWN) |
+|---|---|---:|
+| [google/walt TapLatency.md](https://github.com/google/walt/blob/master/docs/TapLatency.md) **[MEASURED]** | across devices | **9.6 – 29.6 ms** (UP 14.4–31.0) |
+| [WALT_usage.md](https://github.com/google/walt/blob/master/docs/usage/WALT_usage.md) **[MEASURED]** | Nexus 9 | 26.3 ms median; kernel→Java 1.2 ms |
+| [Kämäräinen, arXiv:1611.08520](https://arxiv.org/abs/1611.08520) Tbl 1 **[MEASURED]** | Galaxy S4 / S7 | **40.5 / 24.1 ms** |
+| same paper — **gamepad over USB** | S4 / S7 | **0.6 / 0.2 ms** |
+
+Verbatim: *"The USB connection conveys user commands to the operating system
+considerably faster than the capacitive touch screen. Our measurements show a
+negligible delay of under 1 ms on both tested devices."* The 24–40 ms versus
+0.2–0.6 ms contrast is the cleanest published evidence that the sensing layer is
+what costs and that an injector does not pay it.
+
+**The consequence, stated as an open item rather than a claim.** If the hold is
+bounded by the engine and not the sensor, the model is ⌈2 frame periods⌉ plus
+jitter — about 33 ms at 60 fps, i.e. roughly 65 ms per contact currently spent
+on margin. That is **not claimable without measuring the game's own cadence**,
+and the measurement is bounded rather than decisive: Fusion's "machine
+independent speed" *skips display frames* when behind, so present rate need not
+equal event-loop rate. `dumpsys SurfaceFlinger --latency <layer>` prints
+`desiredPresentTime / actualPresentTime / frameReadyTime` over
+`NUM_FRAME_RECORDS = 128`, costs no pixels, and tracks the **layer** — so it
+works for a game drawing its own surface, where `gfxinfo framestats` (a
+`libs/hwui` facility) may be empty. **[SOURCE]**. Not run; left open.
+
+### The rest of the ViewConfiguration table
+
+The section above flags `DOUBLE_TAP_TIMEOUT = 300` / `DOUBLE_TAP_MIN_TIME = 40`.
+The neighbours, since they are the other silent-reclassification surface and are
+cheaper to read here than to re-derive **[SOURCE]**
+([ViewConfiguration.java](https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/master/core/java/android/view/ViewConfiguration.java)):
+`TAP_TIMEOUT` 100 ("wait to see if a touch event is a tap or a scroll"),
+`DEFAULT_LONG_PRESS_TIMEOUT` **400**, `JUMP_TAP_TIMEOUT` 500,
+`HOVER_TAP_TIMEOUT` 150, `PRESSED_STATE_DURATION` 64, `TOUCH_SLOP` 8 dp,
+`SEND_RECURRING_ACCESSIBILITY_EVENTS_INTERVAL_MILLIS` 100. The 400 ms long-press
+ceiling is the headroom a 100 ms contact is sitting inside — a 300 ms contact
+would not be.
+
+### Calibration: what "past the published record" is past
+
+The section above records, correctly, that no measured closed-loop latency for a
+reactive bot on a physical Android handset exists in public. What it does not
+give is a comparator, and one exists — the nearest published thing to what this
+project is doing, on different hardware:
+
+- **Physical Atari** (Javed, Modayil, Kennickell, Sutton, Carmack): a full
+  physical closed loop — real console, camera, servos — at *"roughly 165 ms,
+  which is comparable to typical human reaction times"*, agent at 30 Hz.
+  **[MEASURED]** ([arXiv:2606.19357](https://arxiv.org/html/2606.19357)). A
+  5000 ms cycle with ~680 ms of observation slack is a far easier regime.
+- For how far the LLM-agent literature is from this regime, both **[MEASURED]**
+  but on emulators: V-Droid, self-described *"first mobile agent capable of
+  near-real-time response"*, at **3.8 s per step**
+  ([arXiv:2503.15937](https://arxiv.org/html/2503.15937v2)); MobileAgentBench at
+  **4.85–26.09 s per action** across five agents
+  ([arXiv:2406.08184](https://arxiv.org/html/2406.08184v1)).
+- DeepMind's AndroidEnv states the structural problem in this project's own
+  terms — *"the OS does not pause when providing observations or when accepting
+  actions"*, and the risk that *"an unexpectedly long agent deliberation time
+  could turn an intended tap gesture into a long press"* — and then **reports no
+  fps or ms/step figure at all**, because the rate "depends on the resolution of
+  the device, the performance of the machine, and whether the rendering is done
+  through software or hardware"
+  ([arXiv:2105.13231](https://arxiv.org/abs/2105.13231)). Its mitigation is a
+  throttle. That is the same instinct as pricing a policy against the actuator.
+
+### Two more absences, recorded so nobody searches twice
+
+- `UNKNOWN(no published or reliably community-measured figure exists)` for a
+  maximum sustainable distinct-touch rate on Android. Fourteen Play Store
+  autoclicker listings were read in full, including one with 824k ratings and
+  one named "Super Fast": **none publishes a maximum CPS or a minimum interval.**
+  The circulating "500–700 clicks/sec" number is a **Windows** figure and must
+  not be transplanted.
+- The one rhythm-game autoplayer that publishes per-event timing
+  (`wlt233/ArcaeaAutoJSAutoplay`) publishes **authored constants, not
+  measurements** — 12 ms judgement refresh, 20 ms hold — and had abandoned the
+  accessibility route for root `/dev/input`. That choice, rather than its
+  constants, is the informative part. **[COMMUNITY]**

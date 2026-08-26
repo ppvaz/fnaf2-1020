@@ -1344,3 +1344,176 @@ a 1% tail was thirty times the slack; price the tail, not the median.
   default whenever `trial-maskcamp.sh` starts and remain in that state after
   the trial. Use `DEBUG_OVERLAYS=0 tools/device/trial-maskcamp.sh ...` to run
   without them.
+
+## What an observation costs elsewhere (2026-08-26)
+
+Literature only. **Nothing in this section was run on this handset.** The
+integral report behind it is
+[`docs/research/ANDROID-INPUT-AND-OBSERVATION.md`](../research/ANDROID-INPUT-AND-OBSERVATION.md)
+§4, "Screen observation cost". Every
+number below is someone else's device, mostly an emulator, and none of it
+revises or confirms a measurement already in this file. It is here because the
+question this document exists to answer — *is an observation cheap enough to
+schedule?* — has a published answer in the wider Android-automation field that
+this project had never looked up. The architecture survey lives in
+`HID-MULTITOUCH.md` §"Prior art"; this is only about the cost of a **read**, and
+deliberately does not repeat that section's comparison table.
+
+### There is no fast, portable, lossless capture on Android
+
+MaaFramework — the generalised successor to MaaAssistantArknights — ships its
+cost model as a comment on the enum that selects a capture method, which makes
+it the closest thing the field has to a published ranking. Reproduced verbatim
+from
+[`MaaDef.h`](https://github.com/MaaXYZ/MaaFramework/blob/main/include/MaaFramework/MaaDef.h)
+[VERIFIED — read the header]:
+
+| Method | Speed | Compatibility | Encoding | Notes |
+|---|---|---|---|---|
+| `EncodeToFileAndPull` | Slow | High | Lossless | |
+| `Encode` | Slow | High | Lossless | |
+| `RawWithGzip` | Medium | High | Lossless | |
+| `RawByNetcat` | Fast | Low | Lossless | |
+| `MinicapDirect` | Fast | Low | **Lossy** | |
+| `MinicapStream` | Very Fast | Low | **Lossy** | |
+| `EmulatorExtras` | Very Fast | Low | Lossless | Emulators only: MuMu 12, LDPlayer 9 |
+
+Read down the Speed column against the other three and the structural fact is
+plain: **every method rated better than "Medium" is either low-compatibility,
+lossy, or emulator-only.** Nothing is simultaneously fast, portable and
+lossless. That is not a gap in one framework's implementation — it is what the
+platform offers, which is why the two genuinely fast paths in the field
+(`nemu_ipc`, `ldopengl`) read a *guest* framebuffer out of shared memory and
+therefore cannot exist on a physical phone at all.
+
+The useful consequence is about our own read, and it is a reframing rather than
+a new number. The cue helper's 59 ms is not a better position on this ladder;
+**it is not on this ladder.** Every row above captures a frame. The helper
+captures a 20x9 region and answers a question. The saving is the resolution and
+the round trip, not a cleverer codec, and no amount of tuning a `screencap`
+would have reached it. INFERENCE, but the ladder is the evidence for it: the
+field spent a decade optimising frame transport and the best portable result is
+still "Medium".
+
+### The lossy rows are a trap this project would fall into
+
+MaaFramework excludes `MinicapDirect` and `MinicapStream` from its default set,
+with the reason stated in the same comment [VERIFIED, same file]:
+
+> Note: MinicapDirect and MinicapStream use lossy JPEG encoding, which may
+> significantly reduce template matching accuracy. Not recommended.
+
+The fastest capture in the table is disqualified because it corrupts the thing
+the capture is *for*. That is this document's own rule — §"The classifier has to
+be trained on the loop that will run it" — arrived at independently by a
+different project. It should be read as a standing constraint on any future
+attempt to make our read cheaper by streaming it: a JPEG-compressed or
+resolution-scaled read is not the same observation, and swapping one in without
+retraining and re-benchmarking the classifier would degrade it silently, which
+is the failure mode this file has already been burned by twice.
+
+### The OpenSTF fast paths died at Android 9, and that is why the field looks the way it does
+
+Both of the classic "go around adb" tools have a hard ceiling, and both READMEs
+say so:
+
+- **minicap**: *"Minicap works without root if started via ADB on SDK 28
+  (Android 9.0) and lower."* Also, and amusingly for a field that runs on
+  emulators: *"Emulators are not supported."*
+  [VERIFIED — [DeviceFarmer/minicap](https://github.com/DeviceFarmer/minicap)]
+- **minitouch**: *"Minitouch can't handle Android 10 by default, due to a new
+  security policy"*, needing an STFService bridge
+  [VERIFIED — [DeviceFarmer/minitouch](https://github.com/DeviceFarmer/minitouch)].
+  MAA's manual puts it without the hedge: *"Starting from Android 10, Minitouch
+  is no longer available when SELinux is in Enforcing mode"*
+  [VERIFIED — [docs.maa.plus](https://docs.maa.plus/en-us/manual/device/android.html)].
+
+So the whole direct-`/dev/input`, direct-framebuffer era ended at Android 9, and
+the field converged on `app_process` + reflection into `InputManager` (MaaTouch,
+Airtest's maxtouch, scrcpy's `sdk` mode) — which is exactly the family that
+`HID-MULTITOUCH.md` §"Prior art" shows is stamped `deviceId = -1`. Airtest
+encodes the ceiling in code, silently rewriting `MINITOUCH` to `MAXTOUCH` at
+SDK >= 29 [VERIFIED — `airtest/core/android/constant.py`]. Worth knowing before
+anyone proposes minicap or minitouch here as an obvious speed-up: they are not
+options on a modern handset, and our uhid route is not a variant of them.
+
+### Actuation, for comparison, is cheap everywhere and still not free
+
+One published measurement, and it is a weak one — a single archived repository,
+benchmarked against BlueStacks, no methodology beyond a timing loop
+[VERIFIED that the numbers are stated; the measurement itself is
+CLAIMED and uncorroborated —
+[hansalemaos/sendevent_touch](https://github.com/hansalemaos/sendevent_touch)]:
+
+| path | cost per tap |
+|---|---|
+| `sendevent` | 109 ms +/- 4.6 |
+| `adb shell input tap` | 197 ms +/- 1.5 |
+
+Take the ratio, not the absolute values. It corroborates the reason this project
+stopped shelling out to `input` — roughly 200 ms for a tap, dominated by process
+startup rather than by the touch — and it says the best a *shell-mediated*
+actuator does is about half that. Neither number is a target for `hid-multi`,
+which does not pay a shell at all.
+
+`UNKNOWN(no published figure found)` for the cost of a single uhid report on any
+Android device. The field does not use uhid for touch, so nobody has measured
+it, and the only per-report reasoning located anywhere is phisap's arithmetic
+for a *different* transport: 50-byte HID reports at 1 kHz is 50 KB/s, "far below
+USB 1.0", so it expected no transport-level delay — an expectation its author
+explicitly never confirmed
+([`hid.md`](https://github.com/kvarenzn/phisap/blob/dev/hid.md), VERIFIED).
+
+### One technique worth stealing: discard the stale frame
+
+FGA captures on-device through MediaProjection and, per its architecture notes,
+does two things this project does not: it wraps the `ImageReader` buffer in an
+OpenCV `Mat` **without copying**, and it runs a two-buffer queue calling
+`acquireLatestImage()` **to discard stale frames**
+[CLAIMED — [DeepWiki summary of FGA](https://deepwiki.com/Fate-Grand-Automata/FGA/4-android-services);
+I did not read FGA's source, so treat the mechanism as reported, not verified].
+
+The second half is the interesting one, and it names a control this project is
+missing. Our helper returns whatever the capture pipeline last produced; it has
+no notion of a frame being too old to answer with. The 30-900 ms
+capture-pipeline lateness recorded above, and the 1 s stalls traced to the
+orphaned trace loops, are both cases where **a read returned a truthful answer
+about the wrong moment** — and a staleness bound is the standard defence against
+exactly that. This is a design note, not a finding: no measurement here says the
+cue helper is currently returning stale frames, and adding a staleness check
+would itself need pricing against the 680 ms budget before it went near the
+loop. It belongs on the list in §"Next steps", not in the loop.
+
+### Reads that break without erroring, on someone else's handset
+
+Two portability failures reported by projects large enough to have hit them
+across many devices. Both are the same shape as this file's recurring lesson —
+an instrument that answers confidently while being wrong:
+
+- **Dark mode.** Alas's wiki advises turning the phone's dark mode off, because
+  on some handsets it shifts in-game colours enough to break screenshot
+  matching [VERIFIED —
+  [Emulator_cn](https://github.com/LmeSzinc/AzurLaneAutoScript/wiki/Emulator_cn)].
+  A vendor theme silently recolouring the frame under a colour-threshold
+  classifier is a failure this project's 20x9 regions would be fully exposed to
+  and would have no way to notice.
+- **Resolution as a hard precondition.** Alas requires exactly 1280x720 and
+  errors on anything else; MAA supports 16:9 only and warns that force-changing
+  a device's resolution *"may cause the device to malfunction"* [VERIFIED — same
+  wiki, and [docs.maa.plus](https://docs.maa.plus/en-us/manual/device/android.html)].
+  Both chose to fail loudly rather than scale, which is the right call and the
+  one this project already makes elsewhere.
+
+Neither is an argument for doing anything today — this project runs one handset
+and pins its geometry. They are the two things that would break first if a
+second handset ever entered, and they are cheap to write down now and expensive
+to rediscover.
+
+### What this section does not say
+
+It does not say our reads are fast, because nothing here measured them. It says
+the ladder the field climbed tops out at "Medium" for a portable lossless frame,
+that the two historical shortcuts are unavailable on a modern handset, and that
+the one borrowable idea is a staleness bound we do not have. Every figure above
+is another project's device; the only numbers in this file that describe *this*
+phone are the ones measured on it.
