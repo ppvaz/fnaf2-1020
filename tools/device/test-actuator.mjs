@@ -7,16 +7,52 @@
 // lateness, and a seeded actuator replays identically. No device.
 import { pathToFileURL } from 'node:url';
 import * as C from '../../src/config.js';
-import { DeviceActuator, SEAM_SAFE_MS } from './actuator.mjs';
+import { DeviceActuator, SEAM_SAFE_MS, MONITOR_ANIM_DOWN_MS } from './actuator.mjs';
 import { run as pilotRun } from '../pilottest.mjs';
+import { cohort } from '../closedlooptest.mjs';
 
 // The actuator only reads sim.frame and sim.maskOn, and writes press/release.
 function stubSim() {
   return {
-    frame: 0, maskOn: false, delivered: [],
+    frame: 0, maskOn: false, monitor: 'down', delivered: [],
     press(a) { this.delivered.push([this.frame, 'press', a]); },
     release(a) { this.delivered.push([this.frame, 'release', a]); },
   };
+}
+
+// The supervisor reads `sim.monitor`, so its unit checks need a monitor that
+// actually flips. Animations included: the whole point of the flip gate is that
+// the cameras are still on screen while the monitor is coming down.
+function monitorSim(start = 'down') {
+  return {
+    frame: 0, maskOn: false, monitor: start, anim: 0, delivered: [],
+    get camsUp() { return this.monitor === 'up'; },
+    press(a) {
+      this.delivered.push([this.frame, 'press', a]);
+      if (a !== 'monitor') return;
+      if (this.monitor === 'up' || this.monitor === 'raising') {
+        this.monitor = 'lowering'; this.anim = C.MONITOR_ANIM_DOWN;
+      } else { this.monitor = 'raising'; this.anim = C.MONITOR_ANIM_UP; }
+    },
+    release(a) { this.delivered.push([this.frame, 'release', a]); },
+    step() {
+      if (this.anim > 0 && --this.anim === 0)
+        this.monitor = this.monitor === 'raising' ? 'up' : 'down';
+    },
+  };
+}
+
+// One read cycle of the runner: lower at frame 0, then the vent light 360 ms
+// later, which is where `light_down_at` runs. `hold` gives the classifier's
+// frame its latch, which is where the second checkpoint runs.
+function runLoop(sim, act, untilFrame = 400, ventAt = 22, ventHold = 30) {
+  for (sim.frame = 0; sim.frame <= untilFrame; sim.frame++) {
+    if (sim.frame === 0) act.press('monitor');
+    if (sim.frame === ventAt) act.press('ventL');
+    if (sim.frame === ventAt + ventHold) act.release('ventL');
+    act.deliver();
+    if (sim.step) sim.step();
+  }
 }
 
 // Submit each event on its scheduled frame while the clock actually runs, the
@@ -150,6 +186,176 @@ function seamRate(gapFrames, trials, worst = false) {
   }
 }
 
+
+// --------------------------------------------------- the modelled closed loop
+//
+// `MonitorSupervisor` models `trial-minus7.sh`'s flip gate and classifier
+// checkpoint. Each check below pins one property of the RUNNER, so a future
+// edit that makes the loop cleverer than the shell has to argue with the shell.
+
+// It never samples the monitor inside the flip it is checking. This is the
+// night 6-38 rule, and it is the one invariant the loop cannot be allowed to
+// lose: "a monitor observation taken inside MONITOR_ANIM_DOWN of a monitor
+// press is not an observation of anything".
+{
+  for (let seed = 0; seed < 50; seed++) {
+    // Cams up, then the anchor lowers them: the geometry the gate checks.
+    const sim = monitorSim('up');
+    const act = new DeviceActuator(sim, { seed, perPress: false, closedLoop: {} });
+    runLoop(sim, act);
+    const sent = act.loop.lastMonitorSent;
+    for (const readAt of act.loop.gateReadFrames)
+      if ((readAt - 0) * 1000 / C.FPS < MONITOR_ANIM_DOWN_MS) {
+        problems.push(`seed ${seed}: the gate read ${((readAt) * 1000 / C.FPS).toFixed(0)} ms ` +
+          `after the monitor press, inside MONITOR_ANIM_DOWN`);
+        break;
+      }
+    if (sent !== 0) { problems.push('the gate did not anchor on the logged monitor press'); break; }
+    // ...and with the flip waited out it has nothing to correct: the monitor is
+    // still LOWERING when the read lands (the press itself was 110-300 ms late),
+    // and the runner's 367 ms wait is measured from its own log, not the landing.
+    if (act.loop.gateCorrections)
+      { problems.push(`seed ${seed}: the gate corrected a monitor it had just lowered`); break; }
+  }
+}
+
+// A monitor that really is up is corrected, exactly once, and only after two
+// agreeing reads.
+{
+  const sim = monitorSim('up');
+  const act = new DeviceActuator(sim, { seed: 3, perPress: false,
+    lateMinMs: 0, lateMaxMs: 0, closedLoop: {} });
+  // Skip the opening lower so the cams stay up: this is the desync itself.
+  for (sim.frame = 0; sim.frame <= 400; sim.frame++) {
+    if (sim.frame === 22) act.press('ventL');
+    if (sim.frame === 52) act.release('ventL');
+    act.deliver();
+    sim.step();
+  }
+  if (act.loop.gateReads !== 2)
+    problems.push(`a correction was taken on ${act.loop.gateReads} reads, not two`);
+  if (act.loop.gateCorrections !== 1)
+    problems.push(`${act.loop.gateCorrections} corrections for one desync`);
+  if (act.loop.gateFalse !== 0)
+    problems.push('a genuine cams-up correction was counted as a false one');
+  if (!sim.delivered.some(d => d[2] === 'monitor'))
+    problems.push('the gate never pressed the monitor on a real desync');
+}
+
+// One reading cannot tell a flash from the cameras: a cue that reads up and
+// then down is a transient and must not be corrected.
+{
+  const sim = monitorSim('up');
+  const act = new DeviceActuator(sim, { seed: 3, perPress: false,
+    lateMinMs: 0, lateMaxMs: 0, closedLoop: {} });
+  for (sim.frame = 0; sim.frame <= 400; sim.frame++) {
+    if (sim.frame === 22) act.press('ventL');
+    // Between the two reads the cameras are gone -- the flash the runner's
+    // second read exists to reject.
+    if (act.loop.gateReads === 1) sim.monitor = 'down';
+    if (sim.frame === 52) act.release('ventL');
+    act.deliver();
+    sim.step();
+  }
+  if (act.loop.gateCorrections !== 0)
+    problems.push('a one-sample transient was corrected');
+  if (sim.delivered.some(d => d[2] === 'monitor'))
+    problems.push('a transient produced a monitor press');
+}
+
+// The read-only loop reads, pays for it, and never presses.
+{
+  const sim = monitorSim('up');
+  const act = new DeviceActuator(sim, { seed: 3, perPress: false,
+    lateMinMs: 0, lateMaxMs: 0, closedLoop: { correct: false } });
+  for (sim.frame = 0; sim.frame <= 400; sim.frame++) {
+    if (sim.frame === 22) act.press('ventL');
+    if (sim.frame === 52) act.release('ventL');
+    act.deliver();
+    sim.step();
+  }
+  if (!act.loop.gateReads) problems.push('the read-only loop did not read');
+  if (act.loop.recoveryPresses) problems.push('the read-only loop pressed the monitor');
+}
+
+// `MASK_ALREADY_OFF`: the classifier checkpoint's recovery runs the branch
+// macro without its mask-off toggle, because there is no mask on to take off
+// and pressing would put one ON and blind every later read.
+{
+  const sim = monitorSim('up');
+  const act = new DeviceActuator(sim, { seed: 5, perPress: false,
+    lateMinMs: 0, lateMaxMs: 0, closedLoop: { gate: false } });
+  let maskSubmitted = false;
+  for (sim.frame = 0; sim.frame <= 600; sim.frame++) {
+    if (sim.frame === 22) act.press('ventL');
+    if (sim.frame === 52) act.release('ventL');
+    // The branch's mask-off, well after the recovery has decided.
+    if (sim.frame === 500 && !maskSubmitted) { maskSubmitted = true; act.press('mask'); }
+    act.deliver();
+    sim.step();
+  }
+  if (act.loop.checkpointDesyncs !== 1)
+    problems.push(`the classifier checkpoint saw ${act.loop.checkpointDesyncs} desyncs, not one`);
+  if (sim.delivered.some(d => d[2] === 'mask'))
+    problems.push('the recovery let the branch mask-off through (MASK_ALREADY_OFF)');
+}
+
+// `desyncs -le 12`, then exit 48. An abort is not a survival, and the model has
+// to be able to end a night that way.
+{
+  const sim = monitorSim('up');
+  const act = new DeviceActuator(sim, { seed: 5, perPress: false,
+    lateMinMs: 0, lateMaxMs: 0, closedLoop: { gate: false, correct: false } });
+  for (sim.frame = 0; sim.frame <= 20000; sim.frame++) {
+    if (sim.frame % 300 === 22) act.press('ventL');
+    if (sim.frame % 300 === 52) act.release('ventL');
+    act.deliver();
+    sim.step();
+  }
+  if (!act.loop.aborted) problems.push('a permanently inverted monitor never tripped the desync cap');
+}
+
+// ------------------------------------------------ the reclaim, pinned as zero
+//
+// The measured result this model was built to produce (2026-08-26, in the
+// simulator). It is a negative one, and it is pinned so that a later claim that
+// the closed loop rescues the actuator cliff has to move these numbers first.
+//
+// Three statements, and the middle one is what makes the first honest:
+//   1. the loop changes no outcome;
+//   2. it is nonetheless doing its job -- with the correction removed the
+//      classifier checkpoint sees real desyncs, and with it on it sees none;
+//   3. a free, instant, always-right, BIDIRECTIONAL resync -- strictly better
+//      than anything `trial-minus7.sh` can do -- changes no outcome either.
+{
+  const runs = 100;
+  for (const night of [1, 6]) {
+    const open = cohort(night, runs, null);
+    const loop = cohort(night, runs, {});
+    const readOnly = cohort(night, runs, { correct: false });
+    const ideal = cohort(night, runs, { idealResync: true });
+    if (loop.won !== open.won)
+      problems.push(`night ${night}: the closed loop moved survival ${open.won} -> ${loop.won}; ` +
+        'the pinned result is that it does not, so re-measure and re-document before re-pinning');
+    if (ideal.won !== open.won)
+      problems.push(`night ${night}: a free ideal resync moved survival ${open.won} -> ${ideal.won}; ` +
+        'that would make the monitor loop the missing variable after all');
+    if (!readOnly.desyncs)
+      problems.push(`night ${night}: nothing for the loop to correct -- the pin is vacuous`);
+    if (loop.desyncs)
+      problems.push(`night ${night}: ${loop.desyncs} desyncs survived the flip gate`);
+    if (loop.gateFalse + loop.checkpointFalse)
+      problems.push(`night ${night}: the shipped loop corrected a monitor that was not up`);
+  }
+  // A loop whose monitor read is always wrong must not help.
+  const wrong = cohort(6, runs, { errorRate: 1 });
+  const open6 = cohort(6, runs, null);
+  if (wrong.won > open6.won)
+    problems.push(`an always-wrong classifier improved night 6 (${open6.won} -> ${wrong.won})`);
+  if (!wrong.gateFalse)
+    problems.push('an always-wrong classifier never corrected a monitor that was down');
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   if (problems.length) {
     console.error('device actuator model:');
@@ -157,4 +363,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     process.exit(1);
   }
   console.log('device actuator: holds keep length, order holds, seam bands match the census, replays are seeded');
+  console.log('closed loop: the gate stays outside MONITOR_ANIM_DOWN, corrects only confirmed desyncs, ' +
+    'and reclaims nothing from the actuator cliff (pinned)');
 }
