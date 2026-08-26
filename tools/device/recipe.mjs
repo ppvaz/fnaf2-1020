@@ -143,6 +143,80 @@ export function budget(cycle, lengthMs) {
   };
 }
 
+// Where the attack cycle's template comes from when the night being evaluated
+// cannot supply one. Night 6 seed 7 is the pinned configuration every device
+// route is built from; borrowing its shape keeps a branch in the plan for a
+// threat the source says cannot happen, which is what makes an unexpected
+// classifier read survivable rather than unhandled.
+export const TEMPLATE_NIGHT = 6;
+export const TEMPLATE_SEED = 7;
+// Alternate samples tried before giving up on a night whose threat IS
+// reachable. A rare character (Balloon Boy is AI 1 then 2 on Night 3) can be
+// absent from one seed and present in the next; that is a sampling accident,
+// not a property of the night, and it must not be answered by borrowing.
+export const ATTACK_SEEDS = [7, 1, 2, 3, 4, 5, 6, 8, 9, 10];
+
+// The attack is the only cycle with no monitor press for seconds after the
+// prophylactic mask: the mask blocks every other control while it is held.
+// Returns the monitor press that anchors it, or null when this sample has no
+// attack cycle at all.
+export function attackAnchor(log) {
+  const masks = log.filter(e => e.kind === 'press' && e.act === 'mask').map(e => e.f);
+  const monitors = log.filter(e => e.kind === 'press' && e.act === 'monitor').map(e => e.f);
+  const attackMask = masks.find(f => !monitors.some(g => g > f && g < f + 180));
+  if (attackMask === undefined) return null;
+  return monitors.filter(f => f < attackMask).pop();
+}
+
+// Which sample the attack branch is cut from, and whether the branch is
+// reachable on the night being built.
+//
+// Before 2026-08-26 this was one line -- `throw new Error('no attack cycle in
+// the sampled night')` -- which conflated "this night's fixed seed showed no
+// Balloon Boy" with "this recipe cannot be built". It cannot be: Nights 1 and
+// 3 both failed there, for opposite reasons. Night 1 never arms him at all,
+// so a missing branch is correct; Night 3 arms him at AI 1 and seed 7 simply
+// did not roll him, so a missing branch is a sampling accident. Only the
+// source table can tell those apart, so this asks it.
+//
+// It stays fail-closed in the other direction: a sample that DOES show an
+// attack on a night whose sourced AI never arms Balloon Boy is an
+// observation/config mismatch, and building a plan against it would mean the
+// engine and the AI table disagree about the night being played.
+export function resolveAttack(o, log, capfn = capture) {
+  const night = o.night ?? 6;
+  const seed = o.seed ?? 7;
+  const possible = C.canAct(night, 'bb');
+  const own = attackAnchor(log);
+  if (own !== null) {
+    if (!possible)
+      throw new Error(`night ${night} sampled a Balloon Boy attack cycle, but the ` +
+        `sourced AI table never arms him on this night (peak AI ${C.peakAi(night, 'bb')}); ` +
+        'refusing to build a plan against an observation/config mismatch');
+    return { anchor: own, log, from: { night, seed }, source: 'sampled', reachable: true };
+  }
+  if (possible) {
+    for (const alt of ATTACK_SEEDS) {
+      if (alt === seed) continue;
+      const sample = capfn({ ...o, seed: alt });
+      const anchor = attackAnchor(sample);
+      if (anchor !== null)
+        return { anchor, log: sample, from: { night, seed: alt },
+                 source: 'reseeded', reachable: true };
+    }
+    throw new Error(`night ${night} arms Balloon Boy (peak AI ${C.peakAi(night, 'bb')}) but ` +
+      `none of ${ATTACK_SEEDS.length} sampled seeds produced an attack cycle to cut the ` +
+      'branch from; widen ATTACK_SEEDS rather than shipping a plan with no attack branch');
+  }
+  const sample = capfn({ ...o, night: TEMPLATE_NIGHT, seed: TEMPLATE_SEED });
+  const anchor = attackAnchor(sample);
+  if (anchor === null)
+    throw new Error(`the canonical attack template (night ${TEMPLATE_NIGHT} seed ` +
+      `${TEMPLATE_SEED}) no longer samples an attack cycle`);
+  return { anchor, log: sample, from: { night: TEMPLATE_NIGHT, seed: TEMPLATE_SEED },
+           source: 'template', reachable: false };
+}
+
 export function build(opts = {}) {
   // Golden Freddy is cleared on every cycle by the canonical prophylactic
   // mask flick.
@@ -170,24 +244,25 @@ export function build(opts = {}) {
   // the flick and folds mask-off + raise into one HID macro whose internal
   // press-to-press gap is 180 ms. See foldMaskRaise() and
   // ON-DEVICE-VALIDATION.md, "Which press desyncs, and why".
+  // `captureFn` is a test seam, not a recipe option: it must not land in
+  // `recipe.options`, which is what the pinning checks compare.
+  const { captureFn = capture, ...rest } = opts;
   const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
               sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, readLatencyMs: 550,
-              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true, ...opts };
-  const log = capture(o);
+              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true, ...rest };
+  const night = o.night ?? 6;
+  const log = captureFn(o);
   const epoch = o.pilotOffset;
   const s = sec => epoch + Math.round(sec * 60);
 
-  // The attack is the only cycle with no monitor press for seconds after the
-  // prophylactic mask: the mask blocks every other control while it is held.
-  const masks = log.filter(e => e.kind === 'press' && e.act === 'mask').map(e => e.f);
-  const monitors = log.filter(e => e.kind === 'press' && e.act === 'monitor').map(e => e.f);
-  const attackMask = masks.find(f => !monitors.some(g => g > f && g < f + 180));
-  if (attackMask === undefined) throw new Error('no attack cycle in the sampled night');
-  const attackAnchor = monitors.filter(f => f < attackMask).pop();
+  // The steady and opening cycles are cut from the night being evaluated; the
+  // attack branch is cut from whichever sample can supply one. Those are
+  // different questions and used to be the same line.
+  const bb = resolveAttack(o, log, captureFn);
 
   const opening = events(log, epoch, s(7));
   const clear = events(log, s(7) + 300, s(7) + 600);
-  const attack = events(log, attackAnchor, attackAnchor + 600);
+  const attack = events(bb.log, bb.anchor, bb.anchor + 600);
 
   const cycles = {
     opening: { lengthMs: 7000, events: opening },
@@ -200,10 +275,25 @@ export function build(opts = {}) {
   // per-night budget rather than against a single cycle.
   const clearCycles = Math.floor((NIGHT_MS - 7000) / CYCLE_MS);
   const nightLitMs = cycles.opening.budget.litMs + clearCycles * cycles.clear.budget.litMs;
+  const available = C.powerFrames(night);
+  const spent = Math.round(nightLitMs * 60 / 1000);
   return {
+    night,
     options: o,
-    powerFramesAvailable: C.POWER_BY_NIGHT[o.night ?? 6],
-    powerFramesSpentIfAllClear: Math.round(nightLitMs * 60 / 1000),
+    powerFramesAvailable: available,
+    powerFramesSpentIfAllClear: spent,
+    powerFramesHeadroom: available - spent,
+    // What the plan's Balloon Boy branch is, and whether the night can reach
+    // it. `reachable: false` means the branch is carried as a fail-safe for an
+    // unexpected classifier read, not as a cycle the night will run.
+    branches: {
+      attack: {
+        reachable: bb.reachable,
+        source: bb.source,
+        cutFrom: bb.from,
+        peakAi: C.peakAi(night, 'bb'),
+      },
+    },
     minContactMs: MIN_CONTACT_MS,
     deviceSpacingMs: DEVICE_SPACING_MS,
     cycles,
@@ -495,9 +585,14 @@ export function devicePlan(recipe) {
 // that reads the recipe, because they all read the same side of the loop.
 // This runs the plan itself, instruction by instruction, and asks the engine
 // whether the night still survives.
-export function replay(plan, { night = 6, seed = 1, worst = false,
+// `night` is required. It defaulted to 6 while Night 6 was the only route the
+// device could run; a default here silently prices a Night 3 plan against
+// Night 6's AI table, which is the exact substitution plans/13's identity
+// contract forbids.
+export function replay(plan, { night, seed = 1, worst = false,
                                pilotOffset = 10, readLatencyMs = 550,
                                classifyMs = 250 } = {}) {
+  if (night === undefined) throw new Error('replay() needs the night the plan was built for');
   const sim = new Sim({ seed, night, worst });
   const f = msv => Math.round(msv * 60 / 1000);
   const queue = [];
@@ -588,6 +683,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
   if (process.argv.includes('--device-plan')) {
     const plan = devicePlan(recipe);
+    // The plan names its own night, so the model gate prices it against the
+    // AI table it was built for instead of assuming 6. The header precedes
+    // every `#cycle`, which is why the runner's parsers skip it: they only
+    // read rows once a matching `#cycle` has opened.
+    console.log(`#night ${recipe.night}`);
     for (const [name, lines] of Object.entries(plan)) {
       console.log(`#cycle ${name} ${recipe.cycles[name].lengthMs}`);
       for (const line of lines) console.log(line);

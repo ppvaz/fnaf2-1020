@@ -150,6 +150,11 @@ const ENGINE = [
   // sourced Fusion LCG and measured-safe maskraise compound).
   ['human gate', ['device/test-human-gate.mjs']],
   ['human floor', ['device/test-human-floor.sh']],
+  // The campaign can request any story night, so every story night must build,
+  // replay and receive a verdict priced against ITS OWN AI table. Nights 1 and
+  // 3 used to crash the builder on one shared message that covered two
+  // opposite facts -- Balloon Boy is impossible on 1 and merely rare on 3.
+  ['night matrix', ['device/test-night-matrix.mjs']],
   // The interpreter is the only part of the runner that decides *what*
   // happens. This runs the shipped functions against the real plan with the
   // device primitives stubbed, so a branch window off by one fails here

@@ -275,6 +275,28 @@ export const AI_BY_NIGHT = {
 export const aiUpdates = (night, hour) =>
   (AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]).filter(row => row.hour === hour);
 
+// The highest AI a character can hold at any point of a night, read off the
+// same rows the engine applies. A `{ oneIn: N }` row is 1 on its top draw, so
+// its peak is 1 -- rare is not impossible and must not read as zero.
+//
+// This exists so a *policy* can ask the source whether a threat exists on a
+// night instead of inferring it from whether one sampled seed happened to
+// show it. g673 zeroes every counter at night start, so a character no row
+// ever names stays at 0 for the whole night: Balloon Boy on Night 1 cannot
+// act, while Night 3 sets him to 1 and then 2 and merely makes him rare.
+export const peakAi = (night, id) => {
+  let peak = 0;
+  for (const row of AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]) {
+    const level = row.set[id];
+    if (level === undefined) continue;
+    peak = Math.max(peak, Math.min(typeof level === 'number' ? level : 1, aiCap(id)));
+  }
+  return peak;
+};
+
+// Whether the sourced table lets this character act at all on this night.
+export const canAct = (night, id) => peakAi(night, id) > 0;
+
 // Power [SOURCED]
 // [SOURCED: decompile — the battery counter (true name `battery life`; the
 // pre-XOR dump called it `cam 9`) is set per night at night start and drains

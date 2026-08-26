@@ -1,7 +1,8 @@
 # Campaign recovery and all-night support
 
-**Status: proposed 2026-08-26 after the target-device save was lost.** The
-exact simulator already models story Nights 1–6 and Custom Night, but the
+**Status: proposed 2026-08-26 after the target-device save was lost; package 1
+closed the same day.** The exact simulator already models story Nights 1–6 and
+Custom Night, but the
 stock-device workflow assumes the Sixth Night title item is unlocked. The
 current runner accepts `continue|6th`, then refuses everything except `6th`;
 its recipe and human gate are always generated as Night 6. A fresh save makes
@@ -23,7 +24,7 @@ only when exact simulation and device evidence support it.
 
 | Scope | Simulator | Device workflow | Gap |
 |---|---|---|---|
-| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | `New Game` coordinate exists but no gated route may select it | New Game resets progress; no save-state/night-card verification; recipe construction assumes a BB attack sample that cannot occur here |
+| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | `New Game` coordinate exists but no gated route may select it | New Game resets progress; no save-state/night-card verification (recipe construction fixed by package 1) |
 | Nights 2–5 | Per-night/per-hour AI and resource tables modeled | `Continue` can be tapped, but the runner refuses it | The title button does not say which night the save cursor owns; no positive identity or clear/advance proof |
 | Night 6 | Exact plan, human gate, runner, sensors, and graders exist | Current sole supported route through the `6th Night` title item | Still lacks a positive win classifier and manifested lifecycle record |
 | Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | No unlocked-menu setup or dial verification | Must distinguish Custom Night configuration from story progression and verify all ten dials before input |
@@ -35,6 +36,8 @@ Nights 1 and 3 fail during *recipe construction*, not replay, because
 `build()` requires its fixed seed to exhibit a Balloon Boy attack cycle. That
 is a template-extraction bug: a low-threat night may legitimately have no such
 cycle. These numbers are local design evidence, not device clears.
+*(Package 1 closed that construction bug on 2026-08-26; Nights 1 and 3 now
+build and gate. The paragraph stays as the evidence that opened the package.)*
 
 ## Identity contract
 
@@ -71,7 +74,7 @@ from another without a positive observation edge.
 
 ## Work packages
 
-### 1. Remove the Night-6 construction assumption
+### 1. Remove the Night-6 construction assumption — complete 2026-08-26
 
 - Separate cycle-template extraction from the night being evaluated.
 - Make a missing threat branch valid when that threat is impossible, while
@@ -87,6 +90,48 @@ from another without a positive observation edge.
 receive a configuration-correct model-gate verdict. A night with no sampled BB
 attack no longer crashes the builder, and a forced unexpected-BB fixture still
 fails closed.
+
+**Result: closed.** `build()` ended its template extraction with one message —
+`no attack cycle in the sampled night` — that covered two opposite facts, which
+is why Nights 1 and 3 failed identically for unrelated reasons. Only the source
+AI table separates them, so `resolveAttack()` now asks it (`C.peakAi` /
+`C.canAct`, read off the same `AI_BY_NIGHT` rows the engine applies):
+
+- **impossible** (Night 1, peak BB AI 0): a missing attack cycle is correct.
+  The branch is still emitted, cut from the pinned Night 6 seed 7 template, so
+  an unexpected classifier read is handled rather than unhandled; the recipe
+  reports it as `reachable: false`.
+- **rare but possible** (Night 3, peak BB AI 2): seed 7 not rolling him is a
+  sampling accident. The builder reseeds the same night until a sample supplies
+  the branch (Night 3 finds one at seed 2) and refuses rather than borrowing.
+- **mismatch** (a sample showing an attack on a night the table cannot arm him
+  on): refused. The engine and the AI table disagreeing about which night is
+  being played is exactly what this plan's identity contract forbids.
+
+The night now travels through `recipe.mjs` (`recipe.night`, `branches.attack`,
+`powerFramesHeadroom`), the emitted plan (a `#night N` header the runner's
+parsers skip, because they only read rows once a matching `#cycle` has opened),
+`replay()` (where `night` is required — the old default of `6` would have priced
+a Night 3 plan against Night 6's table) and `human-gate.mjs` (which refuses a
+plan that names no night rather than guessing one).
+
+`tools/device/test-night-matrix.mjs` holds the matrix, and Night 6's emitted
+plan is pinned byte-for-byte against `testdata/n6-device-plan.txt`:
+
+| Night | Exact | Human slack ±60 ms | Light frames | Peak BB AI | Attack branch | BB reads |
+|---:|---:|---:|---:|---:|---|---:|
+| 1 | 100/100 | 99/100 | 2148/7000 | 0 | unreachable, template n6 s7 | 0 |
+| 2 | 100/100 | 77/100 | 2148/6000 | 3 | sampled n2 s7 | 167 |
+| 3 | 100/100 | 89/100 | 2148/5000 | 2 | reseeded n3 s2 | 103 |
+| 4 | 100/100 | 85/100 | 2148/4000 | 3 | sampled n4 s7 | 202 |
+| 5 | 100/100 | 78/100 | 2148/3000 | 5 | sampled n5 s7 | 362 |
+| 6 | 100/100 | 46/100 | 2148/3000 | 9 | sampled n6 s7 | 558 |
+
+Night 1's zero reads across 100 replays is the control on its `reachable:
+false`: the table and the engine are two independent statements, and the matrix
+fails if they disagree. **These are simulator figures** — no night below 6 has
+ever been attempted on the device, and nothing here is a device clear or a
+claim that one policy is right for every night. That decision is package 4's.
 
 ### 2. Add a save-safe title/menu observer and selector
 

@@ -26,13 +26,20 @@ const check = (name, cond, detail = '') => {
 // ------------------------------------------------- parse: text -> plan shape
 const recipe = build({ night: 6 });
 const plan = devicePlan(recipe);
-const text = Object.entries(plan).map(([name, lines]) =>
+const text = `#night ${recipe.night}\n` + Object.entries(plan).map(([name, lines]) =>
   `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}`).join('\n') + '\n';
-const parsed = parsePlanText(text);
+const { night: parsedNight, plan: parsed } = parsePlanText(text);
 check('round-trips the emitted plan', JSON.stringify(parsed) === JSON.stringify(plan));
+check('the plan names its own night', parsedNight === 6);
 let threw = false;
 try { parsePlanText('#cycle x 1000\n0 teleport monitor 100\n'); } catch { threw = true; }
 check('unknown instruction refused', threw);
+// The gate prices a plan against the night it names. A default of 6 would
+// have gated a Night 3 plan against Night 6's AI table; see plans/13.
+let unnamed = '';
+try { modelGate(text.replace(/^#night 6\n/, ''), { runs: 1 }); }
+catch (e) { unnamed = e.message; }
+check('a plan that names no night is refused', /does not name its night/.test(unnamed), unnamed);
 
 // -------------------------------------------------------- the error injection
 const j1 = jitterPlan(parsed, 7);
@@ -86,7 +93,7 @@ check('shipped n6 plan passes under human slack', real.ok,
       { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
     check('passing plan reaches adb only after its model gate', n6.status !== 44 &&
-      /model gate: \d+\/\d+ nights/.test(n6.stderr + n6.stdout) &&
+      /model gate: \d+\/\d+ night-6 runs/.test(n6.stderr + n6.stdout) &&
       /MOCK_ADB_REACHED/.test(n6.stderr + n6.stdout), `status=${n6.status}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }

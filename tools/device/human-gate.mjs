@@ -46,13 +46,24 @@ export const GATE_RUNS = 100;
 export const GATE_MIN_SURVIVAL = 0.40;
 const JITTER_SALT = 0x68756d61; // "huma"; its own stream, never the sim's rolls
 
-// The emitted plan text, back into replay()'s {name: [lines]} shape.
+// The emitted plan text, back into replay()'s {name: [lines]} shape, plus the
+// night the plan names. A plan that names no night is not gated against a
+// guess: modelGate refuses it. See plans/13 -- pricing a Night 3 plan against
+// Night 6's AI table is a silent substitution, not a conservative default.
 export function parsePlanText(text) {
   const plan = {};
+  let night = null;
   let cur = null;
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
+    if (line.startsWith('#night')) {
+      if (cur) throw new Error('#night must precede every #cycle');
+      night = +line.split(/\s+/)[1];
+      if (!Number.isInteger(night) || night < 1 || night > 7)
+        throw new Error(`plan names night "${line.split(/\s+/)[1]}"`);
+      continue;
+    }
     if (line.startsWith('#cycle')) {
       cur = line.split(/\s+/)[1];
       plan[cur] = [];
@@ -64,7 +75,7 @@ export function parsePlanText(text) {
     plan[cur].push(line);
   }
   if (!Object.keys(plan).length) throw new Error('empty plan');
-  return plan;
+  return { night, plan };
 }
 
 // One modeled execution: every row's offset shifted by an iid draw, clamped
@@ -86,9 +97,12 @@ export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS) {
 
 export function modelGate(planText, {
   runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
-  night = 6, replayFn = replay,
+  night, replayFn = replay,
 } = {}) {
-  const plan = parsePlanText(planText);
+  const { night: named, plan } = parsePlanText(planText);
+  night = night ?? named;
+  if (night === undefined || night === null)
+    throw new Error('this plan does not name its night, and the gate will not guess one');
   let survived = 0;
   const deaths = new Map();
   for (let seed = 1; seed <= runs; seed++) {
@@ -100,7 +114,7 @@ export function modelGate(planText, {
     }
   }
   return {
-    survived, runs, slackMs, minSurvival,
+    survived, runs, slackMs, minSurvival, night,
     ok: survived >= runs * minSurvival,
     deaths: [...deaths.entries()].sort((a, b) => b[1] - a[1]),
   };
@@ -114,12 +128,12 @@ function main() {
   catch (e) { console.error(`model gate: ${e.message}`); process.exit(44); }
   const need = Math.ceil(r.runs * r.minSurvival);
   if (!r.ok) {
-    console.error(`model gate: ${r.survived}/${r.runs} nights under +/-${r.slackMs} ms human slack (need ${need}) -- refusing to run this plan`);
+    console.error(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need}) -- refusing to run this plan`);
     for (const [k, v] of r.deaths.slice(0, 4)) console.error(`  ${v}x  ${k}`);
     console.error('the pilot may not deliver inhumanly timed inputs (2026-08-25, no override)');
     process.exit(44);
   }
-  console.log(`model gate: ${r.survived}/${r.runs} nights under +/-${r.slackMs} ms human slack (need ${need})`);
+  console.log(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need})`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

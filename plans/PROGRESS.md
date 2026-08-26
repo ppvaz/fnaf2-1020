@@ -2,28 +2,32 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **34%** — 26 of 76 mandatory top-level work packages are closed.
+**Overall:** **36%** — 27 of 76 mandatory top-level work packages are closed.
 
-**Expanded stock-device roadmap (Plans 09–13):** **3%** — 1 of 32 mandatory
-packages is closed.
+**Expanded stock-device roadmap (Plans 09–13):** **6%** — 2 of 32 mandatory
+packages are closed.
 
 ## Very next step
 
-Complete **Plan 13, work package 1: remove the Night-6 construction
-assumption**, then return to Plan 09's schema slice before collecting new
-fresh-save evidence.
+Complete **Plan 13, work package 2: the save-safe title/menu observer and
+selector**.
 
-Separate cycle-template extraction from the night being evaluated; thread an
-explicit Nights 1–6 configuration through recipe generation, replay, and the
-human gate; and add a deterministic per-night matrix. Preserve the current
-Night 6 plan behavior while making a legitimately unreachable Balloon Boy
-attack branch non-fatal to Nights 1 and 3.
+Plan 13 package 1 closed on 2026-08-26: all six story nights build, replay
+100/100 exactly, and pass the ±60 ms human-slack gate priced against their own
+AI table (99, 77, 89, 85, 78 and 46 of 100). Night 6's emitted plan is pinned
+byte-for-byte. Those are simulator figures; no night below 6 has been attempted
+on a device.
 
-**This step is complete when** all six story nights build and receive exact and
-human-slack verdicts; branch reachability and resource use are reported; a
-forced unexpected-BB fixture fails closed; and the Night 6 emitted plan retains
-its pinned semantics. This is local-only work—do not tap New Game or collect a
-new device run in this step.
+The next step separates `MenuTarget` from `GameConfig`, puts the title
+coordinates behind one tested selector instead of duplicating them across
+runners and HID fixtures, and requires a deliberate `allowSaveReset`
+capability before New Game can ever be pressed.
+
+**This step is complete when** synthetic menu-frame fixtures cover fresh save,
+story progress, Sixth Night unlocked, Custom Night unlocked, unknown layouts,
+and stale/focus loss; and a test proves no unapproved path can press New Game.
+This remains local-only work—do not tap New Game or collect a new device run in
+this step.
 
 ## Dashboard
 
@@ -41,7 +45,7 @@ new device run in this step.
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 6 | **0%** | Proposed | Agree observation/decision records with Plan 09, then emit shadow state |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 0 / 8 | **0%** | Proposed after target-device save loss; simulator models per-night AI but the device path assumes Sixth Night | Fix low-threat recipe construction and add the Nights 1–6 offline matrix |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 1 / 8 | **13%** | Nights 1–6 build, replay and gate against their own AI table; the device path still assumes Sixth Night | Separate `MenuTarget` from `GameConfig` behind one tested title selector |
 
 ## Counting rule
 

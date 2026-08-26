@@ -61,6 +61,14 @@ document contradicting how the line is actually played.
   Freddy flick as a measured-safe 180 ms `maskraise` compound, the shipped
   plan replays 46/100 under human slack with the sourced Fusion LCG;
   `test-human-gate.mjs` asserts that pass.
+- **A plan names its night, and nothing downstream guesses one.**
+  `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires
+  `night` and `human-gate.mjs` refuses a plan that does not name one. The old
+  `night = 6` defaults would have priced a Night 3 plan against Night 6's AI
+  table. Whether a threat branch is *reachable* comes from the sourced AI table
+  (`C.canAct`), never from whether one sampled seed happened to show it — Night
+  1 cannot arm Balloon Boy at all, Night 3 merely makes him rare, and one
+  `throw` used to conflate those. See `tools/device/test-night-matrix.mjs`.
 - **Short taps get dropped** — Fusion polls touch per frame. The device runner
   now has one gated `hid-multi` route; its plan holds every bare contact for at
   least 100 ms. `fast-swipe` survives only in the historical run record and
