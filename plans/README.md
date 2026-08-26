@@ -35,6 +35,11 @@ Bot-research roadmap added 2026-08-26:
   Plan 09 after their observation record is agreed, and does not require RL.
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
+- **Plan 14 owns device portability.** Every device-facing number in the repo
+  describes one handset; plan 14 makes the device an explicit record, separates
+  geometry (translates by arithmetic) from layout mode (must be measured) from
+  pixel models and timing (do not translate at all), and refuses mismatched
+  pairings.
 - **Plan 13 owns campaign and all-night support.** The target-device save loss
   is treated as an evidence opportunity: safe New Game handling, verified
   story progression, per-night policy gates, Sixth/Custom unlocks, and explicit
@@ -76,3 +81,7 @@ Bot-research roadmap added 2026-08-26:
 13. [13-campaign-and-all-night-support.md](13-campaign-and-all-night-support.md)
     — save-safe lifecycle, per-night policy qualification, fresh-save story
     progression, and verified Custom Night configuration.
+14. [14-device-portability-and-profiles.md](14-device-portability-and-profiles.md)
+    — normalized canvas/controller coordinates behind a device profile, models
+    and timing bound to the profile they were measured under, and a bounded
+    new-device calibration session.

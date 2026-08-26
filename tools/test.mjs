@@ -174,6 +174,12 @@ const ENGINE = [
   // against known lateness and the /save-trace endpoint against a temp dir,
   // no browser involved.
   ['trainer trace', ['tracetest.mjs']],
+  // Plan 11's exact-engine policy adapter and the independently reimplemented
+  // Jason/Shooter25/Couraeel baselines, with their controls: a null policy, a
+  // wind-only policy, an inverted ladder and a flash-deleted Minus 7 must all
+  // score zero on Night 7, and Night 1 -- whose AI table cannot arm Balloon Boy
+  // -- is the positive control every family must clear.
+  ['policytest', ['policytest.mjs', '--assert']],
   ['camtrace', ['device/test-camtrace.py']],
   // Plan 09's read-only corpus index: classify existing artifacts without
   // rewriting them, preserve basename joins, and surface unknown/empty files.

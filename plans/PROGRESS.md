@@ -2,9 +2,9 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **38%** — 29 of 77 mandatory top-level work packages are closed.
+**Overall:** **35%** — 29 of 83 mandatory top-level work packages are closed.
 
-**Expanded stock-device roadmap (Plans 09–13):** **9%** — 3 of 33 mandatory
+**Expanded stock-device roadmap (Plans 09–14):** **8%** — 3 of 39 mandatory
 packages are closed.
 
 ## Very next step
@@ -46,6 +46,7 @@ this step.
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed | Gate A after Plans 09–11 provide their contracts |
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate against their own AI table; the title is observed and the save cursor is readable from it | Positive intro / 6 AM / death / save-advance classifiers |
+| [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; every device number describes one handset and nothing refuses a mismatch | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 
 ## Counting rule
 
@@ -53,6 +54,10 @@ this step.
   11's explicitly optional Gymnasium package is excluded.
 - Plan 13 adds eight mandatory packages; the completion numerator remains
   unchanged until one of its gates actually closes.
+- Plan 14 adds six mandatory packages on 2026-08-26 (77 -> 83 mandatory). Its
+  package 6 needs a second handset the project does not have; it is counted
+  because the plan's done criteria cannot close without it, unlike Plan 11's
+  Gymnasium package which is optional to its own goal.
 - Plan 10 gained a package 0 on 2026-08-26 (76 -> 77 mandatory): the basic
   interaction vocabulary the schedule is made of was never established, and
   office panning appears in the record only as a failure mode.
