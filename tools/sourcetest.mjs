@@ -122,13 +122,45 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   ok('g284', 'the finger is still down -- it is the light that went out', s.ventLightR);
 }
 {
-  // g267/g270: the mask press itself needs `being attacked by` = 0.
-  const s = bare({ stalledEnabled: true });
+  // g530-533: the reaction window, and the fact that the mask CANCELS it.
+  //
+  // Corrected 2026-08-26. This block asserted the opposite -- that the mask
+  // will not go on once an attack is executing -- citing g267/g270. Those
+  // groups gate on `being attacked by` (object 136), which the got-you-box roll
+  // in g556-559 sets, i.e. the COMMITTED attack. The engine was applying that
+  // gate to `got you stage` == 1, the reaction COUNTDOWN, and so forbade for
+  // the whole window the one action g533 says ends it. The old assertion is
+  // kept here as the reason the bug survived: a test asserted it.
+  const s = bare({ stalledEnabled: true, night: 3 });
   const u = s.units.find(x => x.id === 'withfreddy');
   u.inside = true;
   s.armInsideAttack(u, 'test');
+  ok('g530', 'danger raises a countdown rather than killing outright',
+    u.insideDangerAt === s.frame + C.timeAllowedFrames(3));
   s.press('mask');
-  ok('g267/g270', 'the mask will not go on once an attack is executing', !s.maskOn);
+  ok('g267/g270', 'the mask still goes on during the reaction window', s.maskOn);
+  step(s, C.MASK_ANIM_ON + 2);
+  ok('g533', 'a fully-on mask cancels the countdown', u.insideDangerAt === -1);
+}
+{
+  // g532: and if the mask is NOT on in time, the window expires and kills.
+  const s = bare({ stalledEnabled: true, night: 6 });
+  const u = s.units.find(x => x.id === 'withfreddy');
+  u.inside = true;
+  s.armInsideAttack(u, 'test');
+  step(s, C.timeAllowedFrames(6) + C.INSIDE_ATTACK_FRAMES + 2);
+  ok('g532', 'an unanswered reaction window is fatal',
+    s.death && s.death.reason === 'inside-office');
+}
+{
+  // g523-529: `time allowed` by night, and that it TIGHTENS. Night 6 is 50 and
+  // night 7 is 45 -- they are not the same, which is a common recollection.
+  const want = { 1: 100, 2: 80, 3: 60, 4: 55, 5: 50, 6: 50, 7: 45 };
+  for (const [night, frames] of Object.entries(want))
+    ok('g523-529', `night ${night} allows ${frames} frames to react`,
+      C.timeAllowedFrames(+night) === frames);
+  ok('g529', 'the night-7 window is tighter than night 6',
+    C.timeAllowedFrames(7) < C.timeAllowedFrames(6));
 }
 
 // ------------------------------------------------------------- Golden Freddy
@@ -367,12 +399,18 @@ eq('value25', 'the night-7 entry streak is 6 s', C.entryStreakFrames(7), C.s(6))
 eq('value25', 'the night-1 streak is 18 s', C.entryStreakFrames(1), C.s(18));
 eq('decompile', "Toy Bonnie's night-7 cooldown is 300 frames",
   C.toyBonnieOpeningFrames(7), 300);
-eq('decompile', "Toy Chica's opening edge is 5 s", C.TOY_CHICA_OPENING_FRAMES, C.s(5));
+eq('g903-905', "Toy Chica's opening edge is six scheduler ticks",
+  C.TOY_CHICA_OPENING_TICKS, 6);
 eq('g436-441', "Toy Bonnie's overlay rolls every 500 ms", C.TOY_BONNIE_CUE_FRAMES, C.s(0.5));
 eq('g436-441', '...at 1 in 2', C.TOY_BONNIE_CUE_CHANCE, 0.5);
 
 // marker 123
-eq('g556-569', '`danger 2` is a 40-frame transition', C.INSIDE_ATTACK_FRAMES, 40);
+// Retained, and its citation corrected: g556-569 is the got-you-box roll while
+// already masked, NOT the reaction window. The 40 is no longer the window --
+// g523-529 are -- and it is not currently used by the engine at all. Whether 40
+// belongs to `attack animation` (object 137) is UNSOURCED.
+eq('g556-569', 'the legacy flat 40 is still 40, and no longer the window',
+  C.INSIDE_ATTACK_FRAMES, 40);
 eq('g729-731', 'Mangle arms on a 1-in-20 cams-up second', C.MANGLE_INSIDE_ARM_CHANCE, 0.05);
 eq('g747-750', 'a marker-123 leave writes B = 500 flat', C.INSIDE_LEAVE_COOLDOWN, 500);
 eq('g538-555', 'a defended repel rolls Random(500)/night', C.REPEL_COOLDOWN_ROLL, 500);
@@ -439,15 +477,111 @@ eq('g494-497', "the Puppet's bare <= roll is 16/20 at AI 15",
 }
 
 // power and box
-eq('battery life', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);
-eq('battery life', 'night 1 gives 7000', C.powerFrames(1), 7000);
+eq('g866-870', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);
+eq('g866-870', 'night 1 gives 7000', C.powerFrames(1), 7000);
 eq('battery life', 'the indicator blinks at 500', C.POWER_BLINK, 500);
 eq('decompile', 'a full box drains in 16.67 s', C.BOX_DRAIN_FRAMES, C.s(16.67));
 eq('g638-645', 'empty to full takes 5.66 s', C.BOX_WIND_FRAMES, C.s(5.66));
-eq('g404-411', 'the Puppet walks five hops', C.PUPPET_STAGES, 4);
+eq('g494-496', 'three successful rolls free the Puppet', C.PUPPET_ESCAPE_STAGES, 3);
 ok('g404-411', "the Puppet's two routes are the sourced ones",
   C.PUPPET_ROUTE.left.join() === '10,7,3,1,office' &&
   C.PUPPET_ROUTE.right.join() === '10,7,4,2,office');
+
+eq('g3', 'a first raise on nights 1-6 opens CAM 09', C.initialCamera(1), 9);
+eq('g4', 'a first raise on night 7 opens CAM 07', C.initialCamera(7), 7);
+eq('g486-487', 'the Custom Night marker starts parked on CAM 10', C.parkedCamera(7), 10);
+eq('g848-854', 'the hall-light B pin is 40 frames', C.HALL_LIGHT_PIN_FRAMES, 40);
+eq('g774', 'the roaming Puppet camera pin is 10 frames', C.PUPPET_CAMERA_PIN_FRAMES, 10);
+eq('g623', 'the Puppet office edge is a 1-in-10 roll', C.PUPPET_OFFICE_ROLL, 10);
+
+{
+  // g2-4 run when the raise animation completes: the first Custom Night
+  // raise selects CAM 07, and later raises restore the player's last choice.
+  const s = bare({ night: 7 });
+  eq('g486-487', 'before the first raise the hidden marker is CAM 10', s.cam, 10);
+  s.press('monitor'); settle(s);
+  eq('g4', 'the first completed Custom Night raise selects CAM 07', s.cam, 7);
+  s.press('cam:11');
+  s.press('monitor'); settle(s);
+  s.press('monitor'); settle(s);
+  eq('g2', 'a later completed raise restores the last selected camera', s.cam, 11);
+}
+
+{
+  // g848-854 refresh B=40 only while the character is physically at a hall
+  // marker. Once the one-second light latch clears, that tail still drains.
+  const s = bare({ stalledEnabled: true });
+  const wb = s.units.find(u => u.id === 'withbonnie');
+  for (const u of s.units) if (u !== wb) u.done = true;
+  wb.idx = 2;                 // hall stage 1 (`blindA`)
+  wb.pending = true;
+  s.frame = 58;
+  s.lightLogicalUntil = 60;
+  s.tick();                   // last latched frame refreshes B through frame 99
+  while (s.frame < 60) s.tick();
+  ok('g848-854', 'the hall occupant remains pinned after latch clear',
+    wb.pending && wb.idx === 2);
+  while (s.frame < 99) s.tick();
+  ok('g848-854', 'the pending move resolves when the 40-frame B tail drains',
+    !wb.pending && wb.idx === 3);
+}
+
+{
+  // g903-905 use six global scheduler ticks, not arrival + 300 frames.
+  const s = bare({ stalledEnabled: true });
+  const tc = s.units.find(u => u.id === 'toychica');
+  for (const u of s.units) if (u !== tc) u.done = true;
+  tc.idx = tc.path.length - 1;
+  tc.atOpening = true;
+  s.press('monitor'); settle(s);
+  for (let i = 0; i < 5; i++) step(s, C.FPS - (s.frame % C.FPS));
+  ok('g903-905', 'Toy Chica is still at marker 122 after five ticks',
+    tc.atOpening && !tc.inside);
+  step(s, C.FPS);
+  ok('g903-905', 'the sixth tick advances Toy Chica while cameras are up',
+    !tc.atOpening && tc.inside);
+}
+
+{
+  // g494-497 are one-second rolls. Reaching marker 122 is not the kill:
+  // g623 rolls 1-in-10 for 123, then g574/g587-588 run a 40-frame attack.
+  const s = bare({ boxEnabled: true, worst: true });
+  s.box = 0;
+  step(s, C.FPS * C.PUPPET_ESCAPE_STAGES);
+  ok('g494-496', 'three successful seconds free and arm the Puppet',
+    s.puppet.out && s.puppet.pending && s.puppet.stage === 3);
+  s.tick();
+  eq('g404', 'the armed move resolves to CAM 10 next frame', s.puppet.loc, 10);
+  for (let hop = 0; hop < 4; hop++) {
+    step(s, C.FPS - (s.frame % C.FPS));
+    s.tick();
+  }
+  ok('g404-411', 'five route hops end at marker 122 without killing',
+    s.alive && s.puppet.atOpening && !s.puppet.inside);
+  step(s, C.FPS - (s.frame % C.FPS));
+  ok('g623/g574', 'the office roll moves to 123 and starts forcedown',
+    s.puppet.inside && s.puppet.attackAt === s.frame + C.INSIDE_ATTACK_FRAMES &&
+    s.dropEverything);
+  step(s, C.INSIDE_ATTACK_FRAMES - 1);
+  ok('g587-588', 'the Puppet attack is not instant', s.alive);
+  s.tick();
+  ok('g587-588', 'the Puppet kills after 40 attack frames',
+    s.death?.reason === 'puppet');
+}
+
+{
+  // g774 excludes CAM 11 but pins B=10 on a later watched/lit route camera.
+  const s = bare({ boxEnabled: true, worst: true });
+  Object.assign(s.puppet, { stage: 3, out: true, loc: 10 });
+  s.monitor = 'up'; s.cam = 10; s.lightHeld = true; s.frame = 58;
+  s.tick(); s.tick();
+  ok('g774', 'a lit roaming Puppet cannot arm the next one-second hop',
+    !s.puppet.pending && s.puppet.stunUntil > s.frame);
+  s.release('light');
+  step(s, C.FPS);
+  ok('g774/g496', 'the route roll resumes after the B=10 tail drains',
+    s.puppet.pending || s.puppet.loc !== 10);
+}
 
 // animation bank -- the asymmetry is the load-bearing part
 ok('build 296', 'lowering the monitor is slower than raising it',

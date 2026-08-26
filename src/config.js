@@ -111,11 +111,11 @@ export const entryStreakFrames = (night) => s(20 - 2 * night);
 // the same shape as Balloon Boy's [SOURCED: g402 flags her when the raise
 // starts, g403 moves her to 123 when it finishes], so an unchecked Mangle
 // does not sit at 122 -- the next completed raise takes her in. The
-// Chica timer can complete in just over five wall-clock seconds depending on
-// scheduler phase, so the model uses the conservative five-second edge.
+// Chica counter increments on the global one-second event (g904) and g905
+// advances her only above five: exactly six phase-aligned scheduler ticks.
 // (Pre-XOR these were labeled Withered Bonnie / Withered Chica.)
 export const toyBonnieOpeningFrames = night => 1000 - 100 * night;
-export const TOY_CHICA_OPENING_FRAMES = s(5);
+export const TOY_CHICA_OPENING_TICKS = 6;
 // Endpoint resolution (groups 538-555) repels a defended marker-122 occupant
 // to a sourced mid-route room — W. Bonnie to CAM 07, W. Chica to CAM 04,
 // Toy Bonnie to CAM 03 — with a fresh approach cooldown written into their B:
@@ -136,6 +136,42 @@ export const TOY_BONNIE_CUE_CHANCE = 0.5;
 // 729-731, 747-750]. `danger 2` starts a 40-frame attack transition. Mangle
 // arms on a 1-in-20 cameras-up second and attacks on a later cameras-down edge.
 export const INSIDE_ATTACK_FRAMES = 40;
+
+// The reaction window: how long you have to get the mask on once an attacker
+// has raised danger in the office. [SOURCED: Android frame 3 groups 523-529
+// set `time allowed` (object 132) by night; g530 copies it into `time left`
+// (133) and sets `got you stage` (134) = 1; g531 decrements `time left` once
+// per frame with no timer condition; g532 turns stage 1 into stage 2 (the
+// attack) when it reaches 0; **g533 turns stage 1 back into stage 0 when
+// `mask` (89) == 2**, which is the fully-on state g9 sets after the 12-frame
+// put-on animation.]
+//
+// Corrected 2026-08-26. This project modelled the window as a flat
+// INSIDE_ATTACK_FRAMES = 40 for every night, cited to g556-569 -- which is a
+// DIFFERENT mechanic (the got-you-box roll while already masked, groups
+// 556-559/747-750). The real window is per-night and 2.2x wider on Night 1
+// than the constant it replaced, and it TIGHTENS as the nights go on, which is
+// the part the flat constant erased entirely.
+//
+//   night  1: 100 frames   2: 80   3: 60   4: 55   5: 50   6: 50   7+: 45
+//
+// At 60 fps that is 1.67 s on Night 1 and 0.75 s from Night 7 -- and 0.75 s is
+// the figure the community's transcribed FNaF 2 AI breakdowns quote, which is
+// an independent check on both the table and the frame rate.
+// The seven groups are mutually exclusive and nothing else writes object 132,
+// so there is no ordering question: 523 is `night <= 1`, 524-528 are `night ==
+// 2..6`, and 529 is the tail `night >= 7`. Night 6 is 50 and night 7 is 45 --
+// they are NOT the same, which is a common recollection and the dump refutes it.
+//
+// UNKNOWN(what object 108 `night` holds during Custom Night). The 45 applies to
+// anything the game calls night >= 7, and Custom Night is night 7 in the menus,
+// but that variable has not been read on a Custom Night run here. Do not price
+// a 10/20 route against 0.75 s until it has been.
+export const TIME_ALLOWED_BY_NIGHT = { 1: 100, 2: 80, 3: 60, 4: 55, 5: 50, 6: 50 };
+export const TIME_ALLOWED_NIGHT7 = 45;
+export const timeAllowedFrames = (night) =>
+  night >= 7 ? TIME_ALLOWED_NIGHT7
+             : (TIME_ALLOWED_BY_NIGHT[Math.max(1, night)] ?? TIME_ALLOWED_BY_NIGHT[1]);
 export const INSIDE_MASK_ATTACK_CHANCE = 0.5;
 export const INSIDE_MASK_LEAVE_CHANCE = 0.1;
 export const MANGLE_INSIDE_ARM_CHANCE = 0.05;
@@ -193,6 +229,14 @@ export const GF_HALL_KILL_FRAMES = 100;
 // at zero, so for five seconds after anyone passes through the hallway Golden
 // Freddy cannot accumulate exposure there at all.
 export const HALL_MOVEMENT_FRAMES = 300;
+// [SOURCED: g848-854.] The office-light latch rewrites movement countdown B
+// to 40 every frame for these hall occupants. After g488 clears the latch on
+// the next one-second event, that final 40-frame countdown still must drain.
+// W. Chica and Toy Bonnie are the explicit exceptions.
+export const HALL_LIGHT_PIN_FRAMES = 40;
+export const HALL_LIGHT_PIN_IDS = new Set([
+  'withfreddy', 'withbonnie', 'toyfreddy', 'toychica', 'mangle',
+]);
 
 // Stalled animatronics: everyone is capped at 15 AI in 10/20 [SOURCED]
 export const STALLED_AI = 15;
@@ -358,12 +402,18 @@ export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty; night 6/7 rate
 // (2000-300)/300 = 5.67 s. The old "6.67 s gross" note forgot the snap-up.]
 export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding
 export const PUPPET_AI = 15;
-export const PUPPET_STAGES = 4;
+// [SOURCED: g494-497, g623, g774.] Three successful one-second rolls free
+// him from CAM 11. Later route hops use the same one-second roll, camera light
+// writes B=10 outside CAM 11, and marker 122 gets a 1-in-10 roll each second
+// before marker 123 starts the shared 40-frame attack (g574/g587-588).
+export const PUPPET_ESCAPE_STAGES = 3;
+export const PUPPET_CAMERA_PIN_FRAMES = 10;
+export const PUPPET_OFFICE_ROLL = 10;
 // Once he is off CAM 11 he walks a real route like everyone else
 // [SOURCED: g404-411]. CAM 11 -> 10 -> 07, then his own `decide path` value
 // picks a side: 1 sends him 03 -> 01, 2 sends him 04 -> 02. Both arrive at
-// marker 122, and g574 turns that into the encounter. Five hops on the normal
-// 5 s movement roll, not the old flat 5-20 s timer.
+// marker 122. Five hops use the one-second roll in g496; g623 then controls
+// the separate 122 -> 123 edge.
 export const PUPPET_ROUTE = {
   left:  [10, 7, 3, 1, 'office'],
   right: [10, 7, 4, 2, 'office'],
@@ -396,6 +446,12 @@ export const CAMS = {
 
 export const TARGET_CAMS = [10, 4, 7];
 export const BOX_CAM = 11;
+// [SOURCED: g2-4, g486-487.] Before the first raise the hidden `your view`
+// marker is parked on CAM 09 in story nights and CAM 10 in Custom Night. A
+// completed raise restores `last viewed`; with none yet, nights 1-6 open
+// CAM 09 and night 7 opens CAM 07.
+export const parkedCamera = night => night === 7 ? 10 : 9;
+export const initialCamera = night => night === 7 ? 7 : 9;
 
 // Map button geometry, normalised 0..1 inside the map panel.
 // Traced from a screenshot of the real FNaF 2 map, so the thumb path between

@@ -96,7 +96,6 @@ import { Coach } from '../src/coach.js';
     gfEnabled: false, boxEnabled: false, powerEnabled: false, record: false });
   const tc = threshold.units.find(u => u.id === 'toychica');
   tc.idx = tc.path.length - 1; tc.atOpening = true;
-  tc.openingReadyAt = threshold.frame + C.TOY_CHICA_OPENING_FRAMES;
   threshold.press('mask');
   if (!tc.atOpening)
     throw new Error('Toy Chica incorrectly received an immediate marker-122 mask repel');
@@ -229,11 +228,11 @@ import { Coach } from '../src/coach.js';
   orderedInside.rng.chance = () => true;
   orderedInside.frame = C.FPS;
   orderedInside.tickUnits(orderedInside.frame);
-  if (orderedTb.inside || orderedTb.insideDangerAt !== C.FPS + C.INSIDE_ATTACK_FRAMES)
+  if (orderedTb.inside || orderedTb.committedAt !== C.FPS + C.INSIDE_ATTACK_FRAMES)
     throw new Error('same-tick marker-123 leave incorrectly cancelled danger 2');
   if (orderedTb.idx !== 0 || orderedTb.stunUntil !== C.FPS + C.INSIDE_LEAVE_COOLDOWN)
     throw new Error('marker-123 leave did not write the sourced B = 500 route cooldown');
-  orderedInside.frame = orderedTb.insideDangerAt;
+  orderedInside.frame = orderedTb.committedAt;
   orderedInside.tickUnits(orderedInside.frame);
   if (orderedInside.alive || orderedInside.death?.reason !== 'inside-office')
     throw new Error('persisted marker-123 danger did not complete after 40 frames');
@@ -249,19 +248,19 @@ import { Coach } from '../src/coach.js';
   insideTriggers.monitor = 'up';
   insideTriggers.frame = C.FPS * 10;
   insideTriggers.tickUnits(insideTriggers.frame);
-  if (insideTb.insideDangerAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
+  if (insideTb.committedAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
     throw new Error('Toy Bonnie marker-123 ten-second cameras-up trigger was not modeled');
 
   // Isolate Mangle after checking Toy Bonnie: her 1-in-20 cameras-up roll arms
   // a later cameras-down edge rather than raising danger immediately.
-  insideTb.done = true; insideTb.insideDangerAt = -1;
+  insideTb.done = true; insideTb.committedAt = -1;
   insideMg.inside = true;
   insideTriggers.frame = C.FPS * 11;
   insideTriggers.tickUnits(insideTriggers.frame);
   if (!insideMg.insideArmed || insideMg.insideDangerAt >= 0)
     throw new Error('Mangle marker-123 cameras-up roll did not arm separately');
   insideTriggers.setMonitor(false);
-  if (insideMg.insideDangerAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
+  if (insideMg.committedAt !== insideTriggers.frame + C.INSIDE_ATTACK_FRAMES)
     throw new Error('cameras-down edge did not convert Mangle arm into danger 2');
 
   // Endpoint resolution (groups 538-555): a defended encounter repels the

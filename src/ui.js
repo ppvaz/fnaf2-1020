@@ -282,7 +282,7 @@ export class UI {
       const extra = [];
       if (sim.cam === 10 && sim.bb.stage === 0) extra.push('BB');
       if (sim.cam === 5 && sim.bb.stage === C.BB_STAGES - 1) extra.push('BB');
-      if (sim.cam === 11) extra.push(`PUPPET ${sim.puppet.stage}/4`);
+      if (sim.cam === 11) extra.push(`PUPPET ${sim.puppet.stage}/${C.PUPPET_ESCAPE_STAGES}`);
       this.el.feedBody.innerHTML = here.map(u => {
         const st = Math.max(0, u.stunUntil - sim.frame) / C.STUN_FRAMES;
         return `<span class="chip ${st > 0 ? 'stunned' : 'free'}">${u.short}</span>`;

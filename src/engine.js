@@ -48,7 +48,8 @@ export class Sim {
     // frame the current cams-up session started (-1 = monitor down); the
     // sourced entry timer counts against this streak, not time-in-opening
     this.camsUpSince = -1;
-    this.cam = C.BOX_CAM;
+    this.cam = C.parkedCamera(this.opts.night);
+    this.hasViewedCamera = false;
     this.maskOn = false;
     this.maskAnim = 0;
     this.lightHeld = false;
@@ -75,7 +76,10 @@ export class Sim {
     this.maskDAccum = 0;
 
     // --- Golden Freddy (office) + the separate hallway version
-    this.gf = { present: false, inHall: false, hallExposure: 0 };
+    this.gf = {
+      present: false, inHall: false, hallExposure: 0,
+      hallInside: false, attackAt: -1,
+    };
     // `hall movement`: refreshed to 300 frames whenever someone transits the
     // hall, and Golden Freddy's hall exposure is blocked while it runs.
     this.hallMovementUntil = -1;
@@ -97,14 +101,18 @@ export class Sim {
     this.units = C.STALLED.map(u => ({
       ...u, idx: 0, stunUntil: -1, pending: false, atOpening: false,
       openingSince: -1, openingReadyAt: -1, officeCue: false,
-      maskExposureTicks: 0, raiseSeen: false, inside: false,
-      insideArmed: false, insideDangerAt: -1, done: false,
+      openingTicks: 0, maskExposureTicks: 0, raiseSeen: false, inside: false,
+      insideArmed: false, insideDangerAt: -1, committedAt: -1, done: false,
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
 
     // --- puppet
-    this.puppet = { stage: 0, out: false, route: null, idx: -1 };
+    this.puppet = {
+      stage: 0, out: false, route: null, idx: -1, loc: 11,
+      pending: false, pathChoice: 'left', stunUntil: -1,
+      atOpening: false, inside: false, attackAt: -1,
+    };
 
     // --- recording for the post-run report
     if (this.opts.record) {
@@ -142,7 +150,13 @@ export class Sim {
   get camsUp() { return this.monitor === MON_UP; }
   get maskFullyOn() { return this.maskOn && this.maskAnim === 0; }
   // `being attacked by` (g560-562 set it per unit at marker 123).
-  get attackExecuting() { return this.units.some(u => u.insideDangerAt >= 0); }
+  // `being attacked by` (object 136): the COMMITTED attack, which g267/g270
+  // read to refuse the mask and g624 reads to force everything down. It is
+  // NOT `got you stage` == 1 (the reaction countdown) -- conflating the two
+  // is the 2026-08-26 defect recorded in config.js.
+  get attackExecuting() { return this.units.some(u => u.committedAt >= 0); }
+  get puppetAttackExecuting() { return this.puppet.attackAt >= 0; }
+  get goldenHallAttackExecuting() { return this.gf.attackAt >= 0; }
   get hallView() { return this.monitor !== MON_UP; }
   // `white button` follows the physical hold. `new bonnie`, the office-light
   // movement latch, survives release until the next one-second scheduler tick.
@@ -220,8 +234,16 @@ export class Sim {
     if (this.maskOn && action !== 'mask') return;
     if (action === 'mask' && !this.maskOn &&
         (this.monitor === MON_UP || this.monitor === MON_RAISING)) return;
-    // g267/g270 also require `being attacked by` = 0: once a marker-123
-    // occupant has started its 40-frame attack the mask no longer goes on.
+    // Puppet at marker 123 has already written `being attacked by` (g574),
+    // so g267/g270 no longer accept a new mask press during his 40-frame
+    // attack transition.
+    if (action === 'mask' && !this.maskOn &&
+        (this.puppetAttackExecuting || this.goldenHallAttackExecuting)) return;
+    // g267/g270 require `being attacked by` (136) = 0, so a COMMITTED attack
+    // refuses the mask. Corrected 2026-08-26: this used to read the reaction
+    // countdown (`got you stage` == 1) instead, and so forbade for the whole
+    // window the one action g533 says ends it. No withered that reached the
+    // office was survivable in this simulator until that was split apart.
     if (action === 'mask' && !this.maskOn && this.attackExecuting) return;
     if (action === 'light') {
       this.lightHeld = true;
@@ -266,7 +288,7 @@ export class Sim {
       // (Android groups 560-563).
       for (const u of this.units) {
         if (u.inside && u.openingRule === 'streak')
-          this.armInsideAttack(u, 'mask was removed with an attacker inside the office');
+          this.commitAttack(u, 'mask was removed with an attacker inside the office');
       }
     }
   }
@@ -293,9 +315,9 @@ export class Sim {
       for (const u of this.units) {
         if (!u.inside) continue;
         if (u.id === 'mangle') {
-          if (u.insideArmed) this.armInsideAttack(u, 'Mangle armed while the cameras were up');
+          if (u.insideArmed) this.commitAttack(u, 'Mangle armed while the cameras were up');
         } else {
-          this.armInsideAttack(u, 'lowered the monitor with an attacker inside the office');
+          this.commitAttack(u, 'lowered the monitor with an attacker inside the office');
         }
       }
     }
@@ -323,6 +345,7 @@ export class Sim {
     u.raiseSeen = false;
     u.openingSince = -1;
     u.openingReadyAt = -1;
+    u.openingTicks = 0;
     if (this.engagedToy === u.id) this.engagedToy = null;
     this.emit('office-entry', { who: u.id, why });
     this.flag('inside-office', `${u.name} reached marker 123: ${why}`);
@@ -333,10 +356,26 @@ export class Sim {
     return Math.floor(this.rng.int(0, C.REPEL_COOLDOWN_ROLL - 1, 0) / this.opts.night);
   }
 
+  // g532 / g556-559 -> `being attacked by` = N. Past this point the mask is
+  // refused (g267) and everything is forced down (g624); nothing cancels it.
+  commitAttack(u, why) {
+    if (u.committedAt >= 0) return;
+    u.insideDangerAt = -1;
+    u.committedAt = this.frame + C.INSIDE_ATTACK_FRAMES;
+    this.dropEverything = true;   // g624
+    this.emit('inside-committed', { who: u.id, why });
+  }
+
   armInsideAttack(u, why) {
     if (u.insideDangerAt >= 0) return;
-    u.insideDangerAt = this.frame + C.INSIDE_ATTACK_FRAMES;
-    this.dropEverything = true;   // g624: any attack start forces everything down
+    // `got you stage` = 1 and `time left` = `time allowed`, per night (g530).
+    u.insideDangerAt = this.frame + C.timeAllowedFrames(this.opts.night);
+    // NOT dropEverything. g624 gates on `being attacked by` (136) > 0 -- the
+    // COMMITTED attack -- and g274 turns `drop everything` into mask = 3, i.e.
+    // it forces the mask OFF. Setting it here, at `got you stage` = 1, made the
+    // bug self-reinforcing: the mask could never reach `mask == 2`, so g533's
+    // escape was unreachable even once the gate above was removed. Third place
+    // the same two source variables had been merged.
     this.emit('inside-armed', { who: u.id, why });
   }
 
@@ -367,6 +406,10 @@ export class Sim {
     if (this.monAnim > 0 && --this.monAnim === 0) {
       if (this.monitor === MON_RAISING) {
         this.monitor = MON_UP;
+        if (!this.hasViewedCamera) {
+          this.cam = C.initialCamera(this.opts.night);
+          this.hasViewedCamera = true;
+        }
         this.onCamsUp();
         // Active 18 has just become invisible: a Mangle that saw this raise
         // crosses 122 -> 123 now (groups 402-403).
@@ -470,6 +513,17 @@ export class Sim {
     // (sourced groups 450-457; `stun time` = 400 frames).
     if (this.camLightOn && this.opts.cameraLightStunFrames > 0)
       this.stunCam(this.cam, this.opts.cameraLightStunFrames);
+    // g848-854 are distinct from the direct edge gate above: while the
+    // one-second office-light latch remains set, hall occupants have B pinned
+    // to 40. Movement therefore stays blocked for 40 more frames after the
+    // latch finally clears. W. Chica and Toy Bonnie have no such group.
+    if (this.lightStallOn) {
+      for (const u of this.units) {
+        if (!u.done && C.HALL_LIGHT_PIN_IDS.has(u.id) &&
+            (u.path[u.idx] === 'blindA' || u.path[u.idx] === 'blindB'))
+          u.stunUntil = Math.max(u.stunUntil, this.frame + C.HALL_LIGHT_PIN_FRAMES);
+      }
+    }
     // Legacy diagnostic model only: a 400-frame timer refreshed by looking
     // at a Withered. The sourced look effect is the marker hold in
     // canAdvance, which releases the moment the marker leaves; this knob
@@ -484,13 +538,27 @@ export class Sim {
 
   stunCam(n, frames = C.STUN_FRAMES) {
     for (const u of this.units) if (u.path[u.idx] === n && !u.done) u.stunUntil = this.frame + frames;
-    if (n === C.BOX_CAM) this.puppet.lightHeldThisSecond = true;
   }
 
   // Hallway Golden Freddy: he can only take the hall when it is genuinely
   // empty, which in Minus 7 means the windows where Foxy has been evicted.
   tickGoldenHall(f) {
     if (!this.opts.gfEnabled) return;
+    // g780 only moves the hallway figure to marker 123. g570 waits for a
+    // one-second event there before writing attack code 12; g587-588 then run
+    // the shared 40-frame transition. Crossing 100 exposure is not itself the
+    // jumpscare.
+    if (this.gf.hallInside) {
+      if (this.gf.attackAt >= 0) {
+        if (f >= this.gf.attackAt)
+          this.kill('golden-freddy-hall', 'Hall Golden Freddy completed the marker-123 attack');
+      } else if (f % C.FPS === 0) {
+        this.gf.attackAt = f + C.INSIDE_ATTACK_FRAMES;
+        this.dropEverything = true;
+        this.emit('gf-hall-attack');
+      }
+      return;
+    }
     // g779's empty-hall test names exactly the characters whose routes pass
     // through the two off-camera transit markers: `hall stage 1` (120) is
     // blindA and `hall stage 2` (121) is blindB, plus W. Foxy in the hall.
@@ -516,8 +584,9 @@ export class Sim {
     // not modelled, which can only ever make the engine stricter than source.
     if (this.hallLightOn && !hallOccupied) {
       if (++this.gf.hallExposure > C.GF_HALL_KILL_FRAMES) {
-        this.kill('golden-freddy-hall',
-          `Held the light on Golden Freddy in the hallway past ${C.GF_HALL_KILL_FRAMES} frames`);
+        this.gf.inHall = false;
+        this.gf.hallInside = true;
+        this.emit('gf-hall-inside');
       }
     }
   }
@@ -593,7 +662,7 @@ export class Sim {
     // cooldown is the same counter as the flash stun (and Toy Bonnie's
     // opening timer).
     if (opts.cooldown) u.stunUntil = this.frame + opts.cooldown;
-    u.openingSince = -1; u.openingReadyAt = -1;
+    u.openingSince = -1; u.openingReadyAt = -1; u.openingTicks = 0;
     u.officeCue = false; u.maskExposureTicks = 0; u.raiseSeen = false;
     u.insideArmed = false;
     // Do not clear insideDangerAt: `danger 2` is global in the source, so a
@@ -681,9 +750,34 @@ export class Sim {
     if (!this.opts.stalledEnabled) return;
     for (const u of this.units) {
       if (u.done) continue;
+      // Stage 2 first: a committed attack runs out its animation and kills.
+      if (u.committedAt >= 0) {
+        if (f >= u.committedAt) {
+          this.kill('inside-office',
+            `${u.name} completed the sourced ${C.INSIDE_ATTACK_FRAMES}-frame ` +
+            'marker-123 attack');
+          return;
+        }
+        continue;
+      }
+      // g533: `got you stage` == 1 AND `mask` == 2 -> stage 0. The reaction
+      // window is cancelled outright by getting the mask FULLY on -- not merely
+      // pressed, since g9 sets mask = 2 only after the 12-frame put-on
+      // animation, which is what `maskFullyOn` means here.
+      //
+      // Added 2026-08-26. Its absence is why every withered that reached the
+      // office was fatal: the countdown existed, the kill existed, and the one
+      // documented escape did not.
+      if (u.insideDangerAt >= 0 && this.maskFullyOn) {
+        u.insideDangerAt = -1;
+        this.emit('inside-cancelled', { who: u.id, why: 'mask fully on inside `time left`' });
+        continue;
+      }
+      // g532: `time left` <= 0 -> stage 2.
       if (u.insideDangerAt >= 0 && f >= u.insideDangerAt) {
-        this.kill('inside-office', `${u.name} completed the sourced 40-frame marker-123 attack`);
-        return;
+        this.commitAttack(u, `the mask was not fully on within night ` +
+          `${this.opts.night}'s ${C.timeAllowedFrames(this.opts.night)}-frame window`);
+        continue;
       }
       if (u.inside) {
         if (u.id === 'mangle') {
@@ -691,18 +785,21 @@ export class Sim {
               this.rng.chance(C.MANGLE_INSIDE_ARM_CHANCE, true))
             u.insideArmed = true;
           if (!this.camsUp && u.insideArmed)
-            this.armInsideAttack(u, 'Mangle armed while the cameras were up');
+            this.commitAttack(u, 'Mangle armed while the cameras were up');
         } else if (u.id === 'toybonnie') {
           // In addition to the shared monitor-lowering trigger, Toy Bonnie at
           // marker 123 raises danger every ten seconds spent cameras-up
           // (group 722).
           if (this.camsUp && f % (C.FPS * 10) === 0)
-            this.armInsideAttack(u, 'Toy Bonnie remained inside with cameras up');
+            this.commitAttack(u, 'Toy Bonnie remained inside with cameras up');
         } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0) {
           // Groups 556-559 precede the 10% return groups 747-750. Preserve
           // that order: a simultaneous attack roll is not cancelled by leave.
+          // g556-559 set `being attacked by` outright: this is stage 2, not a
+          // new reaction window. Masking is what EXPOSES you to this roll, so
+          // it cannot also be the escape from it.
           if (this.rng.chance(C.INSIDE_MASK_ATTACK_CHANCE, true))
-            this.armInsideAttack(u, 'inside-office mask attack roll');
+            this.commitAttack(u, 'inside-office mask attack roll');
           // A marker-123 leave returns to the route start with B = 500
           // (groups 747-750).
           if (this.rng.chance(C.INSIDE_MASK_LEAVE_CHANCE, false))
@@ -735,10 +832,17 @@ export class Sim {
           continue;
         }
       }
+      // g903 zeroes Toy Chica's v8 on arrival; g904 increments it on every
+      // global one-second event at marker 122. g905 needs v8 > 5 and cameras
+      // up, so this is six scheduler ticks, not a fixed five-second delay.
+      if (u.id === 'toychica' && u.atOpening && f % C.FPS === 0)
+        u.openingTicks++;
       const streakKill = u.atOpening && u.openingRule === 'streak' && this.camsUpSince >= 0 &&
         f - this.camsUpSince >= C.entryStreakFrames(this.opts.night);
       const armedKill = u.atOpening && u.openingRule === 'mask' && this.camsUp &&
-        f >= (u.id === 'toybonnie' ? u.stunUntil : u.openingReadyAt);
+        (u.id === 'toybonnie'
+          ? f >= u.stunUntil
+          : u.openingTicks >= C.TOY_CHICA_OPENING_TICKS);
       if (streakKill || armedKill) {
         const why = streakKill
           ? `cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`
@@ -752,14 +856,12 @@ export class Sim {
     u.idx++;
     const node = u.path[u.idx];
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
-      u.atOpening = true; u.openingSince = this.frame;
+      u.atOpening = true; u.openingSince = this.frame; u.openingTicks = 0;
       // Toy Bonnie's opening timer IS his B counter (group 428 writes
       // B = 1000-100*night on arrival; g546 needs B = 0 plus a monitor
       // raise), so it shares the flash-stun/repel-cooldown field.
       if (u.id === 'toybonnie')
         u.stunUntil = this.frame + C.toyBonnieOpeningFrames(this.opts.night);
-      else if (u.id === 'toychica')
-        u.openingReadyAt = this.frame + C.TOY_CHICA_OPENING_FRAMES;
       if (u.mutex) this.engagedToy = u.id;
       this.emit('vent-bang', { who: u.id, leaving: false, sample: C.THUD_SAMPLE });
       this.flag('broke-loose', `${u.name} reached office threshold marker 122`);
@@ -823,10 +925,7 @@ export class Sim {
         this.emit('gf-appear');
       }
     }
-    // 5. Puppet, once the box is dry
-    if (this.opts.boxEnabled) this.tickPuppetRoute();
   }
-
 
   tickBox() {
     if (!this.opts.boxEnabled) return;
@@ -835,34 +934,85 @@ export class Sim {
     } else {
       this.box = Math.max(0, this.box - 1 / C.BOX_DRAIN_FRAMES);
     }
-    if (this.frame % C.FPS === 0) {
-      if (this.box <= 0 && !this.puppet.out) {
+    this.tickPuppet();
+  }
+
+  // Puppet source order is route actions g404-411, the one-second arm/branch
+  // groups g494-497, the office roll g623, and finally the camera B=10 write
+  // g774. A successful roll therefore becomes a move on the next frame.
+  tickPuppet() {
+    const p = this.puppet;
+    const f = this.frame;
+
+    if (p.attackAt >= 0) {
+      if (f >= p.attackAt)
+        this.kill('puppet', 'The Puppet completed the sourced 40-frame marker-123 attack');
+      return;
+    }
+
+    if (p.pending && !p.atOpening && !p.inside) {
+      p.pending = false;
+      this.advancePuppet();
+    }
+
+    if (f % C.FPS === 0) {
+      // g494/g495: three successful one-second rolls while the box is empty.
+      // CAM 11 light blocks the viewing=11 branch; every other view rolls.
+      if (this.box <= 0 && !p.out && p.stage < C.PUPPET_ESCAPE_STAGES) {
         const protectedByLight = this.camLightOn && this.cam === C.BOX_CAM;
         if (!protectedByLight && this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true)) {
-          this.puppet.stage++;
-          this.emit('puppet-stage', this.puppet.stage);
-          if (this.puppet.stage >= C.PUPPET_STAGES) {
-            this.puppet.out = true;
-            // g406/407 branch on his own `decide path` value.
-            this.puppet.route = this.rng.chance(0.5, true)
-              ? C.PUPPET_ROUTE.left : C.PUPPET_ROUTE.right;
-            this.puppet.idx = -1;
+          p.stage++;
+          this.emit('puppet-stage', p.stage);
+          if (p.stage >= C.PUPPET_ESCAPE_STAGES) {
+            p.out = true;
             this.emit('puppet-out');
           }
         }
       }
+
+      // g496: after escape, each one-second AI success arms one route hop,
+      // provided B has drained to zero.
+      if (p.out && !p.atOpening && !p.inside && f >= p.stunUntil &&
+          this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true))
+        p.pending = true;
+
+      // g497 rewrites the next 07 branch choice every second.
+      p.pathChoice = this.rng.int(1, 2, 1) === 1 ? 'left' : 'right';
+
+      // g623: marker 122 is not lethal on arrival. It rolls 1-in-10 each
+      // second to move to 123; g574 then raises attack code 9 and forcedown.
+      if (p.atOpening && this.rng.int(0, C.PUPPET_OFFICE_ROLL - 1, 1) === 1) {
+        p.atOpening = false;
+        p.inside = true;
+        p.loc = 'inside';
+        p.attackAt = f + C.INSIDE_ATTACK_FRAMES;
+        this.dropEverything = true;
+        this.emit('puppet-attack', { at: 123 });
+      }
     }
+
+    // g774 executes after the movement roll. Outside CAM 11, lighting the
+    // Puppet's current camera rewrites B to 10 every frame; g372 drains it.
+    if (this.camLightOn && p.out && !p.atOpening && !p.inside &&
+        p.loc !== C.BOX_CAM && p.loc === this.cam)
+      p.stunUntil = f + C.PUPPET_CAMERA_PIN_FRAMES;
   }
 
-  // g404-411: off CAM 11 he hops his route on the ordinary movement roll, and
-  // only the arrival at marker 122 ends the run (g574).
-  tickPuppetRoute() {
-    if (!this.puppet.out || !this.puppet.route) return;
-    if (!this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true)) return;
-    this.puppet.idx++;
-    const at = this.puppet.route[this.puppet.idx];
-    this.emit('puppet-move', { at });
-    if (at === 'office') this.kill('puppet', 'The Puppet reached the office');
+  advancePuppet() {
+    const p = this.puppet;
+    if (p.loc === 11) p.loc = 10;
+    else if (p.loc === 10) p.loc = 7;
+    else if (p.loc === 7) {
+      p.route = C.PUPPET_ROUTE[p.pathChoice];
+      p.loc = p.pathChoice === 'left' ? 3 : 4;
+    } else if (p.loc === 3) p.loc = 1;
+    else if (p.loc === 4) p.loc = 2;
+    else if (p.loc === 1 || p.loc === 2) {
+      p.loc = 'opening';
+      p.atOpening = true;
+    }
+    p.idx++;
+    this.emit('puppet-move', { at: p.atOpening ? 'office' : p.loc });
   }
 
   record() {
