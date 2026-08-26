@@ -299,17 +299,25 @@ harmless.
 "needs a survived night". The clear produced one, and the fixtures are retained
 at `captures/lifecycle/n1-sixam-20260826/`.
 
-**Done.** `sixam` and `intro` are positive classifiers, measured with controls
-(`ON-DEVICE-SCREEN-CHECKS`, `lifecycle-observe.py`): the win confetti reads
-0.059–0.326% on every real 6 AM frame and **exactly zero** across sixteen intro
-frames from two recordings, while `mean < 5` separates both from every other
-class by a wide margin. A dark frame with no text now says `dark-frame-no-text`
-instead of blaming the sensor. `run-timeline.py` segments a recording into
-intro / camera / office / mask / dark / sixam and returns a machine-readable
-terminal outcome with its evidence (`--json`), wired into `grade-run.sh`. Three
-phases are positive anchors, not residuals — the selected camera's yellow map
-button, the pink mask bar, and the dark-screen pair — after `is_night()` turned
-out to be an ALIVE test rather than an OFFICE test (the flashlight meter stays
+**Done.** `sixam` and generic `intro` are positive classifiers, measured with
+controls (`ON-DEVICE-SCREEN-CHECKS`, `lifecycle-observe.py`,
+`intro_card.py`). The win confetti reads 0.059–0.326% on every real 6 AM frame
+and **exactly zero** on the measured intro frames. The intro decision is not the
+weaker inverse of that rule: it requires central text, a black outer field, low
+roughness, and absent confetti together. A dark text frame that satisfies
+neither classifier is `UNKNOWN(dark-text-no-lifecycle-signature)`, not an intro
+by elimination. `testdata/make-intro-card-fixture.py` and
+`test-intro-card.py` commit and gate that decision without committing the
+ignored game capture. They explicitly reject the brighter preceding cutscene,
+fade, office, and 6 AM and never emit a night number.
+
+A dark frame with no text says `dark-frame-no-text` instead of blaming the
+sensor. `run-timeline.py` segments a recording into intro / camera / office /
+mask / dark / sixam / unknown and returns a machine-readable terminal outcome
+with its evidence (`--json`), wired into `grade-run.sh`. Three phases are
+positive anchors, not residuals — the selected camera's yellow map button, the
+pink mask bar, and the dark-screen classifiers — after `is_night()` turned out
+to be an ALIVE test rather than an OFFICE test (the flashlight meter stays
 drawn over a raised tablet, so it reads `True` on 100% of a run's frames).
 
 **Still open, and the gate does not close without them:**
@@ -354,23 +362,25 @@ calibrate on.
 minigame, static, title, and unknown. An aborted or short recording cannot be
 graded as either a clear or a campaign advance.
 
-**Fixture inventory, measured 2026-08-26.** This package is half-startable
-without a phone, and the half that is missing is missing for a structural
-reason rather than a filing one.
+**Fixture inventory, reconciled 2026-08-26.** There are two different facts to
+keep separate: real calibration material exists in this working copy, while a
+cold clone has only the synthetic decision gate because `captures/` is
+gitignored.
 
-*Present.* `captures/lifecycle/n1-intro-cal-20260826.mp4` — 12.9 s, 697 frames
+*Present locally.* `captures/lifecycle/n1-intro-cal-20260826.mp4` — 12.9 s, 697 frames
 at 1280x576 — contains the **`12:00 AM / 1st Night` intro card and the
 intro→night transition**. Sampled at 2 fps, `screenstate.py` reads `other`
 through the card and `night` from about 8 s, so the boundary is labelled by the
-authority itself. That is the positive intro classifier's training and holdout
-material, available now. `n1-death/` holds 126 death frames, `night1/` 22 office
-frames, `box-starve/` and `box-wind/` the music-box series.
+authority itself. `captures/lifecycle/n1-sixam-20260826/` contains seventeen
+real 6 AM frames from the cleared `n1-full-1640` run. `n1-death/` holds 126
+death frames, `night1/` 22 office frames, and `box-starve/` / `box-wind/` the
+music-box series. These files calibrate the checked-in models but are not a
+repository fixture set.
 
-*Absent.* **No 6 AM frame exists anywhere in the repository.** Package 3 can
-therefore build and gate the intro classifier, but cannot close: the 6 AM
-transition and the minigames still have nothing to fit or to hold out against,
-which is exactly what `lifecycle-observe.py`'s header already says and reports
-as `unknown` rather than guessing.
+*Absent.* No minigame capture exists, no intro card for Nights 2–6 exists, and
+no real lifecycle capture is committed. The package therefore remains open:
+the repository-runnable synthetic gate proves the classifier's decision logic,
+not its thresholds, cross-night recall, minigame coverage, or night identity.
 
 *Mislabelled, now corrected.* `captures/lifecycle/n1-clear/` contained a **death**
 — `screenstate.py` reads its `final.png` as `gameover` — and has been renamed
@@ -379,58 +389,68 @@ rather than a live defect, but it was a trap aimed precisely at this package: a
 session building 6 AM fixtures would have found a directory named `n1-clear` and
 fitted the clear classifier to a Game Over.
 
-**The intro card's signature, measured 2026-08-26** on the 26 frames sampled at
-2 fps from that video. Recorded here because it cannot be re-measured on a
-machine without these captures, and because it carries its own negative control.
+**The intro card's signature, implemented and re-measured 2026-08-26** on the
+26 frames sampled at 2 fps from that video. Recorded here because it cannot be
+re-measured on a machine without these captures, and because it carries its own
+negative controls.
 
-Three fractional-box signals: `textbox` = bright fraction (min>150) over
+Four fractional signals: `textbox` = bright fraction (min>150) over
 x∈[0.36,0.64], y∈[0.36,0.60], where the `12:00 AM / Nth Night` glyphs sit;
 `outer` = the same over the top quarter of the frame; `rough` = mean absolute
-vertical-neighbour difference over the central 80%.
+grayscale vertical-neighbour difference over the central 80%; and `confetti` =
+saturated-colour percentage sampled over the upper 45%.
 
-| frames | what | `textbox` | `outer` | `rough` |
-|---|---|---:|---:|---:|
-| i001–i006 | pre-intro cutscene | 0.0001–0.1096 | 0.0225–0.0259 | 2.63–4.58 |
-| **i007–i011** | **the intro card** (2.5 s) | **0.0684** | **0.0000** | **0.32** |
-| i012–i015 | fade to black | ≤0.0001 | 0.0000 | 0.00–0.19 |
-| i016–i026 | office / night | 0.0007 | 0.0294–0.0324 | 1.01 |
+| frames | what | `textbox` | `outer` | `rough` | `confetti` |
+|---|---|---:|---:|---:|---:|
+| i001–i006 | pre-intro cutscene | 0.0000–0.0877 | 0.0231–0.0259 | 4.99–8.71 | 0.000–0.727% |
+| **i007–i011** | **the intro card** (2.5 s) | **0.0733** | **0.0000** | **0.565** | **0.000%** |
+| i012–i015 | fade to black | 0.0000 | 0.0000 | 0.000–0.313 | 0.000% |
+| i016–i026 | office / night | 0.0001 | 0.0286–0.0311 | 1.839–1.856 | 4.950–4.996% |
+| e020–e036 | 6 AM | 0.0812–0.0977 | 0.0002–0.0021 | 0.431–0.562 | **0.059–0.326%** |
+
+Those table values are at the retained frames' native 1280x576. At
+`run-timeline.py`'s required 640x288 working size the intro roughness is 1.065;
+the checked-in maximum is therefore 1.2, still below the nearest office
+control at 1.839 native / 2.861 downsampled. The resolution control is part of
+the model evidence rather than an assumption that roughness is scale-invariant.
 
 **The control is the interesting row, and it refutes the obvious classifier.**
-The pre-intro cutscene reaches `textbox` = **0.1096**, *higher* than the intro
-card's 0.0684. A "bright text in the middle" test — the first thing anyone would
-write — fires on the cutscene and would call it an intro card. What separates
-them is not the text at all: it is that the intro card is **pure black
-everywhere else** (`outer` exactly 0.0000, against 0.0225–0.0259) and almost
-perfectly smooth (`rough` 0.32 against 2.63–4.58). So the card must be
-recognised by a *conjunction* — text present AND nothing outside it AND low
-roughness — and any single-signal version of this is wrong in a way that fires
-on the screen immediately preceding the one it is looking for.
+The pre-intro cutscene reaches `textbox` = **0.0877**, higher than the intro
+card's 0.0733. A "bright text in the middle" test fires on the cutscene and
+would call it an intro card. The black outer field and low roughness reject that
+control; text presence rejects the fade. The 6 AM rows add the control the
+original inventory could not: all three shape signals also match the win
+screen, so absent confetti is a required fourth clause. Any inverse rule such
+as "clock text and not enough confetti to prove 6 AM means intro" is not the
+implemented classifier.
 
-Two consequences for how it gets built:
+Two consequences reflected in the implementation:
 
-- **It must use fractional boxes, not `lifecycle-observe.py`'s model.** That
-  model is sensor-bound at `screencap-2400x1080` and correctly refuses these
-  1280x576 screenrecord frames — the fixture that exists is exactly the sensor
-  the refiner will not read. Follow `nightpredicate.py`'s precedent (fractions
-  of the frame, so both callers agree) rather than adding a second calibrated
-  model per sensor, which is the duplication Plan 15 exists to stop.
+- **It uses fractional boxes, not the sensor-bound remainder of
+  `lifecycle-observe.py`'s model.** The real calibration is 1280x576
+  `screenrecord`; the live observer normally sees 2400x1080 `screencap`.
+  `intro_card.py` follows `nightpredicate.py`'s fractional precedent so the
+  lifecycle observer and timeline share one fact rather than duplicating it per
+  sensor.
 - **Card detection generalises; the night number does not.** Every story night's
-  card has this structure, so the conjunction above should find all six. Reading
-  *which* night it says is a separate problem with separate evidence, and the
-  identity contract needs the second, not just the first. Do not let a detected
-  card stand in for a verified night.
+  card is expected to share this structure, but only Night 1 has evidence, so
+  cross-night recall is not claimed. Reading *which* night it says is a separate
+  problem with separate evidence, and the identity contract needs that second
+  fact, not just the first. Do not let a detected card stand in for a verified
+  night.
 
-Gate it the way this repository already gates classifiers: fit the thresholds on
-the real frames, then prove the **decision** with synthetic fixtures generated by
-a committed script (`testdata/make-title-fixture.py` and `test-screenstate.py`
-are the two precedents). That is what makes the gate runnable on a clone that
-has no captures.
+The gate follows the existing pattern: thresholds and measured ranges live in
+`models/intro-card-moto-g56-v207.json`; a committed generator produces an
+intro, cutscene, fade, office, 6 AM and deliberately synthetic model in a
+temporary directory; `test-intro-card.py` proves the conjunction, UNKNOWN
+reasons, generic label, timeline path, and `grade-run.sh` wiring. Synthetic
+frames prove decisions, never calibration.
 
 *And a caveat that outranks all of the above.* **`captures/` is gitignored.**
-Every fixture named here exists on one laptop and in no clone. A cold session on
-another machine has none of it, so "the intro fixture exists" is a statement
-about this working copy, not about the repository. Package 3's holdout set needs
-somewhere to live before it can be a gate anyone else can run.
+Every real frame named here exists on one laptop and in no clone. A cold clone
+can run the synthetic decision gate, but it cannot independently refit or audit
+the real thresholds. Package 3 still needs a reviewable real holdout set before
+its full gate can close.
 
 **Sensor binding, measured the same day** (a fact × sensor pairing Plan 15 wants
 inventoried, so recorded here where it was found):

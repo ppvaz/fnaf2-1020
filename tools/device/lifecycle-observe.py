@@ -24,9 +24,10 @@ OFFICE frame, higher than its 0.050 threshold, so a title test placed before the
 HUD test would claim the office is a title screen. The HUD bars (0.151 in the
 office, 0.000 on every title screen) are consulted first.
 
-Not yet modelled, and deliberately reported as unknown rather than guessed:
-the 6 AM transition and the minigames. Neither has been captured -- 6 AM needs a
-survived night. `state=unknown` is the correct answer for them today.
+Still not modelled, and deliberately reported as unknown rather than guessed:
+minigames and the night number printed on an intro card. The generic intro card
+and the 6 AM transition now have positive signals, but neither can stand in for
+those missing facts.
 
 One correction worth carrying: the death static on this build is DARK (frame
 mean 34.1, the same as the office), not the bright static the cue helper's death
@@ -43,10 +44,12 @@ warnings.simplefilter("ignore")
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sensor import open_frame, SensorMismatch  # noqa: E402
+import intro_card  # noqa: E402
 from PIL import Image  # noqa: E402
 GEOMETRY = (2400, 1080)
 MODEL_SCHEMA = "lifecycle-model-v1"
 DEFAULT_MODEL = os.path.join(HERE, "models", "lifecycle-moto-g56-v207.json")
+_INTRO_MODELS = {}
 
 
 def refuse(reason):
@@ -104,8 +107,15 @@ def authority(data):
 # card names. Reading "1st" from "2nd" is a different problem with different
 # evidence, and plans/13's identity contract needs that second fact -- so a
 # detected card must never stand in for a verified night.
+def _intro_model():
+    path = os.environ.get("INTRO_CARD_MODEL", intro_card.DEFAULT_MODEL)
+    if path not in _INTRO_MODELS:
+        _INTRO_MODELS[path] = intro_card.load_model(path)
+    return _INTRO_MODELS[path]
+
+
 def dark_screen_state(im, th):
-    """`sixam`, `intro`, or None when this is not a dark text screen."""
+    """Name a measured dark screen, otherwise return a refusal sentinel."""
     im = im.convert("RGB")
     w, h = im.size
     px = im.load()
@@ -134,7 +144,9 @@ def dark_screen_state(im, th):
         return "dark"
 
     # Win confetti: saturated colour in the upper half. The intro card is pure
-    # white on black and reads exactly zero here.
+    # white on black and reads exactly zero here. Test this before the intro
+    # conjunction because 6 AM also has central clock text, a black top field,
+    # and low roughness; without confetti it would fit the card's shape.
     sat = m = 0
     for y in range(0, int(0.45 * h), 3):
         for x in range(0, w, 3):
@@ -142,7 +154,18 @@ def dark_screen_state(im, th):
             m += 1
             if max(r, g, b) > 70 and (max(r, g, b) - min(r, g, b)) > 50:
                 sat += 1
-    return "sixam" if 100 * sat / max(m, 1) >= th["confettiMin"] else "intro"
+    if 100 * sat / max(m, 1) >= th["confettiMin"]:
+        return "sixam"
+
+    # The measured intro signature is a conjunction, not "dark plus text".
+    # In particular, the cutscene immediately before the card carries MORE
+    # central text than the card. intro_card also refuses 6 AM and never reads
+    # the ordinal printed beneath 12:00 AM.
+    try:
+        positive, _, _ = intro_card.classify(im, _intro_model())
+    except (ValueError, KeyError, TypeError):
+        return "intro-model-error"
+    return "intro" if positive else "unclassified-dark-text"
 
 
 def main(argv):
@@ -183,6 +206,10 @@ def main(argv):
     dark = dark_screen_state(Image.open(_io.BytesIO(data)), model["thresholds"])
     if dark == "dark":
         refuse("dark-frame-no-text")
+    if dark == "intro-model-error":
+        refuse("intro-model-unreadable")
+    if dark == "unclassified-dark-text":
+        refuse("dark-text-no-lifecycle-signature")
     if dark:
         print(f"state={dark}")
         return 0

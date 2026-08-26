@@ -1,0 +1,50 @@
+{
+  "schema": "intro-card-model-v1",
+  "build": "com.scottgames.fnaf2 v2.0.7 versionCode 26",
+  "device": "Moto g56 5G; fractional boxes over 1280x576 screenrecord calibration",
+  "captured": "2026-08-26",
+  "bright_min": 150,
+  "boxes": {
+    "textbox": [0.36, 0.36, 0.64, 0.60],
+    "outer": [0.0, 0.0, 1.0, 0.25],
+    "rough": [0.1, 0.1, 0.9, 0.9]
+  },
+  "confetti_upper_fraction": 0.45,
+  "confetti_sample_step": 3,
+  "thresholds": {
+    "textbox_min": 0.04,
+    "outer_max": 0.005,
+    "rough_max": 1.2,
+    "confetti_min": 0.02
+  },
+  "measured": {
+    "intro_card": {
+      "textbox": "0.0733 on five 2 fps frames",
+      "outer": "0.0000 exactly",
+      "rough": "0.5648 native; 1.0648 at run-timeline's required 640x288 working size",
+      "confetti_percent": "0.0000 exactly"
+    },
+    "pre_intro_cutscene": {
+      "textbox": "0.0000-0.0877",
+      "outer": "0.0231-0.0259",
+      "rough": "4.9882-8.7075"
+    },
+    "fade": {
+      "textbox": "0.0000",
+      "outer": "0.0000",
+      "rough": "0.0000-0.3129"
+    },
+    "office": {
+      "textbox": "0.0001",
+      "outer": "0.0286-0.0311",
+      "rough": "1.8390-1.8557"
+    },
+    "six_am": {
+      "textbox": "0.0812-0.0977",
+      "outer": "0.0002-0.0021",
+      "rough": "0.4310-0.5619",
+      "note": "The three intro shape signals also match 6 AM; measured coloured confetti is the required negative control."
+    }
+  },
+  "scope": "Presence of a generic story-night intro card only; no night-number recognition."
+}

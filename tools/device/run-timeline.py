@@ -19,6 +19,7 @@ Phases, in the priority they are decided:
     camera   a camera is selected: its map button is highlighted yellow
     office   the HUD is drawn and no camera is selected
     other    lit, but none of the above -- typically the title or menu
+    unknown  dark text that matches neither the intro conjunction nor 6 AM
 
 `static` is not among them, on purpose: this game's camera feed is grained, so
 roughness fires on it constantly and cannot separate it from the death static,
@@ -139,6 +140,11 @@ def phase_of(frame, lo, th):
         # Near-black with no text. The mask bar tells a mask response apart
         # from a fade; both are otherwise identical.
         return "mask" if mask_bar_pixels(frame) >= th.get("maskBarMin", 200) else "dark"
+    if dark in ("unclassified-dark-text", "intro-model-error"):
+        # A readable-looking dark screen is not automatically an intro. Keep
+        # the uncertainty visible in the timeline and, critically, terminal
+        # grading will remain UNKNOWN.
+        return "unknown"
     if dark:
         return dark
     # The monitor, by a POSITIVE anchor rather than by elimination: the

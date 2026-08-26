@@ -43,6 +43,7 @@ const EXCLUDED = new Map([
   ['nightpredicate.py', 'the one definition of the alive/dead rule that screenstate.py and grade-night.py both evaluate; a library, gated by test-screenstate.py'],
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
   ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
+  ['intro_card.py', 'fractional generic intro-card predicate used by lifecycle-observe.py/run-timeline.py; gated by test-intro-card.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
   ['hid-sweep-probe.sh', 'device probe'],
   ['session-manifest.py', 'the manifest producer -- grade-run.sh consumes its output through validate-session.py; gated by test-session-manifest.sh'],

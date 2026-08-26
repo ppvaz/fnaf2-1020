@@ -173,6 +173,10 @@ const ENGINE = [
   // newspaper cutscene read as `night` because it is bright everywhere, and no
   // route had ever pressed New Game so the gap had never been reachable.
   ['screenstate', ['device/test-screenstate.py']],
+  // Plan 13 package 3: a generic intro-card label needs all four measured
+  // signals. It must reject the brighter pre-card cutscene, fade, office and
+  // 6 AM, and must never turn "an intro exists" into a guessed night number.
+  ['intro card', ['device/test-intro-card.py']],
   // plans/15: a classifier reads the capture method it was calibrated for and
   // refuses the rest. Resizing a foreign frame to fit is what makes a sensor
   // mismatch look like a working reading.
