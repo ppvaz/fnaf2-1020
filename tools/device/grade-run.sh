@@ -164,6 +164,36 @@ step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
 # a won night graded as `unknown` until 2026-08-26.
 step "run timeline and terminal outcome" python3 "$HERE/run-timeline.py" "$VIDEO"
 
+# 5c. Elegance: how many inputs the run sent against how many that night needed.
+# The night comes from the session manifest, never guessed -- a route qualified
+# for Night 6 and replayed on Night 1 spends most of its inputs on animatronics
+# whose AI is 0, and nothing else here reports that.
+RUN_LOG="$CAPTURES/$RUN-run.log"
+RUN_NIGHT=""
+if [ -f "$MANIFEST" ]; then
+  RUN_NIGHT=$(python3 -c "
+import json,sys
+try:
+    d=json.load(open(sys.argv[1]))
+    n=d.get('target',{}).get('night')
+    print(n if isinstance(n,int) and n>0 else '')
+except Exception:
+    print('')
+" "$MANIFEST" 2>/dev/null)
+fi
+if [ -n "$RUN_NIGHT" ] && [ -f "$RUN_LOG" ]; then
+  step "elegance (inputs sent vs needed)" \
+    python3 "$HERE/elegance.py" "$RUN_LOG" --night "$RUN_NIGHT"
+else
+  printf '\n--- elegance (inputs sent vs needed) ---\n'
+  if [ ! -f "$RUN_LOG" ]; then
+    echo "  no driver log for $RUN; nothing to count. Runs before 2026-08-26 have none."
+  else
+    echo "  the manifest names no story night (target.night is 0 or absent), so"
+    echo "  'needed' cannot be decided against the AI table. UNKNOWN(night not named)."
+  fi
+fi
+
 # 6. Did Balloon Boy's vent bang reach the capture at all?
 #
 #    This is the instrument the drawer was missing. tools/cue/ has had a working
