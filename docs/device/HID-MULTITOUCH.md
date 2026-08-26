@@ -326,7 +326,10 @@ at an intended 120 ms period:
 `hid_delay` holds to about +/-2 ms. `wait_until` overshoots **49-93 ms** every
 time, because `sleep` and `date` are fork+exec here: `sleep 0.02` costs 75 ms
 wall and one `date` fork about 25 ms, so it sleeps to target-20 and then
-busy-polls past it.
+busy-polls past it. (This measured the `date`-based loop. It was replaced with
+a fork-free `/proc/uptime` read on 2026-08-26 — see "The fix is the fork"
+below; the figures here are what that fix was measured against, not what the
+runner does now.)
 
 This matters more than the raw numbers suggest. Shifting the whole route late
 is nearly free -- it survives 300/300 up to 100 ms and then falls off a cliff
@@ -472,6 +475,25 @@ Three things this does **not** yet establish, and none should be assumed:
   loop is unmeasured.
 - **`read -t 0.02 < /dev/null` is not a fork-free sleep.** It returns instantly
   on EOF — 20 nominal 20 ms sleeps took 12 ms in total.
+
+**Landed 2026-08-26.** `wait_until` and every press timestamp in
+`trial-minus7.sh` now read `/proc/uptime` instead of forking `date`; `T0`
+itself stays a `date +%s%3N` epoch value, because that is what joins to
+`screenrecord` PTS and to host-side artifacts. The two are latched one builtin
+apart at the epoch confirmation.
+
+Of the three caveats above, only the first is answered. The clock crossing is
+no longer inferred: the run's manifest declares `runner_monotonic_ms` and
+carries a `runner_monotonic_ms → device_shell_wall_ms` alignment edge whose
+offset is `T0` and whose residual is `/proc/uptime`'s own 10 ms tick, so the
+axis every log line and HID `mark` is measured on is named rather than assumed
+(plans/09 package 2). The second and third stand: **the per-boundary cost with
+`hid_mark`, the HID writes and the classifier in the loop is still unmeasured**,
+and the landing error above was measured with a bare shell loop, not with the
+runner. The phone was in use by another stream when this landed, so nothing
+here is confirmed against the shipped runner on hardware. Until it is, the
+0–10 ms row in the table above is what the change is *aimed* at, not what it
+has been shown to achieve.
 
 #### What it would be worth, stated honestly
 

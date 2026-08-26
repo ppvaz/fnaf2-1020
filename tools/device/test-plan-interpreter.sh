@@ -65,10 +65,15 @@ extract() {
 cat >> "$TMP/harness.sh" <<'HARNESS'
 PLAN_FILE="$1"
 SLIP=0
-# The runner stamps its log lines from the device clock; BSD date has no %3N,
-# and the wall clock is not what this test is about.
+# The runner reads the device's monotonic clock through now_rel, which is a
+# fork-free `read < /proc/uptime`. macOS has no /proc, and the clock is not
+# what this test is about: what matters is that a macro's offsets are relative,
+# so a fixed answer is the right stub. It sets NOW_REL rather than echoing,
+# exactly as the shipped helper does.
 T0=0
-date() { echo 1000; }
+T0_UP_MS=0
+NOW_REL=1000
+now_rel() { NOW_REL=1000; }
 hid_mark() { :; }
 READ_CAPTURE_DELAY_MS=200
 # Coordinates are irrelevant here; only the control they resolve to matters.
@@ -332,10 +337,15 @@ HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
 } > "$TMP/light-harness.sh"
 cat >> "$TMP/light-harness.sh" <<'HARNESS'
 T0=0
+T0_UP_MS=0
 NOW=0
+NOW_REL=0
 # A clock the test drives. wait_until only ever moves it forward, which is the
-# one property of the real one this depends on.
-date() { echo "$NOW"; }
+# one property of the real one this depends on. The runner reads it through
+# now_rel -- a fork-free `read < /proc/uptime` on the phone, which macOS does
+# not have -- and now_rel assigns NOW_REL rather than echoing, so the stub does
+# the same.
+now_rel() { NOW_REL=$NOW; }
 wait_until() { [ "$1" -le "$NOW" ] || NOW=$1; }
 hid_mark() { :; }
 hid_down() { printf '%s light-down\n' "$NOW"; }

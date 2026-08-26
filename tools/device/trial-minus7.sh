@@ -585,6 +585,22 @@ session_close() {                               # STATUS WATCHDOG_TEXT
       redaction.contains_audio=false redaction.commit_safe=false
   fi
   if [ -f "$LOCAL_EPOCH" ]; then
+    # The runner waits and timestamps on /proc/uptime, not on `date`, so the
+    # axis every log line and hid-trace mark is measured on is monotonic while
+    # T0 itself stays an epoch reading. That is a clock-domain crossing and it
+    # is recorded as one: the two are latched one builtin apart at the same
+    # instant, the offset is T0, and the residual is /proc/uptime's own 10 ms
+    # tick. Reinterpreting one as the other silently is what the v1 contract
+    # exists to prevent.
+    if [ -n "${EPOCH_T0_MS:-}" ] && [ -n "${FNAF2_SESSION_DEVICE_OFFSET:-}" ]; then
+      fnaf_session_record clock domain=runner_monotonic_ms kind=monotonic units=ms \
+        "origin_note=/proc/uptime centiseconds latched at T0 inside the device shell, x10 to ms. Every press offset, log line and hid-trace mark is on this axis; T0 itself is a date +%s%3N epoch reading, which is what joins to host artifacts" \
+        valid_from=0 "valid_until=${MAXDUR_MS:-0}"
+      fnaf_session_record align from_domain=runner_monotonic_ms \
+        to_domain=device_shell_wall_ms "offset=$EPOCH_T0_MS" offset_units=ms \
+        "method=both latched at the epoch confirmation, /proc/uptime read immediately after date +%s%3N" \
+        residual=10
+    fi
     fnaf_session_artifact "$LOCAL_EPOCH" artifact_id=epoch role=epoch-latch-report \
       authority=operational-metadata format=text/plain complete=true truncated=false \
       retention=local-only clock_domain=device_shell_wall_ms \
@@ -1058,7 +1074,7 @@ HID_FD_OPEN=0
 # there: contact lengths, select spacing, and released time between two
 # buttons. The stream carries its own `delay` commands, so the intended timing
 # is fully recoverable from it without timestamping each line, which would put
-# a `date` fork in the hot path.
+# a clock read in the hot path.
 hid_emit() {
   print -p -- "$1"
   [ -z "$HID_TRACE" ] || printf '%s\n' "$1" >> "$HID_TRACE"
@@ -1068,8 +1084,8 @@ hid_emit() {
 # are recoverable from the report stream itself, so a sequence spaced by
 # wait_until looks instantaneous to a reader -- which made the first version of
 # the auditor report every wall-timed action as a zero-gap button change. The
-# helpers already fork `date` once for their own log line, so reusing that
-# value costs nothing.
+# helpers already read the monotonic clock once for their own log line, so
+# reusing that value costs nothing.
 # One device-local cue-helper snapshot. Loopback nc inside this same shell, so
 # it costs no adb round trip -- the whole point of the helper. Returns the
 # response line, or an empty string if the helper is absent or slow; a missing
@@ -1150,7 +1166,39 @@ hid_delay() {
 
 sleep_ms() {
   ms=$1
-  sleep "$((ms / 1000)).$(printf '%03d' "$((ms % 1000))")"
+  # 1000 + remainder, then strip the leading 1: a zero-padded fraction with no
+  # $(printf ...) around it. Command substitution is a subshell, a subshell is
+  # a fork, and a fork on this handset is ~21 ms -- the cost this file exists
+  # to stop paying.
+  ms_frac=$((1000 + ms % 1000))
+  sleep "$((ms / 1000)).${ms_frac#1}"
+}
+
+# Runner-relative milliseconds, without a fork.
+#
+# `date +%s%3N` is fork+exec and costs about 21 ms on this handset: 100 calls
+# took 2126 ms, and consecutive calls in a tight loop sit 22.2 ms apart on
+# average (max 35). That is not a device floor -- it is the fork. `read` with a
+# redirect from /proc/uptime is a shell builtin, no fork, 0.36 ms per read
+# (100 reads in 36 ms), 58x cheaper. It is also monotonic, which an epoch clock
+# is not: `date` can step under NTP or a settimeofday and take the schedule
+# with it.
+#
+# Resolution is centiseconds, so this answers in 10 ms ticks. Measured against
+# the shipped date-based wait over 20 targets while a night was live, landing
+# error went from 34-73 ms late to 0 -- where 0 means "inside one 10 ms tick",
+# not sub-millisecond. That 49-106 ms spread over the wider set is the same
+# number HID-MULTITOUCH.md records as the macro anchor spread; it was the fork
+# all along.
+#
+# This sets NOW_REL instead of echoing, because capturing an echo needs $( ),
+# which is a subshell, which is the fork.
+#
+# 10#$c is not decoration: /proc/uptime prints two decimals, so a hundredths
+# field of `08` or `09` is read as octal and the arithmetic aborts.
+now_rel() {
+  read nr_u nr_rest < /proc/uptime
+  NOW_REL=$(( (${nr_u%.*} * 100 + 10#${nr_u#*.}) * 10 - T0_UP_MS ))
 }
 
 printf '%s\n' "$$" > "$PIDFILE"
@@ -1223,6 +1271,12 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
       sleep 0.002
     done
     epoch_latch=$(date +%s%3N)
+    # The same instant on the monotonic clock, read immediately after so the
+    # two are within one builtin of each other. `date` is what the epoch report
+    # publishes and what joins to host artifacts; /proc/uptime is what the
+    # schedule is then measured on. Neither is derived from the other.
+    read epoch_up_u epoch_up_rest < /proc/uptime
+    epoch_latch_up_ms=$(( (${epoch_up_u%.*} * 100 + 10#${epoch_up_u#*.}) * 10 ))
     wait "$epoch_capture_pid" || {
       rm -f "$CAPTURE_LOCK" "$epoch_raw"
       echo 'device epoch screencap failed' >&2
@@ -1261,6 +1315,7 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
       match)
         if [ "$epoch_confirmations" -eq 0 ]; then
           epoch_first_match=$epoch_latch
+          epoch_first_match_up_ms=$epoch_latch_up_ms
           epoch_confirmations=1
           continue
         fi
@@ -1271,6 +1326,7 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
           epoch_bracket=-1
         fi
         T0=$epoch_first_match
+        T0_UP_MS=$epoch_first_match_up_ms
         # The published route's phase window is one-sided -- it tolerates a
         # late T0 and almost no early one -- so the conservative first-positive
         # edge is right for it. Minus 7 Left-Read's window is 83-267 ms, which
@@ -1279,6 +1335,9 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
         # it. Centring roughly doubles how often a run lands in phase.
         if [ "$NIGHT6_LEFT" -eq 1 ] && [ "$epoch_bracket" -gt 0 ]; then
           T0=$((epoch_first_match - epoch_bracket / 2))
+          # The monotonic origin moves by the same amount, so the two stay one
+          # instant described twice rather than two different starts.
+          T0_UP_MS=$((epoch_first_match_up_ms - epoch_bracket / 2))
           printf 'epoch centred: first match %s, bracket %s, T0 %s\n' \
             "$epoch_first_match" "$epoch_bracket" "$T0"
         fi
@@ -1298,6 +1357,10 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
         exit 44
         ;;
     esac
+    # Deliberately still `date`: this is a coarse epoch-domain deadline in a
+    # loop whose every iteration already spends a screencap (0.7-2.5 s), so the
+    # fork is free here, and the monotonic origin does not exist yet -- it is
+    # latched by the very transition this loop is looking for.
     [ "$(date +%s)" -lt "$epoch_deadline" ] || {
       echo 'device epoch detector timed out waiting for the office clock' >&2
       exit 44
@@ -1310,6 +1373,8 @@ else
   done
   rm -f "$READYFILE" "$STARTFILE"
   T0=$(date +%s%3N)
+  read start_up_u start_up_rest < /proc/uptime
+  T0_UP_MS=$(( (${start_up_u%.*} * 100 + 10#${start_up_u#*.}) * 10 ))
 fi
 
 if [ "$NIGHT6_LEFT" -eq 1 ]; then
@@ -1317,6 +1382,7 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   # this route is 83-267 ms after the night's start, so the pilot's epoch is
   # deliberately offset from the latch rather than equal to it.
   T0=$((T0 + PILOT_OFFSET_MS))
+  T0_UP_MS=$((T0_UP_MS + PILOT_OFFSET_MS))
   printf 'pilot epoch = latch + %s ms\n' "$PILOT_OFFSET_MS"
 fi
 
@@ -1325,16 +1391,20 @@ wait_until() {
   # hid-side delays do, and a helper that spaces its reports with wait_until
   # reads back as a burst of zero-length contacts.
   hid_mark "$1"
-  target=$((T0 + $1))
+  # The target is on the monotonic axis. The polling loop used to fork `date`
+  # per iteration, so its granularity was one fork (~21 ms) and it landed
+  # 34-73 ms late; reading /proc/uptime is a builtin and lands inside one
+  # 10 ms tick. The structure is unchanged -- sleep to 20 ms out, then spin --
+  # because the spin is what absorbs `sleep`'s own fork overshoot.
+  target=$((T0_UP_MS + $1))
   while :; do
-    now=$(date +%s%3N)
-    left=$((target - now))
+    read wu_u wu_rest < /proc/uptime
+    left=$((target - (${wu_u%.*} * 100 + 10#${wu_u#*.}) * 10))
     [ "$left" -le 0 ] && return
     if [ "$left" -gt 40 ]; then
       delay=$((left - 20))
-      whole=$((delay / 1000))
-      frac=$((delay % 1000))
-      sleep "$whole.$(printf '%03d' "$frac")"
+      delay_frac=$((1000 + delay % 1000))
+      sleep "$((delay / 1000)).${delay_frac#1}"
     fi
   done
 }
@@ -1379,7 +1449,8 @@ human_floor_check() {
 press_at() {
   offset=$1; x=$2; y=$3; label=$4
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   human_floor_check "$actual" "$label"
   LAST_PRESS_MS=$actual
   case "$label" in monitor*) LAST_MONITOR_PRESS_MS=$actual ;; esac
@@ -1413,7 +1484,8 @@ press_at() {
 hold_at() {
   offset=$1; x=$2; y=$3; duration=$4; label=$5
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   human_floor_check "$actual" "$label"
   printf '%6d ms  %s (%d ms)\n' "$actual" "$label" "$duration"
   hid_mark "$actual"
@@ -1485,14 +1557,16 @@ light_down_at() {
     if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
       cue_luma_confirm=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
       if [ -z "$cue_luma_confirm" ] || [ "$cue_luma_confirm" -lt "$CUE_CAMS_UP_LUMA" ]; then
-        actual=$(( $(date +%s%3N) - T0 ))
+        now_rel
+        actual=$NOW_REL
         printf '%6d ms  cue read %s then %s; a transient, not the cams -- not correcting\n' \
           "$actual" "$cue_luma" "${cue_luma_confirm:-unreadable}"
         cue_luma=0
       fi
     fi
     if [ -n "$cue_luma" ] && [ "$cue_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
-      actual=$(( $(date +%s%3N) - T0 ))
+      now_rel
+      actual=$NOW_REL
       printf '%6d ms  cams still up at the read (luma %s); correcting in-cycle\n' \
         "$actual" "$cue_luma"
       hid_mark "$actual"
@@ -1501,7 +1575,8 @@ light_down_at() {
     fi
   fi
   wait_until "$ld_offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   # The capture is placed from here, not from the plan's offset: see plan_step.
   LIGHT_DOWN_MS=$actual
   printf '%6d ms  %s (contact 0 down)\n' "$actual" "$ld_label"
@@ -1512,7 +1587,8 @@ light_down_at() {
 light_cam_at() {
   offset=$1; x=$2; y=$3; label=$4
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  %s (contact 1 tap)\n' "$actual" "$label"
   hid_mark "$actual"
   hid_two_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$x" "$y"
@@ -1523,7 +1599,8 @@ light_cam_at() {
 light_up_at() {
   offset=$1; label=$2
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  %s (contacts up)\n' "$actual" "$label"
   hid_mark "$actual"
   hid_release
@@ -1532,7 +1609,8 @@ light_up_at() {
 capture_lit_at() {
   offset=$1; name=$2; label=$3
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  capture-%s %s\n' "$actual" "$label" "$name"
   hid_mark "$actual"
   # Keep the view light down across the screencap without putting a host round
@@ -1557,7 +1635,8 @@ capture_lit_at() {
 capture_unlit_at() {
   offset=$1; name=$2; label=$3
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  capture-%s-unlit %s\n' "$actual" "$label" "$name"
   hid_mark "$actual"
   screencap > "$SAMPLE_DIR/$name.raw"
@@ -1589,7 +1668,8 @@ device_sweep_at() {
 classify_left_and_queue_mask_at() {
   offset=$1; mask_gap=$2; label=$3
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  %s start snapshot\n' "$actual" "$label" >&2
   hid_mark "$actual"
 
@@ -1612,7 +1692,8 @@ classify_left_and_queue_mask_at() {
     kill -0 "$capture_pid" 2>/dev/null || break
     sleep 0.002
   done
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   printf '%6d ms  %s snapshot latched; mask now\n' "$actual" "$label" >&2
   hid_mark "$actual"
   hid_release
@@ -1689,7 +1770,8 @@ classify_left_and_queue_mask_at() {
       ;;
   esac
   rm -f "$CAPTURE_LOCK"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   # Logged, never acted on: this is the labelled data the helper's own threshold
   # needs before anything can be read from it. `luma` is its left-opening
   # value and `ageUs` says how stale the projected frame was.
@@ -1828,7 +1910,8 @@ pulsed_sweep_at() {
   # from its arguments, and refusing early beats refusing mid-macro.
   [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
   wait_until "$sweep_start"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   human_floor_check "$actual" "$sweep_label"
   hf_slots=$(printf '%s' "$cams" | tr -cd , | wc -c | tr -d ' ')
   HF_LAST_PRESS_MS=$((actual + hf_slots * spacing))
@@ -1840,10 +1923,10 @@ pulsed_sweep_at() {
   # The shell only positions the start. Two other arrangements were measured
   # and both put the spacing under the 120 ms the phone accepts, after which
   # the game renders CAM 07 alone: wall-timing every report inside the sweep
-  # jittered it to 90-160 ms because wait_until forks `date` per poll, and
-  # mixing a wall-timed start with hid-side contact delays gave 105-112 ms
-  # because the hid delays elapse concurrently with the shell's wait instead
-  # of adding to it. Each camera costs `spacing` ms of hid time: a `contact` ms
+  # jittered it to 90-160 ms because wait_until placed every select on the
+  # shell's clock, and mixing a wall-timed start with hid-side contact delays
+  # gave 105-112 ms because the hid delays elapse concurrently with the shell's
+  # wait instead of adding to it. Each camera costs `spacing` ms of hid time: a `contact` ms
   # select with the light pulsed inside it, then the remainder released before
   # the next select.
   sweep_rest=$cams
@@ -1874,7 +1957,8 @@ pulsed_sweep_at() {
 hall_reset_and_raise_at() {
   offset=$1; duration=$2; label=$3
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   human_floor_check "$actual" "$label"
   printf '%6d ms  %s (hall pulse under the raise)\n' "$actual" "$label"
   hid_mark "$actual"
@@ -1890,7 +1974,7 @@ hall_reset_and_raise_at() {
   LAST_MONITOR_PRESS_MS=$((offset + 10))
   hid_two_down "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
   # The monitor gets the plan's full contact; the hall light keeps it plus the
-  # lead. wait_until forks `date` to poll and can return a little late, and a
+  # lead. wait_until can still return up to one 10 ms tick late, and a
   # measured run held this 83 ms.
   wait_until $((offset + SWEEP_LIGHT_LEAD_MS + duration))
   hid_second_up "$HALL_X" "$HALL_Y" "$MONITOR_X" "$MONITOR_Y"
@@ -1908,7 +1992,8 @@ mask_and_raise_at() {
     exit 47
   }
   wait_until "$offset"
-  actual=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  actual=$NOW_REL
   human_floor_check "$actual" "$label"
   printf '%6d ms  %s (mask off, %d ms to raise)\n' "$actual" "$label" "$gap"
   hid_mark "$actual"
@@ -2160,7 +2245,8 @@ run_macro() {
       [ "$rm_start" -ge "$rm_floor" ] || rm_start=$rm_floor
       rm_shift=$((rm_start - rm_base - c1))
       wait_until "$rm_start"
-      actual=$(( $(date +%s%3N) - T0 ))
+      now_rel
+      actual=$NOW_REL
       printf '%6d ms  macro %s[%d..%d]\n' "$actual" "$rm_cycle" "$rm_skip" "$rm_limit"
       rm_started=1
     else
@@ -2230,7 +2316,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   # the slip, so the sweep after it still lands on the absolute deadline the
   # route is anchored to.
   opening_at=$(plan_first_offset opening)
-  now=$(( $(date +%s%3N) - T0 ))
+  now_rel
+  now=$NOW_REL
   SLIP=$((now + 20 - opening_at))
   [ "$SLIP" -ge 0 ] || SLIP=0
   [ "$SLIP" -le 1017 ] || {
@@ -2276,7 +2363,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     # read.
     if [ "$monitor_seen" = 'cams=UP-DESYNCED' ]; then
       desyncs=$((desyncs + 1))
-      actual=$(( $(date +%s%3N) - T0 ))
+      now_rel
+      actual=$NOW_REL
       printf '%6d ms  monitor desynced; lowering and resuming the cycle (%d)\n' \
         "$actual" "$desyncs"
       hid_mark "$actual"
@@ -2305,7 +2393,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         wait_until $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
         rs_luma=$(cue_snapshot | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
         if [ -n "$rs_luma" ] && [ "$rs_luma" -ge "$CUE_CAMS_UP_LUMA" ]; then
-          actual=$(( $(date +%s%3N) - T0 ))
+          now_rel
+          actual=$NOW_REL
           printf '%6d ms  cams still up after the resync (luma %s); pressing once more\n' \
             "$actual" "$rs_luma"
           hid_mark "$actual"
@@ -2353,7 +2442,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         nolights=$((nolights + 1))
         nolight_streak=$((nolight_streak + 1))
         blind_streak=0
-        actual=$(( $(date +%s%3N) - T0 ))
+        now_rel
+        actual=$NOW_REL
         printf '%6d ms  left-view %s: the vent lamp is dark; masking and retrying (%d in a row, %d total)\n' \
           "$actual" "$classification" "$nolight_streak" "$nolights"
         hid_mark "$actual"
@@ -2374,7 +2464,8 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
         branch=attack
         unknowns=$((unknowns + 1))
         blind_streak=$((blind_streak + 1))
-        actual=$(( $(date +%s%3N) - T0 ))
+        now_rel
+        actual=$NOW_REL
         printf '%6d ms  left-view %s; failing closed (%d in a row, %d total)\n' \
           "$actual" "$classification" "$blind_streak" "$unknowns"
         hid_mark "$actual"
@@ -2414,12 +2505,14 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       # marks cannot see, and night 6-45 lost a monitor press to it every
       # corrected cycle. The floor turns that lateness into rm_shift, which
       # keeps every plan gap *and* holds the next anchor back the same amount.
-      actual=$(( $(date +%s%3N) - T0 ))
+      now_rel
+      actual=$NOW_REL
       run_macro clear "$base" 2 999 $((actual + FUSION_POLL_MS))
       base=$((base + 5000))
     else
       attacks=$((attacks + 1))
-      actual=$(( $(date +%s%3N) - T0 ))
+      now_rel
+      actual=$NOW_REL
       # The read already put the mask on before classification completed, so a
       # true positive keeps that same continuous hold through five ticks. g293
       # zeroes the counter on every new fully-on entry; pressing again here
@@ -2489,7 +2582,8 @@ if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
       empty\ *)
         # The classifier completed under the prophylactic mask. Release it now,
         # then use the simulator table's fixed wind and late sweep deadlines.
-        now=$(( $(date +%s%3N) - T0 ))
+        now_rel
+        now=$NOW_REL
         [ "$now" -lt $((base + 1950)) ] || {
           echo 'left classifier missed the sparse empty deadline' >&2
           exit 43
@@ -2505,8 +2599,9 @@ if [ "$HID_LEFT_SURVIVAL" -eq 1 ]; then
         # A true positive keeps the already-on mask across the aligned five
         # scheduler ticks. The prior late sweep and pre-read Foxy pulse cover
         # the hold; two device sweeps would then restore the ten-second anchor.
+        now_rel
         printf '%6d ms  left-view BB; aligned five-tick response\n' \
-          "$(( $(date +%s%3N) - T0 ))"
+          "$NOW_REL"
         hid_mark "$actual"
         press_at  $((base + 6020)) "$MASK_X"    "$MASK_Y"    mask-off-after-bb
         hold_at   $((base + 6270)) "$HALL_X"    "$HALL_Y"    80 reset-foxy-after-bb
@@ -2620,16 +2715,18 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         # The classifier input is now immutable. Expose every subsequent touch
         # in the screenrecord so hall coordinates remain visually auditable.
         settings put system show_touches 1
+        now_rel
         printf '%6d ms  touch-overlay on-after-capture\n' \
-          "$(( $(date +%s%3N) - T0 ))"
+          "$NOW_REL"
         hid_mark "$actual"
       fi
       threat=0
       gf_exact_empty=0
       if [ "$BB_MODEL" != "-" ]; then
         classification=$("$CHECKER" classify "$BB_MODEL" < "$SAMPLE_DIR/$sample.raw")
+        now_rel
         printf '%6d ms  classify-bb-left %s\n' \
-          "$(( $(date +%s%3N) - T0 ))" "$classification"
+          "$NOW_REL" "$classification"
         hid_mark "$actual"
         case "$classification" in
           empty\ *) ;;
@@ -2638,8 +2735,9 @@ while [ "$cycle" -lt "$CYCLES" ]; do
       fi
       if [ "$GF_MODEL" != "-" ]; then
         classification=$("$CHECKER" classify "$GF_MODEL" < "$SAMPLE_DIR/$sample.raw")
+        now_rel
         printf '%6d ms  classify-gf-office %s\n' \
-          "$(( $(date +%s%3N) - T0 ))" "$classification"
+          "$NOW_REL" "$classification"
         hid_mark "$actual"
         case "$classification" in
           empty\ score=0\ *) gf_exact_empty=1 ;;
@@ -2660,8 +2758,9 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         # the only state allowed to omit the blind mask. This recovers enough
         # CAM 11 time to keep the box healthy while retaining fail-closed
         # behavior for every nonzero, unknown, Golden, or malformed result.
+        now_rel
         printf '%6d ms  skip-gf-mask exact-empty\n' \
-          "$(( $(date +%s%3N) - T0 ))"
+          "$NOW_REL"
         hid_mark "$actual"
         # Hall-movement darkness is visual only: g489 still asserts the
         # logical hall-light latch and g745/g855 still reset and pin Foxy.
@@ -2716,8 +2815,9 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         capture_unlit_at $((base + 3120)) "$sample" cam-05
         if [ "$CAM05_MODEL" != "-" ]; then
           classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
+          now_rel
           printf '%6d ms  classify-bb-cam05 %s\n' \
-            "$(( $(date +%s%3N) - T0 ))" "$classification"
+            "$NOW_REL" "$classification"
           hid_mark "$actual"
           if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
             case "$classification" in
@@ -2762,8 +2862,9 @@ while [ "$cycle" -lt "$CYCLES" ]; do
         capture_unlit_at $((base + 3380)) "$sample" cam-05
         if [ "$CAM05_MODEL" != "-" ]; then
           classification=$("$CHECKER" classify "$CAM05_MODEL" < "$SAMPLE_DIR/$sample.raw")
+          now_rel
           printf '%6d ms  classify-bb-cam05 %s\n' \
-            "$(( $(date +%s%3N) - T0 ))" "$classification"
+            "$NOW_REL" "$classification"
           hid_mark "$actual"
           if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ]; then
             case "$classification" in

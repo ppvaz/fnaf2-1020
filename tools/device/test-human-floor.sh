@@ -32,9 +32,12 @@ esac
   echo "HUMAN_FLOOR_MS=$FLOOR"
   echo 'HF_LAST_PRESS_MS=-100000'
   echo 'LAST_PRESS_MS=0; LAST_MONITOR_PRESS_MS=-100000'
-  echo 'T0=0; PRESS_MODE=tap; HID_MODE=0; FAKE_NOW=0'
-  # The clock and every device primitive are stubs; the gate is not.
-  echo 'date() { echo "$FAKE_NOW"; }'
+  echo 'T0=0; T0_UP_MS=0; PRESS_MODE=tap; HID_MODE=0; FAKE_NOW=0; NOW_REL=0'
+  # The clock and every device primitive are stubs; the gate is not. The runner
+  # reads the phone's monotonic clock through now_rel (`read < /proc/uptime`,
+  # which macOS does not have) and it assigns NOW_REL rather than echoing, so
+  # the stub assigns too.
+  echo 'now_rel() { NOW_REL=$FAKE_NOW; }'
   echo 'wait_until() { :; }; hid_mark() { :; }'
   echo 'hid_down() { :; }; hid_delay() { :; }; hid_release() { :; }'
   echo 'input() { :; }; pulsed_cam_burst() { :; }'
