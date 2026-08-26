@@ -63,6 +63,18 @@ if it fails:
    `hid_mark`, HID writes and the classifier in it. Priced through
    `actuator.mjs` the change takes Nights 1–5 to 200/200 and Night 6 to 171/200
    **in the simulator**. The knee is a frame count: free to 41 ms, gone at 42.
+
+   **This was attempted once today and answered nothing** — `n1-clock-cycle-`
+   `20260826`, graded at **alive ≥1.5 s** of an 8.8 s recording, died four lines
+   in. Both things that killed it are now fixed, and the run is worth reading
+   before the next attempt: its five-line driver log is the whole story, and it
+   is written up in `RUN-TELEMETRY.md` §10. Briefly — the scalar human floor
+   aborted the plan at its own accepted 120 ms compound boundary, **and** the
+   epoch centring silently wrapped 32-bit, putting T0 exactly 2^32 ms low, an
+   origin wrong by 20,679 days. They masked each other: the abort is the only
+   reason a whole night was not then timed against that origin. The log ranked
+   first of ten signals in that survey at 0 ms cost, landed the same day, and
+   caught two unknown defects on its first run.
 2. Then run Night 6 graded. The run will now produce evidence whether it wins or
    loses — see the three items closed below.
 

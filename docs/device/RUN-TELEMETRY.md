@@ -339,3 +339,59 @@ Reported, not fixed.
    `monitor-verify (contact 0 down)` (`V:846-847`), and it stamps the HID trace
    the auditor reads. It affects the calibration paths only, not the shipped
    `night6-left` route.
+
+---
+
+## 10. The driver log paid for itself in five lines, 2026-08-26
+
+This survey ranked *"persist the driver's stdout and stderr"* first of ten
+signals, at 0 ms and ~70 kB a night, on the argument that three separate
+failures had been reported by the device owner watching the phone rather than
+by any log. It landed the same day. **Its first run produced five lines, and
+two of them were previously unknown defects.**
+
+The run is `n1-clock-cycle-20260826` — a bounded one-cycle Night 1 calibration,
+the first attempt at verifying the fork-free clock inside a real cycle. Graded,
+it is **alive for at least 1.5 s** against an 8.8 s recording; it never reached
+a second cycle. The whole log:
+
+```
+epoch centred: first match 1787767128564, bracket 308, T0 1060733274
+pilot epoch = latch + 175 ms
+   429 ms  mute
+HUMAN FLOOR: monitor lands 120 ms after the previous press (< 350 ms)
+refusing: the pilot may not deliver inhumanly timed inputs (2026-08-25, no override)
+```
+
+**Line 1 is a 32-bit wrap, and the log is the only place it was ever visible.**
+T0 should be `1787767128564 - 308/2 = 1787767128410`. It printed `1060733274`,
+which is exactly that value mod 2^32 — an origin wrong by **20,679 days**.
+Android's mksh does signed 32-bit arithmetic and epoch milliseconds are already
+~1.8e12, so the centring subtraction wrapped. Nothing else in the run would have
+reported this: the manifest records the value, not its plausibility, and no
+instrument cross-checks T0 against the wall clock.
+
+**Line 4 is the scalar human floor aborting the plan at its own deliberate
+spacing.** 120 ms is not an inhuman press the pilot invented; it is the emitted
+plan's compound boundary, the schedule the model gate had already priced and
+accepted. The live floor and the gate disagreed, and the floor won.
+
+**The two masked each other, which is the part worth keeping.** The floor abort
+is why the wrapped origin never mattered — the run died four lines in, before a
+single cycle was timed against a garbage T0. Fix the floor alone and the next
+run would have executed a whole night against an origin off by 57 years, with
+every `wait_until` computing from it and the log reading like a schedule. That
+is the failure mode this repository already has a name for: *one lost input
+inverts the rest of the night, and nothing in the run notices.*
+
+Both are fixed (`epoch_sub_ms`/`epoch_diff_ms` keep the value as a string and
+calculate on its parts; the gated route's presses are priced by the model gate
+rather than the scalar floor, with both arms pinned in
+`test-plan-interpreter.sh`). The interpreter test pins **this exact value** —
+1787767128564 minus 154 — so the wrap cannot come back unnamed.
+
+**The clock question this run was launched to answer is still open.** It died
+before any cycle ran, so "does the fork-free `/proc/uptime` read hold inside a
+real cycle, with `hid_mark`, HID writes and the classifier in it?" has been
+attempted once and answered zero times. What changed is that both things that
+stopped it are now fixed, and the next attempt will leave a log either way.
