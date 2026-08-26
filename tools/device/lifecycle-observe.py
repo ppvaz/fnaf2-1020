@@ -43,6 +43,7 @@ warnings.simplefilter("ignore")
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from sensor import open_frame, SensorMismatch  # noqa: E402
+from PIL import Image  # noqa: E402
 GEOMETRY = (2400, 1080)
 MODEL_SCHEMA = "lifecycle-model-v1"
 DEFAULT_MODEL = os.path.join(HERE, "models", "lifecycle-moto-g56-v207.json")
@@ -70,6 +71,78 @@ def authority(data):
                          input=data, stdout=subprocess.PIPE,
                          stderr=subprocess.DEVNULL, check=False)
     return out.stdout.decode().strip() or "unknown"
+
+
+# --- the two dark screens: 6 AM and the story-night intro card ------------
+#
+# Measured in FRACTIONS of the frame and consulted BEFORE load_frame's sensor
+# gate, because they are sensor-independent by construction -- the same
+# argument nightpredicate.py makes for the alive/dead rule. The only fixtures
+# that exist are 1280x576 `screenrecord` frames, which the calibrated
+# `screencap` model correctly refuses; teaching one fact twice, once per
+# sensor, is what plans/15 exists to stop.
+#
+# Calibrated 2026-08-26 on the first cleared Night 1 (`n1-full-1640`) -- also
+# the first 6 AM this project has ever recorded. Measured, with controls:
+#
+#   class          frame mean     confetti%      clock columns
+#   6 AM (win)     1.80-2.41      0.059-0.326    0.153-0.203
+#   intro card     0.06-1.29      0.000 exactly  0.000-0.205
+#   death frames   29.7-39.4      0.000-5.134    0.027-0.075
+#   death static   34.6           0.000          0.593
+#   game over      19.1           4.930          0.132
+#   office/night   22.2-59.4      0.000-1.140    0.027-0.332
+#   title          24.3-45.5      0.000-0.090    0.027-0.223
+#
+# `mean < 5` isolates the two dark screens from every other class by a wide
+# margin -- the nearest other class is 19.1. Within the dark pair, the win
+# confetti is not merely *small* on the intro card, it is **exactly zero**
+# across sixteen frames from two separate recordings, while the lowest 6 AM
+# frame reads 0.059. That is why the threshold sits at 0.02 and not halfway.
+#
+# NOT separated here, and reported rather than guessed: WHICH night an intro
+# card names. Reading "1st" from "2nd" is a different problem with different
+# evidence, and plans/13's identity contract needs that second fact -- so a
+# detected card must never stand in for a verified night.
+def dark_screen_state(im, th):
+    """`sixam`, `intro`, or None when this is not a dark text screen."""
+    im = im.convert("RGB")
+    w, h = im.size
+    px = im.load()
+
+    tot = n = 0
+    for y in range(0, h, 4):
+        for x in range(0, w, 4):
+            r, g, b = px[x, y]
+            tot += (r * 299 + g * 587 + b * 114) // 1000
+            n += 1
+    if tot / max(n, 1) >= th["darkMeanMax"]:
+        return None
+
+    # Bright text in the clock band. A dark frame without it is a fade or a
+    # blackout, not a screen this can name.
+    cols = set()
+    for y in range(int(0.40 * h), int(0.56 * h), 2):
+        for x in range(0, w, 2):
+            r, g, b = px[x, y]
+            if (r * 299 + g * 587 + b * 114) // 1000 > 150:
+                cols.add(x)
+    if len(cols) / (w / 2) < th["clockColsMin"]:
+        # Dark, but no text: the fade either side of a card, or a blackout.
+        # Named so it does not fall through to the sensor gate and come back
+        # blaming the capture method for a frame that simply has nothing on it.
+        return "dark"
+
+    # Win confetti: saturated colour in the upper half. The intro card is pure
+    # white on black and reads exactly zero here.
+    sat = m = 0
+    for y in range(0, int(0.45 * h), 3):
+        for x in range(0, w, 3):
+            r, g, b = px[x, y]
+            m += 1
+            if max(r, g, b) > 70 and (max(r, g, b) - min(r, g, b)) > 50:
+                sat += 1
+    return "sixam" if 100 * sat / max(m, 1) >= th["confettiMin"] else "intro"
 
 
 def main(argv):
@@ -103,6 +176,15 @@ def main(argv):
     verdict = authority(data)
     if verdict in ("night", "gameover"):
         print(f"state={verdict}")
+        return 0
+
+    # Sensor-independent, so it precedes the calibrated model's sensor gate.
+    import io as _io
+    dark = dark_screen_state(Image.open(_io.BytesIO(data)), model["thresholds"])
+    if dark == "dark":
+        refuse("dark-frame-no-text")
+    if dark:
+        print(f"state={dark}")
         return 0
 
     im = load_frame(data, declared)

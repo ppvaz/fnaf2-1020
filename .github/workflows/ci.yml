@@ -29,6 +29,17 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      # Four device checks (menu selector, interaction classifier, screenstate,
+      # sensor) synthesise their fixtures with Pillow. The runner image ships
+      # no Pillow, so they failed on `ModuleNotFoundError: No module named
+      # 'PIL'` -- a red build that said nothing about the code. Pinned for the
+      # same reason as the JDK above: the check must fail because a classifier
+      # regressed, never because the image's Python moved.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fixture rendering dependency
+        run: python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
       - name: Engine checks
         run: node tools/test.mjs --engine
       - name: Cue helper query (mock ADB)

@@ -109,7 +109,59 @@ def main():
         strokes(d(dialog), (150, 40, 560, 140))
         options = frame(dark)
         strokes(d(options), (1530, 100, 2030, 220))
+        # --- the two dark screens, package 3's subject.
+        #
+        # Both are near-black with bright text in the clock band; what parts
+        # them is the win confetti, which reads EXACTLY zero on sixteen real
+        # intro frames from two recordings and 0.059+ on every real 6 AM frame.
+        # These fixtures prove the DECISION, not the thresholds -- the numbers
+        # come from the real capture and are recorded in lifecycle-observe.py.
+        #
+        # `black` has to be genuinely near-black: the `dark` used elsewhere in
+        # this file means about 14, which is above the model's darkMeanMax of 5,
+        # so reusing it would have made every case below fall through and pass
+        # for the wrong reason.
+        black = (2, 2, 2)
+
+        def clock_text(im):
+            """Bright glyphs where the clock sits: y 0.42-0.54, x 0.39-0.61.
+
+            Thin strokes with gaps, not solid blocks. A seven-segment clock
+            covers a wide span of COLUMNS while filling very little area -- the
+            real 6 AM frame reads 0.153-0.203 clock columns at a frame mean of
+            only 1.8-2.4. Solid blocks over the same span push the mean past the
+            model's darkMeanMax of 5, which is exactly how the first version of
+            this fixture failed: it stopped being a dark screen at all.
+            """
+            dr = d(im)
+            for x in range(900, 1500, 10):
+                dr.rectangle((x, 486, x + 6, 512), fill=(255, 255, 255))
+
+        def confetti(im):
+            """Saturated colour in the upper half. The intro card has none.
+
+            Deliberately sparse. The threshold it must beat is 0.02% of the
+            sampled upper half, and real confetti reads 0.059-0.326% -- so a
+            dense field is not more faithful, it just drags the frame mean past
+            darkMeanMax and stops the fixture being a dark screen at all.
+            """
+            dr = d(im)
+            for i, c in enumerate(((240, 60, 60), (60, 240, 90), (70, 90, 245),
+                                   (245, 230, 60), (240, 80, 220))):
+                for j in range(5):
+                    x = 200 + i * 430 + j * 70
+                    y = 60 + ((i + j) % 5) * 74
+                    dr.rectangle((x, y, x + 12, y + 12), fill=c)
+
+        intro_card = frame(black); clock_text(intro_card)
+        sixam = frame(black); clock_text(sixam); confetti(sixam)
+        fade = frame(black)
+
         lifecycle_cases = [
+            ("the story-night intro card", intro_card, "state=intro"),
+            ("6 AM, which is the intro card plus win confetti", sixam, "state=sixam"),
+            ("a fade is dark with no text, and says so", fade,
+             "unknown=dark-frame-no-text"),
             ("static is roughness, not brightness", noise_frame(), "state=static"),
             ("the New Game newspaper", frame(bright, flash=True), "state=newspaper"),
             ("the title menu", title, "state=title"),

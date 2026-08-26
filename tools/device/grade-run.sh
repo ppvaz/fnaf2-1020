@@ -159,6 +159,11 @@ step "keyframes (what the run contained)" \
 step "music box" python3 "$HERE/windpct.py" "$VIDEO"
 step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
 
+# 5b. What happened, in order, and how it ended. This is the only step that can
+# say `clear`: nothing else in this pipeline can recognise a 6 AM, which is why
+# a won night graded as `unknown` until 2026-08-26.
+step "run timeline and terminal outcome" python3 "$HERE/run-timeline.py" "$VIDEO"
+
 # 6. Did Balloon Boy's vent bang reach the capture at all?
 #
 #    This is the instrument the drawer was missing. tools/cue/ has had a working

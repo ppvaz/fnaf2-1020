@@ -25,7 +25,11 @@ set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 # Inside the checkout on purpose: artifact paths are recorded repo-relative.
-WORK="$(mktemp -d "$REPO/captures/test-session.XXXXXX")"
+# captures/ is gitignored, so a fresh clone does not have it. Without this
+# mkdir, mktemp failed, WORK was empty, and every write in this file landed on
+# "/" -- which on CI is a wall of "Permission denied" that names no defect.
+mkdir -p "$REPO/captures"
+WORK="$(mktemp -d "$REPO/captures/test-session.XXXXXX")" || exit 1
 trap 'rm -rf "$WORK"' EXIT
 export FNAF2_CAPTURES="$WORK"
 

@@ -76,7 +76,12 @@
     "menuRowMin": 0.05,
     "menuRowAbsentMax": 0.03,
     "hudPresentMin": 0.04,
-    "staticRoughnessMin": 12.0
+    "staticRoughnessMin": 12.0,
+    "darkMeanMax": 5.0,
+    "clockColsMin": 0.1,
+    "confettiMin": 0.02,
+    "selectedCamYellowMin": 40,
+    "maskBarMin": 200
   },
   "measured": {
     "wholeFrameMean": {
