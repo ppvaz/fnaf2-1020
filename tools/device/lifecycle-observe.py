@@ -27,6 +27,10 @@ office, 0.000 on every title screen) are consulted first.
 Not yet modelled, and deliberately reported as unknown rather than guessed:
 the 6 AM transition and the minigames. Neither has been captured -- 6 AM needs a
 survived night. `state=unknown` is the correct answer for them today.
+
+One correction worth carrying: the death static on this build is DARK (frame
+mean 34.1, the same as the office), not the bright static the cue helper's death
+signature was measured against. Brightness does not separate it; roughness does.
 """
 import json
 import os
@@ -98,6 +102,19 @@ def main(argv):
     def value(name):
         s = sigs[name]
         box = tuple(s["box"])
+        if s["kind"] == "roughness":
+            # Mean absolute difference between vertically adjacent pixels, at
+            # full resolution. Static is noise everywhere; a rendered scene has
+            # smooth regions. Downsampling would destroy exactly the signal.
+            crop = im.crop(box).convert("L")
+            px = crop.load()
+            w, h = crop.size
+            tot = n = 0
+            for y in range(0, h - 1, 3):
+                for x in range(0, w, 3):
+                    tot += abs(px[x, y] - px[x, y + 1])
+                    n += 1
+            return tot / n
         data_ = list(im.crop(box).resize((24, 24) if s["kind"] == "mean" else (32, 32)).getdata())
         if s["kind"] == "mean":
             return sum(sum(p) for p in data_) / (len(data_) * 3)
@@ -115,6 +132,10 @@ def main(argv):
         # screenstate said this is not a night, yet the office HUD is drawn.
         # That disagreement is a finding, not something to resolve here.
         refuse(f"office-hud-without-night (bars {v['hudBars']:.3f})")
+    # The death static, before anything that reads a box of pixels as text: on
+    # static every such box is noise and could match anything.
+    elif v["roughness"] >= th["staticRoughnessMin"]:
+        state = "static"
     elif v["optionsHeader"] >= th["optionsHeaderMin"]:
         state = "options"
     elif v["logo"] >= th["logoMin"] and v["menuOptionsRow"] >= th["menuRowMin"]:

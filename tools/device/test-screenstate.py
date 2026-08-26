@@ -34,6 +34,29 @@ def frame(bg, flash=False, maskbar=False):
     return im
 
 
+def noise_frame(seed=12345):
+    """Deterministic per-pixel noise: the death static's signature is roughness,
+    not brightness. The real one is DARK (frame mean 34.1), the same as the
+    office, so a brightness test cannot separate them."""
+    im = Image.new("L", (2400, 1080))
+    px = im.load()
+    state = seed
+    for y in range(1080):
+        for x in range(0, 2400, 1):
+            state = (state * 1103515245 + 12345) & 0x7FFFFFFF
+            px[x, y] = (state >> 16) % 90
+    return im.convert("RGB")
+
+
+def lifecycle(im, tmp):
+    path = f"{tmp}/l.png"
+    im.save(path)
+    with open(path, "rb") as fh:
+        out = subprocess.run([sys.executable, str(HERE / "lifecycle-observe.py")],
+                             stdin=fh, capture_output=True, text=True, check=False)
+    return out.stdout.strip()
+
+
 def verdict(im, tmp):
     path = f"{tmp}/f.png"
     im.save(path)
@@ -61,11 +84,50 @@ def main():
             if got != want:
                 print(f"FAIL {name}: expected {want!r}, got {got!r}")
                 failed += 1
+        # --- the lifecycle refinement, which adds classes and never overrides
+        # the authority. The death path this reproduces was captured on a real
+        # Night 1: night -> static -> gameover -> title, every frame named.
+        # Text, not solid blocks. The real logo box overlaps screenstate's
+        # flashlight box, and the real logo is thin strokes -- that box means
+        # 40.8 on a title screen, well under the 90 that would call it a night.
+        # A solid fill there makes the fixture a night, which is what the first
+        # version of this test did.
+        # Bars wide enough to survive the classifier's 32-column downsample --
+        # a 2 px bar averages to grey and vanishes -- but sparse enough that the
+        # box mean stays under screenstate's 90. 16 px every 80 px is 20%
+        # coverage: mean about 51, bright fraction about 0.16 against a 0.05
+        # threshold. The real logo measures 40.8 and 0.112.
+        def strokes(draw, box, step=80, bar=16):
+            x0, y0, x1, y1 = box
+            for x in range(x0, x1 - bar, step):
+                draw.rectangle((x, y0, x + bar, y1), fill=(255, 255, 255))
+
+        d = ImageDraw.Draw
+        title = frame(dark)
+        t = d(title); strokes(t, (150, 40, 560, 140)); strokes(t, (1780, 830, 2310, 900))
+        dialog = frame(dark)
+        strokes(d(dialog), (150, 40, 560, 140))
+        options = frame(dark)
+        strokes(d(options), (1530, 100, 2030, 220))
+        lifecycle_cases = [
+            ("static is roughness, not brightness", noise_frame(), "state=static"),
+            ("the New Game newspaper", frame(bright, flash=True), "state=newspaper"),
+            ("the title menu", title, "state=title"),
+            ("the New Game confirmation", dialog, "state=titleDialog"),
+            ("the Options screen", options, "state=options"),
+            ("a night is left to the authority", frame(dark, flash=True), "state=night"),
+        ]
+        with tempfile.TemporaryDirectory() as tmp2:
+            for name, im, want in lifecycle_cases:
+                got = lifecycle(im, tmp2)
+                if got != want:
+                    print(f"FAIL lifecycle {name}: expected {want!r}, got {got!r}")
+                    failed += 1
     if failed:
         print(f"{failed} screenstate check(s) failed")
         return 1
-    print("screenstate: a lit meter and a mask bar are nights; "
-          "a frame that is bright all over is not")
+    print("screenstate: a lit meter and a mask bar are nights, a frame bright all "
+          "over is not; lifecycle names static, newspaper, title, dialog, options")
     return 0
 
 
