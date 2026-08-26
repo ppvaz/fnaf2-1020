@@ -9,7 +9,7 @@ packages are closed.
 
 ## Very next step
 
-**Resume point, written 2026-08-26 19:58 BRT.** Four scoped changes landed on
+**Resume point, written 2026-08-26 20:01 BRT.** Four scoped changes landed on
 `master` this pass:
 
 - `e04924c` makes the session producer use an OS monotonic clock shared across
@@ -27,15 +27,17 @@ packages are closed.
   5/5 Night 1 card frames, rejects 21/21 non-card frames and all 17/17 6 AM
   frames, and the cleared Night 1 timelines from intro through a positive 6 AM.
 
-**The working tree is not clean.** Concurrent, uncommitted changes exist in
-`src/config.js`, `src/engine.js`, `tools/sourcetest.mjs`, and
-`tools/dump/coverage.py`; they were present outside the scoped commits above
-and are being preserved. The full engine run passed **52 of 53 checks** and
-failed only `simtest`: those edits reinterpret marker 123's 40-frame
-`being attacked by` countdown as the by-night mask fuse, while the sourced
-office audit says they are separate and the by-night fuse is already modeled
-at marker 122. Resolve that ownership/mechanic conflict before touching the
-phone; a route priced by an internally contradictory engine is not gate-clean.
+**The working tree is not clean.** An active concurrent source pass is changing
+`src/config.js`, `src/engine.js`, `src/ui.js`, `tools/simtest.mjs`,
+`tools/sourcetest.mjs`, and `tools/dump/coverage.py`; it was outside the scoped
+commits above and is being preserved. At the first snapshot the full engine run
+passed **52 of 53 checks** and failed `simtest` on the marker-123 model. The
+source pass then split the reaction and committed-attack states and expanded
+into hall-light pinning, Toy Chica timing and Puppet routing; the latest focused
+run passes all 159 sourced-rule checks but fails `simtest` because W. Bonnie
+does not cross after the new hall-light B tail drains. Let that pass finish and
+restore the full green gate before touching the phone; a route priced while its
+engine is changing is not gate-clean.
 
 **The hardware ladder is Night 2, not Night 6.** The live title observer reads
 `items=continue,newGame`, so Sixth Night is not unlocked. The device owner
