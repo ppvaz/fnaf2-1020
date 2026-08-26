@@ -186,6 +186,28 @@ directions the resolution is usually the same:
   judgement calls. A `grade-run.sh` verdict a person can read in five seconds is
   not a legacy concession.
 
+## Every session ends by saying where it stopped
+
+A session can end at any moment -- a usage limit, a lost connection, a context
+that ran out. So the resume point is written **as the work happens**, not
+composed at the end when there may be no end to compose it in.
+
+`plans/PROGRESS.md` is where it lives, because it is the first thing a cold
+session reads. Its "Very next step" must always be true *right now*: what is
+half-done and where, what is running elsewhere, what was just learned that has
+not been acted on, and what the next concrete action is. If a session is
+interrupted mid-change, the tree and the dashboard should still agree about what
+state the work is in.
+
+The test is simple and worth applying honestly: **if this session ended on the
+next tool call, could the following one continue without re-deriving anything?**
+If not, the dashboard is behind and updating it is the next action, not the last
+one.
+
+This applies to subagents too. An agent that finishes without saying what it
+verified, what it could not, and what it left open has produced work the calling
+session has to redo.
+
 ## A finding that is not in the repository does not exist
 
 Every finding lands in the repository in the session that produced it — as code,

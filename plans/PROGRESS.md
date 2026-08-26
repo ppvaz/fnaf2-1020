@@ -9,41 +9,49 @@ packages are closed.
 
 ## Very next step
 
-**Verify the fork-free clock on hardware, then run the campaign ladder.**
+**Resume point, written 2026-08-26 mid-session.** Nothing below is half-applied:
+the tree is clean, the engine suite is green (49 checks, 35.8 s), and everything
+learned this session is committed.
 
-The actuator lateness this pointed at on 2026-08-26 was decomposed, priced and
-fixed in the same day, and the result changes what is reachable:
+### The single most important thing learned today
 
-- `date +%s%3N` is a **fork+exec costing 21 ms** on the target phone, and
-  `wait_until` busy-waited on it. Its landing error measured **49–106 ms**,
-  which is the documented "49–93 ms macro anchor spread" — not a device floor.
-- A builtin `read < /proc/uptime` costs **0.36 ms**. The same wait loop against
-  it landed **0 ms late on 15/15 with a live night running**, where the shipped
-  clock landed 34–73 ms late.
-- The knee is a **frame count, not a millisecond figure**: uniform lateness is
-  free to 41 ms (200/200 every night) and gone at 42 ms. Quote frames.
-- Priced through `actuator.mjs`, moving from the shipped 49–106 ms band to
-  0–10 ms takes Nights 1–5 to **200/200** and Night 6 to **171/200**, in the
-  simulator. Night 7 goes 0 → 25/200 and is still blocked by the one-frame
-  phase island, which is a route problem rather than a clock one.
+**The model gate was passing on its seed block.** `GATE_RUNS` was 100, which
+cannot measure a rate near its own bar. Over 1200 seeds the shipped Night 6 plan
+is **449/1200 = 37.4%** against a 40% contract, and it is now correctly
+**refused**. Nights 1–5 pass honestly (99.1, 66.5, 77.1, 72.3, 62.5 per cent).
+So the campaign ladder is gate-clean to **Night 5**, and Night 6 needs a route
+change rather than a device attempt. Every previously quoted per-night figure was
+measured on the same favourable block and every one was optimistic.
 
-The runner's clock has landed on `/proc/uptime`. **It has not been verified on
-the phone** — the 0-of-15 figure came from a bare shell loop, not from the real
-cycle with `hid_mark`, HID writes and the classifier in it.
+### The next concrete action
 
-**This step is complete when** the runner's per-anchor landing error is measured
-on hardware inside a real cycle and holds under the two-frame budget, the
-`/proc/uptime`↔epoch offset is checked for drift across a night, and a campaign
-night is then attempted and graded end to end.
+Verify the fork-free clock **on hardware inside a real cycle**. `date` was
+measured at 21 ms per fork+exec and `wait_until` busy-waited on it; the runner
+now uses a fork-free `/proc/uptime` read, which landed 0 ms late on 15/15 with a
+live night running — but that was a **bare shell loop**, not the real cycle with
+`hid_mark`, HID writes and the classifier in it. Priced through `actuator.mjs`,
+that change takes Nights 1–5 to 200/200 and Night 6 to 171/200 in the simulator.
+The knee is a frame count: free to 41 ms, gone at 42.
 
-**Nights 1–5 are the target, and that is now a gate fact rather than a
-preference.** A same-day audit found the human gate had been evaluating its
-verdict on 100 seeds, which cannot measure a rate near its own bar; over 1200
-seeds Nights 1–5 clear 40% at 99.1, 66.5, 77.1, 72.3 and 62.5 per cent, while
-**Night 6 is refused at 37.4%** and Night 7 at 11.6%. The device route for Night
-6 is therefore blocked at the gate until the route changes — which is what
-"absolute, no override" means, and it is the first time the gate has actually
-stopped something.
+Then attempt a graded Night 1–5 run. The device is ready: the correct game is
+installed, the title is observed, and every runner emits a session manifest.
+
+### Open, with what is known
+
+- **The music box contradicts `src/config.js` and is not fixed.** Measured on
+  Night 1: inert for the first ~133 s, then ~55 s full→empty, against a constant
+  of 16.67 s that `recipe.mjs` states is the *Nights 6-7* rate. The per-night
+  drain groups have not been located in the dump; the wind side is sourced
+  (g652 sets 2000, g638/g643 add +5/tick, g645 snaps to 300). Do not change the
+  constant until the drain is sourced.
+- **A 6 AM has never been captured**, so `lifecycle-observe.py` reports it
+  `unknown`. It needs a survived night. The minigames are likewise unmodelled.
+- **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
+  cycle, and no schedule prices it. Plan 03 depends on it.
+- **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings; the top two are
+  done, the rest are not.
+- A telemetry design survey was still running when this was written; its output
+  is `docs/device/RUN-TELEMETRY.md` if it landed.
 
 ## Dashboard
 
