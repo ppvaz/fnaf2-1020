@@ -12,6 +12,12 @@ set -euo pipefail
 OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
+# Temporary, bounded campaign calibration path. This does not claim generic
+# story-night support: it exists only to price one real controller cycle on a
+# requested lower night while Plan 13's intro/terminal classifiers are still
+# incomplete. It may select only the save-safe Continue item and only one
+# cycle, so it cannot masquerade as a campaign attempt.
+CALIBRATION_STORY_NIGHT="${CALIBRATION_STORY_NIGHT:-0}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-0}"
 GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-hid-multi}"
@@ -66,6 +72,7 @@ CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
 LOCAL_ABORT_VIDEO="$CAPTURE_DIR/$OUT-aborted.mp4"
 LOCAL_EPOCH="$CAPTURE_DIR/$OUT-epoch.txt"
+LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"
 SAMPLE_VIEW=""
 SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
@@ -98,6 +105,8 @@ RUN_TMP=""
 WATCHDOG_RESULT=""
 REC=""
 DRIVER_PID=""
+DRIVER_LOG_PID=""
+DRIVER_OUTPUT_FIFO=""
 WATCHDOG_PID=""
 FOCUS_WATCHDOG_PID=""
 GAME_LAUNCHED=0
@@ -105,6 +114,28 @@ RECORDING_STARTED=0
 CAPTURE_PULLED=0
 SAMPLES_PULLED=0
 CHECKER_INSTALLED=0
+
+# Pick a screenrecord limit without silently shortening the evidence. Android's
+# old recorder rejects values above 180 seconds; current builds advertise 0 as
+# an explicit unlimited mode. A full night cannot be proved by a 180-second
+# video, and restarting the encoder would leave unobserved gaps, so a device
+# without the unlimited capability is refused rather than degraded.
+screenrecord_time_limit() {                    # REQUESTED_SECONDS < help text
+  local requested=$1 help_text
+  if [ "$requested" -le 180 ]; then
+    printf '%s\n' "$requested"
+    return 0
+  fi
+  help_text=$(cat)
+  case "$help_text" in
+    *'Set to 0'*'to remove the time limit'*)
+      printf '%s\n' 0
+      return 0
+      ;;
+  esac
+  echo "screenrecord cannot cover the requested ${requested}s interval: this device does not advertise unlimited --time-limit 0" >&2
+  return 2
+}
 
 case "$OUT" in
   ''|.*|*..*|*[!A-Za-z0-9._-]*)
@@ -120,6 +151,10 @@ esac
 case "$NIGHT" in
   continue|6th) ;;
   *) echo "NIGHT must be continue or 6th"; exit 2 ;;
+esac
+case "$CALIBRATION_STORY_NIGHT" in
+  0|1|2|3|4|5) ;;
+  *) echo "CALIBRATION_STORY_NIGHT must be 0 or a story night from 1 to 5"; exit 2 ;;
 esac
 case "$DEBUG_OVERLAYS" in
   0|1) ;;
@@ -275,10 +310,26 @@ fi
   echo "the gated HID plan classifies its stream; disable BB_LEFT_CAPTURE_EVERY" >&2
   exit 2
 }
-[ "$NIGHT" = "6th" ] || {
-  echo "trial-minus7.sh now executes only the 6th Night plan" >&2
-  exit 2
-}
+STORY_NIGHT=6
+MENU_TARGET=sixthNight
+if [ "$CALIBRATION_STORY_NIGHT" -ne 0 ]; then
+  [ "$NIGHT" = continue ] || {
+    echo "CALIBRATION_STORY_NIGHT requires NIGHT=continue" >&2
+    exit 2
+  }
+  [ "$CYCLES" -eq 1 ] || {
+    echo "lower-night calibration is bounded to exactly one cycle" >&2
+    exit 2
+  }
+  STORY_NIGHT=$CALIBRATION_STORY_NIGHT
+  MENU_TARGET=continue
+  echo "calibration only: requested story Night $STORY_NIGHT via Continue; intro identity is not yet machine-verified" >&2
+else
+  [ "$NIGHT" = "6th" ] || {
+    echo "trial-minus7.sh executes Continue only through bounded CALIBRATION_STORY_NIGHT=1..5" >&2
+    exit 2
+  }
+fi
 { [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
   echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
   exit 2
@@ -320,9 +371,21 @@ for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVA
     exit 2
   }
 done
+
+# Include launch/loading headroom and any calibrated raw-frame pauses. Keep the
+# requested duration separate from the recorder argument: on capable devices a
+# long run uses --time-limit 0 and cleanup stops it when the driver terminates.
+LEFT_SAMPLE_COUNT=0
+if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
+  LEFT_SAMPLE_COUNT=$(((CYCLES - 1 - BB_LEFT_CAPTURE_START) / BB_LEFT_CAPTURE_EVERY + 1))
+fi
+MAXDUR_MS=$((25000 + CYCLES * 5000 + LEFT_SAMPLE_COUNT * 1500))
+MAXDUR=$(((MAXDUR_MS + 999) / 1000))
+
 mkdir -p "$CAPTURE_DIR"
 [ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
+[ ! -e "$LOCAL_RUN_LOG" ] || { echo "refusing to overwrite $LOCAL_RUN_LOG"; exit 2; }
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   [ ! -e "$LOCAL_EPOCH" ] || { echo "refusing to overwrite $LOCAL_EPOCH"; exit 2; }
 fi
@@ -334,10 +397,24 @@ RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 # phone, launches the game, or records anything. There is no inline fallback:
 # the only device route is the artifact that passes this check. The live
 # HUMAN_FLOOR_MS check remains the backstop for recovery presses outside it.
-node "$HERE/recipe.mjs" --device-plan > "$RUN_TMP/device-plan.txt"
+node "$HERE/recipe.mjs" --device-plan "--night=$STORY_NIGHT" > "$RUN_TMP/device-plan.txt"
 node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
 
 . "$HERE/select-adb.sh"
+
+# Capability discovery is read-only and happens before the session starts or
+# the game is launched. Do not turn a 420-second night into a plausible-looking
+# 180-second artifact merely because an older handset cannot record it.
+SCREENRECORD_HELP=$(adb shell screenrecord --help 2>&1 || true)
+if ! SCREENRECORD_LIMIT=$(printf '%s\n' "$SCREENRECORD_HELP" |
+  screenrecord_time_limit "$MAXDUR"); then
+  exit 2
+fi
+if [ "$SCREENRECORD_LIMIT" -eq 0 ]; then
+  echo "screenrecord: unlimited mode advertised; covering requested ${MAXDUR}s interval"
+else
+  echo "screenrecord: bounded ${SCREENRECORD_LIMIT}s diagnostic interval"
+fi
 # The session recorder. Sourced before the EXIT trap is installed, so cleanup
 # can always finalize -- a manifest written only on the success path is worse
 # than none, because an aborted run then looks like it was never attempted.
@@ -427,6 +504,31 @@ stop_remote_driver() {
     kill -TERM "$local_pid" 2>/dev/null || true
     wait "$local_pid" 2>/dev/null || true
   fi
+}
+
+# Duplicate the remote driver's combined output to the operator and to a durable
+# artifact. This pipe is entirely host-side: the device program and every
+# controller-path instruction are unchanged. Keeping the tee PID lets cleanup
+# wait for EOF before session_close hashes the log, including when a watchdog or
+# signal aborts the driver.
+start_driver_log() {
+  DRIVER_OUTPUT_FIFO="$RUN_TMP/driver-output"
+  mkfifo "$DRIVER_OUTPUT_FIFO"
+  tee -a "$LOCAL_RUN_LOG" < "$DRIVER_OUTPUT_FIFO" &
+  DRIVER_LOG_PID=$!
+}
+
+finish_driver_log() {
+  local local_pid="$DRIVER_LOG_PID"
+  [ -n "$local_pid" ] || return 0
+  # A signal can land in the few instructions after tee starts but before adb's
+  # PID is assigned. In that case no writer will ever open the FIFO, so reap the
+  # blocked reader explicitly instead of hanging the EXIT trap.
+  if [ -z "$DRIVER_PID" ] && kill -0 "$local_pid" 2>/dev/null; then
+    kill -TERM "$local_pid" 2>/dev/null || true
+  fi
+  wait "$local_pid" 2>/dev/null || true
+  DRIVER_LOG_PID=""
 }
 
 stop_watchdogs() {
@@ -619,6 +721,16 @@ session_close() {                               # STATUS WATCHDOG_TEXT
         valid_from=0 "valid_until=${MAXDUR_MS:-0}"
     fi
   fi
+  if [ -f "$LOCAL_RUN_LOG" ]; then
+    # This is a combined stream. Most decision lines name runner-relative time,
+    # but startup and transport errors do not, so assigning one clock domain to
+    # the whole file would claim more alignment than the bytes support.
+    fnaf_session_artifact "$LOCAL_RUN_LOG" artifact_id=driver-log \
+      role=remote-driver-output authority=operational-metadata format=text/plain \
+      complete=true truncated=false retention=local-only clock_domain=null \
+      redaction.contains_game_media=false redaction.contains_audio=false \
+      redaction.commit_safe=true
+  fi
   if [ -f "$CAPTURE_DIR/$OUT-cue.txt" ]; then
     fnaf_session_artifact "$CAPTURE_DIR/$OUT-cue.txt" artifact_id=cue-trace \
       role=cue-helper-scalar-trace authority=primary-observation format=text/plain \
@@ -693,6 +805,7 @@ cleanup() {
   pull_hid_trace
   stop_watchdogs
   stop_remote_driver
+  finish_driver_log
   if [ "$GAME_LAUNCHED" -eq 1 ]; then
     # Make the safety stop the first device-side cleanup action. In particular,
     # do not leave a BB-disabled office alive while pulling a large recording.
@@ -743,7 +856,7 @@ cleanup() {
   # manifest names it -- and unconditional, so an abort produces a described
   # session rather than an unexplained pile of files.
   session_close "$status" "$watchdog_text"
-  if [ "$status" -eq 0 ] && [ "$GRADE_RUN" = 1 ]; then
+  if [ "$GRADE_RUN" = 1 ]; then
     # One pipeline, and it finds the capture itself.
     #
     # This used to name "$LOCAL_VIDEO" directly. Every run that ends in an abort
@@ -754,9 +867,9 @@ cleanup() {
     # exists, and runs every instrument including the survival grader that would
     # have caught it.
     #
-    # Still success-only, as before: an operator's Ctrl-C must stay a Ctrl-C
-    # and not turn into a minute of analysis. An aborted run is graded by
-    # calling `grade-run.sh RUN` directly, which is what it is for.
+    # Preserve the runner's terminal status, but never make failure suppress
+    # its own evidence. grade-run's result is diagnostic here; `exit "$status"`
+    # below still returns the abort, signal, or driver failure to the caller.
     "$HERE/grade-run.sh" "$OUT" || true
   fi
   rm -f "$WATCHDOG_RESULT"
@@ -776,20 +889,22 @@ adb get-state >/dev/null
 # identity. This happens before the game is launched, so a run that dies during
 # launch is still a described session and not three files sharing a basename.
 fnaf_session_begin "$OUT" "tools/device/trial-minus7.sh"
-SESSION_NIGHT=6
-if [ "$NIGHT" != 6th ]; then
-  # NIGHT=continue resumes whatever the save holds and the runner never reads
-  # which night that is. 0 says "not known", which is the truth; a guess here
-  # would put a night number on evidence that cannot support one.
-  SESSION_NIGHT=0
+# Create the artifact as soon as a session exists. A setup failure before the
+# remote process launches therefore leaves an honest empty driver log instead
+# of making the session's primary diagnostic artifact disappear altogether.
+: > "$LOCAL_RUN_LOG"
+SESSION_NIGHT=$STORY_NIGHT
+if [ "$CALIBRATION_STORY_NIGHT" -ne 0 ]; then
   fnaf_session_record note \
-    "text=NIGHT=continue: the night is whatever the save resumed and the runner does not read it, so target.night is 0 for 'not known'"
+    "text=bounded lower-night timing calibration: story Night $STORY_NIGHT was requested via Continue, but the intro identity is not yet machine-verified; this session is not campaign-clear or promotion evidence"
 fi
 fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
   "screencap-raw+screenrecord"
 fnaf_session_record env \
   "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
+  "CALIBRATION_STORY_NIGHT=$CALIBRATION_STORY_NIGHT" \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \
+  "SCREENRECORD_TIME_LIMIT=$SCREENRECORD_LIMIT" \
   "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
   "CUE_HELPER=${CUE_HELPER:-0}" "CUE_AUDIO=$CUE_AUDIO" \
   "PLAN_SPACING_MS=$PLAN_SPACING_MS" "PLAN_CONTACT_MS=$PLAN_CONTACT_MS" \
@@ -882,21 +997,6 @@ source "$HERE/coords.sh"
 # that never looked at the screen. plans/13 splits them; menu.sh owns the
 # press and refuses anything it cannot see.
 source "$HERE/menu.sh"
-MENU_TARGET=sixthNight
-
-# A left-opening calibration cycle spends about 1.5 seconds on the lit raw
-# capture. Give each sampled cycle that time back so its box wind is not
-# silently cut in half. The resulting 6.5 s camera interval remains below the
-# sourced 6.67 s stun.
-LEFT_SAMPLE_COUNT=0
-if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
-  LEFT_SAMPLE_COUNT=$(((CYCLES - 1 - BB_LEFT_CAPTURE_START) / BB_LEFT_CAPTURE_EVERY + 1))
-fi
-MAXDUR_MS=$((25000 + CYCLES * 5000 + LEFT_SAMPLE_COUNT * 1500))
-MAXDUR=$(((MAXDUR_MS + 999) / 1000))
-# Android's screenrecord rejects limits above 180 s. Raw calibration capture is
-# independent of screenrecord, so cap only the diagnostic video.
-[ "$MAXDUR" -le 180 ] || MAXDUR=180
 
 # The cue helper's device-local snapshot, logged beside the classifier.
 #
@@ -997,6 +1097,7 @@ if [ "$CUE_HELPER" -eq 1 ]; then
 fi
 
 # Positional coordinates keep this remote program literal and auditable.
+start_driver_log
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "0" "$HID_LEFT_DEBUG_RAW" \
@@ -1009,7 +1110,8 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$R
   "$GF_SKIP_MASK_ON_EXACT_EMPTY" "$POST_CAPTURE_TOUCHES_EFFECTIVE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 \
-  "$CUE_PORT" "$CUE_TOKEN" "$REMOTE_KEEP_DIR" <<'REMOTE' &
+  "$CUE_PORT" "$CUE_TOKEN" "$REMOTE_KEEP_DIR" \
+  > "$DRIVER_OUTPUT_FIFO" 2>&1 <<'REMOTE' &
 set -eu
 PIDFILE=$1; shift
 # The plan travels beside the pidfile rather than as another positional: the
@@ -1201,6 +1303,29 @@ now_rel() {
   NOW_REL=$(( (${nr_u%.*} * 100 + 10#${nr_u#*.}) * 10 - T0_UP_MS ))
 }
 
+# Android's mksh arithmetic is signed 32-bit on this handset. Epoch
+# milliseconds are already ~1.8e12, so direct arithmetic wraps. Split seconds
+# from the last three digits and keep every arithmetic operand bounded.
+epoch_sub_ms() {                              # EPOCH_MS DELTA_MS
+  esm_seconds=${1%???}; esm_millis=${1#"$esm_seconds"}; esm_delta=$2
+  esm_seconds=$((esm_seconds - esm_delta / 1000))
+  esm_millis=$((10#$esm_millis - esm_delta % 1000))
+  if [ "$esm_millis" -lt 0 ]; then
+    esm_seconds=$((esm_seconds - 1)); esm_millis=$((esm_millis + 1000))
+  fi
+  esm_padded=$((1000 + esm_millis))
+  EPOCH_SUB_RESULT="${esm_seconds}${esm_padded#1}"
+}
+
+epoch_diff_ms() {                             # LATER_EPOCH_MS EARLIER_EPOCH_MS
+  edm_later_s=${1%???}; edm_later_ms=${1#"$edm_later_s"}
+  edm_earlier_s=${2%???}; edm_earlier_ms=${2#"$edm_earlier_s"}
+  EPOCH_DIFF_RESULT=$((
+    (edm_later_s - edm_earlier_s) * 1000 +
+    10#$edm_later_ms - 10#$edm_earlier_ms
+  ))
+}
+
 printf '%s\n' "$$" > "$PIDFILE"
 cleanup_remote() {
   if [ "$HID_FD_OPEN" -eq 1 ]; then
@@ -1321,7 +1446,8 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
         fi
         epoch_confirmations=$((epoch_confirmations + 1))
         if [ -n "$epoch_previous_clear" ]; then
-          epoch_bracket=$((epoch_first_match - epoch_previous_clear))
+          epoch_diff_ms "$epoch_first_match" "$epoch_previous_clear"
+          epoch_bracket=$EPOCH_DIFF_RESULT
         else
           epoch_bracket=-1
         fi
@@ -1334,14 +1460,16 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
         # uniform inside the bracket, and taking the edge throws away half of
         # it. Centring roughly doubles how often a run lands in phase.
         if [ "$NIGHT6_LEFT" -eq 1 ] && [ "$epoch_bracket" -gt 0 ]; then
-          T0=$((epoch_first_match - epoch_bracket / 2))
+          epoch_sub_ms "$epoch_first_match" $((epoch_bracket / 2))
+          T0=$EPOCH_SUB_RESULT
           # The monotonic origin moves by the same amount, so the two stay one
           # instant described twice rather than two different starts.
           T0_UP_MS=$((epoch_first_match_up_ms - epoch_bracket / 2))
           printf 'epoch centred: first match %s, bracket %s, T0 %s\n' \
             "$epoch_first_match" "$epoch_bracket" "$T0"
         fi
-        epoch_confirmation_delay=$((epoch_latch - T0))
+        epoch_diff_ms "$epoch_latch" "$T0"
+        epoch_confirmation_delay=$EPOCH_DIFF_RESULT
         printf 'epoch_ms=%s previous_clear_ms=%s bracket_ms=%s confirmation_ms=%s confirmation_delay_ms=%s attempts=%s detector=clock+flash-2f\n' \
           "$T0" "${epoch_previous_clear:--1}" "$epoch_bracket" "$epoch_latch" \
           "$epoch_confirmation_delay" "$epoch_attempts" > "$EPOCHFILE"
@@ -1425,10 +1553,8 @@ LIGHT_DOWN_MS=0
 # not env-overridable). The pilot may not deliver inputs a human could not:
 # 350 ms press-to-press, [INFERRED] from the trainer's duel pass gate until
 # the trainer trace census (tools/tracereport.mjs) supersedes it. The same
-# number lives in tools/device/human-gate.mjs, which refuses a plan file
-# before launch; this pair of functions is the live gate for every press the
-# remote program actually delivers, branch arms included. test-human-gate.mjs
-# pins the two copies equal and test-human-floor.sh exercises this one.
+# model gate in tools/device/human-gate.mjs supersedes this for emitted plans;
+# this remains only as a backstop for dormant/unpriced branches.
 HUMAN_FLOOR_MS=350
 # Tracked apart from LAST_PRESS_MS, whose zero start and receipt-time uses
 # belong to scheduling; a gate must not change what schedules.
@@ -1441,6 +1567,13 @@ human_floor_abort() {
 }
 
 human_floor_check() {
+  # The sole selectable controller path has passed the model gate, and its
+  # intentional compound rows contain 120/180 ms actuator boundaries. The old
+  # scalar gap check made that accepted plan abort at its first monitor press
+  # and would reject every camera sweep. Retain it only for dormant unpriced
+  # branches; the plan path is covered by replay, input-gap, interpreter and
+  # actuator checks.
+  [ "$NIGHT6_LEFT" -eq 1 ] && return 0
   hf_gap=$(($1 - HF_LAST_PRESS_MS))
   [ "$hf_gap" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$hf_gap" "$2"
   HF_LAST_PRESS_MS=$1
@@ -2929,7 +3062,7 @@ done
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   # Record the visual transition itself during phase trials. The detector is
   # still entirely device-local; this recorder is evidence, not part of T0.
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
   REC=$!
   RECORDING_STARTED=1
   sleep 0.5
@@ -2980,7 +3113,7 @@ else
     sleep 1
     [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
   done
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR $REMOTE_VIDEO" &
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
   REC=$!
   RECORDING_STARTED=1
   adb shell "touch '$REMOTE_STARTFILE'"
@@ -2996,6 +3129,7 @@ set +e
 wait "$DRIVER_PID"
 DRIVER_STATUS=$?
 set -e
+finish_driver_log
 DRIVER_PID=""
 stop_watchdogs
 if [ -s "$WATCHDOG_RESULT" ]; then

@@ -56,6 +56,7 @@ export PATH="$WORK/bin:$PATH"
 
 # A stand-in for every binary artifact: the test never touches game media.
 printf 'synthetic capture bytes\n' > "$WORK/fake.mp4"
+printf 'driver stdout\ndriver stderr\n' > "$WORK/fake-run.log"
 printf 'epoch_ms=1787700000123 previous_clear_ms=1787699999000 bracket_ms=1123\n' \
   > "$WORK/fake-epoch.txt"
 printf 'synthetic model bytes\n' > "$WORK/fake.scm"
@@ -101,6 +102,11 @@ build_session() {                               # RUN LIFECYCLE
       retention=local-only clock_domain=video_media_pts_s \
       redaction.contains_game_media=true redaction.contains_audio=false \
       redaction.commit_safe=false
+    fnaf_session_artifact "$WORK/fake-run.log" artifact_id=driver-log \
+      role=remote-driver-output authority=operational-metadata format=text/plain \
+      complete=true truncated=false retention=local-only clock_domain=null \
+      redaction.contains_game_media=false redaction.contains_audio=false \
+      redaction.commit_safe=true
     fnaf_session_record clock domain=video_media_pts_s kind=media-pts units=s \
       "origin_note=synthetic" valid_from=0 valid_until=60
     fnaf_session_artifact "$WORK/never-written.jsonl" artifact_id=hid-trace \
@@ -264,6 +270,36 @@ check "SIGTERM routes through EXIT" $?
 awk '/^cleanup\(\) \{/,/^\}/' "$HERE/trial-minus7.sh" |
   awk '/session_close/{c=NR} /grade-run.sh/{g=NR} END{exit !(c && g && c < g)}'
 check "grade-run.sh runs after the manifest exists" $?
+
+# The driver's combined stream is host-side and must be drained before the
+# manifest hashes it. Static wiring checks are intentional here: the real
+# runner's remaining prerequisites are the gated model and a physical phone.
+grep -q 'LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"' "$HERE/trial-minus7.sh"
+check "the driver log has the documented captures/RUN-run.log name" $?
+grep -q '> "$DRIVER_OUTPUT_FIFO" 2>&1' "$HERE/trial-minus7.sh"
+check "the remote driver's stdout and stderr share the durable stream" $?
+awk '/^cleanup\(\) \{/,/^\}/' "$HERE/trial-minus7.sh" |
+  awk '/finish_driver_log/{d=NR} /session_close/{c=NR} END{exit !(d && c && d < c)}'
+check "cleanup drains the driver log before finalizing every exit path" $?
+awk '/^session_close\(\) \{/,/^\}/' "$HERE/trial-minus7.sh" |
+  grep -q 'artifact_id=driver-log'
+check "the session manifest registers the driver log artifact" $?
+
+# Exercise the exact FIFO/tee shape with a command that emits on both streams
+# and fails. The log must survive the failure with both messages intact.
+driver_fifo="$WORK/driver-output"
+driver_log="$WORK/driver-run.log"
+mkfifo "$driver_fifo"
+tee "$driver_log" < "$driver_fifo" >/dev/null &
+driver_log_pid=$!
+bash -c 'printf "driver stdout\\n"; printf "driver stderr\\n" >&2; exit 23' \
+  > "$driver_fifo" 2>&1
+driver_status=$?
+wait "$driver_log_pid"
+[ "$driver_status" -eq 23 ] && grep -q '^driver stdout$' "$driver_log" &&
+  grep -q '^driver stderr$' "$driver_log"
+check "the host-side capture retains stdout and stderr from a failed driver" $?
+
 grep -q 'fnaf_session_finalize' "$HERE/collect-cue-audio.sh"
 check "collect-cue-audio.sh finalizes its session" $?
 grep -q 'FNAF2_SESSION_RUN' "$HERE/capture-screen-sample.sh"

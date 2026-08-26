@@ -305,8 +305,19 @@ class HidPilot {
     // flashlight a night spent on nothing. The second beat's pulse is the
     // cycle's real Foxy reset either way; skipping this one when it cannot
     // land takes the night's power floor from 716 frames to 1111.
-    if (maskOff + C.MASK_ANIM_OFF <= b + s(1.28))
+    const earlyHallLands = maskOff + C.MASK_ANIM_OFF <= b + s(1.28);
+    if (earlyHallLands)
       this.hold(b + s(1.28), this.hallPulse, 'light');
+    // The measured read latency makes the old +1.28 s slot land inside the
+    // mask-off animation, so the shipped route used to omit this reset and
+    // leave Foxy for the second beat. Reuse the raise macro as the fallback:
+    // its hall contact is queued before the simultaneous monitor press, just
+    // like the attack recovery, and the tail of the hold remains live after
+    // the mask animation clears. Under the gate's broad 1200-seed human-slack
+    // sample this one reset moves Night 6 from 449/1200 to 673/1200 without
+    // moving any camera-stun or read boundary.
+    if (!earlyHallLands)
+      this.hold(b + s(1.38), this.hallPulse, 'light');
     this.tap(b + s(1.38), 'monitor');
     this.tap(b + s(1.62), 'cam:11');
     if (this.deviceSweep && !this.secondBeat) {

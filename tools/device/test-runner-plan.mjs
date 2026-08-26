@@ -75,8 +75,8 @@ const recipe = build({ night: 6, sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900,
 const plan = devicePlan(recipe);
 
 check(plan.clear[2].split(' ')[1] === 'maskraise' &&
-      plan.clear[2].split(' ')[3] === 'up',
-  `clear instruction 3 must be mask-off + raise, but it is "${plan.clear[2]}"`);
+      plan.clear[2].split(' ')[3] === 'hall',
+  `clear instruction 3 must be mask-off + hall raise, but it is "${plan.clear[2]}"`);
 check(plan.attack[2].split(' ')[1] === 'maskraise' &&
       plan.attack[2].split(' ')[3] === 'hall',
   `attack instruction 3 must be mask-off + hall raise, but it is "${plan.attack[2]}"`);

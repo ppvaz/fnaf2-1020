@@ -146,8 +146,8 @@ const ENGINE = [
   // old inline-schedule modes are no longer selectable; the live press floor
   // stays as the backstop for recovery actions outside the artifact. These
   // checks verify both layers against mocks, exercise the sole runner path
-  // with a fake adb, and assert the shipped Night 6 plan PASSES (46/100 with the
-  // sourced Fusion LCG and measured-safe maskraise compound).
+  // with a fake adb, and assert the shipped Night 6 plan PASSES (673/1200 with
+  // the sourced Fusion LCG and measured-safe maskraise compound).
   ['human gate', ['device/test-human-gate.mjs']],
   ['human floor', ['device/test-human-floor.sh']],
   // The campaign can request any story night, so every story night must build,
@@ -214,6 +214,11 @@ const ENGINE = [
   // runners, hashes rather than filenames, and a manifest on every exit path.
   // Mock adb, synthetic artifacts, no phone.
   ['session producer', ['device/test-session-manifest.sh']],
+  // A 420-second night must not be represented by screenrecord's legacy
+  // 180-second default, and an abort must not suppress the grader that explains
+  // it. The runner negotiates unlimited mode from captured device help and
+  // fails closed on old recorders rather than stitching over evidence gaps.
+  ['screenrecord capability', ['device/test-screenrecord-capability.sh']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],

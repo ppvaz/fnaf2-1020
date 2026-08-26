@@ -11,9 +11,10 @@
 //            night with no attack cycle is CORRECT and the branch is carried
 //            only as a fail-safe for an unexpected classifier read;
 //   Night 3  the table arms him at AI 1 then 2, so he is rare, not absent --
-//            seed 7 simply did not roll him, and answering that by dropping
-//            the branch would have shipped a plan with no BB handling for a
-//            night that can produce one.
+//            the prior route's seed 7 did not roll him, and answering that by
+//            dropping the branch would have shipped a plan with no BB handling
+//            for a night that can produce one. The repaired route now samples
+//            him at seed 7; the source-based invariant remains the same.
 //
 // Only the source table separates those, so `resolveAttack()` asks it. This
 // gate holds the resulting matrix, and it holds the fail-closed direction too:
@@ -89,18 +90,15 @@ for (const night of NIGHTS) {
     `${won}/${EXACT_RUNS}, deaths ${JSON.stringify([...deaths])}`);
   // ...and receive a verdict priced against ITS AI table, not night 6's.
   check(`night ${night} gated against its own night`, gate.night === night);
-  // Which nights clear the bar is now an assertion per night, not a blanket
-  // pass. Corrected 2026-08-26 when GATE_RUNS moved from 100 to 1200: the old
+  // Corrected 2026-08-26 when GATE_RUNS moved from 100 to 1200: the old
   // per-night figures (99, 77, 89, 85, 78, 46 of 100) were all measured on
   // seeds 1..100, which is a favourable block on every night. The truth over
-  // 1200 seeds is 99.1, 66.5, 77.1, 72.3, 62.5 and 37.4 per cent -- so Nights
-  // 1-5 clear 40% honestly and NIGHT 6 DOES NOT.
-  const shouldPass = night <= 5;
-  check(`night ${night} ${shouldPass ? 'passes' : 'is refused by'} the model gate`,
-    gate.ok === shouldPass,
+  // 1200 seeds was 99.1, 66.5, 77.1, 72.3, 62.5 and 37.4 per cent. Carrying
+  // the omitted first Foxy reset on the post-read raise moves that same sample
+  // to 99.1, 68.9, 78.8, 73.2, 63.9 and 56.1 per cent: all six now pass.
+  check(`night ${night} passes the model gate`, gate.ok,
     `${gate.survived}/${gate.runs} under +/-${HUMAN_SLACK_MS} ms ` +
-    `(need ${Math.ceil(gate.runs * GATE_MIN_SURVIVAL)}); if night 6 now clears the ` +
-    'bar a route change fixed it -- update the note above rather than the check');
+    `(need ${Math.ceil(gate.runs * GATE_MIN_SURVIVAL)})`);
   // A plan that spends more flashlight than the night owns is not a plan.
   check(`night ${night} stays inside its power budget`,
     recipe.powerFramesHeadroom > 0,
@@ -132,14 +130,16 @@ for (const { night, attack, detections } of rows) {
 
 // Night 1 is the case that used to crash the builder, and Night 3 the case
 // that must NOT be answered by dropping the branch. Name them, so a future
-// change that collapses the two facts again fails here by name.
+// change that collapses the two facts again fails here by name. Whether the
+// fixed sample supplies Night 3's branch is deliberately not pinned.
 {
   const n1 = rows.find(r => r.night === 1).attack;
   const n3 = rows.find(r => r.night === 3).attack;
   check('night 1 carries a borrowed, unreachable branch',
     !n1.reachable && n1.peakAi === 0 && n1.source === 'template', JSON.stringify(n1));
-  check('night 3 keeps a real branch, cut from another seed of night 3',
-    n3.reachable && n3.peakAi > 0 && n3.source === 'reseeded' && n3.cutFrom.night === 3,
+  check('night 3 keeps a real branch, cut from night 3',
+    n3.reachable && n3.peakAi > 0 &&
+      (n3.source === 'sampled' || n3.source === 'reseeded') && n3.cutFrom.night === 3,
     JSON.stringify(n3));
 }
 

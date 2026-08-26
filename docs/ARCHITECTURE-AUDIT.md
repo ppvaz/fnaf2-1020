@@ -66,6 +66,12 @@ gate print the survival interval rather than a bare fraction. Expect
 `test-human-gate.mjs` to go red — that is the correct outcome and the real
 finding. Move `TEMPLATE_SEED` outside the gate block while you are there.
 
+**Resolved 2026-08-26.** `GATE_RUNS` is now 1200. The widened gate first did go
+red at 449/1200. The route then restored an omitted Foxy reset by carrying the
+first post-read hall contact on the existing `maskraise` row; the same fixed
+sample is now **673/1200 = 56.1%**, with the 40% contract unchanged. The old
+block table remains above as the evidence for widening the sample.
+
 *Negative control, so nobody re-derives it:* I checked whether the contiguous
 block 1..100 is a biased sample of the Fusion LCG's state space. It is not. The
 map `s -> (s*31415+1) mod 2^16` decomposes into exactly 4 cycles of 16,384, and
@@ -208,6 +214,14 @@ every suspect landed.
 offset saturates the search bound, and return `None`/exit 3 with a reason rather
 than a number. Add "the divergence is real but unattributable" as an outcome of
 `blame()`.
+
+**Resolved 2026-08-26.** `align()` now refuses a trace with no monitor presses,
+a recording with no confident state edges, zero press/edge matches, or an
+optimum on either search boundary. `scan()` reports the alignment as `UNKNOWN`
+and exits 2 before walking or attributing any interval. `blame()` now returns no
+culprit when every suspect has a plausible edge, and the report distinguishes
+that from “no divergence”. The built-in suite covers all three former invented-
+offset cases, an interior positive control, and the unattributable divergence.
 
 ---
 

@@ -353,8 +353,10 @@ export const MASK_GAP_MS = 40;
 // 0/17 times at or above 180 ms in the retained device census. Keep the two
 // actions in one HID macro so shell launch spread cannot compress that seam.
 // Starting the compound 60 ms before the policy's mask-off row preserves the
-// following monitor-animation margin; replay is 100/100 exact and 46/100 under
-// the model gate's +/-60 ms human slack at this geometry.
+// following monitor-animation margin. The clear branch also carries its first
+// Foxy reset in this macro: the old standalone slot landed inside mask-off and
+// did nothing at the measured read latency. Replay is 100/100 exact and
+// 673/1200 under the model gate's +/-60 ms human slack at this geometry.
 export const MASK_RAISE_GAP_MS = 180;
 export const MASK_RAISE_SHIFT_MS = 60;
 

@@ -686,7 +686,11 @@ census, ignoring Golden Freddy clears 465/1000 and the first loss can arrive at
 stuck-mask nights lost the *monitor press after mask-off*, not the mask toggle.
 The flick is restored; `recipe.mjs` emits mask-off + raise as one `maskraise`
 macro with a 180 ms internal gap, where the retained device census is 0/17
-losses. It is 100/100 exact and 46/100 under the model gate's ±60 ms slack.
+losses. The route before the first post-read Foxy reset was restored was
+100/100 exact but only 449/1200 under the model gate's ±60 ms slack (its
+46/100 result was a favourable seed block). Carrying an eight-frame hall contact on
+that same compound row leaves the measured 180 ms mask→monitor seam unchanged
+and raises the broad result to 673/1200.
 
 The original reasoning is retained below because it motivated the census that
 found the real seam. Its figures used the simulator's old invented xorshift

@@ -164,8 +164,18 @@ places, each forced by something the phone measurably cannot do:
 | Balloon Boy | heard and reacted to | a lit left-opening read every cycle | a bot has no ears; the vocal is 6-16 dB too quiet (plan 08) |
 | camera sweep | early, 0.80-1.20 s | **late, 4.67-4.90 s** | its stun has to bridge the five-tick mask, and the phone's sweep is longer |
 | camera light | held across the sweep | **pulsed per camera** | a held 790 ms sweep alone outspends night 6's 3000 flashlight frames |
-| hall flash | 0.42 s, one beat | **3.10 s, a second monitor-down beat** | the read owns the first beat |
+| hall flash | 0.42 s, one beat | **1.38 s raise + 3.10 s second beat** | the read owns the first beat; the raise carries its reset |
 | wind | one 3.5 s hold | **two holds, 0.95 s + 1.08 s** | the two beats split it |
+
+**Night 6 gate repair, 2026-08-26.** The table originally omitted the first
+beat's Foxy reset: its +1.28 s hall slot fell inside the mask-off animation at
+the measured 550 ms read latency, so `hallLightOn` could never become true.
+The post-read raise now carries the existing eight-frame (~133 ms) hall pulse in the same
+180 ms `maskraise` HID macro already used by attack recovery. It does not move
+the observation or either stun sweep. On the gate's fixed 1200 seeds it changes
+Night 6 from **449/1200 (37.4%, refused)** to **673/1200 (56.1%, accepted)**;
+exact replay remains 100/100 and the all-clear flashlight budget is
+2808/3000 frames.
 
 It is not a claimed clear. Its gate is `hidpilot n6 target` in
 `tools/test.mjs --engine` (3000/3000 ordinary, 3000/3000 pinned-worst, no

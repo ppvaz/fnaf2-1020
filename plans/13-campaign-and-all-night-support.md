@@ -174,19 +174,40 @@ plan is pinned byte-for-byte against `testdata/n6-device-plan.txt`:
 
 | Night | Exact | Human slack ±60 ms | Light frames | Peak BB AI | Attack branch | BB reads |
 |---:|---:|---:|---:|---:|---|---:|
-| 1 | 100/100 | 1189/1200 (99.1%) | 2148/7000 | 0 | unreachable, template n6 s7 | 0 |
-| 2 | 100/100 | 798/1200 (66.5%) | 2148/6000 | 3 | sampled n2 s7 | 167 |
-| 3 | 100/100 | 925/1200 (77.1%) | 2148/5000 | 2 | reseeded n3 s2 | 103 |
-| 4 | 100/100 | 867/1200 (72.3%) | 2148/4000 | 3 | sampled n4 s7 | 202 |
-| 5 | 100/100 | 750/1200 (62.5%) | 2148/3000 | 5 | sampled n5 s7 | 362 |
-| 6 | 100/100 | **449/1200 (37.4%) — REFUSED** | 2148/3000 | 9 | sampled n6 s7 | 558 |
+| 1 | 100/100 | 1189/1200 (99.1%) | 2808/7000 | 0 | unreachable, template n6 s7 | 0 |
+| 2 | 100/100 | 827/1200 (68.9%) | 2808/6000 | 3 | sampled n2 s7 | 183 |
+| 3 | 100/100 | 946/1200 (78.8%) | 2808/5000 | 2 | sampled n3 s7 | 108 |
+| 4 | 100/100 | 878/1200 (73.2%) | 2808/4000 | 3 | sampled n4 s7 | 197 |
+| 5 | 100/100 | 767/1200 (63.9%) | 2808/3000 | 5 | sampled n5 s7 | 356 |
+| 6 | 100/100 | 673/1200 (56.1%) | 2808/3000 | 9 | sampled n6 s7 | 558 |
 
-**Corrected 2026-08-26, same day.** This table first read 99, 77, 89, 85, 78 and
-46 of **100** seeds, and reported all six as passing. Those were seeds 1..100,
-which is a favourable block on every night, and 100 draws cannot measure a rate
-near the bar. `GATE_RUNS` moved to 1200; the corrected figures are above and
-**Night 6 does not clear the 40% contract**. The original numbers are kept here
-because they are why the sample size changed.
+**Corrected twice on 2026-08-26.** Both corrections are kept, because between
+them they are the whole lesson.
+
+*First:* this table read 99, 77, 89, 85, 78 and 46 of **100** seeds and reported
+all six as passing. Those were seeds 1..100 — a favourable block on every night,
+and 100 draws cannot measure a rate near the bar. `GATE_RUNS` moved to 1200 and
+the honest figures were 99.1, 66.5, 77.1, 72.3, 62.5 and **37.4%**: Night 6 was
+correctly **refused**.
+
+*Second:* the refusal was then fixed at its cause rather than argued with. The
+clear branch had lost its first Foxy reset — the old standalone hall slot landed
+inside mask-off and did nothing at the measured read latency — so the route now
+carries that contact on the existing post-read `maskraise` row
+(`recipe.mjs:353-360`, `testdata/n6-device-plan.txt:12`). The mask→monitor seam
+stays at its measured 180 ms and the read and sweep do not move. Measured on the
+same 1200 seeds, all six nights now clear the unchanged 40% contract.
+
+**What that margin cost, which is the part worth watching.** The restored
+contact is lit, so light spend rose 2148 → 2808 frames on every night. Nights 1-4
+absorb it. **Nights 5 and 6 do not have room to spare: headroom fell 852 → 192
+frames**, about 3.2 s of flashlight against a 3000-frame budget. Night 6's gate
+margin was bought with power, and the two nights that needed it most are now the
+two with the least slack left. Any future observation that costs light — a held
+sweep, a second vent read, a lit calibration frame — has roughly three seconds to
+spend on Nights 5-6 before the route stops fitting its own budget.
+`test-night-matrix.mjs` asserts `powerFramesHeadroom > 0` per night, so crossing
+that line fails the suite rather than the phone; it does not warn on approach.
 
 Night 1's zero reads across 100 replays is the control on its `reachable:
 false`: the table and the engine are two independent statements, and the matrix

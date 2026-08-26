@@ -31,6 +31,7 @@ esac
   echo 'set -eu'
   echo "HUMAN_FLOOR_MS=$FLOOR"
   echo 'HF_LAST_PRESS_MS=-100000'
+  echo 'NIGHT6_LEFT=0'
   echo 'LAST_PRESS_MS=0; LAST_MONITOR_PRESS_MS=-100000'
   echo 'T0=0; T0_UP_MS=0; PRESS_MODE=tap; HID_MODE=0; FAKE_NOW=0; NOW_REL=0'
   # The clock and every device primitive are stubs; the gate is not. The runner
@@ -72,6 +73,13 @@ expect 'tight press aborts' 44 \
 expect 'floor-spaced press allowed' 0 \
   'FAKE_NOW=1000; press_at 1000 1 1 first' \
   "FAKE_NOW=$((1000 + FLOOR)); press_at $((1000 + FLOOR)) 1 1 second"
+
+# The emitted controller plan is gated as a whole. Its actuator macros contain
+# deliberate 120/180 ms boundaries, so applying the retired scalar gap rule to
+# them would make every accepted plan abort on-device.
+expect 'model-gated plan bypasses the legacy scalar floor' 0 \
+  'NIGHT6_LEFT=1; FAKE_NOW=1000; press_at 1000 1 1 first' \
+  'FAKE_NOW=1120; press_at 1120 1 1 planned-second'
 
 # hold_at is a press too.
 expect 'tight hold aborts' 44 \

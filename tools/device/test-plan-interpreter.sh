@@ -127,6 +127,20 @@ run() {
 
 fail() { printf 'FAIL: %b\n' "$1" >&2; exit 1; }
 
+# The device shell's arithmetic is 32-bit while epoch milliseconds are ~1.8e12.
+# The helpers must keep that value as a string and only calculate on its
+# seconds/millisecond components. This is the exact value the first real
+# fork-free-cycle attempt wrapped to 1060733274.
+epoch_math="$({
+  extract epoch_sub_ms
+  extract epoch_diff_ms
+  printf '%s\n' \
+    'epoch_sub_ms 1787767128564 154; printf "%s\\n" "$EPOCH_SUB_RESULT"' \
+    'epoch_diff_ms 1787767128831 1787767128410; printf "%s\\n" "$EPOCH_DIFF_RESULT"'
+} | bash)"
+[ "$epoch_math" = $'1787767128410\n421' ] ||
+  fail "epoch helper wrapped or miscomputed:\n$epoch_math"
+
 # The opening runs whole, at the offsets the plan carries. Derived from the
 # plan, not transcribed: these numbers move whenever the emitter retimes
 # anything -- anchoring the sweep's end rather than its start shifted this one
@@ -320,8 +334,10 @@ HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
 
 {
   echo 'set -eu'
-  # The human floor ships inside press_at, so the shipped gate runs here too:
-  # a monitor-verify the corrector schedules must clear it like any press.
+  # The human floor ships inside press_at, so whichever arm of it applies runs
+  # here too. Since 2026-08-26 that is an arm, not a scalar: the model gate
+  # supersedes the floor on the gated plan path, and the floor is retained only
+  # for dormant unpriced branches. Both arms are exercised below.
   for fn in human_floor_abort human_floor_check press_at light_down_at; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
@@ -352,6 +368,15 @@ hid_down() { printf '%s light-down\n' "$NOW"; }
 input() { :; }
 PRESS_MODE=tap
 HID_MODE=0
+# Which arm of human_floor_check applies. 1 is the shipped gated route, where
+# the model gate has already priced the schedule and the scalar floor stands
+# down -- the compound rows it emits contain deliberate 120/180 ms actuator
+# boundaries that the old blanket check aborted on. 0 is a dormant unpriced
+# branch, where the floor is still the only thing standing between the pilot
+# and an inhuman input. Stubbed explicitly rather than defaulted: the runner
+# takes this from argv, and a harness that let it go unbound would silently
+# test whichever arm `set -eu` happened not to trip on.
+NIGHT6_LEFT=1
 CUE_PORT=1
 CAM_LIGHT_X=1 CAM_LIGHT_Y=1 MONITOR_X=2 MONITOR_Y=2
 LAST_PRESS_MS=0
@@ -442,5 +467,32 @@ esac
 got="$(light_run 'NOW=300; light_down_at 367 vent')"
 [ "$(printf '%s\n' "$got" | awk '/light-down/{print $1}')" = 367 ] ||
   fail "the first read waited for a flip that never happened:\n$got"
+
+# --- both arms of the human floor --------------------------------------------
+#
+# The floor stopped being a scalar on 2026-08-26: the model gate prices the
+# emitted plan, so on the gated route (NIGHT6_LEFT=1) the floor stands down,
+# and it is retained only for dormant unpriced branches (NIGHT6_LEFT=0). That
+# bypass arrived with no test of either arm, and it broke this file by leaving
+# NIGHT6_LEFT unbound under `set -eu`. Pin both directions, so neither a
+# re-widened floor that aborts the shipped compound rows nor a floor quietly
+# disabled everywhere passes here.
+#
+# Two presses one FUSION_POLL_MS apart: far inside HUMAN_FLOOR_MS, and the
+# shape the plan's own compound rows have.
+tight="NOW=1000; press_at 1000 2 2 monitor; NOW=$((1000 + FUSION_POLL_MS))
+       press_at $((1000 + FUSION_POLL_MS)) 1 1 cam11"
+
+if ! light_run "NIGHT6_LEFT=1; $tight" >/dev/null 2>&1; then
+  fail 'the gated route aborted on its own compound spacing; the model gate, not the scalar floor, prices that plan'
+fi
+
+if got="$(light_run "NIGHT6_LEFT=0; $tight" 2>&1)"; then
+  fail "a dormant unpriced branch delivered a ${FUSION_POLL_MS} ms gap with no floor:\n$got"
+fi
+case "$got" in
+  *"HUMAN FLOOR"*"cam11"*) ;;
+  *) fail "the dormant branch refused without naming the press or the floor:\n$got" ;;
+esac
 
 echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan; the cue read waits out the monitor flip and confirms it before correcting)'

@@ -211,19 +211,26 @@ input/video census identified the actual fault: the following monitor press,
 not the mask toggle. `maskraise` now holds that seam at the measured-safe
 180 ms inside one HID macro.
 
-> **2026-08-25: every route on this page is grounded by the model gate.**
+> **2026-08-25, corrected 2026-08-26: every route on this page is grounded by
+> the model gate.**
 > Nothing reaches the phone unless locally proven: before its first adb
 > command, the runner replays the plan through the exact engine under ±60 ms
 > of human slack (the measured plans/04 bracket floor) and refuses below the
-> 40% replay contract. The restored Golden Freddy flick, emitted as the
-> measured-safe `maskraise` compound, replays **46/100** with the sourced Fusion
-> LCG and therefore passes (`tools/device/human-gate.mjs`; absolute, no
-> override). A gap floor was the first form of this rule and was
+> 40% replay contract. **46/100 was a favourable seed block:** the then-shipped
+> route scored **449/1200 = 37.4%** and was correctly refused once the sample
+> widened. The smallest supported repair was already latent in the policy: its
+> first post-read hall pulse was omitted because the old +1.28 s slot landed
+> inside mask-off and could not light. Carrying that same eight-frame pulse on the
+> measured-safe `maskraise` compound resets Foxy without moving the read or the
+> stun sweep, and scores **673/1200 = 56.1%** on the same seeds. Nights 1–5
+> remain above contract at 99.1, 68.9, 78.8, 73.2, and 63.9 per cent
+> (`tools/device/human-gate.mjs`; absolute, no override). A gap floor was the
+> first form of this rule and was
 > retired the same day: gap width never separated human from machine —
 > precision does, which is exactly what error-injected replay measures. The
 > pricing below remains correct and worth keeping: it establishes what the
 > *machine* route costs, and that even the machine cannot land the ideal
-> figures. `test-human-gate.mjs` asserts the pass.
+> figures. `test-human-gate.mjs` pins the 1200-seed pass.
 >
 > Priced the obvious follow-up the same day: the route at the floor's own
 > 350 ms slots is **0/200 in the exact simulator at every offset tried**

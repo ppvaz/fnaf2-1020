@@ -48,7 +48,7 @@ export const HUMAN_SLACK_MS = 60;
 // near the contract -- it is a measurement of a seed block.
 //
 // At p = 0.37 the binomial standard error over 100 draws is 4.8 points, so a
-// 2-sigma interval spans nearly 20 points. The shipped Night 6 plan's twelve
+// 2-sigma interval spans nearly 20 points. The pre-reset Night 6 plan's twelve
 // consecutive 100-seed blocks bear that out exactly:
 //
 //     46 36 29 27 53 39 23 30 30 47 44 45      pooled 449/1200 = 37.4%
@@ -58,9 +58,10 @@ export const HUMAN_SLACK_MS = 60;
 // a biased block: the sourced Fusion LCG's 4x16384 cycle decomposition splits
 // seeds 1..100 exactly 25/25/25/25.
 //
-// So the figure this project has quoted since 2026-08-25 -- "the shipped plan
-// replays 46/100 under human slack" -- was a lucky block, and the gate CLAUDE.md
-// calls absolute has been grounding a route that does not meet its own bar.
+// So the figure this project quoted on 2026-08-25 -- "the shipped plan replays
+// 46/100 under human slack" -- was a lucky block, and the gate CLAUDE.md called
+// absolute had grounded a route that did not meet its own bar. The repaired
+// route is measured on these same 1200 seeds; this sample-size rationale stays.
 // 1200 runs costs 4.7 s and brings the 2-sigma interval to about 2.8 points,
 // which is enough to separate 37.4 from 40.
 export const GATE_RUNS = 1200;

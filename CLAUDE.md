@@ -57,15 +57,24 @@ document contradicting how the line is actually played.
   120 ms gaps need a one-frame phase island): precision separates human from
   machine, so the gate asks the engine, not a ruler. The live `HUMAN_FLOOR_MS`
   check in `press_at` stays only as the backstop for what actually executes.
-  **Corrected 2026-08-26: the shipped Night 6 plan does NOT pass this gate.**
-  It was quoted as "46/100 under human slack" from 2026-08-25; that was seeds
-  1..100, and 100 draws cannot measure a rate near the bar (binomial SE 4.8
-  points). Over 1200 seeds it is **449/1200 = 37.4%** against the 40% contract,
-  and only five of twelve 100-seed blocks clear it. `GATE_RUNS` is now 1200 (4.7
-  s) and `test-human-gate.mjs` asserts the **refusal**, including that the runner
-  stops before adb is ever invoked. Nights 1-5 do pass honestly (99.1, 66.5,
-  77.1, 72.3, 62.5 per cent), so the campaign ladder is gate-clean to Night 5
-  and Night 6 is the night that needs a route change.
+  **Corrected twice on 2026-08-26; both halves are the lesson.** First: the
+  shipped Night 6 plan did NOT pass. It had been quoted as "46/100 under human
+  slack" from 2026-08-25, but that was seeds 1..100, and 100 draws cannot
+  measure a rate near the bar (binomial SE 4.8 points). Over 1200 seeds it was
+  **449/1200 = 37.4%** against the 40% contract, with only five of twelve
+  100-seed blocks clearing it. `GATE_RUNS` is now 1200 (4.7 s), and the gate
+  correctly refused the route.
+  Second, later the same day: the refusal was fixed **at its cause, not by
+  moving the bar**. The clear branch had lost its first Foxy reset — a
+  standalone hall slot that landed inside mask-off and did nothing at the
+  measured read latency — so it now rides the existing post-read `maskraise`
+  row. The read, the sweep and the measured 180 ms mask→monitor seam did not
+  move. On the same 1200 seeds **all six nights now pass**: 99.1, 68.9, 78.8,
+  73.2, 63.9 and 56.1 per cent, so the ladder is gate-clean to Night 6 and
+  `test-human-gate.mjs` pins the acceptance (673/1200) rather than a refusal.
+  **The margin was paid for in flashlight:** light spend rose 2148 → 2808
+  frames, and Nights 5-6 have only **192 frames of headroom left** (~3.2 s)
+  against a 3000-frame budget. Price any new lit observation against that.
 - **A plan names its night, and nothing downstream guesses one.**
   `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires
   `night` and `human-gate.mjs` refuses a plan that does not name one. The old

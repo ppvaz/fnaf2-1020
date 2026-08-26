@@ -73,24 +73,21 @@ check('exactly the bar passes', atBar.ok && atBar.survived === Math.ceil(runs * 
 const underBar = modelGate(text, { runs, replayFn: stub([true, true, true, false, false, false, false, false, false, false]) });
 check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1);
 
-// ------------------------------------- the decision, recorded: it does NOT pass
+// ----------------------------------------- the decision: the repaired plan passes
 //
-// Retraction, 2026-08-26. This asserted that the shipped Night 6 plan PASSES,
-// on the strength of 46/100 at seeds 1..100. Over 1200 seeds it is 449/1200 =
+// The prior plan was first asserted to pass on the strength of 46/100 at seeds
+// 1..100. Over 1200 seeds it was 449/1200 =
 // 37.4% against a 40% contract, and only five of twelve 100-seed blocks clear
-// the bar. The old assertion was not measuring the plan, it was measuring a
-// seed block -- and it is kept here as the reason the sample size moved rather
-// than deleted.
+// the bar. That assertion measured a seed block, not the plan. The route fix
+// carries the previously omitted first Foxy reset on the post-read maskraise;
+// it clears the same broad sample at 673/1200 without moving the read or sweep.
 //
-// The consequence is real and is meant to be: `trial-minus7.sh` gates before
-// its first adb command, so the device route is refused until a plan clears
-// 40% over the full sample. That is what "absolute, no override" means.
+// Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
+// full sample before `trial-minus7.sh` reaches its first adb command.
 const real = modelGate(text);
-check('shipped n6 plan is refused under human slack', !real.ok,
-  `${real.survived}/${real.runs} -- if this now passes, a route change fixed it ` +
-  'and the retraction above should be updated rather than the check relaxed');
-check('and it is refused for being under the bar, not for erroring',
-  real.survived > 0 && real.survived < real.runs * GATE_MIN_SURVIVAL,
+check('shipped n6 plan passes under human slack', real.ok,
+  `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
+check('the broad Night 6 result stays pinned', real.survived === 673,
   `${real.survived}/${real.runs}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
@@ -107,17 +104,37 @@ check('and it is refused for being under the bar, not for erroring',
     const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), `gate-test-${process.pid}`, '90'],
       { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
-    // Until 2026-08-26 this asserted the opposite: that the plan passes and
-    // therefore REACHES adb. It does not pass, so the property worth proving
-    // is the one the gate exists for -- a refused plan never touches the
-    // device at all. If a future route clears the bar, restore the reached-adb
-    // form; do not relax this one.
+    // The repaired route clears the gate, so execution reaches the first adb
+    // command. The fake adb fails there; reaching its marker proves the model
+    // gate no longer blocks the route without touching a phone.
     const out = n6.stderr + n6.stdout;
-    check('a refused plan stops before adb is ever invoked',
-      n6.status === 44 && /refusing to run this plan/.test(out) &&
-      !/MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
-    check('and it says why it refused', /night-6 runs under \+\/-\d+ ms human slack/.test(out),
+    check('an accepted plan reaches adb only after the gate',
+      n6.status !== 44 && !/refusing to run this plan/.test(out) &&
+      /MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
+    check('and it reports the accepted Night 6 sample',
+      /model gate: 673\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
+
+    const n1 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'),
+      `gate-test-n1-${process.pid}`, '1'], { encoding: 'utf8', env: {
+        ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
+        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
+        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0',
+      } });
+    const n1out = n1.stderr + n1.stdout;
+    check('bounded Night 1 calibration emits and gates a Night 1 plan',
+      /model gate: 1189\/1200 night-1 runs/.test(n1out) &&
+      /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
+
+    const unbounded = spawnSync('bash', [join(HERE, 'trial-minus7.sh'),
+      `gate-test-n1-unbounded-${process.pid}`, '2'], { encoding: 'utf8', env: {
+        ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
+        BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
+        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0',
+      } });
+    check('lower-night calibration cannot become an unverified campaign run',
+      unbounded.status === 2 && /bounded to exactly one cycle/.test(unbounded.stderr) &&
+      !/MOCK_ADB_REACHED/.test(unbounded.stderr + unbounded.stdout));
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
@@ -127,9 +144,11 @@ const gateAt = runner.indexOf('human-gate.mjs');
 const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
 check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
 check('runner has no inline schedule fallback around the gate',
-  /node "\$HERE\/recipe\.mjs" --device-plan/.test(runner) &&
+  /node "\$HERE\/recipe\.mjs" --device-plan "--night=\$STORY_NIGHT"/.test(runner) &&
   !/cannot be priced by the model gate/.test(runner));
-check('live floor stays as the backstop', /^HUMAN_FLOOR_MS=\d+$/m.test(runner));
+check('legacy live floor does not contradict the model-gated route',
+  /^HUMAN_FLOOR_MS=\d+$/m.test(runner) &&
+  /\[ "\$NIGHT6_LEFT" -eq 1 \] && return 0/.test(runner));
 
 if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
 console.log(`model gate: verified; shipped plan passes at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

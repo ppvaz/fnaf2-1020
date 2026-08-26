@@ -9,32 +9,85 @@ packages are closed.
 
 ## Very next step
 
-**Resume point, written 2026-08-26 mid-session.** Nothing below is half-applied:
-the tree is clean, the engine suite is green (49 checks, 35.8 s), and everything
-learned this session is committed.
+**Resume point, written 2026-08-26.** The working tree carries a large body of
+uncommitted work from two prior sessions. As of this line the engine suite is
+**green — 49 checks**, and the two failures it had a moment ago are fixed:
+`test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` (the new human-floor
+bypass shipped with no test of either arm; both arms are now pinned), and
+`provision-cue-model.sh` was unaccounted for in `test-grade-run-coverage.mjs`.
+
+Nothing below is half-applied, but **almost none of it is committed**. Slice it
+before adding more.
 
 ### The single most important thing learned today
 
-**The model gate was passing on its seed block.** `GATE_RUNS` was 100, which
-cannot measure a rate near its own bar. Over 1200 seeds the shipped Night 6 plan
-is **449/1200 = 37.4%** against a 40% contract, and it is now correctly
-**refused**. Nights 1–5 pass honestly (99.1, 66.5, 77.1, 72.3, 62.5 per cent).
-So the campaign ladder is gate-clean to **Night 5**, and Night 6 needs a route
-change rather than a device attempt. Every previously quoted per-night figure was
-measured on the same favourable block and every one was optimistic.
+**Night 6 was refused, and then the refusal was fixed at its cause.** The gate
+was passing on its seed block: `GATE_RUNS` was 100, which cannot measure a rate
+near its own bar, and over 1200 seeds the shipped plan was 449/1200 = 37.4%
+against a 40% contract. It was correctly refused.
+
+The cause turned out to be a lost input, not a bad bar. The clear branch's first
+Foxy reset sat in a standalone hall slot that landed inside mask-off and did
+nothing at the measured read latency; carrying that contact on the existing
+post-read `maskraise` row restores it without moving the read, the sweep, or the
+measured 180 ms mask→monitor seam. **Re-verified independently this session, on
+the same 1200 seeds: all six nights now clear the unchanged 40% contract** —
+99.1, 68.9, 78.8, 73.2, 63.9 and **56.1** per cent. The bar never moved.
+
+**The margin was bought with flashlight, and that bill is not recorded anywhere
+else.** The restored contact is lit, so light spend went 2148 → 2808 frames on
+every night. Nights 1–4 absorb it; **Nights 5 and 6 fall from 852 to 192 frames
+of headroom**, about 3.2 s of light against a 3000-frame budget. The two nights
+that most need slack now have the least. `test-night-matrix.mjs` fails the suite
+if headroom reaches zero, but nothing warns on approach.
 
 ### The next concrete action
 
-Verify the fork-free clock **on hardware inside a real cycle**. `date` was
-measured at 21 ms per fork+exec and `wait_until` busy-waited on it; the runner
-now uses a fork-free `/proc/uptime` read, which landed 0 ms late on 15/15 with a
-live night running — but that was a **bare shell loop**, not the real cycle with
-`hid_mark`, HID writes and the classifier in it. Priced through `actuator.mjs`,
-that change takes Nights 1–5 to 200/200 and Night 6 to 171/200 in the simulator.
-The knee is a frame count: free to 41 ms, gone at 42.
+**Attempt a graded Night 6 run.** This is newly unblocked: Night 6 is the only
+night `trial-minus7.sh` can play end to end (`NIGHT=6th` → `sixthNight`), and it
+is now gate-clean. Nights 1–5 are reachable only through the bounded
+`CALIBRATION_STORY_NIGHT=1..5` path, which is Continue-only and refuses more
+than **one cycle** (`trial-minus7.sh:320`) — a full lower-night run needs Plan
+13 package 5, and no lower night has ever been attempted on the device.
 
-Then attempt a graded Night 1–5 run. The device is ready: the correct game is
-installed, the title is observed, and every runner emits a session manifest.
+Do it in this order, because the first step is cheap and invalidates the second
+if it fails:
+
+1. Verify the fork-free clock **on hardware inside a real cycle**. `date` cost
+   21 ms per fork+exec and `wait_until` busy-waited on it; the runner now reads
+   `/proc/uptime` fork-free, which landed 0 ms late on 15/15 with a live night
+   running — but that was a **bare shell loop**, not the real cycle with
+   `hid_mark`, HID writes and the classifier in it. Priced through
+   `actuator.mjs` the change takes Nights 1–5 to 200/200 and Night 6 to 171/200
+   **in the simulator**. The knee is a frame count: free to 41 ms, gone at 42.
+2. Then run Night 6 graded. The run will now produce evidence whether it wins or
+   loses — see the three items closed below.
+
+### Closed in the tree this session, not yet committed
+
+Each of these was an "Open" item here as recently as this morning:
+
+- **A 6 AM can now be recorded.** `screenrecord` no longer caps at 180 s. The
+  runner probes the handset's `--help` for the advertised unlimited mode and
+  uses `--time-limit 0`; a device that does not advertise it is **refused, not
+  degraded**, because a plausible-looking 180 s artifact of a 420 s night is
+  worse than no video (`trial-minus7.sh:115-137`).
+- **Grading is no longer success-only.** `grade-run.sh` runs on every exit path,
+  so the run that failed is no longer the run that is never graded. The runner's
+  own exit status is preserved.
+- **The driver's stdout/stderr is durable.** It tees to `$OUT-run.log` and is
+  declared in the session manifest as operational metadata with
+  `clock_domain=null` — honest, because the stream mixes runner-relative decision
+  lines with transport errors that carry no clock.
+- **A real 32-bit wrap bug in the remote shell is fixed.** Android's mksh does
+  signed 32-bit arithmetic and epoch milliseconds are ~1.8e12, so the epoch
+  centring arithmetic wrapped; `epoch_sub_ms`/`epoch_diff_ms` keep the value as a
+  string and calculate only on its parts. The interpreter test pins the exact
+  value that wrapped in the first real attempt.
+- **`desync-scan.py` can no longer invent an alignment.** `align()` refuses a
+  trace with no monitor presses, no confident edges, zero matches, or an optimum
+  on a search boundary, and `scan()` reports `UNKNOWN` and exits before
+  attributing anything.
 
 ### Open, with what is known
 
@@ -44,28 +97,38 @@ installed, the title is observed, and every runner emits a session manifest.
   drain groups have not been located in the dump; the wind side is sourced
   (g652 sets 2000, g638/g643 add +5/tick, g645 snaps to 300). Do not change the
   constant until the drain is sourced.
-- **A winning run cannot currently be graded as a win — and this is structural,
-  not a matter of surviving one.** A night is 420 s (`NIGHT_FRAMES = s(420)`),
-  `screenrecord` is capped at 180 s (`trial-minus7.sh:899`), and
-  `grade-night.py` — the only number that is a run length — reads the video. So
-  the video ends 43% into any night that reaches 6 AM. This is the actual
-  mechanism behind "capture a 6 AM"; it is not waiting on a good run. Re-check
-  the cap on the handset first, since AOSP relaxed it. The minigames are
-  likewise unmodelled.
-- **Grading is success-only.** `trial-minus7.sh:746` runs `grade-run.sh` under
-  `status -eq 0`, so the run that failed is precisely the run that is never
-  graded. Aborted runs already save `-aborted.mp4` and a finalized manifest; the
-  grading step just never sees them.
-- **The driver's stdout and stderr are never saved.** Every per-cycle press
-  line, classifier verdict, branch and desync counter goes to the terminal and
-  nowhere else. Persisting it costs **0 ms** and ~70 kB a night, and it is why
-  three separate failures were first reported by the device owner watching the
-  phone rather than by any log. `docs/device/RUN-TELEMETRY.md` ranks this first
-  of ten signals, with prices.
+- **The minigames are still unmodelled.** The `screenrecord` cap that used to
+  sit beside this item is gone (see "Closed in the tree" above), so a 6 AM can
+  now be recorded — but nothing yet classifies the intro card, the 6 AM
+  transition, or a minigame. That is Plan 13 package 3, and until it lands a
+  recording that reaches 6 AM still cannot be *graded* as a clear.
+- **Nights 5 and 6 have 192 frames of flashlight headroom, down from 852.** The
+  Night 6 route repair paid for its gate margin in light. Nothing warns as that
+  approaches zero; `test-night-matrix.mjs` only fails once it crosses. Price any
+  new lit observation against 192 frames, not against the old 852.
+- **The live human floor is now off on the shipped route, and nothing replaced
+  it for runtime presses.** `human_floor_check` returns early when
+  `NIGHT6_LEFT=1` (`trial-minus7.sh:1570`), because the model gate prices the
+  emitted plan and the old scalar check aborted on the plan's own deliberate
+  120/180 ms compound boundaries. That is defensible for *scheduled* presses.
+  But the corrector's monitor-verify press in `light_down_at` is **not in the
+  plan** — it is a runtime reaction — so on the shipped route it is now priced
+  by nothing at all. In the modelled path it waits out `MONITOR_ANIM_DOWN`
+  (367 ms) and would clear the old 350 ms floor anyway, so this is a missing
+  check rather than a known-bad press. Both arms of the bypass are now pinned by
+  `test-plan-interpreter.sh`; what is *not* covered is the reactive press.
 - **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
   cycle, and no schedule prices it. Plan 03 depends on it.
-- **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings; the top two are
-  done, the rest are not.
+- **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings. **1, 2 and 4 are
+  resolved**; the rest are not. **Finding 8 is the mission-critical one** — the
+  claim CLAUDE.md states as absolute, "the device runs nothing the model gate
+  has not passed", is *false*, and it is the claim that authorizes every device
+  run on the Plan 12 ladder. `trial-maskcamp.sh` is a second runner that never
+  calls the gate; ~370 lines of inline `press_at` literals remain in
+  `trial-minus7.sh` with no test asserting them; and the "no inline schedule
+  fallback" check tested for the absence of a *prose phrase* until this session
+  made it structural. The reactive-press gap noted above is a fourth item on
+  that list. Fixing finding 8 is worth more than another simulator number.
 - `docs/device/RUN-TELEMETRY.md` ranks ten diagnostic signals by value per
   millisecond. Items 3–6 total ~23 ms of a 5000 ms cycle and belong in the
   plan's ~416 ms post-read slack; re-check placement with `windpct.py
@@ -93,7 +156,7 @@ installed, the title is observed, and every runner emits a session manifest.
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–5 pass the human gate honestly (62–99%); **Night 6 is refused at 37.4%**; title observed; a real death classifies with no unknown | Capture a 6 AM and the minigames; both still report unknown |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **All six nights now pass the human gate** (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%) after the Night 6 route repair; title observed; a real death classifies with no unknown. But only Night 6 is *runnable* end to end — Nights 1–5 are one-cycle calibration only (package 5) | Classify the intro card and 6 AM (package 3); a recording that reaches 6 AM still cannot be graded as a clear |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 

@@ -119,6 +119,11 @@ for (const [name, cycle] of Object.entries(recipe.cycles)) {
 // The device plan is what the phone executes, so it gets the same scrutiny as
 // the recipe it comes from -- including every sweep, not just the first.
 const plan = devicePlan(recipe);
+const clearMaskRaise = plan.clear.find(line => line.includes(' maskraise '));
+check(clearMaskRaise?.split(' ')[3] === 'hall',
+  `the post-read clear raise must carry its first Foxy reset, got "${clearMaskRaise}"`);
+check(+clearMaskRaise.split(' ')[4] >= MIN_CONTACT_MS,
+  `the post-read Foxy reset is under the ${MIN_CONTACT_MS} ms contact floor`);
 for (const [name, lines] of Object.entries(plan)) {
   let sweeps = 0;
   for (const line of lines) {
