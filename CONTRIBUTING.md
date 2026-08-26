@@ -77,6 +77,27 @@ capture, and abort when the night state is wrong — keep it that way. Coordinat
 in `tools/device/coords.sh` are calibrated for one specific handset and layout;
 recalibrate rather than assuming.
 
+## There is no prior art below the policy layer
+
+Every external FNaF bot in the [census](docs/research/FNAF-BOT-CENSUS.md) drives
+a Windows desktop, where input is synchronous and never dropped. This project is
+the only mapped one that actuates a phone, so **the device layer has nothing to
+copy from and no baseline to check against.**
+
+Two consequences for anything you write under `tools/device/`:
+
+- **An actuator constraint is a measurement, not a preference.** The 100 ms
+  contact floor, the 120 ms camera spacing, and the 180 ms mask→monitor seam
+  each came from a night that failed. Do not relax one because a policy would be
+  better without it; measure it again on the phone and record what you did.
+- **A simulator number is not a device number.** `pilottest`/`hidpilottest`
+  count frames, so a press and a `screencap` both look free. Price a policy
+  against `tools/device/actuator.mjs` and the model gate before proposing it,
+  and say "in the simulator" when quoting a survival figure.
+
+If you find prior art that does actuate a phone, add it to the census — the
+negative result is only as good as the search behind it.
+
 ## Retractions stay
 
 When a result turns out to be wrong, correct it in place and **keep the original

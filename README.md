@@ -235,6 +235,44 @@ so only a verdict crosses adb rather than a frame. Models are gated on
 leave-one-out separation and replayed through the real native classifier before
 anything is allowed to act on them.
 
+### Nobody else has actuated a phone
+
+This is the part of the project with no prior art, and it is worth saying
+plainly because it sets what "hard" means here.
+
+The [public bot census](docs/research/FNAF-BOT-CENSUS.md) (2026-08-26) mapped
+every discoverable FNaF gameplay bot. **Every external stock-game bot in it
+drives a Windows desktop** — Win32 `GetPixel`/`SetCursorPos`/`SendInput`, or
+PyAutoGUI/BetterCam/MSS. Touch input was inside the census's stated scope and
+returned no entry; no project uses a phone, an emulator, `scrcpy`,
+`uiautomator`, or Appium. The strongest open 10/20 bot,
+[`jasonclone/fnaf2bot`](https://github.com/jasonclone/fnaf2bot), reports about
+one run in three on PC. It is a negative result over what is publicly
+discoverable, not a proof that no private attempt exists.
+
+On a desktop, `SendInput` is synchronous, sub-millisecond and never dropped, and
+a pixel read is immediate. None of that survives the trip to a phone. Measured
+on the target handset, in a 5000 ms cycle with roughly **680 ms free**:
+
+| Constraint | Measured | PC equivalent |
+|---|---|---|
+| Bare contact must be held | **≥ 100 ms** — Fusion polls touch once per frame and drops anything shorter | none |
+| Camera select spacing | **120 ms** proven; the idealised 267 ms three-camera sweep the published figure assumes has never been produced | none |
+| Monitor press after a mask press | lost **9/15** below 180 ms, **0/17** at or above — the monitor bar is not drawn while the mask is up | none |
+| One `screencap` | **225 ms** of the cycle's 680 ms of slack | immediate |
+| Macro anchor lateness | **49–93 ms** late, wall-timed | none |
+
+So the actuator's error budget is a first-class part of the problem rather than
+a rounding error, which is why this repository has an actuator model
+(`tools/device/actuator.mjs`), a model gate that refuses plans no hand could
+execute (`tools/device/human-gate.mjs`), and a desync census of presses the game
+accepted versus presses it dropped. A policy that clears in the simulator and
+cannot survive the phone's actuator is a policy this project does not have.
+
+Prior art helps with the *policy* — Shooter25's state machine and Couraeel's
+controller decomposition are good — and with nothing at all below it. See
+[`FNAF-BOT-IMPLEMENTATION-COMPARISON.md`](docs/research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md).
+
 ## Tests
 
 All headless, all dependency-free — the browser ones drive Chrome over the DevTools Protocol
