@@ -441,3 +441,56 @@ The immediate honest fix is to make a panned office a refusal rather than a
 verdict: measure pan alongside the read and return `UNKNOWN(panned)`, which the
 existing fail-closed rule already handles. Making the classifier pan-*aware*, or
 stopping the pan, are both larger and need the cause first.
+
+
+---
+
+## The cams-up detector is scene-dependent, and that is why it misses (2026-08-26)
+
+Path 2 of the desync work, and the answer is not the one it looked like.
+
+`CUE_CAMS_UP_LUMA = 180` is **well measured on its own sensor**: night 6-34's
+poller trace has cams-up at 225-229 and the office window at 0-107, with the two
+populations not overlapping anywhere in 1818 samples. Nothing about that
+calibration is loose, and a first attempt here to re-derive it from screenrecord
+frames scaled to 20x9 produced a completely different distribution (up 30-197,
+median 52) -- **the wrong sensor**, which is exactly the substitution plans/15
+exists to prevent. Those numbers are discarded.
+
+The defect is not the threshold. It is that **whole-frame luma is a property of
+the scene, not of the monitor**, and the 225-229 band was measured on the
+cameras the shipped route actually visits. A desync puts you on a camera the
+route never opens.
+
+Measured on the retained frames from the cleared Night 1, at the helper's own
+20x9 geometry:
+
+| frame | whole-frame luma | vs the 180 line |
+|---|---:|---|
+| CAMERA, Main Hall -- **the missed desync** at 98059 ms | **158** | **below: reads as office** |
+| CAMERA, Party Room 4 at 93029 ms | 76 | below |
+| OFFICE (a good read) | 31 | below |
+| 6 AM | 2 | below |
+
+The Main Hall feed is dark enough to sit under a threshold calibrated on the
+Prize Corner. So the read said "monitor is down", the pilot spent its vent light,
+and photographed the camera feed. That is the 1-of-2 catch rate in the record,
+and by extension a candidate for the run's roughly eight desyncs against one
+detection.
+
+**What follows, and what does not.** It does not follow that the threshold
+should move: lowering it toward 158 walks into the office population and starts
+refusing good reads. What follows is that the signal must stop depending on
+scene brightness. The selected-camera map button is yellow -- measured (200,200,0),
+and `camtrace.py`'s `lime_score` already tests exactly `red > 100 and green >
+100 and blue < 100` for it -- so it is present at the same intensity whichever
+camera is open, including the dark ones.
+
+**Unpriced, and the reason this is a note and not a change.** The helper's frame
+is a 20x9 VirtualDisplay (`CaptureService.java:71-72`), and the map button is a
+few pixels of a 1280x576 screen: whether it survives that downscale is an open
+question this session could not answer, because the only way to answer it is to
+read the helper's own sensor, not a recording. `query-cue-helper.sh watch`
+during a night, against known monitor state, is the measurement that settles it.
+Until then the yellow anchor is a hypothesis with a good mechanism and no
+device evidence.
