@@ -219,6 +219,17 @@ const ENGINE = [
   // it. The runner negotiates unlimited mode from captured device help and
   // fails closed on old recorders rather than stitching over evidence gaps.
   ['screenrecord capability', ['device/test-screenrecord-capability.sh']],
+  // The cue helper's detector, compiled and exercised on the host. CueDetector
+  // imports nothing from android.*, so this needs no phone and no Android SDK
+  // -- only a JDK, which test.sh probes for and fails loudly without.
+  //
+  // It is here because it was the one check that actually exercises the live
+  // detector and it ran nowhere: not in this suite, not in ci.yml. The mock-ADB
+  // regressions around it drive `query-cue-helper.sh` against fixtures that
+  // FABRICATE the detector's answers, so before this entry the detector's own
+  // fail-closed behaviour -- shadow evidence cannot arm control, silence is
+  // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
+  ['cue detector (java)', ['../android/cue-helper/test.sh']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],

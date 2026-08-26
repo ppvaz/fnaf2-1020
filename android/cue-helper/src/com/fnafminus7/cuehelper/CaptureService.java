@@ -36,6 +36,7 @@ import android.os.SystemClock;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -96,6 +97,7 @@ public final class CaptureService extends Service {
     private static final int CAL_MAX_PRE_SECONDS = 8;
     private static final int CAL_MAX_POST_SECONDS = 8;
     private static final String CAL_DIR = "calibration";
+    private static final String CUE_MODEL_FILE = "cue-model-v1.txt";
     // A whole night is seven minutes. Buffering it in memory keeps every write
     // off the audio thread, which matters more than the 15 MB: a stalled write
     // would drop exactly the frames the run exists to collect.
@@ -106,6 +108,7 @@ public final class CaptureService extends Service {
     private final AtomicBoolean audioRunning = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object snapshotLock = new Object();
+    private final CueDetector cueDetector = new CueDetector();
 
     private MediaProjection projection;
     private MediaProjection.Callback projectionCallback;
@@ -248,6 +251,7 @@ public final class CaptureService extends Service {
             projection.registerCallback(projectionCallback, mainHandler);
             startVisualCapture();
             startAudioCapture();
+            loadCueModel();
             startControlServer();
             publishCombinedStatus("RUNNING");
         } catch (Throwable error) {
@@ -577,6 +581,7 @@ public final class CaptureService extends Service {
                     Log.e(TAG, "audio read failed", error);
                     lastAudio = "audio=UNAVAILABLE(read-"
                             + error.getClass().getSimpleName() + ")";
+                    cueDetector.unavailable("audio-read-failed");
                     publishCombinedStatus("UNAVAILABLE");
                 }
                 break;
@@ -584,6 +589,7 @@ public final class CaptureService extends Service {
             if (count <= 0) {
                 if (count < 0) {
                     lastAudio = "audio=UNAVAILABLE(read=" + count + ")";
+                    cueDetector.unavailable("audio-read-failed");
                     publishCombinedStatus("UNAVAILABLE");
                     break;
                 }
@@ -600,10 +606,12 @@ public final class CaptureService extends Service {
             }
             int rms = (int) Math.sqrt((double) energy / count);
             totalFrames += count;
+            long readNs = System.nanoTime();
+            cueDetector.accept(samples, count, sampleRate, readNs);
             appendCalibration(samples, count, sampleRate);
             synchronized (snapshotLock) {
                 snapshotAudioFrames = totalFrames;
-                snapshotAudioReadNs = System.nanoTime();
+                snapshotAudioReadNs = readNs;
                 snapshotAudioRms = rms;
                 snapshotAudioPeak = peak;
             }
@@ -627,6 +635,25 @@ public final class CaptureService extends Service {
             }
         }
         audioRunning.set(false);
+    }
+
+    private String loadCueModel() {
+        File source = new File(getFilesDir(), CUE_MODEL_FILE);
+        if (!source.isFile()) {
+            Log.i(TAG, "cue detector model absent: " + source.getAbsolutePath());
+            return "ERROR detector-model-missing";
+        }
+        try (FileInputStream input = new FileInputStream(source)) {
+            CueDetector.Model model = CueDetector.Model.read(input);
+            cueDetector.setModel(model);
+            Log.i(TAG, "cue detector loaded calibration=" + model.calibration
+                    + " evidence=" + model.evidence
+                    + " templates=" + model.templates.length);
+            return "OK " + cueDetector.status();
+        } catch (IOException error) {
+            Log.w(TAG, "cue detector model refused: " + error.getMessage(), error);
+            return "ERROR detector-model-" + error.getMessage();
+        }
     }
 
     private void startControlServer() throws IOException {
@@ -811,6 +838,46 @@ public final class CaptureService extends Service {
                     return "ERROR rec-usage";
                 }
                 return recordCalibrationWindow(field[2], field[3]);
+            case "MODEL":
+                if (field.length != 3) {
+                    return "ERROR model-usage";
+                }
+                if ("status".equals(field[2])) {
+                    return "OK " + cueDetector.status();
+                }
+                if ("reload".equals(field[2])) {
+                    return loadCueModel();
+                }
+                return "ERROR model-usage";
+            case "ARM":
+                if (field.length != 7) {
+                    return "ERROR arm-usage";
+                }
+                long nowNs = System.nanoTime();
+                long openNs;
+                long closeNs;
+                try {
+                    if ("now".equals(field[4])) {
+                        long durationMs = Long.parseLong(field[5]);
+                        openNs = nowNs;
+                        closeNs = Math.addExact(nowNs,
+                                Math.multiplyExact(durationMs, 1_000_000L));
+                    } else {
+                        openNs = Long.parseLong(field[4]);
+                        closeNs = Long.parseLong(field[5]);
+                    }
+                } catch (NumberFormatException error) {
+                    return "ERROR arm-usage";
+                } catch (ArithmeticException error) {
+                    return "ERROR arm-range";
+                }
+                return cueDetector.arm(field[2], field[3], openNs, closeNs,
+                        field[6], nowNs);
+            case "RESULT":
+                if (field.length != 3) {
+                    return "ERROR result-usage";
+                }
+                return cueDetector.result(field[2], System.nanoTime());
             default:
                 return "ERROR unknown-verb";
         }
@@ -1078,7 +1145,8 @@ public final class CaptureService extends Service {
                     "audio=OBSERVED frames=%d rms=%d peak=%d readAgeUs=%d",
                     audioFrames, audioRms, audioPeak, audioReadAgeUs);
         }
-        return "snapshotNs=" + nowNs + " " + visual + " " + audio;
+        return "snapshotNs=" + nowNs + " " + visual + " " + audio
+                + " " + cueDetector.status();
     }
 
     private void publishCombinedStatus(String lifecycle) {
@@ -1138,6 +1206,7 @@ public final class CaptureService extends Service {
         controlToken = null;
 
         audioRunning.set(false);
+        cueDetector.unavailable("capture-stopped");
         AudioRecord record = audioRecord;
         audioRecord = null;
         if (record != null) {

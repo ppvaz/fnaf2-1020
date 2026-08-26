@@ -19,6 +19,16 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      # The engine suite compiles the cue helper's CueDetector on the host. The
+      # runner image happens to ship a JDK, but pinning one here is the point:
+      # the check must fail because the detector regressed, never because the
+      # image's Java moved. test.sh refuses to run without a working javac
+      # rather than skipping, so an unpinned JDK would turn into a red build
+      # that says nothing about the code.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
       - name: Engine checks
         run: node tools/test.mjs --engine
       - name: Cue helper query (mock ADB)

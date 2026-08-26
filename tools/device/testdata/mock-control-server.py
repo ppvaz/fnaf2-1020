@@ -36,6 +36,14 @@ def answer(request):
                 "bytes=224044")
     if field[0] == "REC":
         return "OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044"
+    if field[0] == "MODEL" and len(field) == 3:
+        return "OK detector=READY calibration=mock evidence=shadow templates=2"
+    if field[0] == "ARM" and len(field) == 7:
+        return (f"OK armed={field[2]} cues={field[3]} mode={field[6]} "
+                "openNs=9000 closeNs=1009000 calibration=mock")
+    if field[0] == "RESULT" and len(field) == 3:
+        return (f"MISS window={field[2]} closeNs=1009000 bestCue=none "
+                "template=none score=0.1000 mode=shadow")
     return "ERROR unknown-verb"
 
 

@@ -765,6 +765,68 @@ PCM. The first action-enabled trial must use a branch that a timeout can still
 recover from. Early unmasking is last and requires all prior gates plus an
 independent guard that makes a false departure classification non-lethal.
 
+## What landed on 2026-08-26, and what it does not close
+
+A live, fail-closed, **shadow-only** detector now exists on the device side.
+Recording it here because a capability that no page describes gets rebuilt.
+
+**What is real.** `CueDetector.java` scores 4 kHz templates against captured
+PCM and refuses in every direction it can: no model → `detector=UNAVAILABLE
+reason=model-missing`; a malformed model → a *named* reason per field
+(`model-header`, `model-margin`, `model-pcm-alignment`, `model-silent-template`,
+and six more); and every runtime degradation becomes `UNKNOWN`, never a value —
+`no-audio`, `clipped`, `silent`, `unsupported-rate`, `audio-discontinuity`,
+`capture-stopped` on projection revocation. `ARM`/`RESULT`/`MODEL` verbs exist
+end to end, `provision-cue-model.sh` installs a model atomically into app-private
+storage and verifies the staged bytes' SHA-256 back over adb before the rename,
+and control mode is refused unless the model claims `evidence=heldout`.
+
+**It cannot influence a run, and that was checked rather than assumed.**
+`trial-minus7.sh` sends the helper exactly one verb, `GET`, and every consumer
+of that reply parses only `luma=`/`cam5=`/`ageUs=` — the one-pixel *visual*
+classifier. `ARM` and `RESULT` appear nowhere in the runner. The detector's
+verdict reaches it only as an inert trailing `detector=…` string that no parser
+reads.
+
+**It closes no package.** Packages 2, 3, 5 and 6 remain open; this is the
+prerequisite plumbing they were waiting on, not their evidence. Specifically:
+
+- Package 2 has an *exporter*, not an evaluator. `evaluate.py` still takes no
+  session split and produces no confusion matrix.
+- Package 3 is unmeasured, and one of its quantities is **unmeasurable as
+  built**: close→MISS latency cannot be observed, because `completeIfExpired`
+  is only reached from `accept()` or a `RESULT` poll — nothing emits at window
+  close.
+- Package 5 has protocol but no evidence: no shadow run exists, and no artifact
+  anywhere records an `ARM`/`HIT`/`MISS`.
+
+### Three defects in it, found by audit the same day
+
+1. **The provisioned model's `threshold=0.25` and `margin=0.05` are guessed.**
+   Neither is derivable from anything in this repository. `export-model.py`
+   states in its own source that no threshold is guessed — and a guessed one was
+   then provisioned onto the phone. The nearest measured anchors (`correlate.py`:
+   thud 0.505 at equal level, background alone 0.049, menu 0.183) were taken at
+   **16 kHz**, while the device scores at **4 kHz** through a bare 4-tap box
+   average with no anti-alias filter, and nothing measures what that decimation
+   costs separability. The plan's own measured margins are a different quantity
+   again — background-subtracted log-band class margins, not the between-cue NCC
+   margin the Java computes. Derive both or retract them; a favourable number
+   with no derivation is the defect this repository exists to avoid.
+2. **`heldout` promotion is honour-system.** `export-model.py --holdout-report`
+   SHA-256s whatever file it is pointed at, and `Model.read` then **ignores
+   `reportSha256` entirely**. Any file promotes any model to the evidence level
+   that unlocks control mode. Either verify the hash or stop calling it a gate.
+3. **Background subtraction is silently absent on device.** Package 2 fixed it
+   *by measurement* as an operating rule — contamination manufactures thud
+   detections, with a raw 0.835 scored on a window that cannot contain one.
+   `CueDetector` does no background estimation at all.
+
+Also: the detector is fail-closed against *missing* and *malformed* models but
+not against *stale* ones. There is no expiry and no binding to the game build,
+the APK, or the capture config; `calibration=` is a free-form string. "Stale" is
+not a state this design can report.
+
 ## Deliverables
 
 - `tools/android/audio-cue/` helper source, reproducible build instructions, and

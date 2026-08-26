@@ -17,8 +17,23 @@ for _ in 1 2 3 4 5 6 7 8 9 10; do
   [ -s "$TEMP_DIR/port" ] && break
   sleep 0.2
 done
+
 MOCK_FORWARD_PORT="$(cat "$TEMP_DIR/port")"
 export MOCK_FORWARD_PORT
+
+# The live detector is shadow-only until its model says heldout. Exercise the
+# bounded control vocabulary on both transports; the mock returns a clean miss.
+for transport in loopback forward; do
+  model="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" model status)"
+  case "$model" in *"detector=READY"*"evidence=shadow"*) ;; *) echo "bad model status: $model" >&2; exit 1 ;; esac
+  armed="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" arm test-window bang 1000 shadow)"
+  case "$armed" in "OK armed=test-window"*) ;; *) echo "bad arm response: $armed" >&2; exit 1 ;; esac
+  result="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" result test-window)"
+  case "$result" in "MISS window=test-window"*) ;; *) echo "bad result: $result" >&2; exit 1 ;; esac
+done
 
 for transport in loopback forward; do
   response="$(PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" "$transport")"
@@ -99,4 +114,3 @@ if CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \
 fi
 
 echo "cue-helper query tests passed"
-

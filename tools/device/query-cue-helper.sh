@@ -8,6 +8,9 @@
 #   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
 #   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
+#   query-cue-helper.sh model status|reload       inspect/reload app-private model
+#   query-cue-helper.sh arm ID CUES MS [MODE]      arm a shadow/control cue window
+#   query-cue-helper.sh result ID                  poll one armed cue window
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -36,8 +39,11 @@ case "${1:-}" in
   log) VERB=log; shift ;;
   watch) VERB=watch; shift ;;
   grid) VERB=grid; shift ;;
+  model) VERB=model; shift ;;
+  arm) VERB=arm; shift ;;
+  result) VERB=result; shift ;;
   '') ;;
-  *) echo "usage: query-cue-helper.sh [loopback|forward|record PRE POST]" >&2; exit 2 ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|model|arm|result|record]" >&2; exit 2 ;;
 esac
 case "$TRANSPORT" in
   loopback|forward) ;;
@@ -83,6 +89,28 @@ if [ "$VERB" = record ]; then
   case "$PRE$POST" in *[!0-9]*) echo "PRE and POST must be whole seconds" >&2; exit 2 ;; esac
 fi
 
+if [ "$VERB" = model ]; then
+  MODEL_ACTION="${1:?model needs status or reload}"
+  case "$MODEL_ACTION" in status|reload) ;; *) echo "model takes status or reload" >&2; exit 2 ;; esac
+fi
+
+if [ "$VERB" = arm ]; then
+  WINDOW_ID="${1:?arm needs a window id}"
+  CUE_SET="${2:?arm needs a cue set}"
+  WINDOW_MS="${3:?arm needs a duration in milliseconds}"
+  WINDOW_MODE="${4:-shadow}"
+  case "$WINDOW_ID$CUE_SET" in *[!A-Za-z0-9._,-]*) echo "window and cues use plain names" >&2; exit 2 ;; esac
+  case "$WINDOW_MS" in ''|*[!0-9]*) echo "window duration must be whole milliseconds" >&2; exit 2 ;; esac
+  [ "$WINDOW_MS" -gt 0 ] && [ "$WINDOW_MS" -le 30000 ] || {
+    echo "window duration must be 1..30000 ms" >&2; exit 2; }
+  case "$WINDOW_MODE" in shadow|control) ;; *) echo "mode must be shadow or control" >&2; exit 2 ;; esac
+fi
+
+if [ "$VERB" = result ]; then
+  WINDOW_ID="${1:?result needs a window id}"
+  case "$WINDOW_ID" in *[!A-Za-z0-9._-]*) echo "window id must be a plain name" >&2; exit 2 ;; esac
+fi
+
 . "$HERE/select-adb.sh"
 adb get-state >/dev/null
 
@@ -95,7 +123,7 @@ esac
 # starting a recording is not a reading, and requiring focus there strands a
 # capture whenever a run ends with the game no longer in front.
 case "$VERB" in
-  snapshot|record|watch|grid)
+  snapshot|record|watch|grid|arm|result)
     if ! adb shell dumpsys window 2>/dev/null | \
         awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
       echo "FNaF is not the focused physical-display window" >&2
@@ -166,6 +194,24 @@ sys.stdout.write(b"".join(chunks).decode("ascii", "replace").strip())
 CLIENT
   fi
 }
+
+if [ "$VERB" = model ]; then
+  response="$(exchange "MODEL $token $MODEL_ACTION")"
+  printf '%s\n' "$response"
+  case "$response" in OK\ detector=*) exit 0 ;; *) exit 1 ;; esac
+fi
+
+if [ "$VERB" = arm ]; then
+  response="$(exchange "ARM $token $WINDOW_ID $CUE_SET now $WINDOW_MS $WINDOW_MODE")"
+  printf '%s\n' "$response"
+  case "$response" in OK\ armed=*) exit 0 ;; *) exit 1 ;; esac
+fi
+
+if [ "$VERB" = result ]; then
+  response="$(exchange "RESULT $token $WINDOW_ID")"
+  printf '%s\n' "$response"
+  case "$response" in HIT\ *|MISS\ *|UNKNOWN\ *|PENDING\ *) exit 0 ;; *) exit 1 ;; esac
+fi
 
 if [ "$VERB" = snapshot ]; then
   response="$(exchange "GET $token")"

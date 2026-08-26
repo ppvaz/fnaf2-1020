@@ -52,6 +52,7 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -classpath "$ANDROID_JAR" \
     -d "$CLASSES_DIR" \
     "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/MainActivity.java" \
+    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/CueDetector.java" \
     "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/CaptureService.java"
 
 "$JAR" --create --file "$BUILD_DIR/classes.jar" -C "$CLASSES_DIR" .
