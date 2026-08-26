@@ -137,6 +137,86 @@ loop, measured rather than asserted:
   **how much of the gap is recoverable is currently unmeasured** — that is the
   first thing the campaign should instrument, not a number to assume.
 
+  **Retracted 2026-08-26 — the comparison was confounded, and the answer is
+  zero.** See the section below. The recovery is now modelled and reclaims
+  nothing; and `--sync` was never what made the `pilottest` route
+  actuator-tolerant, because the same route with the resync *removed*
+  (`pilottest --vent`, unconditional monitor toggling) is equally tolerant:
+  200/27/72/6/0/0/0 against `--vent --sync`'s 200/29/79/10/0/0/0 on Nights 1–7,
+  in the simulator. The bullet changed the *route* as well as the loop and
+  credited the difference to the loop. The reasoning is kept because the
+  measurement it prompted is the one that refuted it.
+
+### The closed loop, modelled and priced (measured 2026-08-26)
+
+`tools/device/actuator.mjs` now carries `MonitorSupervisor`, a model of
+`trial-minus7.sh`'s actual monitor loop — the flip gate in `light_down_at`
+(wait `MONITOR_ANIM_DOWN` from the *logged* press, read the cue helper, confirm
+with a second read, correct only if both agree), the classifier checkpoint's
+`cams=UP-DESYNCED` question and its verified two-press recovery with
+`MASK_ALREADY_OFF`, the read costs, and the `desyncs -le 12` abort. It is
+deliberately not an idealised controller: it is one-directional, it looks twice
+a cycle and nowhere else, and it reads a screen state rather than a toggle
+parity. Reproduce with `node tools/closedlooptest.mjs`. **In the simulator:**
+
+| Night | exact | actuator, open loop | actuator + modelled loop | reclaim | free ideal bidirectional resync | `--vent --sync` route ref |
+|---|---|---|---|---|---|---|
+| 1 | 200/200 | 23/200 | **23/200** | **0** | 23/200 | 200/200 |
+| 2 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 29/200 |
+| 3 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 79/200 |
+| 4 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 10/200 |
+| 5 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 0/200 |
+| 6 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 0/200 |
+| 7 | 200/200 | 0/200 | **0/200** | **0** | 0/200 | 0/200 |
+
+**The reclaim is zero on every night, and the loop is not idle while producing
+it.** Over 200 Night 6 seeds it takes 2306 cue reads, finds and repairs 86
+genuine inversions, and never once corrects a monitor that was not up. Removing
+only the corrective press — keeping every read and paying for it — leaves those
+86 inversions to reach the classifier as `cams=UP-DESYNCED`, and survival is
+identical either way. Mean time alive moves 61.9 s → 61.7 s.
+
+The control that settles it is the last column but one: a **free, instantaneous,
+always-correct, bidirectional** repair of the pilot's monitor belief — strictly
+better than anything the shell can do, and not a model of the runner — also
+changes nothing, on any night. No monitor loop recovers the actuator cliff,
+because the cliff is not a desync.
+
+**What the cliff actually is.** Under the actuator the camera stalls lapse and
+marker-122 occupants reach the office opening at all, which the exact route
+never permits: office cues over 200 nights go **0 → 134** (Night 1) and
+**0 → 217** (Night 6), and 177/180 of those nights end in an `inside-office`
+death when the 45-frame office-defense fuse expires. The loop leaves the cue
+count unchanged to the unit (134 → 134, 217 → 217). The mechanism is the one the
+route's own emitter already documents: the sweep has to land *exactly* on its
+anchor because the stun it refreshes bridges the five-tick mask with nothing to
+spare, and 110–300 ms of launch lateness is 7–18 frames of exactly that. This is
+consistent with the earlier finding that a *constant* 110 ms is already fatal
+and no `--pilot-offset-ms` dials it out: the loss is the sweep's geometry, not a
+phase.
+
+Controls, and their results (Night 6 / Night 1, 200 seeds each, in the simulator):
+
+| Control | Expected | Result |
+|---|---|---|
+| classifier's monitor read always wrong | must not help | 0/200 and 2/200 — **hurts** (61.9 s → 52.8 s alive; 200/200 corrections taken on a monitor that was down) |
+| correction removed, reads retained | must gain nothing | 0/200 and 23/200 — identical to open loop, and the 86/24 desyncs it declined to fix reappear at the classifier |
+| cue reads the cams as up for 600 ms after the press (samples inside the flip) | must be able to *cause* desyncs | 199/200 nights desync, alive 61.7 s → 22.6 s on Night 6 — the night 6-38 failure, reproduced |
+| flip-animation window anchored to the press's *landing* instead of its log | sensitivity of the sourced 202 ms | 85/200 false corrections, alive 61.7 s → 54.5 s |
+| gate wait cut to 100 ms | (no-op, and worth knowing) | unchanged: `wait_until` on a past offset returns at once, so nothing can move the read earlier than the plan's 360 ms read position |
+| flip gate only / checkpoint only | separate the two sensors | the gate does all the work — with it on, the classifier checkpoint sees **0** desyncs; with only the checkpoint, 91 |
+
+One honest wrinkle in the controls, recorded because it is the strongest
+evidence for the mechanism above: on Night 1 the two *deliberately broken* loops
+**improve** survival (23/200 → 36/200 and → 57/200), trading `inside-office`
+deaths for `puppet` deaths. A loop whose false corrections invert the monitor
+stops the pilot executing the geometry that was killing it. That is not a
+defence of a broken loop; it is another measurement saying the deaths are
+geometric.
+
+Pinned in `tools/device/test-actuator.mjs`, including the vacuity guard — if
+there is nothing for the loop to correct, the zero is not a result.
+
 ### What this means for the ladder
 
 Working Nights 1–6 in order is the right call and is not blocked: Nights 1–5
@@ -145,6 +225,14 @@ must land before Night 7 is even attemptable are (a) a Foxy reset the Balloon Bo
 attack cycle can reach — which the plan grammar's two-row shared prefix cannot
 express today — and (b) a modelled closed-loop monitor recovery, without which
 every night ≥ 2 is 0/200 through the measured actuator. Neither is a knob.
+
+**(b) is answered, and it was the wrong question (2026-08-26).** The recovery is
+modelled and reclaims 0/200 on every night, as does a free ideal one. The
+actuator cliff is the sweep's stun geometry under 7–18 frames of launch
+lateness, not a monitor desync, so the item that replaces (b) is *a route whose
+camera sweep tolerates the phone's lateness* — and that is a route question, not
+a controller question. Nights 2+ do not become viable through the phone model by
+adding a loop.
 
 ## Canonical run artifact
 

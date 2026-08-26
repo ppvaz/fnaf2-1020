@@ -1149,6 +1149,107 @@ gated on the flashlight budget. Only `lit?` drains `battery life` (g284); vent
 lights are free, corrected in `ANDROID-SOURCE-STATUS.md` on 2026-08-20 and
 missed here.
 
+## 2026-08-26: the runner's own loop, modelled -- and what it turns out not to buy
+
+The flip gate and the classifier checkpoint above are the two places
+`trial-minus7.sh` stops being open-loop, and until now no simulator here
+contained them. Every actuator figure for Nights 2+ was therefore a statement
+about a controller the phone does not run, and plans/12 said so and left the
+number unmeasured. `tools/device/actuator.mjs` now carries `MonitorSupervisor`,
+and `tools/closedlooptest.mjs` prices it. **Everything below is in the
+simulator.** No phone was involved.
+
+### What was modelled, from the shell rather than from an ideal
+
+- `light_down_at`: block, `wait_until LAST_MONITOR_PRESS_MS + MONITOR_ANIM_DOWN_MS`,
+  one cue read (59 ms), and on a cams-up answer a **second** read (59 ms) before
+  correcting -- "one sample cannot tell a flash from the cams". A confirmed
+  correction presses the monitor at +33 ms and pushes the vent light out to
+  `LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS`.
+- The classifier's `cams=UP-DESYNCED` question, asked of the frame the BB model
+  already captured and only when it can change the decision, then the verified
+  recovery: lower, wait the flip out, read the cams back (59 ms), lower once more
+  if they are still up, resume from a floor with the branch's mask-off press
+  skipped (`MASK_ALREADY_OFF`).
+- The shell is single-threaded, so a wait blocks the whole schedule; a contact
+  whose down was pushed late still gets its planned `hid_delay` length; and the
+  capture latch moves with the light that actually went down.
+- `desyncs -le 12`, then `exit 48`. An abort is not a survival.
+
+And what was deliberately left out, because the runner cannot do it: the loop is
+**one-directional** (it only ever asks whether the cams are up when they should
+be down -- nothing in the shell detects a forcedown that left them down), it
+looks **twice a cycle and nowhere else**, and it reads a **screen state, not a
+toggle parity**. One optimism is stated in the model's own header: when the gate
+corrects, the vent light lands ~500 ms late and the phone's classifier frame
+comes out of position, which is what produced the `bbinside` and `unknown`
+misreads; the wrapped pilot's BB answer is ground truth regardless, so the model
+charges the correction its time but not its blindness. The reclaim below is an
+upper bound on this loop.
+
+### The result: zero, on all seven nights
+
+| Night | exact | actuator, open loop | actuator + modelled loop | reclaim |
+|---|---|---|---|---|
+| 1 | 200/200 | 23/200 | **23/200** | **0** |
+| 2-7 | 200/200 | 0/200 | **0/200** | **0** |
+
+The loop is not idle while producing that. Over 200 Night 6 seeds it takes 2306
+cue reads, finds and repairs 86 genuine inversions, and never corrects a monitor
+that was not up. With only the corrective press removed -- every read still
+taken and paid for -- those same 86 inversions reach the classifier as
+`cams=UP-DESYNCED`, and survival is identical. Mean time alive: 61.9 s -> 61.7 s.
+
+**The control that settles it.** A free, instantaneous, always-correct,
+*bidirectional* repair of the pilot's monitor belief -- strictly better than
+anything the shell can do, and not a model of this runner -- also changes
+nothing, on any night. So the answer is not "this loop is too weak". It is that
+**no monitor loop recovers the actuator cliff, because the cliff is not a
+desync.**
+
+What it is: under the actuator the camera stalls lapse and marker-122 occupants
+reach the office opening at all, which the exact route never permits. Office
+cues over 200 nights go **0 -> 134** (Night 1) and **0 -> 217** (Night 6), and
+177/180 of those nights end in an `inside-office` death when the 45-frame
+office-defense fuse expires. The loop leaves that count unchanged to the unit
+(134 -> 134, 217 -> 217). The mechanism is the one the route's emitter already
+documents -- the sweep must land exactly on its anchor because the stun it
+refreshes bridges the five-tick mask with nothing to spare -- and 110-300 ms of
+launch lateness is 7-18 frames of exactly that.
+
+### Correction to plans/12: `--sync` was never what made the other route survive
+
+plans/12 inferred "it is the open loop, not the phone" from
+`pilottest --vent --sync` being nearly free under the same actuator. That
+comparison changed the **route** as well as the loop. The same route with the
+resync removed (`pilottest --vent`, unconditional monitor toggling) is equally
+tolerant: 200/27/72/6/0/0/0 against `--vent --sync`'s 200/29/79/10/0/0/0 on
+Nights 1-7. The tolerance belongs to that route's schedule, not to its loop. The
+original bullet is kept in plans/12 with a dated retraction, because it is what
+prompted the measurement that refuted it.
+
+### The controls, and one uncomfortable one
+
+| Control | Expected | Result (Night 6 / Night 1, 200 seeds) |
+|---|---|---|
+| the monitor read is always wrong | must not help | 0/200 and 2/200 -- it **hurts** (61.9 s -> 52.8 s alive), and 200/200 of its corrections are taken on a monitor that was down |
+| correction removed, reads retained | must gain nothing | 0/200 and 23/200, identical to open loop; the 86/24 desyncs it declined to fix reappear at the classifier |
+| the cams read as up for 600 ms after the press, so the gate samples inside the flip | must be able to **cause** desyncs | 199/200 nights desync; alive 61.7 s -> 22.6 s. Night 6-38, reproduced |
+| the flip window anchored to the press's *landing* rather than its log | sensitivity of the measured 202 ms | 85/200 false corrections; alive 61.7 s -> 54.5 s |
+| gate wait cut to 100 ms | -- | unchanged, and worth knowing why: `wait_until` on a past offset returns at once, so nothing can move the read earlier than the plan's own 360 ms read position. The 6-38 hazard needs the *cue* to still read up there, not a shorter wait |
+| flip gate only / checkpoint only | separate the two sensors | the gate does all the work: with it on, the classifier checkpoint sees **0** desyncs; with only the checkpoint, 91 |
+
+The uncomfortable one, recorded because it is the strongest evidence for the
+mechanism: on Night 1 the two *deliberately broken* loops **improve** survival
+(23/200 -> 36/200 and -> 57/200), trading `inside-office` deaths for `puppet`
+deaths. A loop whose false corrections invert the monitor stops the pilot
+executing the geometry that was killing it. That is not a defence of a broken
+loop. It is another measurement saying the deaths are geometric.
+
+The zero and its vacuity guard are pinned in `tools/device/test-actuator.mjs`:
+if a future change leaves the loop with nothing to correct, the zero stops being
+a result and the check fails.
+
 ## 2026-08-25: pricing the stream as the classifier's capture, and the parasite it flushed out
 
 The question was whether a "capture stream" method can replace the last
