@@ -292,7 +292,54 @@ carries two more items than this plan listed — Options and Unlocks, on the
 right — which the four `MenuTarget` values do not cover and the gate makes
 harmless.
 
-### 3. Identify night start, win, death, and save advancement
+### 3. Identify night start, win, death, and save advancement — ADVANCED 2026-08-26, not closed
+
+**What the cleared Night 1 unblocked.** This package could not start because no
+6 AM frame existed anywhere; `lifecycle-observe.py`'s header said that screen
+"needs a survived night". The clear produced one, and the fixtures are retained
+at `captures/lifecycle/n1-sixam-20260826/`.
+
+**Done.** `sixam` and `intro` are positive classifiers, measured with controls
+(`ON-DEVICE-SCREEN-CHECKS`, `lifecycle-observe.py`): the win confetti reads
+0.059–0.326% on every real 6 AM frame and **exactly zero** across sixteen intro
+frames from two recordings, while `mean < 5` separates both from every other
+class by a wide margin. A dark frame with no text now says `dark-frame-no-text`
+instead of blaming the sensor. `run-timeline.py` segments a recording into
+intro / camera / office / mask / dark / sixam and returns a machine-readable
+terminal outcome with its evidence (`--json`), wired into `grade-run.sh`. Three
+phases are positive anchors, not residuals — the selected camera's yellow map
+button, the pink mask bar, and the dark-screen pair — after `is_night()` turned
+out to be an ALIVE test rather than an OFFICE test (the flashlight meter stays
+drawn over a raised tablet, so it reads `True` on 100% of a run's frames).
+
+**Still open, and the gate does not close without them:**
+
+- **No minigame fixture exists.** The gate names minigame as a class to
+  distinguish and nothing here can. `UNKNOWN(no capture)`.
+- **Which night an intro card names is not read.** Only Night 1's card has ever
+  been captured, and separating "1st" from "2nd" is a different problem with
+  different evidence. The identity contract needs that second fact, so a
+  detected card must not stand in for a verified night — which is why
+  `STORY_CURSOR_OBSERVED` is still an operator assertion.
+- **Media PTS to runner-clock alignment is not established.** Every mapping in
+  this session used a hand-derived `+7.5 s` offset read off `grade-night.py`.
+  That is good enough to line mask responses up with driver events by eye and
+  not good enough to be a contract.
+- **Save advancement is not read by any classifier.** The Night 1 clear was
+  proved by a human reading `Continue — Night 2` at full resolution.
+
+**Two detectors worth building, both sourced, neither built.** The dump carries
+`blackout` and `blackout timer` (the office lights going out with an animatronic
+inside, during the masking response) and `signal out` (the camera feed loss when
+one moves while the monitor is up) as *distinct* objects — three different
+things this project nearly merged under one borrowed word. Either would give
+positive ground truth about when a threat actually acted, which is exactly what
+`elegance.py` currently has to approximate from the AI table. A first attempt at
+signal-out detection on the Night 1 capture found one candidate frame, which is
+uninformative: almost nothing moves on Night 1, so it is the wrong night to
+calibrate on.
+
+### 3 (original scope)
 
 - Add positive classifiers for the `12:00 AM / Nth Night` intro cards and 6 AM
   transition, plus the resulting title/unlock state.
