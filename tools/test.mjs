@@ -259,6 +259,11 @@ const REPORTS = [
   // window causes the desyncs it looks for, and a free perfect one gains
   // nothing either.
   ['closed-loop reclaim', ['closedlooptest.mjs', '--runs=200']],
+  // What a lateness reduction would be worth. Two controls before a table: the
+  // zero row must reproduce the exact figure and the 110-300 ms row must
+  // reproduce plans/12, so a drifted cell fails instead of being re-read. The
+  // knee is the 2->3 frame boundary -- free to 41 ms, gone at 42.
+  ['lateness sweep', ['latenesssweep.mjs', '--runs=200', '--assert']],
   // The measured human bands, from whatever trainer runs have been recorded.
   // Empty until practice sessions accumulate under /save-trace.
   ['tracereport', ['tracereport.mjs']],
