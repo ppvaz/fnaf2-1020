@@ -234,14 +234,27 @@ const REPORTS = [
   // a statement about the model.
   ['pilottest device actuator', ['pilottest.mjs', '200', '--night=6', '--vent',
     '--sync', '--device-actuator']],
-  // The shipped n6 target under the same actuator. The death mix is the
-  // forcedown parity cascade the device recovery loop exists for -- this
-  // pilot has no recovery, so read it as the price of open-loop monitor
-  // toggling at measured lateness, not as a verdict on the live runner.
+  // The shipped n6 target under the same actuator.
+  //
+  // Corrected 2026-08-26. This used to read "the price of open-loop monitor
+  // toggling ... not a verdict on the live runner", on the strength of the
+  // resyncing pilot surviving the same actuator better. That comparison
+  // changed the ROUTE as well as the loop, and the same route with the resync
+  // removed is equally tolerant. The live runner's loop was then modelled and
+  // measured: it reclaims zero, at every lateness band, and so does a free,
+  // instant, always-right, bidirectional one. The cliff is geometric -- camera
+  // stalls lapse, occupants reach the opening, and 177/180 die to the 45-frame
+  // office-defense fuse. Read this as the price of LATENESS, not of open loop.
   ['hidpilot n6 target actuator', ['hidpilottest.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--device-actuator']],
+  // What the live runner's monitor loop reclaims against that, per night. The
+  // answer is zero, and the controls are what make that worth printing: a
+  // loop whose reads are always wrong HURTS, one that reads inside the flip
+  // window causes the desyncs it looks for, and a free perfect one gains
+  // nothing either.
+  ['closed-loop reclaim', ['closedlooptest.mjs', '--runs=200']],
   // The measured human bands, from whatever trainer runs have been recorded.
   // Empty until practice sessions accumulate under /save-trace.
   ['tracereport', ['tracereport.mjs']],
