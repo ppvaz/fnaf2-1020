@@ -126,15 +126,42 @@ check('the broad Night 6 result stays pinned', real.survived === 673,
       /model gate: 1189\/1200 night-1 runs/.test(n1out) &&
       /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
 
-    const unbounded = spawnSync('bash', [join(HERE, 'trial-minus7.sh'),
-      `gate-test-n1-unbounded-${process.pid}`, '2'], { encoding: 'utf8', env: {
+    // A story-night run longer than one cycle is a real attempt at that night,
+    // so it must name the save cursor the operator read under Continue.
+    //
+    // Corrected 2026-08-26. This used to assert the one-cycle bound
+    // ("bounded to exactly one cycle"), which existed because nothing
+    // established WHICH night Continue would resume. The bound is gone -- a
+    // night cannot be cleared one cycle at a time -- but the property it
+    // protected is not, so it is asserted in its new form: an unnamed cursor
+    // still stops the run before adb. Nothing here machine-verifies the
+    // cursor; the point is that a human must have looked and said so, and that
+    // the claim lands in the manifest.
+    const storyRun = (name, extraEnv) => spawnSync('bash',
+      [join(HERE, 'trial-minus7.sh'), `${name}-${process.pid}`, '2'],
+      { encoding: 'utf8', env: {
         ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
         BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
-        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0',
+        CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0', ...extraEnv,
       } });
-    check('lower-night calibration cannot become an unverified campaign run',
-      unbounded.status === 2 && /bounded to exactly one cycle/.test(unbounded.stderr) &&
-      !/MOCK_ADB_REACHED/.test(unbounded.stderr + unbounded.stdout));
+
+    const unnamed = storyRun('gate-test-n1-unnamed', {});
+    check('a multi-cycle story night refuses without a named save cursor',
+      unnamed.status === 2 && /must name the save cursor/.test(unnamed.stderr) &&
+      !/MOCK_ADB_REACHED/.test(unnamed.stderr + unnamed.stdout),
+      `status=${unnamed.status}`);
+
+    const mismatched = storyRun('gate-test-n1-mismatch', { STORY_CURSOR_OBSERVED: '3' });
+    check('a cursor that disagrees with the requested night refuses',
+      mismatched.status === 2 && /must name the save cursor/.test(mismatched.stderr) &&
+      !/MOCK_ADB_REACHED/.test(mismatched.stderr + mismatched.stdout),
+      `status=${mismatched.status}`);
+
+    const named = storyRun('gate-test-n1-named', { STORY_CURSOR_OBSERVED: '1' });
+    check('a named, matching cursor reaches adb after its gate',
+      /MOCK_ADB_REACHED/.test(named.stderr + named.stdout) &&
+      /save cursor reported as Night 1/.test(named.stderr + named.stdout),
+      `status=${named.status}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 

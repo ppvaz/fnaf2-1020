@@ -12,12 +12,30 @@ set -euo pipefail
 OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
-# Temporary, bounded campaign calibration path. This does not claim generic
-# story-night support: it exists only to price one real controller cycle on a
-# requested lower night while Plan 13's intro/terminal classifiers are still
-# incomplete. It may select only the save-safe Continue item and only one
-# cycle, so it cannot masquerade as a campaign attempt.
+# Story-night path, via the save-safe Continue item only.
+#
+# Widened 2026-08-26 from one cycle to a full night. The one-cycle bound existed
+# because nothing verified WHICH night Continue would resume, so a longer run
+# could have masqueraded as a campaign attempt on a night nobody had
+# established.
+#
+# Nothing machine-verifies the cursor yet -- the save cursor IS printed under
+# Continue on the title screen (a 2026-08-26 frame reads "Night 1" plainly at
+# full resolution), but no classifier reads that digit, and calibrating one
+# needs save states for the other nights that this device does not have. So the
+# guard is kept honestly rather than automated away: STORY_CURSOR_OBSERVED must
+# be set to the night the operator actually read under Continue, and it must
+# match the requested night. That is an assertion by a human who looked, it is
+# recorded as such in the manifest, and it is not dressed up as a measurement.
+#
+# What is still NOT claimed, and the manifest says so: a clear. Plan 13 package
+# 3's 6 AM and intro-card classifiers do not exist, so this can reach the end of
+# a night and cannot grade the result as a win. `lifecycle=unknown` is the
+# honest outcome until they land. New Game remains unreachable from here.
 CALIBRATION_STORY_NIGHT="${CALIBRATION_STORY_NIGHT:-0}"
+# The night the operator read under Continue on the title screen. Required for
+# any story-night run longer than one cycle; see the note above.
+STORY_CURSOR_OBSERVED="${STORY_CURSOR_OBSERVED:-}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-0}"
 GRADE_RUN="${GRADE_RUN:-1}"
 PRESS_MODE="${PRESS_MODE:-hid-multi}"
@@ -38,6 +56,14 @@ DEVICE_EPOCH_LATCH="${DEVICE_EPOCH_LATCH:-1}"
 # 4 of 4. A death is not a subtle signal and does not need 4 Hz: at this
 # interval three consecutive misses still stop the run inside ~5 s.
 WATCHDOG_INTERVAL="${WATCHDOG_INTERVAL:-0.8}"
+# How long the screen may classify as `other` before the run stops. `other` is
+# not death -- screenstate.py's classes are night/gameover/other, and the CAMERA
+# VIEW is `other`. The graded n1-full-1620 capture shows 3.50 s camera dwells
+# per 5 s cycle and a 5.3 s opening wind, so anything at or below ~6 s aborts a
+# healthy run; 12 s clears the longest legitimate dwell with margin and still
+# catches the static, the minigame, and the restart card quickly. `gameover`
+# does not use this fuse and aborts on sight.
+WATCHDOG_OTHER_ABORT_MS="${WATCHDOG_OTHER_ABORT_MS:-12000}"
 # The safety capture costs 0.72-0.85 s idle on this phone (12 samples), and
 # the code below records that concurrent captures "more than doubled" it. A
 # 0.8 s budget was therefore under its own idle maximum: night 6-23 printed
@@ -317,13 +343,27 @@ if [ "$CALIBRATION_STORY_NIGHT" -ne 0 ]; then
     echo "CALIBRATION_STORY_NIGHT requires NIGHT=continue" >&2
     exit 2
   }
-  [ "$CYCLES" -eq 1 ] || {
-    echo "lower-night calibration is bounded to exactly one cycle" >&2
+  # A night is 420 s and the cycle is 5000 ms, so a full night is about 84
+  # cycles. Anything beyond 120 is not a night, it is a stuck loop.
+  { [ "$CYCLES" -ge 1 ] && [ "$CYCLES" -le 120 ]; } || {
+    echo "story-night CYCLES must be 1..120 (a 420 s night is about 84)" >&2
     exit 2
   }
+  # More than one cycle is a real attempt at the night, so it must name the
+  # cursor that was seen. One cycle stays open as the timing-calibration path
+  # it always was.
+  if [ "$CYCLES" -gt 1 ]; then
+    [ "$STORY_CURSOR_OBSERVED" = "$CALIBRATION_STORY_NIGHT" ] || {
+      echo "a story-night run longer than one cycle must name the save cursor" >&2
+      echo "read the label printed under Continue on the title screen, then set" >&2
+      echo "  STORY_CURSOR_OBSERVED=<that night>" >&2
+      echo "requested night $CALIBRATION_STORY_NIGHT, observed cursor '${STORY_CURSOR_OBSERVED:-unset}'" >&2
+      exit 2
+    }
+  fi
   STORY_NIGHT=$CALIBRATION_STORY_NIGHT
   MENU_TARGET=continue
-  echo "calibration only: requested story Night $STORY_NIGHT via Continue; intro identity is not yet machine-verified" >&2
+  echo "story Night $STORY_NIGHT via Continue; save cursor reported as Night ${STORY_CURSOR_OBSERVED:-unread} by the operator (not machine-verified)" >&2
 else
   [ "$NIGHT" = "6th" ] || {
     echo "trial-minus7.sh executes Continue only through bounded CALIBRATION_STORY_NIGHT=1..5" >&2
@@ -359,7 +399,7 @@ if [ "$POST_CAPTURE_TOUCHES" -eq 1 ] &&
   # frame, then disables it before the next sampled frame.
   POST_CAPTURE_TOUCHES_EFFECTIVE=1
 fi
-for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL WATCHDOG_BLIND_ABORT_MS; do
+for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVAL WATCHDOG_BLIND_ABORT_MS WATCHDOG_OTHER_ABORT_MS; do
   setting_value="${!setting}"
   case "$setting_value" in
     ''|*[!0-9.]*) echo "$setting must be a positive number"; exit 2 ;;
@@ -573,7 +613,7 @@ pull_samples() {
 }
 
 watch_night() {
-  local misses=0 screen_state blind_since=0 blind_now
+  local misses=0 screen_state blind_since=0 blind_now other_since=0 other_now
   while kill -0 "$DRIVER_PID" 2>/dev/null; do
     sleep "$WATCHDOG_INTERVAL"
     # The survival classifier and safety watchdog both call SurfaceFlinger's
@@ -607,12 +647,43 @@ watch_night() {
           return 0
         fi
         ;;
-      *)
+      gameover)
+        # A real death. No fuse: this is the one state that is unambiguous, and
+        # pressing into it is what produced the 163 s "record" that graded at
+        # 26 s alive.
         blind_since=0
-        misses=$((misses + 1))
-        printf 'watchdog: %s (%d/2)\n' "$screen_state" "$misses"
+        misses=2
+        printf 'watchdog: gameover\n'
+        ;;
+      *)
+        # `other` is NOT evidence of death, and treating it as such aborted a
+        # healthy Night 1 at 32 s on 2026-08-26 (`n1-full-1620`, graded alive
+        # >=25 s with the HUD still up when the recording ended).
+        #
+        # screenstate.py classifies night / gameover / other, and **the camera
+        # view is `other`**. This controller lives on the monitor: the graded
+        # capture shows 3.50 s camera dwells every 5 s cycle and a 5.3 s opening
+        # wind. Two polls at 0.8 s is 1.6 s, so the old `misses >= 2` rule fired
+        # inside every legitimate dwell -- it was only survivable on routes that
+        # spend less time in the cams.
+        #
+        # So `other` gets a fuse longer than any legitimate monitor dwell, while
+        # `gameover` above keeps the instant abort. This does NOT make a
+        # detector that knows one way to be dead into the thing that says you
+        # are alive: death still aborts on sight, and sustained `other` -- the
+        # static, the minigame, the restart card -- still aborts, just after
+        # long enough to tell it from playing the game.
+        blind_since=0
+        other_now=$(date +%s)
+        [ "$other_since" -ne 0 ] || other_since="$other_now"
+        printf 'watchdog: %s (%s ms of %s)\n' "$screen_state" \
+          "$(( (other_now - other_since) * 1000 ))" "$WATCHDOG_OTHER_ABORT_MS"
+        if [ $(( (other_now - other_since) * 1000 )) -ge "$WATCHDOG_OTHER_ABORT_MS" ]; then
+          misses=2
+        fi
         ;;
     esac
+    case "$screen_state" in night) other_since=0 ;; esac
     if [ "$misses" -ge 2 ]; then
       printf 'abort: game left night state (%s)\n' "$screen_state" > "$WATCHDOG_RESULT"
       # Stop the game before any recording/sample transfer. A queued office
@@ -896,13 +967,14 @@ fnaf_session_begin "$OUT" "tools/device/trial-minus7.sh"
 SESSION_NIGHT=$STORY_NIGHT
 if [ "$CALIBRATION_STORY_NIGHT" -ne 0 ]; then
   fnaf_session_record note \
-    "text=bounded lower-night timing calibration: story Night $STORY_NIGHT was requested via Continue, but the intro identity is not yet machine-verified; this session is not campaign-clear or promotion evidence"
+    "text=story Night $STORY_NIGHT requested via Continue. The save cursor was reported as Night ${STORY_CURSOR_OBSERVED:-unread} by the operator reading the label under Continue; NO classifier verified it, so night identity is an asserted observation and not a measurement. No 6 AM or intro-card classifier exists, so this session cannot grade a clear regardless of outcome."
 fi
 fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
   "screencap-raw+screenrecord"
 fnaf_session_record env \
   "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
   "CALIBRATION_STORY_NIGHT=$CALIBRATION_STORY_NIGHT" \
+  "STORY_CURSOR_OBSERVED=${STORY_CURSOR_OBSERVED:-unread}" \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \
   "SCREENRECORD_TIME_LIMIT=$SCREENRECORD_LIMIT" \
   "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
@@ -2041,7 +2113,18 @@ pulsed_sweep_at() {
   # A sweep is successive presses at $spacing, so the floor applies inside it
   # as well as at its edges. Checked before waiting: an inhuman sweep is known
   # from its arguments, and refusing early beats refusing mid-macro.
-  [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
+  #
+  # Same arm as human_floor_check, and it has to be stated again because this
+  # call site reaches human_floor_abort DIRECTLY rather than through it. That
+  # omission is not hypothetical: it killed the first real Night 1 attempt
+  # (2026-08-26, `n1-validate-1607`) at `sweep slots lands 120 ms after the
+  # previous press`. The 120 ms is the plan's own DEVICE_SPACING_MS -- the
+  # spacing this phone has landed 4/4 and the model gate priced under human
+  # slack -- so the scalar floor was refusing the accepted schedule, which is
+  # exactly the confusion the gate was introduced to end.
+  if [ "$NIGHT6_LEFT" -ne 1 ]; then
+    [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
+  fi
   wait_until "$sweep_start"
   now_rel
   actual=$NOW_REL
