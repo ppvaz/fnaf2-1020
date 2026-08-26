@@ -178,6 +178,29 @@ A finding that *contradicts* something already written is the highest priority
 of all, because the repository is actively misleading until it is corrected —
 correct it in place and keep the original, per the next section.
 
+## `plans/PROGRESS.md` is part of the change, not a chore after it
+
+The dashboard is the only place that says what is actually done, so a commit
+that changes package state and leaves it alone has made the repository lie.
+Three specific obligations, each of which was violated before it was written:
+
+- **A package's state changes in the same commit as the work.** Its plan's
+  result block, its dashboard row, and both headline counts, together. The
+  counting rule in `PROGRESS.md` says this for the numerator; it holds equally
+  for the state and next-gate columns, which go stale silently because nothing
+  recomputes them.
+- **The "Very next step" is re-pointed the moment it is finished.** It is the
+  first thing a cold session reads. Leaving it pointing at closed work sends the
+  next session to redo it.
+- **Rows are read off each plan's own completion markers, never from memory.**
+  A 2026-08-26 audit found Plan 03's row had been authored stale on the day the
+  file was created — its work item 1 had closed two days earlier — and Plan 08
+  still carrying a withdrawn refutation that, read literally, closed five open
+  packages.
+
+An honest percentage that goes down is worth more than a flattering one: adding
+a plan raises the denominator, and that is the number moving correctly.
+
 ## Retractions stay
 
 When a result turns out wrong, correct it in place and keep the original
