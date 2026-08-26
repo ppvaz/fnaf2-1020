@@ -35,11 +35,41 @@ for transport in loopback forward; do
   case "$result" in "MISS window=test-window"*) ;; *) echo "bad result: $result" >&2; exit 1 ;; esac
 done
 
+# Both transports must answer the DEVICE's field set, not a subset of it.
+#
+# Corrected 2026-08-26. This matched on substrings that passed whether or not
+# the snapshot carried `cam5=` and `detector=`, and both mocks were missing
+# fields the device sends -- so the mocks answered a shape no runner could
+# parse and this check went green anyway. `trial-minus7.sh:1912` reads the line
+# with `s/.*luma=\(...\).*cam5=\(...\).*ageUs=\(...\)/.../p`; against the
+# old loopback mock that sed did not match AT ALL, and an unmatched sed prints
+# nothing rather than failing, so the runner's cue trace was silently empty.
+#
+# So assert the parse the runner actually performs, on both transports, rather
+# than a substring that survives a missing field.
 for transport in loopback forward; do
   response="$(PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" "$transport")"
   case "$response" in
     'OK '*"visual=OBSERVED seq=121"*"audio=OBSERVED frames=33000"*) ;;
     *) echo "unexpected $transport response: $response" >&2; exit 1 ;;
+  esac
+  # The runner's own extraction, verbatim in shape. It must yield three fields.
+  parsed="$(printf '%s\n' "$response" |
+    sed -n 's/.*luma=\([0-9]*\).*cam5=\([0-9]*\).*ageUs=\([0-9]*\).*/luma=\1 cam5=\2 age=\3us/p')"
+  case "$parsed" in
+    'luma='*' cam5='*' age='*'us') ;;
+    *) echo "$transport snapshot does not parse the way trial-minus7.sh reads it;" \
+            "the mock has drifted from the device's field set: $response" >&2
+       exit 1 ;;
+  esac
+  # cam5 must not be the same number as luma, or a transposed capture group
+  # would read as correct.
+  case "$parsed" in
+    'luma=2 cam5=2 '*) echo "$transport: cam5 must differ from luma so a swapped group shows" >&2; exit 1 ;;
+  esac
+  case "$response" in
+    *detector=*) ;;
+    *) echo "$transport snapshot is missing detector=, which the device appends" >&2; exit 1 ;;
   esac
 done
 

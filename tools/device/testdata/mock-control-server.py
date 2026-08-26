@@ -9,10 +9,20 @@ import pathlib
 import socket
 import sys
 
+# Field-for-field with the device's `CaptureService.buildSnapshot()`, and with
+# the loopback mock in mock-adb-cue-helper.sh. Both transports must answer the
+# same shape or a consumer that works over one silently fails over the other.
+#
+# This lagged the device twice: `cam5=` when the 20x9 frame started carrying the
+# CAM 05 block, and `detector=` when `CueDetector.status()` was appended on
+# 2026-08-26. Consumers parse this with a greedy sed whose groups are positional
+# -- `trial-minus7.sh:1912` wants `.*luma=...*cam5=...*ageUs=...` -- so a
+# missing field does not degrade the parse, it kills the match outright.
 SNAPSHOT = (
-    "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 "
-    "content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 "
-    "readAgeUs=1000"
+    "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 "
+    "ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 "
+    "rms=10 peak=21 readAgeUs=1000 detector=READY calibration=mock "
+    "evidence=shadow templates=2"
 )
 
 

@@ -37,7 +37,25 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   esac
   # args: shell sh -s -- PORT VERB TOKEN [ARG]
   case "${6:-}/${8:-}" in
-    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000' ;;
+    # Keep this line field-for-field with what the device sends. It is
+    # `CaptureService.buildSnapshot()`, and it grew twice without the mock
+    # following: `cam5=` when the 20x9 frame started carrying the CAM 05 block,
+    # and `detector=` when `CueDetector.status()` was appended on 2026-08-26.
+    #
+    # Why that matters more than tidiness: every consumer reads this line with a
+    # greedy sed, and greedy `.*` binds to the LAST match. `trial-minus7.sh`'s
+    # cue trace wants `.*luma=...*cam5=...*ageUs=...`, which against the old
+    # mock did not match at all -- so the mock answered a shape no runner could
+    # parse and the regression still went green. A trailing field is exactly the
+    # kind of addition that silently re-points a capture group, and a mock that
+    # lags the device cannot catch it.
+    #
+    # cam5 is deliberately unequal to luma so a transposed capture group shows.
+    # The detector fields agree with this mock's own MODEL reply below. The mock
+    # is stateless, so it answers READY even straight after ARM where a real
+    # helper would say ARMED or RESULT; the state machine is covered by
+    # android/cue-helper/test.sh, not here.
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000 detector=READY calibration=mock evidence=shadow templates=2' ;;
     GRID/*)
       # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
       printf 'OK grid=20x9 seq=121 '
