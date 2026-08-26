@@ -69,6 +69,9 @@ Fusion build 296, August 2025.
 - [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the
   libc-free on-phone classifier, its model-building discipline, and measured
   latency.
+- [`OBSERVATION-CORPUS-INVENTORY.md`](device/OBSERVATION-CORPUS-INVENTORY.md) —
+  every current visual, audio, video, HID, trace, model, clock, producer, and
+  consumer; the provenance gaps the shared session schema must close.
 - [`ONE-PIXEL-VISION.md`](device/ONE-PIXEL-VISION.md) — an educational case
   study in reducing a visual bot sensor from a full screenshot to one tested
   logical pixel, with Android capture and audio analogues.

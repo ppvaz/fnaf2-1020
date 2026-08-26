@@ -26,6 +26,7 @@ const EXCLUDED = new Map([
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],
   ['grid-signature.py', 'builds live-check signatures from labelled frames; a builder, not a grader'],
+  ['index-observations.py', 'read-only corpus inventory; indexes artifacts rather than grading one run'],
   ['build-screen-model.py', 'model builder'],
   ['build-screencheck.sh', 'native classifier builder'],
   ['replay-screen-model.py', 'validates the classifier against labelled holdouts (test-screencheck.py drives it), not a run'],

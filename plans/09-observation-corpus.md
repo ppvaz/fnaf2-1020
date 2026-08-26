@@ -1,7 +1,14 @@
 # Stock-device observation corpus and replay contract
 
-**Status: proposed 2026-08-26.** The repository has useful labeled visual sets,
-night recordings, HID traces, projection snapshots, and PCM captures, but they
+**Status: package 1 complete 2026-08-26.** The read-only
+[`OBSERVATION-CORPUS-INVENTORY.md`](../docs/device/OBSERVATION-CORPUS-INVENTORY.md)
+accounts for every current producer and retained artifact family. It found only
+three files in the local capture root, no manifest, no durable PCM `startNs`
+sidecar, and no retained source/holdout frames for the operational BB model.
+Package 2—the versioned manifest/event schemas and validator—is next.
+
+The repository has useful labeled visual sets, night recordings, HID traces,
+projection snapshots, and PCM captures, but they
 are collected and evaluated by subsystem. This plan gives them one session and
 replay contract. It does not replace the existing SCM1 or cue evaluators.
 
@@ -81,7 +88,7 @@ fields.
 
 ## Work packages
 
-### 1. Inventory and normalize existing captures
+### 1. Inventory and normalize existing captures — complete 2026-08-26
 
 - Enumerate current ignored capture layouts and every producer/consumer.
 - Define which artifacts are authoritative versus derived.
@@ -92,6 +99,14 @@ fields.
 
 **Gate:** the index explains every retained artifact or marks it unusable with a
 reason, and does not expose tokens or device-specific secrets.
+
+**Result:** complete. The inventory classifies primary observations,
+emitted-action records, derived evidence, models, operational metadata, eight
+clock/alignment domains, producer/consumer joins, label provenance, split
+discipline, retention, and the exact minimum schema fields. Existing files were
+read but not renamed or rewritten. `tools/device/index-observations.py` makes
+the path/authority/family inventory reproducible; synthetic tests enforce its
+strict-mode and read-only contracts.
 
 ### 2. Introduce the manifest and event schema
 

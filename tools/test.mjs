@@ -165,6 +165,9 @@ const ENGINE = [
   // no browser involved.
   ['trainer trace', ['tracetest.mjs']],
   ['camtrace', ['device/test-camtrace.py']],
+  // Plan 09's read-only corpus index: classify existing artifacts without
+  // rewriting them, preserve basename joins, and surface unknown/empty files.
+  ['observation index', ['device/test-index-observations.py']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
