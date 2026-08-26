@@ -728,3 +728,136 @@ different resolution or orientation.
   classifier cycles; the older staged response table is not a clear claim.
 - It does not imply the same flashlight-power budget is affordable on 10/20
   Night 7. The current scope is Night 6.
+
+---
+
+## Prior art: is any of this a solved problem elsewhere? (2026-08-26)
+
+A literature survey, not a measurement. Nothing here was run on the phone. It
+exists because this project had never checked whether its central architectural
+bet — a **physical, stock, unrooted handset driven by raw HID touch injection,
+reacting in real time** — is a normal thing to do or an unusual one. It is
+unusual. Sources are cited so the claims can be re-checked; where the evidence is
+a forum post rather than code it says so, and where nothing was found it says
+that instead of guessing.
+
+### The short answer
+
+**The combination has one public precedent, and it is archived.**
+[`kvarenzn/phisap`](https://github.com/kvarenzn/phisap) drove Phigros and Arcaea
+on an unrooted physical handset in hard real time, through a 10-contact
+**AOAv2** HID touchscreen it wrote itself (report descriptor documented in its
+`hid.md`). It worked on Android 10, its HID backend broke on Android 13 —
+AOAv2 multitouch registration simply fails — was never fixed, and the repository
+was archived on 2024-03-07.
+
+Everything else in the field is one of: emulator + adb; physical device + adb
+for a *turn-based* game; an on-device accessibility service (also turn-based); a
+hardware actuator against the glass; or an in-process memory hook. The two other
+real-time cases found — phisap and Autodori — are rhythm games that **read the
+chart file and replay a precomputed schedule**. They never sample the screen.
+The only screen-reading real-time bot located is a 2016 Piano Tiles robot that
+used *four stepper motors and an external 120 fps camera*, because reading the
+tablet's own framebuffer fast enough was not on the table.
+
+### The one result that changes how we should think about `hid-multi`
+
+Android **deliberately** stamps injected input with `deviceId = -1`. The AOSP
+comment in `InputDispatcher.cpp` says so in as many words, and
+`InputEvent.getDeviceId()` is public API. Accessibility-injected gestures
+additionally carry `FLAG_IS_ACCESSIBILITY_EVENT = 0x800`; `getFlags()` is public,
+so `(ev.getFlags() & 0x800) != 0` is a one-line, permissionless bot check.
+
+Per a scrcpy contributor in
+[PR #3758](https://github.com/Genymobile/scrcpy/pull/3758): *"Android set device
+id of all injected events to -1, unless the event is from InputFilter... The
+only method to get real device id is using AOA HID or uinput."*
+
+So every mainstream alternative — `adb shell input`, MaaTouch, scrcpy's `sdk`
+mode, Airtest's maxtouch, minitouch — is on the detectable side of the only
+detection line anyone has documented, and **`hid-multi` is not.** That property
+was not why this route was chosen (it was chosen because short taps get dropped
+and `input` costs a fork), but it is a real second reason to keep it.
+
+**And the portability warning does not transfer — checked, not assumed.** phisap
+died of **AOAv2**, a USB-accessory gadget negotiated over the cable from a host;
+its failures trace to vendor kernels omitting `raw_request()` in
+`f_accessory.c`, which scrcpy's author maintains a whole repository about
+([rom1v/aoa-hid-bug](https://github.com/rom1v/aoa-hid-bug)). This project does
+not use AOAv2. `trial-minus7.sh:1351` runs **`/system/bin/hid`**, which creates a
+**uhid** virtual device *on the device itself* — the same mechanism behind Trap 1
+above, where `UHID_OPEN` returns before `InputReader` enumerates the touchscreen
+five seconds later. uhid gets the same real-`deviceId` property without the
+USB-gadget dependency that killed phisap's backend. That is a better position
+than the one public precedent had, and it is worth knowing we are not standing
+where it fell.
+
+### phisap's actual lesson, which is uncomfortably close to today's
+
+Its author shipped a working 1 kHz HID touchscreen and then could not tell what
+time it was inside the game. The timer is started **by a human pressing space**
+as the first note approaches, with a manual offset, and the README's standing
+request to strangers was for a way to read song progress without root.
+
+Its diagnostic rule is this repository's graded-interval rule in miniature:
+*Full Combo but not All-Perfect **always** means the timer sync is off, never the
+plan.* Read that against `RUN-TELEMETRY.md` §10, where today's run put T0 exactly
+2^32 ms low and nothing but the driver log noticed. **The nearest thing this
+project has to a solved version of phisap's open problem is the cue helper and
+the epoch latch** — the parts that answer "where am I", not the parts that press.
+Actuation was never the bottleneck for the one person who tried this before.
+
+### Where our measured numbers sit against the field
+
+Corroboration, not validation — these are other people's devices:
+
+| Ours | Field | Source |
+|---|---|---|
+| `screencap` **225 ms** | `adb screencap` **~350 ms** on an accelerated emulator with "pretty beefy hardware"; an MJPEG server ~150 ms | [appiumpro](https://appiumpro.com/editions/83-speeding-up-android-screenshots-with-mjpeg-servers) [V] |
+| cue helper **59 ms** device-local | nothing published for a physical handset beats it; minicap self-reports 10–40 fps and "one to a few frames behind" | [DeviceFarmer/minicap](https://github.com/DeviceFarmer/minicap) [V] |
+| ≥**100 ms** bare contact | Unity's own manual: *"If you read out touch state from `Touchscreen` directly inside of `Update`... your app will miss changes in touch state."* | Unity Input System docs [V] |
+| ~680 ms free per cycle | Alas grades a click <100 ms and a screenshot <300 ms as "Fast", and treats a combined **350 ms** budget as enough to *"run a little faster than human"* | [Alas benchmark.py](https://github.com/LmeSzinc/AzurLaneAutoScript/blob/master/module/daemon/benchmark.py) [V] |
+
+The 225 ms figure landing where the literature says it should is a small
+independent check that this project's measurement rig is honest.
+
+### The negative analogue, in its own words
+
+**Alas — the most engineered bot in the field, 9.5k stars — abandoned physical
+handsets in writing.** Its wiki: 在安卓真机运行 Alas 的方案已经被放弃 ("the scheme
+for running Alas on a real Android device has been abandoned"), and of the
+split-device variant: 真机截图也是非常慢 ("screenshotting a real device is also
+very slow"), the screen cannot be off, and thermal wear costs more than a cloud
+phone. MAA says physical ADB *"has lower stability... Not recommended"* and that
+device-specific bugs will not be fixed. The fastest capture paths in the field
+(`nemu_ipc`, `ldopengl`) are **emulator-exclusive by construction**, reading the
+guest framebuffer out of shared memory.
+
+The one large-scale physical-handset success is
+[FGA](https://github.com/Fate-Grand-Automata/FGA) (Fate/Grand Order):
+MediaProjection + OpenCV + AccessibilityService, entirely on-device, no adb
+round trip at all. **It works because FGO is turn-based** — and every gesture it
+sends carries `FLAG_IS_ACCESSIBILITY_EVENT`.
+
+### Two honest negatives, stated rather than filled in
+
+- **No documented case was found of an Android game detecting a bot by input
+  *timing*.** Detection in every source located is by input *identity*
+  (`deviceId`, accessibility flag, Play Integrity's `KNOWN_CAPTURING` /
+  `KNOWN_CONTROLLING` verdicts), which is cheaper and exact. This is
+  `UNKNOWN(not found in the searches run)`, not "does not happen" — and it does
+  **not** license relaxing the human gate, which exists because a run this
+  project cannot defend as human-executable is not evidence about a human
+  strategy. It only means the gate's justification is that argument and not a
+  ban-avoidance one.
+- **The widely circulated per-method latency table for Alas has no primary
+  source.** The confident version on DeepWiki is LLM-generated and contradicts
+  the repository's own config. Do not cite it.
+
+### What this survey does not say
+
+It does not say the architecture is right — it says it is rare, that the one
+person who tried it stopped for a reason that does not apply to us, and that the
+part of the problem he could not solve is the part this project has spent most
+of its effort on. The survey read public code and docs; it ran nothing on a
+phone, and no number above is a measurement of this handset.

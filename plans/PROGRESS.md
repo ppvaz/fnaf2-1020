@@ -114,6 +114,41 @@ Each of these was an "Open" item here as recently as this morning:
   on a search boundary, and `scan()` reports `UNKNOWN` and exits before
   attributing anything.
 
+### External check, 2026-08-26: is this architecture normal?
+
+Surveyed, because nobody had. **It is not normal — it is near-unprecedented, and
+the one precedent is instructive rather than discouraging.** Full write-up in
+`HID-MULTITOUCH.md` §"Prior art". Three things that change what to work on:
+
+- **`hid-multi` is on the right side of the only documented detection line.**
+  Android stamps injected input with `deviceId = -1` *by deliberate design*
+  (AOSP `InputDispatcher.cpp`), and per a scrcpy contributor the only mechanisms
+  that do not are AOA HID and uinput. Every mainstream alternative — `adb shell
+  input`, MaaTouch, scrcpy's sdk mode, Airtest maxtouch, minitouch — is
+  detectable; this route is not. That was not why it was chosen, and it is a
+  second reason to keep it.
+- **The one prior attempt died of something we do not use.** `phisap` drove an
+  unrooted handset in hard real time via **AOAv2** and broke on Android 13 on
+  vendor USB-gadget bugs. This project runs `/system/bin/hid`, a **uhid** device
+  created on the phone — verified, not assumed — so it gets the same identity
+  property without the dependency that killed the precedent.
+- **Its author's unsolved problem was ours.** He shipped a working 1 kHz HID
+  touchscreen and then started his timer *by having a human press space*,
+  because he could not read the song's progress without root. His rule — "Full
+  Combo but not All-Perfect always means the timer sync is off, never the plan"
+  — is this repository's graded-interval rule in miniature. **Actuation was
+  never the bottleneck for the only person who tried this before.** The cue
+  helper and the epoch latch are the parts of this project with no prior art,
+  and today's 32-bit T0 wrap says that is still where the risk lives.
+
+Also corroborated: 225 ms `screencap` sits where the literature says it should,
+the 59 ms device-local read beats anything published for a physical handset, and
+the ≥100 ms contact rule is Unity's own documented failure mode. And one honest
+negative: **no case was found of any Android game detecting a bot by input
+timing** — only by input identity. That does not license relaxing the human gate,
+whose justification is evidential rather than ban-avoidance, but it does mean the
+gate should stop being argued for on detection grounds.
+
 ### Open, with what is known
 
 - **The music box contradicts `src/config.js` and is not fixed.** Measured on
