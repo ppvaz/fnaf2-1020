@@ -104,6 +104,47 @@ def describe_end(frame):
     return f"not a night HUD (mean {mean:.0f}, edge {edge:.0f})"
 
 
+def hud_gaps(flags, frm=0):
+    """Every [i, j) stretch where the HUD is absent, from index `frm`."""
+    i, out = frm, []
+    while i < len(flags):
+        if flags[i]:
+            i += 1
+            continue
+        j = i
+        while j < len(flags) and not flags[j]:
+            j += 1
+        out.append((i, j))
+        i = j
+    return out
+
+
+def find_end(flags, start, settle, static_at):
+    """Index where the HUD goes away for good, or None if the run never ended.
+
+    A HUD-absent gap is NOT death. The office HUD is not drawn while the monitor
+    is up, and this controller lives on the monitor: the cleared Night 1
+    (`n1-full-1640`) spends 3.5 s of every 5 s cycle in the cams and 5.3 s at
+    the opening. Ending the run at the first such gap graded that 418-second
+    WINNING run at 6.5 s -- wrong by a factor of 64, by the tool CLAUDE.md calls
+    "the only number that is a run length".
+
+    So a gap ends the run only when it contains the death static. `static_at(i)`
+    is injected rather than computed here so this is testable on flag sequences
+    alone. The original failure is still caught: the 163 s claim contained the
+    static, and a terminal gap is still described by its contents whatever they
+    are, because the HUD never comes back after a real death.
+    """
+    for i, j in hud_gaps(flags, start + settle):
+        if j - i < settle:
+            continue
+        step = max(1, (j - i) // 8 or 1)
+        for k in range(i, j, step):
+            if static_at(k):
+                return i
+    return None
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("video")
@@ -132,18 +173,80 @@ def main():
     if start is None:
         print(f"{a.video}: the HUD is never present -- no night ran at all")
         raise SystemExit(1)
-    end = run_start(False, start + a.settle)
+
+    # A HUD-absent gap is NOT death. The office HUD is not drawn while the
+    # monitor is up, and this controller lives on the monitor: the cleared
+    # Night 1 (`n1-full-1640`) spends 3.5 s of every 5 s cycle in the cams and
+    # 5.3 s at the opening. Reporting the first such gap as the end graded that
+    # 418-second WINNING run at 6.5 s -- wrong by a factor of 64, by the tool
+    # CLAUDE.md calls "the only number that is a run length".
+    #
+    # So a gap ends the run only when it CONTAINS evidence of death. The
+    # original failure this file exists for is unaffected: after a real death
+    # the HUD never returns, so the final gap runs to the end of the recording
+    # and is graded on its contents exactly as before.
+    def fatal(gap):
+        """Does this HUD-absent stretch contain something only a DEAD run shows?
+
+        Only the death static counts, and the distinction matters: `dark screen`
+        is ambiguous. A dark camera feed, a raised mask and a death minigame all
+        read as `mean < 25`, so treating dark as death regraded the cleared
+        Night 1 at 313 s instead of ~418 s -- better than the 6.5 s it reported
+        before, and still wrong, for exactly the reason this file exists.
+
+        The original failure is still caught: the 163 s claim contained the
+        death static, and a terminal gap (one with no HUD after it) is still
+        described by its contents whatever they are.
+        """
+        i, j = gap
+        for k in range(i, j, max(1, (j - i) // 8 or 1)):
+            d = describe_end(frames[k])
+            if d.startswith("death static"):
+                return d
+        return None
+
+    def unexplained(gap):
+        """A dark gap the run came back from. Reported, never silently benign."""
+        i, j = gap
+        for k in range(i, j, max(1, (j - i) // 8 or 1)):
+            if describe_end(frames[k]).startswith("dark screen"):
+                return True
+        return False
 
     t = lambda i: i / a.fps
-    alive = (t(end) if end is not None else t(len(flags))) - t(start)
+    end, end_reason = None, None
+    end = find_end(flags, start, a.settle,
+                   lambda i: describe_end(frames[i]).startswith('death static'))
+    if end is not None:
+        end_reason = describe_end(frames[end + 1]) if end + 1 < len(frames) \
+            else describe_end(frames[end])
+
+    last_hud = max(i for i, f in enumerate(flags) if f)
+    alive = (t(end) if end is not None else t(last_hud + 1)) - t(start)
+    monitor_gaps = [g for g in hud_gaps(flags, start + a.settle)
+                    if g[1] - g[0] >= a.settle and not fatal(g)
+                    and (end is None or g[0] < end)]
     print(f"{a.video}: {len(frames)} frames at {a.fps} fps")
     print(f"  night HUD appears at {t(start):.1f}s")
+    if monitor_gaps:
+        longest = max(monitor_gaps, key=lambda g: g[1] - g[0])
+        print(f"  {len(monitor_gaps)} HUD-absent stretches contain no death static "
+              f"-- the monitor is up; longest {t(longest[1]) - t(longest[0]):.1f}s "
+              f"at {t(longest[0]):.1f}s")
+        dark = [g for g in monitor_gaps if unexplained(g)]
+        if dark:
+            worst = max(dark, key=lambda g: g[1] - g[0])
+            print(f"  {len(dark)} of them go fully dark and the HUD returns after "
+                  f"-- longest {t(worst[1]) - t(worst[0]):.1f}s at {t(worst[0]):.1f}s. "
+                  "A dark camera, a raised mask and a death minigame are not "
+                  "separated here: UNKNOWN(dark is ambiguous)")
     if end is None:
-        print(f"  HUD still present at the end of the recording ({t(len(flags)):.1f}s)")
-        print(f"  ALIVE for at least {alive:.1f}s -- the recording ends first, "
-              "so this is a lower bound")
+        print(f"  HUD last seen at {t(last_hud):.1f}s of "
+              f"{t(len(flags)):.1f}s recorded")
+        print(f"  ALIVE for at least {alive:.1f}s -- nothing in this recording "
+              "shows the run ending, so this is a lower bound")
     else:
-        print(f"  HUD gone from {t(end):.1f}s: {describe_end(frames[end])}")
+        print(f"  HUD gone for good from {t(end):.1f}s: {end_reason}")
         print(f"  ALIVE for {alive:.1f}s")
         tail = sum(1 for f in flags[end:] if f)
         if tail:

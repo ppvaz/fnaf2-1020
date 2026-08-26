@@ -150,6 +150,35 @@ def main():
         gn = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(gn)
 
+        # --- the alive interval: a HUD gap is the monitor, not a death.
+        #
+        # grade-night.py ended the run at the FIRST settle-long HUD-absent
+        # stretch. The shipped controller lives on the monitor -- 3.5 s of every
+        # 5 s cycle -- so that stretch happens every cycle, and the cleared
+        # Night 1 (`n1-full-1640`, 418 s, save advanced Night 1 -> Night 2) was
+        # graded at 6.5 s. Wrong by 64x, by the tool that produces the only
+        # number this project treats as a run length.
+        #
+        # Flags are HUD-present per frame; `static` is the frame indices that
+        # show the death static. settle=3 throughout.
+        for name, flags, static, want_end in (
+                # every cycle dips into the cams and comes back: never ended
+                ("monitor dwells are not deaths",
+                 [1]*5 + ([0]*4 + [1]*3) * 6, set(), None),
+                # a real death: static, and the HUD never returns
+                ("static that never returns ends the run",
+                 [1]*10 + [0]*20, set(range(12, 30)), 10),
+                # the 163 s failure: static, then a restarted night
+                ("static then a restart still ends the run at the static",
+                 [1]*10 + [0]*8 + [1]*12, set(range(11, 18)), 10),
+                # a long DARK gap the run came back from is not a death
+                ("a dark gap the HUD returns from is not a death",
+                 [1]*10 + [0]*10 + [1]*10, set(), None)):
+            got = gn.find_end(flags, 0, 3, lambda i, st=static: i in st)
+            if got != want_end:
+                print(f"FAIL alive-interval {name}: expected end {want_end}, got {got}")
+                failed += 1
+
         for name, rgb, meter, want in (
                 ("dark office with a lit meter", (14, 14, 16), True, "night"),
                 ("a dark screen", (14, 14, 16), False, "other"),

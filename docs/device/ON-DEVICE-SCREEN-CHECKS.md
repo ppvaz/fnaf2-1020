@@ -321,3 +321,123 @@ Clean classifier frames require `DEBUG_OVERLAYS=0`. The runner's default
 `POST_CAPTURE_TOUCHES=1` enables only Android's touch dot after each raw frame
 has been saved and disables it before the next one. The recording therefore
 shows the later hall/control coordinates while the BB/GF inputs remain clean.
+
+---
+
+## The left-opening classifier measures camera pan, not Balloon Boy (2026-08-26)
+
+Found on the first cleared Night 1 (`n1-full-1640`), and it invalidates every
+`inside` verdict that run produced.
+
+**Balloon Boy's AI is 0 on Night 1.** The sourced table cannot arm him; the
+recipe marks his branch `reachable: false` and emits it only as a fail-safe for
+an unexpected classifier read. So every BB detection on that night is false by
+construction, and the run reported **9**.
+
+### The mechanism, with its control
+
+The classifier reads a fixed 20×9 screen region. **The office view pans
+horizontally, and nothing in the runner tracks that.** When the view is panned,
+the region covers different scenery and scores differently.
+
+Measured by cross-correlating a horizontal band of each classified frame against
+an unpanned office frame, at the *same point in every cycle* — the lit vent read,
+so this is apples to apples:
+
+| verdict | count | pan vs. unpanned |
+|---|---:|---|
+| `empty` | **16 of 16 sampled**, spread across the whole night | **0 to 6 px** |
+| `inside score=0 margin=18` | 6 of 7 | **−64, −74, −122, −126, −128, −178 px** |
+| `inside score=0 margin=18` | 1 (327969 ms) | −4 px — the one exception |
+
+And the margin tracks the pan monotonically, which is the part that settles it:
+
+| pan | margin | verdict |
+|---:|---:|---|
+| 0 px | 19 | `empty` |
+| 6 px | 20 | `empty` |
+| −64 … −178 px | 18 | `inside` |
+
+A six-pixel pan already moves the margin by one unit. The `inside`/`empty`
+boundary is one unit wide — `score=0 margin=18` against `score=0 margin=19`,
+*identical scores* — so the classifier crosses it on camera position alone. It
+is not detecting an animatronic. It is detecting where the office is pointing.
+
+### The other two are a different fault: the read photographed the monitor
+
+Two reads did not look at the office at all. Retained at
+`captures/n1-full-1640-bb-frames/`:
+
+- `INSIDE score=10 margin=13` (98059 ms) — the frame is the **Main Hall camera
+  feed**, and the runner believed `cams=down`. The desync guard did not fire.
+- `UNKNOWN score=30 margin=6` (93029 ms) — the **Party Room 4 feed**, and here
+  the guard *did* fire (`cams=UP-DESYNCED`).
+
+Same fault, caught one time in two. This is the failure CLAUDE.md already
+names — *"the vent read photographs the camera feed"* — now with frames.
+
+Cross-correlation is meaningless on those two (they return the search bound,
+±250/±300), which is its own small lesson: an alignment that lands on its
+boundary is a refusal, not a measurement. `desync-scan.py` was taught that this
+morning; this measurement should be too before it is automated.
+
+### The pan is a SYMPTOM, and of the thing this project already tracks
+
+Corrected the same day, on the device owner's prior experience with this
+project: **unexpected office panning during a run means desync.** That reframes
+everything above, and it is the more useful reading.
+
+The chain runs the other way from how this section first told it:
+
+1. the pilot and the game disagree about whether the monitor is up — a desync;
+2. presses aimed at the monitor or the camera buttons land on the **office**
+   instead, and dragging the office is what pans it;
+3. the classifier's fixed region is then off-target, so it scores a different
+   patch of scenery — or, when the disagreement is total, it photographs the
+   camera feed outright.
+
+So the false `inside` verdicts are not a classifier defect with an unknown
+trigger. They are **desync, made visible**.
+
+**Corroboration, and it is only partial — say so.** Exactly one read in the run
+carries the runner's own desync label, `cams=UP-DESYNCED` at 93029 ms, and that
+read is also one of the frames measured as displaced. The other seven are
+inferred from the pan measurement plus the owner's experience, not from an
+independent desync signal. `UNKNOWN(6 of 7 not independently confirmed)`.
+
+**What it implies is worse than the false positives.** If pan means desync, this
+run desynced roughly **eight times and the runner noticed once.** And the one
+correction it did make did not work: the resync fired at 93089 ms, and the very
+next read — 98059 ms, five seconds later — still photographed the **Main Hall**
+camera feed. `monitor-resync` restored the pilot's belief, not the game's state.
+
+**The opportunity: pan is a cheap desync detector, and a better one than what is
+there.** The current check reads the cue helper's luma to ask whether the cams
+are up, and it caught one of about eight. A horizontal cross-correlation of the
+office against an unpanned reference separated 16 of 16 good reads from 6 of 7
+bad ones in this run, offline. Whether it can be afforded *inside* the cycle is
+unpriced — it is a full-frame operation, and this repository's rule is to price
+an observation before scheduling it.
+
+### One method note, so nobody repeats a dead end
+
+A whole-video pan time series was attempted and **discarded as uninformative**:
+it cannot separate office frames from camera feeds, so most of its samples were
+the correlation saturating at its search bound. The controlled comparison above
+— same phase of every cycle, `empty` against `inside` — is what carries the
+finding. An alignment that lands on its search boundary is a refusal, not a
+measurement; `desync-scan.py` was taught that this morning and any automated
+version of this must be too.
+
+### What this costs, beyond the false branch
+
+Each false `inside` runs `attack[2..999]` and holds a prophylactic mask through
+five ticks — a different, more expensive branch, on a night that needed none of
+it. And if the office really is panned at those moments, then **every press in
+that cycle is landing on coordinates calibrated for an unpanned office**, which
+is a candidate cause for the monitor desyncs the same run recorded.
+
+The immediate honest fix is to make a panned office a refusal rather than a
+verdict: measure pan alongside the read and return `UNKNOWN(panned)`, which the
+existing fail-closed rule already handles. Making the classifier pan-*aware*, or
+stopping the pan, are both larger and need the cause first.
