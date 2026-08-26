@@ -173,6 +173,10 @@ const ENGINE = [
   // newspaper cutscene read as `night` because it is bright everywhere, and no
   // route had ever pressed New Game so the gap had never been reachable.
   ['screenstate', ['device/test-screenstate.py']],
+  // plans/15: a classifier reads the capture method it was calibrated for and
+  // refuses the rest. Resizing a foreign frame to fit is what makes a sensor
+  // mismatch look like a working reading.
+  ['sensor', ['device/test-sensor.py']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.

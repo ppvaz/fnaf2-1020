@@ -51,6 +51,9 @@ import subprocess
 import sys
 import warnings
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from sensor import open_frame, SensorMismatch  # noqa: E402
+
 warnings.simplefilter("ignore")
 
 GEOMETRY = (2400, 1080)
@@ -118,18 +121,13 @@ def load_model(path):
             "build": model.get("build", "unnamed")}
 
 
-def read_frame(source):
+def read_frame(source, declared=None):
+    """The frame, or a refusal naming the sensor. plans/15: a model reads the
+    capture method it was calibrated for, and says so about the rest."""
     try:
-        from PIL import Image, UnidentifiedImageError
-    except ImportError:
-        print("title-observe.py requires Pillow", file=sys.stderr)
-        raise SystemExit(2)
-    try:
-        image = Image.open(source).convert("RGB")
-    except (OSError, UnidentifiedImageError):
-        fail("unreadable-frame")
-    if image.size != GEOMETRY:
-        image = image.resize(GEOMETRY)
+        image, _ = open_frame(source, declared)
+    except SensorMismatch as exc:
+        fail(str(exc))
     return image
 
 
@@ -163,6 +161,13 @@ def capture_via_adb(timeout):
 def main(argv):
     measure = "--measure" in argv
     use_adb = "--adb" in argv
+    declared = None
+    if "--sensor" in argv:
+        idx = argv.index("--sensor")
+        if idx + 1 >= len(argv):
+            print("--sensor needs a capture method", file=sys.stderr)
+            return 2
+        declared = argv[idx + 1]
     model_path = os.environ.get("TITLE_MODEL", "")
     if "--model" in argv:
         index = argv.index("--model")
@@ -179,7 +184,7 @@ def main(argv):
         bright_min = model["bright_min"] if model else 150
         points = model["items"] if model else {
             "newGame": [400, 640], "continue": [400, 730], "sixthNight": [400, 880]}
-        image = read_frame(capture_via_adb(8.0) if use_adb else sys.stdin.buffer)
+        image = read_frame(capture_via_adb(8.0) if use_adb else sys.stdin.buffer, declared)
         for name in sorted(points):
             value = bright_fraction(image, points[name], band, bright_min)
             print(f"{name} {value:.4f}")
@@ -188,7 +193,7 @@ def main(argv):
     if not model_path:
         fail("no-title-model")
     model = load_model(model_path)
-    image = read_frame(capture_via_adb(8.0) if use_adb else sys.stdin.buffer)
+    image = read_frame(capture_via_adb(8.0) if use_adb else sys.stdin.buffer, declared)
 
     # Is this the title screen at all? Asking the item bands that question is
     # the wrong way round, and the Options screen proves it: its "Perspective

@@ -41,6 +41,8 @@ import warnings
 warnings.simplefilter("ignore")
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+from sensor import open_frame, SensorMismatch  # noqa: E402
 GEOMETRY = (2400, 1080)
 MODEL_SCHEMA = "lifecycle-model-v1"
 DEFAULT_MODEL = os.path.join(HERE, "models", "lifecycle-moto-g56-v207.json")
@@ -51,14 +53,15 @@ def refuse(reason):
     raise SystemExit(3)
 
 
-def load_frame(data):
-    from PIL import Image, UnidentifiedImageError
+def load_frame(data, declared=None):
+    """plans/15: refuse a capture method this model was not calibrated for,
+    rather than resizing it into a plausible answer."""
     import io
     try:
-        im = Image.open(io.BytesIO(data)).convert("RGB")
-    except (OSError, UnidentifiedImageError):
-        refuse("unreadable-frame")
-    return im if im.size == GEOMETRY else im.resize(GEOMETRY)
+        im, _ = open_frame(io.BytesIO(data), declared)
+    except SensorMismatch as exc:
+        refuse(str(exc))
+    return im
 
 
 def authority(data):
@@ -71,6 +74,13 @@ def authority(data):
 
 def main(argv):
     verbose = "--verbose" in argv
+    declared = None
+    if "--sensor" in argv:
+        idx = argv.index("--sensor")
+        if idx + 1 >= len(argv):
+            print("--sensor needs a capture method", file=sys.stderr)
+            return 2
+        declared = argv[idx + 1]
     model_path = os.environ.get("LIFECYCLE_MODEL", DEFAULT_MODEL)
     try:
         with open(model_path, "r", encoding="utf-8") as fh:
@@ -95,7 +105,7 @@ def main(argv):
         print(f"state={verdict}")
         return 0
 
-    im = load_frame(data)
+    im = load_frame(data, declared)
     sigs, th = model["signatures"], model["thresholds"]
     bright = model["bright_min"]
 
