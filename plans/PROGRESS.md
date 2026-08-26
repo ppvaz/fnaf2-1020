@@ -144,6 +144,12 @@ the one precedent is instructive rather than discouraging.** Full write-up in
   helper and the epoch latch are the parts of this project with no prior art,
   and today's 32-bit T0 wrap says that is still where the risk lives.
 
+**Both surveys are retained in full** under
+[`docs/research/`](../docs/research/README.md), which now indexes all four
+reports with what each answers and where it was distilled to. An `UNKNOWN` in
+them is a result, not a gap: it means the question was asked and the public
+record does not answer it, so nobody needs to search again.
+
 Also corroborated: 225 ms `screencap` sits where the literature says it should,
 the 59 ms device-local read beats anything published for a physical handset, and
 the ≥100 ms contact rule is Unity's own documented failure mode. And one honest
