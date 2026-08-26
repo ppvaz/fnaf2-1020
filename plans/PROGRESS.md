@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **36%** — 27 of 76 mandatory top-level work packages are closed.
+**Overall:** **37%** — 28 of 76 mandatory top-level work packages are closed.
 
 **Expanded stock-device roadmap (Plans 09–13):** **6%** — 2 of 32 mandatory
 packages are closed.
@@ -35,7 +35,7 @@ this step.
 |---|---:|---:|---|---|
 | [01 — research pass](01-research-pass.md) | 3 / 3 | **100%** | Done | None |
 | [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 6 | **17%** | Research/simulator verdict complete; framing decision blocks implementation | Decide best-odds practice, PC history, or close the mode |
-| [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 0 / 5 | **0%** | Research complete; implementation untouched | Source load-bearing Android vent/endgame mechanics |
+| [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 1 / 5 | **20%** | Engine sourcing complete (2026-08-24); reactive coach, decision table, ladder and grading untouched | Design the reactive coach: situation detection, expected response, reaction window, decision grading |
 | [04 — optimize Minus 7](04-optimize-minus-7.md) | 3 / 4 | **75%** | Search and grading work complete | Replace inferred human profile with accumulated trainer traces |
 | [05 — derive new strategy](05-derive-new-strategy.md) | 5 / 5 | **100%** | Closed by sourced refutation/negative result | Reopen only after a source-rule change |
 | [06 — hybrid search](06-hybrid-strategy-search.md) | 6 / 6 | **100%** | Closed with no survivor | Reopen only after a corrected mechanic changes reachable policy space |
@@ -63,6 +63,13 @@ this step.
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the
   numerator or denominator here in the same commit.
+- A row is read off its plan's own completion markers, never from memory. This
+  file was written on 2026-08-26, after several plans had already closed
+  packages, and a same-day audit found Plan 03's row had been authored stale:
+  its work item 1 closed on 2026-08-24 and the row still said `0 / 5` and named
+  that finished work as the next gate. The audit also found Plan 08's "Done
+  when" section still carrying a withdrawn refutation that, read literally,
+  closed five packages the plan's own table lists as open.
 
 This percentage measures completion of the written plans, not probability of a
 clear. In particular, simulator success, a bounded device branch, a Night 6

@@ -783,10 +783,26 @@ held-out detector results, latency soak, simulator policy, lifecycle fallback,
 and shadow evidence all agree. Until then, “Android can capture audio” is a
 feasibility fact—not evidence that an audio cue can safely control Night 7.
 
-**Resolved 2026-08-24, by refutation.** The source mapping and the target-device
-capture disagree, which is a complete answer and not a partial one: the sourced
-cue exists, is identified well enough for the surviving architecture, and is
-played too quietly to recover from this phone's internal mix. The held-out
-detector, latency soak, simulator policy and shadow evidence are not pending
-work — there is nothing left for them to measure. “Android can capture audio”
-turned out to be exactly the feasibility fact this section warned it was.
+**Withdrawn 2026-08-26. Kept because the retraction is the lesson.** The
+paragraph below is the earlier reading this plan's status block already calls
+wrong — the one that reasoned from the event sheet without crossing it against
+`MINUS-7-STRATEGY.md`'s stall roster. It was left standing in this section after
+the correction was written into the header, so the file said two incompatible
+things at once: the package table records packages 2, 3, 5 and 6 as open and 4
+as advanced, while this said there was nothing left for them to measure. A
+2026-08-26 audit of `PROGRESS.md` against every plan caught it, and read
+literally it would have credited five phantom closures.
+
+> **Resolved 2026-08-24, by refutation.** The source mapping and the
+> target-device capture disagree, which is a complete answer and not a partial
+> one: the sourced cue exists, is identified well enough for the surviving
+> architecture, and is played too quietly to recover from this phone's internal
+> mix. The held-out detector, latency soak, simulator policy and shadow evidence
+> are not pending work — there is nothing left for them to measure. “Android can
+> capture audio” turned out to be exactly the feasibility fact this section
+> warned it was.
+
+What survives of it: the *vocals* are too quiet to recover from this phone's
+internal mix, and that leg is closed. The **bang** is not — it is found
+repeatedly in target-device PCM, which is why package 1 passes for the cues this
+strategy needs and packages 2 through 6 still have something to measure.
