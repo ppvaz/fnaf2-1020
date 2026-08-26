@@ -9,35 +9,33 @@ packages are closed.
 
 ## Very next step
 
-Attack **actuator lateness**, which is now the only lever left standing on the
-10/20 mission.
+**Verify the fork-free clock on hardware, then run the campaign ladder.**
 
-Three independent offline investigations closed on 2026-08-26 and all three came
-back negative, which is what makes this the next step rather than a guess:
+The actuator lateness this pointed at on 2026-08-26 was decomposed, priced and
+fixed in the same day, and the result changes what is reachable:
 
-- **No route shape reaches the Night 7 gate.** Every documented emitter freedom
-  was swept; the shipped plan holds 12/100 under +/-60 ms human slack against a
-  40% contract, and its 100/100 at zero slack is a one-frame phase island
-  ([plans/12](12-end-to-end-evidence-campaign.md)).
-- **No reimplemented public policy survives it either.** Jason-, Shooter25- and
-  Couraeel-style controllers all score 0 on Night 7; Foxy takes 71–100% of their
-  deaths, and doubling the hall rate only converts them into Puppet deaths
-  ([plans/11](11-policy-interface-and-baselines.md)).
-- **No monitor recovery survives the actuator.** The live runner's loop reclaims
-  zero at every lateness band, and so does a free, instant, always-right,
-  bidirectional one. The cliff is geometric: camera stalls lapse, occupants
-  reach the opening, and 177/180 die to the 45-frame office-defense fuse.
+- `date +%s%3N` is a **fork+exec costing 21 ms** on the target phone, and
+  `wait_until` busy-waited on it. Its landing error measured **49–106 ms**,
+  which is the documented "49–93 ms macro anchor spread" — not a device floor.
+- A builtin `read < /proc/uptime` costs **0.36 ms**. The same wait loop against
+  it landed **0 ms late on 15/15 with a live night running**, where the shipped
+  clock landed 34–73 ms late.
+- The knee is a **frame count, not a millisecond figure**: uniform lateness is
+  free to 41 ms (200/200 every night) and gone at 42 ms. Quote frames.
+- Priced through `actuator.mjs`, moving from the shipped 49–106 ms band to
+  0–10 ms takes Nights 1–5 to **200/200** and Night 6 to **171/200**, in the
+  simulator. Night 7 goes 0 → 25/200 and is still blocked by the one-frame
+  phase island, which is a route problem rather than a clock one.
 
-So the failure is upstream of policy, upstream of recovery, and upstream of
-perception. It is the **49–93 ms macro anchor spread and the 110–300 ms lateness
-band** themselves: 7–18 frames on a sweep the emitter documents as unable to move
-by one.
+The runner's clock has landed on `/proc/uptime`. **It has not been verified on
+the phone** — the 0-of-15 figure came from a bare shell loop, not from the real
+cycle with `hid_mark`, HID writes and the classifier in it.
 
-**This step is complete when** the sources of launch lateness are measured and
-separated — shell spread, HID report scheduling, and Fusion's own frame poll —
-and each is either reduced with device evidence or recorded as a floor the route
-must be designed around. Until then no further policy search is worth running,
-because every candidate is priced against an actuator nobody has tried to fix.
+**This step is complete when** the runner's per-anchor landing error is measured
+on hardware inside a real cycle and holds under the two-frame budget, the
+`/proc/uptime`↔epoch offset is checked for drift across a night, and a campaign
+night is then attempted and graded end to end. Nights 1–5 are the target; Night
+7 is explicitly not, and needs a route whose sweep tolerates a frame.
 
 ## Dashboard
 
@@ -51,10 +49,10 @@ because every candidate is priced against an actuator nobody has tried to fix.
 | [06 — hybrid search](06-hybrid-strategy-search.md) | 6 / 6 | **100%** | Closed with no survivor | Reopen only after a corrected mechanic changes reachable policy space |
 | [07 — tooling consolidation](07-tooling-consolidation.md) | 5 / 8 | **63%** | Correctness pass complete; opportunistic refactors remain | Extract shared browser session during the next browser-tool change |
 | [08 — audio-cue controller](08-audio-cue-controller.md) | 2 / 7 | **29%** | Source map and playback capture pass; detector/latency/shadow gates remain | Session-split bang holdout and confusion matrix |
-| [09 — observation corpus](09-observation-corpus.md) | 1 / 6 | **17%** | Inventory complete; the v1 manifest/event schemas and their validator exist, but no producer emits one | Give `trial-minus7.sh`, cue-helper capture, SCM1 and `grade-run.sh` one session ID and monotonic origin |
+| [09 — observation corpus](09-observation-corpus.md) | 1 / 6 | **17%** | Schemas, validator and producers all landed; every runner emits a manifest on every exit path, proven against mock adb only | Validate one real captured session; the next hardware run closes package 2 |
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
-| [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed; the actuator cliff is now measured as geometric, not a monitor desync — the closed loop reclaims zero and "open loop, not the phone" is retracted | Gate A after Plans 09–11 provide their contracts |
+| [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate; title observed; a real death now classifies night→static→gameover→title with no unknown | Capture a 6 AM and the minigames; both still report unknown |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
