@@ -142,6 +142,27 @@ document contradicting how the line is actually played.
   press within 180 ms of a mask press is lost about half the time, because the
   monitor bar is not drawn while the mask is up. 9 of 14 catalogued desyncs are
   that one seam. See `ON-DEVICE-VALIDATION.md` §"Which press desyncs, and why".
+- **Unexpected office pan during a run means desync — and it is the cheapest
+  tell there is (2026-08-26).** Measured on the cleared Night 1: 16 of 16
+  `empty` vent reads sit at 0–6 px of office pan; 6 of 7 *false* `inside` reads
+  sit at **64–178 px**. The classifier's margin tracks pan monotonically (0 px →
+  19, 6 px → 20, displaced → 18, which is the `inside` boundary), so on a
+  panned frame **the left-opening classifier is reading camera position, not an
+  animatronic**. That run desynced roughly eight times and the runner noticed
+  **once**, and its single `monitor-resync` did not work — the next read, five
+  seconds later, still photographed the Main Hall camera feed. A panned office
+  also means every press in that cycle lands on coordinates calibrated for an
+  unpanned one. Before adopting pan as a detector, price it: it is a full-frame
+  correlation and the cycle has ~680 ms free. See
+  `ON-DEVICE-SCREEN-CHECKS.md` §"The left-opening classifier measures camera pan".
+- **A HUD-absent stretch is the monitor, not a death.** `grade-night.py` ended
+  the run at the first one and graded a **418 s winning night at 6.5 s** — the
+  controller lives on the monitor, 3.5 s of every 5 s cycle. Only the death
+  *static* ends a run now; `dark screen` is ambiguous (a dark camera, a raised
+  mask and a death minigame all read the same) and is reported as such rather
+  than decided. **A 6 AM still looks exactly like a death to every instrument
+  here**, so a won night's manifest reads `lifecycle=unknown` until plan 13
+  package 3 lands.
 - **One lost monitor press inverts the rest of the night**, and nothing in the
   run notices: the vent read photographs the camera feed, the hall press pans
   the map, the box stops being wound, and the log still reads like a schedule.
