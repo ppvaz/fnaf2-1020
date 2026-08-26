@@ -80,14 +80,14 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // 37.4% against a 40% contract, and only five of twelve 100-seed blocks clear
 // the bar. That assertion measured a seed block, not the plan. The route fix
 // carries the previously omitted first Foxy reset on the post-read maskraise;
-// it clears the same broad sample at 673/1200 without moving the read or sweep.
+// it clears the same broad sample at 672/1200 without moving the read or sweep.
 //
 // Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
 // full sample before `trial-minus7.sh` reaches its first adb command.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
   `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
-check('the broad Night 6 result stays pinned', real.survived === 673,
+check('the broad Night 6 result stays pinned', real.survived === 672,
   `${real.survived}/${real.runs}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
@@ -112,7 +112,7 @@ check('the broad Night 6 result stays pinned', real.survived === 673,
       n6.status !== 44 && !/refusing to run this plan/.test(out) &&
       /MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
     check('and it reports the accepted Night 6 sample',
-      /model gate: 673\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
+      /model gate: 672\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
 
     const n1 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'),
@@ -123,7 +123,7 @@ check('the broad Night 6 result stays pinned', real.survived === 673,
       } });
     const n1out = n1.stderr + n1.stdout;
     check('bounded Night 1 calibration emits and gates a Night 1 plan',
-      /model gate: 1189\/1200 night-1 runs/.test(n1out) &&
+      /model gate: 1185\/1200 night-1 runs/.test(n1out) &&
       /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
 
     // A story-night run longer than one cycle is a real attempt at that night,

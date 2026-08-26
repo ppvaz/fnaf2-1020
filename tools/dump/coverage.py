@@ -91,7 +91,14 @@ def cited_groups():
     """Every group number referenced in the repo's docs and engine."""
     found = set()
     pattern = re.compile(r'(?:\bg|\bgroups?\s*)(\d{2,4})(?:\s*[-–]\s*(\d{2,4}))?', re.I)
-    for path in glob.glob('*.md') + glob.glob('src/*.js') + glob.glob('tools/*.mjs'):
+    paths = (glob.glob('**/*.md', recursive=True) + glob.glob('src/*.js') +
+             glob.glob('tools/*.mjs'))
+    generated_map = os.path.normpath('docs/android/ANDROID-GROUP-MAP.md')
+    for path in paths:
+        # The report lists every group by construction; counting it would make
+        # the coverage map cite itself and erase every blind spot.
+        if os.path.normpath(path) == generated_map:
+            continue
         try:
             text = open(path, errors='replace').read()
         except OSError:
