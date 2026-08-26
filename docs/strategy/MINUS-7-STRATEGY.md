@@ -129,6 +129,48 @@ Because Toy Bonnie is stunned all night, the one source of unwinnable RNG in 10/
 | Music Box: empty → full while winding | **~5.66 s** |
 | Music Box: winding tick | one tick every **0.5 s** — usable as a metronome |
 
+### 3.1 Why `:X2` and not `:X0` — Foxy's D arithmetic, and the device route's one-frame phase island
+
+*(Measured 2026-08-26 **in the simulator**, against `AI_BY_NIGHT`. No device.)*
+
+The kill roll is `21 + Random(0..4) - D <= foxy AI`, so the largest D that is
+**always** safe is `20 - AI`:
+
+| Foxy AI dialled | 0 (N1) | 1 (N2) | 2–3 (N3) | 5–7 (N4/N5) | 10 (N6 12–2 AM) | 15 (N6 2 AM+) | **17 (10/20, dial 20 capped at g829)** |
+|---|---|---|---|---|---|---|---|
+| largest always-safe D | 20 | 19 | 17 | 13 | 10 | 5 | **3** |
+
+D is zeroed on any frame the hall light is on with Foxy in the hall, then
+climbs +1 per second (+1 more per masked second when no vent opening is
+occupied). So D at a 5 s check is just *the whole seconds since the last lit
+frame*, plus one for the cycle's prophylactic mask. Flashing at `:X2` — two
+seconds after the interval, three before the next — lands D = 3. That is why
+the table above says `:X2 / :X7` and not "as soon as the interval passes":
+**at the 10/20 cap there is no margin at all, D = 3 is the last safe value.**
+
+The emitted device route (`tools/device/recipe.mjs`) flashes at cycle **+3100
+ms**, which is 0.28 s *after* its 5 s check, not 2 s after — so 4.7 s of D
+accrues before the next check and the designed cadence is **D = 5**. D = 5 is
+safe on every night up to Foxy AI 15, and fatal at 17. On Night 7 the route
+nevertheless replays 100/100 exactly, because of an accident nobody wrote down:
+the sweep's last camera-light hold is still down on the single frame the next
+cycle's opening monitor tap drops the cams, `hallLightOn` is true for exactly
+that one frame, and D is zeroed a second time. Removing it takes D from 3 to 5.
+
+That is a **one-frame phase island**, and it is bounded on both sides:
+
+| shift applied to one plan row | exact Night 7 replay |
+|---|---|
+| cycle-opening `tap monitor`, −40 … +8 ms | 20/20 |
+| cycle-opening `tap monitor`, **+16 ms** (one frame later) | **0/20** |
+| trailing `sweep`, 0 … +40 ms | 20/20 |
+| trailing `sweep`, **−8 ms** (one frame earlier) | **0/20** |
+
+Night 6 only halves (20/20 → 10/20) under the same shift, because AI 10/15
+tolerates D = 5 and only the post-2 AM hours do not. This is exactly what
+`tools/device/human-gate.mjs` exists to refuse: precision, not speed, is what
+separates a human from a machine, and no hand holds a one-frame phase.
+
 ---
 
 ## 4. Start of the night — exact inputs
