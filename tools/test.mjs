@@ -210,6 +210,10 @@ const ENGINE = [
   // generic rejection. A validator that refuses everything identically is
   // indistinguishable from one that refuses everything.
   ['session contract', ['device/test-validate-session.py']],
+  // Plan 09 package 2's producer half: one session id threaded through the
+  // runners, hashes rather than filenames, and a manifest on every exit path.
+  // Mock adb, synthetic artifacts, no phone.
+  ['session producer', ['device/test-session-manifest.sh']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],

@@ -156,6 +156,28 @@ nobody runs is a comment. This is now enforced: `test-grade-run-coverage.mjs`
 fails the engine suite on any `tools/device` script that is neither invoked by
 `grade-run.sh` nor consciously excluded, with a reason, in its exclusion list.
 
+## A finding that is not in the repository does not exist
+
+Every finding lands in the repository in the session that produced it — as code,
+as a test, or as a dated note in the page that owns the subject. This applies
+identically to findings made by a subagent: an agent's report is a delivery
+mechanism, not a destination, and the reporting session is responsible for
+landing it. So is a measurement made in passing while chasing something else.
+
+The failure mode is specific and this session produced it: a device measurement
+gets made, gets discussed, informs the next decision, and is then lost when the
+conversation moves on — leaving the next session to re-measure it, or worse, to
+reason from the stale value still written down.
+
+If a finding cannot be landed now, it is written down as an open item with what
+is known and what is missing. "I will do it later in this session" is not a
+record. Neither is a number that appears only in a commit message for a change
+about something else.
+
+A finding that *contradicts* something already written is the highest priority
+of all, because the repository is actively misleading until it is corrected —
+correct it in place and keep the original, per the next section.
+
 ## Retractions stay
 
 When a result turns out wrong, correct it in place and keep the original
