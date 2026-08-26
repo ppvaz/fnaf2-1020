@@ -73,10 +73,25 @@ check('exactly the bar passes', atBar.ok && atBar.survived === Math.ceil(runs * 
 const underBar = modelGate(text, { runs, replayFn: stub([true, true, true, false, false, false, false, false, false, false]) });
 check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1);
 
-// -------------------------------------------- the decision, recorded: passes
+// ------------------------------------- the decision, recorded: it does NOT pass
+//
+// Retraction, 2026-08-26. This asserted that the shipped Night 6 plan PASSES,
+// on the strength of 46/100 at seeds 1..100. Over 1200 seeds it is 449/1200 =
+// 37.4% against a 40% contract, and only five of twelve 100-seed blocks clear
+// the bar. The old assertion was not measuring the plan, it was measuring a
+// seed block -- and it is kept here as the reason the sample size moved rather
+// than deleted.
+//
+// The consequence is real and is meant to be: `trial-minus7.sh` gates before
+// its first adb command, so the device route is refused until a plan clears
+// 40% over the full sample. That is what "absolute, no override" means.
 const real = modelGate(text);
-check('shipped n6 plan passes under human slack', real.ok,
-  `${real.survived}/${real.runs} -- the route must clear ${Math.ceil(real.runs * GATE_MIN_SURVIVAL)}`);
+check('shipped n6 plan is refused under human slack', !real.ok,
+  `${real.survived}/${real.runs} -- if this now passes, a route change fixed it ` +
+  'and the retraction above should be updated rather than the check relaxed');
+check('and it is refused for being under the bar, not for erroring',
+  real.survived > 0 && real.survived < real.runs * GATE_MIN_SURVIVAL,
+  `${real.survived}/${real.runs}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
 // The priced invocation passes the gate, then reaches a mock adb and stops;
@@ -92,9 +107,17 @@ check('shipped n6 plan passes under human slack', real.ok,
     const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), `gate-test-${process.pid}`, '90'],
       { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
-    check('passing plan reaches adb only after its model gate', n6.status !== 44 &&
-      /model gate: \d+\/\d+ night-6 runs/.test(n6.stderr + n6.stdout) &&
-      /MOCK_ADB_REACHED/.test(n6.stderr + n6.stdout), `status=${n6.status}`);
+    // Until 2026-08-26 this asserted the opposite: that the plan passes and
+    // therefore REACHES adb. It does not pass, so the property worth proving
+    // is the one the gate exists for -- a refused plan never touches the
+    // device at all. If a future route clears the bar, restore the reached-adb
+    // form; do not relax this one.
+    const out = n6.stderr + n6.stdout;
+    check('a refused plan stops before adb is ever invoked',
+      n6.status === 44 && /refusing to run this plan/.test(out) &&
+      !/MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
+    check('and it says why it refused', /night-6 runs under \+\/-\d+ ms human slack/.test(out),
+      out.split('\n').filter(l => l.includes('model gate')).join(' | '));
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 

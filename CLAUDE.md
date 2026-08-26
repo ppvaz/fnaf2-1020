@@ -57,10 +57,15 @@ document contradicting how the line is actually played.
   120 ms gaps need a one-frame phase island): precision separates human from
   machine, so the gate asks the engine, not a ruler. The live `HUMAN_FLOOR_MS`
   check in `press_at` stays only as the backstop for what actually executes.
-  This grounds **every current device route** — after restoring the Golden
-  Freddy flick as a measured-safe 180 ms `maskraise` compound, the shipped
-  plan replays 46/100 under human slack with the sourced Fusion LCG;
-  `test-human-gate.mjs` asserts that pass.
+  **Corrected 2026-08-26: the shipped Night 6 plan does NOT pass this gate.**
+  It was quoted as "46/100 under human slack" from 2026-08-25; that was seeds
+  1..100, and 100 draws cannot measure a rate near the bar (binomial SE 4.8
+  points). Over 1200 seeds it is **449/1200 = 37.4%** against the 40% contract,
+  and only five of twelve 100-seed blocks clear it. `GATE_RUNS` is now 1200 (4.7
+  s) and `test-human-gate.mjs` asserts the **refusal**, including that the runner
+  stops before adb is ever invoked. Nights 1-5 do pass honestly (99.1, 66.5,
+  77.1, 72.3, 62.5 per cent), so the campaign ladder is gate-clean to Night 5
+  and Night 6 is the night that needs a route change.
 - **A plan names its night, and nothing downstream guesses one.**
   `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires
   `night` and `human-gate.mjs` refuses a plan that does not name one. The old

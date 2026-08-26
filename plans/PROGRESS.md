@@ -34,8 +34,16 @@ cycle with `hid_mark`, HID writes and the classifier in it.
 **This step is complete when** the runner's per-anchor landing error is measured
 on hardware inside a real cycle and holds under the two-frame budget, the
 `/proc/uptime`↔epoch offset is checked for drift across a night, and a campaign
-night is then attempted and graded end to end. Nights 1–5 are the target; Night
-7 is explicitly not, and needs a route whose sweep tolerates a frame.
+night is then attempted and graded end to end.
+
+**Nights 1–5 are the target, and that is now a gate fact rather than a
+preference.** A same-day audit found the human gate had been evaluating its
+verdict on 100 seeds, which cannot measure a rate near its own bar; over 1200
+seeds Nights 1–5 clear 40% at 99.1, 66.5, 77.1, 72.3 and 62.5 per cent, while
+**Night 6 is refused at 37.4%** and Night 7 at 11.6%. The device route for Night
+6 is therefore blocked at the gate until the route changes — which is what
+"absolute, no override" means, and it is the first time the gate has actually
+stopped something.
 
 ## Dashboard
 
@@ -53,7 +61,7 @@ night is then attempted and graded end to end. Nights 1–5 are the target; Nigh
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate; title observed; a real death now classifies night→static→gameover→title with no unknown | Capture a 6 AM and the minigames; both still report unknown |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–5 pass the human gate honestly (62–99%); **Night 6 is refused at 37.4%**; title observed; a real death classifies with no unknown | Capture a 6 AM and the minigames; both still report unknown |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 

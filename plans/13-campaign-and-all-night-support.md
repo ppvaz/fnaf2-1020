@@ -174,12 +174,19 @@ plan is pinned byte-for-byte against `testdata/n6-device-plan.txt`:
 
 | Night | Exact | Human slack ±60 ms | Light frames | Peak BB AI | Attack branch | BB reads |
 |---:|---:|---:|---:|---:|---|---:|
-| 1 | 100/100 | 99/100 | 2148/7000 | 0 | unreachable, template n6 s7 | 0 |
-| 2 | 100/100 | 77/100 | 2148/6000 | 3 | sampled n2 s7 | 167 |
-| 3 | 100/100 | 89/100 | 2148/5000 | 2 | reseeded n3 s2 | 103 |
-| 4 | 100/100 | 85/100 | 2148/4000 | 3 | sampled n4 s7 | 202 |
-| 5 | 100/100 | 78/100 | 2148/3000 | 5 | sampled n5 s7 | 362 |
-| 6 | 100/100 | 46/100 | 2148/3000 | 9 | sampled n6 s7 | 558 |
+| 1 | 100/100 | 1189/1200 (99.1%) | 2148/7000 | 0 | unreachable, template n6 s7 | 0 |
+| 2 | 100/100 | 798/1200 (66.5%) | 2148/6000 | 3 | sampled n2 s7 | 167 |
+| 3 | 100/100 | 925/1200 (77.1%) | 2148/5000 | 2 | reseeded n3 s2 | 103 |
+| 4 | 100/100 | 867/1200 (72.3%) | 2148/4000 | 3 | sampled n4 s7 | 202 |
+| 5 | 100/100 | 750/1200 (62.5%) | 2148/3000 | 5 | sampled n5 s7 | 362 |
+| 6 | 100/100 | **449/1200 (37.4%) — REFUSED** | 2148/3000 | 9 | sampled n6 s7 | 558 |
+
+**Corrected 2026-08-26, same day.** This table first read 99, 77, 89, 85, 78 and
+46 of **100** seeds, and reported all six as passing. Those were seeds 1..100,
+which is a favourable block on every night, and 100 draws cannot measure a rate
+near the bar. `GATE_RUNS` moved to 1200; the corrected figures are above and
+**Night 6 does not clear the 40% contract**. The original numbers are kept here
+because they are why the sample size changed.
 
 Night 1's zero reads across 100 replays is the control on its `reachable:
 false`: the table and the engine are two independent statements, and the matrix

@@ -24,7 +24,9 @@
 //   at per-step error the iid model calls fatal), which will replace this.
 // - GATE_MIN_SURVIVAL = 0.40: the replay contract test-runner-plan.mjs
 //   already holds, for the same reason (the plan family eats a priced Golden
-//   Freddy loss rate rather than model his flick).
+//   Freddy loss rate rather than model his flick). The bar is unchanged; what
+//   changed on 2026-08-26 is that the estimate compared against it is no longer
+//   a 100-seed block. See GATE_RUNS.
 //
 // Known v1 simplifications, deliberate and documented: a sweep is shifted as
 // one unit (its internal spacing stays the plan's), a hold's release shares
@@ -42,7 +44,26 @@ import { replay } from './recipe.mjs';
 import { Rng } from '../../src/rng.js';
 
 export const HUMAN_SLACK_MS = 60;
-export const GATE_RUNS = 100;
+// Corrected 2026-08-26. This was 100, and 100 is not a measurement of a rate
+// near the contract -- it is a measurement of a seed block.
+//
+// At p = 0.37 the binomial standard error over 100 draws is 4.8 points, so a
+// 2-sigma interval spans nearly 20 points. The shipped Night 6 plan's twelve
+// consecutive 100-seed blocks bear that out exactly:
+//
+//     46 36 29 27 53 39 23 30 30 47 44 45      pooled 449/1200 = 37.4%
+//
+// Seeds 1..100 gave 46 and the gate reported a pass. Five of twelve blocks
+// clear 40; the plan does not. The control that this is sampling noise and not
+// a biased block: the sourced Fusion LCG's 4x16384 cycle decomposition splits
+// seeds 1..100 exactly 25/25/25/25.
+//
+// So the figure this project has quoted since 2026-08-25 -- "the shipped plan
+// replays 46/100 under human slack" -- was a lucky block, and the gate CLAUDE.md
+// calls absolute has been grounding a route that does not meet its own bar.
+// 1200 runs costs 4.7 s and brings the 2-sigma interval to about 2.8 points,
+// which is enough to separate 37.4 from 40.
+export const GATE_RUNS = 1200;
 export const GATE_MIN_SURVIVAL = 0.40;
 const JITTER_SALT = 0x68756d61; // "huma"; its own stream, never the sim's rolls
 
