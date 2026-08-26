@@ -221,6 +221,65 @@ caching its buffer, filtering layers, and never leaving SurfaceFlinger. Our
 59 ms for 180 pixels is ~20× that, which points at fixed per-read entry cost
 rather than pixels.
 
+### THE SUITE IS RED, deliberately, and this is why
+
+`node tools/test.mjs --engine` fails one check — `recipe` — and the failure is
+the finding. Do not "fix" it by relaxing the check.
+
+**Every cycle's last instruction ends exactly on the next cycle's first press.**
+`test-recipe.mjs` now checks the wrap-around between cycles and reports:
+
+> `clear: its last instruction ("4660 sweep 120 100 10,4,7") ends at 5000 ms of
+> a 5000 ms cycle, leaving 0 ms before the next cycle's monitor press — under
+> the 20 ms the HID auditor requires between two different buttons.`
+
+Both cycle types, from the emitter, systematically. Every other check in that
+file reads a cycle in isolation, which is how this survived: cycles repeat, so
+the instant after a cycle's final instruction is the *next* cycle's `0 tap
+monitor`, and a camera contact butts straight against it.
+
+**Why it is the prime suspect for the Night 1 desyncs.** The 2026-08-25 desync
+census tabulated what each lost monitor press followed — a mask press (9 lost),
+a wind hold (3), a hall hold (1), the vent light (0), the mute (0), another
+monitor press (1 of 1) — and has **no row for a sweep**, because within a cycle
+a sweep never precedes a monitor press. The wrap is the only place it does, and
+it is therefore the one transition never measured. The cleared Night 1 desynced
+about eight times with the mask seam already fixed at 180 ms.
+
+**Both candidate fixes are priced through the model gate, 1200 seeds, SE ≈1.4
+points at n=1200:**
+
+| variant | night 6 | night 5 |
+|---|---:|---:|
+| shipped (0 ms released) | 56.1% | 63.9% |
+| **sweep 20 ms earlier** | 55.8% | **64.5%** |
+| sweep 33 ms earlier | **52.6%** | 61.8% |
+| monitor +20 ms | 55.8% | 64.1% |
+| monitor +33 ms | 55.6% | 64.2% |
+
+So the documented rule holds — *"the sweep's end is the one thing in this cycle
+that must not move"*, one full frame costs **−3.5 points** — but **20 ms is
+free**, and `sweep 4660 → 4640` gives 23 ms released after the wind and exactly
+20 ms before the next monitor press in both cycles.
+
+**Two traps found while pricing, both worth keeping:**
+
+- `monitor +33` scores well and is **invalid**: it moves the monitor press
+  without the read, putting the read 334 ms after it — *inside*
+  `MONITOR_ANIM_DOWN` (367 ms), which CLAUDE.md forbids outright. The gate
+  passed it because the gate does not model that seam. A good score from a
+  variant that violates a device rule is exactly what the gate cannot catch.
+- **The model gate is not enough to promote this.** CLAUDE.md: price a policy
+  against `--device-sweep`, not the ideal actuator. The next action is the
+  actuator pricing, not the edit.
+
+**The device test that would settle attribution costs one run:** re-run with
+`HID_TRACE_RUN=1`, and `desync-scan.py` lines the trace against the recording
+and names the lost press, while `test-hid-trace.mjs` flags the 0 ms released
+time directly. The cleared Night 1 had **no HID trace** — our most instrumented
+night could not answer its own most important question. `HID_TRACE_RUN=1` should
+probably be the default for a graded attempt.
+
 ### Open, with what is known
 
 - **The music box contradicts `src/config.js` and is not fixed.** Measured on

@@ -7,6 +7,8 @@
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
 import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
+import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
+const SWEEP_LIGHT_LEAD_MS = 0;   // the emitter's lead; see trial-minus7.sh
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
@@ -124,6 +126,49 @@ check(clearMaskRaise?.split(' ')[3] === 'hall',
   `the post-read clear raise must carry its first Foxy reset, got "${clearMaskRaise}"`);
 check(+clearMaskRaise.split(' ')[4] >= MIN_CONTACT_MS,
   `the post-read Foxy reset is under the ${MIN_CONTACT_MS} ms contact floor`);
+// --- the wrap-around: a cycle's last contact against the next cycle's first.
+//
+// Every check below reads a cycle in isolation, and that is how a seam nobody
+// measured got into the shipped plan. Cycles repeat, so the instant after a
+// cycle's final instruction is the NEXT cycle's first press -- and both cycles
+// open with `0 tap monitor`. The emitter left zero released time there.
+//
+// This is not a hypothetical. The 2026-08-25 desync census tabulated what the
+// lost monitor press followed -- a mask press, a wind hold, a hall hold, the
+// vent light, the mute, another monitor press -- and has NO ROW for a sweep,
+// because a sweep never preceded a monitor press within a cycle. The wrap is
+// the only place it does, and it is the one transition never measured.
+//
+// The spans are the runner's own (`plan_span` in trial-minus7.sh), restated
+// here rather than imported because that function lives inside a heredoc.
+const SPAN = (kind, rest) => {
+  const n = rest.map(Number);
+  switch (kind) {
+    case 'tap': case 'hold':   return n[1];
+    case 'hall':               return n[0];
+    case 'hallraise':          return SWEEP_LIGHT_LEAD_MS + n[0];
+    case 'maskraise':          return rest[1] === 'hall'
+      ? n[0] + SWEEP_LIGHT_LEAD_MS + n[2] : n[0] + MIN_CONTACT_MS;
+    case 'sweep':              return 2 * n[0] + n[1];
+    case 'read':               return n[0];
+    default: throw new Error(`no span for "${kind}"`);
+  }
+};
+const CYCLE_LEN = { opening: 7000, clear: 5000, attack: 10000 };
+for (const [name, lines] of Object.entries(plan)) {
+  if (name === 'opening') continue;          // the opening runs once, then a cycle
+  const last = lines[lines.length - 1].split(' ');
+  const ends = +last[0] + SPAN(last[1], last.slice(2));
+  const released = CYCLE_LEN[name] - ends;
+  check(released >= MIN_RELEASED_MS,
+    `${name}: its last instruction ("${last.join(' ')}") ends at ${ends} ms of a ` +
+    `${CYCLE_LEN[name]} ms cycle, leaving ${released} ms before the next cycle's ` +
+    `monitor press -- under the ${MIN_RELEASED_MS} ms the HID auditor requires ` +
+    'between two different buttons. A press with no released time before it is ' +
+    'the defect test-hid-trace.mjs exists to catch, and the desync census has ' +
+    'no row for a sweep because the wrap is the only place one precedes a monitor.');
+}
+
 for (const [name, lines] of Object.entries(plan)) {
   let sweeps = 0;
   for (const line of lines) {
