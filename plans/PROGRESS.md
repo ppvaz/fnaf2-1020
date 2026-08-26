@@ -9,25 +9,35 @@ packages are closed.
 
 ## Very next step
 
-Complete **Plan 13, work package 2: the save-safe title/menu observer and
-selector**.
+Attack **actuator lateness**, which is now the only lever left standing on the
+10/20 mission.
 
-Plan 13 package 1 closed on 2026-08-26: all six story nights build, replay
-100/100 exactly, and pass the ±60 ms human-slack gate priced against their own
-AI table (99, 77, 89, 85, 78 and 46 of 100). Night 6's emitted plan is pinned
-byte-for-byte. Those are simulator figures; no night below 6 has been attempted
-on a device.
+Three independent offline investigations closed on 2026-08-26 and all three came
+back negative, which is what makes this the next step rather than a guess:
 
-The next step separates `MenuTarget` from `GameConfig`, puts the title
-coordinates behind one tested selector instead of duplicating them across
-runners and HID fixtures, and requires a deliberate `allowSaveReset`
-capability before New Game can ever be pressed.
+- **No route shape reaches the Night 7 gate.** Every documented emitter freedom
+  was swept; the shipped plan holds 12/100 under +/-60 ms human slack against a
+  40% contract, and its 100/100 at zero slack is a one-frame phase island
+  ([plans/12](12-end-to-end-evidence-campaign.md)).
+- **No reimplemented public policy survives it either.** Jason-, Shooter25- and
+  Couraeel-style controllers all score 0 on Night 7; Foxy takes 71–100% of their
+  deaths, and doubling the hall rate only converts them into Puppet deaths
+  ([plans/11](11-policy-interface-and-baselines.md)).
+- **No monitor recovery survives the actuator.** The live runner's loop reclaims
+  zero at every lateness band, and so does a free, instant, always-right,
+  bidirectional one. The cliff is geometric: camera stalls lapse, occupants
+  reach the opening, and 177/180 die to the 45-frame office-defense fuse.
 
-**This step is complete when** synthetic menu-frame fixtures cover fresh save,
-story progress, Sixth Night unlocked, Custom Night unlocked, unknown layouts,
-and stale/focus loss; and a test proves no unapproved path can press New Game.
-This remains local-only work—do not tap New Game or collect a new device run in
-this step.
+So the failure is upstream of policy, upstream of recovery, and upstream of
+perception. It is the **49–93 ms macro anchor spread and the 110–300 ms lateness
+band** themselves: 7–18 frames on a sweep the emitter documents as unable to move
+by one.
+
+**This step is complete when** the sources of launch lateness are measured and
+separated — shell spread, HID report scheduling, and Fusion's own frame poll —
+and each is either reduced with device evidence or recorded as a floor the route
+must be designed around. Until then no further policy search is worth running,
+because every candidate is priced against an actuator nobody has tried to fix.
 
 ## Dashboard
 
