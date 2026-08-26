@@ -78,7 +78,7 @@ if it fails:
 2. Then run Night 6 graded. The run will now produce evidence whether it wins or
    loses — see the three items closed below.
 
-### Closed in the tree this session, not yet committed
+### Closed and committed this session
 
 Each of these was an "Open" item here as recently as this morning:
 
@@ -129,9 +129,14 @@ Each of these was an "Open" item here as recently as this morning:
   But the corrector's monitor-verify press in `light_down_at` is **not in the
   plan** — it is a runtime reaction — so on the shipped route it is now priced
   by nothing at all. In the modelled path it waits out `MONITOR_ANIM_DOWN`
-  (367 ms) and would clear the old 350 ms floor anyway, so this is a missing
-  check rather than a known-bad press. Both arms of the bypass are now pinned by
-  `test-plan-interpreter.sh`; what is *not* covered is the reactive press.
+  (367 ms) and clears the old 350 ms floor anyway — but **the margin is 50 ms**,
+  measured: the corrective press lands at 400 ms against a 350 ms floor. So this
+  is a missing check rather than a known-bad press, with less room than anyone
+  had assumed. `test-plan-interpreter.sh` pins both arms of the bypass *and*
+  that 400 ms gap, so shortening the corrector's wait by 51 ms now fails locally
+  instead of on the phone. Pinning is not pricing: routing reactive presses
+  through a check that knows they are unplanned needs the device in the loop,
+  and was deliberately not attempted blind against the one gate-clean route.
 - **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
   cycle, and no schedule prices it. Plan 03 depends on it.
 - **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings. **1, 2 and 4 are

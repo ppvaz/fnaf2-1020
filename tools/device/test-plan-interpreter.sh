@@ -448,6 +448,25 @@ light_at="$(printf '%s\n' "$got" | awk '/light-down/{print $1}')"
 [ "$light_at" -ge $((verify_at + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS)) ] ||
   fail "the vent light went down $((light_at - verify_at)) ms after the corrective press, inside its flip"
 
+# The corrective press is REACTIVE: it is in no plan, so no plan gate prices
+# it, and since the live floor stands down on the gated route (NIGHT6_LEFT=1)
+# nothing prices it at runtime either. See ARCHITECTURE-AUDIT finding 8.
+#
+# It does clear the old 350 ms floor, but only because the corrector waits out
+# MONITOR_ANIM_DOWN (367 ms) first -- a coincidence of the corrector's design,
+# not a check. **Measured here: the gap is 400 ms against a 350 ms floor, so the
+# margin is 50 ms.** That is thin enough to be worth a gate: shaving 51 ms off
+# the corrector's wait would deliver, on the shipped route, a press that nothing
+# in the system prices.
+#
+# Pin the coincidence. This asserts nothing about the runtime behaviour and
+# changes none of it; it makes such a change fail HERE, on this machine,
+# instead of on a phone at a press no instrument prices. If this ever goes red,
+# the answer is to price reactive presses properly, not to lower the number.
+verify_gap=$((verify_at - 12132))
+[ "$verify_gap" -ge "$HUMAN_FLOOR_MS" ] ||
+  fail "the reactive monitor-verify lands ${verify_gap} ms after the previous press, under the ${HUMAN_FLOOR_MS} ms floor that no longer runs on the gated route"
+
 # A saturated single sample is a flash, not the cams. Steady cams-up sits at
 # 225-250 (median 227 across nights 6-40 to 6-42) while 255 lasts one or two
 # samples, and every correction on file fired on a 255. One reading cannot tell

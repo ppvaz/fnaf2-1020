@@ -427,6 +427,14 @@ be named rather than glossed.
   `MONITOR_ANIM_DOWN` (367 ms) of forced wait, which clears the old 350 ms floor
   by coincidence of the corrector's design rather than by any check.
 
+  **Measured 2026-08-26: that margin is 50 ms.** The corrective `monitor-verify`
+  lands 400 ms after the press before it, against the 350 ms floor that no
+  longer runs. `test-plan-interpreter.sh` now pins it, so shortening the
+  corrector's wait by 51 ms fails locally instead of delivering an unpriced
+  press on the phone. Pinning is not pricing: the real fix is to route reactive
+  presses through a check that knows they are unplanned, which needs the device
+  in the loop and was deliberately not attempted blind.
+
 CLAUDE.md's rule is restated to say all of this, which was the fifth item.
 
 ---
