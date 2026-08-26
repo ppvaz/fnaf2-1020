@@ -76,7 +76,17 @@ if it fails:
    first of ten signals in that survey at 0 ms cost, landed the same day, and
    caught two unknown defects on its first run.
 2. Then run Night 6 graded. The run will now produce evidence whether it wins or
-   loses — see the three items closed below.
+   loses — see the items closed below.
+
+**If the phone is not available, there is now real work that does not need it.**
+Plan 13 package 3's intro classifier is unblocked: the fixture exists, its
+signature is measured, and its negative control is written down (plan 13,
+"The intro card's signature"). Build it with fractional boxes rather than in
+`lifecycle-observe.py`'s sensor-bound model, and gate the *decision* with
+synthetic fixtures from a committed generator, following
+`testdata/make-title-fixture.py`. That closes half of package 3. The other half
+needs a 6 AM, and no 6 AM frame exists anywhere — which is what step 2 above is
+for.
 
 ### Closed and committed this session
 
