@@ -68,6 +68,9 @@ check(/hid_delay \$\(\(spacing - contact\)\)/.test(sweep),
 // phone rather than a default that no longer decides anything.
 const leadMs = +(/^SWEEP_LIGHT_LEAD_MS=(\d+)$/m.exec(src) || [])[1];
 check(Number.isInteger(leadMs), 'SWEEP_LIGHT_LEAD_MS is not defined in the runner');
+check((src.match(/^SWEEP_LIGHT_LEAD_MS=/gm) || []).length === 1,
+  'SWEEP_LIGHT_LEAD_MS must have one definition; a later assignment silently ' +
+  'overrides the calibrated geometry');
 
 const plan = devicePlan(build({ night: 6, sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900,
                                 readLatencyMs: 550, hallPulseMs: 130, pilotOffset: 10 }));
@@ -147,6 +150,9 @@ for (const kind of kinds)
     `the emitter produces "${kind}" instructions and plan_step has no arm for it`);
 
 const controls = body('plan_control_xy');
+check((src.match(/^plan_control_xy\(\) \{/gm) || []).length === 1,
+  'plan_control_xy must have one definition; body() and the device shell can ' +
+  'otherwise use different resolvers');
 const named = new Set(Object.values(plan).flatMap(ls => ls.flatMap(l => {
   const [, kind, ...rest] = l.split(' ');
   if (kind === 'tap' || kind === 'hold') return [rest[0]];
@@ -156,5 +162,20 @@ const named = new Set(Object.values(plan).flatMap(ls => ls.flatMap(l => {
 for (const control of named)
   check(new RegExp(`^\\s*${control}\\)`, 'm').test(controls),
     `the emitter names the control "${control}" and plan_control_xy cannot press it`);
+
+// A fork-free clock read writes NOW_REL. Freeze that value into `actual`
+// before pairing a human-readable timestamp with a trace mark: the legacy
+// calibration branches once printed fresh NOW_REL but marked an unrelated
+// global `actual`, making the trace disagree with the adjacent log line.
+const sourceLines = src.split('\n');
+let actualIsCurrent = false;
+for (let i = 0; i < sourceLines.length; i++) {
+  const line = sourceLines[i];
+  if (/^\s*now_rel\s*$/.test(line)) actualIsCurrent = false;
+  if (/^\s*actual=\$NOW_REL\s*$/.test(line)) actualIsCurrent = true;
+  if (/^\s*hid_mark "\$actual"\s*$/.test(line))
+    check(actualIsCurrent,
+      `hid_mark uses stale actual after now_rel at trial-minus7.sh:${i + 1}`);
+}
 
 console.log('HID wall-timing checks passed');
