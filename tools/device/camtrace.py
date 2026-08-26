@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """Report stable 10 -> 04 -> 07 -> 11 camera sweeps in a trial video.
 
-The lime selected-camera buttons provide a stronger post-run signal than ADB's
-printed command log. Brief white flashlight frames and map transitions are
+The highlighted selected-camera buttons provide a stronger post-run signal than
+ADB's printed command log. They are YELLOW, not lime: `lime_score` below tests
+`red > 100 and green > 100 and blue < 100`, and the button measures (200,200,0)
+on this build. The function keeps its name; the description is corrected because
+"lime" sent a later reader looking for green and finding nothing. Brief white flashlight frames and map transitions are
 ignored. This tool never participates in the live timed loop.
 
 Usage: camtrace.py captures/run.mp4
