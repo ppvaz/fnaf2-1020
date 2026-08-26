@@ -234,6 +234,106 @@ camera sweep tolerates the phone's lateness* — and that is a route question, n
 a controller question. Nights 2+ do not become viable through the phone model by
 adding a loop.
 
+### The lateness bands, decomposed and priced (2026-08-26)
+
+PROGRESS.md's "very next step" asks for the sources of launch lateness to be
+separated and each one reduced with device evidence or recorded as a floor.
+This is the offline half. `tools/latenesssweep.mjs` prices it; the full table
+and the device probe behind it live in
+[`HID-MULTITOUCH.md`](../docs/device/HID-MULTITOUCH.md) §"What the shell's clock
+actually costs".
+
+**Provenance first, because the two headline bands are not the same quantity
+and were never measured against the same clock.**
+
+| band | where it comes from | anchored to | clock |
+| --- | --- | --- | --- |
+| **49–93 ms** | HID-MULTITOUCH.md §"The shell's clock is 25× looser", 2026-08-24. A separate HID touchscreen on empty wallpaper, **no game running**, 60 contacts at an intended 120 ms period | the *intended* offset of one wall-timed boundary | the kernel's `getevent -lt` |
+| **49–106 ms** | device probe 2026-08-26, 20 targets 200 ms apart, **game running a live Night 1** | same | the shell's own `date` |
+| **110–180 ms** | ON-DEVICE-VALIDATION.md / commit `7a2acfb`, from the run logs of the pre-flip-gate nights. Night 6-38's own line is the worked example: anchor press logged at 12.132 s against a 12.000 s cycle base | the **plan's cycle base**, not the boundary and not the landing | `date +%s%3N` minus `T0` |
+| **~300 ms** | night 6-40, **inferred**: the read's light-down was seen 700–810 ms into the cycle against a plan position of 367, and ~300 was back-computed by subtracting the gate's wait and the cue read | same | same |
+
+Three consequences, and the third is the one that matters:
+
+1. **49–93 and 110–300 are nested, not independent.** The first is one
+   boundary's landing error. The second is that error *plus* whatever slip the
+   shell had already accumulated before it reached `wait_until` — the
+   classifier's capture pipeline (documented as finishing 30–900 ms past the
+   plan's cut-off), the cue reads, and a fork for every `date` and `sleep` in
+   between. Reducing the boundary error cannot by itself reduce 110–300 to
+   49–106; the arrival slip is a separate term with a separate fix.
+2. **Neither is press-to-effect lateness.** Both stop at the shell. The
+   device-side path (coprocess write → UHID → InputReader → Fusion's poll) is
+   outside both, and `actuator.mjs` applies the band as though it were the
+   whole path. That the kernel-anchored 49–93 and the shell-anchored 49–106
+   agree bounds the write→kernel leg at roughly ≤13 ms, which is under a frame
+   — but that is a bound from two measurements agreeing, not a measurement.
+3. **The ~300 ms end should not be quoted until it is re-sourced.** It is one
+   run, inferred from a derived quantity, taken while the orphaned cue-trace
+   parasite was live (`actuator.mjs` already caveats this), on a night whose
+   ending was later retracted as an unlit lamp rather than a Balloon Boy read.
+   None of the night 6-xx artifacts survive in `captures/`, so it cannot be
+   re-derived offline — only re-measured.
+
+**The knee exists, it is sharp, and it is a frame count.** In the simulator, at
+`hidpilot n6 target`, 200 seeds a cell: uniform lateness is free to 41 ms
+(2 frames — 200/200 on *every* night) and gone at 42 ms (3 frames — n6 10/200,
+n7 0/200). A per-anchor re-roll behaves the same: 0–40 ms holds (n6 179/200),
+0–50 ms does not (n6 8/200). **Halving the mean buys nothing** — 205 → 110 ms
+and 205 → 83 ms both leave Nights 2–7 at 0/200 — and at a 205 ms mean the
+spread is irrelevant too (±0 and ±95 are both 0/200 past Night 1). Both facts
+are the same statement: the model quantises to frames, and 205 ms is already
+12 of them.
+
+**The measured fork-free clock lands inside the budget.** `date +%s%3N` is a
+fork+exec costing 21 ms on this handset, which is why `wait_until`'s
+busy-poll granularity is what it is; `read u _ < /proc/uptime` is a builtin
+costing 0.36 ms with 10 ms resolution, and the same wait loop written against
+it landed 0 ms late on 15 of 15 targets *with the game running*. At a 0–10 ms
+band the route recovers Nights 1–5 (197–200/200) and Night 6 to **171/200**.
+
+**Night 7 is not rescued and this must not be sold as a 10/20 result.** It goes
+0 → **25/200** and stays the one-frame phase island this plan already
+documented from the other side (moving the cycle-opening `tap monitor` +16 ms
+takes exact Night 7 replay 20/20 → 0/20). The clock fix unblocks the ladder to
+Night 6. Night 7 still needs a route whose sweep tolerates a frame — which is
+the item that replaced (b) above, unchanged.
+
+**What the cliff is, restated precisely.** `--ablate` delays one class of press
+and leaves the rest on time. Delaying *everything* by a frame is free on all
+seven nights; delaying **only the monitor press** by one frame is 0/200 on
+Nights 6 and 7, with 280 camera selects landing while the monitor is still
+`raising` and being thrown away by the engine. So the cliff is **relative
+displacement, not lateness** — which is exactly what the one-macro-per-cycle
+architecture exists to prevent, and what a regression to per-press wall-timing
+would cost. The shell has to hit two frames of *uniform* error; the macro
+already guarantees zero frames of *differential*.
+
+**Still open, and each needs the phone rather than another sweep.**
+
+- The arrival-slip term. The runner logs only the composite (`actual`), which
+  is why 49–106 and 110–300 cannot be reconciled from the record. Instrument
+  `wait_until` with three numbers per boundary — clock at entry, clock at
+  return, clock immediately before the first `hid_down` byte — and the terms
+  separate. Control: the same instrumentation with the classifier disabled;
+  arrival slip should collapse and boundary overshoot should not.
+- `press_at` takes **another** `date` fork between `wait_until` returning and
+  the report being written, so every logged press time in the run record
+  understates the report's issue time by about one fork (~21 ms, ~1.3 frames).
+  The fork-free loop already holds a usable `now`.
+- **The touch poll rate is unmeasured and the ambiguity spans the budget.**
+  `SOURCE-DUMP-GUIDE.md` sources the game logic at 60 fps; HID-MULTITOUCH.md's
+  verified report sequence and the runner's `FUSION_POLL_MS=33` both say 30 Hz.
+  At 60 fps the quantisation floor is 16.7 ms (1 frame of a 2-frame budget); at
+  30 Hz it is 33 ms (2 frames — the entire budget). A contact-length ladder
+  (100/66/50/33/25/17/8 ms) graded from a recording, against a control
+  coordinate with no control under it, decides it and also either justifies or
+  retires the 100–120 ms contact floor.
+- The clock-domain crossing. `/proc/uptime` is monotonic; `T0`, every log line
+  and the HID trace alignment are epoch. plans/09 tracks those domains, and
+  `clocktrace.mjs`'s 1 AM assertion (69,950 ms against a sourced 70,000) is the
+  control that would catch a bad epoch mapping after the swap.
+
 ## Canonical run artifact
 
 Every promoted run must retain or derive:

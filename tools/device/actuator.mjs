@@ -14,6 +14,24 @@
 //   a uniformly-late schedule is the benign case, and pinning would delete the
 //   spread that does the damage.
 //
+//   **Re-scoped 2026-08-26, and the original is kept because the `worst`-mode
+//   decision still rests on it.** On the HID route the mean is NOT nearly free
+//   and the spread is not the lever: `tools/latenesssweep.mjs` finds a uniform
+//   205 ms is 0/200 on Nights 2-7 at any spread from +/-0 to +/-95, and halving
+//   it to 110 or 83 changes nothing. Both readings are the same statement once
+//   the frame quantisation below is taken seriously -- what costs nights is
+//   total displacement in FRAMES, and 205 ms is 12 of them before any spread.
+//   The real budget is two frames (41 ms) of per-anchor error, uniform or not;
+//   the shipped `date`-based `wait_until` delivers 3-6 (49-106 ms, device probe
+//   2026-08-26) and a fork-free `/proc/uptime` loop delivers 0-1. The `worst`
+//   decision stands unchanged: pinning to the maximum still deletes the
+//   cycle-to-cycle displacement that does the damage.
+//
+//   The band below is also NOT press-to-effect lateness. Every figure in it
+//   stops at the shell -- see plans/12, "The lateness bands, decomposed and
+//   priced" -- so the coprocess write, UHID, InputReader and Fusion's own poll
+//   are outside it, bounded at roughly one frame and not measured.
+//
 // - **The mask seam.** While the mask is up or coming off, the monitor bar is
 //   not drawn, so a monitor press there has no control under it. The engine
 //   already refuses presses while the mask is ON; what only the phone loses is
@@ -58,6 +76,16 @@ export const SEAM_SAFE_MS = 180; // 0 lost in 17 tries at or past this
 // and may account for part of the 30-900 ms pipeline tail. The upper end of
 // this band therefore needs a clean-phone re-measure before it is treated as
 // the device's own lateness; the first post-fix night can re-source it.
+//
+// Sharpened 2026-08-26: the ~300 ms end was never logged. Night 6-40's read
+// light-down was observed 700-810 ms into the cycle against a plan position of
+// 367, and ~300 was back-computed from that by subtracting the gate's wait and
+// the cue read -- one run, one inference, on a night whose ending was later
+// retracted as an unlit lamp. No night 6-xx artifact survives in captures/, so
+// it cannot be re-derived offline, only re-measured. The 110-180 end is the
+// runner's own logged press offset from the plan's CYCLE BASE, which is the
+// boundary's landing error plus the slip the shell arrived with; the boundary
+// error alone is 49-106 ms. plans/12 separates the terms.
 export const LAUNCH_LATE_MIN_MS = 110;
 export const LAUNCH_LATE_MAX_MS = 300;
 

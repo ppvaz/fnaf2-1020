@@ -397,6 +397,121 @@ released gap's measured minimum is 18.5 ms against a 20 ms floor, so this
 probe fails to reproduce the concern at its sample size rather than retiring
 it. The night recording is the larger sample and grades the same two ways.
 
+### What the shell's clock actually costs, and the two-frame budget (2026-08-26)
+
+The section above measures `wait_until`; this one prices it. The answer is that
+the shell's clock is not *a* contributor to the actuator cliff — on this route
+it is the whole of it, and the budget it has to fit into is a **frame count,
+not a millisecond figure**.
+
+`tools/latenesssweep.mjs` sweeps `tools/device/actuator.mjs`'s lateness band
+across Nights 1–7 at the `hidpilot n6 target` settings, 200 seeds a cell.
+**Every number here is a simulator number** — the actuator models launch
+lateness and the mask seam and nothing else. Two controls make the table
+readable rather than merely favourable, and `--assert` fails on either: the
+zero row must reproduce the exact figure (200/200 every night), and the
+110–300 ms row must reproduce plans/12's published table.
+
+| band, per wall-timed anchor | frames | n1 | n2 | n3 | n4 | n5 | n6 | n7 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 ms (the control) | 0 | 200 | 200 | 200 | 200 | 200 | 200 | 200 |
+| **0–10 ms, fork-free `/proc/uptime` loop** | 0–1 | 200 | 200 | 200 | 197 | 200 | **171** | **25** |
+| 0–40 ms | 0–2 | 200 | 199 | 199 | 196 | 198 | 179 | 26 |
+| 0–42 ms | 0–3 | 190 | 177 | 167 | 168 | 147 | 124 | 16 |
+| 0–50 ms | 0–3 | 138 | 58 | 35 | 41 | 14 | 8 | 0 |
+| **49–106 ms, the shipped `date` loop** | 3–6 | 72 | 0 | 0 | 0 | 0 | 0 | 0 |
+| 110–300 ms, `actuator.mjs`'s default | 7–18 | 23 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+**The knee is at the 2-to-3 frame boundary and it is a cliff.** Uniform
+lateness is free to 41 ms (2 frames, 200/200 on every night) and collapses at
+42 ms (3 frames: n6 10/200, n7 0/200). A per-anchor re-roll behaves the same
+way: anything inside 0–40 ms holds, and 0–50 ms is already gone. The
+millisecond thresholds are only meaningful to ±8 ms, because the model
+quantises every draw to a 60 fps frame — quote the frame count.
+
+**Halving the mean buys nothing, and that is not the interesting failure.**
+205 → 110 ms leaves Nights 2–7 at 0/200; so does 205 → 83 ms. Nor does the
+spread help while the mean is high: at a 205 ms mean, ±0 and ±95 ms are both
+0/200 on every night but the first. That retires `actuator.mjs`'s header claim
+("the mean is nearly free … the SPREAD costs nights") for this route, as
+plans/12 already began to. **Both are the same statement**: what matters is
+total displacement in frames, and 205 ms is 12 frames before any spread is
+added.
+
+#### The fix is the fork, and it has been measured on the phone
+
+`wait_until` sleeps to 20 ms before target and then busy-polls `date +%s%3N`.
+A device probe on 2026-08-26 timed the pieces:
+
+| | cost | note |
+| --- | ---: | --- |
+| `date +%s%3N` | **21 ms** | fork+exec; 100 calls in 2126 ms, consecutive-gap max 35 ms |
+| `sleep 0` | ~20.8 ms | fork+exec, same class |
+| `read u _ < /proc/uptime` | **0.36 ms** | builtin + redirect, no fork; 100 reads in 36 ms |
+
+So `wait_until`'s granularity *is* one `date` fork, and its landing error is
+that plus the final `sleep`'s own fork. Re-probed against 20 targets 200 ms
+apart it lands **49–106 ms** late, reproducing the 49–93 ms above — this time
+**with the game running a live Night 1**, which is the control the original
+bench measurement (empty wallpaper, no game) did not have. Widening the
+busy-wait window does not fix it, because the fork cost is per iteration:
+thresholds of 40/100/150/250 ms give mean errors of ~67/37/32/36 ms.
+
+The same loop against `/proc/uptime` landed **0 ms late on 15 of 15 targets**,
+also with the game running. "0" means within one 10 ms centisecond tick, not
+sub-millisecond. That is 0–1 frames, inside the two-frame budget with margin.
+
+Three things this does **not** yet establish, and none should be assumed:
+
+- **It changes a clock domain.** `/proc/uptime` is monotonic while `T0`, every
+  log line and the HID trace alignment are epoch ms from `date`. plans/09
+  tracks those domains explicitly; the swap needs the crossing measured, not
+  inferred.
+- **A bare shell loop is not the runner.** The real cycle also runs `hid_mark`,
+  the HID writes and the classifier. The per-boundary cost with those in the
+  loop is unmeasured.
+- **`read -t 0.02 < /dev/null` is not a fork-free sleep.** It returns instantly
+  on EOF — 20 nominal 20 ms sleeps took 12 ms in total.
+
+#### What it would be worth, stated honestly
+
+Inside the budget the route recovers **Nights 1–5 outright** (197–200/200) and
+Night 6 to **171/200**. Night 7 goes 0 → **25/200** and stays a one-frame phase
+island, which is the same thing plans/12 found from the other direction: moving
+the cycle-opening `tap monitor` by +16 ms takes exact Night 7 replay from 20/20
+to 0/20. **The clock fix is not a Night 7 clear and must not be sold as one.**
+It unblocks the ladder up to Night 6; Night 7 still needs a route whose sweep
+tolerates a frame.
+
+#### Why the macro architecture is load-bearing to the frame
+
+`--ablate` delays one class of press and leaves the rest exactly on time. It is
+a diagnostic, not a phone model — the phone is late on every boundary it
+wall-times — but it says something the aggregate cannot:
+
+| | n1 | n2 | n3 | n4 | n5 | n6 | n7 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **everything** +1 frame | 200 | 200 | 200 | 200 | 200 | 200 | 200 |
+| only the monitor press +1 frame | 200 | 112 | 200 | 200 | 53 | **0** | **0** |
+| only the sweep +1 frame | 200 | 200 | 200 | 200 | 200 | 200 | 200 |
+| only the sweep +2 frames | 200 | 54 | 61 | 21 | 0 | 0 | 0 |
+
+Delaying *everything* by a frame is free; delaying the **monitor press alone**
+by one frame kills Nights 6 and 7 outright. The mechanism is visible in the
+counts: 280 camera selects land while the monitor is still `raising` and the
+engine throws them away — the zero-margin `MONITOR_ANIM_UP` collision this
+document's sibling already found in the plan and gated with
+`test-device-input-gaps.mjs`.
+
+So the cliff is **relative displacement, not lateness**. That is precisely the
+error mode the single-macro-per-cycle architecture exists to prevent: inside a
+macro every boundary is a `hid_delay` at ±2 ms, so the monitor press and the
+sweep that follows it share one draw and cannot slide against each other. This
+table is what a regression to per-press wall-timing would cost — the same
+regression that once drifted a cycle anchor 434 ms — priced to the frame. Two
+frames of *uniform* budget is what the shell has to hit; zero frames of
+*differential* is what the macro already guarantees.
+
 ## Trap 1: UHID open is earlier than Android input readiness
 
 The `hid` command returns from registration after the kernel sends
