@@ -2,9 +2,9 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **35%** — 29 of 83 mandatory top-level work packages are closed.
+**Overall:** **33%** — 29 of 88 mandatory top-level work packages are closed.
 
-**Expanded stock-device roadmap (Plans 09–14):** **8%** — 3 of 39 mandatory
+**Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
 
 ## Very next step
@@ -57,6 +57,7 @@ because every candidate is priced against an actuator nobody has tried to fix.
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed; the actuator cliff is now measured as geometric, not a monitor desync — the closed loop reclaims zero and "open loop, not the phone" is retracted | Gate A after Plans 09–11 provide their contracts |
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate; title observed; a real death now classifies night→static→gameover→title with no unknown | Capture a 6 AM and the minigames; both still report unknown |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
+| [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 
 ## Counting rule
 
@@ -68,6 +69,9 @@ because every candidate is priced against an actuator nobody has tried to fix.
   package 6 needs a second handset the project does not have; it is counted
   because the plan's done criteria cannot close without it, unlike Plan 11's
   Gymnasium package which is optional to its own goal.
+- Plan 15 adds five mandatory packages on 2026-08-26 (83 -> 88 mandatory). It
+  exists because the same game fact is currently re-taught per capture method,
+  and three more sensor-bound classifiers were added the same day.
 - Plan 10 gained a package 0 on 2026-08-26 (76 -> 77 mandatory): the basic
   interaction vocabulary the schedule is made of was never established, and
   office panning appears in the record only as a failure mode.

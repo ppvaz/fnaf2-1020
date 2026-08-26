@@ -35,6 +35,10 @@ Bot-research roadmap added 2026-08-26:
   Plan 09 after their observation record is agreed, and does not require RL.
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
+- **Plan 15 owns sensor independence.** A game fact is taught once and each
+  capture method reads it through a declared, calibrated adapter. The cue
+  helper's 42 ms read is currently blocked on a threshold calibrated for
+  `screencap`, which is the problem in one sentence.
 - **Plan 14 owns device portability.** Every device-facing number in the repo
   describes one handset; plan 14 makes the device an explicit record, separates
   geometry (translates by arithmetic) from layout mode (must be measured) from
@@ -81,6 +85,9 @@ Bot-research roadmap added 2026-08-26:
 13. [13-campaign-and-all-night-support.md](13-campaign-and-all-night-support.md)
     — save-safe lifecycle, per-night policy qualification, fresh-save story
     progression, and verified Custom Night configuration.
+15. [15-sensor-independent-observations.md](15-sensor-independent-observations.md)
+    — one definition per game fact, one calibrated adapter per capture method,
+    and a refusal for every pairing that has not been calibrated.
 14. [14-device-portability-and-profiles.md](14-device-portability-and-profiles.md)
     — normalized canvas/controller coordinates behind a device profile, models
     and timing bound to the profile they were measured under, and a bounded
