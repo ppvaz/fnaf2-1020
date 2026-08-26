@@ -35,6 +35,10 @@ Bot-research roadmap added 2026-08-26:
   Plan 09 after their observation record is agreed, and does not require RL.
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
+- **Plan 13 owns campaign and all-night support.** The target-device save loss
+  is treated as an evidence opportunity: safe New Game handling, verified
+  story progression, per-night policy gates, Sixth/Custom unlocks, and explicit
+  Custom Night configuration rather than a permanent Night 6 menu assumption.
 
 1. [01-research-pass.md](01-research-pass.md) — sourced docs for the 10/20 meta.
    Prerequisite for 02, 03 and the novelty check in 05.
@@ -69,3 +73,6 @@ Bot-research roadmap added 2026-08-26:
 12. [12-end-to-end-evidence-campaign.md](12-end-to-end-evidence-campaign.md) —
     claim ladder and promotion gates from offline replay through a Night 6
     cohort and, only after separate qualification, 10/20.
+13. [13-campaign-and-all-night-support.md](13-campaign-and-all-night-support.md)
+    — save-safe lifecycle, per-night policy qualification, fresh-save story
+    progression, and verified Custom Night configuration.

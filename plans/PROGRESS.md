@@ -2,28 +2,28 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **38%** — 26 of 68 mandatory top-level work packages are closed.
+**Overall:** **34%** — 26 of 76 mandatory top-level work packages are closed.
 
-**New stock-device roadmap (Plans 09–12):** **4%** — 1 of 24 mandatory packages
-is closed.
+**Expanded stock-device roadmap (Plans 09–13):** **3%** — 1 of 32 mandatory
+packages is closed.
 
 ## Very next step
 
-Complete **Plan 09, work package 2's first slice: freeze and validate the v1
-session/event contract**.
+Complete **Plan 13, work package 1: remove the Night-6 construction
+assumption**, then return to Plan 09's schema slice before collecting new
+fresh-save evidence.
 
-Add versioned machine-readable session-manifest and ordered-event schemas, a
-standard-library validator, and synthetic fixtures. This slice must represent
-the twelve minimum field groups in
-[`OBSERVATION-CORPUS-INVENTORY.md`](../docs/device/OBSERVATION-CORPUS-INVENTORY.md),
-including named clock domains/alignment edges, authority class, artifact hash,
-label provenance, model/holdout authorization, lifecycle outcome, and redaction.
+Separate cycle-template extraction from the night being evaluated; thread an
+explicit Nights 1–6 configuration through recipe generation, replay, and the
+human gate; and add a deterministic per-night matrix. Preserve the current
+Night 6 plan behavior while making a legitimately unreachable Balloon Boy
+attack branch non-fatal to Nights 1 and 3.
 
-**This step is complete when** valid synthetic sessions pass; unknown schema
-versions, mixed game builds, missing hashes, stale/unauthorized models,
-cross-clock events without an alignment edge, false-win evidence, and secrets
-in commit-safe metadata fail. Do not integrate a live producer until this
-contract and its negative fixtures pass.
+**This step is complete when** all six story nights build and receive exact and
+human-slack verdicts; branch reachability and resource use are reported; a
+forced unexpected-BB fixture fails closed; and the Night 6 emitted plan retains
+its pinned semantics. This is local-only work—do not tap New Game or collect a
+new device run in this step.
 
 ## Dashboard
 
@@ -41,11 +41,14 @@ contract and its negative fixtures pass.
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 6 | **0%** | Proposed | Agree observation/decision records with Plan 09, then emit shadow state |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed | Gate A after Plans 09–11 provide their contracts |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 0 / 8 | **0%** | Proposed after target-device save loss; simulator models per-night AI but the device path assumes Sixth Night | Fix low-threat recipe construction and add the Nights 1–6 offline matrix |
 
 ## Counting rule
 
 - The denominator is the mandatory numbered work packages in each plan. Plan
   11's explicitly optional Gymnasium package is excluded.
+- Plan 13 adds eight mandatory packages; the completion numerator remains
+  unchanged until one of its gates actually closes.
 - A package contributes only when its plan marks it closed, completed, passed,
   or closed by a documented negative result. Partial or “advanced” work receives
   no fractional credit.
