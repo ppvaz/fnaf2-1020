@@ -41,7 +41,7 @@ this step.
 | [06 — hybrid search](06-hybrid-strategy-search.md) | 6 / 6 | **100%** | Closed with no survivor | Reopen only after a corrected mechanic changes reachable policy space |
 | [07 — tooling consolidation](07-tooling-consolidation.md) | 5 / 8 | **63%** | Correctness pass complete; opportunistic refactors remain | Extract shared browser session during the next browser-tool change |
 | [08 — audio-cue controller](08-audio-cue-controller.md) | 2 / 7 | **29%** | Source map and playback capture pass; detector/latency/shadow gates remain | Session-split bang holdout and confusion matrix |
-| [09 — observation corpus](09-observation-corpus.md) | 1 / 6 | **17%** | Capture/consumer/clock inventory complete | Add and validate v1 manifest/event schemas with synthetic fixtures |
+| [09 — observation corpus](09-observation-corpus.md) | 1 / 6 | **17%** | Inventory complete; the v1 manifest/event schemas and their validator exist, but no producer emits one | Give `trial-minus7.sh`, cue-helper capture, SCM1 and `grade-run.sh` one session ID and monotonic origin |
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 6 | **0%** | Proposed | Agree observation/decision records with Plan 09, then emit shadow state |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed | Gate A after Plans 09–11 provide their contracts |

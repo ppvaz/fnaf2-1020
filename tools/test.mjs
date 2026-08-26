@@ -173,6 +173,11 @@ const ENGINE = [
   // Plan 09's read-only corpus index: classify existing artifacts without
   // rewriting them, preserve basename joins, and surface unknown/empty files.
   ['observation index', ['device/test-index-observations.py']],
+  // Plan 09's v1 session contract: the manifest/event schemas, and the proof
+  // that each way of being malformed fails with its own reason rather than one
+  // generic rejection. A validator that refuses everything identically is
+  // indistinguishable from one that refuses everything.
+  ['session contract', ['device/test-validate-session.py']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
