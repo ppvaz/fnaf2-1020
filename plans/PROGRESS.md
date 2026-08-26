@@ -42,11 +42,11 @@ this step.
 | [07 — tooling consolidation](07-tooling-consolidation.md) | 5 / 8 | **63%** | Correctness pass complete; opportunistic refactors remain | Extract shared browser session during the next browser-tool change |
 | [08 — audio-cue controller](08-audio-cue-controller.md) | 2 / 7 | **29%** | Source map and playback capture pass; detector/latency/shadow gates remain | Session-split bang holdout and confusion matrix |
 | [09 — observation corpus](09-observation-corpus.md) | 1 / 6 | **17%** | Inventory complete; the v1 manifest/event schemas and their validator exist, but no producer emits one | Give `trial-minus7.sh`, cue-helper capture, SCM1 and `grade-run.sh` one session ID and monotonic origin |
-| [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Proposed; package 0 added 2026-08-26 after finding panning is recorded only as an accident | Establish a verified interaction vocabulary, panning included |
+| [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Proposed | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate against their own AI table; the title is observed and the save cursor is readable from it | Positive intro / 6 AM / death / save-advance classifiers |
-| [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; every device number describes one handset and nothing refuses a mismatch | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | Nights 1–6 build, replay and gate; title observed; a real death now classifies night→static→gameover→title with no unknown | Capture a 6 AM and the minigames; both still report unknown |
+| [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 
 ## Counting rule
 
