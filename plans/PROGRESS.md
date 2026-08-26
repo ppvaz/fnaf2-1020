@@ -112,11 +112,25 @@ Each of these was an "Open" item here as recently as this morning:
   drain groups have not been located in the dump; the wind side is sourced
   (g652 sets 2000, g638/g643 add +5/tick, g645 snaps to 300). Do not change the
   constant until the drain is sourced.
-- **The minigames are still unmodelled.** The `screenrecord` cap that used to
-  sit beside this item is gone (see "Closed in the tree" above), so a 6 AM can
-  now be recorded — but nothing yet classifies the intro card, the 6 AM
-  transition, or a minigame. That is Plan 13 package 3, and until it lands a
-  recording that reaches 6 AM still cannot be *graded* as a clear.
+- **A 6 AM still cannot be graded, and the fixtures say why.** The
+  `screenrecord` cap that used to sit beside this item is gone, so a 6 AM can now
+  be *recorded* — but nothing classifies the intro card, the 6 AM transition, or
+  a minigame. Plan 13 package 3, inventoried 2026-08-26 and now **half
+  startable without a phone**:
+  - **Present:** `captures/lifecycle/n1-intro-cal-20260826.mp4` holds the
+    `12:00 AM / 1st Night` card *and* the intro→night transition, with the
+    boundary labelled by `screenstate.py` itself (`other` through the card,
+    `night` from ~8 s). That is the intro classifier's material, today.
+  - **Absent:** **no 6 AM frame exists anywhere in the repository.** Package 3
+    can build and gate the intro half and cannot close on the other.
+  - **Was a trap, now fixed:** `captures/lifecycle/n1-clear/` contained a
+    *death* — `screenstate.py` reads its `final.png` as `gameover`. Renamed
+    `n1-clear-attempt-died/` with a README. Nothing referenced it, but it was
+    aimed exactly at this package: whoever built 6 AM fixtures would have found
+    a directory called `n1-clear` and fitted the classifier to a Game Over.
+  - **Outranks all of it:** **`captures/` is gitignored.** Every fixture above
+    exists on one laptop and in no clone, so package 3's holdout set needs
+    somewhere to live before it can be a gate anyone else can run.
 - **Nights 5 and 6 have 192 frames of flashlight headroom, down from 852.** The
   Night 6 route repair paid for its gate margin in light. Nothing warns as that
   approaches zero; `test-night-matrix.mjs` only fails once it crosses. Price any

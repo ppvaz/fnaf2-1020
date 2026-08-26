@@ -307,6 +307,54 @@ harmless.
 minigame, static, title, and unknown. An aborted or short recording cannot be
 graded as either a clear or a campaign advance.
 
+**Fixture inventory, measured 2026-08-26.** This package is half-startable
+without a phone, and the half that is missing is missing for a structural
+reason rather than a filing one.
+
+*Present.* `captures/lifecycle/n1-intro-cal-20260826.mp4` — 12.9 s, 697 frames
+at 1280x576 — contains the **`12:00 AM / 1st Night` intro card and the
+intro→night transition**. Sampled at 2 fps, `screenstate.py` reads `other`
+through the card and `night` from about 8 s, so the boundary is labelled by the
+authority itself. That is the positive intro classifier's training and holdout
+material, available now. `n1-death/` holds 126 death frames, `night1/` 22 office
+frames, `box-starve/` and `box-wind/` the music-box series.
+
+*Absent.* **No 6 AM frame exists anywhere in the repository.** Package 3 can
+therefore build and gate the intro classifier, but cannot close: the 6 AM
+transition and the minigames still have nothing to fit or to hold out against,
+which is exactly what `lifecycle-observe.py`'s header already says and reports
+as `unknown` rather than guessing.
+
+*Mislabelled, now corrected.* `captures/lifecycle/n1-clear/` contained a **death**
+— `screenstate.py` reads its `final.png` as `gameover` — and has been renamed
+`n1-clear-attempt-died/` with a README. Nothing referenced it, so it was a trap
+rather than a live defect, but it was a trap aimed precisely at this package: a
+session building 6 AM fixtures would have found a directory named `n1-clear` and
+fitted the clear classifier to a Game Over.
+
+*And a caveat that outranks all of the above.* **`captures/` is gitignored.**
+Every fixture named here exists on one laptop and in no clone. A cold session on
+another machine has none of it, so "the intro fixture exists" is a statement
+about this working copy, not about the repository. Package 3's holdout set needs
+somewhere to live before it can be a gate anyone else can run.
+
+**Sensor binding, measured the same day** (a fact × sensor pairing Plan 15 wants
+inventoried, so recorded here where it was found):
+
+- The **night/gameover predicate is sensor-independent by construction.**
+  `nightpredicate.py` expresses its boxes as fractions of the frame precisely so
+  a 2400x1080 and a 1280x576 caller agree, and `screenstate.py` resizes anything
+  else to 2400x1080. So `grade-night.py` reading a 1280x576 screenrecord is
+  calibrated, not assumed.
+- The **`other`-refinement model is sensor-bound**, and correctly refuses:
+  1280x576 frames come back `unknown=sensor-mismatch:1280x576; this model is
+  calibrated for screencap-2400x1080`.
+- The consequence is a reporting seam worth knowing before it confuses someone:
+  `lifecycle-observe.py` consults the authority *first* and returns
+  `state=night` without ever reaching its sensor check, so the same tool, on the
+  same video, answers confidently for one frame and refuses the next. Both
+  answers are correct. Nothing in the output says which path produced them.
+
 ### 4. Qualify policies and budgets per story night
 
 - Replay the conservative generated route across every per-night/per-hour AI
