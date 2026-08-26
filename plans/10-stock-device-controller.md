@@ -187,6 +187,54 @@ modified PC build with its own numbering, so those thresholds are `[CALIBRATED]`
 for Android at best — but they are the right shape to check the measurement
 against.
 
+
+**Device measurements, 2026-08-26 (Moto g56 5G, v2.0.7, Night 1).** The source
+half of this package is recorded in `docs/android/ANDROID-SOURCE-STATUS.md`; this
+is what only the phone could say.
+
+- **The night opens at an extreme, and it is the left one.** Holding further
+  left from the resting view moves nothing (displacement 0, residual 0.40),
+  while holding right moves the view. That is the device confirming
+  `camera follow 2`'s sourced clamp: the scroll starts at 512, the minimum. The
+  left vent's `LIGHT` button is in view at rest, at the documented (350,615).
+- **The right pan band begins between x=1700 and x=1800** at y=400. At x<=1700 a
+  held contact produces no movement at all; at x=1800 and beyond it pans.
+- **A pan is duration-gated, which is why a tap near the band is safe and a hold
+  is not.** Displacement grows with contact length from ~40 ms up to the clamp.
+  This is the mechanism behind both nights lost to "it panned instead": the hall
+  light needs a *hold*, and a hold that misses the hitbox is exactly the input a
+  pan wants.
+- **Both lights verified with a positive signature.** A held (1200,540)
+  brightens the hall region by **+19.75** luma for the duration and returns to
+  baseline exactly (post-minus-pre 0.00). A held (350,615) brightens the left
+  vent region by **+8.87** with no hall change. So "it happened" is separable
+  from "it was dropped", which is the gate's requirement.
+- **A first-run tutorial overlay exists** on a fresh save's Night 1 ("Tap here
+  to use your flashlight!"), covering the hall region until the first tap
+  dismisses it. No lifecycle classifier knew about it.
+- **`Continue` is inert with no save.** It is drawn, with a "Night 1"
+  sub-label, on a fresh install where it does nothing; it works once a save
+  exists. So the presence of Continue is not evidence that a save exists, and
+  `SaveState` cannot be read from it alone.
+
+**Instrument lessons, both paid for.** A displacement matcher must be able to
+refuse: the first version returned its own search bound when the night ended
+mid-measurement, and the second returned a confident `+16 px` three times when
+the tracked content had left the strip. `pan-shift.py` now refuses on a flat
+strip, on a bound match, and when two independent templates disagree. And the
+pan *detector* compared region means until a synthetic fixture caught it — a pan
+that preserves average brightness reads as nothing, so it must be compared per
+pixel. Displacement itself is better read from the dump, where the scroll is an
+integer clamped to [512, 1088]; the phone is needed for the coordinate-to-outcome
+mapping, which is a classification rather than a distance.
+
+**Still open.** The scene X and hitbox extents of `left light` / `right light`
+cannot come from a logic-only dump — `tools/dump/EventTextDumper.cs` would have
+to emit instance X/Y/layer. That is the cheaper path to the rest of this map
+than sweeping the phone, and it is what would let plans/14 derive coordinates on
+a new device instead of hand-calibrating them. The right vent still has no
+measured coordinate, and reaching it requires a pan the schedule must budget.
+
 ### 1. Extract a shadow state transition log
 
 - Define the records above and emit them from the existing runner without

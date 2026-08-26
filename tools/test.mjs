@@ -165,6 +165,10 @@ const ENGINE = [
   // the caller sets for one run. The structural half proves no second title
   // table exists to route around this.
   ['menu selector', ['device/test-menu.sh']],
+  // plans/10 package 0: an interaction must be distinguishable from a dropped
+  // contact and from a pan. Two nights were lost to a finger that missed a
+  // light hitbox and landed in the pan band, and nothing in the run noticed.
+  ['interaction classifier', ['device/test-region-classify.py']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
