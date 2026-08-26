@@ -28,6 +28,10 @@ BRIGHT_MIN = 150
 # is simply lit or not, because a synthetic frame cannot tell you where a logo
 # is -- only that the observer consults the gate before the item bands.
 GATE_BOX = (150, 40, 560, 140)
+# The real menu gate is the Options row: 0.0869-0.1201 with the title MENU up,
+# 0.0000 on the "Start a new game?" confirmation and 0.0000 on the Options
+# screen. The confirmation keeps the logo, so the logo gate alone cannot see it.
+MENU_GATE_BOX = (1780, 830, 2310, 900)
 
 # The three real coordinates are `coords.sh`'s, derived 2026-08-20 from labeled
 # 100px grid overlays. `customNight` is invented for these fixtures: the item
@@ -53,13 +57,20 @@ STATES = {
     # observer simply being on another screen, but it must not be read as "a
     # title screen with no buttons".
     "title-no-items": {},
+    # The New Game confirmation. The logo is still up and all three item rows
+    # carry text -- the prompt, "No" and "Yes" -- so every item band reads
+    # present. Only the dark Options row says this is not the menu. On the real
+    # dialog "Yes" sits on the 6th Night row, so reading this as a menu is how a
+    # save gets erased.
+    "confirm-dialog": {"newGame": "on", "continue": "on", "sixthNight": "on"},
     # Not the title screen at all: bright content, none of it where an item or
     # the logo is. This is the Options screen's shape, and the case that made
-    # the gate necessary.
+    # the logo gate necessary.
     "unknown-layout": {},
 }
-# Which states are the title screen, and therefore light the gate.
+# Which states show the game logo, and which additionally show the title MENU.
 TITLE_STATES = set(STATES) - {"unknown-layout"}
+MENU_STATES = TITLE_STATES - {"confirm-dialog"}
 
 
 def band_box(point, fraction=1.0):
@@ -74,6 +85,8 @@ def render(state, lit):
     draw = ImageDraw.Draw(image)
     if state in TITLE_STATES:
         draw.rectangle(GATE_BOX, fill=(255, 255, 255))
+    if state in MENU_STATES:
+        draw.rectangle(MENU_GATE_BOX, fill=(255, 255, 255))
     if state == "unknown-layout":
         # Bright, but nowhere near an item band and with the logo gate dark, so
         # the observer must answer "not the title screen" without ever asking
@@ -103,6 +116,7 @@ def main(argv):
         "present_min": 0.80,
         "absent_max": 0.20,
         "title_gate": {"box": list(GATE_BOX), "min": 0.80, "max_absent": 0.20},
+        "menu_gate": {"box": list(MENU_GATE_BOX), "min": 0.80, "max_absent": 0.20},
         "items": {name: list(point) for name, point in POINTS.items()},
     }
     with open(f"{outdir}/synthetic-title-model.json", "w", encoding="utf-8") as handle:

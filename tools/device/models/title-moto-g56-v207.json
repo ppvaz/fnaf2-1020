@@ -35,5 +35,16 @@
     "min": 0.05,
     "max_absent": 0.03,
     "note": "the word Five of the game logo: 0.106-0.123 on every measured title frame, 0.007-0.012 on the Options screen"
+  },
+  "menu_gate": {
+    "box": [
+      1780,
+      830,
+      2310,
+      900
+    ],
+    "min": 0.05,
+    "max_absent": 0.03,
+    "note": "the Options row. 0.0869-0.1201 when the title MENU is showing; 0.0000 on the New Game confirmation dialog and 0.0000 on the Options screen itself. Without it the dialog reads as a menu and TAP_6TH lands on Yes."
   }
 }

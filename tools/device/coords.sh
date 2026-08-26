@@ -22,6 +22,14 @@
 # Derived 2026-08-20 from labeled 100px grid overlays on device screenshots
 # (see the session's *_grid.png captures). y stays <= 1020: the bottom ~40px
 # band belongs to Android gesture navigation and can swallow taps.
+# The title menu is a TWO-PRESS interaction and its rows are reused by dialogs.
+# `ON-DEVICE-VALIDATION.md`: "the first press shows the >> cursor, the press
+# must land on the item's hitbox; hitboxes sit slightly above the painted text."
+# Measured 2026-08-26, the "Start a new game?" confirmation keeps the game logo
+# and reuses these same three rows -- the prompt on the New Game row, "No" on
+# Continue, and "Yes" on 6th Night. So TAP_6TH on that dialog erases the save.
+# Never press a title coordinate without menu.sh, which gates on the Options
+# row being lit before it believes the menu is up.
 TAP_CONTINUE="400 730"     # title: Continue
 TAP_NEWGAME="400 640"
 TAP_6TH="400 880"          # title: 6th Night

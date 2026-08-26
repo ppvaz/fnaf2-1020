@@ -84,16 +84,21 @@ def load_model(path):
         if (not isinstance(point, list) or len(point) != 2
                 or not all(isinstance(v, int) for v in point)):
             fail(f"title-model-bad-point:{name}")
-    gate = model.get("title_gate")
-    if gate is not None:
+    gates = {}
+    for key in ("title_gate", "menu_gate"):
+        gate = model.get(key)
+        if gate is None:
+            gates[key] = None
+            continue
         try:
             box = [int(v) for v in gate["box"]]
             gate = {"box": tuple(box), "min": float(gate["min"]),
                     "max_absent": float(gate["max_absent"])}
         except (KeyError, TypeError, ValueError):
-            fail("title-model-bad-gate")
+            fail(f"title-model-bad-gate:{key}")
         if len(box) != 4 or not gate["max_absent"] < gate["min"]:
-            fail("title-model-bad-gate")
+            fail(f"title-model-bad-gate:{key}")
+        gates[key] = gate
     # An undecided band is mandatory. A model whose present and absent
     # thresholds meet has no way to say "ambiguous", and this screen's whole
     # job is to be able to refuse.
@@ -108,7 +113,8 @@ def load_model(path):
     if band_w <= 0 or band_h <= 0:
         fail("title-model-bad-band")
     return {"items": items, "present_min": present, "absent_max": absent,
-            "bright_min": bright, "band": (band_w, band_h), "title_gate": gate,
+            "bright_min": bright, "band": (band_w, band_h),
+            "title_gate": gates["title_gate"], "menu_gate": gates["menu_gate"],
             "build": model.get("build", "unnamed")}
 
 
@@ -200,6 +206,26 @@ def main(argv):
             fail(f"not-the-title-screen:{value:.4f}")
         if value < gate["min"]:
             fail(f"ambiguous:title-gate:{value:.4f}")
+
+    # The logo being up does not mean the MENU is up. Pressing New Game raises a
+    # "Start a new game?" confirmation that keeps the logo and reuses the same
+    # three rows: the prompt sits in the New Game band, "No" on the Continue
+    # row, and "Yes" on the 6th Night row. Measured on that dialog the item
+    # bands read 0.0332 / 0.0166 / 0.0254 -- newGame and sixthNight both ABOVE
+    # the 0.020 present threshold. So without this gate the observer reports a
+    # menu, and `menu_select sixthNight` presses (400,880), which is "Yes", and
+    # the save is gone. Only an accidental ambiguity in the Continue band
+    # stopped that on 2026-08-26.
+    #
+    # The Options row is the discriminator: 0.0869-0.1201 with the menu up,
+    # 0.0000 on the confirmation and 0.0000 on the Options screen.
+    menu = model["menu_gate"]
+    if menu is not None:
+        value = box_fraction(image, menu["box"], model["bright_min"])
+        if value <= menu["max_absent"]:
+            fail(f"title-dialog:{value:.4f}")
+        if value < menu["min"]:
+            fail(f"ambiguous:menu-gate:{value:.4f}")
 
     present = []
     for name in sorted(model["items"]):

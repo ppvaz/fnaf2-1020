@@ -142,6 +142,17 @@ attempt unknown-layout continue
 expect 'an unrecognised screen refuses' 'not-the-title-screen'
 expect_no_tap 'an unrecognised screen refuses'
 
+# The New Game confirmation keeps the logo and lights every item row, and on
+# the real dialog "Yes" sits exactly on the 6th Night coordinate. Reading it as
+# a menu is how the save gets erased, so it must be refused positively rather
+# than by an accident of thresholds.
+attempt confirm-dialog sixthNight
+expect 'the New Game confirmation is not a menu' 'title-dialog'
+expect_no_tap 'the New Game confirmation is not a menu'
+
+attempt confirm-dialog continue
+expect_no_tap 'no item is pressed on the confirmation'
+
 attempt title-no-items continue
 expect 'a title screen with no items refuses' 'no-items-visible'
 expect_no_tap 'a title screen with no items refuses'
@@ -218,4 +229,4 @@ for runner in trial-minus7.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-au
 done
 
 [ "$failed" -eq 0 ] || { echo 'menu selector checks failed'; exit 1; }
-echo 'menu selector: 7 screen states, 9 refusals, New Game gated by capability, no second title table'
+echo 'menu selector: 8 screen states, 11 refusals, New Game gated by capability, no second title table'
