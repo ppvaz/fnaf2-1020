@@ -44,14 +44,38 @@ installed, the title is observed, and every runner emits a session manifest.
   drain groups have not been located in the dump; the wind side is sourced
   (g652 sets 2000, g638/g643 add +5/tick, g645 snaps to 300). Do not change the
   constant until the drain is sourced.
-- **A 6 AM has never been captured**, so `lifecycle-observe.py` reports it
-  `unknown`. It needs a survived night. The minigames are likewise unmodelled.
+- **A winning run cannot currently be graded as a win — and this is structural,
+  not a matter of surviving one.** A night is 420 s (`NIGHT_FRAMES = s(420)`),
+  `screenrecord` is capped at 180 s (`trial-minus7.sh:899`), and
+  `grade-night.py` — the only number that is a run length — reads the video. So
+  the video ends 43% into any night that reaches 6 AM. This is the actual
+  mechanism behind "capture a 6 AM"; it is not waiting on a good run. Re-check
+  the cap on the handset first, since AOSP relaxed it. The minigames are
+  likewise unmodelled.
+- **Grading is success-only.** `trial-minus7.sh:746` runs `grade-run.sh` under
+  `status -eq 0`, so the run that failed is precisely the run that is never
+  graded. Aborted runs already save `-aborted.mp4` and a finalized manifest; the
+  grading step just never sees them.
+- **The driver's stdout and stderr are never saved.** Every per-cycle press
+  line, classifier verdict, branch and desync counter goes to the terminal and
+  nowhere else. Persisting it costs **0 ms** and ~70 kB a night, and it is why
+  three separate failures were first reported by the device owner watching the
+  phone rather than by any log. `docs/device/RUN-TELEMETRY.md` ranks this first
+  of ten signals, with prices.
 - **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
   cycle, and no schedule prices it. Plan 03 depends on it.
 - **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings; the top two are
   done, the rest are not.
-- A telemetry design survey was still running when this was written; its output
-  is `docs/device/RUN-TELEMETRY.md` if it landed.
+- `docs/device/RUN-TELEMETRY.md` ranks ten diagnostic signals by value per
+  millisecond. Items 3–6 total ~23 ms of a 5000 ms cycle and belong in the
+  plan's ~416 ms post-read slack; re-check placement with `windpct.py
+  --samples`, since the screencap that once collapsed the box 52% → 10% was
+  only 10.3 ms/s and did it by landing on the wind.
+- Two defects found while reading and not fixed: `SWEEP_LIGHT_LEAD_MS` and
+  `plan_control_xy` are each **defined twice** in `trial-minus7.sh` (the first
+  `plan_control_xy` lacks the `hall` and `ventl` arms), and `hid_mark "$actual"`
+  reads a stale global in the calibration branches while the printf beside it
+  uses a fresh one. Calibration paths only, not the shipped route.
 
 ## Dashboard
 
