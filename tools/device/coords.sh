@@ -1,4 +1,24 @@
 # FNaF 2 Android (v2.0.7) touch calibration — Moto g56 5G, 2400x1080 landscape.
+#
+# These coordinates depend on the game's OPTIONS as much as on the handset, and
+# nothing recorded that until 2026-08-26. Read off a fresh install of
+# com.scottgames.fnaf2 v2.0.7 (versionCode 26), the defaults are:
+#
+#   Display Mode       Full        changes the drawn geometry and letterboxing
+#   Perspective Effect On          shifts office pixels as the view pans, so
+#                                  every screen model was built under it
+#   Controller Size    120%        MOVES AND SCALES the on-screen controls, so
+#                                  the mask/monitor/light taps below are only
+#                                  valid at this setting
+#   Vibrations         Off
+#   Subtitles          Off, English, Forced Off
+#
+# Changing Controller Size or Display Mode invalidates the tap table; changing
+# Perspective Effect invalidates the screen models. Recalibrate rather than
+# assuming, and record the settings you calibrated under.
+#
+# One navigation note, learned by doing it: KEYCODE_BACK does not go up a menu
+# in this build, it exits the game.
 # Derived 2026-08-20 from labeled 100px grid overlays on device screenshots
 # (see the session's *_grid.png captures). y stays <= 1020: the bottom ~40px
 # band belongs to Android gesture navigation and can swallow taps.

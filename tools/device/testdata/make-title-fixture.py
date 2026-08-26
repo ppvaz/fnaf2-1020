@@ -23,6 +23,11 @@ from PIL import Image, ImageDraw
 GEOMETRY = (2400, 1080)
 BAND = (660, 76)
 BRIGHT_MIN = 150
+# The real gate box is the word "Five" of the game logo, which reads 0.106-0.123
+# on every measured title frame and 0.007-0.012 on the Options screen. Here it
+# is simply lit or not, because a synthetic frame cannot tell you where a logo
+# is -- only that the observer consults the gate before the item bands.
+GATE_BOX = (150, 40, 560, 140)
 
 # The three real coordinates are `coords.sh`'s, derived 2026-08-20 from labeled
 # 100px grid overlays. `customNight` is invented for these fixtures: the item
@@ -44,9 +49,17 @@ STATES = {
     "custom-unlocked": {"newGame": "on", "continue": "on", "sixthNight": "on",
                         "customNight": "on"},
     "ambiguous": {"newGame": "on", "continue": "half", "sixthNight": "on"},
-    # Not the title screen at all: bright content, none of it where an item is.
+    # The title screen, with every item band dark. Far less likely than the
+    # observer simply being on another screen, but it must not be read as "a
+    # title screen with no buttons".
+    "title-no-items": {},
+    # Not the title screen at all: bright content, none of it where an item or
+    # the logo is. This is the Options screen's shape, and the case that made
+    # the gate necessary.
     "unknown-layout": {},
 }
+# Which states are the title screen, and therefore light the gate.
+TITLE_STATES = set(STATES) - {"unknown-layout"}
 
 
 def band_box(point, fraction=1.0):
@@ -59,10 +72,12 @@ def band_box(point, fraction=1.0):
 def render(state, lit):
     image = Image.new("RGB", GEOMETRY, (8, 8, 12))
     draw = ImageDraw.Draw(image)
+    if state in TITLE_STATES:
+        draw.rectangle(GATE_BOX, fill=(255, 255, 255))
     if state == "unknown-layout":
-        # Bright, but nowhere near an item band, so every measurement reads
-        # dark and the observer must answer "no items visible" rather than
-        # "a title screen with no buttons".
+        # Bright, but nowhere near an item band and with the logo gate dark, so
+        # the observer must answer "not the title screen" without ever asking
+        # which title items it has.
         draw.rectangle((1400, 200, 2300, 900), fill=(255, 255, 255))
         return image
     for name, how in lit.items():
@@ -87,6 +102,7 @@ def main(argv):
         "bright_min": BRIGHT_MIN,
         "present_min": 0.80,
         "absent_max": 0.20,
+        "title_gate": {"box": list(GATE_BOX), "min": 0.80, "max_absent": 0.20},
         "items": {name: list(point) for name, point in POINTS.items()},
     }
     with open(f"{outdir}/synthetic-title-model.json", "w", encoding="utf-8") as handle:

@@ -16,19 +16,32 @@ Output is exactly one line on stdout:
     items=<comma-separated MenuTargets>   a confident read   (exit 0)
     unknown=<reason>                      refuse             (exit 3)
 
-**There is no measured model for the target build yet**, and this tool will not
-invent one. Every title item's predicate needs a threshold, thresholds come from
-labelled frames, and the local capture root holds no title frame at all -- the
-save that would have produced one was lost before anything captured it. So with
-no `TITLE_MODEL` this prints `unknown=no-title-model` and the selector refuses,
-which is the correct behaviour and not a placeholder: a blind tap on an
-unobserved menu is exactly the hazard.
+`models/title-moto-g56-v207.json` is the measured model for the canonical build
+on the calibrated handset (2026-08-26, 26 frames). Its numbers, with their
+control:
 
-To calibrate, capture title frames for each save state and run `--measure` over
-them; the bands print with their fractions, and a model is those numbers with a
-separating threshold. `tools/device/testdata/make-title-fixture.py` builds the
-synthetic equivalent that `test-menu.sh` uses to exercise every branch here
-without a phone -- synthetic frames prove the plumbing, never the threshold.
+    band                     newGame        continue       sixthNight
+    title, fresh save (23)   0.0674-0.1318  0.0264-0.0547  0.0000 exactly
+    title, 6th unlocked (3)  0.0690-0.0720  0.0310-0.0330  0.0670-0.0690
+    office HUD (control)     0.0000         0.0000         0.0000
+
+Absent is not "small", it is exactly zero across every frame measured, and the
+narrowest present value is 0.0264 -- so the thresholds sit at 0.008/0.020 with
+the interval between them meaning "undecided", never "probably absent".
+
+The gate exists because of the Options screen. Its "Perspective Effect" label
+lands inside the New Game band at 0.0186, against a 0.020 present threshold: a
+margin of 0.0014, which is not a classifier. So the item bands are consulted
+only after the game logo says this is the title screen at all -- the word "Five"
+reads 0.106-0.123 on every title frame measured and 0.007-0.012 on Options.
+
+With no `TITLE_MODEL` this prints `unknown=no-title-model` and the selector
+refuses. To calibrate a different handset or build, run `--measure` over frames
+of each save state and set thresholds that separate them, with the undecided
+interval kept wide enough to be useful.
+`tools/device/testdata/make-title-fixture.py` builds the synthetic equivalent
+that `test-menu.sh` uses to exercise every branch here without a phone --
+synthetic frames prove the plumbing, never the threshold.
 
 Exit codes: 0 confident, 3 unknown/refuse, 2 usage or I/O failure.
 """
@@ -71,6 +84,16 @@ def load_model(path):
         if (not isinstance(point, list) or len(point) != 2
                 or not all(isinstance(v, int) for v in point)):
             fail(f"title-model-bad-point:{name}")
+    gate = model.get("title_gate")
+    if gate is not None:
+        try:
+            box = [int(v) for v in gate["box"]]
+            gate = {"box": tuple(box), "min": float(gate["min"]),
+                    "max_absent": float(gate["max_absent"])}
+        except (KeyError, TypeError, ValueError):
+            fail("title-model-bad-gate")
+        if len(box) != 4 or not gate["max_absent"] < gate["min"]:
+            fail("title-model-bad-gate")
     # An undecided band is mandatory. A model whose present and absent
     # thresholds meet has no way to say "ambiguous", and this screen's whole
     # job is to be able to refuse.
@@ -85,7 +108,7 @@ def load_model(path):
     if band_w <= 0 or band_h <= 0:
         fail("title-model-bad-band")
     return {"items": items, "present_min": present, "absent_max": absent,
-            "bright_min": bright, "band": (band_w, band_h),
+            "bright_min": bright, "band": (band_w, band_h), "title_gate": gate,
             "build": model.get("build", "unnamed")}
 
 
@@ -104,14 +127,17 @@ def read_frame(source):
     return image
 
 
+def box_fraction(image, box, bright_min):
+    data = list(image.crop(box).resize((32, 32)).getdata())
+    return sum(1 for r, g, b in data if min(r, g, b) > bright_min) / len(data)
+
+
 def bright_fraction(image, point, band, bright_min):
     x, y = point
     half_w, half_h = band[0] // 2, band[1] // 2
     box = (max(0, x - half_w), max(0, y - half_h),
            min(GEOMETRY[0], x + half_w), min(GEOMETRY[1], y + half_h))
-    data = list(image.crop(box).resize((32, 32)).getdata())
-    lit = sum(1 for r, g, b in data if min(r, g, b) > bright_min)
-    return lit / len(data)
+    return box_fraction(image, box, bright_min)
 
 
 def capture_via_adb(timeout):
@@ -157,6 +183,23 @@ def main(argv):
         fail("no-title-model")
     model = load_model(model_path)
     image = read_frame(capture_via_adb(8.0) if use_adb else sys.stdin.buffer)
+
+    # Is this the title screen at all? Asking the item bands that question is
+    # the wrong way round, and the Options screen proves it: its "Perspective
+    # Effect" label lands inside the New Game band at 0.0186, a hair under the
+    # 0.020 present threshold. A margin of 0.0014 is not a classifier.
+    #
+    # The game logo is: the word "Five" reads 0.106-0.123 on every title screen
+    # measured, on both sensors (native screencap and upscaled screenrecord),
+    # and 0.007-0.012 on Options. Gate on that, and the item bands are only ever
+    # consulted once the screen is known to be the title.
+    gate = model["title_gate"]
+    if gate is not None:
+        value = box_fraction(image, gate["box"], model["bright_min"])
+        if value <= gate["max_absent"]:
+            fail(f"not-the-title-screen:{value:.4f}")
+        if value < gate["min"]:
+            fail(f"ambiguous:title-gate:{value:.4f}")
 
     present = []
     for name in sorted(model["items"]):

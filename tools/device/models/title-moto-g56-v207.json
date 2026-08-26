@@ -1,0 +1,39 @@
+{
+  "schema": "title-model-v1",
+  "build": "com.scottgames.fnaf2 v2.0.7 versionCode 26",
+  "device": "Moto g56 5G, 2400x1080 landscape",
+  "captured": "2026-08-26",
+  "frames": 26,
+  "band": [
+    660,
+    76
+  ],
+  "bright_min": 150,
+  "present_min": 0.02,
+  "absent_max": 0.008,
+  "items": {
+    "newGame": [
+      400,
+      640
+    ],
+    "continue": [
+      400,
+      730
+    ],
+    "sixthNight": [
+      400,
+      880
+    ]
+  },
+  "title_gate": {
+    "box": [
+      150,
+      40,
+      560,
+      140
+    ],
+    "min": 0.05,
+    "max_absent": 0.03,
+    "note": "the word Five of the game logo: 0.106-0.123 on every measured title frame, 0.007-0.012 on the Options screen"
+  }
+}

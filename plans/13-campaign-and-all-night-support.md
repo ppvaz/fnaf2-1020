@@ -187,7 +187,7 @@ fails if they disagree. **These are simulator figures** — no night below 6 has
 ever been attempted on the device, and nothing here is a device clear or a
 claim that one policy is right for every night. That decision is package 4's.
 
-### 2. Add a save-safe title/menu observer and selector
+### 2. Add a save-safe title/menu observer and selector — complete 2026-08-26
 
 - Represent `MenuTarget` separately from `GameConfig`.
 - Classify the title items actually visible on the target build: New Game,
@@ -203,9 +203,8 @@ claim that one policy is right for every night. That decision is package 4's.
 Sixth Night unlocked, Custom Night unlocked, unknown layouts, and stale/focus
 loss. A test proves that no unapproved path can press New Game.
 
-**Result (partial — no completion credit), 2026-08-26.** The selector, the
-capability and the refusals exist; the classifier for the real build does not,
-and cannot until a title frame is captured.
+**Result: closed 2026-08-26.** The selector, the capability, the refusals, and
+a measured classifier for the canonical build all exist.
 
 What landed. `tools/device/menu.sh` is now the only place a title item is
 pressed. Four scripts — `trial-minus7.sh`, `trial-maskcamp.sh`,
@@ -228,21 +227,42 @@ screen, a measurement inside the model's undecided band, lost focus, a stale
 observation, and an item that is on screen but has no measured coordinate —
 which is Custom Night's actual state, so it is observed and still refused.
 
-What did not land, and why the package stays open. **There is no title model
-for the target build.** The bullet "classify the title items actually visible
-on the target build" needs labelled title frames, the local capture root holds
-none, and the save that would have produced them was lost before anything
-captured it. So the observer answers `no-title-model` on a real device and the
-selector refuses — correct behaviour, not a placeholder, but it means **no
-route can currently select a night on the phone.** That is a deliberate
-consequence of this plan's own invariant ("a missing expected title item aborts
-before any gameplay tap"): the previous behaviour was a blind tap at a
-coordinate for an item that a fresh save no longer shows.
+The measured model, `tools/device/models/title-moto-g56-v207.json`, was built
+the same day from 26 real frames once the correct game was reinstalled. Its
+numbers and its control:
 
-The fixtures are synthetic and prove the plumbing only. They say nothing about
-where the real items are or how bright they are; `title-observe.py --measure`
-over captured frames is how the first real model gets built, and the refusal
-message says so. Unblocking this is one capture session, not code.
+| band | newGame | continue | sixthNight |
+|---|---:|---:|---:|
+| title, fresh save (23 native screencaps) | 0.0674–0.1318 | 0.0264–0.0547 | **0.0000 exactly** |
+| title, 6th unlocked (3 recorded frames) | 0.0690–0.0720 | 0.0310–0.0330 | 0.0670–0.0690 |
+| office HUD (control) | 0.0000 | 0.0000 | 0.0000 |
+
+Absent is not "small", it is exactly zero on every frame measured, and the
+narrowest present value is 0.0264 — so the thresholds sit at 0.008/0.020 and
+the interval between them means *undecided*, never "probably absent". The two
+sensors agree: `newGame` reads 0.067–0.072 on a native screencap and 0.069–0.072
+on upscaled `screenrecord` output.
+
+**The control changed the design.** The Options screen was measured as a
+negative, and its "Perspective Effect" label lands inside the New Game band at
+**0.0186** against a 0.020 present threshold — a margin of 0.0014, which is not
+a classifier. Asking the item bands whether this is the title screen is the
+wrong way round. So the model now carries a `title_gate`: the word "Five" of
+the game logo, which reads 0.106–0.123 on every title frame measured and
+0.007–0.012 on Options. The item bands are consulted only after the gate says
+this is the title at all, and Options now refuses as `not-the-title-screen`
+rather than as an ambiguous item. Without the negative control this would have
+shipped with a 0.0014 margin and looked fine.
+
+Verified end to end against the live phone, read-only: `items=continue,newGame`
+on the fresh save, which is correct — no 6th Night yet.
+
+Two things named rather than solved. `customNight` still has **no measured
+coordinate**, because the item has never been on screen; it is observable in a
+fixture and refused by `menu_coord`, and package 8 owns it. And the title
+carries two more items than this plan listed — Options and Unlocks, on the
+right — which the four `MenuTarget` values do not cover and the gate makes
+harmless.
 
 ### 3. Identify night start, win, death, and save advancement
 

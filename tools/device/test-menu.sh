@@ -134,9 +134,17 @@ attempt ambiguous continue
 expect 'an undecided band refuses' 'ambiguous:continue'
 expect_no_tap 'an undecided band refuses'
 
+# The gate runs before the item bands, so another screen is rejected as another
+# screen rather than being asked which title items it has. The real Options
+# screen is why: its "Perspective Effect" label lands inside the New Game band
+# at 0.0186, against a 0.020 present threshold.
 attempt unknown-layout continue
-expect 'an unrecognised screen refuses' 'no-items-visible'
+expect 'an unrecognised screen refuses' 'not-the-title-screen'
 expect_no_tap 'an unrecognised screen refuses'
+
+attempt title-no-items continue
+expect 'a title screen with no items refuses' 'no-items-visible'
+expect_no_tap 'a title screen with no items refuses'
 
 # The wrong game, and the trap that makes it hard to see: FNaF 1 also reports
 # versionName 2.0.7, so only the package name identifies the game.
@@ -162,23 +170,30 @@ attempt sixth-unlocked bogusTarget
 expect 'an unknown MenuTarget refuses' 'not a MenuTarget'
 expect_no_tap 'an unknown MenuTarget refuses'
 
-# No model is the state the project is actually in: the save was lost before
-# any title frame was captured. It must refuse, and it must say how to fix it.
+# A model that is not there. The shipped default is the calibrated handset's;
+# another handset or build has none until someone measures one, and that must
+# refuse and say how to fix it rather than fall back to numbers from a
+# different screen.
 (
   set +e
   export MOCK_FRAME="$TMP/frames/sixth-unlocked.png" MOCK_TAPS="$TAPS" MOCK_FOCUS="$FOCUS_OK"
   export MOCK_PACKAGES="$PACKAGES_OK" MOCK_VERSION=2.0.7
+  export TITLE_MODEL="$TMP/there-is-no-model-here.json"
   : > "$TAPS"
-  unset TITLE_MODEL
   # shellcheck source=/dev/null
   source "$HERE/coords.sh"
   # shellcheck source=/dev/null
   source "$HERE/menu.sh"
   menu_select sixthNight
 ) > "$OUT" 2>&1 || true
-expect 'no title model refuses' 'no-title-model'
-expect 'no title model says how to build one' 'title-observe.py --measure'
-expect_no_tap 'no title model refuses'
+expect 'a missing title model refuses' 'title-model-unreadable'
+expect 'a missing title model says how to build one' 'title-observe.py --measure'
+expect_no_tap 'a missing title model refuses'
+
+# The shipped model is the one the runners actually get, so it must load and
+# it must be the calibrated build's.
+[ -f "$HERE/models/title-moto-g56-v207.json" ] || {
+  echo 'FAIL the default title model menu.sh points at does not exist'; failed=1; }
 
 # ------------------------------------------------------- the structural half
 # Nothing but this module may name the save-destructive coordinate.
@@ -203,4 +218,4 @@ for runner in trial-minus7.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-au
 done
 
 [ "$failed" -eq 0 ] || { echo 'menu selector checks failed'; exit 1; }
-echo 'menu selector: 6 save states, 8 refusals, New Game gated by capability, no second title table'
+echo 'menu selector: 7 screen states, 9 refusals, New Game gated by capability, no second title table'

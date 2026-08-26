@@ -37,6 +37,12 @@ MENU_PACKAGE="${MENU_PACKAGE:-com.scottgames.fnaf2}"
 # menu_require_target_build.
 MENU_TARGET_VERSION="${MENU_TARGET_VERSION:-2.0.7}"
 
+# The measured title model for the canonical build on the calibrated handset.
+# Device-specific in exactly the way coords.sh is, and defaulted for the same
+# reason: a runner that has to be told where the title items are will be run
+# without being told.
+TITLE_MODEL="${TITLE_MODEL:-$MENU_HERE/models/title-moto-g56-v207.json}"
+
 MENU_ITEMS=""
 MENU_UNKNOWN=""
 MENU_OBSERVED_MS=0
@@ -68,7 +74,7 @@ menu_observe() {
   local line
   MENU_ITEMS=""; MENU_UNKNOWN=""
   MENU_OBSERVED_MS=$(menu_now_ms)
-  line=$(TITLE_MODEL="${TITLE_MODEL:-}" python3 "$MENU_HERE/title-observe.py" --adb 2>/dev/null) || true
+  line=$(TITLE_MODEL="$TITLE_MODEL" python3 "$MENU_HERE/title-observe.py" --adb 2>/dev/null) || true
   case "$line" in
     items=*)   MENU_ITEMS="${line#items=}" ;;
     unknown=*) MENU_UNKNOWN="${line#unknown=}" ;;
@@ -150,13 +156,14 @@ menu_select() {
 
   menu_observe || {
     echo "menu: cannot see the title screen ($MENU_UNKNOWN); refusing to press $target" >&2
-    [ "$MENU_UNKNOWN" = "no-title-model" ] && cat >&2 <<'HINT'
-menu: no title model exists for this build yet, and one is not invented here.
+    case "$MENU_UNKNOWN" in title-model-*|no-title-model) cat >&2 <<'HINT'
+menu: this build has no usable title model, and one is not invented here.
       Capture title frames for each save state and run
         tools/device/title-observe.py --measure < frame.png
       then write the separating thresholds into a title-model-v1 file and point
       TITLE_MODEL at it. Until then no route may press a title item.
 HINT
+    ;; esac
     return 3
   }
 
