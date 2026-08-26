@@ -118,6 +118,75 @@ sourced reason it does not need to.
 This package is a prerequisite for act-then-verify (package 3) and for plan 03's
 right-vent mode, and it is the layer plans 12 and 13 have been assuming.
 
+#### Source answer, 2026-08-26: the pan is real, sourced, and gates nothing
+
+The offline half of this package is done. The full derivation, with every group,
+is in [`ANDROID-SOURCE-STATUS.md`](../docs/android/ANDROID-SOURCE-STATUS.md)
+§"the office pan is sourced, and no game rule reads it". The verdict:
+
+- **The engine needs no pan *gate*.** An exhaustive scan of frame 3 for every
+  reference to `camera follow 2` (80) and `camera follow` (73) finds the scroll
+  (g252), the integrator (g228/g247), the touch drive (g235-246), an attack stop
+  (g624) and a hitbox re-registration (g1231) — and nothing else. The left vent
+  light (**g313**, previously uncited), the right vent light (g320) and the hall
+  light (g83-86) have **no view-position condition**. Adding one to
+  `src/engine.js` would be inventing a rule. `[SOURCED]`
+- **The engine does need a pan *cost*, and it does not belong in the engine.**
+  A pan changes no game state and spends no game resource — only `lit?` drains
+  the battery (g284). What it spends is actuator occupancy and wall clock, which
+  is exactly what `tools/device/actuator.mjs` already models. Put the duration
+  and the reachability window there and the *decision* to pay it in the policy
+  schedule; leave `src/engine.js` alone.
+- **The vents are not symmetric.** The office opens at v23 = 512, the **minimum**
+  of a 512-1088 clamp (g228/g247) — one end of a 576-unit, one-directional
+  travel. The vent-light hitboxes are scene-anchored (g1223 pins them onto
+  `left light`/`right light`) while the hall-light hitbox is created at an
+  absolute HUD position (g1072/g1077) and is the one control g1231 never has to
+  re-register while panning. So the hall light is pan-free and the right vent is
+  at the far end of the whole travel. `[SOURCED]` for the rest position and the
+  anchoring; `[INFERRED]` for which light is reachable at rest.
+- **Plan 03's right-vent camp is the mode that pays for this**, and it should be
+  re-priced before it is scheduled, not after.
+
+What the source settles, so the phone probe need not re-derive it:
+
+| Question | Sourced answer |
+| --- | --- |
+| drag, fling, or hold? | **Hold-at-edge.** g229 zeroes the velocity every frame before g241-246 re-derive it from the current touch X. No inertia |
+| continuous or snapping? | **Continuous**, an integer accumulator clamped to 512-1088 (g247). No snap targets |
+| speed | ±8 / ±17 / ±25 units per 16.666 ms at screen X 290/240/180 and 734/784/844 of a 1024-wide virtual screen, × `Min(4, frameDelta/16.666)` (g1236). Frame-rate compensated |
+| full traverse | 576 units → **384 ms** fastest band, 565 ms middle, 1200 ms outer, at 60 fps `[INFERRED]` |
+| is input dropped mid-pan? | **No.** The pan touch (`Multiple Touch` v4), the two vent lights (v0/v1) and the flashlight (`hudFlashlight` v0) are four independent slots, and g237 refuses to claim a touch that landed on a light hitbox at all |
+| does a held light survive a pan? | **No.** g299 clears the vent lights every 200 ms and only g313/g320 re-assert them while the touch is still over the hitbox; g308/g315 drop the tracked id the moment it is not. A stationary finger loses a sliding hitbox |
+| why did two nights pan instead of pressing? | Not a priority inversion — g237 gives buttons priority. The finger **missed the hitbox** and landed in the edge band, which is what an unclaimed touch there does |
+
+What only the device (or a richer dump) can answer:
+
+1. **Scene X of `left light` and `right light`**, and their hitbox sizes. A
+   logic-only dump has no frame instance list; `tools/dump/EventTextDumper.cs`
+   would have to be extended to emit X/Y/layer. Until then the travel a
+   right-vent read costs is `[UNKNOWN]` and everything above is a rate without a
+   distance.
+2. **The virtual→physical mapping.** The bands are at virtual X 180/240/290 and
+   734/784/844 with Y < 688; the phone's letterboxing turns those into HID
+   coordinates, and into the *safe* coordinates that reach a light without
+   claiming a pan.
+3. **Sustained frame rate during a pan.** The velocity clamp is `Min(4, …)`, so
+   a tick longer than 66 ms under-scrolls and the wall-clock figures above
+   stretch.
+4. **Whether an HID hold in an edge band reads as one continuous touch.** This
+   repository already knows short taps are dropped; a pan is the longest hold in
+   the vocabulary and has never been actuated deliberately.
+
+The nearest external baseline is in-engine, not Android:
+[`SHOOTER25-BOT-STATE-MACHINE.md`](../docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md)
+records the Shooter25 practice mod driving the **same `camera follow 2`** object,
+with its bot gating the left light on `X <= 680` and the right on `X >= 910`.
+680 < 910, so **no single pan position actuates both vent lights.** That is a
+modified PC build with its own numbering, so those thresholds are `[CALIBRATED]`
+for Android at best — but they are the right shape to check the measurement
+against.
+
 ### 1. Extract a shadow state transition log
 
 - Define the records above and emit them from the existing runner without

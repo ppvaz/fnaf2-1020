@@ -504,6 +504,134 @@ policy must derive identity from controller state rather than from the cue.
 The events now carry a `sample` field so a controller can be held to what the
 phone can actually hear.
 
+## 2026-08-26: the office pan is sourced, and no game rule reads it
+
+Package 0 of the [stock-device controller plan](../../plans/10-stock-device-controller.md)
+asked whether the exact simulator needs a pan state. The event sheet answers it
+completely, and the answer splits in two: **the pan is fully sourced as a
+mechanism, and it is read by nothing in the game.**
+
+### The mechanism
+
+The office view position lives on one object, `camera follow 2` (event handle
+80), and it is the *display scroll*, not a camera selection:
+
+| Group | Rule |
+| --- | --- |
+| 252 | `viewing = 0` → set the display X to `camera follow 2`'s X. Unconditional every frame the monitor is down |
+| 73 / 118 / 121 / 175 | the monitor-up views scroll from `camera follow` (73) or are pinned to X = 0 — a separate carrier |
+| 228 | start of frame: `camera follow 2` v18 = 0, **v23 = 512** |
+| 247 | every frame: `v23 = Max(512, Min(1088, v23 + v18))`, then X := v23 |
+
+So the pan is an integrator with a **clamped range of 512-1088 — 576 units of
+travel — and the office opens at 512, the minimum end.** [SOURCED] The whole
+range is one-directional from rest. (`A -3 num=8` taking a single X parameter
+reads as "centre display at X"; with a 1024-wide virtual screen that implies a
+1600-wide office. The 1024 width is confirmed below; the office width is
+[INFERRED].)
+
+The Android drive is a **hold-at-edge**, not a drag and not a fling: [SOURCED]
+
+| Group | Rule |
+| --- | --- |
+| 235-238 | a new touch sets a global to 0, +1 if it is over neither `hudFlashlightHitbox` nor `muteButtonHitbox` (236), +1 if it is over none of `honk`, `lightLeftHitbox`, `lightRightHitbox` (237). **Only at 2** does group 238 claim it as the pan touch (`Multiple Touch` v4) |
+| 240 | parent: the pan touch exists and its Y < 688. Computes `Multiple Touch` v3 = `XTouch(v4) - XLeftFrame`, i.e. the touch's **screen** X |
+| 241-243 | v3 < 290 / < 240 / < 180 → `camera follow 2` v18 = **-8 / -17 / -25** × the frame-delta scale |
+| 244-246 | v3 > 734 / > 784 / > 844 → v18 = **+8 / +17 / +25** × the same scale |
+| 229 | v18 = 0 **every frame**, before 241-246 run |
+| 230 | v18 = 0 and the pan touch is released when the monitor is up during an attack |
+
+Group 229 is what makes it a hold: the velocity is recomputed from the current
+touch position each frame and there is **no inertia and no snap target**. The
+thresholds are symmetric about 512, which fixes the virtual screen at **1024
+wide**; the pan band is the outer ~28% of each side, above Y = 688. [SOURCED]
+
+The multiplier is the frame-delta scale group 1236 writes as
+`Min(4, frameDelta/16.666)`, so the pan is **frame-rate compensated**: the
+*distance* is frame-rate independent, the *wall clock* is not, and a tick longer
+than 66 ms under-scrolls against the clamp. At 60 fps a full 576-unit traverse
+is **384 ms** in the fastest band, 565 ms in the middle, 1200 ms in the outer
+band. [INFERRED — sourced constants, assumed 60 fps]
+
+### Nothing reads it
+
+An exhaustive scan of frame 3 for every reference to handles 80 and 73 — `OI`,
+`ParamObject`, `Position`, and the `oi=` inside expression items — returns only
+the groups above plus g220-225 (the PC mouse edge-pan and its X > 500 / X < 1100
+bounds), g624 (an attack stops the pan) and g1231 (below). **No light, vent,
+attack, animatronic, battery or timer rule tests the view position.** [SOURCED]
+
+In particular the three office lights are **unconditional with respect to pan**:
+
+| Light | Android group | Its whole condition set |
+| --- | --- | --- |
+| left vent | **313** | the touch tracked in `Multiple Touch` v0 is over `lightLeftHitbox`; `viewing = 0`; `mask` v0 = 0; no BB at 123 |
+| right vent | 320 | the same with v1 and `lightRightHitbox` |
+| hall (`lit?`) | 83-86 | the touch tracked in `hudFlashlight` v0 is over `hudFlashlightHitbox`; `battery life` > 0; `in danger` = 0; then the `viewing`/mask/BB branch |
+
+g301/g303 are the mouse equivalents of 313/320. **Group 313 is the Android left
+vent light and was not previously cited** — the ledger cited g301/303/320 and
+skipped it. None of the five has a view-position condition. [SOURCED]
+
+So the source verdict is: **the exact simulator does not need a pan state as a
+gate.** Adding one to `src/engine.js` would be inventing a rule the event sheet
+does not have.
+
+### But the vent lights are scene-anchored and the hall light is not
+
+The gating is geometric, not logical, and the two kinds of button differ:
+
+| Group | Rule |
+| --- | --- |
+| 1223 | start of frame: `lightLeftHitbox` and `lightRightHitbox` are positioned **onto** `left light` and `right light` — scene objects — and never moved again |
+| 1072 / 1077 | `hudFlashlightHitbox` is created at an **absolute** position with no parent, on layer 4 (290,145) or layer 3 (32,96) depending on the control-layout branch |
+| 1226 / 1229 / 1230 | `honk`, `lightLeftHitbox`, `lightRightHitbox` are registered as `Perspective` zones 0/1/2. `hudFlashlightHitbox` never is |
+| **1231** | those three zones are **re-registered whenever `camera follow 2` v18 ≠ 0** — that is, while the view is panning |
+
+A hitbox that scrolls with the office cannot be touched when the pan has carried
+it off screen, and group 1231 exists precisely because the mapping has to be
+rebuilt as it moves. So the vent lights are pan-dependent **in screen space**
+while the hall light is not. [SOURCED for the groups; [INFERRED] for the
+conclusion, which the placements below would make [SOURCED].]
+
+Two consequences follow from groups already in the ledger:
+
+- **A held vent light does not survive a pan.** g299 clears both vent lights on
+  a 200 ms timer and only g313/g320 re-assert them, each requiring the tracked
+  touch to still be *over* the hitbox. g308/g315 drop the tracked touch id the
+  moment it is not. A stationary finger loses the hitbox as the view moves, and
+  the light is out within 200 ms. [SOURCED]
+- **A pan does not block other input.** The pan touch (`Multiple Touch` v4), the
+  two vent-light touches (v0, v1) and the flashlight touch (`hudFlashlight` v0)
+  are four independent slots, and g237 explicitly refuses to claim a touch that
+  landed on a light hitbox. A second finger can hold the hall light, the mask or
+  the monitor while a first finger pans — those hitboxes do not move. [SOURCED]
+
+That last point also re-reads the two nights lost to panning. *"Started panning
+view instead of flashing"* and *"fails to press hall light and moves the vision
+instead"* are **not** the game preferring pan over press: g237 gives the button
+priority. They are the finger **missing the hitbox** and landing in the edge
+band, which is what an unclaimed touch there does.
+
+### What the dump cannot say
+
+`tools/dump/EventTextDumper.cs` emits logic only, so the **frame object
+placements are not in it**: the scene X of `left light` and `right light`, their
+hitbox sizes, and therefore the pan positions at which each is on screen are
+`[UNKNOWN]` from this artifact. Closing it needs either an extension to the
+dumper that emits the frame instance list (X/Y/layer) or a device measurement.
+
+The nearest existing evidence is the in-engine precedent, not the Android
+source. [`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md)
+records that the Shooter25 practice mod drives **the same `camera follow 2`
+object**, and that its embedded bot gates its own light actuations on it: left
+light while `X <= 680`, right light while `X >= 910`. Because 680 < 910, **no
+single pan position actuates both vent lights** and the bot pans between them.
+That is a modified PC build (Fusion 295, XOR 0) with its own group numbering, so
+for Android those two numbers are `[CALIBRATED]` at best — but the *shape* they
+describe agrees with g228's rest-at-512: the office opens at one end of its
+travel, so the two vents are not symmetric.
+
 ## Labels
 
 - **Implemented** — Android source rule is represented and regression-tested.
@@ -547,6 +675,7 @@ phone can actually hear.
 | P0 | ~~Selected-camera movement gate~~ **Implemented 2026-08-20** | Post-XOR: the `your view` marker holds pending rolls for the three Withereds (344-348, no monitor condition — persists monitor-down via the parked marker) and monitor-up Mangle (357). Toys have Show Stage leave-order gates instead (350-356). Engine default `selectedCameraGate: true`. |
 | P0 | ~~Dormant camera-light countdown~~ **Resolved 2026-08-20: live** | Groups 450-457 feed B from `stun time` = 400 (never written); the pre-XOR audit was reading the wrong counter. `STUN_FRAMES = 400` is Android-sourced, with per-group camera exclusions (8/9/11) and the Paper-Pals `- night*50` variant. See [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md). |
 | P1 | Display-camera mapping | Replace the two route-fitted low-confidence room mappings with direct Android UI/object anchors. `mapLocation.Active` / `mapPortrait.Active` (g1167-1169) look like the anchor pair; the logic-only dumper cannot close the artwork half |
+| P1 | Office pan position | **Sourced 2026-08-26, deliberately not modelled as a gate.** `camera follow 2` v23 integrates to a clamped 512-1088 and the office opens at 512 (g228/g247/g252); the Android drive is a hold-at-edge (g235-246) with no inertia. **No game rule reads it** — the vent lights (g313/g320) and hall light (g83-86) have no view-position condition — so the engine needs no pan state. What remains is a *cost*: the scene X of `left light`/`right light` is not in a logic-only dump, so the travel a right-vent read actually costs is `[UNKNOWN]`. See the section above |
 | P1 | ~~In-office auxiliary mover~~ **Resolved 2026-08-20** | The pre-XOR "`in office` object" is Balloon Boy himself (dump oi 102 = `balloon boy`); his 122/123 monitor-raise branch is BB's office behavior, not an extra mover |
 | P1 | ~~Puppet~~ **Sourced 2026-08-20** | Post-box route is g404-411: CAM 11 → 10 → 07, then his own `decide path` value picks 1 → 03 → 01 or 2 → 04 → 02, both arriving at marker 122 (g574 turns that into the encounter). Five hops on the ordinary movement roll replace the old flat 5-20 s timer, so a dry box is slower to kill than the engine assumed. (The supposed CAM 11 flash-stall event, group 457, actually targets Paper Pals with `stun time - night*50`; the Puppet has no flash group.) |
 | P1 | ~~Balloon Boy inside-office behavior~~ **Sourced 2026-08-20** | Roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Inside: g96 forces `lit?` to zero every frame, g301/303 stop the vent lights answering, g75/g85 exclude him while g77/g86 do not — so CAM 10 keeps its light — and **no group moves him out of 123**. He never attacks; the engine no longer kills on entry, it takes the lights away and lets Foxy finish |
