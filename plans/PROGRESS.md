@@ -9,15 +9,18 @@ packages are closed.
 
 ## Very next step
 
-**Resume point, written 2026-08-26.** The working tree carries a large body of
-uncommitted work from two prior sessions. As of this line the engine suite is
-**green — 49 checks**, and the two failures it had a moment ago are fixed:
-`test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` (the new human-floor
-bypass shipped with no test of either arm; both arms are now pinned), and
-`provision-cue-model.sh` was unaccounted for in `test-grade-run-coverage.mjs`.
+**Resume point, written 2026-08-26.** The tree is **clean** and the engine suite
+is **green at 50 checks**. A large uncommitted body from two prior sessions has
+been verified and landed as three commits: the `desync-scan.py` alignment
+refusal, the Night 6 route repair with the runner's evidence fixes, and the cue
+helper's shadow-only detector.
 
-Nothing below is half-applied, but **almost none of it is committed**. Slice it
-before adding more.
+Two real defects were found and fixed while landing it, both of which had the
+suite red: `test-plan-interpreter.sh` died on an unbound `NIGHT6_LEFT` — the new
+human-floor bypass shipped with neither arm tested, and both are now pinned —
+and `android/cue-helper/test.sh`, the only check that exercises the live audio
+detector, ran nowhere and resolved its JDK by hardcoding one laptop's Homebrew
+prefix. It is in the suite now.
 
 ### The single most important thing learned today
 
