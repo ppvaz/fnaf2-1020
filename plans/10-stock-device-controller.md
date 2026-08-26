@@ -70,6 +70,54 @@ line of a long shell routine is executing.
 
 ## Work packages
 
+### 0. Establish a verified interaction vocabulary
+
+**Added 2026-08-26.** The project built a timed full-night schedule before it
+built a tested vocabulary of the interactions that schedule is made of, and the
+gap shows up in three places at once:
+
+- **Panning exists in this repository only as an accident.** The office view
+  pans, and the only records of it are two failures the device owner reported
+  from watching the phone before any log showed them — *"started panning view
+  instead of flashing"* and *"fails to press hall light and moves the vision
+  instead"* (`ON-DEVICE-VALIDATION.md`, `HID-MULTITOUCH.md`). Both cost nights.
+  There is no pan action, no pan-position observation, and no test.
+- **The engine does not model pan at all.** `hallView` is `monitor !== MON_UP`,
+  and `ventLightL`, `ventLightR` and the hall light are all reachable
+  unconditionally. If reaching the right vent light on a phone requires panning,
+  the simulator is pricing a night the device cannot play.
+- **`coords.sh` has one vent-light coordinate**, commented "in office this is
+  left vent", and none for the right vent — while plan 03 is an entire right-vent
+  camp mode. Every office coordinate is implicitly "valid at whatever pan
+  position the office opens at", and nothing states or checks that.
+
+So the vocabulary has to be established before, not after, another schedule is
+priced against it.
+
+- Enumerate the basic interactions as a closed set: pan left / pan right / pan
+  to centre, left vent light, right vent light, hall flash, mask on / off,
+  monitor raise / lower, select each camera, wind the box, mute the call.
+- For each one, three things and not fewer: the **actuation** (contact geometry
+  the phone accepts), a **positive observation** that it happened, and a
+  **precondition** naming the state it is valid in — pan position, monitor
+  state, mask state.
+- Establish whether office coordinates are pan-dependent, and if they are, make
+  pan position an observed part of the controller's state rather than an
+  assumption.
+- Decide, with evidence, whether the exact engine needs a pan state. If reaching
+  a vent light costs a pan and a pan costs time, that is a resource the
+  simulator currently gives away free.
+- Keep every measurement here separate from any policy that uses it.
+
+**Gate:** each interaction in the vocabulary has a device-verified actuation, a
+positive verification that distinguishes "it happened" from "it was dropped" and
+from "it panned instead", and a stated precondition. A deliberate pan is
+demonstrated and observed. The simulator either models pan cost or records a
+sourced reason it does not need to.
+
+This package is a prerequisite for act-then-verify (package 3) and for plan 03's
+right-vent mode, and it is the layer plans 12 and 13 have been assuming.
+
 ### 1. Extract a shadow state transition log
 
 - Define the records above and emit them from the existing runner without
