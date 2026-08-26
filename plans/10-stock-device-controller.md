@@ -235,6 +235,60 @@ than sweeping the phone, and it is what would let plans/14 derive coordinates on
 a new device instead of hand-calibrating them. The right vent still has no
 measured coordinate, and reaching it requires a pan the schedule must budget.
 
+**Dump extension, 2026-08-26.** The dumper now emits the frame instance list.
+It answered the pan question and refused the one it was built for — full
+derivation and evidence labels in
+[`ANDROID-SOURCE-STATUS.md`](../docs/android/ANDROID-SOURCE-STATUS.md)
+§"the office is 1600x768".
+
+- **The office frame is 1600 x 768.** `[SOURCED]` The width was `[INFERRED]`
+  before. `1600 - 1024 = 576 = 1088 - 512`, so the pan clamp is exactly "do not
+  scroll past the frame edges" — the width comes from the frame header and the
+  clamp from event parameters, so the two confirm each other. The viewport at
+  display centre `c` is scene X `[c - 512, c + 512]`: `[0, 1024]` at rest,
+  `[576, 1600]` at maximum.
+- **The virtual screen is stretched to fill the panel, not letterboxed.**
+  `physX = sceneX * 2400/1024`. `[CALIBRATED]` Checked twice against
+  measurements it was not built from: g244's virtual-734 band predicts phys
+  **1720** and the phone found the band between 1700 and 1800; the hall light at
+  phys (1200, 540) is virtual (512, 384), dead centre. A letterboxed mapping
+  predicts 1182 and is refuted.
+- **This resolves question 2 of "what only the device can answer"** — the
+  virtual→physical mapping — and gives plans/14 a derivation rather than a
+  calibration: any handset's coordinates follow from its landscape width.
+- **Vent reachability, at last with a distance.** Left light scene X ~**149**
+  from the phone's own (350,615), ~168 from Shooter25's `X <= 680` — agreeing
+  within 19 units. Right light ~**1451** by symmetry, ~1422 from Shooter25's
+  `X >= 910` — agreeing within 29. `[CALIBRATED]` The right vent enters the
+  viewport at centre ~939, a travel of **~427 of the 576 units (74%)**, and at
+  maximum pan the left light is at screen X ~ -427, off screen. So no single pan
+  position reaches both, exactly as `680 < 910` implied.
+- **Priced: the right vent costs ~285 ms of pan each way, ~570 ms round trip**
+  at the fastest band, before the light is held, against the ~680 ms the cycle
+  has free. `[INFERRED — sourced rates, assumed 60 fps]` **Plan 03's right-vent
+  camp should be re-priced against this before it is scheduled.**
+
+**What the dump refused, which is the more useful half.** The instance list
+places `left light` and `right light` at scene X = **-276** — off the frame,
+both at the same X, 28 units apart: an authoring park stack. Nothing in any of
+the 33 frames repositions or creates them (every `Position` and `Create`
+parameter was scanned for handles 94/95; the only hit is g1223 moving the
+hitboxes *onto* them). Read literally the vent hitboxes would sit where no
+viewport reaches, yet the phone actuates the left one at rest and Shooter25
+agrees. **Two independent controls agree with each other and both contradict the
+dump by ~425 units**, so the contradiction is reported rather than reconciled.
+
+The explanation the evidence supports: the instance list is the *editor's*
+placement, and the Android port builds part of its HUD from code — every mobile
+HUD object is parked on layer 8 at negative Y in a row, and
+`hudFlashlightHitbox.Active` has no frame-3 instance at all while g1072-1081
+position objects relative to it. `[SOURCED]` for the placements and the absence
+of any repositioning event; `[INFERRED]` for the runtime-layout explanation.
+**So a placed position in this dump is not evidence of a runtime position for
+any HUD or interaction object** — the scene X of the vent anchors stays
+`[UNKNOWN]` from source, and the reachability numbers above stand on the phone
+and Shooter25, made derivable by the 1600 width.
+
 ### 1. Extract a shadow state transition log
 
 - Define the records above and emit them from the existing runner without
