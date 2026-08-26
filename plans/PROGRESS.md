@@ -249,6 +249,35 @@ The suite is currently red only because of the separate uncommitted marker-123
 engine edits named in the top resume point. Do not confuse that source-model
 conflict with the resolved cycle boundary.
 
+### Retracted 2026-08-26: the cycle-wrap seam was not the desync cause
+
+Earlier today this dashboard named the cycle wrap-around as the prime suspect
+for the cleared Night 1's ~8 desyncs: every cycle's last instruction ends
+exactly on the next cycle's `0 tap monitor`, 0 ms released against the HID
+auditor's 20 ms floor.
+
+**The 0 ms is real in the emitted plan and irrelevant in delivery.** The runner
+already compensates: `trial-minus7.sh:2476` waits
+`rm_base + rm_cursor + rm_shift + FUSION_POLL_MS`, holding the next anchor back
+one Fusion poll (33 ms), and `test-runner-plan.mjs:223` pins that. Because the
+wait is relative to `rm_shift`, a late macro moves the boundary with it instead
+of compressing the seam. The delivered gap is 33 ms and legal.
+
+So the sweep-shift variants priced against it — 20 ms free, 33 ms costing 3.5
+points on night 6 — were pricing a fix for a defect the runner does not have.
+Those figures stay on the record because they measure something real about
+Foxy's tolerance, but they are not a desync fix.
+
+**This is the second time this exact mistake has been made here.** The trace
+auditor made it first, mistaking the nominal plan clock for wall-clock delivery,
+and its zero-gap finding was retracted for the same reason. `test-recipe.mjs`
+now checks the DELIVERED seam rather than the nominal one, which is the check
+that would have caught both of us.
+
+What caused the Night 1 desyncs is therefore **open again**. `HID_TRACE_RUN=1`
+on the next graded run remains the way to attribute them, since only
+`desync-scan.py` can line the sent trace against what the game did.
+
 ### Open, with what is known
 
 - **The music box contradicts `src/config.js` and is not fixed.** Measured on
