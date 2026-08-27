@@ -195,9 +195,40 @@ document contradicting how the line is actually played.
   are fine, because `grep` handles SIGPIPE and exits cleanly. Use a herestring
   (`grep -q PAT <<<"$captured"`), and don't "fix" the pipelines that are fine.
 
-## Every camera flash must land, and today ~3% do not (2026-08-26)
+## Every camera flash must land — but 68/75 was the wrong instrument (2026-08-26)
 
-**This is the mission blocker, not an elegance detail.** Measured by
+> **WITHDRAWN the same evening, hours after it was written.** The requirement
+> below is right and stands: on a Minus 7 sweep every flash must land, and one
+> miss opens a movement window. **The measurement is not.** `sweepcheck.py`
+> reads *rendered feed brightness*, and the camera switch tears the frame:
+> white bands read 180-213 where a clean lit feed reads 108. Its `lit
+> threshold 87` counts the bands themselves as a flash. Excluding torn frames
+> instead gives 0/21 -- so neither number measures anything.
+>
+> Worse, brightness was never the right signal. **The stun has no rendering
+> term at all.** g450-457 (g455 is Toy Chica) require only: the `your view`
+> marker overlaps the character, `viewing > 0`, `lit? == 1`, and the camera is
+> not the excluded one. There is no condition on any transition or animation,
+> and g40 writes `viewing` and moves the marker atomically on the touch with
+> only a hitbox-overlap condition. So the stun lands the instant the press
+> registers, whatever the screen is drawing.
+>
+> The instrument that *can* answer this is `camtrace.py`: the button highlight
+> is driven from `viewing` by g46-57, so a lit button means the marker moved.
+> A 60 fps frame walk of one probe sweep shows all four buttons registering
+> (10, 4, 7, 11) at 133 ms spacing.
+>
+> **So "CAM 07 misses five of seven sweeps" is unsupported, and the per-night
+> flash-loss rates below are artifacts.** What remains open is why Toy Chica
+> reached the office hallway at 5 AM. The candidates now are that her camera
+> was not in the swept set at that moment, or that `lit?` was not on when the
+> marker was on her -- not that the press was lost. Measure with camtrace and
+> an HID trace, not with feed brightness.
+>
+> Kept, not deleted, because the reasoning about *why every flash must land*
+> is sound and the arithmetic below is the reason the requirement is strict.
+
+Measured by
 `sweepcheck.py` on the cleared `n1-grey-2202`: **68/75 sweeps flashed all of
 10,4,7**. Per flash that is 218/225 = 96.9%; CAM 07 alone is 70/75 = 93.3%,
 because it is **last** in the 10 -> 4 -> 7 order and takes five of the seven
