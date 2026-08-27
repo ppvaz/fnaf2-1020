@@ -58,9 +58,29 @@ const EXCLUDED = new Map([
   ['soak-cue-helper.sh', 'live helper, mock-gated by test-soak-cue-helper.sh'],
   ['select-adb.sh', 'transport helper, gated by test-select-adb.sh'],
   ['watch-vent-cue.sh', 'live watcher'],
+  ['preflight.sh', 'pre-run refusal check -- says whether a night CAN be run and prints the invocation; it launches nothing and has no run to grade, mock-gated by test-preflight.sh'],
   ['run-batch.sh', 'run launcher'],
   ['trial-minus7.sh', 'run launcher'],
   ['trial-maskcamp.sh', 'run launcher'],
+  ['preflight.sh', 'pre-run gate on the phone and the helper -- it decides whether a run can observe anything, and has no run to grade; mock-gated by test-preflight.sh'],
+]);
+
+// tools/cue and tools/dump, under the same rule. The audit that widened this
+// scan noted the hole: CLAUDE.md's purest "instrument nobody runs" example is
+// tools/cue/detect.py, and this check did not look at it.
+const SIBLING_EXCLUDED = new Map([
+  ['detect.py', 'the bang detector scan-night.sh drives; grade-run.sh reaches it through that'],
+  ['features.py', 'feature extraction library for detect.py/evaluate.py, gated by test-cue.py'],
+  ['correlate.py', 'offline waveform cross-correlation -- the control that refuted the 22 thuds, run by hand against a chosen pair'],
+  ['evaluate.py', 'offline sweep harness over labelled audio; reports a matrix, grades no run'],
+  ['export-model.py', 'model builder for the on-phone detector'],
+  ['label-misses.py', 'labelling aid for building the reference set'],
+  ['reference-report.py', 'inventory of the reference samples, which live outside the repository'],
+  ['aimap.py', 'AI-table extractor from the event-sheet dump, gated by test-aimap.py'],
+  ['readdump.py', 'event-sheet dump reader library, gated by test-instances.py'],
+  ['coverage.py', 'group-coverage report over the dump; answers what is unread, not what a run did'],
+  ['extract-samples.sh', 'asset extraction helper for the audio path'],
+  ['regen-dump.sh', 'regenerates the event-sheet dump from the APK'],
 ]);
 
 const sh = readFileSync(join(HERE, 'grade-run.sh'), 'utf8');
@@ -81,9 +101,52 @@ for (const ref of referenced)
     complain(`grade-run.sh invokes ${ref}, which does not exist -- ` +
       'that step will silently grade nothing');
 
+// What actually runs a gate: this suite's registry, and CI's workflow. Read
+// rather than assumed -- that distinction is the whole point of this block.
+//
+// Registry entries only, never prose -- for the same reason grade-run.sh is
+// read invocation-line-only above. Caught by its own positive control: the
+// first version of this check used a substring match, and a COMMENT here
+// naming `test-select-adb.sh` was enough to report the file as run while its
+// registry entry was deleted. A check that a mention satisfies is a check
+// that measures documentation.
+const scriptNames = (text) => {
+  const found = new Set();
+  for (const line of text.split('\n')) {
+    if (/^\s*(#|\/\/)/.test(line)) continue;
+    for (const m of line.matchAll(/['"`]([\w./-]+\.(?:py|mjs|sh))['"`]/g)) {
+      found.add(m[1]);
+      found.add(m[1].split('/').pop());
+    }
+  }
+  return found;
+};
+const suitePath = join(HERE, '..', 'test.mjs');
+const ciPath = join(HERE, '..', '..', '.github', 'workflows', 'ci.yml');
+const registered = scriptNames(readFileSync(suitePath, 'utf8'));
+// CI invokes gates as shell command lines rather than quoted strings.
+const ci = existsSync(ciPath) ? readFileSync(ciPath, 'utf8') : '';
+const ciNames = new Set();
+for (const line of ci.split('\n')) {
+  if (/^\s*#/.test(line)) continue;
+  for (const m of line.matchAll(/([\w./-]+\.(?:py|mjs|sh))/g))
+    ciNames.add(m[1].split('/').pop());
+}
+const runs = (gate) => registered.has(gate) || ciNames.has(gate.split('/').pop());
+
 for (const name of readdirSync(HERE).sort()) {
   if (!/\.(py|mjs|sh)$/.test(name)) continue;
-  if (name.startsWith('test-')) continue; // suite gates, run by tools/test.mjs
+  if (name.startsWith('test-')) {
+    // This used to be `continue`, under the comment "suite gates, run by
+    // tools/test.mjs". That comment was an assumption, and it was false for
+    // five files -- including two that four exclusions below named as their
+    // justification. A gate nobody runs excusing a script from coverage is
+    // the drawer problem wearing the uniform of the fix for it.
+    if (!runs(name))
+      complain(`${name} is a gate that nothing runs -- it is in neither ` +
+        'tools/test.mjs nor .github/workflows/ci.yml. Register it, or delete it.');
+    continue;
+  }
   if (referenced.has(name)) continue;
   if (EXCLUDED.has(name)) continue;
   complain(`${name} is neither invoked by grade-run.sh nor excluded here. ` +
@@ -96,6 +159,47 @@ for (const name of EXCLUDED.keys())
   if (referenced.has(name))
     complain(`${name} is excluded but grade-run.sh invokes it -- delete the stale exclusion`);
 
+// The reasons are free text and nothing parsed them, so a script could drop
+// out of coverage by citing a gate that did not exist or did not run -- and
+// four did. Any `test-*` file a reason names is now resolved and checked.
+for (const [name, reason] of EXCLUDED) {
+  for (const m of reason.matchAll(/\btest-[\w.-]+\.(?:py|mjs|sh)\b/g)) {
+    const gate = m[0];
+    if (!existsSync(join(HERE, gate)))
+      complain(`${name} is excused because of ${gate}, which does not exist`);
+    else if (!runs(gate))
+      complain(`${name} is excused because of ${gate}, which nothing runs -- ` +
+        'register that gate in tools/test.mjs or ci.yml, or excuse this differently');
+  }
+  if (!reason.trim())
+    complain(`${name} is excluded with no reason at all -- an exclusion is a ` +
+      'decision, and a blank one records nothing for the next reader');
+}
+
+// The rule is "do not add an instrument without adding it to grade-run.sh",
+// and it was scoped to this directory only -- while CLAUDE.md's purest
+// example of an instrument nobody runs lives in tools/cue. A sibling
+// directory is not a loophole.
+for (const dir of ['cue', 'dump']) {
+  const path = join(HERE, '..', dir);
+  if (!existsSync(path)) continue;
+  for (const name of readdirSync(path).sort()) {
+    if (!/\.(py|mjs|sh)$/.test(name)) continue;
+    const rel = `../${dir}/${name}`;
+    if (name.startsWith('test-')) {
+      if (!runs(name))
+        complain(`${rel} is a gate that nothing runs -- register it in ` +
+          'tools/test.mjs or .github/workflows/ci.yml, or delete it.');
+      continue;
+    }
+    if (referenced.has(rel)) continue;
+    if (SIBLING_EXCLUDED.has(name)) continue;
+    complain(`${rel} is neither invoked by grade-run.sh nor excluded. ` +
+      'Wire it in, or record why it is not an instrument.');
+  }
+}
+
 if (!failed) console.log(`grade-run.sh coverage: ${referenced.size} scripts invoked, ` +
-  `${EXCLUDED.size} exclusions, nothing unaccounted for`);
+  `${EXCLUDED.size + SIBLING_EXCLUDED.size} exclusions across device/cue/dump, ` +
+  'every gate reachable, nothing unaccounted for');
 process.exit(failed);

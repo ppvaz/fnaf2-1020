@@ -1722,8 +1722,16 @@ CUE_CAMS_UP_LUMA=180
 # above eight of the twelve cameras. So this detector is calibrated on the one
 # state where it is not needed and blind in the state it exists to catch: a
 # desync puts the game on whatever camera the lost press left selected, and
-# CAM 11 is not it. Night 1's single resync failed exactly here, and the read
-# five seconds later still photographed the Main Hall feed.
+# CAM 11 is not it.
+#
+# Corrected 2026-08-26, same day: this comment first said night 1's resync
+# failed "exactly here". It did not, and the session manifest says so --
+# n1-full-1640 ran with CUE_HELPER=0, so CUE_PORT was "-" and the whole
+# verification branch was skipped. That resync failed because nothing verified
+# it, not because luma was blind. The luma blindness is measured and real; it
+# was simply not what broke that night. A cause inferred from a plausible
+# mechanism, with the run's own recorded configuration left unread, is the
+# failure this repository keeps paying for.
 #
 # `grey=` is the near-grey cell count over the whole 20x9 grid, which a
 # point-sampling sensor cannot defeat by geometry. Measured: monitor-up

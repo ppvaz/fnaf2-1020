@@ -165,6 +165,7 @@ const ENGINE = [
   // the caller sets for one run. The structural half proves no second title
   // table exists to route around this.
   ['menu selector', ['device/test-menu.sh']],
+  ['preflight', ['device/test-preflight.sh']],
   // plans/10 package 0: an interaction must be distinguishable from a dropped
   // contact and from a pan. Two nights were lost to a finger that missed a
   // light hitbox and landed in the pan band, and nothing in the run noticed.
@@ -234,8 +235,24 @@ const ENGINE = [
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
   ['cue detector (java)', ['../android/cue-helper/test.sh']],
+  // The pre-run refusal check. n1-full-1640 was launched with CUE_HELPER=0,
+  // so its cue port was "-", the resync verification branch never executed,
+  // and a later session read the failed recovery as evidence the luma
+  // threshold was blind. It was not; nothing had run. A run's configuration
+  // is not a detail to reconstruct afterwards.
+  ['preflight', ['device/test-preflight.sh']],
+  // The on-phone classifier's host-side checks: frame framing, model refusal
+  // bands, and the streaming protocol. It ran NOWHERE before 2026-08-26 --
+  // not here, not in ci.yml -- while four grade-run coverage exclusions named
+  // it as the reason a script was not an instrument. A gate cited as
+  // provenance that nothing executes is worse than no gate.
+  ['screencheck', ['device/test-screencheck.py']],
+  // Same story: the transport helper every device runner picks its phone
+  // with, whose exclusion reads "gated by test-select-adb.sh".
+  ['select-adb', ['device/test-select-adb.sh']],
   // The drawer itself: every tools/device script is either invoked by
-  // grade-run.sh, a test- gate, or consciously excluded with a reason.
+  // grade-run.sh, a test- gate, or consciously excluded with a reason -- and
+  // every test- gate is actually reachable from this list or from ci.yml.
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
   ['cuetest', ['cue/test-cue.py']],
 ];

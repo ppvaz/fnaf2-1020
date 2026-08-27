@@ -24,8 +24,14 @@ decides on it (`cams_still_up()`, gated by `test-plan-interpreter.sh`): the old
 `luma >= 180` arm was calibrated over 1818 samples of night 6-34, whose route
 sits on CAM 11 all night, and **cleared 180 on CAM 11 alone** -- this route
 selects cams 10, 04, 07 and 11, reading 0, 106, 47 and 226. It was blind on
-three of the four cameras a desync can leave selected, which is why night 1's
-single resync failed and the next read still photographed the Main Hall feed.
+three of the four cameras a desync can leave selected.
+
+**Corrected within the hour:** this first said that is "why night 1's single
+resync failed". It is not. `n1-full-1640` ran with **`CUE_HELPER=0`** -- its
+session manifest records it -- so `CUE_PORT` was `-` and the verification
+branch never ran at all. The luma blindness is measured and real; it did not
+cause that failure. **Any rerun must set `CUE_HELPER=1`**, or it repeats the
+same blind run and records no `grey=` either.
 
 **Very next step:** calibrate the threshold -- the measured gap is 145 -> 173 and the midpoint ~159
 is a *starting point*, not a calibrated boundary. Two states remain unsampled
