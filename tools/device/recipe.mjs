@@ -47,7 +47,12 @@ export const MODEL_SLOT_MS = 120;
 export const NIGHT_MS = 420_000;
 export const CYCLE_MS = 5_000;
 
-const ms = f => Math.round(f * 1000 / 60);
+// Frame<->ms conversion reads the engine's rate, never a literal. This file
+// imports C and still hardcoded 60 in five places while actuator.mjs used
+// C.FPS -- the exact shape of "defined once, re-derived per context" that
+// the tick rate is already ambiguous about (30 Hz Fusion poll vs 60 FPS
+// render). Only one of those two is C.FPS, and now only one is spelled here.
+const ms = f => Math.round(f * 1000 / C.FPS);
 
 // Which physical control a press means depends on the monitor: `light` is the
 // camera light with the cams up and the hallway light with them down.
@@ -279,7 +284,7 @@ export function build(opts = {}) {
   const night = o.night ?? 6;
   const log = captureFn(o);
   const epoch = o.pilotOffset;
-  const s = sec => epoch + Math.round(sec * 60);
+  const s = sec => epoch + Math.round(sec * C.FPS);
 
   // The steady and opening cycles are cut from the night being evaluated; the
   // attack branch is cut from whichever sample can supply one. Those are
@@ -309,7 +314,7 @@ export function build(opts = {}) {
   const clearCycles = Math.floor((NIGHT_MS - 7000) / CYCLE_MS);
   const nightLitMs = cycles.opening.budget.litMs + clearCycles * cycles.clear.budget.litMs;
   const available = C.powerFrames(night);
-  const spent = Math.round(nightLitMs * 60 / 1000);
+  const spent = Math.round(nightLitMs * C.FPS / 1000);
   return {
     night,
     options: o,
@@ -422,7 +427,7 @@ export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 // end is the one thing in this cycle that must not move. Each instruction may
 // slide back to one Fusion poll after the one before it, and the relaxation
 // runs backwards so freeing a raise can free the hall pulse ahead of it.
-export const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / 60);
+export const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 export const RAISE_MARGIN_MS = 33;
 
 function clearTheRaise(name, lines) {
@@ -629,7 +634,7 @@ export function replay(plan, { night, seed = 1, worst = false,
                                classifyMs = 250 } = {}) {
   if (night === undefined) throw new Error('replay() needs the night the plan was built for');
   const sim = new Sim({ seed, night, worst });
-  const f = msv => Math.round(msv * 60 / 1000);
+  const f = msv => Math.round(msv * C.FPS / 1000);
   const queue = [];
   const at = (frame, kind, act) => queue.push([frame, queue.length, kind, act]);
 
