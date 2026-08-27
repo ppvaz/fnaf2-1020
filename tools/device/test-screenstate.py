@@ -198,9 +198,35 @@ def main():
             return bytes(buf)
 
         import importlib.util
-        spec = importlib.util.spec_from_file_location("gn", HERE / "grade-night.py")
-        gn = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(gn)
+
+        def load(name, filename):
+            spec = importlib.util.spec_from_file_location(name, HERE / filename)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return mod
+
+        gn = load("gn", "grade-night.py")
+        dc = load("dc", "death-census.py")
+        ss = load("ss", "screenstate.py")
+
+        def watch_rows(rgb, meter=False):
+            """The twelve RGBA scanlines `--adb-fast` pulls off the phone.
+
+            The live watchdog path had no test at all: the audit that found the
+            rule stated four times noted it "is never run", and it was the copy
+            still carrying its own thresholds. It is in the agreement loop now,
+            so the path that decides whether the phone is alive is checked by
+            the same rows as the two that only read recordings."""
+            ys = ss._covers((45, 55, 65, 75, 85, 1004, 1014, 1024, 1034, 1044,
+                             500, 700))
+            rows = []
+            for y in ys:
+                row = bytearray(bytes((*rgb, 255)) * ss.DEVICE_W)
+                if meter and 40 <= y < 95:
+                    for x in range(95, 260):
+                        row[x * 4:x * 4 + 4] = bytes((230, 230, 230, 255))
+                rows.append(bytes(row))
+            return ys, rows
 
         # --- the alive interval: a HUD gap is the monitor, not a death.
         #
@@ -231,22 +257,53 @@ def main():
                 print(f"FAIL alive-interval {name}: expected end {want_end}, got {got}")
                 failed += 1
 
+        # Four callers now, not two -- including the live --adb-fast
+        # watchdog, which had never been run by anything. death-census.py
+        # was the last copy of
+        # the rule and the last ported (2026-08-26): it still carried the
+        # pre-guard `fl[0]>90 or ...` and so read the New Game newspaper as a
+        # running night. The last row below is that exact frame, and it is why
+        # every caller is in this loop rather than only the ones that drifted
+        # once.
         for name, rgb, meter, want in (
                 ("dark office with a lit meter", (14, 14, 16), True, "night"),
                 ("a dark screen", (14, 14, 16), False, "other"),
                 ("a uniformly bright cutscene", (200, 200, 198), True, "other")):
-            got_video = "night" if gn.is_night(video_frame(rgb, meter)) else "other"
-            got_png = verdict(frame(rgb, flash=meter), tmp)
-            if got_video != want or got_png != want:
-                print(f"FAIL callers disagree on {name}: "
-                      f"screenstate={got_png!r} grade-night={got_video!r} want={want!r}")
+            buf = video_frame(rgb, meter)
+            ys, rows = watch_rows(rgb, meter)
+            got = {
+                "screenstate-png": verdict(frame(rgb, flash=meter), tmp),
+                "screenstate-adb-fast": ss.state_from_rows(ys, rows),
+                "grade-night": "night" if gn.is_night(buf) else "other",
+                "death-census": "night" if dc.night(buf) else "other",
+            }
+            if set(got.values()) != {want}:
+                print(f"FAIL callers disagree on {name}: {got} want={want!r}")
                 failed += 1
+
+        # The structural half: a fifth copy must not be able to appear
+        # quietly. Every drift here began as a literal threshold typed into a
+        # second file, so the thresholds themselves are what is forbidden
+        # outside nightpredicate.py and this test.
+        rule_fragments = ("mb[0]>50", "maskbar[0] > 50", "> maskbar[2] * 1.3",
+                          "> mb[2]*1.3", "flash[0] > 90", "fl[0]>90")
+        for path in sorted(HERE.glob("*.py")) + sorted(HERE.glob("*.sh")):
+            if path.name in ("nightpredicate.py", "test-screenstate.py"):
+                continue
+            text = path.read_text(encoding="utf-8", errors="replace")
+            for fragment in rule_fragments:
+                if fragment in text:
+                    print(f"FAIL {path.name} restates the alive/dead rule "
+                          f"({fragment!r}); evaluate nightpredicate.is_night "
+                          f"with a sampler instead")
+                    failed += 1
 
     if failed:
         print(f"{failed} screenstate check(s) failed")
         return 1
     print("screenstate: a lit meter and a mask bar are nights, a frame bright all "
-          "over is not; both callers agree at both geometries; lifecycle names "
+          "over is not; all four callers agree, live watchdog included, and no "
+          "fourth copy restates the rule; lifecycle names "
           "static, newspaper, title, dialog, options")
     return 0
 

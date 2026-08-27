@@ -39,9 +39,34 @@ import nightpredicate  # noqa: E402
 warnings.simplefilter("ignore")
 
 
-# The fast path keeps its own arithmetic because it only has ten scanlines to
-# work with, but the threshold and the rule are nightpredicate's.
+# The fast path keeps its own arithmetic because it only has twelve scanlines
+# to work with, but the threshold and the rule are nightpredicate's.
 GLOBAL_BRIGHT_MAX = nightpredicate.GLOBAL_BRIGHT_MAX
+
+# Device geometry the scanline plan below is expressed in.
+DEVICE_W, DEVICE_H = 2400, 1080
+
+# The rule's regions, in the order the fast path fetches rows for them.
+RULE_BOXES = (nightpredicate.FLASH, nightpredicate.MASKBAR,
+              *nightpredicate.GLOBAL_ROWS)
+
+
+def _covers(ys):
+    """Every rule region must own at least one fetched scanline.
+
+    The fast path picks its rows by hand -- it cannot afford a full frame --
+    so the rule and the row plan are two things that have to agree. They did
+    not, twice: the global-brightness guard was added to the rule while this
+    path still fetched ten rows and could not see global brightness at all.
+    This makes that a startup failure rather than a silent `night`."""
+    for fx0, fy0, fx1, fy1 in RULE_BOXES:
+        y0 = int(fy0 * DEVICE_H)
+        y1 = max(int(fy1 * DEVICE_H), y0 + 1)
+        if not any(y0 <= y < y1 for y in ys):
+            raise SystemExit(
+                f"screenstate --adb-fast fetches no scanline inside rule region "
+                f"y {y0}-{y1}; the row plan no longer covers nightpredicate.py")
+    return ys
 
 
 def channel_mean(rows, x0, x1):
@@ -57,11 +82,33 @@ def channel_mean(rows, x0, x1):
     return tuple(value / count for value in total)
 
 
+def state_from_rows(ys, rows, width=DEVICE_W):
+    """Evaluate the shared rule over the fetched scanlines.
+
+    Split out of fast_adb_state so it can be tested without a phone. The live
+    watchdog path had never been exercised by anything: the audit that found
+    the rule stated four times noted "--adb-fast is never run", and it was the
+    copy that kept its own `flash > 90 or (maskbar ...)` after the PNG path had
+    been ported. A rule stated twice is a rule that drifts once, and the copy
+    nothing runs is the one that drifts."""
+    by_y = dict(zip(ys, rows))
+
+    def sample(fx0, fy0, fx1, fy1):
+        y0 = int(fy0 * DEVICE_H)
+        y1 = max(int(fy1 * DEVICE_H), y0 + 1)
+        inside = [row for y, row in by_y.items() if y0 <= y < y1]
+        x0 = int(fx0 * DEVICE_W)
+        x1 = max(int(fx1 * DEVICE_W), x0 + 1)
+        return channel_mean(inside, x0, min(x1, width))
+
+    return "night" if nightpredicate.is_night(sample) else "other"
+
+
 def fast_adb_state(timeout):
     width = 2400
     stride = width * 4
     # The last two are the global-brightness guard; see the module docstring.
-    ys = (45, 55, 65, 75, 85, 1004, 1014, 1024, 1034, 1044, 500, 700)
+    ys = _covers((45, 55, 65, 75, 85, 1004, 1014, 1024, 1034, 1044, 500, 700))
     remote = f"/data/local/tmp/fnaf2-watch-{os.getpid()}.raw"
     reads = "; ".join(
         f"dd if=$raw bs=1 skip={16 + y * stride} count={stride} 2>/dev/null"
@@ -88,71 +135,75 @@ def fast_adb_state(timeout):
         result.stdout[index:index + stride]
         for index in range(0, expected, stride)
     ]
-    flash = channel_mean(rows[:5], 95, 260)
-    maskbar = channel_mean(rows[5:10], 70, 1180)
-    overall = channel_mean(rows[10:], 0, width)
-    night = sum(overall) / 3 < GLOBAL_BRIGHT_MAX and (
-        flash[0] > 90 or (maskbar[0] > 50 and maskbar[0] > maskbar[2] * 1.3)
-    )
-    print("night" if night else "other")
+    print(state_from_rows(ys, rows, width))
 
 
-if len(sys.argv) > 1 and sys.argv[1] == "--adb-fast":
+def png_state():
+    """Classify a PNG screenshot on stdin. Prints night, gameover or other.
+
+    Wrapped in a function 2026-08-26 so this module can be imported. It could
+    not be: importing it ran this code, which blocks reading stdin -- which is
+    why the live --adb-fast path had never been exercised by any test even
+    though it was the copy of the rule most worth exercising."""
     try:
-        capture_timeout = float(sys.argv[2]) if len(sys.argv) > 2 else 0.8
-    except ValueError:
+        from PIL import Image, UnidentifiedImageError
+    except ImportError:
+        print("PNG screenshot mode requires Pillow", file=sys.stderr)
         raise SystemExit(2)
-    if capture_timeout <= 0:
+
+    try:
+        im = Image.open(sys.stdin.buffer).convert("RGB")
+    except (OSError, UnidentifiedImageError):
+        print("invalid screenshot", file=sys.stderr)
         raise SystemExit(2)
-    fast_adb_state(capture_timeout)
-    raise SystemExit(0)
+    if im.size != (2400, 1080):
+        im = im.resize((2400, 1080))
 
-try:
-    from PIL import Image, UnidentifiedImageError
-except ImportError:
-    print("PNG screenshot mode requires Pillow", file=sys.stderr)
-    raise SystemExit(2)
+    def mean(box):
+        px = im.crop(box).resize((16, 16))
+        data = list(px.getdata())
+        n = len(data)
+        return tuple(sum(c[i] for c in data) / n for i in range(3))
 
-try:
-    im = Image.open(sys.stdin.buffer).convert("RGB")
-except (OSError, UnidentifiedImageError):
-    print("invalid screenshot", file=sys.stderr)
-    raise SystemExit(2)
-if im.size != (2400, 1080):
-    im = im.resize((2400, 1080))
+    def fraction(box, predicate):
+        data = list(im.crop(box).resize((32, 32)).getdata())
+        return sum(1 for pixel in data if predicate(*pixel)) / len(data)
 
-def mean(box):
-    px = im.crop(box).resize((16, 16))
-    data = list(px.getdata())
-    n = len(data)
-    return tuple(sum(c[i] for c in data) / n for i in range(3))
+    # One definition, in nightpredicate.py. This file used to state the rule and
+    # grade-night.py used to restate it; only one of the two got the global
+    # brightness guard, and the copy that missed it is the one that produces run
+    # lengths. The boxes are fractions there, so a 2400x1080 caller and a 1280x576
+    # one evaluate the same rule rather than two rules that agree by inspection.
+    night = nightpredicate.is_night(
+        lambda fx0, fy0, fx1, fy1: mean((round(fx0 * 2400), round(fy0 * 1080),
+                                         max(round(fx1 * 2400), round(fx0 * 2400) + 1),
+                                         max(round(fy1 * 1080), round(fy0 * 1080) + 1))))
+    red_face = fraction(
+        (650, 450, 1750, 920),
+        lambda r, g, b: r > 80 and r > g * 1.5 and r > b * 1.3,
+    )
+    bright_text = fraction(
+        (900, 950, 1450, 1040),
+        lambda r, g, b: min(r, g, b) > 150,
+    )
+    gameover = red_face > 0.05 and bright_text > 0.08
 
-def fraction(box, predicate):
-    data = list(im.crop(box).resize((32, 32)).getdata())
-    return sum(1 for pixel in data if predicate(*pixel)) / len(data)
+    if night:
+        print("night")
+    elif gameover:
+        print("gameover")
+    else:
+        print("other")
 
-# One definition, in nightpredicate.py. This file used to state the rule and
-# grade-night.py used to restate it; only one of the two got the global
-# brightness guard, and the copy that missed it is the one that produces run
-# lengths. The boxes are fractions there, so a 2400x1080 caller and a 1280x576
-# one evaluate the same rule rather than two rules that agree by inspection.
-night = nightpredicate.is_night(
-    lambda fx0, fy0, fx1, fy1: mean((round(fx0 * 2400), round(fy0 * 1080),
-                                     max(round(fx1 * 2400), round(fx0 * 2400) + 1),
-                                     max(round(fy1 * 1080), round(fy0 * 1080) + 1))))
-red_face = fraction(
-    (650, 450, 1750, 920),
-    lambda r, g, b: r > 80 and r > g * 1.5 and r > b * 1.3,
-)
-bright_text = fraction(
-    (900, 950, 1450, 1040),
-    lambda r, g, b: min(r, g, b) > 150,
-)
-gameover = red_face > 0.05 and bright_text > 0.08
 
-if night:
-    print("night")
-elif gameover:
-    print("gameover")
-else:
-    print("other")
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--adb-fast":
+        try:
+            capture_timeout = float(sys.argv[2]) if len(sys.argv) > 2 else 0.8
+        except ValueError:
+            raise SystemExit(2)
+        if capture_timeout <= 0:
+            raise SystemExit(2)
+        fast_adb_state(capture_timeout)
+        raise SystemExit(0)
+    png_state()
