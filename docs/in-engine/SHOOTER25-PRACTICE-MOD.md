@@ -36,7 +36,7 @@ The resulting MFA has not been opened in Fusion or proven rebuildable.
 
 This used the project's previously discovered **Debian/Linux CTFAK port**, not
 a macOS port. The original patch was made for Debian and is documented in
-`CONTRIBUTIONS.md`; on this Mac, a clean CTFAK checkout was reconstructed and
+`UPSTREAM-LEDGER.md`; on this Mac, a clean CTFAK checkout was reconstructed and
 built inside a Debian .NET 6 container. The Windows executable was parsed
 there. Native macOS execution remains untested and may require different
 patches. CTFAK officially describes support for both EXE and APK/CCN inputs,

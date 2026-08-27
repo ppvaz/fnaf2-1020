@@ -64,6 +64,12 @@ Fusion build 296, August 2025.
 
 - [`android/cue-helper/README.md`](../android/cue-helper/README.md) — the unified
   MediaProjection APK, its build/run procedure, and first target-device soak.
+- [`HID-MULTITOUCH.md`](device/HID-MULTITOUCH.md) — the two traps in stock
+  Android multitouch, the phone's measured input budget, and the Night 6 route
+  priced against the actuator it actually has. **Read this before claiming
+  anything about a device run's configuration or its failure**; CLAUDE.md's
+  read-before-concluding table points here, and it was missing from this index
+  until 2026-08-26 despite being the most-cited device page in the repository.
 - [`ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) — the adb harness,
   its hard-won safety rules, and findings against the real build.
 - [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the
@@ -78,6 +84,9 @@ Fusion build 296, August 2025.
 - [`ANDROID-AUDIO-CAPTURE.md`](device/ANDROID-AUDIO-CAPTURE.md) — the mobile
   recording bug that exposes normally inaudible Mangle/music-box loops, its
   evidence boundary, and the implications for an audio-cue detector.
+- [`RUN-TELEMETRY.md`](device/RUN-TELEMETRY.md) — what a night run should
+  record, ten diagnostic signals ranked by value per millisecond of a cycle
+  that has only ~680 ms free.
 
 ## In-engine and prior art
 
@@ -87,6 +96,12 @@ Fusion build 296, August 2025.
 - [`research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`](research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md)
   — source-level comparison with every substantive scope in this repository,
   including its simulator, trainer, Android sensing/actuation, and evidence gaps.
+- [`research/ANDROID-BOT-LANDSCAPE.md`](research/ANDROID-BOT-LANDSCAPE.md) and
+  [`research/ANDROID-INPUT-AND-OBSERVATION.md`](research/ANDROID-INPUT-AND-OBSERVATION.md)
+  — the two integral survey reports, retained in full. **No number in either is
+  a measurement of this handset.** Their distilled conclusions live in
+  [`device/HID-MULTITOUCH.md`](device/HID-MULTITOUCH.md); read these for the
+  evidence and the method, or before re-asking a question they closed.
 - [`TRAINER-IN-GAME.md`](in-engine/TRAINER-IN-GAME.md) — could the trainer live
   inside the game?
 - [`IN-ENGINE-PILOT-RECOMPILE.md`](in-engine/IN-ENGINE-PILOT-RECOMPILE.md) — APK
@@ -99,6 +114,9 @@ Fusion build 296, August 2025.
 
 ## Project
 
+- [`ARCHITECTURE-AUDIT.md`](ARCHITECTURE-AUDIT.md) — ranked cross-cutting
+  structural findings, each with what it costs the mission and where it is
+  resolved. Retractions and resolutions are recorded in place.
 - [`HANDOVER.md`](HANDOVER.md) — historical snapshot of the iteration-time work.
-- [`../CONTRIBUTIONS.md`](../CONTRIBUTIONS.md) — give-back ledger: what this
+- [`../UPSTREAM-LEDGER.md`](../UPSTREAM-LEDGER.md) — give-back ledger: what this
   project owes upstream, and where each item stands.

@@ -1,7 +1,12 @@
-# Contributions
+# Upstream ledger
 
 Tracking ledger for giving back to the communities whose work this project builds
-on. Every upstreamable patch, doc note, or finding produced along the way gets an
+on.
+
+*Renamed from `CONTRIBUTIONS.md` on 2026-08-26. It sat beside `CONTRIBUTING.md`
+one letter apart, doing an unrelated job, and each file opened by explaining it
+was not the other one — which is the tell that the names were doing the work a
+name should do for free.* Every upstreamable patch, doc note, or finding produced along the way gets an
 entry here so nothing useful dies in a scratchpad.
 
 **House rules:** contributions contain only code patches and derived knowledge —

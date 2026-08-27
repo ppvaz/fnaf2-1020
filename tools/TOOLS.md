@@ -49,6 +49,8 @@ Paths in the tables are relative to the repository root.
 | `tools/serve.py [port]` | dev server | Serves the repo, defaulting to port 8731. `POST /save-layout` validates a calibrated layout, rewrites `src/config.js`, and rebuilds, so that endpoint is intentionally mutating. `POST /save-trace` records a trainer run's per-step timing census under ignored `captures/traces/`, stamped with save time and commit (`FNAF_TRACE_DIR` overrides the directory for tests). |
 | `tools/chrome.mjs` | internal module | Shared Chrome discovery and DevTools flags for browser tools. `$CHROME` overrides discovery; reuse this instead of adding another locator. |
 
+| `tools/test-docs.mjs` | check | Keeps the two indexes honest: every relative markdown link resolves, every page under `docs/` is listed in `docs/README.md`, and every tool script has a **table entry** in this file -- a mention in prose is not an entry, which is what let this drift to 47 missing scripts and 5 missing pages. A link into gitignored output is a failure, not an exemption. |
+
 ## Simulator checks and reports
 
 | Tool | Kind | Purpose and interface |
@@ -73,6 +75,9 @@ Paths in the tables are relative to the repository root.
 The canonical runner judges only the explicit engine-check invocations in
 `tools/test.mjs`, including the `--assert` forms of `bbtest` and `pilottest`.
 Policy scripts remain reports when invoked without an assertion contract.
+
+| `tools/latenesssweep.mjs` | report | What a reduction in actuator launch lateness would be worth, and where the knee is. Sweeps the measured 110-300 ms band through the exact engine; the knee sits at the 2->3 frame boundary. Its band is labelled "actuator.mjs default band" and is a second copy of it -- see `tools/device/device-constants.json`. |
+| `tools/closedlooptest.mjs` | report | What the live runner's closed loop reclaims from the measured actuator. `hidpilottest --device-actuator` prices an **open-loop** monitor model (23/200 Night 1, 0/200 Nights 2-7); this adds the checkpoint read and verified recovery the live runner has and the pilots do not, so the gap between the two is the value of the recovery rather than a property of the phone. |
 
 ## Strategy search and worker infrastructure
 
@@ -137,10 +142,55 @@ accept a page URL when a focused run is useful.
 | `tools/device/trial-maskcamp.sh [name] [seconds] [night] [protocol]` | **device action** | Guarded mask-clear experiment. Protocol is `wind`, `nowind`, or `nowind-flash`; it cold-starts the game and records the trial. |
 | `tools/device/run-batch.sh COUNT [night] [prefix] [protocol]` | **device action** | Runs repeated `trial-maskcamp` experiments and then reports visual events for each recording. |
 
+| `tools/device/preflight.sh NIGHT` | check | One command that says whether a night **can** be run, and prints the invocation. Refuses when the helper is stopped, has no port or token, or sends no `grey=`. It launches nothing: the last step is a human reading the save cursor, which `trial-minus7.sh` keeps manual on purpose. It exists because `n1-full-1640` was launched with `CUE_HELPER=0`, so its cue port was `-`, the resync verification branch never executed, and a later session read the failed recovery as evidence that a luma threshold was blind. Nothing had run. |
+| `tools/device/test-preflight.sh` | check | Mock-ADB gate for those refusals. No phone. |
+| `tools/device/menu.sh` | sourced selector | The one title/menu selector. **Source it; do not re-derive it.** plans/13 keeps four facts apart that the runners used to collapse into a single `NIGHT` variable: which night is played, which title item is pressed, where the save cursor sits, and what the run is called. It gates on the Options row being lit before it believes a menu is up, because the "Start a new game?" confirmation reuses the same three rows and `TAP_6TH` on that dialog erases the save. |
+| `tools/device/test-menu.sh` | check | Mock-ADB gate for the selector, with synthetic title frames. No phone. |
+| `tools/device/title-observe.py` | classifier | Reports which title-screen items are visible, or why that is `unknown`. Refuses a model with no undecided band (`title-model-has-no-undecided-band`) -- the abstain check `build-screen-model.py` does not yet make. |
+| `tools/device/sensor.py` | module | Which capture method a frame came from, and whether a model may read it. The declaration every classifier reads through, so a model built on `screencap` frames cannot be silently applied to helper frames. Gated by `test-sensor.py`. |
+| `tools/device/test-sensor.py` | check | Synthetic-frame regression for that declaration. No phone. |
+| `tools/device/session.sh` | sourced helper | Threads one session id and one OS-monotonic origin through every producer, so a helper started inside a run joins that run's manifest instead of opening its own. Sourced, never executed; `session-manifest.py` owns the file format. |
+| `tools/device/session-manifest.py` | producer | Emits the v1 session manifest and ordered event stream for one device run -- every runner emits one on every exit path, including aborts. |
+| `tools/device/validate-session.py` | check | Validates a v1 manifest and its event stream: shape, ordering, and hashes. It gates the manifest's **shape**, not whether its `env` block describes the run that produced it. |
+| `tools/device/test-validate-session.py` | check | Synthetic contract for that validator, including that a validator which accepts everything is indistinguishable from one that refuses everything. |
+| `tools/device/test-session-manifest.sh` | check | End-to-end gate for the producer through the real shell entry points (`fnaf_session_begin`, `probe_target`, `record`, `event`, `artifact`, `finalize`). Mock adb, synthetic artifacts, no phone. |
+| `tools/device/test-screenrecord-capability.sh` | check | No-device regression for full-night capture negotiation and abort grading: a 420-second night must not be represented by screenrecord's legacy 180-second default, and an abort must not suppress the grader that explains it. |
+| `tools/device/test-device-input-gaps.mjs` | check | The plan must respect the gaps the **phone** needs to accept an input. The simulator emits frames and has no concept of a refused input, so a plan can be 1000/1000 in the engine and un-runnable on the handset. |
+| `tools/device/test-night-matrix.mjs` | check | Every night the campaign can request must build, replay, and receive a configuration-correct gate verdict. Whether a threat branch is reachable comes from the sourced AI table (`C.canAct`), never from whether one sampled seed showed it -- Night 1 cannot arm Balloon Boy at all, Night 3 merely makes him rare, and one `throw` used to conflate those. |
+| `tools/device/gate-worker.mjs` | internal module | One worker's share of a model-gate sweep. A gated night is pure, so the gate's 1200 seeds and the matrix's six nights are embarrassingly parallel; this is what made 1200 seeds affordable at 4.7 s. Not a grader -- it has no run artifacts. |
+| `tools/device/hid-raise-probe.mjs` | **device action** | Measures how long after a monitor **raise** this phone will accept a camera selection. `ON-DEVICE-VALIDATION.md` recorded 500 ms from observation ("shorter gaps were visibly swallowed by the flip"); this measures it rather than inheriting it. |
+| `tools/device/pan-probe.sh` | **device action** | Measures the office pan on a connected phone. The pan was known only by accident until 2026-08-26 -- two nights were lost to a finger that missed a light hitbox on a panned office. A probe, not a grader. |
+| `tools/device/pan-shift.py before.png after.png` | report | Horizontal displacement between two office frames, or `UNKNOWN`. The measuring stick for `pan-probe.sh`. |
+| `tools/device/region-probe.sh` | **device action** | Maps what a touch **does**, by screen region -- plans/10 package 0's actuation/verification/precondition map. A probe, not a grader. |
+| `tools/device/region-classify.py pre.png during.png post.png` | classifier | Classifies what one held touch did, from three office frames. The decision `region-probe.sh` records. |
+| `tools/device/test-region-classify.py` | check | Synthetic-frame regression for that classifier. No phone. |
+| `tools/device/watch-vent-cue.sh [seconds] [label]` | **device action** | Cold-starts a 6th Night, mutes the opening call, and sits while the helper logs audio, to catch Balloon Boy arriving at the vent. Sends no other input; surviving is not the point. |
+| `tools/device/test-cue-trace-loop.sh` | check | Gate for the cue-trace loop's kill switch, which must be a file the loop never writes: the first form used one file as both sentinel and output, so cleanup's `rm` was resurrected by the loop's own appends. |
+
 ### Recorded-trial analysis
+
+**Start here.** `grade-run.sh` runs every instrument below against one run and
+prints one verdict; the individual entries are for when you need one of them
+alone. Quote the interval it reports, never wall clock -- nights 6-36 and 6-37
+were published at 163 s and 153 s and graded at 26.0 s and 72.2 s.
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
+| `tools/device/grade-run.sh RUN_NAME [--require-seconds N]` | check | **The one command to run before quoting any number off a device run.** Drives every instrument this repository owns against one run and prints a single verdict. It exists because the drawer was full of instruments and nothing ran them: `screenstate.py` could have refuted the 163 s claim from any frame of that recording and nobody invoked it. `RUN_NAME` is the `OUT` name the trial was launched with, e.g. `n6-night-39`. |
+| `tools/device/test-grade-run-coverage.mjs` | check | The rule "do not add an instrument without adding it to `grade-run.sh`", enforced. Every script in `tools/device`, `tools/cue` and `tools/dump` must be invoked by the pipeline, be a gate that this suite or CI actually runs, or carry a written exclusion -- and any gate an exclusion **cites** must itself exist and run. Four exclusions once named gates that nothing executed. |
+| `tools/device/grade-night.py VIDEO [--fps 4] [--require-seconds 420]` | check | **The only number that is a run length.** Reports the interval the office HUD was actually present, using the shared predicate. A HUD-absent stretch is the monitor, not a death -- the controller lives on the monitor 3.5 s of every 5 s cycle, and ending the run at the first gap graded a 418 s winning night at 6.5 s. Only the death static ends a run; `dark screen` is reported as ambiguous rather than decided. |
+| `tools/device/nightpredicate.py` | module | The **one** definition of the alive/dead rule, in fractions of the frame with the caller supplying a sampler. Four callers evaluate it -- `screenstate.py`'s PNG and live `--adb-fast` paths, `grade-night.py`, and `death-census.py` -- so a 2400x1080 caller and a 1280x576 one run the same rule rather than two rules that agree by inspection. It existed in five hand copies; each drift began as a threshold typed into a second file, which `test-screenstate.py` now forbids. |
+| `tools/device/test-screenstate.py` | check | Regression for that authority and the lifecycle refinement: all four callers must agree at both geometries, no other file may restate the rule, and the alive interval must survive monitor dwells. |
+| `tools/device/lifecycle-observe.py` | classifier | Refines `screenstate.py`'s `other` into named screens (intro, 6 AM, static, newspaper, title, dialog, options). **Adds classes; never overrides the authority.** |
+| `tools/device/intro_card.py` | module | Recognises a story-night intro card without guessing which night it names. Fractional and generic: it says `intro`, never an ordinal. |
+| `tools/device/test-intro-card.py` | check | Gate for that decision, against synthetic fixtures and the retained real frames. |
+| `tools/device/desync-scan.py RUN_NAME [--strips] [--all-intervals]` | check | **The only instrument that says what the game did**, as opposed to what the phone was sent. Aligns the HID trace against the recording and attributes each divergence. It refuses rather than inventing an offset: no monitor presses, no confident edges, zero matches, or an optimum on a search boundary all report `UNKNOWN` and exit 2 before walking or blaming anything. |
+| `tools/device/sweepcheck.py VIDEO [--fps 60] [--expect 10,4,7]` | check | Did the sweep actually **flash** each camera, not merely select it? |
+| `tools/device/run-timeline.py VIDEO` | report | Segments a recorded run into named phases and names how it ended. |
+| `tools/device/elegance.py RUN_LOG --night N` | report | How many inputs the run sent against how many that night needed. Reports wasted work -- e.g. `bb 92 WASTED -- AI 0 this night` on Night 1, where Balloon Boy cannot act. |
+| `tools/device/keyframes.py VIDEO [--count 12] [--fps 2] [--out sheet.png]` | report | Pulls the most *different* frames out of a run and tiles them into one sheet. |
+| `tools/device/death-census.py OUT_DIR` | report | What killed us, across every night on disk. **Read the times, not just the faces:** 19 Withered Foxy deaths look like the BB->Foxy chain, but they cluster at ~30 s, before Balloon Boy can reach the office at all -- so they are Foxy killing unflashed, which is what a monitor desync causes. A census of faces alone would have shipped the wrong cause. |
+| `tools/device/grid-signature.py` | build | Turns labelled frames into a signature the cue helper can evaluate live. Derives its abstain band from the frames the model was built on, so it marks the result `PROVISIONAL` and prints `NOT VALIDATED`. |
 | `tools/device/index-observations.py [root] [--json] [--hash] [--strict]` | report/check | Read-only Plan 09 inventory of retained capture paths, sizes, authority classes, artifact families, and basename joins. It never opens media content unless `--hash` is requested and never rewrites a capture. `--strict` fails on empty or unclassified artifacts; classification does not make an old artifact manifested or replayable. |
 | `tools/device/test-index-observations.py` | check | Synthetic coverage for all current artifact families, join keys, optional hashes, strict-mode refusal, and the guarantee that indexing changes no file. |
 | `tools/device/grade-minus7.py VIDEO` | report | Post-run office/mask/camera/hall interval grading for a recorded trial. Supports assertion options shown by `--help`; requires ffmpeg. |
@@ -189,11 +239,25 @@ event dump are copyrighted game content and must remain outside the repo.
 | `tools/cue/scan-night.sh WAV [--refs DIR]` | report | Scans one night's captured audio for Balloon Boy's vent bang, denoising before the cascade because that is measured to matter: injecting 52 copies of sample 17 into 159.5 s of real night background and scanning, the raw capture confirms **3/52** and the denoised one **27/52**, all 27 true and none false. Its floor is about **-12 dB** relative to background (0 dB -> 27/52, -6 -> 17/52, -12 -> 7/52, -18 -> 0/52), so a zero means "no bang above that level", not "no bang". `grade-run.sh` calls it whenever a run kept audio, and says so plainly when none was kept. |
 | `tools/cue/label-misses.py VISUAL AUDIO --start-ns N` | report | Scores the bang detector's miss rate against visually labeled arrivals. The label is the lit opening going bright->dark, so it is independent of the detector under test; the luma split is derived from the recording and a dwell filter rejects screen flicker, which otherwise reports a confident rate from noise. Prints a rule-of-three upper bound and refuses to be believed below 60 events. |
 | `tools/cue/export-model.py --refs DIR --cue C=H[,H] --threshold C=S --margin M --calibration NAME --output OUT` | generator | Turns uncommitted reference WAVs into the `cue-model-v1` text file the on-device matcher reads: each reference's most energetic 0.40 s core, resampled to 4 kHz and base64'd, with its cue name and threshold. The APK deliberately ships no game audio and no threshold, so this is the only way one gets onto a phone — pair it with `tools/device/provision-cue-model.sh`. Output is still a derived cue template: it refuses any in-repository path outside ignored `captures/cue-helper/models/`, and refuses to overwrite. `--evidence shadow` is the default and the helper will not let a shadow model arm a control window. |
+| `tools/cue/correlate.py` | report | Full-rate waveform correlation: the confirming stage of the cue detector, and **the control that refuted the 22 thuds**. A band-feature detector reported 22 thuds across 285 s of night audio and was believed until this disagreed on all 22. Run by hand against a chosen pair; it grades no run. |
 | `tools/cue/test-cue.py` | check | Asserts the cue front end on synthesised signals only — level invariance, onset accuracy, fail-closed screening, and that background subtraction raises a transient. Runs in `tools/test.mjs --engine`. |
 | `tools/dump/readdump.py` | query | Resolves Android's XOR-28 object handles and provides `frames`, `objects`, `group`, `find`, `object`, `writes`, and `sounds` queries. `sounds <frame>` indexes every play-sample action by handle so a cue's uniqueness is visible; `sounds <frame> <handle>` prints the groups that play one. Sounds are dispatched through `cam 01` registers, so pair it with `writes` to reach the real trigger. Use `--xor 0` for old PC dumps and `--dump`/`FNAF2_DUMP` for the source file. |
 | `tools/dump/coverage.py` | report | Classifies all event groups and cross-references citations to expose unread state/setup/input clusters. `--map` prints the full Markdown map; `--dump` and `--frame` select input. |
 | `tools/dump/aimap.py [event-sheet]` | report | Replays the per-night/per-hour AI counter table. Reads the canonical tabular dump (`$FNAF2_DUMP`) or an archived rendered `03-04-Office.txt` (`$FNAF2_OFFICE_DUMP`), detected by content. `--json` emits structured output; `--xor 0` reads PC dumps. |
+| `tools/dump/test-instances.py` | check | Checks the frame-instance reader against a synthetic dump. Needs no game content. |
 | `tools/dump/test-aimap.py` | check | Runs `aimap.py` over a synthetic sheet in both forms: night-start zeroing, per-hour carry-forward, `<`/`>` night comparisons, Random assignments, and the Custom Night dial copy. Needs no game content. |
+
+## Test fixtures and mocks
+
+These exist so device tooling can be tested without a phone. They are not
+instruments and produce no evidence about a run.
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/device/testdata/mock-adb-cue-helper.sh` | mock | Stands in for `adb` in the cue-helper regressions. |
+| `tools/device/testdata/mock-control-server.py` | mock | Protocol stand-in for the helper's control socket over the forward transport, field-for-field with the device's `CaptureService.buildSnapshot()`. |
+| `tools/device/testdata/make-title-fixture.py` | fixture builder | Synthesises title-screen frames and a matching model for `test-menu.sh`. Requires Pillow. |
+| `tools/device/testdata/make-intro-card-fixture.py` | fixture builder | Synthesises intro-card decision fixtures and a deliberately **wide** model, so the refusal band is exercised rather than assumed. Requires Pillow. |
 
 ## Generated files and dependencies
 

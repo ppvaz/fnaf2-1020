@@ -341,7 +341,7 @@ assets and no decompiled content, ever** — this repository publishes derived
 knowledge only.
 
 Findings that belong to somebody else's project are tracked for upstreaming in
-[CONTRIBUTIONS.md](CONTRIBUTIONS.md), including the Clickteam handle-scramble
+[UPSTREAM-LEDGER.md](UPSTREAM-LEDGER.md), including the Clickteam handle-scramble
 discovery, the CTFAK patches, and the PAIRIP anti-tamper finding.
 
 ## Licence

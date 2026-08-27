@@ -250,14 +250,21 @@ of human readability is acceptable if the tested decision boundary remains
 wide. The machine is not trying to see Balloon Boy as a person; it is measuring
 whether a stable patch was occluded.
 
-Local, ignored visualizations generated from the retained captures are
-available at
-[`captures/previews/visual-quality-ladder.png`](../../captures/previews/visual-quality-ladder.png),
-[`captures/previews/20x9-empty-vs-bb.png`](../../captures/previews/20x9-empty-vs-bb.png),
-and
-[`captures/previews/20x9-moving-preview.mp4`](../../captures/previews/20x9-moving-preview.mp4).
-They are enlarged with nearest-neighbor scaling so each logical pixel is visible;
-the game imagery remains outside git.
+The paragraph that stood here linked to three files under
+`captures/previews/` — a quality ladder, an empty-vs-BB pair and a moving
+preview, enlarged with nearest-neighbor scaling so each logical pixel was
+visible. **Corrected 2026-08-26: those links pointed at nothing.** `captures/`
+is gitignored, so they could never resolve for a reader; they did not exist
+locally either, and no script in the repository regenerates them. They were
+one-off renders from a session that ended.
+
+Kept as a note rather than deleted, because the failure is the reusable part:
+a document may not rest on evidence a reader cannot obtain. The claim above
+does not — the resolution ladder is arithmetic, and the decision boundary it
+turns on is measured by `test-screencheck.py` and by the `grey=` separation in
+[`ON-DEVICE-VALIDATION.md`](ON-DEVICE-VALIDATION.md). Game imagery stays
+outside git regardless; if the renders are wanted again, they need a script in
+`tools/device` that builds them from a named capture, not a link.
 
 ## 4. The appropriate public Android path
 

@@ -6,7 +6,7 @@ argument, so the conventions below are about keeping claims traceable rather
 than about code style.
 
 If you are looking for what this project owes *other* projects, that is the
-separate give-back ledger in [`CONTRIBUTIONS.md`](CONTRIBUTIONS.md).
+separate give-back ledger in [`UPSTREAM-LEDGER.md`](UPSTREAM-LEDGER.md).
 
 ## The one hard rule
 

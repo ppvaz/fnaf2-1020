@@ -86,7 +86,7 @@ cannot.
 ### The actual path: forward-port mmfparser, then let Chowdren consume it
 
 The Codex session **already forward-ported mmfparser to the build-296 mobile CCN**
-(CONTRIBUTIONS.md **entry 4**, `~/fnaf-apks/mmfparser-mobile-ccn.patch`, 75 lines /
+(UPSTREAM-LEDGER.md **entry 4**, `~/fnaf-apks/mmfparser-mobile-ccn.patch`, 75 lines /
 5 files; working clone `~/fnaf-tools/anaconda`; 33/33 FNaF 2 frames dump). Those
 artifacts live on the **other Debian machine**, not this Mac. The patch set:
 - `build.py` Cython 0.29 fix (already reproduced here).

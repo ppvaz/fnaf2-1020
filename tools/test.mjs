@@ -165,7 +165,6 @@ const ENGINE = [
   // the caller sets for one run. The structural half proves no second title
   // table exists to route around this.
   ['menu selector', ['device/test-menu.sh']],
-  ['preflight', ['device/test-preflight.sh']],
   // plans/10 package 0: an interaction must be distinguishable from a dropped
   // contact and from a pan. Two nights were lost to a finger that missed a
   // light hitbox and landed in the pan band, and nothing in the run noticed.
@@ -235,6 +234,11 @@ const ENGINE = [
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
   ['cue detector (java)', ['../android/cue-helper/test.sh']],
+  // The indexes are how a cold session finds anything, and nothing recomputed
+  // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
+  // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
+  // rather than being remembered.
+  ['docs', ['test-docs.mjs']],
   // The pre-run refusal check. n1-full-1640 was launched with CUE_HELPER=0,
   // so its cue port was "-", the resync verification branch never executed,
   // and a later session read the failed recovery as evidence the luma
