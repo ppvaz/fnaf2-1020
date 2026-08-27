@@ -62,7 +62,8 @@ const record = (flags, point) => {
 };
 
 export function stream(spacings, { readyMs = 7000,
-                                   contactMs = 100, lightLeadMs = 0 } = {}) {
+                                   contactMs = 100, lightLeadMs = 0,
+                                   heldLight = false } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -88,7 +89,28 @@ export function stream(spacings, { readyMs = 7000,
   delay(900);
 
   for (const spacing of spacings) {
-    for (const cam of ['cam10', 'cam4', 'cam7']) {
+    const cams = ['cam10', 'cam4', 'cam7'];
+    for (let k = 0; k < cams.length; k++) {
+      const cam = cams[k];
+      // heldLight: contact 0 (the camera light) goes down once at the first
+      // select and stays down until the last select's release, so every camera
+      // in the sweep is lit while it is the selected feed -- the
+      // pilottest.mjs / original hybrid geometry. The c33 probe showed 33 ms
+      // selects LAND but the last camera's light does not RENDER, because a
+      // 33 ms light pulse repeated three times loses its third edge. Holding
+      // the light removes the edges. It costs flashlight for the sweep's whole
+      // span, which at 33 ms contacts is ~165 ms, not the 366 ms the 100 ms
+      // geometry spans.
+      if (heldLight) {
+        // Light contact stays 0x03 (down) through every select; it is released
+        // (0x00) only alongside the last camera's release.
+        report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
+        delay(contactMs);
+        const lightFlag = k === cams.length - 1 ? 0x00 : 0x03;
+        report([...record(lightFlag, COORDS.light), ...record(0x04, COORDS[cam])]);
+        delay(Math.max(1, spacing - contactMs));
+        continue;
+      }
       // A lead puts the light down *inside* the select, which costs the light
       // exactly that much of its own contact: at the 120 ms spacing the route
       // needs, the select is pinned at 100 ms and 20 ms is the released gap,
@@ -131,7 +153,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const lightLeadMs = Number(process.env.LIGHT_LEAD_MS || 0);
   if (!Number.isInteger(lightLeadMs) || lightLeadMs < 0 || lightLeadMs >= contactMs)
     throw new Error('LIGHT_LEAD_MS must be an integer in [0, CONTACT_MS)');
+  const heldLight = process.env.HELD_LIGHT === '1';
+  if (heldLight && lightLeadMs > 0)
+    throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
   for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
-                             { contactMs, lightLeadMs }))
+                             { contactMs, lightLeadMs, heldLight }))
     console.log(JSON.stringify(event));
 }

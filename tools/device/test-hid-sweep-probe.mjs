@@ -102,4 +102,33 @@ check(ledPulses.filter(d => d === 90).length === 3,
 const litMs = litPulses.reduce((sum, [down, up]) => sum + (up - down), 0) / SPACINGS.length;
 check(litMs <= 300, `a sweep must draw at most 300 ms of light, got ${litMs}`);
 
+// HELD_LIGHT mode (plans/17): contact 0 goes down at the first select and
+// stays down until the last camera's release, so the light spans the whole
+// sweep instead of pulsing per camera. The c33 probe showed 33 ms selects
+// land but the third camera's pulsed light loses its edge -- holding removes
+// the edges.
+{
+  const held = stream([66], { contactMs: 33, heldLight: true });
+  let ht = 0, hLightDown = null, hSelections = [], hLightSpan = null;
+  for (const event of held) {
+    if (event.command === 'delay') { ht += event.duration; continue; }
+    if (event.command !== 'report') continue;
+    const count = event.report[1];
+    const recs = [event.report.slice(2, 7), event.report.slice(7, 12)].slice(0, count);
+    for (const r of recs) {
+      const id = r[0] >> 2, down = (r[0] & 1) !== 0;
+      const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
+      if (id === 0 && xy === key(COORDS.light)) {
+        if (down && hLightDown === null) hLightDown = ht;
+        if (!down && hLightDown !== null) { hLightSpan = ht - hLightDown; hLightDown = null; }
+      } else if (id === 1 && down && wanted.includes(xy)) hSelections.push(xy);
+    }
+  }
+  check(hSelections.join(' ') === wanted.join(' '),
+    `held-light sweep must still select 10,4,7 in order, got ${hSelections.join(' ')}`);
+  // one continuous span, not three pulses: 3 * 33 contact + 2 * 33 gap = 165
+  check(hLightSpan === 165,
+    `held light must be one continuous 165 ms span across the c33 sweep, got ${hLightSpan}`);
+}
+
 console.log(`HID sweep probe checks passed (${SPACINGS.join('/')} ms spacings, ${litMs} ms lit per sweep)`);
