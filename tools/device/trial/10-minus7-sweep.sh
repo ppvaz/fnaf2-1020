@@ -47,10 +47,9 @@ pulsed_sweep_at() {
   # call site reaches human_floor_abort DIRECTLY rather than through it. That
   # omission is not hypothetical: it killed the first real Night 1 attempt
   # (2026-08-26, `n1-validate-1607`) at `sweep slots lands 120 ms after the
-  # previous press`. The 120 ms is the plan's own DEVICE_SPACING_MS -- the
-  # spacing this phone has landed 4/4 and the model gate priced under human
-  # slack -- so the scalar floor was refusing the accepted schedule, which is
-  # exactly the confusion the gate was introduced to end.
+  # previous press`. The emitted slot is an actuator detail already priced by
+  # the model gate, so the scalar floor must not second-guess it. It is now
+  # 133 ms: a 100 ms contact followed by one 33 ms released Fusion poll.
   if [ "$NIGHT6_LEFT" -ne 1 ]; then
     [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
   fi
@@ -64,9 +63,10 @@ pulsed_sweep_at() {
     "$actual" "$sweep_label" "$cams" "$spacing"
   hid_mark "$actual"
   # The whole sweep is one uninterrupted macro, exactly as hid-sweep-probe.sh
-  # replays it -- and that probe landed 4/4 complete traces at this spacing.
+  # replays it. The 120 ms probe established the stream's precision; the
+  # shipped 133 ms geometry adds one complete released Fusion poll.
   # The shell only positions the start. Two other arrangements were measured
-  # and both put the spacing under the 120 ms the phone accepts, after which
+  # and both compressed the spacing below the plan, after which
   # the game renders CAM 07 alone: wall-timing every report inside the sweep
   # jittered it to 90-160 ms because wait_until placed every select on the
   # shell's clock, and mixing a wall-timed start with hid-side contact delays
@@ -168,4 +168,3 @@ mask_and_raise_at() {
 # it here. Everything above this line is a device primitive; everything the
 # schedule says arrives in the file. There is one copy of the table, and it is
 # not this one.
-

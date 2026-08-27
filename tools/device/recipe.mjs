@@ -18,26 +18,21 @@ import { run } from '../hidpilottest.mjs';
 // spacing the shipped route uses. Both are device measurements; see
 // docs/device/HID-MULTITOUCH.md.
 export const MIN_CONTACT_MS = 100;
-// 120 ms is what hid-sweep-probe.sh lands 4/4, and what a real night lands too:
-// sweepcheck.py on night 6-26 reports "11/11 sweeps flashed all of 10,4,7", every
-// camera lit while it was the selected feed. So the stun is being applied at
-// this spacing and there is no measured reason to widen it.
+// Fusion's event loop polls touch at 30 Hz. Distinct controls need one whole
+// poll with neither contact down or they can look like one finger moving.
+export const FUSION_POLL_MS = 33;
+// The 120 ms probe established that the HID stream can deliver 100 ms contacts,
+// but it left only 20 ms released between two different camera buttons. The
+// traced Night 1 run sent every contact cleanly and still produced one plausible
+// missing CAM 07 transition over a full night. Fusion polls touch at 30 Hz, so
+// 20 ms does not guarantee even one released poll between buttons.
 //
-// A widening to 140 ms was built and then withdrawn. The case for it was
-// camtrace reporting "4 complete sweeps, 4 incomplete sweep starts" on that
-// same night -- but camtrace grades the ordered 10-04-07-11 *sequence*, and at
-// a finer dwell floor it reported MORE incomplete starts (7), not fewer, so it
-// is measuring sequence shape rather than dropped selections. The independent
-// signal disagreed with it and the independent signal has a negative control.
-// This repo has already withdrawn one spacing figure that turned out to be a
-// camtrace artifact; it is not going to adopt one.
-//
-// The emitter can still widen -- see the sweep branch, which anchors the END so
-// the stun bridge does not move -- and the route tolerates up to 140 ms that
-// way (400/400 at 140, 3/400 at 160, holding the end fixed). That headroom is
-// measured and recorded here so a future change has a ceiling, but it is not
-// taken without a device measurement that asks for it.
-export const DEVICE_SPACING_MS = 120;
+// Use one full 33 ms Fusion poll of released time: 100 + 33 = 133 ms. This is a
+// deliberately small widening (13 ms per slot, 26 ms over a three-camera
+// sweep), and it remains below the emitter's measured 140 ms end-anchored
+// survival ceiling. devicePlan() moves the start earlier and preserves the
+// sweep's end, so the stun bridge across the five-tick mask does not move.
+export const DEVICE_SPACING_MS = MIN_CONTACT_MS + FUSION_POLL_MS;
 // The slot the POLICY is validated at. It is deliberately not the device
 // spacing: widening the actuator is a device compensation applied by the
 // emitter, not a new route. Rebuilding the policy at 140 moves its sweeps
@@ -399,13 +394,11 @@ export const MASK_RAISE_GAP_MS = 180;
 export const MASK_RAISE_SHIFT_MS = 60;
 
 // The sweep is the one instruction whose numbers are the *actuator's*, not the
-// simulator's. hid-sweep-probe.sh landed 4/4 at exactly this geometry: a 100 ms
-// select, 20 ms released, the next select 120 ms after the last. The simulator
-// quantises the same slot to frames and reports 116 ms, and shipping that to
-// the phone shortens both the spacing and the released time between selects --
-// the collapse to ~105 ms is what rendered CAM 07 alone. Emit the device's
-// numbers and let `replay` ask the engine whether the night still survives at
-// the actuator the phone actually has.
+// simulator's. Each select and its light pulse stay down for the phone-proven
+// 100 ms. The 33 ms after them is fully released, so Fusion gets one complete
+// poll in which no camera button is down before the next button arrives. Emit
+// these device numbers and let `replay` ask the engine whether the night still
+// survives at the actuator the phone actually has.
 export const SWEEP_SELECT_MS = MIN_CONTACT_MS;
 export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 
@@ -524,9 +517,8 @@ function clearTheRaise(name, lines) {
 //
 // Fusion polls touch once per frame, so two different controls closer than one
 // poll can read as a single finger moving between them and the second never
-// fires. That is the same rule test-recipe.mjs enforces; this keeps it true
-// after the emitter has retimed anything.
-export const FUSION_POLL_MS = 33;
+// fires. That is the same FUSION_POLL_MS rule test-recipe.mjs enforces; this
+// keeps it true after the emitter has retimed anything.
 
 function makeRoom(name, lines) {
   const ins = lines.map(line => {

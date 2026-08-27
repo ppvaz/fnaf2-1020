@@ -58,9 +58,9 @@ document contradicting how the line is actually played.
   by spacing — 240 ms → 2 frames ("not landable"), 160 ms → 6, **120 ms → 12
   frames (200 ms), against a `DEVICE_EPOCH_LATCH` bracket of about 80 ms**. So
   the blocker it names as "singular" — the camera actuator's inter-selection
-  spacing — **was answered, in the phone's favour**. `DEVICE_SPACING_MS` is 120
-  in `recipe.mjs` and `test-recipe.mjs` gates against it; only this file still
-  said 240. An independent 2026-08-26 literature survey reached the same place
+  spacing — **was answered, in the phone's favour**. The policy remains modelled
+  at 120 ms; after the full-night trace described below, the device emitter uses
+  133 ms to provide one complete released Fusion poll. An independent 2026-08-26 literature survey reached the same place
   from the other side: nothing in Android, evdev, uinput or InputDispatcher
   imposes any such floor (§"Input injection and sequential budgets"). Do not
   quote 240 ms as a device limit again.
@@ -277,6 +277,21 @@ and swallowed" is the HID trace, which that run did not record. **Set
 `HID_TRACE_RUN=1` on every further night until this is closed.** See
 `ON-DEVICE-VALIDATION.md` §"The last flash: a mechanism, and the control that
 is missing".
+
+**That control now exists (2026-08-27), and the actuator is widened.**
+`n1-elegant-0055` recorded all 42 CAM 10, CAM 04 and CAM 07 HID contacts: every
+one lasted 100 ms and overlapped its light pulse for the whole contact. A native
+frame walk nevertheless has one plausible missing CAM 07 button transition at
+~238 s. This does not prove the game swallowed the selection (`lit?` and the
+internal marker are still unobserved), but it does prove that the host did not
+omit or shorten it, leaving the 20 ms released interval as avoidable risk.
+
+`DEVICE_SPACING_MS` is therefore **133 ms**: the same 100 ms contact followed
+by one full 33 ms Fusion poll released. This is the smallest whole-poll repair,
+not a return to the withdrawn 240 ms figure. `devicePlan()` anchors each sweep's
+end and moves its start 26 ms earlier, so the five-second cadence and the stun
+bridge do not move. All six story-night gates still pass at 1200 seeds; Night 6
+is 648/1200 against the unchanged 480/1200 contract.
 
 ## The simulator prices nothing
 

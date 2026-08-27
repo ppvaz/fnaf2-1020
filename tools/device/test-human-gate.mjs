@@ -79,8 +79,7 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // 1..100. Over 1200 seeds it was 449/1200 =
 // 37.4% against a 40% contract, and only five of twelve 100-seed blocks clear
 // the bar. That assertion measured a seed block, not the plan. The route fix
-// carries the previously omitted first Foxy reset on the post-read maskraise;
-// it clears the same broad sample at 680/1200 without moving the read or sweep.
+// carries the previously omitted first Foxy reset on the post-read maskraise.
 //
 // Re-pinned 2026-08-27, 672 -> 680. RAISE_JITTER_MARGIN_MS moved every wind
 // park clear of the monitor-raise animation by the gate's own +/-60 ms jitter
@@ -88,12 +87,18 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // land after it, so their winds are credited. The read and the sweep did not
 // move -- only the park, and the hold that follows it pays for the shift.
 //
+// Re-pinned again at 648/1200 when the device sweep widened from 120 to 133 ms.
+// The policy slot and the sweep's end are unchanged; its start moves 26 ms
+// earlier to buy a full released Fusion poll between camera buttons. That
+// actuator correction costs 32 modeled-human survivors but remains well above
+// the unchanged 480/1200 gate.
+//
 // Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
 // full sample before `trial.sh` reaches its first adb command.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
   `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
-check('the broad Night 6 result stays pinned', real.survived === 680,
+check('the broad Night 6 result stays pinned', real.survived === 648,
   `${real.survived}/${real.runs}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
@@ -118,7 +123,7 @@ check('the broad Night 6 result stays pinned', real.survived === 680,
       n6.status !== 44 && !/refusing to run this plan/.test(out) &&
       /MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
     check('and it reports the accepted Night 6 sample',
-      /model gate: 680\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
+      /model gate: 648\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
 
     const n1 = spawnSync('bash', [join(HERE, 'trial.sh'),

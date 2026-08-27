@@ -85,7 +85,7 @@ for (const [name, lines] of Object.entries(plan)) {
     const spacingMs = +rest[0], contactMs = +rest[1];
     check(spacingMs === DEVICE_SPACING_MS,
       `${name}: the sweep at +${at} ms spaces selects ${spacingMs} ms apart; ` +
-      'hid-sweep-probe.sh has landed 120 ms and nothing else');
+      `${DEVICE_SPACING_MS} ms is the shipped full-poll device geometry`);
     check(contactMs >= 100,
       `${name}: the sweep's select is ${contactMs} ms; HID-MULTITOUCH.md's ` +
       'verified sequence requires 100-120 ms so the 30 Hz Fusion runtime sees it');
@@ -126,7 +126,7 @@ check(MASK_GAP_MS >= 33,
 
 // The macro exists to take the shell's clock out of the loop, so nothing
 // inside it may consult that clock. `getevent` measured hid_delay holding a
-// 120 ms period to a 0.76 ms stdev against wait_until's 49-93 ms overshoot;
+// 120 ms probe period to a 0.76 ms stdev against wait_until's 49-93 ms overshoot;
 // one stray wait_until inside a macro re-rolls that spread and gives the
 // difference back.
 check(!/wait_until/.test(body('plan_emit')),

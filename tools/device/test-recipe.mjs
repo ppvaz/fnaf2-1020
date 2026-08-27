@@ -7,7 +7,8 @@
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
 import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS,
-         MODEL_SLOT_MS, FUSION_POLL_MS } from './recipe.mjs';
+         MODEL_SLOT_MS, FUSION_POLL_MS, SWEEP_SELECT_MS,
+         SWEEP_RELEASED_MS } from './recipe.mjs';
 import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -36,10 +37,10 @@ for (const [name, cycle] of Object.entries(recipe.cycles)) {
     check(e.dur >= MIN_CONTACT_MS,
       `${name}: ${e.act} at +${e.at} ms is a ${e.dur} ms contact`);
 
-  // The camera actuator: hid-sweep-probe.sh has landed 120 ms spacing 4/4 and
-  // nothing shorter has been measured on a phone.
-  check(b.maxSpacingMs <= DEVICE_SPACING_MS,
-    `${name}: ${b.maxSpacingMs} ms camera spacing exceeds the ${DEVICE_SPACING_MS} ms proven on the phone`);
+  // This is the model recipe, before devicePlan widens its actuator slots while
+  // preserving the sweep end. It must remain the policy the model gate priced.
+  check(b.maxSpacingMs <= MODEL_SLOT_MS,
+    `${name}: ${b.maxSpacingMs} ms model spacing exceeds the ${MODEL_SLOT_MS} ms policy slot`);
 
   // Every cycle must reach the hall, or Foxy's D never resets. The run that
   // motivated this gate flashed the hall zero times in 71 seconds.
@@ -121,6 +122,10 @@ for (const [name, cycle] of Object.entries(recipe.cycles)) {
 // The device plan is what the phone executes, so it gets the same scrutiny as
 // the recipe it comes from -- including every sweep, not just the first.
 const plan = devicePlan(recipe);
+check(SWEEP_SELECT_MS === MIN_CONTACT_MS,
+  `the sweep select is ${SWEEP_SELECT_MS} ms, not the ${MIN_CONTACT_MS} ms contact floor`);
+check(SWEEP_RELEASED_MS === FUSION_POLL_MS,
+  `the sweep releases for ${SWEEP_RELEASED_MS} ms, not exactly one ${FUSION_POLL_MS} ms Fusion poll`);
 const clearMaskRaise = plan.clear.find(line => line.includes(' maskraise '));
 check(clearMaskRaise?.split(' ')[3] === 'hall',
   `the post-read clear raise must carry its first Foxy reset, got "${clearMaskRaise}"`);
@@ -135,9 +140,12 @@ for (const [name, lines] of Object.entries(plan)) {
     if (kind === 'sweep') {
       sweeps++;
       const [spacing, contact, cams] = rest;
-      check(+spacing > 0 && +spacing <= DEVICE_SPACING_MS,
-        `${name}: sweep spacing ${spacing} ms is not a landed device spacing`);
-      check(+contact >= MIN_CONTACT_MS, `${name}: sweep contact ${contact} ms is under the floor`);
+      check(+spacing === DEVICE_SPACING_MS,
+        `${name}: sweep spacing ${spacing} ms is not the ${DEVICE_SPACING_MS} ms device geometry`);
+      check(+contact === SWEEP_SELECT_MS,
+        `${name}: sweep contact ${contact} ms is not the ${SWEEP_SELECT_MS} ms device geometry`);
+      check(+spacing - +contact === FUSION_POLL_MS,
+        `${name}: sweep releases for ${+spacing - +contact} ms, not one Fusion poll`);
       check(cams === '10,4,7', `${name}: sweep covers ${cams}, not Minus 7's 10,4,7`);
     } else if (kind === 'tap' || kind === 'hold') {
       check(+rest[1] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);

@@ -3,8 +3,8 @@
 #cycle opening 7000
 183 tap monitor 100
 503 tap cam11 100
-636 hold wind 5481
-6160 sweep 120 100 10,4,7
+636 hold wind 5465
+6134 sweep 133 100 10,4,7
 6550 tap cam11 100
 6683 hold wind 117
 #cycle clear 5000
@@ -17,13 +17,13 @@
 3100 hall 133
 3267 tap monitor 100
 3587 tap cam11 100
-3720 hold wind 897
-4660 sweep 120 100 10,4,7
+3720 hold wind 881
+4634 sweep 133 100 10,4,7
 #cycle attack 10000
 0 tap monitor 100
 367 read 600 40
 5857 maskraise 180 hall 133
-6360 sweep 120 100 10,4,7
+6334 sweep 133 100 10,4,7
 6750 tap cam11 100
-6883 hold wind 2734
-9660 sweep 120 100 10,4,7
+6883 hold wind 2718
+9634 sweep 133 100 10,4,7

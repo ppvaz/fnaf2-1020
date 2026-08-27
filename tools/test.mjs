@@ -76,10 +76,10 @@ const ENGINE = [
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=350',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--assert-rejected']],
-  // The shipped device target: 120 ms spacing (measured on the phone), the
-  // pessimistic 480 ms lit-frame latch, and the centre of the 83-267 ms
-  // scheduler-phase window. Both the offset and the latch are explicit so the
-  // two device dependencies cannot drift out of the contract silently.
+  // The policy target: 120 ms model slots, the pessimistic 480 ms lit-frame
+  // latch, and the centre of the 83-267 ms scheduler-phase window. The device
+  // emitter widens those slots to 133 ms by moving the sweep start earlier and
+  // preserving its end; recipe replay and the human gate cover that actuator.
   ['hidpilot n6 target', ['hidpilottest.mjs', '500', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',

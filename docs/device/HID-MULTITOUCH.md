@@ -407,6 +407,25 @@ released gap's measured minimum is 18.5 ms against a 20 ms floor, so this
 probe fails to reproduce the concern at its sample size rather than retiring
 it. The night recording is the larger sample and grades the same two ways.
 
+### The full-night trace buys one released poll (2026-08-27)
+
+The larger control is now recorded. `n1-elegant-0055` sent 42 contacts apiece
+to CAM 10, CAM 04 and CAM 07. Its HID trace measures every contact at 100 ms,
+with the light down for the same whole interval, and finds no malformed or
+latched report. A native-frame selected-button walk still contains one
+plausible missing CAM 07 transition around 238 s. That observation cannot prove
+the game's internal stun failed, but it rules out a missing or shortened host
+contact and leaves the 20 ms released interval as needless exposure to Fusion's
+30 Hz touch poll.
+
+The shipped actuator therefore uses **133 ms slots**: 100 ms down, then 33 ms
+fully released. This is only 13 ms slower per selection and is deliberately the
+smallest geometry that contains a whole released poll. It is not a new model
+policy: `MODEL_SLOT_MS` remains 120, while `devicePlan()` moves the three-camera
+sweep's start 26 ms earlier and preserves its end. The full 1200-seed gates
+remain above contract on Nights 1-6, including 648/1200 on Night 6 against the
+unchanged 480/1200 bar.
+
 ### What the shell's clock actually costs, and the two-frame budget (2026-08-26)
 
 The section above measures `wait_until`; this one prices it. The answer is that
@@ -1007,8 +1026,9 @@ only a 4096-byte cap per write. AOSP's *own* synthesised swipe runs at
 streams on real phones at **3.87 ms median, microsecond-accurate**.
 
 Two independent lines therefore agree the 240 ms was never a device limit. The
-repository's engine already uses `DEVICE_SPACING_MS = 120`; **CLAUDE.md was the
-last place asserting 240 as proven and is corrected.** **[SOURCE + MEASURED]**
+repository's engine used `DEVICE_SPACING_MS = 120` at the time; **CLAUDE.md was
+the last place asserting 240 as proven and was corrected.** The later 133 ms
+actuator is a one-poll safety margin, not a platform floor. **[SOURCE + MEASURED]**
 
 ### Correction 2 — the `input tap` rationale is true only up to Android 11
 

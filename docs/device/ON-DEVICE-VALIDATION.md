@@ -1717,6 +1717,31 @@ spacing, not 120. That moves the cycle and must be re-gated at 1200 seeds
 rather than assumed -- and note the 120 ms figure was proven 4/4 by
 `hid-sweep-probe.sh`, which audits the *stream*, not the game's acceptance.
 
+### The traced control, and the 133 ms repair (2026-08-27)
+
+`n1-elegant-0055` supplied the missing control. Its HID trace contains 42
+contacts apiece for CAM 10, CAM 04 and CAM 07. Every contact is 100 ms, every
+one overlaps the camera-light contact for the full 100 ms, and the trace auditor
+finds no short, latched or malformed report. The host therefore sent the final
+CAM 07 contact on every attempted sweep.
+
+At the recording's native frame cadence, the selected-button trace has one
+plausible missing CAM 07 transition around video time 238 s. That is consistent
+with Fusion swallowing a selection after only 20 ms released, but it remains a
+hypothesis: a rendered highlight does not expose the internal `lit?` value or
+the character/marker overlap that actually applies a stun. Feed brightness is
+still inadmissible for this question.
+
+The avoidable timing risk is closed independently of that attribution. The
+device emitter now uses **133 ms selection spacing**: the proven 100 ms shared
+select/light contact, followed by one complete 33 ms released Fusion poll. The
+policy remains modelled at 120 ms. Widening is applied only by `devicePlan()`,
+which starts a three-camera sweep 26 ms earlier and leaves its end fixed. The
+elastic wind before it pays 16 ms so the sweep also retains a full-poll approach
+gap. Generated story-night plans replay exactly 100/100, and their +/-60 ms
+human gates are respectively **1200, 796, 951, 886, 744 and 648 of 1200** for
+Nights 1-6, all above the unchanged 480/1200 contract.
+
 ### Why no instrument found her, and what to change
 
 Two scans failed before Pedro pointed at the timestamp, and both failures are

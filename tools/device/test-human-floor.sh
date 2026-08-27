@@ -95,8 +95,8 @@ expect 'tight hold aborts' 44 \
 expect 'inhuman sweep spacing aborts' 44 \
   'FAKE_NOW=1000; pulsed_sweep_at 1000 120 100 10,4,7 sweep'
 
-# ...and the gated arm must NOT refuse it, because 120 ms is the plan's own
-# DEVICE_SPACING_MS -- landed 4/4 on this phone and priced by the model gate.
+# ...and the gated arm must NOT refuse the plan's own 133 ms actuator spacing,
+# which is priced by the model gate and carries a full released Fusion poll.
 #
 # This pair exists because the bypass was applied to human_floor_check and
 # missed pulsed_sweep_at, which reaches human_floor_abort directly. The gap was
@@ -104,7 +104,7 @@ expect 'inhuman sweep spacing aborts' 44 \
 # on the dormant arm and the gated one was never executed. It cost the first
 # real Night 1 attempt, which aborted at exactly this line.
 expect 'the gated route accepts the plan spacing it was priced at' 0 \
-  'NIGHT6_LEFT=1; FAKE_NOW=1000; pulsed_sweep_at 1000 120 100 10,4,7 sweep'
+  'NIGHT6_LEFT=1; FAKE_NOW=1000; pulsed_sweep_at 1000 133 100 10,4,7 sweep'
 
 # A humane sweep advances the tracker to its LAST slot: a press floor-spaced
 # from the sweep's start but inside the floor of its last slot still aborts.

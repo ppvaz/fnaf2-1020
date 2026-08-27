@@ -3,15 +3,11 @@
 #
 # The select leads its light pulse by this much inside a sweep burst.
 #
-# Zero, and not by preference: at the 120 ms spacing hid-sweep-probe.sh landed,
-# 20 ms has to stay released between selects, which fixes the select at 100 ms
-# -- exactly the floor HID-MULTITOUCH.md's verified sequence requires. Any
-# positive lead spends that budget twice and puts the light pulse under the
-# same floor, which is how it came to be 90 ms. With no lead the select and its
-# light land in one report and both contacts get the full 100 ms.
-#
-# This is not the geometry hid-sweep-probe.sh proved 4/4 -- that one had the
-# 10 ms lead and the 90 ms pulse. Re-probe before trusting a device run.
+# Zero, and not by preference: the select and its light both need the full
+# phone-proven 100 ms contact. A positive lead spends that budget twice and
+# puts the light pulse under the same floor, which is how it once became 90 ms.
+# The emitted 133 ms slot leaves its separate 33 ms released gap after this
+# shared contact.
 SWEEP_LIGHT_LEAD_MS=0
 # A tap's contact. Named because the driver has to reason about when a tap
 # *finishes*, not just when it starts.
@@ -58,4 +54,3 @@ BB_EARLIEST_INSIDE_MS=25000
 # three 10 s attack cycles at most, so the streak that means marker 123 has to
 # be longer than any encounter can account for.
 NOLIGHT_STREAK_MAX=5
-
