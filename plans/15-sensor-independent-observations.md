@@ -163,3 +163,45 @@ one place, when each capture method that can answer it does so through a
 declared, calibrated adapter, when an uncalibrated pairing is refused rather than
 approximated, and when cross-sensor agreement has been measured on held-out data
 rather than assumed. Two classifiers that happen to agree today are not that.
+
+## Progress log
+
+### 2026-08-27 — opened, BB-first, on Pedro's directive: "anything screencap-dependent must be dropped, the cue helper is the response" (scope: everything, graders included)
+
+**Why now.** `plans/PROGRESS.md` item 13 was pointing the sub-70 nights at
+"device-actuator overhead"; the correction there (same date) found the one real
+device capture cost in the live loop is the 225 ms `screencap` BB read in
+`trial/08-bb-threat-response.sh`, and this plan's package 5 is its named fix.
+Note the read cost is **not** an n5/n6/n7 survival lever (the gate is flat from
+`readLatencyMs` 550 → 100) — this is architecture and honesty, not a night
+fix. It is still worth doing: it is the last `screencap` in the reactive path
+and the thing that lets every fact live on one sensor.
+
+**Landed (package 4, instrumentation only — no behaviour change):**
+
+- `trial/02-hid-wire.sh` gains `cue_grid()`, the `GRID` verb companion to
+  `cue_snapshot()`. Same contract: device-local loopback, short timeout,
+  failure ignored, never stalls the schedule.
+- `trial/08-bb-threat-response.sh` launches `cue_grid` **in parallel with**
+  `screencap` (backgrounded before the prophylactic mask, reaped after it — so
+  it costs the mask-off seam nothing) and writes the `OK grid=20x9 …` line to
+  `KEEP_DIR/NNNNNN-<class>.grid` for **every** read, `empty` included. `empty`
+  is the class the screencap corpus has plenty of and the grid corpus has none
+  of, and the line is ~1.1 KB against a 10 MB frame. The per-cycle log line now
+  carries `grid=<seq|MISS>`.
+- `test-hid-walltime.mjs` pins the ordering (grid launch before the mask press,
+  reap after) and the empty-class write.
+
+So the next device night through `trial.sh` accretes a real
+VirtualDisplay-scaler corpus paired with the SCM label the screencap produced.
+`tools/device/grid-signature.py` already reads exactly these `.grid` lines
+(`load()` → source `grid`, not the provisional `screencap` box-filter).
+
+**Not yet done:** the same paired capture at `trial/06-cams-up-anchor.sh` (the
+post-resync monitor check) and `trial/04-session.sh` (the epoch latch); the
+fact/adapter contract (package 2); binding the existing classifiers to declare
+their sensor (package 3); and the signature build + cross-sensor agreement
+(packages 4–5) once the corpus has frames. The graders
+(`screenstate.py`, `grade-*.py`, `elegance.py`, `region-classify.py`,
+`title-observe.py`, `lifecycle-observe.py`, `intro_card.py`, `nightpredicate.py`)
+are in scope per the directive but come after the live loop.

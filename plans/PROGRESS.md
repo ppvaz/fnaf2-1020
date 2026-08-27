@@ -9,12 +9,88 @@ packages are closed.
 
 ## Very next step
 
-**The standing goal (item 9) is now blocked on ONE thing, and it is item 13:
-device-actuator overhead.** Every purely-simulator lever for the sub-70 nights
-(5/6/7) has been enumerated and measured — item 12 and plan 16's progress log
-have the closed list. The route's Foxy problem is not a scheduling problem; it
-is that the measured phone has no room for the ~600–900 ms an in-attack-cycle
-Foxy reset costs. So the next real move is on the phone, not the simulator.
+**The standing goal (item 9): nights 2-6 are sweep-selection-spacing-bound;
+Night 7 is jitter-shape-bound. Item 13's "device-actuator overhead" framing
+was checked and corrected on 2026-08-27 (two sessions) — see the correction
+appended to item 13.** The emitted schedule replays 400/400 = 100% on every
+night at zero jitter (item 11). The read-capture cost moves nothing
+(`readLatencyMs` 550→100 → <1 pt). But `sweepSlotMs` **does**: 120→110
+(emitted spacing 133→123 ms) takes corr n2/n5/n6 to 75/70/68, and the lever
+sits *below* the device-validated 133 ms sweep floor. The sub-70 ladder for
+2-6 is a faster sweep actuator; for n7 it is `human-gate.mjs`'s **iid**
+jitter model (its own header calls it the wrong shape) on a Foxy reset wedged
+between `MASK_ANIM_OFF` and the 400-frame Withered stun budget. Concrete next
+moves:
+
+- **A sub-120 ms sweep actuator, priced against the phone** — `plans/16`
+  progress log (session `55`, `devicetimesearch.mjs`) has the per-spacing
+  survival curve; the open question is whether the phone can deliver
+  ~110-120 ms selection spacing with the CAM-07 last-flash reliability the
+  133 ms floor was set for. `HID-MULTITOUCH.md` "Answered: the phone accepts
+  120 ms spacing" says the actuator can; the last-flash finding says the
+  *game* may still drop one. Re-run `hid-sweep-probe.sh` at 110/120 with an
+  HID trace before trusting it.
+
+- **`plans/15`, BB-first** — Pedro's directive 2026-08-27: *every*
+  screencap-dependent read moves to the cue helper, graders included, live
+  loop first. **In progress:** `trial/08-bb-threat-response.sh` now logs a
+  paired `GRID` line next to every BB frame (`cue_grid()` in
+  `trial/02-hid-wire.sh`, parallel to `screencap`, empty class included), so
+  the next device night accretes the VirtualDisplay-scaler corpus package 4
+  needs. See `plans/15` progress log. Next: same capture at
+  `trial/06-cams-up-anchor.sh` and `trial/04-session.sh`, then the signature
+  build. **This is architecture/honesty, not an n5/n6/n7 fix** — the gate is
+  flat from `readLatencyMs` 550 → 100.
+- **item 12's correlated jitter shape** for `human-gate.mjs` — this *is* an
+  n5/n6/n7 lever. Its own header says iid is the wrong shape, and under a
+  rough correlated model the same unchanged plans already sit at n2 ~71 /
+  n5 ~64 / n6 ~64 / **n7 ~41** (vs iid's 26). Landing
+  `tools/tracereport.mjs`'s correlated bands from real trainer traces is
+  measurement, not tuning, and is the biggest legitimate move left on n7.
+
+### What moves Night 7 out of impossible territory (2026-08-27)
+
+n7 gate is **310/1200 = 25.8%**, 87.5% Foxy deaths, median death 54 s — half
+the runs dead in the first in-game hour, because `foxyDormant` (engine.js
+g872-874) holds Foxy at D=0 for none of Night 7 where it covers all of Night 1.
+
+**Not the screencap.** Proven this session: the read cost does not move any
+n7 model.
+
+**The levers, in order of how load-bearing:**
+
+1. **The jitter model shape (item 12).** iid ±60 ms per row is the wrong
+   structure; correlated bands already put the *unchanged* plan at n7 ~41.
+   Biggest move, and it is honest — it measures the real human error, not
+   tunes the schedule.
+2. **The bang-anchored Foxy reset (item 10).** n7's post-mask hall reset
+   lands inside `MASK_ANIM_OFF` under jitter ~half the draws and resets
+   nothing. Anchoring `off` to the observed departure bang decouples it from
+   the stun-refresh geometry. The one schedule lever items 8–12 left open.
+3. **A different attack-cycle geometry.** The current one wedges the reset
+   between `MASK_ANIM_OFF` (15 fr) and the 400-frame Withered stun budget;
+   every timing sweep on it is a hard wall (item 12 a–e). "New device time"
+   done right = folding the reset into the read's own monitor-down, not a
+   faster phone. Hardest, least explored.
+
+**Are we hitting the strategy's wall?** Precisely:
+
+- **Route shape (left-opening sparse): no.** `hidpilot --night=7 --sparse-left`
+  is 10000/10000 + 3000/3000 worst with *free* lit reads (`HID-MULTITOUCH.md`).
+  The strategy is sound.
+- **The schedule: no.** 400/400 = 100% zero-jitter on every night (item 11).
+- **The Foxy reset's *placement*: yes** — pinned by two game constants, every
+  sweep fails.
+- **n7 flashlight budget: near a wall** — the tightest night, ~3 s of
+  headroom, every lit observation competes.
+- **The actuator model: unfinished** — even the free-read route is 100% only
+  *without* `--device-actuator`; with it, 0% (forcedown cascade, the live
+  runner's verified recovery is unmodeled). No n7 claim is real until that
+  closes.
+
+So n7 → 70% is: get the jitter model honest, bang-anchor the reset, and only
+if both fall short, re-geometry the attack cycle. It is **not** a device-speed
+problem and **not** a route-shape problem.
 
 **Other open items from earlier sessions follow, in priority order.** Written
 as work is done rather than composed at the end; two are delegated and named.
@@ -623,6 +699,50 @@ as work is done rather than composed at the end; two are delegated and named.
     that clears the sub-70 nights only by assuming a faster phone than the
     HID trace shows is a simulator-only result, not a route.
 
+    **CORRECTED 2026-08-27 (two sessions, `66` and `55`). This item's
+    framing was partly wrong and partly right: the *reset cost* it computes
+    is mostly game constants, and the *read-capture cost* moves nothing --
+    but there IS one device number that moves the nights, and this item never
+    isolated it. The paragraphs above are kept; the specifics change.**
+
+    - **Two of the three cited "device times" are sourced *game* constants.**
+      `MONITOR_ANIM_DOWN` (367 ms) + `MONITOR_ANIM_UP` (204 ms) = 571 ms of
+      the quoted 600-900 ms reset cost is the decompiled Android build-296
+      animation bank (`src/config.js:481`, `SOURCED`). No actuator and no
+      capture method moves it; only folding the reset into an animation the
+      schedule already pays (lever 1) can.
+
+    - **The read-capture cost moves nothing.** Sweeping `readLatencyMs`
+      550 -> 100 and `classifyMs` 250 -> 20 through `replay()` /
+      `human-gate.mjs` moves n5/n6/n7 by **< 1 point** (session `66`, 400-600
+      seeds). `hidpilottest.run` without `deviceActuator` is 100% at every
+      read latency; with it, 0% at every read latency (the unmodeled
+      forcedown cascade, not the read). So the 225 ms `screencap` BB read is
+      real device cost but not a survival lever -- the `plans/15` migration
+      of it to the cue helper's ~59 ms `GRID` path is architecture and
+      honesty, not a night fix.
+
+    - **The sweep selection spacing IS the lever for nights 2-6.** Session
+      `55`'s `tools/minus7/devicetimesearch.mjs` (see `plans/16` progress
+      log) isolated every device number and found only this one moves the
+      ladder: `sweepSlotMs` 120 -> 110 (emitted spacing 133 -> 123 ms) takes
+      **corr n2 68 -> 75, n5 62 -> 70, n6 61 -> 68**; spacing 113 ms takes
+      n5/n6 to ~73/72. The pinned `n6target` configs hold 500/500. **The
+      lever sits below the device-validated 133 ms floor** (`HID-MULTITOUCH.md`:
+      100 ms contact + one full released Fusion poll; the CAM-07 last-flash
+      finding is exactly this boundary). So nights 2-6 to 70% is a
+      **sub-120 ms sweep actuator** -- a real "faster actuator" question,
+      lever 2 above, now priced -- not the reset cost this item leads with.
+
+    - **Night 7 is NOT spacing-bound.** At `sweepSlotMs` 90 the spacing wins
+      break n7 on phase while helping n5/n6. n7 needs the jitter-shape fix
+      and the bang-anchored reset -- see the N7 block under "Very next step".
+
+    The `~680 ms free per cycle` figure is a steady-5 s-cycle number, and
+    this item mis-applies it to the 10 s attack cycle where the monitor
+    animations it counts as "reset cost" are already spent on the read and
+    recovery.
+
 
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
 Nothing from it is outstanding and the engine suite is green on `222278d`. What
@@ -1115,7 +1235,7 @@ on the next graded run remains the way to attribute them, since only
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
-| [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
+| [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
 | [16 — constrained policy search](16-constrained-policy-search.md) | 0 / 6 | **0%** | Proposed 2026-08-27; the structured vehicle for item 9's standing goal. Searches the device-plan timing geometry against the 1200-seed human gate (a layer Plans 05/06 never touched), targeting the item 10/11 Foxy-reset decoupling; not a reopening of the closed observable-policy grid | `snapshot`/`restore` on `Sim`, un-break `strategysearch.mjs`, give `human-gate.mjs` the three slack shapes |
 
 ## Counting rule
