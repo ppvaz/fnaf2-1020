@@ -1758,3 +1758,36 @@ worth keeping:
   camera-switch animation (they are uniform across cycle phase at a ~0.2-0.3 s
   period, not twice per 5 s cycle). **Do not filter on them, and do not use
   per-frame variance on this footage.**
+
+## The cue helper runs concurrently with the sweep without degrading it (2026-08-27)
+
+The old worry, from the `screencap` era: a second capture pipeline contends
+with the game's rendering. Per-frame `screencap` from the night watchdog
+"more than doubled" its own capture time and read `unknown` on 7 of 8 cycles
+(night 6-23). The cue helper uses a *continuous* MediaProjection
+VirtualDisplay instead, and it had never been measured against a live sweep.
+
+Measured on the Moto g56 (`ZF525F5BH5`), with the helper capturing
+(`control=READY`, consent granted) through three 25-sweep c33 LIGHT_AFTER
+probe runs -- `c33cc-dark` / `c33cc-stable` / `c33cc-alt` -- while
+`screenrecord` also ran:
+
+| signal | solo | with the helper capturing |
+|---|---|---|
+| sweepcheck flash rate (all-lit) | 23-24 / 25 | **23-24 / 25** -- unchanged |
+| ALT_LIGHT discrimination | 25 / 25 self-calibrated | **25 / 25** self-calibrated |
+| camtrace complete sweeps | 11-13 / 25 | 10-13 / 25 (one dark run 5 incomplete vs 2) |
+| helper `readAgeUs` during the run | -- | n=364, p50 **1.7 ms**, p95 **3.4 ms**, max 4.6 ms |
+
+The helper's own reads stay sub-frame throughout; the sweep's flash rate does
+not move. The only visible cost is a marginally higher camtrace
+incomplete-sweep count on one run, which is at the resolution floor for a
+67 ms/camera sweep and does not change any verdict.
+
+One consequence for grading. sweepcheck's per-camera signature **shifts**
+when the helper is running -- `c33cc-alt` recalibrates CAM 07 to
+`bf>=0.6, pve>=3.25, rv<=43` where the solo `c33-alt` gave
+`bf>=0.28, pve>=4.25, rv<=55`. Each is per-camera perfect on its own run and
+each leaks ~3/25 on the other. So a real night (helper always running) must
+be graded against a signature recalibrated from an `ALT_LIGHT` run recorded
+**in the same session, with the helper up** -- not the bundled solo one.
