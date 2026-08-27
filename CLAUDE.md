@@ -124,6 +124,22 @@ document contradicting how the line is actually played.
   **The margin was paid for in flashlight:** light spend rose 2148 → 2808
   frames, and Nights 5-6 have only **192 frames of headroom left** (~3.2 s)
   against a 3000-frame budget. Price any new lit observation against that.
+
+  **Re-measured 2026-08-26** after the per-night music-box drain was sourced
+  (`src/config.js`, groups g653-660): **99.4, 68.4, 79.3, 73.9, 63.8, 56.0**.
+  The engine had been draining every night at the night-6/7 rate from t=0, so
+  Nights 1-5 were priced against a box that emptied 2-3x too fast — and Night 1
+  against one that drained two hours before the game starts it. Correcting that
+  moved the ladder **by less than a point on every night**.
+
+  That non-result is the useful part, and it refuted the expectation that wrote
+  it: **the box was never the binding constraint below Night 6.** The gate's
+  own death causes say so — the Puppet takes 7-15 runs in 1200 on every night,
+  while Foxy and office entries take ~95% of all losses (Night 6: 338 foxy,
+  175 inside-office, 15 puppet). So do not record the re-sourcing as a survival
+  improvement. It is a correctness fix with a survival effect of roughly zero,
+  and it means **wind budget is not where the remaining nights are won** —
+  spend effort on the Foxy reset and the office-entry mask instead.
 - **A plan names its night, and nothing downstream guesses one.**
   `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires
   `night` and `human-gate.mjs` refuses a plan that does not name one. The old
