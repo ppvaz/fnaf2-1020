@@ -834,7 +834,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     hallPulseMs: arg('hall-pulse-ms', 130), pilotOffset: arg('offset-frames', 10),
   });
   if (process.argv.includes('--device-plan')) {
-    const plan = devicePlan(recipe);
+    // `--device-spacing-ms` emits the three-camera sweep at a spacing other
+    // than the measured-safe DEVICE_SPACING_MS (133). It exists for the
+    // perfect-experiment path (`plans/17`): devicetimesearch.mjs found 113 ms
+    // is the ladder's sweet spot, below the CAM-07 last-flash floor, and the
+    // only way to learn whether the phone can actually hold it is to emit it
+    // and grade a real run. Unset = the shipped, gate-clean 133 ms.
+    const plan = devicePlan(recipe,
+      { deviceSpacingMs: arg('device-spacing-ms', DEVICE_SPACING_MS) });
     // The plan names its own night, so the model gate prices it against the
     // AI table it was built for instead of assuming 6. The header precedes
     // every `#cycle`, which is why the runner's parsers skip it: they only

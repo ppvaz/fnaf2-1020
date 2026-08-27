@@ -287,6 +287,31 @@ const prefix = lines => lines.slice(0, 2).join('|');
 check(prefix(plan.clear) === prefix(plan.attack),
   `clear and attack disagree before the classifier answers:\n  ${prefix(plan.clear)}\n  ${prefix(plan.attack)}`);
 
+// The perfect-experiment spacing override (plans/17). It only widens the
+// SELECT spacing, anchors the sweep END, and refuses to go below the model.
+{
+  const exp = devicePlan(build({ night: 6, sweepSlotMs: 100 }), { deviceSpacingMs: 113 });
+  const shipped = devicePlan(build({ night: 6 }));
+  const sweepEnd = lines => {
+    const s = lines.find(l => l.split(' ')[1] === 'sweep');
+    const [at, , spacing, contact, cams] = s.split(' ');
+    return +at + (cams.split(',').length - 1) * +spacing + +contact;
+  };
+  const sweepSpacing = lines =>
+    +lines.find(l => l.split(' ')[1] === 'sweep').split(' ')[2];
+  check(sweepSpacing(exp.clear) === 113,
+    `the experiment plan emits ${sweepSpacing(exp.clear)} ms spacing, not the requested 113`);
+  check(sweepSpacing(shipped.clear) === DEVICE_SPACING_MS,
+    'the default device plan must still emit the measured-safe spacing');
+  check(sweepEnd(exp.clear) === sweepEnd(shipped.clear),
+    `the experiment sweep ends at ${sweepEnd(exp.clear)} ms, the shipped one at ` +
+    `${sweepEnd(shipped.clear)}; the stun bridge depends on the end not moving`);
+  let threw = false;
+  try { devicePlan(build({ night: 6, sweepSlotMs: 120 }), { deviceSpacingMs: 113 }); }
+  catch { threw = true; }
+  check(threw, 'devicePlan must refuse a device spacing narrower than the model spacing');
+}
+
 console.log(`  seam: ${needsSeamDelay.length ? needsSeamDelay.join(', ') + ' rely on the runner delaying the next anchor' : 'every cycle clears its own boundary'}`);
 console.log('recipe checks passed: ' + Object.entries(recipe.cycles)
   .map(([n, c]) => `${n} ${c.budget.windMarginMs >= 0 ? '+' : ''}${c.budget.windMarginMs} ms wind`)
