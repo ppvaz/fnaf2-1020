@@ -246,9 +246,21 @@ const driver = execFileSync('bash', [join(HERE, 'trial', 'assemble.sh')], { enco
 const gateAt = runner.indexOf('human-gate.mjs');
 const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
 check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
-check('runner has no inline schedule fallback around the gate',
-  /node "\$HERE\/recipe\.mjs" --device-plan "--night=\$STORY_NIGHT"/.test(runner) &&
+check('runner emits the plan from recipe.mjs and has no inline schedule fallback',
+  /node "\$HERE\/recipe\.mjs" --device-plan \$recipe_args/.test(runner) &&
   !/cannot be priced by the model gate/.test(runner));
+// The ONE bypass -- EXPERIMENT_UNGATED, minus7-perfect-experiment branch --
+// must still emit the plan through the engine, still compute the gate verdict,
+// and say loudly that the run is a machine measurement. It may not silently
+// skip the gate.
+check('EXPERIMENT_UNGATED still prices the plan and announces itself',
+  !runner.includes('EXPERIMENT_UNGATED') || (
+    /if \[ "\$\{EXPERIMENT_UNGATED:-0\}" = 1 \]/.test(runner) &&
+    /human gate NOT enforced/.test(runner) &&
+    /gate verdict \(for reference\)/.test(runner)));
+// The default path is unchanged: gate, then `|| exit 44`, no branch.
+check('the default path still hard-refuses on a failed gate',
+  /node "\$HERE\/human-gate\.mjs" "\$RUN_TMP\/device-plan\.txt" \|\| exit 44/.test(runner));
 // The refusal must ask the engine, not a hard-coded night. A literal night
 // number here is exactly the conflation this replaced.
 check('the blind-run refusal reads the sourced AI table',

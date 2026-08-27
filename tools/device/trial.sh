@@ -516,8 +516,27 @@ RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 # phone, launches the game, or records anything. There is no inline fallback:
 # the only device route is the artifact that passes this check. The live
 # HUMAN_FLOOR_MS check remains the backstop for recovery presses outside it.
-node "$HERE/recipe.mjs" --device-plan "--night=$STORY_NIGHT" > "$RUN_TMP/device-plan.txt"
-node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
+#
+# EXPERIMENT_UNGATED=1 (minus7-perfect-experiment branch only): skip the human
+# gate and emit the LIGHT_AFTER sweep geometry. This run MEASURES THE MACHINE
+# -- it is not a human route and its result must never be quoted as a policy
+# survival figure. The gate verdict is still computed and recorded for
+# reference. SWEEP_SPACING_MS / SWEEP_CONTACT_MS override the emitted sweep.
+SWEEP_SPACING_MS="${SWEEP_SPACING_MS:-}"
+SWEEP_CONTACT_MS="${SWEEP_CONTACT_MS:-}"
+recipe_args="--night=$STORY_NIGHT"
+[ -z "$SWEEP_SPACING_MS" ] || recipe_args="$recipe_args --device-spacing-ms=$SWEEP_SPACING_MS"
+[ -z "$SWEEP_CONTACT_MS" ] || recipe_args="$recipe_args --sweep-contact-ms=$SWEEP_CONTACT_MS"
+# shellcheck disable=SC2086
+node "$HERE/recipe.mjs" --device-plan $recipe_args > "$RUN_TMP/device-plan.txt"
+cp "$RUN_TMP/device-plan.txt" "$CAPTURE_DIR/$OUT-device-plan.txt"
+if [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
+  gate_note="$(node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" 2>&1 || true)"
+  echo "EXPERIMENT_UNGATED=1: human gate NOT enforced. This measures the machine." >&2
+  echo "  gate verdict (for reference): $(printf '%s' "$gate_note" | head -1)" >&2
+else
+  node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
+fi
 
 . "$HERE/select-adb.sh"
 
