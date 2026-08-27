@@ -1,5 +1,13 @@
 // Measure how long after a monitor RAISE this phone will accept a camera
-// selection on the HID actuator.
+// selection on the HID actuator -- and, with CONTACT_MS, whether the monitor
+// and mask register at a contact shorter than the 100 ms tap floor.
+//
+// The monitor (`flip panel button`) and the mask are Fusion Clicks, same as
+// the camera-map buttons (g22), so a 33 ms down + release should toggle them
+// exactly as the LIGHT_AFTER camera select does. If it does, the 100 ms tap
+// floor is margin and the attack cycle's 5-tick mask and its monitor flips
+// can be scheduled tighter -- the one place the sub-70 nights need room.
+// MASK_TOGGLES=1 adds mask-on / mask-off taps to each trial.
 //
 // docs/device/ON-DEVICE-VALIDATION.md records 500 ms, "shorter gaps were
 // visibly swallowed by the flip and left the feed on CAM 11" -- but that was
@@ -30,8 +38,13 @@ const record = (flags, point) => {
   return [flags, lo(x), hi(x), lo(y), hi(y)];
 };
 
+// coords.sh: controls hid-sweep-probe's COORDS does not carry.
+const MASK = [600, 1015];
+const HALL = [1200, 540];
+
 export function stream(gaps, { readyMs = 7000,
-                               contactMs = 100, dwellMs = 1500 } = {}) {
+                               contactMs = 100, dwellMs = 1500,
+                               maskToggles = false } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const delay = duration => emit('delay', { duration });
@@ -66,13 +79,28 @@ export function stream(gaps, { readyMs = 7000,
 
     // The measurement: raise, wait exactly `gap` past the release, ask for
     // CAM 10. CAM 10 in the trace means accepted; CAM 11 straight through
-    // means the flip swallowed it.
+    // means the flip swallowed it. Both the monitor tap and the CAM 10 tap
+    // are `contactMs` -- if CAM 10 shows at a short contactMs, both the flip
+    // and the select registered at that contact.
     tap(COORDS.monitor);
     delay(gap);
     tap(COORDS.cam10);
     delay(dwellMs);
     tap(COORDS.monitor);
     delay(900);
+
+    if (maskToggles) {
+      // Mask on, hold, mask off -- both `contactMs`. The mask overlay
+      // appearing then clearing in the video is the Click registering. Then
+      // raise and pulse the hall beam (also `contactMs`): the hallway lighting
+      // up is that Click. Cams down at the end.
+      tap(MASK);
+      delay(dwellMs);
+      tap(MASK);
+      delay(900);
+      tap(HALL);
+      delay(dwellMs);
+    }
   }
   return out;
 }
@@ -87,6 +115,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const gaps = process.argv.slice(2).map(Number);
   if (gaps.some(v => !Number.isInteger(v) || v < 0 || v > 2000))
     throw new Error('gaps must be integers between 0 and 2000 ms');
-  for (const event of stream(gaps.length ? gaps : [100, 150, 200, 250, 300, 400]))
+  const contactMs = Number(process.env.CONTACT_MS || 100);
+  if (!Number.isInteger(contactMs) || contactMs < 10 || contactMs > 200)
+    throw new Error('CONTACT_MS must be an integer between 10 and 200');
+  const maskToggles = process.env.MASK_TOGGLES === '1';
+  for (const event of stream(gaps.length ? gaps : [100, 150, 200, 250, 300, 400],
+                             { contactMs, maskToggles }))
     console.log(JSON.stringify(event));
 }

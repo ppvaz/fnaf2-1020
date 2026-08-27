@@ -62,8 +62,19 @@ if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
 fi
 
 mkdir -p "$CAPTURE_DIR"
-echo "geometry: select ${SELECT_MS:-33} ms, contact ${CONTACT_MS:-100} ms, light-after ${LIGHT_AFTER:-0}, held ${HELD_LIGHT:-0}, ${#SPACINGS[@]} sweep(s) at ${SPACINGS[*]} ms, rec ${REC_SECONDS}s, camtrace floor ${MIN_MS:-50} ms"
-node "$HERE/hid-sweep-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
+# PROBE_GEN picks the stream generator. Default is the camera sweep; `raise`
+# runs hid-raise-probe.mjs (monitor / mask / hall Click floor -- args are the
+# post-raise gap in ms, and CONTACT_MS / MASK_TOGGLES apply).
+PROBE_GEN="${PROBE_GEN:-sweep}"
+case "$PROBE_GEN" in
+  sweep)
+    echo "geometry: select ${SELECT_MS:-33} ms, contact ${CONTACT_MS:-100} ms, light-after ${LIGHT_AFTER:-0}, held ${HELD_LIGHT:-0}, ${#SPACINGS[@]} sweep(s) at ${SPACINGS[*]} ms, rec ${REC_SECONDS}s, camtrace floor ${MIN_MS:-50} ms"
+    node "$HERE/hid-sweep-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+  raise)
+    echo "raise probe: contact ${CONTACT_MS:-100} ms, mask-toggles ${MASK_TOGGLES:-0}, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
+    node "$HERE/hid-raise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+  *) echo "unknown PROBE_GEN: $PROBE_GEN" >&2; exit 2 ;;
+esac
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
 
 adb shell "am force-stop $PKG" >/dev/null
@@ -134,11 +145,17 @@ echo
 # from three selections in the dark -- the same distinction HID-MULTITOUCH.md
 # draws when it says two Android pointer dots are not sufficient evidence.
 # Grade both signals; they fail differently and that is the point.
-"$HERE/sweepcheck.py" --fps 60 "$LOCAL_VIDEO" || SWEEPCHECK_FAILED=1
-echo
-echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
-echo "requested: ${SPACINGS[*]} ms"
-echo "light lead ${LIGHT_LEAD_MS:-0} ms, contact ${CONTACT_MS:-100} ms"
+if [ "$PROBE_GEN" = sweep ]; then
+  "$HERE/sweepcheck.py" --fps 60 "$LOCAL_VIDEO" || SWEEPCHECK_FAILED=1
+  echo
+  echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
+  echo "requested: ${SPACINGS[*]} ms"
+  echo "light lead ${LIGHT_LEAD_MS:-0} ms, contact ${CONTACT_MS:-100} ms"
+else
+  echo "raise probe: each trial should show CAM 10 selected after the raise"
+  echo "(CAM 11 straight through = the flip or the ${CONTACT_MS:-100} ms tap was swallowed)."
+  echo "with MASK_TOGGLES=1, watch the mask overlay appear+clear and the hall light up."
+fi
 [ -z "${CAMTRACE_FAILED:-}" ] || echo "camtrace reported a missing selection"
 [ -z "${SWEEPCHECK_FAILED:-}" ] || echo "sweepcheck reported a sweep that did not flash"
 [ -z "${CAMTRACE_FAILED:-}${SWEEPCHECK_FAILED:-}" ] || exit 1
