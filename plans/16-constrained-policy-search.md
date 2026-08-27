@@ -85,8 +85,29 @@ clean.
   negative result above (masked-span decoupling is geometrically impossible)
   and the openGfFlick collapse, the constrained parameter space contains no
   candidate that clears the sub-70 nights without regressing a pinned config.
-  Night 5/6/7 need the structural change (shorter attack cycle / new device
-  time), not a knob.
+- **The "shorter attack cycle" lever is closed — measured, `7176afc`.**
+  `attackWindowMs` is now a threaded parameter (`hidpilottest.mjs`
+  `attackWindow` → `recipe.build` → `replay` via the `#cycle attack N`
+  header), default 10000 = every plan and pinned test byte-identical.
+  `tools/minus7/cyclelengthsearch.mjs` sweeps it 6000–10000 ms against every
+  pinned actuator config. **It collapses monotonically below 10 s:** gate
+  n5/n6/n7 correlated goes 63/63/33 → 37/0/0 at 9000 → 0/0/0 at 7000, and
+  `n6target` (readLatency 480) goes 100 → 0 by 8000 ms. 10000 exactly
+  reproduces `803feb3` (the regression fixture). The cause is phase-lock: a
+  10 s attack cycle is exactly **two 5 s movement-opportunity grid periods**
+  (`MO_FRAMES` × 2), so it preserves the clear cycle's monitor-down 5 s-check
+  phase — which is what keeps Golden Freddy from spawning (g336) and the Foxy
+  checks safe. Any other length permanently shifts that phase after the first
+  BB response. 5 s is too short for the 5-tick BB hold + reset + sweep; 15 s
+  is longer. **10 s is not a tunable — it is load-bearing.**
+- **So the conclusion is now airtight: Night 5/6/7 to 70% requires new
+  device time**, not any scheduling change. "New device time" = a faster
+  actuator (or a single input doing two jobs) that frees the ~600–900 ms an
+  in-attack-cycle Foxy reset needs — the monitor-down animation, the hall
+  contact, the poll gaps, the monitor-up — which the current ~680 ms/cycle
+  of measured phone slack cannot provide without cutting the sweep, the wind
+  or the 5-tick mask, all load-bearing. Every purely-simulator lever has now
+  been enumerated and measured.
 - **Not the plan's shape, kept as a probe:** `tools/minus7/{search,policy}.mjs`
   — a from-scratch semantic-action beam search + reactive policy over the
   engine (the user's architecture note). They run but a myopic heuristic /
