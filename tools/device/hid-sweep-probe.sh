@@ -112,8 +112,10 @@ adb shell "rm -f $REMOTE_VIDEO" >/dev/null || true
 echo
 # screenrecord captures at the panel's 60 fps; camtrace's 30 fps / 100 ms
 # defaults cannot resolve a sweep this short and report its selections as
-# dropped. See docs/device/HID-MULTITOUCH.md.
-"$HERE/camtrace.py" --fps 60 --min-ms 50 "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
+# dropped. See docs/device/HID-MULTITOUCH.md. MIN_MS is the shortest stable
+# selection counted -- lower it (never below one frame, ~17 ms) when probing
+# a sweep whose per-camera dwell is under 50 ms.
+"$HERE/camtrace.py" --fps 60 --min-ms "${MIN_MS:-50}" "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
 echo
 # camtrace answers "which camera was selected". A Minus 7 sweep exists to apply
 # the camera-light stun, which needs the light on *while* that camera is the
