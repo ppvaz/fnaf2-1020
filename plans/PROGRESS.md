@@ -540,8 +540,21 @@ as work is done rather than composed at the end; two are delegated and named.
     - **`tools/minus7/paramsearch.mjs`** is the search: dominance-pruned beam
       over `hidpilottest.mjs` `SEARCH_KNOBS` (all default-inert), evaluated
       `recipe.build -> devicePlan -> modelGate`, 1200-seed frontier admission.
-      First pass: attack-cycle knobs move n7 ~33 -> ~38 % correlated; n7 needs
-      the opening (plan 16 pkg 5), not the steady cycle.
+
+    **Closed 2026-08-27, all measured, all in plan 16's progress log.** The
+    constrained timing space is exhausted and every lever is a hard wall:
+    (a) the masked-span Foxy decoupling is geometrically impossible -- pushing
+    `off` +50 ms drops n5/n6/n7 to 46/45/26 correlated; (b) `openGfFlick`
+    collapses correlated to a GF massacre (40/38/3); (c) the pre-read hall
+    evicts Foxy (n6/n7 -> 0); (d) the one gate-improving candidate
+    (`attackSweepDeltaMs:-17`) is a **gate-overfit** -- +Pareto against
+    `human-gate.mjs` (readLatency 550) but 0-1/500 on `hidpilot n6 target`
+    (readLatency 480); (e) the **shorter attack cycle** collapses
+    monotonically below 10 s (`cyclelengthsearch.mjs`) -- 10 s is 2x the 5 s
+    movement grid and any other length shifts the clear cycle's monitor-down
+    phase permanently. **Conclusion: nights 5/6/7 to 70% need NEW DEVICE
+    TIME** (a faster actuator freeing the ~600-900 ms an in-cycle Foxy reset
+    costs), not a scheduling change. The purely-simulator search is done.
 
 
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
