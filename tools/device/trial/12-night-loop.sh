@@ -138,7 +138,12 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   opening_at=$(plan_first_offset opening)
   now_rel
   now=$NOW_REL
-  SLIP=$((now + 20 - opening_at))
+  # Relative to where the opening actually starts, which is IDLE_UNTIL, not 0.
+  # Without this the idle's own 140 s reads as epoch slip and the guard below
+  # refuses the night with status 46 -- which it did, correctly, on the first
+  # elegant Night 1 attempt. The guard was right; it had been handed a slip
+  # measured from the wrong origin.
+  SLIP=$((now + 20 - IDLE_UNTIL - opening_at))
   [ "$SLIP" -ge 0 ] || SLIP=0
   [ "$SLIP" -le 1017 ] || {
     echo 'epoch latch left no room for the opening' >&2

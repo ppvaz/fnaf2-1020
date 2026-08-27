@@ -193,6 +193,11 @@ check(/run_cycle clear "\$base" 0 2/.test(block),
 // `0 999` that makes the opening STEPPED: a macro cannot absorb the epoch slip.
 check(/run_cycle opening \S+ 0 999/.test(block),
   'the opening must be stepped: a macro cannot absorb the epoch slip');
+// The epoch slip must be measured from where the opening starts. An idle
+// window is not lateness, and reading it as such refused a night outright.
+check(/SLIP=\$\(\(now \+ 20 - IDLE_UNTIL - opening_at\)\)/.test(block),
+  'the epoch slip must be relative to IDLE_UNTIL, or the idle itself reads ' +
+  'as slip and the opening is refused for having no room');
 check(/run_cycle opening "\$IDLE_UNTIL"/.test(block),
   'the opening must start at the plan\'s idle window, not at a base the ' +
   'runner picked: an idle the runner decides for itself is the unpriceable ' +
