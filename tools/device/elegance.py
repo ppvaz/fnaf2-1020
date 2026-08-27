@@ -12,10 +12,19 @@ that night and who therefore cannot act at all.
 WHAT "NEEDED" MEANS HERE, because it is a model and not a measurement:
 
 An action is NEEDED when the sourced per-night AI table (`src/config.js`,
-`AI_BY_NIGHT`, via `canAct`) says the threat it answers can act on that night.
-It is NOT needed when that threat's peak AI is zero -- the engine's own
-`canAct()` is the authority, the same one `recipe.mjs` uses to decide whether to
-emit a branch at all.
+`AI_BY_NIGHT`, via `canAct`) says a threat it answers can act on that night.
+It is NOT needed when every threat it answers has peak AI zero -- the engine's
+own `canAct()` is the authority.
+
+An action may answer MORE THAN ONE threat, and pretending otherwise is how this
+tool was first wrong: the held-light sweep stuns whoever the camera marker
+overlaps, not one named character. See SERVES.
+
+~~the same one `recipe.mjs` uses to decide whether to emit a branch at all.~~
+**Corrected 2026-08-26: recipe.mjs does not do this.** `--device-plan
+--night=1` and `--night=6` are byte-identical apart from the `#night` header.
+`resolveAttack` computes `reachable: false` for a branch the night cannot arm
+and records it in the plan metadata, and nothing consumes the flag.
 
 This is a LOWER BOUND on waste, never an upper bound on skill:
 
@@ -48,7 +57,18 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 SERVES = [
     (r"wind",                         "puppet"),
     (r"cam-?11",                      "puppet"),      # the box is on CAM 11
-    (r"^sweep$|cam-?(10|04|4|07|7)",  "foxy"),        # the stun sweep
+    # The held-light sweep is NOT one animatronic's answer, and calling it
+    # Foxy's made this tool confidently wrong on the night it was first used.
+    # Groups 450-457 stun whatever `your view` overlaps -- g450-452 the
+    # Withereds, g453/454/455 Toy Freddy/Bonnie/Chica, g456 Mangle -- for
+    # STUN_FRAMES = 400, which is 6.67 s against a ~5 s cycle, so a swept
+    # camera holding a character pins him indefinitely. On Night 1 Foxy cannot
+    # act and the Toys are the whole threat, so the old row graded the sweep as
+    # 481 wasted inputs while it was doing the night's primary defensive work.
+    # A live Night 1 showed Toy Bonnie locked in one camera and never escaping.
+    (r"^sweep$|cam-?(10|04|4|07|7)",  "stun"),
+    # The hall flash is different and does stay Foxy's: it is the office
+    # hallway, not a camera, and it is his reset rather than a marker stun.
     (r"hall|flash-hall",              "foxy"),        # the Foxy reset flash
     (r"left-vent|left-view|classify-bb|bb-left", "bb"),
     (r"mask",                         "toys"),
@@ -60,7 +80,12 @@ SERVES = [
 # The toy trio act as one threat class for this purpose: any of them entering
 # the office is answered by the same mask.
 CLASS_IDS = {"puppet": ["puppet"], "foxy": ["foxy"], "bb": ["bb"],
-             "toys": ["toybonnie", "toychica", "toyfreddy"]}
+             "toys": ["toybonnie", "toychica", "toyfreddy"],
+             # Everyone a held camera light can pin. The sweep is needed if ANY
+             # of them can act, which is the honest reading of a stun that
+             # targets by marker rather than by name.
+             "stun": ["foxy", "toybonnie", "toychica", "toyfreddy",
+                      "withbonnie", "withchica", "withfreddy", "mangle"]}
 
 
 def serves(label):
