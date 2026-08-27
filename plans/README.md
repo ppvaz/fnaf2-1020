@@ -23,7 +23,9 @@ Current triage (2026-08-20):
   `/save-trace` + `tools/tracereport.mjs`. What remains is practice runs.)*
 - **No blind-search juice:** Plans 05 and 06 have completed/closed their defined
   Android search families. Reopen them only when a corrected source rule changes
-  the reachable policy space.
+  the reachable policy space. **Plan 16 is not that** — it searches a different
+  layer (the emitted device plan's timing geometry against the 1200-seed human
+  gate), not the closed observable-policy grid.
 
 Bot-research roadmap added 2026-08-26:
 
@@ -92,3 +94,9 @@ Bot-research roadmap added 2026-08-26:
     — normalized canvas/controller coordinates behind a device profile, models
     and timing bound to the profile they were measured under, and a bounded
     new-device calibration session.
+16. [16-constrained-policy-search.md](16-constrained-policy-search.md) —
+    dominance-pruned beam search over the device plan's timing geometry
+    (evaluated through `human-gate.mjs` at 1200 seeds), targeting the item 10/11
+    Foxy-reset decoupling and the Night 7 opener, with machine-readable
+    provenance so a winning candidate ships its `[SOURCED]`/`[ASSUMED]`
+    dependency list. Structured vehicle for `PROGRESS.md` item 9.

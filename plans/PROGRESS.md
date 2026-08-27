@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **33%** — 29 of 89 mandatory top-level work packages are closed.
+**Overall:** **31%** — 29 of 95 mandatory top-level work packages are closed.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -605,6 +605,7 @@ on the next graded run remains the way to attribute them, since only
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
+| [16 — constrained policy search](16-constrained-policy-search.md) | 0 / 6 | **0%** | Proposed 2026-08-27; the structured vehicle for item 9's standing goal. Searches the device-plan timing geometry against the 1200-seed human gate (a layer Plans 05/06 never touched), targeting the item 10/11 Foxy-reset decoupling; not a reopening of the closed observable-policy grid | `snapshot`/`restore` on `Sim`, un-break `strategysearch.mjs`, give `human-gate.mjs` the three slack shapes |
 
 ## Counting rule
 
@@ -619,6 +620,11 @@ on the next graded run remains the way to attribute them, since only
 - Plan 15 adds five mandatory packages on 2026-08-26 (83 -> 88 mandatory). It
   exists because the same game fact is currently re-taught per capture method,
   and three more sensor-bound classifiers were added the same day.
+- Plan 16 adds six mandatory packages on 2026-08-27 (89 -> 95 mandatory). It
+  exists because the standing goal in item 9 has been attacked by hand twice
+  and reverted twice; no search tool optimises the emitted device plan against
+  `human-gate.mjs`, and the one unexplored lever (items 10/11) needs cross-cycle
+  state. Overall falls 33% -> 31% on the same numerator, the honest direction.
 - Plan 10 gained a package 0 on 2026-08-26 (76 -> 77 mandatory): the basic
   interaction vocabulary the schedule is made of was never established, and
   office panning appears in the record only as a failure mode.
