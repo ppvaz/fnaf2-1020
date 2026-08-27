@@ -65,6 +65,28 @@ clean.
   through the 1200-seed exact replay gate, with `803feb3` included as an
   immutable control. It uses the persistent worker pool as candidate × night
   seed batches; no parallel engine or approximate simulator was added.
+- **The enumerator's best candidate is a gate-overfit — do not promote it.**
+  `{attackSweepDeltaMs: -17, attackRstDeltaMs: 7400}` (recovery sweep one
+  frame earlier + a monitor-down hall beat at b+7.4 s straddling the recovery
+  check) reads as a uniform Pareto gain against `human-gate.mjs`: at 1200
+  seeds correlated, n2/n3/n4/n5/n6/n7 **75/83/77/70/69/36** vs baseline
+  **67/78/72/61/60/33**; under iid every night is also up. But the human gate
+  runs `readLatencyMs = 550`, and **`tools/test.mjs`'s `hidpilot n6 target`
+  runs `readLatencyMs = 480`** — a second sourced actuator model — and there
+  the SAME change is **0-1/500** (Toy Freddy floods the office). The recovery
+  sweep's *end* is the five-tick-mask stun bridge "with nothing to spare"
+  (CLAUDE.md; HID-MULTITOUCH.md: one frame of tail = 272/400 nights), and
+  moving it one frame either way breaks whichever `readLatencyMs` config the
+  search did not score. **The pkg-3 objective must include every pinned
+  actuator config (`hidpilot n6 target`, `n6 target worst`, `n6 target
+  actuator`), or its winners game one latch model at another's expense.**
+  With that constraint added, this candidate — and the whole
+  recovery-sweep-timing lever — is out. Combined with the measured pkg-4
+  negative result above (masked-span decoupling is geometrically impossible)
+  and the openGfFlick collapse, the constrained parameter space contains no
+  candidate that clears the sub-70 nights without regressing a pinned config.
+  Night 5/6/7 need the structural change (shorter attack cycle / new device
+  time), not a knob.
 - **Not the plan's shape, kept as a probe:** `tools/minus7/{search,policy}.mjs`
   — a from-scratch semantic-action beam search + reactive policy over the
   engine (the user's architecture note). They run but a myopic heuristic /
