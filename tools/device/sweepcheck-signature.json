@@ -1,0 +1,38 @@
+{
+ "_source": "c33-alt.mp4",
+ "_crop": [
+  300,
+  150,
+  980,
+  340
+ ],
+ "cams": {
+  "10": {
+   "feature": "brightfrac",
+   "threshold": 0.53,
+   "lit_n": 13,
+   "dark_n": 12,
+   "recall": 0.92,
+   "specificity": 0.83,
+   "gap": 0.0
+  },
+  "4": {
+   "feature": "brightfrac",
+   "threshold": 0.59,
+   "lit_n": 13,
+   "dark_n": 12,
+   "recall": 1.0,
+   "specificity": 1.0,
+   "gap": 0.15
+  },
+  "7": {
+   "feature": "vedge",
+   "threshold": 7.94,
+   "lit_n": 13,
+   "dark_n": 12,
+   "recall": 1.0,
+   "specificity": 0.92,
+   "gap": 0.71
+  }
+ }
+}

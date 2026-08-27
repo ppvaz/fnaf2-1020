@@ -1,43 +1,52 @@
 #!/usr/bin/env python3
 """Did the sweep actually *flash* each camera, not merely select it?
 
-camtrace.py reads the lime highlight on the camera map, which answers "which
-camera is selected". A Minus 7 sweep exists to apply the camera-light stun, and
-that needs the light on *while* that camera is the selected feed. A trace of
-selections alone cannot tell a working sweep from three selections in the dark
--- the same distinction HID-MULTITOUCH.md draws when it says two Android
-pointer dots are not sufficient evidence.
+camtrace.py reads the lime highlight on the camera map ("which camera is
+selected"). A Minus 7 sweep exists to apply the camera-light stun, which needs
+the light on *while* that camera is the selected feed. A trace of selections
+alone cannot tell a working sweep from three selections in the dark.
 
-This pairs both signals per frame: the map highlight for the camera, and the
-feed's own brightness for the light. A lit frame is several times the unlit
-baseline, so the threshold is taken from the recording rather than hardcoded.
+WHAT CHANGED (2026-08-27). The old version measured mean feed brightness and
+could not resolve the c33 LIGHT_AFTER geometry, where each camera lights for
+2-4 frames on a tearing transition: on the NO_LIGHT control it read cam07 as
+lit on every sweep, and on the ALT_LIGHT control (even sweeps lit, odd dark)
+it was coin-flip. It also read the *cleared* n1-grey-2202 as 5/73.
 
-Usage: sweepcheck.py VIDEO [--fps 60] [--expect 10,4,7]
+The controls are the fix. A NO_LIGHT run and an ALT_LIGHT run give ground
+truth for the lit / dark / tearing signatures under identical feed content, so
+`--recalibrate ALT.mp4` learns, PER CAMERA, which feature separates lit from
+dark and at what threshold:
+
+  * CAM 10 / CAM 04 (Game Area, Party Room 4 -- rooms with ambient structure):
+    the flashlight adds mid-grey room content -> `brightfrac`, the fraction of
+    the feed centre in [45, 200].
+  * CAM 07 (Main Hall -- genuinely black without the light): the flashlight
+    reveals room EDGES that black does not have -> `vedge`, mean horizontal
+    gradient over the feed centre.
+
+The feed CENTRE only (300,150)-(980,340): the camera-switch tear bands are
+horizontal and cluster at the top and bottom of the ROI, and averaging them
+is what inverted the old measure.
+
+Usage:
+  sweepcheck.py VIDEO [--fps 60] [--expect 10,4,7] [--signature FILE]
+  sweepcheck.py --recalibrate ALT.mp4 [--out FILE]   (ALT.mp4 from ALT_LIGHT=1)
 """
 import argparse
+import json
+import os
 import subprocess
 import sys
 
 WIDTH, HEIGHT = 1280, 576
-# A feed row varying by less than this across the ROI is a tear band, not
-# scene content. Clean frames carry zero such rows; torn frames carry 17-134.
-BAND_FLAT = 12
 MAP = {10: (1091, 384), 4: (923, 379), 7: (947, 328), 11: (1213, 365)}
-FEED = (60, 60, 620, 430)
+# Feed centre only -- tear bands are horizontal and live at the ROI edges.
+CROP = (300, 150, 980, 340)
+DEFAULT_SIG = os.path.join(os.path.dirname(__file__), "sweepcheck-signature.json")
 
 
 def stream(path, fps, pix, depth):
-    """Yield decoded frames one at a time.
-
-    This used to buffer the whole decode with capture_output and then slice it
-    into a second full copy. A 440 s night at 60 fps is 26,400 frames of
-    1280x576x3, about 58 GB, and the grader was OOM-killed ("Killed: 9")
-    partway through a cleared Night 1 -- taking with it the only instrument
-    that says whether the sweep's light actually flashed.
-
-    Nothing here ever needed a frame twice: both callers reduce each frame to
-    one scalar. So the frames stream and only the two scalar series are kept.
-    """
+    """Yield decoded frames one at a time (never buffer the whole decode)."""
     size = WIDTH * HEIGHT * depth
     proc = subprocess.Popen(
         ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
@@ -52,14 +61,13 @@ def stream(path, fps, pix, depth):
     finally:
         proc.stdout.close()
         err = proc.stderr.read()
-        # A decoder that dies mid-file must not read as a short video: this
-        # tool's whole job is saying what the run contained.
         if proc.wait():
             sys.stderr.buffer.write(err)
             raise SystemExit(proc.returncode)
 
 
 def selected(frame):
+    """Which camera's map button is lime-highlighted, or None."""
     best, score = None, 0
     for cam, (cx, cy) in MAP.items():
         s = 0
@@ -74,160 +82,155 @@ def selected(frame):
     return best if score >= 30 else None
 
 
+def features(gray):
+    """(vedge, brightfrac) over the feed centre of one grayscale frame."""
+    x0, y0, x1, y1 = CROP
+    vedge = n = bright = tot = 0
+    for y in range(y0, y1, 3):
+        r = y * WIDTH
+        for x in range(x0, x1 - 4, 4):
+            a = gray[r + x]
+            vedge += abs(a - gray[r + x + 4])
+            n += 1
+            tot += 1
+            if 45 <= a <= 200:
+                bright += 1
+    return vedge / n, bright / tot
+
+
+def sweep_windows(video, fps):
+    """Yield (sweep_index, {cam: (max_vedge, max_brightfrac) or None}).
+
+    A window is [first clean selection of camN] - 7 .. + 4 frames -- the flash
+    lands just before the highlight settles, so the window reaches back.
+    """
+    rgb = list(stream(video, fps, "rgb24", 3))
+    gray = list(stream(video, fps, "gray", 1))
+    sel = [selected(f) for f in rgb]
+    n = len(sel)
+    i = s = 0
+    while i < n:
+        if sel[i] != 11:
+            i += 1
+            continue
+        while i < n and sel[i] in (11, None):
+            i += 1
+        start = i
+        while i < n and not (i + 3 < n and all(sel[j] == 11 for j in range(i, i + 3))):
+            i += 1
+        out = {}
+        for cam in (10, 4, 7):
+            firsts = [k for k in range(start, i) if sel[k] == cam]
+            if not firsts:
+                out[cam] = None
+                continue
+            lo, hi = max(0, firsts[0] - 7), min(n, firsts[0] + 4)
+            fs = [features(gray[k]) for k in range(lo, hi)]
+            out[cam] = (max(f[0] for f in fs), max(f[1] for f in fs))
+        if any(out.values()):
+            yield s, out
+            s += 1
+
+
+def load_signature(path):
+    with open(path) as fh:
+        return json.load(fh)
+
+
+def cmd_recalibrate(a):
+    """Learn per-camera (feature, threshold) from an ALT_LIGHT run.
+
+    ALT_LIGHT lights EVEN sweeps and leaves ODD sweeps select-only, under one
+    night's feed content -- a clean A/B. For each camera and each candidate
+    feature, pick the threshold midway between the lit floor and the dark
+    ceiling; keep the feature whose gap is largest.
+    """
+    lit = {10: {"v": [], "b": []}, 4: {"v": [], "b": []}, 7: {"v": [], "b": []}}
+    dark = {10: {"v": [], "b": []}, 4: {"v": [], "b": []}, 7: {"v": [], "b": []}}
+    for s, w in sweep_windows(a.alt, a.fps):
+        bucket = lit if s % 2 == 0 else dark
+        for cam, vals in w.items():
+            if vals:
+                bucket[cam]["v"].append(vals[0])
+                bucket[cam]["b"].append(vals[1])
+    sig = {"_source": os.path.basename(a.alt), "_crop": CROP, "cams": {}}
+    for cam in (10, 4, 7):
+        best = None
+        for feat, key in (("vedge", "v"), ("brightfrac", "b")):
+            lv, dv = sorted(lit[cam][key]), sorted(dark[cam][key])
+            if not lv or not dv:
+                continue
+            # 10th pct of lit vs 90th pct of dark -- ignore one outlier each end
+            lo = lv[max(0, len(lv) // 10)]
+            hi = dv[min(len(dv) - 1, len(dv) - 1 - len(dv) // 10)]
+            gap = lo - hi
+            if best is None or gap > best[3]:
+                best = (feat, key, round((lo + hi) / 2, 2), gap)
+        feat, key, thr, gap = best
+        lv = sorted(lit[cam][key]); dv = sorted(dark[cam][key])
+        tp = sum(1 for x in lv if x >= thr)
+        tn = sum(1 for x in dv if x < thr)
+        sig["cams"][str(cam)] = {"feature": feat, "threshold": thr,
+                                 "lit_n": len(lv), "dark_n": len(dv),
+                                 "recall": round(tp / len(lv), 2),
+                                 "specificity": round(tn / len(dv), 2),
+                                 "gap": round(gap, 2)}
+        print(f"CAM {cam:02d}: {feat} >= {thr}   "
+              f"lit {tp}/{len(lv)}  dark-rejected {tn}/{len(dv)}  gap {gap:+.2f}")
+    out = a.out or DEFAULT_SIG
+    with open(out, "w") as fh:
+        json.dump(sig, fh, indent=1)
+    print(f"wrote {out}")
+
+
+def cmd_grade(a):
+    if not os.path.exists(a.signature):
+        print(f"no signature at {a.signature} -- run `sweepcheck.py --recalibrate "
+              f"ALT.mp4` on an ALT_LIGHT=1 recording first", file=sys.stderr)
+        raise SystemExit(2)
+    sig = load_signature(a.signature)["cams"]
+    want = [int(v) for v in a.expect.split(",")]
+    lit_sweeps = total = 0
+    print(f"{a.video}: signature {os.path.basename(a.signature)}")
+    for s, w in sweep_windows(a.video, a.fps):
+        total += 1
+        verdict, missing = {}, []
+        for cam in want:
+            vals = w.get(cam)
+            c = sig.get(str(cam))
+            if not vals or not c:
+                verdict[cam] = "?"
+                continue
+            val = vals[0] if c["feature"] == "vedge" else vals[1]
+            lit = val >= c["threshold"]
+            verdict[cam] = f"{'LIT' if lit else 'dark'}({val:.1f})"
+            if not lit:
+                missing.append(cam)
+        ok = not missing
+        lit_sweeps += ok
+        print(f"  sweep {s + 1:2d}: " + "  ".join(f"cam{c:02d}={verdict[c]}" for c in want)
+              + ("" if ok else "   DARK: " + ",".join(f"cam{c:02d}" for c in missing)))
+    print(f"summary: {lit_sweeps}/{total} sweeps lit every camera")
+    if lit_sweeps < total:
+        sys.exit(1)
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("video")
+    p.add_argument("video", nargs="?")
     p.add_argument("--fps", type=int, default=60)
     p.add_argument("--expect", default="10,4,7")
-    p.add_argument("--lit-ratio", type=float, default=2.0,
-                   help="times the unlit baseline that counts as a lit feed")
+    p.add_argument("--signature", default=DEFAULT_SIG)
+    p.add_argument("--recalibrate", dest="alt", metavar="ALT.mp4",
+                   help="learn the per-camera signature from an ALT_LIGHT=1 run")
+    p.add_argument("--out", help="where --recalibrate writes (default: the bundled signature)")
     a = p.parse_args()
-
-    x0, y0, x1, y1 = FEED
-
-    def luma(f):
-        """Mean feed brightness over TEXTURED rows only.
-
-        The camera switch tears the frame, and a torn frame is a composite of
-        two rendered states separated by near-uniform white bands. Averaging
-        the whole ROI counts those bands as brightness and inverts the answer:
-        measured at 60 fps on hid-sweep-probe.mp4, a torn-and-unlit frame reads
-        176-199 while a clean-and-lit one reads 88-92. That is how this tool
-        reported 68/75 sweeps flashed on a night where the flash is not what it
-        was seeing.
-
-        Excluding torn frames instead is no better -- it drops so many that the
-        camera selection stops registering (0/21 on the same recording).
-
-        So drop the band ROWS and keep the picture. A row that varies by less
-        than BAND_FLAT across the ROI is part of a tear, not of the scene.
-        Reference frames, from CAM 11 unless noted, in
-        captures/frames-tearing-vs-flash:
-
-            dark          0 band rows, 18.5
-            lit           0 band rows, 114.6
-            tearing     123 band rows, 21.3
-            tearing+lit 118 band rows, 136.2   (CAM 10 -- absent on CAM 11,
-                                                which is where the sweep
-                                                returns with the light already
-                                                released)
-
-        The measure sees the flash THROUGH a tear, which is what makes it
-        usable: state four is the one that matters and it is not reachable by
-        excluding torn frames.
-
-        A frame with no textured row at all returns None -- fully torn, no
-        opinion. It is not 0, which would read as a confident dark.
-        """
-        textured = []
-        for y in range(y0, y1, 4):
-            r = y * WIDTH
-            row = [f[r + x] for x in range(x0, x1, 16)]
-            if max(row) - min(row) >= BAND_FLAT:
-                textured.append(sum(f[r + x] for x in range(x0, x1, 4))
-                                / len(range(x0, x1, 4)))
-        return sum(textured) / len(textured) if textured else None
-
-    feed = [luma(f) for f in stream(a.video, a.fps, "gray", 1)]
-    # None = fully torn, no opinion. Never counted as lit and never as dark.
-    readable = sum(1 for f in feed if f is not None)
-    sel = [selected(f) for f in stream(a.video, a.fps, "rgb24", 3)]
-    # Baseline from the monitor-up frames that are not flashing: the lower
-    # quartile of frames where some camera is selected.
-    up = sorted(feed[i] for i, s in enumerate(sel)
-                if s is not None and feed[i] is not None)
-    if not up:
-        print("no camera ever selected"); raise SystemExit(1)
-    base = up[len(up) // 4]
-    thresh = base * a.lit_ratio
-
-    want = [int(v) for v in a.expect.split(",")]
-
-    # The flash lands during the camera STAGGER -- the transition frames where
-    # the map highlight is between buttons and selected() returns None. At the
-    # LIGHT_AFTER geometry the select's Click sets `viewing` and THEN the light
-    # is pressed, so the bright frames come BEFORE that camera's highlight
-    # settles: frame-by-frame on c33-stable, camN's flash is a None run that
-    # ends when sel first reads camN. The strict "highlight == camN on the same
-    # frame as the bright feed" rule discarded every one of them.
-    #
-    # So attribute each None frame FORWARD to the next target-camera selection
-    # within `stagger` frames (the transition is INTO it); fall back to the
-    # previous one only if there is no forward match. Forward-first is what
-    # keeps the 04->07 transition's flash on 07 instead of on 04.
-    stagger = max(1, round(a.fps * 0.12))          # ~120 ms of transition
-    nxt = [None] * len(sel)
-    prv = [None] * len(sel)
-    seen = None
-    for i in range(len(sel) - 1, -1, -1):
-        if sel[i] in want:
-            seen = (i, sel[i])
-        nxt[i] = seen
-    seen = None
-    for i in range(len(sel)):
-        if sel[i] in want:
-            seen = (i, sel[i])
-        prv[i] = seen
-    attributed = list(sel)
-    for i, cam in enumerate(sel):
-        if cam is not None:
-            continue
-        if nxt[i] and nxt[i][0] - i <= stagger:
-            attributed[i] = nxt[i][1]
-        elif prv[i] and i - prv[i][0] <= stagger:
-            attributed[i] = prv[i][1]
-
-    sweeps, cur, last11 = [], {}, True
-    lit_run, gap = False, 0
-    for i, cam in enumerate(attributed):
-        if cam == 11:
-            if cur and not last11:
-                sweeps.append(cur); cur = {}
-            last11 = True
-            lit_run = False
-            continue
-        if cam is None:
-            continue
-        last11 = False
-        bright = feed[i] is not None and feed[i] >= thresh
-        if bright:
-            cur[cam] = cur.get(cam, 0) + 1
-            if not lit_run:
-                cur["_clusters"] = cur.get("_clusters", 0) + 1
-            lit_run, gap = True, 0
-        elif lit_run:
-            gap += 1
-            if gap > 2:            # two dark frames end a cluster
-                lit_run = False
-    if cur:
-        sweeps.append(cur)
-
-    # HONEST LIMIT. A fast (c33) sweep lights each camera for 2-4 frames on a
-    # tearing feed, and adjacent flashes can merge -- so the per-camera counts
-    # under-resolve a sweep the eye calls fine, and frame-by-frame inspection
-    # of captures/c33-stable.mp4 shows all three flashing on every sweep where
-    # this reports gaps. This tool reliably catches a whole sweep going DARK;
-    # it does not certify a fast sweep. For that, dump the frames (--dump DIR)
-    # and look, or check the game effect (did the CAM 04 / CAM 07 occupant get
-    # pinned).
-    print(f"{a.video}: unlit baseline {base:.0f}, lit threshold {thresh:.0f}")
-    lit_sweeps = 0
-    for n, s in enumerate(sweeps, 1):
-        got = [c for c in want if s.get(c)]
-        missing = [c for c in want if not s.get(c)]
-        cl = s.get("_clusters", 0)
-        # "lit" = every camera per-frame, OR most cameras plus >=len(want)-1
-        # distinct clusters (the merge-adjacent-flashes case).
-        sweep_ok = not missing or (len(got) >= len(want) - 1 and cl >= len(want) - 1)
-        if sweep_ok:
-            lit_sweeps += 1
-        detail = " ".join(f"cam{c:02d}={s.get(c,0)}f" for c in want)
-        print(f"  sweep {n}: {detail}  clusters={cl}"
-              + ("" if sweep_ok else "   DARK: " + ",".join(f"cam{c:02d}" for c in missing)))
-    print(f"summary: {lit_sweeps}/{len(sweeps)} sweeps lit "
-          f"(every camera, or all-but-one plus enough distinct flashes)")
-    if lit_sweeps < len(sweeps):
-        sys.exit(1)
+    if a.alt:
+        cmd_recalibrate(a)
+    elif a.video:
+        cmd_grade(a)
+    else:
+        p.error("give a VIDEO to grade, or --recalibrate ALT.mp4")
 
 
 if __name__ == "__main__":

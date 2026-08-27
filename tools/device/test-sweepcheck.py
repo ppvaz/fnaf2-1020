@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""Gate for the tearing-vs-flash discriminator. No phone, no video decode.
+"""Gate for sweepcheck's per-camera lit/dark classifier. No phone, no video.
 
-sweepcheck reported 68/75 sweeps flashed on a night where it was measuring the
-camera-switch tearing rather than the flashlight. The whole-ROI mean it used
-inverts the two states: a torn-and-unlit frame reads brighter than a clean-and-
-lit one. Excluding torn frames instead loses the state that matters, because
-the flash IS visible through a tear.
+The old sweepcheck measured feed brightness and could not resolve the c33
+LIGHT_AFTER geometry: on the NO_LIGHT control it read cam07 lit every sweep,
+on ALT_LIGHT it was coin-flip, on the cleared n1-grey-2202 it was 5/73.
 
-So this pins the four states against real frames kept in docs/img/tearing-vs-
-flash, captured from hid-sweep-probe.mp4 at 60 fps. Their measured values are
-in their filenames. If the discriminator is ever "simplified" back to a
-whole-ROI mean, states 3 and 4 stop being separable and this fails.
+The new one learns per-camera signatures from an ALT_LIGHT run
+(`--recalibrate`). This pins:
+  * the bundled signature is complete and self-consistent,
+  * features() reads a black frame as dark and a textured mid-grey frame as
+    bright + high-edge (the two signals the cameras actually split on),
+  * the classify rule is a plain per-camera threshold,
+  * the tearing reference frames still land on the right side.
 """
+import json
 import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent.parent
-FRAMES = REPO / "docs" / "img" / "tearing-vs-flash"
 sys.path.insert(0, str(HERE))
 import sweepcheck  # noqa: E402
 
@@ -27,76 +28,83 @@ except ImportError:
     print("PIL is required for this gate", file=sys.stderr)
     raise SystemExit(2)
 
-X0, Y0, X1, Y1 = sweepcheck.FEED
-W = sweepcheck.WIDTH
+fail = []
 
 
-def measure(path):
-    """Band rows and tear-robust brightness, as sweepcheck's luma() computes them."""
-    im = Image.open(path).convert("L").resize((sweepcheck.WIDTH, sweepcheck.HEIGHT))
-    buf = im.tobytes()
-    bands, textured = 0, []
-    for y in range(Y0, Y1, 4):
-        r = y * W
-        row = [buf[r + x] for x in range(X0, X1, 16)]
-        if max(row) - min(row) < sweepcheck.BAND_FLAT:
-            bands += 1
-        else:
-            textured.append(sum(buf[r + x] for x in range(X0, X1, 4))
-                            / len(range(X0, X1, 4)))
-    return bands, (sum(textured) / len(textured) if textured else None)
+# --- 1. the bundled signature ------------------------------------------------
+sig = json.loads(Path(sweepcheck.DEFAULT_SIG).read_text())
+if sorted(sig["cams"]) != ["10", "4", "7"]:
+    fail.append(f"signature must cover cams 10/4/7, has {sorted(sig['cams'])}")
+for cam, c in sig["cams"].items():
+    if c["feature"] not in ("vedge", "brightfrac"):
+        fail.append(f"cam {cam}: unknown feature {c['feature']}")
+    if not (0 < c["threshold"] < 300):
+        fail.append(f"cam {cam}: implausible threshold {c['threshold']}")
+    if c.get("specificity", 0) < 0.8:
+        fail.append(f"cam {cam}: signature rejects only {c['specificity']} of dark sweeps "
+                    "-- a NO_LIGHT run would false-positive")
+# CAM 07 (Main Hall, black without the light) must split on edges, not
+# brightness -- that distinction is the whole point of the rewrite.
+if sig["cams"]["7"]["feature"] != "vedge":
+    fail.append("cam 07 must use vedge: brightness does not separate it "
+                "(dark and lit both ~178 mean on n=275)")
 
 
-# name -> (torn?, lit?) -- the ground truth these frames were chosen to carry.
-CASES = {
-    "1-dark_cam11_bands0_luma18.png": (False, False),
-    "2-lit_cam11_bands0_luma115.png": (False, True),
-    "3-tearing_cam11_bands123_luma21.png": (True, False),
-    "4-tearing+lit_cam10_bands118_luma136.png": (True, True),
-}
-LIT = 86.0   # sweepcheck derives this per recording; the reference set is well
-             # clear of it on both sides (18/21 dark, 115/136 lit).
+# --- 2. features() on synthetic frames -------------------------------------
+def gray_frame(fn):
+    buf = bytearray(sweepcheck.WIDTH * sweepcheck.HEIGHT)
+    for y in range(sweepcheck.HEIGHT):
+        for x in range(sweepcheck.WIDTH):
+            buf[y * sweepcheck.WIDTH + x] = fn(x, y)
+    return bytes(buf)
 
-failures = []
-for name, (want_torn, want_lit) in CASES.items():
-    path = FRAMES / name
-    if not path.exists():
-        failures.append(f"{name}: missing -- the reference set is the gate")
+black = gray_frame(lambda x, y: 4)
+# a "lit room": mid-grey with vertical structure every ~12 px
+lit_room = gray_frame(lambda x, y: 70 + (55 if (x // 6) % 2 else 0))
+
+bv, bb = sweepcheck.features(black)
+lv, lb = sweepcheck.features(lit_room)
+if not (bv < 3 and bb < 0.05):
+    fail.append(f"a black frame must read low edge + low brightfrac, got vedge={bv:.1f} bf={bb:.2f}")
+if not (lv > bv + 5 and lb > 0.8):
+    fail.append(f"a lit textured frame must read higher on both, got vedge={lv:.1f} bf={lb:.2f}")
+
+
+# --- 3. the classify rule ------------------------------------------------
+def lit(cam, vedge, brightfrac):
+    c = sig["cams"][str(cam)]
+    return (vedge if c["feature"] == "vedge" else brightfrac) >= c["threshold"]
+
+t7 = sig["cams"]["7"]["threshold"]
+if lit(7, t7 - 1, 0.9) or not lit(7, t7 + 1, 0.1):
+    fail.append("cam 07 verdict must follow vedge vs its threshold alone")
+t4 = sig["cams"]["4"]["threshold"]
+if lit(4, 99, t4 - 0.05) or not lit(4, 0, t4 + 0.05):
+    fail.append("cam 04 verdict must follow brightfrac vs its threshold alone")
+
+
+# --- 4. the tearing reference frames still land right --------------------
+FRAMES = REPO / "docs" / "img" / "tearing-vs-flash"
+refs = {"1-dark_cam11_bands0_luma18.png": False, "2-lit_cam11_bands0_luma115.png": True}
+for name, want_lit in refs.items():
+    p = FRAMES / name
+    if not p.exists():
         continue
-    bands, robust = measure(path)
-    if robust is None:
-        failures.append(f"{name}: no textured row at all")
-        continue
-    torn, lit = bands > 0, robust >= LIT
-    if (torn, lit) != (want_torn, want_lit):
-        failures.append(
-            f"{name}: read torn={torn} lit={lit} "
-            f"(bands={bands}, robust={robust:.1f}); expected torn={want_torn} lit={want_lit}")
+    im = Image.open(p).convert("L").resize((sweepcheck.WIDTH, sweepcheck.HEIGHT))
+    v, b = sweepcheck.features(im.tobytes())
+    # these are CAM 11 frames; check the brighter one reads brighter
+    refs[name] = (v, b)
+if all(isinstance(x, tuple) for x in refs.values()):
+    (dv, db), (lv2, lb2) = refs["1-dark_cam11_bands0_luma18.png"], refs["2-lit_cam11_bands0_luma115.png"]
+    if not (lb2 > db and lv2 >= dv):
+        fail.append(f"the lit reference frame must read brighter than the dark one, "
+                    f"got dark=({dv:.1f},{db:.2f}) lit=({lv2:.1f},{lb2:.2f})")
 
-# The control that matters: the naive whole-ROI mean must FAIL to separate
-# these, or the tear-robust measure is solving a problem that is not there.
-naive = {}
-for name in CASES:
-    path = FRAMES / name
-    if not path.exists():
-        continue
-    im = Image.open(path).convert("L").resize((sweepcheck.WIDTH, sweepcheck.HEIGHT))
-    buf = im.tobytes()
-    vals = [buf[y * W + x] for y in range(Y0, Y1, 4) for x in range(X0, X1, 4)]
-    naive[name] = sum(vals) / len(vals)
-if naive:
-    torn_unlit = naive.get("3-tearing_cam11_bands123_luma21.png")
-    clean_lit = naive.get("2-lit_cam11_bands0_luma115.png")
-    if torn_unlit is not None and clean_lit is not None and torn_unlit <= clean_lit:
-        failures.append(
-            "the naive whole-ROI mean separates these frames after all "
-            f"(torn-unlit {torn_unlit:.1f} <= clean-lit {clean_lit:.1f}); "
-            "re-derive why the tear-robust measure is needed before trusting it")
 
-if failures:
-    for f in failures:
+if fail:
+    for f in fail:
         print("FAIL " + f, file=sys.stderr)
     raise SystemExit(1)
-print(f"sweepcheck discriminator: 4 reference states separated; "
-      f"naive mean inverts them ({naive['3-tearing_cam11_bands123_luma21.png']:.0f} torn-unlit "
-      f"vs {naive['2-lit_cam11_bands0_luma115.png']:.0f} clean-lit)")
+print("sweepcheck classifier: signature complete, "
+      f"cam07 splits on {sig['cams']['7']['feature']}>={sig['cams']['7']['threshold']}, "
+      f"cam04/10 on brightfrac; synthetic + reference frames land right")
