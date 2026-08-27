@@ -233,5 +233,45 @@ for runner in trial.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-audio.sh;
     echo "FAIL $runner presses a title item without sourcing the selector"; failed=1; }
 done
 
+# No file, in any language, may name a title coordinate.
+#
+# Widened 2026-08-26 because the two checks above missed a sixth copy of the
+# selection for three independent reasons: they grep `--include='*.sh'` and it
+# was JavaScript; they iterate a hardcoded runner list and it was not on it;
+# and they match the *name* TAP_NEWGAME while it held the raw literal
+# `sixth: [400, 880]`. hid-sweep-probe.mjs tapped that blind as the first
+# report of an HID stream, and hid-raise-probe.mjs imported it.
+#
+# So match the coordinates themselves, read out of coords.sh rather than
+# repeated here, in every spelling a caller might press them with.
+#
+# Two files hold them legitimately and are excluded by name: title-observe.py
+# needs item positions to *classify* a title, and testdata/make-title-fixture.py
+# *synthesizes* one. Neither presses anything. The hazard this closes is
+# pressing a title item without looking at it first, so an observer is not an
+# offender -- but it is excluded by name rather than by pattern, so a new one
+# has to be a decision in the diff. test-screen-map.mjs is excluded on the same
+# ground: it holds the screen->raw transform to one answer in three languages
+# and must name coordinates to compare them.
+# sed -E, not -n with BRE: BSD sed on macOS has no \| alternation, so the BRE
+# form matched nothing and the guard below fired. -E is portable to both.
+title_coords=$(sed -nE 's/^TAP_(CONTINUE|NEWGAME|6TH)="([0-9]+) ([0-9]+)".*/\2 \3/p' "$HERE/coords.sh")
+[ -n "$title_coords" ] || { echo 'FAIL could not read the title coordinates from coords.sh'; failed=1; }
+while read -r tx ty; do
+  [ -n "$tx" ] || continue
+  hits=$(grep -rlE "$tx[ ,][ ]*$ty" "$HERE"     --include='*.sh' --include='*.mjs' --include='*.py' 2>/dev/null     | grep -vE '/(menu|coords|test-menu)\.sh$' \
+    | grep -vE '/(title-observe\.py|testdata/make-title-fixture\.py|test-screen-map\.mjs)$' || true)
+  [ -z "$hits" ] || {
+    echo "FAIL these files name the title coordinate $tx $ty outside the selector:"
+    printf '    %s
+' $hits
+    echo "    Route them through menu_select; it is the only path that looks at"
+    echo "    the screen before pressing and gates New Game behind a capability."
+    failed=1
+  }
+done <<EOF
+$title_coords
+EOF
+
 [ "$failed" -eq 0 ] || { echo 'menu selector checks failed'; exit 1; }
 echo 'menu selector: 8 screen states, 11 refusals, New Game gated by capability, no second title table'

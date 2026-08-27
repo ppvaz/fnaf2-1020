@@ -31,8 +31,17 @@ import { pathToFileURL } from 'node:url';
 // test-screen-map.mjs now holds all three to the same answer.
 export const toRaw = ([x, y]) => [Math.floor((1080 - y) * 20 / 9), Math.floor(x * 9 / 20)];
 
+// No title coordinate lives here. Selecting a night is menu.sh's job, and it
+// is the only place that looks at the screen before pressing: it refuses when
+// the item is absent, when the game is not focused, and it gates New Game
+// behind MENU_ALLOW_SAVE_RESET. A blind title tap inside an HID stream
+// has none of that, and it was a sixth reimplementation of the selection this
+// repository had already centralised once after a save was destroyed.
+//
+// The wrappers therefore enter the night through menu_select and start the
+// stream with the office already up. See test-menu.sh's structural half, which
+// now covers every language rather than *.sh.
 export const COORDS = {
-  sixth: [400, 880],
   monitor: [1780, 1015],
   light: [350, 615],
   cam10: [2045, 720],
@@ -52,7 +61,7 @@ const record = (flags, point) => {
   return [flags, lo(x), hi(x), lo(y), hi(y)];
 };
 
-export function stream(spacings, { readyMs = 7000, introMs = 8000,
+export function stream(spacings, { readyMs = 7000,
                                    contactMs = 100, lightLeadMs = 0 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
@@ -72,9 +81,9 @@ export function stream(spacings, { readyMs = 7000, introMs = 8000,
   });
   // Kernel readiness is not input readiness: InputReader attaches about 5.1 s
   // after registration on this phone, and reports sent before that are lost.
+  // The night is already running: the wrapper selected it through menu.sh and
+  // verified the office is up before starting this stream.
   delay(readyMs);
-  tap(COORDS.sixth);
-  delay(introMs);
   tap(COORDS.monitor);
   delay(900);
 

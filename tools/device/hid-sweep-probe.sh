@@ -68,6 +68,35 @@ adb shell dumpsys window | grep 'mCurrentFocus' | grep -q "$PKG" || {
   echo "the game never took focus; aborting before any input" >&2; exit 1; }
 sleep 4
 
+# Enter the night through the one selector that looks at the screen first.
+#
+# The stream used to tap a title coordinate blind as its first report. That was a sixth
+# copy of the night selection -- and the only one in JavaScript, so test-menu.sh
+# could not see it: its structural half grepped *.sh. menu_select refuses when
+# the item is absent, when the game is not focused, and when the observation is
+# stale, and it gates New Game behind a capability. A probe that presses a title
+# it has not looked at is how the target device lost a save once already.
+#
+# PROBE_NIGHT is `sixthNight` by default because that is what this probe was
+# written for; set it to `continue` on a save where 6th Night is not unlocked.
+PROBE_NIGHT="${PROBE_NIGHT:-sixthNight}"
+# shellcheck source=coords.sh
+. "$HERE/coords.sh"
+# shellcheck source=menu.sh
+. "$HERE/menu.sh"
+menu_select "$PROBE_NIGHT" || {
+  echo "abort: could not select $PROBE_NIGHT on the title screen" >&2; exit 1; }
+
+# And confirm the night actually started before a single report goes out. The
+# stream's timings are relative to an office that is already up.
+for _ in $(seq 1 40); do
+  state="$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/screenstate.py" 2>/dev/null | tail -1)"
+  [ "$state" = night ] && break
+  sleep 0.5
+done
+[ "$state" = night ] || {
+  echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
+
 adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit 60 $REMOTE_VIDEO" &
 REC_PID=$!
 sleep 1

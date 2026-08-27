@@ -30,7 +30,7 @@ const record = (flags, point) => {
   return [flags, lo(x), hi(x), lo(y), hi(y)];
 };
 
-export function stream(gaps, { readyMs = 7000, introMs = 8000,
+export function stream(gaps, { readyMs = 7000,
                                contactMs = 100, dwellMs = 1500 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
@@ -50,9 +50,8 @@ export function stream(gaps, { readyMs = 7000, introMs = 8000,
     descriptor: DESCRIPTOR,
   });
   // InputReader attaches about 5.1 s after registration on this phone.
+  // The night is already running -- the wrapper selects it through menu.sh.
   delay(readyMs);
-  tap(COORDS.sixth);
-  delay(introMs);
 
   for (const gap of gaps) {
     // Park: raise, settle well clear of any floor, select CAM 11, let the
