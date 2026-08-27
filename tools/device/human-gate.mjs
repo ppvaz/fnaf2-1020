@@ -79,6 +79,7 @@ export function parsePlanText(text) {
   // Absent means zero, so a plan emitted before this header existed still
   // prices. A plan that names one must name a valid one.
   let idleUntilMs = 0;
+  let attackWindowMs = 10000;   // #cycle attack N; 10 s is the baseline
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
@@ -97,8 +98,10 @@ export function parsePlanText(text) {
       continue;
     }
     if (line.startsWith('#cycle')) {
-      cur = line.split(/\s+/)[1];
+      const parts = line.split(/\s+/);
+      cur = parts[1];
       plan[cur] = [];
+      if (cur === 'attack' && parts[2]) attackWindowMs = +parts[2];
       continue;
     }
     if (!cur) throw new Error(`plan row before any #cycle header: "${line}"`);
@@ -107,7 +110,7 @@ export function parsePlanText(text) {
     plan[cur].push(line);
   }
   if (!Object.keys(plan).length) throw new Error('empty plan');
-  return { night, plan, idleUntilMs };
+  return { night, plan, idleUntilMs, attackWindowMs };
 }
 
 // One modeled execution: every row's offset shifted by a slack draw, clamped
@@ -149,7 +152,7 @@ export function modelGate(planText, {
   runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
   night, replayFn = replay, shape = 'iid', seedStart = 1, outcomes = false,
 } = {}) {
-  const { night: named, plan, idleUntilMs } = parsePlanText(planText);
+  const { night: named, plan, idleUntilMs, attackWindowMs } = parsePlanText(planText);
   night = night ?? named;
   if (night === undefined || night === null)
     throw new Error('this plan does not name its night, and the gate will not guess one');
@@ -164,7 +167,7 @@ export function modelGate(planText, {
   const deathTimes = new Map();
   for (let seed = seedStart; seed < seedStart + runs; seed++) {
     const { sim } = replayFn(jitterPlan(plan, seed, slackMs, shape),
-                             { night, seed, idleUntilMs });
+                             { night, seed, idleUntilMs, attackWindowMs });
     if (sim.won) {
       survived++;
       if (outcomeVector) outcomeVector.push(1);

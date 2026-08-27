@@ -48,8 +48,15 @@ class HidPilot {
                      sweepSlotMs = 240, pulseLight = false,
                      secondBeat = false, maskMarginMs = null,
                      readLatencyMs = 360, hallPulseMs = 83,
-                     prophylacticMask = true, actuator = null } = {}) {
+                     prophylacticMask = true, actuator = null,
+                     attackWindowMs = 10000 } = {}) {
     this.sim = sim;
+    // Plan 16 structural experiment: the BB-response cycle length. 10 s is the
+    // baseline (a 5 s masked hold, a reset+sweep, then a ~3.5 s recovery with a
+    // second, weakly-covered Foxy check). A shorter window hands the next
+    // reset/check back to an ordinary 5 s read cycle instead. `replay()` reads
+    // this from the emitted `#cycle attack N` header so the two stay in step.
+    this.attackWindow = attackWindowMs / 1000;
     // The measured phone between this table and the game. The HID runner
     // wall-times one boundary per macro and spaces the inside with hid_delay
     // (+/-2 ms), so lateness here is one draw per beat, not per press --
@@ -447,13 +454,18 @@ class HidPilot {
     const end = this.flashTargets(off + s(0.45) + mv(SEARCH_KNOBS.attackSweepDeltaMs));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
-    const lateSweepStart = b + s(10) - this.sweepFrames - this.sweepTail;
-    const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46);
+    const W = this.attackWindow;
+    const lateSweepStart = b + s(W) - this.sweepFrames - this.sweepTail;
+    const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46 * W / 10);
+    // Is there room for a distinct recovery sweep before the next anchor? At
+    // the 10 s baseline there is (~3 s of tail); a shorter window folds it
+    // away and lets the next ordinary read cycle own the next sweep.
+    const hasRecoverySweep = lateSweepStart > windStart + s(0.4);
     // Plan 16 pkg 4 lever: an extra Foxy reset in the recovery, decoupled from
     // the masked block. Straddle the attack cycle's second 5 s check with the
     // monitor down (no Golden Freddy spawn, g336), flash, raise, resume wind.
     const rstD = mv(SEARCH_KNOBS.attackRstDeltaMs);
-    if (rstD > 0 && this.deviceSweep) {
+    if (rstD > 0 && this.deviceSweep && hasRecoverySweep) {
       const rst = b + rstD;
       this.hold(windStart, Math.max(1, rst - s(0.05) - windStart), 'wind');
       this.tap(rst, 'monitor');
@@ -461,10 +473,10 @@ class HidPilot {
       this.tap(rst + s(0.62), 'monitor');
       this.hold(rst + s(0.90), Math.max(1, windEnd - (rst + s(0.90))), 'wind');
     } else {
-      this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
+      this.hold(windStart, Math.max(1, (a + s(W) - 3) - windStart), 'wind');
     }
-    this.flashTargets(lateSweepStart);
-    this.nextAnchor = a + s(10);
+    if (hasRecoverySweep) this.flashTargets(lateSweepStart);
+    this.nextAnchor = a + s(W);
   }
 
   // The pre-read hall pulse makes the aligned five-tick hold affordable on
@@ -720,7 +732,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     '--device-actuator']);
   const valuedArgs = ['--hall-pulse-ms=', '--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
-    '--drop-bang=', '--false-bang=', '--night=', '--press-late-ms='];
+    '--drop-bang=', '--false-bang=', '--night=', '--press-late-ms=', '--attack-window-ms='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
     !valuedArgs.some(prefix => arg.startsWith(prefix)));
   if (unknownArgs.length) throw new Error(`unknown argument: ${unknownArgs.join(', ')}`);
@@ -740,6 +752,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const maskMarginArg = (cliArgs.find(v => v.startsWith('--mask-margin-ms=')) || '').split('=')[1];
   const maskMarginMs = maskMarginArg === undefined ? null : +maskMarginArg;
   const secondBeat = cliArgs.includes('--second-beat');
+  const awArg = (cliArgs.find(v => v.startsWith('--attack-window-ms=')) || '').split('=')[1];
+  const attackWindowMs = awArg ? +awArg : 10000;
   const bbMode = cliArgs.includes('--cam5') || sparseCam5 || vocalCam5 || bangCam5 ? 'cam5'
     : (cliArgs.includes('--no-bb') || cliArgs.includes('--no-cam5')) ? 'none'
       : 'left';
@@ -813,6 +827,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       bangFalseCount, cam5Hold, pilotOffset,
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
       secondBeat, maskMarginMs, readLatencyMs, hallPulseMs, deviceActuator,
+      attackWindowMs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
     if (actuator) {
       actSent += actuator.sent; actDrops += actuator.seamDrops;

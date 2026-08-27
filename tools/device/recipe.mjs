@@ -180,7 +180,7 @@ export const ATTACK_WINDOW_FRAMES = 600;
 // So a candidate is only an attack cycle if the sample kept running long enough
 // to contain one. Scan every candidate rather than taking the first: an early
 // end-of-night false positive must not hide a real attack later in the log.
-export function attackAnchor(log) {
+export function attackAnchor(log, windowFrames = ATTACK_WINDOW_FRAMES) {
   const masks = log.filter(e => e.kind === 'press' && e.act === 'mask').map(e => e.f);
   const monitors = log.filter(e => e.kind === 'press' && e.act === 'monitor').map(e => e.f);
   const end = log.length ? log[log.length - 1].f : -1;
@@ -188,7 +188,7 @@ export function attackAnchor(log) {
     if (monitors.some(g => g > f && g < f + 180)) continue;
     const anchor = monitors.filter(g => g < f).pop();
     if (anchor === undefined) continue;
-    if (end - anchor < ATTACK_WINDOW_FRAMES) continue;   // the night ended, not an attack
+    if (end - anchor < windowFrames) continue;   // the night ended, not an attack
     return anchor;
   }
   return null;
@@ -213,7 +213,8 @@ export function resolveAttack(o, log, capfn = capture) {
   const night = o.night ?? 6;
   const seed = o.seed ?? 7;
   const possible = C.canAct(night, 'bb');
-  const own = attackAnchor(log);
+  const wf = Math.round((o.attackWindowMs ?? 10000) * C.FPS / 1000);
+  const own = attackAnchor(log, wf);
   if (own !== null) {
     if (!possible)
       throw new Error(`night ${night} sampled a Balloon Boy attack cycle, but the ` +
@@ -225,7 +226,7 @@ export function resolveAttack(o, log, capfn = capture) {
     for (const alt of ATTACK_SEEDS) {
       if (alt === seed) continue;
       const sample = capfn({ ...o, seed: alt });
-      const anchor = attackAnchor(sample);
+      const anchor = attackAnchor(sample, wf);
       if (anchor !== null)
         return { anchor, log: sample, from: { night, seed: alt },
                  source: 'reseeded', reachable: true };
@@ -235,7 +236,7 @@ export function resolveAttack(o, log, capfn = capture) {
       'branch from; widen ATTACK_SEEDS rather than shipping a plan with no attack branch');
   }
   const sample = capfn({ ...o, night: TEMPLATE_NIGHT, seed: TEMPLATE_SEED });
-  const anchor = attackAnchor(sample);
+  const anchor = attackAnchor(sample, wf);
   if (anchor === null)
     throw new Error(`the canonical attack template (night ${TEMPLATE_NIGHT} seed ` +
       `${TEMPLATE_SEED}) no longer samples an attack cycle`);
@@ -275,7 +276,8 @@ export function build(opts = {}) {
   const { captureFn = capture, ...rest } = opts;
   const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
               sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, readLatencyMs: 550,
-              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true, ...rest };
+              hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true,
+              attackWindowMs: 10000, ...rest };
   const night = o.night ?? 6;
   const log = captureFn(o);
   const epoch = o.pilotOffset;
@@ -286,21 +288,22 @@ export function build(opts = {}) {
   // different questions and used to be the same line.
   const bb = resolveAttack(o, log, captureFn);
 
+  const attackFrames = Math.round(o.attackWindowMs * C.FPS / 1000);
   const opening = events(log, epoch, s(7));
   const clear = events(log, s(7) + 300, s(7) + 600);
-  const attack = events(bb.log, bb.anchor, bb.anchor + ATTACK_WINDOW_FRAMES);
+  const attack = events(bb.log, bb.anchor, bb.anchor + attackFrames);
   // Fail closed on a branch that is present but empty. An attack cycle that
-  // never raises the monitor again is not a cycle, it is a ten-second hole, and
-  // the pilot spends it masked and blind. Nothing checked this before.
+  // never raises the monitor again is not a cycle, it is a hole, and the
+  // pilot spends it masked and blind. Nothing checked this before.
   if (!attack.some(e => e.act === 'monitor' && e.at > 0))
     throw new Error(`the attack branch cut from night ${bb.from.night} seed ${bb.from.seed} ` +
       `(${bb.source}) has no monitor press after the read: it is ${attack.length} events of ` +
-      'a 10 s cycle, which would leave the pilot masked and idle on every Balloon Boy read');
+      `a ${o.attackWindowMs / 1000} s cycle, which would leave the pilot masked and idle on every Balloon Boy read`);
 
   const cycles = {
     opening: { lengthMs: 7000, events: opening },
     clear: { lengthMs: 5000, events: clear },
-    attack: { lengthMs: 10000, events: attack },
+    attack: { lengthMs: o.attackWindowMs, events: attack },
   };
   for (const [, c] of Object.entries(cycles)) c.budget = budget(c.events, c.lengthMs);
 
@@ -704,7 +707,8 @@ export function devicePlan(recipe) {
 // contract forbids.
 export function replay(plan, { night, seed = 1, worst = false,
                                pilotOffset = 10, readLatencyMs = 550,
-                               classifyMs = 250, idleUntilMs = 0 } = {}) {
+                               classifyMs = 250, idleUntilMs = 0,
+                               attackWindowMs = 10000 } = {}) {
   if (night === undefined) throw new Error('replay() needs the night the plan was built for');
   const sim = new Sim({ seed, night, worst });
   const f = msv => Math.round(msv * C.FPS / 1000);
@@ -806,7 +810,7 @@ export function replay(plan, { night, seed = 1, worst = false,
       if (bb) detections++;
       const lines = bb ? plan.attack : plan.clear;
       parse(lines.slice(2), b);             // the branch, after the read
-      base = b + f(bb ? 10000 : 5000);
+      base = b + f(bb ? attackWindowMs : 5000);
       parse(plan.clear.slice(0, 2), base);
     }
     sim.tick();
