@@ -330,6 +330,7 @@ want="$(printf '%s\n' '7000 tap monitor' '7767 light' "$((7767 + READ_CAPTURE_DE
 # and lost that press to the same flip -- the corrector caused the desync.
 MONITOR_ANIM_DOWN_MS="$(runner_const MONITOR_ANIM_DOWN_MS)"
 CUE_CAMS_UP_LUMA="$(runner_const CUE_CAMS_UP_LUMA)"
+CUE_CAMS_UP_GREY="$(runner_const CUE_CAMS_UP_GREY)"
 HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
 
 {
@@ -338,7 +339,7 @@ HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
   # here too. Since 2026-08-26 that is an arm, not a scalar: the model gate
   # supersedes the floor on the gated plan path, and the floor is retained only
   # for dormant unpriced branches. Both arms are exercised below.
-  for fn in human_floor_abort human_floor_check press_at light_down_at; do
+  for fn in human_floor_abort human_floor_check press_at light_down_at cams_still_up; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"
@@ -347,7 +348,7 @@ HUMAN_FLOOR_MS="$(runner_const HUMAN_FLOOR_MS)"
 
 {
   for c in FUSION_POLL_MS TAP_CONTACT_MS MONITOR_ANIM_DOWN_MS CUE_CAMS_UP_LUMA \
-           HUMAN_FLOOR_MS; do
+           CUE_CAMS_UP_GREY HUMAN_FLOOR_MS; do
     eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
   done
 } > "$TMP/light-harness.sh"
@@ -402,16 +403,16 @@ cue_snapshot() {
     # command substitution, so a shell variable incremented here dies with the
     # subshell and every call would look like the first.
     if [ "$(wc -l < "$CUE_LOG" | tr -d ' ')" -gt 1 ]; then
-      printf 'OK luma=20 cam5=30 ageUs=1500\n'
+      printf 'OK luma=20 cam5=30 grey=145 ageUs=1500\n'
     else
-      printf 'OK luma=255 cam5=30 ageUs=1500\n'
+      printf 'OK luma=255 cam5=30 grey=178 ageUs=1500\n'
     fi
     return 0
   fi
   if [ "$CUE_HONEST" -eq 1 ] && [ "$NOW" -ge $((LAST_MONITOR_PRESS_MS + 202)) ]; then
-    printf 'OK luma=20 cam5=30 ageUs=1500\n'
+    printf 'OK luma=20 cam5=30 grey=145 ageUs=1500\n'
   else
-    printf 'OK luma=228 cam5=30 ageUs=1500\n'
+    printf 'OK luma=228 cam5=30 grey=178 ageUs=1500\n'
   fi
 }
 HARNESS
@@ -515,3 +516,66 @@ case "$got" in
 esac
 
 echo 'plan interpreter checks passed (opening, prefix, both branches, epoch slip, refusals; macro timeline matches the plan; the cue read waits out the monitor flip and confirms it before correcting)'
+
+# --- cams_still_up: the resync verification ------------------------------
+#
+# This decision had no test and was wrong on the route's own cameras. The luma
+# arm clears its 180 threshold on CAM 11 only -- measured 2026-08-26 over all
+# twelve cameras, and the route selects 10, 04, 07 and 11, which read 0, 106,
+# 47 and 226. So the check that exists to catch a desync was blind on three of
+# the four cameras a desync can leave selected, and night 1's single resync
+# failed exactly there. grey= reads 177-180 on all four.
+csu() { light_run "cams_still_up '$1'"; }
+
+# The four cameras the route actually selects, at their measured grey values.
+for g in 180 180 180 177; do
+  got="$(csu "OK luma=0 cam5=30 grey=$g ageUs=1500")"
+  case "$got" in
+    '1 grey '*) ;;
+    *) echo "cams_still_up: grey=$g is a camera and must read still-up, got: $got" >&2; exit 1 ;;
+  esac
+done
+
+# Office, including the vent-light variant whose luma of 102 beats eight of the
+# twelve cameras -- the confound that makes the luma arm unsafe.
+for g in 142 145; do
+  got="$(csu "OK luma=102 cam5=30 grey=$g ageUs=1500")"
+  case "$got" in
+    '0 grey '*) ;;
+    *) echo "cams_still_up: grey=$g is the office and must read down, got: $got" >&2; exit 1 ;;
+  esac
+done
+
+# The boundary is inclusive at the constant, and sits inside the measured gap
+# of office 145 -> monitor-up 173.
+case "$(csu "OK luma=0 grey=$CUE_CAMS_UP_GREY ageUs=1")" in
+  '1 grey '*) ;;
+  *) echo "cams_still_up: the threshold itself must read still-up" >&2; exit 1 ;;
+esac
+case "$(csu "OK luma=0 grey=$((CUE_CAMS_UP_GREY - 1)) ageUs=1")" in
+  '0 grey '*) ;;
+  *) echo "cams_still_up: one below the threshold must read down" >&2; exit 1 ;;
+esac
+if [ "$CUE_CAMS_UP_GREY" -le 145 ] || [ "$CUE_CAMS_UP_GREY" -ge 173 ]; then
+  echo "CUE_CAMS_UP_GREY $CUE_CAMS_UP_GREY is outside the measured gap 145..173" >&2
+  exit 1
+fi
+
+# An older helper that predates grey= must fall back audibly, never silently:
+# a quiet downgrade to the blind arm reads exactly like a working check.
+got="$(csu 'OK luma=228 cam5=30 ageUs=1500' 2>/dev/null)"
+case "$got" in
+  '1 luma-fallback 228') ;;
+  *) echo "cams_still_up: missing grey= must fall back to luma, got: $got" >&2; exit 1 ;;
+esac
+warn="$(csu 'OK luma=228 cam5=30 ageUs=1500' 2>&1 >/dev/null)"
+case "$warn" in
+  *'no grey='*) ;;
+  *) echo "cams_still_up: the luma fallback must warn on stderr, got: $warn" >&2; exit 1 ;;
+esac
+# A snapshot with neither field is not evidence that the cams are up.
+case "$(csu 'OK cam5=30 ageUs=1500' 2>/dev/null)" in
+  '0 luma-fallback none') ;;
+  *) echo "cams_still_up: an unreadable snapshot must not report still-up" >&2; exit 1 ;;
+esac
+echo "cams_still_up checks passed"

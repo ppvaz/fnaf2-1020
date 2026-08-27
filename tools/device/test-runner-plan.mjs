@@ -195,11 +195,29 @@ check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === 
 // 10 s cadence. So after the resync press the runner reads the cams back
 // through the cue helper and presses once more if they are still up, bounded
 // at one retry so it never fights the engine over the toggle.
+//
+// What it verifies WITH changed on 2026-08-26. The check read `luma`, whose
+// 180 threshold was calibrated over 1818 samples of night 6-34 -- a route that
+// sits on CAM 11 for its whole cams-up stretch. Reading all twelve cameras on
+// the phone, luma at (3,6) clears 180 on CAM 11 alone: this route selects
+// cams 10, 04, 07 and 11, which read 0, 106, 47 and 226, so the check was
+// blind on three of the four cameras a desync can leave selected. An office
+// holding the vent light reads 102 and would have read as a camera. The
+// grey-cell count reads 177-180 on all four and 142-145 on the office.
 const resyncCase = src.match(/monitor-resync\b[\s\S]*?run_macro clear/);
 check(resyncCase, 'the UP-DESYNCED recovery is gone');
-check(/CUE_CAMS_UP_LUMA/.test(resyncCase[0]),
+check(/cams_still_up/.test(resyncCase[0]),
   'the resync press is not verified: a forcedown can spend it and the ' +
   'recovery resumes the schedule inverted');
+// Naming the verifier is not enough -- it has to decide on the anchor that
+// actually separates the states on this sensor.
+const verifier = src.match(/cams_still_up\(\)\s*\{[\s\S]*?\n\}/);
+check(verifier, 'cams_still_up is gone');
+check(/CUE_CAMS_UP_GREY/.test(verifier[0]),
+  'cams_still_up must decide on the grey-cell anchor, not on luma alone');
+check(/>&2/.test(verifier[0]),
+  'the luma fallback must announce itself: a silent downgrade to an arm that ' +
+  'sees cams-up on CAM 11 alone reads exactly like a working check');
 check(/monitor-resync-2/.test(resyncCase[0]),
   'a resync that reads the cams still up must press once more');
 check((resyncCase[0].match(/monitor-resync-2/g) || []).length === 1,

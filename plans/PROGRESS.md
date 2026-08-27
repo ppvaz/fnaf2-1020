@@ -19,11 +19,15 @@ classifier. Mean luma overlaps too. The **near-grey cell count over the whole
 grid** separates office 142-145 from monitor-up 173-180 and is now emitted as
 `grey=` in the snapshot (`ScreenStats`, gated host-side by `ScreenStatsTest`).
 
-**Very next step:** the new APK is **built but NOT installed** at
-`android/cue-helper/build/cue-helper.apk`. Installing kills the running helper
-and needs the user to re-grant projection consent, so it was not done
-unattended. After installing: confirm `grey=` appears in a live snapshot, then
-calibrate the threshold -- the measured gap is 145 -> 173 and the midpoint ~159
+The APK is **installed and `grey=178` reads live**. The resync verification now
+decides on it (`cams_still_up()`, gated by `test-plan-interpreter.sh`): the old
+`luma >= 180` arm was calibrated over 1818 samples of night 6-34, whose route
+sits on CAM 11 all night, and **cleared 180 on CAM 11 alone** -- this route
+selects cams 10, 04, 07 and 11, reading 0, 106, 47 and 226. It was blind on
+three of the four cameras a desync can leave selected, which is why night 1's
+single resync failed and the next read still photographed the Main Hall feed.
+
+**Very next step:** calibrate the threshold -- the measured gap is 145 -> 173 and the midpoint ~159
 is a *starting point*, not a calibrated boundary. Two states remain unsampled
 and both could land inside the monitor-up band: an office with an animatronic
 present, and the blackout. The mask already does (175), so `grey=` must be read
