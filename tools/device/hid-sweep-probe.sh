@@ -52,6 +52,7 @@ if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
 fi
 
 mkdir -p "$CAPTURE_DIR"
+echo "geometry: contact ${CONTACT_MS:-100} ms, spacings ${SPACINGS[*]} ms, held light ${HELD_LIGHT:-0}, camtrace floor ${MIN_MS:-50} ms"
 node "$HERE/hid-sweep-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
 

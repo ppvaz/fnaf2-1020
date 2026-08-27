@@ -143,13 +143,18 @@ const DESCRIPTOR = [5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,1
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const contactMs = Number(process.env.CONTACT_MS || 100);
-  if (!Number.isInteger(contactMs) || contactMs < 20 || contactMs > 200)
-    throw new Error('CONTACT_MS must be an integer between 20 and 200');
+  if (!Number.isInteger(contactMs) || contactMs < 10 || contactMs > 200)
+    throw new Error('CONTACT_MS must be an integer between 10 and 200');
   const spacings = process.argv.slice(2).map(Number);
-  if (spacings.some(v => !Number.isInteger(v) || v < 40 || v > 500))
-    throw new Error('spacings must be integers between 40 and 500 ms');
-  if (spacings.some(v => v <= contactMs))
-    throw new Error('each spacing must exceed CONTACT_MS');
+  // This is a probe: its job is to find where the phone stops accepting input,
+  // so it imposes almost nothing. One 60 fps frame (17 ms) is the floor a
+  // contact or a gap could possibly mean something at; spacing == contact
+  // (zero released gap, back-to-back selects) is a legitimate thing to test.
+  if (spacings.some(v => !Number.isInteger(v) || v < 17 || v > 500))
+    throw new Error('spacings must be integers between 17 (one frame) and 500 ms');
+  if (spacings.some(v => v < contactMs))
+    throw new Error(`each spacing must be >= CONTACT_MS (${contactMs}); a spacing ` +
+      'below the contact would overlap the next select into this one');
   const lightLeadMs = Number(process.env.LIGHT_LEAD_MS || 0);
   if (!Number.isInteger(lightLeadMs) || lightLeadMs < 0 || lightLeadMs >= contactMs)
     throw new Error('LIGHT_LEAD_MS must be an integer in [0, CONTACT_MS)');
