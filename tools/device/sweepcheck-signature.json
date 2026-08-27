@@ -9,18 +9,16 @@
  "_rule": "bf>=A and (pve>=B or rv<=C); sweep lit iff >=2 of 3 cams",
  "cams": {
   "10": {
-   "bf": 0.28,
-   "pve": 1.5,
-   "rv": 65,
+   "shape": "flash",
+   "flash": 1,
    "lit_n": 13,
    "dark_n": 12,
-   "recall": 0.77,
+   "recall": 1.0,
    "specificity": 1.0
   },
   "4": {
-   "bf": 0.58,
-   "pve": 0.0,
-   "rv": 43,
+   "shape": "flash",
+   "flash": 2,
    "lit_n": 13,
    "dark_n": 12,
    "recall": 1.0,

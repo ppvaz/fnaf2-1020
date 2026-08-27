@@ -33,16 +33,20 @@ sig = json.loads(Path(sweepcheck.DEFAULT_SIG).read_text())
 if sorted(sig["cams"]) != ["10", "4", "7"]:
     fail.append(f"signature must cover cams 10/4/7, has {sorted(sig['cams'])}")
 for cam, r in sig["cams"].items():
-    for k in ("bf", "pve", "rv"):
-        if k not in r:
-            fail.append(f"cam {cam}: rule missing {k}")
+    if r.get("shape") == "flash":
+        if not (1 <= r["flash"] <= 3):
+            fail.append(f"cam {cam}: implausible flash-frame count {r['flash']}")
+    else:
+        for k in ("bf", "pve", "rv"):
+            if k not in r:
+                fail.append(f"cam {cam}: rule missing {k}")
     if r.get("specificity", 0) < 1.0:
         fail.append(f"cam {cam}: signature rejects only {r.get('specificity')} of dark sweeps -- "
-                    "the NO_LIGHT control must be a clean 0")
+                    "the ALT_LIGHT calibration must be a clean 0")
 # CAM 07 (Main Hall, black without the light) is the camera brightness alone
 # cannot classify -- its rule must lean on pve (edges) or rv (uniformity).
 r7 = sig["cams"]["7"]
-if r7["pve"] < 2 and r7["rv"] > 70:
+if r7.get("shape") != "flash" and r7.get("pve", 0) < 2 and r7.get("rv", 99) > 70:
     fail.append("cam 07's rule collapsed to brightness -- it must use the edge "
                 "spike or the uniformity term")
 

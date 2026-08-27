@@ -34,6 +34,35 @@ cannot flip the verdict. On the c33 controls: NO_LIGHT 25/25 sweeps correctly
 dark, ALT_LIGHT 25/25, all-lit 23/25 (the 2 misses call a lit sweep dark --
 the safe direction).
 
+CAVEATS -- read before trusting a number.
+
+1. EVERY calibration frame is an EMPTY ROOM. The c33-dark/alt/stable runs are
+   early Night 2 on Continue, before the animatronics leave the stage. A real
+   Minus 7 night has Toy Bonnie on CAM 04, Toy Chica returning to CAM 07,
+   Withereds moving through -- and an animatronic in the feed CHANGES every
+   feature this classifier reads: a dark figure lowers `bf`, adds or destroys
+   edges (`pve`), and breaks the spatial uniformity (`rv`). The thresholds
+   here may be overfit to empty rooms and quietly fail when the room is
+   occupied -- which is exactly the case the sweep exists to handle. This is
+   unmeasured. Do not treat a clean sweepcheck pass on an occupied-room night
+   as validation until the classifier has been re-checked against labelled
+   frames with animatronics present (the same control gap CLAUDE.md records
+   for `grey=` and the yellow anchor).
+
+2. CAM 07 (Main Hall) does not transfer across nights. Its lit and dark feeds
+   overlap on brightness (both ~178 mean, n=275); the only separator is the
+   edge spike / uniformity, and Main Hall's tearing edge-density varies night
+   to night, so a threshold fit on one recording false-positives on another
+   (7/25 on c33-dark with the c33-alt threshold). CAM 07 is only reliable
+   when SELF-calibrated from the same night's own dark sweeps -- i.e. on an
+   ALT_LIGHT run. CAM 10 / CAM 04 use the (mean, bf) sweet-spot frame count,
+   which is more absolute and did hold across the c33 runs.
+
+3. The sweep verdict is a >=2/3 vote precisely because of (2): a real all-lit
+   night cannot self-calibrate CAM 07, so the two reliable cameras carry it.
+   A sweep where CAM 10 and CAM 04 both flash almost certainly flashed CAM 07
+   too -- same light contact, same geometry.
+
 Usage:
   sweepcheck.py VIDEO [--fps 60] [--expect 10,4,7] [--signature FILE]
   sweepcheck.py --recalibrate ALT.mp4 [--out FILE]   (ALT.mp4 from ALT_LIGHT=1)
@@ -106,7 +135,15 @@ def frame_features(gray):
 
 
 def window_stats(frames):
-    """The three per-camera features from a list of frame_features tuples."""
+    """Per-camera features from a list of frame_features (mean, vedge, bf, rv).
+
+    `flash` counts frames in the (mean, bf) SWEET SPOT: a real flash frame sits
+    between the dark settled feed (mean ~80, bf ~0.2) and a white-blowout tear
+    (mean ~218, bf ~0.05) -- mean 85..175 with bf >= 0.45. This is the single
+    cleanest signal for CAM 10 / CAM 04; it does not save CAM 07 (Main Hall is
+    near-black lit or dark, and its 2-4 torn flash frames overlap both ways --
+    see the docstring), which is why the sweep verdict is a >=2/3 vote.
+    """
     means = [f[0] for f in frames]
     vedges = [f[1] for f in frames]
     brightest = means.index(max(means))
@@ -114,6 +151,7 @@ def window_stats(frames):
         "bf": max(f[2] for f in frames),
         "pve": max(vedges) - statistics.median(vedges),
         "rv": frames[brightest][3],
+        "flash": sum(1 for (m, _v, bf, _r) in frames if 85 <= m <= 175 and bf >= 0.45),
     }
 
 
@@ -149,6 +187,8 @@ def sweep_windows(video, fps):
 def cam_lit(rule, w):
     if not w:
         return False
+    if rule.get("shape") == "flash":
+        return w["flash"] >= rule["flash"]
     return w["bf"] >= rule["bf"] and (w["pve"] >= rule["pve"] or w["rv"] <= rule["rv"])
 
 
@@ -167,23 +207,35 @@ def cmd_recalibrate(a):
     for cam in (10, 4, 7):
         L, D = lit[cam], dark[cam]
         best = None
+
+        def consider(rule):
+            nonlocal best
+            tp = sum(1 for w in L if cam_lit(rule, w))
+            tn = sum(1 for w in D if not cam_lit(rule, w))
+            score = tn * 2 + tp   # a false "lit" is the dangerous error
+            if best is None or score > best[0]:
+                best = (score, rule, tp, tn)
+
+        # shape 1: the (mean, bf) sweet-spot frame count -- cleanest for the
+        # rooms with ambient structure (CAM 10, CAM 04).
+        for k in range(1, 4):
+            consider({"shape": "flash", "flash": k})
+        # shape 2: bf floor with an edge-spike / uniformity escape hatch --
+        # the only thing that touches CAM 07 at all.
         for A in [x / 100 for x in range(28, 80, 2)]:
             for B in [x / 4 for x in range(0, 40)]:
                 for C in range(43, 85, 2):
-                    rule = {"bf": A, "pve": B, "rv": C}
-                    tp = sum(1 for w in L if cam_lit(rule, w))
-                    tn = sum(1 for w in D if not cam_lit(rule, w))
-                    # weight specificity: a false "lit" is the dangerous error
-                    score = tn * 2 + tp
-                    if best is None or score > best[0]:
-                        best = (score, rule, tp, tn)
+                    consider({"bf": A, "pve": B, "rv": C})
         _, rule, tp, tn = best
         rule.update(lit_n=len(L), dark_n=len(D),
                     recall=round(tp / len(L), 2) if L else None,
                     specificity=round(tn / len(D), 2) if D else None)
         sig["cams"][str(cam)] = rule
-        print(f"CAM {cam:02d}: bf>={rule['bf']} and (pve>={rule['pve']} or rv<={rule['rv']})   "
-              f"lit {tp}/{len(L)}  dark-rejected {tn}/{len(D)}")
+        if rule.get("shape") == "flash":
+            desc = f"flash-frames >= {rule['flash']}"
+        else:
+            desc = f"bf>={rule['bf']} and (pve>={rule['pve']} or rv<={rule['rv']})"
+        print(f"CAM {cam:02d}: {desc}   lit {tp}/{len(L)}  dark-rejected {tn}/{len(D)}")
 
     out = a.out or DEFAULT_SIG
     with open(out, "w") as fh:
