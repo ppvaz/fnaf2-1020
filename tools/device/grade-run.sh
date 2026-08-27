@@ -64,6 +64,46 @@ echo "capture: ${VIDEO##*/}"
 [ -f "$MANIFEST" ] && echo "session manifest: ${MANIFEST##*/}" || echo "session manifest: none (unmanifested run)"
 
 fail=0
+
+# The frame rate this pipeline ASSERTS, checked against the one the recording
+# actually has. Nothing in this repository read a recording's real rate until
+# 2026-08-26 -- there was no ffprobe anywhere in it -- while the graders
+# disagreed about the number among themselves: this script passes --fps 60 to
+# three of them, camtrace.py defaults to 30 and desync-scan.py decodes at
+# 30/20/4. That is not academic. A 30 fps decode of a 60 fps capture is what
+# produced the withdrawn 240 ms inter-selection figure: every dwell reported as
+# the 0.10 s floor and read as a dropped selection, and the "device limit" it
+# implied survived two days and one CLAUDE.md bullet.
+#
+# So the assumption is now a measurement with a control. This does not change
+# any rate a grader uses -- it refuses when the assumption is false, which is
+# the failure the graders cannot see from inside.
+GRADE_FPS=60
+if command -v ffprobe >/dev/null 2>&1; then
+  probed="$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate \
+            -of default=nw=1:nk=1 "$VIDEO" 2>/dev/null)"
+  case "$probed" in
+    */*)
+      num="${probed%%/*}"; den="${probed##*/}"
+      if [ "${den:-0}" -gt 0 ] 2>/dev/null; then
+        real=$(( (num + den / 2) / den ))
+        echo "capture rate: ${real} fps (ffprobe ${probed})"
+        if [ "$real" -ne "$GRADE_FPS" ]; then
+          echo "  ^ FAILED: every grader below is run at ${GRADE_FPS} fps, and this"
+          echo "    recording is ${real}. Decoding at the wrong rate does not error --"
+          echo "    it reports short events as dropped, which is how the withdrawn"
+          echo "    240 ms spacing figure was produced. Re-run the graders at ${real}."
+          fail=1
+        fi
+      else
+        echo "capture rate: UNKNOWN(ffprobe returned '$probed')"
+      fi
+      ;;
+    *) echo "capture rate: UNKNOWN(ffprobe returned '${probed:-nothing}')" ;;
+  esac
+else
+  echo "capture rate: UNKNOWN(no ffprobe) -- graders below assume ${GRADE_FPS} fps"
+fi
 step() {
   echo
   echo "--- $1 ---"

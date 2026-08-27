@@ -729,6 +729,50 @@ different resolution or orientation.
 - It does not imply the same flashlight-power budget is affordable on 10/20
   Night 7. The current scope is Night 6.
 
+### Open: the tick rate is asserted twice and measured never (2026-08-26)
+
+**This is an open item, recorded here because it kept falling out of the places
+that track open items.** `ARCHITECTURE-AUDIT.md` filed it as a note that
+deferred to `plans/PROGRESS.md`'s next step; PROGRESS then moved on to a
+different thread and stopped mentioning it. It now lives on the page that owns
+device timing, where the constants it governs are.
+
+Two rates are stated as fact and neither is sourced to a measurement:
+
+- **60 FPS**, `src/config.js:23`. Every sourced duration, camera stall, fuse
+  and animation frame count in the engine is in 60ths.
+  `SOURCE-DUMP-GUIDE.md:316` calls it "the 60 fps assumption" and
+  `ANDROID-SOURCE-STATUS.md:554` labels a derived figure `[INFERRED — sourced
+  constants, assumed 60 fps]`.
+- **30 Hz**, as "one 30 Hz Fusion poll is 33 ms", asserted in `recipe.mjs`,
+  `actuator.mjs`, `trial-minus7.sh` and six tests, and at line 688 above — as
+  though sourced. Nowhere in the repository is it measured or derived.
+
+They may both be right: render rate and touch-poll rate are different things,
+and Fusion's own "poll touch per frame" would make them the same number rather
+than two. But nothing here says which, and the difference is load-bearing in
+**both** directions. At 60 Hz the emitter's enforced 33 ms gaps spend twice the
+cycle budget they need, and the route is short of exactly that budget — Nights
+5-6 have 192 frames of flashlight headroom. At 30 Hz a "one-frame phase island"
+is not something a phone can land on, and the Night 7 route depends on landing
+one.
+
+Price nothing new against either number until one of them is measured. The
+cheap experiment is `hid-raise-probe.mjs`'s shape: sweep the inter-selection
+gap and find the quantum the accept/reject boundary snaps to.
+
+**Half-closed 2026-08-26:** the *recording* rate is no longer assumed.
+`grade-run.sh` now probes the capture with `ffprobe` and refuses when it is not
+the 60 fps every grader below it is run at. There had been no `ffprobe`
+anywhere in the repository, while the graders disagreed among themselves —
+`grade-run.sh` passes `--fps 60`, `camtrace.py` defaults to 30,
+`desync-scan.py` decodes at 30/20/4. That disagreement is not hypothetical: a
+30 fps decode of a 60 fps capture is what produced the **withdrawn 240 ms
+inter-selection figure**, since every dwell reported as the 0.10 s floor and
+read as a dropped selection. The fix applied at the time was to pass `--fps 60`
+at the call site, which left the defaults in place and the assumption
+unchecked. It is checked now. The *input* poll rate above remains open.
+
 ---
 
 ## Prior art: is any of this a solved problem elsewhere? (2026-08-26)

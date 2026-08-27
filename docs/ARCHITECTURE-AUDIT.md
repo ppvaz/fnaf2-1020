@@ -127,6 +127,33 @@ fixture-based test asserting all four copies answer alike — including the
 newspaper frame. The structural half (one fact, four sensor-bound readers) is
 already `plans/15`'s package 3; this is the drift that cannot wait for it.
 
+**Resolved 2026-08-26 (`8a9925b`), and the count above was wrong: there were
+five copies, not four.** `nightpredicate.py` holds the rule in fractions of the
+frame and the caller supplies a sampler. It had already taken over
+`grade-night.py` and `screenstate.py`'s PNG path, and `plans/PROGRESS.md`
+recorded this finding as resolved on that basis. It was not. Two callers still
+stated the rule, and the worse of them is one this document undercounted:
+
+- **`screenstate.py`'s `--adb-fast` path** — copy A, the *live* watchdog that
+  decides whether the phone is still in a night — kept its own thresholds. The
+  table above lists copy A as having the guard, which was true of the guard and
+  false of the rule. It is the copy this finding itself noted "is never run".
+- **`death-census.py`** kept the pre-guard form, so it read the New Game
+  newspaper as a running night. Harmless over the `n6-night-*` corpus and wrong
+  on the fresh-save route `plans/13` needs.
+
+Both now evaluate `nightpredicate.is_night`. The fast path additionally refuses
+at startup when its hand-picked scanlines stop covering a region of the rule —
+which is exactly how the global-brightness rows came to be missing from it.
+`screenstate.py` and `death-census.py` guard their main under `__name__`,
+because neither could be imported: importing `screenstate.py` ran it and
+blocked on stdin, which is *why* the live path had no test.
+
+`test-screenstate.py` now asserts all four callers agree at both geometries and
+forbids any other file in `tools/device` from restating the rule's thresholds.
+That structural half is what found copy A — the agreement test alone would not
+have, because nothing was calling the live path to disagree with.
+
 ---
 
 ## 3. `grade-run.sh` prints "every instrument passed" for instruments that measured nothing
@@ -352,6 +379,30 @@ points to as "this is now enforced".
 **Recommendation: quick fix.** Have `test-grade-run-coverage.mjs` read
 `tools/test.mjs`'s registry and CI's workflow, and fail when a `test-*` file is
 in neither. Extend the directory scan to `tools/cue` and `tools/dump`.
+
+**Resolved 2026-08-26.** Three of the five orphans had been wired in without
+this finding being updated; `test-select-adb.sh` and `test-screencheck.py` had
+not, and both still stood as the cited justification for an exclusion. Both are
+registered in `tools/test.mjs` and both passed on the first run.
+
+The `test-*` skip is no longer a `continue` under an unverified comment. The
+gate reads `tools/test.mjs` and `.github/workflows/ci.yml` and fails on any
+gate in neither, and — the half the recommendation did not name — it now
+**resolves every `test-*` file an exclusion reason cites** and fails when that
+gate does not exist or does not run. The reasons were free text that nothing
+parsed, which is the mechanism that let four of them cite dead gates. The
+directory scan covers `tools/cue` and `tools/dump`, with twelve sibling
+exclusions written for the scripts there.
+
+*Worth recording, because it is the finding in miniature:* the first version of
+the "does this gate run?" check used a substring match, and its positive
+control failed — a **comment** in `tools/test.mjs` naming `test-select-adb.sh`
+satisfied the check while the registry entry was deleted. It now parses
+registry entries only, for the same reason `grade-run.sh` is read
+invocation-lines-only. A check a mention can satisfy measures documentation.
+
+Not resolved by this, and left as its own finding: whether a step can be made
+to *fail* (finding 3). Coverage and reachability are still different questions.
 
 ---
 

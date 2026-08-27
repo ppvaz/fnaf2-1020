@@ -73,17 +73,20 @@ still the live next action.
   5/5 Night 1 card frames, rejects 21/21 non-card frames and all 17/17 6 AM
   frames, and the cleared Night 1 timelines from intro through a positive 6 AM.
 
-**The working tree is not clean.** An active concurrent source pass is changing
-`src/config.js`, `src/engine.js`, `src/ui.js`, `tools/simtest.mjs`,
-`tools/sourcetest.mjs`, and `tools/dump/coverage.py`; it was outside the scoped
-commits above and is being preserved. At the first snapshot the full engine run
-passed **52 of 53 checks** and failed `simtest` on the marker-123 model. The
-source pass then split the reaction and committed-attack states and expanded
-into hall-light pinning, Toy Chica timing and Puppet routing; the latest focused
-run passes all 159 sourced-rule checks but fails `simtest` because W. Bonnie
-does not cross after the new hall-light B tail drains. Let that pass finish and
-restore the full green gate before touching the phone; a route priced while its
-engine is changing is not gate-clean.
+**Closed 2026-08-26: the source pass landed and the gate is green again.**
+This block said the working tree was dirty with an in-flight marker-123 source
+pass and that `simtest` was failing on W. Bonnie's hall-light B tail. That pass
+is committed as `47dcd1b` ("Split the reaction window from the committed
+attack"), the tree is clean, and `node tools/test.mjs --engine` passes every
+check. Nothing is blocked on it, and Plan 13's next gate no longer waits on a
+reconciliation that already happened.
+
+*Kept rather than deleted, because the staleness is the lesson.* This paragraph
+is the first thing a cold session reads, and it stood for hours after the
+condition it describes had cleared — sending the next session to redo finished
+work and to hold off the phone for a red suite that was green. CLAUDE.md's rule
+is that the "Very next step" is re-pointed *the moment* it is finished, not at
+the end of a session that may not have an end.
 
 **The hardware ladder is Night 2, not Night 6.** The live title observer reads
 `items=continue,newGame`, so Sixth Night is not unlocked. The device owner
@@ -130,7 +133,7 @@ in the game and has 4192 frames of flashlight headroom; the same faults on
 Night 5 or 6, which have 192, are unlikely to be survivable. **This is a floor,
 not a ceiling.**
 
-**No package closed.** The headline stays 29/88. Plan 13 package 3 is advanced,
+**No package closed.** The headline stays 29/89 (the denominator is 89; this line read 29/88 until 2026-08-26 while the header two screens up read 29 of 89, and the dashboard table sums to 89). Plan 13 package 3 is advanced,
 not closed: 6 AM and the generic intro are now classified, but the intro's night
 ordinal, minigames, save advancement, committed real holdouts, and media-PTS ↔
 runner-clock alignment remain open. An honest percentage that does not move is
@@ -291,9 +294,11 @@ an unrelated lateness cliff, with **zero seam drops** in roughly 1.25 million
 sent actions. With lateness zeroed, both were 1200/1200. Moving the sweep offers
 no seam benefit, so the recipe stays at 4660.
 
-The suite is currently red only because of the separate uncommitted marker-123
-engine edits named in the top resume point. Do not confuse that source-model
-conflict with the resolved cycle boundary.
+~~The suite is currently red only because of the separate uncommitted
+marker-123 engine edits named in the top resume point.~~ **Stale as of
+2026-08-26:** that source pass landed in `47dcd1b` and the engine suite is
+green. The cycle boundary this section resolves was never the reason it was
+red.
 
 ### Retracted 2026-08-26: the cycle-wrap seam was not the desync cause
 
@@ -378,8 +383,26 @@ on the next graded run remains the way to attribute them, since only
   and was deliberately not attempted blind against the one gate-clean route.
 - **The right vent costs ~570 ms of pan round trip** against ~680 ms of free
   cycle, and no schedule prices it. Plan 03 depends on it.
-- **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings. **1, 2 and 4 are
-  resolved, and 8 is mostly resolved**; the rest are not. Finding 8 was the
+- **The Fusion touch-poll rate is asserted (30 Hz, eight places) and measured
+  never**, while the engine runs at 60 FPS. Load-bearing in both directions:
+  at 60 Hz the emitter's 33 ms gaps spend twice the budget they need against
+  192 frames of Nights 5-6 headroom, and at 30 Hz the Night 7 phase island is
+  not landable. **This item fell out of both tracking documents** — the audit
+  filed it as a note deferring to this dashboard, and this dashboard stopped
+  naming it — so it now lives in `HID-MULTITOUCH.md` §"Open: the tick rate is
+  asserted twice and measured never", beside the constants it governs. The
+  *recording* rate half is closed: `grade-run.sh` probes with `ffprobe` and
+  refuses a capture that is not the 60 fps its graders assume.
+- **`docs/ARCHITECTURE-AUDIT.md`** holds ten ranked findings. **1, 2, 4 and 7
+  are resolved, and 8 is mostly resolved**; the rest are not. **This line said
+  "1, 2 and 4" on 2026-08-26 and finding 2 was not in fact resolved** — the
+  audit named four copies of the alive/dead predicate, there were five, and two
+  of them still stated the rule. The worse one was `screenstate.py --adb-fast`,
+  the *live* watchdog that decides whether the phone is in a night, which
+  nothing had ever run. Both are ported and gated in `8a9925b`, and the audit
+  now carries the correction in place. The dashboard was ahead of the code,
+  which is the direction that costs most: a reader trusts "resolved" and stops
+  looking. Finding 8 was the
   mission-critical one, because the claim CLAUDE.md stated as absolute — "the
   device runs nothing the model gate has not passed" — was *false*, and it is
   what authorizes every device run on the Plan 12 ladder. Now: the 378 dead
@@ -395,11 +418,15 @@ on the next graded run remains the way to attribute them, since only
   plan's ~416 ms post-read slack; re-check placement with `windpct.py
   --samples`, since the screencap that once collapsed the box 52% → 10% was
   only 10.3 ms/s and did it by landing on the wind.
-- Two defects found while reading and not fixed: `SWEEP_LIGHT_LEAD_MS` and
-  `plan_control_xy` are each **defined twice** in `trial-minus7.sh` (the first
-  `plan_control_xy` lacks the `hall` and `ventl` arms), and `hid_mark "$actual"`
-  reads a stale global in the calibration branches while the printf beside it
-  uses a fresh one. Calibration paths only, not the shipped route.
+- ~~Two defects found while reading and not fixed: `SWEEP_LIGHT_LEAD_MS` and
+  `plan_control_xy` are each **defined twice** in `trial-minus7.sh`~~ —
+  **fixed, and this entry was stale when written.** `98eb7ff` removed both the
+  duplicate sweep-light constant and the incomplete coordinate resolver, and
+  that commit is cited eight lines above this bullet in the same file, which is
+  how a dashboard ends up asserting a fix and its absence on one screen. Both
+  now have exactly one definition, and every remaining HID timestamp is
+  structurally gated against a freshly frozen value — which was the `hid_mark
+  "$actual"` stale-global half.
 
 ## Dashboard
 
@@ -417,7 +444,7 @@ on the next graded run remains the way to attribute them, since only
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), but the current uncommitted marker-123 edits leave the full suite red and must be reconciled before hardware | Reconcile the marker-123 source model, then one traced Night 2 cycle and a full graded Night 2 attempt |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | Proposed; every classifier is bound to one capture method and the cue helper's fast read is blocked on a `screencap` threshold | Inventory every fact × sensor pairing as calibrated, assumed, or absent |
 
