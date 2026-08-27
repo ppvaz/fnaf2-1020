@@ -206,28 +206,39 @@ check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === 
 // through the cue helper and presses once more if they are still up, bounded
 // at one retry so it never fights the engine over the toggle.
 //
-// What it verifies WITH changed on 2026-08-26. The check read `luma`, whose
-// 180 threshold was calibrated over 1818 samples of night 6-34 -- a route that
-// sits on CAM 11 for its whole cams-up stretch. Reading all twelve cameras on
-// the phone, luma at (3,6) clears 180 on CAM 11 alone: this route selects
-// cams 10, 04, 07 and 11, which read 0, 106, 47 and 226, so the check was
-// blind on three of the four cameras a desync can leave selected. An office
-// holding the vent light reads 102 and would have read as a camera. The
-// grey-cell count reads 177-180 on all four and 142-145 on the office.
+// What it verifies WITH changed twice on 2026-08-26, and the second change
+// retracted the first. It read `luma` against 180, calibrated over 1818
+// samples of a route that sits on CAM 11 for its whole cams-up stretch, so it
+// was blind on three of the four cameras a desync can leave selected. It was
+// then moved to the cue helper's `grey=` count against 159, on an office band
+// of 142-145 taken from idle captures on a parked device -- and the cleared
+// run captures/n1-grey-2202-run.log refutes that outright: 77 office reads
+// spanning grey 138-180, 21 of them at or above 159. A false "still up" is not
+// a wasted read, it presses `monitor-resync-2` into a monitor that is already
+// down and RAISES it.
+//
+// So the verification now asks the device-graded detector that fired in the
+// first place -- the same `$CHECKER match` on the same CUE_MONITOR_ROI -- on a
+// fresh frame. It costs a screencap, which this path can pay and the per-cycle
+// loop cannot: it is already holding MONITOR_ANIM_DOWN for the flip.
 const resyncCase = driver.match(/monitor-resync\b[\s\S]*?run_macro clear/);
 check(resyncCase, 'the UP-DESYNCED recovery is gone');
 check(/cams_still_up/.test(resyncCase[0]),
   'the resync press is not verified: a forcedown can spend it and the ' +
   'recovery resumes the schedule inverted');
-// Naming the verifier is not enough -- it has to decide on the anchor that
-// actually separates the states on this sensor.
+// Naming the verifier is not enough -- it has to ask the anchor that actually
+// separates the states on this sensor, which is the one the detector used.
 const verifier = driver.match(/cams_still_up\(\)\s*\{[\s\S]*?\n\}/);
 check(verifier, 'cams_still_up is gone');
-check(/CUE_CAMS_UP_GREY/.test(verifier[0]),
-  'cams_still_up must decide on the grey-cell anchor, not on luma alone');
-check(/>&2/.test(verifier[0]),
-  'the luma fallback must announce itself: a silent downgrade to an arm that ' +
-  'sees cams-up on CAM 11 alone reads exactly like a working check');
+check(/match \$CUE_MONITOR_ROI/.test(verifier[0]),
+  'cams_still_up must re-ask the detector that fired: the same $CHECKER ' +
+  'match on the same CUE_MONITOR_ROI');
+check(!/CUE_CAMS_UP_GREY|CUE_CAMS_UP_LUMA/.test(verifier[0]),
+  'the resync verification must not decide on a cue-helper point sample: ' +
+  'luma sees cams-up on CAM 11 alone, and office grey= reaches 180 live');
+check(/\bscreencap\b/.test(verifier[0]),
+  'cams_still_up must take its own frame -- the frame that triggered the ' +
+  'recovery predates the resync press it is checking');
 check(/monitor-resync-2/.test(resyncCase[0]),
   'a resync that reads the cams still up must press once more');
 check((resyncCase[0].match(/monitor-resync-2/g) || []).length === 1,

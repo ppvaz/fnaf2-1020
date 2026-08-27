@@ -191,9 +191,15 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
       # through four recoveries. Read the cams back (59 ms) and press again
       # once if they are still up; past that, let the next cycle's checkpoint
       # catch it rather than fighting the engine over the toggle.
-      if [ "$CUE_PORT" != "-" ]; then
+      #
+      # Verified with the classifier, not the cue helper. This branch fired
+      # BECAUSE `$CHECKER match` read the selection highlight on the frame; the
+      # only honest way to ask whether the press cleared it is to ask the same
+      # question again. It costs a screencap (~225 ms) on top of the flip wait,
+      # which is why the check exists here and not in the per-cycle loop.
+      if [ "$CHECKER" != "-" ]; then
         wait_until $((LAST_PRESS_MS + TAP_CONTACT_MS + MONITOR_ANIM_DOWN_MS))
-        rs_verdict=$(cams_still_up "$(cue_snapshot)")
+        rs_verdict=$(cams_still_up)
         rs_why=${rs_verdict#* }
         if [ "${rs_verdict%% *}" = 1 ]; then
           now_rel

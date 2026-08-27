@@ -12,16 +12,15 @@ packages are closed.
 **Open items from the 2026-08-26 evening session, in priority order.** Written
 as work is done rather than composed at the end; two are delegated and named.
 
-1. **LIVE DEFECT, mine: `CUE_CAMS_UP_GREY=159` is refuted and still shipped**
-   (`trial/09-constants.sh`, introduced ffb1631). Measured on the cleared
-   `n1-grey-2202`: **21 of 77 office reads sit at or above 159**, and those are
-   confident `empty` office frames, not desyncs -- checked against the frames'
-   own `cams=` verdicts, where the validated `$CHECKER` said `down`. A false
-   "cams still up" makes the resync corrector press the monitor again, *raising*
-   it, causing the desync it exists to fix. My 142-145 office band came from
-   five idle captures and does not survive a running night. **Fix: verify the
-   resync with the `$CHECKER match` classifier that already runs and got these
-   frames right, not a cue scalar.** DELEGATED.
+1. ~~**LIVE DEFECT: `CUE_CAMS_UP_GREY=159` is refuted and still shipped**~~
+   **CLOSED 2026-08-26.** The measurement held on re-derivation: of the 77
+   office reads in `captures/n1-grey-2202-run.log`, **21 sit at or above 159**
+   -- 16 confident `empty` and 5 on which `$CHECKER match` itself said
+   `cams=down`, so all 21 are false positives and none is a missed desync.
+   `cams_still_up()` now re-asks that same `$CHECKER match` on a fresh frame,
+   through a shared `CUE_MONITOR_ROI`; the constant is gone and
+   `test-plan-interpreter.sh` refuses its return. See the grey-anchor section
+   below for the retraction in full.
 2. **The night-blind BB-model guard** (`trial/01-arguments.sh` region). It
    refuses every night without a BB model by quoting a Night 6 statistic, but
    `canAct(1,'bb')` is false -- Night 1 cannot arm him at all. Same defect the
@@ -110,11 +109,29 @@ branch never ran at all. The luma blindness is measured and real; it did not
 cause that failure. **Any rerun must set `CUE_HELPER=1`**, or it repeats the
 same blind run and records no `grey=` either.
 
-**Very next step:** calibrate the threshold -- the measured gap is 145 -> 173 and the midpoint ~159
-is a *starting point*, not a calibrated boundary. Two states remain unsampled
-and both could land inside the monitor-up band: an office with an animatronic
-present, and the blackout. The mask already does (175), so `grey=` must be read
-only when the mask is known down.
+**RETRACTED 2026-08-26, same evening: `grey=` cannot verify the resync and no
+threshold through it can.** The office band 142-145 came from five idle
+captures on a parked device. Graded against the cleared run's own office reads
+(`captures/n1-grey-2202-run.log`, 77 samples of `cue[... grey=N ...]`), office
+grey runs **138-180, median 151, with 21 of 77 at or above 159** -- 16 of them
+a confident `empty` (an office frame by construction) and 5 on frames where
+`$CHECKER match` itself answered `cams=down`. The office reaches the top of the
+monitor-up band; the populations overlap completely. Every one of those 21
+would have sent the retry press into a monitor that was already down, *raising*
+it -- the exact desync the corrector exists to repair.
+
+`cams_still_up()` now re-asks the **device-graded detector that fired**: the
+same `$CHECKER match` on the same region, hoisted into `CUE_MONITOR_ROI` so the
+recovery cannot drift from the detection (`test-plan-interpreter.sh` pins the
+single definition, both uses, and that no reading which is not a positive
+`match` reports "still up"). It costs a screencap (~225 ms) that only this path
+can pay: it already waits `MONITOR_ANIM_DOWN` (367 ms) for the flip.
+
+`grey=` is still logged and now decides nothing. The 77-sample distribution is
+the first *live* population it has, and it is why the calibration below is not
+merely incomplete but was measured on the wrong device state. Still unsampled,
+and still the reason to keep logging it: an office with an animatronic present,
+and the blackout. The mask reads 175, inside the monitor-up band.
 
 **Landed 2026-08-26 21:20 BRT, and it contradicts something the repository
 said:** the **double-camera glitch transfers to Android**. A retained classifier

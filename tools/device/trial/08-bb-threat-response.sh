@@ -69,7 +69,10 @@ classify_left_and_queue_mask_at() {
   case "$classification" in
     empty\ *|bb\ *) ;;
     *)
-      monitor_seen=$("$CHECKER" match 1300 350 2300 950 4 100 255 100 255 0 99 30 \
+      # CUE_MONITOR_ROI, not a literal: cams_still_up() verifies the recovery
+      # this branch triggers, and a recovery check that can drift from the
+      # detection it answers is the same open-loop mistake at one remove.
+      monitor_seen=$("$CHECKER" match $CUE_MONITOR_ROI \
         < "$capture_raw" 2>/dev/null) || monitor_seen=unreadable
       case "$monitor_seen" in
         match) monitor_seen='cams=UP-DESYNCED' ;;
@@ -113,11 +116,12 @@ classify_left_and_queue_mask_at() {
   # NOTHING when the device's field set moved, and an unmatched sed is silent:
   # that is how the cue trace went empty without anyone noticing.
   #
-  # grey= is recorded but not yet acted on. It is the anchor the resync check
-  # now verifies with, and the classifier-gated desync detector is the obvious
-  # next consumer -- but the intermittency has to be watched across a real
-  # night before a schedule reacts to it. Reacting to an unwatched signal is
-  # how this runner acquired most of its scars.
+  # grey= is recorded and decides nothing, and the record is now the point.
+  # It was briefly the resync verification's anchor (ffb1631, withdrawn the
+  # same day -- see CUE_MONITOR_ROI). These 77 office samples per cleared night
+  # are what refuted it: office grey runs 138-180, straight through the
+  # monitor-up band. Keep logging it, because a threshold nobody has a live
+  # distribution for is the thing that keeps getting adopted.
   cue_line=""
   if [ "$CUE_PORT" != "-" ]; then
     cl_snap=$(cue_snapshot)
