@@ -9,6 +9,42 @@ packages are closed.
 
 ## Very next step
 
+**Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
+Nothing from it is outstanding and the engine suite is green on `222278d`. What
+a later session needs to know:
+
+- **`tools/device/trial-minus7.sh` is now `tools/device/trial.sh`**, and the
+  1619-line heredoc that runs on the phone is assembled from named parts under
+  `tools/device/trial/` (`10-minus7-sweep.sh` is the strategy,
+  `08-bb-threat-response.sh` is the Balloon Boy read). The assembled text is
+  byte-identical to the old heredoc, so nothing the device runs changed. **Cite
+  driver code by part name, not by `trial.sh:NNNN`** — three citations in this
+  file were already dangling and are re-pointed.
+- **Four gates now read the assembled driver rather than grepping the runner**,
+  which exposed six checks asserting device-side facts against host text. The
+  host/device boundary is visible for the first time; keep it that way.
+- **New gates, all in `tools/test.mjs`:** `trial assembly`, `screen map`,
+  `docs`, plus `screencheck`, `select-adb` and `preflight`, which previously ran
+  nowhere. `test-grade-run-coverage.mjs` now fails when a gate an exclusion
+  *cites* does not exist or does not run.
+- **Two things stay open and are deliberate, not forgotten.** `tools/device`
+  remains physically flat (the taxonomy is machine-checked in the exclusion map
+  instead; moving 83 files is not a surgical refactor). And the **Fusion
+  touch-poll rate is asserted 30 Hz in eight places and measured never** — it
+  had fallen out of both tracking documents, so it now lives in
+  `HID-MULTITOUCH.md` §"Open: the tick rate is asserted twice and measured
+  never". The recording-rate half is closed: `grade-run.sh` probes with
+  `ffprobe` and refuses a capture that is not the rate its graders assume.
+- **What kills Night 1, measured:** in the simulator only the Puppet, 7/1200,
+  and they are the **same seven seeds on every night** — a fixed human-slack
+  pattern, not night difficulty. Jitter never changes a hold's length, only
+  where it lands, so it is wind *timing* rather than wind budget. On the phone
+  Night 1 is cleared and the near-miss was desync, absorbed by 4192 frames of
+  flashlight headroom that Nights 5-6 do not have.
+
+The live hardware thread below is the next action.
+
+
 **Live hardware thread, 2026-08-26 22:05 BRT -- the cue helper's sensor was
 mischaracterised, and one anchor survives it.** Measured on the phone: the
 `20x9` grid **point-samples ~180 source pixels**; it is not a small image, and
@@ -177,7 +213,7 @@ Each of these was an "Open" item here as recently as this morning:
   runner probes the handset's `--help` for the advertised unlimited mode and
   uses `--time-limit 0`; a device that does not advertise it is **refused, not
   degraded**, because a plausible-looking 180 s artifact of a 420 s night is
-  worse than no video (`trial.sh:115-137`).
+  worse than no video (`trial.sh`, `screenrecord_time_limit`).
 - **Grading is no longer success-only.** `grade-run.sh` runs on every exit path,
   so the run that failed is no longer the run that is never graded. The runner's
   own exit status is preserved.
@@ -308,7 +344,7 @@ exactly on the next cycle's `0 tap monitor`, 0 ms released against the HID
 auditor's 20 ms floor.
 
 **The 0 ms is real in the emitted plan and irrelevant in delivery.** The runner
-already compensates: `trial.sh:2476` waits
+already compensates: the driver's `12-night-loop.sh` waits
 `rm_base + rm_cursor + rm_shift + FUSION_POLL_MS`, holding the next anchor back
 one Fusion poll (33 ms), and `test-runner-plan.mjs:223` pins that. Because the
 wait is relative to `rm_shift`, a late macro moves the boundary with it instead
@@ -367,7 +403,7 @@ on the next graded run remains the way to attribute them, since only
   new lit observation against 192 frames, not against the old 852.
 - **The live human floor is now off on the shipped route, and nothing replaced
   it for runtime presses.** `human_floor_check` returns early when
-  `NIGHT6_LEFT=1` (`trial.sh:1570`), because the model gate prices the
+  `NIGHT6_LEFT=1` (`trial/05-press.sh`), because the model gate prices the
   emitted plan and the old scalar check aborted on the plan's own deliberate
   120/180 ms compound boundaries. That is defensible for *scheduled* presses.
   But the corrector's monitor-verify press in `light_down_at` is **not in the
