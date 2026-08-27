@@ -64,7 +64,8 @@ const record = (flags, point) => {
 
 export function stream(spacings, { readyMs = 7000,
                                    contactMs = 100, lightLeadMs = 0,
-                                   heldLight = false, lightTailMs = 50 } = {}) {
+                                   heldLight = false, lightTailMs = 50,
+                                   lightAfter = false, selectMs = 33 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -100,6 +101,24 @@ export function stream(spacings, { readyMs = 7000,
     const cams = ['cam10', 'cam4', 'cam7'];
     for (let k = 0; k < cams.length; k++) {
       const cam = cams[k];
+      // lightAfter: the select and the light are fully separate reports. The
+      // map button is a Click (`viewing` written on RELEASE, g22); the light
+      // registers on PRESS (g82). Sending them together attributes each light
+      // pulse to the PREVIOUS camera -- the "CAM 07 has the same light as CAM
+      // 04, no gap" symptom. So: select down, hold `selectMs`, select up (Click
+      // fires, viewing = N), THEN light down on the now-settled feed, hold
+      // `contactMs`, light up. Every camera's light lands on the right feed.
+      if (lightAfter) {
+        report([...record(0x07, COORDS[cam]), 0, 0, 0, 0, 0]);   // select down
+        delay(selectMs);
+        report([...record(0x04, COORDS[cam]), 0, 0, 0, 0, 0]);   // select up -> Click -> viewing=N
+        delay(17);                                               // one frame for the Click to settle
+        report([...record(0x03, COORDS.light), 0, 0, 0, 0, 0]);  // light down on the settled feed
+        delay(contactMs);
+        report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);  // light up
+        delay(Math.max(1, spacing - selectMs - 17 - contactMs));
+        continue;
+      }
       // heldLight: contact 0 (the camera light) goes down at the first select
       // and stays down across the sweep -- and, critically, `lightTailMs` PAST
       // the last camera's release. The map buttons are a Fusion Click
@@ -177,6 +196,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (spacings.some(v => v < contactMs))
     throw new Error(`each spacing must be >= CONTACT_MS (${contactMs}); a spacing ` +
       'below the contact would overlap the next select into this one');
+  if (process.env.LIGHT_AFTER === '1') {
+    const per = Number(process.env.SELECT_MS || 33) + 17 + contactMs;
+    if (spacings.some(v => v < per))
+      throw new Error(`LIGHT_AFTER needs spacing >= SELECT_MS + 17 + CONTACT_MS (${per}); ` +
+        'the select and the light are separate now, so the camera costs more time');
+  }
   const lightLeadMs = Number(process.env.LIGHT_LEAD_MS || 0);
   if (!Number.isInteger(lightLeadMs) || lightLeadMs < 0 || lightLeadMs >= contactMs)
     throw new Error('LIGHT_LEAD_MS must be an integer in [0, CONTACT_MS)');
@@ -184,9 +209,13 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const lightTailMs = Number(process.env.LIGHT_TAIL_MS || 50);
   if (!Number.isInteger(lightTailMs) || lightTailMs < 0 || lightTailMs > 300)
     throw new Error('LIGHT_TAIL_MS must be an integer in [0, 300]');
+  const lightAfter = process.env.LIGHT_AFTER === '1';
+  const selectMs = Number(process.env.SELECT_MS || 33);
+  if (!Number.isInteger(selectMs) || selectMs < 10 || selectMs > 200)
+    throw new Error('SELECT_MS must be an integer between 10 and 200');
   if (heldLight && lightLeadMs > 0)
     throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
   for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
-                             { contactMs, lightLeadMs, heldLight, lightTailMs }))
+                             { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs }))
     console.log(JSON.stringify(event));
 }

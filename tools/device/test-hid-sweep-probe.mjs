@@ -157,4 +157,39 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
     `even at tail 0 the light must release no earlier than the last select (light ${tLightUp}, select ${tLastSelUp})`);
 }
 
+// LIGHT_AFTER mode (plans/17): the select and the light are separate reports,
+// and every light-down comes AFTER its own select-up so it lands on the
+// settled feed. Working theory for the "each light renders on the previous
+// camera" symptom -- the map button is a Click (viewing on release) but the
+// flashlight registers on press.
+{
+  const la = stream([120], { lightAfter: true, selectMs: 25, contactMs: 40 });
+  let t = 0, events = [];
+  for (const e of la) {
+    if (e.command === 'delay') { t += e.duration; continue; }
+    if (e.command !== 'report') continue;
+    const r = e.report.slice(2, 7);
+    const id = r[0] >> 2, down = (r[0] & 1) !== 0;
+    const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
+    events.push({ t, id, down, xy });
+  }
+  // For each target camera: select-up must precede the next light-down, and no
+  // report may carry both a select and a light (they are decoupled).
+  // Every LIGHT_AFTER report carries exactly one live contact: contact 1's
+  // flags byte (report[7]) is 0 whenever it is the light, and contact 0's
+  // (report[2]) is 0 whenever it is the select.
+  for (const e of la.filter(x => x.command === 'report')) {
+    const c0Live = e.report[2] !== 0, c1Live = e.report[7] !== 0;
+    check(!(c0Live && c1Live),
+      'LIGHT_AFTER must never send select and light in the same report');
+  }
+  for (const camXY of wanted) {
+    const selUp = events.find(e => e.id === 1 && !e.down && e.xy === camXY);
+    check(selUp, `LIGHT_AFTER: no select-up found for ${camXY}`);
+    const lightDown = events.find(e => e.id === 0 && e.down && e.t >= selUp.t);
+    check(lightDown && lightDown.t > selUp.t,
+      `LIGHT_AFTER: the light for ${camXY} must go down strictly after its select-up`);
+  }
+}
+
 console.log(`HID sweep probe checks passed (${SPACINGS.join('/')} ms spacings, ${litMs} ms lit per sweep)`);
