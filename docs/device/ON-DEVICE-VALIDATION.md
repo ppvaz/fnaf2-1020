@@ -1590,6 +1590,36 @@ It costs nothing. The helper already builds `snapshotGrid` every frame in the
 same `ImageReader` callback; counting near-grey cells is one comparison per
 cell inside a loop that already runs.
 
+### Confirmed live, and two traps in measuring it (2026-08-26)
+
+The rebuilt helper was installed and read on the phone: `grey=178` appears in
+the snapshot line between `cam5=` and `ageUs=`, as designed.
+
+**Trap 1 -- `grey=` is high on the title screen too.** That live reading of 178
+was taken at the FNaF title, which is inside the monitor-up band (173-180). The
+title is a desaturated static image, so this is the anchor working as specified
+rather than a defect: the field answers *"is the office visible?"* and the title
+is not the office. It means `grey=` must never be read as "the monitor is up"
+without the game state already being known to be a night. `screenstate.py`
+remains the authority on that.
+
+**Trap 2 -- do not price the helper with `query-cue-helper.sh`.** Timed from
+the host it takes **~429 ms** per call, which looks catastrophic next to a
+225 ms `screencap` and is the wrong comparison. That script is a host-side
+one-off tool: transport detection, forward setup, and several USB round-trips,
+where a bare `adb shell echo hi` alone measures **76 ms** on this handset.
+The runner never uses it in the loop. `trial-minus7.sh` is pushed to
+`/data/local/tmp` and executes **on the phone** -- which is why `cue_snapshot()`
+is `toybox nc 127.0.0.1 $CUE_PORT` with no `adb` in front, and why its presses
+are bare `input tap`. The in-loop read is the documented **59 ms device-local**
+cost, and `screencap`'s 225 ms is device-local too, so those two are
+comparable and the 429 ms is not.
+
+This was measured wrongly twice in one session before it was measured right --
+first against the script's usage-error path (43 ms, no query performed at all),
+then against the host wrapper (429 ms). **A capture cost is only meaningful with
+the transport named**, which is what `sensor.py` exists to declare.
+
 ### What is not yet controlled
 
 Honest limits on the numbers above, so the next session does not over-trust
