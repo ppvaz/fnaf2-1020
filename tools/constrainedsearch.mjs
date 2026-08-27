@@ -195,7 +195,7 @@ async function main() {
     shard: value('shard', '') });
   console.log(`CONSTRAINED SEARCH — ${mode.toUpperCase()}`);
   console.log(`baseline: ${BASELINE}; shape: ${value('shape', 'correlated')}; candidates: ${result.candidates.length}; workers: ${value('workers', 'default')}`);
-  console.log(`nodes generated: ${result.candidates.length}; screen evaluations: ${result.screen.length * nights.length}; gate evaluations: ${result.gate.length * nights.length}; secondary evaluations: ${result.secondary.length * nights.length}`);
+  console.log(`nodes generated: ${result.candidates.length}; screen evaluations: ${result.screen.length * nights.length}; gate evaluations: ${result.gate.length * nights.length}; secondary evaluations: ${(result.secondary?.length ?? 0) * nights.length}`);
   printTable('screen Pareto frontier', result.screenFrontier, nights);
   if (result.frontier) printTable(`gate Pareto frontier @${integer('gate-runs', 1200)} seeds`, result.frontier, nights);
 }
