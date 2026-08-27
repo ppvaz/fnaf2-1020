@@ -187,9 +187,51 @@ value rather than select `(451,730)`. See Android's
 
 The smallest exact integer form of this 20:9 landscape view that retains a
 spatial grid is `20x9`. The original source coordinate maps approximately to
-logical cell `(3,6)`. The cell is an aggregate of nearby source pixels, so its
+logical cell `(3,6)`. ~~The cell is an aggregate of nearby source pixels, so its
 value is not the source pixel's original RGB; that is why the downscaled result
-must be recalibrated separately.
+must be recalibrated separately.~~
+
+> **Corrected 2026-08-26 — the cell is not an aggregate. It is a point sample.**
+> Measured on the phone, not assumed. With a selected camera button on screen,
+> the helper's own grid returns a cell of exactly `rgb(194,221,0)`, yellowness
+> `min(r,g)-b = 194` -- the button's own unblended colour. A box-average of the
+> *same* screen, computed from a `screencap` taken at the same moment, gives
+> yellowness **46**. An averaging scaler cannot return 194; only a scaler that
+> reproduces one source pixel can. Across six different cameras with the button
+> in six different map positions the value came back byte-identical at 194,
+> which averaging also cannot produce -- coverage fraction would vary and so
+> would the mean.
+>
+> The mechanism is ordinary: minifying 2400x1080 to 20x9 is a 120x reduction
+> with no mipmap chain, so bilinear filtering degenerates to aliasing. The
+> helper is therefore **not looking at a small image of the screen. It is
+> looking at ~180 individual source pixels**, spaced roughly 120x120 apart.
+>
+> This inverts the recalibration advice above. The values do not need
+> re-deriving because they are blended; they need re-deriving because they are
+> a *lottery*. The consequence is the one that matters for classifier design:
+
+**Any feature smaller than the ~120x120 sample pitch is detected only if a
+sample point happens to land on it.** Measured 2026-08-26 by selecting each of
+the twelve cameras in turn and reading the helper's grid, with `screenstate.py`
+confirming the game was alive at every step:
+
+| | cameras detected |
+|---|---|
+| lit camera button present (`screencap`, full resolution) | **12 / 12** (1064-2165 px) |
+| same button seen by the helper's grid | **7 / 12** (yellowness 194 or 0-10, nothing between) |
+
+There is no middle value in that second row, which is the point-sampling
+signature: the sample lands on the button or it does not. So a point-feature
+anchor on this sensor is not "noisy", it is a coin flip with fixed odds set by
+geometry -- and no threshold change can repair it. `luma` at `VISUAL_X=3,
+VISUAL_Y=6` is one such point feature: it is literally one source pixel out of
+2,592,000.
+
+The anchors that survive this sensor are **whole-frame statistics**, which
+aggregate all 180 samples and so cannot be defeated by where any one of them
+falls. See `ON-DEVICE-VALIDATION.md` §"Which anchor survives a point-sampling
+sensor".
 
 | Resolution | Logical pixels | RGBA payload* | Reduction from 2400x1080 |
 |---|---:|---:|---:|

@@ -1525,3 +1525,85 @@ that the two historical shortcuts are unavailable on a modern handset, and that
 the one borrowable idea is a staleness bound we do not have. Every figure above
 is another project's device; the only numbers in this file that describe *this*
 phone are the ones measured on it.
+
+## Which anchor survives a point-sampling sensor (2026-08-26)
+
+The cue helper's `20x9` grid **point-samples ~180 source pixels**; it is not a
+small image of the screen. `ONE-PIXEL-VISION.md` §3 carries the measurement and
+the correction it forced. This section is the consequence for classifiers: it
+prices every anchor this project has considered for "is the office visible?"
+against that sensor, on the sensor itself.
+
+Measured on the phone. Every camera was selected in turn and the helper's own
+grid read; `screenstate.py` confirmed the game was alive before each reading,
+and a sweep that found anything else was discarded rather than reported. An
+earlier pass of this same sweep was run without that check, died to a music-box
+kill partway through, and produced twelve readings off a dead game at the menu.
+Those numbers were void and are not in this table. **A sweep that does not
+check it is alive between steps is not a sweep, it is a transcript.**
+
+| anchor | monitor up (12 cameras) | office (4 variants) | verdict |
+|---|---|---|---|
+| **near-grey cell count / 180** | **173 - 180** | **142 - 145** | **SEPARABLE, margin 28** |
+| mean saturation | 0.5 - 13.4 | 13.5 - 14.9 | separable by 0.1 -- unusable |
+| max yellowness `min(r,g)-b` | 0 - 194 | 47 | **OVERLAP** |
+| mean luma | 3.8 - 63.1 | 28.6 - 35.6 | **OVERLAP** |
+
+Office variants: plain (night 1), plain (night 2), hall light held, left vent
+light held. A cell counts as near-grey when `max(r,g,b) - min(r,g,b) < 25`.
+
+Two of those rows are anchors this project actively wanted to be true.
+
+- **The yellow selected-camera button does not work**, and not because the
+  threshold is wrong. At full resolution the button is present on 12/12
+  cameras; the helper sees it on 7/12, at yellowness 194 or 0-10 with nothing
+  in between. On the five it misses, the office scores *higher* (47) than the
+  camera -- the classifier is not merely blind there, it is **inverted**.
+- **Mean luma cannot separate the two states at all.** The ranges overlap: the
+  darkest camera (CAM 10, 3.8) and the brightest (CAM 07, 63.1) straddle every
+  office reading. This is the sensor-level reason the existing luma fast path
+  had to be backstopped rather than trusted.
+
+The grey-cell count works because it is a **whole-frame statistic**. It
+aggregates all 180 samples, so no individual sample's position can defeat it --
+which is exactly the property a point-sampling sensor demands. Physically: a
+camera feed is a desaturated greyscale static image filling the screen, while
+the office is coloured (the purple `CELEBRATE!` poster, the orange hall light,
+warm wood). It held across both nights tested and every light state.
+
+### What it actually answers, and the seam it still closes
+
+The anchor answers **"is the office visible?"**, not "is the monitor up?". The
+mask reads **175 grey cells**, inside the monitor-up band -- mask and monitor
+both mean *not office*. Do not read this field as a monitor-state oracle.
+
+It still closes the desync seam that costs the most, because of *when* it is
+read. The catalogued failure is a monitor press within 180 ms of a mask press
+being dropped, since the monitor bar is not drawn while the mask is up (9 of 14
+desyncs; see §"Which press desyncs, and why"). Evaluated after the mask comes
+down, there is no ambiguity left: office means the press was lost, not-office
+means it landed. Combined with the standing rule never to observe the monitor
+inside `MONITOR_ANIM_DOWN` (367 ms) of a monitor press, that is a usable
+verified-recovery check.
+
+It costs nothing. The helper already builds `snapshotGrid` every frame in the
+same `ImageReader` callback; counting near-grey cells is one comparison per
+cell inside a loop that already runs.
+
+### What is not yet controlled
+
+Honest limits on the numbers above, so the next session does not over-trust
+them:
+
+- The office samples cover four variants on two nights, all with **no
+  animatronic in the office**. An animatronic present is the state that most
+  plausibly moves the grey count, and it is untested. The repository has no
+  frame of one: every `-inside` label in `captures/screencheck-keep/` is a
+  pan-induced false positive on an empty office.
+- The **blackout** state (office lights out with an animatronic inside during a
+  masking response) is untested and is exactly where a grey count could rise
+  into the monitor-up band.
+- The threshold is not calibrated. The measured gap is 145 -> 173; the midpoint
+  is ~159, but two clusters of five samples do not fix a boundary. Treat 159 as
+  a starting point to be replayed against labelled holdouts, per
+  `ONE-PIXEL-VISION.md` §7.
