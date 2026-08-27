@@ -32,6 +32,7 @@ case "$*" in
   "shell pidof "*)                printf '%s\n' "$MOCK_PID"; exit 0 ;;
   "logcat -d"*)                   printf '%s\n' "$MOCK_CONTROL"; exit 0 ;;
   "shell toybox nc"*)             printf '%s\n' "$MOCK_SNAP"; exit 0 ;;
+  "shell dumpsys window")         printf '%s\n' "$MOCK_FOCUS"; exit 0 ;;
   "exec-out screencap -p")        cat "$MOCK_FRAME"; exit 0 ;;
 esac
 echo "unexpected mock adb: $*" >&2; exit 1
@@ -46,6 +47,10 @@ export MOCK_PKGS=all
 export MOCK_PID=7007
 export MOCK_CONTROL='I/FnafCueHelper(7007): RUNNING control=READY port=49707 token=0123456789abcdef0123456789abcdef'
 export MOCK_SNAP='OK snapshotNs=1 visual=OBSERVED seq=1 rgba=1,2,3 luma=2 cam5=30 grey=178 ageUs=1200'
+# Two mCurrentFocus lines, the first null, because that is what the device
+# prints mid-transition and matching only the first is a documented trap.
+export MOCK_FOCUS='  mCurrentFocus=null
+  mCurrentFocus=Window{a1b2c3 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.MainActivity}'
 
 printf 'SCM1 stub' > "$TMP/bb.scm"
 export BB_LEFT_MODEL="$TMP/bb.scm"
@@ -64,6 +69,15 @@ want "not 1-6" "$(run 7)" "night 7"
 out="$(run 1)"
 want "ok    device" "$out" "device listed"
 want "grey=178" "$out" "snapshot reported"
+want "game focused" "$out" "focus checked"
+# The healthy path must reach the SCREEN step -- the furthest a mock can go,
+# since the synthetic fixtures classify as state=night (see the header). Every
+# other assertion here matches a substring printed early, so before this line a
+# new refusal inserted anywhere in the middle broke every real run while this
+# gate stayed green. That is precisely what the back-stack focus check did when
+# it was first added: the mock had no `dumpsys window` case, preflight refused
+# at step 7 on every invocation, and nothing here noticed.
+want "the game is not at the title" "$out" "healthy path reaches the screen step"
 
 # One device only.
 # The assignment must sit INSIDE the substitution: in `VAR=x want ... "$(run)"`
@@ -87,6 +101,21 @@ want "did not answer a snapshot" "$(MOCK_SNAP='ERROR unavailable' run 1)" "helpe
 want "sends no grey=" \
   "$(MOCK_SNAP='OK visual=OBSERVED luma=2 cam5=30 ageUs=1200' run 1)" \
   "helper predates grey="
+
+# The helper's MainActivity sits in the back stack after you grant capture
+# consent. If it comes forward, the runner's own focus guard refuses partway
+# through a night and the failure reads as a transient.
+want "cue helper's activity is focused" \
+  "$(MOCK_FOCUS='  mCurrentFocus=Window{9f8e7d u0 com.fnafminus7.cuehelper/com.fnafminus7.cuehelper.MainActivity}' run 1)" \
+  "helper in front"
+want "not the focused window" "$(MOCK_FOCUS='  mCurrentFocus=null' run 1)" "nothing focused"
+# The game must be matched across ALL mCurrentFocus lines, not just the first:
+# the first is routinely null mid-transition, and `-m1` would refuse a healthy
+# phone. This is the healthy fixture with the order reversed.
+want "game focused" \
+  "$(MOCK_FOCUS='  mCurrentFocus=null
+  mCurrentFocus=Window{a1b2c3 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.MainActivity}' run 1)" \
+  "null first line does not refuse"
 
 # A run with no Balloon Boy read is 0/3000, and the runner refuses one. If
 # preflight does not refuse it first, preflight is not a preflight -- this is

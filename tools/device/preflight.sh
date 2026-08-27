@@ -80,7 +80,31 @@ BB_LEFT_MODEL="${BB_LEFT_MODEL:-$HERE/../../captures/screencheck/bb-left/models/
 head -c 4 "$BB_LEFT_MODEL" | grep -q SCM || fail "$BB_LEFT_MODEL is not an SCM model"
 ok "BB left model $(basename "$BB_LEFT_MODEL")"
 
-# 7. The game is at its title, which is the only state the runner can start from.
+# 7. The GAME is the focused window -- not the helper.
+#
+# You must foreground the helper's MainActivity to grant MediaProjection
+# consent, and Android leaves it in the back stack afterwards. If it comes
+# forward again for any reason, the runner's own focus guard finds the helper
+# focused instead of the game and refuses mid-run. The failure reads as a
+# transient and sends you looking at window state, when the answer is that the
+# consent screen never went away.
+#
+# `dumpsys window` prints several mCurrentFocus lines and the first is often
+# `null` mid-transition, so this matches the package across all of them rather
+# than taking `-m1` -- and greps a herestring, because `cmd | grep -q` under
+# `set -o pipefail` reports 141 when the pattern DOES match. Both traps are
+# CLAUDE.md entries paid for in lost nights.
+focus="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' | grep mCurrentFocus || true)"
+if grep -q "$HELPER_PKG" <<<"$focus"; then
+  fail "the cue helper's activity is focused, not the game -- press Back or Home
+    on the phone until FNaF 2 is in front. It is left in the back stack after
+    you grant capture consent, and a run that starts behind it dies to the
+    runner's focus guard partway through."
+fi
+grep -q "$GAME_PKG" <<<"$focus" || fail "the game is not the focused window (focus: ${focus:-none})"
+ok "game focused"
+
+# 8. The game is at its title, which is the only state the runner can start from.
 mkdir -p "$OUT_DIR"
 shot="$OUT_DIR/preflight-title.png"
 adb exec-out screencap -p > "$shot" 2>/dev/null
@@ -91,7 +115,7 @@ items="$(TITLE_MODEL="${TITLE_MODEL:-$HERE/models/title-moto-g56-v207.json}" \
 grep -q continue <<<"$items" || fail "the title offers no Continue item ($items)"
 ok "at the title, $items"
 
-# 8. The save cursor. Deliberately NOT decided here.
+# 9. The save cursor. Deliberately NOT decided here.
 #
 # trial-minus7.sh keeps STORY_CURSOR_OBSERVED as a human assertion on purpose,
 # because a run that resumes the wrong night masquerades as a campaign attempt

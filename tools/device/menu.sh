@@ -26,6 +26,10 @@ MENU_HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # How stale an observation may be when the tap goes out. A title screen is
 # static, so this is generous; it exists to catch an observation taken before a
 # long unrelated step rather than to model animation.
+#
+# The age is measured from when the observation RETURNED -- see menu_observe.
+# Measuring it from when the observation started made this limit a limit on the
+# observer's own latency, which is not what it is for.
 MENU_STALE_MS="${MENU_STALE_MS:-2000}"
 # Set to 1, for one run, to permit the save-destructive New Game press. It is
 # never inferred from a missing Continue: plans/13 is explicit that New Game is
@@ -73,8 +77,23 @@ menu_coord() {
 menu_observe() {
   local line
   MENU_ITEMS=""; MENU_UNKNOWN=""
-  MENU_OBSERVED_MS=$(menu_now_ms)
   line=$(TITLE_MODEL="$TITLE_MODEL" python3 "$MENU_HERE/title-observe.py" --adb 2>/dev/null) || true
+  # Stamped AFTER the observation, not before it.
+  #
+  # It was stamped before, so the "age" the staleness guard measured included
+  # the observation's own duration -- and that duration is not small: the
+  # observer runs a screencap plus a model classification, measured at ~1497 ms
+  # median idle on this phone and ~2.3 s under run conditions, where
+  # screenrecord and the cue helper are both capturing. Against a 2000 ms
+  # limit, that refused a perfectly valid title with "the title observation is
+  # 2376 ms old", aborting a Night 1 run on the title screen.
+  #
+  # The guard's own comment says it exists "to catch an observation taken
+  # before a long unrelated step rather than to model animation". Here the
+  # observation *was* the long step, so it fired for the reason it explicitly
+  # disclaims. Raising the limit would have hidden that; the number was never
+  # wrong, the clock was measuring the wrong interval.
+  MENU_OBSERVED_MS=$(menu_now_ms)
   case "$line" in
     items=*)   MENU_ITEMS="${line#items=}" ;;
     unknown=*) MENU_UNKNOWN="${line#unknown=}" ;;

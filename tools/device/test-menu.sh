@@ -173,8 +173,13 @@ FOCUS="$FOCUS_LOST" attempt sixth-unlocked sixthNight
 expect 'lost focus refuses' 'is not the focused window'
 expect_no_tap 'lost focus refuses'
 
-attempt sixth-unlocked sixthNight MENU_STALE_MS=0
-expect 'a stale observation refuses' 'ms old (limit 0 ms)'
+# -1, not 0. The age is now measured from when the observation RETURNED
+# rather than from when it started, so under a mock it is a couple of
+# milliseconds and `age <= 0` was decided by how fast this machine ran the
+# shell between the two. A limit no non-negative age can satisfy asserts the
+# refusal rather than racing it.
+attempt sixth-unlocked sixthNight MENU_STALE_MS=-1
+expect 'a stale observation refuses' 'ms old (limit -1 ms)'
 expect_no_tap 'a stale observation refuses'
 
 attempt sixth-unlocked bogusTarget
