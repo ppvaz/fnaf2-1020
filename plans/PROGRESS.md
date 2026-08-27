@@ -9,6 +9,47 @@ packages are closed.
 
 ## Very next step
 
+**Open items from the 2026-08-26 evening session, in priority order.** Written
+as work is done rather than composed at the end; two are delegated and named.
+
+1. **LIVE DEFECT, mine: `CUE_CAMS_UP_GREY=159` is refuted and still shipped**
+   (`trial/09-constants.sh`, introduced ffb1631). Measured on the cleared
+   `n1-grey-2202`: **21 of 77 office reads sit at or above 159**, and those are
+   confident `empty` office frames, not desyncs -- checked against the frames'
+   own `cams=` verdicts, where the validated `$CHECKER` said `down`. A false
+   "cams still up" makes the resync corrector press the monitor again, *raising*
+   it, causing the desync it exists to fix. My 142-145 office band came from
+   five idle captures and does not survive a running night. **Fix: verify the
+   resync with the `$CHECKER match` classifier that already runs and got these
+   frames right, not a cue scalar.** DELEGATED.
+2. **The night-blind BB-model guard** (`trial/01-arguments.sh` region). It
+   refuses every night without a BB model by quoting a Night 6 statistic, but
+   `canAct(1,'bb')` is false -- Night 1 cannot arm him at all. Same defect the
+   engine fixed and the shell never learned. DELEGATED with item 1.
+3. **Third and fourth attribution defects in `elegance.py`**, same class as the
+   two already fixed (sweep, vent read): `cam-?11 -> puppet` ignores that CAM 11
+   is Mangle's cam-stall (g357) and flash target (g456); `mask -> toys` ignores
+   that the mask also answers the Withereds, Foxy and Golden Freddy. Neither
+   mis-grades today; both are wrong models. DELEGATED.
+4. **Hour-aware Night 1 plan, not built.** Sourced and ready: hours 0-1 need
+   nothing (no threat armed until 2 AM, and g653 gates the box drain to 2 AM),
+   and the BB attack branch is dead all night. Needs `recipe.mjs` emission, the
+   runner honouring it, and a 1200-seed re-gate **watching the seven
+   Puppet-sensitive seeds (136, 139, 403, 715, 825, 978, 1197)** the concurrent
+   session identified -- they are wind *timing*, not budget.
+5. **Toy Chica has not been found.** Pedro saw her in the hall on the live
+   Night 1; no instrument here has caught her, and the repository still has no
+   frame of an animatronic in the office. That control is what would settle
+   whether `grey=` and the yellow anchor survive a real occupant.
+6. **The white bands in the recordings are unexplained.** Three hypotheses
+   measured and refuted: not the cue helper (the run without it is torn *more*,
+   34.7% vs 27.7%), not the "lost signal" cue (that is a dark camera with text),
+   not the camera-switch animation (bands are uniform across cycle phase at a
+   ~0.2-0.3 s period, not twice per 5 s cycle). What is settled: **do not filter
+   frames on them and do not use per-frame variance on this footage** -- doing
+   so discarded the very frame that showed Toy Bonnie.
+
+
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
 Nothing from it is outstanding and the engine suite is green on `222278d`. What
 a later session needs to know:
