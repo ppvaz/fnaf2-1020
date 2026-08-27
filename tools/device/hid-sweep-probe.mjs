@@ -65,7 +65,7 @@ const record = (flags, point) => {
 export function stream(spacings, { readyMs = 7000,
                                    contactMs = 100, lightLeadMs = 0,
                                    heldLight = false, lightTailMs = 50,
-                                   lightAfter = false, selectMs = 33 } = {}) {
+                                   lightAfter = false, selectMs = 33, parkMs = 1500 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -97,7 +97,7 @@ export function stream(spacings, { readyMs = 7000,
   // sweep as starting on CAM 04. Every sweep now has a clean CAM 11 boundary
   // on both sides.
   tap(COORDS.cam11);
-  delay(1500);
+  delay(parkMs);
 
   for (const spacing of spacings) {
     const cams = ['cam10', 'cam4', 'cam7'];
@@ -174,7 +174,7 @@ export function stream(spacings, { readyMs = 7000,
     // camtrace.py reads a sweep as 10 -> 04 -> 07 -> 11, so park on the box
     // camera between spacings and leave it there long enough to be stable.
     tap(COORDS.cam11);
-    delay(1500);
+    delay(parkMs);
   }
   return out;
 }
@@ -216,9 +216,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const selectMs = Number(process.env.SELECT_MS || 33);
   if (!Number.isInteger(selectMs) || selectMs < 10 || selectMs > 200)
     throw new Error('SELECT_MS must be an integer between 10 and 200');
+  const parkMs = Number(process.env.PARK_MS || 1500);
+  if (!Number.isInteger(parkMs) || parkMs < 400 || parkMs > 4000)
+    throw new Error('PARK_MS must be an integer between 400 and 4000 (camtrace needs a stable CAM 11 to split sweeps)');
   if (heldLight && lightLeadMs > 0)
     throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
   for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
-                             { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs }))
+                             { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs, parkMs }))
     console.log(JSON.stringify(event));
 }

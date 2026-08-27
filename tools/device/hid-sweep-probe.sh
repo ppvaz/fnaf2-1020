@@ -30,6 +30,16 @@ PKG=com.scottgames.fnaf2
 OUT="${OUT:-hid-sweep-probe}"
 SPACINGS=("$@")
 [ "${#SPACINGS[@]}" -gt 0 ] || SPACINGS=(240 200 160 120)
+# REPEAT=N runs the whole spacing list N times back to back -- a stability
+# probe: does EVERY sweep light all three cameras, or only most of them?
+if [ "${REPEAT:-1}" -gt 1 ]; then
+  base=("${SPACINGS[@]}"); SPACINGS=()
+  for _ in $(seq 1 "$REPEAT"); do SPACINGS+=("${base[@]}"); done
+fi
+# The recording must outlast the run. A REPEAT stability probe is longer than
+# the 60 s a single run needs; the night still dies to Foxy eventually.
+REC_SECONDS="${REC_SECONDS:-60}"
+case "$REC_SECONDS" in ""|*[!0-9]*) echo "REC_SECONDS must be a whole number of seconds" >&2; exit 2 ;; esac
 
 CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
@@ -52,7 +62,7 @@ if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
 fi
 
 mkdir -p "$CAPTURE_DIR"
-echo "geometry: contact ${CONTACT_MS:-100} ms, spacings ${SPACINGS[*]} ms, held light ${HELD_LIGHT:-0}, camtrace floor ${MIN_MS:-50} ms"
+echo "geometry: select ${SELECT_MS:-33} ms, contact ${CONTACT_MS:-100} ms, light-after ${LIGHT_AFTER:-0}, held ${HELD_LIGHT:-0}, ${#SPACINGS[@]} sweep(s) at ${SPACINGS[*]} ms, rec ${REC_SECONDS}s, camtrace floor ${MIN_MS:-50} ms"
 node "$HERE/hid-sweep-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
 
@@ -98,7 +108,7 @@ done
 [ "$state" = night ] || {
   echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
 
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit 60 $REMOTE_VIDEO" &
+adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
 REC_PID=$!
 sleep 1
 echo "running sweeps at ${SPACINGS[*]} ms spacing"
