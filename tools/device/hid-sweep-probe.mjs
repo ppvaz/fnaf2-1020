@@ -65,7 +65,8 @@ const record = (flags, point) => {
 export function stream(spacings, { readyMs = 7000,
                                    contactMs = 100, lightLeadMs = 0,
                                    heldLight = false, lightTailMs = 50,
-                                   lightAfter = false, selectMs = 33, parkMs = 1500 } = {}) {
+                                   lightAfter = false, selectMs = 33, parkMs = 1500,
+                                   noLight = false, altLight = false } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -99,10 +100,21 @@ export function stream(spacings, { readyMs = 7000,
   tap(COORDS.cam11);
   delay(parkMs);
 
-  for (const spacing of spacings) {
+  for (const [sweepIdx, spacing] of spacings.entries()) {
     const cams = ['cam10', 'cam4', 'cam7'];
+    // Control geometries for validating sweepcheck against false positives:
+    //   noLight  -- every sweep selects the three cameras and NEVER lights
+    //               them; sweepcheck must report 0 lit.
+    //   altLight -- even sweeps light, odd sweeps are select-only; sweepcheck
+    //               must catch exactly the odd ones.
+    const dark = noLight || (altLight && sweepIdx % 2 === 1);
     for (let k = 0; k < cams.length; k++) {
       const cam = cams[k];
+      if (dark) {
+        c0Down(COORDS[cam]); delay(selectMs); c0Up(COORDS[cam]);
+        delay(Math.max(1, spacing - selectMs));
+        continue;
+      }
       // lightAfter: the select and the light are fully separate reports. The
       // map button is a Click (`viewing` written on RELEASE, g22); the light
       // registers on PRESS (g82). Sending them together attributes each light
@@ -196,11 +208,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   // (zero released gap, back-to-back selects) is a legitimate thing to test.
   if (spacings.some(v => !Number.isInteger(v) || v < 17 || v > 500))
     throw new Error('spacings must be integers between 17 (one frame) and 500 ms');
-  if (spacings.some(v => v < contactMs))
+  const darkOnly = process.env.NO_LIGHT === '1';
+  const selectMsArg = Number(process.env.SELECT_MS || 33);
+  if (darkOnly) {
+    // No light contact at all -- the only per-camera cost is the select.
+    if (spacings.some(v => v < selectMsArg))
+      throw new Error(`NO_LIGHT still needs spacing >= SELECT_MS (${selectMsArg})`);
+  } else if (spacings.some(v => v < contactMs)) {
     throw new Error(`each spacing must be >= CONTACT_MS (${contactMs}); a spacing ` +
       'below the contact would overlap the next select into this one');
-  if (process.env.LIGHT_AFTER === '1') {
-    const per = Number(process.env.SELECT_MS || 33) + 17 + contactMs;
+  }
+  if (process.env.LIGHT_AFTER === '1' && !darkOnly) {
+    const per = selectMsArg + 17 + contactMs;
+    // altLight's dark sweeps only cost SELECT_MS; its lit sweeps still need
+    // the full budget, so the check stays.
     if (spacings.some(v => v < per))
       throw new Error(`LIGHT_AFTER needs spacing >= SELECT_MS + 17 + CONTACT_MS (${per}); ` +
         'the select and the light are separate now, so the camera costs more time');
@@ -219,9 +240,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const parkMs = Number(process.env.PARK_MS || 1500);
   if (!Number.isInteger(parkMs) || parkMs < 400 || parkMs > 4000)
     throw new Error('PARK_MS must be an integer between 400 and 4000 (camtrace needs a stable CAM 11 to split sweeps)');
+  const noLight = process.env.NO_LIGHT === '1';
+  const altLight = process.env.ALT_LIGHT === '1';
+  if (noLight && altLight) throw new Error('NO_LIGHT and ALT_LIGHT are mutually exclusive');
   if (heldLight && lightLeadMs > 0)
     throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
   for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
-                             { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs, parkMs }))
+                             { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs, parkMs, noLight, altLight }))
     console.log(JSON.stringify(event));
 }

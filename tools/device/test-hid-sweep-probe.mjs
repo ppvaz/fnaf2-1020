@@ -194,3 +194,34 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
 }
 
 console.log(`HID sweep probe checks passed (${SPACINGS.join('/')} ms spacings, ${litMs} ms lit per sweep)`);
+
+// NO_LIGHT / altLight -- the controls for sweepcheck false positives. NO_LIGHT
+// selects the three cameras and never lights them; altLight lights only even
+// sweeps. A frame walk must find zero light-coordinate presses in a dark sweep.
+{
+  const isLight = r => r[2] % 2 === 1
+    && (r[3] | (r[4] << 8)) === toRaw(COORDS.light)[0]
+    && (r[5] | (r[6] << 8)) === toRaw(COORDS.light)[1];
+  const camKeys = [COORDS.cam10, COORDS.cam4, COORDS.cam7].map(key);
+  const isTargetSelDown = r => r[2] === 3
+    && camKeys.includes(`${r[3] | (r[4] << 8)},${r[5] | (r[6] << 8)}`);
+  const dark = stream([90, 90], { lightAfter: true, selectMs: 17, contactMs: 33, noLight: true });
+  check(dark.filter(e => e.command === 'report' && isLight(e.report)).length === 0,
+    'NO_LIGHT must emit no light-coordinate press at all');
+  check(dark.filter(e => e.command === 'report' && isTargetSelDown(e.report)).length === 6,
+    'NO_LIGHT must still select all three cameras on both sweeps');
+
+  const alt = stream([90, 90, 90, 90], { lightAfter: true, selectMs: 17, contactMs: 33, altLight: true });
+  // split the report stream into sweeps at each CAM 11 park
+  let sweep = -1, perSweepLights = [];
+  for (const e of alt) {
+    if (e.command !== 'report') continue;
+    const xy = `${e.report[3] | (e.report[4] << 8)},${e.report[5] | (e.report[6] << 8)}`;
+    if (e.report[2] === 3 && xy === `${toRaw(COORDS.cam10)[0]},${toRaw(COORDS.cam10)[1]}`) {
+      sweep++; perSweepLights[sweep] = 0;
+    }
+    if (isLight(e.report) && e.report[2] === 3 && sweep >= 0) perSweepLights[sweep]++;
+  }
+  check(JSON.stringify(perSweepLights) === JSON.stringify([3, 0, 3, 0]),
+    `altLight must light even sweeps only, got ${JSON.stringify(perSweepLights)}`);
+}
