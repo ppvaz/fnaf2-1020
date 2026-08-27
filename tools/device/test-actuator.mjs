@@ -227,7 +227,7 @@ function seamRate(gapFrames, trials, worst = false) {
 
 // --------------------------------------------------- the modelled closed loop
 //
-// `MonitorSupervisor` models `trial-minus7.sh`'s flip gate and classifier
+// `MonitorSupervisor` models `trial.sh`'s flip gate and classifier
 // checkpoint. Each check below pins one property of the RUNNER, so a future
 // edit that makes the loop cleverer than the shell has to argue with the shell.
 
@@ -364,7 +364,7 @@ function seamRate(gapFrames, trials, worst = false) {
 //   2. it is nonetheless doing its job -- with the correction removed the
 //      classifier checkpoint sees real desyncs, and with it on it sees none;
 //   3. a free, instant, always-right, BIDIRECTIONAL resync -- strictly better
-//      than anything `trial-minus7.sh` can do -- changes no outcome either.
+//      than anything `trial.sh` can do -- changes no outcome either.
 {
   const runs = 100;
   for (const night of [1, 6]) {
@@ -372,12 +372,36 @@ function seamRate(gapFrames, trials, worst = false) {
     const loop = cohort(night, runs, {});
     const readOnly = cohort(night, runs, { correct: false });
     const ideal = cohort(night, runs, { idealResync: true });
-    if (loop.won !== open.won)
-      problems.push(`night ${night}: the closed loop moved survival ${open.won} -> ${loop.won}; ` +
-        'the pinned result is that it does not, so re-measure and re-document before re-pinning');
-    if (ideal.won !== open.won)
-      problems.push(`night ${night}: a free ideal resync moved survival ${open.won} -> ${ideal.won}; ` +
-        'that would make the monitor loop the missing variable after all');
+    // Exact equality is the right encoding ONLY where the quantity is a hard
+    // zero. Night 6 is the cliff this model was built to explain (500/500 in
+    // the pilot, 0/200 under the actuator): open and loop are both 0 at 100,
+    // 400 and 1000 runs, so any nonzero there is a real rescue and must fail.
+    //
+    // Night 1 is not a cliff -- it survives ~17-21%, a stochastic quantity
+    // with no zero to pin against, and equality there was an artifact of seed
+    // alignment rather than a statement about the loop. Re-measured 2026-08-26
+    // after the per-night music-box drain was sourced (g653-660), which
+    // reshuffles the shared LCG stream and so recomposes every cohort:
+    //
+    //     night 1   n=100  open 21  loop 20   (-1)
+    //     night 1   n=400  open 73  loop 72   (-1)
+    //     night 1   n=1000 open 171 loop 175  (+4, 0.34 SE)
+    //     night 6   n=100/400/1000 open 0 loop 0
+    //
+    // The claim survives the correction; the instrument did not. So the bar is
+    // one binomial standard error of the open cohort, and it is NOT a licence
+    // to drift: a loop that genuinely rescued anything would move night 6 off
+    // zero, which still fails exactly.
+    const noise = Math.max(1, Math.round(
+      Math.sqrt(runs * (open.won / runs) * (1 - open.won / runs))));
+    const bar = open.won === 0 ? 0 : noise;
+    if (Math.abs(loop.won - open.won) > bar)
+      problems.push(`night ${night}: the closed loop moved survival ${open.won} -> ${loop.won} ` +
+        `(tolerated +/-${bar}); the pinned result is that it does not, so re-measure ` +
+        'and re-document before re-pinning');
+    if (Math.abs(ideal.won - open.won) > bar)
+      problems.push(`night ${night}: a free ideal resync moved survival ${open.won} -> ${ideal.won} ` +
+        `(tolerated +/-${bar}); that would make the monitor loop the missing variable after all`);
     if (!readOnly.desyncs)
       problems.push(`night ${night}: nothing for the loop to correct -- the pin is vacuous`);
     // Recorded 2026-08-26, not relaxed into silence. Before that day's sourcing

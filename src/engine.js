@@ -931,8 +931,12 @@ export class Sim {
     if (!this.opts.boxEnabled) return;
     if (this.isWinding) {
       this.box = Math.min(1, this.box + 1 / C.BOX_WIND_FRAMES);
-    } else {
-      this.box = Math.max(0, this.box - 1 / C.BOX_DRAIN_FRAMES);
+    } else if (C.boxDrainsAtHour(this.opts.night, Math.floor(this.frame / C.HOUR_FRAMES))) {
+      // Per-night rate, sourced at g653-660, and g653's hour gate: night 1's
+      // box does not drain during 12 AM or 1 AM. This used to apply the night
+      // 6/7 rate from t=0 to every night, which made Night 1 demand winding
+      // 3.3x sooner than the game does and two hours earlier than it starts.
+      this.box = Math.max(0, this.box - 1 / C.boxDrainFrames(this.opts.night));
     }
     this.tickPuppet();
   }

@@ -392,10 +392,58 @@ export const POWER_BLINK = 500;   // indicator starts blinking [SOURCED]
 // 133-142 s at a 9 s sampling interval. What is not in doubt is the sign and
 // the rough magnitude of both disagreements.
 //
-// NOT YET FIXED. The per-night drain groups have not been located in the dump;
-// until they are, changing this constant would swap a sourced-but-wrong number
-// for a measured-but-unsourced one, and every survival figure in the repository
-// is computed against it.
+// ~~NOT YET FIXED. The per-night drain groups have not been located in the dump~~
+// **FOUND AND FIXED 2026-08-26. The groups are g653-660**, and they confirm
+// both device disagreements above, from source.
+//
+// Each is `music button` AlterableValue0 minus a per-night constant every
+// 50 ms, gated on not winding (AlterableValue1 == 0) and not already empty:
+//
+//   | group | night | per 50 ms | units/s | full -> empty |
+//   |-------|-------|-----------|---------|---------------|
+//   | 653   | 1     | 2         | 40      | 50 s          |
+//   | 654   | 2     | 2         | 40      | 50 s          |
+//   | 655   | 3     | 3         | 60      | 33.3 s        |
+//   | 656   | 3     | 4         | 80      | 25 s   (DEMO) |
+//   | 657   | 4     | 4         | 80      | 25 s          |
+//   | 658   | 5     | 5         | 100     | 20 s          |
+//   | 659   | 6     | 6         | 120     | 16.67 s       |
+//   | 660   | 7     | 6         | 120     | 16.67 s       |
+//
+// g655/g656 split on object 33 `DEMO?`: 3 when it is 0, 4 when above. The
+// shipped game runs the 0 arm, so Night 3 is 60 units/s.
+//
+// **g653 also carries `time of the night != 12` and `!= 1`.** Night 1's box
+// does not drain during 12 AM or 1 AM -- it starts at 2 AM. No other night's
+// group has an hour condition. That is the sourced form of the "held flat for
+// the first ~133 s" measurement above: 2 AM lands at ~150 s on a 69.7 s/hour
+// night, and the drain was bracketed to 133-142 s.
+//
+// Three controls, because a favourable number is not a result until something
+// that should not produce it has been checked:
+//   1. The night 6 row independently reproduces the 16.67 s already in this
+//      file, which came from recipe.mjs's "120 units/s, Nights 6-7".
+//   2. The values rise monotonically with difficulty (2,2,3,4,4,5,6,6) --
+//      meaningful as a drain and meaningless as an increment.
+//   3. The device measured Night 1 at ~36 units/s against a sourced 40, inside
+//      the stated pie-linearity caveat.
+// Read as an ADD rather than a subtract, the box could never empty and g662's
+// `AlterableValue0 == 0` branch would be unreachable.
+export const BOX_UNITS = 2000;                      // g652
+export const BOX_DRAIN_PER_TICK = { 1: 2, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 6 };
+export const BOX_DRAIN_TICK_MS = 50;                // g653-660 `Time: 50`
+
+// Full -> empty for one night, in frames.
+export const boxDrainFrames = (night) =>
+  s(BOX_UNITS / ((BOX_DRAIN_PER_TICK[night] ?? BOX_DRAIN_PER_TICK[7])
+                 * (1000 / BOX_DRAIN_TICK_MS)));
+
+// Whether the box drains at all in this hour. Only g653 (night 1) is gated,
+// and it excludes 12 AM (hour 0) and 1 AM (hour 1).
+export const boxDrainsAtHour = (night, hour) => night !== 1 || hour >= 2;
+
+// Retained: the night 6/7 rate this file applied to every night. Callers that
+// still want one number get the hardest one, which is the safe direction.
 export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty; night 6/7 rate
 // [SOURCED: decompile + Markiplier agree — winding below 300 snaps to 300
 // (groups 639/645), then +5/frame (+300/s, groups 638/643); empty -> full is
