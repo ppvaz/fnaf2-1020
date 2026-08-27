@@ -44,7 +44,7 @@ const HALL = [1200, 540];
 
 export function stream(gaps, { readyMs = 7000,
                                contactMs = 100, dwellMs = 1500,
-                               maskToggles = false } = {}) {
+                               maskToggles = false, hallMs = 0 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const delay = duration => emit('delay', { duration });
@@ -91,15 +91,19 @@ export function stream(gaps, { readyMs = 7000,
 
     if (maskToggles) {
       // Mask on, hold, mask off -- both `contactMs`. The mask overlay
-      // appearing then clearing in the video is the Click registering. Then
-      // raise and pulse the hall beam (also `contactMs`): the hallway lighting
-      // up is that Click. Cams down at the end.
+      // appearing then clearing is the Click registering.
       tap(MASK);
       delay(dwellMs);
       tap(MASK);
       delay(900);
-      tap(HALL);
-      delay(dwellMs);
+      // The hall beam is a HELD interaction (Key-17, g75-79: lit? = 1 while
+      // held, cleared on release), NOT a Click -- a 33 ms tap there panned
+      // the office instead. hallMs holds it: sweep 50/66/100/133 to find the
+      // shortest hold that lights the hallway. 0 = skip.
+      if (hallMs > 0) {
+        tap(HALL, hallMs);
+        delay(dwellMs);
+      }
     }
   }
   return out;
@@ -119,7 +123,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (!Number.isInteger(contactMs) || contactMs < 10 || contactMs > 200)
     throw new Error('CONTACT_MS must be an integer between 10 and 200');
   const maskToggles = process.env.MASK_TOGGLES === '1';
+  const hallMs = Number(process.env.HALL_MS || 0);
+  if (!Number.isInteger(hallMs) || hallMs < 0 || hallMs > 400)
+    throw new Error('HALL_MS must be an integer in [0, 400]');
   for (const event of stream(gaps.length ? gaps : [100, 150, 200, 250, 300, 400],
-                             { contactMs, maskToggles }))
+                             { contactMs, maskToggles, hallMs }))
     console.log(JSON.stringify(event));
 }
