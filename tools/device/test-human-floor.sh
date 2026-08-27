@@ -47,7 +47,7 @@ esac
   echo 'hid_down() { :; }; hid_delay() { :; }; hid_release() { :; }'
   echo 'input() { :; }; pulsed_cam_burst() { :; }'
   echo 'plan_control_xy() { PX=1; PY=1; }'
-  for fn in human_floor_abort human_floor_check press_at hold_at pulsed_sweep_at; do
+  for fn in sweep_cam_ms human_floor_abort human_floor_check press_at hold_at pulsed_sweep_at; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"

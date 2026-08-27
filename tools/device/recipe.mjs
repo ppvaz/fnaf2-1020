@@ -405,6 +405,16 @@ export const MASK_RAISE_SHIFT_MS = 60;
 export const SWEEP_SELECT_MS = MIN_CONTACT_MS;
 export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 
+// LIGHT_AFTER geometry (plans/17, trial/09-constants.sh): when the emitted
+// sweep contact is under 50 ms the map button is a Click and the light a
+// separate press, so each camera costs a 17 ms select + a 17 ms settle frame
+// + the emitted contact (the light hold). Kept in step with the runner by
+// trial/test-plan-interpreter.sh, which reads both.
+export const LA_SELECT_MS = 17;
+export const LA_SETTLE_MS = 17;
+export const sweepCamMs = (contactMs) =>
+  contactMs < 50 ? LA_SELECT_MS + LA_SETTLE_MS + contactMs : contactMs;
+
 // MONITOR_ANIM_UP is 12 sourced frames and `engine.js` drops a camera select
 // outright until the raise finishes:
 //
@@ -452,7 +462,7 @@ function clearTheRaise(name, lines) {
     e.kind === 'tap' || e.kind === 'hold' ? +e.rest[1] :
     e.kind === 'hall' ? +e.rest[0] :
     e.kind === 'hallraise' ? +e.rest[0] :
-    e.kind === 'sweep' ? 2 * +e.rest[0] + +e.rest[1] :
+    e.kind === 'sweep' ? 2 * +e.rest[0] + sweepCamMs(+e.rest[1]) :
     e.kind === 'read' ? +e.rest[0] : MIN_CONTACT_MS;
   const isCamera = e => e.kind === 'sweep' ||
     (e.kind === 'tap' && /^cam\d+$/.test(e.rest[0]));
@@ -532,7 +542,7 @@ function makeRoom(name, lines) {
     e.kind === 'tap' ? e.at + +e.rest[1] :
     e.kind === 'hold' ? e.at + +e.rest[1] :
     e.kind === 'hall' || e.kind === 'hallraise' ? e.at + +e.rest[0] :
-    e.kind === 'sweep' ? e.at + 2 * +e.rest[0] + +e.rest[1] :
+    e.kind === 'sweep' ? e.at + 2 * +e.rest[0] + sweepCamMs(+e.rest[1]) :
     e.kind === 'read' ? e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS :
     e.at + MIN_CONTACT_MS;
   for (let i = 0; i + 1 < ins.length; i++) {
@@ -651,18 +661,21 @@ export function devicePlan(recipe, {
         // by name found the first one in the cycle instead, which produced a
         // negative spacing on a second sweep.
         const modelled = ats.length > 1 ? ats[1] - ats[0] : spacing;
-        // The emitted spacing is the actuator's, not the model's, and the phone
-        // needs a wider one than the model quantises to. Widen by starting the
-        // sweep EARLIER so its end does not move: that end is the stun bridge
-        // across the five-tick mask, and HID-MULTITOUCH.md records that one
-        // frame of tail costs 272 of 400 nights. Anchoring the end is what makes
-        // 140 ms free (400/400) where rebuilding the policy at 140 is not
-        // (11/300) -- the difference is entirely which end of the sweep moves.
-        if (spacing < modelled)
-          throw new Error(`the device spacing ${spacing} ms is narrower ` +
-            `than the ${modelled} ms the recipe models; this emitter only widens`);
+        // The emitted spacing is the ACTUATOR's, and either end could move:
+        // the model quantises to MODEL_SLOT_MS and the phone may need wider
+        // (the withdrawn 133 ms geometry) or -- since the LIGHT_AFTER
+        // breakthrough (plans/17) -- much NARROWER. Either way the sweep END
+        // is anchored to the model's, because that end is the stun bridge
+        // across the five-tick mask and HID-MULTITOUCH.md records one frame of
+        // tail costing 272 of 400 nights. A narrower sweep just starts LATER,
+        // which is strictly more free time before it -- the guard is only that
+        // the start stays inside the cycle.
+        void modelled;
         const modelledEnd = ats[ats.length - 1] + MIN_CONTACT_MS;
-        const deviceSpan = (cams.length - 1) * spacing + sweepContactMs;
+        // The last camera costs its full per-camera time, not just the emitted
+        // contact -- a LIGHT_AFTER select+settle+light is 67 ms where `contact`
+        // alone is 33. Anchor the END to the model's using the real span.
+        const deviceSpan = (cams.length - 1) * spacing + sweepCamMs(sweepContactMs);
         const start = modelledEnd - deviceSpan;
         if (start < 0)
           throw new Error(`widening the sweep to ${spacing} ms starts it ` +
@@ -752,12 +765,18 @@ export function replay(plan, { night, seed = 1, worst = false,
         }
         at(t + f(+gap), 'press', 'monitor');
       } else if (kind === 'sweep') {
-        const [spacing, , cams] = rest;
+        const [spacing, contact, cams] = rest;
+        // LIGHT_AFTER: the select's Click writes `viewing` on release, then the
+        // light presses on the settled feed. In the engine that is press cam:N,
+        // then press light one select+settle later, held the emitted contact.
+        const la = +contact < 50;
+        const lightGap = la ? f(LA_SELECT_MS + LA_SETTLE_MS) : 1;
+        const lightHold = la ? f(+contact) : f(100);
         cams.split(',').forEach((n, i) => {
           const st = t + f(i * +spacing);
           at(st, 'press', 'cam:' + n);
-          at(st + 1, 'press', 'light');
-          at(st + 1 + f(100), 'release', 'light');
+          at(st + lightGap, 'press', 'light');
+          at(st + lightGap + lightHold, 'release', 'light');
         });
       } else if (kind === 'read') {
         const [duration, gap, hallAt, hallDuration, hallMode, hallAge] = rest;

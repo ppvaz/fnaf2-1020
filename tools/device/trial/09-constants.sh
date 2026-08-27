@@ -9,6 +9,16 @@
 # The emitted 133 ms slot leaves its separate 33 ms released gap after this
 # shared contact.
 SWEEP_LIGHT_LEAD_MS=0
+# LIGHT_AFTER sweep geometry (plans/17). When the plan's sweep CONTACT is
+# under 50 ms it is a light-after plan: the map button is a Fusion Click
+# (`viewing` on RELEASE, g22) and the flashlight registers on PRESS (g82), so
+# sending them together renders each light on the PREVIOUS feed. The runner
+# then does, per camera: select down, hold SELECT_MS, select up (Click ->
+# viewing = N), one frame to settle, light down on the settled feed, hold the
+# plan's `contact` ms, light up. Device-validated 2026-08-27: every camera
+# lights, CAM 07 included. Each camera costs SELECT_MS + SETTLE_MS + contact.
+SWEEP_SELECT_MS=17
+SWEEP_SETTLE_MS=17
 # A tap's contact. Named because the driver has to reason about when a tap
 # *finishes*, not just when it starts.
 TAP_CONTACT_MS=100

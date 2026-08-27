@@ -19,14 +19,29 @@ plan_control_xy() {
   esac
 }
 
+# Per-camera time inside a sweep, for the geometry the plan's contact selects.
+sweep_cam_ms() {
+  if [ "$1" -lt 50 ]; then echo $((SWEEP_SELECT_MS + SWEEP_SETTLE_MS + $1)); else echo "$1"; fi
+}
+
 pulsed_cam_burst() {
   x=$1; y=$2; contact=$3
-  # `stunCam` refreshes on every frame the light is on while that camera is
-  # selected, so contact 0 does not have to be held across the sweep: select
-  # first, then pulse. That is one contact of flashlight per camera instead of
-  # a 790 ms hold, which is the difference between fitting night 6's
-  # 3000-frame budget and outspending it. The select leads the light by
-  # SWEEP_LIGHT_LEAD_MS; hid-sweep-probe.sh proved this geometry 4/4.
+  if [ "$contact" -lt 50 ]; then
+    # LIGHT_AFTER: the select and the light are separate single-finger Clicks
+    # (see 09-constants.sh). `contact` is the LIGHT hold, not the select's.
+    hid_down "$x" "$y"
+    hid_delay "$SWEEP_SELECT_MS"
+    hid_up "$x" "$y"
+    hid_delay "$SWEEP_SETTLE_MS"
+    hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+    hid_delay "$contact"
+    hid_up "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+    return
+  fi
+  # Legacy pulsed geometry: `stunCam` refreshes every frame the light is on
+  # while that camera is selected, so contact 0 need not be held across the
+  # sweep -- select and light in one report, held `contact` ms. The select
+  # leads the light by SWEEP_LIGHT_LEAD_MS (0 in the shipped geometry).
   if [ "$SWEEP_LIGHT_LEAD_MS" -gt 0 ]; then
     hid_cam_down "$x" "$y"
     hid_delay "$SWEEP_LIGHT_LEAD_MS"
@@ -74,6 +89,7 @@ pulsed_sweep_at() {
   # wait instead of adding to it. Each camera costs `spacing` ms of hid time: a `contact` ms
   # select with the light pulsed inside it, then the remainder released before
   # the next select.
+  sweep_cam_time=$(sweep_cam_ms "$contact")
   sweep_rest=$cams
   sweep_first=1
   while [ -n "$sweep_rest" ]; do
@@ -82,7 +98,7 @@ pulsed_sweep_at() {
       *,*) sweep_rest=${sweep_rest#*,} ;;
       *)   sweep_rest= ;;
     esac
-    [ "$sweep_first" -eq 1 ] || hid_delay $((spacing - contact))
+    [ "$sweep_first" -eq 1 ] || hid_delay $((spacing - sweep_cam_time))
     sweep_first=0
     plan_control_xy "cam$sweep_cam"
     pulsed_cam_burst "$PX" "$PY" "$contact"
@@ -96,7 +112,7 @@ pulsed_sweep_at() {
   # early. A 73 ms contact is dropped, the cams stay up, and the frame the
   # classifier is then handed is the CAM 11 feed. Waiting out the macro costs
   # the press a few milliseconds and buys it a real contact.
-  wait_until $((sweep_start + 2 * spacing + contact))
+  wait_until $((sweep_start + 2 * spacing + sweep_cam_time))
 }
 
 hall_reset_and_raise_at() {

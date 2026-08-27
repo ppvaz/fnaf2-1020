@@ -59,6 +59,17 @@ hid_down() {
   hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,1,3,$((rx % 256)),$((rx / 256)),$((ry % 256)),$((ry / 256)),0,0,0,0,0]}"
 }
 
+hid_up() {
+  # Single-contact-0 release at a coordinate. Byte 7 (contact 1 flags) is 0x04
+  # so Linux consumes contact 1's inactive record -- a report promising one
+  # record leaves it latched down (trap 2). Used by the LIGHT_AFTER sweep,
+  # where the select and the light are separate single-finger Clicks.
+  x=$1; y=$2
+  rx=$(((1080 - y) * 20 / 9))
+  ry=$((x * 9 / 20))
+  hid_emit "{\"id\":92,\"command\":\"report\",\"report\":[1,1,0,$((rx % 256)),$((rx / 256)),$((ry % 256)),$((ry / 256)),4,0,0,0,0]}"
+}
+
 hid_two_down() {
   x1=$1; y1=$2; x2=$3; y2=$4
   rx1=$(((1080 - y1) * 20 / 9)); ry1=$((x1 * 9 / 20))

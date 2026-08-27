@@ -50,6 +50,8 @@ FUSION_POLL_MS="$(runner_const FUSION_POLL_MS)"
 MIN_RELEASED_MS="$(runner_const MIN_RELEASED_MS)"
 TAP_CONTACT_MS="$(runner_const TAP_CONTACT_MS)"
 SWEEP_LIGHT_LEAD_MS="$(runner_const SWEEP_LIGHT_LEAD_MS)"
+SWEEP_SELECT_MS="$(runner_const SWEEP_SELECT_MS)"
+SWEEP_SETTLE_MS="$(runner_const SWEEP_SETTLE_MS)"
 READ_CAPTURE_DELAY_MS="$(runner_const READ_CAPTURE_DELAY_MS)"
 
 # Lift the interpreter out of the remote program. Extracting by name rather
@@ -65,7 +67,7 @@ extract() {
 
 {
   echo 'set -eu'
-  for fn in plan_control_xy plan_first_offset plan_step run_cycle \
+  for fn in plan_control_xy sweep_cam_ms plan_first_offset plan_step run_cycle \
             plan_span plan_emit run_macro; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
@@ -76,7 +78,7 @@ extract() {
 {
   # The runner's own constants, so the stubs cannot drift from them.
   for c in FUSION_POLL_MS MIN_RELEASED_MS TAP_CONTACT_MS SWEEP_LIGHT_LEAD_MS \
-           READ_CAPTURE_DELAY_MS; do
+           SWEEP_SELECT_MS SWEEP_SETTLE_MS READ_CAPTURE_DELAY_MS; do
     eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
   done
 } > "$TMP/harness.sh"

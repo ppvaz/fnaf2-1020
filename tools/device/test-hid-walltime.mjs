@@ -51,21 +51,24 @@ check(!/wait_until/.test(loop),
   'pulsed_sweep_at must not wall-time between its selects');
 check(/wait_until "\$sweep_start"/.test(sweep),
   'pulsed_sweep_at must wall-time its start');
-check(/wait_until \$\(\(sweep_start \+ 2 \* spacing \+ contact\)\)/.test(sweep),
+check(/wait_until \$\(\(sweep_start \+ 2 \* spacing \+ sweep_cam_time\)\)/.test(sweep),
   'pulsed_sweep_at must wait out its own macro before returning, or the next ' +
   "action is written while the stream is draining and its contact is cut short");
 
-// The sweep is parameterised by the plan now, so check the relationship
-// symbolically and the defaults numerically. Per camera the hid process must
-// spend exactly `spacing`: a `contact` ms select with the light pulsed inside
-// it, then `spacing - contact` released before the next select.
+// The per-camera hid time is `sweep_cam_ms contact`: the plan's `contact` for
+// the legacy pulsed geometry, or SELECT_MS + SETTLE_MS + contact for a
+// LIGHT_AFTER plan (contact < 50). Either way the shell releases
+// `spacing - sweep_cam_time` between selects and never wall-times inside.
 const burst = body('pulsed_cam_burst');
 check(!/wait_until/.test(burst), 'pulsed_cam_burst must not wall-time inside the macro');
-check(/hid_delay "\$SWEEP_LIGHT_LEAD_MS"/.test(burst) &&
-      /hid_delay \$\(\(contact - SWEEP_LIGHT_LEAD_MS\)\)/.test(burst),
-  'pulsed_cam_burst must spend exactly `contact` ms of hid time per select');
-check(/hid_delay \$\(\(spacing - contact\)\)/.test(sweep),
-  'pulsed_sweep_at must release for `spacing - contact` between selects');
+check(/if \[ "\$contact" -lt 50 \]/.test(burst),
+  'pulsed_cam_burst must branch on contact < 50 for the LIGHT_AFTER geometry');
+check(/hid_delay "\$SWEEP_SELECT_MS"[\s\S]*hid_up "\$x" "\$y"[\s\S]*hid_delay "\$SWEEP_SETTLE_MS"[\s\S]*hid_down "\$CAM_LIGHT_X"/.test(burst),
+  'the LIGHT_AFTER burst must be select-down / SELECT_MS / select-up / SETTLE_MS / light-down');
+check(/hid_cam_light_down "\$x" "\$y"[\s\S]*hid_delay \$\(\(contact - SWEEP_LIGHT_LEAD_MS\)\)/.test(burst),
+  'the legacy burst must still spend exactly `contact` ms of hid time per select');
+check(/hid_delay \$\(\(spacing - sweep_cam_time\)\)/.test(sweep),
+  'pulsed_sweep_at must release for `spacing - sweep_cam_time` between selects');
 
 // The numbers themselves are the plan's, not the shell's: the runner reads
 // them from the file recipe.mjs emits. Check what will actually reach the

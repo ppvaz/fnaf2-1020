@@ -8,7 +8,7 @@
 // Nothing caught it, because nothing checked the stream the runner emits.
 import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS,
          MODEL_SLOT_MS, FUSION_POLL_MS, SWEEP_SELECT_MS,
-         SWEEP_RELEASED_MS } from './recipe.mjs';
+         SWEEP_RELEASED_MS, sweepCamMs } from './recipe.mjs';
 import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -295,7 +295,7 @@ check(prefix(plan.clear) === prefix(plan.attack),
   const sweepEnd = lines => {
     const s = lines.find(l => l.split(' ')[1] === 'sweep');
     const [at, , spacing, contact, cams] = s.split(' ');
-    return +at + (cams.split(',').length - 1) * +spacing + +contact;
+    return +at + (cams.split(',').length - 1) * +spacing + sweepCamMs(+contact);
   };
   const sweepSpacing = lines =>
     +lines.find(l => l.split(' ')[1] === 'sweep').split(' ')[2];
@@ -306,13 +306,18 @@ check(prefix(plan.clear) === prefix(plan.attack),
   check(sweepEnd(exp.clear) === sweepEnd(shipped.clear),
     `the experiment sweep ends at ${sweepEnd(exp.clear)} ms, the shipped one at ` +
     `${sweepEnd(shipped.clear)}; the stun bridge depends on the end not moving`);
-  let threw = false;
-  try { devicePlan(build({ night: 6, sweepSlotMs: 120 }), { deviceSpacingMs: 113 }); }
-  catch { threw = true; }
-  check(threw, 'devicePlan must refuse a device spacing narrower than the model spacing');
+  // Since the LIGHT_AFTER breakthrough (plans/17) the emitter may NARROW the
+  // sweep too, not only widen it -- a shorter sweep that ends at the same
+  // place is strictly more free time before it. The end anchor (checked above)
+  // is the invariant; the spacing floor is gone.
+  const narrow = devicePlan(build({ night: 6, sweepSlotMs: 120 }), { deviceSpacingMs: 67, sweepContactMs: 33 });
+  check(narrow.clear.find(l => l.split(' ')[1] === 'sweep').split(' ')[2] === '67',
+    'devicePlan must now accept a device spacing narrower than the model spacing');
+  check(sweepEnd(narrow.clear) === sweepEnd(shipped.clear),
+    'a narrowed sweep must still end where the model does -- it just starts later');
 
-  // The 33 ms hold + 33 ms release probe geometry (plans/17): the emitter
-  // carries the contact length, and refuses one that leaves no released gap.
+  // The emitter carries the contact length and refuses one that leaves no
+  // released gap.
   const short = devicePlan(build({ night: 7, sweepSlotMs: 50 }),
     { deviceSpacingMs: 66, sweepContactMs: 33 });
   const shortSweep = short.clear.find(l => l.split(' ')[1] === 'sweep').split(' ');
