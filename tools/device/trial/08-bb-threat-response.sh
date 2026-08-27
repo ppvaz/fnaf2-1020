@@ -21,6 +21,20 @@ classify_left_and_queue_mask_at() {
   : > "$CAPTURE_LOCK"
   screencap > "$capture_raw" &
   capture_pid=$!
+  # Grab the cue helper's 20x9 sensor for the SAME moment, in parallel -- it is
+  # a device-local loopback read (~53 ms) launched alongside screencap, so it
+  # adds no serial latency to the mask that follows. This is the paired corpus
+  # plans/15 package 5 needs: a real VirtualDisplay-scaler grid line next to the
+  # screencap the BB model is trained on. Logged only; the read still decides on
+  # the screencap. Empty string when the helper is absent.
+  capture_grid="$PIDFILE.left.grid"
+  rm -f "$capture_grid"
+  if [ "$CUE_PORT" != "-" ]; then
+    cue_grid > "$capture_grid" &
+    grid_pid=$!
+  else
+    grid_pid=""
+  fi
   while [ ! -s "$capture_raw" ]; do
     kill -0 "$capture_pid" 2>/dev/null || break
     sleep 0.002
@@ -105,6 +119,19 @@ classify_left_and_queue_mask_at() {
       [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw"
       ;;
   esac
+  # The paired grid line goes next to the frame for EVERY read, empty included
+  # -- `empty` is the class the screencap corpus already has plenty of and the
+  # grid corpus has none of, and one line is ~1.1 KB where the frame is 10 MB.
+  # Named to match the .raw so a later session pairs them by the timestamp
+  # prefix. Nothing reads these yet; plans/15 package 4 builds the signature.
+  if [ -n "$grid_pid" ]; then
+    wait "$grid_pid" 2>/dev/null || true
+    if [ -n "$KEEP_DIR" ] && grep -q '^OK grid=' "$capture_grid" 2>/dev/null; then
+      mkdir -p "$KEEP_DIR"
+      cp "$capture_grid" "$KEEP_DIR/$(printf '%06d' "$actual")-${classification%% *}.grid" \
+        2>/dev/null || true
+    fi
+  fi
   rm -f "$CAPTURE_LOCK"
   now_rel
   actual=$NOW_REL
@@ -129,9 +156,11 @@ classify_left_and_queue_mask_at() {
     cl_cam5=$(printf '%s\n' "$cl_snap" | sed -n 's/.* cam5=\([0-9-]*\).*/\1/p')
     cl_grey=$(printf '%s\n' "$cl_snap" | sed -n 's/.* grey=\([0-9-]*\).*/\1/p')
     cl_age=$(printf '%s\n' "$cl_snap" | sed -n 's/.* ageUs=\([0-9-]*\).*/\1/p')
-    cue_line=" cue[luma=${cl_luma:-UNREAD} cam5=${cl_cam5:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us]"
+    cl_grid=$(sed -n 's/^OK grid=[0-9x]* seq=\([0-9]*\).*/\1/p' "$capture_grid" 2>/dev/null)
+    cue_line=" cue[luma=${cl_luma:-UNREAD} cam5=${cl_cam5:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us grid=${cl_grid:-MISS}]"
   fi
   printf '%6d ms  classify-bb-left %s %s%s\n' "$actual" "$classification" "$monitor_seen" "$cue_line" >&2
   hid_mark "$actual"
+  rm -f "$capture_grid"
 }
 

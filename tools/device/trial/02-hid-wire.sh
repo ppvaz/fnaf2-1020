@@ -26,6 +26,18 @@ cue_snapshot() {
   printf 'GET %s\n' "$CUE_TOKEN" | toybox nc -w 1 127.0.0.1 "$CUE_PORT" 2>/dev/null | tr -d '\r'
 }
 
+# The helper's whole 20x9 visual sensor as one `OK grid=20x9 seq=N <hex>` line
+# (CaptureService.dispatchControl, verb GRID). This is the sensor the
+# screencap-free BB read has to be calibrated against -- Android's own
+# VirtualDisplay scaler, not a host box-filter of a screencap
+# (plans/15, ON-DEVICE-VALIDATION.md "pricing the stream as the classifier's
+# capture"). Logged only; nothing decides on it yet. Same contract as
+# cue_snapshot: short timeout, failure ignored, never stalls the schedule.
+cue_grid() {
+  [ "$CUE_PORT" != "-" ] || return 0
+  printf 'GRID %s\n' "$CUE_TOKEN" | toybox nc -w 1 127.0.0.1 "$CUE_PORT" 2>/dev/null | tr -d '\r'
+}
+
 hid_mark() {
   [ -z "$HID_TRACE" ] || printf '{"command":"mark","ms":%s}\n' "$1" >> "$HID_TRACE"
 }

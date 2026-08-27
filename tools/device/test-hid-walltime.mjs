@@ -117,6 +117,19 @@ const maskSeq = classify.slice(classify.indexOf('hid_release'));
 const readBody = body('classify_left_and_queue_mask_at');
 check(/hid_delay "\$mask_gap"[\s\S]*hid_down "\$MASK_X"/.test(readBody),
   'the read must wait the plan\'s mask gap before pressing the prophylactic mask');
+
+// The paired-grid capture (plans/15) must not cost the mask any latency: it is
+// launched in the background alongside screencap and reaped only after the
+// mask press has gone out. A serial `cue_grid` before the mask would add ~53 ms
+// to the mask-off seam the census already showed is where reads are lost.
+const gridLaunch = readBody.indexOf('cue_grid > "$capture_grid" &');
+const maskPress = readBody.indexOf('hid_down "$MASK_X"');
+check(gridLaunch !== -1 && gridLaunch < maskPress,
+  'the paired grid read must be backgrounded before the prophylactic mask press, not block it');
+check(readBody.indexOf('wait "$grid_pid"') > maskPress,
+  'the grid read must be reaped after the mask press, so it never delays the seam');
+check(/\$\{classification%% \*\}\.grid/.test(readBody),
+  'every read must write its grid line next to the frame, empty class included');
 check(!/mask-on-bb/.test(src),
   'the BB branch must keep the read\'s mask on, not toggle it off');
 check(MASK_GAP_MS >= 33,
