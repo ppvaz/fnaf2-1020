@@ -14,22 +14,32 @@ Night 7 is jitter-shape-bound. Item 13's "device-actuator overhead" framing
 was checked and corrected on 2026-08-27 (two sessions) — see the correction
 appended to item 13.** The emitted schedule replays 400/400 = 100% on every
 night at zero jitter (item 11). The read-capture cost moves nothing
-(`readLatencyMs` 550→100 → <1 pt). But `sweepSlotMs` **does**: 120→110
-(emitted spacing 133→123 ms) takes corr n2/n5/n6 to 75/70/68, and the lever
-sits *below* the device-validated 133 ms sweep floor. The sub-70 ladder for
-2-6 is a faster sweep actuator; for n7 it is `human-gate.mjs`'s **iid**
-jitter model (its own header calls it the wrong shape) on a Foxy reset wedged
-between `MASK_ANIM_OFF` and the 400-frame Withered stun budget. Concrete next
-moves:
+(`readLatencyMs` 550→100 → <1 pt). But sweep selection spacing **does**:
+emitted 133→113 ms takes corr **n2 75, n5 73, n6 72, n7 43** (session `55`,
+`devicetimesearch.mjs`, `plans/16` log) — and 113 ms sits *below* the
+device-validated 133 ms floor. So 2-6 to 70% is a 113 ms sweep actuator; n7
+is still short at 43 for the jitter-shape / reset-placement reasons, not
+spacing.
 
-- **A sub-120 ms sweep actuator, priced against the phone** — `plans/16`
-  progress log (session `55`, `devicetimesearch.mjs`) has the per-spacing
-  survival curve; the open question is whether the phone can deliver
-  ~110-120 ms selection spacing with the CAM-07 last-flash reliability the
-  133 ms floor was set for. `HID-MULTITOUCH.md` "Answered: the phone accepts
-  120 ms spacing" says the actuator can; the last-flash finding says the
-  *game* may still drop one. Re-run `hid-sweep-probe.sh` at 110/120 with an
-  HID trace before trusting it.
+**Is the unjittered schedule runnable on the phone?** The precision is there
+— `hid_delay` holds intra-macro boundaries to **±2 ms** (getevent), and the
+fork-free `/proc/uptime` `wait_until` lands the one per-cycle wall boundary
+**inside a 10 ms tick** (device-probed 2026-08-26, was 34–73 ms late on the
+`date` loop). The gate's ±60 ms iid is a *human* model, not the machine. Four
+things stand between that and "runnable", none of them raw timing precision:
+(1) the human gate refuses a machine-precision plan by design; (2) the one
+un-macro'd beat — the `screencap`-gated BB read → branch — slips **30–900 ms**
+past the plan cut-off on the real phone (`actuator.mjs`), on the Foxy-critical
+beat, which is what `plans/15`'s cue-helper migration fixes; (3) the sweep
+spacing the nights want (113 ms) is below the proven-reliable actuator floor;
+(4) `--device-actuator` is still 0% (forcedown cascade, verified recovery
+unmodeled). Concrete next moves:
+
+- **A 113 ms sweep actuator, proven against the phone** — `HID-MULTITOUCH.md`
+  "Answered: the phone accepts 120 ms spacing" says the actuator can hit it;
+  the CAM-07 last-flash finding says at 20 ms released (120 ms spacing) the
+  *game* may still drop ~1 flash in 32. Re-run `hid-sweep-probe.sh` at 113 ms
+  with an HID trace and grade both signals before trusting it.
 
 - **`plans/15`, BB-first** — Pedro's directive 2026-08-27: *every*
   screencap-dependent read moves to the cue helper, graders included, live
@@ -722,21 +732,26 @@ as work is done rather than composed at the end; two are delegated and named.
       of it to the cue helper's ~59 ms `GRID` path is architecture and
       honesty, not a night fix.
 
-    - **The sweep selection spacing IS the lever for nights 2-6.** Session
-      `55`'s `tools/minus7/devicetimesearch.mjs` (see `plans/16` progress
-      log) isolated every device number and found only this one moves the
-      ladder: `sweepSlotMs` 120 -> 110 (emitted spacing 133 -> 123 ms) takes
-      **corr n2 68 -> 75, n5 62 -> 70, n6 61 -> 68**; spacing 113 ms takes
-      n5/n6 to ~73/72. The pinned `n6target` configs hold 500/500. **The
-      lever sits below the device-validated 133 ms floor** (`HID-MULTITOUCH.md`:
-      100 ms contact + one full released Fusion poll; the CAM-07 last-flash
-      finding is exactly this boundary). So nights 2-6 to 70% is a
-      **sub-120 ms sweep actuator** -- a real "faster actuator" question,
-      lever 2 above, now priced -- not the reset cost this item leads with.
+    - **The sweep selection spacing IS the lever, and 113 ms is a sweet
+      spot.** Session `55`'s `tools/minus7/devicetimesearch.mjs` (see
+      `plans/16` progress log) isolated every device number and found only
+      this one moves the ladder. Emitted spacing 133 -> 123 -> 113 ms
+      (`sweepSlotMs` 120/110/100): **n2 68 -> 75, n5 62 -> 70 -> 73,
+      n6 61 -> 68 -> 72, and n7 34 -> 39 -> 43** (its best-ever). The pinned
+      `n6target` configs hold 500/500. It only breaks *below* 113: at 103 ms
+      n7 falls to 32 on a phase break. **The lever sits below the
+      device-validated 133 ms floor** (`HID-MULTITOUCH.md`: 100 ms contact +
+      one full released Fusion poll; the CAM-07 last-flash finding is exactly
+      this boundary -- at 120 ms spacing the released interval is 20 ms
+      against a 33 ms poll). So nights 2-6 to 70% is a **113 ms sweep
+      actuator** -- lever 2 above, now priced -- not the reset cost this item
+      leads with.
 
-    - **Night 7 is NOT spacing-bound.** At `sweepSlotMs` 90 the spacing wins
-      break n7 on phase while helping n5/n6. n7 needs the jitter-shape fix
-      and the bang-anchored reset -- see the N7 block under "Very next step".
+    - **Night 7 is still short at 113 ms (43), for reasons unrelated to
+      spacing.** Tightening the sweep helps n7 monotonically down to 113;
+      there is no 2-6-vs-7 tradeoff until 103 ms. n7's remaining gap is the
+      jitter-shape fix and the bang-anchored reset -- see the N7 block under
+      "Very next step".
 
     The `~680 ms free per cycle` figure is a steady-5 s-cycle number, and
     this item mis-applies it to the 10 s attack cycle where the monitor
