@@ -12,7 +12,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../../src/config.js';
 import { Sim } from '../../src/engine.js';
-import { run } from '../hidpilottest.mjs';
+import { run, SEARCH_KNOBS } from '../hidpilottest.mjs';
 
 // The phone's proven floor for a contact Fusion cannot miss, and the camera
 // spacing the shipped route uses. Both are device measurements; see
@@ -614,9 +614,10 @@ export function devicePlan(recipe) {
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
     const lines = [];
     const ev = cycle.events;
-    let skipMask = null;
+    const skip = new Set();
     for (let i = 0; i < ev.length; i++) {
       const e = ev[i];
+      if (skip.has(e)) continue;
       if (e.act === 'camlight') continue;            // merged into its select
       if (/^cam(10|4|7)$/.test(e.act)) {
         const cams = [];
@@ -663,11 +664,23 @@ export function devicePlan(recipe) {
         // presses the mask 40 ms later, one Fusion poll, so the game sees an
         // unpressed frame between two different buttons. The plan says so,
         // rather than listing a mask the schedule does not separately time.
-        skipMask = ev.find(x => x.act === 'mask' && x.at >= e.at);
-        lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS}`);
+        const mask = ev.find(x => x.act === 'mask' && x.at >= e.at);
+        if (mask) skip.add(mask);
+        // Package 4's permitted decoupling geometry puts one hall pulse while
+        // the left-opening light is held.  The two controls are independent
+        // contacts, so make it an explicit compound read row instead of
+        // letting makeRoom incorrectly serialize it behind the read.  This
+        // is analogous to hallraise: one measured gesture with two contacts.
+        const hall = ev.find(x => x.act === 'hall' && x.at > e.at &&
+          x.at < e.at + e.dur);
+        if (hall) {
+          skip.add(hall);
+          const condition = SEARCH_KNOBS.bangAgeFrames > 0
+            ? ` bangage ${SEARCH_KNOBS.bangAgeFrames}` : '';
+          lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS} ${hall.at - e.at} ${hall.dur}${condition}`);
+        } else lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS}`);
         continue;
       }
-      if (e === skipMask) continue;
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${e.dur}`);
     }
@@ -727,11 +740,20 @@ export function replay(plan, { night, seed = 1, worst = false,
           at(st + 1 + f(100), 'release', 'light');
         });
       } else if (kind === 'read') {
+        const [duration, gap, hallAt, hallDuration, hallMode, hallAge] = rest;
         at(t, 'press', 'ventL');
-        at(t + f(+rest[0]), 'release', 'ventL');
+        at(t + f(+duration), 'release', 'ventL');
         // The read owns the prophylactic mask-on press. Its release-to-press
         // gap is the phone's measured one-frame acceptance boundary.
-        at(t + f(+rest[0]) + f(+rest[1]), 'press', 'mask');
+        at(t + f(+duration) + f(+gap), 'press', 'mask');
+        if (hallAt !== undefined) {
+          if (hallMode === 'bangage')
+            at(t + f(+hallAt), 'recent-hall', { age: +hallAge, duration: +hallDuration });
+          else {
+            at(t + f(+hallAt), 'press', 'light');
+            at(t + f(+hallAt) + f(+hallDuration), 'release', 'light');
+          }
+        }
         at(t + f(readLatencyMs), 'snapshot', base);
       } else throw new Error(`unknown instruction ${kind}`);
     }
@@ -750,13 +772,28 @@ export function replay(plan, { night, seed = 1, worst = false,
   let pending = null;
   parse(plan.clear.slice(0, 2), base);      // the shared prefix, up to the read
   let missed = 0, detections = 0;
+  let eventCursor = 0, lastDepartureBang = -Infinity;
 
   while (sim.alive && !sim.won) {
+    while (eventCursor < sim.events.length) {
+      const event = sim.events[eventCursor++];
+      if (event.type === 'vent-bang' && event.data?.leaving)
+        lastDepartureBang = event.f;
+    }
     while (queue.length && queue[0][0] <= sim.frame) {
       queue.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
       const [, , kind, act] = queue.shift();
       if (kind === 'press') sim.press(act);
       else if (kind === 'release') sim.release(act);
+      else if (kind === 'recent-hall') {
+        // This is the permitted policy state, not an optimizer-invented
+        // history rule: only the age of an observed departure bang chooses
+        // whether the pre-read reset fires.
+        if (sim.frame - lastDepartureBang < act.age) {
+          sim.press('light');
+          at(sim.frame + f(act.duration), 'release', 'light');
+        }
+      }
       else if (kind === 'snapshot') {
         pending = { base: act, bb: sim.bb.inOpening, inside: sim.bb.inside,
                     resolveAt: sim.frame + f(classifyMs) };

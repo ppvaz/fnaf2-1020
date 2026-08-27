@@ -4,7 +4,8 @@
 import * as C from '../../src/config.js';
 import { Sim } from '../../src/engine.js';
 import { cloneSim, view, ACTIONS, run } from './sim.mjs';
-import { searchParams, baselineLadder } from './paramsearch.mjs';
+import { searchParams, baselineLadder, evalParams } from './paramsearch.mjs';
+import { enumeratePackage4 } from '../constrainedsearch.mjs';
 
 let fails = 0;
 const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`); if (!cond) fails++; };
@@ -23,6 +24,21 @@ const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`);
     if (JSON.stringify([a.won, a.frame, a.death]) !== JSON.stringify([b.won, b.frame, b.death])) mismatch++;
   }
   ok('snapshot/restore: 60/60 bit-identical continuation', mismatch === 0);
+}
+
+// --- Package 4 enumeration is finite, constrained, and has one baseline.
+{
+  const candidates = enumeratePackage4();
+  const baseline = candidates.filter(c => Object.values(c.params).every(v => v === 0));
+  const invalidPulse = candidates.filter(c => c.params.preReadHallMs > 0 && c.params.openGfFlick !== 1);
+  const invalidAge = candidates.filter(c => c.params.preReadHallMs === 0 && c.params.bangAgeFrames !== 0);
+  ok('pkg-4 enumerator omits its duplicate baseline', baseline.length === 0);
+  ok('pkg-4 in-read resets always include GF suppression', invalidPulse.length === 0);
+  ok('pkg-4 bang-age state only controls an in-read reset', invalidAge.length === 0);
+  const conditional = evalParams({ preReadHallMs: 500, openGfFlick: 1,
+    bangAgeFrames: 37 }, [7], 1, 'correlated');
+  ok('pkg-4 conditional read replays through modelGate', conditional.ok &&
+    conditional.nights[7].runs === 1);
 }
 
 // --- cloneSim (the search branch primitive) agrees with a fresh run

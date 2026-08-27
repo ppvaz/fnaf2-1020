@@ -11,8 +11,8 @@
 // searched nights of modelGate survival under `--shape`. Frontier admission is
 // a --admit-seed re-evaluation; screening during beam expansion is at --runs.
 import { execFileSync } from 'node:child_process';
-import { build, devicePlan, replay, idleUntilMs } from '../device/recipe.mjs';
-import { modelGate, jitterPlan, parsePlanText } from '../device/human-gate.mjs';
+import { build, devicePlan, idleUntilMs } from '../device/recipe.mjs';
+import { modelGate } from '../device/human-gate.mjs';
 import { SEARCH_KNOBS } from '../hidpilottest.mjs';
 import * as C from '../../src/config.js';
 
@@ -43,6 +43,17 @@ export const FLOORS = {
   // pkg 5: opening gains a monitor-down GF-clear flick across the frame-300
   // check. Boolean.
   openGfFlick:         { min: 0,   max: 1,  step: [1, -1] },
+  // pkg 4: a reset during the left-opening read.  The monitor-down animation
+  // is 367 ms, so a pulse before 400 ms cannot reach the hallway; 800 ms
+  // leaves room before the read's prophylactic mask.  It is meaningful only
+  // with the opening GF suppression, but keeping that relation as a
+  // constraint in the enumerator (rather than hiding it in HidPilot) makes
+  // the permitted geometry auditable.
+  preReadHallMs:        { min: 0,   max: 800, step: [400, 450, 500, 550, 600, 650, 700, 750, 800] },
+  // The sole cross-cycle state lever: frames since an observed departure bang.
+  // Its ceiling is FOXY_RETURN_MAX (999 frames); zero preserves the ordinary
+  // unconditional geometry.
+  bangAgeFrames:        { min: 0,   max: 999, step: [30, 37, 45, 60, 90, 120, 240, 500, 999] },
 };
 const KNOBS = Object.keys(FLOORS);
 
@@ -59,22 +70,29 @@ function planTextFor(night) {
 // per-night { pct, won, runs, cvar } plus `ok` (false if any night threw --
 // an over-floor value that devicePlan/makeRoom rejects, which is the sourced
 // constraint doing its job).
-export function evalParams(params, nights, runs, shape) {
+export function evalParams(params, nights, runs, shape, seedStart = 1) {
+  for (const k of KNOBS) {
+    const v = params[k] || 0;
+    if (!Number.isInteger(v) || v < FLOORS[k].min || v > FLOORS[k].max)
+      return { params: { ...params }, nights: {}, ok: false,
+        error: `${k}=${v} is outside its constrained search floor` };
+  }
+  if (params.preReadHallMs > 0 && !params.openGfFlick)
+    return { params: { ...params }, nights: {}, ok: false,
+      error: 'preReadHallMs requires the opening Golden Freddy suppression' };
+  if (params.bangAgeFrames > 0 && !params.preReadHallMs)
+    return { params: { ...params }, nights: {}, ok: false,
+      error: 'bangAgeFrames may only control an in-read hall reset' };
   for (const k of KNOBS) SEARCH_KNOBS[k] = params[k] || 0;
   const out = { params: { ...params }, nights: {}, ok: true };
   try {
     for (const night of nights) {
       const text = planTextFor(night);
-      // per-seed outcomes for CVaR: reuse modelGate's replay but keep the
-      // vector. modelGate does not expose it, so replay directly here with
-      // the same jitterPlan + shape.
-      const { plan, idleUntilMs: idle } = parsePlanText(text);
-      const alive = [];
-      for (let seed = 1; seed <= runs; seed++) {
-        const { sim } = replay(jitterPlan(plan, seed, 60, shape), { night, seed, idleUntilMs: idle });
-        alive.push(sim.won ? 1 : 0);
-      }
-      const won = alive.reduce((a, b) => a + b, 0);
+      // Keep the per-seed vector from modelGate itself so screening and
+      // admission share exactly one jitter/replay implementation.
+      const gate = modelGate(text, { night, runs, shape, seedStart, outcomes: true });
+      const alive = gate.outcomes;
+      const won = gate.survived;
       // seed-CVaR: survival over the worst decile of seed trajectories. With a
       // 0/1 outcome this is just the mean of the lowest 10% -- i.e. is the
       // worst decile all deaths (cvar 0) or does it carry some survivors.

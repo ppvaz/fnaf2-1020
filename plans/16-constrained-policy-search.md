@@ -18,7 +18,7 @@ clean.
   (exported, default-inert — the 803feb3 plan is byte-identical with every knob
   0): `attackHallDeltaMs`, `attackSweepDeltaMs`, `attackRstDeltaMs`,
   `clearHall2DeltaMs`, `phaseMarginDeltaMs`, `hallPulseDeltaMs`, `openGfFlick`,
-  `preReadHallMs`.
+  `preReadHallMs`, `bangAgeFrames`.
   Each floor is in `tools/minus7/paramsearch.mjs` `FLOORS` with its citation.
   The search state view is `tools/minus7/sim.mjs` `view()` — sourced fields
   only; office pan, render flicker, sound identity, object handles dropped.

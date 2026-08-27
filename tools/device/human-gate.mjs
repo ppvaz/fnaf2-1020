@@ -147,13 +147,14 @@ export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS, shape = 'iid') 
 
 export function modelGate(planText, {
   runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
-  night, replayFn = replay, shape = 'iid',
+  night, replayFn = replay, shape = 'iid', seedStart = 1, outcomes = false,
 } = {}) {
   const { night: named, plan, idleUntilMs } = parsePlanText(planText);
   night = night ?? named;
   if (night === undefined || night === null)
     throw new Error('this plan does not name its night, and the gate will not guess one');
   let survived = 0;
+  const outcomeVector = outcomes ? [] : null;
   const deaths = new Map();
   // When a run died, not only what killed it. A census of causes alone once
   // shipped the wrong conclusion here (death-census.py's header): nineteen
@@ -161,11 +162,15 @@ export function modelGate(planText, {
   // Balloon Boy could not have arrived yet. Seconds of in-game time, so the
   // caller can place a death against the AI table's hour rows.
   const deathTimes = new Map();
-  for (let seed = 1; seed <= runs; seed++) {
+  for (let seed = seedStart; seed < seedStart + runs; seed++) {
     const { sim } = replayFn(jitterPlan(plan, seed, slackMs, shape),
                              { night, seed, idleUntilMs });
-    if (sim.won) survived++;
+    if (sim.won) {
+      survived++;
+      if (outcomeVector) outcomeVector.push(1);
+    }
     else if (sim.death) {
+      if (outcomeVector) outcomeVector.push(0);
       const k = `${sim.death.reason}: ${sim.death.detail}`;
       deaths.set(k, (deaths.get(k) || 0) + 1);
       if (!deathTimes.has(k)) deathTimes.set(k, []);
@@ -175,6 +180,7 @@ export function modelGate(planText, {
   return {
     survived, runs, slackMs, minSurvival, night,
     ok: survived >= runs * minSurvival,
+    outcomes: outcomeVector,
     deaths: [...deaths.entries()].sort((a, b) => b[1] - a[1]),
     deathTimes,
   };

@@ -165,6 +165,17 @@ for (const [name, lines] of Object.entries(plan)) {
         `${name}: the read leaves ${rest[1]} ms between the vent light and the ` +
         'mask; one 30 Hz Fusion poll is 33 ms and a lost mask press sticks the ' +
         'mask on, which blinds every later read');
+      if (rest.length > 2) {
+        check(rest.length === 4 || rest.length === 6,
+          `${name}: read compound must carry hall offset/duration and optional condition together`);
+        check(+rest[2] > 0 && +rest[2] < +rest[0],
+          `${name}: read hall offset ${rest[2]} is outside the held vent-light window`);
+        check(+rest[3] >= MIN_CONTACT_MS,
+          `${name}: read hall contact ${rest[3]} is under the contact floor`);
+        if (rest.length === 6)
+          check(rest[4] === 'bangage' && Number.isInteger(+rest[5]) && +rest[5] > 0,
+            `${name}: read's cross-cycle condition is malformed`);
+      }
     }
   }
   check(sweeps >= 1, `${name}: no camera sweep, so nothing refreshes the stalls`);

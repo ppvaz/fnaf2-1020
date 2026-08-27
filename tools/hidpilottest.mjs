@@ -35,6 +35,7 @@ export const SEARCH_KNOBS = {
   hallPulseDeltaMs: 0,     // every hall pulse length, 130 -> 130+d                (floor: MIN_CONTACT 100)
   openGfFlick: 0,          // pkg 5: opening gains a monitor-down mask flick across the frame-300 GF check
   preReadHallMs: 0,        // pkg 4: a hall pulse this many ms into leftNormal, before the read (needs openGfFlick; tight-Foxy nights only)
+  bangAgeFrames: 0,        // pkg 4: only fire that pulse when the last departure bang is younger than this (0 = unconditional)
 };
 
 class HidPilot {
@@ -303,7 +304,10 @@ class HidPilot {
     // tight-Foxy nights (peak AI >= 10).
     if (mv(SEARCH_KNOBS.preReadHallMs) > 0 && this.prophylacticMask
         && SEARCH_KNOBS.openGfFlick && C.peakAi((this.sim.opts && this.sim.opts.night) || 6, 'foxy') >= 10) {
-      this.hold(a + mv(SEARCH_KNOBS.preReadHallMs), 3, 'light');
+      // This is a device-plan action, not an abstract three-frame flash.
+      // Keeping the ordinary hall-contact duration means the emitted plan
+      // continues to satisfy Fusion's measured contact floor.
+      this.hold(a + mv(SEARCH_KNOBS.preReadHallMs), this.hallPulse, 'light');
     }
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
     this.at(latch + this.beatShift(), 'left-snapshot', a);

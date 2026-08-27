@@ -22,6 +22,22 @@ const WORKER_URL = new URL('./pool-worker.mjs', import.meta.url);
 // Beyond the physical core count the extra threads only contend, and the
 // harness is not the only thing running on the machine.
 export const DEFAULT_WORKERS = Math.max(1, Math.min(8, availableParallelism()));
+const workerArg = () => {
+  const raw = process.argv.find(a => a.startsWith('--workers='));
+  if (!raw) return DEFAULT_WORKERS;
+  const n = Number(raw.slice('--workers='.length));
+  if (!Number.isInteger(n) || n < 1)
+    throw new Error(`--workers must be a positive integer, got ${raw}`);
+  return n;
+};
+const batchArg = () => {
+  const raw = process.argv.find(a => a.startsWith('--pool-batch='));
+  if (!raw) return 16;
+  const n = Number(raw.slice('--pool-batch='.length));
+  if (!Number.isInteger(n) || n < 1)
+    throw new Error(`--pool-batch must be a positive integer, got ${raw}`);
+  return n;
+};
 
 export class SimPool {
   constructor({ workers = DEFAULT_WORKERS } = {}) {
@@ -40,20 +56,29 @@ export class SimPool {
   }
 
   // Map `fn` over `optsList`, returning results in the caller's order.
-  // Deals the list round-robin rather than in contiguous blocks: a night that
-  // ends in a death at 0:30 costs a fraction of one that runs to 6 AM, and
-  // deaths cluster, so contiguous blocks would leave workers idle.
+  // A persistent work queue lets a worker take another batch immediately
+  // after an early-death batch.  This matters for candidate searches: a weak
+  // candidate's Night 7 jobs often finish much sooner than a survivor's.
+  // `--pool-batch=1` is useful when each option is itself a large seed batch;
+  // the default amortizes IPC for ordinary short jobs.
   async map(mod, fn, optsList) {
     if (!optsList.length) return [];
     if (this.size === 1) return runSerial(mod, fn, optsList);
     this.spawn();
-    const shares = Array.from({ length: this.size }, () => []);
-    optsList.forEach((o, i) => shares[i % this.size].push(o));
-    const parts = await Promise.all(shares.map((batch, k) =>
-      batch.length ? this.send(this.workers[k], mod, fn, batch) : []));
+    const batchSize = batchArg();
+    const jobs = [];
+    for (let start = 0; start < optsList.length; start += batchSize)
+      jobs.push({ start, batch: optsList.slice(start, start + batchSize) });
     const out = new Array(optsList.length);
-    for (let k = 0; k < this.size; k++)
-      parts[k].forEach((v, j) => { out[j * this.size + k] = v; });
+    let next = 0;
+    const runWorker = async (worker) => {
+      while (next < jobs.length) {
+        const job = jobs[next++];
+        const values = await this.send(worker, mod, fn, job.batch);
+        values.forEach((v, i) => { out[job.start + i] = v; });
+      }
+    };
+    await Promise.all(this.workers.map(runWorker));
     return out;
   }
 
@@ -96,7 +121,7 @@ let shared = null;
 export function pool() {
   if (!shared) {
     shared = new SimPool({
-      workers: process.argv.includes('--serial') ? 1 : DEFAULT_WORKERS,
+      workers: process.argv.includes('--serial') ? 1 : workerArg(),
     });
   }
   return shared;
