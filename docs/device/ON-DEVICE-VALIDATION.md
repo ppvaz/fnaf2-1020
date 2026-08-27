@@ -1683,6 +1683,40 @@ worth more than any elegance saving on this night: the sweep is what suppresses
 the Toys, and its least reliable step is aimed at the camera one of them lives
 on.
 
+### The last flash: a mechanism, and the control that is missing
+
+Why CAM 07 and not the others. `SWEEP_LIGHT_LEAD_MS` is 0 in the shipped
+geometry, so a camera's select and its light are the **same contact**, held
+`PLAN_CONTACT_MS` = 100 ms at `PLAN_SPACING_MS` = 120 ms spacing. That leaves
+**20 ms of released time** between cameras, and Fusion polls touch per frame
+(~16.7 ms at 60 fps) -- barely over one frame. The hypothesis is a **dropped
+selection**, not a mistimed light: if CAM 07's select is swallowed, CAM 04
+stays selected and absorbs the pulse.
+
+Consistent with the data, and NOT established by it:
+
+| | n | CAM 04 lit frames (median / mean) |
+|---|---:|---|
+| sweeps where CAM 07 lit | 70 | 7.0 / 8.3 |
+| sweeps where CAM 07 missed | **5** | 10.0 / 9.2 |
+
+The direction is the predicted one. Five samples cannot carry it, and a
+favourable number with n=5 is precisely what this repository's rules say to
+distrust.
+
+**The control that would settle it was not recorded.** `n1-grey-2202` reports
+`hid trace: MISSING (run with HID_TRACE_RUN=1)`. `test-hid-trace.mjs` audits
+what the phone was *sent*; `sweepcheck.py` reports what the game *did*. Only
+both together separate "the press never went out" from "it went out and Fusion
+swallowed it" -- and those have opposite fixes. **Any further Night 1 run must
+set `HID_TRACE_RUN=1`.**
+
+If the trace shows all three sent, the released gap is the suspect and the
+repair is geometric: 100 ms of contact plus a 33 ms released gap is 133 ms of
+spacing, not 120. That moves the cycle and must be re-gated at 1200 seeds
+rather than assumed -- and note the 120 ms figure was proven 4/4 by
+`hid-sweep-probe.sh`, which audits the *stream*, not the game's acceptance.
+
 ### Why no instrument found her, and what to change
 
 Two scans failed before Pedro pointed at the timestamp, and both failures are
