@@ -188,8 +188,15 @@ check(!/^\s*bbinside\\ \*\)/m.test(block),
 // stepped path because its epoch slip has to come out of a wind hold.
 check(/run_cycle clear "\$base" 0 2/.test(block),
   'the shared prefix must be stepped: it contains the read');
-check(/run_cycle opening 0 0 999/.test(block),
+// The base is a variable since 2026-08-27 -- it is the plan's `#idle-until`,
+// which is 140000 on Night 1 and 0 elsewhere. What must not change is the
+// `0 999` that makes the opening STEPPED: a macro cannot absorb the epoch slip.
+check(/run_cycle opening \S+ 0 999/.test(block),
   'the opening must be stepped: a macro cannot absorb the epoch slip');
+check(/run_cycle opening "\$IDLE_UNTIL"/.test(block),
+  'the opening must start at the plan\'s idle window, not at a base the ' +
+  'runner picked: an idle the runner decides for itself is the unpriceable ' +
+  'inline schedule the model gate exists to refuse');
 // The flick is one actuator row so human jitter shifts the two game inputs
 // together and the HID macro preserves the measured-safe seam.
 check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === '180',

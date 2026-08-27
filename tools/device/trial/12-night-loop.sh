@@ -112,6 +112,24 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     exit 47
   }
   press_at 0 "$MUTE_X" "$MUTE_Y" mute
+
+  # The plan's idle window: hours this night has nothing to answer.
+  #
+  # Derived in recipe.mjs from the sourced AI table and the per-night music-box
+  # drain, and priced by the model gate, which runs the sim through the window
+  # rather than skipping it. Night 1 reports 140000: its Toys do not arm until
+  # 2 AM (g674) and g653 holds its box full until 2 AM, while the Puppet cannot
+  # roll on a full box (g494/g495). Every other night reports 0.
+  #
+  # Read here rather than assumed: a runner that idles on its own judgement is
+  # exactly the unpriceable inline schedule the model gate exists to refuse.
+  IDLE_UNTIL=$(sed -n 's/^#idle-until \([0-9][0-9]*\).*/\1/p' "$PLAN_FILE" | head -1)
+  [ -n "$IDLE_UNTIL" ] || IDLE_UNTIL=0
+  if [ "$IDLE_UNTIL" -gt 0 ]; then
+    printf '%6d ms  idling to %d ms: nothing is armed and the box is not draining\n' \
+      0 "$IDLE_UNTIL"
+    wait_until "$IDLE_UNTIL"
+  fi
   # The epoch detector needs one more confirming capture after T0, so the
   # opening's first instruction can already be due. Let it slip rather than
   # firing the cam-11 select inside MONITOR_ANIM_UP; the opening's wind absorbs
@@ -126,9 +144,9 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
     echo 'epoch latch left no room for the opening' >&2
     exit 46
   }
-  run_cycle opening 0 0 999
+  run_cycle opening "$IDLE_UNTIL" 0 999
 
-  base=7000
+  base=$((IDLE_UNTIL + 7000))
   cycle=0
   unknowns=0
   nolights=0
