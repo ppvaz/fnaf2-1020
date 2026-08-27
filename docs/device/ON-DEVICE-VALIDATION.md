@@ -61,7 +61,7 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   camera-light flashes do not become false visible-hall intervals. The count
   is explicitly a rendering lower bound: sourced hall-movement darkness can
   hide a logically accepted Foxy flash.
-- `trial-minus7.sh <name> [cycles]` — the sole current device controller: the
+- `trial.sh <name> [cycles]` — the sole current device controller: the
   emitted, model-gated Night 6 HID plan. It requires the runtime left-opening
   model, gates the start, then executes one absolute-time device-side schedule. Independent
   safety guards cancel the exact remote driver immediately if the game loses
@@ -334,7 +334,7 @@ frame it already captures, so that path no longer requires one.
 
 ## Simulating the pilot (2026-08-20)
 
-`tools/pilottest.mjs` replays `trial-minus7.sh`'s millisecond table in the
+`tools/pilottest.mjs` replays `trial.sh`'s millisecond table in the
 sourced engine with no state reads, so schedule changes can be judged without
 spending a night on the phone. The shipped blind schedule dies **200/200 to
 Foxy**, with Balloon Boy as the cause rather than the recorded killer.
@@ -1164,7 +1164,7 @@ missed here.
 ## 2026-08-26: the runner's own loop, modelled -- and what it turns out not to buy
 
 The flip gate and the classifier checkpoint above are the two places
-`trial-minus7.sh` stops being open-loop, and until now no simulator here
+`trial.sh` stops being open-loop, and until now no simulator here
 contained them. Every actuator figure for Nights 2+ was therefore a statement
 about a controller the phone does not run, and plans/12 said so and left the
 number unmeasured. `tools/device/actuator.mjs` now carries `MonitorSupervisor`,
@@ -1608,7 +1608,7 @@ the host it takes **~429 ms** per call, which looks catastrophic next to a
 225 ms `screencap` and is the wrong comparison. That script is a host-side
 one-off tool: transport detection, forward setup, and several USB round-trips,
 where a bare `adb shell echo hi` alone measures **76 ms** on this handset.
-The runner never uses it in the loop. `trial-minus7.sh` is pushed to
+The runner never uses it in the loop. `trial.sh` is pushed to
 `/data/local/tmp` and executes **on the phone** -- which is why `cue_snapshot()`
 is `toybox nc 127.0.0.1 $CUE_PORT` with no `adb` in front, and why its presses
 are bare `input tap`. The in-loop read is the documented **59 ms device-local**

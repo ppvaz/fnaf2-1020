@@ -3,7 +3,7 @@
 
 This is deliberately post-run analysis. It does not participate in or retime
 the open-loop Minus 7 strategy. The geometry is calibrated against the
-1280x576 recordings made by trial-minus7.sh; input video is scaled before
+1280x576 recordings made by trial.sh; input video is scaled before
 measurement, so other resolutions produce the same result.
 
 Usage: windpct.py [--samples] captures/run.mp4

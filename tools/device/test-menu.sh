@@ -223,7 +223,7 @@ offenders=$(grep -rl 'TAP_NEWGAME' "$HERE" --include='*.sh' 2>/dev/null \
 }
 
 # And no runner may keep its own copy of the title table.
-for runner in trial-minus7.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-audio.sh; do
+for runner in trial.sh trial-maskcamp.sh watch-vent-cue.sh collect-cue-audio.sh; do
   [ -f "$HERE/$runner" ] || continue
   if grep -qE 'NIGHT_TAP|input swipe \$TAP_(6TH|CONTINUE|NEWGAME)' "$HERE/$runner"; then
     echo "FAIL $runner still resolves a title item itself; use menu_select"

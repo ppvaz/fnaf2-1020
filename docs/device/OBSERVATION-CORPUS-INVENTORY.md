@@ -85,7 +85,7 @@ one field named `timestamp` would incorrectly imply interchangeability.
 
 | Property | Inventory |
 |---|---|
-| Producers | `trial-minus7.sh`, `trial-maskcamp.sh`, `hid-sweep-probe.sh`; Android `screenrecord` |
+| Producers | `trial.sh`, `trial-maskcamp.sh`, `hid-sweep-probe.sh`; Android `screenrecord` |
 | Default root/format | `captures/RUN.mp4`; aborted Minus 7 runs use `captures/RUN-aborted.mp4` |
 | Primary content | 1280×576 H.264 visual record; current night recording does not contain helper playback PCM |
 | Clock | Media PTS relative to recording start |
@@ -102,7 +102,7 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 
 | Property | Inventory |
 |---|---|
-| Producer | `trial-minus7.sh` when `DEVICE_EPOCH_LATCH=1` |
+| Producer | `trial.sh` when `DEVICE_EPOCH_LATCH=1` |
 | Path/format | `captures/RUN-epoch.txt`, one key/value line |
 | Content | `epoch_ms`, prior clear edge, bracket, confirmation time/delay, attempts, detector name |
 | Clock | Device shell millisecond clock used by the runner |
@@ -114,7 +114,7 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 
 | Property | Inventory |
 |---|---|
-| Producers | `HID_TRACE_RUN=1 trial-minus7.sh`; `hid-sweep-probe.mjs`/`.sh` |
+| Producers | `HID_TRACE_RUN=1 trial.sh`; `hid-sweep-probe.mjs`/`.sh` |
 | Paths/formats | `captures/RUN-hid.jsonl` for emitted marks/delays/reports; `captures/OUT.hid` for a generated probe stream |
 | Content | Exact HID reports and delay commands; runner marks at action boundaries |
 | Clock | Mixed/rebased scheduled milliseconds described in the clock table |
@@ -127,7 +127,7 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 
 | Property | Inventory |
 |---|---|
-| Producer | `CUE_HELPER=1 trial-minus7.sh`, device-side loopback `GET` at roughly 14 Hz |
+| Producer | `CUE_HELPER=1 trial.sh`, device-side loopback `GET` at roughly 14 Hz |
 | Path/format | `captures/RUN-cue.txt`, lines containing outer `date +%s%3N` and the helper response |
 | Content | Helper `snapshotNs`, visual sequence/age/luma/CAM 5 aggregate, audio frames/age/RMS/peak, observed/unknown state |
 | Consumers | Manual/device diagnosis; not currently parsed by `grade-run.sh` beyond presence |
@@ -139,7 +139,7 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 
 | Property | Inventory |
 |---|---|
-| Producers | `query-cue-helper.sh record`, `query-cue-helper.sh log stop`, `collect-cue-audio.sh`, `watch-vent-cue.sh`, optional `CUE_AUDIO=1 trial-minus7.sh` |
+| Producers | `query-cue-helper.sh record`, `query-cue-helper.sh log stop`, `collect-cue-audio.sh`, `watch-vent-cue.sh`, optional `CUE_AUDIO=1 trial.sh` |
 | Root/format | `captures/cue-helper/calibration/LABEL-cue-WALLTIME-pPRE-qPOST.wav`; mono 16-bit WAV at the helper's capture rate |
 | Primary content | Eligible Android playback mix. It can include inaudible-to-operator music-box/Mangle contamination and can be all-zero under Bluetooth A2DP offload. |
 | Clock | PCM sample offset plus helper monotonic `startNs` for continuous logs; filename uses wall time |
@@ -165,8 +165,8 @@ schemas.
 | Family | Producer/path | Label source | Consumers | Gaps |
 |---|---|---|---|---|
 | Deliberate labeled sample | `capture-screen-sample.sh` → `captures/screencheck/VIEW/LABEL/NAME.raw` | Operator chooses view/label and optional held control | SCM1 builder/replay | No timestamp, session, device/build, coordinate/calibration, hold timing, or independent label evidence sidecar |
-| In-run calibration sample | `trial-minus7.sh` → `captures/screencheck/VIEW/BUCKET/RUN/cycle-NNN.raw` | Bucket and run configuration; may be `unlabeled` | SCM1 builder/replay, manual inspection | Capture time appears in runner stdout/HID mark, not beside frame; filename has cycle only |
-| Rare/non-empty classifier frame | `trial-minus7.sh` → `captures/screencheck-keep/RUN/ELAPSED-CLASS.raw` | Existing classifier result in filename | Manual labeling, SCM1/grid-signature research | This is selection-biased and classifier-derived, not ground truth; elapsed value lacks explicit clock domain |
+| In-run calibration sample | `trial.sh` → `captures/screencheck/VIEW/BUCKET/RUN/cycle-NNN.raw` | Bucket and run configuration; may be `unlabeled` | SCM1 builder/replay, manual inspection | Capture time appears in runner stdout/HID mark, not beside frame; filename has cycle only |
+| Rare/non-empty classifier frame | `trial.sh` → `captures/screencheck-keep/RUN/ELAPSED-CLASS.raw` | Existing classifier result in filename | Manual labeling, SCM1/grid-signature research | This is selection-biased and classifier-derived, not ground truth; elapsed value lacks explicit clock domain |
 | Temporary live read | On-device PID paths | None retained unless non-empty/debug/calibration mode | Live `screencheck` | Normal confident-empty frames are deleted, preventing an unbiased live-distribution replay |
 
 Raw Android files contain a 16-byte dimensions/format header followed by RGBA

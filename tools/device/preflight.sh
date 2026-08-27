@@ -9,7 +9,7 @@
 # detail to reconstruct afterwards -- it decides what the run can even observe.
 #
 # Refuses loudly and names the reason. It never launches anything: the last
-# step is a human reading the save cursor, which trial-minus7.sh keeps manual
+# step is a human reading the save cursor, which trial.sh keeps manual
 # on purpose (see its STORY_CURSOR_OBSERVED guard).
 set -euo pipefail
 
@@ -117,7 +117,7 @@ ok "at the title, $items"
 
 # 9. The save cursor. Deliberately NOT decided here.
 #
-# trial-minus7.sh keeps STORY_CURSOR_OBSERVED as a human assertion on purpose,
+# trial.sh keeps STORY_CURSOR_OBSERVED as a human assertion on purpose,
 # because a run that resumes the wrong night masquerades as a campaign attempt
 # on a night nobody verified. So crop the evidence and make a person look at
 # it; automating this would be automating away the guard, not satisfying it.
@@ -142,7 +142,7 @@ cat <<EOF
     CUE_HELPER=1 NIGHT=continue CALIBRATION_STORY_NIGHT=$NIGHT \\
     STORY_CURSOR_OBSERVED=$NIGHT PRESS_MODE=hid-multi \\
     BB_LEFT_MODEL=$BB_LEFT_MODEL \\
-    tools/device/trial-minus7.sh n${NIGHT}-\$(date +%H%M) 90
+    tools/device/trial.sh n${NIGHT}-\$(date +%H%M) 90
 
   CUE_HELPER=1 is not optional. Without it CUE_PORT is "-", the resync
   verification never executes, and no grey= is recorded -- which is exactly

@@ -10,9 +10,13 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNNER="$HERE/trial-minus7.sh"
+# The assembled driver, not the runner file: the press primitives run on the
+# phone, and this must read what is sent there rather than a source file that
+# may no longer be what gets sent.
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-human-floor.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
+RUNNER="$TMP/driver.sh"
+bash "$HERE/trial/assemble.sh" > "$RUNNER"
 
 extract() {
   awk -v fn="$1" '

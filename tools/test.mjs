@@ -234,6 +234,11 @@ const ENGINE = [
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
   ['cue detector (java)', ['../android/cue-helper/test.sh']],
+  // The device driver is assembled from named parts and piped to the phone.
+  // `sh` executes a script before it has read all of it, so a truncated or
+  // misordered driver does not fail at launch -- it presses real buttons and
+  // dies mid-night. This gates the assembly instead.
+  ['trial assembly', ['device/test-trial-assembly.sh']],
   // One screen->raw transform written in shell, Python and JS, held to the
   // same answer over the real tap table. They disagreed on 24 of 39
   // coordinates: the probe measuring what the phone accepts was sending

@@ -43,7 +43,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     # and `detector=` when `CueDetector.status()` was appended on 2026-08-26.
     #
     # Why that matters more than tidiness: every consumer reads this line with a
-    # greedy sed, and greedy `.*` binds to the LAST match. `trial-minus7.sh`'s
+    # greedy sed, and greedy `.*` binds to the LAST match. `trial.sh`'s
     # cue trace wants `.*luma=...*cam5=...*ageUs=...`, which against the old
     # mock did not match at all -- so the mock answered a shape no runner could
     # parse and the regression still went green. A trailing field is exactly the

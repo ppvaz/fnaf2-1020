@@ -107,7 +107,7 @@ stream. Nothing in the pipeline could tell that from a quiet night.
 This is the same shape as every other failure in this repository: a sensor that
 knows one way to be working must not be what says the capture is fine. So:
 
-- `trial-minus7.sh` refuses to start with `CUE_AUDIO=1` while audio is routed to
+- `trial.sh` refuses to start with `CUE_AUDIO=1` while audio is routed to
   A2DP, rather than recording silence through the night;
 - `scan-night.sh` fails (exit 3) on an all-zero capture instead of reporting a
   clean scan, because **silence is not "no bangs", it is no observation**.

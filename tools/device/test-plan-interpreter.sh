@@ -12,19 +12,37 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNNER="$HERE/trial-minus7.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-plan-interp.XXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
+# The DRIVER, assembled -- not the runner file. The program that runs on the
+# phone used to be a heredoc inside trial.sh, so reading the runner was the
+# only way to reach it. It is built from named parts under trial/ now, and this
+# reads exactly what gets sent: a check that greps a source file can pass while
+# the phone is sent something else.
+RUNNER="$TMP/driver.sh"
+bash "$HERE/trial/assemble.sh" > "$RUNNER"
+
 node "$HERE/recipe.mjs" --device-plan > "$TMP/plan.txt"
 
-# Device constants come from the runner, never restated here: a stub that
+# Device constants come from the assembled driver, never restated here: a stub that
 # drifts from the value it stands in for tests the stub. Assigned outside any
 # `||` list so an unbound one fails loudly rather than skipping an assertion.
 runner_const() {
-  rc_v="$(grep -m1 "^$1=" "$RUNNER" | cut -d= -f2)"
+  # Every definition, not `grep -m1`.
+  #
+  # SWEEP_LIGHT_LEAD_MS was defined TWICE in the driver, each with its own
+  # justification comment, and `-m1` asserted against the first while the
+  # runtime used the second. Taking the first match cannot detect that; counting
+  # them can, and a constant defined twice is a bug wherever it is found.
+  rc_all="$(grep -c "^$1=" "$RUNNER" || true)"
+  [ "$rc_all" -eq 1 ] || {
+    echo "the driver defines $1 $rc_all times; it must be defined exactly once" >&2
+    exit 1
+  }
+  rc_v="$(grep "^$1=" "$RUNNER" | cut -d= -f2)"
   case "$rc_v" in
-    ''|*[!0-9]*) echo "the runner has no numeric $1" >&2; exit 1 ;;
+    ''|*[!0-9]*) echo "the driver has no numeric $1" >&2; exit 1 ;;
   esac
   printf '%s\n' "$rc_v"
 }

@@ -40,7 +40,7 @@ Deliberately not merged:
   lifecycle guards than the current device harness;
 - `nightsweep.mjs`: it labels a run Night 6 without modeling the extracted
   per-hour AI table, so its comparison is not authoritative;
-- the remote `trial-minus7.sh` change: it passes an unused `BB_PERIOD` argument
+- the remote `trial.sh` change: it passes an unused `BB_PERIOD` argument
   into the device shell and implements no response.
 
 These exclusions are conclusions, not a backlog. Reopen one only if a future
@@ -134,7 +134,7 @@ the copies.
 
 ### 7. Share the Android trial lifecycle and guards
 
-`trial-minus7.sh` and `trial-maskcamp.sh` duplicate game launch, focus checks,
+`trial.sh` and `trial-maskcamp.sh` duplicate game launch, focus checks,
 screen-state polling, recording shutdown, and cleanup, but their safeguards have
 already diverged. Extract only stable lifecycle primitives into a sourced shell
 module: exact-device/focus verification, guarded launch, HUD wait, recording

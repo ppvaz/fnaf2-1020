@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 // InputReader exposes it through the portrait-natural display.
 //
 // FLOOR, not round. This used Math.round until 2026-08-26 while the two other
-// implementations of the same transform -- trial-minus7.sh's shell arithmetic
+// implementations of the same transform -- trial.sh's shell arithmetic
 // and desync-scan.py's `//` -- both truncate. Over the real tap table they
 // disagreed on four coordinates: cam11 (878 vs 877), mute (2227 vs 2226),
 // newGame (778 vs 777) and continue (978 vs 977).

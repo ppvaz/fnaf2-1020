@@ -70,7 +70,7 @@ export function cohort(night, runs, closedLoop, deviceActuator = true) {
 // The `--vent --sync` pilot, which plans/12 named as the reference. It is not
 // the runner: its `up`/`down` intents read the monitor state at any moment, in
 // both directions, and repair it with no observation cost -- three things
-// `trial-minus7.sh` cannot do.
+// `trial.sh` cannot do.
 //
 // It is printed beside `--vent`, the SAME route with the resync removed,
 // because plans/12's "it is the open loop, not the phone" compared

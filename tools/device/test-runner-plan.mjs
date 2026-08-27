@@ -8,12 +8,20 @@
 // There is one copy now, so the check changed shape: the driver must contain
 // no schedule of its own, and the plan it does execute must survive the night.
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { build, devicePlan, replay, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here, 'trial-minus7.sh'), 'utf8');
+// Two sources, and the split made the difference visible for the first time.
+// `src` is the HOST script -- what runs on this machine: pushing the plan,
+// launching adb, the state helpers. `driver` is the program that runs on the
+// PHONE. They used to be one file, so a check could assert a device-side fact
+// against host text or the reverse and nobody could see it. Five checks below
+// were reading the host for driver-side subjects until 2026-08-26; they only
+// passed because the driver happened to be inside the host file.
+const src = readFileSync(join(here, 'trial.sh'), 'utf8');
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
 // The whole remote program, not a slice of it.
@@ -25,16 +33,18 @@ const check = (ok, message) => { if (!ok) throw new Error(message); };
 // routes were unreachable only because the host hardcodes two positional
 // arguments, and nothing asserted even that. They are deleted now, and the
 // literal scan runs over the entire driver so they cannot come back unnoticed.
-const REMOTE_OPEN = "<<'REMOTE'";
-const driverStart = src.indexOf('\n', src.indexOf(REMOTE_OPEN));
-const driverEnd = src.indexOf('\nREMOTE\n', driverStart);
-check(driverStart > 0 && driverEnd > driverStart, 'could not delimit the remote driver');
-const driver = src.slice(driverStart, driverEnd);
+// Re-pointed 2026-08-26: the driver is no longer a heredoc to be delimited out
+// of the runner, it is assembled from named parts under trial/. This runs the
+// assembler, so it reads exactly what the phone is sent -- and the slice
+// boundary that defeated this check the first time no longer exists to get
+// wrong, because there is no slicing.
+const driver = execFileSync('bash', [join(here, 'trial', 'assemble.sh')], { encoding: 'utf8' });
+check(driver.includes('run_cycle'), 'the assembled driver has no run_cycle');
 
 // The guard for this mode and the driver for it are both `if NIGHT6_LEFT`;
 // the driver is the later one, after the hid helpers.
-const start = src.lastIndexOf('if [ "$NIGHT6_LEFT" -eq 1 ]; then');
-const block = src.slice(start, driverEnd);
+const start = driver.lastIndexOf('if [ "$NIGHT6_LEFT" -eq 1 ]; then');
+const block = driver.slice(start);
 check(block.includes('run_cycle'), 'could not find the NIGHT6_LEFT driver block');
 
 // No schedule literals, anywhere in the driver. It positions cycles; it does
@@ -60,7 +70,7 @@ check(!/\[ "\$HID_LEFT_SURVIVAL" -eq 1 \]/.test(driver),
 
 // Deliberately NOT asserted here: `press_at`/`hold_at` still carry dead
 // `async-swipe`/`fast-swipe` actuator arms, unreachable because the host pins
-// PRESS_MODE=hid-multi (trial-minus7.sh:194-196). Those are a different
+// PRESS_MODE=hid-multi (trial.sh:194-196). Those are a different
 // concern from this file's subject -- they decide HOW a press is delivered,
 // not WHEN, so they are not a second copy of the schedule and removing them is
 // its own change. Recorded in ARCHITECTURE-AUDIT finding 8 rather than
@@ -204,14 +214,14 @@ check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === 
 // blind on three of the four cameras a desync can leave selected. An office
 // holding the vent light reads 102 and would have read as a camera. The
 // grey-cell count reads 177-180 on all four and 142-145 on the office.
-const resyncCase = src.match(/monitor-resync\b[\s\S]*?run_macro clear/);
+const resyncCase = driver.match(/monitor-resync\b[\s\S]*?run_macro clear/);
 check(resyncCase, 'the UP-DESYNCED recovery is gone');
 check(/cams_still_up/.test(resyncCase[0]),
   'the resync press is not verified: a forcedown can spend it and the ' +
   'recovery resumes the schedule inverted');
 // Naming the verifier is not enough -- it has to decide on the anchor that
 // actually separates the states on this sensor.
-const verifier = src.match(/cams_still_up\(\)\s*\{[\s\S]*?\n\}/);
+const verifier = driver.match(/cams_still_up\(\)\s*\{[\s\S]*?\n\}/);
 check(verifier, 'cams_still_up is gone');
 check(/CUE_CAMS_UP_GREY/.test(verifier[0]),
   'cams_still_up must decide on the grey-cell anchor, not on luma alone');
@@ -226,7 +236,7 @@ check((resyncCase[0].match(/monitor-resync-2/g) || []).length === 1,
 // An office encounter darkens the lamp for two to three cycles while the mask
 // clears it (night 6-43, Mangle). Only marker 123 never relights, so the
 // streak that concludes BB is inside must outlast any encounter.
-check(/^NOLIGHT_STREAK_MAX=5$/m.test(src),
+check(/^NOLIGHT_STREAK_MAX=5$/m.test(driver),
   'NOLIGHT_STREAK_MAX must be 5: three dark reads span a single masked ' +
   'encounter and aborted a live night as "BB inside"');
 
@@ -238,10 +248,10 @@ check(/^NOLIGHT_STREAK_MAX=5$/m.test(src),
 // any macro shift, and by a full Fusion poll rather than the auditor's bare
 // floor. Because rm_shift is included on every cycle, lateness cannot erode the
 // next seam or accumulate as compression.
-check(/wait_until \$\(\(rm_base \+ rm_cursor \+ rm_shift \+ FUSION_POLL_MS\)\)/.test(src),
+check(/wait_until \$\(\(rm_base \+ rm_cursor \+ rm_shift \+ FUSION_POLL_MS\)\)/.test(driver),
   "run_macro must leave a full Fusion poll after the macro before the shell " +
   'writes the next anchor; without it the cycle seam has no released time');
-check(/^FUSION_POLL_MS=33$/m.test(src),
+check(/^FUSION_POLL_MS=33$/m.test(driver),
   'FUSION_POLL_MS must be defined as one 30 Hz poll');
 
 // The plan is generated, which only means the emitter ran. Run the plan itself

@@ -1,6 +1,6 @@
 # Stock-device controller core and act-then-verify loop
 
-**Status: proposed 2026-08-26.** `trial-minus7.sh` is the sole current device
+**Status: proposed 2026-08-26.** `trial.sh` is the sole current device
 route and already contains focus guards, an epoch latch, generated HID windows,
 visual reads, forcedown-aware recovery, a watchdog, and post-run grading. This
 plan makes those behaviors an explicit controller contract without rewriting a
@@ -409,4 +409,4 @@ new controller matches its clean timing and improves its measured failure modes.
 - replacing the exact engine with live heuristics;
 - enabling Night 7 merely because the controller compiles;
 - making audio mandatory for a path whose non-audio fallback is simulator-rejected;
-- a big-bang rewrite of `trial-minus7.sh` before shadow equivalence exists.
+- a big-bang rewrite of `trial.sh` before shadow equivalence exists.

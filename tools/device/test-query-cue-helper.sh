@@ -40,7 +40,7 @@ done
 # Corrected 2026-08-26. This matched on substrings that passed whether or not
 # the snapshot carried `cam5=` and `detector=`, and both mocks were missing
 # fields the device sends -- so the mocks answered a shape no runner could
-# parse and this check went green anyway. `trial-minus7.sh:1912` reads the line
+# parse and this check went green anyway. `trial.sh:1912` reads the line
 # with `s/.*luma=\(...\).*cam5=\(...\).*ageUs=\(...\)/.../p`; against the
 # old loopback mock that sed did not match AT ALL, and an unmatched sed prints
 # nothing rather than failing, so the runner's cue trace was silently empty.
@@ -58,7 +58,7 @@ for transport in loopback forward; do
     sed -n 's/.*luma=\([0-9]*\).*cam5=\([0-9]*\).*ageUs=\([0-9]*\).*/luma=\1 cam5=\2 age=\3us/p')"
   case "$parsed" in
     'luma='*' cam5='*' age='*'us') ;;
-    *) echo "$transport snapshot does not parse the way trial-minus7.sh reads it;" \
+    *) echo "$transport snapshot does not parse the way trial.sh reads it;" \
             "the mock has drifted from the device's field set: $response" >&2
        exit 1 ;;
   esac

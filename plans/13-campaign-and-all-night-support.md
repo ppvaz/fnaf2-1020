@@ -235,7 +235,7 @@ loss. A test proves that no unapproved path can press New Game.
 a measured classifier for the canonical build all exist.
 
 What landed. `tools/device/menu.sh` is now the only place a title item is
-pressed. Four scripts — `trial-minus7.sh`, `trial-maskcamp.sh`,
+pressed. Four scripts — `trial.sh`, `trial-maskcamp.sh`,
 `watch-vent-cue.sh`, `collect-cue-audio.sh` — each carried their own
 `NIGHT_TAP=$TAP_CONTINUE; [ "$NIGHT" = 6th ] && NIGHT_TAP=$TAP_6TH` and tapped
 it without looking at the screen; they now call `menu_select`, which refuses

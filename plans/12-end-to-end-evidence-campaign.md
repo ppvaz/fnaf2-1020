@@ -150,7 +150,7 @@ loop, measured rather than asserted:
 ### The closed loop, modelled and priced (measured 2026-08-26)
 
 `tools/device/actuator.mjs` now carries `MonitorSupervisor`, a model of
-`trial-minus7.sh`'s actual monitor loop — the flip gate in `light_down_at`
+`trial.sh`'s actual monitor loop — the flip gate in `light_down_at`
 (wait `MONITOR_ANIM_DOWN` from the *logged* press, read the cue helper, confirm
 with a second read, correct only if both agree), the classifier checkpoint's
 `cams=UP-DESYNCED` question and its verified two-press recovery with

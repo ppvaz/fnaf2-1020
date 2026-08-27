@@ -2,7 +2,7 @@
 // budgets, as one artifact both the runner and its checks read.
 //
 // Why this exists: the cycle table used to live twice -- as JS here and as
-// hand-typed millisecond literals inside trial-minus7.sh -- with nothing
+// hand-typed millisecond literals inside trial.sh -- with nothing
 // checking that they agreed and nothing tracking what a cycle spends. A hall
 // pulse transcribed as the simulator's 83 ms reached the phone three times and
 // `grade-minus7.py` found zero visible beams, because 83 ms is under the

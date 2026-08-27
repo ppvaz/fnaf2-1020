@@ -1,6 +1,6 @@
 // The device pilot, run in the simulator.
 //
-// tools/device/trial-minus7.sh drives the phone from a fixed millisecond
+// tools/device/trial.sh drives the phone from a fixed millisecond
 // table. This replays that exact table against the sourced engine, so a
 // schedule change can be judged before it costs a night on the device.
 //
@@ -22,7 +22,7 @@ import { DeviceActuator } from './device/actuator.mjs';
 
 const ms = (v) => Math.round(v / 1000 * C.FPS);
 
-// trial-minus7.sh, PRESS_MODE=fast-swipe: the opening sequence, then a 5000 ms
+// trial.sh, PRESS_MODE=fast-swipe: the opening sequence, then a 5000 ms
 // cycle from base = 7000 + cycle * 5000. Camera-light and hall presses are
 // holds; the phone's 60 ms swipe is one frame of contact but the game latches
 // the flash for the frame it lands on.

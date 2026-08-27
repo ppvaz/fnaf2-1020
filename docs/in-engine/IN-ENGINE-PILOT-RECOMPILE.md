@@ -13,7 +13,7 @@ dying to Foxy? Two candidate routes were examined: **inject into the APK**, and
 
 ## Why "pilot the phone" (adb) is not enough
 
-The adb injector (`tools/device/trial-minus7.sh`) fires scripted `input swipe`
+The adb injector (`tools/device/trial.sh`) fires scripted `input swipe`
 presses at wall-clock times, gated by a coarse visual watchdog. It is **blind and
 wall-clock-timed**: it cannot read game state, so a dropped or mis-aimed press is
 invisible until the jumpscare. The recurring 6th-Night Foxy death was diagnosed as

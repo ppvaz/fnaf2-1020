@@ -7,7 +7,7 @@ three files in the local capture root, no manifest, no durable PCM `startNs`
 sidecar, and no retained source/holdout frames for the operational BB model.
 **Package 2's contract slice landed 2026-08-26**—versioned schemas, a
 standard-library validator, and synthetic fixtures—and its **producer slice
-landed the same day**: `trial-minus7.sh`, cue-helper collection and the
+landed the same day**: `trial.sh`, cue-helper collection and the
 calibration capture helper now share one session id and one monotonic origin,
 and every exit path emits a manifest. Package 2 stays open on one item only:
 no manifest from a real phone run has been validated yet, because the device
@@ -117,7 +117,7 @@ strict-mode and read-only contracts.
 ### 2. Introduce the manifest and event schema — contract and producer slices landed 2026-08-26; package open on one item
 
 - Add schema validation and synthetic fixtures.
-- Give `trial-minus7.sh`, cue-helper capture, SCM1 collection, and `grade-run.sh`
+- Give `trial.sh`, cue-helper capture, SCM1 collection, and `grade-run.sh`
   one session ID and monotonic origin.
 - Record model hashes, not merely model filenames.
 - Preserve raw source timestamps; derived alignment belongs in a report field.
@@ -158,7 +158,7 @@ general secret scanner — it makes no claim about shapes it was not told about.
 [`session.sh`](../tools/device/session.sh) is the threading: `fnaf_session_begin`
 latches one id and one `time.monotonic()` origin, exports them, and every later
 call — including a helper started *inside* a run — reads them back rather than
-deriving a second identity from a filename. `trial-minus7.sh` begins the session
+deriving a second identity from a filename. `trial.sh` begins the session
 before the game is launched and closes it from `cleanup`, which is trapped on
 `EXIT` with `INT`/`TERM` routed through it, so a watchdog abort, a classifier
 threat stop, a menu failure and an operator's Ctrl-C all finalize. The outcome

@@ -116,7 +116,7 @@ step() {
 #    hashes, which clocks, which terminal outcome and on what evidence. The
 #    v1 contract lives in tools/device/schema/ and is enforced here.
 #
-#    trial-minus7.sh writes one on every exit path, so an absent manifest now
+#    trial.sh writes one on every exit path, so an absent manifest now
 #    means either a run from before 2026-08-26 or a producer that has not been
 #    wired up. Either way the absent case says so in as many words rather than
 #    passing quietly -- a step that grades a file that is not there is the
@@ -139,7 +139,7 @@ else
     echo "  and its manifest was refused or never finalized. Read the spool."
     fail=1
   else
-    echo "  Run under tools/device/trial-minus7.sh, which emits one."
+    echo "  Run under tools/device/trial.sh, which emits one."
   fi
 fi
 

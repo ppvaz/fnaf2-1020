@@ -16,7 +16,7 @@ import sys
 # This lagged the device twice: `cam5=` when the 20x9 frame started carrying the
 # CAM 05 block, and `detector=` when `CueDetector.status()` was appended on
 # 2026-08-26. Consumers parse this with a greedy sed whose groups are positional
-# -- `trial-minus7.sh:1912` wants `.*luma=...*cam5=...*ageUs=...` -- so a
+# -- `trial.sh:1912` wants `.*luma=...*cam5=...*ageUs=...` -- so a
 # missing field does not degrade the parse, it kills the match outright.
 SNAPSHOT = (
     "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 "

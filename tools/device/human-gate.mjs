@@ -33,7 +33,7 @@
 // its press's draw (plans/04: independent draws price nothing), and the
 // read->branch reaction path keeps the machine's classifier latency -- this
 // gate prices scheduled presses, not reactivity. The live HUMAN_FLOOR_MS
-// check inside trial-minus7.sh remains the backstop for schedules that never
+// check inside trial.sh remains the backstop for schedules that never
 // pass through a plan file.
 //
 //   node tools/device/human-gate.mjs plan.txt    # exit 44 when the gate refuses

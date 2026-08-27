@@ -4,7 +4,7 @@
 // and shell cannot import JS. So `rawX = (1080 - screenY) * 20 / 9` is written
 // three times:
 //
-//   trial-minus7.sh   shell arithmetic     truncates
+//   trial.sh   shell arithmetic     truncates
 //   desync-scan.py    `//`                 floors
 //   hid-sweep-probe.mjs                    used Math.round until 2026-08-26
 //

@@ -8,7 +8,7 @@
 // Golden Freddy mask-off + raise became one measured-safe compound row.
 // Plus the precondition: the runner gates BEFORE its first adb command and has
 // no inline schedule fallback around the gated artifact.
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -83,7 +83,7 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // it clears the same broad sample at 672/1200 without moving the read or sweep.
 //
 // Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
-// full sample before `trial-minus7.sh` reaches its first adb command.
+// full sample before `trial.sh` reaches its first adb command.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
   `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
@@ -101,7 +101,7 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
     const mockAdb = join(bin, 'adb');
     writeFileSync(mockAdb, '#!/bin/sh\necho MOCK_ADB_REACHED >&2\nexit 1\n');
     chmodSync(mockAdb, 0o755);
-    const n6 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'), `gate-test-${process.pid}`, '90'],
+    const n6 = spawnSync('bash', [join(HERE, 'trial.sh'), `gate-test-${process.pid}`, '90'],
       { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
     // The repaired route clears the gate, so execution reaches the first adb
@@ -115,15 +115,24 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
       /model gate: 672\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
 
-    const n1 = spawnSync('bash', [join(HERE, 'trial-minus7.sh'),
+    const n1 = spawnSync('bash', [join(HERE, 'trial.sh'),
       `gate-test-n1-${process.pid}`, '1'], { encoding: 'utf8', env: {
         ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
         BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
         CALIBRATION_STORY_NIGHT: '1', GRADE_RUN: '0',
       } });
     const n1out = n1.stderr + n1.stdout;
+    // 1193, not 1185, since `2a4c872` sourced the music box drain per night
+    // (g653-660) instead of applying the night 6/7 rate to all seven. Night
+    // 1's box does not drain at all during 12 AM and 1 AM, which changes how
+    // much wind the plan needs and reshuffles the shared LCG stream.
+    //
+    // Pinned exactly rather than as a floor, because this is a deterministic
+    // replay: the number is a property of the plan and the engine, and a
+    // drifting one should fail here and be re-read, not be absorbed by a
+    // tolerance. Every one of the seven losses is the Puppet.
     check('bounded Night 1 calibration emits and gates a Night 1 plan',
-      /model gate: 1185\/1200 night-1 runs/.test(n1out) &&
+      /model gate: 1193\/1200 night-1 runs/.test(n1out) &&
       /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
 
     // A story-night run longer than one cycle is a real attempt at that night,
@@ -138,7 +147,7 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
     // cursor; the point is that a human must have looked and said so, and that
     // the claim lands in the manifest.
     const storyRun = (name, extraEnv) => spawnSync('bash',
-      [join(HERE, 'trial-minus7.sh'), `${name}-${process.pid}`, '2'],
+      [join(HERE, 'trial.sh'), `${name}-${process.pid}`, '2'],
       { encoding: 'utf8', env: {
         ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
         BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
@@ -166,7 +175,14 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
 }
 
 // ------------------------------------------------------- runner precondition
-const runner = readFileSync(join(HERE, 'trial-minus7.sh'), 'utf8');
+//
+// Two texts, and they are not interchangeable. `runner` is the HOST script;
+// `driver` is the program it sends to the phone, assembled from the named
+// parts under trial/. They were one file until 2026-08-26, so an assertion
+// about a device-side constant could be written against the host and pass by
+// accident. The live floor below is device-side.
+const runner = readFileSync(join(HERE, 'trial.sh'), 'utf8');
+const driver = execFileSync('bash', [join(HERE, 'trial', 'assemble.sh')], { encoding: 'utf8' });
 const gateAt = runner.indexOf('human-gate.mjs');
 const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));
 check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && gateAt < adbAt);
@@ -174,8 +190,8 @@ check('runner has no inline schedule fallback around the gate',
   /node "\$HERE\/recipe\.mjs" --device-plan "--night=\$STORY_NIGHT"/.test(runner) &&
   !/cannot be priced by the model gate/.test(runner));
 check('legacy live floor does not contradict the model-gated route',
-  /^HUMAN_FLOOR_MS=\d+$/m.test(runner) &&
-  /\[ "\$NIGHT6_LEFT" -eq 1 \] && return 0/.test(runner));
+  /^HUMAN_FLOOR_MS=\d+$/m.test(driver) &&
+  /\[ "\$NIGHT6_LEFT" -eq 1 \] && return 0/.test(driver));
 
 if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
 console.log(`model gate: verified; shipped plan passes at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

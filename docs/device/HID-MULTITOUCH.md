@@ -484,7 +484,7 @@ Three things this does **not** yet establish, and none should be assumed:
   on EOF — 20 nominal 20 ms sleeps took 12 ms in total.
 
 **Landed 2026-08-26.** `wait_until` and every press timestamp in
-`trial-minus7.sh` now read `/proc/uptime` instead of forking `date`; `T0`
+`trial.sh` now read `/proc/uptime` instead of forking `date`; `T0`
 itself stays a `date +%s%3N` epoch value, because that is what joins to
 `screenrecord` PTS and to host-side artifacts. The two are latched one builtin
 apart at the epoch confirmation.
@@ -745,7 +745,7 @@ Two rates are stated as fact and neither is sourced to a measurement:
   `ANDROID-SOURCE-STATUS.md:554` labels a derived figure `[INFERRED — sourced
   constants, assumed 60 fps]`.
 - **30 Hz**, as "one 30 Hz Fusion poll is 33 ms", asserted in `recipe.mjs`,
-  `actuator.mjs`, `trial-minus7.sh` and six tests, and at line 688 above — as
+  `actuator.mjs`, `trial.sh` and six tests, and at line 688 above — as
   though sourced. Nowhere in the repository is it measured or derived.
 
 They may both be right: render rate and touch-poll rate are different things,
@@ -858,14 +858,14 @@ well-documented class of AOA-HID failure does trace to vendor kernels omitting
 repository about ([rom1v/aoa-hid-bug](https://github.com/rom1v/aoa-hid-bug)).
 Two independent ways for the same transport to fail; joining them into one
 diagnosis would assert something nobody established. This project does
-not use AOAv2. `trial-minus7.sh:1351` runs **`/system/bin/hid`**, which creates a
+not use AOAv2. `trial.sh:1351` runs **`/system/bin/hid`**, which creates a
 **uhid** virtual device *on the device itself* — the same mechanism behind Trap 1
 above, where `UHID_OPEN` returns before `InputReader` enumerates the touchscreen
 five seconds later. uhid gets the same real-`deviceId` property without the
 USB-gadget dependency that killed phisap's backend.
 
 One difference worth knowing, since it is not the identity property: phisap's
-descriptor declared **ten** contacts; ours at `trial-minus7.sh:1351` declares
+descriptor declared **ten** contacts; ours at `trial.sh:1351` declares
 **two** Finger collections. Two is what the route needs — every compound row in
 the plan is at most a two-finger chord — but if a future route ever wants a
 third simultaneous contact, the descriptor is where that is decided, not the
@@ -1191,7 +1191,7 @@ group `1004(input)`, proving DAC was untouched and SELinux alone is the blocker
 ([openstf/minitouch#41](https://github.com/openstf/minitouch/issues/41)).
 
 **So the three candidate nodes are not interchangeable, and `/system/bin/hid`
-took the one that has been open longest.** `trial-minus7.sh:1351` creates a
+took the one that has been open longest.** `trial.sh:1351` creates a
 **uhid** device — writable by shell since **8.1**, versus 10 for `/dev/uinput`
 and, for `/dev/input`, closed since 2018 behind a neverallow assertion that a
 CTS test enforces. That is a second portability argument for

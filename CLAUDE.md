@@ -65,7 +65,7 @@ document contradicting how the line is actually played.
   imposes any such floor (§"Input injection and sequential budgets"). Do not
   quote 240 ms as a device limit again.
 - **The controller route runs nothing the model gate has not passed — absolute,
-  no override (2026-08-25).** Before its first adb command, `trial-minus7.sh`
+  no override (2026-08-25).** Before its first adb command, `trial.sh`
   replays the emitted plan through the exact engine under measured human slack
   (±60 ms iid, the floor of the plans/04 bracket, until the trace census in
   `tools/tracereport.mjs` supersedes it with correlated bands) and refuses
@@ -83,7 +83,7 @@ document contradicting how the line is actually played.
 
   - **Covered:** every *scheduled* press of the sole controller route. The
     ~370 lines of inline `press_at` literals that used to sit unreachable in
-    `trial-minus7.sh` are deleted, and `test-runner-plan.mjs` now scans the
+    `trial.sh` are deleted, and `test-runner-plan.mjs` now scans the
     **whole** driver rather than a slice that ended exactly where they began.
   - **Not covered, legitimately, and now named rather than glossed:** the
     runtime *reactive* presses — `monitor-verify`, `monitor-resync`,

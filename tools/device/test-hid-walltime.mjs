@@ -15,21 +15,25 @@
 //
 // Neither failure is visible in the report stream, which is valid in both
 // cases. Only the timing is wrong, which is why this gate reads the source.
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { build, devicePlan, MASK_GAP_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
 import { MIN_CONTACT_MS, MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const src = readFileSync(join(here, 'trial-minus7.sh'), 'utf8');
+// The assembled driver: every primitive checked here runs on the PHONE, so
+// this reads what is sent there rather than the host script that sends it.
+// They were the same file until 2026-08-26, when the 1619-line heredoc became
+// named parts under trial/.
+const src = execFileSync('bash', [join(here, 'trial', 'assemble.sh')], { encoding: 'utf8' });
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
 // Code only: these helpers document the hazard by name, and a checker that
 // matched its own warning text would fire on the fix as readily as the bug.
 function body(name) {
   const start = src.indexOf(`\n${name}() {\n`);
-  check(start >= 0, `${name} not found in trial-minus7.sh`);
+  check(start >= 0, `${name} not found in the assembled driver`);
   const end = src.indexOf('\n}\n', start);
   return src.slice(start, end)
     .split('\n').filter(line => !/^\s*#/.test(line)).join('\n');
@@ -175,7 +179,7 @@ for (let i = 0; i < sourceLines.length; i++) {
   if (/^\s*actual=\$NOW_REL\s*$/.test(line)) actualIsCurrent = true;
   if (/^\s*hid_mark "\$actual"\s*$/.test(line))
     check(actualIsCurrent,
-      `hid_mark uses stale actual after now_rel at trial-minus7.sh:${i + 1}`);
+      `hid_mark uses stale actual after now_rel at driver line ${i + 1}`);
 }
 
 console.log('HID wall-timing checks passed');

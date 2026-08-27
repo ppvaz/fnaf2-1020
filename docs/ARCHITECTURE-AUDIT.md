@@ -13,7 +13,7 @@ Night 7 10/20 on a stock Android phone.** Findings 9–10 do not affect that
 mission and are marked so they can be deprioritised rather than silently
 carried.
 
-Line numbers in `trial-minus7.sh` were read on 2026-08-26 while other streams
+Line numbers in `trial.sh` were read on 2026-08-26 while other streams
 were editing it; they may have shifted by a few lines. Every other citation was
 verified directly.
 
@@ -188,7 +188,7 @@ read as coverage. Seven paths through it still do:
 - **`grade-run.sh:32-34`** has no `*)` arm, so `--require-second` or
   `--require-seconds=420` silently drops the only flag that turns the survival
   step into a gate.
-- **`trial-minus7.sh:760`** discards `grade-run.sh`'s exit status with `|| true`.
+- **`trial.sh:760`** discards `grade-run.sh`'s exit status with `|| true`.
 
 `test-grade-run-coverage.mjs` enforces that every instrument is *wired in*. It
 does not enforce that a step can *fail*, which is where all of the above live.
@@ -289,22 +289,22 @@ applied here.
 
 The runner is shell, the emitter and the actuator model are JS, the graders are
 Python, and shell cannot import JS. So every device constant is re-typed. The
-repo knows: `trial-minus7.sh` carries the comment *"Designing to the floor is
+repo knows: `trial.sh` carries the comment *"Designing to the floor is
 how a 20 and a 33 end up meaning the same thing in two files and then quietly
 stop agreeing"* — sixteen lines above one of the four copies of `33`.
 
 | constant | copies |
 |---|---|
-| `FUSION_POLL_MS = 33` | `recipe.mjs:456`, `actuator.mjs:107`, `trial-minus7.sh`, **and `test-recipe.mjs:224`** — the test that gates the emitter holds its own copy, plus bare `33` literals at :184 and :199 |
-| contact floor `100` | `recipe.mjs:20`, `test-hid-trace.mjs:22`, `actuator.mjs:106`, `test-device-input-gaps.mjs:65`, `trial-minus7.sh` ×2, `hid-sweep-probe.{mjs,sh}` |
-| `MONITOR_ANIM_DOWN_MS = 367` | `actuator.mjs:105`, `trial-minus7.sh`, `test-device-input-gaps.mjs:63` — all hand-computed from `src/config.js:336` (22 frames). Note `test-device-input-gaps.mjs:55` **does** assert the derived UP value against `C.MONITOR_ANIM_UP`; DOWN, eight lines later, is a bare literal with no equivalent check, and `actuator.mjs` already imports `C` |
+| `FUSION_POLL_MS = 33` | `recipe.mjs:456`, `actuator.mjs:107`, `trial.sh`, **and `test-recipe.mjs:224`** — the test that gates the emitter holds its own copy, plus bare `33` literals at :184 and :199 |
+| contact floor `100` | `recipe.mjs:20`, `test-hid-trace.mjs:22`, `actuator.mjs:106`, `test-device-input-gaps.mjs:65`, `trial.sh` ×2, `hid-sweep-probe.{mjs,sh}` |
+| `MONITOR_ANIM_DOWN_MS = 367` | `actuator.mjs:105`, `trial.sh`, `test-device-input-gaps.mjs:63` — all hand-computed from `src/config.js:336` (22 frames). Note `test-device-input-gaps.mjs:55` **does** assert the derived UP value against `C.MONITOR_ANIM_UP`; DOWN, eight lines later, is a bare literal with no equivalent check, and `actuator.mjs` already imports `C` |
 | mask→monitor seam `180` | `recipe.mjs:358` (`MASK_RAISE_GAP_MS`), `actuator.mjs:66` (`SEAM_SAFE_MS`), plus literals in `test-recipe.mjs:140` and `test-runner-plan.mjs:149` |
 | lateness band 110–300 | `actuator.mjs:89-90` and `latenesssweep.mjs:84-85`, the latter labelled "actuator.mjs default band" and not importing it |
 
 All of these currently agree. **One does not.** The HID axis transform
 `rawX = (1080 − y) * 20 / 9` has three implementations with three rounding
 rules: `hid-sweep-probe.mjs:17` uses `Math.round`, `desync-scan.py:58` uses `//`
-(floor), and `trial-minus7.sh` uses shell truncation. Computed over the real tap
+(floor), and `trial.sh` uses shell truncation. Computed over the real tap
 table, they differ by one unit wherever the product is non-integral:
 
 ```
@@ -319,7 +319,7 @@ Nothing compares them; `test-hid-sweep-probe.mjs` tests only the JS copy.
 
 Two adjacent traps worth naming in the same breath:
 
-- `trial-minus7.sh` assigns `SWEEP_LIGHT_LEAD_MS=0` **twice** (lines 1798 and
+- `trial.sh` assigns `SWEEP_LIGHT_LEAD_MS=0` **twice** (lines 1798 and
   1869), each with its own justification comment. `test-plan-interpreter.sh:24-25`
   reads runner constants with `grep -m1`, so it asserts against line 1798 while
   the runtime value comes from line 1869 — under a header comment claiming
@@ -360,7 +360,7 @@ import JS, so for a cross-language constant the control **is** the fix.
 **Still open, and blocked rather than deferred:** the *timing* constants
 (`FUSION_POLL_MS`, the 100 ms contact floor, `MONITOR_ANIM_DOWN_MS`, the 180 ms
 seam, the lateness band) are still hand-copied, and closing them means editing
-`trial-minus7.sh`, which was carrying a live device run. `test-plan-interpreter.sh`
+`trial.sh`, which was carrying a live device run. `test-plan-interpreter.sh`
 reading runner constants by `grep -m1` is part of the same knot: the reason the
 constants live in the runner at all is that the runner is the only thing all
 three languages can read, and it can only be read by grepping it. A
@@ -450,7 +450,7 @@ CLAUDE.md states this as absolute, no override. Three things sit outside it:
   It presses via `adb shell input swipe` from a hand-written inline schedule
   (`trial-maskcamp.sh:121-139`). No `human-gate.mjs`, no `HUMAN_FLOOR_MS`.
   `test-grade-run-coverage.mjs` excuses it as `'run launcher'`.
-- **~370 lines of inline schedule remain in `trial-minus7.sh`** — the
+- **~370 lines of inline schedule remain in `trial.sh`** — the
   `HID_LEFT_SURVIVAL` route and the "Calibration opening" fallthrough, full of
   `press_at $((base + N))` literals. They are unreachable only because the host
   hardcodes two positional arguments, and **no test asserts those literals.**
@@ -479,7 +479,7 @@ be named rather than glossed.
 
 **Partly resolved 2026-08-26.** Three of the five are done:
 
-- **The dead inline routes are deleted** — 378 lines, `trial-minus7.sh` 3174 →
+- **The dead inline routes are deleted** — 378 lines, `trial.sh` 3174 →
   2796. They were doubly unreachable: the host hardcodes `HID_LEFT_SURVIVAL=0`
   *and* the `NIGHT6_LEFT` block above them ends in `exit 0`. Nothing in the
   deleted region defined a function, so it was pure straight-line schedule.
@@ -501,7 +501,7 @@ be named rather than glossed.
   retire.
 - `press_at`/`hold_at` still carry dead `async-swipe`/`fast-swipe` actuator
   arms, unreachable because the host pins `PRESS_MODE=hid-multi`
-  (`trial-minus7.sh:194-196`). They decide *how* a press is delivered rather
+  (`trial.sh:194-196`). They decide *how* a press is delivered rather
   than *when*, so they are not a second copy of the schedule; removing them is
   its own change, deliberately not bundled with the schedule deletion.
 - **New, and it makes this finding worse rather than better:** the live floor
@@ -536,7 +536,7 @@ duration, camera stall, fuse and animation frame count is in 60ths.
 `SOURCE-DUMP-GUIDE.md:316` calls it "the 60 fps assumption";
 `ANDROID-SOURCE-STATUS.md:554` labels a derived figure `[INFERRED — sourced
 constants, assumed 60 fps]`. The device side asserts **30 Hz** — "one 30 Hz
-Fusion poll is 33 ms" — in `recipe.mjs`, `actuator.mjs`, `trial-minus7.sh`,
+Fusion poll is 33 ms" — in `recipe.mjs`, `actuator.mjs`, `trial.sh`,
 `HID-MULTITOUCH.md:659` and six tests, as though sourced. I could not find where
 that 30 Hz was measured or derived.
 
@@ -623,7 +623,7 @@ than a missing one: a reader trusts "resolved" and stops looking.
   the tree was dirty and the suite red on an in-flight source pass. That pass
   had landed in `47dcd1b`; the tree was clean and every check passed. Plan 13's
   next gate was pointed at a reconciliation that had already happened.
-- `PROGRESS.md` listed two `trial-minus7.sh` defects as "found and not fixed"
+- `PROGRESS.md` listed two `trial.sh` defects as "found and not fixed"
   while citing, eight lines above, the commit that fixed them (`98eb7ff`).
 - The headline read `29 of 89` in the header and `29/88` two screens down.
 - Finding 7 above had had three of its five orphan gates wired in with nothing
@@ -676,7 +676,7 @@ positive control failed, because a **comment** in `tools/test.mjs` naming
 `test-select-adb.sh` satisfied the check while the registry entry was deleted.
 A check a mention can satisfy measures documentation.
 
-## 13. `trial-minus7.sh` is 2934 lines against a 2000-line ceiling — OPEN
+## 13. `trial.sh` is 2934 lines against a 2000-line ceiling — OPEN
 
 The global working agreement sets ~2000 lines as a hard ceiling. The runner is
 **47% over it**, it is the file that touches the phone, and it has exactly one
@@ -696,7 +696,7 @@ and it is why `grep -m1` once asserted against a constant defined twice. A
 coupling, and is also the first cut of finding 6's timing half.
 
 **Not attempted, and the reason is not judgement:** a device run was live in
-`trial-minus7.sh` for the duration of this pass, and bash reads scripts
+`trial.sh` for the duration of this pass, and bash reads scripts
 incrementally — editing one mid-run corrupts execution. Deferred deliberately,
 with the seams named so the next session does not re-derive them.
 

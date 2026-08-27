@@ -130,7 +130,7 @@ state, so a controller run can be shown to have been unable to write PCM.
 ### The cue detector's half of the protocol (2026-08-26)
 
 `MODEL`, `ARM` and `RESULT` are the live matcher. They are **shadow-only**: no
-runner sends them. `trial-minus7.sh` speaks exactly one verb to this helper,
+runner sends them. `trial.sh` speaks exactly one verb to this helper,
 `GET`, and reads only the visual `luma`/`cam5` fields out of it, so nothing the
 detector concludes can reach a press today.
 
@@ -249,7 +249,7 @@ The API-36 Moto g56 ran one unified projection with the real FNaF process:
 
 The first integration failure was not capture performance. The virtual display
 adds an expected `mCurrentFocus=null` record before the physical display's FNaF
-record, exposing a single-display assumption in `trial-minus7.sh`. The focus
+record, exposing a single-display assumption in `trial.sh`. The focus
 guard now searches specifically for an FNaF-focused record and still fails
 closed if none exists.
 

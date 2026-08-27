@@ -26,7 +26,7 @@ honesty:
 
 ## 1. What a run leaves behind today
 
-`trial-minus7.sh` writes its manifest on every exit path (`cleanup` →
+`trial.sh` writes its manifest on every exit path (`cleanup` →
 `session_close`), so both cases below are described sessions.
 
 ### A completed run
@@ -47,7 +47,7 @@ honesty:
 The same list, with `RUN.mp4` replaced by `RUN-aborted.mp4` (pulled only if
 `RECORDING_STARTED=1`), plus a `fault` event naming the watchdog text or the
 driver's exit status. **`grade-run.sh` does not run** — grading is success-only
-(`trial-minus7.sh:760`), deliberately, so a Ctrl-C stays a Ctrl-C. So the run
+(`trial.sh:760`), deliberately, so a Ctrl-C stays a Ctrl-C. So the run
 that failed is the one that is not graded unless somebody remembers to type
 `grade-run.sh RUN`.
 
@@ -79,7 +79,7 @@ that failed is the one that is not graded unless somebody remembers to type
 ### And one hard ceiling nobody has hit yet
 
 `MAXDUR` is capped at 180 s because "Android's `screenrecord` rejects limits
-above 180 s" (`trial-minus7.sh:897-899`). A night runs to `base < 419000`, about
+above 180 s" (`trial.sh:897-899`). A night runs to `base < 419000`, about
 **426 s**. So a run that reaches 6 AM has video for its first three minutes and
 nothing after — and `grade-night.py`, which `grade-run.sh:110` labels *"the only
 number that is a run length"*, reads the video. **A winning run cannot currently
@@ -320,7 +320,7 @@ Items 1-4 are the ones a night run can close by recording differently. Items
 Reported, not fixed.
 
 1. **`SWEEP_LIGHT_LEAD_MS` and `plan_control_xy` are each defined twice** in
-   `trial-minus7.sh` — `SWEEP_LIGHT_LEAD_MS` at lines **1798 and 1869**,
+   `trial.sh` — `SWEEP_LIGHT_LEAD_MS` at lines **1798 and 1869**,
    `plan_control_xy` at **1847 and 1872**. The second definition wins at
    runtime, and the first `plan_control_xy` lacks the `hall` and `ventl` arms
    the second has, so the live copy is the only one that can execute the

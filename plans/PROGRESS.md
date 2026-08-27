@@ -97,7 +97,7 @@ suite is green, run the bounded fork-free-clock check with a trace:
 BB_LEFT_MODEL=captures/screencheck/bb-left/models/runtime-gh.scm \
 NIGHT=continue CALIBRATION_STORY_NIGHT=2 STORY_CURSOR_OBSERVED=2 \
 HID_TRACE_RUN=1 GRADE_RUN=1 \
-tools/device/trial-minus7.sh n2-clock-cycle-20260826 1
+tools/device/trial.sh n2-clock-cycle-20260826 1
 ```
 
 If its real-cycle log proves the clock and delivered seam, attempt the full
@@ -123,7 +123,7 @@ on screen; it is checked against the requested night and refuses on mismatch.
 ```sh
 BB_LEFT_MODEL=captures/screencheck/bb-left/models/runtime-gh.scm \
 NIGHT=continue CALIBRATION_STORY_NIGHT=2 STORY_CURSOR_OBSERVED=2 \
-tools/device/trial-minus7.sh NAME 90
+tools/device/trial.sh NAME 90
 ```
 
 **Read this before celebrating it.** The run desynced roughly **eight times and
@@ -177,7 +177,7 @@ Each of these was an "Open" item here as recently as this morning:
   runner probes the handset's `--help` for the advertised unlimited mode and
   uses `--time-limit 0`; a device that does not advertise it is **refused, not
   degraded**, because a plausible-looking 180 s artifact of a 420 s night is
-  worse than no video (`trial-minus7.sh:115-137`).
+  worse than no video (`trial.sh:115-137`).
 - **Grading is no longer success-only.** `grade-run.sh` runs on every exit path,
   so the run that failed is no longer the run that is never graded. The runner's
   own exit status is preserved.
@@ -308,7 +308,7 @@ exactly on the next cycle's `0 tap monitor`, 0 ms released against the HID
 auditor's 20 ms floor.
 
 **The 0 ms is real in the emitted plan and irrelevant in delivery.** The runner
-already compensates: `trial-minus7.sh:2476` waits
+already compensates: `trial.sh:2476` waits
 `rm_base + rm_cursor + rm_shift + FUSION_POLL_MS`, holding the next anchor back
 one Fusion poll (33 ms), and `test-runner-plan.mjs:223` pins that. Because the
 wait is relative to `rm_shift`, a late macro moves the boundary with it instead
@@ -367,7 +367,7 @@ on the next graded run remains the way to attribute them, since only
   new lit observation against 192 frames, not against the old 852.
 - **The live human floor is now off on the shipped route, and nothing replaced
   it for runtime presses.** `human_floor_check` returns early when
-  `NIGHT6_LEFT=1` (`trial-minus7.sh:1570`), because the model gate prices the
+  `NIGHT6_LEFT=1` (`trial.sh:1570`), because the model gate prices the
   emitted plan and the old scalar check aborted on the plan's own deliberate
   120/180 ms compound boundaries. That is defensible for *scheduled* presses.
   But the corrector's monitor-verify press in `light_down_at` is **not in the
@@ -419,7 +419,7 @@ on the next graded run remains the way to attribute them, since only
   --samples`, since the screencap that once collapsed the box 52% → 10% was
   only 10.3 ms/s and did it by landing on the wind.
 - ~~Two defects found while reading and not fixed: `SWEEP_LIGHT_LEAD_MS` and
-  `plan_control_xy` are each **defined twice** in `trial-minus7.sh`~~ —
+  `plan_control_xy` are each **defined twice** in `trial.sh`~~ —
   **fixed, and this entry was stale when written.** `98eb7ff` removed both the
   duplicate sweep-light constant and the incomplete coordinate resolver, and
   that commit is cited eight lines above this bullet in the same file, which is

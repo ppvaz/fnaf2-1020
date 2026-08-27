@@ -91,7 +91,7 @@ export const LAUNCH_LATE_MAX_MS = 300;
 
 // ---------------------------------------------------------------- the loop
 //
-// `trial-minus7.sh` is not open-loop. It reads the monitor twice a cycle and
+// `trial.sh` is not open-loop. It reads the monitor twice a cycle and
 // presses again when it does not like the answer, and until now nothing here
 // modelled that -- which is why every actuator figure for Nights 2+ was a
 // statement about a controller the phone does not run. These constants are the
@@ -247,7 +247,7 @@ export class DeviceActuator {
   }
 }
 
-// `trial-minus7.sh`'s monitor loop, and only that.
+// `trial.sh`'s monitor loop, and only that.
 //
 // WHAT IT MODELS -- every step is a line in the runner:
 //

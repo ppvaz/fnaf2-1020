@@ -133,10 +133,10 @@ for needle in 'CUE_HELPER=1' 'CALIBRATION_STORY_NIGHT=$NIGHT' 'STORY_CURSOR_OBSE
 done
 # The cursor stays a human assertion: preflight must never launch the runner.
 case "$src" in
-  *'trial-minus7.sh n${NIGHT}'*) ;;
+  *'trial.sh n${NIGHT}'*) ;;
   *) echo "FAIL: preflight must print the invocation" >&2; exit 1 ;;
 esac
-if grep -qE '^[^#]*(bash|sh|exec)[^#]*trial-minus7\.sh' "$HERE/preflight.sh"; then
+if grep -qE '^[^#]*(bash|sh|exec)[^#]*trial\.sh' "$HERE/preflight.sh"; then
   echo "FAIL: preflight must print the invocation, never execute it -- the save" \
        "cursor is a human assertion by design" >&2
   exit 1

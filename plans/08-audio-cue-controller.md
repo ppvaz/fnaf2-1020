@@ -782,7 +782,7 @@ storage and verifies the staged bytes' SHA-256 back over adb before the rename,
 and control mode is refused unless the model claims `evidence=heldout`.
 
 **It cannot influence a run, and that was checked rather than assumed.**
-`trial-minus7.sh` sends the helper exactly one verb, `GET`, and every consumer
+`trial.sh` sends the helper exactly one verb, `GET`, and every consumer
 of that reply parses only `luma=`/`cam5=`/`ageUs=` — the one-pixel *visual*
 classifier. `ARM` and `RESULT` appear nowhere in the runner. The detector's
 verdict reaches it only as an inert trailing `detector=…` string that no parser

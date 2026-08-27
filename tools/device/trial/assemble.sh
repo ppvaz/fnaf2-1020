@@ -9,7 +9,7 @@
 # The parts are named for what they DO, not for which layer they are. Reading
 # `10-minus7-sweep.sh` tells you where the strategy lives; reading
 # `08-bb-threat-response.sh` tells you where Balloon Boy is answered. The old
-# file said only "trial-minus7.sh, line 1900-ish".
+# file said only "trial.sh, line 1900-ish".
 #
 # ORDER IS SEMANTIC, NOT ALPHABETICAL BY ACCIDENT. This is `sh`, not a module
 # system: every definition must precede its first use, and `01-arguments.sh`
