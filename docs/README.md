@@ -31,6 +31,11 @@ Fusion build 296, August 2025.
   ledger, and the project's most load-bearing document. Enforced by
   `tools/sourcetest.mjs` so a corrupted mechanism cannot hide behind unchanged
   survival statistics.
+- [`UNIFIED-SOURCED-ENGINE-FACT-INDEX.md`](android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md)
+  — every `[SOURCED]` engine fact in one place: a master constant table, then a
+  section per subsystem, each with its group citations and the document that
+  owns it. A digest and router, not a new authority — the ledger and the other
+  pages still win on any disagreement.
 - [`SOURCE-DUMP-GUIDE.md`](android/SOURCE-DUMP-GUIDE.md) — chain of custody from
   APK to readable event sheet, the file format, and **the XOR-28 handle
   scramble**. Read §4 before citing any group number; every dump produced before
