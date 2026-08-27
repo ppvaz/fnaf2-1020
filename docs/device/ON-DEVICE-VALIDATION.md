@@ -13,7 +13,15 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
    PC-style sub-second repel. This single rule refuted the whole Minus 3
    family in `tools/minus2test.mjs`; if the device disagrees, that family
    reopens.
-2. Double-camera glitch absence (one `viewing` counter, atomic per touch).
+2. ~~Double-camera glitch absence (one `viewing` counter, atomic per touch).~~
+   **Reversed 2026-08-26:** the glitch transfers — `viewing` (counter 55) and
+   the `your view` marker (126) are separate fields and the monitor-raise
+   restore (g1 → g2) moves only the first, from a `last viewed` that g263
+   samples every 200 ms. A retained frame from the cleared Night 1 caught it
+   by accident (`ANDROID-SOURCE-STATUS.md` §"the double-camera glitch *does*
+   transfer"). The target is now the opposite question: **can it be armed
+   deliberately, and how often does the 200 ms window land through this
+   phone's actuator?** Nothing here has attempted it.
 3. Right-vent-light Toy Bonnie stall (g428).
 4. Vent lights not draining the battery (g284).
 5. Office-defense fuse by night (`time allowed` 100..45 frames) and the

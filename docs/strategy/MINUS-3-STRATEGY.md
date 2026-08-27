@@ -41,6 +41,12 @@ stays "selected" — and, crucially, the flashlight input registers on the glitc
 camera, which bypasses the custom-night rule that CAM 08/09 cannot be flashed.
 The glitch is re-armed once before 0:05 and persists.
 
+**On Android (2026-08-26):** the same state exists and is reachable — it is
+`viewing` (the counter driving the picture, the label and the flash-immunity
+gate) disagreeing with the `your view` marker (driving the stun target and the
+cam-stall). The arming input is the same one, with a window of up to 200 ms
+instead of a single frame. See §5 item 2 and §8.
+
 ## 3. The state of the art: Minus Toys (Zach_Scream, May 2025)
 
 From the author's own write-up (source 5) — the full routine, condensed:
@@ -90,16 +96,36 @@ Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Min
    (persisting monitor-down via the parked marker) and monitor-up Mangle.
    Note it does NOT cover the Toys — Minus Toys' cam-stall claims need
    re-checking against that set.
-2. **Double camera glitch** — **checked against source 2026-08-20**: no
+2. **Double camera glitch** — ~~**checked against source 2026-08-20**: no
    two-camera state exists in the Android data model (one `viewing` counter,
    one marker, set atomically per touch; the light input is blocked while
    masked). The PC glitch is an input-layer artifact that does not visibly
    transfer to this build; glitch-dependent Minus Toys steps need on-device
-   confirmation before being assumed possible on Android.
+   confirmation before being assumed possible on Android.~~
+   **Retracted and reversed 2026-08-26 — it transfers.** A retained on-device
+   frame (Night 1, 1 AM, run `n1-full-1640`, moto g56 5G, build 2.0.7+26) shows
+   **CAM 04 and CAM 07 highlighted at once** while the picture and label read
+   Party Room 4. Re-read against the dump, the selection is **two** fields:
+   `viewing` (counter 55) and the `your view` marker (126). A touch writes both
+   plus a clear latch (g16-27 / g39+40); the **monitor-raise restore (g1 → g2)
+   writes only `viewing`**, from a `last viewed` that g263 samples on a **200 ms**
+   timer. Select a camera and drop the monitor inside that window and the raise
+   leaves `viewing` on the previous camera with the marker parked on the new
+   one — both buttons lit, because g45 is the only clearer and fires on the
+   touch latch alone. It persists until the next camera touch. Full sourcing,
+   controls and the open items are in
+   [`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md)
+   §"the double-camera glitch *does* transfer".
 3. **CAM 08/09 custom-night flash immunity** — **sourced 2026-08-20**: the
    flash groups carry unconditional `viewing <> 8` (Withereds), `<> 9`
    (Toys), `<> 11` (Mangle) exclusions; whether night 7 changes anything
    remains to confirm (the groups look night-independent).
+   **Qualified 2026-08-26:** those gates read `viewing`, but *who* gets stunned
+   in the same groups (450-457) is `your view` overlapping the character. With
+   item 2's desync armed the two disagree, so the exclusions are bypassable
+   exactly as on PC — park the marker on CAM 09 with `viewing` elsewhere and a
+   held light stuns all three Toys (g453-455). The exclusions are unconditional;
+   they are simply not immune to a split selection.
 4. **Golden Freddy interval avoidance** — the engine has `GF_UNFAIR_WINDOW`, but not
    the full "never enter cams during an interval" spawn model, the first-frame hall
    flash on monitor-down, or the 1-frame blackout flash window.
@@ -140,9 +166,19 @@ Toy Bonnie stall, boundary-aligned Foxy flashes during holds, reactive
 mask-hold branches, observable-only controller) — against the corrected
 Android model:
 
-- **Minus Toys cannot transfer**: the double-camera glitch has no Android
+- ~~**Minus Toys cannot transfer**: the double-camera glitch has no Android
   data-model state (§5 item 2) and CAM 09 is unconditionally flash-excluded
-  (§5 item 3).
+  (§5 item 3).~~ **Withdrawn 2026-08-26 — both halves of that sentence were
+  wrong.** The glitch state exists (`viewing` vs. the `your view` marker, §5
+  item 2), and the CAM 09 exclusion gates on `viewing` while the stun targets
+  the marker, so a split selection bypasses it (§5 item 3). **This does not make
+  Minus Toys work on Android — it makes it unprobed.** `minus2test.mjs` never
+  modelled the glitch and still does not; the engine has no two-camera state, so
+  the probe below measured the *glitchless* member only, and its result stands
+  on its own terms. What the retraction changes is that the family was closed
+  for the wrong reason: the transfer-breaker is the consecutive-tick mask-clear
+  semantics below, not the absence of the glitch. See the 2026-08-26 verdict
+  at the end of this section.
 - **Minus Two: 16/200 normal seeds** (deaths inside-office via Toy Chica);
   the pin-all-six `--cams=3,5,6` extension scores 0/200. The pinned
   worst-luck 100/100 is a diagnostic artifact (pinning freezes the escape
@@ -164,6 +200,31 @@ Android model:
 For plan 02 this means a "Minus 3 family" trainer mode on Android is either
 a best-odds practice mode (~8% even played perfectly, per the probe) or PC
 history — not a zero-RNG drill like Minus 7.
+
+## 8. 2026-08-26: the glitch transfers, so §7's first bullet is withdrawn
+
+Sourced from the event sheet and forced by a retained on-device frame — the
+mechanism, the device provenance, the pixel control and the group citations are
+all in [`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md)
+§"2026-08-26: the double-camera glitch *does* transfer". The strategy-side
+consequences:
+
+- **Minus Toys is reopened as a question, not answered as a strategy.** Every
+  step of the published routine that needs the glitch is now *possible* on this
+  build's event data. None of it has been played, modelled, or measured here.
+- **The glitched hold does stack, in source.** With the marker parked on CAM 09
+  and `viewing == 11`, one held flashlight both stuns all three Toys (g453-455,
+  gate `viewing <> 9`) and blocks the Puppet's escape roll (g494, `viewing == 11`
+  + `lit?`). That is the routine's central trick, and it reads as intact.
+- **The known transfer-breaker is untouched.** §7's structural failure was Toy
+  Chica against the *consecutive*-mask semantics (g292-294), which the glitch
+  does nothing about. A glitch-aware probe could still lose to exactly that.
+- **What it would take to settle it:** a two-camera state in the engine
+  (`viewing` split from the marker, with g450-457 reading them separately), a
+  glitch-aware Minus Toys probe, and an on-device arming test that measures how
+  often the 200 ms window is actually hit through the phone's actuator. Until
+  those exist, quote this as "possible in the data model", never as "works".
+- **Legitimacy caveat unchanged**: this is the glitch-based half of the family.
 
 ## Sources
 

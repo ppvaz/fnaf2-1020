@@ -207,9 +207,15 @@ What they have established is mostly **negative**, and that is kept on purpose:
 - **Six-Seven** (CAM 06/07) was derived by the search and then refuted by the
   extracted route graph — Withered Freddy transits rooms those cameras never see.
   [`CAM-6-7-STRATEGY.md`](docs/strategy/CAM-6-7-STRATEGY.md)
-- **The Minus 3 family does not transfer to Android.** Minus Toys depends on a
-  glitch state the mobile build lacks, and the glitchless Minus Two probe scores
-  16/200. [`MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md)
+- **The Minus 3 family does not transfer to Android** — but only for the
+  glitchless reason. The adapted Minus Two probe scores 16/200, losing
+  structurally to the sourced *consecutive*-mask semantics. ~~Minus Toys depends
+  on a glitch state the mobile build lacks~~ — **withdrawn 2026-08-26: the
+  build has that state.** `viewing` and the `your view` marker are separate
+  fields and a monitor raise restores only the first, from a 200 ms-stale
+  sample; a device frame caught both camera buttons lit. Minus Toys is therefore
+  **unprobed, not refuted** — nothing here models or has played it.
+  [`MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md)
 - **Every gate-aware policy family searched scores 0/150** once the 45-frame
   defense fuse and 300-frame resolution chain are modeled — including two
   apparent 150/150 results that were retracted as model errors.

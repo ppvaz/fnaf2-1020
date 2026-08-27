@@ -1,8 +1,15 @@
 // Android policy probe for plan 02: Zach_Scream's glitchless "Minus Two"
-// (2025), adapted to the canonical Android model. Minus Toys itself cannot
-// transfer (the double-camera glitch has no Android state and CAM 09 is
-// flash-excluded), so this probes the family's glitchless member: an
-// interval-anchored 5 s cycle that flashes only CAM 03 (pinning Toy Bonnie
+// (2025), adapted to the canonical Android model.
+//
+// This header used to say "Minus Toys itself cannot transfer (the double-camera
+// glitch has no Android state and CAM 09 is flash-excluded)". Withdrawn
+// 2026-08-26: the glitch state exists on Android -- `viewing` and the
+// `your view` marker are separate fields, and the monitor-raise restore moves
+// only `viewing`, from a 200 ms-stale `last viewed`. See
+// docs/android/ANDROID-SOURCE-STATUS.md. The engine still has no two-camera
+// state, so this probe covers only the family's glitchless member and says
+// nothing about Minus Toys either way. The probe is an interval-anchored
+// 5 s cycle that flashes only CAM 03 (pinning Toy Bonnie
 // and W. Freddy), hall-flashes Foxy on every exit, and mask-camps the rest.
 //
 // The controller is observable-only: the clock, its own inputs, vent-bang /

@@ -2,12 +2,28 @@
 
 **Updated:** 2026-08-26
 
-**Overall:** **33%** — 29 of 88 mandatory top-level work packages are closed.
+**Overall:** **33%** — 29 of 89 mandatory top-level work packages are closed.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
 
 ## Very next step
+
+**Landed 2026-08-26 21:20 BRT, and it contradicts something the repository
+said:** the **double-camera glitch transfers to Android**. A retained classifier
+frame from the cleared Night 1 (`n1-full-1640`, runner clock 92879 ms) shows CAM
+04 and CAM 07 lit at once; re-read against the dump, the camera selection is two
+fields (`viewing` counter 55 / `your view` marker 126) and the monitor-raise
+restore (g1 → g2) writes only the first, from a `last viewed` that g263 samples
+every 200 ms. Groups 450-457 read the marker for *who* is stunned and `viewing`
+for the `<> 8 / <> 9 / <> 11` immunity, so the exclusions are bypassable. Four
+documents plus `minus2test.mjs`'s header said the opposite and are corrected in
+place. **Nothing is modelled or measured**: the engine has no two-camera state,
+no glitch-aware probe exists, and nobody has tried to arm it on the phone —
+that is plan 02's new package 2a. Full sourcing and controls:
+`docs/android/ANDROID-SOURCE-STATUS.md` §"2026-08-26: the double-camera glitch
+*does* transfer". **This does not change the hardware thread below**, which is
+still the live next action.
 
 **Resume point, written 2026-08-26 20:01 BRT.** Four scoped changes landed on
 `master` this pass:
@@ -360,7 +376,7 @@ on the next graded run remains the way to attribute them, since only
 | Plan | Closed / mandatory packages | Progress | Current state | Next gate |
 |---|---:|---:|---|---|
 | [01 — research pass](01-research-pass.md) | 3 / 3 | **100%** | Done | None |
-| [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 6 | **17%** | Research/simulator verdict complete; framing decision blocks implementation | Decide best-odds practice, PC history, or close the mode |
+| [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 7 | **14%** | **Reopened 2026-08-26.** The glitchless Minus Two verdict stands (16/200, consecutive-mask failure), but the reason the *family* was closed — "Minus Toys cannot transfer, the build has no double-camera state" — is retracted: `viewing` and the `your view` marker are separate fields and a monitor raise restores only `viewing` from a 200 ms-stale sample, so the CAM 08/09/11 flash exclusions are bypassable. A device frame caught both buttons lit. Minus Toys is unprobed, not refuted; the framing decision is blocked behind the new package 2a | Package 2a: split the engine's camera selection into counter + marker, write a glitch-aware Minus Toys probe, and measure the 200 ms arming window on the device |
 | [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 1 / 5 | **20%** | Engine sourcing complete (2026-08-24); reactive coach, decision table, ladder and grading untouched | Design the reactive coach: situation detection, expected response, reaction window, decision grading |
 | [04 — optimize Minus 7](04-optimize-minus-7.md) | 3 / 4 | **75%** | Search and grading work complete | Replace inferred human profile with accumulated trainer traces |
 | [05 — derive new strategy](05-derive-new-strategy.md) | 5 / 5 | **100%** | Closed by sourced refutation/negative result | Reopen only after a source-rule change |
@@ -391,6 +407,11 @@ on the next graded run remains the way to attribute them, since only
 - Plan 10 gained a package 0 on 2026-08-26 (76 -> 77 mandatory): the basic
   interaction vocabulary the schedule is made of was never established, and
   office panning appears in the record only as a failure mode.
+- Plan 02 gained a package 2a on 2026-08-26 (88 -> 89 mandatory): the
+  double-camera glitch turned out to exist on Android, so the Minus Toys half of
+  the family needs an engine state, a probe and a device measurement that were
+  never written. Its percentage falls 17% -> 14% on the same numerator, which is
+  the honest direction.
 - A package contributes only when its plan marks it closed, completed, passed,
   or closed by a documented negative result. Partial or “advanced” work receives
   no fractional credit.

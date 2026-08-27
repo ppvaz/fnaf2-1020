@@ -758,6 +758,155 @@ explanation.] The scene X of the vent anchors stays `[UNKNOWN]` from the source;
 the reachability answer above stands on the phone and Shooter25 instead, and the
 1600 width — which the scene art *does* corroborate — is what made it derivable.
 
+## 2026-08-26: the double-camera glitch *does* transfer — `viewing` and `your view` can disagree
+
+**This section retracts backlog item 8 below.** From 2026-08-20 that item said
+"no such state exists in the Android data model: one `viewing` counter, one
+marker, set atomically per touch (group 40)". The first half is right about a
+single *touch*; the conclusion drawn from it is wrong, because a touch is not
+the only writer of `viewing`. Two fields carry the camera selection, and one
+event path moves them apart. The original text is kept in place, struck through.
+
+### What forced the re-read
+
+A retained on-device classifier frame from the cleared Night 1 shows **two
+camera buttons highlighted lime at once**.
+
+![Night 1 1 AM: CAM 04 and CAM 07 both highlighted](../img/n1-full-1640-092879-double-camera.png)
+
+| | |
+| --- | --- |
+| Run / session | `n1-full-1640` / `n1-full-1640-20260826T191856Z-aab8b590`, 2026-08-26 |
+| Device / build | moto g56 5G, `com.scottgames.fnaf2` **2.0.7+26** |
+| Sensor | `screencap-raw`, 2400x1080 RGBA_8888 (the retained `.raw`, rendered losslessly to the PNG above) |
+| Clock / offset | `runner_monotonic_ms` **92879 ms**, Night 1, in-game **1 AM** |
+| On screen | picture and room label = **Party Room 4 (CAM 04)**; **CAM 04 and CAM 07 both lit** |
+
+**Control, because a favourable blob is not two buttons.** Under the saturated
+predicate `r>150 & g>150 & b<110`, sampling every 2nd pixel, the frame has 2165
+lit pixels in **two disjoint boxes** — x 1668-1788 / y 668-712 (**1101 px**, the
+CAM 04 tile) and x 1716-1838 / y 584-628 (**1064 px**, the CAM 07 tile). A
+single lit button measures **1064-1157** under the same predicate across all
+twelve cameras, so each cluster is exactly one button. It is not one enlarged
+highlight and it is not the classifier over-reading green.
+
+`captures/n1-full-1640.mp4` **cannot** settle this and should not be tried
+again: it is 1280x576 H.264, and its maximum yellowness (`min(r,g) - b`)
+anywhere in a 10-sample scan across the run is 93 against 194 for the same
+button on the raw sensor. Chroma subsampling crushes the lime below
+separability.
+
+### The mechanism, from the event sheet
+
+The camera selection is **two fields**, and every consumer picks one of them:
+
+| Field | What it is | Read by |
+| --- | --- | --- |
+| `viewing` (counter, handle 55) | which camera the *UI* thinks is up; `0` = monitor down | the camera picture (`views.Active` frame, g98-198), the room-name label (`Active 14`, g46-57), the button highlight (g46-57), the flash **immunity** gates `viewing <> 8 / <> 9 / <> 11` (g450-457), the Puppet's held-light block `viewing == 11` (g494/495) |
+| `your view` (Active marker, handle 126) | which camera *marker* the player is parked on | the flash **target** — `your view` overlapping the character (g450-457), the marker look-hold cam-stall (g344-348 Withereds, g357 Mangle), the Puppet's camera interference (g498) |
+
+Writers, from an exhaustive scan of all 1332 groups of frame 3:
+
+| Group(s) | Writes |
+| --- | ---: |
+| 16-27 (mouse click on a `cam NN`), 39 + 40 (touch release on `cameraHitbox`) | `viewing = N`, `your view` → that marker, **and** `cam 01`.AlterableValue0 = 1 — the three together, only here |
+| 45 | `cam 01`.v0 == 1 → clear the latch and set **all twelve** button tiles to the unlit frame |
+| 46-57 | `viewing == N` → set that one button tile to the lit frame, and the room label |
+| 262 (monitor down), 911 (mask fully on) | `viewing = 0`. **Marker not moved, latch not set** |
+| 263 | `viewing > 0` **+ Every 200 ms** → `last viewed = viewing`. The *only* writer of `last viewed` |
+| 1 → child 2 | on monitor-raise completion (`mmonitorUp.v0 >= 12`, "only one action when event loops"): `viewing = last viewed`. **Marker not moved, latch not set** |
+| 3, 4, 486, 487 | the frame-start / first-raise defaults, which *do* move the marker in step (CAM 09, or CAM 07/10 on night 7) |
+
+Two consequences follow directly:
+
+1. **`last viewed` is sampled, not written through.** Group 263 copies `viewing`
+   into it on a 200 ms timer, so it lags the live selection by up to 200 ms.
+2. **The raise restores `viewing` from that stale copy and never touches the
+   marker.** So: select camera X, then drop the monitor before 263's next tick.
+   `last viewed` still holds the previous camera Y. On the next raise
+   `viewing = Y` — the picture, the label and the immunity gate all say Y — while
+   `your view` is still parked on **X**.
+
+The double highlight is not a separate rendering bug; it is the *tell* for that
+state. Group 45 is the only clearer and it fires only on the touch latch, so
+X's button — lit by g46-57 while `viewing` was X — is never cleared, and Y's
+button lights beside it. Because g2/g3/g4 are the only `viewing` writers that
+skip the latch, and g3/g4 move the marker in step, **two lit buttons implies
+`viewing` ≠ `your view`**, with the freshly lit tile naming `viewing` and the
+stale one naming the marker. That is exactly the observed frame: `viewing = 4`
+(Party Room 4 on screen, CAM 04 lit) with the marker parked on `cam 7`.
+
+It also **persists**. After the raise, g263 resamples `last viewed = viewing`,
+so further monitor cycles preserve the pair; only the next camera *touch*
+re-syncs the marker and clears the highlights. That matches the PC accounts'
+"the glitch persists and is re-armed once".
+
+### Why this is not cosmetic
+
+Groups 450-457 read the two fields **in different roles in the same group** —
+`your view` overlap picks *who* is stunned, `viewing` supplies the *immunity*:
+
+```
+GROUP 453   your view overlapping [new freddy]  +  viewing > 0
+            +  lit? = 1  +  viewing <> 9          →  new freddy.B = stun time
+```
+
+So parking `your view` on `cam 9` while `viewing` is anything but 9 stuns Toy
+Freddy, Toy Bonnie and Toy Chica (g453/454/455) through a held flashlight —
+**the CAM 09 immunity is bypassed**, which is the whole payoff of Minus Toys.
+The same holds for `cam 8` and the three Withereds (g450-452, gate `<> 8`) and
+for `cam 11` and Mangle (g456, gate `<> 11`). And with `viewing == 11` the
+Puppet's escape-stage roll is still blocked by the held light (g494), so the
+glitched flash and the box-hold stack in one hold — the published routine's core.
+
+The marker look-hold cam-stall (g344-348, g357) also reads `your view`, so the
+parked marker keeps stalling its room while a different camera is displayed.
+
+### What is sourced, what is inferred, and what is still open
+
+**[SOURCED]** — the field split, every writer above, the flash groups' split
+read, the Puppet block's `viewing == 11`, and the exhaustive result that
+**nothing in frame 3 reads the button highlight back** (the only condition
+anywhere in the frame that addresses a `cam NN` object as its subject is g45's
+`cam 01`.v0 test; every other `cam NN` reference is a position-overlap
+parameter).
+
+**[INFERRED]** — two glosses the dump cannot name, per
+[`SOURCE-DUMP-GUIDE.md`](SOURCE-DUMP-GUIDE.md) §3 ("no condition/action name table"):
+
+- `A 17` is read as "set the display frame". Control: the same action on
+  `views.Active` (g98-198) is demonstrably what selects which camera picture is
+  shown, and on `Active 14` what selects the room-name label.
+- Group flag bit `0x8000` is read as "child event" and `0x40` as "has children",
+  which is what makes g2/g3/g4 children of g1. Control: g83 has **`acts=0`** and
+  is followed by three `0xA000` groups (g84-86) that set `lit? = 1`; at top level
+  those would fire unconditionally every frame, which is impossible, so they must
+  be gated by g83's flashlight-hold conditions — and g75-77 are the identical
+  three cases with the *keyboard* condition written inline. Independently, g2
+  cannot be top-level either: `last viewed > 0 → viewing = last viewed` firing
+  every frame would make `viewing = 0` unreachable and pin every selection to
+  `last viewed`.
+
+**OPEN, and none of it is small:**
+
+- **Deliberate arming has never been attempted on the device.** This frame was
+  an accident inside a Minus 7 pilot run. The run's event stream records no
+  presses, and the log shows only `macro attack[2..999]` at 87859 ms and
+  `monitor` at 92039 ms before the 92879 ms snapshot, so the exact input that
+  produced it is **not reconstructed**. The runner's own classifier flagged the
+  frame `cams=UP-DESYNCED` at 93029 ms.
+- **The real window is unmeasured.** The source says "before group 263's next
+  200 ms tick"; what fraction of attempts land it through the phone's actuator
+  is unknown. Price it against `HID-MULTITOUCH.md`, not against an ideal input.
+- **No stun has been observed through a glitched marker.** The payoff above is
+  read off the event sheet only.
+- **The engine models none of this.** There is no double-camera state in
+  `src/engine.js`, so no `sourcetest` case accompanies this section; it is a
+  backlog finding, not an implemented rule. Implementing it is what would reopen
+  Minus Toys as a *measurable* policy rather than a plausible one.
+- The consecutive-tick mask-clear semantics that broke Minus Two
+  (`MINUS-3-STRATEGY.md` §7) are untouched by this and still apply.
+
 ## Labels
 
 - **Implemented** — Android source rule is represented and regression-tested.
@@ -853,13 +1002,34 @@ each resolved item records the finding. Remaining open items are marked OPEN.
 
 **Minus 3 / Minus Toys (plan 02, `MINUS-3-STRATEGY.md` §5):**
 
-8. ~~Double-camera glitch~~ — no such state exists in the Android data model:
-   one `viewing` counter, one marker, set atomically per touch (group 40);
-   mask/monitor transitions zero `viewing` without moving the marker but the
-   light is input-blocked while masked (g75/76 require mask v0=0). The PC
-   glitch is an input-layer artifact that does not transfer to this build's
-   event data; glitch-dependent Minus Toys steps need on-device confirmation
-   before being assumed possible on Android.
+8. **Double-camera glitch — RETRACTED AND REVERSED 2026-08-26: it transfers.**
+   See §"the double-camera glitch *does* transfer" above for the full sourcing,
+   the device frame and the controls. In one line: the selection is **two**
+   fields, `viewing` (counter 55) and the `your view` marker (126); a touch
+   writes both, but the monitor-raise restore (g1 → g2) writes only `viewing`,
+   from a `last viewed` that g263 samples on a **200 ms** timer. Select a
+   camera and drop the monitor inside that window and the raise leaves
+   `viewing` on the previous camera while the marker stays on the new one —
+   both buttons lit, because g45 (the only clearer) fires on the touch latch
+   alone. Groups 450-457 then read `your view` for *who* is stunned and
+   `viewing` for the `<> 8 / <> 9 / <> 11` immunity, so the CAM 08/09/11 flash
+   exclusions are bypassable, and with `viewing == 11` the held light still
+   blocks the Puppet (g494). Still OPEN: deliberate arming on the device, the
+   real window width, any observed stun through a glitched marker, and an
+   engine model — there is none, so Minus Toys is *not yet* re-probed.
+
+   > **Original 2026-08-20 text, kept per "retractions stay":**
+   > ~~Double-camera glitch — no such state exists in the Android data model:
+   > one `viewing` counter, one marker, set atomically per touch (group 40);
+   > mask/monitor transitions zero `viewing` without moving the marker but the
+   > light is input-blocked while masked (g75/76 require mask v0=0). The PC
+   > glitch is an input-layer artifact that does not transfer to this build's
+   > event data; glitch-dependent Minus Toys steps need on-device confirmation
+   > before being assumed possible on Android.~~
+   >
+   > What it got right: a single *touch* is atomic, and the marker does persist
+   > across a monitor drop. What it missed: a touch is not the only writer of
+   > `viewing`, and the raise path restores it from a stale sample.
 9. ~~Night-7 variants of the flash immunities~~ — none: groups 450-457 carry
    no night conditions; the 8/9/11 exclusions are unconditional.
 10. ~~CAM 03 stalling Toy Bonnie + Withered Freddy~~ — resolved: both routes

@@ -92,6 +92,15 @@ it grades:
 6. **Exact glitch/bug windows** (the double camera glitch's same-frame input, the
    1-frame blackout flash) — determines whether Minus Toys is even drillable on a
    touch screen and what tolerance to teach if so.
+   **Half-answered 2026-08-26** for the camera glitch: on Android it is not a
+   same-frame input at all. The arming window is "select a camera, then drop the
+   monitor before group 263's next **200 ms** tick", because `last viewed` is a
+   sampled copy and the monitor-raise restore reads it while leaving the
+   `your view` marker parked. So it is *more* drillable on a touch screen than on
+   PC, not less. What is still unknown is how often the window is actually hit
+   through this phone's actuator — nobody has tried. See
+   `docs/android/ANDROID-SOURCE-STATUS.md` §"2026-08-26: the double-camera glitch
+   *does* transfer". The 1-frame blackout flash is untouched.
 
 ## Done when
 
