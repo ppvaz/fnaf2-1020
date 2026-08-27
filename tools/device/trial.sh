@@ -90,6 +90,12 @@ POST_CAPTURE_TOUCHES="${POST_CAPTURE_TOUCHES:-1}"
 # block below reads it under `set -u`, so a late default crashes every run
 # that does not set it in the environment.
 CUE_AUDIO="${CUE_AUDIO:-0}"
+CUE_HELPER="${CUE_HELPER:-0}"
+# Record bounded detector windows beside the night's anchored PCM. This is an
+# observation-only path: the remote input driver never receives the detector
+# result. Promotion and control remain separate gates.
+CUE_SHADOW="${CUE_SHADOW:-0}"
+CUE_SHADOW_MODEL="${CUE_SHADOW_MODEL:-}"
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-}"
 GF_OFFICE_MODEL="${GF_OFFICE_MODEL:-}"
 GF_SKIP_MASK_ON_EXACT_EMPTY="${GF_SKIP_MASK_ON_EXACT_EMPTY:-0}"
@@ -99,6 +105,7 @@ LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
 LOCAL_ABORT_VIDEO="$CAPTURE_DIR/$OUT-aborted.mp4"
 LOCAL_EPOCH="$CAPTURE_DIR/$OUT-epoch.txt"
 LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"
+LOCAL_CUE_SHADOW="$CAPTURE_DIR/$OUT-cue-shadow.txt"
 SAMPLE_VIEW=""
 SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
@@ -122,6 +129,9 @@ REMOTE_CHECKER="/data/local/tmp/fnaf2-screencheck-$$-$(date +%s)"
 REMOTE_BB_MODEL="/data/local/tmp/fnaf2-bb-left-model-$$-$(date +%s).scm"
 REMOTE_CAM05_MODEL="/data/local/tmp/fnaf2-bb-cam05-model-$$-$(date +%s).scm"
 REMOTE_GF_MODEL="/data/local/tmp/fnaf2-gf-office-model-$$-$(date +%s).scm"
+REMOTE_CUE_SHADOW="$REMOTE_PIDFILE.cue-shadow"
+REMOTE_CUE_SHADOW_SENTINEL="$REMOTE_PIDFILE.cue-shadow.run"
+REMOTE_CUE_SHADOW_PIDFILE="$REMOTE_PIDFILE.cue-shadow.pid"
 REMOTE_CHECKER_ARG="-"
 REMOTE_BB_MODEL_ARG="-"
 REMOTE_CAM05_MODEL_ARG="-"
@@ -140,6 +150,9 @@ RECORDING_STARTED=0
 CAPTURE_PULLED=0
 SAMPLES_PULLED=0
 CHECKER_INSTALLED=0
+CUE_SHADOW_STARTED=0
+CUE_MODEL_SHA256=""
+CUE_MODEL_EVIDENCE=""
 
 # Pick a screenrecord limit without silently shortening the evidence. Android's
 # old recorder rejects values above 180 seconds; current builds advertise 0 as
@@ -198,6 +211,41 @@ case "$CUE_AUDIO" in
   0|1) ;;
   *) echo "CUE_AUDIO must be 0 or 1"; exit 2 ;;
 esac
+case "$CUE_HELPER" in
+  0|1) ;;
+  *) echo "CUE_HELPER must be 0 or 1"; exit 2 ;;
+esac
+case "$CUE_SHADOW" in
+  0|1) ;;
+  *) echo "CUE_SHADOW must be 0 or 1"; exit 2 ;;
+esac
+if [ "$CUE_SHADOW" -eq 1 ]; then
+  [ "$CUE_HELPER" -eq 1 ] && [ "$CUE_AUDIO" -eq 1 ] || {
+    echo "CUE_SHADOW=1 requires CUE_HELPER=1 and CUE_AUDIO=1" >&2
+    exit 2
+  }
+  [ -f "$CUE_SHADOW_MODEL" ] || {
+    echo "CUE_SHADOW=1 requires CUE_SHADOW_MODEL=<exact installed model>" >&2
+    exit 2
+  }
+  cue_model_schema="$(sed -n '1s/^\(cue-model-v1\) .*/\1/p' "$CUE_SHADOW_MODEL")"
+  CUE_MODEL_EVIDENCE="$(sed -n '1s/.* evidence=\([^ ]*\).*/\1/p' "$CUE_SHADOW_MODEL")"
+  cue_model_cues="$(awk '/^template / { for (i=1;i<=NF;i++) if ($i ~ /^cue=/) { sub(/^cue=/,"",$i); print $i } }' "$CUE_SHADOW_MODEL" | sort -u | tr '\n' ' ' | sed 's/ $//')"
+  [ "$cue_model_schema" = cue-model-v1 ] && \
+    { [ "$CUE_MODEL_EVIDENCE" = shadow ] || [ "$CUE_MODEL_EVIDENCE" = heldout ]; } || {
+      echo "CUE_SHADOW_MODEL is not a shadow-capable cue-model-v1" >&2
+      exit 2
+    }
+  [ "$cue_model_cues" = "bang bb_voice" ] || {
+    echo "CUE_SHADOW_MODEL must contain exactly the bang and bb_voice classes (found: $cue_model_cues)" >&2
+    exit 2
+  }
+  CUE_MODEL_SHA256="$(shasum -a 256 "$CUE_SHADOW_MODEL" | awk '{print $1}')"
+  [ ! -e "$LOCAL_CUE_SHADOW" ] || {
+    echo "refusing to overwrite $LOCAL_CUE_SHADOW" >&2
+    exit 2
+  }
+fi
 case "$GRADE_RUN" in
   0|1) ;;
   *) echo "GRADE_RUN must be 0 or 1"; exit 2 ;;
@@ -621,6 +669,64 @@ stop_recording() {
   REC=""
 }
 
+start_cue_shadow() {
+  [ "$CUE_SHADOW" -eq 1 ] || return 0
+  adb shell "printf 'cue-shadow-trace-v1 session=%s modelSha256=%s evidence=%s\\n' \
+    '$FNAF2_SESSION_ID' '$CUE_MODEL_SHA256' '$CUE_MODEL_EVIDENCE' > '$REMOTE_CUE_SHADOW'; \
+    : > '$REMOTE_CUE_SHADOW_SENTINEL'; \
+    nohup sh -c '
+      echo \$\$ > $REMOTE_CUE_SHADOW_PIDFILE
+      i=0
+      while [ -e $REMOTE_CUE_SHADOW_SENTINEL ]; do
+        window=w\$i
+        arm=\$(printf \"ARM %s %s all now 5000 shadow\\n\" $CUE_TOKEN \"\$window\" | \
+          toybox nc -w 2 127.0.0.1 $CUE_PORT 2>/dev/null | tr -d \"\\r\")
+        printf \"ARM %s\\n\" \"\$arm\" >> $REMOTE_CUE_SHADOW
+        case \"\$arm\" in OK\\ armed=*) ;; *) break ;; esac
+        sleep 5.1
+        tries=0
+        while :; do
+          result=\$(printf \"RESULT %s %s\\n\" $CUE_TOKEN \"\$window\" | \
+            toybox nc -w 2 127.0.0.1 $CUE_PORT 2>/dev/null | tr -d \"\\r\")
+          case \"\$result\" in
+            HIT\\ *|MISS\\ *|UNKNOWN\\ *) break ;;
+            PENDING\\ *) tries=\$((tries + 1)); [ \"\$tries\" -lt 10 ] || break; sleep 0.1 ;;
+            *) break ;;
+          esac
+        done
+        printf \"RESULT %s\\n\" \"\$result\" >> $REMOTE_CUE_SHADOW
+        case \"\$result\" in HIT\\ *|MISS\\ *|UNKNOWN\\ *) ;; *) break ;; esac
+        i=\$((i + 1))
+      done
+      rm -f $REMOTE_CUE_SHADOW_PIDFILE
+    ' >/dev/null 2>&1 &" >/dev/null 2>&1
+  CUE_SHADOW_STARTED=1
+  echo "cue helper: recording non-controlling 5 s shadow windows"
+}
+
+stop_cue_shadow() {
+  [ "${CUE_SHADOW_STARTED:-0}" -eq 1 ] || return 0
+  CUE_SHADOW_STARTED=0
+  adb shell "rm -f '$REMOTE_CUE_SHADOW_SENTINEL'" >/dev/null 2>&1 || true
+  # A stop can land during the one bounded sleep. Wait for that terminal result
+  # rather than pulling a trace whose final ARM has no RESULT.
+  for _ in $(seq 1 70); do
+    adb shell "[ ! -e '$REMOTE_CUE_SHADOW_PIDFILE' ]" >/dev/null 2>&1 && break
+    sleep 0.1
+  done
+  if adb shell "[ -e '$REMOTE_CUE_SHADOW_PIDFILE' ]" >/dev/null 2>&1; then
+    echo "cue shadow loop did not terminate; refusing its partial trace" >&2
+    return 1
+  fi
+  if adb pull "$REMOTE_CUE_SHADOW" "$LOCAL_CUE_SHADOW" >/dev/null 2>&1; then
+    echo "cue shadow trace: $LOCAL_CUE_SHADOW"
+  else
+    echo "could not pull cue shadow trace" >&2
+    return 1
+  fi
+  adb shell "rm -f '$REMOTE_CUE_SHADOW' '$REMOTE_CUE_SHADOW_PIDFILE'" >/dev/null 2>&1 || true
+}
+
 pull_samples() {
   [ -n "$SAMPLE_VIEW" ] || return 0
   [ "$SAMPLES_PULLED" -eq 0 ] || return 0
@@ -840,6 +946,13 @@ session_close() {                               # STATUS WATCHDOG_TEXT
       clock_domain=device_shell_wall_ms redaction.contains_game_media=false \
       redaction.contains_audio=false redaction.commit_safe=true
   fi
+  if [ -f "$LOCAL_CUE_SHADOW" ]; then
+    fnaf_session_artifact "$LOCAL_CUE_SHADOW" artifact_id=cue-shadow-trace \
+      role=non-controlling-cue-detector-windows authority=primary-observation \
+      format=text/plain complete=true truncated=false retention=local-only \
+      clock_domain=helper_monotonic_ns redaction.contains_game_media=false \
+      redaction.contains_audio=false redaction.commit_safe=true
+  fi
   if [ -d "$CAPTURE_DIR/screencheck-keep/$OUT" ]; then
     fnaf_session_artifact "$CAPTURE_DIR/screencheck-keep/$OUT" artifact_id=kept-frames \
       role=classifier-frames authority=primary-observation \
@@ -859,17 +972,38 @@ session_close() {                               # STATUS WATCHDOG_TEXT
     [ -f "$candidate" ] && audio="$candidate"
   done
   if [ -n "$audio" ]; then
-    # clock_domain is null, not `helper_nanotime_ns`. The helper's nanoTime
-    # origin for this PCM is printed by `log stop` and never saved beside the
-    # WAV -- the sidecar the inventory names as missing. Declaring the domain
-    # here would assert an origin nothing on disk can supply.
-    fnaf_session_artifact "$audio" artifact_id=night-audio role=night-pcm \
-      authority=primary-observation format=audio/wav complete=true truncated=false \
-      retention=local-only clock_domain=null \
-      redaction.contains_game_media=true redaction.contains_audio=true \
-      redaction.commit_safe=false
-    fnaf_session_record note \
-      "text=night PCM has no startNs sidecar, so it carries no clock domain and cannot be aligned to the recording or the runner"
+    local audio_sidecar="$audio.meta.json"
+    if [ -f "$audio_sidecar" ]; then
+      local audio_clock
+      audio_clock="$(python3 - "$audio_sidecar" <<'PY'
+import json, pathlib, sys
+x = json.loads(pathlib.Path(sys.argv[1]).read_text())
+start = int(x["start_ns"]); frames = int(x["frames"]); rate = int(x["rate"])
+print("%d %d" % (start, start + frames * 1_000_000_000 // rate))
+PY
+)"
+      fnaf_session_record clock domain=helper_monotonic_ns kind=monotonic units=ns \
+        "origin_note=System.nanoTime in the cue-helper process; PCM sample zero and every detector event use this same axis" \
+        "valid_from=${audio_clock%% *}" "valid_until=${audio_clock##* }"
+      fnaf_session_artifact "$audio_sidecar" artifact_id=night-audio-anchor \
+        role=pcm-clock-and-hash-sidecar authority=operational-metadata \
+        format=application/json complete=true truncated=false retention=local-only \
+        clock_domain=helper_monotonic_ns redaction.contains_game_media=false \
+        redaction.contains_audio=false redaction.commit_safe=true
+      fnaf_session_artifact "$audio" artifact_id=night-audio role=night-pcm \
+        authority=primary-observation format=audio/wav complete=true truncated=false \
+        retention=local-only clock_domain=helper_monotonic_ns \
+        redaction.contains_game_media=true redaction.contains_audio=true \
+        redaction.commit_safe=false
+    else
+      fnaf_session_artifact "$audio" artifact_id=night-audio role=night-pcm \
+        authority=primary-observation format=audio/wav complete=true truncated=false \
+        retention=local-only clock_domain=null \
+        redaction.contains_game_media=true redaction.contains_audio=true \
+        redaction.commit_safe=false
+      fnaf_session_record note \
+        "text=night PCM has no startNs sidecar, so it carries no clock domain and cannot be aligned to the recording or the runner"
+    fi
   fi
 
   local focus_faults=0
@@ -936,6 +1070,7 @@ cleanup() {
     fi
     adb shell "rm -rf $REMOTE_KEEP_DIR" >/dev/null 2>&1 || true
   fi
+  stop_cue_shadow || true
   if [ "${CUE_AUDIO_STARTED:-0}" -eq 1 ]; then
     CUE_AUDIO_STARTED=0
     "$HERE/query-cue-helper.sh" log stop "$OUT" 2>&1 | sed 's/^/  audio: /' || true
@@ -948,7 +1083,7 @@ cleanup() {
       echo "cue trace: $CAPTURE_DIR/$OUT-cue.txt" || true
     adb shell "rm -f $CUE_TRACE_REMOTE" >/dev/null 2>&1 || true
   fi
-  adb shell rm -f "$REMOTE_PLAN" "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" >/dev/null 2>&1 || true
+  adb shell rm -f "$REMOTE_PLAN" "$REMOTE_VIDEO" "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" "$REMOTE_CUE_SHADOW" "$REMOTE_CUE_SHADOW_SENTINEL" "$REMOTE_CUE_SHADOW_PIDFILE" >/dev/null 2>&1 || true
   if [ "$CHECKER_INSTALLED" -eq 1 ]; then
     adb shell rm -f "$REMOTE_CHECKER" "$REMOTE_CAM05_MODEL" "$REMOTE_BB_MODEL" "$REMOTE_GF_MODEL" >/dev/null 2>&1 || true
   fi
@@ -1012,7 +1147,7 @@ fnaf_session_record env \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \
   "SCREENRECORD_TIME_LIMIT=$SCREENRECORD_LIMIT" \
   "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
-  "CUE_HELPER=${CUE_HELPER:-0}" "CUE_AUDIO=$CUE_AUDIO" \
+  "CUE_HELPER=$CUE_HELPER" "CUE_AUDIO=$CUE_AUDIO" "CUE_SHADOW=$CUE_SHADOW" \
   "PLAN_SPACING_MS=$PLAN_SPACING_MS" "PLAN_CONTACT_MS=$PLAN_CONTACT_MS" \
   "PILOT_OFFSET_MS=$PILOT_OFFSET_MS" \
   "BB_LEFT_CAPTURE_EVERY=$BB_LEFT_CAPTURE_EVERY" \
@@ -1044,6 +1179,12 @@ session_record_model() {                        # MODEL_ID KIND PATH
 session_record_model bb-left scm1-left-opening "$BB_LEFT_MODEL"
 session_record_model bb-cam05 scm1-cam05 "$BB_CAM05_MODEL"
 session_record_model gf-office scm1-golden-freddy-office "$GF_OFFICE_MODEL"
+if [ "$CUE_SHADOW" -eq 1 ]; then
+  fnaf_session_record model model_id=bb-audio-cues kind=cue-model-v1 \
+    "file=$CUE_SHADOW_MODEL" built_from_commit=unknown authorized_for=shadow-only \
+    "authorized_for_game_build=$FNAF2_CALIBRATED_BUILD" \
+    calibration_report=null holdout_report=null
+fi
 if [ -n "$BB_CAM05_MODEL$BB_LEFT_MODEL$GF_OFFICE_MODEL" ]; then
   fnaf_session_record note \
     "text=model built_from_commit is 'unknown': SCM1 binaries are gitignored and carry no provenance of their own, so the hash above is the only thing that identifies them"
@@ -1118,7 +1259,6 @@ source "$HERE/menu.sh"
 # does not switch the sensor. It records the helper's reading next to the
 # screencheck class that is already trusted, which is exactly the labelled data
 # the threshold needs. Switch only once that data says where the line is.
-CUE_HELPER="${CUE_HELPER:-0}"
 # Keep the night's PCM, not just the scalar snapshots.
 #
 # The cue trace records rms and peak per sample, which cannot carry a transient:
@@ -1171,6 +1311,22 @@ if [ "$CUE_HELPER" -eq 1 ]; then
       echo 'CUE_AUDIO=1 but the helper would not start a capture' >&2
       exit 2
     fi
+  fi
+  if [ "$CUE_SHADOW" -eq 1 ]; then
+    cue_model_status="$("$HERE/query-cue-helper.sh" model status)" || {
+      echo "CUE_SHADOW=1 but the helper could not report its model" >&2
+      exit 2
+    }
+    installed_sha="$(printf '%s\n' "$cue_model_status" | sed -n 's/.* modelSha256=\([0-9a-f]*\).*/\1/p')"
+    installed_evidence="$(printf '%s\n' "$cue_model_status" | sed -n 's/.* evidence=\([^ ]*\).*/\1/p')"
+    [ "$installed_sha" = "$CUE_MODEL_SHA256" ] && \
+      [ "$installed_evidence" = "$CUE_MODEL_EVIDENCE" ] || {
+        echo "the helper is not running the exact CUE_SHADOW_MODEL" >&2
+        echo "  local:     $CUE_MODEL_SHA256 evidence=$CUE_MODEL_EVIDENCE" >&2
+        echo "  installed: ${installed_sha:-unreported} evidence=${installed_evidence:-unreported}" >&2
+        exit 2
+      }
+    echo "cue helper: exact model $CUE_MODEL_SHA256 evidence=$CUE_MODEL_EVIDENCE (shadow observations only)"
   fi
   # And a continuous device-side trace of the same socket, for the events we
   # cannot schedule. Golden Freddy is one run in ten before 2 AM; the box-low
@@ -1307,6 +1463,7 @@ else
   RECORDING_STARTED=1
   adb shell "touch '$REMOTE_STARTFILE'"
 fi
+start_cue_shadow
 echo "$NIGHT night detected; starting timed Minus 7 interaction loop + $CYCLES cycles ($PRESS_MODE presses)"
 
 watch_night &

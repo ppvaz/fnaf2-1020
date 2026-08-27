@@ -69,8 +69,8 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     CAL/off) echo 'OK cal=off' ;;
     REC/*) echo 'OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044' ;;
     LOG/start) echo 'OK log=started max=480' ;;
-    LOG/stop) echo 'OK rec=cue-1700000000001-p0-q7.wav frames=112000 rate=16000 bytes=224044' ;;
-    MODEL/status|MODEL/reload) echo 'OK detector=READY calibration=mock evidence=shadow templates=2' ;;
+    LOG/stop) echo 'OK rec=cue-1700000000001-p0-q7.wav frames=112000 rate=16000 bytes=224044 startNs=123456789000' ;;
+    MODEL/status|MODEL/reload) echo 'OK detector=READY calibration=mock evidence=shadow modelSha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa templates=2' ;;
     ARM/*) echo "OK armed=${8:-mock-window} cues=${9:-bang} mode=${12:-shadow} openNs=9000 closeNs=1009000 calibration=mock" ;;
     RESULT/*) echo "MISS window=${8:-mock-window} closeNs=1009000 bestCue=none template=none score=0.1000 mode=shadow" ;;
     *) echo 'ERROR unknown-verb' ;;

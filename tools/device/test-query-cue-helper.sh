@@ -138,9 +138,18 @@ esac
 stop="$(CUE_HELPER_CALIBRATION="$out" PATH="$TEMP_DIR/bin:$PATH" \
   "$HERE/query-cue-helper.sh" log stop night6)"
 case "$stop" in
-  *"wrote $out/night6-cue-"*) ;;
+  *"wrote $out/night6-cue-"*"helper monotonic sample-zero anchor"*) ;;
   *) echo "unexpected log stop: $stop" >&2; exit 1 ;;
 esac
+python3 - "$out/night6-cue-1700000000001-p0-q7.wav.meta.json" <<'PY'
+import json, pathlib, sys
+item = json.loads(pathlib.Path(sys.argv[1]).read_text())
+assert item["schema"] == "cue-audio-anchor-v1"
+assert item["clock_domain"] == "helper_monotonic_ns"
+assert item["start_ns"] == 123456789000
+assert item["frames"] == 112000 and item["rate"] == 16000
+assert len(item["audio_sha256"]) == 64
+PY
 
 # A second record with the same label must not clobber the first window.
 out="$TEMP_DIR/cal-loopback"

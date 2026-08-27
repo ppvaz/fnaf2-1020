@@ -384,11 +384,19 @@ if [ "$VERB" = log ]; then
     'OK rec='*) ;;
     *) echo "continuous capture failed" >&2; exit 1 ;;
   esac
+  start_ns="$(printf '%s\n' "$response" | sed -n 's/.* startNs=\([0-9][0-9]*\).*/\1/p')"
+  case "$start_ns" in
+    ''|*[!0-9]*)
+      echo "continuous capture has no monotonic startNs anchor" >&2
+      exit 1
+      ;;
+  esac
   name="$(printf '%s\n' "$response" | sed -n 's/.*rec=\([^ ]*\).*/\1/p')"
   mkdir -p "$OUT_DIR"
   target="$OUT_DIR/${LABEL}-${name}"
-  if [ -e "$target" ]; then
-    echo "refusing to overwrite $target" >&2
+  sidecar="$target.meta.json"
+  if [ -e "$target" ] || [ -e "$sidecar" ]; then
+    echo "refusing to overwrite $target or its clock sidecar" >&2
     exit 1
   fi
   adb exec-out run-as "$PACKAGE" cat "files/calibration/$name" > "$target"
@@ -398,7 +406,29 @@ if [ "$VERB" = log ]; then
     echo "pulled capture is empty ($bytes bytes)" >&2
     exit 1
   fi
+  python3 - "$target" "$sidecar" "$response" <<'PY'
+import hashlib, json, pathlib, re, sys
+wav = pathlib.Path(sys.argv[1])
+sidecar = pathlib.Path(sys.argv[2])
+response = sys.argv[3]
+fields = dict(re.findall(r"([A-Za-z][A-Za-z0-9]*)=([^ ]+)", response))
+required = ("rec", "frames", "rate", "bytes", "startNs")
+if any(name not in fields for name in required):
+    raise SystemExit("log-stop response lacks its clock/audio fields")
+payload = {
+    "schema": "cue-audio-anchor-v1",
+    "wav": wav.name,
+    "audio_sha256": hashlib.sha256(wav.read_bytes()).hexdigest(),
+    "clock_domain": "helper_monotonic_ns",
+    "start_ns": int(fields["startNs"]),
+    "frames": int(fields["frames"]),
+    "rate": int(fields["rate"]),
+    "bytes": int(fields["bytes"]),
+}
+pathlib.Path(sidecar).write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+PY
   echo "wrote $target ($bytes bytes)"
+  echo "wrote $sidecar (helper monotonic sample-zero anchor)"
   exit 0
 fi
 

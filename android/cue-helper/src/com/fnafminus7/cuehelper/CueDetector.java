@@ -1,14 +1,19 @@
 package com.fnafminus7.cuehelper;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -34,6 +39,28 @@ public final class CueDetector {
     private static final long MAX_PAST_OPEN_NS = 250_000_000L;
     private static final double MAX_CLIPPED_FRACTION = 0.001;
     private static final double SILENCE_RMS = 3.0;
+    private static final int MAX_EVENTS = 32;
+    private static final int MAX_MODEL_BYTES = 1_000_000;
+    // Adjacent NCC positions and alternate templates for one spoken clip must
+    // not become multiple route movements. Different cue classes are retained
+    // independently, so BB's voice + bang composite survives this filter.
+    private static final long SAME_CUE_REFRACTORY_NS = 300_000_000L;
+
+    private static final class Event {
+        String cue;
+        String template;
+        long cueNs;
+        double score;
+        double margin;
+
+        Event(String cue, String template, long cueNs, double score, double margin) {
+            this.cue = cue;
+            this.template = template;
+            this.cueNs = cueNs;
+            this.score = score;
+            this.margin = margin;
+        }
+    }
 
     public static final class Template {
         final String cue;
@@ -58,14 +85,18 @@ public final class CueDetector {
     public static final class Model {
         final String calibration;
         final String evidence;
+        final String reportSha256;
+        final String sourceSha256;
         final double margin;
         final Template[] templates;
         final int maxTemplateSamples;
 
-        Model(String calibration, String evidence, double margin,
-                Template[] templates) {
+        Model(String calibration, String evidence, String reportSha256, String sourceSha256,
+                double margin, Template[] templates) {
             this.calibration = calibration;
             this.evidence = evidence;
+            this.reportSha256 = reportSha256;
+            this.sourceSha256 = sourceSha256;
             this.margin = margin;
             this.templates = templates;
             int longest = 0;
@@ -77,20 +108,38 @@ public final class CueDetector {
 
         /** Read the deliberately small, auditable cue-model-v1 text format. */
         public static Model read(InputStream input) throws IOException {
+            ByteArrayOutputStream copy = new ByteArrayOutputStream();
+            byte[] block = new byte[8192];
+            int read;
+            while ((read = input.read(block)) != -1) {
+                if (copy.size() + read > MAX_MODEL_BYTES) {
+                    throw new IOException("model-too-large");
+                }
+                copy.write(block, 0, read);
+            }
+            byte[] source = copy.toByteArray();
+            String sourceSha256 = digest(source);
             BufferedReader reader = new BufferedReader(new InputStreamReader(
-                    input, StandardCharsets.US_ASCII));
+                    new ByteArrayInputStream(source), StandardCharsets.US_ASCII));
             String header = reader.readLine();
             if (header == null || !header.startsWith("cue-model-v1 ")) {
                 throw new IOException("model-header");
             }
             String calibration = field(header, "calibration");
             String evidence = field(header, "evidence");
+            String reportSha256 = field(header, "reportSha256");
             String rate = field(header, "rate");
             String marginText = field(header, "margin");
             if (!safeName(calibration) || !("shadow".equals(evidence)
                     || "heldout".equals(evidence))
                     || !String.valueOf(MODEL_RATE).equals(rate)) {
                 throw new IOException("model-metadata");
+            }
+            if ("heldout".equals(evidence) && !sha256(reportSha256)) {
+                throw new IOException("model-holdout-report");
+            }
+            if ("shadow".equals(evidence) && reportSha256 != null) {
+                throw new IOException("model-holdout-report");
             }
             double margin = parseUnit(marginText, "model-margin");
             List<Template> templates = new ArrayList<>();
@@ -140,8 +189,21 @@ public final class CueDetector {
             if (templates.isEmpty()) {
                 throw new IOException("model-empty");
             }
-            return new Model(calibration, evidence, margin,
+            return new Model(calibration, evidence, reportSha256, sourceSha256, margin,
                     templates.toArray(new Template[0]));
+        }
+
+        private static String digest(byte[] source) throws IOException {
+            try {
+                byte[] digest = MessageDigest.getInstance("SHA-256").digest(source);
+                StringBuilder out = new StringBuilder(64);
+                for (byte value : digest) {
+                    out.append(String.format(Locale.US, "%02x", value & 0xff));
+                }
+                return out.toString();
+            } catch (NoSuchAlgorithmException error) {
+                throw new IOException("model-sha256-unavailable", error);
+            }
         }
 
         private static String field(String line, String name) {
@@ -165,6 +227,19 @@ public final class CueDetector {
                 throw new IOException(reason, error);
             }
         }
+
+        private static boolean sha256(String value) {
+            if (value == null || value.length() != 64) {
+                return false;
+            }
+            for (int i = 0; i < value.length(); i++) {
+                char c = value.charAt(i);
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     private Model model;
@@ -182,8 +257,10 @@ public final class CueDetector {
     private String windowMode;
     private long windowOpenNs;
     private long windowCloseNs;
-    private Set<String> windowCues = Set.of();
+    private Set<String> windowCues = Collections.emptySet();
     private String terminal;
+    private final Event[] events = new Event[MAX_EVENTS];
+    private int eventCount;
     private long windowInputSamples;
     private long windowEnergy;
     private long windowClipped;
@@ -247,6 +324,7 @@ public final class CueDetector {
         windowCloseNs = closeNs;
         windowCues = cues;
         terminal = null;
+        eventCount = 0;
         windowInputSamples = 0;
         windowEnergy = 0;
         windowClipped = 0;
@@ -267,7 +345,8 @@ public final class CueDetector {
         if (terminal != null) {
             return terminal;
         }
-        return "PENDING window=" + windowId + " closeNs=" + windowCloseNs;
+        return "PENDING window=" + windowId + " closeNs=" + windowCloseNs
+                + " count=" + eventCount + formatEvents();
     }
 
     /** Feed one AudioRecord read. No objects are allocated in this method. */
@@ -329,7 +408,10 @@ public final class CueDetector {
         }
         String state = windowId == null ? "READY" : terminal == null ? "ARMED" : "RESULT";
         return "detector=" + state + " calibration=" + model.calibration
-                + " evidence=" + model.evidence + " templates=" + model.templates.length;
+                + " evidence=" + model.evidence
+                + " modelSha256=" + model.sourceSha256
+                + (model.reportSha256 == null ? "" : " reportSha256=" + model.reportSha256)
+                + " templates=" + model.templates.length;
     }
 
     private void appendModelSample(short value, long sampleNs) {
@@ -400,10 +482,53 @@ public final class CueDetector {
         while (start < 0) {
             start += history.length;
         }
-        terminal = String.format(Locale.US,
-                "HIT window=%s cue=%s template=%s cueNs=%d score=%.4f margin=%.4f mode=%s",
-                windowId, first.cue, first.id, historyNs[start], firstScore,
-                firstScore - other, windowMode);
+        recordEvent(first.cue, first.id, historyNs[start], firstScore,
+                firstScore - other);
+    }
+
+    private void recordEvent(String cue, String template, long cueNs,
+            double score, double margin) {
+        for (int i = eventCount - 1; i >= 0; i--) {
+            Event previous = events[i];
+            if (!previous.cue.equals(cue)) {
+                continue;
+            }
+            if (cueNs - previous.cueNs >= SAME_CUE_REFRACTORY_NS) {
+                break;
+            }
+            // Keep the strongest alignment for one physical cue. Its onset is
+            // still the template onset associated with that strongest score.
+            if (score > previous.score) {
+                previous.template = template;
+                previous.cueNs = cueNs;
+                previous.score = score;
+                previous.margin = margin;
+            }
+            return;
+        }
+        if (eventCount == events.length) {
+            markFault("event-overflow");
+            return;
+        }
+        events[eventCount++] = new Event(cue, template, cueNs, score, margin);
+    }
+
+    private String formatEvents() {
+        if (eventCount == 0) {
+            return " events=none";
+        }
+        StringBuilder out = new StringBuilder(" events=");
+        for (int i = 0; i < eventCount; i++) {
+            if (i > 0) {
+                out.append(',');
+            }
+            Event event = events[i];
+            out.append(event.cue).append(':').append(event.template).append(':')
+                    .append(event.cueNs).append(':')
+                    .append(String.format(Locale.US, "%.4f", event.score)).append(':')
+                    .append(String.format(Locale.US, "%.4f", event.margin));
+        }
+        return out.toString();
     }
 
     private void completeIfExpired(long nowNs) {
@@ -428,6 +553,12 @@ public final class CueDetector {
             terminal = "UNKNOWN window=" + windowId + " reason=silent mode=" + windowMode;
             return;
         }
+        if (eventCount > 0) {
+            terminal = "HIT window=" + windowId + " count=" + eventCount
+                    + formatEvents() + " closeNs=" + windowCloseNs
+                    + " mode=" + windowMode;
+            return;
+        }
         terminal = String.format(Locale.US,
                 "MISS window=%s closeNs=%d bestCue=%s template=%s score=%.4f mode=%s",
                 windowId, windowCloseNs, bestCue, bestTemplate, bestScore, windowMode);
@@ -450,7 +581,7 @@ public final class CueDetector {
     private void clearWindow() {
         windowId = null;
         windowMode = null;
-        windowCues = Set.of();
+        windowCues = Collections.emptySet();
         terminal = null;
         faultReason = null;
     }

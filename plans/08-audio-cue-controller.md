@@ -813,10 +813,19 @@ prerequisite plumbing they were waiting on, not their evidence. Specifically:
    again — background-subtracted log-band class margins, not the between-cue NCC
    margin the Java computes. Derive both or retract them; a favourable number
    with no derivation is the defect this repository exists to avoid.
-2. **`heldout` promotion is honour-system.** `export-model.py --holdout-report`
-   SHA-256s whatever file it is pointed at, and `Model.read` then **ignores
-   `reportSha256` entirely**. Any file promotes any model to the evidence level
-   that unlocks control mode. Either verify the hash or stop calling it a gate.
+2. ~~**`heldout` promotion is honour-system.**~~ **CLOSED 2026-08-27.**
+   `Model.read` still cannot verify this on-device (it never receives the
+   report), so the gate lives host-side in `provision-cue-model.sh`, which now
+   refuses a heldout model unless a report is supplied whose hash matches the
+   model's `reportSha256=`, whose own JSON is a passing whole-session-split
+   holdout, and whose `model_sha256` matches a reconstruction of the exact
+   shadow-form bytes it claims to have scored -- not merely *a* passing report
+   attached to the wrong model. That last check was the actual gap: the first
+   two alone let a genuinely-passing report from one promotion be hand-copied
+   onto an unrelated model's header, since nothing compared the report's own
+   claim against these templates. `test-provision-cue-model.sh` proves it: the
+   same fixture with only that check removed installs a passing-but-wrong
+   model clean.
 3. **Background subtraction is silently absent on device.** Package 2 fixed it
    *by measurement* as an operating rule — contamination manufactures thud
    detections, with a raw 0.835 scored on a window that cannot contain one.

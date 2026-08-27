@@ -157,6 +157,7 @@ const ENGINE = [
   // Foxy between two panels meant to be compared).
   ['deathchart', ['device/test-deathchart.mjs']],
   ['human floor', ['device/test-human-floor.sh']],
+  ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,
   // replay and receive a verdict priced against ITS OWN AI table. Nights 1 and
   // 3 used to crash the builder on one shared message that covered two
@@ -288,6 +289,10 @@ const ENGINE = [
   ['sweepcheck discriminator', ['device/test-sweepcheck.py']],
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
   ['cuetest', ['cue/test-cue.py']],
+  ['BB cue state', ['device/test-bb-cue-state.mjs']],
+  ['cue shadow evaluator', ['cue/test-evaluate-shadow.py']],
+  ['cue shadow window builder', ['cue/test-build-shadow-windows.py']],
+  ['cue model promotion', ['cue/test-export-model.py']],
 ];
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],

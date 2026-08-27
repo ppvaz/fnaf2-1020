@@ -21,6 +21,7 @@ the helper still cannot judge whether that report's experiment was sound.
 import argparse
 import base64
 import hashlib
+import json
 import re
 import struct
 import sys
@@ -60,44 +61,80 @@ def resample_core(path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--refs", required=True)
-    parser.add_argument("--cue", action="append", required=True,
+    parser.add_argument("--refs")
+    parser.add_argument("--cue", action="append",
                         help="CUE=HANDLE[,HANDLE...] (repeatable)")
-    parser.add_argument("--threshold", action="append", required=True,
+    parser.add_argument("--threshold", action="append",
                         help="CUE=SCORE; no threshold is guessed")
-    parser.add_argument("--margin", type=float, required=True)
-    parser.add_argument("--calibration", required=True)
+    parser.add_argument("--margin", type=float)
+    parser.add_argument("--calibration")
     parser.add_argument("--evidence", choices=("shadow", "heldout"),
                         default="shadow")
     parser.add_argument("--holdout-report")
+    parser.add_argument("--shadow-model",
+                        help="exact evidence=shadow model evaluated by the report")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
-    if not SAFE.fullmatch(args.calibration):
-        parser.error("--calibration must use letters, numbers, dot, dash, or underscore")
-    if not 0.0 <= args.margin <= 1.0:
-        parser.error("--margin must be in 0..1")
-    try:
-        cues = parse_mapping(args.cue,
-                             lambda text: [int(v) for v in text.split(",")])
-        thresholds = parse_mapping(args.threshold, float)
-    except ValueError as error:
-        parser.error(str(error))
-    if set(cues) != set(thresholds):
-        parser.error("every --cue needs exactly one matching --threshold")
-    if any(not 0.0 <= value <= 1.0 for value in thresholds.values()):
-        parser.error("thresholds must be in 0..1")
-
     report_hash = None
+    promoted_lines = None
     if args.evidence == "heldout":
-        if not args.holdout_report:
-            parser.error("heldout evidence requires --holdout-report")
+        if not args.holdout_report or not args.shadow_model:
+            parser.error("heldout evidence requires --holdout-report and --shadow-model")
+        if any(value is not None for value in
+               (args.refs, args.cue, args.threshold, args.margin, args.calibration)):
+            parser.error("heldout promotion copies the exact shadow model; do not supply "
+                         "refs, cues, thresholds, margin, or calibration")
         report = Path(args.holdout_report)
         if not report.is_file():
             parser.error("holdout report does not exist")
+        shadow = Path(args.shadow_model)
+        if not shadow.is_file():
+            parser.error("shadow model does not exist")
+        try:
+            evidence = json.loads(report.read_text())
+        except (OSError, json.JSONDecodeError) as error:
+            parser.error("invalid holdout report: %s" % error)
+        if evidence.get("schema") != "cue-holdout-v1" or evidence.get("verdict") != "pass":
+            parser.error("holdout report is not a passing cue-holdout-v1 report")
+        shadow_bytes = shadow.read_bytes()
+        if evidence.get("model_sha256") != hashlib.sha256(shadow_bytes).hexdigest():
+            parser.error("holdout report does not evaluate the supplied shadow model")
+        try:
+            promoted_lines = shadow_bytes.decode("ascii").splitlines()
+        except UnicodeDecodeError:
+            parser.error("shadow model is not ASCII")
+        if not promoted_lines or " evidence=shadow " not in promoted_lines[0]:
+            parser.error("--shadow-model is not an evidence=shadow cue-model-v1")
+        if not promoted_lines[0].startswith("cue-model-v1 ") or \
+                " reportSha256=" in promoted_lines[0]:
+            parser.error("shadow model header is invalid")
         report_hash = hashlib.sha256(report.read_bytes()).hexdigest()
+        promoted_lines[0] = promoted_lines[0].replace(
+            " evidence=shadow ", " evidence=heldout ", 1) + \
+            " reportSha256=" + report_hash
     elif args.holdout_report:
         parser.error("--holdout-report is only meaningful with evidence=heldout")
+    elif args.shadow_model:
+        parser.error("--shadow-model is only meaningful with evidence=heldout")
+    else:
+        if not all(value is not None for value in
+                   (args.refs, args.cue, args.threshold, args.margin, args.calibration)):
+            parser.error("shadow export requires refs, cues, thresholds, margin, and calibration")
+        if not SAFE.fullmatch(args.calibration):
+            parser.error("--calibration must use letters, numbers, dot, dash, or underscore")
+        if not 0.0 <= args.margin <= 1.0:
+            parser.error("--margin must be in 0..1")
+        try:
+            cues = parse_mapping(args.cue,
+                                 lambda text: [int(v) for v in text.split(",")])
+            thresholds = parse_mapping(args.threshold, float)
+        except ValueError as error:
+            parser.error(str(error))
+        if set(cues) != set(thresholds):
+            parser.error("every --cue needs exactly one matching --threshold")
+        if any(not 0.0 <= value <= 1.0 for value in thresholds.values()):
+            parser.error("thresholds must be in 0..1")
 
     root = Path(__file__).resolve().parents[2]
     output = Path(args.output).resolve()
@@ -111,25 +148,28 @@ def main():
     if output.exists():
         parser.error(f"refusing to overwrite {output}")
 
-    refs = Path(args.refs)
-    lines = [
-        "cue-model-v1 calibration=%s evidence=%s rate=%d margin=%.6f%s" % (
-            args.calibration, args.evidence, MODEL_RATE, args.margin,
-            " reportSha256=" + report_hash if report_hash else "")
-    ]
-    count = 0
-    for cue, handles in cues.items():
-        for handle in handles:
-            path = refs / f"s{handle:04d}.wav"
-            if not path.is_file():
-                parser.error(f"missing reference {path}")
-            pcm = resample_core(path)
-            encoded = base64.b64encode(pcm).decode("ascii")
-            lines.append("template cue=%s id=%d threshold=%.6f pcm=%s" % (
-                cue, handle, thresholds[cue], encoded))
-            count += 1
-    if count > 16:
-        parser.error("the helper accepts at most 16 templates")
+    if promoted_lines is not None:
+        lines = promoted_lines
+        count = sum(line.startswith("template ") for line in lines)
+    else:
+        refs = Path(args.refs)
+        lines = [
+            "cue-model-v1 calibration=%s evidence=%s rate=%d margin=%.6f" % (
+                args.calibration, args.evidence, MODEL_RATE, args.margin)
+        ]
+        count = 0
+        for cue, handles in cues.items():
+            for handle in handles:
+                path = refs / f"s{handle:04d}.wav"
+                if not path.is_file():
+                    parser.error(f"missing reference {path}")
+                pcm = resample_core(path)
+                encoded = base64.b64encode(pcm).decode("ascii")
+                lines.append("template cue=%s id=%d threshold=%.6f pcm=%s" % (
+                    cue, handle, thresholds[cue], encoded))
+                count += 1
+        if count > 16:
+            parser.error("the helper accepts at most 16 templates")
 
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines) + "\n", encoding="ascii")

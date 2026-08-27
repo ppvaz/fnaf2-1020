@@ -11,13 +11,18 @@ public final class CueDetectorTest {
 
     public static void main(String[] args) throws Exception {
         short[] bang = signal(400, 0x12345678, 9_000);
+        short[] voice21 = signal(400, 0x21bb21bb, 6_000);
+        short[] voice23 = signal(400, 0x23bb23bb, 6_000);
         short[] step = signal(400, 0x7357abcd, 7_000);
-        CueDetector.Model parsed = parseModel("shadow", bang, step);
-        check(parsed.templates.length == 2, "model parser keeps both templates");
+        CueDetector.Model parsed = parseModel("shadow", bang, voice21, voice23, step);
+        check(parsed.templates.length == 4, "model parser keeps every BB cue template");
         check(parsed.maxTemplateSamples == 400, "model parser records longest core");
 
         CueDetector detector = new CueDetector();
         detector.setModel(parsed);
+        check(detector.status().contains("modelSha256=")
+                        && detector.status().matches(".*modelSha256=[0-9a-f]{64}.*"),
+                "status binds observations to the exact model bytes");
         long start = 1_000_000_000L;
         check(detector.arm("w-control", "bang", start, start + 2_000_000_000L,
                 "control", start).equals("ERROR detector-model-not-promoted"),
@@ -27,12 +32,29 @@ public final class CueDetectorTest {
                 "shadow", start);
         check(armed.startsWith("OK armed=w-hit"), "shadow window arms");
         short[] capture = noise(16_000 * 2, 0x5eed, 120);
-        injectUpsampled(capture, 8_000, bang, 4, 12_000);
+        injectUpsampled(capture, 7_040, voice21, 4, 12_000);
+        injectUpsampled(capture, 9_024, bang, 4, 12_000);
         detector.accept(capture, capture.length, 16_000, start + 2_000_000_000L);
         String hit = detector.result("w-hit", start + 2_000_000_000L);
-        check(hit.startsWith("HIT window=w-hit cue=bang template=17"),
-                "the matching cue produces a timestamped hit");
+        check(hit.startsWith("HIT window=w-hit count=2"),
+                "one window retains both halves of a composite cue: " + hit);
+        check(hit.contains("events=bb_voice:21:") && hit.contains(",bang:17:"),
+                "the composite result names and timestamps voice plus bang");
         check(hit.contains("mode=shadow"), "the result retains its promotion mode");
+
+        detector.setModel(parsed);
+        long pendingStart = 3_000_000_000L;
+        detector.arm("w-pending", "bb_voice", pendingStart,
+                pendingStart + 2_000_000_000L, "shadow", pendingStart);
+        short[] firstHalf = noise(16_000, 0x1234, 120);
+        injectUpsampled(firstHalf, 4_032, voice23, 4, 12_000);
+        detector.accept(firstHalf, firstHalf.length, 16_000,
+                pendingStart + 1_000_000_000L);
+        String pending = detector.result("w-pending",
+                pendingStart + 1_000_000_000L);
+        check(pending.startsWith("PENDING window=w-pending")
+                        && pending.contains("count=1 events=bb_voice:23:"),
+                "a partial window exposes retained events without terminating");
 
         detector.setModel(parsed);
         long missStart = 4_000_000_000L;
@@ -66,7 +88,7 @@ public final class CueDetectorTest {
                         .contains("reason=unsupported-rate"),
                 "an unsupported capture rate fails closed");
 
-        detector.setModel(parseModel("heldout", bang, step));
+        detector.setModel(parseModel("heldout", bang, voice21, voice23, step));
         long promotedStart = 10_000_000_000L;
         check(detector.arm("w-promoted", "bang", promotedStart,
                         promotedStart + 1_000_000_000L, "control", promotedStart)
@@ -78,14 +100,25 @@ public final class CueDetectorTest {
         expectModelError("bad header\n", "model-header");
         expectModelError("cue-model-v1 calibration=x evidence=shadow rate=8000 margin=.1\n",
                 "model-metadata");
+        expectModelError("cue-model-v1 calibration=x evidence=heldout rate=4000 margin=.1\n"
+                        + templateLine("bang", "17", 0.72, bang),
+                "model-holdout-report");
+        expectModelError("cue-model-v1 calibration=x evidence=shadow rate=4000 margin=.1 "
+                        + "reportSha256=" + "a".repeat(64) + "\n"
+                        + templateLine("bang", "17", 0.72, bang),
+                "model-holdout-report");
         System.out.println("cue detector: " + checks + " checks passed");
     }
 
     private static CueDetector.Model parseModel(String evidence, short[] bang,
-            short[] step) throws Exception {
+            short[] voice21, short[] voice23, short[] step) throws Exception {
         String text = "cue-model-v1 calibration=synthetic evidence=" + evidence
-                + " rate=4000 margin=0.05\n"
+                + " rate=4000 margin=0.05"
+                + ("heldout".equals(evidence)
+                        ? " reportSha256=" + "a".repeat(64) : "") + "\n"
                 + templateLine("bang", "17", 0.72, bang)
+                + templateLine("bb_voice", "21", 0.72, voice21)
+                + templateLine("bb_voice", "23", 0.72, voice23)
                 + templateLine("footstep", "25", 0.72, step);
         return CueDetector.Model.read(new ByteArrayInputStream(
                 text.getBytes(StandardCharsets.US_ASCII)));
