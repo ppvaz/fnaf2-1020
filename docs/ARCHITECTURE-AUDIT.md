@@ -332,6 +332,42 @@ Two adjacent traps worth naming in the same breath:
 timing constant is retuned — and PROGRESS names actuator lateness as the very
 next thing to retune.
 
+**Partly resolved 2026-08-26, and the rounding half was bigger than measured
+above.** The table in this finding checks only `rawX` and only three taps. Run
+over the whole coordinate set — `coords.sh`'s taps plus `desync-scan.py`'s
+camera table, 39 points — and including the `rawY = x * 9 / 20` axis this
+finding never checked, **24 of 39 coordinates disagreed**, not three. Among
+them `cam11`, which `hid-sweep-probe.mjs` actually sweeps: the probe that
+measures what the phone accepts was sending a coordinate the runner never
+sends, while the auditor that decides what the game did was keyed to a third.
+
+`hid-sweep-probe.mjs` now floors. The runner wins the tie because it is what
+presses the phone, and the auditor must match the runner or it attributes
+presses to the wrong control.
+
+`tools/device/test-screen-map.mjs` holds all three implementations to one
+answer, evaluating the shell and Python forms in their own interpreters over
+the real tables rather than restating them. It also pins the *truncation*, so
+the check cannot be satisfied by changing all three copies to round together —
+which would silently re-aim every coordinate this project has calibrated.
+
+This is the shape this document's own closing section names as the sanctioned
+answer: `sourcetest.mjs:533`'s second Fusion LCG, asserted bit-exact against
+`src/rng.js`, is "the one duplication in the repository that is a *control*
+rather than a hazard … the pattern findings 2 and 6 are missing." Shell cannot
+import JS, so for a cross-language constant the control **is** the fix.
+
+**Still open, and blocked rather than deferred:** the *timing* constants
+(`FUSION_POLL_MS`, the 100 ms contact floor, `MONITOR_ANIM_DOWN_MS`, the 180 ms
+seam, the lateness band) are still hand-copied, and closing them means editing
+`trial-minus7.sh`, which was carrying a live device run. `test-plan-interpreter.sh`
+reading runner constants by `grep -m1` is part of the same knot: the reason the
+constants live in the runner at all is that the runner is the only thing all
+three languages can read, and it can only be read by grepping it. A
+`constants.sh` both the runner and the test source would break that knot, and
+is the natural first cut of the file-size split recorded in the follow-up audit
+below.
+
 **Recommendation: package in `plans/14`.** Plan 14 already owns "every
 device-facing number" and its package 2 makes a profile "the single source for
 the values `coords.sh` currently hardcodes". Extend its packages 1–2 to cover
@@ -560,3 +596,147 @@ Recorded so they can be dropped rather than carried:
 repository that is a *control* rather than a hazard — it is asserted bit-exact
 against `src/rng.js` over 20,000 draws, and it is the pattern findings 2 and 6
 are missing.
+
+---
+
+# Second pass, 2026-08-26: legibility, maintainability, coherence
+
+The audit above hunts *correctness* hazards. This pass asks the other three
+questions, and starts by checking the record above against the tree — because
+the first thing it found is that the record was wrong in both directions.
+
+Everything below was verified directly, and the engine suite was green
+(`node tools/test.mjs --engine`) before and after.
+
+## What the records got wrong about themselves
+
+**Both tracking documents disagreed with the tree, and with each other.** This
+is the failure this repository rates highest, because a wrong record is worse
+than a missing one: a reader trusts "resolved" and stops looking.
+
+- `PROGRESS.md` said audit findings "1, 2 and 4 are resolved". Finding 2 was
+  not. It is now, and this document's finding 2 carries the correction —
+  including that the count of four copies was itself wrong. There were five,
+  and the one this document listed as already fixed was `screenstate.py`'s
+  live `--adb-fast` watchdog, which nothing had ever run.
+- `PROGRESS.md`'s resume block — the first thing a cold session reads — said
+  the tree was dirty and the suite red on an in-flight source pass. That pass
+  had landed in `47dcd1b`; the tree was clean and every check passed. Plan 13's
+  next gate was pointed at a reconciliation that had already happened.
+- `PROGRESS.md` listed two `trial-minus7.sh` defects as "found and not fixed"
+  while citing, eight lines above, the commit that fixed them (`98eb7ff`).
+- The headline read `29 of 89` in the header and `29/88` two screens down.
+- Finding 7 above had had three of its five orphan gates wired in with nothing
+  recorded, so the document overstated the problem while `PROGRESS` understated
+  it.
+
+None of these were hard to find. Nothing recomputes any of them, which is the
+whole point: **the parts of this repository that are checked stay true, and the
+parts that are asserted drift.** Every fix in this pass is therefore a gate,
+not just a correction.
+
+## 11. The indexes had drifted, and nothing recomputed them
+
+`docs/README.md` routes "Find the right command" to `tools/TOOLS.md`, which was
+**missing 47 of 137 tool scripts.** Among them `grade-run.sh` — the one command
+CLAUDE.md says to run before quoting any number off a device run — plus
+`grade-night.py` ("the only number that is a run length") and `desync-scan.py`
+("only `desync-scan.py` says what the game did"). `docs/README.md` was itself
+missing 5 of 32 pages, one being `HID-MULTITOUCH.md`: 26 inbound references,
+and the page CLAUDE.md's read-before-concluding table points at for any device
+claim.
+
+This is CLAUDE.md's "an instrument nobody runs is a comment" one layer up — an
+instrument nobody can *find*. `test-grade-run-coverage.mjs` gates wiring;
+nothing gated discoverability.
+
+`ONE-PIXEL-VISION.md` also linked three files under gitignored `captures/` that
+exist for no reader and that no script regenerates.
+
+**Resolved.** `tools/test-docs.mjs` checks that every link resolves, every
+`docs/` page is indexed, and every tool script has a **table entry**. A mention
+in prose is not an entry — the first version of that check used a substring
+match and passed on tools that had no row, which is exactly how the drift hid.
+
+## 12. Gates that ran nowhere, cited as the reason not to check
+
+Finding 7's remainder, plus a mechanism it did not name. Exclusion reasons in
+`test-grade-run-coverage.mjs` are free text and **nothing parsed them**, so a
+script could drop out of coverage by citing a gate that did not exist or did
+not run — and four did.
+
+**Resolved.** The gate now resolves every `test-*` file a reason cites and
+fails when it does not exist or is registered nowhere; the `test-*` skip reads
+`tools/test.mjs` and `ci.yml` instead of asserting in a comment; and the
+directory scan covers `tools/cue` and `tools/dump`, which were outside the rule
+entirely — the source of CLAUDE.md's own purest example.
+
+*The instructive part:* the first version used a substring match and its
+positive control failed, because a **comment** in `tools/test.mjs` naming
+`test-select-adb.sh` satisfied the check while the registry entry was deleted.
+A check a mention can satisfy measures documentation.
+
+## 13. `trial-minus7.sh` is 2934 lines against a 2000-line ceiling — OPEN
+
+The global working agreement sets ~2000 lines as a hard ceiling. The runner is
+**47% over it**, it is the file that touches the phone, and it has exactly one
+section header in its whole length. It shed 378 dead lines this week and is
+still over. Nothing enforces the ceiling.
+
+Four seams are already near-separable: session/watchdog lifecycle, the HID
+primitives, the timing helpers, and the plan interpreter (the one block that is
+already fenced with a header).
+
+The strongest argument for starting is not the line count. It is that
+`test-plan-interpreter.sh` reads the runner's constants **by grepping the shell
+file** and lifts its functions out by `awk`. That is not a test harness reaching
+into an implementation by choice — it is the only interface the file offers,
+and it is why `grep -m1` once asserted against a constant defined twice. A
+`constants.sh` that both the runner and the test source would delete that
+coupling, and is also the first cut of finding 6's timing half.
+
+**Not attempted, and the reason is not judgement:** a device run was live in
+`trial-minus7.sh` for the duration of this pass, and bash reads scripts
+incrementally — editing one mid-run corrupts execution. Deferred deliberately,
+with the seams named so the next session does not re-derive them.
+
+## 14. `tools/device` is 83 scripts in one flat directory — PARTLY ADDRESSED
+
+Probes, graders, builders, libraries, launchers, helpers and tests are all
+siblings, and the taxonomy that should be the directory structure exists
+instead as ~40 free-text reason strings in `test-grade-run-coverage.mjs`'s
+exclusion map: *builder, probe, library, launcher, helper, grader*. Those
+categories are real and consistently used.
+
+**What was done:** the reasons are now *parsed* rather than trusted, which
+closes the defect they actually caused (finding 12).
+
+**What was deliberately not done:** the physical move. Relocating 83 files
+would touch `grade-run.sh`'s paths, `tools/test.mjs`, CI, four documents and
+the coverage gate's own scan, in a repository with a second session actively
+committing to it. That is not a surgical refactor, and the legibility gain is
+smaller than the merge risk. Recorded here so it is a decision rather than an
+oversight.
+
+## 15. What is healthy, stated so it is not "fixed" later
+
+The `src/` boundary is clean and enforced by use: 20 tools import
+`../src/config.js`, and nothing in `src/` reaches into `tools/`. The simulator
+is a library the device stack consumes, one-way. That is the part of this
+architecture that is working, and it is why the JS half of finding 6 was never
+the problem — only the half that crosses a language boundary shell cannot see
+across.
+
+## Still open after this pass
+
+- **The runner's size** (13), blocked on the live device run.
+- **Timing constants across three languages** (finding 6's remainder), blocked
+  on the same file. The coordinate half is closed.
+- **The Fusion touch-poll rate** — asserted 30 Hz in eight places, measured
+  never, while the engine runs at 60 FPS. Moved to
+  `HID-MULTITOUCH.md` §"Open: the tick rate is asserted twice and measured
+  never", because it had fallen out of *both* tracking documents: this document
+  filed it as a note deferring to `PROGRESS`, and `PROGRESS` stopped naming it.
+  The *recording*-rate half is closed — `grade-run.sh` now probes with
+  `ffprobe` and refuses a capture that is not the rate its graders assume.
+- **Findings 3, 5, 9, 10 above**, untouched by this pass.

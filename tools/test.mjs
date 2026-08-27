@@ -234,6 +234,13 @@ const ENGINE = [
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
   ['cue detector (java)', ['../android/cue-helper/test.sh']],
+  // One screen->raw transform written in shell, Python and JS, held to the
+  // same answer over the real tap table. They disagreed on 24 of 39
+  // coordinates: the probe measuring what the phone accepts was sending
+  // coordinates the runner never sends, and the auditor deciding what the game
+  // did was keyed to a third set. Shell cannot import JS, so a control test is
+  // the answer -- the same shape as sourcetest.mjs's second Fusion LCG.
+  ['screen map', ['device/test-screen-map.mjs']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
