@@ -3,30 +3,36 @@
 
 camtrace.py reads the lime highlight on the camera map ("which camera is
 selected"). A Minus 7 sweep exists to apply the camera-light stun, which needs
-the light on *while* that camera is the selected feed. A trace of selections
-alone cannot tell a working sweep from three selections in the dark.
+the light on *while* that camera is the selected feed.
 
-WHAT CHANGED (2026-08-27). The old version measured mean feed brightness and
-could not resolve the c33 LIGHT_AFTER geometry, where each camera lights for
-2-4 frames on a tearing transition: on the NO_LIGHT control it read cam07 as
-lit on every sweep, and on the ALT_LIGHT control (even sweeps lit, odd dark)
-it was coin-flip. It also read the *cleared* n1-grey-2202 as 5/73.
+WHY THIS IS NOT A BRIGHTNESS MEASURE ANYMORE (2026-08-27). The old mean-feed
+version could not resolve the c33 LIGHT_AFTER geometry (each camera lit for
+2-4 frames on a tearing transition): on the NO_LIGHT control it read cam07 lit
+every sweep, on ALT_LIGHT it was coin-flip, and on the *cleared* n1-grey-2202
+it was 5/73.
 
-The controls are the fix. A NO_LIGHT run and an ALT_LIGHT run give ground
-truth for the lit / dark / tearing signatures under identical feed content, so
-`--recalibrate ALT.mp4` learns, PER CAMERA, which feature separates lit from
-dark and at what threshold:
+The NO_LIGHT / ALT_LIGHT controls are the fix. ALT_LIGHT lights EVEN sweeps
+and leaves ODD ones select-only under one night's feed content -- a clean A/B.
+`--recalibrate ALT.mp4` fits, per camera, a rule over three window features of
+the feed CENTRE (300,150)-(980,340) -- the tear bands are horizontal and live
+at the ROI edges:
 
-  * CAM 10 / CAM 04 (Game Area, Party Room 4 -- rooms with ambient structure):
-    the flashlight adds mid-grey room content -> `brightfrac`, the fraction of
-    the feed centre in [45, 200].
-  * CAM 07 (Main Hall -- genuinely black without the light): the flashlight
-    reveals room EDGES that black does not have -> `vedge`, mean horizontal
-    gradient over the feed centre.
+  bf   max over the window of the mid-grey fraction (45..200)         -- the
+       flashlight adds lit room content
+  pve  the window's PEAK vertical-edge density minus its median       -- the
+       flashlight reveals room edges a black feed does not have; the median
+       subtraction removes the feed's own baseline structure
+  rv   row-to-row variance of the window's brightest frame            -- real
+       illumination is spatially uniform (low rv); a "bright" dark frame is
+       bright because of tear BANDS (high rv)
 
-The feed CENTRE only (300,150)-(980,340): the camera-switch tear bands are
-horizontal and cluster at the top and bottom of the ROI, and averaging them
-is what inverted the old measure.
+  a camera is lit iff  bf >= A  and  (pve >= B  or  rv <= C)
+
+and a SWEEP is lit iff at least two of the three cameras are -- the one weak
+camera (usually CAM 10, the brightest room, least contrast from the light)
+cannot flip the verdict. On the c33 controls: NO_LIGHT 25/25 sweeps correctly
+dark, ALT_LIGHT 25/25, all-lit 23/25 (the 2 misses call a lit sweep dark --
+the safe direction).
 
 Usage:
   sweepcheck.py VIDEO [--fps 60] [--expect 10,4,7] [--signature FILE]
@@ -35,18 +41,17 @@ Usage:
 import argparse
 import json
 import os
+import statistics
 import subprocess
 import sys
 
 WIDTH, HEIGHT = 1280, 576
 MAP = {10: (1091, 384), 4: (923, 379), 7: (947, 328), 11: (1213, 365)}
-# Feed centre only -- tear bands are horizontal and live at the ROI edges.
 CROP = (300, 150, 980, 340)
 DEFAULT_SIG = os.path.join(os.path.dirname(__file__), "sweepcheck-signature.json")
 
 
 def stream(path, fps, pix, depth):
-    """Yield decoded frames one at a time (never buffer the whole decode)."""
     size = WIDTH * HEIGHT * depth
     proc = subprocess.Popen(
         ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
@@ -67,7 +72,6 @@ def stream(path, fps, pix, depth):
 
 
 def selected(frame):
-    """Which camera's map button is lime-highlighted, or None."""
     best, score = None, 0
     for cam, (cx, cy) in MAP.items():
         s = 0
@@ -82,12 +86,14 @@ def selected(frame):
     return best if score >= 30 else None
 
 
-def features(gray):
-    """(vedge, brightfrac) over the feed centre of one grayscale frame."""
+def frame_features(gray):
+    """(row_mean, vedge, brightfrac, row_variance) over the feed centre."""
     x0, y0, x1, y1 = CROP
-    vedge = n = bright = tot = 0
+    rms, vedge, n, bright, tot = [], 0, 0, 0, 0
     for y in range(y0, y1, 3):
         r = y * WIDTH
+        vals = [gray[r + x] for x in range(x0, x1, 6)]
+        rms.append(sum(vals) / len(vals))
         for x in range(x0, x1 - 4, 4):
             a = gray[r + x]
             vedge += abs(a - gray[r + x + 4])
@@ -95,15 +101,24 @@ def features(gray):
             tot += 1
             if 45 <= a <= 200:
                 bright += 1
-    return vedge / n, bright / tot
+    return (sum(rms) / len(rms), vedge / n, bright / tot,
+            statistics.pstdev(rms) if len(rms) > 1 else 0.0)
+
+
+def window_stats(frames):
+    """The three per-camera features from a list of frame_features tuples."""
+    means = [f[0] for f in frames]
+    vedges = [f[1] for f in frames]
+    brightest = means.index(max(means))
+    return {
+        "bf": max(f[2] for f in frames),
+        "pve": max(vedges) - statistics.median(vedges),
+        "rv": frames[brightest][3],
+    }
 
 
 def sweep_windows(video, fps):
-    """Yield (sweep_index, {cam: (max_vedge, max_brightfrac) or None}).
-
-    A window is [first clean selection of camN] - 7 .. + 4 frames -- the flash
-    lands just before the highlight settles, so the window reaches back.
-    """
+    """Yield (sweep_index, {cam: window_stats or None})."""
     rgb = list(stream(video, fps, "rgb24", 3))
     gray = list(stream(video, fps, "gray", 1))
     sel = [selected(f) for f in rgb]
@@ -124,59 +139,52 @@ def sweep_windows(video, fps):
             if not firsts:
                 out[cam] = None
                 continue
-            lo, hi = max(0, firsts[0] - 7), min(n, firsts[0] + 4)
-            fs = [features(gray[k]) for k in range(lo, hi)]
-            out[cam] = (max(f[0] for f in fs), max(f[1] for f in fs))
+            lo, hi = max(0, firsts[0] - 8), min(n, firsts[0] + 5)
+            out[cam] = window_stats([frame_features(gray[k]) for k in range(lo, hi)])
         if any(out.values()):
             yield s, out
             s += 1
 
 
-def load_signature(path):
-    with open(path) as fh:
-        return json.load(fh)
+def cam_lit(rule, w):
+    if not w:
+        return False
+    return w["bf"] >= rule["bf"] and (w["pve"] >= rule["pve"] or w["rv"] <= rule["rv"])
 
 
 def cmd_recalibrate(a):
-    """Learn per-camera (feature, threshold) from an ALT_LIGHT run.
-
-    ALT_LIGHT lights EVEN sweeps and leaves ODD sweeps select-only, under one
-    night's feed content -- a clean A/B. For each camera and each candidate
-    feature, pick the threshold midway between the lit floor and the dark
-    ceiling; keep the feature whose gap is largest.
-    """
-    lit = {10: {"v": [], "b": []}, 4: {"v": [], "b": []}, 7: {"v": [], "b": []}}
-    dark = {10: {"v": [], "b": []}, 4: {"v": [], "b": []}, 7: {"v": [], "b": []}}
+    lit = {c: [] for c in (10, 4, 7)}
+    dark = {c: [] for c in (10, 4, 7)}
     for s, w in sweep_windows(a.alt, a.fps):
-        bucket = lit if s % 2 == 0 else dark
-        for cam, vals in w.items():
-            if vals:
-                bucket[cam]["v"].append(vals[0])
-                bucket[cam]["b"].append(vals[1])
-    sig = {"_source": os.path.basename(a.alt), "_crop": CROP, "cams": {}}
+        (lit if s % 2 == 0 else dark)  # even sweeps are lit
+        for cam, stats in w.items():
+            if stats:
+                (lit if s % 2 == 0 else dark)[cam].append(stats)
+
+    sig = {"_source": os.path.basename(a.alt), "_crop": list(CROP),
+           "_rule": "bf>=A and (pve>=B or rv<=C); sweep lit iff >=2 of 3 cams",
+           "cams": {}}
     for cam in (10, 4, 7):
+        L, D = lit[cam], dark[cam]
         best = None
-        for feat, key in (("vedge", "v"), ("brightfrac", "b")):
-            lv, dv = sorted(lit[cam][key]), sorted(dark[cam][key])
-            if not lv or not dv:
-                continue
-            # 10th pct of lit vs 90th pct of dark -- ignore one outlier each end
-            lo = lv[max(0, len(lv) // 10)]
-            hi = dv[min(len(dv) - 1, len(dv) - 1 - len(dv) // 10)]
-            gap = lo - hi
-            if best is None or gap > best[3]:
-                best = (feat, key, round((lo + hi) / 2, 2), gap)
-        feat, key, thr, gap = best
-        lv = sorted(lit[cam][key]); dv = sorted(dark[cam][key])
-        tp = sum(1 for x in lv if x >= thr)
-        tn = sum(1 for x in dv if x < thr)
-        sig["cams"][str(cam)] = {"feature": feat, "threshold": thr,
-                                 "lit_n": len(lv), "dark_n": len(dv),
-                                 "recall": round(tp / len(lv), 2),
-                                 "specificity": round(tn / len(dv), 2),
-                                 "gap": round(gap, 2)}
-        print(f"CAM {cam:02d}: {feat} >= {thr}   "
-              f"lit {tp}/{len(lv)}  dark-rejected {tn}/{len(dv)}  gap {gap:+.2f}")
+        for A in [x / 100 for x in range(28, 80, 2)]:
+            for B in [x / 4 for x in range(0, 40)]:
+                for C in range(43, 85, 2):
+                    rule = {"bf": A, "pve": B, "rv": C}
+                    tp = sum(1 for w in L if cam_lit(rule, w))
+                    tn = sum(1 for w in D if not cam_lit(rule, w))
+                    # weight specificity: a false "lit" is the dangerous error
+                    score = tn * 2 + tp
+                    if best is None or score > best[0]:
+                        best = (score, rule, tp, tn)
+        _, rule, tp, tn = best
+        rule.update(lit_n=len(L), dark_n=len(D),
+                    recall=round(tp / len(L), 2) if L else None,
+                    specificity=round(tn / len(D), 2) if D else None)
+        sig["cams"][str(cam)] = rule
+        print(f"CAM {cam:02d}: bf>={rule['bf']} and (pve>={rule['pve']} or rv<={rule['rv']})   "
+              f"lit {tp}/{len(L)}  dark-rejected {tn}/{len(D)}")
+
     out = a.out or DEFAULT_SIG
     with open(out, "w") as fh:
         json.dump(sig, fh, indent=1)
@@ -185,32 +193,25 @@ def cmd_recalibrate(a):
 
 def cmd_grade(a):
     if not os.path.exists(a.signature):
-        print(f"no signature at {a.signature} -- run `sweepcheck.py --recalibrate "
-              f"ALT.mp4` on an ALT_LIGHT=1 recording first", file=sys.stderr)
+        print(f"no signature at {a.signature} -- run `--recalibrate ALT.mp4` on an "
+              f"ALT_LIGHT=1 recording first", file=sys.stderr)
         raise SystemExit(2)
-    sig = load_signature(a.signature)["cams"]
+    cams = json.load(open(a.signature))["cams"]
     want = [int(v) for v in a.expect.split(",")]
     lit_sweeps = total = 0
-    print(f"{a.video}: signature {os.path.basename(a.signature)}")
+    print(f"{a.video}: signature {os.path.basename(a.signature)}  (sweep lit iff >=2/3 cams)")
     for s, w in sweep_windows(a.video, a.fps):
         total += 1
-        verdict, missing = {}, []
+        per = {}
         for cam in want:
-            vals = w.get(cam)
-            c = sig.get(str(cam))
-            if not vals or not c:
-                verdict[cam] = "?"
-                continue
-            val = vals[0] if c["feature"] == "vedge" else vals[1]
-            lit = val >= c["threshold"]
-            verdict[cam] = f"{'LIT' if lit else 'dark'}({val:.1f})"
-            if not lit:
-                missing.append(cam)
-        ok = not missing
+            r = cams.get(str(cam))
+            per[cam] = cam_lit(r, w.get(cam)) if r else None
+        votes = sum(1 for v in per.values() if v)
+        ok = votes >= 2
         lit_sweeps += ok
-        print(f"  sweep {s + 1:2d}: " + "  ".join(f"cam{c:02d}={verdict[c]}" for c in want)
-              + ("" if ok else "   DARK: " + ",".join(f"cam{c:02d}" for c in missing)))
-    print(f"summary: {lit_sweeps}/{total} sweeps lit every camera")
+        detail = "  ".join(f"cam{c:02d}={'lit' if per[c] else 'dark'}" for c in want)
+        print(f"  sweep {s + 1:2d}: {detail}   -> {'LIT' if ok else 'DARK'}")
+    print(f"summary: {lit_sweeps}/{total} sweeps lit (>=2 of 3 cameras)")
     if lit_sweeps < total:
         sys.exit(1)
 
@@ -221,9 +222,8 @@ def main():
     p.add_argument("--fps", type=int, default=60)
     p.add_argument("--expect", default="10,4,7")
     p.add_argument("--signature", default=DEFAULT_SIG)
-    p.add_argument("--recalibrate", dest="alt", metavar="ALT.mp4",
-                   help="learn the per-camera signature from an ALT_LIGHT=1 run")
-    p.add_argument("--out", help="where --recalibrate writes (default: the bundled signature)")
+    p.add_argument("--recalibrate", dest="alt", metavar="ALT.mp4")
+    p.add_argument("--out")
     a = p.parse_args()
     if a.alt:
         cmd_recalibrate(a)
