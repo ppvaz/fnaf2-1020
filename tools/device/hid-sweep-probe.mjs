@@ -88,6 +88,13 @@ export function stream(spacings, { readyMs = 7000,
   delay(readyMs);
   tap(COORDS.monitor);
   delay(900);
+  // Park on CAM 11 before the first sweep too, not only between them. Without
+  // this, sweep 1's start depends on whatever camera the monitor opened on --
+  // if that is CAM 10, the first select is a no-op and camtrace reads the
+  // sweep as starting on CAM 04. Every sweep now has a clean CAM 11 boundary
+  // on both sides.
+  tap(COORDS.cam11);
+  delay(1500);
 
   for (const spacing of spacings) {
     const cams = ['cam10', 'cam4', 'cam7'];

@@ -61,9 +61,10 @@ for (const [i, spacing] of SPACINGS.entries()) {
 // property, since a reintroduced one would have to appear here.
 const menuTaps = lightPulses.filter(([, , , xy]) => xy !== key(COORDS.light));
 check(menuTaps.map(([, , , xy]) => xy).join(' ') ===
-  [COORDS.monitor, ...SPACINGS.map(() => COORDS.cam11)].map(key).join(' '),
-  'the probe must raise the monitor and park on CAM 11 after each sweep, and ' +
-  'must not select a night itself -- that is menu_select\'s job');
+  // monitor raise, then a CAM 11 park BEFORE the first sweep and one after each
+  [COORDS.monitor, ...Array(SPACINGS.length + 1).fill(COORDS.cam11)].map(key).join(' '),
+  'the probe must raise the monitor and park on CAM 11 before the first sweep ' +
+  'and after each, and must not select a night itself -- that is menu_select\'s job');
 check(!('sixth' in COORDS),
   'COORDS must not carry a title coordinate; menu.sh owns night selection');
 const litPulses = lightPulses.filter(([, , , xy]) => xy === key(COORDS.light));
