@@ -128,6 +128,11 @@ const ENGINE = [
   // buttons, and the trap-2 release discipline. Its self-test runs here; point
   // it at a captured trace to audit a real run.
   ['hid trace', ['device/test-hid-trace.mjs']],
+  // Joins the emitted plan and the phone on one clock: per-anchor residual
+  // (planned vs delivered), whether it re-anchors or compounds, and the
+  // intra-macro sweep spacing against what the plan emitted. The number the
+  // perfect-experiment run (plans/17) reads. Self-test only here.
+  ['drift trace', ['device/test-drifttrace.mjs']],
   // The other half of that oracle: the trace says what the phone was sent, and
   // this says whether the game acted on it. A monitor press the port drops
   // inverts every later cycle silently, so the run keeps producing schedule

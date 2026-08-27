@@ -173,6 +173,16 @@ if [ -f "$TRACE" ]; then
   step "input defects (contact lengths, released time, latched contacts, zero delays)" \
     node "$HERE/test-hid-trace.mjs" "$TRACE"
 
+  # 2a. How far is DELIVERED from PLANNED for every wall-timed press, and does
+  #     that gap re-anchor each boundary or compound across the night? The
+  #     auditor above says the stream is legal; this says how close it landed
+  #     to the plan. Reads the emitted plan when the run saved one, so an
+  #     experiment at --device-spacing-ms=113 is graded against 113.
+  DRIFT_PLAN=""
+  [ -f "$CAPTURES/$RUN-device-plan.txt" ] && DRIFT_PLAN="--plan $CAPTURES/$RUN-device-plan.txt"
+  step "plan-vs-phone drift (per-anchor residual, accumulation, sweep spacing)" \
+    node "$HERE/drifttrace.mjs" "$TRACE" $DRIFT_PLAN
+
   # 2b. Did the game act on the presses? The auditor above reads the stream the
   #     phone was sent; this reads the stream against what the screen then did.
   #     A monitor press the game drops inverts every later cycle and nothing in
