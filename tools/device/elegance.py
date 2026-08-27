@@ -16,9 +16,16 @@ An action is NEEDED when the sourced per-night AI table (`src/config.js`,
 It is NOT needed when every threat it answers has peak AI zero -- the engine's
 own `canAct()` is the authority.
 
-An action may answer MORE THAN ONE threat, and pretending otherwise is how this
-tool was first wrong: the held-light sweep stuns whoever the camera marker
-overlaps, not one named character. See SERVES.
+An action may answer MORE THAN ONE threat, or serve a purpose that is not a
+threat at all, and pretending otherwise is how this tool was wrong TWICE. The
+held-light sweep stuns whoever the camera marker overlaps rather than one named
+character; the vent read is simultaneously the Balloon Boy check, the health
+guards and the desync checkpoint. Both were attributed to a single animatronic
+and both then graded as pure waste on a night that animatronic sits out.
+
+That is the standing hazard in this file, not a fixed pair of bugs: this route's
+actions are routinely multi-purpose, so before adding a SERVES row, go and read
+every consumer of the thing it names. See SERVES.
 
 ~~the same one `recipe.mjs` uses to decide whether to emit a branch at all.~~
 **Corrected 2026-08-26: recipe.mjs does not do this.** `--device-plan
@@ -70,7 +77,20 @@ SERVES = [
     # The hall flash is different and does stay Foxy's: it is the office
     # hallway, not a camera, and it is his reset rather than a marker stun.
     (r"hall|flash-hall",              "foxy"),        # the Foxy reset flash
-    (r"left-vent|left-view|classify-bb|bb-left", "bb"),
+    # The vent read is NOT Balloon Boy's alone, and calling it his was the
+    # second instance of the same modelling error as the sweep above -- caught
+    # before it was acted on, but only just. One capture feeds three consumers
+    # in 12-night-loop.sh: the `bb */empty *` branch decision, the
+    # blind_streak/nolight_streak health guards, and `monitor_seen`, which is
+    # the desync checkpoint (08-bb-threat-response.sh:68). On a night where
+    # canAct(n,'bb') is false the read still carries the other two, so grading
+    # it as waste would have recommended deleting the desync detector from
+    # Night 1 while reporting an elegance gain.
+    #
+    # It is overhead, like @transport: a closed-loop route pays it on every
+    # night regardless of who can act. Counting it as "needed" would be just as
+    # dishonest in the other direction -- it answers no threat by itself.
+    (r"left-vent|left-view|classify-bb|bb-left", "@observation"),
     (r"mask",                         "toys"),
     (r"monitor-(verify|resync)",      "@correction"),
     (r"monitor",                      "@transport"),
