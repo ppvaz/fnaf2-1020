@@ -19,6 +19,9 @@ import subprocess
 import sys
 
 WIDTH, HEIGHT = 1280, 576
+# A feed row varying by less than this across the ROI is a tear band, not
+# scene content. Clean frames carry zero such rows; torn frames carry 17-134.
+BAND_FLAT = 12
 MAP = {10: (1091, 384), 4: (923, 379), 7: (947, 328), 11: (1213, 365)}
 FEED = (60, 60, 620, 430)
 
@@ -83,18 +86,56 @@ def main():
     x0, y0, x1, y1 = FEED
 
     def luma(f):
-        t = c = 0
+        """Mean feed brightness over TEXTURED rows only.
+
+        The camera switch tears the frame, and a torn frame is a composite of
+        two rendered states separated by near-uniform white bands. Averaging
+        the whole ROI counts those bands as brightness and inverts the answer:
+        measured at 60 fps on hid-sweep-probe.mp4, a torn-and-unlit frame reads
+        176-199 while a clean-and-lit one reads 88-92. That is how this tool
+        reported 68/75 sweeps flashed on a night where the flash is not what it
+        was seeing.
+
+        Excluding torn frames instead is no better -- it drops so many that the
+        camera selection stops registering (0/21 on the same recording).
+
+        So drop the band ROWS and keep the picture. A row that varies by less
+        than BAND_FLAT across the ROI is part of a tear, not of the scene.
+        Reference frames, from CAM 11 unless noted, in
+        captures/frames-tearing-vs-flash:
+
+            dark          0 band rows, 18.5
+            lit           0 band rows, 114.6
+            tearing     123 band rows, 21.3
+            tearing+lit 118 band rows, 136.2   (CAM 10 -- absent on CAM 11,
+                                                which is where the sweep
+                                                returns with the light already
+                                                released)
+
+        The measure sees the flash THROUGH a tear, which is what makes it
+        usable: state four is the one that matters and it is not reachable by
+        excluding torn frames.
+
+        A frame with no textured row at all returns None -- fully torn, no
+        opinion. It is not 0, which would read as a confident dark.
+        """
+        textured = []
         for y in range(y0, y1, 4):
             r = y * WIDTH
-            for x in range(x0, x1, 4):
-                t += f[r + x]; c += 1
-        return t / c
+            row = [f[r + x] for x in range(x0, x1, 16)]
+            if max(row) - min(row) >= BAND_FLAT:
+                textured.append(sum(f[r + x] for x in range(x0, x1, 4))
+                                / len(range(x0, x1, 4)))
+        return sum(textured) / len(textured) if textured else None
 
     feed = [luma(f) for f in stream(a.video, a.fps, "gray", 1)]
+    # None = fully torn, no opinion. Never counted as lit and never as dark.
+    readable = sum(1 for f in feed if f is not None)
     sel = [selected(f) for f in stream(a.video, a.fps, "rgb24", 3)]
     # Baseline from the monitor-up frames that are not flashing: the lower
     # quartile of frames where some camera is selected.
-    up = sorted(feed[i] for i, s in enumerate(sel) if s is not None)
+    up = sorted(feed[i] for i, s in enumerate(sel)
+                if s is not None and feed[i] is not None)
     if not up:
         print("no camera ever selected"); raise SystemExit(1)
     base = up[len(up) // 4]
@@ -111,7 +152,7 @@ def main():
         if cam is None:
             continue
         last11 = False
-        if feed[i] >= thresh:
+        if feed[i] is not None and feed[i] >= thresh:
             cur[cam] = cur.get(cam, 0) + 1
     if cur:
         sweeps.append(cur)

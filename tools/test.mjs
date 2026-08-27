@@ -274,6 +274,11 @@ const ENGINE = [
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason -- and
   // every test- gate is actually reachable from this list or from ci.yml.
+  // The tearing-vs-flash discriminator. sweepcheck reported 68/75 sweeps
+  // flashed on a night where it was reading camera-switch tearing: a
+  // torn-and-unlit frame's whole-ROI mean is 173 against a clean-and-lit
+  // frame's 111. Four reference frames pin all four states.
+  ['sweepcheck discriminator', ['device/test-sweepcheck.py']],
   ['grade-run coverage', ['device/test-grade-run-coverage.mjs']],
   ['cuetest', ['cue/test-cue.py']],
 ];
