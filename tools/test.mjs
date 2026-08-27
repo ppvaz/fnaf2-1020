@@ -35,6 +35,10 @@ const ENGINE = [
   ['sourcetest', ['sourcetest.mjs']],
   ['simtest', ['simtest.mjs', '--sweep']],
   ['hidreporttest', ['hidreporttest.mjs']],
+  // Plan 16 pkg 1/3 gates: Sim.snapshot()/restore() bit-identity, the semantic
+  // action layer, and the parameter search harness reproducing the 803feb3
+  // ladder on a zero perturbation.
+  ['minus7 search', ['minus7/test-search.mjs']],
   ['bbtest', ['bbtest.mjs', '200', '--assert']],
   ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
   // The human-slack budget, measured 2026-08-25: reactive Minus 7 holds

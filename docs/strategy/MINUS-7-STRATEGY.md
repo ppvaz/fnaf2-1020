@@ -171,6 +171,20 @@ tolerates D = 5 and only the post-2 AM hours do not. This is exactly what
 `tools/device/human-gate.mjs` exists to refuse: precision, not speed, is what
 separates a human from a machine, and no hand holds a one-frame phase.
 
+**Follow-up, 2026-08-27 (simulator; see `plans/PROGRESS.md` item 11).** The
+emitted device plan replays **400/400 with no jitter on every night 1-7**,
+Night 7 included — the schedule is correct and the sub-70 human-gate ladder is
+entirely an iid-±60 ms robustness result. The fragile row is the attack
+cycle's post-mask Foxy reset at `off + s(0.25)`, which is **exactly
+`MASK_ANIM_OFF`** (15 frames): under independent per-row draws it lands inside
+the mask-off animation about half the time and `hallLightOn` never asserts.
+It cannot simply be delayed — the sweep at `off + s(0.45)` is pinned by the
+400-frame Withered stun budget (pushing it 7 frames collapses nights 5-7 to
+inside-office). A hall pulse fired *during* the read is a valid reset
+(`lightHeld` ⊥ `ventLightL`) but is blocked by Golden Freddy spawning at the
+attack cycle's monitor-up recovery check. The live levers are the
+bang-anchored `off` (PROGRESS item 10) and new device budget (item 8).
+
 ---
 
 ## 4. Start of the night — exact inputs

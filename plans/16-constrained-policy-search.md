@@ -1,9 +1,48 @@
 # Constrained policy search on the exact engine
 
-**Status: proposed 2026-08-27.** Nothing landed. This plan is the structured
-vehicle for the standing goal in `PROGRESS.md` item 9 ("iterate on Minus 7 until
-every night clears 70% under the human-gate"), after two sessions (items 8–11)
-attacked it by hand and reverted clean.
+**Status: in progress 2026-08-27.** Packages 1–3 built; 4–5 searching; 6 not
+started. This plan is the structured vehicle for the standing goal in
+`PROGRESS.md` item 9 ("iterate on Minus 7 until every night clears 70% under the
+human-gate"), after two sessions (items 8–11) attacked it by hand and reverted
+clean.
+
+## Progress log
+
+- **Pkg 1 (done).** `Sim.snapshot()`/`restore()` in `src/engine.js` —
+  bit-identical continuation over 200 seeds (`tools/minus7/test-search.mjs`).
+  `jitterPlan`/`modelGate` in `human-gate.mjs` gained a `shape` arg:
+  `iid` (unchanged default), `common` (one shared per-cycle draw), `correlated`
+  (shared draw + `±round(slackMs/3)` iid). `strategysearch.mjs` un-broken — its
+  stale `buildCycle` is now `genCycle(KNOBS0, order)` shared from `cyclesearch`.
+- **Pkg 2 (done).** Parameter space is `SEARCH_KNOBS` in `hidpilottest.mjs`
+  (exported, default-inert — the 803feb3 plan is byte-identical with every knob
+  0): `attackHallDeltaMs`, `attackSweepDeltaMs`, `attackRstDeltaMs`,
+  `clearHall2DeltaMs`, `phaseMarginDeltaMs`, `hallPulseDeltaMs`, `openGfFlick`.
+  Each floor is in `tools/minus7/paramsearch.mjs` `FLOORS` with its citation.
+  The search state view is `tools/minus7/sim.mjs` `view()` — sourced fields
+  only; office pan, render flicker, sound identity, object handles dropped.
+- **Pkg 3 (done).** `tools/minus7/paramsearch.mjs`: dominance-pruned beam over
+  the parameter space, `recipe.build → devicePlan → modelGate`, Pareto frontier
+  on the per-night survival + seed-CVaR vector, `--admit` re-scores the
+  frontier at 1200 seeds. Reproduces the 803feb3 ladder on a zero perturbation
+  (pinned in the test).
+- **The correlated-shape baseline, the number that reframes the goal.** The
+  unchanged 803feb3 plan, per-cycle `common`/`correlated` slack (the shape
+  `human-gate.mjs`'s own header calls the right one): **n2 ~70, n5 ~63,
+  n6 ~62, n7 ~33** — versus iid's n2 66, n5 62, n6 54, n7 26. The route is
+  materially less fragile than iid says, but n5/n6/n7 still miss 70 with no
+  change, so the search still has to find real gains.
+- **Pkg 4 first pass.** Attack-cycle knobs alone (`attackSweepDeltaMs ≈ -17 ms`,
+  earlier recovery sweep — the safe direction; `attackRstDeltaMs ≈ 7100`, an
+  extra monitor-down hall reset straddling the recovery 5 s check) move n7
+  32.7 → ~38 % under correlated at 350-seed screening. Not enough; n7's death
+  is in the opening (pkg 5), which the attack knobs do not touch.
+- **Not the plan's shape, kept as a probe:** `tools/minus7/{search,policy}.mjs`
+  — a from-scratch semantic-action beam search + reactive policy over the
+  engine (the user's architecture note). They run but a myopic heuristic /
+  untuned reactive policy does not find Minus-7-quality play; a real MCTS with
+  a tuned default policy is unstarted. The parameter search is the one
+  producing results.
 
 ## Why this is not a reopening of Plan 06
 

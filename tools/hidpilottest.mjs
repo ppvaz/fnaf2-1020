@@ -16,8 +16,26 @@ import { Sim } from '../src/engine.js';
 import { DeviceActuator } from './device/actuator.mjs';
 
 const s = C.s;
+const mv = (x) => Math.round(x * C.FPS / 1000);   // ms -> frames
 const TARGETS = [10, 4, 7];
 const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
+
+// Plan 16 (constrained policy search) parameter space: named device-plan
+// timing offsets, each defaulting to a no-op so an unset harness produces the
+// byte-identical 803feb3 plan. `tools/minus7/paramsearch.mjs` mutates this
+// object in-process between build() calls. Every field carries the sourced
+// floor it may not cross, checked in paramsearch's FLOORS table, not here --
+// this file only applies the offset the search chose.
+export const SEARCH_KNOBS = {
+  attackHallDeltaMs: 0,    // leftAttack post-mask reset, off+0.25 -> off+0.25+d  (floor: MASK_ANIM_OFF)
+  attackSweepDeltaMs: 0,   // leftAttack recovery sweep, off+0.45 -> off+0.45+d   (ceil: 400-fr Withered budget)
+  attackRstDeltaMs: 0,     // leftAttack: an extra hall reset in the recovery, d ms into the wind (0 = none)
+  clearHall2DeltaMs: 0,    // leftClear device branch, second reset b+3.10 -> +d
+  phaseMarginDeltaMs: 0,   // leftAttack `off` phase margin, 900 -> 900+d          (floor: ~300, item 8)
+  hallPulseDeltaMs: 0,     // every hall pulse length, 130 -> 130+d                (floor: MIN_CONTACT 100)
+  openGfFlick: 0,          // pkg 5: opening gains a monitor-down mask flick across the frame-300 GF check
+  preReadHallMs: 0,        // pkg 4: a hall pulse this many ms into leftNormal, before the read (needs openGfFlick; tight-Foxy nights only)
+};
 
 class HidPilot {
   constructor(sim, { bbMode = 'left', cam5Light = true, phaseSafeMask = true,
@@ -66,7 +84,7 @@ class HidPilot {
     // a bare contact, and Fusion polls touch per frame: a graded run scheduled
     // ten of them and `grade-minus7.py` found *zero* visible beams. The device
     // profile therefore pays for a contact above the proven 100-120 ms floor.
-    this.hallPulse = s(hallPulseMs / 1000);
+    this.hallPulse = s(hallPulseMs / 1000) + mv(SEARCH_KNOBS.hallPulseDeltaMs);
     // The device sweep's second monitor-down beat is replaced by winding
     // unless this asks for the ideal route's shape back.
     this.secondBeat = secondBeat;
@@ -155,7 +173,20 @@ class HidPilot {
       ? e + s(6.5) - this.sweepFrames - this.sweepTail : e + s(6.25);
     const openingWindEnd = this.deviceSweep ? openingSweep - 3 : e + s(6.10);
     const openingWindStart = e + (this.deviceSweep ? s(0.60) : s(0.52));
-    this.hold(openingWindStart, openingWindEnd - openingWindStart, 'wind');
+    if (SEARCH_KNOBS.openGfFlick && this.deviceSweep) {
+      // pkg 5: the opening is the one cycle with no mask flick, so Golden
+      // Freddy spawns at the frame-300 check (g336) and persists into the
+      // first steady cycle. Drop the monitor across that check and flick the
+      // mask (the press clears him); the opening runs a >3 s wind margin.
+      this.hold(openingWindStart, e + s(4.35) - openingWindStart, 'wind');
+      this.tap(e + s(4.45), 'monitor');
+      this.tap(e + s(4.85), 'mask');
+      this.tap(e + s(5.10), 'mask');
+      this.tap(e + s(5.40), 'monitor');
+      this.hold(e + s(5.62), openingWindEnd - (e + s(5.62)), 'wind');
+    } else {
+      this.hold(openingWindStart, openingWindEnd - openingWindStart, 'wind');
+    }
     // The left-opening cycle deliberately flashes late. Put the opening
     // sweep late as well so its stun cannot expire before cycle zero's sweep.
     const end = this.flashTargets(openingSweep);
@@ -263,6 +294,17 @@ class HidPilot {
       const lightDown = a + s(0.36);
     const latch = lightDown + this.readLatency;
     this.tap(a, 'monitor');
+    // pkg 4 lever (item 11): a hall pulse DURING the read. `lightHeld` and
+    // `ventLightL` are independent, so with the monitor down and mask off this
+    // is a valid Foxy reset ~0.3 s before the prophylactic mask -- it enters
+    // the attack cycle's masked hold near D = 0 instead of D ~= 3. Blocked by
+    // Golden Freddy (kills on the press) unless the opening/recovery GF-clears
+    // hold him absent -- so it is gated on `openGfFlick` and only fires on the
+    // tight-Foxy nights (peak AI >= 10).
+    if (mv(SEARCH_KNOBS.preReadHallMs) > 0 && this.prophylacticMask
+        && SEARCH_KNOBS.openGfFlick && C.peakAi((this.sim.opts && this.sim.opts.night) || 6, 'foxy') >= 10) {
+      this.hold(a + mv(SEARCH_KNOBS.preReadHallMs), 3, 'light');
+    }
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
     this.at(latch + this.beatShift(), 'left-snapshot', a);
     if (this.prophylacticMask) this.tap(latch + s(0.06), 'mask');
@@ -332,7 +374,7 @@ class HidPilot {
       // covers this cycle. Dropping the flick shortens the beat from 1.48 s
       // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
       this.tap(b + s(2.72), 'monitor');
-      this.hold(b + s(3.10), this.hallPulse, 'light');
+      this.hold(b + s(3.10) + mv(SEARCH_KNOBS.clearHall2DeltaMs), this.hallPulse, 'light');
       // The hall pulse is a 130 ms contact on the phone, so the raise it is
       // meant to precede has to clear it, and CAM 11 has to clear the raise's
       // 204 ms animation after that.
@@ -391,19 +433,32 @@ class HidPilot {
       this.tap(resultAt + s(0.02), 'mask');
     // The shift moves the mask-off later, never earlier -- rm_floor floors the
     // attack past its own mask press, so a late read extends the hold.
-    const off = b + s(5.02) + phaseMargin;
+    const off = b + s(5.02) + phaseMargin + mv(SEARCH_KNOBS.phaseMarginDeltaMs);
     this.tap(off, 'mask');
     // The hall press is queued before the simultaneous monitor raise. It
     // therefore resets Foxy during the raise frame without spending another
     // 120 ms before the recovery sweep.
-    this.hold(off + s(0.25), this.hallPulse, 'light');
-    this.tap(off + s(0.25), 'monitor');
-    const end = this.flashTargets(off + s(0.45));
+    this.hold(off + s(0.25) + mv(SEARCH_KNOBS.attackHallDeltaMs), this.hallPulse, 'light');
+    this.tap(off + s(0.25) + mv(SEARCH_KNOBS.attackHallDeltaMs), 'monitor');
+    const end = this.flashTargets(off + s(0.45) + mv(SEARCH_KNOBS.attackSweepDeltaMs));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
     const lateSweepStart = b + s(10) - this.sweepFrames - this.sweepTail;
     const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46);
-    this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
+    // Plan 16 pkg 4 lever: an extra Foxy reset in the recovery, decoupled from
+    // the masked block. Straddle the attack cycle's second 5 s check with the
+    // monitor down (no Golden Freddy spawn, g336), flash, raise, resume wind.
+    const rstD = mv(SEARCH_KNOBS.attackRstDeltaMs);
+    if (rstD > 0 && this.deviceSweep) {
+      const rst = b + rstD;
+      this.hold(windStart, Math.max(1, rst - s(0.05) - windStart), 'wind');
+      this.tap(rst, 'monitor');
+      this.hold(rst + s(0.42), this.hallPulse, 'light');
+      this.tap(rst + s(0.62), 'monitor');
+      this.hold(rst + s(0.90), Math.max(1, windEnd - (rst + s(0.90))), 'wind');
+    } else {
+      this.hold(windStart, Math.max(1, windEnd - windStart), 'wind');
+    }
     this.flashTargets(lateSweepStart);
     this.nextAnchor = a + s(10);
   }

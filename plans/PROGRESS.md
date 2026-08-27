@@ -112,6 +112,437 @@ as work is done rather than composed at the end; two are delegated and named.
    **Not yet done:** nothing has been changed in the plan on the strength of
    this. It is a census, not a fix.
 
+8. **REVERTED 2026-08-27, after a third refuted fix: the widened
+   (CAM 10/04/07/11-dark) sweep from the interrupted `~/.codex` session had a
+   real, unfixable-within-this-session stun-coverage gap on the transition
+   into any 'attack'-shaped cycle -- opening or steady.** `tools/device/
+   recipe.mjs`, `tools/hidpilottest.mjs`, `tools/device/trial/{02-hid-wire,
+   10-minus7-sweep,11-plan-interpreter}.sh` and `tools/device/
+   test-human-floor.sh` are checked out back to `803feb3` (`git checkout --`).
+   Nothing about *when Minus 7 flashes which camera* changed -- the reverted
+   code was purely the actuator's CAM 11 dark-park addition, undocumented
+   anywhere (no HID-MULTITOUCH.md/ON-DEVICE-VALIDATION.md entry motivates it,
+   unlike the already-committed 133 ms Fusion-poll widening in the same area,
+   which stays). Full record of why, so this is not re-attempted blind:
+
+   Found two independent ways:
+
+   - `recipe.mjs`'s `assertStunCoverage` (added the same session, uncommitted)
+     throws `opening -> attack: CAM 10 is unlit for 7200 ms` against the
+     6666.7 ms (400-frame) stun budget, on every night 1-7. `clear -> attack`
+     and `attack -> attack` are also over budget, by 33-66 ms per camera.
+   - Independently, in the exact `hidpilottest.mjs` simulator (no recipe.mjs
+     involved): `hidpilot n6 target` went 500/500 -> 0/500. Traced one seed to
+     its mechanism, not just its symptom -- `withchica` (Withered Chica) sits
+     gated on CAM 04 (`u.stunUntil`, refreshed every ~300-frame clear cycle)
+     from frame 900 until frame 7116, where she advances. Her last CAM 04
+     relight before that was frames [6709,6716), giving `stunUntil=7115`; the
+     next scheduled relight (a `clear -> attack` transition, since the read at
+     frame 8230/8530-equivalent classified `bb` on this seed) doesn't land
+     until frame 7126 -- an 11-frame (183 ms) window in which she is
+     unstunned, and her per-tick advance roll landed inside it. She reaches
+     the office 40-frame marker-123 attack and completes it at frame 8653; the
+     224+171+62 = 457/500 "Withered X completed the sourced 40-frame
+     marker-123 attack" deaths are this same mechanism, not 457 unrelated
+     bugs.
+
+   **Root cause, confirmed by bisection (`git diff` reverted piece by piece
+   against the same 500 seeds):** the dark CAM 11 park added to the sweep is
+   real, needed device time (a fourth HID contact, priced correctly in
+   `recipe.mjs`'s `SWEEP_ROUTE`/`sweepSpan`). Anchoring the *whole 4-contact
+   macro's end* at the old boundary (so the extra contact doesn't overrun the
+   cycle) pulls the *light* portion's own end earlier by one slot, which is
+   exactly the two edges above run out of stun budget on.
+
+   **Three "obvious" fixes were tried and all three are refuted, not merely
+   unconvincing -- each closes the gap and breaks something else specifically
+   tuned against the same lever:**
+   1. *Don't count the park in the anchor; append it after the light's old
+      end instead.* Implemented in `recipe.mjs`, then reverted after
+      measurement: for the shipped `MODEL_SLOT_MS=120`/`DEVICE_SPACING_MS=133`
+      pair, the underlying `hidpilottest.mjs` model's own CAM 07->CAM 11 gap
+      already sits at exactly 133 ms, so the two anchor formulas are
+      numerically identical here -- the edit was a no-op that would have
+      shipped a false "fixes the 7200 ms gap" comment.
+   2. *Shrink `maskMarginMs` (900 ms), the attack cycle's phase-safety margin,
+      since a comment in `hidpilottest.mjs` calls it "the only place the
+      extra stun gap can be paid from."* Closing the WORST edge
+      (`opening -> attack`, 7200 ms) needs it down to ~300 ms; at 300 ms the
+      human-gate's 300-seed screen collapses Night 6 to 0.3%, Night 7 to 0%.
+   3. *A smaller, more surgical cut (900 -> 800 ms) closes only the
+      RECURRING edges* (`clear -> attack`/`attack -> attack`, over budget by
+      just 33-66 ms, not 533-566 -- confirmed algebraically: their outgoing
+      side already has zero slack, its sweep ends exactly on the cycle
+      boundary, so 800 ms is the exact value that makes `clear->attack`'s gap
+      6633 ms, just under the 6666.7 ms budget). Measured full 1200 seeds,
+      night 6: the "Withered X completed the attack" deaths it targets DID
+      fall (99+65+33=197/300 at 900 ms -> 31+17+8=56/300 at 800 ms, one
+      300-seed screen) -- **but Foxy deaths exploded in their place**
+      (38+31=69/300 -> 126+109=235/300), because the SAME `off`/phaseMargin
+      anchor that gates the first flash also fires the attack cycle's Foxy
+      hall-reset (`leftAttack`'s comment: "the hall press... resets Foxy
+      during the raise frame"). Whole-night 1200-seed verdict at 800 ms:
+      night 2 19.8%, 3 34.7%, 4 13.1%, 5 2.6%, 6 0.2%, 7 0.0% -- worse than
+      900 ms on every night but 2 and 3. There is no free lever left in this
+      sequence: the five-tick mask hold is a sourced BB-repel requirement, the
+      0.25 s hall-then-raise and 0.45 s raise-clearance are the SAME kind of
+      measured animation floor `RAISE_JITTER_MARGIN_MS`/`MONITOR_ANIM_UP_MS`
+      exist to protect elsewhere in this file, and no press can land at all
+      while `maskOn` (`press()` drops every non-mask input). Closing this
+      gap without breaking Foxy or the mask genuinely needs NEW device time,
+      not a reshuffled budget -- e.g., a relight burst inserted before the
+      monitor first lowers each cycle, while it is still up from the
+      previous cycle's raise, which is unexplored and not a small change (it
+      touches the runner's shared per-cycle entry point, not just the sweep).
+
+   **Given that, and that this row of investigation had already run three
+   refuted fixes without net progress, the decision is to revert rather than
+   keep iterating on an unvalidated addition with no documented benefit.**
+   The pre-existing (`803feb3`) 66/79/74/62/54/26% human-gate baseline
+   (nights 2-7, 1200 seeds, confirmed by direct re-measurement this session)
+   is restored and confirmed clean: `tools/test.mjs --engine` is
+   **all checks passed**. If the CAM 11 dark park is worth its device-side
+   benefit (whatever it was -- battery, desync recovery; never written down),
+   it needs to be re-attempted as its own scoped, documented, gate-validated
+   change, not resumed from this state.
+
+   **Two adjacent, unambiguous fixes landed this session and are safe, and
+   were kept through the revert (they do not touch the sweep):**
+   `tools/device/test-cue-trace-loop.sh` was covering only one of the
+   runner's two remote background loops (cue-trace; the newer cue-shadow loop
+   added the same session was unguarded) -- rewritten to cover both, pinned to
+   the actual loop count so a third goes uncovered loudly, and each is now
+   proven to both progress (arm+result) and actually die on sentinel removal,
+   not just fail to hang. The audio cue-helper's `heldout`-promotion gate was
+   honour-system (`plans/08-audio-cue-controller.md` defect 2) -- closed:
+   `provision-cue-model.sh` now reconstructs the exact shadow-form bytes a
+   holdout report claims to have scored and hashes them, so a genuinely
+   passing report from a DIFFERENT promotion can no longer be hand-pasted
+   onto an unrelated model's header. `test-provision-cue-model.sh` is its
+   first mock-ADB regression and proves the specific gap: the same fixture
+   with only that one check removed installs a passing-but-wrong model clean.
+
+9. **Standing goal, set 2026-08-27: iterate on Minus 7 until every night
+   clears 70% under the human-gate.** Baseline to beat (1200 seeds,
+   `803feb3`, confirmed this session): night 1 100.0%, 2 66.3%, 3 79.3%,
+   4 73.8%, 5 62.0%, 6 54.0%, 7 26.0%. Four nights (2, 5, 6, 7) are below the
+   bar. Per the death census in item 7, Foxy and office entries are 100% of
+   all losses on every night, Foxy alone 52-88% of them -- so this is where
+   effort goes, not wind or the audio controller. **Not reached. Two sessions
+   have now attempted it (eviction, below; and the 2026-08-27 later session's
+   jitter-robustness pass, item 11) -- both reverted clean, both documented
+   rather than left half-built. Item 11's finding narrows the problem: the
+   schedule already replays 100% on every night with no jitter, so what is
+   open is slack-tolerance of one geometrically-wedged Foxy reset, not the
+   route.**
+
+   **The `bb.inside` mechanism, sourced and confirmed.** Traced one Foxy death
+   to its exact cause, not just its symptom: `hallLightOn` requires
+   `!bb.inside` (`[SOURCED: g75 (hall), g76/g77 (camera), g301/g303/g320
+   (vent)]`, `src/engine.js:172`), and BB is walked `inside` -- not by
+   lingering, but by *our own response*: `onCamsUp()` (`g417`, engine.js:677)
+   sets it the instant the monitor is raised again while he is still
+   `inOpening`, which the BB-response macro always does right after masking
+   (to get back to flashing CAM 10/04/07). "He does not kill... Foxy finishes
+   the job" is the engine's own comment. Once inside, every hall flash is a
+   no-op regardless of how many are tried -- confirmed empirically:
+   deterministic replay (no human-slack jitter) walks BB inside 0/1636 times
+   across 300 seeds; jittered replay does it 55/1150 (4.8%) -- and D climbs
+   unopposed (`tickMask` doubles his rate when nobody is credited as
+   "in an opening") until he locks on.
+
+   **Tried: Markiplier's eviction pattern (`docs/strategy/MINUS-7-STRATEGY.md`
+   §9, "evict instead of suppress"), sourced and mechanically real --
+   `fx.loc==='parts'` skips the `gotYou` lock-on check ENTIRELY
+   (`engine.js:876`), a genuine 500-999 frame (8.3-16.6 s) immunity window,
+   not a reduced-risk one. Confirmed by trace: one seed's Foxy did reach
+   `parts` and got a real 16.6 s window. But it made every tested night
+   WORSE, and is reverted (`git checkout --` on `recipe.mjs`/
+   `hidpilottest.mjs`; the two files are back to `803feb3` byte-for-byte,
+   `tools/test.mjs --engine` confirmed clean).**
+
+   What was built: a periodic `evict` cycle (opt-in, `evictFoxy`/
+   `clearCycleS` options; a genuinely separate named cycle alongside
+   opening/clear/attack, captured from its own `HidPilot` run since
+   `evictFoxy` is a whole-instance flag, substituted for `clear` every Nth
+   cycle in `replay()`) -- widened to 6.2 s (using 1666.7 ms of the
+   camera-stun budget's own slack, the same margin the reverted CAM11-park
+   work in item 8 spent and lost) to fit a 1200 ms hall hold instead of the
+   usual ~133 ms D-reset pulse.
+
+   Two real, fixed bugs surfaced along the way and are worth keeping in mind
+   if this is re-attempted: the legacy `secondBeat` code path had two stale
+   spacing defects (a 16 ms gap and a 13 ms overlap) that predated
+   `FUSION_POLL_MS` enforcement and were never brought forward with it; and a
+   wind-hold formula in the new `evict` path was off by exactly one Fusion
+   poll (used `camAt + MIN_CONTACT_FRAMES` where the original -- correctly --
+   used `camAt + MIN_CONTACT_FRAMES + FUSION_POLL_FRAMES`), which was
+   silently corrupting the PLAIN, non-evict `clear` cycle too before it was
+   caught by `devicePlan()` itself refusing the plan -- worth remembering as
+   a general lesson: verify a refactor against the unmodified baseline
+   byte-for-byte, not just by eye.
+
+   **Why it made things worse -- fully diagnosed, not left open. Two
+   separate, both-confirmed causes, found in this order:**
+
+   1. **Widening the cycle length is independently destructive, regardless
+      of eviction.** Isolated with a controlled A/B that changed nothing
+      else -- identical `plan.clear`/`plan.attack` content, only the read
+      cadence moved from 5 s to 6.2 s (a hand-rolled `replay()` copy, no
+      tracked-file changes, so this cost nothing to verify): BB walk-ins
+      (the `bb.inside` mechanism two paragraphs up) went **55/300 -> 167/300**
+      and night 6 survival **161/300 -> 0/300**. Fewer reads per night means
+      BB is detected later on average, giving him more time to still be
+      `inOpening` when a routine cams-up event (not even a response --
+      *any* monitor raise) walks him inside. **5 s read cadence is
+      load-bearing on its own merits; do not widen it for any reason without
+      re-measuring this specific number.**
+   2. **Even holding cadence fixed at exactly 5000 ms and funding the wider
+      pulse purely from that cycle's own wind time (in place, same
+      `raiseAt`/`camAt`/`windAt` dynamic-spacing technique that made the
+      `evict` cycle's plan build cleanly), Foxy deaths still roughly
+      TRIPLED** (evictPulseMs 300 -> 224/300 foxy deaths, 500 -> 239/300,
+      vs. 69/300 at the unwidened 130 ms baseline) **and this reproduces
+      deterministically, with zero human-slack jitter** (0/300 survived) --
+      ruling out jitter-sensitivity as the cause and making it traceable.
+      The trace found the actual mechanism: `fx.D` is **not** reset while
+      Foxy is dormant (`loc==='parts'`) -- only a slow, hall-light-gated
+      -1-per-30-frames decay applies there, far short of keeping pace with
+      the unconditional +1/s (or +2/s while masked) accumulation. Worse,
+      the SAME formula (`eq() = 21+rand(0,4)-D <= ai.foxy`) gates BOTH his
+      arrival from `parts` back to `hall` AND his lock-on -- so D must
+      already be near the lock-on threshold just to trigger the arrival
+      transition. A traced deterministic run showed this exactly: dormant
+      and safe for 16 s (t=354-370), arrived back in `hall` with **D
+      already at 18**, no reset landed in the following 5 s, and he locked
+      on at D=23 at t=375. **Sending Foxy to sleep does not reset his danger
+      meter -- it lets it climb unmanaged, then wakes him already primed.**
+      This is not a tuning problem the same lever can fix by degree; more
+      exposure spent per cycle produces MORE wake-up events, each one a
+      near-immediate lock-on risk, not fewer total risk-seconds.
+
+   **The conclusion this repository should treat as settled, not
+   re-attempted the same way:** canonical Minus 7's uniform, every-cycle
+   suppression is not incidental -- it is *why* the strategy is safe. It
+   works by never letting D approach the threshold `eq()` needs at all.
+   Eviction requires the opposite precondition (D near-threshold) to even
+   begin, so it cannot be bolted onto the low-D-always policy as an
+   occasional extra beat; the two are mechanically opposed, not
+   complementary, and this session's numbers are the proof, not a
+   suspicion. `docs/strategy/MINUS-7-STRATEGY.md` §9 already said as much in
+   prose (*"Take from it the eviction pattern and the metronome trick; keep
+   the timer"* -- not both mechanisms in the same policy) and this is the
+   measured confirmation of why.
+
+   **If eviction is revisited, it needs a different shape than anything
+   tried here:** not "spend more toward eviction," but a cycle type that
+   tracks *when* an eviction happened (against `FOXY_RETURN_MIN`/`MAX`,
+   500-999 frames) and schedules a rapid, targeted reset right at his
+   predicted wake window, rather than waiting for the next routine ~5 s
+   pulse. That needs cross-cycle state this policy does not carry today
+   (nothing here remembers "an eviction happened N frames ago") and is
+   real, unstarted scope -- not a parameter to sweep further.
+
+   Both `tools/hidpilottest.mjs` and `tools/device/recipe.mjs` are
+   `git checkout --`-clean at `803feb3` after this; nothing from this
+   investigation is left half-applied in the tracked files.
+
+10. **NEW 2026-08-27, same session, real remaining promise (not a dead end
+    like eviction): audio-confirmed BB departure, in the fast simulator
+    only, no device involved.** `48 of 69 (70%) of night 6's Foxy deaths are
+    BB-chained` (measured: a Foxy death within 30 s of a BB walk-in). The
+    walk-in itself was traced to one frame: the response macro's mask-off
+    (`off = b + s(5.02) + phaseMargin(900ms)`) landed **33 ms before** BB's
+    5th mask-tick (`VENT_MASK_TICKS=5`, `bbLeave()`), so the monitor raised
+    while he was still `inOpening` and `onCamsUp()` walked him inside --
+    which then permanently disables the hall-light Foxy-reset for as long as
+    he stays there (`hallLightOn` requires `!bb.inside`, already documented
+    above). `phaseMargin` is a *guess padded for the worst case* because the
+    policy cannot see the game's 1-second tick phase; `bbLeave()` itself
+    emits a real, sourced bang the instant he actually leaves (same cue as
+    every other vent-bang, `THUD_SAMPLE`) -- `tools/device/bb-cue-state.mjs`
+    already anticipated exactly this ("The departure bang can arrive early
+    ... without its timestamp the full-duration recovery deadline is
+    unknowable"). Building `off` from that bang's real timestamp instead of
+    a fixed guess is a fundamentally different, better-motivated lever than
+    anything else tried tonight -- it does not fight an existing safety
+    mechanism the way eviction does.
+
+    **First measurement was wrong, and the correction matters more than the
+    original claim -- this is its own "numbers need their control" case.**
+    A hand-rolled `replay()` variant (scratch file, not a tracked-file
+    change -- shipped code untouched throughout) hooked `sim.events` for
+    `{type:'vent-bang', data:{who:'bb', leaving:true}}` and anchored `off`
+    to `bangEvent.f + audioLatencyMs` instead of the fixed formula. First
+    pass reported Foxy deaths on night 6 falling from 69/300 to 7-12/300 --
+    but that number was never checked against a control. Adding one (the
+    same scaffolding with the bang trigger effectively disabled, which
+    *must* reproduce vanilla `replay()`'s numbers almost exactly if the
+    harness is sound) found it did not: 44/100 vs vanilla's 68/100 survived,
+    a real bug, not audio-related. Cause: the fallback path recomputed
+    `off` as `b + s(5.02) + phaseMargin` in raw milliseconds instead of
+    reading the actual frame-quantized offset baked into `plan.attack`'s
+    own emitted text (`+5857 ms`, not the ~5920 ms the approximation
+    produced) -- a few frames of drift per cycle that compounded into a
+    fully diverged run over 420 s. Fixed by extracting `plan.attack`'s real
+    offset once (`+plan.attack[2].split(' ')[0]`) and using it for both the
+    deadline and the post-bang re-anchor; sanity check afterward: 171/300 vs
+    vanilla's 161/300 (small residual gap from independent-rounding noise
+    in the hand-rolled `parse()`, not a logic bug -- acceptable for this
+    prototype's purpose).
+
+    **With the bug fixed, the honest numbers are far weaker than first
+    reported.** Night 6, swept `audioLatencyMs` 50/100/200/300 ms (all
+    unmeasured placeholders -- see below): survived 34-50/300 across the
+    sweep, against baseline's 161/300. Foxy deaths did drop, but only
+    modestly (69 -> ~54-58, roughly 20%, not 69 -> 7-12) -- and
+    Withered-character inside-office deaths rose sharply enough (Withered
+    Chica 72-83/300 alone, Withered Freddy 55-67/300) to make every tested
+    configuration a net loss, not a near-win. The mechanism insight from the
+    corrected run stands even though the first number was wrong: BB→Foxy
+    chaining is real and the bang-anchoring idea does reduce it somewhat,
+    but the naive implementation (waiting for the bang delays whatever comes
+    after it, and nothing can be pressed while masked, so the wait's length
+    is paid entirely in CAM 10/04/07 stun-coverage risk) costs more than it
+    saves as built.
+
+    **Not a dead end -- an unfinished design, now correctly scoped smaller
+    than first thought.** The fix is not another deadline tweak: it is
+    decoupling the CAM 10/04/07 stun-refresh from the bang-wait so the
+    wait's length stops being paid in stun-coverage risk. Concretely
+    unexplored:
+    - Does the *previous* cycle's own trailing sweep have slack to move
+      later specifically ahead of an anticipated attack branch, the same
+      kind of budget accounting `assertStunCoverage` already does in
+      `recipe.mjs` (item 8 above) -- paid for by knowing the wait is usually
+      short (audio-informed), not by a blind worst case?
+    - Is there a way to keep a minimal camera presence (even briefly)
+      separate from the masked block, exploiting some other room in the
+      engine's input rules not yet checked?
+    - The real audio latency (package 3 of `plans/08-audio-cue-controller.md`)
+      is still unmeasured -- `close→MISS latency cannot be observed, because
+      completeIfExpired is only reached from accept() or a RESULT poll` per
+      that plan's own status. 50-300 ms here are placeholders swept for
+      sensitivity, not numbers to build on, and the sweep shows the result
+      is NOT latency-sensitive in this range (34-50/300 throughout) -- the
+      stun-coverage cost dominates regardless of how fast detection is,
+      which is itself useful: fixing detection latency alone will not save
+      this design without also fixing the stun-refresh coupling.
+    - This also needs the cue-helper's own remaining defects closed first
+      (`plans/08-audio-cue-controller.md`'s open packages 2/3/5/6) before
+      ANY of this could run on a real device -- this finding is
+      simulator-only, and deliberately so per this session's own
+      instruction to check the simulator before the device.
+
+    **Process lesson worth keeping alongside the technical one:** the first
+    (wrong, dramatic) number was reported to the user before it was
+    controlled. It should have been checked against the disabled-trigger
+    case immediately, the same reflex this repository already documents
+    elsewhere ("Numbers need their control"). Caught and corrected the same
+    session, but the corrected number is the one that belongs in anyone's
+    memory of this finding, not the first one.
+
+    Scratch prototype (session-local, not preserved in the repo -- re-derive
+    from this description): `.../scratchpad/audio_replay_module.mjs`
+    (the `audioReplay()` function) and `.../scratchpad/final_check.mjs`
+    (the sanity check + latency sweep that produced the corrected numbers).
+    (session-local temp path, not preserved in the repo -- re-derive from
+    this description rather than hunting for the file).
+
+
+11. **NEW 2026-08-27, later session, same standing goal (item 9). No lever
+    shipped; the schedule was found to already be perfect and the gap is
+    entirely a robustness-model question. Reverted clean, documented here.**
+
+    **The headline: the emitted device plan replays 400/400 = 100% on every
+    night 1-7 with zero human-slack jitter** (`replay(plan, {night, seed})`
+    over seeds 1..400, no `jitterPlan`). Night 7 included. The whole sub-70
+    ladder -- n2 63%, n5 59%, n6 51%, n7 27% at ±60 ms iid over 400 seeds --
+    is produced by `human-gate.mjs`'s jitter model, not by anything the
+    schedule does wrong. Item 9's "deterministic replay walks BB inside
+    0/1636" is the same fact seen narrowly; stated plainly, **the Minus 7
+    device schedule is correct on all seven nights and the open problem is
+    slack-tolerance of the Foxy resets, nothing else.**
+
+    **A specific fragility, and why it cannot be widened.** The attack
+    cycle's post-mask Foxy reset is `hold(off + s(0.25), hallPulse, 'light')`
+    with `off` the mask-off tap. `s(0.25)` = 15 frames = **exactly
+    `MASK_ANIM_OFF`** (`src/config.js:487`). `hallLightOn` needs
+    `maskFullyOff` (`engine.js:181`), so with each row taking an independent
+    ±60 ms draw the hall lands `0.25 ± 0.13 s` after the mask-off's own
+    `±0.06 s` -- inside the 0.25 s animation on roughly half the draws, and
+    resets nothing. `leftClear` documents this exact trap for its own early
+    slot. The obvious fix (delay the hall past the animation) is blocked: the
+    sweep at `off + s(0.45)` is hard-pinned by the 400-frame Withered stun
+    budget -- measured, pushing it 7 frames (`off+0.45 -> off+0.54`)
+    collapses nights 5-7 to inside-office (Withered Chica/Freddy) at
+    100-160/300. Same wall item 8 hit from the other side.
+
+    **A pre-read reset works mechanically but is blocked by Golden Freddy.**
+    `lightHeld` and `ventLightL` are independent, so a hall pulse fired
+    *during* the read (while the vent light is held, monitor down, mask off)
+    is a valid Foxy reset and lands ~0.3 s before the prophylactic mask --
+    entering the attack cycle's masked hold at D≈0 instead of D≈3, which is
+    the masked-span 5 s check (n6/n7's dominant Foxy lock). But: (a) any
+    GF-clear mask blip ahead of it delays the read past the sourced 45-frame
+    office-defense fuse and Withered/Toy office entries explode; (b) a naked
+    flash kills outright on Golden Freddy (`onLightPress`, `engine.js:274`),
+    and GF spawns (g336: monitor fully up on a 5 s check) at the attack
+    cycle's monitor-up recovery check ~1 per seed on Night 7. Suppressing
+    that spawn needs a monitor-down beat in the attack cycle's tail, which
+    re-opens the same wind/stun budget the reset needed.
+
+    **The opening has no Golden Freddy clear at all** -- unlike every steady
+    cycle, whose prophylactic mask clears him. Adding a monitor-down mask
+    flick straddling the frame-300 check looked like a +4-8 point win on
+    every night at 300-800 seeds. **At 1200 seeds it is gate-neutral to
+    slightly negative** (n6 673→646, n2 ~801, n7 ~326 -- all inside binomial
+    noise). This is the item-9-style trap again at the iteration level: at
+    p≈0.55 the 2σ interval over 400 seeds is ±10 points, so a 300-800 seed
+    A/B measures the block, not the rate. Every apparent win this session
+    evaporated at 1200 seeds. **Do not accept a Minus 7 ladder change on
+    under ~1200 seeds.**
+
+    **Conclusion, consistent with items 8-10:** the schedule is right, the
+    remaining nights are lost to iid-jitter fragility in a reset that is
+    geometrically wedged (mask animation on one side, Withered stun budget on
+    the other), and `human-gate.mjs`'s own comment already flags iid as the
+    wrong shape ("humans clear at per-step error the iid model calls fatal";
+    correlated per-step bands pending). Under a rough correlated model
+    (one shared per-cycle draw + a small iid term, 90% shared) the same
+    unchanged plans sit at n2 71, n5 64, n6 64, n7 41 -- still not 70
+    everywhere, but the gap is a model artifact as much as a schedule one.
+    The real levers are item 10's bang-anchored `off` (decoupled from the
+    stun refresh) and item 8's "new device time" -- not another timing sweep
+    on the current geometry.
+
+    **Also found: `tools/strategysearch.mjs` is stale and throws on start** --
+    `buildCycle(TARGET_CAMS) no longer reproduces DEFAULT_CYCLE` (line 77).
+    `DEFAULT_CYCLE` was retimed 2026-08-24 for the post-mask flash lockout and
+    `strategysearch`'s own `buildCycle` was not brought forward; `cyclesearch.mjs`
+    stayed in sync (it asserts `genCycle(KNOBS0) === DEFAULT_CYCLE` and passes).
+    Neither search touches the device route anyway (both operate on
+    `bbtest.mjs`'s abstract reactive cycle, not `hidpilottest`/`recipe.mjs`),
+    so this did not block item 11; noting it so a future session does not
+    rediscover the crash. **Fixed in the plan-16 work below** (`strategysearch`
+    now shares `cyclesearch`'s `genCycle`).
+
+12. **NEW 2026-08-27: `plans/16-constrained-policy-search.md` opened and pkgs
+    1-3 built.** The structured vehicle for the standing goal (item 9), after
+    items 8-11 exhausted hand-tuning. See that plan's progress log for detail;
+    the two things a cold session needs from here:
+
+    - **`human-gate.mjs` now takes a slack `shape`** (`iid` default, `common`,
+      `correlated`). Under `correlated` -- which `human-gate.mjs`'s own header
+      says is the right shape -- the **unchanged 803feb3 plan** is n2 ~70,
+      n5 ~63, n6 ~62, n7 ~33, versus iid's 66/62/54/26. Less fragile than iid
+      claims, but n5/n6/n7 still miss 70 with no change.
+    - **`tools/minus7/paramsearch.mjs`** is the search: dominance-pruned beam
+      over `hidpilottest.mjs` `SEARCH_KNOBS` (all default-inert), evaluated
+      `recipe.build -> devicePlan -> modelGate`, 1200-seed frontier admission.
+      First pass: attack-cycle knobs move n7 ~33 -> ~38 % correlated; n7 needs
+      the opening (plan 16 pkg 5), not the steady cycle.
+
 
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
 Nothing from it is outstanding and the engine suite is green on `222278d`. What
