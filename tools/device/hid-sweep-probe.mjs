@@ -1,6 +1,7 @@
 // Emit a `/system/bin/hid` report stream that selects CAM 10, CAM 04 and
-// CAM 07 at a chosen inter-selection spacing, pulsing the camera light after
-// each selection instead of holding contact 0 across the sweep.
+// CAM 07 at a chosen inter-selection spacing. The camera light is pulsed after
+// each selection by default; HELD_LIGHT=1 holds contact 0 across the whole
+// sweep and LIGHT_TAIL_MS past the last camera's click.
 //
 // This exists to settle one measurement. The Night 6 left-opening route needs
 // a three-camera sweep spanning about 300 ms; the phone's only proven figure
@@ -63,7 +64,7 @@ const record = (flags, point) => {
 
 export function stream(spacings, { readyMs = 7000,
                                    contactMs = 100, lightLeadMs = 0,
-                                   heldLight = false } = {}) {
+                                   heldLight = false, lightTailMs = 50 } = {}) {
   const out = [];
   const emit = (command, extra) => out.push({ id: ID, command, ...extra });
   const report = (r) => emit('report', { report: [1, 2, ...r] });
@@ -92,22 +93,25 @@ export function stream(spacings, { readyMs = 7000,
     const cams = ['cam10', 'cam4', 'cam7'];
     for (let k = 0; k < cams.length; k++) {
       const cam = cams[k];
-      // heldLight: contact 0 (the camera light) goes down once at the first
-      // select and stays down until the last select's release, so every camera
-      // in the sweep is lit while it is the selected feed -- the
-      // pilottest.mjs / original hybrid geometry. The c33 probe showed 33 ms
-      // selects LAND but the last camera's light does not RENDER, because a
-      // 33 ms light pulse repeated three times loses its third edge. Holding
-      // the light removes the edges. It costs flashlight for the sweep's whole
-      // span, which at 33 ms contacts is ~165 ms, not the 366 ms the 100 ms
-      // geometry spans.
+      // heldLight: contact 0 (the camera light) goes down at the first select
+      // and stays down across the sweep -- and, critically, `lightTailMs` PAST
+      // the last camera's release. The map buttons are a Fusion Click
+      // (down-then-up, `viewing` is written on the RELEASE, g22), and the
+      // flashlight (g82) needs a held frame AT that `viewing`. Every camera but
+      // the last gets those frames free because the held light carries into
+      // the next select; the last one has nothing after it, so without a tail
+      // `viewing == lastCam` and "light held" never coincide -- which is
+      // exactly the CAM 07 dark-last symptom the c33 probe showed.
       if (heldLight) {
-        // Light contact stays 0x03 (down) through every select; it is released
-        // (0x00) only alongside the last camera's release.
         report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
         delay(contactMs);
-        const lightFlag = k === cams.length - 1 ? 0x00 : 0x03;
-        report([...record(lightFlag, COORDS.light), ...record(0x04, COORDS[cam])]);
+        if (k === cams.length - 1) {
+          report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]); // cam up, light HELD
+          delay(lightTailMs);
+          report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);                // light up alone
+        } else {
+          report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]);
+        }
         delay(Math.max(1, spacing - contactMs));
         continue;
       }
@@ -159,9 +163,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (!Number.isInteger(lightLeadMs) || lightLeadMs < 0 || lightLeadMs >= contactMs)
     throw new Error('LIGHT_LEAD_MS must be an integer in [0, CONTACT_MS)');
   const heldLight = process.env.HELD_LIGHT === '1';
+  const lightTailMs = Number(process.env.LIGHT_TAIL_MS || 50);
+  if (!Number.isInteger(lightTailMs) || lightTailMs < 0 || lightTailMs > 300)
+    throw new Error('LIGHT_TAIL_MS must be an integer in [0, 300]');
   if (heldLight && lightLeadMs > 0)
     throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
   for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
-                             { contactMs, lightLeadMs, heldLight }))
+                             { contactMs, lightLeadMs, heldLight, lightTailMs }))
     console.log(JSON.stringify(event));
 }

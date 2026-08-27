@@ -126,9 +126,27 @@ check(litMs <= 300, `a sweep must draw at most 300 ms of light, got ${litMs}`);
   }
   check(hSelections.join(' ') === wanted.join(' '),
     `held-light sweep must still select 10,4,7 in order, got ${hSelections.join(' ')}`);
-  // one continuous span, not three pulses: 3 * 33 contact + 2 * 33 gap = 165
-  check(hLightSpan === 165,
-    `held light must be one continuous 165 ms span across the c33 sweep, got ${hLightSpan}`);
+  // one continuous span, not three pulses: 3*33 contact + 2*33 gap = 165, plus
+  // the 50 ms tail that keeps the light held past CAM 07's click release so
+  // `viewing == 7` and "light held" coincide for a few frames.
+  check(hLightSpan === 215,
+    `held light must be one continuous span = 165 sweep + 50 tail = 215 ms, got ${hLightSpan}`);
+  // that tail must sit AFTER the last select's release, not before it
+  const heldTail = stream([66], { contactMs: 33, heldLight: true, lightTailMs: 0 });
+  let tt = 0, tLightUp = null, tLastSelUp = null;
+  for (const event of heldTail) {
+    if (event.command === 'delay') { tt += event.duration; continue; }
+    if (event.command !== 'report') continue;
+    const recs = [event.report.slice(2, 7), event.report.slice(7, 12)].slice(0, event.report[1]);
+    for (const r of recs) {
+      const id = r[0] >> 2, down = (r[0] & 1) !== 0;
+      const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
+      if (id === 0 && xy === key(COORDS.light) && !down) tLightUp = tt;
+      if (id === 1 && !down && wanted.includes(xy)) tLastSelUp = tt;
+    }
+  }
+  check(tLightUp !== null && tLastSelUp !== null && tLightUp >= tLastSelUp,
+    `even at tail 0 the light must release no earlier than the last select (light ${tLightUp}, select ${tLastSelUp})`);
 }
 
 console.log(`HID sweep probe checks passed (${SPACINGS.join('/')} ms spacings, ${litMs} ms lit per sweep)`);
