@@ -43,7 +43,10 @@ ok "helper and game installed"
 
 # 3. The helper is RUNNING. A stale install that was never reopened after an
 #    `adb install` looks identical from `pm list` and answers nothing.
-cue_pid="$(adb shell pidof "$HELPER_PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}')"
+# `|| true`: pidof exits non-zero when the process is absent, and under
+# `set -e` that killed this script before it could say so -- a check that
+# refuses silently is worse than no check, which is the whole point of the file.
+cue_pid="$(adb shell pidof "$HELPER_PKG" 2>/dev/null | tr -d '\r' | awk '{print $1}' || true)"
 [ -n "$cue_pid" ] || fail "the cue helper is not running -- open it and press START UNIFIED CAPTURE"
 ok "helper running (pid $cue_pid)"
 
