@@ -24,6 +24,7 @@ const EXCLUDED = new Map([
   ['grade-run.sh', 'the pipeline itself'],
   ['screenstate.py', 'the live alive/dead authority; grade-night.py and desync-scan.py apply its predicate to recordings'],
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
+  ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],
   ['grid-signature.py', 'builds live-check signatures from labelled frames; a builder, not a grader'],
   ['index-observations.py', 'read-only corpus inventory; indexes artifacts rather than grading one run'],

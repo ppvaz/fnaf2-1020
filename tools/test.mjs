@@ -149,6 +149,13 @@ const ENGINE = [
   // with a fake adb, and assert the shipped Night 6 plan PASSES (673/1200 with
   // the sourced Fusion LCG and measured-safe maskraise compound).
   ['human gate', ['device/test-human-gate.mjs']],
+  // The gate counts the deaths and prints its top four; on Night 2 that cut
+  // says "Foxy, mostly" when Foxy is 58% and the office is 42%. deathchart.mjs
+  // charts the whole census by the engine's own kill() reasons. This pins the
+  // part that can go wrong silently: a new engine death cause with no slice,
+  // and slices ordered by count rather than by character (which would repaint
+  // Foxy between two panels meant to be compared).
+  ['deathchart', ['device/test-deathchart.mjs']],
   ['human floor', ['device/test-human-floor.sh']],
   // The campaign can request any story night, so every story night must build,
   // replay and receive a verdict priced against ITS OWN AI table. Nights 1 and

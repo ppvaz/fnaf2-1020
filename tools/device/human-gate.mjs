@@ -137,6 +137,12 @@ export function modelGate(planText, {
     throw new Error('this plan does not name its night, and the gate will not guess one');
   let survived = 0;
   const deaths = new Map();
+  // When a run died, not only what killed it. A census of causes alone once
+  // shipped the wrong conclusion here (death-census.py's header): nineteen
+  // Foxy deaths read as the BB->Foxy chain until their ~30 s clustering showed
+  // Balloon Boy could not have arrived yet. Seconds of in-game time, so the
+  // caller can place a death against the AI table's hour rows.
+  const deathTimes = new Map();
   for (let seed = 1; seed <= runs; seed++) {
     const { sim } = replayFn(jitterPlan(plan, seed, slackMs),
                              { night, seed, idleUntilMs });
@@ -144,12 +150,15 @@ export function modelGate(planText, {
     else if (sim.death) {
       const k = `${sim.death.reason}: ${sim.death.detail}`;
       deaths.set(k, (deaths.get(k) || 0) + 1);
+      if (!deathTimes.has(k)) deathTimes.set(k, []);
+      deathTimes.get(k).push(sim.death.t);
     }
   }
   return {
     survived, runs, slackMs, minSurvival, night,
     ok: survived >= runs * minSurvival,
     deaths: [...deaths.entries()].sort((a, b) => b[1] - a[1]),
+    deathTimes,
   };
 }
 

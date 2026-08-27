@@ -58,6 +58,60 @@ as work is done rather than composed at the end; two are delegated and named.
    frames on them and do not use per-frame variance on this footage** -- doing
    so discarded the very frame that showed Toy Bonnie.
 
+7. **NEW 2026-08-27: `tools/device/deathchart.mjs` charts the gate's whole
+   death census** -- one pie plus a full detail table per night, colour fixed
+   per character, median time of death per cause, gated by
+   `test-deathchart.mjs` and listed in `TOOLS.md` and the coverage exclusions.
+   `modelGate()` now also returns `deathTimes`. Engine suite green.
+
+   **What it found, and it contradicts `CLAUDE.md` (now corrected in place):
+   the Puppet is at ZERO on every night 2-7** at `6e27c79`, where that page
+   records 15 on Night 6. Mechanism checked, not inferred: `windtrace.mjs
+   --night=6` has the box never below 0.56 across 300 seeds, so he cannot
+   reach an attack. Foxy plus office entries are now **100%** of all losses.
+
+   **Open, and this is the next thing worth doing.** Foxy is 52-88% of deaths
+   on every night and the ladder's whole remaining cost:
+
+   | night | survived | foxy | office | median death |
+   |---|---|---|---|---|
+   | 2 | 825/1200 68.8% | 219 (58.4%) | 156 | 276 s / 3 AM |
+   | 3 | 959/1200 79.9% | 164 (68.0%) | 77 | 299 s / 4 AM |
+   | 4 | 891/1200 74.3% | 226 (73.1%) | 83 | 239 s / 3 AM |
+   | 5 | 774/1200 64.5% | 220 (51.6%) | 206 | 160 s / 2 AM |
+   | 6 | 680/1200 56.7% | 342 (65.8%) | 178 | 175 s / 2 AM |
+   | 7 | 310/1200 25.8% | 779 (87.5%) | 111 |  54 s / 12 AM |
+
+   Two facts to start from, both visible in `captures/deathchart-n2-7.svg`.
+   **(a) Night 2 is harder than Night 3** (68.8% vs 79.9%) and the sourced AI
+   table says why: night 2 arms toybonnie/toychica at 3 and toyfreddy at 2,
+   where night 3 arms the toys at 1. Night 2 is not a gentle night.
+   **(b) The two Foxy causes are one mechanism seen twice** -- "locked on, no
+   blackout covered the 10s interval" and "flashed the hall after Foxy locked
+   on" are both D having already exceeded 3. The reset is what is missing, not
+   the flash. `foxyExposureFrames = 100 * night` also means Foxy locks on
+   *sooner* on Night 2 than Night 3, which is the other half of (a).
+   **(c) Night 7's median death is 54 s -- half its runs are dead inside the
+   first in-game hour.** Checked, not assumed: the night-7 plan emits
+   `#idle-until 0`, so this is not the opening idle. It is `foxyDormant`
+   (engine.js, g872-874) holding D at zero for all of Night 1 and until 2 AM on
+   Night 2, and for *no* part of Night 7, where Foxy is at his capped 17 from
+   midnight. That is also why Night 1 is 1200/1200. So on Night 7 the question
+   is what the opening does, not what the steady cycle does.
+
+   **Before acting on (b), know the device-side gap that sits under it
+   (from the concurrent session, 2026-08-27).** `sweepcheck.py` was measuring
+   camera-switch **tearing**, not the flashlight -- a torn frame's whole-ROI
+   mean is 173 against its own lit threshold of 86, where a clean lit frame is
+   111. Fixed in `7b70927` (textured rows only, gated by four reference frames
+   in `docs/img/tearing-vs-flash`), but the honest state is that **no
+   instrument here has yet confirmed a flash landing on the device**, and the
+   stun is game state that rendering cannot see. A Foxy-reset fix priced only
+   in the gate would be a simulator result resting on an unmeasured actuator.
+
+   **Not yet done:** nothing has been changed in the plan on the strength of
+   this. It is a census, not a fix.
+
 
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
 Nothing from it is outstanding and the engine suite is green on `222278d`. What

@@ -140,6 +140,25 @@ document contradicting how the line is actually played.
   improvement. It is a correctness fix with a survival effect of roughly zero,
   and it means **wind budget is not where the remaining nights are won** —
   spend effort on the Foxy reset and the office-entry mask instead.
+
+  **The Puppet figure above is stale as of 2026-08-27 (`6e27c79`): he now
+  takes ZERO runs in 1200 on every night 2-7.** Charted with
+  `deathchart.mjs --night=2,3,4,5,6,7`, Night 6 is 342 foxy / 178
+  inside-office / **0 puppet** where the line above records 338 / 175 / 15.
+  The mechanism is checked, not inferred: `windtrace.mjs --night=6` reports
+  the box never falling below **0.56** on any of 300 seeds, so the Puppet
+  cannot reach an attack at all. `RAISE_JITTER_MARGIN_MS` is why — wind parks
+  that used to land inside `MON_RAISING` are now credited.
+
+  **Read that carefully, because it looks like the opposite of the conclusion
+  it is confirming.** A *wind* fix deleting every Puppet death is not "wind
+  was the binding constraint after all": on Night 6 it moved survival
+  672 → 680, eight runs, because those fifteen seeds still had to get past
+  Foxy and the office and seven of them did not. The conclusion stands and is
+  now stronger — Foxy and office entries are **100%** of losses on every night,
+  not ~95%, and Foxy alone is 52-88% of them. Night 7 is the extreme and the
+  only refused night: **310/1200 = 25.8%**, of which 779 deaths (87.5%) are
+  Foxy. Spend effort on the Foxy reset.
 - **A plan names its night, and nothing downstream guesses one.**
   `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires
   `night` and `human-gate.mjs` refuses a plan that does not name one. The old
