@@ -23,15 +23,37 @@ MAP = {10: (1091, 384), 4: (923, 379), 7: (947, 328), 11: (1213, 365)}
 FEED = (60, 60, 620, 430)
 
 
-def decode(path, fps, pix, depth):
-    out = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
-         "-f", "rawvideo", "-pix_fmt", pix, "-"], capture_output=True)
-    if out.returncode:
-        sys.stderr.buffer.write(out.stderr)
-        raise SystemExit(out.returncode)
+def stream(path, fps, pix, depth):
+    """Yield decoded frames one at a time.
+
+    This used to buffer the whole decode with capture_output and then slice it
+    into a second full copy. A 440 s night at 60 fps is 26,400 frames of
+    1280x576x3, about 58 GB, and the grader was OOM-killed ("Killed: 9")
+    partway through a cleared Night 1 -- taking with it the only instrument
+    that says whether the sweep's light actually flashed.
+
+    Nothing here ever needed a frame twice: both callers reduce each frame to
+    one scalar. So the frames stream and only the two scalar series are kept.
+    """
     size = WIDTH * HEIGHT * depth
-    return [out.stdout[i:i + size] for i in range(0, len(out.stdout) - size + 1, size)]
+    proc = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
+         "-f", "rawvideo", "-pix_fmt", pix, "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        while True:
+            buf = proc.stdout.read(size)
+            if len(buf) < size:
+                break
+            yield buf
+    finally:
+        proc.stdout.close()
+        err = proc.stderr.read()
+        # A decoder that dies mid-file must not read as a short video: this
+        # tool's whole job is saying what the run contained.
+        if proc.wait():
+            sys.stderr.buffer.write(err)
+            raise SystemExit(proc.returncode)
 
 
 def selected(frame):
@@ -58,8 +80,6 @@ def main():
                    help="times the unlit baseline that counts as a lit feed")
     a = p.parse_args()
 
-    grey = decode(a.video, a.fps, "gray", 1)
-    rgb = decode(a.video, a.fps, "rgb24", 3)
     x0, y0, x1, y1 = FEED
 
     def luma(f):
@@ -70,8 +90,8 @@ def main():
                 t += f[r + x]; c += 1
         return t / c
 
-    feed = [luma(f) for f in grey]
-    sel = [selected(f) for f in rgb]
+    feed = [luma(f) for f in stream(a.video, a.fps, "gray", 1)]
+    sel = [selected(f) for f in stream(a.video, a.fps, "rgb24", 3)]
     # Baseline from the monitor-up frames that are not flashing: the lower
     # quartile of frames where some camera is selected.
     up = sorted(feed[i] for i, s in enumerate(sel) if s is not None)
