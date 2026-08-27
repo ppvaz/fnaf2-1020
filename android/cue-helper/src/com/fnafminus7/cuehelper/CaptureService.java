@@ -162,6 +162,12 @@ public final class CaptureService extends Service {
     private int snapshotBlue;
     private int snapshotLuma;
     private int snapshotCam5;
+    // Near-grey cells over the whole grid, or -1 when the grid is incomplete.
+    //
+    // A whole-frame count, because this sensor point-samples: the position
+    // anchors it defeats (the lit camera button, 7 of 12 cameras) cannot be
+    // repaired by a threshold. See ScreenStats and ONE-PIXEL-VISION.md section 3.
+    private int snapshotGreyCells = -1;
     // The whole 20x9 sensor, packed 0xRRGGBB per cell.
     //
     // The service already renders this grid every frame and was reporting one
@@ -357,6 +363,10 @@ public final class CaptureService extends Service {
                 ageUs = -1;
             }
             visualSequence++;
+            // Read once under the lock: the report below runs outside it, and
+            // recomputing there would both duplicate the pass and race the
+            // next frame's writer.
+            int greyCells;
             synchronized (snapshotLock) {
                 snapshotVisualSequence = visualSequence;
                 snapshotVisualTimestampNs = timestampNs;
@@ -386,6 +396,10 @@ public final class CaptureService extends Service {
                     }
                 }
                 snapshotGridValid = complete;
+                snapshotGreyCells = complete
+                        ? ScreenStats.greyCells(snapshotGrid, snapshotGrid.length)
+                        : -1;
+                greyCells = snapshotGreyCells;
             }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
@@ -405,9 +419,9 @@ public final class CaptureService extends Service {
                 if (invalidReason == null) {
                     lastVisual = String.format(Locale.US,
                             "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
-                                    + "cam5=%d ageUs=%d content=%s",
+                                    + "cam5=%d grey=%d ageUs=%d content=%s",
                             visualSequence, red, green, blue, luma, cam5Luma,
-                            ageUs, content);
+                            greyCells, ageUs, content);
                 } else {
                     lastVisual = String.format(Locale.US,
                             "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%s",
@@ -1095,6 +1109,7 @@ public final class CaptureService extends Service {
         long audioReadNs;
         int audioRms;
         int audioPeak;
+        int greyCells;
         synchronized (snapshotLock) {
             visualSequenceSnapshot = snapshotVisualSequence;
             visualTimestampNs = snapshotVisualTimestampNs;
@@ -1103,6 +1118,7 @@ public final class CaptureService extends Service {
             blue = snapshotBlue;
             luma = snapshotLuma;
             cam5 = snapshotCam5;
+            greyCells = snapshotGreyCells;
             audioFrames = snapshotAudioFrames;
             audioReadNs = snapshotAudioReadNs;
             audioRms = snapshotAudioRms;
@@ -1121,8 +1137,9 @@ public final class CaptureService extends Service {
         if (invalidReason == null) {
             visual = String.format(Locale.US,
                     "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam5=%d "
-                            + "ageUs=%d content=%dx%d visible=%d",
-                    visualSequenceSnapshot, red, green, blue, luma, cam5, visualAgeUs,
+                            + "grey=%d ageUs=%d content=%dx%d visible=%d",
+                    visualSequenceSnapshot, red, green, blue, luma, cam5,
+                    greyCells, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility);
         } else {

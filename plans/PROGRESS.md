@@ -9,6 +9,26 @@ packages are closed.
 
 ## Very next step
 
+**Live hardware thread, 2026-08-26 22:05 BRT -- the cue helper's sensor was
+mischaracterised, and one anchor survives it.** Measured on the phone: the
+`20x9` grid **point-samples ~180 source pixels**; it is not a small image, and
+`ONE-PIXEL-VISION.md` §3 said the opposite (`a1abafa`). So the lit camera
+button is visible to the helper on **7 of 12** cameras -- 194 or 0-10, nothing
+between -- and on the five it misses the office scores *higher*, inverting the
+classifier. Mean luma overlaps too. The **near-grey cell count over the whole
+grid** separates office 142-145 from monitor-up 173-180 and is now emitted as
+`grey=` in the snapshot (`ScreenStats`, gated host-side by `ScreenStatsTest`).
+
+**Very next step:** the new APK is **built but NOT installed** at
+`android/cue-helper/build/cue-helper.apk`. Installing kills the running helper
+and needs the user to re-grant projection consent, so it was not done
+unattended. After installing: confirm `grey=` appears in a live snapshot, then
+calibrate the threshold -- the measured gap is 145 -> 173 and the midpoint ~159
+is a *starting point*, not a calibrated boundary. Two states remain unsampled
+and both could land inside the monitor-up band: an office with an animatronic
+present, and the blackout. The mask already does (175), so `grey=` must be read
+only when the mask is known down.
+
 **Landed 2026-08-26 21:20 BRT, and it contradicts something the repository
 said:** the **double-camera glitch transfers to Android**. A retained classifier
 frame from the cleared Night 1 (`n1-full-1640`, runner clock 92879 ms) shows CAM

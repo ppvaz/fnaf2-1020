@@ -39,5 +39,8 @@ JAVA="$JDK_ROOT/bin/java"
 # system modules and warns that the result may not run on 17.
 "$JAVAC" -encoding UTF-8 --release 17 -d "$TEST_TMP" \
   "$HERE/src/com/fnafminus7/cuehelper/CueDetector.java" \
-  "$HERE/test/com/fnafminus7/cuehelper/CueDetectorTest.java"
+  "$HERE/src/com/fnafminus7/cuehelper/ScreenStats.java" \
+  "$HERE/test/com/fnafminus7/cuehelper/CueDetectorTest.java" \
+  "$HERE/test/com/fnafminus7/cuehelper/ScreenStatsTest.java"
 "$JAVA" -cp "$TEST_TMP" com.fnafminus7.cuehelper.CueDetectorTest
+"$JAVA" -cp "$TEST_TMP" com.fnafminus7.cuehelper.ScreenStatsTest

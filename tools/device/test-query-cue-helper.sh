@@ -67,6 +67,13 @@ for transport in loopback forward; do
   case "$parsed" in
     'luma=2 cam5=2 '*) echo "$transport: cam5 must differ from luma so a swapped group shows" >&2; exit 1 ;;
   esac
+  # grey= is the whole-frame near-grey cell count the device started sending
+  # 2026-08-26. It sits between cam5= and ageUs=, so the parse asserted above
+  # also guards the regression an inserted field would cause.
+  case "$response" in
+    *" grey="[0-9-]*" "*) ;;
+    *) echo "$transport snapshot is missing grey=, which the device appends" >&2; exit 1 ;;
+  esac
   case "$response" in
     *detector=*) ;;
     *) echo "$transport snapshot is missing detector=, which the device appends" >&2; exit 1 ;;

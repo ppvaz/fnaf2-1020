@@ -20,6 +20,7 @@ import sys
 # missing field does not degrade the parse, it kills the match outright.
 SNAPSHOT = (
     "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 "
+    "grey=142 "
     "ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 "
     "rms=10 peak=21 readAgeUs=1000 detector=READY calibration=mock "
     "evidence=shadow templates=2"
