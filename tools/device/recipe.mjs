@@ -612,12 +612,23 @@ export function idleUntilMs(night) {
   return 0;
 }
 
-export function devicePlan(recipe, { deviceSpacingMs = DEVICE_SPACING_MS } = {}) {
+export function devicePlan(recipe, {
+  deviceSpacingMs = DEVICE_SPACING_MS,
+  sweepContactMs = SWEEP_SELECT_MS,
+} = {}) {
   // The actuator's inter-contact spacing. DEVICE_SPACING_MS (133) is the
   // measured phone; plan 16's device-time experiment (PROGRESS item 13) sweeps
-  // it downward to price what a faster actuator would buy. `sweepSelectMs`
-  // stays MIN_CONTACT_MS -- the contact length, not the spacing.
+  // it downward to price what a faster actuator would buy.
+  //
+  // `sweepContactMs` is the select's own contact length. It defaults to
+  // SWEEP_SELECT_MS (100), the value HID-MULTITOUCH.md's "verified report
+  // sequence" asks for -- but that 100 has margin baked in and the game's own
+  // Fusion cadence is "asserted 30 Hz in eight places and measured never"
+  // (CLAUDE.md). plans/17 probes 33 ms hold + 33 ms release; this lets the
+  // emitter carry the answer.
   const spacing = deviceSpacingMs;
+  if (!(sweepContactMs > 0) || sweepContactMs >= spacing)
+    throw new Error(`sweep contact ${sweepContactMs} ms must be > 0 and < the ${spacing} ms spacing`);
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
     const lines = [];
@@ -651,12 +662,12 @@ export function devicePlan(recipe, { deviceSpacingMs = DEVICE_SPACING_MS } = {})
           throw new Error(`the device spacing ${spacing} ms is narrower ` +
             `than the ${modelled} ms the recipe models; this emitter only widens`);
         const modelledEnd = ats[ats.length - 1] + MIN_CONTACT_MS;
-        const deviceSpan = (cams.length - 1) * spacing + SWEEP_SELECT_MS;
+        const deviceSpan = (cams.length - 1) * spacing + sweepContactMs;
         const start = modelledEnd - deviceSpan;
         if (start < 0)
           throw new Error(`widening the sweep to ${spacing} ms starts it ` +
             `at ${start} ms, before the cycle begins`);
-        lines.push(`${start} sweep ${spacing} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
+        lines.push(`${start} sweep ${spacing} ${sweepContactMs} ${cams.join(',')}`);
         i = j - 1;
         continue;
       }
@@ -840,8 +851,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     // is the ladder's sweet spot, below the CAM-07 last-flash floor, and the
     // only way to learn whether the phone can actually hold it is to emit it
     // and grade a real run. Unset = the shipped, gate-clean 133 ms.
-    const plan = devicePlan(recipe,
-      { deviceSpacingMs: arg('device-spacing-ms', DEVICE_SPACING_MS) });
+    const plan = devicePlan(recipe, {
+      deviceSpacingMs: arg('device-spacing-ms', DEVICE_SPACING_MS),
+      sweepContactMs: arg('sweep-contact-ms', SWEEP_SELECT_MS),
+    });
     // The plan names its own night, so the model gate prices it against the
     // AI table it was built for instead of assuming 6. The header precedes
     // every `#cycle`, which is why the runner's parsers skip it: they only

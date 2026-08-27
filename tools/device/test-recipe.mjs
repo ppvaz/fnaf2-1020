@@ -310,6 +310,18 @@ check(prefix(plan.clear) === prefix(plan.attack),
   try { devicePlan(build({ night: 6, sweepSlotMs: 120 }), { deviceSpacingMs: 113 }); }
   catch { threw = true; }
   check(threw, 'devicePlan must refuse a device spacing narrower than the model spacing');
+
+  // The 33 ms hold + 33 ms release probe geometry (plans/17): the emitter
+  // carries the contact length, and refuses one that leaves no released gap.
+  const short = devicePlan(build({ night: 7, sweepSlotMs: 50 }),
+    { deviceSpacingMs: 66, sweepContactMs: 33 });
+  const shortSweep = short.clear.find(l => l.split(' ')[1] === 'sweep').split(' ');
+  check(shortSweep[2] === '66' && shortSweep[3] === '33',
+    `the short-contact sweep should emit "66 33", got "${shortSweep[2]} ${shortSweep[3]}"`);
+  let threw2 = false;
+  try { devicePlan(build({ night: 7, sweepSlotMs: 50 }), { deviceSpacingMs: 66, sweepContactMs: 66 }); }
+  catch { threw2 = true; }
+  check(threw2, 'devicePlan must refuse a contact length that leaves no released gap');
 }
 
 console.log(`  seam: ${needsSeamDelay.length ? needsSeamDelay.join(', ') + ' rely on the runner delaying the next anchor' : 'every cycle clears its own boundary'}`);
