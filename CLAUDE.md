@@ -195,6 +195,39 @@ document contradicting how the line is actually played.
   are fine, because `grep` handles SIGPIPE and exits cleanly. Use a herestring
   (`grep -q PAT <<<"$captured"`), and don't "fix" the pipelines that are fine.
 
+## Every camera flash must land, and today ~3% do not (2026-08-26)
+
+**This is the mission blocker, not an elegance detail.** Measured by
+`sweepcheck.py` on the cleared `n1-grey-2202`: **68/75 sweeps flashed all of
+10,4,7**. Per flash that is 218/225 = 96.9%; CAM 07 alone is 70/75 = 93.3%,
+because it is **last** in the 10 -> 4 -> 7 order and takes five of the seven
+misses. CAM 04 never missed.
+
+There is no margin for a single miss. `STUN_FRAMES` is 400 (6.67 s) against a
+5 s cycle, so a landed flash covers the *next* sweep with 1.67 s to spare -- but
+if that one misses, the stun expires 1.67 s later and the sweep after it is
+3.33 s too late. A movement window opens on **one** miss. That is how Toy Chica
+reached the office hallway at 5 AM on a night where none of the five CAM 07
+misses were consecutive, while Toy Bonnie -- sitting on CAM 04, which never
+missed -- stayed pinned all night.
+
+Compounded, essentially every night leaks: P(all 225 flashes land) at 96.9% is
+**0.08%**, and P(CAM 07 never missed) is **0.55%**. Night 7 has all eleven at
+maximum AI and nothing to absorb a gap, so **a 97% actuator cannot clear it**
+however good the schedule is.
+
+It also prices the simulator's headline. A 10000/10000 figure is computed
+against an actuator that never drops a flash. The device drops one flash in
+thirty-two.
+
+The mechanism is not yet established -- the suspect is a dropped *selection*
+(one contact of 100 ms at 120 ms spacing leaves 20 ms released against a
+~16.7 ms Fusion poll), and the control that separates "never sent" from "sent
+and swallowed" is the HID trace, which that run did not record. **Set
+`HID_TRACE_RUN=1` on every further night until this is closed.** See
+`ON-DEVICE-VALIDATION.md` §"The last flash: a mechanism, and the control that
+is missing".
+
 ## The simulator prices nothing
 
 `pilottest`/`hidpilottest` count frames. A press and a screencap both look free,
