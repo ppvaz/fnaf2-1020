@@ -114,6 +114,39 @@ clean.
   untuned reactive policy does not find Minus-7-quality play; a real MCTS with
   a tuned default policy is unstarted. The parameter search is the one
   producing results.
+- **Item 13 priced, and it names which device number (2026-08-27,
+  `tools/minus7/devicetimesearch.mjs`, `ef5eb46`/`b265653`).** `devicePlan`
+  now takes an explicit `deviceSpacingMs`; the tool sweeps `readLatencyMs`,
+  `sweepSlotMs` and `hallPulseMs` one at a time through
+  `build → devicePlan → jitterPlan → replay`, correlated and iid, every story
+  night. **Only `sweepSlotMs` moves the sub-70 nights** — and it is the sweep's
+  inter-selection spacing (`→` emitted `deviceSpacingMs = slot + 13`):
+
+  | slot | emit spacing | corr n2 | n5 | n6 | n7 |
+  |---|---|---|---|---|---|
+  | 120 | 133 (device-validated) | 69 | 62 | 61 | 34 |
+  | 110 | 123 | 75 | 70 | 68 | 39 |
+  | 100 | 113 | 78 | 73 | 72 | 43 |
+  | 90 | 103 | 82 | 77 | 75 | 32 (phase break) |
+
+  `n6target` / `n6target-worst` (readLatency 480) hold **500/500** at slot 100,
+  so this is not a latch overfit like `{attackSweepDeltaMs:-17}`. But slot 100
+  emits a **113 ms** spacing, under the device-validated **133 ms** floor
+  (`HID-MULTITOUCH.md`: 100 ms contact + one full 33 ms Fusion poll released;
+  the CAM 07 last-flash finding is a fight over exactly this boundary). The
+  other numbers are inert: `readLatencyMs` 550→400 moves every night < 1 pt
+  (250/100 throw — `leftClear`'s fixed hall/tap offsets don't adapt to a
+  shorter latch), `hallPulseMs` 130→83 costs n7 ~15 pt, and the recovery
+  Foxy-reset beat (`attackRstDeltaMs = 7400`) is +0.5–1 pt everywhere.
+
+  **So "new device time" has a specific shape: a sweep actuator that reliably
+  delivers sub-120 ms inter-selection spacing.** That clears nights 2–6 to
+  70%+. It is the same knob the last-flash / dropped-selection investigation
+  (`ON-DEVICE-VALIDATION.md`) is contesting — closing that in the phone's
+  favour is what unblocks nights 2–6. **n7 is not spacing-bound**: it tops out
+  near 43 and phase-breaks below slot 90, so it still needs the jitter-shape
+  fix (item 12) and the bang-anchored Foxy reset (item 10), per
+  `PROGRESS.md` "What moves Night 7".
 
 ## Why this is not a reopening of Plan 06
 
