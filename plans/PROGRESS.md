@@ -21,10 +21,20 @@ as work is done rather than composed at the end; two are delegated and named.
    through a shared `CUE_MONITOR_ROI`; the constant is gone and
    `test-plan-interpreter.sh` refuses its return. See the grey-anchor section
    below for the retraction in full.
-2. **The night-blind BB-model guard** (`trial/01-arguments.sh` region). It
-   refuses every night without a BB model by quoting a Night 6 statistic, but
-   `canAct(1,'bb')` is false -- Night 1 cannot arm him at all. Same defect the
-   engine fixed and the shell never learned. DELEGATED with item 1.
+2. ~~**The night-blind BB-model guard**~~ **CLOSED 2026-08-26, and the fix is
+   not the one that was asked for.** The refusal in `trial.sh` (and its mirror
+   in `preflight.sh`) now asks `canAct(night,'bb')` and names the night it is
+   refusing for, so a Night 1 operator is no longer told a Night 6 statistic.
+   **But the requirement itself still holds on every night**, because the
+   premise that the model "is never consulted" on Night 1 does not survive
+   checking: `recipe.mjs --night=1` emits a `read` in every cycle, and that one
+   capture feeds three consumers in `12-night-loop.sh` -- the bb/empty branch,
+   the `blind_streak`/`nolight_streak` health guards, and `monitor_seen`, the
+   desync checkpoint. `elegance.py` already says this in prose ("on a night
+   where `canAct(n,'bb')` is false the read still carries the other two"). With
+   `BB_LEFT_MODEL` unset the driver is handed `BB_MODEL=-` *and* `CHECKER=-`,
+   every classify fails, every read is `unknown`, and the run exits 45 on its
+   fifth cycle. So what was night-blind was the *reason*, not the rule.
 3. **Third and fourth attribution defects in `elegance.py`**, same class as the
    two already fixed (sweep, vent read): `cam-?11 -> puppet` ignores that CAM 11
    is Mangle's cam-stall (g357) and flash target (g456); `mask -> toys` ignores

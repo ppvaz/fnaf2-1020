@@ -294,18 +294,6 @@ if [ "$BB_CAM05_STOP_ON_BB" -eq 1 ] && [ -z "$BB_CAM05_MODEL" ]; then
   echo "BB_CAM05_STOP_ON_BB=1 requires BB_CAM05_MODEL" >&2
   exit 2
 fi
-# A run with no Balloon Boy read is a known-dead configuration, not a variant.
-# HID-MULTITOUCH.md records 0/3000 for it in the exact simulator, through the
-# BB-to-Foxy chain, and a 2026-08-24 device run reproduced that chain exactly:
-# BB walked in, took the lights, Foxy finished it. Say so out loud, because the
-# defaults do not, and the failure looks like bad luck if you have not read the
-# note.
-if [ -z "$BB_LEFT_MODEL" ] && [ -z "$BB_CAM05_MODEL" ]; then
-  echo "warning: no BB read configured (BB_LEFT_MODEL / BB_CAM05_MODEL unset)." >&2
-  echo "         HID-MULTITOUCH.md records 0/3000 Night 6 for this, via BB->Foxy." >&2
-  echo "         The validated check is the lit left opening; CAM 05 is not the" >&2
-  echo "         Night 6 checkpoint, and the left vent light costs no flashlight." >&2
-fi
 if [ -n "$BB_LEFT_MODEL" ]; then
   [ "$CALIBRATION_INPUT_DEBUG" -eq 0 ] || {
     echo "BB_LEFT_MODEL requires clean capture without input-debug overlays" >&2
@@ -317,13 +305,13 @@ if [ -n "$BB_LEFT_MODEL" ]; then
   }
 fi
 
-# This runner has one policy: the emitted, model-gated Night 6 HID plan. The
-# old swipe table and sparse pre-read probe were inline schedules the model
-# gate could not price, so they are no longer selectable device routes.
-[ -n "$BB_LEFT_MODEL" ] || {
-  echo "trial.sh requires BB_LEFT_MODEL; the Night 6 route is 0/3000 blind" >&2
-  exit 2
-}
+# This runner has one policy: the emitted, model-gated HID plan. The old swipe
+# table and sparse pre-read probe were inline schedules the model gate could
+# not price, so they are no longer selectable device routes.
+#
+# The BB_LEFT_MODEL refusal used to live here, quoting a Night 6 statistic on
+# every night. It has moved below STORY_NIGHT, because it could not name the
+# night it was refusing for until the night was resolved.
 [ "$DEVICE_EPOCH_LATCH" -eq 1 ] || {
   echo "the gated HID plan requires DEVICE_EPOCH_LATCH=1" >&2
   exit 2
@@ -370,6 +358,49 @@ else
     exit 2
   }
 fi
+# A run with no left-opening read is a known-dead configuration, not a variant,
+# and the reason differs by night -- so the refusal reads the sourced AI table
+# rather than quoting one night's statistic at all six.
+#
+# `canAct` is the authority on whether a threat branch is REACHABLE, never a
+# sampled seed: Night 1 gives Balloon Boy AI 0 so no group can arm him, while
+# Night 3 merely makes him rare. Conflating those is a defect this repository
+# has already fixed once, in the engine, and never propagated to the shell.
+#
+# What did NOT survive checking is the conclusion that the model is therefore
+# optional on Night 1. One capture per cycle feeds three consumers in
+# 12-night-loop.sh: the bb/empty branch decision, the blind_streak and
+# nolight_streak health guards, and `monitor_seen` -- the desync checkpoint,
+# which CLAUDE.md calls the cheapest tell there is. Only the first is Balloon
+# Boy's. With BB_LEFT_MODEL unset the driver is handed BB_MODEL=- and CHECKER=-,
+# every classify fails, every read returns `unknown`, and the run exits 45 on
+# its fifth cycle. So the requirement holds on every night; the *reason* is what
+# the AI table decides.
+bb_can_act="$(node --input-type=module -e \
+  "import { canAct } from '$HERE/../../src/config.js';
+   process.stdout.write(canAct($STORY_NIGHT, 'bb') ? 'yes' : 'no');")" || {
+  echo "could not ask the engine whether Balloon Boy can act on night $STORY_NIGHT" >&2
+  exit 2
+}
+if [ -z "$BB_LEFT_MODEL" ]; then
+  echo "trial.sh requires BB_LEFT_MODEL; refusing to run night $STORY_NIGHT blind" >&2
+  if [ "$bb_can_act" = yes ]; then
+    echo "  Balloon Boy can act on night $STORY_NIGHT (sourced AI table), and" >&2
+    echo "  HID-MULTITOUCH.md records 0/3000 Night 6 for a blind run, via BB->Foxy." >&2
+    echo "  A 2026-08-24 device run reproduced that chain exactly: BB walked in," >&2
+    echo "  took the lights, Foxy finished it." >&2
+  else
+    echo "  Balloon Boy cannot act on night $STORY_NIGHT at all (AI 0), so the" >&2
+    echo "  0/3000 BB->Foxy figure is not the reason -- but the read is still" >&2
+    echo "  required. It also feeds the monitor desync checkpoint and the" >&2
+    echo "  blind/nolight health guards, and with no model every read returns" >&2
+    echo "  'unknown': the run exits 45 on its fifth cycle." >&2
+  fi
+  echo "  Use captures/screencheck/bb-left/models/runtime-gh.scm; CAM 05 is not" >&2
+  echo "  the checkpoint, and the left vent light costs no flashlight battery." >&2
+  exit 2
+fi
+
 { [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
   echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
   exit 2

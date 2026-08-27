@@ -171,6 +171,45 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
       /MOCK_ADB_REACHED/.test(named.stderr + named.stdout) &&
       /save cursor reported as Night 1/.test(named.stderr + named.stdout),
       `status=${named.status}`);
+
+    // The left-opening read is required on every night, and the REASON is read
+    // off the sourced AI table rather than quoted from Night 6 at all six.
+    //
+    // The refusal used to be one line -- "the Night 6 route is 0/3000 blind" --
+    // printed for a Night 1 run, where canAct(1,'bb') is false and no group can
+    // arm Balloon Boy at all. That is the same conflation the engine already
+    // fixed (see test-night-matrix.mjs) and the shell never learned.
+    //
+    // What did not survive checking is the idea that the model is therefore
+    // optional on Night 1: the same capture feeds the desync checkpoint and the
+    // blind/nolight health guards, and with no model every read is `unknown`
+    // and the run exits 45 on its fifth cycle. So both nights refuse; only the
+    // reason differs, and both must name the night they are refusing for.
+    const blind = (night, cycles, extraEnv) => {
+      const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`,
+        TMPDIR: tmp, GRADE_RUN: '0', ...extraEnv };
+      delete env.BB_LEFT_MODEL;
+      return spawnSync('bash', [join(HERE, 'trial.sh'),
+        `gate-test-blind-n${night}-${process.pid}`, String(cycles)],
+        { encoding: 'utf8', env });
+    };
+
+    const blind6 = blind(6, 90, {});
+    const b6 = blind6.stderr + blind6.stdout;
+    check('a blind Night 6 refuses, names its night, and cites 0/3000',
+      blind6.status === 2 && /refusing to run night 6 blind/.test(b6) &&
+      /can act on night 6/.test(b6) && /0\/3000/.test(b6) &&
+      !/MOCK_ADB_REACHED/.test(b6), `status=${blind6.status}: ${b6}`);
+
+    const blind1 = blind(1, 2, { NIGHT: 'continue', CALIBRATION_STORY_NIGHT: '1',
+      STORY_CURSOR_OBSERVED: '1' });
+    const b1 = blind1.stderr + blind1.stdout;
+    check('a blind Night 1 refuses for the reason that is true on Night 1',
+      blind1.status === 2 && /refusing to run night 1 blind/.test(b1) &&
+      /cannot act on night 1/.test(b1) &&
+      /0\/3000 BB->Foxy figure is not the reason/.test(b1) &&
+      /desync checkpoint/.test(b1) && !/MOCK_ADB_REACHED/.test(b1),
+      `status=${blind1.status}: ${b1}`);
   } finally { rmSync(tmp, { recursive: true, force: true }); }
 }
 
@@ -189,6 +228,11 @@ check('runner gates before its first adb command', gateAt > 0 && adbAt > 0 && ga
 check('runner has no inline schedule fallback around the gate',
   /node "\$HERE\/recipe\.mjs" --device-plan "--night=\$STORY_NIGHT"/.test(runner) &&
   !/cannot be priced by the model gate/.test(runner));
+// The refusal must ask the engine, not a hard-coded night. A literal night
+// number here is exactly the conflation this replaced.
+check('the blind-run refusal reads the sourced AI table',
+  /canAct\(\$STORY_NIGHT, 'bb'\)/.test(runner) &&
+  !/the Night 6 route is 0\/3000 blind/.test(runner));
 check('legacy live floor does not contradict the model-gated route',
   /^HUMAN_FLOOR_MS=\d+$/m.test(driver) &&
   /\[ "\$NIGHT6_LEFT" -eq 1 \] && return 0/.test(driver));

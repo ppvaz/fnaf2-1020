@@ -117,12 +117,23 @@ want "game focused" \
   mCurrentFocus=Window{a1b2c3 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.MainActivity}' run 1)" \
   "null first line does not refuse"
 
-# A run with no Balloon Boy read is 0/3000, and the runner refuses one. If
-# preflight does not refuse it first, preflight is not a preflight -- this is
-# the check it was missing when it green-lit a night the runner then rejected.
+# A run with no left-opening read is refused by the runner, so preflight must
+# refuse it first -- this is the check it was missing when it green-lit a night
+# the runner then rejected. It must also refuse for the same REASON, and the
+# reason is night-dependent: `canAct(1,'bb')` is false, so quoting the Night 6
+# BB->Foxy figure at a Night 1 operator is the conflation the engine already
+# fixed and the shell did not. The requirement itself does not move -- the same
+# capture carries the desync checkpoint and the health guards on every night.
 want "no BB left model" "$(BB_LEFT_MODEL="$TMP/absent.scm" run 1)" "missing bb model"
 printf 'not a model' > "$TMP/bad.scm"
 want "is not an SCM model" "$(BB_LEFT_MODEL="$TMP/bad.scm" run 1)" "corrupt bb model"
+want "cannot act on night 1" "$(BB_LEFT_MODEL="$TMP/absent.scm" run 1)" "night 1 reason"
+want "desync checkpoint" "$(BB_LEFT_MODEL="$TMP/absent.scm" run 1)" "night 1 real reason"
+want "can act on night 6" "$(BB_LEFT_MODEL="$TMP/absent.scm" run 6)" "night 6 reason"
+want "0/3000" "$(BB_LEFT_MODEL="$TMP/absent.scm" run 6)" "night 6 cites the figure"
+# The healthy path says which reason applied, so a passing preflight is not
+# silent about a night where Balloon Boy is not the threat being guarded.
+want "cannot act on night 1" "$(run 1)" "healthy night 1 names the reason"
 
 # Structural: the printed invocation must set CUE_HELPER=1 and must thread the
 # requested night through both the calibration and the human assertion, or a

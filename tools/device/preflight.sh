@@ -69,16 +69,33 @@ grey="$(sed -n 's/.* grey=\([0-9-]*\).*/\1/p' <<<"$snap")"
 [ -n "$grey" ] || fail "this helper build sends no grey= -- rebuild and reinstall android/cue-helper"
 ok "snapshot answers, grey=$grey"
 
-# 6. A Balloon Boy read is configured, and its model file is actually there.
+# 6. A left-opening read is configured, and its model file is actually there.
 #
-# The runner refuses without one and it is right to: HID-MULTITOUCH.md records
-# 0/3000 on Night 6 for a blind configuration, through the BB->Foxy chain. This
-# check exists because preflight passed a night that the runner then refused --
-# preflight is worth nothing if the runner knows a precondition it does not.
+# This check exists because preflight passed a night that the runner then
+# refused -- preflight is worth nothing if the runner knows a precondition it
+# does not. So it must also refuse for the same REASON, and the reason is not
+# the same on every night.
+#
+# `canAct` is the authority on whether Balloon Boy's branch is reachable, never
+# a sampled seed: Night 1 gives him AI 0 and no group can arm him, Night 3
+# merely makes him rare. On a night where he can act, a blind run is the
+# recorded 0/3000 through BB->Foxy. On a night where he cannot, that figure is
+# irrelevant and the read is still required -- it feeds the monitor desync
+# checkpoint and the blind/nolight health guards too, and with no model every
+# read returns `unknown` and the run exits 45 on its fifth cycle.
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-$HERE/../../captures/screencheck/bb-left/models/runtime-gh.scm}"
-[ -f "$BB_LEFT_MODEL" ] || fail "no BB left model at $BB_LEFT_MODEL -- a run without a BB read is 0/3000"
+bb_can_act="$(node --input-type=module -e \
+  "import { canAct } from '$HERE/../../src/config.js';
+   process.stdout.write(canAct($NIGHT, 'bb') ? 'yes' : 'no');")" \
+  || fail "could not ask the engine whether Balloon Boy can act on night $NIGHT"
+if [ "$bb_can_act" = yes ]; then
+  bb_why="Balloon Boy can act on night $NIGHT and a blind run is 0/3000 via BB->Foxy"
+else
+  bb_why="Balloon Boy cannot act on night $NIGHT, but the read also carries the desync checkpoint and the health guards"
+fi
+[ -f "$BB_LEFT_MODEL" ] || fail "no BB left model at $BB_LEFT_MODEL -- $bb_why"
 head -c 4 "$BB_LEFT_MODEL" | grep -q SCM || fail "$BB_LEFT_MODEL is not an SCM model"
-ok "BB left model $(basename "$BB_LEFT_MODEL")"
+ok "BB left model $(basename "$BB_LEFT_MODEL") ($bb_why)"
 
 # 7. The GAME is the focused window -- not the helper.
 #
