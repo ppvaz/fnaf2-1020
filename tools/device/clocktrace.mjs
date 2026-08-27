@@ -5,7 +5,7 @@
 // a small strip at x=1110..1155 persistently white; at 1 AM that same strip is
 // empty. Requiring several consecutive frames with the surrounding Night/hour
 // HUD present rejects camera flips, static, and full-white transition frames.
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 
 function usage(message = '') {
@@ -40,35 +40,57 @@ if ((expectMs === null) !== (toleranceMs === null))
 const width = 190;
 const height = 80;
 const frameBytes = width * height;
-const decoded = spawnSync('ffmpeg', [
-  '-loglevel', 'error', '-i', video,
-  '-vf', `scale=1280:576,fps=${fps},crop=${width}:${height}:1070:10`,
-  '-f', 'rawvideo', '-pix_fmt', 'gray', '-',
-], { maxBuffer: 96 * 1024 * 1024 });
-if (decoded.error) {
-  console.error(`could not run ffmpeg: ${decoded.error.message}`);
-  process.exit(2);
-}
-if (decoded.status !== 0) {
-  process.stderr.write(decoded.stderr);
-  process.exit(decoded.status || 2);
-}
-
-const frameCount = Math.floor(decoded.stdout.length / frameBytes);
-const scores = [];
-for (let frame = 0; frame < frameCount; frame++) {
-  const offset = frame * frameBytes;
+// Streamed, not buffered. This ran through spawnSync with a 96 MB maxBuffer
+// and died on a full night with `spawnSync ffmpeg ENOBUFS`: the crop is
+// 190x80, so a 440 s night at 60 fps is about 401 MB. Raising the ceiling only
+// moves the cliff -- sweepcheck.py carried the same bug at 58 GB and was
+// OOM-killed the day this was found. Each frame reduces to two counts and is
+// never needed again, so only the scores are kept.
+const score = (buf, offset) => {
   let hudWhite = 0;
   let leadingDigitWhite = 0;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (decoded.stdout[offset + y * width + x] <= 180) continue;
+      if (buf[offset + y * width + x] <= 180) continue;
       hudWhite++;
       if (x >= 40 && x < 85 && y >= 35 && y < 75)
         leadingDigitWhite++;
     }
   }
-  scores.push({ hudWhite, leadingDigitWhite });
+  return { hudWhite, leadingDigitWhite };
+};
+
+const decoder = spawn('ffmpeg', [
+  '-loglevel', 'error', '-i', video,
+  '-vf', `scale=1280:576,fps=${fps},crop=${width}:${height}:1070:10`,
+  '-f', 'rawvideo', '-pix_fmt', 'gray', '-',
+], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+const scores = [];
+let decoderError = '';
+decoder.stderr.on('data', chunk => { decoderError += chunk; });
+decoder.on('error', error => {
+  console.error(`could not run ffmpeg: ${error.message}`);
+  process.exit(2);
+});
+
+let pending = Buffer.alloc(0);
+for await (const chunk of decoder.stdout) {
+  pending = pending.length ? Buffer.concat([pending, chunk]) : chunk;
+  let offset = 0;
+  while (pending.length - offset >= frameBytes) {
+    scores.push(score(pending, offset));
+    offset += frameBytes;
+  }
+  pending = pending.subarray(offset);
+}
+
+// A decoder that dies mid-file must not read as a short recording. This tool
+// reports where the clock turned over; a truncated read would move that.
+const status = await new Promise(resolve => decoder.on('close', resolve));
+if (status !== 0) {
+  process.stderr.write(decoderError);
+  process.exit(status || 2);
 }
 
 const stableFrames = Math.max(3, Math.ceil(fps * 0.15));

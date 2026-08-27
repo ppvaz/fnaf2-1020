@@ -113,7 +113,7 @@ def can_act(night, ids):
 # ("macro clear[2..999]"), so counting log lines undercounts inputs badly -- the
 # first version of this tool called 74 macros "unattributed" and reported 2%
 # elegance off a count that was mostly missing. These come from the shapes
-# recipe.mjs emits and trial-minus7.sh executes.
+# recipe.mjs emits and trial.sh executes.
 CONTACTS = {
     "tap": 1, "hold": 1, "hall": 1, "hallraise": 2,
     "read": 2,            # vent light down, and up again
