@@ -1637,3 +1637,65 @@ them:
   is ~159, but two clusters of five samples do not fix a boundary. Treat 159 as
   a starting point to be replayed against labelled holdouts, per
   `ONE-PIXEL-VISION.md` §7.
+
+## An animatronic in the office, measured at last (2026-08-26)
+
+The control this repository never had. Every prior `inside` label in
+`captures/screencheck-keep/` is a false positive on an empty office, so every
+claim about how the classifiers behave with an occupant was untested. Pedro
+found her by eye in the cleared `n1-grey-2202` recording at 06:23-06:24 --
+**Toy Chica, right hallway, flashlight on, 5 AM.**
+
+| frame | grey/180 | saturated-yellow px | max yellowness |
+|---|---:|---:|---:|
+| **Toy Chica in the office** (383.5 s) | **150** | **7** | 67 |
+| empty hallway (188.0 s) | 156 | 0 | 30 |
+| a lit camera button, for scale | - | 1064-2165 | 163-194 |
+
+Two questions that had been open all day, both answered no:
+
+- **A yellow animatronic does not trip the selected-camera yellow anchor.**
+  Seven pixels against a button's thousand. Her plumage is muted and shaded
+  under the flashlight, so blue never falls far enough below red and green.
+  The same reasoning covers Golden Freddy, who is duller still -- untested.
+- **An occupant does not push the grey-cell count into the monitor-up band.**
+  150 against a 173-180 band; she *lowers* it slightly, by adding saturated
+  colour to an otherwise desaturated scene.
+
+Read these as relative, not absolute: they come from 1280x576 `screenrecord`
+frames whose chroma is crushed, not from the helper's own grid. The ordering
+is what transfers.
+
+**How she got there, and it is the same defect Toy Bonnie's cage was.**
+`sweepcheck.py` reports 68/75 sweeps flashing all of 10,4,7. The seven misses
+are not random: **five of them missed CAM 07** (sweeps 7, 49, 53, 59, 65), two
+missed CAM 10, and CAM 04 was never missed. The sweep order is 10 -> 4 -> 7, so
+the failure sits on the **last flash**.
+
+CAM 07 is Toy Chica's sourced repel destination ("TC CAM 07",
+`ANDROID-SOURCE-STATUS.md:173`). CAM 04 is where Toy Bonnie sat, and it never
+lost a flash in 75 sweeps -- which is why he was pinned all night at
+STUN_FRAMES = 400 (6.67 s) against a ~5 s cycle, and why she was not. One
+unreliable actuator step explains both observations.
+
+**So the sweep's last flash is a real defect, not a rounding error**, and it is
+worth more than any elegance saving on this night: the sweep is what suppresses
+the Toys, and its least reliable step is aimed at the camera one of them lives
+on.
+
+### Why no instrument found her, and what to change
+
+Two scans failed before Pedro pointed at the timestamp, and both failures are
+worth keeping:
+
+- A hallway scan filtered for a **dark** hall (`mean < 60`). She is only ever
+  visible when the hall is **lit** -- the flashlight is what reveals her -- so
+  the filter excluded every frame that could contain her.
+- A variance scan rejected frames carrying white bands as "torn". Those bands
+  are not decode damage, and rejecting them discarded the frame where Toy
+  Bonnie was visible. Three explanations for them were measured and refuted:
+  not the cue helper (the run without it bands *more*, 34.7% vs 27.7%), not the
+  "lost signal" cue (that is a dark camera carrying text), and not the
+  camera-switch animation (they are uniform across cycle phase at a ~0.2-0.3 s
+  period, not twice per 5 s cycle). **Do not filter on them, and do not use
+  per-frame variance on this footage.**
