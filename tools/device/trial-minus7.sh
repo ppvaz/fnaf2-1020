@@ -2031,8 +2031,25 @@ classify_left_and_queue_mask_at() {
   # Logged, never acted on: this is the labelled data the helper's own threshold
   # needs before anything can be read from it. `luma` is its left-opening
   # value and `ageUs` says how stale the projected frame was.
+  # Log the cue fields per cycle, each extracted on its own so a missing one
+  # cannot blank the rest. The single all-or-nothing sed this replaced printed
+  # NOTHING when the device's field set moved, and an unmatched sed is silent:
+  # that is how the cue trace went empty without anyone noticing.
+  #
+  # grey= is recorded but not yet acted on. It is the anchor the resync check
+  # now verifies with, and the classifier-gated desync detector is the obvious
+  # next consumer -- but the intermittency has to be watched across a real
+  # night before a schedule reacts to it. Reacting to an unwatched signal is
+  # how this runner acquired most of its scars.
   cue_line=""
-  [ "$CUE_PORT" = "-" ] || cue_line=" cue[$(cue_snapshot | sed -n 's/.*luma=\([0-9]*\).*cam5=\([0-9]*\).*ageUs=\([0-9]*\).*/luma=\1 cam5=\2 age=\3us/p')]"
+  if [ "$CUE_PORT" != "-" ]; then
+    cl_snap=$(cue_snapshot)
+    cl_luma=$(printf '%s\n' "$cl_snap" | sed -n 's/.* luma=\([0-9-]*\).*/\1/p')
+    cl_cam5=$(printf '%s\n' "$cl_snap" | sed -n 's/.* cam5=\([0-9-]*\).*/\1/p')
+    cl_grey=$(printf '%s\n' "$cl_snap" | sed -n 's/.* grey=\([0-9-]*\).*/\1/p')
+    cl_age=$(printf '%s\n' "$cl_snap" | sed -n 's/.* ageUs=\([0-9-]*\).*/\1/p')
+    cue_line=" cue[luma=${cl_luma:-UNREAD} cam5=${cl_cam5:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us]"
+  fi
   printf '%6d ms  classify-bb-left %s %s%s\n' "$actual" "$classification" "$monitor_seen" "$cue_line" >&2
   hid_mark "$actual"
 }
