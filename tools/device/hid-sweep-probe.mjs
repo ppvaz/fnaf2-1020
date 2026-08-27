@@ -71,11 +71,13 @@ export function stream(spacings, { readyMs = 7000,
   const report = (r) => emit('report', { report: [1, 2, ...r] });
   const delay = (duration) => emit('delay', { duration });
   // A one-contact tap still sends its own release; contact 1 stays untouched.
-  const tap = (point, hold = 120) => {
+  // Everything single-finger goes on CONTACT 0 (the camera-park taps do), and
+  // the release carries the 0x04 in contact 1's flags so Linux consumes it.
+  const c0Down = (point) =>
     out.push({ id: ID, command: 'report', report: [1, 1, ...record(0x03, point), 0, 0, 0, 0, 0] });
-    delay(hold);
+  const c0Up = (point) =>
     out.push({ id: ID, command: 'report', report: [1, 1, ...record(0x00, point), 4, 0, 0, 0, 0] });
-  };
+  const tap = (point, hold = 120) => { c0Down(point); delay(hold); c0Up(point); };
 
   emit('register', {
     name: 'FNAF HID sweep probe',
@@ -109,13 +111,14 @@ export function stream(spacings, { readyMs = 7000,
       // fires, viewing = N), THEN light down on the now-settled feed, hold
       // `contactMs`, light up. Every camera's light lands on the right feed.
       if (lightAfter) {
-        report([...record(0x07, COORDS[cam]), 0, 0, 0, 0, 0]);   // select down
-        delay(selectMs);
-        report([...record(0x04, COORDS[cam]), 0, 0, 0, 0, 0]);   // select up -> Click -> viewing=N
-        delay(17);                                               // one frame for the Click to settle
-        report([...record(0x03, COORDS.light), 0, 0, 0, 0, 0]);  // light down on the settled feed
-        delay(contactMs);
-        report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);  // light up
+        // Both the select and the light are single-finger, so BOTH go on
+        // contact 0 (well-formed count-1 reports, release consumed) -- the
+        // camera-park taps prove that geometry. The c33 LIGHT_AFTER run that
+        // lit nothing sent the select on contact 1 with a zeroed contact 0,
+        // which the game did not read.
+        c0Down(COORDS[cam]); delay(selectMs); c0Up(COORDS[cam]); // select Click -> viewing = N
+        delay(17);                                              // one frame to settle
+        c0Down(COORDS.light); delay(contactMs); c0Up(COORDS.light);
         delay(Math.max(1, spacing - selectMs - 17 - contactMs));
         continue;
       }

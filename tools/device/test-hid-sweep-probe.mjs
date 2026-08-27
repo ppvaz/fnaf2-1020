@@ -168,27 +168,28 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
   for (const e of la) {
     if (e.command === 'delay') { t += e.duration; continue; }
     if (e.command !== 'report') continue;
-    const r = e.report.slice(2, 7);
-    const id = r[0] >> 2, down = (r[0] & 1) !== 0;
-    const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
-    events.push({ t, id, down, xy });
+    // Single-finger reports: contact 0 slot (bytes 2-6) carries the flags and
+    // point; the release also sets byte 7 to 0x04 so Linux consumes contact 1.
+    const flags = e.report[2];
+    const down = (flags & 1) !== 0;
+    const xy = `${e.report[3] | (e.report[4] << 8)},${e.report[5] | (e.report[6] << 8)}`;
+    events.push({ t, down, xy, count: e.report[1] });
   }
-  // For each target camera: select-up must precede the next light-down, and no
-  // report may carry both a select and a light (they are decoupled).
-  // Every LIGHT_AFTER report carries exactly one live contact: contact 1's
-  // flags byte (report[7]) is 0 whenever it is the light, and contact 0's
-  // (report[2]) is 0 whenever it is the select.
-  for (const e of la.filter(x => x.command === 'report')) {
-    const c0Live = e.report[2] !== 0, c1Live = e.report[7] !== 0;
-    check(!(c0Live && c1Live),
-      'LIGHT_AFTER must never send select and light in the same report');
-  }
-  for (const camXY of wanted) {
-    const selUp = events.find(e => e.id === 1 && !e.down && e.xy === camXY);
-    check(selUp, `LIGHT_AFTER: no select-up found for ${camXY}`);
-    const lightDown = events.find(e => e.id === 0 && e.down && e.t >= selUp.t);
-    check(lightDown && lightDown.t > selUp.t,
-      `LIGHT_AFTER: the light for ${camXY} must go down strictly after its select-up`);
+  // Every LIGHT_AFTER report is a single-contact report (count 1) on contact 0
+  // -- that is the geometry the camera-park taps use and the c33 run that lit
+  // nothing did NOT (it put the select on contact 1 with a zeroed contact 0).
+  for (const e of la.filter(x => x.command === 'report'))
+    check(e.report[1] === 1, `LIGHT_AFTER reports must be single-contact, got count ${e.report[1]}`);
+  const key2 = ([x, y]) => `${x},${y}`;
+  for (const cam of ['cam10', 'cam4', 'cam7']) {
+    const camXY = key(COORDS[cam]);
+    const selDown = events.find(e => e.down && e.xy === camXY);
+    const selUp = events.find(e => !e.down && e.xy === camXY && e.t >= (selDown?.t ?? 0));
+    const lightDown = events.find(e => e.down && e.xy === key(COORDS.light) && e.t > (selUp?.t ?? 0));
+    check(selDown && selUp && lightDown,
+      `LIGHT_AFTER ${cam}: expected select-down, select-up, then a light-down`);
+    check(lightDown.t > selUp.t,
+      `LIGHT_AFTER ${cam}: the light must go down strictly after the select's Click completes`);
   }
 }
 
