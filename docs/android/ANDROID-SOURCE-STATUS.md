@@ -907,6 +907,45 @@ parameter).
 - The consecutive-tick mask-clear semantics that broke Minus Two
   (`MINUS-3-STRATEGY.md` §7) are untouched by this and still apply.
 
+## 2026-08-26: who each control actually answers — the audit behind `elegance.py`
+
+`tools/device/elegance.py` grades a run by asking, per input, whether the threat
+it answers can act that night. Its table had already been wrong twice by naming
+**one** animatronic for a control that answers several (the held-light sweep,
+the vent read). Every remaining row was then read off the dump rather than off
+its name. Three more were wrong the same way. None of the three moved a night's
+figure — `canAct` kept the old class live wherever the row fires — so they were
+**wrong models, not wrong numbers**, and nothing would have caught them until an
+AI-table or route change made them wrong numbers silently.
+
+**[SOURCED]**, frame 3:
+
+| Control | What it answers | Groups |
+| --- | --- | --- |
+| Wind the box | the Puppet, and **only** the Puppet | `music button`.v0 is written by g638/639 (both gated `viewing == 11`) and read as a game rule only by g494/495, the escape-stage advance. Of 35 groups touching the object the rest are presentation: g633/634 show/hide, g597-600 + g662 sample choice, g664-671 the danger warnings |
+| Select CAM 11 | the Puppet **and Mangle** | selecting writes both fields (g16-27, g39+40). `viewing == 11` gates the wind button (g633/634, g638/639) and, with the light held, blocks the Puppet's escape roll (g494 vs g495). The parked `your view` marker stalls Mangle: g357 promotes him only when the marker is *not* on him, and his route is cam 12 → **cam 11** (g391) → cam 10 → cam 7 → hall |
+| Mask | **eight** characters, not the three Toys | repelled at `mask`.v0 == 2: Toy Bonnie g436/437, Toy Chica g439/440, Toy Freddy g213, Mangle g400/401, W. Freddy g378, W. Bonnie g748, W. Chica g749, Balloon Boy g292/294, Golden Freddy g776 |
+| Mask, on **Withered Foxy** | makes him **worse** | g824 ticks his approach counter every 1000 ms; g825 ticks it a *second* time per second while the mask is fully on and nobody is at the vent opening |
+| Hall flash | Withered Foxy **and Withered Freddy** | `viewing hall light` is written by g489 (monitor down + battery + `lit?`). g745 resets W. Foxy's v3 at hall stage 1, g864 decrements it every 500 ms on cam 8 — **and g848/g849 set W. Freddy's B to 40 at hall stage 1/2**, a stun that is not Foxy's |
+| Hall flash, as a hazard | Golden Freddy, W. Foxy | g778 spawns Golden Freddy straight into `got you box` if he is visible when it fires; g573 kills through a W. Foxy already inside. This is the sourced form of the route's "clear Golden Freddy *before* you press CTRL" |
+
+Two effects were read and deliberately **not** counted as services, with the
+reasoning recorded on the rows in `elegance.py`:
+
+- `viewing hall light == 0` is a precondition on the hall-transit hop of six
+  characters (g376-378 W. Freddy, g381/382 W. Bonnie, g389/390 W. Foxy, g358 +
+  g394/395/399 Mangle, g421/422 Toy Freddy, g431/432 Toy Chica). True, but it
+  holds only while the light is lit and the route's pulse is ~130 ms of a
+  ~5000 ms cycle. A block that expires with the pulse is not the same kind of
+  thing as a latched counter reset, and counting it would make the hall row
+  "needed" on every night and stop it discriminating at all.
+- The monitor raise is transport, not a defence — but it is not free: it is what
+  lets Balloon Boy cash his latch (g417) and step from the opening into the
+  office (g290/291). A cost is not a threat answered.
+
+**Not implemented in the engine**, and no `sourcetest` case accompanies this: it
+is a grading-model correction, not a new simulated rule.
+
 ## Labels
 
 - **Implemented** — Android source rule is represented and regression-tested.

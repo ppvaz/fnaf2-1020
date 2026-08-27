@@ -209,6 +209,11 @@ const ENGINE = [
   // in this repository is computed against.
   ['aimap', ['dump/test-aimap.py']],
   ['observation index', ['device/test-index-observations.py']],
+  // elegance.py's SERVES table, which has been wrong four times in the same
+  // way -- one multi-purpose route action attributed to one animatronic, and
+  // then graded as pure waste on the night that animatronic sits out. The pins
+  // are on the table and on the compound-macro split, not on a headline figure.
+  ['elegance', ['device/test-elegance.py']],
   // Plan 09's v1 session contract: the manifest/event schemas, and the proof
   // that each way of being malformed fails with its own reason rather than one
   // generic rejection. A validator that refuses everything identically is

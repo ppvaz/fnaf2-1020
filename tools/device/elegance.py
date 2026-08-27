@@ -27,6 +27,18 @@ That is the standing hazard in this file, not a fixed pair of bugs: this route's
 actions are routinely multi-purpose, so before adding a SERVES row, go and read
 every consumer of the thing it names. See SERVES.
 
+Every row was audited against the event-sheet dump on 2026-08-26 and three more
+instances turned up, each with its groups cited on the row: CAM 11 is Mangle's
+cam-stall as well as the Puppet's box, the mask repels eight characters rather
+than three (and makes Withered Foxy WORSE), and the hall flash stuns Withered
+Freddy as well as resetting Foxy. None of the three moved a night's figure,
+because `canAct` happens to keep the old class live wherever the row fires --
+they were wrong models, not wrong numbers, and the reason to fix them is that
+the next AI-table or route change turns a wrong model into a wrong number with
+nothing to notice. `wind`, `monitor`, `monitor-verify/resync` and `mute` were
+checked the same way and left alone; the audit is recorded on their rows too,
+so the next reader does not have to redo it to find out it was done.
+
 ~~the same one `recipe.mjs` uses to decide whether to emit a branch at all.~~
 **Corrected 2026-08-26: recipe.mjs does not do this.** `--device-plan
 --night=1` and `--night=6` are byte-identical apart from the `#night` header.
@@ -62,8 +74,31 @@ REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 # Which animatronic each action of the route answers. The engine decides
 # whether that animatronic matters; this table only says what the press is FOR.
 SERVES = [
+    # Winding IS single-purpose, checked rather than assumed (2026-08-26). The
+    # box level is `music button`.AlterableValue0; g638/639 are the only writers
+    # a press can reach and both gate on `viewing == 11`. Of the 35 frame-3
+    # groups that touch the object, exactly two read v0 as a game rule --
+    # g494/495, the Puppet's escape-stage advance, which need `v0 <= 0`. Every
+    # other reader is presentation: g633/634 show/hide the button, g597-600 and
+    # g662 pick the music sample, g664-671 the `danger 1`/`danger 2` warnings.
+    # Nobody else's movement, stun or spawn consults the box.
     (r"wind",                         "puppet"),
-    (r"cam-?11",                      "puppet"),      # the box is on CAM 11
+    # CAM 11 is not the Puppet's alone (corrected 2026-08-26 -- a wrong model,
+    # not yet a wrong number). Selecting it writes BOTH fields at once
+    # (g16-27 / g39+40 set `viewing = 11` and move the `your view` marker), and
+    # the two fields are read by different characters:
+    #   viewing == 11  -- the wind button exists at all (g633/634) and responds
+    #                     to a press (g638/639); and with the light held it is
+    #                     what blocks the Puppet's escape roll (g494 vs g495).
+    #   your view on cam 11 -- Mangle's look-hold cam-stall (g357: his A=1 -> 2
+    #                     promotion is gated on `NOT your view overlapping new
+    #                     foxy`, plus `viewing > 0`). Mangle's route is
+    #                     cam 12 -> cam 11 (g391) -> cam 10 -> cam 7 -> hall, so
+    #                     the marker parked on 11 for the wind pins him there.
+    # It stays "needed" on every night either way, because the Puppet is on
+    # every night's AI row -- which is exactly why this had to be read off the
+    # dump rather than off the elegance figure.
+    (r"cam-?11",                      "cam11"),
     # The held-light sweep is NOT one animatronic's answer, and calling it
     # Foxy's made this tool confidently wrong on the night it was first used.
     # Groups 450-457 stun whatever `your view` overlaps -- g450-452 the
@@ -74,9 +109,27 @@ SERVES = [
     # 481 wasted inputs while it was doing the night's primary defensive work.
     # A live Night 1 showed Toy Bonnie locked in one camera and never escaping.
     (r"^sweep$|cam-?(10|04|4|07|7)",  "stun"),
-    # The hall flash is different and does stay Foxy's: it is the office
-    # hallway, not a camera, and it is his reset rather than a marker stun.
-    (r"hall|flash-hall",              "foxy"),        # the Foxy reset flash
+    # The hall flash is a different mechanism from the sweep -- it is the office
+    # hallway, not a camera, and its state is `viewing hall light` (written by
+    # g489: monitor down + battery > 0 + lit?). It is mostly Foxy's, but not
+    # only his (corrected 2026-08-26). What `viewing hall light == 1` does:
+    #   g745  W. Foxy at hall stage 1 -> v3 = 0. His reset; the point of it.
+    #   g864  every 500 ms, W. Foxy on cam 8 with v3 > 0 -> v3 -= 1. Same.
+    #   g848  W. Freddy at hall stage 1 -> B = 40. A real stun, and not Foxy's.
+    #   g849  W. Freddy at hall stage 2 -> B = 40. Same.
+    # So the row is Foxy AND Withered Freddy. Two effects are deliberately NOT
+    # counted:
+    #   - `viewing hall light == 0` is a precondition on the hall-transit hop of
+    #     six characters (g376-378 W.Freddy, g381/382 W.Bonnie, g389/390 W.Foxy,
+    #     g358 + g394/395/399 Mangle, g421/422 Toy Freddy, g431/432 Toy Chica).
+    #     True, but it only holds while the light is lit, and the route's pulse
+    #     is ~130 ms of a ~5000 ms cycle. A block that expires with the pulse is
+    #     not a service the way a latched counter reset is.
+    #   - the flash is also a HAZARD: g778 spawns Golden Freddy straight into
+    #     `got you box` if he is visible when it fires, and g573 kills through
+    #     W. Foxy already inside. That is why the route masks before it flashes;
+    #     it is not a threat this answers.
+    (r"hall|flash-hall",              "hall"),
     # The vent read is NOT Balloon Boy's alone, and calling it his was the
     # second instance of the same modelling error as the sweep above -- caught
     # before it was acted on, but only just. One capture feeds three consumers
@@ -90,17 +143,56 @@ SERVES = [
     # It is overhead, like @transport: a closed-loop route pays it on every
     # night regardless of who can act. Counting it as "needed" would be just as
     # dishonest in the other direction -- it answers no threat by itself.
-    (r"left-vent|left-view|classify-bb|bb-left", "@observation"),
-    (r"mask",                         "toys"),
+    # `read` is the plan instruction for the same capture (vent light down,
+    # screencap, up); it reaches this table whenever a macro expansion starts
+    # before it, and used to fall through to @unattributed.
+    (r"^read$|left-vent|left-view|classify-bb|bb-left", "@observation"),
+    # The mask is not the Toys' answer (corrected 2026-08-26 -- again a wrong
+    # model rather than a wrong number, since Toy Bonnie is on every night's AI
+    # row). `mask`.AlterableValue0 == 2 is "fully on", and it repels EIGHT
+    # characters, from three different pens:
+    #   g436/437  Toy Bonnie   in office     -> cam 3
+    #   g439/440  Toy Chica    in office     -> cam 7
+    #   g213      Toy Freddy   hall stage 2  -> cam 9
+    #   g400/401  Mangle       in office     -> cam 7
+    #   g378      W. Freddy    hall stage 2  -> cam 3, plus a long B
+    #   g748      W. Bonnie    got you box   -> cam 7, B = 500
+    #   g749      W. Chica     got you box   -> cam 4
+    #   g292/294  Balloon Boy  in office     -> cam 10
+    #   g776      Golden Freddy visible      -> v0 = 1 and fade out
+    # Withered Foxy is NOT in that list and must not be: g824 ticks his approach
+    # counter every 1000 ms, and g825 ticks it a SECOND time per second while
+    # the mask is fully on and nobody is at the vent opening. The mask makes
+    # Foxy strictly worse. His answer is the hall flash (g745), which is why the
+    # two are separate rows.
+    (r"mask",                         "maskable"),
     (r"monitor-(verify|resync)",      "@correction"),
+    # Raising and dropping the monitor answers nobody by itself: it is the
+    # carrier every other action needs (the wind button only exists at
+    # `viewing == 11`, the stun needs `viewing > 0`, the hall flash needs
+    # `viewing == 0`). It is not free of consequence -- a raise is what lets
+    # Balloon Boy cash his latch (g417) and step from the opening into the
+    # office (g290/291) -- but a cost is not a threat answered, so it stays
+    # overhead rather than becoming a class.
     (r"monitor",                      "@transport"),
+    # The MUTE CALL button (coords.sh TAP_MUTE, pressed once at T0 by
+    # 12-night-loop.sh). Nothing in frame 3 reads it as a game rule; it exists
+    # so the phone-call audio does not sit on top of the cue recordings.
     (r"mute",                         "@setup"),
 ]
 
-# The toy trio act as one threat class for this purpose: any of them entering
-# the office is answered by the same mask.
+# Each class is "any of these can act". A class exists when one press answers
+# several characters at once; it never means "all of them must be live".
 CLASS_IDS = {"puppet": ["puppet"], "foxy": ["foxy"], "bb": ["bb"],
-             "toys": ["toybonnie", "toychica", "toyfreddy"],
+             # CAM 11: the Puppet through `viewing`, Mangle through the marker.
+             "cam11": ["puppet", "mangle"],
+             # The hall flash: Foxy's counter reset, W. Freddy's hall stun.
+             "hall": ["foxy", "withfreddy"],
+             # Everyone the fully-raised mask sends back out of the office or
+             # the hall, per the groups listed on the `mask` row above.
+             "maskable": ["toybonnie", "toychica", "toyfreddy", "mangle",
+                          "withfreddy", "withbonnie", "withchica", "bb",
+                          "golden"],
              # Everyone a held camera light can pin. The sweep is needed if ANY
              # of them can act, which is the honest reading of a stun that
              # targets by marker rather than by name.
@@ -135,18 +227,37 @@ def can_act(night, ids):
 # elegance off a count that was mostly missing. These come from the shapes
 # recipe.mjs emits and trial.sh executes.
 CONTACTS = {
-    "tap": 1, "hold": 1, "hall": 1, "hallraise": 2,
+    "hall": 1,
     "read": 2,            # vent light down, and up again
 }
 
 
 def instruction_contacts(kind, rest):
+    """One plan instruction, as the labelled contacts it actually delivers.
+
+    A COMPOUND ROW IS NOT ONE PURPOSE, and this is the same hazard as SERVES.
+    `maskraise 180 hall 134` is a mask press, a hallway flash and a monitor
+    raise fused into one HID macro because the mask -> monitor seam drops
+    presses about half the time (CLAUDE.md; ON-DEVICE-VALIDATION.md "Which
+    press desyncs, and why"). Fusing them is a device workaround, not a claim
+    that all three answer the same threat -- so each contact is labelled by what
+    it does, and `serves()` classifies them separately. Attributing the whole
+    macro to `mask` charged the mask row for the run's Foxy resets and its
+    monitor raises.
+    """
+    if kind in ("tap", "hold"):
+        return [(rest[0], 1)]
     if kind == "sweep":                       # spacing contact cam,cam,cam
         cams = rest[2].split(",") if len(rest) > 2 else []
-        return len(cams) + 2                  # each camera, plus light down/up
+        return [("sweep", len(cams) + 2)]     # each camera, plus light down/up
     if kind == "maskraise":                   # gap [hall N] -> mask, hall, raise
-        return 3 if len(rest) > 1 and rest[1] == "hall" else 2
-    return CONTACTS.get(kind, 1)
+        out = [("mask", 1)]
+        if len(rest) > 1 and rest[1] == "hall":
+            out.append(("hall", 1))
+        return out + [("monitor", 1)]
+    if kind == "hallraise":                   # hall pulse under a raise
+        return [("hall", 1), ("monitor", 1)]
+    return [(kind, CONTACTS.get(kind, 1))]
 
 
 def load_plan(night):
@@ -184,8 +295,7 @@ def parse(path, cycles):
                 actions.append(("@unattributed", 1)); continue
             seq = cycles[mm.group(1)][int(mm.group(2)):]
             for kind, args in seq:
-                nm = kind if kind not in ("tap", "hold") else args[0]
-                actions.append((nm, instruction_contacts(kind, args)))
+                actions.extend(instruction_contacts(kind, args))
             continue
         actions.append((label, 1))
     return actions
@@ -215,15 +325,26 @@ def main():
     needed = sum(n for c, n in by_class.items() if not c.startswith("@") and live[c])
     wasted = sum(n for c, n in by_class.items() if not c.startswith("@") and not live[c])
     correction = by_class.get("@correction", 0)
+    # @observation belongs here: it is overhead a closed-loop route pays on
+    # every night. Leaving it out meant the four buckets did not sum to `sent`
+    # -- 950 + 70 + 1 + 220 against 1332 on the Night 1 log -- and a total that
+    # does not add up is how a missing category hides.
     overhead = sum(n for c, n in by_class.items()
-                   if c in ("@transport", "@setup", "@unattributed"))
+                   if c in ("@transport", "@setup", "@observation",
+                            "@unattributed"))
     total = sum(n for _, n in actions)
+    if needed + wasted + correction + overhead != total:
+        print(f"{a.runlog}: the buckets do not sum to the contacts sent "
+              f"({needed}+{wasted}+{correction}+{overhead} != {total}); a class "
+              "in SERVES has no bucket", file=sys.stderr)
+        raise SystemExit(2)
 
     rows = []
     for c in sorted(by_class, key=lambda k: -by_class[k]):
         if c.startswith("@"):
             verdict = {"@correction": "desync overhead",
                        "@transport": "transport",
+                       "@observation": "observation overhead",
                        "@setup": "setup"}.get(c, "unattributed")
         else:
             verdict = "needed -- can act" if live[c] else "WASTED -- AI 0 this night"
