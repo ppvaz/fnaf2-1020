@@ -76,6 +76,9 @@ export function parsePlanText(text) {
   const plan = {};
   let night = null;
   let cur = null;
+  // Absent means zero, so a plan emitted before this header existed still
+  // prices. A plan that names one must name a valid one.
+  let idleUntilMs = 0;
   for (const raw of text.split('\n')) {
     const line = raw.trim();
     if (!line) continue;
@@ -84,6 +87,13 @@ export function parsePlanText(text) {
       night = +line.split(/\s+/)[1];
       if (!Number.isInteger(night) || night < 1 || night > 7)
         throw new Error(`plan names night "${line.split(/\s+/)[1]}"`);
+      continue;
+    }
+    if (line.startsWith('#idle-until')) {
+      if (cur) throw new Error('#idle-until must precede every #cycle');
+      idleUntilMs = +line.split(/\s+/)[1];
+      if (!Number.isInteger(idleUntilMs) || idleUntilMs < 0)
+        throw new Error(`plan names idle window "${line.split(/\s+/)[1]}"`);
       continue;
     }
     if (line.startsWith('#cycle')) {
@@ -97,7 +107,7 @@ export function parsePlanText(text) {
     plan[cur].push(line);
   }
   if (!Object.keys(plan).length) throw new Error('empty plan');
-  return { night, plan };
+  return { night, plan, idleUntilMs };
 }
 
 // One modeled execution: every row's offset shifted by an iid draw, clamped
@@ -121,14 +131,15 @@ export function modelGate(planText, {
   runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
   night, replayFn = replay,
 } = {}) {
-  const { night: named, plan } = parsePlanText(planText);
+  const { night: named, plan, idleUntilMs } = parsePlanText(planText);
   night = night ?? named;
   if (night === undefined || night === null)
     throw new Error('this plan does not name its night, and the gate will not guess one');
   let survived = 0;
   const deaths = new Map();
   for (let seed = 1; seed <= runs; seed++) {
-    const { sim } = replayFn(jitterPlan(plan, seed, slackMs), { night, seed });
+    const { sim } = replayFn(jitterPlan(plan, seed, slackMs),
+                             { night, seed, idleUntilMs });
     if (sim.won) survived++;
     else if (sim.death) {
       const k = `${sim.death.reason}: ${sim.death.detail}`;

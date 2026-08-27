@@ -930,7 +930,11 @@ export class Sim {
   tickBox() {
     if (!this.opts.boxEnabled) return;
     if (this.isWinding) {
-      this.box = Math.min(1, this.box + 1 / C.BOX_WIND_FRAMES);
+      // g639/g645: a wind below 300 snaps the counter to 300 first. The climb
+      // rate below is already the 300 -> 2000 one, so without this the engine
+      // was slower than the game at the bottom of the box -- the only place
+      // the difference can cost a night.
+      this.box = Math.min(1, Math.max(this.box, C.BOX_SNAP) + 1 / C.BOX_WIND_FRAMES);
     } else if (C.boxDrainsAtHour(this.opts.night, Math.floor(this.frame / C.HOUR_FRAMES))) {
       // Per-night rate, sourced at g653-660, and g653's hour gate: night 1's
       // box does not drain during 12 AM or 1 AM. This used to apply the night

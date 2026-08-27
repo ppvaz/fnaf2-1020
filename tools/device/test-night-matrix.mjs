@@ -28,8 +28,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as C from '../../src/config.js';
-import { build, capture, devicePlan, replay, resolveAttack, TEMPLATE_NIGHT }
-  from './recipe.mjs';
+import { build, capture, devicePlan, replay, resolveAttack, TEMPLATE_NIGHT,
+         idleUntilMs } from './recipe.mjs';
 import { modelGate, GATE_MIN_SURVIVAL, HUMAN_SLACK_MS, GATE_RUNS } from './human-gate.mjs';
 import { pool, closePool } from '../pool.mjs';
 
@@ -42,8 +42,12 @@ const check = (name, cond, detail = '') => {
   if (!cond) { failed++; console.error(`FAIL ${name}${detail ? ` -- ${detail}` : ''}`); }
 };
 
+// Must match what --device-plan prints, header for header: this text is
+// compared against a pinned file, and a header the CLI emits but this does not
+// makes the pin compare two different plans.
 const planText = (recipe, plan) =>
-  `#night ${recipe.night}\n` + Object.entries(plan).map(([name, lines]) =>
+  `#night ${recipe.night}\n#idle-until ${idleUntilMs(recipe.night)}\n` +
+  Object.entries(plan).map(([name, lines]) =>
     `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}`).join('\n') + '\n';
 
 // The gate over six nights is 7200 simulated nights and was the whole wall

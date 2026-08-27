@@ -33,6 +33,7 @@ const EXCLUDED = new Map([
   ['bench-screencheck.sh', 'benchmark'],
   ['actuator.mjs', 'simulator layer, gated by test-actuator.mjs'],
   ['gate-worker.mjs', 'pure worker for test-night-matrix.mjs; it simulates gate chunks and has no run artifacts to grade'],
+  ['windtrace.mjs', 'grades a MODEL, not a run: it replays the plan and reports what fraction of its wind frames the engine credited. There is no device counterpart -- the box level is not observable on the phone beyond the CAM 11 pie that windpct.py reads -- so grade-run.sh has nothing to hand it'],
   ['recipe.mjs', 'library, gated by test-recipe.mjs'],
   ['human-gate.mjs', 'pre-flight gate on plan files, gated by test-human-gate.mjs'],
   ['hid-raise-probe.mjs', 'device probe -- acts on a phone rather than grading a run'],

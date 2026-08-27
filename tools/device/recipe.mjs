@@ -430,6 +430,23 @@ export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 export const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 export const RAISE_MARGIN_MS = 33;
 
+// The same clearance, sized for the MODEL rather than the phone.
+//
+// 33 ms answers the actuator's 49-93 ms lateness. It does not answer the model
+// gate, which shifts every row by an iid +/-60 ms draw -- so the gap between a
+// raise and the select after it can lose 120 ms, four times the margin. On
+// night 1 that cost two seeds in 200: their cam11 select landed inside
+// MON_RAISING every cycle, the camera stayed where the sweep left it, and the
+// pilot wound CAM 07 all night. windtrace.mjs credits 12% of their wind frames.
+//
+// This margin is applied by moving the SELECT later, which is only safe when
+// the select is a wind park rather than the sweep -- HID-MULTITOUCH.md records
+// that one frame of sweep tail costs 272 of 400 nights, so the sweep's end may
+// not move and its raise is still pulled earlier instead. A wind park has
+// slack: a later select shortens the hold, and the hold is far longer than the
+// drain needs.
+export const RAISE_JITTER_MARGIN_MS = 120;
+
 function clearTheRaise(name, lines) {
   const ins = lines.map(line => {
     const [at, kind, ...rest] = line.split(' ');
@@ -461,6 +478,22 @@ function clearTheRaise(name, lines) {
     const i = ins.indexOf(raise);
     const select = ins.slice(i + 1).find(isCamera);
     if (!select) continue;
+    // A wind park can move; the sweep cannot. Push the park late enough that
+    // the gate's own jitter cannot land it inside the raise animation.
+    const isSweep = select.kind === 'sweep';
+    if (!isSweep) {
+      const earliest = raise.at + MONITOR_ANIM_UP_MS + RAISE_JITTER_MARGIN_MS;
+      if (select.at < earliest) {
+        const shift = earliest - select.at;
+        select.at = earliest;
+        // The hold that follows the park is what pays for it.
+        const hold = ins[ins.indexOf(select) + 1];
+        if (hold && hold.kind === 'hold' && +hold.rest[1] > shift) {
+          hold.at += shift;
+          hold.rest[1] = String(+hold.rest[1] - shift);
+        }
+      }
+    }
     const want = select.at - (MONITOR_ANIM_UP_MS + RAISE_MARGIN_MS);
     if (raise.at <= want) continue;
     // Slide the raise and, if it runs into what precedes it, that too.
@@ -549,6 +582,41 @@ function foldMaskRaise(name, lines) {
   return out;
 }
 
+// The first in-game hour on this night that needs the pilot awake at all.
+//
+// Two independent reasons to act, both sourced, and a night needs the earlier
+// of them:
+//   - a threat can act: some character's AI row has fired by this hour
+//     (AI_BY_NIGHT, g673-684). A character no row ever names stays at 0.
+//     The PUPPET is excluded from this test and covered by the box test
+//     instead: his escape roll is gated on an EMPTY box (g494/g495, and
+//     engine.js tickPuppet's `this.box <= 0`), and the box starts full at 2000
+//     (g652). While it is not draining he cannot roll, however high his AI. He
+//     is AI 1 from hour 0 on night 1, so testing him directly would report
+//     that hour as busy and hide the whole finding.
+//   - the music box is draining: g653-660. Only night 1's group is hour-gated,
+//     carrying `time of the night != 12` and `!= 1`, so night 1's box does not
+//     drain until 2 AM.
+//
+// On night 1 those coincide: the Toys arm at 2 AM (g674) and the box starts at
+// 2 AM, while Foxy, BB, Mangle, the Withereds and Golden Freddy never act at
+// all. So its first two in-game hours need nothing -- no sweep, no wind, no
+// read. Every other night needs hour 0, because its box drains from the start.
+//
+// Returned in ms of night time, which is what the runner's `base` counts.
+export function idleUntilMs(night) {
+  for (let hour = 0; hour < 6; hour++) {
+    if (C.boxDrainsAtHour(night, hour)) return hour * (C.HOUR_FRAMES / C.FPS) * 1000;
+    const armed = new Set();
+    for (let h = 0; h <= hour; h++)
+      for (const row of C.aiUpdates(night, h))
+        for (const id of Object.keys(row.set)) armed.add(id);
+    if ([...armed].some(id => id !== 'puppet' && C.peakAi(night, id) > 0))
+      return hour * (C.HOUR_FRAMES / C.FPS) * 1000;
+  }
+  return 0;
+}
+
 export function devicePlan(recipe) {
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
@@ -631,7 +699,7 @@ export function devicePlan(recipe) {
 // contract forbids.
 export function replay(plan, { night, seed = 1, worst = false,
                                pilotOffset = 10, readLatencyMs = 550,
-                               classifyMs = 250 } = {}) {
+                               classifyMs = 250, idleUntilMs = 0 } = {}) {
   if (night === undefined) throw new Error('replay() needs the night the plan was built for');
   const sim = new Sim({ seed, night, worst });
   const f = msv => Math.round(msv * C.FPS / 1000);
@@ -679,8 +747,14 @@ export function replay(plan, { night, seed = 1, worst = false,
 
   // The opening, then a steady cycle whose kind the read chooses -- exactly
   // the branch the phone makes.
-  parse(plan.opening, pilotOffset);
-  let base = pilotOffset + f(7000);
+  // Nothing is scheduled before idleUntilMs: on a night whose threats are not
+  // armed and whose box is not draining, the pilot has nothing to answer, so
+  // the engine simply runs the game. See idleUntilMs() for how it is derived.
+  // The sim still ticks through it, so the box, the AI table and every roll
+  // advance exactly as they would have -- the idle is priced, not skipped.
+  const start = pilotOffset + f(idleUntilMs);
+  parse(plan.opening, start);
+  let base = start + f(7000);
   let pending = null;
   parse(plan.clear.slice(0, 2), base);      // the shared prefix, up to the read
   let missed = 0, detections = 0;
@@ -728,6 +802,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     // every `#cycle`, which is why the runner's parsers skip it: they only
     // read rows once a matching `#cycle` has opened.
     console.log(`#night ${recipe.night}`);
+    // Emitted even when zero, so a plan always states its answer rather than
+    // leaving the runner to infer one. A missing header would be
+    // indistinguishable from a night nobody priced.
+    console.log(`#idle-until ${idleUntilMs(recipe.night)}`);
     for (const [name, lines] of Object.entries(plan)) {
       console.log(`#cycle ${name} ${recipe.cycles[name].lengthMs}`);
       for (const line of lines) console.log(line);

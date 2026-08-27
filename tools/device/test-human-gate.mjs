@@ -80,14 +80,20 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // 37.4% against a 40% contract, and only five of twelve 100-seed blocks clear
 // the bar. That assertion measured a seed block, not the plan. The route fix
 // carries the previously omitted first Foxy reset on the post-read maskraise;
-// it clears the same broad sample at 672/1200 without moving the read or sweep.
+// it clears the same broad sample at 680/1200 without moving the read or sweep.
+//
+// Re-pinned 2026-08-27, 672 -> 680. RAISE_JITTER_MARGIN_MS moved every wind
+// park clear of the monitor-raise animation by the gate's own +/-60 ms jitter
+// instead of the phone's 33 ms. Parks that used to land inside MON_RAISING now
+// land after it, so their winds are credited. The read and the sweep did not
+// move -- only the park, and the hold that follows it pays for the shift.
 //
 // Keep both sides pinned: the gate bar stays 40%, and the plan must pass the
 // full sample before `trial.sh` reaches its first adb command.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
   `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
-check('the broad Night 6 result stays pinned', real.survived === 672,
+check('the broad Night 6 result stays pinned', real.survived === 680,
   `${real.survived}/${real.runs}`);
 
 // ---------------------------------- the precondition, exercised end-to-end
@@ -112,7 +118,7 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
       n6.status !== 44 && !/refusing to run this plan/.test(out) &&
       /MOCK_ADB_REACHED/.test(out), `status=${n6.status}`);
     check('and it reports the accepted Night 6 sample',
-      /model gate: 672\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
+      /model gate: 680\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
 
     const n1 = spawnSync('bash', [join(HERE, 'trial.sh'),
@@ -130,9 +136,19 @@ check('the broad Night 6 result stays pinned', real.survived === 672,
     // Pinned exactly rather than as a floor, because this is a deterministic
     // replay: the number is a property of the plan and the engine, and a
     // drifting one should fail here and be re-read, not be absorbed by a
-    // tolerance. Every one of the seven losses is the Puppet.
+    // tolerance.
+    //
+    // 1200/1200 as of 2026-08-27, from 1193. Every one of the seven losses was
+    // the Puppet, and all seven were the same defect: the cycle's CAM 11 park
+    // cleared the monitor-raise animation by 33 ms, sized for the phone's
+    // lateness rather than for this gate's own +/-60 ms jitter. On those seeds
+    // the park landed inside MON_RAISING every cycle, the camera stayed where
+    // the sweep left it, and the pilot held the wind button on CAM 07 for the
+    // whole night -- windtrace.mjs credited 12% of its wind frames. The box
+    // drained from full to empty in a straight line and the Puppet walked in.
+    // RAISE_JITTER_MARGIN_MS moves the park clear; the hold pays for it.
     check('bounded Night 1 calibration emits and gates a Night 1 plan',
-      /model gate: 1193\/1200 night-1 runs/.test(n1out) &&
+      /model gate: 1200\/1200 night-1 runs/.test(n1out) &&
       /MOCK_ADB_REACHED/.test(n1out), `status=${n1.status}`);
 
     // A story-night run longer than one cycle is a real attempt at that night,

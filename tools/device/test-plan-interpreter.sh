@@ -198,7 +198,11 @@ set -- $attack_maskraise
 got="$(run 'SLIP=200; run_cycle opening 0 0 999')"
 [ "$(printf '%s\n' "$got" | head -1)" = '383 tap monitor' ] ||
   fail "a 200 ms slip did not move the opening's first press"
-printf '%s\n' "$got" | grep -q '^800 hold wind 5317$' ||
+# Re-pinned 2026-08-27 (was 800/5317). RAISE_JITTER_MARGIN_MS moved the
+# opening's CAM 11 park 36 ms later so it clears the monitor-raise animation
+# under the model gate's own jitter, and the wind that follows pays for it.
+# The slip arithmetic is unchanged: 636 + 200 = 836, 5481 - 200 = 5281.
+printf '%s\n' "$got" | grep -q '^836 hold wind 5281$' ||
   fail "the opening's wind did not absorb the slip:\n$got"
 # Derived, not transcribed: the emitter anchors each sweep's END, so its start
 # moves whenever the spacing or the model's quantisation does. What must hold is

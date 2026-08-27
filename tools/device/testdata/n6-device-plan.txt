@@ -1,8 +1,9 @@
 #night 6
+#idle-until 0
 #cycle opening 7000
 183 tap monitor 100
-467 tap cam11 100
-600 hold wind 5517
+503 tap cam11 100
+636 hold wind 5481
 6160 sweep 120 100 10,4,7
 6550 tap cam11 100
 6683 hold wind 117
@@ -10,13 +11,13 @@
 0 tap monitor 100
 367 read 600 40
 1140 maskraise 180 hall 134
-1617 tap cam11 100
-1767 hold wind 916
+1703 tap cam11 100
+1853 hold wind 830
 2717 tap monitor 100
 3100 hall 133
 3267 tap monitor 100
-3500 tap cam11 100
-3633 hold wind 984
+3587 tap cam11 100
+3720 hold wind 897
 4660 sweep 120 100 10,4,7
 #cycle attack 10000
 0 tap monitor 100

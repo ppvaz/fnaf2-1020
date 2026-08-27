@@ -448,7 +448,17 @@ export const BOX_DRAIN_FRAMES = s(16.67);  // full -> empty; night 6/7 rate
 // [SOURCED: decompile + Markiplier agree — winding below 300 snaps to 300
 // (groups 639/645), then +5/frame (+300/s, groups 638/643); empty -> full is
 // (2000-300)/300 = 5.67 s. The old "6.67 s gross" note forgot the snap-up.]
-export const BOX_WIND_FRAMES = s(5.66);    // empty -> full while winding
+export const BOX_WIND_FRAMES = s(5.66);    // 300 -> full while winding
+// [SOURCED: g639/g645 — a wind on a counter below 300 sets it TO 300 before
+// the +5/frame climb begins.] As a fraction of the 2000-unit counter (g652).
+//
+// The note above BOX_WIND_FRAMES has recorded this snap since the constant was
+// derived — 5.66 s is (2000-300)/300, not 2000/300 — but the ENGINE never
+// implemented it, winding linearly from wherever the box sat. The two differ
+// only at the bottom, which is exactly where it decides a night: with the box
+// at zero the Puppet rolls every second (g494/g495), and the engine spent
+// ~0.85 s climbing to a level the game reaches on the first wind frame.
+export const BOX_SNAP = 300 / 2000;
 export const PUPPET_AI = 15;
 // [SOURCED: g494-497, g623, g774.] Three successful one-second rolls free
 // him from CAM 11. Later route hops use the same one-second roll, camera light
