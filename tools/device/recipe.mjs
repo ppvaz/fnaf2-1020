@@ -612,7 +612,12 @@ export function idleUntilMs(night) {
   return 0;
 }
 
-export function devicePlan(recipe) {
+export function devicePlan(recipe, { deviceSpacingMs = DEVICE_SPACING_MS } = {}) {
+  // The actuator's inter-contact spacing. DEVICE_SPACING_MS (133) is the
+  // measured phone; plan 16's device-time experiment (PROGRESS item 13) sweeps
+  // it downward to price what a faster actuator would buy. `sweepSelectMs`
+  // stays MIN_CONTACT_MS -- the contact length, not the spacing.
+  const spacing = deviceSpacingMs;
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
     const lines = [];
@@ -634,7 +639,7 @@ export function devicePlan(recipe) {
         // Spacing comes from this sweep's own selects. Looking the camera up
         // by name found the first one in the cycle instead, which produced a
         // negative spacing on a second sweep.
-        const modelled = ats.length > 1 ? ats[1] - ats[0] : DEVICE_SPACING_MS;
+        const modelled = ats.length > 1 ? ats[1] - ats[0] : spacing;
         // The emitted spacing is the actuator's, not the model's, and the phone
         // needs a wider one than the model quantises to. Widen by starting the
         // sweep EARLIER so its end does not move: that end is the stun bridge
@@ -642,16 +647,16 @@ export function devicePlan(recipe) {
         // frame of tail costs 272 of 400 nights. Anchoring the end is what makes
         // 140 ms free (400/400) where rebuilding the policy at 140 is not
         // (11/300) -- the difference is entirely which end of the sweep moves.
-        if (DEVICE_SPACING_MS < modelled)
-          throw new Error(`the device spacing ${DEVICE_SPACING_MS} ms is narrower ` +
+        if (spacing < modelled)
+          throw new Error(`the device spacing ${spacing} ms is narrower ` +
             `than the ${modelled} ms the recipe models; this emitter only widens`);
         const modelledEnd = ats[ats.length - 1] + MIN_CONTACT_MS;
-        const deviceSpan = (cams.length - 1) * DEVICE_SPACING_MS + SWEEP_SELECT_MS;
+        const deviceSpan = (cams.length - 1) * spacing + SWEEP_SELECT_MS;
         const start = modelledEnd - deviceSpan;
         if (start < 0)
-          throw new Error(`widening the sweep to ${DEVICE_SPACING_MS} ms starts it ` +
+          throw new Error(`widening the sweep to ${spacing} ms starts it ` +
             `at ${start} ms, before the cycle begins`);
-        lines.push(`${start} sweep ${DEVICE_SPACING_MS} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
+        lines.push(`${start} sweep ${spacing} ${SWEEP_SELECT_MS} ${cams.join(',')}`);
         i = j - 1;
         continue;
       }
