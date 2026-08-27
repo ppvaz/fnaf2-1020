@@ -135,7 +135,18 @@ export function stream(spacings, { readyMs = 7000,
       }
       report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
       delay(contactMs - lightLeadMs);
-      report([...record(0x00, COORDS.light), ...record(0x04, COORDS[cam])]);
+      if (k === cams.length - 1 && lightTailMs > 0) {
+        // Same lesson as HELD_LIGHT: on cameras 1..n-1 the NEXT select's
+        // contact keeps the light down while this camera's Click has already
+        // set `viewing`, so they light for free. The last camera has no next
+        // select -- so release the SELECT here (Click completes, viewing = N)
+        // and hold the light `lightTailMs` longer before lifting it.
+        report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]); // select up, light held
+        delay(lightTailMs);
+        report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);                // light up alone
+      } else {
+        report([...record(0x00, COORDS.light), ...record(0x04, COORDS[cam])]);
+      }
       delay(Math.max(1, spacing - contactMs));
     }
     // camtrace.py reads a sweep as 10 -> 04 -> 07 -> 11, so park on the box
