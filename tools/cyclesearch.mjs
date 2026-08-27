@@ -34,7 +34,7 @@ const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 
 // The current cycle, expressed as knobs. genCycle(KNOBS0) reproduces
 // DEFAULT_CYCLE exactly (asserted below).
-const KNOBS0 = {
+export const KNOBS0 = {
   maskDelay: 15, // monitor down -> mask on (covers the monitor animation)
   maskHold: 9,   // mask on -> mask off
   hallDelay: 16, // mask off -> hall flash on (>= MASK_ANIM_OFF, see MIN)

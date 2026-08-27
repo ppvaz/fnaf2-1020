@@ -146,6 +146,26 @@ export class Sim {
     return this.rng.int(0, oneIn - 1, oneIn - 1) === oneIn - 1 ? 1 : 0;
   }
 
+  // A deep, restorable copy of every mutable field. Plan 16 package 1: a tree
+  // search needs to branch a run without re-simulating from frame 0. All state
+  // is plain data plus `this.rng` (a class instance restored by its own
+  // state), so a JSON round-trip is exact -- verified bit-identical over a
+  // 1500-tick continuation. `opts` is shared by reference: it is never
+  // mutated after construction.
+  snapshot() {
+    const snap = JSON.parse(JSON.stringify(this, (k, v) => (k === 'opts' || k === 'rec') ? undefined : v));
+    snap.rng = { seed: this.rng.seed, state: this.rng.state, worst: this.rng.worst };
+    return snap;
+  }
+  restore(snap) {
+    const rngProto = Object.getPrototypeOf(this.rng);
+    for (const k of Object.keys(this)) if (k !== 'opts' && k !== 'rec' && k !== 'rng') delete this[k];
+    Object.assign(this, JSON.parse(JSON.stringify(snap)));
+    this.rng = Object.assign(Object.create(rngProto), snap.rng);
+    return this;
+  }
+  static fromSnapshot(opts, snap) { return new Sim(opts).restore(snap); }
+
   get t() { return this.frame / C.FPS; }
   get camsUp() { return this.monitor === MON_UP; }
   get maskFullyOn() { return this.maskOn && this.maskAnim === 0; }

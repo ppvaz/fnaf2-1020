@@ -12,6 +12,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { DEFAULT_CYCLE } from './bbtest.mjs';
+import { genCycle, KNOBS0 } from './cyclesearch.mjs';
 import { pool, closePool } from './pool.mjs';
 
 // Every night goes through the worker pool; `--serial` pins it to one thread
@@ -52,24 +53,12 @@ export function permutations(xs) {
   return out;
 }
 
-// Preserve Minus 7's office half and its 12-frame camera rhythm, but allow a
-// different number and order of camera flashes.  Fewer cameras turn directly
-// into more music-box winding time.
-export function buildCycle(order) {
-  const rows = [
-    [0, 'tap', 'monitor'], [18, 'tap', 'mask'], [27, 'tap', 'mask'],
-    [30, 'down', 'light'], [32, 'up', 'light'], [36, 'tap', 'monitor'],
-  ];
-  let t = 55;
-  for (const cam of order) {
-    rows.push([t, 'tap', `cam:${cam}`], [t + 2, 'down', 'light'], [t + 4, 'up', 'light']);
-    t += 12;
-  }
-  const lastLightUp = t - 8;
-  rows.push([lastLightUp + 7, 'tap', `cam:${C.BOX_CAM}`],
-    [lastLightUp + 10, 'down', 'wind']);
-  return rows;
-}
+// Preserve Minus 7's office half and its camera rhythm, but allow a different
+// number and order of camera flashes.  Fewer cameras turn directly into more
+// music-box winding time. The structure comes from cyclesearch's genCycle so
+// the two files cannot drift -- this file's own copy went stale at the
+// 2026-08-24 DEFAULT_CYCLE retiming and threw on start (plan 16 pkg 1).
+export const buildCycle = (order) => genCycle(KNOBS0, order);
 
 // The structural generator must leave the shipped strategy byte-for-byte
 // unchanged when fed its original camera order.

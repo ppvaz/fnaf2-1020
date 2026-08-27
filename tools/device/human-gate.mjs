@@ -110,17 +110,35 @@ export function parsePlanText(text) {
   return { night, plan, idleUntilMs };
 }
 
-// One modeled execution: every row's offset shifted by an iid draw, clamped
+// One modeled execution: every row's offset shifted by a slack draw, clamped
 // at zero. Row order is preserved -- replay()'s queue sorts by frame, so a
 // draw that swaps two tight presses swaps them there, exactly as a human's
 // hands would have.
-export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS) {
+//
+// `shape` (plan 16 pkg 1; `tools/policy.mjs` has had all three since plan 04):
+//   'iid'        -- an independent +/-slackMs draw per row (the v1 default;
+//                   human-gate.mjs's own header calls this the wrong shape --
+//                   humans clear at per-step error the iid model calls fatal).
+//   'common'     -- one shared +/-slackMs draw for the whole pass (you started
+//                   the whole cycle late, but hit every row on the same beat).
+//   'correlated' -- one shared draw plus a small independent term
+//                   (+/- round(slackMs/3)); the CENSUS-shaped model plan 04
+//                   asked for, pending the trainer trace.
+export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS, shape = 'iid') {
   const rng = new Rng((((seed >>> 0) ^ JITTER_SALT) >>> 0));
+  const spread = shape === 'correlated' ? Math.round(slackMs / 3)
+    : shape === 'common' ? 0 : slackMs;
   const out = {};
   for (const [name, lines] of Object.entries(plan)) {
+    // The shared "started this pass late" term is drawn per CYCLE, not once
+    // per night: a human's lateness is consistent within a pass and varies
+    // between them. (`policy.mjs`'s minus7 control draws it per cycle() call
+    // for the same reason.) 'iid' has no shared term.
+    const common = shape === 'iid' ? 0 : rng.int(-slackMs, slackMs);
     out[name] = lines.map(line => {
       const sp = line.indexOf(' ');
-      const offs = Math.max(0, +line.slice(0, sp) + rng.int(-slackMs, slackMs));
+      const draw = common + (spread ? rng.int(-spread, spread) : 0);
+      const offs = Math.max(0, +line.slice(0, sp) + draw);
       return `${offs}${line.slice(sp)}`;
     });
   }
@@ -129,7 +147,7 @@ export function jitterPlan(plan, seed, slackMs = HUMAN_SLACK_MS) {
 
 export function modelGate(planText, {
   runs = GATE_RUNS, slackMs = HUMAN_SLACK_MS, minSurvival = GATE_MIN_SURVIVAL,
-  night, replayFn = replay,
+  night, replayFn = replay, shape = 'iid',
 } = {}) {
   const { night: named, plan, idleUntilMs } = parsePlanText(planText);
   night = night ?? named;
@@ -144,7 +162,7 @@ export function modelGate(planText, {
   // caller can place a death against the AI table's hour rows.
   const deathTimes = new Map();
   for (let seed = 1; seed <= runs; seed++) {
-    const { sim } = replayFn(jitterPlan(plan, seed, slackMs),
+    const { sim } = replayFn(jitterPlan(plan, seed, slackMs, shape),
                              { night, seed, idleUntilMs });
     if (sim.won) survived++;
     else if (sim.death) {
