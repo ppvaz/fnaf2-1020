@@ -17,7 +17,8 @@ clean.
 - **Pkg 2 (done).** Parameter space is `SEARCH_KNOBS` in `hidpilottest.mjs`
   (exported, default-inert — the 803feb3 plan is byte-identical with every knob
   0): `attackHallDeltaMs`, `attackSweepDeltaMs`, `attackRstDeltaMs`,
-  `clearHall2DeltaMs`, `phaseMarginDeltaMs`, `hallPulseDeltaMs`, `openGfFlick`.
+  `clearHall2DeltaMs`, `phaseMarginDeltaMs`, `hallPulseDeltaMs`, `openGfFlick`,
+  `preReadHallMs`.
   Each floor is in `tools/minus7/paramsearch.mjs` `FLOORS` with its citation.
   The search state view is `tools/minus7/sim.mjs` `view()` — sourced fields
   only; office pan, render flicker, sound identity, object handles dropped.
@@ -36,7 +37,34 @@ clean.
   earlier recovery sweep — the safe direction; `attackRstDeltaMs ≈ 7100`, an
   extra monitor-down hall reset straddling the recovery 5 s check) move n7
   32.7 → ~38 % under correlated at 350-seed screening. Not enough; n7's death
-  is in the opening (pkg 5), which the attack knobs do not touch.
+  is the attack cycle's masked-span 5 s check (mask on at read+0.6 s, check
+  ~1.9 s into the hold, D at mask-on ≈ 2–3 → D = 4 at the check), same as n6.
+- **Pkg 4 negative result, measured (2026-08-27).** The masked-span check can
+  only be made safe by entering the five-tick BB hold at D = 0, which needs a
+  hall reset that restarts the tick counter (g293) and therefore pushes `off`
+  ≥ +1000 ms. That is geometrically impossible: the recovery sweep at
+  `off + 0.45` is pinned ≤ b + 6.67 s by the 400-frame Withered stun, so `off`
+  may not exceed b + 6.22 s and the hold must start by b + 1.2 s — exactly
+  where the prophylactic mask already is. Confirmed by sweeping
+  `phaseMarginDeltaMs` (pushes `off` later): **+50 ms → n5/n6/n7 46/45/26 %
+  correlated; +100 ms → 14/14/8 %; +150 → ~1 %.** Deterministic (5 s hold +
+  sweep-every-6.67 s + 10 s cycle), so it holds under iid and correlated
+  alike. The decoupling cannot be funded inside the 10 s attack geometry —
+  it needs a structurally shorter attack cycle (ATTACK_WINDOW_FRAMES + replay
+  + emitter) or item 8's new device time.
+- **openGfFlick (pkg 5) is a net loss under the honest shape.** It helps iid
+  (n6 56→60, n7 28→36) but its monitor-raise-back near the frame-300 GF spawn
+  is fragile to a coordinated shift: under `correlated` it collapses to
+  n5/n6/n7 40/38/3 % (a Golden-Freddy massacre). The opening cannot be
+  GF-cleared without a monitor-down beat, and every such beat has this
+  raise-back fragility.
+- **Pkg 4 enumerator (built; no result promoted).**
+  `tools/constrainedsearch.mjs` exhaustively enumerates the finite permitted
+  recovery-sweep/recovery-reset/in-read-reset geometry. Its screen is
+  informational: `--mode=exhaustive` sends every mechanically legal candidate
+  through the 1200-seed exact replay gate, with `803feb3` included as an
+  immutable control. It uses the persistent worker pool as candidate × night
+  seed batches; no parallel engine or approximate simulator was added.
 - **Not the plan's shape, kept as a probe:** `tools/minus7/{search,policy}.mjs`
   — a from-scratch semantic-action beam search + reactive policy over the
   engine (the user's architecture note). They run but a myopic heuristic /
