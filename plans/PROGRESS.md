@@ -9,7 +9,14 @@ packages are closed.
 
 ## Very next step
 
-**Open items from the 2026-08-26 evening session, in priority order.** Written
+**The standing goal (item 9) is now blocked on ONE thing, and it is item 13:
+device-actuator overhead.** Every purely-simulator lever for the sub-70 nights
+(5/6/7) has been enumerated and measured — item 12 and plan 16's progress log
+have the closed list. The route's Foxy problem is not a scheduling problem; it
+is that the measured phone has no room for the ~600–900 ms an in-attack-cycle
+Foxy reset costs. So the next real move is on the phone, not the simulator.
+
+**Other open items from earlier sessions follow, in priority order.** Written
 as work is done rather than composed at the end; two are delegated and named.
 
 1. ~~**LIVE DEFECT: `CUE_CAMS_UP_GREY=159` is refuted and still shipped**~~
@@ -549,12 +556,72 @@ as work is done rather than composed at the end; two are delegated and named.
     evicts Foxy (n6/n7 -> 0); (d) the one gate-improving candidate
     (`attackSweepDeltaMs:-17`) is a **gate-overfit** -- +Pareto against
     `human-gate.mjs` (readLatency 550) but 0-1/500 on `hidpilot n6 target`
-    (readLatency 480); (e) the **shorter attack cycle** collapses
-    monotonically below 10 s (`cyclelengthsearch.mjs`) -- 10 s is 2x the 5 s
-    movement grid and any other length shifts the clear cycle's monitor-down
-    phase permanently. **Conclusion: nights 5/6/7 to 70% need NEW DEVICE
-    TIME** (a faster actuator freeing the ~600-900 ms an in-cycle Foxy reset
-    costs), not a scheduling change. The purely-simulator search is done.
+    (readLatency 480); (e) the **shorter (7 s / variable-length) attack
+    cycle** collapses monotonically below 10 s. `attackWindowMs` is now a
+    threaded parameter (`hidpilottest.mjs` `attackWindow` -> `recipe.build`
+    -> `replay` via the `#cycle attack N` header, default 10000 = every plan
+    byte-identical) and `tools/minus7/cyclelengthsearch.mjs` sweeps it
+    against every pinned actuator config. Gate n5/n6/n7 correlated goes
+    **63/63/33 at 10 s -> 37/0/0 at 9 s -> 0/0/0 at 7 s**, and `n6target`
+    (readLatency 480) goes **100 -> 0 by 8 s**; 10 s exactly reproduces
+    `803feb3` (the regression fixture). There is no basin at 7 s -- it is a
+    smooth cliff, and the failure mass moves from Foxy toward Golden Freddy
+    and inside-office as W shrinks, which is the phase-lock signature.
+    **Cause:** a 10 s attack cycle is exactly two 5 s movement-opportunity
+    grid periods (`MO_FRAMES` x 2), so it preserves the clear cycle's
+    monitor-down 5 s-check phase -- which is what keeps Golden Freddy from
+    spawning (g336) and the Foxy checks landing at low D. Any other length
+    permanently shifts that phase after the first BB response; the clear
+    cycles never re-align. 5 s is too short for the 5-tick BB hold + reset +
+    sweep; 15 s is worse. **The 10 s attack cycle is load-bearing, not a
+    tunable.**
+
+    **Conclusion: nights 5/6/7 to 70% need NEW DEVICE TIME**, not a
+    scheduling change. The purely-simulator search is done; the next step is
+    item 13.
+
+13. **NEXT STEP -- device-actuator overhead, the only thing item 9 is now
+    blocked on.** The masked-span Foxy check on nights 6/7 (and the eviction
+    runaway on 5) is fatal because the attack cycle has no room for an extra
+    hall reset: a monitor-down -> hall -> monitor-up beat costs ~600-900 ms
+    (`MONITOR_ANIM_DOWN` 22 fr + `MONITOR_ANIM_UP` 12 fr + a ~130 ms hall
+    contact + two Fusion-poll gaps), and the measured phone leaves only
+    ~680 ms of discretionary time per 5 s cycle (`HID-MULTITOUCH.md`). The
+    sweep, the wind and the 5-tick mask are all load-bearing, so the
+    milliseconds are not there to take.
+
+    **What "new device time" concretely means, in decreasing order of
+    likely payoff:**
+    - **A cheaper Foxy reset.** The reset needs `hallLightOn`, which needs
+      the monitor NOT up (`hallView`) and the mask fully off. The ~370 ms
+      monitor-down + ~200 ms monitor-up animation is most of the cost. Is
+      there a shorter path to `hallView` on the phone -- e.g. the monitor
+      already mid-lower from the cycle's own read, so the reset rides an
+      animation the schedule was already paying for? `recipe.mjs`'s
+      `foldMaskRaise` / `clearTheRaise` already do this kind of accounting
+      for the mask-off + raise seam; the question is whether the hall reset
+      can be folded into the read's own monitor-down the same way.
+    - **A faster actuator.** The HID route's per-macro wall-time is one
+      boundary draw plus `hid_delay` spacing (`HID-MULTITOUCH.md`
+      "Answered: 120 ms spacing"). If the inter-press floor can go below
+      133 ms measured on the phone (the 2026-08-27 literature survey found
+      nothing in Android/evdev/uinput imposing one -- `HID-MULTITOUCH.md`
+      "Input injection and sequential budgets"), the sweep tightens and
+      frees slack for the reset.
+    - **A dual-purpose input.** The hall reset and the recovery sweep both
+      raise the monitor. `leftAttack` already queues the hall press before
+      the simultaneous monitor raise so it "resets Foxy during the raise
+      frame". Can a SECOND reset be folded into the recovery sweep's raise
+      the same way, at the cost of only the hall contact?
+
+    **How to measure it:** the levers above are all things the exact engine
+    can price -- `recipe.mjs`'s budget accounting, `cyclelengthsearch.mjs`'s
+    per-actuator-config scoring, and a real device trace (`grade-run.sh`,
+    `test-hid-trace.mjs`) for the inter-press floor. The one thing this must
+    NOT do is shrink a simulated delay the phone cannot actually hit --
+    `ANDROID-SOURCE-STATUS.md` "The simulator prices nothing". Any candidate
+    that clears the sub-70 nights only by assuming a faster phone than the
+    HID trace shows is a simulator-only result, not a route.
 
 
 **Legibility/maintainability/coherence pass, closed 2026-08-26 (`084a8d7`..`fb68baf`).**
