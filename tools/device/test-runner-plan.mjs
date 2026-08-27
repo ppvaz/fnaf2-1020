@@ -11,7 +11,8 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { build, devicePlan, replay, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
+import { build, devicePlan, replay, DEVICE_SPACING_MS, MODEL_SLOT_MS,
+         MIN_CONTACT_MS } from './recipe.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // Two sources, and the split made the difference visible for the first time.
@@ -23,6 +24,17 @@ const here = dirname(fileURLToPath(import.meta.url));
 // passed because the driver happened to be inside the host file.
 const src = readFileSync(join(here, 'trial.sh'), 'utf8');
 const check = (ok, message) => { if (!ok) throw new Error(message); };
+
+// These values are carried into the session manifest and the remote driver's
+// argument header. They do not schedule the generated plan, which makes a stale
+// copy especially dangerous: the night behaves correctly while its evidence
+// claims a different actuator. Pin both defaults to the recipe authority.
+const spacingDefault = src.match(/^PLAN_SPACING_MS="\$\{PLAN_SPACING_MS:-(\d+)\}"$/m)?.[1];
+const contactDefault = src.match(/^PLAN_CONTACT_MS="\$\{PLAN_CONTACT_MS:-(\d+)\}"$/m)?.[1];
+check(+spacingDefault === DEVICE_SPACING_MS,
+  `runner records ${spacingDefault || 'no'} ms sweep spacing, recipe emits ${DEVICE_SPACING_MS}`);
+check(+contactDefault === MIN_CONTACT_MS,
+  `runner records ${contactDefault || 'no'} ms sweep contact, recipe emits ${MIN_CONTACT_MS}`);
 
 // The whole remote program, not a slice of it.
 //

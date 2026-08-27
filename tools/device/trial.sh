@@ -42,7 +42,7 @@ PRESS_MODE="${PRESS_MODE:-hid-multi}"
 HID_TRACE_RUN="${HID_TRACE_RUN:-0}"
 # The sweep geometry the plan specifies; `recipe.mjs --device-plan` prints it
 # and tools/device/test-runner-plan.mjs checks these against it.
-PLAN_SPACING_MS="${PLAN_SPACING_MS:-120}"
+PLAN_SPACING_MS="${PLAN_SPACING_MS:-133}"
 PLAN_CONTACT_MS="${PLAN_CONTACT_MS:-100}"
 # The centre of the measured 83-267 ms scheduler-phase window.
 PILOT_OFFSET_MS="${PILOT_OFFSET_MS:-175}"
