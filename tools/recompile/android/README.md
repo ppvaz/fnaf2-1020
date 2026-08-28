@@ -56,18 +56,37 @@ cross-build: `freetype` (official Android build exists), `libogg`/`libvorbis`
 - **Engine:** compiles for arm64 Android with **one** fix — `fileio.cpp`
   `#include <iostream>` (in the patch).
 
-## Remaining work (est. ~1 week to a device boot attempt)
+## Remaining work
 
-1. ~~Confirm the `testgles2` APK installs and renders on the g56~~ — **done.**
-2. `include_gl.h` — real `#elif defined(CHOWDREN_IS_ANDROID)` branch (draft:
-   `include_gl-android.h.draft`).
-3. `base/android/{platform,renderplatform,fbo}.cpp` — adapt from `desktop/`; the
-   `CMAKE_CROSSCOMPILING` path already drops the desktop versions +
-   `CHOWDREN_IS_DESKTOP` + `glslshader.cpp`.
-4. Cross-build ogg/vorbis/freetype/openal-soft (or SDL_mixer).
-5. `platform.cpp` Android runtime: `Assets.dat` from the APK → internal storage,
-   `chdir` (`SDL_AndroidGetInternalStoragePath`); drop
-   `SDL_WINDOW_FULLSCREEN_DESKTOP`/resize; SDL2 touch→pointer is on by default.
-6. FNaF 2 `gamesrc` into the Gradle project → `libmain.so` + `libSDL2.so` +
-   bundled `Assets.dat` → debug APK → `adb install`.
-7. Boot on the g56, iterate on ES 1.1 texture-format / FBO-OES / blit issues.
+1. ~~`testgles2` APK on the g56~~ — done.
+2. ~~`include_gl.h` Android branch~~ — done (in the patch; GLES1 + `*OES` remaps).
+3. ~~Android platform layer~~ — done. `desktop/{platform,renderplatform,fbo}.cpp`
+   compile as-is for GLES1 (the remaps cover them); the only real edits are in
+   `platform.cpp` (`#ifdef CHOWDREN_IS_ANDROID`: fullscreen window, and
+   `set_resources_dir()` extracts `Assets.dat` from the APK via `SDL_RWops` and
+   `chdir`s to internal storage). `base/android/glesshader.cpp` is the new file: a
+   no-op `BaseShader` (FNaF 2 has no shaders; fixed-function ES 1.1 draws
+   directly) that still `#include`s `shadercommon.cpp` for the blend-mode logic.
+4. ~~ogg/vorbis~~ built inline from `base/staticlibs/` (as on desktop). ~~freetype~~
+   not a real dep — `FTTextureFont` is Chowdren's own atlas font, reads from
+   `Assets.dat`. ~~OpenAL~~ — `openal-soft` 1.23.1 cross-built static
+   (`/opt/openal-soft/build-android/libopenal.a`, OpenSL ES backend).
+5. ~~FNaF 2 `gamesrc` → APK~~ — **`libmain.so` (24 MB) links clean**;
+   `./gradlew assembleDebug` → `app-debug.apk` (129 MB with `Assets.dat`).
+   Self-contained `app/jni/CMakeLists.txt` (does not use the desktop-tangled
+   `base/CMakeLists.txt`); `-std=gnu++14` (bundled boost + `register`),
+   `_LIBCPP_ENABLE_CXX17_REMOVED_*`, `GL_GLEXT_PROTOTYPES`. Source lists parsed
+   from the converter's own `gamesrc/CMakeLists.txt` (27 events, 29 frames, 5
+   objects) so stale `events_28/29.cpp` are not built.
+6. **Next: `adb install` + boot on the g56**, iterate on ES 1.1 texture-format /
+   FBO-OES / blit issues.
+
+## Build recipe
+
+Container `fnaf2-android` (image `fnaf2-android-build:local`, `--platform
+linux/amd64`), mounts `/work` → anaconda checkout, `/input` → recompile dir.
+Gradle project scaffold at `fnaf2-android:/root/game` (symlinks `SDL` →
+`/opt/SDL`, `chowdren` → `/work/Chowdren`, `gamesrc` → `/input/gamesrc`, `openal`
+→ `/opt/openal-soft`; `Assets.dat` copied to `/root/game-assets/`). `app/jni/
+CMakeLists.txt` is committed here as `game-CMakeLists.txt`.
+`cd /root/game && ./gradlew assembleDebug`.

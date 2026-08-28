@@ -1,3 +1,159 @@
+diff --git a/Chowdren/base/android/glesshader.cpp b/Chowdren/base/android/glesshader.cpp
+new file mode 100644
+index 0000000..8f91c0c
+--- /dev/null
++++ b/Chowdren/base/android/glesshader.cpp
+@@ -0,0 +1,62 @@
++// GL ES 1.1 stand-in for desktop/glslshader.cpp.
++//
++// FNaF 2's generated project compiles no shaders (glslshader.cpp is excluded on
++// this target), and the Chowdren Render:: layer draws through fixed-function
++// client arrays which ES 1.1 provides natively.  So every BaseShader entry
++// point here is a no-op — the fixed pipeline does modulate texturing by
++// default — and the only part of shadercommon.cpp that still matters is the
++// blend-func / blend-equation switching, which is GL-version-agnostic once the
++// *OES entry points are remapped in include_gl.h.
++//
++// Consequence: the ink-effect shaders (blur, monochrome, tint, ...) render as
++// plain textures.  The base game — sprites, backdrops, text, additive/subtract
++// blends — renders correctly.
++
++#include "include_gl.h"
++#include "glslshader.h"
++#include "shadercommon.h"
++#include "frameobject.h"
++#include "fileio.h"
++#include "render.h"
++
++BaseShader * BaseShader::current = NULL;
++
++BaseShader::BaseShader(unsigned int id, int flags,
++                       const char * texture_parameter)
++: initialized(false), id(id), flags(flags),
++  texture_parameter(texture_parameter)
++{
++}
++
++void BaseShader::initialize() {}
++void BaseShader::initialize_parameters() {}
++int BaseShader::get_uniform(const char *) { return -1; }
++void BaseShader::begin(FrameObject *, int, int) { BaseShader::current = this; }
++void BaseShader::set_int(FrameObject *, int, int) {}
++void BaseShader::set_float(FrameObject *, int, int) {}
++void BaseShader::set_vec4(FrameObject *, int, int) {}
++void BaseShader::set_image(FrameObject *, int) {}
++GLhandleARB BaseShader::attach_source(FSFile &, GLenum) { return 0; }
++
++void set_scale_uniform(float, float, float, float) {}
++
++// blend function / equation constants + setters, matching the GL branch of
++// desktop/glslshader.cpp (the *OES names come from include_gl.h)
++#define EQ_REVERSE_SUBTRACT GL_FUNC_REVERSE_SUBTRACT
++#define EQ_ADD GL_FUNC_ADD
++
++#define FUNC_DST_COLOR GL_DST_COLOR
++#define FUNC_ONE GL_ONE
++#define FUNC_SRC_ALPHA GL_SRC_ALPHA
++#define FUNC_ONE_MINUS_SRC_ALPHA GL_ONE_MINUS_SRC_ALPHA
++#define FUNC_ZERO GL_ZERO
++#define FUNC_SRC_COLOR GL_SRC_COLOR
++
++#define set_blend_func_eq(a, b, c, d, e, f) \
++    glBlendFuncSeparate(a, b, c, d); \
++    glBlendEquationSeparate(e, f)
++#define set_blend_func(a, b, c, d) glBlendFuncSeparate(a, b, c, d)
++
++#define commit_parameters(x)
++
++#include "shadercommon.cpp"
+diff --git a/Chowdren/base/desktop/platform.cpp b/Chowdren/base/desktop/platform.cpp
+index 0a7095c..c10e2ab 100644
+--- a/Chowdren/base/desktop/platform.cpp
++++ b/Chowdren/base/desktop/platform.cpp
+@@ -204,6 +204,59 @@ static void set_resources_dir()
+ }
+ #endif
+ 
++#ifdef CHOWDREN_IS_ANDROID
++#include <SDL_system.h>
++#include <sys/stat.h>
++#include <unistd.h>
++
++// Chowdren opens "./Assets.dat" with fopen (stdiofile.cpp), which cannot see a
++// file packed inside the APK. Copy it out of assets/ (via SDL_RWops ->
++// AAssetManager) to internal storage once, then chdir there so every later
++// fopen resolves. image_cache/ is not shipped in the APK — the runtime rebuilds
++// what it needs from Assets.dat.
++static void set_resources_dir()
++{
++    const char * base = SDL_AndroidGetInternalStoragePath();
++    if (base == NULL) {
++        std::cout << "No Android internal storage path" << std::endl;
++        return;
++    }
++    if (chdir(base) != 0) {
++        std::cout << "chdir(" << base << ") failed" << std::endl;
++        return;
++    }
++
++    const char * name = "Assets.dat";
++    SDL_RWops * src = SDL_RWFromFile(name, "rb");
++    if (src == NULL) {
++        std::cout << "Assets.dat not found in APK: " << SDL_GetError()
++                  << std::endl;
++        return;
++    }
++    Sint64 want = SDL_RWsize(src);
++
++    struct stat st;
++    if (stat(name, &st) == 0 && (Sint64)st.st_size == want) {
++        SDL_RWclose(src);
++        return; // already extracted
++    }
++
++    std::cout << "Extracting Assets.dat (" << want << " bytes)" << std::endl;
++    FILE * dst = fopen(name, "wb");
++    if (dst == NULL) {
++        std::cout << "Could not open Assets.dat for writing" << std::endl;
++        SDL_RWclose(src);
++        return;
++    }
++    char buf[1 << 16];
++    size_t n;
++    while ((n = SDL_RWread(src, buf, 1, sizeof(buf))) > 0)
++        fwrite(buf, 1, n, dst);
++    fclose(dst);
++    SDL_RWclose(src);
++}
++#endif
++
+ #ifndef NDEBUG
+ static void sdl_log(void *userdata, int category, SDL_LogPriority priority,
+                     const char * message)
+@@ -224,7 +277,7 @@ void platform_init()
+     }
+     SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
+     // SDL_EventState(SDL_WINDOWEVENT, SDL_DISABLE);
+-#ifdef __APPLE__
++#if defined(__APPLE__) || defined(CHOWDREN_IS_ANDROID)
+     set_resources_dir();
+ #endif
+     start_time = SDL_GetPerformanceCounter();
+@@ -615,9 +668,14 @@ void platform_create_display(bool fullscreen)
+ {
+     is_fullscreen = fullscreen;
+ 
++#ifdef CHOWDREN_IS_ANDROID
++    // one full-screen surface at the device's native resolution; SDL sizes it
++    int flags = SDL_WINDOW_FULLSCREEN;
++#else
+     int flags = SDL_WINDOW_RESIZABLE;
+     if (fullscreen)
+         flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
++#endif
+ 
+ #ifndef CHOWDREN_USE_D3D
+     flags |= SDL_WINDOW_OPENGL;
 diff --git a/Chowdren/base/fileio.cpp b/Chowdren/base/fileio.cpp
 index 2a988b7..9064f7f 100644
 --- a/Chowdren/base/fileio.cpp
@@ -83,6 +239,74 @@ index 950da8d..2f504df 100644
  #include "frame.h"
  
  inline int FrameObject::get_x()
+diff --git a/Chowdren/base/include_gl.h b/Chowdren/base/include_gl.h
+index 8489546..b31e648 100644
+--- a/Chowdren/base/include_gl.h
++++ b/Chowdren/base/include_gl.h
+@@ -1,7 +1,62 @@
+ #ifndef INCLUDE_GL_H
+ #define INCLUDE_GL_H
+ 
+-#ifdef CHOWDREN_IS_DESKTOP
++#if defined(CHOWDREN_IS_ANDROID)
++
++// Android: GL ES 1.1 via the NDK. The Chowdren Render:: layer is fixed-function
++// client arrays (glVertexPointer / glColorPointer / glTexCoordPointer /
++// glDrawArrays), which ES 1.1 provides natively. FNaF 2 compiles no shaders, so
++// glslshader.h is not pulled in on this target.
++#include <GLES/gl.h>
++#include <GLES/glext.h>
++
++// ES 1.1 spells the separate-blend and FBO entry points with an OES suffix; the
++// desktop CHOWDREN_USE_GL branch does the same remap trick against __gl*EXT.
++#define glBlendFuncSeparate        glBlendFuncSeparateOES
++#define glBlendEquation            glBlendEquationOES
++#define glBlendEquationSeparate    glBlendEquationSeparateOES
++
++#define glGenFramebuffers          glGenFramebuffersOES
++#define glDeleteFramebuffers       glDeleteFramebuffersOES
++#define glBindFramebuffer          glBindFramebufferOES
++#define glFramebufferTexture2D     glFramebufferTexture2DOES
++#define glCheckFramebufferStatus   glCheckFramebufferStatusOES
++#define glGenRenderbuffers         glGenRenderbuffersOES
++#define glDeleteRenderbuffers      glDeleteRenderbuffersOES
++#define glBindRenderbuffer         glBindRenderbufferOES
++#define glRenderbufferStorage      glRenderbufferStorageOES
++#define glFramebufferRenderbuffer  glFramebufferRenderbufferOES
++#define GL_FRAMEBUFFER             GL_FRAMEBUFFER_OES
++#define GL_RENDERBUFFER            GL_RENDERBUFFER_OES
++#define GL_COLOR_ATTACHMENT0       GL_COLOR_ATTACHMENT0_OES
++#define GL_DEPTH_ATTACHMENT        GL_DEPTH_ATTACHMENT_OES
++#define GL_FRAMEBUFFER_COMPLETE    GL_FRAMEBUFFER_COMPLETE_OES
++#define GL_FRAMEBUFFER_BINDING     GL_FRAMEBUFFER_BINDING_OES
++
++// GL_OES_blend_subtract / blend_equation_separate constant names
++#ifndef GL_FUNC_ADD
++#define GL_FUNC_ADD                GL_FUNC_ADD_OES
++#endif
++#ifndef GL_FUNC_SUBTRACT
++#define GL_FUNC_SUBTRACT           GL_FUNC_SUBTRACT_OES
++#endif
++#ifndef GL_FUNC_REVERSE_SUBTRACT
++#define GL_FUNC_REVERSE_SUBTRACT   GL_FUNC_REVERSE_SUBTRACT_OES
++#endif
++
++#ifndef GL_CLAMP_TO_EDGE
++#define GL_CLAMP_TO_EDGE           0x812F
++#endif
++
++// glslshader.h still declares desktop-GL shader handle members even though the
++// Android backend never builds a program (fixed-function ES 1.1). Give the
++// types a definition so the header compiles; the members stay unused.
++typedef unsigned int GLhandleARB;
++typedef char GLcharARB;
++
++#undef TRANSPARENT
++
++#elif defined(CHOWDREN_IS_DESKTOP)
+ 
+ #ifdef CHOWDREN_USE_D3D
+ #define NOMINMAX
 diff --git a/Chowdren/base/manager.h b/Chowdren/base/manager.h
 index 47a213e..5c8de41 100644
 --- a/Chowdren/base/manager.h
