@@ -2191,6 +2191,33 @@ Applied here, two consequences worth testing:
   was on screen, so no frame could have shown him. That is the measured death,
   and it is on a channel already wired up.
 
+**Correction, same day: the audio channel is contaminated and sometimes empty —
+read [`ANDROID-AUDIO-CAPTURE.md`](ANDROID-AUDIO-CAPTURE.md) before believing
+either bullet above.** Both were written without it. Two documented defects cut
+against them:
+
+1. **`AudioPlaybackCapture` does not receive the audible mix.** On this build the
+   music-box winding and Mangle's static are present in the capture
+   *continuously*, even when the player hears nothing — the `[INFERRED]` cause is
+   the Clickteam runtime leaving those loops on internal channels and gating only
+   the player's mix. So the metronome bullet may be backwards: if the loop
+   free-runs decoupled from wind state, its phase is **not** the box counter, and
+   cross-correlating it recovers the loop's own phase, not the game-state value.
+   It might still be a clean reference for *clock drift* (game-frame vs wall
+   clock, which is the phase-estimation goal, not a counter read) — but **only if
+   that loop is driven by the game tick**, which is unmeasured. And the permanent
+   Mangle/static layer is exactly the contaminating background a laugh template
+   could learn instead of the cue.
+2. **Bluetooth silently zero-fills the capture** (A2DP offload bypasses the tap);
+   night 6-42 recorded 71 s of all-zero PCM over a live BB night while the helper
+   reported healthy. Any audio path is dead the moment Bluetooth is connected.
+
+The acceptance test the audio page already wrote governs: collect labeled
+positive/negative windows from the target build — negatives *with* Mangle and
+*with* the box winding — and prove separability against raw PCM before audio
+controls anything. The metronome claim needs one thing that page does not yet
+answer: whether the captured loop's phase tracks the counter or free-runs.
+
 **The mandatory control, because this repository has already been burned by
 exactly this.** A thud detector reported 22 hits across 285 s of night audio and
 all 22 were false positives (CLAUDE.md §"Numbers need their control"). So no
