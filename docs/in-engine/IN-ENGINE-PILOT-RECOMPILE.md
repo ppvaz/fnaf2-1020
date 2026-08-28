@@ -358,6 +358,41 @@ input hook, WP4).
 the frame parse, the parameter table — are cleared. What's left is extension
 stub-object coverage, then the per-ACE grind, then desktop build + boot.
 
+### Phase 2 — complete source emission (2026-08-28)
+
+The next external rerun cleared the `AndroidObject` instance lookup and exits
+successfully after writing the generated C++ for all **29 real frames**. The four
+already-classified truncated developer frames (29–32) are skipped. This passes
+the Phase-2 generation gate only; it does not establish a compilable, runnable,
+or faithful binary.
+
+The patch now gives unsupported extensions an inert but instance-bearing
+`FrameObject` fallback, provides static backdrops with generated BackMagic-style
+lists, and logs/omits unresolved frame-local objects. It also converts an
+unbalanced expression to `0` and makes static-backdrop overlap inert so source
+emission can finish. These are deliberate compatibility placeholders, not
+semantic implementations.
+
+The converter's end-of-run inventory records unsupported Android/iOS/In-App,
+INI, Multiple Touch, Perspective, KYSO, Calculate Text Rect, several system
+ACEs, and unmatched numeric loops. Generated source remains external. The next
+phase is desktop compilation: capture the first compiler-error classes, then
+replace only the necessary extension/runtime paths before attempting a boot.
+
+### Phase 3 — first arm64 compiler boundary (2026-08-28)
+
+An external Debian arm64 CMake configure completed with SDL2, OpenAL and OpenGL.
+The first runtime-only error was a duplicate `number_to_string(size_t)` /
+`number_to_string(uint64_t)` overload; build-296’s Chowdren base now spells the
+latter as `unsigned long long`, which clears that host portability issue. The
+compiler then reaches generated event translation and fails on the expected
+stub semantics: generic `FrameObject` extension placeholders lack emitted
+extension methods, and some system actions have no valid receiver after a
+placeholder/unsupported-ACE path. Thus **Phase 3 has started but has not linked**.
+The next repair slice is a minimal no-op extension writer that declares the
+specific generated method surface, plus receiver-safe handling for the first
+unbound system actions; no boot attempt is authorized by this result.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:

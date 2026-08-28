@@ -1,5 +1,23 @@
+diff --git a/Chowdren/base/stringcommon.h b/Chowdren/base/stringcommon.h
+index ed74b78..f9d064d 100644
+--- a/Chowdren/base/stringcommon.h
++++ b/Chowdren/base/stringcommon.h
+@@ -69,9 +69,11 @@ inline std::string number_to_string(long long value)
+     return fast_lltoa(value);
+ }
+ 
+-inline std::string number_to_string(uint64_t value)
++// uint64_t is an unsigned long on LP64 arm64, the same type as size_t.
++// Spell this overload as unsigned long long so both overloads coexist.
++inline std::string number_to_string(unsigned long long value)
+ {
+-    return fast_lltoa(value);
++    return fast_lltoa((long long)value);
+ }
+ 
+ inline void to_lower(std::string & str)
 diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
-index d8edac8..83be972 100644
+index d8edac8..cb11fb6 100644
 --- a/Chowdren/chowdren/converter.py
 +++ b/Chowdren/chowdren/converter.py
 @@ -1107,7 +1107,7 @@ class Converter(object):
@@ -11,7 +29,40 @@ index d8edac8..83be972 100644
                      image.height), image.getImageData())
  
                  handle = (image.handle, game_index)
-@@ -1359,6 +1359,9 @@ class Converter(object):
+@@ -1251,7 +1251,14 @@ class Converter(object):
+         self.container_ids = Counter()
+         frame_file = FrameDataWriter(frame_index+1, self)
+         frame_class_name = self.frame_class = frame_file.class_name
+-        frame.load()
++        try:
++            frame.load()
++        except IndexError as e:
++            # Build-296 carries several debug/global placeholder frames whose
++            # truncated chunk stream has no Layers record.  They cannot form a
++            # runnable frame; leave them out while converting the real frames.
++            print 'skipping truncated frame:', frame_index, e
++            return
+         self.current_frame = frame
+         self.current_frame_index = frame_index
+         self.config.init_frame(frame)
+@@ -1268,7 +1275,15 @@ class Converter(object):
+         object_writers.append(self.system_object)
+ 
+         for instance in getattr(frame.instances, 'items', ()):
+-            frameitem = instance.getObjectInfo(self.game.frameItems)
++            try:
++                frameitem = instance.getObjectInfo(self.game.frameItems)
++            except KeyError:
++                # Some build-296 frame instances refer to a handle absent
++                # from the application-level FrameItems list.  Do not invent
++                # an object definition; omit that instance and continue to
++                # catalogue the remaining converter boundaries.
++                print 'missing frame-item definition:', instance.objectInfo
++                continue
+             obj = (frameitem.handle, frameitem.objectType)
+             all_startup_infos.add(obj)
+             try:
+@@ -1359,6 +1374,9 @@ class Converter(object):
                      current_container.add_child(new_container)
                  current_container = new_container
                  containers[group_loader.offset] = current_container
@@ -21,7 +72,7 @@ index d8edac8..83be972 100644
                  always_groups.append(ContainerMark(current_container, name))
                  continue
              elif name == 'GroupEnd':
-@@ -1426,8 +1429,11 @@ class Converter(object):
+@@ -1426,8 +1444,11 @@ class Converter(object):
                          self.multiple_instances.add(create_info)
                  elif action_name in ('DeactivateGroup',
                                       'ActivateGroup'):
@@ -35,7 +86,7 @@ index d8edac8..83be972 100644
  
              always_group_index = None
              generated_group_index = None
-@@ -2280,6 +2286,14 @@ class Converter(object):
+@@ -2280,6 +2301,14 @@ class Converter(object):
              writer.putln('if (!%s) goto %s;' % (
                  item.code_name, item.end_label))
  
@@ -50,7 +101,24 @@ index d8edac8..83be972 100644
      def get_container_check(self, container):
          groups = []
          for item in container.tree:
-@@ -2965,6 +2979,14 @@ class Converter(object):
+@@ -2695,7 +2724,15 @@ class Converter(object):
+             obj = action_writer.get_object()
+             object_info, object_type = obj
+             if object_info is not None and not is_qualifier(object_info):
+-                is_static = self.get_object_writer(obj).static
++                try:
++                    is_static = self.get_object_writer(obj).static
++                except KeyError:
++                    # A few frame-local mobile ACEs reference an object handle
++                    # without a FrameItems definition.  Its concrete class is
++                    # unknowable here, so omit this action rather than emit an
++                    # unbound method call.
++                    print 'missing action-object definition:', obj
++                    continue
+                 if is_static and action_writer.ignore_static:
+                     continue
+             if object_info is not None:
+@@ -2965,6 +3002,14 @@ class Converter(object):
                  return self.intern_string(loader.value)
              elif parameter_name in ('TwoShorts'):
                  return to_c('%r, %r', loader.value1, loader.value2)
@@ -65,11 +133,140 @@ index d8edac8..83be972 100644
              else:
                  raise NotImplementedError('parameter: %s' % parameter_name)
          self.start_clauses += out.count('(')
+@@ -2984,10 +3029,18 @@ class Converter(object):
+ 
+             print out
+ 
+-            while True:
+-                end = out.rindex('),', 0, end)
+-                if out[end-1] != '(':
+-                    break
++            try:
++                while True:
++                    end = out.rindex('),', 0, end)
++                    if out[end-1] != '(':
++                        break
++            except ValueError:
++                # The mobile stream can pair an unimplemented expression with
++                # unmatched closing clauses.  Preserve generation progress and
++                # classify it as an inert expression rather than crashing the
++                # entire converter in this legacy repair heuristic.
++                print 'unsupported unbalanced expression'
++                return '0'
+ 
+             filtered = out[end+1:]
+             out = out[:end+1]
+@@ -3160,6 +3213,25 @@ class Converter(object):
+     def get_default_instance(self, object_type):
+         return self.get_object_impl(object_type).default_instance
+ 
++    def get_background_id(self, object_writer):
++        """Allocate a BackMagic-style list slot for a static backdrop.
++
++        Ordinary static backdrops live only in the broadphase, whereas a few
++        mobile events select them as normal objects.  Give each such object a
++        stable generated slot so the event writer can address it without
++        falling through to an absent ObjectList.
++        """
++        key = ('object', object_writer.handle[0], object_writer.handle[2])
++        try:
++            return self.back_ids[key]
++        except KeyError:
++            name = 'BACK_ID_OBJECT_%s_%s' % (object_writer.handle[2],
++                                              object_writer.handle[0])
++            self.back_ids[key] = name
++            self.add_define('CHOWDREN_USE_BACKMAGIC')
++            self.add_define(name, len(self.back_ids) - 1)
++            return name
++
+     def get_object_list(self, obj, allow_single=False):
+         if self.has_single(obj) and not allow_single:
+             print 'single exception:', self.get_single(obj)
+@@ -3170,11 +3242,14 @@ class Converter(object):
+         if is_qual:
+             return type_id
+         obj = self.filter_object_type(obj)
++        object_writer = self.get_object_writer(obj)
++        if object_writer.is_static_background():
++            return 'back_instances[%s]' % self.get_background_id(object_writer)
+         try:
+             return self.object_lists[obj + (self.game_index,)]
+         except KeyError:
+-            import code
+-            code.interact(local=locals())
++            print 'missing object list:', obj, 'game:', self.game_index
++            raise
+ 
+     def filter_object_type(self, obj):
+         if is_qualifier(obj[0]):
+@@ -3285,9 +3360,12 @@ class Converter(object):
+                 return get_method_name('_'.join(full_name))
+         ret = item.getName()
+         if ret is None:
+-            print 'ret:', item.objectType, item.num
+-            import code
+-            code.interact(local = locals())
++            # Some mobile ACE slots have no name in the historic table. Keep
++            # conversion non-interactive and let the explicit inert writer
++            # record the unsupported operation instead of yielding ``None``
++            # into generated C++.
++            print 'unsupported ACE:', key, item.objectType, item.num
++            return 'UnsupportedExpression'
+         return ret
+ 
+     def get_action_writer(self, item, as_klass = False):
+diff --git a/Chowdren/chowdren/writers/events/__init__.py b/Chowdren/chowdren/writers/events/__init__.py
+index 1943544..980b47d 100644
+--- a/Chowdren/chowdren/writers/events/__init__.py
++++ b/Chowdren/chowdren/writers/events/__init__.py
+@@ -74,6 +74,13 @@ class ExpressionWriter(EventWriter):
+     def get_string(self):
+         raise NotImplementedError()
+ 
++class UnsupportedExpression(ExpressionWriter):
++    """Inert fallback for a parser-recognized but unnamed mobile ACE."""
++    has_object = False
++
++    def get_string(self):
++        return '0'
++
+ # helper writers
+ 
+ class EmptyAction(ActionWriter):
+@@ -159,8 +166,16 @@ class DefaultExpression(ExpressionWriter):
+ # method writers
+ 
+ def get_method_out(writer):
+-    parameters = tuple([str(writer.convert_parameter(item))
+-        for item in writer.parameters])
++    parameters = []
++    for item in writer.parameters:
++        value = writer.convert_parameter(item)
++        if value is None:
++            # Keep the generator alive long enough to report the next
++            # boundary; do not emit an invalid `None` into C++.
++            print 'unsupported parameter:', writer.data.getName(), item.getName()
++            value = '0'
++        parameters.append(str(value))
++    parameters = tuple(parameters)
+     meth = writer.method
+ 
+     if meth.count('%s'):
 diff --git a/Chowdren/chowdren/writers/events/system.py b/Chowdren/chowdren/writers/events/system.py
-index 48623cf..0f8f785 100644
+index 48623cf..0eb0e41 100644
 --- a/Chowdren/chowdren/writers/events/system.py
 +++ b/Chowdren/chowdren/writers/events/system.py
-@@ -292,8 +292,7 @@ class SystemObject(ObjectWriter):
+@@ -2,7 +2,8 @@ from mmfparser.data.chunkloaders.objectinfo import SEMITRANSPARENT_EFFECT
+ from chowdren.writers.events import (ActionWriter, ConditionWriter,
+     ExpressionWriter, ComparisonWriter, ActionMethodWriter,
+     ConditionMethodWriter, ExpressionMethodWriter, make_table,
+-    make_expression, make_comparison, EmptyAction, FalseCondition)
++    make_expression, make_comparison, EmptyAction, FalseCondition,
++    UnsupportedExpression)
+ from chowdren.common import (get_method_name, to_c, make_color,
+                              parse_direction, get_flag_direction,
+                              TEMPORARY_GROUP_ID, is_qualifier)
+@@ -292,8 +293,7 @@ class SystemObject(ObjectWriter):
          loop_objects = {}
          for loop in self.get_conditions('OnObjectLoop'):
              parameter = loop.conditions[0].data.items[0]
@@ -79,7 +276,7 @@ index 48623cf..0f8f785 100644
              loop_objects[name] = loop.conditions[0].get_object()
              loops[name].append(loop)
  
-@@ -320,8 +319,7 @@ class SystemObject(ObjectWriter):
+@@ -320,8 +320,7 @@ class SystemObject(ObjectWriter):
  
          for loop_group in self.get_conditions('OnLoop'):
              parameter = loop_group.conditions[0].data.items[0]
@@ -89,7 +286,26 @@ index 48623cf..0f8f785 100644
              if name is None:
                  # try and get config to give us a loop name
                  name = self.converter.config.get_loop_name(parameter)
-@@ -751,8 +749,7 @@ class OnceCondition(ConditionWriter):
+@@ -490,6 +489,18 @@ class IsOverlapping(CollisionCondition):
+         other_info = (data.items[0].loader.objectInfo,
+                       data.items[0].loader.objectType)
+         converter = self.converter
++        # Static backdrops are registered in the frame broadphase, not in an
++        # ObjectList.  The historic overlap writer only accepts object lists;
++        # leave this unsupported branch inert until a backdrop-list adapter is
++        # implemented rather than producing a missing-list crash.
++        def has_static_backdrop(info):
++            return any(converter.get_object_writer(item).is_static_background()
++                       for item in converter.resolve_qualifier(info))
++        if (has_static_backdrop(object_info) or
++                has_static_backdrop(other_info)):
++            print 'unsupported static-backdrop overlap'
++            writer.putlnc('if (true) %s', converter.event_break)
++            return
+         selected_name = converter.create_list(object_info, writer)
+         if negated:
+             other_selected = converter.get_object_list(other_info,
+@@ -751,8 +762,7 @@ class OnceCondition(ConditionWriter):
  
  class GroupActivated(ConditionWriter):
      def write(self, writer):
@@ -99,7 +315,7 @@ index 48623cf..0f8f785 100644
          writer.put(self.converter.get_container_check(container))
  
  class PickRandom(ConditionWriter):
-@@ -1425,9 +1422,7 @@ class Foreach(ActionWriter):
+@@ -1425,9 +1435,7 @@ class Foreach(ActionWriter):
      custom = True
  
      def get_name(self):
@@ -110,7 +326,7 @@ index 48623cf..0f8f785 100644
  
      def write(self, writer):
          self.reorder = self.converter.config.reorder_foreach()
-@@ -1461,14 +1456,26 @@ class Foreach(ActionWriter):
+@@ -1461,14 +1469,26 @@ class Foreach(ActionWriter):
              writer.putlnc('%s();', func_call)
          writer.end_brace()
  
@@ -139,7 +355,7 @@ index 48623cf..0f8f785 100644
          if name is not None:
              return name
          return self.converter.config.get_dynamic_loop_call_name(parameter)
-@@ -1558,8 +1565,11 @@ class StartLoop(ActionWriter):
+@@ -1558,8 +1578,11 @@ class StartLoop(ActionWriter):
                  times = exp.loader.value
                  if times == -1:
                      comparison = 'true'
@@ -153,7 +369,7 @@ index 48623cf..0f8f785 100644
          if times is None:
              times = self.convert_index(1)
          is_infinite = comparison is not None
-@@ -1622,15 +1632,13 @@ class DeactivateGroup(ActionWriter):
+@@ -1622,15 +1645,13 @@ class DeactivateGroup(ActionWriter):
  
      def get_deactivated_container(self):
          if self.deactivated_container is None:
@@ -171,7 +387,7 @@ index 48623cf..0f8f785 100644
          if name is None:
              name = self.converter.convert_parameter(parameter)
              print 'Could not convert stop loop name for', name
-@@ -1640,8 +1648,7 @@ class StopLoop(ActionWriter):
+@@ -1640,8 +1661,7 @@ class StopLoop(ActionWriter):
  
  class SetLoopIndex(ActionWriter):
      def write(self, writer):
@@ -181,7 +397,7 @@ index 48623cf..0f8f785 100644
          index_name = get_loop_index_name(name)
          value = self.convert_index(1)
          writer.putln('%s = %s;' % (index_name, value))
-@@ -1650,8 +1657,7 @@ class ActivateGroup(ActionWriter):
+@@ -1650,8 +1670,7 @@ class ActivateGroup(ActionWriter):
      custom = True
  
      def write(self, writer):
@@ -191,7 +407,7 @@ index 48623cf..0f8f785 100644
          writer.putlnc('if (!%s) {', container.code_name)
          writer.indent()
          writer.putlnc('%s = true;', container.code_name)
-@@ -2055,6 +2061,7 @@ actions = make_table(ActionMethodWriter, {
+@@ -2055,6 +2074,7 @@ actions = make_table(ActionMethodWriter, {
      'CreateObject' : CreateObject,
      'Shoot' : ShootObject,
      'StartLoop' : StartLoop,
@@ -199,7 +415,7 @@ index 48623cf..0f8f785 100644
      'Foreach' : Foreach,
      'StopLoop' : StopLoop,
      'SwapPosition' : SwapPosition,
-@@ -2072,6 +2079,7 @@ actions = make_table(ActionMethodWriter, {
+@@ -2072,6 +2092,7 @@ actions = make_table(ActionMethodWriter, {
      'SetMinimumValue' : 'set_min',
      'SetGlobalString' : 'global_strings->set',
      'SetGlobalValue' : 'global_values->set',
@@ -207,7 +423,7 @@ index 48623cf..0f8f785 100644
      'AddGlobalValue' : 'global_values->add',
      'AddGlobalValueInt' : 'global_values->add',
      'SubtractGlobalValue' : 'global_values->sub',
-@@ -2225,6 +2233,13 @@ conditions = make_table(ConditionMethodWriter, {
+@@ -2225,6 +2246,13 @@ conditions = make_table(ConditionMethodWriter, {
      'WhileMousePressed' : 'is_mouse_pressed',
      'MouseOnObject' : MouseOnObject,
      'Always' : Always,
@@ -221,6 +437,74 @@ index 48623cf..0f8f785 100644
      'MouseClicked' : MouseClicked,
      'ObjectClicked' : ObjectClicked,
      'PlayerKeyDown' : PlayerKeyDown,
+@@ -2290,6 +2318,7 @@ conditions = make_table(ConditionMethodWriter, {
+ })
+ 
+ expressions = make_table(ExpressionMethodWriter, {
++    'UnsupportedExpression' : UnsupportedExpression,
+     'Speed' : 'get_movement()->get_speed()',
+     'String' : StringExpression,
+     'ToNumber' : 'string_to_number',
+diff --git a/Chowdren/chowdren/writers/extensions/__init__.py b/Chowdren/chowdren/writers/extensions/__init__.py
+index 6348cc1..ea169ab 100644
+--- a/Chowdren/chowdren/writers/extensions/__init__.py
++++ b/Chowdren/chowdren/writers/extensions/__init__.py
+@@ -3,6 +3,20 @@ import os
+ 
+ loaded_extensions = {}
+ 
++
++class UnsupportedExtensionObject(ObjectWriter):
++    """Minimal instance-bearing fallback for an extension with no writer.
++
++    The historic fallback returned ``ObjectWriter`` itself, whose ``Undefined``
++    class name deliberately makes the converter skip object/list registration.
++    Mobile CCNs can still refer to such an extension in an event, so that
++    produces an internal lookup failure before the unsupported ACE is reached.
++    Represent it as an inert FrameObject instead: it has a concrete object list
++    and accepts ordinary placement/lifetime operations, while extension ACEs
++    remain handled by the normal empty-writer fallback.
++    """
++    class_name = 'FrameObject'
++
+ def filter_name(name):
+     return name.replace(' ', '').replace('+', 'p').lower()
+ 
+@@ -39,11 +53,11 @@ def load_extension_module(ext, use_default):
+         class NewModule(object):
+             @staticmethod
+             def get_object():
+-                return ObjectWriter
++                return UnsupportedExtensionObject
+         extension = NewModule
+ 
+     if extension is not None:
+         extension.extension_name = ext
+ 
+     loaded_extensions[ext] = extension
+-    return extension
+\ No newline at end of file
++    return extension
+diff --git a/Chowdren/chowdren/writers/objects/system.py b/Chowdren/chowdren/writers/objects/system.py
+index 24a61c1..1e80427 100644
+--- a/Chowdren/chowdren/writers/objects/system.py
++++ b/Chowdren/chowdren/writers/objects/system.py
+@@ -219,7 +219,7 @@ class Backdrop(ObjectWriter):
+             raise NotImplementedError
+ 
+     def write_init(self, writer):
+-        name_id = 'BACK_ID_' + get_method_name(self.data.name).upper()
++        name_id = self.converter.get_background_id(self)
+         writer.putraw('#ifdef %s' % name_id)
+         writer.putlnc('manager.frame->back_instances[%s].push_back(this);',
+                       name_id)
+@@ -610,4 +610,4 @@ system_objects = {
+     RTF : RTFText,
+     LIVES : Lives,
+     SUBAPPLICATION : SubApplication,
+-}
+\ No newline at end of file
++}
 diff --git a/build.py b/build.py
 index ae51170..30028dd 100644
 --- a/build.py

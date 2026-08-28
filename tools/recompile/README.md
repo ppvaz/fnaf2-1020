@@ -16,7 +16,7 @@ directory (`/private/tmp/fnaf2-recompile.*` on the dev machine).
 
 | File | What it is |
 |---|---|
-| `mmfparser-chowdren-mobile.patch` | Source patch (`.py` / `.pyx` only) forward-porting `fnmwolf/Anaconda`'s bundled `mmfparser` + Chowdren to the build-296 mobile CCN: image/font/sound/music banks, object and movement records, the Pillow `frombytes` fix, and `Parameter.read` raw-payload capture for undecoded codes. |
+| `mmfparser-chowdren-mobile.patch` | Content-free source patch (`.py` / `.pyx` plus one Chowdren runtime header) forward-porting `fnmwolf/Anaconda`'s bundled `mmfparser` + Chowdren to the build-296 mobile CCN: image/font/sound/music banks, object and movement records, the Pillow `frombytes` fix, raw-payload capture for undecoded codes, and the arm64 `size_t`/`uint64_t` overload fix. |
 | `fnaf2-config.py` | Chowdren `--config`: `get_missing_image` for placeholder image handle `(0,0)`, and an `init()` hook that synthesizes `game.extensions` entries from the frame items (`Layer` → native writer; `Multiple Touch` / `Android object` / `AndroidPlus` / `iOS Plus Object` → generic `ObjectWriter` stub). |
 | `probe-unknown-params.py` | Dumps every event parameter whose code is past `parameterLoaders`, with the ACE it attaches to and its raw bytes. Requires the `Parameter.read` capture patch. |
 | `probe-onloop.py` | Prints every `OnLoop` condition and its parameter loader — the probe that showed mobile loops are numeric `Short` indices, not name expressions. |
@@ -52,9 +52,11 @@ docker run --rm -e MMFPARSER_ANDROID_RAW_DIR=/input/android-res-raw \
 
 ## State (2026-08-28)
 
-Parse ✓ · assets ✓ · `write_objects` ✓ · `write_loops` ✓ · `write_foreach` ✓ ·
-group-pointer resolution ✓. The patch carries (NebulaFD-sourced or confirmed
-against captured bytes):
+Parse ✓ · assets ✓ · `write_objects` ✓ · event/frame C++ emission ✓ (29 real
+frames; 4 known truncated debug stubs skipped). This is a **generation** gate
+only: the emitted source still has inert compatibility paths and has not been
+compiled, booted, or treated as retail-runtime evidence. The patch carries
+(NebulaFD-sourced or confirmed against captured bytes):
 
 - parameter loaders 67–72: `67`/`70` → `Int`, `68` → `ParameterVariables`,
   `69` → `ParameterChildEvent`, `71` → `Bug`, `72` → `Zone`; names + inert
@@ -72,13 +74,23 @@ against captured bytes):
   fallback in `Activate`/`DeactivateGroup` / `GroupActivated`
 - Chowdren stubs: `RunningAs` → `Always`, `SetGlobalValueDouble` →
   `global_values->set`
+- unknown mobile extensions become inert, instance-bearing `FrameObject`
+  placeholders; static backdrops receive generated BackMagic-style lists;
+  undefined frame-local instances/actions and malformed expressions are logged
+  and omitted or replaced with `0` solely to complete source emission
+- arm64 desktop portability: the duplicate `size_t` / `uint64_t`
+  `number_to_string` overload is disambiguated in `base/stringcommon.h`
 
-**Next boundary:** `get_object_handle` `KeyError: (20, 40, 0)` — an action
-operates on an `AndroidObject` (extension type 40) instance that the config's
-`game.extensions` synthesis does not register in `name_to_item` / `all_objects`.
-The 14 synthesized stub extensions need full **object-instance** registration in
-Chowdren. Also open: `Could not find loop 'loop_3'`; the `multipletouch_*`
-generated groups (expected — WP4).
+The completed run's derived unsupported inventory is printed at the end of the
+converter output (not committed): Android/iOS/In-App, INI, Multiple Touch,
+Perspective, KYSO, Calculate Text Rect, several system ACEs and unmatched
+fastloops remain. The next boundary is **Phase 3 desktop compilation** of the
+external generated target. The first arm64 CMake probe configures and clears a
+`size_t`/`uint64_t` runtime overload conflict, then stops in generated events:
+generic extension placeholders do not expose their emitted methods and some
+unsupported system actions have no receiver. Repair those declaration/receiver
+paths before a second link attempt. `Multiple Touch` remains a later pilot-hook
+task.
 
 Regenerate this patch after landing more:
-`cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`
+`cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' '*.h' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

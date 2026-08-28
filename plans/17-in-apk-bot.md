@@ -47,8 +47,9 @@ untouched stock game.
   and 67 APK audio resources. This build's music bank is empty. It is not yet a
   generated or booted runtime. The 2026-08-28 build-293→296 `mmfparser` port
   (NebulaFD as spec) clears parse, assets, `write_objects`, `write_loops`,
-  `write_foreach` and group-pointer resolution; event C++ generation now stops on
-  stub-extension object-instance registration (`get_object_handle` `KeyError`).
+  `write_foreach` and group-pointer resolution; event C++ emission now completes
+  for the 29 real frames (the four truncated debug frames are skipped). The
+  unsupported-ACE inventory is the next desktop-build repair list.
   See
   [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#phase-2--generate-boundaries-2026-08-28).
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
@@ -365,7 +366,7 @@ key, or a raw state dump in Git.
 | rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
 | loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
 | CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
-| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, asset creation ✓, C++ generation in progress.** `tools/recompile/fnaf2-config.py` clears `write_objects` — placeholder image `(0,0)` and the empty extension list (synthesize entries; `Layer`→native, `Multiple Touch`/Android/iOS→stub). Now stops in event gen (`write_loops`); build-293→296 `mmfparser` port: write_loops now passes; next is ParameterChildEvent (new system ACEs). Not a boot attempt yet. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, assets ✓, C++ emission ✓ for 29 real frames.** The generated source contains explicit compatibility stubs and has not been compiled or booted; Phase 3 is the first desktop compiler-error inventory. |
 
 The route harness is complete only when every attempted row has one such record.
 It is not complete merely because a command exists in a shell history.  The current
@@ -389,20 +390,19 @@ the mobile event format"). Toolchain: `tools/recompile/` (patch + config +
 probes + README). Spec: `AITYunivers/NebulaFD` (C#, active) — the only maintained
 build-296 reader; ported in place rather than adopted as a runtime dep.
 
-Cleared 2026-08-28: parse, assets, `write_objects` (via the config's
-`get_missing_image` + extension-synthesis `init()` hook), and **`write_loops`**
-(parameter loaders 67–72, frame chunk `13132`, a `ChunkList` end-of-data guard,
-numeric-fastloop naming in Chowdren, `RunningAs` / `SetGlobalValueDouble` stubs).
+Cleared 2026-08-28: parse, assets, `write_objects`, numeric loops, group
+pointers, extension-instance fallback, and source emission for the 29 real
+frames. The generated code is externally held and includes documented inert
+compatibility paths.
 
 Next:
 
-1. Give the 14 synthesized stub extensions full **object-instance** registration
-   in Chowdren (`name_to_item` / `all_objects` / `object_names`), not just a
-   `game.extensions` entry — the current blocker is `get_object_handle`
-   `KeyError: (20, 40, 0)` on an `AndroidObject` instance.
-2. Rebuild, rerun `chowdren.run --config tools/recompile/fnaf2-config.py
-   <owned-ccn> <gamesrc>`, record the next boundary. Keep going per the Phase
-   gates table until a desktop target builds and boots to a night.
+1. Compile the external generated desktop target and record the first compiler
+   error classes. **Reached:** CMake configures and the runtime arm64 overload
+   is fixed; generated events now require no-op extension method declarations
+   and receiver-safe unsupported system actions before a link can proceed.
+2. Boot only after a link succeeds, then compare a selected night to the sourced
+   model before making any pilot claim.
 3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
    events generate.
 5. Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion
