@@ -26,8 +26,12 @@ progress log has the tables):
   `iid` (n6 ~62), and it drops **n7 to 13–18** (vs shipped 33). `dev` is a
   ~4 ms-wide plateau with cliffs on both sides. Not promotable until the
   device shows a real actuator holds the basin under its own jitter — that is
-  the `fnaf2-1020-e8` device thread, still gated on whether a 33 ms light
-  contact *stuns* vs merely lights.
+  the `fnaf2-1020-e8` device thread. (The "does 33 ms *stun* vs merely light"
+  question is **answered** — the dump sources no minimum lit time, g450–455
+  are single-frame triggers on a per-frame `lit?` boolean, and at zero jitter
+  the sim locks every toy on every geometry; see "The stun needs no minimum
+  lit time" below. What the device still has to show is that the last-slot
+  drift leak and its 67 ms repair behave on the phone as in the model.)
 - **Item 10: needs a bang detector faster than the phone has.** Firing the
   attack cycle's mask-off/reset/raise (+ dragged recovery sweep) on the BB
   departure bang clears n2–n6 to ~90% **at a perfect instant oracle**, and is
@@ -41,9 +45,13 @@ be worth ~+30 points on n2–n6, so **plan 15 / plan 08 audio-detection latency
 is a survival lever, not just an honesty concern.**
 
 **Next, in order:**
-1. **Device (`fnaf2-1020-e8`'s A/B/C):** does a 33 ms light contact stun Toy
-   Chica, or only render? If it only renders, the whole n2–n6 geometry lever
-   is gone. If it stuns, does a real actuator hold the `dev≈62` basin?
+1. **Device (`fnaf2-1020-e8`'s probe):** the 33 ms contact *does* stun in the
+   model (dump + sim, no minimum lit time). The open device questions are (a)
+   does the LIGHT_AFTER sweep's last-slot ~12–30 % jitter leak reproduce on
+   the phone, (b) does a 67 ms light close it there as in the sim — which
+   needs the LA/legacy switch made a flag (plan-16 follow-up), and (c) does a
+   real actuator hold the ~4 ms `dev≈62` basin. `n2-la-212912` already showed
+   the geometry transfers and the HID stream has no lit-miss.
 2. **Plan 16 pkg 5 — the Night-7 opener.** n7 is untouched by both levers;
    its Foxy deaths are in the opening (Foxy at capped 17 from midnight, no
    dormancy, no Golden-Freddy clear). This is the one unexplored structural
