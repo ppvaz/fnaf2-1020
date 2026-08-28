@@ -524,7 +524,9 @@ RUN_TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-minus7.XXXXXX")"
 # reference. SWEEP_SPACING_MS / SWEEP_CONTACT_MS override the emitted sweep.
 SWEEP_SPACING_MS="${SWEEP_SPACING_MS:-}"
 SWEEP_CONTACT_MS="${SWEEP_CONTACT_MS:-}"
+SWEEP_SLOT_MS="${SWEEP_SLOT_MS:-}"
 recipe_args="--night=$STORY_NIGHT"
+[ -z "$SWEEP_SLOT_MS" ] || recipe_args="$recipe_args --slot-ms=$SWEEP_SLOT_MS"
 [ -z "$SWEEP_SPACING_MS" ] || recipe_args="$recipe_args --device-spacing-ms=$SWEEP_SPACING_MS"
 [ -z "$SWEEP_CONTACT_MS" ] || recipe_args="$recipe_args --sweep-contact-ms=$SWEEP_CONTACT_MS"
 # shellcheck disable=SC2086
