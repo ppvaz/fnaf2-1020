@@ -9,8 +9,48 @@ packages are closed.
 
 ## Very next step
 
-**The standing goal (item 9): nights 2-6 are sweep-selection-spacing-bound;
-Night 7 is jitter-shape-bound. Item 13's "device-actuator overhead" framing
+**2026-08-27, `minus7-perfect-experiment` branch — the actuator question is
+CLOSED, and the answer is that it was never the constraint.** Session on this
+branch measured, on the g56: 33 ms contacts register for **every** touch
+control — camera select (via the LIGHT_AFTER decoupling, `plans/17`), monitor,
+mask, and the hall beam (a 33 ms hold lights the hallway). The 100 ms floor
+this project defended since the swipe era is margin. LIGHT_AFTER is a
+device-validated sweep that spans ~200 ms (vs 366) and locks Toy Bonnie AND
+Toy Chica where the 100 ms geometry did only intermittently (the CAM-07
+last-flash saga). `docs/device/HID-MULTITOUCH.md` §"The 100 ms contact floor
+is margin".
+
+**But it does not move the sub-70 nights, and the sims say so unambiguously.**
+Gate ladder, `minus7-perfect-experiment`:
+
+- **The simulator does not model contact length** — every toggle fires on the
+  press frame (`engine.js`). A 33 ms-contact plan replays identically to a
+  100 ms one. There is no survival number to move.
+- **LIGHT_AFTER sweep swapped into the shipped schedule: collapse** (config B —
+  n2 11, n5 1, n6 0 at *zero* jitter). Re-laid-out for a tight model slot
+  (config C): n5/n6 hold at 100 at machine precision — but they were *already*
+  100 with the shipped sweep — and **n7 breaks 90 → 11** (the sparse-mask stun
+  bridge had no phase to give up).
+- **The freed ~600-800 ms/cycle has no home.** Moving the attack-cycle Foxy
+  reset into it (`SEARCH_KNOBS.attackHallDeltaMs > 0`) errors the emitter or
+  does not help human jitter — item 12's wall (`MASK_ANIM_OFF` vs the
+  400-frame Withered stun budget, both game constants) does not reopen.
+
+**So: n1-n6 clear at machine precision with the SHIPPED geometry. The sub-70
+ladder is `human-gate.mjs`'s iid model on a geometrically-wedged Foxy reset,
+and no actuator change — faster, lighter, or shorter-contact — touches that.**
+The lines below about "sweep-selection-spacing-bound" nights 2-6 are
+superseded: at machine precision 2-6 were never spacing-bound (they were
+100%), and session 55's 113 ms sweet spot was measuring the human-jitter
+model, not the machine. The open levers are unchanged and both are jitter/
+geometry, not device: **item 12's correlated jitter shape** and **item 10's
+bang-anchored Foxy reset**.
+
+---
+
+*(Superseded 2026-08-27, kept per the retractions rule.)* **The standing goal
+(item 9): nights 2-6 are sweep-selection-spacing-bound; Night 7 is
+jitter-shape-bound. Item 13's "device-actuator overhead" framing
 was checked and corrected on 2026-08-27 (two sessions) — see the correction
 appended to item 13.** The emitted schedule replays 400/400 = 100% on every
 night at zero jitter (item 11). The read-capture cost moves nothing

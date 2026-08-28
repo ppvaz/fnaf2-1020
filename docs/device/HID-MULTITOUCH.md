@@ -1322,3 +1322,57 @@ project is doing, on different hardware:
   measurements** — 12 ms judgement refresh, 20 ms hold — and had abandoned the
   accessibility route for root `/dev/input`. That choice, rather than its
   constants, is the informative part. **[COMMUNITY]**
+
+## The 100 ms contact floor is margin: every touch control registers at 33 ms (2026-08-27)
+
+Measured on the Moto g56 (`ZF525F5BH5`), the LIGHT_AFTER breakthrough plus
+`hid-raise-probe.mjs PROBE_GEN=raise`:
+
+| control | mechanism | 33 ms contact |
+|---|---|---|
+| camera-map select | Fusion Click, `viewing` on RELEASE (g22) | **works** -- via LIGHT_AFTER (select and light decoupled) |
+| monitor toggle (`flip panel button`) | Click | **works** |
+| mask on / mask off | Click | **works** |
+| hall beam (`Key-17`, g75-79: `lit? = 1` while held) | HELD | **works at a 33 ms hold** -- lights the hallway, does not pan |
+
+So the `MIN_CONTACT_MS = 100` / `TAP_CONTACT_MS = 100` floor this document has
+defended since the swipe era is **margin**, not a Fusion requirement. The
+camera select needed the LIGHT_AFTER decoupling (its own section / `plans/17`)
+because select-then-light is a Click-then-hold, not because 100 ms was needed;
+the monitor, mask and hall took the short contact directly.
+
+**What this does NOT change, and why the shipped constants stay 100 for now.**
+
+1. **The simulator does not model contact length.** `src/engine.js` fires every
+   toggle on the press frame -- monitor, mask, camera select are instant. So a
+   plan with 33 ms contacts replays *identically* to one with 100 ms contacts:
+   there is no survival number to move by lowering the floor. Verified against
+   the gate ladder -- config B (LIGHT_AFTER sweep, everything else shipped) and
+   the shipped config score the same on n1-n6 at machine precision.
+
+2. **Full-night reliability is unmeasured.** The CAM-07 last-flash saga was
+   about *intermittent* drops at 100 ms contact / 20 ms released over ~80
+   sweeps a night. A shorter contact has more, not less, exposure to that. The
+   probe runs here are seconds long.
+
+3. **The freed schedule room (~600-800 ms/cycle if every contact drops to
+   33 ms) is real but has no home.** The attack-cycle Foxy reset is wedged
+   between `MASK_ANIM_OFF` and the 400-frame Withered stun budget -- both game
+   constants, both still there. Moving the reset into the freed room
+   (`SEARCH_KNOBS.attackHallDeltaMs > 0`) errors the plan emitter or does not
+   help the human-jitter ladder (item 12 already found this at the old
+   geometry, and the tight geometry does not reopen it).
+
+**The one change that IS shipped** is the LIGHT_AFTER *sweep* -- because that
+is an actuator correctness fix (it lights CAM 07, which the 100 ms geometry
+did only intermittently), not a contact-length optimisation. See
+`plans/17` and `trial/09-constants.sh`. On the model it holds n5/n6 at machine
+precision and *breaks* n7 (90 -> ~11: the sparse-mask stun bridge had no phase
+to give up); on the device it locks Toy Bonnie and Toy Chica where the 100 ms
+geometry did not.
+
+**The synthesis for the sub-70 nights:** the actuator was never the binding
+constraint. n1-n6 clear at machine precision with the *shipped* geometry; the
+sub-70 ladder is `human-gate.mjs`'s iid model on a geometrically-wedged Foxy
+reset. A faster or lighter actuator does not touch that. The open levers stay
+item 12's correlated jitter shape and item 10's bang-anchored reset.
