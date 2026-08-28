@@ -363,7 +363,7 @@ key, or a raw state dump in Git.
 | rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
 | loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
 | CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
-| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, asset creation ✓, C++ generation in progress.** A game config (`fnaf2-config.py`, external) clears `write_objects` — placeholder image `(0,0)` and the empty extension list (synthesize entries; `Layer`→native, `Multiple Touch`/Android/iOS→stub). Now stops in event gen (`write_loops`) on undecoded mobile parameter codes 67 and 69 — parser-patch work. Not a boot attempt yet. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, asset creation ✓, C++ generation in progress.** A game config (`fnaf2-config.py`, external) clears `write_objects` — placeholder image `(0,0)` and the empty extension list (synthesize entries; `Layer`→native, `Multiple Touch`/Android/iOS→stub). Now stops in event gen (`write_loops`); root-caused as a build-293→296 `mmfparser` port (numeric loops, parameter codes 67–70, frames 29–32 don't parse). Not a boot attempt yet. |
 
 The route harness is complete only when every attempted row has one such record.
 It is not complete merely because a command exists in a shell history.  The current
@@ -391,16 +391,21 @@ synthesizes `game.extensions` entries from the frame items (`Layer` → native
 writer; `Multiple Touch` / `Android object` / `AndroidPlus` / `iOS Plus Object`
 → generic `ObjectWriter` stub). Converter now reaches event generation.
 
+The `write_loops` crash is root-caused (2026-08-28): build 296's event format is
+a **build-293 → 296 `mmfparser` port**, not a small fix. Raw evidence captured;
+see `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — third boundary: the
+mobile event format" for the byte table.
+
 Next:
 
-1. **Decode mobile parameter codes 67 and 69.** `mmfparser` skips them (past the
-   end of the stock `parameterLoaders` table), so the `OnLoop` loop-name
-   parameter falls back to a bare `Short` and `write_loops` crashes. Work out
-   what each carries (likely the fast-loop name) and add them to the mobile-CCN
-   parameter table in the patch.
-2. Rerun `chowdren.run --config /…/fnaf2-config.py <owned-ccn> <gamesrc>` and
-   record the next event-generation boundary. Keep going per the Phase gates
-   table until a desktop target builds and boots to a night.
+1. **Decide the port strategy** — patch the bundled `mmfparser` in place, or
+   pull a Fusion-2.5+ `mmfparser`/CTFAK fork that already handles build-296 events
+   and re-point Chowdren at it. The in-place list: 4 parameter loaders (codes
+   67–70), a numeric-loop mode in `mmfparser` **and** Chowdren's name-keyed loop
+   machinery, and the frame 29–32 parse desync (`unknown chunk 13132`).
+2. Rerun `chowdren.run --config /…/fnaf2-config.py <owned-ccn> <gamesrc>` after
+   each fix and record the next event-generation boundary. Keep going per the
+   Phase gates table until a desktop target builds and boots to a night.
 3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
    events generate.
 4. Historical toolchain reference (still valid): `fnmwolf/Anaconda` `9b00bb4`

@@ -282,7 +282,7 @@ Both were cleared with a game config (`fnaf2-config.py`, external):
   `ObjectWriter` stub. `Multiple Touch` (46) becomes the pilot input hook in a
   later phase (Plan 17 WP4); for now it is a stub.
 
-### Phase 2 — third boundary: mobile parameter codes (2026-08-28)
+### Phase 2 — third boundary: the mobile event format (2026-08-28)
 
 With the config in place the converter clears **all of `write_objects`** and
 reaches event/frame generation (`write_frame` → `write_loops`), then stops:
@@ -293,26 +293,52 @@ chowdren/writers/events/system.py:323, write_loops
 AttributeError: 'Short' object has no attribute 'items'
 ```
 
-The `OnLoop` condition's loop-name parameter decodes to a bare `Short` instead of
-an expression list. Upstream cause: `mmfparser` prints **`unknown parameter code
-67`** (×10) and **`69`** (×8) and skips them — build 296 uses parameter type
-codes past the end of the stock `parameterLoaders` table (0–68; 64 =
-`FASTLOOPNAME`). The skipped parameters leave `data.items[0]` pointing at the
-wrong loader. Also surfaced, not yet blocking: `unknown chunk 13132` (a frame
-chunk), `unknown chunk 8774 / 8781 / 8783 / 8796` (app chunks), and one
-`FRAME has not been implemented`.
+Investigated with a raw-payload capture patch on `mmfparser`'s `Parameter.read`
+(`events.pyx`: store `self.raw` for codes past the table instead of discarding)
+plus two probe scripts (`probe-unknown-params.py`, `probe-onloop.py`, both in the
+recompile experiment dir). The mobile event format differs from build-293
+`mmfparser` in several independent ways:
 
-**This boundary is parser-patch work, not config.** Decode what codes 67 and 69
-carry (almost certainly the fast-loop name as a string/expression) and add them
-to the mobile-CCN patch's parameter table, then rerun. A `write_loops` guard that
-falls through to `config.get_loop_name` when `parameter.loader` has no `.items`
-avoids the crash but produces misnamed loops — acceptable only as a temporary
-step, and it still needs the real loop names to generate correct code.
+**1. Loops are numeric, not named.** The mobile `OnLoop` condition (System
+num −16) has **one parameter, code 11 → `Short`**, holding a small integer
+(1, 2, 3, …). Desktop Fusion puts a `FASTLOOPNAME` expression there (the loop
+*name*), which is why Chowdren reads `parameter.loader.items`. `StartLoop`
+(System action 14) is the mirror. Chowdren's entire loop machinery
+(`write_loops`, `StartLoop.get_loop_names`, `get_loop_running_name`, …) is
+name-keyed, so this needs a mobile mode: derive a stable name (`loop_<index>`)
+from the `Short`, or recover a fastloop-name table if one of the unknown app
+chunks holds it.
+
+**2. `parameterLoaders` runs 0–66 here; build 296 uses codes 67–70.** Captured
+raw payloads and the ACE each attaches to:
+
+| code | ACE (objectType / num) | size | raw payload (sample) | likely meaning |
+| --- | --- | --- | --- | --- |
+| 67 | System cond −40 (`RunningAs`) | 8 | `04000000` / `03000000` / `00000000` | int32 runtime-kind enum |
+| 68 | Active cond −25 / −41; Extension cond −25 | 80 | 76 bytes, leading `11000000…` / `01000000…` | new fixed-width compare/alterable-value struct |
+| 69 | System cond −43 / action 43 | 16 / 12 | `01000000 2b000000 ffffffff` / `00000000 ffffffff` | int32 fields + trailing `-1` sentinel |
+| 70 | Active action, num 0 | 8 | `01000000` | int32 immediate |
+
+Each needs a loader class registered in `parameterLoaders`, and Chowdren's
+writers must then consume it.
+
+**3. Frames 29–32 do not parse at all** — `frame.load()` raises
+`error('1 bytes required')`, i.e. the frame-chunk stream desyncs. `unknown chunk
+13132` (past the stock frame-chunk table, which ends at 13130) is the prime
+suspect; `unknown chunk 8774 / 8781 / 8783 / 8796` are the app-level equivalents.
+These four frames are likely gameplay frames, so this is on the critical path,
+not cosmetic.
+
+**Scope.** This is a build-293 → build-296 `mmfparser` port: ~4 parameter loaders,
+a mobile loop mode in `mmfparser` **and** Chowdren, ≥2 unknown chunk formats, and
+the frame-parse desync. It is the bulk of the remaining Phase-1/2 work. A newer
+`mmfparser`/CTFAK fork that already targets Fusion 2.5+ may shortcut parts of it.
 
 External artifacts for the next session (all outside Git, under the recompile
 experiment dir): the parsed CCN + `android-res-raw/`, the populated
-`gamesrc/cache.dat` + `image_cache/`, and `fnaf2-config.py` (the extension
-synthesis + `get_missing_image`).
+`gamesrc/cache.dat` + `image_cache/`, `fnaf2-config.py`, `probe-unknown-params.py`,
+`probe-onloop.py`, and the `events.pyx` raw-capture instrumentation in the
+Chowdren tree.
 
 ### Fidelity labels
 
