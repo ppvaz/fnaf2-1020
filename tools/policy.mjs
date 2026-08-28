@@ -207,7 +207,7 @@ export class PolicyRun {
 
     if (this.mode === 'truth') {
       o.monUp = s.camsUp; o.maskOn = s.maskOn; o.maskFullyOn = s.maskFullyOn;
-      o.cam = s.cam; o.lightHeld = s.lightHeld; o.winding = s.isWinding;
+      o.cam = s.viewing; o.lightHeld = s.lightHeld; o.winding = s.isWinding;
       o.box = s.box; o.power = s.power; o.bars = s.bars;
       o.gfPresent = s.gf.present;
       o.foxyD = s.foxy.D; o.foxyLocked = s.foxy.gotYou;
@@ -234,7 +234,7 @@ export class PolicyRun {
     o.monUp = b.monUp; o.maskOn = b.maskOn; o.maskFullyOn = b.maskOn;
     o.cam = b.cam; o.lightHeld = b.lightHeld; o.winding = b.windHeld && b.monUp && b.cam === C.BOX_CAM;
     // The box gauge is drawn on CAM 11; the power bars are in the office.
-    if (s.camsUp && s.cam === C.BOX_CAM) this.sensors.box = [s.box, s.frame];
+    if (s.camsUp && s.viewing === C.BOX_CAM) this.sensors.box = [s.box, s.frame];
     o.box = this.sensors.box[0] ?? 1;
     o.bars = s.camsUp ? o.bars : s.bars;
     o.power = s.camsUp ? o.power : s.power;

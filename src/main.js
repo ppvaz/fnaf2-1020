@@ -171,7 +171,8 @@ class App {
     });
     this.coach = null;
     this.sim.monitor = 'up';
-    this.sim.cam = C.BOX_CAM;
+    this.sim.cam = this.sim.viewing = this.sim.lastViewed = C.BOX_CAM;
+    this.sim.hasViewedCamera = true;
     this.ui.clearCoach();
     this.ui.setCoachVisible(false);
     this.ui.duelMode = false;
@@ -236,7 +237,15 @@ class App {
     await Assets.loadInto(this.audio).catch(() => {});
     this.sim = new Sim(Object.assign({ android: true, record: true }, mode.sim,
       mode.fullNight ? {} : { durationFrames: HUGE }));
-    if (mode.start) Object.assign(this.sim, mode.start);
+    if (mode.start) {
+      Object.assign(this.sim, mode.start);
+      // Lesson fixtures predate the sourced viewing/marker split. Their one
+      // `cam` value describes a normal, synchronized cameras-up state.
+      if (mode.start.cam && mode.start.monitor === 'up') {
+        this.sim.viewing = this.sim.lastViewed = mode.start.cam;
+        this.sim.hasViewedCamera = true;
+      }
+    }
     const coached = !!mode.script;
     this.coach = new Coach(this.sim, {
       enabled: coached,

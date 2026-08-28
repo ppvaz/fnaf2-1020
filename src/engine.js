@@ -48,7 +48,14 @@ export class Sim {
     // frame the current cams-up session started (-1 = monitor down); the
     // sourced entry timer counts against this streak, not time-in-opening
     this.camsUpSince = -1;
+    // Android carries camera selection in two fields. `cam` is the parked
+    // `your view` marker (flash target / look-hold); `viewing` is counter 55
+    // (picture, winding, flash immunity). Camera touches write both. A raise
+    // restores only `viewing` from the sampled `lastViewed`, which is how the
+    // double-camera glitch makes them disagree.
     this.cam = C.parkedCamera(this.opts.night);
+    this.viewing = 0;
+    this.lastViewed = 0;
     this.hasViewedCamera = false;
     this.maskOn = false;
     this.maskAnim = 0;
@@ -217,12 +224,14 @@ export class Sim {
   // not, so CAM 10 is the one camera he leaves you.
   get camLightOn() {
     return this.lightHeld && this.monitor === MON_UP && !this.blackout.active &&
-      (!this.bb.inside || this.cam === 10);
+      this.viewing > 0 && (!this.bb.inside || this.viewing === 10);
   }
   get bars() { return Math.max(0, Math.min(4, Math.floor((this.power - C.POWER_PER_BAR) / C.POWER_PER_BAR))); }
   // Holding the wind button only winds when you are actually on the box camera.
   // Anything else -- cams down, wrong camera -- is a finger doing nothing.
-  get isWinding() { return this.winding && this.monitor === MON_UP && this.cam === C.BOX_CAM; }
+  get isWinding() {
+    return this.winding && this.monitor === MON_UP && this.viewing === C.BOX_CAM;
+  }
 
   emit(type, data) { this.events.push({ f: this.frame, type, data }); }
   flag(code, detail) { this.mistakes.push({ f: this.frame, t: this.t, code, detail }); }
@@ -278,7 +287,10 @@ export class Sim {
     else if (action === 'ventR') { this.ventLightR = true; }
     else if (action.startsWith('cam:')) {
       const n = +action.slice(4);
-      if (this.monitor === MON_UP && C.CAMS[n]) this.cam = n;
+      if (this.monitor === MON_UP && C.CAMS[n]) {
+        this.cam = n;
+        this.viewing = n;
+      }
     }
   }
 
@@ -327,6 +339,9 @@ export class Sim {
       this.camsUpSince = this.frame; // the source counter runs from the tap
     } else {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
+      // g262 clears the displayed feed immediately but leaves the marker and
+      // sampled last-viewed camera untouched.
+      this.viewing = 0;
       this.winding = false;
       this.camsUpSince = -1; // the source resets the streak on lowering
       // The monitor-lowering object (`blip`) raises `danger 2` for the six
@@ -427,8 +442,12 @@ export class Sim {
       if (this.monitor === MON_RAISING) {
         this.monitor = MON_UP;
         if (!this.hasViewedCamera) {
-          this.cam = C.initialCamera(this.opts.night);
+          this.cam = this.viewing = C.initialCamera(this.opts.night);
           this.hasViewedCamera = true;
+        } else if (this.lastViewed > 0) {
+          // g1 -> child g2 restores only counter 55. The marker deliberately
+          // stays parked, so a stale sample creates the split-camera state.
+          this.viewing = this.lastViewed;
         }
         this.onCamsUp();
         // Active 18 has just become invisible: a Mangle that saw this raise
@@ -441,6 +460,8 @@ export class Sim {
       else if (this.monitor === MON_LOWERING) this.monitor = MON_DOWN;
     }
     if (this.maskAnim > 0 && --this.maskAnim === 0 && this.maskOn) {
+      // g911 mirrors monitor-down's counter clear without moving the marker.
+      this.viewing = 0;
       // Group 293 resets the local mask-duration counters on each transition
       // into the fully-on mask state. They are continuous holds, not storage.
       for (const u of this.units) {
@@ -448,6 +469,11 @@ export class Sim {
       }
       this.bb.maskTicks = 0;   // g293 names Balloon Boy alongside the two toys
     }
+
+    // g263 is the only writer of `last viewed`: a global 200 ms sample of the
+    // live feed. It runs only while a camera is displayed.
+    if (this.viewing > 0 && f % C.LAST_VIEW_SAMPLE_FRAMES === 0)
+      this.lastViewed = this.viewing;
 
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (f % C.MO_FRAMES === 0) this.onFiveSecond();
@@ -529,10 +555,11 @@ export class Sim {
     // remains a movement blocker only until the next scheduler boundary.
     if (this.anyOfficeLightHeld && !this.camsUp)
       this.lightLogicalUntil = Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
-    // Holding the camera light stuns whoever is in the room being viewed
-    // (sourced groups 450-457; `stun time` = 400 frames).
+    // Groups 450-457 split their reads: marker overlap chooses the target,
+    // while `viewing` supplies the CAM 08/09/11 immunity. A desynced marker
+    // on 09 with viewing=11 therefore stuns the Toys for Minus Toys.
     if (this.camLightOn && this.opts.cameraLightStunFrames > 0)
-      this.stunCam(this.cam, this.opts.cameraLightStunFrames);
+      this.stunCam(this.cam, this.opts.cameraLightStunFrames, this.viewing);
     // g848-854 are distinct from the direct edge gate above: while the
     // one-second office-light latch remains set, hall occupants have B pinned
     // to 40. Movement therefore stays blocked for 40 more frames after the
@@ -556,8 +583,14 @@ export class Sim {
     }
   }
 
-  stunCam(n, frames = C.STUN_FRAMES) {
-    for (const u of this.units) if (u.path[u.idx] === n && !u.done) u.stunUntil = this.frame + frames;
+  stunCam(n, frames = C.STUN_FRAMES, viewing = n) {
+    for (const u of this.units) {
+      if (u.path[u.idx] !== n || u.done) continue;
+      if ((C.WITHEREDS.has(u.id) && viewing === 8) ||
+          (C.TOYS.has(u.id) && viewing === 9) ||
+          (u.id === 'mangle' && viewing === 11)) continue;
+      u.stunUntil = this.frame + frames;
+    }
   }
 
   // Hallway Golden Freddy: he can only take the hall when it is genuinely
@@ -987,7 +1020,7 @@ export class Sim {
       // g494/g495: three successful one-second rolls while the box is empty.
       // CAM 11 light blocks the viewing=11 branch; every other view rolls.
       if (this.box <= 0 && !p.out && p.stage < C.PUPPET_ESCAPE_STAGES) {
-        const protectedByLight = this.camLightOn && this.cam === C.BOX_CAM;
+        const protectedByLight = this.camLightOn && this.viewing === C.BOX_CAM;
         if (!protectedByLight && this.rng.chance(C.PUPPET_MO_CHANCE(this.ai.puppet), true)) {
           p.stage++;
           this.emit('puppet-stage', p.stage);

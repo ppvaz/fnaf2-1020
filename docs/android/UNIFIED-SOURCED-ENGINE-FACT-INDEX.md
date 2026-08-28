@@ -263,12 +263,14 @@ fires on the touch latch alone. **Two lit buttons ⇒ `viewing ≠ your view`**,
 freshly-lit tile = `viewing`, stale tile = the marker. It **persists** (g263
 resamples after the raise); only the next camera *touch* re-syncs.
 
-Payoff (read off the event sheet only, **never observed**): park `your view` on
+Payoff (sourced and now exercised in the engine, **not yet observed on-device**): park `your view` on
 `cam 9` with `viewing ≠ 9` and a held flash stuns all three Toys through the
 CAM 09 immunity (g453‑455); same for `cam 8`/Withereds and `cam 11`/Mangle.
-With `viewing == 11` the held light still blocks the Puppet (g494). **Still
-open:** deliberate arming on the device, the real window width, any stun
-observed through a glitched marker, an engine model (there is none).
+With `viewing == 11` the held light still blocks the Puppet (g494).
+`minustoystest.mjs` now gates the consequence: 200/200 normal and 100/100
+pinned worst-luck with the split, 0/200 without it. Deliberate device arming is
+proved once. **Still open:** repeatability, the empirical window width, and a
+Toy stun observed through a glitched marker on the phone.
 
 Forced by a retained classifier frame — `n1-full-1640` (moto g56 5G,
 `2.0.7+26`), CAM 04 + CAM 07 both lit, Party Room 4 on screen. Nothing in frame

@@ -6,14 +6,13 @@ in any later session. Suggested order and dependencies:
 **Current completion and the single next action:**
 [`PROGRESS.md`](PROGRESS.md).
 
-Current triage (2026-08-20):
+Current triage (2026-08-28):
 
-- **Plan 02 is blocked on a framing decision (2026-08-20 second pass):** the
-  sim-verify step ran and the Minus 3 family is NOT zero-RNG on Android
-  (Minus Toys can't transfer; adapted Minus Two probes 16/200 — see
-  `MINUS-3-STRATEGY.md` §7). The mode is only worth building as best-odds
-  practice or PC history, or after on-device validation of the
-  consecutive-tick mask clears.
+- **Plan 02 is reopened around Minus Toys.** Android can deliberately arm its
+  split-camera state, and the glitch-aware engine probe is 200/200 normal plus
+  100/100 pinned worst-luck; the no-split control is 0/200. The next gate is
+  on-device repeatability and direct evidence that a glitched CAM 09 flash
+  holds the Toys. Glitchless Minus Two remains a separate 16/200 negative.
 - **Most untouched work:** Plan 03, a real reactive-grading mode; it is larger than
   a script addition and still needs its Android vent/endgame rules sourced.
 - **Plan 04's runnable experiment is complete:** per-step model windows and an

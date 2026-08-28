@@ -276,23 +276,28 @@ export class UI {
 
     // monitor contents
     if (up) {
-      this.el.feedCam.textContent = `CAM ${pad2(sim.cam)}`;
-      this.el.feedName.textContent = C.CAMS[sim.cam].name;
-      const here = sim.units.filter(u => !u.done && u.path[u.idx] === sim.cam);
+      // During the raise animation g2 has not restored `viewing` yet; keep a
+      // valid feed shell underneath the animation using the sampled/parked cam.
+      const viewing = sim.viewing || sim.lastViewed || sim.cam;
+      this.el.feedCam.textContent = `CAM ${pad2(viewing)}`;
+      this.el.feedName.textContent = C.CAMS[viewing].name;
+      const here = sim.units.filter(u => !u.done && u.path[u.idx] === viewing);
       const extra = [];
-      if (sim.cam === 10 && sim.bb.stage === 0) extra.push('BB');
-      if (sim.cam === 5 && sim.bb.stage === C.BB_STAGES - 1) extra.push('BB');
-      if (sim.cam === 11) extra.push(`PUPPET ${sim.puppet.stage}/${C.PUPPET_ESCAPE_STAGES}`);
+      if (viewing === 10 && sim.bb.stage === 0) extra.push('BB');
+      if (viewing === 5 && sim.bb.stage === C.BB_STAGES - 1) extra.push('BB');
+      if (viewing === 11) extra.push(`PUPPET ${sim.puppet.stage}/${C.PUPPET_ESCAPE_STAGES}`);
       this.el.feedBody.innerHTML = here.map(u => {
         const st = Math.max(0, u.stunUntil - sim.frame) / C.STUN_FRAMES;
         return `<span class="chip ${st > 0 ? 'stunned' : 'free'}">${u.short}</span>`;
       }).join('') + extra.map(e => `<span class="chip immune">${e}</span>`).join('');
       const maxStun = Math.max(0, ...here.map(u => u.stunUntil - sim.frame));
       this.el.feedStun.style.width = `${(maxStun / C.STUN_FRAMES) * 100}%`;
-      this.el.wind.classList.toggle('shown', sim.cam === C.BOX_CAM);
+      this.el.wind.classList.toggle('shown', viewing === C.BOX_CAM);
       for (const b of this.el.map.children) {
         const id = +b.dataset.cam;
-        b.classList.toggle('active', id === sim.cam);
+        // The stale marker tile remains lit when a raise restores a different
+        // `viewing` camera; two active buttons are the glitch's visible tell.
+        b.classList.toggle('active', id === viewing || id === sim.cam);
         let best = -1;
         for (const u of sim.units) if (!u.done && u.path[u.idx] === id) best = Math.max(best, u.stunUntil - sim.frame);
         b.classList.toggle('has', best > -1);

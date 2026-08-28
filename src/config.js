@@ -609,6 +609,11 @@ export const STALLED = [
 // source-excluded (group 456, `viewing <> 11`); her pin room is CAM 10.
 
 export const WITHEREDS = new Set(['withchica', 'withbonnie', 'withfreddy']);
+export const TOYS = new Set(['toyfreddy', 'toybonnie', 'toychica']);
+// [SOURCED: g263] `last viewed` samples the live `viewing` counter on the
+// runtime's 200 ms timer. A camera touch followed by monitor-down before this
+// tick is the Android double-camera-glitch arming window.
+export const LAST_VIEW_SAMPLE_FRAMES = s(0.2);
 // [SOURCED: Android decompile, post-XOR names — Office groups 344-348 & 357.]
 // The look-hold: while the selected-camera marker (`your view`) overlaps the
 // character, their pending movement roll (A=1) cannot resolve to A=2. It

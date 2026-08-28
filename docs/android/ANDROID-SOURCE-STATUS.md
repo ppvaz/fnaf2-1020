@@ -1053,9 +1053,11 @@ each resolved item records the finding. Remaining open items are marked OPEN.
    alone. Groups 450-457 then read `your view` for *who* is stunned and
    `viewing` for the `<> 8 / <> 9 / <> 11` immunity, so the CAM 08/09/11 flash
    exclusions are bypassable, and with `viewing == 11` the held light still
-   blocks the Puppet (g494). Still OPEN: deliberate arming on the device, the
-   real window width, any observed stun through a glitched marker, and an
-   engine model — there is none, so Minus Toys is *not yet* re-probed.
+   blocks the Puppet (g494). **Engine/model answered 2026-08-28:** `Sim` now
+   carries all three fields and `minustoystest.mjs` scores 200/200 normal plus
+   100/100 pinned worst-luck; its no-split control is 0/200. Deliberate arming
+   is proved once on the target phone. Still OPEN: arming repeatability, the
+   empirical window width, and an observed Toy stun through the glitched marker.
 
    > **Original 2026-08-20 text, kept per "retractions stay":**
    > ~~Double-camera glitch — no such state exists in the Android data model:

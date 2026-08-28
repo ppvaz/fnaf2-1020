@@ -23,7 +23,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **Minus Toys** | Highest-priority unexplored strategy. Source says the split state can stun all three Toys while viewing CAM 11; on 2026-08-28 one scheduled HID attempt deliberately armed it on the target phone: CAM 11/Prize Corner visible with **CAM 09 and CAM 11 both lit**. | Split `viewing` from the marker in `src/engine.js`, implement the published 10 s Minus Toys loop, then prove a glitched CAM 09 light holds the Toys on the phone. |
+| **Minus Toys** | Highest-priority route. The split engine and published 10 s loop now score **200/200 normal + 100/100 pinned worst-luck**; the no-split control is **0/200**. One scheduled HID attempt deliberately armed CAM 11 viewing + CAM 09 marker on the target phone. | Repeat the 50 ms arming geometry, then prove a glitched CAM 09 light holds the Toys on the phone. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
 | **Foxy GOT-YOU blackout cover** | Engine and source contain the two kill triggers. The public 2999/3000 greenrun deliberately locks Foxy and covers every 10 s execution check with a blackout. Searches here penalise `gotYou`; none deliberately synthesize this policy. | Encode it as an explicit, likely-RNG baseline and measure it before deciding whether it is useful on Android. |
@@ -60,11 +60,12 @@ contact. Setting an environment variable for the last contact therefore emits
 the old all-33 plan. Thread the option through the live entry point and pin it in
 the runner-plan test before claiming that device experiment ran.
 
-**Concrete next action:** plan 02 package 2a, engine half first. Represent
-`viewing`, `lastViewed` and the `your view` marker separately; pin the existing
-Minus 7 behavior byte-for-byte; then add the glitch-aware Minus Toys probe. The
-device arming sub-gate is answered once, but stun transfer and repeatability are
-still open.
+**Concrete next action:** plan 02 package 2a, device half. The engine now
+represents `viewing`, `lastViewed` and the `your view` marker separately; all
+existing engine gates pass, and the glitch-aware policy/control pair is
+200/200 versus 0/200. Repeat the proven 50 ms arming geometry and observe
+whether a held glitched CAM 09 light actually prevents a Toy move. Stun transfer
+and repeatability are the remaining claims.
 
 ### Prior Minus 7 frontier (retained, now scoped)
 
@@ -1206,7 +1207,9 @@ place. **Nothing is modelled or measured**: the engine has no two-camera state,
 no glitch-aware probe exists, and nobody has tried to arm it on the phone —
 that is plan 02's new package 2a. Full sourcing and controls:
 `docs/android/ANDROID-SOURCE-STATUS.md` §"2026-08-26: the double-camera glitch
-*does* transfer". **This does not change the hardware thread below**, which is
+*does* transfer". **Superseded 2026-08-28:** all three are now answered through
+one deliberate device arm and the gated engine probe; repeatability and an
+on-device Toy-stun observation remain open. **This does not change the hardware thread below**, which is
 still the live next action.
 
 **Resume point, written 2026-08-26 20:01 BRT.** Four scoped changes landed on

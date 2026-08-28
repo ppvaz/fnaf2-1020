@@ -33,6 +33,12 @@ const ENGINE = [
   // than a wrong *outcome*: the population checks below all pass with a
   // corrupted sourced constant.
   ['sourcetest', ['sourcetest.mjs']],
+  // Plan 02's reopened Android route: the sourced split-camera state must arm,
+  // the published 10 s Minus Toys loop must clear both normal and pinned
+  // worst-luck seeds, and the same loop without the split must fail.
+  ['minus toys', ['minustoystest.mjs', '200', '--assert']],
+  ['minus toys worst', ['minustoystest.mjs', '100', '--worst', '--assert']],
+  ['minus toys no-split', ['minustoystest.mjs', '200', '--no-split', '--assert']],
   ['simtest', ['simtest.mjs', '--sweep']],
   ['hidreporttest', ['hidreporttest.mjs']],
   // Plan 16 pkg 1/3 gates: Sim.snapshot()/restore() bit-identity, the semantic

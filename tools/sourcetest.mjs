@@ -333,9 +333,41 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   const s = bare();
   s.press('monitor'); settle(s);
   s.press('cam:7');
-  ok('g16-27', 'the camera is selected', s.cam === 7);
+  ok('g16-27', 'a camera touch writes viewing and the marker',
+    s.cam === 7 && s.viewing === 7);
   s.press('monitor'); settle(s);
-  ok('g262', 'lowering the monitor keeps the marker on CAM 07', s.cam === 7);
+  ok('g262', 'lowering clears viewing but keeps the marker on CAM 07',
+    s.viewing === 0 && s.cam === 7);
+}
+
+// ---------------------------------------------- split-camera state / stun
+{
+  const s = bare({ night: 7, stalledEnabled: true });
+  s.press('monitor'); settle(s); // first raise: viewing + marker = CAM 07
+  s.press('cam:11');
+  while (s.frame % C.LAST_VIEW_SAMPLE_FRAMES !== 0) s.tick();
+  ok('g263', 'the 200 ms sampler stores the displayed CAM 11', s.lastViewed === 11);
+
+  // Start immediately after a sample, so CAM 09 cannot reach g263 before the
+  // monitor-down write clears viewing.
+  s.tick();
+  s.press('cam:9');
+  s.press('monitor'); settle(s);
+  s.press('monitor'); settle(s);
+  ok('g1/g2', 'raise restores stale viewing while leaving the marker on CAM 09',
+    s.viewing === 11 && s.cam === 9);
+
+  const toys = s.units.filter(u => C.TOYS.has(u.id));
+  s.press('light'); s.tick();
+  ok('g453-455', 'split CAM 09 marker + CAM 11 viewing stuns all three Toys',
+    toys.every(u => u.stunUntil === s.frame + C.STUN_FRAMES));
+}
+{
+  const s = bare({ stalledEnabled: true });
+  s.monitor = 'up'; s.viewing = s.cam = 9; s.lightHeld = true;
+  s.tick();
+  ok('g453-455', 'synchronized CAM 09 keeps the Show Stage Toys immune',
+    s.units.filter(u => C.TOYS.has(u.id)).every(u => u.stunUntil < 0));
 }
 
 // ------------------------------------------------------------- camera stun
@@ -502,9 +534,11 @@ eq('g623', 'the Puppet office edge is a 1-in-10 roll', C.PUPPET_OFFICE_ROLL, 10)
   s.press('monitor'); settle(s);
   eq('g4', 'the first completed Custom Night raise selects CAM 07', s.cam, 7);
   s.press('cam:11');
+  step(s, C.LAST_VIEW_SAMPLE_FRAMES);
   s.press('monitor'); settle(s);
   s.press('monitor'); settle(s);
-  eq('g2', 'a later completed raise restores the last selected camera', s.cam, 11);
+  eq('g2', 'a later completed raise restores the sampled camera', s.viewing, 11);
+  eq('g2', 'a normal sampled cycle leaves the marker synchronized', s.cam, 11);
 }
 
 {
@@ -573,7 +607,7 @@ eq('g623', 'the Puppet office edge is a 1-in-10 roll', C.PUPPET_OFFICE_ROLL, 10)
   // g774 excludes CAM 11 but pins B=10 on a later watched/lit route camera.
   const s = bare({ boxEnabled: true, worst: true });
   Object.assign(s.puppet, { stage: 3, out: true, loc: 10 });
-  s.monitor = 'up'; s.cam = 10; s.lightHeld = true; s.frame = 58;
+  s.monitor = 'up'; s.viewing = s.cam = 10; s.lightHeld = true; s.frame = 58;
   s.tick(); s.tick();
   ok('g774', 'a lit roaming Puppet cannot arm the next one-second hop',
     !s.puppet.pending && s.puppet.stunUntil > s.frame);

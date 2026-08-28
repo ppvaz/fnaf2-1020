@@ -178,7 +178,8 @@ Android model:
   on its own terms. What the retraction changes is that the family was closed
   for the wrong reason. The consecutive-tick mask-clear semantics below break
   the probed **Minus Two** policy; they are not yet a Minus Toys verdict. See
-  the 2026-08-28 correction at the end of §8.
+  the 2026-08-28 correction at the end of §8; the “engine has no state” sentence
+  above records the 2026-08-26 checkpoint and is now superseded.
 - **Minus Two: 16/200 normal seeds** (deaths inside-office via Toy Chica);
   the pin-all-six `--cams=3,5,6` extension scores 0/200. The pinned
   worst-luck 100/100 is a diagnostic artifact (pinning freezes the escape
@@ -209,10 +210,11 @@ all in [`ANDROID-SOURCE-STATUS.md`](../android/ANDROID-SOURCE-STATUS.md)
 §"2026-08-26: the double-camera glitch *does* transfer". The strategy-side
 consequences:
 
-- **Minus Toys is reopened as a question, not answered as a strategy.** Every
-  step of the published routine that needs the glitch is now *possible* on this
-  build's event data. Deliberate device arming is proved below; the policy and
-  glitched stun have still not been modelled or measured.
+- **Minus Toys is positive in the Android model, not yet proved on-device.**
+  `tools/minustoystest.mjs` arms the split through the real 200 ms sampler and
+  runs the published 10 s cadence: **200/200 normal + 100/100 pinned
+  worst-luck**, against a **0/200 no-split control**. Deliberate device arming
+  is proved below; actual Toy stun transfer and repeatability remain open.
 - **The glitched hold does stack, in source.** With the marker parked on CAM 09
   and `viewing == 11`, one held flashlight both stuns all three Toys (g453-455,
   gate `viewing <> 9`) and blocks the Puppet's escape roll (g494, `viewing == 11`
@@ -231,12 +233,11 @@ consequences:
   and wind control with both CAM 09 and CAM 11 lit. Artifacts:
   `captures/n2-doublecam-hid-0003.{png,hid}`. This proves the split state and a
   working 50 ms actuator geometry, not the glitched stun or an all-night policy.
-- **What it would take to settle the strategy:** a two-camera state in the engine
-  (`viewing` split from the marker, with g450-457 reading them separately), a
-  glitch-aware Minus Toys probe, a repeatability sweep around the now-proved
-  HID geometry, and an on-device observation that the glitched CAM 09 light
-  actually holds the Toys. Until those exist, quote this as "deliberately armed
-  on Android; policy and stun unmeasured", never as "works".
+- **What it would take to settle the strategy:** the engine state and policy
+  probe are complete. What remains is a repeatability sweep around the proved
+  HID geometry and an on-device observation that the glitched CAM 09 light
+  actually holds the Toys. Until those exist, quote this as "model-positive and
+  deliberately armed on Android; device stun unmeasured", never as "works".
 - **Legitimacy caveat unchanged**: this is the glitch-based half of the family.
 
 ## Sources

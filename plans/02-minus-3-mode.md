@@ -1,12 +1,12 @@
 # Trainer mode: Minus 3
 
-**Status:** research done — see `MINUS-3-STRATEGY.md` (2026-08-19). Step 2
-(sim-verify before teaching) **done 2026-08-20 (second pass)**: the *glitchless*
+**Status:** engine-first Minus Toys probe complete 2026-08-28. Step 2's original
+pass established that the *glitchless*
 member is NOT zero-RNG on the canonical Android model — the adapted Minus Two
 probe (`tools/minus2test.mjs`) scores 16/200 with a structural Toy Chica failure
 against the sourced consecutive-mask semantics, see `MINUS-3-STRATEGY.md` §7.
-Engine gaps from §5 that were load-bearing are now closed (camera stall,
-right-vent Toy Bonnie stall, vent-light battery).
+Engine gaps from §5 that were load-bearing are now closed, including the
+`viewing` / marker split added in the 2026-08-28 pass.
 
 ~~Minus Toys cannot transfer (no glitch state, CAM 09 flash-excluded)~~ —
 **withdrawn 2026-08-26.** The double-camera state *does* exist on Android:
@@ -29,19 +29,19 @@ actuator hit the stale-sample window?” with **yes for one bounded attempt**. I
 does not yet prove repeatability or that a held glitched light actually stuns
 the Toys.
 
-The headline question remains open rather than refuted: the engine still has no
-two-camera state and no glitch-aware Minus Toys probe exists. Crucially, do not
-carry Minus Two's Toy Chica failure over as a Minus Toys verdict. Minus Two let
-Toy Chica reach the opening; Minus Toys is specifically meant to pin Toy Chica,
-Toy Bonnie and Toy Freddy on CAM 09. Android's consecutive mask semantics remain
-load-bearing for Mangle and BB, but the prior 16/200 Toy Chica mechanism does not
-by itself close this strategy.
+**The engine half is now answered positively.** `tools/minustoystest.mjs` arms
+`viewing == 11` with the marker on CAM 09, runs the published 10 s wind/mask
+cadence, and scores **200/200 normal plus 100/100 pinned worst-luck**. The same
+cadence without the split is **0/200**, all inside-office deaths. The continuous
+office half gives Mangle and BB the five sourced mask ticks while the glitched
+flash pins all three Toys. This is a model result, not yet a device stun proof or
+a human timing claim.
 
 **Research verdict:** the mode should teach **Minus Toys** (Zach_Scream, 2025), the
 family's state of the art and the second-ever zero-RNG strategy; the 2023 original is
 historical. It is still a fixed clock-anchored cycle (good lane fit, two-branch
 blackout decision), but it is *not* pure data: cam-stall, the double camera glitch
-(sourced on Android 2026-08-26, unmodelled),
+(sourced on Android 2026-08-26 and modelled 2026-08-28),
 CAM 08/09 flash immunity, GF interval avoidance, RVC mask timing and the right-vent
 light stall are all engine mechanics Minus 7 never needed — see the doc's §5 gap list.
 The glitch also carries a legitimacy caveat the mode must surface; glitchless
@@ -71,14 +71,13 @@ So this is "new script + new lesson ladder + strategy selection UI," not a new e
 2. **Sim-verify before teaching:** seed sweep + worst-luck sweep. Establish whether
    Minus 3 is RNG-proof like Minus 7 or has losable rolls — the answer changes how the
    mode is framed (drill machine vs. best-odds practice).
-2a. **Probe Minus Toys properly (advanced 2026-08-28).** Three parts, in order:
-   split the engine's camera selection into `viewing` and a marker so g450-457
-   can read them separately; write a glitch-aware Minus Toys probe beside
-   `minus2test.mjs`; and measure on the device whether the 200 ms arming window
-   is hit reliably through the phone's actuator. One 50 ms HID geometry has now
-   armed it once; repeatability and the actual glitched stun remain open. Until
-   all three exist, the family's headline verdict stays "possible and
-   deliberately armed on device, policy unmeasured".
+2a. **Probe Minus Toys properly (engine half done 2026-08-28).** The engine now
+   separates `viewing`, sampled `lastViewed`, and the parked marker; sourced
+   tests pin their separate g450-457 roles. `minustoystest.mjs` gates 200/200
+   normal, 100/100 pinned worst-luck, and the 0/200 no-split control. One 50 ms
+   HID geometry has armed the state once on the phone. Remaining: repeatability
+   around that geometry and a device observation that the glitched CAM 09 light
+   actually holds the Toys.
 3. Fill any engine gaps the strategy doc flagged (mechanics Minus 7 never exercised).
 4. Build the lesson ladder (mirroring the 10-step structure where it maps).
 5. Strategy picker in the UI; per-strategy progress/records kept separate.
