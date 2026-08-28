@@ -1,10 +1,15 @@
 # Constrained policy search on the exact engine
 
-**Status: in progress 2026-08-27.** Packages 1–3 built; 4–5 searching; 6 not
-started. This plan is the structured vehicle for the standing goal in
-`PROGRESS.md` item 9 ("iterate on Minus 7 until every night clears 70% under the
-human-gate"), after two sessions (items 8–11) attacked it by hand and reverted
-clean.
+**Status: in progress 2026-08-27.** Packages 1–3 built. **Package 4 closed by
+recorded negative** — the constrained scheduling space is exhausted: the timing
+knobs, the cycle length, the sweep geometry (a fragile phase-lock spike), and
+the bang-anchored attack raise (needs a bang detector faster than the phone has)
+all measured to a conclusion. Package 5 (the Night-7 opener) not started;
+package 6 not started. This plan is the structured vehicle for the standing goal
+in `PROGRESS.md` item 9 ("iterate on Minus 7 until every night clears 70% under
+the human-gate"), after two sessions (items 8–11) attacked it by hand and
+reverted clean. **The goal is not met** — see the last progress-log entry for
+what is left.
 
 ## Progress log
 
@@ -147,6 +152,103 @@ clean.
   near 43 and phase-breaks below slot 90, so it still needs the jitter-shape
   fix (item 12) and the bang-anchored Foxy reset (item 10), per
   `PROGRESS.md` "What moves Night 7".
+
+- **The sweep-geometry axis, searched properly (2026-08-27, `740f5b0`,
+  `tools/minus7/geometrysearch.mjs`).** Item 13 could only *widen* the emitted
+  spacing; the `minus7-perfect-experiment` LIGHT_AFTER breakthrough (33 ms
+  contacts register, `1ac9e13`) lets `devicePlan` emit the sweep NARROW, which
+  re-phases the whole 5 s cycle. `build({sweepSlotMs})` sets the model layout,
+  `devicePlan(r, {deviceSpacingMs, sweepContactMs})` the device emission;
+  `paramsearch.mjs` now takes a fixed `geom` context (not a beam knob — the
+  landscape is phase-locked, 2 ms of `dev` flips n6 ~30 points), and
+  `geometrysearch.mjs` maps it on a dense grid then admits at 1200 seeds.
+
+  | geom slot/dev/con | corr n2 | n3 | n4 | n5 | n6 | n7 | iid min(n2-6) | 480 rebuild | ±ms nbhd worst |
+  |---|---|---|---|---|---|---|---|---|---|
+  | 120/133/100 shipped | 66.7 | 78.2 | 71.8 | 60.9 | 59.4 | 31.8 | 54 | 59.2 | — |
+  | 54/62/30 | 79.3 | 84.3 | 78.9 | 74.5 | 69.8 | 13.0 | **62.4** | 69.5 | **48.3** |
+  | 50/62/28 | 78.7 | 83.8 | 78.6 | 74.0 | 69.1 | 14.5 | **63.0** | 68.8 | **46.5** |
+
+  The grid: `dev ∈ {54, 59–62}` is a ~4 ms-wide plateau at min(n2-6) ~70;
+  `dev ∈ {56–58, 63–64}` are cliffs to ~45; `dev ≤ 42` and the whole thing
+  is 0. So the +10-point correlated gain is real and holds at the 480 latch,
+  **but it is a phase-lock SPIKE, not a basin** — the ±(slot 2, dev 3)
+  neighbourhood collapses to ~46, it never clears 70 under `iid` (n6 ~62),
+  and **every helping geometry drops n7 to 13–18** (its sparse-mask stun
+  bridge has no phase to give up). No single geometry serves all seven
+  nights. Verdict: marginal, and not promotable until the device confirms a
+  real actuator can hold the ~4 ms basin under its own jitter — that is
+  `fnaf2-1020-e8`'s device thread, gated by the still-open question of whether
+  a 33 ms light contact *stuns* (vs merely lights).
+
+- **Item 10 (the bang-anchored attack raise) — a recorded NEGATIVE, and the
+  shape of it is the finding (2026-08-27, `740f5b0`).** The attack cycle's
+  mask-off + hall Foxy-reset + monitor-raise sits blind behind a 900 ms phase
+  pad because the policy cannot see the game's tick phase. `bbLeave()` emits a
+  real departure bang. `SEARCH_KNOBS.attackBangGateMs` (default 0) fires that
+  whole group `gateMs` after the observed bang instead of the blind
+  `off = b + 5.02 + phaseMargin`, and **drags the recovery sweep with it** so
+  the toy stun-refresh stays a fixed offset behind the raise (the fix the
+  item-11 scratch prototype lacked). `replay()` gains `bangLatencyMs` /
+  `bbOnlyBang` to price it honestly.
+
+  | | corr n2 | n5 | n6 | n7 |
+  |---|---|---|---|---|
+  | blind (gate off) | 69 | 62 | 61 | 33 |
+  | gate 1, **bang latency 0** | **94** | **92** | **91** | 47 |
+  | gate 1, bang latency 100 ms | 53 | 29 | 26 | 16 |
+  | gate 1, bang latency 200 ms | 34 | 4 | 1 | 0 |
+
+  `bbOnlyBang` (ignore non-BB vent departures — a phone's mic cannot tell them
+  apart, all use `THUD_SAMPLE`) changes nothing; latency is the whole story.
+  At a **perfect instant oracle** the attack-cycle Foxy deaths are *eliminated*
+  and n2–n6 clear ~90% on both slack shapes. At any realistic
+  bang-detection latency the group (and the dragged sweep) fires late, toy
+  stun coverage collapses, and it is **worse than doing nothing**. The
+  recovery sweep is pinned to the cycle end (the 400-frame Withered stun
+  bridge), so there is no slack to absorb the lag — the same wall pkg 4 hit.
+
+  n7 is barely moved either way (33 → 47 at the oracle) because its Foxy
+  deaths are not in the attack cycle — bang-gating cannot touch them.
+
+  **So item 10 needs a <~50 ms BB-specific departure-bang detector**, which
+  the phone's audio cue path (plan 08: ~tens–hundreds ms, close→MISS latency
+  unmeasurable as built) cannot provide. Kept default-off with a
+  `test-search.mjs` fixture pinning both halves. **The flip side is a real
+  reprioritisation**: a fast bang detector is worth ~+30 points on n2–n6, so
+  plan 15 / plan 08 detection latency is a *survival* lever, not only an
+  architecture/honesty concern.
+
+- **`replay()` queue-drain bug, fixed in passing (`740f5b0`).** The drain
+  tested `queue[0][0]` on an *unsorted* head, so a queue entry pushed at
+  runtime (`recent-hall`'s light release; item 10's `bangraise`) could stall
+  behind a far-future entry and only fire when some later entry re-entered the
+  loop — tens of frames late. Now sorts before testing. Nothing pushed at
+  parse time is affected; the 803feb3 ladder reproduces byte-for-byte and the
+  engine suite is green.
+
+- **Standing goal status after this session: NOT met, and now bounded on
+  both sides.** The purely-simulator scheduling space is exhausted (pkg 4's
+  timing knobs, the cycle length, and now the sweep geometry). Geometry gives
+  a fragile +10 pending device validation; item 10 needs a detector that does
+  not exist. Nights 5/6/7 to 70% still requires either (a) the device
+  confirming the geometry basin is real *and* stacking the correlated shape,
+  or (b) a fast departure-bang detector, or (c) pkg 5's Night-7 opener work
+  (untouched by both levers — n7 Foxy deaths are in the opening / clear
+  cycles, not the attack cycle).
+
+- **Not chased, and why: the 55–67 ms contact band.** `sweepCamMs` / `replay`
+  take the LIGHT_AFTER decoupled path only when `sweepContactMs < 50`, so the
+  grid could not explore a wider light contact with the narrow geometry. The
+  device session (`fnaf2-1020-e8`) found a **67 ms** light closes the sweep's
+  last-slot toy leak (n2 1199/1200 at ±30 ms in the sim) — which is plausibly
+  what makes the geometry basin a spike rather than a plateau. Searching it
+  needs the LA/legacy switch made an explicit flag rather than a contact
+  threshold. Deferred because it does not change the two structural verdicts
+  (the geometry still fails the iid bar and still wrecks n7), and 67 ms routes
+  to legacy same-report geometry on the phone (CAM 07 dark), so it may not
+  transfer. Pick this up only if the device proves the narrow geometry basin
+  is worth hardening.
 
 ## Why this is not a reopening of Plan 06
 

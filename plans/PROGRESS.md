@@ -1,13 +1,61 @@
 # Plan progress
 
-**Updated:** 2026-08-26
+**Updated:** 2026-08-27
 
-**Overall:** **31%** — 29 of 95 mandatory top-level work packages are closed.
+**Overall:** **35%** — 33 of 95 mandatory top-level work packages are closed.
+(2026-08-27: +4 from Plan 16 — pkgs 1–3 were built in prior commits but the
+dashboard row was never updated off the plan's own `(done)` markers, and pkg 4
+closed by recorded negative in `740f5b0`.)
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
 
 ## Very next step
+
+**2026-08-27 (`740f5b0`) — the plan-16 constrained search is done, both levers
+measured to a conclusion, and the standing goal (item 9) is NOT met.** The
+sweep-geometry axis and item 10's bang-anchored reset — the two levers the
+block below named — were each built and gated at 1200 seeds
+(`tools/minus7/geometrysearch.mjs`, `SEARCH_KNOBS.attackBangGateMs`; plan 16
+progress log has the tables):
+
+- **Sweep geometry: a real +10 on n2–n6 correlated, but a phase-lock SPIKE.**
+  Every `dev≈62` geometry (`geometrysearch --mode=admit`) lifts min(n2–6)
+  59→70 correlated and holds at the readLatency-480 latch — but the
+  ±(slot 2, dev 3) neighbourhood collapses to ~46, it never clears 70 under
+  `iid` (n6 ~62), and it drops **n7 to 13–18** (vs shipped 33). `dev` is a
+  ~4 ms-wide plateau with cliffs on both sides. Not promotable until the
+  device shows a real actuator holds the basin under its own jitter — that is
+  the `fnaf2-1020-e8` device thread, still gated on whether a 33 ms light
+  contact *stuns* vs merely lights.
+- **Item 10: needs a bang detector faster than the phone has.** Firing the
+  attack cycle's mask-off/reset/raise (+ dragged recovery sweep) on the BB
+  departure bang clears n2–n6 to ~90% **at a perfect instant oracle**, and is
+  **worse than blind at 100 ms bang latency** — the recovery sweep is pinned
+  to the cycle end, so acting late drags it late and toy coverage collapses.
+  Recorded as a default-off negative. n7 barely moves (it dies to Foxy in the
+  opening / clear cycles, not the attack cycle).
+
+**The useful positive:** a <~50 ms BB-specific departure-bang detector would
+be worth ~+30 points on n2–n6, so **plan 15 / plan 08 audio-detection latency
+is a survival lever, not just an honesty concern.**
+
+**Next, in order:**
+1. **Device (`fnaf2-1020-e8`'s A/B/C):** does a 33 ms light contact stun Toy
+   Chica, or only render? If it only renders, the whole n2–n6 geometry lever
+   is gone. If it stuns, does a real actuator hold the `dev≈62` basin?
+2. **Plan 16 pkg 5 — the Night-7 opener.** n7 is untouched by both levers;
+   its Foxy deaths are in the opening (Foxy at capped 17 from midnight, no
+   dormancy, no Golden-Freddy clear). This is the one unexplored structural
+   piece.
+3. **Plan 15 detection latency** is now on the critical path for survival,
+   not only architecture — a fast enough bang read unlocks item 10.
+
+---
+
+*(Superseded 2026-08-27 by the 1200-seed search above — the "needs a proper
+1200-seed search" it calls for is now done. Kept per the retractions rule; its
+7-point 400-seed table is subsumed by the plan-16 grid.)*
 
 **2026-08-27, `minus7-perfect-experiment` branch — the actuator question is
 CLOSED, and the answer is that it was never the constraint.** Session on this
@@ -809,6 +857,31 @@ as work is done rather than composed at the end; two are delegated and named.
     scheduling change. The purely-simulator search is done; the next step is
     item 13.
 
+    **Extended and closed 2026-08-27 (`740f5b0`), and the "need new device
+    time" conclusion is now precise.** Two more levers were built and gated at
+    1200 seeds:
+    - **The sweep geometry** (`tools/minus7/geometrysearch.mjs`; the LIGHT_AFTER
+      breakthrough lets `devicePlan` emit the sweep NARROW, which re-phases the
+      cycle). Every `dev≈62` geometry lifts min(n2-6) 59→70 correlated and
+      holds at the 480 latch, but it is a **phase-lock spike** — the ±ms
+      neighbourhood collapses to ~46, it fails the iid bar (n6 ~62), and it
+      drops n7 to 13-18. Marginal; pending device validation of the ~4 ms
+      basin. `paramsearch.mjs` now takes a `--geom` context so timing knobs
+      can search on top of a fixed geometry.
+    - **Item 10, bang-anchored attack raise** (`SEARCH_KNOBS.attackBangGateMs`,
+      default 0). At a **perfect instant bang oracle** it clears n2-n6 to ~90%
+      on both shapes; at **100 ms bang-detection latency it is worse than
+      blind**; at 200 ms near-total collapse. The recovery sweep is pinned to
+      the cycle end, so acting on the bang late drags the sweep late and toy
+      coverage collapses. Recorded negative. n7 barely moves (its Foxy deaths
+      are not in the attack cycle).
+
+    So the shape of "new device time" is now specific: **either** a real
+    actuator that holds a ~4 ms sweep-spacing basin under its own jitter,
+    **or** a <~50 ms BB-specific departure-bang detector (which would be worth
+    ~+30 points on n2-n6 — this makes plan 15 / plan 08 detection latency a
+    *survival* lever). n7 needs neither; it needs pkg 5's opener work.
+
 13. **NEXT STEP -- device-actuator overhead, the only thing item 9 is now
     blocked on.** The masked-span Foxy check on nights 6/7 (and the eviction
     runaway on 5) is fatal because the attack cycle has no room for an extra
@@ -1394,7 +1467,7 @@ on the next graded run remains the way to attribute them, since only
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
-| [16 — constrained policy search](16-constrained-policy-search.md) | 0 / 6 | **0%** | Proposed 2026-08-27; the structured vehicle for item 9's standing goal. Searches the device-plan timing geometry against the 1200-seed human gate (a layer Plans 05/06 never touched), targeting the item 10/11 Foxy-reset decoupling; not a reopening of the closed observable-policy grid | `snapshot`/`restore` on `Sim`, un-break `strategysearch.mjs`, give `human-gate.mjs` the three slack shapes |
+| [16 — constrained policy search](16-constrained-policy-search.md) | 4 / 6 | **67%** | Pkgs 1–3 built (row was stale at 0/6 — read off the plan's own `(done)` markers). **Pkg 4 closed by recorded negative 2026-08-27 (`740f5b0`):** the constrained scheduling space is exhausted — the timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks) all measured to a wall. The standing goal (item 9) is **not met**; nights 5/6/7 to 70% need a real actuator holding a ~4 ms spacing basin, a fast departure-bang detector, or pkg 5's opener work | Pkg 5 — the Night-7 opener (Foxy at capped 17 from midnight, no dormancy, no Golden-Freddy clear); pkg 6 — the provenance registry |
 
 ## Counting rule
 
