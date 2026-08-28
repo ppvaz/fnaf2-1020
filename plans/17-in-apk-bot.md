@@ -129,6 +129,68 @@ wipes user data and changes the fidelity environment, so it requires a separate,
 explicit device decision. Without such a device, advance the faithful-recompile
 route while retaining Gadget/re-sign as a lower-priority measured experiment.
 
+## PAIRIP-specific refresh: the anti-Frida layer is real, but the VM is not the wall (2026-08-28)
+
+A follow-up survey specifically on PAIRIP (a.k.a. pairipcore / Play Integrity
+Protect) internals and current bypass status, prompted by the question of whether
+the in-process route is actually reachable. This tightens the route order above;
+it does not report a completed probe. **All external results below are on other
+people's devices and, where dated, on older Android/Frida than this target; none
+has been reproduced here.** Every figure is CLAIMED until a probe on an approved
+research device confirms it.
+
+What PAIRIP actually does, corroborated across three independent write-ups:
+
+- Protected Java methods are lifted into custom **VM bytecode** run by
+  `libpairipcore.so`\'s `executeVM()`; each opcode is FNV-1 hash-checked before
+  execution and the opcode table is **regenerated per build**, which is why static
+  decompilation is incomplete rather than impossible. [CLAIMED — Byteria Lab,
+  https://blog.byterialab.com/reversing-googles-new-vm-based-integrity-protection-pairip/]
+- A **signature/installation** layer validates that the package came from Play and
+  is unmodified — this is the layer the already-recorded re-sign crash hits.
+- An **anti-instrumentation** layer: `ptrace`/`prctl`/`clone` anti-debug,
+  `/proc/self/maps` scanning, and frida-server port detection. Stock
+  `frida-interception-and-unpinning` is reported unable to bypass it. [CLAIMED —
+  frida/frida#3316, https://github.com/frida/frida/issues/3316]
+
+Why this **improves** the route ranking rather than confirming a dead end:
+
+1. **The VM is not in the path of this plan.** `plans/17` needs to read Clickteam
+   objects (`viewing`, `mask`, music-box counter, Foxy `D`) after a module is
+   loaded in-process. Those live in the Chowdren/Fusion runtime, not inside
+   `executeVM()`. Defeating the bytecode VM is a licensing/anti-piracy goal; it is
+   not a precondition for reading game state once code runs in the process.
+2. **The signature layer has a named, public defeat.** `ahmedmani/pairipfix` is an
+   **LSPosed module that bypasses PAIRIP signature checks for APKs installed
+   outside Play** [CLAIMED — https://github.com/ahmedmani/pairipfix]. That is
+   precisely the wall the re-sign crash represents, which raises the
+   Zygisk/LSPosed route from "second injection vehicle" to a first-class one: a
+   scoped module runs inside the app process *before* the anti-instrumentation
+   checks fully arm, and the signature defeat is a module rather than a re-sign.
+3. **VM tooling now exists, for the day it is needed.** `MatrixEditor/pairipcore-vm`
+   disassembles and decompiles the VM bytecode; `Solaree/pairipcore` collects the
+   internals research; working Frida bypass PoCs are reported on **Frida 17.2.17 /
+   Android 10** [all CLAIMED — respective repos]. Relevant only if a later package
+   needs the licensing path, not for the state read.
+
+**Corrected route order (supersedes the "Frida injected first" operational
+consequence above, kept per the retractions rule):** on an approved rooted
+research device, the highest-information first probe is a **package-scoped
+Zygisk/LSPosed module** (pairipfix-style signature handling + an in-process read
+of one state value), *not* naive Frida attach — because the anti-Frida layer is
+the one PAIRIP component that is confirmed to bite, while a module that is already
+inside the process before specialization sidesteps the detection that stock Frida
+tooling trips. Frida injected mode remains a valid probe, but it must carry
+anti-detection from the first attempt rather than being tried bare.
+
+**The honest caveat that keeps this from being hope again.** Every result here is
+someone else\'s handset, several on Android 10 against a target that is Android
+15-era, and PAIRIP is versioned server-side and updated — a bypass that worked in
+one write-up is not guaranteed against build 296\'s protection revision. This
+section changes *which probe to run first*; it does not claim the probe will
+succeed, and the falsification rule in "Focus rule" still governs: run the
+smallest read of one value, record exactly what stage broke, move on.
+
 ## Why in-process — measured against `n2-minustoys-0117`
 
 The first Minus Toys device night (2026-08-28,

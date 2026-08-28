@@ -100,6 +100,28 @@ check (200/200 hid a 33 ms phase cliff — wire `minus-toys-jitter.mjs`'s
 `evalEnsemble` into it); `test-hid-trace.mjs`'s 100 ms contact floor
 false-fails this policy's deliberate 33 ms contacts.
 
+**Session review, 2026-08-28 (survey + reframe, nothing measured on the phone).**
+Two notes landed that a cold session should read before touching actuator geometry
+or plan 17 again:
+
+- **The frontier is phase, not actuation** —
+  `docs/device/ON-DEVICE-VALIDATION.md` §"The frontier is phase, not actuation".
+  A perfect actuator at a 300 ms-wrong phase still dies (margin 33/99 ms vs a
+  302 ms epoch bracket). The unbuilt lever is an **audio-locked clock estimator**
+  (music-box track as metronome via cross-correlation; Kalman/PLL over the
+  −184 ms/min skew; BB laugh as the read no pixel can give). Mandatory control:
+  the 22/22-false-thud lesson — a cue-free recording plus a second signature
+  before any audio number counts. The one real actuator defect (the arming pair
+  merging to a 0 ms drag) is topology, not time — fix with distinct tracking
+  slots: `docs/device/HID-MULTITOUCH.md` §"The arming pair merged into a drag".
+- **PAIRIP posture corrected** — `plans/17` §"PAIRIP-specific refresh". The VM is
+  not on this plan's path (state lives in the Chowdren runtime, not `executeVM()`);
+  the signature layer has a named LSPosed defeat (`pairipfix`); the confirmed-biting
+  layer is anti-Frida. Corrected first probe: **package-scoped Zygisk/LSPosed
+  module**, not bare Frida attach. All external, mostly Android-10-era, none
+  reproduced here — changes which probe runs first, promises nothing.
+
+
 ### Prior Minus 7 frontier (retained, now scoped)
 
 **2026-08-27 (`740f5b0`) — the plan-16 constrained search is done, both levers
