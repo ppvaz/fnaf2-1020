@@ -60,6 +60,48 @@ stand and n7 needs them: **item 12's correlated jitter shape** and **item
 was written before the 50/60/30 point and is wrong — kept per the retractions
 rule.)*
 
+### Device run `n2-la-212912` (2026-08-27): the geometry transfers; the death was Foxy during a mask-camp
+
+First graded on-device Night 2 with the LIGHT_AFTER sweep (`SWEEP_SLOT_MS=50
+SWEEP_SPACING_MS=66 SWEEP_CONTACT_MS=33`, `EXPERIMENT_UNGATED=1`, no cue
+helper — it had died). `grade-run.sh` verdict + Pedro's eyewitness:
+
+**Confirmed by the instruments — the open question is answered YES:**
+- The LIGHT_AFTER burst executed correctly on the phone (hid trace: per camera,
+  select-down 17 ms → up → 17 ms settle → light-down 33 ms → up; all of 10, 4, 7).
+- **CAM 07 lit on ~20 consecutive sweeps** (sweepcheck 8–27 all `cam07=lit`).
+  The geometry that only intermittently lit CAM 07 at 100 ms lights it here.
+- All camera selects registered (camtrace: 10, 4, 7 every sweep).
+- **The monitor model held with ZERO desync for 154 s** (desync-scan: "held for
+  the whole graded interval"; every monitor/mask press agreed with the game).
+- screenstate: **ALIVE ≥ 180 s**; no instrument saw the end (run aborted on
+  focus-loss at 193 s).
+
+**What killed it (keyframe at 187.5 s = the withered-Foxy jumpscare):**
+- ~148 s: `left-view` flips to `inside` (margin 18, the displaced boundary) and
+  stays there — Pedro saw Toy Chica in the office, and a BB "kill" in the chain.
+  So the lit CAM 07 sweep **rendered** but did not **pin** Toy Chica this run.
+- The runner correctly failed closed: prophylactic mask, 5 ticks, 4× over
+  148–188 s (`macro attack[2..999]`).
+- **While mask-camping, the normal cycle — including the hall Foxy resets — is
+  suspended.** Foxy, un-reset for ~40 s, jumpscared at ~188 s.
+
+**Reading:** this is *not* a refutation of the n2–n6 lever (the geometry
+transfers, which was the doubt) but *not* a confirmation either. Two
+pre-existing problems bit, both already named on this page:
+1. The office-entry **mask-camp emergency mode has no Foxy handling.** Lever
+   10 (bang-anchored Foxy reset) and "the office-entry mask" are exactly where
+   CLAUDE.md says the nights are won.
+2. Whether a **33 ms light contact STUNS** (not just lights) Toy Chica at
+   SLOT 50 is still unverified on device — needs the `lit?`/marker observation
+   we still don't have. Could be phase-lock (narrow sweep vs her 5 s move
+   clock) or the 33 ms `lit?` window missing the game's stun poll.
+3. No cue-helper BB read this run (helper dead) — the runner never separated
+   "BB inside" from "toy inside" and just mask-camped. `plans/15` BB-first.
+
+Next device move: re-run with `CUE_HELPER=1` and `CUE_AUDIO=1`, and add a
+`camtrace`/`lit?` probe of one sweep against a known Toy-Chica-on-CAM-07 frame.
+
 ---
 
 *(Superseded 2026-08-27, kept per the retractions rule.)* **The standing goal
