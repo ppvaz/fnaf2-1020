@@ -526,6 +526,35 @@ stays `rebuilt-runtime`. Remaining boundaries, in order: image-bank decode so
 sprites render; the menu→night transition; then a night frame to compare against
 the sourced model.
 
+### The toolchain is desktop-only — no Android path (2026-08-28)
+
+Prompted by "before more recompile effort, will it run on the phone when done?"
+— checked, and the answer is **no, not with this toolchain**. The
+`fnmwolf/Anaconda` Chowdren fork registers exactly two platforms
+(`chowdren/platforms/__init__.py`): `generic` (desktop SDL2) and `d3d` (Windows
+Direct3D). There is **no Android or iOS backend**: no `base/android/`, no
+`platforms/android.py`, no NDK CMake toolchain, no Java `SDLActivity`/`android_main`
+glue, no APK packaging, and nothing android in the checkout's git history. The
+generated `CMakeLists.txt` hardcodes `APP_PLATFORM "generic"`. Vestigial GLES
+render paths (`CHOWDREN_USE_GLES2` in `include_gl.h`, `base/cmake/FindOpenGLES2.cmake`,
+`base/desktop/emscriptenplatform.cpp`) exist but are wired into no build.
+
+So **route 5 as built produces a desktop binary only.** `plans/17` route 5's
+"package it for Android" step, and `plans/17`'s "Done when: an installed personal
+research APK…", are not reachable from here without first **building a Chowdren
+Android backend**: SDL2-Android activity + `android_main` entry, an NDK CMake
+toolchain in the generated project, `AAssetManager`- or bundled-`Assets.dat`
+loading, touch→pointer input mapping, and validation of the GLES2 render path
+(the working build uses desktop GL). Upstream `mp2/chowdren` shipped the official
+FNaF console/mobile ports so an Android backend existed, but that code is not in
+this fork and is not reliably public. PAIRIP is not a factor for an own-package
+research APK, and sideloading a debug-signed APK needs no root.
+
+**What the desktop recompile is still worth, independent of Android:** it runs
+the *actual decoded event logic* from the owned CCN — a materially higher-fidelity
+model than `src/engine.js` for strategy validation and Plan 05 novel-strategy
+work. See `plans/PROGRESS.md` "Very next step" for the decision this forces.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:

@@ -276,13 +276,20 @@ The read-true-state route as specced hit a barrier that is not a probe result:
   oracle this plan's package 6 depends on).
 
 So routes **2** and **3** (rooted retail observation, loader/shim that has to
-sidestep the same protection) are parked. This does **not** close Plan 17: the
-goal — an owned research build that reads authoritative state and closes one
-loop — is still reachable through the **faithful recompile (route 5)**, which
-converts the owned CCN with open-source Chowdren into a separately-packaged
-research binary and touches none of PAIRIP. Route 5 is now the active path,
-working through the Phase 2 generate boundaries (see the ledger row and
-[`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#phase-2--generate-boundaries-2026-08-28)).
+sidestep the same protection) are parked.
+
+**Route 5 does not currently reach an APK either (2026-08-28).** The Chowdren
+fork in use (`fnmwolf/Anaconda`) is **desktop-only** — platforms `generic`
+(desktop SDL2) and `d3d` (Windows); no Android backend, NDK path, or APK
+packaging (`IN-ENGINE-PILOT-RECOMPILE.md` §"The toolchain is desktop-only"). The
+recompile has been driven to a **booting desktop build that renders the FNaF 2
+title screen** and runs the real decoded event logic — a high-fidelity model,
+worth a lot for strategy work — but "package it for Android" (route 5 step) needs
+a Chowdren Android backend built first, which is its own sub-project. So Plan 17's
+APK "Done when" is **blocked on all currently-scoped routes** pending a decision:
+build the Android backend, accept the recompile as a desktop oracle and rescope
+the plan, or redirect effort (see `plans/PROGRESS.md` "Very next step").
+
 The runtime-attachment survey above is kept per the retractions rule — it
 correctly maps the route; it is the route itself that is declined.
 
@@ -309,7 +316,10 @@ recipe.
    available.
 5. **Faithful recompile:** forward-port mmfparser into Chowdren, generate native
    code, restore required extensions, package it for Android, and inject the pilot in
-   generated C++.
+   generated C++. **2026-08-28: the "package it for Android" step has no toolchain
+   support** — the Chowdren fork is desktop-only. Achieved so far: a desktop build
+   that boots to the FNaF 2 title screen and runs the real event logic. Android
+   packaging needs a Chowdren Android backend built first.
 
 The campaign may add a route when evidence reveals one. It must not keep retrying the
 same failed re-sign recipe under a new label.

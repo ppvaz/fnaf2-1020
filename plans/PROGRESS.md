@@ -71,9 +71,28 @@ contact. Setting an environment variable for the last contact therefore emits
 the old all-33 plan. Thread the option through the live entry point and pin it in
 the runner-plan test before claiming that device experiment ran.
 
-**Concrete next action (2026-08-28, Pedro's call): advance the faithful recompile
-(Plan 17 route 5).** Runtime attachment is parked (defeats a PAIRIP layer, no
-rooted device — `plans/17` §"Runtime attachment (route 2) is not being pursued").
+**Concrete next action (2026-08-28): a decision on the recompile route.** The
+faithful recompile now **boots a desktop build to the FNaF 2 title screen** and
+runs the real decoded event logic — but the Chowdren fork is **desktop-only**
+(platforms `generic` + `d3d`, no Android backend / NDK / APK packaging;
+`IN-ENGINE-PILOT-RECOMPILE.md` §"The toolchain is desktop-only"). So route 5 as
+built does **not** reach `plans/17`'s "installed research APK" goal, and with
+runtime attachment (routes 2/3) parked, that goal is blocked on all scoped
+routes. Pick one:
+
+- **(a) Build a Chowdren Android backend** — SDL2-Android activity + `android_main`,
+  NDK CMake toolchain, `AAssetManager`/bundled-`Assets.dat` loading, touch input,
+  GLES2 render-path validation. Own sub-project; only path from here to an APK.
+  Spike it minimally first (stock Chowdren → phone) before committing.
+- **(b) Accept the recompile as a desktop fidelity oracle** — finish it to a
+  playable night, use it to validate/discover strategies against real event
+  logic (big upgrade over `src/engine.js`; directly serves Plan 05). Rescope
+  Plan 17's APK "Done when".
+- **(c) Stop the recompile** — if only an on-phone bot counts and neither
+  routes 2/3 nor route 5 reach it, redirect to Plan 05 / the external hybrid.
+
+Runtime attachment stays parked (defeats a PAIRIP layer, no rooted device —
+`plans/17` §"Runtime attachment (route 2) is not being pursued").
 
 **Recompile status.** Toolchain committed at `tools/recompile/` (content-free
 patch + config + probes + README). No maintained Python decompiler exists, so the
@@ -95,11 +114,11 @@ the frame (Fusion Globals placed later, dead cross-frame refs) and Chowdren
 dereferenced `back_obj` unconditionally — landed absent-ACE default/skip,
 `JumpToFrame` no longer dropped, universal `create_alterables()`, and an
 `INVALID_ASSET_ID` sound guard (`tools/recompile/mmfparser-chowdren-mobile.patch`,
-now also carrying the touched `Chowdren/base/*.cpp`). **Very next step:** the
-image bank / `get_missing_image` path is incomplete so sprites draw as
-placeholder boxes — decode the image bank so sprites render, then drive the menu
-to a night frame and compare to the sourced model. Fidelity `rebuilt-runtime`;
-no gameplay or night comparison yet.
+now also carrying the touched `Chowdren/base/*.cpp`). Playable now over VNC:
+container `fnaf2-play`, `x11vnc` on `127.0.0.1:5901` (`open vnc://localhost:5901`).
+**Very next step: the decision above** — the desktop-only finding means "polish
+the desktop build" (image bank so sprites render, menu→night, night comparison)
+is only worth doing under option (b). Fidelity `rebuilt-runtime`.
 Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
 Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
 event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.
