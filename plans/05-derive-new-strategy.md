@@ -158,6 +158,19 @@ mandatory packages; it reopens the goal, not the refuted candidate.
    real-engine evidence for the load-bearing mechanic and an honest promotion or
    rejection record.
 
+## Progress log (reopened campaign)
+
+- **2026-08-28 — target chosen, engine unblocked.** Pedro's call: the search
+  aims at the **Custom Night configuration space** (systematic single- then
+  pair-threat vectors first), where no published human routine exists to
+  rediscover. `8694c1b` adds `Sim` `opts.customNight` — an `AI_DIALS` vector
+  replacing the night-7 table — plus `peakAi`/`canAct` overloads so a policy can
+  ask what a vector arms. `sourcetest.mjs` pins it. This was the only engine
+  blocker; Plan 16's search infra (`snapshot`/`restore`, exact RNG, 1200-seed
+  gate, dominance pruning) is reusable. Next: pkg 6, the structural policy
+  language and interpreter. See `plans/PROGRESS.md` §"Plan 05 — Custom Night
+  invention campaign".
+
 ## Done when
 
 The original pass met its done condition by recording the sourced refutation. The

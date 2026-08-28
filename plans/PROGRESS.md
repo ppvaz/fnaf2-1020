@@ -193,6 +193,35 @@ or plan 17 again:
   `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Probed and rejected as a
   shortcut".
 
+### Plan 05 — Custom Night invention campaign (active 2026-08-28)
+
+**Direction (Pedro's call, 2026-08-28): aim the reopened invention search at the
+Custom Night configuration space, not another 10/20 pass.** The published FNaF 2
+strategy corpus is entirely human-derived from the decompiled AI and concentrated
+on a handful of canonical challenges. The Custom Night space (10 dials × 21
+levels) has no published routine for the overwhelming majority of vectors, so a
+machine-found policy there has a real shot at genuine novelty — there is nothing
+to rediscover. Target selection: **systematic single- then pair-threat vectors**
+first (each animatronic alone at 20, then dangerous pairs) — a single-threat
+vector also isolates exactly which approximated mechanic a survivor leans on,
+which is the honest-caveat work Plan 05 already requires.
+
+**Landed 2026-08-28 (`8694c1b`):** `Sim` accepts `opts.customNight`, an
+`AI_DIALS` vector that replaces the night-7 table with one 12 AM row (`night`
+stays 7, so every `night >= 7` rule applies; Puppet pinned at 15 by g821; the
+per-frame caps clamp on apply). `peakAi`/`canAct` take the vector too. Pinned by
+`sourcetest.mjs`. This was the one engine blocker — the search infra Plan 16
+built (`Sim.snapshot`/`restore`, exact RNG, 1200-seed gates, dominance pruning)
+is otherwise reusable as-is.
+
+**Very next step for this track:** Plan 05 pkg 6 — define the structural policy
+language (event-triggered, stateful, unequal-cadence, cross-cycle; machine-only
+survivors allowed, simplified for a human later) and its interpreter over the
+engine. Then pkg 7 searches policy *structure* per target vector. Model-boundary
+crossing (pkg 9) routes through Plan 17's in-engine build as the measurement
+oracle. Unverified model dependency to carry into any result:
+`src/config.js:166` — Custom Night's `night` variable and the 0.75 s cams-up
+grace have never been read on a real Custom Night run.
 
 ### Prior Minus 7 frontier (retained, now scoped)
 
