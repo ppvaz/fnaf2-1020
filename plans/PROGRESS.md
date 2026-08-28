@@ -32,7 +32,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Blocked at Phase 2 — `chowdren.run` clears parse + assets, stops in `write_objects` on the unparsed extension list (types 40/42/43/46/47). Next: parse the mobile extension chunk or map those types in a game config. |
+| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Phase 2 in progress — an external `fnaf2-config.py` clears all of `write_objects` (placeholder image + synthesized extension entries); converter now stops in event gen on undecoded mobile parameter codes 67/69 (parser-patch work). |
 | **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. | Not the open-loop loop. (a) external hybrid: AM clock re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
@@ -74,14 +74,17 @@ the runner-plan test before claiming that device experiment ran.
 **Concrete next action (2026-08-28, Pedro's call): advance the faithful recompile
 (Plan 17 route 5).** The runtime-attachment route is parked — it defeats a PAIRIP
 layer and there is no rooted device (`plans/17` §"Runtime attachment (route 2) is
-not being pursued"). The recompile route is blocked at Phase 2: `chowdren.run`
-over the owned CCN clears parse + assets and stops in `write_objects` on the
-unparsed extension list (object types 40/42/43/46/47). Next: parse the mobile
-extension chunk, or map those five types in a game config, then rerun and record
-the next boundary. External artifacts (parsed CCN, `gamesrc/` cache,
-`fnaf2-config.py`) are under the recompile experiment dir. Detail in
-`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — first two generate
-boundaries".
+not being pursued"). Phase 2 progress this session: an external `fnaf2-config.py`
+(`get_missing_image` + an `init()` hook that synthesizes `game.extensions` from
+the frame items) clears **all of `write_objects`**. The converter now reaches
+event generation and stops in `write_loops`: `mmfparser` skips **mobile parameter
+codes 67 and 69** (past the stock `parameterLoaders` table), so the `OnLoop`
+loop-name parameter falls back to a bare `Short`. **Next: decode codes 67/69 and
+add them to the mobile-CCN parameter table in the patch**, then rerun
+`chowdren.run --config /…/fnaf2-config.py <owned-ccn> <gamesrc>` and record the
+next boundary. External artifacts (parsed CCN, `gamesrc/` cache, `fnaf2-config.py`)
+are under the recompile experiment dir. Detail in
+`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — generate boundaries".
 
 **Superseded fork (kept for context): the Minus Toys decision.** The open-loop
 device port is built, run, and refuted (`n2-minustoys-0117`, 2026-08-28 — full
@@ -109,8 +112,8 @@ Two paths, neither built:
    disappears; the only approach with demonstrated reliability (Shooter25
    practice mod, 104–1). `plans/17` now carries the state tuple and WP4.
    **Runtime attachment parked 2026-08-28** (ethics + no rooted device); the
-   route to this end state is now the faithful recompile (route 5), blocked at
-   its Phase 2 extension list.
+   route to this end state is now the faithful recompile (route 5), working
+   through its Phase 2 generate boundaries.
 
 Also open, low priority: the deterministic Minus Toys gate needs a jitter/margin
 check (200/200 hid a 33 ms phase cliff — wire `minus-toys-jitter.mjs`'s
@@ -143,17 +146,18 @@ or plan 17 again:
   protection, and there is no approved rooted device. `plans/17` §"Runtime
   attachment (route 2) is not being pursued". The route survey is kept; the
   route is declined.
-- **Recompile fallback (route 5) is now the active in-engine path, blocked at
-  Phase 2 (2026-08-28).** The externally-parsed build-296 CCN converts through
-  parse + asset creation, then `chowdren.run` stops in C++ generation at
-  `write_objects`: first a placeholder image handle `(0, 0)` (a one-line game
-  config passes it), then the **unparsed extension list** —
-  `game.extensions.items` empty while frame items reference object types
-  40/42/43/46/47 (Android / iOS / AndroidPlus / Multiple Touch / Layer). Next
-  work is the mobile extension chunk + a game config mapping those five types.
-  Full record + external artifact paths in
-  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — first two generate
-  boundaries".
+- **Recompile fallback (route 5) is now the active in-engine path; Phase 2 in
+  progress (2026-08-28).** The externally-parsed build-296 CCN converts through
+  parse + asset creation. An external `fnaf2-config.py` — `get_missing_image` for
+  placeholder image `(0,0)`, and an `init()` hook that synthesizes
+  `game.extensions` entries from the frame items (`Layer` → native writer;
+  `Multiple Touch` / `Android object` / `AndroidPlus` / `iOS Plus Object` →
+  generic `ObjectWriter` stub) — clears **all of `write_objects`**. The converter
+  now stops in event generation (`write_loops`) because `mmfparser` skips
+  **mobile parameter codes 67 and 69**, leaving the `OnLoop` loop-name parameter
+  as a bare `Short`. Next: decode 67/69 and add them to the mobile-CCN parameter
+  table in the patch. Full record + external artifact paths in
+  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — generate boundaries".
 
 
 ### Prior Minus 7 frontier (retained, now scoped)

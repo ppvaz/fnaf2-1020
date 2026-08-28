@@ -245,13 +245,13 @@ the patch are experiment artifacts.  If that command fails, retain the *first*
 parser boundary (image bank, events, objects, or converter contract) and return to
 the matching patch hunk. Do not skip ahead to extension stubs or pilot code.
 
-### Phase 2 — first two generate boundaries (2026-08-28)
+### Phase 2 — generate boundaries (2026-08-28)
 
 The cache-backed converter rerun (`chowdren.run` over the same externally parsed
 build-296 CCN, assets already in `cache.dat` / `image_cache/`) clears parse and
 asset creation — it writes `Assets.dat` and processes the 108 subtitle files and
-the shader set — then **stops in C++ generation, at `write_objects`.** Two
-distinct boundaries, in order:
+the shader set — then **stops in C++ generation, at `write_objects`.** The
+boundaries hit so far, in order:
 
 1. **`NotImplementedError: invalid image: (0, 0)`** —
    `writers/objects/system.py:write_pre` resolves an object direction frame whose
@@ -269,18 +269,50 @@ distinct boundaries, in order:
    object*). With no parsed extension the converter cannot map the handle to a
    writer.
 
-So Phase 2 is **not** passed. The next work is Phase-3-shaped and lands in the
-parser patch plus a game config: parse the mobile extension chunk (one of the
-`unknown chunk` warnings) so handles resolve, or map those five raw object types
-directly — `Layer object` is native to Chowdren, `Multiple Touch` becomes the
-pilot input hook (per Plan 17 WP3), and `Android object` / `iOS Plus Object` /
-`AndroidPlus` are no-op stubs. The `(0, 0)` image substitution is a fidelity
-compromise, not a clean pass, and must be revisited before any boot comparison.
+Both were cleared with a game config (`fnaf2-config.py`, external):
+
+- **image `(0, 0)`** — `get_missing_image` → first real image (`configs/fp.py`
+  approach). ~40 substitutions logged. A fidelity compromise, not a clean pass;
+  revisit before any boot comparison.
+- **empty extension list** — the config's `init(converter)` hook synthesizes one
+  `game.extensions` entry per distinct extension `objectType` in the frame items,
+  handle `objectType - 32`, name from a small map: `47` → Chowdren's native
+  `Layer` writer; `46`/`40`/`43`/`42` → names with no Chowdren writer, which
+  `load_extension_module(..., use_default=True)` resolves to the generic
+  `ObjectWriter` stub. `Multiple Touch` (46) becomes the pilot input hook in a
+  later phase (Plan 17 WP4); for now it is a stub.
+
+### Phase 2 — third boundary: mobile parameter codes (2026-08-28)
+
+With the config in place the converter clears **all of `write_objects`** and
+reaches event/frame generation (`write_frame` → `write_loops`), then stops:
+
+```
+chowdren/writers/events/system.py:323, write_loops
+  items = parameter.loader.items
+AttributeError: 'Short' object has no attribute 'items'
+```
+
+The `OnLoop` condition's loop-name parameter decodes to a bare `Short` instead of
+an expression list. Upstream cause: `mmfparser` prints **`unknown parameter code
+67`** (×10) and **`69`** (×8) and skips them — build 296 uses parameter type
+codes past the end of the stock `parameterLoaders` table (0–68; 64 =
+`FASTLOOPNAME`). The skipped parameters leave `data.items[0]` pointing at the
+wrong loader. Also surfaced, not yet blocking: `unknown chunk 13132` (a frame
+chunk), `unknown chunk 8774 / 8781 / 8783 / 8796` (app chunks), and one
+`FRAME has not been implemented`.
+
+**This boundary is parser-patch work, not config.** Decode what codes 67 and 69
+carry (almost certainly the fast-loop name as a string/expression) and add them
+to the mobile-CCN patch's parameter table, then rerun. A `write_loops` guard that
+falls through to `config.get_loop_name` when `parameter.loader` has no `.items`
+avoids the crash but produces misnamed loops — acceptable only as a temporary
+step, and it still needs the real loop names to generate correct code.
 
 External artifacts for the next session (all outside Git, under the recompile
 experiment dir): the parsed CCN + `android-res-raw/`, the populated
-`gamesrc/cache.dat` + `image_cache/`, and `fnaf2-config.py` (the
-`get_missing_image` stub).
+`gamesrc/cache.dat` + `image_cache/`, and `fnaf2-config.py` (the extension
+synthesis + `get_missing_image`).
 
 ### Fidelity labels
 
