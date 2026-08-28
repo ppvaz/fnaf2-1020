@@ -158,6 +158,107 @@ mandatory packages; it reopens the goal, not the refuted candidate.
    real-engine evidence for the load-bearing mechanic and an honest promotion or
    rejection record.
 
+## Implementation plan (2026-08-28)
+
+Concrete build-out of packages 6–9, scoped to the Custom Night target. All new
+tooling lives in `tools/invent/`, parallel to `tools/minus7/`. Every number this
+campaign produces is a statement about the model until package 9 — write "in the
+simulator" on all of them.
+
+### Decisions taken (Pedro to override if wrong)
+
+- **Representation: an ordered rule-list plus a small register bank.** A policy
+  is `{ registers: N, rules: [{ when: Predicate, do: Action }, ...] }`. Each
+  decision tick the interpreter evaluates rules top-to-bottom and fires the
+  first whose predicate is true. Chosen over a behavior tree or FSM because it
+  is the representation a survivor can be read back from as a human routine
+  (the tier-3 goal) and the easiest to ablate rule-by-rule. Phase behaviour is
+  expressed with `ticksSince`/`everyN` predicates and a register, not a
+  dedicated state machine.
+- **Action grain: semantic.** The search interprets a genome into one semantic
+  action per decision tick against the exact engine, reusing
+  `tools/minus7/sim.mjs`'s vocabulary (`MASK_ON`, `HALL_FLASH`, `WIND`,
+  `cam:NN`, …). Frame-level lowering through `tools/policy.mjs` happens only in
+  package 9. Rationale: the semantic layer searches ~100× faster and matches how
+  a human or an in-engine build would act; the device actuator is a
+  package-9 concern.
+- **Decision tick: the sourced 5 s scheduler tick** (`C.FPS * 5`), with an
+  event-driven wake on blackout-start, BB-opening, and Foxy-departure so a
+  policy can react inside a cycle. Not every frame — a per-frame genome is
+  unsearchable and unlike anything executable.
+
+### Package 6 — the policy language
+
+- **6a. Custom Night observation surface.** `tools/invent/observe.mjs`: extend
+  `view()` to all eleven characters (locations/stages, stun timers, committed
+  attacks), the two resources, monitor/mask/camera state, and the event flags
+  above. Every field carries a one-line provenance tag: a group citation into
+  `docs/android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md`, or `[MODEL]` for an
+  approximated one (post-chokepoint routing, vent departures, blackout forcing).
+  Cross-check the tagged-sourced subset against Plan 17's internal-state tuple —
+  a policy may not read something an in-engine build could not.
+  **Gate:** `test-observe.mjs` asserts every field is tagged and that the
+  `[MODEL]` set equals the known approximation list (so a new approximation
+  cannot slip in untagged).
+- **6b. Grammar, genome ops, interpreter.** `tools/invent/policy-lang.mjs`:
+  the Predicate AST (observation-field reads, `<`/`<=`/`==`/`>=`/`>`, boolean
+  and/or/not, register reads, `ticksSince(event)`, `everyN(period, phase)`),
+  the Action set (the semantic vocabulary + register writes), a seeded random
+  genome generator, `mutate`/`crossover`, `serialize`/`parse` (round-trip
+  exact), and a pure deterministic `interpret(genome, obs) -> action`.
+  **Gate:** `test-policy-lang.mjs` — serialize/parse round-trips; interpreter
+  purity (same obs → same action, no retained state beyond declared registers);
+  and a hand-written rule-list reproduces `tools/minus7/policy.mjs`'s `decide()`
+  on a 200-seed sample, proving the language is expressive enough to contain the
+  known reactive policy.
+- **6c. Duplicate-policy control.** Encode one Plan 05 static cover and one
+  Plan 06 phase schedule as genomes; the search's novelty filter must classify
+  both as known-family and prune them. **Gate:** part of `test-policy-lang.mjs`.
+
+### Package 7 — the search
+
+- **7a. Harness.** `tools/invent/search.mjs`: rollout = `interpret` →
+  semantic action → exact engine, seeded like `tools/minus7/search.mjs`.
+  1200-seed admission gate reused verbatim. Pareto front over
+  (survival ↑, input count ↓, registers ↓, rule count ↓). Negative controls:
+  the empty policy and a random-genome baseline run every generation so a
+  "solved" claim always has a floor beside it.
+- **7b. Targets and difficulty probes.** `tools/invent/targets.mjs`: the ten
+  single-threat vectors (`{ <dial>: 20 }`), then a pair set pruned to
+  interacting pairs (drop a pair when the two single-threat survivors compose
+  without new deaths). Each target first gets a difficulty probe — empty-policy
+  and reactive-baseline (`minus7/policy.mjs` `decide`, adapted) survival over
+  1200 seeds. A target the reactive baseline already clears >95% is recorded as
+  "no invention needed" and skipped. **This is the first real check-in point:**
+  if reaction clears every single-threat vector, the campaign moves straight to
+  pairs/triples and says so.
+- **7c. Run.** Per non-trivial target: search, record the frontier and a
+  pruning log (structures tried, why each was dropped). **Gate:** a reproducible
+  frontier file per target plus the log.
+
+### Package 8 — interrogate and name
+
+Per frontier survivor: ablate each rule (measure the survival delta), drop
+rules with zero delta, name the essential mechanic, and run the novelty review
+from the "Online frontier refresh" section (record query date, creators,
+`technicalFNaF`, current guide videos, bot census; a numeric-schedule
+difference is not novelty). **Gate:** per target, a structurally distinct named
+policy with provenance + ablations, or an explicit negative.
+
+### Package 9 — cross the boundary
+
+Take the strongest survivor across targets, lower its semantic actions to
+frame-level through `tools/policy.mjs`, run it under `--device-actuator`, and
+measure it in Plan 17's in-engine build as the perfect oracle before any human
+or device translation. **Gate:** observed real-engine evidence for the
+load-bearing mechanic; honest promote/reject in this plan and `PROGRESS.md`.
+
+### Sequencing
+
+6a → 6b → 6c → 7a → 7b (**check in here**) → 7c → 8 → 9. Packages 6 and 7a are
+pure infrastructure with no survival claim; 7b is the first point where the
+model says something about the game's configuration space.
+
 ## Progress log (reopened campaign)
 
 - **2026-08-28 — target chosen, engine unblocked.** Pedro's call: the search
@@ -167,9 +268,10 @@ mandatory packages; it reopens the goal, not the refuted candidate.
   replacing the night-7 table — plus `peakAi`/`canAct` overloads so a policy can
   ask what a vector arms. `sourcetest.mjs` pins it. This was the only engine
   blocker; Plan 16's search infra (`snapshot`/`restore`, exact RNG, 1200-seed
-  gate, dominance pruning) is reusable. Next: pkg 6, the structural policy
-  language and interpreter. See `plans/PROGRESS.md` §"Plan 05 — Custom Night
-  invention campaign".
+  gate, dominance pruning) is reusable. The build-out is planned above
+  (§"Implementation plan"); next concrete action is **pkg 6a**,
+  `tools/invent/observe.mjs` — the tagged Custom Night observation surface. See
+  `plans/PROGRESS.md` §"Plan 05 — Custom Night invention campaign".
 
 ## Done when
 

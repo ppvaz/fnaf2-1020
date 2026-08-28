@@ -2,11 +2,13 @@
 
 **Updated:** 2026-08-28
 
-**Overall:** **33%** — 34 of 104 mandatory top-level work packages are closed.
+**Overall:** **30%** — 34 of 113 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
 mandatory) — a dependency report needs a promoted candidate and there is none.)
+2026-08-28: Plan 18 adds nine mandatory tooling packages (104 → 113); the
+numerator is unchanged, so overall falls 33% → 30%, the honest direction.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -235,14 +237,18 @@ per-frame caps clamp on apply). `peakAi`/`canAct` take the vector too. Pinned by
 built (`Sim.snapshot`/`restore`, exact RNG, 1200-seed gates, dominance pruning)
 is otherwise reusable as-is.
 
-**Very next step for this track:** Plan 05 pkg 6 — define the structural policy
-language (event-triggered, stateful, unequal-cadence, cross-cycle; machine-only
-survivors allowed, simplified for a human later) and its interpreter over the
-engine. Then pkg 7 searches policy *structure* per target vector. Model-boundary
-crossing (pkg 9) routes through Plan 17's in-engine build as the measurement
-oracle. Unverified model dependency to carry into any result:
-`src/config.js:166` — Custom Night's `night` variable and the 0.75 s cams-up
-grace have never been read on a real Custom Night run.
+**The build-out is planned** in `plans/05` §"Implementation plan (2026-08-28)":
+representation is an ordered rule-list + register bank, action grain is semantic
+(frame-level lowering deferred to pkg 9), decision tick is the sourced 5 s
+scheduler with event wakes. Sequencing 6a → 6b → 6c → 7a → 7b (check-in) → 7c →
+8 → 9; all new tooling in `tools/invent/`.
+
+**Very next step for this track:** pkg 6a — `tools/invent/observe.mjs`, the
+Custom Night observation surface with per-field provenance tags (group citation
+or `[MODEL]`), cross-checked against Plan 17's internal-state tuple. Unverified
+model dependency to carry into any result: `src/config.js:166` — Custom Night's
+`night` variable and the 0.75 s cams-up grace have never been read on a real
+Custom Night run.
 
 ### Prior Minus 7 frontier (retained, now scoped)
 
@@ -1783,6 +1789,7 @@ on the next graded run remains the way to attribute them, since only
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
+| [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step: `shellcheck` + footgun fixtures, engine `tsc --checkJs`, a confidence-interval helper for the gates, a property-based harness, an on-device input-dispatch trace, a `scrcpy` capture path, a pinned Python toolchain (`uv`/`ruff`/type-check), executable-doc number checks, a devcontainer. | Package 1 (`shellcheck` in CI + the three documented shell-footgun fixtures) and Package 5 (on-device `atrace`/Perfetto input trace) — both address currently-open items rather than hardening. |
 
 ## Counting rule
 
@@ -1827,6 +1834,10 @@ on the next graded run remains the way to attribute them, since only
   percentage falls 36% -> 33% with no invented completion credit; the earlier
   naive re-sign negative is starting evidence, not a closed package in the new
   route campaign.
+- Plan 18 adds nine mandatory packages on 2026-08-28 (104 -> 113 mandatory).
+  Each package is scoped to close either on a landed check or on a recorded
+  negative (packages 4 and 6 are the likely negatives); the percentage falls
+  33% -> 30% with no invented completion credit.
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the
