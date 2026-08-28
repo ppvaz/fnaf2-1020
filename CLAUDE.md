@@ -64,6 +64,14 @@ document contradicting how the line is actually played.
   from the other side: nothing in Android, evdev, uinput or InputDispatcher
   imposes any such floor (§"Input injection and sequential budgets"). Do not
   quote 240 ms as a device limit again.
+
+  **And do not quote 133 ms as one either (2026-08-27, `15fc595`).** The g56
+  measured **33 ms contacts registering for every touch control** — camera
+  select (via LIGHT_AFTER), the monitor and mask Clicks, and the hall beam.
+  The 100 ms contact floor is margin. 133 ms remains the shipped
+  `DEVICE_SPACING_MS` because no tighter sweep geometry moves the sub-70
+  nights — not because the phone needs a released Fusion poll. Full dated note
+  under "Every camera flash must land" below.
 - **The controller route runs nothing the model gate has not passed — absolute,
   no override (2026-08-25).** Before its first adb command, `trial.sh`
   replays the emitted plan through the exact engine under measured human slack
@@ -292,6 +300,36 @@ not a return to the withdrawn 240 ms figure. `devicePlan()` anchors each sweep's
 end and moves its start 26 ms earlier, so the five-second cadence and the stun
 bridge do not move. All six story-night gates still pass at 1200 seeds; Night 6
 is 648/1200 against the unchanged 480/1200 contract.
+
+**Superseded 2026-08-27 (`15fc595`), kept per the retractions rule: 133 ms is
+not a device floor, and the "released Fusion poll" rationale above is not a
+requirement.** The g56 measured **33 ms contacts registering for every touch
+control** — camera select (via LIGHT_AFTER), the monitor and mask Clicks, and
+the hall beam (a 33 ms hold lights the hallway, no pan). The 100 ms contact
+floor is margin. 133 ms stays the shipped `DEVICE_SPACING_MS`
+(`recipe.mjs:35`, `MIN_CONTACT_MS + FUSION_POLL_MS`) for a different reason:
+the sims are unambiguous that no tighter geometry helps. The engine does not
+model contact length — a 33 ms plan replays identically to a 100 ms one.
+
+**Corrected again 2026-08-27 (`1ac9e13` and later), kept per the retractions
+rule.** The "no actuator change touches the sub-70 ladder" sentence that was
+here is too strong. A *tight, re-laid-out* LIGHT_AFTER sweep re-phases the 5 s
+cycle and **is** a marginal n2–n6 lever: `50/60/30` and `40/50/25` lift n2–n6
+by +5..+13 under correlated ±60 ms. But session `31`'s 1200-seed admission
+(2026-08-27) shows every helping basin is a **phase-lock spike** — a ±few-ms
+neighbourhood collapses to ~46, it fails the 70 bar under iid (n6 ~62), and it
+drops n7 to ~14. So it is not a clean lever, and it is unconfirmed on the
+phone: whether a ~4 ms-wide spacing basin survives real actuator jitter is a
+device question (`PROGRESS.md` "Very next step"). n7 is untouched by any
+geometry and still needs the correlated jitter shape (`PROGRESS.md` item 12)
+and the bang-anchored reset (item 10) — the latter is now a recorded NEGATIVE
+without a <~50 ms departure-bang detector (session `31`, plans/16). Today's
+finding: the LIGHT_AFTER sweep's **last camera slot** leaks ~12–30 % under
+jitter whatever camera sits there, and a **67 ms** light contact closes it —
+but 67 ms currently routes to the legacy same-report geometry (CAM 07 dark on
+device), so the LA/legacy switch must become a flag. See `HID-MULTITOUCH.md`
+§"33 ms", `PROGRESS.md` "The stun needs no minimum lit time", and
+`ON-DEVICE-VALIDATION.md` §"The LIGHT_AFTER geometry's CAM 07, traced".
 
 ## The simulator prices nothing
 
