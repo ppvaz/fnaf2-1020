@@ -108,3 +108,9 @@ Bot-research roadmap added 2026-08-26:
     test retail hooks, modified-package, loader/shim, CCN rebuild and faithful
     recompile routes until one APK can observe, decide and act internally with an
     auditable trace.
+18. [18-modern-tooling.md](18-modern-tooling.md) — nine tooling additions, each
+    tied to a documented failure: `shellcheck` + footgun fixtures, `tsc --checkJs`
+    on the engine, a confidence-interval helper for the gates, a property-based
+    harness, an on-device input-dispatch trace, a `scrcpy` capture path, a pinned
+    Python toolchain, executable-doc number checks, and a devcontainer. No new
+    runtime dependency, no build step.
