@@ -1,15 +1,19 @@
 # Constrained policy search on the exact engine
 
-**Status: in progress 2026-08-27.** Packages 1–3 built. **Package 4 closed by
-recorded negative** — the constrained scheduling space is exhausted: the timing
-knobs, the cycle length, the sweep geometry (a fragile phase-lock spike), and
-the bang-anchored attack raise (needs a bang detector faster than the phone has)
-all measured to a conclusion. Package 5 (the Night-7 opener) not started;
-package 6 not started. This plan is the structured vehicle for the standing goal
-in `PROGRESS.md` item 9 ("iterate on Minus 7 until every night clears 70% under
-the human-gate"), after two sessions (items 8–11) attacked it by hand and
-reverted clean. **The goal is not met** — see the last progress-log entry for
-what is left.
+**Status: in progress 2026-08-27.** Packages 1–3 built. **Packages 4 and 5
+closed by recorded negative.** Pkg 4: the constrained scheduling space is
+exhausted — the timing knobs, the cycle length, the sweep geometry (a fragile
+phase-lock spike), and the bang-anchored attack raise (needs a bang detector
+faster than the phone has) all measured to a wall. Pkg 5: the Night-7 *opener*
+is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state
+clear-cycle problem (two existing Foxy resets missing under jitter, + office
+entries = the geometry lever). Package 6 (provenance registry) not started.
+This plan is the structured vehicle for the standing goal in `PROGRESS.md`
+item 9 ("iterate on Minus 7 until every night clears 70% under the human-gate"),
+after two sessions (items 8–11) attacked it by hand and reverted clean. **The
+goal is not met**, and every simulator lever is now exhausted — what is left is
+device work: a real actuator holding the geometry basin, a fast departure-bang
+detector, or new device time for a second clear-cycle Foxy reset.
 
 ## Progress log
 
@@ -233,9 +237,29 @@ what is left.
   a fragile +10 pending device validation; item 10 needs a detector that does
   not exist. Nights 5/6/7 to 70% still requires either (a) the device
   confirming the geometry basin is real *and* stacking the correlated shape,
-  or (b) a fast departure-bang detector, or (c) pkg 5's Night-7 opener work
-  (untouched by both levers — n7 Foxy deaths are in the opening / clear
-  cycles, not the attack cycle).
+  or (b) a fast departure-bang detector, or (c) new device time for a
+  jitter-robust second Foxy reset in the clear cycle (see the pkg 5 entry
+  below — the *opener* is refuted).
+
+- **Pkg 5 (the Night-7 opener) closed by recorded negative (2026-08-27,
+  `tools/minus7/n7probe.mjs`).** Its premise — n7 dies in the opening because
+  Foxy has no dormancy and the opening has no reset/GF-clear — is wrong. Three
+  controlled `Sim` patches:
+  - A **perfect opening Foxy reset** (extend `foxyDormant` on n7 to the first
+    5/8/12/20/40 s) moves n7 by **~0.0 points**. The opener is irrelevant.
+  - n7's Foxy shortfall is the clear cycle's **two existing resets (b+1.38,
+    b+3.10) missing under jitter**: making those two perfect takes n7 **33 →
+    61 %**; one perfect reset per cycle, or a perfect third, does nothing.
+  - Once Foxy is perfect, **every remaining n7 death is `inside-office`**
+    (232/600) — the sweep-geometry lever, not Foxy.
+
+  So n7 → 70 % is a jitter-robust second clear-cycle Foxy reset (pkg 4: cannot
+  clear `MASK_ANIM_OFF` without hitting the sweep pin → device time) stacked
+  with the tight geometry. The n7-in-the-attack-cycle framing in
+  `PROGRESS.md` "What moves Night 7" (levers 1–3) is superseded: n7's Foxy
+  deaths are in the **clear** cycle, item 10's attack-cycle bang-gate barely
+  touches them (33 → 47 even at a perfect oracle), and the *opener* is not a
+  factor at all.
 
 - **Not chased, and why: the 55–67 ms contact band.** `sweepCamMs` / `replay`
   take the LIGHT_AFTER decoupled path only when `sweepContactMs < 50`, so the
@@ -424,22 +448,42 @@ negative result showing the decoupling cannot be funded, precise enough that the
 next session does not re-attempt it blind. A recorded negative result closes
 this package (Plans 05/06 precedent).
 
-### 5. The Night-7 opener search
+### 5. The Night-7 opener search — CLOSED by recorded negative (2026-08-27)
 
-- Night 7's median death is 54 s — half the runs die in the first in-game hour,
-  to Foxy at his capped 17 from midnight with no `foxyDormant` (g872–874 give
-  him no dormancy on Night 7). This is a different problem from the steady
-  cycle: the opening has **no Golden Freddy clear at all**, and `#idle-until 0`
-  means it is not an idle-window artefact.
-- Search the opening's structure: first Foxy reset placement before `D` climbs,
-  GF-spawn suppression (g336: monitor fully up on a 5 s check), and the
-  handoff into the first steady attack cycle.
+**The premise was wrong: the opener is not where Night 7 is lost.**
+`tools/minus7/n7probe.mjs` tested it with three controlled `Sim` prototype
+patches (each applied and restored — a measurement control, not a second
+engine):
 
-**Gate:** a candidate that beats 26 % at 1200 seeds under `correlated`, or a
-recorded negative result showing the opening budget (Foxy at 17, no dormancy, no
-GF clear) rejects every shape — which would make Night 7 a device-time problem
-(item 8's "new device time"), not a scheduling one, and that is itself a
-publishable conclusion.
+- **A *perfect* opening Foxy reset** — extend `foxyDormant` to cover the first
+  N seconds on n7 — moves n7 by **~0.0 points** at N = 5, 8, 12, 20, 40
+  (33.0 → 32.8–33.8, all inside noise). "Foxy arrives hot because the opening
+  never resets him" is not the mechanism.
+- **A perfect *extra* Foxy D-zero once per 5 s cycle**: no change. **Twice per
+  cycle** (either 2.5 s apart, or at the clear cycle's own two reset phases
+  ~1.7 s apart): **n7 33 → 61 %.** A third beyond that adds nothing. So n7's
+  Foxy shortfall is the clear cycle's **two existing resets (b+1.38, b+3.10)
+  missing under jitter** — not a missing reset, and not the opening.
+- With those two resets made perfect, **every remaining n7 death is
+  `inside-office`** (232/600) — toys/Withereds past the sweep, which is the
+  sweep-geometry lever's territory, not Foxy's.
+
+**So Night 7 → 70 % needs, and only needs:** (a) jitter-robust execution of the
+clear cycle's two existing Foxy resets — and pkg 4 already established those
+cannot be moved clear of the `MASK_ANIM_OFF` window without colliding with the
+400-frame sweep pin, i.e. it is new device time — stacked with (b) the tight
+sweep geometry for the office entries (device-validation gated). **Neither is an
+opener change**, and the opening's lack of a Golden Freddy clear is not on the
+n7 critical path (GF deaths are a small minority and appear at the tight
+geometries, not the opening).
+
+This is the "recorded negative → Night 7 is a device-time problem, not a
+scheduling one" outcome the gate below anticipated, reached from a different
+direction than expected (the opening is *irrelevant*, not *unfixable*).
+
+**Gate:** ~~a candidate that beats 26 % at 1200 seeds under `correlated`, or~~ a
+recorded negative result — **met**: `n7probe.mjs` + the `test-search.mjs`
+fixture pinning that a perfect opening reset does not move n7.
 
 ### 6. Machine-readable provenance and dependency reporting
 
@@ -486,12 +530,22 @@ test candidate is correctly flagged.
 
 ## Done when
 
-- The Foxy-reset decoupling (package 4) has either a 1200-seed frontier
+- ~~The Foxy-reset decoupling (package 4) has either a 1200-seed frontier
   candidate that clears the sub-70 nights under `correlated`, or a recorded
-  negative result with the mechanism named;
-- the Night-7 opener (package 5) likewise;
+  negative result with the mechanism named;~~ **met — recorded negative
+  (2026-08-27), mechanism named: the constrained scheduling space is a wall.**
+- ~~the Night-7 opener (package 5) likewise;~~ **met — recorded negative
+  (2026-08-27): the opener is refuted, n7 is a steady-state clear-cycle
+  problem. `tools/minus7/n7probe.mjs`.**
 - every promoted candidate carries its provenance-dependency list, and no
-  promotion rests on an unflagged `ASSUMED`/`MODEL` rule;
-- `PROGRESS.md` item 9's standing goal is either met in the simulator or shown
-  to require new device time, with the search recorded well enough that a later
-  session does not repeat it.
+  promotion rests on an unflagged `ASSUMED`/`MODEL` rule (package 6, not
+  started — nothing was promoted, so nothing is blocked on it);
+- ~~`PROGRESS.md` item 9's standing goal is either met in the simulator or
+  shown to require new device time~~ **shown to require new device time
+  (2026-08-27), with the search recorded** in this log and in
+  `tools/minus7/{geometrysearch,n7probe}.mjs` + `SEARCH_KNOBS.attackBangGateMs`
+  so a later session does not repeat it.
+
+**This plan is effectively complete** — 4 of 6 packages closed (5 of 6 if the
+stale 0/6 dashboard row is corrected for pkgs 1–3), and pkg 6 blocks nothing
+because no candidate was promoted. The standing goal moves to the device.

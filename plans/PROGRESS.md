@@ -2,10 +2,10 @@
 
 **Updated:** 2026-08-27
 
-**Overall:** **35%** — 33 of 95 mandatory top-level work packages are closed.
-(2026-08-27: +4 from Plan 16 — pkgs 1–3 were built in prior commits but the
-dashboard row was never updated off the plan's own `(done)` markers, and pkg 4
-closed by recorded negative in `740f5b0`.)
+**Overall:** **36%** — 34 of 95 mandatory top-level work packages are closed.
+(2026-08-27: +5 from Plan 16 — pkgs 1–3 were built in prior commits but the
+dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
+5 closed by recorded negative in `740f5b0` and its follow-up.)
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -44,20 +44,23 @@ progress log has the tables):
 be worth ~+30 points on n2–n6, so **plan 15 / plan 08 audio-detection latency
 is a survival lever, not just an honesty concern.**
 
-**Next, in order:**
-1. **Device (`fnaf2-1020-e8`'s probe):** the 33 ms contact *does* stun in the
-   model (dump + sim, no minimum lit time). The open device questions are (a)
-   does the LIGHT_AFTER sweep's last-slot ~12–30 % jitter leak reproduce on
-   the phone, (b) does a 67 ms light close it there as in the sim — which
-   needs the LA/legacy switch made a flag (plan-16 follow-up), and (c) does a
-   real actuator hold the ~4 ms `dev≈62` basin. `n2-la-212912` already showed
-   the geometry transfers and the HID stream has no lit-miss.
-2. **Plan 16 pkg 5 — the Night-7 opener.** n7 is untouched by both levers;
-   its Foxy deaths are in the opening (Foxy at capped 17 from midnight, no
-   dormancy, no Golden-Freddy clear). This is the one unexplored structural
-   piece.
-3. **Plan 15 detection latency** is now on the critical path for survival,
-   not only architecture — a fast enough bang read unlocks item 10.
+**Next, in order (all device — the simulator scheduling space is exhausted):**
+1. **The LIGHT_AFTER geometry on the phone.** The 33 ms contact *does* stun in
+   the model (dump + sim, no minimum lit time). Open: (a) does the sweep's
+   last-slot ~12–30 % jitter leak reproduce on the phone, (b) does a 67 ms
+   light close it there — needs the LA/legacy switch made a flag (`fnaf2-1020-02`
+   is on this), and (c) does a real actuator hold the ~4 ms `dev≈62` basin.
+   `n2-la-212912` already showed the geometry transfers with no HID lit-miss.
+2. **New device time for a second clear-cycle Foxy reset** — the one thing
+   Night 7 needs (plan 16 pkg 5: the opener is refuted, n7's Foxy deaths are
+   the clear cycle's two resets missing under jitter; perfect x2 → 61 %, the
+   rest is office entries = lever 1). Pkg 4 showed the reset cannot clear
+   `MASK_ANIM_OFF` without hitting the sweep pin, so this is a device-side
+   question: is there a cheaper path to `hallView` (e.g. folding the reset
+   into the read's own monitor-down)?
+3. **Plan 15 detection latency** is on the critical path for survival, not
+   only architecture — a <~50 ms departure-bang read is worth ~+30 points on
+   n2–n6 (it would unlock item 10, which is otherwise a recorded negative).
 
 ---
 
@@ -258,6 +261,19 @@ unmodeled). Concrete next moves:
   measurement, not tuning, and is the biggest legitimate move left on n7.
 
 ### What moves Night 7 out of impossible territory (2026-08-27)
+
+> **Levers 1–3 below are partly superseded by plan 16 pkg 5 (`740f5b0` +
+> follow-up, `tools/minus7/n7probe.mjs`). Kept per the retractions rule.**
+> Measured with controlled `Sim` patches: **the opener is irrelevant** — a
+> perfect opening Foxy reset moves n7 by 0.0 points. n7's Foxy deaths are in
+> the **clear** cycle, not the attack cycle: its two existing resets (b+1.38,
+> b+3.10) miss under jitter, and making just those two perfect takes n7
+> **33 → 61 %**. Item 10's attack-cycle bang-gate (lever 2) barely touches it
+> (33 → 47 even at a perfect bang oracle). The remaining ~39 % once Foxy is
+> perfect is entirely `inside-office` — the sweep-geometry lever. So n7 → 70 %
+> is **a jitter-robust second clear-cycle Foxy reset (new device time — pkg 4:
+> cannot clear `MASK_ANIM_OFF` without the sweep pin) + the tight geometry**.
+> Lever 1 (correlated jitter) still stands as the honest-measurement move.
 
 n7 gate is **310/1200 = 25.8%**, 87.5% Foxy deaths, median death 54 s — half
 the runs dead in the first in-game hour, because `foxyDormant` (engine.js
@@ -888,7 +904,17 @@ as work is done rather than composed at the end; two are delegated and named.
     actuator that holds a ~4 ms sweep-spacing basin under its own jitter,
     **or** a <~50 ms BB-specific departure-bang detector (which would be worth
     ~+30 points on n2-n6 — this makes plan 15 / plan 08 detection latency a
-    *survival* lever). n7 needs neither; it needs pkg 5's opener work.
+    *survival* lever).
+
+    **n7 update (plan 16 pkg 5, `tools/minus7/n7probe.mjs`): the opener is
+    refuted, not a factor.** A perfect opening Foxy reset moves n7 by 0.0.
+    n7's Foxy deaths are the **clear** cycle's two resets (b+1.38, b+3.10)
+    missing under jitter — perfect execution of just those two → n7 33 → 61 %,
+    and the remaining 39 % is office entries (the geometry lever). So n7 → 70 %
+    needs a jitter-robust *second* clear-cycle Foxy reset (which pkg 4 shows
+    cannot clear `MASK_ANIM_OFF` without the 400-frame sweep pin — new device
+    time) plus the tight geometry. Not an opener change, and not the
+    attack-cycle geometry item 10 targets.
 
 13. **NEXT STEP -- device-actuator overhead, the only thing item 9 is now
     blocked on.** The masked-span Foxy check on nights 6/7 (and the eviction
@@ -1475,7 +1501,7 @@ on the next graded run remains the way to attribute them, since only
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
-| [16 — constrained policy search](16-constrained-policy-search.md) | 4 / 6 | **67%** | Pkgs 1–3 built (row was stale at 0/6 — read off the plan's own `(done)` markers). **Pkg 4 closed by recorded negative 2026-08-27 (`740f5b0`):** the constrained scheduling space is exhausted — the timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks) all measured to a wall. The standing goal (item 9) is **not met**; nights 5/6/7 to 70% need a real actuator holding a ~4 ms spacing basin, a fast departure-bang detector, or pkg 5's opener work | Pkg 5 — the Night-7 opener (Foxy at capped 17 from midnight, no dormancy, no Golden-Freddy clear); pkg 6 — the provenance registry |
+| [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 6 | **83%** | Pkgs 1–3 built (row was stale at 0/6). **Pkgs 4 and 5 closed by recorded negative 2026-08-27 (`740f5b0` + follow-up).** Pkg 4: the constrained scheduling space is a wall — timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks). Pkg 5: the Night-7 *opener* is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state clear-cycle problem (two existing Foxy resets missing under jitter → 33/61 %, + office entries = the geometry lever). Every simulator lever is exhausted; the standing goal (item 9) is **not met** and moves to the device. Pkg 6 (provenance registry) blocks nothing — nothing was promoted | Device: a real actuator holding the ~4 ms geometry basin, a fast departure-bang detector, or new device time for a 2nd clear-cycle Foxy reset. Optionally pkg 6 |
 
 ## Counting rule
 

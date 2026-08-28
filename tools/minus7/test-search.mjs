@@ -141,5 +141,31 @@ const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`);
     laggy < blind);
 }
 
+// --- plan 16 pkg 5 (n7probe): a perfect opening Foxy reset does not move
+//     Night 7 -- the opener premise is refuted, n7 is a steady-state problem.
+{
+  const pt7 = () => {
+    const r = build({ night: 7 });
+    const p = devicePlan(r, {});
+    let t = `#night 7\n#idle-until ${idleUntilMs(7)}\n`;
+    for (const [n, l] of Object.entries(p)) t += `#cycle ${n} ${r.cycles[n].lengthMs}\n${l.join('\n')}\n`;
+    return t;
+  };
+  const RUNS = 250;
+  const g = (opts) => modelGate(pt7(), { night: 7, runs: RUNS, slackMs: 60, shape: 'correlated', ...opts }).survived;
+  const base = g();
+
+  const dormantDesc = Object.getOwnPropertyDescriptor(Sim.prototype, 'foxyDormant');
+  let opener;
+  Object.defineProperty(Sim.prototype, 'foxyDormant', {
+    configurable: true,
+    get() { return this.opts.night === 7 ? this.frame < 20 * C.FPS : dormantDesc.get.call(this); },
+  });
+  try { opener = g(); } finally { Object.defineProperty(Sim.prototype, 'foxyDormant', dormantDesc); }
+
+  ok(`pkg 5: a perfect opening Foxy reset does not move n7 (opener ${opener}/${RUNS} vs base ${base}/${RUNS}) -- refuted`,
+    Math.abs(opener - base) <= RUNS * 0.08);
+}
+
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks passed');
 process.exit(fails ? 1 : 0);
