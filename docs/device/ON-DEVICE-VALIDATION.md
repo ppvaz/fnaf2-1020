@@ -1742,6 +1742,39 @@ gap. Generated story-night plans replay exactly 100/100, and their +/-60 ms
 human gates are respectively **1200, 796, 951, 886, 744 and 648 of 1200** for
 Nights 1-6, all above the unchanged 480/1200 contract.
 
+### The LIGHT_AFTER geometry's CAM 07, traced (2026-08-27, `n2-la-212912`)
+
+Same question for the decoupled 66/33 slot-50 LIGHT_AFTER sweep, from the
+first graded Night 2. The HID trace holds **38 CAM 07 bursts, every one
+structurally identical**: a 17 ms select contact, a 17 ms released settle gap,
+then a 33 ms light contact — no short, latched, malformed or missing report.
+The host sent a correctly decoupled lit CAM 07 on every sweep of the run.
+camtrace corroborates the select half: the `viewing`-driven button highlight
+(g46-57) registered on all 38. So **there was no host-side lit-miss** — not a
+dropped selection, not a dropped light, not a compressed gap.
+
+What remains unobservable is the same gap as the 100 ms case: whether CAM 07
+rendered `lit? == 1` for those frames and whether the per-frame stun poll
+(g450-455) caught it. `sweepcheck.py` is the only frame instrument and it is
+**inadmissible for CAM 07** — Main Hall is near-black, the camera-switch tear
+puts white bands at 180-213 where a clean lit feed reads ~108, and the 2-4
+torn flash frames overlap both verdicts. A hand zoom of the feed-centre crop
+at five sweeps (t ≈ 34, 40, 65, 96, 130 s; the 96 s strip clearly shows Toy
+Chica's face on the feed, so she was present and on the swept camera) shows
+only tear — no eyeball-distinguishable flash frame either way. Its "26/36
+sweeps lit … FAILED" line in `grade-run.sh` is measuring tear, not the flash,
+and should not be read as a lit-miss count.
+
+The lit-miss was the wrong question. The sim (`modelGate`, night 2, 1200
+seeds) says at zero jitter every geometry stuns every toy and Toy Chica never
+escapes; under ±30-60 ms the sweep's **last slot** leaks ~12-30% whatever
+camera sits there, because the ~200 ms sweep lands up to 150 ms late (this
+run's drift) and a 33 ms light on the last, most-delayed slot often arrives
+after its target took the 5 s move. A 67 ms light closes it. See
+`plans/PROGRESS.md` "The stun needs no minimum lit time". So the Night 2
+escape is consistent with **zero lit-misses and a timing-window miss on one
+late sweep** — after which nothing covers her (CAM 01, CAM 05 unswept).
+
 ### Why no instrument found her, and what to change
 
 Two scans failed before Pedro pointed at the timestamp, and both failures are
