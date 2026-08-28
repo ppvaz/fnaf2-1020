@@ -32,7 +32,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames (four known truncated debug stubs skipped); arm64 CMake now compiles generated event units 1–16, then stops before link on empty qualifiers, numeric loop indexes, and flat-backdrop selection. |
+| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames and arm64 CMake links the desktop target. A no-device container exits at SDL; dummy drivers segfault before visual output, so no boot gate has passed. |
 | **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. | Not the open-loop loop. (a) external hybrid: AM clock re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
@@ -87,9 +87,9 @@ game is frames 0–28), numeric-fastloop naming in Chowdren, and `RunningAs` /
 
 **Generation gate passed:** generic extension stubs now register instances, and
 the external converter emits C++ for all 29 real frames (the 4 truncated debug
-frames are skipped). The arm64 probe compiles generated event units 1–16;
-empty qualifiers, numeric loop indexes, and flat-backdrop selection stop it
-before link. Generated code has not booted or been claimed faithful.
+frames are skipped). The arm64 probe now links the desktop target. A container
+without devices exits at SDL and dummy drivers segfault before visual output;
+generated code has not booted or been claimed faithful.
 Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
 Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
 event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.
@@ -154,17 +154,18 @@ or plan 17 again:
   protection, and there is no approved rooted device. `plans/17` §"Runtime
   attachment (route 2) is not being pursued". The route survey is kept; the
   route is declined.
-- **Recompile fallback (route 5) is now the active in-engine path; Phase 3 second
-  compiler boundary (2026-08-28).** The externally parsed build-296 CCN now emits
+- **Recompile fallback (route 5) is now the active in-engine path; Phase 3 linked
+  target and first runtime boundary (2026-08-28).** The externally parsed build-296 CCN now emits
   source for 29 real frames; four known truncated developer stubs are skipped.
   The mobile parser/Chowdren port covers the needed object registration, numeric
   loops, malformed event fallback, static backdrops, and portable arm64 runtime
-  overload. A Linux CMake probe now compiles generated event units 1–16, then
-  stops before link on empty qualifiers, numeric loop indexes, and selection
-  operations on flat static-backdrop lists. This establishes source emission only, not a
-  compiled boot or retail-faithfulness result. Full record in
+  overload. A Linux CMake probe now links the generated desktop target after
+  compatibility handling for empty qualifiers, numeric loop indexes, and flat
+  static-backdrop lists. No-device startup exits at SDL; dummy drivers segfault
+  before visual output. This establishes a link only, not a compiled boot or
+  retail-faithfulness result. Full record in
   `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — complete source
-  emission" and §"Phase 3 — second arm64 compiler boundary".
+  emission" and §"Phase 3 — linked desktop target; first runtime boundary".
 
 
 ### Prior Minus 7 frontier (retained, now scoped)

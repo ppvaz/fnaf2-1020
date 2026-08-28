@@ -1,3 +1,65 @@
+diff --git a/Chowdren/base/frame.h b/Chowdren/base/frame.h
+index 18d207b..166b9e4 100644
+--- a/Chowdren/base/frame.h
++++ b/Chowdren/base/frame.h
+@@ -209,6 +209,7 @@ public:
+     FrameObject * add_object(FrameObject * object, Layer * layer);
+     void add_background_object(FrameObject * object, int layer_index);
+     void set_object_layer(FrameObject * object, int new_layer);
++    int get_frame() const { return index; }
+     int get_loop_index(const std::string & name);
+     void set_timer(double value);
+     void set_lives(int lives);
+diff --git a/Chowdren/base/frameobject.h b/Chowdren/base/frameobject.h
+index 950da8d..cf9b327 100644
+--- a/Chowdren/base/frameobject.h
++++ b/Chowdren/base/frameobject.h
+@@ -683,6 +683,45 @@ public:
+     }
+ };
+ 
++// Static backdrops are stored in a flat vector and do not participate in the
++// ObjectList selection chain.  This iterator keeps event traversal type-safe;
++// deselection is intentionally inert for the compatibility path.
++class FlatObjectIterator
++{
++public:
++    FlatObjectList & items;
++    size_t index;
++
++    FlatObjectIterator(FlatObjectList & list)
++    : items(list), index(0)
++    {
++    }
++
++    FrameObject * operator*() const
++    {
++        return items[index];
++    }
++
++    void operator++()
++    {
++        index++;
++    }
++
++    void operator++(int)
++    {
++        ++*this;
++    }
++
++    void deselect()
++    {
++    }
++
++    bool end() const
++    {
++        return index >= items.size();
++    }
++};
++
+ inline FrameObject * ObjectList::get_wrapped_selection(int index)
+ {
+     if (!has_selection()) {
 diff --git a/Chowdren/base/manager.h b/Chowdren/base/manager.h
 index 47a213e..6727e91 100644
 --- a/Chowdren/base/manager.h
@@ -38,7 +100,7 @@ index ed74b78..f9d064d 100644
  
  inline void to_lower(std::string & str)
 diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
-index d8edac8..1113f33 100644
+index d8edac8..0c085e4 100644
 --- a/Chowdren/chowdren/converter.py
 +++ b/Chowdren/chowdren/converter.py
 @@ -22,7 +22,8 @@ import string
@@ -117,7 +179,45 @@ index d8edac8..1113f33 100644
  
              always_group_index = None
              generated_group_index = None
-@@ -2280,6 +2302,14 @@ class Converter(object):
+@@ -1610,9 +1632,13 @@ class Converter(object):
+ 
+         # set up qualifiers
+         for name, instances in qualifier_setup.iteritems():
++            # A mobile qualifier may resolve to no frame-local ObjectLists.
++            # C++ still needs one sentinel array element even though its count
++            # is zero.
++            instance_data = ', '.join(instances) or 'NULL'
+             start_writer.putlnc('static ObjectList* '
+                                 '%s_instances[] = {%s, NULL};',
+-                                name, ', '.join(instances))
++                                name, instance_data)
+             start_writer.putlnc('%s.set(%s, &%s_instances[0]);', name,
+                                 len(instances), name)
+ 
+@@ -2178,6 +2204,8 @@ class Converter(object):
+             return 'SavedIterator'
+         if is_qualifier(obj[0]):
+             return 'QualifierIterator'
++        if self.is_static_background(obj):
++            return 'FlatObjectIterator'
+         return 'ObjectIterator'
+ 
+     @contextlib.contextmanager
+@@ -2217,6 +2245,13 @@ class Converter(object):
+             return
+         
+         list_name = self.get_object_list(object_info)
++        if self.is_static_background(object_info):
++            writer.putlnc('for (FlatObjectList::iterator %s = %s.begin(); '
++                          '%s != %s.end(); ++%s) {',
++                          name, list_name, name, list_name, name)
++            self.set_iterator(object_info, list_name, '*' + name)
++            writer.indent()
++            return
+         is_qual = is_qualifier(object_info[0])
+         if is_qual:
+             writer.putlnc('for (int i = 0; i < %s.count; i++)', list_name)
+@@ -2280,6 +2315,14 @@ class Converter(object):
              writer.putln('if (!%s) goto %s;' % (
                  item.code_name, item.end_label))
  
@@ -132,7 +232,88 @@ index d8edac8..1113f33 100644
      def get_container_check(self, container):
          groups = []
          for item in container.tree:
-@@ -2695,7 +2725,15 @@ class Converter(object):
+@@ -2602,26 +2645,36 @@ class Converter(object):
+ 
+                 for write_condition in write_conditions:
+                     negated = not write_condition.is_negated()
++                    condition_out = CodeWriter()
++                    write_condition.write(condition_out)
++                    condition_data = condition_out.get_data()
++                    is_never = condition_data.strip() in ('.false', 'false',
++                                                          'false)')
+                     writer.putindent()
+                     if negated:
+                         writer.put('if (!(')
+                     else:
+                         writer.put('if (')
+-                    writer.put(write_condition.prefix)
+-                    if object_name is None:
+-                        if write_condition.static:
+-                            writer.put('%s::' % self.get_object_class(
+-                                object_type, star = False))
+-                    elif write_condition.iterate_objects is not False:
+-                        if has_multiple:
+-                            obj = '((%s)%s)' % (self.get_object_class(
+-                                object_type), object_name)
+-                        else:
+-                            obj = object_name
+-                        obj += '->'
+-                        writer.put(obj)
+-
+-                    write_condition.write(writer)
++                    if is_never:
++                        # Legacy tables model Never as ``.false``; it must not
++                        # consume an object receiver from the event record.
++                        writer.put('(false)')
++                    else:
++                        writer.put(write_condition.prefix)
++                        if object_name is None:
++                            if write_condition.static:
++                                writer.put('%s::' % self.get_object_class(
++                                    object_type, star = False))
++                        elif write_condition.iterate_objects is not False:
++                            if has_multiple:
++                                obj = '((%s)%s)' % (self.get_object_class(
++                                    object_type), object_name)
++                            else:
++                                obj = object_name
++                            obj += '->'
++                            writer.put(obj)
++
++                        writer.put(condition_data)
+                     if negated:
+                         writer.put(')')
+                     if has_multiple:
+@@ -2655,6 +2708,8 @@ class Converter(object):
+                 or_lists.add(list_name)
+ 
+             for list_name in or_lists:
++                if self.is_static_backdrop_list(list_name):
++                    continue
+                 if is_logical:
+                     writer.putlnc('%s.clear_selection();', list_name)
+                 else:
+@@ -2673,7 +2728,8 @@ class Converter(object):
+                 check = '%s' % (' || '.join(or_bools))
+                 writer.putlnc('if (%s) {', check)
+                 writer.indent()
+-                writer.putlnc('%s.restore_selection();', list_name)
++                if not self.is_static_backdrop_list(list_name):
++                    writer.putlnc('%s.restore_selection();', list_name)
+                 writer.end_brace()
+ 
+             # writer.start_brace()
+@@ -2689,13 +2745,25 @@ class Converter(object):
+             if action_writer.custom:
+                 action_writer.write(writer)
+                 continue
++            if (hasattr(action_writer, 'should_skip') and
++                    action_writer.should_skip()):
++                print 'action omitted for unsupported expression:', action_writer.data.getName()
++                continue
+             action_writer.write_pre(writer)
+             has_multiple = False
+             has_single = False
              obj = action_writer.get_object()
              object_info, object_type = obj
              if object_info is not None and not is_qualifier(object_info):
@@ -149,7 +330,7 @@ index d8edac8..1113f33 100644
                  if is_static and action_writer.ignore_static:
                      continue
              if object_info is not None:
-@@ -2708,6 +2746,14 @@ class Converter(object):
+@@ -2708,6 +2776,14 @@ class Converter(object):
              if action_writer.iterate_objects is False:
                  has_multiple = False
                  object_info = None
@@ -164,7 +345,37 @@ index d8edac8..1113f33 100644
              object_name = None
              write_actions = [action_writer]
              if has_single:
-@@ -2965,6 +3011,14 @@ class Converter(object):
+@@ -2721,6 +2797,9 @@ class Converter(object):
+                         break
+                     if next_action.custom:
+                         break
++                    if (hasattr(next_action, 'should_skip') and
++                            next_action.should_skip()):
++                        break
+                     if next_action.iterate_objects is False:
+                         break
+                     action_index += 1
+@@ -2805,7 +2884,8 @@ class Converter(object):
+                 continue
+             list_name = self.get_object_list(obj, True)
+             group.or_selected[obj] = list_name
+-            writer.putlnc('%s.clear_saved_selection();', list_name)
++            if not self.is_static_backdrop_list(list_name):
++                writer.putlnc('%s.clear_saved_selection();', list_name)
+ 
+         writer.putlnc('if (%s) {', group.or_temp_result)
+         writer.indent()
+@@ -2817,7 +2897,8 @@ class Converter(object):
+         for obj, list_name in self.has_selection.iteritems():
+             if obj in has_qualifier:
+                 continue
+-            writer.putlnc('%s.save_selection();', list_name)
++            if not self.is_static_backdrop_list(list_name):
++                writer.putlnc('%s.save_selection();', list_name)
+ 
+         writer.end_brace()
+ 
+@@ -2965,6 +3046,14 @@ class Converter(object):
                  return self.intern_string(loader.value)
              elif parameter_name in ('TwoShorts'):
                  return to_c('%r, %r', loader.value1, loader.value2)
@@ -179,7 +390,7 @@ index d8edac8..1113f33 100644
              else:
                  raise NotImplementedError('parameter: %s' % parameter_name)
          self.start_clauses += out.count('(')
-@@ -2978,16 +3032,25 @@ class Converter(object):
+@@ -2978,16 +3067,25 @@ class Converter(object):
  
              if remove != 1:
                  print out
@@ -210,7 +421,17 @@ index d8edac8..1113f33 100644
  
              filtered = out[end+1:]
              out = out[:end+1]
-@@ -3160,6 +3223,25 @@ class Converter(object):
+@@ -3068,7 +3166,8 @@ class Converter(object):
+             clear_lists = (list_name,)
+ 
+         for obj_list in clear_lists:
+-            writer.putlnc('%s.clear_selection();', obj_list)
++            if not self.is_static_backdrop_list(obj_list):
++                writer.putlnc('%s.clear_selection();', obj_list)
+ 
+         for obj in objs:
+             if obj == object_info:
+@@ -3160,6 +3259,25 @@ class Converter(object):
      def get_default_instance(self, object_type):
          return self.get_object_impl(object_type).default_instance
  
@@ -236,7 +457,7 @@ index d8edac8..1113f33 100644
      def get_object_list(self, obj, allow_single=False):
          if self.has_single(obj) and not allow_single:
              print 'single exception:', self.get_single(obj)
-@@ -3170,11 +3252,14 @@ class Converter(object):
+@@ -3170,11 +3288,23 @@ class Converter(object):
          if is_qual:
              return type_id
          obj = self.filter_object_type(obj)
@@ -250,10 +471,19 @@ index d8edac8..1113f33 100644
 -            code.interact(local=locals())
 +            print 'missing object list:', obj, 'game:', self.game_index
 +            raise
++
++    def is_static_backdrop_list(self, list_name):
++        return list_name.startswith('back_instances[')
++
++    def is_static_background(self, obj):
++        if is_qualifier(obj[0]):
++            return False
++        obj = self.filter_object_type(obj)
++        return self.get_object_writer(obj).is_static_background()
  
      def filter_object_type(self, obj):
          if is_qualifier(obj[0]):
-@@ -3285,9 +3370,12 @@ class Converter(object):
+@@ -3285,9 +3415,12 @@ class Converter(object):
                  return get_method_name('_'.join(full_name))
          ret = item.getName()
          if ret is None:
@@ -269,7 +499,7 @@ index d8edac8..1113f33 100644
          return ret
  
      def get_action_writer(self, item, as_klass = False):
-@@ -3329,6 +3417,18 @@ class Converter(object):
+@@ -3329,6 +3462,24 @@ class Converter(object):
              klass = getattr(writer_module, ace_type)[key]
          except (KeyError, AttributeError):
              klass = default_writers[ace_type]
@@ -285,11 +515,17 @@ index d8edac8..1113f33 100644
 +                klass = FalseCondition
 +            else:
 +                klass = UnsupportedExpression
++        # Older tables express a never-condition as a receiver method named
++        # ``.false``.  It is semantically receiver-free; normalize it so an
++        # object-scoped mobile record cannot emit ``object->false``.
++        if (ace_type == 'conditions' and
++                getattr(klass, 'method', None) == '.false'):
++            klass = FalseCondition
          if as_klass:
              return klass
          else:
 diff --git a/Chowdren/chowdren/writers/events/__init__.py b/Chowdren/chowdren/writers/events/__init__.py
-index 1943544..5c184ad 100644
+index 1943544..af89498 100644
 --- a/Chowdren/chowdren/writers/events/__init__.py
 +++ b/Chowdren/chowdren/writers/events/__init__.py
 @@ -2,6 +2,8 @@ from chowdren.writers import BaseWriter
@@ -368,8 +604,29 @@ index 1943544..5c184ad 100644
      meth = writer.method
  
      if meth.count('%s'):
+@@ -178,9 +204,19 @@ def get_method_out(writer):
+     return out
+ 
+ class ActionMethodWriter(ActionWriter):
++    def should_skip(self):
++        self.method_out = get_method_out(self)
++        return 'unsupported expression' in self.method_out
++
+     def write(self, writer):
+         try:
+-            writer.put(get_method_out(self) + ';')
++            out = getattr(self, 'method_out', None)
++            if out is None:
++                out = get_method_out(self)
++            if 'unsupported expression' in out:
++                print 'action omitted for unsupported expression:', self.data.getName()
++                return
++            writer.put(out + ';')
+         except TypeError, e:
+             print 'meth:', self.method
+             raise e
 diff --git a/Chowdren/chowdren/writers/events/system.py b/Chowdren/chowdren/writers/events/system.py
-index 48623cf..0eb0e41 100644
+index 48623cf..60db996 100644
 --- a/Chowdren/chowdren/writers/events/system.py
 +++ b/Chowdren/chowdren/writers/events/system.py
 @@ -2,7 +2,8 @@ from mmfparser.data.chunkloaders.objectinfo import SEMITRANSPARENT_EFFECT
@@ -431,7 +688,36 @@ index 48623cf..0eb0e41 100644
          writer.put(self.converter.get_container_check(container))
  
  class PickRandom(ConditionWriter):
-@@ -1425,9 +1435,7 @@ class Foreach(ActionWriter):
+@@ -1120,8 +1130,14 @@ class CreateBase(ActionWriter):
+ 
+         if object_info != parent_info and (not has_selection and
+                                            not select_single):
+-            writer.putlnc('%s.empty_selection();', list_name)
+-            self.converter.set_list(object_info, list_name)
++            if self.converter.get_object_writer(
++                    object_info).is_static_background():
++                # Flat backdrop vectors do not carry a selectable ObjectList
++                # chain; leave subsequent compatibility actions unselected.
++                pass
++            else:
++                writer.putlnc('%s.empty_selection();', list_name)
++                self.converter.set_list(object_info, list_name)
+ 
+         writer.putlnc('// select single: %s %s %s', select_single,
+                       multi, has_selection)
+@@ -1191,6 +1207,11 @@ class CreateBase(ActionWriter):
+                 writer.indent()
+                 writer.putlnc('%s = new_obj;', single_name)
+                 writer.dedent()
++            elif self.converter.get_object_writer(
++                    object_info).is_static_background():
++                # Static backdrops live in a flat vector.  They have no
++                # ObjectList selection chain to update after creation.
++                pass
+             else:
+                 writer.putlnc('%s.add_back();', list_name)
+             if is_shoot:
+@@ -1425,9 +1446,7 @@ class Foreach(ActionWriter):
      custom = True
  
      def get_name(self):
@@ -442,7 +728,7 @@ index 48623cf..0eb0e41 100644
  
      def write(self, writer):
          self.reorder = self.converter.config.reorder_foreach()
-@@ -1461,14 +1469,26 @@ class Foreach(ActionWriter):
+@@ -1461,14 +1480,26 @@ class Foreach(ActionWriter):
              writer.putlnc('%s();', func_call)
          writer.end_brace()
  
@@ -471,7 +757,7 @@ index 48623cf..0eb0e41 100644
          if name is not None:
              return name
          return self.converter.config.get_dynamic_loop_call_name(parameter)
-@@ -1558,8 +1578,11 @@ class StartLoop(ActionWriter):
+@@ -1558,8 +1589,11 @@ class StartLoop(ActionWriter):
                  times = exp.loader.value
                  if times == -1:
                      comparison = 'true'
@@ -485,7 +771,7 @@ index 48623cf..0eb0e41 100644
          if times is None:
              times = self.convert_index(1)
          is_infinite = comparison is not None
-@@ -1622,15 +1645,13 @@ class DeactivateGroup(ActionWriter):
+@@ -1622,15 +1656,13 @@ class DeactivateGroup(ActionWriter):
  
      def get_deactivated_container(self):
          if self.deactivated_container is None:
@@ -503,7 +789,7 @@ index 48623cf..0eb0e41 100644
          if name is None:
              name = self.converter.convert_parameter(parameter)
              print 'Could not convert stop loop name for', name
-@@ -1640,8 +1661,7 @@ class StopLoop(ActionWriter):
+@@ -1640,8 +1672,7 @@ class StopLoop(ActionWriter):
  
  class SetLoopIndex(ActionWriter):
      def write(self, writer):
@@ -513,7 +799,7 @@ index 48623cf..0eb0e41 100644
          index_name = get_loop_index_name(name)
          value = self.convert_index(1)
          writer.putln('%s = %s;' % (index_name, value))
-@@ -1650,8 +1670,7 @@ class ActivateGroup(ActionWriter):
+@@ -1650,8 +1681,7 @@ class ActivateGroup(ActionWriter):
      custom = True
  
      def write(self, writer):
@@ -523,7 +809,24 @@ index 48623cf..0eb0e41 100644
          writer.putlnc('if (!%s) {', container.code_name)
          writer.indent()
          writer.putlnc('%s = true;', container.code_name)
-@@ -2055,6 +2074,7 @@ actions = make_table(ActionMethodWriter, {
+@@ -1970,9 +2000,13 @@ class GetLoopIndex(ExpressionWriter):
+             size = 2
+             next_exp = items[converter.item_index + 1]
+             if next_exp.getName() != 'String':
+-                name = converter.config.get_dynamic_loop_index(next_exp)
+-                if name is None:
+-                    return 'get_loop_index('
++                value = getattr(next_exp.loader, 'value', None)
++                if value is not None:
++                    name = 'loop_%d' % value
++                else:
++                    name = converter.config.get_dynamic_loop_index(next_exp)
++                    if name is None:
++                        return 'get_loop_index('
+             else:
+                 name = next_exp.loader.value
+         converter.item_index += size
+@@ -2055,6 +2089,7 @@ actions = make_table(ActionMethodWriter, {
      'CreateObject' : CreateObject,
      'Shoot' : ShootObject,
      'StartLoop' : StartLoop,
@@ -531,7 +834,7 @@ index 48623cf..0eb0e41 100644
      'Foreach' : Foreach,
      'StopLoop' : StopLoop,
      'SwapPosition' : SwapPosition,
-@@ -2072,6 +2092,7 @@ actions = make_table(ActionMethodWriter, {
+@@ -2072,6 +2107,7 @@ actions = make_table(ActionMethodWriter, {
      'SetMinimumValue' : 'set_min',
      'SetGlobalString' : 'global_strings->set',
      'SetGlobalValue' : 'global_values->set',
@@ -539,7 +842,7 @@ index 48623cf..0eb0e41 100644
      'AddGlobalValue' : 'global_values->add',
      'AddGlobalValueInt' : 'global_values->add',
      'SubtractGlobalValue' : 'global_values->sub',
-@@ -2225,6 +2246,13 @@ conditions = make_table(ConditionMethodWriter, {
+@@ -2225,6 +2261,13 @@ conditions = make_table(ConditionMethodWriter, {
      'WhileMousePressed' : 'is_mouse_pressed',
      'MouseOnObject' : MouseOnObject,
      'Always' : Always,
@@ -553,7 +856,16 @@ index 48623cf..0eb0e41 100644
      'MouseClicked' : MouseClicked,
      'ObjectClicked' : ObjectClicked,
      'PlayerKeyDown' : PlayerKeyDown,
-@@ -2290,6 +2318,7 @@ conditions = make_table(ConditionMethodWriter, {
+@@ -2271,7 +2314,7 @@ conditions = make_table(ConditionMethodWriter, {
+     'NearWindowBorder' : 'is_near_border',
+     'AnimationFinished' : AnimationFinished,
+     'StartOfFrame' : '.loop_count <= 1',
+-    'Never' : '.false',
++    'Never' : FalseCondition,
+     'NumberOfLives' :  make_comparison('manager.lives'),
+     'PlayerDied' : PlayerDied,
+     'AnyKeyPressed' : AnyKeyPressed,
+@@ -2290,6 +2333,7 @@ conditions = make_table(ConditionMethodWriter, {
  })
  
  expressions = make_table(ExpressionMethodWriter, {

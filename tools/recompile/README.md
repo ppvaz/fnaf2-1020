@@ -87,12 +87,14 @@ compiled, booted, or treated as retail-runtime evidence. The patch carries
 The completed run's derived unsupported inventory is printed at the end of the
 converter output (not committed): Android/iOS/In-App, INI, Multiple Touch,
 Perspective, KYSO, Calculate Text Rect, several system ACEs and unmatched
-fastloops remain. The Phase-3 arm64 CMake probe configures, clears the
-`size_t`/`uint64_t` overload, and now compiles generated event units 1–16. It
-then stops on an empty qualifier initializer, numeric loop-index calls, and
-static-backdrop selection operations that expect `ObjectList` rather than a
-flat backdrop vector. It has not linked or booted; these compatibility paths are
-not fidelity evidence. `Multiple Touch` remains a later pilot-hook task.
+fastloops remain. The Phase-3 arm64 CMake probe now completes and links the
+external desktop target after compatibility handling for empty qualifiers,
+numeric loop indices, static-backdrop traversal, receiver-free `Never`, and
+unsupported-expression actions. This is **link success only**: without a video
+or audio device the process exits at SDL initialization; a dummy-driver retry
+initializes OpenAL then segfaults before a visual state is observable. No title,
+night, or fidelity result exists. `Multiple Touch` remains a later pilot-hook
+task.
 
 Regenerate this patch after landing more:
 `cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' '*.h' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

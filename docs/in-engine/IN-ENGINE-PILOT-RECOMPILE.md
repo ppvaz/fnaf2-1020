@@ -412,6 +412,24 @@ The next slice must model those three cases explicitly, then rerun from a clean
 external generation. These compatibility omissions mean this remains a compiler
 probe, not a fidelity result.
 
+### Phase 3 — linked desktop target; first runtime boundary (2026-08-28)
+
+The next compatibility slice supplies the empty-qualifier sentinel, turns
+numbered mobile loop-index expressions into the generated loop keys, and keeps
+static backdrop selection bookkeeping inert while supporting its default lookup
+and flat-vector traversal. It also makes receiver-free `Never` conditions and
+unsupported-expression actions safe before their C++ receiver is emitted. With
+those strictly compatibility-oriented paths, the external arm64 CMake build
+completes and links the desktop target.
+
+That is not a boot pass. The first direct process attempt lacks a container video
+and audio device and exits during SDL initialization. A second attempt with dummy
+SDL/OpenAL drivers initializes OpenAL but segfaults before any visual state can
+be observed. Therefore there is no title transition, selected-night transition,
+or runtime-fidelity evidence. Next: obtain a display-capable external runtime
+probe or capture a symbolized crash at the dummy-driver boundary; keep the
+generated target, binary, and logs external.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:

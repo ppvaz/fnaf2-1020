@@ -366,7 +366,7 @@ key, or a raw state dump in Git.
 | rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
 | loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
 | CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
-| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, assets ✓, C++ emission ✓ for 29 real frames; generated event units 1–16 compile.** Empty qualifier, numeric loop-index, and flat-backdrop-selection mismatches stop Phase 3 before link or boot. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, assets ✓, C++ emission ✓ for 29 real frames, desktop link ✓.** The headless container cannot establish a boot: no-device startup exits at SDL, while dummy drivers segfault before a visual state. |
 
 The route harness is complete only when every attempted row has one such record.
 It is not complete merely because a command exists in a shell history.  The current
@@ -397,10 +397,9 @@ compatibility paths.
 
 Next:
 
-1. Continue compiling the external generated desktop target from the recorded
-   Phase-3 boundary. **Reached:** CMake configures, the arm64 overload and
-   unsupported-ACE/receiver paths are guarded, and event units 1–16 compile;
-   next are empty qualifiers, numeric loop indexes, and flat-backdrop selection.
+1. Obtain a display-capable external runtime probe or symbolize the dummy-driver
+   crash. **Reached:** CMake links the desktop target; neither the no-device nor
+   dummy-driver container run establishes a visual boot.
 2. Boot only after a link succeeds, then compare a selected night to the sourced
    model before making any pilot claim.
 3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
