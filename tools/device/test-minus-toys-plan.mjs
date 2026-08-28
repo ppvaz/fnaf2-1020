@@ -18,11 +18,44 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { OPENING, LOOP, replay, emitPlan } from './minus-toys-plan.mjs';
+import { OPENING, LOOP, KNOBS0, build, replay, emitPlan } from './minus-toys-plan.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 const seed = i => (i * 2654435761) >>> 0;
+
+// --- 0. the parametrized build reproduces the shipped schedule ---------------
+//
+// minus-toys-plan.mjs self-asserts this on import (build(KNOBS0) === the frozen
+// arrays); re-state it here so a change to that assertion also trips a suite
+// check, and pin the two facts a search depends on: a knob perturbs the plan,
+// and the shipped default does not.
+{
+  const d = build();
+  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  check(eq(d.opening, OPENING) && eq(d.loop, LOOP),
+    'build() does not reproduce the exported OPENING/LOOP');
+  check(!eq(build({ windMs: KNOBS0.windMs + 500 }).loop, LOOP),
+    'a windMs knob change did not alter the loop -- build() is not reading knobs');
+  check(emitPlan(2, { windMs: KNOBS0.windMs + 500 }) !== emitPlan(2),
+    'emitPlan ignored its knobs argument');
+}
+
+// The published routine is 5 s-interval-anchored but the port is a 10 s loop.
+// cyclelengthsearch.mjs found the same for Minus 7: a 10 s period is structural
+// (2x the 5 s movement grid). Pin that a 5 s symmetric build does NOT clear --
+// it cannot deliver Balloon Boy's 5 consecutive mask ticks without the
+// reactive blackout branch. If this ever passes, the loop-period picture changed.
+{
+  let wins = 0;
+  for (let i = 0; i < 100; i++) {
+    const r = replay({ night: 2, seed: seed(i), knobs: { loopPeriodMs: 5000 } });
+    if (r.sim.won && r.splitAt >= 0) wins++;
+  }
+  check(wins < 20,
+    `the 5 s loop-period build cleared night 2 ${wins}/100 -- it was expected to ` +
+    'fail without the reactive branch; the 10 s period may no longer be structural');
+}
 
 // --- 1. the ported schedule survives, and the split is what does it ----------
 
