@@ -86,8 +86,10 @@ routes. Pick one:
   Spike it minimally first (stock Chowdren → phone) before committing.
 - **(b) Accept the recompile as a desktop fidelity oracle** — finish it to a
   playable night, use it to validate/discover strategies against real event
-  logic (big upgrade over `src/engine.js`; directly serves Plan 05). Rescope
-  Plan 17's APK "Done when".
+  logic (big upgrade over `src/engine.js`). **The Custom Night campaign already
+  names it as its measurement oracle** (Plan 05 pkg 9 / this section's Plan 05
+  block), so this option is not a consolation — it is a dependency of the other
+  active track. Rescope Plan 17's APK "Done when".
 - **(c) Stop the recompile** — if only an on-phone bot counts and neither
   routes 2/3 nor route 5 reach it, redirect to Plan 05 / the external hybrid.
 
