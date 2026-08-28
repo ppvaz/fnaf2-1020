@@ -2,10 +2,11 @@
 
 **Updated:** 2026-08-27
 
-**Overall:** **36%** — 34 of 95 mandatory top-level work packages are closed.
-(2026-08-27: +5 from Plan 16 — pkgs 1–3 were built in prior commits but the
+**Overall:** **36%** — 34 of 94 mandatory top-level work packages are closed.
+(2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
-5 closed by recorded negative in `740f5b0` and its follow-up.)
+5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
+mandatory) — a dependency report needs a promoted candidate and there is none.)
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -1501,7 +1502,7 @@ on the next graded run remains the way to attribute them, since only
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
-| [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 6 | **83%** | Pkgs 1–3 built (row was stale at 0/6). **Pkgs 4 and 5 closed by recorded negative 2026-08-27 (`740f5b0` + follow-up).** Pkg 4: the constrained scheduling space is a wall — timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks). Pkg 5: the Night-7 *opener* is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state clear-cycle problem (two existing Foxy resets missing under jitter → 33/61 %, + office entries = the geometry lever). Every simulator lever is exhausted; the standing goal (item 9) is **not met** and moves to the device. Pkg 6 (provenance registry) blocks nothing — nothing was promoted | Device: a real actuator holding the ~4 ms geometry basin, a fast departure-bang detector, or new device time for a 2nd clear-cycle Foxy reset. Optionally pkg 6 |
+| [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27.** Pkgs 1–3 built (row was stale at 0/6). **Pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`).** Pkg 4: the constrained scheduling space is a wall — timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks). Pkg 5: the Night-7 *opener* is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state clear-cycle problem (two existing Foxy resets missing under jitter → 33/61 %, + office entries = the geometry lever). Pkg 6 dropped — no promoted candidate for a dependency report. Every simulator lever is exhausted; the standing goal (item 9) is **not met in the simulator** and moves entirely to the device | Reopen only if a device result produces a candidate to harden, or a source-rule change reopens the scheduling space |
 
 ## Counting rule
 
@@ -1534,7 +1535,11 @@ on the next graded run remains the way to attribute them, since only
   no fractional credit.
 - Plans 05 and 06 count as complete because their done criteria explicitly
   accept a recorded refutation/no-survivor result; implementation was correctly
-  not started after the candidate failed.
+  not started after the candidate failed. **Plan 16 closes the same way**
+  (2026-08-27): pkgs 4 and 5 are recorded negatives, and pkg 6 (a
+  dependency-report on a promoted candidate) was dropped because no candidate
+  was promoted — 95 → 94 mandatory. Its row was also corrected off a stale
+  `0 / 6` (pkgs 1–3 built in prior commits, never counted).
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the

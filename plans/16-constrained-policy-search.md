@@ -7,7 +7,10 @@ phase-lock spike), and the bang-anchored attack raise (needs a bang detector
 faster than the phone has) all measured to a wall. Pkg 5: the Night-7 *opener*
 is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state
 clear-cycle problem (two existing Foxy resets missing under jitter, + office
-entries = the geometry lever). Package 6 (provenance registry) not started.
+entries = the geometry lever). Package 6 (provenance registry) **dropped** —
+no promoted candidate for a dependency report to run on, `src/config.js` is
+by now ~all `[SOURCED]`; build it against a device-produced candidate if one
+ever appears. **Plan 16 is effectively complete.**
 This plan is the structured vehicle for the standing goal in `PROGRESS.md`
 item 9 ("iterate on Minus 7 until every night clears 70% under the human-gate"),
 after two sessions (items 8–11) attacked it by hand and reverted clean. **The
@@ -485,7 +488,18 @@ direction than expected (the opening is *irrelevant*, not *unfixable*).
 recorded negative result — **met**: `n7probe.mjs` + the `test-search.mjs`
 fixture pinning that a perfect opening reset does not move n7.
 
-### 6. Machine-readable provenance and dependency reporting
+### 6. Machine-readable provenance and dependency reporting — DROPPED (2026-08-27)
+
+**Not built, deliberately.** This package exists to make a *promoted candidate's*
+dependency on non-`SOURCED` rules explicit. Packages 4 and 5 both closed by
+recorded negative — there is no promoted candidate, so the dependency report has
+nothing to run on, and `src/config.js` is by now ~entirely `[SOURCED]` (the
+music-box drain, the last hold-out, was closed by g653–660). A dependency-report
+tool retains value for whatever candidate a future *device* result produces;
+build it then, against that candidate, not speculatively now. Pedro's call,
+2026-08-27: "it's too late for package 6, everything has been refuted already."
+
+The original spec, kept:
 
 - Promote the `[SOURCED]` / `[CALIBRATED]` / `[INFERRED]` / `[MODEL]` tags from
   `src/config.js` / `src/engine.js` comments to a queryable registry
@@ -537,9 +551,9 @@ test candidate is correctly flagged.
 - ~~the Night-7 opener (package 5) likewise;~~ **met — recorded negative
   (2026-08-27): the opener is refuted, n7 is a steady-state clear-cycle
   problem. `tools/minus7/n7probe.mjs`.**
-- every promoted candidate carries its provenance-dependency list, and no
-  promotion rests on an unflagged `ASSUMED`/`MODEL` rule (package 6, not
-  started — nothing was promoted, so nothing is blocked on it);
+- ~~every promoted candidate carries its provenance-dependency list~~
+  **package 6 dropped** — nothing was promoted, so there is nothing to flag;
+  rebuild it against a device-produced candidate if one appears;
 - ~~`PROGRESS.md` item 9's standing goal is either met in the simulator or
   shown to require new device time~~ **shown to require new device time
   (2026-08-27), with the search recorded** in this log and in
