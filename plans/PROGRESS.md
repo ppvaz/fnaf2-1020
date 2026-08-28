@@ -99,8 +99,23 @@ pre-existing problems bit, both already named on this page:
 3. No cue-helper BB read this run (helper dead) — the runner never separated
    "BB inside" from "toy inside" and just mask-camped. `plans/15` BB-first.
 
-Next device move: re-run with `CUE_HELPER=1` and `CUE_AUDIO=1`, and add a
-`camtrace`/`lit?` probe of one sweep against a known Toy-Chica-on-CAM-07 frame.
+Next device move — the **stun-on-33ms probe**, an A/B/C graded Night 2 where
+only the light contact changes (select stays decoupled), all with
+`CUE_HELPER=1 CUE_AUDIO=1`:
+- **A** `SWEEP_CONTACT_MS=33` (what just ran — Chica reached office)
+- **B** `SWEEP_CONTACT_MS=50` (the LIGHT_AFTER/legacy boundary — tells hard
+  poll threshold from graded)
+- **C** `SWEEP_CONTACT_MS=100` (legacy-length light, decoupled select)
+
+If C pins Toy Chica and A does not → the 33 ms `lit?` window misses the stun
+poll and the lever needs ≥~67 ms light (sweep back to ~270 ms, most of the
+phase-lock gain gone). If none pin her → phase-lock / camera-set, and session
+`31`'s slot search is the right instrument. Session `31`'s early grid (sim,
+400 seeds correlated) already shows the n2-n6 basins are **narrow phase-lock
+wells, not a region** — 2 ms of spacing flips n6 by ~30 points, every basin
+that lifts n2-n6 leaves n7 at 3-17% — so a device confirmation that a basin
+survives ±real actuator jitter is a precondition for trusting any geometry
+number.
 
 ---
 
