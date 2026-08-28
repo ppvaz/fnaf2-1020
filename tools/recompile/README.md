@@ -52,26 +52,33 @@ docker run --rm -e MMFPARSER_ANDROID_RAW_DIR=/input/android-res-raw \
 
 ## State (2026-08-28)
 
-Parse ✓, asset creation ✓, `write_objects` ✓, **`write_loops` ✓**. The patch now
-carries (all NebulaFD-sourced or confirmed against captured bytes):
+Parse ✓ · assets ✓ · `write_objects` ✓ · `write_loops` ✓ · `write_foreach` ✓ ·
+group-pointer resolution ✓. The patch carries (NebulaFD-sourced or confirmed
+against captured bytes):
 
 - parameter loaders 67–72: `67`/`70` → `Int`, `68` → `ParameterVariables`,
-  `69` → `ParameterChildEvent`, `71` → `Bug` (no-op), `72` → `Zone`; names added
-- frame chunk `0x334C` (13132) = `FrameHandle` (one `int32`)
-- `ChunkList.read` stops at end-of-data (build-296 leaves 4 truncated
-  `olivier_DEBUG_*` / `_GLOBALS` stub frames with no LAST marker)
-- Chowdren `write_loops` / `StartLoop` key loops on `loop_<index>` — mobile
-  fastloops are numeric (`Short`), not named (`static_loop_name` helper)
-- Chowdren stubs: `RunningAs` → `Always` (fidelity caveat, dev-branch gate);
-  `SetGlobalValueDouble` → `global_values->set`
+  `69` → `ParameterChildEvent`, `71` → `Bug`, `72` → `Zone`; names + inert
+  `convert_parameter` cases
+- frame chunk `0x334C` (13132) = `FrameHandle`; `ChunkList.read` end-of-data
+  guard (4 truncated `olivier_DEBUG_*` / `_GLOBALS` stub frames — real game is
+  frames 0–28)
+- `static_loop_name()` — mobile fastloops are numeric (`Short` index), so
+  `write_loops` / `write_foreach` / `StartLoop` / `StopLoop` / `SetLoopIndex` /
+  `Foreach` key on `loop_<index>`
+- new system ACEs: cond `-42`/`-43` → `Always`, action `43` → `EmptyAction`
+  (Fusion 2.5+ structural markers; `CHILDEVENT` object-scope list dropped)
+- `GroupPointer` build-≥284 layout (int ID, `tell − 12` base; `Group` base
+  `tell − 36`); `containers` also keyed by group id with a `pointer == 0`
+  fallback in `Activate`/`DeactivateGroup` / `GroupActivated`
+- Chowdren stubs: `RunningAs` → `Always`, `SetGlobalValueDouble` →
+  `global_values->set`
 
-**Next boundary:** event C++ generation stops at `convert_parameter` on
-`ParameterChildEvent`. System condition `-43` and action `43` (169 / 189 uses,
-one `CHILDEVENT` param each) are **not in the stock `systemDict`** — new build-296
-system ACEs carrying a qualifier-object list. Read NebulaFD's
-`Nebula.Core/Data/Chunks/FrameChunks/Events/{Condition,Action}.cs` and its
-qualifier handling to decide whether they are qualifier-scoping no-ops.
-Also minor: `expression not implemented: Zero`.
+**Next boundary:** `get_object_handle` `KeyError: (20, 40, 0)` — an action
+operates on an `AndroidObject` (extension type 40) instance that the config's
+`game.extensions` synthesis does not register in `name_to_item` / `all_objects`.
+The 14 synthesized stub extensions need full **object-instance** registration in
+Chowdren. Also open: `Could not find loop 'loop_3'`; the `multipletouch_*`
+generated groups (expected — WP4).
 
 Regenerate this patch after landing more:
 `cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

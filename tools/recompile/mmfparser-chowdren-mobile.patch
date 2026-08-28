@@ -1,5 +1,5 @@
 diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
-index d8edac8..a3cca32 100644
+index d8edac8..83be972 100644
 --- a/Chowdren/chowdren/converter.py
 +++ b/Chowdren/chowdren/converter.py
 @@ -1107,7 +1107,7 @@ class Converter(object):
@@ -11,11 +11,75 @@ index d8edac8..a3cca32 100644
                      image.height), image.getImageData())
  
                  handle = (image.handle, game_index)
+@@ -1359,6 +1359,9 @@ class Converter(object):
+                     current_container.add_child(new_container)
+                 current_container = new_container
+                 containers[group_loader.offset] = current_container
++                # build 296: GroupPointer params with pointer 0 identify the
++                # group by id instead of byte offset.
++                containers[('id', group_loader.id)] = current_container
+                 always_groups.append(ContainerMark(current_container, name))
+                 continue
+             elif name == 'GroupEnd':
+@@ -1426,8 +1429,11 @@ class Converter(object):
+                         self.multiple_instances.add(create_info)
+                 elif action_name in ('DeactivateGroup',
+                                      'ActivateGroup'):
+-                    pointer = action.items[0].loader.pointer
+-                    changed_containers.add(pointer)
++                    loader = action.items[0].loader
++                    if loader.pointer in containers:
++                        changed_containers.add(loader.pointer)
++                    else:
++                        changed_containers.add(('id', loader.id))
+ 
+             always_group_index = None
+             generated_group_index = None
+@@ -2280,6 +2286,14 @@ class Converter(object):
+             writer.putln('if (!%s) goto %s;' % (
+                 item.code_name, item.end_label))
+ 
++    def resolve_container(self, loader):
++        # build 296: GroupPointer.pointer is 0 when the group is referenced by
++        # id rather than byte offset.
++        try:
++            return self.containers[loader.pointer]
++        except KeyError:
++            return self.containers[('id', loader.id)]
++
+     def get_container_check(self, container):
+         groups = []
+         for item in container.tree:
+@@ -2965,6 +2979,14 @@ class Converter(object):
+                 return self.intern_string(loader.value)
+             elif parameter_name in ('TwoShorts'):
+                 return to_c('%r, %r', loader.value1, loader.value2)
++            elif parameter_name == 'ParameterChildEvent':
++                # build 296 structural object-scope list; no code equivalent.
++                return '0'
++            elif parameter_name == 'ParameterVariables':
++                # build 296 flag/value compare struct; emit the first value if any.
++                if loader.variables:
++                    return repr(loader.variables[0].value)
++                return '0'
+             else:
+                 raise NotImplementedError('parameter: %s' % parameter_name)
+         self.start_clauses += out.count('(')
 diff --git a/Chowdren/chowdren/writers/events/system.py b/Chowdren/chowdren/writers/events/system.py
-index 48623cf..0133771 100644
+index 48623cf..0f8f785 100644
 --- a/Chowdren/chowdren/writers/events/system.py
 +++ b/Chowdren/chowdren/writers/events/system.py
-@@ -320,8 +320,7 @@ class SystemObject(ObjectWriter):
+@@ -292,8 +292,7 @@ class SystemObject(ObjectWriter):
+         loop_objects = {}
+         for loop in self.get_conditions('OnObjectLoop'):
+             parameter = loop.conditions[0].data.items[0]
+-            items = parameter.loader.items
+-            name = self.converter.convert_static_expression(items)
++            name = static_loop_name(self.converter, parameter)
+             loop_objects[name] = loop.conditions[0].get_object()
+             loops[name].append(loop)
+ 
+@@ -320,8 +319,7 @@ class SystemObject(ObjectWriter):
  
          for loop_group in self.get_conditions('OnLoop'):
              parameter = loop_group.conditions[0].data.items[0]
@@ -25,7 +89,28 @@ index 48623cf..0133771 100644
              if name is None:
                  # try and get config to give us a loop name
                  name = self.converter.config.get_loop_name(parameter)
-@@ -1461,14 +1460,26 @@ class Foreach(ActionWriter):
+@@ -751,8 +749,7 @@ class OnceCondition(ConditionWriter):
+ 
+ class GroupActivated(ConditionWriter):
+     def write(self, writer):
+-        container = self.converter.containers[
+-            self.parameters[0].loader.pointer]
++        container = self.converter.resolve_container(self.parameters[0].loader)
+         writer.put(self.converter.get_container_check(container))
+ 
+ class PickRandom(ConditionWriter):
+@@ -1425,9 +1422,7 @@ class Foreach(ActionWriter):
+     custom = True
+ 
+     def get_name(self):
+-        parameter = self.parameters[0]
+-        items = parameter.loader.items
+-        return self.converter.convert_static_expression(items)
++        return static_loop_name(self.converter, self.parameters[0])
+ 
+     def write(self, writer):
+         self.reorder = self.converter.config.reorder_foreach()
+@@ -1461,14 +1456,26 @@ class Foreach(ActionWriter):
              writer.putlnc('%s();', func_call)
          writer.end_brace()
  
@@ -54,7 +139,67 @@ index 48623cf..0133771 100644
          if name is not None:
              return name
          return self.converter.config.get_dynamic_loop_call_name(parameter)
-@@ -2072,6 +2083,7 @@ actions = make_table(ActionMethodWriter, {
+@@ -1558,8 +1565,11 @@ class StartLoop(ActionWriter):
+                 times = exp.loader.value
+                 if times == -1:
+                     comparison = 'true'
+-        except ValueError:
+-            pass
++        except (ValueError, AttributeError):
++            # build 296: the loop-count parameter can be a bare Int/Short.
++            times = getattr(self.parameters[1].loader, 'value', None)
++            if times == -1:
++                comparison = 'true'
+         if times is None:
+             times = self.convert_index(1)
+         is_infinite = comparison is not None
+@@ -1622,15 +1632,13 @@ class DeactivateGroup(ActionWriter):
+ 
+     def get_deactivated_container(self):
+         if self.deactivated_container is None:
+-            self.deactivated_container = self.converter.containers[
+-                self.parameters[0].loader.pointer]
++            self.deactivated_container = self.converter.resolve_container(self.parameters[0].loader)
+         return self.deactivated_container
+ 
+ class StopLoop(ActionWriter):
+     def write(self, writer):
+         parameter = self.parameters[0]
+-        items = parameter.loader.items
+-        name = self.converter.convert_static_expression(items)
++        name = static_loop_name(self.converter, parameter)
+         if name is None:
+             name = self.converter.convert_parameter(parameter)
+             print 'Could not convert stop loop name for', name
+@@ -1640,8 +1648,7 @@ class StopLoop(ActionWriter):
+ 
+ class SetLoopIndex(ActionWriter):
+     def write(self, writer):
+-        exp, = self.parameters[0].loader.items[:-1]
+-        name = exp.loader.value
++        name = static_loop_name(self.converter, self.parameters[0])
+         index_name = get_loop_index_name(name)
+         value = self.convert_index(1)
+         writer.putln('%s = %s;' % (index_name, value))
+@@ -1650,8 +1657,7 @@ class ActivateGroup(ActionWriter):
+     custom = True
+ 
+     def write(self, writer):
+-        container = self.converter.containers[
+-            self.parameters[0].loader.pointer]
++        container = self.converter.resolve_container(self.parameters[0].loader)
+         writer.putlnc('if (!%s) {', container.code_name)
+         writer.indent()
+         writer.putlnc('%s = true;', container.code_name)
+@@ -2055,6 +2061,7 @@ actions = make_table(ActionMethodWriter, {
+     'CreateObject' : CreateObject,
+     'Shoot' : ShootObject,
+     'StartLoop' : StartLoop,
++    'ChildEvents' : EmptyAction, # build 296 structural marker; object-scope list dropped
+     'Foreach' : Foreach,
+     'StopLoop' : StopLoop,
+     'SwapPosition' : SwapPosition,
+@@ -2072,6 +2079,7 @@ actions = make_table(ActionMethodWriter, {
      'SetMinimumValue' : 'set_min',
      'SetGlobalString' : 'global_strings->set',
      'SetGlobalValue' : 'global_values->set',
@@ -62,7 +207,7 @@ index 48623cf..0133771 100644
      'AddGlobalValue' : 'global_values->add',
      'AddGlobalValueInt' : 'global_values->add',
      'SubtractGlobalValue' : 'global_values->sub',
-@@ -2225,6 +2237,10 @@ conditions = make_table(ConditionMethodWriter, {
+@@ -2225,6 +2233,13 @@ conditions = make_table(ConditionMethodWriter, {
      'WhileMousePressed' : 'is_mouse_pressed',
      'MouseOnObject' : MouseOnObject,
      'Always' : Always,
@@ -70,6 +215,9 @@ index 48623cf..0133771 100644
 +    # binary is always the application, so treat it as true. A rare
 +    # RunningAs <other-mode> branch would wrongly activate -- fidelity caveat.
 +    'RunningAs' : Always,
++    # build 296 structural condition markers -- no runtime effect.
++    'GroupStart' : Always,
++    'ChildEventsCondition' : Always,
      'MouseClicked' : MouseClicked,
      'ObjectClicked' : ObjectClicked,
      'PlayerKeyDown' : PlayerKeyDown,
@@ -118,6 +266,38 @@ index aa037de..092741f 100644
      17476 : 'OBJINFOHEADER',
      17477 : 'OBJINFONAME',
      17478 : 'OBJECTSCOMMON',
+diff --git a/mmfparser/data/chunkloaders/actions/names.py b/mmfparser/data/chunkloaders/actions/names.py
+index d9bfdf7..46bebc0 100644
+--- a/mmfparser/data/chunkloaders/actions/names.py
++++ b/mmfparser/data/chunkloaders/actions/names.py
+@@ -142,7 +142,10 @@ systemDict = {
+         35 : 'SubtractGlobalValueInt',
+         36 : 'SubtractGlobalValue2',
+         37 : 'SubtractGlobalValueDouble',
+-        38 : 'SubtractGlobalValue3'
++        38 : 'SubtractGlobalValue3',
++        # Fusion 2.5+ / build 296: trailing structural marker on every group,
++        # carrying a CHILDEVENT (child-event object-scope) parameter.
++        43 : 'ChildEvents'
+     },
+     -7 : {
+         0 : 'SetScore',
+diff --git a/mmfparser/data/chunkloaders/conditions/names.py b/mmfparser/data/chunkloaders/conditions/names.py
+index 9f11e27..a18461e 100644
+--- a/mmfparser/data/chunkloaders/conditions/names.py
++++ b/mmfparser/data/chunkloaders/conditions/names.py
+@@ -151,7 +151,10 @@ systemDict = {
+         -37 : 'CompareGlobalValueDoubleLess',
+         -38 : 'CompareGlobalValueDoubleGreaterEqual',
+         -39 : 'CompareGlobalValueDoubleGreater',
+-        -40 : 'RunningAs'
++        -40 : 'RunningAs',
++        # Fusion 2.5+ / build 296 structural markers (see IN-ENGINE-PILOT-RECOMPILE):
++        -42 : 'GroupStart',            # parameterless, sole condition of a group
++        -43 : 'ChildEventsCondition'   # carries a CHILDEVENT (object-scope) param
+     }
+ }
+ 
 diff --git a/mmfparser/data/chunkloaders/events.pyx b/mmfparser/data/chunkloaders/events.pyx
 index 1613f17..0d27e63 100644
 --- a/mmfparser/data/chunkloaders/events.pyx
@@ -497,11 +677,20 @@ index 85649ce..06bce1c 100644
 \ No newline at end of file
 +    'AnimationDirection', 'Animation', 'AnimationHeader', 'ObjectCommon']
 diff --git a/mmfparser/data/chunkloaders/parameters/loaders.py b/mmfparser/data/chunkloaders/parameters/loaders.py
-index 2a53e31..49eeeee 100644
+index 2a53e31..cf31ff0 100644
 --- a/mmfparser/data/chunkloaders/parameters/loaders.py
 +++ b/mmfparser/data/chunkloaders/parameters/loaders.py
-@@ -351,6 +351,13 @@ class Group(ParameterCommon):
-         self.offset = reader.tell() - 24
+@@ -348,9 +348,21 @@ class Group(ParameterCommon):
+         self.flags = GROUP_FLAGS.copy()
+ 
+     def read(self, reader):
+-        self.offset = reader.tell() - 24
++        if self.settings['build'] >= 284:
++            # NebulaFD ParameterGroup: pointer base is (tell - 36), and the
++            # GroupPointer param resolves against this same value.
++            self.offset = reader.tell() - 36
++        else:
++            self.offset = reader.tell() - 24
          self.flags.setFlags(reader.readShort(True))
          self.id = reader.readShort(True)
 +        if self.settings['build'] >= 293:
@@ -514,7 +703,27 @@ index 2a53e31..49eeeee 100644
          try:
              self.name = self.readString(reader, 96)
              self.password = reader.readInt()
-@@ -489,6 +496,86 @@ class Bug(ParameterCommon):
+@@ -372,9 +384,16 @@ class GroupPointer(ParameterCommon):
+ 
+     def read(self, reader):
+         self.pointer = self.savedPointer = reader.readInt()
+-        self.id = reader.readShort()
+-        if self.pointer != 0:
+-            self.pointer += reader.tell()
++        # Fusion 2.5+ / build 296: the ID is a 32-bit field and the pointer is
++        # relative to (tell - 12), matching NebulaFD's ParameterGroupPointer.
++        if self.settings['build'] >= 284:
++            self.id = reader.readInt()
++            if self.pointer != 0:
++                self.pointer = reader.tell() - 12 + self.savedPointer
++        else:
++            self.id = reader.readShort()
++            if self.pointer != 0:
++                self.pointer += reader.tell()
+ 
+     def write(self, reader):
+         reader.writeInt(self.savedPointer)
+@@ -489,6 +508,86 @@ class Bug(ParameterCommon):
      def write(self, reader):
          pass
  
@@ -601,7 +810,7 @@ index 2a53e31..49eeeee 100644
  parameterLoaders = [
      None,
      Object,
-@@ -556,5 +643,11 @@ parameterLoaders = [
+@@ -556,5 +655,11 @@ parameterLoaders = [
      Filename,
      String,
      CharacterEncoding,

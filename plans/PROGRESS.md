@@ -85,10 +85,12 @@ guard (the 4 unparsable frames were truncated `olivier_DEBUG_*` stubs; the real
 game is frames 0–28), numeric-fastloop naming in Chowdren, and `RunningAs` /
 `SetGlobalValueDouble` stubs.
 
-**Next boundary:** `convert_parameter` on `ParameterChildEvent` (code 69) —
-System condition `-43` (169×) and action `43` (189×), not in `systemDict`, each
-with a qualifier-object list. Classify them from NebulaFD's
-`Events/{Condition,Action}.cs` + `Qualifier.cs`. Then keep the per-ACE grind.
+**Next boundary:** `get_object_handle` `KeyError: (20, 40, 0)` — the 14
+synthesized stub extensions need full object-instance registration in Chowdren,
+not just a `game.extensions` entry. Cleared this session: the new system ACEs
+(`-42`/`-43`/`43` → structural no-ops), `GroupPointer` alignment + id fallback
+(`DeactivateGroup`), `write_foreach`, and `StopLoop`/`SetLoopIndex`. Then the
+per-ACE grind, then desktop build + boot.
 Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
 Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
 event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.

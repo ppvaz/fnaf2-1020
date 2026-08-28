@@ -45,10 +45,11 @@ untouched stock game.
   externally held mobile patch now reproduces a clean-clone structural parse of
   the owned build-296 CCN (33 frames / 782 images), including 7 real font records
   and 67 APK audio resources. This build's music bank is empty. It is not yet a
-  generated or booted runtime. The 2026-08-28 converter work clears parse, asset
-  creation, `write_objects` and — after this session's build-293→296 `mmfparser`
-  port work (NebulaFD as spec) — `write_loops`. Now stops at `convert_parameter`
-  on `ParameterChildEvent` (a new build-296 system ACE). See
+  generated or booted runtime. The 2026-08-28 build-293→296 `mmfparser` port
+  (NebulaFD as spec) clears parse, assets, `write_objects`, `write_loops`,
+  `write_foreach` and group-pointer resolution; event C++ generation now stops on
+  stub-extension object-instance registration (`get_object_handle` `KeyError`).
+  See
   [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#phase-2--generate-boundaries-2026-08-28).
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
   Foxy `D`, music-box state, office occupants and battery life.
@@ -395,16 +396,14 @@ numeric-fastloop naming in Chowdren, `RunningAs` / `SetGlobalValueDouble` stubs)
 
 Next:
 
-1. Classify **`ParameterChildEvent`** (code 69) — the sole param of System
-   condition `-43` (169×) and action `43` (189×), neither in `systemDict`. Read
-   NebulaFD's `Events/{Condition,Action}.cs` + `Qualifier.cs`; likely
-   qualifier-scoping no-ops (`Always` / `EmptyAction`).
-2. Also `ParameterVariables` (code 68) in `convert_parameter`; `expression not
-   implemented: Zero`.
-3. Rebuild, rerun `chowdren.run --config tools/recompile/fnaf2-config.py
+1. Give the 14 synthesized stub extensions full **object-instance** registration
+   in Chowdren (`name_to_item` / `all_objects` / `object_names`), not just a
+   `game.extensions` entry — the current blocker is `get_object_handle`
+   `KeyError: (20, 40, 0)` on an `AndroidObject` instance.
+2. Rebuild, rerun `chowdren.run --config tools/recompile/fnaf2-config.py
    <owned-ccn> <gamesrc>`, record the next boundary. Keep going per the Phase
    gates table until a desktop target builds and boots to a night.
-4. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
+3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
    events generate.
 5. Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion
    2.5 → re-export a desktop CCN Chowdren fully supports.

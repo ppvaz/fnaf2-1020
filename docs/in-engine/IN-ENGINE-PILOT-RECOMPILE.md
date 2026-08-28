@@ -336,24 +336,27 @@ All in `tools/recompile/mmfparser-chowdren-mobile.patch`:
 
 | gap | fix |
 | --- | --- |
-| parameter codes 67–72 | `67`/`70` → `Int`; `68` → `ParameterVariables` (flags + up to 4 `{index, op, value}`); `69` → `ParameterChildEvent` (count + `uint16` pairs); `71` → `Bug` no-op; `72` → `Zone`. Names added to `names.py`. |
-| numeric loops | `static_loop_name()` helper in Chowdren `system.py`: `Short` loop index → `loop_<index>`, used by `write_loops` and `StartLoop.get_name`. **`write_loops` now passes.** |
+| parameter codes 67–72 | `67`/`70` → `Int`; `68` → `ParameterVariables` (flags + up to 4 `{index, op, value}`); `69` → `ParameterChildEvent` (count + `uint16` pairs); `71` → `Bug` no-op; `72` → `Zone`. Names added to `names.py`; inert cases in `convert_parameter`. |
+| numeric loops | `static_loop_name()` helper: `Short` loop index → `loop_<index>`, used by `write_loops`, `write_foreach`, `StartLoop` / `StopLoop` / `SetLoopIndex` / `Foreach`. **`write_loops` and `write_foreach` pass.** |
 | frame stub desync | `ChunkList.read` end-of-data guard; `13132` → `FrameHandle`. |
+| new system ACEs | System condition `-42` (`GroupStart`), `-43` (`ChildEventsCondition`) → `Always`; System action `43` (`ChildEvents`) → `EmptyAction`. Structural markers Fusion 2.5+ writes on every group; the `CHILDEVENT` object-scope list is dropped (fidelity caveat — 87 of the 189 carry a non-empty list). |
+| `GroupPointer` alignment | Build ≥ 284: ID is a 32-bit field and the pointer resolves against `tell − 12` (per NebulaFD `ParameterGroupPointer`); `Group` param base is `tell − 36`. `containers` is also keyed by group `id`, and `Activate`/`DeactivateGroup` / `GroupActivated` fall back to it when `pointer == 0`. |
 | `RunningAs` condition | → `Always` (dev-branch gate; a `RunningAs <non-app>` branch would wrongly activate — fidelity caveat, like the `(0,0)` image). |
 | `SetGlobalValueDouble` action | → `global_values->set` (Chowdren globals are doubles). |
 
-**Next boundary:** event C++ generation reaches `convert_parameter` and stops on
-**`ParameterChildEvent`** (code 69). It is the sole parameter of **System
-condition `-43`** (169 uses) and **System action `43`** (189 uses) — neither is
-in the stock `systemDict`, so they are new build-296 system ACEs carrying a
-qualifier-object list. Decide from NebulaFD's
-`Events/{Condition,Action}.cs` + `Qualifier.cs` whether they are
-qualifier-scoping no-ops (→ `Always` / `EmptyAction`, dropping the `CHILDEVENT`
-param) or something that must be translated. Also open: `expression not
-implemented: Zero`.
+**Next boundary:** event C++ generation now runs deep (past loops, foreach, group
+activation) and stops in `get_object_handle` with **`KeyError: (20, 40, 0)`** —
+an action operates on an `AndroidObject` (extension type 40) instance that the
+synthesized-extension stub does not register in `name_to_item` / `all_objects`.
+The 14 synthesized stub extensions need full **object-instance** registration in
+Chowdren, not just a `game.extensions` entry. Also open: `Could not find loop
+'loop_3'` (a `StartLoop` with no matching `OnLoop` in-frame), and the
+`multipletouch_*` generated groups (expected — `Multiple Touch` becomes the pilot
+input hook, WP4).
 
-**Scope remaining.** The per-ACE / per-parameter grind continues, but the
-structural blockers (loops, frame parse, the parameter table) are cleared.
+**Scope remaining.** The structural blockers — loops, foreach, group pointers,
+the frame parse, the parameter table — are cleared. What's left is extension
+stub-object coverage, then the per-ACE grind, then desktop build + boot.
 
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
