@@ -412,8 +412,37 @@ export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 // trial/test-plan-interpreter.sh, which reads both.
 export const LA_SELECT_MS = 17;
 export const LA_SETTLE_MS = 17;
-export const sweepCamMs = (contactMs) =>
-  contactMs < 50 ? LA_SELECT_MS + LA_SETTLE_MS + contactMs : contactMs;
+// `lightAfter` defaults to the historical `contact < 50` inference, but the
+// caller may force it: a sweep whose base contact is short is LIGHT_AFTER for
+// *every* slot, so a lengthened last slot (sweepLastContactMs, below) still
+// costs the select + settle even at 67 ms, where the bare threshold would
+// misprice it as the legacy same-report geometry.
+export const sweepCamMs = (contactMs, lightAfter = contactMs < 50) =>
+  lightAfter ? LA_SELECT_MS + LA_SETTLE_MS + contactMs : contactMs;
+
+// A sweep's cams token is `10,4,7`, or `10,4,7:67` when the drift-exposed last
+// slot needs a longer light hold than the rest -- the `:N` suffix overrides
+// that one slot's light contact (ON-DEVICE-VALIDATION.md, the last-slot leak).
+// Returns the camera list and the parallel per-slot light-contact list.
+export function sweepCams(camsToken, baseContactMs) {
+  const cams = [], contacts = [];
+  for (const tok of String(camsToken).split(',')) {
+    const [n, c] = tok.split(':');
+    cams.push(n);
+    contacts.push(c === undefined ? baseContactMs : +c);
+  }
+  return { cams, contacts };
+}
+
+// The device-time span of a `sweep` instruction from its rest tokens
+// [spacing, contact, cams]. The geometry is set by the base contact; only the
+// last slot's own contact changes its per-slot cost.
+export function sweepSpanMs([spacing, contact, cams]) {
+  const base = +contact;
+  const { contacts } = sweepCams(cams, base);
+  const last = contacts[contacts.length - 1];
+  return (contacts.length - 1) * +spacing + sweepCamMs(last, base < 50);
+}
 
 // MONITOR_ANIM_UP is 12 sourced frames and `engine.js` drops a camera select
 // outright until the raise finishes:
@@ -462,7 +491,7 @@ function clearTheRaise(name, lines) {
     e.kind === 'tap' || e.kind === 'hold' ? +e.rest[1] :
     e.kind === 'hall' ? +e.rest[0] :
     e.kind === 'hallraise' ? +e.rest[0] :
-    e.kind === 'sweep' ? 2 * +e.rest[0] + sweepCamMs(+e.rest[1]) :
+    e.kind === 'sweep' ? sweepSpanMs(e.rest) :
     e.kind === 'read' ? +e.rest[0] : MIN_CONTACT_MS;
   const isCamera = e => e.kind === 'sweep' ||
     (e.kind === 'tap' && /^cam\d+$/.test(e.rest[0]));
@@ -542,7 +571,7 @@ function makeRoom(name, lines) {
     e.kind === 'tap' ? e.at + +e.rest[1] :
     e.kind === 'hold' ? e.at + +e.rest[1] :
     e.kind === 'hall' || e.kind === 'hallraise' ? e.at + +e.rest[0] :
-    e.kind === 'sweep' ? e.at + 2 * +e.rest[0] + sweepCamMs(+e.rest[1]) :
+    e.kind === 'sweep' ? e.at + sweepSpanMs(e.rest) :
     e.kind === 'read' ? e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS :
     e.at + MIN_CONTACT_MS;
   for (let i = 0; i + 1 < ins.length; i++) {
@@ -645,6 +674,7 @@ export function idleUntilMs(night) {
 export function devicePlan(recipe, {
   deviceSpacingMs = DEVICE_SPACING_MS,
   sweepContactMs = SWEEP_SELECT_MS,
+  sweepLastContactMs = null,
 } = {}) {
   // The actuator's inter-contact spacing. DEVICE_SPACING_MS (133) is the
   // measured phone; plan 16's device-time experiment (PROGRESS item 13) sweeps
@@ -656,9 +686,24 @@ export function devicePlan(recipe, {
   // Fusion cadence is "asserted 30 Hz in eight places and measured never"
   // (CLAUDE.md). plans/17 probes 33 ms hold + 33 ms release; this lets the
   // emitter carry the answer.
+  //
+  // `sweepLastContactMs`, when set, lengthens only the final slot's light hold.
+  // The sweep's last camera lands most drift-delayed (its start floats while
+  // its end is anchored), so a short light there arrives after its target has
+  // taken the 5 s move -- the Toy Chica escape traced in ON-DEVICE-VALIDATION.md
+  // "The LIGHT_AFTER geometry's CAM 07, traced". 67 ms closes it in the model.
   const spacing = deviceSpacingMs;
   if (!(sweepContactMs > 0) || sweepContactMs >= spacing)
     throw new Error(`sweep contact ${sweepContactMs} ms must be > 0 and < the ${spacing} ms spacing`);
+  // The last slot has no select after it, so its light hold is not bound by the
+  // spacing the way the others are -- only by staying positive and not pushing
+  // the anchored sweep start before the cycle (checked below). It must not,
+  // though, be *shorter* than the base: the point is a longer last flash.
+  if (sweepLastContactMs != null &&
+      (!(sweepLastContactMs > 0) || sweepLastContactMs < sweepContactMs))
+    throw new Error(`sweep last-slot contact ${sweepLastContactMs} ms must be > 0 and ` +
+      `>= the ${sweepContactMs} ms base contact`);
+  const lastContact = sweepLastContactMs == null ? sweepContactMs : sweepLastContactMs;
   const out = {};
   for (const [name, cycle] of Object.entries(recipe.cycles)) {
     const lines = [];
@@ -694,13 +739,19 @@ export function devicePlan(recipe, {
         const modelledEnd = ats[ats.length - 1] + MIN_CONTACT_MS;
         // The last camera costs its full per-camera time, not just the emitted
         // contact -- a LIGHT_AFTER select+settle+light is 67 ms where `contact`
-        // alone is 33. Anchor the END to the model's using the real span.
-        const deviceSpan = (cams.length - 1) * spacing + sweepCamMs(sweepContactMs);
+        // alone is 33, and a lengthened last slot costs still more. Its
+        // geometry follows the base contact, not its own length. Anchor the END
+        // to the model's using the real span.
+        const la = sweepContactMs < 50;
+        const deviceSpan = (cams.length - 1) * spacing + sweepCamMs(lastContact, la);
         const start = modelledEnd - deviceSpan;
         if (start < 0)
           throw new Error(`widening the sweep to ${spacing} ms starts it ` +
             `at ${start} ms, before the cycle begins`);
-        lines.push(`${start} sweep ${spacing} ${sweepContactMs} ${cams.join(',')}`);
+        const camsToken = lastContact === sweepContactMs
+          ? cams.join(',')
+          : [...cams.slice(0, -1), `${cams[cams.length - 1]}:${lastContact}`].join(',');
+        lines.push(`${start} sweep ${spacing} ${sweepContactMs} ${camsToken}`);
         i = j - 1;
         continue;
       }
@@ -819,11 +870,14 @@ export function replay(plan, { night, seed = 1, worst = false,
         // LIGHT_AFTER: the select's Click writes `viewing` on release, then the
         // light presses on the settled feed. In the engine that is press cam:N,
         // then press light one select+settle later, held the emitted contact.
+        // The geometry follows the base contact; `10,4,7:67` lengthens only the
+        // last slot's light hold (the drift-exposed slot).
         const la = +contact < 50;
         const lightGap = la ? f(LA_SELECT_MS + LA_SETTLE_MS) : 1;
-        const lightHold = la ? f(+contact) : f(100);
-        cams.split(',').forEach((n, i) => {
+        const { cams: camList, contacts } = sweepCams(cams, +contact);
+        camList.forEach((n, i) => {
           const st = t + f(i * +spacing);
+          const lightHold = la ? f(contacts[i]) : f(100);
           at(st, 'press', 'cam:' + n);
           at(st + lightGap, 'press', 'light');
           at(st + lightGap + lightHold, 'release', 'light');
@@ -912,9 +966,10 @@ export function replay(plan, { night, seed = 1, worst = false,
             const sweepAt = Math.min(d.sweepCap, ft + d.sweepRel);
             const la = d.contact < 50;
             const lightGap = la ? f(LA_SELECT_MS + LA_SETTLE_MS) : 1;
-            const lightHold = la ? f(d.contact) : f(100);
-            d.cams.split(',').forEach((n, i) => {
+            const { cams: camList, contacts } = sweepCams(d.cams, d.contact);
+            camList.forEach((n, i) => {
               const st = sweepAt + f(i * d.spacing);
+              const lightHold = la ? f(contacts[i]) : f(100);
               at(st, 'press', 'cam:' + n);
               at(st + lightGap, 'press', 'light');
               at(st + lightGap + lightHold, 'release', 'light');
@@ -949,6 +1004,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const v = (process.argv.find(a => a.startsWith(`--${name}=`)) || '').split('=')[1];
     return v === undefined ? def : +v;
   };
+  const argOpt = (name) => {
+    const v = (process.argv.find(a => a.startsWith(`--${name}=`)) || '').split('=')[1];
+    return v === undefined ? null : +v;
+  };
   const recipe = build({
     night: arg('night', 6), sweepSlotMs: arg('slot-ms', MODEL_SLOT_MS),
     maskMarginMs: arg('mask-margin-ms', 900), readLatencyMs: arg('read-latency-ms', 550),
@@ -961,9 +1020,14 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     // is the ladder's sweet spot, below the CAM-07 last-flash floor, and the
     // only way to learn whether the phone can actually hold it is to emit it
     // and grade a real run. Unset = the shipped, gate-clean 133 ms.
+    //
+    // `--sweep-last-contact-ms` lengthens only the final slot's light hold --
+    // the drift-exposed slot where Toy Chica leaks (ON-DEVICE-VALIDATION.md).
+    // Unset = uniform.
     const plan = devicePlan(recipe, {
       deviceSpacingMs: arg('device-spacing-ms', DEVICE_SPACING_MS),
       sweepContactMs: arg('sweep-contact-ms', SWEEP_SELECT_MS),
+      sweepLastContactMs: argOpt('sweep-last-contact-ms'),
     });
     // The plan names its own night, so the model gate prices it against the
     // AI table it was built for instead of assuming 6. The header precedes

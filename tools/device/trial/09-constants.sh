@@ -17,6 +17,14 @@ SWEEP_LIGHT_LEAD_MS=0
 # viewing = N), one frame to settle, light down on the settled feed, hold the
 # plan's `contact` ms, light up. Device-validated 2026-08-27: every camera
 # lights, CAM 07 included. Each camera costs SELECT_MS + SETTLE_MS + contact.
+#
+# The last camera in the cams list may carry a `:N` suffix -- `10,4,7:67` --
+# overriding that one slot's LIGHT hold. The sweep's start floats while its end
+# is anchored, so the last slot lands most drift-delayed and a short light there
+# can arrive after its target has moved (ON-DEVICE-VALIDATION.md, the Toy Chica
+# / CAM 07 last-slot leak). The geometry stays LIGHT_AFTER -- decided by the
+# base contact, not this slot's -- so a 67 ms last slot is still select + settle
+# + 67, not the legacy same-report press.
 SWEEP_SELECT_MS=17
 SWEEP_SETTLE_MS=17
 # A tap's contact. Named because the driver has to reason about when a tap

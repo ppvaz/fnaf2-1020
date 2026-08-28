@@ -51,18 +51,19 @@ check(!/wait_until/.test(loop),
   'pulsed_sweep_at must not wall-time between its selects');
 check(/wait_until "\$sweep_start"/.test(sweep),
   'pulsed_sweep_at must wall-time its start');
-check(/wait_until \$\(\(sweep_start \+ 2 \* spacing \+ sweep_cam_time\)\)/.test(sweep),
+check(/wait_until \$\(\(sweep_start \+ 2 \* spacing \+ \$\(sweep_cam_ms "\$sweep_last_ms" "\$contact"\)\)\)/.test(sweep),
   'pulsed_sweep_at must wait out its own macro before returning, or the next ' +
   "action is written while the stream is draining and its contact is cut short");
 
-// The per-camera hid time is `sweep_cam_ms contact`: the plan's `contact` for
-// the legacy pulsed geometry, or SELECT_MS + SETTLE_MS + contact for a
-// LIGHT_AFTER plan (contact < 50). Either way the shell releases
+// The per-camera hid time is `sweep_cam_ms contact base`: the plan's `contact`
+// for the legacy pulsed geometry, or SELECT_MS + SETTLE_MS + contact for a
+// LIGHT_AFTER plan (the second arg -- the sweep's BASE contact -- under 50, so
+// a lengthened last slot stays LIGHT_AFTER). Either way the shell releases
 // `spacing - sweep_cam_time` between selects and never wall-times inside.
 const burst = body('pulsed_cam_burst');
 check(!/wait_until/.test(burst), 'pulsed_cam_burst must not wall-time inside the macro');
-check(/if \[ "\$contact" -lt 50 \]/.test(burst),
-  'pulsed_cam_burst must branch on contact < 50 for the LIGHT_AFTER geometry');
+check(/if \[ "\$base" -lt 50 \]/.test(burst),
+  'pulsed_cam_burst must branch on the base contact < 50 for the LIGHT_AFTER geometry');
 check(/hid_delay "\$SWEEP_SELECT_MS"[\s\S]*hid_up "\$x" "\$y"[\s\S]*hid_delay "\$SWEEP_SETTLE_MS"[\s\S]*hid_down "\$CAM_LIGHT_X"/.test(burst),
   'the LIGHT_AFTER burst must be select-down / SELECT_MS / select-up / SETTLE_MS / light-down');
 check(/hid_cam_light_down "\$x" "\$y"[\s\S]*hid_delay \$\(\(contact - SWEEP_LIGHT_LEAD_MS\)\)/.test(burst),

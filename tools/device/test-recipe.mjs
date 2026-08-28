@@ -6,9 +6,9 @@
 // perfectly valid there; on the phone Fusion polls touch per frame and a
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
-import { build, track, devicePlan, MIN_CONTACT_MS, DEVICE_SPACING_MS,
-         MODEL_SLOT_MS, FUSION_POLL_MS, SWEEP_SELECT_MS,
-         SWEEP_RELEASED_MS, sweepCamMs } from './recipe.mjs';
+import { build, track, devicePlan, replay, MIN_CONTACT_MS, DEVICE_SPACING_MS,
+         MODEL_SLOT_MS, FUSION_POLL_MS, SWEEP_SELECT_MS, LA_SELECT_MS, LA_SETTLE_MS,
+         SWEEP_RELEASED_MS, sweepCamMs, sweepCams, sweepSpanMs } from './recipe.mjs';
 import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -187,7 +187,7 @@ for (const [name, lines] of Object.entries(plan)) {
   // CAM 10 press, and 0 ms between the hall pulse and the monitor raise it
   // was supposed to precede.
   const span = e => {
-    if (e.kind === 'sweep') return [e.at, e.at + 2 * +e.rest[0] + +e.rest[1]];
+    if (e.kind === 'sweep') return [e.at, e.at + sweepSpanMs(e.rest)];
     // A read owns its prophylactic mask: light, released gap, mask contact.
     if (e.kind === 'read') return [e.at, e.at + +e.rest[0] + +e.rest[1] + MIN_CONTACT_MS];
     if (e.kind === 'maskraise')
@@ -252,7 +252,7 @@ for (const [name, lines] of Object.entries(plan)) {
 // the delivered boundary (not the trace auditor's plan clock) has a legal gap.
 const needsSeamDelay = [];
 const instrSpan = (kind, rest) =>
-  kind === 'sweep' ? 2 * +rest[0] + +rest[1]
+  kind === 'sweep' ? sweepSpanMs(rest)
   : kind === 'tap' || kind === 'hold' ? +rest[1]
   : kind === 'hall' || kind === 'hallraise' ? +rest[0]
   : kind === 'maskraise' ? +rest[0] + (rest[1] === 'hall' ? +rest[2] : MIN_CONTACT_MS)
@@ -294,8 +294,8 @@ check(prefix(plan.clear) === prefix(plan.attack),
   const shipped = devicePlan(build({ night: 6 }));
   const sweepEnd = lines => {
     const s = lines.find(l => l.split(' ')[1] === 'sweep');
-    const [at, , spacing, contact, cams] = s.split(' ');
-    return +at + (cams.split(',').length - 1) * +spacing + sweepCamMs(+contact);
+    const [at, , ...rest] = s.split(' ');
+    return +at + sweepSpanMs(rest);
   };
   const sweepSpacing = lines =>
     +lines.find(l => l.split(' ')[1] === 'sweep').split(' ')[2];
@@ -327,6 +327,68 @@ check(prefix(plan.clear) === prefix(plan.attack),
   try { devicePlan(build({ night: 7, sweepSlotMs: 50 }), { deviceSpacingMs: 66, sweepContactMs: 66 }); }
   catch { threw2 = true; }
   check(threw2, 'devicePlan must refuse a contact length that leaves no released gap');
+}
+
+// The localized last-slot light contact (ON-DEVICE-VALIDATION.md, the Toy Chica
+// / CAM 07 last-slot leak). Only the final slot's hold lengthens; the geometry
+// stays LIGHT_AFTER, decided by the base contact; the sweep END does not move.
+{
+  const shipped = devicePlan(build({ night: 6 }));
+  const sweepEnd = lines => {
+    const [at, , ...rest] = lines.find(l => l.split(' ')[1] === 'sweep').split(' ');
+    return +at + sweepSpanMs(rest);
+  };
+  const sweepRest = lines =>
+    lines.find(l => l.split(' ')[1] === 'sweep').split(' ').slice(2);
+
+  const loc = devicePlan(build({ night: 6, sweepSlotMs: 120 }),
+    { deviceSpacingMs: 100, sweepContactMs: 33, sweepLastContactMs: 67 });
+  const [spacing, contact, cams] = sweepRest(loc.clear);
+  check(spacing === '100' && contact === '33' && cams === '10,4,7:67',
+    `the localized sweep should emit "100 33 10,4,7:67", got "${spacing} ${contact} ${cams}"`);
+  check(sweepEnd(loc.clear) === sweepEnd(shipped.clear),
+    `the localized sweep ends at ${sweepEnd(loc.clear)} ms, the shipped one at ` +
+    `${sweepEnd(shipped.clear)}; the stun bridge depends on the end not moving`);
+  check(sweepSpanMs(['100', '33', '10,4,7:67']) === 2 * 100 + LA_SELECT_MS + LA_SETTLE_MS + 67,
+    'the last slot must cost select + settle + its own longer hold, not the base contact');
+  check(sweepSpanMs(['100', '33', '10,4,7']) === 2 * 100 + LA_SELECT_MS + LA_SETTLE_MS + 33,
+    'an unsuffixed sweep costs the base contact on every slot');
+
+  // A last contact equal to the base emits no suffix -- byte-identical to
+  // omitting the option.
+  const noop = devicePlan(build({ night: 6, sweepSlotMs: 120 }),
+    { deviceSpacingMs: 100, sweepContactMs: 33, sweepLastContactMs: 33 });
+  const plain = devicePlan(build({ night: 6, sweepSlotMs: 120 }),
+    { deviceSpacingMs: 100, sweepContactMs: 33 });
+  check(JSON.stringify(noop) === JSON.stringify(plain),
+    'sweepLastContactMs equal to the base contact must change nothing');
+
+  // A last slot may run longer than the spacing -- nothing follows it -- but it
+  // may not be SHORTER than the base contact (that is not a localized fix) or
+  // non-positive.
+  const longer = devicePlan(build({ night: 6, sweepSlotMs: 120 }),
+    { deviceSpacingMs: 66, sweepContactMs: 33, sweepLastContactMs: 67 });
+  check(sweepRest(longer.clear)[2] === '10,4,7:67',
+    'a last contact above the spacing is allowed -- the last slot has no successor');
+  for (const bad of [0, -5, 20]) {
+    let threwLast = false;
+    try {
+      devicePlan(build({ night: 7, sweepSlotMs: 50 }),
+        { deviceSpacingMs: 100, sweepContactMs: 33, sweepLastContactMs: bad });
+    } catch { threwLast = true; }
+    check(threwLast, `devicePlan must refuse a last-slot contact of ${bad} ms`);
+  }
+
+  // The token round-trips: the parser reads the last slot's override and leaves
+  // the others on the base.
+  const parsed = sweepCams('10,4,7:67', 33);
+  check(parsed.cams.join(',') === '10,4,7' &&
+        parsed.contacts.join(',') === '33,33,67',
+    `sweepCams misread the localized token: ${JSON.stringify(parsed)}`);
+
+  // The plan replays -- the sweep parser accepts the `:N` token end to end.
+  const r = replay(loc, { night: 6, seed: 1 });
+  check(r && r.sim, 'a localized plan must replay through the engine without error');
 }
 
 console.log(`  seam: ${needsSeamDelay.length ? needsSeamDelay.join(', ') + ' rely on the runner delaying the next anchor' : 'every cycle clears its own boundary'}`);

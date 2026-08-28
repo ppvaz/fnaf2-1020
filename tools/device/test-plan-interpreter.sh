@@ -67,8 +67,8 @@ extract() {
 
 {
   echo 'set -eu'
-  for fn in plan_control_xy sweep_cam_ms plan_first_offset plan_step run_cycle \
-            plan_span plan_emit run_macro; do
+  for fn in plan_control_xy sweep_cam_ms sweep_cam_list sweep_last_contact \
+            plan_first_offset plan_step run_cycle plan_span plan_emit run_macro; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"
@@ -277,6 +277,25 @@ for spec in "clear 2" "attack 2"; do
   [ "$got" = "$want" ] ||
     fail "$cyc macro contact starts:\n$got\n--- want (from the plan) ---\n$want"
 done
+
+# The localized last-slot light contact: `10,4,7:67` lengthens only the final
+# slot, so the runner's timeline span for that sweep must count the longer hold
+# or the seam wait is written early. The geometry stays LIGHT_AFTER -- decided
+# by the base contact (33) -- so the last slot costs select + settle + 67, not
+# the legacy same-report 67.
+la_base=$((2 * 100 + SWEEP_SELECT_MS + SWEEP_SETTLE_MS))
+[ "$(run 'sweep_cam_list 10,4,7:67')" = '10,4,7' ] ||
+  fail "sweep_cam_list did not strip the :N suffix"
+[ "$(run 'sweep_cam_list 10,4,7')" = '10,4,7' ] ||
+  fail "sweep_cam_list altered an unsuffixed token"
+[ "$(run 'sweep_last_contact 10,4,7:67 33')" = 67 ] ||
+  fail "sweep_last_contact did not read the :N override"
+[ "$(run 'sweep_last_contact 10,4,7 33')" = 33 ] ||
+  fail "sweep_last_contact did not fall back to the base contact"
+[ "$(run 'plan_span sweep 100 33 10,4,7; printf %s "$PLAN_SPAN"')" = "$((la_base + 33))" ] ||
+  fail "an unsuffixed sweep's span is not 2*spacing + select + settle + base"
+[ "$(run 'plan_span sweep 100 33 10,4,7:67; printf %s "$PLAN_SPAN"')" = "$((la_base + 67))" ] ||
+  fail "a localized sweep's span did not grow by the last slot's longer hold"
 
 # The floor: a window may not open inside a contact the shell is still
 # holding. The whole macro shifts, so every released gap the plan guarantees is

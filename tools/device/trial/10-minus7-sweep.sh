@@ -19,14 +19,30 @@ plan_control_xy() {
   esac
 }
 
-# Per-camera time inside a sweep, for the geometry the plan's contact selects.
+# Per-camera time inside a sweep. The geometry (LIGHT_AFTER vs legacy) is set by
+# the sweep's BASE contact, passed as $2; a lengthened last slot ($1 above the
+# 50 ms threshold) still costs the LIGHT_AFTER select + settle when the base is
+# short. One argument reproduces the old behaviour.
 sweep_cam_ms() {
-  if [ "$1" -lt 50 ]; then echo $((SWEEP_SELECT_MS + SWEEP_SETTLE_MS + $1)); else echo "$1"; fi
+  scm_base=${2:-$1}
+  if [ "$scm_base" -lt 50 ]; then echo $((SWEEP_SELECT_MS + SWEEP_SETTLE_MS + $1)); else echo "$1"; fi
+}
+
+# The last camera of a cams token may carry a `:N` light-hold override:
+# `10,4,7:67`. These strip it off / read it out; no colon -> the base contact.
+sweep_cam_list() {
+  printf '%s\n' "${1%:*}"
+}
+sweep_last_contact() {
+  case "$1" in
+    *:*) printf '%s\n' "${1##*:}" ;;
+    *)   printf '%s\n' "$2" ;;
+  esac
 }
 
 pulsed_cam_burst() {
-  x=$1; y=$2; contact=$3
-  if [ "$contact" -lt 50 ]; then
+  x=$1; y=$2; contact=$3; base=${4:-$3}
+  if [ "$base" -lt 50 ]; then
     # LIGHT_AFTER: the select and the light are separate single-finger Clicks
     # (see 09-constants.sh). `contact` is the LIGHT hold, not the select's.
     hid_down "$x" "$y"
@@ -51,9 +67,13 @@ pulsed_cam_burst() {
   hid_cam_light_up "$x" "$y"
 }
 
-# `spacing` and `contact` are the plan's; `cams` is its comma-separated list.
+# `spacing` and `contact` are the plan's; `cams` is its comma-separated list,
+# whose last entry may carry a `:N` light-hold override for the drift-exposed
+# last slot.
 pulsed_sweep_at() {
   sweep_start=$1; spacing=$2; contact=$3; cams=$4; sweep_label=$5
+  sweep_last_ms=$(sweep_last_contact "$cams" "$contact")
+  cams=$(sweep_cam_list "$cams")
   # A sweep is successive presses at $spacing, so the floor applies inside it
   # as well as at its edges. Checked before waiting: an inhuman sweep is known
   # from its arguments, and refusing early beats refusing mid-macro.
@@ -95,13 +115,13 @@ pulsed_sweep_at() {
   while [ -n "$sweep_rest" ]; do
     sweep_cam=${sweep_rest%%,*}
     case "$sweep_rest" in
-      *,*) sweep_rest=${sweep_rest#*,} ;;
-      *)   sweep_rest= ;;
+      *,*) sweep_rest=${sweep_rest#*,}; sweep_this_ms=$contact ;;
+      *)   sweep_rest=;              sweep_this_ms=$sweep_last_ms ;;
     esac
     [ "$sweep_first" -eq 1 ] || hid_delay $((spacing - sweep_cam_time))
     sweep_first=0
     plan_control_xy "cam$sweep_cam"
-    pulsed_cam_burst "$PX" "$PY" "$contact"
+    pulsed_cam_burst "$PX" "$PY" "$sweep_this_ms" "$contact"
   done
   # Resynchronise the shell with the hid stream. The macro is scheduled to end
   # on the next cycle's anchor, and the simulator will not let it end earlier:
@@ -111,8 +131,9 @@ pulsed_sweep_at() {
   # its contact is measured from when the shell wrote it -- gets released
   # early. A 73 ms contact is dropped, the cams stay up, and the frame the
   # classifier is then handed is the CAM 11 feed. Waiting out the macro costs
-  # the press a few milliseconds and buys it a real contact.
-  wait_until $((sweep_start + 2 * spacing + sweep_cam_time))
+  # the press a few milliseconds and buys it a real contact. The last slot's
+  # burst may be longer than the rest, so the macro end uses its time.
+  wait_until $((sweep_start + 2 * spacing + $(sweep_cam_ms "$sweep_last_ms" "$contact")))
 }
 
 hall_reset_and_raise_at() {

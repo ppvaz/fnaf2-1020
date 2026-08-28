@@ -85,7 +85,7 @@ plan_span() {
         PLAN_SPAN=$((pn_a + TAP_CONTACT_MS))
       fi
       ;;
-    sweep)     PLAN_SPAN=$((2 * pn_a + $(sweep_cam_ms "$pn_b"))) ;;
+    sweep)     PLAN_SPAN=$((2 * pn_a + $(sweep_cam_ms "$(sweep_last_contact "$pn_c" "$pn_b")" "$pn_b"))) ;;
     *) echo "the plan names an instruction with no known span: $pn_kind" >&2
        exit 47 ;;
   esac
@@ -149,19 +149,20 @@ plan_emit() {
       fi
       ;;
     sweep)
-      pe_rest=$pe_c
+      pe_last_ms=$(sweep_last_contact "$pe_c" "$pe_b")
+      pe_rest=$(sweep_cam_list "$pe_c")
       pe_first=1
       pe_cam_time=$(sweep_cam_ms "$pe_b")
       while [ -n "$pe_rest" ]; do
         pe_cam=${pe_rest%%,*}
         case "$pe_rest" in
-          *,*) pe_rest=${pe_rest#*,} ;;
-          *)   pe_rest= ;;
+          *,*) pe_rest=${pe_rest#*,}; pe_this_ms=$pe_b ;;
+          *)   pe_rest=;              pe_this_ms=$pe_last_ms ;;
         esac
         [ "$pe_first" -eq 1 ] || hid_delay $((pe_a - pe_cam_time))
         pe_first=0
         plan_control_xy "cam$pe_cam"
-        pulsed_cam_burst "$PX" "$PY" "$pe_b"
+        pulsed_cam_burst "$PX" "$PY" "$pe_this_ms" "$pe_b"
       done
       ;;
     *)
