@@ -32,7 +32,8 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **Minus Toys** | Highest-priority route. The split engine and published 10 s loop now score **200/200 normal + 100/100 pinned worst-luck** on every night; the no-split control is **0/200**. One scheduled HID attempt deliberately armed CAM 11 viewing + CAM 09 marker on the target phone. **2026-08-28: the device plan is built, gated and mock-tested** — `tools/device/minus-toys-plan.mjs` + `DEVICE_POLICY=minus-toys tools/device/trial.sh` (same epoch-latched watchdog runner as Minus 7). Nothing run on the phone yet. | Run a graded device Night 2 via the Continue cursor (`HID_TRACE_RUN=1`): does the 50 ms geometry reproduce the split, and does a held glitched CAM 09 light hold the Toys across a full night. |
+| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research APK that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. First step: how the event-sheet handle numbers map to runtime-inspectable state (Chowdren C++ symbols / native layout / Frida-readable Clickteam objects). |
+| **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. | Not the open-loop loop. (a) external hybrid: AM clock re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
 | **Foxy GOT-YOU blackout cover** | Engine and source contain the two kill triggers. The public 2999/3000 greenrun deliberately locks Foxy and covers every 10 s execution check with a blackout. Searches here penalise `gotYou`; none deliberately synthesize this policy. | Encode it as an explicit, likely-RNG baseline and measure it before deciding whether it is useful on Android. |
@@ -58,9 +59,10 @@ down (50 ms through the pair, inside the sourced 200 ms stale-sample window).
 After the next raise the screenshot shows the CAM 11 feed/label and wind control,
 with CAM 09 and CAM 11 highlighted. Artifacts:
 `captures/n2-doublecam-hid-0003.{png,hid}` (ignored capture corpus). This proves
-deliberate arming and the actuator window. It does **not** yet prove the glitched
+deliberate arming and the actuator window. It does **not** prove the glitched
 light applies a stun, that the split survives a full night, or that the published
-PC loop transfers unchanged.
+PC loop transfers unchanged — **and the full-loop run below now shows the last of
+those is false for the open-loop port.**
 
 **Do not run the advertised localized-last67 trial yet.** `recipe.mjs` accepts
 `--sweep-last-contact-ms=67` and the plan interpreter understands `10,4,7:67`,
@@ -69,34 +71,34 @@ contact. Setting an environment variable for the last contact therefore emits
 the old all-33 plan. Thread the option through the live entry point and pin it in
 the runner-plan test before claiming that device experiment ran.
 
-**Concrete next action:** run the graded Minus Toys device Night 2. The engine
-half AND the device-plan half of plan 02 pkg 2a are now done (2026-08-28):
-`tools/device/minus-toys-plan.mjs` ports the loop into the on-phone
-interpreter's plan format, `DEVICE_POLICY=minus-toys tools/device/trial.sh`
-runs it through the existing title-safe/epoch-latched/watchdog runner
-(`NIGHT6_LEFT=2` branch, new `camdrop` instruction, CAM 09 coord threaded),
-gating on `minus-toys-plan.mjs --gate` before the first adb command.
-`test-minus-toys-plan.mjs` + the extended `test-plan-interpreter.sh` pin it;
-they caught two draft bugs (a `hold light` control the interpreter lacks; the
-scalar human-floor not standing down for the gated route). Full note:
-`docs/device/ON-DEVICE-VALIDATION.md` §"A second device policy: Minus Toys".
+**Concrete next action: pick the Minus Toys fork.** The open-loop device port is
+built, run, and refuted (`n2-minustoys-0117`, 2026-08-28 — full record in
+`docs/device/ON-DEVICE-VALIDATION.md` §"The Minus Toys open-loop policy is
+refuted on the phone", and `plans/02` pkg 2a). It clears the deterministic gate
+200/200 and dies on the phone at the ~0.66 s/cycle margin the strategy's own
+write-up (`MINUS-3-STRATEGY.md` §3) predicts — mask-window cliff ~300–500 ms,
+BB→Foxy chain, wind-phase drift → Puppet under the clock-error model
+(`minus-toys-jitter.mjs`: n2 237/600, n3–5 0/600, AM-reanchor caps ~27–48%).
 
-The run itself needs the phone (Moto g56 `ZF525F5BH5` is connected) and a
-watcher — it is ~7 min and must be graded (`GRADE_RUN=1`, then
-`tools/device/grade-run.sh`). Night 2 is the save cursor, reached via Continue:
+Two paths, neither built:
 
-```
-DEVICE_POLICY=minus-toys NIGHT=continue CALIBRATION_STORY_NIGHT=2 \
-  HID_TRACE_RUN=1 GRADE_RUN=1 \
-  tools/device/trial.sh n2-minustoys-NNNN 42
-```
+1. **External hybrid** — keep the timed skeleton, add: AM-digit clock re-anchor
+   every 70 s, a reactive left-vent BB read (the Minus 7 runner already has
+   one), and mask verify-and-retry. Ceiling ~1/3 (jasonclone bot; AM-anchor
+   sim). Search tooling landed this session: `tools/device/minus-toys-plan.mjs`
+   is now `build(knobs)`-parametrized (arming gap, mask window, wind, hall,
+   camdrop, `loopPeriodMs`, inert `reactiveBB` hook — `trial/12-night-loop.sh`
+   hardcodes `base += 10000` so a non-10 s period is search-only for now);
+   `minus-toys-margin.mjs` maps per-press slack; `minus-toys-jitter.mjs` is the
+   robustness fitness function under the calibrated clock-error ensemble.
+2. **In-APK read-internal-state** (`plans/17`) — the clock-sync problem
+   disappears; the only approach with demonstrated reliability (Shooter25
+   practice mod, 104–1). `plans/17` now carries the state tuple and WP4.
 
-What to look for: the split armed (CAM 09 + CAM 11 both lit after the opening
-raise), the Toys staying on the Show Stage, and no Foxy jumpscare — the 33 ms
-hall pulse each cycle is the only Foxy reset, this loop has no reactive branch.
-`screenstate.py` / `grade-run.sh` still cannot grade a 6 AM, so a survived
-night reads `lifecycle=unknown`. Stun transfer and 50 ms-geometry repeatability
-under real jitter are the remaining claims.
+Also open, low priority: the deterministic Minus Toys gate needs a jitter/margin
+check (200/200 hid a 33 ms phase cliff — wire `minus-toys-jitter.mjs`'s
+`evalEnsemble` into it); `test-hid-trace.mjs`'s 100 ms contact floor
+false-fails this policy's deliberate 33 ms contacts.
 
 ### Prior Minus 7 frontier (retained, now scoped)
 

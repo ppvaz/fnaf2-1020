@@ -1,6 +1,9 @@
 # Trainer mode: Minus 3
 
-**Status:** engine-first Minus Toys probe complete 2026-08-28. Step 2's original
+**Status:** engine-first Minus Toys probe complete 2026-08-28; first device run
+the same day (`n2-minustoys-0117`) **refutes the open-loop policy on the phone**
+— it clears the deterministic model but not the ~0.66 s/cycle margin the
+strategy needs, dying to a BB→Foxy chain (pkg 2a). Step 2's original
 pass established that the *glitchless*
 member is NOT zero-RNG on the canonical Android model — the adapted Minus Two
 probe (`tools/minus2test.mjs`) scores 16/200 with a structural Toy Chica failure
@@ -92,10 +95,31 @@ So this is "new script + new lesson ladder + strategy selection UI," not a new e
    model-gated route (it aborts on the deliberate 50 ms CAM 09 -> monitor
    arming gap).
 
-   **Remaining:** a graded device Night 2 via the Continue cursor — does the
-   arming geometry reproduce, and does a held glitched CAM 09 light actually
-   hold the Toys across a full night. Repeatability of the 50 ms geometry under
-   real actuator jitter is the sub-question.
+   **Device Night 2 run 2026-08-28 (`n2-minustoys-0117`) — the open-loop policy
+   is refuted.** Graded Night 2, Moto g56. Died at ~2 AM to Balloon Boy walking
+   into the office → Foxy. The Toys *did* appear held (no Toy in any office
+   frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held
+   with zero desync all night — but the fixed cadence has a ~300–500 ms mask-
+   window cliff the deterministic gate (`sim.won && splitAt >= 0`) cannot see,
+   and the arming geometry's 17 ms released gap collapsed to 0 ms in the HID
+   trace. The per-instruction margin map (`tools/device/minus-toys-margin.mjs`)
+   puts the whole-schedule phase tolerance at **33 ms early / 99 ms late** —
+   against the 302 ms epoch bracket the run reported. Under a full clock-error
+   model (302 ms epoch bracket, −184 ms/min drift, σ 29 ms jitter) Night 2 goes
+   600/600 → 127/600 and Nights 3–5 → 0/600; an AM-digit re-anchor every 70 s
+   recovers only to ~17–35 %. This is exactly the ~0.66 s/cycle margin
+   `MINUS-3-STRATEGY.md` §3 predicts, and the port anchors to `T0` not the
+   game's :X0/:X5 phase. Full record:
+   `docs/device/ON-DEVICE-VALIDATION.md` §"The Minus Toys open-loop policy is
+   refuted on the phone".
+
+   **Remaining paths (neither built):** (a) an external hybrid — AM clock
+   re-anchor + reactive left-vent BB read + mask verify/retry (jasonclone-style,
+   ceiling ~1/3 per the mapped-bot research); (b) the in-APK read-internal-state
+   route (`plans/17`), the only approach with demonstrated reliability (Shooter25
+   practice mod, 104–1). Also open: the deterministic gate needs a margin check,
+   and `test-hid-trace.mjs`'s 100 ms contact floor is a false-fail for this
+   policy's 33 ms contacts.
 3. Fill any engine gaps the strategy doc flagged (mechanics Minus 7 never exercised).
 4. Build the lesson ladder (mirroring the 10-step structure where it maps).
 5. Strategy picker in the UI; per-strategy progress/records kept separate.

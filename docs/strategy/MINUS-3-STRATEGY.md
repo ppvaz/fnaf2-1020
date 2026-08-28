@@ -69,6 +69,29 @@ Claimed and independently replicated as zero-RNG: "This along with Minus 7 are 1
 beatable every single time, although this strat is way, way easier" (Tru3P1ay3r).
 Foxy is nullified, Toy Bonnie never vent-camps, the music box "never went below half."
 
+**Device-transfer result (2026-08-28, `n2-minustoys-0117`).** The engine port
+(`tools/minustoystest.mjs` / `tools/device/minus-toys-plan.mjs`, 200/200 in the
+deterministic model) was run open-loop on the Moto g56, Night 2. **It died at
+~2 AM to Balloon Boy walking into the office, then Foxy** -- and the model
+explains why: shrinking the mask window by ±500 ms in the sim drops Night 2 to
+35/300, ~190 of those `BB-inside → foxy`; the cadence never reaches more than 4
+of the 5 mask ticks it needs to *cleanly* evict Balloon Boy. That is the
+**~0.66 s margin above, measured** -- and the device port cannot hold it. It is
+anchored to `T0` (first HUD frame), not to the game's :X0/:X5 phase; the
+per-instruction margin map (`tools/device/minus-toys-margin.mjs`) puts the
+whole-schedule phase tolerance at **33 ms early / 99 ms late**, against an epoch
+bracket the run measured at **302 ms** -- three to nine times the margin before
+any per-cycle jitter or the −184 ms/min game-vs-wall drift the run also
+measured. Under the
+full clock-error model, Nights 3-5 open-loop are 0/600; an AM-digit re-anchor
+every 70 s recovers only to ~17-35 %. The Toys themselves *did* appear held on
+the phone (no Toy reached the office in any frame). Full record:
+`docs/device/ON-DEVICE-VALIDATION.md` §"The Minus Toys open-loop policy is
+refuted on the phone". **Open-loop Minus Toys is not a viable device policy;**
+the paths that remain are an external hybrid (AM re-anchor + reactive vent read
++ mask verify/retry, ceiling ~1/3 per the mapped `jasonclone` bot) or the
+in-APK read-internal-state route (`plans/17`).
+
 **Minus Two (glitchless variant):** identical plan, but with no glitch CAM 09 cannot
 be flashed, so instead CAM 03 is flashed before every monitor-down, stalling Toy
 Bonnie and Withered Freddy; the player then swaps back to CAM 11 to wind. Zero RNG,
@@ -88,6 +111,12 @@ strategy's consistency by removing the human. (Cross-referenced in plan 05.)
 Fit: every strategy in this family is **timer-anchored on the 5 s intervals**, like
 Minus 7, so the rhythm-lane coaching model fits — Minus Toys especially, since it is
 a fixed cycle with two branches (blackout / no blackout).
+
+*The anchor is the whole difference between a trainer and a phone bot.* A human
+in the rhythm lane reads the on-screen clock and never loses the :X0/:X5 phase.
+The 2026-08-28 device port lost it — it anchored to `T0` and drifted (§3
+device-transfer result). "Timer-anchored" is only a strength when the timer is
+the game's, not the pilot's wall clock.
 
 Gaps in `src/engine.js` (all load-bearing for this family, none exercised by Minus 7):
 

@@ -45,6 +45,44 @@ untouched stock game.
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
   Foxy `D`, music-box state, office occupants and battery life.
 
+## The minimal internal state tuple
+
+Shooter25's in-process bot (104 wins / 1 death, `docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md`)
+proves the point of this whole plan: it reads a handful of Clickteam objects
+directly and never touches a pixel or a wall clock. It branches on
+`music box counter >= 1950`, `mask value 0 = 2` (fully on), `in danger`, the
+`drop everything` blackout, `panel state`, `old-Foxy value 3`, and phases off
+`Timer mod 5000`. The Android build exposes the same state under different
+handles; the sourced mapping already exists in
+[`UNIFIED-SOURCED-ENGINE-FACT-INDEX.md`](../docs/android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md).
+Package 3's job is to read this tuple in process and confirm each value against
+a visible or source-derived transition.
+
+**Must read** (a closed-loop Minus-Toys-or-better policy is not expressible
+without these):
+
+| value | Android handle / groups | why it is load-bearing |
+| --- | --- | --- |
+| `viewing` | counter, handle **55**; set g16‑27/g39‑40, zeroed g262/g911 | which camera the UI shows; 0 = monitor down. The flash-immunity gate. |
+| `your view` marker | Active marker, handle **126** | the stun/cam-stall target. `55 != 126` **is** the double-camera split — the one thing an external reader cannot see (camtrace reads 55 only). |
+| `last viewed` | g263 samples `viewing` every 200 ms while `viewing > 0` | the stale sample the split arms against; reading it tells the bot whether an arming attempt will take. |
+| mask fully-on | `mask == 2` (g9, 12-frame put-on); `v12` mask-tick counter g907 (one per one-second event) | BB/Mangle/Withered repel is counted in whole masked ticks; the external run failed because it could not confirm 5 clean ticks. In process this is a direct compare. |
+| monitor / `panel state` | g262 (down + `viewing`=0), raise animation state | every phase decision keys off it. |
+| `blackout` v0 | object handle **131**, slot 0: 300-frame counter, `+dt` while `in danger`=1; g514/g516/g535/g537 | Foxy's 10 s kill check is denied by an active blackout; the greenrun forces one across every check. In process the bot reads the countdown instead of forcing it blind. |
+| `drop everything` | set g718‑721/g624/g574, executed g262/g274, cleared g612 then re-set one frame later | the forced monitor-down that silently inverts an open-loop schedule (`RUN-TELEMETRY.md` §10). In process it is observable, not a desync. |
+| `in danger` | g443 sets (Toy Bonnie overlay), g530 (0→1 → `got you stage`=1), g533 (defended on `mask`=2) | gates every light (g75/76/77); Shooter25's `Blackout` state entry. |
+| music box counter | **2000** at frame start; wind snaps `<300`→300 then +5/frame; g652/g638/g643 | Puppet is the dominant death once the external clock drifts the wind phase; in process the level is a number, not a phase gamble. |
+| Foxy `D` | `21 + Random(0..4) − D ≤ 17` at g337 every 5 s; D +1/s (+1 more masked), blackout pauses, 0 until 2 AM night 2, −1 per 500 ms Parts/Service hall light; g824/g825/g864/g872‑874 | tells the bot exactly when a hall reset is actually needed instead of pulsing every cycle on faith. |
+| BB `stage` / `inOpening` / `inside` (marker 123) | stage roll g342; opening hop g417 latches to the next raise; `v6`=1 on raise-seen g290, marker 123 on raise-complete g291; inside is **permanent** g96 | the `n2-minustoys-0117` kill: the bot needs to know BB is in the opening *before* it raises the monitor. |
+| the one-second game event / frame count | the tick every 200 ms / 500 ms / 1 s / 5 s / 10 s cadence is gated on (g263, g496, g781, g907, g336, g718) | **phase-lock.** This is what the external epoch latch approximates to ±302 ms and drifts; in process it is exact and free. |
+
+**Nice to have** (sharpen the policy, not required for a first closed loop):
+`got you stage` / `time left` / `time allowed` (the 100/80/60/55/50/50/45-frame
+office fuse, g523‑533); per-character marker positions (g329 home positions,
+the route markers 120‑123); `hall movement` latch (g875‑881); Golden Freddy
+office roll state (g336, inert below night 6); battery / `power` and the
+`FLASHLIGHT_DRAIN` rate; Mangle `insideArmed`; the Puppet route index (g404‑411).
+
 ## Online technical refresh (2026-08-28)
 
 Current primary documentation sharpens the route order:
@@ -91,9 +129,49 @@ wipes user data and changes the fidelity environment, so it requires a separate,
 explicit device decision. Without such a device, advance the faithful-recompile
 route while retaining Gadget/re-sign as a lower-priority measured experiment.
 
+## Why in-process — measured against `n2-minustoys-0117`
+
+The first Minus Toys device night (2026-08-28,
+`docs/device/ON-DEVICE-VALIDATION.md`) is the concrete case for this plan. The
+external open-loop port cleared the deterministic model 200/200 and still died
+at ~2 AM to a Balloon Boy walk-in → Foxy chain. Every failure mode it hit is
+one that in-process reading removes:
+
+| external failure | in-process |
+| --- | --- |
+| epoch latch locates T0 to a **302 ms bracket**, then never re-corrects | the one-second game event / frame count is read directly — phase is exact and free |
+| game-vs-wall clock drift (`~-184 ms/min` on the drift trace) walks the wind phase; Puppet becomes the dominant death | the music box counter is a number, not a phase gamble |
+| the mask window delivers 4 clean ticks against a 5-tick repel; a fixed cadence cannot confirm | `mask == 2` and the `v12` tick counter (g907) are direct compares |
+| `camtrace` reads `viewing` (55) only — the split (`55 != 126`) is unobservable from pixels | the `your view` marker (126) is a readable field |
+| a `drop everything` forcedown silently inverts the schedule and reads as a desync | the flag is observable state |
+| the strategy's own budget is **~0.66 s/cycle** (`MINUS-3-STRATEGY.md` §3) and half of it is gone before the night starts | no per-cycle timing budget to spend — decisions fire on state edges |
+
+This does not make the external track worthless — it makes the in-process
+track the one with a demonstrated ceiling. Shooter25's in-engine bot plays
+brayden's timer strategy at **104 wins / 1 death** reading exactly this class
+of state; no external screen-driven FNaF 2 bot is documented above ~1/3 on
+10/20 (`docs/research/FNAF-BOT-CENSUS.md`,
+`docs/research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`).
+
+## Relation to the external track
+
+The external hybrid — an AM-digit clock re-anchor plus a reactive left-vent BB
+read with mask verify/retry, jasonclone-style — and this plan are **parallel
+tracks that answer different questions**, not sequential steps. The external
+hybrid answers "how far can a screen-and-ADB bot get on the retail package with
+nothing installed?" — its ceiling is ~1/3 (jasonclone) and the
+`n2-minustoys-0117` sim puts an AM-anchored open-loop Minus Toys at ~17–35 %
+before any reactive branch. This plan answers "what does a policy do when it
+reads true state and is frame-locked?" — the Shooter25 ceiling. Run whichever
+is unblocked; do not gate one on the other. The external track also keeps the
+retail package as the fidelity oracle this plan's package 6 needs.
+
 ## Route matrix
 
-Treat these as parallel hypotheses and kill each only with a reproducible probe:
+Treat these as parallel hypotheses and kill each only with a reproducible probe.
+For each, the cheapest probe that would falsify it is named — a route is
+retired on that probe's result, never on a second failed attempt at the same
+recipe.
 
 1. **Modified retail package:** smallest possible resource/dex/native change,
    followed by signature/install/launch logging to localize the actual integrity
@@ -133,7 +211,14 @@ same failed re-sign recipe under a new label.
 4. **Win same-process actuation.** Trigger one reversible input or game action at a
    chosen engine frame and record requested versus accepted timing. **Gate:** a
    closed-loop state→decision→action round trip works without external screencap or
-   ADB timing as the control path.
+   ADB timing as the control path. **Suggested first decision: the Foxy hall
+   reset** — read Foxy `D` (g337/g824) and `blackout` v0, and on the frame `D`
+   crosses a threshold with no active blackout, assert the hall `lit?` for one
+   game second. It is a single scalar read, a single one-frame output, reversible,
+   and its effect (`D` drops, or the 5 s roll `21+Random(0..4)−D ≤ 17` stops
+   firing) is directly checkable in the same trace. The BB mask
+   (read `bb.inOpening` + marker, hold `mask` to `== 2` for 5 `v12` ticks) is the
+   natural second — it is the exact decision `n2-minustoys-0117` could not make.
 5. **Bake the minimal bot.** Package an explicit, deterministic policy with a kill
    switch, bounded actions and a full decision/action trace. Start with a small
    scenario before a full night. **Gate:** the installed research APK completes the

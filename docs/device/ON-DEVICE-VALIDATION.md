@@ -1940,8 +1940,165 @@ control + emitted-plan shape + every kind/control implemented);
 functions (camdrop span, the opening resolving every control, the toys macro's
 contact starts matching the plan) and pins the `NIGHT6_LEFT=2` floor arm.
 
-**Not yet run on the phone.** The remaining claims are all device: does the
-scheduled 50 ms geometry reproduce the split, does a held glitched CAM 09 light
-actually hold the Toys across a full night, and does the geometry survive real
-actuator jitter. First run is a graded Night 2 via the Continue cursor with
-`HID_TRACE_RUN=1`.
+**~~Not yet run on the phone.~~** *(Superseded the same day -- it was run, and it
+died. See "The Minus Toys open-loop policy is refuted on the phone" immediately
+below. Kept per the retractions rule.)* The remaining claims are all device:
+does the scheduled 50 ms geometry reproduce the split, does a held glitched
+CAM 09 light actually hold the Toys across a full night, and does the geometry
+survive real actuator jitter. First run is a graded Night 2 via the Continue
+cursor with `HID_TRACE_RUN=1`.
+
+## The Minus Toys open-loop policy is refuted on the phone (2026-08-28, `n2-minustoys-0117`)
+
+First graded device run of `DEVICE_POLICY=minus-toys`: Moto g56, Night 2 via
+the Continue cursor, `HID_TRACE_RUN=1`, graded through `grade-run.sh`. **It
+died at ~188 s -- between 2 AM and 3 AM -- to Balloon Boy walking into the
+office, then a Foxy jumpscare.** Pedro's eyewitness: *"bb walked in while the
+bot was on the monitor."* The retained keyframes show Balloon Boy standing in
+the office at 177 s and the withered-Foxy jumpscare at ~198 s; the run aborted
+on focus loss at ~203 s (`captures/n2-minustoys-0117-aborted.mp4`).
+
+### What worked
+
+- **The monitor/mask model held with zero desync for the whole graded
+  interval** (`desync-scan.py`: every monitor and mask toggle agreed with the
+  game). The phone delivered the monitor/mask schedule at the toggle level.
+- **The Toys stayed on the Show Stage.** `camtrace.py` shows CAM 11 as the
+  viewed feed ~3.6 s in every 10 s cycle, and no instrument -- and no retained
+  frame -- caught a Toy in the office. The split appears to have held them.
+- `screenstate.py`: ALIVE for at least 180 s.
+
+### What broke -- the arming geometry, in the HID trace
+
+The opening's `833 cam9` -> `883 monitor` pair carries **17 ms of planned
+released time**: that is the split-arming geometry (tap CAM 09, leave one
+released poll, drop the monitor before g263's 200 ms sample). The trace reports
+that pair delivered with **0 ms released time** (`only 0 ms released between
+[cam9] and [monitor] at 1400 ms`) -- Fusion saw one finger dragging from the
+CAM 09 button to the monitor button, not two taps. The 17 ms margin collapsed
+under actuator jitter. **Whether the split actually armed is unmeasurable
+here:** `camtrace` reads the `viewing`-driven button highlight; nothing in this
+repository reads the `your view` marker, which is the other half of the split.
+
+### Two instrument problems this run exposed, both open
+
+- **`test-hid-trace.mjs` FAILED with "98 problems"** because its contact-length
+  floor is 100 ms -- a Minus 7 assumption. The Minus Toys plan deliberately
+  uses 33 ms contacts (the g56 "33 ms registers for every touch control"
+  finding, CLAUDE.md). Every 33 ms contact reads as a violation. This is a
+  stale-auditor false alarm for this policy, not a defect in the run. The
+  auditor's floor needs to become policy-aware, or drop to the ~33 ms the phone
+  actually registers.
+- **The recording captured at 59 fps, not 60.** `grade-run.sh` warns the
+  graders must be re-run at 59 -- decoding a 59 fps recording at 60 reports
+  short events as dropped, which is exactly how the withdrawn 240 ms spacing
+  figure was once produced. The verdicts above survive that caveat but any
+  frame-count figure off this recording does not.
+
+### Why the model said 200/200 -- and what it was hiding
+
+The gate (`minus-toys-plan.mjs --gate`) checks `sim.won && splitAt >= 0` --
+survival and split-armed, **not margin**. Night 2 is 200/200 in the
+deterministic engine. Measured this session, with the engine:
+
+- **The mask window has a ~300-500 ms cliff.** Shrinking the mask-ON window by
+  +-200 ms: still 300/300. By **+-500 ms: 35/300**, of which ~190 are
+  `BB-inside -> foxy`.
+- **The mechanism, from a single-seed trace.** Balloon Boy hops into the left
+  vent right after a monitor raise (his hop latches to the next cams-up,
+  `camsUpCount = K`). The fixed cadence gives him ~10 s before the next raise;
+  it masks him for ~5 of those and he leaves at **~9 s -- a ~1 second margin**.
+  Lose a second of effective mask time and the next scheduled raise catches
+  him: `onCamsUp` (`engine.js:739`) sets `bb.inside`; `hallLightOn` then
+  requires `!bb.inside`, so the 33 ms hall pulse stops resetting Foxy; Foxy
+  locks on. The cadence never reaches more than **4** `maskTicks` against a
+  `VENT_MASK_TICKS = 5` repel threshold -- it never *cleanly* evicts Balloon
+  Boy, it relies entirely on the 10 %/tick `VENT_EARLY_LEAVE_CHANCE` roll.
+- **The per-instruction margin map** (`tools/device/minus-toys-margin.mjs`,
+  Night 2, 120 seeds, model only, no jitter -- it shifts one press in isolation
+  and reports how far it can move before some seed dies):
+
+  | instruction | early | late |
+  |---|---|---|
+  | **whole-schedule phase** (epoch/T0 error) | **33 ms** | **99 ms** |
+  | opening CAM 09 tap / the monitor tap after it (the arming pair) | 33 ms | 33 ms |
+  | loop mask toggle | 198 ms | 66-165 ms |
+  | loop monitor raise | >528 ms | 198 ms |
+  | loop `ventl` stun refresh | 198 ms | 231 ms |
+  | loop `camdrop` exit | 231 ms | 363 ms |
+  | everything else | >528 ms | >528 ms |
+
+  The whole-schedule phase tolerance is **33 ms early / 99 ms late** against an
+  epoch-latch bracket the run measured at **302 ms** -- the alignment error is
+  three to nine times the margin before a single press has jittered. The
+  arming pair's 33 ms each way is one Fusion poll, and it is exactly the gap
+  that collapsed to 0 ms in the HID trace. Night 4 has the same shape. The
+  tool's own printed verdict: *"A fixed cadence anchored to T0 cannot hold it
+  on a device whose epoch latch alone is uncertain by ~300 ms."*
+- **Under a full clock-error model it collapses.** Model: epoch phase error
+  +-150 ms (the run reported a **302 ms** epoch bracket), game-vs-wall drift
+  -184 ms/min (the run's own drift trace), per-press jitter sigma 29 ms (p95
+  57 ms, measured). Night 2 goes **600/600 (perfect clock) -> 127/600
+  (phone-like)**; Nights 3-5 -> **0/600**. The dominant death shifts to the
+  **Puppet** -- the drift walks the *wind* phase, the box empties (343/600 on
+  Night 2) -- then Toys-in-office, then Foxy. **Re-anchoring the loop phase to
+  the AM digit every 70 s** recovers it to N2 178, N3 211, N4 159, N5 101 of
+  600 -- necessary, not sufficient.
+
+### This is the margin the strategy write-up already predicted
+
+`docs/strategy/MINUS-3-STRATEGY.md` sec.3 states Minus Toys' error budget is
+**~0.66 s per cycle**, and sec.5 that the family is *"timer-anchored on the 5 s
+intervals."* The device port is anchored to `T0` (the first office-HUD frame),
+not to the game's :X0/:X5 Golden-Freddy-interval phase, and it makes one camera
+visit per 10 s where the published routine makes two (exits at :X4 *and* :X9).
+The 302 ms epoch bracket alone spends nearly half the strategy's entire margin
+before the night starts. On Night 2 specifically the GF-interval rule is moot
+(Golden Freddy office AI is 0 below Night 6, `g804`); the phase that bites early
+is mask-vs-Balloon-Boy and wind-vs-Puppet.
+
+### What the mapped bots say about the way out
+
+A research pass this session over `docs/research/FNAF-BOT-CENSUS.md`,
+`docs/research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`,
+`docs/in-engine/SHOOTER25-*.md` and `docs/research/ANDROID-BOT-LANDSCAPE.md`:
+
+- **No external screen-reading FNaF 2 bot solves live game-clock sync.**
+  `jasonclone/fnaf2bot` -- the only external bot documented to react to the
+  blackout, and it does so by fixed-coordinate pixels -- caps at *"around 1 in
+  3"* on 10/20, and its documented weakness is this run verbatim: *"timers
+  substitute for a mechanics model, so late detections can perturb later phases
+  without a principled recovery state."*
+- **phisap** (external, physical Android touchscreen, real-time -- the direct
+  precedent) never solved live sync: its timer is *"started by a human pressing
+  space,"* and the class conclusion is *"the only real-time bots that work read
+  the chart file and replay a pre-computed schedule. They never sample the
+  screen."*
+- **The only demonstrated-reliable approach is in-process internal-state
+  reading.** Shooter25's practice-mod bot went 104 wins / 1 death reading
+  `in danger` / `blackout` / the music-box counter directly, frame-locked
+  because it *is* the game process.
+- The repo's own bottom line (`docs/research/README.md`): *"no measured
+  closed-loop latency for any reactive bot on any physical handset, published
+  anywhere."*
+
+### Conclusion
+
+**The pure open-loop Minus Toys device policy is refuted -- at exactly the
+margin its own write-up predicts.** It is not viable as shipped. The
+engine-model result (200/200) is not wrong; it is a model result that does not
+transfer, and the gate needs a margin check so a 300 ms cliff cannot hide
+behind "200/200" again.
+
+Two forward paths, neither built:
+
+1. **External hybrid.** Keep the timed skeleton but add: an AM-digit clock
+   re-anchor every 70 s, a reactive left-vent Balloon-Boy read (the Minus 7
+   runner already has this), and mask verify-and-retry (jasonclone has this,
+   this runner does not). Ceiling ~1/3, per jasonclone and the AM-anchor sim.
+2. **In-APK read-internal-state** (`plans/17`). The only approach with
+   demonstrated reliability; the clock-sync problem disappears because the bot
+   runs on the game's own tick.
+
+The `n2-minustoys-0117` artifacts (aborted mp4, hid jsonl, run log, session
+manifest) are in the gitignored `captures/` corpus.
