@@ -74,17 +74,24 @@ the old all-33 plan. Thread the option through the live entry point and pin it i
 the runner-plan test before claiming that device experiment ran.
 
 **Concrete next action (2026-08-28): building the Chowdren Android backend
-(option a, Pedro's call).** Feasibility assessed first
-(`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)"): **~2–4 weeks to a device boot**,
-made tractable by a single fixed-function `Render::` layer that fits GL ES 1.1
-(no shaders — FNaF 2 compiles none — no immediate mode, no matrix stack) and a
-`base/CMakeLists.txt` cross-compile path that already expects an external
-platform backend. In progress: `--platform linux/amd64` NDK + SDL2
-`android-project` build container (the NDK ships only `linux-x86_64` host
-binaries; Docker's amd64 emulation runs them). Next: confirm an SDL2 sample APK
-builds, then wire in the Chowdren base for a first GLES1 compile. **The Moto g56
-must be connected with USB debugging on for the install step** (`adb devices`
-empty right now).
+(option a, Pedro's call).** Feasibility spike **done and it is a GO**
+(`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)", `tools/recompile/android/README.md`):
+`fnaf2-android-build:local` container built (`--platform linux/amd64` — NDK ships
+only `linux-x86_64` binaries; amd64 emulation runs them; NDK r26d, SDK
+platform-34, `adb`, SDL2 2.30). Cross-compile of a valid Android `.so` verified.
+**20 translation units** — engine core + renderplatform + platform + fbo + all
+generated FNaF 2 event/object/frame code — syntax-check for `arm64-v8a` GLES1
+with a ~12-`#define` `include_gl` shim; **12 total errors, all trivial** (an
+`#include <iostream>`, an include-order/cast in `overlap.cpp`) — generated code
+0. Revised estimate **~1 week to a device boot attempt**.
+
+**Very next step:** the ~12 compile fixes + real `include_gl.h` Android branch +
+`base/android/{platform,renderplatform,fbo}.cpp` (adapt from `desktop/`) +
+cross-build ogg/vorbis/freetype/openal-soft, then SDL2 `android-project` Gradle
+shell → `libmain.so` + bundled `Assets.dat` → APK. **The Moto g56 must be
+connected with USB debugging on for the install step** (`adb devices` empty right
+now; also `adb shell getprop ro.build.version.release` to pin the Android
+version).
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as

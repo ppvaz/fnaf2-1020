@@ -595,6 +595,23 @@ FTGL's texture path has any hidden desktop-GL assumption. Build environment is a
 `--platform linux/amd64` container (the NDK ships only `linux-x86_64` host
 binaries; Docker's amd64 emulation on Apple Silicon runs them).
 
+**Spike result (2026-08-28): GO, and faster than estimated.** Container
+`fnaf2-android-build:local` built (NDK r26d, SDK platform-34, `adb`, SDL2 2.30
+`android-project`); `aarch64-linux-android34-clang++` verified to cross-compile a
+valid Android `.so`. Syntax-checked **20 translation units** — engine core +
+`renderplatform` + `platform` + `fbo` + generated `events_*/objects*/frame*_1/
+lists/fonts` — for `arm64-v8a` with `-DCHOWDREN_USE_GLES1` against NDK
+`<GLES/gl.h>` + a small `include_gl` shim
+(`tools/recompile/android/include_gl-android.h.draft`, ~12 `#define`s). **Total:
+12 errors, all trivial** — `fileio.cpp` needs `#include <iostream>`,
+`overlap.cpp` has an include-order / one-cast issue; **every other TU, including
+all generated FNaF 2 code, compiled with zero changes.** NDK sysroot ships
+`libGLESv1_CM.so` (a real ES 1.1 driver interface, not just emulation),
+`libEGL`, `libOpenSLES`, `liblog`, `libandroid`. Deps needing an NDK cross-build:
+freetype, libogg/libvorbis, OpenAL-soft (all solved-problem). Revised estimate:
+**~1 week to a device boot attempt.** Full checklist:
+`tools/recompile/android/README.md`.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:
