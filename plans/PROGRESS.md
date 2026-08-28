@@ -60,13 +60,33 @@ would need".
 1. **The LIGHT_AFTER geometry on the phone — device run, not more code.** The
    33 ms contact *does* stun in the model (dump + sim, no minimum lit time),
    and the localized 67 ms last-slot light is now built and gated
-   (`fnaf2-1020-02`: `recipe.mjs sweepLastContactMs`, sweep line `10,4,7:67`;
-   1200-seed `66/33 slot50 last67` is correlated n2–n6 ≈ 72–83, **n7 18** — a
-   +10–13 lever that still wrecks n7, consistent with the geometry search).
+   (`fnaf2-1020-02`, `853f8bc`: `recipe.mjs sweepLastContactMs`, sweep line
+   `10,4,7:67`, runner threaded, `--sweep-last-contact-ms=67`). **Scrutinised
+   1200-seed (Pedro: "surprising results fall under scrutiny"):** `66/33 slot50
+   last67` correlated is a **robust +10–12 on n2 and n5** across both actuator
+   models (rl550 *and* the pinned rl480) — a perturbation-stable basin, not a
+   spike, and mechanism-grounded (67 ms = 4 lit frames vs 33 ms = 2, widening
+   the last flash's coverage past the drift). **n6's +13 is mostly a rl550
+   artifact — only +4 at rl480.** **n7 is broken deterministically** — *any*
+   LIGHT_AFTER base-33 geometry fails the n7 schedule at zero jitter (Toy
+   Bonnie / Foxy flood the office), the last-slot 67 ms does not touch it.
    Open, and all device: (a) does the sweep's last-slot jitter leak reproduce
    on the phone, (b) does the 67 ms light close it there, (c) does a real
    actuator hold the ~4 ms `dev≈62` basin under its own jitter.
    `n2-la-212912` already showed the geometry transfers with no HID lit-miss.
+   Full scrutiny in `ON-DEVICE-VALIDATION.md` §"The localized last-slot 67 ms
+   light, gated (2026-08-27)".
+
+   **Parked, flagged 2026-08-27 (`fnaf2-1020-02`):** a `--device-spacing-ms=100
+   --sweep-contact-ms=67` config (legacy geometry — `contact ≥ 50`, so `replay`
+   holds the light 100 ms regardless of the emitted 67) reads correlated **n7
+   ≈ 50–63**, flat across model slot 42–83, holding at rl480 (n7 50). That
+   contradicts `devicetimesearch`'s "emit spacing ~103 → n7 32 phase break"
+   and, if real, breaks plan 16's "n5/n6/n7 need new device time" conclusion.
+   But it is a legacy-geometry corner with an emit/replay inconsistency (the
+   emitter anchors the sweep end on the 67 ms cost, `replay` models 100 ms), so
+   it is most likely a model artifact, not a lever. Not chased — needs the
+   inconsistency untangled first. `ON-DEVICE-VALIDATION.md` same section.
 2. **New device time for a second clear-cycle Foxy reset** — the one thing
    Night 7 needs (plan 16 pkg 5: the opener is refuted, n7's Foxy deaths are
    the clear cycle's two resets missing under jitter; perfect x2 → 61 %, the

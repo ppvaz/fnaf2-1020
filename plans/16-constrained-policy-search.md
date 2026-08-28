@@ -271,18 +271,36 @@ route is out (item 10 is closed on latency, 2026-08-27).
   touches them (33 → 47 even at a perfect oracle), and the *opener* is not a
   factor at all.
 
-- **Not chased, and why: the 55–67 ms contact band.** `sweepCamMs` / `replay`
-  take the LIGHT_AFTER decoupled path only when `sweepContactMs < 50`, so the
-  grid could not explore a wider light contact with the narrow geometry. The
-  device session (`fnaf2-1020-e8`) found a **67 ms** light closes the sweep's
-  last-slot toy leak (n2 1199/1200 at ±30 ms in the sim) — which is plausibly
-  what makes the geometry basin a spike rather than a plateau. Searching it
-  needs the LA/legacy switch made an explicit flag rather than a contact
-  threshold. Deferred because it does not change the two structural verdicts
-  (the geometry still fails the iid bar and still wrecks n7), and 67 ms routes
-  to legacy same-report geometry on the phone (CAM 07 dark), so it may not
-  transfer. Pick this up only if the device proves the narrow geometry basin
-  is worth hardening.
+- **The 55–67 ms contact band — built, gated, and it is an n2/n5 lever, not
+  the sub-70 fix (2026-08-27, `853f8bc`, `fnaf2-1020-02`).** The blocker this
+  bullet named is gone: `devicePlan` now takes `sweepLastContactMs` and the
+  sweep line carries a `:N` suffix on the last camera (`10,4,7:67`), so only
+  the drift-exposed last slot's light lengthens and the geometry stays
+  LIGHT_AFTER (`sweepCamMs` is geometry-aware, not a bare `< 50` threshold).
+  1200-seed `66/33 slot50 last67` vs shipped, correlated:
+  - **n2 +12, n5 +10 — robust.** Holds at the pinned rl480 actuator and under
+    `iid`, and it is a **basin, not a spike**: ±6 ms device-spacing keeps n6
+    71–76, the model slot is a smooth gradient with no cliff. Mechanism, not
+    coincidence: 67 ms is 4 lit frames vs 33 ms's 2, widening the last flash's
+    coverage past the drift. This is the geometry lever the grid was looking
+    for — but only for n2/n5.
+  - **n6 +13 at rl550 → +4 at rl480.** Mostly a gate artifact; n6 → 70 % not
+    delivered.
+  - **n7 unaffected and still broken** — any LIGHT_AFTER base-33 sweep fails
+    the n7 schedule at **zero jitter** (Toy Bonnie / Foxy flood), last-slot
+    67 ms or not. So the two structural verdicts stand: n7 needs new device
+    time, and n5/n6 to 70 % is not a scheduling change.
+  Full table and controls in `ON-DEVICE-VALIDATION.md` §"The localized
+  last-slot 67 ms light, gated". Device probe open: does the last-slot leak,
+  and its repair, behave on the phone as in the model.
+
+  **Parked, flagged:** `--device-spacing-ms=100 --sweep-contact-ms=67` (legacy
+  geometry, `contact ≥ 50`) reads correlated n7 ≈ 50–63 flat across model slot,
+  holding at rl480. If real that breaks the "n5/n6/n7 need device time"
+  conclusion and contradicts `devicetimesearch`. But it is the legacy path
+  where `replay` holds the light `f(100)` while the emitter anchors on
+  `sweepCamMs(67)` — a 33 ms emit/replay mismatch that is the likely source.
+  Untangle the legacy contact semantics before trusting it.
 
 ## Why this is not a reopening of Plan 06
 

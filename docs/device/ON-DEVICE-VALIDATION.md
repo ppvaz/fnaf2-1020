@@ -1792,6 +1792,65 @@ worth keeping:
   period, not twice per 5 s cycle). **Do not filter on them, and do not use
   per-frame variance on this footage.**
 
+### The localized last-slot 67 ms light, gated (2026-08-27, `853f8bc`)
+
+The repair the section above names -- "A 67 ms light closes it" -- is now
+expressible without widening the whole sweep. `devicePlan` takes
+`sweepLastContactMs`; the plan's sweep line carries the override as a `:N`
+suffix on the last camera (`10,4,7:67`), and `replay` plus the device runner
+hold only that slot's light the longer time. Geometry stays LIGHT_AFTER --
+decided by the base contact (33), not this slot's -- so the 67 ms last flash is
+still select + settle + hold, not the legacy same-report press.
+`recipe.mjs --device-plan --sweep-last-contact-ms=67`.
+
+**Gated 1200 seeds, and scrutinised** (Pedro: "surprising results fall under
+scrutiny"). Config `66/33 slot50 last67` -- the `n2-la-212912` device geometry
+plus the localized fix -- against the shipped `133/100`:
+
+| | shipped rl550 | last67 rl550 | shipped **rl480** | last67 **rl480** |
+|---|---|---|---|---|
+| n2 | 67 | 79 | 66 | 78 |
+| n5 | 61 | 74 | 62 | 72 |
+| n6 | 59 | 72 | 42 | 46 |
+| n7 | 32 | 18 | 15 | 4 |
+
+*(correlated slack, `modelGate` via `recipe.mjs` `replay`.)*
+
+- **n2 and n5: a robust +10-12.** It holds at the pinned rl480 actuator, holds
+  under `iid` as well as `correlated`, and is a **basin, not a phase-lock
+  spike** -- +-6 ms device-spacing perturbation keeps n6 71-76, and the model
+  slot is a smooth gradient (best 33-50 ms, gentle decline to 83) with no
+  cliff. It is mechanism-grounded: 67 ms is 4 lit frames against 33 ms's 2, so
+  the last, most-drift-delayed flash covers a wider window before its target
+  takes the 5 s move. This is the first geometry lever here that is not a
+  +-few-ms spike.
+- **n6's +13 at rl550 is mostly a gate artifact** -- only +4 at rl480, the
+  actuator `hidpilot n6 target` is pinned to. n6 -> 70 % is not delivered.
+- **n7 is broken deterministically, and the last-slot 67 ms does not touch
+  it.** *Any* LIGHT_AFTER base-33 sweep -- with or without the longer last
+  slot, at the shipped model layout or the narrow one -- fails the n7 schedule
+  at **zero jitter** (27/400 at slot 50, 0/400 at slot 120; Toy Bonnie and Foxy
+  flood the office). n7 stays a device-time problem, exactly as plan 16
+  concluded. The `n7 18` gate figure is a broken schedule, not the jitter
+  fragility the rest of the sub-70 ladder is.
+
+So the localized 67 ms is a real **n2/n5** simulator lever worth a device
+probe -- does the last-slot leak, and its 67 ms repair, behave on the phone as
+in the model -- but it is **not** "the sub-70 nights solved" and must not ship
+as n7's geometry.
+
+**Parked, flagged for a later session.** A neighbouring config,
+`--device-spacing-ms=100 --sweep-contact-ms=67`, reads correlated **n7 ≈ 50-63**
+-- flat across model slot 42-83, holding at rl480 (n7 50). Taken at face value
+that breaks plan 16's "n5/n6/n7 need new device time" conclusion and
+contradicts `devicetimesearch`'s "emit spacing ~103 -> n7 32 phase break". But
+`sweepContactMs = 67` is `>= 50`, so it is the **legacy** geometry: `replay`
+holds the light `f(100)` regardless of the emitted 67, while the emitter
+anchors the sweep end on `sweepCamMs(67)`. That 33 ms emit/replay mismatch is
+the likely source of the n7 number -- a model inconsistency, not a lever. It
+was found in passing while measuring the localized fix and is not chased here;
+untangle the legacy-path contact semantics before trusting it.
+
 ## The cue helper runs concurrently with the sweep without degrading it (2026-08-27)
 
 The old worry, from the `screencap` era: a second capture pipeline contends
