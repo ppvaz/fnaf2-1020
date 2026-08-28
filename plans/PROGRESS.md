@@ -74,24 +74,24 @@ the old all-33 plan. Thread the option through the live entry point and pin it i
 the runner-plan test before claiming that device experiment ran.
 
 **Concrete next action (2026-08-28): building the Chowdren Android backend
-(option a, Pedro's call).** Feasibility spike **done and it is a GO**
-(`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)", `tools/recompile/android/README.md`):
-`fnaf2-android-build:local` container built (`--platform linux/amd64` — NDK ships
-only `linux-x86_64` binaries; amd64 emulation runs them; NDK r26d, SDK
-platform-34, `adb`, SDL2 2.30). Cross-compile of a valid Android `.so` verified.
-**20 translation units** — engine core + renderplatform + platform + fbo + all
-generated FNaF 2 event/object/frame code — syntax-check for `arm64-v8a` GLES1
-with a ~12-`#define` `include_gl` shim; **12 total errors, all trivial** (an
-`#include <iostream>`, an include-order/cast in `overlap.cpp`) — generated code
-0. Revised estimate **~1 week to a device boot attempt**.
+(option a, Pedro's call).** Feasibility spike **done, GO**, and the **full APK
+pipeline is proven end to end** (`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)",
+`tools/recompile/android/README.md`): `fnaf2-android-build:local` container
+(`--platform linux/amd64`, NDK, SDK, `adb`, SDL2 2.30) → SDL2 `android-project`
+`testgles2` app → `./gradlew assembleDebug` → `adb install` on the **g56
+(Android 16, arm64, PowerVR GPU) = Success**, launched, **GLES rendering on the
+device**. Chowdren engine compiles for arm64 Android with **one** fix
+(`fileio.cpp` `#include <iostream>`, in the patch) — the `overlap.cpp` /
+`glslshader.h` probe errors were artefacts (non-standalone TU / desktop-only
+shader header). Every uncertain link verified.
 
-**Very next step:** the ~12 compile fixes + real `include_gl.h` Android branch +
-`base/android/{platform,renderplatform,fbo}.cpp` (adapt from `desktop/`) +
-cross-build ogg/vorbis/freetype/openal-soft, then SDL2 `android-project` Gradle
-shell → `libmain.so` + bundled `Assets.dat` → APK. **The Moto g56 must be
-connected with USB debugging on for the install step** (`adb devices` empty right
-now; also `adb shell getprop ro.build.version.release` to pin the Android
-version).
+**Very next step:** write the backend — real `include_gl.h` Android branch
+(draft in `tools/recompile/android/`) + `base/android/{platform,renderplatform,
+fbo}.cpp` (adapt from `desktop/`; the `CMAKE_CROSSCOMPILING` path already drops
+the desktop versions) + cross-build ogg/vorbis/freetype/openal-soft, then swap
+`testgles2` for the FNaF 2 `gamesrc` in the Gradle project + bundle `Assets.dat`
+→ APK → boot on the g56. Est. ~1 week. Device is connected
+(`org.fnaf2rebuild.hello` test build installed).
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as
@@ -1796,7 +1796,7 @@ on the next graded run remains the way to attribute them, since only
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
-| [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step: `shellcheck` + footgun fixtures, engine `tsc --checkJs`, a confidence-interval helper for the gates, a property-based harness, an on-device input-dispatch trace, a `scrcpy` capture path, a pinned Python toolchain (`uv`/`ruff`/type-check), executable-doc number checks, a devcontainer. | Package 1 (`shellcheck` in CI + the three documented shell-footgun fixtures) and Package 5 (on-device `atrace`/Perfetto input trace) — both address currently-open items rather than hardening. |
+| [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Package 5 spike done.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 5 gating question answered on the Moto g56 (Android 16, `user` build): the `shell` user captures the full `perfetto` input-dispatch path without root — `publishMotionEvent`, `deliverInputEvent` with `eventTimeNano`, dispatch-cycle `id`, `Choreographer#doFrame` — and injected vs real contacts are distinguishable. See plan §Package 5 spike result. | Build the host-side `trace_processor` parse and capture one real `trial.sh` camera sweep; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
 
 ## Counting rule
 

@@ -1,3 +1,14 @@
+diff --git a/Chowdren/base/fileio.cpp b/Chowdren/base/fileio.cpp
+index 2a988b7..9064f7f 100644
+--- a/Chowdren/base/fileio.cpp
++++ b/Chowdren/base/fileio.cpp
+@@ -1,4 +1,6 @@
+ #include "fileio.h"
++#include <iostream> // std::cout in the load-failure paths; the NDK libc++ does
++                    // not pull it in transitively the way the desktop STL does
+ 
+ // BaseFile
+ 
 diff --git a/Chowdren/base/frame.h b/Chowdren/base/frame.h
 index 18d207b..166b9e4 100644
 --- a/Chowdren/base/frame.h
