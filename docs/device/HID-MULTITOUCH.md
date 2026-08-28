@@ -1377,6 +1377,61 @@ sub-70 ladder is `human-gate.mjs`'s iid model on a geometrically-wedged Foxy
 reset. A faster or lighter actuator does not touch that. The open levers stay
 item 12's correlated jitter shape and item 10's bang-anchored reset.
 
+### The input path is not the limiter: a Perfetto trace of a 100 ms-spacing sweep (2026-08-28)
+
+Every timing claim on this page above was reconstructed from *rendered feed
+brightness* or a 60 fps button-highlight walk. This is the first measurement of
+the input path **at the source** — the phone's own `InputDispatcher`. It is
+[`plans/18`](../../plans/18-modern-tooling.md) Package 5's first run.
+
+Method: `adb shell perfetto --background -t 160s -b 256mb input view gfx wm
+sched` running while `NO_LIGHT=1 SELECT_MS=33 PROBE_NIGHT=continue
+tools/device/hid-sweep-probe.sh 240 160 133 120 100` drove a select-only
+CAM 10→04→07 sweep at five inter-selection spacings on Night 2, monitor up.
+Trace parsed with Perfetto `trace_processor`. Moto g56 5G (`ZF525F5BH5`),
+Android 16 / SDK 36, `user` build. Artifacts:
+`captures/n2-inputtrace-0001.{mp4,hid,pftrace}` (ignored capture corpus).
+
+Result — the input pipeline delivered **every** contact:
+
+| stream contact | delivered to `com.scottgames.fnaf2` channel |
+|---|---|
+| 15 camera selects (3 per sweep × 5 spacings, 33 ms each) | 15 `MotionEvent` DOWN + 15 UP, one pair each |
+| 5 CAM 11 parks + monitor raise + the `continue` press | 8 further DOWN/UP pairs |
+| **total 23 taps** | **23 DOWN, 23 UP — zero dropped, zero merged, zero reordered** |
+
+- The 33 ms selects produced **no spurious `MOVE`** (the only 5 MOVE events in
+  the whole run belong to the one deliberate long-press, the monitor raise).
+- App-side consume latency (`sendMessage(MOTION)` → `receiveMessage(FINISHED)`)
+  was **0.8–8 ms for 13 of 15 selects**, 15.8 and 18.7 ms for two selects in
+  the 120 ms sweep — i.e. every selection is consumed within about one 16.7 ms
+  frame of dispatch.
+- The **100 ms** sweep (the tightest, well below the shipped 133 ms
+  `DEVICE_SPACING_MS`) was the cleanest of the five: consume latencies 5.9,
+  0.8, 2.6, 2.4, 1.6, 2.1, 2.5, 1.9 ms.
+- `camtrace.py --fps 60 --expected 5` on the same recording independently
+  reports **5/5 complete 10-04-07-11 sweeps, 0 incomplete** — so each of the
+  15 selections also moved the viewed feed (the g46–57 button highlight, hence
+  `viewing` was written every time).
+
+Two instruments that fail differently agree: at 33 ms contact and 100–240 ms
+spacing, **the phone accepts and the game reads every camera selection.** This
+corroborates the "33 ms contacts register" table above from the other side, and
+removes the input path — dropped or swallowed selections — as a candidate
+explanation for anything. It does **not** speak to the LIGHT_AFTER geometry
+(this was `NO_LIGHT`), to `lit?` coinciding with `viewing`, or to full-night
+intermittency over ~80 sweeps; those stay open. One run.
+
+**Capture-method note for Package 5.** A `perfetto -t` background session
+writes a 0-byte file until it stops; `kill -TERM <pid>` flushes it. Use
+`--background-wait`, or signal explicitly — do not pull on a timer. `sched` at
+this buffer size is a ring that wraps well inside 160 s; drop it (or shrink the
+window) when only the input path matters. Per-app `Choreographer#doFrame` is
+**not** a usable frame signal here — Clickteam Fusion renders through its own GL
+loop, not the View system, so frame-landing needs the SurfaceFlinger
+`actual_frame_timeline_slice` (only 12 frames present in this trace; its data
+source needs to be requested explicitly next run).
+
 ## The arming pair merged into a drag: topology, not time (2026-08-28)
 
 `n2-minustoys-0117` planned **17 ms of released time** between the opening's
