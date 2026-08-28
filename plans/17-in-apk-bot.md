@@ -45,6 +45,30 @@ untouched stock game.
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
   Foxy `D`, music-box state, office occupants and battery life.
 
+### Repackage/Gadget negative — 2026-08-28
+
+The modified-retail branch has now been run through its smallest complete device
+probe on the Moto g56 (arm64-v8a). AntiSplit-M merged the locally installed
+v2.0.7 split set. A separate, self-signed research APK then added an ARM64
+instrumentation library as a dependency of `libRuntimeNative.so`; the library
+was configured to listen only on loopback and not to block normal launch.
+
+- The package manager accepted the signed APK after the stock package was
+  removed. APK signature verification passed before installation.
+- On its first launch the process loaded `libpairipcore.so` and exited with
+  `SIGSEGV`; the only native frame in the tombstone was
+  `libpairipcore.so +0x37190`. No instrumentation connection survived long
+  enough to enumerate.
+- This is a measured failure of ordinary merge/re-sign/repackage on this build,
+  not evidence that the game runtime or its exposed state tuple is unavailable.
+
+**Disposition:** retire this exact repackage recipe. Do not retry it with
+cosmetic changes and do not add mechanisms intended to defeat the package's
+integrity, licensing, provenance, or anti-instrumentation checks. Keep all APKs,
+extracted game content, signing keys, and experiment-only utilities outside Git.
+Advance the separately named rebuild/recompile route or the existing external
+retail-device helper instead.
+
 ## The minimal internal state tuple
 
 Shooter25's in-process bot (104 wins / 1 death, `docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md`)
