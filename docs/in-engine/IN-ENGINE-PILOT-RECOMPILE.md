@@ -89,6 +89,46 @@ cannot.
   `ExpressionParameter`, `KeyParameter`, comparison). So a CTFAK→JSON→adapter bridge
   is redundant: once mmfparser parses the CCN, Chowdren consumes it directly.
 
+### Public toolchain recheck (2026-08-28, Mac arm64)
+
+The parser toolchain itself was revalidated from a clean shallow checkout of
+`fnmwolf/Anaconda` at `9b00bb4227cc3ddd6f7baefe06120368bd7226e9`. This is only a
+toolchain check; no owned CCN was present or read.
+
+- The stock `python:2.7-slim` image initially failed before dependency install because
+  its Buster `deb.debian.org` / security mirrors no longer carry Release files. A
+  recipe that does not switch those entries to `archive.debian.org`, remove the dead
+  `buster-updates` line, and set `Acquire::Check-Valid-Until=false` is no longer
+  reproducible.
+- With that archive adjustment, `build-essential`, `g++`, `libjpeg-dev` and
+  `zlib1g-dev`, plus `Cython<3` and `Pillow<7`, the one-line
+  `Options.directive_defaults` → `Options.get_directive_defaults()` compatibility
+  change built all **17** mmfparser extension modules. A fresh container imported
+  `Events` and `ObjectCommon` successfully.
+- Cython emits generated `.cpp` files beside the source, so run this in a disposable
+  external clone (or clean it afterwards); those files are tool build output, not
+  a mobile-parser patch. This check did **not** apply the recovered 75-line mobile
+  patch, parse `application.ccn`, generate game C++, or establish any runtime
+  fidelity.
+
+The verified build command shape, with `<anaconda>` outside this repository, is:
+
+```sh
+docker run --rm -v <anaconda>:/work -w /work python:2.7-slim bash -lc '
+  sed -i -e "s|deb.debian.org/debian|archive.debian.org/debian|g" \
+         -e "s|security.debian.org/debian-security|archive.debian.org/debian-security|g" \
+         -e "/buster-updates/d" /etc/apt/sources.list
+  apt-get -o Acquire::Check-Valid-Until=false update
+  apt-get install -y --no-install-recommends build-essential g++ libjpeg-dev zlib1g-dev
+  pip install "Cython<3" "Pillow<7"
+  python build.py build_ext --inplace
+'
+```
+
+Apply the mobile patch only after this stock-toolchain gate succeeds, then repeat
+the build before attempting the owned input. The separate recompile probe contract
+below records the next evidence boundary.
+
 ### The actual path: forward-port mmfparser, then let Chowdren consume it
 
 The Codex session **already forward-ported mmfparser to the build-296 mobile CCN**
@@ -142,6 +182,87 @@ patches are same-lineage and should port onto Chowdren's `mmfparser/` tree.
    unimplemented ACE/extension (Phases 2–3).
 4. Boot to a night, compare schedule to the sim (Phase 4), then inject the pilot
    (Phase 5).
+
+## Recompile probe contract and evidence boundary
+
+This is the repeatable, no-content-in-Git contract for the faithful-recompile
+fallback. It exists because an apparently encouraging parser message is not a
+recompiled game, and a recompiled game is not the untouched Android runtime.
+The companion Plan 17 route ledger records which route was tried and where it
+stopped; this section records the recompile route's phase evidence.
+
+### Preconditions and run record
+
+- Use an owned `application.ccn` and the recovered mobile-CCN patch only from
+  storage outside this repository. Do not copy either into the worktree or an
+  output directory under it.
+- Start from a clean, revision-pinned Chowdren checkout. Record the checkout commit,
+  patch-file hash, input hash, host/OS, Python/Cython versions, and exact commands
+  in an ignored experiment record. Hashes identify the inputs without publishing
+  them; paths and raw output can reveal proprietary material and remain local.
+- Give generated C++, build trees, binaries and logs an external experiment
+  directory. The only repo-facing evidence is a derived summary: phase reached,
+  exit status/signal, counts, and a short non-content error classification.
+- Apply the patch with a clean-tree check first. A patch conflict means **Phase 1
+  did not run**; do not hand-edit around it and label the result as a successful
+  forward port.
+
+### Re-derived Android patch — 2026-08-28
+
+Using an owned, currently installed v2.0.7 copy on the unlocked research device,
+the CCN was extracted only to an external experiment directory. The input and
+patch hashes are retained there, not in Git. A newly reconstructed 299-line patch
+was applied to a pristine Chowdren revision-pinned clone, rebuilt under Py2.7 with
+`Cython<3`, and exercised against that external input.
+
+The structural `GameData` parse completed at mobile build 296 with **33 frames**
+and **782 image records**. The 2026-08-28 asset pass then decoded all 782 image
+payloads, parsed **7** real font records, and bound all **67** APK audio resources
+to their CCN descriptors. This owned build's music bank is genuinely empty. The
+raw audio resources and all generated media remain outside Git and are supplied
+to the parser from the external experiment directory. This is still a Phase-1
+*sub-gate*, not a converter or boot pass.
+
+The refreshed patch also contains the previously identified mobile event/object
+layout handling, guarded unknown parameter/movement records, real Android media
+bank support, and current Cython/Pillow compatibility adjustments. It is an
+external research artifact and must not be committed with the owned CCN, APK
+resources, or generated output.
+
+### Phase gates
+
+| phase | bounded action | evidence required to pass | not sufficient |
+| --- | --- | --- | --- |
+| 1 — parse | Rebuild Chowdren's bundled `mmfparser` after applying the recovered patch, then invoke `python -m chowdren.run <owned-ccn> <external-gamesrc>`. | The command exits successfully after constructing `GameData`; log the frame count and parser warnings without serializing events or assets. | A successful Cython build, or getting past only the image bank. |
+| 2 — generate | Let the converter write C++ to the external output directory. | Converter exit success plus a derived count/classification of unsupported ACE writers and extensions. | A parsed CCN with no generated translation unit. |
+| 3 — build | Compile the generated desktop target with the declared stubs/runtime. | Link success and a runnable binary identity in the local record. | Source generation or a binary that immediately terminates. |
+| 4 — boot | Start the desktop binary and reach a selected night through normal input. | Timestamped title → night transition plus a minimal derived event/timing trace compared with the sourced model. | A title screen, a menu click, or visual similarity alone. |
+| 5 — pilot | Add the smallest bounded controller: observe a named state, choose one reversible action, and log requested/accepted frame numbers and effect. | Repeated state → decision → action → state-effect traces without screen/ADB timing in the control path. | An input fired on a timer, a debug print with no transition check, or any result labeled as retail-runtime. |
+
+For Phase 1, the expected command shape is deliberately only
+`python -m chowdren.run <owned-ccn> <external-gamesrc>`: the concrete paths and
+the patch are experiment artifacts.  If that command fails, retain the *first*
+parser boundary (image bank, events, objects, or converter contract) and return to
+the matching patch hunk. Do not skip ahead to extension stubs or pilot code.
+
+### Fidelity labels
+
+Every result must carry exactly one label:
+
+- **retail-runtime** — untouched Play-installed package; the oracle only.
+- **hooked-retail** — untouched package files with an explicitly recorded approved
+  research environment; not established by this recompile route.
+- **rebuilt-runtime** — the Chowdren/other independently packaged result. It can
+  validate decoded event logic and controller shape, but it is never evidence that
+  stock Android accepted the same action/timing.
+- **model-only** — `src/engine.js` or a derived simulation result with no executable
+  rebuild observation.
+
+The first pilot acceptance criterion is intentionally the Foxy hall reset from
+Plan 17: read Foxy `D` and blackout, assert hall light only when the controller's
+condition is true, then log the relevant state change. It is one scalar read and
+one reversible output, so it demonstrates the whole closed loop without claiming a
+full-night strategy or retail fidelity.
 
 ## Risks (honest)
 

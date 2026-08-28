@@ -41,7 +41,11 @@ untouched stock game.
 - The game logic is `res/raw/application.ccn`; the project can decode the event
   sheet and has a mobile-build mmfparser patch.
 - Chowdren is a viable CCN-to-C++ research route, but it uses a reimplemented
-  runtime and has not yet generated and booted this game.
+  runtime and has not yet generated and booted this game. A newly re-derived,
+  externally held mobile patch now reproduces a clean-clone structural parse of
+  the owned build-296 CCN (33 frames / 782 images), including 7 real font records
+  and 67 APK audio resources. This build's music bank is empty. It is not yet a
+  generated or booted runtime.
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
   Foxy `D`, music-box state, office occupants and battery life.
 
@@ -264,8 +268,9 @@ recipe.
    failure rather than treating “PAIRIP” as one opaque wall.
 2. **Runtime attachment:** rooted/in-process Java or native instrumentation that
    leaves the retail files intact and proves one read-only state observation before
-   attempting control. Frida injected mode is the first probe; a package-scoped
-   Zygisk/LSPosed module is the durable vehicle if the probe works.
+   attempting control. On an explicitly approved research device, the corrected
+   first probe is a package-scoped Zygisk/LSPosed module; Frida injected mode remains
+   a separately logged later probe, not a prerequisite or a bare retry.
 3. **Runtime or loader shim:** load the original runtime/content under a controlled
    wrapper or intercept the narrow state/input boundary, with provenance checks and
    fidelity differences recorded.
@@ -315,6 +320,29 @@ same failed re-sign recipe under a new label.
    labeled retail-runtime, hooked-retail, rebuilt-runtime or model-only; no modified
    result is promoted as stock evidence without a stock cross-check.
 
+### Package-2 route ledger — the command is not the result
+
+The local repository intentionally contains neither the owned APK/CCN nor a signing
+key.  A route record therefore belongs with the ignored experiment artifacts, while
+this table fixes the *shape* of each repeatable probe.  Record the exact command,
+tool/source revision, input hash, device/API level, stdout/stderr, exit/signal and
+the first stage reached.  Do not put the proprietary input, a modified package, a
+key, or a raw state dump in Git.
+
+| route | smallest permitted probe | first positive evidence | falsification record / next route |
+| --- | --- | --- | --- |
+| stock oracle | Launch the untouched Play-installed target, enter the same selected night, and collect the normal capture/telemetry manifest. | The package identity, installer/provenance and night-entry evidence agree with the frozen oracle record. | An oracle mismatch invalidates comparison evidence; repair the device workflow before any research build is judged. |
+| ordinary repackage | **Retired:** the recorded merged/re-signed research APK is the one probe for this recipe. | None; it is not to be retried cosmetically. | `libpairipcore.so +0x37190` / `SIGSEGV` after native load; move to a separately named route. |
+| rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
+| loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
+| CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. |
+
+The route harness is complete only when every attempted row has one such record.
+It is not complete merely because a command exists in a shell history.  The current
+repackage negative satisfies one retired row; it does not satisfy package 2 as a
+whole.
+
 ## Focus rule
 
 Until package 2 identifies a viable observation route, the next session on this plan
@@ -332,7 +360,11 @@ rule is met.
    approved rooted research device; otherwise skip directly to step 3.
 3. In parallel only where it does not dilute that probe, recover the existing
    `mmfparser-mobile-ccn.patch` and apply it to Chowdren so the rebuild route retains
-   a live fallback.
+   a live fallback. The clean public Chowdren toolchain is rechecked on Mac arm64:
+   `fnmwolf/Anaconda` `9b00bb4` builds all 17 mmfparser modules under a
+   Debian-archive-adjusted `python:2.7-slim` container after the Cython API fix; see
+   [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#public-toolchain-recheck-2026-08-28-mac-arm64). This is a toolchain gate only,
+   not evidence that the missing mobile patch applies or parses the owned CCN.
 
 ## Done when
 
