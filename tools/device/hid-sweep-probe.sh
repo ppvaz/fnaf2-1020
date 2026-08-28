@@ -78,7 +78,11 @@ esac
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
 
 adb shell "am force-stop $PKG" >/dev/null
-adb shell "monkey -p $PKG -c android.intent.category.LAUNCHER 1" >/dev/null 2>&1
+# `monkey -p` left this package stopped on the Moto g56 even though the same
+# game launches normally through its explicit activity.  Use the activity
+# contract already used by the collection harness, then retain the focus gate
+# below so a failed launch still sends no HID input.
+adb shell "am start -n $PKG/.Main" >/dev/null
 
 # dumpsys prints several mCurrentFocus lines and the first is often null
 # mid-transition, so match the package across all of them rather than -m1.
@@ -137,7 +141,11 @@ echo
 # dropped. See docs/device/HID-MULTITOUCH.md. MIN_MS is the shortest stable
 # selection counted -- lower it (never below one frame, ~17 ms) when probing
 # a sweep whose per-camera dwell is under 50 ms.
-"$HERE/camtrace.py" --fps 60 --min-ms "${MIN_MS:-50}" "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
+# A spacing probe only passes if every requested 10->04->07->11 sequence is
+# visible.  Without --expected, camtrace reports incomplete starts but exits
+# successfully, turning a partial sweep into a false pass.
+"$HERE/camtrace.py" --fps 60 --min-ms "${MIN_MS:-50}" \
+  --expected "${#SPACINGS[@]}" "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
 echo
 # camtrace answers "which camera was selected". A Minus 7 sweep exists to apply
 # the camera-light stun, which needs the light on *while* that camera is the
