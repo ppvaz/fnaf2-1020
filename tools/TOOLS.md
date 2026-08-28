@@ -319,6 +319,23 @@ event dump are copyrighted game content and must remain outside the repo.
 | `tools/dump/test-instances.py` | check | Checks the frame-instance reader against a synthetic dump. Needs no game content. |
 | `tools/dump/test-aimap.py` | check | Runs `aimap.py` over a synthetic sheet in both forms: night-start zeroing, per-hour carry-forward, `<`/`>` night comparisons, Random assignments, and the Custom Night dial copy. Needs no game content. |
 
+## In-engine recompile toolchain
+
+Content-free toolchain for Plan 17's faithful-recompile route (owned CCN →
+open-source Chowdren → research binary). Read
+[`tools/recompile/README.md`](recompile/README.md) and
+[`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md)
+first. These run against copies of the owned CCN/APK in an **external** directory;
+the CCN, APK, `res/raw` audio, and generated C++ never enter the repo.
+`mmfparser-chowdren-mobile.patch` (the build-296 forward-port) and
+`recompile/README.md` carry the setup.
+
+| Tool | Kind | Purpose and interface |
+|---|---|---|
+| `tools/recompile/fnaf2-config.py` | Chowdren config | `python -m chowdren.run --config tools/recompile/fnaf2-config.py <external-ccn> <external-gamesrc>`. `get_missing_image` → first real image for placeholder handle `(0,0)`; an `init()` hook synthesizes `game.extensions` from the frame items (`Layer` → native writer, the mobile extensions → generic `ObjectWriter` stub). Clears `write_objects`; not a boot. |
+| `tools/recompile/probe-unknown-params.py` | report | Dumps every event parameter whose code is past `parameterLoaders` — the ACE it attaches to, its size, and raw bytes. Needs the `Parameter.read` raw-capture patch from `mmfparser-chowdren-mobile.patch`. Run inside the phase-1 Docker image against the external CCN. |
+| `tools/recompile/probe-onloop.py` | report | Prints every `OnLoop` condition and its parameter loader across all frames. Showed mobile loops carry a numeric `Short` index, not a name expression. Same Docker/CCN setup as above. |
+
 ## Test fixtures and mocks
 
 These exist so device tooling can be tested without a phone. They are not

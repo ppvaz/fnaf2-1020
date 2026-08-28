@@ -374,11 +374,11 @@ NebulaFD disagree on more codes than the gaps above): NebulaFD → MFA export �
 load in licensed Clickteam Fusion 2.5 → re-export a desktop CCN Chowdren fully
 supports. Adds a paid tool and a manual step; keep it in reserve.
 
-External artifacts for the next session (all outside Git, under the recompile
-experiment dir): the parsed CCN + `android-res-raw/`, the populated
-`gamesrc/cache.dat` + `image_cache/`, `fnaf2-config.py`, `probe-unknown-params.py`,
-`probe-onloop.py`, and the `events.pyx` raw-capture instrumentation in the
-Chowdren tree.
+Toolchain (content-free, committed): `tools/recompile/` — the build-296
+`mmfparser-chowdren-mobile.patch`, `fnaf2-config.py`, and the two probes, with
+`tools/recompile/README.md` for setup. External, uncommitted: the parsed CCN +
+`android-res-raw/`, the populated `gamesrc/cache.dat` + `image_cache/`, and the
+applied/rebuilt Chowdren checkout.
 
 ### Fidelity labels
 

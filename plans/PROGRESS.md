@@ -74,7 +74,7 @@ the runner-plan test before claiming that device experiment ran.
 **Concrete next action (2026-08-28, Pedro's call): advance the faithful recompile
 (Plan 17 route 5).** The runtime-attachment route is parked — it defeats a PAIRIP
 layer and there is no rooted device (`plans/17` §"Runtime attachment (route 2) is
-not being pursued"). Phase 2 progress this session: an external `fnaf2-config.py`
+not being pursued"). Phase 2 progress this session: `tools/recompile/fnaf2-config.py`
 (`get_missing_image` + an `init()` hook that synthesizes `game.extensions` from
 the frame items) clears **all of `write_objects`**. The converter reaches event
 generation and stops in `write_loops`.
@@ -99,8 +99,9 @@ these to the mmfparser mobile patch + a `write_loops` guard, rebuild, rerun.
 Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion →
 re-export desktop CCN. Full survey + spec table in
 `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Tooling survey (2026-08-28)".
-External artifacts (parsed CCN, `gamesrc/` cache, `fnaf2-config.py`, `probe-*.py`,
-`events.pyx` instrumentation) are under the recompile experiment dir.
+Toolchain is now committed at `tools/recompile/` (patch + config + probes +
+README, all content-free); the CCN, `gamesrc/` cache and applied Chowdren
+checkout stay external.
 
 **Superseded fork (kept for context): the Minus Toys decision.** The open-loop
 device port is built, run, and refuted (`n2-minustoys-0117`, 2026-08-28 — full
@@ -164,7 +165,7 @@ or plan 17 again:
   route is declined.
 - **Recompile fallback (route 5) is now the active in-engine path; Phase 2 in
   progress (2026-08-28).** The externally-parsed build-296 CCN converts through
-  parse + asset creation. An external `fnaf2-config.py` — `get_missing_image` for
+  parse + asset creation. `tools/recompile/fnaf2-config.py` — `get_missing_image` for
   placeholder image `(0,0)`, and an `init()` hook that synthesizes
   `game.extensions` entries from the frame items (`Layer` → native writer;
   `Multiple Touch` / `Android object` / `AndroidPlus` / `iOS Plus Object` →

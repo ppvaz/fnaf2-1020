@@ -1,0 +1,466 @@
+diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
+index d8edac8..a3cca32 100644
+--- a/Chowdren/chowdren/converter.py
++++ b/Chowdren/chowdren/converter.py
+@@ -1107,7 +1107,7 @@ class Converter(object):
+             if not game.images:
+                 continue
+             for image in game.images.itemDict.itervalues():
+-                pil_image = Image.fromstring('RGBA', (image.width,
++                pil_image = Image.frombytes('RGBA', (image.width,
+                     image.height), image.getImageData())
+ 
+                 handle = (image.handle, game_index)
+diff --git a/build.py b/build.py
+index ae51170..30028dd 100644
+--- a/build.py
++++ b/build.py
+@@ -25,7 +25,7 @@ from Cython.Distutils.extension import Extension
+ from Cython.Build import cythonize
+ 
+ from Cython.Compiler import Options
+-directive_defaults = Options.directive_defaults
++directive_defaults = Options.get_directive_defaults()
+ Options.docstrings = False
+ if sys.argv[0].count('profile'):
+     directive_defaults['profile'] = True
+diff --git a/mmfparser/data/chunkloaders/events.pyx b/mmfparser/data/chunkloaders/events.pyx
+index 1613f17..0d27e63 100644
+--- a/mmfparser/data/chunkloaders/events.pyx
++++ b/mmfparser/data/chunkloaders/events.pyx
+@@ -105,12 +105,26 @@ class Qualifier(DataLoader, _ObjectInfoMixin):
+ cdef class Parameter(DataLoader):
+     cdef public:
+         int code
++        int size
+         object loader
++        object raw
+ 
+     cpdef read(self, ByteReader reader):
+         cdef int currentPosition = reader.tell()
+         cdef int size = reader.readShort()
+         self.code = reader.readShort()
++        self.size = size
++        self.raw = None
++        if self.code < 0 or self.code >= len(parameterLoaders):
++            # build 296 uses parameter type codes past the stock table
++            # (67-70 so far). Capture the raw payload for offline decode
++            # instead of discarding it; size-based skip keeps the stream aligned.
++            print 'unknown parameter code %d; capturing %d raw bytes' % (
++                self.code, currentPosition + size - reader.tell())
++            self.raw = reader.read(currentPosition + size - reader.tell())
++            self.loader = None
++            reader.seek(currentPosition+size)
++            return
+         self.loader = self.new((<list>parameterLoaders)[self.code], reader)
+         reader.seek(currentPosition+size)
+ 
+@@ -349,6 +363,7 @@ cdef class Events(DataLoader):
+ 
+     cpdef read(self, ByteReader reader):
+         java = self.settings.get('java', False)
++        cdef bint mobile = self.settings['build'] >= 290
+         while 1:
+             identifier = reader.read(4)
+             if identifier == HEADER:
+@@ -368,6 +383,8 @@ cdef class Events(DataLoader):
+                 # just ignoring here, we'll be getting
+                 # number of events in EVENTGROUP_DATA
+                 # anyway
++                if mobile:
++                    reader.skipBytes(4)
+                 size = reader.readInt() # ignored
+                 if java:
+                     if reader.read(4) == EVENTGROUP_DATA: # iPhone
+@@ -376,14 +393,24 @@ cdef class Events(DataLoader):
+ 
+             elif identifier == EVENTGROUP_DATA:
+                 size = reader.readInt()
+-                if java:
++                if mobile:
++                    # Android writes a group count before the groups, and its
++                    # ERev size excludes that count.
++                    size += 4
++                    numberOfGroups = reader.readInt()
++                    self.items.extend([self.new(EventGroup, reader)
++                        for _ in xrange(numberOfGroups)])
++                elif java:
+                     numberOfGroups = reader.readInt()
+                     self.items.extend([self.new(EventGroup, reader)
+                         for _ in xrange(numberOfGroups)])
+                 else:
+                     endPosition = reader.tell() + size
+                     while 1:
++                        currentPosition = reader.tell()
+                         self.items.append(self.new(EventGroup, reader))
++                        if reader.tell() <= currentPosition:
++                            raise RuntimeError('event parser made no progress')
+                         if reader.tell() >= endPosition:
+                             break
+ 
+@@ -403,8 +430,6 @@ cdef class Events(DataLoader):
+             elif identifier == END:
+                 break
+             else:
+-                import code
+-                code.interact(local = locals())
+                 raise NotImplementedError(
+                     'identifier %r not implemented (%s)' % (identifier, reader.tell()))
+ 
+diff --git a/mmfparser/data/chunkloaders/fontbank.py b/mmfparser/data/chunkloaders/fontbank.py
+index 7966f0f..feb83de 100644
+--- a/mmfparser/data/chunkloaders/fontbank.py
++++ b/mmfparser/data/chunkloaders/fontbank.py
+@@ -20,6 +20,35 @@ from mmfparser.data.font import LogFont
+ from mmfparser.bytereader import ByteReader
+ from mmfparser.loader import DataLoader
+ 
++class AndroidLogFont(LogFont):
++    def read(self, reader):
++        self.height = reader.readInt()
++        self.width = reader.readInt()
++        self.escapement = reader.readInt()
++        self.orientation = reader.readInt()
++        self.weight = reader.readInt()
++        self.italic = reader.readByte()
++        self.underline = reader.readByte()
++        self.strikeOut = reader.readByte()
++        self.charSet = reader.readByte()
++        self.outPrecision = reader.readByte()
++        self.clipPrecision = reader.readByte()
++        self.quality = reader.readByte()
++        self.pitchAndFamily = reader.readByte()
++        self.faceName = reader.read(64).decode('utf-16le').split('\x00', 1)[0].encode('utf-8')
++
++class AndroidFontItem(DataLoader):
++    handle = None
++    checksum = None
++    references = None
++    value = None
++    def read(self, reader):
++        self.handle = reader.readInt(True)
++        self.checksum = reader.readInt()
++        self.references = reader.readInt()
++        reader.readInt() # Android font-record size/reserved field
++        self.value = self.new(AndroidLogFont, reader)
++
+ class FontItem(DataLoader):
+     handle = None
+     checksum = None
+@@ -78,6 +107,13 @@ class FontBank(DataLoader):
+     items = None
+     offsets = None
+     def read(self, reader):
++        if self.settings['build'] >= 290:
++            numberOfItems = reader.readInt()
++            self.items = []
++            for _ in xrange(numberOfItems):
++                self.items.append(self.new(AndroidFontItem, reader))
++            return
++
+         debug = self.settings.get('debug', False)
+         old = self.settings.get('old', False)
+         if debug:
+diff --git a/mmfparser/data/chunkloaders/imagebank.pyx b/mmfparser/data/chunkloaders/imagebank.pyx
+index 7459cb4..1576e1b 100644
+--- a/mmfparser/data/chunkloaders/imagebank.pyx
++++ b/mmfparser/data/chunkloaders/imagebank.pyx
+@@ -208,6 +208,21 @@ cdef inline tuple read_rgb(char * data, int width, int height, BasePoint pointCl
+         n += pad * pointClass.size
+     return points, n
+ 
++cdef inline object read_android_rgb565(char * data, int width, int height):
++    cdef char * buf
++    cdef unsigned int * c_array
++    points = allocate_memory(width * height * 4, &buf)
++    c_array = <unsigned int *>buf
++    cdef int x, y, stride = width * 2
++    cdef int i = 0
++    if stride % 4:
++        stride += 2
++    for y in range(height):
++        for x in range(width):
++            c_array[i] = sixteen_point.read(data, y * stride + x * 2)
++            i += 1
++    return buf[:width * height * 4]
++
+ cdef inline int get_padding(int width, BasePoint pointClass, int bytes = 2):
+     cdef int pad
+     pad = bytes - ((width * pointClass.size) % bytes)
+@@ -364,8 +379,60 @@ cdef class ImageItem(DataLoader):
+         self.flags = IMAGE_FLAGS.copy()
+ 
+     cpdef read(self, ByteReader reader):
++        cdef bint mobile = self.settings['build'] >= 290
++        cdef bint load_now
++        cdef int size
++        if mobile:
++            # Modern Android CCNs use compact RGB565/zlib or JPEG image records.
++            # A two-byte optional reference field moves the payload to +24.
++            start = reader.tell()
++            self.handle = reader.readInt()
++            for streamOffset in (22, 24):
++                reader.seek(start + streamOffset)
++                if reader.read(2) not in ('\x78\xda', '\xff\xd8'):
++                    continue
++                reader.seek(start + streamOffset - 4)
++                size = reader.readInt()
++                if size <= 0:
++                    continue
++                reader.seek(start + streamOffset - 16)
++                self.width = reader.readShort()
++                self.height = reader.readShort()
++                self.xHotspot = reader.readShort()
++                self.yHotspot = reader.readShort()
++                self.actionX = reader.readShort()
++                self.actionY = reader.readShort()
++                self.graphicMode = POINT_MODE
++                self.transparent = (0, 0, 0)
++                self.flags.setFlags(0)
++                reader.seek(start + streamOffset)
++                data = reader.read(size)
++                reader.seek(start + streamOffset + size)
++                self.reader = None
++                load_now = self.settings.get('loadImages', True)
++                if not load_now:
++                    return
++                if data[:2] == '\x78\xda':
++                    raw = zlib.decompress(data)
++                    if len(raw) == self.height * ((self.width * 2 + 3) & ~3):
++                        self.image = read_android_rgb565(raw, self.width,
++                            self.height)
++                        self.alpha = None
++                    elif len(raw) == self.width * self.height * 4:
++                        self.image = raw
++                        self.alpha = raw[3::4]
++                    else:
++                        raise ValueError('unexpected Android pixel size for image %d' % self.handle)
++                else:
++                    from mmfparser.image import Image
++                    self.image = Image(data = data).get_data()
++                    self.alpha = self.image[3::4]
++                return
++            raise ValueError('unrecognised Android image-bank record at %d handle %d' %
++                (start, self.handle))
++
+         self.handle = reader.readInt()
+-        cdef bint load_now = self.settings.get('loadImages', True)
++        load_now = self.settings.get('loadImages', True)
+         self.reader = reader
+         self.pos = reader.tell()
+         if load_now:
+@@ -377,7 +444,6 @@ cdef class ImageItem(DataLoader):
+             raise NotImplementedError('not supported')
+ 
+         cdef bint debug = self.settings.get('debug', False)
+-        cdef int size
+         if debug:
+             reader.skipBytes(8)
+             size = reader.readInt(True)
+@@ -569,10 +635,18 @@ cdef class ImageBank(DataLoader):
+                 for item in bank.items:
+                     self.itemDict[item.handle] = item
+                 return
+-            numberOfItems = reader.readInt()
++            if build >= 290:
++                numberOfItems = reader.readShort()
++            else:
++                numberOfItems = reader.readInt()
+             for i in range(numberOfItems):
+-                newItem = self.new(ImageItem, reader)
+-                if build >= 284:
++                try:
++                    newItem = self.new(ImageItem, reader)
++                except struct.error:
++                    # The mobile count is an allocation capacity; this release
++                    # ends the bank after 783 physical records, not 967.
++                    break
++                if build >= 284 and build < 290:
+                     newItem.handle -= 1
+                 self.itemDict[newItem.handle] = newItem
+         
+diff --git a/mmfparser/data/chunkloaders/movement.py b/mmfparser/data/chunkloaders/movement.py
+index 2a87a0b..23cb602 100644
+--- a/mmfparser/data/chunkloaders/movement.py
++++ b/mmfparser/data/chunkloaders/movement.py
+@@ -311,6 +311,14 @@ class Movement(DataLoader):
+ 
+         self.directionAtStart = reader.readInt()
+ 
++        # Modern Android CCNs carry movement records the 2012 parser never
++        # named.  They are not needed by the converter's object model, but
++        # failing the whole frame on one makes the later event data unreachable.
++        if self.type not in MOVEMENT_CLASSES:
++            print 'unknown movement type %d; skipping' % self.type
++            self.loader = None
++            return
++
+         if self.getName() == 'Extension':
+             reader.skipBytes(14)
+             dataSize -= 14
+@@ -351,4 +359,4 @@ class Movement(DataLoader):
+         return MOVEMENT_TYPES[self.type]
+ 
+     def setName(self, name):
+-        self.type = MOVEMENT_TYPES.index(name)
+\ No newline at end of file
++        self.type = MOVEMENT_TYPES.index(name)
+diff --git a/mmfparser/data/chunkloaders/musicbank.py b/mmfparser/data/chunkloaders/musicbank.py
+index 80d294a..613310f 100644
+--- a/mmfparser/data/chunkloaders/musicbank.py
++++ b/mmfparser/data/chunkloaders/musicbank.py
+@@ -68,6 +68,14 @@ class MusicBank(DataLoader):
+         self.items = []
+ 
+     def read(self, reader):
++        if self.settings['build'] >= 290:
++            # This owned Android build's bank is the documented empty u16 form.
++            numberOfItems = reader.readShort(True)
++            if numberOfItems != 0:
++                raise NotImplementedError('Android music-bank records are not mapped')
++            self.items = []
++            return
++
+         java = self.settings.get('java', False)
+         debug = self.settings.get('debug', False)
+         
+diff --git a/mmfparser/data/chunkloaders/objects.pyx b/mmfparser/data/chunkloaders/objects.pyx
+index 85649ce..06bce1c 100644
+--- a/mmfparser/data/chunkloaders/objects.pyx
++++ b/mmfparser/data/chunkloaders/objects.pyx
+@@ -901,7 +901,36 @@ cdef class ObjectCommon(DataLoader):
+                             not self.settings.get('compat', False))
+         cdef bint newobj2 = True
+ 
+-        if newobj and newobj2:
++        if self.settings['build'] >= 290 and not self.settings.get('compat', False):
++            movementsOffset = reader.readShort()
++            valuesOffset = reader.readShort()
++            self.version = reader.readShort()
++            counterOffset = reader.readShort()
++            systemObjectOffset = reader.readShort()
++            extensionOffset = reader.readShort()
++            self.flags.setFlags(reader.readShort(True))
++            createFlags = reader.readShort()
++            if createFlags == 6:
++                self.flags['DoNotCreateAtStart'] = True
++
++            end = reader.tell() + 8 * 2
++            for _ in xrange(8):
++                qualifier = reader.readShort()
++                if qualifier == -1:
++                    break
++                self.qualifiers.append(qualifier)
++            reader.seek(end)
++
++            animationsOffset = reader.readShort()
++            reader.skipBytes(2) # unused Android slot
++            stringsOffset = reader.readShort()
++            self.newFlags.setFlags(reader.readShort(True))
++            self.preferences.setFlags(reader.readShort(True))
++            self.identifier = reader.readInt()
++            self.backColour = reader.readColor()
++            fadeInOffset = reader.readInt()
++            fadeOutOffset = reader.readInt()
++        elif newobj and newobj2:
+             animationsOffset = reader.readShort()
+             movementsOffset = reader.readShort()
+             self.version = reader.readShort()
+@@ -1126,4 +1155,4 @@ cdef class ObjectCommon(DataLoader):
+         return self.flags['QuickDisplay'] or self.flags['Background']
+ 
+ __all__ = ['AlterableValues', 'AlterableStrings', 'Backdrop', 'QuickBackdrop',
+-    'AnimationDirection', 'Animation', 'AnimationHeader', 'ObjectCommon']
+\ No newline at end of file
++    'AnimationDirection', 'Animation', 'AnimationHeader', 'ObjectCommon']
+diff --git a/mmfparser/data/chunkloaders/parameters/loaders.py b/mmfparser/data/chunkloaders/parameters/loaders.py
+index 2a53e31..3ce75cb 100644
+--- a/mmfparser/data/chunkloaders/parameters/loaders.py
++++ b/mmfparser/data/chunkloaders/parameters/loaders.py
+@@ -351,6 +351,13 @@ class Group(ParameterCommon):
+         self.offset = reader.tell() - 24
+         self.flags.setFlags(reader.readShort(True))
+         self.id = reader.readShort(True)
++        if self.settings['build'] >= 293:
++            # Fusion 2.5+ mobile builds obfuscate this editor-only text.
++            # Preserve the record boundary but use the stable group id.
++            reader.skipBytes(100)
++            self.name = 'Group %d' % self.id
++            self.password = 0
++            return
+         try:
+             self.name = self.readString(reader, 96)
+             self.password = reader.readInt()
+diff --git a/mmfparser/data/chunkloaders/soundbank.py b/mmfparser/data/chunkloaders/soundbank.py
+index 6a95889..1f97781 100644
+--- a/mmfparser/data/chunkloaders/soundbank.py
++++ b/mmfparser/data/chunkloaders/soundbank.py
+@@ -15,6 +15,8 @@
+ # You should have received a copy of the GNU General Public License
+ # along with Anaconda.  If not, see <http://www.gnu.org/licenses/>.
+ 
++import glob
++import os
+ import zlib
+ 
+ from mmfparser.loader import DataLoader
+@@ -153,6 +155,35 @@ class OldSound(BaseSound):
+         reader.write(self.name + '\x00')
+         reader.writeReader(data)
+ 
++class AndroidSound(BaseSound):
++    handle = None
++    checksum = None
++    flags = None
++    sampleRate = None
++    name = None
++    data = None
++
++    def read(self, reader):
++        self.handle = reader.readShort(True)
++        self.flags = reader.readShort(True)
++        self.checksum = reader.readInt()
++        self.sampleRate = reader.readInt()
++        nameLength = reader.readShort(True)
++        self.name = reader.read(nameLength * 2).decode('utf-16le').rstrip('\x00').encode('utf-8')
++        raw_dir = self.settings.get('android_raw_dir')
++        if raw_dir is None:
++            raw_dir = os.environ.get('MMFPARSER_ANDROID_RAW_DIR')
++        if not raw_dir:
++            if not self.settings.get('loadImages', True):
++                self.data = ''
++                return
++            raise RuntimeError('Android sound resources require MMFPARSER_ANDROID_RAW_DIR')
++        pattern = os.path.join(raw_dir, 's%04d.*' % self.settings['android_sound_index'])
++        matches = glob.glob(pattern)
++        if len(matches) != 1:
++            raise RuntimeError('expected one Android sound resource for %s' % pattern)
++        self.data = open(matches[0], 'rb').read()
++
+ class SoundBank(DataLoader):
+     items = None
+ 
+@@ -161,6 +192,16 @@ class SoundBank(DataLoader):
+ 
+     def read(self, reader):
+         # reader.openEditor()
++        if self.settings['build'] >= 290:
++            numberOfItems = reader.readShort(True)
++            reader.readShort(True) # total references
++            self.items = []
++            for index in xrange(numberOfItems):
++                self.items.append(self.new(AndroidSound, reader,
++                    android_sound_index = index))
++            self.names = dict([(item.name, item) for item in self.items])
++            return
++
+         debug = self.settings.get('debug', False)
+         java = self.settings.get('java', False)
+         flash = self.settings.get('flash', False)
+@@ -202,4 +243,4 @@ class SoundBank(DataLoader):
+         for item in self.items:
+             item.write(reader)
+ 
+-__all__ = ['SoundBank']
+\ No newline at end of file
++__all__ = ['SoundBank']
