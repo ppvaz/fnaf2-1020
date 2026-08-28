@@ -13,6 +13,7 @@ plan_control_xy() {
     cam10)   PX=$CAM10_X;     PY=$CAM10_Y ;;
     cam4)    PX=$CAM04_X;     PY=$CAM04_Y ;;
     cam7)    PX=$CAM07_X;     PY=$CAM07_Y ;;
+    cam9)    PX=$CAM09_X;     PY=$CAM09_Y ;;
     cam11)   PX=$CAM11_X;     PY=$CAM11_Y ;;
     cam5)    PX=$CAM05_X;     PY=$CAM05_Y ;;
     *) echo "unknown plan control: $1" >&2; exit 47 ;;
@@ -85,7 +86,9 @@ pulsed_sweep_at() {
   # previous press`. The emitted slot is an actuator detail already priced by
   # the model gate, so the scalar floor must not second-guess it. It is now
   # 133 ms: a 100 ms contact followed by one 33 ms released Fusion poll.
-  if [ "$NIGHT6_LEFT" -ne 1 ]; then
+  # Only the dormant unpriced route (NIGHT6_LEFT=0) still gets the scalar floor;
+  # every model-gated plan path (1 = Minus 7, 2 = Minus Toys) prices its own.
+  if [ "$NIGHT6_LEFT" -eq 0 ]; then
     [ "$spacing" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$spacing" "$sweep_label slots"
   fi
   wait_until "$sweep_start"

@@ -51,13 +51,15 @@ human_floor_abort() {
 }
 
 human_floor_check() {
-  # The sole selectable controller path has passed the model gate, and its
-  # intentional compound rows contain 120/180 ms actuator boundaries. The old
-  # scalar gap check made that accepted plan abort at its first monitor press
-  # and would reject every camera sweep. Retain it only for dormant unpriced
-  # branches; the plan path is covered by replay, input-gap, interpreter and
-  # actuator checks.
-  [ "$NIGHT6_LEFT" -eq 1 ] && return 0
+  # A model-gated controller path has priced its own schedule: Minus 7
+  # (NIGHT6_LEFT=1) through human-gate.mjs, Minus Toys (NIGHT6_LEFT=2) through
+  # minus-toys-plan.mjs --gate. Their intentional compound rows contain sub-350
+  # ms boundaries on purpose -- the Minus Toys arming geometry lands CAM 09 and
+  # the monitor 50 ms apart. The old scalar gap check aborted those plans at
+  # their first press. Retain it only for dormant unpriced branches
+  # (NIGHT6_LEFT=0); the plan path is covered by replay, input-gap, interpreter
+  # and actuator checks.
+  case "$NIGHT6_LEFT" in 1|2) return 0 ;; esac
   hf_gap=$(($1 - HF_LAST_PRESS_MS))
   [ "$hf_gap" -ge "$HUMAN_FLOOR_MS" ] || human_floor_abort "$hf_gap" "$2"
   HF_LAST_PRESS_MS=$1

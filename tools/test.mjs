@@ -148,6 +148,11 @@ const ENGINE = [
   // The runner must schedule the plan the simulator emits. The table lived in
   // two places and a fix to one silently missed the other.
   ['runner plan', ['device/test-runner-plan.mjs']],
+  // The Minus Toys device plan (plan 02 pkg 2a, device half): the ported
+  // glitch loop still clears nights 2 and 7 in the exact model with the split
+  // armed, the no-split control still loses, and every instruction kind and
+  // control it emits is one the on-phone interpreter implements.
+  ['minus toys plan', ['device/test-minus-toys-plan.mjs']],
   // The engine cannot price an input the port refuses, so the plan is checked
   // against the phone's measured input-acceptance gaps separately.
   ['device input gaps', ['device/test-device-input-gaps.mjs']],

@@ -32,7 +32,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **Minus Toys** | Highest-priority route. The split engine and published 10 s loop now score **200/200 normal + 100/100 pinned worst-luck**; the no-split control is **0/200**. One scheduled HID attempt deliberately armed CAM 11 viewing + CAM 09 marker on the target phone. | Repeat the 50 ms arming geometry, then prove a glitched CAM 09 light holds the Toys on the phone. |
+| **Minus Toys** | Highest-priority route. The split engine and published 10 s loop now score **200/200 normal + 100/100 pinned worst-luck** on every night; the no-split control is **0/200**. One scheduled HID attempt deliberately armed CAM 11 viewing + CAM 09 marker on the target phone. **2026-08-28: the device plan is built, gated and mock-tested** — `tools/device/minus-toys-plan.mjs` + `DEVICE_POLICY=minus-toys tools/device/trial.sh` (same epoch-latched watchdog runner as Minus 7). Nothing run on the phone yet. | Run a graded device Night 2 via the Continue cursor (`HID_TRACE_RUN=1`): does the 50 ms geometry reproduce the split, and does a held glitched CAM 09 light hold the Toys across a full night. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
 | **Foxy GOT-YOU blackout cover** | Engine and source contain the two kill triggers. The public 2999/3000 greenrun deliberately locks Foxy and covers every 10 s execution check with a blackout. Searches here penalise `gotYou`; none deliberately synthesize this policy. | Encode it as an explicit, likely-RNG baseline and measure it before deciding whether it is useful on Android. |
@@ -69,12 +69,34 @@ contact. Setting an environment variable for the last contact therefore emits
 the old all-33 plan. Thread the option through the live entry point and pin it in
 the runner-plan test before claiming that device experiment ran.
 
-**Concrete next action:** plan 02 package 2a, device half. The engine now
-represents `viewing`, `lastViewed` and the `your view` marker separately; all
-existing engine gates pass, and the glitch-aware policy/control pair is
-200/200 versus 0/200. Repeat the proven 50 ms arming geometry and observe
-whether a held glitched CAM 09 light actually prevents a Toy move. Stun transfer
-and repeatability are the remaining claims.
+**Concrete next action:** run the graded Minus Toys device Night 2. The engine
+half AND the device-plan half of plan 02 pkg 2a are now done (2026-08-28):
+`tools/device/minus-toys-plan.mjs` ports the loop into the on-phone
+interpreter's plan format, `DEVICE_POLICY=minus-toys tools/device/trial.sh`
+runs it through the existing title-safe/epoch-latched/watchdog runner
+(`NIGHT6_LEFT=2` branch, new `camdrop` instruction, CAM 09 coord threaded),
+gating on `minus-toys-plan.mjs --gate` before the first adb command.
+`test-minus-toys-plan.mjs` + the extended `test-plan-interpreter.sh` pin it;
+they caught two draft bugs (a `hold light` control the interpreter lacks; the
+scalar human-floor not standing down for the gated route). Full note:
+`docs/device/ON-DEVICE-VALIDATION.md` §"A second device policy: Minus Toys".
+
+The run itself needs the phone (Moto g56 `ZF525F5BH5` is connected) and a
+watcher — it is ~7 min and must be graded (`GRADE_RUN=1`, then
+`tools/device/grade-run.sh`). Night 2 is the save cursor, reached via Continue:
+
+```
+DEVICE_POLICY=minus-toys NIGHT=continue CALIBRATION_STORY_NIGHT=2 \
+  HID_TRACE_RUN=1 GRADE_RUN=1 \
+  tools/device/trial.sh n2-minustoys-NNNN 42
+```
+
+What to look for: the split armed (CAM 09 + CAM 11 both lit after the opening
+raise), the Toys staying on the Show Stage, and no Foxy jumpscare — the 33 ms
+hall pulse each cycle is the only Foxy reset, this loop has no reactive branch.
+`screenstate.py` / `grade-run.sh` still cannot grade a 6 AM, so a survived
+night reads `lifecycle=unknown`. Stun transfer and 50 ms-geometry repeatability
+under real jitter are the remaining claims.
 
 ### Prior Minus 7 frontier (retained, now scoped)
 

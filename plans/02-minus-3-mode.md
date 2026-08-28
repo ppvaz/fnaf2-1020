@@ -71,13 +71,31 @@ So this is "new script + new lesson ladder + strategy selection UI," not a new e
 2. **Sim-verify before teaching:** seed sweep + worst-luck sweep. Establish whether
    Minus 3 is RNG-proof like Minus 7 or has losable rolls — the answer changes how the
    mode is framed (drill machine vs. best-odds practice).
-2a. **Probe Minus Toys properly (engine half done 2026-08-28).** The engine now
-   separates `viewing`, sampled `lastViewed`, and the parked marker; sourced
-   tests pin their separate g450-457 roles. `minustoystest.mjs` gates 200/200
-   normal, 100/100 pinned worst-luck, and the 0/200 no-split control. One 50 ms
-   HID geometry has armed the state once on the phone. Remaining: repeatability
-   around that geometry and a device observation that the glitched CAM 09 light
-   actually holds the Toys.
+2a. **Probe Minus Toys properly (engine half + device plan done 2026-08-28).**
+   The engine now separates `viewing`, sampled `lastViewed`, and the parked
+   marker; sourced tests pin their separate g450-457 roles. `minustoystest.mjs`
+   gates 200/200 normal, 100/100 pinned worst-luck, and the 0/200 no-split
+   control. One 50 ms HID geometry has armed the state once on the phone
+   (`captures/n2-doublecam-hid-0003`).
+
+   **Device half, 2026-08-28:** `tools/device/minus-toys-plan.mjs` ports that
+   loop into the on-phone interpreter's plan format — an opening that arms the
+   split before 0:05, then a repeating 10 s wind/mask cycle — and
+   `trial.sh DEVICE_POLICY=minus-toys` runs it through the same title-safe,
+   epoch-latched, watchdog-guarded runner as Minus 7, gating on
+   `minus-toys-plan.mjs --gate` before its first adb command
+   (`NIGHT6_LEFT=2` driver branch, new `camdrop` interpreter instruction, CAM 09
+   coordinate threaded through). `test-minus-toys-plan.mjs` and the extended
+   `test-plan-interpreter.sh` pin it. Two bugs in the first draft were caught by
+   those tests, not the phone: a `hold light` row the interpreter has no `light`
+   control for, and the 350 ms scalar human-floor not standing down for the
+   model-gated route (it aborts on the deliberate 50 ms CAM 09 -> monitor
+   arming gap).
+
+   **Remaining:** a graded device Night 2 via the Continue cursor — does the
+   arming geometry reproduce, and does a held glitched CAM 09 light actually
+   hold the Toys across a full night. Repeatability of the 50 ms geometry under
+   real actuator jitter is the sub-question.
 3. Fill any engine gaps the strategy doc flagged (mechanics Minus 7 never exercised).
 4. Build the lesson ladder (mirroring the 10-step structure where it maps).
 5. Strategy picker in the UI; per-strategy progress/records kept separate.

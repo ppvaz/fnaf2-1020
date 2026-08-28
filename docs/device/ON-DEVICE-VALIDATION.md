@@ -1883,3 +1883,65 @@ when the helper is running -- `c33cc-alt` recalibrates CAM 07 to
 each leaks ~3/25 on the other. So a real night (helper always running) must
 be graded against a signature recalibrated from an `ALT_LIGHT` run recorded
 **in the same session, with the helper up** -- not the bundled solo one.
+
+## A second device policy: Minus Toys, wired into the same runner (2026-08-28)
+
+Until now `trial.sh` emitted only Minus 7 (`recipe.mjs --device-plan`). The
+Minus Toys engine result (plan 02 pkg 2a; `tools/minustoystest.mjs`, 200/200
+normal + 100/100 worst per night, 0/200 no-split control) existed only as an
+engine schedule. `tools/device/minus-toys-plan.mjs` ports it into the on-phone
+interpreter's plan format and `DEVICE_POLICY=minus-toys tools/device/trial.sh`
+runs it through the **same** title-safe, epoch-latched, watchdog-guarded runner
+-- not a second execution path.
+
+What the port is:
+
+- **An opening cycle** (`#cycle opening`) that arms the split before 0:05 --
+  establish CAM 11 as `viewing`, tap CAM 09, leave one released Fusion poll,
+  drop and re-raise the monitor. This is the geometry
+  `captures/n2-doublecam-hid-0003` hit once by hand, now scheduled: CAM 09 and
+  the monitor land 50 ms apart.
+- **A repeating 10 s cycle** (`#cycle toys`): mask through the fifth global
+  one-second tick, a 33 ms hall flash to reset Foxy, raise, a 100 ms `ventl`
+  pulse to refresh the glitched CAM 09 stun, ~3.25 s of wind, then `camdrop`
+  (hold the feed light, tap the monitor down through it, keep the light on) to
+  exit while the stun is still refreshing.
+
+New runner pieces, all mock-gated (no phone):
+
+- `NIGHT6_LEFT=2` driver branch in `trial/12-night-loop.sh` -- no BB read, no
+  branch: the opening stepped (its wind absorbs the epoch slip), then
+  `run_macro toys` every 10 s.
+- A `camdrop` instruction in the plan interpreter (`plan_step` / `plan_span` /
+  `plan_emit`), spanning light-lead + monitor-contact + light-tail.
+- The CAM 09 coordinate threaded through the driver's positional argument
+  header (`trial/01-arguments.sh`, `plan_control_xy`).
+- The gate: `minus-toys-plan.mjs --night=N --gate` replaces `human-gate.mjs`
+  for this policy and runs before the first adb command.
+- `04-session.sh`'s epoch centring stays Minus-7-only: the published route's
+  phase window is one-sided (tolerates a late T0, almost no early one), so the
+  conservative first-positive edge is correct for it.
+
+**Two bugs in the first draft were caught by the new tests, not the phone:**
+
+1. A `hold light` loop row. `plan_control_xy` has no `light` control -- the
+   camera-feed light is `ventl` -- so the run would have aborted at exit 47.
+   Fixed to `hold ventl`, with `replay()` mapping `ventl` -> the engine's
+   `light` action.
+2. The 350 ms scalar human-floor (`trial/05-press.sh`) only stood down for
+   `NIGHT6_LEFT=1`. On the model-gated Minus Toys route it aborts at exit 44 on
+   the deliberate 50 ms CAM 09 -> monitor arming gap. Fixed: the floor stands
+   down for every model-gated plan path (`1|2`); only the dormant unpriced
+   route (`0`) still gets the scalar.
+
+`test-minus-toys-plan.mjs` gates the ported schedule (survival + split armed +
+control + emitted-plan shape + every kind/control implemented);
+`test-plan-interpreter.sh` runs the emitted plan through the shipped interpreter
+functions (camdrop span, the opening resolving every control, the toys macro's
+contact starts matching the plan) and pins the `NIGHT6_LEFT=2` floor arm.
+
+**Not yet run on the phone.** The remaining claims are all device: does the
+scheduled 50 ms geometry reproduce the split, does a held glitched CAM 09 light
+actually hold the Toys across a full night, and does the geometry survive real
+actuator jitter. First run is a graded Night 2 via the Continue cursor with
+`HID_TRACE_RUN=1`.

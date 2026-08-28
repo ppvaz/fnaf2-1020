@@ -43,6 +43,23 @@ plan_step() {
     sweep)
       pulsed_sweep_at "$ps_when" "$ps_a" "$ps_b" "$ps_c" sweep
       ;;
+    camdrop)
+      # Hold the camera-feed light, tap the monitor down through it, keep the
+      # light on for another ps_c ms. Minus Toys ends each viewing interval this
+      # way so the glitched CAM 09 stun is still refreshing as the monitor drops.
+      wait_until "$ps_when"
+      now_rel
+      printf '%6d ms  camdrop (light %d+%d+%d ms, monitor down after %d)\n' \
+        "$NOW_REL" "$ps_a" "$ps_b" "$ps_c" "$ps_a"
+      hid_mark "$NOW_REL"
+      hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+      hid_delay "$ps_a"
+      hid_two_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_delay "$ps_b"
+      hid_second_up "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_delay "$ps_c"
+      hid_release
+      ;;
     read)
       # The light's end is a device readiness boundary -- screencap's first
       # output byte -- not a schedule value, so the plan's nominal duration is
@@ -86,6 +103,7 @@ plan_span() {
       fi
       ;;
     sweep)     PLAN_SPAN=$((2 * pn_a + $(sweep_cam_ms "$(sweep_last_contact "$pn_c" "$pn_b")" "$pn_b"))) ;;
+    camdrop)   PLAN_SPAN=$((pn_a + pn_b + pn_c)) ;;
     *) echo "the plan names an instruction with no known span: $pn_kind" >&2
        exit 47 ;;
   esac
@@ -105,6 +123,15 @@ plan_emit() {
     hall)
       hid_down "$HALL_X" "$HALL_Y"
       hid_delay "$pe_a"
+      hid_release
+      ;;
+    camdrop)
+      hid_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y"
+      hid_delay "$pe_a"
+      hid_two_down "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_delay "$pe_b"
+      hid_second_up "$CAM_LIGHT_X" "$CAM_LIGHT_Y" "$MONITOR_X" "$MONITOR_Y"
+      hid_delay "$pe_c"
       hid_release
       ;;
     hallraise)
@@ -171,4 +198,3 @@ plan_emit() {
       ;;
   esac
 }
-

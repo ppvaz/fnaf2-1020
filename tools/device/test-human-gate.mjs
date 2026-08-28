@@ -266,9 +266,14 @@ check('the default path still hard-refuses on a failed gate',
 check('the blind-run refusal reads the sourced AI table',
   /canAct\(\$STORY_NIGHT, 'bb'\)/.test(runner) &&
   !/the Night 6 route is 0\/3000 blind/.test(runner));
-check('legacy live floor does not contradict the model-gated route',
+// The scalar live floor must stand down for EVERY model-gated plan path, or it
+// contradicts the gate it is supposed to back up: Minus 7 (NIGHT6_LEFT=1,
+// priced by human-gate.mjs) and Minus Toys (NIGHT6_LEFT=2, priced by
+// minus-toys-plan.mjs --gate, whose arming geometry lands two presses 50 ms
+// apart on purpose). Only the dormant unpriced route (0) keeps the scalar.
+check('legacy live floor does not contradict either model-gated route',
   /^HUMAN_FLOOR_MS=\d+$/m.test(driver) &&
-  /\[ "\$NIGHT6_LEFT" -eq 1 \] && return 0/.test(driver));
+  /case "\$NIGHT6_LEFT" in 1\|2\) return 0 ;; esac/.test(driver));
 
 if (failed) { console.error(`${failed} model-gate check(s) failed`); process.exit(1); }
 console.log(`model gate: verified; shipped plan passes at ${real.survived}/${real.runs} under +/-${HUMAN_SLACK_MS} ms`);

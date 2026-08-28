@@ -44,6 +44,7 @@ WIND_X=$1; WIND_Y=$2; shift 2
 CAM10_X=$1; CAM10_Y=$2; shift 2
 CAM04_X=$1; CAM04_Y=$2; shift 2
 CAM07_X=$1; CAM07_Y=$2; shift 2
+CAM09_X=$1; CAM09_Y=$2; shift 2
 CAM11_X=$1; CAM11_Y=$2; shift 2
 CAM05_X=$1; CAM05_Y=$2; shift 2
 CUE_PORT=$1; CUE_TOKEN=$2; shift 2
@@ -55,4 +56,3 @@ fi
 
 HID_PID=""
 HID_FD_OPEN=0
-

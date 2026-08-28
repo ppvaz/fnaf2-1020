@@ -99,7 +99,8 @@ READ_CAPTURE_DELAY_MS=200
 # Coordinates are irrelevant here; only the control they resolve to matters.
 MONITOR_X=1 MONITOR_Y=1 MASK_X=2 MASK_Y=2 WIND_X=3 WIND_Y=3
 CAM04_X=4 CAM04_Y=4 CAM05_X=5 CAM05_Y=5 CAM07_X=7 CAM07_Y=7
-CAM10_X=10 CAM10_Y=10 CAM11_X=11 CAM11_Y=11 HALL_X=99 HALL_Y=99
+CAM09_X=9 CAM09_Y=9 CAM10_X=10 CAM10_Y=10 CAM11_X=11 CAM11_Y=11
+CAM_LIGHT_X=8 CAM_LIGHT_Y=8 HALL_X=99 HALL_Y=99
 
 press_at()   { printf '%s tap %s\n' "$1" "$4"; }
 hold_at()    { printf '%s hold %s %s\n' "$1" "$5" "$4"; }
@@ -366,6 +367,46 @@ want="$(printf '%s\n' '7000 tap monitor' '7767 light' "$((7767 + READ_CAPTURE_DE
 [ "$got" = "$want" ] || fail "a moved light did not carry its capture:\n$got\n--- want ---\n$want"
 
 
+# --- the Minus Toys plan --------------------------------------------------
+#
+# A second plan through the same interpreter, this one from minus-toys-plan.mjs
+# (DEVICE_POLICY=minus-toys). It uses camdrop, and hold/tap on ventl and cam9 --
+# a `hold light` row the earlier draft carried would have aborted the run at
+# exit 47 on the phone, because plan_control_xy has no `light`. Run its two
+# cycles through the shipped functions so that fails here instead.
+node "$HERE/minus-toys-plan.mjs" --night=7 > "$TMP/toys.txt"
+
+toys() { run "PLAN_FILE='$TMP/toys.txt'; $1" ; }
+
+# camdrop's span is its whole light hold: lead + monitor contact + tail. If it
+# is short the macro's seam wait is written early and the next interval's first
+# press lands on the light's tail.
+[ "$(toys 'plan_span camdrop 200 33 67; printf %s "$PLAN_SPAN"')" = 300 ] ||
+  fail "plan_span camdrop is not pn_a + pn_b + pn_c"
+
+# The opening runs whole and every control resolves. Compare the tap/hold lines
+# with the plan's own tap/hold rows -- an unresolvable control exits non-zero
+# and never reaches this comparison.
+got="$(toys 'run_cycle opening 0 0 999' | grep -E ' (tap|hold) ')"
+# The tap stub drops the contact length; the hold stub prints offset, control,
+# duration. Match those shapes from the plan's own rows.
+want="$(awk '/^#cycle opening/{a=1;next} /^#cycle/{a=0}
+  a && $2=="tap"  { print $1, $2, $3 }
+  a && $2=="hold" { print $1, $2, $3, $4 }' "$TMP/toys.txt")"
+[ "$got" = "$want" ] ||
+  fail "minus-toys opening:\n$got\n--- want ---\n$want"
+
+# The toys loop as one macro: every contact goes down where the plan put it,
+# relative to the window's wall-timed start. camdrop emits a down then a
+# two-down; only the down is the instruction start.
+got="$(toys 'run_macro toys 0 0 999' | awk '/^[0-9]+ down$/{print $1}' \
+  | awk 'NR==1{b=$1} {print $1-b}')"
+want="$(awk '/^#cycle toys/{a=1;next} /^#cycle/{a=0} a && NF {print $1}' "$TMP/toys.txt" \
+  | awk 'NR==1{b=$1} {print $1-b}')"
+[ "$got" = "$want" ] ||
+  fail "minus-toys loop contact starts:\n$got\n--- want (from the plan) ---\n$want"
+
+
 # --- the monitor-flip gate on the cue read -----------------------------------
 #
 # light_down_at samples the cue helper to check the anchor's monitor press
@@ -582,6 +623,13 @@ tight="NOW=1000; press_at 1000 2 2 monitor; NOW=$((1000 + FUSION_POLL_MS))
 
 if ! light_run "NIGHT6_LEFT=1; $tight" >/dev/null 2>&1; then
   fail 'the gated route aborted on its own compound spacing; the model gate, not the scalar floor, prices that plan'
+fi
+
+# Minus Toys (NIGHT6_LEFT=2) is model-gated too -- by minus-toys-plan.mjs --gate
+# -- and its arming geometry lands CAM 09 and the monitor 50 ms apart on
+# purpose. The scalar floor must stand down for it as well.
+if ! light_run "NIGHT6_LEFT=2; $tight" >/dev/null 2>&1; then
+  fail 'the Minus Toys route aborted on its 50 ms arming gap; minus-toys-plan.mjs --gate prices that plan'
 fi
 
 if got="$(light_run "NIGHT6_LEFT=0; $tight" 2>&1)"; then

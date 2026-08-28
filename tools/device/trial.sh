@@ -12,6 +12,7 @@ set -euo pipefail
 OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
+DEVICE_POLICY="${DEVICE_POLICY:-minus7}"
 # Story-night path, via the save-safe Continue item only.
 #
 # Widened 2026-08-26 from one cycle to a full night. The one-cycle bound existed
@@ -190,6 +191,10 @@ esac
 case "$NIGHT" in
   continue|6th) ;;
   *) echo "NIGHT must be continue or 6th"; exit 2 ;;
+esac
+case "$DEVICE_POLICY" in
+  minus7|minus-toys) ;;
+  *) echo "DEVICE_POLICY must be minus7 or minus-toys"; exit 2 ;;
 esac
 case "$CALIBRATION_STORY_NIGHT" in
   0|1|2|3|4|5) ;;
@@ -430,7 +435,7 @@ bb_can_act="$(node --input-type=module -e \
   echo "could not ask the engine whether Balloon Boy can act on night $STORY_NIGHT" >&2
   exit 2
 }
-if [ -z "$BB_LEFT_MODEL" ]; then
+if [ "$DEVICE_POLICY" = minus7 ] && [ -z "$BB_LEFT_MODEL" ]; then
   echo "trial.sh requires BB_LEFT_MODEL; refusing to run night $STORY_NIGHT blind" >&2
   if [ "$bb_can_act" = yes ]; then
     echo "  Balloon Boy can act on night $STORY_NIGHT (sourced AI table), and" >&2
@@ -449,10 +454,12 @@ if [ -z "$BB_LEFT_MODEL" ]; then
   exit 2
 fi
 
+if [ "$DEVICE_POLICY" = minus7 ]; then
 { [ "$PILOT_OFFSET_MS" -ge 83 ] && [ "$PILOT_OFFSET_MS" -le 267 ]; } || {
   echo "PILOT_OFFSET_MS must be inside the measured 83-267 ms phase window" >&2
   exit 2
 }
+fi
 if [ -n "$GF_OFFICE_MODEL" ]; then
   [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ] || {
     echo "GF_OFFICE_MODEL requires BB_LEFT_CAPTURE_EVERY > 0" >&2
@@ -498,7 +505,9 @@ LEFT_SAMPLE_COUNT=0
 if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
   LEFT_SAMPLE_COUNT=$(((CYCLES - 1 - BB_LEFT_CAPTURE_START) / BB_LEFT_CAPTURE_EVERY + 1))
 fi
-MAXDUR_MS=$((25000 + CYCLES * 5000 + LEFT_SAMPLE_COUNT * 1500))
+POLICY_CYCLE_MS=5000
+[ "$DEVICE_POLICY" != minus-toys ] || POLICY_CYCLE_MS=10000
+MAXDUR_MS=$((25000 + CYCLES * POLICY_CYCLE_MS + LEFT_SAMPLE_COUNT * 1500))
 MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 
 mkdir -p "$CAPTURE_DIR"
@@ -530,9 +539,17 @@ recipe_args="--night=$STORY_NIGHT"
 [ -z "$SWEEP_SPACING_MS" ] || recipe_args="$recipe_args --device-spacing-ms=$SWEEP_SPACING_MS"
 [ -z "$SWEEP_CONTACT_MS" ] || recipe_args="$recipe_args --sweep-contact-ms=$SWEEP_CONTACT_MS"
 # shellcheck disable=SC2086
-node "$HERE/recipe.mjs" --device-plan $recipe_args > "$RUN_TMP/device-plan.txt"
+if [ "$DEVICE_POLICY" = minus-toys ]; then
+  node "$HERE/minus-toys-plan.mjs" --night="$STORY_NIGHT" --gate || exit 44
+  node "$HERE/minus-toys-plan.mjs" --night="$STORY_NIGHT" > "$RUN_TMP/device-plan.txt"
+else
+  # shellcheck disable=SC2086
+  node "$HERE/recipe.mjs" --device-plan $recipe_args > "$RUN_TMP/device-plan.txt"
+fi
 cp "$RUN_TMP/device-plan.txt" "$CAPTURE_DIR/$OUT-device-plan.txt"
-if [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
+if [ "$DEVICE_POLICY" = minus-toys ]; then
+  echo "Minus Toys exact device-plan gate passed for Night $STORY_NIGHT" >&2
+elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
   gate_note="$(node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" 2>&1 || true)"
   echo "EXPERIMENT_UNGATED=1: human gate NOT enforced. This measures the machine." >&2
   echo "  gate verdict (for reference): $(printf '%s' "$gate_note" | head -1)" >&2
@@ -1178,7 +1195,7 @@ fnaf_session_record env \
 # a temporary directory that is gone before anyone reads the manifest.
 fnaf_session_record controller \
   "policy_version=trial/$NIGHT/$PRESS_MODE" \
-  "plan_id=recipe.mjs --device-plan" \
+  "plan_id=$DEVICE_POLICY device-plan" \
   "plan_file=$RUN_TMP/device-plan.txt" \
   "actuator=$PRESS_MODE" \
   "emitted_action_trace=$([ "$HID_TRACE_RUN" -eq 1 ] && echo hid-trace || echo null)"
@@ -1398,7 +1415,7 @@ start_driver_log
 adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$REMOTE_EPOCHFILE" "$REMOTE_CAPTURE_LOCK" \
   "$DEVICE_EPOCH_LATCH" \
   "$CYCLES" "$PRESS_MODE" "0" "$HID_LEFT_DEBUG_RAW" \
-  "1" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
+  "$([ "$DEVICE_POLICY" = minus-toys ] && echo 2 || echo 1)" "$PILOT_OFFSET_MS" "$REMOTE_HID_TRACE" \
   "$PLAN_SPACING_MS" "$PLAN_CONTACT_MS" \
   "$BB_CAM05_CAPTURE_EVERY" "$BB_CAM05_CAPTURE_START" \
   "$BB_CAM05_UNLIT" "$BB_CAM05_STOP_ON_BB" \
@@ -1406,7 +1423,7 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$R
   "$REMOTE_CHECKER_ARG" "$REMOTE_CAM05_MODEL_ARG" "$REMOTE_BB_MODEL_ARG" "$REMOTE_GF_MODEL_ARG" \
   "$GF_SKIP_MASK_ON_EXACT_EMPTY" "$POST_CAPTURE_TOUCHES_EFFECTIVE" \
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
-  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM11 $TAP_CAM05 \
+  $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM09 $TAP_CAM11 $TAP_CAM05 \
   "$CUE_PORT" "$CUE_TOKEN" "$REMOTE_KEEP_DIR" \
   > "$DRIVER_OUTPUT_FIFO" 2>&1 < "$REMOTE_PROGRAM" &
 DRIVER_PID=$!

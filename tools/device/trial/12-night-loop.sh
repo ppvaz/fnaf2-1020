@@ -106,7 +106,32 @@ run_cycle() {
 }
 
 
-if [ "$NIGHT6_LEFT" -eq 1 ]; then
+if [ "$NIGHT6_LEFT" -eq 2 ]; then
+  [ -s "$PLAN_FILE" ] || { echo 'Minus Toys needs its device plan' >&2; exit 47; }
+  opening_at=$(plan_first_offset opening)
+  now_rel
+  SLIP=$((NOW_REL + 20 - opening_at))
+  [ "$SLIP" -ge 0 ] || SLIP=0
+  # The opening's wind is the only elastic interval; every later boundary is
+  # absolute. More slip than it can absorb would move the first exit past 0:05.
+  [ "$SLIP" -lt 1750 ] || {
+    echo 'epoch latch left no room to arm Minus Toys before the first interval' >&2
+    exit 46
+  }
+  run_cycle opening 0 0 999
+
+  base=0
+  cycle=0
+  while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
+    SLIP=0
+    run_macro toys "$base" 0 999
+    base=$((base + 10000))
+    cycle=$((cycle + 1))
+  done
+  hid_release
+  printf 'minus-toys finished: %d ten-second cycles\n' "$cycle"
+  exit 0
+elif [ "$NIGHT6_LEFT" -eq 1 ]; then
   [ -s "$PLAN_FILE" ] || {
     echo 'night6-left needs the device plan, and none was pushed' >&2
     exit 47
