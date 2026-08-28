@@ -2102,3 +2102,120 @@ Two forward paths, neither built:
 
 The `n2-minustoys-0117` artifacts (aborted mp4, hid jsonl, run log, session
 manifest) are in the gitignored `captures/` corpus.
+
+## The frontier is phase, not actuation — and what the 2026 field says (2026-08-28)
+
+A session-level review of the actuator and sensor questions ("can we build an
+S-tier actuator? a god-tier sensor?"), cross-checked against current published
+work. **Nothing in this section was measured on this handset.** It is a
+reframing plus a literature survey, and every external figure is someone else's
+device. It is written down because the reframing contradicts the intuition that
+sent three sessions at actuator geometry, and because two of the surveyed
+results change a route ranking in `plans/17`.
+
+### The actuator is not what is killing runs, and a perfect one would not help
+
+Stated plainly so it stops being re-derived:
+
+- `desync-scan.py` on `n2-minustoys-0117` reports **zero desync across the whole
+  graded interval** — every monitor and mask toggle agreed with the game.
+- `/system/bin/hid` schedules one on-device timeline; intra-macro error is about
+  **±2 ms**, and the g56 registers **33 ms** contacts on every touch control
+  (`HID-MULTITOUCH.md` §"The 100 ms contact floor is margin").
+- Against that, `minus-toys-margin.mjs` puts whole-schedule phase tolerance at
+  **33 ms early / 99 ms late**, versus an epoch-latch bracket the same run
+  measured at **302 ms** and a **−184 ms/min** drift.
+
+So a hypothetically perfect actuator — zero jitter, unlimited precision — placed
+at a phase that is 300 ms wrong still dies, and dies to the Puppet, which is
+exactly what the 600-seed clock-error ensemble showed (n2 600/600 → 127/600,
+n3–5 → 0/600). **The phone can hit any millisecond named. Nothing here can
+currently name the right one.** The wish is not a better hand; it is a watch.
+
+### The read is already at the portable ceiling; there is nothing faster to buy
+
+Corroborates §"There is no fast, portable, lossless capture on Android" from the
+other direction. Current published practice for low-latency Android capture is
+what the cue helper already does — MediaProjection `VirtualDisplay`, buffer
+wrapped without a copy, no GPU→CPU readback (readback is reported at
+**12–18 ms/frame** on Mali) — and the best-in-class end-to-end
+capture→encode→save figure quoted for a mid-tier handset is **~214 ms median**,
+for a whole 1080p frame crossing an encoder [CLAIMED — vendor/press benchmark,
+not a peer-reviewed or reproducible measurement].
+
+The helper answers a 20×9 question at **p50 1.7 ms read age** (measured here,
+2026-08-27). That is not a better rung on the transport ladder; as this file
+already argued, it is off the ladder, because it never moves a frame. **Do not
+spend a session looking for a faster capture path.** The remaining borrowable
+idea is unchanged and still unbuilt: an `acquireLatestImage()`-style staleness
+bound, so a read can refuse to answer about the wrong moment.
+
+### The technique that is actually missing: audio-locked clock recovery
+
+This is the one genuinely new idea from the survey, and it is mature published
+work rather than speculation.
+
+The problem is textbook **clock recovery**: recover the phase and rate of a
+periodic source from noisy observations. The standard construction is a
+second-order digital PLL whose loop filter is a Kalman estimator with state
+`(phase, rate)`; this is what UWB location and GNSS tracking systems use, and
+the direct comparison of DPLL against Kalman filtering for clock tracking is
+published [VERIFIED that the technique and comparison exist —
+Gao et al., *J. Electrical and Computer Engineering* 2018,
+https://onlinelibrary.wiley.com/doi/10.1155/2018/5873239]. Our drift is a
+**linear skew** (−184 ms/min), which is precisely the parameter such a filter
+estimates. The "AM-digit re-anchor every 70 s" already modelled is the crude
+zeroth-order version of this: a periodic reset with no rate term.
+
+What is missing is a good **phase discriminator**, and the field's answer is
+audio. Robust audio fingerprinting generates sub-fingerprints every **11.6 ms**
+over a 370 ms window, deliberately overlapped so they vary slowly and align
+sub-frame [VERIFIED — Haitsma & Kalker, ISMIR 2002,
+https://ismir2002.ismir.net/proceedings/02-FP04-2.pdf]; second-screen TV
+synchronisation combines exactly that with generalized cross-correlation to
+recover playback offset [VERIFIED that the method is published —
+https://www.researchgate.net/publication/263925127_Fast_second_screen_TV_synchronization_combining_audio_fingerprint_technique_and_generalized_cross_correlation].
+
+Applied here, two consequences worth testing:
+
+- **The music-box track is a metronome.** It plays while the box is wound. Its
+  playback offset, recovered by cross-correlation against a stored reference,
+  *is* the music-box counter — the value `plans/17` lists as "must read" and
+  which the in-APK route exists partly to hook. Video gives 60 phase samples a
+  second; audio gives a time base three orders finer, timestamped by the audio
+  path rather than the render pipeline. `CaptureService.java` already imports
+  `AudioPlaybackCaptureConfiguration` and `AudioTimestamp`, and the project has
+  already captured night audio, so the capture half is not speculative.
+- **Balloon Boy's laugh is audible when no pixel can help.** `n2-minustoys-0117`
+  died because BB walked in *while the bot was on the monitor* — the camera feed
+  was on screen, so no frame could have shown him. That is the measured death,
+  and it is on a channel already wired up.
+
+**The mandatory control, because this repository has already been burned by
+exactly this.** A thud detector reported 22 hits across 285 s of night audio and
+all 22 were false positives (CLAUDE.md §"Numbers need their control"). So no
+audio result is a result until (a) it has been run against a recording that
+*cannot* contain the cue, and (b) a second signature that fails differently
+agrees. For a laugh detector, cross-correlation against a reference clip is the
+natural second signature, and vice versa.
+
+**What this does not say.** No phase estimator has been built, nothing has been
+measured, and the ~1/3 ceiling that `jasonclone` and the AM-anchor sim put on
+*external* play is not lifted by having a better clock — a better clock is
+necessary for that ceiling, not proof of exceeding it. The unrendered state
+(`your view` marker, the permanent `bb.inside` latch, Foxy `D`) stays unreadable
+by any sensor, however good, which is why `plans/17` remains the higher ceiling.
+
+### A proposal, not a finding: score candidate policies on observability
+
+Minus Toys passed its gate at 200/200 while hiding a ~300 ms mask cliff and a
+33 ms arming margin, and its load-bearing guard (`viewing != your view`) is not
+observable by any external instrument this project owns. A survival-only search
+cannot see either problem.
+
+So a search criterion worth adding alongside survival: **how much of a policy's
+load-bearing state is rendered, and how wide is its per-instruction margin map**
+(`minus-toys-margin.mjs` is the template for the second half). A policy whose
+guards are invisible is a policy whose failures are undiagnosable on the phone,
+which is the position this session ended in. Unbuilt, and offered as a design
+note rather than a result.
