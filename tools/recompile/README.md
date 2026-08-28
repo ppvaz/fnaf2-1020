@@ -90,11 +90,19 @@ Perspective, KYSO, Calculate Text Rect, several system ACEs and unmatched
 fastloops remain. The Phase-3 arm64 CMake probe now completes and links the
 external desktop target after compatibility handling for empty qualifiers,
 numeric loop indices, static-backdrop traversal, receiver-free `Never`, and
-unsupported-expression actions. This is **link success only**: without a video
-or audio device the process exits at SDL initialization; a dummy-driver retry
-initializes OpenAL then segfaults before a visual state is observable. No title,
-night, or fidelity result exists. `Multiple Touch` remains a later pilot-hook
-task.
+unsupported-expression actions.
+
+**Visual boot reached 2026-08-28.** Under real Xvfb + llvmpipe with
+`ALSOFT_DRIVERS=null`, run with CWD at the `gamesrc` dir (the binary opens
+`./Assets.dat`), the linked binary renders an SDL/GL window, initializes audio,
+loads frame 0, and enters generated event code. It then SIGSEGVs in
+`Frames::on_frame_1_start_events` → `event_func_44` on a null
+`get_instance(playvoice4_3_instances)`: frame 1 ("01-Initialize & Setup") never
+emits `playvoice4_3`/`star1_4` though its start events act on them (both resolve
+on frames 2–3). Frame-1 instance-emission gap in the converter — the next slice.
+Still no title/night transition and no fidelity result. `Multiple Touch` remains
+a later pilot-hook task. Full note: `IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 —
+visual boot reached".
 
 Regenerate this patch after landing more:
 `cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' '*.h' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

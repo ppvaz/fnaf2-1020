@@ -366,7 +366,7 @@ key, or a raw state dump in Git.
 | rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
 | loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
 | CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
-| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, assets ✓, C++ emission ✓ for 29 real frames, desktop link ✓.** The headless container cannot establish a boot: no-device startup exits at SDL, while dummy drivers segfault before a visual state. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, assets ✓, C++ emission ✓ for 29 real frames, desktop link ✓, visual boot ✓ (window + GL + audio + frame 0).** Under Xvfb+llvmpipe with `ALSOFT_DRIVERS=null` and CWD at the asset dir, the binary renders an SDL window and enters generated events, then SIGSEGVs in `on_frame_1_start_events` on a null `get_instance(playvoice4_3_instances)` — frame-1 object-instance emission gap in the converter. No title/night transition yet. |
 
 The route harness is complete only when every attempted row has one such record.
 It is not complete merely because a command exists in a shell history.  The current
@@ -398,10 +398,17 @@ compatibility paths.
 Next:
 
 1. Obtain a display-capable external runtime probe or symbolize the dummy-driver
-   crash. **Reached:** CMake links the desktop target; neither the no-device nor
-   dummy-driver container run establishes a visual boot.
-2. Boot only after a link succeeds, then compare a selected night to the sourced
-   model before making any pilot claim.
+   crash. **Done 2026-08-28:** real Xvfb + llvmpipe + `ALSOFT_DRIVERS=null`, CWD
+   at the asset dir → the linked binary renders an SDL window, inits audio, loads
+   frame 0, enters generated events. The dummy-SDL segfault was the dummy video
+   driver, not the code.
+2. **Current boundary:** SIGSEGV in `Frames::on_frame_1_start_events` →
+   `event_func_44`, `((Counter*)get_instance(playvoice4_3_instances))->set(...)`
+   with a null instance. Frame 1 ("01-Initialize & Setup") never emits
+   `playvoice4_3`/`star1_4`; both resolve on frames 2–3. Fix frame-1 instance
+   resolution in the patched converter (or emit generated single-object actions
+   as null-safe no-ops as an explicit compatibility placeholder), rerun the boot,
+   then compare a selected night to the sourced model before any pilot claim.
 3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
    events generate.
 5. Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion

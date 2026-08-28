@@ -430,6 +430,59 @@ or runtime-fidelity evidence. Next: obtain a display-capable external runtime
 probe or capture a symbolized crash at the dummy-driver boundary; keep the
 generated target, binary, and logs external.
 
+### Phase 3 — visual boot reached; crash is now in generated event code (2026-08-28)
+
+Both open items above are answered, and the "segfaults before any visual state"
+sentence above is **withdrawn** (kept per the retractions rule): it was a
+consequence of the SDL *dummy video* driver, not of the binary.
+
+Environment (external Debian-buster arm64 container, `chowdren-build` base +
+`cmake libsdl2-dev libopenal-dev libgl1-mesa-dev gdb xvfb mesa-utils`):
+
+```sh
+cd <external>/gamesrc        # CWD must be the dir holding Assets.dat — the
+                             # binary opens "./Assets.dat" (base/assetfile.cpp:56)
+export LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe ALSOFT_DRIVERS=null
+xvfb-run -s "-screen 0 1280x720x24" ./build-linux/Chowdren
+```
+
+- Run from the wrong CWD → `BaseFile::seek` SIGSEGV in `init_assets` (null
+  `./Assets.dat` handle, no open-failure check). Not a code fault — a CWD/asset
+  layout requirement. With `SDL_VIDEODRIVER=dummy` the window never renders and
+  an unrelated null-GL segfault masks this.
+- Run correctly (real Xvfb + llvmpipe 3.1, `ALSOFT_DRIVERS=null`): the process
+  **renders an SDL window**. First run without null audio drew a real in-engine
+  modal — *"Could not open audio device"* with an OK button — proving GL context,
+  text render and event loop are live. With null audio the log reaches:
+  `Audio initialized … / Renderer: llvmpipe … / Setting frame: 0 / Frame set`,
+  then SIGSEGV.
+
+Symbolized crash (`gdb -batch -ex run -ex bt`):
+
+```
+#0 Counter::set(double)                         this == 0x0
+#1 Frames::on_frame_1_start_events()   → event_func_44  (events_1.cpp)
+#5 GameManager::run / update / update_frame
+```
+
+`event_func_44` (event `59_0`) is
+`((Counter*)get_instance(playvoice4_3_instances))->set(randrange_event(1000)+1);`
+— the 1-in-1000 menu RNG roll. `get_instance(ObjectList&)` returns `back_obj`,
+which is `NULL` here: **frame 1 ("01-Initialize & Setup") never adds
+`playvoice4_3` or `star1_4`** (`on_frame_1_init` emits 11 objects), yet frame 1's
+start events act on both. Those objects *are* emitted for frames 2–3
+(`events_2.cpp` `on_frame_3_init`), so this is a **frame-1-specific object-instance
+emission gap** in the patched converter — the README's "undefined frame-local
+instances … are omitted" path dropping instances on this frame that resolve on
+later frames — compounded by conditions on event 59 being emitted as blank
+(`event_func_44` has empty condition lines; cf. `event_func_37`'s `if (!((false)))`).
+
+This is `rebuilt-runtime` progress only: the engine boots and enters real decoded
+event logic, but no frame has drawn game content and no title/night transition
+has occurred. Next slice: fix frame-1 instance resolution in the converter (or,
+as an explicit compatibility placeholder, make generated single-object actions
+no-op on a null `get_instance`), then rerun the boot and compare frame-1→title.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:
