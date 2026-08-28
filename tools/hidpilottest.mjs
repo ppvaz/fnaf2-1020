@@ -36,6 +36,7 @@ export const SEARCH_KNOBS = {
   openGfFlick: 0,          // pkg 5: opening gains a monitor-down mask flick across the frame-300 GF check
   preReadHallMs: 0,        // pkg 4: a hall pulse this many ms into leftNormal, before the read (needs openGfFlick; tight-Foxy nights only)
   bangAgeFrames: 0,        // pkg 4: only fire that pulse when the last departure bang is younger than this (0 = unconditional)
+  attackBangGateMs: 0,     // item 10: gate leftAttack's mask-off/raise on the observed BB departure bang -- fire it `d` ms after the bang instead of the blind `off = b + 5.02 + phaseMargin(900)`, pulled EARLIER only, never delayed (0 = the blind wait)
 };
 
 class HidPilot {

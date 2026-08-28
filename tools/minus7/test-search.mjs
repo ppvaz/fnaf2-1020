@@ -4,8 +4,11 @@
 import * as C from '../../src/config.js';
 import { Sim } from '../../src/engine.js';
 import { cloneSim, view, ACTIONS, run } from './sim.mjs';
-import { searchParams, baselineLadder, evalParams } from './paramsearch.mjs';
+import { searchParams, baselineLadder, evalParams, SHIPPED_GEOM } from './paramsearch.mjs';
 import { enumeratePackage4 } from '../constrainedsearch.mjs';
+import { SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { build, devicePlan, idleUntilMs, replay } from '../device/recipe.mjs';
+import { modelGate } from '../device/human-gate.mjs';
 
 let fails = 0;
 const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`); if (!cond) fails++; };
@@ -79,6 +82,63 @@ const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`);
   const frontier = searchParams({ nights: [6], runs: RUNS, beam: 1, rounds: 0, shape: 'iid' });
   ok('zero-perturbation search frontier is the single unmodified point',
     frontier.length === 1 && Object.keys(frontier[0].params).every(k => frontier[0].params[k] === 0));
+}
+
+// --- the sweep-geometry axis: a fixed geom threads through evalParams, and the
+//     shipped geom is inert (identical to omitting it).
+{
+  const base = evalParams({}, [6], 120, 'iid', 1, SHIPPED_GEOM);
+  const omit = evalParams({}, [6], 120, 'iid');
+  ok('SHIPPED_GEOM is inert (== omitting geom)', base.nights[6].pct === omit.nights[6].pct);
+
+  // A tight LIGHT_AFTER geometry must (a) still build and replay, (b) actually
+  // change the outcome -- if it did not, the axis would be doing nothing.
+  const tight = evalParams({}, [6], 200, 'correlated', 1,
+    { sweepSlotMs: 46, deviceSpacingMs: 54, sweepContactMs: 25 });
+  ok('a LIGHT_AFTER geom builds + replays through evalParams',
+    tight.ok && tight.nights[6].runs === 200);
+  const shippedC = evalParams({}, [6], 200, 'correlated', 1, SHIPPED_GEOM);
+  ok(`the geometry axis moves n6 (tight ${tight.nights[6].pct} vs shipped ${shippedC.nights[6].pct})`,
+    Math.abs(tight.nights[6].pct - shippedC.nights[6].pct) > 3);
+}
+
+// --- item 10 (attackBangGateMs): the bang-anchored attack-raise. This is a
+//     RECORDED NEGATIVE (plan 16 pkg 4), and the shape of the negative is the
+//     point: fire the attack cycle's mask-off/reset/raise the instant a BB
+//     departure bang is heard, and it clears every story night ~90% -- but
+//     ONLY with a perfect instant bang oracle. At any realistic detection
+//     latency the recovery sweep (pinned to the cycle end) drags late and toy
+//     coverage collapses below the blind baseline. Default-off; this pins both
+//     halves so the search cannot rediscover the lat=0 number as a win.
+{
+  const pt = (night) => {
+    const r = build({ night });
+    const p = devicePlan(r, {});
+    let t = `#night ${r.night}\n#idle-until ${idleUntilMs(r.night)}\n`;
+    for (const [n, l] of Object.entries(p)) t += `#cycle ${n} ${r.cycles[n].lengthMs}\n${l.join('\n')}\n`;
+    return t;
+  };
+  const RUNS = 300;
+  const gate6 = (latMs) => modelGate(pt(6), {
+    night: 6, runs: RUNS, slackMs: 60, shape: 'correlated',
+    replayFn: (plan, o) => replay(plan, { ...o, bangLatencyMs: latMs }),
+  }).survived;
+
+  const blind = gate6(0);
+  let text0, oracle, laggy;
+  SEARCH_KNOBS.attackBangGateMs = 1;
+  try {
+    text0 = pt(6);
+    oracle = gate6(0);      // perfect instant oracle
+    laggy = gate6(150);     // a realistic device bang-detection latency
+  } finally { SEARCH_KNOBS.attackBangGateMs = 0; }
+
+  ok('item 10: the knob folds the recovery sweep into the maskraise row',
+    /maskraise \d+ hall \d+ bang 1 \d+ \d+ \d+ [\d,]+ \d+/.test(text0));
+  ok(`item 10 at a perfect instant oracle is a large win (n6 ${oracle}/${RUNS} vs blind ${blind}/${RUNS})`,
+    oracle > blind + RUNS * 0.15);
+  ok(`item 10 at 150 ms bang latency is worse than blind (n6 ${laggy}/${RUNS} vs blind ${blind}/${RUNS}) -- the win needs an oracle the phone has not got`,
+    laggy < blind);
 }
 
 console.log(fails ? `\n${fails} check(s) failed` : '\nall checks passed');

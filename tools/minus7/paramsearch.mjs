@@ -57,9 +57,21 @@ export const FLOORS = {
 };
 const KNOBS = Object.keys(FLOORS);
 
-function planTextFor(night) {
-  const recipe = build({ night });
-  const plan = devicePlan(recipe);
+// The sweep geometry is NOT a beam knob -- its landscape is phase-locked and
+// chaotic (2 ms of emitted spacing flips n6 survival by 20 points), so
+// `tools/minus7/geometrysearch.mjs` maps it on a dense grid instead. A geometry
+// enters this search as a FIXED context the timing knobs are then optimised on
+// top of -- which is how the two levers compose: pick the sweep geometry, then
+// search the attack/opening/bang-anchor knobs at that geometry. `null` fields
+// mean devicePlan()'s own device-validated defaults (spacing 133, contact 100).
+export const SHIPPED_GEOM = { sweepSlotMs: 120, deviceSpacingMs: null, sweepContactMs: null };
+
+function planTextFor(night, geom = SHIPPED_GEOM) {
+  const recipe = build({ night, sweepSlotMs: geom.sweepSlotMs });
+  const plan = devicePlan(recipe,
+    geom.deviceSpacingMs != null || geom.sweepContactMs != null
+      ? { deviceSpacingMs: geom.deviceSpacingMs, sweepContactMs: geom.sweepContactMs }
+      : {});
   let text = `#night ${recipe.night}\n#idle-until ${idleUntilMs(recipe.night)}\n`;
   for (const [name, lines] of Object.entries(plan))
     text += `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}\n`;
@@ -70,7 +82,7 @@ function planTextFor(night) {
 // per-night { pct, won, runs, cvar } plus `ok` (false if any night threw --
 // an over-floor value that devicePlan/makeRoom rejects, which is the sourced
 // constraint doing its job).
-export function evalParams(params, nights, runs, shape, seedStart = 1) {
+export function evalParams(params, nights, runs, shape, seedStart = 1, geom = SHIPPED_GEOM) {
   for (const k of KNOBS) {
     const v = params[k] || 0;
     if (!Number.isInteger(v) || v < FLOORS[k].min || v > FLOORS[k].max)
@@ -87,7 +99,7 @@ export function evalParams(params, nights, runs, shape, seedStart = 1) {
   const out = { params: { ...params }, nights: {}, ok: true };
   try {
     for (const night of nights) {
-      const text = planTextFor(night);
+      const text = planTextFor(night, geom);
       // Keep the per-seed vector from modelGate itself so screening and
       // admission share exactly one jitter/replay implementation.
       const gate = modelGate(text, { night, runs, shape, seedStart, outcomes: true });
@@ -105,8 +117,8 @@ export function evalParams(params, nights, runs, shape, seedStart = 1) {
   return out;
 }
 
-export function baselineLadder(nights, runs, shape = 'iid') {
-  const r = evalParams({}, nights, runs, shape);
+export function baselineLadder(nights, runs, shape = 'iid', geom = SHIPPED_GEOM) {
+  const r = evalParams({}, nights, runs, shape, 1, geom);
   const lad = {};
   for (const n of nights) lad[n] = r.nights[n].pct;
   return lad;
@@ -118,9 +130,9 @@ function dominates(a, b, nights) {  // a dominates b: >= on every night pct AND 
   return axes.every(d => d >= -1e-9) && axes.some(d => d > 1e-9);
 }
 
-export function searchParams({ nights, runs = 400, beam = 12, rounds = 6, shape = 'correlated', admit = 0 } = {}) {
+export function searchParams({ nights, runs = 400, beam = 12, rounds = 6, shape = 'correlated', admit = 0, geom = SHIPPED_GEOM } = {}) {
   const zero = Object.fromEntries(KNOBS.map(k => [k, 0]));
-  let frontier = [evalParams(zero, nights, runs, shape)];
+  let frontier = [evalParams(zero, nights, runs, shape, 1, geom)];
   let pool = [...frontier];
   for (let round = 0; round < rounds; round++) {
     const cand = [];
@@ -131,7 +143,7 @@ export function searchParams({ nights, runs = 400, beam = 12, rounds = 6, shape 
           if (v < FLOORS[k].min || v > FLOORS[k].max) continue;
           const params = { ...node.params, [k]: v };
           if (JSON.stringify(params) === JSON.stringify(node.params)) continue;
-          const r = evalParams(params, nights, runs, shape);
+          const r = evalParams(params, nights, runs, shape, 1, geom);
           if (r.ok) cand.push(r);
         }
       }
@@ -148,7 +160,7 @@ export function searchParams({ nights, runs = 400, beam = 12, rounds = 6, shape 
   // frontier admission: re-score the top candidates at `admit` seeds
   if (admit) {
     for (const node of frontier.slice(0, beam)) {
-      const hi = evalParams(node.params, nights, admit, shape);
+      const hi = evalParams(node.params, nights, admit, shape, 1, geom);
       node.admit = hi.nights;
     }
   }
@@ -163,14 +175,21 @@ function main() {
   const beam = +arg('beam', '12');
   const rounds = +arg('rounds', '6');
   const shape = arg('shape', 'correlated');
+  // --geom=slot:dev:con fixes the sweep geometry the timing knobs search on top
+  // of (see geometrysearch.mjs). Omitted = the shipped 120/133/100.
+  const geomArg = arg('geom', '');
+  const geom = geomArg
+    ? (([s, d, c]) => ({ sweepSlotMs: s, deviceSpacingMs: d || null, sweepContactMs: c || null }))(geomArg.split(':').map(Number))
+    : SHIPPED_GEOM;
 
-  console.log(`plan-16 parameter search  nights ${nights}  screen ${runs} seeds  shape ${shape}`);
+  console.log(`plan-16 parameter search  nights ${nights}  screen ${runs} seeds  shape ${shape}` +
+    (geomArg ? `  geom ${geomArg}` : ''));
   for (const sh of ['iid', 'correlated']) {
-    const lad = baselineLadder(nights, runs, sh);
-    console.log(`  803feb3 baseline (${sh}): ${nights.map(n => `n${n} ${lad[n]}`).join('  ')}`);
+    const lad = baselineLadder(nights, runs, sh, geom);
+    console.log(`  baseline (${sh}${geomArg ? ', this geom' : ', 803feb3'}): ${nights.map(n => `n${n} ${lad[n]}`).join('  ')}`);
   }
   console.log('');
-  const frontier = searchParams({ nights, runs, beam, rounds, shape, admit });
+  const frontier = searchParams({ nights, runs, beam, rounds, shape, admit, geom });
   console.log(`\nPareto frontier (${frontier.length} members), best-min first:`);
   for (const node of frontier.slice(0, 8)) {
     const line = nights.map(n => `n${n} ${node.nights[n].pct}%`).join('  ');

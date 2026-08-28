@@ -579,10 +579,30 @@ function foldMaskRaise(name, lines) {
     }
     const at = +cur[0] - MASK_RAISE_SHIFT_MS;
     if (at < 0) throw new Error(`${name}: folding mask + raise starts before the cycle`);
-    out.push(isHallRaise
-      ? `${at} maskraise ${MASK_RAISE_GAP_MS} hall ${next[2]}`
-      : `${at} maskraise ${MASK_RAISE_GAP_MS} up 0`);
-    i++;
+    // Item 10: the attack cycle's mask-off + hall reset + raise sits blind
+    // behind a 900 ms phase pad because the policy cannot see the game's tick
+    // phase, so under jitter it can land BEFORE BB's 5th mask-tick (the
+    // `onCamsUp` walk-in that PROGRESS item 10 traced) or waste the pad when he
+    // left early. `bbLeave()` emits a real departure bang the instant he goes.
+    // Gating the group on that bang fires it `gateMs` after the observed bang,
+    // clamped near the nominal time, and drags the recovery sweep with it so
+    // the toy stun-refresh stays a fixed offset behind the raise instead of
+    // colliding with MONITOR_ANIM_UP (the "Withered inside-office rose"
+    // regression the item-11 scratch prototype hit). Default off.
+    const sweepNext = lines[i + 2]?.split(' ');
+    const canBang = name === 'attack' && isHallRaise &&
+      SEARCH_KNOBS.attackBangGateMs > 0 && sweepNext?.[1] === 'sweep';
+    if (canBang) {
+      const lateSweepOff = lines[lines.length - 1].split(' ')[0];
+      out.push(`${at} maskraise ${MASK_RAISE_GAP_MS} hall ${next[2]} bang ` +
+        `${SEARCH_KNOBS.attackBangGateMs} ${sweepNext[0]} ${sweepNext.slice(2).join(' ')} ${lateSweepOff}`);
+      i += 2;
+    } else {
+      out.push(isHallRaise
+        ? `${at} maskraise ${MASK_RAISE_GAP_MS} hall ${next[2]}`
+        : `${at} maskraise ${MASK_RAISE_GAP_MS} up 0`);
+      i++;
+    }
   }
   return out;
 }
@@ -737,7 +757,14 @@ export function devicePlan(recipe, {
 export function replay(plan, { night, seed = 1, worst = false,
                                pilotOffset = 10, readLatencyMs = 550,
                                classifyMs = 250, idleUntilMs = 0,
-                               attackWindowMs = 10000 } = {}) {
+                               attackWindowMs = 10000,
+                               // Item 10 control: how long after the game emits
+                               // a departure thud before the pilot can act on
+                               // it. 0 = a perfect instant oracle (not a
+                               // phone). `bbOnlyBang` = ignore non-BB vent
+                               // departures (a phone's mic cannot tell them
+                               // apart -- all use THUD_SAMPLE).
+                               bangLatencyMs = 0, bbOnlyBang = false } = {}) {
   if (night === undefined) throw new Error('replay() needs the night the plan was built for');
   const sim = new Sim({ seed, night, worst });
   const f = msv => Math.round(msv * C.FPS / 1000);
@@ -758,12 +785,35 @@ export function replay(plan, { night, seed = 1, worst = false,
         if (kind === 'hallraise') at(t, 'press', 'monitor');
       } else if (kind === 'maskraise') {
         const [gap, mode, duration] = rest;
-        at(t, 'press', 'mask');
-        if (mode === 'hall') {
-          at(t + f(+gap), 'press', 'light');
-          at(t + f(+gap) + f(+duration), 'release', 'light');
+        if (rest[3] === 'bang') {
+          // Item 10: fire the attack cycle's mask-off/reset/raise group
+          // `gateMs` after the observed BB departure bang -- earlier than the
+          // blind nominal time when he left early, later when jitter pushed the
+          // 5th tick past it (the walk-in PROGRESS item 10 traced). A hard cap
+          // (maxDelay) past nominal is the fallback if no qualifying bang ever
+          // arrives. `base` is this branch's own anchor so a stale bang from
+          // the previous cycle does not count.
+          //
+          // rest = [gap, hall, dur, 'bang', gateMs, sweepOff, spacing, contact,
+          //         cams, lateSweepOff]  (the recovery sweep folded in so it
+          //         can be dragged with the raise). One 'bangraise' entry that
+          //         re-pushes itself every 2 frames until it fires -- safe
+          //         because the queue drain sorts before testing its head.
+          const d = { nominalT: t, gap: f(+gap),
+            dur: mode === 'hall' ? f(+duration) : 0, hall: mode === 'hall',
+            gateFrames: f(+rest[4]), base, fired: false, maxDelay: f(400),
+            sweepRel: f(+rest[5]) - f(+offs), spacing: +rest[6],
+            contact: +rest[7], cams: rest[8],
+            sweepCap: base + f(+rest[9]) - f(500) };
+          at(t - f(1400), 'bangraise', d);
+        } else {
+          at(t, 'press', 'mask');
+          if (mode === 'hall') {
+            at(t + f(+gap), 'press', 'light');
+            at(t + f(+gap) + f(+duration), 'release', 'light');
+          }
+          at(t + f(+gap), 'press', 'monitor');
         }
-        at(t + f(+gap), 'press', 'monitor');
       } else if (kind === 'sweep') {
         const [spacing, contact, cams] = rest;
         // LIGHT_AFTER: the select's Click writes `viewing` on release, then the
@@ -816,11 +866,19 @@ export function replay(plan, { night, seed = 1, worst = false,
   while (sim.alive && !sim.won) {
     while (eventCursor < sim.events.length) {
       const event = sim.events[eventCursor++];
-      if (event.type === 'vent-bang' && event.data?.leaving)
-        lastDepartureBang = event.f;
+      if (event.type === 'vent-bang' && event.data?.leaving &&
+          (!bbOnlyBang || event.data.who === 'bb'))
+        lastDepartureBang = event.f + f(bangLatencyMs);
     }
-    while (queue.length && queue[0][0] <= sim.frame) {
+    // Sort BEFORE testing the head: entries pushed at runtime (recent-hall's
+    // release, item 10's bangraise group) land at the array tail, and a raw
+    // `queue[0][0]` test can be a far-future entry that keeps the loop from
+    // ever draining them -- they then fire whenever some later entry happens
+    // to re-enter this loop, tens of frames late. Nothing pushed at parse time
+    // is affected (it is all sorted together on the first drain).
+    while (queue.length) {
       queue.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+      if (queue[0][0] > sim.frame) break;
       const [, , kind, act] = queue.shift();
       if (kind === 'press') sim.press(act);
       else if (kind === 'release') sim.release(act);
@@ -831,6 +889,39 @@ export function replay(plan, { night, seed = 1, worst = false,
         if (sim.frame - lastDepartureBang < act.age) {
           sim.press('light');
           at(sim.frame + f(act.duration), 'release', 'light');
+        }
+      }
+      else if (kind === 'bangraise') {
+        const d = act;
+        if (!d.fired) {
+          const bangReady = lastDepartureBang > d.base &&
+            sim.frame >= lastDepartureBang + d.gateFrames;
+          // Fire on the bang (+gate), earlier or later than nominal; a hard cap
+          // past nominal is the fallback if no qualifying bang ever arrives.
+          if (bangReady || sim.frame >= d.nominalT + d.maxDelay) {
+            d.fired = true;
+            const ft = sim.frame;
+            at(ft, 'press', 'mask');
+            if (d.hall) {
+              at(ft + d.gap, 'press', 'light');
+              at(ft + d.gap + d.dur, 'release', 'light');
+            }
+            at(ft + d.gap, 'press', 'monitor');
+            // Drag the recovery sweep with the raise (fixed offset behind it),
+            // but never past its cycle-end stun-bridge pin.
+            const sweepAt = Math.min(d.sweepCap, ft + d.sweepRel);
+            const la = d.contact < 50;
+            const lightGap = la ? f(LA_SELECT_MS + LA_SETTLE_MS) : 1;
+            const lightHold = la ? f(d.contact) : f(100);
+            d.cams.split(',').forEach((n, i) => {
+              const st = sweepAt + f(i * d.spacing);
+              at(st, 'press', 'cam:' + n);
+              at(st + lightGap, 'press', 'light');
+              at(st + lightGap + lightHold, 'release', 'light');
+            });
+          } else {
+            at(sim.frame + 2, 'bangraise', d);   // check again in ~33 ms
+          }
         }
       }
       else if (kind === 'snapshot') {
