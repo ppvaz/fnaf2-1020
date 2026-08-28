@@ -1376,3 +1376,53 @@ constraint. n1-n6 clear at machine precision with the *shipped* geometry; the
 sub-70 ladder is `human-gate.mjs`'s iid model on a geometrically-wedged Foxy
 reset. A faster or lighter actuator does not touch that. The open levers stay
 item 12's correlated jitter shape and item 10's bang-anchored reset.
+
+## The arming pair merged into a drag: topology, not time (2026-08-28)
+
+`n2-minustoys-0117` planned **17 ms of released time** between the opening's
+`cam9` and `monitor` contacts — the split-arming geometry. The HID trace reports
+that pair delivered with **0 ms released** ("only 0 ms released between [cam9]
+and [monitor] at 1400 ms"): Fusion saw one finger dragging from the CAM 09
+button to the monitor button rather than two taps. Full run record in
+[`ON-DEVICE-VALIDATION.md`](ON-DEVICE-VALIDATION.md) §"The Minus Toys open-loop
+policy is refuted on the phone".
+
+This is worth naming separately from jitter, because the obvious repair — make
+the gap bigger — is the expensive one, and the schedule has only 33 ms of slack
+either way at that point.
+
+**The gap is a timing quantity; "two taps" is a topological one.** Nothing
+requires the separation to be expressed in time at all:
+
+- Emit the two contacts on **distinct multitouch slots / tracking IDs**. Two
+  concurrent-capable contacts at different tracking IDs cannot be interpolated
+  into one finger's motion path, whatever the released interval is.
+- Or interpose one report at a coordinate far from both, so any interpolation
+  that did occur is not a straight line between two buttons.
+
+Both are host-side changes to `hid-multi`, both are mock-gatable without a
+phone, and neither costs schedule margin. **Untested — this is a proposed
+repair, not a measured one**, and the control that would confirm it is the same
+HID trace plus `camtrace.py` on the button highlight.
+
+**Do not read this as "the actuator is the problem".** It is the only actuator
+defect in the run record, and closing it does not move the phase margin that
+actually killed the night (`ON-DEVICE-VALIDATION.md` §"The frontier is phase,
+not actuation").
+
+### Landscape note: the platform keeps closing doors uhid does not use (2026-08-28)
+
+Adds one row to §"Prior art" without revising any measurement. The trend the
+prior-art survey found — direct `/dev/input` and direct-framebuffer paths dying
+at Android 9/10 under SELinux, the field converging on `app_process` +
+`InputManager` reflection — continues: **Android 16's Advanced Protection Mode
+is reported to restrict `AccessibilityService`-based automation**, the other
+family of general-purpose Android input automation
+[CLAIMED — APK teardown reporting, not shipped-behaviour documentation:
+https://www.androidauthority.com/android-advanced-protection-mode-accessibility-apk-teardown-3640742/].
+
+The consequence for this project is only reassurance, and should not be
+overstated: the `hid-multi` route is a kernel uhid device, not an input-injection
+API and not an accessibility service, so none of these restrictions apply to it.
+That is a reason not to migrate toward the mainstream paths, not evidence that
+anything here needs to change.
