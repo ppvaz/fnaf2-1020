@@ -66,6 +66,20 @@ index 0000000..8f91c0c
 +#define commit_parameters(x)
 +
 +#include "shadercommon.cpp"
+diff --git a/Chowdren/base/bitarray.h b/Chowdren/base/bitarray.h
+index 4795776..50588aa 100644
+--- a/Chowdren/base/bitarray.h
++++ b/Chowdren/base/bitarray.h
+@@ -9,7 +9,8 @@
+ #define alloca _alloca
+ #endif
+ 
+-#elif defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_WIIU)
++#elif defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_WIIU) || \
++      defined(CHOWDREN_IS_ANDROID)
+ #include <alloca.h>
+ #else
+ #include <stdlib.h>
 diff --git a/Chowdren/base/desktop/platform.cpp b/Chowdren/base/desktop/platform.cpp
 index 0a7095c..c10e2ab 100644
 --- a/Chowdren/base/desktop/platform.cpp
@@ -165,6 +179,19 @@ index 2a988b7..9064f7f 100644
  
  // BaseFile
  
+diff --git a/Chowdren/base/fpslimit.cpp b/Chowdren/base/fpslimit.cpp
+index 30eb23e..ae91afc 100644
+--- a/Chowdren/base/fpslimit.cpp
++++ b/Chowdren/base/fpslimit.cpp
+@@ -30,7 +30,7 @@ void FPSLimiter::finish()
+ {
+     double current_time = platform_get_time();
+ 
+-#ifdef CHOWDREN_IS_DESKTOP
++#if defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_ANDROID)
+     if (framerate < 100) {
+         double t = normalize(next_update - current_time);
+         platform_sleep(t);
 diff --git a/Chowdren/base/frame.h b/Chowdren/base/frame.h
 index 18d207b..166b9e4 100644
 --- a/Chowdren/base/frame.h
@@ -307,6 +334,19 @@ index 8489546..b31e648 100644
  
  #ifdef CHOWDREN_USE_D3D
  #define NOMINMAX
+diff --git a/Chowdren/base/keydef.h b/Chowdren/base/keydef.h
+index 6fd2a25..2ad50c1 100644
+--- a/Chowdren/base/keydef.h
++++ b/Chowdren/base/keydef.h
+@@ -1,7 +1,7 @@
+ #ifndef CHOWDREN_KEYDEF_H
+ #define CHOWDREN_KEYDEF_H
+ 
+-#ifdef CHOWDREN_IS_DESKTOP
++#if defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_ANDROID)
+ 
+ #include "SDL_keycode.h"
+ #include "SDL_mouse.h"
 diff --git a/Chowdren/base/manager.h b/Chowdren/base/manager.h
 index 47a213e..5c8de41 100644
 --- a/Chowdren/base/manager.h
@@ -336,9 +376,17 @@ index 47a213e..5c8de41 100644
  {
      if (list.empty())
 diff --git a/Chowdren/base/media.cpp b/Chowdren/base/media.cpp
-index 77baf6b..307aaf9 100644
+index 77baf6b..86709f1 100644
 --- a/Chowdren/base/media.cpp
 +++ b/Chowdren/base/media.cpp
+@@ -1,5 +1,5 @@
+-#ifdef CHOWDREN_IS_DESKTOP
+-#include "desktop/audio.h"
++#if defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_ANDROID)
++#include "desktop/audio.h"   // OpenAL (openal-soft on Android, OpenSL ES backend)
+ #else
+ #include "audio.h"
+ #endif
 @@ -293,6 +293,11 @@ void Media::play(const std::string & in, int channel, int loop)
  
  void Media::play_id(unsigned int id, int channel, int loop)
@@ -432,6 +480,21 @@ index 2d07cf0..6747410 100644
 +extern FrameObject * default_text_instance;
 +
  #endif // CHOWDREN_TEXT_H
+diff --git a/Chowdren/base/run.cpp b/Chowdren/base/run.cpp
+index fd70fdf..fd43617 100644
+--- a/Chowdren/base/run.cpp
++++ b/Chowdren/base/run.cpp
+@@ -27,7 +27,9 @@ GameManager manager;
+ #include "crashdump.cpp"
+ #include "transition.cpp"
+ 
+-#if defined(CHOWDREN_IS_DESKTOP)
++#if defined(CHOWDREN_IS_DESKTOP) || defined(CHOWDREN_IS_ANDROID)
++// on Android this also renames main -> SDL_main (SDL_main.h), which the SDL
++// Java activity dlsym's out of libmain.so
+ #include "SDL.h"
+ #endif
+ 
 diff --git a/Chowdren/base/stringcommon.h b/Chowdren/base/stringcommon.h
 index ed74b78..f9d064d 100644
 --- a/Chowdren/base/stringcommon.h
