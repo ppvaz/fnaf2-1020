@@ -153,6 +153,18 @@ const ENGINE = [
   // armed, the no-split control still loses, and every instruction kind and
   // control it emits is one the on-phone interpreter implements.
   ['minus toys plan', ['device/test-minus-toys-plan.mjs']],
+  // The per-instruction timing margin map for that plan: how far each press can
+  // move before a seed dies. Pins the two facts the 2026-08-28 device-run
+  // writeup rests on -- the split-arming pair has ~one Fusion poll of slack, and
+  // the whole-schedule phase tolerance (33/99 ms) is far under the 302 ms epoch
+  // bracket the run reported.
+  ['minus toys margin', ['device/test-minus-toys-margin.mjs']],
+  // The robustness objective: replays the loop through a calibrated model of
+  // the first device run's clock error (epoch bracket, game-vs-wall drift,
+  // per-press jitter) with an optional per-hour AM re-anchor. A search fitness
+  // function -- the deterministic gate's 200/200 has ~66 ms of phase tolerance
+  // behind it.
+  ['minus toys jitter', ['device/test-minus-toys-jitter.mjs']],
   // The engine cannot price an input the port refuses, so the plan is checked
   // against the phone's measured input-acceptance gaps separately.
   ['device input gaps', ['device/test-device-input-gaps.mjs']],
