@@ -315,9 +315,24 @@ export const AI_BY_NIGHT = {
   7: [{ hour: 0, set: { ...TEN_TWENTY, puppet: 15 } }],                   // g787, g821
 };
 
-// The rows that fire as this hour begins.
-export const aiUpdates = (night, hour) =>
-  (AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]).filter(row => row.hour === hour);
+// A Custom Night AI vector: the ten adjustable dials (`AI_DIALS`) at whatever
+// the player set them to. The menu has no Puppet dial and no per-hour rows, so
+// a custom night is a single 12 AM row with the Puppet pinned at 15 (g821).
+// `night` stays 7, so every sourced `night >= 7` rule still applies (the
+// 45-frame office fuse, the CAM 10 parked marker). A dial the caller omits
+// stays 0; the per-frame caps (g829/g830/g856-863) still clamp on apply, so a
+// search that dials Foxy to 20 gets 17, Golden Freddy 10, the rest 15.
+export const customNightRow = (dials) => ({
+  hour: 0,
+  set: { ...dials, puppet: dials.puppet ?? PUPPET_AI },
+});
+
+// The rows that fire as this hour begins. `customNight` (an `AI_DIALS` vector)
+// replaces the whole night table with one 12 AM row.
+export const aiUpdates = (night, hour, customNight = null) =>
+  customNight
+    ? (hour === 0 ? [customNightRow(customNight)] : [])
+    : (AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]).filter(row => row.hour === hour);
 
 // The highest AI a character can hold at any point of a night, read off the
 // same rows the engine applies. A `{ oneIn: N }` row is 1 on its top draw, so
@@ -328,9 +343,10 @@ export const aiUpdates = (night, hour) =>
 // show it. g673 zeroes every counter at night start, so a character no row
 // ever names stays at 0 for the whole night: Balloon Boy on Night 1 cannot
 // act, while Night 3 sets him to 1 and then 2 and merely makes him rare.
-export const peakAi = (night, id) => {
+export const peakAi = (night, id, customNight = null) => {
+  const rows = customNight ? [customNightRow(customNight)] : (AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]);
   let peak = 0;
-  for (const row of AI_BY_NIGHT[night] ?? AI_BY_NIGHT[7]) {
+  for (const row of rows) {
     const level = row.set[id];
     if (level === undefined) continue;
     peak = Math.max(peak, Math.min(typeof level === 'number' ? level : 1, aiCap(id)));
@@ -338,8 +354,9 @@ export const peakAi = (night, id) => {
   return peak;
 };
 
-// Whether the sourced table lets this character act at all on this night.
-export const canAct = (night, id) => peakAi(night, id) > 0;
+// Whether the sourced table lets this character act at all on this night (or,
+// with `customNight`, whether that vector arms it).
+export const canAct = (night, id, customNight = null) => peakAi(night, id, customNight) > 0;
 
 // Power [SOURCED]
 // [SOURCED: decompile — the battery counter (true name `battery life`; the

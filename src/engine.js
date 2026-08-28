@@ -9,6 +9,10 @@ export class Sim {
       seed: (Math.random() * 4294967295) >>> 0,
       worst: false,
       night: 7,             // sourced tables index by night; 7 = 10/20 mode
+      // A Custom Night AI vector (an `AI_DIALS` map). Replaces the night-7 AI
+      // table with the player's ten dials; requires `night: 7`, since Custom
+      // Night is night 7 in the menus and every `night >= 7` rule must apply.
+      customNight: null,
       android: true,        // canonical target; flag retained only for old test modes
       speed: 1.0,
       // Off by default: the per-frame report channels cost about half of a
@@ -33,6 +37,9 @@ export class Sim {
       passiveWitheredLookStunFrames: 0,
       selectedCameraGate: true,
     }, opts);
+
+    if (this.opts.customNight && this.opts.night !== 7)
+      throw new Error('customNight requires night: 7 (Custom Night is night 7 in the menus)');
 
     this.rng = new Rng(this.opts.seed, this.opts.worst);
     this.frame = 0;
@@ -140,7 +147,7 @@ export class Sim {
   // ---------------------------------------------------------------- helpers
   // The rows that fire as `hour` begins, capped as g829/g830/g856-863 cap them.
   applyAiHour(hour) {
-    for (const row of C.aiUpdates(this.opts.night, hour)) {
+    for (const row of C.aiUpdates(this.opts.night, hour, this.opts.customNight)) {
       for (const [id, level] of Object.entries(row.set)) {
         const value = typeof level === 'number' ? level : this.rollAi(level.oneIn);
         this.ai[id] = Math.min(value, C.aiCap(id));

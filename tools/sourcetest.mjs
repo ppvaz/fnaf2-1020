@@ -507,6 +507,37 @@ eq('g494-497', "the Puppet's bare <= roll is 16/20 at AI 15",
     C.MO_CHANCE(s.ai.bb), C.BB_MOVE_CHANCE);
   eq('g821', 'the Puppet has no dial and stays at 15', s.ai.puppet, C.PUPPET_AI);
 }
+{
+  // Custom Night: `customNight` (an AI_DIALS vector) replaces the whole night
+  // table with one 12 AM row. g787 copies the ten dials the player set; the
+  // menu has no Puppet dial, so g821 still pins him at 15. `night` stays 7, so
+  // every night>=7 rule keeps applying -- which is why customNight requires it.
+  const only = (dials) => bare({ night: 7, customNight: dials });
+
+  const tc = only({ toychica: 20 });
+  eq('g787', 'a custom dial applies, capped at 15', tc.ai.toychica, C.STALLED_AI);
+  eq('g673', 'a dial the vector omits stays at zero', tc.ai.toybonnie, 0);
+  eq('g821', 'the Puppet is still armed on a custom night', tc.ai.puppet, C.PUPPET_AI);
+  ok('canAct', 'canAct reads the custom vector, not the night-7 table',
+    C.canAct(7, 'toychica', { toychica: 20 }) && !C.canAct(7, 'toybonnie', { toychica: 20 }));
+  eq('peakAi', 'peakAi caps the custom dial like the engine does',
+    C.peakAi(7, 'foxy', { foxy: 20 }), C.FOXY_AI);
+
+  const max = only(Object.fromEntries(C.AI_DIALS.map(id => [id, 20])));
+  ok('g829/g830/g856-863', 'an all-20 custom vector clamps to the per-frame caps',
+    max.ai.foxy === C.FOXY_AI && max.ai.golden === 10 && max.ai.bb === C.STALLED_AI);
+
+  // Only the armed characters can end the night: nothing but the Puppet is
+  // dialed, so an unplayed run can only die to the Puppet.
+  const idle = new Sim({ seed: 7, night: 7, customNight: {} });
+  while (idle.alive && !idle.won) idle.tick();
+  ok('customNight', 'with only the Puppet armed, only the Puppet kills',
+    !idle.won && idle.death.reason === 'puppet');
+
+  let threw = false;
+  try { new Sim({ night: 3, customNight: { bb: 20 } }); } catch { threw = true; }
+  ok('customNight', 'the vector refuses a night other than 7', threw);
+}
 
 // power and box
 eq('g866-870', 'night 7 gives 3000 frames of light', C.powerFrames(7), 3000);
