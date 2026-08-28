@@ -278,17 +278,17 @@ The read-true-state route as specced hit a barrier that is not a probe result:
 So routes **2** and **3** (rooted retail observation, loader/shim that has to
 sidestep the same protection) are parked.
 
-**Route 5 does not currently reach an APK either (2026-08-28).** The Chowdren
-fork in use (`fnmwolf/Anaconda`) is **desktop-only** — platforms `generic`
-(desktop SDL2) and `d3d` (Windows); no Android backend, NDK path, or APK
-packaging (`IN-ENGINE-PILOT-RECOMPILE.md` §"The toolchain is desktop-only"). The
-recompile has been driven to a **booting desktop build that renders the FNaF 2
-title screen** and runs the real decoded event logic — a high-fidelity model,
-worth a lot for strategy work — but "package it for Android" (route 5 step) needs
-a Chowdren Android backend built first, which is its own sub-project. So Plan 17's
-APK "Done when" is **blocked on all currently-scoped routes** pending a decision:
-build the Android backend, accept the recompile as a desktop oracle and rescope
-the plan, or redirect effort (see `plans/PROGRESS.md` "Very next step").
+**Route 5's first build was desktop-only; the Android backend is now being built
+(2026-08-28).** The Chowdren fork (`fnmwolf/Anaconda`) ships platforms `generic`
+(desktop SDL2) and `d3d` (Windows) — no Android backend, NDK path, or APK
+packaging. The recompile was driven to a **booting desktop build that renders the
+FNaF 2 title screen** and runs the real decoded event logic, then the toolchain
+gap surfaced. Pedro's call: **build the Chowdren Android backend** (option a).
+Assessed as ~2–4 weeks to a device boot — one fixed-function `Render::` layer
+that fits GL ES 1.1, and a `base/CMakeLists.txt` cross-compile path that already
+expects an external platform backend. Progress and work items in
+`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)" and `plans/PROGRESS.md`. Until it
+boots on the g56, the plan's APK "Done when" remains unmet.
 
 The runtime-attachment survey above is kept per the retractions rule — it
 correctly maps the route; it is the route itself that is declined.

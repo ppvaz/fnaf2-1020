@@ -73,30 +73,30 @@ contact. Setting an environment variable for the last contact therefore emits
 the old all-33 plan. Thread the option through the live entry point and pin it in
 the runner-plan test before claiming that device experiment ran.
 
-**Concrete next action (2026-08-28): a decision on the recompile route.** The
-faithful recompile now **boots a desktop build to the FNaF 2 title screen** and
-runs the real decoded event logic — but the Chowdren fork is **desktop-only**
-(platforms `generic` + `d3d`, no Android backend / NDK / APK packaging;
-`IN-ENGINE-PILOT-RECOMPILE.md` §"The toolchain is desktop-only"). So route 5 as
-built does **not** reach `plans/17`'s "installed research APK" goal, and with
-runtime attachment (routes 2/3) parked, that goal is blocked on all scoped
-routes. Pick one:
+**Concrete next action (2026-08-28): building the Chowdren Android backend
+(option a, Pedro's call).** Feasibility assessed first
+(`IN-ENGINE-PILOT-RECOMPILE.md` §"Route (a)"): **~2–4 weeks to a device boot**,
+made tractable by a single fixed-function `Render::` layer that fits GL ES 1.1
+(no shaders — FNaF 2 compiles none — no immediate mode, no matrix stack) and a
+`base/CMakeLists.txt` cross-compile path that already expects an external
+platform backend. In progress: `--platform linux/amd64` NDK + SDL2
+`android-project` build container (the NDK ships only `linux-x86_64` host
+binaries; Docker's amd64 emulation runs them). Next: confirm an SDL2 sample APK
+builds, then wire in the Chowdren base for a first GLES1 compile. **The Moto g56
+must be connected with USB debugging on for the install step** (`adb devices`
+empty right now).
 
-- **(a) Build a Chowdren Android backend** — SDL2-Android activity + `android_main`,
-  NDK CMake toolchain, `AAssetManager`/bundled-`Assets.dat` loading, touch input,
-  GLES2 render-path validation. Own sub-project; only path from here to an APK.
-  Spike it minimally first (stock Chowdren → phone) before committing.
-- **(b) Accept the recompile as a desktop fidelity oracle** — finish it to a
-  playable night, use it to validate/discover strategies against real event
-  logic (big upgrade over `src/engine.js`). **The Custom Night campaign already
-  names it as its measurement oracle** (Plan 05 pkg 9 / this section's Plan 05
-  block), so this option is not a consolation — it is a dependency of the other
-  active track. Rescope Plan 17's APK "Done when".
-- **(c) Stop the recompile** — if only an on-phone bot counts and neither
-  routes 2/3 nor route 5 reach it, redirect to Plan 05 / the external hybrid.
+The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
+logic) stays valuable regardless — Plan 05's Custom Night campaign names it as
+its pkg 9 measurement oracle. Runtime attachment stays parked (defeats a PAIRIP
+layer, no rooted device — `plans/17` §"Runtime attachment (route 2) is not being
+pursued").
 
-Runtime attachment stays parked (defeats a PAIRIP layer, no rooted device —
-`plans/17` §"Runtime attachment (route 2) is not being pursued").
+Route context (kept): route 5 as first built produced a **desktop binary only**
+— the Chowdren fork has platforms `generic` + `d3d`, no Android backend / NDK /
+APK packaging. With runtime attachment (routes 2/3) parked, option (a) is the
+path to `plans/17`'s "installed research APK" goal; (b) accept the desktop build
+as a fidelity oracle and rescope; (c) stop the recompile. Pedro picked (a).
 
 **Recompile status.** Toolchain committed at `tools/recompile/` (content-free
 patch + config + probes + README). No maintained Python decompiler exists, so the

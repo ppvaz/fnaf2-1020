@@ -555,6 +555,46 @@ the *actual decoded event logic* from the owned CCN — a materially higher-fide
 model than `src/engine.js` for strategy validation and Plan 05 novel-strategy
 work. See `plans/PROGRESS.md` "Very next step" for the decision this forces.
 
+### Route (a) — build the Android backend: feasibility (2026-08-28)
+
+Pedro chose (a). Assessed before committing tooling; **tractable, ~2–4 weeks to a
+device boot.** What makes it so:
+
+- Chowdren has **one** GL abstraction — `base/desktop/renderplatform.{h,cpp}`
+  (~960 lines). Sprites, backdrops, and `FTTextureFont` text all render through
+  the `Render::` namespace; there is no per-subsystem GL code.
+- That layer is **fixed-function client arrays** (`glVertexPointer` /
+  `glColorPointer` / `glTexCoordPointer` / `glDrawArrays`) — natively supported by
+  **GL ES 1.1**. Confirmed absent: shaders (FNaF 2 compiles none —
+  `glslshader.cpp` not in the generated `CMakeLists.txt`), immediate mode
+  (`glBegin`), matrix stack (`glOrtho`/`glMatrixMode` unused; coords are
+  screen-space), display lists (`glGenLists`/`glCallList` nowhere).
+- `base/CMakeLists.txt` already has a `CMAKE_CROSSCOMPILING` path that switches
+  off `CHOWDREN_IS_DESKTOP`, the `desktop/` includes, `desktop/platform.cpp`,
+  `glslshader.cpp` and `fbo.cpp` — i.e. it **expects a cross-target to supply its
+  own platform + render + fbo files**. That is exactly the missing backend, and
+  the desktop renderplatform is close enough to adapt rather than rewrite.
+- `platform.cpp` already carries `CHOWDREN_USE_GLES1` context-creation branches.
+- Dependency surface is small: `base/staticlibs/` is only `libogg`, `libvorbis`,
+  `happyhttp` (`python` OFF). Plus freetype (system dep on desktop; needs an
+  Android cross-build). SDL2's official `android-project` handles the
+  Activity / window / GL context / input / audio-callback plumbing.
+
+Work items: (1) NDK + SDL2 `android-project` + Gradle scaffold; (2) a
+`base/android/` backend — `platform.cpp` (SDL2-Android loop/input/asset path),
+`renderplatform` for GLES1 adapted from desktop, `fbo.cpp` using
+`GL_OES_framebuffer_object` (the desktop build renders every frame to
+`screen_fbo` then blits — FBO is **required**, universal on Android), and an
+`include_gl.h` Android branch; (3) `Assets.dat` (~120 MB) bundled in the APK,
+extracted on first run, `chdir`; (4) boot on the g56 and iterate on ES 1.1
+texture-format / driver quirks. Later: multitouch, OpenAL-soft for Android.
+
+Main unknowns: ES 1.1 on the g56's Mali GPU (a compat layer over ES3 — supported
+but can be quirky), `glTexImage` internalformat matching under ES, and whether
+FTGL's texture path has any hidden desktop-GL assumption. Build environment is an
+`--platform linux/amd64` container (the NDK ships only `linux-x86_64` host
+binaries; Docker's amd64 emulation on Apple Silicon runs them).
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:
