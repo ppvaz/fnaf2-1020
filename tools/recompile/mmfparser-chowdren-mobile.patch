@@ -11,7 +11,7 @@ index 18d207b..166b9e4 100644
      void set_timer(double value);
      void set_lives(int lives);
 diff --git a/Chowdren/base/frameobject.h b/Chowdren/base/frameobject.h
-index 950da8d..cf9b327 100644
+index 950da8d..2f504df 100644
 --- a/Chowdren/base/frameobject.h
 +++ b/Chowdren/base/frameobject.h
 @@ -683,6 +683,45 @@ public:
@@ -60,11 +60,23 @@ index 950da8d..cf9b327 100644
  inline FrameObject * ObjectList::get_wrapped_selection(int index)
  {
      if (!has_selection()) {
+@@ -1025,6 +1064,11 @@ inline void ObjectList::restore_selection()
+ 
+ void setup_default_instance(FrameObject * obj);
+ 
++// Generic throwaway instance for a single-object ACE whose object is absent
++// from the current frame and whose type has no dedicated default (extension
++// stubs, bare FrameObject casts).  Points at default_active (active.cpp).
++extern FrameObject * default_instance;
++
+ #include "frame.h"
+ 
+ inline int FrameObject::get_x()
 diff --git a/Chowdren/base/manager.h b/Chowdren/base/manager.h
-index 47a213e..6727e91 100644
+index 47a213e..5c8de41 100644
 --- a/Chowdren/base/manager.h
 +++ b/Chowdren/base/manager.h
-@@ -119,6 +119,16 @@ inline FrameObject * get_instance(ObjectList & list)
+@@ -119,6 +119,23 @@ inline FrameObject * get_instance(ObjectList & list)
      return list.back_obj;
  }
  
@@ -78,9 +90,113 @@ index 47a213e..6727e91 100644
 +    return list.back();
 +}
 +
++inline FrameObject * get_instance(FlatObjectList & list, FrameObject * def)
++{
++    if (list.empty())
++        return def;
++    return list.back();
++}
++
  inline FrameObject * get_instance(ObjectList & list, int index)
  {
      if (list.empty())
+diff --git a/Chowdren/base/media.cpp b/Chowdren/base/media.cpp
+index 77baf6b..307aaf9 100644
+--- a/Chowdren/base/media.cpp
++++ b/Chowdren/base/media.cpp
+@@ -293,6 +293,11 @@ void Media::play(const std::string & in, int channel, int loop)
+ 
+ void Media::play_id(unsigned int id, int channel, int loop)
+ {
++    // A mobile Play Sample action whose sound reference did not resolve during
++    // conversion carries INVALID_ASSET_ID; treat it as a missing sample
++    // (silence) rather than indexing sounds[] out of bounds.
++    if (id == INVALID_ASSET_ID)
++        return;
+     play(sounds[id], channel, loop);
+ }
+ 
+diff --git a/Chowdren/base/objects/active.cpp b/Chowdren/base/objects/active.cpp
+index 72cc910..5799d90 100644
+--- a/Chowdren/base/objects/active.cpp
++++ b/Chowdren/base/objects/active.cpp
+@@ -599,3 +599,4 @@ public:
+ 
+ static DefaultActive default_active;
+ FrameObject * default_active_instance = &default_active;
++FrameObject * default_instance = &default_active;
+diff --git a/Chowdren/base/objects/counter.cpp b/Chowdren/base/objects/counter.cpp
+index a27e49c..492d459 100644
+--- a/Chowdren/base/objects/counter.cpp
++++ b/Chowdren/base/objects/counter.cpp
+@@ -181,3 +181,21 @@ void Counter::draw()
+         image->draw(x + image->hotspot_x, y + image->hotspot_y, blend_color);
+     }
+ }
++
++// A shared throwaway so an event selecting a Counter absent from the current
++// frame (a global object placed only on a later frame, or a dead cross-frame
++// reference) resolves to a valid object and behaves as the Fusion no-op it is
++// rather than dereferencing NULL.  Mirrors DefaultActive.
++class DefaultCounter : public Counter
++{
++public:
++    DefaultCounter()
++    : Counter(0, 0, 0)
++    {
++        create_alterables();
++        setup_default_instance(this);
++    }
++};
++
++static DefaultCounter default_counter;
++FrameObject * default_counter_instance = &default_counter;
+diff --git a/Chowdren/base/objects/counter.h b/Chowdren/base/objects/counter.h
+index b13f5bd..c6f454e 100644
+--- a/Chowdren/base/objects/counter.h
++++ b/Chowdren/base/objects/counter.h
+@@ -61,4 +61,6 @@ public:
+     }
+ };
+ 
++extern FrameObject * default_counter_instance;
++
+ #endif // CHOWDREN_COUNTER_H
+diff --git a/Chowdren/base/objects/text.cpp b/Chowdren/base/objects/text.cpp
+index 228e3c8..480a5b8 100644
+--- a/Chowdren/base/objects/text.cpp
++++ b/Chowdren/base/objects/text.cpp
+@@ -246,3 +246,19 @@ void FontInfo::set_scale(FrameObject * obj, float scale)
+ 
+ 
+ std::string FontInfo::vertical_tab("\x0B");
++
++// See DefaultCounter / DefaultActive: a valid throwaway for a Text object the
++// current frame does not contain.
++class DefaultText : public Text
++{
++public:
++    DefaultText()
++    : Text(0, 0, 0)
++    {
++        create_alterables();
++        setup_default_instance(this);
++    }
++};
++
++static DefaultText default_text;
++FrameObject * default_text_instance = &default_text;
+diff --git a/Chowdren/base/objects/text.h b/Chowdren/base/objects/text.h
+index 2d07cf0..6747410 100644
+--- a/Chowdren/base/objects/text.h
++++ b/Chowdren/base/objects/text.h
+@@ -58,4 +58,6 @@ public:
+     static void set_scale(FrameObject * obj, float scale);
+ };
+ 
++extern FrameObject * default_text_instance;
++
+ #endif // CHOWDREN_TEXT_H
 diff --git a/Chowdren/base/stringcommon.h b/Chowdren/base/stringcommon.h
 index ed74b78..f9d064d 100644
 --- a/Chowdren/base/stringcommon.h
@@ -100,7 +216,7 @@ index ed74b78..f9d064d 100644
  
  inline void to_lower(std::string & str)
 diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
-index d8edac8..0c085e4 100644
+index d8edac8..136491a 100644
 --- a/Chowdren/chowdren/converter.py
 +++ b/Chowdren/chowdren/converter.py
 @@ -22,7 +22,8 @@ import string
@@ -194,7 +310,24 @@ index d8edac8..0c085e4 100644
              start_writer.putlnc('%s.set(%s, &%s_instances[0]);', name,
                                  len(instances), name)
  
-@@ -2178,6 +2204,8 @@ class Converter(object):
+@@ -1620,6 +1646,16 @@ class Converter(object):
+             startup_instances)
+         self.startup_instances = startup_instances
+ 
++        # Object handles with a real startup instance on this frame.  A
++        # single-object ACE that selects anything else has zero instances at
++        # runtime, exactly as in Fusion (a global object placed only on a
++        # later frame, or a dead cross-frame reference); get_object() routes
++        # those through the type's default instance so the ACE is a no-op
++        # instead of a NULL dereference.  Runtime-created objects are tracked
++        # separately in self.multiple_instances and take the iterator path.
++        self.frame_startup_handles = set(
++            frameitem.handle for _, frameitem in startup_instances)
++
+         for instance, frameitem in startup_instances:
+             obj = (frameitem.handle, frameitem.objectType)
+             object_writer = self.get_object_writer(obj)
+@@ -2178,6 +2214,8 @@ class Converter(object):
              return 'SavedIterator'
          if is_qualifier(obj[0]):
              return 'QualifierIterator'
@@ -203,7 +336,7 @@ index d8edac8..0c085e4 100644
          return 'ObjectIterator'
  
      @contextlib.contextmanager
-@@ -2217,6 +2245,13 @@ class Converter(object):
+@@ -2217,6 +2255,13 @@ class Converter(object):
              return
          
          list_name = self.get_object_list(object_info)
@@ -217,7 +350,7 @@ index d8edac8..0c085e4 100644
          is_qual = is_qualifier(object_info[0])
          if is_qual:
              writer.putlnc('for (int i = 0; i < %s.count; i++)', list_name)
-@@ -2280,6 +2315,14 @@ class Converter(object):
+@@ -2280,6 +2325,14 @@ class Converter(object):
              writer.putln('if (!%s) goto %s;' % (
                  item.code_name, item.end_label))
  
@@ -232,7 +365,7 @@ index d8edac8..0c085e4 100644
      def get_container_check(self, container):
          groups = []
          for item in container.tree:
-@@ -2602,26 +2645,36 @@ class Converter(object):
+@@ -2602,26 +2655,36 @@ class Converter(object):
  
                  for write_condition in write_conditions:
                      negated = not write_condition.is_negated()
@@ -284,7 +417,7 @@ index d8edac8..0c085e4 100644
                      if negated:
                          writer.put(')')
                      if has_multiple:
-@@ -2655,6 +2708,8 @@ class Converter(object):
+@@ -2655,6 +2718,8 @@ class Converter(object):
                  or_lists.add(list_name)
  
              for list_name in or_lists:
@@ -293,7 +426,7 @@ index d8edac8..0c085e4 100644
                  if is_logical:
                      writer.putlnc('%s.clear_selection();', list_name)
                  else:
-@@ -2673,7 +2728,8 @@ class Converter(object):
+@@ -2673,7 +2738,8 @@ class Converter(object):
                  check = '%s' % (' || '.join(or_bools))
                  writer.putlnc('if (%s) {', check)
                  writer.indent()
@@ -303,7 +436,7 @@ index d8edac8..0c085e4 100644
                  writer.end_brace()
  
              # writer.start_brace()
-@@ -2689,13 +2745,25 @@ class Converter(object):
+@@ -2689,15 +2755,28 @@ class Converter(object):
              if action_writer.custom:
                  action_writer.write(writer)
                  continue
@@ -329,23 +462,32 @@ index d8edac8..0c085e4 100644
 +                    continue
                  if is_static and action_writer.ignore_static:
                      continue
++            unresolved_object = False
              if object_info is not None:
-@@ -2708,6 +2776,14 @@ class Converter(object):
+                 if obj in self.has_single_selection:
+                     has_single = True
+@@ -2705,9 +2784,20 @@ class Converter(object):
+                     has_multiple = True
+                 elif not self.is_valid_object(obj):
+                     object_info = None
++                    unresolved_object = True
              if action_writer.iterate_objects is False:
                  has_multiple = False
                  object_info = None
-+            if (object_info is None and action_writer.has_object and
++            if (unresolved_object and action_writer.has_object and
 +                    not action_writer.static):
-+                # A build-296 action can name an object method without carrying
-+                # the frame-object binding used by the older writer.  Emitting
-+                # it bare creates an invalid C++ call; it is not safe to guess
-+                # a receiver from neighbouring conditions.
++                # A build-296 action names an object handle that has no
++                # FrameItems definition.  Emitting it bare creates an invalid
++                # C++ call, and it is not safe to guess a receiver from
++                # neighbouring conditions.  (A pure system action -- JumpToFrame,
++                # NextFrame, timer actions -- carries no object info at all and
++                # is emitted below with no receiver, as upstream does.)
 +                print 'unbound action omitted:', action_writer.data.getName()
 +                continue
              object_name = None
              write_actions = [action_writer]
              if has_single:
-@@ -2721,6 +2797,9 @@ class Converter(object):
+@@ -2721,6 +2811,9 @@ class Converter(object):
                          break
                      if next_action.custom:
                          break
@@ -355,7 +497,27 @@ index d8edac8..0c085e4 100644
                      if next_action.iterate_objects is False:
                          break
                      action_index += 1
-@@ -2805,7 +2884,8 @@ class Converter(object):
+@@ -2734,6 +2827,19 @@ class Converter(object):
+                 self.set_iterator(obj, list_name)
+                 object_name = '*it'
+             elif object_info is not None:
++                sobj = self.filter_object_type(obj)
++                if (not is_qualifier(sobj[0])
++                        and sobj[0] not in getattr(
++                            self, 'frame_startup_handles', ())
++                        and not self.get_object_writer(obj).static):
++                    # The object has no instance on this frame (a global placed
++                    # only on a later frame, or a dead cross-frame reference).
++                    # A Fusion action on zero selected instances does nothing;
++                    # emitting it against a shared default instance would let it
++                    # mutate that dummy.  Skip it, as the runtime would.
++                    print ('action on frame-absent object skipped:',
++                           action_writer.data.getName(), sobj)
++                    continue
+                 writer.putindent()
+                 writer.put('%s->' % self.get_object(obj))
+             elif action_writer.static:
+@@ -2805,7 +2911,8 @@ class Converter(object):
                  continue
              list_name = self.get_object_list(obj, True)
              group.or_selected[obj] = list_name
@@ -365,7 +527,7 @@ index d8edac8..0c085e4 100644
  
          writer.putlnc('if (%s) {', group.or_temp_result)
          writer.indent()
-@@ -2817,7 +2897,8 @@ class Converter(object):
+@@ -2817,7 +2924,8 @@ class Converter(object):
          for obj, list_name in self.has_selection.iteritems():
              if obj in has_qualifier:
                  continue
@@ -375,7 +537,7 @@ index d8edac8..0c085e4 100644
  
          writer.end_brace()
  
-@@ -2965,6 +3046,14 @@ class Converter(object):
+@@ -2965,6 +3073,14 @@ class Converter(object):
                  return self.intern_string(loader.value)
              elif parameter_name in ('TwoShorts'):
                  return to_c('%r, %r', loader.value1, loader.value2)
@@ -390,7 +552,7 @@ index d8edac8..0c085e4 100644
              else:
                  raise NotImplementedError('parameter: %s' % parameter_name)
          self.start_clauses += out.count('(')
-@@ -2978,16 +3067,25 @@ class Converter(object):
+@@ -2978,16 +3094,25 @@ class Converter(object):
  
              if remove != 1:
                  print out
@@ -421,7 +583,7 @@ index d8edac8..0c085e4 100644
  
              filtered = out[end+1:]
              out = out[:end+1]
-@@ -3068,7 +3166,8 @@ class Converter(object):
+@@ -3068,7 +3193,8 @@ class Converter(object):
              clear_lists = (list_name,)
  
          for obj_list in clear_lists:
@@ -431,7 +593,26 @@ index d8edac8..0c085e4 100644
  
          for obj in objs:
              if obj == object_info:
-@@ -3160,6 +3259,25 @@ class Converter(object):
+@@ -3149,6 +3275,18 @@ class Converter(object):
+                 if default_instance:
+                     args.append(default_instance)
+ 
++            if not is_qual and len(args) == (2 if use_index else 1):
++                sobj = self.filter_object_type(obj)
++                if sobj[0] not in getattr(self, 'frame_startup_handles', ()):
++                    # absent from this frame -> zero instances at runtime; give
++                    # get_instance() a valid fallback so the ACE no-ops rather
++                    # than dereferencing a NULL back_obj (a global object placed
++                    # only on a later frame, or a dead cross-frame reference)
++                    if sobj[1] in (ACTIVE, TEXT, COUNTER):
++                        args.append(self.get_default_instance(sobj[1]))
++                    else:
++                        args.append('default_instance')
++
+             if is_qual:
+                 getter_name = 'get_qualifier'
+             else:
+@@ -3160,6 +3298,25 @@ class Converter(object):
      def get_default_instance(self, object_type):
          return self.get_object_impl(object_type).default_instance
  
@@ -457,7 +638,7 @@ index d8edac8..0c085e4 100644
      def get_object_list(self, obj, allow_single=False):
          if self.has_single(obj) and not allow_single:
              print 'single exception:', self.get_single(obj)
-@@ -3170,11 +3288,23 @@ class Converter(object):
+@@ -3170,11 +3327,23 @@ class Converter(object):
          if is_qual:
              return type_id
          obj = self.filter_object_type(obj)
@@ -483,7 +664,7 @@ index d8edac8..0c085e4 100644
  
      def filter_object_type(self, obj):
          if is_qualifier(obj[0]):
-@@ -3285,9 +3415,12 @@ class Converter(object):
+@@ -3285,9 +3454,12 @@ class Converter(object):
                  return get_method_name('_'.join(full_name))
          ret = item.getName()
          if ret is None:
@@ -499,7 +680,7 @@ index d8edac8..0c085e4 100644
          return ret
  
      def get_action_writer(self, item, as_klass = False):
-@@ -3329,6 +3462,24 @@ class Converter(object):
+@@ -3329,6 +3501,24 @@ class Converter(object):
              klass = getattr(writer_module, ace_type)[key]
          except (KeyError, AttributeError):
              klass = default_writers[ace_type]
@@ -913,8 +1094,25 @@ index 6348cc1..ea169ab 100644
 -    return extension
 \ No newline at end of file
 +    return extension
+diff --git a/Chowdren/chowdren/writers/objects/__init__.py b/Chowdren/chowdren/writers/objects/__init__.py
+index 351012a..eaf351c 100644
+--- a/Chowdren/chowdren/writers/objects/__init__.py
++++ b/Chowdren/chowdren/writers/objects/__init__.py
+@@ -212,6 +212,12 @@ class ObjectWriter(BaseWriter):
+ 
+     def load_alterables(self, writer):
+         if not self.use_alterables:
++            # Every Fusion object exposes alterable values/strings/flags even
++            # when this writer does not model them, and build-296 events read
++            # them (Multiple Touch, Android object, ... on 02-title).  Give the
++            # instance a zeroed Alterables so those accesses do not dereference
++            # NULL; initial-value population below stays gated on use_alterables.
++            writer.putln('create_alterables();')
+             return
+ 
+         is_global = self.is_global()
 diff --git a/Chowdren/chowdren/writers/objects/system.py b/Chowdren/chowdren/writers/objects/system.py
-index 24a61c1..1e80427 100644
+index 24a61c1..75a3ccd 100644
 --- a/Chowdren/chowdren/writers/objects/system.py
 +++ b/Chowdren/chowdren/writers/objects/system.py
 @@ -219,7 +219,7 @@ class Backdrop(ObjectWriter):
@@ -926,7 +1124,28 @@ index 24a61c1..1e80427 100644
          writer.putraw('#ifdef %s' % name_id)
          writer.putlnc('manager.frame->back_instances[%s].push_back(this);',
                        name_id)
-@@ -610,4 +610,4 @@ system_objects = {
+@@ -331,6 +331,7 @@ class Text(ObjectWriter):
+     use_alterables = True
+     has_color = True
+     filename = 'text'
++    default_instance = 'default_text_instance'
+ 
+     def initialize(self):
+         pass
+@@ -403,6 +404,12 @@ class RTFText(ObjectWriter):
+ class Counter(ObjectWriter):
+     class_name = 'Counter'
+     filename = 'counter'
++    default_instance = 'default_counter_instance'
++    # Fusion counters carry alterable values/strings/flags like any object, and
++    # build-296 FNaF 2 events read them (e.g. "viewing" on 02-title).  Without
++    # this the generated subclass never calls create_alterables() and every
++    # such access dereferences NULL.
++    use_alterables = True
+ 
+     def write_init(self, writer):
+         common = self.common
+@@ -610,4 +617,4 @@ system_objects = {
      RTF : RTFText,
      LIVES : Lives,
      SUBAPPLICATION : SubApplication,

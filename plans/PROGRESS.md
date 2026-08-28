@@ -32,7 +32,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames and arm64 CMake links the desktop target. **Visual boot reached 2026-08-28** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): the binary renders an SDL window, inits audio, loads frame 0, enters generated events, then SIGSEGVs in `on_frame_1_start_events` on a null `get_instance(playvoice4_3_instances)` — a frame-1 object-instance emission gap in the converter. No title/night transition yet; the boot gate (Phase 4) has not passed. |
+| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames, arm64 CMake links the desktop target, and **it boots to the FNaF 2 02-title screen** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): frame 0 → frame 1, title event logic runs (title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable 45 s+. Sprites are placeholder boxes (image bank incomplete); no gameplay yet. Fidelity `rebuilt-runtime`. Next: decode the image bank so sprites render, then drive the menu to a night and compare to the sourced model. |
 | **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. | Not the open-loop loop. (a) external hybrid: AM clock re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
@@ -85,19 +85,21 @@ guard (the 4 unparsable frames were truncated `olivier_DEBUG_*` stubs; the real
 game is frames 0–28), numeric-fastloop naming in Chowdren, and `RunningAs` /
 `SetGlobalValueDouble` stubs.
 
-**Generation gate passed:** generic extension stubs now register instances, and
-the external converter emits C++ for all 29 real frames (the 4 truncated debug
-frames are skipped). The arm64 probe links the desktop target, and **it boots to
-a visual SDL window** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset
-dir): audio init, frame 0 load, entry into generated event code. It SIGSEGVs in
-`Frames::on_frame_1_start_events` → `event_func_44`,
-`((Counter*)get_instance(playvoice4_3_instances))->set(...)` on a null instance —
-frame 1 ("01-Initialize & Setup") never emits `playvoice4_3`/`star1_4` though its
-start events act on them (both resolve on frames 2–3). **Very next step:** fix
-frame-1 instance resolution in the patched converter (or emit generated
-single-object actions as null-safe no-ops as an explicit compatibility
-placeholder), rerun the boot, then compare frame-1→title. No title/night
-transition and no fidelity claim yet.
+**Generation gate passed, and it boots to the title screen (2026-08-28).** The
+external converter emits C++ for all 29 real frames, arm64 CMake links the
+desktop target, and under Xvfb+llvmpipe (`ALSOFT_DRIVERS=null`, CWD at the asset
+dir) the binary boots frame 0 → frame 1 and runs the FNaF 2 02-title event logic
+(title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable
+45 s+. Frame-1 resolution fixed: the events reference objects genuinely not on
+the frame (Fusion Globals placed later, dead cross-frame refs) and Chowdren
+dereferenced `back_obj` unconditionally — landed absent-ACE default/skip,
+`JumpToFrame` no longer dropped, universal `create_alterables()`, and an
+`INVALID_ASSET_ID` sound guard (`tools/recompile/mmfparser-chowdren-mobile.patch`,
+now also carrying the touched `Chowdren/base/*.cpp`). **Very next step:** the
+image bank / `get_missing_image` path is incomplete so sprites draw as
+placeholder boxes — decode the image bank so sprites render, then drive the menu
+to a night frame and compare to the sourced model. Fidelity `rebuilt-runtime`;
+no gameplay or night comparison yet.
 Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
 Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
 event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.
@@ -162,22 +164,34 @@ or plan 17 again:
   protection, and there is no approved rooted device. `plans/17` §"Runtime
   attachment (route 2) is not being pursued". The route survey is kept; the
   route is declined.
-- **Recompile fallback (route 5) is now the active in-engine path; Phase 3 linked
-  target and first runtime boundary (2026-08-28).** The externally parsed build-296 CCN now emits
-  source for 29 real frames; four known truncated developer stubs are skipped.
-  The mobile parser/Chowdren port covers the needed object registration, numeric
-  loops, malformed event fallback, static backdrops, and portable arm64 runtime
-  overload. A Linux CMake probe now links the generated desktop target after
-  compatibility handling for empty qualifiers, numeric loop indexes, and flat
-  static-backdrop lists. Under real Xvfb + llvmpipe (`ALSOFT_DRIVERS=null`, CWD at
-  the asset dir) the linked binary **renders an SDL window**, inits audio, loads
-  frame 0, and enters generated events, then SIGSEGVs on a null
-  `get_instance(playvoice4_3_instances)` in `on_frame_1_start_events` — a
-  frame-1 object-instance emission gap in the converter. The earlier
-  dummy-SDL-driver segfault was the dummy *video* driver, not the code. This is a
-  visual boot into real decoded event logic, not a title/night transition or
-  retail-faithfulness result. Full record in
-  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 — visual boot reached".
+- **Recompile fallback (route 5) is the active in-engine path; boots to the
+  02-title screen (2026-08-28).** The externally parsed build-296 CCN emits
+  source for 29 real frames; arm64 CMake links the desktop target; under real
+  Xvfb + llvmpipe (`ALSOFT_DRIVERS=null`, CWD at the asset dir) the binary boots
+  frame 0 → frame 1 and runs the FNaF 2 title event logic — title text, the
+  `12:00 AM` clock, the WARNING block, the camera-map layout, menu buttons —
+  stable 45 s+. The frame-1 "instance emission gap" reading was wrong: the events
+  reference objects genuinely not on the frame (Fusion Globals placed later,
+  dead cross-frame refs) and Chowdren dereferenced `back_obj` unconditionally.
+  Landed: absent single-object ACEs → type default / skipped no-op; `JumpToFrame`
+  &c. no longer dropped (frame transitions emit); every object gets
+  `create_alterables()`; `Media::play_id` guards `INVALID_ASSET_ID`. Sprites are
+  placeholder boxes (image bank incomplete) and it does not reach gameplay —
+  `rebuilt-runtime`, no night comparison. Full record in
+  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 — boots to the FNaF 2
+  title screen".
+- **HTML5-export shortcut probed and rejected (2026-08-28).** `irv77/hd_fnaf`'s
+  `.../2/` runs a full FNaF 2 on the freely-redistributable Clickteam HTML5
+  runtime (no PAIRIP) — tempting as a route-5 shortcut. Probed live: it is
+  **PC v1.0, not Android build 296** (27 frames vs 29; title reads `v 1.0`), and
+  its Closure-minified runtime exposes **no names** — reading AI state needs the
+  same `.cch` decompile + mapping work as a fresh parse. Not a shortcut. Value
+  that remains: a playable PC reference for eyeballing mechanics, and `Runtime.js`
+  as a reference implementation of Fusion event semantics (it no-ops an action on
+  a zero-instance object type — confirms the Chowdren emit's frame-1
+  `playvoice4_3` null-safe-no-op fix is Fusion-correct). Full record in
+  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Probed and rejected as a
+  shortcut".
 
 
 ### Prior Minus 7 frontier (retained, now scoped)

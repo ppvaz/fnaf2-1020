@@ -483,6 +483,49 @@ has occurred. Next slice: fix frame-1 instance resolution in the converter (or,
 as an explicit compatibility placeholder, make generated single-object actions
 no-op on a null `get_instance`), then rerun the boot and compare frame-1→title.
 
+### Phase 3 — boots to the FNaF 2 title screen (2026-08-28)
+
+**The "frame-1-specific object-instance emission gap" reading above is wrong**
+(kept per the retractions rule). Frame 1 ("01-Initialize & Setup") *is* parsed
+correctly — 12 instances — and its events genuinely reference objects it does not
+contain: some are **Global** objects (`play voice N`, Fusion's `Global` flag)
+placed only on later frames, some are dead cross-frame references. Fusion runs an
+ACE on zero selected instances as a no-op; Chowdren assumed every single-instance
+object had a startup instance and dereferenced `back_obj` unconditionally.
+
+Fixes landed this slice (all in `tools/recompile/mmfparser-chowdren-mobile.patch`;
+converter + a few `Chowdren/base` runtime files, no game content):
+
+- **Absent single-object ACEs.** `write_frame` records `frame_startup_handles`;
+  `get_object()` routes a single object with no instance on the frame through a
+  type default instance (`default_active/counter/text_instance`, new
+  `Default{Counter,Text}` + a generic `default_instance`), and a single-object
+  *action* on such an object is skipped outright (Fusion no-op) rather than
+  mutating the shared dummy.
+- **`JumpToFrame` / system actions were being dropped.** The patch's blanket
+  "unbound action omitted" guard fired on any `has_object` action whose object
+  resolved to nothing — including pure frame/timer actions that carry no object
+  and emit a complete statement. Narrowed to fire only when the action *named* an
+  object with no FrameItems definition. Frame transitions now emit
+  (`next_frame = …`), and 01-Initialize & Setup advances to 02-title.
+- **Counters carry alterables.** Fusion counters expose alterable
+  values/strings/flags and build-296 events read them (`viewing` on 02-title);
+  `Counter.use_alterables = True`, and `ObjectWriter.load_alterables` now emits
+  `create_alterables()` for *every* object (extension stubs included) so
+  `->alterables` is never NULL. Initial-value population stays gated.
+- **Unresolved sound refs.** A mobile Play Sample whose sample did not resolve
+  emits `INVALID_ASSET_ID`; `Media::play_id` now treats that as silence instead
+  of indexing `sounds[]` out of bounds.
+
+Result: under Xvfb + llvmpipe the binary boots frame 0 → **frame 1, and renders
+the FNaF 2 title screen** — title text, the `12:00 AM` clock, the
+`WARNING! …flashing lights…` block, the camera-map layout, menu buttons — stable
+for 45 s+. Sprites draw as placeholder boxes (the image bank / `get_missing_image`
+path is still incomplete) and it does not yet advance to gameplay. Fidelity class
+stays `rebuilt-runtime`. Remaining boundaries, in order: image-bank decode so
+sprites render; the menu→night transition; then a night frame to compare against
+the sourced model.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:
@@ -529,6 +572,59 @@ Toolchain (content-free, committed): `tools/recompile/` — the build-296
 `tools/recompile/README.md` for setup. External, uncommitted: the parsed CCN +
 `android-res-raw/`, the populated `gamesrc/cache.dat` + `image_cache/`, and the
 applied/rebuilt Chowdren checkout.
+
+### Probed and rejected as a shortcut: the `irv77/hd_fnaf` HTML5 export (2026-08-28)
+
+`https://irv77.github.io/hd_fnaf/2/` is a full FNaF 2 running on the **stock
+Clickteam Fusion 2.5 HTML5 exporter runtime** (`2/src/Runtime.js`, 332 KB
+Google-Closure-compiled; app file `resources/FiveNights2NOHACKS.cch`; ~180 MB of
+assets in a 20-part split zip reassembled client-side). The idea worth checking:
+the HTML5 runtime is **freely redistributable** (unlike NuclearRT, which needs a
+Fusion licence), so a build-296 → MFA → HTML5 re-export would give a
+browser-runnable, PAIRIP-free FNaF 2 on a known-good interpreter, piloted with
+full JS access instead of a from-scratch C++ recompile.
+
+Probed live in Chrome (constructor hook on `window.Runtime` before `Runtime.js`
+loads captures the instance as `window.__rtCaptured`; the instance is closed over,
+never global). What was **confirmed**:
+
+- **It is PC / Steam FNaF 2 v1.0 (©2014), not Android build 296.** Title screen
+  reads `v 1.0`, "New Game / Continue", "Press and hold delete to reset all data"
+  — all PC hallmarks; the mobile build is v2.0.x with a different menu. So any
+  mechanic or constant read off it carries the **PC-vs-mobile offset** this
+  project already treats as material (`CLAUDE.md`: "say which build").
+  `rt.Sc.FusionVersion` is `"Clickteam Fusion HTML5 Exporter Build 292.24"` — the
+  *exporter tool* version, not the game's event build.
+- **Frame count is 27** (`rt.Sc.Su` / `Nn` / `Tu`), against the build-296 CCN's
+  "29 real frames (0–28)" this doc records. Different, consistent with PC ≠ mobile.
+- **The live runtime is as opaque as an un-started parse.** Full Closure
+  minification: every property is a 1–3 char mangled name (`Sc`, `Jc`, `ko`,
+  `Nn`, `G`…). No object names, no event-sheet symbols, no alterable-value labels
+  survive at runtime. `rt.Sc.Jc` (203) and the frame-runtime's `H` (1000) are
+  boxed-primitive / empty-object pools, not readable state. Reading "withered
+  Foxy's D" would need either an empirical mangled-field diff across many frames,
+  or an offline `.cch` decompile (CTFAK) to recover names and then a mapping —
+  **comparable effort to the mmfparser port, minus the C++ emit.**
+- Boot cost ~40–60 s (download + client-side unzip + HD asset load); not
+  headless-friendly as shipped. The game is drivable via synthetic canvas events
+  (reached Night 5, ran, died while introspection was in progress).
+
+**Verdict.** The *concept* (redistributable Fusion runtime, no PAIRIP) still
+stands, but this artifact is not a shortcut to it: wrong game version, and its
+runtime needs the same name-recovery work as a fresh parse. The value that
+remains is narrower and real: (a) a **playable PC-version reference** for
+eyeballing mechanic behaviour before trusting an event-sheet reading — the
+control the 2026-08-24 stun-lock retraction shows this project needs; (b)
+`Runtime.js`, deobfuscated against Clickteam's public HTML5-runtime source, is a
+**reference implementation of Fusion event/instance semantics** — e.g. it does
+*not* crash on an action against an object type with zero instances (Fusion
+no-ops it), which is exactly the frame-1 `playvoice4_3` SIGSEGV in the Chowdren
+emit and confirms the "emit null-safe no-ops" fix replicates real Fusion
+behaviour rather than papering over a bug.
+
+Not landed as an instrument; nothing in the plan changes on it. Open if pursued:
+decompile the `.cch` (PC event sheet) and diff it against the dumped build-296
+sheet to convert the PC-vs-mobile offset into a named list of differences.
 
 ### Fidelity labels
 
