@@ -1,6 +1,6 @@
 # Constrained policy search on the exact engine
 
-**Status: in progress 2026-08-27.** Packages 1–3 built. **Packages 4 and 5
+**Status: resolved 2026-08-27.** Packages 1–3 built. **Packages 4 and 5
 closed by recorded negative.** Pkg 4: the constrained scheduling space is
 exhausted — the timing knobs, the cycle length, the sweep geometry (a fragile
 phase-lock spike), and the bang-anchored attack raise (needs a bang detector

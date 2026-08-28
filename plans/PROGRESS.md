@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-28
 
-**Overall:** **36%** — 34 of 94 mandatory top-level work packages are closed.
+**Overall:** **33%** — 34 of 104 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
@@ -14,6 +14,15 @@ packages are closed.
 ## Very next step
 
 ### 2026-08-28 strategic reset — this is not a dead end
+
+**Pedro's second strategic directive (2026-08-28): two dormant paths are active
+again.** Plan 05 reopens novel-strategy invention now that the simulation and search
+methodologies are sufficiently sourced; its old static-cover negative remains
+closed evidence, not the boundary of the new search. Plan 17 opens a laser-focused
+campaign to bake the bot into an APK by every technically distinct same-process
+route worth falsifying. The measured PAIRIP re-sign failure is a route result, not a
+blanket stop. These are durable tracks alongside the ranked near-term frontier
+below, not permission to relabel another Minus 7 timing permutation as novelty.
 
 The 2026-08-27 conclusion below is narrow: plan 16 exhausted timing changes to
 the **emitted Minus 7 device plan under the synthetic human gate**. It did not
@@ -1593,7 +1602,7 @@ on the next graded run remains the way to attribute them, since only
 | [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 7 | **14%** | **Reopened; device sub-gate advanced 2026-08-28.** Glitchless Minus Two remains 16/200, but that Toy Chica failure is not a Minus Toys verdict. A deliberate 50 ms HID sequence armed `viewing=11` / marker CAM 09 on the target phone in one attempt (both buttons lit); policy, stun and repeatability remain unmeasured. | Package 2a: split counter + marker in the engine and write the glitch-aware Minus Toys probe; then measure stun transfer and arming repeatability. |
 | [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 1 / 5 | **20%** | Engine sourcing complete (2026-08-24). The existing 0/300 `rvctest` is a deliberately incomplete non-reactive skeleton, not the brayden/Shooter25 policy; decision table, coach, ladder and grading untouched. | Encode and measure the published four-way post-wind controller before designing lessons or quoting an Android rate. |
 | [04 — optimize Minus 7](04-optimize-minus-7.md) | 3 / 4 | **75%** | Search and grading work complete | Replace inferred human profile with accumulated trainer traces |
-| [05 — derive new strategy](05-derive-new-strategy.md) | 5 / 5 | **100%** | Closed by sourced refutation/negative result | Reopen only after a source-rule change |
+| [05 — derive new strategy](05-derive-new-strategy.md) | 5 / 9 | **56%** | **Reopened 2026-08-28.** Original static-cover pass closed by sourced refutation; broader stateful/event-driven invention campaign is active on the now-sourced model/search substrate. | Package 6: define and source the novel-policy language, with duplicate controls excluding Plans 05/06/16's closed families. |
 | [06 — hybrid search](06-hybrid-strategy-search.md) | 6 / 6 | **100%** | Closed with no survivor | Reopen only after a corrected mechanic changes reachable policy space |
 | [07 — tooling consolidation](07-tooling-consolidation.md) | 5 / 8 | **63%** | Correctness pass complete; opportunistic refactors remain | Extract shared browser session during the next browser-tool change |
 | [08 — audio-cue controller](08-audio-cue-controller.md) | 2 / 7 | **29%** | Source map and playback capture pass. A live **fail-closed, shadow-only** detector now exists on device (`ARM`/`RESULT`/`MODEL`, named refusal reasons, `UNKNOWN` for every degradation) and **cannot influence a run** — the runner sends only `GET` and reads only the visual pixel. It closes no package: the exporter is not an evaluator, close→MISS latency is unmeasurable as built, and no shadow run exists | Derive or retract the guessed `threshold=0.25`/`margin=0.05` now provisioned on the phone, then the session-split holdout and confusion matrix |
@@ -1605,6 +1614,7 @@ on the next graded run remains the way to attribute them, since only
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
+| [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 
 ## Counting rule
 
@@ -1642,6 +1652,13 @@ on the next graded run remains the way to attribute them, since only
   dependency-report on a promoted candidate) was dropped because no candidate
   was promoted — 95 → 94 mandatory. Its row was also corrected off a stale
   `0 / 6` (pkgs 1–3 built in prior commits, never counted).
+- Plan 05 adds four mandatory packages on reopening (94 -> 98 mandatory). Its
+  original five packages remain closed; the new denominator records that the
+  invention goal is active again without erasing the Six-Seven refutation.
+- Plan 17 adds six mandatory packages on 2026-08-28 (98 -> 104 mandatory). The
+  percentage falls 36% -> 33% with no invented completion credit; the earlier
+  naive re-sign negative is starting evidence, not a closed package in the new
+  route campaign.
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the

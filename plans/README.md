@@ -20,11 +20,15 @@ Current triage (2026-08-28):
   measured trainer timing by step, not another invented profile.
   *(2026-08-25: the collection pipeline for exactly that now exists —
   `/save-trace` + `tools/tracereport.mjs`. What remains is practice runs.)*
-- **No blind-search juice:** Plans 05 and 06 have completed/closed their defined
-  Android search families. Reopen them only when a corrected source rule changes
-  the reachable policy space. **Plan 16 is not that** — it searches a different
-  layer (the emitted device plan's timing geometry against the 1200-seed human
-  gate), not the closed observable-policy grid.
+- **Plan 05 is reopened for invention.** Its original static-cover pass remains a
+  sourced negative; the new campaign searches policy structure with the exact RNG,
+  stateful probes, dominance pruning and 1200-seed gates now available. Do not rerun
+  Plan 06's closed 125-schedule family or Plan 16's Minus 7 timing grid and call it
+  novelty.
+- **Plan 17 is the focused in-APK campaign.** Straight re-signing remains blocked
+  by measured PAIRIP behavior, but same-process hooks, loader/runtime approaches,
+  CCN mutation/rebuild and Chowdren recompilation are active hypotheses. The target
+  is a traceable personal research APK with internal observation and actuation.
 
 Bot-research roadmap added 2026-08-26:
 
@@ -58,8 +62,9 @@ Bot-research roadmap added 2026-08-26:
 4. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
    needs a reactive coaching model, the biggest piece.
 5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — first derivation pass
-   produced **Six-Seven**, then the sourced route graph refuted it and independently
-   re-derived Minus 7 as the only robust minimal cover.
+   produced **Six-Seven**, then the sourced route graph refuted it; reopened for a
+   broader stateful/event-driven policy invention campaign that excludes the closed
+   grids.
 6. [06-hybrid-strategy-search.md](06-hybrid-strategy-search.md) — first gate-aware
    pass complete: Minus Right, monitor denial and 125 clock-phased combinations all
    fail after the sourced per-unit Withered endgames are modeled. See
@@ -99,3 +104,7 @@ Bot-research roadmap added 2026-08-26:
     Foxy-reset decoupling and the Night 7 opener, with machine-readable
     provenance so a winning candidate ships its `[SOURCED]`/`[ASSUMED]`
     dependency list. Structured vehicle for `PROGRESS.md` item 9.
+17. [17-in-apk-bot.md](17-in-apk-bot.md) — laser-focused same-process bot campaign:
+    test retail hooks, modified-package, loader/shim, CCN rebuild and faithful
+    recompile routes until one APK can observe, decide and act internally with an
+    auditable trace.

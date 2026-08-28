@@ -24,28 +24,34 @@ it (hall `(1400,330)`, left-vent `(350,615)`) and was mid-revalidation. That fix
 in-engine pilot for reactive strategies. **Minus 7 itself stays external** (open-loop,
 no state classification needed during a run — see `TRAINER-IN-GAME.md`).
 
-## Route A — inject into the APK: BLOCKED
+## Route A — inject into the APK: REOPENED AS A FOCUSED CAMPAIGN
 
 - Owned copy: `com.scottgames.fnaf2` v2.0.7 (versionCode 26 = the release-7 target).
   Game logic is `res/raw/application.ccn` (89 MB, Fusion CCN, magic `PAMU`, handles
   XOR-28 scrambled).
 - **PAIRIP anti-tamper is present**: `com.pairip.VMRunner`,
   `com.pairip.licensecheck.LicenseClient/LicenseActivity/InitContextProvider` in the
-  dex, `libpairipcore.so` in the arm64 split. PAIRIP validates Play-install
-  provenance + app signature and virtualizes protected methods, so **any repackage /
-  re-sign → integrity failure → crash**. Defeating it is anti-tamper circumvention
-  (rooted LSPosed `pairipfix`, stripping license components, "APK-repair" tools) — the
-  wrong arms race for a personal study bot.
+  dex, `libpairipcore.so` in the arm64 split. The owned target's tested
+  repackage/re-sign path fails integrity and crashes; Google describes the protection
+  class as runtime installer and anti-tamper checks designed to detect modification,
+  not as a mathematical guarantee that every same-process attachment is impossible.
+  Rooted runtime attachment, scoped LSPosed/Zygisk modules and static repair are now
+  separate Plan 17 hypotheses rather than one undifferentiated bypass bucket.
 - **No free CCN recompiler back to an APK exists.** CTFAK / CTFAK-UnEx / Anaconda are
   decompilers/dumpers + Export-as-MFA. The only supported CCN→APK round-trip is
   Clickteam Fusion 2.5 + the Android Exporter DLC (paid, Windows) — and its output
   would still be PAIRIP-blocked on re-sign.
 
-**Conclusion:** in-APK injection is not viable without cracking anti-tamper. Do not
-pursue it. This use case is *homebrew study of an owned copy*, not distribution; the
-recompile route below reaches the same place without touching the retail binary.
+**2026-08-20 conclusion, now narrowed:** ordinary modify/repackage/re-sign is not
+viable against this PAIRIP-wrapped build. That is a recorded negative for one route,
+not proof that every same-process route is closed. Pedro reopened the goal on
+2026-08-28 for focused exploration, including read-only runtime attachment,
+Java/native hooks, loader/shim approaches, CCN mutation/rebuild and the recompile
+route below. The campaign and its falsifiable gates live in
+[`plans/17-in-apk-bot.md`](../../plans/17-in-apk-bot.md). Personal study of an owned
+copy and no distribution remain hard boundaries.
 
-## Route B — recompile the CCN to native C++ (chosen)
+## Route B — recompile the CCN to native C++ (active fallback)
 
 Feed the extracted `application.ccn` to an open-source Fusion **recompiler** we build
 ourselves — no Fusion license, no PAIRIP, because it produces *our own* binary. The

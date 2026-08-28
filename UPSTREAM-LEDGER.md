@@ -324,11 +324,12 @@ The split, in one place:
   296) is wrapped in **Google Play PAIRIP** — `com.pairip.VMRunner`,
   `com.pairip.licensecheck.*` in the dex, `libpairipcore.so` in the arm64 split. It
   validates Play-install provenance + app signature and virtualizes protected
-  methods, so **any repackage/re-sign of the retail APK crashes**. Consequence for
-  datamining/modding modern Clickteam-on-Android titles: in-APK mods are not viable
-  without anti-tamper circumvention; the tamper-free study path is **recompile from
-  the extracted CCN** (entry 10), which never touches the signed binary. Derived
-  knowledge only — no assets, no bypass tooling published.
+  methods. On the owned target, the tested ordinary repackage/re-sign path crashes.
+  That makes static retail-APK mutation a protected route, but it does not establish
+  that rooted runtime attachment or every same-process route is impossible. Plan 17
+  now tests those separately; the tamper-free fallback remains **recompile from the
+  extracted CCN** (entry 10), which never touches the signed binary. Derived
+  knowledge only — no assets or modified binary published.
 - **Artifact today:** recorded in
   [`IN-ENGINE-PILOT-RECOMPILE.md`](docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md) (Route A).
 - **Disposition:** short community/wiki note alongside entry 6's mobile-build

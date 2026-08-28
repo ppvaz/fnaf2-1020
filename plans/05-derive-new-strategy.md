@@ -1,13 +1,14 @@
 # Derivation, tiers 2–3: a structurally new strategy
 
-**Status:** closed for the Android target. The first model-only pass (2026-08-19)
-found the **Six-Seven Strat** (also **CAM 67** / **Deep 7**) and it cleared the old
-simulator sweeps. The subsequently extracted Android route graph refuted CAM 06/07
-as a full cover: several routes cross off-camera transit markers and escape it.
-`CAM-6-7-STRATEGY.md` is retained as the derivation record, not as an awaiting
-candidate. The Android light countdown is disabled and a separate camera-overlap
-gate is active. That correction does not reopen the route-graph refutation, but
-future Android policy searches must use the corrected gate.
+**Status:** reopened 2026-08-28 for a second, broader invention campaign. The
+first pass remains complete: it found the **Six-Seven Strat** (also **CAM 67** /
+**Deep 7**) in the old model, and the subsequently extracted Android route graph
+refuted CAM 06/07 as a full cover because several routes cross off-camera transit
+markers. `CAM-6-7-STRATEGY.md` remains a derivation record, not an awaiting
+candidate. What changed is the research substrate: the Android model, exact RNG,
+negative controls, 1200-seed gates, policy probes and dominance-pruned search
+methods are now sufficiently sourced to support a genuinely new search language.
+The reopened work must not rerun the closed static-cover or three-phase grids.
 
 ## Goal
 
@@ -65,6 +66,31 @@ Two conclusions baked into this plan:
   human routine. A trainer needs human-executable scripts, so this plan searches; it
   does not train an agent.
 
+## Online frontier refresh (2026-08-28)
+
+The reopened campaign includes an online novelty check, not just a local-document
+comparison. A fresh search found no clearly new post-Minus-Toys structure, but that
+is a best-effort result, never proof of absence:
+
+- Shooter25's May 2025 [Minus Toys guide](https://www.youtube.com/watch?v=55msMR86BHE)
+  credits ZachScream as the inventor and gives the public 10-second loop. A December
+  2025 [current guide](https://www.youtube.com/watch?v=48c-YN62rsQ) still presents
+  Minus Toys as the leading practical strategy.
+- February 2026 player reports document the same load-bearing boundaries the model
+  must test: the split CAM 11/CAM 09 state, Golden Freddy five-second intervals, and
+  uninterrupted mask time for BB/Mangle. See the
+  [Minus Toys discussion](https://www.reddit.com/r/technicalFNaF/comments/1r8oo5a/fnaf_2_minus_toys_strategy/)
+  and its [follow-up](https://www.reddit.com/r/technicalFNaF/comments/1rdlstq/fnaf_2_minus_toys_continued_foxy_bbmangle/).
+- A 2026 "new 10/20 strat" claim was quickly identified by the community as an
+  existing Minus Two routine, with inventor attribution corrected afterward. That
+  [rediscovery record](https://www.reddit.com/r/technicalFNaF/comments/1ruafkj/babe_wake_up_new_1020_strat_just_dropped_read/)
+  is why package 8 requires mechanic-level comparison and creator/source tracing,
+  not name or timing comparison.
+
+The public web remains poorly indexed and video/Discord-heavy. Before any novelty
+claim, repeat searches across the original creators, `technicalFNaF`, current guide
+videos and the public bot census; record query date and ambiguous matches.
+
 ## The honest caveats (write them into any result)
 
 1. **Model coverage.** The engine models the mechanics *Minus 7* depends on.
@@ -96,8 +122,46 @@ Two conclusions baked into this plan:
    06/07 match found, but novelty is explicitly not claimed.
 5. Trainer mode: intentionally not started; the Android graph refuted its candidate.
 
+## Reopened campaign (2026-08-28)
+
+The first five packages above stay closed and auditable. This campaign adds four
+mandatory packages; it reopens the goal, not the refuted candidate.
+
+6. **Define the novel-policy language.** Inventory the remaining sourced levers
+   and compile policies that can be state-dependent, event-triggered,
+   unequal-cadence and cross-cycle. Explicitly include policies outside Minus 7's
+   emitted timing geometry: selective route release, intentional office-state
+   transitions, controlled blackout cover, split-camera states, and machine-only
+   policies that can later be simplified for a human. Exclude exact duplicates of
+   the Plan 05 static covers, Plan 06's 125 phase schedules, and Plan 16's Minus 7
+   knob search. **Gate:** every observable and transition used by the language is
+   cited to the Android source ledger or labeled as a model dependency, and a
+   duplicate-policy control proves the old families are rejected.
+7. **Run a broad invention search.** Reuse the exact RNG, deterministic replay,
+   negative controls, Pareto/dominance pruning and 1200-seed admission gate, but
+   search policy structure as well as timings. Optimize survival first and then
+   input cost, state memory and human executability; retain machine-only survivors
+   rather than prematurely forcing every result into a fixed loop. **Gate:** a
+   reproducible frontier plus a recorded account of the structures explored and
+   pruned.
+8. **Interrogate survivors and invent the strategy.** Trace why each frontier
+   member works, minimize it, name its essential mechanic, and compare it against
+   the documented public frontier. A candidate is not called novel merely because
+   its numeric schedule differs. **Gate:** either one structurally distinct
+   candidate with provenance, ablations and novelty review, or an explicit negative
+   for this policy language that leaves the overall invention path open to a new
+   language.
+9. **Cross the model boundary.** Turn the strongest candidate into an auditable
+   device or instrumented-build experiment. Stock-APK evidence remains the final
+   game-fidelity oracle; Plan 17's in-APK controller may be used to measure a policy
+   perfectly before translation to human or external execution. **Gate:** observed
+   real-engine evidence for the load-bearing mechanic and an honest promotion or
+   rejection record.
+
 ## Done when
 
-Either a written-up, sim-verified candidate exists with dependencies and caveats
-documented and awaiting in-game validation — or the enumeration is recorded showing
-the searched space and why nothing beat the known strategies. Both are real results.
+The original pass met its done condition by recording the sourced refutation. The
+reopened campaign is done only when a structurally distinct candidate crosses the
+model boundary, or when its current policy language is closed by a reproducible
+negative and the next materially different language is named. One exhausted grid no
+longer makes the invention path dormant.
