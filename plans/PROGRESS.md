@@ -88,12 +88,19 @@ the doc table). (c) **Frames 29–32 do not parse at all** (`error('1 bytes
 required')`); `unknown chunk 13132` is the suspect. This is a build-293→296
 `mmfparser` port, not a two-code fix — the bulk of the remaining Phase-1/2 work.
 
-**Next:** decide scope (port in place vs. try a Fusion-2.5+ `mmfparser`/CTFAK
-fork), then work the list: the 4 parameter loaders, a mobile loop mode, the
-frame-parse desync. Full findings + the raw byte table in
-`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — third boundary: the
-mobile event format". External artifacts (parsed CCN, `gamesrc/` cache,
-`fnaf2-config.py`, `probe-*.py`) are under the recompile experiment dir.
+**Tooling decided (2026-08-28):** no maintained Python decompiler exists;
+`AITYunivers/NebulaFD` (C#, active) reads build-296 Android CCN. Rather than take
+it on as a runtime dep + adapter, **port `mmfparser` in place using NebulaFD's C#
+source as the byte-layout spec.** Specs already pulled: parameter codes 67/70/26
+→ Int, 68 → ParameterVariables, 69 → ParameterChildEvent, 72 → Zone; loop code 11
+→ Short *by design* (fix `write_loops` to key on `loop_<index>`); frame chunk
+0x334C (13132) = FrameHandle (int32) — the frame 29–32 desync. **Next:** apply
+these to the mmfparser mobile patch + a `write_loops` guard, rebuild, rerun.
+Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion →
+re-export desktop CCN. Full survey + spec table in
+`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Tooling survey (2026-08-28)".
+External artifacts (parsed CCN, `gamesrc/` cache, `fnaf2-config.py`, `probe-*.py`,
+`events.pyx` instrumentation) are under the recompile experiment dir.
 
 **Superseded fork (kept for context): the Minus Toys decision.** The open-loop
 device port is built, run, and refuted (`n2-minustoys-0117`, 2026-08-28 — full

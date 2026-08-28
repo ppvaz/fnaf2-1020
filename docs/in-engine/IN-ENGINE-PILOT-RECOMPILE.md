@@ -329,10 +329,50 @@ suspect; `unknown chunk 8774 / 8781 / 8783 / 8796` are the app-level equivalents
 These four frames are likely gameplay frames, so this is on the critical path,
 not cosmetic.
 
-**Scope.** This is a build-293 → build-296 `mmfparser` port: ~4 parameter loaders,
-a mobile loop mode in `mmfparser` **and** Chowdren, ≥2 unknown chunk formats, and
-the frame-parse desync. It is the bulk of the remaining Phase-1/2 work. A newer
-`mmfparser`/CTFAK fork that already targets Fusion 2.5+ may shortcut parts of it.
+**Scope.** This is a build-293 → build-296 `mmfparser` port: parameter loaders,
+a mobile loop mode in `mmfparser` **and** Chowdren, new chunk formats, and the
+frame-parse desync. It is the bulk of the remaining Phase-1/2 work.
+
+### Tooling survey (2026-08-28) — NebulaFD is the reference spec
+
+The Fusion-decompiler landscape was checked for a shortcut:
+
+| tool | lang | state | verdict |
+| --- | --- | --- | --- |
+| `fnmwolf/Anaconda` (`mmfparser`, in use) | Python | current, caps at **build 293** | the base; needs the 296 port |
+| `AITYunivers/NebulaFD` | C# (.NET) | **active** (2026-07, commits re "re-reading ccn file for Android") | reads build-296 Android CCN; has event/parameter/expression model + MFA export |
+| `CTFAK/CTFAK2.0`, `CTFAK-UnEx` | C# | archived 2024 | dead |
+| `CTFAK/CTFAK` | C++ | dead 2021 | dead |
+| `FNAFSource` / `gfktrin` `AnacondaDecompiler` | Python | last touched 2018 / 2021 | older than what we have |
+
+No maintained Python option exists. Taking on NebulaFD as a **runtime** dependency
+means a C# process in the pipeline plus a large adapter onto Chowdren's
+`mmfparser` object model (the "CTFAK→JSON→adapter bridge" this doc's Phase-0 note
+called redundant — it stops being redundant only if the in-place port fails).
+
+**Chosen approach: port `mmfparser` in place, using NebulaFD's C# source as the
+byte-layout spec.** That keeps the pipeline Python-in-Docker with no new tools,
+and NebulaFD's readers remove the reverse-engineering guesswork. The specs pulled
+this session (`Nebula.Core/Data/Chunks/FrameChunks/`):
+
+- **Parameter code → type**, build 296 (`Events/Parameter.cs`): `67` and `70`
+  and `26`(when build ≥ 296) → **`Int`**; `68` → **`ParameterVariables`**
+  (3 × uint32 flags, then up to 4 × `{int32 index, int32 op, int32|double value
+  +skip4}`); `69` → **`ParameterChildEvent`** (`int32 count`, `count·2` × uint16,
+  skip 4); `72` → **`Zone`**. Confirmed against the captured raw payloads.
+- **Loop parameter is a `Short` index by design** (code `11`). Not a bug — the
+  fix is Chowdren-side: `write_loops` / `StartLoop` must key on
+  `"loop_<index>"` instead of a name expression.
+- **Frame chunk `0x334C` (13132) = `FrameHandle`** — a single `int32` (the
+  frame's handle). `mmfparser`'s frame-chunk table ends at 13130 and mis-sizes
+  it, which is what desyncs frames 29–32. Add the handler.
+- App chunks `8774 / 8781 / 8783 / 8796` still need identifying in NebulaFD's
+  `AppChunks/`.
+
+Fallback if the in-place port hits pervasive silent mis-parses (`mmfparser` and
+NebulaFD disagree on more codes than the gaps above): NebulaFD → MFA export →
+load in licensed Clickteam Fusion 2.5 → re-export a desktop CCN Chowdren fully
+supports. Adds a paid tool and a manual step; keep it in reserve.
 
 External artifacts for the next session (all outside Git, under the recompile
 experiment dir): the parsed CCN + `android-res-raw/`, the populated

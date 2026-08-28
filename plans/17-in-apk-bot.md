@@ -396,19 +396,27 @@ a **build-293 → 296 `mmfparser` port**, not a small fix. Raw evidence captured
 see `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — third boundary: the
 mobile event format" for the byte table.
 
+Port strategy decided (2026-08-28): no maintained Python decompiler exists;
+`AITYunivers/NebulaFD` (C#, active) reads build-296 Android CCN. **Port the
+bundled `mmfparser` in place, using NebulaFD's C# readers as the byte-layout
+spec** — keeps the pipeline Python-in-Docker, no runtime dep, no adapter. Specs
+already pulled (see `IN-ENGINE-PILOT-RECOMPILE.md` §"Tooling survey").
+
 Next:
 
-1. **Decide the port strategy** — patch the bundled `mmfparser` in place, or
-   pull a Fusion-2.5+ `mmfparser`/CTFAK fork that already handles build-296 events
-   and re-point Chowdren at it. The in-place list: 4 parameter loaders (codes
-   67–70), a numeric-loop mode in `mmfparser` **and** Chowdren's name-keyed loop
-   machinery, and the frame 29–32 parse desync (`unknown chunk 13132`).
-2. Rerun `chowdren.run --config /…/fnaf2-config.py <owned-ccn> <gamesrc>` after
-   each fix and record the next event-generation boundary. Keep going per the
-   Phase gates table until a desktop target builds and boots to a night.
-3. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
+1. Apply to the mmfparser mobile patch: parameter codes 67/70/26→Int,
+   68→`ParameterVariables`, 69→`ParameterChildEvent`, 72→`Zone`; frame chunk
+   `0x334C` (13132) → `FrameHandle` (int32).
+2. Patch Chowdren's `write_loops` / `StartLoop` to key loops on `loop_<index>`
+   (mobile loop code 11 → `Short` is correct by design, not a bug).
+3. Rebuild, rerun `chowdren.run --config /…/fnaf2-config.py <owned-ccn> <gamesrc>`,
+   record the next event-generation boundary. Keep going per the Phase gates table
+   until a desktop target builds and boots to a night.
+4. Replace the `Multiple Touch` stub with the real pilot input hook (WP4) once
    events generate.
-4. Historical toolchain reference (still valid): `fnmwolf/Anaconda` `9b00bb4`
+5. Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion
+   2.5 → re-export a desktop CCN Chowdren fully supports.
+6. Historical toolchain reference (still valid): `fnmwolf/Anaconda` `9b00bb4`
    builds all 17 mmfparser modules under a Debian-archive-adjusted
    `python:2.7-slim` container after the Cython API fix; see
    [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#public-toolchain-recheck-2026-08-28-mac-arm64).
