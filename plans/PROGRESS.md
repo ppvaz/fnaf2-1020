@@ -85,13 +85,25 @@ device**. Chowdren engine compiles for arm64 Android with **one** fix
 `glslshader.h` probe errors were artefacts (non-standalone TU / desktop-only
 shader header). Every uncertain link verified.
 
-**Very next step:** write the backend — real `include_gl.h` Android branch
-(draft in `tools/recompile/android/`) + `base/android/{platform,renderplatform,
-fbo}.cpp` (adapt from `desktop/`; the `CMAKE_CROSSCOMPILING` path already drops
-the desktop versions) + cross-build ogg/vorbis/freetype/openal-soft, then swap
-`testgles2` for the FNaF 2 `gamesrc` in the Gradle project + bundle `Assets.dat`
-→ APK → boot on the g56. Est. ~1 week. Device is connected
-(`org.fnaf2rebuild.hello` test build installed).
+**Backend built; APK built (2026-08-28).** The whole engine + all 27 event / 29
+frame / 5 object generated units + the Android backend + inline ogg/vorbis +
+cross-built openal-soft link to `libmain.so` (exports `SDL_main`), and
+`./gradlew assembleDebug` → `app-debug.apk` (134 MB, `Assets.dat` stored
+uncompressed). The backend turned out small: `desktop/{renderplatform,fbo}.cpp`
+compile as-is under GLES1 (`include_gl.h` `*OES` remaps), the only new file is
+`base/android/glesshader.cpp` (no-op `BaseShader`), and the rest is
+`#ifdef CHOWDREN_IS_ANDROID` widening of `CHOWDREN_IS_DESKTOP` gates (run.cpp
+SDL.h/`SDL_main`, keydef.h, media.cpp audio, platform.cpp window + Assets.dat
+extraction). freetype was not a real dep. All in
+`tools/recompile/mmfparser-chowdren-mobile.patch`; native build in
+`tools/recompile/android/game-CMakeLists.txt`.
+
+**Very next step: `adb install` + boot on the g56.** Blocked on the device
+connection — `adb devices` empty; need the g56's Wireless-debugging IP:port (and
+pairing code if this host has not paired before). APK at
+`captures`-external `/private/tmp/fnaf2-recompile.FQPVjr/fnaf2-android.apk`
+(`org.fnaf2rebuild.game`). Then iterate on ES 1.1 texture-format / FBO-OES / blit
+runtime issues, and compare a night to the sourced model.
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as
