@@ -20,31 +20,45 @@ Toy Chica where the 100 ms geometry did only intermittently (the CAM-07
 last-flash saga). `docs/device/HID-MULTITOUCH.md` §"The 100 ms contact floor
 is margin".
 
-**But it does not move the sub-70 nights, and the sims say so unambiguously.**
-Gate ladder, `minus7-perfect-experiment`:
+**What it does to the sub-70 nights is a TRADEOFF, and the landscape is
+chaotic — phase-lock, not a smooth curve.** Gate ladder + a 7-point geometry
+sweep, `minus7-perfect-experiment`, human-correlated ±60 ms, 400 seeds:
 
-- **The simulator does not model contact length** — every toggle fires on the
-  press frame (`engine.js`). A 33 ms-contact plan replays identically to a
-  100 ms one. There is no survival number to move.
-- **LIGHT_AFTER sweep swapped into the shipped schedule: collapse** (config B —
-  n2 11, n5 1, n6 0 at *zero* jitter). Re-laid-out for a tight model slot
-  (config C): n5/n6 hold at 100 at machine precision — but they were *already*
-  100 with the shipped sweep — and **n7 breaks 90 → 11** (the sparse-mask stun
-  bridge had no phase to give up).
-- **The freed ~600-800 ms/cycle has no home.** Moving the attack-cycle Foxy
-  reset into it (`SEARCH_KNOBS.attackHallDeltaMs > 0`) errors the emitter or
-  does not help human jitter — item 12's wall (`MASK_ANIM_OFF` vs the
-  400-frame Withered stun budget, both game constants) does not reopen.
+| sweep geom (slot/dev/con) | n2 | n5 | n6 | n7 | n7 @ measured |
+|---|---|---|---|---|---|
+| 120/133/100 (shipped) | 71 | 64 | 63 | 33 | 90 |
+| 67/33 slot 50 | 70 | 57 | 57 | 12 | 11 |
+| **50/60/30 slot 50** | **82** | **76** | **71** | 17 | 14 |
+| **40/50/25 slot 40** | **81** | **74** | **67** | 22 | 42 |
+| 45/56/28 slot 45 | 60 | 46 | 45 | 14 | 52 |
+| 36/45/22 slot 36 | **3** | **0** | **0** | 0 | 0 |
+| 33/40/20 slot 33 | 8 | 5 | 0 | 0 | 0 |
 
-**So: n1-n6 clear at machine precision with the SHIPPED geometry. The sub-70
-ladder is `human-gate.mjs`'s iid model on a geometrically-wedged Foxy reset,
-and no actuator change — faster, lighter, or shorter-contact — touches that.**
-The lines below about "sweep-selection-spacing-bound" nights 2-6 are
-superseded: at machine precision 2-6 were never spacing-bound (they were
-100%), and session 55's 113 ms sweet spot was measuring the human-jitter
-model, not the machine. The open levers are unchanged and both are jitter/
-geometry, not device: **item 12's correlated jitter shape** and **item 10's
-bang-anchored Foxy reset**.
+Read that carefully:
+
+- **A tight LIGHT_AFTER sweep (50/60/30 or 40/50/25) lifts n2-n6 at human
+  jitter by +5 to +13 points — n5 crosses 70, n6 gets to 67-71.** This is a
+  real re-phasing gain, not noise (it repeats across two geometries and both
+  jitter shapes).
+- **Every geometry that helps n2-n6 WRECKS n7** (17-22 human, 14-42 measured
+  vs the shipped 33/90). n7's sparse-mask stun bridge had no phase to give up.
+- **Two nearby geometries collapse EVERYTHING to 0** (36/45/22, 33/40/20) —
+  the phase-lock cliff. So this is not a knob to turn; it is a search.
+- **The simulator still does not model contact length** — a 33 ms *tap* plan
+  replays identically to a 100 ms one. The gain here is entirely from the
+  narrower SWEEP re-phasing the cycle, which the LIGHT_AFTER geometry makes
+  landable, not from shorter taps.
+
+**So the corrected standing: the actuator discovery IS a lever for n2-n6 at
+human jitter — through cycle re-phasing, needing a proper 1200-seed search
+over the sweep geometry (a plan-16 axis that was never in the search) — and
+it is NOT a lever for n7, which gets worse.** The other two levers still
+stand and n7 needs them: **item 12's correlated jitter shape** and **item
+10's bang-anchored Foxy reset**.
+
+*(The 2026-08-27 09:xx line just above, "does not move the sub-70 nights,"
+was written before the 50/60/30 point and is wrong — kept per the retractions
+rule.)*
 
 ---
 
