@@ -45,7 +45,11 @@ untouched stock game.
   externally held mobile patch now reproduces a clean-clone structural parse of
   the owned build-296 CCN (33 frames / 782 images), including 7 real font records
   and 67 APK audio resources. This build's music bank is empty. It is not yet a
-  generated or booted runtime.
+  generated or booted runtime: the 2026-08-28 converter rerun clears parse and
+  asset creation but stops in C++ generation at `write_objects` — first on a
+  placeholder image handle `(0, 0)`, then on the unparsed extension list
+  (`fromHandle` over 0 items) for object types 40/42/43/46/47. See
+  [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#phase-2--first-two-generate-boundaries-2026-08-28).
 - Direct state targets already have names and source mappings: `viewing`, `mask`,
   Foxy `D`, music-box state, office occupants and battery life.
 
@@ -256,6 +260,30 @@ reads true state and is frame-locked?" — the Shooter25 ceiling. Run whichever
 is unblocked; do not gate one on the other. The external track also keeps the
 retail package as the fidelity oracle this plan's package 6 needs.
 
+## Runtime attachment (route 2) is not being pursued — Pedro's call, 2026-08-28
+
+The read-true-state route as specced hit a barrier that is not a probe result:
+
+- **Ethical.** Every viable form of it here depends on defeating a PAIRIP layer —
+  `pairipfix`-style bypass of the signature/installation check, plus evading the
+  anti-instrumentation layer that is the one PAIRIP component confirmed to bite.
+  That is circumventing the app's integrity and anti-tamper protection, not
+  studying an owned copy, and it is out of scope for this project.
+- **Practical.** There is no approved rooted research device, and rooting the
+  g56 target is off the table (it wipes user data and destroys the fidelity
+  oracle this plan's package 6 depends on).
+
+So routes **2** and **3** (rooted retail observation, loader/shim that has to
+sidestep the same protection) are parked. This does **not** close Plan 17: the
+goal — an owned research build that reads authoritative state and closes one
+loop — is still reachable through the **faithful recompile (route 5)**, which
+converts the owned CCN with open-source Chowdren into a separately-packaged
+research binary and touches none of PAIRIP. Route 5 is now the active path; its
+current boundary is the Phase 2 extension list (see the ledger row and
+[`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#phase-2--first-two-generate-boundaries-2026-08-28)).
+The runtime-attachment survey above is kept per the retractions rule — it
+correctly maps the route; it is the route itself that is declined.
+
 ## Route matrix
 
 Treat these as parallel hypotheses and kill each only with a reproducible probe.
@@ -336,7 +364,7 @@ key, or a raw state dump in Git.
 | rooted retail observation | On an explicitly approved sacrificial rooted device, run one read-only, package-scoped observation of a harmless value through a permitted research environment. | A local timestamped value changes with a visible/source-derived transition while the untouched package files remain the fidelity subject. | Record whether failure was device setup, process start, native-library load, or state lookup. Do not turn a failed probe into a sequence of integrity/anti-instrumentation evasion attempts. |
 | loader or runtime shim | Boot the original content under a separately packaged controlled runtime and observe one value only. | A frame reaches the title/night boundary and the value has a defined, logged owner. | Record the first incompatible runtime/content boundary; continue to the independent recompile route, not a disguised repackage retry. |
 | CCN mutation/rebuild | With a lawful writer/export path, build a distinct package-name research app with one inert diagnostic. | It installs, boots and emits the diagnostic without claiming retail-runtime fidelity. | Record writer/export/boot stage and retain the CCN and package outside Git; the faithful-recompile route remains independent. |
-| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. |
+| faithful Chowdren recompile | Run the redacted parser → C++ → desktop-boot contract in [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#recompile-probe-contract-and-evidence-boundary). | First `GameData` parse, then generated C++, desktop boot, and finally an in-process state trace — each is a separate milestone. | Stop at the first failing phase and preserve its derived log; do not call a parser success, generated source, or rebuilt desktop run a stock-APK result. **At 2026-08-28: parse ✓, asset creation ✓, C++ generation ✗** — stops in `write_objects` on a placeholder image and then the unparsed extension list. Next work is the extension chunk + a game config, not a boot attempt. |
 
 The route harness is complete only when every attempted row has one such record.
 It is not complete merely because a command exists in a shell history.  The current
@@ -353,18 +381,25 @@ rule is met.
 
 ## Continue here
 
-1. Convert the existing PAIRIP conclusion into the package-1/2 probe ledger: exact
-   splits, hashes, install source, signature and crash stage.
-2. Run the smallest read-only runtime-attachment probe because it tests same-process
-   observation without first solving APK rewriting. This requires an explicitly
-   approved rooted research device; otherwise skip directly to step 3.
-3. In parallel only where it does not dilute that probe, recover the existing
-   `mmfparser-mobile-ccn.patch` and apply it to Chowdren so the rebuild route retains
-   a live fallback. The clean public Chowdren toolchain is rechecked on Mac arm64:
-   `fnmwolf/Anaconda` `9b00bb4` builds all 17 mmfparser modules under a
-   Debian-archive-adjusted `python:2.7-slim` container after the Cython API fix; see
-   [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#public-toolchain-recheck-2026-08-28-mac-arm64). This is a toolchain gate only,
-   not evidence that the missing mobile patch applies or parses the owned CCN.
+Runtime attachment (routes 2/3) is parked — see the barrier note above. The
+active path is the **faithful recompile (route 5)**, now blocked at the Phase 2
+extension list.
+
+1. **Parse the mobile extension list.** `game.extensions.items` is empty because
+   the mobile-CCN patch skips the extension chunk. Identify which `unknown chunk`
+   is the extension data for build 296 and add a parse hunk so
+   `extensions.fromHandle` resolves handles for object types 40/42/43/46/47.
+2. **Or** short-circuit it with a game config that maps those five raw object
+   types directly: `Layer object` → Chowdren's native writer, `Multiple Touch` →
+   the pilot input hook (WP4), the three Android/iOS objects → no-op stubs.
+   Whichever is smaller wins; the extension parse is the more faithful one.
+3. Rerun `chowdren.run --config <cfg> <owned-ccn> <gamesrc>` and record the next
+   `write_objects` / event-generation boundary. Keep going per the Phase gates
+   table until a desktop target builds and boots to a night.
+4. Historical toolchain reference (still valid): `fnmwolf/Anaconda` `9b00bb4`
+   builds all 17 mmfparser modules under a Debian-archive-adjusted
+   `python:2.7-slim` container after the Cython API fix; see
+   [`IN-ENGINE-PILOT-RECOMPILE.md`](../docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md#public-toolchain-recheck-2026-08-28-mac-arm64).
 
 ## Done when
 

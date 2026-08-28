@@ -245,6 +245,43 @@ the patch are experiment artifacts.  If that command fails, retain the *first*
 parser boundary (image bank, events, objects, or converter contract) and return to
 the matching patch hunk. Do not skip ahead to extension stubs or pilot code.
 
+### Phase 2 — first two generate boundaries (2026-08-28)
+
+The cache-backed converter rerun (`chowdren.run` over the same externally parsed
+build-296 CCN, assets already in `cache.dat` / `image_cache/`) clears parse and
+asset creation — it writes `Assets.dat` and processes the 108 subtitle files and
+the shader set — then **stops in C++ generation, at `write_objects`.** Two
+distinct boundaries, in order:
+
+1. **`NotImplementedError: invalid image: (0, 0)`** —
+   `writers/objects/system.py:write_pre` resolves an object direction frame whose
+   image handle is the placeholder `(0, 0)` (also `(332, 0)`, `(334, 0)`, … — a
+   `handle, game_index` pair the mobile runtime never draws). Stock
+   `configs/default.py` raises here. A one-function research config
+   (`get_missing_image` → first real image, the `configs/fp.py` approach) passes
+   it; ~15 substitutions are logged across four `ObjectInfo` objects.
+2. **`ValueError: need more than 0 values to unpack`** in
+   `mmfparser/data/chunkloaders/extensions.py:fromHandle`, from
+   `converter.py:get_object_impl`. **`game.extensions.items` is empty** — the
+   mobile-CCN patch does not parse the extension list — while `game.frameItems`
+   references extension object types `40` (*Android object*), `42` (*iOS Plus
+   Object*), `43` (*AndroidPlus*), `46` (*Multiple Touch*) and `47` (*Layer
+   object*). With no parsed extension the converter cannot map the handle to a
+   writer.
+
+So Phase 2 is **not** passed. The next work is Phase-3-shaped and lands in the
+parser patch plus a game config: parse the mobile extension chunk (one of the
+`unknown chunk` warnings) so handles resolve, or map those five raw object types
+directly — `Layer object` is native to Chowdren, `Multiple Touch` becomes the
+pilot input hook (per Plan 17 WP3), and `Android object` / `iOS Plus Object` /
+`AndroidPlus` are no-op stubs. The `(0, 0)` image substitution is a fidelity
+compromise, not a clean pass, and must be revisited before any boot comparison.
+
+External artifacts for the next session (all outside Git, under the recompile
+experiment dir): the parsed CCN + `android-res-raw/`, the populated
+`gamesrc/cache.dat` + `image_cache/`, and `fnaf2-config.py` (the
+`get_missing_image` stub).
+
 ### Fidelity labels
 
 Every result must carry exactly one label:
