@@ -33,24 +33,39 @@ progress log has the tables):
   the sim locks every toy on every geometry; see "The stun needs no minimum
   lit time" below. What the device still has to show is that the last-slot
   drift leak and its 67 ms repair behave on the phone as in the model.)
-- **Item 10: needs a bang detector faster than the phone has.** Firing the
-  attack cycle's mask-off/reset/raise (+ dragged recovery sweep) on the BB
-  departure bang clears n2–n6 to ~90% **at a perfect instant oracle**, and is
-  **worse than blind at 100 ms bang latency** — the recovery sweep is pinned
-  to the cycle end, so acting late drags it late and toy coverage collapses.
-  Recorded as a default-off negative. n7 barely moves (it dies to Foxy in the
-  opening / clear cycles, not the attack cycle).
+- **Item 10: closed on latency.** Firing the attack cycle's
+  mask-off/reset/raise (+ dragged recovery sweep) on the BB departure bang
+  clears n2–n6 to ~90% **at a perfect instant oracle** — but the gain needs
+  end-to-end bang latency **< ~33 ms** (useful +10 on n5/n6), < ~50 ms to
+  break even, and is a **net loss above ~67 ms** (`tools/minus7/i10latency.mjs`;
+  the recovery sweep is pinned to the cycle end, so acting late drags it late
+  and toy coverage collapses). Android's CDD recommends ≤30 ms for continuous
+  PCM delivery *alone*. So the latency is below what the audio path can give,
+  and a fast bang detector would not unlock it. Default-off recorded negative;
+  n7 barely moves regardless (it dies to Foxy in the clear cycle, not the
+  attack cycle).
 
-**The useful positive:** a <~50 ms BB-specific departure-bang detector would
-be worth ~+30 points on n2–n6, so **plan 15 / plan 08 audio-detection latency
-is a survival lever, not just an honesty concern.**
+**~~The useful positive: a <~50 ms bang detector would be worth ~+30 points.~~
+Checked 2026-08-27 (`tools/minus7/i10latency.mjs`) and withdrawn.** Item 10's
+gain needs end-to-end bang latency **< ~33 ms** for a useful +10 on n5/n6,
+< ~50 ms to break even — and Android's CDD recommends ≤30 ms for *continuous
+PCM delivery alone*, before onset classification or IPC, with plan 08's
+windowed capture paying cold start on top. The latency item 10 needs is below
+what the audio path can deliver. **Item 10 is closed on latency, not blocked.**
+The cue helper's remaining value is the fast *visual* read (plan 15 pkg 5),
+not an audio-driven action. See `plans/08` §"The latency budget an early-unmask
+would need".
 
 **Next, in order (all device — the simulator scheduling space is exhausted):**
-1. **The LIGHT_AFTER geometry on the phone.** The 33 ms contact *does* stun in
-   the model (dump + sim, no minimum lit time). Open: (a) does the sweep's
-   last-slot ~12–30 % jitter leak reproduce on the phone, (b) does a 67 ms
-   light close it there — needs the LA/legacy switch made a flag (`fnaf2-1020-02`
-   is on this), and (c) does a real actuator hold the ~4 ms `dev≈62` basin.
+1. **The LIGHT_AFTER geometry on the phone — device run, not more code.** The
+   33 ms contact *does* stun in the model (dump + sim, no minimum lit time),
+   and the localized 67 ms last-slot light is now built and gated
+   (`fnaf2-1020-02`: `recipe.mjs sweepLastContactMs`, sweep line `10,4,7:67`;
+   1200-seed `66/33 slot50 last67` is correlated n2–n6 ≈ 72–83, **n7 18** — a
+   +10–13 lever that still wrecks n7, consistent with the geometry search).
+   Open, and all device: (a) does the sweep's last-slot jitter leak reproduce
+   on the phone, (b) does the 67 ms light close it there, (c) does a real
+   actuator hold the ~4 ms `dev≈62` basin under its own jitter.
    `n2-la-212912` already showed the geometry transfers with no HID lit-miss.
 2. **New device time for a second clear-cycle Foxy reset** — the one thing
    Night 7 needs (plan 16 pkg 5: the opener is refuted, n7's Foxy deaths are
@@ -59,9 +74,13 @@ is a survival lever, not just an honesty concern.**
    `MASK_ANIM_OFF` without hitting the sweep pin, so this is a device-side
    question: is there a cheaper path to `hallView` (e.g. folding the reset
    into the read's own monitor-down)?
-3. **Plan 15 detection latency** is on the critical path for survival, not
-   only architecture — a <~50 ms departure-bang read is worth ~+30 points on
-   n2–n6 (it would unlock item 10, which is otherwise a recorded negative).
+3. **Plan 15's fast *visual* read** (BB in the left opening via the cue-helper
+   GRID, ~42–59 ms vs `screencap`'s 225 ms) — architecture and honesty, not an
+   n5/n6/n7 survival lever. The *audio* path is not on the critical path: item
+   10's early-unmask needs a bang latency (<~33 ms end-to-end) below what
+   Android audio can deliver, so a fast bang detector would not unlock it
+   (checked 2026-08-27, `tools/minus7/i10latency.mjs`; `plans/08` §"The latency
+   budget an early-unmask would need").
 
 ---
 
@@ -901,11 +920,14 @@ as work is done rather than composed at the end; two are delegated and named.
       coverage collapses. Recorded negative. n7 barely moves (its Foxy deaths
       are not in the attack cycle).
 
-    So the shape of "new device time" is now specific: **either** a real
-    actuator that holds a ~4 ms sweep-spacing basin under its own jitter,
-    **or** a <~50 ms BB-specific departure-bang detector (which would be worth
-    ~+30 points on n2-n6 — this makes plan 15 / plan 08 detection latency a
-    *survival* lever).
+    So the shape of "new device time" is now specific: a real actuator that
+    holds a ~4 ms sweep-spacing basin under its own jitter, or a cheaper path
+    to `hallView` for a second clear-cycle Foxy reset (n7). **The audio route
+    is out** — item 10's early-unmask needs a bang latency < ~33 ms end-to-end
+    for a useful gain (`tools/minus7/i10latency.mjs`), below what Android audio
+    can deliver (CDD: ≤30 ms for continuous PCM delivery alone). A fast bang
+    detector would not unlock it; `plans/08` §"The latency budget an
+    early-unmask would need".
 
     **n7 update (plan 16 pkg 5, `tools/minus7/n7probe.mjs`): the opener is
     refuted, not a factor.** A perfect opening Foxy reset moves n7 by 0.0.

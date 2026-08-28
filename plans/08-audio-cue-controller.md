@@ -599,6 +599,51 @@ window, so the on-device classifier is a reimplementation, not a port, and its
 cost has to be measured on the phone before any deadline arithmetic means
 anything.
 
+#### The latency budget an early-unmask would need — and it is out of reach (2026-08-27)
+
+Plan 16 item 10 is "fire the attack cycle's mask-off/reset/raise the instant a
+BB departure bang is heard" — the one policy the `bang` cue could still enable.
+`tools/minus7/i10latency.mjs` sweeps the whole audio path as one number
+(`replay()`'s `bangLatencyMs` = PCM buffering + onset classification + IPC +
+reaction) against the blind baseline, 800 seeds correlated:
+
+| bang latency | n2 | n5 | n6 | n7 |
+|---|---|---|---|---|
+| blind (no early unmask) | 68.5 | 62.4 | 61.1 | 33.6 |
+| 0 ms (perfect oracle) | 93.9 | 91.6 | 90.5 | 47.0 |
+| 33 ms | 79.9 | 72.6 | 70.9 | 39.8 |
+| 50 ms | 74.9 | 64.3 | 62.9 | 36.1 |
+| 67 ms | 69.5 | 55.6 | 53.3 | 30.9 |
+| 100 ms | 52.4 | 30.5 | 26.5 | 15.9 |
+
+The whole gain is reacting to BB leaving *early* — the 900 ms phase pad is a
+worst case, the bang says when he actually went — so detection latency eats it
+directly. **The budget is end-to-end < ~33 ms for a useful gain, < ~50 ms to
+break even; above ~67 ms it is a net loss on n5/n6/n7.**
+
+Against that budget:
+
+- Android's CDD recommends **continuous input latency ≤ 30 ms** — and that is
+  the PCM-delivery leg *alone*, before onset classification or IPC. Cold input
+  latency (this package's windowed-capture default) is recommended ≤ 100 ms,
+  allowed ≤ 500 ms. A *continuously-capturing* detector armed at mask-on avoids
+  cold start but still pays ~30 ms delivery + classification + the 5–22 ms IPC
+  leg measured above ≈ 50–90 ms — already break-even to net loss.
+- The g56's audio path is unmeasured, and the `ARM`/`HIT`/`MISS` protocol to
+  measure it does not exist.
+- This model assumes a **perfect** detector. Real false-negatives (a missed
+  departure bang → the recovery fires on the 400 ms fallback → collapse) and
+  false-positives (an early non-BB thud during the hold → raise before BB left
+  → the `onCamsUp` walk-in) both make it strictly worse, and the thud
+  detector's FP rate is package 2's named open unknown.
+
+**So item 10 is closed on latency, not merely blocked on this plan.** The
+`bang` cue cannot enable an early unmask that helps, and the last remaining
+argument for finishing this package's timing legs *for a Minus 7 survival gain*
+is gone. The cue helper's value is now entirely the fast **visual** read
+(plan 15 package 5) and shadow-mode research, not an audio-driven Night 7
+action.
+
 **Gate:** p99 completion plus the existing mask/monitor/input sequence and an
 explicit margin must land before the simulator-derived action deadline. Also
 show that the helper does not add unacceptable frame, input, audio, or thermal

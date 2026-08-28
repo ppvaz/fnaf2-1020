@@ -15,8 +15,9 @@ This plan is the structured vehicle for the standing goal in `PROGRESS.md`
 item 9 ("iterate on Minus 7 until every night clears 70% under the human-gate"),
 after two sessions (items 8–11) attacked it by hand and reverted clean. **The
 goal is not met**, and every simulator lever is now exhausted — what is left is
-device work: a real actuator holding the geometry basin, a fast departure-bang
-detector, or new device time for a second clear-cycle Foxy reset.
+device work: a real actuator holding the geometry basin, or new device time for
+a cheaper `hallView` path (a second clear-cycle Foxy reset for n7). The audio
+route is out (item 10 is closed on latency, 2026-08-27).
 
 ## Progress log
 
@@ -218,13 +219,18 @@ detector, or new device time for a second clear-cycle Foxy reset.
   n7 is barely moved either way (33 → 47 at the oracle) because its Foxy
   deaths are not in the attack cycle — bang-gating cannot touch them.
 
-  **So item 10 needs a <~50 ms BB-specific departure-bang detector**, which
-  the phone's audio cue path (plan 08: ~tens–hundreds ms, close→MISS latency
-  unmeasurable as built) cannot provide. Kept default-off with a
-  `test-search.mjs` fixture pinning both halves. **The flip side is a real
-  reprioritisation**: a fast bang detector is worth ~+30 points on n2–n6, so
-  plan 15 / plan 08 detection latency is a *survival* lever, not only an
-  architecture/honesty concern.
+  **So item 10 needs a fast BB-departure-bang read.** Kept default-off with a
+  `test-search.mjs` fixture pinning both halves. **Pinned exactly, 2026-08-27**
+  (`tools/minus7/i10latency.mjs`): the budget is end-to-end < ~33 ms for a
+  useful +10 on n5/n6, < ~50 ms to break even, a net loss above ~67 ms.
+  Android's CDD recommends ≤ 30 ms for continuous PCM delivery *alone* (cold
+  start, plan 08's windowed default, is recommended ≤ 100 ms / allowed
+  ≤ 500 ms), and that is before onset classification or the 5–22 ms IPC leg
+  plan 08 measured. **The latency item 10 needs is below what the audio path
+  can deliver — item 10 is closed on latency, not blocked** (`plans/08` §"The
+  latency budget an early-unmask would need"). The `bang` cue does not enable
+  a Minus 7 survival gain; the cue helper's value is the fast *visual* read
+  (plan 15 pkg 5) and shadow research.
 
 - **`replay()` queue-drain bug, fixed in passing (`740f5b0`).** The drain
   tested `queue[0][0]` on an *unsorted* head, so a queue entry pushed at
@@ -240,9 +246,10 @@ detector, or new device time for a second clear-cycle Foxy reset.
   a fragile +10 pending device validation; item 10 needs a detector that does
   not exist. Nights 5/6/7 to 70% still requires either (a) the device
   confirming the geometry basin is real *and* stacking the correlated shape,
-  or (b) a fast departure-bang detector, or (c) new device time for a
-  jitter-robust second Foxy reset in the clear cycle (see the pkg 5 entry
-  below — the *opener* is refuted).
+  or (b) new device time for a jitter-robust second Foxy reset in the clear
+  cycle (see the pkg 5 entry below — the *opener* is refuted). ~~(c) a fast
+  departure-bang detector~~ — ruled out 2026-08-27, item 10 is closed on
+  latency (`tools/minus7/i10latency.mjs`).
 
 - **Pkg 5 (the Night-7 opener) closed by recorded negative (2026-08-27,
   `tools/minus7/n7probe.mjs`).** Its premise — n7 dies in the opening because
