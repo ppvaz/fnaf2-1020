@@ -1,6 +1,6 @@
 # Plan progress
 
-**Updated:** 2026-08-27
+**Updated:** 2026-08-28
 
 **Overall:** **36%** — 34 of 94 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
@@ -12,6 +12,61 @@ mandatory) — a dependency report needs a promoted candidate and there is none.
 packages are closed.
 
 ## Very next step
+
+### 2026-08-28 strategic reset — this is not a dead end
+
+The 2026-08-27 conclusion below is narrow: plan 16 exhausted timing changes to
+the **emitted Minus 7 device plan under the synthetic human gate**. It did not
+exhaust the Android strategy space, and it did not show that the exact machine
+route is impossible. Do not begin the next session by searching another Minus 7
+sweep knob. Start from this ranked frontier instead:
+
+| Route | What is actually known | Next falsifiable gate |
+|---|---|---|
+| **Minus Toys** | Highest-priority unexplored strategy. Source says the split state can stun all three Toys while viewing CAM 11; on 2026-08-28 one scheduled HID attempt deliberately armed it on the target phone: CAM 11/Prize Corner visible with **CAM 09 and CAM 11 both lit**. | Split `viewing` from the marker in `src/engine.js`, implement the published 10 s Minus Toys loop, then prove a glitched CAM 09 light holds the Toys on the phone. |
+| **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
+| **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
+| **Foxy GOT-YOU blackout cover** | Engine and source contain the two kill triggers. The public 2999/3000 greenrun deliberately locks Foxy and covers every 10 s execution check with a blackout. Searches here penalise `gotYou`; none deliberately synthesize this policy. | Encode it as an explicit, likely-RNG baseline and measure it before deciding whether it is useful on Android. |
+| **Original Minus 3** | The same split-camera primitive should support CAM 08, but Toy Bonnie remains live, so it is dominated by Minus Toys for consistency. | Keep as a cheap split-state control, not the primary route. |
+
+Routes that really have been measured down: glitchless **Minus Two** is 16/200
+on the current Android model; Six-Seven, Minus Right and the fixed gate-aware
+families have sourced structural failures; the attempted periodic Foxy-eviction
+addition made every tested Minus 7 night worse. Reopen those only for a corrected
+mechanic or a genuinely different policy, not a new timing permutation.
+
+**Minus Toys correction that must survive context loss.** The 16/200 Minus Two
+failure was Toy Chica reaching the office against Android's consecutive mask
+semantics. Minus Toys is not that policy: its glitched CAM 09 light is intended
+to pin Toy Chica, Toy Bonnie and Toy Freddy on the Show Stage. Therefore the
+Minus Two Toy Chica failure is **not evidence that Minus Toys fails**. Mangle and
+BB still require the sourced five-consecutive-tick mask handling, so the full
+policy must be modelled rather than declared solved.
+
+**Device proof, 2026-08-28, Moto g56 / v2.0.7 Night 2.** A single HID stream used
+33 ms contacts and a 17 ms released gap between the CAM 09 Click and monitor
+down (50 ms through the pair, inside the sourced 200 ms stale-sample window).
+After the next raise the screenshot shows the CAM 11 feed/label and wind control,
+with CAM 09 and CAM 11 highlighted. Artifacts:
+`captures/n2-doublecam-hid-0003.{png,hid}` (ignored capture corpus). This proves
+deliberate arming and the actuator window. It does **not** yet prove the glitched
+light applies a stun, that the split survives a full night, or that the published
+PC loop transfers unchanged.
+
+**Do not run the advertised localized-last67 trial yet.** `recipe.mjs` accepts
+`--sweep-last-contact-ms=67` and the plan interpreter understands `10,4,7:67`,
+but `tools/device/trial.sh` currently forwards only slot, spacing and base
+contact. Setting an environment variable for the last contact therefore emits
+the old all-33 plan. Thread the option through the live entry point and pin it in
+the runner-plan test before claiming that device experiment ran.
+
+**Concrete next action:** plan 02 package 2a, engine half first. Represent
+`viewing`, `lastViewed` and the `your view` marker separately; pin the existing
+Minus 7 behavior byte-for-byte; then add the glitch-aware Minus Toys probe. The
+device arming sub-gate is answered once, but stun transfer and repeatability are
+still open.
+
+### Prior Minus 7 frontier (retained, now scoped)
 
 **2026-08-27 (`740f5b0`) — the plan-16 constrained search is done, both levers
 measured to a conclusion, and the standing goal (item 9) is NOT met.** The
@@ -61,7 +116,9 @@ would need".
    33 ms contact *does* stun in the model (dump + sim, no minimum lit time),
    and the localized 67 ms last-slot light is now built and gated
    (`fnaf2-1020-02`, `853f8bc`: `recipe.mjs sweepLastContactMs`, sweep line
-   `10,4,7:67`, runner threaded, `--sweep-last-contact-ms=67`). **Scrutinised
+   `10,4,7:67`, plan interpreter threaded, `--sweep-last-contact-ms=67`). The
+   live `trial.sh` option is **not** threaded yet; see the 2026-08-28 reset
+   above. **Scrutinised
    1200-seed (Pedro: "surprising results fall under scrutiny"):** `66/33 slot50
    last67` correlated is a **robust +10–12 on n2 and n5** across both actuator
    models (rl550 *and* the pinned rl480) — a perturbation-stable basin, not a
@@ -1530,8 +1587,8 @@ on the next graded run remains the way to attribute them, since only
 | Plan | Closed / mandatory packages | Progress | Current state | Next gate |
 |---|---:|---:|---|---|
 | [01 — research pass](01-research-pass.md) | 3 / 3 | **100%** | Done | None |
-| [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 7 | **14%** | **Reopened 2026-08-26.** The glitchless Minus Two verdict stands (16/200, consecutive-mask failure), but the reason the *family* was closed — "Minus Toys cannot transfer, the build has no double-camera state" — is retracted: `viewing` and the `your view` marker are separate fields and a monitor raise restores only `viewing` from a 200 ms-stale sample, so the CAM 08/09/11 flash exclusions are bypassable. A device frame caught both buttons lit. Minus Toys is unprobed, not refuted; the framing decision is blocked behind the new package 2a | Package 2a: split the engine's camera selection into counter + marker, write a glitch-aware Minus Toys probe, and measure the 200 ms arming window on the device |
-| [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 1 / 5 | **20%** | Engine sourcing complete (2026-08-24); reactive coach, decision table, ladder and grading untouched | Design the reactive coach: situation detection, expected response, reaction window, decision grading |
+| [02 — Minus 3 mode](02-minus-3-mode.md) | 1 / 7 | **14%** | **Reopened; device sub-gate advanced 2026-08-28.** Glitchless Minus Two remains 16/200, but that Toy Chica failure is not a Minus Toys verdict. A deliberate 50 ms HID sequence armed `viewing=11` / marker CAM 09 on the target phone in one attempt (both buttons lit); policy, stun and repeatability remain unmeasured. | Package 2a: split counter + marker in the engine and write the glitch-aware Minus Toys probe; then measure stun transfer and arming repeatability. |
+| [03 — right-vent-camp mode](03-right-vent-camp-mode.md) | 1 / 5 | **20%** | Engine sourcing complete (2026-08-24). The existing 0/300 `rvctest` is a deliberately incomplete non-reactive skeleton, not the brayden/Shooter25 policy; decision table, coach, ladder and grading untouched. | Encode and measure the published four-way post-wind controller before designing lessons or quoting an Android rate. |
 | [04 — optimize Minus 7](04-optimize-minus-7.md) | 3 / 4 | **75%** | Search and grading work complete | Replace inferred human profile with accumulated trainer traces |
 | [05 — derive new strategy](05-derive-new-strategy.md) | 5 / 5 | **100%** | Closed by sourced refutation/negative result | Reopen only after a source-rule change |
 | [06 — hybrid search](06-hybrid-strategy-search.md) | 6 / 6 | **100%** | Closed with no survivor | Reopen only after a corrected mechanic changes reachable policy space |
@@ -1544,7 +1601,7 @@ on the next graded run remains the way to attribute them, since only
 | [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
-| [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27.** Pkgs 1–3 built (row was stale at 0/6). **Pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`).** Pkg 4: the constrained scheduling space is a wall — timing knobs, the 10 s attack cycle, the sweep geometry (a phase-lock spike that fails iid and wrecks n7), and item 10's bang-anchored raise (needs a <~50 ms bang detector the phone lacks). Pkg 5: the Night-7 *opener* is refuted — a perfect opening Foxy reset moves n7 by 0.0; n7 is a steady-state clear-cycle problem (two existing Foxy resets missing under jitter → 33/61 %, + office entries = the geometry lever). Pkg 6 dropped — no promoted candidate for a dependency report. Every simulator lever is exhausted; the standing goal (item 9) is **not met in the simulator** and moves entirely to the device | Reopen only if a device result produces a candidate to harden, or a source-rule change reopens the scheduling space |
+| [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
 
 ## Counting rule
 

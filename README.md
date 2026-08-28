@@ -213,8 +213,12 @@ What they have established is mostly **negative**, and that is kept on purpose:
   on a glitch state the mobile build lacks~~ — **withdrawn 2026-08-26: the
   build has that state.** `viewing` and the `your view` marker are separate
   fields and a monitor raise restores only the first, from a 200 ms-stale
-  sample; a device frame caught both camera buttons lit. Minus Toys is therefore
-  **unprobed, not refuted** — nothing here models or has played it.
+  sample. On 2026-08-28 a scheduled HID stream then armed the split deliberately
+  on the target phone: CAM 11 remained visible while CAM 09 and CAM 11 were both
+  lit. Minus Toys is therefore **device-armed but policy-unprobed, not refuted** —
+  nothing here yet models its split state or proves the glitched light stuns the
+  Toys. The 16/200 Minus Two Toy Chica failure is not a Minus Toys verdict,
+  because Minus Toys is specifically intended to pin her on CAM 09.
   [`MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md)
 - **Every gate-aware policy family searched scores 0/150** once the 45-frame
   defense fuse and 300-frame resolution chain are modeled — including two

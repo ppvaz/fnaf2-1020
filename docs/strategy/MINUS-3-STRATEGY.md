@@ -176,9 +176,9 @@ Android model:
   modelled the glitch and still does not; the engine has no two-camera state, so
   the probe below measured the *glitchless* member only, and its result stands
   on its own terms. What the retraction changes is that the family was closed
-  for the wrong reason: the transfer-breaker is the consecutive-tick mask-clear
-  semantics below, not the absence of the glitch. See the 2026-08-26 verdict
-  at the end of this section.
+  for the wrong reason. The consecutive-tick mask-clear semantics below break
+  the probed **Minus Two** policy; they are not yet a Minus Toys verdict. See
+  the 2026-08-28 correction at the end of §8.
 - **Minus Two: 16/200 normal seeds** (deaths inside-office via Toy Chica);
   the pin-all-six `--cams=3,5,6` extension scores 0/200. The pinned
   worst-luck 100/100 is a diagnostic artifact (pinning freezes the escape
@@ -211,19 +211,32 @@ consequences:
 
 - **Minus Toys is reopened as a question, not answered as a strategy.** Every
   step of the published routine that needs the glitch is now *possible* on this
-  build's event data. None of it has been played, modelled, or measured here.
+  build's event data. Deliberate device arming is proved below; the policy and
+  glitched stun have still not been modelled or measured.
 - **The glitched hold does stack, in source.** With the marker parked on CAM 09
   and `viewing == 11`, one held flashlight both stuns all three Toys (g453-455,
   gate `viewing <> 9`) and blocks the Puppet's escape roll (g494, `viewing == 11`
   + `lit?`). That is the routine's central trick, and it reads as intact.
-- **The known transfer-breaker is untouched.** §7's structural failure was Toy
-  Chica against the *consecutive*-mask semantics (g292-294), which the glitch
-  does nothing about. A glitch-aware probe could still lose to exactly that.
-- **What it would take to settle it:** a two-camera state in the engine
+- **Do not import Minus Two's transfer-breaker into Minus Toys.** §7's
+  structural failure was Toy Chica reaching the opening in the glitchless
+  CAM-03 policy and failing to clear before the next raise. Minus Toys' whole
+  premise is that the glitched CAM 09 light pins Toy Chica, Toy Bonnie and Toy
+  Freddy on the Show Stage. The glitch therefore targets the exact character
+  that killed Minus Two. Android's five-consecutive-tick rule is still
+  load-bearing for Mangle and BB, so a glitch-aware probe can still fail, but
+  not by simply citing the old Toy Chica trace.
+- **Device arming is now proved once (2026-08-28).** On the target Moto g56,
+  one scheduled HID attempt used 33 ms contacts plus a 17 ms released gap from
+  CAM 09 to monitor-down. The next raise showed the CAM 11 Prize Corner feed
+  and wind control with both CAM 09 and CAM 11 lit. Artifacts:
+  `captures/n2-doublecam-hid-0003.{png,hid}`. This proves the split state and a
+  working 50 ms actuator geometry, not the glitched stun or an all-night policy.
+- **What it would take to settle the strategy:** a two-camera state in the engine
   (`viewing` split from the marker, with g450-457 reading them separately), a
-  glitch-aware Minus Toys probe, and an on-device arming test that measures how
-  often the 200 ms window is actually hit through the phone's actuator. Until
-  those exist, quote this as "possible in the data model", never as "works".
+  glitch-aware Minus Toys probe, a repeatability sweep around the now-proved
+  HID geometry, and an on-device observation that the glitched CAM 09 light
+  actually holds the Toys. Until those exist, quote this as "deliberately armed
+  on Android; policy and stun unmeasured", never as "works".
 - **Legitimacy caveat unchanged**: this is the glitch-based half of the family.
 
 ## Sources

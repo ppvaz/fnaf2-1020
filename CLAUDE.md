@@ -20,12 +20,22 @@ as a night the game does not have.
 | anything about a device run's configuration or its failure | [`docs/device/HID-MULTITOUCH.md`](docs/device/HID-MULTITOUCH.md) |
 | an observation is cheap enough to add to the pilot loop | [`docs/device/ON-DEVICE-VALIDATION.md`](docs/device/ON-DEVICE-VALIDATION.md) |
 | anything citing a group number | [`docs/android/SOURCE-DUMP-GUIDE.md`](docs/android/SOURCE-DUMP-GUIDE.md) §4 |
+| the Android strategy space is exhausted, or Minus Toys fails because Minus Two did | [`plans/PROGRESS.md`](plans/PROGRESS.md) §"2026-08-28 strategic reset" and [`docs/strategy/MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md) §8 |
 
 The event sheet describes the **game**. The strategy describes the **run**. A
 sample shared by seven characters is not ambiguous if this line stun-locks all
 seven — that single distinction invalidated a day of conclusions on 2026-08-24,
 including a withdrawn strategy rule and a retraction written into the strategy
 document contradicting how the line is actually played.
+
+**2026-08-28 frontier reset.** Plan 16 exhausted Minus 7 timing changes under
+the human gate, not every Android strategy. A scheduled HID stream deliberately
+armed the Minus Toys split state on the target phone in one attempt (CAM 11
+visible, CAM 09 + CAM 11 lit; `captures/n2-doublecam-hid-0003.{png,hid}`). The
+next strategy task is plan 02 package 2a: model `viewing` separately from the
+marker and probe the real Minus Toys loop. Do not quote glitchless Minus Two's
+Toy Chica loss as a Minus Toys refutation — Minus Toys is intended to pin her.
+The other live alternatives and their exact gates are ranked in `PROGRESS.md`.
 
 ## Device runs
 
