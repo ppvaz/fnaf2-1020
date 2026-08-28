@@ -92,30 +92,62 @@ pre-existing problems bit, both already named on this page:
 1. The office-entry **mask-camp emergency mode has no Foxy handling.** Lever
    10 (bang-anchored Foxy reset) and "the office-entry mask" are exactly where
    CLAUDE.md says the nights are won.
-2. Whether a **33 ms light contact STUNS** (not just lights) Toy Chica at
-   SLOT 50 is still unverified on device — needs the `lit?`/marker observation
-   we still don't have. Could be phase-lock (narrow sweep vs her 5 s move
-   clock) or the 33 ms `lit?` window missing the game's stun poll.
+2. Toy Chica escaped because of **sweep geometry, not contact length** — see
+   the source + sim finding below.
 3. No cue-helper BB read this run (helper dead) — the runner never separated
    "BB inside" from "toy inside" and just mask-camped. `plans/15` BB-first.
 
-Next device move — the **stun-on-33ms probe**, an A/B/C graded Night 2 where
-only the light contact changes (select stays decoupled), all with
-`CUE_HELPER=1 CUE_AUDIO=1`:
-- **A** `SWEEP_CONTACT_MS=33` (what just ran — Chica reached office)
-- **B** `SWEEP_CONTACT_MS=50` (the LIGHT_AFTER/legacy boundary — tells hard
-  poll threshold from graded)
-- **C** `SWEEP_CONTACT_MS=100` (legacy-length light, decoupled select)
+### The stun needs no minimum lit time — Toy Chica leaks on ORDER (2026-08-27)
 
-If C pins Toy Chica and A does not → the 33 ms `lit?` window misses the stun
-poll and the lever needs ≥~67 ms light (sweep back to ~270 ms, most of the
-phase-lock gain gone). If none pin her → phase-lock / camera-set, and session
-`31`'s slot search is the right instrument. Session `31`'s early grid (sim,
-400 seeds correlated) already shows the n2-n6 basins are **narrow phase-lock
-wells, not a region** — 2 ms of spacing flips n6 by ~30 points, every basin
-that lifts n2-n6 leaves n7 at 3-17% — so a device confirmation that a basin
-survives ±real actuator jitter is a precondition for trusting any geometry
-number.
+**The dump sources no minimum `lit?` duration.** Groups 450–455 (g455 = Toy
+Chica) are single-frame triggers: `your view` marker overlaps the character
+**and** `viewing > 0` **and** `lit? == 1` **and** `viewing != <excluded cam>`
+→ stun set that frame. `lit?` itself (g75–79) is a plain per-frame boolean —
+1 on any frame `Key-17` is held with battery and not `in danger`, 0 the frame
+it releases. No ramp, no accumulator, no hold counter anywhere. A 33 ms
+contact spans ~2 frames > one 16.7 ms poll, so `lit?` is 1 for ≥1 frame and
+the stun lands that frame. **So "33 ms is below a stun threshold" is not a
+thing** — the A/B/C contact-length probe is not needed to answer this.
+
+**The sim confirms it and localises the real fault.** `modelGate`, night 2,
+1200 seeds, Toy-death census:
+
+| geometry | slack 0 | slack ±30 | slack ±60 |
+|---|---|---|---|
+| shipped 133/100 | TC 0 TB 0 TF 0 | TC 3 TB 6 TF 3 | TC 85 TB 66 TF 35 |
+| LIGHT_AFTER 66/**33** slot 50 | **TC 0 TB 0 TF 0** | **TC 146** TB 0 TF 0 | TC 349 |
+| LIGHT_AFTER 80/**50** slot 50 | — | TC 233 | TC 413 |
+| LIGHT_AFTER 100/**67** slot 50 | — | **TC 0 TB 0 TF 0**, surv 1199 | surv 850 |
+| LIGHT_AFTER 100/**67** slot 67 | — | **TC 0**, surv 1199 | **surv 936** |
+
+- **At zero jitter every geometry locks every toy.** The stun lands. The
+  device run's Chica escape is a jitter/drift effect, not a mechanic failure.
+- **The leak is the sweep's LAST slot, whatever camera sits there** — reorder
+  `10,4,7`→`7,4,10` and the ~145-at-±30 hole moves from Toy Chica to Toy
+  Freddy (CAM 10); →`7,10,4` moves it to Toy Bonnie (CAM 04). Flashing 07
+  twice (`10,4,7,7`) does **not** help — the extra slot is just the new last
+  one. So it is not Chica's path (`[9,7,blindA,1,5,ventL]`, CAM 07 her only
+  swept room) that is special; it is the position.
+- **The cause is drift margin, not stun threshold.** The whole ~200 ms sweep
+  landed up to 150 ms late on the device run (60–99 ms median cycle-boundary
+  residual). A 33 ms light on the last, most-delayed slot often arrives after
+  its target has already taken the 5 s move — 50 ms is no better (worse,
+  even) — but **67 ms closes it completely** (±30: 0 leak, 1199/1200; ±60:
+  936 vs 653). 100 ms would too, but forces the slot wide enough to re-trigger
+  the Foxy phase-lock (`133/100 slot 50` → Foxy 880/1200).
+
+**The fix is a 67 ms light contact — and it needs a code change first.**
+`sweepCamMs`/`replay` currently pick the decoupled LIGHT_AFTER path only when
+`contact < 50`; at 67 they fall back to the legacy same-report geometry, which
+is exactly what renders CAM 07 dark on the phone (the whole reason LIGHT_AFTER
+exists). The LA/legacy switch has to become a flag, not a contact-length
+threshold, so 67 ms decoupled is expressible. **This is session 31's search
+axis** — the useful band is ~`100/67 slot 55–67`, and every search so far
+capped contact below the value that actually works.
+
+**Device probe, reframed:** one graded Night 2 at `100/67 slot 67` with the
+decoupled select forced on, `CUE_HELPER=1 CUE_AUDIO=1` — does 67 ms close the
+last-slot hole on the phone as the sim says (1199/1200, zero toy leak).
 
 ---
 
