@@ -76,21 +76,23 @@ compiled, booted, or treated as retail-runtime evidence. The patch carries
   `global_values->set`
 - unknown mobile extensions become inert, instance-bearing `FrameObject`
   placeholders; static backdrops receive generated BackMagic-style lists;
-  undefined frame-local instances/actions and malformed expressions are logged
-  and omitted or replaced with `0` solely to complete source emission
+  undefined frame-local instances/actions are omitted, unbound object actions
+  are omitted, and malformed/unknown expressions carry an explicit numeric
+  fallback (their containing comparisons become `false`) solely for build probes
 - arm64 desktop portability: the duplicate `size_t` / `uint64_t`
   `number_to_string` overload is disambiguated in `base/stringcommon.h`
+- the runtime accepts a `FlatObjectList` default-instance lookup when a mobile
+  event references a static backdrop
 
 The completed run's derived unsupported inventory is printed at the end of the
 converter output (not committed): Android/iOS/In-App, INI, Multiple Touch,
 Perspective, KYSO, Calculate Text Rect, several system ACEs and unmatched
-fastloops remain. The next boundary is **Phase 3 desktop compilation** of the
-external generated target. The first arm64 CMake probe configures and clears a
-`size_t`/`uint64_t` runtime overload conflict, then stops in generated events:
-generic extension placeholders do not expose their emitted methods and some
-unsupported system actions have no receiver. Repair those declaration/receiver
-paths before a second link attempt. `Multiple Touch` remains a later pilot-hook
-task.
+fastloops remain. The Phase-3 arm64 CMake probe configures, clears the
+`size_t`/`uint64_t` overload, and now compiles generated event units 1–16. It
+then stops on an empty qualifier initializer, numeric loop-index calls, and
+static-backdrop selection operations that expect `ObjectList` rather than a
+flat backdrop vector. It has not linked or booted; these compatibility paths are
+not fidelity evidence. `Multiple Touch` remains a later pilot-hook task.
 
 Regenerate this patch after landing more:
 `cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' '*.h' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

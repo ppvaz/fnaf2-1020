@@ -393,6 +393,25 @@ The next repair slice is a minimal no-op extension writer that declares the
 specific generated method surface, plus receiver-safe handling for the first
 unbound system actions; no boot attempt is authorized by this result.
 
+### Phase 3 — second arm64 compiler boundary (2026-08-28)
+
+The follow-up patch makes unsupported ACEs explicit inert writers: actions are
+omitted, conditions are false, and expressions have a marked numeric fallback
+whose containing comparison becomes false. It also omits object actions that
+have no recoverable receiver rather than guessing one from nearby conditions,
+and adds the default-instance lookup needed when a static backdrop is used as
+an expression target. The regenerated external source again completes for the
+29 real frames.
+
+The same arm64 CMake probe now compiles generated event units 1–16 before
+stopping on three separate representation mismatches: an empty qualifier list
+is emitted as an invalid initializer; numeric mobile loop indexes reach the
+string-keyed runtime API; and static backdrop selection still calls
+`ObjectList` selection methods on a flat vector. No link or boot was attempted.
+The next slice must model those three cases explicitly, then rerun from a clean
+external generation. These compatibility omissions mean this remains a compiler
+probe, not a fidelity result.
+
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 
 The Fusion-decompiler landscape was checked for a shortcut:

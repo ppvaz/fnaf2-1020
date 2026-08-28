@@ -1,3 +1,24 @@
+diff --git a/Chowdren/base/manager.h b/Chowdren/base/manager.h
+index 47a213e..6727e91 100644
+--- a/Chowdren/base/manager.h
++++ b/Chowdren/base/manager.h
+@@ -119,6 +119,16 @@ inline FrameObject * get_instance(ObjectList & list)
+     return list.back_obj;
+ }
+ 
++// Static backdrops are kept in a flat vector rather than an ObjectList.  They
++// are still valid expression targets in mobile event data, so provide the same
++// default-instance lookup used for ordinary object lists.
++inline FrameObject * get_instance(FlatObjectList & list)
++{
++    if (list.empty())
++        return NULL;
++    return list.back();
++}
++
+ inline FrameObject * get_instance(ObjectList & list, int index)
+ {
+     if (list.empty())
 diff --git a/Chowdren/base/stringcommon.h b/Chowdren/base/stringcommon.h
 index ed74b78..f9d064d 100644
 --- a/Chowdren/base/stringcommon.h
@@ -17,10 +38,20 @@ index ed74b78..f9d064d 100644
  
  inline void to_lower(std::string & str)
 diff --git a/Chowdren/chowdren/converter.py b/Chowdren/chowdren/converter.py
-index d8edac8..cb11fb6 100644
+index d8edac8..1113f33 100644
 --- a/Chowdren/chowdren/converter.py
 +++ b/Chowdren/chowdren/converter.py
-@@ -1107,7 +1107,7 @@ class Converter(object):
+@@ -22,7 +22,8 @@ import string
+ import functools
+ import itertools
+ from collections import defaultdict, Counter
+-from chowdren.writers.events import default_writers
++from chowdren.writers.events import (default_writers, EmptyAction,
++    FalseCondition, UnsupportedExpression, UNSUPPORTED_EXPRESSION)
+ from chowdren.writers.events import system as system_writers
+ from chowdren.writers.events.system import SystemObject
+ from chowdren.writers.objects.system import system_objects
+@@ -1107,7 +1108,7 @@ class Converter(object):
              if not game.images:
                  continue
              for image in game.images.itemDict.itervalues():
@@ -29,7 +60,7 @@ index d8edac8..cb11fb6 100644
                      image.height), image.getImageData())
  
                  handle = (image.handle, game_index)
-@@ -1251,7 +1251,14 @@ class Converter(object):
+@@ -1251,7 +1252,14 @@ class Converter(object):
          self.container_ids = Counter()
          frame_file = FrameDataWriter(frame_index+1, self)
          frame_class_name = self.frame_class = frame_file.class_name
@@ -45,7 +76,7 @@ index d8edac8..cb11fb6 100644
          self.current_frame = frame
          self.current_frame_index = frame_index
          self.config.init_frame(frame)
-@@ -1268,7 +1275,15 @@ class Converter(object):
+@@ -1268,7 +1276,15 @@ class Converter(object):
          object_writers.append(self.system_object)
  
          for instance in getattr(frame.instances, 'items', ()):
@@ -62,7 +93,7 @@ index d8edac8..cb11fb6 100644
              obj = (frameitem.handle, frameitem.objectType)
              all_startup_infos.add(obj)
              try:
-@@ -1359,6 +1374,9 @@ class Converter(object):
+@@ -1359,6 +1375,9 @@ class Converter(object):
                      current_container.add_child(new_container)
                  current_container = new_container
                  containers[group_loader.offset] = current_container
@@ -72,7 +103,7 @@ index d8edac8..cb11fb6 100644
                  always_groups.append(ContainerMark(current_container, name))
                  continue
              elif name == 'GroupEnd':
-@@ -1426,8 +1444,11 @@ class Converter(object):
+@@ -1426,8 +1445,11 @@ class Converter(object):
                          self.multiple_instances.add(create_info)
                  elif action_name in ('DeactivateGroup',
                                       'ActivateGroup'):
@@ -86,7 +117,7 @@ index d8edac8..cb11fb6 100644
  
              always_group_index = None
              generated_group_index = None
-@@ -2280,6 +2301,14 @@ class Converter(object):
+@@ -2280,6 +2302,14 @@ class Converter(object):
              writer.putln('if (!%s) goto %s;' % (
                  item.code_name, item.end_label))
  
@@ -101,7 +132,7 @@ index d8edac8..cb11fb6 100644
      def get_container_check(self, container):
          groups = []
          for item in container.tree:
-@@ -2695,7 +2724,15 @@ class Converter(object):
+@@ -2695,7 +2725,15 @@ class Converter(object):
              obj = action_writer.get_object()
              object_info, object_type = obj
              if object_info is not None and not is_qualifier(object_info):
@@ -118,7 +149,22 @@ index d8edac8..cb11fb6 100644
                  if is_static and action_writer.ignore_static:
                      continue
              if object_info is not None:
-@@ -2965,6 +3002,14 @@ class Converter(object):
+@@ -2708,6 +2746,14 @@ class Converter(object):
+             if action_writer.iterate_objects is False:
+                 has_multiple = False
+                 object_info = None
++            if (object_info is None and action_writer.has_object and
++                    not action_writer.static):
++                # A build-296 action can name an object method without carrying
++                # the frame-object binding used by the older writer.  Emitting
++                # it bare creates an invalid C++ call; it is not safe to guess
++                # a receiver from neighbouring conditions.
++                print 'unbound action omitted:', action_writer.data.getName()
++                continue
+             object_name = None
+             write_actions = [action_writer]
+             if has_single:
+@@ -2965,6 +3011,14 @@ class Converter(object):
                  return self.intern_string(loader.value)
              elif parameter_name in ('TwoShorts'):
                  return to_c('%r, %r', loader.value1, loader.value2)
@@ -133,7 +179,15 @@ index d8edac8..cb11fb6 100644
              else:
                  raise NotImplementedError('parameter: %s' % parameter_name)
          self.start_clauses += out.count('(')
-@@ -2984,10 +3029,18 @@ class Converter(object):
+@@ -2978,16 +3032,25 @@ class Converter(object):
+ 
+             if remove != 1:
+                 print out
+-                raise NotImplementedError()
++                print 'unsupported unbalanced expression'
++                return UNSUPPORTED_EXPRESSION
+ 
+             end = len(out)
  
              print out
  
@@ -152,11 +206,11 @@ index d8edac8..cb11fb6 100644
 +                # classify it as an inert expression rather than crashing the
 +                # entire converter in this legacy repair heuristic.
 +                print 'unsupported unbalanced expression'
-+                return '0'
++                return UNSUPPORTED_EXPRESSION
  
              filtered = out[end+1:]
              out = out[:end+1]
-@@ -3160,6 +3213,25 @@ class Converter(object):
+@@ -3160,6 +3223,25 @@ class Converter(object):
      def get_default_instance(self, object_type):
          return self.get_object_impl(object_type).default_instance
  
@@ -182,7 +236,7 @@ index d8edac8..cb11fb6 100644
      def get_object_list(self, obj, allow_single=False):
          if self.has_single(obj) and not allow_single:
              print 'single exception:', self.get_single(obj)
-@@ -3170,11 +3242,14 @@ class Converter(object):
+@@ -3170,11 +3252,14 @@ class Converter(object):
          if is_qual:
              return type_id
          obj = self.filter_object_type(obj)
@@ -199,7 +253,7 @@ index d8edac8..cb11fb6 100644
  
      def filter_object_type(self, obj):
          if is_qualifier(obj[0]):
-@@ -3285,9 +3360,12 @@ class Converter(object):
+@@ -3285,9 +3370,12 @@ class Converter(object):
                  return get_method_name('_'.join(full_name))
          ret = item.getName()
          if ret is None:
@@ -215,11 +269,39 @@ index d8edac8..cb11fb6 100644
          return ret
  
      def get_action_writer(self, item, as_klass = False):
+@@ -3329,6 +3417,18 @@ class Converter(object):
+             klass = getattr(writer_module, ace_type)[key]
+         except (KeyError, AttributeError):
+             klass = default_writers[ace_type]
++        # A missing mobile extension writer used to fall through to the
++        # historic diagnostic writers.  Those writers emit the recovered ACE
++        # label as a C++ call, which has neither a declaration nor (for a
++        # system ACE) an object receiver.  Keep source generation/build probes
++        # honest by making an unsupported operation explicitly inert instead.
++        if klass is default_writers[ace_type]:
++            if ace_type == 'actions':
++                klass = EmptyAction
++            elif ace_type == 'conditions':
++                klass = FalseCondition
++            else:
++                klass = UnsupportedExpression
+         if as_klass:
+             return klass
+         else:
 diff --git a/Chowdren/chowdren/writers/events/__init__.py b/Chowdren/chowdren/writers/events/__init__.py
-index 1943544..980b47d 100644
+index 1943544..5c184ad 100644
 --- a/Chowdren/chowdren/writers/events/__init__.py
 +++ b/Chowdren/chowdren/writers/events/__init__.py
-@@ -74,6 +74,13 @@ class ExpressionWriter(EventWriter):
+@@ -2,6 +2,8 @@ from chowdren.writers import BaseWriter
+ from collections import defaultdict, Counter
+ from chowdren.common import COMPARISONS
+ 
++UNSUPPORTED_EXPRESSION = '0/* unsupported expression */'
++
+ class EventWriter(BaseWriter):
+     static = False
+     custom = False
+@@ -74,6 +76,13 @@ class ExpressionWriter(EventWriter):
      def get_string(self):
          raise NotImplementedError()
  
@@ -228,12 +310,46 @@ index 1943544..980b47d 100644
 +    has_object = False
 +
 +    def get_string(self):
-+        return '0'
++        return UNSUPPORTED_EXPRESSION
 +
  # helper writers
  
  class EmptyAction(ActionWriter):
-@@ -159,8 +166,16 @@ class DefaultExpression(ExpressionWriter):
+@@ -84,15 +93,17 @@ class EmptyAction(ActionWriter):
+ 
+ class TrueCondition(ConditionWriter):
+     has_object = False
++    prefix = '('
+ 
+     def write(self, writer):
+-        writer.put('true')
++        writer.put('true)')
+ 
+ class FalseCondition(ConditionWriter):
+     has_object = False
++    prefix = '('
+ 
+     def write(self, writer):
+-        writer.put('false')
++        writer.put('false)')
+ 
+ class ComparisonWriter(ConditionWriter):
+     prefix = '('
+@@ -101,6 +112,13 @@ class ComparisonWriter(ConditionWriter):
+         comparison = self.get_comparison()
+         parameters = [str(self.convert_parameter(parameter))
+             for parameter in self.get_parameters()]
++        # Do not compare a numeric inert fallback against a string (or vice
++        # versa).  An unsupported expression makes this condition false; the
++        # rest of the event remains type-correct C++ for build probing.
++        if any('unsupported expression' in parameter
++               for parameter in parameters):
++            writer.put('false)')
++            return
+         value = self.get_comparison_value()
+         if len(parameters) == 1:
+             value1 = value
+@@ -159,8 +177,16 @@ class DefaultExpression(ExpressionWriter):
  # method writers
  
  def get_method_out(writer):
