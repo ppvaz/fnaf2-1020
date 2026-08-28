@@ -282,7 +282,7 @@ Both were cleared with a game config (`fnaf2-config.py`, external):
   `ObjectWriter` stub. `Multiple Touch` (46) becomes the pilot input hook in a
   later phase (Plan 17 WP4); for now it is a stub.
 
-### Phase 2 — third boundary: the mobile event format (2026-08-28)
+### Phase 2 — the mobile event format (2026-08-28)
 
 With the config in place the converter clears **all of `write_objects`** and
 reaches event/frame generation (`write_frame` → `write_loops`), then stops:
@@ -309,7 +309,7 @@ name-keyed, so this needs a mobile mode: derive a stable name (`loop_<index>`)
 from the `Short`, or recover a fastloop-name table if one of the unknown app
 chunks holds it.
 
-**2. `parameterLoaders` runs 0–66 here; build 296 uses codes 67–70.** Captured
+**2. `parameterLoaders` runs 0–66 here; build 296 uses codes 67–72.** Captured
 raw payloads and the ACE each attaches to:
 
 | code | ACE (objectType / num) | size | raw payload (sample) | likely meaning |
@@ -322,16 +322,38 @@ raw payloads and the ACE each attaches to:
 Each needs a loader class registered in `parameterLoaders`, and Chowdren's
 writers must then consume it.
 
-**3. Frames 29–32 do not parse at all** — `frame.load()` raises
-`error('1 bytes required')`, i.e. the frame-chunk stream desyncs. `unknown chunk
-13132` (past the stock frame-chunk table, which ends at 13130) is the prime
-suspect; `unknown chunk 8774 / 8781 / 8783 / 8796` are the app-level equivalents.
-These four frames are likely gameplay frames, so this is on the critical path,
-not cosmetic.
+**3. Frames 29–32 do not parse** — `frame.load()` raises `error('1 bytes
+required')`. **Resolved:** those four are truncated developer stub frames
+(`olivier_DEBUG_SelectFrame`, `_SUBS`, `_SoundTest`, `olivier_GLOBALS`), 100–130
+bytes each, with a header and name but no `LAST` marker. The real game is frames
+0–28 (`01-Initialize` … `29-Options`; the Night is frame 3, `04-Office`). Fix:
+`ChunkList.read` stops at end-of-data instead of raising. Frame chunk `13132` is
+`FrameHandle` (one `int32`); registered.
 
-**Scope.** This is a build-293 → build-296 `mmfparser` port: parameter loaders,
-a mobile loop mode in `mmfparser` **and** Chowdren, new chunk formats, and the
-frame-parse desync. It is the bulk of the remaining Phase-1/2 work.
+### Phase 2 — fixes landed and the next boundary (2026-08-28)
+
+All in `tools/recompile/mmfparser-chowdren-mobile.patch`:
+
+| gap | fix |
+| --- | --- |
+| parameter codes 67–72 | `67`/`70` → `Int`; `68` → `ParameterVariables` (flags + up to 4 `{index, op, value}`); `69` → `ParameterChildEvent` (count + `uint16` pairs); `71` → `Bug` no-op; `72` → `Zone`. Names added to `names.py`. |
+| numeric loops | `static_loop_name()` helper in Chowdren `system.py`: `Short` loop index → `loop_<index>`, used by `write_loops` and `StartLoop.get_name`. **`write_loops` now passes.** |
+| frame stub desync | `ChunkList.read` end-of-data guard; `13132` → `FrameHandle`. |
+| `RunningAs` condition | → `Always` (dev-branch gate; a `RunningAs <non-app>` branch would wrongly activate — fidelity caveat, like the `(0,0)` image). |
+| `SetGlobalValueDouble` action | → `global_values->set` (Chowdren globals are doubles). |
+
+**Next boundary:** event C++ generation reaches `convert_parameter` and stops on
+**`ParameterChildEvent`** (code 69). It is the sole parameter of **System
+condition `-43`** (169 uses) and **System action `43`** (189 uses) — neither is
+in the stock `systemDict`, so they are new build-296 system ACEs carrying a
+qualifier-object list. Decide from NebulaFD's
+`Events/{Condition,Action}.cs` + `Qualifier.cs` whether they are
+qualifier-scoping no-ops (→ `Always` / `EmptyAction`, dropping the `CHILDEVENT`
+param) or something that must be translated. Also open: `expression not
+implemented: Zero`.
+
+**Scope remaining.** The per-ACE / per-parameter grind continues, but the
+structural blockers (loops, frame parse, the parameter table) are cleared.
 
 ### Tooling survey (2026-08-28) — NebulaFD is the reference spec
 

@@ -11,6 +11,68 @@ index d8edac8..a3cca32 100644
                      image.height), image.getImageData())
  
                  handle = (image.handle, game_index)
+diff --git a/Chowdren/chowdren/writers/events/system.py b/Chowdren/chowdren/writers/events/system.py
+index 48623cf..0133771 100644
+--- a/Chowdren/chowdren/writers/events/system.py
++++ b/Chowdren/chowdren/writers/events/system.py
+@@ -320,8 +320,7 @@ class SystemObject(ObjectWriter):
+ 
+         for loop_group in self.get_conditions('OnLoop'):
+             parameter = loop_group.conditions[0].data.items[0]
+-            items = parameter.loader.items
+-            name = self.converter.convert_static_expression(items)
++            name = static_loop_name(self.converter, parameter)
+             if name is None:
+                 # try and get config to give us a loop name
+                 name = self.converter.config.get_loop_name(parameter)
+@@ -1461,14 +1460,26 @@ class Foreach(ActionWriter):
+             writer.putlnc('%s();', func_call)
+         writer.end_brace()
+ 
++def static_loop_name(converter, parameter):
++    # Desktop: the loop name is a static string expression (loader.items).
++    # Build-296 mobile: fastloops are numbered, so the loop-name parameter
++    # is a bare Short index -- synthesize a stable name from it.
++    loader = parameter.loader
++    items = getattr(loader, 'items', None)
++    if items is not None:
++        return converter.convert_static_expression(items)
++    value = getattr(loader, 'value', None)
++    if value is not None:
++        return 'loop_%d' % value
++    return None
++
+ class StartLoop(ActionWriter):
+     custom = True
+     loop_warnings = set()
+ 
+     def get_name(self):
+         parameter = self.parameters[0]
+-        items = parameter.loader.items
+-        name = self.converter.convert_static_expression(items)
++        name = static_loop_name(self.converter, parameter)
+         if name is not None:
+             return name
+         return self.converter.config.get_dynamic_loop_call_name(parameter)
+@@ -2072,6 +2083,7 @@ actions = make_table(ActionMethodWriter, {
+     'SetMinimumValue' : 'set_min',
+     'SetGlobalString' : 'global_strings->set',
+     'SetGlobalValue' : 'global_values->set',
++    'SetGlobalValueDouble' : 'global_values->set', # build 296; values are doubles
+     'AddGlobalValue' : 'global_values->add',
+     'AddGlobalValueInt' : 'global_values->add',
+     'SubtractGlobalValue' : 'global_values->sub',
+@@ -2225,6 +2237,10 @@ conditions = make_table(ConditionMethodWriter, {
+     'WhileMousePressed' : 'is_mouse_pressed',
+     'MouseOnObject' : MouseOnObject,
+     'Always' : Always,
++    # build 296: the game gates dev-only branches on RunningAs. The recompiled
++    # binary is always the application, so treat it as true. A rare
++    # RunningAs <other-mode> branch would wrongly activate -- fidelity caveat.
++    'RunningAs' : Always,
+     'MouseClicked' : MouseClicked,
+     'ObjectClicked' : ObjectClicked,
+     'PlayerKeyDown' : PlayerKeyDown,
 diff --git a/build.py b/build.py
 index ae51170..30028dd 100644
 --- a/build.py
@@ -24,6 +86,38 @@ index ae51170..30028dd 100644
  Options.docstrings = False
  if sys.argv[0].count('profile'):
      directive_defaults['profile'] = True
+diff --git a/mmfparser/data/chunk.pyx b/mmfparser/data/chunk.pyx
+index aa037de..092741f 100644
+--- a/mmfparser/data/chunk.pyx
++++ b/mmfparser/data/chunk.pyx
+@@ -169,6 +169,11 @@ cdef class ChunkList(DataLoader):
+ 
+         while 1:
+             # chunkPosition = reader.tell()
++            if reader.tell() + 8 > reader.size():
++                # No LAST marker before end of data. Build-296 leaves a few
++                # truncated developer stub frames (olivier_DEBUG_*, _GLOBALS)
++                # with just a header and name; stop cleanly instead of raising.
++                break
+             newChunk = parent.new(Chunk, reader)
+             if newChunk.id == LAST:
+                 break
+@@ -353,6 +358,7 @@ cdef inline void setup():
+         13128 : createPreservingLoader(), # MosaicImageTable
+         13129 : all.FrameEffects, # FrameEffects
+         13130 : createPreservingLoader(), # FrameIphoneOptions
++        13132 : all.FrameHandle, # FrameHandle (Fusion 2.5+, 0x334C)
+         # Object chunks (0x44)
+         17476 : all.ObjectHeader, # ObjInfoHeader
+         17477 : all.ObjectName,
+@@ -489,6 +495,7 @@ chunkNames = {
+     13128 : 'MOSAICIMAGETABLE',
+     13129 : 'FRAMEEFFECTS',
+     13130 : 'FRAME_IPHONE_OPTIONS',
++    13132 : 'FRAMEHANDLE',
+     17476 : 'OBJINFOHEADER',
+     17477 : 'OBJINFONAME',
+     17478 : 'OBJECTSCOMMON',
 diff --git a/mmfparser/data/chunkloaders/events.pyx b/mmfparser/data/chunkloaders/events.pyx
 index 1613f17..0d27e63 100644
 --- a/mmfparser/data/chunkloaders/events.pyx
@@ -161,6 +255,35 @@ index 7966f0f..feb83de 100644
          debug = self.settings.get('debug', False)
          old = self.settings.get('old', False)
          if debug:
+diff --git a/mmfparser/data/chunkloaders/frame.py b/mmfparser/data/chunkloaders/frame.py
+index dc38547..d602523 100644
+--- a/mmfparser/data/chunkloaders/frame.py
++++ b/mmfparser/data/chunkloaders/frame.py
+@@ -73,6 +73,17 @@ class MovementTimerBase(DataLoader):
+     def write(self, reader):
+         reader.writeInt(self.value)
+ 
++class FrameHandle(DataLoader):
++    # Fusion 2.5+ frame chunk 0x334C: the frame's runtime handle, one int32.
++    # Absent from the historic table, which mis-sized it and desynced the
++    # frame-chunk stream (build-296 gameplay frames failed to parse).
++    value = None
++    def read(self, reader):
++        self.value = reader.readInt()
++
++    def write(self, reader):
++        reader.writeInt(self.value)
++
+ class Frame(DataLoader):
+     name = None
+ 
+@@ -408,4 +419,5 @@ class FramePassword(StringChunk):
+ 
+ __all__ = ['FrameHandles', 'FrameName', 'Frame', 'FrameHeader',
+     'VirtualSize', 'ObjectInstances', 'Layers', 'FramePalette',
+-    'MovementTimerBase', 'FramePassword', 'LayerEffects', 'FrameEffects']
++    'MovementTimerBase', 'FramePassword', 'LayerEffects', 'FrameEffects',
++    'FrameHandle']
 diff --git a/mmfparser/data/chunkloaders/imagebank.pyx b/mmfparser/data/chunkloaders/imagebank.pyx
 index 7459cb4..1576e1b 100644
 --- a/mmfparser/data/chunkloaders/imagebank.pyx
@@ -374,7 +497,7 @@ index 85649ce..06bce1c 100644
 \ No newline at end of file
 +    'AnimationDirection', 'Animation', 'AnimationHeader', 'ObjectCommon']
 diff --git a/mmfparser/data/chunkloaders/parameters/loaders.py b/mmfparser/data/chunkloaders/parameters/loaders.py
-index 2a53e31..3ce75cb 100644
+index 2a53e31..49eeeee 100644
 --- a/mmfparser/data/chunkloaders/parameters/loaders.py
 +++ b/mmfparser/data/chunkloaders/parameters/loaders.py
 @@ -351,6 +351,13 @@ class Group(ParameterCommon):
@@ -391,6 +514,125 @@ index 2a53e31..3ce75cb 100644
          try:
              self.name = self.readString(reader, 96)
              self.password = reader.readInt()
+@@ -489,6 +496,86 @@ class Bug(ParameterCommon):
+     def write(self, reader):
+         pass
+ 
++# --- Fusion 2.5+ / build-296 mobile parameter types --------------------------
++# Codes past the historic table (0-66). Layouts ported from NebulaFD's C#
++# readers (Nebula.Core/Data/Chunks/FrameChunks/Events/Parameters/*). Codes
++# 67 and 70 are plain int32 and reuse Int. See
++# docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md "Tooling survey".
++
++class ParameterVariable(ParameterCommon):
++    index = None
++    operator = None
++    isGlobal = None
++    value = None
++
++    def read(self, reader):
++        self.isGlobal = self.settings.get('isGlobal', False)
++        self.index = reader.readInt()
++        self.operator = reader.readInt()
++        if self.settings.get('isDouble', False):
++            self.value = reader.readDouble()
++        else:
++            self.value = reader.readInt()
++            reader.skipBytes(4)
++
++    def write(self, reader):
++        reader.writeInt(self.index)
++        reader.writeInt(self.operator)
++        if isinstance(self.value, float):
++            reader.writeDouble(self.value)
++        else:
++            reader.writeInt(int(self.value))
++            reader.skipBytes(4)
++
++class ParameterVariables(ParameterCommon):
++    # 3 x uint32 flags, then up to four ParameterVariable records (16 bytes each).
++    # ValueFlags bit layout per slot i: 4i = exists, 4i+1 = global, 4i+2 = double.
++    valueFlags = None
++    flagMasks = None
++    flagValues = None
++    variables = None
++
++    def initialize(self):
++        self.variables = []
++
++    def read(self, reader):
++        self.valueFlags = reader.readInt(True)
++        self.flagMasks = reader.readInt(True)
++        self.flagValues = reader.readInt(True)
++        self.variables = []
++        for i in xrange(4):
++            if not (self.valueFlags >> (i * 4)) & 1:
++                break
++            var = self.new(ParameterVariable, reader,
++                           isGlobal = bool((self.valueFlags >> (i * 4 + 1)) & 1),
++                           isDouble = bool((self.valueFlags >> (i * 4 + 2)) & 1))
++            self.variables.append(var)
++
++    def write(self, reader):
++        reader.writeInt(self.valueFlags)
++        reader.writeInt(self.flagMasks)
++        reader.writeInt(self.flagValues)
++        for var in self.variables:
++            var.write(reader)
++
++class ParameterChildEvent(ParameterCommon):
++    # int32 count, then count*2 uint16 object infos, then 4 skipped bytes.
++    objectInfos = None
++
++    def initialize(self):
++        self.objectInfos = []
++
++    def read(self, reader):
++        count = reader.readInt()
++        self.objectInfos = [reader.readShort(True) for _ in xrange(count * 2)]
++        reader.skipBytes(4)
++
++    def write(self, reader):
++        reader.writeInt(len(self.objectInfos) // 2)
++        for oi in self.objectInfos:
++            reader.writeShort(oi, True)
++        reader.skipBytes(4)
++
+ parameterLoaders = [
+     None,
+     Object,
+@@ -556,5 +643,11 @@ parameterLoaders = [
+     Filename,
+     String,
+     CharacterEncoding,
+-    CharacterEncoding
++    CharacterEncoding,
++    Int,                 # 67  build-296 int32 (RunningAs kind, etc.)
++    ParameterVariables,  # 68
++    ParameterChildEvent, # 69
++    Int,                 # 70  build-296 int32 immediate
++    Bug,                 # 71  unobserved; size-based skip keeps alignment
++    Zone,                # 72
+ ]
+diff --git a/mmfparser/data/chunkloaders/parameters/names.py b/mmfparser/data/chunkloaders/parameters/names.py
+index 9e3e3ba..482976a 100644
+--- a/mmfparser/data/chunkloaders/parameters/names.py
++++ b/mmfparser/data/chunkloaders/parameters/names.py
+@@ -78,7 +78,13 @@ parameterNames = {
+     63 : 'FILENAME',
+     64 : 'FASTLOOPNAME',
+     65 : 'CHAR_ENCODING_INPUT',
+-    66 : 'CHAR_ENCODING_OUTPUT'
++    66 : 'CHAR_ENCODING_OUTPUT',
++    67 : 'INT',            # Fusion 2.5+ / build 296
++    68 : 'VARIABLES',
++    69 : 'CHILDEVENT',
++    70 : 'INT',
++    71 : 'UNKNOWN71',
++    72 : 'ZONE'
+ }
+ 
+ def getName(id):
 diff --git a/mmfparser/data/chunkloaders/soundbank.py b/mmfparser/data/chunkloaders/soundbank.py
 index 6a95889..1f97781 100644
 --- a/mmfparser/data/chunkloaders/soundbank.py

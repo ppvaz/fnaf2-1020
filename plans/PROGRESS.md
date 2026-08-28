@@ -72,36 +72,26 @@ the old all-33 plan. Thread the option through the live entry point and pin it i
 the runner-plan test before claiming that device experiment ran.
 
 **Concrete next action (2026-08-28, Pedro's call): advance the faithful recompile
-(Plan 17 route 5).** The runtime-attachment route is parked — it defeats a PAIRIP
-layer and there is no rooted device (`plans/17` §"Runtime attachment (route 2) is
-not being pursued"). Phase 2 progress this session: `tools/recompile/fnaf2-config.py`
-(`get_missing_image` + an `init()` hook that synthesizes `game.extensions` from
-the frame items) clears **all of `write_objects`**. The converter reaches event
-generation and stops in `write_loops`.
+(Plan 17 route 5).** Runtime attachment is parked (defeats a PAIRIP layer, no
+rooted device — `plans/17` §"Runtime attachment (route 2) is not being pursued").
 
-Root-caused with a raw-capture patch + two probe scripts: **build 296's event
-format differs from build-293 `mmfparser` in several ways.** (a) Mobile loops are
-**numeric** — `OnLoop` carries a `Short` index, not a name expression, and
-Chowdren's loop machinery is entirely name-keyed. (b) `parameterLoaders` runs
-0–66; build 296 uses **codes 67–70** (raw payloads + ACE context captured — see
-the doc table). (c) **Frames 29–32 do not parse at all** (`error('1 bytes
-required')`); `unknown chunk 13132` is the suspect. This is a build-293→296
-`mmfparser` port, not a two-code fix — the bulk of the remaining Phase-1/2 work.
+**Recompile status.** Toolchain committed at `tools/recompile/` (content-free
+patch + config + probes + README). No maintained Python decompiler exists, so the
+build-293→296 `mmfparser` port is done in place with **`AITYunivers/NebulaFD`
+(C#, active) as the byte-layout spec**. Cleared so far: parse, assets,
+`write_objects`, and — after this session's port work — **`write_loops`**.
+Landed: parameter loaders 67–72, frame chunk `13132`, a `ChunkList` end-of-data
+guard (the 4 unparsable frames were truncated `olivier_DEBUG_*` stubs; the real
+game is frames 0–28), numeric-fastloop naming in Chowdren, and `RunningAs` /
+`SetGlobalValueDouble` stubs.
 
-**Tooling decided (2026-08-28):** no maintained Python decompiler exists;
-`AITYunivers/NebulaFD` (C#, active) reads build-296 Android CCN. Rather than take
-it on as a runtime dep + adapter, **port `mmfparser` in place using NebulaFD's C#
-source as the byte-layout spec.** Specs already pulled: parameter codes 67/70/26
-→ Int, 68 → ParameterVariables, 69 → ParameterChildEvent, 72 → Zone; loop code 11
-→ Short *by design* (fix `write_loops` to key on `loop_<index>`); frame chunk
-0x334C (13132) = FrameHandle (int32) — the frame 29–32 desync. **Next:** apply
-these to the mmfparser mobile patch + a `write_loops` guard, rebuild, rerun.
-Fallback if silent mis-parses are pervasive: NebulaFD → MFA → licensed Fusion →
-re-export desktop CCN. Full survey + spec table in
-`docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Tooling survey (2026-08-28)".
-Toolchain is now committed at `tools/recompile/` (patch + config + probes +
-README, all content-free); the CCN, `gamesrc/` cache and applied Chowdren
-checkout stay external.
+**Next boundary:** `convert_parameter` on `ParameterChildEvent` (code 69) —
+System condition `-43` (169×) and action `43` (189×), not in `systemDict`, each
+with a qualifier-object list. Classify them from NebulaFD's
+`Events/{Condition,Action}.cs` + `Qualifier.cs`. Then keep the per-ACE grind.
+Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
+Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
+event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.
 
 **Superseded fork (kept for context): the Minus Toys decision.** The open-loop
 device port is built, run, and refuted (`n2-minustoys-0117`, 2026-08-28 — full
@@ -170,14 +160,16 @@ or plan 17 again:
   `game.extensions` entries from the frame items (`Layer` → native writer;
   `Multiple Touch` / `Android object` / `AndroidPlus` / `iOS Plus Object` →
   generic `ObjectWriter` stub) — clears **all of `write_objects`**. The converter
-  now stops in event generation (`write_loops`). Root-caused: build 296's event
-  format differs from build-293 `mmfparser` — mobile loops are numeric (`Short`
-  index, not a name expression); parameter codes 67–70 are past the stock table
-  (raw payloads captured); frames 29–32 don't parse (`1 bytes required`, suspect
-  `unknown chunk 13132`). This is a build-293→296 `mmfparser` port, not a
-  two-code fix. Full record + raw byte table in
-  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — third boundary: the
-  mobile event format".
+  reaches event generation. Root-caused as a build-293→296 `mmfparser` port
+  (NebulaFD as spec). This session's port work cleared it: parameter loaders
+  67–72, frame chunk `13132`, a `ChunkList` end-of-data guard (frames 29–32 were
+  truncated `olivier_DEBUG_*` stubs — real game is frames 0–28), numeric-fastloop
+  naming in Chowdren (**`write_loops` passes**), `RunningAs` /
+  `SetGlobalValueDouble` stubs. Now stops at `convert_parameter` on
+  `ParameterChildEvent` (System cond `-43` / action `43`, not in `systemDict`).
+  Full record + byte table in
+  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile event
+  format".
 
 
 ### Prior Minus 7 frontier (retained, now scoped)

@@ -52,17 +52,26 @@ docker run --rm -e MMFPARSER_ANDROID_RAW_DIR=/input/android-res-raw \
 
 ## State (2026-08-28)
 
-Parse ✓, asset creation ✓, `write_objects` ✓ (via `fnaf2-config.py`). Blocked in
-event generation: the mobile event format needs a build-293 → 296 port. The specs
-are pulled from `AITYunivers/NebulaFD` (C#, the only maintained build-296 reader)
-and listed in the doc's "Tooling survey" section:
+Parse ✓, asset creation ✓, `write_objects` ✓, **`write_loops` ✓**. The patch now
+carries (all NebulaFD-sourced or confirmed against captured bytes):
 
-- parameter codes `67`/`70`/`26`(build≥296) → `Int`; `68` → `ParameterVariables`;
-  `69` → `ParameterChildEvent`; `72` → `Zone`
-- loop code `11` → `Short` index **by design** — fix Chowdren's `write_loops` /
-  `StartLoop` to key on `loop_<index>`
-- frame chunk `0x334C` (13132) = `FrameHandle` (one `int32`) — the frame 29–32
-  parse desync
+- parameter loaders 67–72: `67`/`70` → `Int`, `68` → `ParameterVariables`,
+  `69` → `ParameterChildEvent`, `71` → `Bug` (no-op), `72` → `Zone`; names added
+- frame chunk `0x334C` (13132) = `FrameHandle` (one `int32`)
+- `ChunkList.read` stops at end-of-data (build-296 leaves 4 truncated
+  `olivier_DEBUG_*` / `_GLOBALS` stub frames with no LAST marker)
+- Chowdren `write_loops` / `StartLoop` key loops on `loop_<index>` — mobile
+  fastloops are numeric (`Short`), not named (`static_loop_name` helper)
+- Chowdren stubs: `RunningAs` → `Always` (fidelity caveat, dev-branch gate);
+  `SetGlobalValueDouble` → `global_values->set`
 
-Regenerate this patch after landing those:
+**Next boundary:** event C++ generation stops at `convert_parameter` on
+`ParameterChildEvent`. System condition `-43` and action `43` (169 / 189 uses,
+one `CHILDEVENT` param each) are **not in the stock `systemDict`** — new build-296
+system ACEs carrying a qualifier-object list. Read NebulaFD's
+`Nebula.Core/Data/Chunks/FrameChunks/Events/{Condition,Action}.cs` and its
+qualifier handling to decide whether they are qualifier-scoping no-ops.
+Also minor: `expression not implemented: Zero`.
+
+Regenerate this patch after landing more:
 `cd <anaconda> && git diff -- '*.py' '*.pyx' '*.pxd' ':(exclude)*.cpp' ':(exclude)build/*' > tools/recompile/mmfparser-chowdren-mobile.patch`

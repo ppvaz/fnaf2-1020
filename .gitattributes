@@ -1,0 +1,3 @@
+# Patch snapshots capture upstream source verbatim, including whatever
+# trailing whitespace it carries. Don't flag it in `git diff --check`.
+*.patch -whitespace
