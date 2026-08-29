@@ -94,6 +94,22 @@ const SIBLING_EXCLUDED = new Map([
 ]);
 
 const sh = readFileSync(join(HERE, 'grade-run.sh'), 'utf8');
+let failed = 0;
+const complain = (message) => { console.error(message); failed = 1; };
+
+// A full 420-second Moto recording is not a small test fixture: decoding it
+// into one Python byte string costs gigabytes before the classifier starts.
+// These are the full-run graders grade-run.sh invokes; keep their decoders
+// streaming and leave the runner's memory/time fuse visible in the contract.
+for (const name of ['grade-night.py', 'camtrace.py', 'windpct.py',
+                    'grade-minus7.py', 'run-timeline.py', 'keyframes.py']) {
+  const body = readFileSync(join(HERE, name), 'utf8');
+  if (!body.includes('subprocess.Popen') || body.includes('capture_output=True'))
+    complain(`${name} is a full-run grader but no longer has a streaming decoder`);
+}
+if (!/GRADE_MAX_VMEM_KB="\$\{GRADE_MAX_VMEM_KB:-2097152\}"/.test(sh) ||
+    !/timeout --foreground/.test(sh) || !/taskset -c "\$GRADE_CPUSET"/.test(sh))
+  complain('grade-run.sh lost its per-instrument resource fuse or Linux CPU pin');
 
 // Invocation lines only. The header's prose names instruments the script never
 // runs -- counting those as covered is exactly the lie this check exists for.
@@ -102,9 +118,6 @@ const referenced = new Set();
 for (const line of invocations)
   for (const m of line.matchAll(/\$HERE\/((?:\.\.\/)?[\w./-]+\.(?:py|mjs|sh))/g))
     referenced.add(m[1]);
-
-let failed = 0;
-const complain = (message) => { console.error(message); failed = 1; };
 
 for (const ref of referenced)
   if (!existsSync(resolve(HERE, ref)))

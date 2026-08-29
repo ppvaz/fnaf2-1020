@@ -100,21 +100,25 @@ def resolve_hall(states):
 
 
 def decode(path):
+    """Yield frames; this report only retains classification labels."""
     command = [
-        "ffmpeg", "-v", "error", "-i", path,
+        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
         "-vf", f"fps={FPS},scale={WIDTH}:{HEIGHT}",
         "-f", "rawvideo", "-pix_fmt", "gray", "-",
     ]
-    result = subprocess.run(command, capture_output=True)
-    if result.returncode:
-        sys.stderr.buffer.write(result.stderr)
-        raise SystemExit(result.returncode)
-    if not result.stdout:
-        raise SystemExit(f"no video frames decoded from {path}")
-    return [
-        result.stdout[i:i + FRAME_SIZE]
-        for i in range(0, len(result.stdout) - FRAME_SIZE + 1, FRAME_SIZE)
-    ]
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        while True:
+            frame = proc.stdout.read(FRAME_SIZE)
+            if len(frame) < FRAME_SIZE:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def main():
@@ -123,6 +127,8 @@ def main():
     args = parser.parse_args()
 
     states = smooth(resolve_hall(classify(frame) for frame in decode(args.video)))
+    if not states:
+        raise SystemExit(f"no video frames decoded from {args.video}")
     stable = []
     minimum = round(FPS * 0.25)
     for state, start, end in runs(states):

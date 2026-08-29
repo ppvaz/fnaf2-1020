@@ -33,6 +33,25 @@ case "${1:-}" in
   --require-seconds) REQUIRE="${2:?--require-seconds needs a number}" ;;
 esac
 
+# A grader must never be allowed to take the desktop down with it.  The video
+# decoders are deliberately sequential, but a malformed/long recording or a
+# future non-streaming instrument can still request unbounded address space.
+# Each instrument therefore gets a fresh process with a conservative virtual
+# memory ceiling and wall-clock fuse.  Override only for a deliberate
+# workstation-grade analysis; the default favours a failed diagnostic over an
+# OOM-killed host.
+GRADE_MAX_VMEM_KB="${GRADE_MAX_VMEM_KB:-2097152}"
+GRADE_STEP_TIMEOUT_SECONDS="${GRADE_STEP_TIMEOUT_SECONDS:-1200}"
+# Linux ffmpeg can split decode and filtering across cores even with
+# `-threads 1`.  Pin the whole instrument process tree when taskset exists;
+# macOS has no taskset, where the streamed decoders remain fully functional.
+GRADE_CPUSET="${GRADE_CPUSET:-0}"
+case "$GRADE_MAX_VMEM_KB" in ''|*[!0-9]*) echo 'GRADE_MAX_VMEM_KB must be a positive integer'; exit 2 ;; esac
+case "$GRADE_STEP_TIMEOUT_SECONDS" in ''|*[!0-9]*) echo 'GRADE_STEP_TIMEOUT_SECONDS must be a positive integer'; exit 2 ;; esac
+[ "$GRADE_MAX_VMEM_KB" -gt 0 ] && [ "$GRADE_STEP_TIMEOUT_SECONDS" -gt 0 ] || {
+  echo 'grading resource limits must be positive'; exit 2;
+}
+
 VIDEO=""
 for candidate in "$CAPTURES/$RUN.mp4" "$CAPTURES/$RUN-aborted.mp4"; do
   [ -f "$candidate" ] && VIDEO="$candidate"
@@ -75,9 +94,9 @@ fail=0
 # the 0.10 s floor and read as a dropped selection, and the "device limit" it
 # implied survived two days and one CLAUDE.md bullet.
 #
-# So the assumption is now a measurement with a control. This does not change
-# any rate a grader uses -- it refuses when the assumption is false, which is
-# the failure the graders cannot see from inside.
+# So the assumption is now a measurement with a control.  Use the measured
+# whole-frame rate consistently: a 59 fps recording must not be analysed as
+# 60 fps merely because that is the panel's nominal rate.
 GRADE_FPS=60
 if command -v ffprobe >/dev/null 2>&1; then
   probed="$(ffprobe -v error -select_streams v:0 -show_entries stream=avg_frame_rate \
@@ -89,11 +108,8 @@ if command -v ffprobe >/dev/null 2>&1; then
         real=$(( (num + den / 2) / den ))
         echo "capture rate: ${real} fps (ffprobe ${probed})"
         if [ "$real" -ne "$GRADE_FPS" ]; then
-          echo "  ^ FAILED: every grader below is run at ${GRADE_FPS} fps, and this"
-          echo "    recording is ${real}. Decoding at the wrong rate does not error --"
-          echo "    it reports short events as dropped, which is how the withdrawn"
-          echo "    240 ms spacing figure was produced. Re-run the graders at ${real}."
-          fail=1
+          echo "  using measured ${real} fps for timing-sensitive graders (nominal ${GRADE_FPS})"
+          GRADE_FPS=$real
         fi
       else
         echo "capture rate: UNKNOWN(ffprobe returned '$probed')"
@@ -104,11 +120,25 @@ if command -v ffprobe >/dev/null 2>&1; then
 else
   echo "capture rate: UNKNOWN(no ffprobe) -- graders below assume ${GRADE_FPS} fps"
 fi
+limited() {
+  ( ulimit -v "$GRADE_MAX_VMEM_KB"
+    if command -v taskset >/dev/null 2>&1; then
+      exec nice -n 10 taskset -c "$GRADE_CPUSET" \
+        timeout --foreground "$GRADE_STEP_TIMEOUT_SECONDS" "$@"
+    fi
+    exec nice -n 10 timeout --foreground "$GRADE_STEP_TIMEOUT_SECONDS" "$@"
+  )
+}
+
 step() {
   echo
   echo "--- $1 ---"
   shift
-  "$@" || { echo "  ^ FAILED"; fail=1; }
+  # `ulimit` is scoped to this subshell and inherited by ffmpeg/Python/Node;
+  # timeout's --foreground keeps Ctrl-C directed at the diagnostic rather than
+  # leaving a decoder behind.  nice makes an explicitly requested grade less
+  # likely to make the interactive desktop unusable.
+  limited "$@" || { echo "  ^ FAILED (resource-limited or diagnostic error)"; fail=1; }
 }
 
 # 0. Does the run describe itself? A manifest is what turns a pile of
@@ -162,7 +192,7 @@ fi
 #     what produced the withdrawn spacing figure.
 echo
 echo "--- clock transitions (HUD first frame, 1 AM) ---"
-node "$HERE/clocktrace.mjs" "$VIDEO" --fps=60 || {
+limited node "$HERE/clocktrace.mjs" "$VIDEO" --fps="$GRADE_FPS" || {
   status=$?
   [ "$status" -eq 3 ] || { echo "  ^ FAILED"; fail=1; }
 }
@@ -189,14 +219,14 @@ if [ -f "$TRACE" ]; then
   #     the run notices, so a desynced run keeps producing plausible-looking
   #     schedule output for as long as the pilot keeps pressing.
   step "monitor desync (does the game agree with the pilot about the cams?)" \
-    python3 "$HERE/desync-scan.py" "$RUN" --strips
+    python3 "$HERE/desync-scan.py" "$RUN" --fps "$GRADE_FPS" --strips
 fi
 
 # 3. Did the sweeps select, and did they flash? Two independent signals that
 #    fail differently -- camtrace at the recording's real 60 fps, because its
 #    30 fps default is what produced the withdrawn 240 ms spacing figure.
-step "camera selections" python3 "$HERE/camtrace.py" --fps 60 --min-ms 50 "$VIDEO"
-step "camera light actually flashing" python3 "$HERE/sweepcheck.py" --fps 60 "$VIDEO"
+step "camera selections" python3 "$HERE/camtrace.py" --fps "$GRADE_FPS" --min-ms 50 "$VIDEO"
+step "camera light actually flashing" python3 "$HERE/sweepcheck.py" --fps "$GRADE_FPS" "$VIDEO"
 
 # 4. What did this run actually contain? A dozen maximally-different frames,
 #    tiled. The one time the frames were looked at, the whole failure was

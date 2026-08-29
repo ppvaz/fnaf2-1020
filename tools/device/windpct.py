@@ -43,21 +43,25 @@ BUTTON_POINTS = [
 
 
 def decode(path):
+    """Yield cropped frames so a long recording stays O(seconds), not O(video)."""
     command = [
-        "ffmpeg", "-v", "error", "-i", path,
+        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
         "-vf", f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:120:400",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
     ]
-    result = subprocess.run(command, capture_output=True)
-    if result.returncode:
-        sys.stderr.buffer.write(result.stderr)
-        raise SystemExit(result.returncode)
-    if not result.stdout:
-        raise SystemExit(f"no video frames decoded from {path}")
-    return [
-        result.stdout[i:i + FRAME_SIZE]
-        for i in range(0, len(result.stdout) - FRAME_SIZE + 1, FRAME_SIZE)
-    ]
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        while True:
+            frame = proc.stdout.read(FRAME_SIZE)
+            if len(frame) < FRAME_SIZE:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def pixel(frame, x, y):
@@ -118,14 +122,13 @@ def main():
     )
     args = parser.parse_args()
 
-    frames = decode(args.video)
-    values = smooth([
-        gauge_fill(frame) if is_cam11(frame) else None
-        for frame in frames
-    ])
+    values = smooth([gauge_fill(frame) if is_cam11(frame) else None
+                     for frame in decode(args.video)])
+    if not values:
+        raise SystemExit(f"no video frames decoded from {args.video}")
     intervals = list(runs(values))
 
-    print(f"{args.video}: {len(frames) / FPS:.2f}s sampled at {FPS} fps")
+    print(f"{args.video}: {len(values) / FPS:.2f}s sampled at {FPS} fps")
     if not intervals:
         print("  no CAM 11 music-box gauge detected")
         return

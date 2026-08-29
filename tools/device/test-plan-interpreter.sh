@@ -429,6 +429,11 @@ want="$(awk '/^#cycle opening/{a=1;next} /^#cycle/{a=0}
 first_minimal_arm="$(printf '%s\n' "$got" | head -1 | awk '{print $1}')"
 [ "$first_minimal_arm" = 115000 ] ||
   fail "minimal Minus Toys armed at ${first_minimal_arm:-nothing}ms, want 115000ms"
+got="$(minimal_toys 'run_cycle finish 0 0 999' | grep -E ' (tap|hold) ')"
+want="$(awk '/^#cycle finish/{a=1;next} /^#cycle/{a=0}
+  a && $2==\"tap\" {print $1, $2, $3}' \"$TMP/toys-minimal.txt\")"
+[ "$got" = "$want" ] ||
+  fail "minimal terminal CAM 09 proof / monitor-down sequence drifted from its emitted plan:\n$got\n--- want ---\n$want"
 got="$(minimal_toys 'run_macro toys 140000 0 999' | awk '/^[0-9]+ down$/{print $1}' \
   | awk 'NR==1{b=$1} {print $1-b}')"
 want="$(awk '/^#cycle toys/{a=1;next} /^#cycle/{a=0} a && NF {print $1}' "$TMP/toys-minimal.txt" \

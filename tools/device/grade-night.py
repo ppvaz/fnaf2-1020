@@ -43,14 +43,24 @@ MASKBAR = (int(70 * SCALE_X), int(1004 * SCALE_Y), int(1180 * SCALE_X), int(1044
 
 
 def decode(path, fps):
-    out = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
-         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"], capture_output=True)
-    if out.returncode:
-        sys.stderr.buffer.write(out.stderr)
-        raise SystemExit(out.returncode)
+    """Yield decoded frames without retaining the recording in host memory."""
+    proc = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
+         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     size = WIDTH * HEIGHT * 3
-    return [out.stdout[i:i + size] for i in range(0, len(out.stdout) - size + 1, size)]
+    try:
+        while True:
+            frame = proc.stdout.read(size)
+            if len(frame) < size:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def channel_mean(frame, box, step=2):
@@ -155,8 +165,14 @@ def main():
                    help="consecutive frames needed to call a state change")
     a = p.parse_args()
 
-    frames = decode(a.video, a.fps)
-    if not frames:
+    # Keep only the two facts this grader needs from each frame.  A 420-second
+    # 1280x576 RGB recording is ~4.3 GB at 4 fps; retaining it here can freeze
+    # the host before any verdict is printed.
+    flags, descriptions = [], []
+    for frame in decode(a.video, a.fps):
+        flags.append(is_night(frame))
+        descriptions.append(describe_end(frame))
+    if not flags:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
     flags = [is_night(f) for f in frames]
@@ -200,7 +216,7 @@ def main():
         """
         i, j = gap
         for k in range(i, j, max(1, (j - i) // 8 or 1)):
-            d = describe_end(frames[k])
+            d = descriptions[k]
             if d.startswith("death static"):
                 return d
         return None
@@ -209,24 +225,23 @@ def main():
         """A dark gap the run came back from. Reported, never silently benign."""
         i, j = gap
         for k in range(i, j, max(1, (j - i) // 8 or 1)):
-            if describe_end(frames[k]).startswith("dark screen"):
+            if descriptions[k].startswith("dark screen"):
                 return True
         return False
 
     t = lambda i: i / a.fps
     end, end_reason = None, None
     end = find_end(flags, start, a.settle,
-                   lambda i: describe_end(frames[i]).startswith('death static'))
+                   lambda i: descriptions[i].startswith('death static'))
     if end is not None:
-        end_reason = describe_end(frames[end + 1]) if end + 1 < len(frames) \
-            else describe_end(frames[end])
+        end_reason = descriptions[end + 1] if end + 1 < len(flags) else descriptions[end]
 
     last_hud = max(i for i, f in enumerate(flags) if f)
     alive = (t(end) if end is not None else t(last_hud + 1)) - t(start)
     monitor_gaps = [g for g in hud_gaps(flags, start + a.settle)
                     if g[1] - g[0] >= a.settle and not fatal(g)
                     and (end is None or g[0] < end)]
-    print(f"{a.video}: {len(frames)} frames at {a.fps} fps")
+    print(f"{a.video}: {len(flags)} frames at {a.fps} fps")
     print(f"  night HUD appears at {t(start):.1f}s")
     if monitor_gaps:
         longest = max(monitor_gaps, key=lambda g: g[1] - g[0])

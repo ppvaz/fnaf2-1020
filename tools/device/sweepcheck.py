@@ -83,7 +83,7 @@ DEFAULT_SIG = os.path.join(os.path.dirname(__file__), "sweepcheck-signature.json
 def stream(path, fps, pix, depth):
     size = WIDTH * HEIGHT * depth
     proc = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
          "-f", "rawvideo", "-pix_fmt", pix, "-"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:

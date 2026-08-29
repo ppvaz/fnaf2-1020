@@ -151,13 +151,25 @@ def presses(cs):
 def state_frames(video):
     """cams-up / cams-down / None, one entry per frame at FPS."""
     size = G7.WIDTH * G7.HEIGHT
-    raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", video, "-vf",
+    proc = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", video, "-vf",
          f"fps={FPS},scale={G7.WIDTH}:{G7.HEIGHT}", "-f", "rawvideo",
-         "-pix_fmt", "gray", "-"], capture_output=True).stdout
-    if not raw:
+         "-pix_fmt", "gray", "-"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    classes = []
+    try:
+        while True:
+            frame = proc.stdout.read(size)
+            if len(frame) < size:
+                break
+            classes.append(G7.classify(frame))
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
+    if not classes:
         raise SystemExit(f"no video frames decoded from {video}")
-    classes = [G7.classify(raw[i:i + size]) for i in range(0, len(raw) - size + 1, size)]
     return classes, [cams(c) for c in classes]
 
 
@@ -173,7 +185,7 @@ def hud_onset(video, before, fps=20.0, settle=3):
     """
     size = GN.WIDTH * GN.HEIGHT * 3
     raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-t", f"{before + 1.5}", "-i", video, "-vf",
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-t", f"{before + 1.5}", "-i", video, "-vf",
          f"fps={fps},scale={GN.WIDTH}:{GN.HEIGHT}", "-f", "rawvideo",
          "-pix_fmt", "rgb24", "-"], capture_output=True).stdout
     flags = [GN.is_night(raw[i:i + size]) for i in range(0, len(raw) - size + 1, size)]
@@ -363,7 +375,9 @@ def strip(classes, acts, off, lo, hi, until):
     return "".join(expect), observed, "".join(marks)
 
 
-def scan(run, want_strips=False, all_intervals=False):
+def scan(run, want_strips=False, all_intervals=False, fps=FPS):
+    global FPS
+    FPS = fps
     video = None
     for candidate in (os.path.join(CAPTURES, f"{run}.mp4"),
                       os.path.join(CAPTURES, f"{run}-aborted.mp4")):
@@ -521,13 +535,15 @@ def main():
                         help="print the expected routine against the frames that came back")
     parser.add_argument("--all-intervals", action="store_true",
                         help="include intervals too short to judge")
+    parser.add_argument("--fps", type=float, default=FPS,
+                        help="measured recording rate (default: 60)")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         raise SystemExit(self_test())
     if not args.run:
         parser.error("a run name, or --self-test")
-    raise SystemExit(scan(args.run, args.strips, args.all_intervals))
+    raise SystemExit(scan(args.run, args.strips, args.all_intervals, args.fps))
 
 
 if __name__ == "__main__":

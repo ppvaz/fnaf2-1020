@@ -61,7 +61,7 @@ const score = (buf, offset) => {
 };
 
 const decoder = spawn('ffmpeg', [
-  '-loglevel', 'error', '-i', video,
+  '-loglevel', 'error', '-threads', '1', '-filter_threads', '1', '-i', video,
   '-vf', `scale=1280:576,fps=${fps},crop=${width}:${height}:1070:10`,
   '-f', 'rawvideo', '-pix_fmt', 'gray', '-',
 ], { stdio: ['ignore', 'pipe', 'pipe'] });

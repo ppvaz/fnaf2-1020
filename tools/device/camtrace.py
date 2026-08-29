@@ -32,21 +32,25 @@ CAMERAS = {
 
 
 def decode(path):
+    """Yield frames; a full 60 fps night is far too large for capture_output."""
     command = [
-        "ffmpeg", "-v", "error", "-i", path,
+        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
         "-vf", f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:{CROP_X}:{CROP_Y}",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
     ]
-    result = subprocess.run(command, capture_output=True)
-    if result.returncode:
-        sys.stderr.buffer.write(result.stderr)
-        raise SystemExit(result.returncode)
-    if not result.stdout:
-        raise SystemExit(f"no video frames decoded from {path}")
-    return [
-        result.stdout[i:i + FRAME_SIZE]
-        for i in range(0, len(result.stdout) - FRAME_SIZE + 1, FRAME_SIZE)
-    ]
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        while True:
+            frame = proc.stdout.read(FRAME_SIZE)
+            if len(frame) < FRAME_SIZE:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def lime_score(frame, center):
@@ -94,8 +98,10 @@ def main():
     args = parser.parse_args()
     FPS, MIN_MS = args.fps, args.min_ms
 
-    frames = decode(args.video)
-    detected = list(stable_runs([classify(frame) for frame in frames]))
+    states = [classify(frame) for frame in decode(args.video)]
+    if not states:
+        raise SystemExit(f"no video frames decoded from {args.video}")
+    detected = list(stable_runs(states))
     print(f"{args.video}: selected-camera trace at {FPS} fps")
     if not detected:
         print("  no stable target-camera highlights detected")

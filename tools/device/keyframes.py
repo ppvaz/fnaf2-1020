@@ -35,14 +35,24 @@ TW, TH = 480, 216
 
 
 def decode(path, fps, w, h, pix, depth):
-    out = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(path), "-vf", f"fps={fps},scale={w}:{h}",
-         "-f", "rawvideo", "-pix_fmt", pix, "-"], capture_output=True)
-    if out.returncode:
-        sys.stderr.buffer.write(out.stderr)
-        raise SystemExit(out.returncode)
+    """Yield frames so full-night contact-sheet generation stays bounded."""
+    proc = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", str(path), "-vf", f"fps={fps},scale={w}:{h}",
+         "-f", "rawvideo", "-pix_fmt", pix, "-"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     size = w * h * depth
-    return [out.stdout[i:i + size] for i in range(0, len(out.stdout) - size + 1, size)]
+    try:
+        while True:
+            frame = proc.stdout.read(size)
+            if len(frame) < size:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def distance(a, b):
@@ -76,7 +86,7 @@ def main():
     a = p.parse_args()
 
     video = Path(a.video)
-    small = decode(video, a.fps, FW, FH, "gray", 1)
+    small = list(decode(video, a.fps, FW, FH, "gray", 1))
     if not small:
         print(f"{video}: no frames", file=sys.stderr)
         raise SystemExit(2)
@@ -92,13 +102,17 @@ def main():
         print("(install Pillow for the contact sheet)")
         return
 
-    tiles = decode(video, a.fps, TW, TH, "rgb24", 3)
+    # Decode the display pass again, but retain only the twelve selected frames
+    # rather than every 480x216 RGB frame from the night.
+    wanted = set(picks)
+    tiles = {i: frame for i, frame in enumerate(decode(video, a.fps, TW, TH, "rgb24", 3))
+             if i in wanted}
     cols = 3
     rows = (len(picks) + cols - 1) // cols
     sheet = Image.new("RGB", (TW * cols, TH * rows), (12, 12, 12))
     draw = ImageDraw.Draw(sheet)
     for n, i in enumerate(picks):
-        if i >= len(tiles):
+        if i not in tiles:
             continue
         im = Image.frombytes("RGB", (TW, TH), tiles[i])
         if a.brighten != 1.0:

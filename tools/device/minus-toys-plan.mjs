@@ -72,6 +72,7 @@ export const KNOBS0 = {
   minFlashHoldMs: 100,     // its hold -- >= one Fusion poll past the 33 ms contact floor
   minWindAtMs: 300,        // wind start, just after the flash
   minWindHoldMs: 4400,     // wind hold -- nearly the whole 5 s window; box stays full
+  minProofCam09AtMs: 359700, // after the final wind releases: visible CAM 09 proof visit
 };
 
 const clone = k => ({ ...KNOBS0, ...(k || {}) });
@@ -99,10 +100,13 @@ export function build(knobs) {
       [k.minFlashAtMs, 'hold', 'ventl', k.minFlashHoldMs],
       [k.minWindAtMs, 'hold', 'wind', k.minWindHoldMs],
     ];
-    // The final wind ends just before minStopAtMs.  Lower the monitor once,
-    // then send no further input: this is a terminal safety action, not another
-    // cadence beat.
-    const finish = [[k.minStopAtMs, 'tap', 'monitor', 100]];
+    // The final wind ends at 5:08.  Select CAM 09 once more and leave a 300 ms
+    // visible dwell before lowering the monitor.  This is proof that the Toys
+    // remain held at the terminal boundary, not another defensive cycle.
+    const finish = [
+      [k.minProofCam09AtMs, 'tap', 'cam9', 100],
+      [k.minStopAtMs, 'tap', 'monitor', 100],
+    ];
     return { opening: open, loop, finish };
   }
 

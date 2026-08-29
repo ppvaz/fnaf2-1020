@@ -119,12 +119,14 @@ for (const night of ['2', '7']) {
     `the minimal plan arms at ${m.opening[0][0]}ms, not the sourced ~1:38 delay`);
   check(m.opening.every(([at]) => at >= 115000),
     'the minimal plan sends an action before the Night 1 idle window ends');
-  check(JSON.stringify(m.finish) === JSON.stringify([[360000, 'tap', 'monitor', 100]]),
-    `the minimal plan has no exact 5:08 AM monitor-down terminal action: ${JSON.stringify(m.finish)}`);
+  check(JSON.stringify(m.finish) === JSON.stringify([
+    [359700, 'tap', 'cam9', 100], [360000, 'tap', 'monitor', 100],
+  ]), `the minimal plan has no CAM 09 proof visit then exact 5:08 AM monitor-down: ${JSON.stringify(m.finish)}`);
   const queued = schedule({ opening: m.opening, loop: m.loop, finish: m.finish,
     periodMs: 5000, loopStartMs: 140000, untilMs: 360000 });
-  check(queued.at(-1)?.[0] === 21600 && queued.at(-1)?.[2] === 'monitor',
-    'the minimal schedule does not end on its 5:08 AM monitor-down');
+  check(queued.at(-2)?.[2] === 'cam:9' && queued.at(-1)?.[0] === 21600 &&
+    queued.at(-1)?.[2] === 'monitor',
+  'the minimal schedule does not end with CAM 09 proof then its 5:08 AM monitor-down');
 
   const plan = emitPlan(1, { minimal: true });
   check(plan.includes('#period 5000'), 'the minimal plan does not name its 5 s period');

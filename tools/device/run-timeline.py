@@ -61,13 +61,24 @@ def _lifecycle():
 
 
 def decode(path, fps):
-    out = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={fps},scale={W}:{H}",
+    """Yield frames; the timeline retains labels and roughness, never video."""
+    proc = subprocess.Popen(
+        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={W}:{H}",
          "-pix_fmt", "rgb24", "-f", "rawvideo", "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     size = W * H * 3
-    buf = out.stdout
-    return [buf[i:i + size] for i in range(0, len(buf) - size + 1, size)]
+    try:
+        while True:
+            frame = proc.stdout.read(size)
+            if len(frame) < size:
+                break
+            yield frame
+    finally:
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        if proc.wait():
+            sys.stderr.buffer.write(stderr)
+            raise SystemExit(proc.returncode)
 
 
 def sampler(frame):
@@ -206,7 +217,7 @@ def collapse(phases, fps, min_dwell):
     return merged
 
 
-def terminal_outcome(runs, phases, frames, fps, th):
+def terminal_outcome(runs, phases, roughnesses, fps, th):
     """How the run ended, with its evidence. Never inferred from duration.
 
     Only two things are positive evidence, and both are things a LIVE run
@@ -226,7 +237,7 @@ def terminal_outcome(runs, phases, frames, fps, th):
                       default=None)
     if last_office is not None and last_office < len(phases) - 1:
         tail = range(last_office + 1, len(phases))
-        rough = [roughness(frames[i]) for i in tail]
+        rough = roughnesses[last_office + 1:]
         if rough and len(rough) / fps >= 2.0 and \
                 sum(1 for r in rough if r >= th["staticRoughnessMin"]) >= len(rough) * 0.6:
             return {"outcome": "death", "evidence": "terminal-static",
@@ -251,17 +262,19 @@ def main():
     with open(os.environ.get("LIFECYCLE_MODEL", DEFAULT_MODEL)) as fh:
         th = json.load(fh)["thresholds"]
 
-    frames = decode(a.video, a.fps)
-    if not frames:
+    phases, roughnesses = [], []
+    for frame in decode(a.video, a.fps):
+        phases.append(phase_of(frame, lo, th))
+        roughnesses.append(roughness(frame))
+    if not phases:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
-    phases = [phase_of(f, lo, th) for f in frames]
     runs = collapse(phases, a.fps, a.min_dwell)
-    res = terminal_outcome(runs, phases, frames, a.fps, th)
+    res = terminal_outcome(runs, phases, roughnesses, a.fps, th)
 
     if a.json:
         print(json.dumps({
-            "video": a.video, "fps": a.fps, "frames": len(frames),
+            "video": a.video, "fps": a.fps, "frames": len(phases),
             "segments": [{"phase": p, "from_s": round(x / a.fps, 2),
                           "to_s": round(y / a.fps, 2),
                           "seconds": round((y - x) / a.fps, 2)}
@@ -269,7 +282,7 @@ def main():
             "terminal": res}, indent=2))
         return 0
 
-    print(f"{a.video}: {len(frames)} frames at {a.fps} fps, {W}x{H}")
+    print(f"{a.video}: {len(phases)} frames at {a.fps} fps, {W}x{H}")
     for ph, x, y in runs:
         print(f"  {x / a.fps:7.1f}s -> {y / a.fps:7.1f}s  "
               f"({(y - x) / a.fps:6.1f}s)  {ph}")
