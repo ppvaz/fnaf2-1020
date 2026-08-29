@@ -98,12 +98,16 @@ extraction). freetype was not a real dep. All in
 `tools/recompile/mmfparser-chowdren-mobile.patch`; native build in
 `tools/recompile/android/game-CMakeLists.txt`.
 
-**Very next step: `adb install` + boot on the g56.** Blocked on the device
-connection — `adb devices` empty; need the g56's Wireless-debugging IP:port (and
-pairing code if this host has not paired before). APK at
-`captures`-external `/private/tmp/fnaf2-recompile.FQPVjr/fnaf2-android.apk`
-(`org.fnaf2rebuild.game`). Then iterate on ES 1.1 texture-format / FBO-OES / blit
-runtime issues, and compare a night to the sourced model.
+**Installed and running on the g56 (2026-08-28, USB).** `adb install` OK, app
+launches, SDLActivity focused, **renders at a steady 60 fps** in fullscreen
+landscape with the FBO letterbox correct (black bars L/R, 4:3 centre), and
+**audio is playing** (openal-soft → OpenSL ES → AudioFlinger mixing). PowerVR
+B-Series BXM (ES 3.2, so ES 1.1 compat is solid). **Current bug: the centre
+region renders solid white** — engine loop + audio + blit geometry all work, but
+the game content isn't reaching the screen (FBO content, or every draw sampling
+white). Instrumented build in progress: unbuffered stdout→logcat, `GL_VERSION`/
+`GL_RENDERER`, `glCheckFramebufferStatus(screen_fbo)`, per-frame `glGetError`.
+Next: read that, fix the render path, then compare a night to the sourced model.
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as
