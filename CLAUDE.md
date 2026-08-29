@@ -516,12 +516,14 @@ retractions than their conclusions.
 ## Checks
 
 ```sh
-node tools/test.mjs --engine     # about a minute; run on every edit
+node tools/test.mjs --engine     # fast headless feedback; run on every edit
+node tools/test.mjs --engine --extended # full model-sweep gate, as CI runs
 tools/device/test-query-cue-helper.sh
 tools/device/test-soak-cue-helper.sh
 ```
 
-CI (`.github/workflows/ci.yml`) runs these three on every push to `master`.
+CI (`.github/workflows/ci.yml`) runs the extended engine tier plus these two
+cue-helper checks on every push to `master`.
 The `--browser` checks stay local: they are graded in real-time milliseconds,
 and a loaded shared runner fails them without saying anything about the code.
 

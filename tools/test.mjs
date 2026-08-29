@@ -41,6 +41,11 @@ const ENGINE = [
   ['minus toys no-split', ['minustoystest.mjs', '200', '--no-split', '--assert']],
   ['simtest', ['simtest.mjs', '--sweep']],
   ['hidreporttest', ['hidreporttest.mjs']],
+  // Plan 19 pkg 1: the stock-device observation model (OBSERVED/UNKNOWN facts,
+  // sensor cadence + latency + drops) and the blackout-reactive controller
+  // (animation-window guard, lower-mask-verify-raise, graceful under a noisy
+  // observer).
+  ['reactivetest', ['reactivetest.mjs', '--assert']],
   // Plan 16 pkg 1/3 gates: Sim.snapshot()/restore() bit-identity, the semantic
   // action layer, and the parameter search harness reproducing the 803feb3
   // ladder on a zero perturbation.

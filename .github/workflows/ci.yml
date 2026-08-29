@@ -41,7 +41,7 @@ jobs:
       - name: Fixture rendering dependency
         run: python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
       - name: Engine checks
-        run: node tools/test.mjs --engine
+        run: node tools/test.mjs --engine --extended
       - name: Cue helper query (mock ADB)
         run: tools/device/test-query-cue-helper.sh
       - name: Cue helper soak (mock ADB)

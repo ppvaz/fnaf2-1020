@@ -27,6 +27,7 @@ assets.
 |---|---|
 | Run the maintained test suite | `node tools/test.mjs` |
 | Check only simulator regressions | `node tools/test.mjs --engine` |
+| Include exhaustive model sweeps too | `node tools/test.mjs --engine --extended` |
 | Check the built page in Chrome | `node tools/test.mjs --browser` |
 | See non-asserting policy diagnostics too | `node tools/test.mjs --reports` |
 | Serve or make the self-contained trainer | `tools/serve.py`, `tools/build.py` |
@@ -44,7 +45,7 @@ Paths in the tables are relative to the repository root.
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
-| `tools/test.mjs` | check runner | Canonical entry point. `--engine`, `--browser`, and `--reports` select groups; `--parallel` opts into concurrent timing-sensitive browser checks. It builds `dist/` and starts the dev server when needed. |
+| `tools/test.mjs` | check runner | Canonical entry point. `--engine` is the edit-time headless tier; add `--extended` for campaign-wide and timing-margin model sweeps (the default full suite and CI include them). `--browser` and `--reports` select their groups; `--parallel` opts into concurrent timing-sensitive browser checks. It builds `dist/` and starts the dev server when needed. |
 | `tools/build.py` | build | Inlines the imported JS modules, CSS, and fonts into ignored `dist/index.html`. Source works without this build during development. |
 | `tools/serve.py [port]` | dev server | Serves the repo, defaulting to port 8731. `POST /save-layout` validates a calibrated layout, rewrites `src/config.js`, and rebuilds, so that endpoint is intentionally mutating. `POST /save-trace` records a trainer run's per-step timing census under ignored `captures/traces/`, stamped with save time and commit (`FNAF_TRACE_DIR` overrides the directory for tests). |
 | `tools/chrome.mjs` | internal module | Shared Chrome discovery and DevTools flags for browser tools. `$CHROME` overrides discovery; reuse this instead of adding another locator. |

@@ -294,12 +294,15 @@ source-dump tool, including which commands assert and which only report.
 
 ```sh
 node tools/test.mjs              # the whole suite
-node tools/test.mjs --engine     # engine checks only — about a second
+node tools/test.mjs --engine     # fast headless checks for each edit
+node tools/test.mjs --engine --extended # include exhaustive model sweeps
 node tools/test.mjs --browser    # Chrome checks only — about four minutes
 node tools/test.mjs --reports    # also print the diagnostic tools
 ```
 
-The engine checks are the ones to run on every edit. The browser checks are slow
+The fast engine checks are the ones to run on every edit. The default full suite
+and CI additionally run the extended model sweeps, which replay campaign-wide
+seed sets and timing margins. The browser checks are slow
 for a reason that will not go away: the trainer never slows the clock, so driving
 a lesson to a pass costs that lesson's real duration. Engine checks run concurrently,
 so that group costs its slowest member rather than the sum. Browser checks run
