@@ -8,12 +8,18 @@ Android release rather than on folklore.
 build (Fusion build 296, August 2025). PC and community material is kept as
 attributed supporting research, never silently merged into Android rules.
 
-The visible output is a touch trainer that drills the **Minus 7** strategy on a
-phone. Behind it sit four things that took longer: a simulator whose every
-constant carries its evidence, a search lab that has refuted more strategies than
-it has confirmed, a harness that tests the model against the real binary on real
-hardware, and a written record of how each claim was established — including the
-ones that turned out to be wrong.
+**Mission:** make this 10/20 night understandable, learnable, and demonstrably
+controllable through an evidence-labelled model, proven policies, and claims
+that real-device evidence can support. The five-layer program — truth,
+understanding, decision, embodiment, and proof — is stated in the
+[project charter](PROJECT-CHARTER.md).
+
+The currently usable public output is a touch trainer that drills the **Minus
+7** strategy on a phone. It is backed by a simulator whose every constant carries
+its evidence, a search lab that keeps negative results, a real-device harness,
+and an emerging constrained-controller path. Human training, stock-device
+control, and the faithful-recompile route all use the same evidence base rather
+than competing to define the project.
 
 **[Play the trainer →](https://ppvaz.github.io/fnaf2-1020/)**
 
@@ -34,6 +40,8 @@ ones that turned out to be wrong.
   the searches this repo ran, and what they closed.
 - **[On-device validation](#on-device-validation)** — adb harness, recorded-trial
   grading, and a libc-free on-phone classifier.
+- **[Project charter](PROJECT-CHARTER.md)** — the shared vision, mission, scope,
+  and claim discipline for the trainer and controller research.
 - **[Docs index](docs/README.md)** — all of the above, routed by question.
 
 ## What Minus 7 is
@@ -207,18 +215,18 @@ What they have established is mostly **negative**, and that is kept on purpose:
 - **Six-Seven** (CAM 06/07) was derived by the search and then refuted by the
   extracted route graph — Withered Freddy transits rooms those cameras never see.
   [`CAM-6-7-STRATEGY.md`](docs/strategy/CAM-6-7-STRATEGY.md)
-- **The Minus 3 family does not transfer to Android** — but only for the
-  glitchless reason. The adapted Minus Two probe scores 16/200, losing
-  structurally to the sourced *consecutive*-mask semantics. ~~Minus Toys depends
-  on a glitch state the mobile build lacks~~ — **withdrawn 2026-08-26: the
-  build has that state.** `viewing` and the `your view` marker are separate
-  fields and a monitor raise restores only the first, from a 200 ms-stale
-  sample. On 2026-08-28 a scheduled HID stream then armed the split deliberately
-  on the target phone: CAM 11 remained visible while CAM 09 and CAM 11 were both
-  lit. Minus Toys is therefore **device-armed but policy-unprobed, not refuted** —
-  nothing here yet models its split state or proves the glitched light stuns the
-  Toys. The 16/200 Minus Two Toy Chica failure is not a Minus Toys verdict,
-  because Minus Toys is specifically intended to pin her on CAM 09.
+- **Minus Two and Minus Toys have different Android verdicts.** The glitchless
+  Minus Two probe scores 16/200, losing structurally to the sourced
+  *consecutive*-mask semantics. The Android double-camera state is real,
+  implemented in the engine, and deliberately armed on the target phone:
+  `viewing` and the `your view` marker can disagree after a stale-sample monitor
+  raise, allowing the glitched CAM 09 light to target the Toys. The deterministic
+  Minus Toys model clears 200/200 normal and 100/100 pinned-worst seeds; its
+  no-split control clears 0/200. A graded open-loop Night 2 device attempt then
+  failed through the BB→Foxy chain. A later Night 1 calibration showed zero
+  desync and no measurable drift, so the failure's clock explanation remains
+  qualified pending a monitor-stressing run — not overturned. The 16/200 Minus
+  Two result is not a Minus Toys verdict.
   [`MINUS-3-STRATEGY.md`](docs/strategy/MINUS-3-STRATEGY.md)
 - **Every gate-aware policy family searched scores 0/150** once the 45-frame
   defense fuse and 300-frame resolution chain are modeled — including two

@@ -9,6 +9,9 @@ rule enters the simulator only when it earns one. **Retractions stay put**: when
 a result is refuted, the document keeps its original reasoning and gains a
 correction at the top, because the wrong turn is usually the useful part.
 
+The [project charter](../PROJECT-CHARTER.md) defines how the trainer, model,
+controller research, and device evidence form one program.
+
 ## Start here
 
 | If you want to… | Read |
@@ -19,6 +22,7 @@ correction at the top, because the wrong turn is usually the useful part.
 | Read the game's event sheet yourself | [`android/SOURCE-DUMP-GUIDE.md`](android/SOURCE-DUMP-GUIDE.md) |
 | Decompile a Clickteam Android game | [`android/SOURCE-DUMP-GUIDE.md` §4](android/SOURCE-DUMP-GUIDE.md) — the handle scramble |
 | Run something against a real phone | [`device/ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) |
+| Understand the project's scope and claim discipline | [`../PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) |
 | Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
 | Pick up unfinished work | [`../plans/`](../plans/) |
 
@@ -57,7 +61,8 @@ Fusion build 296, August 2025.
 - [`MINUS-7-STRATEGY.md`](strategy/MINUS-7-STRATEGY.md) — exact input sequence for
   the strategy the trainer drills.
 - [`MINUS-3-STRATEGY.md`](strategy/MINUS-3-STRATEGY.md) — the cam-stall family.
-  **Does not transfer to Android**; §7 has the probe.
+  The Android split-camera mechanism transfers; the tested open-loop device
+  policy does not yet transfer reliably. §7–9 keep those verdicts separate.
 - [`VENT-CAMP-STRATEGY.md`](strategy/VENT-CAMP-STRATEGY.md) — the right-vent-camp
   lineage up to brayden's timer strategy.
 - [`CAM-6-7-STRATEGY.md`](strategy/CAM-6-7-STRATEGY.md) — a strategy this project
@@ -92,6 +97,10 @@ Fusion build 296, August 2025.
 - [`RUN-TELEMETRY.md`](device/RUN-TELEMETRY.md) — what a night run should
   record, ten diagnostic signals ranked by value per millisecond of a cycle
   that has only ~680 ms free.
+- [`../plans/19-video-reactive-controller.md`](../plans/19-video-reactive-controller.md)
+  and [`../plans/20-belief-state-cycle-controller.md`](../plans/20-belief-state-cycle-controller.md)
+  — the current stock-device sensing/controller build and its uncertainty-aware
+  planning layer.
 
 ## In-engine and prior art
 

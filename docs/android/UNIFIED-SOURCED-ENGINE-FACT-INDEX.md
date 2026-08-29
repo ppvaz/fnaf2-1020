@@ -740,7 +740,7 @@ a small dispatch bank turns it into sound:
 | `mmaskOff` state flip at **15** frames | Event threshold is **14** (g10/g11); `config.js` `MASK_ANIM_OFF = 15` is the animation-bank rounding — off by one. | 2026‑08‑26 (unfixed) |
 | `sweepcheck.py` "every flash lands 68/75" via feed brightness | Withdrawn — the stun has no rendering term; feed brightness measures nothing. Use `camtrace.py` (button highlight driven from `viewing` by g46‑57). | 2026‑08‑26 |
 | The simulator's `vent-bang` event carried a `who` field | Every such event is sample 17; no audio detector can recover `who`. `minus6test.mjs` and `hidpilottest.mjs --vocal-cam5` used a sensor that does not exist. A `sample` field was added. | 2026‑08‑24 |
-| "Minus Toys cannot transfer (no double-camera state, CAM 09 flash-excluded)" — still in `ANDROID-SOURCE-STATUS.md` "Current strategic verdict" | **Stale** — the "no double-camera state" premise is reversed (see the double-camera row above). Minus Toys is *not yet* re-probed as a measurable policy; the verdict paragraph was not updated. | 2026‑08‑26 |
+| "Minus Toys cannot transfer (no double-camera state, CAM 09 flash-excluded)" | **Withdrawn and corrected.** The sourced split is implemented in the engine; the deterministic split policy clears 200/200 normal and 100/100 pinned-worst seeds, with a 0/200 no-split control. The 2026-08-28 open-loop device attempt failed, while a 2026-08-29 Night 1 calibration removed the previously measured drift/desync explanation only for an unstressed run. The current question is full-policy device transfer under load. | 2026‑08‑29 |
 
 ---
 

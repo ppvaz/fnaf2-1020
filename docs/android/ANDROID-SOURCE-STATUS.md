@@ -862,7 +862,7 @@ glitched flash and the box-hold stack in one hold — the published routine's co
 The marker look-hold cam-stall (g344-348, g357) also reads `your view`, so the
 parked marker keeps stalling its room while a different camera is displayed.
 
-### What is sourced, what is inferred, and what is still open
+### What is sourced, what is inferred, and what remains open
 
 **[SOURCED]** — the field split, every writer above, the flash groups' split
 read, the Puppet block's `viewing == 11`, and the exhaustive result that
@@ -887,23 +887,28 @@ parameter).
   every frame would make `viewing = 0` unreachable and pin every selection to
   `last viewed`.
 
-**OPEN, and none of it is small:**
+**OPEN, updated through 2026-08-29:**
 
-- **Deliberate arming has never been attempted on the device.** This frame was
-  an accident inside a Minus 7 pilot run. The run's event stream records no
-  presses, and the log shows only `macro attack[2..999]` at 87859 ms and
-  `monitor` at 92039 ms before the 92879 ms snapshot, so the exact input that
-  produced it is **not reconstructed**. The runner's own classifier flagged the
-  frame `cams=UP-DESYNCED` at 93029 ms.
-- **The real window is unmeasured.** The source says "before group 263's next
-  200 ms tick"; what fraction of attempts land it through the phone's actuator
-  is unknown. Price it against `HID-MULTITOUCH.md`, not against an ideal input.
-- **No stun has been observed through a glitched marker.** The payoff above is
-  read off the event sheet only.
-- **The engine models none of this.** There is no double-camera state in
-  `src/engine.js`, so no `sourcetest` case accompanies this section; it is a
-  backlog finding, not an implemented rule. Implementing it is what would reopen
-  Minus Toys as a *measurable* policy rather than a plausible one.
+- **Deliberate arming works on the device.** A scheduled HID stream armed the
+  split on 2026-08-28, and `n1-minustoys-calib-01` held it through roughly five
+  minutes on 2026-08-29. The accidental Minus 7 frame that first exposed the
+  state remains historical evidence, not the only device observation.
+- **The source window is 200 ms; its device yield remains unmeasured.** The
+  successful runs establish that the actuator can land it, but not the success
+  distribution across timing geometry, load, or devices. Price a new policy
+  against `HID-MULTITOUCH.md`, not against an ideal input.
+- **Hardware evidence is still indirect.** The 2026-08-28 device policy run
+  held the Toys off the office in retained frames, and the 2026-08-29 Night 1
+  calibration held the split for about five minutes; neither directly observes
+  a Show-Stage stun. Treat the mechanism as sourced and modelled, not as a
+  complete device-policy proof.
+- **The engine now models this.** `src/engine.js` keeps `viewing`, `cam`, and
+  `lastViewed` separately; the raise restore can create the sourced split, and
+  the camera-light rule applies its target from the marker while retaining the
+  `viewing` immunity gate. `tools/minustoystest.mjs` and
+  `tools/device/minus-toys-plan.mjs` exercise it with split and no-split
+  controls. The remaining question is transfer of a full policy under device
+  timing, not whether Android has the state.
 - The consecutive-tick mask-clear semantics that broke Minus Two
   (`MINUS-3-STRATEGY.md` §7) are untouched by this and still apply.
 
@@ -1181,13 +1186,15 @@ each resolved item records the finding. Remaining open items are marked OPEN.
   See [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md).
 - Six-Seven has no two-camera cover on the extracted Android route graph and stays
   refuted for the target platform.
-- The Minus 3 family (plan 02) is not zero-RNG on Android: Minus Toys cannot
-  transfer (no double-camera state, CAM 09 flash-excluded) and the adapted
-  glitchless Minus Two probe scores 16/200 normal seeds with a structural
-  Toy Chica failure (`tools/minus2test.mjs`, `MINUS-3-STRATEGY.md` §7). The
-  consecutive-tick mask-clear semantics are the highest-value on-device
-  validation target — they are what breaks the whole imported family. The
-  adb harness and first results live in
+- The Minus 3 family has two separate Android results. The glitchless Minus Two
+  probe scores 16/200 normal seeds with a structural Toy Chica failure. Minus
+  Toys' double-camera state and CAM 09 stun path are sourced and implemented;
+  the split model clears 200/200 normal and 100/100 pinned-worst seeds, while
+  the no-split control clears 0/200. The first graded open-loop Night 2 device
+  attempt failed through BB→Foxy. A later Night 1 calibration found zero desync
+  and no measurable drift, but did not stress monitor transitions, so it
+  qualifies rather than reverses that device verdict. See
+  [`MINUS-3-STRATEGY.md`](../strategy/MINUS-3-STRATEGY.md) §7–9 and
   [`ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md).
 - The apparent 150/150 monitor-denial reopening is **retracted**. It came from
   reading groups 538-555 as continuous mask polling; they actually resolve the

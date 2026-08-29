@@ -1,18 +1,24 @@
 # Plans
 
 Future work beyond the Minus 7 trainer, one file per ask, written to be picked up cold
-in any later session. Suggested order and dependencies:
+in any later session. The trainer remains the public product; these plans build the
+same evidence base into strategy research and constrained control. See the
+[`PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) for the shared scope and claim
+discipline. Suggested order and dependencies:
 
 **Current completion and the single next action:**
 [`PROGRESS.md`](PROGRESS.md).
 
-Current triage (2026-08-28):
+Current triage (2026-08-29):
 
-- **Plan 02 is reopened around Minus Toys.** Android can deliberately arm its
+- **Plan 02 remains open around Minus Toys.** Android can deliberately arm its
   split-camera state, and the glitch-aware engine probe is 200/200 normal plus
-  100/100 pinned worst-luck; the no-split control is 0/200. The next gate is
-  on-device repeatability and direct evidence that a glitched CAM 09 flash
-  holds the Toys. Glitchless Minus Two remains a separate 16/200 negative.
+  100/100 pinned worst-luck; the no-split control is 0/200. The first graded
+  open-loop Night 2 run failed, while a later Night 1 calibration found no
+  measurable drift or desync but did not stress monitor transitions. The next
+  gate is a monitor-stressing observe-only run, followed by direct evidence
+  that a glitched CAM 09 flash holds the Toys. Glitchless Minus Two remains a
+  separate 16/200 negative.
 - **Most untouched work:** Plan 03, a real reactive-grading mode; it is larger than
   a script addition and still needs its Android vent/endgame rules sourced.
 - **Plan 04's runnable experiment is complete:** per-step model windows and an
@@ -41,9 +47,9 @@ Bot-research roadmap added 2026-08-26:
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
 - **Plan 15 owns sensor independence.** A game fact is taught once and each
-  capture method reads it through a declared, calibrated adapter. The cue
-  helper's 42 ms read is currently blocked on a threshold calibrated for
-  `screencap`, which is the problem in one sentence.
+  capture method reads it through a declared, calibrated adapter. Plan 19 P2
+  now owns the native-resolution visual watchlist that replaces the old
+  cue-helper/screencap threshold mismatch.
 - **Plan 14 owns device portability.** Every device-facing number in the repo
   describes one handset; plan 14 makes the device an explicit record, separates
   geometry (translates by arithmetic) from layout mode (must be measured) from
@@ -72,10 +78,10 @@ Bot-research roadmap added 2026-08-26:
 7. [07-tooling-consolidation.md](07-tooling-consolidation.md) — queued tooling
    correctness fixes and consolidation opportunities found by the 2026-08-23
    all-tools audit; take the contract fixes first and refactor opportunistically.
-8. [08-audio-cue-controller.md](08-audio-cue-controller.md) — recovered plan for
-   windowed, fully on-device Android playback capture and cue classification;
-   source mapping, target-phone calibration, timing, simulation, and shadow-mode
-   gates precede any Night 7 action.
+8. [08-audio-cue-controller.md](08-audio-cue-controller.md) — audio-cue research:
+   the target phone's internal capture cannot hear the critical fast-mixer cues
+   without root; external A2DP is the validated slower path now composed by
+   Plan 19 P6 and Plan 20.
 9. [09-observation-corpus.md](09-observation-corpus.md) — versioned multimodal
    session, holdout, and replay contract for lifecycle, actuator-state, visual,
    and audio observations.

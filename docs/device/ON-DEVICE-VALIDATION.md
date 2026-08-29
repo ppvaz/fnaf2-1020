@@ -2103,6 +2103,19 @@ Two forward paths, neither built:
 The `n2-minustoys-0117` artifacts (aborted mp4, hid jsonl, run log, session
 manifest) are in the gitignored `captures/` corpus.
 
+### Qualification: Night 1 calibration did not reproduce drift or desync (2026-08-29)
+
+`n1-minustoys-calib-01` held the split for about five minutes on the same g56:
+CAM 09 was co-lit in 99.5% of monitor-up windows, `desync-scan.py` found 0/31
+monitor-up failures, and the AM-digit / map-cycle clocks showed no measurable
+drift. This does **not** overturn the graded Night 2 failure: Night 1 has no
+forcedowns, mask churn, or reactive corrections, and the calibration never
+directly viewed the Show Stage to prove a glitched Toy stun. It removes the
+claim that drift is established for every run and sets the next gate: run the
+same instrumentation observe-only on Night 5 or 7 before promoting any
+open-loop or reactive policy. The current strategy record is
+[`MINUS-3-STRATEGY.md`](../strategy/MINUS-3-STRATEGY.md) §9.
+
 ## The frontier is phase, not actuation — and what the 2026 field says (2026-08-28)
 
 A session-level review of the actuator and sensor questions ("can we build an

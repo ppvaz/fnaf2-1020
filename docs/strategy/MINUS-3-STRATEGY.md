@@ -200,15 +200,16 @@ Android model:
   (§5 item 3).~~ **Withdrawn 2026-08-26 — both halves of that sentence were
   wrong.** The glitch state exists (`viewing` vs. the `your view` marker, §5
   item 2), and the CAM 09 exclusion gates on `viewing` while the stun targets
-  the marker, so a split selection bypasses it (§5 item 3). **This does not make
-  Minus Toys work on Android — it makes it unprobed.** `minus2test.mjs` never
-  modelled the glitch and still does not; the engine has no two-camera state, so
-  the probe below measured the *glitchless* member only, and its result stands
-  on its own terms. What the retraction changes is that the family was closed
-  for the wrong reason. The consecutive-tick mask-clear semantics below break
-  the probed **Minus Two** policy; they are not yet a Minus Toys verdict. See
-  the 2026-08-28 correction at the end of §8; the “engine has no state” sentence
-  above records the 2026-08-26 checkpoint and is now superseded.
+  the marker, so a split selection bypasses it (§5 item 3). **This does not itself
+  make a device policy viable.** The engine now models the split and its
+  glitched CAM 09 stun path; `tools/minustoystest.mjs` clears 200/200 normal
+  and 100/100 pinned-worst seeds, and its no-split control clears 0/200. The
+  2026-08-28 graded open-loop phone attempt nevertheless failed through the
+  BB→Foxy chain. The 2026-08-29 Night 1 calibration found no measurable drift
+  or desync, but did not stress monitor transitions, so it qualifies rather
+  than reverses that result. The consecutive-tick mask-clear semantics below
+  break the probed **Minus Two** policy; they are not a Minus Toys verdict.
+  See §8–9 for the retained device evidence and next gate.
 - **Minus Two: 16/200 normal seeds** (deaths inside-office via Toy Chica);
   the pin-all-six `--cams=3,5,6` extension scores 0/200. The pinned
   worst-luck 100/100 is a diagnostic artifact (pinning freezes the escape
