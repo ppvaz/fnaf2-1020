@@ -22,6 +22,12 @@
 >   the SoundPool cues. Cost: ~150–250 ms A2DP latency + its p99 jitter. That
 >   permanently closes the Minus 7 early-unmask (§3 needs < 67 ms) but fits a
 >   mask-deadline reaction and a pre-positioning use of an auditory early warning.
+>   **Confirmed 2026-08-29:** the winding tick (`s0033`) matched-filters at
+>   NC 0.56 in a `phone → aptX HD → BlueALSA` capture vs 0.045 on-device — the
+>   fast-mixer cues really are in the A2DP mix. Working path is BlueALSA, not
+>   PipeWire (broken BT receive on the host). Caveat: A2DP suspends on silence,
+>   so there is a resume gap after every quiet stretch.
+>   `ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer SFX".
 > - **Recompile hook** (`plans/17`) — openal-soft `Play sample` callback: cue
 >   sensing becomes an event read, not a waveform problem, at zero latency.
 >

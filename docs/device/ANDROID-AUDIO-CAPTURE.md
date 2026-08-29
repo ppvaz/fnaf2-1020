@@ -284,10 +284,205 @@ music is captured, SFX are not — so it is purely the fast-mixer routing.
 - Recorded audio is still useful for **offline detector proofing** — an external
   mix recording can validate a detector that a rooted or recompiled build would
   then run live.
-- **The A2DP output is not blocked — only the capture API is.** The Bluetooth
-  encoder sits *after* the HAL combines DEEP_BUFFER + FAST, so a Bluetooth sink
-  (Linux box / ESP32 / BT receiver) receives the fully-rendered mix, SoundPool
-  cues included. It costs ~150–250 ms A2DP latency + p99 jitter — too slow for
-  the sub-67 ms Minus 7 early-unmask (`plans/08` §3), fast enough for a
-  mask-deadline reaction and for pre-positioning on an auditory early warning
-  video cannot see. `plans/19` P6.
+- **Do not assume an A2DP receiver solves this.** In theory the Bluetooth
+  encoder is downstream of the HAL mix, but a receiver must first prove it is
+  decoding the stream correctly. The Linux-receiver experiment below found a
+  corrupt aptX HD stream, so it is not evidence that the game mix was captured.
+
+## Linux Bluetooth receiver: aptX HD failure and SBC control — 2026-08-29
+
+This is a live-device finding, recorded specifically to prevent a repeat of a
+bad conclusion: **a PipeWire/BlueZ node and advancing frames are not proof that
+the PCM is valid.**
+
+### What failed
+
+The Moto g56 was paired as an A2DP source to this Linux PC. PipeWire exposed
+`bluez_input.10_2B_1C_DA_18_2C.2`, and the phone reported the link using aptX
+HD (48 kHz, 24-bit stereo). WAV files recorded from that node sounded like
+static, not FNaF audio. The device owner independently audited them and
+rejected them as game audio.
+
+This was then checked without involving FNaF: a known two-tone WAV (440 Hz,
+then 880 Hz) was copied to the phone, played through VLC, and recorded from the
+same receiver node. The capture did **not** contain the expected two successive
+tones. Therefore the defect is in, or before, this Linux aptX HD decode/capture
+path; it cannot be blamed on a missed game action or an FNaF capture quirk.
+
+### Current blocker
+
+No file recorded through this PC's aptX HD A2DP-source node is usable as game
+audio. In particular, the following artifacts are diagnostics only and must
+not be used to train, validate, or time an audio cue detector:
+
+- `/tmp/fnaf-wind-a2dp-1788034934.wav`
+- `/tmp/fnaf-a2dp-windpair-1788035173.wav`
+- `/tmp/phone-a2dp-tone-capture-1788035596.wav`
+
+The earlier assertion that the receiver had captured the fully rendered game
+mix was wrong and is superseded by this control test.
+
+### SBC control result — failed (2026-08-29)
+
+The phone was explicitly switched to SBC. Android then reported
+`codecName:SBC`, 44.1 kHz, 16-bit stereo, and PipeWire reported
+`api.bluez5.codec = "sbc"` with profile `a2dp-source`. The visible Android
+settings summary still displayed aptX HD, but its live rate/bit-depth dials and
+`dumpsys bluetooth_manager` show that summary was stale.
+
+The two-tone control was repeated through that SBC link. Its spectrogram was
+broadband static, with neither the 440 Hz nor the subsequent 880 Hz tone. Thus
+forcing the mandatory baseline codec **did not repair the receiver**. The
+failure is broader than the proprietary aptX HD decoder and remains isolated to
+the **PipeWire** Bluetooth A2DP-source receive/decode/capture path. It does
+not yet establish that the PC radio, BlueZ transport, or phone-to-PC A2DP link
+is broken.
+
+The Debian dock's microphone/privacy indicator appeared during these captures.
+That was investigated rather than assumed: the live PipeWire graph showed
+`pw-record:input_FL/FR` linked directly to
+`bluez_input.10_2B_1C_DA_18_2C.2:output_FL/FR`, while those same Bluetooth
+ports fed the PC's ALC257 speaker sink. There was no link from
+`alsa_input...analog-stereo` (the laptop microphone) to the recorder. The
+indicator is PipeWire's generic recording privacy signal; it is **not** proof
+that the WAVs came from the microphone.
+
+The active BlueZ transport is also structurally valid: its local endpoint is
+the A2DP Audio Sink (`0000110b`), exactly what a PC receiving a phone's A2DP
+source should use. Its SBC configuration is 44.1 kHz joint stereo, 8 subbands,
+16 blocks, bitpool 2–53. The Intel 9560 Bluetooth controller reported link
+quality 213/255 during the experiment. These checks narrow the remaining
+problem to the BlueZ/PipeWire receiver implementation or its interaction with
+this phone, rather than a microphone fallback, wrong A2DP direction, invalid
+SBC negotiation, or an obviously weak radio link.
+
+### Independent-decoder follow-up — in progress
+
+The BlueALSA A2DP-sink backend (v4.3.1) was installed as a deliberately
+independent receiver. It owns a matching PC-side source PCM:
+`/org/bluealsa/hci0/dev_10_2B_1C_DA_18_2C/a2dpsnk/source` (S16_LE, stereo,
+44.1 kHz, SBC). Its automatic player has that PCM open exclusively, so a direct
+raw-PMC capture correctly returned `Device or resource busy`. This is not a
+decoder error. Stop the automatic `bluealsa-aplay` service temporarily, run the
+same 440 Hz → 880 Hz source through `bluealsa-cli open`, and inspect the raw
+PCM. This test isolates PipeWire: a clean BlueALSA capture makes PipeWire the
+fix target; a noisy one moves the fault lower to BlueZ/radio/phone interaction.
+
+**Result: passed.** With `bluealsa-aplay` stopped, the direct BlueALSA PCM
+capture (`/tmp/fnaf-sbc-check/bluealsa-tone-02.wav`) contained 440 Hz for
+0.0–2.0 s, then 880 Hz for 2.0–4.0 s, then silence. This is the expected source
+file structure. It proves that the phone-to-PC SBC transport and the BlueALSA
+decoder are sound. The failure is therefore specific to PipeWire 1.4.2's
+`api.bluez5.a2dp.source` path on this host; **BlueALSA is the validated
+capture path** for an external audible-mix recording.
+
+### Optional aptX HD follow-up
+
+Restoring Android's default codec selection correctly renegotiated aptX HD
+(48 kHz / 24-bit stereo); BlueZ showed an active Qualcomm aptX HD transport.
+However, Debian's stock BlueALSA service starts without optional codecs and
+reported only `A2DP-sink: SBC`, so it deliberately exposed no PCM for that
+transport. This is a local service configuration limit, not proof that aptX HD
+is corrupt.
+
+To test HD, override the service to include its compiled codecs (for example,
+`--all-codecs`), restart BlueALSA, then repeat the same two-tone acceptance
+test. Do not promote aptX HD merely because it negotiated: it becomes the
+preferred capture codec only if the direct BlueALSA PCM contains the expected
+tones. SBC remains the validated fallback.
+
+**Result: passed after a Debian-version correction.** The installed BlueALSA
+4.3.1 does not implement the newer `--all-codecs` switch. Its service was
+instead configured with `-c aptX-HD`; status then showed `A2DP-sink: SBC
+aptX-HD`. WirePlumber was stopped and the A2DP profile reconnected so that the
+two sound servers did not compete for BlueZ endpoints. This matters:
+WirePlumber logged that multiple PipeWire/PulseAudio/BlueALSA instances trying
+to manage the same Bluetooth audio transport can cause problems.
+
+BlueALSA then exposed an active aptX HD source PCM: 48 kHz stereo, `S24_LE`.
+The direct tone control again contained 440 Hz from 0.0–2.0 s and 880 Hz from
+2.0–4.0 s. `S24_LE` here carries valid 24-bit samples in the low bits of a
+32-bit container; normalising a standard 32-bit decode by `volume=256` is
+needed for a conventional 16-bit audition WAV. This is a container-conversion
+detail, not noise or a decoder failure. **aptX HD via exclusive BlueALSA is now
+validated and is the preferred external game-audio path on this PC.**
+
+### Resolution procedure (PipeWire path blocked; BlueALSA validated)
+
+1. Do **not** record more game audio through PipeWire's Bluetooth receiver; its
+   mandatory SBC control failed.
+2. For this PC, stop `bluealsa-aplay` and read the validated BlueALSA source
+   PCM with `bluealsa-cli open` while recording. Do not run PipeWire and
+   BlueALSA as competing A2DP endpoint owners for the same capture.
+3. Restart `bluealsa-aplay` afterwards if PC speaker/headphone monitoring is
+   wanted (`sudo systemctl start bluealsa-aplay`).
+4. Only after the tone control passes, repeat a deliberately audible FNaF action
+   and label the resulting PCM. Node existence, packet flow, and non-zero RMS
+   are insufficient acceptance criteria.
+
+The configuration attempt to restrict WirePlumber to SBC with
+`override.bluez5.codecs = [ sbc ]` did not take effect on this host: after a
+WirePlumber restart and reconnect, the negotiated codec remained aptX HD. Do
+not treat that configuration fragment as a fix. Selecting SBC on the phone did
+force SBC successfully, but the controlled PCM remained invalid.
+
+Sources for the resolution: Android documents that A2DP negotiates a supported
+codec and that users can disable HD Bluetooth audio codecs in Settings
+([AOSP Bluetooth services](https://source.android.com/docs/core/connect/bluetooth/services)).
+WirePlumber documents the per-user configuration-fragment mechanism and codec
+override property
+([WirePlumber configuration](https://pipewire.pages.freedesktop.org/wireplumber/daemon/configuration/modifying_configuration.html)).
+
+## The A2DP mix DOES carry the fast-mixer SFX — winding tick matched, 2026-08-29
+
+The step-4 test above ran: FNaF 2 (`com.scottgames.fnaf2` 2.0.7+26, Moto g56)
+driven to a night, music box wound, captured through the validated
+**phone → aptX HD → BlueALSA → `bluealsa-cli open` → raw S24_LE/32-bit** path
+with `bluealsa-aplay` and WirePlumber stopped. Container normalised `volume=256`,
+resampled to 48 kHz mono. Reference: `res/raw/s0033.wav` pulled straight from
+`base.apk` (`tools/dump/extract-samples.sh` — sample handle 33 `'WinD'`, 12513
+samples / 0.284 s at 44.1 kHz, the exact fast-track burst length recorded in
+"Discrete SFX are on the fast mixer" above).
+
+**Result: the winding tick is present in the A2DP capture.** Normalised
+matched-filter (`s0033` vs the recording, energy-normalised sliding correlation):
+
+| window | max NC | notes |
+|---|---|---|
+| on-device `AudioPlaybackCapture` while winding (`n1-minustoys-calib-01`, prior finding) | **0.045** | noise floor — tick absent, the FAST-mixer sibling stream |
+| this BlueALSA capture, not winding (t=40–50 s) | 0.09–0.15 | true not-winding baseline on the same path |
+| this BlueALSA capture, winding (t≈6–30 s) | **0.44–0.56** | isolated peaks clearing 0.35; ~4× the not-winding baseline, ~10× the on-device floor |
+
+For calibration the same pipeline scores injected `s0033` at 0.89 / 0.70 / 0.43
+for +6 / 0 / −6 dB sample-to-bed ratio, so 0.56 corresponds to roughly a 0-dB
+tick under the CAM 11 static bed.
+
+**So the Bluetooth encoder really is downstream of the full HAL mix.** The
+`AUDIO_OUTPUT_FLAG_FAST` SoundPool stream that `AudioPlaybackCapture` never sees
+*is* combined into the A2DP stream. This recovers the non-root path for
+`plans/08` offline detector proofing and for the winding-tick phase clock
+(`MINUS-3-STRATEGY.md` §9), and BB's laughs (samples 21/23/24, same fast path)
+should come with it.
+
+**Not yet resolved — the 2 Hz phase grid.** This was a single hand-wound take:
+matched peaks in the winding window are sparse (0–2 per 2 s, not the 4 per 2 s a
+clean 2 Hz train would give) and an envelope autocorrelation does not lock at
+0.500 s (best-fit period 0.497 s but phase-jitter std ≈ 66 ms). Cause is
+undetermined — intermittent hand contact, low sample-to-bed ratio clipping all
+but the loudest ticks, or A2DP delivery jitter smearing the grid. **The
+frame-vs-wall-locked question (`MINUS-3-STRATEGY.md` §9) needs a scripted
+continuous wind with a quieter camera bed and a timestamped capture**, not this
+recording.
+
+**Also observed, and it matters for cue timing:** the A2DP stream **suspends on
+true silence.** A capture spanning a night→menu transition showed ~3 s of exact
+zero samples (`peak=0`, not a noise floor) during the silent load screen, then
+audio resumed. Any absolute-time cue anchor off this path has to expect a
+resume gap after every silent stretch. Content is also band-limited to
+~10.5 kHz — consistent with the game's own low-rate assets, and a useful sanity
+check that a capture is the game mix and not broadband noise or a mic fallback.
+
+**Reproduce.** `bluealsa-cli open /org/bluealsa/hci0/dev_<mac>/a2dpsnk/source`
+to a raw file (nothing else may hold that PCM); `ffmpeg -f s32le -ar 48000 -ac 2
+-i raw -af volume=256 out.wav`. Raw artifacts and the reference sample:
+`~/fnaf-apks/audio-capture-2026-08-29/` (outside the repo, game content).
