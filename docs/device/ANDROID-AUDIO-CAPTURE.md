@@ -46,17 +46,45 @@ captured. See the official
 and
 [`AudioPlaybackCaptureConfiguration` reference](https://developer.android.com/reference/android/media/AudioPlaybackCaptureConfiguration).
 
-`[INFERRED]` FNaF 2's Clickteam runtime probably leaves the music-box and Mangle
-loops active on internal sound channels, then controls whether the player hears
-them through channel volume or runtime mixing. The Android capture path and
-the runtime appear to disagree about that state, allowing the recorder to
-receive loops that the live speaker/headphone mix suppresses.
+`[SOURCED, runtime side]` (event sheet, 2026-08-29) FNaF 2's Clickteam runtime
+**does** leave every ambient loop playing and gate audibility purely by channel
+volume:
 
-That explanation fits the observations, but the current evidence cannot decide
-whether the defect is in Clickteam's Android channel handling, an Android/OEM
-playback-capture interaction, or both. Do **not** elevate the proposed mechanism
-to a sourced engine rule. What is established is the mismatch between recorded
-internal audio and the sound heard by the player.
+- **g60 / g61** (Start of Frame, `Set channel volume`) set the initial mix.
+  g61 **zeroes channels 2, 3, 8, 9, 13, 16, 30, 31** — every conditionally-heard
+  loop starts silent.
+- **g62–g68** (Start of Frame, then `Every 500…3000 ms`) issue `Play sample if
+  not already playing` on each loop's own channel, so the loop is *always
+  running* regardless of game state — the timer just re-arms it.
+- Game state then raises the muted channels: the mask groups drive channel 8
+  (breathing), the blackout groups channel 9, the box danger level channels 13
+  (g596–600), Mangle proximity channel 16 (g732/733).
+
+So on the runtime side the mechanism is not a guess: the loops never stop, only
+their volume moves. `[INFERRED]` remains only for the Android half — that
+`AudioPlaybackCapture` reads the pre-volume channel or otherwise ignores the
+volume automation, which is what lets the recorder receive loops the live mix
+silences. Do **not** elevate the Android half to a sourced rule; the runtime
+half above now is one.
+
+### Sound-handle map (event sheet, cross-checked by the device owner's ear)
+
+| handle | file | Fusion name | channel | what it is | volume driven by |
+|---|---|---|---|---|---|
+| 3 | s0003 | `'C'` | 3 | room ambience | g61→0, g109/g110 |
+| 9 | s0009 | `'d'` | 8 | **mask-up breathing** | g61→0; mask groups g281/g283/g287–297 |
+| 10 | s0010 | `'s'` | 9 | **blackout / camera-signal-lost** | g448 mutes when `in danger == 0` **and** `your view`.AV1 `== 0`; g449/g478 → 60 |
+| 15 | s0015 | `'M'` | 13 | **the music box** | g596→0 (not viewing CAM 11); g597 40 / g598–599 15 / g600 5 by `music button` v0 (box level) |
+| 20 | s0020 | `'e'` | 16 | **Mangle** | g61→0; g732/g733 → 40 (Mangle proximity) |
+| 33 | s0033 | `'WinD'` | 12 | winding ratchet (see phase-clock section) | not on this system — g637/g644 `Play sample` per 500 ms tick |
+| 60 | s0060 | `'W'` | 31 | hall ambience ("someone near the hall" — owner uses it as a W. Foxy watch cue); exact volume gate not yet traced | g61→0; g68 keeps it looping |
+
+This **corrects the 2026-08-29 detectability study's guesses**: s0020 is Mangle,
+not the music-box tune; s0010 is the blackout sound, not Mangle static; the
+music box is **s0015**, which that study never tested. The study's conclusion is
+unaffected — it mixed WinD against two real stationary game loops and the
+identities do not change the matched-filter result — but re-run any SBR number
+with s0015 + s0020 as the bed.
 
 The repository's adb harness uses Android's shell `screenrecord`. That tool's
 documented output is video-only; an OEM screen recorder or a purpose-built
@@ -138,3 +166,65 @@ the speaker/headphone route.
 There is no established in-game repair in the sources above. Post-processing
 may reduce the persistent layer, but it cannot be trusted to reconstruct the
 original mix perfectly.
+
+## The winding tick (sample 33) as a phase reference — 2026-08-29
+
+A candidate use of recorded audio that is *not* a threat cue: the music-box
+winding ratchet. `readdump.py sounds 3 33` → **groups 637 and 644 only**, both
+playing `Sample 'WinD'` (handle 33, `res/raw/s0033.wav`, a 0.284 s mono burst)
+on a `Time: 500 loops: 0` — a global "Every 500 ms" Fusion timer — while the
+wind button is held and `viewing == 11`. g637 is the mouse twin, g644 the
+touch twin. One handle, one channel, no random bank: it is always sample 33.
+
+Why it is interesting: it is **strictly 2 Hz on a fixed frame grid** (the timer
+is global and free-running, not restarted on wind press), so each onset carries
+`frame mod 30`. That is a phase reference — the thing `MINUS-3-STRATEGY.md` §3's
+device refutation says open-loop Minus Toys lacks. And **every strategy on every
+night must wind** (the Puppet is always armed), so it is a phase source for the
+whole device-pilot program, not one strategy.
+
+**Detectability (synthetic study, 2026-08-29):**
+
+- The coarse **band-energy / recall stage is useless** — s0033's band profile is
+  0.97-similar to a tonal contaminant candidate.
+- A **per-tick waveform matched filter** (`correlate.best_match` at the known
+  grid position) is clean: ≈0.8 normalised xcorr at 0 dB SBR, ≈0.3 at −12 dB vs
+  a ~0.09 off-grid floor. Single tick reliable to ≈ −10..−12 dB SBR.
+- **Folding that score across the ~60-tick 2 Hz grid** adds ≈+9 dB → phase
+  recovery to ≈ **−20 dB SBR** when the tick is buried, with a **sub-millisecond**
+  folded onset (inside the ±33 ms `DEVICE_EPOCH_LATCH` bracket).
+- **In the realistic regime it is not close.** Leaked music-box + Mangle loops
+  both at full volume, WinD at ~equal RMS over them: **57/57 grid ticks
+  recovered** (median grid-corr 0.685), **0/57 in the no-WinD control**
+  (0.080 grid, 0.081 off-grid). While you are actually winding, WinD is a
+  foreground broadband transient and the stationary loops correlate ~0.08
+  against it.
+- **Naive epoch-folding on an energy envelope does NOT work** — the always-on
+  ambient loops carry their own sub-0.5 s periodicity and a crude onset envelope
+  mislocates the ratchet by 25–140 ms. Matched-filter-over-fold + bed
+  subtraction (`detect.subtract`) is the shape; not built yet.
+- **No other game audio is a phase-clock candidate** — the mask SFX (g254/g267/
+  g270/g274) are one-shot press-triggered sounds, not periodic; a masked loop
+  would anchor to the press, not the game grid. Only g637/g644's global 500 ms
+  timer gives absolute phase.
+
+**The section's own warning still applies.** Whether sample 33 *also* leaks
+continuously is **unmeasured**:
+
+- **It leaks:** the wind-gate is lost (tick ≠ winding), but a continuous leak
+  still folds to a 2 Hz phase — usable as a pure phase source *if* the leak
+  rides the same global 500 ms timer.
+- **It doesn't:** an external-mic capture of the audible mix is clean, and the
+  tick doubles as an "am I actually winding" confirmation.
+
+The contaminants themselves are **not yet sourced to handles** — s0035 is the
+Night-1 phone call, not the music-box tune; unverified candidates are s0020
+(tonal), s0009 (noise), s0010 (74 s loop, g66).
+
+Modelled as `WIND_TICK_SAMPLE`/`WIND_TICK_FRAMES` in `config.js`, emitted as a
+`wind-tick` event, pinned by `sourcetest.mjs`. Device measurements that settle
+it, in order: (1) **frame-lock vs wall-lock** — Night 1 winding capture,
+sample-33 onset spacing vs `camtrace.py` frame stamps; does it track the
+−184 ms/min drift or stay at 500.0 ms wall? (2) **does it leak** — a not-winding
+stretch must be silent; (3) **real SBR floor** — `tools/cue/evaluate.py`
+extended to handle 33 against a real internal capture.
