@@ -134,30 +134,42 @@ that combine** and gets the fully-rendered mix — music, SoundPool SFX, volume
 automation. An external A2DP sink hears WinD, BB's laughs, the footsteps, the
 vent bang: the exact cues `plans/08` is blocked on.
 
-- **Sink:** a Linux box (BlueZ/PipeWire A2DP sink — also runs the whole trial
-  harness) or a dedicated ESP32/BT-receiver with a wired out into a recorder.
-  The phone pairs to it; `pw-record` / the ESP32 captures the stream.
+- **Sink and actuator are separate hardware decisions.** The recommended first
+  topology is a Linux BlueZ/PipeWire A2DP sink (which can also run the trial
+  harness) -> timestamped fact link -> an ESP32-S3 that owns wired USB-HID.
+  An alternative is two MCUs: a Classic-Bluetooth ESP32 receives A2DP and sends
+  facts over UART/SPI to the ESP32-S3. This split is not decorative: the
+  original ESP32 supports the Bluetooth Classic A2DP sink API, while ESP32-S3
+  has native USB HID but no Bluetooth Classic. A single original ESP32 using
+  Bluetooth HID remains a bench-only option until Android acceptance and jitter
+  are measured. [Espressif A2DP sink API](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_a2dp.html),
+  [ESP32-S3 Bluetooth support](https://docs.espressif.com/projects/esp-idf/en/v5.1.6/esp32s3/esp-idf-en-v5.1.6-esp32s3.pdf),
+  [ESP32-S3 USB HID](https://docs.espressif.com/projects/esp-iot-solution/en/latest/esp-iot-solution-en-master.pdf).
+  The phone pairs to the sink; `pw-record` / the Classic ESP32 captures the
+  stream.
 - **Latency reality.** A2DP adds ~150–250 ms of roughly-constant transport +
   buffering. That **closes the Minus 7 BB early-unmask for good** (`plans/08` §3:
   end-to-end < 33 ms for a useful gain — already closed on latency; BT only
-  makes it worse). It **fits** a blackout/threat → mask reaction (0.75 s Night 7
-  deadline, ~250–500 ms margin) and a *pre-positioning* use of an auditory early
-  warning video cannot see (BB laugh, Mangle radio, footsteps) — used to narrow
-  the controller's route-uncertainty set, never in the mask critical path.
+  makes it worse). It may fit the 0.75 s blackout deadline only if a bench
+  measurement proves its p99 end-to-end tail, but the controller architecture
+  does **not** put it in the blackout → mask critical path. Its promoted role
+  is pre-positioning on an auditory early warning video cannot see (BB laugh,
+  Mangle radio, footsteps), narrowing the controller's route-uncertainty set.
 - **The number that decides feasible-vs-reliable:** p99 / p99.9 A2DP
   PCM-arrival jitter. Timestamp every PCM block at the sink as soon as BT
-  delivers it; characterize `event → BT PCM arrival` separately from
-  `arrival → detector` and `detector → actuator`. A rare +170 ms buffering
-  excursion is what eats the safety margin for 10/20.
+  delivers it, but do not call that the game-event time: receipt only bounds
+  the cue's earlier occurrence through a calibrated latency interval. Record
+  `cue reference → BT PCM arrival`, `arrival → detector`, and
+  `detector → actuator` separately. A rare +170 ms buffering excursion is
+  what eats the safety margin for 10/20.
 - **Detection is causal, not windowed.** A distinctive transient is often
   confidently matched from its first ~10–30 ms (80–480 samples at 16 kHz), so
   the detector streams and decides early rather than waiting for the whole
   cue tail.
-- **Actuation.** If the sink also drives the actuator (ESP32 → USB-HID to the
-  phone, or a physical tapper), it owns both legs; if the Linux box drives it,
-  it reuses the existing `/system/bin/hid` primitive. Either way the audio
-  result reaches the controller as one bounded message and never blocks the HID
-  schedule.
+- **Actuation.** The HID executor owns its own monotonic schedule. Upstream
+  audio sends one bounded fact, never a sequence of wall-timed button commands,
+  and never blocks the pre-approved HID cycle. It may pre-empt only through the
+  controller's explicitly permitted safety path.
 
 This package is hardware-gated and lower priority than P1–P4 (the video
 fast-path is what a mask deadline needs). It exists so the auditory cues are not

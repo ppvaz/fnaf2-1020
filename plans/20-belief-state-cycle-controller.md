@@ -195,15 +195,40 @@ observation control without approaching the oracle through privileged state.
 
 ### P6 -- ESP32 transport and real-time split
 
-Define the hardware protocol. The ESP32 owns monotonic timestamps, local
-actuation, cycle scheduling, and the fast mask path. A phone-side/helper or
-Linux/A2DP process sends timestamped facts; it must include capture time,
-arrival time, calibration profile, and confidence. Design for bounded messages
-and degraded operation when the upstream observer disappears.
+Define the hardware protocol and choose the topology only after a bench trace.
+The recommended first topology is Linux A2DP sink -> fact link -> ESP32-S3
+wired USB-HID. A two-MCU alternative is Classic-Bluetooth ESP32 A2DP sink ->
+UART/SPI -> ESP32-S3 USB-HID. The split reflects the hardware boundary:
+original ESP32 supports Classic A2DP; ESP32-S3 supports native USB HID but not
+Bluetooth Classic. A one-MCU Classic-ESP32 Bluetooth-HID route is an unmeasured
+alternative, not the architecture's assumption.
+
+The HID ESP32 owns monotonic timestamps, local actuation, cycle scheduling, and
+the fast mask path. Upstream sends bounded fact messages, never a sequence of
+wall-timed commands:
+
+```
+{ type, value, confidence, source, calibrationProfile,
+  t_observed?, t_received, latencyMin, latencyMax }
+```
+
+`t_observed` is included only when the sensor can directly timestamp its
+observation. In particular, A2DP PCM receipt is **not** game-event time; it
+updates the estimator over the interval implied by its measured transport
+latency, then predicts that historical state forward to `t_received`.
+
+The visual fast path must also be measured, not assumed. A detector wired to a
+display/compositor can see a new frame quickly; the current phone helper is a
+~59 ms read at ~14 Hz plus fact delivery. Its p99
+`visible-blackout → fact → HID command → mask-confirmed` is the relevant
+number. Design toward <150 ms, but do not quote that target as achieved before
+the trace exists. The ESP must complete an already-approved safe cycle if the
+upstream observer disappears.
 
 **Done when:** a bench trace measures every leg (`screen/audio event -> fact ->
-ESP receipt -> HID command -> observed result`) and the ESP can complete an
-already-approved safe cycle if the host link drops.
+ESP receipt -> HID command -> observed result`), reports p50/p95/p99/p99.9
+per path, and the ESP can complete an already-approved safe cycle if the host
+link drops.
 
 ### P7 -- shadow campaign and bounded promotion
 
