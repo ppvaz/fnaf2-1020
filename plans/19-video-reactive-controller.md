@@ -146,8 +146,8 @@ automation. An external A2DP sink hears WinD, BB's laughs, the footsteps, the
 vent bang: the exact cues `plans/08` is blocked on.
 
 - **Sink and actuator are separate hardware decisions.** The recommended first
-  topology is a Linux BlueZ/PipeWire A2DP sink (which can also run the trial
-  harness) -> timestamped fact link -> an ESP32-S3 that owns wired USB-HID.
+  topology is a **Linux A2DP sink** (which also runs the trial harness and the
+  detector) -> timestamped fact link -> an **ESP32-S3 that owns wired USB-HID**.
   An alternative is two MCUs: a Classic-Bluetooth ESP32 receives A2DP and sends
   facts over UART/SPI to the ESP32-S3. This split is not decorative: the
   original ESP32 supports the Bluetooth Classic A2DP sink API, while ESP32-S3
@@ -156,8 +156,19 @@ vent bang: the exact cues `plans/08` is blocked on.
   are measured. [Espressif A2DP sink API](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_a2dp.html),
   [ESP32-S3 Bluetooth support](https://docs.espressif.com/projects/esp-idf/en/v5.1.6/esp32s3/esp-idf-en-v5.1.6-esp32s3.pdf),
   [ESP32-S3 USB HID](https://docs.espressif.com/projects/esp-iot-solution/en/latest/esp-iot-solution-en-master.pdf).
-  The phone pairs to the sink; `pw-record` / the Classic ESP32 captures the
-  stream.
+  The phone pairs to the sink.
+
+  **2026-08-29 correction from the working setup:** the Linux sink is
+  **BlueALSA (`bluez-alsa`), not PipeWire** — PipeWire 1.4.2's
+  `api.bluez5.a2dp.source` path produced only broadband static on this host and
+  never a valid PCM, on aptX HD *and* on forced SBC. BlueALSA with
+  `bluealsa-aplay` + WirePlumber's Bluetooth monitor disabled is the validated
+  path (`ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer
+  SFX"). This matters for the two-MCU alternative: the ESP32 Classic-A2DP sink
+  is SBC-only and low-rate, and **it is unproven that FNaF's SoundPool cues
+  survive that decode** — the Linux path only worked with a full BlueALSA
+  decoder. Keep the PC in the loop until an ESP32 A2DP sink is bench-proven
+  against the same `s0033` matched-filter control (NC 0.56 is the bar).
 - **Latency reality.** A2DP adds ~150–250 ms of roughly-constant transport +
   buffering. That **closes the Minus 7 BB early-unmask for good** (`plans/08` §3:
   end-to-end < 33 ms for a useful gain — already closed on latency; BT only

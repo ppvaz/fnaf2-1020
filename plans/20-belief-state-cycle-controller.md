@@ -203,6 +203,21 @@ original ESP32 supports Classic A2DP; ESP32-S3 supports native USB HID but not
 Bluetooth Classic. A one-MCU Classic-ESP32 Bluetooth-HID route is an unmeasured
 alternative, not the architecture's assumption.
 
+**Shape after the 2026-08-29 findings.** The PC stays in the loop — it is the
+only proven A2DP sink (BlueALSA; PipeWire's BT receive is broken here) and it
+already runs the detector and estimator. So v1 is: **phone** (WiFi: adb + the
+on-device cue-helper video socket; BT: A2DP audio; USB: HID) -> **PC** (BlueALSA
+sink + video read + belief state + planner) -> **ESP32-S3** over USB-CDC serial,
+presenting an absolute-multitouch USB-HID device to the phone. The ESP32-S3
+owns its monotonic cycle clock and one cached pre-empt ("MASK NOW", fired by
+the PC's video blackout detector, executed without waiting for the planner) and
+completes an already-approved safe cycle if the serial link drops. Audio never
+enters the mask critical path — its ~150-250 ms A2DP latency (plus a
+silence-suspend resume gap) confines it to route-hypothesis narrowing. Open and
+bench-gated: whether the phone accepts an external USB-HID touch device with the
+same ~33 ms contact-landing behaviour the on-device `/system/bin/hid` path has,
+and the p99/p99.9 of every leg.
+
 The HID ESP32 owns monotonic timestamps, local actuation, cycle scheduling, and
 the fast mask path. Upstream sends bounded fact messages, never a sequence of
 wall-timed commands:
