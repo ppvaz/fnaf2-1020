@@ -482,7 +482,36 @@ resume gap after every silent stretch. Content is also band-limited to
 ~10.5 kHz — consistent with the game's own low-rate assets, and a useful sanity
 check that a capture is the game mix and not broadband noise or a mic fallback.
 
-**Reproduce.** `bluealsa-cli open /org/bluealsa/hci0/dev_<mac>/a2dpsnk/source`
-to a raw file (nothing else may hold that PCM); `ffmpeg -f s32le -ar 48000 -ac 2
--i raw -af volume=256 out.wav`. Raw artifacts and the reference sample:
-`~/fnaf-apks/audio-capture-2026-08-29/` (outside the repo, game content).
+**Reproduce.** `tools/cue/capture-bt-audio.sh <seconds>` wraps it:
+`bluealsa-cli open /org/bluealsa/hci0/dev_<mac>/a2dpsnk/source` to a raw file
+(nothing else may hold that PCM), then `ffmpeg -f s32le -ar 48000 -ac 2 -i raw
+-af volume=256 out.wav`. Reference samples: `tools/dump/extract-samples.sh
+~/fnaf-apks/fnaf2/base.apk` pulls `res/raw/sNNNN.*` by handle. Raw artifacts and
+the winding reference: `~/fnaf-apks/audio-capture-2026-08-29/` and
+`~/fnaf-apks/bt-audio-captures/` (outside the repo, game content).
+
+### Listening while capturing — the host audio setup
+
+The two sound servers must not both manage Bluetooth. WirePlumper keeps this
+PC's own card; BlueALSA owns the phone, exclusively. Persistent config,
+`~/.config/wireplumber/wireplumber.conf.d/60-fnaf-phone-sbc.conf`:
+
+```
+monitor.bluez.enabled = false
+wireplumber.profiles = { main = { monitor.bluez = disabled } }
+```
+
+`sudo systemctl edit bluealsa` → `ExecStart=` then
+`ExecStart=/usr/bin/bluealsa -S -p a2dp-source -p a2dp-sink -c aptX-HD`
+(Debian's 4.3.1 has no `--all-codecs`).
+
+- **Hear the phone:** `bluealsa-aplay --profile-a2dp --volume=software <mac>`
+  streams it to the default PipeWire sink, where it mixes with normal desktop
+  audio — so PC sound and game sound both reach the headphones at once.
+- **Hear the phone *during* a capture:** `capture-bt-audio.sh` stops
+  `bluealsa-aplay` for the capture window (single-consumer PCM), tees the raw
+  stream to the default sink at +48 dB so monitoring never drops, and restarts
+  `bluealsa-aplay` on exit.
+
+Neither `bluealsa-aplay` nor the WirePlumber Bluetooth-disable survives a
+reboot as a service yet; re-run / re-check after one.
