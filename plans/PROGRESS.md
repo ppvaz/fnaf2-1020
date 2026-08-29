@@ -98,16 +98,21 @@ extraction). freetype was not a real dep. All in
 `tools/recompile/mmfparser-chowdren-mobile.patch`; native build in
 `tools/recompile/android/game-CMakeLists.txt`.
 
-**Installed and running on the g56 (2026-08-28, USB).** `adb install` OK, app
-launches, SDLActivity focused, **renders at a steady 60 fps** in fullscreen
-landscape with the FBO letterbox correct (black bars L/R, 4:3 centre), and
-**audio is playing** (openal-soft → OpenSL ES → AudioFlinger mixing). PowerVR
-B-Series BXM (ES 3.2, so ES 1.1 compat is solid). **Current bug: the centre
-region renders solid white** — engine loop + audio + blit geometry all work, but
-the game content isn't reaching the screen (FBO content, or every draw sampling
-white). Instrumented build in progress: unbuffered stdout→logcat, `GL_VERSION`/
-`GL_RENDERER`, `glCheckFramebufferStatus(screen_fbo)`, per-frame `glGetError`.
-Next: read that, fix the render path, then compare a night to the sourced model.
+**The recompiled FNaF 2 renders its title screen on the g56 (2026-08-28).**
+`adb install` (USB) → launches, `OpenGL ES-CM 1.1` context, `screen_fbo`
+`GL_FRAMEBUFFER_COMPLETE_OES`, no GL errors, frame 0 → frame 1, **60 fps**,
+**openal-soft audio playing**, and the 02-title event logic renders — "Five
+Nights at Freddy's 2", the `12:00 AM` clock, the WARNING block, the camera-map
+layout, menu buttons. Same fidelity as the desktop build: text renders, sprites
+are placeholder boxes (image bank still incomplete). The white-screen bug was
+`glEnable(GL_TEXTURE_2D)` — the desktop path samples via `texture_shader`, but
+the Android `glesshader` stand-in is a no-op so the ES 1.1 fixed pipeline had
+texturing disabled and every textured draw rendered the flat vertex colour.
+Fixed in `set_gl_state()`.
+
+**Very next step:** decode the image bank so sprites render (shared with the
+desktop build), fix minor letterbox centring, wire touch input, then drive the
+menu to a night frame and compare to the sourced model. `rebuilt-runtime`.
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as

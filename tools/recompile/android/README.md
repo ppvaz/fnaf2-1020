@@ -78,8 +78,18 @@ cross-build: `freetype` (official Android build exists), `libogg`/`libvorbis`
    `_LIBCPP_ENABLE_CXX17_REMOVED_*`, `GL_GLEXT_PROTOTYPES`. Source lists parsed
    from the converter's own `gamesrc/CMakeLists.txt` (27 events, 29 frames, 5
    objects) so stale `events_28/29.cpp` are not built.
-6. **Next: `adb install` + boot on the g56**, iterate on ES 1.1 texture-format /
-   FBO-OES / blit issues.
+6. ~~`adb install` + boot on the g56~~ — **done. The recompiled FNaF 2 renders
+   its title screen on the phone** (2026-08-28): `OpenGL ES-CM 1.1`,
+   `screen_fbo` `GL_FRAMEBUFFER_COMPLETE_OES`, no GL errors, frame 0 → 1, 60 fps,
+   openal-soft audio playing. The one runtime fix was `glEnable(GL_TEXTURE_2D)`
+   in `set_gl_state()` — the desktop path samples through `texture_shader` (a
+   real GLSL program), so the ES 1.1 fixed pipeline needs texturing explicitly
+   enabled or every textured draw is the flat vertex colour (white screen).
+   `desktop/platform.cpp` also gained `redirect_stdio()` (SDL 2.30 no longer
+   mirrors stdout to logcat) and one-shot GL/FBO diagnostics.
+7. Next: image-bank decode (shared with the desktop build — sprites are
+   placeholder boxes), minor letterbox centring, touch input, then a night frame
+   vs. the sourced model.
 
 ## Build recipe
 

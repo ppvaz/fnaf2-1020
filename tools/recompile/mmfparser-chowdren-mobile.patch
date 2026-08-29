@@ -81,10 +81,10 @@ index 4795776..50588aa 100644
  #else
  #include <stdlib.h>
 diff --git a/Chowdren/base/desktop/platform.cpp b/Chowdren/base/desktop/platform.cpp
-index 0a7095c..c10e2ab 100644
+index 0a7095c..12e6a9c 100644
 --- a/Chowdren/base/desktop/platform.cpp
 +++ b/Chowdren/base/desktop/platform.cpp
-@@ -204,6 +204,59 @@ static void set_resources_dir()
+@@ -204,6 +204,96 @@ static void set_resources_dir()
  }
  #endif
  
@@ -92,6 +92,43 @@ index 0a7095c..c10e2ab 100644
 +#include <SDL_system.h>
 +#include <sys/stat.h>
 +#include <unistd.h>
++#include <android/log.h>
++#include <pthread.h>
++
++// SDL 2.30 no longer mirrors stdout/stderr to logcat; do it here so the engine's
++// std::cout diagnostics are visible during Android bring-up.
++static void * stdio_to_logcat(void * arg)
++{
++    int fd = (int)(intptr_t)arg;
++    char line[512];
++    size_t n = 0;
++    char c;
++    while (read(fd, &c, 1) == 1) {
++        if (c == '\n' || n == sizeof(line) - 1) {
++            line[n] = 0;
++            __android_log_write(ANDROID_LOG_INFO, "Chowdren", line);
++            n = 0;
++        } else {
++            line[n++] = c;
++        }
++    }
++    return NULL;
++}
++
++static void redirect_stdio()
++{
++    setvbuf(stdout, NULL, _IONBF, 0);
++    setvbuf(stderr, NULL, _IONBF, 0);
++    int pfd[2];
++    if (pipe(pfd) != 0)
++        return;
++    dup2(pfd[1], 1);
++    dup2(pfd[1], 2);
++    close(pfd[1]);
++    pthread_t t;
++    pthread_create(&t, NULL, stdio_to_logcat, (void*)(intptr_t)pfd[0]);
++    pthread_detach(t);
++}
 +
 +// Chowdren opens "./Assets.dat" with fopen (stdiofile.cpp), which cannot see a
 +// file packed inside the APK. Copy it out of assets/ (via SDL_RWops ->
@@ -144,7 +181,17 @@ index 0a7095c..c10e2ab 100644
  #ifndef NDEBUG
  static void sdl_log(void *userdata, int category, SDL_LogPriority priority,
                      const char * message)
-@@ -224,7 +277,7 @@ void platform_init()
+@@ -215,6 +305,9 @@ static void sdl_log(void *userdata, int category, SDL_LogPriority priority,
+ 
+ void platform_init()
+ {
++#ifdef CHOWDREN_IS_ANDROID
++    redirect_stdio();
++#endif
+     unsigned int flags = SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER |
+                          SDL_INIT_HAPTIC | SDL_INIT_NOPARACHUTE;
+     if (SDL_Init(flags) < 0) {
+@@ -224,7 +317,7 @@ void platform_init()
      }
      SDL_EventState(SDL_MOUSEMOTION, SDL_DISABLE);
      // SDL_EventState(SDL_WINDOWEVENT, SDL_DISABLE);
@@ -153,7 +200,7 @@ index 0a7095c..c10e2ab 100644
      set_resources_dir();
  #endif
      start_time = SDL_GetPerformanceCounter();
-@@ -615,9 +668,14 @@ void platform_create_display(bool fullscreen)
+@@ -615,9 +708,14 @@ void platform_create_display(bool fullscreen)
  {
      is_fullscreen = fullscreen;
  
@@ -168,6 +215,67 @@ index 0a7095c..c10e2ab 100644
  
  #ifndef CHOWDREN_USE_D3D
      flags |= SDL_WINDOW_OPENGL;
+@@ -842,6 +940,17 @@ void platform_create_display(bool fullscreen)
+         platform_hide_mouse();
+ 
+     screen_fbo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
++
++#ifdef CHOWDREN_IS_ANDROID
++    printf("GL_VERSION=%s\nGL_EXTENSIONS=%s\n",
++           (const char*)glGetString(GL_VERSION),
++           (const char*)glGetString(GL_EXTENSIONS));
++    screen_fbo.bind();
++    GLenum fbs = glCheckFramebufferStatus(GL_FRAMEBUFFER);
++    screen_fbo.unbind();
++    printf("screen_fbo %dx%d status=0x%x glError=0x%x tex=%u\n",
++           WINDOW_WIDTH, WINDOW_HEIGHT, fbs, glGetError(), screen_fbo.get_tex());
++#endif
+ }
+ 
+ void platform_set_vsync(bool value)
+@@ -949,6 +1058,17 @@ void platform_swap_buffers()
+         std::cout << "OpenGL error: " << err << std::endl;
+ #endif
+ 
++#ifdef CHOWDREN_IS_ANDROID
++    {
++        static int _f = 0;
++        if (_f < 8) {
++            printf("swap frame %d glError=0x%x fbo_tex=%u\n",
++                   _f, glGetError(), screen_fbo.get_tex());
++            _f++;
++        }
++    }
++#endif
++
+     int window_width, window_height;
+     platform_get_size(&window_width, &window_height);
+     bool resize = window_width != WINDOW_WIDTH ||
+diff --git a/Chowdren/base/desktop/renderplatform.cpp b/Chowdren/base/desktop/renderplatform.cpp
+index 813223a..be26898 100644
+--- a/Chowdren/base/desktop/renderplatform.cpp
++++ b/Chowdren/base/desktop/renderplatform.cpp
+@@ -70,6 +70,20 @@ void set_gl_state()
+     glEnable(GL_BLEND);
+     glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_ONE);
+ 
++#ifdef CHOWDREN_IS_ANDROID
++    // GL ES 1.1 fixed-function: the desktop build relies on texture_shader to
++    // sample, but the Android glesshader stand-in is a no-op, so the fixed
++    // pipeline must be told to texture (default env is GL_MODULATE = tex *
++    // vertex colour, which is what the shader path did). Without this every
++    // textured draw -- sprites, text, and the screen_fbo blit -- renders as the
++    // flat vertex colour (white).
++    glDisable(GL_DEPTH_TEST);
++    glDisable(GL_CULL_FACE);
++    glDisable(GL_LIGHTING);
++    glActiveTexture(GL_TEXTURE0);
++    glEnable(GL_TEXTURE_2D);
++#endif
++
+     glVertexPointer(2, GL_FLOAT, 0,
+                     (void*)&render_data.positions[0]);
+     glColorPointer(4, GL_UNSIGNED_BYTE, 0, (void*)&render_data.colors[0]);
 diff --git a/Chowdren/base/fileio.cpp b/Chowdren/base/fileio.cpp
 index 2a988b7..9064f7f 100644
 --- a/Chowdren/base/fileio.cpp
