@@ -267,7 +267,368 @@ consequences:
   HID geometry and an on-device observation that the glitched CAM 09 light
   actually holds the Toys. Until those exist, quote this as "model-positive and
   deliberately armed on Android; device stun unmeasured", never as "works".
+- **Weak device evidence for the glitched Toy stun (2026-08-29, §9).** Pedro
+  hand-played Night 1 Minus Toys on the g56 (build 2.0.7+26) repeatedly, holding
+  the CAM 09 split all night and re-flashing the feed on a rough beat; no Toy
+  ever appeared, even with sloppy flash timing. Uncaptured, not graded, cadence
+  unlogged — but it is a human doing on-device exactly what "device stun
+  unmeasured" is waiting on, on the easiest night. See §9.
 - **Legitimacy caveat unchanged**: this is the glitch-based half of the family.
+
+## 9. 2026-08-29: the split-camera family on the *story* nights, not 10/20
+
+Everything above treats this family as 10/20 tooling. It is also story-campaign
+tooling, and a much softer target there — CAM 09 (Minus Toys) on Nights 1–2,
+CAM 08 (Minus 3) from Night 3 on, per the crossover in `PROGRESS.md`'s frontier
+notes. Pedro hand-played it on the Moto g56 and reported **Nights 1, 3 and 4 as
+trivial**; Nights 2 and 5 not yet attempted this way.
+
+**Not documented anywhere.** The community discusses this family only for 10/20,
+because the story nights are winnable without it. Pointing the split-camera
+glitch at a story night is an obvious corollary nobody bothers to write down —
+not a new technique, just an unrecorded one.
+
+### What Minus 3 removes, and what each story night has left
+
+Minus 3 deletes exactly the three Parts/Service Withereds (`WITHEREDS` minus
+Withered Foxy, who is cam-stall-immune). Reading `AI_BY_NIGHT`
+(`src/config.js`, g677–682) for what stays armed after that:
+
+| Night | Removed (peak AI) | Still live after Minus 3 (peak AI) | Box full→empty |
+|---|---|---|---|
+| 3 | WBonnie 3, WChica 2, WFreddy 2 | Foxy 3, BB 2, ToyBonnie 1, ToyChica 1, Puppet 8 | 33 s |
+| 4 | WBonnie 4, WChica 4, WFreddy 3 | Foxy 7, Mangle 5, BB 3, ToyBonnie 1, Puppet 9 | 25 s |
+| 5 | WFreddy 5, WBonnie 5, WChica 5 | Foxy 7, Mangle 10, ToyFreddy 5, ToyBonnie 2, ToyChica 2, BB 5, Puppet 10 | 20 s |
+
+Golden Freddy does not act below Night 6 (g804), so the 10/20 interval-avoidance
+play is never needed here. Story-night Minus 3 is just: arm the glitch, wind the
+box on CAM 11 (the glitch leaves you viewing it), and handle a much thinner
+office. On Night 3 the office is almost empty; Night 4 keeps Foxy and Mangle;
+Night 5 stays a real night (Mangle 10, Foxy 7, Toy Freddy 5) even three
+characters lighter.
+
+### The play observation
+
+Pedro, hand-played on the Moto g56, `com.scottgames.fnaf2` build **2.0.7+26** —
+the same build as the rest of the device work (`n1-full-1640`,
+`n2-doublecam-hid-0003`). **Not recorded** — no video, no `grade-run.sh`
+manifest. n=1 per night, a play report, not a rate.
+
+- **The glitch held from the very start to the very end of the night, no
+  re-arm.** The practical confirmation is that no Withered ever appeared. This
+  is the first reported instance of the double-camera split holding a full ~7 min
+  night in play — `ANDROID-SOURCE-STATUS.md` §"does transfer" sources the
+  persistence and `n2-doublecam-hid-0003` proved one arming, but neither watched
+  it hold a night. Still uncaptured.
+- **Why Night 4 played easy despite Foxy 7 + Mangle 5** (this resolves the
+  "either not scary or lucky" question the earlier draft left open): the
+  remaining threats are cheap *individually* once the three Withereds are not
+  also in the mix. Mangle announces herself by sound. Foxy is a cheap flash and
+  the flashlight battery is plentiful because you are not sweeping cameras. That
+  leaves two things actually needing attention: **Balloon Boy** (watch / listen /
+  count his cues) and **Toy Bonnie**, who can still surprise you. The load is low
+  enough that the box warning is the main clock you keep.
+- **Still open:** Night 5 not attempted this way; nothing graded; Toy Bonnie's
+  exact stall/handling on Nights 3–5 not written down.
+
+### Nights 1–2 use Minus Toys (CAM 09), not Minus 3
+
+On Nights 1–2 the Withereds, Foxy, Mangle and BB are all at 0 or near it — the
+**Toys are the whole roster** (`AI_BY_NIGHT`, g674/g676):
+
+| Night | Active (peak AI) | After Minus Toys (CAM 09 flash-stun) | Box full→empty |
+|---|---|---|---|
+| 1 | ToyBonnie 3, ToyChica 2, ToyFreddy 2, Puppet 1 | Puppet only | 50 s, **and it does not drain until 2 AM** (g653) |
+| 2 | ToyBonnie 3, ToyChica 3, ToyFreddy 2, Mangle 3, BB 3, Foxy 1, Puppet 5 | Mangle 3, BB 3, Foxy 1, Puppet 5 — all low | 50 s |
+
+So CAM 08 is pointless here (nothing lives in Parts/Service); CAM 09 is the
+target. Unlike CAM 08, CAM 09 selection alone does **not** hold the Toys — you
+re-flash the glitched feed every cycle against the 400-frame (6.67 s) stun
+(`STUN_FRAMES`).
+
+**Night 1 collapses to a pure schedule.** Nothing can move until 2 AM (all Toys
+AI 0, box static), so: zero inputs until ~1:55 AM, arm the CAM 09 glitch, then
+from 2 AM hold wind on CAM 11 and re-flash CAM 09 on a ~5 s beat until 6 AM.
+Puppet is the only real threat and the box warning is the only clock.
+
+**Play observation (Pedro, g56, build 2.0.7+26, uncaptured).** Night 1 hand-played
+this way, repeatedly, winning every time *with deliberately sloppy flash timing*
+— lost the count, flashed every 2 ticks, freestyled out of boredom; battery is
+effectively unlimited on Night 1 so over-flashing costs nothing. The Toys never
+appeared. That is weak-but-real evidence for the §8 open item ("glitched CAM 09
+Toy stun — device stun unmeasured"): a human re-flashing the split feed on
+Night 1 keeps all three Toys off, even played carelessly. Not graded, not a
+rate, flash cadence not logged.
+
+### Cadence math (the ~5 s beat)
+
+The stun is 400 frames = 6.667 s. Against a 0.5 s audible metronome tick:
+
+| Re-flash every | gap | stun margin |
+|---|---|---|
+| 10 ticks (5.0 s) | 300 fr | 100 fr / 1.67 s |
+| 12 ticks (6.0 s) | 360 fr | 40 fr / 0.67 s |
+| 13 ticks (6.5 s) | 390 fr | **10 fr / 167 ms** (not 16 ms) |
+| 14 ticks (7.0 s) | 420 fr | −20 fr — Toys roll |
+
+Flush the stun-arithmetic margin and the binding limit is **human count drift**,
+±1 tick easily (as the Night 1 play above shows). Use 10 ticks / 5 s: it holds a
+lost-count tick, and it is the same beat Minus 7 and the later Minus Toys nights
+run on, so it builds the right muscle memory.
+
+### The coast point — when you can stop everything (Night 1)
+
+The monitor being **down** disarms all three Toys. Every kill path for "the
+seven" needs the monitor up: `streakKill` requires `camsUpSince >= 0` (reset to
+−1 on every lower, `engine.js:353`) and `armedKill` has an explicit `this.camsUp`
+(`engine.js:900-905`). Foxy, BB, Mangle and Golden Freddy are all AI 0 on Night 1.
+**So with the monitor down, the only thing on Night 1 that can kill you is the
+Puppet** — his attack (`tickPuppet`, `engine.js:1050-1058`) has no cams-up
+condition.
+
+So "drop everything" = "stop winding", and the deadline is pure box arithmetic.
+Worst case, from a **full** box (2000) with the monitor down and no more inputs:
+
+| Stage | Mechanism | Worst-case time |
+|---|---|---|
+| Box full → empty | 40 units/s (`BOX_DRAIN_PER_TICK[1]=2` × 20) | 50.0 s |
+| Puppet escape | 3 × 1 s rolls at `(1+1)/20 = 0.1`, all hit | 3 s |
+| Route CAM 11→10→7→3→1→opening | 5 × 1 s hop rolls (g496), all hit | 5 s |
+| Opening → inside (marker 123) | 1-in-10 per 1 s roll (g623), hits | 1 s |
+| Inside → kill | `INSIDE_ATTACK_FRAMES` = 40 fr | 0.67 s |
+| **Total** | | **≈ 60 s** |
+
+Night is 420 s; 6 AM = 420 s; 70 s per in-game hour. Stop no later than
+**t ≈ 360 s ≈ 5:08 AM with the box topped full**, lower the monitor, and put the
+phone down — no sequence of rolls reaches the office before 6 AM. Expected-case
+the Puppet takes ~140 s, so ~4:00 AM is the "probably fine" line, but 5:08 AM is
+the one where luck cannot beat you.
+
+### Night 1 pilot recipe (human, not a gated device plan)
+
+Times are wall-clock into the 420 s night.
+
+| t (s) | in-game | action | contact |
+|---|---|---|---|
+| 0–110 | 12:00–1:34 | nothing — all Toys AI 0, box static until 2 AM | — |
+| ~115 | ~1:38 | **arm the split:** tap CAM 09, drop monitor within ~150 ms, raise. Left viewing CAM 11, marker on CAM 09. | ~67 ms tap |
+| 140 → 355 | 2:00–5:04 | every 5.0 s: ~67 ms flash on the CAM 09 feed (re-applies the 6.67 s Toy stun); ~1 s wind hold to top the box | flash 67 ms / wind ~1 s |
+| ~356 | ~5:05 | last wind — hold to **full** | ~5 s |
+| ~360 | ~5:08 | lower the monitor. Stop. | — |
+| 420 | 6:00 | night clears | — |
+
+Total distinct inputs ≈ 1 arm + ~43 flash/wind cycles + 1 final wind. No mask,
+no lights, no hall, no vent reads — every one of those answers a threat that is
+AI 0 on Night 1 (`elegance.py`'s test).
+
+**Status (corrected 2026-08-29):** an earlier draft here said "no gated device
+plan exists — the engine models no split-camera state". **Both halves were
+stale.** Plan 02 pkg 2a shipped 2026-08-28 (`c038938`): the engine separates
+`viewing`, sampled `lastViewed` and the parked marker; `tools/minustoystest.mjs`
+gates the split 200/200; and **`tools/device/minus-toys-plan.mjs --night=1`
+emits a gated device plan that scores 200/200 normal + 100/100 worst-luck**.
+`trial.sh DEVICE_POLICY=minus-toys NIGHT=continue CALIBRATION_STORY_NIGHT=1`
+runs it. The emitted plan is the 10/20-shaped routine (10 s loop, mask camp)
+applied to Night 1 — heavier than the minimal recipe above, but already built
+and gate-clean. The remaining gap is device-side: the glitched Toy stun is
+unobserved on hardware (§8), and `trial.sh` runs story nights only through the
+save-safe Continue item with the **real save cursor verified** — so a Night 1
+run needs the phone's save reset to Night 1 first (it is currently at Night 2
+from `n1-full-1640`).
+
+### A second axis: teachability, not just elegance
+
+`elegance.py` scores the *run* — per input, does it answer a threat that can act
+tonight? A routine can be elegant (few, short inputs) and still be hard to hand
+to another person. That is a separate axis, scored on the *description*:
+
+| Term | What it counts |
+|---|---|
+| `R` | distinct action-rules ("wind CAM 11", "flash CAM 09 every ~5 s") |
+| `C` | game concepts the player must *understand*, not just perform — the double-camera glitch, tick counting, the streak/GF timers, box arithmetic |
+| `B` | conditional branches ("if blackout … else …") |
+| `M` | running counters held in working memory (tick count, box level, consecutive mask ticks) |
+| `T` | timing-tightness: 0 "roughly", +1 "within ~1 s", +3 "within a frame / the 200 ms glitch-arm window" |
+
+Teachability cost ≈ `R + 2C + 2B + M + T` — concepts and branches weighted up,
+because they are what makes a routine hard to *explain*. A routine is dominated
+if another beats it on both elegance and teachability.
+
+**The selection rule (Pedro, 2026-08-29):**
+
+- **Machine / device-plan runs → optimise elegance alone.** The emitter and the
+  gate carry the complexity; a human never reads the schedule, so `C`/`B`/`M`/`T`
+  cost nothing. Minimum contact time, minimum input count.
+- **Transferable human runs → optimise elegance + teachability.** The routine
+  has to survive being explained to another person and executed from memory, so
+  a lower teachability cost is worth spending extra inputs on ("wind and flash
+  forever" over "elegant coast").
+
+Night 1, three shapes:
+
+- **Elegant coast** (the recipe above): fewest inputs, but `C` = glitch + tick
+  count + box arithmetic, `T` = +3 (the arm), `M` = clock. Cheap to run, dear to
+  explain.
+- **"Wind and flash forever":** arm the glitch once, then *"hold wind on CAM 11,
+  tap the CAM 09 light every time you count to about five, until 6 AM."* More
+  total inputs (~56 flashes, no coast), but `R` = 2, `B` = 0, `M` = 1 loose
+  count, no coast concept. The glitch arm is still one irreducible `C`/`T`.
+- **Glitchless (Minus Two shape):** removes the glitch concept entirely, but
+  needs a CAM 03 flash *plus* an RVC mask camp for Toy Chica/Freddy — more `R`,
+  a `B`, and it does not fully cover the Night 1 Toys. Simpler vocabulary, more
+  moving parts.
+
+The glitch arm is the irreducible teaching cost of any CAM 09 routine. The
+elegance-vs-teachability trade on Night 1 is real and unforced: pick "wind and
+flash forever" to teach, "elegant coast" to minimise wear.
+
+### Night 1 as a calibration run
+
+Night 1 Minus Toys is the cleanest possible device trace: a full 420 s with no
+threat events to confound anything (only the Puppet can even kill, and only if
+the box empties). That makes it the right place to attack the problem that
+actually sank device Minus Toys — §3's refutation is *entirely* a clock problem:
+"every beat phase-locked to a clock the device holds only to ~302 ms + drift",
+with a measured −184 ms/min game-vs-wall drift.
+
+Two things to measure on a Night 1 run:
+
+1. **The drift, cleanly.** `camtrace.py` reads the CAM 09 button highlight
+   (driven from `viewing`/marker by g46-57), so each flash gives a frame-stamped
+   fix of the game clock against the pilot's wall clock over a whole night with
+   nothing else moving.
+2. **An audio phase clock — the winding tick, now sourced (2026-08-29).**
+   `readdump.py sounds 3 33` → **groups 637 and 644 only**, both playing
+   `Sample 'WinD'` (handle 33, `res/raw/s0033.wav`, a **0.284 s** mono ratchet)
+   on a `Time: 500 loops: 0` — a **global "Every 500 ms" timer** — while the
+   wind button is held and `viewing == 11`. g637 is the mouse-hold twin
+   (`Key` + `music button` overlap), g644 the touch-hold twin (reached through
+   g642/g643's `Multiple Touch` over `musicButtonHitbox`). **No variation:** one
+   handle, one channel (12), no random bank, no pitch expression — it is always
+   sample 33. This is the 0.5 s beat a human counts.
+
+   Modelled as `WIND_TICK_SAMPLE = 33` / `WIND_TICK_FRAMES = s(0.5)` (30 frames
+   at 60 fps), emitted as a `wind-tick` event in `tickBox` and pinned by
+   `sourcetest.mjs` ("g637/g644"). Consistent with how every other Fusion
+   `Time:` condition here is modelled frame-locked (g263's 200 ms, the 5 s
+   interval). Because the timer is **global and free-running** (`loops: 0`,
+   attached to Backdrop, not restarted on wind press/release), the tick *edges*
+   sit on a fixed frame grid — each tick heard tells you `frame mod 30`. That is
+   what makes it a phase reference and not just a rhythm.
+
+   **Why this generalises past Night 1 Minus Toys.** The Puppet is armed on
+   *every* night (`AI_BY_NIGHT`: 1/5/8/9/10/15/15) and the box mechanic never
+   changes, so **every strategy on every night must wind** — Minus 7, RVC, Minus
+   Toys, all of them. The winding tick is therefore a phase reference available
+   to the whole device-pilot program, not a one-strategy trick. It re-acquires
+   on every wind visit: the only stretches without it are mask-camp windows with
+   the monitor down and no winding, and those are bounded by box drain — i.e.
+   they end exactly when you must wind again. The AM digit gives phase once per
+   70 s; the camera-button highlight (`camtrace`) only while you touch cameras;
+   the winding tick gives 2 Hz phase across every wind phase of every cycle. It
+   is the best candidate yet for the desync/phase-lock problem that has sunk
+   more than one timer-anchored route.
+
+   **Open — the frame-vs-wall question.** A Fusion "Every N ms" timer accumulates
+   real elapsed time per frame. At a locked 60 fps it fires every 30 frames; if
+   the framerate dips it follows wall time. Which the g56 does is unmeasured, and
+   it is the whole question: if frame-locked, the tick *is* the game's phase and
+   tracks the −184 ms/min drift; if wall-locked, it tracks the pilot's clock and
+   is useless as a game reference. A Night 1 run resolves it — sample-33 onsets
+   vs `camtrace.py` frame stamps.
+
+   **Capture-bug interaction (`ANDROID-AUDIO-CAPTURE.md`).** Internal
+   `AudioPlaybackCapture` on this build is documented to carry the music box and
+   Mangle's static *continuously*, even when inaudible. Whether sample 33 —
+   a discrete per-tick `Play Sample`, not a suppressed loop — also leaks is
+   unmeasured.
+
+   **Detectability study, 2026-08-29 (synthetic, subagent).** s0033 is a 0.284 s
+   front-loaded ratchet (16 kHz ref sha256 `52938c8c…`, peak 0.118, rms 0.028).
+   Findings:
+
+   - The coarse **band-energy / recall stage is useless here** — s0033's
+     band-profile similarity to a tonal contaminant candidate is **0.97**. Do
+     not try to detect this with `features`-domain matching.
+   - A **per-tick waveform matched filter** (`correlate.best_match` against the
+     s0033 template, probed at the known grid position) is clean: median
+     normalised xcorr ≈ 0.8 at 0 dB SBR, ≈ 0.3 at −12 dB, against a ~0.09
+     off-grid floor with **no periodicity artifact in the matched-filter
+     domain**. A single tick is reliable to about **−10 to −12 dB SBR**.
+   - **Folding the matched-filter score across the 2 Hz grid** (≈60 ticks/night)
+     buys ≈√N ≈ +9 dB, so phase recovery should hold to roughly **−20 dB SBR**.
+     Folded onset estimate is **sub-millisecond**, far inside the ±33 ms
+     `DEVICE_EPOCH_LATCH` bracket.
+   - **Naive epoch-folding on an energy envelope is NOT a usable detector** —
+     the always-on ambient loops carry their own sub-0.5 s periodicity, and a
+     crude onset envelope mislocates the ratchet by 25–140 ms. It needs the
+     matched filter + bed-background subtraction (`detect.subtract`), not
+     demonstrated yet.
+   - **The realistic-regime test is decisive.** Rebuilt as specified — leaked
+     music-box loop + Mangle/static loop both at full volume, 30 s of WinD at
+     2 Hz over them, matched filter at each grid position:
+
+     | Scene | grid-corr median | off-grid control | ticks ≥ 0.30 |
+     |---|---|---|---|
+     | leaked bed, **no WinD** | 0.080 | 0.081 | **0 / 57** |
+     | leaked bed + WinD (~equal RMS) | **0.685** | 0.086 | **57 / 57** |
+
+     Every tick recovered, zero misses, zero false ticks from the bed. The
+     −12/−24 dB sweep above was pessimistic: while you are *actually winding*,
+     WinD is a foreground sound at roughly the bed's level or louder, and the
+     stationary loops correlate ~0.08 against a sharp broadband transient.
+
+   So: **recoverable as a phase clock via a per-tick matched filter — 57/57 in
+   the leaked-bed regime, ~−20 dB SBR floor when buried.** The residual risk is
+   unchanged — it is the
+   wind-*gate*, not the phase: a continuous leak still folds to a 2 Hz phase
+   (fold-z 6.6–8.1 in the leaked-continuous synthetic) but "tick present" stops
+   meaning "winding". **Controls required** per "numbers need their control": a
+   not-winding window where sample 33 must be absent, and the CAM 11 wind-pie
+   via `camtrace` as a second signature.
+
+   **The contaminants are now sourced (2026-08-29, `ANDROID-AUDIO-CAPTURE.md`
+   sound-handle map).** The capture bug's persistent bed is **s0015** (the music
+   box, channel 13) + **s0020** (Mangle, channel 16) — both kept looping by g65,
+   volume-gated by g596–600 / g732. The subagent's synthetic study mislabelled
+   these (it used s0020 as "music box" and s0010, the blackout sound, as
+   "Mangle") but mixed WinD against two real stationary loops all the same, so
+   its matched-filter result stands; re-run any SBR figure with s0015 + s0020 as
+   the bed. Other confirmed handles: s0009 = mask breathing, s0010 = blackout,
+   s0035 = the Night-1 phone call.
+
+   **No other audio is a phase-clock candidate.** The mask SFX (g254 sample 5,
+   g267/g270 sample 7, g274 sample 8) are one-shot transition sounds on the
+   button press — no `Time:` condition, not periodic. A masked-breathing loop, if
+   one exists, would anchor to the *press*, giving elapsed-time-masked, not
+   absolute game phase. WinD is unique because g637/g644 fire on a **global,
+   free-running** 500 ms timer whose edges sit on a fixed frame grid regardless
+   of when winding began.
+
+**Device measurements that settle it, in order:**
+
+1. **Frame-lock vs wall-lock** — a ~5 min Night 1 winding capture, sample-33
+   onset spacing vs `camtrace.py` frame stamps on one clock. Tracks the
+   −184 ms/min game drift → frame-locked → a real game-phase clock. Stays at
+   500.0 ms wall → useless. **This is the gate.**
+2. **Does sample 33 leak?** — record a deliberate not-winding stretch; it must
+   be absent. If present, phase-only use or external-mic capture.
+3. **Real SBR floor** — extend `tools/cue/evaluate.py` to handle 33 and run
+   `--anchor` against a real Night 1 internal capture.
+
+Open item, not yet built. If it works it reopens open-loop Minus Toys as a
+device policy — and gives every timer-anchored route a phase corrector; if the
+tick is wall-timed it is a dead end, cheaply.
+
+### Why this is worth a deliberate run
+
+The whole Minus 3 / Minus Toys line has been chased as a **10/20** device policy
+and repeatedly stalled (§3, §7). If the goal is instead "clear the story
+campaign on the g56 with the least fragile input", story-night Minus 3 is a far
+easier target: no Golden Freddy, no zero-RNG bar, and the one sourced device
+risk is arming the glitch — proved once already (`captures/n2-doublecam-hid-0003`,
+§8). A recorded Night 3–5 sweep through `tools/device/grade-run.sh` would turn
+this play report into a graded result.
 
 ## Sources
 

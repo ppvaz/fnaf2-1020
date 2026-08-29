@@ -31,11 +31,24 @@ document contradicting how the line is actually played.
 **2026-08-28 frontier reset.** Plan 16 exhausted Minus 7 timing changes under
 the human gate, not every Android strategy. A scheduled HID stream deliberately
 armed the Minus Toys split state on the target phone in one attempt (CAM 11
-visible, CAM 09 + CAM 11 lit; `captures/n2-doublecam-hid-0003.{png,hid}`). The
-next strategy task is plan 02 package 2a: model `viewing` separately from the
-marker and probe the real Minus Toys loop. Do not quote glitchless Minus Two's
-Toy Chica loss as a Minus Toys refutation — Minus Toys is intended to pin her.
-The other live alternatives and their exact gates are ranked in `PROGRESS.md`.
+visible, CAM 09 + CAM 11 lit; `captures/n2-doublecam-hid-0003.{png,hid}`).
+Plan 02 package 2a — model `viewing` separately from the marker and probe the
+Minus Toys loop — **shipped the same day (`c038938`, 17 min after this note was
+first written).** The engine has the split, `tools/minustoystest.mjs` gates it
+200/200 + 100/100 worst + 0/200 no-split control, `tools/device/minus-toys-plan.mjs
+--night=N` emits a gated device plan, and `trial.sh DEVICE_POLICY=minus-toys`
+runs it. The open Minus Toys questions are now device-side: the glitched Toy
+stun is unobserved on hardware (§8), and the open-loop port is phase-lock
+refuted for 10/20 (`n2-minustoys-0117`, PROGRESS.md frontier). Do not quote
+glitchless Minus Two's Toy Chica loss as a Minus Toys refutation — Minus Toys is
+intended to pin her. The other live alternatives and their exact gates are
+ranked in `PROGRESS.md`.
+
+**Story-campaign Minus Toys / Minus 3 (2026-08-29).** Separate target from
+10/20: `MINUS-3-STRATEGY.md` §9. Nights 1–2 use CAM 09, 3–5 use CAM 08; Night 1
+reduces to a pure schedule (only the Puppet can kill with the monitor down).
+`minus-toys-plan.mjs --night=1 --gate` is 200/200. Pedro has hand-played Nights
+1/3/4 on the g56 (uncaptured); the split held a full night with no re-arm.
 
 ## Device runs
 
