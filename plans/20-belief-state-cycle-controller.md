@@ -218,6 +218,14 @@ bench-gated: whether the phone accepts an external USB-HID touch device with the
 same ~33 ms contact-landing behaviour the on-device `/system/bin/hid` path has,
 and the p99/p99.9 of every leg.
 
+**Hardware note (2026-08-29):** the ESP32 on hand is a **WROOM-32** (original
+ESP32) — BT Classic A2DP sink + BLE/BT-Classic HID, but **no USB device
+controller**, so it cannot be the wired USB-HID actuator. Near-term this plan
+therefore keeps actuation on the validated on-device `/system/bin/hid`/adb path
+and treats the ESP32 as, at most, an alternative SBC A2DP audio tap (gated on
+the s0033 SFX-survives-SBC check). A wired USB-HID actuator MCU is a later
+purchase, not a blocker for P1–P5.
+
 The HID ESP32 owns monotonic timestamps, local actuation, cycle scheduling, and
 the fast mask path. Upstream sends bounded fact messages, never a sequence of
 wall-timed commands:

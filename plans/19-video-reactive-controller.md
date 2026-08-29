@@ -158,6 +158,19 @@ vent bang: the exact cues `plans/08` is blocked on.
   [ESP32-S3 USB HID](https://docs.espressif.com/projects/esp-iot-solution/en/latest/esp-iot-solution-en-master.pdf).
   The phone pairs to the sink.
 
+  **Hardware on hand (2026-08-29): an ESP32-WROOM-32 — the *original* ESP32.**
+  It has BT Classic (A2DP sink, SBC only) and BLE/BT-Classic HID, but **no
+  native USB device controller** (its USB port is a UART bridge for flashing).
+  So it **cannot be the wired USB-HID actuator** — that needs an S3/S2/RP2040/
+  Pro-Micro or an add-on USB-HID chip. Consequence: **do not build an external
+  actuator yet.** The on-device `/system/bin/hid` path over adb is validated
+  (33 ms contacts land, ±2 ms macro timing) and needs no hardware. The
+  WROOM-32's only role here is the audio path, as an *alternative* to the PC
+  BlueALSA sink (portability / PC-offload) — SBC-only, so gated on the SFX-
+  survives-SBC check below. A BT-HID actuator from the same chip while it also
+  runs A2DP is a radio-coexistence headache and external BT multitouch
+  acceptance on Android is unproven; not worth it over the working adb path.
+
   **2026-08-29 correction from the working setup:** the Linux sink is
   **BlueALSA (`bluez-alsa`), not PipeWire** — PipeWire 1.4.2's
   `api.bluez5.a2dp.source` path produced only broadband static on this host and
