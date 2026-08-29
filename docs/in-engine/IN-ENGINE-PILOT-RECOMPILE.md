@@ -526,6 +526,44 @@ stays `rebuilt-runtime`. Remaining boundaries, in order: image-bank decode so
 sprites render; the menu→night transition; then a night frame to compare against
 the sourced model.
 
+### Phase 3b — the image bank was decoding, the handles were wrong (2026-08-28)
+
+"Sprites are placeholder boxes" was read as *the image bank does not decode*. It
+does: `ImageItem.read()`'s mobile branch parses all **782** physical records with
+sane width/height/hotspots. The bug was one field. Each record opens with a
+4-byte value the parser took whole as the handle (`self.handle = reader.readInt()`);
+its **upper 16 bits are a section/generation counter** (observed 0–5), not part of
+the handle. Left unmasked, ~350 images landed at `0x1xxxx`–`0x5xxxx` (e.g. real
+handle 332 stored as 65868) while every object referencing them fell through
+`get_object_handle` → `config.get_missing_image` → "first image".
+
+Fix (`mmfparser-chowdren-mobile.patch`, `imagebank.pyx`): `reader.readInt() & 0xFFFF`.
+Masking yields **782 distinct handles, zero collisions**, and the object-side
+missing-image count drops **723 → 18** — the 18 remaining are all the genuine
+`(0, 0)` editor placeholder that `get_missing_image` exists for. After a reconvert
++ desktop rebuild the title screen renders its real images: the animated TV-static
+background cycles frame-to-frame, camera-map thumbnails and `CAM` buttons draw
+from their bitmaps.
+
+Still open on 02-title, and **not** image-bank problems:
+
+- **Letterbox placement.** The 1024×768 virtual frame is composited into the
+  window anchored toward the top-left with the right edge clipped, not
+  aspect-scaled and centred. `platform_swap_buffers`' `draw_x_off`/`draw_y_off`
+  math, or the window vs. `WINDOW_WIDTH/HEIGHT` mismatch under Xvfb.
+- **Title text elements overlap.** "5 Nights at Freddy's 2" (stacked), the
+  `12:00 AM` clock, and `6th Night` all pile at one anchor. Either a
+  string-object position/formatting gap or the conditional-visibility events
+  (`12:00 AM` / `6th Night` should be hidden on the title) not firing.
+- **Static-background intensity.** It draws at full RGB where the game overlays
+  it faint — a blend-mode / ink-effect (`SEMITRANSPARENT`, subtract) the
+  converter is not carrying onto the object, or an alterable-driven alpha.
+- **Camera-map lines** render as bright white wireframe rather than faded.
+  Likely the same missing blend/opacity term as the static.
+
+Next: the menu→night transition, then a night frame against the sourced model.
+The remaining title-screen cosmetics are lower priority than reaching gameplay.
+
 ### The toolchain is desktop-only — no Android path (2026-08-28)
 
 Prompted by "before more recompile effort, will it run on the phone when done?"

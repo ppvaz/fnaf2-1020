@@ -53,9 +53,9 @@ docker run --rm -e MMFPARSER_ANDROID_RAW_DIR=/input/android-res-raw \
 ## State (2026-08-28)
 
 Parse ✓ · assets ✓ · `write_objects` ✓ · event/frame C++ emission ✓ (29 real
-frames) · arm64 link ✓ · **boots to the 02-title screen ✓**. Still
-`rebuilt-runtime` only: inert compatibility paths remain, sprites are placeholder
-boxes, and it does not reach gameplay. The patch carries
+frames) · arm64 link ✓ · **boots to the 02-title screen, real images ✓**. Still
+`rebuilt-runtime` only: inert compatibility paths remain, title-screen layout and
+blend effects are off, and it does not reach gameplay. The patch carries
 (NebulaFD-sourced or confirmed against captured bytes):
 
 - parameter loaders 67–72: `67`/`70` → `Int`, `68` → `ParameterVariables`,
@@ -98,6 +98,12 @@ boxes, and it does not reach gameplay. The patch carries
   not hit NULL
 - **`Media::play_id` guards `INVALID_ASSET_ID`** — an unresolved mobile Play
   Sample plays silence instead of indexing `sounds[]` out of bounds
+- **image-bank handle mask** (`imagebank.pyx`): the mobile `ImageItem` record's
+  opening 4-byte field is `handle | (section_counter << 16)` (counter observed
+  0–5); taken whole it scattered ~350 images to `0x1xxxx`–`0x5xxxx` and their
+  objects fell through to `get_missing_image`. `readInt() & 0xFFFF` → 782 distinct
+  handles, 0 collisions, object-side missing-image count **723 → 18** (the 18 are
+  the genuine `(0,0)` placeholder). Real title images now render.
 
 The completed run's derived unsupported inventory is printed at the end of the
 converter output (not committed): Android/iOS/In-App, INI, Multiple Touch,
@@ -112,14 +118,19 @@ unsupported-expression actions.
 `./Assets.dat`), the linked binary renders an SDL/GL window, initializes audio,
 boots frame 0 → frame 1, and runs the 02-title event logic — title text, the
 `12:00 AM` clock, the WARNING block, the camera-map layout, menu buttons — stable
-45 s+. Sprites are placeholder boxes (image bank still incomplete); it does not
-yet advance to gameplay. Fidelity class `rebuilt-runtime`. Fixes this slice:
+45 s+. With the image-bank handle mask (2026-08-28) the real title images render —
+the animated TV static, camera-map thumbnails, `CAM` buttons — though the
+letterbox is anchored not centred, the stacked title text overlaps the clock, and
+the static/map draw at full opacity where the game overlays them faint. It does
+not yet advance to gameplay. Fidelity class `rebuilt-runtime`. Fixes this slice:
 absent single-object ACEs routed to a type default / skipped as Fusion no-ops
 (`frame_startup_handles`, `Default{Counter,Text}`), the blanket "unbound action
 omitted" guard narrowed so `JumpToFrame` and other pure system actions emit,
 `Counter.use_alterables = True` + `load_alterables` always calls
-`create_alterables()`, and `Media::play_id` guards `INVALID_ASSET_ID`. Full note:
-`IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 — boots to the FNaF 2 title screen".
+`create_alterables()`, `Media::play_id` guards `INVALID_ASSET_ID`, and the
+image-bank handle mask. Full notes: `IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 —
+boots to the FNaF 2 title screen" and §"Phase 3b — the image bank was decoding,
+the handles were wrong".
 
 Run recipe (external Debian-buster arm64 container, `fnaf2-chowdren-phase1:local`
 + `cmake libsdl2-dev libopenal-dev libgl1-mesa-dev gdb xvfb mesa-utils`, mounts

@@ -81,7 +81,7 @@ index 4795776..50588aa 100644
  #else
  #include <stdlib.h>
 diff --git a/Chowdren/base/desktop/platform.cpp b/Chowdren/base/desktop/platform.cpp
-index 0a7095c..12e6a9c 100644
+index 0a7095c..964d9c4 100644
 --- a/Chowdren/base/desktop/platform.cpp
 +++ b/Chowdren/base/desktop/platform.cpp
 @@ -204,6 +204,96 @@ static void set_resources_dir()
@@ -215,42 +215,25 @@ index 0a7095c..12e6a9c 100644
  
  #ifndef CHOWDREN_USE_D3D
      flags |= SDL_WINDOW_OPENGL;
-@@ -842,6 +940,17 @@ void platform_create_display(bool fullscreen)
+@@ -842,6 +940,18 @@ void platform_create_display(bool fullscreen)
          platform_hide_mouse();
  
      screen_fbo.init(WINDOW_WIDTH, WINDOW_HEIGHT);
 +
 +#ifdef CHOWDREN_IS_ANDROID
-+    printf("GL_VERSION=%s\nGL_EXTENSIONS=%s\n",
-+           (const char*)glGetString(GL_VERSION),
-+           (const char*)glGetString(GL_EXTENSIONS));
-+    screen_fbo.bind();
-+    GLenum fbs = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-+    screen_fbo.unbind();
-+    printf("screen_fbo %dx%d status=0x%x glError=0x%x tex=%u\n",
-+           WINDOW_WIDTH, WINDOW_HEIGHT, fbs, glGetError(), screen_fbo.get_tex());
++    {
++        GLenum fbs;
++        screen_fbo.bind();
++        fbs = glCheckFramebufferStatus(GL_FRAMEBUFFER);
++        screen_fbo.unbind();
++        std::cout << "GL: " << (const char*)glGetString(GL_VERSION)
++                  << "  screen_fbo status=0x" << std::hex << fbs
++                  << " err=0x" << glGetError() << std::dec << std::endl;
++    }
 +#endif
  }
  
  void platform_set_vsync(bool value)
-@@ -949,6 +1058,17 @@ void platform_swap_buffers()
-         std::cout << "OpenGL error: " << err << std::endl;
- #endif
- 
-+#ifdef CHOWDREN_IS_ANDROID
-+    {
-+        static int _f = 0;
-+        if (_f < 8) {
-+            printf("swap frame %d glError=0x%x fbo_tex=%u\n",
-+                   _f, glGetError(), screen_fbo.get_tex());
-+            _f++;
-+        }
-+    }
-+#endif
-+
-     int window_width, window_height;
-     platform_get_size(&window_width, &window_height);
-     bool resize = window_width != WINDOW_WIDTH ||
 diff --git a/Chowdren/base/desktop/renderplatform.cpp b/Chowdren/base/desktop/renderplatform.cpp
 index 813223a..be26898 100644
 --- a/Chowdren/base/desktop/renderplatform.cpp
@@ -1802,7 +1785,7 @@ index dc38547..d602523 100644
 +    'MovementTimerBase', 'FramePassword', 'LayerEffects', 'FrameEffects',
 +    'FrameHandle']
 diff --git a/mmfparser/data/chunkloaders/imagebank.pyx b/mmfparser/data/chunkloaders/imagebank.pyx
-index 7459cb4..1576e1b 100644
+index 7459cb4..b27facb 100644
 --- a/mmfparser/data/chunkloaders/imagebank.pyx
 +++ b/mmfparser/data/chunkloaders/imagebank.pyx
 @@ -208,6 +208,21 @@ cdef inline tuple read_rgb(char * data, int width, int height, BasePoint pointCl
@@ -1827,7 +1810,7 @@ index 7459cb4..1576e1b 100644
  cdef inline int get_padding(int width, BasePoint pointClass, int bytes = 2):
      cdef int pad
      pad = bytes - ((width * pointClass.size) % bytes)
-@@ -364,8 +379,60 @@ cdef class ImageItem(DataLoader):
+@@ -364,8 +379,65 @@ cdef class ImageItem(DataLoader):
          self.flags = IMAGE_FLAGS.copy()
  
      cpdef read(self, ByteReader reader):
@@ -1838,7 +1821,12 @@ index 7459cb4..1576e1b 100644
 +            # Modern Android CCNs use compact RGB565/zlib or JPEG image records.
 +            # A two-byte optional reference field moves the payload to +24.
 +            start = reader.tell()
-+            self.handle = reader.readInt()
++            # The record opens with a 4-byte field whose low 16 bits are the
++            # image handle; the upper 16 bits carry a section/generation counter
++            # (observed values 0-5) that is not part of the handle. Left
++            # unmasked it scatters ~350 images into 0x1xxxx..0x5xxxx and every
++            # object referencing them falls through to get_missing_image.
++            self.handle = reader.readInt() & 0xFFFF
 +            for streamOffset in (22, 24):
 +                reader.seek(start + streamOffset)
 +                if reader.read(2) not in ('\x78\xda', '\xff\xd8'):
@@ -1889,7 +1877,7 @@ index 7459cb4..1576e1b 100644
          self.reader = reader
          self.pos = reader.tell()
          if load_now:
-@@ -377,7 +444,6 @@ cdef class ImageItem(DataLoader):
+@@ -377,7 +449,6 @@ cdef class ImageItem(DataLoader):
              raise NotImplementedError('not supported')
  
          cdef bint debug = self.settings.get('debug', False)
@@ -1897,7 +1885,7 @@ index 7459cb4..1576e1b 100644
          if debug:
              reader.skipBytes(8)
              size = reader.readInt(True)
-@@ -569,10 +635,18 @@ cdef class ImageBank(DataLoader):
+@@ -569,10 +640,18 @@ cdef class ImageBank(DataLoader):
                  for item in bank.items:
                      self.itemDict[item.handle] = item
                  return

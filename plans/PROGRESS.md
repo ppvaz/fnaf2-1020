@@ -34,7 +34,7 @@ sweep knob. Start from this ranked frontier instead:
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
-| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames, arm64 CMake links the desktop target, and **it boots to the FNaF 2 02-title screen** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): frame 0 → frame 1, title event logic runs (title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable 45 s+. Sprites are placeholder boxes (image bank incomplete); no gameplay yet. Fidelity `rebuilt-runtime`. Next: decode the image bank so sprites render, then drive the menu to a night and compare to the sourced model. |
+| **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames, arm64 CMake links the desktop target, and **it boots to the FNaF 2 02-title screen** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): frame 0 → frame 1, title event logic runs (title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable 45 s+. The image bank now decodes correctly (2026-08-28 `& 0xFFFF` handle mask, 723→18 missing-image fallbacks) so the real title images render on desktop; title-screen layout/blend cosmetics remain and no gameplay yet. Fidelity `rebuilt-runtime`. Next: rebuild the g56 APK with the image fix, then drive the menu to a night and compare to the sourced model. |
 | **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. | Not the open-loop loop. (a) external hybrid: AM clock re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
@@ -103,16 +103,27 @@ extraction). freetype was not a real dep. All in
 `GL_FRAMEBUFFER_COMPLETE_OES`, no GL errors, frame 0 → frame 1, **60 fps**,
 **openal-soft audio playing**, and the 02-title event logic renders — "Five
 Nights at Freddy's 2", the `12:00 AM` clock, the WARNING block, the camera-map
-layout, menu buttons. Same fidelity as the desktop build: text renders, sprites
-are placeholder boxes (image bank still incomplete). The white-screen bug was
+layout, menu buttons. Same fidelity as the desktop build. The white-screen bug was
 `glEnable(GL_TEXTURE_2D)` — the desktop path samples via `texture_shader`, but
 the Android `glesshader` stand-in is a no-op so the ES 1.1 fixed pipeline had
 texturing disabled and every textured draw rendered the flat vertex colour.
 Fixed in `set_gl_state()`.
 
-**Very next step:** decode the image bank so sprites render (shared with the
-desktop build), fix minor letterbox centring, wire touch input, then drive the
-menu to a night frame and compare to the sourced model. `rebuilt-runtime`.
+**Image bank fixed (2026-08-28, desktop-verified; Android needs a reconvert +
+APK rebuild to pick it up).** "Placeholder boxes" was a wrong diagnosis: the
+mobile `ImageItem` record decodes all 782 images, but its 4-byte opening field is
+`handle | (section_counter << 16)` and the parser took it whole, scattering ~350
+images to `0x1xxxx`–`0x5xxxx`. `imagebank.pyx` now masks `& 0xFFFF` → object-side
+missing-image count **723 → 18** (the 18 are the genuine `(0,0)` placeholder).
+On desktop the real title images now render (animated TV static, camera-map
+thumbnails, `CAM` buttons).
+
+**Very next step:** reconvert + rebuild the g56 APK to carry the image-bank fix;
+then the title-screen cosmetics that are *not* image-bank
+(`IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3b" lists them: letterbox anchored not
+centred, stacked title text overlaps the clock, static/map draw at full opacity)
+and touch input, then drive the menu to a night frame and compare to the sourced
+model. `rebuilt-runtime`.
 
 The desktop build (boots to the FNaF 2 title screen, runs the real decoded event
 logic) stays valuable regardless — Plan 05's Custom Night campaign names it as
@@ -149,8 +160,8 @@ dereferenced `back_obj` unconditionally — landed absent-ACE default/skip,
 now also carrying the touched `Chowdren/base/*.cpp`). Playable now over VNC:
 container `fnaf2-play`, `x11vnc` on `127.0.0.1:5901` (`open vnc://localhost:5901`).
 **Very next step: the decision above** — the desktop-only finding means "polish
-the desktop build" (image bank so sprites render, menu→night, night comparison)
-is only worth doing under option (b). Fidelity `rebuilt-runtime`.
+the desktop build" (menu→night, night comparison; the image bank was fixed
+2026-08-28) is only worth doing under option (b). Fidelity `rebuilt-runtime`.
 Fallback if it proves pervasive: NebulaFD → MFA → licensed Fusion → desktop CCN.
 Full record: `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 2 — the mobile
 event format" / "Tooling survey". CCN + `gamesrc/` cache stay external.
@@ -226,11 +237,14 @@ or plan 17 again:
   dead cross-frame refs) and Chowdren dereferenced `back_obj` unconditionally.
   Landed: absent single-object ACEs → type default / skipped no-op; `JumpToFrame`
   &c. no longer dropped (frame transitions emit); every object gets
-  `create_alterables()`; `Media::play_id` guards `INVALID_ASSET_ID`. Sprites are
-  placeholder boxes (image bank incomplete) and it does not reach gameplay —
-  `rebuilt-runtime`, no night comparison. Full record in
-  `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 — boots to the FNaF 2
-  title screen".
+  `create_alterables()`; `Media::play_id` guards `INVALID_ASSET_ID`; and
+  (2026-08-28) the image-bank handle mask — the mobile `ImageItem` field is
+  `handle | (counter << 16)`, `& 0xFFFF` cut missing-image fallbacks 723→18 and
+  the real title images render on desktop. Title-screen layout/blend cosmetics
+  remain and it does not reach gameplay — `rebuilt-runtime`, no night comparison.
+  Full record in `docs/in-engine/IN-ENGINE-PILOT-RECOMPILE.md` §"Phase 3 — boots
+  to the FNaF 2 title screen" and §"Phase 3b — the image bank was decoding, the
+  handles were wrong".
 - **HTML5-export shortcut probed and rejected (2026-08-28).** `irv77/hd_fnaf`'s
   `.../2/` runs a full FNaF 2 on the freely-redistributable Clickteam HTML5
   runtime (no PAIRIP) — tempting as a route-5 shortcut. Probed live: it is
