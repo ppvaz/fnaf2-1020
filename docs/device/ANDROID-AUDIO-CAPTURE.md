@@ -222,9 +222,65 @@ Night-1 phone call, not the music-box tune; unverified candidates are s0020
 (tonal), s0009 (noise), s0010 (74 s loop, g66).
 
 Modelled as `WIND_TICK_SAMPLE`/`WIND_TICK_FRAMES` in `config.js`, emitted as a
-`wind-tick` event, pinned by `sourcetest.mjs`. Device measurements that settle
-it, in order: (1) **frame-lock vs wall-lock** — Night 1 winding capture,
-sample-33 onset spacing vs `camtrace.py` frame stamps; does it track the
-−184 ms/min drift or stay at 500.0 ms wall? (2) **does it leak** — a not-winding
-stretch must be silent; (3) **real SBR floor** — `tools/cue/evaluate.py`
-extended to handle 33 against a real internal capture.
+`wind-tick` event, pinned by `sourcetest.mjs`.
+
+## Discrete SFX are on the fast mixer and NOT captured — settled 2026-08-29
+
+The winding tick, and every other discrete `Play sample` cue, **does not appear
+in the internal capture on this device.** Confirmed three independent ways
+against `n1-minustoys-calib-01` (Moto g56, `com.scottgames.fnaf2` 2.0.7+26):
+
+1. **Ear** — 318 s of the real internal capture, audited by the device owner:
+   no winding tick anywhere, just a continuous loop bed.
+2. **Matched filter** — `s0033` injected into the capture scores 0.89/0.70/0.43
+   at +6/0/−6 dB SBR (pipeline works), but matched-filter scan of the real
+   capture at 656 onset candidates is at the ~0.045 noise floor for s0033,
+   s0015 and s0020. Capture RMS is identical winding vs not-winding (0.994).
+3. **`dumpsys media.audio_flinger` while winding** — FNaF (uid 10741) runs
+   ~12 tracks on `AudioOut_15` = `AUDIO_OUTPUT_FLAG_DEEP_BUFFER` (the ambient
+   loops, `Usg` 1 = USAGE_MEDIA) **plus one track (id 4999, session 14409) on
+   `AudioOut_1D` = `AUDIO_OUTPUT_FLAG_FAST`** — the FastMixer thread,
+   `mixPeriod=5.33 ms`. That fast track flips active↔standby every ~0.5 s with a
+   **12513-frame (0.284 s at 44.1 kHz) burst = WinD's exact length.** WinD *is*
+   that fast track.
+
+**Mechanism.** Two AOSP topologies exist. Classic
+([latency design](https://source.android.com/docs/core/audio/latency/design)):
+"the normal mixer's sink is a blocking pipe to the fast mixer's track 0" — one
+HAL output, and playback capture *does* get SoundPool. The g56 instead has
+**three separate output threads each with its own `AudioStreamOut`**
+(`AudioOut_D` PRIMARY, `AudioOut_15` DEEP_BUFFER, `AudioOut_1D` FAST), combined
+only downstream at the HAL. `AudioPlaybackCapture` taps the normal mixer's
+software output; the FAST stream is a sibling it never sees. **Device-specific:
+a phone with the classic topology would capture these cues.**
+
+**Not a tagging or policy issue.** `Application/CSoundPlayer.java:125` builds
+`new AudioAttributes.Builder().setUsage(14).setContentType(4).setLegacyStreamType(3)`
+— `setUsage(14)` is `USAGE_GAME`, which *is* capturable (and the runtime
+resolves it to USAGE_MEDIA anyway via the legacy stream type). No
+`setAllowedCapturePolicy` opt-out. Manifest `targetSdk=36`, no
+`allowAudioPlaybackCapture` override. Music and SFX carry the same attributes —
+music is captured, SFX are not — so it is purely the fast-mixer routing.
+
+**Every fix is privileged:**
+
+| Approach | Verdict on this phone |
+|---|---|
+| `setprop af.fast_track_multiplier 0` (drop SoundPool to the normal mixer) | **Denied** — `user` build, no root (tested: "Failed to set property"). |
+| [XAudioCapture](https://github.com/wzhy90/XAudioCapture) (LSPosed) | Doesn't apply — it force-adds the *capture policy*; FNaF already allows capture. Needs Xposed regardless. |
+| Tap the FAST HAL output / HAL loopback (`tinyalsa`) | System/root only. |
+
+### Consequences
+
+- **The winding-tick phase clock via internal capture is refuted.** External-mic
+  capture of the audible mix (BT A2DP sink on a Linux box, or a wired 3.5 mm
+  tap) is the only non-root path; the recompile's openal-soft `Play sample`
+  hook is the frame-perfect one.
+- **`plans/08` (the audio-cue controller) is blocked on this device.** BB's
+  laughs are samples 21/23/24 — the same SoundPool/fast path. The cue helper's
+  2026-08-24 "PCM was nonzero" result was the ambient bed, never the vocals. An
+  on-device `AudioPlaybackCapture` cue controller cannot hear discrete cues here
+  without root.
+- Recorded audio is still useful for **offline detector proofing** — an external
+  mix recording can validate a detector that a rooted or recompiled build would
+  then run live.

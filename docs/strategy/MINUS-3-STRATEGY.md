@@ -639,6 +639,106 @@ Open item, not yet built. If it works it reopens open-loop Minus Toys as a
 device policy — and gives every timer-anchored route a phase corrector; if the
 tick is wall-timed it is a dead end, cheaply.
 
+### The calibration run happened — `n1-minustoys-calib-01`, 2026-08-29
+
+First device run of `minus-toys-plan.mjs --night=1` (the 10/20-shaped plan, not
+`--minimal`) on the g56 / 2.0.7+26, with the cue helper capturing internal
+audio + `HID_TRACE_RUN=1`. Aborted by hand at ~305 s (the plan can't lock the
+Toys any better than the model and the audio was the point), but graded fully.
+Artifacts: `captures/n1-minustoys-calib-01-*` and
+`captures/cue-helper/calibration/n1-minustoys-calib-01-cue-…-q318.wav`.
+
+**Positive results:**
+
+- **The split-camera glitch armed in a full pilot run and held the entire
+  night.** `camtrace` on the CAM 09 / CAM 11 button highlights: co-lit in
+  **99.5 %** of the 3277 map-visible frames, **0 of 31** monitor-up windows
+  failed, no collapse, no re-arm. Stronger than the one-shot
+  `n2-doublecam-hid-0003` (§8) — this is deliberate arming *persisting through a
+  ~5 min pilot*.
+- **Zero desync.** `desync-scan.py`: the pilot's open-loop model of the monitor
+  agreed with game state across every press over ~30 cycles.
+- **No measurable game-vs-wall drift.** AM-digit transitions gave three
+  consecutive game hours of **69.99 / 70.04 / 70.00 s** (mean 70.01 ± 0.03) vs
+  the nominal 70.000 s; the map-cycle falling edge repeats every
+  **9.99949 ± 0.00086 s** against a scheduled 10.000 s (−51 ± 86 ppm, consistent
+  with zero). **The −184 ms/min drift from `n2-minustoys-0117` did NOT
+  reproduce.**
+- ALIVE ≥ 302 s, reached 4 AM, no death; box wound continuously (pie ≥ 0.62);
+  all four run clocks aligned to ~50 ppm, and a new video-PTS↔wall edge landed
+  (video-PTS 0 ≈ device-wall 1787989030800).
+
+**What it did not show:** the Toy stun — the feed was CAM 11 the whole run, so
+the Show Stage never appeared. Consistent with the stun working, not proof; a
+run that periodically views CAM 09, or a Night 3+ run, is needed.
+
+**The audio phase clock is dead via internal capture (`ANDROID-AUDIO-CAPTURE.md`
+§"Discrete SFX are on the fast mixer").** Confirmed three ways: no winding tick
+in 318 s of capture by ear, matched-filter at the noise floor, and
+`dumpsys media.audio_flinger` showing WinD as a track on the `FAST` output
+thread — a separate HAL stream `AudioPlaybackCapture` never taps. Not fixable
+without root. External-mic capture, or the recompile's `Play sample` hook, are
+the only paths left for the winding tick specifically.
+
+### So: does the timer-anchored route even need a phase clock?
+
+`n2-minustoys-0117` was refuted on "302 ms + −184 ms/min drift". This run, on
+the same phone, shows **no drift and zero desync over 5 minutes on Night 1.**
+Two readings, and which one is true decides the frontier:
+
+- **The drift was a `n2-minustoys-0117` artifact** (BT audio, thermal, a
+  measurement bug, a different device state) → open-loop Minus Toys is back on
+  the table, and §3's refutation needs a caveat.
+- **The drift is real under load** (Night 1 has no forcedowns, no mask churn, no
+  reactive corrections — the easy case) → it only shows on the hard nights.
+
+The cheap experiment: a **Night 5 or Night 7 run with the same instrumentation,
+observing only** — grade the drift and desync under a schedule that actually
+stresses the monitor. Do this before acting on the no-drift result.
+
+### What a video-only live loop can and can't do
+
+With audio out, the live sensor is the cue helper's `VirtualDisplay`
+(~59 ms device-local read, ~14 Hz, its own MediaProjection surface — does not
+touch SurfaceFlinger, so it does not contend with rendering or presses).
+
+**The 20×9 is a config choice, not a limit (2026-08-29).** The helper currently
+box-filters the whole screen to 20×9 and samples cell (3,6). Set the
+`VirtualDisplay` to native 2400×1080 instead and sample a **device-side
+watchlist of individual pixels / tiny regions** — the reply stays tiny and the
+round-trip stays ~59 ms, you just get precise pixels instead of 120×120
+averages. A native ImageReader is ~10 MB/frame of memory bandwidth (what screen
+mirroring does; the 40 min soak held at 38 °C).
+
+**Affordable in one ~59 ms snapshot** — left-opening lit/dark (BB→Foxy — already
+load-bearing, 0/3000 without it), blackout (`luma` collapse), monitor up/down,
+mask up, CAM 05 region, split-armed (CAM 09/CAM 11 tiles), right-vent light,
+music-box pie *angle*, the **AM digit** (sample the strokes → the hour, a phase
+anchor), and an **office-pan reference edge** (a 1-px shift is visible on a
+known edge — no full-frame correlation needed). Reaction budget ≈ 300 ms
+(59 ms read + 33 ms press + ~200 ms mask animation) against a mask-grace window
+of 1.67 s (Night 1) → **0.75 s (Night 7)** — fits, if the threat is caught on
+the frame it appears.
+
+**Still off the table:** whole-frame ops — a full `screencap` is 225 ms and
+*"a screencap every four cycles truncated the wind and collapsed the box from
+52 % to 10 %"*. The watchlist approach avoids them; a full-frame correlation
+does not, so keep pan to the edge-pixel trick.
+
+**Consequences per strategy:**
+
+- **Minus 7 — BB vent detection is dead.** Most cycles the pilot is mid-sweep or
+  mid-mask when BB would appear in the opening, so it misses him. Minus 7's own
+  stun-loop is what handles BB; a reactive read cannot be the backstop.
+- **Blackout-reactive strategies (RVC / brayden / the published Minus Toys
+  blackout branch) — the video loop is enough for the reaction it needs.**
+  Blackout is a free whole-screen read; mask → wait → check the opening → resume
+  is inside budget on every night.
+- **Any timer route — the loop's real job is verification, not reaction.** With
+  no drift to correct, it is a passive monitor that resyncs only on a detected
+  desync — and conservatively, because a mis-timed correction *causes* the
+  desync it hunts (§"Device runs", night 6-38).
+
 ### Why this is worth a deliberate run
 
 The whole Minus 3 / Minus Toys line has been chased as a **10/20** device policy

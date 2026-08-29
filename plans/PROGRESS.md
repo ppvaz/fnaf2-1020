@@ -32,6 +32,52 @@ exhaust the Android strategy space, and it did not show that the exact machine
 route is impossible. Do not begin the next session by searching another Minus 7
 sweep knob. Start from this ranked frontier instead:
 
+### 2026-08-29 device session — two results that move the frontier
+
+**1. No measurable drift, zero desync (`n1-minustoys-calib-01`).** First device
+run of `minus-toys-plan.mjs --night=1` on the g56. The split-camera glitch armed
+and **held the entire ~5 min pilot** (CAM 09 co-lit 99.5 %, 0/31 monitor-up
+windows failed) — deliberate arming persisting through a full run, past the
+one-shot `n2-doublecam-hid-0003`. `desync-scan.py`: **zero desync** over ~30
+cycles. AM-digit hours **69.99 / 70.04 / 70.00 s** vs nominal 70.000; map cycle
+9.99949 ± 0.00086 s vs scheduled 10.000 (−51 ± 86 ppm). **The −184 ms/min drift
+that refuted open-loop Minus Toys (`n2-minustoys-0117`) did not reproduce.**
+Either it was a `n2-…-0117` artifact (→ open-loop is back on the table, §3 needs
+a caveat) or it only shows under load (Night 1 has no forcedowns/mask churn).
+**Next: a Night 5 or 7 run with the same instrumentation, observing only, to
+grade drift+desync under a schedule that stresses the monitor.** Full record:
+`MINUS-3-STRATEGY.md` §9 "The calibration run happened".
+
+**2. On-device audio cues are dead without root.** The winding tick — and every
+discrete `Play sample` cue including BB's laughs (samples 21/23/24) — is a
+SoundPool track on the g56's `AUDIO_OUTPUT_FLAG_FAST` mixer, a separate HAL
+stream `AudioPlaybackCapture` never taps (confirmed by ear, matched filter, and
+`dumpsys media.audio_flinger`). Not a tagging/policy bug (`USAGE_GAME`, no
+opt-out); the classic AOSP topology would capture it, the g56's multi-stream HAL
+does not. `setprop af.fast_track_multiplier 0` is **denied on the user build**.
+**`plans/08`'s on-device `AudioPlaybackCapture` premise is blocked here.** Paths:
+external-mix recording (BT A2DP sink on a Linux box / wired 3.5 mm) for offline
+proofing only; the recompile's openal-soft `Play sample` hook for a live
+in-process cue; or lean on the video loop. Full record:
+`ANDROID-AUDIO-CAPTURE.md` §"Discrete SFX are on the fast mixer".
+
+**3. Rooting the g56 is now a shared dependency.** Multiple frontier paths need
+it: forcing SoundPool off the fast mixer (audio cues live), Frida/runtime
+attachment (`plans/17` routes 2/3, parked for exactly this), and any HAL-level
+capture. Pedro is weighing it (2026-08-29). If a rooted device becomes
+available, re-open those rows.
+
+**4. The video live loop, scoped.** With audio out, the reactive sensor is the
+cue helper's `VirtualDisplay` at **native res** with a device-side pixel
+watchlist (~59 ms/read, ~14 Hz, no SurfaceFlinger contention). Affordable:
+left-opening (BB→Foxy, already 0/3000 without it), blackout, monitor/mask state,
+AM digit, pan-reference edge, pie angle, split-armed tiles. Reaction ≈ 300 ms
+vs a 0.75 s Night 7 mask window — fits. **BB vent detection stays dead for
+Minus 7** (the pilot is mid-routine when he'd appear), but **blackout-reactive
+strategies (RVC / brayden / the Minus Toys blackout branch) are within budget.**
+For a timer route the loop's job is verification + conservative resync, not
+reaction. `MINUS-3-STRATEGY.md` §9 "What a video-only live loop can and can't do".
+
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
 | **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames, arm64 CMake links the desktop target, and **it boots to the FNaF 2 02-title screen** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): frame 0 → frame 1, title event logic runs (title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable 45 s+. The image bank now decodes correctly (2026-08-28 `& 0xFFFF` handle mask, 723→18 missing-image fallbacks) so the real title images render on desktop; title-screen layout/blend cosmetics remain and no gameplay yet. Fidelity `rebuilt-runtime`. Next: rebuild the g56 APK with the image fix, then drive the menu to a night and compare to the sourced model. |

@@ -1,5 +1,24 @@
 # On-device audio-cue controller
 
+> **BLOCKED on the target device (2026-08-29).** The discrete `Play sample`
+> cues this plan depends on — the vent bang (17), the footsteps (25–29), BB's
+> vocals (21/23/24) — are SoundPool tracks on the g56's
+> `AUDIO_OUTPUT_FLAG_FAST` mixer, a separate HAL output stream that
+> `AudioPlaybackCapture` does not tap. Confirmed by ear, matched filter, and
+> `dumpsys media.audio_flinger` (WinD as a 0.284 s fast track flipping
+> active/standby every 500 ms). Only the always-on ambient loops
+> (`AUDIO_OUTPUT_FLAG_DEEP_BUFFER`, `USAGE_MEDIA`) reach the capture — that is
+> the "capture bug" bed, not the cues. Not fixable without root
+> (`setprop af.fast_track_multiplier 0` is denied on the user build). See
+> [`ANDROID-AUDIO-CAPTURE.md`](../docs/device/ANDROID-AUDIO-CAPTURE.md)
+> §"Discrete SFX are on the fast mixer".
+>
+> This plan is not wrong — the cue map below still holds, and a **recording of
+> the audible mix** (external mic / BT A2DP sink) can still proof a detector
+> offline. But the *on-device, real-time* half needs one of: a rooted g56, or
+> the recompile's openal-soft `Play sample` hook (`plans/17`), which makes cue
+> sensing an event read rather than a waveform problem.
+
 **Status: gate 1 passes for the cue set this strategy needs (2026-08-24,
 after a correction).**
 
