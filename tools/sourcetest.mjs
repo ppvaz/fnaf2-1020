@@ -708,6 +708,21 @@ ok('build 296', 'taking the mask off is slower than putting it on',
   const before = s.box;
   step(s, C.FPS);
   ok('g638-645', 'winding on CAM 11 refills', s.box > before);
+
+  // g637/g644: the 'WinD' ratchet (sample 33) fires on a global 500 ms grid
+  // while winding on CAM 11 -- the audible tick a human counts.
+  s.events.length = 0;
+  step(s, C.FPS); // one game-second of continuous winding
+  const ticks = s.events.filter(e => e.type === 'wind-tick');
+  ok('g637/g644', 'the winding ratchet fires twice a second',
+    ticks.length === 2 && ticks.every(t => t.data.sample === C.WIND_TICK_SAMPLE));
+  ok('g637/g644', 'its edges sit on the fixed frame grid, not since-wind-start',
+    ticks.every(t => t.f % C.WIND_TICK_FRAMES === 0));
+  s.release('wind');
+  s.events.length = 0;
+  step(s, C.FPS);
+  ok('g637/g644', 'and it stops the moment winding stops',
+    s.events.filter(e => e.type === 'wind-tick').length === 0);
 }
 {
   // The cams-up entry streak resets the moment the monitor starts down --

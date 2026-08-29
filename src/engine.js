@@ -990,6 +990,10 @@ export class Sim {
   tickBox() {
     if (!this.opts.boxEnabled) return;
     if (this.isWinding) {
+      // g637/g644: the 'WinD' ratchet on a global 500 ms timer. Frame-locked
+      // grid, so the edge carries the game's phase mod WIND_TICK_FRAMES.
+      if (this.frame % C.WIND_TICK_FRAMES === 0)
+        this.emit('wind-tick', { sample: C.WIND_TICK_SAMPLE });
       // g639/g645: a wind below 300 snaps the counter to 300 first. The climb
       // rate below is already the 300 -> 2000 one, so without this the engine
       // was slower than the game at the bottom of the box -- the only place

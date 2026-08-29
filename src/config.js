@@ -202,6 +202,20 @@ export const BB_VOCAL_SAMPLES = [21, 24, 23];
 // g607 adds this on arrival at marker 122, so reaching the opening is a pair
 // (thud + 21) rather than a bare thud. Sample 21 is also one of the vocals.
 export const BB_ARRIVAL_SAMPLE = 21;
+
+// The music-box winding tick. [SOURCED: g637 (mouse-hold twin, conds
+// `Every 500 ms` + Key + `music button` overlap + `viewing == 11`) and g644
+// (touch-hold twin, reached via g642/g643's `Multiple Touch` over
+// `musicButtonHitbox`) both play `Sample 'WinD'`, handle 33 — a ~0.28 s
+// ratchet — on a global `Every 500 ms` timer while the wind button is held on
+// CAM 11.] Modelled frame-locked like every other Fusion `Time:` condition in
+// this file (g263's 200 ms sampler, the 5 s movement interval). The timer is
+// global: its edges sit on a fixed frame grid (multiples of WIND_TICK_FRAMES),
+// not relative to when winding began — which is what makes the audible tick a
+// candidate game-phase reference. Whether the device honours it frame-locked
+// or wall-locked is unmeasured; see `MINUS-3-STRATEGY.md` §9.
+export const WIND_TICK_SAMPLE = 33;
+export const WIND_TICK_FRAMES = s(0.5);
 // Channel 14 volume. The same three samples mean two different things and the
 // level is what separates them: g60 defaults the channel to 50, g414-416 play
 // a route hop at 25, and g906 plays at 60 when he is on the camera you are
