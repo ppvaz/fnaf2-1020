@@ -61,7 +61,18 @@ stun-loop is his backstop.
 
 ## Packages
 
-### P1 — engine observation model + reactive controller (no phone)
+### P1 — engine observation model + reactive controller (no phone) — DONE (`6bfbc39`, 2026-08-29)
+
+Shipped: `src/observer.js` (OBSERVED/UNKNOWN fact model, `OBSERVE_INTERVAL`
+cadence, `readDelayFrames` round-trip latency, `dropRate` → `UNKNOWN(read-dropped)`,
+mid-animation and off-screen refusal), `src/controller.js` (`guardIntents` for
+the night 6-38 rule, `BlackoutReactive` lower→mask→hold→verify→raise with a Foxy
+mask timeout and a press cooldown against stale-read reversal), and
+`tools/reactivetest.mjs` in `tools/test.mjs --engine` + `tools/TOOLS.md`
+(`e007463`). Integration result: the real minimal Night 1 Minus Toys base dies
+200/200 to four synthetic blackouts, +reactive 0/200, +delayed-and-dropped
+observer 0/200 — with a documented Toy-stun cost for leaving CAM 09, which the
+blackout-specific metric excludes by design.
 
 - `src/observer.js` — `Observer` derives, from a `Sim` snapshot, exactly the
   facts a native watchlist can see, **with the real sensor's coarseness and

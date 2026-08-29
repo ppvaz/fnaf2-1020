@@ -1,14 +1,17 @@
 # Plan progress
 
-**Updated:** 2026-08-28
+**Updated:** 2026-08-29
 
-**Overall:** **30%** — 34 of 113 mandatory top-level work packages are closed.
+**Overall:** **28%** — 35 of 126 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
 mandatory) — a dependency report needs a promoted candidate and there is none.)
 2026-08-28: Plan 18 adds nine mandatory tooling packages (104 → 113); the
 numerator is unchanged, so overall falls 33% → 30%, the honest direction.
+2026-08-29: Plans 19 and 20 add thirteen mandatory packages (113 → 126); Plan 19
+package 1 lands the same day (`6bfbc39`), so the numerator moves to 35 and
+overall falls 30% → 28%.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -77,6 +80,12 @@ Minus 7** (the pilot is mid-routine when he'd appear), but **blackout-reactive
 strategies (RVC / brayden / the Minus Toys blackout branch) are within budget.**
 For a timer route the loop's job is verification + conservative resync, not
 reaction. `MINUS-3-STRATEGY.md` §9 "What a video-only live loop can and can't do".
+**[`plans/19`](19-video-reactive-controller.md) now owns this build.** Package 1
+landed 2026-08-29 (`6bfbc39`): `src/observer.js` fact model + `src/controller.js`
+`BlackoutReactive` + `tools/reactivetest.mjs` in `--engine`, phone-free.
+[`plans/20`](20-belief-state-cycle-controller.md) is the estimator/planner layer
+above it (Pedro's digital-twin directive). **Next: Plan 19 P2** — the native-res
+`PixelWatch`/`CaptureService` watchlist verbs, compiled offline against mock ADB.
 
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
@@ -1878,6 +1887,8 @@ on the next graded run remains the way to attribute them, since only
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 | [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Package 5 spike done.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 5 gating question answered on the Moto g56 (Android 16, `user` build): the `shell` user captures the full `perfetto` input-dispatch path without root — `publishMotionEvent`, `deliverInputEvent` with `eventTimeNano`, dispatch-cycle `id`, `Choreographer#doFrame` — and injected vs real contacts are distinguishable. See plan §Package 5 spike result. | Build the host-side `trace_processor` parse and capture one real `trial.sh` camera sweep; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
+| [19 — video reactive controller](19-video-reactive-controller.md) | 1 / 6 | **17%** | **Proposed 2026-08-29; Package 1 landed (`6bfbc39`).** `src/observer.js` models the native-res pixel watchlist with real sensor coarseness (OBSERVED/UNKNOWN facts, ~15 Hz cadence, round-trip latency, drop rate, mid-animation refusal); `src/controller.js` has the night-6-38 animation-window guard and the `BlackoutReactive` lower→mask→verify→raise sequence; `tools/reactivetest.mjs` gates it in `--engine` — the minimal Night 1 Minus Toys base dies 200/200 to synthetic blackouts, +reactive 0/200, +noisy-observer 0/200. Packages 2–6 (native-res watchlist protocol, calibration harness, `trial.sh` observe-only branch, blackout-strategy attach, external audio slow-path) open. | Package 2: `PixelWatch.java` / `CaptureService.java` native-res watchlist verbs, compiled offline against the mock-ADB harness. |
+| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 0 / 7 | **0%** | **Proposed 2026-08-29, Pedro's architectural directive.** The external digital-twin estimator + receding-horizon planner that composes Plans 19/08/10/11 into one partially-observable controller (no claim of exact RNG recovery). Seven packages: versioned belief contract, reduced transition model, estimator + uncertainty tests, finite cycle library + constraint gate, robust short-horizon selector, ESP32 transport + real-time split, shadow campaign. | Package 1 (belief-state schema + replay fixtures) against synthetic traces, after Plan 19 P1/P3. |
 
 ## Counting rule
 
@@ -1926,6 +1937,11 @@ on the next graded run remains the way to attribute them, since only
   Each package is scoped to close either on a landed check or on a recorded
   negative (packages 4 and 6 are the likely negatives); the percentage falls
   33% -> 30% with no invented completion credit.
+- Plans 19 and 20 add six and seven mandatory packages on 2026-08-29 (113 ->
+  126 mandatory). Plan 19 package 1 (`src/observer.js`, `src/controller.js`,
+  `tools/reactivetest.mjs` in `--engine`) closes the same day on its landed
+  gate, so the numerator moves 34 -> 35 and the percentage falls 30% -> 28%.
+  Plan 19's other five packages and all of Plan 20 are open.
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the
