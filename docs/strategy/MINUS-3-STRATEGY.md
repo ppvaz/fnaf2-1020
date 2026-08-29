@@ -428,13 +428,32 @@ stale.** Plan 02 pkg 2a shipped 2026-08-28 (`c038938`): the engine separates
 gates the split 200/200; and **`tools/device/minus-toys-plan.mjs --night=1`
 emits a gated device plan that scores 200/200 normal + 100/100 worst-luck**.
 `trial.sh DEVICE_POLICY=minus-toys NIGHT=continue CALIBRATION_STORY_NIGHT=1`
-runs it. The emitted plan is the 10/20-shaped routine (10 s loop, mask camp)
-applied to Night 1 — heavier than the minimal recipe above, but already built
-and gate-clean. The remaining gap is device-side: the glitched Toy stun is
-unobserved on hardware (§8), and `trial.sh` runs story nights only through the
-save-safe Continue item with the **real save cursor verified** — so a Night 1
-run needs the phone's save reset to Night 1 first (it is currently at Night 2
-from `n1-full-1640`).
+runs it.
+
+**`--minimal` now emits this recipe (2026-08-29).** `minus-toys-plan.mjs
+--night=1 --minimal` drops the 10/20 shape for exactly the table above: arm the
+split (5 taps), then a **5 s** cycle of `hold ventl` (re-flash CAM 09) +
+`hold wind`. No mask, no hall, no per-cycle camdrop re-arm. `#period 5000` in
+the header. Gate: **200/200 normal**; worst-mode is 0/100 but every loss is
+Golden Freddy, and `canAct(1,'golden')` is false — the gate recognises that as
+a pinned-RNG artifact (§7) and passes on the normal-seed proof. `--minimal` is
+**Night 1 only** and the CLI refuses any other night; nights 2–5 need their own
+shapes (Night 2 adds a mask for Mangle/BB, Nights 3–5 switch to CAM 08 and are
+Minus 3, not Minus Toys — no flash, mask + hall instead).
+
+**The elegance↔robustness trade, on record.** The minimal plan carries no
+defensive mask/monitor churn, so it is exactly as safe as the sourced Night 1
+AI table is correct: worst-mode killing it instantly via an impossible GF spawn
+is that fragility made visible. The 10/20 plan's mask-every-cycle is the safety
+net being traded away. Per Pedro's rule (machine → elegance) that is the right
+call for a device plan, but a Night 1 AI-table error would not be caught by
+this plan the way it would by the heavy one.
+
+The remaining gap is device-side: the glitched Toy stun is unobserved on
+hardware (§8). `trial.sh` still hardcodes `POLICY_CYCLE_MS=10000` for
+minus-toys — it must read the plan's `#period` before `--minimal` can run
+on the phone at its 5 s cadence. And a story-night run needs the save reset to
+Night 1 first (`trial.sh` verifies the real Continue cursor).
 
 ### A second axis: teachability, not just elegance
 

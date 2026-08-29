@@ -97,20 +97,58 @@ for (const night of ['2', '7']) {
     { stdio: 'ignore' });
 }
 
+// --- 1b. the minimal Night 1 plan (MINUS-3-STRATEGY.md sec.9) ----------------
+
+{
+  // Arm + flash + wind, 5 s cycle, no mask/hall/camdrop. Clears Night 1 on
+  // normal seeds with the split armed; the box never empties.
+  let wins = 0, armed = 0, minBox = 1;
+  for (let i = 0; i < 200; i++) {
+    const r = replay({ night: 1, seed: seed(i), knobs: { minimal: true } });
+    if (r.sim.won) wins++;
+    if (r.splitAt >= 0) armed++;
+    minBox = Math.min(minBox, r.minBox);
+  }
+  check(wins === 200, `minimal night 1: ${wins}/200 survived`);
+  check(armed === 200, `minimal night 1: split armed on only ${armed}/200`);
+  check(minBox > 0.4, `minimal night 1: box fell to ${(minBox * 100).toFixed(0)}%`);
+
+  const m = build({ minimal: true });
+  const kinds = new Set([...m.opening, ...m.loop].map(r => r[1]));
+  check(!kinds.has('mask') && !kinds.has('hall') && !kinds.has('camdrop'),
+    `the minimal plan still has defensive churn: ${[...kinds].join(', ')}`);
+
+  const plan = emitPlan(1, { minimal: true });
+  check(plan.includes('#period 5000'), 'the minimal plan does not name its 5 s period');
+
+  // --gate exits 0; and it refuses any night but 1.
+  execFileSync('node', [join(here, 'minus-toys-plan.mjs'), '--night=1', '--minimal', '--gate'],
+    { stdio: 'ignore' });
+  let refused = false;
+  try {
+    execFileSync('node', [join(here, 'minus-toys-plan.mjs'), '--night=3', '--minimal'],
+      { stdio: 'ignore' });
+  } catch { refused = true; }
+  check(refused, '--minimal did not refuse night 3 (it is Night 1 only)');
+}
+
 // --- 2. the emitted plan is shaped for the interpreter -----------------------
 
 const plan = emitPlan(7);
 const lines = plan.trimEnd().split('\n');
 check(lines[0] === '#policy minus-toys', `first line is "${lines[0]}", not the policy header`);
 check(lines.includes('#night 7'), 'the emitted plan does not name its night');
-check(lines.indexOf('#cycle opening') === 2, 'the opening cycle must follow the two headers');
+check(lines.includes('#period 10000'), 'the emitted plan does not name its loop period');
+const openAt = lines.indexOf('#cycle opening');
+check(openAt >= 0 && lines.slice(0, openAt).every(l => l.startsWith('#')),
+  'the opening cycle must follow the `#` headers');
 check(lines.includes('#cycle toys'), 'the emitted plan has no toys loop cycle');
 check(plan.endsWith('\n'), 'the plan must end with a newline for `read` to see its last row');
 
 // Rows round-trip: what emitPlan writes is exactly OPENING then LOOP, joined.
 const rowText = rows => rows.map(r => r.join(' '));
 check(
-  lines.slice(3, 3 + OPENING.length).join('|') === rowText(OPENING).join('|'),
+  lines.slice(openAt + 1, openAt + 1 + OPENING.length).join('|') === rowText(OPENING).join('|'),
   'the opening rows are not the OPENING table verbatim');
 const toysAt = lines.indexOf('#cycle toys');
 check(
