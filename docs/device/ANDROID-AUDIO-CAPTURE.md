@@ -284,3 +284,10 @@ music is captured, SFX are not — so it is purely the fast-mixer routing.
 - Recorded audio is still useful for **offline detector proofing** — an external
   mix recording can validate a detector that a rooted or recompiled build would
   then run live.
+- **The A2DP output is not blocked — only the capture API is.** The Bluetooth
+  encoder sits *after* the HAL combines DEEP_BUFFER + FAST, so a Bluetooth sink
+  (Linux box / ESP32 / BT receiver) receives the fully-rendered mix, SoundPool
+  cues included. It costs ~150–250 ms A2DP latency + p99 jitter — too slow for
+  the sub-67 ms Minus 7 early-unmask (`plans/08` §3), fast enough for a
+  mask-deadline reaction and for pre-positioning on an auditory early warning
+  video cannot see. `plans/19` P6.

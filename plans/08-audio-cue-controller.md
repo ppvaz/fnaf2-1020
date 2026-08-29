@@ -13,11 +13,20 @@
 > [`ANDROID-AUDIO-CAPTURE.md`](../docs/device/ANDROID-AUDIO-CAPTURE.md)
 > §"Discrete SFX are on the fast mixer".
 >
-> This plan is not wrong — the cue map below still holds, and a **recording of
-> the audible mix** (external mic / BT A2DP sink) can still proof a detector
-> offline. But the *on-device, real-time* half needs one of: a rooted g56, or
-> the recompile's openal-soft `Play sample` hook (`plans/17`), which makes cue
-> sensing an event read rather than a waveform problem.
+> This plan is not wrong — the cue map below still holds. What is blocked is the
+> *on-device `AudioPlaybackCapture`* path specifically. Two ways around it:
+>
+> - **External A2DP sink** (`plans/19` P6). The fast-mixer block is capture-side:
+>   the A2DP encoder sits *after* the HAL combines DEEP_BUFFER + FAST, so a
+>   Bluetooth sink (Linux box / ESP32 / BT receiver) gets the full mix including
+>   the SoundPool cues. Cost: ~150–250 ms A2DP latency + its p99 jitter. That
+>   permanently closes the Minus 7 early-unmask (§3 needs < 67 ms) but fits a
+>   mask-deadline reaction and a pre-positioning use of an auditory early warning.
+> - **Recompile hook** (`plans/17`) — openal-soft `Play sample` callback: cue
+>   sensing becomes an event read, not a waveform problem, at zero latency.
+>
+> A rooted g56 would also work (`setprop af.fast_track_multiplier 0`), but is not
+> available.
 
 **Status: gate 1 passes for the cue set this strategy needs (2026-08-24,
 after a correction).**
