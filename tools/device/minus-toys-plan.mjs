@@ -63,8 +63,11 @@ export const KNOBS0 = {
   // CAM 08 and need hall flashes; those shapes are not designed. The CLI refuses
   // `--minimal` for any other night.
   minimal: false,
+  minArmAtMs: 115000,     // Night 1 is inert until ~1:38; do not churn early.
   minPeriodMs: 5000,       // re-flash on the game's 5 s grid, not the 10 s GF-interval cycle
-  minLoopStartMs: 10000,   // first loop cycle; the opening wind bridges [openWind, here + minWindAtMs]
+  minLoopStartMs: 140000,  // first 2 AM interval: begin flash/wind work here.
+  minStopAtMs: 360000,     // ~5:08 AM: no route can reach the office before 6.
+  minObserveUntilMs: 420000, // stay hands-off but record through the 6 AM result.
   minFlashAtMs: 150,       // ventl (CAM 09 feed light) re-flash, early in each 5 s window
   minFlashHoldMs: 100,     // its hold -- >= one Fusion poll past the 33 ms contact floor
   minWindAtMs: 300,        // wind start, just after the flash
@@ -82,22 +85,25 @@ export function build(knobs) {
     // Arm-only opening: establish viewing, sample CAM 11 as last-viewed, tap
     // CAM 09 (marker), drop, raise -- the split is armed on that raise. Then
     // wind, held until the first loop cycle takes over. No camdrop, no mask.
+    const arm = k.minArmAtMs;
     const open = [];
-    open.push([k.openViewMs, 'tap', 'monitor', c]);
-    open.push([k.openLastViewedMs, 'tap', 'cam11', c]);
-    const drop = k.openArmMs + k.armingGapMs;
-    if (k.openArm) open.push([k.openArmMs, 'tap', 'cam9', c]);
+    open.push([arm + k.openViewMs, 'tap', 'monitor', c]);
+    open.push([arm + k.openLastViewedMs, 'tap', 'cam11', c]);
+    const drop = arm + k.openArmMs + k.armingGapMs;
+    if (k.openArm) open.push([arm + k.openArmMs, 'tap', 'cam9', c]);
     open.push([drop, 'tap', 'monitor', c]);
     const raise = drop + k.openRaiseGapMs;
     open.push([raise, 'tap', 'monitor', c]);
-    const windAt = raise + k.openWindLeadMs;
-    open.push([windAt, 'hold', 'wind', k.minLoopStartMs + k.minWindAtMs - windAt]);
     // Steady 5 s cycle: re-flash CAM 09, then wind. Nothing else.
     const loop = [
       [k.minFlashAtMs, 'hold', 'ventl', k.minFlashHoldMs],
       [k.minWindAtMs, 'hold', 'wind', k.minWindHoldMs],
     ];
-    return { opening: open, loop };
+    // The final wind ends just before minStopAtMs.  Lower the monitor once,
+    // then send no further input: this is a terminal safety action, not another
+    // cadence beat.
+    const finish = [[k.minStopAtMs, 'tap', 'monitor', 100]];
+    return { opening: open, loop, finish };
   }
 
   const opening = [];
@@ -149,7 +155,7 @@ export function build(knobs) {
       [camEnd5 + 150, 'tap', 'mask', c],
     ];
   }
-  return { opening, loop };
+  return { opening, loop, finish: [] };
 }
 
 // The shipped schedule, frozen. schedule()/emitPlan() default to these; a
@@ -193,7 +199,8 @@ const actionFor = action =>
 // schedule a searched variant. `periodMs` is how often the loop table repeats.
 export function schedule({ splitCamera = true, shift = () => 0,
                            opening = OPENING, loop = LOOP,
-                           periodMs = KNOBS0.loopPeriodMs, loopStartMs = 0 } = {}) {
+                           finish = [], periodMs = KNOBS0.loopPeriodMs,
+                           loopStartMs = 0, untilMs = 420000 } = {}) {
   const queue = [];
   const add = (cycle, index, base, row) => {
     const [at, kind, a, b, cc] = row;
@@ -214,19 +221,21 @@ export function schedule({ splitCamera = true, shift = () => 0,
     if (!splitCamera && row[2] === 'cam9') return;
     add('opening', i, 0, row);
   });
-  for (let base = loopStartMs; base < 420000; base += periodMs)
+  for (let base = loopStartMs; base < untilMs; base += periodMs)
     loop.forEach((row, i) => add('toys', i, base, row));
+  finish.forEach((row, i) => add('finish', i, 0, row));
   return queue.sort((x, y) => x[0] - y[0]);
 }
 
 export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
                          shift, knobs } = {}) {
   const sim = new Sim({ night, seed, worst });
-  const { opening, loop } = knobs ? build(knobs) : _default;
+  const { opening, loop, finish } = knobs ? build(knobs) : _default;
   const kk = knobs ? clone(knobs) : KNOBS0;
   const periodMs = kk.minimal ? kk.minPeriodMs : kk.loopPeriodMs;
   const loopStartMs = kk.minimal ? kk.minLoopStartMs : 0;
-  const queue = schedule({ splitCamera, shift, opening, loop, periodMs, loopStartMs });
+  const untilMs = kk.minimal ? kk.minStopAtMs : 420000;
+  const queue = schedule({ splitCamera, shift, opening, loop, finish, periodMs, loopStartMs, untilMs });
 
   let i = 0, splitAt = -1, minBox = 1, minPower = sim.power;
   while (sim.alive && !sim.won) {
@@ -244,16 +253,22 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
 }
 
 export function emitPlan(night, knobs) {
-  const { opening, loop } = knobs ? build(knobs) : _default;
+  const { opening, loop, finish } = knobs ? build(knobs) : _default;
   const kk = knobs ? clone(knobs) : KNOBS0;
   const periodMs = kk.minimal ? kk.minPeriodMs : kk.loopPeriodMs;
   // `#period` names the loop cadence so trial.sh does not have to guess it
   // (POLICY_CYCLE_MS). The 10/20 plan is 10 s; `--minimal` is 5 s.
-  const lines = [`#policy minus-toys`, `#night ${night}`, `#period ${periodMs}`,
-                 '#cycle opening'];
+  const lines = [`#policy minus-toys`, `#night ${night}`, `#period ${periodMs}`];
+  if (kk.minimal) lines.push(`#loop-start ${kk.minLoopStartMs}`, `#stop-at ${kk.minStopAtMs}`,
+    `#observe-until ${kk.minObserveUntilMs}`);
+  lines.push('#cycle opening');
   for (const row of opening) lines.push(row.join(' '));
   lines.push('#cycle toys');
   for (const row of loop) lines.push(row.join(' '));
+  if (finish.length) {
+    lines.push('#cycle finish');
+    for (const row of finish) lines.push(row.join(' '));
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -269,10 +284,14 @@ function gate(night, knobs, runs = 200) {
     const n = worst ? Math.min(100, runs) : runs;
     let wins = 0;
     const lossReasons = new Set();
+    const lossFrames = [];
     for (let i = 0; i < n; i++) {
       const r = replay({ night, worst, seed: (i * 2654435761) >>> 0, knobs });
       if (r.sim.won && r.splitAt >= 0) wins++;
-      else if (r.sim.death) lossReasons.add(r.sim.death.reason);
+      else if (r.sim.death) {
+        lossReasons.add(r.sim.death.reason);
+        lossFrames.push(r.sim.death.frame);
+      }
     }
     console.log(`Minus Toys device plan night ${night}${minimal ? ' minimal' : ''} ` +
       `${worst ? 'worst' : 'normal'}: ${wins}/${n}`);
@@ -282,10 +301,11 @@ function gate(night, knobs, runs = 200) {
     // states the sourced table forbids. Accept a worst-mode loss ONLY if every
     // loss is to an animatronic canAct() says cannot act on this night. A loss
     // to any reachable threat, or any loss on normal seeds, is a real failure.
-    const artifactOnly = minimal && worst && [...lossReasons].every(reason => {
-      const id = REASON_AI[reason];
-      return id && !C.canAct(night, id);
-    });
+    const artifactOnly = minimal && worst && lossFrames.length === n &&
+      // Worst mode forces characters through their pre-2-AM routes even though
+      // Night 1's sourced AI table cannot arm them.  The first real minimal
+      // action is at 2 AM, so only a loss before that boundary is an artifact.
+      lossFrames.every(at => at < frame(KNOBS0.minLoopStartMs));
     if (artifactOnly) {
       console.log(`  worst-mode losses are pinned-RNG artifacts (${[...lossReasons].join(', ')} ` +
         `-- all AI 0 on night ${night}); the normal-seed gate is the proof`);

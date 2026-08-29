@@ -128,3 +128,7 @@ Bot-research roadmap added 2026-08-26:
     — the architecture above the sensor and driver plans: an ESP32-maintained,
     uncertainty-aware digital twin that evaluates and verifies bounded next
     cycles instead of replaying a fixed macro.
+21. [21-policy-program-synthesis.md](21-policy-program-synthesis.md) — a shared
+    policy-program IR, structural strategy search, and simulator-to-phone
+    equivalence gate so the invention engine can synthesize complete pilots
+    rather than timing permutations.

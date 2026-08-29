@@ -13,6 +13,12 @@ OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
 DEVICE_POLICY="${DEVICE_POLICY:-minus7}"
+# A Minus Toys run has two materially different schedules.  The standard
+# 10-second route is the 10/20-shaped policy; the Night 1 minimal route is a
+# 5-second, no-mask/no-hall calibration policy.  Selecting neither is unsafe:
+# a caller can otherwise believe it is testing Night 1 minimal while emitting
+# the standard route.
+MINUS_TOYS_VARIANT="${MINUS_TOYS_VARIANT:-}"
 # Story-night path, via the save-safe Continue item only.
 #
 # Widened 2026-08-26 from one cycle to a full night. The one-cycle bound existed
@@ -38,7 +44,10 @@ CALIBRATION_STORY_NIGHT="${CALIBRATION_STORY_NIGHT:-0}"
 # any story-night run longer than one cycle; see the note above.
 STORY_CURSOR_OBSERVED="${STORY_CURSOR_OBSERVED:-}"
 DEBUG_OVERLAYS="${DEBUG_OVERLAYS:-0}"
-GRADE_RUN="${GRADE_RUN:-1}"
+# Video grading fans out into several full-capture decoders.  Keep evidence
+# collection safe by default; a human explicitly starts grade-run.sh later on a
+# host with enough headroom.
+GRADE_RUN="${GRADE_RUN:-0}"
 PRESS_MODE="${PRESS_MODE:-hid-multi}"
 HID_TRACE_RUN="${HID_TRACE_RUN:-0}"
 # The sweep geometry the plan specifies; `recipe.mjs --device-plan` prints it
@@ -196,6 +205,18 @@ case "$DEVICE_POLICY" in
   minus7|minus-toys) ;;
   *) echo "DEVICE_POLICY must be minus7 or minus-toys"; exit 2 ;;
 esac
+case "$MINUS_TOYS_VARIANT" in
+  ''|standard|minimal) ;;
+  *) echo "MINUS_TOYS_VARIANT must be standard or minimal"; exit 2 ;;
+esac
+if [ "$DEVICE_POLICY" = minus-toys ] && [ -z "$MINUS_TOYS_VARIANT" ]; then
+  echo "DEVICE_POLICY=minus-toys requires MINUS_TOYS_VARIANT=standard or minimal" >&2
+  exit 2
+fi
+if [ "$DEVICE_POLICY" != minus-toys ] && [ -n "$MINUS_TOYS_VARIANT" ]; then
+  echo "MINUS_TOYS_VARIANT applies only to DEVICE_POLICY=minus-toys" >&2
+  exit 2
+fi
 case "$CALIBRATION_STORY_NIGHT" in
   0|1|2|3|4|5) ;;
   *) echo "CALIBRATION_STORY_NIGHT must be 0 or a story night from 1 to 5"; exit 2 ;;
@@ -411,6 +432,10 @@ else
     exit 2
   }
 fi
+if [ "$MINUS_TOYS_VARIANT" = minimal ] && [ "$STORY_NIGHT" -ne 1 ]; then
+  echo "MINUS_TOYS_VARIANT=minimal is a Night 1-only policy" >&2
+  exit 2
+fi
 # A run with no left-opening read is a known-dead configuration, not a variant,
 # and the reason differs by night -- so the refusal reads the sourced AI table
 # rather than quoting one night's statistic at all six.
@@ -498,18 +523,6 @@ for setting in WATCHDOG_INTERVAL WATCHDOG_CAPTURE_TIMEOUT FOCUS_WATCHDOG_INTERVA
   }
 done
 
-# Include launch/loading headroom and any calibrated raw-frame pauses. Keep the
-# requested duration separate from the recorder argument: on capable devices a
-# long run uses --time-limit 0 and cleanup stops it when the driver terminates.
-LEFT_SAMPLE_COUNT=0
-if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
-  LEFT_SAMPLE_COUNT=$(((CYCLES - 1 - BB_LEFT_CAPTURE_START) / BB_LEFT_CAPTURE_EVERY + 1))
-fi
-POLICY_CYCLE_MS=5000
-[ "$DEVICE_POLICY" != minus-toys ] || POLICY_CYCLE_MS=10000
-MAXDUR_MS=$((25000 + CYCLES * POLICY_CYCLE_MS + LEFT_SAMPLE_COUNT * 1500))
-MAXDUR=$(((MAXDUR_MS + 999) / 1000))
-
 mkdir -p "$CAPTURE_DIR"
 [ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
@@ -540,15 +553,17 @@ recipe_args="--night=$STORY_NIGHT"
 [ -z "$SWEEP_CONTACT_MS" ] || recipe_args="$recipe_args --sweep-contact-ms=$SWEEP_CONTACT_MS"
 # shellcheck disable=SC2086
 if [ "$DEVICE_POLICY" = minus-toys ]; then
-  node "$HERE/minus-toys-plan.mjs" --night="$STORY_NIGHT" --gate || exit 44
-  node "$HERE/minus-toys-plan.mjs" --night="$STORY_NIGHT" > "$RUN_TMP/device-plan.txt"
+  minus_toys_args=(--night="$STORY_NIGHT")
+  [ "$MINUS_TOYS_VARIANT" != minimal ] || minus_toys_args+=(--minimal)
+  node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate || exit 44
+  node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" > "$RUN_TMP/device-plan.txt"
 else
   # shellcheck disable=SC2086
   node "$HERE/recipe.mjs" --device-plan $recipe_args > "$RUN_TMP/device-plan.txt"
 fi
 cp "$RUN_TMP/device-plan.txt" "$CAPTURE_DIR/$OUT-device-plan.txt"
 if [ "$DEVICE_POLICY" = minus-toys ]; then
-  echo "Minus Toys exact device-plan gate passed for Night $STORY_NIGHT" >&2
+  echo "Minus Toys $MINUS_TOYS_VARIANT device-plan gate passed for Night $STORY_NIGHT" >&2
 elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
   gate_note="$(node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" 2>&1 || true)"
   echo "EXPERIMENT_UNGATED=1: human gate NOT enforced. This measures the machine." >&2
@@ -556,6 +571,40 @@ elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
 else
   node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" || exit 44
 fi
+
+# Include launch/loading headroom and any calibrated raw-frame pauses.  For
+# Minus Toys the emitted plan is authoritative: the minimal variant deliberately
+# idles until 2 AM, so CYCLES*period alone is not its wall duration.  Deriving
+# this from #loop-start/#stop-at keeps the recorder's scope aligned with the
+# same plan the phone will execute.
+LEFT_SAMPLE_COUNT=0
+if [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
+  LEFT_SAMPLE_COUNT=$(((CYCLES - 1 - BB_LEFT_CAPTURE_START) / BB_LEFT_CAPTURE_EVERY + 1))
+fi
+POLICY_RUNTIME_MS=$((CYCLES * 5000))
+if [ "$DEVICE_POLICY" = minus-toys ]; then
+  PLAN_PERIOD_MS=$(sed -n 's/^#period \([0-9][0-9]*\).*/\1/p' "$RUN_TMP/device-plan.txt" | head -1)
+  PLAN_LOOP_START_MS=$(sed -n 's/^#loop-start \([0-9][0-9]*\).*/\1/p' "$RUN_TMP/device-plan.txt" | head -1)
+  PLAN_STOP_AT_MS=$(sed -n 's/^#stop-at \([0-9][0-9]*\).*/\1/p' "$RUN_TMP/device-plan.txt" | head -1)
+  PLAN_OBSERVE_UNTIL_MS=$(sed -n 's/^#observe-until \([0-9][0-9]*\).*/\1/p' "$RUN_TMP/device-plan.txt" | head -1)
+  case "$PLAN_PERIOD_MS" in ''|*[!0-9]*) echo 'Minus Toys plan has no numeric #period'; exit 44 ;; esac
+  [ -n "$PLAN_LOOP_START_MS" ] || PLAN_LOOP_START_MS=0
+  PLAN_SCHEDULED_END_MS=$((PLAN_LOOP_START_MS + CYCLES * PLAN_PERIOD_MS))
+  POLICY_RUNTIME_MS=$PLAN_SCHEDULED_END_MS
+  if [ -n "$PLAN_STOP_AT_MS" ] && [ "$POLICY_RUNTIME_MS" -gt "$PLAN_STOP_AT_MS" ]; then
+    POLICY_RUNTIME_MS=$PLAN_STOP_AT_MS
+  fi
+  # An observation tail is part of a completed policy, not a hidden extension
+  # of a deliberately short calibration.  The on-phone driver makes the same
+  # decision from its actual loop base before it calls wait_until.
+  if [ -n "$PLAN_OBSERVE_UNTIL_MS" ] && [ -n "$PLAN_STOP_AT_MS" ] && \
+     [ "$PLAN_SCHEDULED_END_MS" -ge "$PLAN_STOP_AT_MS" ] && \
+     [ "$POLICY_RUNTIME_MS" -lt "$PLAN_OBSERVE_UNTIL_MS" ]; then
+    POLICY_RUNTIME_MS=$PLAN_OBSERVE_UNTIL_MS
+  fi
+fi
+MAXDUR_MS=$((25000 + POLICY_RUNTIME_MS + LEFT_SAMPLE_COUNT * 1500))
+MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 
 . "$HERE/select-adb.sh"
 
@@ -1180,6 +1229,7 @@ fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
   "screencap-raw+screenrecord"
 fnaf_session_record env \
   "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
+  "DEVICE_POLICY=$DEVICE_POLICY" "MINUS_TOYS_VARIANT=${MINUS_TOYS_VARIANT:-none}" \
   "CALIBRATION_STORY_NIGHT=$CALIBRATION_STORY_NIGHT" \
   "STORY_CURSOR_OBSERVED=${STORY_CURSOR_OBSERVED:-unread}" \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \

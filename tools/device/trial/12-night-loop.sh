@@ -108,28 +108,54 @@ run_cycle() {
 
 if [ "$NIGHT6_LEFT" -eq 2 ]; then
   [ -s "$PLAN_FILE" ] || { echo 'Minus Toys needs its device plan' >&2; exit 47; }
+  toys_period=$(plan_header_number period) || {
+    echo 'Minus Toys needs a #period header in its device plan' >&2
+    exit 47
+  }
+  toys_loop_start=$(plan_header_number loop-start 2>/dev/null || true)
+  [ -n "$toys_loop_start" ] || toys_loop_start=0
+  toys_stop_at=$(plan_header_number stop-at 2>/dev/null || true)
+  [ -n "$toys_stop_at" ] || toys_stop_at=419000
+  toys_observe_until=$(plan_header_number observe-until 2>/dev/null || true)
+  [ "$toys_period" -gt 0 ] || { echo 'Minus Toys #period must be positive' >&2; exit 47; }
+  [ "$toys_stop_at" -gt "$toys_loop_start" ] || {
+    echo 'Minus Toys #stop-at must be after #loop-start' >&2
+    exit 47
+  }
   opening_at=$(plan_first_offset opening)
   now_rel
   SLIP=$((NOW_REL + 20 - opening_at))
   [ "$SLIP" -ge 0 ] || SLIP=0
   # The opening's wind is the only elastic interval; every later boundary is
   # absolute. More slip than it can absorb would move the first exit past 0:05.
-  [ "$SLIP" -lt 1750 ] || {
+  [ "$toys_loop_start" -ne 0 ] || [ "$SLIP" -lt 1750 ] || {
     echo 'epoch latch left no room to arm Minus Toys before the first interval' >&2
     exit 46
   }
   run_cycle opening 0 0 999
 
-  base=0
+  base=$toys_loop_start
   cycle=0
-  while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
+  while [ "$base" -lt "$toys_stop_at" ] && [ "$cycle" -lt "$CYCLES" ]; do
     SLIP=0
     run_macro toys "$base" 0 999
-    base=$((base + 10000))
+    base=$((base + toys_period))
     cycle=$((cycle + 1))
   done
+  if [ "$base" -ge "$toys_stop_at" ] && plan_header_number stop-at >/dev/null 2>&1; then
+    run_cycle finish 0 0 999
+  fi
+  # Do not turn a deliberately short calibration into a six-minute idle wait.
+  # The tail belongs only to a run that reached the terminal monitor-down.
+  if [ "$base" -ge "$toys_stop_at" ] && [ -n "$toys_observe_until" ]; then
+    [ "$toys_observe_until" -gt "$toys_stop_at" ] || {
+      echo 'Minus Toys #observe-until must be after #stop-at' >&2
+      exit 47
+    }
+    wait_until "$toys_observe_until"
+  fi
   hid_release
-  printf 'minus-toys finished: %d ten-second cycles\n' "$cycle"
+  printf 'minus-toys finished: %d %d-ms cycles\n' "$cycle" "$toys_period"
   exit 0
 elif [ "$NIGHT6_LEFT" -eq 1 ]; then
   [ -s "$PLAN_FILE" ] || {

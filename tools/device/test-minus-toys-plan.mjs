@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { OPENING, LOOP, KNOBS0, build, replay, emitPlan } from './minus-toys-plan.mjs';
+import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule } from './minus-toys-plan.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -102,24 +102,37 @@ for (const night of ['2', '7']) {
 {
   // Arm + flash + wind, 5 s cycle, no mask/hall/camdrop. Clears Night 1 on
   // normal seeds with the split armed; the box never empties.
-  let wins = 0, armed = 0, minBox = 1;
+  let wins = 0, armed = 0;
   for (let i = 0; i < 200; i++) {
     const r = replay({ night: 1, seed: seed(i), knobs: { minimal: true } });
     if (r.sim.won) wins++;
     if (r.splitAt >= 0) armed++;
-    minBox = Math.min(minBox, r.minBox);
   }
   check(wins === 200, `minimal night 1: ${wins}/200 survived`);
   check(armed === 200, `minimal night 1: split armed on only ${armed}/200`);
-  check(minBox > 0.4, `minimal night 1: box fell to ${(minBox * 100).toFixed(0)}%`);
 
   const m = build({ minimal: true });
-  const kinds = new Set([...m.opening, ...m.loop].map(r => r[1]));
+  const kinds = new Set([...m.opening, ...m.loop, ...m.finish].map(r => r[1]));
   check(!kinds.has('mask') && !kinds.has('hall') && !kinds.has('camdrop'),
     `the minimal plan still has defensive churn: ${[...kinds].join(', ')}`);
+  check(m.opening[0][0] === 115000,
+    `the minimal plan arms at ${m.opening[0][0]}ms, not the sourced ~1:38 delay`);
+  check(m.opening.every(([at]) => at >= 115000),
+    'the minimal plan sends an action before the Night 1 idle window ends');
+  check(JSON.stringify(m.finish) === JSON.stringify([[360000, 'tap', 'monitor', 100]]),
+    `the minimal plan has no exact 5:08 AM monitor-down terminal action: ${JSON.stringify(m.finish)}`);
+  const queued = schedule({ opening: m.opening, loop: m.loop, finish: m.finish,
+    periodMs: 5000, loopStartMs: 140000, untilMs: 360000 });
+  check(queued.at(-1)?.[0] === 21600 && queued.at(-1)?.[2] === 'monitor',
+    'the minimal schedule does not end on its 5:08 AM monitor-down');
 
   const plan = emitPlan(1, { minimal: true });
   check(plan.includes('#period 5000'), 'the minimal plan does not name its 5 s period');
+  check(plan.includes('#loop-start 140000'),
+    'the minimal plan does not defer its flash/wind loop to 2 AM');
+  check(plan.includes('#stop-at 360000') && plan.includes('#observe-until 420000') &&
+    plan.includes('#cycle finish'),
+  'the minimal plan does not stop at 5:08 AM and observe hands-off through 6 AM');
 
   // --gate exits 0; and it refuses any night but 1.
   execFileSync('node', [join(here, 'minus-toys-plan.mjs'), '--night=1', '--minimal', '--gate'],

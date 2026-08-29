@@ -15,6 +15,25 @@ plan_first_offset() {
   exit 47
 }
 
+# Numeric metadata belongs to the emitted plan, not to the runner.  A policy
+# variant may change its cadence or defer its first cycle; treating either as a
+# fixed runner constant silently executes a different policy.
+plan_header_number() {
+  ph_name=$1
+  while read -r c1 c2 _rest <&9; do
+    [ "$c1" = "#$ph_name" ] || continue
+    case "$c2" in
+      ''|*[!0-9]*)
+        echo "the plan header #$ph_name needs a non-negative integer" >&2
+        exit 47
+        ;;
+    esac
+    printf '%s\n' "$c2"
+    return 0
+  done 9< "$PLAN_FILE"
+  return 1
+}
+
 # One instruction. SLIP is the epoch latch's cost; it is absorbed by the first
 # wind hold, whose start moves but whose end does not -- the sweep after it is
 # anchored to that end, not to the wind's start.

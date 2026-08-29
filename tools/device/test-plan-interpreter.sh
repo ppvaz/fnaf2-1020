@@ -68,7 +68,7 @@ extract() {
 {
   echo 'set -eu'
   for fn in plan_control_xy sweep_cam_ms sweep_cam_list sweep_last_contact \
-            plan_first_offset plan_step run_cycle plan_span plan_emit run_macro; do
+            plan_first_offset plan_header_number plan_step run_cycle plan_span plan_emit run_macro; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"
@@ -405,6 +405,90 @@ want="$(awk '/^#cycle toys/{a=1;next} /^#cycle/{a=0} a && NF {print $1}' "$TMP/t
   | awk 'NR==1{b=$1} {print $1-b}')"
 [ "$got" = "$want" ] ||
   fail "minus-toys loop contact starts:\n$got\n--- want (from the plan) ---\n$want"
+
+# The Night 1 minimal policy is not the standard policy at a smaller period.
+# It must idle through the harmless opening, arm only around 1:38 AM, and begin
+# its own 5 s macro at 2 AM.  The live driver consumes these headers; this test
+# pins both the emitted timing and the shared plan parser.
+node "$HERE/minus-toys-plan.mjs" --night=1 --minimal > "$TMP/toys-minimal.txt"
+minimal_toys() { run "PLAN_FILE='$TMP/toys-minimal.txt'; $1" ; }
+[ "$(minimal_toys 'plan_header_number period')" = 5000 ] ||
+  fail 'minimal Minus Toys did not expose its 5000 ms period to the interpreter'
+[ "$(minimal_toys 'plan_header_number loop-start')" = 140000 ] ||
+  fail 'minimal Minus Toys did not defer its first loop to 2 AM'
+[ "$(minimal_toys 'plan_header_number stop-at')" = 360000 ] ||
+  fail 'minimal Minus Toys did not stop at its emitted 5:08 AM boundary'
+[ "$(minimal_toys 'plan_header_number observe-until')" = 420000 ] ||
+  fail 'minimal Minus Toys did not expose its 6 AM hands-off observation boundary'
+got="$(minimal_toys 'run_cycle opening 0 0 999' | grep -E ' (tap|hold) ')"
+want="$(awk '/^#cycle opening/{a=1;next} /^#cycle/{a=0}
+  a && $2=="tap" {print $1, $2, $3}
+  a && $2=="hold" {print $1, $2, $3, $4}' "$TMP/toys-minimal.txt")"
+[ "$got" = "$want" ] ||
+  fail "minimal Minus Toys opening drifted from its emitted plan:\n$got\n--- want ---\n$want"
+first_minimal_arm="$(printf '%s\n' "$got" | head -1 | awk '{print $1}')"
+[ "$first_minimal_arm" = 115000 ] ||
+  fail "minimal Minus Toys armed at ${first_minimal_arm:-nothing}ms, want 115000ms"
+got="$(minimal_toys 'run_macro toys 140000 0 999' | awk '/^[0-9]+ down$/{print $1}' \
+  | awk 'NR==1{b=$1} {print $1-b}')"
+want="$(awk '/^#cycle toys/{a=1;next} /^#cycle/{a=0} a && NF {print $1}' "$TMP/toys-minimal.txt" \
+  | awk 'NR==1{b=$1} {print $1-b}')"
+[ "$got" = "$want" ] ||
+  fail "minimal Minus Toys macro did not honor its 5 s plan offsets:\n$got\n--- want ---\n$want"
+loop_driver="$HERE/trial/12-night-loop.sh"
+grep -q 'toys_period=$(plan_header_number period)' "$loop_driver" ||
+  fail 'Minus Toys driver does not read #period from the plan'
+grep -q 'base=$toys_loop_start' "$loop_driver" ||
+  fail 'Minus Toys driver does not read #loop-start from the plan'
+grep -q 'base=$((base + toys_period))' "$loop_driver" ||
+  fail 'Minus Toys driver still increments at a hard-coded cadence'
+
+# Run the live Minus Toys branch against mock input primitives.  This is the
+# integration check the earlier source-only assertions lacked: it proves the
+# branch starts the minimal loop at its emitted 2 AM offset and advances by the
+# emitted 5 s period, rather than merely containing the right-looking strings.
+awk '
+  /^if \[ "\$NIGHT6_LEFT" -eq 2 \]; then/ { in_branch = 1 }
+  in_branch { print }
+  /^elif \[ "\$NIGHT6_LEFT" -eq 1 \]; then/ { exit }
+' "$loop_driver" | sed '$d' > "$TMP/toys-driver-branch.sh"
+printf 'fi\n' >> "$TMP/toys-driver-branch.sh"
+branch_out="$(bash -c "
+  source '$TMP/harness.sh' '$TMP/toys-minimal.txt'
+  source '$TMP/interp.sh'
+  run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
+  run_macro() { printf 'toys %s %s\\n' \"\$1\" \"\$2\"; }
+  hid_release() { :; }
+  NIGHT6_LEFT=2
+  CYCLES=44
+  source '$TMP/toys-driver-branch.sh'
+" _ "$TMP/toys-minimal.txt")"
+[ "$(printf '%s\n' "$branch_out" | grep -c '^opening opening 0$')" -eq 1 ] ||
+  fail "minimal driver did not execute its opening once:\n$branch_out"
+got="$(printf '%s\n' "$branch_out" | awk '/^toys toys /{print $3}')"
+want="$(awk 'BEGIN { for (at = 140000; at < 360000; at += 5000) print at }')"
+[ "$got" = "$want" ] ||
+  fail "minimal driver cadence drifted from its emitted headers:\n$got\n--- want ---\n$want"
+[ "$(printf '%s\n' "$branch_out" | grep -c '^opening finish 0$')" -eq 1 ] ||
+  fail "minimal driver did not lower the monitor at its terminal boundary:\n$branch_out"
+[ "$(printf '%s\n' "$branch_out" | grep -c '^wait 420000$')" -eq 1 ] ||
+  fail "minimal driver did not remain hands-off through its observation boundary:\n$branch_out"
+
+# A short calibration must stop after its requested macro count; it must not
+# silently wait through 6 AM or make a short capture look like a full-night run.
+short_branch_out="$(bash -c "
+  source '$TMP/harness.sh' '$TMP/toys-minimal.txt'
+  source '$TMP/interp.sh'
+  run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
+  run_macro() { printf 'toys %s %s\\n' \"\$1\" \"\$2\"; }
+  hid_release() { :; }
+  NIGHT6_LEFT=2
+  CYCLES=1
+  source '$TMP/toys-driver-branch.sh'
+" _ "$TMP/toys-minimal.txt")"
+if printf '%s\n' "$short_branch_out" | grep -q '^wait '; then
+  fail "short minimal calibration unexpectedly entered the observation tail:\n$short_branch_out"
+fi
 
 
 # --- the monitor-flip gate on the cue read -----------------------------------
