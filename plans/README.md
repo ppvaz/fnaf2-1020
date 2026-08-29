@@ -114,3 +114,11 @@ Bot-research roadmap added 2026-08-26:
     harness, an on-device input-dispatch trace, a `scrcpy` capture path, a pinned
     Python toolchain, executable-doc number checks, and a devcontainer. No new
     runtime dependency, no build step.
+19. [19-video-reactive-controller.md](19-video-reactive-controller.md) — the
+    stock-device visual loop: calibrated native-resolution watchlist facts,
+    animation-safe blackout reaction, observe-only promotion, and a delayed
+    external-A2DP audio slow path.
+20. [20-belief-state-cycle-controller.md](20-belief-state-cycle-controller.md)
+    — the architecture above the sensor and driver plans: an ESP32-maintained,
+    uncertainty-aware digital twin that evaluates and verifies bounded next
+    cycles instead of replaying a fixed macro.

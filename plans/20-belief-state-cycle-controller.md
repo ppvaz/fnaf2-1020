@@ -1,0 +1,241 @@
+# Belief-state cycle controller
+
+**Status: proposed 2026-08-29, Pedro's architectural directive.** Build the
+controller as a small, explainable estimator and planner that runs beside the
+phone. It constructs each next control cycle from what audio, video, elapsed
+time, and action verification say about the night; it does not replay a fixed
+macro and call that a closed loop.
+
+## The idea in one sentence
+
+The ESP32 maintains a **belief state**: a compact, continuously corrected
+model of the parts of the night that matter to the next decision. It evaluates
+a few safe candidate cycles against that belief, executes one, verifies the
+result, and repeats.
+
+```
+phone audio/video + elapsed time + action acknowledgements
+                         |
+                         v
+                 calibrated fact adapters
+                         |
+                         v
+              belief-state estimator / digital twin
+                         |
+                         v
+           constrained short-horizon cycle planner
+                         |
+                         v
+                 safety supervisor + USB-HID
+                         |
+                         +-------------------------+
+                                                   |
+                                      next observations
+```
+
+This is a practical partially-observable controller, not a claim that an
+external device can recover Fusion's hidden RNG state. When a route or an
+observation is uncertain, the belief records that uncertainty and the planner
+chooses only a cycle safe across the remaining plausible states.
+
+## Why this is a separate plan
+
+The existing plans build important pieces, but none owns their composition:
+
+- [Plan 19](19-video-reactive-controller.md) supplies calibrated video facts,
+  a blackout fast path, and the stock-device observation loop.
+- [Plan 08](08-audio-cue-controller.md) maps audible cues. Its live stock-phone
+  capture is blocked; Plan 19 P6 makes an external A2DP sink a slower, valid
+  input to this controller.
+- [Plan 10](10-stock-device-controller.md) supplies the action/verification
+  boundary, and Plan 11 supplies comparable simulator policies.
+- [Plan 12](12-end-to-end-evidence-campaign.md) owns promotion from simulation
+  to shadow mode and live action.
+
+This plan defines the layer above those components: how observations become a
+decision-relevant world model, and how that model chooses the next cycle.
+
+## Non-goals and safety boundary
+
+- Do **not** model all internal game state or claim exact RNG recovery. The
+  external controller cannot observe it; fake precision is worse than an
+  explicit unknown.
+- Do **not** put delayed A2DP classification in the blackout-to-mask critical
+  path. Video remains the fast defensive path.
+- Do **not** emit unconstrained arbitrary sequences. The planner selects from
+  reviewed, model-gated cycle primitives and obeys monitor/mask animation and
+  device input-acceptance constraints.
+- Do **not** allow live action until the same estimator has completed a clean
+  observe-only campaign under load.
+
+## State model
+
+The state is deliberately small and auditable. Each field holds a value,
+confidence, provenance, and age rather than a naked boolean.
+
+| State group | Examples | How it is maintained |
+|---|---|---|
+| Control truth | monitor position, mask position, viewed camera, current action lockout | HID command plus video confirmation; disagreement enters recovery |
+| Clock and resources | game-phase interval, AM-hour bracket, box fraction/range, flashlight budget | monotonic time prediction corrected by AM digits and calibrated box reads |
+| Immediate hazards | blackout, visible opening threat, hall threat, forced monitor-down | fast video facts; an observed hazard overrides the planner |
+| Route hypotheses | BB/Mangle/Withered/Toy/Foxy risk buckets and possible route stage | sourced transition model, elapsed time, camera/light effects, and cue/video evidence |
+| Sensor health | frame age, audio latency/jitter band, calibration profile, dropped-read count | every adapter; stale or mismatched readings reduce confidence instead of changing game state |
+
+The first version uses named discrete buckets and ranges, not a neural model:
+`Foxy={low, rising, hall-risk, locked}`, `BB={absent, possible, opening,
+inside}`, and a bounded set of route stages per character. That makes each
+decision replayable and explainable.
+
+## Controller shape
+
+### 1. Fast safety supervisor
+
+Runs on every fresh visual read and may pre-empt the planner only for a small
+set of proven actions:
+
+- observed blackout or committed visible office threat -> mask immediately;
+- unknown monitor/mask polarity after an action -> stop scheduled transitions
+  and run a verification/recovery sequence;
+- action requested inside a monitor/mask animation window -> refuse it.
+
+The supervisor is intentionally boring. It protects deadlines; it does not
+invent strategy.
+
+### 2. Belief update
+
+At each observation boundary, predict the state forward from elapsed time and
+the last accepted action, then apply facts as evidence:
+
+- a high-confidence visual fact narrows or sets a state bucket;
+- an audio cue narrows route hypotheses after its measured transport-latency
+  band, never at its local receipt timestamp;
+- absent, stale, ambiguous, or sensor-mismatched facts make no positive claim;
+- a contradiction between predicted and observed control state creates a
+  desync incident and moves to a conservative recovery belief.
+
+This can begin as a small weighted set of hypotheses (a particle set) and
+collapse equivalent hypotheses into named risk buckets after each update.
+
+### 3. Receding-horizon cycle planner
+
+Every cycle boundary, score a small finite library over the next 5--15 seconds:
+
+- wind-and-anchor;
+- short verify-and-resume;
+- defensive mask-hold;
+- Foxy reset / hall-check where sourced and model-gated;
+- recovery after an unverified monitor or mask transition;
+- strategy-specific post-wind branch (for example RVC).
+
+Candidates are rejected before scoring if they violate a hard constraint for
+any sufficiently plausible hypothesis: mask deadline, box floor, animation
+window, input gap, or known route hazard. Among the survivors, select the
+lowest worst-case risk, then the best resource margin. Commit only the short
+prefix; new evidence replans the next cycle.
+
+### 4. Act, verify, learn
+
+Every command carries an expected visible result and deadline. The controller
+records `sent -> device delivered -> visual confirmation`; a missed
+confirmation does not silently advance the model. It either retries the
+bounded action or enters a defined recovery primitive.
+
+## Work packages
+
+### P1 -- versioned belief-state contract
+
+Define a plain-data schema for facts, state fields, hypotheses, confidence,
+age, source calibration profile, planned primitive, action, and verification.
+Add replay fixtures for: clear cycle, blackout pre-emption, delayed audio cue,
+dropped video read, and monitor-desync.
+
+**Done when:** a recorded observation/action stream deterministically rebuilds
+the same belief transitions and explains every confidence change.
+
+### P2 -- reduced transition model
+
+Extract the decision-relevant transition rules from `Sim` into a controller
+model: clock/box prediction, action locks, visible hazard deadlines, and route
+risk bucket transitions. Keep hidden RNG as branching probability/risk, not a
+fabricated observed value.
+
+**Done when:** the model can predict one cycle forward from a documented state,
+and its deliberately coarse outputs agree with the full engine within declared
+bounds over seeded replay.
+
+### P3 -- estimator and uncertainty tests
+
+Implement predict/update/reconcile with no device dependency. Test that delayed
+audio is time-shifted, unknown facts never reduce risk, stale control-state
+facts trigger verification, and two contradictory sensors produce a visible
+incident rather than last-write-wins behaviour.
+
+**Done when:** fault-injected observation traces degrade margin gradually or
+enter safe recovery; they never produce an unlogged confidence jump.
+
+### P4 -- finite cycle library and constraint gate
+
+Express every permissible cycle as data with prerequisites, temporal actions,
+expected results, resource cost, and hazard coverage. Reuse the exact model
+gate and phone acceptance constraints; the planner cannot emit a primitive that
+has not passed them.
+
+**Done when:** an attempted unsafe cycle is rejected with its violated
+constraint, and every selected cycle has a readable decision record.
+
+### P5 -- robust short-horizon selector
+
+Evaluate candidates across the belief hypotheses, using worst-case /
+risk-bounded selection rather than an average that gambles on one hidden route.
+Add controls: fixed open-loop schedule, truth-state oracle (upper bound), and
+an estimator with video/audio disabled.
+
+**Done when:** simulation shows the estimator controller beats the disabled
+observation control without approaching the oracle through privileged state.
+
+### P6 -- ESP32 transport and real-time split
+
+Define the hardware protocol. The ESP32 owns monotonic timestamps, local
+actuation, cycle scheduling, and the fast mask path. A phone-side/helper or
+Linux/A2DP process sends timestamped facts; it must include capture time,
+arrival time, calibration profile, and confidence. Design for bounded messages
+and degraded operation when the upstream observer disappears.
+
+**Done when:** a bench trace measures every leg (`screen/audio event -> fact ->
+ESP receipt -> HID command -> observed result`) and the ESP can complete an
+already-approved safe cycle if the host link drops.
+
+### P7 -- shadow campaign and bounded promotion
+
+Run the complete controller with `act=false` first. Compare intended actions,
+belief state, actual game state where video can establish it, timing margin,
+and recovery count against the timer route on a monitor-stressing Night 5 or 7.
+Only then enable the fast safety actions, then one cycle primitive at a time.
+
+**Done when:** Plan 12's promotion gate accepts a named configuration and the
+session corpus contains its raw facts, beliefs, plans, actions, and outcomes.
+
+## Suggested order
+
+1. Complete Plan 19 P1--P4 so video facts and their refusal semantics are
+   real, then land P1/P3 of this plan against synthetic fixtures.
+2. Build P2 and P4 together: the estimator's prediction must use the same
+   definitions as cycle safety checks.
+3. Add P5 and prove the disabled-observation and oracle controls before buying
+   or wiring ESP32 hardware.
+4. Build P6 as a bench instrument, not a live bot.
+5. Run P7 under Plan 12's evidence ladder.
+
+## Success criterion
+
+Success is not "the ESP32 pressed buttons." It is an auditable trace showing:
+
+1. what the controller believed before a cycle;
+2. which observations and latency bounds justified that belief;
+3. which alternatives were rejected and why;
+4. which bounded cycle it selected;
+5. whether every action visibly happened; and
+6. how the next observation corrected the model.
+
+That is the architecture that can adapt its cycles to the game while remaining
+testable enough to trust on a real night.
