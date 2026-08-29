@@ -175,8 +175,6 @@ def main():
     if not flags:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
-    flags = [is_night(f) for f in frames]
-
     def run_start(want, frm):
         streak = 0
         for i in range(frm, len(flags)):
