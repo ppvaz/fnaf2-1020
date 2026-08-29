@@ -1,7 +1,8 @@
 // The single entry point for the suite.
 //
 //   node tools/test.mjs             # every check that can run here
-//   node tools/test.mjs --engine    # headless engine checks only (seconds)
+//   node tools/test.mjs --engine    # fast headless checks for edit feedback
+//   node tools/test.mjs --engine --extended # include exhaustive model sweeps
 //   node tools/test.mjs --browser   # Chrome checks only (minutes)
 //   node tools/test.mjs --reports   # also print the diagnostic tools
 //   node tools/test.mjs --parallel  # run the browser checks at once (see below)
@@ -11,7 +12,10 @@
 // for a human to read and always exit 0 -- running them under a PASS heading
 // would be a lie, so they are opt-in and unjudged.
 //
-// The engine checks run concurrently. The browser checks do NOT, by default:
+// The engine checks run concurrently. A few exhaustive model sweeps live in
+// the extended tier: they are valuable CI gates, but re-running thousands of
+// full simulated nights after every edit makes the normal feedback loop drag.
+// The browser checks do NOT, by default:
 // they drive a trainer that runs at real time and grades inputs in
 // milliseconds, and five headless Chromes on four cores measurably degrade it
 // -- the same lessontest run reached best streak 5 alone and 3 under load.
@@ -331,6 +335,15 @@ const ENGINE = [
   ['cue shadow window builder', ['cue/test-build-shadow-windows.py']],
   ['cue model promotion', ['cue/test-export-model.py']],
 ];
+
+// These checks establish robustness margins and campaign-wide survival floors,
+// rather than a local engine invariant. Keep them in the default full suite
+// and CI, but let `--engine` remain a practical edit-time command.
+const EXTENDED_ENGINE = new Set([
+  'minus toys margin',
+  'minus toys jitter',
+  'night matrix',
+]);
 const BROWSER = [
   ['browsertest', ['browsertest.mjs']],
   ['caltest', ['caltest.mjs']],
@@ -457,11 +470,13 @@ async function serve() {
 
 const only = process.argv.includes('--engine') ? 'engine'
   : process.argv.includes('--browser') ? 'browser' : 'all';
+const extended = process.argv.includes('--extended') || only === 'all';
 let failed = 0;
 
 if (only !== 'browser') {
-  console.log('engine checks');
-  failed += await runGroup(ENGINE, true);
+  const engine = extended ? ENGINE : ENGINE.filter(([name]) => !EXTENDED_ENGINE.has(name));
+  console.log(extended ? 'engine checks (including extended model sweeps)' : 'engine checks');
+  failed += await runGroup(engine, true);
 }
 
 if (only !== 'engine') {
