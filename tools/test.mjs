@@ -50,6 +50,26 @@ const ENGINE = [
   // (animation-window guard, lower-mask-verify-raise, graceful under a noisy
   // observer).
   ['reactivetest', ['reactivetest.mjs', '--assert']],
+  // Plan 19/21 BB vent policy: this is deliberately a release gate. Its
+  // measured policy regressions must fail -- they are not printable
+  // known-negatives that allow --assert to pass.
+  ['vent reactive', ['ventreacttest.mjs', '--assert']],
+  // Plan 21 phase-clock foundation: paired A2DP latency calibration, 2 Hz
+  // period/phase lock, explicit 500 ms parity, and stale/low-confidence
+  // recovery. No privileged engine phase is used here.
+  ['phase clock', ['phaseclocktest.mjs']],
+  // Plan 20 package 1: unknown-safe, calibration-bound facts and explicit
+  // action verification in a deterministic replayable belief contract.
+  ['belief state', ['belieftest.mjs']],
+  // Plan 20 package 2: controller-visible reduced transition model agrees with
+  // seeded Sim control/resource traces; hidden routes remain risk buckets.
+  ['reduced model', ['reducedmodeltest.mjs']],
+  // Plan 21 package 1: the current Minimal Minus Toys headers are represented
+  // once as finite policy IR and round-trip with a canonical hash.
+  ['policy IR', ['device/test-policy-ir.mjs']],
+  // Plan 21 package 2 foundation: compile the finite IR into semantic press /
+  // release events, including repeat and terminal phases.
+  ['policy interpreter', ['device/test-policy-interpreter.mjs']],
   // Plan 16 pkg 1/3 gates: Sim.snapshot()/restore() bit-identity, the semantic
   // action layer, and the parameter search harness reproducing the 803feb3
   // ladder on a zero perturbation.
@@ -235,6 +255,9 @@ const ENGINE = [
   // refuses the rest. Resizing a foreign frame to fit is what makes a sensor
   // mismatch look like a working reading.
   ['sensor', ['device/test-sensor.py']],
+  // Plan 19 P3: derive a native-resolution watch adapter from labelled frames;
+  // weak separation is an explicit refusal and foreign geometry is not resized.
+  ['watch calibration', ['device/test-watch-calibrate.py']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.
@@ -298,6 +321,9 @@ const ENGINE = [
   // misordered driver does not fail at launch -- it presses real buttons and
   // dies mid-night. This gates the assembly instead.
   ['trial assembly', ['device/test-trial-assembly.sh']],
+  // Plan 19 P4: native watchlist observe-only wiring is explicit, while live
+  // reactive action refuses until that evidence has promoted.
+  ['trial reactive', ['device/test-trial-reactive.sh']],
   // One screen->raw transform written in shell, Python and JS, held to the
   // same answer over the real tap table. They disagreed on 24 of 39
   // coordinates: the probe measuring what the phone accepts was sending
