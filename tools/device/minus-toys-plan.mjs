@@ -201,14 +201,21 @@ const actionFor = action =>
 // row is the per-instruction margin probe (minus-toys-margin.mjs). `opening` /
 // `loop` default to the shipped tables; pass build(knobs).opening/.loop to
 // schedule a searched variant. `periodMs` is how often the loop table repeats.
+// `epochMs` shifts the whole schedule against the game's frame grid -- the
+// device reality: the plan is anchored to T0 wall clock while g263's 200 ms
+// sampler (engine.js, `f % LAST_VIEW_SAMPLE_FRAMES`) is anchored to the
+// night's own frame counter, and the run-to-run epoch error rotates one
+// against the other. It is why the split arm is a coin flip on the phone and
+// deterministic in this model at epochMs=0.
 export function schedule({ splitCamera = true, shift = () => 0,
                            opening = OPENING, loop = LOOP,
                            finish = [], periodMs = KNOBS0.loopPeriodMs,
-                           loopStartMs = 0, untilMs = 420000 } = {}) {
+                           loopStartMs = 0, untilMs = 420000,
+                           epochMs = 0 } = {}) {
   const queue = [];
   const add = (cycle, index, base, row) => {
     const [at, kind, a, b, cc] = row;
-    const when = base + at + shift(cycle, index, base + at);
+    const when = base + at + epochMs + shift(cycle, index, base + at);
     if (kind === 'tap') queue.push([frame(when), 'press', actionFor(a)]);
     else if (kind === 'hold' || kind === 'hall') {
       const action = kind === 'hall' ? 'light' : actionFor(a);
@@ -232,14 +239,14 @@ export function schedule({ splitCamera = true, shift = () => 0,
 }
 
 export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
-                         shift, knobs } = {}) {
+                         shift, knobs, epochMs = 0 } = {}) {
   const sim = new Sim({ night, seed, worst });
   const { opening, loop, finish } = knobs ? build(knobs) : _default;
   const kk = knobs ? clone(knobs) : KNOBS0;
   const periodMs = kk.minimal ? kk.minPeriodMs : kk.loopPeriodMs;
   const loopStartMs = kk.minimal ? kk.minLoopStartMs : 0;
   const untilMs = kk.minimal ? kk.minStopAtMs : 420000;
-  const queue = schedule({ splitCamera, shift, opening, loop, finish, periodMs, loopStartMs, untilMs });
+  const queue = schedule({ splitCamera, shift, opening, loop, finish, periodMs, loopStartMs, untilMs, epochMs });
 
   let i = 0, splitAt = -1, minBox = 1, minPower = sim.power;
   while (sim.alive && !sim.won) {
@@ -256,6 +263,30 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
   return { sim, splitAt, minBox, minPower };
 }
 
+// The arm's sensitivity to the schedule/game phase, measured. For each whole
+// frame offset over one sampler period (g263 ticks every
+// LAST_VIEW_SAMPLE_FRAMES), replay the night and report survival and
+// arm-landing separately: on a minimal Night 1 a missed arm is a guaranteed
+// Puppet death, so `wins` separates the two only via `armed`. This is the
+// pricing instrument for any arm change -- it is the model finally seeing the
+// miss branch the 200/200 deterministic gate is blind to.
+export function phaseScan({ night = 1, seeds = 24, worst = false, knobs } = {}) {
+  const step = 1000 / C.FPS;               // one frame in ms
+  const n = Math.round(C.LAST_VIEW_SAMPLE_FRAMES); // one sampler period in frames
+  const rows = [];
+  for (let k = 0; k < n; k++) {
+    let wins = 0, armed = 0;
+    for (let i = 0; i < seeds; i++) {
+      const r = replay({ night, worst, seed: (i * 2654435761) >>> 0,
+                         knobs, epochMs: k * step });
+      if (r.sim.won) wins++;
+      if (r.splitAt >= 0) armed++;
+    }
+    rows.push({ epochFrames: k, epochMs: +(k * step).toFixed(2), wins, armed, seeds });
+  }
+  return rows;
+}
+
 export function emitPlan(night, knobs) {
   const { opening, loop, finish } = knobs ? build(knobs) : _default;
   const kk = knobs ? clone(knobs) : KNOBS0;
@@ -264,7 +295,13 @@ export function emitPlan(night, knobs) {
   // (POLICY_CYCLE_MS). The 10/20 plan is 10 s; `--minimal` is 5 s.
   const lines = [`#policy minus-toys`, `#night ${night}`, `#period ${periodMs}`];
   if (kk.minimal) lines.push(`#loop-start ${kk.minLoopStartMs}`, `#stop-at ${kk.minStopAtMs}`,
-    `#observe-until ${kk.minObserveUntilMs}`);
+    `#observe-until ${kk.minObserveUntilMs}`,
+    // Tells trial.sh's on-phone driver to open the arm-verify window after the
+    // opening raise: the host classifies the raised monitor's CAM 11 button
+    // (cam11lit.py) and re-arms or aborts on a miss. The 200/200 gate above
+    // replays at a fixed sampler phase and cannot see the arm's 3-of-12 miss
+    // branch (--phasegate), so the runner closes it.
+    `#arm-verify 1`);
   lines.push('#cycle opening');
   for (const row of opening) lines.push(row.join(' '));
   lines.push('#cycle toys');
@@ -356,7 +393,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         'nights 2-5 need their own shapes and do not have them yet');
     knobs = { ...(knobs || {}), minimal: true };
   }
-  if (process.argv.includes('--gate')) {
+  if (process.argv.includes('--phasegate')) {
+    // A measurement, not a contract: it prints the arm's phase sensitivity
+    // and always exits 0. The suite (test-minus-toys-plan.mjs) pins what the
+    // shipped arm must show; trial.sh's --gate stays the schedule contract.
+    const seeds = +(process.argv.find(v => v.startsWith('--seeds=')) || '--seeds=24').slice(8);
+    const rows = phaseScan({ night, seeds, knobs });
+    console.log(`arm phase scan, night ${night}${knobs?.minimal ? ' minimal' : ''}, ` +
+      `${seeds} seeds per epoch (epoch = schedule shifted against the game frame grid):`);
+    for (const r of rows)
+      console.log(`  +${String(r.epochFrames).padStart(2)}f (${String(r.epochMs).padStart(6)} ms): ` +
+        `${r.wins}/${r.seeds} won, split armed ${r.armed}/${r.seeds}`);
+    const landed = rows.filter(r => r.armed === r.seeds).length;
+    const missed = rows.filter(r => r.armed === 0).length;
+    console.log(`arm lands on ${landed}/${rows.length} epochs, never on ${missed}; ` +
+      `device arm is a coin flip with P(miss) ~= ${missed}/${rows.length} per attempt`);
+  } else if (process.argv.includes('--gate')) {
     if (!gate(night, knobs)) process.exitCode = 1;
   } else {
     process.stdout.write(emitPlan(night, knobs));

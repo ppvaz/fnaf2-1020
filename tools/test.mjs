@@ -162,6 +162,11 @@ const ENGINE = [
   // armed, the no-split control still loses, and every instruction kind and
   // control it emits is one the on-phone interpreter implements.
   ['minus toys plan', ['device/test-minus-toys-plan.mjs']],
+  // The --minimal arm verifier's fixtures: lit/unlit from the 2026-08-29 r2/r3
+  // recordings, plus the office and menu never-lit controls. Pins the crop
+  // fractions, the thresholds and the rotation convention the live verify in
+  // trial.sh leans on to re-arm or abort.
+  ['cam11lit fixtures', ['device/test-cam11lit.sh']],
   // The per-instruction timing margin map for that plan: how far each press can
   // move before a seed dies. Pins the two facts the 2026-08-28 device-run
   // writeup rests on -- the split-arming pair has ~one Fusion poll of slack, and

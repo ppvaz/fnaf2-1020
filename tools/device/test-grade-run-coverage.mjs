@@ -47,6 +47,7 @@ const EXCLUDED = new Map([
   ['region-probe.sh', 'device probe -- maps what a touch does by screen region'],
   ['region-classify.py', 'the interaction classifier region-probe.sh decides with, gated by test-region-classify.py'],
   ['nightpredicate.py', 'the one definition of the alive/dead rule that screenstate.py and grade-night.py both evaluate; a library, gated by test-screenstate.py'],
+  ['cam11lit.py', 'live runner-side arm verifier for the Minus Toys --minimal opening (trial.sh reads its verdict mid-run to re-arm or abort); not a run grader, gated by test-cam11lit.sh'],
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
   ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
   ['intro_card.py', 'fractional generic intro-card predicate used by lifecycle-observe.py/run-timeline.py; gated by test-intro-card.py'],
@@ -107,6 +108,9 @@ for (const name of ['grade-night.py', 'camtrace.py', 'windpct.py',
   if (!body.includes('subprocess.Popen') || body.includes('capture_output=True'))
     complain(`${name} is a full-run grader but no longer has a streaming decoder`);
 }
+const sweepcheck = readFileSync(join(HERE, 'sweepcheck.py'), 'utf8');
+if (/list\(stream\(/.test(sweepcheck))
+  complain('sweepcheck.py buffers full decoded streams instead of derived features');
 if (!/GRADE_MAX_VMEM_KB="\$\{GRADE_MAX_VMEM_KB:-2097152\}"/.test(sh) ||
     !/timeout --foreground/.test(sh) || !/taskset -c "\$GRADE_CPUSET"/.test(sh))
   complain('grade-run.sh lost its per-instrument resource fuse or Linux CPU pin');

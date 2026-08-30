@@ -125,6 +125,19 @@ REMOTE_PLAN="$REMOTE_PIDFILE.plan"
 REMOTE_READYFILE="$REMOTE_PIDFILE.ready"
 REMOTE_STARTFILE="$REMOTE_PIDFILE.start"
 REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
+# Host->driver signals, checked by the driver at points it can act on them.
+# The halt file is the save-wipe guard: the driver stops at its next macro
+# boundary (<= one 5 s cycle) once it exists, because the r3 abort kept
+# pressing the death menu for ~7 s until the slow kill path landed -- the
+# watchdog's force-stop/pidfile teardown is seconds; a file touch is one adb
+# round trip. The three arm-verify files carry the --minimal split-arm check
+# (see watch_arm_verify): the driver opens the window, the host classifies the
+# raised monitor's CAM 11 button and touches rearm on a miss or armfail when
+# the retries are spent.
+REMOTE_HALTFILE="$REMOTE_PIDFILE.halt"
+REMOTE_ARMWINDOW="$REMOTE_PIDFILE.armwin"
+REMOTE_REARM="$REMOTE_PIDFILE.rearm"
+REMOTE_ARMFAIL="$REMOTE_PIDFILE.armfail"
 REMOTE_CAPTURE_LOCK="$REMOTE_PIDFILE.capture"
 # `adb shell` joins its arguments into one command string and the device shell
 # re-parses it, so an empty argument disappears and every parameter after it
@@ -155,6 +168,7 @@ DRIVER_LOG_PID=""
 DRIVER_OUTPUT_FIFO=""
 WATCHDOG_PID=""
 FOCUS_WATCHDOG_PID=""
+ARM_VERIFY_PID=""
 GAME_LAUNCHED=0
 RECORDING_STARTED=0
 CAPTURE_PULLED=0
@@ -702,6 +716,14 @@ state() {
 
 stop_remote_driver() {
   local local_pid
+  # The halt file lands first and cheapest: one adb round trip that the driver
+  # checks at every macro boundary, versus seconds for the kill path below.
+  # The r3 abort (2026-08-29) spent those seconds firing the blind wind macro
+  # into the death menu and walked it to "Start a new game? Yes" -- the save
+  # survived by one contact.
+  if [ -n "${REMOTE_HALTFILE:-}" ]; then
+    adb shell ": > '$REMOTE_HALTFILE'" >/dev/null 2>&1 || true
+  fi
   # The remote parent records its exact PID. Kill its direct input-swipe
   # children first, then the parent; never use a device-wide `pkill input`.
   adb shell "pidfile=$REMOTE_PIDFILE; if [ -f \"\$pidfile\" ]; then pid=\$(cat \"\$pidfile\" 2>/dev/null); case \"\$pid\" in ''|*[!0-9]*) ;; *) children=\$(cat /proc/\$pid/task/\$pid/children 2>/dev/null || true); [ -z \"\$children\" ] || kill -TERM \$children 2>/dev/null || true; kill -TERM \$pid 2>/dev/null || true ;; esac; rm -f \"\$pidfile\"; fi" >/dev/null 2>&1 || true
@@ -710,6 +732,9 @@ stop_remote_driver() {
     kill -TERM "$local_pid" 2>/dev/null || true
     wait "$local_pid" 2>/dev/null || true
   fi
+  # The driver is gone; leave no signal files for the next run to inherit.
+  adb shell "rm -f '$REMOTE_HALTFILE' '$REMOTE_ARMWINDOW' '$REMOTE_REARM' '$REMOTE_ARMFAIL'" \
+    >/dev/null 2>&1 || true
 }
 
 # Duplicate the remote driver's combined output to the operator and to a durable
@@ -940,6 +965,76 @@ watch_focus() {
   done
 }
 
+# The --minimal split-arm verifier (Night 1 only).
+#
+# Why this exists: the split arm is a coin flip on the phone. The model shows
+# why (minus-toys-plan.mjs --phasegate, 2026-08-29): the arm's CAM 09 touch ->
+# monitor drop window is 3 frames wide, and g263's 200 ms sampler lands inside
+# it at 3 of 12 schedule/game phase alignments -- a missed arm leaves
+# `viewing` on CAM 09, where the wind button does not exist, so the box is
+# unwoundable and the Puppet kills at ~4 AM (measured: r3 of
+# n1-minustoys-minimal-20260829). The deterministic gate replays at a fixed
+# phase and cannot see this branch; the runner closes it instead.
+#
+# Contract with the driver: after the opening raise the driver touches
+# REMOTE_ARMWINDOW and polls REMOTE_REARM until #loop-start minus a margin.
+# Here the raised monitor is photographed and classified by cam11lit.py (the
+# CAM 11 button is lit iff the raise restored CAM 11 -- the arm landed). unlit
+# or unknown touches REMOTE_REARM, which makes the driver re-run the opening's
+# camera rows as one macro; lit closes the check. Three attempts, then
+# REMOTE_ARMFAIL: the driver exits 50 and the run ends named, not as a Puppet
+# death two hours later. Every verdict is logged and recorded so the manifest
+# carries what was seen, not just what was decided.
+watch_arm_verify() {
+  [ "$MINUS_TOYS_VARIANT" = minimal ] || return 0
+  local i attempt=0 verdict
+  # The window opens ~117 s into the night (the opening raise) but loading and
+  # menu selection happen before T0, so budget a generous 240 s of wall time.
+  for i in $(seq 1 480); do
+    adb shell "[ -e '$REMOTE_ARMWINDOW' ]" >/dev/null 2>&1 && break
+    kill -0 "$DRIVER_PID" 2>/dev/null || return 0
+    sleep 0.5
+    if [ "$i" = 480 ]; then
+      echo "arm verify: driver never opened the arm window; continuing unverified" >&2
+      return 0
+    fi
+  done
+  # The raise animation finishes inside MONITOR_ANIM_UP (~0.3 s); leave the
+  # map a beat to settle before the first photograph.
+  sleep 1.5
+  while [ "$attempt" -lt 3 ]; do
+    attempt=$((attempt + 1))
+    if ! verdict=$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/cam11lit.py"); then
+      verdict="cam11lit verdict=unknown note=classifier-failed"
+    fi
+    printf 'arm verify (attempt %d): %s\n' "$attempt" "$verdict"
+    fnaf_session_event kind=sensor sensor=cam11lit "attempt=$attempt" "note=$verdict"
+    case "$verdict" in
+      *verdict=lit*)
+        return 0 ;;
+      *)
+        if [ "$attempt" -ge 3 ]; then
+          printf 'arm verify: split not armed after %d attempts; stopping the run\n' "$attempt" >&2
+          adb shell ": > '$REMOTE_ARMFAIL'" >/dev/null 2>&1 || true
+          return 1
+        fi
+        adb shell ": > '$REMOTE_REARM'" >/dev/null 2>&1 || true
+        # The re-arm macro takes ~1.7 s (opening rows 2..5) plus settle time.
+        sleep 3.5 ;;
+    esac
+  done
+}
+
+stop_arm_verify() {
+  local local_pid="$ARM_VERIFY_PID"
+  [ -n "$local_pid" ] || return 0
+  if kill -0 "$local_pid" 2>/dev/null; then
+    kill -TERM "$local_pid" 2>/dev/null || true
+    wait "$local_pid" 2>/dev/null || true
+  fi
+  ARM_VERIFY_PID=""
+}
+
 pull_hid_trace() {
   [ "$REMOTE_HID_TRACE" != "-" ] || return 0
   adb pull "$REMOTE_HID_TRACE" "$LOCAL_HID_TRACE" >/dev/null 2>&1 &&
@@ -1105,6 +1200,7 @@ PY
          reason="planned $CYCLES cycles completed. The runner grades nothing: whether the game was alive for that interval is grade-run.sh's answer, not this one" ;;
     42)  lifecycle=aborted; reason="classifier read a threat and stopped before the hall press" ;;
     47)  lifecycle=aborted; reason="could not select ${MENU_TARGET:-the night} on the title screen" ;;
+    50)  lifecycle=aborted; reason="arm verify: the Minus Toys split never armed within the retries (cam11lit); stopping before the guaranteed Puppet death" ;;
     129) lifecycle=aborted; reason="hangup (SIGHUP)" ;;
     130) lifecycle=aborted; reason="interrupted (SIGINT)" ;;
     143) lifecycle=aborted; reason="terminated (SIGTERM)" ;;
@@ -1475,6 +1571,7 @@ adb shell sh -s -- "$REMOTE_PIDFILE" "$REMOTE_READYFILE" "$REMOTE_STARTFILE" "$R
   $TAP_MUTE $TAP_MONITOR $TAP_MASK $TAP_CAM_LIGHT $TAP_HALL $WIND \
   $TAP_CAM10 $TAP_CAM04 $TAP_CAM07 $TAP_CAM09 $TAP_CAM11 $TAP_CAM05 \
   "$CUE_PORT" "$CUE_TOKEN" "$REMOTE_KEEP_DIR" \
+  "$REMOTE_HALTFILE" "$REMOTE_ARMWINDOW" "$REMOTE_REARM" "$REMOTE_ARMFAIL" \
   > "$DRIVER_OUTPUT_FIFO" 2>&1 < "$REMOTE_PROGRAM" &
 DRIVER_PID=$!
 
@@ -1558,6 +1655,8 @@ watch_night &
 WATCHDOG_PID=$!
 watch_focus &
 FOCUS_WATCHDOG_PID=$!
+watch_arm_verify &
+ARM_VERIFY_PID=$!
 
 set +e
 wait "$DRIVER_PID"
@@ -1565,6 +1664,7 @@ DRIVER_STATUS=$?
 set -e
 finish_driver_log
 DRIVER_PID=""
+stop_arm_verify
 stop_watchdogs
 if [ -s "$WATCHDOG_RESULT" ]; then
   cat "$WATCHDOG_RESULT"

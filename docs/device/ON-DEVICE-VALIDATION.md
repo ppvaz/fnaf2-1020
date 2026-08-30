@@ -2116,6 +2116,73 @@ same instrumentation observe-only on Night 5 or 7 before promoting any
 open-loop or reactive policy. The current strategy record is
 [`MINUS-3-STRATEGY.md`](../strategy/MINUS-3-STRATEGY.md) §9.
 
+### The `--minimal` split arm is non-deterministic, and a missed arm kills (2026-08-29)
+
+Two full runs of `minus-toys-plan.mjs --night=1 --minimal` on the g56 /
+2.0.7+26, back to back, from a **byte-identical** emitted opening
+(`115000 monitor` / `115300 cam11` / `115833 cam9` / `115883 monitor` /
+`116616 monitor`; the arm taps are 33 ms contacts), same env
+(`PILOT_OFFSET_MS=175`):
+
+- `n1-minustoys-minimal-20260829-r2` — **armed.** `grade-run.sh`: feed = CAM 11
+  *Prize Corner* from 124.9 s to end, music box **100.0 % the entire run**
+  (`windpct`, 148→367 s), monitor never desynced, ALIVE ≥ 360.8 s (recording
+  ends before 6 AM, terminal unknown).
+- `n1-minustoys-minimal-20260829-r3` — **not armed.** Frame walk: only CAM 09
+  lit, monitor caption *Show Stage*, no "Wind Up Music Box" button, feed never
+  *Prize Corner*. The box drained on schedule (pie gauge full at 1 AM → empty by
+  4 AM) because **winding is impossible from CAM 09**. Died to the **Puppet at
+  ~4 AM** (~303 s of a 420 s night): monitor-up jumpscare → death static (frames
+  305–309 s) → Game Over → main menu. The CAM 09 light held the Toys off the
+  player mask-less for 2+ hours (the minimal loop uses no mask, and an unstunned
+  Night 1 Toy Bonnie/Chica would reach the office long before 4 AM), but whether
+  all three stayed on the Show Stage is not legible — the Night 1 flashlight
+  overlay and VHS noise obscure the feed and Toy Bonnie is not clearly on stage
+  in any frame. Evidence the light works, not proof it pins all three.
+
+Same plan, opposite arm outcome. Across all four 2026-08-29 Night 1 runs the
+split armed on the 10/20-shaped calib-01 and on `-r2`, missed on `-r1`
+(SIGINT'd early) and `-r3` — the 33 ms opening taps make the arm probabilistic,
+and the model's `replay()` (split ≡ `viewing === 11 && cam === 9`) assumes it
+always lands, so the 200/200 gate never sees the miss branch. `--minimal`
+carries no defensive churn, so nothing catches it.
+
+Two open items:
+
+1. **Verify the arm, don't assume it.** After the opening raise the monitor
+   caption reads *Prize Corner* (armed) or *Show Stage* (not armed) and the wind
+   button is present iff armed — a one-frame read. A `--minimal` device run must
+   check it and re-arm or abort on *Show Stage*. First fix to try: hold the arm
+   taps to ≥100 ms (the `hid-multi` contact floor the loop cycle already uses).
+
+   > **Corrected later the same day: the arm miss is sampler phase, not tap
+   > length, and the verify is now built.** 33 ms contacts register on this
+   > phone; what varies run to run is the schedule's phase against g263's
+   > 200 ms `lastViewed` sampler (engine.js). The touch→drop gap is 3 frames;
+   > a tick inside it samples `viewing=9` and the raise restores CAM 09 —
+   > exactly r3. `minus-toys-plan.mjs --phasegate` measures 3-of-12 epochs
+   > missing (bimodal, P(miss) = 3/12 per attempt). Runner-side fix landed:
+   > `#arm-verify 1` in the emitted minimal plan, a post-raise arm-verify
+   > window in the driver, `cam11lit.py` classifying the CAM 11 map button
+   > (the g46-57 highlight: lit ⇔ `viewing===11`; 58-point margins on the
+   > r2/r3 frames with office/menu as never-lit controls), host-touch `rearm`
+   > re-runs the opening camera rows (skip=1), and `armfail` ends the run
+   > named (driver exit 50) after 3 misses.
+2. **The abort path is a save-wipe hazard.** After the r3 death the runner kept
+   firing the blind `toys[0..999]` macro into the menu for ~7 s before the focus
+   watchdog stopped input; the retained tail shows the cursor reached *"Start a
+   new game?  »Yes"*. The Night 1 save survived by one contact (menu still
+   shows *Continue / Night 1*). On a story-night run `trial.sh` must stop
+   pressing, or press a known-neutral coordinate, the moment `screenstate`
+   leaves the night — not keep running the schedule.
+   **Closed 2026-08-29 (late):** `stop_remote_driver` touches a per-run `halt`
+   file (one adb round trip) before the slow force-stop/kill path, and the
+   driver checks it at every macro boundary in both loops; residual exposure is
+   at most the in-flight macro.
+
+Artifacts: `captures/n1-minustoys-minimal-20260829-r{2,3}-*` (gitignored;
+`-r2-grade-debian-r2.log` has the r2 grade).
+
 ## The frontier is phase, not actuation — and what the 2026 field says (2026-08-28)
 
 A session-level review of the actuator and sensor questions ("can we build an

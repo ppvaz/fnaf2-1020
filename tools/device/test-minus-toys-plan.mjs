@@ -18,7 +18,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule } from './minus-toys-plan.mjs';
+import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, phaseScan } from './minus-toys-plan.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -135,6 +135,9 @@ for (const night of ['2', '7']) {
   check(plan.includes('#stop-at 360000') && plan.includes('#observe-until 420000') &&
     plan.includes('#cycle finish'),
   'the minimal plan does not stop at 5:08 AM and observe hands-off through 6 AM');
+  check(plan.includes('#arm-verify 1'),
+    'the minimal plan does not ask the driver for the arm-verify window -- the ' +
+    'runner-side check is what closes the 3-of-12 arm miss branch');
 
   // --gate exits 0; and it refuses any night but 1.
   execFileSync('node', [join(here, 'minus-toys-plan.mjs'), '--night=1', '--minimal', '--gate'],
@@ -145,6 +148,42 @@ for (const night of ['2', '7']) {
       { stdio: 'ignore' });
   } catch { refused = true; }
   check(refused, '--minimal did not refuse night 3 (it is Night 1 only)');
+}
+
+// --- 1c. the arm's phase sensitivity (2026-08-29, r2/r3 device coin flip) ----
+//
+// The deterministic gate above is blind to the miss branch BY CONSTRUCTION: it
+// replays at epochMs=0, where the schedule sits at a fixed phase of g263's
+// 200 ms sampler (engine.js samples `lastViewed` only on
+// `f % LAST_VIEW_SAMPLE_FRAMES === 0`). On the phone the run-to-run epoch
+// error rotates the schedule against that grid, and the arm is a coin flip --
+// measured as armed on calib-01 + r2, missed on r3, with r3 dying to the
+// Puppet at ~4 AM because the box cannot be wound from CAM 09.
+//
+// The shipped arm's hazard window is 3 frames wide: the CAM 09 touch lands on
+// frame 6950 (115833 ms, ~ 2 mod 12) and the monitor drop on frame 6953
+// (115883 ms). A sampler tick inside that window samples `viewing=9` into
+// `lastViewed` and the raise writes `viewing=9` -- exactly the r3 state (only
+// CAM 09 lit, Show Stage, no wind button). That predicts misses at epoch
+// offsets +7f/+8f/+9f and nowhere else, i.e. P(miss) = 3/12 per attempt.
+{
+  const rows = phaseScan({ night: 1, seeds: 48, knobs: { minimal: true } });
+  check(rows.length === 12, `phase scan returned ${rows.length} epochs, not one sampler period`);
+  const miss = rows.filter(r => r.armed === 0).map(r => r.epochFrames);
+  const land = rows.filter(r => r.armed === 48).map(r => r.epochFrames);
+  check(miss.length + land.length === 12,
+    `the arm is not bimodal per epoch: missed ${JSON.stringify(miss)}, landed ${JSON.stringify(land)}` +
+    ' -- partial epochs mean the model has arm nondeterminism it should not have');
+  check(JSON.stringify(miss) === JSON.stringify([7, 8, 9]),
+    `the arm misses at epochs ${JSON.stringify(miss)}, not the arithmetic-predicted [7,8,9] ` +
+    '(CAM 09 touch at 6950 ~ 2 mod 12 with a 3-frame touch->drop window)');
+  check(land.length === 9,
+    `the arm lands on ${land.length}/12 epochs; the emitted geometry changed`);
+  // The deterministic gate must keep assuming the arm lands (epochMs=0 is the
+  // phase the emitter anchors to); the runner-side arm verify owns the miss
+  // branch. If epoch 0 ever misses here, that contract is broken at its root.
+  check(rows[0].armed === 48 && rows[0].wins === 48,
+    'the arm missed at epoch 0 -- the deterministic gate no longer describes the emitter');
 }
 
 // --- 2. the emitted plan is shaped for the interpreter -----------------------
@@ -204,5 +243,7 @@ check(/camdrop\)\s+PLAN_SPAN=\$\(\(pn_a \+ pn_b \+ pn_c\)\)/.test(spanBody),
 
 console.log(
   `minus toys device plan: nights 2 and 7 clear 200/200 + 100/100 worst with the ` +
-  `split armed every run, no-split control 0/200; emitted plan parses and every ` +
-  `kind/control is implemented`);
+  `split armed every run, no-split control 0/200; minimal night 1 clears with the ` +
+  `arm landing on exactly 9/12 sampler epochs (misses at +7f/+8f/+9f, the r2/r3 ` +
+  `device coin flip, runner-side arm verify owns the miss branch); emitted plan ` +
+  `parses and every kind/control is implemented`);

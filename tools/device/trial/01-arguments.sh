@@ -49,6 +49,13 @@ CAM11_X=$1; CAM11_Y=$2; shift 2
 CAM05_X=$1; CAM05_Y=$2; shift 2
 CUE_PORT=$1; CUE_TOKEN=$2; shift 2
 KEEP_DIR=${1:-}
+# Host->driver signal files (trial.sh stop_remote_driver / watch_arm_verify).
+# All optional: an older caller that passes none simply never halts and never
+# verifies, which is the pre-2026-08-29 behaviour.
+HALT_FILE=${2:-}
+ARM_WINDOW=${3:-}
+REARM_FILE=${4:-}
+ARMFAIL_FILE=${5:-}
 
 if [ "$BB_CAM05_CAPTURE_EVERY" -gt 0 ] || [ "$BB_LEFT_CAPTURE_EVERY" -gt 0 ]; then
   mkdir -p "$SAMPLE_DIR"

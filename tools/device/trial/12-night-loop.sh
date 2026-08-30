@@ -134,9 +134,53 @@ if [ "$NIGHT6_LEFT" -eq 2 ]; then
   }
   run_cycle opening 0 0 999
 
+  # Arm-verify window (--minimal only; the plan carries #arm-verify and the
+  # host passed the signal files). The split arm is a 3-of-12 phase coin flip
+  # on the phone (minus-toys-plan.mjs --phasegate): when it misses, viewing
+  # stays on CAM 09, the wind button does not exist, and the Puppet kills at
+  # ~4 AM. The host photographs the raised monitor (cam11lit.py) and touches
+  # REARM on a miss; re-running the opening's camera rows -- skipping row 1,
+  # the monitor tap that would only LOWER the already-raised monitor -- is a
+  # fresh coin flip. Three misses and the host touches ARMFAIL: exit 50 ends
+  # the run named, hours before the guaranteed Puppet death. The window closes
+  # a margin before #loop-start so a last re-arm macro cannot overlap it.
+  if [ -n "$ARM_WINDOW" ] && plan_header_number arm-verify >/dev/null 2>&1; then
+    : > "$ARM_WINDOW"
+    arm_deadline=$((toys_loop_start - 2500))
+    while :; do
+      now_rel
+      [ "$NOW_REL" -lt "$arm_deadline" ] || break
+      if [ -n "$ARMFAIL_FILE" ] && [ -e "$ARMFAIL_FILE" ]; then
+        hid_release
+        echo 'the arm verifier reports the split never armed; refusing an unwoundable night' >&2
+        exit 50
+      fi
+      if [ -n "$REARM_FILE" ] && [ -e "$REARM_FILE" ]; then
+        rm -f "$REARM_FILE"
+        now_rel
+        printf '%6d ms  arm verify: re-arming (opening camera rows, no leading monitor tap)\n' "$NOW_REL"
+        SLIP=0
+        run_macro opening "$NOW_REL" 1 999
+      fi
+      sleep_ms 200
+    done
+    rm -f "$ARM_WINDOW"
+  fi
+
   base=$toys_loop_start
   cycle=0
   while [ "$base" -lt "$toys_stop_at" ] && [ "$cycle" -lt "$CYCLES" ]; do
+    # The host-side save-wipe guard: stop_remote_driver touches this file
+    # BEFORE its slow force-stop/kill path, because the r3 abort kept firing
+    # the blind wind macro into the death menu for ~7 s and reached
+    # "Start a new game? Yes" -- one contact short of wiping the save. The
+    # check costs one stat per cycle; the residual exposure is at most the
+    # in-flight macro, which is bounded by construction (one cycle).
+    if [ -n "$HALT_FILE" ] && [ -e "$HALT_FILE" ]; then
+      hid_release
+      printf 'halt: host stopped input; the screen has left the night\n'
+      exit 0
+    fi
     SLIP=0
     run_macro toys "$base" 0 999
     base=$((base + toys_period))
@@ -211,6 +255,13 @@ elif [ "$NIGHT6_LEFT" -eq 1 ]; then
   desyncs=0
   blind_streak=0
   while [ "$base" -lt 419000 ] && [ "$cycle" -lt "$CYCLES" ]; do
+    # Same save-wipe guard as the Minus Toys loop: one stat per cycle, and the
+    # residual exposure is the in-flight macro.
+    if [ -n "$HALT_FILE" ] && [ -e "$HALT_FILE" ]; then
+      hid_release
+      printf 'halt: host stopped input; the screen has left the night\n'
+      exit 0
+    fi
     SLIP=0
     # The shared prefix: lower the monitor, light the vent, read it. Both
     # steady cycles begin with these two instructions and test-recipe.mjs

@@ -274,6 +274,17 @@ consequences:
   ever appeared, even with sloppy flash timing. Uncaptured, not graded, cadence
   unlogged — but it is a human doing on-device exactly what "device stun
   unmeasured" is waiting on, on the easiest night. See §9.
+- **Device evidence the CAM 09 light works enough to survive Night 1 mask-less,
+  and that the arm is a coin flip (2026-08-29, §9).**
+  `n1-minustoys-minimal-20260829-r3` armed only CAM 09 (no split) and still
+  reached ~4 AM with no mask ever used — so the light held the Toys off the
+  player for 2+ hours — then died to the **Puppet** (box unwindable from CAM 09).
+  Whether all three Toys stayed on the Show Stage is not legible (Night 1
+  flashlight overlay + VHS noise; Toy Bonnie is not clearly on stage in any
+  frame). Its sister run `-r2`, identical emitted plan, armed the full split and
+  held the box at 100 %. Same opening, opposite arm outcome: the 33 ms opening
+  taps make the split non-deterministic, and `--minimal` has no margin for a
+  missed arm.
 - **Legitimacy caveat unchanged**: this is the glitch-based half of the family.
 
 ## 9. 2026-08-29: the split-camera family on the *story* nights, not 10/20
@@ -680,6 +691,86 @@ in 318 s of capture by ear, matched-filter at the noise floor, and
 thread — a separate HAL stream `AudioPlaybackCapture` never taps. Not fixable
 without root. External-mic capture, or the recompile's `Play sample` hook, are
 the only paths left for the winding tick specifically.
+
+### The `--minimal` plan run twice — the split arm is non-deterministic on device (2026-08-29)
+
+Two full runs of `minus-toys-plan.mjs --night=1 --minimal` on the g56 / 2.0.7+26,
+back to back, from a **byte-identical emitted opening** (`115000 monitor`,
+`115300 cam11`, `115833 cam9`, `115883 monitor`, `116616 monitor`; the arm taps
+are 33 ms contacts). Same env, same `PILOT_OFFSET_MS=175`. Opposite outcomes:
+
+| Run | Split armed? | Feed | Music box | Outcome |
+|---|---|---|---|---|
+| `n1-minustoys-minimal-20260829-r2` | **yes** — CAM 09 **and** CAM 11 both lit, monitor shows *Prize Corner*, "Wind Up Music Box" button present | CAM 11 from 124.9 s to end | **100.0 % the entire run** (`windpct`, 148→367 s) | ALIVE ≥ 360.8 s, recording ends before 6 AM, terminal unknown |
+| `n1-minustoys-minimal-20260829-r3` | **no** — only CAM 09 lit, monitor shows *Show Stage*, no wind button, never *Prize Corner* | CAM 09 the whole run | drains steadily 1 AM → empty by 4 AM (frame walk of the pie gauge) | **DEAD to the Puppet at ~4 AM** (~303 s): monitor-up jumpscare, death static, Game Over, back to the menu |
+
+The model (`minus-toys-plan.mjs` `replay()`, split ≡ `sim.viewing === 11 &&
+sim.cam === 9`) assumes the arm always lands, so its 200/200 gate never sees the
+r3 branch. On device the arm is a **coin flip on the 33 ms opening taps** —
+across all four 2026-08-29 runs the split armed on the 10/20-shaped calib-01 and
+on r2, and did **not** arm on r1 (interrupted early) or r3. When it misses, the
+plan plainly views CAM 09, and **you cannot wind the music box from CAM 09**, so
+the per-cycle 4400 ms `hold wind` at the CAM 11 button coordinate is inert and
+the Puppet is guaranteed.
+
+What the CAM 09 light did for the Toys on r3 is only **partly** legible: the run
+reached ~4 AM with **no mask used at all** (the minimal loop is `ventl` + `wind`
+only), and on Night 1 an unstunned Toy Bonnie or Toy Chica reaching the mask-less
+office would kill well before then — so the light held them off the player for
+2+ hours. But the Show Stage feed is heavily obscured by the persistent Night 1
+"tap here to use your flashlight" overlay plus VHS noise: Toy Chica's beak is
+identifiable on stage, **Toy Bonnie is not clearly on the Show Stage in any
+frame** (Pedro's read, 2026-08-29), and the office is never visible with the
+monitor up. So: evidence the light *works* enough to survive Night 1 mask-less,
+not proof it pins all three Toys on stage. The §8 open item stands.
+
+This is the elegance↔robustness trade (§9 "The elegance↔robustness trade, on
+record") realised on hardware: `--minimal` carries no defensive churn, so a
+failed arm has nothing to catch it. Two consequences:
+
+1. **The arm needs to be verified, not assumed.** The cheapest check is the one
+   the frames make obvious: after the raise, the monitor caption reads
+   *Prize Corner* (armed) or *Show Stage* (not armed), and the "Wind Up Music
+   Box" button is present iff armed. A device run must read that and re-arm (or
+   abort) on *Show Stage*, exactly as a live loop's split-armed tile watchlist
+   would (§9 "What a video-only live loop can and can't do"). Holding the arm
+   taps to ≥100 ms (the `hid-multi` contact floor the loop cycle already uses —
+   CLAUDE.md "Short taps get dropped") is the first thing to try.
+
+   > **Corrected later the same day: contact length was the wrong suspect, and
+   > the check above is now built.** The ≥100 ms idea was stale-era reasoning —
+   > the g56 registers 33 ms contacts on every touch control. The modelled
+   > mechanism is **g263's sampler phase**: the arm's CAM 09 touch → monitor
+   > drop gap is 3 frames, g263 samples `lastViewed` only on
+   > `f % LAST_VIEW_SAMPLE_FRAMES === 0`, and at 3 of 12 schedule/game phase
+   > alignments a tick lands inside the gap, samples `viewing=9`, and the raise
+   > writes `viewing=9` — exactly r3. Measured by the new
+   > `minus-toys-plan.mjs --phasegate` (epochs +7f/+8f/+9f miss; bimodal 24/24
+   > or 0/24; P(miss) = 3/12 per attempt; pinned in
+   > `test-minus-toys-plan.mjs`). No static same-slot arm reaches 12/12 — a
+   > 1-frame gap needs overlapping contacts, i.e. the measured drag defect —
+   > so the fix is runner-side: the emitted `#arm-verify 1` header opens an
+   > arm-verify window after the raise; `trial.sh` photographs the monitor and
+   > `cam11lit.py` reads the **CAM 11 map button** (lit ⇔ `viewing===11` via
+   > g46-57; lit 228.0–229.7 vs unlit 110.2–111.8 green on the r2/r3 frames,
+   > office 34 / menu 16 as never-lit controls), touches `rearm` on a miss
+   > (the driver re-runs the opening camera rows, skip=1) and aborts the run
+   > named (driver exit 50) after 3 misses.
+2. **The post-abort input is a save-wipe hazard.** After the r3 death the runner
+   kept firing the blind `toys[0..999]` macro into the menu for ~7 s before the
+   focus watchdog stopped it; the retained tail shows the cursor walked to
+   *"Start a new game?  »Yes"*. Input halted one contact short — the Night 1
+   save survived (the menu still offers *Continue / Night 1*) — but on a story
+   run the abort path must press nothing, or press a known-neutral coordinate,
+   once `screenstate` leaves the night. Open item for `trial.sh`.
+   **Closed 2026-08-29 (late):** `stop_remote_driver` now touches a per-run
+   `halt` file — one adb round trip — before its slow force-stop/kill path, and
+   the driver checks it at every macro boundary in both loops (Minus Toys and
+   the gated Night 6 route). The residual exposure is at most the in-flight
+   macro, bounded by construction, instead of ~7 s of pressing into the menu.
+
+Artifacts: `captures/n1-minustoys-minimal-20260829-r{2,3}-*`
+(`-r2-grade-debian-r2.log` has the r2 grade; r3 graded by frame walk here).
 
 ### So: does the timer-anchored route even need a phase clock?
 

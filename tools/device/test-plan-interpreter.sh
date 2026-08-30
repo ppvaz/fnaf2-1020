@@ -431,7 +431,7 @@ first_minimal_arm="$(printf '%s\n' "$got" | head -1 | awk '{print $1}')"
   fail "minimal Minus Toys armed at ${first_minimal_arm:-nothing}ms, want 115000ms"
 got="$(minimal_toys 'run_cycle finish 0 0 999' | grep -E ' (tap|hold) ')"
 want="$(awk '/^#cycle finish/{a=1;next} /^#cycle/{a=0}
-  a && $2==\"tap\" {print $1, $2, $3}' \"$TMP/toys-minimal.txt\")"
+  a && $2=="tap" {print $1, $2, $3}' "$TMP/toys-minimal.txt")"
 [ "$got" = "$want" ] ||
   fail "minimal terminal CAM 09 proof / monitor-down sequence drifted from its emitted plan:\n$got\n--- want ---\n$want"
 got="$(minimal_toys 'run_macro toys 140000 0 999' | awk '/^[0-9]+ down$/{print $1}' \
@@ -464,6 +464,7 @@ branch_out="$(bash -c "
   run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
   run_macro() { printf 'toys %s %s\\n' \"\$1\" \"\$2\"; }
   hid_release() { :; }
+  HALT_FILE=; ARM_WINDOW=; REARM_FILE=; ARMFAIL_FILE=
   NIGHT6_LEFT=2
   CYCLES=44
   source '$TMP/toys-driver-branch.sh'
@@ -487,6 +488,7 @@ short_branch_out="$(bash -c "
   run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
   run_macro() { printf 'toys %s %s\\n' \"\$1\" \"\$2\"; }
   hid_release() { :; }
+  HALT_FILE=; ARM_WINDOW=; REARM_FILE=; ARMFAIL_FILE=
   NIGHT6_LEFT=2
   CYCLES=1
   source '$TMP/toys-driver-branch.sh'
@@ -494,6 +496,56 @@ short_branch_out="$(bash -c "
 if printf '%s\n' "$short_branch_out" | grep -q '^wait '; then
   fail "short minimal calibration unexpectedly entered the observation tail:\n$short_branch_out"
 fi
+
+# The arm-verify window (2026-08-29). The gate cannot price the arm's 3-of-12
+# sampler-phase miss, so the runner closes it: the host classifies the raised
+# monitor and the driver re-runs the opening's camera rows on a miss. This
+# pins the driver half against the emitted minimal plan: a rearm file is
+# consumed exactly once and re-runs the opening with skip=1 -- skipping the
+# leading monitor tap, which would only LOWER the already-raised monitor --
+# inside the window, and an armfail file ends the driver with status 50
+# before any toys macro runs.
+arm_branch_out="$(bash -c "
+  source '$TMP/harness.sh' '$TMP/toys-minimal.txt'
+  source '$TMP/interp.sh'
+  run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
+  run_macro() { printf 'macro %s %s %s\\n' \"\$1\" \"\$2\" \"\$3\"; }
+  hid_release() { :; }
+  sleep_ms() { NOW_REL=\$((NOW_REL + 200)); }
+  now_rel() { :; }
+  HALT_FILE=; ARM_WINDOW='$TMP/armwin'; REARM_FILE='$TMP/rearm'; ARMFAIL_FILE='$TMP/armfail'
+  NOW_REL=100000
+  printf 'rearm\n' > '$TMP/rearm'
+  NIGHT6_LEFT=2
+  CYCLES=44
+  source '$TMP/toys-driver-branch.sh'
+" _ "$TMP/toys-minimal.txt")" </dev/null
+[ "$(printf '%s\n' "$arm_branch_out" | grep -c '^macro opening 100000 1$')" -eq 1 ] ||
+  fail "the arm-verify window did not re-run the opening camera rows with skip=1:\n$arm_branch_out"
+[ ! -e "$TMP/rearm" ] ||
+  fail 'the arm-verify window did not consume the rearm signal'
+[ ! -e "$TMP/armwin" ] ||
+  fail 'the arm-verify window did not close its armwin signal before the loop'
+[ "$(printf '%s\n' "$arm_branch_out" | grep -c '^macro toys ')" -eq 44 ] ||
+  fail "the toys loop drifted after a re-arm:\n$arm_branch_out"
+
+armfail_status=0
+bash -c "
+  source '$TMP/harness.sh' '$TMP/toys-minimal.txt'
+  source '$TMP/interp.sh'
+  run_cycle() { printf 'opening %s %s\\n' \"\$1\" \"\$2\"; }
+  run_macro() { printf 'macro %s %s %s\\n' \"\$1\" \"\$2\" \"\$3\"; }
+  hid_release() { :; }
+  sleep_ms() { NOW_REL=\$((NOW_REL + 200)); }
+  now_rel() { :; }
+  HALT_FILE=; ARM_WINDOW='$TMP/armwin2'; REARM_FILE='$TMP/rearm2'; ARMFAIL_FILE='$TMP/armfail'
+  printf 'armfail\n' > '$TMP/armfail'
+  NIGHT6_LEFT=2
+  CYCLES=44
+  source '$TMP/toys-driver-branch.sh'
+" </dev/null >/dev/null 2>&1 || armfail_status=$?
+[ "$armfail_status" -eq 50 ] ||
+  fail "an armfail signal did not end the driver with status 50 (got $armfail_status)"
 
 
 # --- the monitor-flip gate on the cue read -----------------------------------

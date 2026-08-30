@@ -51,6 +51,60 @@ a caveat) or it only shows under load (Night 1 has no forcedowns/mask churn).
 grade drift+desync under a schedule that stresses the monitor.** Full record:
 `MINUS-3-STRATEGY.md` §9 "The calibration run happened".
 
+**1b. The `--minimal` split arm is non-deterministic on device — and a missed
+arm is a guaranteed Puppet death (2026-08-29).** Two full back-to-back runs of
+`minus-toys-plan.mjs --night=1 --minimal` from a byte-identical emitted opening:
+`-r2` armed the split (feed = *Prize Corner*, box 100 % all run, ALIVE ≥ 360 s),
+`-r3` did **not** arm (feed stayed *Show Stage*, only CAM 09 lit, no wind
+button) and **died to the Puppet at ~4 AM** — you cannot wind the box from
+CAM 09, so the per-cycle 4400 ms `hold wind` was inert. The CAM 09 light held
+the Toys off the player mask-less for 2+ hours (whether all three stayed on
+stage is not legible — Toy Bonnie is not clearly on the Show Stage). The arm is
+a coin flip on the 33 ms opening taps (armed on calib-01 + r2, missed on
+r1 + r3); the model's 200/200 gate assumes it always lands. `--minimal` has no
+defensive churn to catch the miss.
+
+> **Mechanism corrected later the same day — it is sampler phase, not contact
+> length.** The "hold the arm taps to ≥100 ms" first fix below was stale-era
+> reasoning (Pedro: the 100 ms floor is from before the g56 proved 33 ms
+> contacts register on every touch control). The real mechanism, now modelled:
+> the arm's CAM 09 touch → monitor drop gap is **3 frames wide**, and g263
+> samples `lastViewed` only on `f % LAST_VIEW_SAMPLE_FRAMES === 0` while cams
+> are up (engine.js) — at 3 of 12 schedule/game phase alignments a tick falls
+> inside that window, samples `viewing=9`, and the raise writes `viewing=9`:
+> exactly r3. `minus-toys-plan.mjs --phasegate` measures it (epochs +7f/+8f/+9f
+> miss, perfectly bimodal, P(miss) = 3/12 per attempt); the deterministic gate
+> stays blind because it replays at one fixed phase. No static same-slot
+> geometry reaches 12/12 (1 frame needs overlapping contacts = the measured
+> drag defect), so the fix is runner-side.
+
+**Landed 2026-08-29 (late), pending only the device re-run:**
+`emitPlan --minimal` emits `#arm-verify 1`; after the opening raise the driver
+opens an arm-verify window and `trial.sh watch_arm_verify` photographs the
+raised monitor, classifies the **CAM 11 map button** with
+`tools/device/cam11lit.py` (lit ⇔ `viewing===11` via g46-57; lit 228.0–229.7 vs
+unlit 110.2–111.8 green across the r2/r3 recordings, office 34 / menu 16 as
+never-lit controls; unknown band between — a weird frame re-reads, never votes
+"armed"), touches `rearm` on a miss (the driver re-runs the opening camera rows
+as one macro, skip=1 — no leading monitor tap) and aborts via `armfail` →
+driver exit 50 after 3 misses: the run ends **named, before the guaranteed
+Puppet death**, instead of two hours later. The save-wipe hazard is closed the
+same way: `stop_remote_driver` touches `halt` (one adb round trip) before its
+slow force-stop/kill path, and the driver checks it at every macro boundary in
+both loops — residual exposure is at most the in-flight macro, not ~7 s of
+pressing into the death menu. Pinned by `test-minus-toys-plan.mjs` (phase
+table), `test-cam11lit.sh` (fixtures + controls), and `test-plan-interpreter.sh`
+(re-arm skip=1, armwin consumed, exit 50).
+**Next: re-plug the g56 (it dropped off USB mid-session) and run the fixed
+`--minimal` pilot once on Night 1 — `trial.sh DEVICE_POLICY=minus-toys
+MINUS_TOYS_VARIANT=minimal` — expecting either an armed split or a named
+arm-verify abort within the 2 AM idle window, never a silent Show Stage night.**
+Also open: after the r3 death the blind macro walked the menu to "Start a new
+game? »Yes" before the watchdog stopped input (save survived by one contact) —
+closed by the halt file above for both loops; the abort latency is now one
+watchdog poll + one macro. Full record: `MINUS-3-STRATEGY.md`
+§9 "The `--minimal` plan run twice".
+
 **2. On-device audio cues are dead without root — but the A2DP external mix
 carries them (2026-08-29).** The winding tick and every discrete `Play sample`
 cue (BB's laughs, samples 21/23/24) is a SoundPool track on the g56's
@@ -98,7 +152,7 @@ above it (Pedro's digital-twin directive). **Next: Plan 19 P2** — the native-r
 | Route | What is actually known | Next falsifiable gate |
 |---|---|---|
 | **In-APK read-true-state** (`plans/17`) | **Promoted 2026-08-28** after the Minus Toys device refutation below. The only bot family with a demonstrated ceiling: Shooter25's practice mod is **104–1** reading `in danger` / `blackout` / the music-box counter directly, frame-locked because it runs in-process; no external FNaF 2 bot exceeds ~1/3, and none solves live game-clock sync (mapped-bot research this session). Runtime established: Clickteam Fusion build 296, `application.ccn`, PAIRIP + `libpairipcore.so`. `plans/17` now carries the minimal internal-state tuple (each value with its Android group ref), a failure→fix table against `n2-minustoys-0117`, and WP4 = the Foxy hall-reset as the first in-process closed-loop decision. | One installed research build that boots to a night, exposes the state tuple, executes one closed-loop decision, and logs evidence comparable to a stock run. **Runtime attachment (routes 2/3) parked 2026-08-28** — Pedro's call: it depends on defeating PAIRIP's signature + anti-instrumentation layers, and there is no approved rooted device. Active path is the **faithful recompile (route 5)**: owned CCN → open-source Chowdren → separate research binary, no PAIRIP contact. Source emission completes for 29 real frames, arm64 CMake links the desktop target, and **it boots to the FNaF 2 02-title screen** (Xvfb+llvmpipe, `ALSOFT_DRIVERS=null`, CWD at the asset dir): frame 0 → frame 1, title event logic runs (title text, `12:00 AM` clock, WARNING block, camera map, menu buttons), stable 45 s+. The image bank now decodes correctly (2026-08-28 `& 0xFFFF` handle mask, 723→18 missing-image fallbacks) so the real title images render on desktop; title-screen layout/blend cosmetics remain and no gameplay yet. Fidelity `rebuilt-runtime`. Next: rebuild the g56 APK with the image fix, then drive the menu to a night and compare to the sourced model. |
-| **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. **Story-night aside (2026-08-29):** Pedro hand-played Night 1 Minus Toys on the g56 (2.0.7+26), holding the split all night and re-flashing on a rough beat — no Toy ever appeared, sloppy timing included. Weak/uncaptured, but the first on-device sign the glitched CAM 09 Toy stun holds (`MINUS-3-STRATEGY.md` §8/§9). Story campaign ≠ 10/20: Night 1 has only the Puppet left after the stun. | Not the open-loop loop. (a) external hybrid re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. **New lead (2026-08-29): the winding-tick phase clock.** Sample 33 `'WinD'` (g637/g644) fires strictly 2 Hz on a fixed frame grid while winding — and *every* strategy on *every* night must wind (Puppet always armed). Modelled (`WIND_TICK_*`, `sourcetest.mjs`); a far denser re-anchor than the once-per-70 s AM digit. **2026-08-29: the tick is capturable** — it survives the A2DP mix to a BlueALSA sink (matched-filter NC 0.56 winding vs 0.045 on-device), so this is a live non-root sensor. Still open: frame- vs wall-locked on the g56 (one hand-wound take did not resolve the 2 Hz grid — needs a scripted continuous wind, timestamped), and A2DP's silence-suspend resume gap. `ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer SFX". Night 1 Minus Toys is the calibration run. |
+| **Minus Toys** | **Open-loop external port refuted on the phone, 2026-08-28** (`n2-minustoys-0117`): cleared the deterministic gate 200/200, died Night 2 at ~2 AM to a BB→Foxy chain the gate cannot see. The Toys *were* held (no Toy in any office frame; CAM 11 the viewed feed every cycle) and the monitor/mask model held zero-desync — the failure is that every beat is phase-locked to a clock the device holds only to ~302 ms + drift, against the ~0.66 s/cycle budget `MINUS-3-STRATEGY.md` §3 already predicts. `minus-toys-margin.mjs`: whole-schedule phase tolerance **33 ms early / 99 ms late**, arming pair one Fusion poll. `minus-toys-jitter.mjs` under the calibrated ensemble: n2 237/600, n3–5 **0/600**, and even a perfect AM-digit re-anchor tops out at ~27–48% (n7 12%); phase basin ~66 ms wide. **Story-night aside (2026-08-29):** `--minimal` Night 1 run twice on the g56 (2.0.7+26). `-r3` armed CAM 09 only (no split) and reached ~4 AM with no mask ever used — the CAM 09 light held the Toys off the player for 2+ hours (though Toy Bonnie is not clearly on the Show Stage in any frame) — then died to the Puppet because the box cannot be wound from CAM 09. `-r2`, identical plan, armed the full split (box 100 %, ALIVE ≥ 360 s). The 33 ms opening taps make the arm non-deterministic and `--minimal` has no margin for a miss (`MINUS-3-STRATEGY.md` §9 "The `--minimal` plan run twice"). Story campaign ≠ 10/20: Night 1 has only the Puppet left after the stun. | Not the open-loop loop. (a) external hybrid re-anchor + reactive left-vent BB read + mask verify/retry — jasonclone ceiling ~1/3; (b) the in-APK row above. `loopPeriodMs=5000` faithful build is 0/200 — the 10 s period is structural. **New lead (2026-08-29): the winding-tick phase clock.** Sample 33 `'WinD'` (g637/g644) fires strictly 2 Hz on a fixed frame grid while winding — and *every* strategy on *every* night must wind (Puppet always armed). Modelled (`WIND_TICK_*`, `sourcetest.mjs`); a far denser re-anchor than the once-per-70 s AM digit. **2026-08-29: the tick is capturable** — it survives the A2DP mix to a BlueALSA sink (matched-filter NC 0.56 winding vs 0.045 on-device), so this is a live non-root sensor. Still open: frame- vs wall-locked on the g56 (one hand-wound take did not resolve the 2 Hz grid — needs a scripted continuous wind, timestamped), and A2DP's silence-suspend resume gap. `ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer SFX". Night 1 Minus Toys is the calibration run. |
 | **Faithful brayden/Shooter25 RVC** | Still untested on Android. `rvctest.mjs` is explicitly a non-reactive skeleton and its 0/300 (206 Puppet) is not a verdict on the published four-way post-wind decision policy. Most load-bearing Android mechanics are now sourced. | Implement the actual blackout / Toy Bonnie / vent guest / empty decision tree before quoting a rate. |
 | **Machine-exact Minus 7** | The emitted schedule replays 100/100 exactly on every night; its Night 7 collapse is an iid ±60 ms *human* robustness result. `/system/bin/hid` schedules one on-device event timeline, and target measurements put intra-macro error around ±2 ms. | Build a measured machine-delivery/acceptance gate (including dropped game contacts and desync), not a zero-jitter claim and not iid human row jitter. |
 | **Foxy GOT-YOU blackout cover** | Engine and source contain the two kill triggers. The public 2999/3000 greenrun deliberately locks Foxy and covers every 10 s execution check with a blackout. Searches here penalise `gotYou`; none deliberately synthesize this policy. | Encode it as an explicit, likely-RNG baseline and measure it before deciding whether it is useful on Android. |
