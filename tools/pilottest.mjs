@@ -19,6 +19,7 @@ import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 import { DeviceActuator } from './device/actuator.mjs';
+import { formatRate } from './stat.mjs';
 
 const ms = (v) => Math.round(v / 1000 * C.FPS);
 
@@ -367,7 +368,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const mode = `${guard ? ' (forcedown guard)' : ''}${lateFlash ? ' (late flash)' : ''}${fastResponse ? ' (fast response)' : ''}${vent ? ' + vent check' : ' (blind, as shipped)'}${evict ? ' + eviction' : ''}${sync ? ' + monitor sync' : ''}${deviceActuator ? ' + device actuator' : ''}`;
   const label = night === 7 ? 'a full 10/20 night' : `a full night ${night}`;
-  console.log(`${survived}/${n} survived ${label} — device schedule${mode}`);
+  console.log(`${survived}/${n} survived (${formatRate(survived, n, { label: 'survival' })}) ` +
+    `${label} — device schedule${mode}`);
   for (const [k, v] of Object.entries(fails).sort((a, b) => b[1] - a[1])) console.log(`  ${v}x  ${k}`);
   console.log(`min box ${(minBox * 100).toFixed(0)}% | min power ${minPower}` +
     (vent ? ` | ${responses} responses in ${checks} checks` : '') +

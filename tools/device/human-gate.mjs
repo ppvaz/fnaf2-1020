@@ -42,6 +42,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { replay } from './recipe.mjs';
 import { Rng } from '../../src/rng.js';
+import { contractVerdict, formatRate } from '../stat.mjs';
 
 export const HUMAN_SLACK_MS = 60;
 // Corrected 2026-08-26. This was 100, and 100 is not a measurement of a rate
@@ -180,9 +181,16 @@ export function modelGate(planText, {
       deathTimes.get(k).push(sim.death.t);
     }
   }
+  const verdict = contractVerdict(survived, runs, minSurvival);
   return {
     survived, runs, slackMs, minSurvival, night,
-    ok: survived >= runs * minSurvival,
+    // Exploratory callers can still inspect the raw sample comparison. The
+    // release-gate answer is interval-aware: a small sample cannot pass by
+    // luck when its confidence interval straddles the contract bar.
+    thresholdOk: survived >= runs * minSurvival,
+    ok: verdict.ok,
+    verdict: verdict.status,
+    interval: { low: verdict.low, high: verdict.high, halfWidth: verdict.halfWidth },
     outcomes: outcomeVector,
     deaths: [...deaths.entries()].sort((a, b) => b[1] - a[1]),
     deathTimes,
@@ -196,13 +204,15 @@ function main() {
   try { r = modelGate(readFileSync(file, 'utf8')); }
   catch (e) { console.error(`model gate: ${e.message}`); process.exit(44); }
   const need = Math.ceil(r.runs * r.minSurvival);
+  const stats = formatRate(r.survived, r.runs);
   if (!r.ok) {
-    console.error(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need}) -- refusing to run this plan`);
+    const reason = r.verdict === 'INCONCLUSIVE' ? 'INCONCLUSIVE(n too small)' : r.verdict;
+    console.error(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need}) -- ${stats} -- ${reason}; refusing to run this plan`);
     for (const [k, v] of r.deaths.slice(0, 4)) console.error(`  ${v}x  ${k}`);
     console.error('the pilot may not deliver inhumanly timed inputs (2026-08-25, no override)');
     process.exit(44);
   }
-  console.log(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need})`);
+  console.log(`model gate: ${r.survived}/${r.runs} night-${r.night} runs under +/-${r.slackMs} ms human slack (need ${need}) -- ${stats} -- PASS`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) main();

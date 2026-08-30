@@ -98,6 +98,14 @@ Separately, "a detector reporting 22 thuds ... all 22 were false positives" —
 interval; a contract-straddling result is `INCONCLUSIVE`, never silently a
 pass; the ladder in the docs carries intervals.
 
+**Foundation landed 2026-08-30.** `tools/stat.mjs` and its Python twin now
+provide Wilson intervals, bounded required-N planning, two-proportion z tests,
+and explicit PASS/FAIL/INCONCLUSIVE contract verdicts. `test-stat.mjs`
+cross-checks both implementations. `human-gate.mjs` and the night matrix now
+use the interval-aware verdict and print the interval; the remaining work is
+to migrate the other assertion CLIs and backfill every historical ladder and
+death-census quotation.
+
 ## Package 4 — A minimal property-based harness for the engine invariants
 
 **Incident.** Worst-case seeds are currently found by brute-force `--worst`

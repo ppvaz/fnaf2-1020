@@ -7,6 +7,7 @@ import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 import { Observer, OBSERVE_INTERVAL, val } from '../src/observer.js';
 import { BlackoutReactive, guardIntents, GUARD_FRAMES } from '../src/controller.js';
+import { formatRate } from './stat.mjs';
 
 let failures = 0;
 const ok = (group, what, cond) => {
@@ -272,6 +273,9 @@ function runBase(seed, { reactive = null } = {}) {
   console.log(`  night ${NIGHT}, ${N_BLACKOUTS} synthetic blackouts/run, ${N} seeds -- ` +
     `deaths TO A BLACKOUT: base ${base.deadToBlackout}, +reactive ${react.deadToBlackout}, ` +
     `+reactive(noisy) ${noisy.deadToBlackout}`);
+  console.log(`  ${formatRate(base.deadToBlackout, N, { label: 'base blackout-death rate' })}; ` +
+    `${formatRate(react.deadToBlackout, N, { label: 'reactive blackout-death rate' })}; ` +
+    `${formatRate(noisy.deadToBlackout, N, { label: 'noisy blackout-death rate' })}`);
   ok('integration', 'the scenario actually exercises blackouts', base.exercised === N);
   ok('integration', 'the base without reaction dies to almost every blackout',
     base.deadToBlackout >= N * 0.9);

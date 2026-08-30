@@ -30,6 +30,7 @@ import { writeFileSync, existsSync } from 'node:fs';
 import { chromeBinary, chromeAvailable } from '../chrome.mjs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { modelGate, GATE_RUNS, HUMAN_SLACK_MS } from './human-gate.mjs';
+import { formatRate } from '../stat.mjs';
 import * as C from '../../src/config.js';
 
 const arg = (name, def) => {
@@ -133,7 +134,6 @@ function slices(rows, total) {
 function panel(g) {
   const rows = census(g.deaths, g.deathTimes);
   const total = rows.reduce((s, r) => s + r.n, 0);
-  const pct = (100 * g.survived / g.runs).toFixed(1);
   let y = LEGEND_TOP, body = '';
   // A night with no deaths is a result, not an empty panel. Say so where the
   // pie would have been, or the reader cannot tell it from a failed render.
@@ -156,7 +156,7 @@ function panel(g) {
   }
   return { h: y + 10, svg:
     `<text class="h" x="0" y="28">Night ${g.night}</text>` +
-    `<text class="s" x="0" y="52">${g.survived}/${g.runs} survived (${pct}%) &#183; ${total} deaths</text>` +
+    `<text class="s" x="0" y="52">${g.survived}/${g.runs} survived &#183; ${esc(formatRate(g.survived, g.runs, { label: 'survival' }))} &#183; ${total} deaths</text>` +
     `<text class="m" x="0" y="72">bar ${(100 * g.minSurvival).toFixed(0)}% &#8212; ${g.ok ? 'accepted' : 'REFUSED'}${
       total ? ` &#183; a lost run dies at a median ${clock(median(rows.flatMap(r => r.ts)))}` : ''}</text>` +
     (total ? `<text class="m n" x="${COL_T}" y="${LEGEND_TOP - 20}">median time of death</text>` : '') +
@@ -234,7 +234,7 @@ function main() {
     const rows = census(g.deaths, g.deathTimes);
     const total = rows.reduce((s, r) => s + r.n, 0);
     console.log(`night ${night}: ${g.survived}/${g.runs} survived ` +
-                `(${(100 * g.survived / g.runs).toFixed(1)}%, bar ${(100 * g.minSurvival).toFixed(0)}%) -- ${total} deaths, ` +
+                `(${formatRate(g.survived, g.runs, { label: 'survival' })}, bar ${(100 * g.minSurvival).toFixed(0)}%) -- ${total} deaths, ` +
                 `median time of death ${clock(median(rows.flatMap(r => r.ts))) || 'n/a'}`);
     for (const r of rows) {
       console.log(`  ${String(r.n).padStart(5)}  ${(100 * r.n / total).toFixed(1).padStart(5)}%  ${clock(r.t).padStart(12)}  ${r.reason}`);

@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 import { DeviceActuator } from './device/actuator.mjs';
+import { formatRate } from './stat.mjs';
 
 const s = C.s;
 const mv = (x) => Math.round(x * C.FPS / 1000);   // ms -> frames
@@ -853,7 +854,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         sparseCam5 ? 'sparse phase-aligned ' : ''}CAM 05 tracking ` +
         `(${cam5Light ? `${cam5Hold}f lit` : 'unlit'})`
       : 'blind cycle';
-  console.log(`${wins}/${n} survived night ${night} — HID multitouch + ${mode}` +
+  console.log(`${wins}/${n} survived (${formatRate(wins, n, { label: 'survival' })}) ` +
+    `night ${night} — HID multitouch + ${mode}` +
     `, ${sparseLeft ? `${pilotOffset}f pilot offset` :
       `${maskMarginMs !== null ? `${maskMarginMs}ms-margin` :
         phaseSafeMask ? 'phase-safe' : 'tick-aligned'} BB mask`}` +

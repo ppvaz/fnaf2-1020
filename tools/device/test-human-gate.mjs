@@ -1,9 +1,10 @@
 // Mock regression for the model gate. No phone, no adb.
 //
-// Four claims: the plan text round-trips into replay()'s shape; the error
+// Five claims: the plan text round-trips into replay()'s shape; the error
 // injection is deterministic, bounded, and touches only offsets (a hold's
 // release shares its press's draw by construction -- the duration column is
-// untouched); the verdict thresholds exactly; and the shipped Night 6 plan
+// untouched); a small sample is explicitly inconclusive rather than a pass or
+// fail; and the shipped Night 6 plan
 // PASSES under measured human slack -- the 2026-08-25 grounding after the
 // Golden Freddy mask-off + raise became one measured-safe compound row.
 // Plus the precondition: the runner gates BEFORE its first adb command and has
@@ -69,9 +70,19 @@ const stub = (survivals) => {
 };
 const runs = 10;
 const atBar = modelGate(text, { runs, replayFn: stub([true, true, true, true, false, false, false, false, false, false]) });
-check('exactly the bar passes', atBar.ok && atBar.survived === Math.ceil(runs * GATE_MIN_SURVIVAL));
+check('a small sample at the bar is inconclusive', !atBar.ok &&
+  atBar.verdict === 'INCONCLUSIVE' && atBar.survived === Math.ceil(runs * GATE_MIN_SURVIVAL));
 const underBar = modelGate(text, { runs, replayFn: stub([true, true, true, false, false, false, false, false, false, false]) });
-check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1);
+check('a small sample under the bar is also inconclusive', !underBar.ok &&
+  underBar.verdict === 'INCONCLUSIVE' && underBar.deaths.length === 1);
+const definitePass = modelGate(text, { runs: 1000,
+  replayFn: stub(Array(900).fill(true).concat(Array(100).fill(false))) });
+check('a large sample whose interval clears the bar passes',
+  definitePass.ok && definitePass.verdict === 'PASS');
+const definiteFail = modelGate(text, { runs: 1000,
+  replayFn: stub(Array(100).fill(true).concat(Array(900).fill(false))) });
+check('a large sample whose interval misses the bar fails',
+  !definiteFail.ok && definiteFail.verdict === 'FAIL');
 
 // ----------------------------------------- the decision: the repaired plan passes
 //
@@ -97,7 +108,7 @@ check('one under the bar refuses', !underBar.ok && underBar.deaths.length === 1)
 // full sample before `trial.sh` reaches its first adb command.
 const real = modelGate(text);
 check('shipped n6 plan passes under human slack', real.ok,
-  `${real.survived}/${real.runs} -- the route must clear the unchanged 40% bar`);
+  `${real.survived}/${real.runs} ${real.verdict} -- the route must clear the unchanged 40% bar`);
 check('the broad Night 6 result stays pinned', real.survived === 648,
   `${real.survived}/${real.runs}`);
 

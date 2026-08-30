@@ -149,9 +149,13 @@ reduces to a pure schedule (only the Puppet can kill with the monitor down).
   standalone hall slot that landed inside mask-off and did nothing at the
   measured read latency — so it now rides the existing post-read `maskraise`
   row. The read, the sweep and the measured 180 ms mask→monitor seam did not
-  move. On the same 1200 seeds **all six nights now pass**: 99.1, 68.9, 78.8,
-  73.2, 63.9 and 56.1 per cent, so the ladder is gate-clean to Night 6 and
-  `test-human-gate.mjs` pins the acceptance (673/1200) rather than a refusal.
+  move. On the current 1200-seed replay **all six nights now pass**: n1
+  **100.0% [99.7%, 100.0%]**, n2 **66.3% [63.6%, 69.0%]**, n3
+  **79.3% [76.9%, 81.4%]**, n4 **73.8% [71.3%, 76.2%]**, n5
+  **62.0% [59.2%, 64.7%]**, and n6 **54.0% [51.2%, 56.8%]** (95% Wilson,
+  n=1200). `test-human-gate.mjs` pins the current acceptance at 648/1200;
+  an interval that straddles the 40% bar is now reported as
+  `INCONCLUSIVE(n too small)` and refused rather than treated as a pass.
   **The margin was paid for in flashlight:** light spend rose 2148 → 2808
   frames, and Nights 5-6 have only **192 frames of headroom left** (~3.2 s)
   against a 3000-frame budget. Price any new lit observation against that.
@@ -188,7 +192,8 @@ reduces to a pure schedule (only the Puppet can kill with the monitor down).
   Foxy and the office and seven of them did not. The conclusion stands and is
   now stronger — Foxy and office entries are **100%** of losses on every night,
   not ~95%, and Foxy alone is 52-88% of them. Night 7 is the extreme and the
-  only refused night: **310/1200 = 25.8%**, of which 779 deaths (87.5%) are
+  only refused night: **312/1200 = 26.0%**, of which 728 deaths (82.0%,
+  95% Wilson [79.3%, 84.4%]) are
   Foxy. Spend effort on the Foxy reset.
 - **A plan names its night, and nothing downstream guesses one.**
   `recipe.mjs --device-plan` emits a `#night N` header; `replay()` requires

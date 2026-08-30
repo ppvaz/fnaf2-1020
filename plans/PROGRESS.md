@@ -65,6 +65,16 @@ the package can close.
 snapshot/restore identity and continuation, same-seed event determinism, and
 Night-1 exclusion of Balloon Boy with bounded seed shrinking. The broader
 property campaign remains open.
+2026-08-30: Plan 18 Package 3's statistical foundation landed in
+`tools/stat.mjs` and `tools/stat.py`: Wilson intervals, required-N planning,
+two-proportion tests, and explicit PASS/FAIL/INCONCLUSIVE verdicts are now
+cross-checked by `tools/test-stat.mjs`. `human-gate.mjs` and the night matrix
+print intervals and refuse a straddling sample. The current 1200-seed ladder
+is n1 **100.0% [99.7%, 100.0%]**, n2 **66.3% [63.6%, 69.0%]**, n3
+**79.3% [76.9%, 81.4%]**, n4 **73.8% [71.3%, 76.2%]**, n5
+**62.0% [59.2%, 64.7%]**, and n6 **54.0% [51.2%, 56.8%]** (95% Wilson;
+all n=1200). The other assertion CLIs and historical quotations remain to
+be migrated.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -878,8 +888,9 @@ unmodeled). Concrete next moves:
 > cannot clear `MASK_ANIM_OFF` without the sweep pin) + the tight geometry**.
 > Lever 1 (correlated jitter) still stands as the honest-measurement move.
 
-n7 gate is **310/1200 = 25.8%**, 87.5% Foxy deaths, median death 54 s — half
-the runs dead in the first in-game hour, because `foxyDormant` (engine.js
+n7 gate is **312/1200 = 26.0% [23.6%, 28.6%]**, 82.0% Foxy deaths
+[79.3%, 84.4%], median death 55 s — most of the runs are dead in the first
+in-game hour, because `foxyDormant` (engine.js
 g872-874) holds Foxy at D=0 for none of Night 7 where it covers all of Night 1.
 
 **Not the screencap.** Proven this session: the read cost does not move any
@@ -984,17 +995,17 @@ as work is done rather than composed at the end; two are delegated and named.
    **Open, and this is the next thing worth doing.** Foxy is 52-88% of deaths
    on every night and the ladder's whole remaining cost:
 
-   | night | survived | foxy | office | median death |
+   | night | survived | foxy losses | office losses | median death |
    |---|---|---|---|---|
-   | 2 | 825/1200 68.8% | 219 (58.4%) | 156 | 276 s / 3 AM |
-   | 3 | 959/1200 79.9% | 164 (68.0%) | 77 | 299 s / 4 AM |
-   | 4 | 891/1200 74.3% | 226 (73.1%) | 83 | 239 s / 3 AM |
-   | 5 | 774/1200 64.5% | 220 (51.6%) | 206 | 160 s / 2 AM |
-   | 6 | 680/1200 56.7% | 342 (65.8%) | 178 | 175 s / 2 AM |
-   | 7 | 310/1200 25.8% | 779 (87.5%) | 111 |  54 s / 12 AM |
+   | 2 | 796/1200 66.3% | 216 (53.5%, 48.6–58.3%) | 188 (46.5%, 41.7–51.4%) | 281 s / 4 AM |
+   | 3 | 951/1200 79.3% | 165 (66.3%, 60.2–71.9%) | 84 (33.7%, 28.1–39.8%) | 310 s / 4 AM |
+   | 4 | 886/1200 73.8% | 224 (71.3%, 66.1–76.1%) | 90 (28.7%, 23.9–33.9%) | 240 s / 3 AM |
+   | 5 | 744/1200 62.0% | 217 (47.6%, 43.0–52.2%) | 239 (52.4%, 47.8–57.0%) | 160 s / 2 AM |
+   | 6 | 648/1200 54.0% | 329 (59.6%, 55.5–63.6%) | 223 (40.4%, 36.4–44.5%) | 180 s / 2 AM |
+   | 7 | 312/1200 26.0% | 728 (82.0%, 79.3–84.4%) | 160 (18.0%, 15.6–20.7%) |  55 s / 12 AM |
 
    Two facts to start from, both visible in `captures/deathchart-n2-7.svg`.
-   **(a) Night 2 is harder than Night 3** (68.8% vs 79.9%) and the sourced AI
+   **(a) Night 2 is harder than Night 3** (66.3% vs 79.3%) and the sourced AI
    table says why: night 2 arms toybonnie/toychica at 3 and toyfreddy at 2,
    where night 3 arms the toys at 1. Night 2 is not a gentle night.
    **(b) The two Foxy causes are one mechanism seen twice** -- "locked on, no
@@ -1002,7 +1013,7 @@ as work is done rather than composed at the end; two are delegated and named.
    on" are both D having already exceeded 3. The reset is what is missing, not
    the flash. `foxyExposureFrames = 100 * night` also means Foxy locks on
    *sooner* on Night 2 than Night 3, which is the other half of (a).
-   **(c) Night 7's median death is 54 s -- half its runs are dead inside the
+   **(c) Night 7's median death is 55 s -- most of its runs are dead inside the
    first in-game hour.** Checked, not assumed: the night-7 plan emits
    `#idle-until 0`, so this is not the opening idle. It is `foxyDormant`
    (engine.js, g872-874) holding D at zero for all of Night 1 and until 2 AM on
@@ -2117,7 +2128,7 @@ on the next graded run remains the way to attribute them, since only
 | [10 — stock-device controller](10-stock-device-controller.md) | 0 / 7 | **0%** | Package 0 advanced: pan sourced and measured, both lights verified, office proven 1600×768 and the screen mapping derived; the right vent's scene X stays unknown | Price the right vent's ~570 ms pan round trip, then close the vocabulary |
 | [11 — policy interface](11-policy-interface-and-baselines.md) | 0 / 5 | **0%** | Proposed; optional Gym package excluded from denominator | Freeze exact-engine policy protocol after Plan 09 record agreement |
 | [12 — evidence campaign](12-end-to-end-evidence-campaign.md) | 0 / 7 | **0%** | Lateness decomposed and priced: the knee is the 2→3 frame boundary, and the fork-free clock recovers Nights 1–5 in the simulator; Night 7 stays blocked by the phase island | Gate A after Plans 09–11 provide their contracts |
-| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. The 2026-08-30 run added a shadow-only labelled Foxy-cause foundation, but the operator label is not a holdout or a promotion. All six story configurations pass the last committed human gate (99.1, 68.9, 78.8, 73.2, 63.9, 56.1%), and the marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
+| [13 — campaign/all-night](13-campaign-and-all-night-support.md) | 2 / 8 | **25%** | **Night 1 CLEARED on device 2026-08-26** (`n1-full-1640`, 420.2 s alive, save advanced Night 1 → Night 2). Package 3 is **advanced, not closed**: generic intro and positive 6 AM now timeline the real clear, while minigames, ordinal recognition, committed real holdouts, clock alignment and save advancement remain open. The live title has only New Game + Continue and the device owner confirmed cursor Night 2; Sixth Night is not unlocked. The 2026-08-30 run added a shadow-only labelled Foxy-cause foundation, but the operator label is not a holdout or a promotion. Current simulator ladder (1200 seeds, 95% Wilson) is 100.0% [99.7%, 100.0%], 66.3% [63.6%, 69.0%], 79.3% [76.9%, 81.4%], 73.8% [71.3%, 76.2%], 62.0% [59.2%, 64.7%], and 54.0% [51.2%, 56.8%]; this is not device evidence. The marker-123 source pass has landed (`47dcd1b`) with the engine suite green, so nothing blocks hardware | One traced Night 2 cycle, then a full graded Night 2 attempt |
 | [14 — device portability](14-device-portability-and-profiles.md) | 0 / 6 | **0%** | Proposed; the canvas→screen mapping is now derived (stretch-to-fill, predicted 1720 against a measured 1700–1800) rather than calibrated | Inventory and classify the coupling: geometry, layout mode, pixel models, timing |
 | [15 — sensor independence](15-sensor-independent-observations.md) | 0 / 5 | **0%** | In progress (2026-08-27, Pedro's directive: drop every screencap read, cue helper is the response). Pkg-4 instrumentation landed — `trial/08` logs paired `GRID` lines per BB read; corpus accretes on the next device night. Pkgs 2/3/5 and the grader migration open. | Same capture at `trial/06` + `trial/04`, then build the BB grid signature from the paired frames |
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |

@@ -37,6 +37,9 @@ const ENGINE = [
   // than a wrong *outcome*: the population checks below all pass with a
   // corrupted sourced constant.
   ['sourcetest', ['sourcetest.mjs']],
+  // Plan 18 package 3: JavaScript/Python statistical primitives agree on
+  // Wilson intervals, planning-N, two-proportion tests and fail-closed bars.
+  ['stat helper', ['test-stat.mjs']],
   // Plan 02's reopened Android route: the sourced split-camera state must arm,
   // the published 10 s Minus Toys loop must clear both normal and pinned
   // worst-luck seeds, and the same loop without the split must fail.
@@ -243,7 +246,7 @@ const ENGINE = [
   // old inline-schedule modes are no longer selectable; the live press floor
   // stays as the backstop for recovery actions outside the artifact. These
   // checks verify both layers against mocks, exercise the sole runner path
-  // with a fake adb, and assert the shipped Night 6 plan PASSES (673/1200 with
+  // with a fake adb, and assert the shipped Night 6 plan PASSES (648/1200 with
   // the sourced Fusion LCG and measured-safe maskraise compound).
   ['human gate', ['device/test-human-gate.mjs']],
   // The gate counts the deaths and prints its top four; on Night 2 that cut
@@ -260,6 +263,9 @@ const ENGINE = [
   // The external audio recorder must expose a fail-closed, phone-free route
   // preflight before it can create an output directory or stop monitoring.
   ['BT audio route', ['cue/test-capture-bt-audio.sh']],
+  // The external authority owns rendered audio and publishes the same bounded
+  // fact contract regardless of whether its receiver is BlueALSA or an ESP32.
+  ['audio authority', ['cue/test-audio-authority.py']],
   ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,

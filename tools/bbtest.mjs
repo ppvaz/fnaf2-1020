@@ -6,6 +6,7 @@ import { isMainThread } from 'node:worker_threads';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
 import { Rng } from '../src/rng.js';
+import { formatRate } from './stat.mjs';
 
 // The scripted half of the routine, as frame offsets from the cycle anchor.
 // tools/cyclesearch.mjs optimises alternatives to this table; everything the
@@ -306,7 +307,8 @@ for (let i = 0; i < n; i++) {
   }
 }
 const failed = Object.values(fails).reduce((a, b) => a + b, 0);
-console.log(`${n - failed}/${n} survived${process.argv.includes('--worst') ? ' (worst luck)' : ''}`);
+console.log(`${n - failed}/${n} survived (${formatRate(n - failed, n, { label: 'survival' })})` +
+  `${process.argv.includes('--worst') ? ' (worst luck)' : ''}`);
 for (const [k, v] of Object.entries(fails)) console.log(`  ${v}x  ${k}`);
 console.log(`min box ${(minB * 100).toFixed(0)}% | min power ${minP} | stun lapses total ${lapses}`);
 

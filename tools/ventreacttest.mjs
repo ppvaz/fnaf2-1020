@@ -18,6 +18,7 @@ import { Observer } from '../src/observer.js';
 import { VentThreatReactive } from '../src/controller.js';
 import { replay, KNOBS0, ENGINE_PHASE_ORACLE } from './device/minus-toys-plan.mjs';
 import { evalEnsemble } from './device/minus-toys-jitter.mjs';
+import { formatRate } from './stat.mjs';
 
 let failures = 0, knownNegatives = 0;
 const assertMode = process.argv.includes('--assert');
@@ -208,8 +209,8 @@ const base = rate(KNOBS0);
 const clean = rate({ ...KNOBS0, reactiveBB: true });
 const noisy = rate({ ...KNOBS0, reactiveBB: true, reactiveDelayFrames: 8, reactiveDropRate: 0.2 });
 
-const pct = (x, n = SEEDS.length) => (100 * x / n).toFixed(1);
-const fmt = (x) => `${x.won}/${SEEDS.length} (${pct(x.won)}%) won, bb-inside runs ${x.bbInRuns}, ` +
+const fmt = (x) => `${x.won}/${SEEDS.length} won (${formatRate(x.won, SEEDS.length, { label: 'survival' })}), ` +
+  `bb-inside runs ${x.bbInRuns}, ` +
   `deaths ${Object.entries(x.deaths).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(' ') || 'none'}`;
 
 console.log(`\nNight ${NIGHT} story table, ${SEEDS.length} seeds, zero jitter:`);
@@ -240,8 +241,10 @@ const N_ENS = numericArg('ensemble-seeds', 600);
 const ensBase = evalEnsemble({ night: NIGHT, seeds: N_ENS });
 const ensReact = evalEnsemble({ night: NIGHT, seeds: N_ENS, knobs: { ...KNOBS0, reactiveBB: true } });
 console.log(`\nEnsemble (calibrated clock-error model), ${N_ENS} seeds, night ${NIGHT}:`);
-console.log(`  base             ${ensBase.survived}/${N_ENS} (${pct(ensBase.survived, N_ENS)}%)`);
-console.log(`  +vent-reactive   ${ensReact.survived}/${N_ENS} (${pct(ensReact.survived, N_ENS)}%)`);
+  console.log(`  base             ${ensBase.survived}/${N_ENS} (` +
+    `${formatRate(ensBase.survived, N_ENS, { label: 'survival' })})`);
+  console.log(`  +vent-reactive   ${ensReact.survived}/${N_ENS} (` +
+    `${formatRate(ensReact.survived, N_ENS, { label: 'survival' })})`);
 console.log(`  base deaths ${JSON.stringify(ensBase.deaths)}`);
 console.log(`  react deaths ${JSON.stringify(ensReact.deaths)}`);
 

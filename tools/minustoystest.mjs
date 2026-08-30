@@ -15,6 +15,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Sim } from '../src/engine.js';
+import { formatRate } from './stat.mjs';
 
 const SETUP = new Map([
   [0,   [['press', 'monitor']]],
@@ -102,7 +103,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     maxVentArrivals = Math.max(maxVentArrivals, result.ventArrivals);
   }
   console.log(`Minus Toys probe (${worst ? 'pinned worst-luck' : 'normal'} seeds${control ? ', no-split control' : ''})`);
-  console.log(`${wins}/${runs} survived on the current Android model`);
+  console.log(`${wins}/${runs} survived (${formatRate(wins, runs, { label: 'survival' })}) on the current Android model`);
   for (const [reason, count] of Object.entries(deaths)) console.log(`  ${count}x ${reason}`);
   console.log(`split misses ${splitMisses} | min box ${(minBox * 100).toFixed(0)}% | ` +
     `min power ${minPower} | max blackouts ${maxBlackouts} | max vent arrivals ${maxVentArrivals}`);

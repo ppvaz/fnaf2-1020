@@ -31,6 +31,7 @@ import * as C from '../../src/config.js';
 import { build, capture, devicePlan, replay, resolveAttack, TEMPLATE_NIGHT,
          idleUntilMs } from './recipe.mjs';
 import { modelGate, GATE_MIN_SURVIVAL, HUMAN_SLACK_MS, GATE_RUNS } from './human-gate.mjs';
+import { contractVerdict, formatRate } from '../stat.mjs';
 import { pool, closePool } from '../pool.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -83,9 +84,12 @@ for (const night of NIGHTS) {
     detections += r.detections;
   }
   const survived = gateSurvivors.get(night);
+  const verdict = contractVerdict(survived, GATE_RUNS, GATE_MIN_SURVIVAL);
   const gate = { night, survived, runs: GATE_RUNS, slackMs: HUMAN_SLACK_MS,
                  minSurvival: GATE_MIN_SURVIVAL,
-                 ok: survived >= GATE_RUNS * GATE_MIN_SURVIVAL };
+                 ok: verdict.ok, verdict: verdict.status,
+                 interval: { low: verdict.low, high: verdict.high,
+                   halfWidth: verdict.halfWidth } };
 
   rows.push({ night, recipe, plan, attack, won, missed, detections, deaths, gate });
 
@@ -130,7 +134,9 @@ for (const night of NIGHTS) {
   // does not clear its night must not reach a phone.
   check(`night ${night} passes the model gate`, gate.ok,
     `${gate.survived}/${gate.runs} under +/-${HUMAN_SLACK_MS} ms ` +
-    `(need ${Math.ceil(gate.runs * GATE_MIN_SURVIVAL)})`);
+    `(need ${Math.ceil(gate.runs * GATE_MIN_SURVIVAL)}, ${gate.verdict} ` +
+    `[${(100 * gate.interval.low).toFixed(1)}%, ${
+      (100 * gate.interval.high).toFixed(1)}%])`);
   // A plan that spends more flashlight than the night owns is not a plan.
   check(`night ${night} stays inside its power budget`,
     recipe.powerFramesHeadroom > 0,
@@ -227,7 +233,8 @@ for (const { night, recipe, attack, won, detections, gate } of rows) {
   const need = Math.ceil(gate.runs * GATE_MIN_SURVIVAL);
   console.log(
     `night ${night}  exact ${String(won).padStart(3)}/${EXACT_RUNS}` +
-    `  human ${String(gate.survived).padStart(3)}/${gate.runs} (need ${need})` +
+    `  human ${String(gate.survived).padStart(3)}/${gate.runs} ` +
+    `(${formatRate(gate.survived, gate.runs, { label: 'survival' })}; need ${need})` +
     `  light ${String(recipe.powerFramesSpentIfAllClear).padStart(4)}/${recipe.powerFramesAvailable}` +
     `  BB ai ${String(attack.peakAi).padStart(2)} ${attack.reachable ? 'reachable' : 'UNREACHABLE'}` +
     ` (${attack.source} n${attack.cutFrom.night} s${attack.cutFrom.seed})` +

@@ -15,6 +15,7 @@ import * as C from '../src/config.js';
 import { sweep, runPolicy } from './policy.mjs';
 import { POLICIES } from './policybaselines.mjs';
 import { run as bbRun } from './bbtest.mjs';
+import { formatRate } from './stat.mjs';
 
 const RUNS = +(process.env.POLICY_RUNS || 100);
 const SLACKS = [0, 20, 40, 60, 100];
@@ -41,7 +42,8 @@ const CONTROLS = [
   ['shooter25-hoisted', 'C5 Shooter25 with the danger test hoisted out of Checking'],
 ];
 
-const pct = (r) => `${String(r.survived).padStart(3)}/${r.runs}`;
+const pct = (r) => `${String(r.survived).padStart(3)}/${r.runs} ` +
+  `(${formatRate(r.survived, r.runs, { label: 'survival' })})`;
 
 function nightsTable() {
   console.log('\n== survival by night, exact replay, no execution error ==');
