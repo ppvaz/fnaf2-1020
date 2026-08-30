@@ -18,6 +18,12 @@ import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.net.ConnectivityManager;
+import android.net.DhcpInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.media.projection.MediaProjectionManager;
 import android.media.projection.MediaProjectionConfig;
 import android.os.Build;
@@ -37,9 +43,10 @@ public final class MainActivity extends Activity {
     private static final int REQUEST_MEDIA_PROJECTION = 1002;
     private static final int REQUEST_BLUETOOTH_CONNECT = 1003;
     private static final String GAME_PACKAGE = "com.scottgames.fnaf2";
-    // Current external A2DP receiver used by the experiment.
-    private static final String AUDIO_RECEIVER_ADDRESS = "C4:23:60:B6:03:40";
-    private static final String AUDIO_RECEIVER_NAME = "pedro-82cg";
+    // Bench ESP32 A2DP receiver flashed from firmware/esp32-audio-consumer.
+    private static final String AUDIO_RECEIVER_NAME = "FNAF2 Audio Consumer";
+    private static final String WIFI_AP_SSID = "FNAF2-AUDIO";
+    private static final String WIFI_AP_PASSWORD = "fnaf2-audio";
     private static final int COLOR_BACKGROUND = Color.rgb(18, 10, 11);
     private static final int COLOR_PANEL = Color.rgb(31, 16, 18);
     private static final int COLOR_PANEL_BORDER = Color.rgb(119, 45, 39);
@@ -79,6 +86,11 @@ public final class MainActivity extends Activity {
     private boolean profileProxyRequested;
     private boolean bluetoothPermissionRequested;
     private boolean openBluetoothSettingsAfterPermission;
+    private boolean bluetoothConnected;
+    private boolean firmwareAudioReceiverConnected;
+    private boolean wifiEspConnected;
+    private String audioStatusText = "AUDIO A2DP: checking receiver...\nreceiver = "
+            + AUDIO_RECEIVER_NAME + " (discover by name)";
 
     private final BroadcastReceiver statusReceiver = new BroadcastReceiver() {
         @Override
@@ -149,6 +161,7 @@ public final class MainActivity extends Activity {
             hudTypeface = Typeface.DEFAULT;
         }
         setContentView(buildUi());
+        refreshSetupGuide();
     }
 
     @Override
@@ -177,6 +190,13 @@ public final class MainActivity extends Activity {
         // the next sensor heartbeat to redraw the signal feed.
         startService(new Intent(this, CaptureService.class)
                 .setAction(CaptureService.ACTION_QUERY_STATUS));
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        refreshAudioStatus();
+        refreshSetupGuide();
     }
 
     @Override
@@ -453,8 +473,7 @@ public final class MainActivity extends Activity {
 
     private TextView audioStatusView() {
         TextView view = new TextView(this);
-        view.setText("AUDIO A2DP: checking receiver...\nreceiver = "
-                + AUDIO_RECEIVER_NAME + " (" + AUDIO_RECEIVER_ADDRESS + ")");
+        view.setText(audioStatusText);
         view.setTextIsSelectable(true);
         view.setTextSize(14);
         view.setTextColor(COLOR_TEXT);
@@ -469,7 +488,13 @@ public final class MainActivity extends Activity {
         bluetoothButton = themedButton(
                 "Connect audio receiver", COLOR_BONNIE, COLOR_BONNIE_PRESSED,
                 COLOR_BONNIE_STROKE, COLOR_TEXT);
-        bluetoothButton.setOnClickListener(view -> openBluetoothSettings());
+        bluetoothButton.setOnClickListener(view -> {
+            if (firmwareAudioReceiverConnected && !isEspWifiConnected()) {
+                openWifiSettings();
+            } else {
+                openBluetoothSettings();
+            }
+        });
         return bluetoothButton;
     }
 
@@ -503,6 +528,12 @@ public final class MainActivity extends Activity {
 
     private void toggleCapture() {
         if (!captureRunning) {
+            if (!bluetoothConnected
+                    || (firmwareAudioReceiverConnected && !isEspWifiConnected())) {
+                refreshSetupGuide();
+                showAudioSetupDialog();
+                return;
+            }
             requestProjection();
             return;
         }
@@ -594,51 +625,95 @@ public final class MainActivity extends Activity {
             return;
         }
         if (!hasBluetoothConnectPermission()) {
-        audioStatusView.setText(
+            setAudioReceiverState(false, false);
+            setAudioDisplayText(
                     "AUDIO A2DP: permission required\n"
                             + "tap Connect audio receiver to authorize BLUETOOTH_CONNECT");
             return;
         }
         if (bluetoothAdapter == null) {
-            audioStatusView.setText("AUDIO A2DP: unavailable\nBluetooth adapter not found");
+            setAudioReceiverState(false, false);
+            setAudioDisplayText("AUDIO A2DP: unavailable\nBluetooth adapter not found");
             return;
         }
         if (!bluetoothAdapter.isEnabled()) {
-            audioStatusView.setText("AUDIO A2DP: Bluetooth off\n"
+            setAudioReceiverState(false, false);
+            setAudioDisplayText("AUDIO A2DP: Bluetooth off\n"
                     + "enable Bluetooth, then connect " + AUDIO_RECEIVER_NAME);
             return;
         }
         if (a2dpProxy == null) {
-            setBluetoothConnected(false);
-            audioStatusView.setText("AUDIO A2DP: checking receiver...\nreceiver = "
-                    + AUDIO_RECEIVER_NAME + " (" + AUDIO_RECEIVER_ADDRESS + ")");
+            setAudioReceiverState(false, false);
+            setAudioDisplayText("AUDIO A2DP: checking receiver...\nreceiver = "
+                    + AUDIO_RECEIVER_NAME + " (discover by name)");
             return;
         }
         try {
-            BluetoothDevice receiver = bluetoothAdapter.getRemoteDevice(AUDIO_RECEIVER_ADDRESS);
-            int state = a2dpProxy.getConnectionState(receiver);
-            if (state == BluetoothProfile.STATE_CONNECTED) {
+            BluetoothDevice receiver = findConnectedAudioReceiver();
+            if (receiver != null) {
+                boolean firmwareReceiver = AUDIO_RECEIVER_NAME.equals(receiver.getName());
                 boolean playing = a2dpProxy.isA2dpPlaying(receiver);
-                setBluetoothConnected(true);
+                setAudioReceiverState(true, firmwareReceiver);
                 setAudioStatus(
                         "AUDIO A2DP: " + (playing ? "STREAMING" : "CONNECTED"),
-                        "receiver = " + AUDIO_RECEIVER_NAME,
-                        "PCM source = external receiver");
-            } else {
-                setBluetoothConnected(false);
+                        "receiver = " + bluetoothDeviceName(receiver),
+                        "address = " + receiver.getAddress());
+                return;
+            }
+
+            BluetoothDevice firmwareReceiver = findFirmwareAudioReceiver();
+            if (firmwareReceiver != null) {
+                int state = a2dpProxy.getConnectionState(firmwareReceiver);
+                setAudioReceiverState(false, false);
                 setAudioStatus(
                         "AUDIO A2DP: " + bluetoothStateName(state),
                         "receiver = " + AUDIO_RECEIVER_NAME,
-                        "tap Connect audio receiver to open Bluetooth settings");
+                        "address = " + firmwareReceiver.getAddress());
+                return;
             }
-        } catch (IllegalArgumentException exception) {
-            setBluetoothConnected(false);
-            audioStatusView.setText("AUDIO A2DP: invalid receiver address\n"
-                    + AUDIO_RECEIVER_ADDRESS);
+
+            setAudioReceiverState(false, false);
+            setAudioStatus(
+                    "AUDIO A2DP: DISCONNECTED",
+                    "receiver = " + AUDIO_RECEIVER_NAME,
+                    "pair/connect the device with this name");
         } catch (SecurityException exception) {
-            setBluetoothConnected(false);
-            audioStatusView.setText("AUDIO A2DP: BLUETOOTH_CONNECT permission required");
+            setAudioReceiverState(false, false);
+            setAudioDisplayText("AUDIO A2DP: BLUETOOTH_CONNECT permission required");
         }
+    }
+
+    private BluetoothDevice findConnectedAudioReceiver() {
+        if (a2dpProxy == null) {
+            return null;
+        }
+        for (BluetoothDevice device : a2dpProxy.getConnectedDevices()) {
+            return device;
+        }
+        return null;
+    }
+
+    private BluetoothDevice findFirmwareAudioReceiver() {
+        if (a2dpProxy != null) {
+            for (BluetoothDevice device : a2dpProxy.getConnectedDevices()) {
+                if (AUDIO_RECEIVER_NAME.equals(device.getName())) {
+                    return device;
+                }
+            }
+        }
+        if (bluetoothAdapter != null) {
+            for (BluetoothDevice device : bluetoothAdapter.getBondedDevices()) {
+                if (AUDIO_RECEIVER_NAME.equals(device.getName())) {
+                    return device;
+                }
+            }
+        }
+        return null;
+    }
+
+    private String bluetoothDeviceName(BluetoothDevice device) {
+        String name = device.getName();
+        return name == null ? "unknown A2DP receiver" : name;
     }
 
     private void setAudioStatus(String headline, String receiverLine, String extraLine) {
@@ -648,14 +723,129 @@ public final class MainActivity extends Activity {
                     == Configuration.ORIENTATION_LANDSCAPE
                     ? " | " + extraLine : "\n" + extraLine;
         }
-        audioStatusView.setText(text);
+        setAudioDisplayText(text);
     }
 
-    private void setBluetoothConnected(boolean connected) {
-        if (bluetoothButton != null) {
-            bluetoothButton.setText(connected
-                    ? "Disconnect audio receiver" : "Connect audio receiver");
+    private void setAudioDisplayText(String text) {
+        audioStatusText = text;
+        refreshSetupGuide();
+    }
+
+    private void setAudioReceiverState(boolean connected, boolean firmwareReceiver) {
+        bluetoothConnected = connected;
+        firmwareAudioReceiverConnected = connected && firmwareReceiver;
+        updateAudioButton();
+        refreshSetupGuide();
+    }
+
+    private void updateAudioButton() {
+        if (bluetoothButton == null) {
+            return;
         }
+        if (firmwareAudioReceiverConnected && !isEspWifiConnected()) {
+            bluetoothButton.setText("Connect ESP32 Wi-Fi");
+        } else if (bluetoothConnected) {
+            bluetoothButton.setText("Disconnect audio receiver");
+        } else {
+            bluetoothButton.setText("Connect audio receiver");
+        }
+    }
+
+    private void refreshSetupGuide() {
+        if (audioStatusView == null) {
+            return;
+        }
+
+        wifiEspConnected = firmwareAudioReceiverConnected && isEspWifiConnected();
+        String wifiLine;
+        if (wifiEspConnected) {
+            wifiLine = "Wi-Fi: CONNECTED to " + WIFI_AP_SSID;
+        } else if (firmwareAudioReceiverConnected && hasWifiTransport()) {
+            String ssid = connectedWifiSsid();
+            wifiLine = "Wi-Fi: " + (ssid == null ? "connected; verify " : ssid
+                    + "; select ") + WIFI_AP_SSID
+                    + " (password: " + WIFI_AP_PASSWORD + ")";
+        } else if (firmwareAudioReceiverConnected) {
+            wifiLine = "Wi-Fi: connect " + WIFI_AP_SSID
+                    + " (password: " + WIFI_AP_PASSWORD + ")";
+        } else {
+            wifiLine = "Wi-Fi: not required for this A2DP receiver";
+        }
+        String nextStep;
+        if (!bluetoothConnected) {
+            nextStep = "Next: tap Connect audio receiver";
+        } else if (firmwareAudioReceiverConnected && !wifiEspConnected) {
+            nextStep = "Next: tap the audio button for Wi-Fi settings";
+        } else {
+            nextStep = "SETUP READY: tap Start video capture";
+        }
+        audioStatusView.setText(audioStatusText + "\n" + wifiLine + "\n" + nextStep);
+        updateAudioButton();
+    }
+
+    private boolean isEspWifiConnected() {
+        String ssid = connectedWifiSsid();
+        if (ssid != null) {
+            return WIFI_AP_SSID.equals(ssid);
+        }
+        // Android may hide the SSID from apps without location permission.
+        // The ESP32 soft AP uses the stable default gateway 192.168.4.1, so
+        // use that local-only signal as a permission-free fallback.
+        try {
+            WifiManager wifiManager = getSystemService(WifiManager.class);
+            DhcpInfo dhcp = wifiManager == null ? null : wifiManager.getDhcpInfo();
+            return dhcp != null && isEspApAddress(dhcp.gateway);
+        } catch (SecurityException exception) {
+            return false;
+        }
+    }
+
+    private boolean isEspApAddress(int address) {
+        int first = address & 0xff;
+        int second = (address >>> 8) & 0xff;
+        int third = (address >>> 16) & 0xff;
+        int fourth = (address >>> 24) & 0xff;
+        return (first == 192 && second == 168 && third == 4 && fourth == 1)
+                || (first == 1 && second == 4 && third == 168 && fourth == 192);
+    }
+
+    private String connectedWifiSsid() {
+        try {
+            WifiManager wifiManager = getSystemService(WifiManager.class);
+            if (wifiManager == null) {
+                return null;
+            }
+            WifiInfo info = wifiManager.getConnectionInfo();
+            if (info == null) {
+                return null;
+            }
+            String ssid = info.getSSID();
+            if (ssid == null || "<unknown ssid>".equalsIgnoreCase(ssid)) {
+                return null;
+            }
+            if (ssid.length() >= 2 && ssid.startsWith("\"")
+                    && ssid.endsWith("\"")) {
+                ssid = ssid.substring(1, ssid.length() - 1);
+            }
+            return ssid;
+        } catch (SecurityException exception) {
+            return null;
+        }
+    }
+
+    private boolean hasWifiTransport() {
+        ConnectivityManager manager = getSystemService(ConnectivityManager.class);
+        if (manager == null) {
+            return false;
+        }
+        for (Network network : manager.getAllNetworks()) {
+            NetworkCapabilities capabilities = manager.getNetworkCapabilities(network);
+            if (capabilities != null && capabilities.hasTransport(
+                    NetworkCapabilities.TRANSPORT_WIFI)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String bluetoothStateName(int state) {
@@ -683,6 +873,21 @@ public final class MainActivity extends Activity {
             return;
         }
         startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
+    }
+
+    private void openWifiSettings() {
+        startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+    }
+
+    private void showAudioSetupDialog() {
+        String message = audioStatusView == null
+                ? "Connect the ESP32 Bluetooth receiver and Wi-Fi network first."
+                : audioStatusView.getText().toString();
+        new AlertDialog.Builder(this)
+                .setTitle("Prepare ESP32 audio")
+                .setMessage(message)
+                .setPositiveButton("Close", null)
+                .show();
     }
 
     @Override

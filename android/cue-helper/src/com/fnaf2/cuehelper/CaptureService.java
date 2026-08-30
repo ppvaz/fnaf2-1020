@@ -31,11 +31,14 @@ import android.util.Log;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -82,6 +85,7 @@ public final class CaptureService extends Service {
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
     private static final int CONTROL_PORT = 49_707;
     private static final int AUDIO_FACT_PORT = 49_708;
+    private static final int AUDIO_FACT_UDP_PORT = 49_709;
     private static final String CONTROL_SOCKET_PREFIX =
             "com.fnaf2.cuehelper.control";
     private static final int CONTROL_LINE_LIMIT = 256;
@@ -104,12 +108,15 @@ public final class CaptureService extends Service {
     private HandlerThread visualThread;
     private ServerSocket controlServer;
     private ServerSocket audioFactServer;
+    private DatagramSocket audioFactUdpServer;
     private LocalServerSocket localControlServer;
     private Thread controlThread;
     private Thread audioFactThread;
+    private Thread audioFactUdpThread;
     private Thread localControlThread;
     private volatile boolean controlRunning;
     private volatile boolean audioFactRunning;
+    private volatile boolean audioFactUdpRunning;
     private volatile boolean tcpControlUp;
     private volatile boolean localControlUp;
     private volatile Socket audioFactClient;
@@ -265,6 +272,7 @@ public final class CaptureService extends Service {
             audioProfileName = "unknown";
             startControlServer(generation);
             startAudioFactServer(generation);
+            startAudioFactUdpServer(generation);
             publishControlStatus();
             publishCombinedStatus("RUNNING");
         } catch (Throwable error) {
@@ -685,6 +693,50 @@ public final class CaptureService extends Service {
         audioFactThread.start();
     }
 
+    private void startAudioFactUdpServer(long generation) throws IOException {
+        DatagramSocket server = new DatagramSocket(null);
+        server.setReuseAddress(true);
+        // The ESP32 bench consumer sends one bounded health fact per UDP
+        // datagram on its private Wi-Fi AP. This listener is intentionally
+        // shadow-only: it accepts no cue-* facts and cannot receive actions.
+        server.bind(new InetSocketAddress(AUDIO_FACT_UDP_PORT));
+        server.setSoTimeout(1_000);
+        audioFactUdpServer = server;
+        audioFactUdpRunning = true;
+        audioFactUdpThread = new Thread(
+                () -> audioFactUdpLoop(generation, server), "cue-audio-facts-wifi");
+        audioFactUdpThread.start();
+    }
+
+    private void audioFactUdpLoop(long generation, DatagramSocket server) {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        byte[] buffer = new byte[AUDIO_FACT_LINE_LIMIT];
+        while (audioFactUdpRunning && sessionActive(generation)) {
+            DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+            try {
+                server.receive(packet);
+                String line = new String(packet.getData(), packet.getOffset(),
+                        packet.getLength(), StandardCharsets.US_ASCII).trim();
+                if (!line.isEmpty() && !acceptAudioFact(line, true)) {
+                    Log.w(TAG, "rejected Wi-Fi audio fact from "
+                            + packet.getAddress().getHostAddress());
+                }
+            } catch (SocketTimeoutException ignored) {
+                // Re-check the session generation and shutdown flag.
+            } catch (SocketException error) {
+                if (audioFactUdpRunning && sessionActive(generation)) {
+                    Log.e(TAG, "Wi-Fi audio fact socket failed", error);
+                    audioFactUdpRunning = false;
+                }
+                break;
+            } catch (Throwable error) {
+                if (audioFactUdpRunning && sessionActive(generation)) {
+                    Log.w(TAG, "Wi-Fi audio fact failed", error);
+                }
+            }
+        }
+    }
+
     private void audioFactLoop(long generation, ServerSocket server) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
         while (audioFactRunning && sessionActive(generation)) {
@@ -730,7 +782,7 @@ public final class CaptureService extends Service {
             if (line.isEmpty()) {
                 continue;
             }
-            if (!acceptAudioFact(line)) {
+            if (!acceptAudioFact(line, false)) {
                 writeAudioFactResponse(output, "ERROR invalid-fact");
                 return;
             }
@@ -766,7 +818,7 @@ public final class CaptureService extends Service {
         return null;
     }
 
-    private boolean acceptAudioFact(String line) {
+    private boolean acceptAudioFact(String line, boolean wifiShadow) {
         try {
             JSONObject fact = new JSONObject(line);
             if (!"fact-message-v1".equals(fact.optString("schema"))) {
@@ -779,6 +831,12 @@ public final class CaptureService extends Service {
             String type = statusToken(fact.optString("type"), "unknown");
             String source = statusToken(fact.optString("source"), AUDIO_AUTHORITY);
             String profile = statusToken(fact.optString("calibrationProfile"), "unknown");
+            if (wifiShadow && (!"esp32-audio-consumer".equals(source)
+                    || !("audio-route".equals(type)
+                    || "audio-rms".equals(type)
+                    || "audio-peak".equals(type)))) {
+                return false;
+            }
             double confidence = fact.optDouble("confidence", -1.0);
             if ("unknown".equals(type) || confidence < 0.0
                     || confidence > 1.0 || !Double.isFinite(confidence)) {
@@ -846,6 +904,8 @@ public final class CaptureService extends Service {
         lastControl = "control=" + state
                 + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
                 + " audioPort=" + (audioFactRunning ? String.valueOf(AUDIO_FACT_PORT) : "none")
+                + " audioUdpPort=" + (audioFactUdpRunning
+                        ? String.valueOf(AUDIO_FACT_UDP_PORT) : "none")
                 + " socket=" + (localControlUp ? controlSocketName : "none")
                 + " token=" + (controlToken == null ? "none" : controlToken)
                 + " " + watchStatus();
@@ -1080,6 +1140,7 @@ public final class CaptureService extends Service {
 
         controlRunning = false;
         audioFactRunning = false;
+        audioFactUdpRunning = false;
         ServerSocket server = controlServer;
         controlServer = null;
         if (server != null) {
@@ -1116,7 +1177,13 @@ public final class CaptureService extends Service {
                 // Closing an already-failed audio fact client is still stopped.
             }
         }
+        DatagramSocket audioUdpServer = audioFactUdpServer;
+        audioFactUdpServer = null;
+        if (audioUdpServer != null) {
+            audioUdpServer.close();
+        }
         for (Thread worker : new Thread[] {controlThread, audioFactThread,
+                audioFactUdpThread,
                 localControlThread}) {
             if (worker != null && worker != Thread.currentThread()) {
                 worker.interrupt();
@@ -1127,6 +1194,7 @@ public final class CaptureService extends Service {
         joinWorker(localControlThread);
         controlThread = null;
         audioFactThread = null;
+        audioFactUdpThread = null;
         localControlThread = null;
         tcpControlUp = false;
         localControlUp = false;

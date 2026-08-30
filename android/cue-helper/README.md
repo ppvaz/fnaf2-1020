@@ -23,11 +23,15 @@ controller can reject stale, missing, or out-of-order facts. A missing route
 is `UNKNOWN`, never a negative cue.
 
 The APK now also monitors the phone's A2DP connection to the configured
-receiver (`pedro-82cg`, `C4:23:60:B6:03:40`). **Connect audio receiver** opens the
+receiver by the stable name `FNAF2 Audio Consumer`; its Bluetooth address is
+discovered at runtime and may differ between ESP32 boards. **Connect audio receiver** opens the
 system Bluetooth settings and the status card reports `DISCONNECTED`,
 `CONNECTED`, or `STREAMING`. This is a phone-side connection aid and monitor;
 the external audio authority remains responsible for the received PCM and
 transport route.
+The ESP32 Wi‑Fi setup is requested only when the connected A2DP receiver has
+that firmware name. Other A2DP receivers, such as the legacy host adapter, do
+not require or display the ESP32 Wi‑Fi step.
 Android does not expose a regular-app API to force the user's selected A2DP
 output, so pairing/connecting still requires the system Bluetooth UI.
 
@@ -66,20 +70,23 @@ at `tools/cue/test-audio-authority.py`.
 On the phone:
 
 1. Tap **Connect audio receiver**, grant `BLUETOOTH_CONNECT` if requested, and
-   connect `pedro-82cg` in the system Bluetooth settings.
+   connect `FNAF2 Audio Consumer` in the system Bluetooth settings.
 2. Confirm the APK reports `CONNECTED` or `STREAMING` for the receiver.
-3. Tap **Start video capture** and grant screen-capture consent.
-4. Start the external audio authority on the receiver host, for example:
+3. Join the Wi‑Fi network `FNAF2-AUDIO` (password `fnaf2-audio`).
+4. Tap **Start video capture** and grant screen-capture consent.
+5. Tap **Open FNaF 2**.
+6. Exercise the exact lit-left view used by `bb-left` calibration.
+7. Inspect the Android log; route/RMS/peak facts from the ESP32 arrive on the
+   shadow-only UDP path. No host audio authority is needed for this path.
+
+For the legacy BlueALSA host path, start the external audio authority on the
+receiver host after step 4, for example:
 
    ```sh
    tools/cue/audio-authority.py \
      --socket /tmp/fnaf2-audio.sock \
      --profile g56-bluealsa-a2dp-v1
    ```
-
-5. Tap **Open FNaF 2**.
-6. Exercise the exact lit-left view used by `bb-left` calibration.
-7. Inspect the Android log and the authority's fact stream.
 
 The authority's route preflight is transport-specific because this adapter
 currently implements BlueALSA:
@@ -116,7 +123,13 @@ invariant enforced by the device harness.
 ## External audio authority
 
 The host authority publishes compact `fact-message-v1` records to stdout and,
-when `--socket` is supplied, to a Unix stream socket:
+when `--socket` is supplied, to a Unix stream socket. During an active capture
+session the helper also listens on UDP `0.0.0.0:49709` for the shadow-only
+health facts from the ESP32-WROOM-32 bench consumer. The ESP32's Wi-Fi AP is
+`FNAF2-AUDIO` (password `fnaf2-audio`); connect the phone to it before starting
+the capture session. The UDP listener accepts only `audio-route`, `audio-rms`,
+and `audio-peak` from source `esp32-audio-consumer`; cue facts and actions are
+not accepted on this path.
 
 ```json
 {"schema":"fact-message-v1","seq":0,"type":"audio-route","state":"OBSERVED","confidence":1.0,"source":"audio-authority","calibrationProfile":"g56-bluealsa-a2dp-v1","t_received":123,"value":true,"latencyMin":150,"latencyMax":250}
@@ -147,6 +160,12 @@ BlueALSA or ESP32 and must not be reused without external re-calibration.
 For a latency probe, a named non-phase template may be enabled explicitly with
 `--shadow-cue bang`; this only publishes a shadow fact and cannot arm a control
 window. Detector promotion still requires independent held-out calibration.
+
+The bridge applies a positive visual context gate before sending event facts to
+the APK: `screenstate.py --adb-fast` must report `night`, meaning the office
+HUD is visible. The title/menu (and its BGM), transitions, game-over, and any
+unknown visual state therefore cannot forward a `cue-bang`; they are logged as
+dropped. Route/RMS/peak health facts remain observable on every screen.
 
 The current BlueALSA adapter uses the phone's A2DP output and reads
 `S32_LE` stereo at 48 kHz, downmixing to 4 kHz mono for the optional matcher.
@@ -183,6 +202,7 @@ The two visual channels are:
 |---|---|---|
 | loopback TCP | `127.0.0.1:49707` | the on-device visual controller |
 | abstract unix | `@com.fnaf2.cuehelper.control.<session>` | host tooling over `adb forward` |
+| Wi-Fi UDP | `0.0.0.0:49709` | ESP32 shadow audio health facts |
 
 ```sh
 tools/device/query-cue-helper.sh                    # loopback snapshot

@@ -3,8 +3,10 @@
     package="com.fnaf2.cuehelper">
     <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="36" />
 
-    <!-- Required by Android even though the control server binds only loopback. -->
+    <!-- Required by the loopback control server and the optional ESP32 Wi-Fi listener. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
