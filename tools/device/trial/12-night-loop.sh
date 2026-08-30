@@ -147,6 +147,9 @@ if [ "$NIGHT6_LEFT" -eq 2 ]; then
   if [ -n "$ARM_WINDOW" ] && plan_header_number arm-verify >/dev/null 2>&1; then
     : > "$ARM_WINDOW"
     arm_deadline=$((toys_loop_start - 2500))
+    now_rel
+    printf '%6d ms  arm-verify window open until %d ms; host classifies the raised monitor\n' \
+      "$NOW_REL" "$arm_deadline"
     while :; do
       now_rel
       [ "$NOW_REL" -lt "$arm_deadline" ] || break

@@ -988,6 +988,8 @@ watch_focus() {
 watch_arm_verify() {
   [ "$MINUS_TOYS_VARIANT" = minimal ] || return 0
   local i attempt=0 verdict
+  fnaf_session_event kind=sensor sensor=cam11lit "note=watcher-started" \
+    "target=$REMOTE_ARMWINDOW"
   # The window opens ~117 s into the night (the opening raise) but loading and
   # menu selection happen before T0, so budget a generous 240 s of wall time.
   for i in $(seq 1 480); do
@@ -995,7 +997,15 @@ watch_arm_verify() {
     kill -0 "$DRIVER_PID" 2>/dev/null || return 0
     sleep 0.5
     if [ "$i" = 480 ]; then
+      # A verify that silently does nothing reads as coverage (the r3 lesson):
+      # the 2026-08-30 pass run armed first-try but left no verify telemetry at
+      # all, which is indistinguishable from this check not existing. Record
+      # the gap instead of printing it into a pipe nobody keeps.
       echo "arm verify: driver never opened the arm window; continuing unverified" >&2
+      fnaf_session_event kind=fault sensor=cam11lit \
+        "fault.fault_kind=arm-window-never-opened" \
+        "fault.detail=driver did not touch $REMOTE_ARMWINDOW within 240s; the arm went unverified" \
+        "fault.degraded_to=unverified"
       return 0
     fi
   done

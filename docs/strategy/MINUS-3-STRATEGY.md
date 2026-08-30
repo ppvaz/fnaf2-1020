@@ -772,6 +772,26 @@ failed arm has nothing to catch it. Two consequences:
 Artifacts: `captures/n1-minustoys-minimal-20260829-r{2,3}-*`
 (`-r2-grade-debian-r2.log` has the r2 grade; r3 graded by frame walk here).
 
+### Night 1 passed on the device (2026-08-30)
+
+`n1-minustoys-armverify-20260830` — the first run of the armed `--minimal`
+pilot (sampler-phase model, `#arm-verify`, halt guard all in place) — **passed
+the night**: 44/44 cycles, terminal CAM 09 proof, monitor down at 5:08, hands-off
+observe to 6 AM, and **the save advanced to Night 2** (operator-observed; the
+instruments still cannot see a 6 AM card, so the manifest reads
+`TERMINAL: unknown` — the cursor is the game's own statement). Graded:
+CAM 11 feed continuous 124.67→367.92 s, no death static in 427.9 s of
+recording, 51 contacts all scheduled, 0 desync, 0 wasted inputs. The arm
+landed first-try, so (a) re-arm and exit-50 remain unproven live, and (b) the
+run exposed that the live verify could be *silent*: no verify event exists for
+it, indistinguishable from the check not existing. Fixed the same day — the
+driver logs the window opening and `watch_arm_verify` records
+`watcher-started`, every attempt verdict, and an `arm-window-never-opened`
+fault on timeout. **The verify chain's first live firing therefore waits for
+the next natural Night 1 run** — the save sits on Night 2 and Pedro parked
+Night 1 (2026-08-30). `--minimal` is Night-1-only; nothing further to do here
+until then.
+
 ### So: does the timer-anchored route even need a phase clock?
 
 `n2-minustoys-0117` was refuted on "302 ms + −184 ms/min drift". This run, on
