@@ -117,6 +117,13 @@ one `throw` got wrong) are asserted only on fixed or swept seeds.
 **Done when.** Each property runs in the engine suite and, on an injected
 regression, prints a minimal failing seed rather than the first one hit.
 
+**Bounded foundation landed 2026-08-30.** `tools/propertytest.mjs` runs a
+reproducible 64-seed campaign without a dependency, shrinks a failing seed to
+the first failing seed in that campaign, and covers snapshot/restore
+bit-identity plus continuation, same-seed event determinism, and the sourced
+Night-1 exclusion of Balloon Boy. It is wired into the engine suite. Broader
+randomized state/action generation and a larger proof campaign remain open.
+
 ## Package 5 — On-device input-dispatch trace (`atrace` / Perfetto)
 
 **Incident.** The entire 240 → 133 → "33 ms contacts register" sequence in

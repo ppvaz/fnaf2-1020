@@ -375,6 +375,9 @@ const ENGINE = [
   // Plan 18 Package 1 foundation: reproduce the three shell failures that
   // already cost recorded nights, without requiring a phone or shellcheck.
   ['shell footguns', ['device/test-shell-footguns.sh']],
+  // Plan 18 Package 4: bounded dependency-free properties for Sim state,
+  // event determinism, and sourced Night-1 reachability.
+  ['engine properties', ['propertytest.mjs']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here

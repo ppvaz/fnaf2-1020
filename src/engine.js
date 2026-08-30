@@ -245,7 +245,15 @@ export class Sim {
     return this.winding && this.monitor === MON_UP && this.viewing === C.BOX_CAM;
   }
 
-  emit(type, data) { this.events.push({ f: this.frame, type, data }); }
+  // Keep event objects JSON-stable: snapshot()/restore() deliberately uses a
+  // JSON round-trip, which drops an own property whose value is undefined.
+  // Omitting an absent payload at emission time preserves event identity on a
+  // branch restore while callers can still read event.data as undefined.
+  emit(type, data) {
+    const event = { f: this.frame, type };
+    if (data !== undefined) event.data = data;
+    this.events.push(event);
+  }
   flag(code, detail) { this.mistakes.push({ f: this.frame, t: this.t, code, detail }); }
 
   syncMangleStatic() {
