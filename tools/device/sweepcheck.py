@@ -157,9 +157,11 @@ def window_stats(frames):
 
 def sweep_windows(video, fps):
     """Yield (sweep_index, {cam: window_stats or None})."""
-    rgb = list(stream(video, fps, "rgb24", 3))
-    gray = list(stream(video, fps, "gray", 1))
-    sel = [selected(f) for f in rgb]
+    # Keep only a camera label and a four-number feature vector per frame.  A
+    # full night at 59 fps is tens of gigabytes as rgb24; making `list()` from
+    # a streaming decoder merely moves the old OOM from ffmpeg into Python.
+    sel = [selected(f) for f in stream(video, fps, "rgb24", 3)]
+    features = [frame_features(f) for f in stream(video, fps, "gray", 1)]
     n = len(sel)
     i = s = 0
     while i < n:
@@ -178,7 +180,7 @@ def sweep_windows(video, fps):
                 out[cam] = None
                 continue
             lo, hi = max(0, firsts[0] - 8), min(n, firsts[0] + 5)
-            out[cam] = window_stats([frame_features(gray[k]) for k in range(lo, hi)])
+            out[cam] = window_stats(features[lo:hi])
         if any(out.values()):
             yield s, out
             s += 1
