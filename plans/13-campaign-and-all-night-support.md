@@ -469,6 +469,18 @@ inventoried, so recorded here where it was found):
   same video, answers confidently for one frame and refuses the next. Both
   answers are correct. Nothing in the output says which path produced them.
 
+**Death-cause foundation, 2026-08-30.** `tools/device/death-cause.py` and
+`run-timeline.py --cause-model` now provide a separate, shadow-only visual
+Foxy-jumpscare fact. It is a measured nearest-centroid envelope over explicitly
+labelled 20:9 frames and refuses uncalibrated geometry or overlapping positive /
+negative envelopes. A match cannot declare the game dead by itself: the
+timeline accepts it only after the last positive office segment and a captured
+post-jumpscare tail; otherwise the result stays UNKNOWN. The Night 2 operator
+observation ("game over from a Foxy death") is therefore usable as a
+calibration label, but it is not silently promoted to a machine cause or live
+action rule. Session-separated holdouts and a real model remain open for
+package 3.
+
 ### 4. Qualify policies and budgets per story night
 
 - Replay the conservative generated route across every per-night/per-hour AI

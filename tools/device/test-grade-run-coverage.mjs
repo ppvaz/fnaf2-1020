@@ -58,6 +58,7 @@ const EXCLUDED = new Map([
   ['sensor.py', 'the capture-method declaration every classifier reads through; a library, gated by test-sensor.py'],
   ['lifecycle-observe.py', 'refines screenstate.py\'s `other` into named screens; a live observer, gated by test-screenstate.py'],
   ['intro_card.py', 'fractional generic intro-card predicate used by lifecycle-observe.py/run-timeline.py; gated by test-intro-card.py'],
+  ['death-cause.py', 'shadow-only labelled visual-cause model builder used by run-timeline.py when explicitly supplied; it builds a model rather than grading a run, gated by test-death-cause.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
   ['hid-sweep-probe.sh', 'device probe'],
   ['session-manifest.py', 'the manifest producer -- grade-run.sh consumes its output through validate-session.py; gated by test-session-manifest.sh'],

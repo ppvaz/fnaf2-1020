@@ -61,6 +61,10 @@ const ENGINE = [
   // period/phase lock, explicit 500 ms parity, and stale/low-confidence
   // recovery. No privileged engine phase is used here.
   ['phase clock', ['phaseclocktest.mjs']],
+  // Plan 20 package 6 foundation: bounded fact messages, ordered receipt and
+  // gap/stale reporting, plus a local drain that can finish an already-
+  // approved cycle without inventing actions after the host link drops.
+  ['fact link', ['factlinktest.mjs']],
   // Plan 20 package 1: unknown-safe, calibration-bound facts and explicit
   // action verification in a deterministic replayable belief contract.
   ['belief state', ['belieftest.mjs']],
@@ -249,6 +253,10 @@ const ENGINE = [
   // and slices ordered by count rather than by character (which would repaint
   // Foxy between two panels meant to be compared).
   ['deathchart', ['device/test-deathchart.mjs']],
+  // Plan 13 package 3 foundation: a labelled, nearest-centroid visual Foxy
+  // cause envelope can add attribution after the last office segment, but it
+  // is hard-bound to shadow mode and cannot replace lifecycle authority.
+  ['death cause', ['device/test-death-cause.py']],
   ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,

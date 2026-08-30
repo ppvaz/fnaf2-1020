@@ -25,7 +25,9 @@ Phases, in the priority they are decided:
 roughness fires on it constantly and cannot separate it from the death static,
 which on this build is DARK (frame mean 34.1) and not bright. A death is
 distinguished by being TERMINAL instead -- sustained static the HUD never
-returns from -- which terminal_outcome() decides and no frame label claims.
+returns from -- which terminal_outcome() decides. An optional shadow-only visual
+cause model may add a Foxy candidate to the terminal evidence, but no frame
+cause can make a live controller claim that the night is over.
 
 The terminal outcome is reported with its evidence and never inferred from
 duration. A recording that stops before anything terminal is `unknown`, which
@@ -55,6 +57,14 @@ DEFAULT_MODEL = os.path.join(HERE, "models", "lifecycle-moto-g56-v207.json")
 def _lifecycle():
     spec = importlib.util.spec_from_file_location(
         "lifecycle_observe", os.path.join(HERE, "lifecycle-observe.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _death_cause():
+    spec = importlib.util.spec_from_file_location(
+        "death_cause", os.path.join(HERE, "death-cause.py"))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -217,20 +227,50 @@ def collapse(phases, fps, min_dwell):
     return merged
 
 
-def terminal_outcome(runs, phases, roughnesses, fps, th):
+def terminal_outcome(runs, phases, roughnesses, fps, th, cause_labels=None):
     """How the run ended, with its evidence. Never inferred from duration.
 
-    Only two things are positive evidence, and both are things a LIVE run
-    cannot show: the 6 AM win screen, and a sustained death static the HUD
-    never returns from. Anything else is `unknown`, which is the honest answer
-    for a recording that stops before the end of the night -- and is what this
-    returns for every run this project made before 2026-08-26.
+    The lifecycle evidence remains the 6 AM win screen or a sustained death
+    static the HUD never returns from. An optional visual cause candidate can
+    add attribution only when the terminal-tail context is present; it is not
+    itself an alive/dead authority. Anything else is `unknown`, which is the
+    honest answer for a recording that stops before the end of the night -- and
+    is what this returns for every run this project made before 2026-08-26.
     """
+    if cause_labels is not None and len(cause_labels) != len(phases):
+        raise ValueError("cause label count must match decoded frame count")
+
     for p, a, b in reversed(runs):
         if p == "sixam":
             return {"outcome": "clear", "evidence": "sixam",
                     "at_s": round(a / fps, 2), "positive": True,
                     "note": "the 6 AM win screen is in the recording"}
+
+    # A Foxy visual is a cause candidate, not a lifecycle authority. Require
+    # the candidate after the last positively observed office segment, require
+    # at least one captured frame after it, and reject a candidate followed by
+    # a return to the office. This keeps an isolated false match in a live
+    # scene from terminating a run.
+    if cause_labels is not None:
+        for index, cause in enumerate(cause_labels):
+            if cause != "foxy" or index >= len(phases) - 1:
+                continue
+            # The stock HUD remains drawn over the jumpscare, so this exact
+            # frame may still satisfy the positive alive predicate. Compare
+            # against office frames strictly before the candidate rather than
+            # letting the candidate disqualify itself as "office".
+            last_office_before = max(
+                (i for i, p in enumerate(phases[:index]) if p == "office"),
+                default=None)
+            if last_office_before is None:
+                continue
+            if any(p == "office" for p in phases[index + 1:]):
+                continue
+            return {"outcome": "death", "evidence": "visual-foxy-jumpscare",
+                    "cause": "foxy", "at_s": round(index / fps, 2),
+                    "positive": True,
+                    "note": "a shadow-only visual Foxy candidate followed the "
+                            "last office segment and the recording continued"}
 
     # A terminal static: the tail of the recording, no HUD in it, and rough.
     last_office = max((i for i, p in enumerate(phases) if p == "office"),
@@ -255,6 +295,7 @@ def main():
     p.add_argument("video")
     p.add_argument("--fps", type=float, default=2.0)
     p.add_argument("--min-dwell", type=float, default=1.5)
+    p.add_argument("--cause-model", help="shadow-only visual death-cause model")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
 
@@ -262,15 +303,33 @@ def main():
     with open(os.environ.get("LIFECYCLE_MODEL", DEFAULT_MODEL)) as fh:
         th = json.load(fh)["thresholds"]
 
-    phases, roughnesses = [], []
+    cause_model_path = a.cause_model or os.environ.get("DEATH_CAUSE_MODEL")
+    cause_mod = None
+    cause_model = None
+    if cause_model_path:
+        try:
+            cause_mod = _death_cause()
+            with open(cause_model_path, encoding="utf-8") as fh:
+                cause_model = json.load(fh)
+            cause_mod._validate_model(cause_model)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"cause model: {exc}", file=sys.stderr)
+            raise SystemExit(2)
+
+    phases, roughnesses, cause_labels = [], [], []
     for frame in decode(a.video, a.fps):
         phases.append(phase_of(frame, lo, th))
         roughnesses.append(roughness(frame))
+        if cause_mod is not None:
+            result = cause_mod.classify_bytes(frame, W, H, cause_model)
+            cause_labels.append(result.get("value")
+                                if result.get("state") == "OBSERVED" else None)
     if not phases:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
     runs = collapse(phases, a.fps, a.min_dwell)
-    res = terminal_outcome(runs, phases, roughnesses, a.fps, th)
+    res = terminal_outcome(runs, phases, roughnesses, a.fps, th,
+                           cause_labels if cause_mod is not None else None)
 
     if a.json:
         print(json.dumps({
@@ -279,7 +338,10 @@ def main():
                           "to_s": round(y / a.fps, 2),
                           "seconds": round((y - x) / a.fps, 2)}
                          for p, x, y in runs],
-            "terminal": res}, indent=2))
+            "terminal": res,
+            **({"cause_model": {"path": cause_model_path,
+                                 "authorized_for": "shadow"}}
+               if cause_mod is not None else {})}, indent=2))
         return 0
 
     print(f"{a.video}: {len(phases)} frames at {a.fps} fps, {W}x{H}")
@@ -288,6 +350,7 @@ def main():
               f"({(y - x) / a.fps:6.1f}s)  {ph}")
     print(f"\n  TERMINAL: {res['outcome']}"
           + (f" -- {res['evidence']} at {res['at_s']}s" if res["evidence"] else "")
+          + (f" (cause={res['cause']})" if res.get("cause") else "")
           + f"\n  {res['note']}")
     return 0
 

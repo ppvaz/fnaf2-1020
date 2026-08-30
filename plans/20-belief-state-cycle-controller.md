@@ -270,6 +270,17 @@ observation. In particular, A2DP PCM receipt is **not** game-event time; it
 updates the estimator over the interval implied by its measured transport
 latency, then predicts that historical state forward to `t_received`.
 
+**Phone-free foundation landed 2026-08-30.** `src/fact-link.js` now owns a
+bounded `fact-message-v1` newline contract: primitive observed values or
+explicit UNKNOWN reasons, source/calibration identity, separate observation,
+sender-receipt, and local-link-receipt times, finite latency bounds, and an
+ordered sequence with visible gaps and stale state. `SafeCycleHandoff` accepts
+at most 16 actions over at most 15 seconds and can drain only the actions the
+host already approved; a stale link cannot create a replacement action and an
+expired approval emits nothing. `tools/factlinktest.mjs` covers the contract
+and is in the normal suite. These are deliberate protocol bounds, not a
+measurement of USB timing or proof that an MCU/external HID accepts the wire.
+
 The visual fast path must also be measured, not assumed. A detector wired to a
 display/compositor can see a new frame quickly; the current phone helper is a
 ~59 ms read at ~14 Hz plus fact delivery. Its p99
