@@ -91,7 +91,7 @@ blackout-specific metric excludes by design.
   strictly worse; a control with reads **delayed/noised** must degrade
   gracefully, not cliff. Added to `tools/test.mjs --engine`.
 
-### P2 — cue helper native-res watchlist protocol (no phone; compiles offline)
+### P2 — cue helper native-res watchlist protocol (no phone; compiles offline) — DONE (worktree)
 
 - `PixelWatch.java` — a fixed list of `(x,y)` pixels and `(x,y,w,h)` ROIs with
   per-entry reducers (mean luma, yellowness, grey-cell count). Native
@@ -105,7 +105,7 @@ blackout-specific metric excludes by design.
   gains the two verbs' argument handling and reply shape (mock ADB, no phone).
 - `CueDetector` is untouched — this is the visual path only.
 
-### P3 — calibration harness (harness now; values need device frames)
+### P3 — calibration harness (harness now; values need device frames) — DONE (worktree)
 
 - `tools/device/watch-calibrate.py` — given a directory of device frames each
   labeled with the game state it shows, derive the watchlist: which native
@@ -118,7 +118,7 @@ blackout-specific metric excludes by design.
   194 vs 0 (`ONE-PIXEL-VISION.md`).
 - `test-watch-calibrate.py` — mock frames in, expected spec + refusals out.
 
-### P4 — trial.sh reactive branch, observe-only first (phone)
+### P4 — trial.sh reactive branch, observe-only first (wiring landed; phone evidence open)
 
 - `REACTIVE=observe` — the loop runs, logs every fact and every decision it
   *would* have made, and grades drift/desync against the schedule. Ships first.

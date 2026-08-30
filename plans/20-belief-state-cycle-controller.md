@@ -152,7 +152,7 @@ dropped video read, and monitor-desync.
 **Done when:** a recorded observation/action stream deterministically rebuilds
 the same belief transitions and explains every confidence change.
 
-### P2 -- reduced transition model
+### P2 -- reduced transition model — DONE (worktree)
 
 Extract the decision-relevant transition rules from `Sim` into a controller
 model: clock/box prediction, action locks, visible hazard deadlines, and route
@@ -162,6 +162,12 @@ fabricated observed value.
 **Done when:** the model can predict one cycle forward from a documented state,
 and its deliberately coarse outputs agree with the full engine within declared
 bounds over seeded replay.
+
+`src/reduced-model.js` is the deliberately narrow model: it predicts the
+monitor/mask animation and input locks, camera sampling anchor, winding/box and
+power resources, plus explicit hazard/risk buckets. `tools/reducedmodeltest.mjs`
+compares those controller-visible fields against seeded Night 1 `Sim` traces;
+unknown route state is not copied from the simulator.
 
 ### P3 -- estimator and uncertainty tests
 

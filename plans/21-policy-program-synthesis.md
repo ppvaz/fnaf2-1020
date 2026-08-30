@@ -68,7 +68,7 @@ adding another format.
 **Done when:** the Night 1 minimal policy serializes and round-trips with the
 same phases, action timestamps, and terminal observation window.
 
-### P2 — one semantic interpreter
+### P2 — one semantic interpreter — DONE (initial target, worktree)
 
 Implement the IR evaluator on top of `Sim`. It must derive action events,
 resource accounting, and expected control state from the program; no strategy
@@ -77,6 +77,13 @@ may carry a second inline timeline.
 **Done when:** existing Minus 7, standard Minus Toys, and Night 1 minimal
 replay identically to their current gated behavior or have a documented,
 source-backed semantic difference.
+
+The finite interpreter and exact-engine adapter are now in
+`tools/device/policy-interpreter.mjs`. The initial Night 1 Minimal target is
+equivalence-gated against `schedule()` frame-for-frame, including release/press
+seams, and reaches the same `Sim` terminal state. Standard Minus Toys and the
+separate Minus 7 policy family remain explicit follow-on ports rather than
+being silently claimed by this initial target.
 
 ### P3 — structural policy grammar
 
@@ -195,17 +202,17 @@ survival, interventions per visit, and false-intervention rate.
 
 ## First seed facts: the Night 2 vent-threat conflict (2026-08-30)
 
-The reactive BB/Mangle build (`VentThreatReactive`, `src/controller.js`;
+The reactive BB-only build (`VentThreatReactive`, `src/controller.js`;
 `tools/ventreacttest.mjs`) measured the constraint system a Night 2 program
 must satisfy — four demands on one monitor-down/up boundary, which is why
 hand-tuned cycles keep failing and why this plan's structural search is the
 right instrument for the resolution:
 
 1. **BB eviction budget:** 5 *consecutive* fully-on mask seconds (g907 →
-   v12 ≥ 5; g293 zeroes the counter on every re-entry). The 10 s cycle's
-   ~4.8 s mask window delivers 4 — the one-tick miss that killed
-   `n2-minustoys-0117`. Mangle clears on the same 5-tick hold
-   (`engine.js:887-894`).
+   v12 ≥ 5; g293 zeroes the counter on every re-entry). The nominal 10 s
+   cycle window is only ~4.8 s after the ON animation, and exact coverage must
+   use the actual independently shifted ON/OFF rows. Mangle has no Observer
+   occupancy fact yet, so the current controller makes no Mangle claim.
 2. **Foxy D deadline:** D climbs ~1/s whenever Foxy is not dormant
    (`engine.js:669`), is zeroed only by the hall pulse (`:679`), and the hall
    cannot fire while masked or cams-up. Measured: one 5.7 s mask extension
@@ -260,18 +267,23 @@ table — `tools/ventreacttest.mjs`):**
 2. *+ pre-mask hall pulse (Pedro's play) + schedule frozen only while the mask
    is up:* Foxy fixed (294 → 16-18 deaths), still 6-9/300 — the box tax
    remained.
-3. *+ coverage gate:* the scheduled mask window CONTAINS five tick boundaries
+3. *+ coverage gate (historical pre-audit cut):* the scheduled mask window CONTAINS five tick boundaries
    when phase holds (fully-on :X4.7 → :X5..:X9, eviction just before
    mask-off) — so count the boundaries; ≥5 means stand down and spend
    nothing. Zero-jitter **276/300**, refuting the apparent geometry wall.
-   Three known-negatives remain documented in the tool (box margin under
-   repeated rescue, noisy-anchor coverage flips, ensemble unchanged).
+   Two policy negatives remain documented in the tool (box margin under
+   repeated rescue and the mixed ensemble not improving). The noisy-anchor
+   check is now an ordinary passing robustness assertion at its declared
+   five-point threshold; it is not evidence that the ensemble is phase-only.
+   The later endpoint/transaction/UNKNOWN fixes intentionally invalidate this as
+   a current release number; rerun the full corrected gate before quoting it.
 
-**The diagnosis after cut 3 is a phase-estimation problem, not a BB-policy
-problem:** the ensemble (~63/600) is sustained phase error making every visit
-look uncovered, so the controller repeatedly pays for coverage that may
-already exist. Hence the estimator specification above; the coverage gate
-becomes uncertainty-aware (lo/hi boundary range: stand down / full rescue /
-bounded extension) and latches per visit, and every timing change the
-technique implies ("stay long on the monitor") requires the re-anchor the
-estimator provides.
+**The diagnosis after cut 3 is a phase-estimation candidate, not a settled
+causal result:** the ensemble's collapse is consistent with sustained phase
+error, but it also mixes rescue cost, independent action jitter, endpoint
+semantics, stale cue retriggers, and UNKNOWN polarity. The estimator remains
+strongly motivated; its clean proof ladder must separate those controls before
+the survival loss is attributed to phase alone. The corrected coverage gate is
+uncertainty-aware (lo/hi boundary range: stand by / full rescue / bounded
+extension), latches per visit, and requires a safe re-anchor for any timing
+change that stays long on the monitor.

@@ -34,7 +34,12 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 let failed = 0;
 const complain = (message) => { console.error(message); failed = 1; };
 
-const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+// Include files present in the working tree but not staged yet. During a
+// normal patch review, a newly added tool must already have an index row; the
+// old tracked-only census made TOOLS.md fail in the exact interval between
+// creating a file and committing it.
+const tracked = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'],
+  { cwd: ROOT, encoding: 'utf8' })
   .split('\n').filter(Boolean);
 
 // --- 1. every relative link in a tracked markdown file resolves.

@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-30
 
-**Overall:** **26%** — 35 of 133 mandatory top-level work packages are closed.
+**Overall:** **30%** — 40 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
@@ -12,9 +12,17 @@ numerator is unchanged, so overall falls 33% → 30%, the honest direction.
 2026-08-29: Plans 19 and 20 add thirteen mandatory packages (113 → 126); Plan 19
 package 1 lands the same day (`6bfbc39`), so the numerator moves to 35 and
 overall falls 30% → 28%.
+2026-08-30: Plan 19 packages 2–3, Plan 20 package 1, and Plan 21 package 1
+are implemented and checked in the worktree; the numerator moves to 38 and
+the rounded overall to 29%.
 2026-08-30: Plan 21 (proposed 2026-08-29) is counted with its seven mandatory
 packages (126 → 133); none closed yet, so the numerator stays 35 and overall
 falls 28% → 26%.
+2026-08-30: Plan 20 package 2 and Plan 21 package 2 are now closed by seeded
+exact-engine comparisons: the reduced controller model matches visible
+control/resource traces, and the finite Night 1 policy interpreter matches
+the device schedule and reaches the same Sim terminal state; numerator 40,
+rounded overall 30%.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -24,23 +32,25 @@ packages are closed.
 ### 2026-08-30 directive — LOCK: reactive handling is the top priority (Pedro)
 
 **"This project has stalled on delivering the reactive handling for far too
-long, I want it at the highest priority."** The BB/Mangle detect-and-react
-chain is the campaign's deliverable, ahead of the winding-tick experiment and
-the Night 2 pilot. Build order, acting on all three fronts the bench allows:
+long, I want it at the highest priority."** The BB-first detect-and-react
+chain is the campaign's deliverable; Mangle occupancy evidence remains open.
+It is ahead of the winding-tick experiment and the Night 2 pilot. Build order,
+acting on all three fronts the bench allows:
 
-1. **Engine-side reactive policy — BUILT, gated, with findings (2026-08-30).**
+1. **Engine-side reactive policy — implemented, with a red release gate (2026-08-30).**
    `VentThreatReactive` (`src/controller.js`) + the `bbVent` audio fact
    (`src/observer.js`, A2DP-latency model) + `reactiveBB` wired in
    `minus-toys-plan.mjs`, gated by `tools/ventreacttest.mjs`. Cue taxonomy is
    the owner's play: laughs = belief, first thud = pending/prepare, the
    thud+21 arrival pair = evict with priority; pre-mask hall pulse pays the
    Foxy D bill. Coverage gate: the scheduled mask window contains five tick
-   boundaries when phase holds (free eviction), so the controller intervenes
-   only on misalignment. Zero-jitter **276/300** (first cut was 8/300) —
-   the apparent geometry wall is refuted. Three documented known-negatives;
-   the binding failure is now **phase estimation** (ensemble ~63/600:
-   sustained misalignment makes every visit look uncovered). Full record:
-   `plans/21` "First seed facts" + "A2DP phase-clock estimator".
+   boundaries when phase holds (free eviction), so the controller can stand by
+   when coverage is proven and intervene only on an uncovered/ambiguous
+   interval. The timing, stale-cue, UNKNOWN, endpoint, and intent
+   transaction defects are covered by focused checks. The survival claims
+   remain a failing `--assert` gate until rescue cost and phase estimation are
+   separately priced; the mixed ensemble is not phase-only evidence. Full
+   record: `plans/21` "First seed facts" + "A2DP phase-clock estimator".
 2. **Phase-clock estimator = the critical path.** Specification landed
    (`plans/21` "The A2DP phase-clock estimator — specification"):
    latency-calibrated multi-tick estimator behind BlueALSA, lock states,
@@ -397,17 +407,19 @@ BB→Foxy chain, wind-phase drift → Puppet under the clock-error model
 external hybrid below remains a valid parallel track if picked up; it is no
 longer the pointer.
 
-Two paths, neither built:
+Two paths, with the external-hybrid foundation now built but not promoted:
 
 1. **External hybrid** — keep the timed skeleton, add: AM-digit clock re-anchor
    every 70 s, a reactive left-vent BB read (the Minus 7 runner already has
    one), and mask verify-and-retry. Ceiling ~1/3 (jasonclone bot; AM-anchor
    sim). Search tooling landed this session: `tools/device/minus-toys-plan.mjs`
    is now `build(knobs)`-parametrized (arming gap, mask window, wind, hall,
-   camdrop, `loopPeriodMs`, inert `reactiveBB` hook — `trial/12-night-loop.sh`
-   hardcodes `base += 10000` so a non-10 s period is search-only for now);
-   `minus-toys-margin.mjs` maps per-press slack; `minus-toys-jitter.mjs` is the
-   robustness fitness function under the calibrated clock-error ensemble.
+   camdrop, `loopPeriodMs`) with an optional BB-only `reactiveBB` hook. The
+   hook is wired in the exact replay but its survival gate is red; the phone
+   runner is observe-only until evidence closes. `trial/12-night-loop.sh`
+   still hardcodes `base += 10000` so a non-10 s period is search-only for now;
+   `minus-toys-margin.mjs` maps per-press slack; `minus-toys-jitter.mjs` is
+   the robustness fitness function under the calibrated clock-error ensemble.
 2. **In-APK read-internal-state** (`plans/17`) — the clock-sync problem
    disappears; the only approach with demonstrated reliability (Shooter25
    practice mod, 104–1). `plans/17` now carries the state tuple and WP4.
@@ -2052,8 +2064,9 @@ on the next graded run remains the way to attribute them, since only
 | [16 — constrained policy search](16-constrained-policy-search.md) | 5 / 5 | **100%** | **Resolved 2026-08-27 and scoped 2026-08-28.** Pkgs 1–3 built; pkgs 4 and 5 closed by recorded negative (`740f5b0`, `4e7abce`); pkg 6 dropped. The searched Minus 7 timing/geometry space is a wall under the human gate, and the Night-7 opener is irrelevant. This is not a claim that Minus Toys, faithful RVC, GOT-YOU blackout cover, or measured machine execution was searched. | Reopen this Minus 7 search only for a device candidate or corrected mechanic; pursue the separate frontier at the top of this page independently. |
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 | [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Package 5 spike done.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 5 gating question answered on the Moto g56 (Android 16, `user` build): the `shell` user captures the full `perfetto` input-dispatch path without root — `publishMotionEvent`, `deliverInputEvent` with `eventTimeNano`, dispatch-cycle `id`, `Choreographer#doFrame` — and injected vs real contacts are distinguishable. See plan §Package 5 spike result. | Build the host-side `trace_processor` parse and capture one real `trial.sh` camera sweep; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
-| [19 — video reactive controller](19-video-reactive-controller.md) | 1 / 6 | **17%** | **Proposed 2026-08-29; Package 1 landed (`6bfbc39`).** `src/observer.js` models the native-res pixel watchlist with real sensor coarseness (OBSERVED/UNKNOWN facts, ~15 Hz cadence, round-trip latency, drop rate, mid-animation refusal); `src/controller.js` has the night-6-38 animation-window guard and the `BlackoutReactive` lower→mask→verify→raise sequence; `tools/reactivetest.mjs` gates it in `--engine` — the minimal Night 1 Minus Toys base dies 200/200 to synthetic blackouts, +reactive 0/200, +noisy-observer 0/200. Packages 2–6 (native-res watchlist protocol, calibration harness, `trial.sh` observe-only branch, blackout-strategy attach, external audio slow-path) open. | Package 2: `PixelWatch.java` / `CaptureService.java` native-res watchlist verbs, compiled offline against the mock-ADB harness. |
-| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 0 / 7 | **0%** | **Proposed 2026-08-29, Pedro's architectural directive.** The external digital-twin estimator + receding-horizon planner that composes Plans 19/08/10/11 into one partially-observable controller (no claim of exact RNG recovery). Seven packages: versioned belief contract, reduced transition model, estimator + uncertainty tests, finite cycle library + constraint gate, robust short-horizon selector, ESP32 transport + real-time split, shadow campaign. | Package 1 (belief-state schema + replay fixtures) against synthetic traces, after Plan 19 P1/P3. |
+| [19 — video reactive controller](19-video-reactive-controller.md) | 3 / 6 | **50%** | **Proposed 2026-08-29; packages 1–3 are implemented in the worktree.** The observer/controller audit fixes cover deadline timing, stale cue identity, actual mask endpoints, UNKNOWN polarity, and rejected-intent rollback. `PixelWatch.java` / `CaptureService.java` provide the native watch protocol; `watch-calibrate.py` refuses weak or foreign calibration; `reactivetest.mjs` remains green and `ventreacttest.mjs --assert` is intentionally red on the survival-cost claims. P4 observe-only wiring is present; phone evidence, P5 blackout attachment, and P6 external audio remain open. | Run the observe-only branch on a monitor-stressing phone session, then grade it. |
+| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 2 / 7 | **29%** | **Packages 1–2 implemented in the worktree.** `src/belief-state.js` is a deterministic, versioned unknown-safe reducer with delayed-fact provenance, calibration mismatch incidents, and explicit action verification; `src/reduced-model.js` predicts controller-visible animation/resource state and agrees with seeded Night 1 `Sim` traces while leaving hidden routes as risk buckets. Estimator/planner, transport, and shadow campaign remain open. | Package 3: estimator and uncertainty tests. |
+| [21 — policy-program synthesis](21-policy-program-synthesis.md) | 2 / 7 | **29%** | **Packages 1–2 implemented in the worktree.** `src/policy-ir.js` defines finite policy validation/canonicalization and `tools/device/policy-ir.mjs` ports the Night 1 Minimal headers; `tools/device/policy-interpreter.mjs` now has an exact-engine adapter whose frame-stamped stream matches the existing schedule, including terminal seams. Structural search, phone compiler equivalence, and device-only execution remain open. The BB-only reactive experiment remains a failing release gate; Mangle occupancy is not implemented. | Package 3: structural policy grammar. |
 
 ## Counting rule
 
