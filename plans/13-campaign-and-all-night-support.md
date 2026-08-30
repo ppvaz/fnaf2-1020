@@ -469,17 +469,21 @@ inventoried, so recorded here where it was found):
   same video, answers confidently for one frame and refuses the next. Both
   answers are correct. Nothing in the output says which path produced them.
 
-**Death-cause foundation, 2026-08-30.** `tools/device/death-cause.py` and
-`run-timeline.py --cause-model` now provide a separate, shadow-only visual
-Foxy-jumpscare fact. It is a measured nearest-centroid envelope over explicitly
-labelled 20:9 frames and refuses uncalibrated geometry or overlapping positive /
-negative envelopes. A match cannot declare the game dead by itself: the
-timeline accepts it only after the last positive office segment and a captured
-post-jumpscare tail; otherwise the result stays UNKNOWN. The Night 2 operator
-observation ("game over from a Foxy death") is therefore usable as a
-calibration label, but it is not silently promoted to a machine cause or live
-action rule. Session-separated holdouts and a real model remain open for
-package 3.
+**Death-cause foundation, extended 2026-08-30.** `tools/device/death-cause.py`
+and `run-timeline.py --cause-model` now provide separate, shadow-only visual
+Foxy/Marionette-jumpscare facts. Models remain measured nearest-centroid
+envelopes over explicitly labelled 20:9 frames and refuse uncalibrated geometry
+or overlapping positive/negative envelopes. Multiple models are scanned at an
+independent 12fps default, so a brief jumpscare is not forced through the
+lifecycle timeline's coarse 2fps cadence; adjacent hits are retained as one
+timestamped candidate episode. A match cannot declare the game dead by itself:
+the timeline accepts it only after a prior office segment, no later office
+return, in the final non-live-looking tail, and with a captured post-jumpscare
+sample; otherwise lifecycle remains UNKNOWN. The Night 2 transition supplied a concrete Marionette candidate at
+about 116.0s, followed by static and the generic Game Over face. That is useful
+calibration evidence, not a promoted live detector: the one-run model still
+produced in-night lookalike candidates, and session-separated holdouts plus a
+real validated model remain open for package 3.
 
 ### 4. Qualify policies and budgets per story night
 

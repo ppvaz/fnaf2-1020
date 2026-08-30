@@ -1996,6 +1996,17 @@ on the next graded run remains the way to attribute them, since only
   recognition, a committed real holdout corpus, media-PTS ↔ runner-clock
   alignment, and save-advancement classification. Those gaps keep the package
   open.
+- **The Night 2 death source is now observable in shadow mode, but not
+  promotion-ready.** The `n2-reactive-observe-followup-20260830` recording's
+  `different frames` sheet surfaced a Marionette jumpscare at about 116.0 s,
+  followed by static and the generic Game Over face. `death-cause.py` now
+  accepts explicitly labelled Foxy/Marionette envelopes, and `run-timeline.py`
+  scans them at an independent 12 fps cadence while keeping lifecycle
+  authoritative. The local one-run Marionette calibration also produced
+  lookalike hits during live camera/mask transitions; the final-tail join
+  excludes those and identifies only the 116.0 s episode. A session-separated
+  holdout corpus and validated model remain open, so this is attribution
+  evidence rather than a live detector or action rule.
 - **The controller desyncs far more than it detects, and pan is the tell.**
   Measured on the cleared Night 1: 16 of 16 `empty` vent reads sit at 0–6 px of
   office pan, and 6 of 7 false `inside` reads at **64–178 px**, with the

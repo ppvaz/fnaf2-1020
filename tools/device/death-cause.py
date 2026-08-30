@@ -40,6 +40,7 @@ FEATURE_CROP = (0.18, 0.05, 0.82, 0.88)
 ASPECT = 20 / 9
 ASPECT_TOLERANCE = 0.025
 MIN_SAMPLES = 2
+SUPPORTED_LABELS = ("foxy", "marionette")
 
 
 def _fail(message):
@@ -95,7 +96,14 @@ def _images(root):
     return paths, rows
 
 
-def build_model(positive_root, negative_root):
+def _label(label):
+    if label not in SUPPORTED_LABELS:
+        _fail(f"label must be one of {', '.join(SUPPORTED_LABELS)}")
+    return label
+
+
+def build_model(positive_root, negative_root, label="foxy"):
+    label = _label(label)
     positive_paths, positive = _images(positive_root)
     negative_paths, negative = _images(negative_root)
     pos_centroid = _centroid(positive)
@@ -109,7 +117,7 @@ def build_model(positive_root, negative_root):
     threshold = (positive_max + negative_min) / 2
     return {
         "schema": MODEL_SCHEMA,
-        "label": "foxy",
+        "label": label,
         "authorized_for": "shadow",
         "sensor": {"aspect": "20:9", "feature_grid": list(FEATURE_GRID),
                    "crop": list(FEATURE_CROP)},
@@ -128,8 +136,8 @@ def build_model(positive_root, negative_root):
 def _validate_model(model):
     if not isinstance(model, dict) or model.get("schema") != MODEL_SCHEMA:
         _fail(f"model schema must be {MODEL_SCHEMA}")
-    if model.get("label") != "foxy":
-        _fail("model label must be foxy")
+    label = model.get("label")
+    _label(label)
     if model.get("authorized_for") != "shadow":
         _fail("death-cause models are shadow-only")
     sensor = model.get("sensor", {})
@@ -159,12 +167,13 @@ def classify_image(im, model):
     positive = _distance(vector, model["positive_centroid"])
     negative = _distance(vector, model["negative_centroid"])
     threshold = model["training"]["threshold"]
+    label = model["label"]
     if positive <= threshold and positive < negative:
-        return {"schema": FACT_SCHEMA, "state": "OBSERVED", "value": "foxy",
+        return {"schema": FACT_SCHEMA, "state": "OBSERVED", "value": label,
                 "distance": positive, "negativeDistance": negative,
                 "threshold": threshold, "source": "visual-death-model",
                 "authorizedFor": "shadow"}
-    reason = "outside-foxy-envelope" if positive > threshold else "negative-nearer"
+    reason = f"outside-{label}-envelope" if positive > threshold else "negative-nearer"
     return {"schema": FACT_SCHEMA, "state": "UNKNOWN", "reason": reason,
             "distance": positive, "negativeDistance": negative,
             "threshold": threshold, "source": "visual-death-model",
@@ -187,6 +196,7 @@ def main(argv):
     build.add_argument("positive")
     build.add_argument("negative")
     build.add_argument("--output", required=True)
+    build.add_argument("--label", choices=SUPPORTED_LABELS, default="foxy")
     classify = sub.add_parser("classify")
     classify.add_argument("image")
     classify.add_argument("--model", required=True)
@@ -194,7 +204,7 @@ def main(argv):
 
     try:
         if args.command == "build":
-            model = build_model(args.positive, args.negative)
+            model = build_model(args.positive, args.negative, args.label)
             Path(args.output).write_text(json.dumps(model, indent=2) + "\n",
                                          encoding="utf-8")
             print(json.dumps({"schema": MODEL_SCHEMA,
