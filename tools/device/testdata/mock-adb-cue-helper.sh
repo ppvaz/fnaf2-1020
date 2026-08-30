@@ -50,7 +50,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     # lags the device cannot catch it.
     #
     # cam05_mean_luma is deliberately unequal to luma so a transposed capture group shows.
-    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 ageUs=1200 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=host-authority-not-connected' ;;
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 ageUs=1200 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected' ;;
     GRID/*)
       # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
       printf 'OK grid=20x9 seq=121 '
@@ -82,7 +82,7 @@ elif [ "${1:-}" = forward ] && [ "${2:-}" = --remove ]; then
 elif [ "${1:-}" = forward ]; then
   echo "${MOCK_FORWARD_PORT:?mock adb forward needs MOCK_FORWARD_PORT}"
 elif [ "${1:-}" = logcat ]; then
-  echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=host-authority-not-connected control=READY port=49707 socket=com.fnaf2.cuehelper.control token=0123456789abcdef0123456789abcdef"
+  echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY port=49707 socket=com.fnaf2.cuehelper.control token=0123456789abcdef0123456789abcdef"
 else
   echo "unexpected mock adb invocation: $*" >&2
   exit 1

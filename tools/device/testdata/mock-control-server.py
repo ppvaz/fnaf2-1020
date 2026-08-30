@@ -22,7 +22,7 @@ SNAPSHOT = (
     "grey=142 "
     "ageUs=1200 content=2400x1080 visible=1 "
     "audio=EXTERNAL authority=audio-authority state=UNKNOWN "
-    "reason=host-authority-not-connected"
+    "reason=external-authority-not-connected"
 )
 
 

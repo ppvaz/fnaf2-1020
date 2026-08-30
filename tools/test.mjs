@@ -418,6 +418,8 @@ const ENGINE = [
   ['cue shadow evaluator', ['cue/test-evaluate-shadow.py']],
   ['cue shadow window builder', ['cue/test-build-shadow-windows.py']],
   ['cue model promotion', ['cue/test-export-model.py']],
+  ['latency experiment', ['cue/test-latency-experiment.py']],
+  ['audio fact bridge', ['cue/test-bridge-audio-authority.py']],
 ];
 
 // These checks establish robustness margins and campaign-wide survival floors,

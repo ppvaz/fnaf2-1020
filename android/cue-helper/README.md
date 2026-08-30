@@ -10,16 +10,26 @@ The APK owns only the user-approved `MediaProjection` visual stream:
 Audio is deliberately external. The phone renders FNaF 2 audio to its selected
 output, while an external audio authority observes that rendered signal and
 publishes facts to the controller. The current host adapter is
-`tools/cue/audio-authority.py`, which reads the validated Linux BlueALSA A2DP
-PCM. An ESP32 receiver can be another adapter: it must publish the same
+`tools/cue/audio-authority.py`, whose current adapter reads a validated A2DP
+PCM path. An ESP32 receiver can be another adapter: it must publish the same
 `fact-message-v1` fields, with a transport-specific `calibrationProfile` such
 as `g56-esp32-a2dp-v1`. The APK therefore does not claim that it captured
 audio and has no `RECORD_AUDIO` or `AudioPlaybackCapture` dependency.
 
 This separation is intentional: the audio authority follows the actual
-physical receiver, whether that receiver is the Linux PC or an ESP32, and the
+physical receiver, whether that receiver is the current host adapter or an
+ESP32, and the
 controller can reject stale, missing, or out-of-order facts. A missing route
 is `UNKNOWN`, never a negative cue.
+
+The APK now also monitors the phone's A2DP connection to the configured
+receiver (`pedro-82cg`, `C4:23:60:B6:03:40`). **Connect audio receiver** opens the
+system Bluetooth settings and the status card reports `DISCONNECTED`,
+`CONNECTED`, or `STREAMING`. This is a phone-side connection aid and monitor;
+the external audio authority remains responsible for the received PCM and
+transport route.
+Android does not expose a regular-app API to force the user's selected A2DP
+output, so pairing/connecting still requires the system Bluetooth UI.
 
 The visual path reports `OBSERVED` values rather than making an empty/threat
 claim. Its pixel rule must be recalibrated against frames from the exact target
@@ -48,8 +58,11 @@ at `tools/cue/test-audio-authority.py`.
 
 On the phone:
 
-1. Tap **Start unified capture** and grant screen-capture consent.
-2. Start the external audio authority on the receiver host, for example:
+1. Tap **Connect audio receiver**, grant `BLUETOOTH_CONNECT` if requested, and
+   connect `pedro-82cg` in the system Bluetooth settings.
+2. Confirm the APK reports `CONNECTED` or `STREAMING` for the receiver.
+3. Tap **Start video capture** and grant screen-capture consent.
+4. Start the external audio authority on the receiver host, for example:
 
    ```sh
    tools/cue/audio-authority.py \
@@ -57,9 +70,9 @@ On the phone:
      --profile g56-bluealsa-a2dp-v1
    ```
 
-3. Tap **Open FNaF 2**.
-4. Exercise the exact lit-left view used by `bb-left` calibration.
-5. Inspect the Android log and the authority's fact stream.
+5. Tap **Open FNaF 2**.
+6. Exercise the exact lit-left view used by `bb-left` calibration.
+7. Inspect the Android log and the authority's fact stream.
 
 The authority's route preflight is transport-specific because this adapter
 currently implements BlueALSA:
@@ -73,13 +86,13 @@ A healthy APK line contains visual data and explicitly identifies audio as an
 external dependency:
 
 ```text
-RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=host-authority-not-connected control=READY ...
+RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY ...
 ```
 
-That `UNKNOWN` is expected in the APK until a separate status bridge is added;
-the authoritative audio facts are the newline-delimited JSON messages emitted
-by the host authority. The app does not pretend that an ESP32 or BlueALSA
-receiver is reachable through Android's audio APIs.
+The APK's A2DP card is only a connection/playing-state indicator. The
+authoritative audio facts are still the newline-delimited JSON messages emitted
+by the host authority. The app does not claim that the PCM is available to the
+Android process.
 
 On API 34+, the helper consumes `onCapturedContentResize()` and
 `onCapturedContentVisibilityChanged()`. Hidden, not-yet-sized, stale, or

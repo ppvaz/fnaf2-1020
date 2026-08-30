@@ -26,6 +26,7 @@ BUILD_DIR="$SCRIPT_DIR/build"
 CLASSES_DIR="$BUILD_DIR/classes"
 DEX_DIR="$BUILD_DIR/dex"
 RES_DIR="$SCRIPT_DIR/res"
+ASSETS_DIR="$SCRIPT_DIR/assets"
 KEYSTORE="$SCRIPT_DIR/debug.keystore"
 
 for required in "$AAPT2" "$D8" "$ZIPALIGN" "$APKSIGNER" "$ANDROID_JAR" \
@@ -51,6 +52,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     --manifest "$SCRIPT_DIR/AndroidManifest.xml" \
     -I "$ANDROID_JAR" \
     -R "$BUILD_DIR/compiled-res.zip" \
+    -A "$ASSETS_DIR" \
+    -0 otf \
     --auto-add-overlay \
     --min-sdk-version 29 \
     --target-sdk-version 36 \

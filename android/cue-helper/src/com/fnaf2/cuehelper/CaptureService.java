@@ -42,9 +42,14 @@ import java.security.SecureRandom;
 import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public final class CaptureService extends Service {
     public static final String ACTION_START =
             "com.fnaf2.cuehelper.action.START";
+    public static final String ACTION_QUERY_STATUS =
+            "com.fnaf2.cuehelper.action.QUERY_STATUS";
     public static final String ACTION_STOP =
             "com.fnaf2.cuehelper.action.STOP";
     public static final String ACTION_STATUS =
@@ -76,9 +81,12 @@ public final class CaptureService extends Service {
     private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
     private static final int CONTROL_PORT = 49_707;
+    private static final int AUDIO_FACT_PORT = 49_708;
     private static final String CONTROL_SOCKET_PREFIX =
             "com.fnaf2.cuehelper.control";
     private static final int CONTROL_LINE_LIMIT = 256;
+    private static final int AUDIO_FACT_LINE_LIMIT = 1_024;
+    private static final long AUDIO_FACT_STALE_MS = 3_000L;
     private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
     private static final String AUDIO_AUTHORITY = "audio-authority";
 
@@ -95,12 +103,16 @@ public final class CaptureService extends Service {
     private ImageReader imageReader;
     private HandlerThread visualThread;
     private ServerSocket controlServer;
+    private ServerSocket audioFactServer;
     private LocalServerSocket localControlServer;
     private Thread controlThread;
+    private Thread audioFactThread;
     private Thread localControlThread;
     private volatile boolean controlRunning;
+    private volatile boolean audioFactRunning;
     private volatile boolean tcpControlUp;
     private volatile boolean localControlUp;
+    private volatile Socket audioFactClient;
     private String controlToken;
     private String controlSocketName;
 
@@ -119,6 +131,9 @@ public final class CaptureService extends Service {
     private volatile int capturedContentVisibility = -1;
     private volatile String lastVisual = "visual=UNAVAILABLE";
     private volatile String lastAudio = externalAudioStatus();
+    private volatile long lastAudioFactElapsedNs;
+    private volatile String audioAuthorityName = AUDIO_AUTHORITY;
+    private volatile String audioProfileName = "unknown";
     private volatile String lastControl = "control=UNAVAILABLE";
 
     private long snapshotVisualSequence;
@@ -171,6 +186,11 @@ public final class CaptureService extends Service {
             stopCapture("operator-stop", true);
             // Keep the service instance alive and idle. The next start gets a
             // fresh consent token and can reuse this process immediately.
+            return START_NOT_STICKY;
+        }
+
+        if (ACTION_QUERY_STATUS.equals(action)) {
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
             return START_NOT_STICKY;
         }
 
@@ -238,7 +258,12 @@ public final class CaptureService extends Service {
             }
             startVisualCapture(generation);
             lastAudio = externalAudioStatus();
+            lastAudioFactElapsedNs = 0L;
+            audioAuthorityName = AUDIO_AUTHORITY;
+            audioProfileName = "unknown";
             startControlServer(generation);
+            startAudioFactServer(generation);
+            publishControlStatus();
             publishCombinedStatus("RUNNING");
         } catch (Throwable error) {
             Log.e(TAG, "capture startup failed", error);
@@ -534,7 +559,22 @@ public final class CaptureService extends Service {
 
     private static String externalAudioStatus() {
         return "audio=EXTERNAL authority=" + AUDIO_AUTHORITY
-                + " state=UNKNOWN reason=host-authority-not-connected";
+                + " state=UNKNOWN reason=external-authority-not-connected";
+    }
+
+    private String currentAudioStatus() {
+        long receivedNs = lastAudioFactElapsedNs;
+        if (receivedNs == 0L) {
+            return lastAudio;
+        }
+        long ageMs = Math.max(0L,
+                (SystemClock.elapsedRealtimeNanos() - receivedNs) / 1_000_000L);
+        if (ageMs > AUDIO_FACT_STALE_MS) {
+            return "audio=EXTERNAL authority=" + audioAuthorityName
+                    + " state=UNKNOWN reason=external-authority-stale ageMs=" + ageMs
+                    + " profile=" + audioProfileName;
+        }
+        return lastAudio + " ageMs=" + ageMs;
     }
 
     /** Return one bounded, authenticated-read response for the active watch. */
@@ -617,6 +657,160 @@ public final class CaptureService extends Service {
         localControlThread.start();
     }
 
+    private void startAudioFactServer(long generation) throws IOException {
+        ServerSocket server = new ServerSocket();
+        server.setReuseAddress(true);
+        // The host bridge reaches this endpoint through an explicitly-created
+        // adb forward. It is loopback-only and exists only for this capture
+        // session; the session token authenticates the forwarded client.
+        server.bind(new InetSocketAddress(
+                InetAddress.getByAddress(new byte[] {127, 0, 0, 1}), AUDIO_FACT_PORT), 1);
+        audioFactServer = server;
+        audioFactRunning = true;
+        audioFactThread = new Thread(
+                () -> audioFactLoop(generation, server), "cue-audio-facts");
+        audioFactThread.start();
+    }
+
+    private void audioFactLoop(long generation, ServerSocket server) {
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+        while (audioFactRunning && sessionActive(generation)) {
+            try {
+                Socket accepted = server.accept();
+                audioFactClient = accepted;
+                try (Socket client = accepted) {
+                    serveAudioFactClient(client.getInputStream(), client.getOutputStream());
+                } catch (IOException error) {
+                    if (audioFactRunning && sessionActive(generation)) {
+                        Log.w(TAG, "audio fact client failed", error);
+                    }
+                } finally {
+                    audioFactClient = null;
+                }
+            } catch (SocketException error) {
+                if (audioFactRunning && sessionActive(generation)) {
+                    Log.e(TAG, "audio fact socket failed", error);
+                    audioFactRunning = false;
+                }
+                break;
+            } catch (Throwable error) {
+                if (audioFactRunning && sessionActive(generation)) {
+                    Log.w(TAG, "audio fact request failed", error);
+                }
+            }
+        }
+    }
+
+    private void serveAudioFactClient(InputStream input, OutputStream output)
+            throws IOException {
+        String authentication = readBoundedAudioFactLine(input);
+        if (!("AUTH " + controlToken).equals(authentication)) {
+            writeAudioFactResponse(output, "ERROR unauthorized");
+            return;
+        }
+        writeAudioFactResponse(output, "OK audio-link=READY");
+        while (audioFactRunning && sessionActive(sessionGeneration)) {
+            String line = readBoundedAudioFactLine(input);
+            if (line == null) {
+                return;
+            }
+            if (line.isEmpty()) {
+                continue;
+            }
+            if (!acceptAudioFact(line)) {
+                writeAudioFactResponse(output, "ERROR invalid-fact");
+                return;
+            }
+        }
+    }
+
+    private void writeAudioFactResponse(OutputStream output, String response)
+            throws IOException {
+        output.write((response + "\n").getBytes(StandardCharsets.US_ASCII));
+        output.flush();
+    }
+
+    private String readBoundedAudioFactLine(InputStream input) throws IOException {
+        byte[] bytes = new byte[AUDIO_FACT_LINE_LIMIT];
+        int length = 0;
+        while (length < bytes.length) {
+            int value = input.read();
+            if (value == -1) {
+                return length == 0 ? null : new String(bytes, 0, length,
+                        StandardCharsets.US_ASCII);
+            }
+            if (value == '\n') {
+                return new String(bytes, 0, length, StandardCharsets.US_ASCII);
+            }
+            if (value == '\r') {
+                continue;
+            }
+            if (value < 0x20 || value > 0x7e) {
+                return null;
+            }
+            bytes[length++] = (byte) value;
+        }
+        return null;
+    }
+
+    private boolean acceptAudioFact(String line) {
+        try {
+            JSONObject fact = new JSONObject(line);
+            if (!"fact-message-v1".equals(fact.optString("schema"))) {
+                return false;
+            }
+            String state = fact.optString("state");
+            if (!"OBSERVED".equals(state) && !"UNKNOWN".equals(state)) {
+                return false;
+            }
+            String type = statusToken(fact.optString("type"), "unknown");
+            String source = statusToken(fact.optString("source"), AUDIO_AUTHORITY);
+            String profile = statusToken(fact.optString("calibrationProfile"), "unknown");
+            double confidence = fact.optDouble("confidence", -1.0);
+            if ("unknown".equals(type) || confidence < 0.0
+                    || confidence > 1.0 || !Double.isFinite(confidence)) {
+                return false;
+            }
+            if ("OBSERVED".equals(state) && !fact.has("value")) {
+                return false;
+            }
+            StringBuilder status = new StringBuilder(192);
+            status.append("audio=EXTERNAL authority=").append(source)
+                    .append(" state=").append(state)
+                    .append(" type=").append(type)
+                    .append(" confidence=").append(String.format(Locale.US, "%.3f", confidence))
+                    .append(" profile=").append(profile);
+            if ("UNKNOWN".equals(state)) {
+                String reason = statusToken(fact.optString("reason"), "invalid-fact");
+                status.append(" reason=").append(reason);
+            }
+            audioAuthorityName = source;
+            audioProfileName = profile;
+            lastAudio = status.toString();
+            lastAudioFactElapsedNs = SystemClock.elapsedRealtimeNanos();
+            publishCombinedStatus("RUNNING");
+            return true;
+        } catch (JSONException | RuntimeException error) {
+            Log.w(TAG, "rejected external audio fact", error);
+            return false;
+        }
+    }
+
+    private static String statusToken(String value, String fallback) {
+        if (value == null || value.isEmpty() || value.length() > 96) {
+            return fallback;
+        }
+        StringBuilder token = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            if (character < 0x21 || character > 0x7e || character == '=') {
+                return fallback;
+            }
+            token.append(character);
+        }
+        return token.toString();
+    }
+
     private LocalServerSocket openLocalControlServer(String socketName) throws IOException {
         IOException lastError = null;
         for (int attempt = 0; attempt < 10; attempt++) {
@@ -638,6 +832,7 @@ public final class CaptureService extends Service {
                 : tcpControlUp || localControlUp ? "DEGRADED" : "UNAVAILABLE";
         lastControl = "control=" + state
                 + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
+                + " audioPort=" + (audioFactRunning ? String.valueOf(AUDIO_FACT_PORT) : "none")
                 + " socket=" + (localControlUp ? controlSocketName : "none")
                 + " token=" + (controlToken == null ? "none" : controlToken)
                 + " " + watchStatus();
@@ -835,11 +1030,11 @@ public final class CaptureService extends Service {
         }
 
         return "snapshotNs=" + nowNs + " " + visual + " "
-                + externalAudioStatus() + " " + watchStatus();
+                + currentAudioStatus() + " " + watchStatus();
     }
 
     private void publishCombinedStatus(String lifecycle) {
-        publishStatus(lifecycle + "\n" + lastVisual + "\n" + lastAudio
+        publishStatus(lifecycle + "\n" + lastVisual + "\n" + currentAudioStatus()
                 + "\n" + lastControl);
     }
 
@@ -864,6 +1059,7 @@ public final class CaptureService extends Service {
         Log.w(TAG, "stopping capture: " + reason);
 
         controlRunning = false;
+        audioFactRunning = false;
         ServerSocket server = controlServer;
         controlServer = null;
         if (server != null) {
@@ -882,14 +1078,35 @@ public final class CaptureService extends Service {
                 // Closing an already-failed local server is still stopped.
             }
         }
-        for (Thread worker : new Thread[] {controlThread, localControlThread}) {
+        ServerSocket audioServer = audioFactServer;
+        audioFactServer = null;
+        if (audioServer != null) {
+            try {
+                audioServer.close();
+            } catch (IOException ignored) {
+                // Closing an already-failed audio fact server is still stopped.
+            }
+        }
+        Socket audioClient = audioFactClient;
+        audioFactClient = null;
+        if (audioClient != null) {
+            try {
+                audioClient.close();
+            } catch (IOException ignored) {
+                // Closing an already-failed audio fact client is still stopped.
+            }
+        }
+        for (Thread worker : new Thread[] {controlThread, audioFactThread,
+                localControlThread}) {
             if (worker != null && worker != Thread.currentThread()) {
                 worker.interrupt();
             }
         }
         joinWorker(controlThread);
+        joinWorker(audioFactThread);
         joinWorker(localControlThread);
         controlThread = null;
+        audioFactThread = null;
         localControlThread = null;
         tcpControlUp = false;
         localControlUp = false;
@@ -935,6 +1152,9 @@ public final class CaptureService extends Service {
 
         lastVisual = "visual=UNAVAILABLE(" + reason + ")";
         lastAudio = externalAudioStatus();
+        lastAudioFactElapsedNs = 0L;
+        audioAuthorityName = AUDIO_AUTHORITY;
+        audioProfileName = "unknown";
         lastControl = "control=UNAVAILABLE(" + reason + ")";
         publishCombinedStatus("UNAVAILABLE");
         stopForeground(STOP_FOREGROUND_REMOVE);

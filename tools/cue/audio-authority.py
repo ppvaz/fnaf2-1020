@@ -399,9 +399,14 @@ class AudioAuthority:
                 if not raw:
                     process.wait()
                     process = None
-                    self.emit_unknown("audio-route", "stream-ended")
+                    # A connected receiver may still have no PCM producer when
+                    # the phone is silent. Rate-limit this condition exactly
+                    # like other health facts; otherwise a fast EOF loop can
+                    # flood the subscriber and the APK with UNKNOWN records.
+                    self.emit_health(False, monotonic_ms(), "stream-ended")
                     if self.args.once:
                         return 3
+                    time.sleep(1.0)
                     continue
                 samples = self.decode(raw)
                 now_ms = monotonic_ms()
