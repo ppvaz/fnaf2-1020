@@ -87,7 +87,12 @@ acting on all three fronts the bench allows:
    latency-calibrated multi-tick estimator behind BlueALSA, lock states,
    500 ms parity anchoring, correction protocol, proof ladder (oracle →
    wrong-phase control → estimated clock → re-anchoring → measure). Feeds
-   from the real continuous-wind capture (the open 2 Hz-grid item).
+   from the real continuous-wind capture (the open 2 Hz-grid item). **Host
+   integration landed 2026-08-30:** `WindTickFactAdapter` accepts only
+   timestamp-ordered observed wind-tick facts, and the BlueALSA recorder now
+   has a read-only `--check` route gate that returns UNKNOWN while the phone is
+   disconnected. No detector, latency calibration, parity, or live action is
+   implied by this phone-free slice.
 3. **Observe-only instrumented run** feeds the detector corpus and drift
    measurement; **live reaction** only after detector proof (22/22-thud
    controls) and priced reactive presses (human-gate rule).

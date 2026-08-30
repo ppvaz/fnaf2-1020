@@ -234,6 +234,22 @@ wrong-phase control reproducing repeated interventions; (3) estimated clock
 with offset+drift uncertainty; (4) safe-boundary re-anchoring; (5) measure
 survival, interventions per visit, and false-intervention rate.
 
+### Host integration landed — 2026-08-30
+
+`WindTickFactAdapter` now binds the fact-link envelope to this estimator. It
+advances the clock only for an `OBSERVED`, boolean-true `wind-tick` and uses
+the host receiver timestamp, not the event timestamp, as its monotonic input.
+UNKNOWN facts and unrelated fact types are visible non-samples; non-increasing
+receipt times and invalid confidence are refused before estimator mutation.
+This is still a phone-free host contract: it does not detect audio, calibrate
+the A2DP delay, assign one-second parity, or authorize a live action.
+
+`capture-bt-audio.sh --check` is the matching physical-route preflight. It
+reports `READY` only when the expected BlueALSA source PCM answers `info`, and
+reports `UNKNOWN(a2dp-source-not-connected)` with exit status 3 otherwise.
+The preflight creates no output and does not stop `bluealsa-aplay`; a real
+capture remains gated on that check.
+
 ## First seed facts: the Night 2 vent-threat conflict (2026-08-30)
 
 The reactive BB-only build (`VentThreatReactive`, `src/controller.js`;

@@ -127,6 +127,7 @@ export function messageToFact(message, receivedAtMs) {
     ? { state: 'OBSERVED', value: valid.value }
     : { state: 'UNKNOWN', reason: valid.reason };
   return {
+    type: valid.type,
     ...fact,
     confidence: valid.confidence,
     source: valid.source,

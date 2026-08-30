@@ -257,6 +257,9 @@ const ENGINE = [
   // cause envelope can add attribution after the last office segment, but it
   // is hard-bound to shadow mode and cannot replace lifecycle authority.
   ['death cause', ['device/test-death-cause.py']],
+  // The external audio recorder must expose a fail-closed, phone-free route
+  // preflight before it can create an output directory or stop monitoring.
+  ['BT audio route', ['cue/test-capture-bt-audio.sh']],
   ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,

@@ -205,6 +205,77 @@ export class PhaseClockEstimator {
   }
 }
 
+/**
+ * Adapter from the fact-link envelope to the winding-tick estimator.  The
+ * transport may carry many observations; only an OBSERVED boolean
+ * `wind-tick` fact is allowed to advance this clock. UNKNOWN, another fact
+ * type, duplicate timestamps, and non-boolean values are visible refusals,
+ * not clock samples.
+ */
+export class WindTickFactAdapter {
+  constructor(estimator, { type = 'wind-tick' } = {}) {
+    if (!estimator || typeof estimator.observe !== 'function' ||
+        typeof estimator.status !== 'function')
+      throw new TypeError('WindTickFactAdapter needs a PhaseClockEstimator');
+    if (typeof type !== 'string' || !type.length)
+      throw new TypeError('wind-tick fact type must be a non-empty string');
+    this.estimator = estimator;
+    this.type = type;
+    this.lastReceivedMs = null;
+    this.accepted = 0;
+    this.ignored = 0;
+    this.rejected = 0;
+  }
+
+  observe(fact) {
+    if (!fact || typeof fact !== 'object') {
+      this.rejected++;
+      throw new TypeError('wind-tick fact must be an object');
+    }
+    if (fact.type !== this.type) {
+      this.ignored++;
+      return this.result(false, 'fact-type-not-wind-tick');
+    }
+    if (fact.state !== 'OBSERVED' || fact.value !== true) {
+      this.ignored++;
+      return this.result(false, fact.state === 'UNKNOWN'
+        ? 'fact-unknown' : 'wind-tick-value-not-true');
+    }
+    if (!finite(fact.receivedAtMs) || fact.receivedAtMs < 0) {
+      this.rejected++;
+      throw new TypeError('wind-tick receivedAtMs must be finite and non-negative');
+    }
+    if (this.lastReceivedMs !== null && fact.receivedAtMs <= this.lastReceivedMs) {
+      this.rejected++;
+      throw new RangeError('wind-tick receipt time must increase');
+    }
+    if (!finite(fact.confidence) || fact.confidence < 0 || fact.confidence > 1) {
+      this.rejected++;
+      throw new RangeError('wind-tick confidence must be between 0 and 1');
+    }
+    this.lastReceivedMs = fact.receivedAtMs;
+    this.accepted++;
+    return this.result(true, null,
+      this.estimator.observe(fact.receivedAtMs, { confidence: fact.confidence }));
+  }
+
+  result(accepted, reason, estimatorStatus = this.estimator.status(
+    this.lastReceivedMs ?? 0)) {
+    return {
+      schema: 'wind-tick-adapter-v1', accepted, reason,
+      estimator: estimatorStatus,
+      acceptedCount: this.accepted,
+      ignoredCount: this.ignored,
+      rejectedCount: this.rejected,
+      lastReceivedMs: this.lastReceivedMs,
+    };
+  }
+
+  status(nowMs = this.lastReceivedMs ?? 0) {
+    return this.result(false, null, this.estimator.status(nowMs));
+  }
+}
+
 // Adapt the estimator's calibrated reference-clock fit to the frame provider
 // consumed by VentThreatReactive. `frameOriginMs` is the independently paired
 // timestamp of game frame 0 (or an equivalent stable frame origin); it is not

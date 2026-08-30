@@ -2,6 +2,7 @@
 # Capture the phone's fully-rendered audio mix off its A2DP stream.
 #
 #   tools/cue/capture-bt-audio.sh <seconds> [outdir] [bt-mac]
+#   tools/cue/capture-bt-audio.sh --check [bt-mac]
 #
 # This is the non-root path to the discrete `Play sample` cues (winding tick,
 # BB's laughs). On the g56 those are on the `AUDIO_OUTPUT_FLAG_FAST` mixer,
@@ -20,23 +21,51 @@
 # Commit the derived fingerprint (tools/cue/reference-report.py) instead.
 set -euo pipefail
 
-SECS=${1:?usage: capture-bt-audio.sh <seconds> [outdir] [bt-mac]}
-OUT=${2:-$HOME/fnaf-apks/bt-audio-captures}
-MAC=${3:-10:2B:1C:DA:18:2C}
-case "$SECS" in *[!0-9]*) echo "seconds must be a whole number" >&2; exit 2 ;; esac
+DEFAULT_MAC=10:2B:1C:DA:18:2C
+MODE=record
+if [ "${1:-}" = "--check" ]; then
+  MODE=check
+  MAC=${2:-$DEFAULT_MAC}
+else
+  SECS=${1:?usage: capture-bt-audio.sh <seconds> [outdir] [bt-mac]}
+  OUT=${2:-$HOME/fnaf-apks/bt-audio-captures}
+  MAC=${3:-$DEFAULT_MAC}
+  case "$SECS" in *[!0-9]*) echo "seconds must be a whole number" >&2; exit 2 ;; esac
+fi
+
+if ! [[ "$MAC" =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
+  echo "Bluetooth MAC must have the form 00:11:22:33:44:55" >&2
+  exit 2
+fi
 
 REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+DEV="dev_$(echo "$MAC" | tr ':' '_')"
+PCM="/org/bluealsa/hci0/$DEV/a2dpsnk/source"
+check_route() {
+  if ! command -v bluealsa-cli >/dev/null 2>&1; then
+    echo "audio-route=UNKNOWN reason=bluealsa-cli-missing pcm=$PCM mac=$MAC"
+    return 3
+  fi
+  if bluealsa-cli info "$PCM" >/dev/null 2>&1; then
+    echo "audio-route=READY transport=bluealsa pcm=$PCM mac=$MAC"
+    return 0
+  fi
+  echo "audio-route=UNKNOWN reason=a2dp-source-not-connected pcm=$PCM mac=$MAC"
+  return 3
+}
+
+if check_route; then
+  :
+else
+  ROUTE_STATUS=$?
+  exit "$ROUTE_STATUS"
+fi
+[ "$MODE" = check ] && exit 0
+
 ABS_OUT="$(mkdir -p "$OUT" && cd "$OUT" && pwd)"
 case "$ABS_OUT/" in
   "$REPO"/*) echo "refusing to write game audio inside the repository: $ABS_OUT" >&2; exit 1 ;;
 esac
-
-DEV="dev_$(echo "$MAC" | tr ':' '_')"
-PCM="/org/bluealsa/hci0/$DEV/a2dpsnk/source"
-bluealsa-cli info "$PCM" >/dev/null 2>&1 || {
-  echo "no BlueALSA PCM at $PCM -- is the phone connected as an A2DP source?" >&2
-  exit 1
-}
 
 STAMP="$(date +%Y%m%dT%H%M%S)"
 RAW="$ABS_OUT/bt-$STAMP.raw"

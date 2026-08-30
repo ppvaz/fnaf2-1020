@@ -1,5 +1,7 @@
 // Phone-free contract tests for the Plan 21 winding-tick estimator.
-import { EstimatedPhaseClock, LatencyCalibrator, PhaseClockEstimator, PHASE_STATES } from '../src/phase-clock.js';
+import { EstimatedPhaseClock, LatencyCalibrator, PhaseClockEstimator,
+         WindTickFactAdapter, PHASE_STATES } from '../src/phase-clock.js';
+import { messageToFact } from '../src/fact-link.js';
 
 let failures = 0;
 const check = (name, condition) => {
@@ -55,6 +57,34 @@ check('estimated provider converts only calibrated phase + parity to game frames
 const notReady = new EstimatedPhaseClock(new PhaseClockEstimator(), { frameOriginMs: 0 });
 check('estimated provider refuses uncalibrated absolute game phase',
   notReady.nextBoundaryFrame(0) === Infinity);
+
+const factAdapter = new WindTickFactAdapter(
+  new PhaseClockEstimator({ latencyCalibration: calibration }));
+for (let i = 0; i < 8; i++) {
+  const wire = {
+    schema: 'fact-message-v1', seq: i, type: 'wind-tick', state: 'OBSERVED',
+    value: true, confidence: 1, source: 'bluealsa',
+    t_observed: 1210 + i * 500, t_received: 1210 + i * 500,
+    latencyMin: 200, latencyMax: 220,
+  };
+  const fact = messageToFact(wire, 1210 + i * 500);
+  factAdapter.observe(fact);
+}
+check('fact-link wind ticks feed only their timestamped receiver clock',
+  factAdapter.status().acceptedCount === 8 && factAdapter.status().estimator.locked);
+check('UNKNOWN and unrelated facts do not advance the wind clock',
+  factAdapter.observe({ type: 'maskOn', state: 'OBSERVED', value: true,
+    confidence: 1, receivedAtMs: 6000 }).reason === 'fact-type-not-wind-tick' &&
+  factAdapter.observe({ type: 'wind-tick', state: 'UNKNOWN', reason: 'audio-dropped',
+    confidence: 0, receivedAtMs: 6500 }).reason === 'fact-unknown' &&
+  factAdapter.status().acceptedCount === 8);
+let duplicateRejected = false;
+try {
+  factAdapter.observe({ type: 'wind-tick', state: 'OBSERVED', value: true,
+    confidence: 1, receivedAtMs: 4000 });
+} catch { duplicateRejected = true; }
+check('out-of-order wind ticks are rejected before estimator mutation', duplicateRejected &&
+  factAdapter.status().acceptedCount === 8);
 
 if (failures) process.exit(1);
 console.log('phase clock: calibration, lock, parity, confidence, and stale contracts pass');
