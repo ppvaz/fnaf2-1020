@@ -662,16 +662,16 @@ cue_snapshot() {
     # command substitution, so a shell variable incremented here dies with the
     # subshell and every call would look like the first.
     if [ "$(wc -l < "$CUE_LOG" | tr -d ' ')" -gt 1 ]; then
-      printf 'OK luma=20 cam5=30 grey=145 ageUs=1500\n'
+      printf 'OK luma=20 cam05_mean_luma=30 grey=145 ageUs=1500\n'
     else
-      printf 'OK luma=255 cam5=30 grey=178 ageUs=1500\n'
+      printf 'OK luma=255 cam05_mean_luma=30 grey=178 ageUs=1500\n'
     fi
     return 0
   fi
   if [ "$CUE_HONEST" -eq 1 ] && [ "$NOW" -ge $((LAST_MONITOR_PRESS_MS + 202)) ]; then
-    printf 'OK luma=20 cam5=30 grey=145 ageUs=1500\n'
+    printf 'OK luma=20 cam05_mean_luma=30 grey=145 ageUs=1500\n'
   else
-    printf 'OK luma=228 cam5=30 grey=178 ageUs=1500\n'
+    printf 'OK luma=228 cam05_mean_luma=30 grey=178 ageUs=1500\n'
   fi
 }
 HARNESS

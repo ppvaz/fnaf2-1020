@@ -1,4 +1,4 @@
-package com.fnafminus7.cuehelper;
+package com.fnaf2.cuehelper;
 
 /**
  * Host-side gate for the whole-frame grey-cell count. No phone, no Android SDK.

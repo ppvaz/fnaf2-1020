@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="CueHelperTheme" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/cue_background</item>
+        <item name="android:colorAccent">@color/cue_amber</item>
+        <item name="android:statusBarColor">@color/cue_background_deep</item>
+        <item name="android:navigationBarColor">@color/cue_background_deep</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

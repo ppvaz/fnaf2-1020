@@ -22,7 +22,7 @@ ROUNDS="${1:-4}"
 SECONDS_PER="${2:-60}"
 LABEL="${3:-bb-route}"
 OUT_DIR="${CUE_HELPER_CALIBRATION:-captures/cue-helper/calibration}"
-PACKAGE="com.fnafminus7.cuehelper"
+PACKAGE="com.fnaf2.cuehelper"
 
 case "$ROUNDS$SECONDS_PER" in *[!0-9]*) echo "rounds and seconds must be whole numbers" >&2; exit 2 ;; esac
 # The helper buffers a night in memory and stops rather than wrapping.

@@ -154,11 +154,11 @@ classify_left_and_queue_mask_at() {
   if [ "$CUE_PORT" != "-" ]; then
     cl_snap=$(cue_snapshot)
     cl_luma=$(printf '%s\n' "$cl_snap" | sed -n 's/.* luma=\([0-9-]*\).*/\1/p')
-    cl_cam5=$(printf '%s\n' "$cl_snap" | sed -n 's/.* cam5=\([0-9-]*\).*/\1/p')
+    cl_cam05_mean_luma=$(printf '%s\n' "$cl_snap" | sed -n 's/.* cam05_mean_luma=\([0-9-]*\).*/\1/p')
     cl_grey=$(printf '%s\n' "$cl_snap" | sed -n 's/.* grey=\([0-9-]*\).*/\1/p')
     cl_age=$(printf '%s\n' "$cl_snap" | sed -n 's/.* ageUs=\([0-9-]*\).*/\1/p')
     cl_grid=$(sed -n 's/^OK grid=[0-9x]* seq=\([0-9]*\).*/\1/p' "$capture_grid" 2>/dev/null)
-    cue_line=" cue[luma=${cl_luma:-UNREAD} cam5=${cl_cam5:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us grid=${cl_grid:-MISS}]"
+    cue_line=" cue[luma=${cl_luma:-UNREAD} cam05_mean_luma=${cl_cam05_mean_luma:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us grid=${cl_grid:-MISS}]"
   fi
   printf '%6d ms  classify-bb-left %s %s%s\n' "$actual" "$classification" "$monitor_seen" "$cue_line" >&2
   hid_mark "$actual"

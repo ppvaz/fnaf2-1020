@@ -868,7 +868,7 @@ and control mode is refused unless the model claims `evidence=heldout`.
 
 **It cannot influence a run, and that was checked rather than assumed.**
 `trial.sh` sends the helper exactly one verb, `GET`, and every consumer
-of that reply parses only `luma=`/`cam5=`/`ageUs=` — the one-pixel *visual*
+of that reply parses only `luma=`/`cam05_mean_luma=`/`ageUs=` — the *visual*
 classifier. `ARM` and `RESULT` appear nowhere in the runner. The detector's
 verdict reaches it only as an inert trailing `detector=…` string that no parser
 reads.

@@ -40,7 +40,8 @@ honesty:
 | `captures/screencheck-keep/RUN/` | when a read was not confidently `empty` | 2400x1080 raw frames, ~10.4 MB each, named `ELAPSED-CLASS.raw` |
 | `captures/RUN-hid.jsonl` | **only if `HID_TRACE_RUN=1`** | default is **0** |
 | `captures/RUN-cue.txt` | **only if `CUE_HELPER=1`** | default is **0**; ~14 Hz `GET` responses |
-| `captures/cue-helper/calibration/RUN-cue-*.wav` | **only if `CUE_AUDIO=1`** | default is **0**; mono 16-bit @ 16 kHz |
+| Android cue-helper PCM | never | The APK is visual-only; external rendered audio belongs to `tools/cue/audio-authority.py` |
+| `captures/RUN-audio-facts.jsonl` | **only if `CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH`** | `fact-message-v1` JSONL sidecar from the receiver authority; transport/profile identify BlueALSA, ESP32, or another backend |
 
 ### An aborted run
 
@@ -202,7 +203,7 @@ and the run already spends one.
 | `getevent -lt` | Used once, offline, on empty wallpaper, to measure `hid_delay`'s 0.76 ms stdev. Never during a night |
 | `soak-cue-helper.sh`'s process sampler | Exists; runs only in soak tests |
 | The v1 `observation`/`decision`/`action-result` event kinds | Defined in `schema/session-events-v1.json`; nothing emits them |
-| PCM capture | `CUE_AUDIO=1`, off by default. Costs the run nothing — Android states `AudioPlaybackCapture` does not affect the captured app's latency (`ANDROID-AUDIO-CAPTURE.md:44-46`) |
+| External audio facts | `CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH`, off by default. The trial subscribes to the live external authority and persists its JSONL facts; it never falls back to Android `AudioPlaybackCapture` |
 | `windpct.py --samples` | The series is computed and discarded |
 | `keyframes.py` | In `grade-run.sh`. Worth keeping: a tiled PNG is not a human-only artifact when the reader is multimodal |
 
@@ -304,11 +305,11 @@ Items 1-4 are the ones a night run can close by recording differently. Items
 - **A general telemetry framework.** The v1 manifest and event schema are the
   contract; the gap is that nothing emits into them from the device side. A
   second abstraction would fight `plans/09` for the same files.
-- **Audio as a *decision* input for Nights 1-5.** The bang detector's floor
+- **Audio as a *decision* input for Nights 1-5.** The external bang detector's floor
   (~-12 dB, 52% recall on injected controls) is a bound, not a verdict, and
   `ARCHITECTURE-AUDIT.md:145-153` shows `scan-night.sh` can print a complete
-  zero report from zero comparisons. Keep `CUE_AUDIO=1` for the death signature
-  and the corpus; do not let a night's outcome depend on it yet.
+  zero report from zero comparisons. Keep external audio facts observation-only;
+  do not let a night's outcome depend on them yet.
 - **Human-eye-only formats.** Nothing here needs a chart. `keyframes.py`'s tile
   survives that cut on a technicality — the reader is multimodal — and a
   dashboard does not.

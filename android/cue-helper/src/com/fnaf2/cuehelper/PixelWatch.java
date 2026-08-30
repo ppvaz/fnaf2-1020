@@ -1,4 +1,4 @@
-package com.fnafminus7.cuehelper;
+package com.fnaf2.cuehelper;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;

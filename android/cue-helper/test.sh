@@ -38,12 +38,12 @@ JAVA="$JDK_ROOT/bin/java"
 # --release, not -source/-target: the latter compiles against the running JDK's
 # system modules and warns that the result may not run on 17.
 "$JAVAC" -encoding UTF-8 --release 17 -d "$TEST_TMP" \
-  "$HERE/src/com/fnafminus7/cuehelper/CueDetector.java" \
-  "$HERE/src/com/fnafminus7/cuehelper/PixelWatch.java" \
-  "$HERE/src/com/fnafminus7/cuehelper/ScreenStats.java" \
-  "$HERE/test/com/fnafminus7/cuehelper/CueDetectorTest.java" \
-  "$HERE/test/com/fnafminus7/cuehelper/PixelWatchTest.java" \
-  "$HERE/test/com/fnafminus7/cuehelper/ScreenStatsTest.java"
-"$JAVA" -cp "$TEST_TMP" com.fnafminus7.cuehelper.CueDetectorTest
-$JAVA -cp "$TEST_TMP" com.fnafminus7.cuehelper.PixelWatchTest
-"$JAVA" -cp "$TEST_TMP" com.fnafminus7.cuehelper.ScreenStatsTest
+  "$HERE/src/com/fnaf2/cuehelper/CueDetector.java" \
+  "$HERE/src/com/fnaf2/cuehelper/PixelWatch.java" \
+  "$HERE/src/com/fnaf2/cuehelper/ScreenStats.java" \
+  "$HERE/test/com/fnaf2/cuehelper/CueDetectorTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/PixelWatchTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/ScreenStatsTest.java"
+"$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.CueDetectorTest
+$JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PixelWatchTest
+"$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenStatsTest

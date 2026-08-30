@@ -101,6 +101,10 @@ POST_CAPTURE_TOUCHES="${POST_CAPTURE_TOUCHES:-1}"
 # block below reads it under `set -u`, so a late default crashes every run
 # that does not set it in the environment.
 CUE_AUDIO="${CUE_AUDIO:-0}"
+# A live external authority is a host-side fact stream, not an Android app
+# permission. CUE_AUDIO=1 below subscribes to a socket whose authority is
+# started separately with tools/cue/audio-authority.py.
+AUDIO_AUTHORITY_SOCKET="${AUDIO_AUTHORITY_SOCKET:-}"
 CUE_HELPER="${CUE_HELPER:-0}"
 # Record bounded detector windows beside the night's anchored PCM. This is an
 # observation-only path: the remote input driver never receives the detector
@@ -119,6 +123,7 @@ LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"
 LOCAL_DEVICE_PLAN="$CAPTURE_DIR/$OUT-device-plan.txt"
 LOCAL_POLICY_ARTIFACT="$CAPTURE_DIR/$OUT-policy-artifact.json"
 LOCAL_CUE_SHADOW="$CAPTURE_DIR/$OUT-cue-shadow.txt"
+LOCAL_AUDIO_FACTS="$CAPTURE_DIR/$OUT-audio-facts.jsonl"
 SAMPLE_VIEW=""
 SAMPLE_BUCKET="unlabeled"
 LOCAL_SAMPLE_DIR=""
@@ -166,6 +171,7 @@ POST_CAPTURE_TOUCHES_EFFECTIVE=0
 RUN_TMP=""
 WATCHDOG_RESULT=""
 REC=""
+AUDIO_FACTS_PID=""
 DRIVER_PID=""
 DRIVER_LOG_PID=""
 DRIVER_OUTPUT_FIFO=""
@@ -271,6 +277,10 @@ case "$CUE_AUDIO" in
   0|1) ;;
   *) echo "CUE_AUDIO must be 0 or 1"; exit 2 ;;
 esac
+if [ "$CUE_AUDIO" -eq 1 ] && [ "$CUE_HELPER" -ne 1 ]; then
+  echo "CUE_AUDIO=1 requires CUE_HELPER=1 so the run has a visual session to pair with the facts" >&2
+  exit 2
+fi
 case "$CUE_HELPER" in
   0|1) ;;
   *) echo "CUE_HELPER must be 0 or 1"; exit 2 ;;
@@ -280,31 +290,8 @@ case "$CUE_SHADOW" in
   *) echo "CUE_SHADOW must be 0 or 1"; exit 2 ;;
 esac
 if [ "$CUE_SHADOW" -eq 1 ]; then
-  [ "$CUE_HELPER" -eq 1 ] && [ "$CUE_AUDIO" -eq 1 ] || {
-    echo "CUE_SHADOW=1 requires CUE_HELPER=1 and CUE_AUDIO=1" >&2
-    exit 2
-  }
-  [ -f "$CUE_SHADOW_MODEL" ] || {
-    echo "CUE_SHADOW=1 requires CUE_SHADOW_MODEL=<exact installed model>" >&2
-    exit 2
-  }
-  cue_model_schema="$(sed -n '1s/^\(cue-model-v1\) .*/\1/p' "$CUE_SHADOW_MODEL")"
-  CUE_MODEL_EVIDENCE="$(sed -n '1s/.* evidence=\([^ ]*\).*/\1/p' "$CUE_SHADOW_MODEL")"
-  cue_model_cues="$(awk '/^template / { for (i=1;i<=NF;i++) if ($i ~ /^cue=/) { sub(/^cue=/,"",$i); print $i } }' "$CUE_SHADOW_MODEL" | sort -u | tr '\n' ' ' | sed 's/ $//')"
-  [ "$cue_model_schema" = cue-model-v1 ] && \
-    { [ "$CUE_MODEL_EVIDENCE" = shadow ] || [ "$CUE_MODEL_EVIDENCE" = heldout ]; } || {
-      echo "CUE_SHADOW_MODEL is not a shadow-capable cue-model-v1" >&2
-      exit 2
-    }
-  [ "$cue_model_cues" = "bang bb_voice" ] || {
-    echo "CUE_SHADOW_MODEL must contain exactly the bang and bb_voice classes (found: $cue_model_cues)" >&2
-    exit 2
-  }
-  CUE_MODEL_SHA256="$(shasum -a 256 "$CUE_SHADOW_MODEL" | awk '{print $1}')"
-  [ ! -e "$LOCAL_CUE_SHADOW" ] || {
-    echo "refusing to overwrite $LOCAL_CUE_SHADOW" >&2
-    exit 2
-  }
+  echo 'CUE_SHADOW is no longer an APK operation; consume fact-message-v1 from the external authority instead' >&2
+  exit 2
 fi
 case "$GRADE_RUN" in
   0|1) ;;
@@ -694,58 +681,10 @@ fi
 source "$HERE/session.sh"
 WATCHDOG_RESULT="$RUN_TMP/watchdog-result"
 
-# The death signature, measured rather than guessed.
-#
-# A device-side poller sampled the cue helper at ~14 Hz across night 6-34's death.
-# Alive, the snapshot alternates luma 2-80, cam5 23-44, with audio rms 2800-4100
-# and peak 5000-16500. At the death it goes flat and stays there:
-#
-#     t=158.3   luma  71  cam5  44   rms 2919   peak 5691
-#     t=158.5   luma 214  cam5 250   rms 2286   peak 5761
-#     t=158.6   luma 214  cam5 250   rms    0   peak    0     <- and never moves again
-#
-# Audio falling to exactly zero is the sharpest edge; the two visual channels
-# pinning high agree with it. This costs one loopback exchange (~70 ms measured)
-# against the screencap path's 0.7-2.5 s, so the watchdog stops being both slow
-# and a competitor for SurfaceFlinger -- it was the screencap contention that
-# blinded the classifier for seven of eight cycles on night 6-23.
-CUE_DEAD_LUMA=200
-CUE_DEAD_CAM5=200
-
 state_once() {
-  local result snap luma cam5 rms
-  if [ "$CUE_PORT" != "-" ]; then
-    snap=$(printf 'GET %s\n' "$CUE_TOKEN" |
-      adb shell "toybox nc -w 1 127.0.0.1 $CUE_PORT" 2>/dev/null | tr -d '\r')
-    case "$snap" in
-      OK\ *)
-        luma=$(printf '%s\n' "$snap" | sed -n 's/.* luma=\([0-9]*\).*/\1/p')
-        cam5=$(printf '%s\n' "$snap" | sed -n 's/.* cam5=\([0-9]*\).*/\1/p')
-        rms=$(printf '%s\n' "$snap" | sed -n 's/.* rms=\([0-9]*\).*/\1/p')
-        if [ -n "$luma" ] && [ -n "$cam5" ] && [ -n "$rms" ] &&
-           [ "$rms" -eq 0 ] && [ "$luma" -ge "$CUE_DEAD_LUMA" ] &&
-           [ "$cam5" -ge "$CUE_DEAD_CAM5" ]; then
-          printf '%s\n' "gameover"
-          return 0
-        fi
-        # NOT "night". This signature was measured on one death and it matches
-        # the static screen only. Night 6-37 died, played the "Take cake to the
-        # children" minigame, and restarted to "12:00 AM 6th Night" -- none of
-        # which are bright-and-silent, so this returned "night" for 60+ seconds
-        # of a dead game and the pilot kept pressing into it. The elapsed time
-        # was then reported as run length, which is how a 163 s "record" got
-        # published without checking the run was alive.
-        #
-        # A detector that can only recognise ONE way of being dead must not be
-        # the thing that decides you are alive. Fall through to screenstate,
-        # which classifies night/gameover/other from the frame itself; the
-        # helper's job here is to catch the static case fast, never to vouch
-        # for gameplay.
-        ;;
-    esac
-    # Anything else -- helper refused, or a reading that is not the static
-    # signature -- goes to the authority below.
-  fi
+  # The helper is visual-only now. Keep lifecycle authority in screenstate;
+  # a missing external audio fact is UNKNOWN and cannot be used as a death
+  # signal or as evidence that the game is alive.
   if result=$(python3 "$HERE/screenstate.py" \
     --adb-fast "$WATCHDOG_CAPTURE_TIMEOUT" 2>/dev/null); then
     printf '%s\n' "$result"
@@ -832,6 +771,44 @@ stop_recording() {
   adb shell pkill -INT screenrecord 2>/dev/null || true
   wait "$REC" 2>/dev/null || true
   REC=""
+}
+
+stop_audio_facts() {
+  local local_pid="${AUDIO_FACTS_PID:-}"
+  [ -n "$local_pid" ] || return 0
+  if kill -0 "$local_pid" 2>/dev/null; then
+    kill -TERM "$local_pid" 2>/dev/null || true
+  fi
+  wait "$local_pid" 2>/dev/null || true
+  AUDIO_FACTS_PID=""
+}
+
+start_audio_facts() {
+  [ "$CUE_AUDIO" -eq 1 ] || return 0
+  [ -n "$AUDIO_AUTHORITY_SOCKET" ] || {
+    echo 'CUE_AUDIO=1 requires AUDIO_AUTHORITY_SOCKET for the external authority' >&2
+    echo 'start tools/cue/audio-authority.py --socket PATH, then retry' >&2
+    exit 2
+  }
+  [ -S "$AUDIO_AUTHORITY_SOCKET" ] || {
+    echo "external audio authority socket is not live: $AUDIO_AUTHORITY_SOCKET" >&2
+    exit 2
+  }
+  [ ! -e "$LOCAL_AUDIO_FACTS" ] || {
+    echo "refusing to overwrite $LOCAL_AUDIO_FACTS" >&2
+    exit 2
+  }
+  python3 "$HERE/../cue/collect-facts.py" \
+    --socket "$AUDIO_AUTHORITY_SOCKET" --output "$LOCAL_AUDIO_FACTS" &
+  AUDIO_FACTS_PID=$!
+  sleep 0.1
+  if ! kill -0 "$AUDIO_FACTS_PID" 2>/dev/null; then
+    wait "$AUDIO_FACTS_PID" 2>/dev/null || true
+    AUDIO_FACTS_PID=""
+    echo 'external audio authority accepted no fact-stream subscriber' >&2
+    exit 2
+  fi
+  echo "external audio authority facts: $LOCAL_AUDIO_FACTS"
 }
 
 start_cue_shadow() {
@@ -1213,6 +1190,13 @@ session_close() {                               # STATUS WATCHDOG_TEXT
         redaction.contains_audio=false redaction.commit_safe=true
     fi
   fi
+  if [ -f "$LOCAL_AUDIO_FACTS" ]; then
+    fnaf_session_artifact "$LOCAL_AUDIO_FACTS" artifact_id=audio-facts \
+      role=external-audio-authority-facts authority=external-audio-authority \
+      format=application/x-ndjson complete=true truncated=false retention=local-only \
+      clock_domain=authority_monotonic_ms redaction.contains_game_media=true \
+      redaction.contains_audio=false redaction.commit_safe=false
+  fi
   if [ -f "$LOCAL_CUE_SHADOW" ]; then
     fnaf_session_artifact "$LOCAL_CUE_SHADOW" artifact_id=cue-shadow-trace \
       role=non-controlling-cue-detector-windows authority=primary-observation \
@@ -1320,6 +1304,7 @@ cleanup() {
     GAME_LAUNCHED=0
   fi
   stop_recording
+  stop_audio_facts
   # A clean classifier run may temporarily enable touch dots only after each
   # raw frame. Restore the requested global debug setting on every exit.
   adb shell settings put system show_touches "$DEBUG_OVERLAYS" >/dev/null 2>&1 || true
@@ -1339,10 +1324,6 @@ cleanup() {
     adb shell "rm -rf $REMOTE_KEEP_DIR" >/dev/null 2>&1 || true
   fi
   stop_cue_shadow || true
-  if [ "${CUE_AUDIO_STARTED:-0}" -eq 1 ]; then
-    CUE_AUDIO_STARTED=0
-    "$HERE/query-cue-helper.sh" log stop "$OUT" 2>&1 | sed 's/^/  audio: /' || true
-  fi
   if [ "${CUE_TRACE_REMOTE:-}" != "" ]; then
     # Stop the writer first: the loop only reads the sentinel, so this rm
     # cannot be resurrected, and the pull then copies a quiescent file.
@@ -1422,7 +1403,8 @@ fnaf_session_record env \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \
   "SCREENRECORD_TIME_LIMIT=$SCREENRECORD_LIMIT" \
   "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
-  "CUE_HELPER=$CUE_HELPER" "CUE_AUDIO=$CUE_AUDIO" "CUE_SHADOW=$CUE_SHADOW" \
+  "CUE_HELPER=$CUE_HELPER" "CUE_AUDIO=$CUE_AUDIO" \
+  "AUDIO_AUTHORITY_SOCKET=${AUDIO_AUTHORITY_SOCKET:-none}" "CUE_SHADOW=$CUE_SHADOW" \
   "REACTIVE=$REACTIVE" "REACTIVE_WATCH_SPEC=${WATCH_SPEC_HASH:-none}" \
   "PLAN_SPACING_MS=$PLAN_SPACING_MS" "PLAN_CONTACT_MS=$PLAN_CONTACT_MS" \
   "PILOT_OFFSET_MS=$PILOT_OFFSET_MS" \
@@ -1560,20 +1542,14 @@ source "$HERE/menu.sh"
 # does not switch the sensor. It records the helper's reading next to the
 # screencheck class that is already trusted, which is exactly the labelled data
 # the threshold needs. Switch only once that data says where the line is.
-# Keep the night's PCM, not just the scalar snapshots.
-#
-# The cue trace records rms and peak per sample, which cannot carry a transient:
-# measured over night 6-40 the peak is pinned at full-scale int16 on 55% of the
-# live stretch. The bang detector needs the waveform, and nothing was ever
-# recording it -- `screenrecord` is video-only and no night run has ever kept
-# audio, so "no bang was heard" has never once been a measurement. The helper
-# buffers the night in memory and writes on stop, so this costs the run nothing.
-CUE_AUDIO_STARTED=0
+# Audio facts stay on the external authority's transport. The trial can verify
+# that a live authority socket exists, but it never falls back to an Android
+# recorder or treats an absent fact as a negative cue.
 CUE_PORT="-"
 CUE_TOKEN="-"
 CUE_READ_VERB="GET"
 if [ "$CUE_HELPER" -eq 1 ]; then
-  cue_pid="$(adb shell pidof com.fnafminus7.cuehelper 2>/dev/null | tr -d '\r' | awk '{print $1}')"
+  cue_pid="$(adb shell pidof com.fnaf2.cuehelper 2>/dev/null | tr -d '\r' | awk '{print $1}')"
   [ -n "$cue_pid" ] || { echo 'CUE_HELPER=1 but the helper is not running' >&2; exit 2; }
   cue_control="$(adb logcat -d --pid="$cue_pid" -v brief -s FnafCueHelper:I '*:S' 2>/dev/null |
     tr -d '\r' | awk '/control=(READY|DEGRADED)/ { line=$0 } END { print line }')"
@@ -1603,52 +1579,11 @@ if [ "$CUE_HELPER" -eq 1 ]; then
     echo "reactive: observe-only native watch active spec=$WATCH_SPEC_HASH"
   fi
   if [ "$CUE_AUDIO" -eq 1 ]; then
-    # Refuse the night rather than record silence through it.
-    #
-    # AudioPlaybackCapture taps the phone's mix. A2DP offload does not go
-    # through that mix, so with Bluetooth audio connected the helper returns
-    # zero-filled buffers -- and keeps reporting `audio=OBSERVED` with an
-    # advancing frame counter, which is indistinguishable from working. Night
-    # 6-42 recorded 71 s of exact zeros across a night that had Balloon Boy on
-    # camera, and only the sample values said so. Checking costs one dumpsys.
-    # A herestring, because `grep -q` must not be on the right of a pipe here.
-    #
-    # It exits the instant it matches, the writer takes SIGPIPE, and under
-    # `set -o pipefail` the pipeline reports 141 -- so the `if` reads false no
-    # matter how well the pattern matched. That skipped this guard twice and let
-    # nights 6-43 and 6-guardtest record 66 s and 63 s of silence anyway. Piping
-    # into `grep -c` and comparing hides it, because -c reads to the end.
-    audio_route="$(adb shell dumpsys audio 2>/dev/null | tr -d '\r')"
-    if grep -q 'Devices: *bt_a2dp' <<<"$audio_route"; then
-      echo 'CUE_AUDIO=1 but this phone is playing to Bluetooth, and A2DP offload' >&2
-      echo 'bypasses the mix the helper captures: the recording would be silent and' >&2
-      echo 'the bang scan would report a meaningless zero. Disconnect Bluetooth audio' >&2
-      echo '(or set CUE_AUDIO=0 to run the night without it).' >&2
-      exit 2
-    fi
-    if "$HERE/query-cue-helper.sh" log start >/dev/null 2>&1; then
-      CUE_AUDIO_STARTED=1
-      echo "cue helper: recording the night's audio for the bang detector"
-    else
-      echo 'CUE_AUDIO=1 but the helper would not start a capture' >&2
-      exit 2
-    fi
+    start_audio_facts
   fi
   if [ "$CUE_SHADOW" -eq 1 ]; then
-    cue_model_status="$("$HERE/query-cue-helper.sh" model status)" || {
-      echo "CUE_SHADOW=1 but the helper could not report its model" >&2
-      exit 2
-    }
-    installed_sha="$(printf '%s\n' "$cue_model_status" | sed -n 's/.* modelSha256=\([0-9a-f]*\).*/\1/p')"
-    installed_evidence="$(printf '%s\n' "$cue_model_status" | sed -n 's/.* evidence=\([^ ]*\).*/\1/p')"
-    [ "$installed_sha" = "$CUE_MODEL_SHA256" ] && \
-      [ "$installed_evidence" = "$CUE_MODEL_EVIDENCE" ] || {
-        echo "the helper is not running the exact CUE_SHADOW_MODEL" >&2
-        echo "  local:     $CUE_MODEL_SHA256 evidence=$CUE_MODEL_EVIDENCE" >&2
-        echo "  installed: ${installed_sha:-unreported} evidence=${installed_evidence:-unreported}" >&2
-        exit 2
-      }
-    echo "cue helper: exact model $CUE_MODEL_SHA256 evidence=$CUE_MODEL_EVIDENCE (shadow observations only)"
+    echo 'CUE_SHADOW is no longer an APK operation; consume fact-message-v1 from the external authority instead' >&2
+    exit 2
   fi
   # And a continuous device-side trace of the same socket, for the events we
   # cannot schedule. Golden Freddy is one run in ten before 2 AM; the box-low

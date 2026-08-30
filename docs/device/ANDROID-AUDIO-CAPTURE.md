@@ -1,5 +1,13 @@
 # Android internal-audio capture does not match the audible mix
 
+> Current implementation (2026-08-30): the APK no longer attempts this
+> internal capture path. `FNaF 2 Cue Helper` owns visual `MediaProjection`
+> only; `tools/cue/audio-authority.py` owns external rendered-audio facts.
+> The validated host adapter is BlueALSA/A2DP, while an ESP32 receiver may use
+> the same `fact-message-v1` contract with its own calibration profile. The
+> Android findings below are retained as the reason for that boundary and are
+> historical evidence, not the current APK behavior.
+
 This note records an FNaF 2 mobile recording artifact reported on the owned
 Android build and independently described by other players. It matters beyond
 sharing gameplay clips: any future audio-cue detector must establish what the
@@ -116,11 +124,11 @@ negative windows with Mangle present and with the music box winding. The first
 acceptance test is whether BB laughs remain distinguishable under the captured
 background; end-to-end timing is a separate test after that.
 
-The proposed on-device boundary, window schedule, failure semantics, and
+The historical on-device boundary, window schedule, failure semantics, and
 promotion gates are preserved in
 [`plans/08-audio-cue-controller.md`](../../plans/08-audio-cue-controller.md).
-That plan keeps PCM and detection on the phone and does not assume that the
-helper must read continuously.
+The current boundary moves PCM and detection to the external audio authority;
+the APK does not assume or advertise an on-device audio reader.
 
 ## Bluetooth silently empties the capture (2026-08-25)
 
@@ -152,12 +160,11 @@ Two traps found while wiring that guard, both worth keeping:
   skipped the Bluetooth guard twice, and two nights recorded silence anyway
   before it was noticed. Piping into `grep -c` and comparing hides the bug,
   because `-c` reads to the end; a herestring avoids it entirely.
-- **The helper does not release its control socket when its capture restarts.**
-  Asking a running instance to start capture again fails with
-  `java.io.IOException: Address already in use`, and it then reports
-  `visual/audio/control=UNAVAILABLE(startup-IOException)` -- which reads as a
-  broken helper rather than a stale one. `adb shell am force-stop
-  com.fnafminus7.cuehelper` and relaunch; the consent has to be granted again.
+- **The helper now releases its capture workers when stopped and uses a
+  session-scoped control socket.** Asking a running instance to stop and start
+  capture again no longer fails with `java.io.IOException: Address already in
+  use`. After installing the renamed package, use `adb shell am force-stop
+  com.fnaf2.cuehelper` and relaunch when a clean consent session is needed.
 
 ## Practical recording workarounds
 

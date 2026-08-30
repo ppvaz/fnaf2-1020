@@ -2,17 +2,11 @@
 # Talk to the cue helper's authenticated snapshot socket.
 #
 #   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
-#   query-cue-helper.sh record PRE POST [label]   pull one calibration window
 #   query-cue-helper.sh latency [count]           time device-local snapshot and grid reads
-#   query-cue-helper.sh log start                 begin a night-length capture
-#   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
 #   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
 #   query-cue-helper.sh watchlist status|load HASH inspect/load native watchlist
 #   query-cue-helper.sh read                      read the active native watchlist
-#   query-cue-helper.sh model status|reload       inspect/reload app-private model
-#   query-cue-helper.sh arm ID CUES MS [MODE]      arm a shadow/control cue window
-#   query-cue-helper.sh result ID                  poll one armed cue window
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -22,14 +16,12 @@
 #             socket. Cable-bound: nothing on the device has to open a port.
 #             Select with CUE_HELPER_TRANSPORT=forward.
 #
-# `record` is a device action: it turns calibration capture on, waits for the
-# ring to hold PRE seconds of pre-roll, captures PRE+POST seconds around now,
-# turns calibration back off, and pulls the WAV into an ignored local
-# directory. Raw game audio never enters the repository.
+# Audio is not an APK operation. Use `tools/cue/audio-authority.py` on the
+# external receiver host for route checks, PCM, and fact messages.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE="com.fnafminus7.cuehelper"
+PACKAGE="com.fnaf2.cuehelper"
 OUT_DIR="${CUE_HELPER_CALIBRATION:-captures/cue-helper/calibration}"
 
 VERB=snapshot
@@ -47,7 +39,13 @@ case "${1:-}" in
   arm) VERB=arm; shift ;;
   result) VERB=result; shift ;;
   '') ;;
-  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|watch|watchlist|read|model|arm|result|record]" >&2; exit 2 ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|watch|watchlist|read]" >&2; exit 2 ;;
+esac
+case "$VERB" in
+  record|log|model|arm|result)
+    echo "$VERB is no longer an APK operation; use tools/cue/audio-authority.py on the external receiver host" >&2
+    exit 2
+    ;;
 esac
 case "$TRANSPORT" in
   loopback|forward) ;;

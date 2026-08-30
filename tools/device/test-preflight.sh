@@ -46,7 +46,7 @@ export MOCK_DEVICES=ZF525F5BH5
 export MOCK_PKGS=all
 export MOCK_PID=7007
 export MOCK_CONTROL='I/FnafCueHelper(7007): RUNNING control=READY port=49707 token=0123456789abcdef0123456789abcdef'
-export MOCK_SNAP='OK snapshotNs=1 visual=OBSERVED seq=1 rgba=1,2,3 luma=2 cam5=30 grey=178 ageUs=1200'
+export MOCK_SNAP='OK snapshotNs=1 visual=OBSERVED seq=1 rgba=1,2,3 luma=2 cam05_mean_luma=30 grey=178 ageUs=1200'
 # Two mCurrentFocus lines, the first null, because that is what the device
 # prints mid-transition and matching only the first is a documented trap.
 export MOCK_FOCUS='  mCurrentFocus=null
@@ -99,14 +99,14 @@ want "did not answer a snapshot" "$(MOCK_SNAP='ERROR unavailable' run 1)" "helpe
 # The one that matters most: an older helper build runs, answers, and silently
 # degrades the resync verification to an arm that sees one camera in four.
 want "sends no grey=" \
-  "$(MOCK_SNAP='OK visual=OBSERVED luma=2 cam5=30 ageUs=1200' run 1)" \
+  "$(MOCK_SNAP='OK visual=OBSERVED luma=2 cam05_mean_luma=30 ageUs=1200' run 1)" \
   "helper predates grey="
 
 # The helper's MainActivity sits in the back stack after you grant capture
 # consent. If it comes forward, the runner's own focus guard refuses partway
 # through a night and the failure reads as a transient.
 want "cue helper's activity is focused" \
-  "$(MOCK_FOCUS='  mCurrentFocus=Window{9f8e7d u0 com.fnafminus7.cuehelper/com.fnafminus7.cuehelper.MainActivity}' run 1)" \
+  "$(MOCK_FOCUS='  mCurrentFocus=Window{9f8e7d u0 com.fnaf2.cuehelper/com.fnaf2.cuehelper.MainActivity}' run 1)" \
   "helper in front"
 want "not the focused window" "$(MOCK_FOCUS='  mCurrentFocus=null' run 1)" "nothing focused"
 # The game must be matched across ALL mCurrentFocus lines, not just the first:

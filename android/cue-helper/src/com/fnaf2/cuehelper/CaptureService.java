@@ -1,4 +1,4 @@
-package com.fnafminus7.cuehelper;
+package com.fnaf2.cuehelper;
 
 import android.app.Activity;
 import android.app.Notification;
@@ -8,18 +8,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.graphics.PixelFormat;
 import android.hardware.HardwareBuffer;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.VirtualDisplay;
-import android.media.AudioAttributes;
-import android.media.AudioFormat;
-import android.media.AudioPlaybackCaptureConfiguration;
-import android.media.AudioRecord;
-import android.media.AudioTimestamp;
 import android.media.Image;
 import android.media.ImageReader;
 import android.media.projection.MediaProjection;
@@ -35,9 +28,6 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.Log;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -54,11 +44,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class CaptureService extends Service {
     public static final String ACTION_START =
-            "com.fnafminus7.cuehelper.action.START";
+            "com.fnaf2.cuehelper.action.START";
     public static final String ACTION_STOP =
-            "com.fnafminus7.cuehelper.action.STOP";
+            "com.fnaf2.cuehelper.action.STOP";
     public static final String ACTION_STATUS =
-            "com.fnafminus7.cuehelper.action.STATUS";
+            "com.fnaf2.cuehelper.action.STATUS";
     public static final String EXTRA_RESULT_CODE = "resultCode";
     public static final String EXTRA_RESULT_DATA = "resultData";
     public static final String EXTRA_CAPTURE_WIDTH = "captureWidth";
@@ -66,7 +56,6 @@ public final class CaptureService extends Service {
     public static final String EXTRA_STATUS = "status";
 
     private static final String TAG = "FnafCueHelper";
-    private static final String GAME_PACKAGE = "com.scottgames.fnaf2";
     private static final String NOTIFICATION_CHANNEL = "capture";
     private static final int NOTIFICATION_ID = 7007;
 
@@ -80,45 +69,31 @@ public final class CaptureService extends Service {
     // service already has -- the reason CAM 05 needed a 206 ms screencap was
     // that this service sampled exactly one hardcoded point, not any limit of
     // the capture.
-    private static final int CAM5_X0 = 5;
-    private static final int CAM5_X1 = 9;
-    private static final int CAM5_Y0 = 1;
-    private static final int CAM5_Y1 = 4;
+    private static final int CAM05_X0 = 5;
+    private static final int CAM05_X1 = 9;
+    private static final int CAM05_Y0 = 1;
+    private static final int CAM05_Y1 = 4;
     private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
-    private static final long MAX_AUDIO_READ_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
-    private static final long AUDIO_REPORT_INTERVAL_MS = 1_000L;
     private static final int CONTROL_PORT = 49_707;
-    private static final String CONTROL_SOCKET_NAME =
-            "com.fnafminus7.cuehelper.control";
+    private static final String CONTROL_SOCKET_PREFIX =
+            "com.fnaf2.cuehelper.control";
     private static final int CONTROL_LINE_LIMIT = 256;
-    // Calibration ring. Package 1 of plan 08 needs labeled windows around a cue
-    // that is only recognised after it starts, so the ring keeps a pre-roll and
-    // REC copies backwards from the request.
-    private static final int CAL_RING_SECONDS = 12;
-    private static final int CAL_MAX_PRE_SECONDS = 8;
-    private static final int CAL_MAX_POST_SECONDS = 8;
-    private static final String CAL_DIR = "calibration";
-    private static final String CUE_MODEL_FILE = "cue-model-v1.txt";
-    // A whole night is seven minutes. Buffering it in memory keeps every write
-    // off the audio thread, which matters more than the 15 MB: a stalled write
-    // would drop exactly the frames the run exists to collect.
-    private static final int LOG_MAX_SECONDS = 480;
     private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
+    private static final String AUDIO_AUTHORITY = "audio-authority";
 
     private final AtomicBoolean stopping = new AtomicBoolean(false);
-    private final AtomicBoolean audioRunning = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object snapshotLock = new Object();
-    private final CueDetector cueDetector = new CueDetector();
+    // Incremented for every start and stop. Worker callbacks from an older
+    // projection must not observe or mutate a later session.
+    private volatile long sessionGeneration;
 
     private MediaProjection projection;
     private MediaProjection.Callback projectionCallback;
     private VirtualDisplay virtualDisplay;
     private ImageReader imageReader;
     private HandlerThread visualThread;
-    private AudioRecord audioRecord;
-    private Thread audioThread;
     private ServerSocket controlServer;
     private LocalServerSocket localControlServer;
     private Thread controlThread;
@@ -127,6 +102,7 @@ public final class CaptureService extends Service {
     private volatile boolean tcpControlUp;
     private volatile boolean localControlUp;
     private String controlToken;
+    private String controlSocketName;
 
     private long visualSequence;
     private long lastVisualReportNs;
@@ -142,26 +118,8 @@ public final class CaptureService extends Service {
     // turn a letterboxed or hidden capture into a confident pixel reading.
     private volatile int capturedContentVisibility = -1;
     private volatile String lastVisual = "visual=UNAVAILABLE";
-    private volatile String lastAudio = "audio=UNAVAILABLE";
+    private volatile String lastAudio = externalAudioStatus();
     private volatile String lastControl = "control=UNAVAILABLE";
-    // Off unless an operator turns it on over the authenticated channel, and
-    // always printed in the status line: controller mode must be provably
-    // unable to write PCM to disk.
-    private volatile boolean calibrationEnabled;
-    private final Object calLock = new Object();
-    private volatile int audioSampleRate;
-    private short[] calRing;
-    private short[] logBuffer;
-    private int logWrite;
-    private boolean logRunning;
-    // nanoTime of the first frame written to the log. Without it a pulled WAV
-    // is a sound with no place on the clock, and it cannot be aligned to the
-    // visual snapshots that label it.
-    private long logStartNs;
-    private long logStartFrames;
-    private int calRingWrite;
-    private long calRingFrames;
-    private int calRingRate;
 
     private long snapshotVisualSequence;
     private long snapshotVisualTimestampNs;
@@ -169,7 +127,7 @@ public final class CaptureService extends Service {
     private int snapshotGreen;
     private int snapshotBlue;
     private int snapshotLuma;
-    private int snapshotCam5;
+    private int snapshotCam05MeanLuma;
     // Near-grey cells over the whole grid, or -1 when the grid is incomplete.
     //
     // A whole-frame count, because this sensor point-samples: the position
@@ -194,10 +152,6 @@ public final class CaptureService extends Service {
     private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
     private final int[] snapshotWatchValues = new int[PixelWatch.MAX_ENTRIES];
     private volatile boolean watchActive;
-    private long snapshotAudioFrames;
-    private long snapshotAudioReadNs;
-    private int snapshotAudioRms;
-    private int snapshotAudioPeak;
 
     @Override
     public void onCreate() {
@@ -206,7 +160,7 @@ public final class CaptureService extends Service {
                 NOTIFICATION_CHANNEL,
                 "Cue capture",
                 NotificationManager.IMPORTANCE_LOW);
-        channel.setDescription("Active on-device visual and playback-audio capture");
+        channel.setDescription("Active on-device visual capture with external audio authority");
         getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
 
@@ -215,7 +169,8 @@ public final class CaptureService extends Service {
         String action = intent == null ? null : intent.getAction();
         if (ACTION_STOP.equals(action)) {
             stopCapture("operator-stop", true);
-            stopSelf();
+            // Keep the service instance alive and idle. The next start gets a
+            // fresh consent token and can reuse this process immediately.
             return START_NOT_STICKY;
         }
 
@@ -229,6 +184,9 @@ public final class CaptureService extends Service {
             publishCombinedStatus("RUNNING");
             return START_NOT_STICKY;
         }
+
+        stopping.set(false);
+        final long generation = ++sessionGeneration;
 
         int resultCode = intent.getIntExtra(EXTRA_RESULT_CODE, Activity.RESULT_CANCELED);
         Intent resultData;
@@ -248,6 +206,7 @@ public final class CaptureService extends Service {
             projectionCallback = new MediaProjection.Callback() {
                 @Override
                 public void onCapturedContentResize(int width, int height) {
+                    if (!sessionActive(generation)) return;
                     capturedContentWidth = width;
                     capturedContentHeight = height;
                     Log.i(TAG, "captured content resized: " + width + "x" + height);
@@ -255,12 +214,14 @@ public final class CaptureService extends Service {
 
                 @Override
                 public void onCapturedContentVisibilityChanged(boolean isVisible) {
+                    if (!sessionActive(generation)) return;
                     capturedContentVisibility = isVisible ? 1 : 0;
                     Log.i(TAG, "captured content visible=" + isVisible);
                 }
 
                 @Override
                 public void onStop() {
+                    if (!sessionActive(generation)) return;
                     Log.w(TAG, "projection callback: stopped");
                     stopCapture("projection-stopped", false);
                     stopSelf();
@@ -275,10 +236,9 @@ public final class CaptureService extends Service {
                 throw new IllegalArgumentException("capture size must be a 20:9 "
                         + "landscape size between 20x9 and 2400x1080");
             }
-            startVisualCapture();
-            startAudioCapture();
-            loadCueModel();
-            startControlServer();
+            startVisualCapture(generation);
+            lastAudio = externalAudioStatus();
+            startControlServer(generation);
             publishCombinedStatus("RUNNING");
         } catch (Throwable error) {
             Log.e(TAG, "capture startup failed", error);
@@ -296,8 +256,8 @@ public final class CaptureService extends Service {
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification notification = new Notification.Builder(this, NOTIFICATION_CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_menu_view)
-                .setContentTitle("Minus 7 sensors active")
-                .setContentText("20x9 visual and playback-audio probe")
+                .setContentTitle("FNaF 2 sensors active")
+                .setContentText("20x9 visual probe; audio supplied externally")
                 .setContentIntent(contentIntent)
                 .setOngoing(true)
                 .build();
@@ -309,7 +269,7 @@ public final class CaptureService extends Service {
         }
     }
 
-    private void startVisualCapture() {
+    private void startVisualCapture(long generation) {
         visualThread = new HandlerThread(
                 "cue-visual",
                 Process.THREAD_PRIORITY_DISPLAY);
@@ -322,7 +282,8 @@ public final class CaptureService extends Service {
                 PixelFormat.RGBA_8888,
                 2,
                 HardwareBuffer.USAGE_CPU_READ_OFTEN);
-        imageReader.setOnImageAvailableListener(this::onImageAvailable, visualHandler);
+        imageReader.setOnImageAvailableListener(
+                reader -> onImageAvailable(reader, generation), visualHandler);
 
         int densityDpi = getResources().getConfiguration().densityDpi;
         virtualDisplay = projection.createVirtualDisplay(
@@ -335,6 +296,7 @@ public final class CaptureService extends Service {
                 new VirtualDisplay.Callback() {
                     @Override
                     public void onStopped() {
+                        if (!sessionActive(generation)) return;
                         lastVisual = "visual=UNAVAILABLE(display-stopped)";
                         publishCombinedStatus("UNAVAILABLE");
                     }
@@ -349,7 +311,8 @@ public final class CaptureService extends Service {
         Log.i(TAG, lastVisual);
     }
 
-    private void onImageAvailable(ImageReader reader) {
+    private void onImageAvailable(ImageReader reader, long generation) {
+        if (!sessionActive(generation)) return;
         Image image = null;
         try {
             image = reader.acquireLatestImage();
@@ -381,9 +344,9 @@ public final class CaptureService extends Service {
             int green = (rgb >> 8) & 0xff;
             int blue = rgb & 0xff;
             int luma = (77 * red + 150 * green + 29 * blue) >> 8;
-            int cam5Luma = blockLuma(watchFrame,
-                    scaleX(CAM5_X0, VISUAL_WIDTH), scaleY(CAM5_Y0, VISUAL_HEIGHT),
-                    scaleX(CAM5_X1 + 1, VISUAL_WIDTH), scaleY(CAM5_Y1 + 1, VISUAL_HEIGHT));
+            int cam05MeanLuma = blockLuma(watchFrame,
+                    scaleX(CAM05_X0, VISUAL_WIDTH), scaleY(CAM05_Y0, VISUAL_HEIGHT),
+                    scaleX(CAM05_X1 + 1, VISUAL_WIDTH), scaleY(CAM05_Y1 + 1, VISUAL_HEIGHT));
             long callbackNs = System.nanoTime();
             long timestampNs = image.getTimestamp();
             long ageUs = timestampNs > 0 ? (callbackNs - timestampNs) / 1_000L : -1;
@@ -395,6 +358,7 @@ public final class CaptureService extends Service {
             // recomputing there would both duplicate the pass and race the
             // next frame's writer.
             int greyCells;
+            if (!sessionActive(generation)) return;
             synchronized (snapshotLock) {
                 snapshotVisualSequence = visualSequence;
                 snapshotVisualTimestampNs = timestampNs;
@@ -402,7 +366,7 @@ public final class CaptureService extends Service {
                 snapshotGreen = green;
                 snapshotBlue = blue;
                 snapshotLuma = luma;
-                snapshotCam5 = cam5Luma;
+                snapshotCam05MeanLuma = cam05MeanLuma;
                 boolean complete = true;
                 for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
                     for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
@@ -456,8 +420,8 @@ public final class CaptureService extends Service {
                 if (invalidReason == null) {
                     lastVisual = String.format(Locale.US,
                             "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
-                                    + "cam5=%d grey=%d ageUs=%d content=%s",
-                            visualSequence, red, green, blue, luma, cam5Luma,
+                                    + "cam05_mean_luma=%d grey=%d ageUs=%d content=%s",
+                            visualSequence, red, green, blue, luma, cam05MeanLuma,
                             greyCells, ageUs, content);
                 } else {
                     lastVisual = String.format(Locale.US,
@@ -568,6 +532,11 @@ public final class CaptureService extends Service {
                 + " entries=" + watchSpec.size();
     }
 
+    private static String externalAudioStatus() {
+        return "audio=EXTERNAL authority=" + AUDIO_AUTHORITY
+                + " state=UNKNOWN reason=host-authority-not-connected";
+    }
+
     /** Return one bounded, authenticated-read response for the active watch. */
     private String currentWatch() {
         if (!watchActive) {
@@ -604,170 +573,7 @@ public final class CaptureService extends Service {
         return result.toString();
     }
 
-    private void startAudioCapture() throws PackageManager.NameNotFoundException {
-        ApplicationInfo game = getPackageManager().getApplicationInfo(GAME_PACKAGE, 0);
-        AudioPlaybackCaptureConfiguration configuration =
-                new AudioPlaybackCaptureConfiguration.Builder(projection)
-                        .addMatchingUid(game.uid)
-                        .addMatchingUsage(AudioAttributes.USAGE_GAME)
-                        .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
-                        .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-                        .build();
-
-        audioRecord = buildAudioRecord(configuration, 16_000);
-        int sampleRate = 16_000;
-        if (audioRecord == null) {
-            audioRecord = buildAudioRecord(configuration, 48_000);
-            sampleRate = 48_000;
-        }
-        if (audioRecord == null) {
-            throw new IllegalStateException("no supported playback-capture format");
-        }
-
-        final int activeSampleRate = sampleRate;
-        audioRecord.startRecording();
-        if (audioRecord.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING) {
-            throw new IllegalStateException("AudioRecord did not start");
-        }
-
-        audioRunning.set(true);
-        audioSampleRate = activeSampleRate;
-        lastAudio = "audio=STARTING(rate=" + activeSampleRate + ",mono,pcm16)";
-        Log.i(TAG, lastAudio + " uid=" + game.uid);
-        audioThread = new Thread(
-                () -> audioLoop(activeSampleRate),
-                "cue-audio");
-        audioThread.start();
-    }
-
-    private AudioRecord buildAudioRecord(
-            AudioPlaybackCaptureConfiguration configuration,
-            int sampleRate) {
-        int minBytes = AudioRecord.getMinBufferSize(
-                sampleRate,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT);
-        if (minBytes <= 0) {
-            Log.w(TAG, "unsupported audio rate=" + sampleRate + " minBytes=" + minBytes);
-            return null;
-        }
-        int bufferBytes = Math.max(minBytes * 2, sampleRate / 2);
-        AudioFormat format = new AudioFormat.Builder()
-                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setSampleRate(sampleRate)
-                .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
-                .build();
-        try {
-            AudioRecord record = new AudioRecord.Builder()
-                    .setAudioFormat(format)
-                    .setBufferSizeInBytes(bufferBytes)
-                    .setAudioPlaybackCaptureConfig(configuration)
-                    .build();
-            if (record.getState() == AudioRecord.STATE_INITIALIZED) {
-                return record;
-            }
-            record.release();
-        } catch (Throwable error) {
-            Log.w(TAG, "AudioRecord build failed at " + sampleRate, error);
-        }
-        return null;
-    }
-
-    private void audioLoop(int sampleRate) {
-        Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
-        short[] samples = new short[1024];
-        long nextReportMs = 0;
-        long totalFrames = 0;
-        AudioTimestamp timestamp = new AudioTimestamp();
-        while (audioRunning.get()) {
-            int count;
-            try {
-                count = audioRecord.read(
-                        samples,
-                        0,
-                        samples.length,
-                        AudioRecord.READ_BLOCKING);
-            } catch (Throwable error) {
-                if (audioRunning.get()) {
-                    Log.e(TAG, "audio read failed", error);
-                    lastAudio = "audio=UNAVAILABLE(read-"
-                            + error.getClass().getSimpleName() + ")";
-                    cueDetector.unavailable("audio-read-failed");
-                    publishCombinedStatus("UNAVAILABLE");
-                }
-                break;
-            }
-            if (count <= 0) {
-                if (count < 0) {
-                    lastAudio = "audio=UNAVAILABLE(read=" + count + ")";
-                    cueDetector.unavailable("audio-read-failed");
-                    publishCombinedStatus("UNAVAILABLE");
-                    break;
-                }
-                continue;
-            }
-
-            int peak = 0;
-            long energy = 0;
-            for (int i = 0; i < count; i++) {
-                int value = samples[i];
-                int magnitude = value == Short.MIN_VALUE ? 32768 : Math.abs(value);
-                peak = Math.max(peak, magnitude);
-                energy += (long) value * value;
-            }
-            int rms = (int) Math.sqrt((double) energy / count);
-            totalFrames += count;
-            long readNs = System.nanoTime();
-            cueDetector.accept(samples, count, sampleRate, readNs);
-            appendCalibration(samples, count, sampleRate);
-            synchronized (snapshotLock) {
-                snapshotAudioFrames = totalFrames;
-                snapshotAudioReadNs = readNs;
-                snapshotAudioRms = rms;
-                snapshotAudioPeak = peak;
-            }
-            long nowMs = SystemClock.elapsedRealtime();
-            if (nowMs >= nextReportMs) {
-                nextReportMs = nowMs + AUDIO_REPORT_INTERVAL_MS;
-                int timestampStatus = audioRecord.getTimestamp(
-                        timestamp,
-                        AudioTimestamp.TIMEBASE_MONOTONIC);
-                long audioAgeUs = -1;
-                if (timestampStatus == AudioRecord.SUCCESS && timestamp.nanoTime > 0) {
-                    audioAgeUs = (System.nanoTime() - timestamp.nanoTime) / 1_000L;
-                    if (audioAgeUs < 0 || audioAgeUs > 10_000_000L) {
-                        audioAgeUs = -1;
-                    }
-                }
-                lastAudio = String.format(Locale.US,
-                        "audio=OBSERVED rate=%d frames=%d rms=%d peak=%d ageUs=%d",
-                        sampleRate, totalFrames, rms, peak, audioAgeUs);
-                publishCombinedStatus("RUNNING");
-            }
-        }
-        audioRunning.set(false);
-    }
-
-    private String loadCueModel() {
-        File source = new File(getFilesDir(), CUE_MODEL_FILE);
-        if (!source.isFile()) {
-            Log.i(TAG, "cue detector model absent: " + source.getAbsolutePath());
-            return "ERROR detector-model-missing";
-        }
-        try (FileInputStream input = new FileInputStream(source)) {
-            CueDetector.Model model = CueDetector.Model.read(input);
-            cueDetector.setModel(model);
-            Log.i(TAG, "cue detector loaded calibration=" + model.calibration
-                    + " evidence=" + model.evidence
-                    + " templates=" + model.templates.length);
-            return "OK " + cueDetector.status();
-        } catch (IOException error) {
-            Log.w(TAG, "cue detector model refused: " + error.getMessage(), error);
-            return "ERROR detector-model-" + error.getMessage();
-        }
-    }
-
-    private void startControlServer() throws IOException {
+    private void startControlServer(long generation) throws IOException {
         byte[] tokenBytes = new byte[16];
         new SecureRandom().nextBytes(tokenBytes);
         char[] tokenChars = new char[tokenBytes.length * 2];
@@ -793,17 +599,37 @@ public final class CaptureService extends Service {
         // it without the app opening a port any other process can probe. The
         // loopback port stays for the on-device controller, whose whole point
         // is deciding without an adb round trip.
-        localControlServer = new LocalServerSocket(CONTROL_SOCKET_NAME);
+        controlSocketName = CONTROL_SOCKET_PREFIX + "."
+                + Long.toUnsignedString(generation, 36);
+        LocalServerSocket localServer = openLocalControlServer(controlSocketName);
+        localControlServer = localServer;
         localControlUp = true;
 
         controlRunning = true;
         publishControlStatus();
         Log.i(TAG, lastControl);
 
-        controlThread = new Thread(this::controlLoop, "cue-control");
+        controlThread = new Thread(
+                () -> controlLoop(generation, server), "cue-control");
         controlThread.start();
-        localControlThread = new Thread(this::localControlLoop, "cue-control-local");
+        localControlThread = new Thread(
+                () -> localControlLoop(generation, localServer), "cue-control-local");
         localControlThread.start();
+    }
+
+    private LocalServerSocket openLocalControlServer(String socketName) throws IOException {
+        IOException lastError = null;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            try {
+                return new LocalServerSocket(socketName);
+            } catch (IOException error) {
+                lastError = error;
+                if (attempt < 9) {
+                    SystemClock.sleep(50L);
+                }
+            }
+        }
+        throw lastError;
     }
 
     private void publishControlStatus() {
@@ -811,23 +637,22 @@ public final class CaptureService extends Service {
                 ? "READY"
                 : tcpControlUp || localControlUp ? "DEGRADED" : "UNAVAILABLE";
         lastControl = "control=" + state
-                + " cal=" + (calibrationEnabled ? "on" : "off")
                 + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
-                + " socket=" + (localControlUp ? CONTROL_SOCKET_NAME : "none")
+                + " socket=" + (localControlUp ? controlSocketName : "none")
                 + " token=" + (controlToken == null ? "none" : controlToken)
                 + " " + watchStatus();
     }
 
-    private void controlLoop() {
+    private void controlLoop(long generation, ServerSocket server) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-        while (controlRunning) {
+        while (controlRunning && sessionActive(generation)) {
             try {
-                Socket accepted = controlServer.accept();
+                Socket accepted = server.accept();
                 try (Socket client = accepted) {
                     client.setSoTimeout(CONTROL_READ_TIMEOUT_MS);
                     serveControlRequest(client.getInputStream(), client.getOutputStream());
                 } catch (IOException error) {
-                    if (controlRunning) {
+                    if (controlRunning && sessionActive(generation)) {
                         // A slow, disconnected, or malformed client loses only
                         // its own request. It cannot tear down the listener.
                         Log.w(TAG, "control client failed", error);
@@ -836,7 +661,7 @@ public final class CaptureService extends Service {
             } catch (SocketException error) {
                 // One dead listener must not silence the other channel, so the
                 // shared shutdown flag is left alone here.
-                if (controlRunning) {
+                if (controlRunning && sessionActive(generation)) {
                     Log.e(TAG, "control socket failed", error);
                     tcpControlUp = false;
                     publishControlStatus();
@@ -844,28 +669,28 @@ public final class CaptureService extends Service {
                 }
                 break;
             } catch (Throwable error) {
-                if (controlRunning) {
+                if (controlRunning && sessionActive(generation)) {
                     Log.w(TAG, "control request failed", error);
                 }
             }
         }
     }
 
-    private void localControlLoop() {
+    private void localControlLoop(long generation, LocalServerSocket server) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
-        while (controlRunning) {
+        while (controlRunning && sessionActive(generation)) {
             try {
-                LocalSocket accepted = localControlServer.accept();
+                LocalSocket accepted = server.accept();
                 try (LocalSocket client = accepted) {
                     client.setSoTimeout(CONTROL_READ_TIMEOUT_MS);
                     serveControlRequest(client.getInputStream(), client.getOutputStream());
                 } catch (IOException error) {
-                    if (controlRunning) {
+                    if (controlRunning && sessionActive(generation)) {
                         Log.w(TAG, "local control client failed", error);
                     }
                 }
             } catch (IOException error) {
-                if (controlRunning) {
+                if (controlRunning && sessionActive(generation)) {
                     Log.e(TAG, "local control socket failed", error);
                     localControlUp = false;
                     publishControlStatus();
@@ -873,7 +698,7 @@ public final class CaptureService extends Service {
                 }
                 break;
             } catch (Throwable error) {
-                if (controlRunning) {
+                if (controlRunning && sessionActive(generation)) {
                     Log.w(TAG, "local control request failed", error);
                 }
             }
@@ -934,271 +759,15 @@ public final class CaptureService extends Service {
                 }
                 return currentWatch();
             case "CAL":
-                if (field.length != 3) {
-                    return "ERROR cal-usage";
-                }
-                if ("on".equals(field[2])) {
-                    synchronized (calLock) {
-                        // Allocate here, never on the audio thread.
-                        if (calRing == null && audioSampleRate > 0) {
-                            calRingRate = audioSampleRate;
-                            calRing = new short[calRingRate * CAL_RING_SECONDS];
-                            calRingWrite = 0;
-                            calRingFrames = 0;
-                        }
-                    }
-                    calibrationEnabled = true;
-                } else if ("off".equals(field[2])) {
-                    calibrationEnabled = false;
-                    synchronized (calLock) {
-                        logRunning = false;
-                    }
-                } else {
-                    return "ERROR cal-usage";
-                }
-                publishControlStatus();
-                publishCombinedStatus("RUNNING");
-                return "OK cal=" + (calibrationEnabled ? "on" : "off");
             case "LOG":
-                if (field.length != 3) {
-                    return "ERROR log-usage";
-                }
-                if ("start".equals(field[2])) {
-                    return startContinuousLog();
-                }
-                if ("stop".equals(field[2])) {
-                    return stopContinuousLog();
-                }
-                return "ERROR log-usage";
             case "REC":
-                if (field.length != 4) {
-                    return "ERROR rec-usage";
-                }
-                return recordCalibrationWindow(field[2], field[3]);
             case "MODEL":
-                if (field.length != 3) {
-                    return "ERROR model-usage";
-                }
-                if ("status".equals(field[2])) {
-                    return "OK " + cueDetector.status();
-                }
-                if ("reload".equals(field[2])) {
-                    return loadCueModel();
-                }
-                return "ERROR model-usage";
             case "ARM":
-                if (field.length != 7) {
-                    return "ERROR arm-usage";
-                }
-                long nowNs = System.nanoTime();
-                long openNs;
-                long closeNs;
-                try {
-                    if ("now".equals(field[4])) {
-                        long durationMs = Long.parseLong(field[5]);
-                        openNs = nowNs;
-                        closeNs = Math.addExact(nowNs,
-                                Math.multiplyExact(durationMs, 1_000_000L));
-                    } else {
-                        openNs = Long.parseLong(field[4]);
-                        closeNs = Long.parseLong(field[5]);
-                    }
-                } catch (NumberFormatException error) {
-                    return "ERROR arm-usage";
-                } catch (ArithmeticException error) {
-                    return "ERROR arm-range";
-                }
-                return cueDetector.arm(field[2], field[3], openNs, closeNs,
-                        field[6], nowNs);
             case "RESULT":
-                if (field.length != 3) {
-                    return "ERROR result-usage";
-                }
-                return cueDetector.result(field[2], System.nanoTime());
+                return "ERROR audio-authority-external";
             default:
                 return "ERROR unknown-verb";
         }
-    }
-
-    private void appendCalibration(short[] samples, int count, int sampleRate) {
-        if (!calibrationEnabled) {
-            return;
-        }
-        synchronized (calLock) {
-            if (calRing == null || calRingRate != sampleRate) {
-                return;
-            }
-            for (int i = 0; i < count; i++) {
-                calRing[calRingWrite] = samples[i];
-                calRingWrite = (calRingWrite + 1) % calRing.length;
-            }
-            calRingFrames += count;
-            if (logRunning && logBuffer != null) {
-                if (logWrite == 0) {
-                    // This read's frames end at `now`, so the first one began
-                    // `count` frames earlier.
-                    logStartNs = System.nanoTime()
-                            - (count * 1_000_000_000L) / sampleRate;
-                    logStartFrames = calRingFrames - count;
-                }
-                int room = Math.min(count, logBuffer.length - logWrite);
-                System.arraycopy(samples, 0, logBuffer, logWrite, room);
-                logWrite += room;
-                if (logWrite >= logBuffer.length) {
-                    // Full is a stop, not a wrap: a night that overran its
-                    // buffer must not silently overwrite its own beginning.
-                    logRunning = false;
-                }
-            }
-            calLock.notifyAll();
-        }
-    }
-
-    private String startContinuousLog() {
-        if (!calibrationEnabled) {
-            return "ERROR calibration-disabled";
-        }
-        synchronized (calLock) {
-            if (logRunning) {
-                return "ERROR log-already-running";
-            }
-            if (calRingRate <= 0) {
-                return "ERROR log-no-audio";
-            }
-            if (logBuffer == null || logBuffer.length != calRingRate * LOG_MAX_SECONDS) {
-                logBuffer = new short[calRingRate * LOG_MAX_SECONDS];
-            }
-            logWrite = 0;
-            logStartNs = 0;
-            logRunning = true;
-        }
-        return "OK log=started max=" + LOG_MAX_SECONDS;
-    }
-
-    private String stopContinuousLog() {
-        int rate;
-        short[] window;
-        long startNs;
-        synchronized (calLock) {
-            if (logBuffer == null || logWrite <= 0) {
-                logRunning = false;
-                return "ERROR log-empty";
-            }
-            rate = calRingRate;
-            window = new short[logWrite];
-            System.arraycopy(logBuffer, 0, window, 0, logWrite);
-            logRunning = false;
-            logWrite = 0;
-            startNs = logStartNs;
-        }
-        String result = writeCalibrationWav(window, rate, 0, window.length / rate);
-        // The anchor is what makes the recording labelable: every visual
-        // snapshot carries the same monotonic clock, so a frame index in this
-        // file maps to a snapshotNs and back.
-        return result.startsWith("OK ")
-                ? result + " startNs=" + startNs : result;
-    }
-
-    private String recordCalibrationWindow(String preText, String postText) {
-        if (!calibrationEnabled) {
-            return "ERROR calibration-disabled";
-        }
-        int pre;
-        int post;
-        try {
-            pre = Integer.parseInt(preText);
-            post = Integer.parseInt(postText);
-        } catch (NumberFormatException error) {
-            return "ERROR rec-usage";
-        }
-        if (pre < 0 || pre > CAL_MAX_PRE_SECONDS
-                || post < 1 || post > CAL_MAX_POST_SECONDS) {
-            return "ERROR rec-range";
-        }
-
-        int rate;
-        long target;
-        short[] window;
-        synchronized (calLock) {
-            if (calRing == null || calRingRate <= 0) {
-                return "ERROR rec-no-audio";
-            }
-            rate = calRingRate;
-            target = calRingFrames + (long) post * rate;
-            // The post-roll is real time; cap the wait so a stalled capture
-            // fails the request instead of holding the control thread forever.
-            long deadline = SystemClock.elapsedRealtime()
-                    + (long) post * 1_000L + 2_000L;
-            while (calRingFrames < target) {
-                long remaining = deadline - SystemClock.elapsedRealtime();
-                if (remaining <= 0) {
-                    return "ERROR rec-stalled";
-                }
-                try {
-                    calLock.wait(remaining);
-                } catch (InterruptedException error) {
-                    Thread.currentThread().interrupt();
-                    return "ERROR rec-interrupted";
-                }
-            }
-            int wanted = (int) Math.min(
-                    (long) (pre + post) * rate,
-                    Math.min(calRingFrames, calRing.length));
-            window = new short[wanted];
-            int start = ((calRingWrite - wanted) % calRing.length + calRing.length)
-                    % calRing.length;
-            for (int i = 0; i < wanted; i++) {
-                window[i] = calRing[(start + i) % calRing.length];
-            }
-        }
-        // Outside the lock: a 400 KB write must not stall the audio thread.
-        return writeCalibrationWav(window, rate, pre, post);
-    }
-
-    private String writeCalibrationWav(short[] window, int rate, int pre, int post) {
-        File directory = new File(getFilesDir(), CAL_DIR);
-        if (!directory.isDirectory() && !directory.mkdirs()) {
-            return "ERROR rec-mkdir";
-        }
-        String name = String.format(Locale.US, "cue-%d-p%d-q%d.wav",
-                System.currentTimeMillis(), pre, post);
-        File target = new File(directory, name);
-        int dataBytes = window.length * 2;
-        try (FileOutputStream out = new FileOutputStream(target)) {
-            out.write(wavHeader(dataBytes, rate));
-            byte[] payload = new byte[dataBytes];
-            for (int i = 0; i < window.length; i++) {
-                payload[i * 2] = (byte) (window[i] & 0xff);
-                payload[i * 2 + 1] = (byte) ((window[i] >> 8) & 0xff);
-            }
-            out.write(payload);
-        } catch (IOException error) {
-            Log.w(TAG, "calibration write failed", error);
-            return "ERROR rec-write";
-        }
-        return String.format(Locale.US,
-                "OK rec=%s frames=%d rate=%d bytes=%d",
-                name, window.length, rate, dataBytes + 44);
-    }
-
-    private static byte[] wavHeader(int dataBytes, int rate) {
-        int byteRate = rate * 2;
-        byte[] header = new byte[44];
-        ByteBuffer buffer = ByteBuffer.wrap(header)
-                .order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        buffer.put("RIFF".getBytes(StandardCharsets.US_ASCII));
-        buffer.putInt(36 + dataBytes);
-        buffer.put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII));
-        buffer.putInt(16);
-        buffer.putShort((short) 1);      // PCM
-        buffer.putShort((short) 1);      // mono
-        buffer.putInt(rate);
-        buffer.putInt(byteRate);
-        buffer.putShort((short) 2);      // block align
-        buffer.putShort((short) 16);     // bits per sample
-        buffer.put("data".getBytes(StandardCharsets.US_ASCII));
-        buffer.putInt(dataBytes);
-        return header;
     }
 
     private String readBoundedControlLine(InputStream input) throws IOException {
@@ -1227,11 +796,7 @@ public final class CaptureService extends Service {
         int green;
         int blue;
         int luma;
-        int cam5;
-        long audioFrames;
-        long audioReadNs;
-        int audioRms;
-        int audioPeak;
+        int cam05MeanLuma;
         int greyCells;
         synchronized (snapshotLock) {
             visualSequenceSnapshot = snapshotVisualSequence;
@@ -1240,12 +805,8 @@ public final class CaptureService extends Service {
             green = snapshotGreen;
             blue = snapshotBlue;
             luma = snapshotLuma;
-            cam5 = snapshotCam5;
+            cam05MeanLuma = snapshotCam05MeanLuma;
             greyCells = snapshotGreyCells;
-            audioFrames = snapshotAudioFrames;
-            audioReadNs = snapshotAudioReadNs;
-            audioRms = snapshotAudioRms;
-            audioPeak = snapshotAudioPeak;
         }
 
         long nowNs = System.nanoTime();
@@ -1259,9 +820,9 @@ public final class CaptureService extends Service {
         String visual;
         if (invalidReason == null) {
             visual = String.format(Locale.US,
-                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam5=%d "
+                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
                             + "grey=%d ageUs=%d content=%dx%d visible=%d",
-                    visualSequenceSnapshot, red, green, blue, luma, cam5,
+                    visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
                     greyCells, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility);
@@ -1273,20 +834,8 @@ public final class CaptureService extends Service {
                     capturedContentVisibility);
         }
 
-        long audioReadAgeUs = audioReadNs > 0 ? (nowNs - audioReadNs) / 1_000L : -1;
-        String audio;
-        if (audioReadAgeUs < 0 || audioReadAgeUs > MAX_AUDIO_READ_AGE_US) {
-            audio = String.format(Locale.US,
-                    "audio=UNKNOWN reason=%s frames=%d readAgeUs=%d",
-                    audioReadAgeUs < 0 ? "read-pending" : "read-stale",
-                    audioFrames, audioReadAgeUs);
-        } else {
-            audio = String.format(Locale.US,
-                    "audio=OBSERVED frames=%d rms=%d peak=%d readAgeUs=%d",
-                    audioFrames, audioRms, audioPeak, audioReadAgeUs);
-        }
-        return "snapshotNs=" + nowNs + " " + visual + " " + audio
-                + " " + cueDetector.status() + " " + watchStatus();
+        return "snapshotNs=" + nowNs + " " + visual + " "
+                + externalAudioStatus() + " " + watchStatus();
     }
 
     private void publishCombinedStatus(String lifecycle) {
@@ -1311,6 +860,7 @@ public final class CaptureService extends Service {
         if (!stopping.compareAndSet(false, true)) {
             return;
         }
+        ++sessionGeneration;
         Log.w(TAG, "stopping capture: " + reason);
 
         controlRunning = false;
@@ -1337,31 +887,14 @@ public final class CaptureService extends Service {
                 worker.interrupt();
             }
         }
+        joinWorker(controlThread);
+        joinWorker(localControlThread);
         controlThread = null;
         localControlThread = null;
         tcpControlUp = false;
         localControlUp = false;
-        calibrationEnabled = false;
-        logRunning = false;
         controlToken = null;
-
-        audioRunning.set(false);
-        cueDetector.unavailable("capture-stopped");
-        AudioRecord record = audioRecord;
-        audioRecord = null;
-        if (record != null) {
-            try {
-                record.stop();
-            } catch (IllegalStateException ignored) {
-                // A failed or already-stopped recorder is still unavailable.
-            }
-            record.release();
-        }
-        Thread worker = audioThread;
-        audioThread = null;
-        if (worker != null && worker != Thread.currentThread()) {
-            worker.interrupt();
-        }
+        controlSocketName = null;
 
         ImageReader reader = imageReader;
         imageReader = null;
@@ -1378,6 +911,7 @@ public final class CaptureService extends Service {
         visualThread = null;
         if (handlerThread != null) {
             handlerThread.quitSafely();
+            joinWorker(handlerThread);
         }
 
         MediaProjection activeProjection = projection;
@@ -1394,12 +928,29 @@ public final class CaptureService extends Service {
         capturedContentWidth = 0;
         capturedContentHeight = 0;
         capturedContentVisibility = -1;
+        synchronized (snapshotLock) {
+            snapshotGridValid = false;
+            watchActive = false;
+        }
 
         lastVisual = "visual=UNAVAILABLE(" + reason + ")";
-        lastAudio = "audio=UNAVAILABLE(" + reason + ")";
+        lastAudio = externalAudioStatus();
         lastControl = "control=UNAVAILABLE(" + reason + ")";
         publishCombinedStatus("UNAVAILABLE");
         stopForeground(STOP_FOREGROUND_REMOVE);
+    }
+
+    private boolean sessionActive(long generation) {
+        return sessionGeneration == generation && !stopping.get();
+    }
+
+    private void joinWorker(Thread worker) {
+        if (worker == null || worker == Thread.currentThread()) return;
+        try {
+            worker.join(1_000L);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override

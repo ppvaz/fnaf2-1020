@@ -1,4 +1,4 @@
-package com.fnafminus7.cuehelper;
+package com.fnaf2.cuehelper;
 
 /**
  * Whole-frame statistics over the helper's {@code 20x9} visual grid.

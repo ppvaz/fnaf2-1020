@@ -1,4 +1,4 @@
-package com.fnafminus7.cuehelper;
+package com.fnaf2.cuehelper;
 
 /** Host-only regression for the native watchlist contract and reducers. */
 public final class PixelWatchTest {

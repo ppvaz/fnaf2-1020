@@ -20,7 +20,7 @@ case "$NIGHT" in
 esac
 [ "$NIGHT" -ge 1 ] && [ "$NIGHT" -le 6 ] || { echo "night $NIGHT is not 1-6" >&2; exit 2; }
 
-HELPER_PKG=com.fnafminus7.cuehelper
+HELPER_PKG=com.fnaf2.cuehelper
 GAME_PKG=com.scottgames.fnaf2
 OUT_DIR="${PREFLIGHT_OUT:-$HERE/../../captures/preflight}"
 fail() { echo "REFUSED: $*" >&2; exit 1; }

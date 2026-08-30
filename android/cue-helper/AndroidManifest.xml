@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.fnafminus7.cuehelper">
+    package="com.fnaf2.cuehelper">
     <uses-sdk android:minSdkVersion="29" android:targetSdkVersion="36" />
 
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Required by Android even though the control server binds only loopback. -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -17,9 +16,11 @@
     <application
         android:allowBackup="false"
         android:debuggable="true"
-        android:label="Minus 7 Cue Helper"
+        android:icon="@mipmap/cue_helper_icon"
+        android:label="FNaF 2 Cue Helper"
+        android:roundIcon="@mipmap/cue_helper_icon"
         android:supportsRtl="true"
-        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        android:theme="@style/CueHelperTheme">
         <activity
             android:name=".MainActivity"
             android:exported="true"

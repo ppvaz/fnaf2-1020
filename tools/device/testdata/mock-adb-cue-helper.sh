@@ -38,24 +38,19 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   # args: shell sh -s -- PORT VERB TOKEN [ARG]
   case "${6:-}/${8:-}" in
     # Keep this line field-for-field with what the device sends. It is
-    # `CaptureService.buildSnapshot()`, and it grew twice without the mock
-    # following: `cam5=` when the 20x9 frame started carrying the CAM 05 block,
-    # and `detector=` when `CueDetector.status()` was appended on 2026-08-26.
+    # `CaptureService.currentSnapshot()`, and `audio=EXTERNAL` is deliberate:
+    # the APK no longer owns an AudioRecord; the receiver host owns that path.
     #
     # Why that matters more than tidiness: every consumer reads this line with a
     # greedy sed, and greedy `.*` binds to the LAST match. `trial.sh`'s
-    # cue trace wants `.*luma=...*cam5=...*ageUs=...`, which against the old
+    # cue trace wants `.*luma=...*cam05_mean_luma=...*ageUs=...`, which against the old
     # mock did not match at all -- so the mock answered a shape no runner could
     # parse and the regression still went green. A trailing field is exactly the
     # kind of addition that silently re-points a capture group, and a mock that
     # lags the device cannot catch it.
     #
-    # cam5 is deliberately unequal to luma so a transposed capture group shows.
-    # The detector fields agree with this mock's own MODEL reply below. The mock
-    # is stateless, so it answers READY even straight after ARM where a real
-    # helper would say ARMED or RESULT; the state machine is covered by
-    # android/cue-helper/test.sh, not here.
-    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 grey=142 ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 rms=10 peak=21 readAgeUs=1000 detector=READY calibration=mock evidence=shadow templates=2' ;;
+    # cam05_mean_luma is deliberately unequal to luma so a transposed capture group shows.
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 ageUs=1200 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=host-authority-not-connected' ;;
     GRID/*)
       # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
       printf 'OK grid=20x9 seq=121 '
@@ -73,9 +68,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     REC/*) echo 'OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044' ;;
     LOG/start) echo 'OK log=started max=480' ;;
     LOG/stop) echo 'OK rec=cue-1700000000001-p0-q7.wav frames=112000 rate=16000 bytes=224044 startNs=123456789000' ;;
-    MODEL/status|MODEL/reload) echo 'OK detector=READY calibration=mock evidence=shadow modelSha256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa templates=2' ;;
-    ARM/*) echo "OK armed=${8:-mock-window} cues=${9:-bang} mode=${12:-shadow} openNs=9000 closeNs=1009000 calibration=mock" ;;
-    RESULT/*) echo "MISS window=${8:-mock-window} closeNs=1009000 bestCue=none template=none score=0.1000 mode=shadow" ;;
+    MODEL/status|MODEL/reload|ARM/*|RESULT/*) echo 'ERROR audio-authority-external' ;;
     *) echo 'ERROR unknown-verb' ;;
   esac
 elif [ "${1:-}" = exec-out ] && [ "${2:-}" = run-as ]; then
@@ -89,7 +82,7 @@ elif [ "${1:-}" = forward ] && [ "${2:-}" = --remove ]; then
 elif [ "${1:-}" = forward ]; then
   echo "${MOCK_FORWARD_PORT:?mock adb forward needs MOCK_FORWARD_PORT}"
 elif [ "${1:-}" = logcat ]; then
-  echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=OBSERVED rate=16000 frames=32000 rms=9 peak=20 ageUs=3000 control=READY port=49707 socket=com.fnafminus7.cuehelper.control token=0123456789abcdef0123456789abcdef"
+  echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=host-authority-not-connected control=READY port=49707 socket=com.fnaf2.cuehelper.control token=0123456789abcdef0123456789abcdef"
 else
   echo "unexpected mock adb invocation: $*" >&2
   exit 1

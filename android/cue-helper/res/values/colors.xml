@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="cue_background">#120A0B</color>
+    <color name="cue_background_deep">#090506</color>
+    <color name="cue_amber">#FFB020</color>
+</resources>

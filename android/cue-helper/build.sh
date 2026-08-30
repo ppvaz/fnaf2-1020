@@ -2,7 +2,13 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SDK_ROOT="${ANDROID_SDK_ROOT:-${HOME}/Library/Android/sdk}"
+if [[ -n "${ANDROID_SDK_ROOT:-}" ]]; then
+    SDK_ROOT="$ANDROID_SDK_ROOT"
+elif [[ -d "${HOME}/.local/toolchains/android-sdk" ]]; then
+    SDK_ROOT="${HOME}/.local/toolchains/android-sdk"
+else
+    SDK_ROOT="${HOME}/Library/Android/sdk"
+fi
 JDK_ROOT="${JAVA_HOME:-/opt/homebrew/opt/openjdk}"
 BUILD_TOOLS="${ANDROID_BUILD_TOOLS_VERSION:-36.0.0}"
 PLATFORM="${ANDROID_PLATFORM_VERSION:-36}"
@@ -19,6 +25,7 @@ KEYTOOL="$JDK_ROOT/bin/keytool"
 BUILD_DIR="$SCRIPT_DIR/build"
 CLASSES_DIR="$BUILD_DIR/classes"
 DEX_DIR="$BUILD_DIR/dex"
+RES_DIR="$SCRIPT_DIR/res"
 KEYSTORE="$SCRIPT_DIR/debug.keystore"
 
 for required in "$AAPT2" "$D8" "$ZIPALIGN" "$APKSIGNER" "$ANDROID_JAR" \
@@ -36,9 +43,15 @@ fi
 rm -rf "$BUILD_DIR"
 mkdir -p "$CLASSES_DIR" "$DEX_DIR"
 
+"$AAPT2" compile \
+    --dir "$RES_DIR" \
+    -o "$BUILD_DIR/compiled-res.zip"
+
 "$AAPT2" link \
     --manifest "$SCRIPT_DIR/AndroidManifest.xml" \
     -I "$ANDROID_JAR" \
+    -R "$BUILD_DIR/compiled-res.zip" \
+    --auto-add-overlay \
     --min-sdk-version 29 \
     --target-sdk-version 36 \
     --version-code 1 \
@@ -51,11 +64,10 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -target 17 \
     -classpath "$ANDROID_JAR" \
     -d "$CLASSES_DIR" \
-    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/MainActivity.java" \
-    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/CueDetector.java" \
-    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/PixelWatch.java" \
-    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/ScreenStats.java" \
-    "$SCRIPT_DIR/src/com/fnafminus7/cuehelper/CaptureService.java"
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/MainActivity.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PixelWatch.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenStats.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureService.java"
 
 "$JAR" --create --file "$BUILD_DIR/classes.jar" -C "$CLASSES_DIR" .
 JAVA_HOME="$JDK_ROOT" "$D8" \

@@ -62,8 +62,9 @@ TRACE="$CAPTURES/$RUN-hid.jsonl"
 # parsed when the capture exists; old runs remain gradeable but visibly lack it.
 INPUT_TRACE="$CAPTURES/$RUN-input.pftrace"
 SF_LATENCY="$CAPTURES/$RUN-surfaceflinger-latency.txt"
-# The night's PCM, if the run kept any. Written by CUE_AUDIO=1 through the
-# helper's log capture, and named by the helper rather than by the run.
+# The external authority's fact sidecar, if the trial subscribed to one. Raw
+# PCM remains owned by the receiver and is not copied through the APK.
+AUDIO_FACTS="$CAPTURES/$RUN-audio-facts.jsonl"
 AUDIO=""
 for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
   [ -f "$candidate" ] && AUDIO="$candidate"
@@ -85,7 +86,8 @@ echo "capture: ${VIDEO##*/}"
 [ -f "$INPUT_TRACE" ] && echo "input trace: ${INPUT_TRACE##*/}" || echo "input trace: none (run atrace-input.sh around the command)"
 [ -f "$SF_LATENCY" ] && echo "SurfaceFlinger latency: ${SF_LATENCY##*/}" || echo "SurfaceFlinger latency: none (set SF_LAYER for capture)"
 [ -f "$CUE" ] && echo "cue trace: ${CUE##*/}" || echo "cue trace: none (run with CUE_HELPER=1)"
-[ -n "$AUDIO" ] && echo "night audio: ${AUDIO##*/}" || echo "night audio: none (run with CUE_AUDIO=1)"
+[ -n "$AUDIO" ] && echo "legacy night audio: ${AUDIO##*/}" || echo "legacy night PCM: none (receiver owns live audio)"
+[ -f "$AUDIO_FACTS" ] && echo "audio facts: ${AUDIO_FACTS##*/}" || echo "audio facts: none (run with external authority socket)"
 [ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
 [ -f "$MANIFEST" ] && echo "session manifest: ${MANIFEST##*/}" || echo "session manifest: none (unmanifested run)"
 
@@ -313,7 +315,8 @@ if [ -n "$AUDIO" ]; then
 else
   echo
   echo "--- Balloon Boy's vent bang ---"
-  echo "  no audio kept for $RUN; nothing was listening. Run with CUE_AUDIO=1."
+  echo "  no raw audio kept for $RUN; scan-night requires a receiver PCM capture."
+  [ -f "$AUDIO_FACTS" ] || echo "  external authority facts are also absent; run with CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH."
 fi
 
 echo

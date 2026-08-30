@@ -129,7 +129,7 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 |---|---|
 | Producer | `CUE_HELPER=1 trial.sh`, device-side loopback `GET` at roughly 14 Hz |
 | Path/format | `captures/RUN-cue.txt`, lines containing outer `date +%s%3N` and the helper response |
-| Content | Helper `snapshotNs`, visual sequence/age/luma/CAM 5 aggregate, audio frames/age/RMS/peak, observed/unknown state |
+| Content | Helper `snapshotNs`, visual sequence/age/luma/`cam05_mean_luma` aggregate, external-audio authority state, observed/unknown state |
 | Consumers | Manual/device diagnosis; not currently parsed by `grade-run.sh` beyond presence |
 | Labels | Sensor observations only. Scalar RMS/peak cannot label transient audio. |
 | Gaps | No schema/header, helper PID/session/model/build, dropped-read count, or durable mapping to video/HID; first timestamp and inner monotonic timestamp use different domains |
@@ -139,14 +139,14 @@ coarse end description. It is not yet a positive 6 AM/win classifier.
 
 | Property | Inventory |
 |---|---|
-| Producers | `query-cue-helper.sh record`, `query-cue-helper.sh log stop`, `collect-cue-audio.sh`, `watch-vent-cue.sh`, optional `CUE_AUDIO=1 trial.sh` |
+| Producers | `collect-cue-audio.sh`, `watch-vent-cue.sh`, and external receiver captures/facts; the APK no longer produces PCM |
 | Root/format | `captures/cue-helper/calibration/LABEL-cue-WALLTIME-pPRE-qPOST.wav`; mono 16-bit WAV at the helper's capture rate |
-| Primary content | Eligible Android playback mix. It can include inaudible-to-operator music-box/Mangle contamination and can be all-zero under Bluetooth A2DP offload. |
+| Primary content | External receiver's rendered mix. The current BlueALSA/A2DP path includes the full output mix; an ESP32 adapter must use its own transport calibration. Legacy Android playback-capture artifacts are historical and not interchangeable. |
 | Clock | PCM sample offset plus helper monotonic `startNs` for continuous logs; filename uses wall time |
 | Consumers | `tools/cue/detect.py`, `evaluate.py`, `scan-night.sh`, `label-misses.py`, `grade-run.sh` |
 | Labels | Filename label is operator/collection intent; true bang labels require an independent visual arrival stream |
 | Split discipline | `collect-cue-audio.sh` writes a sessions TSV to preserve round boundaries; detector plan requires complete-session splits |
-| Critical gap | `log stop` returns `startNs`, but `query-cue-helper.sh` only prints it. The pulled WAV has no sidecar, so alignment is lost unless terminal output was retained and manually supplied to `label-misses.py --start-ns`. Ring-window `record` has no equivalent absolute sample-zero anchor. |
+| Critical gap | External authority fact streams carry sender timestamps and sequence numbers, but a trial does not yet persist a joined audio-fact/visual timeline. A future bridge must preserve the authority clock domain and reject stale or missing facts rather than infer audio state from the visual APK snapshot. |
 | Retention | Copyrighted game audio, ignored/local; raw PCM must not be committed or uploaded |
 
 ### 7. Visual watch, collection-boundary, and soak TSVs

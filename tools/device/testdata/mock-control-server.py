@@ -9,21 +9,20 @@ import pathlib
 import socket
 import sys
 
-# Field-for-field with the device's `CaptureService.buildSnapshot()`, and with
+# Field-for-field with the device's `CaptureService.currentSnapshot()`, and with
 # the loopback mock in mock-adb-cue-helper.sh. Both transports must answer the
 # same shape or a consumer that works over one silently fails over the other.
 #
-# This lagged the device twice: `cam5=` when the 20x9 frame started carrying the
-# CAM 05 block, and `detector=` when `CueDetector.status()` was appended on
-# 2026-08-26. Consumers parse this with a greedy sed whose groups are positional
-# -- `trial.sh:1912` wants `.*luma=...*cam5=...*ageUs=...` -- so a
+# This lagged the device twice: `cam05_mean_luma=` when the 20x9 frame started carrying the
+# CAM 05 block. Consumers parse this with a greedy sed whose groups are positional
+# -- the trial's visual parser wants `.*luma=...*cam05_mean_luma=...*ageUs=...` -- so a
 # missing field does not degrade the parse, it kills the match outright.
 SNAPSHOT = (
-    "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam5=37 "
+    "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 "
     "grey=142 "
-    "ageUs=1200 content=2400x1080 visible=1 audio=OBSERVED frames=33000 "
-    "rms=10 peak=21 readAgeUs=1000 detector=READY calibration=mock "
-    "evidence=shadow templates=2"
+    "ageUs=1200 content=2400x1080 visible=1 "
+    "audio=EXTERNAL authority=audio-authority state=UNKNOWN "
+    "reason=host-authority-not-connected"
 )
 
 
@@ -47,23 +46,8 @@ def answer(request):
                 " seq=122 snapshotNs=10000 ageUs=1200 "
                 "bb_left_luma=194 bb_left_yellowness=-111 "
                 "cam05_mean_luma=37 screen_grey_cells=142")
-    if field[0] == "CAL" and len(field) == 3:
-        return "OK cal=" + field[2]
-    if field[0] == "LOG" and len(field) == 3:
-        if field[2] == "start":
-            return "OK log=started max=480"
-        return ("OK rec=cue-1700000000001-p0-q7.wav frames=112000 rate=16000 "
-                "bytes=224044")
-    if field[0] == "REC":
-        return "OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044"
-    if field[0] == "MODEL" and len(field) == 3:
-        return "OK detector=READY calibration=mock evidence=shadow templates=2"
-    if field[0] == "ARM" and len(field) == 7:
-        return (f"OK armed={field[2]} cues={field[3]} mode={field[6]} "
-                "openNs=9000 closeNs=1009000 calibration=mock")
-    if field[0] == "RESULT" and len(field) == 3:
-        return (f"MISS window={field[2]} closeNs=1009000 bestCue=none "
-                "template=none score=0.1000 mode=shadow")
+    if field[0] in {"CAL", "LOG", "REC", "MODEL", "ARM", "RESULT"}:
+        return "ERROR audio-authority-external"
     return "ERROR unknown-verb"
 
 

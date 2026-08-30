@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Export app-private cue-model-v1 data from uncommitted reference WAVs.
+"""Export external-authority cue-model-v1 data from uncommitted reference WAVs.
 
-The APK deliberately ships with no game audio and no threshold. This command
-turns the most energetic 0.40 s of each supplied reference into a 4 kHz PCM
-correlation core that the on-device matcher can consume. The output is still a
-derived cue template: keep it in ignored ``captures/cue-helper/models/`` or
-outside the repository.
+The APK deliberately ships with no game audio, threshold, or matcher. This
+command turns the most energetic 0.40 s of each supplied reference into a 4
+kHz PCM correlation core that an externally calibrated audio authority can
+consume. The output is still a derived cue template: keep it in ignored
+``captures/cue-helper/models/`` or outside the repository.
 
 Example::
 
@@ -16,7 +16,8 @@ Example::
 
 ``evidence=shadow`` is the default and cannot arm a control-mode window. The
 heldout label requires a report path so promotion always names its evidence;
-the helper still cannot judge whether that report's experiment was sound.
+the external authority still cannot judge whether that report's experiment was
+sound.
 """
 import argparse
 import base64
