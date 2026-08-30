@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Thread one session id and one monotonic origin through every producer.
 #
 # Sourced, never executed. `session-manifest.py` owns the file format; this

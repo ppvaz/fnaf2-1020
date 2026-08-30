@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # One camera of the sweep, written into the macro the hid process is already
 # executing. No wait_until: see pulsed_sweep_at.
 # The select leads the light so the camera is already the selected feed when

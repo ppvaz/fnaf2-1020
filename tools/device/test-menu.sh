@@ -259,7 +259,7 @@ title_coords=$(sed -nE 's/^TAP_(CONTINUE|NEWGAME|6TH)="([0-9]+) ([0-9]+)".*/\2 \
 [ -n "$title_coords" ] || { echo 'FAIL could not read the title coordinates from coords.sh'; failed=1; }
 while read -r tx ty; do
   [ -n "$tx" ] || continue
-  hits=$(grep -rlE "$tx[ ,][ ]*$ty" "$HERE"     --include='*.sh' --include='*.mjs' --include='*.py' 2>/dev/null     | grep -vE '/(menu|coords|test-menu)\.sh$' \
+  hits=$(grep -rlE "${tx}[ ,][ ]*${ty}" "$HERE"     --include='*.sh' --include='*.mjs' --include='*.py' 2>/dev/null     | grep -vE '/(menu|coords|test-menu)\.sh$' \
     | grep -vE '/(title-observe\.py|testdata/make-title-fixture\.py|test-screen-map\.mjs)$' || true)
   [ -z "$hits" ] || {
     echo "FAIL these files name the title coordinate $tx $ty outside the selector:"

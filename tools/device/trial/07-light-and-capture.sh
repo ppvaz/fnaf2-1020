@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # ld_ prefixes because this calls press_at, and the runner's functions share one
 # global scope: plain `offset` and `label` came back clobbered, so the vent
 # light's own log line was printed as "monitor-verify (contact 0 down)".
@@ -156,4 +157,3 @@ device_sweep_at() {
   light_cam_at  $((sweep_start + 550)) "$CAM07_X" "$CAM07_Y" "$sweep_label-cam-07"
   light_up_at   $((sweep_start + 790)) "$sweep_label-light-up"
 }
-

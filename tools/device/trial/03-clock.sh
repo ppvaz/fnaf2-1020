@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 sleep_ms() {
   ms=$1
   # 1000 + remainder, then strip the leading 1: a zero-padded fraction with no

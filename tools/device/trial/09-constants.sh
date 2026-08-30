@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Device constants. The plan carries the schedule; these are properties of the
 # phone that no simulator can emit, so they stay here and are named.
 #

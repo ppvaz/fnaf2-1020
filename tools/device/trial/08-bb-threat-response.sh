@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 classify_left_and_queue_mask_at() {
   offset=$1; mask_gap=$2; label=$3
   wait_until "$offset"
@@ -163,4 +164,3 @@ classify_left_and_queue_mask_at() {
   hid_mark "$actual"
   rm -f "$capture_grid"
 }
-

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Every report the runner sends, appended verbatim. The routine level has an
 # oracle -- the device plan replays through the engine -- but the microroutine
 # level had none but a phone, and every input bug this project has hit lives
@@ -116,4 +117,3 @@ hid_delay() {
   [ "$1" -gt 0 ] || return 0
   hid_emit "{\"id\":92,\"command\":\"delay\",\"duration\":$1}"
 }
-

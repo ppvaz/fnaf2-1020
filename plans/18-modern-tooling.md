@@ -48,6 +48,14 @@ nothing"). 51 tracked `.sh` files, zero static analysis.
 fails CI at the line; every tracked `.sh` is `shellcheck`-clean or annotated;
 the three fixtures are in the suite.
 
+**Critical-tier foundation landed 2026-08-30.** Sourced driver fragments now
+declare their Bash context, the one ShellCheck parse/expansion error in the
+menu regression is fixed, and the production `dumpsys`/focus guards no longer
+use an early-exit `grep -q` pipeline. `test-shell-footguns.sh` reproduces the
+pipefail/SIGPIPE failure, the multiline-focus case, and loud missing-input
+grading. CI pins ShellCheck `v0.10.0` and runs its error tier. The broader
+warning/style cleanup and full clean-tier claim remain open.
+
 ## Package 2 — Type-check the engine with `tsc --checkJs`, no emit
 
 **Incident.** The `night = 6` default that "would have priced a Night 3 plan

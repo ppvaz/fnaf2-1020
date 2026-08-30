@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # The offset of a cycle's first instruction, so the opening can be slipped
 # relative to whatever the plan actually starts with.
 plan_first_offset() {

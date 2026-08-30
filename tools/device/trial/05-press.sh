@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 wait_until() {
   # Every wall-timed boundary advances the trace's clock. Without this only
   # hid-side delays do, and a helper that spaces its reports with wait_until
@@ -116,4 +117,3 @@ hold_at() {
     input swipe "$x" "$y" "$x" "$y" "$duration"
   fi
 }
-

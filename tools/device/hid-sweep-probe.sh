@@ -54,9 +54,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-adb shell "pm list packages" | grep -qx "package:$PKG" || {
-  echo "$PKG is not installed on this device" >&2; exit 1; }
-if adb shell dumpsys window | grep -q 'isKeyguardShowing=true'; then
+if ! adb shell "pm list packages" | grep -Fx "package:$PKG" >/dev/null; then
+  echo "$PKG is not installed on this device" >&2
+  exit 1
+fi
+window_state="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' || true)"
+if grep -Fq 'isKeyguardShowing=true' <<<"$window_state"; then
   echo "the device is locked; unlock it and leave the screen on, then rerun" >&2
   exit 1
 fi
@@ -87,10 +90,12 @@ adb shell "am start -n $PKG/.Main" >/dev/null
 # dumpsys prints several mCurrentFocus lines and the first is often null
 # mid-transition, so match the package across all of them rather than -m1.
 for _ in $(seq 1 40); do
-  if adb shell dumpsys window | grep 'mCurrentFocus' | grep -q "$PKG"; then break; fi
+  focus="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' | grep 'mCurrentFocus' || true)"
+  if grep -Fq "$PKG" <<<"$focus"; then break; fi
   sleep 0.5
 done
-adb shell dumpsys window | grep 'mCurrentFocus' | grep -q "$PKG" || {
+focus="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' | grep 'mCurrentFocus' || true)"
+grep -Fq "$PKG" <<<"$focus" || {
   echo "the game never took focus; aborting before any input" >&2; exit 1; }
 sleep 4
 

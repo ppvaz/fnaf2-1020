@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # FNaF 2 Android (v2.0.7) touch calibration — Moto g56 5G, 2400x1080 landscape.
 #
 # These coordinates depend on the game's OPTIONS as much as on the handset, and

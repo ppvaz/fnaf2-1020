@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # The cams-up luma, measured on this phone.
 #
 # Across night 6-34's poller trace the snapshot sits at 225-229 for the whole

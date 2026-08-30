@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 cleanup_remote() {
   if [ "$HID_FD_OPEN" -eq 1 ]; then
     hid_release 2>/dev/null || true
@@ -28,7 +29,8 @@ if [ "$HID_MODE" -eq 1 ]; then
   # that gap is silently lost. Gate the strategy clock on the framework-level
   # device entry AOSP requires instead of guessing a fixed startup delay.
   hid_ready_deadline=$(( $(date +%s) + 12 ))
-  until dumpsys input 2>/dev/null | grep -q 'FNAF Timed Touch'; do
+  until input_state="$(dumpsys input 2>/dev/null || true)" &&
+      grep -F 'FNAF Timed Touch' <<<"$input_state" >/dev/null; do
     kill -0 "$HID_PID" 2>/dev/null || {
       echo 'HID transport exited before InputReader attached it' >&2
       exit 1
@@ -184,4 +186,3 @@ if [ "$NIGHT6_LEFT" -eq 1 ]; then
   T0_UP_MS=$((T0_UP_MS + PILOT_OFFSET_MS))
   printf 'pilot epoch = latch + %s ms\n' "$PILOT_OFFSET_MS"
 fi
-

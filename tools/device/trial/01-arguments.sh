@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -eu
 PIDFILE=$1; shift
 # The plan travels beside the pidfile rather than as another positional: the

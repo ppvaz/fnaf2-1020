@@ -54,11 +54,16 @@ adb shell cmd statusbar collapse >/dev/null 2>&1 || true
 adb shell am force-stop com.scottgames.fnaf2
 sleep 1
 adb shell am start -n com.scottgames.fnaf2/.Main >/dev/null
+focus=""
 for i in $(seq 1 20); do
-  adb shell dumpsys window 2>/dev/null | grep mCurrentFocus |
-    grep -q com.scottgames.fnaf2 && break
+  focus="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' |
+    grep mCurrentFocus || true)"
+  grep -Fq com.scottgames.fnaf2 <<<"$focus" && break
   sleep 1
 done
+[ -n "$focus" ] && grep -Fq com.scottgames.fnaf2 <<<"$focus" || {
+  echo "abort: game never took focus" >&2; exit 1;
+}
 sleep 4
 source "$HERE/menu.sh"
 menu_select sixthNight || {

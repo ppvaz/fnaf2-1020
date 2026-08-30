@@ -97,7 +97,8 @@ else
   bb_why="Balloon Boy cannot act on night $NIGHT, but the read also carries the desync checkpoint and the health guards"
 fi
 [ -f "$BB_LEFT_MODEL" ] || fail "no BB left model at $BB_LEFT_MODEL -- $bb_why"
-head -c 4 "$BB_LEFT_MODEL" | grep -q SCM || fail "$BB_LEFT_MODEL is not an SCM model"
+model_magic="$(head -c 4 "$BB_LEFT_MODEL" || true)"
+[ "$model_magic" = SCM1 ] || fail "$BB_LEFT_MODEL is not an SCM model"
 ok "BB left model $(basename "$BB_LEFT_MODEL") ($bb_why)"
 
 # 7. The GAME is the focused window -- not the helper.

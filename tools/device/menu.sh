@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # The one title/menu selector. Source this; do not re-derive it.
 #
 # plans/13 keeps four facts apart, and the runners used to collapse all four

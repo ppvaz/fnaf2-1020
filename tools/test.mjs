@@ -372,6 +372,9 @@ const ENGINE = [
   // Plan 18 Package 5: parse source-side InputDispatcher evidence without a
   // phone or a trace-processor dependency in the normal checkout.
   ['input trace', ['device/test-inputtrace.py']],
+  // Plan 18 Package 1 foundation: reproduce the three shell failures that
+  // already cost recorded nights, without requiring a phone or shellcheck.
+  ['shell footguns', ['device/test-shell-footguns.sh']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here

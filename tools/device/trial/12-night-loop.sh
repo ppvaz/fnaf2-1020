@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # A contiguous window of one cycle, delivered as a single hid macro.
 #
 # The shell wall-times only the window's start and then waits it out; every

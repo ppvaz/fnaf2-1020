@@ -150,8 +150,9 @@ while [ "$round" -le "$ROUNDS" ]; do
   # taking the first line.
   focused=""
   for i in $(seq 1 20); do
-    if adb shell dumpsys window 2>/dev/null | grep mCurrentFocus |
-        grep -q com.scottgames.fnaf2; then
+    focus="$(adb shell dumpsys window 2>/dev/null | tr -d '\r' |
+      grep mCurrentFocus || true)"
+    if grep -Fq com.scottgames.fnaf2 <<<"$focus"; then
       focused=yes
       break
     fi
