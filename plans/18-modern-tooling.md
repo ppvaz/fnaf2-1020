@@ -159,6 +159,27 @@ pin whichever in Package 9). Then: capture one real camera sweep from
 the enclosing `doFrame`, and check whether each 33 ms / 133 ms selection
 produces its own consumed event on its own frame.
 
+**Host/capture foundation landed 2026-08-30.** `tools/device/atrace-input.sh`
+now brackets a device command with a flush-safe phone-side Perfetto trace,
+refuses to overwrite evidence, defaults to all-app ATrace categories, and can
+optionally retain a `SurfaceFlinger --latency` dump. `inputtrace.py` queries
+the resulting trace without making `trace_processor` a repository dependency;
+it correlates enclosing or equal-cardinality chronological app delivery
+slices, event IDs, device-vs-injected identity, and candidate frame landing,
+and exits `3` on no app events. `grade-run.sh` reports and grades the artifact
+when present, while the parser has phone-free coverage and the wrapper's
+shell boundary is syntax-checked.
+
+**Live follow-up, not closure (2026-08-30).** Three Continue/Night 2
+select-only probes produced valid Perfetto files and video-visible light
+attempts, but the video gate accepted only 4/5 sweeps in the first probe and
+0/1 in each of the two shorter probes. None of those traces contained app
+`MotionEvent` dispatch/delivery rows; `inputtrace.py` therefore reports
+`NO APP EVENTS` rather than treating the video as dispatch proof. The earlier
+2026-08-28 positive trace remains recorded above. Reproduce that positive
+capture configuration, then join direct-HID events to actual frame-timeline
+landings before closing Package 5.
+
 ## Package 6 — A `scrcpy` capture path, priced against `screencap`
 
 **Incident.** `screencap` costs 225 ms against "roughly 680 ms free" per cycle;

@@ -369,6 +369,9 @@ const ENGINE = [
   // did was keyed to a third set. Shell cannot import JS, so a control test is
   // the answer -- the same shape as sourcetest.mjs's second Fusion LCG.
   ['screen map', ['device/test-screen-map.mjs']],
+  // Plan 18 Package 5: parse source-side InputDispatcher evidence without a
+  // phone or a trace-processor dependency in the normal checkout.
+  ['input trace', ['device/test-inputtrace.py']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here

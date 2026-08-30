@@ -57,6 +57,11 @@ for candidate in "$CAPTURES/$RUN.mp4" "$CAPTURES/$RUN-aborted.mp4"; do
   [ -f "$candidate" ] && VIDEO="$candidate"
 done
 TRACE="$CAPTURES/$RUN-hid.jsonl"
+# Optional Perfetto trace produced by atrace-input.sh around the same run.
+# Unlike the HID trace, this is a device-side record of dispatch and is only
+# parsed when the capture exists; old runs remain gradeable but visibly lack it.
+INPUT_TRACE="$CAPTURES/$RUN-input.pftrace"
+SF_LATENCY="$CAPTURES/$RUN-surfaceflinger-latency.txt"
 # The night's PCM, if the run kept any. Written by CUE_AUDIO=1 through the
 # helper's log capture, and named by the helper rather than by the run.
 AUDIO=""
@@ -77,6 +82,8 @@ done
 [ -n "$VIDEO" ] || { echo "no capture found for $RUN (looked for $RUN.mp4 and $RUN-aborted.mp4)"; exit 2; }
 echo "capture: ${VIDEO##*/}"
 [ -f "$TRACE" ] && echo "hid trace: ${TRACE##*/}" || echo "hid trace: MISSING (run with HID_TRACE_RUN=1)"
+[ -f "$INPUT_TRACE" ] && echo "input trace: ${INPUT_TRACE##*/}" || echo "input trace: none (run atrace-input.sh around the command)"
+[ -f "$SF_LATENCY" ] && echo "SurfaceFlinger latency: ${SF_LATENCY##*/}" || echo "SurfaceFlinger latency: none (set SF_LAYER for capture)"
 [ -f "$CUE" ] && echo "cue trace: ${CUE##*/}" || echo "cue trace: none (run with CUE_HELPER=1)"
 [ -n "$AUDIO" ] && echo "night audio: ${AUDIO##*/}" || echo "night audio: none (run with CUE_AUDIO=1)"
 [ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
@@ -182,6 +189,20 @@ if [ -n "$REQUIRE" ]; then
 else
   step "survival (the only number that is a run length)" \
     python3 "$HERE/grade-night.py" "$VIDEO"
+fi
+
+# 1a. What did Android's InputDispatcher deliver? This is a source-side
+#     control for the rendered-video inference. A trace artifact without a
+#     host parser is a diagnostic failure, not evidence that the input landed.
+if [ -f "$INPUT_TRACE" ]; then
+  INPUT_TRACE_ARGS=(python3 "$HERE/inputtrace.py" "$INPUT_TRACE"
+    --package com.scottgames.fnaf2)
+  [ -f "$SF_LATENCY" ] && INPUT_TRACE_ARGS+=(--sf-latency "$SF_LATENCY")
+  step "input dispatch / frame landing (Perfetto)" "${INPUT_TRACE_ARGS[@]}"
+else
+  echo
+  echo "--- input dispatch / frame landing (Perfetto) ---"
+  echo "  no input trace kept for $RUN; rendered video cannot establish dispatch."
 fi
 
 # 1b. The clock, as an independent control on that interval: the HUD's first

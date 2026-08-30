@@ -1432,6 +1432,27 @@ loop, not the View system, so frame-landing needs the SurfaceFlinger
 `actual_frame_timeline_slice` (only 12 frames present in this trace; its data
 source needs to be requested explicitly next run).
 
+### Package 5 host instrument follow-up (2026-08-30)
+
+The repository now has `tools/device/atrace-input.sh`, which brackets a
+command with a phone-side Perfetto trace and flushes the trace before pulling
+it, plus `tools/device/inputtrace.py`, which queries dispatch, delivery,
+identity, and candidate frame rows without adding a trace-processor dependency
+to the checkout. `grade-run.sh` consumes the artifact when it exists, and the
+parser has phone-free regression coverage. The wrapper refuses to overwrite a
+capture and can also retain a `SurfaceFlinger --latency` dump for the frame
+cross-check.
+
+Three direct `/system/bin/hid` Continue/Night 2 select-only probes on
+2026-08-30 produced valid Perfetto files. The video saw light attempts, but
+the camera-sweep gate accepted only 4/5 sweeps in the first probe and 0/1 in
+each shorter probe. The traces contained no app `MotionEvent`
+dispatch/delivery rows, including the all-app ATrace retry, so the parser
+returned `NO APP EVENTS`; these runs do not prove that the contacts reached
+Fusion. The earlier positive 2026-08-28 trace remains the evidence to
+reproduce. Direct-HID dispatch and actual frame-timeline landing are still
+open, and Package 5 is not closed.
+
 ## The arming pair merged into a drag: topology, not time (2026-08-28)
 
 `n2-minustoys-0117` planned **17 ms of released time** between the opening's
