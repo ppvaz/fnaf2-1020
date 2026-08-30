@@ -40,10 +40,13 @@ JAVA="$JDK_ROOT/bin/java"
 "$JAVAC" -encoding UTF-8 --release 17 -d "$TEST_TMP" \
   "$HERE/src/com/fnaf2/cuehelper/CueDetector.java" \
   "$HERE/src/com/fnaf2/cuehelper/PixelWatch.java" \
+  "$HERE/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
   "$HERE/src/com/fnaf2/cuehelper/ScreenStats.java" \
   "$HERE/test/com/fnaf2/cuehelper/CueDetectorTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/PixelWatchTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/ScreenIdentityTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/ScreenStatsTest.java"
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.CueDetectorTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PixelWatchTest
+$JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenIdentityTest
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenStatsTest

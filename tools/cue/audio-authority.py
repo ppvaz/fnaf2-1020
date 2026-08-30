@@ -16,6 +16,9 @@ Examples::
 The model is the same ignored cue-model-v1 format exported for earlier
 experiments.  A model is optional: without one the authority still publishes
 route, level, and stream-health facts, but it publishes no cue detections.
+The phase cue is enabled by model identity; other named templates require one
+or more explicit ``--shadow-cue`` options for a timing experiment and remain
+shadow facts only.
 """
 import argparse
 import base64
@@ -46,6 +49,7 @@ DEFAULT_LATENCY_MIN_MS = 150
 DEFAULT_LATENCY_MAX_MS = 250
 DEFAULT_PROFILE = "g56-bluealsa-a2dp-v1"
 DEFAULT_SOURCE = "audio-authority"
+REPO = pathlib.Path(__file__).resolve().parents[2]
 
 
 def monotonic_ms():
@@ -264,14 +268,15 @@ def normalized_correlation(window, template):
 
 
 class LiveMatcher:
-    def __init__(self, templates):
-        # Only the authoritative phase cue is enabled by default. Other model
-        # templates remain available to a later gated consumer, but treating
-        # them as controller facts without a cue-specific contract would be an
-        # unsafe expansion of scope.
+    def __init__(self, templates, shadow_cues=()):
+        # Only the authoritative phase cue is enabled by default. A named
+        # shadow cue is an explicit measurement opt-in; it is still just a
+        # fact on the external link and cannot arm a controller action.
+        enabled_shadow_cues = set(shadow_cues)
         self.templates = [item for item in templates
                           if item["id"] == 33 or item["cue"] in
-                          ("wind", "wind-tick", "winding")]
+                          ("wind", "wind-tick", "winding") or
+                          item["cue"] in enabled_shadow_cues]
         self.maximum = max((len(item["pcm"]) for item in self.templates), default=0)
         self.samples = collections.deque(maxlen=self.maximum + MODEL_RATE // 4)
         self.last_event_ms = -10**12
@@ -314,11 +319,23 @@ class AudioAuthority:
         self.model_digest = None
         if args.model:
             profile, self.model_digest, templates = parse_model(args.model)
-            self.matcher = LiveMatcher(templates)
+            self.matcher = LiveMatcher(templates, getattr(args, "shadow_cues", ()))
         self.last_health_ms = -10**12
         self.total_frames = 0
         self.last_rms = 0.0
         self.last_peak = 0.0
+        raw_output = getattr(args, "raw_output", None)
+        self.raw_path = pathlib.Path(raw_output).expanduser().resolve() \
+            if raw_output else None
+        self.raw_stream = None
+        self.raw_bytes = 0
+        self.raw_nonzero_bytes = 0
+        self.first_read_before_ns = None
+        self.first_read_after_ns = None
+        if self.raw_path is not None:
+            if self.raw_path == REPO or REPO in self.raw_path.parents:
+                raise ValueError("refusing to write game audio inside the repository")
+            self.raw_path.parent.mkdir(parents=True, exist_ok=True)
 
     def emit_unknown(self, fact_type, reason):
         self.publisher.fact(fact_type, reason=reason, confidence=0.0,
@@ -371,9 +388,11 @@ class AudioAuthority:
         return output
 
     def run(self):
-        self.publisher.start()
         process = None
         try:
+            self.publisher.start()
+            if self.raw_path is not None:
+                self.raw_stream = self.raw_path.open("xb")
             while True:
                 now_ms = monotonic_ms()
                 if process is None:
@@ -395,7 +414,9 @@ class AudioAuthority:
                     if self.args.once:
                         return 0
                     continue
+                read_before_ns = time.monotonic_ns()
                 raw = process.stdout.read(PCM_BYTES_PER_FRAME * RAW_FRAMES_PER_READ)
+                read_after_ns = time.monotonic_ns()
                 if not raw:
                     process.wait()
                     process = None
@@ -408,6 +429,14 @@ class AudioAuthority:
                         return 3
                     time.sleep(1.0)
                     continue
+                if self.first_read_before_ns is None:
+                    self.first_read_before_ns = read_before_ns
+                    self.first_read_after_ns = read_after_ns
+                if self.raw_stream is not None:
+                    self.raw_stream.write(raw)
+                    self.raw_stream.flush()
+                    self.raw_bytes += len(raw)
+                    self.raw_nonzero_bytes += sum(1 for value in raw if value)
                 samples = self.decode(raw)
                 now_ms = monotonic_ms()
                 self.emit_health(True, now_ms)
@@ -427,6 +456,30 @@ class AudioAuthority:
                     process.wait(timeout=1)
                 except subprocess.TimeoutExpired:
                     process.kill()
+            if self.raw_stream is not None:
+                self.raw_stream.close()
+                metadata = {
+                    "schema": "fnaf2-audio-authority-capture-v1",
+                    "raw": str(self.raw_path),
+                    "pcm_path": self.path,
+                    "rate": PCM_RATE,
+                    "channels": PCM_CHANNELS,
+                    "bytes_per_frame": PCM_BYTES_PER_FRAME,
+                    "frames": self.raw_bytes // PCM_BYTES_PER_FRAME,
+                    "bytes": self.raw_bytes,
+                    "nonzero_fraction": self.raw_nonzero_bytes / float(max(1, self.raw_bytes)),
+                    "first_read_before_ns": self.first_read_before_ns,
+                    "first_read_after_ns": self.first_read_after_ns,
+                    "sample_zero_host_ns_estimate": (
+                        (self.first_read_before_ns + self.first_read_after_ns) // 2
+                        if self.first_read_before_ns is not None else None),
+                    "sample_zero_uncertainty_ms": (
+                        (self.first_read_after_ns - self.first_read_before_ns) / 2e6
+                        if self.first_read_before_ns is not None else None),
+                    "status": "complete" if self.raw_bytes else "error",
+                }
+                metadata_path = pathlib.Path(str(self.raw_path) + ".meta.json")
+                metadata_path.write_text(json_dumps(metadata) + "\n", encoding="utf-8")
             self.publisher.close()
 
 
@@ -437,6 +490,8 @@ def arguments():
     parser.add_argument("--socket", help="Unix stream socket for fact messages")
     parser.add_argument("--mac", default=DEFAULT_MAC)
     parser.add_argument("--model", help="ignored cue-model-v1 exported from held-out data")
+    parser.add_argument("--shadow-cue", action="append", dest="shadow_cues", default=[],
+                        help="enable a named model template for shadow measurement only")
     parser.add_argument("--profile", default=DEFAULT_PROFILE)
     parser.add_argument("--source", default=DEFAULT_SOURCE,
                         help="fact source name shared by transport adapters")
@@ -446,6 +501,8 @@ def arguments():
                         help="publish only to --socket, not stdout")
     parser.add_argument("--once", action="store_true",
                         help="perform one route/read attempt; intended for checks")
+    parser.add_argument("--raw-output",
+                        help="also retain the authoritative S32LE PCM outside the repository")
     args = parser.parse_args()
     if not 0 <= args.latency_min <= args.latency_max:
         parser.error("latency bounds must be ordered and non-negative")

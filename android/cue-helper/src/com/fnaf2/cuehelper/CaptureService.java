@@ -143,6 +143,8 @@ public final class CaptureService extends Service {
     private int snapshotBlue;
     private int snapshotLuma;
     private int snapshotCam05MeanLuma;
+    private int snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
+    private int snapshotScreenScore;
     // Near-grey cells over the whole grid, or -1 when the grid is incomplete.
     //
     // A whole-frame count, because this sensor point-samples: the position
@@ -383,6 +385,8 @@ public final class CaptureService extends Service {
             // recomputing there would both duplicate the pass and race the
             // next frame's writer.
             int greyCells;
+            int screenIdentity;
+            int screenScore;
             if (!sessionActive(generation)) return;
             synchronized (snapshotLock) {
                 snapshotVisualSequence = visualSequence;
@@ -416,7 +420,13 @@ public final class CaptureService extends Service {
                 snapshotGreyCells = complete
                         ? ScreenStats.greyCells(snapshotGrid, snapshotGrid.length)
                         : -1;
+                snapshotScreenIdentity = complete
+                        ? ScreenIdentity.classify(snapshotGrid) : ScreenIdentity.UNKNOWN;
+                snapshotScreenScore = complete
+                        ? ScreenIdentity.score(snapshotGrid) : 0;
                 greyCells = snapshotGreyCells;
+                screenIdentity = snapshotScreenIdentity;
+                screenScore = snapshotScreenScore;
                 if (watchActive && captureWidth == PixelWatch.NATIVE_WIDTH
                         && captureHeight == PixelWatch.NATIVE_HEIGHT) {
                     PixelWatch.readInto(watchSpec, watchFrame,
@@ -445,12 +455,15 @@ public final class CaptureService extends Service {
                 if (invalidReason == null) {
                     lastVisual = String.format(Locale.US,
                             "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
-                                    + "cam05_mean_luma=%d grey=%d ageUs=%d content=%s",
+                                    + "cam05_mean_luma=%d grey=%d ageUs=%d content=%s "
+                                    + "screen=%s screenScore=%d",
                             visualSequence, red, green, blue, luma, cam05MeanLuma,
-                            greyCells, ageUs, content);
+                            greyCells, ageUs, content,
+                            ScreenIdentity.label(screenIdentity), screenScore);
                 } else {
                     lastVisual = String.format(Locale.US,
-                            "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%s",
+                            "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%s "
+                                    + "screen=UNKNOWN screenScore=0",
                             visualSequence, invalidReason, ageUs, content);
                 }
                 publishCombinedStatus("RUNNING");
@@ -993,6 +1006,8 @@ public final class CaptureService extends Service {
         int luma;
         int cam05MeanLuma;
         int greyCells;
+        int screenIdentity;
+        int screenScore;
         synchronized (snapshotLock) {
             visualSequenceSnapshot = snapshotVisualSequence;
             visualTimestampNs = snapshotVisualTimestampNs;
@@ -1002,6 +1017,8 @@ public final class CaptureService extends Service {
             luma = snapshotLuma;
             cam05MeanLuma = snapshotCam05MeanLuma;
             greyCells = snapshotGreyCells;
+            screenIdentity = snapshotScreenIdentity;
+            screenScore = snapshotScreenScore;
         }
 
         long nowNs = System.nanoTime();
@@ -1016,14 +1033,17 @@ public final class CaptureService extends Service {
         if (invalidReason == null) {
             visual = String.format(Locale.US,
                     "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
-                            + "grey=%d ageUs=%d content=%dx%d visible=%d",
+                            + "grey=%d ageUs=%d content=%dx%d visible=%d "
+                            + "screen=%s screenScore=%d",
                     visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
                     greyCells, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
-                    capturedContentVisibility);
+                    capturedContentVisibility,
+                    ScreenIdentity.label(screenIdentity), screenScore);
         } else {
             visual = String.format(Locale.US,
-                    "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d",
+                    "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
+                            + "screen=UNKNOWN screenScore=0",
                     visualSequenceSnapshot, invalidReason, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility);
@@ -1147,6 +1167,8 @@ public final class CaptureService extends Service {
         capturedContentVisibility = -1;
         synchronized (snapshotLock) {
             snapshotGridValid = false;
+            snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
+            snapshotScreenScore = 0;
             watchActive = false;
         }
 

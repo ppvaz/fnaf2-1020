@@ -60,6 +60,53 @@ def check_nearest_pairing():
     assert unmatched == []
 
 
+def check_pairing_is_one_to_one():
+    sync = module.merge_clocks({"samples": [{
+        "host_mid_ns": 0,
+        "device_ns": 5_000_000_000,
+        "rtt_ns": 1,
+        "offset_device_minus_host_ns": 5_000_000_000,
+    }]})
+    pairs, unmatched = module.pair_events(
+        [6_000_000_000, 6_010_000_000],
+        [{"onset_s": 1.005, "correlation": 0.8}],
+        0, sync, 500.0,
+    )
+    assert len(pairs) == 1
+    assert pairs[0]["audio_hit_index"] == 0
+    assert unmatched == [6_010_000_000]
+
+
+def check_latency_statistics():
+    pairs = [
+        {"audio_minus_visual_ms": 100.0, "audio_hit_index": 0},
+        {"audio_minus_visual_ms": 150.0, "audio_hit_index": 1},
+        {"audio_minus_visual_ms": 200.0, "audio_hit_index": 2},
+    ]
+    report = module.latency_statistics(
+        pairs, [1, 2, 3, 4], [{}, {}, {}, {}], [4])
+    assert report["p50_ms"] == 150.0
+    assert report["p95_ms"] == 195.0
+    assert report["max_ms"] == 200.0
+    assert report["jitter_ms"] == 45.0
+    assert report["temporal_decision"]["recommended_timestamp_compensation_ms"] == -150.0
+    assert report["temporal_decision"]["positive_delay_max_ms"] == 200.0
+    assert report["temporal_decision"]["remaining_causal_budget_ms"] == 550.0
+    assert report["temporal_decision"]["timestamp_compensation"] == \
+        "within-window-but-losses"
+    assert report["temporal_decision"]["loss_free"] is False
+    assert report["losses"] == {
+        "visual_events": 4,
+        "audio_hits": 4,
+        "paired_events": 3,
+        "visual_without_audio": 1,
+        "audio_without_visual": 1,
+        "visual_loss_rate": 0.25,
+        "audio_orphan_rate": 0.25,
+        "pair_rate": 0.75,
+    }
+
+
 def check_session_creation_and_manifest_shape():
     with tempfile.TemporaryDirectory(prefix="fnaf2-latency-test-") as directory:
         root = Path(directory)
@@ -74,9 +121,29 @@ def check_session_creation_and_manifest_shape():
             "fnaf2-latency-experiment-v1"
 
 
+def check_authority_fact_timestamps():
+    with tempfile.TemporaryDirectory(prefix="fnaf2-latency-facts-") as directory:
+        facts_path = Path(directory) / "audio-facts.jsonl"
+        facts_path.write_text(json.dumps({
+            "schema": "fact-message-v1", "seq": 4, "type": "cue-bang",
+            "state": "OBSERVED", "value": True, "confidence": 0.8,
+            "t_observed": 1150, "t_received": 1150,
+        }) + "\n")
+        facts = module.authority_fact_hits(facts_path, "bang")
+        events = module.fact_hits_as_audio_events(facts, 1_000_000_000)
+        assert facts["fact_type"] == "cue-bang"
+        assert len(events) == 1
+        assert events[0]["onset_s"] == 0.15
+
+
+check_authority_fact_timestamps()
+
+
 check_clock_mapping()
 check_visual_arrivals()
 check_visual_unknown()
 check_nearest_pairing()
+check_pairing_is_one_to_one()
+check_latency_statistics()
 check_session_creation_and_manifest_shape()
 print("latency experiment: clock mapping, visual labeling, and session shape pass")

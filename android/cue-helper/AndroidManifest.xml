@@ -24,9 +24,9 @@
     <application
         android:allowBackup="false"
         android:debuggable="true"
-        android:icon="@mipmap/cue_helper_icon"
+        android:icon="@mipmap/cue_helper_icon_adaptive"
         android:label="FNaF 2 Cue Helper"
-        android:roundIcon="@mipmap/cue_helper_icon"
+        android:roundIcon="@mipmap/cue_helper_icon_adaptive"
         android:supportsRtl="true"
         android:theme="@style/CueHelperTheme">
         <activity

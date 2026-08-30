@@ -57,8 +57,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     --auto-add-overlay \
     --min-sdk-version 29 \
     --target-sdk-version 36 \
-    --version-code 1 \
-    --version-name 0.1.0 \
+    --version-code 10 \
+    --version-name 0.1.9 \
     -o "$BUILD_DIR/base-unsigned.apk"
 
 "$JAVAC" \
@@ -69,6 +69,7 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -d "$CLASSES_DIR" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/MainActivity.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PixelWatch.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenStats.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureService.java"
 

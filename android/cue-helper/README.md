@@ -36,6 +36,13 @@ claim. Its pixel rule must be recalibrated against frames from the exact target
 device before it may control an action. The APK is measurement plumbing, not a
 promoted controller.
 
+The visual status also carries a fail-closed screen identity gate. It reports
+`screen=CUE_HELPER` only when the 20x9 sensor matches the stable helper layout
+calibrated from the retained portrait and landscape frames. A valid frame that
+does not match the helper is `screen=UNKNOWN`; it is not promoted to
+`FNAF_2`, Android settings, or any other semantic screen. This prevents a
+capture of the helper UI itself from being interpreted as game content.
+
 ## Build and install
 
 The build is intentionally Gradle-free. It uses the installed Android 36 SDK
@@ -89,6 +96,11 @@ external dependency:
 RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY ...
 ```
 
+When the captured content is the helper UI, the visual portion additionally
+contains `screen=CUE_HELPER screenScore=...`. If the capture is fresh but the
+screen signature is not recognized, it contains `screen=UNKNOWN`; this is a
+semantic refusal, not a stale-frame failure.
+
 The APK's A2DP card is only a connection/playing-state indicator. The
 authoritative audio facts are still the newline-delimited JSON messages emitted
 by the host authority. The app does not claim that the PCM is available to the
@@ -131,6 +143,10 @@ tools/cue/audio-authority.py \
 The model must be calibrated for the selected external transport. A model
 captured from Android's deprecated playback-capture path is not evidence for
 BlueALSA or ESP32 and must not be reused without external re-calibration.
+
+For a latency probe, a named non-phase template may be enabled explicitly with
+`--shadow-cue bang`; this only publishes a shadow fact and cannot arm a control
+window. Detector promotion still requires independent held-out calibration.
 
 The current BlueALSA adapter uses the phone's A2DP output and reads
 `S32_LE` stereo at 48 kHz, downmixing to 4 kHz mono for the optional matcher.

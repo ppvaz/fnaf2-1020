@@ -85,6 +85,18 @@ def check_decode_and_matcher():
     assert len(events) == 1 and events[0][0] == "wind"
     assert events[0][1] > 0.99
 
+    # Non-phase templates stay disabled unless a measurement explicitly opts
+    # them into shadow facts. This must not silently become a control path.
+    bang = authority.LiveMatcher([{
+        "id": 17, "cue": "bang", "threshold": 0.9, "pcm": template,
+    }])
+    assert bang.accept(template, 1000) == []
+    shadow_bang = authority.LiveMatcher([{
+        "id": 17, "cue": "bang", "threshold": 0.9, "pcm": template,
+    }], ["bang"])
+    events = shadow_bang.accept(template, 1000)
+    assert len(events) == 1 and events[0][0] == "bang"
+
 
 def check_socket_publisher():
     with tempfile.TemporaryDirectory(prefix="fnaf2-authority-test-") as temp:
@@ -155,9 +167,46 @@ def check_bluealsa_route_gate():
             os.environ.pop("MOCK_BLUEALSA_ROUTE", None)
 
 
+def check_raw_capture_metadata():
+    with tempfile.TemporaryDirectory(prefix="fnaf2-authority-raw-") as temp:
+        root = Path(temp)
+        command = root / "bluealsa-cli"
+        command.write_text(
+            "#!/usr/bin/env python3\n"
+            "import struct, sys\n"
+            "if sys.argv[1] == 'info': sys.exit(0)\n"
+            "if sys.argv[1] == 'open':\n"
+            "    frame = struct.pack('<ii', 1000000, -1000000)\n"
+            "    sys.stdout.buffer.write(frame * 100)\n"
+            "    sys.stdout.buffer.flush()\n"
+            "    sys.exit(0)\n"
+            "sys.exit(2)\n",
+            encoding="ascii",
+        )
+        command.chmod(0o755)
+        raw = root / "capture.raw"
+        previous = os.environ.get("PATH", "")
+        try:
+            os.environ["PATH"] = str(root) + os.pathsep + previous
+            result = subprocess.run([
+                sys.executable, str(HERE / "audio-authority.py"),
+                "--mac", authority.DEFAULT_MAC, "--once", "--quiet",
+                "--socket", str(root / "unused.sock"), "--raw-output", str(raw),
+            ], text=True, capture_output=True, timeout=3)
+        finally:
+            os.environ["PATH"] = previous
+        assert result.returncode == 3
+        metadata = json.loads(Path(str(raw) + ".meta.json").read_text())
+        assert metadata["status"] == "complete"
+        assert metadata["frames"] == 100
+        assert metadata["first_read_before_ns"] <= metadata["first_read_after_ns"]
+        assert raw.stat().st_size == 100 * authority.PCM_BYTES_PER_FRAME
+
+
 check_fact_contract()
 check_decode_and_matcher()
 check_socket_publisher()
 check_fact_collector()
 check_bluealsa_route_gate()
+check_raw_capture_metadata()
 print("audio authority: fact contract, external profile, decode, socket, and route gate passed")

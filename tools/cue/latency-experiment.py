@@ -6,7 +6,9 @@ is the temporary A2DP endpoint and authoritative PCM consumer.  This command own
 parts of a run so that a session is not reconstructed from shell history:
 
   tools/cue/latency-experiment.py preflight --connect
-  tools/cue/latency-experiment.py run --seconds 300 --refs /private/tmp/fnaf2-cue-refs
+  tools/cue/latency-experiment.py run --seconds 300 \
+    --authority-model /private/tmp/fnaf2-cue-model.txt --shadow-cue bang \
+    --refs /private/tmp/fnaf2-cue-refs
   tools/cue/latency-experiment.py analyze /path/to/session
 
 ``run`` requires FNaF 2 to be focused and the Cue Helper to be running.  It
@@ -16,7 +18,7 @@ BB vent arrival's bright->dark visual transition with sample 17's bang).
 
 Raw game audio is never written inside the repository.  The session directory
 contains the WAV/RAW outside the repository, the visual TSV, clock samples,
-capture metadata, and a JSON report.  If the reference samples are absent,
+authority/bridge logs, a captured fact sidecar, and a JSON report.  If the reference samples are absent,
 the run still records evidence and reports ``analysis=NOT_RUN`` instead of
 silently pretending that no cue occurred.
 """
@@ -30,6 +32,7 @@ import os
 import pathlib
 import re
 import select
+import signal
 import shutil
 import statistics
 import subprocess
@@ -42,6 +45,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 QUERY = REPO / "tools/device/query-cue-helper.sh"
 AUTHORITY = HERE / "audio-authority.py"
+BRIDGE = HERE / "bridge-audio-authority.py"
+COLLECT_FACTS = HERE / "collect-facts.py"
 DEFAULT_MAC = "10:2B:1C:DA:18:2C"
 DEFAULT_REFS = pathlib.Path("/private/tmp/fnaf2-cue-refs")
 DEFAULT_OUT = pathlib.Path.home() / "fnaf-apks" / "fnaf2-latency-experiments"
@@ -51,6 +56,7 @@ PCM_BYTES_PER_SAMPLE = 4  # BlueALSA S24_LE in a 32-bit container.
 PCM_BYTES_PER_FRAME = PCM_CHANNELS * PCM_BYTES_PER_SAMPLE
 READ_BYTES = PCM_BYTES_PER_FRAME * 480  # at most 10 ms per host read
 SAFE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,80}$")
+MIN_REPEATED_EVENTS = 3
 
 
 def mono_ns() -> int:
@@ -219,24 +225,48 @@ def preflight(mac: str, connect: bool = False) -> dict:
     }
 
 
-def stop_monitor(mac: str) -> bool:
-    if shutil.which("pgrep") is None or shutil.which("pkill") is None:
+def monitor_process_exists() -> bool:
+    if shutil.which("pgrep") is None:
         return False
-    probe = subprocess.run(["pgrep", "-x", "bluealsa-aplay"],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    if probe.returncode != 0:
-        return False
-    subprocess.run(["pkill", "-x", "bluealsa-aplay"],
-                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    time.sleep(0.3)
-    return True
+    return subprocess.run(["pgrep", "-x", "bluealsa-aplay"],
+                          stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL).returncode == 0
 
 
-def restore_monitor(mac: str, was_running: bool) -> None:
-    if not was_running or shutil.which("bluealsa-aplay") is None:
+def stop_monitor(mac: str) -> str | bool:
+    """Release BlueALSA's exclusive PCM and remember how to restore audio."""
+    service_active = False
+    if shutil.which("systemctl") is not None:
+        service_active = subprocess.run(
+            ["systemctl", "is-active", "--quiet", "bluealsa-aplay.service"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+        if service_active:
+            subprocess.run(["systemctl", "stop", "bluealsa-aplay.service"],
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                           check=False)
+            time.sleep(0.3)
+            if not monitor_process_exists():
+                return "systemd"
+
+    if monitor_process_exists() and shutil.which("pkill") is not None:
+        subprocess.run(["pkill", "-x", "bluealsa-aplay"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.3)
+        if not monitor_process_exists():
+            return True
+        fail("could not release bluealsa-aplay's exclusive PCM")
+    return False
+
+
+def restore_monitor(mac: str, was_running: str | bool) -> None:
+    if not was_running:
         return
-    if subprocess.run(["pgrep", "-x", "bluealsa-aplay"],
-                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+    if was_running == "systemd" and shutil.which("systemctl") is not None:
+        subprocess.run(["systemctl", "start", "bluealsa-aplay.service"],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       check=False)
+        return
+    if shutil.which("bluealsa-aplay") is None or monitor_process_exists():
         return
     subprocess.Popen(["bluealsa-aplay", "--profile-a2dp", "--volume=software", mac],
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -251,6 +281,79 @@ def write_wav_from_raw(raw_path: pathlib.Path, wav_path: pathlib.Path) -> None:
     result = run(command, timeout=60)
     if result.returncode != 0:
         fail("ffmpeg could not create %s: %s" % (wav_path, result.stderr.strip()))
+
+
+def stop_process(process: subprocess.Popen | None, timeout: float = 4.0) -> None:
+    """Stop a child through its Python cleanup path before using SIGTERM."""
+    if process is None or process.poll() is not None:
+        return
+    try:
+        process.send_signal(signal.SIGINT)
+        process.wait(timeout=timeout)
+        return
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    try:
+        process.terminate()
+        process.wait(timeout=1.0)
+        return
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    try:
+        process.kill()
+        process.wait(timeout=1.0)
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+
+
+def wait_for_path(path: pathlib.Path, process: subprocess.Popen,
+                  timeout: float = 8.0) -> None:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if path.exists():
+            return
+        if process.poll() is not None:
+            fail("audio authority exited before creating %s" % path)
+        time.sleep(0.05)
+    fail("audio authority did not create %s" % path)
+
+
+def logged_process(command: list[str], log_path: pathlib.Path,
+                   handles: list[object]) -> subprocess.Popen:
+    handle = log_path.open("x")
+    handles.append(handle)
+    return subprocess.Popen(command, stdout=handle, stderr=subprocess.STDOUT,
+                            start_new_session=True)
+
+
+def authority_capture_result(run_dir: pathlib.Path) -> dict:
+    metadata_path = run_dir / "audio.raw.meta.json"
+    raw_path = run_dir / "audio.raw"
+    if not metadata_path.is_file():
+        return {"status": "error", "error": "authority metadata missing",
+                "raw": str(raw_path)}
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return {"status": "error", "error": "invalid authority metadata: %s" % error,
+                "raw": str(raw_path)}
+    result = dict(metadata)
+    result["raw"] = str(raw_path)
+    result["wav"] = str(run_dir / "audio.wav")
+    if metadata.get("status") != "complete" or metadata.get("frames", 0) <= 0:
+        result["status"] = "error"
+        result.setdefault("error", "authority captured no complete PCM")
+        return result
+    write_wav_from_raw(raw_path, run_dir / "audio.wav")
+    result["status"] = "complete"
+    return result
+
+
+def dump_helper_log(path: pathlib.Path) -> None:
+    result = run(["adb", "logcat", "-d", "-v", "brief", "-s",
+                  "FnafCueHelper:I", "*:S"], timeout=20)
+    text = result.stdout or result.stderr or ""
+    path.write_text(text, encoding="utf-8")
 
 
 def capture_a2dp(mac: str, run_dir: pathlib.Path, seconds: float,
@@ -444,27 +547,83 @@ def audio_hits(wav_path: pathlib.Path, refs_dir: pathlib.Path, handle: int,
     }
 
 
+def authority_fact_hits(path: pathlib.Path, cue: str) -> dict:
+    """Read the live shadow detections delivered by the external authority."""
+    if not path.is_file():
+        return {"state": "UNKNOWN", "reason": "audio-facts-missing", "hits": []}
+    fact_type = "cue-" + cue
+    records = 0
+    hits = []
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as error:
+        return {"state": "UNKNOWN", "reason": "audio-facts-unreadable: %s" % error,
+                "hits": []}
+    for line in lines:
+        try:
+            fact = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        records += 1
+        if (fact.get("type") != fact_type or fact.get("state") != "OBSERVED"
+                or fact.get("value") is not True):
+            continue
+        timestamp_ms = fact.get("t_observed", fact.get("t_received"))
+        if not isinstance(timestamp_ms, (int, float)):
+            continue
+        hits.append({
+            "observed_ms": float(timestamp_ms),
+            "confidence": float(fact.get("confidence", 0.0)),
+            "correlation": float(fact.get("confidence", 0.0)),
+        })
+    return {"state": "OBSERVED", "fact_type": fact_type,
+            "records": records, "hits": hits}
+
+
+def fact_hits_as_audio_events(facts: dict, sample_zero: int | None) -> list[dict]:
+    """Convert authority monotonic-ms observations to the pairing shape."""
+    if sample_zero is None:
+        return []
+    events = []
+    for hit in facts.get("hits", []):
+        host_ns = round(hit["observed_ms"] * 1e6)
+        events.append({
+            "onset_s": (host_ns - sample_zero) / 1e9,
+            "correlation": hit["correlation"],
+            "authority_observed_ms": hit["observed_ms"],
+        })
+    return events
+
+
 def pair_events(visual_events: list[int], audio_events: list[dict],
                 sample_zero: int | None, sync: dict | None,
                 match_window_ms: float) -> tuple[list[dict], list[int]]:
     if sample_zero is None or sync is None:
         return [], list(visual_events)
-    pairs = []
-    unmatched_visual = []
-    for visual_device_ns in visual_events:
+    candidates = []
+    for visual_index, visual_device_ns in enumerate(visual_events):
         visual_host_ns = device_to_host_ns(sync, visual_device_ns)
-        candidates = []
         for hit_index, hit in enumerate(audio_events):
             audio_host_ns = sample_zero + round(hit["onset_s"] * 1e9)
-            candidates.append((abs(audio_host_ns - visual_host_ns), hit_index,
-                               hit, audio_host_ns))
-        if not candidates:
-            unmatched_visual.append(visual_device_ns)
+            distance = abs(audio_host_ns - visual_host_ns)
+            if distance <= match_window_ms * 1e6:
+                candidates.append((distance, visual_index, hit_index,
+                                   visual_device_ns, visual_host_ns, hit,
+                                   audio_host_ns))
+
+    # A detector hit is one physical observation.  Greedy nearest matching
+    # over all admissible pairs prevents a single audio hit from being reused
+    # for multiple visual transitions.  Ties resolve in input order, and the
+    # final list is restored to visual order for readable reports.
+    assigned_visual = set()
+    assigned_audio = set()
+    pairs = []
+    for distance, visual_index, hit_index, visual_device_ns, visual_host_ns, hit, audio_host_ns \
+            in sorted(candidates, key=lambda item: (item[0], item[1], item[2])):
+        if visual_index in assigned_visual or hit_index in assigned_audio:
             continue
-        distance, hit_index, hit, audio_host_ns = min(candidates)
-        if distance > match_window_ms * 1e6:
-            unmatched_visual.append(visual_device_ns)
-            continue
+        assigned_visual.add(visual_index)
+        assigned_audio.add(hit_index)
         pairs.append({
             "visual_device_ns": visual_device_ns,
             "visual_host_ns": visual_host_ns,
@@ -476,13 +635,127 @@ def pair_events(visual_events: list[int], audio_events: list[dict],
             "audio_hit_index": hit_index,
             "distance_ms": round(distance / 1e6, 3),
         })
+    pairs.sort(key=lambda item: item["visual_device_ns"])
+    unmatched_visual = [event for index, event in enumerate(visual_events)
+                        if index not in assigned_visual]
     return pairs, unmatched_visual
+
+
+def percentile(values: list[float], quantile: float) -> float | None:
+    """Linear-interpolated percentile, including the n=1 case."""
+    if not values:
+        return None
+    if not 0.0 <= quantile <= 1.0:
+        raise ValueError("quantile must be between 0 and 1")
+    ordered = sorted(values)
+    position = quantile * (len(ordered) - 1)
+    lower = int(math.floor(position))
+    upper = int(math.ceil(position))
+    if lower == upper:
+        return ordered[lower]
+    fraction = position - lower
+    return ordered[lower] + fraction * (ordered[upper] - ordered[lower])
+
+
+def latency_statistics(pairs: list[dict], visual_events: list[int],
+                       audio_hits: list[dict], unmatched_visual: list[int],
+                       blackout_window_ms: float = 750.0) -> dict:
+    """Summarize the requested T_audio_detect - T_visual_detect measure.
+
+    ``jitter_ms`` is the p95-p50 tail spread of the signed latency samples;
+    ``mad_jitter_ms`` is also retained as a robust scale estimate.  Audio hits
+    that cannot be assigned to a visual event are counted as orphan/extra
+    audio observations, while visual events without a unique audio assignment
+    are counted as losses.  No loss is silently converted into a zero latency.
+    """
+    if not math.isfinite(blackout_window_ms) or blackout_window_ms <= 0:
+        raise ValueError("blackout window must be positive")
+    values = [float(pair["audio_minus_visual_ms"]) for pair in pairs]
+    used_audio = {pair["audio_hit_index"] for pair in pairs}
+    p50 = percentile(values, 0.50)
+    p95 = percentile(values, 0.95)
+    median = p50
+    deviations = ([abs(value - median) for value in values]
+                  if median is not None else [])
+    mad = percentile(deviations, 0.50)
+    visual_count = len(visual_events)
+    audio_count = len(audio_hits)
+    paired_count = len(pairs)
+    unmatched_audio_count = audio_count - len(used_audio)
+    residuals = ([value - median for value in values]
+                 if median is not None else [])
+    residual_abs = [abs(value) for value in residuals]
+    positive_max = max((value for value in values if value > 0), default=0.0)
+    if not values:
+        temporal_decision = {
+            "state": "UNKNOWN",
+            "reason": "no-paired-events",
+            "blackout_window_ms": blackout_window_ms,
+        }
+    else:
+        loss_free = not unmatched_visual and unmatched_audio_count == 0
+        sufficient_sample_count = len(values) >= MIN_REPEATED_EVENTS
+        if not sufficient_sample_count:
+            compensation_verdict = "insufficient-repeated-events"
+        elif positive_max <= blackout_window_ms:
+            compensation_verdict = ("supported-within-window" if loss_free
+                                    else "within-window-but-losses")
+        else:
+            compensation_verdict = "not-guaranteed-within-window"
+        temporal_decision = {
+            "state": "OBSERVED",
+            "blackout_window_ms": blackout_window_ms,
+            "minimum_repeated_events": MIN_REPEATED_EVENTS,
+            "sufficient_sample_count": sufficient_sample_count,
+            "loss_free": loss_free,
+            "recommended_timestamp_compensation_ms": round(-median, 3),
+            "residual_p95_abs_ms": round(percentile(residual_abs, 0.95), 3),
+            "residual_max_abs_ms": round(max(residual_abs), 3),
+            "positive_delay_max_ms": round(positive_max, 3),
+            "remaining_causal_budget_ms": round(
+                blackout_window_ms - positive_max, 3),
+            "timestamp_compensation": (
+                compensation_verdict),
+            "note": (
+                "compensation shifts timestamps only; it cannot make an audio "
+                "fact arrive before its physical/detector delay"),
+        }
+    return {
+        "state": "OBSERVED" if values else "UNKNOWN",
+        "definition": "T_audio_detect - T_visual_detect; positive means audio later",
+        "sample_count": paired_count,
+        "min_ms": round(min(values), 3) if values else None,
+        "p50_ms": round(p50, 3) if p50 is not None else None,
+        "p95_ms": round(p95, 3) if p95 is not None else None,
+        "max_ms": round(max(values), 3) if values else None,
+        "max_abs_ms": round(max(abs(value) for value in values), 3) if values else None,
+        "jitter_ms": round(p95 - p50, 3) if p50 is not None and p95 is not None else None,
+        "jitter_definition": "p95_ms - p50_ms",
+        "mad_jitter_ms": round(1.4826 * mad, 3) if mad is not None else None,
+        "minimum_repeated_events": MIN_REPEATED_EVENTS,
+        "sufficient_sample_count": len(values) >= MIN_REPEATED_EVENTS,
+        "temporal_decision": temporal_decision,
+        "losses": {
+            "visual_events": visual_count,
+            "audio_hits": audio_count,
+            "paired_events": paired_count,
+            "visual_without_audio": len(unmatched_visual),
+            "audio_without_visual": unmatched_audio_count,
+            "visual_loss_rate": round(
+                len(unmatched_visual) / visual_count, 6) if visual_count else None,
+            "audio_orphan_rate": round(
+                unmatched_audio_count / audio_count, 6) if audio_count else None,
+            "pair_rate": round(paired_count / visual_count, 6) if visual_count else None,
+        },
+    }
 
 
 def analyse_session(run_dir: pathlib.Path, refs: pathlib.Path,
                     handle: int, threshold: float, prominence: float,
                     confirm: float, sync: dict | None = None,
-                    match_window_ms: float = 2_000.0) -> dict:
+                    match_window_ms: float = 2_000.0,
+                    blackout_window_ms: float = 750.0,
+                    authority_cue: str = "bang") -> dict:
     visual = visual_arrivals(read_visual(run_dir / "visual.tsv"))
     audio_path = run_dir / "audio.wav"
     if not audio_path.is_file():
@@ -509,13 +782,35 @@ def analyse_session(run_dir: pathlib.Path, refs: pathlib.Path,
     pairs, unmatched_visual = pair_events(
         visual.get("events_device_ns", []), audio["hits"], sample_zero,
         sync, match_window_ms)
+    statistics_report = latency_statistics(
+        pairs, visual.get("events_device_ns", []), audio["hits"], unmatched_visual,
+        blackout_window_ms)
+    authority_facts = authority_fact_hits(run_dir / "audio-facts.jsonl", authority_cue)
+    live_audio = fact_hits_as_audio_events(
+        authority_facts, sample_zero)
+    live_pairs, live_unmatched_visual = pair_events(
+        visual.get("events_device_ns", []), live_audio, sample_zero, sync,
+        match_window_ms)
+    live_statistics = latency_statistics(
+        live_pairs, visual.get("events_device_ns", []), live_audio,
+        live_unmatched_visual, blackout_window_ms)
+    primary_statistics = (live_statistics if live_audio else statistics_report)
     return {
         "state": "OBSERVED",
         "visual": visual,
         "audio": audio,
         "pairs": pairs,
         "unmatched_visual_events": unmatched_visual,
+        "statistics": primary_statistics,
+        "offline_statistics": statistics_report,
+        "authority_facts": authority_facts,
+        "live_fact_pairs": live_pairs,
+        "live_fact_statistics": live_statistics,
+        "statistics_source": ("authority-t_observed" if live_audio
+                               else "offline-audio-onset"),
+        "authority_cue": authority_cue,
         "match_window_ms": match_window_ms,
+        "blackout_window_ms": blackout_window_ms,
         "interpretation": (
             "positive audio_minus_visual means audio detection was later; "
             "each visual event is paired with its nearest audio hit within "
@@ -548,6 +843,7 @@ def create_run_dir(out_dir: pathlib.Path, name: str) -> pathlib.Path:
 def run_experiment(args: argparse.Namespace) -> int:
     checks = preflight(args.mac, args.connect)
     run_dir = create_run_dir(pathlib.Path(args.outdir).expanduser(), args.name)
+    authority_socket = run_dir / "audio-authority.sock"
     manifest = {
         "schema": "fnaf2-latency-experiment-v1",
         "state": "running",
@@ -559,65 +855,107 @@ def run_experiment(args: argparse.Namespace) -> int:
         "refs": str(pathlib.Path(args.refs).expanduser()),
         "detector": {"threshold": args.threshold, "prominence": args.prominence,
                       "confirm": args.confirm,
-                      "match_window_ms": args.match_window_ms},
+                      "match_window_ms": args.match_window_ms,
+                      "blackout_window_ms": args.blackout_window_ms},
+        "authority": {
+            "managed": True,
+            "socket": str(authority_socket),
+            "profile": args.authority_profile,
+            "model": args.authority_model,
+            "shadow_cues": args.shadow_cues,
+            "cue": args.authority_cue,
+        },
         "preflight": checks,
         "host_monotonic_start_ns": mono_ns(),
     }
     (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
-    stop = threading.Event()
-    audio_started = threading.Event()
-    audio_result: dict = {}
-    audio_thread = threading.Thread(
-        target=capture_a2dp,
-        args=(args.mac, run_dir, args.seconds, audio_started, stop, audio_result),
-        daemon=True,
-    )
-    visual_log = run_dir / "visual.tsv"
-    visual_stderr = run_dir / "visual.stderr.log"
+    handles: list[object] = []
+    authority = None
+    bridge = None
+    collector = None
     visual = None
+    monitor_was_running = False
+    audio_result: dict = {}
+    clock_start = None
+    clock_end = None
+    visual_log = run_dir / "visual.tsv"
+    return_code = 1
     try:
         clock_start = sync_clock()
-        (run_dir / "clock-start.json").write_text(json.dumps(clock_start, indent=2) + "\n")
-        audio_thread.start()
-        if not audio_started.wait(timeout=8):
-            fail("A2DP capture did not start")
-        if audio_result.get("status") == "error":
-            fail("A2DP capture failed: %s" % audio_result.get("error", "unknown error"))
+        (run_dir / "clock-start.json").write_text(
+            json.dumps(clock_start, indent=2) + "\n")
+
+        # BlueALSA exposes this PCM exclusively. The managed authority is the
+        # only reader; its raw file and the live fact stream come from one
+        # observation, so the offline and bridged evidence share a clock.
+        monitor_was_running = stop_monitor(args.mac)
+        authority_command = [sys.executable, str(AUTHORITY),
+                             "--socket", str(authority_socket),
+                             "--mac", args.mac,
+                             "--profile", args.authority_profile,
+                             "--quiet",
+                             "--raw-output", str(run_dir / "audio.raw")]
+        if args.authority_model:
+            authority_command.extend(["--model", args.authority_model])
+        for cue in args.shadow_cues:
+            authority_command.extend(["--shadow-cue", cue])
+        authority = logged_process(authority_command,
+                                   run_dir / "authority.log", handles)
+        wait_for_path(authority_socket, authority)
+        wait_for_path(run_dir / "audio.raw", authority)
+
+        collector = logged_process(
+            [sys.executable, str(COLLECT_FACTS),
+             "--socket", str(authority_socket),
+             "--output", str(run_dir / "audio-facts.jsonl")],
+            run_dir / "facts.log", handles)
+        bridge = logged_process(
+            [sys.executable, str(BRIDGE), "--socket", str(authority_socket)],
+            run_dir / "bridge.log", handles)
+
         visual_start = mono_ns()
-        with visual_stderr.open("x") as errors:
-            visual = subprocess.Popen([str(QUERY), "watch", str(math.ceil(args.seconds)),
-                                       str(visual_log)], stdout=subprocess.DEVNULL,
-                                      stderr=errors)
-        manifest.update({"audio_thread_start_ns": audio_result.get("capture_start_ns"),
-                         "visual_process_start_ns": visual_start,
+        with (run_dir / "visual.stderr.log").open("x") as errors:
+            visual = subprocess.Popen(
+                [str(QUERY), "watch", str(math.ceil(args.seconds)), str(visual_log)],
+                stdout=subprocess.DEVNULL, stderr=errors, start_new_session=True)
+        manifest.update({"visual_process_start_ns": visual_start,
                          "state": "capturing"})
         (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
         print("CAPTURING %ss" % args.seconds)
         print("Produza o evento no FNaF 2 mantendo o jogo em foco; Ctrl-C aborta com segurança.")
-        audio_thread.join(timeout=args.seconds + 20)
-        if audio_thread.is_alive():
-            stop.set()
-            audio_thread.join(timeout=5)
-        if visual is not None:
-            try:
-                visual.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                visual.terminate()
-                visual.wait(timeout=5)
+
+        deadline = mono_ns() + int(args.seconds * 1e9)
+        while mono_ns() < deadline:
+            if authority.poll() is not None:
+                fail("audio authority exited during capture; see authority.log")
+            time.sleep(0.25)
+
+        try:
+            visual.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            stop_process(visual)
         try:
             clock_end = sync_clock()
-            (run_dir / "clock-end.json").write_text(json.dumps(clock_end, indent=2) + "\n")
+            (run_dir / "clock-end.json").write_text(
+                json.dumps(clock_end, indent=2) + "\n")
         except RuntimeError as error:
             manifest["clock_end_error"] = str(error)
-            clock_end = None
-        if audio_result:
-            (run_dir / "audio.json").write_text(json.dumps(audio_result, indent=2) + "\n")
+
+        stop_process(visual)
+        stop_process(authority)
+        stop_process(collector)
+        stop_process(bridge)
+        audio_result = authority_capture_result(run_dir)
+        (run_dir / "audio.json").write_text(
+            json.dumps(audio_result, indent=2) + "\n")
+        dump_helper_log(run_dir / "helper.logcat")
         analysis = analyse_session(
             run_dir, pathlib.Path(args.refs).expanduser(), args.handle,
             args.threshold, args.prominence, args.confirm,
             merge_clocks(clock_start, clock_end),
-            args.match_window_ms,
+            args.match_window_ms, args.blackout_window_ms,
+            args.authority_cue,
         )
         manifest.update({"state": "complete" if audio_result.get("status") == "complete"
                          else "incomplete", "audio": audio_result,
@@ -630,28 +968,28 @@ def run_experiment(args: argparse.Namespace) -> int:
             visual.returncode if visual else "missing",
             analysis.get("visual", {}).get("snapshots", 0)))
         print("PAIRS %d" % len(analysis.get("pairs", [])))
-        return 0 if audio_result.get("status") == "complete" else 1
+        print("LIVE_FACT_PAIRS %d" % len(analysis.get("live_fact_pairs", [])))
+        return_code = 0 if audio_result.get("status") == "complete" else 1
     except KeyboardInterrupt:
-        stop.set()
         manifest.update({"state": "aborted", "reason": "keyboard-interrupt"})
         return_code = 130
     except Exception as error:
-        stop.set()
         manifest.update({"state": "aborted", "reason": str(error)})
         return_code = 1
         print("latency-experiment: %s" % error, file=sys.stderr)
     finally:
-        stop.set()
-        if visual is not None and visual.poll() is None:
-            visual.terminate()
-            try:
-                visual.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                visual.kill()
-        if audio_thread.is_alive():
-            audio_thread.join(timeout=5)
+        stop_process(visual)
+        stop_process(authority)
+        stop_process(collector)
+        stop_process(bridge)
+        restore_monitor(args.mac, monitor_was_running)
+        for handle in handles:
+            handle.close()
+        if not audio_result and (run_dir / "audio.raw.meta.json").is_file():
+            audio_result = authority_capture_result(run_dir)
         if audio_result:
-            (run_dir / "audio.json").write_text(json.dumps(audio_result, indent=2) + "\n")
+            (run_dir / "audio.json").write_text(
+                json.dumps(audio_result, indent=2) + "\n")
         manifest["host_monotonic_end_ns"] = mono_ns()
         (run_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return return_code
@@ -685,8 +1023,12 @@ def command_analyze(args: argparse.Namespace) -> int:
         args.threshold if args.threshold is not None else detector.get("threshold", 0.45),
         args.prominence if args.prominence is not None else detector.get("prominence", 0.05),
         args.confirm if args.confirm is not None else detector.get("confirm", 0.35),
-        args.match_window_ms if args.match_window_ms is not None
-        else detector.get("match_window_ms", 2000.0),
+        sync=None,
+        match_window_ms=(args.match_window_ms if args.match_window_ms is not None
+                         else detector.get("match_window_ms", 2000.0)),
+        blackout_window_ms=(args.blackout_window_ms if args.blackout_window_ms is not None
+                            else detector.get("blackout_window_ms", 750.0)),
+        authority_cue=manifest.get("authority", {}).get("cue", "bang"),
     )
     output = run_dir / "analysis.json"
     output.write_text(json.dumps(result, indent=2) + "\n")
@@ -694,6 +1036,17 @@ def command_analyze(args: argparse.Namespace) -> int:
     print("VISUAL_EVENTS %d" % len(result.get("visual", {}).get("events_device_ns", [])))
     print("AUDIO_HITS %d" % len(result.get("audio", {}).get("hits", [])))
     print("PAIRS %d" % len(result.get("pairs", [])))
+    print("LIVE_FACT_PAIRS %d" % len(result.get("live_fact_pairs", [])))
+    stats = result.get("statistics", {})
+    if stats.get("sample_count"):
+        print("LATENCY p50=%.3fms p95=%.3fms max=%.3fms jitter=%.3fms" % (
+            stats["p50_ms"], stats["p95_ms"], stats["max_ms"], stats["jitter_ms"]))
+    losses = stats.get("losses", {})
+    if losses:
+        print("LOSSES visual_without_audio=%s audio_without_visual=%s pair_rate=%s" % (
+            losses.get("visual_without_audio", "UNKNOWN"),
+            losses.get("audio_without_visual", "UNKNOWN"),
+            losses.get("pair_rate", "UNKNOWN")))
     return 0
 
 
@@ -717,6 +1070,16 @@ def parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--confirm", type=float, default=0.35)
     run_parser.add_argument("--match-window-ms", type=float, default=2000.0,
                             help="maximum visual/audio pairing distance")
+    run_parser.add_argument("--blackout-window-ms", type=float, default=750.0,
+                            help="blackout response window used by the temporal decision")
+    run_parser.add_argument("--authority-profile", default="g56-bluealsa-a2dp-v1",
+                            help="calibration profile published by the external authority")
+    run_parser.add_argument("--authority-model",
+                            help="external cue-model-v1 for shadow acoustic facts")
+    run_parser.add_argument("--authority-cue", default="bang",
+                            help="model cue name whose live fact timestamps are analysed")
+    run_parser.add_argument("--shadow-cue", action="append", dest="shadow_cues", default=[],
+                            help="explicitly enable a named authority template as shadow-only")
     analyse_parser = sub.add_parser("analyze", help="reanalyse an existing session")
     analyse_parser.add_argument("session")
     analyse_parser.add_argument("--refs", help="reference directory; defaults to the run manifest")
@@ -725,6 +1088,7 @@ def parser() -> argparse.ArgumentParser:
     analyse_parser.add_argument("--prominence", type=float)
     analyse_parser.add_argument("--confirm", type=float)
     analyse_parser.add_argument("--match-window-ms", type=float)
+    analyse_parser.add_argument("--blackout-window-ms", type=float)
     return command
 
 
