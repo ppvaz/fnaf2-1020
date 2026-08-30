@@ -169,7 +169,7 @@ power resources, plus explicit hazard/risk buckets. `tools/reducedmodeltest.mjs`
 compares those controller-visible fields against seeded Night 1 `Sim` traces;
 unknown route state is not copied from the simulator.
 
-### P3 -- estimator and uncertainty tests
+### P3 -- estimator and uncertainty tests — DONE (worktree)
 
 Implement predict/update/reconcile with no device dependency. Test that delayed
 audio is time-shifted, unknown facts never reduce risk, stale control-state
@@ -179,7 +179,14 @@ incident rather than last-write-wins behaviour.
 **Done when:** fault-injected observation traces degrade margin gradually or
 enter safe recovery; they never produce an unlogged confidence jump.
 
-### P4 -- finite cycle library and constraint gate
+`src/estimator.js` wraps the versioned belief reducer with monotonic prediction,
+observation/receipt timestamps, stale-control verification lockouts,
+calibration refusal, contradiction incidents, and transactional action
+reconciliation. `tools/estimatortest.mjs` covers delayed A2DP-style facts,
+UNKNOWN preservation, stale controls, missing profiles, contradictory sensors,
+and failed/successful verification.
+
+### P4 -- finite cycle library and constraint gate — DONE (worktree)
 
 Express every permissible cycle as data with prerequisites, temporal actions,
 expected results, resource cost, and hazard coverage. Reuse the exact model
@@ -189,7 +196,13 @@ has not passed them.
 **Done when:** an attempted unsafe cycle is rejected with its violated
 constraint, and every selected cycle has a readable decision record.
 
-### P5 -- robust short-horizon selector
+`src/cycle-library.js` provides reviewed wind, mask, hall-reset, and
+monitor-verification primitives. Its gate checks reduced-model prerequisites,
+animation collisions, contact/released gaps, and a required exact-engine proof
+callback; `tools/cycletest.mjs` pins both accepted records and fail-closed
+controls.
+
+### P5 -- robust short-horizon selector (selection foundation landed)
 
 Evaluate candidates across the belief hypotheses, using worst-case /
 risk-bounded selection rather than an average that gambles on one hidden route.

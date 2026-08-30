@@ -47,8 +47,10 @@ export function compilePolicy(program, { untilMs = Infinity } = {}) {
 
 // The first exact-engine adapter. It deliberately consumes the same semantic
 // events as the phone compiler; no policy-specific timeline is copied here.
-export function replayPolicy(program, { night = 1, seed = 1, untilMs = Infinity } = {}) {
-  const sim = new Sim({ night, seed });
+export function replayPolicy(program, {
+  night = 1, seed = 1, worst = false, untilMs = Infinity,
+} = {}) {
+  const sim = new Sim({ night, seed, worst });
   const events = compilePolicy(program, { untilMs });
   let i = 0;
   const endFrame = Number.isFinite(untilMs)

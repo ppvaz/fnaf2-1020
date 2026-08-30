@@ -25,6 +25,8 @@ export function minimalPolicy(knobs = {}) {
     schema: POLICY_SCHEMA,
     metadata: {
       id: 'minus-toys-minimal-night1', family: 'minus-toys', nights: [1],
+      setupTarget: 'minus-toys-split',
+      armVerify: true,
       sourceDependencies: ['src/config.js', 'tools/device/minus-toys-plan.mjs'],
       calibrationProfile: 'moto-g56-v207-landscape',
     },

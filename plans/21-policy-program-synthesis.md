@@ -85,7 +85,7 @@ seams, and reaches the same `Sim` terminal state. Standard Minus Toys and the
 separate Minus 7 policy family remain explicit follow-on ports rather than
 being silently claimed by this initial target.
 
-### P3 — structural policy grammar
+### P3 — structural policy grammar — DONE (worktree)
 
 Define a small grammar for legal synthesis moves: choose sourced setup target,
 idle/loop/finish boundaries, cycle period, action primitives, bounded proof
@@ -95,7 +95,14 @@ search labels a rediscovery rather than calling it novel.
 **Done when:** the grammar generates the existing families, rejects impossible
 action orderings, and identifies each known family from its canonical IR.
 
-### P4 — constrained structural search
+`tools/device/policy-grammar.mjs` builds the finite five-phase program shape,
+requires a named sourced setup target, checks action timing/overlap and
+engine-shaped monitor/mask/camera ordering, and fingerprints the current
+Minus Toys Minimal family. `tools/policygrammartest.mjs` includes duplicate and
+illegal-order controls; the standard Minus Toys and separate Minus 7 families
+remain explicit follow-on ports as documented under P2.
+
+### P4 — constrained structural search — DONE (initial target, worktree)
 
 Enumerate or beam-search grammar candidates with exact-engine replay, worst
 controls where meaningful, actuator/contact constraints, resource margins,
@@ -106,7 +113,16 @@ dependency set.
 controls and known negatives, and no candidate is admitted solely because an
 unmodelled device behavior was assumed.
 
-### P5 — compiler equivalence gate
+`tools/device/policy-search.mjs` enumerates caller-declared period/action
+mutations, validates the structural grammar, checks device-plan equivalence and
+contact floors, replays the exact engine, and Pareto-prunes accepted results.
+`tools/policysearchtest.mjs` persists a reproducible Minimal positive plus
+dropped-wind/period negative campaign with source and calibration provenance.
+This closes the initial policy target's infrastructure; the broader
+1200-seed invention campaign, additional policy families, and device promotion
+remain P6/P7 work.
+
+### P5 — compiler equivalence gate — DONE (initial target, worktree)
 
 Compile the same IR to (a) simulator events, (b) the device plan, and (c) a
 mocked phone-interpreter trace. Compare timestamped actions, phase boundaries,
@@ -117,7 +133,14 @@ declared clock rounding.
 2026-08-29: early arm, hard-coded 10 s cadence, and missing terminal/observe
 tail.
 
-### P6 — safe device execution contract
+`tools/device/policy-equivalence.mjs` compiles the policy to the device-plan
+text, parses that text through a finite mocked phone interpreter, and compares
+its semantic events with the IR compiler. `tools/policyequivalencetest.mjs`
+also runs the shipped emitter and rejects each of the three named Night 1
+defects. This closes the initial Minimal target; broader policy-family ports
+remain open.
+
+### P6 — safe device execution contract — DONE (initial target, worktree)
 
 Make the runner consume only a compiled IR artifact, record its hash in the
 session manifest, and separate low-cost capture from opt-in bounded grading.
@@ -127,6 +150,17 @@ observation phases, and never launch unbounded host analysis automatically.
 **Done when:** a device session can prove it ran the compiled program while the
 host remains responsive; post-run analysis is an explicit, resource-capped
 operation.
+
+`tools/device/policy-artifact.mjs` now binds canonical `policy-v1` bytes to the
+compiled device plan, carries both hashes in the plan, and refuses altered
+artifacts or projections. The Night 1 Minimal branch of `trial.sh` consumes
+that artifact, records the policy and plan hashes plus the retained artifact in
+the session manifest, verifies the remote plan hash after `adb push`, and keeps
+`GRADE_RUN=0` as the low-cost default; grading remains an explicit opt-in.
+`tools/policyartifacttest.mjs` covers the mutations and runner wiring without a
+phone. A physical run is still required before any live-device claim, and the
+standard Minus Toys/Minus 7 routes remain on their pre-IR paths until their
+family ports are complete.
 
 ### P7 — invention campaign and promotion
 

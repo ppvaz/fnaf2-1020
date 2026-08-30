@@ -211,7 +211,12 @@
         "actuator": "string",
         "emitted_action_trace": {"nullable": "string"}
       },
-      "optional": {}
+      "optional": {
+        "policy_schema": "string",
+        "policy_id": "string",
+        "policy_sha256": "sha256",
+        "execution_mode": "string"
+      }
     },
     "outcome": {
       "required": {

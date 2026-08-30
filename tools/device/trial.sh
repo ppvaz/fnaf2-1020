@@ -116,6 +116,8 @@ LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
 LOCAL_ABORT_VIDEO="$CAPTURE_DIR/$OUT-aborted.mp4"
 LOCAL_EPOCH="$CAPTURE_DIR/$OUT-epoch.txt"
 LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"
+LOCAL_DEVICE_PLAN="$CAPTURE_DIR/$OUT-device-plan.txt"
+LOCAL_POLICY_ARTIFACT="$CAPTURE_DIR/$OUT-policy-artifact.json"
 LOCAL_CUE_SHADOW="$CAPTURE_DIR/$OUT-cue-shadow.txt"
 SAMPLE_VIEW=""
 SAMPLE_BUCKET="unlabeled"
@@ -178,6 +180,11 @@ CHECKER_INSTALLED=0
 CUE_SHADOW_STARTED=0
 CUE_MODEL_SHA256=""
 CUE_MODEL_EVIDENCE=""
+POLICY_SCHEMA=""
+POLICY_ID=""
+POLICY_SHA256=""
+POLICY_PLAN_SHA256=""
+POLICY_EXECUTION_MODE="legacy-device-plan"
 
 # Pick a screenrecord limit without silently shortening the evidence. Android's
 # old recorder rejects values above 180 seconds; current builds advertise 0 as
@@ -554,6 +561,11 @@ mkdir -p "$CAPTURE_DIR"
 [ ! -e "$LOCAL_VIDEO" ] || { echo "refusing to overwrite $LOCAL_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_ABORT_VIDEO" ] || { echo "refusing to overwrite $LOCAL_ABORT_VIDEO"; exit 2; }
 [ ! -e "$LOCAL_RUN_LOG" ] || { echo "refusing to overwrite $LOCAL_RUN_LOG"; exit 2; }
+[ ! -e "$LOCAL_DEVICE_PLAN" ] || { echo "refusing to overwrite $LOCAL_DEVICE_PLAN"; exit 2; }
+if [ "$DEVICE_POLICY" = minus-toys ] && [ "$MINUS_TOYS_VARIANT" = minimal ]; then
+  [ ! -e "$LOCAL_POLICY_ARTIFACT" ] ||
+    { echo "refusing to overwrite $LOCAL_POLICY_ARTIFACT"; exit 2; }
+fi
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   [ ! -e "$LOCAL_EPOCH" ] || { echo "refusing to overwrite $LOCAL_EPOCH"; exit 2; }
 fi
@@ -582,13 +594,41 @@ recipe_args="--night=$STORY_NIGHT"
 if [ "$DEVICE_POLICY" = minus-toys ]; then
   minus_toys_args=(--night="$STORY_NIGHT")
   [ "$MINUS_TOYS_VARIANT" != minimal ] || minus_toys_args+=(--minimal)
-  node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate || exit 44
-  node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" > "$RUN_TMP/device-plan.txt"
+  if [ "$MINUS_TOYS_VARIANT" = minimal ]; then
+    # The live Minimal target is emitted from policy-v1, not from a second
+    # schedule writer. The artifact compiler performs the exact gate,
+    # equivalence check, and records the canonical policy alongside its plan.
+    node "$HERE/policy-artifact.mjs" --minimal --gate || exit 44
+    node "$HERE/policy-artifact.mjs" --minimal \
+      --plan "$RUN_TMP/device-plan.txt" \
+      --artifact "$RUN_TMP/policy-artifact.json" \
+      --metadata "$RUN_TMP/policy-meta.env" || exit 44
+    POLICY_EXECUTION_MODE="compiled-ir"
+    POLICY_SCHEMA="$(sed -n 's/^policy_schema=//p' "$RUN_TMP/policy-meta.env")"
+    POLICY_ID="$(sed -n 's/^policy_id=//p' "$RUN_TMP/policy-meta.env")"
+    POLICY_SHA256="$(sed -n 's/^policy_sha256=//p' "$RUN_TMP/policy-meta.env")"
+    POLICY_PLAN_SHA256="$(sed -n 's/^plan_sha256=//p' "$RUN_TMP/policy-meta.env")"
+    [ "$POLICY_SCHEMA" = policy-v1 ] && [ -n "$POLICY_ID" ] &&
+      [ "$(printf '%s' "$POLICY_SHA256" | wc -c | tr -d ' ')" -eq 64 ] &&
+      [ "$(printf '%s' "$POLICY_PLAN_SHA256" | wc -c | tr -d ' ')" -eq 64 ] || {
+        echo "policy artifact metadata is incomplete" >&2
+        exit 44
+      }
+    actual_policy_plan_sha256="$(shasum -a 256 "$RUN_TMP/device-plan.txt" | awk '{print $1}')"
+    [ "$actual_policy_plan_sha256" = "$POLICY_PLAN_SHA256" ] || {
+      echo "policy artifact plan hash does not match the emitted plan" >&2
+      exit 44
+    }
+  else
+    node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate || exit 44
+    node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" > "$RUN_TMP/device-plan.txt"
+  fi
 else
   # shellcheck disable=SC2086
   node "$HERE/recipe.mjs" --device-plan $recipe_args > "$RUN_TMP/device-plan.txt"
 fi
-cp "$RUN_TMP/device-plan.txt" "$CAPTURE_DIR/$OUT-device-plan.txt"
+cp "$RUN_TMP/device-plan.txt" "$LOCAL_DEVICE_PLAN"
+PLAN_SHA256="$(shasum -a 256 "$RUN_TMP/device-plan.txt" | awk '{print $1}')"
 if [ "$DEVICE_POLICY" = minus-toys ]; then
   echo "Minus Toys $MINUS_TOYS_VARIANT device-plan gate passed for Night $STORY_NIGHT" >&2
 elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
@@ -1081,6 +1121,20 @@ session_close() {                               # STATUS WATCHDOG_TEXT
   local status=$1 watchdog=$2 lifecycle reason candidate
   fnaf_session_active || return 0
 
+  if [ -f "$LOCAL_DEVICE_PLAN" ]; then
+    fnaf_session_artifact "$LOCAL_DEVICE_PLAN" artifact_id=device-plan \
+      role=compiled-device-plan authority=operational-metadata format=text/plain \
+      complete=true truncated=false retention=local-only clock_domain=null \
+      redaction.contains_game_media=false redaction.contains_audio=false \
+      redaction.commit_safe=true
+  fi
+  if [ -f "$LOCAL_POLICY_ARTIFACT" ]; then
+    fnaf_session_artifact "$LOCAL_POLICY_ARTIFACT" artifact_id=policy-artifact \
+      role=compiled-policy-ir authority=operational-metadata format=application/json \
+      complete=true truncated=false retention=local-only clock_domain=null \
+      redaction.contains_game_media=false redaction.contains_audio=false \
+      redaction.commit_safe=true
+  fi
   if [ -f "$LOCAL_VIDEO" ] || [ -f "$LOCAL_ABORT_VIDEO" ]; then
     fnaf_session_record clock domain=video_media_pts_s kind=media-pts units=s \
       "origin_note=screenrecord MP4 presentation timestamps. The origin is the first encoded frame and no mapping to the runner clock has been measured, so no alignment edge is claimed for it" \
@@ -1343,6 +1397,12 @@ adb get-state >/dev/null
 # identity. This happens before the game is launched, so a run that dies during
 # launch is still a described session and not three files sharing a basename.
 fnaf_session_begin "$OUT" "tools/device/trial.sh"
+# Keep the exact IR artifact beside the run before any game-side work begins.
+# session_close hashes it later, so the manifest proves both the canonical
+# policy and the plan bytes that were sent to the phone.
+if [ "$POLICY_EXECUTION_MODE" = compiled-ir ]; then
+  cp "$RUN_TMP/policy-artifact.json" "$LOCAL_POLICY_ARTIFACT"
+fi
 # Create the artifact as soon as a session exists. A setup failure before the
 # remote process launches therefore leaves an honest empty driver log instead
 # of making the session's primary diagnostic artifact disappear altogether.
@@ -1369,14 +1429,28 @@ fnaf_session_record env \
   "BB_LEFT_CAPTURE_EVERY=$BB_LEFT_CAPTURE_EVERY" \
   "BB_CAM05_CAPTURE_EVERY=$BB_CAM05_CAPTURE_EVERY" \
   "GF_SKIP_MASK_ON_EXACT_EMPTY=$GF_SKIP_MASK_ON_EXACT_EMPTY"
-# The plan is identified by its bytes, not its name: it is emitted per run into
-# a temporary directory that is gone before anyone reads the manifest.
-fnaf_session_record controller \
-  "policy_version=trial/$NIGHT/$PRESS_MODE" \
-  "plan_id=$DEVICE_POLICY device-plan" \
-  "plan_file=$RUN_TMP/device-plan.txt" \
-  "actuator=$PRESS_MODE" \
-  "emitted_action_trace=$([ "$HID_TRACE_RUN" -eq 1 ] && echo hid-trace || echo null)"
+# The plan is identified by its bytes, not its name. For the Minimal target,
+# the controller also records the canonical policy hash and schema, binding
+# the device text to the IR artifact that produced it.
+if [ "$POLICY_EXECUTION_MODE" = compiled-ir ]; then
+  fnaf_session_record controller \
+    "policy_version=$POLICY_SCHEMA" \
+    "policy_id=$POLICY_ID" \
+    "policy_sha256=$POLICY_SHA256" \
+    "execution_mode=$POLICY_EXECUTION_MODE" \
+    "plan_id=$POLICY_ID device-plan" \
+    "plan_file=$RUN_TMP/device-plan.txt" \
+    "actuator=$PRESS_MODE" \
+    "emitted_action_trace=$([ "$HID_TRACE_RUN" -eq 1 ] && echo hid-trace || echo null)"
+else
+  fnaf_session_record controller \
+    "policy_version=trial/$NIGHT/$PRESS_MODE" \
+    "execution_mode=$POLICY_EXECUTION_MODE" \
+    "plan_id=$DEVICE_POLICY device-plan" \
+    "plan_file=$RUN_TMP/device-plan.txt" \
+    "actuator=$PRESS_MODE" \
+    "emitted_action_trace=$([ "$HID_TRACE_RUN" -eq 1 ] && echo hid-trace || echo null)"
+fi
 # Model hashes, not model filenames. authorized_for is `fail-safe` for all
 # three because that is what they are wired to do: any read that is not
 # confidently empty masks and stops the run. None of them can cause an action,
@@ -1431,6 +1505,17 @@ fi
 # reached the phone as the old value.
 # Emitted and model-gated at the top of this script, before any adb command.
 adb push "$RUN_TMP/device-plan.txt" "$REMOTE_PLAN" >/dev/null
+DEVICE_PLAN_SHA256="$(adb shell "sha256sum '$REMOTE_PLAN'" 2>/dev/null |
+  tr -d '\r' | awk 'NF {print $1; exit}')"
+[ "$DEVICE_PLAN_SHA256" = "$PLAN_SHA256" ] || {
+  echo "device plan hash mismatch after adb push" >&2
+  echo "  host:   $PLAN_SHA256" >&2
+  device_plan_display="$DEVICE_PLAN_SHA256"
+  [ -n "$device_plan_display" ] || device_plan_display=unavailable
+  echo "  device: $device_plan_display" >&2
+  exit 44
+}
+echo "device plan hash: $DEVICE_PLAN_SHA256"
 echo "device plan: $(grep -c . "$RUN_TMP/device-plan.txt") lines"
 
 adb shell input keyevent KEYCODE_WAKEUP

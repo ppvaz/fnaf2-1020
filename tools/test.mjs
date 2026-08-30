@@ -64,12 +64,33 @@ const ENGINE = [
   // Plan 20 package 2: controller-visible reduced transition model agrees with
   // seeded Sim control/resource traces; hidden routes remain risk buckets.
   ['reduced model', ['reducedmodeltest.mjs']],
+  // Plan 20 package 3: delayed facts retain event time, UNKNOWN never clears
+  // risk, stale controls require verification, and contradictions fail safe.
+  ['estimator', ['estimatortest.mjs']],
+  // Plan 20 package 4: reviewed cycle data, reduced-model locks, device
+  // contact floors, and mandatory exact-engine proof callback.
+  ['cycle library', ['cycletest.mjs']],
+  // Plan 20 package 5 foundation: worst-case (not average) selection across
+  // plausible reduced states with readable rejection records.
+  ['cycle planner', ['plannertest.mjs']],
   // Plan 21 package 1: the current Minimal Minus Toys headers are represented
   // once as finite policy IR and round-trip with a canonical hash.
   ['policy IR', ['device/test-policy-ir.mjs']],
   // Plan 21 package 2 foundation: compile the finite IR into semantic press /
   // release events, including repeat and terminal phases.
   ['policy interpreter', ['device/test-policy-interpreter.mjs']],
+  // Plan 21 package 3: finite phase/action grammar, engine-shaped ordering
+  // checks, and duplicate-family classification.
+  ['policy grammar', ['policygrammartest.mjs']],
+  // Plan 21 package 5: IR, device-plan text, and mocked phone trace stay
+  // equivalent, including arm timing, repeat cadence, and terminal tail.
+  ['policy equivalence', ['policyequivalencetest.mjs']],
+  // Plan 21 package 4: explicit structural mutations run through grammar,
+  // device-equivalence, exact-engine, and provenance/Pareto gates.
+  ['policy search', ['policysearchtest.mjs']],
+  // Plan 21 package 6: canonical policy artifact, compiled-plan hash binding,
+  // runner wiring, and the opt-in post-run analysis boundary.
+  ['policy artifact', ['policyartifacttest.mjs']],
   // Plan 16 pkg 1/3 gates: Sim.snapshot()/restore() bit-identity, the semantic
   // action layer, and the parameter search harness reproducing the 803feb3
   // ladder on a zero perturbation.
