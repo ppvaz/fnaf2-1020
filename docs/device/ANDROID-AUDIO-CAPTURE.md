@@ -490,6 +490,79 @@ check that a capture is the game mix and not broadband noise or a mic fallback.
 the winding reference: `~/fnaf-apks/audio-capture-2026-08-29/` and
 `~/fnaf-apks/bt-audio-captures/` (outside the repo, game content).
 
+## Can the target phone consume its own A2DP stream? — no on stock, 2026-08-30
+
+This was checked after proposing a phone-only controller: could the g56 enable
+Android's A2DP-sink role, pair to itself, and receive the full HAL mix without
+another physical endpoint? **Not on the stock, unrooted target.** This is two
+different constraints, not merely a missing app:
+
+1. **The sink profile is a disabled system service.** AOSP ships the ordinary
+   phone configuration with `profile_supported_a2dp_sink=false`; current AOSP's
+   `A2dpSinkService.isEnabled()` starts it only when the system Bluetooth
+   property enables that profile. `BluetoothA2dpSink` is a hidden framework
+   API, not a profile an ordinary application can instantiate. Sources:
+   [AOSP Bluetooth config](https://android.googlesource.com/platform/packages/apps/Bluetooth/+/main/res/values/config.xml),
+   [A2dpSinkService](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/refs/heads/master/android/app/src/com/android/bluetooth/a2dpsink/A2dpSinkService.java),
+   [hidden BluetoothA2dpSink API](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/refs/heads/main/framework/java/android/bluetooth/BluetoothA2dpSink.java).
+2. **An A2DP role is still one end of a link to a remote peer.** The source
+   service checks that the remote device advertises the A2DP Sink UUID before
+   it connects; the sink native interface likewise accepts a remote
+   `BluetoothDevice` address. Enabling source and sink concurrently therefore
+   permits connections to other devices in both roles. It does not synthesize
+   a second peer or route the local source back to the local sink. Sources:
+   [A2dpService](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/refs/heads/main/android/app/src/com/android/bluetooth/a2dp/A2dpService.java),
+   [A2dpSinkNativeInterface](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/refs/heads/master/android/app/src/com/android/bluetooth/a2dpsink/A2dpSinkNativeInterface.java),
+   [Bluetooth BR/EDR baseband](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Core-61/out/en/br-edr-controller/baseband-specification.html).
+
+The second conclusion is an architectural inference from the profile and
+baseband contracts: neither Android nor the Bluetooth specification offers a
+"pair this controller to its own address" operation. The radio link is between
+distinct Bluetooth devices. Android's `a2dpConcurrentSourceSink` feature flag
+does not change that contract.
+
+The live target agrees. A read-only `adb shell dumpsys bluetooth_manager` on
+the Moto g56 reported:
+
+```
+Enabled Profile Services: A2DP
+A2DP Source State: Enabled
+A2DP Sink State: Disabled
+SDP A2DP source handle: 65539
+SDP A2DP sink handle: 0
+```
+
+There is a further application boundary even if a custom system image enables
+the sink: the system Bluetooth service owns the AVDTP connection and decoder;
+it does not publish the decoded PCM as a public `AudioRecord` source for the cue
+helper. A local software loop would therefore require a Bluetooth/audio-stack
+patch in addition to enabling the role.
+
+Rejected near-misses:
+
+- **Virtual Bluetooth controller:** AOSP RootCanal can create virtual
+  controllers and peers, but it is emulator/test infrastructure. AOSP's own
+  physical-device setup requires a built system component and `adb root`, so it
+  is not a stock-phone escape hatch
+  ([RootCanal](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/refs/heads/master/tools/rootcanal/),
+  [Pandora setup](https://android.googlesource.com/platform/packages/modules/Bluetooth/+/43ebbf5565851af3e0de28b2089af7c98ad07c65/android/pandora/server/README.md)).
+- **Decode outbound packets from HCI snoop:** full BTSnoop can contain HCI
+  packets, but Android stores it under `/data/misc/bluetooth/logs` and documents
+  extraction through a bug report. That is a privileged/post-run diagnostic,
+  not a low-latency PCM feed available to the controller
+  ([AOSP Bluetooth debugging](https://source.android.com/docs/core/connect/bluetooth/verifying_debugging)).
+- **Same-phone microphone:** this is an acoustic recording, not A2DP. It remains
+  suitable for post-run experiments, not the controller timing loop (§"Practical
+  recording workarounds" and `plans/08` gate 1).
+
+**Consequence.** For the original stock, unrooted game, consuming the discrete
+FAST-mixer cues live requires a genuinely external audible-mix endpoint: the
+validated BlueALSA receiver, a proven A2DP-sink MCU, or a wired tap. A rooted or
+custom-ROM phone could remain physically standalone, but then a direct FAST-HAL
+tap is simpler and lower-latency than manufacturing an A2DP self-loop. The
+recompiled game remains the clean phone-only route: report `Play sample`
+directly before audio routing.
+
 ### Listening while capturing — the host audio setup
 
 The two sound servers must not both manage Bluetooth. WirePlumper keeps this
