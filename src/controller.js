@@ -154,4 +154,342 @@ export class BlackoutReactive extends ReactiveController {
   }
 }
 
-export const CONTROLLERS = { blackoutReactive: BlackoutReactive };
+export const CONTROLLERS = { blackoutReactive: BlackoutReactive,
+                              ventThreatReactive: undefined }; // replaced below
+
+// Vent-threat reaction: the BB/Mangle eviction the scheduled mask cannot
+// deliver. Android's mask counter is a CONTINUOUS hold -- five consecutive
+// fully-on seconds (g907 -> v12 >= 5, g294), and g293 zeroes it on every
+// re-entry into the mask, so the 10 s cycle's ~4.8 s mask window tops out at
+// four ticks. That one missing tick is measured: n2-minustoys-0117 died
+// BB-inside -> Foxy, and `--phasegate`-adjacent sim runs reproduce it. The
+// engine's too-late edge is sharp: BB walks inside at the NEXT cams-up
+// (engine.js onCamsUp) and never leaves; the mask evicts him only at the
+// opening (tickMask / engine.js:887 for Mangle).
+//
+// Trigger: the left-opening video fact ('threat' == BB at the opening; the
+// office is only in view with the monitor down, so detection lands when the
+// schedule lowers it -- exactly when the scheduled mask phase begins, making
+// this the "extend the hold until the 5th tick" policy in practice). A
+// right-vent / audio Mangle fact can be added via opts.threatPred without
+// touching this machine. Hold is time-based (the opening read is UNKNOWN
+// while the mask animates), then verified after the drop.
+export class VentThreatReactive extends ReactiveController {
+  constructor(opts = {}) {
+    super(opts);
+    // Ticks accrue from maskFullyOn, anchored at the mask-on press + anim
+    // (this.since, set in securing). The hold length is the five ticks plus a
+    // half-tick of phase slack; the pre-mask hall pulse (Pedro's play) is what
+    // makes the Foxy D budget safe, and the box cost is bounded by ending the
+    // hold at eviction rather than camping to a wall-clock cap.
+    this.hardCapFrames = opts.hardCapFrames ?? C.s(12);
+    // Coverage gate (2026-08-30): the scheduled mask window CONTAINS five
+    // one-second tick boundaries when phase holds (4.8 s window, mask fully-on
+    // at :X4.7 -> boundaries :X5..:X9 -> eviction for free just before
+    // mask-off). BB only escapes when clock error slides the mask off the
+    // grid. So the controller first COUNTS the boundaries the current mask
+    // window will cross; >= 5 means the schedule handles the eviction and the
+    // correct action is nothing (a rescue here would only spend box). Inject
+    // maskWindowFrames from the schedule knobs; 0 disables the gate.
+    this.maskWindowFrames = opts.maskWindowFrames ?? 0;
+    this.maskOnAt = -1;     // first frame the mask was observed fully on
+    this.firstTick = -1;    // first tick boundary our own mask hold crosses
+    // Phase uncertainty (+-frames on the fully-on anchor). With u > 0 the
+    // boundary count becomes a RANGE and the decision three-way: lo >= 5 ->
+    // covered, stand down; hi < 5 -> uncovered, full rescue; else AMBIGUOUS ->
+    // the smallest bounded extension that guarantees the possibly-missing
+    // fifth boundary (hold the current mask ~1 s past its window -- its Foxy
+    // D bill is bounded by the pulse saw-tooth, ~11-16 against a lock of ~20),
+    // never the full drop-flash-remask rescue. Latched by the state until the
+    // visit resolves, so noisy reads cannot flip it repeatedly.
+    this.phaseUncertaintyFrames = opts.phaseUncertaintyFrames ?? 6;
+    // A threat that outlives two hold+verify cycles is BB already INSIDE
+    // (bb.inside never clears and the left-opening reads it exactly like the
+    // opening). Nothing the mask does helps; mask-camping the box to death is
+    // strictly worse than stopping. Two strikes and this controller stands
+    // down for the night.
+    // A threat that outlives a hold+verify cycle is USUALLY BB still at the
+    // opening, not inside: with the monitor held down there is no walk-in
+    // edge, and the 10%/s early-leave rolls make each extra cycle a fresh
+    // eviction chance. (Inside would require a raise we did not make.) So the
+    // retry budget is generous; standing down early surrendered winnable
+    // states. Six cycles of 10%/s + tick rolls is ~99% cumulative.
+    this.maxFailedHolds = opts.maxFailedHolds ?? 6;
+    this.failedHolds = 0;
+    this.dead = false;
+    // Early-cue banking (Pedro's technique, 2026-08-30): on BB's first route
+    // laugh, extend the current cams-up wind a little -- bank box before any
+    // rescue can spend it. TWO hard prerequisites kept this OFF by default:
+    // (1) the laugh fact is level, so banking must be edge-triggered on the
+    // timestamp or it re-enters for the whole 25 s window; (2) any up-phase
+    // extension SLIDES the frame-anchored schedule against the game's 5 s
+    // grid, and the busy-hold drops rows rather than deferring them -- an
+    // open-loop plan cannot absorb the slide (margin: 33/99 ms whole-plan).
+    // The human does this technique by re-anchoring on the game's clock
+    // continuously; the machine equivalent needs the winding-tick phase
+    // clock first. Defaults off until then.
+    this.bankingEnabled = opts.banking ?? false;
+    this.bankCapFrames = opts.bankCapFrames ?? C.s(2);
+    this.bankTarget = opts.bankTarget ?? 0.995;
+    this.bankStart = -1;
+    this.prevVentCue = false;
+    this.state = 'idle';    // idle | securing | holding | verifying | restoring
+    this.since = -1;        // the frame the mask is expected fully-on
+    this.loweredMonitor = false;
+    this.flashed = false;   // pre-mask hall pulse (Pedro's play, 2026-08-30)
+    this.threat = opts.threatPred ?? (obs => {
+      const o = obs.leftOpening;
+      if (o.state === 'OBSERVED' && o.value === 'threat') return true;
+      // The audio arrival pair (thud + 21) sounds at the RAISE, ~4 s before
+      // any video read could see the opening -- evicting on it, monitor up,
+      // is the audio channel's whole point.
+      const v = obs.bbVent;
+      return !!v && v.state === 'OBSERVED' && v.value === 'opening';
+    });
+  }
+
+  // Tick boundaries (f % FPS === 0, the sourced one-second event grid) in
+  // [from, from + windowFrames].
+  _boundariesIn(from, windowFrames) {
+    const first = from + ((C.FPS - (from % C.FPS)) % C.FPS);
+    if (first > from + windowFrames) return 0;
+    return Math.floor((from + windowFrames - first) / C.FPS) + 1;
+  }
+
+  covered() {
+    return this.maskWindowFrames > 0 && this.maskOnAt >= 0 &&
+      this._boundariesIn(this.maskOnAt, this.maskWindowFrames) >= C.VENT_MASK_TICKS;
+  }
+
+  // Uncertainty-aware coverage: the fully-on time is known only +-u frames
+  // (observation quantization, transport latency), so the tick count is a
+  // RANGE. lo shrinks the window and delays the anchor (conservative against
+  // coverage); hi widens both (conservative toward coverage).
+  coverageRange() {
+    const u = this.phaseUncertaintyFrames;
+    const lo = this._boundariesIn(this.maskOnAt + u, Math.max(0, this.maskWindowFrames - u));
+    const hi = this._boundariesIn(Math.max(0, this.maskOnAt - u), this.maskWindowFrames + u);
+    return [lo, hi];
+  }
+
+  // The frame by which holding is GUARANTEED to have crossed five boundaries
+  // under the latest-phase interpretation -- the bounded extension the
+  // ambiguous case needs (usually ~1 s past the scheduled mask-off, its Foxy
+  // D bill bounded by the saw-tooth argument: the previous pulse zeroed D
+  // ~5-10 s ago, so the peak stays ~11-16 against a lock threshold of ~20).
+  guaranteedFifthTick() {
+    const u = this.phaseUncertaintyFrames;
+    const lateAnchor = this.maskOnAt + u;
+    return (lateAnchor + ((C.FPS - (lateAnchor % C.FPS)) % C.FPS)) +
+      (C.VENT_MASK_TICKS - 1) * C.FPS + 2;
+  }
+
+  decide(obs, ctx) {
+    if (this.dead) return [];
+    const f = ctx.frame;
+    const masked = val(obs.maskOn, false);
+    const monUp = val(obs.monitorUp, null);
+    const opening = obs.leftOpening;
+    const cooling = this.cooling(f);
+    const threatened = this.threat(obs);
+    // Restarts trust the VIDEO read only: the audio opening-cue window (12 s)
+    // outlives the eviction itself, and restarting on its afterglow would
+    // re-mask a cleared opening.
+    const vo = obs.leftOpening;
+    const videoThreat = vo.state === 'OBSERVED' && vo.value === 'threat';
+    const out = [];
+    // Edge bookkeeping for the audio 'pending' cue (first thud): the fact is
+    // level for ~20 s, banking must fire once per cue.
+    const ventVal = val(obs.bbVent, false);
+    const pendingEdge = ventVal === 'pending' && this.prevVentCue !== 'pending';
+    this.prevVentCue = ventVal;
+    // Coverage bookkeeping: the first frame the mask was observed fully on.
+    // (Observation quantization is +-4 frames against a ~48-frame coverage
+    // margin -- cheap.)
+    if (masked && this.maskOnAt < 0) this.maskOnAt = f;
+    if (!masked) this.maskOnAt = -1;
+
+    // A threat that outlives its hold+verify cycle is a strike against
+    // "still at the opening"; past two, treat it as BB-inside and stand down.
+    if (videoThreat && (this.state === 'verifying' || this.state === 'restoring')) {
+      this.failedHolds++;
+      this.note(f, `threat persisted past hold (${this.failedHolds}/${this.maxFailedHolds})`);
+      if (this.failedHolds >= this.maxFailedHolds) {
+        this.dead = true;
+        this.state = 'idle';
+        this.loweredMonitor = false;
+        this.note(f, 'threat outlived the holds -> BB inside; standing down');
+        return out;
+      }
+      this.state = 'securing';
+      this.since = -1;
+      this.firstTick = -1;
+      this.flashed = false;
+      return out;
+    }
+
+    if (this.state === 'idle') {
+      if (!threatened) {
+        // Early-cue banking: the FIRST thud (BB pending, not yet dangerous --
+        // laughs are belief only, per the owner's play) and the cams are up:
+        // keep winding past the schedule's release to top the box before any
+        // rescue can spend it. Bounded by the stun clock; OFF by default until
+        // the phase clock exists (the extension slides the frame-anchored
+        // plan against the game's 5 s grid).
+        if (this.bankingEnabled && !cooling && monUp === true && pendingEdge) {
+          this.state = 'banking';
+          this.bankStart = f;
+          this.note(f, 'BB pending (first thud) -> banking wind');
+        }
+        return out;
+      }
+      // Three-way coverage decision over the tick-count RANGE (lo/hi).
+      if (masked && this.maskWindowFrames > 0 && this.maskOnAt >= 0) {
+        const [lo, hi] = this.coverageRange();
+        if (lo >= C.VENT_MASK_TICKS) {
+          this.state = 'covered';
+          this.note(f, `scheduled mask covers >= ${lo} boundaries -> stand by`);
+          return out;
+        }
+        if (hi >= C.VENT_MASK_TICKS) {
+          // Ambiguous: latch the bounded extension of the CURRENT mask --
+          // guarantee the fifth boundary under the latest-phase reading.
+          this.state = 'holding';
+          this.since = this.maskOnAt;
+          this.firstTick = this.guaranteedFifthTick();
+          this.note(f, `coverage ambiguous (${lo}..${hi}) -> bounded extension`);
+          return out;
+        }
+        this.note(f, `uncovered (max ${hi} boundaries) -> full rescue`);
+      }
+      this.state = 'securing';
+      this.since = -1;
+      this.firstTick = -1;
+      this.flashed = false;
+      this.note(f, 'vent threat -> drop-to-flash, then mask');
+    }
+
+    if (this.state === 'covered') {
+      // The schedule owns this mask and it will cross enough boundaries to
+      // evict; the correct action is nothing. If the mask drops before the
+      // threat cleared, fall back to idle for a fresh (uncovered) evaluation.
+      if (!masked || !threatened) this.state = 'idle';
+      return out;
+    }
+
+    if (this.state === 'banking') {
+      // A threat while banking outranks the bank.
+      if (threatened) {
+        this.state = 'securing';
+        this.since = -1;
+        this.flashed = false;
+        this.note(f, 'threat while banking -> evict now');
+        return this.emit(f, [{ action: 'windRelease', at: f }]);
+      }
+      const pie = val(obs.boxPie, null);
+      if ((pie !== null && pie >= this.bankTarget) || f - this.bankStart >= this.bankCapFrames) {
+        this.state = 'idle';
+        this.note(f, 'banked -> release and resume');
+        return this.emit(f, [{ action: 'windRelease', at: f }]);
+      }
+      if (!cooling) return this.emit(f, [{ action: 'wind', at: f }]);
+      return out;
+    }
+
+    if (this.state === 'securing') {
+      // Mask observed fully on after our own press -> the hold begins (the
+      // tick anchor was set when the press was emitted). Without this the
+      // securing block would re-press the mask and toggle it back off.
+      if (masked && this.since >= 0) { this.state = 'holding'; return out; }
+      // The pre-mask hall pulse is what pays for the hold: the light zeroes D
+      // while Foxy stands at the hall (engine.js:679) and the lock needs
+      // D >= ~20 at a 5 s check (engine.js:938, ai 1 on Night 2) -- a 5-tick
+      // hold accrues only ~6 past a fresh zero. Measured without it: ONE
+      // scheduled pulse swallowed by the hold took D from its 0..10 saw-tooth
+      // past 20 -> lock + same-tick strike (foxy:294/300). With the mask
+      // already on (the common case: detection lands in the scheduled mask
+      // phase) the pulse must wait for the drop -- the mask blocks every
+      // non-mask action -- so the sequence is drop -> flash -> re-mask, and
+      // the tick counter restarts from the re-mask (g293 zeroes on re-entry;
+      // there is nothing worth keeping at <=4 ticks anyway).
+      if (cooling) return out;
+      if (monUp === true) {
+        this.loweredMonitor = true;
+        this.note(f, 'lower monitor first');
+        return this.emit(f, [{ action: 'monitor', at: f }]);
+      }
+      if (monUp === false) {
+        if (!this.flashed) {
+          if (masked) {
+            this.note(f, 'drop the scheduled mask to make room for the pulse');
+            return this.emit(f, [{ action: 'mask', at: f }]);
+          }
+          this.flashed = true;
+          this.note(f, 'pre-mask hall pulse (zero Foxy D)');
+          return this.emit(f, [{ action: 'hall', at: f }]);
+        }
+        // Mask ON: ticks count from fully-on (the press + anim); anchor the
+        // eviction to the first tick boundary after that, not to wall clock.
+        this.since = f + C.MASK_ANIM_ON;
+        this.firstTick = this.since + ((C.FPS - (this.since % C.FPS)) % C.FPS);
+        this.note(f, 'mask on -> hold 5 consecutive ticks');
+        return this.emit(f, [{ action: 'mask', at: f }]);
+      }
+      return out;   // UNKNOWN: animating
+    }
+
+    if (this.state === 'holding') {
+      // The engine refuses every non-mask action while masked; the harness
+      // additionally suppresses the base schedule only while the mask must be
+      // up (securing/holding) -- verifying and restoring run it, because the
+      // schedule's raise+wind rows after the drop are the point. The
+      // scheduled hall slot the hold swallows is paid for by the pre-flash.
+      // Phase-aligned drop: the fifth tick lands on the fifth one-second
+      // boundary at or after fully-on; release right behind it (+1 frame so
+      // the boundary's increment has processed), not a wall-clock 5.5 s.
+      const dropAt = this.firstTick >= 0
+        ? this.firstTick + (C.VENT_MASK_TICKS - 1) * C.FPS + 2
+        : this.since + C.s(C.VENT_MASK_TICKS) + 30;
+      if (f >= Math.min(dropAt, this.since + this.hardCapFrames)) {
+        this.state = 'verifying';
+        this.note(f, 'hold elapsed -> drop and verify');
+        return this.emit(f, [{ action: 'mask', at: f }]);
+      }
+      return out;
+    }
+
+    if (this.state === 'verifying') {
+      if (cooling) return out;
+      if (opening.state === 'OBSERVED') {
+        if (opening.value === 'empty') {
+          this.state = this.loweredMonitor ? 'restoring' : 'idle';
+          this.note(f, 'opening clear');
+        }
+        return out;
+      }
+      // UNKNOWN for too long (dropped reads) -> give up cleanly rather than
+      // camp the mask forever; the box is not winding.
+      if (f - this.since > this.hardCapFrames + C.MASK_ANIM_OFF + PRESS_COOLDOWN) {
+        this.state = 'idle';
+        this.loweredMonitor = false;
+        this.note(f, 'verify gave up (no reads)');
+      }
+      return out;
+    }
+
+    // restoring: raise the monitor back so the base schedule resumes.
+    if (this.state === 'restoring') {
+      if (cooling) return out;
+      if (monUp === true) { this.state = 'idle'; this.loweredMonitor = false; return out; }
+      if (monUp === false) {
+        this.note(f, 'raise monitor -> resume base');
+        return this.emit(f, [{ action: 'monitor', at: f }]);
+      }
+      return out;
+    }
+
+    return out;
+  }
+}
+
+CONTROLLERS.ventThreatReactive = VentThreatReactive;

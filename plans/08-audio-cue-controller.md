@@ -33,6 +33,12 @@
 >
 > A rooted g56 would also work (`setprop af.fast_track_multiplier 0`), but is not
 > available.
+>
+> **Flagship (Pedro, 2026-08-30):** the external BlueALSA A2DP capture is *the*
+> audio path from here on — build and gate detectors against it
+> (`tools/cue/capture-bt-audio.sh`), not against a future rooted or on-device
+> capture. A rooted g56 would reopen internal capture only as the shared
+> dependency recorded in `PROGRESS.md`, not as this plan's path.
 
 **Status: gate 1 passes for the cue set this strategy needs (2026-08-24,
 after a correction).**

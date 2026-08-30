@@ -92,6 +92,27 @@ the paths that remain are an external hybrid (AM re-anchor + reactive vent read
 + mask verify/retry, ceiling ~1/3 per the mapped `jasonclone` bot) or the
 in-APK read-internal-state route (`plans/17`).
 
+**Story-Night-2 pricing, decomposed (2026-08-30).** Every number above is the
+*story* Night 2 table — the jitter tool's `night 2` is `AI_BY_NIGHT[2]`
+(g816/g676: BB 3, Mangle 3, Foxy 1, Puppet 5); the plan is 10/20-*shaped*, not
+10/20-AI. Same 600 seeds, decomposed: deterministic gate **200/200 + 100/100
+worst** with the **no-split control at 177/200** — the weak story AI lets the
+defensive churn hold without the stun, so the split buys margin, not
+survival-in-model. Ensemble census: **puppet:232, BBin/foxy:73,
+inside-office:54** — under clock error the binding failure is the
+*box/Puppet*, not the BB chain, and the AM-digit re-anchor barely moves it
+(**263/600**, puppet:252): one fix per 70 s cannot hold a 50 s box. Phase
+basin at the measured device jitter (σ29 ms): **66 ms** (early 0 / late +66;
+85% at perfect phase, 18–32% at ±132 ms). Consequences: Night 2's open-loop
+lever is dense *wind-phase* re-anchoring — the winding-tick phase clock
+(`ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer SFX") —
+not deeper BB sensing; and the arm is still a 3-of-12 phase coin flip whose
+miss is fatal (`--phasegate` night 2: 0/24 on miss epochs — viewing CAM 09
+leaves the wind inert, exactly r3), so `#arm-verify` is mandatory here too.
+Caveat on the whole ensemble: it is calibrated to `n2-minustoys-0117`'s
+302 ms + drift, and calib-01 measured no drift on this build — Night 2's mask
+churn makes the device run the under-load test of that discrepancy.
+
 **Minus Two (glitchless variant):** identical plan, but with no glitch CAM 09 cannot
 be flashed, so instead CAM 03 is flashed before every monitor-down, stalling Toy
 Bonnie and Withered Freddy; the player then swaps back to CAM 11 to wind. Zero RNG,
@@ -452,6 +473,66 @@ a pinned-RNG artifact (§7) and passes on the normal-seed proof. `--minimal` is
 **Night 1 only** and the CLI refuses any other night; nights 2–5 need their own
 shapes (Night 2 adds a mask for Mangle/BB, Nights 3–5 switch to CAM 08 and are
 Minus 3, not Minus Toys — no flash, mask + hall instead).
+
+#### Night 2 detection scoping (Pedro, 2026-08-30)
+
+On Night 2 the mask threats after the CAM 09 stun are exactly BB and Mangle —
+and they are the two characters the blackout grace does **not** cover.
+Engine-checked: the office-encounter blackout (`startOfficeEncounter`,
+`engine.js:376`) fires only for `openingRule: 'streak'` units — the Withereds
+and Toy Freddy (`engine.js:873`, `:928`), plus Toy Bonnie's mask case
+(`engine.js:878`) — while Mangle is `openingRule: 'raise'` (`config.js:635`,
+armed on cams-up, committed at monitor lowering, `engine.js:357-363`) and BB is
+not in `STALLED` at all (his own five-tick eviction; inside → flashlight dead →
+the Foxy chain). **Once either is inside the office it is already too late**, so
+the pilot must track the vents, not the office:
+
+- **Audio first.** BB's laughs (samples 21/23/24) are fast-mixer SoundPool cues
+  — A2DP external capture only. Mangle's static (s0020, channel 16, g732/733)
+  is a volume-gated loop: the internal capture has it *permanently* (the leak),
+  so only the A2DP path hears the real fade-in. The vent→inside window is
+  seconds wide, so A2DP's ~150–250 ms latency does not hit item 10's <~33 ms
+  closure — that bound the bang-anchored Foxy reset, not vent tracking. The
+  BlueALSA A2DP capture is the **flagship audio path** (2026-08-30 directive;
+  `ANDROID-AUDIO-CAPTURE.md` §"The A2DP mix DOES carry the fast-mixer SFX").
+- **A vent video cue is possible but priced.** Mangle is `ventR`
+  (`config.js:635`) — her office read needs the view panned right, and pan is
+  the documented press-coordinate desync hazard and classifier confound
+  (`ON-DEVICE-SCREEN-CHECKS.md` §"the left-opening classifier measures camera
+  pan"). The left opening stays readable for BB's side at ~0 pan.
+- **GF is the odd one:** countered by phase (never enter cams during an
+  interval), not by a sensor; at one-in-1000 arming it is a gate-census check,
+  not a design driver.
+- **Foxy is scheduled, not sensed, on Night 2 (agreed 2026-08-30).** At AI 1
+  (~1-in-20 per 5 s roll) a per-cycle 33 ms hall pulse resets whatever state
+  exists, and the flash is also the only read — he is visible only when lit,
+  so a sensor would duplicate the one contact that both observes and clears
+  him. The engine gates light actions on mask-off (`engine.js:203-233`), so
+  the pulse must sit in the cams-up phase: `n2-la-212912` died to a ~40 s
+  un-reset window inside a mask camp. The one audio candidate, s0060 hall
+  ambience, has an untraced volume gate — trace it for Night 4+ (Foxy 7),
+  where reactivity starts earning its keep; on Night 2 it buys nothing.
+
+**Route-audio detail (Pedro, 2026-08-30, same day).** Both carry characteristic
+movement cues along their routes, and both change voice in the final stretch:
+
+- **BB's vent stretch moves on the shared thud, not his laugh.** The sourced
+  route is CAM 10 → 07 → 03 → 01 → 05 → opening; only the middle three hops
+  play a laugh (`BB_VOCAL_SAMPLES` 21/24/23, random bank, identical channel-14
+  volume — no range information), hop 1 is silent, and the vent-stage movement
+  edges are `THUD_SAMPLE` 17 — the sample **seven characters share**
+  (g292/294, g400/401, g439/440, g748/749), indistinguishable in audio. One
+  sourced exception cuts through: arrival at the opening is the
+  **thud + 21 pair** (`BB_ARRIVAL_SAMPLE`, g607), so his final stretch reads
+  as generic thuds ending in a distinctive pair. Controls stay mandatory per
+  the 22/22-false-thud lesson — matched filter against the A2DP bed plus a
+  cue-free control recording before any thud number counts.
+- **Mangle's right-vent occupancy is a sustained state cue, monitor-state
+  independent.** While she sits visible in the right vent, her characteristic
+  loop (s0020, channel 16, g732/733 proximity gating) plays with the monitor
+  up or down. That lifts her occupancy detection off video entirely — no
+  office pan needed to know she is at ventR; the panned right-vent read
+  becomes optional confirmation, not the detector.
 
 **The elegance↔robustness trade, on record.** The minimal plan carries no
 defensive mask/monitor churn, so it is exactly as safe as the sourced Night 1

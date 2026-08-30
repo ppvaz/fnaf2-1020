@@ -1,8 +1,8 @@
 # Plan progress
 
-**Updated:** 2026-08-29
+**Updated:** 2026-08-30
 
-**Overall:** **28%** — 35 of 126 mandatory top-level work packages are closed.
+**Overall:** **26%** — 35 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
@@ -12,11 +12,76 @@ numerator is unchanged, so overall falls 33% → 30%, the honest direction.
 2026-08-29: Plans 19 and 20 add thirteen mandatory packages (113 → 126); Plan 19
 package 1 lands the same day (`6bfbc39`), so the numerator moves to 35 and
 overall falls 30% → 28%.
+2026-08-30: Plan 21 (proposed 2026-08-29) is counted with its seven mandatory
+packages (126 → 133); none closed yet, so the numerator stays 35 and overall
+falls 28% → 26%.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
 
 ## Very next step
+
+### 2026-08-30 directive — LOCK: reactive handling is the top priority (Pedro)
+
+**"This project has stalled on delivering the reactive handling for far too
+long, I want it at the highest priority."** The BB/Mangle detect-and-react
+chain is the campaign's deliverable, ahead of the winding-tick experiment and
+the Night 2 pilot. Build order, acting on all three fronts the bench allows:
+
+1. **Engine-side reactive policy — BUILT, gated, with findings (2026-08-30).**
+   `VentThreatReactive` (`src/controller.js`) + the `bbVent` audio fact
+   (`src/observer.js`, A2DP-latency model) + `reactiveBB` wired in
+   `minus-toys-plan.mjs`, gated by `tools/ventreacttest.mjs`. Cue taxonomy is
+   the owner's play: laughs = belief, first thud = pending/prepare, the
+   thud+21 arrival pair = evict with priority; pre-mask hall pulse pays the
+   Foxy D bill. Coverage gate: the scheduled mask window contains five tick
+   boundaries when phase holds (free eviction), so the controller intervenes
+   only on misalignment. Zero-jitter **276/300** (first cut was 8/300) —
+   the apparent geometry wall is refuted. Three documented known-negatives;
+   the binding failure is now **phase estimation** (ensemble ~63/600:
+   sustained misalignment makes every visit look uncovered). Full record:
+   `plans/21` "First seed facts" + "A2DP phase-clock estimator".
+2. **Phase-clock estimator = the critical path.** Specification landed
+   (`plans/21` "The A2DP phase-clock estimator — specification"):
+   latency-calibrated multi-tick estimator behind BlueALSA, lock states,
+   500 ms parity anchoring, correction protocol, proof ladder (oracle →
+   wrong-phase control → estimated clock → re-anchoring → measure). Feeds
+   from the real continuous-wind capture (the open 2 Hz-grid item).
+3. **Observe-only instrumented run** feeds the detector corpus and drift
+   measurement; **live reaction** only after detector proof (22/22-thud
+   controls) and priced reactive presses (human-gate rule).
+
+The winding-tick experiment and Night 2 pilot follow; the 2026-08-30 "Night 2
+model pricing" block below remains the number set this builds against.
+
+### 2026-08-30 directive — LOCK: Night 2 work (Pedro)
+
+The campaign's active workstream is the **story Night 2 automated pilot**. The
+model side is priced and recorded — `MINUS-3-STRATEGY.md` §3 "Story-Night-2
+pricing, decomposed": the existing 10 s shape gates 200/200 (no-split control
+177/200), the calibrated ensemble is 237/600 with a **Puppet-dominant census**
+(puppet:232 / BBin:foxy:73), the phase basin is 66 ms, and the arm miss is
+fatal (0/24 on miss epochs). Device order, in sequence:
+
+1. **Arm-verify's first hardware run** — the pending Night 1 `--minimal`
+   re-run (`trial.sh DEVICE_POLICY=minus-toys MINUS_TOYS_VARIANT=minimal`;
+   g56 re-plug needed) is step zero of *this* workstream: it validates the
+   `#arm-verify`/`cam11lit.py` re-arm machinery Night 2 inherits, and the
+   halt-file abort protects the save cursor Night 2 needs. Expecting an armed
+   split or a named arm-verify abort inside the 2 AM idle window.
+2. **Night 2 device run of the gated shape** (`minus-toys-plan.mjs
+   --night=2`, `HID_TRACE_RUN=1`, cue-helper video, AM-digit + camtrace
+   instruments) — it doubles as the drift-under-load test that decides
+   whether the 237/600 ensemble is real or pessimistic (calib-01 measured
+   no drift on a no-churn night).
+3. **If drift is real:** the lever is dense wind-phase re-anchoring — the
+   A2DP winding-tick phase clock (flagship path), starting from the open
+   2 Hz-grid item (scripted continuous wind + timestamped capture).
+   BB/Mangle vent sensing is second-order (12% of ensemble deaths) and
+   follows it. Foxy stays scheduled, not sensed (§9).
+
+This supersedes the blocks below as campaign priority; the 2026-08-28 reset's
+ranked frontier and the active tracks (plans 05/17) are unchanged.
 
 ### 2026-08-28 strategic reset — this is not a dead end
 
@@ -141,6 +206,28 @@ stretch). This unblocks **offline detector proofing** and is a live path to the
 winding-tick phase clock. Full record: `ANDROID-AUDIO-CAPTURE.md`
 §"Discrete SFX are on the fast mixer" and §"The A2DP mix DOES carry the
 fast-mixer SFX".
+
+   **Elevated 2026-08-30 (Pedro): the BlueALSA A2DP external capture is the
+   flagship audio path from now on.** Detector work gates against it, not a
+   future rooted or on-device capture; `plans/08`'s on-device premise stays
+   dead without root. First consumer: Night 2's vent-stage BB/Mangle tracking
+   (`MINUS-3-STRATEGY.md` §9 "Night 2 detection scoping" — Night 2's two mask
+   threats are exactly the two characters with no blackout grace). Open items
+   unchanged: the 2 Hz grid needs a scripted continuous wind, and any
+   absolute-time anchor must expect A2DP's silence-suspend resume gap.
+
+**Night 2 model pricing (2026-08-30): the existing 10 s shape gates clean on
+the story table, and its binding failure is the Puppet, not BB.**
+`minus-toys-plan.mjs --night=2 --gate`: 200/200 + 100/100 worst, no-split
+control **177/200** (weak story AI — the split buys margin, not
+survival-in-model). Ensemble: 237/600, census puppet:232 / BBin:foxy:73 /
+inside-office:54; AM re-anchor 263/600; phase basin 66 ms; arm-miss epochs
+0/24 — `#arm-verify` is mandatory on Night 2. So the Night 2 open-loop lever
+is dense wind-phase re-anchoring (the A2DP winding-tick phase clock), not
+deeper BB sensing, and the device Night 2 run doubles as the drift-under-load
+test (calib-01 found none). Note the 10/20-shaped-vs-story-table distinction
+explicitly — it was conflated in session on 2026-08-30 and retracted. Full
+record: `MINUS-3-STRATEGY.md` §3 "Story-Night-2 pricing, decomposed".
 
 **3. Rooting the g56 is now a shared dependency.** Multiple frontier paths need
 it: forcing SoundPool off the fast mixer (audio cues live), Frida/runtime

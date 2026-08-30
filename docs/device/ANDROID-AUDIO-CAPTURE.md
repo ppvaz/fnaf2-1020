@@ -288,6 +288,15 @@ music is captured, SFX are not — so it is purely the fast-mixer routing.
   encoder is downstream of the HAL mix, but a receiver must first prove it is
   decoding the stream correctly. The Linux-receiver experiment below found a
   corrupt aptX HD stream, so it is not evidence that the game mix was captured.
+  **Superseded later the same day:** the fault was isolated to PipeWire's
+  receive path; BlueALSA passed the two-tone control (SBC and aptX HD) and the
+  winding tick matched at NC 0.44–0.56 — see §"Linux Bluetooth receiver" and
+  §"The A2DP mix DOES carry the fast-mixer SFX" below.
+- **Flagship audio path (Pedro, 2026-08-30):** all cue work targets the
+  validated external BlueALSA A2DP capture from now on
+  (`tools/cue/capture-bt-audio.sh`); internal capture stays settled-dead on this
+  device. Night 2's vent-stage BB/Mangle tracking is the first consumer
+  (`MINUS-3-STRATEGY.md` §9 "Night 2 detection scoping").
 
 ## Linux Bluetooth receiver: aptX HD failure and SBC control — 2026-08-29
 

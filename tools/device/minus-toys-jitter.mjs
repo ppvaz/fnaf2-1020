@@ -31,7 +31,7 @@
 // Golden-Freddy-interval and Toy-cam-stall model gaps (plans/02 sec.5). Read
 // each figure as "in the model, under the calibrated ensemble".
 import { pathToFileURL } from 'node:url';
-import { replay } from './minus-toys-plan.mjs';
+import { replay, KNOBS0 } from './minus-toys-plan.mjs';
 
 const HOUR_MS = 70000;
 const NIGHT_MS = 420000;
@@ -85,9 +85,9 @@ const deathKey = sim => {
   return (sim.bb.inside ? 'BBin/' : '') + sim.death.reason;
 };
 
-export function runOne(night, seed, opts) {
+export function runOne(night, seed, opts, knobs) {
   const rng = mulberry32((seed ^ 0x9e3779b9) >>> 0);
-  const r = replay({ night, seed, shift: makeShift(opts, rng) });
+  const r = replay({ night, seed, shift: makeShift(opts, rng), knobs });
   // A run counts only if it survives AND the split armed -- a phase error can
   // leave the CAM 09 tap unregistered so `viewing` never disagrees with the
   // marker, which is a Minus-Toys failure even when the night is won.
@@ -98,12 +98,12 @@ export function runOne(night, seed, opts) {
 }
 
 // The fitness primitive a search calls: survival of `seeds` runs under `opts`.
-export function evalEnsemble({ night, opts = {}, seeds = 400 }) {
+export function evalEnsemble({ night, opts = {}, seeds = 400, knobs }) {
   let survived = 0;
   const deaths = {};
   for (let i = 0; i < seeds; i++) {
     const s = (i * 2654435761) >>> 0;
-    const { won, key } = runOne(night, s, opts);
+    const { won, key } = runOne(night, s, opts, knobs);
     if (won) survived++;
     else deaths[key] = (deaths[key] || 0) + 1;
   }
@@ -117,11 +117,11 @@ export function evalEnsemble({ night, opts = {}, seeds = 400 }) {
 // band around 0 that still clears `threshold`, plus the survival curve. Width 0
 // means jitter alone already sinks it -- no amount of phase alignment helps.
 export function basinWidth({ night, opts = {}, seeds = 200, max = 560, step = 33,
-                             threshold = 0.7 }) {
+                             threshold = 0.7, knobs }) {
   const base = { epochErrMs: 0, driftMsPerMin: 0, jitterMs: DEFAULTS.jitterMs,
                  reanchor: opts.reanchor ?? 'none', ...opts };
   const rate = phaseMs => {
-    const { survived, n } = evalEnsemble({ night, opts: { ...base, phaseMs }, seeds });
+    const { survived, n } = evalEnsemble({ night, opts: { ...base, phaseMs }, seeds, knobs });
     return survived / n;
   };
   const offs = [0];
@@ -145,6 +145,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const nights = String(arg('nights', '2,3,4,5,7')).split(',').map(Number);
   const seeds = +arg('seeds', 400);
   const reanchor = arg('reanchor', 'none');
+  // --reactive: price the VentThreatReactive layer (minus-toys-plan replay
+  // knobs.reactiveBB) under the same ensemble, directly comparable to the
+  // open-loop rows.
+  const knobs = process.argv.includes('--reactive')
+    ? { ...KNOBS0, reactiveBB: true } : undefined;
   const banner = () => {
     console.log('minus-toys-jitter -- MODEL, under the [CALIBRATED] ' +
       'n2-minustoys-0117 error ensemble. Sensitivity analysis, not a ' +
@@ -156,7 +161,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`\nphase basin: fixed global offset + sigma ${DEFAULTS.jitterMs} ms ` +
       `per-press jitter (epoch/drift 0), >=70% survival, ${Math.min(seeds, 250)} seeds`);
     for (const night of nights) {
-      const b = basinWidth({ night, opts: { reanchor }, seeds: Math.min(seeds, 250) });
+      const b = basinWidth({ night, opts: { reanchor }, seeds: Math.min(seeds, 250), knobs });
       const curve = b.curve.filter(([k]) => k % 132 === 0)
         .map(([k, r]) => `${k >= 0 ? '+' : ''}${k}:${(r * 100).toFixed(0)}%`).join('  ');
       console.log(`  night ${night}:  basin early -${b.early}${b.cappedEarly ? '+' : ''} ` +
@@ -172,7 +177,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     let crossed = null;
     for (const j of [0, 10, 15, 20, 25, 29, 35, 45, 60, 80]) {
       const { survived, n } = evalEnsemble({
-        night, seeds, opts: { epochErrMs: 0, driftMsPerMin: 0, jitterMs: j, reanchor },
+        night, seeds, knobs, opts: { epochErrMs: 0, driftMsPerMin: 0, jitterMs: j, reanchor },
       });
       const pct = (100 * survived / n).toFixed(1);
       if (crossed === null && survived / n < 0.7) crossed = j;
@@ -184,7 +189,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     banner();
     console.log(`\nsurvival under the ensemble, ${seeds} seeds, reanchor=${reanchor}`);
     for (const night of nights) {
-      const { survived, n, deaths } = evalEnsemble({ night, seeds, opts: { reanchor } });
+      const { survived, n, deaths } = evalEnsemble({ night, seeds, knobs, opts: { reanchor } });
       const top = Object.entries(deaths).sort((a, b) => b[1] - a[1]).slice(0, 4)
         .map(([k, v]) => `${k}:${v}`).join('  ');
       console.log(`  night ${night}:  ${String(survived).padStart(4)}/${n}  ` +

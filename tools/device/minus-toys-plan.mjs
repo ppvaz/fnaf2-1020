@@ -11,6 +11,9 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '../../src/config.js';
 import { Sim } from '../../src/engine.js';
+import { Observer } from '../../src/observer.js';
+import { VentThreatReactive, guardIntents, GUARD_FRAMES } from '../../src/controller.js';
+import { Rng } from '../../src/rng.js';
 
 // Every tunable number in the schedule. build(KNOBS0) reproduces the shipped
 // opening/loop byte-for-byte (asserted below). Each knob names one decision the
@@ -248,11 +251,73 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
   const untilMs = kk.minimal ? kk.minStopAtMs : 420000;
   const queue = schedule({ splitCamera, shift, opening, loop, finish, periodMs, loopStartMs, untilMs, epochMs });
 
+  // `reactiveBB` wires the reserved hook for real (2026-08-30 directive): a
+  // VentThreatReactive layer rides the schedule -- the opening left-opening
+  // video fact pre-empts it with a 5-tick mask hold (the continuous-hold tick
+  // the ~4.8 s scheduled window cannot deliver), the harness suppresses the
+  // base schedule while the controller is mid-response (a scheduled mask-off
+  // or monitor raise during the hold is what walks BB inside), and press
+  // collisions obey the night 6-38 guard. Observation models the stock video
+  // loop: ~15 Hz cadence, optional round-trip delay and drop rate.
+  const reactive = kk.reactiveBB ? {
+    obs: new Observer({
+      interval: kk.reactiveIntervalFrames ?? 4,
+      readDelayFrames: kk.reactiveDelayFrames ?? 0,
+      dropRate: kk.reactiveDropRate ?? 0,
+      rng: new Rng((seed ^ 0x9e3779b9) >>> 0),
+    }),
+    ctrl: new VentThreatReactive({
+      // The scheduled mask window's length, for the coverage gate: when the
+      // current window still crosses five tick boundaries, the schedule
+      // evicts for free and the controller stands down.
+      maskWindowFrames: Math.round((kk.maskOffMs - kk.maskOnMs) / 1000 * C.FPS),
+    }),
+    lightReleaseAt: -1,   // the pre-mask hall pulse: press now, release in hallMs
+  } : null;
+  const hallFrames = Math.max(1, Math.round(kk.hallMs / 1000 * C.FPS));
+  const animated = reactive
+    ? queue.filter(([, k, a]) => k === 'press' && (a === 'monitor' || a === 'mask'))
+        .map(([at, , action]) => ({ at, action }))
+    : null;
+
   let i = 0, splitAt = -1, minBox = 1, minPower = sim.power;
   while (sim.alive && !sim.won) {
-    while (i < queue.length && queue[i][0] <= sim.frame) {
-      const [, kind, action] = queue[i++];
-      sim[kind](action);
+    if (reactive && reactive.lightReleaseAt >= 0 && sim.frame >= reactive.lightReleaseAt) {
+      sim.release('light');
+      reactive.lightReleaseAt = -1;
+    }
+    // The schedule freezes only while the mask must be UP (securing/holding).
+    // Verifying and restoring run it: the raise+wind rows after the drop are
+    // the point, and suppressing them costs more than the threat on Night 2's
+    // box margin (measured 2026-08-30: the first, blunter cut went 8/300).
+    if (!reactive ||
+        (!['securing', 'holding', 'banking'].includes(reactive.ctrl.state))) {
+      while (i < queue.length && queue[i][0] <= sim.frame) {
+        const [, kind, action] = queue[i++];
+        sim[kind](action);
+      }
+    } else {
+      while (i < queue.length && queue[i][0] <= sim.frame) i++;   // dropped, not deferred
+    }
+    if (reactive) {
+      const facts = reactive.obs.read(sim);
+      const window = animated.filter(x => Math.abs(sim.frame - x.at) < GUARD_FRAMES * 3);
+      for (const it of guardIntents(
+          reactive.ctrl.decide(facts, { frame: sim.frame, scheduled: window }), window)) {
+        if (it.at <= sim.frame) {
+          // The pre-mask hall pulse: the schedule spells a hall as a held
+          // light (press now, release after hallMs), so expand to that pair.
+          // windRelease likewise closes a hold the controller opened.
+          if (it.action === 'hall') {
+            sim.press('light');
+            reactive.lightReleaseAt = sim.frame + hallFrames;
+          } else if (it.action === 'windRelease') {
+            sim.release('wind');
+          } else {
+            sim.press(it.action);
+          }
+        }
+      }
     }
     sim.tick();
     if (splitAt < 0 && sim.camsUp && sim.viewing === 11 && sim.cam === 9)

@@ -23,7 +23,7 @@ const O = (value) => ({ state: 'OBSERVED', value });
 const U = (reason) => ({ state: 'UNKNOWN', reason });
 
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
-                      'splitArmed', 'leftOpening', 'ventLightL'];
+                      'splitArmed', 'leftOpening', 'ventLightL', 'bbVent'];
 
 // A complete fact set with every entry UNKNOWN -- what the controller sees
 // before the first read completes.
@@ -35,11 +35,15 @@ const NO_READ = () => {
 
 export class Observer {
   constructor({ interval = OBSERVE_INTERVAL, readDelayFrames = 0, dropRate = 0,
-                rng = null } = {}) {
+                rng = null, audioLatencyFrames = 12 } = {}) {
     this.interval = interval;
     this.readDelayFrames = readDelayFrames;  // model host round-trip latency
     this.dropRate = dropRate;                // fraction of reads that come back UNKNOWN
     this.rng = rng;
+    this.audioLatencyFrames = audioLatencyFrames; // A2DP transport, ~200 ms
+    this.evtCursor = 0;                      // how much of the event feed is heard
+    this.lastCueAt = -Infinity;              // device-frame the last cue became audible
+    this.lastCueType = false;                // 'route' | 'pending' | 'opening'
     this.lastReadFrame = -Infinity;
     this.cache = NO_READ();
     this.pending = [];                       // delayed reads not yet visible
@@ -48,6 +52,26 @@ export class Observer {
   // Take a fresh read off a live Sim if the cadence allows, then return the
   // most recent read that has finished its round-trip.
   read(sim) {
+    // Audio is not on the video cadence: the event feed stands in for the
+    // detector, each discrete cue surfacing after the transport latency.
+    // Cue semantics are the device owner's play (2026-08-30): laughs are
+    // belief only (route position), the FIRST thud (stage-4 CAM 05 arrival,
+    // cam:true) means BB is pending -- committed to the vent, not yet
+    // evictable -- and the SECOND thud (the thud+21 arrival pair, g607) means
+    // he is at the opening and evictable. Most recent cue wins.
+    for (; this.evtCursor < sim.events.length; this.evtCursor++) {
+      const e = sim.events[this.evtCursor];
+      let cue = null;
+      if (e.type === 'laugh') cue = 'route';
+      else if (e.type === 'vent-bang' && e.data.who === 'bb') {
+        if (e.data.arrival) cue = 'opening';
+        else if (e.data.cam) cue = 'pending';
+      }
+      if (cue) {
+        this.lastCueType = cue;
+        this.lastCueAt = Math.max(this.lastCueAt, e.f + this.audioLatencyFrames);
+      }
+    }
     if (sim.frame - this.lastReadFrame >= this.interval) {
       this.lastReadFrame = sim.frame;
       const snap = this._sample(sim);
@@ -111,6 +135,23 @@ export class Observer {
       // the left vent light widget, only while the office is shown
       ventLightL: drop ? U('read-dropped')
         : officeVisible ? O(sim.ventLightL) : U('office-not-in-view'),
+
+      // BB's vent-stage audio cue (fast-mixer samples; A2DP only). One fact,
+      // most recent cue wins: 'route' (laugh, belief only), 'pending' (first
+      // thud -- prepare), 'opening' (arrival pair -- evict with priority).
+      // Audio facts do not depend on monitor position -- that independence is
+      // the whole point of them -- and they do not share the video read's
+      // drop coin; discrete-cue detection is a separate reliability question.
+      // A cue is NOT visible before its transport latency has elapsed: the
+      // audible time is e.f + latency, so a fresh cue has age >= 0 only after
+      // the delay (the first cut leaked future cues immediately).
+      bbVent: (() => {
+        if (this.lastCueType === false) return O(false);
+        const age = sim.frame - this.lastCueAt;
+        if (age < 0) return O(false);
+        const window = this.lastCueType === 'opening' ? C.s(12) : C.s(20);
+        return age <= window ? O(this.lastCueType) : O(false);
+      })(),
     };
   }
 }
