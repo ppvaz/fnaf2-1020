@@ -23,8 +23,8 @@ const O = (value) => ({ state: 'OBSERVED', value });
 const U = (reason) => ({ state: 'UNKNOWN', reason });
 
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
-                      'splitArmed', 'leftOpening', 'ventLightL', 'bbVent',
-                      'bbVentId'];
+                      'splitArmed', 'leftOpening', 'ventLightL',
+                      'bbVent', 'bbVentId', 'mangleStatic', 'mangleStaticCam'];
 
 // A complete fact set with every entry UNKNOWN -- what the controller sees
 // before the first read completes.
@@ -37,7 +37,11 @@ const NO_READ = () => {
 export class Observer {
   constructor({ interval = OBSERVE_INTERVAL, readDelayFrames = 0, dropRate = 0,
                 rng = null, audioLatencyFrames = 12, audioDropRate = 0,
-                audioFalseNegativeRate = 0, audioFalsePositiveRate = 0 } = {}) {
+                audioFalseNegativeRate = 0, audioFalsePositiveRate = 0,
+                mangleAudioLatencyFrames = audioLatencyFrames,
+                mangleAudioDropRate = audioDropRate,
+                mangleAudioFalseNegativeRate = audioFalseNegativeRate,
+                mangleAudioFalsePositiveRate = audioFalsePositiveRate } = {}) {
     this.interval = interval;
     this.readDelayFrames = readDelayFrames;  // model host round-trip latency
     this.dropRate = dropRate;                // fraction of reads that come back UNKNOWN
@@ -50,11 +54,21 @@ export class Observer {
     this.audioDropRate = audioDropRate;
     this.audioFalseNegativeRate = audioFalseNegativeRate;
     this.audioFalsePositiveRate = audioFalsePositiveRate;
+    // Mangle's cue is a sustained static loop (s0020, g732/733), not a
+    // visually sampled opening. Keep its transport and detector errors
+    // independently tunable from the BB event classifier.
+    this.mangleAudioLatencyFrames = mangleAudioLatencyFrames;
+    this.mangleAudioDropRate = mangleAudioDropRate;
+    this.mangleAudioFalseNegativeRate = mangleAudioFalseNegativeRate;
+    this.mangleAudioFalsePositiveRate = mangleAudioFalsePositiveRate;
     this.evtCursor = 0;                      // how much of the event feed is heard
     this.lastCueAt = -Infinity;              // device-frame the last cue became audible
     this.lastCueType = false;                // 'route' | 'pending' | 'opening'
     this.lastCueId = null;                   // one engine event = one visit cue
     this.audioSeq = 0;
+    this.mangleStaticByContext = { office: false, cam11: false };
+    this.mangleStaticPending = [];
+    this.mangleAudioSeq = 0;
     this.lastReadFrame = -Infinity;
     this.cache = NO_READ();
     this.pending = [];                       // delayed reads not yet visible
@@ -87,6 +101,16 @@ export class Observer {
         this.lastCueAt = e.f + this.audioLatencyFrames;
         this.lastCueId = `${this.evtCursor}:${e.f}:${cue}`;
       }
+      if (e.type === 'mangle-static') {
+        if (this.mangleAudioFalseNegativeRate > 0 &&
+            this._random() < this.mangleAudioFalseNegativeRate) continue;
+        this.mangleStaticPending.push({
+          at: e.f + this.mangleAudioLatencyFrames,
+          context: e.data?.context ?? 'office',
+          present: !!e.data?.present,
+          id: `${this.evtCursor}:${e.f}:${this.mangleAudioSeq++}`,
+        });
+      }
     }
     // A false-positive detector model is opt-in and has no engine event or
     // privileged identity. That distinction is useful in the cue-free
@@ -104,6 +128,12 @@ export class Observer {
     }
     while (this.pending.length && this.pending[0].at <= sim.frame)
       this.cache = this.pending.shift().snap;
+    while (this.mangleStaticPending.length &&
+           this.mangleStaticPending[0].at <= sim.frame) {
+      const cue = this.mangleStaticPending.shift();
+      if (cue.context === 'office' || cue.context === 'cam11')
+        this.mangleStaticByContext[cue.context] = cue.present;
+    }
     return { ...this.cache, ...this._audioFacts(sim) };
   }
 
@@ -170,17 +200,35 @@ export class Observer {
   // snapshot. This keeps A2DP latency/detector loss independent of monitor
   // animation, video read cadence, and video drop coins.
   _audioFacts(sim) {
-    if (this.audioDropRate > 0 && this._random() < this.audioDropRate)
-      return { bbVent: U('audio-dropped'), bbVentId: U('audio-dropped') };
-    if (this.lastCueType === false)
-      return { bbVent: O(false), bbVentId: O(null) };
-    const age = sim.frame - this.lastCueAt;
-    if (age < 0)
-      return { bbVent: O(false), bbVentId: O(null) };
-    const window = this.lastCueType === 'opening' ? C.s(12) : C.s(20);
-    if (age > window)
-      return { bbVent: O(false), bbVentId: O(null) };
-    return { bbVent: O(this.lastCueType), bbVentId: O(this.lastCueId) };
+    let bbVent = O(false), bbVentId = O(null);
+    if (this.audioDropRate > 0 && this._random() < this.audioDropRate) {
+      bbVent = U('audio-dropped');
+      bbVentId = U('audio-dropped');
+    } else if (this.lastCueType !== false) {
+      const age = sim.frame - this.lastCueAt;
+      if (age >= 0) {
+        const window = this.lastCueType === 'opening' ? C.s(12) : C.s(20);
+        if (age <= window) {
+          bbVent = O(this.lastCueType);
+          bbVentId = O(this.lastCueId);
+        }
+      }
+    }
+
+    // The same s0020 waveform can be raised by two proximity contexts: CAM 11
+    // (the winding/Prize Corner camera) and the office/right-vent edge. Keep
+    // them as separate facts. The camera occurrence is diagnostic only; the
+    // reactive policy consumes the office occurrence.
+    let mangleStatic = O(this.mangleStaticByContext.office);
+    let mangleStaticCam = O(this.mangleStaticByContext.cam11);
+    if (this.mangleAudioDropRate > 0 && this._random() < this.mangleAudioDropRate) {
+      mangleStatic = U('audio-dropped');
+      mangleStaticCam = U('audio-dropped');
+    } else if (!this.mangleStaticByContext.office && this.mangleAudioFalsePositiveRate > 0 &&
+               this._random() < this.mangleAudioFalsePositiveRate) {
+      mangleStatic = O(true);
+    }
+    return { bbVent, bbVentId, mangleStatic, mangleStaticCam };
   }
 }
 

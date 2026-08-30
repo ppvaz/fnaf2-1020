@@ -53,7 +53,8 @@ export const KNOBS0 = {
 
   contactMs: 33,           // tap/hall contact length. The engine ignores it; the emitted plan carries it.
   reactiveBB: false,       // optional BB-only left-opening/audio reactive layer
-                           //   (Mangle occupancy is not exposed by Observer yet).
+                           //   (Mangle audio is a separate policy, not part of
+                           //   this device schedule yet).
 
   // --- minimal Night 1 mode (`--minimal`, Night 1 ONLY) ---
   // The 10/20 loop bolted onto Night 1 is wasted motion: the monitor never has

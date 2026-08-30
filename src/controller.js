@@ -215,7 +215,8 @@ export class BlackoutReactive extends ReactiveController {
 }
 
 export const CONTROLLERS = { blackoutReactive: BlackoutReactive,
-                              ventThreatReactive: undefined }; // replaced below
+                              ventThreatReactive: undefined,
+                              mangleThreatReactive: undefined }; // replaced below
 
 // Vent-threat reaction: the BB eviction the scheduled mask cannot deliver.
 // Android's mask counter is a CONTINUOUS hold -- five consecutive
@@ -227,17 +228,17 @@ export const CONTROLLERS = { blackoutReactive: BlackoutReactive,
 // (engine.js onCamsUp) and never leaves; the mask evicts him only at the
 // opening (tickMask / engine.js:887 for Mangle).
 //
-// Trigger: the left-opening video fact ('threat' == BB at the opening; the
-// office is only in view with the monitor down, so detection lands when the
-// schedule lowers it -- exactly when the scheduled mask phase begins, making
-// this the "extend the hold until the 5th tick" policy in practice). No
-// Mangle occupancy fact is currently exposed by Observer, so this is a BB-only
-// default; a caller may provide a separately calibrated threatPred. Hold is
-// time-based (the opening read is UNKNOWN
-// while the mask animates), then verified after the drop.
+// Trigger: the selected threat fact. BB defaults to the left opening plus its
+// audio arrival cue; MangleThreatReactive binds the same bounded response to
+// the independent sustained static audio fact. Hold is time-based (the
+// opening read is UNKNOWN while the mask animates), then verified after the
+// drop.
 export class VentThreatReactive extends ReactiveController {
   constructor(opts = {}) {
     super(opts);
+    this.openingFact = opts.openingFact ?? 'leftOpening';
+    this.threatValue = opts.threatValue ?? 'threat';
+    this.clearValue = opts.clearValue ?? 'empty';
     // Ticks accrue from maskFullyOn, anchored at the mask-on press + anim
     // (this.since, set in securing). The hold length is the five ticks plus a
     // half-tick of phase slack; the pre-mask hall pulse (Pedro's play) is what
@@ -301,13 +302,16 @@ export class VentThreatReactive extends ReactiveController {
     this.loweredMonitor = false;
     this.flashed = false;   // pre-mask hall pulse (Pedro's play, 2026-08-30)
     this.threat = opts.threatPred ?? (obs => {
-      const o = obs.leftOpening;
-      if (o.state === 'OBSERVED' && o.value === 'threat') return true;
+      const o = obs[this.openingFact];
+      if (o?.state === 'OBSERVED' && o.value === this.threatValue) return true;
       // The audio arrival pair (thud + 21) sounds at the RAISE, ~4 s before
       // any video read could see the opening -- evicting on it, monitor up,
       // is the audio channel's whole point.
-      const v = obs.bbVent;
-      return !!v && v.state === 'OBSERVED' && v.value === 'opening';
+      if (this.openingFact === 'leftOpening') {
+        const v = obs.bbVent;
+        return !!v && v.state === 'OBSERVED' && v.value === 'opening';
+      }
+      return false;
     });
   }
 
@@ -378,28 +382,29 @@ export class VentThreatReactive extends ReactiveController {
     const maskValue = val(obs.maskOn, null);
     const masked = maskValue === true;
     const monUp = val(obs.monitorUp, null);
-    const opening = obs.leftOpening;
+    const opening = obs[this.openingFact] ??
+      { state: 'UNKNOWN', reason: `${this.openingFact}-unavailable` };
     const cooling = this.cooling(f);
-    const videoThreat = opening.state === 'OBSERVED' && opening.value === 'threat';
-    const audioValue = val(obs.bbVent, null);
-    const audioCueId = val(obs.bbVentId, null);
+    const factThreat = opening.state === 'OBSERVED' && opening.value === this.threatValue;
+    const audioValue = this.openingFact === 'leftOpening' ? val(obs.bbVent, null) : null;
+    const audioCueId = this.openingFact === 'leftOpening' ? val(obs.bbVentId, null) : null;
     // An audio level without a visit identity is not safe to turn into a new
     // rescue: it may be the afterglow of a cue that already caused an
-    // eviction. Video can still trigger from its own observed opening fact.
+    // eviction. A selected observed fact can still trigger independently.
     const freshAudioThreat = audioValue === 'opening' && audioCueId !== null &&
       audioCueId !== this.consumedAudioCueId;
     let threatened = this.threat(obs);
     // The default predicate is intentionally BB-only. An audio fact is a
     // visit, not a level-triggered threat: once handled, its 12-second cue
     // tail must not start another rescue after the mask drops.
-    if (this.usesDefaultThreat) threatened = videoThreat || freshAudioThreat;
-    // Restarts trust the VIDEO read only: the audio opening-cue window (12 s)
-    // outlives the eviction itself, and restarting on its afterglow would
-    // re-mask a cleared opening.
+    if (this.usesDefaultThreat) threatened = factThreat || freshAudioThreat;
+    // Restarts trust the selected fact only: the BB audio opening-cue window
+    // (12 s) outlives the eviction itself, and restarting on its afterglow
+    // would re-mask a cleared opening.
     const out = [];
     // Edge bookkeeping for the audio 'pending' cue (first thud): the fact is
     // level for ~20 s, banking must fire once per cue.
-    const ventVal = val(obs.bbVent, false);
+    const ventVal = this.openingFact === 'leftOpening' ? val(obs.bbVent, false) : false;
     const pendingEdge = ventVal === 'pending' && this.prevVentCue !== 'pending';
     this.prevVentCue = ventVal;
     // Coverage bookkeeping: the first frame the mask was observed fully on.
@@ -410,7 +415,7 @@ export class VentThreatReactive extends ReactiveController {
 
     // A threat that outlives its hold+verify cycle is a strike against
     // "still at the opening"; past two, treat it as BB-inside and stand down.
-    if (videoThreat && (this.state === 'verifying' || this.state === 'restoring')) {
+    if (factThreat && (this.state === 'verifying' || this.state === 'restoring')) {
       this.failedHolds++;
       this.note(f, `threat persisted past hold (${this.failedHolds}/${this.maxFailedHolds})`);
       if (this.failedHolds >= this.maxFailedHolds) {
@@ -574,7 +579,7 @@ export class VentThreatReactive extends ReactiveController {
     if (this.state === 'verifying') {
       if (cooling) return out;
       if (opening.state === 'OBSERVED') {
-        if (opening.value === 'empty') {
+        if (opening.value === this.clearValue) {
           this.state = this.loweredMonitor ? 'restoring' : 'idle';
           this.note(f, 'opening clear');
         }
@@ -606,3 +611,25 @@ export class VentThreatReactive extends ReactiveController {
 }
 
 CONTROLLERS.ventThreatReactive = VentThreatReactive;
+
+// Mangle's office-context s0020 proximity static is a sustained audio cue
+// (g732/733), not a visual opening read. Once detected, the safe response is
+// the same continuous five-tick mask eviction used for BB: keep the monitor
+// down, hold the mask through the sourced counter, then verify that the static
+// cleared before any raise. The named class prevents CAM 11 static, a BB audio
+// cue, or a left-opening fact from silently becoming a Mangle decision.
+export class MangleThreatReactive extends VentThreatReactive {
+  constructor(opts = {}) {
+    const predicate = opts.threatPred ?? (obs => {
+      const o = obs.mangleStatic;
+      return !!o && o.state === 'OBSERVED' && o.value === true;
+    });
+    super({ ...opts, openingFact: 'mangleStatic', threatPred: predicate,
+      threatValue: true, clearValue: false });
+  }
+}
+
+// Short alias for policy callers that name the character rather than the
+// threat source.
+export const MangleReactive = MangleThreatReactive;
+CONTROLLERS.mangleThreatReactive = MangleThreatReactive;

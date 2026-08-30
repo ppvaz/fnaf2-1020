@@ -27,6 +27,7 @@ DEFAULT_REFS = "/private/tmp/fnaf2-cue-refs"
 # What each handle means, from the 2026-08-24 gate-0 pass recorded in
 # docs/android/ANDROID-SOURCE-STATUS.md.
 ROLE = {
+    15: "music-box loop (g596-600; persistent capture background)",
     16: "BB in-office taunt (g78/88/302/304/311/318)",
     17: "shared movement thud (g691-694, 18 edges, 7 characters)",
     21: "BB vocal 1 (g608) and arrival at 122 (g607)",
@@ -37,6 +38,8 @@ ROLE = {
     27: "footstep bank (g706)",
     28: "footstep bank (g707)",
     29: "footstep bank (g708)",
+    20: "Mangle static (g732/733, CAM 11 and office/right-vent contexts)",
+    33: "winding ratchet (g637/644, CAM 11 while winding)",
 }
 
 

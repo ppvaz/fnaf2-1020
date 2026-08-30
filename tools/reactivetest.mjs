@@ -66,12 +66,14 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
 
   // a drop surfaces as UNKNOWN(read-dropped), not a stale value -- on the
   // VIDEO facts. Audio (bbVent) does not share the video read's drop coin:
-  // a dropped frame is not a missed hearing.
+  // a dropped frame is not a missed hearing. Both audio facts are excluded
+  // from this video-only assertion.
   const s3 = new Sim({ seed: 3, night: 1 });
   const drop = new Observer({ interval: 1, dropRate: 1, rng: { next: () => 0 } });
   const df = drop.read(s3);
   ok('observer', 'a dropped VIDEO read is UNKNOWN(read-dropped) on every video fact',
-    Object.entries(df).filter(([k]) => k !== 'frame' && k !== 'bbVent' && k !== 'bbVentId')
+    Object.entries(df).filter(([k]) => k !== 'frame' && k !== 'bbVent' &&
+      k !== 'bbVentId' && k !== 'mangleStatic' && k !== 'mangleStaticCam')
       .every(([, v]) => v.state === 'UNKNOWN' && v.reason === 'read-dropped'));
   ok('observer', 'audio does not share the video drop coin (bbVent stays OBSERVED)',
     df.bbVent.state === 'OBSERVED');

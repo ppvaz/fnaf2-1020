@@ -101,6 +101,11 @@ export class Sim {
     // --- Balloon Boy
     this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
                 maskTicks: 0, inside: false };
+    // Mangle's s0020 static is raised in two proximity contexts: while she is
+    // on CAM 11 (the winding/Prize Corner camera) and at the office/right-vent
+    // edge. They use the same sample but are separate policy facts; only the
+    // latter is actionable. Observer applies the audio transport/error model.
+    this.mangleStatic = { office: false, cam11: false };
 
 
     // --- blackout
@@ -242,6 +247,23 @@ export class Sim {
 
   emit(type, data) { this.events.push({ f: this.frame, type, data }); }
   flag(code, detail) { this.mistakes.push({ f: this.frame, t: this.t, code, detail }); }
+
+  syncMangleStatic() {
+    const mangle = this.units.find(u => u.id === 'mangle' && !u.done);
+    const next = {
+      office: !!mangle?.atOpening,
+      cam11: !!mangle && !mangle.atOpening && mangle.path[mangle.idx] === C.BOX_CAM,
+    };
+    for (const context of ['office', 'cam11']) {
+      if (next[context] === this.mangleStatic[context]) continue;
+      this.mangleStatic[context] = next[context];
+      this.emit('mangle-static', {
+        context,
+        present: next[context],
+        sample: C.MANGLE_STATIC_SAMPLE,
+      });
+    }
+  }
 
   kill(reason, detail) {
     if (!this.alive || !this.opts.lethal) { if (!this.opts.lethal) this.flag('would-die', reason); return; }
@@ -535,6 +557,7 @@ export class Sim {
     this.tickFoxy(f);
     this.tickMask();
     this.tickUnits(f);
+    this.syncMangleStatic();
     this.tickBox();
     if (this.opts.record) this.record();
 

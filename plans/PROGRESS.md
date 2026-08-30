@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-30
 
-**Overall:** **35%** — 46 of 133 mandatory top-level work packages are closed.
+**Overall:** **35%** — 47 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
@@ -41,6 +41,11 @@ for the Minimal target: the runner consumes a canonical IR-derived artifact,
 retains policy and plan hashes in the manifest, verifies the pushed plan bytes
 on-device, and leaves post-run grading explicitly opt-in. Physical device
 evidence and family ports remain open. Numerator 46, rounded overall 35%.
+2026-08-30: Plan 20 package 5 is now closed by a bounded exact-engine
+comparison: the belief-backed controller beats the observation-disabled
+control, the delayed/dropped stress result remains below the truth-state upper
+bound, and the production controller contains no engine read. Full-night
+survival and hardware transport remain open. Numerator 47, rounded overall 35%.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -51,7 +56,8 @@ packages are closed.
 
 **"This project has stalled on delivering the reactive handling for far too
 long, I want it at the highest priority."** The BB-first detect-and-react
-chain is the campaign's deliverable; Mangle occupancy evidence remains open.
+chain is the campaign's deliverable; Mangle's audio-static response is now
+modeled, while device occupancy evidence remains open.
 It is ahead of the winding-tick experiment and the Night 2 pilot. Build order,
 acting on all three fronts the bench allows:
 
@@ -2083,8 +2089,8 @@ on the next graded run remains the way to attribute them, since only
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 | [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Package 5 spike done.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 5 gating question answered on the Moto g56 (Android 16, `user` build): the `shell` user captures the full `perfetto` input-dispatch path without root — `publishMotionEvent`, `deliverInputEvent` with `eventTimeNano`, dispatch-cycle `id`, `Choreographer#doFrame` — and injected vs real contacts are distinguishable. See plan §Package 5 spike result. | Build the host-side `trace_processor` parse and capture one real `trial.sh` camera sweep; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
 | [19 — video reactive controller](19-video-reactive-controller.md) | 3 / 6 | **50%** | **Proposed 2026-08-29; packages 1–3 are implemented in the worktree.** The observer/controller audit fixes cover deadline timing, stale cue identity, actual mask endpoints, UNKNOWN polarity, and rejected-intent rollback. `PixelWatch.java` / `CaptureService.java` provide the native watch protocol; `watch-calibrate.py` refuses weak or foreign calibration; `reactivetest.mjs` remains green and `ventreacttest.mjs --assert` is intentionally red on the survival-cost claims. P4 observe-only wiring is present; phone evidence, P5 blackout attachment, and P6 external audio remain open. | Run the observe-only branch on a monitor-stressing phone session, then grade it. |
-| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 4 / 7 | **57%** | **Packages 1–4 implemented in the worktree.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` provides reviewed primitives with reduced-model, device-contact, and mandatory exact-proof gates; `src/cycle-planner.js` has worst-case selection foundation. Robust survival comparison, transport, and shadow campaign remain open. | Package 5: finish the estimator/oracle/disabled-observation comparison. |
-| [21 — policy-program synthesis](21-policy-program-synthesis.md) | 6 / 7 | **86%** | **Packages 1–6 implemented for the initial Minimal target.** The finite named-target grammar fingerprints known families; IR/device/mock-phone equivalence rejects the three Night 1 defect controls; `policy-search.mjs` persists an exact-engine positive/negative mutation frontier with provenance; and `policy-artifact.mjs` binds the canonical program to the pushed plan and manifest while keeping grading opt-in. Broader 1200-seed invention, family ports, physical device evidence, and promotion remain open. The BB-only reactive experiment remains a failing release gate; Mangle occupancy is not implemented. | Package 7: scoped invention campaign and promotion. |
+| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 5 / 7 | **71%** | **Packages 1–5 implemented in the worktree.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` and `src/cycle-planner.js` provide reviewed primitives and worst-case selection; `src/cycle-controller.js` composes them without an engine read, and the exact-engine blackout control comparison is 0/80 disabled, 80/80 normal estimator, 13/80 harsh stress, 80/80 oracle. Transport and shadow campaign remain open. | Package 6: bench transport trace and safe-cycle continuation. |
+| [21 — policy-program synthesis](21-policy-program-synthesis.md) | 6 / 7 | **86%** | **Packages 1–6 implemented for the initial Minimal target.** The finite named-target grammar fingerprints known families; IR/device/mock-phone equivalence rejects the three Night 1 defect controls; `policy-search.mjs` persists an exact-engine positive/negative mutation frontier with provenance; and `policy-artifact.mjs` binds the canonical program to the pushed plan and manifest while keeping grading opt-in. Broader 1200-seed invention, family ports, physical device evidence, and promotion remain open. The BB-only reactive experiment remains a failing release gate; Mangle audio-static handling is modeled, but device calibration/evidence remains open. | Package 7: scoped invention campaign and promotion. |
 
 ## Counting rule
 
@@ -2137,12 +2143,12 @@ on the next graded run remains the way to attribute them, since only
   126 mandatory). Plan 19 package 1 (`src/observer.js`, `src/controller.js`,
   `tools/reactivetest.mjs` in `--engine`) closes the same day on its landed
   gate, so the numerator moves 34 -> 35 and the percentage falls 30% -> 28%.
-  Plan 20 packages 1–4 are now closed by their recorded phone-free gates;
-  packages 5–7 remain open.
+  Plan 20 packages 1–5 are now closed by their recorded phone-free gates;
+  packages 6–7 remain open.
 - Plan 21 adds seven mandatory packages on 2026-08-30 (126 -> 133 mandatory).
-  Packages 1–5 are now closed for the initial target by their canonical IR,
-  grammar, constrained mutation campaign, and compiler-equivalence checks;
-  package 7 remains open.
+  Packages 1–6 are now closed for the initial target by their canonical IR,
+  grammar, constrained mutation campaign, compiler-equivalence checks, and
+  safe artifact binding; package 7 remains open.
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the

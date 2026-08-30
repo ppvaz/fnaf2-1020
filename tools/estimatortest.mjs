@@ -65,6 +65,19 @@ check(conflict.belief.incidents.some(x => x.type === 'sensor-contradiction'),
 check(needsVerification(conflict, 'mask'),
   'contradictory mask sensors did not force recovery');
 
+// A real transition from the same source is not a contradiction. This is the
+// hazard edge the controller must be able to observe after a clear reading.
+let transition = initialEstimator({ nowMs: 0, contradictionWindowMs: 500 });
+transition = update(transition, { nowMs: 100, facts: {
+  blackout: O(false, { source: 'video', observedAtMs: 100, receivedAtMs: 100 }),
+}});
+transition = update(transition, { nowMs: 200, facts: {
+  blackout: O(true, { source: 'video', observedAtMs: 200, receivedAtMs: 200 }),
+}});
+check(transition.belief.facts.blackout.value === true &&
+      !transition.belief.incidents.some(x => x.type === 'sensor-contradiction'),
+  'same-source blackout transition was incorrectly treated as a contradiction');
+
 // A declared calibration profile is mandatory, not advisory: a missing or
 // foreign profile is UNKNOWN even when the numeric fact looks plausible.
 let calibrated = initialEstimator({

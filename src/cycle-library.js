@@ -132,6 +132,17 @@ export const CYCLE_LIBRARY = Object.freeze([
     hazardCoverage: ['visible-office-threat', 'blackout'],
   }),
   primitive({
+    id: 'observe-and-hold', durationFrames: C.s(1),
+    prerequisites: [
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [],
+    verifications: [],
+    cost: { presses: 0, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: [],
+  }),
+  primitive({
     id: 'foxy-hall-reset', durationFrames: C.s(1),
     prerequisites: [
       { field: 'monitor', equals: 'down' },

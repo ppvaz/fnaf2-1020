@@ -144,6 +144,9 @@ ok("a core longer than the reference is the reference",
 ok("the three vocals share one class",
    len({evaluate.class_of(h) for h in (21, 23, 24)}) == 1)
 ok("the thud is its own class", evaluate.class_of(17) == "thud")
+ok("Mangle static is its own class", evaluate.class_of(20) == "mangle-static")
+ok("the winding ratchet is separate from Mangle static",
+   evaluate.class_of(33) == "winding" and evaluate.class_of(33) != evaluate.class_of(20))
 ok("an unmapped handle is not a cue class", evaluate.class_of(999) == "other")
 
 if FAILURES:

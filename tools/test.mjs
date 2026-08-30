@@ -54,6 +54,9 @@ const ENGINE = [
   // measured policy regressions must fail -- they are not printable
   // known-negatives that allow --assert to pass.
   ['vent reactive', ['ventreacttest.mjs', '--assert']],
+  // Mangle audio-static contexts and the named five-tick mask response;
+  // kept separate from the BB gate so the two audio channels cannot cross.
+  ['mangle reactive', ['mangletest.mjs', '--assert']],
   // Plan 21 phase-clock foundation: paired A2DP latency calibration, 2 Hz
   // period/phase lock, explicit 500 ms parity, and stale/low-confidence
   // recovery. No privileged engine phase is used here.
@@ -73,6 +76,9 @@ const ENGINE = [
   // Plan 20 package 5 foundation: worst-case (not average) selection across
   // plausible reduced states with readable rejection records.
   ['cycle planner', ['plannertest.mjs']],
+  // Plan 20 package 5: exact-engine blackout controls compare fixed open-loop,
+  // truth-state oracle, disabled observations, and the estimator controller.
+  ['cycle controller', ['cyclecontrollertest.mjs']],
   // Plan 21 package 1: the current Minimal Minus Toys headers are represented
   // once as finite policy IR and round-trip with a canonical hash.
   ['policy IR', ['device/test-policy-ir.mjs']],

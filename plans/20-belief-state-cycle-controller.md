@@ -202,7 +202,7 @@ animation collisions, contact/released gaps, and a required exact-engine proof
 callback; `tools/cycletest.mjs` pins both accepted records and fail-closed
 controls.
 
-### P5 -- robust short-horizon selector (selection foundation landed)
+### P5 -- robust short-horizon selector — DONE (worktree)
 
 Evaluate candidates across the belief hypotheses, using worst-case /
 risk-bounded selection rather than an average that gambles on one hidden route.
@@ -211,6 +211,17 @@ an estimator with video/audio disabled.
 
 **Done when:** simulation shows the estimator controller beats the disabled
 observation control without approaching the oracle through privileged state.
+
+`src/cycle-controller.js` composes the estimator, reduced state, finite cycle
+library, and worst-case selector. It accepts only fact envelopes and commits
+the selected cycle's immediate prefix; delayed actions remain deferred until a
+new boundary and control actions stay locked until a matching observation
+reconciles them. `tools/cyclecontrollertest.mjs` runs the exact engine over a
+bounded, sourced five-second-blackout scenario: the fixed and observation-
+disabled controls score 0/80, the normal delayed/dropped estimator scores
+80/80, the deliberately harsh stress control scores 13/80, and the explicit
+truth-state upper bound scores 80/80. The production controller has no exact
+engine import; the exact replay is confined to the test's proof callback.
 
 ### P6 -- ESP32 transport and real-time split
 
@@ -289,7 +300,9 @@ session corpus contains its raw facts, beliefs, plans, actions, and outcomes.
 2. Build P2 and P4 together: the estimator's prediction must use the same
    definitions as cycle safety checks.
 3. Add P5 and prove the disabled-observation and oracle controls before buying
-   or wiring ESP32 hardware.
+   or wiring ESP32 hardware. **Done in the worktree:** the bounded exact-engine
+   comparison now exists; full-night survival and device evidence remain
+   separate gates.
 4. Build P6 as a bench instrument, not a live bot.
 5. Run P7 under Plan 12's evidence ladder.
 

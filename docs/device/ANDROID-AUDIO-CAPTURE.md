@@ -98,6 +98,10 @@ particular:
 
 - Mangle/static and music-box energy may be permanently present in the PCM,
   even when gameplay says those cues are inactive.
+- The same Mangle static signature can occur in the CAM 11/winding-camera
+  context and at the office/right-vent context. The sample handle alone does
+  not identify which context is active; a controller must keep those labels
+  separate and never treat CAM 11 static by itself as an office threat.
 - A detector trained from shared screen recordings could learn the capture
   artifact instead of the intended cue.
 - Windowed capture around a known game tick reduces processing work, but does

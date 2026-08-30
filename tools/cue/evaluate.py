@@ -36,6 +36,9 @@ CLASSES = {
     "thud": (17,),
     "taunt": (16,),
     "footstep": (25, 26, 27, 28, 29),
+    "mangle-static": (20,),
+    "music-box": (15,),
+    "winding": (33,),
 }
 DEFAULT_CUES = [21, 23, 24, 17]
 DEFAULT_SNR = [18, 12, 6, 0, -6]

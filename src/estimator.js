@@ -64,6 +64,12 @@ function contradiction(state, name, fact, receivedAtMs) {
   if (!previous || previous.state !== FACT_STATES.OBSERVED ||
       fact.state !== FACT_STATES.OBSERVED || previous.value === fact.value)
     return false;
+  // A single calibrated sensor is allowed to report a real state transition
+  // (blackout clear, mask off, monitor raise). The contradiction contract is
+  // for two sources disagreeing inside the same decision window; treating a
+  // normal transition from one source as a sensor conflict would lock the
+  // controller precisely when a visible hazard arrives.
+  if ((previous.source ?? null) === (fact.source ?? null)) return false;
   const age = Math.abs(receivedAtMs - latestReceived(previous));
   return age <= state.config.contradictionWindowMs;
 }

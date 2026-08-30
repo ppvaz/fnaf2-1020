@@ -203,6 +203,13 @@ export const BB_VOCAL_SAMPLES = [21, 24, 23];
 // (thud + 21) rather than a bare thud. Sample 21 is also one of the vocals.
 export const BB_ARRIVAL_SAMPLE = 21;
 
+// Mangle's proximity static loop. [SOURCED: Android audio groups g732/733,
+// sample s0020 on channel 16, proximity-gated by the CAM 11 and right-vent
+// markers.] It is a sustained audio occupancy cue; there is intentionally no
+// visual fact here yet. The observer models its context through
+// `mangle-static`.
+export const MANGLE_STATIC_SAMPLE = 20;
+
 // The music-box winding tick. [SOURCED: g637 (mouse-hold twin, conds
 // `Every 500 ms` + Key + `music button` overlap + `viewing == 11`) and g644
 // (touch-hold twin, reached via g642/g643's `Multiple Touch` over

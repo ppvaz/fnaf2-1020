@@ -245,8 +245,10 @@ right instrument for the resolution:
 1. **BB eviction budget:** 5 *consecutive* fully-on mask seconds (g907 →
    v12 ≥ 5; g293 zeroes the counter on every re-entry). The nominal 10 s
    cycle window is only ~4.8 s after the ON animation, and exact coverage must
-   use the actual independently shifted ON/OFF rows. Mangle has no Observer
-   occupancy fact yet, so the current controller makes no Mangle claim.
+   use the actual independently shifted ON/OFF rows. Mangle now has an
+   audio-only static fact in the engine/controller gate; there is still no
+   calibrated visual occupancy fact, and the device audio context separation
+   remains an evidence task.
 2. **Foxy D deadline:** D climbs ~1/s whenever Foxy is not dormant
    (`engine.js:669`), is zeroed only by the hall pulse (`:679`), and the hall
    cannot fire while masked or cams-up. Measured: one 5.7 s mask extension
