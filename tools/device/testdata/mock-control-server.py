@@ -38,6 +38,15 @@ def answer(request):
             "ffffff" if i == 123 else f"10{i % 256:02x}{(i * 7) % 256:02x}"
             for i in range(180))
         return "OK grid=20x9 seq=121 " + cells
+    if field[0] == "WATCH" and len(field) == 3:
+        if field[2] == "status":
+            return "OK watch=OFF spec=" + "a" * 64 + " entries=4"
+        return "OK watch=ACTIVE spec=" + "a" * 64 + " entries=4"
+    if field[0] == "READ" and len(field) == 2:
+        return ("OK read=OBSERVED spec=" + "a" * 64 +
+                " seq=122 snapshotNs=10000 ageUs=1200 "
+                "bb_left_luma=194 bb_left_yellowness=-111 "
+                "cam05_mean_luma=37 screen_grey_cells=142")
     if field[0] == "CAL" and len(field) == 3:
         return "OK cal=" + field[2]
     if field[0] == "LOG" and len(field) == 3:

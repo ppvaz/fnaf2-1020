@@ -8,6 +8,8 @@
 #   query-cue-helper.sh log stop [label]          end it and pull the WAV
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
 #   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
+#   query-cue-helper.sh watchlist status|load HASH inspect/load native watchlist
+#   query-cue-helper.sh read                      read the active native watchlist
 #   query-cue-helper.sh model status|reload       inspect/reload app-private model
 #   query-cue-helper.sh arm ID CUES MS [MODE]      arm a shadow/control cue window
 #   query-cue-helper.sh result ID                  poll one armed cue window
@@ -37,13 +39,15 @@ case "${1:-}" in
   record) VERB=record; shift ;;
   latency) VERB=latency; shift ;;
   log) VERB=log; shift ;;
-  watch) VERB=watch; shift ;;
   grid) VERB=grid; shift ;;
+  watch) VERB=watch; shift ;;
+  watchlist) VERB=watchlist; shift ;;
+  read) VERB=read; shift ;;
   model) VERB=model; shift ;;
   arm) VERB=arm; shift ;;
   result) VERB=result; shift ;;
   '') ;;
-  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|model|arm|result|record]" >&2; exit 2 ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|watch|watchlist|read|model|arm|result|record]" >&2; exit 2 ;;
 esac
 case "$TRANSPORT" in
   loopback|forward) ;;
@@ -61,6 +65,23 @@ if [ "$VERB" = latency ]; then
     echo "latency measures the device-local path; use the loopback transport" >&2
     exit 2
   fi
+fi
+
+if [ "$VERB" = watchlist ]; then
+  WATCH_ACTION="${1:?watchlist needs status or load HASH}"
+  case "$WATCH_ACTION" in
+    status) ;;
+    load)
+      WATCH_HASH="${2:?watchlist load needs the spec hash}"
+      case "$WATCH_HASH" in
+        [0-9a-fA-F][0-9a-fA-F]*) ;;
+        *) echo "watch spec hash must be hexadecimal" >&2; exit 2 ;;
+      esac
+      [ "${#WATCH_HASH}" -eq 64 ] || {
+        echo "watch spec hash must be 64 hex characters" >&2; exit 2; }
+      ;;
+    *) echo "watchlist takes status or load HASH" >&2; exit 2 ;;
+  esac
 fi
 
 if [ "$VERB" = watch ]; then
@@ -123,7 +144,7 @@ esac
 # starting a recording is not a reading, and requiring focus there strands a
 # capture whenever a run ends with the game no longer in front.
 case "$VERB" in
-  snapshot|record|watch|grid|arm|result)
+  snapshot|record|watch|watchlist|read|grid|arm|result)
     if ! adb shell dumpsys window 2>/dev/null | \
         awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
       echo "FNaF is not the focused physical-display window" >&2
@@ -263,6 +284,28 @@ im.resize((w*40, h*40), Image.NEAREST).save(sys.argv[1])
 print(f"wrote {sys.argv[1]}")
 ' "$GRID_OUT"
   exit 0
+fi
+
+if [ "$VERB" = watchlist ]; then
+  if [ "$WATCH_ACTION" = status ]; then
+    response="$(exchange "WATCH $token status")"
+  else
+    response="$(exchange "WATCH $token $WATCH_HASH")"
+  fi
+  printf '%s\n' "$response"
+  case "$response" in
+    'OK watch='*) exit 0 ;;
+    *) exit 1 ;;
+  esac
+fi
+
+if [ "$VERB" = read ]; then
+  response="$(exchange "READ $token")"
+  printf '%s\n' "$response"
+  case "$response" in
+    'OK read='*) exit 0 ;;
+    *) exit 1 ;;
+  esac
 fi
 
 if [ "$VERB" = latency ]; then

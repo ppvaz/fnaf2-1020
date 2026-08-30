@@ -21,6 +21,30 @@ done
 MOCK_FORWARD_PORT="$(cat "$TEMP_DIR/port")"
 export MOCK_FORWARD_PORT
 
+# The native-resolution watchlist is authenticated separately from the legacy
+# GET/GRID path. Status does not activate it; a 64-hex spec hash does.
+for transport in loopback forward; do
+  status="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" watchlist status)"
+  case "$status" in
+    *"watch=OFF"*"entries=4"*) ;;
+    *) echo "unexpected $transport watch status: $status" >&2; exit 1 ;;
+  esac
+  loaded="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" watchlist load \
+    aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)"
+  case "$loaded" in
+    *"watch=ACTIVE"*"entries=4"*) ;;
+    *) echo "unexpected $transport watch load: $loaded" >&2; exit 1 ;;
+  esac
+  reading="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" read)"
+  case "$reading" in
+    *"OK read=OBSERVED"*"bb_left_luma=194"*"screen_grey_cells=142"*) ;;
+    *) echo "unexpected $transport watch read: $reading" >&2; exit 1 ;;
+  esac
+done
+
 # The live detector is shadow-only until its model says heldout. Exercise the
 # bounded control vocabulary on both transports; the mock returns a clean miss.
 for transport in loopback forward; do

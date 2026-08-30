@@ -13,6 +13,7 @@ OUT="${1:-minus7-6th}"
 CYCLES="${2:-6}"
 NIGHT="${NIGHT:-6th}"
 DEVICE_POLICY="${DEVICE_POLICY:-minus7}"
+REACTIVE="${REACTIVE:-off}"
 # A Minus Toys run has two materially different schedules.  The standard
 # 10-second route is the 10/20-shaped policy; the Night 1 minimal route is a
 # 5-second, no-mask/no-hall calibration policy.  Selecting neither is unsafe:
@@ -219,6 +220,18 @@ case "$DEVICE_POLICY" in
   minus7|minus-toys) ;;
   *) echo "DEVICE_POLICY must be minus7 or minus-toys"; exit 2 ;;
 esac
+case "$REACTIVE" in
+  off|observe) ;;
+  act)
+    echo "REACTIVE=act is not implemented: observe-only evidence must pass before action" >&2
+    exit 2
+    ;;
+  *) echo "REACTIVE must be off or observe" >&2; exit 2 ;;
+esac
+if [ "$REACTIVE" = observe ] && [ "$CUE_HELPER" -ne 1 ]; then
+  echo "REACTIVE=observe requires CUE_HELPER=1" >&2
+  exit 2
+fi
 case "$MINUS_TOYS_VARIANT" in
   ''|standard|minimal) ;;
   *) echo "MINUS_TOYS_VARIANT must be standard or minimal"; exit 2 ;;
@@ -1132,11 +1145,19 @@ session_close() {                               # STATUS WATCHDOG_TEXT
       redaction.commit_safe=true
   fi
   if [ -f "$CAPTURE_DIR/$OUT-cue.txt" ]; then
-    fnaf_session_artifact "$CAPTURE_DIR/$OUT-cue.txt" artifact_id=cue-trace \
-      role=cue-helper-scalar-trace authority=primary-observation format=text/plain \
-      complete=true truncated=false retention=local-only \
-      clock_domain=device_shell_wall_ms redaction.contains_game_media=false \
-      redaction.contains_audio=false redaction.commit_safe=true
+    if [ "${REACTIVE:-off}" = observe ]; then
+      fnaf_session_artifact "$CAPTURE_DIR/$OUT-cue.txt" artifact_id=reactive-watch-trace \
+        role=native-watchlist-observe-trace authority=primary-observation format=text/plain \
+        complete=true truncated=false retention=local-only \
+        clock_domain=device_shell_wall_ms redaction.contains_game_media=false \
+        redaction.contains_audio=false redaction.commit_safe=true
+    else
+      fnaf_session_artifact "$CAPTURE_DIR/$OUT-cue.txt" artifact_id=cue-trace \
+        role=cue-helper-scalar-trace authority=primary-observation format=text/plain \
+        complete=true truncated=false retention=local-only \
+        clock_domain=device_shell_wall_ms redaction.contains_game_media=false \
+        redaction.contains_audio=false redaction.commit_safe=true
+    fi
   fi
   if [ -f "$LOCAL_CUE_SHADOW" ]; then
     fnaf_session_artifact "$LOCAL_CUE_SHADOW" artifact_id=cue-shadow-trace \
@@ -1342,6 +1363,7 @@ fnaf_session_record env \
   "SCREENRECORD_TIME_LIMIT=$SCREENRECORD_LIMIT" \
   "DEVICE_EPOCH_LATCH=$DEVICE_EPOCH_LATCH" "DEBUG_OVERLAYS=$DEBUG_OVERLAYS" \
   "CUE_HELPER=$CUE_HELPER" "CUE_AUDIO=$CUE_AUDIO" "CUE_SHADOW=$CUE_SHADOW" \
+  "REACTIVE=$REACTIVE" "REACTIVE_WATCH_SPEC=${WATCH_SPEC_HASH:-none}" \
   "PLAN_SPACING_MS=$PLAN_SPACING_MS" "PLAN_CONTACT_MS=$PLAN_CONTACT_MS" \
   "PILOT_OFFSET_MS=$PILOT_OFFSET_MS" \
   "BB_LEFT_CAPTURE_EVERY=$BB_LEFT_CAPTURE_EVERY" \
@@ -1464,6 +1486,7 @@ source "$HERE/menu.sh"
 CUE_AUDIO_STARTED=0
 CUE_PORT="-"
 CUE_TOKEN="-"
+CUE_READ_VERB="GET"
 if [ "$CUE_HELPER" -eq 1 ]; then
   cue_pid="$(adb shell pidof com.fnafminus7.cuehelper 2>/dev/null | tr -d '\r' | awk '{print $1}')"
   [ -n "$cue_pid" ] || { echo 'CUE_HELPER=1 but the helper is not running' >&2; exit 2; }
@@ -1474,6 +1497,26 @@ if [ "$CUE_HELPER" -eq 1 ]; then
   case "$CUE_PORT" in ''|*[!0-9]*) echo 'the cue helper has no live loopback port' >&2; exit 2 ;; esac
   [ "${#CUE_TOKEN}" -eq 32 ] || { echo 'no valid per-run cue-helper token' >&2; exit 2; }
   echo "cue helper: port $CUE_PORT, logging snapshots beside each left read"
+  if [ "$REACTIVE" = observe ]; then
+    watch_status="$("$HERE/query-cue-helper.sh" watchlist status)" || {
+      echo 'REACTIVE=observe but native watchlist status failed' >&2; exit 2;
+    }
+    WATCH_SPEC_HASH="$(printf '%s\n' "$watch_status" |
+      sed -n 's/.* spec=\([0-9a-fA-F]\{64\}\).*/\1/p')"
+    [ "${#WATCH_SPEC_HASH}" -eq 64 ] || {
+      echo "native watchlist status has no 64-hex spec hash: $watch_status" >&2
+      exit 2;
+    }
+    loaded="$("$HERE/query-cue-helper.sh" watchlist load "$WATCH_SPEC_HASH")" || {
+      echo "native watchlist load failed: $loaded" >&2; exit 2;
+    }
+    case "$loaded" in
+      'OK watch=ACTIVE'*) ;;
+      *) echo "native watchlist did not activate: $loaded" >&2; exit 2 ;;
+    esac
+    CUE_READ_VERB="READ"
+    echo "reactive: observe-only native watch active spec=$WATCH_SPEC_HASH"
+  fi
   if [ "$CUE_AUDIO" -eq 1 ]; then
     # Refuse the night rather than record silence through it.
     #
@@ -1547,7 +1590,7 @@ if [ "$CUE_HELPER" -eq 1 ]; then
     : > $CUE_TRACE_REMOTE
     while [ -e $CUE_TRACE_SENTINEL ]; do
       printf \"%s \" \"\$(date +%s%3N)\" >> $CUE_TRACE_REMOTE
-      printf \"GET $CUE_TOKEN\n\" | toybox nc -w 1 127.0.0.1 $CUE_PORT >> $CUE_TRACE_REMOTE 2>/dev/null
+      printf \"$CUE_READ_VERB $CUE_TOKEN\n\" | toybox nc -w 1 127.0.0.1 $CUE_PORT >> $CUE_TRACE_REMOTE 2>/dev/null
       printf \"\n\" >> $CUE_TRACE_REMOTE
     done' >/dev/null 2>&1 &" >/dev/null 2>&1
 fi

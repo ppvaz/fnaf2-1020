@@ -61,6 +61,8 @@ public final class CaptureService extends Service {
             "com.fnafminus7.cuehelper.action.STATUS";
     public static final String EXTRA_RESULT_CODE = "resultCode";
     public static final String EXTRA_RESULT_DATA = "resultData";
+    public static final String EXTRA_CAPTURE_WIDTH = "captureWidth";
+    public static final String EXTRA_CAPTURE_HEIGHT = "captureHeight";
     public static final String EXTRA_STATUS = "status";
 
     private static final String TAG = "FnafCueHelper";
@@ -130,6 +132,12 @@ public final class CaptureService extends Service {
     private long lastVisualReportNs;
     private volatile int capturedContentWidth;
     private volatile int capturedContentHeight;
+    // The watchlist is native-resolution by contract. A small projection can
+    // still be requested for the legacy GRID path or a latency probe, but a
+    // native watch refuses to run against it rather than silently scaling a
+    // calibrated coordinate into a different sensor.
+    private int captureWidth = PixelWatch.NATIVE_WIDTH;
+    private int captureHeight = PixelWatch.NATIVE_HEIGHT;
     // -1 is unknown, 0 is hidden, 1 is visible. The API-36 target must not
     // turn a letterboxed or hidden capture into a confident pixel reading.
     private volatile int capturedContentVisibility = -1;
@@ -182,6 +190,10 @@ public final class CaptureService extends Service {
     // which is why the first long-running probe accumulated heap pressure.
     private final int[] snapshotGrid = new int[VISUAL_WIDTH * VISUAL_HEIGHT];
     private boolean snapshotGridValid;
+    private final PixelWatch.Spec watchSpec = PixelWatch.defaultSpec();
+    private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
+    private final int[] snapshotWatchValues = new int[PixelWatch.MAX_ENTRIES];
+    private volatile boolean watchActive;
     private long snapshotAudioFrames;
     private long snapshotAudioReadNs;
     private int snapshotAudioRms;
@@ -255,6 +267,14 @@ public final class CaptureService extends Service {
                 }
             };
             projection.registerCallback(projectionCallback, mainHandler);
+            captureWidth = intent.getIntExtra(EXTRA_CAPTURE_WIDTH,
+                    PixelWatch.NATIVE_WIDTH);
+            captureHeight = intent.getIntExtra(EXTRA_CAPTURE_HEIGHT,
+                    PixelWatch.NATIVE_HEIGHT);
+            if (!validCaptureSize(captureWidth, captureHeight)) {
+                throw new IllegalArgumentException("capture size must be a 20:9 "
+                        + "landscape size between 20x9 and 2400x1080");
+            }
             startVisualCapture();
             startAudioCapture();
             loadCueModel();
@@ -297,8 +317,8 @@ public final class CaptureService extends Service {
         Handler visualHandler = new Handler(visualThread.getLooper());
 
         imageReader = ImageReader.newInstance(
-                VISUAL_WIDTH,
-                VISUAL_HEIGHT,
+                captureWidth,
+                captureHeight,
                 PixelFormat.RGBA_8888,
                 2,
                 HardwareBuffer.USAGE_CPU_READ_OFTEN);
@@ -307,8 +327,8 @@ public final class CaptureService extends Service {
         int densityDpi = getResources().getConfiguration().densityDpi;
         virtualDisplay = projection.createVirtualDisplay(
                 "Minus7Visual",
-                VISUAL_WIDTH,
-                VISUAL_HEIGHT,
+                captureWidth,
+                captureHeight,
                 densityDpi,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
                 imageReader.getSurface(),
@@ -324,7 +344,8 @@ public final class CaptureService extends Service {
         if (virtualDisplay == null) {
             throw new IllegalStateException("createVirtualDisplay returned null");
         }
-        lastVisual = "visual=STARTING(20x9,pixel=3,6)";
+        lastVisual = "visual=STARTING(" + captureWidth + "x" + captureHeight
+                + ",legacy-grid=20x9,watch-spec=" + watchSpec.sha256() + ")";
         Log.i(TAG, lastVisual);
     }
 
@@ -342,20 +363,27 @@ public final class CaptureService extends Service {
             }
 
             Image.Plane plane = planes[0];
-            int offset = VISUAL_Y * plane.getRowStride()
-                    + VISUAL_X * plane.getPixelStride();
             ByteBuffer buffer = plane.getBuffer();
-            if (offset < 0 || offset + 2 >= buffer.limit()) {
+            watchFrame.set(buffer, captureWidth, captureHeight,
+                    plane.getRowStride(), plane.getPixelStride());
+            int logicalX = Math.min(captureWidth - 1,
+                    (int) (((long) VISUAL_X * 2 + 1) * captureWidth
+                            / (VISUAL_WIDTH * 2L)));
+            int logicalY = Math.min(captureHeight - 1,
+                    (int) (((long) VISUAL_Y * 2 + 1) * captureHeight
+                            / (VISUAL_HEIGHT * 2L)));
+            int rgb = watchFrame.rgb(logicalX, logicalY);
+            if (rgb == PixelWatch.UNKNOWN) {
                 lastVisual = "visual=UNAVAILABLE(bounds)";
                 return;
             }
-
-            int red = buffer.get(offset) & 0xff;
-            int green = buffer.get(offset + 1) & 0xff;
-            int blue = buffer.get(offset + 2) & 0xff;
+            int red = (rgb >> 16) & 0xff;
+            int green = (rgb >> 8) & 0xff;
+            int blue = rgb & 0xff;
             int luma = (77 * red + 150 * green + 29 * blue) >> 8;
-            int cam5Luma = blockLuma(plane, buffer,
-                    CAM5_X0, CAM5_Y0, CAM5_X1, CAM5_Y1);
+            int cam5Luma = blockLuma(watchFrame,
+                    scaleX(CAM5_X0, VISUAL_WIDTH), scaleY(CAM5_Y0, VISUAL_HEIGHT),
+                    scaleX(CAM5_X1 + 1, VISUAL_WIDTH), scaleY(CAM5_Y1 + 1, VISUAL_HEIGHT));
             long callbackNs = System.nanoTime();
             long timestampNs = image.getTimestamp();
             long ageUs = timestampNs > 0 ? (callbackNs - timestampNs) / 1_000L : -1;
@@ -375,21 +403,21 @@ public final class CaptureService extends Service {
                 snapshotBlue = blue;
                 snapshotLuma = luma;
                 snapshotCam5 = cam5Luma;
-                int rowStride = plane.getRowStride();
-                int pixelStride = plane.getPixelStride();
-                int limit = buffer.limit();
                 boolean complete = true;
                 for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
                     for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
-                        int at = gy * rowStride + gx * pixelStride;
-                        if (at < 0 || at + 2 >= limit) {
+                        int x = Math.min(captureWidth - 1,
+                                (int) (((long) gx * 2 + 1) * captureWidth
+                                        / (VISUAL_WIDTH * 2L)));
+                        int y = Math.min(captureHeight - 1,
+                                (int) (((long) gy * 2 + 1) * captureHeight
+                                        / (VISUAL_HEIGHT * 2L)));
+                        int cell = watchFrame.rgb(x, y);
+                        if (cell == PixelWatch.UNKNOWN) {
                             complete = false;
                             break;
                         }
-                        snapshotGrid[gy * VISUAL_WIDTH + gx] =
-                                ((buffer.get(at) & 0xff) << 16)
-                                        | ((buffer.get(at + 1) & 0xff) << 8)
-                                        | (buffer.get(at + 2) & 0xff);
+                        snapshotGrid[gy * VISUAL_WIDTH + gx] = cell;
                     }
                     if (!complete) {
                         break;
@@ -400,6 +428,15 @@ public final class CaptureService extends Service {
                         ? ScreenStats.greyCells(snapshotGrid, snapshotGrid.length)
                         : -1;
                 greyCells = snapshotGreyCells;
+                if (watchActive && captureWidth == PixelWatch.NATIVE_WIDTH
+                        && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                    PixelWatch.readInto(watchSpec, watchFrame,
+                            snapshotWatchValues);
+                } else {
+                    for (int i = 0; i < watchSpec.size(); i++) {
+                        snapshotWatchValues[i] = PixelWatch.UNKNOWN;
+                    }
+                }
             }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
@@ -460,26 +497,44 @@ public final class CaptureService extends Service {
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
-    /** Mean luma over an inclusive cell block, or -1 if it does not fit. */
-    private static int blockLuma(Image.Plane plane, ByteBuffer buffer,
+    /** Mean luma over a half-open native rectangle, or -1 if it does not fit. */
+    private static int blockLuma(PixelWatch.Frame frame,
             int x0, int y0, int x1, int y1) {
         long total = 0;
         int count = 0;
-        for (int y = y0; y <= y1; y++) {
-            int row = y * plane.getRowStride();
-            for (int x = x0; x <= x1; x++) {
-                int at = row + x * plane.getPixelStride();
-                if (at < 0 || at + 2 >= buffer.limit()) {
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int rgb = frame.rgb(x, y);
+                if (rgb == PixelWatch.UNKNOWN) {
                     return -1;
                 }
-                int r = buffer.get(at) & 0xff;
-                int g = buffer.get(at + 1) & 0xff;
-                int b = buffer.get(at + 2) & 0xff;
+                int r = (rgb >> 16) & 0xff;
+                int g = (rgb >> 8) & 0xff;
+                int b = rgb & 0xff;
                 total += (77 * r + 150 * g + 29 * b) >> 8;
                 count++;
             }
         }
         return count == 0 ? -1 : (int) (total / count);
+    }
+
+    private int scaleX(int logical, int logicalWidth) {
+        return Math.min(captureWidth - 1,
+                (int) ((long) logical * captureWidth / logicalWidth));
+    }
+
+    private int scaleY(int logical, int logicalHeight) {
+        return Math.min(captureHeight - 1,
+                (int) ((long) logical * captureHeight / logicalHeight));
+    }
+
+    private static boolean validCaptureSize(int width, int height) {
+        if (width < PixelWatch.GRID_WIDTH || height < PixelWatch.GRID_HEIGHT
+                || width > PixelWatch.NATIVE_WIDTH || height > PixelWatch.NATIVE_HEIGHT) {
+            return false;
+        }
+        return (long) width * PixelWatch.GRID_HEIGHT
+                == (long) height * PixelWatch.GRID_WIDTH;
     }
 
     private String capturedContentInvalidReason() {
@@ -505,6 +560,48 @@ public final class CaptureService extends Service {
             return "aspect-mismatch";
         }
         return null;
+    }
+
+    private String watchStatus() {
+        return "watch=" + (watchActive ? "ACTIVE" : "OFF")
+                + " spec=" + watchSpec.sha256()
+                + " entries=" + watchSpec.size();
+    }
+
+    /** Return one bounded, authenticated-read response for the active watch. */
+    private String currentWatch() {
+        if (!watchActive) {
+            return "ERROR watch-not-loaded expected=" + watchSpec.sha256();
+        }
+
+        long sequence;
+        long timestampNs;
+        int[] values = new int[watchSpec.size()];
+        synchronized (snapshotLock) {
+            sequence = snapshotVisualSequence;
+            timestampNs = snapshotVisualTimestampNs;
+            System.arraycopy(snapshotWatchValues, 0, values, 0, values.length);
+        }
+        long nowNs = System.nanoTime();
+        long ageUs = timestampNs > 0 ? (nowNs - timestampNs) / 1_000L : -1;
+        String invalidReason = ageUs < 0
+                ? "frame-pending"
+                : ageUs > MAX_VISUAL_FRAME_AGE_US
+                        ? "frame-stale" : capturedContentInvalidReason();
+        StringBuilder result = new StringBuilder(256);
+        result.append("OK read=")
+                .append(invalidReason == null ? "OBSERVED" : "UNKNOWN")
+                .append(" spec=").append(watchSpec.sha256())
+                .append(" seq=").append(sequence)
+                .append(" snapshotNs=").append(timestampNs)
+                .append(" ageUs=").append(ageUs);
+        if (invalidReason != null) result.append(" reason=").append(invalidReason);
+        for (int i = 0; i < watchSpec.size(); i++) {
+            result.append(' ').append(watchSpec.entry(i).name).append('=');
+            result.append(invalidReason != null || values[i] == PixelWatch.UNKNOWN
+                    ? "UNKNOWN" : values[i]);
+        }
+        return result.toString();
     }
 
     private void startAudioCapture() throws PackageManager.NameNotFoundException {
@@ -717,7 +814,8 @@ public final class CaptureService extends Service {
                 + " cal=" + (calibrationEnabled ? "on" : "off")
                 + " port=" + (tcpControlUp ? String.valueOf(CONTROL_PORT) : "none")
                 + " socket=" + (localControlUp ? CONTROL_SOCKET_NAME : "none")
-                + " token=" + (controlToken == null ? "none" : controlToken);
+                + " token=" + (controlToken == null ? "none" : controlToken)
+                + " " + watchStatus();
     }
 
     private void controlLoop() {
@@ -810,6 +908,31 @@ public final class CaptureService extends Service {
                 // line, no allocation on the capture thread -- the string is
                 // built here, on the control thread, only when asked for.
                 return currentGrid();
+            case "WATCH":
+                if (field.length != 3) {
+                    return "ERROR watch-usage";
+                }
+                if ("status".equals(field[2])) {
+                    return "OK " + watchStatus();
+                }
+                if (!watchSpec.sha256().equals(field[2])) {
+                    return "ERROR watch-spec-mismatch expected=" + watchSpec.sha256();
+                }
+                if (captureWidth != PixelWatch.NATIVE_WIDTH
+                        || captureHeight != PixelWatch.NATIVE_HEIGHT) {
+                    return "ERROR watch-native-resolution-required capture="
+                            + captureWidth + "x" + captureHeight;
+                }
+                synchronized (snapshotLock) {
+                    watchActive = true;
+                }
+                publishControlStatus();
+                return "OK " + watchStatus();
+            case "READ":
+                if (field.length != 2) {
+                    return "ERROR read-usage";
+                }
+                return currentWatch();
             case "CAL":
                 if (field.length != 3) {
                     return "ERROR cal-usage";
@@ -1163,7 +1286,7 @@ public final class CaptureService extends Service {
                     audioFrames, audioRms, audioPeak, audioReadAgeUs);
         }
         return "snapshotNs=" + nowNs + " " + visual + " " + audio
-                + " " + cueDetector.status();
+                + " " + cueDetector.status() + " " + watchStatus();
     }
 
     private void publishCombinedStatus(String lifecycle) {
