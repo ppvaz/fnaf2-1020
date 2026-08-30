@@ -36,6 +36,8 @@ export class ReactiveController {
     this.opts = opts;
     this.log = [];
     this.lastAnimPress = { action: null, at: -Infinity };
+    this._decisionSnapshot = null;
+    this._pendingIntents = null;
   }
   // obs: the current fact set. ctx: { frame, scheduled: [{at,action}] }.
   decide(_obs, _ctx) { return []; }
@@ -45,12 +47,67 @@ export class ReactiveController {
   cooling(frame) {
     return frame - this.lastAnimPress.at < PRESS_COOLDOWN;
   }
-  // Record + return the intents, stamping the cooldown on animated ones.
+
+  // Controller decisions are speculative until the replay's collision guard
+  // accepts them.  The old implementation stamped cooldown/state in emit()
+  // and then let the harness discard the intent, leaving the FSM convinced a
+  // press had happened.  Snapshot the small controller state at the start of
+  // each decision so a rejected intent can be rolled back atomically.
+  beginDecision() {
+    const state = {};
+    for (const key of Object.keys(this)) {
+      if (key === 'opts' || key === 'log' || key.startsWith('_') ||
+          key === 'threat' || key === 'phaseClock') continue;
+      state[key] = structuredClone(this[key]);
+    }
+    this._decisionSnapshot = { state, logLength: this.log.length };
+    this._pendingIntents = null;
+  }
+
+  _restoreDecision() {
+    const snap = this._decisionSnapshot;
+    if (!snap) return;
+    for (const key of Object.keys(this)) {
+      if (key === 'opts' || key === 'log' || key.startsWith('_') ||
+          key === 'threat' || key === 'phaseClock') continue;
+      if (!(key in snap.state)) delete this[key];
+    }
+    Object.assign(this, snap.state);
+    this.log.length = snap.logLength;
+  }
+
+  // Record + return the intents, stamping the cooldown on animated ones. The
+  // state remains speculative until settle() is called by the caller.
   emit(frame, intents) {
+    if (!this._decisionSnapshot) this.beginDecision();
+    this._pendingIntents = intents;
     for (const i of intents)
       if (ANIMATED.has(i.action)) this.lastAnimPress = { action: i.action, at: frame };
     return intents;
   }
+
+  // Accept exactly the intents returned by emit(), or roll the whole decision
+  // back if the caller filtered even one of them.
+  settle(accepted) {
+    if (!this._pendingIntents) {
+      this._decisionSnapshot = null;
+      return true;
+    }
+    const emitted = this._pendingIntents;
+    const same = accepted.length === emitted.length &&
+      accepted.every((intent, i) => intent === emitted[i]);
+    if (!same) {
+      this._restoreDecision();
+      this._pendingIntents = null;
+      this._decisionSnapshot = null;
+      return false;
+    }
+    this._pendingIntents = null;
+    this._decisionSnapshot = null;
+    return true;
+  }
+
+  reject() { return this.settle([]); }
 }
 
 // Watch the schedule, act only on a blackout: get a mask fully on before the
@@ -71,30 +128,32 @@ export class BlackoutReactive extends ReactiveController {
   }
 
   decide(obs, ctx) {
+    this.beginDecision();
     const f = ctx.frame;
     const blackoutNow = obs.blackout.state === 'OBSERVED' && obs.blackout.value;
     const opening = obs.leftOpening;
-    const masked = val(obs.maskOn, false);
+    const maskValue = val(obs.maskOn, null);
+    const masked = maskValue === true;
     const monUp = val(obs.monitorUp, null);  // true | false | null (UNKNOWN)
     const out = [];
 
     // A fresh blackout while we are past the mask (verifying/restoring) and no
     // longer protected must restart -- blackouts land in quick succession and
     // the second is just as lethal.
-    if (blackoutNow && !masked && (this.state === 'verifying' || this.state === 'restoring'))
+    if (blackoutNow && maskValue === false && (this.state === 'verifying' || this.state === 'restoring'))
       this.state = 'idle';
 
     const cooling = this.cooling(f);
 
     // Mask up too long -> drop it regardless of what we can see (Foxy).
-    if (masked && this.since >= 0 && f - this.since >= this.maxMaskFrames && !cooling) {
+    if (maskValue === true && this.since >= 0 && f - this.since >= this.maxMaskFrames && !cooling) {
       this.state = this.loweredMonitor ? 'restoring' : 'idle';
       this.note(f, 'mask timeout -> drop');
       return this.emit(f, [{ action: 'mask', at: f }]);
     }
 
     if (this.state === 'idle') {
-      if (blackoutNow && !masked) {
+      if (blackoutNow && maskValue === false) {
         this.state = 'securing';
         this.since = f;
         this.note(f, 'blackout -> secure a mask');
@@ -104,6 +163,7 @@ export class BlackoutReactive extends ReactiveController {
     }
 
     if (this.state === 'securing') {
+      if (maskValue === null) return out;
       if (masked) {
         this.state = 'holding';
         this.since = f;   // the Foxy timeout counts from when the mask went ON
@@ -132,7 +192,7 @@ export class BlackoutReactive extends ReactiveController {
         if (opening.value === 'empty') {
           this.state = this.loweredMonitor ? 'restoring' : 'idle';
           this.note(f, 'opening empty -> drop mask');
-          return masked ? this.emit(f, [{ action: 'mask', at: f }]) : out;
+          return maskValue === true ? this.emit(f, [{ action: 'mask', at: f }]) : out;
         }
         this.note(f, 'opening threat -> hold');
       }
@@ -141,7 +201,7 @@ export class BlackoutReactive extends ReactiveController {
 
     // restoring: mask off, raise the monitor back so the base schedule resumes.
     if (this.state === 'restoring') {
-      if (masked || cooling) return out;
+      if (maskValue !== false || cooling) return out;
       if (monUp === true) { this.state = 'idle'; this.loweredMonitor = false; return out; }
       if (monUp === false) {
         this.note(f, 'raise monitor -> resume base');
@@ -157,8 +217,8 @@ export class BlackoutReactive extends ReactiveController {
 export const CONTROLLERS = { blackoutReactive: BlackoutReactive,
                               ventThreatReactive: undefined }; // replaced below
 
-// Vent-threat reaction: the BB/Mangle eviction the scheduled mask cannot
-// deliver. Android's mask counter is a CONTINUOUS hold -- five consecutive
+// Vent-threat reaction: the BB eviction the scheduled mask cannot deliver.
+// Android's mask counter is a CONTINUOUS hold -- five consecutive
 // fully-on seconds (g907 -> v12 >= 5, g294), and g293 zeroes it on every
 // re-entry into the mask, so the 10 s cycle's ~4.8 s mask window tops out at
 // four ticks. That one missing tick is measured: n2-minustoys-0117 died
@@ -170,9 +230,10 @@ export const CONTROLLERS = { blackoutReactive: BlackoutReactive,
 // Trigger: the left-opening video fact ('threat' == BB at the opening; the
 // office is only in view with the monitor down, so detection lands when the
 // schedule lowers it -- exactly when the scheduled mask phase begins, making
-// this the "extend the hold until the 5th tick" policy in practice). A
-// right-vent / audio Mangle fact can be added via opts.threatPred without
-// touching this machine. Hold is time-based (the opening read is UNKNOWN
+// this the "extend the hold until the 5th tick" policy in practice). No
+// Mangle occupancy fact is currently exposed by Observer, so this is a BB-only
+// default; a caller may provide a separately calibrated threatPred. Hold is
+// time-based (the opening read is UNKNOWN
 // while the mask animates), then verified after the drop.
 export class VentThreatReactive extends ReactiveController {
   constructor(opts = {}) {
@@ -183,17 +244,14 @@ export class VentThreatReactive extends ReactiveController {
     // makes the Foxy D budget safe, and the box cost is bounded by ending the
     // hold at eviction rather than camping to a wall-clock cap.
     this.hardCapFrames = opts.hardCapFrames ?? C.s(12);
-    // Coverage gate (2026-08-30): the scheduled mask window CONTAINS five
-    // one-second tick boundaries when phase holds (4.8 s window, mask fully-on
-    // at :X4.7 -> boundaries :X5..:X9 -> eviction for free just before
-    // mask-off). BB only escapes when clock error slides the mask off the
-    // grid. So the controller first COUNTS the boundaries the current mask
-    // window will cross; >= 5 means the schedule handles the eviction and the
-    // correct action is nothing (a rescue here would only spend box). Inject
-    // maskWindowFrames from the schedule knobs; 0 disables the gate.
+    // Coverage gate (2026-08-30): count the boundaries in the CURRENT mask
+    // interval, from the later of the observed fully-on frame and the planned
+    // post-animation start to the actual upcoming off press. The replay passes
+    // those endpoints from independently shifted rows; maskWindowFrames is
+    // retained only as a small direct-controller test fallback.
     this.maskWindowFrames = opts.maskWindowFrames ?? 0;
     this.maskOnAt = -1;     // first frame the mask was observed fully on
-    this.firstTick = -1;    // first tick boundary our own mask hold crosses
+    this.firstTick = -1;    // final fifth-tick deadline for the current hold
     // Phase uncertainty (+-frames on the fully-on anchor). With u > 0 the
     // boundary count becomes a RANGE and the decision three-way: lo >= 5 ->
     // covered, stand down; hi < 5 -> uncovered, full rescue; else AMBIGUOUS ->
@@ -203,6 +261,9 @@ export class VentThreatReactive extends ReactiveController {
     // never the full drop-flash-remask rescue. Latched by the state until the
     // visit resolves, so noisy reads cannot flip it repeatedly.
     this.phaseUncertaintyFrames = opts.phaseUncertaintyFrames ?? 6;
+    this.maskEndUncertaintyFrames = opts.maskEndUncertaintyFrames ?? 0;
+    this.maskWindow = null;
+    this.phaseClock = opts.phaseClock ?? null;
     // A threat that outlives two hold+verify cycles is BB already INSIDE
     // (bb.inside never clears and the left-opening reads it exactly like the
     // opening). Nothing the mask does helps; mask-camping the box to death is
@@ -233,6 +294,8 @@ export class VentThreatReactive extends ReactiveController {
     this.bankTarget = opts.bankTarget ?? 0.995;
     this.bankStart = -1;
     this.prevVentCue = false;
+    this.consumedAudioCueId = null;
+    this.usesDefaultThreat = !opts.threatPred;
     this.state = 'idle';    // idle | securing | holding | verifying | restoring
     this.since = -1;        // the frame the mask is expected fully-on
     this.loweredMonitor = false;
@@ -251,52 +314,88 @@ export class VentThreatReactive extends ReactiveController {
   // Tick boundaries (f % FPS === 0, the sourced one-second event grid) in
   // [from, from + windowFrames].
   _boundariesIn(from, windowFrames) {
-    const first = from + ((C.FPS - (from % C.FPS)) % C.FPS);
-    if (first > from + windowFrames) return 0;
-    return Math.floor((from + windowFrames - first) / C.FPS) + 1;
+    const clock = this.phaseClock;
+    if (!clock || typeof clock.nextBoundaryFrame !== 'function') return 0;
+    const period = clock.periodFrames ?? C.FPS;
+    if (!Number.isFinite(period) || period <= 0) return 0;
+    const first = clock.nextBoundaryFrame(from);
+    if (!Number.isFinite(first) || first > from + windowFrames) return 0;
+    return Math.floor((from + windowFrames - first) / period) + 1;
   }
 
   covered() {
-    return this.maskWindowFrames > 0 && this.maskOnAt >= 0 &&
-      this._boundariesIn(this.maskOnAt, this.maskWindowFrames) >= C.VENT_MASK_TICKS;
+    return this.coverageRange()[0] >= C.VENT_MASK_TICKS;
   }
 
-  // Uncertainty-aware coverage: the fully-on time is known only +-u frames
-  // (observation quantization, transport latency), so the tick count is a
-  // RANGE. lo shrinks the window and delays the anchor (conservative against
-  // coverage); hi widens both (conservative toward coverage).
+  // Uncertainty-aware coverage: the observed/planned fully-on and off times
+  // define the interval; phase uncertainty shrinks/expands its endpoints, so
+  // the tick count is a RANGE. lo is conservative against coverage and hi is
+  // conservative toward it.
   coverageRange() {
-    const u = this.phaseUncertaintyFrames;
-    const lo = this._boundariesIn(this.maskOnAt + u, Math.max(0, this.maskWindowFrames - u));
-    const hi = this._boundariesIn(Math.max(0, this.maskOnAt - u), this.maskWindowFrames + u);
+    const u = this.phaseClock?.uncertaintyFrames ?? this.phaseUncertaintyFrames;
+    const observedStart = this.maskOnAt >= 0 ? this.maskOnAt : -1;
+    const plannedStart = this.maskWindow?.startFrame ?? -1;
+    const start = Math.max(observedStart, plannedStart);
+    const end = this.maskWindow?.endFrame ??
+      (start >= 0 ? start + this.maskWindowFrames : -1);
+    if (start < 0 || end < start) return [0, 0];
+    const endUncertainty = this.maskEndUncertaintyFrames;
+    const loStart = start + u;
+    const loEnd = end - endUncertainty;
+    const hiStart = Math.max(0, start - u);
+    const hiEnd = end + endUncertainty;
+    const lo = this._boundariesIn(loStart, Math.max(0, loEnd - loStart));
+    const hi = this._boundariesIn(hiStart, Math.max(0, hiEnd - hiStart));
     return [lo, hi];
   }
 
   // The frame by which holding is GUARANTEED to have crossed five boundaries
-  // under the latest-phase interpretation -- the bounded extension the
-  // ambiguous case needs (usually ~1 s past the scheduled mask-off, its Foxy
-  // D bill bounded by the saw-tooth argument: the previous pulse zeroed D
-  // ~5-10 s ago, so the peak stays ~11-16 against a lock threshold of ~20).
-  guaranteedFifthTick() {
-    const u = this.phaseUncertaintyFrames;
-    const lateAnchor = this.maskOnAt + u;
-    return (lateAnchor + ((C.FPS - (lateAnchor % C.FPS)) % C.FPS)) +
-      (C.VENT_MASK_TICKS - 1) * C.FPS + 2;
+  // under the latest-phase interpretation. This is already the final
+  // fifth-tick deadline; callers must not add another four tick periods.
+  guaranteedFifthTick(anchorOverride = null) {
+    const u = this.phaseClock?.uncertaintyFrames ?? this.phaseUncertaintyFrames;
+    const observedStart = this.maskOnAt >= 0 ? this.maskOnAt : -1;
+    const plannedStart = this.maskWindow?.startFrame ?? -1;
+    const anchor = anchorOverride ?? Math.max(observedStart, plannedStart);
+    if (anchor < 0) return -1;
+    const lateAnchor = anchor + u;
+    const first = this.phaseClock && typeof this.phaseClock.nextBoundaryFrame === 'function'
+      ? this.phaseClock.nextBoundaryFrame(lateAnchor)
+      // Without a phase source, wait a full period before the first possible
+      // boundary. This is conservative and intentionally not engine-phase
+      // oracle logic.
+      : lateAnchor + C.FPS;
+    const period = this.phaseClock?.periodFrames ?? C.FPS;
+    return first + (C.VENT_MASK_TICKS - 1) * period + 2;
   }
 
   decide(obs, ctx) {
+    this.beginDecision();
     if (this.dead) return [];
     const f = ctx.frame;
-    const masked = val(obs.maskOn, false);
+    if (ctx.phaseClock) this.phaseClock = ctx.phaseClock;
+    this.maskWindow = ctx.maskWindow ?? null;
+    const maskValue = val(obs.maskOn, null);
+    const masked = maskValue === true;
     const monUp = val(obs.monitorUp, null);
     const opening = obs.leftOpening;
     const cooling = this.cooling(f);
-    const threatened = this.threat(obs);
+    const videoThreat = opening.state === 'OBSERVED' && opening.value === 'threat';
+    const audioValue = val(obs.bbVent, null);
+    const audioCueId = val(obs.bbVentId, null);
+    // An audio level without a visit identity is not safe to turn into a new
+    // rescue: it may be the afterglow of a cue that already caused an
+    // eviction. Video can still trigger from its own observed opening fact.
+    const freshAudioThreat = audioValue === 'opening' && audioCueId !== null &&
+      audioCueId !== this.consumedAudioCueId;
+    let threatened = this.threat(obs);
+    // The default predicate is intentionally BB-only. An audio fact is a
+    // visit, not a level-triggered threat: once handled, its 12-second cue
+    // tail must not start another rescue after the mask drops.
+    if (this.usesDefaultThreat) threatened = videoThreat || freshAudioThreat;
     // Restarts trust the VIDEO read only: the audio opening-cue window (12 s)
     // outlives the eviction itself, and restarting on its afterglow would
     // re-mask a cleared opening.
-    const vo = obs.leftOpening;
-    const videoThreat = vo.state === 'OBSERVED' && vo.value === 'threat';
     const out = [];
     // Edge bookkeeping for the audio 'pending' cue (first thud): the fact is
     // level for ~20 s, banking must fire once per cue.
@@ -306,8 +405,8 @@ export class VentThreatReactive extends ReactiveController {
     // Coverage bookkeeping: the first frame the mask was observed fully on.
     // (Observation quantization is +-4 frames against a ~48-frame coverage
     // margin -- cheap.)
-    if (masked && this.maskOnAt < 0) this.maskOnAt = f;
-    if (!masked) this.maskOnAt = -1;
+    if (maskValue === true && this.maskOnAt < 0) this.maskOnAt = f;
+    if (maskValue === false) this.maskOnAt = -1;
 
     // A threat that outlives its hold+verify cycle is a strike against
     // "still at the opening"; past two, treat it as BB-inside and stand down.
@@ -343,11 +442,16 @@ export class VentThreatReactive extends ReactiveController {
         }
         return out;
       }
+      // A dropped or mid-animation mask read is UNKNOWN, not proof that the
+      // mask is off. Wait for a known polarity before choosing a toggle.
+      if (maskValue === null) return out;
       // Three-way coverage decision over the tick-count RANGE (lo/hi).
-      if (masked && this.maskWindowFrames > 0 && this.maskOnAt >= 0) {
+      if (masked && (this.maskWindow?.endFrame > 0 || this.maskWindowFrames > 0) &&
+          this.maskOnAt >= 0) {
         const [lo, hi] = this.coverageRange();
         if (lo >= C.VENT_MASK_TICKS) {
           this.state = 'covered';
+          if (freshAudioThreat) this.consumedAudioCueId = audioCueId;
           this.note(f, `scheduled mask covers >= ${lo} boundaries -> stand by`);
           return out;
         }
@@ -357,6 +461,7 @@ export class VentThreatReactive extends ReactiveController {
           this.state = 'holding';
           this.since = this.maskOnAt;
           this.firstTick = this.guaranteedFifthTick();
+          if (freshAudioThreat) this.consumedAudioCueId = audioCueId;
           this.note(f, `coverage ambiguous (${lo}..${hi}) -> bounded extension`);
           return out;
         }
@@ -366,6 +471,7 @@ export class VentThreatReactive extends ReactiveController {
       this.since = -1;
       this.firstTick = -1;
       this.flashed = false;
+      if (freshAudioThreat) this.consumedAudioCueId = audioCueId;
       this.note(f, 'vent threat -> drop-to-flash, then mask');
     }
 
@@ -373,7 +479,7 @@ export class VentThreatReactive extends ReactiveController {
       // The schedule owns this mask and it will cross enough boundaries to
       // evict; the correct action is nothing. If the mask drops before the
       // threat cleared, fall back to idle for a fresh (uncovered) evaluation.
-      if (!masked || !threatened) this.state = 'idle';
+      if (maskValue === false || !threatened) this.state = 'idle';
       return out;
     }
 
@@ -397,6 +503,7 @@ export class VentThreatReactive extends ReactiveController {
     }
 
     if (this.state === 'securing') {
+      if (maskValue === null) return out;
       // Mask observed fully on after our own press -> the hold begins (the
       // tick anchor was set when the press was emitted). Without this the
       // securing block would re-press the mask and toggle it back off.
@@ -431,7 +538,7 @@ export class VentThreatReactive extends ReactiveController {
         // Mask ON: ticks count from fully-on (the press + anim); anchor the
         // eviction to the first tick boundary after that, not to wall clock.
         this.since = f + C.MASK_ANIM_ON;
-        this.firstTick = this.since + ((C.FPS - (this.since % C.FPS)) % C.FPS);
+        this.firstTick = this.guaranteedFifthTick(this.since);
         this.note(f, 'mask on -> hold 5 consecutive ticks');
         return this.emit(f, [{ action: 'mask', at: f }]);
       }
@@ -444,12 +551,18 @@ export class VentThreatReactive extends ReactiveController {
       // up (securing/holding) -- verifying and restoring run it, because the
       // schedule's raise+wind rows after the drop are the point. The
       // scheduled hall slot the hold swallows is paid for by the pre-flash.
-      // Phase-aligned drop: the fifth tick lands on the fifth one-second
-      // boundary at or after fully-on; release right behind it (+1 frame so
-      // the boundary's increment has processed), not a wall-clock 5.5 s.
+      // Phase-aligned drop: firstTick is already the final fifth one-second
+      // boundary at or after fully-on (+2 frames so that boundary's increment
+      // has processed), not a wall-clock deadline plus another four ticks.
       const dropAt = this.firstTick >= 0
-        ? this.firstTick + (C.VENT_MASK_TICKS - 1) * C.FPS + 2
+        ? this.firstTick
         : this.since + C.s(C.VENT_MASK_TICKS) + 30;
+      if (maskValue === null) return out;
+      if (maskValue === false) {
+        this.state = 'verifying';
+        this.note(f, 'mask already off -> verify');
+        return out;
+      }
       if (f >= Math.min(dropAt, this.since + this.hardCapFrames)) {
         this.state = 'verifying';
         this.note(f, 'hold elapsed -> drop and verify');

@@ -4,41 +4,49 @@
 //   node tools/ventreacttest.mjs            # all checks
 //   node tools/ventreacttest.mjs --assert   # exit 1 on any failure (suite mode)
 //
-// What is gated, and why: the Minus Toys scheduled mask window (~4.8 s of the
-// 10 s cycle) delivers at most four of Balloon Boy's five CONSECUTIVE mask
-// ticks -- the one-tick miss that killed n2-minustoys-0117 (BB-inside -> Foxy).
+// What is gated, and why: the Minus Toys scheduled mask window is nominally
+// ~4.8 s of the 10 s cycle, but the post-animation/full-off endpoints and phase
+// decide whether it crosses four or five of Balloon Boy's CONSECUTIVE ticks.
 // VentThreatReactive pre-empts the cycle on the left-opening fact and holds the
 // mask the extra tick, then hands back. The threat is real, not injected: BB is
-// live at AI 3 on the story Night 2 table from 1 AM (g676), and Mangle clears
-// on the same 5-tick hold (engine.js:887-894) when a detection fact for her
-// exists.
+// live at AI 3 on the story Night 2 table from 1 AM (g676). Mangle occupancy is
+// intentionally not claimed until Observer has a separately calibrated fact.
 import { pathToFileURL } from 'node:url';
 import * as C from '../src/config.js';
 import { Rng } from '../src/rng.js';
 import { Observer } from '../src/observer.js';
 import { VentThreatReactive } from '../src/controller.js';
-import { replay, KNOBS0 } from './device/minus-toys-plan.mjs';
+import { replay, KNOBS0, ENGINE_PHASE_ORACLE } from './device/minus-toys-plan.mjs';
 import { evalEnsemble } from './device/minus-toys-jitter.mjs';
 
 let failures = 0, knownNegatives = 0;
+const assertMode = process.argv.includes('--assert');
 const ok = (group, what, cond) => {
   if (!cond) { failures++; console.error(`FAIL  ${group}: ${what}`); }
   else console.log(`ok    ${group}: ${what}`);
 };
-// For regressions that are measured, understood, and landed as findings: they
-// do not gate, but they are COUNTED and printed, so a green run never reads
-// as "the policy works" (plans/21 carries each one with its numbers).
-const KNOWN_NEGATIVE = (why) => {
+// Reports remain useful without --assert, but a release-style run must fail
+// when one of the policy claims regresses. The previous helper returned true
+// unconditionally, so --assert was only a formatting flag.
+const KNOWN_NEGATIVE = (group, what, why) => {
   knownNegatives++;
-  console.log(`  KNOWN-NEGATIVE (${knownNegatives}): ${why}`);
-  return true;
+  if (assertMode) {
+    failures++;
+    console.error(`FAIL  ${group}: ${what} -- ${why}`);
+  } else {
+    console.error(`KNOWN-NEGATIVE (${knownNegatives}) ${group}: ${what} -- ${why}`);
+  }
+};
+const policyGate = (group, what, condition, why) => {
+  if (condition) ok(group, what, true);
+  else KNOWN_NEGATIVE(group, what, why);
 };
 const O = (v) => ({ state: 'OBSERVED', value: v });
 const U = (r) => ({ state: 'UNKNOWN', reason: r });
 
 // --- 1. controller unit: detection -> drop -> flash -> mask -> hold -> verify
 {
-  const c = new VentThreatReactive();
+  const c = new VentThreatReactive({ phaseClock: ENGINE_PHASE_ORACLE });
 
   // monitor down, mask off, threat: the pre-mask hall pulse comes FIRST
   // (Pedro: "do one quick extra flash of the hall before masking").
@@ -62,10 +70,15 @@ const U = (r) => ({ state: 'UNKNOWN', reason: r });
     d.length === 0 && c.state === 'holding');
 
   // 5 ticks counted from fully-on, but the drop is PHASE-ALIGNED: release
-  // right behind the fifth one-second boundary at or after fully-on.
+  // right behind the fifth one-second boundary at or after fully-on. The
+  // stored deadline is already the FINAL fifth-tick deadline.
   const since = 11 + C.MASK_ANIM_ON;
   const firstTick = since + ((C.FPS - (since % C.FPS)) % C.FPS);
   const dropAt = firstTick + (C.VENT_MASK_TICKS - 1) * C.FPS + 2;
+  d = c.decide({ leftOpening: U('x'), maskOn: O(true), monitorUp: O(false) },
+               { frame: dropAt - 1, scheduled: [] });
+  ok('unit', 'does not release before the stored fifth-tick deadline',
+    d.length === 0 && c.state === 'holding');
   d = c.decide({ leftOpening: U('x'), maskOn: O(true), monitorUp: O(false) },
                { frame: dropAt, scheduled: [] });
   ok('unit', 'fifth tick boundary crossed -> drop and verify',
@@ -77,7 +90,7 @@ const U = (r) => ({ state: 'UNKNOWN', reason: r });
     d.length === 0 && c.state === 'idle');
 
   // the common Night 2 case: detection lands INSIDE the scheduled mask phase.
-  const c3 = new VentThreatReactive();
+  const c3 = new VentThreatReactive({ phaseClock: ENGINE_PHASE_ORACLE });
   let e = c3.decide({ leftOpening: O('threat'), maskOn: O(true), monitorUp: O(false) },
                     { frame: 100, scheduled: [] });
   ok('unit', 'threat with the scheduled mask on -> drop it to make room for the pulse',
@@ -92,7 +105,7 @@ const U = (r) => ({ state: 'UNKNOWN', reason: r });
 
   // a masked hold that receives a scheduled-mask collision risk: guard is
   // inherited (guardIntents), covered by the P1 tests; here pin the restart:
-  const c2 = new VentThreatReactive();
+  const c2 = new VentThreatReactive({ phaseClock: ENGINE_PHASE_ORACLE });
   c2.state = 'verifying'; c2.since = 100; c2.loweredMonitor = true;
   c2.decide({ leftOpening: O('threat'), maskOn: O(false), monitorUp: O(false) },
             { frame: 200, scheduled: [] });
@@ -100,31 +113,81 @@ const U = (r) => ({ state: 'UNKNOWN', reason: r });
 
   // coverage decision, three ways (lo/hi boundary range vs the five ticks):
   // oracle-phase covered -> stand down and spend nothing.
-  const cg = new VentThreatReactive({ maskWindowFrames: 288, phaseUncertaintyFrames: 0 });
+  const cg = new VentThreatReactive({ maskWindowFrames: 288, phaseUncertaintyFrames: 0,
+                                      phaseClock: ENGINE_PHASE_ORACLE });
   let g = cg.decide({ leftOpening: O('threat'), maskOn: O(true), monitorUp: O(false),
-                      bbVent: O(false) }, { frame: 120, scheduled: [] });   // [120,408]: 5 boundaries
+                      bbVent: O(false) }, { frame: 120, scheduled: [],
+                                            phaseClock: ENGINE_PHASE_ORACLE }); // [120,408]: 5
   ok('unit', 'aligned mask window (5 boundaries ahead) -> covered, spend nothing',
     g.length === 0 && cg.state === 'covered');
   // +-6 frames of phase uncertainty makes the same window ambiguous: the
   // decision latches to the BOUNDED EXTENSION (hold the current mask until
   // the fifth boundary is guaranteed), not the full rescue.
-  const ca = new VentThreatReactive({ maskWindowFrames: 288, phaseUncertaintyFrames: 6 });
+  const ca = new VentThreatReactive({ maskWindowFrames: 288, phaseUncertaintyFrames: 6,
+                                      phaseClock: ENGINE_PHASE_ORACLE });
   g = ca.decide({ leftOpening: O('threat'), maskOn: O(true), monitorUp: O(false),
-                  bbVent: O(false) }, { frame: 120, scheduled: [] });
+                  bbVent: O(false) }, { frame: 120, scheduled: [],
+                                        phaseClock: ENGINE_PHASE_ORACLE });
   ok('unit', 'ambiguous coverage -> bounded extension of the current mask',
     g.length === 0 && ca.state === 'holding' && ca.firstTick === ca.guaranteedFifthTick());
   // a short window that cannot hold five boundaries even at the best phase:
   // intervene with the full rescue (drop -> flash -> mask).
-  const cu = new VentThreatReactive({ maskWindowFrames: 220, phaseUncertaintyFrames: 0 });
+  const cu = new VentThreatReactive({ maskWindowFrames: 220, phaseUncertaintyFrames: 0,
+                                      phaseClock: ENGINE_PHASE_ORACLE });
   g = cu.decide({ leftOpening: O('threat'), maskOn: O(true), monitorUp: O(false),
-                  bbVent: O(false) }, { frame: 120, scheduled: [] });   // [120,340]: 4 boundaries
+                  bbVent: O(false) }, { frame: 120, scheduled: [],
+                                        phaseClock: ENGINE_PHASE_ORACLE }); // [120,340]: 4
   ok('unit', 'genuinely uncovered -> intervene (drop the scheduled mask first)',
     g.length === 1 && g[0].action === 'mask' && cu.state === 'securing');
+
+  const late = new VentThreatReactive({ phaseUncertaintyFrames: 0,
+                                        phaseClock: ENGINE_PHASE_ORACLE });
+  late.decide({ leftOpening: O('threat'), maskOn: O(true), monitorUp: O(false) },
+              { frame: 100, scheduled: [],
+                maskWindow: { startFrame: 112, endFrame: 348 },
+                phaseClock: ENGINE_PHASE_ORACLE });
+  ok('unit', 'coverage starts after mask-on animation and ends at the actual off press',
+    late.state === 'securing');
+
+  const unknown = new VentThreatReactive({ phaseUncertaintyFrames: 0,
+                                            phaseClock: ENGINE_PHASE_ORACLE });
+  unknown.maskOnAt = 100;
+  unknown.state = 'holding';
+  unknown.since = 100;
+  unknown.firstTick = 500;
+  unknown.decide({ leftOpening: U('x'), maskOn: U('mask-animating'), monitorUp: O(false) },
+                 { frame: 200, scheduled: [] });
+  ok('unit', 'UNKNOWN mask reads do not erase the mask anchor or toggle it',
+    unknown.state === 'holding' && unknown.maskOnAt === 100);
+
+  const cue = new VentThreatReactive({ phaseClock: ENGINE_PHASE_ORACLE });
+  const cueObs = { leftOpening: U('opening-not-in-view'), maskOn: O(false),
+                   monitorUp: O(false), bbVent: O('opening'), bbVentId: O('visit-1') };
+  let cueIntent = cue.decide(cueObs, { frame: 200, scheduled: [] });
+  cue.settle(cueIntent);
+  cue.state = 'idle';
+  cueIntent = cue.decide(cueObs, { frame: 400, scheduled: [] });
+  ok('unit', 'one audio visit identity cannot retrigger after the mask drops',
+    cueIntent.length === 0 && cue.state === 'idle');
+  const anonymousCue = new VentThreatReactive({ phaseClock: ENGINE_PHASE_ORACLE });
+  const anonymousObs = { leftOpening: U('opening-not-in-view'), maskOn: O(false),
+                        monitorUp: O(false), bbVent: O('opening'), bbVentId: U('no-identity') };
+  const anonymousIntent = anonymousCue.decide(anonymousObs, { frame: 200, scheduled: [] });
+  ok('unit', 'anonymous audio levels fail closed instead of creating a rescue visit',
+    anonymousIntent.length === 0 && anonymousCue.state === 'idle');
 }
 
 // --- 2. Night 2 policy A/B: base vs reactive vs noisy ------------------------
 const NIGHT = 2;
-const SEEDS = Array.from({ length: 300 }, (_, i) => (i * 2654435761) >>> 0);
+const numericArg = (name, fallback) => {
+  const raw = process.argv.find(arg => arg.startsWith(`--${name}=`));
+  if (raw === undefined) return fallback;
+  const value = Number(raw.slice(name.length + 3));
+  if (!Number.isInteger(value) || value < 1) throw new Error(`--${name} must be a positive integer`);
+  return value;
+};
+const SEEDS = Array.from({ length: numericArg('seeds', 300) },
+  (_, i) => (i * 2654435761) >>> 0);
 
 const bbInsides = (r) => r.sim.events.filter(e => e.type === 'bb-inside').length;
 
@@ -145,7 +208,7 @@ const base = rate(KNOBS0);
 const clean = rate({ ...KNOBS0, reactiveBB: true });
 const noisy = rate({ ...KNOBS0, reactiveBB: true, reactiveDelayFrames: 8, reactiveDropRate: 0.2 });
 
-const pct = (x) => (100 * x / SEEDS.length).toFixed(1);
+const pct = (x, n = SEEDS.length) => (100 * x / n).toFixed(1);
 const fmt = (x) => `${x.won}/${SEEDS.length} (${pct(x.won)}%) won, bb-inside runs ${x.bbInRuns}, ` +
   `deaths ${Object.entries(x.deaths).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(' ') || 'none'}`;
 
@@ -154,18 +217,17 @@ console.log(`  base             ${fmt(base)}`);
 console.log(`  +vent-reactive   ${fmt(clean)}`);
 console.log(`  +reactive(noisy) ${fmt(noisy)}`);
 
-ok('policy', 'the reactive layer never costs survival at zero jitter',
-  clean.won >= base.won || KNOWN_NEGATIVE(
-    'rescues bankrupt the box margin on the 10 s geometry (minBox 0.87 -> 0.08): ' +
-    'the scheduled mask window is one tick short of BB\'s 5, so every rescue ' +
-    'spills into the cams-up phase. Landed in plans/21 "First seed facts"; the ' +
-    'repair is the cycle-geometry search (P4), not this controller.'));
-ok('policy', 'noisy observation stays within 5 points of clean',
-  noisy.won >= clean.won - SEEDS.length * 0.05 || KNOWN_NEGATIVE(
+policyGate('policy', 'the reactive layer never costs survival at zero jitter',
+  clean.won >= base.won,
+    'the current policy still pays a monitor-down/box cost when it rescues. ' +
+    'The gate stays red until cycle selection and phase estimation price that ' +
+    'cost explicitly (plans/20-21).');
+policyGate('policy', 'noisy observation stays within 5 points of clean',
+  noisy.won >= clean.won - SEEDS.length * 0.05,
     'coverage decisions are anchor-sensitive: an 8-frame delay + 20% drops ' +
-    'mistime maskOnAt and flip coverage calls. The device read is ~59 ms ' +
-    '(~4 frames), not this stress pair; the principled fix anchors at our own ' +
-    'press time and tracks the raise ledger (plans/21).'));
+    'the mixed delay/drop run is not a phase-only experiment. The gate stays ' +
+    'red until the observer error model and the controller cost are separately ' +
+    'priced (plans/20-21).');
 if (base.bbInRuns > 0)
   ok('policy', 'reactive strictly reduces BB walk-ins when the base has them',
     clean.bbInRuns < base.bbInRuns || (clean.bbInRuns === 0));
@@ -174,21 +236,24 @@ else
               'is priced under the ensemble below)');
 
 // --- 3. the ensemble: where the BB share actually lives ----------------------
-const N_ENS = 600;
+const N_ENS = numericArg('ensemble-seeds', 600);
 const ensBase = evalEnsemble({ night: NIGHT, seeds: N_ENS });
 const ensReact = evalEnsemble({ night: NIGHT, seeds: N_ENS, knobs: { ...KNOBS0, reactiveBB: true } });
 console.log(`\nEnsemble (calibrated clock-error model), ${N_ENS} seeds, night ${NIGHT}:`);
-console.log(`  base             ${ensBase.survived}/${N_ENS} (${pct(ensBase.survived)}%)`);
-console.log(`  +vent-reactive   ${ensReact.survived}/${N_ENS} (${pct(ensReact.survived)}%)`);
+console.log(`  base             ${ensBase.survived}/${N_ENS} (${pct(ensBase.survived, N_ENS)}%)`);
+console.log(`  +vent-reactive   ${ensReact.survived}/${N_ENS} (${pct(ensReact.survived, N_ENS)}%)`);
 console.log(`  base deaths ${JSON.stringify(ensBase.deaths)}`);
 console.log(`  react deaths ${JSON.stringify(ensReact.deaths)}`);
 
-ok('ensemble', 'the reactive layer lifts ensemble survival',
-  ensReact.survived > ensBase.survived || KNOWN_NEGATIVE(
-    'same geometry bound as above: the rescue tax exceeds the BB share it ' +
-    'reclaims until the cycle carries a >= 5-tick mask window (plans/21).'));
+policyGate('ensemble', 'the reactive layer lifts ensemble survival',
+  ensReact.survived > ensBase.survived,
+    'this ensemble combines epoch, drift, per-action jitter, observation loss, ' +
+    'and controller rescue cost; it cannot isolate sustained phase error. The ' +
+    'gate stays red pending the estimator/control decomposition (plans/20-21).');
 
-if (process.argv.includes('--assert') && failures) process.exit(1);
+if (assertMode && failures) process.exit(1);
 console.log(failures
   ? `\n${failures} failure(s)`
-  : `\nall vent-reactive checks passed (${knownNegatives} known-negative${knownNegatives === 1 ? '' : 's'} documented -- see plans/21; a green run here does NOT mean Night 2 is solved)`);
+  : knownNegatives
+    ? `\nvent-reactive report completed: ${knownNegatives} policy negative${knownNegatives === 1 ? '' : 's'} remain (see plans/20-21)`
+    : '\nall vent-reactive checks passed');

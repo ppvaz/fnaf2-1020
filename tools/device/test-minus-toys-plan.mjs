@@ -18,7 +18,8 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, phaseScan } from './minus-toys-plan.mjs';
+import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, maskWindows, phaseScan } from './minus-toys-plan.mjs';
+import * as C from '../../src/config.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const check = (ok, message) => { if (!ok) throw new Error(message); };
@@ -39,6 +40,21 @@ const seed = i => (i * 2654435761) >>> 0;
     'a windMs knob change did not alter the loop -- build() is not reading knobs');
   check(emitPlan(2, { windMs: KNOBS0.windMs + 500 }) !== emitPlan(2),
     'emitPlan ignored its knobs argument');
+
+  const exactQueue = schedule({ opening: OPENING, loop: LOOP, untilMs: 30000,
+                                periodMs: KNOBS0.loopPeriodMs });
+  const exactWindows = maskWindows(exactQueue);
+  check(exactWindows[0].startFrame === 264 + C.MASK_ANIM_ON &&
+        exactWindows[0].endFrame === 552,
+    'mask coverage does not start after ON animation or end at the OFF press');
+  const jitterQueue = schedule({ opening: OPENING, loop: LOOP, untilMs: 30000,
+    periodMs: KNOBS0.loopPeriodMs,
+    shift: (cycle, index) => cycle === 'opening' && index === 7 ? 20
+      : cycle === 'toys' && index === 0 ? -20 : 0 });
+  const jitterWindow = maskWindows(jitterQueue)[0];
+  check(jitterWindow.endFrame - jitterWindow.startFrame !==
+        exactWindows[0].endFrame - exactWindows[0].startFrame,
+    'independent mask-row jitter was collapsed into the nominal window');
 }
 
 // The published routine is 5 s-interval-anchored but the port is a 10 s loop.

@@ -23,7 +23,8 @@ const O = (value) => ({ state: 'OBSERVED', value });
 const U = (reason) => ({ state: 'UNKNOWN', reason });
 
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
-                      'splitArmed', 'leftOpening', 'ventLightL', 'bbVent'];
+                      'splitArmed', 'leftOpening', 'ventLightL', 'bbVent',
+                      'bbVentId'];
 
 // A complete fact set with every entry UNKNOWN -- what the controller sees
 // before the first read completes.
@@ -35,15 +36,25 @@ const NO_READ = () => {
 
 export class Observer {
   constructor({ interval = OBSERVE_INTERVAL, readDelayFrames = 0, dropRate = 0,
-                rng = null, audioLatencyFrames = 12 } = {}) {
+                rng = null, audioLatencyFrames = 12, audioDropRate = 0,
+                audioFalseNegativeRate = 0, audioFalsePositiveRate = 0 } = {}) {
     this.interval = interval;
     this.readDelayFrames = readDelayFrames;  // model host round-trip latency
     this.dropRate = dropRate;                // fraction of reads that come back UNKNOWN
     this.rng = rng;
     this.audioLatencyFrames = audioLatencyFrames; // A2DP transport, ~200 ms
+    // These are independent detector parameters. Defaults are deliberately
+    // zero because the current engine feed is only a privileged cue proxy;
+    // device promotion must supply measured rates rather than inherit an
+    // oracle. They are nevertheless available for cue-free/error sweeps.
+    this.audioDropRate = audioDropRate;
+    this.audioFalseNegativeRate = audioFalseNegativeRate;
+    this.audioFalsePositiveRate = audioFalsePositiveRate;
     this.evtCursor = 0;                      // how much of the event feed is heard
     this.lastCueAt = -Infinity;              // device-frame the last cue became audible
     this.lastCueType = false;                // 'route' | 'pending' | 'opening'
+    this.lastCueId = null;                   // one engine event = one visit cue
+    this.audioSeq = 0;
     this.lastReadFrame = -Infinity;
     this.cache = NO_READ();
     this.pending = [];                       // delayed reads not yet visible
@@ -59,18 +70,32 @@ export class Observer {
     // cam:true) means BB is pending -- committed to the vent, not yet
     // evictable -- and the SECOND thud (the thud+21 arrival pair, g607) means
     // he is at the opening and evictable. Most recent cue wins.
+    let cueSeen = false;
     for (; this.evtCursor < sim.events.length; this.evtCursor++) {
       const e = sim.events[this.evtCursor];
       let cue = null;
       if (e.type === 'laugh') cue = 'route';
-      else if (e.type === 'vent-bang' && e.data.who === 'bb') {
+      else if (e.type === 'vent-bang' && e.data?.who === 'bb') {
         if (e.data.arrival) cue = 'opening';
         else if (e.data.cam) cue = 'pending';
       }
       if (cue) {
+        cueSeen = true;
+        if (this.audioFalseNegativeRate > 0 &&
+            this._random() < this.audioFalseNegativeRate) continue;
         this.lastCueType = cue;
-        this.lastCueAt = Math.max(this.lastCueAt, e.f + this.audioLatencyFrames);
+        this.lastCueAt = e.f + this.audioLatencyFrames;
+        this.lastCueId = `${this.evtCursor}:${e.f}:${cue}`;
       }
+    }
+    // A false-positive detector model is opt-in and has no engine event or
+    // privileged identity. That distinction is useful in the cue-free
+    // control: the controller can only consume a real visit identity.
+    if (!cueSeen && this.audioFalsePositiveRate > 0 &&
+        this._random() < this.audioFalsePositiveRate) {
+      this.lastCueType = 'opening';
+      this.lastCueAt = sim.frame;
+      this.lastCueId = `fp:${this.audioSeq++}`;
     }
     if (sim.frame - this.lastReadFrame >= this.interval) {
       this.lastReadFrame = sim.frame;
@@ -79,8 +104,10 @@ export class Observer {
     }
     while (this.pending.length && this.pending[0].at <= sim.frame)
       this.cache = this.pending.shift().snap;
-    return this.cache;
+    return { ...this.cache, ...this._audioFacts(sim) };
   }
+
+  _random() { return this.rng ? this.rng.next() : Math.random(); }
 
   _drop() {
     if (!this.dropRate) return false;
@@ -136,23 +163,24 @@ export class Observer {
       ventLightL: drop ? U('read-dropped')
         : officeVisible ? O(sim.ventLightL) : U('office-not-in-view'),
 
-      // BB's vent-stage audio cue (fast-mixer samples; A2DP only). One fact,
-      // most recent cue wins: 'route' (laugh, belief only), 'pending' (first
-      // thud -- prepare), 'opening' (arrival pair -- evict with priority).
-      // Audio facts do not depend on monitor position -- that independence is
-      // the whole point of them -- and they do not share the video read's
-      // drop coin; discrete-cue detection is a separate reliability question.
-      // A cue is NOT visible before its transport latency has elapsed: the
-      // audible time is e.f + latency, so a fresh cue has age >= 0 only after
-      // the delay (the first cut leaked future cues immediately).
-      bbVent: (() => {
-        if (this.lastCueType === false) return O(false);
-        const age = sim.frame - this.lastCueAt;
-        if (age < 0) return O(false);
-        const window = this.lastCueType === 'opening' ? C.s(12) : C.s(20);
-        return age <= window ? O(this.lastCueType) : O(false);
-      })(),
     };
+  }
+
+  // Audio is returned from the live cadence, not from the delayed video
+  // snapshot. This keeps A2DP latency/detector loss independent of monitor
+  // animation, video read cadence, and video drop coins.
+  _audioFacts(sim) {
+    if (this.audioDropRate > 0 && this._random() < this.audioDropRate)
+      return { bbVent: U('audio-dropped'), bbVentId: U('audio-dropped') };
+    if (this.lastCueType === false)
+      return { bbVent: O(false), bbVentId: O(null) };
+    const age = sim.frame - this.lastCueAt;
+    if (age < 0)
+      return { bbVent: O(false), bbVentId: O(null) };
+    const window = this.lastCueType === 'opening' ? C.s(12) : C.s(20);
+    if (age > window)
+      return { bbVent: O(false), bbVentId: O(null) };
+    return { bbVent: O(this.lastCueType), bbVentId: O(this.lastCueId) };
   }
 }
 

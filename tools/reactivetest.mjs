@@ -71,10 +71,40 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   const drop = new Observer({ interval: 1, dropRate: 1, rng: { next: () => 0 } });
   const df = drop.read(s3);
   ok('observer', 'a dropped VIDEO read is UNKNOWN(read-dropped) on every video fact',
-    Object.entries(df).filter(([k]) => k !== 'frame' && k !== 'bbVent')
+    Object.entries(df).filter(([k]) => k !== 'frame' && k !== 'bbVent' && k !== 'bbVentId')
       .every(([, v]) => v.state === 'UNKNOWN' && v.reason === 'read-dropped'));
   ok('observer', 'audio does not share the video drop coin (bbVent stays OBSERVED)',
     df.bbVent.state === 'OBSERVED');
+
+  const s4 = new Sim({ seed: 4, night: 2 });
+  s4.events.push({ type: 'vent-bang', f: 0, data: { who: 'bb', arrival: true } });
+  const audio = new Observer({ interval: 60, audioLatencyFrames: 0 });
+  const a0 = audio.read(s4);
+  ok('observer', 'audio cue is not delayed by the video cadence',
+    a0.bbVent.state === 'OBSERVED' && a0.bbVent.value === 'opening' &&
+    a0.bbVentId.state === 'OBSERVED');
+
+  const fnSim = new Sim({ seed: 5, night: 2 });
+  fnSim.events.push({ type: 'vent-bang', f: 0, data: { who: 'bb', arrival: true } });
+  const fn = new Observer({ interval: 60, audioLatencyFrames: 0,
+                            audioFalseNegativeRate: 1, rng: { next: () => 0 } });
+  const fnFact = fn.read(fnSim);
+  ok('observer', 'audio false negative becomes an absent cue, not privileged truth',
+    fnFact.bbVent.state === 'OBSERVED' && fnFact.bbVent.value === false);
+
+  const droppedAudio = new Observer({ interval: 60, audioDropRate: 1,
+                                      rng: { next: () => 0 } });
+  const droppedFact = droppedAudio.read(new Sim({ seed: 6, night: 2 }));
+  ok('observer', 'audio transport loss is UNKNOWN and independently modeled',
+    droppedFact.bbVent.state === 'UNKNOWN' && droppedFact.bbVent.reason === 'audio-dropped' &&
+    droppedFact.bbVentId.state === 'UNKNOWN');
+
+  const fp = new Observer({ interval: 60, audioLatencyFrames: 0,
+                            audioFalsePositiveRate: 1, rng: { next: () => 0 } });
+  const fpFact = fp.read(new Sim({ seed: 7, night: 2 }));
+  ok('observer', 'cue-free false positive has no engine visit identity',
+    fpFact.bbVent.state === 'OBSERVED' && fpFact.bbVent.value === 'opening' &&
+    fpFact.bbVentId.value?.startsWith('fp:'));
 }
 
 // --- 3. controller: the night 6-38 guard ------------------------------------
@@ -88,6 +118,15 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   const kept = guardIntents(intents, scheduled);
   ok('controller', 'an intent inside a scheduled press animation window is dropped',
     kept.length === 1 && kept[0].at === 300 + GUARD_FRAMES + 5);
+
+  const tx = new BlackoutReactive();
+  const press = tx.decide({ blackout: { state: 'OBSERVED', value: true },
+    leftOpening: { state: 'UNKNOWN', reason: 'hidden' },
+    maskOn: { state: 'OBSERVED', value: false },
+    monitorUp: { state: 'OBSERVED', value: false } }, { frame: 20, scheduled: [] });
+  ok('controller', 'a rejected animated intent does not commit the FSM or cooldown',
+    press.length === 1 && tx.state === 'securing' &&
+    tx.settle([]) === false && tx.state === 'idle' && !tx.cooling(20));
 }
 
 // --- 4. BlackoutReactive state machine ------------------------------------

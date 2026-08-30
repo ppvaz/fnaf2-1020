@@ -52,8 +52,8 @@ export const KNOBS0 = {
   camdropTailMs: 67,       // camdrop: light-only tail after the monitor tap
 
   contactMs: 33,           // tap/hall contact length. The engine ignores it; the emitted plan carries it.
-  reactiveBB: false,       // RESERVED, INERT. A later effort wires a left-opening read + reactive mask
-                           //   here (the published routine's blackout / vent-guest branch).
+  reactiveBB: false,       // optional BB-only left-opening/audio reactive layer
+                           //   (Mangle occupancy is not exposed by Observer yet).
 
   // --- minimal Night 1 mode (`--minimal`, Night 1 ONLY) ---
   // The 10/20 loop bolted onto Night 1 is wasted motion: the monitor never has
@@ -241,8 +241,38 @@ export function schedule({ splitCamera = true, shift = () => 0,
   return queue.sort((x, y) => x[0] - y[0]);
 }
 
+// Resolve the mask coverage endpoints from the emitted press rows. The two
+// mask rows are shifted independently by the device-error model, so their
+// nominal knob difference is not the available window. A mask tick can only
+// accrue after the ON animation and stops when the OFF press begins.
+export function maskWindows(queue) {
+  const presses = queue.filter(([, kind, action]) => kind === 'press' && action === 'mask');
+  const windows = [];
+  for (let i = 0; i + 1 < presses.length; i += 2) {
+    const onPressFrame = presses[i][0];
+    const offPressFrame = presses[i + 1][0];
+    windows.push({
+      onPressFrame,
+      offPressFrame,
+      startFrame: onPressFrame + C.MASK_ANIM_ON,
+      endFrame: offPressFrame,
+    });
+  }
+  return windows;
+}
+
+// Explicit upper-bound control only. Production code must replace this with
+// an estimator-backed provider; naming the oracle here keeps the exact engine
+// phase from masquerading as the proposed Bluetooth phase clock.
+export const ENGINE_PHASE_ORACLE = Object.freeze({
+  kind: 'engine-phase-oracle',
+  periodFrames: C.FPS,
+  nextBoundaryFrame: frame => frame + ((C.FPS - (frame % C.FPS)) % C.FPS),
+});
+
 export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
-                         shift, knobs, epochMs = 0 } = {}) {
+                         shift, knobs, epochMs = 0,
+                         phaseClock = ENGINE_PHASE_ORACLE } = {}) {
   const sim = new Sim({ night, seed, worst });
   const { opening, loop, finish } = knobs ? build(knobs) : _default;
   const kk = knobs ? clone(knobs) : KNOBS0;
@@ -250,6 +280,7 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
   const loopStartMs = kk.minimal ? kk.minLoopStartMs : 0;
   const untilMs = kk.minimal ? kk.minStopAtMs : 420000;
   const queue = schedule({ splitCamera, shift, opening, loop, finish, periodMs, loopStartMs, untilMs, epochMs });
+  const scheduledMaskWindows = maskWindows(queue);
 
   // `reactiveBB` wires the reserved hook for real (2026-08-30 directive): a
   // VentThreatReactive layer rides the schedule -- the opening left-opening
@@ -264,13 +295,17 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
       interval: kk.reactiveIntervalFrames ?? 4,
       readDelayFrames: kk.reactiveDelayFrames ?? 0,
       dropRate: kk.reactiveDropRate ?? 0,
+      audioLatencyFrames: kk.reactiveAudioLatencyFrames ?? 12,
+      audioDropRate: kk.reactiveAudioDropRate ?? 0,
+      audioFalseNegativeRate: kk.reactiveAudioFalseNegativeRate ?? 0,
+      audioFalsePositiveRate: kk.reactiveAudioFalsePositiveRate ?? 0,
       rng: new Rng((seed ^ 0x9e3779b9) >>> 0),
     }),
     ctrl: new VentThreatReactive({
-      // The scheduled mask window's length, for the coverage gate: when the
-      // current window still crosses five tick boundaries, the schedule
-      // evicts for free and the controller stands down.
-      maskWindowFrames: Math.round((kk.maskOffMs - kk.maskOnMs) / 1000 * C.FPS),
+      // The active window is supplied per decision from the actual emitted
+      // press frames below. Do not substitute the nominal maskOff-maskOn knob
+      // difference: animation, late observation, and independent row jitter
+      // all change the remaining coverage.
     }),
     lightReleaseAt: -1,   // the pre-mask hall pulse: press now, release in hallMs
   } : null;
@@ -302,8 +337,16 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
     if (reactive) {
       const facts = reactive.obs.read(sim);
       const window = animated.filter(x => Math.abs(sim.frame - x.at) < GUARD_FRAMES * 3);
-      for (const it of guardIntents(
-          reactive.ctrl.decide(facts, { frame: sim.frame, scheduled: window }), window)) {
+      const maskWindow = scheduledMaskWindows.find(w =>
+        sim.frame >= w.onPressFrame && sim.frame <= w.offPressFrame);
+      const intents = reactive.ctrl.decide(facts, {
+        frame: sim.frame,
+        scheduled: window,
+        maskWindow,
+        phaseClock,
+      });
+      const kept = guardIntents(intents, window);
+      if (reactive.ctrl.settle(kept)) for (const it of kept) {
         if (it.at <= sim.frame) {
           // The pre-mask hall pulse: the schedule spells a hall as a held
           // light (press now, release after hallMs), so expand to that pair.
@@ -325,7 +368,8 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
     minBox = Math.min(minBox, sim.box);
     minPower = Math.min(minPower, sim.power);
   }
-  return { sim, splitAt, minBox, minPower };
+  return { sim, splitAt, minBox, minPower,
+           reactiveLog: reactive ? reactive.ctrl.log : undefined };
 }
 
 // The arm's sensitivity to the schedule/game phase, measured. For each whole
