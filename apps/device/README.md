@@ -19,6 +19,14 @@ The generated session manifest and result bundle are retained under the ignored
 `artifacts/` directory. Coordinates and transport details come from the
 profile; they are never inferred from a policy or conversation.
 
+Research winners use a separate, content-addressed handoff before any device
+lane is considered: `npm run device:emit -- --winner winner.json --out
+artifacts/run-001` writes `winner.json`, `manifest.json`, `night-N.plan`, and
+`profile.json`, then validates the interpreter vocabulary, timing/contact
+budget, identity, hashes, and bounded replay. The shell facade consumes that
+exact bundle with `tools/device/trial.sh --artifact artifacts/run-001
+--dry-run`; live artifact execution remains refused until device qualification.
+
 `composeDevice` is the shared composition factory for fixture and qualification
 profiles. Live composition requires injected ADB/HID and sensor transports,
 `abort`/`releaseAll`, a `qualification-v1` record with external evidence, and

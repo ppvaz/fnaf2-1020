@@ -315,7 +315,23 @@
     {
       "file": "packages/research/src/experiment.js",
       "imports": [
+        "./families/minus-toys.js",
+        "./families/minus-two.js",
         "@fnaf2-1020/core"
+      ]
+    },
+    {
+      "file": "packages/research/src/families/minus-toys.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/families/minus-two.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {
@@ -324,6 +340,17 @@
         "../src/experiment.js",
         "node:assert/strict",
         "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "packages/research/test/legacy-equivalence.test.js",
+      "imports": [
+        "../src/families/minus-toys.js",
+        "../src/families/minus-two.js",
+        "node:assert/strict",
+        "node:child_process",
         "node:path",
         "node:url"
       ]
@@ -459,6 +486,24 @@
       ]
     },
     {
+      "file": "tools/device/artifact-runner.mjs",
+      "imports": [
+        "./bundle.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/bundle.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "./recipe.mjs",
+        "@fnaf2-1020/core/contracts",
+        "node:crypto",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/clocktrace.mjs",
       "imports": [
         "node:child_process",
@@ -482,6 +527,13 @@
       "imports": [
         "node:fs",
         "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/emit.mjs",
+      "imports": [
+        "./bundle.mjs",
+        "node:fs"
       ]
     },
     {
@@ -611,6 +663,16 @@
       "imports": [
         "./bb-cue-state.mjs",
         "node:assert"
+      ]
+    },
+    {
+      "file": "tools/device/test-bundle.mjs",
+      "imports": [
+        "./bundle.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
       ]
     },
     {
@@ -876,7 +938,7 @@
     {
       "file": "tools/minus2test.mjs",
       "imports": [
-        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research",
         "node:url"
       ]
     },
@@ -915,7 +977,10 @@
       "file": "tools/minus7/geometrysearch.mjs",
       "imports": [
         "../device/human-gate.mjs",
-        "../device/recipe.mjs"
+        "../device/recipe.mjs",
+        "@fnaf2-1020/core/contracts",
+        "node:fs",
+        "node:path"
       ]
     },
     {
@@ -940,8 +1005,11 @@
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
         "../model/hid-device-pilot.mjs",
+        "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/mechanics",
-        "node:child_process"
+        "node:child_process",
+        "node:fs",
+        "node:path"
       ]
     },
     {
@@ -990,7 +1058,7 @@
       "file": "tools/minustoystest.mjs",
       "imports": [
         "./stat.mjs",
-        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research",
         "node:url"
       ]
     },
@@ -1173,6 +1241,15 @@
       "imports": [
         "./device/minus-toys-plan.mjs",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/retrieval-benchmark.mjs",
+      "imports": [
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
       ]
     },
     {

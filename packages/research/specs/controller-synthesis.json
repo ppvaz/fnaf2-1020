@@ -8,18 +8,21 @@
   "observationPrivilege": "none",
   "faultProfile": "none",
   "seeds": [1, 2, 3],
-  "candidateParameters": [
-    {"label": "early-camera", "commandAtFrames": [0, 8, 40]},
-    {"label": "baseline-camera", "commandAtFrames": [0, 12, 48]},
-    {"label": "late-camera", "commandAtFrames": [0, 18, 56]}
-  ],
+  "candidateSpace": {
+    "kind": "cartesian",
+    "dimensions": {
+      "cameraOrder": [[10, 4, 7], [10, 7, 4], [4, 10, 7]],
+      "offsetFrames": [0, 2]
+    }
+  },
   "commands": [
     {"at": 0, "action": {"kind": "press", "control": "monitor"}},
     {"at": 12, "action": {"kind": "select", "control": "cam:10"}},
     {"at": 48, "action": {"kind": "release", "control": "monitor"}}
   ],
   "durationFrames": 90,
-  "sample": {"count": 3, "stoppingRule": "fixed reference candidate set"},
+  "sample": {"count": 18, "stoppingRule": "exhaustive cartesian candidate space over three seeds"},
+  "search": {"method": "exhaustive-enumeration", "candidateSpace": "camera order × declared label × timing offset"},
   "objectives": ["candidate-comparison", "trace-reproducibility"],
   "controls": ["invalid-coordinate-command"],
   "artifacts": ["experiment-result-v1", "session-manifest-v1"],

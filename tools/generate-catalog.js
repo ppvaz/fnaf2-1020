@@ -67,6 +67,8 @@ const contractEvidence = {
   'session-manifest-v1': ['tools/device/test-session-manifest.sh'],
   'experiment-spec-v1': ['packages/research/test/experiment.test.js'],
   'experiment-result-v1': ['packages/research/test/experiment.test.js'],
+  'winner-v1': ['tools/device/test-bundle.mjs'],
+  'device-bundle-v1': ['tools/device/test-bundle.mjs'],
   'trainer-trace-v1': ['tools/tracereport.mjs'],
   'artifact-ref-v1': ['tools/evidence.js'],
   'claim-evidence-v1': ['tools/evidence.js'],
@@ -96,6 +98,43 @@ const contractSpecifications = {
     runtimeValidation: item.validator,
     conformanceFixtures: contractEvidence[item.id] ?? ['packages/core/test/contracts.test.js'],
   })),
+};
+
+// Stable IDs are the joins between source, tests, documentation, and retained
+// evidence. Keep the forward register as the authority, but generate the
+// reverse view from repository text so a reader can start at a contract or
+// claim and reach every current reference without maintaining another table.
+const stableLinks = [];
+const linkFiles = files.filter(path => /\.(?:md|txt|js|mjs|ts|py|sh|c|S|json)$/.test(path));
+const stablePatterns = [
+  ['CONTRACT', /CONTRACT:([a-z0-9-]+)/gi],
+  ['ADR', /ADR:([0-9]{4}-[a-z0-9-]+)/gi],
+  ['CLAIM', /CLAIM:([a-z0-9._-]+)/gi],
+  ['EVIDENCE', /EVIDENCE:([a-z0-9._-]+)/gi],
+];
+for (const path of linkFiles) {
+  const source = await readFile(path, 'utf8');
+  const relativePath = relative(ROOT, path);
+  for (const [kind, pattern] of stablePatterns) {
+    for (const match of source.matchAll(pattern)) {
+      const line = source.slice(0, match.index).split('\n').length;
+      stableLinks.push({ id: `${kind.toLowerCase()}.${match[1]}`, kind,
+        path: relativePath, line, relation: 'REFERENCES' });
+    }
+  }
+}
+for (const [contractId, paths] of Object.entries(contractEvidence)) {
+  for (const path of paths)
+    stableLinks.push({ id: `contract.${contractId}`, kind: 'CONTRACT', path,
+      relation: 'CONFORMANCE_FIXTURE' });
+}
+const reverseLinks = {
+  schema: 'reverse-links-v1',
+  generatedFrom: ['stable IDs in repository text', 'contractEvidence in tools/generate-catalog.js'],
+  links: [...new Map(stableLinks.map(link => [
+    `${link.id}\u0000${link.path}\u0000${link.line ?? ''}\u0000${link.relation}`, link,
+  ])).values()].sort((a, b) => a.id.localeCompare(b.id) || a.path.localeCompare(b.path) ||
+    (a.line ?? 0) - (b.line ?? 0) || a.relation.localeCompare(b.relation)),
 };
 const tests = [];
 for (const path of sourceFiles.filter(path => /(?:test|check|spec)[^/]*\.(?:mjs|js|py|sh)$/.test(path))) {
@@ -146,6 +185,7 @@ const outputs = {
   'adapter-registry.json': { schema: 'adapter-registry-v1', adapters: Object.values(ADAPTER_REGISTRY) },
   'test-manifest.json': { schema: 'test-manifest-v1', generatedFrom: 'source inventory', tests },
   'duplicate-responsibilities.json': { schema: 'duplicate-responsibility-map-v1', entries: duplicateResponsibilities },
+  'reverse-links.json': reverseLinks,
 };
 for (const [name, value] of Object.entries(outputs)) await writeFile(join(OUT, name), JSON.stringify(value, null, 2) + '\n');
 console.log(`catalog: ${Object.keys(outputs).length} inventories (${sourceFiles.length} source files)`);

@@ -37,7 +37,7 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
       "lifecycle": "supported"
     },
     {
@@ -116,6 +116,11 @@
       "lifecycle": "supported"
     },
     {
+      "id": "test:retrieval",
+      "command": "node tools/retrieval-benchmark.mjs",
+      "lifecycle": "supported"
+    },
+    {
       "id": "device:dry-run",
       "command": "node apps/device/src/cli.js dry-run",
       "lifecycle": "supported"
@@ -138,6 +143,11 @@
     {
       "id": "device:grade",
       "command": "node apps/device/src/cli.js grade",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:emit",
+      "command": "node tools/device/emit.mjs",
       "lifecycle": "supported"
     }
   ],
@@ -199,6 +209,12 @@
     {
       "id": "tools/test-docs.mjs",
       "invocation": "tools/test-docs.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/retrieval-benchmark.mjs",
+      "invocation": "tools/retrieval-benchmark.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -414,13 +430,13 @@
     },
     {
       "id": "tools/minus7/paramsearch.mjs",
-      "invocation": "tools/minus7/paramsearch.mjs --nights=N,N --shape=correlated [--runs --admit --beam --rounds --geom=slot:dev:con]",
+      "invocation": "tools/minus7/paramsearch.mjs --nights=N,N --shape=correlated [--runs --admit --beam --rounds --geom=slot:dev:con] [--winner-out PATH]",
       "kind": "search/report",
       "lifecycle": "supported"
     },
     {
       "id": "tools/minus7/geometrysearch.mjs",
-      "invocation": "tools/minus7/geometrysearch.mjs [--mode=grid\\|admit] [--runs --slots --dev-offsets --configs]",
+      "invocation": "tools/minus7/geometrysearch.mjs [--mode=grid\\|admit] [--runs --slots --dev-offsets --configs] [--winner-out PATH --admit-runs N]",
       "kind": "search/report",
       "lifecycle": "supported"
     },
@@ -530,6 +546,42 @@
       "id": "tools/device/trial.sh",
       "invocation": "tools/device/trial.sh",
       "kind": "compatibility launcher",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "npm",
+      "invocation": "npm run device:emit -- --winner winner.json --out artifacts/run-001",
+      "kind": "compiler/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/emit.mjs",
+      "invocation": "tools/device/emit.mjs --winner winner.json --out artifacts/run-001",
+      "kind": "compiler",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/artifact-runner.mjs",
+      "invocation": "tools/device/artifact-runner.mjs --artifact artifacts/run-001 --dry-run [--night N]",
+      "kind": "check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial.sh",
+      "invocation": "tools/device/trial.sh --artifact artifacts/run-001 --dry-run [--night N]",
+      "kind": "artifact consumer",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/bundle.mjs",
+      "invocation": "tools/device/bundle.mjs",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-bundle.mjs",
+      "invocation": "tools/device/test-bundle.mjs",
+      "kind": "check",
       "lifecycle": "supported"
     },
     {

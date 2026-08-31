@@ -43,6 +43,9 @@
 // (plan 16 progress log).
 import { build, devicePlan, replay, idleUntilMs } from '../device/recipe.mjs';
 import { modelGate, jitterPlan } from '../device/human-gate.mjs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { canonicalJson } from '@fnaf2-1020/core/contracts';
 
 const arg = (k, d) => {
   const m = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -110,6 +113,8 @@ function ladder480(geom, runs, shape) {
 function grid() {
   const slots = arg('slots', '40,42,44,46,48,50,52,54,56,58,60').split(',').map(Number);
   const devOffsets = arg('dev-offsets', '8,11,14,17').split(',').map(Number);
+  const winnerOut = arg('winner-out', '');
+  const admitRuns = +arg('admit-runs', '0');
   console.log(`geometry grid  ${RUNS} seeds/night  correlated ±${SLACK}`);
   console.log(`slots ${slots.join(',')}   dev = slot + {${devOffsets.join(',')}}   con = round(slot*0.55)\n`);
 
@@ -138,6 +143,35 @@ function grid() {
   }
   console.log(`\nshipped baseline min(n2-6) ${minOf(base, CORE)} / n7 ${base[7]}.`);
   console.log(`Re-score the winners with:  --mode=admit --configs=${rows.slice(0, 4).map(r => `${r.geom.slot}:${r.geom.dev}:${r.geom.con}`).join(',')}`);
+  if (winnerOut) {
+    if (!admitRuns) throw new Error('--winner-out requires --admit-runs so the persisted gate is explicit');
+    const best = rows[0];
+    if (!best) throw new Error('geometry search produced no candidate to persist');
+    const byNight = [];
+    for (const shape of ['correlated', 'iid']) for (const night of NIGHTS) {
+      const result = modelGate(planText(night, best.geom), { night, runs: admitRuns, slackMs: SLACK, shape });
+      byNight.push({ shape, night, ...result, outcomes: undefined });
+    }
+    const status = byNight.every(result => result.ok) ? 'PASS'
+      : byNight.some(result => result.verdict === 'INCONCLUSIVE') ? 'INCONCLUSIVE' : 'FAIL';
+    if (status !== 'PASS')
+      throw new Error(`best geometry did not pass the persisted model gate (${status}); no winner was written`);
+    const seeds = Array.from({ length: admitRuns }, (_, index) => index + 1);
+    const winner = {
+      schema: 'winner-v1', strategy: 'minus7',
+      knobs: { night: NIGHTS[0], sweepSlotMs: best.geom.slot, readLatencyMs: 550,
+        hallPulseMs: 130, pilotOffset: 10, maskMarginMs: 900, search: {} },
+      planOptions: { deviceSpacingMs: best.geom.dev, sweepContactMs: best.geom.con },
+      nights: [...NIGHTS], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
+      profile: 'fixture-hid-screencap',
+      gate: { status, claimLevel: 'MODEL_ONLY', runs: admitRuns,
+        byNight: byNight.map(({ outcomes, ...result }) => result) },
+    };
+    if (existsSync(winnerOut)) throw new Error(`refusing to overwrite winner file ${winnerOut}`);
+    mkdirSync(dirname(winnerOut), { recursive: true });
+    writeFileSync(winnerOut, canonicalJson(winner));
+    console.log(`winner=${winnerOut} strategy=minus7 gate=${status} geometry=${best.geom.slot}:${best.geom.dev}:${best.geom.con}`);
+  }
 }
 
 // The n2-n6 basins are ~6 ms wide in emitted spacing (slot 46: dev 54 -> min

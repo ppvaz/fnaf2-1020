@@ -11,6 +11,7 @@ const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../../.
 const CASES = Object.freeze([
   'model-smoke', 'controller-synthesis', 'cycle-optimization',
   'robustness-sweep', 'model-probe', 'device-characterization',
+  'minus-toys', 'minus-two',
 ]);
 
 const help = () => console.log(`fnaf2-research — explicit experiment operations\n\nUsage:\n  npm run research -- --help\n  npm run research -- <case>\n\nCases:\n  ${CASES.join(', ')}\n\nEvery case retains its spec, structured result, and session manifest. Results\nare claim-capped until the Plan 12 promotion ladder supplies external evidence.`);

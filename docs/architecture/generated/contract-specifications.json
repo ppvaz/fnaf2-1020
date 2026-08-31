@@ -408,6 +408,46 @@
       ]
     },
     {
+      "contractId": "winner-v1",
+      "id": "winner-v1",
+      "version": 1,
+      "owner": "research/device",
+      "kind": "artifact",
+      "purpose": "Stable winner-v1 boundary for research/device; its validator is tools/device/bundle.mjs validateWinner.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "tools/device/bundle.mjs validateWinner",
+      "conformanceFixtures": [
+        "tools/device/test-bundle.mjs"
+      ]
+    },
+    {
+      "contractId": "device-bundle-v1",
+      "id": "device-bundle-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "artifact",
+      "purpose": "Stable device-bundle-v1 boundary for apps/device; its validator is tools/device/bundle.mjs validateBundle.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "tools/device/bundle.mjs validateBundle",
+      "conformanceFixtures": [
+        "tools/device/test-bundle.mjs"
+      ]
+    },
+    {
       "contractId": "trainer-trace-v1",
       "id": "trainer-trace-v1",
       "version": 1,

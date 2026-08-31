@@ -123,6 +123,18 @@
       "validator": "validateExperimentResult"
     },
     {
+      "id": "winner-v1",
+      "owner": "research/device",
+      "kind": "artifact",
+      "validator": "tools/device/bundle.mjs validateWinner"
+    },
+    {
+      "id": "device-bundle-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "tools/device/bundle.mjs validateBundle"
+    },
+    {
       "id": "trainer-trace-v1",
       "owner": "apps/trainer",
       "kind": "artifact",

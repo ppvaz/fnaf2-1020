@@ -10,7 +10,7 @@ export const CONTRACTS = Object.freeze([
   'detector-v1', 'state-estimate-v1', 'supervisor-v1', 'clock-v1',
   'actuator-v1', 'capability-v1', 'calibration-v1', 'device-profile-v1',
   'telemetry-event-v1', 'session-manifest-v1', 'experiment-spec-v1',
-  'experiment-result-v1', 'trainer-trace-v1', 'artifact-ref-v1',
+  'experiment-result-v1', 'winner-v1', 'device-bundle-v1', 'trainer-trace-v1', 'artifact-ref-v1',
   'claim-evidence-v1', 'screencheck-process-v1', 'cue-helper-control-v1',
   'fact-message-v1', 'pcm-udp-v1', 'hid-executor-v1', 'device-executor-v1',
 ]);
