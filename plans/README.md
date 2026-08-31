@@ -1,8 +1,9 @@
 # Plans
 
-Future work beyond the Minus 7 trainer, one file per ask, written to be picked up cold
-in any later session. The trainer remains the public product; these plans build the
-same evidence base into strategy research and constrained control. See the
+Future work across the evidence model, strategy research, human trainer, and
+constrained controllers, one file per ask, written to be picked up cold in any
+later session. The trainer remains the current public application, but it is one
+consumer of the canonical model rather than the architectural root. See the
 [`PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) for the shared scope and claim
 discipline. Suggested order and dependencies:
 
@@ -132,3 +133,11 @@ Bot-research roadmap added 2026-08-26:
     policy-program IR, structural strategy search, and simulator-to-phone
     equivalence gate so the invention engine can synthesize complete pilots
     rather than timing permutations.
+22. [22-architecture-and-developer-experience-refactor.md](22-architecture-and-developer-experience-refactor.md)
+    — architectural umbrella: a `@fnaf2-1020/*` workspaces monorepo, canonical
+    core package, trainer as a leaf application, conventional automation
+    vocabulary, capability-aware sensor/actuator adapters, first-class research
+    experiments, strict typed/runtime contracts, fast deterministic test lanes,
+    a profile-driven device service and optional actuator MCP, generated
+    knowledge indexes/portal, a legible repository front door, and a
+    characterized migration away from the monolithic device shell path.
