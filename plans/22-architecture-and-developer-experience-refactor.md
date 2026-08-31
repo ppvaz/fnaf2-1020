@@ -30,9 +30,9 @@ The refactor is complete only when both statements are true:
 1. A general reader can identify the vision, mission, scope, current products,
    and evidence limits from the root README without first understanding Minus 7
    or the device harness.
-2. A developer can test the model, build the trainer, inspect a policy, and run
-   a complete no-phone device dry-run from a clean checkout using a handful of
-   root commands.
+2. A developer can run one documented bootstrap, test the model, build the
+   trainer, inspect a policy, and run a complete no-phone device dry-run from a
+   clean checkout using a handful of root commands.
 
 ### Decisions at a glance
 
@@ -167,14 +167,21 @@ improvement.
 
 Use npm workspaces because the JavaScript already runs as ES modules and the
 packages must change atomically. This does not require publishing packages or
-adding runtime dependencies. The initial workspace may remain dependency-free
-and create no meaningful `node_modules` tree.
+adding runtime dependencies. Commit `package-lock.json` and make `npm ci` the
+single clean-checkout bootstrap: it creates the workspace links required for
+bare `@fnaf2-1020/*` imports and installs a pinned TypeScript/tooling set. Core
+and trainer retain zero runtime dependencies unless a later ADR changes that;
+the root development install is disposable and is never shipped with either
+application. Preserve a documented bare-Node core/legacy test path during the
+migration for offline diagnosis, but do not invent a custom resolver merely to
+avoid the conventional workspace bootstrap.
 
 ```text
 fnaf2-1020/
   package.json
   README.md
   CONTRIBUTING.md
+  CLAUDE.md
 
   packages/
     core/                       @fnaf2-1020/core
@@ -880,6 +887,64 @@ Search code must not import trainer UI or live device shell internals. Hardware
 characterization uses adapter ports and emits calibration evidence; it does not
 become a policy search merely because it explores several parameter values.
 
+## Evidence without paperwork
+
+Evidence is an automatic product of supported work, not a second narrative task
+performed after the command finishes. Any supported command capable of printing
+a claim, comparison, rate, timing, or promotion-relevant verdict must emit a
+versioned machine-readable result and a stable evidence/run ID in the same
+execution. A quotable number without that result reference is an incomplete
+command, not an invitation for the operator to transcribe it into Markdown.
+
+The runtime fills everything it can know: session identity, operation, Git
+state, resolved model/policy/profile and hashes, seeds/sample/stopping rule,
+clock mappings, capabilities, calibrations, semantic inputs/events, controls,
+artifacts, evaluator version, verdict, and claim ceiling. Humans supply only
+meaning automation cannot infer safely: experiment intent or hypothesis,
+consent/retention choice for sensitive media, and an explicit request to propose
+promotion. Grading and promotion consume the retained result; they never ask a
+human to re-enter its numbers.
+
+Every completed command prints a concise terminal record such as:
+
+```text
+result=KNOWN_NEGATIVE claim=MODEL_ONLY evidence=run-20260831-0042
+```
+
+The evidence CLI makes retained work useful during ordinary diagnosis:
+
+```sh
+npm run evidence -- list
+npm run evidence -- show RUN_ID
+npm run evidence -- diff RUN_A RUN_B
+npm run evidence -- replay RUN_ID
+npm run evidence -- why RUN_ID
+npm run evidence -- promote RUN_ID
+```
+
+`why` follows causal IDs through measurement -> estimate -> controller decision
+-> supervision -> actuation -> outcome and exposes UNKNOWN, rejection, dropout,
+and unverified boundaries. `promote` only proposes the existing result to Plan
+12's gate; it cannot raise the claim ceiling itself.
+
+Retention is graduated rather than universal:
+
+1. Ordinary unit/edit-loop results are ephemeral and concise.
+2. Named experiments and regressions retain structured results, fixed inputs,
+   and a reproducer.
+3. Device runs and promotion candidates retain the complete manifest,
+   telemetry, calibration binding, grading, and artifact hashes.
+4. Promoted claims and known negatives commit a small claim/result record and
+   content references; large or sensitive media remains in the authorized
+   artifact store under declared retention and redaction.
+
+Record semantic transitions and causal references by default, not indiscriminate
+raw streams. Large media and high-rate samples are separate content-addressed
+artifacts. Generated indexes discover bundles and propose missing graph edges;
+humans approve authoritative claim, promotion, supersession, and retraction
+edges. Evidence tooling is accepted only when it shortens replay, comparison,
+or failure diagnosis as well as preserving proof.
+
 ## Documentation and repository front door
 
 Markdown remains the correct medium for narrative evidence and research, but
@@ -918,6 +983,7 @@ The README keeps only:
 ```text
 README.md                       vision, scope, status, navigation
 CONTRIBUTING.md                 clean-checkout developer workflow
+CLAUDE.md                       concise repository operating discipline
 packages/*/README.md            package responsibility and public API
 docs/architecture/              current dependency and data-flow truth
 docs/decisions/                 short architectural decision records
@@ -927,6 +993,41 @@ docs/research/                  hypotheses, campaigns, negative results
 docs/operations/                procedures with safety consequences
 plans/                          future work and completion gates
 ```
+
+### `CLAUDE.md` operating contract
+
+Retain a root `CLAUDE.md` after the refactor, but change its job. It is the
+short operating constitution that a human or coding agent reads at the start
+of work, not an incident archive, architecture manual, command catalog, or
+second copy of executable configuration. It protects the disciplines most
+likely to be lost when code becomes easier to move:
+
+- the canonical Android target and the five-layer charter;
+- evidence labels and Plan 12's prohibition on silent claim promotion;
+- package ownership and dependency direction, including the sandbox one-way
+  rule and the ban on production imports from tests/reports;
+- characterize -> change -> compare -> switch -> remove-shim migration order;
+- dry-run by default, explicit live-device mode, resolved profiles, bounded
+  actuation, retained telemetry, and fail-safe abort/release;
+- required controls for numbers, explicit UNKNOWN/failure states, and the rule
+  that retractions and known negatives remain discoverable;
+- the session-finish obligation: run the affected gates, update the structured
+  result/progress record, reference its generated evidence ID rather than
+  writing a parallel evidence log, and state exactly what remains open.
+
+The file links to the charter, current architecture, generated command and
+contract catalogs, evidence policy, operations safety page, and
+`plans/PROGRESS.md`; it does not reproduce their tables or current values.
+Dated incident narratives in the present file move to the owning evidence,
+research, operations, or ADR record before their old text is shortened. A
+small checked-in set of especially costly prohibited shortcuts may remain when
+the concise rule cannot be derived safely from a catalog, but each carries a
+stable incident/evidence ID rather than an unindexed chronology.
+
+Keep `CLAUDE.md` curated and short enough to read at the beginning of every
+session. CI validates its links and stable IDs. Changes to it receive the same
+review as an architecture or safety contract, and generated tooling must never
+overwrite it.
 
 Move historical incident narratives out of operational code comments when the
 code is next touched. Code comments explain the current invariant and link to a
@@ -1025,23 +1126,34 @@ The root package is private and uses the project scope consistently:
 }
 ```
 
-The supported top-level workflow is intentionally small:
+The README presents five safe, non-live front-door commands after bootstrap:
 
 ```sh
+npm ci
 npm test
-npm run test:core
 npm run build:trainer
+npm run serve:trainer
 npm run research -- --help
 npm run device:dry-run -- --profile fixture-hid-screencap
+```
+
+The full supported surface also includes focused and explicitly live commands,
+documented outside the README's first screen:
+
+```sh
+npm run test:core
+npm run evidence -- list
 npm run device:run -- --profile moto-g56-hid-screencap --policy minus7
 npm run device:grade -- RUN_NAME
 ```
 
-`npm install` must not be necessary merely to run dependency-free workspaces;
-if development dependencies are later admitted, pin them and document the
-offline/core path. The trainer may gain a build step only if the decision is
-explicit and the published static artifact remains reproducible. A workspace
-layout does not by itself justify a bundler or framework.
+`npm ci` is required for canonical cross-workspace package resolution and the
+pinned development toolchain. Runtime dependencies remain a separate decision:
+none enters core or trainer without an ADR. Keep the documented bare-Node
+offline/core path through the compatibility period. The trainer may gain a
+build step only if the decision is explicit and the published static artifact
+remains reproducible. A workspace layout does not by itself justify a bundler
+or framework.
 
 A clean checkout includes fixture profiles, fake ADB/HID transports, synthetic
 sensor samples, and non-proprietary model fixtures sufficient for
@@ -1125,6 +1237,9 @@ and every later move has a before/after contract. No files move in P0.
 
 - Add the private root workspace and package manifests without changing module
   locations.
+- Commit the npm lockfile, pin TypeScript and other admitted development tools,
+  and make `npm ci` create the canonical workspace links. Retain a documented
+  bare-Node compatibility lane until P9.
 - Expose wrappers for the existing suite, trainer build, research commands,
   device dry-run, device execution, and grading.
 - Rewrite the root README to the contract above and reduce CONTRIBUTING to one
@@ -1139,9 +1254,11 @@ and every later move has a before/after contract. No files move in P0.
 major subsystem from the README; every existing canonical command is reachable
 through a documented root command; the old direct commands still work.
 
-This package intentionally supersedes Plan 18's blanket “no `package.json`”
-constraint while preserving its actual safety goal: no runtime dependency or
-build-system tax enters the trainer/core merely because workspaces exist.
+This package intentionally supersedes Plan 18's blanket “no `node_modules`” and
+no-`package.json` constraints for development. The replacement is narrower and
+testable: a committed lockfile, pinned development-only tools, no shipped
+`node_modules`, no runtime dependency in trainer/core without an ADR, and no
+trainer build-system tax merely because workspaces exist.
 
 ### P2 — Extract `@fnaf2-1020/core` and make the trainer a leaf
 
@@ -1216,6 +1333,9 @@ names; a mismatched detector/sensor calibration is refused.
 - Introduce `DeviceControlService`; make CLI and dry-run clients of it. Replace
   inferred coordinates/modes and positional shell arguments with resolved,
   validated, hashed run bundles.
+- Make dry and live execution emit their result/evidence ID automatically;
+  grading consumes that bundle and never requires configuration or measured
+  values to be re-entered.
 - Add the optional actuator MCP as a bounded semantic orchestration adapter
   over that service, with leases, idempotency, live/dry mode, telemetry, and
   fail-safe abort. Keep scheduling and the control loop outside MCP.
@@ -1235,6 +1355,9 @@ an approved command and retained result.
   model probe, and one device-characterization experiment as reference cases.
 - Emit structured results first and derive console/Markdown/graph reports from
   them.
+- Require every claim-producing experiment command to create its evidence ID
+  and result bundle automatically. Implement `evidence show`, `diff`, `replay`,
+  and causal `why` over the reference experiment cases.
 - Preserve legacy commands as aliases until the old and new result artifacts
   match on fixed seeds.
 - Establish the graduated `research/sandbox` -> named experiment -> shared
@@ -1268,18 +1391,27 @@ that the implementation is C.
   adapter maturity to structured manifests.
 - Keep plans as plans and move completed current behavior into package or
   architecture documentation.
+- Refactor the root `CLAUDE.md` into the concise operating contract above.
+  Relocate its dated incident history to owning evidence/research/operations
+  records without deleting retractions, then validate every retained stable
+  reference and link.
 - Add stable concept/claim/contract/evidence IDs to cross-cutting source
   comments and validate them. Generate reverse source/test/evidence links.
 - Create the layered indexes and lightweight claim/evidence graph, then publish
   a wiki-like static portal from repository truth. Do not create a separately
   edited wiki or mandatory RAG service.
+- Complete the evidence CLI with `list` and gated `promote`; apply the graduated
+  retention policy and generate proposed graph edges from retained bundles
+  without granting generators promotion authority.
 - Define a retrieval benchmark before considering an optional local hybrid
   lexical/semantic assistant.
 
 **Done when:** README and package docs describe the current system without
-reconstructing it from plans; operational procedures contain only current
-steps; history and retractions remain searchable; CI detects unregistered
-commands and broken documentation links.
+reconstructing it from plans; `CLAUDE.md` states the repository discipline
+without duplicating executable registries or serving as an incident archive;
+operational procedures contain only current steps; history and retractions
+remain searchable; CI detects unregistered commands, unknown stable IDs, and
+broken documentation links.
 
 ### P9 — Remove compatibility surface and audit the result
 
@@ -1376,7 +1508,8 @@ future evidence work cannot audit a semantic rewrite hidden inside one.
 | A generic adapter erases timing/calibration differences | Capability and calibration schemas; backend-specific conformance tests. |
 | Host refactor changes the physical input stream | Compare compiled policy, remote plan, HID report, and mocked executor traces before live use. |
 | Documentation reorganization destroys evidence context | Redirect/link first; preserve retractions and dated research; never bulk-delete history. |
-| Workspaces introduce dependency/build overhead | Begin with zero external dependencies; package scripts wrap current commands; admit dependencies separately. |
+| Workspaces introduce dependency/build overhead | Keep the pinned root development toolchain small; enforce a lockfile and dependency budget; keep core/trainer runtime dependencies empty unless separately admitted. |
+| The root development install is mistaken for a runtime dependency | Commit the lockfile; classify dependencies by workspace; keep core/trainer runtime dependencies empty unless an ADR and acceptance gate approve one. |
 | New names obscure established evidence references | Compatibility aliases and a current-to-target glossary; update links mechanically only after canonical ownership settles. |
 | Research framework homogenizes distinct hypotheses | Share execution/provenance contracts, not candidate semantics; retain per-experiment candidate spaces and controls. |
 | Profiles become another unvalidated configuration layer | Runtime schema validation, printed resolved profile, artifact hashes, capability/interlock checks, retained manifest. |
@@ -1385,6 +1518,7 @@ future evidence work cannot audit a semantic rewrite hidden inside one.
 | Test sharding hides shared-state failures | Fresh immutable inputs, isolated resources, deterministic reruns, and a separate bounded integration lane. |
 | MCP is mistaken for a real-time or trusted actuator | MCP only wraps `DeviceControlService`; local executor owns deadlines/safety; semantic bounded tools, leases, telemetry, abort. |
 | Wiki/RAG becomes another authority | Static portal and indexes are generated from Git truth; semantic retrieval remains optional, cited, benchmarked, and non-authoritative. |
+| `CLAUDE.md` becomes another stale manual or loses hard-won discipline | Keep it concise and curated, link to canonical registries, validate stable IDs, and move chronology without deleting its evidence or retractions. |
 | Registries become scattered edit points | Each concept has one owning registry; other catalogs and documentation are generated views. |
 
 ## Final acceptance gates
@@ -1397,12 +1531,16 @@ future evidence work cannot audit a semantic rewrite hidden inside one.
   one another under core.
 - Every package README answers responsibility, public API, dependencies,
   commands, artifacts, and explicit non-responsibilities.
+- A new human or agent can read `CLAUDE.md` once and identify the claim,
+  dependency, migration, live-device safety, evidence-retention, and
+  session-finish rules; every linked ID resolves to its canonical owner.
 
 ### Developer experience
 
-- A clean checkout can run `npm test`, build/serve the trainer, execute a
-  representative model experiment, and complete `device:dry-run` without
-  proprietary assets or a phone.
+- After the single documented `npm ci` bootstrap, a clean checkout can run
+  `npm test`, build/serve the trainer, execute a representative model
+  experiment, and complete `device:dry-run` without proprietary assets or a
+  phone.
 - Root commands and CLI help are authoritative; command discovery does not
   require reading a giant Markdown inventory.
 - Failures identify the package, contract, missing capability/artifact, and
@@ -1433,6 +1571,11 @@ future evidence work cannot audit a semantic rewrite hidden inside one.
 
 - Every search/sweep/probe is classified by research operation and produces a
   versioned result artifact with model/profile/hash/sample/statistical context.
+- Every supported command that prints a quotable claim, comparison, rate,
+  timing, or verdict also prints a stable evidence ID and retains its structured
+  result without manual transcription.
+- `evidence show`, `diff`, `replay`, and `why` make named experiment and device
+  bundles usable for diagnosis; `promote` invokes rather than bypasses Plan 12.
 - Search winners remain model candidates until Plan 12 promotion evidence.
 - A device run retains resolved profile, policy/plan hashes, measurements,
   commands, actuation results, lifecycle events, and grading references.
