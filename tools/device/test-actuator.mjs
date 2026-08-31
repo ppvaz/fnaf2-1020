@@ -8,8 +8,8 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { DeviceActuator, SEAM_SAFE_MS, MONITOR_ANIM_DOWN_MS } from './actuator.mjs';
-import { run as pilotRun } from '../pilottest.mjs';
-import { cohort } from '../closedlooptest.mjs';
+import { run as pilotRun } from '../model/stock-device-pilot.mjs';
+import { cohort } from '../model/closed-loop-reclaim.mjs';
 
 // The actuator only reads sim.frame and sim.maskOn, and writes press/release.
 function stubSim() {

@@ -38,14 +38,35 @@ assert.equal((await mcp.call('actuator.apply', { lease, profileHash, idempotency
 const liveProfile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/hid-mediaprojection.json', import.meta.url)), 'utf8'));
 liveProfile.limits.dryRunOnly = false;
 let sent = 0;
+const liveTransport = {
+  claimLevel: 'DEVICE_MEASURED', send: async () => { sent += 1; },
+  abort: () => {}, releaseAll: () => {},
+};
 const liveService = composeDevice({
   profile: liveProfile, mode: 'live', artifactRoot,
-  actuatorTransport: { claimLevel: 'DEVICE_MEASURED', send: async () => { sent += 1; } },
+  actuatorTransport: liveTransport,
   sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
   detectorRead: () => ({ state: 'UNKNOWN', reason: 'fixture-live-composition' }),
 });
-liveService.startSession();
-const liveResult = await liveService.execute();
-assert.equal(liveResult.claimLevel, 'DEVICE_MEASURED');
-assert.equal(sent, liveService.trajectory().commands.length);
-console.log('device service: profile lease, bounded trajectory, artifact path, and MCP idempotency pass');
+assert.throws(() => liveService.startSession(), /externally qualified DEVICE_MEASURED/);
+assert.equal(sent, 0);
+
+const qualifiedTransport = {
+  send: async () => { sent += 1; }, abort: () => {}, releaseAll: () => {},
+};
+const qualifiedService = composeDevice({
+  profile: liveProfile, mode: 'live', artifactRoot,
+  actuatorTransport: qualifiedTransport,
+  qualification: { schema: 'qualification-v1', evidenceId: 'fixture-live-evidence', claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1', sampleCount: 1, verdict: 'PASS' },
+  sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
+  detectorRead: () => ({ state: 'OBSERVED', value: true, confidence: 1 }),
+  now: () => 0,
+});
+qualifiedService.startSession({ lease: 'qualified-live' });
+const liveCommand = { schema: 'control-command-v1', id: 'qualified-live-command', action: { kind: 'press', control: 'mask' }, requestedAt: { clock: 'device-monotonic-ms', value: 0 }, deadline: { clock: 'device-monotonic-ms', value: 100 }, source: { controller: 'test-live' } };
+const liveResult = await qualifiedService.applyCommand(liveCommand, { idempotencyKey: 'qualified-live-command' });
+assert.equal(liveResult.status, 'SENT');
+assert.equal(sent, 1);
+await qualifiedService.abort('test-stop');
+assert.equal(sent, 1);
+console.log('device service: profile lease, bounded trajectory, observation wiring, cleanup, and claim refusal pass');

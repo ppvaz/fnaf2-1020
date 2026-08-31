@@ -12,27 +12,22 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { run, SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { run, DEFAULT_SEARCH_KNOBS, makeSearchKnobs } from '../model/hid-device-pilot.mjs';
 
-// The phone's proven floor for a contact Fusion cannot miss, and the camera
-// spacing the shipped route uses. Both are device measurements; see
-// docs/device/HID-MULTITOUCH.md.
-export const MIN_CONTACT_MS = 100;
+// The phone's measured contact floor. The Moto g56 accepted 33 ms contacts
+// on camera-select, monitor, mask and hall controls; 100 ms was margin from
+// the swipe-era probe, not a Fusion requirement. See
+// docs/device/HID-MULTITOUCH.md, "every touch control registers at 33 ms".
+export const MIN_CONTACT_MS = 33;
 // Fusion's event loop polls touch at 30 Hz. Distinct controls need one whole
 // poll with neither contact down or they can look like one finger moving.
 export const FUSION_POLL_MS = 33;
-// The 120 ms probe established that the HID stream can deliver 100 ms contacts,
-// but it left only 20 ms released between two different camera buttons. The
-// traced Night 1 run sent every contact cleanly and still produced one plausible
-// missing CAM 07 transition over a full night. Fusion polls touch at 30 Hz, so
-// 20 ms does not guarantee even one released poll between buttons.
-//
-// Use one full 33 ms Fusion poll of released time: 100 + 33 = 133 ms. This is a
-// deliberately small widening (13 ms per slot, 26 ms over a three-camera
-// sweep), and it remains below the emitter's measured 140 ms end-anchored
-// survival ceiling. devicePlan() moves the start earlier and preserves the
-// sweep's end, so the stun bridge across the five-tick mask does not move.
-export const DEVICE_SPACING_MS = MIN_CONTACT_MS + FUSION_POLL_MS;
+// Perfetto + camtrace delivered every camera selection at 100 ms spacing with
+// 33 ms contacts; it was the cleanest of the tested 100/120/160/240 ms runs.
+// This is the active device geometry. It is intentionally independent from
+// FUSION_POLL_MS: 33 ms is the proven contact duration, while 100 ms is the
+// tightest end-to-end sweep spacing currently measured on the phone.
+export const DEVICE_SPACING_MS = 100;
 // The slot the POLICY is validated at. It is deliberately not the device
 // spacing: widening the actuator is a device compensation applied by the
 // emitter, not a new route. Rebuilding the policy at 140 moves its sweeps
@@ -277,7 +272,8 @@ export function build(opts = {}) {
   const o = { bbMode: 'left', deviceSweep: true, pulseLight: true,
               sweepSlotMs: MODEL_SLOT_MS, maskMarginMs: 900, readLatencyMs: 550,
               hallPulseMs: 130, pilotOffset: 10, prophylacticMask: true,
-              attackWindowMs: 10000, ...rest };
+              attackWindowMs: 10000, ...rest,
+              knobs: makeSearchKnobs(rest.knobs) };
   const night = o.night ?? 6;
   const log = captureFn(o);
   const epoch = o.pilotOffset;
@@ -397,11 +393,10 @@ export const MASK_RAISE_GAP_MS = 180;
 export const MASK_RAISE_SHIFT_MS = 60;
 
 // The sweep is the one instruction whose numbers are the *actuator's*, not the
-// simulator's. Each select and its light pulse stay down for the phone-proven
-// 100 ms. The 33 ms after them is fully released, so Fusion gets one complete
-// poll in which no camera button is down before the next button arrives. Emit
-// these device numbers and let `replay` ask the engine whether the night still
-// survives at the actuator the phone actually has.
+// simulator's. Each select/light pulse uses the phone-proven 33 ms contact;
+// the active 100 ms inter-selection spacing leaves 67 ms released. Emit these
+// measured device numbers and let `replay` ask the engine whether the night
+// still survives at the actuator the phone actually has.
 export const SWEEP_SELECT_MS = MIN_CONTACT_MS;
 export const SWEEP_RELEASED_MS = DEVICE_SPACING_MS - SWEEP_SELECT_MS;
 
@@ -594,7 +589,7 @@ function makeRoom(name, lines) {
 // is an actuator instruction, like `sweep`: the policy still contains the two
 // sourced game inputs, while the phone receives one report stream with the
 // measured-safe gap held inside it.
-function foldMaskRaise(name, lines) {
+function foldMaskRaise(name, lines, knobs = DEFAULT_SEARCH_KNOBS) {
   const out = [];
   for (let i = 0; i < lines.length; i++) {
     const cur = lines[i].split(' ');
@@ -620,11 +615,11 @@ function foldMaskRaise(name, lines) {
     // regression the item-11 scratch prototype hit). Default off.
     const sweepNext = lines[i + 2]?.split(' ');
     const canBang = name === 'attack' && isHallRaise &&
-      SEARCH_KNOBS.attackBangGateMs > 0 && sweepNext?.[1] === 'sweep';
+      knobs.attackBangGateMs > 0 && sweepNext?.[1] === 'sweep';
     if (canBang) {
       const lateSweepOff = lines[lines.length - 1].split(' ')[0];
       out.push(`${at} maskraise ${MASK_RAISE_GAP_MS} hall ${next[2]} bang ` +
-        `${SEARCH_KNOBS.attackBangGateMs} ${sweepNext[0]} ${sweepNext.slice(2).join(' ')} ${lateSweepOff}`);
+        `${knobs.attackBangGateMs} ${sweepNext[0]} ${sweepNext.slice(2).join(' ')} ${lateSweepOff}`);
       i += 2;
     } else {
       out.push(isHallRaise
@@ -675,17 +670,18 @@ export function devicePlan(recipe, {
   deviceSpacingMs = DEVICE_SPACING_MS,
   sweepContactMs = SWEEP_SELECT_MS,
   sweepLastContactMs = null,
+  knobs = recipe.options?.knobs,
 } = {}) {
-  // The actuator's inter-contact spacing. DEVICE_SPACING_MS (133) is the
-  // measured phone; plan 16's device-time experiment (PROGRESS item 13) sweeps
-  // it downward to price what a faster actuator would buy.
+  const resolvedKnobs = makeSearchKnobs(knobs);
+  // The actuator's inter-contact spacing. DEVICE_SPACING_MS (100) is the
+  // tightest spacing accepted cleanly in the current Perfetto/camtrace probe;
+  // plan 16's simulator search below it remains exploratory, not a device
+  // qualification.
   //
   // `sweepContactMs` is the select's own contact length. It defaults to
-  // SWEEP_SELECT_MS (100), the value HID-MULTITOUCH.md's "verified report
-  // sequence" asks for -- but that 100 has margin baked in and the game's own
-  // Fusion cadence is "asserted 30 Hz in eight places and measured never"
-  // (CLAUDE.md). plans/17 probes 33 ms hold + 33 ms release; this lets the
-  // emitter carry the answer.
+  // SWEEP_SELECT_MS (33), measured on every touch control. A base contact below
+  // 50 ms selects the LIGHT_AFTER path, which decouples camera Click from the
+  // light press and is required for the 33 ms camera geometry.
   //
   // `sweepLastContactMs`, when set, lengthens only the final slot's light hold.
   // The sweep's last camera lands most drift-delayed (its start floats while
@@ -778,8 +774,8 @@ export function devicePlan(recipe, {
           x.at < e.at + e.dur);
         if (hall) {
           skip.add(hall);
-          const condition = SEARCH_KNOBS.bangAgeFrames > 0
-            ? ` bangage ${SEARCH_KNOBS.bangAgeFrames}` : '';
+          const condition = resolvedKnobs.bangAgeFrames > 0
+            ? ` bangage ${resolvedKnobs.bangAgeFrames}` : '';
           lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS} ${hall.at - e.at} ${hall.dur}${condition}`);
         } else lines.push(`${e.at} read ${e.dur} ${MASK_GAP_MS}`);
         continue;
@@ -787,7 +783,7 @@ export function devicePlan(recipe, {
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${e.dur}`);
     }
-    out[name] = foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)));
+    out[name] = foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)), resolvedKnobs);
   }
   return out;
 }
@@ -877,7 +873,7 @@ export function replay(plan, { night, seed = 1, worst = false,
         const { cams: camList, contacts } = sweepCams(cams, +contact);
         camList.forEach((n, i) => {
           const st = t + f(i * +spacing);
-          const lightHold = la ? f(contacts[i]) : f(100);
+          const lightHold = la ? f(contacts[i]) : f(MIN_CONTACT_MS);
           at(st, 'press', 'cam:' + n);
           at(st + lightGap, 'press', 'light');
           at(st + lightGap + lightHold, 'release', 'light');
@@ -969,7 +965,7 @@ export function replay(plan, { night, seed = 1, worst = false,
             const { cams: camList, contacts } = sweepCams(d.cams, d.contact);
             camList.forEach((n, i) => {
               const st = sweepAt + f(i * d.spacing);
-              const lightHold = la ? f(contacts[i]) : f(100);
+              const lightHold = la ? f(contacts[i]) : f(MIN_CONTACT_MS);
               at(st, 'press', 'cam:' + n);
               at(st + lightGap, 'press', 'light');
               at(st + lightGap + lightHold, 'release', 'light');
@@ -1015,11 +1011,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   });
   if (process.argv.includes('--device-plan')) {
     // `--device-spacing-ms` emits the three-camera sweep at a spacing other
-    // than the measured-safe DEVICE_SPACING_MS (133). It exists for the
-    // perfect-experiment path (`plans/17`): devicetimesearch.mjs found 113 ms
-    // is the ladder's sweet spot, below the CAM-07 last-flash floor, and the
-    // only way to learn whether the phone can actually hold it is to emit it
-    // and grade a real run. Unset = the shipped, gate-clean 133 ms.
+    // than the active DEVICE_SPACING_MS (100). It exists for the
+    // perfect-experiment path (`plans/17`) and simulator geometry searches.
+    // Unset = the current 100 ms device geometry.
     //
     // `--sweep-last-contact-ms` lengthens only the final slot's light hold --
     // the drift-exposed slot where Toy Chica leaks (ON-DEVICE-VALIDATION.md).

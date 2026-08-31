@@ -20,9 +20,9 @@ function scoreOne(score, cycle, hypothesis, gate) {
  * model; no hidden simulator state is consulted here. The returned decisions
  * form an auditable record of both rejected and selected candidates.
  */
-export function selectCycle(cycles, hypotheses, {
-  constraints, exactGate, score,
-} = {}) {
+/** @param {any} options */
+export function selectCycle(cycles, hypotheses, options = {}) {
+  const { constraints, exactGate, score } = options;
   if (!Array.isArray(cycles) || !cycles.length) invalid('cycles are required');
   if (!Array.isArray(hypotheses) || !hypotheses.length) invalid('hypotheses are required');
   if (typeof exactGate !== 'function') invalid('exactGate callback is required');

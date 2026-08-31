@@ -26,7 +26,7 @@ function rowFor(action, repeat) {
   const at = repeat ? action.offsetMs : action.atMs;
   if (!finite(at) || at < 0) fail(`action ${action.action} has no valid plan time`);
   const mode = action.mode ?? 'tap';
-  const contact = action.contactMs ?? 100;
+  const contact = action.contactMs ?? 33;
   if (mode === 'camdrop')
     return [at, 'camdrop', action.leadMs, action.durationMs, action.tailMs];
   if (mode === 'hall') return [at, 'hall', action.durationMs];

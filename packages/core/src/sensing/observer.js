@@ -19,7 +19,9 @@ export const OBSERVE_INTERVAL = 4;
 
 const MON_UP = 'up', MON_DOWN = 'down';
 
+/** @param {any} value @returns {any} */
 const O = (value) => ({ state: 'OBSERVED', value });
+/** @param {any} reason @returns {any} */
 const U = (reason) => ({ state: 'UNKNOWN', reason });
 
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
@@ -63,7 +65,7 @@ export class Observer {
     this.mangleAudioFalsePositiveRate = mangleAudioFalsePositiveRate;
     this.evtCursor = 0;                      // how much of the event feed is heard
     this.lastCueAt = -Infinity;              // device-frame the last cue became audible
-    this.lastCueType = false;                // 'route' | 'pending' | 'opening'
+    /** @type {any} */ this.lastCueType = false; // 'route' | 'pending' | 'opening'
     this.lastCueId = null;                   // one engine event = one visit cue
     this.audioSeq = 0;
     this.mangleStaticByContext = { office: false, cam11: false };

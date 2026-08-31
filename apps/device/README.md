@@ -20,9 +20,11 @@ The generated session manifest and result bundle are retained under the ignored
 profile; they are never inferred from a policy or conversation.
 
 `composeDevice` is the shared composition factory for fixture and qualification
-profiles. Live composition requires injected ADB/HID and sensor transports with
-an explicit `DEVICE_MEASURED` capability; the stock CLI refuses to invent that
-transport or claim, so hardware qualification must be an operator-owned lane.
+profiles. Live composition requires injected ADB/HID and sensor transports,
+`abort`/`releaseAll`, a `qualification-v1` record with external evidence, and
+an observed sensor→detector result before each command. Transport self-report
+cannot create a `DEVICE_MEASURED` claim; the stock CLI refuses to invent that
+composition, so hardware qualification remains an operator-owned lane.
 
 The optional JSON-RPC/MCP-shaped adapter exposes bounded semantic tools over
 the same service (`devices.list`, `profiles.resolve`, `device.preflight`,

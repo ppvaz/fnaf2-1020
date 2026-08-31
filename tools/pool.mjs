@@ -13,7 +13,7 @@
 // A task is `(mod, fn, optsList)`: each worker imports `mod` once and maps
 // `fn` over its share of `optsList`. Both the options and the return value
 // cross a structured clone, so tasks take and return plain JSON-shaped data --
-// see `summarize` in bbtest.mjs for the shape that implies.
+// see `summarize` in model/reactive-pilot.mjs for the shape that implies.
 import { Worker } from 'node:worker_threads';
 import { availableParallelism } from 'node:os';
 

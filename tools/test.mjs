@@ -108,26 +108,26 @@ const ENGINE = [
   // action layer, and the parameter search harness reproducing the 803feb3
   // ladder on a zero perturbation.
   ['minus7 search', ['minus7/test-search.mjs']],
-  ['bbtest', ['bbtest.mjs', '200', '--assert']],
-  ['bbtest --worst', ['bbtest.mjs', '100', '--worst', '--assert']],
+  ['reactive pilot', ['model/reactive-pilot.mjs', '200', '--assert']],
+  ['reactive pilot --worst', ['model/reactive-pilot.mjs', '100', '--worst', '--assert']],
   // The human-slack budget, measured 2026-08-25: reactive Minus 7 holds
   // 200/200 at +/-60 ms uniform per-input error, 89/200 at +/-100, 0/200 at
   // +/-150. The strategy's human-executability rests on this margin (and on
   // human error correlating rather than being iid -- plans/04), so hold the
   // floor of the bracket. If this flips, the human-viability picture changed.
-  ['bbtest jitter 60', ['bbtest.mjs', '200', '--jitter=60', '--assert']],
+  ['reactive pilot jitter 60', ['model/reactive-pilot.mjs', '200', '--jitter=60', '--assert']],
   // The pilot asserts one narrow claim, not survival: Balloon Boy never
   // reaches the office, and no Foxy death follows him taking the lights.
-  ['pilottest', ['pilottest.mjs', '200', '--vent', '--sync', '--assert']],
-  ['pilottest --worst', ['pilottest.mjs', '100', '--vent', '--sync', '--worst', '--assert']],
-  ['pilottest --guard', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync', '--assert-guard']],
+  ['stock device pilot', ['model/stock-device-pilot.mjs', '200', '--vent', '--sync', '--assert']],
+  ['stock device pilot --worst', ['model/stock-device-pilot.mjs', '100', '--vent', '--sync', '--worst', '--assert']],
+  ['stock device pilot --guard', ['model/stock-device-pilot.mjs', '200', '--night=6', '--vent', '--sync', '--assert-guard']],
   // The sparse-left Night 7 candidate is an aligned simulator contract, not a
   // device clear. Its explicit pilot offset keeps the phase dependency visible.
-  ['hidpilot sparse-left', ['hidpilottest.mjs', '500', '--night=7', '--sparse-left', '--assert']],
-  ['hidpilot sparse worst', ['hidpilottest.mjs', '200', '--night=7', '--sparse-left', '--worst', '--assert']],
+  ['hidpilot sparse-left', ['model/hid-device-pilot.mjs', '500', '--night=7', '--sparse-left', '--assert']],
+  ['hidpilot sparse worst', ['model/hid-device-pilot.mjs', '200', '--night=7', '--sparse-left', '--worst', '--assert']],
   // The phone-accepted 790 ms sweep invalidates that idealized table. Preserve
   // the rejection until a different policy is consciously modeled and proven.
-  ['hidpilot device reject', ['hidpilottest.mjs', '200', '--night=7', '--sparse-left', '--device-sweep', '--assert-rejected']],
+  ['hidpilot device reject', ['model/hid-device-pilot.mjs', '200', '--night=7', '--sparse-left', '--device-sweep', '--assert-rejected']],
   // The selected Night 6 left-opening route, priced against the actuator the
   // phone actually has. Held at 790 ms it dies -- and not only on stalls: a
   // 47-frame lit sweep 84 times over spends more than night 6's whole 3000
@@ -135,9 +135,9 @@ const ENGINE = [
   // but at the phone's proven 240 ms spacing the stun bridge across the
   // five-tick BB mask still lapses. Both rejections stay until a faster
   // camera actuator is measured on a phone.
-  ['hidpilot n6 device reject', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 device reject', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--assert-rejected']],
-  ['hidpilot n6 pulse reject', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 pulse reject', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=240',
     '--mask-margin-ms=800', '--pilot-offset-ms=217', '--assert-rejected']],
   // The route at the human floor's 350 ms slots: 0/200 at every offset tried
@@ -145,7 +145,7 @@ const ENGINE = [
   // sweep span cannot bridge the five-tick mask. The left-opening architecture
   // cannot be slowed into human compliance; a human-executable night 6 needs a
   // different route shape. If this check ever flips, that is a finding.
-  ['hidpilot n6 human reject', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 human reject', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=350',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--assert-rejected']],
@@ -153,30 +153,30 @@ const ENGINE = [
   // latch, and the centre of the 83-267 ms scheduler-phase window. The device
   // emitter widens those slots to 133 ms by moving the sweep start earlier and
   // preserving its end; recipe replay and the human gate cover that actuator.
-  ['hidpilot n6 target', ['hidpilottest.mjs', '500', '--night=6',
+  ['hidpilot n6 target', ['model/hid-device-pilot.mjs', '500', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--assert']],
-  ['hidpilot n6 target worst', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 target worst', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--worst', '--assert']],
   // Just past the window's upper edge (83-267 ms), so the window is a
   // measurement and not a hope. Below the edge survival is a 1-in-400
   // straggler rather than a clean zero, which is why this control sits above.
-  ['hidpilot n6 off-phase', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 off-phase', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=300',
     '--assert-rejected']],
   // Perfect sourced events only: this guards the visual policy upper bound,
   // while plan 08's forced-miss report explicitly rejects promotion as-is.
-  ['hidpilot vocal bound', ['hidpilottest.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],
+  ['hidpilot vocal bound', ['model/hid-device-pilot.mjs', '200', '--night=7', '--vocal-cam5', '--assert']],
   // The bang-armed policy, and the property that makes it worth having: the
   // CAM 05 read re-syncs the count, so false positives are absorbed. Guard
   // both, because the false-tolerance is the whole argument for it over the
   // counted-vocal policy plan 08 rejected.
-  ['hidpilot bang', ['hidpilottest.mjs', '200', '--night=7', '--bang-cam5', '--assert']],
-  ['hidpilot bang false', ['hidpilottest.mjs', '200', '--night=7', '--bang-cam5',
+  ['hidpilot bang', ['model/hid-device-pilot.mjs', '200', '--night=7', '--bang-cam5', '--assert']],
+  ['hidpilot bang false', ['model/hid-device-pilot.mjs', '200', '--night=7', '--bang-cam5',
     '--false-bang=2', '--assert']],
   // The cue detector's front end, on synthesised signals: the reference
   // samples are game content and live outside the repository.
@@ -446,14 +446,14 @@ const REPORTS = [
   ['androidstalltest', ['androidstalltest.mjs']],
   // The blind schedule, still unjudged: it is what the phone runs today, and
   // it fails the assertion above by construction (200/200 BB->Foxy).
-  ['pilottest blind', ['pilottest.mjs']],
+  ['stock device pilot blind', ['model/stock-device-pilot.mjs']],
   // ...and on the night the device actually selects, where the same schedule
   // reaches about 118 s instead of 48 s and still loses.
-  ['pilottest 6th night', ['pilottest.mjs', '200', '--night=6', '--vent', '--sync']],
+  ['stock device pilot 6th night', ['model/stock-device-pilot.mjs', '200', '--night=6', '--vent', '--sync']],
   // The same night through the measured actuator (launch lateness plus the
   // mask-seam drop). A report, not a check: survival under the model is still
   // a statement about the model.
-  ['pilottest device actuator', ['pilottest.mjs', '200', '--night=6', '--vent',
+  ['stock device pilot actuator', ['model/stock-device-pilot.mjs', '200', '--night=6', '--vent',
     '--sync', '--device-actuator']],
   // The shipped n6 target under the same actuator.
   //
@@ -466,7 +466,7 @@ const REPORTS = [
   // instant, always-right, bidirectional one. The cliff is geometric -- camera
   // stalls lapse, occupants reach the opening, and 177/180 die to the 45-frame
   // office-defense fuse. Read this as the price of LATENESS, not of open loop.
-  ['hidpilot n6 target actuator', ['hidpilottest.mjs', '200', '--night=6',
+  ['hidpilot n6 target actuator', ['model/hid-device-pilot.mjs', '200', '--night=6',
     '--device-sweep', '--pulse-light', '--sweep-slot-ms=120',
     '--mask-margin-ms=900', '--read-latency-ms=480', '--pilot-offset-ms=167',
     '--device-actuator']],
@@ -475,7 +475,7 @@ const REPORTS = [
   // loop whose reads are always wrong HURTS, one that reads inside the flip
   // window causes the desyncs it looks for, and a free perfect one gains
   // nothing either.
-  ['closed-loop reclaim', ['closedlooptest.mjs', '--runs=200']],
+  ['closed-loop reclaim', ['model/closed-loop-reclaim.mjs', '--runs=200']],
   // What a lateness reduction would be worth. Two controls before a table: the
   // zero row must reproduce the exact figure and the 110-300 ms row must
   // reproduce plans/12, so a drifted cell fails instead of being re-read. The
@@ -488,7 +488,7 @@ const REPORTS = [
 
 const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
 
-function runTool(argv) {
+function runTool(argv, { timeoutMs = 120_000, streamLabel = null } = {}) {
   return new Promise((resolve) => {
     const started = Date.now();
     // Most checks are node; the cue front end is stdlib Python, like the rest
@@ -498,24 +498,66 @@ function runTool(argv) {
     const child = spawn(runner, [join(TOOLS, argv[0]), ...argv.slice(1)],
       { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
-    child.stdout.on('data', d => { out += d; });
-    child.stderr.on('data', d => { out += d; });
-    child.on('close', code => resolve({ code, out, ms: Date.now() - started }));
+    let timedOut = false;
+    let settled = false;
+    const stream = (d) => {
+      const text = d.toString();
+      out += text;
+      if (streamLabel) {
+        process.stderr.write(text.split('\n').map((line, i, lines) => {
+          const suffix = i === lines.length - 1 ? '' : '\n';
+          return line ? `      [${streamLabel}] ${line}${suffix}` : suffix;
+        }).join(''));
+      }
+    };
+    child.stdout.on('data', stream);
+    child.stderr.on('data', stream);
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill('SIGTERM');
+      setTimeout(() => child.kill('SIGKILL'), 2_000).unref();
+    }, timeoutMs);
+    child.on('close', code => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      const finalCode = timedOut ? 124 : code;
+      const suffix = timedOut ? `\nTIMEOUT after ${secs(timeoutMs)}\n` : '';
+      resolve({ code: finalCode, out: out + suffix, ms: Date.now() - started, timedOut });
+    });
   });
 }
 
 // Checks report as they land, because the browser group runs for minutes and a
 // silent terminal is indistinguishable from a hung one. The verdict block that
 // follows is in list order, so a run stays diffable against the last one.
-async function runGroup(group, judge, { progress = false, concurrent = true } = {}) {
+async function runGroup(group, judge, { progress = false, concurrent = true, concurrency = 6 } = {}) {
   const one = async ([name, argv]) => {
-    const r = await runTool(argv);
-    if (progress) process.stderr.write(`    ... ${name} finished in ${secs(r.ms)}\n`);
+    if (progress) process.stderr.write(`    ... ${name} started\n`);
+    const timeoutMs = name === 'minus7 search' ? 600_000
+      : name === 'vent reactive' ? 900_000
+      : name === 'reactivetest' ? 300_000
+        : name === 'human gate' ? 240_000
+          : name.startsWith('browser') || name === 'caltest' || name === 'lessontest'
+            ? 360_000 : 180_000;
+    const r = await runTool(argv, {
+      timeoutMs,
+      streamLabel: progress ? name : null,
+    });
+    if (progress) process.stderr.write(`    ... ${name} finished in ${secs(r.ms)}${r.timedOut ? ' (TIMEOUT)' : ''}\n`);
     return r;
   };
   let results;
   if (concurrent) {
-    results = await Promise.all(group.map(one));
+    results = new Array(group.length);
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < group.length) {
+        const index = cursor++;
+        results[index] = await one(group[index]);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, group.length) }, worker));
   } else {
     results = [];
     for (const entry of group) results.push(await one(entry));
@@ -564,7 +606,7 @@ let failed = 0;
 if (only !== 'browser') {
   const engine = extended ? ENGINE : ENGINE.filter(([name]) => !EXTENDED_ENGINE.has(name));
   console.log(extended ? 'engine checks (including extended model sweeps)' : 'engine checks');
-  failed += await runGroup(engine, true);
+  failed += await runGroup(engine, true, { progress: true, concurrent: true });
 }
 
 if (only !== 'engine') {

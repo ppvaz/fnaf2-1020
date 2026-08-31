@@ -90,18 +90,16 @@ for (const [name, lines] of Object.entries(plan)) {
     check(spacingMs === DEVICE_SPACING_MS,
       `${name}: the sweep at +${at} ms spaces selects ${spacingMs} ms apart; ` +
       `${DEVICE_SPACING_MS} ms is the shipped full-poll device geometry`);
-    check(contactMs >= 100,
-      `${name}: the sweep's select is ${contactMs} ms; HID-MULTITOUCH.md's ` +
-      'verified sequence requires 100-120 ms so the 30 Hz Fusion runtime sees it');
+    check(contactMs >= MIN_CONTACT_MS,
+      `${name}: the sweep's select is ${contactMs} ms; the measured device ` +
+      `contact floor is ${MIN_CONTACT_MS} ms`);
     check(spacingMs - contactMs >= MIN_RELEASED_MS,
       `${name}: only ${spacingMs - contactMs} ms released between selects; Fusion ` +
       'polls touch per frame, so back-to-back contacts can read as one finger moving');
     check(leadMs >= 0 && leadMs < contactMs,
       `the light lead is ${leadMs} ms, which does not fall inside the select`);
-    // The pulse inside a held select is deliberately not held to the 100 ms
-    // floor a fresh button press has to clear: 90 ms is the light pulse in the
-    // exact geometry hid-sweep-probe.sh landed 4/4, and test-hid-trace.mjs
-    // records it as the shortest contact this phone has been seen to accept.
+    // A light pulse inside a held select is checked against the same measured
+    // 33 ms floor; the current 33 ms geometry is intentionally explicit.
     check(contactMs - leadMs >= MIN_CONTACT_MS,
       `${name}: leading the light by ${leadMs} ms leaves it ${contactMs - leadMs} ms, ` +
       `under the ${MIN_CONTACT_MS} ms hid-sweep-probe.sh landed`);

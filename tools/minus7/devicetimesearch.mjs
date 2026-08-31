@@ -12,7 +12,7 @@
 //                               adapt to a shorter read latch.
 //   hallPulseMs    130 -> 83    nothing on n2/n5/n6; costs n7 ~15 pt.
 //   recovery Foxy reset beat    +0.5 to +1 pt everywhere. NOT a lever -- the
-//     (SEARCH_KNOBS.attackRstDeltaMs = 7400, a monitor-down hall at b+7.4s
+//     (an attackRstDeltaMs=7400 knob, a monitor-down hall at b+7.4s
 //      straddling the recovery 5 s check) is inert against the wedge.
 //
 //   sweepSlotMs (-> emit spacing) is the ONLY number that moves the ladder:
@@ -37,7 +37,7 @@
 //   node tools/minus7/devicetimesearch.mjs [--runs=600] [--nights=2,3,4,5,6,7]
 import { build, devicePlan, replay } from '../device/recipe.mjs';
 import { jitterPlan } from '../device/human-gate.mjs';
-import { SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { makeSearchKnobs } from '../model/hid-device-pilot.mjs';
 
 const arg = (k, d) => {
   const m = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -52,11 +52,11 @@ function score(cfg, shape) {
   const { readLatencyMs = 550, sweepSlotMs = 120, hallPulseMs = 130,
     recoveryReset = false } = cfg;
   const spacing = Math.max(sweepSlotMs, sweepSlotMs + 13); // emitter only widens
-  SEARCH_KNOBS.attackRstDeltaMs = recoveryReset ? 7400 : 0;
+  const knobs = makeSearchKnobs({ attackRstDeltaMs: recoveryReset ? 7400 : 0 });
   const out = {};
   try {
     for (const night of NIGHTS) {
-      const recipe = build({ night, readLatencyMs, sweepSlotMs, hallPulseMs });
+      const recipe = build({ night, readLatencyMs, sweepSlotMs, hallPulseMs, knobs });
       const plan = devicePlan(recipe, { deviceSpacingMs: spacing });
       // replay needs the SAME latch the plan was built for, or the schedule
       // and the replay diverge.
@@ -68,8 +68,7 @@ function score(cfg, shape) {
       }
       out[night] = +(100 * won / RUNS).toFixed(1);
     }
-  } catch (e) { SEARCH_KNOBS.attackRstDeltaMs = 0; return { err: e.message }; }
-  SEARCH_KNOBS.attackRstDeltaMs = 0;
+  } catch (e) { return { err: e.message }; }
   return out;
 }
 

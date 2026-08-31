@@ -14,3 +14,8 @@ The fixture adapters are hermetic and are used by `device:dry-run` and the
 conformance lane. A legal HID/ADB send is not evidence that the game accepted
 the command. This package does not own policy, scheduling, shell orchestration,
 or live-device authorization.
+
+Profile resolution is fail-closed: the selected sensor format must be listed
+by the detector, and the visual and detector calibration IDs must match. A
+profile with an unbound or incompatible acquisition path is refused before a
+service can actuate.

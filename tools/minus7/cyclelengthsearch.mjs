@@ -17,7 +17,7 @@
 // 803feb3 numbers within noise on every config.
 import { build, devicePlan, idleUntilMs } from '../device/recipe.mjs';
 import { modelGate } from '../device/human-gate.mjs';
-import { run } from '../hidpilottest.mjs';
+import { run } from '../model/hid-device-pilot.mjs';
 import * as C from '@fnaf2-1020/core/mechanics';
 
 const arg = (k, d) => {

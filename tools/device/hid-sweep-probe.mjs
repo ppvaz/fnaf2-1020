@@ -10,7 +10,7 @@
 // is for *batched* `hid delay` macros, not for wall-timed spacing below
 // 240 ms, so the floor has never actually been measured.
 //
-// Usage: node hid-sweep-probe.mjs [spacingMs ...]   (default 240 200 160 120)
+// Usage: node hid-sweep-probe.mjs [spacingMs ...]   (default 240 160 120 100)
 import { pathToFileURL } from 'node:url';
 
 // docs/device/HID-MULTITOUCH.md: the virtual descriptor is 2400x1080 but
@@ -63,7 +63,7 @@ const record = (flags, point) => {
 };
 
 export function stream(spacings, { readyMs = 7000,
-                                   contactMs = 100, lightLeadMs = 0,
+                                   contactMs = 33, lightLeadMs = 0,
                                    heldLight = false, lightTailMs = 50,
                                    lightAfter = false, selectMs = 33, parkMs = 1500,
                                    noLight = false, altLight = false } = {}) {
@@ -157,10 +157,8 @@ export function stream(spacings, { readyMs = 7000,
         continue;
       }
       // A lead puts the light down *inside* the select, which costs the light
-      // exactly that much of its own contact: at the 120 ms spacing the route
-      // needs, the select is pinned at 100 ms and 20 ms is the released gap,
-      // so any positive lead drops the pulse under the 100 ms floor
-      // HID-MULTITOUCH.md's verified sequence asks for. The runner ships a
+      // exactly that much of its own contact: the active 100 ms spacing leaves
+      // 67 ms released after the 33 ms contact. The runner ships a
       // zero lead for that reason and this defaults to it; the old 10 ms form
       // is kept reachable so the recordings taken under it stay reproducible.
       if (lightLeadMs > 0) {
@@ -198,7 +196,7 @@ const DESCRIPTOR = [5,13,9,4,161,1,133,1,9,34,161,0,9,85,21,0,37,2,117,8,149,1,1
   5,1,9,48,38,95,9,117,16,129,2,9,49,38,55,4,129,2,192,192,192];
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const contactMs = Number(process.env.CONTACT_MS || 100);
+  const contactMs = Number(process.env.CONTACT_MS || 33);
   if (!Number.isInteger(contactMs) || contactMs < 10 || contactMs > 200)
     throw new Error('CONTACT_MS must be an integer between 10 and 200');
   const spacings = process.argv.slice(2).map(Number);
@@ -245,7 +243,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   if (noLight && altLight) throw new Error('NO_LIGHT and ALT_LIGHT are mutually exclusive');
   if (heldLight && lightLeadMs > 0)
     throw new Error('HELD_LIGHT holds contact 0 across the sweep; LIGHT_LEAD_MS does not apply');
-  for (const event of stream(spacings.length ? spacings : [240, 200, 160, 120],
+  for (const event of stream(spacings.length ? spacings : [240, 160, 120, 100],
                              { contactMs, lightLeadMs, heldLight, lightTailMs, lightAfter, selectMs, parkMs, noLight, altLight }))
     console.log(JSON.stringify(event));
 }

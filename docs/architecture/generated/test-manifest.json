@@ -6,1081 +6,2105 @@
       "id": "android/cue-helper/test.sh",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "apps/device/test/service.test.js",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "packages/adapters/test/conformance.test.js",
       "lane": "test:unit",
       "owner": "package boundary",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "packages/core/test/contracts.test.js",
       "lane": "test:unit",
       "owner": "@fnaf2-1020/core",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "packages/research/test/experiment.test.js",
       "lane": "test:unit",
       "owner": "package boundary",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "packages/runtime/test/scheduler.test.js",
+      "lane": "test:unit",
+      "owner": "package boundary",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/affected-test.js",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/androidstalltest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/architecture-test.js",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
-    },
-    {
-      "id": "tools/bbtest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 10000,
-      "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/belieftest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/browsertest.mjs",
       "lane": "test:browser:realtime",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 360000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, ms",
+        "sleep(250",
+        "sleep(1500",
+        "sleep(250",
+        "sleep(600",
+        "sleep(1200",
+        "sleep(400",
+        "sleep(200",
+        "sleep(120",
+        "sleep(120",
+        "sleep(150",
+        "sleep(500"
+      ],
+      "sharedResources": [
+        "browser",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/caltest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
-    },
-    {
-      "id": "tools/closedlooptest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 10000,
-      "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, ms",
+        "sleep(250",
+        "sleep(1500",
+        "sleep(200",
+        "sleep(500",
+        "sleep(150",
+        "sleep(150",
+        "sleep(150",
+        "sleep(200",
+        "sleep(200",
+        "sleep(150",
+        "sleep(250"
+      ],
+      "sharedResources": [
+        "browser",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-audio-authority.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "time.sleep(0.01"
+      ],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-bridge-audio-authority.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-build-shadow-windows.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-capture-bt-audio.sh",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-cue.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-esp32-audio-authority.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-evaluate-shadow.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-export-model.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-latency-experiment.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cue/test-pilot-supervisor.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "time.sleep(60",
+        "time.sleep(60",
+        "time.sleep(0.05"
+      ],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cyclecontrollertest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/cycletest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/bench-screencheck.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/build-screencheck.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/sweepcheck.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-actuator.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-bb-cue-state.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-cam11lit.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-camtrace.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-cue-trace-loop.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-death-cause.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-deathchart.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "browser",
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-device-input-gaps.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-drifttrace.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-elegance.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-grade-run-coverage.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-hid-sweep-probe.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-hid-trace.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-hid-walltime.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-human-floor.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-human-gate.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 240000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-index-observations.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-inputtrace.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-intro-card.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-menu.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-minus-toys-jitter.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-minus-toys-margin.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-minus-toys-plan.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-night-matrix.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-plan-interpreter.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-policy-interpreter.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-policy-ir.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-preflight.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-provision-cue-model.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-query-cue-helper.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-recipe.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-region-classify.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-runner-plan.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-screen-map.mjs",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-screencheck.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-screenrecord-capability.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-screenstate.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-select-adb.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-sensor.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "local-http-port"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-session-manifest.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-shell-footguns.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-soak-cue-helper.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-sweepcheck.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-trial-assembly.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-trial-reactive.sh",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-validate-session.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/device/test-watch-calibrate.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
-      "timeoutMs": 30000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/dump/test-aimap.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/dump/test-instances.py",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/estimatortest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/factlinktest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
-    },
-    {
-      "id": "tools/hidpilottest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 10000,
-      "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/hidreporttest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/lessontest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, ms",
+        "sleep(200",
+        "sleep(1500",
+        "sleep(1200",
+        "sleep(200",
+        "sleep(500",
+        "sleep(16000",
+        "sleep(500",
+        "sleep(24000",
+        "sleep(250",
+        "sleep(500",
+        "sleep(47000"
+      ],
+      "sharedResources": [
+        "browser",
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/lightcheck.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, ms",
+        "sleep(200",
+        "sleep(1500",
+        "sleep(120",
+        "sleep(200",
+        "sleep(500",
+        "sleep(1300",
+        "sleep(150",
+        "sleep(150",
+        "sleep(120",
+        "sleep(120",
+        "sleep(150"
+      ],
+      "sharedResources": [
+        "browser",
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/mangletest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/minus2test.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/minus6test.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/minus7/test-search.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 600000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/minustoystest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/phaseclocktest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/phasetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
-    },
-    {
-      "id": "tools/pilottest.mjs",
-      "lane": "test:unit",
-      "owner": "legacy migration",
-      "timeoutMs": 10000,
-      "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, ms",
+        "setTimeout((",
+        "setTimeout((",
+        "sleep(200",
+        "sleep(1500",
+        "sleep(150",
+        "sleep(200",
+        "sleep(600",
+        "sleep(1300",
+        "sleep(22000",
+        "setTimeout(r, 6",
+        "sleep(400"
+      ],
+      "sharedResources": [
+        "browser",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/plannertest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policy-inspect.js",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policyartifacttest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policyequivalencetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policygrammartest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policysearchtest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/policytest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/propertytest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/reactivetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 300000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/reducedmodeltest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/rvctest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/simtest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/sourcetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/test-docs.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/test-stat.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": false
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/test.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
-      "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": false,
+      "determinismSignals": [
+        "Date.now",
+        "Date.now"
+      ],
+      "fixedSleeps": [
+        "setTimeout((",
+        "setTimeout((",
+        "setTimeout(r, 250"
+      ],
+      "sharedResources": [
+        "browser",
+        "device-transport",
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/tracetest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
-      "fixedSleeps": [],
-      "sharedResources": [],
-      "subprocesses": true
+      "determinismSignals": [],
+      "fixedSleeps": [
+        "setTimeout(r, 250"
+      ],
+      "sharedResources": [
+        "local-http-port"
+      ],
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     },
     {
       "id": "tools/ventreacttest.mjs",
       "lane": "test:unit",
       "owner": "legacy migration",
-      "timeoutMs": 10000,
+      "timeoutMs": 900000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
+      "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": true
+      "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
     }
   ]
 }

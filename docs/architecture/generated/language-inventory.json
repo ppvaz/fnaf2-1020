@@ -3,19 +3,19 @@
   "languages": {
     "Shell": {
       "files": 58,
-      "lines": 10100
+      "lines": 10098
     },
     "JavaScript": {
-      "files": 169,
-      "lines": 28519
+      "files": 171,
+      "lines": 29006
+    },
+    "TypeScript": {
+      "files": 2,
+      "lines": 97
     },
     "C": {
       "files": 4,
       "lines": 2125
-    },
-    "TypeScript": {
-      "files": 1,
-      "lines": 81
     },
     "Assembly": {
       "files": 1,

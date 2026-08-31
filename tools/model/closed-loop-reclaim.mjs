@@ -12,12 +12,12 @@
 // lateness and the mask seam; the supervisor prices what the shell then does
 // about them. Neither is the phone.
 //
-//   node tools/closedlooptest.mjs                 # the reclaim table
-//   node tools/closedlooptest.mjs --controls      # the controls, night 6
-//   node tools/closedlooptest.mjs --runs=500
+//   node tools/model/closed-loop-reclaim.mjs                 # the reclaim table
+//   node tools/model/closed-loop-reclaim.mjs --controls      # the controls, night 6
+//   node tools/model/closed-loop-reclaim.mjs --runs=500
 import { pathToFileURL } from 'node:url';
-import { run as hidRun } from './hidpilottest.mjs';
-import { run as pilotRun } from './pilottest.mjs';
+import { run as hidRun } from './hid-device-pilot.mjs';
+import { run as pilotRun } from './stock-device-pilot.mjs';
 
 // `hidpilot n6 target` in tools/test.mjs, which is the route plans/12 priced.
 export const N6_TARGET = {

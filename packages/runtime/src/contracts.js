@@ -4,7 +4,8 @@ import { validateClockRef, stableHash } from '@fnaf2-1020/core/contracts';
 export function validateQualification(value) {
   if (!value || value.schema !== 'qualification-v1' || typeof value.policyHash !== 'string' ||
       typeof value.modelHash !== 'string' || !Number.isInteger(value.sampleCount) || value.sampleCount < 1 ||
-      !['PASS', 'FAIL', 'INCONCLUSIVE'].includes(value.verdict))
+      !['PASS', 'FAIL', 'INCONCLUSIVE'].includes(value.verdict) ||
+      typeof value.evidenceId !== 'string' || value.evidenceId.length === 0)
     throw new TypeError('qualification is incomplete');
   return value;
 }

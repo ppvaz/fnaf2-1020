@@ -15,7 +15,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { Bot } from './bbtest.mjs';
+import { Bot } from './model/reactive-pilot.mjs';
 
 export const MINUS6_CYCLE = [
   [0, 'tap', 'monitor'],

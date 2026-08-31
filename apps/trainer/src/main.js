@@ -43,9 +43,10 @@ class App {
 
   bindUI() {
     document.getElementById('menu').addEventListener('click', async (e) => {
-      const b = e.target.closest('[data-mode]');
+      const target = /** @type {any} */ (e.target);
+      const b = target?.closest('[data-mode]');
       if (b) { this.brief(b.dataset.mode); return; }
-      const s = e.target.closest('[data-ui]');
+      const s = target?.closest('[data-ui]');
       if (!s) return;
       if (s.dataset.ui === 'settings') showPanel('settings');
       if (s.dataset.ui === 'about') showPanel('about');
@@ -58,7 +59,7 @@ class App {
     document.getElementById('btn-brief-go').addEventListener('click', () => this.start(this.pendingLesson));
     document.getElementById('btn-brief-back').addEventListener('click', () => { buildMenu(); showPanel('menu'); });
     document.getElementById('btn-next-lesson').addEventListener('click', (e) =>
-      this.brief(e.currentTarget.dataset.next));
+      this.brief(/** @type {any} */ (e.currentTarget).dataset.next));
     document.getElementById('btn-retry-lesson').addEventListener('click', () => this.start(this.modeKey));
     document.getElementById('btn-passed-menu').addEventListener('click', () => { buildMenu(); showPanel('menu'); });
     document.getElementById('btn-resetprogress').addEventListener('click', () => {
@@ -71,16 +72,16 @@ class App {
       note('Layout reset to the shipped defaults.');
     });
     document.getElementById('btn-savemap').addEventListener('click', () => this.saveLayout());
-    const snd = document.getElementById('opt-sound');
+    const snd = /** @type {any} */ (document.getElementById('opt-sound'));
     snd.checked = this.settings.sound;
     snd.addEventListener('change', () => { this.settings.sound = snd.checked; this.audio.enabled = snd.checked; saveSettings(this.settings); });
-    const hp = document.getElementById('opt-haptics');
+    const hp = /** @type {any} */ (document.getElementById('opt-haptics'));
     hp.checked = this.settings.haptics;
     hp.addEventListener('change', () => { this.settings.haptics = hp.checked; saveSettings(this.settings); if (hp.checked) buzz(20); });
-    const mt = document.getElementById('opt-metronome');
+    const mt = /** @type {any} */ (document.getElementById('opt-metronome'));
     mt.checked = this.settings.metronome;
     mt.addEventListener('change', () => { this.settings.metronome = mt.checked; saveSettings(this.settings); });
-    const co = document.getElementById('opt-coach');
+    const co = /** @type {any} */ (document.getElementById('opt-coach'));
     co.checked = this.settings.coach;
     co.addEventListener('change', () => { this.settings.coach = co.checked; saveSettings(this.settings); });
 
@@ -118,7 +119,7 @@ class App {
   // Only the dev server can do that; anywhere else we fall back to showing the
   // JSON so it can be copied across by hand.
   async saveLayout() {
-    const ta = document.getElementById('map-json');
+    const ta = /** @type {any} */ (document.getElementById('map-json'));
     try {
       const res = await fetch('/save-layout', {
         method: 'POST',
@@ -139,7 +140,7 @@ class App {
   }
 
   async buildSoundSlots() {
-    const wrap = document.getElementById('sound-slots');
+    const wrap = /** @type {any} */ (document.getElementById('sound-slots'));
     const have = await Assets.listSlots().catch(() => ({}));
     wrap.innerHTML = Assets.SLOTS.map(s => `
       <label class="slot">
@@ -300,7 +301,7 @@ class App {
     this.audio.win();
     this.buzz([20, 60, 20, 60, 45]);
     markPassed(this.mode.id, this.coach?.bestCombo || 0);
-    const i = LESSONS.indexOf(this.mode);
+    const i = LESSONS.indexOf(/** @type {any} */ (this.mode));
     const nxt = LESSONS[i + 1];
     pendingUnlock = nxt?.id || null;
     buildMenu();

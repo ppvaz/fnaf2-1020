@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generateCandidates, runModelExperiment } from '../src/experiment.js';
+import { generateCandidates, replayModelResult, runModelExperiment } from '../src/experiment.js';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const cases = ['model-smoke', 'controller-synthesis', 'cycle-optimization',
@@ -16,5 +16,7 @@ for (const id of cases) {
   assert.equal(result.operation, spec.operation, `${id}: operation`);
   assert.equal(result.claimLevel, 'MODEL_ONLY', `${id}: claim ceiling`);
   assert.ok(result.evaluations.every(item => item.traceHash.startsWith('fnv1a-')), `${id}: trace hashes`);
+  const replay = replayModelResult(spec, { evidenceId: `replay-${id}` });
+  assert.equal(replay.resultHash, replayModelResult(spec, { evidenceId: `replay-${id}` }).resultHash, `${id}: replay hash`);
 }
 console.log(`research reference cases: ${cases.length} shared experiment paths pass`);

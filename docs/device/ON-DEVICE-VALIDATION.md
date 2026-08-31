@@ -340,7 +340,7 @@ frame it already captures, so that path no longer requires one.
 
 ## Simulating the pilot (2026-08-20)
 
-`tools/pilottest.mjs` replays `trial.sh`'s millisecond table in the
+`tools/model/stock-device-pilot.mjs` replays `trial.sh`'s millisecond table in the
 sourced engine with no state reads, so schedule changes can be judged without
 spending a night on the phone. The shipped blind schedule dies **200/200 to
 Foxy**, with Balloon Boy as the cause rather than the recorded killer.
@@ -409,7 +409,7 @@ The chain is gone, under pinned worst-luck RNG as well as normal seeds: Balloon
 Boy never reaches the office, so Foxy never collects a run because of him. The
 blind schedule's Foxy deaths were never really Foxy's.
 
-`node tools/pilottest.mjs 200 --vent --sync --assert` guards exactly that
+`node tools/model/stock-device-pilot.mjs 200 --vent --sync --assert` guards exactly that
 claim and nothing more — it asserts BB never gets in and no Foxy death follows
 him, and deliberately does **not** assert survival. It runs in
 `tools/test.mjs --engine`, normal and `--worst`. The blind schedule fails it
@@ -1174,7 +1174,7 @@ The flip gate and the classifier checkpoint above are the two places
 contained them. Every actuator figure for Nights 2+ was therefore a statement
 about a controller the phone does not run, and plans/12 said so and left the
 number unmeasured. `tools/device/actuator.mjs` now carries `MonitorSupervisor`,
-and `tools/closedlooptest.mjs` prices it. **Everything below is in the
+and `tools/model/closed-loop-reclaim.mjs` prices it. **Everything below is in the
 simulator.** No phone was involved.
 
 ### What was modelled, from the shell rather than from an ideal

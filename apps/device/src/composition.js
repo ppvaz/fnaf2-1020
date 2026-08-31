@@ -3,14 +3,16 @@ import { DeviceControlService } from './service.js';
 import { FixtureActuator, AdbTapActuator, HidActuator } from '@fnaf2-1020/adapters/actuators';
 import { FixtureRawSensor, ScreencapSensor, MediaProjectionSensor, A2dpPcmSensor, FixtureVisualDetector, CueHelperDetector, ScreencheckDetector } from '@fnaf2-1020/adapters/sensors';
 
-function makeActuator(profile, mode, transport) {
+/** @param {any} profile @param {string} mode @param {any} transport @param {any} qualification */
+function makeActuator(profile, mode, transport, qualification) {
   if (mode !== 'live') return new FixtureActuator({ id: profile.actuator });
   if (!transport) throw new Error('live composition requires an injected actuator transport');
-  if (profile.actuator === 'adb-tap') return new AdbTapActuator({ transport, controlMap: profile.controlMap });
-  if (profile.actuator === 'hid-multi') return new HidActuator({ transport, controlMap: profile.controlMap });
+  if (profile.actuator === 'adb-tap') return new AdbTapActuator({ transport, controlMap: profile.controlMap, qualification });
+  if (profile.actuator === 'hid-multi') return new HidActuator({ transport, controlMap: profile.controlMap, qualification });
   throw new Error(`no live actuator composition for ${profile.actuator}`);
 }
 
+/** @param {any} profile @param {string} mode @param {any} transport */
 function makeSensor(profile, mode, transport) {
   if (mode !== 'live') return new FixtureRawSensor();
   if (!transport?.capture) throw new Error('live composition requires an injected sensor capture transport');
@@ -21,6 +23,7 @@ function makeSensor(profile, mode, transport) {
   throw new Error(`no live sensor composition for ${profile.visualSensor}`);
 }
 
+/** @param {any} profile @param {string} mode @param {any} read */
 function makeDetector(profile, mode, read) {
   if (mode !== 'live') return new FixtureVisualDetector();
   if (typeof read !== 'function') throw new Error('live composition requires an injected detector reader');
@@ -29,8 +32,10 @@ function makeDetector(profile, mode, read) {
   throw new Error(`no live detector composition for ${profile.visualDetector}`);
 }
 
-export function composeDevice({ profile, mode = 'dry-run', actuatorTransport, sensorTransport, detectorRead, artifactRoot = 'artifacts', now } = {}) {
-  const actuator = makeActuator(profile, mode, actuatorTransport);
+/** @param {any} options */
+export function composeDevice(options = {}) {
+  const { profile, mode = 'dry-run', actuatorTransport, sensorTransport, detectorRead, qualification, artifactRoot = 'artifacts', now } = options;
+  const actuator = makeActuator(profile, mode, actuatorTransport, qualification);
   const sensor = makeSensor(profile, mode, sensorTransport);
   const detector = makeDetector(profile, mode, detectorRead);
   return new DeviceControlService({ profile, actuator, sensor, detector, mode, artifactRoot, now });

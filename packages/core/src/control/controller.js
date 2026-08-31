@@ -404,8 +404,8 @@ export class VentThreatReactive extends ReactiveController {
     const out = [];
     // Edge bookkeeping for the audio 'pending' cue (first thud): the fact is
     // level for ~20 s, banking must fire once per cue.
-    const ventVal = this.openingFact === 'leftOpening' ? val(obs.bbVent, false) : false;
-    const pendingEdge = ventVal === 'pending' && this.prevVentCue !== 'pending';
+    const ventVal = /** @type {any} */ (this.openingFact === 'leftOpening' ? val(obs.bbVent, false) : false);
+    const pendingEdge = /** @type {any} */ (ventVal) === 'pending' && /** @type {any} */ (this.prevVentCue) !== 'pending';
     this.prevVentCue = ventVal;
     // Coverage bookkeeping: the first frame the mask was observed fully on.
     // (Observation quantization is +-4 frames against a ~48-frame coverage

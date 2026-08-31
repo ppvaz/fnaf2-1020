@@ -4,22 +4,22 @@
 // table. This replays that exact table against the sourced engine, so a
 // schedule change can be judged before it costs a night on the device.
 //
-// Unlike tools/bbtest.mjs -- whose bot reads sim state freely -- this bot is
+// Unlike tools/model/reactive-pilot.mjs -- whose bot reads sim state freely -- this bot is
 // blind by construction. Its only optional input is one left-vent check per
 // cycle, which is what the phone can actually do: flash the left vent light
 // and classify one screenshot. That check is sourced: with the left light on,
 // Balloon Boy standing at the vent opening renders his own view (group 289),
 // distinct from the empty-vent view (group 287).
 //
-//   node tools/pilottest.mjs 200            # blind, as the device runs today
-//   node tools/pilottest.mjs 200 --vent     # with the once-a-cycle vent check
-//   node tools/pilottest.mjs 200 --vent --cycles=80
-//   node tools/pilottest.mjs 200 --night=6  # 6th Night, the night the phone runs
+//   node tools/model/stock-device-pilot.mjs 200            # blind, as the device runs today
+//   node tools/model/stock-device-pilot.mjs 200 --vent     # with the once-a-cycle vent check
+//   node tools/model/stock-device-pilot.mjs 200 --vent --cycles=80
+//   node tools/model/stock-device-pilot.mjs 200 --night=6  # 6th Night, the night the phone runs
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { DeviceActuator } from './device/actuator.mjs';
-import { formatRate } from './stat.mjs';
+import { DeviceActuator } from '../device/actuator.mjs';
+import { formatRate } from '../stat.mjs';
 
 const ms = (v) => Math.round(v / 1000 * C.FPS);
 

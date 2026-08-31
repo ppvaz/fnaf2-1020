@@ -41,6 +41,7 @@ export class Audio {
     return g;
   }
 
+  /** @param {any} type */
   tone(freq, at, dur, v = 0.25, type = 'square') {
     if (!this.ready || !this.enabled) return;
     const o = this.ctx.createOscillator();

@@ -1044,7 +1044,7 @@ export class Sim {
   // groups g494-497, the office roll g623, and finally the camera B=10 write
   // g774. A successful roll therefore becomes a move on the next frame.
   tickPuppet() {
-    const p = this.puppet;
+    const p = /** @type {any} */ (this.puppet);
     const f = this.frame;
 
     if (p.attackAt >= 0) {
@@ -1102,7 +1102,7 @@ export class Sim {
   }
 
   advancePuppet() {
-    const p = this.puppet;
+    const p = /** @type {any} */ (this.puppet);
     if (p.loc === 11) p.loc = 10;
     else if (p.loc === 10) p.loc = 7;
     else if (p.loc === 7) {

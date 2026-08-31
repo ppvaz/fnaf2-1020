@@ -14,7 +14,7 @@ import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { sweep, runPolicy } from './policy.mjs';
 import { POLICIES } from './policybaselines.mjs';
-import { run as bbRun } from './bbtest.mjs';
+import { run as bbRun } from './model/reactive-pilot.mjs';
 import { formatRate } from './stat.mjs';
 
 const RUNS = +(process.env.POLICY_RUNS || 100);
@@ -107,7 +107,7 @@ function assertSuite() {
     if (!cond) problems.push(`${name}${detail ? ` -- ${detail}` : ''}`);
   };
 
-  // 1. Equivalence. The Minus 7 control IS bbtest.mjs's Bot, so at zero slack
+  // 1. Equivalence. The Minus 7 control IS model/reactive-pilot.mjs's Bot, so at zero slack
   //    and with no actuator the adapter must not change a single night.
   //    This is plans/11 work package 2's gate.
   for (let i = 0; i < 25; i++) {

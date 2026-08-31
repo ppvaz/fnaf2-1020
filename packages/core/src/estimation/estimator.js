@@ -229,8 +229,9 @@ export function update(estimator, { facts = {}, nowMs = null, maxAgeMs = {} } = 
 }
 
 /** Record a command; it is not physical truth until reconcile() succeeds. */
-export function send(estimator, { action, expected, sentAtMs = estimator.nowMs,
-  token = null } = {}) {
+/** @param {any} options */
+export function send(estimator, options = {}) {
+  const { action, expected, sentAtMs = estimator.nowMs, token = null } = options;
   checkEstimator(estimator);
   if (!finite(sentAtMs) || sentAtMs < estimator.nowMs)
     throw new RangeError('action sent time is not monotonic');
@@ -247,8 +248,9 @@ export function send(estimator, { action, expected, sentAtMs = estimator.nowMs,
  * leave the pending action and force recovery; matching verification clears
  * only the corresponding control requirement.
  */
-export function reconcile(estimator, { action, value, verifiedAtMs = estimator.nowMs,
-  token = undefined } = {}) {
+/** @param {any} options */
+export function reconcile(estimator, options = {}) {
+  const { action, value, verifiedAtMs = estimator.nowMs, token = undefined } = options;
   checkEstimator(estimator);
   if (!finite(verifiedAtMs) || verifiedAtMs < estimator.nowMs)
     throw new RangeError('verification time is not monotonic');

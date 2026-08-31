@@ -123,6 +123,7 @@
       "actions": [],
       "controls": [],
       "clock": "device-monotonic-ms",
+      "format": "rgba8888",
       "verification": "none",
       "claimLevel": "DEVICE_MEASURED",
       "limitations": [
@@ -135,6 +136,7 @@
       "actions": [],
       "controls": [],
       "clock": "device-monotonic-ms",
+      "format": "rgba8888",
       "verification": "none",
       "claimLevel": "DEVICE_MEASURED",
       "limitations": [
@@ -147,6 +149,7 @@
       "actions": [],
       "controls": [],
       "clock": "audio-sample",
+      "format": "pcm-s16le",
       "verification": "none",
       "claimLevel": "DEVICE_MEASURED",
       "limitations": [
@@ -159,6 +162,7 @@
       "actions": [],
       "controls": [],
       "clock": "host-monotonic-ms",
+      "format": "fixture-rgba-v1",
       "verification": "none",
       "claimLevel": "FIXTURE",
       "limitations": [
@@ -171,6 +175,9 @@
       "actions": [],
       "controls": [],
       "clock": "host-monotonic-ms",
+      "acceptsFormats": [
+        "fixture-rgba-v1"
+      ],
       "verification": "none",
       "claimLevel": "FIXTURE",
       "limitations": [
@@ -183,6 +190,9 @@
       "actions": [],
       "controls": [],
       "clock": "device-monotonic-ms",
+      "acceptsFormats": [
+        "rgba8888"
+      ],
       "verification": "none",
       "claimLevel": "DEVICE_MEASURED",
       "limitations": [
@@ -195,6 +205,9 @@
       "actions": [],
       "controls": [],
       "clock": "device-monotonic-ms",
+      "acceptsFormats": [
+        "rgba8888"
+      ],
       "verification": "none",
       "claimLevel": "DEVICE_MEASURED",
       "limitations": [

@@ -103,7 +103,9 @@ export const LAUNCH_LATE_MAX_MS = 300;
 // is asked whether the cams are up, and a `cams=UP-DESYNCED` answer lowers,
 // verifies, and lowers once more before resuming the cycle from a floor.
 export const MONITOR_ANIM_DOWN_MS = 367; // src/config.js MONITOR_ANIM_DOWN, in ms
-export const TAP_CONTACT_MS = 100;
+// The Moto g56 registers 33 ms contacts on monitor, mask, camera and hall
+// controls. 100 ms was a conservative swipe-era margin, not the device floor.
+export const TAP_CONTACT_MS = 33;
 export const FUSION_POLL_MS = 33;
 // The cue helper's device-local read. CLAUDE.md prices it at 59 ms; the flip
 // gate's own comment says 42 ms for the same call. 59 is the published number
@@ -159,7 +161,7 @@ export class DeviceActuator {
     this.lateWhen = lateWhen;
     this.sim = sim;
     // Its own stream, never sim.rng: a lateness draw must not move the game's
-    // rolls, or no run is comparable to its unwrapped twin (bbtest.mjs keeps
+    // rolls, or no run is comparable to its unwrapped twin (model/reactive-pilot.mjs keeps
     // the same rule for its jitter draws).
     this.rng = new Rng(((seed >>> 0) ^ 0x9e3779b9) >>> 0, worst);
     this.lateMin = lateMinMs;

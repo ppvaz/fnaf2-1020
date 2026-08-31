@@ -1,7 +1,7 @@
 // Plan 16: constrained policy search over the device plan's named timing
 // geometry, evaluated on the exact engine through recipe.build ->
 // devicePlan -> modelGate. Dominance-pruned beam search over a small, sourced-
-// floored parameter space (tools/hidpilottest.mjs SEARCH_KNOBS). No second
+// floored parameter space (tools/model/hid-device-pilot.mjs search knobs). No second
 // simulator, no semantic-action free search (Plan 16 non-goals).
 //
 //   node tools/minus7/paramsearch.mjs --nights=5,6,7 [--runs=400] [--admit=1200]
@@ -13,7 +13,7 @@
 import { execFileSync } from 'node:child_process';
 import { build, devicePlan, idleUntilMs } from '../device/recipe.mjs';
 import { modelGate } from '../device/human-gate.mjs';
-import { SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { makeSearchKnobs } from '../model/hid-device-pilot.mjs';
 import * as C from '@fnaf2-1020/core/mechanics';
 
 const arg = (k, d) => {
@@ -66,8 +66,8 @@ const KNOBS = Object.keys(FLOORS);
 // mean devicePlan()'s own device-validated defaults (spacing 133, contact 100).
 export const SHIPPED_GEOM = { sweepSlotMs: 120, deviceSpacingMs: null, sweepContactMs: null };
 
-function planTextFor(night, geom = SHIPPED_GEOM) {
-  const recipe = build({ night, sweepSlotMs: geom.sweepSlotMs });
+function planTextFor(night, geom = SHIPPED_GEOM, knobs = undefined) {
+  const recipe = build({ night, sweepSlotMs: geom.sweepSlotMs, knobs });
   const plan = devicePlan(recipe,
     geom.deviceSpacingMs != null || geom.sweepContactMs != null
       ? { deviceSpacingMs: geom.deviceSpacingMs, sweepContactMs: geom.sweepContactMs }
@@ -95,11 +95,11 @@ export function evalParams(params, nights, runs, shape, seedStart = 1, geom = SH
   if (params.bangAgeFrames > 0 && !params.preReadHallMs)
     return { params: { ...params }, nights: {}, ok: false,
       error: 'bangAgeFrames may only control an in-read hall reset' };
-  for (const k of KNOBS) SEARCH_KNOBS[k] = params[k] || 0;
+  const knobs = makeSearchKnobs(params);
   const out = { params: { ...params }, nights: {}, ok: true };
   try {
     for (const night of nights) {
-      const text = planTextFor(night, geom);
+      const text = planTextFor(night, geom, knobs);
       // Keep the per-seed vector from modelGate itself so screening and
       // admission share exactly one jitter/replay implementation.
       const gate = modelGate(text, { night, runs, shape, seedStart, outcomes: true });
@@ -113,7 +113,6 @@ export function evalParams(params, nights, runs, shape, seedStart = 1, geom = SH
       out.nights[night] = { won, runs, pct: +(100 * won / runs).toFixed(1), cvar };
     }
   } catch (e) { out.ok = false; out.error = e.message; }
-  for (const k of KNOBS) SEARCH_KNOBS[k] = 0;
   return out;
 }
 

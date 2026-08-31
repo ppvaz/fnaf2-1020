@@ -2,7 +2,7 @@
 
 **Updated:** 2026-08-31
 
-**Plan 22 architecture refactor (active branch `refactor`):** workspace/core
+**Plan 22 architecture refactor (active branch `refactor`, foundation/phase 1):** workspace/core
 boundaries, contract validators and register/spec catalog, trainer move,
 runtime/device service, fixture/transport adapter registry, screencheck package,
 research experiment primitive, evidence CLI, generated catalogs, portal, and
@@ -14,13 +14,36 @@ native screencheck shims are removed; the remaining legacy device runner is
 explicitly named and isolated. Fixture and model outputs remain capped at
 `FIXTURE`/`MODEL_ONLY`.
 
-2026-08-31 final architecture audit: `npm ci`, strict typecheck, unit/contract/
+2026-08-31 foundation audit: `npm ci`, TypeScript-shape typecheck, unit/contract/
 core lanes, catalog and documentation-link checks, native screencheck, trial
 assembly, device dry-run, research model-smoke, and all five browser checks
 pass. The CLI correctly refuses live qualification until an operator injects a
 real `DEVICE_MEASURED` transport. The full legacy engine lane remains an
 explicit diagnostic command; its known red vent-reactive scientific gate is
-not folded into the green edit lane.
+not folded into the green edit lane. This is not a P0–P9 completion claim;
+the current closure matrix is [plans/22-STATUS.md](22-STATUS.md).
+
+2026-08-31 architecture follow-up: the four former test-named pilot modules
+ now live under `tools/model/` with descriptive names, and all production and
+ research imports point at those canonical model modules. Plan-16 searches
+ pass frozen knob assignments through each build instead of mutating a shared
+ `SEARCH_KNOBS` object. Adapter profile resolution now binds detector input
+ formats and matching visual/detector calibration IDs, with refusal fixtures
+ for both mismatch classes. Fast tests and regenerated catalogs remain green;
+ `test:affected` now selects deterministic package-local gates from the diff,
+ and research/evidence bundles verify their retained hashes before retrieval.
+ Live qualification and broader research campaigns remain external/open gates.
+
+2026-08-31 runtime/evidence follow-up: the scheduler now waits on an injected
+monotonic clock, refuses expired deadlines, requires an observed sensor/detector
+measurement in live mode, and runs mandatory abort/release cleanup. Live
+adapters cannot obtain `DEVICE_MEASURED` from transport self-report; they need
+an explicit qualification with evidence. `npm run typecheck` now runs strict TS
+and a checked-JavaScript source lane. Research replay reruns the retained spec
+and compares its result hash; evidence promotion now invokes a Plan 12 gate and
+refuses MODEL_ONLY/fixture bundles. The check runner streams child output with
+bounded concurrency and per-test watchdogs. These changes improve the phase-1
+foundation but do not close P0/P5/P6/P8/P9.
 
 **Overall:** **35%** — 47 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the

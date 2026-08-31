@@ -13,8 +13,8 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { DeviceActuator } from './device/actuator.mjs';
-import { formatRate } from './stat.mjs';
+import { DeviceActuator } from '../device/actuator.mjs';
+import { formatRate } from '../stat.mjs';
 
 const s = C.s;
 const mv = (x) => Math.round(x * C.FPS / 1000);   // ms -> frames
@@ -23,11 +23,9 @@ const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
 
 // Plan 16 (constrained policy search) parameter space: named device-plan
 // timing offsets, each defaulting to a no-op so an unset harness produces the
-// byte-identical 803feb3 plan. `tools/minus7/paramsearch.mjs` mutates this
-// object in-process between build() calls. Every field carries the sourced
-// floor it may not cross, checked in paramsearch's FLOORS table, not here --
-// this file only applies the offset the search chose.
-export const SEARCH_KNOBS = {
+// byte-identical 803feb3 plan. Search callers pass an immutable assignment to
+// each build; no process-global experiment state is shared between runs.
+export const DEFAULT_SEARCH_KNOBS = Object.freeze({
   attackHallDeltaMs: 0,    // leftAttack post-mask reset, off+0.25 -> off+0.25+d  (floor: MASK_ANIM_OFF)
   attackSweepDeltaMs: 0,   // leftAttack recovery sweep, off+0.45 -> off+0.45+d   (ceil: 400-fr Withered budget)
   attackRstDeltaMs: 0,     // leftAttack: an extra hall reset in the recovery, d ms into the wind (0 = none)
@@ -38,7 +36,20 @@ export const SEARCH_KNOBS = {
   preReadHallMs: 0,        // pkg 4: a hall pulse this many ms into leftNormal, before the read (needs openGfFlick; tight-Foxy nights only)
   bangAgeFrames: 0,        // pkg 4: only fire that pulse when the last departure bang is younger than this (0 = unconditional)
   attackBangGateMs: 0,     // item 10: gate leftAttack's mask-off/raise on the observed BB departure bang -- fire it `d` ms after the bang instead of the blind `off = b + 5.02 + phaseMargin(900)`, pulled EARLIER only, never delayed (0 = the blind wait)
-};
+});
+
+export function makeSearchKnobs(overrides = {}) {
+  const knobs = { ...DEFAULT_SEARCH_KNOBS };
+  for (const [key, value] of Object.entries(overrides)) {
+    if (!(key in knobs)) throw new Error(`unknown HID search knob: ${key}`);
+    if (value !== undefined) knobs[key] = value;
+  }
+  for (const [key, value] of Object.entries(knobs)) {
+    if (!Number.isFinite(value) || !Number.isInteger(value))
+      throw new Error(`HID search knob ${key} must be a finite integer`);
+  }
+  return Object.freeze(knobs);
+}
 
 class HidPilot {
   constructor(sim, { bbMode = 'left', cam5Light = true, phaseSafeMask = true,
@@ -51,8 +62,9 @@ class HidPilot {
                      secondBeat = false, maskMarginMs = null,
                      readLatencyMs = 360, hallPulseMs = 83,
                      prophylacticMask = true, actuator = null,
-                     attackWindowMs = 10000 } = {}) {
+                     attackWindowMs = 10000, knobs = DEFAULT_SEARCH_KNOBS } = {}) {
     this.sim = sim;
+    this.knobs = makeSearchKnobs(knobs);
     // Plan 16 structural experiment: the BB-response cycle length. 10 s is the
     // baseline (a 5 s masked hold, a reset+sweep, then a ~3.5 s recovery with a
     // second, weakly-covered Foxy check). A shorter window hands the next
@@ -94,7 +106,7 @@ class HidPilot {
     // a bare contact, and Fusion polls touch per frame: a graded run scheduled
     // ten of them and `grade-minus7.py` found *zero* visible beams. The device
     // profile therefore pays for a contact above the proven 100-120 ms floor.
-    this.hallPulse = s(hallPulseMs / 1000) + mv(SEARCH_KNOBS.hallPulseDeltaMs);
+    this.hallPulse = s(hallPulseMs / 1000) + mv(this.knobs.hallPulseDeltaMs);
     // The device sweep's second monitor-down beat is replaced by winding
     // unless this asks for the ideal route's shape back.
     this.secondBeat = secondBeat;
@@ -183,7 +195,7 @@ class HidPilot {
       ? e + s(6.5) - this.sweepFrames - this.sweepTail : e + s(6.25);
     const openingWindEnd = this.deviceSweep ? openingSweep - 3 : e + s(6.10);
     const openingWindStart = e + (this.deviceSweep ? s(0.60) : s(0.52));
-    if (SEARCH_KNOBS.openGfFlick && this.deviceSweep) {
+    if (this.knobs.openGfFlick && this.deviceSweep) {
       // pkg 5: the opening is the one cycle with no mask flick, so Golden
       // Freddy spawns at the frame-300 check (g336) and persists into the
       // first steady cycle. Drop the monitor across that check and flick the
@@ -311,12 +323,12 @@ class HidPilot {
     // Golden Freddy (kills on the press) unless the opening/recovery GF-clears
     // hold him absent -- so it is gated on `openGfFlick` and only fires on the
     // tight-Foxy nights (peak AI >= 10).
-    if (mv(SEARCH_KNOBS.preReadHallMs) > 0 && this.prophylacticMask
-        && SEARCH_KNOBS.openGfFlick && C.peakAi((this.sim.opts && this.sim.opts.night) || 6, 'foxy') >= 10) {
+    if (mv(this.knobs.preReadHallMs) > 0 && this.prophylacticMask
+        && this.knobs.openGfFlick && C.peakAi((this.sim.opts && this.sim.opts.night) || 6, 'foxy') >= 10) {
       // This is a device-plan action, not an abstract three-frame flash.
       // Keeping the ordinary hall-contact duration means the emitted plan
       // continues to satisfy Fusion's measured contact floor.
-      this.hold(a + mv(SEARCH_KNOBS.preReadHallMs), this.hallPulse, 'light');
+      this.hold(a + mv(this.knobs.preReadHallMs), this.hallPulse, 'light');
     }
     this.hold(lightDown, latch + 3 - lightDown, 'ventL');
     this.at(latch + this.beatShift(), 'left-snapshot', a);
@@ -387,7 +399,7 @@ class HidPilot {
       // covers this cycle. Dropping the flick shortens the beat from 1.48 s
       // to 0.73 s, which is where the wind the 790 ms sweep costs comes from.
       this.tap(b + s(2.72), 'monitor');
-      this.hold(b + s(3.10) + mv(SEARCH_KNOBS.clearHall2DeltaMs), this.hallPulse, 'light');
+      this.hold(b + s(3.10) + mv(this.knobs.clearHall2DeltaMs), this.hallPulse, 'light');
       // The hall pulse is a 130 ms contact on the phone, so the raise it is
       // meant to precede has to clear it, and CAM 11 has to clear the raise's
       // 204 ms animation after that.
@@ -446,14 +458,14 @@ class HidPilot {
       this.tap(resultAt + s(0.02), 'mask');
     // The shift moves the mask-off later, never earlier -- rm_floor floors the
     // attack past its own mask press, so a late read extends the hold.
-    const off = b + s(5.02) + phaseMargin + mv(SEARCH_KNOBS.phaseMarginDeltaMs);
+    const off = b + s(5.02) + phaseMargin + mv(this.knobs.phaseMarginDeltaMs);
     this.tap(off, 'mask');
     // The hall press is queued before the simultaneous monitor raise. It
     // therefore resets Foxy during the raise frame without spending another
     // 120 ms before the recovery sweep.
-    this.hold(off + s(0.25) + mv(SEARCH_KNOBS.attackHallDeltaMs), this.hallPulse, 'light');
-    this.tap(off + s(0.25) + mv(SEARCH_KNOBS.attackHallDeltaMs), 'monitor');
-    const end = this.flashTargets(off + s(0.45) + mv(SEARCH_KNOBS.attackSweepDeltaMs));
+    this.hold(off + s(0.25) + mv(this.knobs.attackHallDeltaMs), this.hallPulse, 'light');
+    this.tap(off + s(0.25) + mv(this.knobs.attackHallDeltaMs), 'monitor');
+    const end = this.flashTargets(off + s(0.45) + mv(this.knobs.attackSweepDeltaMs));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
     const W = this.attackWindow;
@@ -466,7 +478,7 @@ class HidPilot {
     // Plan 16 pkg 4 lever: an extra Foxy reset in the recovery, decoupled from
     // the masked block. Straddle the attack cycle's second 5 s check with the
     // monitor down (no Golden Freddy spawn, g336), flash, raise, resume wind.
-    const rstD = mv(SEARCH_KNOBS.attackRstDeltaMs);
+    const rstD = mv(this.knobs.attackRstDeltaMs);
     if (rstD > 0 && this.deviceSweep && hasRecoverySweep) {
       const rst = b + rstD;
       this.hold(windStart, Math.max(1, rst - s(0.05) - windStart), 'wind');
@@ -709,6 +721,7 @@ class HidPilot {
 }
 
 export function run(opts = {}) {
+  const knobs = makeSearchKnobs(opts.knobs);
   const sim = new Sim(Object.assign({ seed: 1, night: 6 }, opts.sim));
   const actuator = opts.deviceActuator
     ? new DeviceActuator(sim, Object.assign(
@@ -716,7 +729,7 @@ export function run(opts = {}) {
           perPress: false },
         opts.deviceActuator === true ? {} : opts.deviceActuator))
     : null;
-  const bot = new HidPilot(sim, Object.assign({}, opts, { actuator }));
+  const bot = new HidPilot(sim, Object.assign({}, opts, { actuator, knobs }));
   while (sim.alive && !sim.won) {
     bot.step();
     sim.tick();

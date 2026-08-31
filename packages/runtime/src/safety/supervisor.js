@@ -2,7 +2,9 @@
 import { validateControlCommand } from '@fnaf2-1020/core/contracts';
 
 export class SafetySupervisor {
-  constructor({ profile, maxActions = 256, dryRun = true } = {}) {
+  /** @param {any} options */
+  constructor(options = {}) {
+    const { profile, maxActions = 256, dryRun = true } = options;
     if (!profile || typeof profile !== 'object') throw new TypeError('supervisor needs a resolved profile');
     if (!Number.isInteger(maxActions) || maxActions < 1) throw new RangeError('maxActions must be positive');
     this.profile = profile;
@@ -22,7 +24,7 @@ export class SafetySupervisor {
     return command;
   }
 
-  abort() { this.aborted = true; }
+  abort(reason = 'operator-abort') { this.aborted = true; this.abortReason = reason; }
 
   status() {
     return { schema: 'supervisor-status-v1', dryRun: this.dryRun, actions: this.count, aborted: this.aborted, profile: this.profile.id };

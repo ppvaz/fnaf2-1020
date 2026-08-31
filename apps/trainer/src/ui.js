@@ -16,6 +16,9 @@ export class UI {
     this.map = saved.map;
     this.widgets = saved.widgets;
     this.calibrating = false;
+    this.duelMode = false;
+    this.duel = null;
+    this.showCues = false;
     this.reduce = matchMedia('(prefers-reduced-motion: reduce)');
     this.build();
   }

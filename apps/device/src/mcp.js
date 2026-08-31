@@ -48,7 +48,7 @@ export function createActuatorMcp(service, { profiles = [service.profile] } = {}
         if (name === 'device.preflight') return { ok: true, preflight: service.preflight() };
         if (name === 'session.start') return { ok: true, session: service.startSession({ lease: args.lease }) };
         if (name === 'session.status') return { ok: true, status: service.session ? { ...service.session, results: undefined } : { status: 'IDLE' } };
-        if (name === 'session.abort') return { ok: true, result: service.abort(args.reason ?? 'mcp-abort') };
+        if (name === 'session.abort') return { ok: true, result: await service.abort(args.reason ?? 'mcp-abort') };
         if (name === 'sensor.sample') {
           if (typeof service.sensor?.sample !== 'function') return error('UNAVAILABLE', 'sensor is not selected in this composition');
           return { ok: true, sample: await service.sensor.sample(args.request ?? {}) };

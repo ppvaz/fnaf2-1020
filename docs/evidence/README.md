@@ -17,5 +17,11 @@ npm run evidence -- promote RUN_ID
 Large or sensitive media is content-addressed and retained separately. The
 manifest retains profile, policy/model hashes, clocks, capabilities,
 calibrations, semantic commands, actuation results, lifecycle, grading, and
-redaction. Generators may propose graph edges; humans approve support,
-refutation, supersession, retraction, and promotion edges.
+redaction. Research bundles additionally retain content-addressed spec/result
+artifact refs, spec/result/manifest hashes, and a reproducer command; evidence
+lookup verifies these before showing or diffing a run. `replay` reruns that
+retained research spec through the shared deterministic evaluator and compares
+the result hash. `promote` invokes the Plan 12 gate and returns a structured
+refusal until external device evidence and a passing terminal result exist.
+Generators may propose graph edges; humans approve support, refutation,
+supersession, retraction, and promotion edges.

@@ -27,7 +27,7 @@ route is out (item 10 is closed on latency, 2026-08-27).
   `iid` (unchanged default), `common` (one shared per-cycle draw), `correlated`
   (shared draw + `±round(slackMs/3)` iid). `strategysearch.mjs` un-broken — its
   stale `buildCycle` is now `genCycle(KNOBS0, order)` shared from `cyclesearch`.
-- **Pkg 2 (done).** Parameter space is `SEARCH_KNOBS` in `hidpilottest.mjs`
+- **Pkg 2 (done).** Parameter space is `SEARCH_KNOBS` in `hid-device-pilot.mjs`
   (exported, default-inert — the 803feb3 plan is byte-identical with every knob
   0): `attackHallDeltaMs`, `attackSweepDeltaMs`, `attackRstDeltaMs`,
   `clearHall2DeltaMs`, `phaseMarginDeltaMs`, `hallPulseDeltaMs`, `openGfFlick`,
@@ -99,7 +99,7 @@ route is out (item 10 is closed on latency, 2026-08-27).
   and the openGfFlick collapse, the constrained parameter space contains no
   candidate that clears the sub-70 nights without regressing a pinned config.
 - **The "shorter attack cycle" lever is closed — measured, `7176afc`.**
-  `attackWindowMs` is now a threaded parameter (`hidpilottest.mjs`
+  `attackWindowMs` is now a threaded parameter (`hid-device-pilot.mjs`
   `attackWindow` → `recipe.build` → `replay` via the `#cycle attack N`
   header), default 10000 = every plan and pinned test byte-identical.
   `tools/minus7/cyclelengthsearch.mjs` sweeps it 6000–10000 ms against every
@@ -314,7 +314,7 @@ from behind. **This plan does not search that space again.** Plans 05 and 06
 reopen "only after a source-rule change" and there has not been one.
 
 What this plan searches is the layer those searches never touched: the **device
-plan's timing geometry** (`recipe.mjs` `devicePlan()` → `hidpilottest.mjs`
+plan's timing geometry** (`recipe.mjs` `devicePlan()` → `hid-device-pilot.mjs`
 `replay()` → `human-gate.mjs` at 1200 seeds), plus a small, bounded amount of
 new *cross-cycle* policy state. `cyclesearch.mjs` hill-climbs 11 timing knobs but
 against `bbtest`'s abstract cycle and a jitter-maximising fitness, **not** the

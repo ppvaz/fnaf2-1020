@@ -6,7 +6,7 @@ import { isMainThread } from 'node:worker_threads';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
 import { Rng } from '@fnaf2-1020/core/mechanics';
-import { formatRate } from './stat.mjs';
+import { formatRate } from '../stat.mjs';
 
 // The scripted half of the routine, as frame offsets from the cycle anchor.
 // tools/cyclesearch.mjs optimises alternatives to this table; everything the

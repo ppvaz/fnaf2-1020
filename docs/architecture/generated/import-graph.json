@@ -355,9 +355,25 @@
       ]
     },
     {
+      "file": "packages/runtime/test/scheduler.test.js",
+      "imports": [
+        "../src/scheduler/scheduler.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/affected-test.js",
+      "imports": [
+        "node:assert/strict",
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/androidstalltest.mjs",
       "imports": [
-        "./bbtest.mjs"
+        "./model/reactive-pilot.mjs"
       ]
     },
     {
@@ -367,15 +383,6 @@
         "node:fs/promises",
         "node:path",
         "node:url"
-      ]
-    },
-    {
-      "file": "tools/bbtest.mjs",
-      "imports": [
-        "./stat.mjs",
-        "@fnaf2-1020/core/mechanics",
-        "node:url",
-        "node:worker_threads"
       ]
     },
     {
@@ -412,14 +419,6 @@
       ]
     },
     {
-      "file": "tools/closedlooptest.mjs",
-      "imports": [
-        "./hidpilottest.mjs",
-        "./pilottest.mjs",
-        "node:url"
-      ]
-    },
-    {
       "file": "tools/constrainedsearch.mjs",
       "imports": [
         "./minus7/paramsearch.mjs",
@@ -440,7 +439,7 @@
     {
       "file": "tools/cyclesearch.mjs",
       "imports": [
-        "./bbtest.mjs",
+        "./model/reactive-pilot.mjs",
         "./pool.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
@@ -592,7 +591,7 @@
     {
       "file": "tools/device/recipe.mjs",
       "imports": [
-        "../hidpilottest.mjs",
+        "../model/hid-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
       ]
@@ -600,8 +599,8 @@
     {
       "file": "tools/device/test-actuator.mjs",
       "imports": [
-        "../closedlooptest.mjs",
-        "../pilottest.mjs",
+        "../model/closed-loop-reclaim.mjs",
+        "../model/stock-device-pilot.mjs",
         "./actuator.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
@@ -786,6 +785,7 @@
       "file": "tools/evidence.js",
       "imports": [
         "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/research",
         "@fnaf2-1020/runtime",
         "node:fs/promises",
         "node:path",
@@ -801,7 +801,7 @@
     {
       "file": "tools/flicksweep.mjs",
       "imports": [
-        "./pilottest.mjs",
+        "./model/stock-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -829,15 +829,6 @@
       ]
     },
     {
-      "file": "tools/hidpilottest.mjs",
-      "imports": [
-        "./device/actuator.mjs",
-        "./stat.mjs",
-        "@fnaf2-1020/core/mechanics",
-        "node:url"
-      ]
-    },
-    {
       "file": "tools/hidreporttest.mjs",
       "imports": [
         "node:fs",
@@ -848,8 +839,8 @@
     {
       "file": "tools/latenesssweep.mjs",
       "imports": [
-        "./closedlooptest.mjs",
-        "./hidpilottest.mjs",
+        "./model/closed-loop-reclaim.mjs",
+        "./model/hid-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
       ]
@@ -892,7 +883,7 @@
     {
       "file": "tools/minus6test.mjs",
       "imports": [
-        "./bbtest.mjs",
+        "./model/reactive-pilot.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
       ]
@@ -908,7 +899,7 @@
       "imports": [
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
-        "../hidpilottest.mjs",
+        "../model/hid-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -917,7 +908,7 @@
       "imports": [
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
-        "../hidpilottest.mjs"
+        "../model/hid-device-pilot.mjs"
       ]
     },
     {
@@ -932,7 +923,7 @@
       "imports": [
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
-        "../hidpilottest.mjs"
+        "../model/hid-device-pilot.mjs"
       ]
     },
     {
@@ -948,7 +939,7 @@
       "imports": [
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
-        "../hidpilottest.mjs",
+        "../model/hid-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:child_process"
       ]
@@ -989,7 +980,7 @@
         "../constrainedsearch.mjs",
         "../device/human-gate.mjs",
         "../device/recipe.mjs",
-        "../hidpilottest.mjs",
+        "../model/hid-device-pilot.mjs",
         "./paramsearch.mjs",
         "./sim.mjs",
         "@fnaf2-1020/core/mechanics"
@@ -1004,9 +995,44 @@
       ]
     },
     {
+      "file": "tools/model/closed-loop-reclaim.mjs",
+      "imports": [
+        "./hid-device-pilot.mjs",
+        "./stock-device-pilot.mjs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/model/hid-device-pilot.mjs",
+      "imports": [
+        "../device/actuator.mjs",
+        "../stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/model/reactive-pilot.mjs",
+      "imports": [
+        "../stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url",
+        "node:worker_threads"
+      ]
+    },
+    {
+      "file": "tools/model/stock-device-pilot.mjs",
+      "imports": [
+        "../device/actuator.mjs",
+        "../stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/periodicsweep.mjs",
       "imports": [
-        "./pilottest.mjs",
+        "./model/stock-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -1020,7 +1046,7 @@
     {
       "file": "tools/phasesweep.mjs",
       "imports": [
-        "./pilottest.mjs",
+        "./model/stock-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -1032,15 +1058,6 @@
         "node:fs",
         "node:os",
         "node:path"
-      ]
-    },
-    {
-      "file": "tools/pilottest.mjs",
-      "imports": [
-        "./device/actuator.mjs",
-        "./stat.mjs",
-        "@fnaf2-1020/core/mechanics",
-        "node:url"
       ]
     },
     {
@@ -1079,7 +1096,7 @@
     {
       "file": "tools/policybaselines.mjs",
       "imports": [
-        "./bbtest.mjs",
+        "./model/reactive-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -1112,7 +1129,7 @@
     {
       "file": "tools/policytest.mjs",
       "imports": [
-        "./bbtest.mjs",
+        "./model/reactive-pilot.mjs",
         "./policy.mjs",
         "./policybaselines.mjs",
         "./stat.mjs",
@@ -1182,8 +1199,8 @@
     {
       "file": "tools/strategysearch.mjs",
       "imports": [
-        "./bbtest.mjs",
         "./cyclesearch.mjs",
+        "./model/reactive-pilot.mjs",
         "./pool.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"

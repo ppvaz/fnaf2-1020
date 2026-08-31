@@ -9,9 +9,9 @@
 //
 // It is deliberately the same machinery the existing tools already use:
 //
-//   - the run loop is `tools/hidpilottest.mjs`'s `run()` -- schedule rows into
+//   - the run loop is `tools/model/hid-device-pilot.mjs`'s `run()` -- schedule rows into
 //     a frame-sorted queue, drain what is due, `actuator.deliver()`, `tick()`;
-//   - the error streams follow `tools/bbtest.mjs`: a jitter draw taken from
+//   - the error streams follow `tools/model/reactive-pilot.mjs`: a jitter draw taken from
 //     `sim.rng` would move the game's own rolls, so slack and actuator noise
 //     each get their own salted `Rng` and never touch the sim's;
 //   - the device layer is `tools/device/actuator.mjs` unchanged.
@@ -64,7 +64,7 @@ import { DeviceActuator } from './device/actuator.mjs';
 export const ADAPTER_VERSION = 1;
 
 // Its own stream, never the sim's. "slac" -- the same trick human-gate.mjs
-// and bbtest.mjs use so two error models stay comparable on identical luck.
+// and model/reactive-pilot.mjs use so two error models stay comparable on identical luck.
 const SLACK_SALT = 0x736c6163;
 
 const f = (msv) => Math.round(msv * C.FPS / 1000);
@@ -89,10 +89,10 @@ export class PolicyRun {
     //                 currently enforces.
     //   correlated -- one draw shared by every row of a decision (you started
     //                 the whole pass late) plus a third of the magnitude
-    //                 independently per row. This is bbtest.mjs's model.
+    //                 independently per row. This is model/reactive-pilot.mjs's model.
     //   common     -- the shared draw alone: the whole pass translated, with
     //                 no differential error at all. It is the optimistic end
-    //                 of the bracket and it is what bbtest.mjs's published
+    //                 of the bracket and it is what model/reactive-pilot.mjs's published
     //                 jitter curve actually measures at small magnitudes,
     //                 where its integer spread term rounds to zero.
     this.slackModel = slackModel;
@@ -140,7 +140,7 @@ export class PolicyRun {
       tap(frame, act) { self.emit(frame, 0, act); },
       hold(frame, frames, act) { self.emit(frame, frames, act); },
       // Low-level rows, for a policy whose plan already carries separate
-      // down/up rows (bbtest.mjs's `Bot` is the one in this repository).
+      // down/up rows (model/reactive-pilot.mjs's `Bot` is the one in this repository).
       press(frame, act) { self.emit(frame, 0, act); },
       release(frame, act) { self.emit(frame, -1, act); },
       clear() { self.queue.length = 0; },
@@ -294,7 +294,7 @@ export class PolicyRun {
       this.queue.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
       // One wall-timed launch per DELIVERY frame, not per press: everything
       // the runner issues together shares a lateness draw, the way
-      // hidpilottest.mjs beats once per HID macro (perPress: false). This is
+      // model/hid-device-pilot.mjs beats once per HID macro (perPress: false). This is
       // uniform across policies so the actuator column compares like with
       // like -- a policy that batches its rows onto one frame is not thereby
       // given a different error model from one that spreads them.

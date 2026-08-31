@@ -36,8 +36,8 @@
 //   node tools/latenesssweep.mjs --runs=200 --assert
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
-import { run as hidRun } from './hidpilottest.mjs';
-import { N6_TARGET, NIGHTS } from './closedlooptest.mjs';
+import { run as hidRun } from './model/hid-device-pilot.mjs';
+import { N6_TARGET, NIGHTS } from './model/closed-loop-reclaim.mjs';
 
 const seedOf = (i) => (i * 2246822519) >>> 0;
 const frames = (ms) => Math.round(ms / 1000 * C.FPS);

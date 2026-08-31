@@ -88,7 +88,7 @@ export class PhaseClockEstimator {
     this.samples = [];
     this.nextIndex = 0;
     this.lastReceivedMs = null;
-    this.state = PHASE_STATES.UNLOCKED;
+    /** @type {string} */ this.state = PHASE_STATES.UNLOCKED;
     this.gridParity = null;
     this.paritySource = null;
   }

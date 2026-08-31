@@ -101,7 +101,7 @@ export class CycleController {
     this.reduced = observeReduced(this.reduced, physicalFacts, { frame });
     this.facts = clone(facts);
 
-    const pending = this.estimator.belief.pendingAction;
+    const pending = /** @type {any} */ (this.estimator.belief.pendingAction);
     if (pending) {
       for (const [factName, control] of Object.entries(CONTROL_FACTS)) {
         if (pending.action !== control) continue;
@@ -129,7 +129,9 @@ export class CycleController {
    * UNKNOWN hazard is not silently promoted to clear or threat; the caller can
    * continue observing and replan at the next boundary.
    */
-  plan({ exactGate, score } = {}) {
+  /** @param {any} options */
+  plan(options = {}) {
+    const { exactGate, score } = options;
     if (typeof exactGate !== 'function' || typeof score !== 'function')
       fail('exactGate and score callbacks are required');
     if (this.activeCycleId && this.reduced.frame < this.activeUntilFrame)

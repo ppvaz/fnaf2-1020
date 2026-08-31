@@ -8,7 +8,7 @@
       "version": 1,
       "owner": "core/mechanics",
       "kind": "port",
-      "purpose": "Stable plant-model-v1 boundary for core/mechanics.",
+      "purpose": "Stable plant-model-v1 boundary for core/mechanics; its validator is PlantModel.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -19,8 +19,8 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "PlantModel",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/sourcetest.mjs",
+        "tools/simtest.mjs"
       ]
     },
     {
@@ -29,7 +29,7 @@
       "version": 1,
       "owner": "core/contracts",
       "kind": "data",
-      "purpose": "Stable semantic-control-v1 boundary for core/contracts.",
+      "purpose": "Stable semantic-control-v1 boundary for core/contracts; its validator is validateControlCommand.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -41,7 +41,7 @@
       "runtimeValidation": "validateControlCommand",
       "conformanceFixtures": [
         "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/device/test-policy-interpreter.mjs"
       ]
     },
     {
@@ -50,7 +50,7 @@
       "version": 1,
       "owner": "core/control",
       "kind": "data",
-      "purpose": "Stable policy-program-v1 boundary for core/control.",
+      "purpose": "Stable policy-program-v1 boundary for core/control; its validator is validatePolicy.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -61,8 +61,8 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validatePolicy",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/policygrammartest.mjs",
+        "tools/device/test-policy-ir.mjs"
       ]
     },
     {
@@ -71,7 +71,7 @@
       "version": 1,
       "owner": "core/control",
       "kind": "port",
-      "purpose": "Stable controller-v1 boundary for core/control.",
+      "purpose": "Stable controller-v1 boundary for core/control; its validator is Controller.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -82,8 +82,8 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "Controller",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/reactivetest.mjs",
+        "tools/cyclecontrollertest.mjs"
       ]
     },
     {
@@ -92,7 +92,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "data",
-      "purpose": "Stable trajectory-v1 boundary for runtime.",
+      "purpose": "Stable trajectory-v1 boundary for runtime; its validator is validateTrajectory.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -103,8 +103,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateTrajectory",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "packages/runtime/test/scheduler.test.js"
       ]
     },
     {
@@ -113,7 +112,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "data",
-      "purpose": "Stable qualification-v1 boundary for runtime.",
+      "purpose": "Stable qualification-v1 boundary for runtime; its validator is validateQualification.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -124,8 +123,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateQualification",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "apps/device/test/service.test.js"
       ]
     },
     {
@@ -134,7 +132,7 @@
       "version": 1,
       "owner": "adapters",
       "kind": "data",
-      "purpose": "Stable raw-sample-v1 boundary for adapters.",
+      "purpose": "Stable raw-sample-v1 boundary for adapters; its validator is validateRawSample.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -145,7 +143,6 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateRawSample",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
         "packages/adapters/test/conformance.test.js"
       ]
     },
@@ -155,7 +152,7 @@
       "version": 1,
       "owner": "core/contracts",
       "kind": "data",
-      "purpose": "Stable measurement-v1 boundary for core/contracts.",
+      "purpose": "Stable measurement-v1 boundary for core/contracts; its validator is validateMeasurement.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -176,7 +173,7 @@
       "version": 1,
       "owner": "adapters",
       "kind": "port",
-      "purpose": "Stable detector-v1 boundary for adapters.",
+      "purpose": "Stable detector-v1 boundary for adapters; its validator is Detector.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -187,7 +184,6 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "Detector",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
         "packages/adapters/test/conformance.test.js"
       ]
     },
@@ -197,7 +193,7 @@
       "version": 1,
       "owner": "core/estimation",
       "kind": "data",
-      "purpose": "Stable state-estimate-v1 boundary for core/estimation.",
+      "purpose": "Stable state-estimate-v1 boundary for core/estimation; its validator is validateStateEstimate.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -208,8 +204,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateStateEstimate",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/estimatortest.mjs"
       ]
     },
     {
@@ -218,7 +213,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "port",
-      "purpose": "Stable supervisor-v1 boundary for runtime.",
+      "purpose": "Stable supervisor-v1 boundary for runtime; its validator is Supervisor.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -229,8 +224,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "Supervisor",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/cue/test-pilot-supervisor.py"
       ]
     },
     {
@@ -239,7 +233,7 @@
       "version": 1,
       "owner": "core/timing",
       "kind": "data",
-      "purpose": "Stable clock-v1 boundary for core/timing.",
+      "purpose": "Stable clock-v1 boundary for core/timing; its validator is validateClockRef.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -250,8 +244,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateClockRef",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/phaseclocktest.mjs"
       ]
     },
     {
@@ -260,7 +253,7 @@
       "version": 1,
       "owner": "adapters",
       "kind": "port",
-      "purpose": "Stable actuator-v1 boundary for adapters.",
+      "purpose": "Stable actuator-v1 boundary for adapters; its validator is validateActuationResult.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -271,7 +264,6 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateActuationResult",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
         "packages/adapters/test/conformance.test.js"
       ]
     },
@@ -281,7 +273,7 @@
       "version": 1,
       "owner": "adapters",
       "kind": "data",
-      "purpose": "Stable capability-v1 boundary for adapters.",
+      "purpose": "Stable capability-v1 boundary for adapters; its validator is validateCapability.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -292,7 +284,6 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateCapability",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
         "packages/adapters/test/conformance.test.js"
       ]
     },
@@ -302,7 +293,7 @@
       "version": 1,
       "owner": "adapters",
       "kind": "data",
-      "purpose": "Stable calibration-v1 boundary for adapters.",
+      "purpose": "Stable calibration-v1 boundary for adapters; its validator is validateCalibration.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -313,7 +304,6 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateCalibration",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
         "packages/adapters/test/conformance.test.js"
       ]
     },
@@ -323,7 +313,7 @@
       "version": 1,
       "owner": "apps/device",
       "kind": "data",
-      "purpose": "Stable device-profile-v1 boundary for apps/device.",
+      "purpose": "Stable device-profile-v1 boundary for apps/device; its validator is validateProfile.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -334,8 +324,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateProfile",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "apps/device/test/service.test.js"
       ]
     },
     {
@@ -344,7 +333,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "data",
-      "purpose": "Stable telemetry-event-v1 boundary for runtime.",
+      "purpose": "Stable telemetry-event-v1 boundary for runtime; its validator is validateTelemetry.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -355,8 +344,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateTelemetry",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/factlinktest.mjs"
       ]
     },
     {
@@ -365,7 +353,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "artifact",
-      "purpose": "Stable session-manifest-v1 boundary for runtime.",
+      "purpose": "Stable session-manifest-v1 boundary for runtime; its validator is validateManifest.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -376,8 +364,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateManifest",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/device/test-session-manifest.sh"
       ]
     },
     {
@@ -386,7 +373,7 @@
       "version": 1,
       "owner": "research",
       "kind": "data",
-      "purpose": "Stable experiment-spec-v1 boundary for research.",
+      "purpose": "Stable experiment-spec-v1 boundary for research; its validator is validateExperiment.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -397,8 +384,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateExperiment",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "packages/research/test/experiment.test.js"
       ]
     },
     {
@@ -407,7 +393,7 @@
       "version": 1,
       "owner": "research",
       "kind": "artifact",
-      "purpose": "Stable experiment-result-v1 boundary for research.",
+      "purpose": "Stable experiment-result-v1 boundary for research; its validator is validateExperimentResult.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -418,8 +404,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateExperimentResult",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "packages/research/test/experiment.test.js"
       ]
     },
     {
@@ -428,7 +413,7 @@
       "version": 1,
       "owner": "apps/trainer",
       "kind": "artifact",
-      "purpose": "Stable trainer-trace-v1 boundary for apps/trainer.",
+      "purpose": "Stable trainer-trace-v1 boundary for apps/trainer; its validator is validateTrainerTrace.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -439,8 +424,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateTrainerTrace",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/tracereport.mjs"
       ]
     },
     {
@@ -449,7 +433,7 @@
       "version": 1,
       "owner": "runtime",
       "kind": "data",
-      "purpose": "Stable artifact-ref-v1 boundary for runtime.",
+      "purpose": "Stable artifact-ref-v1 boundary for runtime; its validator is validateArtifactRef.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -460,8 +444,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateArtifactRef",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/evidence.js"
       ]
     },
     {
@@ -470,7 +453,7 @@
       "version": 1,
       "owner": "evidence",
       "kind": "data",
-      "purpose": "Stable claim-evidence-v1 boundary for evidence.",
+      "purpose": "Stable claim-evidence-v1 boundary for evidence; its validator is validateClaimEvidence.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -481,8 +464,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "validateClaimEvidence",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/evidence.js"
       ]
     },
     {
@@ -491,7 +473,7 @@
       "version": 1,
       "owner": "adapters/screencheck",
       "kind": "process",
-      "purpose": "Stable screencheck-process-v1 boundary for adapters/screencheck.",
+      "purpose": "Stable screencheck-process-v1 boundary for adapters/screencheck; its validator is screencheck grammar.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -502,8 +484,8 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "screencheck grammar",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "packages/screencheck/src/screencheck.c",
+        "packages/screencheck/src/screencheck-start.S"
       ]
     },
     {
@@ -512,7 +494,7 @@
       "version": 1,
       "owner": "android/cue-helper",
       "kind": "wire",
-      "purpose": "Stable cue-helper-control-v1 boundary for android/cue-helper.",
+      "purpose": "Stable cue-helper-control-v1 boundary for android/cue-helper; its validator is bounded ASCII codec.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -523,8 +505,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "bounded ASCII codec",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/cue/test-cue.py"
       ]
     },
     {
@@ -533,7 +514,7 @@
       "version": 1,
       "owner": "core/telemetry",
       "kind": "wire",
-      "purpose": "Stable fact-message-v1 boundary for core/telemetry.",
+      "purpose": "Stable fact-message-v1 boundary for core/telemetry; its validator is encodeFactMessage.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -553,7 +534,7 @@
       "version": 1,
       "owner": "firmware",
       "kind": "wire",
-      "purpose": "Stable pcm-udp-v1 boundary for firmware.",
+      "purpose": "Stable pcm-udp-v1 boundary for firmware; its validator is 28-byte header.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -564,8 +545,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "28-byte header",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/cue/test-audio-authority.py"
       ]
     },
     {
@@ -574,7 +554,7 @@
       "version": 1,
       "owner": "apps/device",
       "kind": "wire",
-      "purpose": "Stable hid-executor-v1 boundary for apps/device.",
+      "purpose": "Stable hid-executor-v1 boundary for apps/device; its validator is trajectory JSONL.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -585,8 +565,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "trajectory JSONL",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "tools/device/test-runner-plan.mjs"
       ]
     },
     {
@@ -595,7 +574,7 @@
       "version": 1,
       "owner": "apps/device",
       "kind": "artifact",
-      "purpose": "Stable device-executor-v1 boundary for apps/device.",
+      "purpose": "Stable device-executor-v1 boundary for apps/device; its validator is run bundle.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -606,8 +585,7 @@
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
       "runtimeValidation": "run bundle",
       "conformanceFixtures": [
-        "packages/core/test/contracts.test.js",
-        "packages/adapters/test/conformance.test.js"
+        "apps/device/test/service.test.js"
       ]
     }
   ]

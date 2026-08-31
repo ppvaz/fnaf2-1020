@@ -17,7 +17,7 @@
 // captured at a moment the schedule believed was the office.
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
-import { build, devicePlan, MONITOR_ANIM_UP_MS, RAISE_MARGIN_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS } from './recipe.mjs';
+import { build, devicePlan, MONITOR_ANIM_UP_MS, RAISE_MARGIN_MS, DEVICE_SPACING_MS, MODEL_SLOT_MS, MIN_CONTACT_MS } from './recipe.mjs';
 
 // The sourced constant, not the swipe-era one.
 //
@@ -62,7 +62,7 @@ if (MONITOR_ANIM_UP_MS !== Math.round(C.MONITOR_ANIM_UP * 1000 / 60))
 // plan-level version of the same rule.
 export const OFFICE_INPUT_AFTER_LOWER_MS = 367;
 
-const CONTACT_MS = 100;
+const CONTACT_MS = MIN_CONTACT_MS;
 
 // Walk one cycle and report where the monitor ends up after each instruction.
 // A steady cycle is entered with the cams UP -- its anchor is the press that

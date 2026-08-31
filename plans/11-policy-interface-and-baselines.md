@@ -104,7 +104,7 @@ through the adapter.
 [`tools/policy.mjs`](../tools/policy.mjs) is the adapter. It creates no second
 simulator: it wraps `Sim` construction, a frame-sorted action queue,
 observation privilege, the error models and the terminal report, and the run
-loop is `hidpilottest.mjs`'s (`schedule -> drain -> actuator.deliver() ->
+loop is `hid-device-pilot.mjs`'s (`schedule -> drain -> actuator.deliver() ->
 tick()`). Action duration is defined once — `api.hold(frame, frames, act)` is
 ONE scheduled row and therefore ONE error draw, so a hold keeps its length
 under every error model, which is `human-gate.mjs`'s and

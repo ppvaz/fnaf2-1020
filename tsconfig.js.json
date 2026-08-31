@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true
+  },
+  "include": [
+    "packages/*/src/**/*.js",
+    "apps/device/src/**/*.js",
+    "apps/trainer/src/**/*.js",
+    "apps/trainer/src/**/*.d.ts"
+  ],
+  "exclude": ["node_modules", "dist", "artifacts"]
+}

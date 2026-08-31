@@ -46,6 +46,37 @@ const toolCommands = [...toolsIndex.matchAll(/^\| `([^`]+)` \| ([^|]+) \|/gm)].m
 }));
 const contractRegister = JSON.parse(await readFile(join(ROOT, 'packages/core/contracts/register.json'), 'utf8'));
 const protocols = contractRegister.contracts.filter(item => ['wire', 'process'].includes(item.kind));
+const contractEvidence = {
+  'plant-model-v1': ['tools/sourcetest.mjs', 'tools/simtest.mjs'],
+  'semantic-control-v1': ['packages/core/test/contracts.test.js', 'tools/device/test-policy-interpreter.mjs'],
+  'policy-program-v1': ['tools/policygrammartest.mjs', 'tools/device/test-policy-ir.mjs'],
+  'controller-v1': ['tools/reactivetest.mjs', 'tools/cyclecontrollertest.mjs'],
+  'trajectory-v1': ['packages/runtime/test/scheduler.test.js'],
+  'qualification-v1': ['apps/device/test/service.test.js'],
+  'raw-sample-v1': ['packages/adapters/test/conformance.test.js'],
+  'measurement-v1': ['packages/core/test/contracts.test.js', 'packages/adapters/test/conformance.test.js'],
+  'detector-v1': ['packages/adapters/test/conformance.test.js'],
+  'state-estimate-v1': ['tools/estimatortest.mjs'],
+  'supervisor-v1': ['tools/cue/test-pilot-supervisor.py'],
+  'clock-v1': ['tools/phaseclocktest.mjs'],
+  'actuator-v1': ['packages/adapters/test/conformance.test.js'],
+  'capability-v1': ['packages/adapters/test/conformance.test.js'],
+  'calibration-v1': ['packages/adapters/test/conformance.test.js'],
+  'device-profile-v1': ['apps/device/test/service.test.js'],
+  'telemetry-event-v1': ['tools/factlinktest.mjs'],
+  'session-manifest-v1': ['tools/device/test-session-manifest.sh'],
+  'experiment-spec-v1': ['packages/research/test/experiment.test.js'],
+  'experiment-result-v1': ['packages/research/test/experiment.test.js'],
+  'trainer-trace-v1': ['tools/tracereport.mjs'],
+  'artifact-ref-v1': ['tools/evidence.js'],
+  'claim-evidence-v1': ['tools/evidence.js'],
+  'screencheck-process-v1': ['packages/screencheck/src/screencheck.c', 'packages/screencheck/src/screencheck-start.S'],
+  'cue-helper-control-v1': ['tools/cue/test-cue.py'],
+  'fact-message-v1': ['packages/core/test/fixtures/fact-message-v1.jsonl'],
+  'pcm-udp-v1': ['tools/cue/test-audio-authority.py'],
+  'hid-executor-v1': ['tools/device/test-runner-plan.mjs'],
+  'device-executor-v1': ['apps/device/test/service.test.js'],
+};
 const contractSpecifications = {
   schema: 'contract-specification-catalog-v1',
   generatedFrom: 'packages/core/contracts/register.json',
@@ -55,7 +86,7 @@ const contractSpecifications = {
     version: Number(item.id.match(/-v(\d+)$/)?.[1] ?? 1),
     owner: item.owner,
     kind: item.kind,
-    purpose: `Stable ${item.id} boundary for ${item.owner}.`,
+    purpose: `Stable ${item.id} boundary for ${item.owner}; its validator is ${item.validator}.`,
     nonPurpose: 'Does not grant capabilities beyond the fields and actions explicitly validated by the contract.',
     clockDomains: ['declared-by-payload-or-profile'],
     units: 'Values carry explicit units or are documented by the owning validator.',
@@ -63,17 +94,40 @@ const contractSpecifications = {
     errorBehavior: 'Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.',
     compatibility: 'Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.',
     runtimeValidation: item.validator,
-    conformanceFixtures: item.id === 'fact-message-v1'
-      ? ['packages/core/test/fixtures/fact-message-v1.jsonl']
-      : ['packages/core/test/contracts.test.js', 'packages/adapters/test/conformance.test.js'],
+    conformanceFixtures: contractEvidence[item.id] ?? ['packages/core/test/contracts.test.js'],
   })),
 };
-const tests = sourceFiles.filter(path => /(?:test|check|spec)[^/]*\.(?:mjs|js|py|sh)$/.test(path)).map(path => ({
-  id: relative(ROOT, path), lane: path.includes('browser') || path.includes('realtime') ? 'test:browser:realtime' : path.includes('device') ? 'test:device:dry' : 'test:unit',
-  owner: path.includes('packages/core') ? '@fnaf2-1020/core' : path.includes('packages') ? 'package boundary' : 'legacy migration',
-  timeoutMs: path.includes('browser') ? 30000 : path.includes('device') ? 30000 : 10000,
-  deterministic: true, fixedSleeps: [], sharedResources: [], subprocesses: /(?:\.sh|test-docs|test\.mjs)/.test(path),
-}));
+const tests = [];
+for (const path of sourceFiles.filter(path => /(?:test|check|spec)[^/]*\.(?:mjs|js|py|sh)$/.test(path))) {
+  const source = await readFile(path, 'utf8');
+  const id = relative(ROOT, path);
+  const lane = path.includes('browser') || path.includes('realtime') ? 'test:browser:realtime' : path.includes('device') ? 'test:device:dry' : 'test:unit';
+  const fixedSleeps = [...source.matchAll(/(?:setTimeout|sleep|time\.sleep)\s*\(([^\n)]*)/g)]
+    .map(match => match[0].trim()).slice(0, 12);
+  const nondeterministic = [...source.matchAll(/\b(Math\.random|Date\.now|new Date\(|performance\.now|crypto\.randomUUID)\b/g)]
+    .map(match => match[1]);
+  const sharedResources = [...new Set([
+    ...(source.includes('chrome') || source.includes('CDP') ? ['browser'] : []),
+    ...(source.includes('adb') || source.includes('/dev/') || source.includes('hid') ? ['device-transport'] : []),
+    ...(source.includes('8731') || source.includes('serve.py') ? ['local-http-port'] : []),
+  ])];
+  tests.push({
+    id, lane,
+    owner: path.includes('packages/core') ? '@fnaf2-1020/core' : path.includes('packages') ? 'package boundary' : 'legacy migration',
+    timeoutMs: lane === 'test:browser:realtime' ? 360000
+      : id === 'tools/ventreacttest.mjs' ? 900000
+        : id === 'tools/minus7/test-search.mjs' ? 600000
+        : id === 'tools/reactivetest.mjs' ? 300000
+          : id === 'tools/device/test-human-gate.mjs' ? 240000 : 180000,
+    timeoutSource: 'tools/test.mjs per-test watchdog',
+    deterministic: nondeterministic.length === 0,
+    determinismSignals: nondeterministic,
+    fixedSleeps,
+    sharedResources,
+    subprocesses: /(?:\.sh|test-docs|test\.mjs|spawn\(|execFile)/.test(source),
+    measurement: { status: 'NOT_MEASURED', runs: 0, durationMs: null, flakiness: null },
+  });
+}
 const duplicateResponsibilities = [
   { responsibility: 'canonical mechanics', owner: '@fnaf2-1020/core', legacy: [] },
   { responsibility: 'semantic policy IR', owner: '@fnaf2-1020/core', legacy: ['tools/device/policy-ir.mjs'] },

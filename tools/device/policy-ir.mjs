@@ -2,7 +2,7 @@
 import { build, KNOBS0 } from './minus-toys-plan.mjs';
 import { POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
 
-const rowAction = (row, defaultContactMs = 100) => {
+const rowAction = (row, defaultContactMs = 33) => {
   const [at, kind, action, duration] = row;
   if (kind === 'camdrop')
     return { atMs: at, action: 'monitor', mode: 'camdrop', leadMs: row[2],

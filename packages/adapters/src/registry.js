@@ -15,13 +15,13 @@ const capabilities = [
   freeze({ schema: 'capability-v1', adapter: 'fixture-hid', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'FIXTURE', limitations: ['no physical acceptance claim'] }),
   freeze({ schema: 'capability-v1', adapter: 'adb-tap', actions: ['press', 'release'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['serialized host-mediated input', 'no multitouch'] }),
   freeze({ schema: 'capability-v1', adapter: 'hid-multi', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['requires profile calibration', 'send is not game acceptance'] }),
-  freeze({ schema: 'capability-v1', adapter: 'screencap', actions: [], controls: [], clock: 'device-monotonic-ms', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['raw visual samples only'] }),
-  freeze({ schema: 'capability-v1', adapter: 'mediaprojection', actions: [], controls: [], clock: 'device-monotonic-ms', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['requires MediaProjection permission and retained frame metadata'] }),
-  freeze({ schema: 'capability-v1', adapter: 'a2dp-pcm', actions: [], controls: [], clock: 'audio-sample', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['audio samples do not prove game state'] }),
-  freeze({ schema: 'capability-v1', adapter: 'fixture-visual', actions: [], controls: [], clock: 'host-monotonic-ms', verification: 'none', claimLevel: 'FIXTURE', limitations: ['synthetic samples only'] }),
-  freeze({ schema: 'capability-v1', adapter: 'fixture-detector', actions: [], controls: [], clock: 'host-monotonic-ms', verification: 'none', claimLevel: 'FIXTURE', limitations: ['accepts fixture-rgba-v1 only'] }),
-  freeze({ schema: 'capability-v1', adapter: 'cue-helper-detector', actions: [], controls: [], clock: 'device-monotonic-ms', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['helper loss is UNKNOWN'] }),
-  freeze({ schema: 'capability-v1', adapter: 'screencheck-detector', actions: [], controls: [], clock: 'device-monotonic-ms', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['classifier output is not game acceptance'] }),
+  freeze({ schema: 'capability-v1', adapter: 'screencap', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['raw visual samples only'] }),
+  freeze({ schema: 'capability-v1', adapter: 'mediaprojection', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['requires MediaProjection permission and retained frame metadata'] }),
+  freeze({ schema: 'capability-v1', adapter: 'a2dp-pcm', actions: [], controls: [], clock: 'audio-sample', format: 'pcm-s16le', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['audio samples do not prove game state'] }),
+  freeze({ schema: 'capability-v1', adapter: 'fixture-visual', actions: [], controls: [], clock: 'host-monotonic-ms', format: 'fixture-rgba-v1', verification: 'none', claimLevel: 'FIXTURE', limitations: ['synthetic samples only'] }),
+  freeze({ schema: 'capability-v1', adapter: 'fixture-detector', actions: [], controls: [], clock: 'host-monotonic-ms', acceptsFormats: ['fixture-rgba-v1'], verification: 'none', claimLevel: 'FIXTURE', limitations: ['accepts fixture-rgba-v1 only'] }),
+  freeze({ schema: 'capability-v1', adapter: 'cue-helper-detector', actions: [], controls: [], clock: 'device-monotonic-ms', acceptsFormats: ['rgba8888'], verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['helper loss is UNKNOWN'] }),
+  freeze({ schema: 'capability-v1', adapter: 'screencheck-detector', actions: [], controls: [], clock: 'device-monotonic-ms', acceptsFormats: ['rgba8888'], verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['classifier output is not game acceptance'] }),
   freeze({ schema: 'capability-v1', adapter: 'host-clock', actions: [], controls: [], clock: 'host-monotonic-ms', verification: 'none', claimLevel: 'FIXTURE', limitations: ['clock supplied by composition root'] }),
   freeze({ schema: 'capability-v1', adapter: 'simulator-clock', actions: [], controls: [], clock: 'simulator-frame', verification: 'none', claimLevel: 'MODEL_ONLY', limitations: ['logical time only'] }),
 ];
@@ -44,8 +44,19 @@ export function resolveProfile(profile, { requireCalibration = true } = {}) {
   const sensor = getCapability(profile.visualSensor);
   const detector = getCapability(profile.visualDetector);
   if (!actuator.actions.length) throw new Error(`profile actuator has no actions: ${profile.actuator}`);
-  if (requireCalibration && Object.values(profile.calibrations).some(value => typeof value !== 'string' || !value.length))
-    throw new Error(`profile ${profile.id} contains an unbound calibration`);
+  if (requireCalibration) {
+    for (const key of ['geometry', 'actuator-timing', 'visual', 'detector']) {
+      const value = profile.calibrations[key];
+      if (typeof value !== 'string' || !value.length)
+        throw new Error(`profile ${profile.id} contains an unbound calibration: ${key}`);
+    }
+    if (profile.calibrations.visual !== profile.calibrations.detector)
+      throw new Error(`profile ${profile.id} has incompatible visual/detector calibrations`);
+  }
+  if (typeof sensor.format !== 'string' || !Array.isArray(detector.acceptsFormats) ||
+      !detector.acceptsFormats.includes(sensor.format))
+    throw new Error(`profile ${profile.id} pairs detector ${profile.visualDetector} with ` +
+      `sensor format ${sensor.format ?? 'undeclared'} it cannot consume`);
   if (!profile.controlMap || typeof profile.controlMap !== 'object') throw new Error(`profile ${profile.id} has no semantic control map`);
   for (const control of actuator.controls) {
     const point = profile.controlMap[control];

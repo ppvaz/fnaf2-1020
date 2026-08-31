@@ -41,10 +41,15 @@ export class FixtureActuator extends Actuator {
 }
 
 export class AdbTapActuator extends FixtureActuator {
-  constructor({ transport, controlMap, ...options } = {}) {
-    super({ id: 'adb-tap', ...options });
-    if (!transport || typeof transport.tap !== 'function') throw new TypeError('ADB actuator needs an injected transport');
-    this.transport = transport; this.controlMap = Object.freeze({ ...controlMap }); this.claimLevel = transport.claimLevel ?? 'DEVICE_MEASURED';
+  /** @param {any} options */
+  constructor(options = {}) {
+    const { transport, controlMap, qualification = null, ...rest } = options;
+    super({ id: 'adb-tap', ...rest });
+    if (!transport || typeof transport.tap !== 'function' || typeof transport.abort !== 'function' || typeof transport.releaseAll !== 'function')
+      throw new TypeError('ADB actuator needs an injected transport with tap, abort, and releaseAll');
+    this.transport = transport; this.controlMap = Object.freeze({ ...controlMap });
+    this.qualification = qualification;
+    this.claimLevel = qualification?.claimLevel ?? 'FIXTURE';
   }
 
   capabilities() { return { adapter: this.id, verification: 'external', claimLevel: this.claimLevel }; }
@@ -56,13 +61,21 @@ export class AdbTapActuator extends FixtureActuator {
     await this.transport.tap(point.x, point.y);
     return super.apply(command);
   }
+
+  abort(reason) { return this.transport.abort(reason); }
+  releaseAll() { return this.transport.releaseAll(); }
 }
 
 export class HidActuator extends FixtureActuator {
-  constructor({ transport, controlMap, ...options } = {}) {
-    super({ id: 'hid-multi', ...options });
-    if (!transport || typeof transport.send !== 'function') throw new TypeError('HID actuator needs an injected transport');
-    this.transport = transport; this.controlMap = Object.freeze({ ...controlMap }); this.claimLevel = transport.claimLevel ?? 'DEVICE_MEASURED';
+  /** @param {any} options */
+  constructor(options = {}) {
+    const { transport, controlMap, qualification = null, ...rest } = options;
+    super({ id: 'hid-multi', ...rest });
+    if (!transport || typeof transport.send !== 'function' || typeof transport.abort !== 'function' || typeof transport.releaseAll !== 'function')
+      throw new TypeError('HID actuator needs an injected transport with send, abort, and releaseAll');
+    this.transport = transport; this.controlMap = Object.freeze({ ...controlMap });
+    this.qualification = qualification;
+    this.claimLevel = qualification?.claimLevel ?? 'FIXTURE';
   }
 
   capabilities() { return { adapter: this.id, verification: 'external', claimLevel: this.claimLevel }; }
@@ -72,4 +85,7 @@ export class HidActuator extends FixtureActuator {
     await this.transport.send({ command, point: this.controlMap[command.action.control] ?? null });
     return super.apply(command);
   }
+
+  abort(reason) { return this.transport.abort(reason); }
+  releaseAll() { return this.transport.releaseAll(); }
 }

@@ -12,7 +12,17 @@
     },
     {
       "id": "typecheck",
+      "command": "npm run typecheck:ts && npm run typecheck:js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "typecheck:ts",
       "command": "tsc --noEmit -p tsconfig.json",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "typecheck:js",
+      "command": "tsc --noEmit -p tsconfig.js.json",
       "lifecycle": "supported"
     },
     {
@@ -27,7 +37,7 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
       "lifecycle": "supported"
     },
     {
@@ -42,7 +52,7 @@
     },
     {
       "id": "test:affected",
-      "command": "node tools/architecture-test.js",
+      "command": "node tools/affected-test.js",
       "lifecycle": "supported"
     },
     {
@@ -217,8 +227,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/bbtest.mjs",
-      "invocation": "tools/bbtest.mjs [n]",
+      "id": "tools/model/reactive-pilot.mjs",
+      "invocation": "tools/model/reactive-pilot.mjs [n]",
       "kind": "report/check",
       "lifecycle": "supported"
     },
@@ -271,8 +281,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/pilottest.mjs",
-      "invocation": "tools/pilottest.mjs [n]",
+      "id": "tools/model/stock-device-pilot.mjs",
+      "invocation": "tools/model/stock-device-pilot.mjs [n]",
       "kind": "legacy report/check",
       "lifecycle": "legacy"
     },
@@ -379,8 +389,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/closedlooptest.mjs",
-      "invocation": "tools/closedlooptest.mjs",
+      "id": "tools/model/closed-loop-reclaim.mjs",
+      "invocation": "tools/model/closed-loop-reclaim.mjs",
       "kind": "report",
       "lifecycle": "supported"
     },
@@ -877,8 +887,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/hidpilottest.mjs",
-      "invocation": "tools/hidpilottest.mjs [runs] [--night=6]",
+      "id": "tools/model/hid-device-pilot.mjs",
+      "invocation": "tools/model/hid-device-pilot.mjs [runs] [--night=6]",
       "kind": "report/check",
       "lifecycle": "supported"
     },

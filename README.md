@@ -48,9 +48,11 @@ fixture device run resolves a versioned profile, uses semantic commands, emits
 telemetry, and retains a replayable result under ignored `artifacts/`.
 
 Focused lanes include `npm run test:core`, `npm run test:contracts`,
-`npm run policy -- --json`, `npm run evidence -- list`, and `npm run test:device:dry`. Live execution is a
-separate, explicit lane and requires `--live --confirm-live`; the local
-executor owns release, abort, leases, deadlines, and capability checks.
+`npm run typecheck` (strict TypeScript plus checked JavaScript sources),
+`npm run test:affected`, `npm run policy -- --json`, `npm run evidence -- list`,
+and `npm run test:device:dry`. Live execution is a separate, explicit lane and
+requires `--live --confirm-live`; the local executor owns release, abort,
+leases, deadlines, and capability checks.
 
 ## Choose a route
 

@@ -48,9 +48,11 @@ export function evaluateModelCandidate(spec, candidate) {
 export function aggregateExperiment(spec, evaluations) {
   const result = {
     schema: 'experiment-result-v1', operation: spec.operation, verdict: 'MODEL_ONLY',
-    outcome: 'COMPLETED', modelHash: spec.modelHash,
+    outcome: 'COMPLETED', modelHash: spec.modelHash, specHash: stableHash(spec),
     sample: { firstSeed: spec.seeds[0], count: evaluations.length, seeds: evaluations.map(item => item.seed) },
     evaluations, claimLevel: spec.claimLevel,
+    profile: spec.profile ?? 'simulator-fixture',
+    reproducer: { case: spec.id, command: `npm run research -- ${spec.id}`, seeds: [...spec.seeds] },
   };
   return validateExperimentResult(result);
 }
@@ -58,4 +60,21 @@ export function aggregateExperiment(spec, evaluations) {
 export function runModelExperiment(spec) {
   const candidates = generateCandidates(spec);
   return aggregateExperiment(spec, candidates.map(candidate => evaluateModelCandidate(spec, candidate)));
+}
+
+export function makeResultPayload(evaluation, evidenceId) {
+  return {
+    ...evaluation,
+    evidenceId,
+    terminal: evaluation.evaluations[0]?.terminal,
+    eventCount: evaluation.evaluations.reduce((sum, item) => sum + item.eventCount, 0),
+  };
+}
+
+/** Rebuild the exact result payload used by the CLI without mutating artifacts. */
+export function replayModelResult(spec, result) {
+  if (!result || typeof result.evidenceId !== 'string') throw new TypeError('replay needs an evidence id');
+  const evaluation = runModelExperiment(spec);
+  const payload = makeResultPayload(evaluation, result.evidenceId);
+  return { evaluation, payload, resultHash: stableHash(payload) };
 }

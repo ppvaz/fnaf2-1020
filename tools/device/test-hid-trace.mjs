@@ -14,12 +14,10 @@ import { pathToFileURL } from 'node:url';
 
 // Both from device measurement; see docs/device/HID-MULTITOUCH.md.
 //
-// HID-MULTITOUCH.md's verified report sequence: "Hold for at least 100-120 ms
-// so the 30 Hz Fusion runtime sees it." This floor was briefly lowered to 90
-// to accommodate a light pulse that had been built under it -- which is the
-// wrong direction to move a documented device threshold, and is recorded here
-// so it is not done again.
-export const MIN_CONTACT_MS = 100;
+// HID-MULTITOUCH.md's current device result: the Moto g56 registered 33 ms
+// contacts on camera, monitor, mask and hall controls. The former 100-120 ms
+// value was swipe-era margin and is retained only in the historical record.
+export const MIN_CONTACT_MS = 33;
 // Fusion polls touch once per frame, so two different buttons with no released
 // time between them can read as one finger moving from one to the other. The
 // mask press lost that way stuck the mask on and blinded every later read.
@@ -144,22 +142,20 @@ const D = ms => JSON.stringify({ id: 92, command: 'delay', duration: ms });
 
 function selfTest() {
   const rec = (flags, x, y) => [flags, x & 255, x >> 8, y & 255, y >> 8];
-  // Two clean camera selects at 120 ms spacing: the light goes down in the
-  // same report as the select so both contacts get the full 100 ms
-  // HID-MULTITOUCH.md's verified sequence requires, and 20 ms of released time
-  // separates them. Both contacts are named on every release (trap 2).
-  const good = [R(2, rec(3, 100, 200), rec(7, 300, 400)), D(100),
-                R(2, rec(0, 100, 200), rec(4, 300, 400)), D(20),
-                R(2, rec(3, 100, 200), rec(7, 500, 600)), D(100),
+  // Two clean camera selects at 100 ms spacing: 33 ms contacts plus 67 ms
+  // released time. Both contacts are named on every release (trap 2).
+  const good = [R(2, rec(3, 100, 200), rec(7, 300, 400)), D(33),
+                R(2, rec(0, 100, 200), rec(4, 300, 400)), D(67),
+                R(2, rec(3, 100, 200), rec(7, 500, 600)), D(33),
                 R(2, rec(0, 100, 200), rec(4, 500, 600))].join('\n');
   const clean = audit(good);
   if (clean.problems.length) throw new Error('self-test: a clean stream was rejected: ' +
     clean.problems.join('; '));
 
   // The three failures this session actually shipped to the phone.
-  const short = audit([R(1, rec(3, 700, 800)), D(83), R(1, rec(0, 700, 800))].join('\n'));
-  if (!short.problems.some(p => /held 83 ms/.test(p)))
-    throw new Error('self-test: an 83 ms contact was not caught');
+  const short = audit([R(1, rec(3, 700, 800)), D(25), R(1, rec(0, 700, 800))].join('\n'));
+  if (!short.problems.some(p => /held 25 ms/.test(p)))
+    throw new Error('self-test: a 25 ms contact was not caught');
 
   const nogap = audit([R(1, rec(3, 100, 200)), D(100), R(1, rec(0, 100, 200)),
                        R(1, rec(3, 900, 900)), D(100), R(1, rec(0, 900, 900))].join('\n'));

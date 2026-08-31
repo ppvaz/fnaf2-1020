@@ -147,7 +147,7 @@ export function validateExperiment(input) {
 
 export function validateExperimentResult(input) {
   if (!isRecord(input) || input.schema !== 'experiment-result-v1' || typeof input.operation !== 'string' ||
-      typeof input.verdict !== 'string' || typeof input.modelHash !== 'string' || !isRecord(input.sample) ||
+      typeof input.verdict !== 'string' || typeof input.modelHash !== 'string' || typeof input.specHash !== 'string' || !isRecord(input.sample) ||
       typeof input.claimLevel !== 'string') fail('experiment result is incomplete');
   return input;
 }

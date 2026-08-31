@@ -45,4 +45,17 @@ for (const path of production) {
   const source = await readFile(path, 'utf8');
   assert.doesNotMatch(source, /from ['"][^'"]*(?:test|report)[^'"]*['"]/, `${path} imports a test/report module`);
 }
+const operational = [
+  ...production,
+  ...await files(join(ROOT, 'apps')),
+  ...await files(join(ROOT, 'tools')),
+].filter(path => !/(?:^|\/)test[^/]*\.(?:js|mjs|ts)$/.test(path) &&
+                !/(?:^|\/)report[^/]*\.(?:js|mjs|ts)$/.test(path));
+for (const path of operational) {
+  const source = await readFile(path, 'utf8');
+  // `apps/trainer/src/report.js` is presentation code, not a report harness;
+  // only test-named modules are forbidden across operational boundaries.
+  assert.doesNotMatch(source, /(?:from\s+|import\s*\()['"][^'"]*(?:^|\/|[-_.])test[^'"]*['"]/i, `${path} imports a test module`);
+  assert.doesNotMatch(source, /\bSEARCH_KNOBS(?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\[[^\]]+\])\s*=/, `${path} mutates a process-global search knob`);
+}
 console.log(`architecture: ${core.length} core modules and ${production.length} package modules obey boundary checks`);

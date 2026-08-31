@@ -37,7 +37,9 @@ export class SimTruthSensor {
 }
 
 class TransportRawSensor extends Sensor {
-  constructor({ id, format, capture, clock = 'device-monotonic-ms', dimensions = { width: 1, height: 1 }, rate = 60, calibration = `${id}-calibration-v1` } = {}) {
+  /** @param {any} options */
+  constructor(options = {}) {
+    const { id, format, capture, clock = 'device-monotonic-ms', dimensions = { width: 1, height: 1 }, rate = 60, calibration = `${id}-calibration-v1` } = options;
     super();
     if (typeof id !== 'string' || typeof capture !== 'function') throw new TypeError('transport sensor needs an id and capture function');
     this.id = id; this.format = format; this.capture = capture; this.clock = clock;
@@ -69,19 +71,24 @@ class TransportRawSensor extends Sensor {
 }
 
 export class ScreencapSensor extends TransportRawSensor {
+  /** @param {any} options */
   constructor(options = {}) { super({ id: 'screencap', format: 'rgba8888', ...options }); }
 }
 
 export class MediaProjectionSensor extends TransportRawSensor {
+  /** @param {any} options */
   constructor(options = {}) { super({ id: 'mediaprojection', format: 'rgba8888', ...options }); }
 }
 
 export class A2dpPcmSensor extends TransportRawSensor {
+  /** @param {any} options */
   constructor(options = {}) { super({ id: 'a2dp-pcm', format: 'pcm-s16le', dimensions: { width: 1, height: 1 }, ...options }); }
 }
 
 class TransportDetector extends Detector {
-  constructor({ id, read, output = 'measurement-v1' } = {}) {
+  /** @param {any} options */
+  constructor(options = {}) {
+    const { id, read, output = 'measurement-v1' } = options;
     super();
     if (typeof id !== 'string' || typeof read !== 'function') throw new TypeError('transport detector needs an id and read function');
     this.id = id; this.read = read; this.output = output;
@@ -113,9 +120,11 @@ class TransportDetector extends Detector {
 }
 
 export class CueHelperDetector extends TransportDetector {
+  /** @param {any} options */
   constructor(options = {}) { super({ id: 'cue-helper-detector', ...options }); }
 }
 
 export class ScreencheckDetector extends TransportDetector {
+  /** @param {any} options */
   constructor(options = {}) { super({ id: 'screencheck-detector', ...options }); }
 }

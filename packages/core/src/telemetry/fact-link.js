@@ -121,7 +121,7 @@ export function decodeFactMessage(line) {
 
 /** Convert a valid wire message to the estimator's fact-envelope shape. */
 export function messageToFact(message, receivedAtMs) {
-  const valid = validateMessage(message);
+  const valid = /** @type {any} */ (validateMessage(message));
   const received = timestamp('link receipt time', receivedAtMs);
   const fact = valid.state === 'OBSERVED'
     ? { state: 'OBSERVED', value: valid.value }
@@ -164,7 +164,9 @@ export class FactLinkReceiver {
     this.rejected = 0;
   }
 
-  receive(line, { receivedAtMs } = {}) {
+  /** @param {any} options */
+  receive(line, options = {}) {
+    const { receivedAtMs } = options;
     const receipt = timestamp('link receipt time', receivedAtMs);
     let message;
     try { message = decodeFactMessage(line); }
