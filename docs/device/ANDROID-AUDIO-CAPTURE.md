@@ -1,12 +1,13 @@
 # Android internal-audio capture does not match the audible mix
 
-> Current implementation (2026-08-30): the APK no longer attempts this
-> internal capture path. `FNaF 2 Cue Helper` owns visual `MediaProjection`
-> only; `tools/cue/audio-authority.py` owns external rendered-audio facts.
-> The validated host adapter is BlueALSA/A2DP, while an ESP32 receiver may use
-> the same `fact-message-v1` contract with its own calibration profile. The
-> Android findings below are retained as the reason for that boundary and are
-> historical evidence, not the current APK behavior.
+> Current implementation (2026-08-30): the APK no longer uses internal audio
+> capture for game cues. The runtime target is **phone + ESP32**: FNaF 2 sends
+> its complete rendered mix to the ESP32 over A2DP; the ESP32 decodes it and
+> returns PCM to `FNaF 2 Cue Helper` over its `FNAF2-AUDIO` Wi-Fi network. The
+> helper analyzes, optionally records, and can monitor that returned PCM on the
+> phone's built-in speaker. BlueALSA remains an optional host calibration and
+> offline-diagnostic path, not a runtime dependency. The Android findings below
+> are retained as the reason this physical loopback boundary exists.
 
 This note records an FNaF 2 mobile recording artifact reported on the owned
 Android build and independently described by other players. It matters beyond
@@ -583,7 +584,75 @@ tap is simpler and lower-latency than manufacturing an A2DP self-loop. The
 recompiled game remains the clean phone-only route: report `Play sample`
 directly before audio routing.
 
-### Listening while capturing — the host audio setup
+## Phone → ESP32 → same-phone loopback: boundary and prior art
+
+The runtime target is deliberately a physical loop rather than a second
+on-phone capture API:
+
+```
+FNaF 2 on phone -> Bluetooth A2DP -> ESP32 sink
+ESP32 decoded PCM -> Wi-Fi UDP 49710 -> Cue Helper on the same phone
+Cue Helper -> detector / recorder / AudioTrack -> built-in speaker
+```
+
+The word **callback** does not remove the return transport. ESP-IDF invokes
+`a2dp_data_callback()` *inside the ESP32* after its A2DP sink has decoded SBC
+into interleaved signed 16-bit PCM. The callback provides a transient local
+buffer; it is not an Android callback and does not cross back to the phone.
+`send_pcm()` therefore copies that PCM into sequenced, timestamped UDP
+datagrams. The helper receives them on port 49710, validates the packet header
+and sequence, then feeds the same returned samples to the analyzer, WAV sink,
+and optional `AudioTrack` monitor. No DAC/ADC or acoustic microphone leg is
+involved.
+
+Returning the complete stream needs a real data channel. At 44.1 kHz, stereo,
+16-bit, the payload alone is **176,400 bytes/s**; health and detected-event
+facts are tiny enough for a low-bandwidth control link, but human monitoring
+is not. The ESP32's Wi-Fi AP is therefore not redundant with the A2DP callback:
+A2DP carries the game mix *to* the ESP32, while Wi-Fi carries the decoded mix
+back to the phone.
+
+### Internet precedent search — 2026-08-30
+
+No public implementation was located for the exact self-returning topology
+above, especially as a workaround for a device-specific Android fast-mixer
+capture omission. This is a search result, not a claim that nobody has ever
+built one. The individual pieces all have public precedent:
+
+- Espressif documents an A2DP sink whose receive callback exposes decoded
+  audio, and the open-source
+  [ESP32-A2DP](https://github.com/pschatzmann/ESP32-A2DP) library likewise
+  exposes the PCM stream to application code. These establish the
+  `A2DP -> decoded PCM callback` half, not a return to the source phone. See
+  [Espressif's A2DP API](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/bluetooth/esp_a2dp.html).
+- An [ESP32 multi-room implementation](https://www.reddit.com/r/esp32/comments/1vqw4z8/esp32_based_multiroom_audio_system/)
+  uses an ESP32 as Bluetooth ingress and distributes the resulting audio over
+  Wi-Fi/UDP. That is the same bridge shape, but its Wi-Fi consumers are other
+  playback nodes rather than the originating phone.
+- A [Chromecast private-listening build](https://www.reddit.com/r/raspberry_pi/comments/12dtx2x/how_i_set_up_my_chromecast_to_transmit_sound_to/)
+  routes source audio through a Raspberry Pi and back to a phone over Wi-Fi.
+  It establishes the external-receiver-to-phone listening pattern, but the
+  source is a Chromecast, not that same phone.
+- Android network players such as
+  [Aurelay](https://github.com/IshuSinghSE/aurelay) receive raw PCM over the
+  network and render it with Android audio output. That is the final
+  `network PCM -> phone speaker` leg in isolation.
+
+So the building blocks are conventional; their composition here is unusual.
+The project uses it because Android's documented
+[`AudioPlaybackCaptureConfiguration`](https://developer.android.com/reference/android/media/AudioPlaybackCaptureConfiguration.html)
+is a player/policy-filtered capture facility, not a promise of the complete
+post-HAL signal delivered to an external A2DP sink. On the g56 the measured
+FAST and DEEP_BUFFER sibling streams make that distinction load-bearing.
+
+The closest implementation also exposes the main engineering risk: Bluetooth
+Classic and Wi-Fi share the ESP32's 2.4 GHz radio. The multi-room precedent
+above reports enough contention/jitter to split ingress and distribution over
+two microcontrollers. This project keeps one ESP32 for now, so PCM sequence
+numbers, capture timestamps, bounded queues, loss counters, and a startup
+jitter buffer are correctness requirements rather than optional polish.
+
+### Legacy: listening while capturing through the host
 
 The two sound servers must not both manage Bluetooth. WirePlumper keeps this
 PC's own card; BlueALSA owns the phone, exclusively. Persistent config,

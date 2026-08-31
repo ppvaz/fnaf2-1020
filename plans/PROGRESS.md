@@ -254,8 +254,8 @@ natural Night 1 run.** The junk probe run is `n1-minustoys-armprobe-20260830`
 advanced cursor). Full record: `MINUS-3-STRATEGY.md`
 §9 "The `--minimal` plan run twice".
 
-**2. On-device audio cues are dead without root — but the A2DP external mix
-carries them (2026-08-29).** The winding tick and every discrete `Play sample`
+**2. Direct on-device audio capture is dead without root — but the A2DP
+external mix carries the cues (2026-08-29).** The winding tick and every discrete `Play sample`
 cue (BB's laughs, samples 21/23/24) is a SoundPool track on the g56's
 `AUDIO_OUTPUT_FLAG_FAST` mixer, a separate HAL stream `AudioPlaybackCapture`
 never taps (ear + matched filter + `dumpsys media.audio_flinger`). `setprop
@@ -275,14 +275,21 @@ winding-tick phase clock. Full record: `ANDROID-AUDIO-CAPTURE.md`
 §"Discrete SFX are on the fast mixer" and §"The A2DP mix DOES carry the
 fast-mixer SFX".
 
-   **Elevated 2026-08-30 (Pedro): the BlueALSA A2DP external capture is the
-   flagship audio path from now on.** Detector work gates against it, not a
-   future rooted or on-device capture; `plans/08`'s on-device premise stays
-   dead without root. First consumer: Night 2's vent-stage BB/Mangle tracking
-   (`MINUS-3-STRATEGY.md` §9 "Night 2 detection scoping" — Night 2's two mask
-   threats are exactly the two characters with no blackout grace). Open items
-   unchanged: the 2 Hz grid needs a scripted continuous wind, and any
-   absolute-time anchor must expect A2DP's silence-suspend resume gap.
+   **Runtime target updated 2026-08-30 (Pedro): phone + ESP32, with no PC in
+   the live loop.** BlueALSA remains the validated capture proof and optional
+   calibration/offline diagnostic. At runtime the phone sends the game mix by
+   A2DP to `FNAF2 Audio Consumer`; the ESP32's local decoded-PCM callback sends
+   sequenced/timestamped PCM back over its `FNAF2-AUDIO` Wi-Fi AP on UDP 49710;
+   the Cue Helper on that same phone analyzes, records, and optionally monitors
+   it through the built-in speaker. The callback itself crosses no device
+   boundary — Wi-Fi is the required return leg. No exact public precedent for
+   this same-phone loop was located, though every individual leg has precedent;
+   see `ANDROID-AUDIO-CAPTURE.md` §"Phone → ESP32 → same-phone loopback".
+   Receiver-specific calibration remains mandatory. First consumer: Night 2's
+   vent-stage BB/Mangle tracking (`MINUS-3-STRATEGY.md` §9 "Night 2 detection
+   scoping"). Open items unchanged: the 2 Hz grid needs a scripted continuous
+   wind, and any absolute-time anchor must expect A2DP's silence-suspend resume
+   gap plus measured ESP32 Bluetooth/Wi-Fi coexistence jitter.
 
 **Night 2 model pricing (2026-08-30): the existing 10 s shape gates clean on
 the story table, and its binding failure is the Puppet, not BB.**
