@@ -8,8 +8,15 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir "$TMP/bin"
 cat > "$TMP/bin/bluealsa-cli" <<'EOF'
 #!/usr/bin/env bash
-if [ "${MOCK_BLUEALSA_ROUTE:-}" = ready ] && [ "${1:-}" = info ]; then
-  exit 0
+if [ "${1:-}" = info ]; then
+  if [ "${MOCK_BLUEALSA_ROUTE:-}" = ready ]; then
+    printf 'Running: true\n'
+    exit 0
+  fi
+  if [ "${MOCK_BLUEALSA_ROUTE:-}" = stopped ]; then
+    printf 'Running: false\n'
+    exit 0
+  fi
 fi
 exit 1
 EOF
@@ -19,6 +26,10 @@ MAC=10:2B:1C:DA:18:2C
 ready="$(MOCK_BLUEALSA_ROUTE=ready PATH="$TMP/bin:$PATH" \
   "$HERE/capture-bt-audio.sh" --check "$MAC")"
 [[ "$ready" == audio-route=READY* ]]
+
+stopped="$(MOCK_BLUEALSA_ROUTE=stopped PATH="$TMP/bin:$PATH" \
+  "$HERE/capture-bt-audio.sh" --check "$MAC" 2>&1 || true)"
+[[ "$stopped" == audio-route=UNKNOWN\ reason=a2dp-stream-not-running* ]]
 
 set +e
 missing="$(MOCK_BLUEALSA_ROUTE=missing PATH="$TMP/bin:$PATH" \

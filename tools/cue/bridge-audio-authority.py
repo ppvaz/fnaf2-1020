@@ -12,8 +12,11 @@ Start the publisher first, then run:
   tools/cue/bridge-audio-authority.py --socket /tmp/fnaf2-audio.sock
 
 The bridge waits for a video-capture session and reconnects when the session
-or publisher is restarted.  Stop it with Ctrl-C; the adb forward is removed
-automatically.
+or publisher is restarted.  Before forwarding an event fact (`cue-*` or
+`wind-tick`), it performs a positive `screenstate.py --adb-fast` check. Only
+`night` (the office HUD) passes; the title/menu BGM, transitions, game-over,
+and failed/unknown captures are dropped. Stop it with Ctrl-C; the adb forward
+is removed automatically.
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import pathlib
 import re
 import socket
 import subprocess
@@ -29,6 +33,9 @@ import time
 
 
 PACKAGE = "com.fnaf2.cuehelper"
+HERE = pathlib.Path(__file__).resolve().parent
+REPO = HERE.parents[1]
+SCREENSTATE = REPO / "tools/device/screenstate.py"
 DEFAULT_SOCKET = "/tmp/fnaf2-audio.sock"
 DEFAULT_DEVICE_PORT = 49_708
 MAX_FACT_BYTES = 1_024
@@ -38,6 +45,8 @@ MAX_CALIBRATION_PROFILE_LENGTH = 96
 MAX_TOKEN_LENGTH = 32
 RETRY_SECONDS = 1.0
 UINT32_MAX = 0xFFFF_FFFF
+CUE_FACT_PREFIX = "cue-"
+SCREEN_STATES = {"night", "other", "gameover"}
 
 
 def run(command: list[str], timeout: float = 10.0) -> subprocess.CompletedProcess[str]:
@@ -175,6 +184,63 @@ def normalized_fact(line: bytes) -> bytes | None:
     return normalized if len(normalized) <= MAX_FACT_BYTES else None
 
 
+def fact_type(line: bytes) -> str | None:
+    """Read the type from a line that has already passed normalization."""
+    try:
+        value = json.loads(line.decode("ascii"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    candidate = value.get("type") if isinstance(value, dict) else None
+    return candidate if isinstance(candidate, str) else None
+
+
+def is_cue_fact(line: bytes) -> bool:
+    """Return true for event facts, not route/health facts."""
+    candidate = fact_type(line)
+    return candidate == "wind-tick" or bool(
+        candidate and candidate.startswith(CUE_FACT_PREFIX))
+
+
+class VisualGate:
+    """Positive night-context gate for external cue facts.
+
+    A menu is an audio-producing screen, so "not menu" is not enough: a
+    transition, death screen, or unknown frame must also be unable to pass a
+    cue. The existing screenstate authority answers `night` only when the
+    office HUD is present. Every other answer is fail-closed here.
+    """
+
+    def __init__(self, timeout: float = 0.8):
+        self.timeout = timeout
+
+    def state(self) -> str:
+        if not SCREENSTATE.is_file():
+            return "unknown(screenstate-missing)"
+        try:
+            result = subprocess.run(
+                [sys.executable, str(SCREENSTATE), "--adb-fast", str(self.timeout)],
+                text=True, capture_output=True, timeout=self.timeout + 0.25,
+                check=False)
+        except (OSError, subprocess.TimeoutExpired):
+            return "unknown(screenstate-failed)"
+        state = (result.stdout or "").strip()
+        return state if state in SCREEN_STATES else "unknown(screenstate-invalid)"
+
+
+def cue_allowed(line: bytes, visual_gate: VisualGate | None) -> tuple[bool, str]:
+    """Allow event facts only with a positive office/night observation.
+
+    Production forwarding always supplies a gate. A missing gate is refused
+    rather than becoming an accidental command-line bypass.
+    """
+    if not is_cue_fact(line):
+        return True, "not-a-cue"
+    if visual_gate is None:
+        return False, "unknown(no-visual-gate)"
+    state = visual_gate.state()
+    return state == "night", state
+
+
 def open_forward(device_port: int) -> int:
     result = run(["adb", "forward", "tcp:0", "tcp:%d" % device_port])
     if result.returncode != 0:
@@ -202,7 +268,8 @@ def connect_helper(host_port: int, token: str) -> socket.socket:
 
 
 def forward_stream(host_port: int, token: str, authority_socket: str,
-                   once: bool = False) -> int:
+                   once: bool = False,
+                   visual_gate: VisualGate | None = None) -> int:
     with connect_helper(host_port, token) as helper:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as source:
             source.settimeout(3.0)
@@ -227,6 +294,13 @@ def forward_stream(host_port: int, token: str, authority_socket: str,
                     if fact is None:
                         print("bridge: dropped invalid external fact", file=sys.stderr)
                         continue
+                    allowed, reason = cue_allowed(fact, visual_gate)
+                    if not allowed:
+                        print("bridge: dropped %s; visual=%s "
+                              "(cue facts require an observed night)" %
+                              (fact_type(fact) or "cue", reason),
+                              file=sys.stderr, flush=True)
+                        continue
                     helper.sendall(fact)
                     forwarded += 1
                     if once:
@@ -241,6 +315,8 @@ def parser() -> argparse.ArgumentParser:
                          help="temporary Cue Helper device port")
     command.add_argument("--once", action="store_true",
                          help="forward one valid fact and exit")
+    command.add_argument("--screenstate-timeout", type=float, default=0.8,
+                         help="maximum seconds for the positive night screen gate")
     return command
 
 
@@ -248,10 +324,13 @@ def main() -> int:
     args = parser().parse_args()
     if not 1 <= args.device_port <= 65_535:
         parser().error("--device-port must be in 1..65535")
+    if not 0.1 <= args.screenstate_timeout <= 5.0:
+        parser().error("--screenstate-timeout must be 0.1..5.0 seconds")
     state = run(["adb", "get-state"])
     if state.returncode != 0 or state.stdout.strip() != "device":
         raise RuntimeError("ADB has no usable phone")
     host_port = open_forward(args.device_port)
+    visual_gate = VisualGate(args.screenstate_timeout)
     print("BRIDGE host_port=%d device_port=%d" % (host_port, args.device_port),
           flush=True)
     try:
@@ -263,7 +342,8 @@ def main() -> int:
                 time.sleep(RETRY_SECONDS)
                 continue
             try:
-                count = forward_stream(host_port, token, args.socket, args.once)
+                count = forward_stream(host_port, token, args.socket, args.once,
+                                       visual_gate)
                 print("BRIDGE forwarded=%d" % count, flush=True)
                 if args.once:
                     return 0

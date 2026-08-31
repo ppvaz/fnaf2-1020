@@ -52,6 +52,7 @@ export const KNOBS0 = {
   camdropTailMs: 67,       // camdrop: light-only tail after the monitor tap
 
   contactMs: 33,           // tap/hall contact length. The engine ignores it; the emitted plan carries it.
+  preventiveVentLight: true, // regular ventl refresh; false is an observation experiment
   reactiveBB: false,       // optional BB-only left-opening/audio reactive layer
                            //   (Mangle audio is a separate policy, not part of
                            //   this device schedule yet).
@@ -135,11 +136,12 @@ export function build(knobs) {
       [k.maskOffMs, 'tap', 'mask', c],
       [k.hallOffsetMs, 'hall', k.hallMs],
       [k.raiseMs, 'tap', 'monitor', c],
-      [k.stunRefreshMs, 'hold', 'ventl', k.stunRefreshHoldMs],
       [k.windLeadMs, 'hold', 'wind', k.windMs],
       [k.camdropMs, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs],
       [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', c],
     ];
+    if (k.preventiveVentLight)
+      loop.splice(3, 0, [k.stunRefreshMs, 'hold', 'ventl', k.stunRefreshHoldMs]);
   } else {
     // Faithful per-interval routine, MINUS-3-STRATEGY sec.3: enter the cameras
     // just after the interval, refresh the CAM 09 stun and wind, exit at :X4
@@ -156,12 +158,13 @@ export function build(knobs) {
     const camEnd5 = camdrop5 + k.camdropLeadMs + k.camdropMonitorMs + k.camdropTailMs;
     loop = [
       [enter, 'tap', 'monitor', c],
-      [enter + 50, 'hold', 'ventl', k.stunRefreshHoldMs],
       [windAt5, 'hold', 'wind', Math.max(200, camdrop5 - windAt5 - 100)],
       [camdrop5, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs],
       [camEnd5 + 50, 'hall', k.hallMs],
       [camEnd5 + 150, 'tap', 'mask', c],
     ];
+    if (k.preventiveVentLight)
+      loop.splice(1, 0, [enter + 50, 'hold', 'ventl', k.stunRefreshHoldMs]);
   }
   return { opening, loop, finish: [] };
 }

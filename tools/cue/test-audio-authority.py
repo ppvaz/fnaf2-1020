@@ -149,7 +149,16 @@ def check_bluealsa_route_gate():
     with tempfile.TemporaryDirectory(prefix="fnaf2-authority-route-") as temp:
         command = Path(temp) / "bluealsa-cli"
         command.write_text(
-            "#!/bin/sh\n[ \"$MOCK_BLUEALSA_ROUTE\" = ready ] && exit 0\nexit 1\n",
+            "#!/bin/sh\n"
+            "if [ \"$MOCK_BLUEALSA_ROUTE\" = ready ]; then\n"
+            "  printf 'Running: true\\n'\n"
+            "  exit 0\n"
+            "fi\n"
+            "if [ \"$MOCK_BLUEALSA_ROUTE\" = stopped ]; then\n"
+            "  printf 'Running: false\\n'\n"
+            "  exit 0\n"
+            "fi\n"
+            "exit 1\n",
             encoding="ascii")
         command.chmod(0o755)
         previous = os.environ.get("PATH", "")
@@ -159,6 +168,9 @@ def check_bluealsa_route_gate():
             os.environ["MOCK_BLUEALSA_ROUTE"] = "ready"
             assert authority.route_ready(path)
             assert "transport=bluealsa" in authority.route_status(path, authority.DEFAULT_MAC)
+            os.environ["MOCK_BLUEALSA_ROUTE"] = "stopped"
+            assert not authority.route_ready(path)
+            assert "a2dp-stream-not-running" in authority.route_status(path, authority.DEFAULT_MAC)
             os.environ["MOCK_BLUEALSA_ROUTE"] = "missing"
             assert not authority.route_ready(path)
             assert "a2dp-source-not-connected" in authority.route_status(path, authority.DEFAULT_MAC)
@@ -174,7 +186,9 @@ def check_raw_capture_metadata():
         command.write_text(
             "#!/usr/bin/env python3\n"
             "import struct, sys\n"
-            "if sys.argv[1] == 'info': sys.exit(0)\n"
+            "if sys.argv[1] == 'info':\n"
+            "    print('Running: true')\n"
+            "    sys.exit(0)\n"
             "if sys.argv[1] == 'open':\n"
             "    frame = struct.pack('<ii', 1000000, -1000000)\n"
             "    sys.stdout.buffer.write(frame * 100)\n"

@@ -17,12 +17,19 @@
 # reasoned about.
 run_macro() {
   rm_cycle=$1; rm_base=$2; rm_skip=$3; rm_limit=$4; rm_floor=${5:-0}
-  # A macro cannot absorb the epoch slip: the slip is taken out of a wind hold
-  # whose *end* must not move, and inside a macro the offsets are relative.
-  [ "$SLIP" -eq 0 ] || {
+  rm_initial_shift=${6:-0}
+  # A steady macro cannot absorb the epoch slip: the slip is taken out of a
+  # wind hold whose *end* must not move, and inside a macro the offsets are
+  # relative. The opening arm is the one deliberate exception. Its first five
+  # taps have to be one HID stream so the 17 ms released gap between CAM 09 and
+  # the lowering monitor survives the host's wall-clock/adb scheduling. The
+  # following wind is still stepped and absorbs SLIP as before.
+  if [ "$SLIP" -ne 0 ] && {
+    [ "$rm_cycle" != opening ] || [ "$rm_initial_shift" -ne "$SLIP" ];
+  }; then
     echo 'a macro cannot absorb the epoch slip; step that cycle instead' >&2
     exit 47
-  }
+  fi
   rm_idx=0; rm_in=0; rm_started=0; rm_cursor=0; rm_shift=0
   while read -r c1 c2 c3 c4 c5 <&9; do
     if [ "$c1" = '#cycle' ]; then
@@ -44,7 +51,7 @@ run_macro() {
       # The window may not open inside a contact the shell is still holding.
       # Shifting the whole macro keeps every released gap the plan guarantees;
       # shifting only its first instruction would eat the next one.
-      rm_start=$((rm_base + c1))
+      rm_start=$((rm_base + c1 + rm_initial_shift))
       [ "$rm_start" -ge "$rm_floor" ] || rm_start=$rm_floor
       rm_shift=$((rm_start - rm_base - c1))
       wait_until "$rm_start"
@@ -133,7 +140,11 @@ if [ "$NIGHT6_LEFT" -eq 2 ]; then
     echo 'epoch latch left no room to arm Minus Toys before the first interval' >&2
     exit 46
   }
-  run_cycle opening 0 0 999
+  # Keep the five opening arm taps in one HID macro. A wall-timed pair here
+  # was observed as CAM 09 -> monitor-down = 200 ms instead of the plan's 50 ms
+  # on the target phone, which silently disabled the double-camera glitch.
+  run_macro opening 0 0 5 0 "$SLIP"
+  run_cycle opening 0 5 999
 
   # Arm-verify window (--minimal only; the plan carries #arm-verify and the
   # host passed the signal files). The split arm is a 3-of-12 phase coin flip

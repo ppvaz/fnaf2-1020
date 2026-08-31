@@ -60,26 +60,47 @@ def pcm_path(mac):
     return "/org/bluealsa/hci0/dev_%s/a2dpsnk/source" % mac.replace(":", "_")
 
 
-def route_ready(path):
+def bluealsa_running(info):
+    """Return whether bluealsa-cli reports an active PCM producer."""
+    for line in info.splitlines():
+        key, separator, value = line.partition(":")
+        if separator and key.strip().lower() == "running":
+            return value.strip().lower() == "true"
+    return False
+
+
+def route_issue(path):
+    """Return a stable route error, or None when PCM is actually running."""
     try:
         result = subprocess.run(
             ["bluealsa-cli", "info", path],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            text=True, check=False,
         )
     except OSError:
-        return False
-    return result.returncode == 0
+        return "bluealsa-cli-missing"
+    if result.returncode != 0:
+        return "a2dp-source-not-connected"
+    if not bluealsa_running(result.stdout):
+        # bluealsa-cli returns success for an existing transport even when its
+        # producer is stopped. Treating that object as ready caused r10 to
+        # start an authority that could never receive PCM.
+        return "a2dp-stream-not-running"
+    return None
+
+
+def route_ready(path):
+    return route_issue(path) is None
 
 
 def route_status(path, mac):
     if not shutil_which("bluealsa-cli"):
         return "audio-route=UNKNOWN reason=bluealsa-cli-missing pcm=%s mac=%s" % (
             path, mac)
-    if route_ready(path):
+    issue = route_issue(path)
+    if issue is None:
         return "audio-route=READY transport=bluealsa pcm=%s mac=%s" % (path, mac)
-    return "audio-route=UNKNOWN reason=a2dp-source-not-connected pcm=%s mac=%s" % (
-        path, mac)
+    return "audio-route=UNKNOWN reason=%s pcm=%s mac=%s" % (issue, path, mac)
 
 
 def shutil_which(command):
@@ -396,8 +417,9 @@ class AudioAuthority:
             while True:
                 now_ms = monotonic_ms()
                 if process is None:
-                    if not route_ready(self.path):
-                        self.emit_health(False, now_ms, "a2dp-source-not-connected")
+                    issue = route_issue(self.path)
+                    if issue is not None:
+                        self.emit_health(False, now_ms, issue)
                         if self.args.once:
                             return 3
                         time.sleep(1.0)
@@ -518,7 +540,7 @@ def main():
     path = pcm_path(args.mac)
     if args.check:
         print(route_status(path, args.mac))
-        return 0 if route_ready(path) else 3
+        return 0 if route_issue(path) is None else 3
     try:
         return AudioAuthority(args).run()
     except (OSError, RuntimeError, ValueError) as error:

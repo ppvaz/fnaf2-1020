@@ -7,20 +7,24 @@ The APK owns only the user-approved `MediaProjection` visual stream:
 - the authenticated loopback/abstract control sockets used by the device
   harness.
 
-Audio is deliberately external. The phone renders FNaF 2 audio to its selected
-output, while an external audio authority observes that rendered signal and
-publishes facts to the controller. The current host adapter is
-`tools/cue/audio-authority.py`, whose current adapter reads a validated A2DP
-PCM path. An ESP32 receiver can be another adapter: it must publish the same
-`fact-message-v1` fields, with a transport-specific `calibrationProfile` such
-as `g56-esp32-a2dp-v1`. The APK therefore does not claim that it captured
-audio and has no `RECORD_AUDIO` or `AudioPlaybackCapture` dependency.
+Audio uses the external loopback path:
+`FNaF 2 -> Bluetooth A2DP -> ESP32 -> PCM UDP 49710 -> APK`. The ESP32
+decodes the complete A2DP mix and sends the PCM to the phone on `FNAF2-AUDIO`.
+The APK validates the packet contract, feeds the same payload to its analyzer
+and WAV recorder, and the optional phone monitor reproduces it through an
+`AudioTrack` routed to the built-in speaker. Because this phone's media
+strategy remains globally attached to A2DP, the monitor uses the independent
+alarm/speaker strategy and 4x saturating PCM gain; routing it as ordinary media
+causes AudioFlinger to remove the track before playback. Health facts remain
+on UDP `49709`.
+The PC/BlueALSA authority is an optional offline/legacy calibration path; it is
+not required at runtime. The APK has no `RECORD_AUDIO` or
+`AudioPlaybackCapture` dependency.
 
-This separation is intentional: the audio authority follows the actual
-physical receiver, whether that receiver is the current host adapter or an
-ESP32, and the
-controller can reject stale, missing, or out-of-order facts. A missing route
-is `UNKNOWN`, never a negative cue.
+The ESP32 image is intentionally transport-only: it contains no cue assets,
+semantic names, or matched filters. The phone is the authority for cue IDs,
+timestamps, phase clock, visual context, recording, and human monitoring. A
+missing route or missing PCM is `UNKNOWN`, never a negative cue.
 
 The APK now also monitors the phone's A2DP connection to the configured
 receiver by the stable name `FNAF2 Audio Consumer`; its Bluetooth address is
@@ -30,8 +34,12 @@ system Bluetooth settings and the status card reports `DISCONNECTED`,
 the external audio authority remains responsible for the received PCM and
 transport route.
 The ESP32 Wi‑Fi setup is requested only when the connected A2DP receiver has
-that firmware name. Other A2DP receivers, such as the legacy host adapter, do
-not require or display the ESP32 Wi‑Fi step.
+that firmware name. **Connect ESP32 Wi-Fi** requests the local-only
+`FNAF2-AUDIO` network through `WifiNetworkSpecifier`; Android shows the consent
+dialog on first use. Registration uses a fresh socket bound only to that
+network. The process is not globally rebound to the no-Internet AP, and stale
+network requests are discarded on a button retry. Other A2DP receivers, such
+as the legacy host adapter, do not require or display this step.
 Android does not expose a regular-app API to force the user's selected A2DP
 output, so pairing/connecting still requires the system Bluetooth UI.
 
@@ -61,23 +69,26 @@ adb shell am start -n com.fnaf2.cuehelper/.MainActivity
 If the SDK or JDK is elsewhere, set `ANDROID_SDK_ROOT` or `JAVA_HOME`. Generated
 build output and the local debug keystore are ignored.
 
-`android/cue-helper/test.sh` compiles the detector/model parser and visual
-helpers against their host unit tests. The detector source is retained for
-offline compatibility coverage; it is not packaged into the APK and is not an
-on-device audio path. The external authority has its own phone-free regression
-at `tools/cue/test-audio-authority.py`.
+`android/cue-helper/test.sh` compiles the shared detector/model parser, the
+phone `AudioAnalyzer`/phase clock, and visual helpers against host unit tests.
+The external legacy authority has its own phone-free regression at
+`tools/cue/test-audio-authority.py`.
 
 On the phone:
 
 1. Tap **Connect audio receiver**, grant `BLUETOOTH_CONNECT` if requested, and
    connect `FNAF2 Audio Consumer` in the system Bluetooth settings.
 2. Confirm the APK reports `CONNECTED` or `STREAMING` for the receiver.
-3. Join the Wi‑Fi network `FNAF2-AUDIO` (password `fnaf2-audio`).
+3. Tap **Connect ESP32 Wi-Fi** and accept Android's request for
+   `FNAF2-AUDIO` (password `fnaf2-audio`).
 4. Tap **Start video capture** and grant screen-capture consent.
 5. Tap **Open FNaF 2**.
-6. Exercise the exact lit-left view used by `bb-left` calibration.
-7. Inspect the Android log; route/RMS/peak facts from the ESP32 arrive on the
-   shadow-only UDP path. No host audio authority is needed for this path.
+6. Tap **Monitor ESP32 PCM on phone** if you want to hear the returned mix.
+   It first reports `STARTING` and becomes `ON` after four packets are buffered.
+7. Optionally tap **Record ESP audio (dev)** to save the same returned PCM.
+8. Inspect the Audio/Diagnostic tabs: `audioMonitor=ON source=esp32-pcm` and
+   `audioAnalyzer=...` confirm that the phone is consuming UDP `49710`. No host
+   audio authority is needed for this path.
 
 For the legacy BlueALSA host path, start the external audio authority on the
 receiver host after step 4, for example:
@@ -96,11 +107,10 @@ tools/cue/audio-authority.py --check
 adb logcat -s FnafCueHelper:I '*:S'
 ```
 
-A healthy APK line contains visual data and explicitly identifies audio as an
-external dependency:
+A healthy APK line contains visual data and identifies the ESP32 PCM path:
 
 ```text
-RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY ...
+RUNNING visual=OBSERVED seq=... rgba=... luma=... ageUs=... content=2400x1080 visible=1 audio=ESP32 authority=esp32-audio-consumer ... audioMonitor=ON source=esp32-pcm ...
 ```
 
 When the captured content is the helper UI, the visual portion additionally
@@ -108,10 +118,9 @@ contains `screen=CUE_HELPER screenScore=...`. If the capture is fresh but the
 screen signature is not recognized, it contains `screen=UNKNOWN`; this is a
 semantic refusal, not a stale-frame failure.
 
-The APK's A2DP card is only a connection/playing-state indicator. The
-authoritative audio facts are still the newline-delimited JSON messages emitted
-by the host authority. The app does not claim that the PCM is available to the
-Android process.
+The APK's A2DP card is a connection/playing-state indicator. The ESP32 health
+facts are accepted on UDP `49709`; PCM on UDP `49710` is independently consumed
+by the analyzer, recorder, and optional monitor.
 
 On API 34+, the helper consumes `onCapturedContentResize()` and
 `onCapturedContentVisibilityChanged()`. Hidden, not-yet-sized, stale, or
@@ -122,26 +131,42 @@ invariant enforced by the device harness.
 
 ## External audio authority
 
-The host authority publishes compact `fact-message-v1` records to stdout and,
-when `--socket` is supplied, to a Unix stream socket. During an active capture
-session the helper also listens on UDP `0.0.0.0:49709` for the shadow-only
-health facts from the ESP32-WROOM-32 bench consumer. The ESP32's Wi-Fi AP is
-`FNAF2-AUDIO` (password `fnaf2-audio`); connect the phone to it before starting
-the capture session. The UDP listener accepts only `audio-route`, `audio-rms`,
-and `audio-peak` from source `esp32-audio-consumer`; cue facts and actions are
-not accepted on this path.
+The ESP32 is the runtime audio authority for this architecture. During an
+active capture session the APK listens on UDP `0.0.0.0:49709` for its health
+facts and on UDP `0.0.0.0:49710` for the PCM loopback. The ESP32's Wi-Fi AP is
+`FNAF2-AUDIO` (password `fnaf2-audio`). The health listener accepts only
+`audio-route`, `audio-rms`, and `audio-peak` from source
+`esp32-audio-consumer`; cue facts and actions are not accepted from UDP.
+
+The PCM packet is a 28-byte little-endian header followed by stereo signed
+16-bit PCM:
+
+`magic:u32 version:u8 channels:u8 format:u8 reserved:u8 sample_rate:u32 seq:u32 t_capture_us:u64 payload_bytes:u16 reserved2:u16`
+
+`magic` is `0x46325043`, `version` is `1`, and `format` is `1`. The APK checks
+rate, payload alignment, packet length, and sequence continuity before sending
+the bytes to the analyzer, recorder, or speaker queue. It uses a four-packet
+startup buffer and a bounded 32-packet queue; packet loss is reported as
+`lost`/`dropped`, never hidden as a clean cue stream.
+
+The sample rate is the negotiated SBC rate reported by the ESP32. SBC octet-0
+bits map as `0x80=16000`, `0x40=32000`, `0x20=44100`, and `0x10=48000` Hz.
+Earlier bridge builds had this table reversed; a `0x20`/44.1 kHz game stream
+was labelled 32 kHz, making monitoring and WAV playback about 37.8% slow.
+Recordings created after the corrected firmware flash carry the proper rate.
+
+The legacy host authority remains useful for offline BlueALSA calibration. It
+publishes compact `fact-message-v1` records to stdout and, when `--socket` is
+supplied, to a Unix stream socket:
 
 ```json
 {"schema":"fact-message-v1","seq":0,"type":"audio-route","state":"OBSERVED","confidence":1.0,"source":"audio-authority","calibrationProfile":"g56-bluealsa-a2dp-v1","t_received":123,"value":true,"latencyMin":150,"latencyMax":250}
 ```
 
 The `source` is deliberately transport-neutral. The profile identifies the
-calibrated receiver/backend. An ESP32 transport adapter should retain the
-same schema, source, primitive values, timestamps, latency bounds, and ordered
-sequence numbers, while selecting its own profile. The existing
-`src/fact-link.js` receiver is the validation boundary for those messages.
-`tools/cue/collect-facts.py` can persist a subscribed stream as a per-run
-sidecar; `trial.sh CUE_AUDIO=1 AUDIO_AUTHORITY_SOCKET=PATH` uses that path.
+calibrated receiver/backend. The existing `src/fact-link.js` receiver is the
+validation boundary for legacy host facts. `tools/cue/collect-facts.py` can
+persist a subscribed stream as a per-run sidecar.
 
 With no model, the authority emits route, RMS, and peak facts only. With an
 ignored `cue-model-v1` file, it can emit shadow-only `wind-tick` observations:
@@ -153,24 +178,25 @@ tools/cue/audio-authority.py \
   --profile g56-bluealsa-a2dp-v1
 ```
 
-The model must be calibrated for the selected external transport. A model
-captured from Android's deprecated playback-capture path is not evidence for
-BlueALSA or ESP32 and must not be reused without external re-calibration.
+The model must be calibrated for the selected transport. A model from the
+returned ESP32 PCM path is not interchangeable with legacy BlueALSA evidence
+without re-calibration.
 
 For a latency probe, a named non-phase template may be enabled explicitly with
 `--shadow-cue bang`; this only publishes a shadow fact and cannot arm a control
 window. Detector promotion still requires independent held-out calibration.
 
-The bridge applies a positive visual context gate before sending event facts to
-the APK: `screenstate.py --adb-fast` must report `night`, meaning the office
-HUD is visible. The title/menu (and its BGM), transitions, game-over, and any
-unknown visual state therefore cannot forward a `cue-bang`; they are logged as
-dropped. Route/RMS/peak health facts remain observable on every screen.
+The phone applies a positive visual context gate before emitting any local cue
+event: the fresh 20x9 grid must identify `FNAF2_NIGHT`, meaning the office HUD
+is visible. The title/menu (and its BGM), transitions, game-over, and any
+unknown visual state therefore cannot emit a `cue-bang`; they remain in
+transport/score telemetry only. Route/RMS/peak health facts remain observable
+on every screen.
 
 The current BlueALSA adapter uses the phone's A2DP output and reads
-`S32_LE` stereo at 48 kHz, downmixing to 4 kHz mono for the optional matcher.
-Those details belong to this adapter, not to the APK/fact contract. The
-one-shot recorder remains available for raw evidence:
+`S32_LE` stereo at 48 kHz for offline evidence. Those details belong to that
+adapter, not to the APK/ESP32 packet contract. The one-shot recorder remains
+available for raw evidence:
 
 ```sh
 tools/cue/capture-bt-audio.sh --check 10:2B:1C:DA:18:2C
@@ -185,16 +211,15 @@ error and no sensor data.
 
 | Request | Response | Notes |
 |---|---|---|
-| `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus `audio=EXTERNAL`; never PCM or an image. |
+| `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. |
 | `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid. |
 | `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist. |
 | `READ <token>` | `OK read=...` | Read the active visual watchlist. |
 
-`CAL`, `REC`, `LOG`, `MODEL`, `ARM`, and `RESULT` are no longer APK commands;
-the service returns `ERROR audio-authority-external`. Audio capture, model
-loading, and cue observation belong to the external authority. The device
-query wrapper consequently supports only visual snapshot/grid/watchlist/read
-operations for this APK.
+`CAL`, `LOG`, `ARM`, and `RESULT` are no longer APK commands. Model import and
+PCM recording are APK UI operations; cue observation is shadow-only until
+independent calibration. The device query wrapper supports visual
+snapshot/grid/watchlist/read operations, not raw PCM streaming.
 
 The two visual channels are:
 
@@ -203,6 +228,7 @@ The two visual channels are:
 | loopback TCP | `127.0.0.1:49707` | the on-device visual controller |
 | abstract unix | `@com.fnaf2.cuehelper.control.<session>` | host tooling over `adb forward` |
 | Wi-Fi UDP | `0.0.0.0:49709` | ESP32 shadow audio health facts |
+| Wi-Fi UDP | `0.0.0.0:49710` | ESP32 stereo PCM loopback |
 
 ```sh
 tools/device/query-cue-helper.sh                    # loopback snapshot

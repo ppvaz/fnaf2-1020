@@ -38,6 +38,9 @@ ROLE = {
     27: "footstep bank (g706)",
     28: "footstep bank (g707)",
     29: "footstep bank (g708)",
+    30: "Mangle movement bank (g703/g709, hear footsteps branch 1)",
+    31: "Mangle movement bank (g703/g710, hear footsteps branch 2)",
+    32: "Mangle movement bank (g703/g711, hear footsteps branch 3)",
     20: "Mangle static (g732/733, CAM 11 and office/right-vent contexts)",
     33: "winding ratchet (g637/644, CAM 11 while winding)",
 }

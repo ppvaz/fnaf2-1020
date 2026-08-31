@@ -843,7 +843,13 @@ def create_run_dir(out_dir: pathlib.Path, name: str) -> pathlib.Path:
 def run_experiment(args: argparse.Namespace) -> int:
     checks = preflight(args.mac, args.connect)
     run_dir = create_run_dir(pathlib.Path(args.outdir).expanduser(), args.name)
-    authority_socket = run_dir / "audio-authority.sock"
+    # Linux limits AF_UNIX socket paths to roughly 108 bytes. Session names
+    # and the external output root are intentionally descriptive, so keep
+    # only this ephemeral transport endpoint short; all evidence stays in the
+    # session directory.
+    authority_socket = (pathlib.Path(args.authority_socket)
+                        if args.authority_socket
+                        else pathlib.Path("/tmp/fnaf2-audio-%d.sock" % os.getpid()))
     manifest = {
         "schema": "fnaf2-latency-experiment-v1",
         "state": "running",
@@ -864,6 +870,12 @@ def run_experiment(args: argparse.Namespace) -> int:
             "model": args.authority_model,
             "shadow_cues": args.shadow_cues,
             "cue": args.authority_cue,
+        },
+        "visual": {
+            "source": ("native-watch:bb_left_luma"
+                       if os.environ.get("CUE_HELPER_WATCH_READ") == "1"
+                       else "legacy-get:luma"),
+            "log": "visual.tsv",
         },
         "preflight": checks,
         "host_monotonic_start_ns": mono_ns(),
@@ -1074,6 +1086,8 @@ def parser() -> argparse.ArgumentParser:
                             help="blackout response window used by the temporal decision")
     run_parser.add_argument("--authority-profile", default="g56-bluealsa-a2dp-v1",
                             help="calibration profile published by the external authority")
+    run_parser.add_argument("--authority-socket",
+                            help="explicit temporary authority socket (for a supervisor-coordinated pilot)")
     run_parser.add_argument("--authority-model",
                             help="external cue-model-v1 for shadow acoustic facts")
     run_parser.add_argument("--authority-cue", default="bang",

@@ -350,7 +350,7 @@ that value into a sound:
 | `cam 01` v6 | g608-611 | 21, 24, 23 (v6=4 re-rolls) | BB hops 2-4 (g414-416) |
 | `cam 01` v21 | g691-694 | 17, on any value 1-4 | 18 groups, see below |
 | `cam 01` v5 | g704-708 | 25-29 | 8 characters at marker 149 `hear footsteps` (g695-702) |
-| `cam 01` v12 | g709-711 | 30-32 | Toy Foxy only (g703, g741) |
+| `cam 01` v12 | g709-711 | 30-32 | Mangle / `new foxy` only (g703, g709-711) |
 
 Reading only the play actions hides this indirection completely, and it is the
 reason a naive pass concludes that BB's departure is silent. It is not.
@@ -438,11 +438,12 @@ calibrated level feature beside the shape score.
 | 24 | 609, 743, 814 | No — also Toy Foxy at 123 and BB at 123 |
 | 17 | 691-694 | No — 18 edges, 7 characters |
 | 25-29 | 704-708 | No — `Random(5)+1` shared by 8 characters incl. BB |
-| 30-32 | 709-711 | Toy Foxy only |
+| 30-32 | 709-711 | Mangle / `new foxy` movement bank (g703) |
 
 BB's own footstep sound at marker 149 is `Random(5)+1` from the same bank the
 other seven draw from (g702 is identical to g695-701), so there is no unique
-BB vent cue either. Toy Foxy is the only character with a private bank.
+BB vent cue either. Mangle / `new foxy` is the only character with this
+private movement bank.
 
 ### What this costs the plan — and what it does not
 

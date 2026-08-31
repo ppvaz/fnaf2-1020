@@ -209,6 +209,11 @@ export const BB_ARRIVAL_SAMPLE = 21;
 // visual fact here yet. The observer models its context through
 // `mangle-static`.
 export const MANGLE_STATIC_SAMPLE = 20;
+// Mangle's private movement bank. [SOURCED: g703 writes cam 01.v12 when the
+// new-foxy/Mangle route overlaps `hear footsteps`; g709-711 dispatch IDs
+// 30-32 on channel 19. These are separate from the shared thud 17 and the
+// proximity static 20.]
+export const MANGLE_MOVEMENT_SAMPLES = [30, 31, 32];
 
 // The music-box winding tick. [SOURCED: g637 (mouse-hold twin, conds
 // `Every 500 ms` + Key + `music button` overlap + `viewing == 11`) and g644

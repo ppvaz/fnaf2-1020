@@ -16,7 +16,9 @@ DEVICE_POLICY="${DEVICE_POLICY:-minus7}"
 REACTIVE="${REACTIVE:-off}"
 # A Minus Toys run has two materially different schedules.  The standard
 # 10-second route is the 10/20-shaped policy; the Night 1 minimal route is a
-# 5-second, no-mask/no-hall calibration policy.  Selecting neither is unsafe:
+# 5-second, no-mask/no-hall calibration policy.  `audio-gated` is an explicit
+# observation-only Night 2 experiment that omits the regular left-vent light;
+# it is not a survival policy and requires EXPERIMENT_UNGATED=1. Selecting neither is unsafe:
 # a caller can otherwise believe it is testing Night 1 minimal while emitting
 # the standard route.
 MINUS_TOYS_VARIANT="${MINUS_TOYS_VARIANT:-}"
@@ -188,6 +190,7 @@ CUE_MODEL_SHA256=""
 CUE_MODEL_EVIDENCE=""
 POLICY_SCHEMA=""
 POLICY_ID=""
+POLICY_GATE_STATUS="not-applicable"
 POLICY_SHA256=""
 POLICY_PLAN_SHA256=""
 POLICY_EXECUTION_MODE="legacy-device-plan"
@@ -246,8 +249,8 @@ if [ "$REACTIVE" = observe ] && [ "$CUE_HELPER" -ne 1 ]; then
   exit 2
 fi
 case "$MINUS_TOYS_VARIANT" in
-  ''|standard|minimal) ;;
-  *) echo "MINUS_TOYS_VARIANT must be standard or minimal"; exit 2 ;;
+  ''|standard|minimal|audio-gated) ;;
+  *) echo "MINUS_TOYS_VARIANT must be standard, minimal, or audio-gated"; exit 2 ;;
 esac
 if [ "$DEVICE_POLICY" = minus-toys ] && [ -z "$MINUS_TOYS_VARIANT" ]; then
   echo "DEVICE_POLICY=minus-toys requires MINUS_TOYS_VARIANT=standard or minimal" >&2
@@ -256,6 +259,16 @@ fi
 if [ "$DEVICE_POLICY" != minus-toys ] && [ -n "$MINUS_TOYS_VARIANT" ]; then
   echo "MINUS_TOYS_VARIANT applies only to DEVICE_POLICY=minus-toys" >&2
   exit 2
+fi
+if [ "$MINUS_TOYS_VARIANT" = audio-gated ]; then
+  [ "${EXPERIMENT_UNGATED:-0}" = 1 ] || {
+    echo 'MINUS_TOYS_VARIANT=audio-gated requires EXPERIMENT_UNGATED=1; it is a shadow observation route, not a survival policy' >&2
+    exit 2
+  }
+  [ "$CUE_AUDIO" -eq 1 ] || {
+    echo 'MINUS_TOYS_VARIANT=audio-gated requires CUE_AUDIO=1 so the second-bang observation is recorded' >&2
+    exit 2
+  }
 fi
 case "$CALIBRATION_STORY_NIGHT" in
   0|1|2|3|4|5) ;;
@@ -581,6 +594,8 @@ recipe_args="--night=$STORY_NIGHT"
 if [ "$DEVICE_POLICY" = minus-toys ]; then
   minus_toys_args=(--night="$STORY_NIGHT")
   [ "$MINUS_TOYS_VARIANT" != minimal ] || minus_toys_args+=(--minimal)
+  [ "$MINUS_TOYS_VARIANT" != audio-gated ] ||
+    minus_toys_args+=(--knobs=preventiveVentLight=false)
   if [ "$MINUS_TOYS_VARIANT" = minimal ]; then
     # The live Minimal target is emitted from policy-v1, not from a second
     # schedule writer. The artifact compiler performs the exact gate,
@@ -591,6 +606,7 @@ if [ "$DEVICE_POLICY" = minus-toys ]; then
       --artifact "$RUN_TMP/policy-artifact.json" \
       --metadata "$RUN_TMP/policy-meta.env" || exit 44
     POLICY_EXECUTION_MODE="compiled-ir"
+    POLICY_GATE_STATUS="passed"
     POLICY_SCHEMA="$(sed -n 's/^policy_schema=//p' "$RUN_TMP/policy-meta.env")"
     POLICY_ID="$(sed -n 's/^policy_id=//p' "$RUN_TMP/policy-meta.env")"
     POLICY_SHA256="$(sed -n 's/^policy_sha256=//p' "$RUN_TMP/policy-meta.env")"
@@ -607,7 +623,24 @@ if [ "$DEVICE_POLICY" = minus-toys ]; then
       exit 44
     }
   else
-    node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate || exit 44
+    if [ "$MINUS_TOYS_VARIANT" = audio-gated ]; then
+      # This route is intentionally outside the survival gate: removing the
+      # preventive light exposes the vent-bang/visual-confirmation interval.
+      # Still run the exact gate and require it to be negative, so a future
+      # schedule change cannot silently turn this into an unlabelled policy.
+      audio_gated_gate_log="$RUN_TMP/audio-gated-gate.log"
+      if node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate >"$audio_gated_gate_log" 2>&1; then
+        cat "$audio_gated_gate_log" >&2
+        echo 'audio-gated variant unexpectedly passed the survival gate; refusing an unlabelled route' >&2
+        exit 44
+      fi
+      cat "$audio_gated_gate_log" >&2
+      POLICY_EXECUTION_MODE="audio-gated-observation"
+      POLICY_GATE_STATUS="expected-negative"
+    else
+      node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" --gate || exit 44
+      POLICY_GATE_STATUS="passed"
+    fi
     node "$HERE/minus-toys-plan.mjs" "${minus_toys_args[@]}" > "$RUN_TMP/device-plan.txt"
   fi
 else
@@ -617,7 +650,7 @@ fi
 cp "$RUN_TMP/device-plan.txt" "$LOCAL_DEVICE_PLAN"
 PLAN_SHA256="$(shasum -a 256 "$RUN_TMP/device-plan.txt" | awk '{print $1}')"
 if [ "$DEVICE_POLICY" = minus-toys ]; then
-  echo "Minus Toys $MINUS_TOYS_VARIANT device-plan gate passed for Night $STORY_NIGHT" >&2
+  echo "Minus Toys $MINUS_TOYS_VARIANT device-plan status=$POLICY_GATE_STATUS for Night $STORY_NIGHT" >&2
 elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
   gate_note="$(node "$HERE/human-gate.mjs" "$RUN_TMP/device-plan.txt" 2>&1 || true)"
   echo "EXPERIMENT_UNGATED=1: human gate NOT enforced. This measures the machine." >&2
@@ -1398,6 +1431,7 @@ fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
 fnaf_session_record env \
   "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
   "DEVICE_POLICY=$DEVICE_POLICY" "MINUS_TOYS_VARIANT=${MINUS_TOYS_VARIANT:-none}" \
+  "POLICY_GATE_STATUS=$POLICY_GATE_STATUS" "POLICY_EXECUTION_MODE=$POLICY_EXECUTION_MODE" \
   "CALIBRATION_STORY_NIGHT=$CALIBRATION_STORY_NIGHT" \
   "STORY_CURSOR_OBSERVED=${STORY_CURSOR_OBSERVED:-unread}" \
   "GRADE_RUN=$GRADE_RUN" "HID_TRACE_RUN=$HID_TRACE_RUN" \

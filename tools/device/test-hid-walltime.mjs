@@ -154,9 +154,9 @@ const macroWaits = (macro.match(/wait_until/g) || []).length;
 check(macroWaits === 2,
   `run_macro wall-times ${macroWaits} boundaries; it may anchor its start and ` +
   'wait itself out, and nothing else');
-check(/\[ "\$SLIP" -eq 0 \]/.test(macro),
-  'run_macro must refuse a nonzero epoch slip rather than run the window late: ' +
-  'the slip comes out of a wind hold whose end must not move, and a macro\'s ' +
+check(/\[ "\$SLIP" -ne 0 \][\s\S]*\[ "\$rm_cycle" != opening \][\s\S]*\[ "\$rm_initial_shift" -ne "\$SLIP" \]/.test(macro),
+  'run_macro must refuse a nonzero epoch slip except for the explicitly shifted ' +
+  'opening prefix; later windows cannot move the wind deadline and their macro ' +
   'offsets are relative');
 check(/\[ "\$c2" != read \]/.test(macro),
   'run_macro must refuse a window containing the read, which needs the classifier');

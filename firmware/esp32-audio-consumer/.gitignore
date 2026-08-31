@@ -1,3 +1,4 @@
 build/
 sdkconfig
 sdkconfig.old
+main/cue_assets.c

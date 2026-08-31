@@ -384,17 +384,37 @@ if [ "$VERB" = watch ]; then
   # the audio log is anchored to, so a bright->black transition on the lit left
   # opening timestamps a real g417 arrival independently of any audio.
   # Polling inside one device shell keeps it near the 49 ms read cost.
+  # The legacy GET luma is a whole-screen anchor and can miss a local BB
+  # arrival. An experimental native-watch path is opt-in so existing traces
+  # remain compatible: REACTIVE=observe loads the authenticated native
+  # watchlist in trial.sh, and CUE_HELPER_WATCH_READ=1 records bb_left_luma
+  # instead of the legacy whole-screen luma. A watcher may start before the
+  # trial has loaded the watchlist, so READ errors are transient unknowns.
+  WATCH_READ_NATIVE="${CUE_HELPER_WATCH_READ:-0}"
+  case "$WATCH_READ_NATIVE" in
+    0|1) ;;
+    *) echo "CUE_HELPER_WATCH_READ must be 0 or 1" >&2; exit 2 ;;
+  esac
   deadline=$(( $(date +%s) + WATCH_SECONDS ))
   {
-    printf 'snapshot_ns	seq	luma	state
+    printf 'snapshot_ns	seq	luma	state	source
 '
     while [ "$(date +%s)" -lt "$deadline" ]; do
-      line="$(exchange "GET $token")"
-      ns="$(printf '%s' "$line" | sed -n 's/.*snapshotNs=\([0-9]*\).*/\1/p')"
-      seq="$(printf '%s' "$line" | sed -n 's/.*seq=\([0-9]*\).*/\1/p')"
-      luma="$(printf '%s' "$line" | sed -n 's/.*luma=\([0-9-]*\).*/\1/p')"
-      state="$(printf '%s' "$line" | sed -n 's/.*visual=\([A-Z]*\).*/\1/p')"
-      [ -n "$ns" ] && printf '%s\t%s\t%s\t%s\n' "$ns" "${seq:-}" "${luma:-}" "${state:-}"
+      if [ "$WATCH_READ_NATIVE" -eq 1 ]; then
+        if line="$(exchange "READ $token" 2>/dev/null)"; then :; else line=""; fi
+        ns="$(printf '%s' "$line" | sed -n 's/.*snapshotNs=\([0-9]*\).*/\1/p')"
+        seq="$(printf '%s' "$line" | sed -n 's/.*seq=\([0-9]*\).*/\1/p')"
+        luma="$(printf '%s' "$line" | sed -n 's/.*bb_left_luma=\([0-9-]*\).*/\1/p')"
+        state="$(printf '%s' "$line" | sed -n 's/.*read=\([A-Z]*\).*/\1/p')"
+        [ -n "$ns" ] && printf '%s\t%s\t%s\t%s\tbb_left_luma\n' "$ns" "${seq:-}" "${luma:-}" "${state:-UNKNOWN}"
+      else
+        line="$(exchange "GET $token")"
+        ns="$(printf '%s' "$line" | sed -n 's/.*snapshotNs=\([0-9]*\).*/\1/p')"
+        seq="$(printf '%s' "$line" | sed -n 's/.*seq=\([0-9]*\).*/\1/p')"
+        luma="$(printf '%s' "$line" | sed -n 's/.*luma=\([0-9-]*\).*/\1/p')"
+        state="$(printf '%s' "$line" | sed -n 's/.*visual=\([A-Z]*\).*/\1/p')"
+        [ -n "$ns" ] && printf '%s\t%s\t%s\t%s\tlegacy_luma\n' "$ns" "${seq:-}" "${luma:-}" "${state:-}"
+      fi
     done
   } | { if [ -n "$WATCH_OUT" ]; then tee "$WATCH_OUT"; else cat; fi; }
   [ -n "$WATCH_OUT" ] && echo "wrote $WATCH_OUT" >&2

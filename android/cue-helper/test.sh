@@ -39,14 +39,20 @@ JAVA="$JDK_ROOT/bin/java"
 # system modules and warns that the result may not run on 17.
 "$JAVAC" -encoding UTF-8 --release 17 -d "$TEST_TMP" \
   "$HERE/src/com/fnaf2/cuehelper/CueDetector.java" \
+  "$HERE/src/com/fnaf2/cuehelper/AudioAnalyzer.java" \
+  "$HERE/src/com/fnaf2/cuehelper/PhaseClock.java" \
   "$HERE/src/com/fnaf2/cuehelper/PixelWatch.java" \
   "$HERE/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
   "$HERE/src/com/fnaf2/cuehelper/ScreenStats.java" \
   "$HERE/test/com/fnaf2/cuehelper/CueDetectorTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/AudioAnalyzerTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/PhaseClockTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/PixelWatchTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/ScreenIdentityTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/ScreenStatsTest.java"
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.CueDetectorTest
+"$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.AudioAnalyzerTest
+$JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PhaseClockTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PixelWatchTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenIdentityTest
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenStatsTest

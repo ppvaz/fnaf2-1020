@@ -266,6 +266,7 @@ const ENGINE = [
   // The external authority owns rendered audio and publishes the same bounded
   // fact contract regardless of whether its receiver is BlueALSA or an ESP32.
   ['audio authority', ['cue/test-audio-authority.py']],
+  ['ESP32 audio authority', ['cue/test-esp32-audio-authority.py']],
   ['human floor', ['device/test-human-floor.sh']],
   ['provision-cue-model', ['device/test-provision-cue-model.sh']],
   // The campaign can request any story night, so every story night must build,
@@ -419,6 +420,7 @@ const ENGINE = [
   ['cue shadow window builder', ['cue/test-build-shadow-windows.py']],
   ['cue model promotion', ['cue/test-export-model.py']],
   ['latency experiment', ['cue/test-latency-experiment.py']],
+  ['pilot supervisor', ['cue/test-pilot-supervisor.py']],
   ['audio fact bridge', ['cue/test-bridge-audio-authority.py']],
 ];
 

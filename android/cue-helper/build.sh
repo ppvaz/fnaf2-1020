@@ -68,9 +68,13 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -classpath "$ANDROID_JAR" \
     -d "$CLASSES_DIR" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/MainActivity.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/AudioAnalyzer.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PhaseClock.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CueDetector.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PixelWatch.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenStats.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureFileProvider.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureService.java"
 
 "$JAR" --create --file "$BUILD_DIR/classes.jar" -C "$CLASSES_DIR" .

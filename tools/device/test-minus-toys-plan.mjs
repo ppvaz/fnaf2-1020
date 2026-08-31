@@ -138,6 +138,12 @@ for (const night of ['2', '7']) {
   check(JSON.stringify(m.finish) === JSON.stringify([
     [359700, 'tap', 'cam9', 100], [360000, 'tap', 'monitor', 100],
   ]), `the minimal plan has no CAM 09 proof visit then exact 5:08 AM monitor-down: ${JSON.stringify(m.finish)}`);
+
+  const audioGated = build({ preventiveVentLight: false });
+  check(!audioGated.loop.some(row => row[2] === 'ventl'),
+    'the audio-gated observation variant removes the preventive vent light');
+  check(build().loop.some(row => row[2] === 'ventl'),
+    'the shipped standard schedule retains its preventive vent light');
   const queued = schedule({ opening: m.opening, loop: m.loop, finish: m.finish,
     periodMs: 5000, loopStartMs: 140000, untilMs: 360000 });
   check(queued.at(-2)?.[2] === 'cam:9' && queued.at(-1)?.[0] === 21600 &&

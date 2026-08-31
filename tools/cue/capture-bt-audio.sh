@@ -46,9 +46,15 @@ check_route() {
     echo "audio-route=UNKNOWN reason=bluealsa-cli-missing pcm=$PCM mac=$MAC"
     return 3
   fi
-  if bluealsa-cli info "$PCM" >/dev/null 2>&1; then
+  local info
+  if info="$(bluealsa-cli info "$PCM" 2>/dev/null)" && \
+      printf '%s\n' "$info" | grep -Eiq '^[[:space:]]*Running:[[:space:]]*true[[:space:]]*$'; then
     echo "audio-route=READY transport=bluealsa pcm=$PCM mac=$MAC"
     return 0
+  fi
+  if [ -n "${info:-}" ]; then
+    echo "audio-route=UNKNOWN reason=a2dp-stream-not-running pcm=$PCM mac=$MAC"
+    return 3
   fi
   echo "audio-route=UNKNOWN reason=a2dp-source-not-connected pcm=$PCM mac=$MAC"
   return 3

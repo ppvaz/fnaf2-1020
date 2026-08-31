@@ -26,6 +26,7 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.media.projection.MediaProjectionManager;
 import android.media.projection.MediaProjectionConfig;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -34,14 +35,24 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowInsets;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import android.widget.Toast;
 
 public final class MainActivity extends Activity {
     private static final int REQUEST_MEDIA_PROJECTION = 1002;
     private static final int REQUEST_BLUETOOTH_CONNECT = 1003;
+    private static final int REQUEST_NEARBY_WIFI = 1004;
+    private static final int REQUEST_AUDIO_MODEL = 1005;
     private static final String GAME_PACKAGE = "com.scottgames.fnaf2";
     // Bench ESP32 A2DP receiver flashed from firmware/esp32-audio-consumer.
     private static final String AUDIO_RECEIVER_NAME = "FNAF2 Audio Consumer";
@@ -68,24 +79,34 @@ public final class MainActivity extends Activity {
     private static final String SESSION_DETAILS =
             "Each session uses user-approved MediaProjection screen capture "
                     + "with a persistent 20x9 stream. Audio comes from the external "
-                    + "audio authority, using a transport-specific receiver. Stop and "
-                    + "restart for a fresh session, then open FNaF 2.";
+                    + "audio authority, using a transport-specific receiver. The phone "
+                    + "the optional phone monitor reproduces PCM returned by the ESP32. "
+                    + "Stop and restart for a fresh session, then open FNaF 2.";
 
     private MediaProjectionManager projectionManager;
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothA2dp a2dpProxy;
     private TextView statusView;
+    private TextView diagnosticView;
+    private TextView audioAnalysisView;
     private TextView audioStatusView;
     private ScrollView landscapeStatusScroll;
     private Button bluetoothButton;
     private Button captureButton;
+    private Button audioMonitorButton;
+    private Button audioRecordButton;
+    private Button shareAudioButton;
     private Typeface hudTypeface;
     private boolean captureRunning;
+    private boolean audioMonitoring;
+    private boolean audioRecording;
     private boolean receiverRegistered;
     private boolean bluetoothReceiverRegistered;
     private boolean profileProxyRequested;
     private boolean bluetoothPermissionRequested;
     private boolean openBluetoothSettingsAfterPermission;
+    private boolean nearbyWifiPermissionRequested;
+    private boolean connectEspWifiAfterPermission;
     private boolean bluetoothConnected;
     private boolean firmwareAudioReceiverConnected;
     private boolean wifiEspConnected;
@@ -100,11 +121,32 @@ public final class MainActivity extends Activity {
             }
             String status = intent.getStringExtra(CaptureService.EXTRA_STATUS);
             if (status != null) {
-                statusView.setText(status);
+                if (statusView != null) {
+                    statusView.setText(status);
+                }
+                if (diagnosticView != null) {
+                    diagnosticView.setText(status);
+                }
+                if (audioAnalysisView != null) {
+                    audioAnalysisView.setText(extractAudioStatus(status));
+                }
                 if (status.startsWith("RUNNING") || status.startsWith("STARTING")) {
                     setCaptureRunning(true);
                 } else if (status.startsWith("UNAVAILABLE")) {
                     setCaptureRunning(false);
+                }
+                if (status.contains("audioRecord=ON")) {
+                    setAudioRecording(true);
+                } else if (status.contains("audioRecord=READY")
+                        || status.contains("audioRecord=OFF")) {
+                    setAudioRecording(false);
+                }
+                if (status.contains("audioMonitor=ON")
+                        || status.contains("audioMonitor=STARTING")) {
+                    setAudioMonitoring(true);
+                } else if (status.contains("audioMonitor=OFF")
+                        || status.contains("audioMonitor=ERROR")) {
+                    setAudioMonitoring(false);
                 }
             }
         }
@@ -241,38 +283,159 @@ public final class MainActivity extends Activity {
 
         root.addView(titleHeader(), matchWrap());
 
-        if (getResources().getConfiguration().orientation
-                == Configuration.ORIENTATION_LANDSCAPE) {
-            addLandscapeContent(root);
-            return root;
+        FrameLayout pages = new FrameLayout(this);
+        LinearLayout.LayoutParams pagesParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+        pagesParams.setMargins(0, dp(8), 0, 0);
+
+        Button[] tabs = new Button[4];
+        String[] labels = {"SESSION", "AUDIO", "DIAGNOSTIC", "CONFIG"};
+        LinearLayout tabBar = new LinearLayout(this);
+        tabBar.setOrientation(LinearLayout.HORIZONTAL);
+        tabBar.setGravity(Gravity.CENTER);
+        for (int index = 0; index < labels.length; index++) {
+            final int tabIndex = index;
+            tabs[index] = themedButton(labels[index], COLOR_PANEL,
+                    COLOR_FREDDY_PRESSED, COLOR_PANEL_BORDER, COLOR_TEXT);
+            tabs[index].setTextSize(11);
+            tabs[index].setPadding(dp(4), 0, dp(4), 0);
+            tabs[index].setOnClickListener(view -> selectTab(pages, tabs, tabIndex));
+            LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            tabParams.setMargins(dp(2), 0, dp(2), 0);
+            tabBar.addView(tabs[index], tabParams);
         }
+        root.addView(tabBar, matchWrap());
 
-        statusView = new TextView(this);
-        statusView.setText("UNAVAILABLE: capture has not started");
-        statusView.setTextIsSelectable(true);
-        statusView.setTextSize(15);
-        statusView.setTextColor(COLOR_TEXT);
-        statusView.setTypeface(Typeface.MONOSPACE);
-        statusView.setGravity(Gravity.CENTER_VERTICAL);
-        statusView.setPadding(dp(12), dp(12), dp(12), dp(12));
-        statusView.setBackground(panelBackground());
-        root.addView(statusView, matchWrap());
-
-        audioStatusView = audioStatusView();
-        root.addView(audioStatusView, matchWrap());
-
-        root.addView(bluetoothButton(), matchWrap());
-        root.addView(captureButton(), matchWrap());
-
-        Button openGame = themedButton(
-                "Open FNaF 2", COLOR_CHICA, COLOR_CHICA_PRESSED,
-                COLOR_CHICA_STROKE, Color.rgb(35, 24, 5));
-        openGame.setOnClickListener(view -> openGame());
-        root.addView(openGame, matchWrap());
-
-        root.addView(settingsRow(), matchWrap());
+        pages.addView(sessionPage(), pageParams());
+        pages.addView(audioPage(), pageParams());
+        pages.addView(diagnosticPage(), pageParams());
+        pages.addView(configPage(), pageParams());
+        root.addView(pages, pagesParams);
+        selectTab(pages, tabs, 0);
 
         return root;
+    }
+
+    private FrameLayout.LayoutParams pageParams() {
+        return new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+    }
+
+    private void selectTab(FrameLayout pages, Button[] tabs, int selected) {
+        for (int index = 0; index < pages.getChildCount(); index++) {
+            pages.getChildAt(index).setVisibility(index == selected
+                    ? View.VISIBLE : View.GONE);
+            if (tabs[index] != null) {
+                tabs[index].setTextColor(index == selected ? COLOR_AMBER : COLOR_TEXT);
+            }
+        }
+    }
+
+    private ScrollView scrollPage(LinearLayout content) {
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.addView(content, new ScrollView.LayoutParams(
+                ScrollView.LayoutParams.MATCH_PARENT,
+                ScrollView.LayoutParams.WRAP_CONTENT));
+        return scroll;
+    }
+
+    private LinearLayout pageContent(String label) {
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(0, dp(4), 0, dp(12));
+        content.addView(sectionLabel(label), matchWrap());
+        return content;
+    }
+
+    private ScrollView sessionPage() {
+        LinearLayout content = pageContent("SESSION / PILOT");
+        statusView = statusTextView();
+        content.addView(statusView, matchWrap());
+        content.addView(captureButton(), matchWrap());
+        content.addView(openGameButton(), matchWrap());
+        TextView note = bodyText(
+                "Run controls stay here. Audio authority and detailed diagnostics "
+                        + "are in their own tabs.");
+        content.addView(note, matchWrap());
+        return scrollPage(content);
+    }
+
+    private ScrollView audioPage() {
+        LinearLayout content = pageContent("AUDIO");
+        audioStatusView = audioStatusView();
+        content.addView(audioStatusView, matchWrap());
+        audioAnalysisView = statusTextView();
+        content.addView(audioAnalysisView, matchWrap());
+        content.addView(bluetoothButton(), matchWrap());
+        content.addView(audioMonitorButton(), matchWrap());
+        content.addView(audioRecordButton(), matchWrap());
+        content.addView(shareAudioButton(), matchWrap());
+        TextView note = bodyText(
+                "ESP32 remains the audio authority. Phone monitoring reproduces the "
+                        + "PCM returned on UDP 49710 and routes it to the built-in speaker.");
+        content.addView(note, matchWrap());
+        return scrollPage(content);
+    }
+
+    private ScrollView diagnosticPage() {
+        LinearLayout content = pageContent("DIAGNOSTIC / RAW STATUS");
+        diagnosticView = statusTextView();
+        content.addView(diagnosticView, matchWrap());
+        content.addView(themedButton("Session details", COLOR_PANEL,
+                COLOR_FREDDY_PRESSED, COLOR_PANEL_BORDER, COLOR_TEXT), matchWrap());
+        Button details = (Button) content.getChildAt(content.getChildCount() - 1);
+        details.setOnClickListener(view -> showSessionDetailsDialog());
+        return scrollPage(content);
+    }
+
+    private ScrollView configPage() {
+        LinearLayout content = pageContent("CONFIGURATION");
+        Button importModel = themedButton("Import audio model", COLOR_BONNIE,
+                COLOR_BONNIE_PRESSED, COLOR_BONNIE_STROKE, COLOR_TEXT);
+        importModel.setOnClickListener(view -> importAudioModel());
+        content.addView(importModel, matchWrap());
+        content.addView(settingsRow(), matchWrap());
+        content.addView(bodyText(
+                "Runtime target: phone + ESP32. A computer is an optional offline "
+                        + "diagnostic and analysis tool."), matchWrap());
+        return scrollPage(content);
+    }
+
+    private String extractAudioStatus(String status) {
+        if (status == null) {
+            return "audio service status unavailable";
+        }
+        for (String line : status.split("\\n")) {
+            if (line.startsWith("audio=")) {
+                return line;
+            }
+        }
+        return "audio service status unavailable";
+    }
+
+    private TextView statusTextView() {
+        TextView view = new TextView(this);
+        view.setText("UNAVAILABLE: capture has not started");
+        view.setTextIsSelectable(true);
+        view.setTextSize(14);
+        view.setTextColor(COLOR_TEXT);
+        view.setTypeface(Typeface.MONOSPACE);
+        view.setGravity(Gravity.TOP);
+        view.setPadding(dp(12), dp(12), dp(12), dp(12));
+        view.setBackground(panelBackground());
+        return view;
+    }
+
+    private TextView bodyText(String text) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextSize(14);
+        view.setTextColor(COLOR_MUTED);
+        view.setPadding(dp(8), dp(8), dp(8), dp(8));
+        return view;
     }
 
     private void addLandscapeContent(LinearLayout root) {
@@ -461,6 +624,9 @@ public final class MainActivity extends Activity {
 
     private void addControlButtons(LinearLayout controlCard) {
         controlCard.addView(captureButton(), matchWrap());
+        controlCard.addView(audioMonitorButton(), matchWrap());
+        controlCard.addView(audioRecordButton(), matchWrap());
+        controlCard.addView(shareAudioButton(), matchWrap());
 
         Button openGame = themedButton(
                 "Open FNaF 2", COLOR_CHICA, COLOR_CHICA_PRESSED,
@@ -490,7 +656,7 @@ public final class MainActivity extends Activity {
                 COLOR_BONNIE_STROKE, COLOR_TEXT);
         bluetoothButton.setOnClickListener(view -> {
             if (firmwareAudioReceiverConnected && !isEspWifiConnected()) {
-                openWifiSettings();
+                connectEspWifi();
             } else {
                 openBluetoothSettings();
             }
@@ -507,6 +673,40 @@ public final class MainActivity extends Activity {
         return captureButton;
     }
 
+    private Button openGameButton() {
+        Button openGame = themedButton(
+                "Open FNaF 2", COLOR_CHICA, COLOR_CHICA_PRESSED,
+                COLOR_CHICA_STROKE, Color.rgb(35, 24, 5));
+        openGame.setOnClickListener(view -> openGame());
+        return openGame;
+    }
+
+    private Button audioMonitorButton() {
+        audioMonitorButton = themedButton(
+                audioMonitoring ? "Stop ESP32 PCM monitor" : "Monitor ESP32 PCM on phone",
+                COLOR_BONNIE, COLOR_BONNIE_PRESSED,
+                COLOR_BONNIE_STROKE, COLOR_TEXT);
+        audioMonitorButton.setOnClickListener(view -> toggleAudioMonitor());
+        return audioMonitorButton;
+    }
+
+    private Button audioRecordButton() {
+        audioRecordButton = themedButton(
+                audioRecording ? "Stop ESP audio recording" : "Record ESP audio (dev)",
+                COLOR_FOXY_MANGLE, COLOR_FOXY_MANGLE_PRESSED,
+                COLOR_FOXY_MANGLE_STROKE, COLOR_TEXT);
+        audioRecordButton.setOnClickListener(view -> toggleAudioRecording());
+        return audioRecordButton;
+    }
+
+    private Button shareAudioButton() {
+        shareAudioButton = themedButton(
+                "Share last audio", COLOR_TEXT, Color.rgb(226, 204, 193),
+                COLOR_FOXY_MANGLE_STROKE, Color.BLACK);
+        shareAudioButton.setOnClickListener(view -> shareLastAudio());
+        return shareAudioButton;
+    }
+
     private void setCaptureRunning(boolean running) {
         captureRunning = running;
         if (captureButton != null) {
@@ -515,6 +715,123 @@ public final class MainActivity extends Activity {
         if (landscapeStatusScroll != null) {
             landscapeStatusScroll.setLayoutParams(statusScrollLayoutParams(running));
         }
+    }
+
+    private void setAudioMonitoring(boolean monitoring) {
+        audioMonitoring = monitoring;
+        if (audioMonitorButton != null) {
+            audioMonitorButton.setText(monitoring
+                    ? "Stop ESP32 PCM monitor" : "Monitor ESP32 PCM on phone");
+        }
+    }
+
+    private void toggleAudioMonitor() {
+        if (!captureRunning) {
+            Toast.makeText(this, "Start video capture first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (audioMonitoring) {
+            startService(new Intent(this, CaptureService.class)
+                    .setAction(CaptureService.ACTION_STOP_AUDIO_MONITOR));
+            return;
+        }
+        startPhoneAudioMonitor();
+    }
+
+    private void startPhoneAudioMonitor() {
+        startService(new Intent(this, CaptureService.class)
+                .setAction(CaptureService.ACTION_START_AUDIO_MONITOR));
+    }
+
+    private void importAudioModel() {
+        Intent open = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .setType("text/plain")
+                .addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(open, REQUEST_AUDIO_MODEL);
+    }
+
+    private void installAudioModel(android.net.Uri uri) throws IOException {
+        if (uri == null) {
+            throw new IOException("model-uri-missing");
+        }
+        File temporary = File.createTempFile("cue-model-", ".tmp", getFilesDir());
+        try {
+            try (InputStream input = getContentResolver().openInputStream(uri);
+                    FileOutputStream output = new FileOutputStream(temporary)) {
+                if (input == null) {
+                    throw new IOException("model-open-failed");
+                }
+                byte[] buffer = new byte[8192];
+                int total = 0;
+                int read;
+                while ((read = input.read(buffer)) != -1) {
+                    total += read;
+                    if (total > 1_000_000) {
+                        throw new IOException("model-too-large");
+                    }
+                    output.write(buffer, 0, read);
+                }
+            }
+            AudioAnalyzer.readModel(temporary);
+            File target = new File(getFilesDir(), "cue-model-v1.txt");
+            File backup = new File(getFilesDir(), "cue-model-v1.txt.bak");
+            if (backup.exists() && !backup.delete()) {
+                throw new IOException("model-backup-remove-failed");
+            }
+            boolean movedOld = target.exists() && target.renameTo(backup);
+            if (!temporary.renameTo(target)) {
+                if (movedOld) {
+                    backup.renameTo(target);
+                }
+                throw new IOException("model-install-failed");
+            }
+            if (movedOld) {
+                backup.delete();
+            }
+        } finally {
+            if (temporary.exists()) {
+                temporary.delete();
+            }
+        }
+    }
+
+    private void setAudioRecording(boolean recording) {
+        audioRecording = recording;
+        if (audioRecordButton != null) {
+            audioRecordButton.setText(recording
+                    ? "Stop ESP audio recording" : "Record ESP audio (dev)");
+        }
+    }
+
+    private void toggleAudioRecording() {
+        if (!captureRunning) {
+            Toast.makeText(this, "Start video capture first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Intent intent = new Intent(this, CaptureService.class).setAction(
+                audioRecording ? CaptureService.ACTION_STOP_AUDIO_RECORD
+                        : CaptureService.ACTION_START_AUDIO_RECORD);
+        startService(intent);
+        setAudioRecording(!audioRecording);
+    }
+
+    private void shareLastAudio() {
+        File directory = new File(getFilesDir(), "audio-captures");
+        File[] files = directory.listFiles((dir, name) -> name.endsWith(".wav"));
+        if (files == null || files.length == 0) {
+            Toast.makeText(this, "No ESP32 audio recording yet", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        Arrays.sort(files, (left, right) -> Long.compare(
+                right.lastModified(), left.lastModified()));
+        File file = files[0];
+        Uri uri = Uri.parse("content://com.fnaf2.cuehelper.files/audio-captures/"
+                + Uri.encode(file.getName()));
+        Intent send = new Intent(Intent.ACTION_SEND)
+                .setType("audio/wav")
+                .putExtra(Intent.EXTRA_STREAM, uri)
+                .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        startActivity(Intent.createChooser(send, "Share ESP32 audio"));
     }
 
     private LinearLayout.LayoutParams statusScrollLayoutParams(boolean expanded) {
@@ -541,6 +858,8 @@ public final class MainActivity extends Activity {
                 .setAction(CaptureService.ACTION_STOP);
         startService(intent);
         setCaptureRunning(false);
+        setAudioMonitoring(false);
+        setAudioRecording(false);
     }
 
     private Button themedButton(String label, int fill, int pressedFill,
@@ -876,7 +1195,37 @@ public final class MainActivity extends Activity {
     }
 
     private void openWifiSettings() {
-        startActivity(new Intent(Settings.ACTION_WIFI_SETTINGS));
+        connectEspWifi();
+    }
+
+    private boolean hasNearbyWifiPermission() {
+        if (Build.VERSION.SDK_INT >= 33) {
+            return checkSelfPermission(Manifest.permission.NEARBY_WIFI_DEVICES)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        if (Build.VERSION.SDK_INT >= 29) {
+            return checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+        return true;
+    }
+
+    private void connectEspWifi() {
+        if (!hasNearbyWifiPermission()) {
+            if (!nearbyWifiPermissionRequested) {
+                nearbyWifiPermissionRequested = true;
+                connectEspWifiAfterPermission = true;
+                String permission = Build.VERSION.SDK_INT >= 33
+                        ? Manifest.permission.NEARBY_WIFI_DEVICES
+                        : Manifest.permission.ACCESS_FINE_LOCATION;
+                requestPermissions(new String[]{permission}, REQUEST_NEARBY_WIFI);
+            }
+            return;
+        }
+        startService(new Intent(this, CaptureService.class)
+                .setAction(CaptureService.ACTION_CONNECT_AUDIO_WIFI));
+        setAudioDisplayText("Wi-Fi: requesting managed local connection to "
+                + WIFI_AP_SSID);
     }
 
     private void showAudioSetupDialog() {
@@ -894,6 +1243,21 @@ public final class MainActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions,
             int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NEARBY_WIFI) {
+            nearbyWifiPermissionRequested = false;
+            boolean granted = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (granted && connectEspWifiAfterPermission) {
+                connectEspWifiAfterPermission = false;
+                connectEspWifi();
+            } else if (!granted) {
+                connectEspWifiAfterPermission = false;
+                Toast.makeText(this,
+                        "ESP32 Wi-Fi connection needs nearby-device permission",
+                        Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (requestCode != REQUEST_BLUETOOTH_CONNECT) {
             return;
         }
@@ -916,6 +1280,22 @@ public final class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_AUDIO_MODEL) {
+            if (resultCode != RESULT_OK || data == null || data.getData() == null) {
+                return;
+            }
+            try {
+                installAudioModel(data.getData());
+                startService(new Intent(this, CaptureService.class)
+                        .setAction(CaptureService.ACTION_RELOAD_AUDIO_MODEL));
+                Toast.makeText(this, "Audio model installed and reloaded",
+                        Toast.LENGTH_LONG).show();
+            } catch (IOException | RuntimeException error) {
+                Toast.makeText(this, "Audio model rejected: " + error.getMessage(),
+                        Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (requestCode != REQUEST_MEDIA_PROJECTION) {
             return;
         }

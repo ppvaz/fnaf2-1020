@@ -37,6 +37,40 @@ observed = bridge.normalized_fact(fact())
 assert observed is not None and observed.endswith(b"\n")
 assert json.loads(observed) == json.loads(fact())
 
+
+def cue_line(name="cue-bang"):
+    value = json.loads(fact())
+    value["type"] = name
+    value["value"] = True
+    return bridge.normalized_fact(
+        json.dumps(value, separators=(",", ":")).encode("ascii"))
+
+
+class FakeVisualGate:
+    def __init__(self, state):
+        self._state = state
+        self.calls = 0
+
+    def state(self):
+        self.calls += 1
+        return self._state
+
+
+# Audio health is useful on every screen, but a cue is only usable with a
+# positive office observation. Menu and unknown are both safe refusals; neither
+# can let title-screen BGM through as a cue-bang.
+bang = cue_line()
+assert bang is not None and bridge.is_cue_fact(bang)
+menu_gate = FakeVisualGate("other")
+assert bridge.cue_allowed(bang, menu_gate) == (False, "other")
+assert menu_gate.calls == 1
+night_gate = FakeVisualGate("night")
+assert bridge.cue_allowed(bang, night_gate) == (True, "night")
+assert bridge.cue_allowed(observed, night_gate) == (True, "not-a-cue")
+assert bridge.cue_allowed(bang, None) == (False, "unknown(no-visual-gate)")
+assert bridge.cue_allowed(cue_line("wind-tick"), FakeVisualGate("gameover")) == \
+    (False, "gameover")
+
 unknown = bridge.normalized_fact(fact("UNKNOWN"))
 assert unknown is not None
 

@@ -9,13 +9,15 @@ package com.fnaf2.cuehelper;
  * frames in both orientations: dark display background, panel fill, and the
  * Bonnie/Freddy/Chica control colours. Dynamic status text is not used.</p>
  *
- * <p>This class identifies the helper only. A frame that is not confidently the
- * helper is {@link #UNKNOWN}; it is not silently promoted to a game identity.
- * That distinction is the safety gate for downstream visual interpretation.</p>
+ * <p>Besides the helper, this class has a conservative FNaF 2 night/menu
+ * diagnostic. Only {@link #FNAF2_NIGHT} can authorize audio observations; the
+ * menu and every unrecognized frame remain non-authorizing.</p>
  */
 public final class ScreenIdentity {
     public static final int UNKNOWN = 0;
     public static final int CUE_HELPER = 1;
+    public static final int FNAF2_NIGHT = 2;
+    public static final int FNAF2_MENU = 3;
 
     private static final int GRID_WIDTH = PixelWatch.GRID_WIDTH;
     private static final int GRID_HEIGHT = PixelWatch.GRID_HEIGHT;
@@ -43,9 +45,14 @@ public final class ScreenIdentity {
         if (grid == null || grid.length != GRID_WIDTH * GRID_HEIGHT) {
             return UNKNOWN;
         }
-        return landscapeScore(grid) >= LANDSCAPE_THRESHOLD
-                || portraitScore(grid) >= PORTRAIT_THRESHOLD
-                ? CUE_HELPER : UNKNOWN;
+        if (landscapeScore(grid) >= LANDSCAPE_THRESHOLD
+                || portraitScore(grid) >= PORTRAIT_THRESHOLD) {
+            return CUE_HELPER;
+        }
+        if (nightScore(grid) > 0) {
+            return FNAF2_NIGHT;
+        }
+        return menuScore(grid) >= 5 ? FNAF2_MENU : UNKNOWN;
     }
 
     /** A bounded diagnostic score, useful for logs and offline calibration. */
@@ -53,11 +60,115 @@ public final class ScreenIdentity {
         if (grid == null || grid.length != GRID_WIDTH * GRID_HEIGHT) {
             return 0;
         }
-        return Math.max(landscapeScore(grid), portraitScore(grid));
+        return Math.max(Math.max(landscapeScore(grid), portraitScore(grid)),
+                Math.max(nightScore(grid), menuScore(grid)));
     }
 
     public static String label(int state) {
-        return state == CUE_HELPER ? "CUE_HELPER" : "UNKNOWN";
+        switch (state) {
+            case CUE_HELPER:
+                return "CUE_HELPER";
+            case FNAF2_NIGHT:
+                return "FNAF2_NIGHT";
+            case FNAF2_MENU:
+                return "FNAF2_MENU";
+            default:
+                return "UNKNOWN";
+        }
+    }
+
+    /**
+     * Conservative approximation of the established phone-side night rule:
+     * the frame must be globally dark and show either the lit flashlight meter
+     * or the pink mask bar. A title/menu frame is therefore never a night.
+     */
+    private static int nightScore(int[] grid) {
+        if (globalMeanLuma(grid) >= 80) {
+            return 0;
+        }
+        int score = 0;
+        if (meanCells(grid, 0, 0, 2, 1) > 90) {
+            score += 6;
+        }
+        int maskRed = meanChannel(grid, 1, 8, 10, 9, 16);
+        int maskBlue = meanChannel(grid, 1, 8, 10, 9, 0);
+        if (maskRed > 50 && maskRed > maskBlue * 1.3) {
+            score += 6;
+        }
+        return score;
+    }
+
+    /** Menu is diagnostic only; it can never authorize audio cues. */
+    private static int menuScore(int[] grid) {
+        if (globalMeanLuma(grid) >= 80) {
+            return 0;
+        }
+        int brightTop = brightCells(grid, 0, 0, 10, 3);
+        int brightOptions = brightCells(grid, 0, 3, 12, 7);
+        return (brightTop >= 3 ? 3 : 0)
+                + (brightOptions >= 2 ? 2 : 0);
+    }
+
+    private static int globalMeanLuma(int[] grid) {
+        long total = 0L;
+        int count = 0;
+        for (int y = 4; y <= 6; y += 2) {
+            for (int x = 0; x < GRID_WIDTH; x++) {
+                int rgb = grid[y * GRID_WIDTH + x];
+                int red = (rgb >> 16) & 0xff;
+                int green = (rgb >> 8) & 0xff;
+                int blue = rgb & 0xff;
+                total += (77 * red + 150 * green + 29 * blue) >> 8;
+                count++;
+            }
+        }
+        return (int) (total / count);
+    }
+
+    private static int meanCells(int[] grid, int x0, int y0, int x1, int y1) {
+        long total = 0L;
+        int count = 0;
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int rgb = grid[y * GRID_WIDTH + x];
+                int red = (rgb >> 16) & 0xff;
+                int green = (rgb >> 8) & 0xff;
+                int blue = rgb & 0xff;
+                total += (77 * red + 150 * green + 29 * blue) >> 8;
+                count++;
+            }
+        }
+        return count == 0 ? 0 : (int) (total / count);
+    }
+
+    private static int meanChannel(int[] grid, int x0, int y0, int x1, int y1,
+            int shift) {
+        long total = 0L;
+        int count = 0;
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int rgb = grid[y * GRID_WIDTH + x];
+                total += (rgb >> shift) & 0xff;
+                count++;
+            }
+        }
+        return count == 0 ? 0 : (int) (total / count);
+    }
+
+    private static int brightCells(int[] grid, int x0, int y0, int x1, int y1) {
+        int count = 0;
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int rgb = grid[y * GRID_WIDTH + x];
+                int red = (rgb >> 16) & 0xff;
+                int green = (rgb >> 8) & 0xff;
+                int blue = rgb & 0xff;
+                if (red > 150 && green > 150 && blue > 150) {
+                    count++;
+                }
+            }
+        }
+        return count;
     }
 
     private static int landscapeScore(int[] grid) {

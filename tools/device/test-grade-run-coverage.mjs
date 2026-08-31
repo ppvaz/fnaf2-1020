@@ -86,6 +86,13 @@ const EXCLUDED = new Map([
 // scan noted the hole: CLAUDE.md's purest "instrument nobody runs" example is
 // tools/cue/detect.py, and this check did not look at it.
 const SIBLING_EXCLUDED = new Map([
+  ['audio-authority.py', 'live rendered-audio authority and run input, not a grader; gated by test-audio-authority.py'],
+  ['bridge-audio-authority.py', 'live transport bridge into Cue Helper, not a run artifact grader; gated by test-bridge-audio-authority.py'],
+  ['collect-facts.py', 'fact sidecar producer invoked by trial.sh, whose output is consumed by later analysis'],
+  ['esp32-audio-authority.py', 'live ESP32 PCM transport adapter, not a run grader; gated by test-esp32-audio-authority.py'],
+  ['latency-experiment.py', 'paired calibration experiment harness that creates evidence rather than grading a night; gated by test-latency-experiment.py'],
+  ['pack-esp32-cues.py', 'legacy firmware asset generator; production bridge firmware carries no cue assets'],
+  ['pilot-supervisor.py', 'run/experiment process supervisor rather than an artifact grader; gated by test-pilot-supervisor.py'],
   ['detect.py', 'the bang detector scan-night.sh drives; grade-run.sh reaches it through that'],
   ['features.py', 'feature extraction library for detect.py/evaluate.py, gated by test-cue.py'],
   ['correlate.py', 'offline waveform cross-correlation -- the control that refuted the 22 thuds, run by hand against a chosen pair'],

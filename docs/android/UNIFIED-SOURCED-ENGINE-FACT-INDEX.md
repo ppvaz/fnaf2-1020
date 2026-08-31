@@ -683,7 +683,7 @@ a small dispatch bank turns it into sound:
 | `cam 01` v6 | g608‑611 | 21, 24, 23 | BB hops 2‑4 (g414‑416) |
 | `cam 01` v21 | g691‑694 | **17** (the movement thud) on any value 1‑4 | 18 groups, 7 characters |
 | `cam 01` v5 | g704‑708 | 25‑29 (`Random(5)+1`) | 8 characters at marker 149 |
-| `cam 01` v12 | g709‑711 | 30‑32 | Toy Foxy only |
+| `cam 01` v12 | g709‑711 | **30‑32** | Mangle / `new foxy` only, private movement bank from g703 |
 
 - **Sample 17 is shared by 18 state edges across 7 characters** — including BB's
   two mask-clears (g292/g294) and every other vent occupant's (g400/g401,
@@ -696,9 +696,13 @@ a small dispatch bank turns it into sound:
   `tools/cue/features.py` removes each frame's mean (level-invariant by design)
   and therefore throws that away. g814 replays sample 24 every 2000 ms while BB
   is at marker 123.
+- **Mangle's private movement bank:** when `new foxy` (Mangle) overlaps
+  `hear footsteps`, g703 writes `cam 01` v12 = `Random(3)+1`; g709‑711 then
+  dispatch samples **30‑32** on channel 19. This is a route-movement cue,
+  distinct from the shared thud 17 and proximity static 20.
 - **Uniqueness:** sample **23** (g610) is the only sole-trigger BB vocal;
-  21 (g607/g608) is BB-only but two triggers; 24 also fires for Toy Foxy and BB
-  at 123. Toy Foxy is the only character with a private bank (30‑32). BB's
+ 21 (g607/g608) is BB-only but two triggers; 24 also fires for Toy Foxy and BB
+  at 123. Mangle is the only character with this private movement bank (30‑32). BB's
   footsteps at marker 149 are `Random(5)+1` from the shared bank.
 - **BB's in-office taunt is a *different* sample — 16** — played on every input
   he blocks while at marker 123: flashlight key (g78), flashlight hitbox (g88),

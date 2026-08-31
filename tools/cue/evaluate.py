@@ -36,6 +36,7 @@ CLASSES = {
     "thud": (17,),
     "taunt": (16,),
     "footstep": (25, 26, 27, 28, 29),
+    "mangle-movement": (30, 31, 32),
     "mangle-static": (20,),
     "music-box": (15,),
     "winding": (33,),

@@ -120,6 +120,19 @@ for transport in loopback forward; do
   esac
 done
 
+# The latency experiment can opt into the native watch source.  This must
+# preserve the same first three data columns consumed by latency-experiment.py
+# while proving that the luma came from the authenticated BB anchor.
+native_watch="$TEMP_DIR/native.tsv"
+CUE_HELPER_WATCH_READ=1 PATH="$TEMP_DIR/bin:$PATH" \
+  "$HERE/query-cue-helper.sh" watch 1 "$native_watch" >/dev/null
+head -n 1 "$native_watch" | grep -Fq $'snapshot_ns\tseq\tluma\tstate\tsource' || {
+  echo "native watch lost its source column" >&2; exit 1;
+}
+tail -n +2 "$native_watch" | grep -Eq $'^[0-9]+\t[0-9]+\t194\tOBSERVED\tbb_left_luma$' || {
+  echo "native watch did not record bb_left_luma" >&2; exit 1;
+}
+
 # latency: the mock answers the device-side sample loop with fixed values, so
 # this covers the reporter -- all three groups must survive to the summary.
 summary="$(PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" latency 5)"

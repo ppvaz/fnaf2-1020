@@ -43,11 +43,42 @@ public final class ScreenIdentityTest {
         return grid;
     }
 
+    private static int[] nightWithFlash() {
+        int[] grid = filled(0x0e0e10);
+        put(grid, 0, 0, 0xf0f0f0);
+        put(grid, 1, 0, 0xf0f0f0);
+        return grid;
+    }
+
+    private static int[] nightWithMask() {
+        int[] grid = filled(0x0e0e10);
+        for (int x = 1; x < 10; x++) put(grid, x, 8, 0xc85a78);
+        return grid;
+    }
+
+    private static int[] titleMenu() {
+        int[] grid = filled(0x0e0e10);
+        put(grid, 3, 0, 0xf0f0f0);
+        put(grid, 5, 1, 0xf0f0f0);
+        put(grid, 7, 2, 0xf0f0f0);
+        put(grid, 3, 4, 0xf0f0f0);
+        put(grid, 5, 5, 0xf0f0f0);
+        return grid;
+    }
+
     public static void main(String[] args) {
         check("landscape helper frame is identified",
                 ScreenIdentity.classify(landscapeHelper()) == ScreenIdentity.CUE_HELPER);
         check("portrait helper frame is identified",
                 ScreenIdentity.classify(portraitHelper()) == ScreenIdentity.CUE_HELPER);
+        check("dark office with lit meter is identified as night",
+                ScreenIdentity.classify(nightWithFlash()) == ScreenIdentity.FNAF2_NIGHT);
+        check("masked office is identified as night",
+                ScreenIdentity.classify(nightWithMask()) == ScreenIdentity.FNAF2_NIGHT);
+        check("title menu is diagnostic menu, not night",
+                ScreenIdentity.classify(titleMenu()) == ScreenIdentity.FNAF2_MENU);
+        check("night label is explicit",
+                "FNAF2_NIGHT".equals(ScreenIdentity.label(ScreenIdentity.FNAF2_NIGHT)));
 
         // The FNaF title is deliberately grey/white and must not be inferred
         // as the helper merely because it is a dark 20x9 frame.
