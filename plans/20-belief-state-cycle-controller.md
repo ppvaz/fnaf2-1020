@@ -225,6 +225,14 @@ engine import; the exact replay is confined to the test's proof callback.
 
 ### P6 -- ESP32 transport and real-time split
 
+**Architecture correction, 2026-08-31.** The phone -> ESP32 A2DP -> Wi-Fi/UDP
+PCM -> same-phone helper bridge was experimentally rejected for severe loss.
+The ESP32 is a local audio-DSP/reflex coprocessor, not a PCM return bridge.
+Audio leaves it only as timestamped semantic cue/health facts; the full
+controller boundary, action-arbiter ordering, and measurement gate are now
+defined in
+[`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](../docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md).
+
 Define the hardware protocol and choose the topology only after a bench trace.
 The recommended first topology is Linux A2DP sink -> fact link -> ESP32-S3
 wired USB-HID. A two-MCU alternative is Classic-Bluetooth ESP32 A2DP sink ->

@@ -94,6 +94,9 @@ Fusion build 296, August 2025.
 - [`ANDROID-AUDIO-CAPTURE.md`](device/ANDROID-AUDIO-CAPTURE.md) — the mobile
   recording bug that exposes normally inaudible Mangle/music-box loops, its
   evidence boundary, and the implications for an audio-cue detector.
+- [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md)
+  — the event-driven, three-loop controller boundary. The ESP32 is a local
+  audio/reflex coprocessor, not a PCM bridge back to the phone.
 - [`RUN-TELEMETRY.md`](device/RUN-TELEMETRY.md) — what a night run should
   record, ten diagnostic signals ranked by value per millisecond of a cycle
   that has only ~680 ms free.

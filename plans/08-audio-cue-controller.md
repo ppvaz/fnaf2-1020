@@ -34,17 +34,15 @@
 > A rooted g56 would also work (`setprop af.fast_track_multiplier 0`), but is not
 > available.
 >
-> **Runtime target (Pedro, 2026-08-30): phone + ESP32.** BlueALSA remains the
-> validated proof and an optional calibration/offline path, not a runtime PC
-> dependency. The game sends its complete mix from the phone to an ESP32 A2DP
-> sink; ESP-IDF exposes decoded PCM to a callback local to the ESP32; the
-> firmware returns that PCM over `FNAF2-AUDIO`/UDP 49710 to the Cue Helper on
-> the same phone. The APK analyzes and optionally records the returned stream,
-> and can reproduce it through an `AudioTrack` on the built-in speaker. The
-> callback is not a return channel: Wi-Fi is what carries the full PCM back.
-> Models remain receiver-specific; a BlueALSA calibration cannot silently
-> promote the ESP32 path. Full boundary and prior-art search:
-> `ANDROID-AUDIO-CAPTURE.md` §"Phone → ESP32 → same-phone loopback".
+> **Runtime-target correction (2026-08-31):** the phone -> ESP32 A2DP ->
+> Wi-Fi/UDP PCM -> same-phone Cue Helper experiment had severe loss problems.
+> The return-PCM bridge is retracted for live control. The ESP32 now owns local
+> bounded DSP/cue classification and emits timestamped semantic cue/health
+> facts; it must not stream PCM back to the phone's online controller. BlueALSA
+> remains a validated proof and optional calibration/offline path. Models remain
+> receiver-specific; a BlueALSA calibration cannot silently promote the ESP32
+> path. The controlling architecture and measurement gate are in
+> `docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`.
 
 **Status: gate 1 passes for the cue set this strategy needs (2026-08-24,
 after a correction).**

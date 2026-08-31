@@ -1,13 +1,15 @@
 # Android internal-audio capture does not match the audible mix
 
-> Current implementation (2026-08-30): the APK no longer uses internal audio
-> capture for game cues. The runtime target is **phone + ESP32**: FNaF 2 sends
-> its complete rendered mix to the ESP32 over A2DP; the ESP32 decodes it and
-> returns PCM to `FNaF 2 Cue Helper` over its `FNAF2-AUDIO` Wi-Fi network. The
-> helper analyzes, optionally records, and can monitor that returned PCM on the
-> phone's built-in speaker. BlueALSA remains an optional host calibration and
-> offline-diagnostic path, not a runtime dependency. The Android findings below
-> are retained as the reason this physical loopback boundary exists.
+> **Correction, 2026-08-31:** the 2026-08-30 phone -> ESP32 A2DP -> Wi-Fi/UDP
+> PCM -> same-phone helper experiment had severe loss problems. The ESP32 PCM
+> return path is therefore **retracted as a live-control architecture**. The
+> ESP32 remains useful as a local audio-DSP/reflex coprocessor: it consumes
+> audio locally and emits timestamped semantic cue/health facts, not a
+> continuous PCM stream for the phone to analyze. The experiment did not retain
+> a loss-rate or latency-percentile record, so this is a qualitative calibrated
+> rejection. See [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md)
+> for the controlling architecture. The Android findings below still establish
+> why a genuinely external audible-mix endpoint is needed for FAST-mixer cues.
 
 This note records an FNaF 2 mobile recording artifact reported on the owned
 Android build and independently described by other players. It matters beyond
@@ -584,9 +586,16 @@ tap is simpler and lower-latency than manufacturing an A2DP self-loop. The
 recompiled game remains the clean phone-only route: report `Play sample`
 directly before audio routing.
 
-## Phone → ESP32 → same-phone loopback: boundary and prior art
+## Retracted: phone → ESP32 → same-phone PCM loopback
 
-The runtime target is deliberately a physical loop rather than a second
+**Retraction, 2026-08-31.** The architecture in this section was implemented
+as an experiment and rejected after severe loss in its returned PCM path. It is
+kept below as a boundary/prior-art record, not as a runtime recommendation.
+The supported direction is local ESP32 DSP -> timestamped semantic fact ->
+belief/reflex controller; see
+[`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md).
+
+The experimental target was deliberately a physical loop rather than a second
 on-phone capture API:
 
 ```
