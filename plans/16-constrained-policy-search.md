@@ -360,7 +360,7 @@ gate that actually rejects it.
 
 ## Design rules
 
-- [`src/engine.js`](../src/engine.js) remains the sole mechanics authority.
+- [`packages/core/src/mechanics/plant-model.js`](../packages/core/src/mechanics/plant-model.js) remains the sole mechanics authority.
   **No second simulator and no event-driven variant** — a frame-skipping engine
   risks silent divergence, and sweeps are already fast enough (`policytest` is
   ~1.4 s). If search proves too slow, profile first.

@@ -1,0 +1,8 @@
+{
+  "name": "@fnaf2-1020/adapters",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {"@fnaf2-1020/core": "file:../core"},
+  "exports": {".": "./src/index.js", "./registry": "./src/registry.js", "./actuators": "./src/actuators.js", "./sensors": "./src/sensors.js"}
+}

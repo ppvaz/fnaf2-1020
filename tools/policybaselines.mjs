@@ -26,8 +26,8 @@
 // The local Minus 7 control is not reimplemented at all: it is
 // `tools/bbtest.mjs`'s `Bot`, driven through the adapter, so the control and
 // the published reactive Minus 7 figure are the same code.
-import * as C from '../src/config.js';
-import { Rng } from '../src/rng.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Rng } from '@fnaf2-1020/core/mechanics';
 import { Bot, DEFAULT_CYCLE } from './bbtest.mjs';
 
 const ms = (v) => Math.round(v * C.FPS / 1000);

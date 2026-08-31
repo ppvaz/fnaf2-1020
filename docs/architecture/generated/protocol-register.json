@@ -1,0 +1,35 @@
+{
+  "schema": "protocol-register-v1",
+  "protocols": [
+    {
+      "id": "screencheck-process-v1",
+      "owner": "adapters/screencheck",
+      "kind": "process",
+      "validator": "screencheck grammar"
+    },
+    {
+      "id": "cue-helper-control-v1",
+      "owner": "android/cue-helper",
+      "kind": "wire",
+      "validator": "bounded ASCII codec"
+    },
+    {
+      "id": "fact-message-v1",
+      "owner": "core/telemetry",
+      "kind": "wire",
+      "validator": "encodeFactMessage"
+    },
+    {
+      "id": "pcm-udp-v1",
+      "owner": "firmware",
+      "kind": "wire",
+      "validator": "28-byte header"
+    },
+    {
+      "id": "hid-executor-v1",
+      "owner": "apps/device",
+      "kind": "wire",
+      "validator": "trajectory JSONL"
+    }
+  ]
+}

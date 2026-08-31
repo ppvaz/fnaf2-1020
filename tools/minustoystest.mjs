@@ -13,8 +13,8 @@
 // consecutive mask ticks needed by Mangle and Balloon Boy. Golden Freddy's
 // five-second checks always land with the monitor down.
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 import { formatRate } from './stat.mjs';
 
 const SETUP = new Map([

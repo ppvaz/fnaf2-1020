@@ -1,5 +1,5 @@
 // Calibration smoke test: dragging a control must reposition it and must NOT
-// register as a game input, and the saved layout must reach src/config.js.
+// register as a game input, and the saved layout must reach canonical core config.
 import { spawn } from 'node:child_process';
 import { chromeBinary, chromeArgs } from './chrome.mjs';
 import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
@@ -10,15 +10,15 @@ import { join } from 'node:path';
 const BASE = process.argv[2] || 'http://localhost:8731/dist/index.html';
 
 // This test exercises the save-to-config path, which really does rewrite
-// src/config.js. Snapshot it so a test run never leaves the repo edited.
-const CONFIG = new URL('../src/config.js', import.meta.url).pathname;
+// core config. Snapshot it so a test run never leaves the repo edited.
+const CONFIG = new URL('../packages/core/src/mechanics/config.js', import.meta.url).pathname;
 const SNAPSHOT = readFileSync(CONFIG, 'utf8');
 const restore = () => {
   try {
     if (readFileSync(CONFIG, 'utf8') !== SNAPSHOT) {
       writeFileSync(CONFIG, SNAPSHOT);
       execFileSync('python3', [new URL('./build.py', import.meta.url).pathname], { stdio: 'ignore' });
-      console.log('(restored src/config.js and rebuilt)');
+      console.log('(restored canonical core config and rebuilt)');
     }
   } catch (e) { console.error('RESTORE FAILED:', e.message); }
 };
@@ -98,11 +98,11 @@ async function main() {
   const shot = await rpc(ws, 'Page.captureScreenshot', { format: 'png' });
   writeFileSync('/tmp/m7-cal.png', Buffer.from(shot.data, 'base64'));
 
-  console.log('\n— save to src/config.js —');
+  console.log('\n— save to canonical core config —');
   await ev('document.getElementById("btn-quit").click()'); await sleep(200);
   await ev('document.querySelector(\'[data-ui="settings"]\').click()'); await sleep(200);
   // Dry run: exercises validation and the whole client path without rewriting
-  // src/config.js, which earlier versions of this test silently destroyed.
+  // canonical core config, which earlier versions of this test silently destroyed.
   const res = await ev(`(async () => {
     const r = await fetch('/save-layout', {method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ map: window.app.ui.map, widgets: window.app.ui.widgets, dry: true })});

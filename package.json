@@ -1,0 +1,40 @@
+{
+  "name": "fnaf2-1020",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "bootstrap": "npm ci",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "npm run test:unit && npm run test:contracts && npm run test:core",
+    "test:unit": "node tools/architecture-test.js && node tools/validate-references.js",
+    "test:contracts": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+    "test:core": "node tools/sourcetest.mjs && node tools/simtest.mjs",
+    "test:legacy:engine": "node tools/test.mjs --engine",
+    "test:affected": "node tools/architecture-test.js",
+    "test:simulation": "node tools/test.mjs --engine --extended",
+    "test:trainer": "node tools/test.mjs --browser",
+    "test:browser:realtime": "node tools/test.mjs --browser",
+    "test:device:dry": "node apps/device/src/cli.js dry-run",
+    "test:device:bench": "node apps/device/src/cli.js bench",
+    "test:device:qualification": "node apps/device/src/cli.js live",
+    "build:trainer": "python3 tools/build.py",
+    "serve:trainer": "python3 tools/serve.py 8731",
+    "research": "node packages/research/src/cli.js",
+    "policy": "node tools/policy-inspect.js",
+    "evidence": "node tools/evidence.js",
+    "catalog": "node tools/generate-catalog.js",
+    "device:dry-run": "node apps/device/src/cli.js dry-run",
+    "device:bench": "node apps/device/src/cli.js bench",
+    "device:qualification": "node apps/device/src/cli.js live",
+    "device:run": "node apps/device/src/cli.js live",
+    "device:grade": "node apps/device/src/cli.js grade"
+  },
+  "devDependencies": {
+    "typescript": "5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

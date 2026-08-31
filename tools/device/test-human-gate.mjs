@@ -19,6 +19,7 @@ import { parsePlanText, jitterPlan, modelGate, HUMAN_SLACK_MS, GATE_MIN_SURVIVAL
 import { build, devicePlan } from './recipe.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const TRIAL = join(HERE, 'legacy-trial.sh');
 let failed = 0;
 const check = (name, cond, detail = '') => {
   if (!cond) { failed++; console.error(`FAIL ${name}${detail ? ` -- ${detail}` : ''}`); }
@@ -123,7 +124,7 @@ check('the broad Night 6 result stays pinned', real.survived === 648,
     const mockAdb = join(bin, 'adb');
     writeFileSync(mockAdb, '#!/bin/sh\necho MOCK_ADB_REACHED >&2\nexit 1\n');
     chmodSync(mockAdb, 0o755);
-    const n6 = spawnSync('bash', [join(HERE, 'trial.sh'), `gate-test-${process.pid}`, '90'],
+    const n6 = spawnSync('bash', [TRIAL, `gate-test-${process.pid}`, '90'],
       { encoding: 'utf8', env: { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, BB_LEFT_MODEL: join(HERE, 'hid-smoke.json') } });
     // The repaired route clears the gate, so execution reaches the first adb
@@ -137,7 +138,7 @@ check('the broad Night 6 result stays pinned', real.survived === 648,
       /model gate: 648\/1200 night-6 runs under \+\/-60 ms human slack/.test(out),
       out.split('\n').filter(l => l.includes('model gate')).join(' | '));
 
-    const n1 = spawnSync('bash', [join(HERE, 'trial.sh'),
+    const n1 = spawnSync('bash', [TRIAL,
       `gate-test-n1-${process.pid}`, '1'], { encoding: 'utf8', env: {
         ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
         BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
@@ -179,7 +180,7 @@ check('the broad Night 6 result stays pinned', real.survived === 648,
     // cursor; the point is that a human must have looked and said so, and that
     // the claim lands in the manifest.
     const storyRun = (name, extraEnv) => spawnSync('bash',
-      [join(HERE, 'trial.sh'), `${name}-${process.pid}`, '2'],
+      [TRIAL, `${name}-${process.pid}`, '2'],
       { encoding: 'utf8', env: {
         ...process.env, PATH: `${bin}:${process.env.PATH}`, TMPDIR: tmp,
         BB_LEFT_MODEL: join(HERE, 'hid-smoke.json'), NIGHT: 'continue',
@@ -221,7 +222,7 @@ check('the broad Night 6 result stays pinned', real.survived === 648,
       const env = { ...process.env, PATH: `${bin}:${process.env.PATH}`,
         TMPDIR: tmp, GRADE_RUN: '0', ...extraEnv };
       delete env.BB_LEFT_MODEL;
-      return spawnSync('bash', [join(HERE, 'trial.sh'),
+      return spawnSync('bash', [TRIAL,
         `gate-test-blind-n${night}-${process.pid}`, String(cycles)],
         { encoding: 'utf8', env });
     };
@@ -252,7 +253,7 @@ check('the broad Night 6 result stays pinned', real.survived === 648,
 // parts under trial/. They were one file until 2026-08-26, so an assertion
 // about a device-side constant could be written against the host and pass by
 // accident. The live floor below is device-side.
-const runner = readFileSync(join(HERE, 'trial.sh'), 'utf8');
+const runner = readFileSync(TRIAL, 'utf8');
 const driver = execFileSync('bash', [join(HERE, 'trial', 'assemble.sh')], { encoding: 'utf8' });
 const gateAt = runner.indexOf('human-gate.mjs');
 const adbAt = runner.indexOf('select-adb.sh', runner.indexOf('RUN_TMP="$(mktemp'));

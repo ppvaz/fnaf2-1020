@@ -76,7 +76,7 @@ build_session() {                               # RUN LIFECYCLE
     export MOCK_NO_CLOCK="${NO_CLOCK:-0}"
     # shellcheck source=/dev/null
     source "$HERE/session.sh"
-    fnaf_session_begin "$run" "tools/device/trial.sh" || exit 9
+    fnaf_session_begin "$run" "tools/device/legacy-trial.sh" || exit 9
     fnaf_session_probe_target 6 "6th-hid-multi-c6" "screencap-raw+screenrecord"
     fnaf_session_record controller \
       "policy_version=trial/6th/hid-multi" \
@@ -259,33 +259,33 @@ python3 "$HERE/session-manifest.py" record ok-run target not_a_field=1 \
 # The producers must actually call this, on the paths that matter. A helper
 # nobody invokes is the "instrument nobody runs" failure with extra steps.
 say "the producers are wired to it"
-grep -q 'source "\$HERE/session.sh"' "$HERE/trial.sh"
-check "trial.sh sources session.sh" $?
-grep -q 'fnaf_session_begin "\$OUT"' "$HERE/trial.sh"
-check "trial.sh begins a session" $?
-awk '/^cleanup\(\) \{/,/^\}/' "$HERE/trial.sh" | grep -q 'session_close'
+grep -q 'source "\$HERE/session.sh"' "$HERE/legacy-trial.sh"
+check "legacy-trial.sh sources session.sh" $?
+grep -q 'fnaf_session_begin "\$OUT"' "$HERE/legacy-trial.sh"
+check "legacy-trial.sh begins a session" $?
+awk '/^cleanup\(\) \{/,/^\}/' "$HERE/legacy-trial.sh" | grep -q 'session_close'
 check "cleanup closes the session" $?
-grep -q "^trap cleanup EXIT" "$HERE/trial.sh"
+grep -q "^trap cleanup EXIT" "$HERE/legacy-trial.sh"
 check "cleanup runs on EXIT" $?
-grep -q "^trap 'exit 130' INT" "$HERE/trial.sh"
+grep -q "^trap 'exit 130' INT" "$HERE/legacy-trial.sh"
 check "SIGINT routes through EXIT (and so through session_close)" $?
-grep -q "^trap 'exit 143' TERM" "$HERE/trial.sh"
+grep -q "^trap 'exit 143' TERM" "$HERE/legacy-trial.sh"
 check "SIGTERM routes through EXIT" $?
-awk '/^cleanup\(\) \{/,/^\}/' "$HERE/trial.sh" |
+awk '/^cleanup\(\) \{/,/^\}/' "$HERE/legacy-trial.sh" |
   awk '/session_close/{c=NR} /grade-run.sh/{g=NR} END{exit !(c && g && c < g)}'
 check "grade-run.sh runs after the manifest exists" $?
 
 # The driver's combined stream is host-side and must be drained before the
 # manifest hashes it. Static wiring checks are intentional here: the real
 # runner's remaining prerequisites are the gated model and a physical phone.
-grep -q 'LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"' "$HERE/trial.sh"
+grep -q 'LOCAL_RUN_LOG="$CAPTURE_DIR/$OUT-run.log"' "$HERE/legacy-trial.sh"
 check "the driver log has the documented captures/RUN-run.log name" $?
-grep -q '> "$DRIVER_OUTPUT_FIFO" 2>&1' "$HERE/trial.sh"
+grep -q '> "$DRIVER_OUTPUT_FIFO" 2>&1' "$HERE/legacy-trial.sh"
 check "the remote driver's stdout and stderr share the durable stream" $?
-awk '/^cleanup\(\) \{/,/^\}/' "$HERE/trial.sh" |
+awk '/^cleanup\(\) \{/,/^\}/' "$HERE/legacy-trial.sh" |
   awk '/finish_driver_log/{d=NR} /session_close/{c=NR} END{exit !(d && c && d < c)}'
 check "cleanup drains the driver log before finalizing every exit path" $?
-awk '/^session_close\(\) \{/,/^\}/' "$HERE/trial.sh" |
+awk '/^session_close\(\) \{/,/^\}/' "$HERE/legacy-trial.sh" |
   grep -q 'artifact_id=driver-log'
 check "the session manifest registers the driver log artifact" $?
 

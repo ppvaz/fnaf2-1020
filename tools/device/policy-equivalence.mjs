@@ -5,7 +5,7 @@
 // be compared to the mocked phone trace before an adb action is allowed.
 import { createHash } from 'node:crypto';
 import { compilePolicy } from './policy-interpreter.mjs';
-import { canonicalPolicy, validatePolicy } from '../../src/policy-ir.js';
+import { canonicalPolicy, validatePolicy } from '@fnaf2-1020/core/control';
 
 const ACTIONS = new Set(['monitor', 'mask', 'cam9', 'cam11', 'ventl', 'light', 'wind', 'hall']);
 const finite = value => Number.isFinite(value);

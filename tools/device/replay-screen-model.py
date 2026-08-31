@@ -57,7 +57,7 @@ def frame_input(path):
 def compile_checker(directory):
     checker = pathlib.Path(directory) / "screencheck"
     subprocess.run(
-        ["cc", "-std=c99", "-O3", str(HERE / "screencheck.c"), "-o", checker],
+        ["cc", "-std=c99", "-O3", str(HERE / "../../packages/screencheck/src/screencheck.c"), "-o", checker],
         check=True,
     )
     return checker

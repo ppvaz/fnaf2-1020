@@ -9,11 +9,11 @@
 // per cycle (docs/strategy/MINUS-3-STRATEGY.md sec.3). `minus-toys-margin.mjs`
 // maps where the slack is; a jitter/clock-error search sits on `schedule({shift})`.
 import { pathToFileURL } from 'node:url';
-import * as C from '../../src/config.js';
-import { Sim } from '../../src/engine.js';
-import { Observer } from '../../src/observer.js';
-import { VentThreatReactive, guardIntents, GUARD_FRAMES } from '../../src/controller.js';
-import { Rng } from '../../src/rng.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
+import { Observer } from '@fnaf2-1020/core/sensing';
+import { VentThreatReactive, guardIntents, GUARD_FRAMES } from '@fnaf2-1020/core/control';
+import { Rng } from '@fnaf2-1020/core/mechanics';
 
 // Every tunable number in the schedule. build(KNOBS0) reproduces the shipped
 // opening/loop byte-for-byte (asserted below). Each knob names one decision the

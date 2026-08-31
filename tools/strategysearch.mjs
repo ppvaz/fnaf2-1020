@@ -10,7 +10,7 @@
 //   node tools/strategysearch.mjs
 //   node tools/strategysearch.mjs --quick
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { DEFAULT_CYCLE } from './bbtest.mjs';
 import { genCycle, KNOBS0 } from './cyclesearch.mjs';
 import { pool, closePool } from './pool.mjs';

@@ -2,7 +2,7 @@
 import {
   BELIEF_SCHEMA, initialBelief, observed, unknown,
   reduceBelief, replayBelief,
-} from '../src/belief-state.js';
+} from '@fnaf2-1020/core/estimation';
 
 let failures = 0;
 const check = (name, condition) => {

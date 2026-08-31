@@ -16,9 +16,9 @@
 //
 //   node tools/sourcetest.mjs
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
-import { Rng } from '../src/rng.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
+import { Rng } from '@fnaf2-1020/core/mechanics';
 
 let pass = 0;
 const fails = [];

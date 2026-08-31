@@ -1,0 +1,8 @@
+{
+  "name": "@fnaf2-1020/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {"@fnaf2-1020/core": "file:../core"},
+  "exports": {".": "./src/index.js", "./scheduler": "./src/scheduler/scheduler.js", "./safety": "./src/safety/supervisor.js"}
+}

@@ -1,6 +1,6 @@
 // Convert the current Night 1 Minimal Minus Toys plan into Plan 21's policy IR.
 import { build, KNOBS0 } from './minus-toys-plan.mjs';
-import { POLICY_SCHEMA, validatePolicy } from '../../src/policy-ir.js';
+import { POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
 
 const rowAction = (row, defaultContactMs = 100) => {
   const [at, kind, action, duration] = row;
@@ -27,7 +27,7 @@ export function minimalPolicy(knobs = {}) {
       id: 'minus-toys-minimal-night1', family: 'minus-toys', nights: [1],
       setupTarget: 'minus-toys-split',
       armVerify: true,
-      sourceDependencies: ['src/config.js', 'tools/device/minus-toys-plan.mjs'],
+      sourceDependencies: ['@fnaf2-1020/core/mechanics', 'tools/device/minus-toys-plan.mjs'],
       calibrationProfile: 'moto-g56-v207-landscape',
     },
     phases: [

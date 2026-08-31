@@ -45,7 +45,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="fnaf-screencheck-test-") as temp:
         binary = pathlib.Path(temp) / "screencheck"
         subprocess.run(
-            ["cc", "-std=c99", "-O2", str(HERE / "screencheck.c"), "-o", binary],
+            ["cc", "-std=c99", "-O2", str(HERE / "../../packages/screencheck/src/screencheck.c"), "-o", binary],
             check=True,
         )
 

@@ -1,5 +1,11 @@
 # On-device validation (bot over adb)
 
+> Migration notice: new device composition goes through `@fnaf2-1020/device`
+> and `DeviceControlService` (`npm run device:dry-run`). The shell procedure
+> below is retained as historical characterization under
+> `tools/device/legacy-trial.sh`; it is not a source of new architecture or
+> claim promotion.
+
 Started 2026-08-20 with the Moto g56 5G plugged in over USB. Goal: test the
 decoded Android model's load-bearing rules against the real
 `com.scottgames.fnaf2` build instead of only the event-sheet reading.
@@ -249,7 +255,7 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   and [`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
 - **A minimal stock-device visual path now exists.**
-  [`tools/device/screencheck.c`](../../tools/device/screencheck.c) builds to a
+  [`packages/screencheck/src/screencheck.c`](../../packages/screencheck/src/screencheck.c) builds to a
   12,680-byte static ARM64 helper and reduces raw `screencap` to color features,
   `match`/`clear`, or a compact nearest-template class entirely inside one
   device shell. No frame crosses USB and no APK/root/runtime dependency is

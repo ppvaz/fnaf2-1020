@@ -11,7 +11,7 @@
 // (CLAUDE.md, "The simulator prices nothing"). `--actuator` narrows that gap
 // without closing it, and none of these figures is a device clear.
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { sweep, runPolicy } from './policy.mjs';
 import { POLICIES } from './policybaselines.mjs';
 import { run as bbRun } from './bbtest.mjs';

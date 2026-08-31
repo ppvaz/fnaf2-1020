@@ -1,8 +1,8 @@
 // Headless check: drive a "perfect player" through the Minus 7 cycle and see
 // whether the simulation's economics actually work out over a full night.
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
-import { Coach } from '../src/coach.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
+import { Coach } from '@fnaf2-1020/trainer';
 
 // The coach must not call an input safe when the model says it ends the night.
 // Grading is per step and lopsided: `mask-off` has 450 ms of room early and

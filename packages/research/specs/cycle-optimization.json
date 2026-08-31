@@ -1,0 +1,28 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "cycle-optimization",
+  "operation": "cycle-optimization",
+  "hypothesis": "a finite semantic cycle can be ranked by one pure evaluator",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "cycle-reference",
+  "observationPrivilege": "none",
+  "faultProfile": "none",
+  "seeds": [7, 8, 9],
+  "candidateParameters": [
+    {"label": "compact", "commandAtFrames": [0, 10, 36, 62]},
+    {"label": "nominal", "commandAtFrames": [0, 12, 40, 68]},
+    {"label": "spaced", "commandAtFrames": [0, 16, 48, 80]}
+  ],
+  "commands": [
+    {"at": 0, "action": {"kind": "press", "control": "monitor"}},
+    {"at": 12, "action": {"kind": "select", "control": "cam:10"}},
+    {"at": 40, "action": {"kind": "select", "control": "cam:4"}},
+    {"at": 68, "action": {"kind": "release", "control": "monitor"}}
+  ],
+  "durationFrames": 120,
+  "sample": {"count": 3, "stoppingRule": "fixed cycle candidates"},
+  "objectives": ["cycle-cost", "trace-reproducibility"],
+  "controls": ["empty-cycle"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

@@ -1,6 +1,26 @@
 # Plan progress
 
-**Updated:** 2026-08-30
+**Updated:** 2026-08-31
+
+**Plan 22 architecture refactor (active branch `refactor`):** workspace/core
+boundaries, contract validators and register/spec catalog, trainer move,
+runtime/device service, fixture/transport adapter registry, screencheck package,
+research experiment primitive, evidence CLI, generated catalogs, portal, and
+CI fast lanes are implemented in the worktree. The legacy shell runner is now
+explicitly `tools/device/legacy-trial.sh`; `tools/device/trial.sh` is a short
+facade. Remaining Plan 22 work is live hardware qualification and broader
+research campaigns beyond the checked-in reference cases. The root `src` and
+native screencheck shims are removed; the remaining legacy device runner is
+explicitly named and isolated. Fixture and model outputs remain capped at
+`FIXTURE`/`MODEL_ONLY`.
+
+2026-08-31 final architecture audit: `npm ci`, strict typecheck, unit/contract/
+core lanes, catalog and documentation-link checks, native screencheck, trial
+assembly, device dry-run, research model-smoke, and all five browser checks
+pass. The CLI correctly refuses live qualification until an operator injects a
+real `DEVICE_MEASURED` transport. The full legacy engine lane remains an
+explicit diagnostic command; its known red vent-reactive scientific gate is
+not folded into the green edit lane.
 
 **Overall:** **35%** — 47 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the

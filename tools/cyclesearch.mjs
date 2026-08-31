@@ -22,7 +22,7 @@
 //   --profile asks whether a cycle survives a *player* whose error is
 //     distributed unevenly across the steps. The weights are inferred, not
 //     sourced (see PROFILES in bbtest.mjs); this is a sensitivity analysis.
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { DEFAULT_CYCLE, labelCycle } from './bbtest.mjs';
 import { pool, closePool } from './pool.mjs';
 

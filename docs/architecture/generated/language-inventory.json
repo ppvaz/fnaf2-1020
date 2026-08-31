@@ -1,0 +1,29 @@
+{
+  "schema": "language-inventory-v1",
+  "languages": {
+    "Shell": {
+      "files": 58,
+      "lines": 10100
+    },
+    "JavaScript": {
+      "files": 169,
+      "lines": 28519
+    },
+    "C": {
+      "files": 4,
+      "lines": 2125
+    },
+    "TypeScript": {
+      "files": 1,
+      "lines": 81
+    },
+    "Assembly": {
+      "files": 1,
+      "lines": 12
+    },
+    "Python": {
+      "files": 82,
+      "lines": 16182
+    }
+  }
+}

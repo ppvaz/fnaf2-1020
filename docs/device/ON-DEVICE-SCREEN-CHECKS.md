@@ -14,7 +14,7 @@ stock SurfaceFlinger -> screencap -> 12.4 KiB native helper -> local branch
                                        no image leaves phone
 ```
 
-The helper is [`tools/device/screencheck.c`](../../tools/device/screencheck.c). It is
+The helper is [`packages/screencheck/src/screencheck.c`](../../packages/screencheck/src/screencheck.c). The package path is the only native source. It is
 a static, libc-free ARM64/Linux executable, so it does not need an APK, root,
 an Android permission prompt, Python, an NDK runtime, or a writable game
 package. It consumes Android's native 16-byte raw-screencap header and RGBA

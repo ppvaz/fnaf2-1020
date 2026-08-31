@@ -3,7 +3,7 @@
 import { minimalPolicy } from './policy-ir.mjs';
 import { compilePolicy, replayPolicy } from './policy-interpreter.mjs';
 import { build, schedule } from './minus-toys-plan.mjs';
-import * as C from '../../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const events = compilePolicy(minimalPolicy(), { untilMs: 420000 });

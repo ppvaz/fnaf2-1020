@@ -1,0 +1,1086 @@
+{
+  "schema": "test-manifest-v1",
+  "generatedFrom": "source inventory",
+  "tests": [
+    {
+      "id": "android/cue-helper/test.sh",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "apps/device/test/service.test.js",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "packages/adapters/test/conformance.test.js",
+      "lane": "test:unit",
+      "owner": "package boundary",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "packages/core/test/contracts.test.js",
+      "lane": "test:unit",
+      "owner": "@fnaf2-1020/core",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "packages/research/test/experiment.test.js",
+      "lane": "test:unit",
+      "owner": "package boundary",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/androidstalltest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/architecture-test.js",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/bbtest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/belieftest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/browsertest.mjs",
+      "lane": "test:browser:realtime",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/caltest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/closedlooptest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/cue/test-audio-authority.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-bridge-audio-authority.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-build-shadow-windows.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-capture-bt-audio.sh",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/cue/test-cue.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-esp32-audio-authority.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-evaluate-shadow.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-export-model.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-latency-experiment.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cue/test-pilot-supervisor.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/cyclecontrollertest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/cycletest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/bench-screencheck.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/build-screencheck.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/sweepcheck.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-actuator.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-bb-cue-state.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-cam11lit.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-camtrace.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-cue-trace-loop.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-death-cause.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-deathchart.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-device-input-gaps.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-drifttrace.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-elegance.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-grade-run-coverage.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-hid-sweep-probe.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-hid-trace.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-hid-walltime.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-human-floor.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-human-gate.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-index-observations.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-inputtrace.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-intro-card.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-menu.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-minus-toys-jitter.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-minus-toys-margin.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-minus-toys-plan.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-night-matrix.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-plan-interpreter.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-policy-interpreter.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-policy-ir.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-preflight.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-provision-cue-model.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-query-cue-helper.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-recipe.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-region-classify.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-runner-plan.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-screen-map.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-screencheck.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-screenrecord-capability.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-screenstate.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-select-adb.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-sensor.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-session-manifest.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-shell-footguns.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-soak-cue-helper.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-sweepcheck.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-trial-assembly.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-trial-reactive.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/device/test-validate-session.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/device/test-watch-calibrate.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 30000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/dump/test-aimap.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/dump/test-instances.py",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/estimatortest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/factlinktest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/hidpilottest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/hidreporttest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/lessontest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/lightcheck.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/mangletest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/minus2test.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/minus6test.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/minus7/test-search.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/minustoystest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/phaseclocktest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/phasetest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/pilottest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/plannertest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/policy-inspect.js",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/policyartifacttest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/policyequivalencetest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/policygrammartest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/policysearchtest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/policytest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/propertytest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/reactivetest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/reducedmodeltest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/rvctest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/simtest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/sourcetest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/test-docs.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/test-stat.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false
+    },
+    {
+      "id": "tools/test.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/tracetest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    },
+    {
+      "id": "tools/ventreacttest.mjs",
+      "lane": "test:unit",
+      "owner": "legacy migration",
+      "timeoutMs": 10000,
+      "deterministic": true,
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": true
+    }
+  ]
+}

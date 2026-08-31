@@ -32,8 +32,8 @@
 // monitor raise admits her to marker 123. Adding flash depth to fix that
 // re-derives Minus 7's {4,7,10} cut set. See docs/strategy/MINUS-3-STRATEGY.md §7.
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 
 // Cycle phases, frames from each 5 s boundary (GF rolls land on boundaries;
 // the monitor is always down across them).

@@ -3,7 +3,7 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNNER="$HERE/trial.sh"
+RUNNER="$HERE/legacy-trial.sh"
 failed=0
 
 check() {

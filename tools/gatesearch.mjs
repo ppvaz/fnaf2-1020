@@ -13,7 +13,7 @@
 //
 //   node tools/gatesearch.mjs [--quick]
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { pool, closePool } from './pool.mjs';
 
 // The controller itself lives in gatebot.mjs so the pool can import it as a

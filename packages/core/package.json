@@ -1,0 +1,18 @@
+{
+  "name": "@fnaf2-1020/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./contracts": "./src/contracts/index.js",
+    "./mechanics": "./src/mechanics/index.js",
+    "./control": "./src/control/index.js",
+    "./sensing": "./src/sensing/index.js",
+    "./actuation": "./src/actuation/index.js",
+    "./estimation": "./src/estimation/index.js",
+    "./timing": "./src/timing/index.js",
+    "./telemetry": "./src/telemetry/index.js"
+  },
+  "types": "./src/contracts/types.ts"
+}

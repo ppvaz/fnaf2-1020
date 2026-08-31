@@ -2,7 +2,7 @@
 """Dev server for the trainer.
 
 Serves the project on the LAN and accepts POST /save-layout, so a layout
-calibrated by dragging on the phone can be written back into src/config.js as
+calibrated by dragging on the phone can be written back into the core config as
 the new DEFAULT_MAP. Rebuilds dist/ afterwards so a reload picks it up.
 
     python3 tools/serve.py [port]
@@ -11,7 +11,7 @@ import datetime, json, os, re, subprocess, sys, pathlib
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-CONFIG = ROOT / 'src' / 'config.js'
+CONFIG = ROOT / 'packages' / 'core' / 'src' / 'mechanics' / 'config.js'
 # Where POST /save-trace lands. captures/ is ignored, like every other run
 # artifact; the env override exists so tests can exercise the real write
 # without littering the repository.
@@ -58,7 +58,7 @@ def write_config(m, w):
     src = CONFIG.read_text()
     for name, block in (('DEFAULT_MAP', MAP_BLOCK), ('DEFAULT_WIDGETS', WID_BLOCK)):
         if not block.search(src):
-            raise RuntimeError(f'{name} block not found in src/config.js')
+            raise RuntimeError(f'{name} block not found in canonical core config')
     rows = '\n'.join(
         f"  {k}:{' ' * (2 - len(str(k)))} {{ x: {m[k]['x']:.3f}, y: {m[k]['y']:.3f}, "
         f"w: {m[k]['w']:.3f}, h: {m[k]['h']:.3f} }},"
@@ -150,7 +150,7 @@ class Handler(SimpleHTTPRequestHandler):
             write_config(m, w)
             build = subprocess.run([sys.executable, str(ROOT / 'tools' / 'build.py')],
                                    capture_output=True, text=True)
-            print(f'saved layout -> src/config.js  ({build.stdout.strip()})')
+            print(f'saved layout -> packages/core/src/mechanics/config.js  ({build.stdout.strip()})')
             self._json(200, {'ok': True, 'build': build.stdout.strip()})
         except Exception as e:
             print(f'save-layout failed: {e}')

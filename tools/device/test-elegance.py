@@ -78,7 +78,7 @@ class Serves(unittest.TestCase):
         # A typo'd id is the silent failure: canAct() returns peak 0 for a name
         # nothing sets, so the whole class grades as WASTED on every night and
         # reads like a finding.
-        with open(os.path.join(REPO, "src", "config.js")) as f:
+        with open(os.path.join(REPO, "packages", "core", "src", "mechanics", "config.js")) as f:
             config = f.read()
         table = config[config.index("AI_BY_NIGHT"):config.index("aiUpdates")]
         known = set(re.findall(r"(\w+):\s*(?:\d+|\{ oneIn)", table))

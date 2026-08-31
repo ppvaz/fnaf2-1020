@@ -1,0 +1,1262 @@
+{
+  "schema": "import-graph-v1",
+  "files": [
+    {
+      "file": "apps/device/src/cli.js",
+      "imports": [
+        "./composition.js",
+        "@fnaf2-1020/adapters/registry",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/src/composition.js",
+      "imports": [
+        "./service.js",
+        "@fnaf2-1020/adapters/actuators",
+        "@fnaf2-1020/adapters/sensors"
+      ]
+    },
+    {
+      "file": "apps/device/src/index.js",
+      "imports": [
+        "./composition.js",
+        "./mcp.js",
+        "./service.js"
+      ]
+    },
+    {
+      "file": "apps/device/src/mcp.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "apps/device/src/service.js",
+      "imports": [
+        "@fnaf2-1020/adapters/registry",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/runtime",
+        "node:crypto",
+        "node:fs/promises",
+        "node:path"
+      ]
+    },
+    {
+      "file": "apps/device/test/service.test.js",
+      "imports": [
+        "../src/composition.js",
+        "../src/mcp.js",
+        "../src/service.js",
+        "@fnaf2-1020/adapters/actuators",
+        "@fnaf2-1020/adapters/sensors",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/coach.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/curriculum.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/index.js",
+      "imports": [
+        "./coach.js"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/lane.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/main.js",
+      "imports": [
+        "./assets.js",
+        "./audio.js",
+        "./coach.js",
+        "./curriculum.js",
+        "./input.js",
+        "./lane.js",
+        "./report.js",
+        "./ui.js",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/report.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/ui.js",
+      "imports": [
+        "./lane.js",
+        "./report.js",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/actuators.js",
+      "imports": [
+        "@fnaf2-1020/core/actuation",
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/clocks.js",
+      "imports": [
+        "@fnaf2-1020/core/timing"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/index.js",
+      "imports": [
+        "./actuators.js",
+        "./clocks.js",
+        "./registry.js",
+        "./sensors.js"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/registry.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/sensors.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/sensing"
+      ]
+    },
+    {
+      "file": "packages/adapters/test/conformance.test.js",
+      "imports": [
+        "../src/actuators.js",
+        "../src/clocks.js",
+        "../src/registry.js",
+        "../src/sensors.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/src/actuation/index.js",
+      "imports": [
+        "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/controller.js",
+      "imports": [
+        "../mechanics/config.js",
+        "../sensing/observer.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/cycle-controller.js",
+      "imports": [
+        "../estimation/estimator.js",
+        "../mechanics/config.js",
+        "../mechanics/reduced-model.js",
+        "./cycle-library.js",
+        "./cycle-planner.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/cycle-library.js",
+      "imports": [
+        "../mechanics/config.js",
+        "../mechanics/reduced-model.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/cycle-planner.js",
+      "imports": [
+        "./cycle-library.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/index.js",
+      "imports": [
+        "./controller.js",
+        "./cycle-controller.js",
+        "./cycle-library.js",
+        "./cycle-planner.js",
+        "./policy-ir.js",
+        "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/estimation/estimator.js",
+      "imports": [
+        "./belief-state.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/estimation/index.js",
+      "imports": [
+        "./belief-state.js",
+        "./estimator.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/index.js",
+      "imports": [
+        "./actuation/index.js",
+        "./contracts/index.js",
+        "./control/index.js",
+        "./estimation/index.js",
+        "./mechanics/index.js",
+        "./sensing/index.js",
+        "./telemetry/index.js",
+        "./timing/index.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/index.js",
+      "imports": [
+        "./config.js",
+        "./plant-model.js",
+        "./plant.js",
+        "./reduced-model.js",
+        "./rng.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/plant-model.js",
+      "imports": [
+        "./config.js",
+        "./rng.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/plant.js",
+      "imports": [
+        "../contracts/index.js",
+        "./plant-model.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/reduced-model.js",
+      "imports": [
+        "./config.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/sensing/index.js",
+      "imports": [
+        "./observer.js",
+        "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/sensing/observer.js",
+      "imports": [
+        "../mechanics/config.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/sensing/ports.js",
+      "imports": [
+        "../contracts/index.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/telemetry/index.js",
+      "imports": [
+        "./fact-link.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/timing/index.js",
+      "imports": [
+        "./phase-clock.js",
+        "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/test/contracts.test.js",
+      "imports": [
+        "../src/contracts/index.js",
+        "../src/mechanics/plant.js",
+        "../src/telemetry/fact-link.js",
+        "node:assert/strict",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "packages/research/src/cli.js",
+      "imports": [
+        "./experiment.js",
+        "@fnaf2-1020/core",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "packages/research/src/experiment.js",
+      "imports": [
+        "@fnaf2-1020/core"
+      ]
+    },
+    {
+      "file": "packages/research/test/experiment.test.js",
+      "imports": [
+        "../src/experiment.js",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "packages/runtime/src/contracts.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "packages/runtime/src/index.js",
+      "imports": [
+        "./contracts.js",
+        "./safety/supervisor.js",
+        "./scheduler/scheduler.js"
+      ]
+    },
+    {
+      "file": "packages/runtime/src/safety/supervisor.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "packages/runtime/src/scheduler/scheduler.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "tools/androidstalltest.mjs",
+      "imports": [
+        "./bbtest.mjs"
+      ]
+    },
+    {
+      "file": "tools/architecture-test.js",
+      "imports": [
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/bbtest.mjs",
+      "imports": [
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url",
+        "node:worker_threads"
+      ]
+    },
+    {
+      "file": "tools/belieftest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/estimation"
+      ]
+    },
+    {
+      "file": "tools/browsertest.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/caltest.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/chrome.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/closedlooptest.mjs",
+      "imports": [
+        "./hidpilottest.mjs",
+        "./pilottest.mjs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/constrainedsearch.mjs",
+      "imports": [
+        "./minus7/paramsearch.mjs",
+        "./pool.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/cyclecontrollertest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/cyclesearch.mjs",
+      "imports": [
+        "./bbtest.mjs",
+        "./pool.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/cycletest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/device/actuator.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/device/clocktrace.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/device/deathchart.mjs",
+      "imports": [
+        "../chrome.mjs",
+        "../stat.mjs",
+        "./human-gate.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/drifttrace.mjs",
+      "imports": [
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/gate-worker.mjs",
+      "imports": [
+        "./human-gate.mjs",
+        "./recipe.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/hid-raise-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/hid-sweep-probe.mjs",
+      "imports": [
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/human-gate.mjs",
+      "imports": [
+        "../stat.mjs",
+        "./recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/minus-toys-jitter.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/minus-toys-margin.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/minus-toys-plan.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/policy-artifact.mjs",
+      "imports": [
+        "./policy-equivalence.mjs",
+        "./policy-interpreter.mjs",
+        "./policy-ir.mjs",
+        "@fnaf2-1020/core/control",
+        "node:crypto",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/policy-equivalence.mjs",
+      "imports": [
+        "./policy-interpreter.mjs",
+        "@fnaf2-1020/core/control",
+        "node:crypto"
+      ]
+    },
+    {
+      "file": "tools/device/policy-grammar.mjs",
+      "imports": [
+        "./policy-ir.mjs",
+        "@fnaf2-1020/core/control"
+      ]
+    },
+    {
+      "file": "tools/device/policy-interpreter.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/device/policy-ir.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "@fnaf2-1020/core/control"
+      ]
+    },
+    {
+      "file": "tools/device/policy-search.mjs",
+      "imports": [
+        "./policy-equivalence.mjs",
+        "./policy-grammar.mjs",
+        "./policy-interpreter.mjs",
+        "@fnaf2-1020/core/control",
+        "node:crypto",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/device/recipe.mjs",
+      "imports": [
+        "../hidpilottest.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-actuator.mjs",
+      "imports": [
+        "../closedlooptest.mjs",
+        "../pilottest.mjs",
+        "./actuator.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-bb-cue-state.mjs",
+      "imports": [
+        "./bb-cue-state.mjs",
+        "node:assert"
+      ]
+    },
+    {
+      "file": "tools/device/test-deathchart.mjs",
+      "imports": [
+        "./deathchart.mjs",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-device-input-gaps.mjs",
+      "imports": [
+        "./recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-drifttrace.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/test-grade-run-coverage.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-hid-sweep-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/test-hid-trace.mjs",
+      "imports": [
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-hid-walltime.mjs",
+      "imports": [
+        "./recipe.mjs",
+        "./test-hid-trace.mjs",
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-human-gate.mjs",
+      "imports": [
+        "./human-gate.mjs",
+        "./recipe.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-minus-toys-jitter.mjs",
+      "imports": [
+        "./minus-toys-jitter.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/test-minus-toys-margin.mjs",
+      "imports": [
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-minus-toys-plan.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-night-matrix.mjs",
+      "imports": [
+        "../pool.mjs",
+        "../stat.mjs",
+        "./human-gate.mjs",
+        "./recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-policy-interpreter.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "./policy-interpreter.mjs",
+        "./policy-ir.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/device/test-policy-ir.mjs",
+      "imports": [
+        "./policy-ir.mjs",
+        "@fnaf2-1020/core/control",
+        "node:crypto"
+      ]
+    },
+    {
+      "file": "tools/device/test-recipe.mjs",
+      "imports": [
+        "./recipe.mjs",
+        "./test-hid-trace.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/test-runner-plan.mjs",
+      "imports": [
+        "./recipe.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-screen-map.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/windtrace.mjs",
+      "imports": [
+        "./human-gate.mjs",
+        "./recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/estimatortest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/estimation"
+      ]
+    },
+    {
+      "file": "tools/evidence.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/runtime",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/factlinktest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/telemetry"
+      ]
+    },
+    {
+      "file": "tools/flicksweep.mjs",
+      "imports": [
+        "./pilottest.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/gatebot.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/gatesearch.mjs",
+      "imports": [
+        "./pool.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/generate-catalog.js",
+      "imports": [
+        "@fnaf2-1020/adapters/registry",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/hidpilottest.mjs",
+      "imports": [
+        "./device/actuator.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/hidreporttest.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/latenesssweep.mjs",
+      "imports": [
+        "./closedlooptest.mjs",
+        "./hidpilottest.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/lessontest.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/lightcheck.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/mangletest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing"
+      ]
+    },
+    {
+      "file": "tools/minus2test.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/minus6test.mjs",
+      "imports": [
+        "./bbtest.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/minus7/constrained-worker.mjs",
+      "imports": [
+        "./paramsearch.mjs"
+      ]
+    },
+    {
+      "file": "tools/minus7/cyclelengthsearch.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "../hidpilottest.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minus7/devicetimesearch.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "../hidpilottest.mjs"
+      ]
+    },
+    {
+      "file": "tools/minus7/geometrysearch.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs"
+      ]
+    },
+    {
+      "file": "tools/minus7/i10latency.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "../hidpilottest.mjs"
+      ]
+    },
+    {
+      "file": "tools/minus7/n7probe.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minus7/paramsearch.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "../hidpilottest.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process"
+      ]
+    },
+    {
+      "file": "tools/minus7/policy.mjs",
+      "imports": [
+        "./sim.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minus7/robustify.mjs",
+      "imports": [
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process"
+      ]
+    },
+    {
+      "file": "tools/minus7/search.mjs",
+      "imports": [
+        "./policy.mjs",
+        "./sim.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minus7/sim.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minus7/test-search.mjs",
+      "imports": [
+        "../constrainedsearch.mjs",
+        "../device/human-gate.mjs",
+        "../device/recipe.mjs",
+        "../hidpilottest.mjs",
+        "./paramsearch.mjs",
+        "./sim.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/minustoystest.mjs",
+      "imports": [
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/periodicsweep.mjs",
+      "imports": [
+        "./pilottest.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/phaseclocktest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/telemetry",
+        "@fnaf2-1020/core/timing"
+      ]
+    },
+    {
+      "file": "tools/phasesweep.mjs",
+      "imports": [
+        "./pilottest.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/phasetest.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/pilottest.mjs",
+      "imports": [
+        "./device/actuator.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/plannertest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/policy-inspect.js",
+      "imports": [
+        "./device/policy-ir.mjs",
+        "@fnaf2-1020/core/control"
+      ]
+    },
+    {
+      "file": "tools/policy.mjs",
+      "imports": [
+        "./device/actuator.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/policyartifacttest.mjs",
+      "imports": [
+        "./device/policy-artifact.mjs",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/policybaselines.mjs",
+      "imports": [
+        "./bbtest.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/policyequivalencetest.mjs",
+      "imports": [
+        "./device/minus-toys-plan.mjs",
+        "./device/policy-equivalence.mjs",
+        "./device/policy-ir.mjs"
+      ]
+    },
+    {
+      "file": "tools/policygrammartest.mjs",
+      "imports": [
+        "./device/policy-grammar.mjs",
+        "./device/policy-ir.mjs"
+      ]
+    },
+    {
+      "file": "tools/policysearchtest.mjs",
+      "imports": [
+        "./device/policy-grammar.mjs",
+        "./device/policy-ir.mjs",
+        "./device/policy-search.mjs",
+        "node:fs",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
+      "file": "tools/policytest.mjs",
+      "imports": [
+        "./bbtest.mjs",
+        "./policy.mjs",
+        "./policybaselines.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/pool-worker.mjs",
+      "imports": [
+        "node:worker_threads"
+      ]
+    },
+    {
+      "file": "tools/pool.mjs",
+      "imports": [
+        "node:os",
+        "node:worker_threads"
+      ]
+    },
+    {
+      "file": "tools/propertytest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/reactivetest.mjs",
+      "imports": [
+        "../tools/device/minus-toys-plan.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/reducedmodeltest.mjs",
+      "imports": [
+        "./device/minus-toys-plan.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/rvctest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/simtest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/trainer"
+      ]
+    },
+    {
+      "file": "tools/sourcetest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/strategysearch.mjs",
+      "imports": [
+        "./bbtest.mjs",
+        "./cyclesearch.mjs",
+        "./pool.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/test-docs.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/test-stat.mjs",
+      "imports": [
+        "./stat.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/test.mjs",
+      "imports": [
+        "./chrome.mjs",
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/tracereport.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/tracetest.mjs",
+      "imports": [
+        "./tracereport.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/trainer",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/validate-references.js",
+      "imports": [
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/ventreacttest.mjs",
+      "imports": [
+        "./device/minus-toys-jitter.mjs",
+        "./device/minus-toys-plan.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing",
+        "node:url"
+      ]
+    }
+  ]
+}

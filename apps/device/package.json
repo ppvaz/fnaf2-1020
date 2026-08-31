@@ -1,0 +1,12 @@
+{
+  "name": "@fnaf2-1020/device",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fnaf2-1020/core": "file:../../packages/core",
+    "@fnaf2-1020/runtime": "file:../../packages/runtime",
+    "@fnaf2-1020/adapters": "file:../../packages/adapters"
+  },
+  "bin": {"fnaf2-device": "src/cli.js"}
+}

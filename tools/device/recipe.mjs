@@ -10,8 +10,8 @@
 //
 // Usage: node tools/device/recipe.mjs [--night=6] [--slot-ms=120] ... [--json]
 import { pathToFileURL } from 'node:url';
-import * as C from '../../src/config.js';
-import { Sim } from '../../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 import { run, SEARCH_KNOBS } from '../hidpilottest.mjs';
 
 // The phone's proven floor for a contact Fusion cannot miss, and the camera

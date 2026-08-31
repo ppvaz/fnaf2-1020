@@ -1,0 +1,1606 @@
+{
+  "schema": "command-registry-v1",
+  "source": [
+    "package.json",
+    "tools/TOOLS.md"
+  ],
+  "commands": [
+    {
+      "id": "bootstrap",
+      "command": "npm ci",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "typecheck",
+      "command": "tsc --noEmit -p tsconfig.json",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test",
+      "command": "npm run test:unit && npm run test:contracts && npm run test:core",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:unit",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:contracts",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:core",
+      "command": "node tools/sourcetest.mjs && node tools/simtest.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:legacy:engine",
+      "command": "node tools/test.mjs --engine",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:affected",
+      "command": "node tools/architecture-test.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:simulation",
+      "command": "node tools/test.mjs --engine --extended",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:trainer",
+      "command": "node tools/test.mjs --browser",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:browser:realtime",
+      "command": "node tools/test.mjs --browser",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:device:dry",
+      "command": "node apps/device/src/cli.js dry-run",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:device:bench",
+      "command": "node apps/device/src/cli.js bench",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:device:qualification",
+      "command": "node apps/device/src/cli.js live",
+      "lifecycle": "supported-live"
+    },
+    {
+      "id": "build:trainer",
+      "command": "python3 tools/build.py",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "serve:trainer",
+      "command": "python3 tools/serve.py 8731",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "research",
+      "command": "node packages/research/src/cli.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "policy",
+      "command": "node tools/policy-inspect.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "evidence",
+      "command": "node tools/evidence.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "catalog",
+      "command": "node tools/generate-catalog.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:dry-run",
+      "command": "node apps/device/src/cli.js dry-run",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:bench",
+      "command": "node apps/device/src/cli.js bench",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:qualification",
+      "command": "node apps/device/src/cli.js live",
+      "lifecycle": "supported-live"
+    },
+    {
+      "id": "device:run",
+      "command": "node apps/device/src/cli.js live",
+      "lifecycle": "supported-live"
+    },
+    {
+      "id": "device:grade",
+      "command": "node apps/device/src/cli.js grade",
+      "lifecycle": "supported"
+    }
+  ],
+  "tools": [
+    {
+      "id": "tools/test.mjs",
+      "invocation": "tools/test.mjs",
+      "kind": "check runner",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/build.py",
+      "invocation": "tools/build.py",
+      "kind": "build",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/serve.py",
+      "invocation": "tools/serve.py [port]",
+      "kind": "dev server",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/chrome.mjs",
+      "invocation": "tools/chrome.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/architecture-test.js",
+      "invocation": "tools/architecture-test.js",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/contract-vectors.py",
+      "invocation": "tools/contract-vectors.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/generate-catalog.js",
+      "invocation": "tools/generate-catalog.js",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/evidence.js",
+      "invocation": "tools/evidence.js",
+      "kind": "evidence CLI",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policy-inspect.js",
+      "invocation": "tools/policy-inspect.js",
+      "kind": "inspection CLI",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-docs.mjs",
+      "invocation": "tools/test-docs.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/sourcetest.mjs",
+      "invocation": "tools/sourcetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-stat.mjs",
+      "invocation": "tools/test-stat.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/simtest.mjs",
+      "invocation": "tools/simtest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/propertytest.mjs",
+      "invocation": "tools/propertytest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/bbtest.mjs",
+      "invocation": "tools/bbtest.mjs [n]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policy.mjs",
+      "invocation": "tools/policy.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policybaselines.mjs",
+      "invocation": "tools/policybaselines.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policytest.mjs",
+      "invocation": "tools/policytest.mjs",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/androidstalltest.mjs",
+      "invocation": "tools/androidstalltest.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minustoystest.mjs",
+      "invocation": "tools/minustoystest.mjs [n]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus2test.mjs",
+      "invocation": "tools/minus2test.mjs [n]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus6test.mjs",
+      "invocation": "tools/minus6test.mjs [n]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/rvctest.mjs",
+      "invocation": "tools/rvctest.mjs [n]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/pilottest.mjs",
+      "invocation": "tools/pilottest.mjs [n]",
+      "kind": "legacy report/check",
+      "lifecycle": "legacy"
+    },
+    {
+      "id": "tools/phasesweep.mjs",
+      "invocation": "tools/phasesweep.mjs [n] [--sync]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/periodicsweep.mjs",
+      "invocation": "tools/periodicsweep.mjs [n]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/flicksweep.mjs",
+      "invocation": "tools/flicksweep.mjs [n]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/reactivetest.mjs",
+      "invocation": "tools/reactivetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/ventreacttest.mjs",
+      "invocation": "tools/ventreacttest.mjs",
+      "kind": "check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/mangletest.mjs",
+      "invocation": "tools/mangletest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/phaseclocktest.mjs",
+      "invocation": "tools/phaseclocktest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/factlinktest.mjs",
+      "invocation": "tools/factlinktest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/belieftest.mjs",
+      "invocation": "tools/belieftest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/reducedmodeltest.mjs",
+      "invocation": "tools/reducedmodeltest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/estimatortest.mjs",
+      "invocation": "tools/estimatortest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cycletest.mjs",
+      "invocation": "tools/cycletest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/plannertest.mjs",
+      "invocation": "tools/plannertest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cyclecontrollertest.mjs",
+      "invocation": "tools/cyclecontrollertest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/tracetest.mjs",
+      "invocation": "tools/tracetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/tracereport.mjs",
+      "invocation": "tools/tracereport.mjs [dir]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/latenesssweep.mjs",
+      "invocation": "tools/latenesssweep.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/closedlooptest.mjs",
+      "invocation": "tools/closedlooptest.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cyclesearch.mjs",
+      "invocation": "tools/cyclesearch.mjs",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/strategysearch.mjs",
+      "invocation": "tools/strategysearch.mjs",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/gatesearch.mjs",
+      "invocation": "tools/gatesearch.mjs",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/paramsearch.mjs",
+      "invocation": "tools/minus7/paramsearch.mjs --nights=N,N --shape=correlated [--runs --admit --beam --rounds --geom=slot:dev:con]",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/geometrysearch.mjs",
+      "invocation": "tools/minus7/geometrysearch.mjs [--mode=grid\\|admit] [--runs --slots --dev-offsets --configs]",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/i10latency.mjs",
+      "invocation": "tools/minus7/i10latency.mjs [--runs=800] [--latencies=...]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/n7probe.mjs",
+      "invocation": "tools/minus7/n7probe.mjs [--runs=800]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/cyclelengthsearch.mjs",
+      "invocation": "tools/minus7/cyclelengthsearch.mjs [--windows=6000,...] [--runs --nights]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/devicetimesearch.mjs",
+      "invocation": "tools/minus7/devicetimesearch.mjs [--runs=600] [--nights=2,3,4,5,6,7]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/constrainedsearch.mjs",
+      "invocation": "tools/constrainedsearch.mjs --mode=screen\\|exhaustive\\|validate [--workers=N --pool-batch=N]",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/constrained-worker.mjs",
+      "invocation": "tools/minus7/constrained-worker.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/robustify.mjs",
+      "invocation": "tools/minus7/robustify.mjs --night=N [--seeds --range --descend]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/sim.mjs",
+      "invocation": "tools/minus7/sim.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minus7/test-search.mjs",
+      "invocation": "tools/minus7/test-search.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/gatebot.mjs",
+      "invocation": "tools/gatebot.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/pool.mjs",
+      "invocation": "tools/pool.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/pool-worker.mjs",
+      "invocation": "tools/pool-worker.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/browsertest.mjs",
+      "invocation": "tools/browsertest.mjs [url] [screenshot]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/caltest.mjs",
+      "invocation": "tools/caltest.mjs [url]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/lessontest.mjs",
+      "invocation": "tools/lessontest.mjs [url]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/lightcheck.mjs",
+      "invocation": "tools/lightcheck.mjs [url]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/phasetest.mjs",
+      "invocation": "tools/phasetest.mjs [url]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial.sh",
+      "invocation": "tools/device/trial.sh",
+      "kind": "compatibility launcher",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/legacy-trial.sh",
+      "invocation": "tools/device/legacy-trial.sh",
+      "kind": "legacy device action",
+      "lifecycle": "legacy"
+    },
+    {
+      "id": "tools/device/select-adb.sh",
+      "invocation": "tools/device/select-adb.sh",
+      "kind": "sourced transport guard",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-select-adb.sh",
+      "invocation": "tools/device/test-select-adb.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/soak-cue-helper.sh",
+      "invocation": "tools/device/soak-cue-helper.sh [samples] [interval-seconds] [output]",
+      "kind": "device check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-soak-cue-helper.sh",
+      "invocation": "tools/device/test-soak-cue-helper.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/query-cue-helper.sh",
+      "invocation": "tools/device/query-cue-helper.sh [loopback\\|forward\\|watch\\|watchlist\\|read\\|grid\\|latency]",
+      "kind": "device check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/collect-cue-audio.sh",
+      "invocation": "tools/device/collect-cue-audio.sh [rounds] [seconds] [label]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-query-cue-helper.sh",
+      "invocation": "tools/device/test-query-cue-helper.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/provision-cue-model.sh",
+      "invocation": "tools/device/provision-cue-model.sh MODEL [HOLDOUT_REPORT] [--replace]",
+      "kind": "legacy device action",
+      "lifecycle": "legacy"
+    },
+    {
+      "id": "tools/device/coords.sh",
+      "invocation": "tools/device/coords.sh",
+      "kind": "sourced config",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/screenstate.py",
+      "invocation": "tools/device/screenstate.py",
+      "kind": "classifier",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/clocktrace.mjs",
+      "invocation": "tools/device/clocktrace.mjs VIDEO",
+      "kind": "analyzer",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/recipe.mjs",
+      "invocation": "tools/device/recipe.mjs",
+      "kind": "generator/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-recipe.mjs",
+      "invocation": "tools/device/test-recipe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/actuator.mjs",
+      "invocation": "tools/device/actuator.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-actuator.mjs",
+      "invocation": "tools/device/test-actuator.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-runner-plan.mjs",
+      "invocation": "tools/device/test-runner-plan.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/minus-toys-plan.mjs",
+      "invocation": "tools/device/minus-toys-plan.mjs --night=N [--gate] [--knobs=k=v,...]",
+      "kind": "generator/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-ir.mjs",
+      "invocation": "tools/device/policy-ir.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-interpreter.mjs",
+      "invocation": "tools/device/policy-interpreter.mjs",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-grammar.mjs",
+      "invocation": "tools/device/policy-grammar.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-equivalence.mjs",
+      "invocation": "tools/device/policy-equivalence.mjs",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-search.mjs",
+      "invocation": "tools/device/policy-search.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/policy-artifact.mjs",
+      "invocation": "tools/device/policy-artifact.mjs",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-policy-ir.mjs",
+      "invocation": "tools/device/test-policy-ir.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-policy-interpreter.mjs",
+      "invocation": "tools/device/test-policy-interpreter.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policygrammartest.mjs",
+      "invocation": "tools/policygrammartest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policyequivalencetest.mjs",
+      "invocation": "tools/policyequivalencetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policysearchtest.mjs",
+      "invocation": "tools/policysearchtest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/policyartifacttest.mjs",
+      "invocation": "tools/policyartifacttest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/watch-calibrate.py",
+      "invocation": "tools/device/watch-calibrate.py",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-watch-calibrate.py",
+      "invocation": "tools/device/test-watch-calibrate.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-trial-reactive.sh",
+      "invocation": "tools/device/test-trial-reactive.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-minus-toys-plan.mjs",
+      "invocation": "tools/device/test-minus-toys-plan.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/minus-toys-plan.mjs",
+      "invocation": "tools/device/minus-toys-plan.mjs --phasegate",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cam11lit.py",
+      "invocation": "tools/device/cam11lit.py",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cam11lit.sh",
+      "invocation": "tools/device/test-cam11lit.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/minus-toys-margin.mjs",
+      "invocation": "tools/device/minus-toys-margin.mjs [--night=N] [--seeds=N] [--max=MS]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-minus-toys-margin.mjs",
+      "invocation": "tools/device/test-minus-toys-margin.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/minus-toys-jitter.mjs",
+      "invocation": "tools/device/minus-toys-jitter.mjs [--nights=N,N] [--seeds=N] [--reanchor=none\\|am] [--basin\\|--sweep-jitter]",
+      "kind": "search/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-minus-toys-jitter.mjs",
+      "invocation": "tools/device/test-minus-toys-jitter.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/human-gate.mjs",
+      "invocation": "tools/device/human-gate.mjs plan.txt",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-human-gate.mjs",
+      "invocation": "tools/device/test-human-gate.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-human-floor.sh",
+      "invocation": "tools/device/test-human-floor.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-plan-interpreter.sh",
+      "invocation": "tools/device/test-plan-interpreter.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-trace.mjs",
+      "invocation": "tools/device/test-hid-trace.mjs [trace]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-walltime.mjs",
+      "invocation": "tools/device/test-hid-walltime.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/drifttrace.mjs",
+      "invocation": "tools/device/drifttrace.mjs RUN [--plan FILE]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-drifttrace.mjs",
+      "invocation": "tools/device/test-drifttrace.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-sweep-probe.mjs",
+      "invocation": "tools/device/hid-sweep-probe.mjs [spacing ...]",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-sweep-probe.sh",
+      "invocation": "tools/device/hid-sweep-probe.sh [spacing ...]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/atrace-input.sh",
+      "invocation": "tools/device/atrace-input.sh RUN SECONDS -- COMMAND [ARGS...]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/inputtrace.py",
+      "invocation": "tools/device/inputtrace.py TRACE [--trace-processor PATH] [--package PKG] [--sf-latency FILE]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-screen-map.mjs",
+      "invocation": "tools/device/test-screen-map.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-inputtrace.py",
+      "invocation": "tools/device/test-inputtrace.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-shell-footguns.sh",
+      "invocation": "tools/device/test-shell-footguns.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-sweep-probe.mjs",
+      "invocation": "tools/device/test-hid-sweep-probe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-multitouch-smoke.json",
+      "invocation": "tools/device/hid-multitouch-smoke.json",
+      "kind": "**device action/fixture**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/hidreporttest.mjs",
+      "invocation": "tools/hidreporttest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/hidpilottest.mjs",
+      "invocation": "tools/hidpilottest.mjs [runs] [--night=6]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial-maskcamp.sh",
+      "invocation": "tools/device/trial-maskcamp.sh [name] [seconds] [night] [protocol]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/run-batch.sh",
+      "invocation": "tools/device/run-batch.sh COUNT [night] [prefix] [protocol]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/preflight.sh",
+      "invocation": "tools/device/preflight.sh NIGHT",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-preflight.sh",
+      "invocation": "tools/device/test-preflight.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/menu.sh",
+      "invocation": "tools/device/menu.sh",
+      "kind": "sourced selector",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-menu.sh",
+      "invocation": "tools/device/test-menu.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/title-observe.py",
+      "invocation": "tools/device/title-observe.py",
+      "kind": "classifier",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/sensor.py",
+      "invocation": "tools/device/sensor.py",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-sensor.py",
+      "invocation": "tools/device/test-sensor.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/session.sh",
+      "invocation": "tools/device/session.sh",
+      "kind": "sourced helper",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/session-manifest.py",
+      "invocation": "tools/device/session-manifest.py",
+      "kind": "producer",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/validate-session.py",
+      "invocation": "tools/device/validate-session.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-validate-session.py",
+      "invocation": "tools/device/test-validate-session.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-session-manifest.sh",
+      "invocation": "tools/device/test-session-manifest.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-screenrecord-capability.sh",
+      "invocation": "tools/device/test-screenrecord-capability.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-device-input-gaps.mjs",
+      "invocation": "tools/device/test-device-input-gaps.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-night-matrix.mjs",
+      "invocation": "tools/device/test-night-matrix.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/gate-worker.mjs",
+      "invocation": "tools/device/gate-worker.mjs",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-raise-probe.mjs",
+      "invocation": "tools/device/hid-raise-probe.mjs",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/pan-probe.sh",
+      "invocation": "tools/device/pan-probe.sh",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/pan-shift.py",
+      "invocation": "tools/device/pan-shift.py before.png after.png",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/region-probe.sh",
+      "invocation": "tools/device/region-probe.sh",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/region-classify.py",
+      "invocation": "tools/device/region-classify.py pre.png during.png post.png",
+      "kind": "classifier",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-region-classify.py",
+      "invocation": "tools/device/test-region-classify.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/watch-vent-cue.sh",
+      "invocation": "tools/device/watch-vent-cue.sh [seconds] [label]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cue-trace-loop.sh",
+      "invocation": "tools/device/test-cue-trace-loop.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/assemble.sh",
+      "invocation": "tools/device/trial/assemble.sh",
+      "kind": "build",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-trial-assembly.sh",
+      "invocation": "tools/device/test-trial-assembly.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/01-arguments.sh",
+      "invocation": "tools/device/trial/01-arguments.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/02-hid-wire.sh",
+      "invocation": "tools/device/trial/02-hid-wire.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/03-clock.sh",
+      "invocation": "tools/device/trial/03-clock.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/04-session.sh",
+      "invocation": "tools/device/trial/04-session.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/05-press.sh",
+      "invocation": "tools/device/trial/05-press.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/06-cams-up-anchor.sh",
+      "invocation": "tools/device/trial/06-cams-up-anchor.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/07-light-and-capture.sh",
+      "invocation": "tools/device/trial/07-light-and-capture.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/08-bb-threat-response.sh",
+      "invocation": "tools/device/trial/08-bb-threat-response.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/09-constants.sh",
+      "invocation": "tools/device/trial/09-constants.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/10-minus7-sweep.sh",
+      "invocation": "tools/device/trial/10-minus7-sweep.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/11-plan-interpreter.sh",
+      "invocation": "tools/device/trial/11-plan-interpreter.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/trial/12-night-loop.sh",
+      "invocation": "tools/device/trial/12-night-loop.sh",
+      "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/grade-run.sh",
+      "invocation": "tools/device/grade-run.sh RUN_NAME [--require-seconds N]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-grade-run-coverage.mjs",
+      "invocation": "tools/device/test-grade-run-coverage.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/grade-night.py",
+      "invocation": "tools/device/grade-night.py VIDEO [--fps 4] [--require-seconds 420]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/nightpredicate.py",
+      "invocation": "tools/device/nightpredicate.py",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-screenstate.py",
+      "invocation": "tools/device/test-screenstate.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/lifecycle-observe.py",
+      "invocation": "tools/device/lifecycle-observe.py",
+      "kind": "classifier",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/intro_card.py",
+      "invocation": "tools/device/intro_card.py",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-intro-card.py",
+      "invocation": "tools/device/test-intro-card.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/death-cause.py",
+      "invocation": "tools/device/death-cause.py build POSITIVE NEGATIVE --label {foxy,marionette} --output MODEL",
+      "kind": "classifier/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-death-cause.py",
+      "invocation": "tools/device/test-death-cause.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/desync-scan.py",
+      "invocation": "tools/device/desync-scan.py RUN_NAME [--strips] [--all-intervals]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/windtrace.mjs",
+      "invocation": "tools/device/windtrace.mjs --night=N [--seeds=A..B]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/deathchart.mjs",
+      "invocation": "tools/device/deathchart.mjs --night=N[,N...] [--runs=1200] [--cols=2] [--out=F.png]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-deathchart.mjs",
+      "invocation": "tools/device/test-deathchart.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-sweepcheck.py",
+      "invocation": "tools/device/test-sweepcheck.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/run-timeline.py",
+      "invocation": "tools/device/run-timeline.py VIDEO [--cause-fps 12] [--cause-model MODEL ...]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/elegance.py",
+      "invocation": "tools/device/elegance.py RUN_LOG --night N",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-elegance.py",
+      "invocation": "tools/device/test-elegance.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/keyframes.py",
+      "invocation": "tools/device/keyframes.py VIDEO [--count 12] [--fps 2] [--out sheet.png]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/death-census.py",
+      "invocation": "tools/device/death-census.py OUT_DIR",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/grid-signature.py",
+      "invocation": "tools/device/grid-signature.py",
+      "kind": "build",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/index-observations.py",
+      "invocation": "tools/device/index-observations.py [root] [--json] [--hash] [--strict]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-index-observations.py",
+      "invocation": "tools/device/test-index-observations.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/grade-minus7.py",
+      "invocation": "tools/device/grade-minus7.py VIDEO",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/camtrace.py",
+      "invocation": "tools/device/camtrace.py VIDEO",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-camtrace.py",
+      "invocation": "tools/device/test-camtrace.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/windpct.py",
+      "invocation": "tools/device/windpct.py [--samples] VIDEO",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/find-events.py",
+      "invocation": "tools/device/find-events.py VIDEO",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/build-screencheck.sh",
+      "invocation": "tools/device/build-screencheck.sh [output]",
+      "kind": "build",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-screencheck.py",
+      "invocation": "tools/device/test-screencheck.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/bench-screencheck.sh",
+      "invocation": "tools/device/bench-screencheck.sh [samples] [model]",
+      "kind": "device benchmark",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/capture-screen-sample.sh",
+      "invocation": "tools/device/capture-screen-sample.sh VIEW LABEL NAME [hold-x hold-y [hold-ms]]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/build-screen-model.py",
+      "invocation": "tools/device/build-screen-model.py --roi X0,Y0,X1,Y1 --output MODEL LABEL=PATH ...",
+      "kind": "build/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/replay-screen-model.py",
+      "invocation": "tools/device/replay-screen-model.py MODEL LABEL=PATH ...",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/regen-dump.sh",
+      "invocation": "tools/dump/regen-dump.sh APPLICATION.CCN [outfile]",
+      "kind": "extraction",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/EventTextDumper.cs",
+      "invocation": "tools/dump/EventTextDumper.cs",
+      "kind": "CTFAK plugin source",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/extract-samples.sh",
+      "invocation": "tools/dump/extract-samples.sh APK [outdir] [handle ...]",
+      "kind": "query",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/capture-bt-audio.sh",
+      "invocation": "tools/cue/capture-bt-audio.sh SECONDS [outdir] [bt-mac]",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/audio-authority.py",
+      "invocation": "tools/cue/audio-authority.py [--socket PATH] [--model MODEL] [--profile PROFILE] [--raw-output PATH]",
+      "kind": "external-device authority",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/esp32-audio-authority.py",
+      "invocation": "tools/cue/esp32-audio-authority.py [--bind HOST] [--port PORT] [--raw-output PATH]",
+      "kind": "external-device authority",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/pack-esp32-cues.py",
+      "invocation": "tools/cue/pack-esp32-cues.py MODEL OUTPUT_H OUTPUT_C",
+      "kind": "legacy generator",
+      "lifecycle": "legacy"
+    },
+    {
+      "id": "tools/cue/latency-experiment.py",
+      "invocation": "tools/cue/latency-experiment.py preflight|run|analyze",
+      "kind": "external-device action/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/pilot-supervisor.py",
+      "invocation": "tools/cue/pilot-supervisor.py",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/bridge-audio-authority.py",
+      "invocation": "tools/cue/bridge-audio-authority.py --socket PATH",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/collect-facts.py",
+      "invocation": "tools/cue/collect-facts.py --socket PATH --output OUT",
+      "kind": "external-device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-audio-authority.py",
+      "invocation": "tools/cue/test-audio-authority.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-esp32-audio-authority.py",
+      "invocation": "tools/cue/test-esp32-audio-authority.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-pilot-supervisor.py",
+      "invocation": "tools/cue/test-pilot-supervisor.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-bridge-audio-authority.py",
+      "invocation": "tools/cue/test-bridge-audio-authority.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-capture-bt-audio.sh",
+      "invocation": "tools/cue/test-capture-bt-audio.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/features.py",
+      "invocation": "tools/cue/features.py",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/reference-report.py",
+      "invocation": "tools/cue/reference-report.py [refdir]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/detect.py",
+      "invocation": "tools/cue/detect.py WINDOW...",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/evaluate.py",
+      "invocation": "tools/cue/evaluate.py BACKGROUND",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/scan-night.sh",
+      "invocation": "tools/cue/scan-night.sh WAV [--refs DIR]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/label-misses.py",
+      "invocation": "tools/cue/label-misses.py VISUAL AUDIO --start-ns N",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/export-model.py",
+      "invocation": "tools/cue/export-model.py --refs DIR --cue C=H[,H] --threshold C=S --margin M --calibration NAME --output OUT",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/correlate.py",
+      "invocation": "tools/cue/correlate.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-cue.py",
+      "invocation": "tools/cue/test-cue.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/build-shadow-windows.py",
+      "invocation": "tools/cue/build-shadow-windows.py TRACE LABELS --output OUT",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/evaluate-shadow.py",
+      "invocation": "tools/cue/evaluate-shadow.py WINDOWS --max-error CUE=RATE... --output OUT",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-build-shadow-windows.py",
+      "invocation": "tools/cue/test-build-shadow-windows.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-evaluate-shadow.py",
+      "invocation": "tools/cue/test-evaluate-shadow.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-export-model.py",
+      "invocation": "tools/cue/test-export-model.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/cue/test-latency-experiment.py",
+      "invocation": "tools/cue/test-latency-experiment.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/bb-cue-state.mjs",
+      "invocation": "tools/device/bb-cue-state.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-bb-cue-state.mjs",
+      "invocation": "tools/device/test-bb-cue-state.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-provision-cue-model.sh",
+      "invocation": "tools/device/test-provision-cue-model.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/readdump.py",
+      "invocation": "tools/dump/readdump.py",
+      "kind": "query",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/coverage.py",
+      "invocation": "tools/dump/coverage.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/aimap.py",
+      "invocation": "tools/dump/aimap.py [event-sheet]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/test-instances.py",
+      "invocation": "tools/dump/test-instances.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/dump/test-aimap.py",
+      "invocation": "tools/dump/test-aimap.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/recompile/fnaf2-config.py",
+      "invocation": "tools/recompile/fnaf2-config.py",
+      "kind": "Chowdren config",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/recompile/probe-unknown-params.py",
+      "invocation": "tools/recompile/probe-unknown-params.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/recompile/probe-onloop.py",
+      "invocation": "tools/recompile/probe-onloop.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/mock-adb-cue-helper.sh",
+      "invocation": "tools/device/testdata/mock-adb-cue-helper.sh",
+      "kind": "mock",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/mock-control-server.py",
+      "invocation": "tools/device/testdata/mock-control-server.py",
+      "kind": "mock",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/make-title-fixture.py",
+      "invocation": "tools/device/testdata/make-title-fixture.py",
+      "kind": "fixture builder",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/testdata/make-intro-card-fixture.py",
+      "invocation": "tools/device/testdata/make-intro-card-fixture.py",
+      "kind": "fixture builder",
+      "lifecycle": "supported"
+    }
+  ]
+}

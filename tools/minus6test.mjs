@@ -13,8 +13,8 @@
 // which also asserts the sourced office-light latch. A pass here is a
 // sim-derived result on the current Android model, not a proven strategy.
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 import { Bot } from './bbtest.mjs';
 
 export const MINUS6_CYCLE = [

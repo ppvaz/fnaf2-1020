@@ -1,0 +1,15 @@
+{
+  "schema": "device-profile-v1",
+  "id": "adb-screencap",
+  "name": "ADB tap + screencap qualification",
+  "lifecycle": "qualification",
+  "targetBuild": "com.scottgames.fnaf2:2.0.7+26",
+  "clock": "device-monotonic-ms",
+  "actuator": "adb-tap",
+  "visualSensor": "screencap",
+  "visualDetector": "screencheck-detector",
+  "geometry": "fixture-landscape-v1",
+  "calibrations": {"geometry":"adb-geometry-v1","actuator-timing":"adb-timing-v1","visual":"screencap-v1"},
+  "controlMap": {"mask":{"x":100,"y":100},"monitor":{"x":200,"y":100},"light":{"x":300,"y":100},"wind":{"x":400,"y":100},"ventL":{"x":500,"y":100},"ventR":{"x":600,"y":100},"cam:4":{"x":40,"y":40},"cam:7":{"x":70,"y":70},"cam:9":{"x":90,"y":90},"cam:10":{"x":100,"y":90},"cam:11":{"x":110,"y":110}},
+  "limits": {"maxActions":64,"maxDurationMs":15000,"dryRunOnly":true}
+}

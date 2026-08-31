@@ -35,7 +35,7 @@
 //   node tools/latenesssweep.mjs --ablate         # which press's lateness costs it
 //   node tools/latenesssweep.mjs --runs=200 --assert
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { run as hidRun } from './hidpilottest.mjs';
 import { N6_TARGET, NIGHTS } from './closedlooptest.mjs';
 

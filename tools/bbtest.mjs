@@ -3,9 +3,9 @@
 // routine in docs/strategy/MINUS-7-STRATEGY.md is wrong or the engine is.
 import { pathToFileURL } from 'node:url';
 import { isMainThread } from 'node:worker_threads';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
-import { Rng } from '../src/rng.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
+import { Rng } from '@fnaf2-1020/core/mechanics';
 import { formatRate } from './stat.mjs';
 
 // The scripted half of the routine, as frame offsets from the cycle anchor.

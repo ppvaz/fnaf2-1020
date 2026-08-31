@@ -19,7 +19,7 @@ case "$header" in
   *) echo "missing report columns: $header" >&2; exit 1 ;;
 esac
 case "$row" in
-  *$'7007\t51200\t64000\t7\t0\t0\t120\t1500\t2400\t1080\t1\t1\t32000\t3000\t9\t20') ;;
+  *$'7007\t51200\t64000\t7\t0\t0\t120\t1500\t2400\t1080\t1\t1\taudio-authority') ;;
   *) echo "unexpected parsed row: $row" >&2; exit 1 ;;
 esac
 

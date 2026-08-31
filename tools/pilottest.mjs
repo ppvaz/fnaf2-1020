@@ -16,8 +16,8 @@
 //   node tools/pilottest.mjs 200 --vent --cycles=80
 //   node tools/pilottest.mjs 200 --night=6  # 6th Night, the night the phone runs
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 import { DeviceActuator } from './device/actuator.mjs';
 import { formatRate } from './stat.mjs';
 
