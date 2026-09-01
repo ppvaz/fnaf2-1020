@@ -1,33 +1,39 @@
 # Real-time closed-loop controller architecture
 
-**Status: proposed architecture, 2026-08-31.** This is the control boundary
-for the stock-device controller work. It supersedes the experimental idea of
-using the ESP32 as an audio bridge that returns decoded PCM to the phone.
+**Status: proposed architecture, 2026-08-31; hardware-role correction
+2026-09-01.** This is the control boundary for the stock-device controller
+work. Hardware identities do not own architectural roles; profiles compose
+capabilities and contracts.
 
 ## Decision
 
-The ESP32 is a **real-time coprocessor and reflex node**, not an audio bridge.
-It may receive the phone's audible mix, but it processes that stream locally
-into small, timestamped semantic facts. It must not forward the full decoded
-PCM stream back to the phone as an input to the live controller.
+An ESP32 is one possible internal node, not a mandatory topology or a fixed
+role. Depending on the selected profile, it may be a transport-only bridge, a
+sensor processor, a reflex coprocessor, an actuator peer, or absent. The same
+roles may be implemented by the phone, a host, another MCU, or several nodes.
+Composition is valid when every selected component satisfies its declared
+capability, timing, health, and data contracts.
 
 The 2026-08-30 phone -> ESP32 A2DP -> Wi-Fi/UDP PCM -> same-phone-helper
 experiment had severe loss problems. No loss rate or latency percentile has yet
-been retained, so this is a **[CALIBRATED, qualitative]** rejection, not a
-quantitative transport result. Until a separate bench record establishes a
-bounded loss/jitter profile for a different transport, the PCM-return design is
-not a runtime candidate—not even as a source of timing truth.
+been retained, so this is a **[CALIBRATED, qualitative]** rejection of that
+specific topology/profile, not a quantitative rejection of bridges as an
+architectural mode. It remains ineligible for live control. A different bridge
+or processor placement may qualify independently by satisfying the contracts
+and measurement gate below.
 
-This is a useful distinction:
+The distinction is contractual rather than hardware-branded:
 
 ```text
-invalid: phone audio -> ESP32 -> Wi-Fi PCM bridge -> phone detector
-valid:   phone audio -> ESP32 local DSP -> timestamped CUE / HEALTH fact
+rejected profile: phone audio -> ESP32 -> lossy Wi-Fi PCM -> same-phone detector
+possible profile: source -> sample bridge -> detector -> semantic facts
+possible profile: source -> local detector -> semantic facts
 ```
 
-Audio recordings can still be collected as an explicitly non-authoritative,
-offline diagnostic artifact. They are not allowed to close a live safety or
-phase-control loop.
+Raw sample transport is not intrinsically diagnostic-only. It may close a live
+loop only when its `SampleChunk` stream has measured loss, jitter, freshness,
+clock, and end-to-end deadline bounds for that exact profile. Otherwise it is
+non-authoritative evidence or an offline diagnostic artifact.
 
 ## Controller shape
 
@@ -36,9 +42,9 @@ planning, and input execution overlap; a slow computation never blocks the
 fast path.
 
 ```text
-Android video ----> visual event detector ---\
-                                          timestamped facts
-ESP32 local DSP --> audio event detector ----> shared belief state
+Android video ------> visual adapter --------\
+                                            timestamped facts
+Audio source/adapter -> optional processor ---> shared belief state
                                                     |          |
                                                     v          v
                                              L1 reflex     L3 planner
@@ -65,7 +71,7 @@ missing audio/video into a confident boolean.
 | Layer | Target cadence / budget | Owner | Responsibility |
 |---|---:|---|---|
 | L0: I/O | sub-ms where hardware permits | acquisition / actuator MCU | timestamping, input delivery, watchdogs |
-| L1: reflex | ~1–5 ms after a local fact | ESP32/reflex node and actuator peer | deadline actions, cancellation, safe hold |
+| L1: reflex | ~1–5 ms after a local fact | qualified reflex and actuator capabilities | deadline actions, cancellation, safe hold |
 | L2: belief | ~10–30 ms | phone or controller host | event fusion, prediction, uncertainty, health |
 | L3: tactical | ~100–500 ms | controller host | select and revise a short safe action prefix |
 | L4: strategic | 100 ms to seconds | optional planner/model | policy parameters, diagnostics, candidate plans |
@@ -85,12 +91,19 @@ must never claim that an interrupt withdrew an input which has already been
 delivered. On link or sensor-health failure, it enters a named conservative
 hold/recovery behavior rather than continuing a stale plan.
 
-## Responsibilities by node
+## Roles and deployable nodes
 
-- **ESP32 audio/reflex node:** decode available audible audio, run bounded DSP
-  and cue classification locally, own local timers, emit semantic events and
-  health facts, and execute locally reachable reflexes. It does not export a
-  continuous PCM stream for online control.
+- **Audio source adapter:** acquires or receives the audible mix and publishes
+  either qualified sample chunks or semantic facts. It may be implemented by
+  an ESP32, phone, host, other hardware, or a composition of them.
+- **Sample bridge:** transports bounded, sequenced audio chunks with format,
+  acquisition/receipt timestamps, clock identity, loss and health metadata. It
+  is permitted when its profile passes the measurement gate; it owns no
+  semantic truth merely because bytes arrived.
+- **Sensor processor:** turns samples into calibrated semantic facts. It may be
+  co-located with the source, bridge, belief host, reflex node, or actuator.
+- **Reflex node:** consumes qualified facts, owns deadline/cancellation state,
+  and can issue only the bounded actions declared by its capability profile.
 - **Android Cue Helper:** produces visual events and control-state
   confirmations, and may maintain a richer belief/planner. Its capture rate
   and compositor delay are measured inputs to the model, not assumed to be
@@ -102,11 +115,13 @@ hold/recovery behavior rather than continuing a stale plan.
   HID-capable MCU (for example an ESP32-S3) or the currently validated
   on-device input path.
 
-For a two-MCU build, the audio/reflex ESP32 and HID MCU communicate by a
-bounded wired protocol (UART/SPI). The message is an idempotent event or
-reflex command with sequence number and deadline—not a wall-clock macro.
-Wireless transport may carry noncritical observations and strategic updates,
-but is not the sole authority for a lethal deadline.
+An ESP32-WROOM-32 local-DSP + HID-capable MCU deployment is one possible
+profile: the nodes communicate by a bounded wired protocol (UART/SPI), and the
+message is an idempotent event or reflex command with sequence number and
+deadline—not a wall-clock macro. A bridge profile may instead carry sample
+chunks to a detector elsewhere. Wireless transport is eligible for a lethal
+deadline only when the exact link/profile has retained tail-latency, loss and
+recovery evidence within that deadline.
 
 ## Fact and action contracts
 
@@ -118,9 +133,18 @@ Fact { type, value, confidence, source, calibrationProfile,
        sequence, t_observed, t_received, latencyMin, latencyMax, health }
 ```
 
+Bridge mode additionally uses an explicit stream contract:
+
+```text
+SampleChunk { format, payload, source, transportProfile, sequence,
+              t_acquired, t_received, clockId, loss, health }
+```
+
 Audio PCM arrival is not `t_observed`. It is only a transport receipt time
-unless the local ESP32 detector supplies its acquisition timestamp and measured
-latency bounds.
+unless the acquisition source supplies a timestamp whose clock relation and
+latency bounds are calibrated. A downstream detector derives a new `Fact` and
+preserves the relevant provenance; it does not relabel receipt time as event
+time.
 
 Actions use an explicit lifetime:
 
@@ -150,15 +174,17 @@ remain shadow-only.
 
 ## Consequences for existing plans
 
-- Plan 08's phone/ESP32 PCM loopback is retracted as a runtime architecture;
-  audio classification moves to the ESP32 local DSP path.
+- Plan 08's measured phone/ESP32/Wi-Fi PCM loopback profile is retracted as a
+  runtime candidate. Bridge mode remains available to a different qualified
+  profile; ESP32-local DSP is one alternative placement, not the architecture.
 - Plan 20 owns the belief, tactical planner, and arbiter semantics; its P6
-  hardware work must use this document's event-only boundary.
+  hardware work must use the fact/sample/action contracts above.
 - `ANDROID-AUDIO-CAPTURE.md` retains the A2DP-mix evidence, but no longer
-  presents Wi-Fi PCM return as a runtime target.
+  presents the rejected Wi-Fi PCM-return profile as a runtime target.
 
 The engineering rule is simple: **keep sensing and acting while slower
-inference is running, and keep full audio off the control transport.**
+inference is running, and qualify the exact placement and transport rather than
+assigning architectural truth to a hardware name.**
 
 ## Host choice: macOS is not an A2DP-sink target
 

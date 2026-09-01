@@ -103,8 +103,9 @@ Fusion build 296, August 2025.
   recording bug that exposes normally inaudible Mangle/music-box loops, its
   evidence boundary, and the implications for an audio-cue detector.
 - [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md)
-  — the event-driven, three-loop controller boundary. The ESP32 is a local
-  audio/reflex coprocessor, not a PCM bridge back to the phone.
+  — the event-driven, three-loop controller boundary. Hardware roles are
+  profile-selected capabilities: an ESP32 may bridge, process, host a reflex,
+  participate in actuation, or be absent.
 - [`RUN-TELEMETRY.md`](device/RUN-TELEMETRY.md) — what a night run should
   record, ten diagnostic signals ranked by value per millisecond of a cycle
   that has only ~680 ms free.

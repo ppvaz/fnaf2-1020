@@ -8,10 +8,12 @@ macro and call that a closed loop.
 
 ## The idea in one sentence
 
-The ESP32 maintains a **belief state**: a compact, continuously corrected
-model of the parts of the night that matter to the next decision. It evaluates
-a few safe candidate cycles against that belief, executes one, verifies the
-result, and repeats.
+The selected controller host maintains a **belief state**: a compact,
+continuously corrected model of the parts of the night that matter to the next
+decision. It evaluates a few safe candidate cycles against that belief,
+executes one through a qualified actuator, verifies the result, and repeats.
+The host may be the phone, an ESP32-class coprocessor, a PC, or another node;
+the contract does not assign the role to a hardware name.
 
 ```
 phone audio/video + elapsed time + action acknowledgements
@@ -223,25 +225,28 @@ disabled controls score 0/80, the normal delayed/dropped estimator scores
 truth-state upper bound scores 80/80. The production controller has no exact
 engine import; the exact replay is confined to the test's proof callback.
 
-### P6 -- ESP32 transport and real-time split
+### P6 -- transport capabilities and real-time placement
 
 **Architecture correction, 2026-08-31.** The phone -> ESP32 A2DP -> Wi-Fi/UDP
 PCM -> same-phone helper bridge was experimentally rejected for severe loss.
-The ESP32 is a local audio-DSP/reflex coprocessor, not a PCM return bridge.
-Audio leaves it only as timestamped semantic cue/health facts; the full
-controller boundary, action-arbiter ordering, and measurement gate are now
-defined in
+That rejects the measured profile, not bridge mode or any fixed hardware role.
+An ESP32 may bridge samples, process them locally, host a reflex, participate
+in actuation, combine those capabilities, or be absent. Sample chunks,
+semantic facts, actions, health, and timing cross explicit contracts; the full
+controller boundary, action-arbiter ordering, and measurement gate are defined
+in
 [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](../docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md).
 
 Define the hardware protocol and choose the topology only after a bench trace.
-The recommended first topology is Linux A2DP sink -> fact link -> ESP32-S3
+One candidate topology is Linux A2DP sink -> fact link -> ESP32-S3
 wired USB-HID. A two-MCU alternative is Classic-Bluetooth ESP32 A2DP sink ->
 UART/SPI -> ESP32-S3 USB-HID. The split reflects the hardware boundary:
 original ESP32 supports Classic A2DP; ESP32-S3 supports native USB HID but not
 Bluetooth Classic. A one-MCU Classic-ESP32 Bluetooth-HID route is an unmeasured
 alternative, not the architecture's assumption.
 
-**Shape after the 2026-08-29 findings.** The PC stays in the loop — it is the
+**Candidate v1 after the 2026-08-29 findings.** The PC stays in the loop for
+this profile — it is the
 only proven A2DP sink (BlueALSA; PipeWire's BT receive is broken here) and it
 already runs the detector and estimator. So v1 is: **phone** (WiFi: adb + the
 on-device cue-helper video socket; BT: A2DP audio; USB: HID) -> **PC** (BlueALSA
@@ -264,9 +269,10 @@ and treats the ESP32 as, at most, an alternative SBC A2DP audio tap (gated on
 the s0033 SFX-survives-SBC check). A wired USB-HID actuator MCU is a later
 purchase, not a blocker for P1–P5.
 
-The HID ESP32 owns monotonic timestamps, local actuation, cycle scheduling, and
-the fast mask path. Upstream sends bounded fact messages, never a sequence of
-wall-timed commands:
+In this candidate, the HID node owns monotonic timestamps, local actuation,
+cycle scheduling, and the fast mask path. Another profile can allocate those
+roles differently while satisfying the same contracts. Upstream sends bounded
+fact messages, never a sequence of wall-timed commands:
 
 ```
 { type, value, confidence, source, calibrationProfile,
@@ -294,13 +300,13 @@ display/compositor can see a new frame quickly; the current phone helper is a
 ~59 ms read at ~14 Hz plus fact delivery. Its p99
 `visible-blackout → fact → HID command → mask-confirmed` is the relevant
 number. Design toward <150 ms, but do not quote that target as achieved before
-the trace exists. The ESP must complete an already-approved safe cycle if the
-upstream observer disappears.
+the trace exists. The selected real-time executor must complete an
+already-approved safe cycle if the upstream observer disappears.
 
 **Done when:** a bench trace measures every leg (`screen/audio event -> fact ->
-ESP receipt -> HID command -> observed result`), reports p50/p95/p99/p99.9
-per path, and the ESP can complete an already-approved safe cycle if the host
-link drops.
+executor receipt -> actuator command -> observed result`), reports
+p50/p95/p99/p99.9 per path, and the executor can complete an already-approved
+safe cycle if its upstream link drops.
 
 ### P7 -- shadow campaign and bounded promotion
 
@@ -327,7 +333,8 @@ session corpus contains its raw facts, beliefs, plans, actions, and outcomes.
 
 ## Success criterion
 
-Success is not "the ESP32 pressed buttons." It is an auditable trace showing:
+Success is not "a particular board pressed buttons." It is an auditable trace
+showing:
 
 1. what the controller believed before a cycle;
 2. which observations and latency bounds justified that belief;

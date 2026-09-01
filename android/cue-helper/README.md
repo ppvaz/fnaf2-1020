@@ -48,6 +48,13 @@ claim. Its pixel rule must be recalibrated against frames from the exact target
 device before it may control an action. The APK is measurement plumbing, not a
 promoted controller.
 
+A transparent player/debug overlay is planned but is **not implemented** in
+the current APK. Its permission, shared ROI geometry, touch-through and
+self-capture gates are specified in
+[`plans/23-cue-helper-overlay-hud.md`](../../plans/23-cue-helper-overlay-hud.md).
+Until those gates pass, the helper has no `SYSTEM_ALERT_WINDOW` permission and
+does not draw over FNaF 2.
+
 The visual status also carries a fail-closed screen identity gate. It reports
 `screen=CUE_HELPER` only when the 20x9 sensor matches the stable helper layout
 calibrated from the retained portrait and landscape frames. A valid frame that
@@ -131,10 +138,11 @@ invariant enforced by the device harness.
 
 ## External audio authority
 
-The ESP32 is the runtime audio authority for this architecture. During an
-active capture session the APK listens on UDP `0.0.0.0:49709` for its health
-facts and on UDP `0.0.0.0:49710` for the PCM loopback. The ESP32's Wi-Fi AP is
-`FNAF2-AUDIO` (password `fnaf2-audio`). The health listener accepts only
+The ESP32 is the audio source/bridge selected by the current Cue Helper
+deployment profile; it is not a fixed role in the controller architecture.
+During an active capture session the APK listens on UDP `0.0.0.0:49709` for
+its health facts and on UDP `0.0.0.0:49710` for the PCM loopback. The ESP32's
+Wi-Fi AP is `FNAF2-AUDIO` (password `fnaf2-audio`). The health listener accepts only
 `audio-route`, `audio-rms`, and `audio-peak` from source
 `esp32-audio-consumer`; cue facts and actions are not accepted from UDP.
 

@@ -126,9 +126,10 @@ Bot-research roadmap added 2026-08-26:
     animation-safe blackout reaction, observe-only promotion, and a delayed
     external-A2DP audio slow path.
 20. [20-belief-state-cycle-controller.md](20-belief-state-cycle-controller.md)
-    — the architecture above the sensor and driver plans: an ESP32-maintained,
+    — the architecture above the sensor and driver plans: a hardware-agnostic,
     uncertainty-aware digital twin that evaluates and verifies bounded next
-    cycles instead of replaying a fixed macro.
+    cycles instead of replaying a fixed macro; bridge, processor, reflex, and
+    actuator roles are selected by capability/profile contracts.
 21. [21-policy-program-synthesis.md](21-policy-program-synthesis.md) — a shared
     policy-program IR, structural strategy search, and simulator-to-phone
     equivalence gate so the invention engine can synthesize complete pilots
@@ -141,3 +142,8 @@ Bot-research roadmap added 2026-08-26:
     a profile-driven device service and optional actuator MCP, generated
     knowledge indexes/portal, a legible repository front door, and a
     characterized migration away from the monolithic device shell path.
+23. [23-cue-helper-overlay-hud.md](23-cue-helper-overlay-hud.md) — a single
+    transparent, non-interactive Cue Helper HUD over the stock game, with one
+    shared ROI geometry authority, separate sensor/debug and decision/run
+    modes, fail-closed cue expiry, and explicit touch-through, target-overlay-
+    suppression, self-capture, latency, and lifecycle qualification gates.

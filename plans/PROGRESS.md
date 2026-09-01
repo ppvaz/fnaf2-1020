@@ -2,6 +2,21 @@
 
 **Updated:** 2026-09-01
 
+2026-09-01 Cue Helper overlay plan — Plan 23 now specifies a single
+transparent, non-interactive HUD with shared sensor/display ROI geometry,
+separate sensor-debug and decision-run modes, expiring fail-closed cues, and
+device gates for Android 12 touch obscuring, target-requested overlay hiding,
+MediaProjection self-capture, Android 15 service ordering, lifecycle, latency,
+and resource interference. This is planning only: the current APK still has no
+`SYSTEM_ALERT_WINDOW` permission or overlay implementation. The accompanying
+architecture correction makes bridge, sensor processor, reflex, and actuator
+deployable roles selected by capability/profile contracts; an ESP32 may fill
+any supported combination or be absent. The lossy 2026-08-30
+phone/A2DP/ESP32/Wi-Fi-PCM/same-phone profile remains rejected specifically,
+without banning bridge mode. Documentation gates: `npm run test:unit` green
+(architecture boundaries + stable references). **Open:** Plan 23 P1-P6; no
+device or gameplay claim was produced.
+
 2026-09-01 monitorUp + cameraSelected calibration session (opencode) — both
 visual facts are now calibrated on real g56 frames, the helper watch carries
 the twelve measured map buttons, and the tap coordinates that were off are
