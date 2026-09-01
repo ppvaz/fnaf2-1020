@@ -6,6 +6,16 @@
  */
 
 const bounded = value => typeof value === 'string' && value.length <= 4096;
+const CAMERA_UNKNOWN_REASONS = new Set([
+  'monitor-not-up', 'no-camera-highlight', 'multiple-camera-highlight',
+  'ambiguous-threshold', 'feature-missing', 'read-unavailable',
+  'read-stale', 'sensor-mismatch', 'calibration-refused',
+]);
+const BATTERY_UNKNOWN_REASONS = new Set([
+  'battery-unavailable', 'feature-missing', 'read-unavailable',
+  'read-stale', 'sensor-mismatch', 'screen-identity', 'frame-stale',
+  'timestamp-invalid',
+]);
 
 export function parseCueResponse(line) {
   if (!bounded(line)) throw new TypeError('cue-helper response is missing or oversized');
@@ -64,5 +74,64 @@ export class CueHelperControlTransport {
     if (!Number.isFinite(ageUs) || ageUs < 0 || ageUs > this.maxAgeUs || !['true', 'false'].includes(value))
       return { signal: 'monitorUp', state: 'UNKNOWN', reason: 'monitor-state-unavailable' };
     return { signal: 'monitorUp', state: 'OBSERVED', value: value === 'true', confidence: 1 };
+  }
+
+  /**
+   * Consume the helper's explicit camera fact only while the same fresh
+   * snapshot says the monitor is up. This is observation telemetry; it does
+   * not emit or select a game control.
+   */
+  cameraMeasurement(snapshot = {}) {
+    const ageUs = Number(snapshot.ageUs);
+    if (!Number.isFinite(ageUs) || ageUs < 0) {
+      return { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'read-unavailable' };
+    }
+    if (ageUs > this.maxAgeUs) {
+      return { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'read-stale' };
+    }
+    if (snapshot.monitorUp !== 'true') {
+      return { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'monitor-not-up' };
+    }
+    const value = snapshot.cameraSelected;
+    if (value === 'UNKNOWN' || value === undefined) {
+      const reason = snapshot.cameraReason;
+      return {
+        signal: 'cameraSelected', state: 'UNKNOWN',
+        reason: typeof reason === 'string' && CAMERA_UNKNOWN_REASONS.has(reason)
+          ? reason : 'read-unavailable',
+      };
+    }
+    if (!/^cam:(?:[1-9]|1[0-2])$/.test(value)) {
+      return { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'sensor-mismatch' };
+    }
+    return { signal: 'cameraSelected', state: 'OBSERVED', value, confidence: 1 };
+  }
+
+  /** Consume the game-UI flashlight meter only from a fresh night snapshot. */
+  batteryMeasurement(snapshot = {}) {
+    const ageUs = Number(snapshot.ageUs);
+    if (!Number.isFinite(ageUs) || ageUs < 0) {
+      return { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'read-unavailable' };
+    }
+    if (ageUs > this.maxAgeUs) {
+      return { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'read-stale' };
+    }
+    if (snapshot.screen !== 'FNAF2_NIGHT') {
+      return { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'screen-identity' };
+    }
+    const raw = snapshot.batteryPercent;
+    if (raw === undefined || raw === 'UNKNOWN') {
+      const reason = snapshot.batteryReason;
+      return {
+        signal: 'batteryPercent', state: 'UNKNOWN',
+        reason: typeof reason === 'string' && BATTERY_UNKNOWN_REASONS.has(reason)
+          ? reason : 'read-unavailable',
+      };
+    }
+    const value = Number(raw);
+    if (!Number.isInteger(value) || value < 0 || value > 100 || value % 25 !== 0) {
+      return { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'sensor-mismatch' };
+    }
+    return { signal: 'batteryPercent', state: 'OBSERVED', value, confidence: 1 };
   }
 }

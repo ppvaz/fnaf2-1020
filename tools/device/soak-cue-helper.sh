@@ -32,6 +32,12 @@ mkdir -p "$(dirname "$OUTPUT")"
 . "$HERE/select-adb.sh"
 adb get-state >/dev/null
 
+# Keep long-lived resource telemetry coherent with the active helper session.
+if [ "${CUE_HELPER_DEVICE_LOCK_HELD:-0}" != 1 ]; then
+  export CUE_HELPER_DEVICE_LOCK_HELD=1
+  exec python3 "$HERE/device-lock-exec.py" "$ANDROID_SERIAL" -- "$0" "$@"
+fi
+
 initial_pid="$(adb shell pidof "$PACKAGE" 2>/dev/null | tr -d '\r' | awk '{print $1}')"
 case "$initial_pid" in
   ''|*[!0-9]*)

@@ -82,6 +82,16 @@ public final class CaptureService extends Service {
             "com.fnaf2.cuehelper.action.CONNECT_AUDIO_WIFI";
     public static final String ACTION_RELOAD_AUDIO_MODEL =
             "com.fnaf2.cuehelper.action.RELOAD_AUDIO_MODEL";
+    public static final String ACTION_OVERLAY_ENABLE =
+            "com.fnaf2.cuehelper.action.OVERLAY_ENABLE";
+    public static final String ACTION_OVERLAY_DISABLE =
+            "com.fnaf2.cuehelper.action.OVERLAY_DISABLE";
+    public static final String ACTION_OVERLAY_MODE =
+            "com.fnaf2.cuehelper.action.OVERLAY_MODE";
+    public static final String ACTION_OVERLAY_PROBE_START =
+            "com.fnaf2.cuehelper.action.OVERLAY_PROBE_START";
+    public static final String ACTION_OVERLAY_PROBE_STOP =
+            "com.fnaf2.cuehelper.action.OVERLAY_PROBE_STOP";
     public static final String ACTION_STOP =
             "com.fnaf2.cuehelper.action.STOP";
     public static final String ACTION_STATUS =
@@ -91,6 +101,7 @@ public final class CaptureService extends Service {
     public static final String EXTRA_CAPTURE_WIDTH = "captureWidth";
     public static final String EXTRA_CAPTURE_HEIGHT = "captureHeight";
     public static final String EXTRA_STATUS = "status";
+    public static final String EXTRA_OVERLAY_MODE = "overlayMode";
 
     private static final String TAG = "FnafCueHelper";
     private static final String NOTIFICATION_CHANNEL = "capture";
@@ -207,6 +218,7 @@ public final class CaptureService extends Service {
     private PcmRecording audioRecording;
     private volatile String lastAudioRecording = "audioRecord=OFF";
     private final AudioAnalyzer audioAnalyzer = new AudioAnalyzer(this::onPhoneAudioCue);
+    private OverlayController overlayController;
     private volatile String lastPhoneAudio = "audioAnalyzer=UNAVAILABLE reason=model-missing";
     private volatile String lastPhoneAudioCue =
             "phoneCue=UNKNOWN reason=phone-analyzer-no-event";
@@ -226,6 +238,7 @@ public final class CaptureService extends Service {
     private int snapshotCam05MeanLuma;
     private int snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
     private int snapshotScreenScore;
+    private long snapshotDetectorLatencyMs;
     // Near-grey cells over the whole grid, or -1 when the grid is incomplete.
     //
     // A whole-frame count, because this sensor point-samples: the position
@@ -253,6 +266,8 @@ public final class CaptureService extends Service {
     private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
     private final int[] snapshotWatchValues = new int[PixelWatch.MAX_ENTRIES];
     private volatile boolean watchActive;
+    private long lastOverlaySnapshotNs;
+    private long overlaySequence;
 
     /**
      * Development-only WAV sink for the authoritative PCM datagrams. The ESP
@@ -489,6 +504,8 @@ public final class CaptureService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        overlayController = new OverlayController(this,
+                state -> publishCombinedStatus("RUNNING"));
         NotificationChannel channel = new NotificationChannel(
                 NOTIFICATION_CHANNEL,
                 "Cue capture",
@@ -531,6 +548,34 @@ public final class CaptureService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+        if (ACTION_OVERLAY_ENABLE.equals(action)) {
+            overlayController.enable();
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OVERLAY_DISABLE.equals(action)) {
+            overlayController.disable();
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OVERLAY_MODE.equals(action)) {
+            String requested = intent.getStringExtra(EXTRA_OVERLAY_MODE);
+            overlayController.setMode("run".equalsIgnoreCase(requested)
+                    ? OverlaySnapshot.Mode.DECISION_RUN
+                    : OverlaySnapshot.Mode.SENSOR_DEBUG);
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OVERLAY_PROBE_START.equals(action)) {
+            overlayController.startQualificationProbe();
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
+            return START_NOT_STICKY;
+        }
+        if (ACTION_OVERLAY_PROBE_STOP.equals(action)) {
+            overlayController.stopQualificationProbe();
+            publishCombinedStatus(projection == null ? "UNAVAILABLE" : "RUNNING");
+            return START_NOT_STICKY;
+        }
         if (ACTION_STOP.equals(action)) {
             stopCapture("operator-stop", true);
             // Keep the service instance alive and idle. The next start gets a
@@ -615,6 +660,9 @@ public final class CaptureService extends Service {
                     if (!sessionActive(generation)) return;
                     capturedContentWidth = width;
                     capturedContentHeight = height;
+                    if (overlayController != null) {
+                        overlayController.onCaptureResized(width, height);
+                    }
                     Log.i(TAG, "captured content resized: " + width + "x" + height);
                 }
 
@@ -622,6 +670,10 @@ public final class CaptureService extends Service {
                 public void onCapturedContentVisibilityChanged(boolean isVisible) {
                     if (!sessionActive(generation)) return;
                     capturedContentVisibility = isVisible ? 1 : 0;
+                    if (overlayController != null) {
+                        overlayController.onTargetVisibilityChanged(
+                                isVisible ? 1 : 0);
+                    }
                     Log.i(TAG, "captured content visible=" + isVisible);
                 }
 
@@ -642,6 +694,8 @@ public final class CaptureService extends Service {
                 throw new IllegalArgumentException("capture size must be a 20:9 "
                         + "landscape size between 20x9 and 2400x1080");
             }
+            overlayController.onCaptureStarted(captureWidth, captureHeight);
+            lastOverlaySnapshotNs = 0L;
             startVisualCapture(generation);
             audioAnalyzer.resetSession();
             lastPhoneAudio = audioAnalyzer.status();
@@ -862,6 +916,7 @@ public final class CaptureService extends Service {
             if (image == null) {
                 return;
             }
+            long detectorStartNs = System.nanoTime();
             Image.Plane[] planes = image.getPlanes();
             if (planes.length == 0) {
                 lastVisual = "visual=UNAVAILABLE(no-plane)";
@@ -948,15 +1003,34 @@ public final class CaptureService extends Service {
                 gridMeanLuma = snapshotGridMeanLuma;
                 screenIdentity = snapshotScreenIdentity;
                 screenScore = snapshotScreenScore;
-                if (watchActive && captureWidth == PixelWatch.NATIVE_WIDTH
+                boolean overlayDebug = overlayController != null
+                        && overlayController.wantsDebugSamples();
+                if ((watchActive || overlayDebug)
+                        && captureWidth == PixelWatch.NATIVE_WIDTH
                         && captureHeight == PixelWatch.NATIVE_HEIGHT) {
                     PixelWatch.readInto(watchSpec, watchFrame,
                             snapshotWatchValues);
                 } else {
                     for (int i = 0; i < watchSpec.size(); i++) {
-                        snapshotWatchValues[i] = PixelWatch.UNKNOWN;
+                    snapshotWatchValues[i] = PixelWatch.UNKNOWN;
                     }
                 }
+                snapshotDetectorLatencyMs = Math.max(0L,
+                        (System.nanoTime() - detectorStartNs) / 1_000_000L);
+            }
+
+            if (overlayController != null) {
+                overlayController.onCapturedScreenIdentity(screenIdentity);
+            }
+
+            if (overlayController != null && overlayController.visible()
+                    && callbackNs - lastOverlaySnapshotNs >= 33_000_000L) {
+                lastOverlaySnapshotNs = callbackNs;
+                String overlayInvalidReason = ageUs < 0
+                        ? "timestamp-invalid"
+                        : ageUs > MAX_VISUAL_FRAME_AGE_US
+                                ? "frame-stale" : capturedContentInvalidReason();
+                publishOverlaySnapshot(callbackNs, overlayInvalidReason);
             }
 
             if (callbackNs - lastVisualReportNs >= VISUAL_REPORT_INTERVAL_NS) {
@@ -998,6 +1072,81 @@ public final class CaptureService extends Service {
                 image.close();
             }
         }
+    }
+
+    /**
+     * Convert the current immutable capture facts into the HUD leaf contract.
+     * No action vocabulary is inferred here: decision mode receives an empty
+     * cue until a qualified belief/arbiter producer supplies one.
+     */
+    private void publishOverlaySnapshot(long renderedNs, String invalidReason) {
+        OverlaySnapshot.Mode mode = overlayController.mode();
+        if (mode != OverlaySnapshot.Mode.SENSOR_DEBUG) return;
+        OverlaySnapshot.Screen screen;
+        OverlaySnapshot.Region[] regions;
+        long sequence;
+        long detectorLatencyMs;
+        OverlaySnapshot.MonitorState monitorState;
+        String monitorReason;
+        String selectedCamera;
+        String cameraReason;
+        BatteryLifeDetector.Result battery;
+        synchronized (snapshotLock) {
+            sequence = ++overlaySequence;
+            detectorLatencyMs = snapshotDetectorLatencyMs;
+            screen = invalidReason == null
+                    ? OverlaySnapshot.Screen.fromIdentity(snapshotScreenIdentity)
+                    : OverlaySnapshot.Screen.UNKNOWN;
+            MonitorStateDetector.Result monitor = invalidReason == null
+                    ? MonitorStateDetector.measure(
+                            snapshotGridValid ? snapshotGrid : null,
+                            snapshotScreenIdentity)
+                    : MonitorStateDetector.measure(null, ScreenIdentity.UNKNOWN);
+            CameraSelectionDetector.Result camera = CameraSelectionDetector.measure(
+                    watchSpec, snapshotWatchValues, monitor);
+            switch (monitor.state) {
+                case UP:
+                    monitorState = OverlaySnapshot.MonitorState.UP;
+                    break;
+                case DOWN:
+                    monitorState = OverlaySnapshot.MonitorState.DOWN;
+                    break;
+                case UNKNOWN:
+                default:
+                    monitorState = OverlaySnapshot.MonitorState.UNKNOWN;
+                    break;
+            }
+            monitorReason = monitor.reason;
+            selectedCamera = camera.observed() ? camera.selectedCamera : null;
+            cameraReason = camera.reason;
+            battery = BatteryLifeDetector.measureForScreen(watchSpec,
+                    snapshotWatchValues, snapshotScreenIdentity);
+            regions = new OverlaySnapshot.Region[overlayController.contract().size()];
+            long ageMs = Math.max(0L,
+                    snapshotVisualTimestampNs > 0L
+                            ? (renderedNs - snapshotVisualTimestampNs) / 1_000_000L : 0L);
+            OverlaySnapshot.FactState state = invalidReason == null
+                    ? OverlaySnapshot.FactState.MONITORED
+                    : "frame-stale".equals(invalidReason)
+                            ? OverlaySnapshot.FactState.STALE
+                            : OverlaySnapshot.FactState.UNKNOWN;
+            for (int index = 0; index < regions.length; index++) {
+                RoiSpec roi = overlayController.contract().region(index);
+                int value = invalidReason == null
+                        ? snapshotWatchValues[index] : PixelWatch.UNKNOWN;
+                OverlaySnapshot.FactState regionState = value == PixelWatch.UNKNOWN
+                        ? OverlaySnapshot.FactState.UNKNOWN : state;
+                regions[index] = new OverlaySnapshot.Region(
+                        roi.id, regionState, value, Double.NaN,
+                        OverlaySnapshot.ScoreType.NONE, ageMs,
+                        detectorLatencyMs, false);
+            }
+        }
+        overlayController.publishSensorSnapshot(new OverlaySnapshot(
+                sequence, renderedNs, screen, mode, regions,
+                OverlaySnapshot.Cue.none(), monitorState, monitorReason,
+                selectedCamera, cameraReason, battery.observed() ? battery.percent : -1,
+                battery.reason));
     }
 
     /** The whole 20x9 sensor as hex, for classifying what a single pixel cannot. */
@@ -2133,6 +2282,12 @@ public final class CaptureService extends Service {
                     return "ERROR read-usage";
                 }
                 return currentWatch();
+            case "OVERLAY":
+                if (field.length != 2) {
+                    return "ERROR overlay-usage";
+                }
+                return "OK " + (overlayController == null
+                        ? "overlay=UNAVAILABLE" : overlayController.status());
             case "CAL":
             case "LOG":
             case "REC":
@@ -2176,6 +2331,10 @@ public final class CaptureService extends Service {
         int gridMeanLuma;
         int screenIdentity;
         int screenScore;
+        long detectorLatencyMs;
+        MonitorStateDetector.Result monitor;
+        CameraSelectionDetector.Result camera;
+        BatteryLifeDetector.Result battery;
         synchronized (snapshotLock) {
             visualSequenceSnapshot = snapshotVisualSequence;
             visualTimestampNs = snapshotVisualTimestampNs;
@@ -2188,6 +2347,13 @@ public final class CaptureService extends Service {
             gridMeanLuma = snapshotGridMeanLuma;
             screenIdentity = snapshotScreenIdentity;
             screenScore = snapshotScreenScore;
+            detectorLatencyMs = snapshotDetectorLatencyMs;
+            monitor = MonitorStateDetector.measure(snapshotGridValid ? snapshotGrid : null,
+                    snapshotScreenIdentity);
+            camera = CameraSelectionDetector.measure(watchSpec, snapshotWatchValues,
+                    monitor);
+            battery = BatteryLifeDetector.measureForScreen(watchSpec,
+                    snapshotWatchValues, snapshotScreenIdentity);
         }
 
         long nowNs = System.nanoTime();
@@ -2203,28 +2369,76 @@ public final class CaptureService extends Service {
             visual = String.format(Locale.US,
                     "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
                             + "grey=%d gridLuma=%d ageUs=%d content=%dx%d visible=%d "
-                            + "screen=%s screenScore=%d",
+                            + "screen=%s screenScore=%d detectorLatencyMs=%d "
+                            + "monitorUp=%s monitorReason=%s cameraSelected=%s cameraReason=%s "
+                            + "batteryPercent=%s batteryReason=%s",
                     visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
                     greyCells, gridMeanLuma, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
-                    capturedContentVisibility,
-                    ScreenIdentity.label(screenIdentity), screenScore);
+                    capturedContentVisibility, ScreenIdentity.label(screenIdentity),
+                    screenScore, detectorLatencyMs, monitorValue(monitor), monitor.reason,
+                    camera.selectedCamera == null ? "UNKNOWN" : camera.selectedCamera,
+                    camera.reason, battery.observed() ? Integer.toString(battery.percent) : "UNKNOWN",
+                    battery.reason);
         } else {
             visual = String.format(Locale.US,
                     "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
-                            + "screen=UNKNOWN screenScore=0",
+                            + "screen=UNKNOWN screenScore=0 detectorLatencyMs=%d "
+                            + "monitorUp=UNKNOWN monitorReason=%s cameraSelected=UNKNOWN "
+                            + "cameraReason=%s batteryPercent=UNKNOWN batteryReason=%s",
                     visualSequenceSnapshot, invalidReason, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
-                    capturedContentVisibility);
+                    capturedContentVisibility, detectorLatencyMs, monitor.reason,
+                    camera.reason, invalidReason);
         }
 
         return "snapshotNs=" + nowNs + " " + visual + " "
                 + currentAudioStatus() + " " + watchStatus();
     }
 
+    private static String monitorValue(MonitorStateDetector.Result monitor) {
+        if (monitor == null) return "UNKNOWN";
+        switch (monitor.state) {
+            case UP:
+                return "true";
+            case DOWN:
+                return "false";
+            case UNKNOWN:
+            default:
+                return "UNKNOWN";
+        }
+    }
+
     private void publishCombinedStatus(String lifecycle) {
         publishStatus(lifecycle + "\n" + lastVisual + "\n" + currentAudioStatus()
-                + "\n" + lastControl);
+                + "\n" + currentBatteryStatus() + "\n" + lastControl + "\n"
+                + (overlayController == null ? "overlay=UNAVAILABLE"
+                        : overlayController.status()));
+    }
+
+    /** Publish the UI-derived flashlight meter independently from audio state. */
+    private String currentBatteryStatus() {
+        BatteryLifeDetector.Result battery;
+        int identity;
+        long timestampNs;
+        synchronized (snapshotLock) {
+            identity = snapshotScreenIdentity;
+            timestampNs = snapshotVisualTimestampNs;
+            battery = BatteryLifeDetector.measureForScreen(watchSpec,
+                    snapshotWatchValues, snapshotScreenIdentity);
+        }
+        long ageUs = timestampNs > 0L
+                ? (System.nanoTime() - timestampNs) / 1_000L : -1L;
+        if (identity != ScreenIdentity.FNAF2_NIGHT || ageUs < 0L
+                || ageUs > MAX_VISUAL_FRAME_AGE_US || !battery.observed()) {
+            String reason = identity != ScreenIdentity.FNAF2_NIGHT
+                    ? "screen-identity" : !battery.observed()
+                            ? battery.reason : "frame-stale";
+            return "battery=UNKNOWN reason=" + reason;
+        }
+        return "battery=OBSERVED percent=" + battery.percent
+                + " bars=" + battery.filledBars + "/" + BatteryLifeDetector.BAR_COUNT
+                + " reason=" + battery.reason;
     }
 
     private void publishStatus(String status) {
@@ -2246,6 +2460,10 @@ public final class CaptureService extends Service {
         }
         ++sessionGeneration;
         Log.w(TAG, "stopping capture: " + reason);
+
+        if (overlayController != null) {
+            overlayController.onCaptureStopped();
+        }
 
         stopAudioMonitor();
         releaseAudioWifi();
@@ -2361,6 +2579,7 @@ public final class CaptureService extends Service {
             snapshotScreenScore = 0;
             watchActive = false;
         }
+        lastOverlaySnapshotNs = 0L;
 
         lastVisual = "visual=UNAVAILABLE(" + reason + ")";
         lastAudio = esp32AudioStatus();
@@ -2388,6 +2607,10 @@ public final class CaptureService extends Service {
     @Override
     public void onDestroy() {
         stopCapture("service-destroyed", true);
+        if (overlayController != null) {
+            overlayController.destroy();
+            overlayController = null;
+        }
         super.onDestroy();
     }
 

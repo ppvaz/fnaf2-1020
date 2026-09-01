@@ -44,11 +44,17 @@ PROFILE_ID = "moto-g56-v207-landscape"
 # The camNN_button pixels are the measured monitor-map camera buttons
 # (selected button renders yellow, yellowness near 194; coordinates measured
 # on 2026-09-01 g56 captures) for the cameraSelected fact.
+# The battery_bar_N ROIs are the four bright interior compartments of the
+# top-left flashlight meter, measured on the exact 2400x1080 HUD.
 ENTRIES = (
     ("bb_left_luma", "PIXEL", 451, 730, 1, 1, "LUMA", 1, 0),
     ("bb_left_yellowness", "PIXEL", 451, 730, 1, 1, "YELLOWNESS", 1, 0),
     ("cam05_mean_luma", "ROI", 600, 180, 520, 320, "MEAN_LUMA", 4, 0),
     ("screen_grey_cells", "ROI", 0, 0, 2400, 1080, "GREY_CELLS", 120, 25),
+    ("battery_bar_1", "ROI", 132, 70, 28, 32, "MEAN_LUMA", 4, 0),
+    ("battery_bar_2", "ROI", 172, 70, 28, 32, "MEAN_LUMA", 4, 0),
+    ("battery_bar_3", "ROI", 212, 70, 28, 32, "MEAN_LUMA", 4, 0),
+    ("battery_bar_4", "ROI", 252, 70, 28, 32, "MEAN_LUMA", 4, 0),
     ("cam01_button", "PIXEL", 1412, 784, 1, 1, "YELLOWNESS", 1, 0),
     ("cam02_button", "PIXEL", 1720, 784, 1, 1, "YELLOWNESS", 1, 0),
     ("cam03_button", "PIXEL", 1411, 690, 1, 1, "YELLOWNESS", 1, 0),

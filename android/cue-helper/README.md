@@ -48,19 +48,66 @@ claim. Its pixel rule must be recalibrated against frames from the exact target
 device before it may control an action. The APK is measurement plumbing, not a
 promoted controller.
 
-A transparent player/debug overlay is planned but is **not implemented** in
-the current APK. Its permission, shared ROI geometry, touch-through and
-self-capture gates are specified in
+The APK now contains a permission-gated, read-only overlay shell. **Enable
+overlay** opens the explicit `SYSTEM_ALERT_WINDOW` settings flow; the service
+owns exactly one `TYPE_APPLICATION_OVERLAY` window with
+`FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE`, a conservative alpha below
+`InputManager.getMaximumObscuringOpacityForTouch()`, and independent
+`DISABLED`, `READY`, `VISIBLE`, `HIDDEN`, and `ERROR` status. The sensor/debug
+and decision/run renderers consume immutable snapshots derived from the same
+normalized regions as `PixelWatch`; run mode has no cue until a qualified
+belief/arbiter producer supplies one.
+
+The self-observation gate is deliberately **unqualified by default**. No
+overlay is attached beside authoritative sensing until retained HUD-off/HUD-on
+evidence proves that capture excludes the overlay, the protected regions have a
+guard band, or capture is phase-separated. A raw transparent paint choice is
+not evidence. The gate and host regressions are in
+[`OverlayCaptureGate.java`](src/com/fnaf2/cuehelper/OverlayCaptureGate.java),
+and the complete platform/self-capture qualification remains specified in
 [`plans/23-cue-helper-overlay-hud.md`](../../plans/23-cue-helper-overlay-hud.md).
-Until those gates pass, the helper has no `SYSTEM_ALERT_WINDOW` permission and
-does not draw over FNaF 2.
+The device execution matrix and retained evidence schema are in
+[`OVERLAY-QUALIFICATION.md`](../../docs/device/OVERLAY-QUALIFICATION.md).
+
+Debug builds also expose an explicit **Start qualification probe** button. It
+temporarily permits only the sensor/debug renderer so the observer can measure
+HUD-on capture feedback; it reports `overlay=PROBE`, never accepts decision
+cues, never changes the qualification sidecar, and is not a supported run HUD.
+
+The debug HUD is screen-aware and intentionally quiet. Menu, helper, unknown,
+and other non-night frames render no game-element boxes. On a recognized night
+the compact badge reports `MONITOR UP`, `MONITOR DOWN`, or `MONITOR ?`. Office
+regions are shown only while the monitor is down; the camera feed/map areas are
+shown only while it is up, and the one calibrated yellow map button is marked
+`CAM NN ACTIVE`. Camera selection is never retained or displayed while the
+monitor is down. Normal regions use thicker double-keyline frames without
+per-box age/latency text; state changes ease in over a short transition and the
+active camera has a restrained pulse. Labels use the bundled CC0 `HUD FONT`
+asset from `assets/fonts/hud-font.otf`.
+
+The same native watchlist reads the four bright interior compartments of the
+stock top-left `flashlight` meter. The debug badge and authenticated snapshot
+report this as `battery=OBSERVED percent=... bars=.../4`; missing, foreign, or
+non-night reads are `battery=UNKNOWN`. Short UNKNOWN projection gaps retain the
+last usable night snapshot for 350 ms, so ROI frames and the battery badge do
+not blink, while a confirmed menu/helper identity clears them immediately.
+
+The renderer also accepts a profile-bound `game-hud-map-v1` collision map. Each
+calibrated game HUD zone is an exclusion for overlay frames and labels, and
+labels additionally avoid one another. The default map is empty until a zone
+has retained calibration evidence, so this does not invent coverage for HUD
+areas that have not been measured yet.
 
 The visual status also carries a fail-closed screen identity gate. It reports
 `screen=CUE_HELPER` only when the 20x9 sensor matches the stable helper layout
 calibrated from the retained portrait and landscape frames. A valid frame that
 does not match the helper is `screen=UNKNOWN`; it is not promoted to
 `FNAF_2`, Android settings, or any other semantic screen. This prevents a
-capture of the helper UI itself from being interpreted as game content.
+capture of the helper UI itself from being interpreted as game content. While
+the HUD is enabled, the controller also keeps the window detached unless the
+captured frame positively identifies `FNAF2_NIGHT`; an app switch therefore
+fails closed as `UNAVAILABLE(target-not-game) state=HIDDEN`, and a later valid
+game frame may reattach it.
 
 ## Build and install
 
@@ -73,6 +120,24 @@ adb install -r android/cue-helper/build/cue-helper.apk
 adb shell am start -n com.fnaf2.cuehelper/.MainActivity
 ```
 
+The image-free setup/menu protocol can be run after the APK is built:
+
+```sh
+tools/device/cue-helper-setup.sh --install       # install, start capture, check FNaF menu
+tools/device/cue-helper-setup.sh                 # reuse an active capture and check menu
+tools/device/cue-helper-setup.sh --probe         # optional debug-only sensor probe
+tools/device/cue-helper-setup.sh --screen night --probe  # wait for a manually entered night
+tools/device/cue-helper-setup.sh --stop          # force-stop helper capture for cleanup
+```
+
+It resolves the target launcher and build, discovers helper/system buttons by
+UIAutomator text and bounds, handles projection consent, starts FNaF with
+`am start`, and verifies the requested screen identity through the authenticated
+socket (`FNAF2_MENU` by default, or `FNAF2_NIGHT`).
+It never sends a game-control coordinate, takes a screenshot, or writes the
+qualification sidecar. Use `--probe` only for debug sensor observation; the
+production gate remains unqualified.
+
 If the SDK or JDK is elsewhere, set `ANDROID_SDK_ROOT` or `JAVA_HOME`. Generated
 build output and the local debug keystore are ignored.
 
@@ -81,15 +146,17 @@ phone `AudioAnalyzer`/phase clock, and visual helpers against host unit tests.
 The external legacy authority has its own phone-free regression at
 `tools/cue/test-audio-authority.py`.
 
-On the phone:
+On the phone, video capture is independent of the optional audio path:
 
-1. Tap **Connect audio receiver**, grant `BLUETOOTH_CONNECT` if requested, and
-   connect `FNAF2 Audio Consumer` in the system Bluetooth settings.
-2. Confirm the APK reports `CONNECTED` or `STREAMING` for the receiver.
-3. Tap **Connect ESP32 Wi-Fi** and accept Android's request for
-   `FNAF2-AUDIO` (password `fnaf2-audio`).
-4. Tap **Start video capture** and grant screen-capture consent.
-5. Tap **Open FNaF 2**.
+1. Tap **Start video capture** and grant screen-capture consent. No audio
+   receiver, Bluetooth permission, or Wi-Fi setup is required.
+2. Tap **Open FNaF 2**.
+3. If audio is wanted, tap **Connect audio receiver**, grant
+   `BLUETOOTH_CONNECT` if requested, and connect `FNAF2 Audio Consumer` in the
+   system Bluetooth settings.
+4. Confirm the APK reports `CONNECTED` or `STREAMING` for the receiver.
+5. If this is the ESP32 receiver, tap **Connect ESP32 Wi-Fi** and accept
+   Android's request for `FNAF2-AUDIO` (password `fnaf2-audio`).
 6. Tap **Monitor ESP32 PCM on phone** if you want to hear the returned mix.
    It first reports `STARTING` and becomes `ON` after four packets are buffered.
 7. Optionally tap **Record ESP audio (dev)** to save the same returned PCM.
@@ -212,17 +279,19 @@ tools/cue/capture-bt-audio.sh --check 10:2B:1C:DA:18:2C
 
 ## Snapshot boundary
 
-The APK's authenticated control socket serves visual observations only. A
-fresh 128-bit token is created per consented run. Every request is one bounded
-ASCII line; malformed, oversized, or unauthenticated requests receive an
-error and no sensor data.
+The APK's authenticated control socket serves visual observations and
+read-only overlay telemetry; it has no input or actuator operation. A fresh
+128-bit token is created per consented run. Every request is one bounded ASCII
+line; malformed, oversized, or unauthenticated requests receive an error and
+no sensor data.
 
 | Request | Response | Notes |
 |---|---|---|
 | `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. The visual line carries the whole-grid statistics `grey` (near-grey cell count) and `gridLuma` (grid mean luma) — verdict-free features a calibrated consumer may fit rules against. |
 | `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid (180 point samples, row-major). |
-| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (16 entries: 4 sourced + 12 measured monitor-map camera buttons). |
+| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (20 entries: 4 sourced + 4 flashlight-meter bars + 12 measured monitor-map camera buttons). |
 | `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. |
+| `OVERLAY <token>` | `OK overlay=...` | Read-only HUD lifecycle, qualification gate, and bounded update/draw/drop/latency counters for retained device evidence. |
 
 `CAL`, `LOG`, `ARM`, and `RESULT` are no longer APK commands. Model import and
 PCM recording are APK UI operations; cue observation is shadow-only until
@@ -243,7 +312,19 @@ tools/device/query-cue-helper.sh                    # loopback snapshot
 tools/device/query-cue-helper.sh forward            # forwarded snapshot
 tools/device/query-cue-helper.sh grid               # render the visual grid
 tools/device/query-cue-helper.sh watchlist status
+tools/device/query-cue-helper.sh overlay             # HUD status and timing counters
+tools/device/validate-overlay-qualification.py RECORD.json
+tools/device/provision-overlay-qualification.sh RECORD.json --replace
+tools/device/overlay-qualification-observe.sh 60 1 captures/cue-helper/overlay-on.tsv
 ```
+
+Provisioning accepts only a structurally valid, reviewed record and writes an
+atomic private sidecar; it does not grant overlay permission or make the HUD
+qualified. Restart the capture session after provisioning so the service reloads
+the sidecar. Run the observer separately with
+`CUE_HELPER_OVERLAY_PHASE=off` for the paired baseline, or `probe` while the
+debug-only qualification probe is active. The sampler retains native watchlist
+values on every row; these are evidence inputs, not an automatic qualification.
 
 Projection stop tears down the visual display and both control workers, so a
 new consent session can start in the same app process. The service remains

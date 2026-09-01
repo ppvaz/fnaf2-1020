@@ -16,7 +16,15 @@ import { composeDevice } from './composition.js';
 function observe(cueTransport) {
   const snapshot = cueTransport.snapshot();
   const grid = cueTransport.grid();
-  return { ...snapshot, gridSeq: grid.seq, cells: grid.cells };
+  return {
+    ...snapshot,
+    gridSeq: grid.seq,
+    cells: grid.cells,
+    measurements: {
+      cameraSelected: cueTransport.cameraMeasurement(snapshot),
+      batteryPercent: cueTransport.batteryMeasurement(snapshot),
+    },
+  };
 }
 
 /**

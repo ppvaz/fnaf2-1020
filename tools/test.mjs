@@ -354,6 +354,13 @@ const ENGINE = [
   // runners, hashes rather than filenames, and a manifest on every exit path.
   // Mock adb, synthetic artifacts, no phone.
   ['session producer', ['device/test-session-manifest.sh']],
+  // Plan 23's retained overlay evidence must be complete before a qualification
+  // sidecar can be reviewed: no-device synthetic records exercise the same
+  // refusal reasons as the device-side gate.
+  ['overlay qualification', ['device/test-overlay-qualification.py']],
+  // Plan 23's device observer must retain enough paired telemetry to calculate
+  // detector delta and render cadence, without inventing a qualified HUD run.
+  ['overlay observation', ['device/test-overlay-qualification-observe.sh']],
   // A 420-second night must not be represented by screenrecord's legacy
   // 180-second default, and an abort must not suppress the grader that explains
   // it. The runner negotiates unlimited mode from captured device help and

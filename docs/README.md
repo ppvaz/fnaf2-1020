@@ -82,6 +82,10 @@ Fusion build 296, August 2025.
 
 - [`android/cue-helper/README.md`](../android/cue-helper/README.md) — the unified
   MediaProjection APK, its build/run procedure, and first target-device soak.
+- [`OVERLAY-QUALIFICATION.md`](device/OVERLAY-QUALIFICATION.md) — the retained
+  evidence protocol and structural validator for the non-interactive HUD's
+  touch, target-suppression, self-capture, latency, resource, and lifecycle
+  gates.
 - [`HID-MULTITOUCH.md`](device/HID-MULTITOUCH.md) — the two traps in stock
   Android multitouch, the phone's measured input budget, and the Night 6 route
   priced against the actuator it actually has. **Read this before claiming

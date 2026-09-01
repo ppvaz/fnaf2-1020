@@ -68,8 +68,11 @@ the twelve map buttons are measured watch pixels, the selected one renders
 yellow (bright ~194, dimmed ~96 while the wind control is held) against
 cool-grey unselected. Exactly one lit button names the camera; zero and
 several lit buttons are distinct UNKNOWN reasons so a camera transition and
-the Android double-camera glitch stay separable in telemetry. The rule's
-runtime wiring into the live observation loop is still open.
+the Android double-camera glitch stay separable in telemetry. The live
+MediaProjection observation payload carries this camera measurement alongside
+the game-UI `batteryPercent` measurement from the same fresh snapshot; neither
+fact is an actuator command or a substitute for the monitor detector's
+qualification.
 
 The Moto g56 100 ms and 17 ms profiles are deliberately separate
 qualification candidates. Both remain `dryRunOnly` until their own
@@ -79,6 +82,22 @@ the 17 ms profile.
 
 The optional JSON-RPC/MCP-shaped adapter exposes bounded semantic tools over
 the same service (`devices.list`, `profiles.resolve`, `device.preflight`,
-`session.*`, `sensor.sample`, `actuator.apply`, `trajectory.execute`, and
-artifact inspection). It is not a scheduler and never exposes arbitrary shell
-or raw tap coordinates.
+`session.*`, `sensor.sample`, `actuator.apply`, `trajectory.execute`, artifact
+inspection, and the safe Cue Helper tools). It never exposes arbitrary shell or
+raw tap coordinates.
+
+For a real stdio MCP server that can be shared by Codex, Claude Code, and
+OpenCode, run `npm run device:mcp`. Its project configuration is checked in as
+`.mcp.json` (Claude Code) and `opencode.json` (OpenCode). The exposed Cue
+Helper tools are `cue.setup`, `cue.queue.enqueue`, `cue.queue.list`, and
+`cue.queue.run`. Queue enqueue/list work without a phone; queue run returns a
+safe HOLD while the phone is absent, locked, asleep, or ambiguous and leaves
+the job pending. The server cannot unlock the phone, tap the game, send HID,
+or write qualification evidence.
+
+All MCP instances share a kernel-released per-device lease. Multiple agents
+may enqueue/list concurrently, but setup and queue draining for the same ADB
+serial are serialized; a competing operation returns `HOLD device-busy` or
+waits when a bounded wait was requested.
+`cue.queue.enqueue` accepts an optional idempotency key so retries from several
+agents do not create duplicate setup jobs.

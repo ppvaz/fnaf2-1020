@@ -34,12 +34,16 @@ public final class PixelWatchTest {
 
     public static void main(String[] args) {
         PixelWatch.Spec spec = PixelWatch.defaultSpec();
-        check("default spec has the four sourced entries plus twelve map buttons",
-                spec.size() == 16);
-        check("the map buttons follow the sourced entries",
-                spec.entry(4).name.equals("cam01_button")
-                        && spec.entry(15).name.equals("cam12_button")
-                        && spec.entry(10).x == 1776 && spec.entry(10).y == 606);
+        check("default spec has the four sourced entries, battery bars, and map buttons",
+                spec.size() == 20);
+        check("the battery bars follow the sourced entries",
+                spec.entry(4).name.equals("battery_bar_1")
+                        && spec.entry(7).name.equals("battery_bar_4")
+                        && spec.entry(4).x == 132 && spec.entry(4).y == 70);
+        check("the map buttons follow the battery bars",
+                spec.entry(8).name.equals("cam01_button")
+                        && spec.entry(19).name.equals("cam12_button")
+                        && spec.entry(14).x == 1776 && spec.entry(14).y == 606);
         check("spec hash is stable and lowercase sha256",
                 spec.sha256().matches("[0-9a-f]{64}")
                         && spec.sha256().equals(PixelWatch.defaultSpec().sha256()));
@@ -48,6 +52,12 @@ public final class PixelWatchTest {
         Frame frame = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0x808080);
         frame.set(451, 730, 0x90d1ff);
         frame.set(1776, 606, 0xc2dd00);
+        for (int bar = 1; bar <= PixelWatch.BATTERY_BAR_COUNT; bar++) {
+            int x = 132 + (bar - 1) * 40;
+            for (int y = 70; y < 102; y++) {
+                for (int xx = x; xx < x + 28; xx++) frame.set(xx, y, 0xffffff);
+            }
+        }
         int[] values = new int[spec.size()];
         check("readInto fills every entry",
                 PixelWatch.readInto(spec, frame, values) == spec.size());
@@ -56,10 +66,12 @@ public final class PixelWatchTest {
         check("uniform CAM ROI returns its mean luma",
                 values[2] == 128);
         check("uniform grey coarse screen is all grey cells", values[3] == 180);
+        check("a full battery bar reads bright meter luma",
+                values[spec.indexOfName("battery_bar_1")] == 255);
         check("an unselected map button reads grey, not yellow",
-                values[4] == 0);
+                values[spec.indexOfName("cam01_button")] == 0);
         check("the lit CAM 07 button reads the measured selected yellowness",
-                values[10] == 194);
+                values[spec.indexOfName("cam07_button")] == 194);
 
         Frame mixed = new Frame(10, 10, 0x808080);
         mixed.set(0, 0, 0xc2dd00);

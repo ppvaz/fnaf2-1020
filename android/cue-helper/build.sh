@@ -74,6 +74,21 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PixelWatch.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenStats.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/NormalizedRect.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/RoiSpec.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayGeometry.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayCollisionDetector.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayRegionFilter.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlaySnapshot.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/BatteryLifeDetector.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/MonitorStateDetector.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CameraSelectionDetector.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayCaptureGate.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayMetrics.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayCueArbiter.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlaySnapshotRetention.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayView.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/OverlayController.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureFileProvider.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CaptureService.java"
 

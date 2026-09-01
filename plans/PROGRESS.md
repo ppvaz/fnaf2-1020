@@ -2,20 +2,318 @@
 
 **Updated:** 2026-09-01
 
+2026-09-01 Cue Helper touch-evidence contract hardening — the Plan 23
+qualification validator now requires one retained trial record for each of
+`mask`, `leftVent`, `rightVent`, `flashlight`, `cameraMap`, and
+`cameraButtons`, including positive attempt/delivery counts, target-observed
+proof, and a non-placeholder trace ID. An aggregate `allDelivered=true` can no
+longer mask a failed or missing control. Synthetic refusal coverage and the
+full default suite pass; no physical touch result is being claimed.
+
+2026-09-01 Cue Helper lease coverage — long-lived overlay qualification
+observation, helper soak telemetry, and reviewed qualification-sidecar
+provisioning now acquire the same kernel-released per-serial lease used by
+setup and queue execution. The independent-process lock regression and mock
+observer pass, so a second agent cannot mutate or invalidate an active trace.
+
+2026-09-01 Cue Helper native test coverage — `npm test` now includes
+`android/cue-helper/test.sh`, so the default contract lane exercises the
+native ROI geometry, screen identity, battery/monitor/camera facts, snapshot
+retention, overlay metrics, collision/lifecycle contracts, optional-audio
+capture gate, and non-game identity detachment. The expanded suite passes.
+
+2026-09-01 Cue Helper default verification tightening — `npm test` now runs
+both TypeScript and checked-JavaScript typechecks before the architecture,
+contract, qualification-observer, and simulation lanes. The complete default
+suite passes, including the MCP queue boundary and Plan 23 qualification
+regressions.
+
+2026-09-01 Cue Helper MCP typecheck correction — the optional injected queue
+runner in `apps/device/src/mcp.js` now has an explicit checked-JavaScript type,
+so `npm run typecheck` no longer rejects the `cueHelper.run` boundary. The
+TypeScript and JavaScript checks, full `npm test`, qualification regressions,
+and `git diff --check` pass.
+
+2026-09-01 Cue Helper qualification-test coverage — the default `npm test`
+contract lane now runs the strict synthetic Plan 23 qualification-record
+validator and the mock observer regression, covering safe opacity, required
+touch-control set, paired-evidence placeholders, self-capture consistency,
+resource/latency fields, and lifecycle refusal cases. Both pass alongside the
+native overlay contracts and device coordination tests.
+
+2026-09-01 Cue Helper live queue integration — with the g56 explicitly
+selected, a persisted `menu-check` job was claimed once by the queue runner,
+completed against helper `10:0.1.9` and target `26:2.0.7`, reported
+`TARGET_SUPPRESSION status=NOT_REQUESTED`, passed the authenticated
+`FNAF2_MENU` check, and finished `DONE`; the runner then reported `QUEUE EMPTY`.
+Capture was stopped immediately afterward. This was an image-free menu check,
+not night or touch qualification.
+
+2026-09-01 Cue Helper setup confirmation hardening — the image-free setup
+wrapper no longer treats the landscape/off-screen `Stop video capture` button
+as its only startup proof; it now confirms the helper package owns an active
+`TYPE_SCREEN_CAPTURE` entry in `dumpsys media_projection`, retaining the named
+button as a compatibility fallback. A live g56 menu probe passed after this
+change (`helper=10:0.1.9`, `target=26:2.0.7`,
+`TARGET_SUPPRESSION status=NOT_REQUESTED`), and safe stop returned
+`Media Projection: null`. The prior false setup failure is discarded as
+non-evidence. Setup parser coverage and the full `npm test` suite pass.
+
+2026-09-01 Cue Helper independent-agent and lifecycle continuation — the
+per-device lease regression now uses a real child process: a second independent
+agent is refused with `DeviceBusy`, and terminating the owner releases the
+kernel lease for the next agent. The queue-drainer regression likewise uses an
+independent process and returns `QUEUE HOLD reason=queue-runner-busy` instead
+of allowing two drainers to claim work. On the connected g56, a fresh image-free menu
+probe kept the HUD hidden with
+`gate=UNQUALIFIED(self-capture-unqualified)`;
+force-stopping and restarting FNaF exercised focus loss/recovery, and the
+capture stream reported the resulting display resize/aspect transition as
+UNKNOWN without restoring the HUD. Safe capture stop left
+`Media Projection: null`, no helper process, and FNaF foreground. No
+game-control touch was sent. **Open:** P5 touch passthrough and paired HUD
+off/on feedback qualification, plus P6 observe-only night evidence.
+
+2026-09-01 Cue Helper project MCP, offline queue, and multi-agent lease — the
+safe image-free
+setup/menu/night checks are now exposed through a real newline-delimited stdio
+MCP server (`tools/device/cue-helper-mcp.mjs`) with project configuration for
+Claude Code and OpenCode. Codex requires a one-time `codex mcp add` because its
+current launcher registry is user-scoped. Queue enqueue/list work without ADB;
+queue run returns HOLD and preserves PENDING jobs for absent, locked, asleep, or
+ambiguous devices. The server exposes no arbitrary shell, coordinates, HID, or
+game-control operation. A kernel-released per-serial lease now serializes
+direct setup and queue execution across independently launched agents, while a
+queue-runner lock prevents competing drainers from claiming separate jobs, and
+optional enqueue idempotency keys collapse duplicate agent retries; the
+contention/recovery and MCP regressions pass.
+
+2026-09-01 Cue Helper battery identity gate — the native flashlight-meter
+detector now accepts a battery read only with positive `FNAF2_NIGHT` identity.
+Overlay snapshots, authenticated `GET`, and the status card therefore cannot
+reinterpret bright pixels at the same coordinates on the menu/helper as game
+battery. The screen-scoped detector regression and rebuilt v3-signed APK pass.
+
+2026-09-01 Cue Helper image-free setup protocol — `tools/device/cue-helper-setup.sh`
+now resolves the installed target launcher/build, discovers helper and Android
+projection controls through UIAutomator text/bounds, starts capture, launches
+FNaF, and verifies `screen=FNAF2_MENU` through the authenticated socket. The
+connected g56 cold-path run installed helper `10:0.1.9`, accepted projection
+consent, passed the menu check, and reported `batteryPercent=UNKNOWN` with
+`batteryReason=screen-identity`; no screenshot or game-control touch was used.
+The optional `--probe` path is sensor-only and leaves the production gate
+unqualified. The parser/allowlist regression passes.
+
+2026-09-01 Cue Helper battery HUD and flicker fix — the shared native
+watchlist now samples the four calibrated interior bars of the stock top-left
+flashlight meter and reports a fail-closed `battery=OBSERVED` bar count and
+coarse percentage through the snapshot/status path and debug badge. A new
+bounded snapshot-retention layer keeps the last usable night monitor/camera/
+ROI state through 350 ms UNKNOWN projection gaps, while confirmed menu/helper
+identity clears immediately and decision cues are never retained. The debug
+status badge is drawn without reserving annotation collision space. Host tests,
+the full repository suite, the signed APK build, and the battery/retention
+regressions pass. The qualification sampler now also retains parsed battery
+percentage/reason fields beside monitor/camera state. Device installation and
+a night-surface battery read remain to be verified because the phone transport
+is currently offline.
+
+2026-09-01 Cue Helper night-surface live check — with the exact FNaF 2 build
+(`26:2.0.7`) running on the connected g56, a five-sample debug probe held one
+overlay window per sample and remained
+`UNQUALIFIED(self-capture-unqualified)`. The night surface reported
+`monitor=false (anchors-down)` and correctly kept camera selection hidden as
+`UNKNOWN (monitor-not-up)`; detector latency was 24–69 ms and update-to-draw
+p50 was 10.82–11.12 ms. After disabling the probe, a three-sample HUD-off
+trace reported `windows=0` and `state=READY` with the same fail-closed monitor
+and camera facts. Traces are retained at
+`captures/cue-helper/overlay-qualification-20260901/hud-probe-current-5.tsv`
+and `hud-off-current-3.tsv`; neither is a production qualification record.
+The helper was force-stopped afterward, leaving no active MediaProjection or
+helper process and the target night activity foreground. No game-control
+touches were sent; camera-up verification, touch passthrough, and the
+self-capture gate remain open.
+
+2026-09-01 Cue Helper shared-geometry hardening — the twelve camera-button
+coordinates are now owned by `PixelWatch`; both the native camera detector and
+the display overlay resolve them through that contract, so a same-named point
+at foreign geometry refuses as `sensor-mismatch`. Android host tests, the full
+repository suite (`npm test`), APK signing, and final device installation pass.
+The post-install lifecycle check also force-stopped a stale helper projection
+and confirmed no helper process/projection remains; rotation is restored to
+`user_rotation=0`, `accelerometer_rotation=0`.
+
+The host `CueHelperControlTransport` now also exposes the helper's explicit
+`cameraSelected` fact, but only for a fresh snapshot whose monitor is observed
+up; stale, down, unknown, malformed, and out-of-range values remain UNKNOWN.
+Stale reads use `read-stale`, while invalid or untrusted reason text is reduced
+to `read-unavailable`, preserving the camera-rule vocabulary. Adapter contract
+tests and the Android host suite pass after this hardening.
+
+The qualification sampler now asserts the same visibility rule in retained
+telemetry: camera selection must be `UNKNOWN` with reason `monitor-not-up`
+unless monitor state is `true`, and observed selections must be `cam:1` through
+`cam:12`. The mock observer and contract suite pass.
+
+The sampler also now rejects invalid monitor/camera enum values before writing
+qualification evidence, making the retained trace itself a gate for the
+monitor-up-only camera contract. The observer regression and adapter contract
+suite pass after this addition.
+
+2026-09-01 Cue Helper final-build control/status check — after the device
+reconnected, the rebuilt signed APK was installed on the g56 (`0.1.9`), and
+capture started through the helper UI with no audio receiver connected. The
+exact FNaF 2 build (`26:2.0.7`) then reported `screen=FNAF2_MENU`,
+`monitorUp=UNKNOWN`, and `cameraSelected=UNKNOWN`; the production HUD remained
+`DISABLED(self-capture-unqualified)`. The helper was force-stopped afterward,
+leaving no MediaProjection/HUD window and restoring portrait rotation
+(`user_rotation=0`, `accelerometer_rotation=0`). No gameplay-control touches
+were sent; touch passthrough and paired self-capture evidence remain open.
+
+The same final-build check inspected the exact target package's requested
+permissions: it declares no `HIDE_NON_SYSTEM_OVERLAY_WINDOWS` permission, so
+the Android 12 target-suppression request is not present in this APK. This is
+useful static evidence only; a night-surface overlay visibility check is still
+required before marking target suppression PASS.
+
+2026-09-01 Cue Helper monitor/camera HUD wiring and polish — the Android
+renderer now consumes the calibrated `monitor-rule-v1` and
+`camera-rule-v1` thresholds. On the recognized night surface it shows a compact
+monitor UP/DOWN/UNKNOWN badge; office regions are gated to monitor-down, while
+the camera feed/map regions appear only monitor-up and the unique highlighted
+camera gets a bright active keyline and label. Camera selection is fail-closed
+on missing, ambiguous, or multiple highlights. A profile-bound
+`game-hud-map-v1` collision layer suppresses annotations over future calibrated
+game HUD zones and avoids label overlap. Short smooth state transitions, custom
+font rendering, corner keylines, and a restrained active-camera pulse add
+visual polish without adding touch handling or changing sensor geometry. The
+controller now gives transient UNKNOWN identity frames a 250 ms grace instead
+of repeatedly tearing down/recreating the window. Host tests, unit tests, and
+the signed APK build pass. The rebuilt APK was installed on the g56 and a live
+observe-only check over the game menu returned `screen=FNAF2_MENU`,
+`monitorUp=UNKNOWN`, `cameraSelected=UNKNOWN`, and a hidden overlay as
+required. The capture was stopped and portrait rotation restored afterward;
+no game-control touches were sent. Night/camera visual verification remains
+part of the authorized touch matrix.
+
+2026-09-01 Cue Helper UI probe — the rebuilt helper was installed on the
+connected g56 and a read-only screenshot confirmed the bundled HUD font, compact
+screen badge, state color treatment, and quiet double-keyline renderer over the
+exact target build (`26:2.0.7`). A fresh five-sample debug probe passed with one
+HUD window per sample, `overlay=PROBE`, production gate
+`UNQUALIFIED(self-capture-unqualified)`, detector latency 28–52 ms, update-to-
+draw p50 13.43–13.87 ms, and thermal status 0 at
+`captures/cue-helper/overlay-qualification-20260901/hud-probe-ui-cleanup.tsv`.
+Video capture was stopped afterward; the HUD/projection are absent and the
+original device rotation (`user_rotation=0`, `accelerometer_rotation=0`) was
+restored. No game-control touches were sent.
+
+2026-09-01 Cue Helper debug HUD cleanup — the overlay now derives a screen
+scope from the shared `PixelWatch` geometry: menu/helper/unknown frames show no
+game-element annotations, recognized night frames show only established office
+regions, and monitor-map regions stay hidden until a positive monitor-up fact
+exists. Normal boxes no longer carry verbose age/latency labels; exceptional
+states get short labels and the HUD uses the bundled CC0 HUD font, thicker
+double-keyline frames, and screen/state color variations. Host contracts and a
+signed APK build pass, and the rebuilt helper was installed on the connected
+g56. No game-control touches were sent.
+
+2026-09-01 Cue Helper self-capture probe — the debug APK now exposes an
+explicit sensor/debug-only qualification probe. On the unlocked g56, the
+exact FNaF 2 build (`26:2.0.7`) held a live MediaProjection while the target
+was focused, and five probe samples passed at
+`captures/cue-helper/overlay-qualification-20260901/hud-probe-unlocked-rerun.tsv`:
+one HUD window, `overlay=PROBE`, fresh native watch values, detector latency
+25–31 ms, update-to-draw p50 15.49–16.03 ms, draw-interval p50 about 50.3 ms,
+two dropped frames, 0% sampled CPU delta, and thermal status 0. The production
+gate remained `UNQUALIFIED(self-capture-unqualified)` throughout; the probe
+cannot render decision cues or write a qualification sidecar. A second
+application-context display lookup was fixed after the first probe exposed it,
+and the observer now counts live window records instead of repeated diagnostic
+title lines. Capture, the probe, and the target were force-stopped afterward;
+MediaProjection and HUD windows are now absent. No game-control touches were
+sent. **Open:** P5 touch passthrough and HUD-off/on feedback qualification, and
+P6 observe-only run-mode evidence.
+
+2026-09-01 Cue Helper overlay qualification continuation — the exact target
+build is present on the connected g56 (`com.scottgames.fnaf2`, version
+`26:2.0.7`), `SYSTEM_ALERT_WINDOW` is granted, and a fresh signed helper APK
+was installed. Direct projection consent still starts capture with the audio
+receiver disconnected; the helper observed `FNAF2_NIGHT` on a stable landscape
+frame while retaining `gate=UNQUALIFIED(self-capture-unqualified)`. The real
+HUD-off sampler was attempted, but the device's `com.nvt.cs` window repeatedly
+took physical focus from FNaF, so the sampler correctly rejected the trace and
+no qualification record or sidecar was created. The capture was stopped and
+the device has zero active MediaProjection/HUD windows. **Open:** the same
+device focus interference plus the remaining paired HUD-off/on, touch,
+lifecycle, and observe-only evidence required by Plan 23 P5-P6.
+
+The subsequent cleanup probe was also discarded: a helper scroll command was
+issued after focus had unexpectedly moved to the target game, so it is not
+treated as touch or qualification evidence. The helper and target were then
+force-stopped.
+
+The host contract audit also found and fixed an ordering bug in
+`OverlayCueArbiter`: a lower-priority equal-priority action conflict could previously
+clear a later higher-priority cue. Priority is now resolved before equal-level
+conflicts, with unknown/menu identity cue-clear coverage; `test.sh`, the
+signed APK build, and device reinstall pass.
+
+The same audit hardened `OverlayController` lifecycle threading: attach,
+detach, resize, target-visibility, and snapshot view updates now converge on
+the main looper, and a queued attach refuses to run after capture has ended.
+Host tests, signed build, reinstall, and `git diff --check` pass; the
+self-capture qualification gate is unchanged.
+
+After the g56 was unlocked, the qualification observer was corrected to read
+the parent `dumpsys window` output; Android's `dumpsys window windows`
+subcommand omitted the focus lines and caused false failures. The real HUD-off
+phase then passed five focused samples on FNaF 2 `26:2.0.7`, retaining visual
+sequence/age, detector latency, resource, thermal, and fail-closed overlay
+fields at `captures/cue-helper/overlay-qualification-20260901/hud-off-g56.tsv`.
+Capture was stopped afterward. The HUD-on phase remains intentionally
+unrunnable until the real self-capture gate is qualified, so no sidecar was
+installed.
+
+The unlocked-device sampler was rerun and passed five focused samples at
+`captures/cue-helper/overlay-qualification-20260901/hud-off-unlocked.tsv`,
+again retaining exact target build `26:2.0.7`, live visual sequence and
+detector latency, zero HUD windows, and the fail-closed state. The target-hidden
+boundary was exercised by force-stopping FNaF: focus returned to Cue Helper and
+the authenticated overlay query remained disabled. Restarting FNaF preserved
+capture; force-stopping Cue Helper cleared MediaProjection to `null`. The game
+was stopped for cleanup, and no game-control touches were sent.
+
+2026-09-01 adaptive prediction coach plan — Plan 24 now follows Plan 23 with
+state-conditioned prediction, recognition, timing, and strategy microtraining.
+It preserves the stock-game HUD as non-interactive, freezes every question and
+resolves it from later independent facts, censors ambiguous/interrupted cases,
+and gates live prompts on conservative critical-event risk plus measured
+prompt, cancellation, render, and human-recovery latency. The staged route is
+offline/replay trainer -> adaptive skill model -> passive live mental pilot ->
+separately qualified response port; recognition crops and counterfactual
+strategy questions start offline. This is planning only: no activity gate,
+exercise schema, skill model, prompt renderer, or response channel exists, and
+no safety, training-benefit, or gameplay claim was produced. **Open:** Plan 24
+P1-P6, after the relevant Plan 23 and belief/session contracts exist.
+
 2026-09-01 Cue Helper overlay plan — Plan 23 now specifies a single
 transparent, non-interactive HUD with shared sensor/display ROI geometry,
 separate sensor-debug and decision-run modes, expiring fail-closed cues, and
 device gates for Android 12 touch obscuring, target-requested overlay hiding,
 MediaProjection self-capture, Android 15 service ordering, lifecycle, latency,
-and resource interference. This is planning only: the current APK still has no
-`SYSTEM_ALERT_WINDOW` permission or overlay implementation. The accompanying
-architecture correction makes bridge, sensor processor, reflex, and actuator
-deployable roles selected by capability/profile contracts; an ESP32 may fill
-any supported combination or be absent. The lossy 2026-08-30
-phone/A2DP/ESP32/Wi-Fi-PCM/same-phone profile remains rejected specifically,
-without banning bridge mode. Documentation gates: `npm run test:unit` green
-(architecture boundaries + stable references). **Open:** Plan 23 P1-P6; no
-device or gameplay claim was produced.
+and resource interference. Code-scoped P1-P4, coalesced-update metrics, and a
+strict fail-closed qualification sidecar/retained-record validator are now
+implemented in the APK;
+the default gate remains `self-capture-unqualified`, so no qualified HUD run
+is being claimed. The accompanying architecture correction makes bridge,
+sensor processor, reflex, and actuator deployable roles selected by
+capability/profile contracts; an ESP32 may fill any supported combination or
+be absent. The lossy 2026-08-30 phone/A2DP/ESP32/Wi-Fi-PCM/same-phone profile
+remains rejected specifically, without banning bridge mode. Documentation
+gates: `npm run test:unit` green (architecture boundaries + stable
+references). **Open:** Plan 23 P5-P6 device qualification; no device or
+gameplay claim was produced.
 
 2026-09-01 monitorUp + cameraSelected calibration session (opencode) — both
 visual facts are now calibrated on real g56 frames, the helper watch carries

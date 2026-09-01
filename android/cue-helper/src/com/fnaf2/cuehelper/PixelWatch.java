@@ -22,6 +22,26 @@ public final class PixelWatch {
     public static final int GRID_WIDTH = 20;
     public static final int GRID_HEIGHT = 9;
     public static final int MAX_ENTRIES = 32;
+    /** Four visible interior bars in the stock top-left flashlight meter. */
+    public static final int BATTERY_BAR_COUNT = 4;
+    /** Calibrated display footprint of one fixed monitor-map camera button. */
+    public static final int CAMERA_BUTTON_OVERLAY_WIDTH = 120;
+    public static final int CAMERA_BUTTON_OVERLAY_HEIGHT = 40;
+    private static final int[] CAMERA_BUTTON_X = new int[] {
+            1412, 1720, 1411, 1728, 1424, 1696,
+            1776, 1412, 2144, 1984, 2228, 2188
+    };
+    private static final int[] CAMERA_BUTTON_Y = new int[] {
+            784, 784, 690, 690, 916, 916,
+            606, 590, 548, 716, 652, 784
+    };
+    // Native coordinates measured from the exact 2400x1080 FNaF 2 HUD. Each
+    // ROI stays inside one bright meter compartment and avoids its border or
+    // separator so static/noise cannot turn a frame edge into a bar.
+    private static final int[] BATTERY_BAR_X = new int[] {132, 172, 212, 252};
+    private static final int BATTERY_BAR_Y = 70;
+    private static final int BATTERY_BAR_WIDTH = 28;
+    private static final int BATTERY_BAR_HEIGHT = 32;
 
     public enum Kind { PIXEL, ROI }
     public enum Reducer { LUMA, YELLOWNESS, MEAN_LUMA, GREY_CELLS }
@@ -118,6 +138,54 @@ public final class PixelWatch {
             for (Entry entry : entries) if (entry.name.equals(name)) return true;
             return false;
         }
+
+        public int indexOfName(String name) {
+            if (name == null) return -1;
+            for (int index = 0; index < entries.length; index++) {
+                if (entries[index].name.equals(name)) return index;
+            }
+            return -1;
+        }
+    }
+
+    /** Return the canonical profile name for one of the twelve camera buttons. */
+    public static String cameraButtonName(int cameraNumber) {
+        if (cameraNumber < 1 || cameraNumber > CAMERA_BUTTON_X.length) return null;
+        return String.format(Locale.US, "cam%02d_button", cameraNumber);
+    }
+
+    /**
+     * Verify that an entry is the shared profile-bound camera point. This is
+     * deliberately owned by PixelWatch so the detector cannot drift from the
+     * capture/UI geometry by maintaining a second coordinate table.
+     */
+    public static boolean isCanonicalCameraButton(Entry entry, int cameraNumber) {
+        if (entry == null || cameraNumber < 1
+                || cameraNumber > CAMERA_BUTTON_X.length) return false;
+        int index = cameraNumber - 1;
+        return cameraButtonName(cameraNumber).equals(entry.name)
+                && entry.kind == Kind.PIXEL
+                && entry.reducer == Reducer.YELLOWNESS
+                && entry.x == CAMERA_BUTTON_X[index]
+                && entry.y == CAMERA_BUTTON_Y[index];
+    }
+
+    public static String batteryBarName(int barNumber) {
+        if (barNumber < 1 || barNumber > BATTERY_BAR_COUNT) return null;
+        return "battery_bar_" + barNumber;
+    }
+
+    public static boolean isCanonicalBatteryBar(Entry entry, int barNumber) {
+        if (entry == null || barNumber < 1 || barNumber > BATTERY_BAR_COUNT) return false;
+        int index = barNumber - 1;
+        return batteryBarName(barNumber).equals(entry.name)
+                && entry.kind == Kind.ROI
+                && entry.reducer == Reducer.MEAN_LUMA
+                && entry.x == BATTERY_BAR_X[index]
+                && entry.y == BATTERY_BAR_Y
+                && entry.width == BATTERY_BAR_WIDTH
+                && entry.height == BATTERY_BAR_HEIGHT
+                && entry.step == 4;
     }
 
     /** A reusable source view over an RGBA/RGB byte buffer. */
@@ -163,8 +231,9 @@ public final class PixelWatch {
 
     /**
      * The first calibrated watchlist. The BB anchor is the sourced
-     * (451,730) observation; the CAM 05 ROI and coarse whole-screen grey count
-     * are existing helper observations expressed in native coordinates.
+     * (451,730) observation; the CAM 05 ROI, coarse whole-screen grey count,
+     * and flashlight-meter bars are existing helper observations expressed in
+     * native coordinates.
      *
      * <p>The twelve {@code camNN_button} pixels are the monitor map's camera
      * buttons, measured on 2026-09-01 labelled captures of the moto g56
@@ -185,29 +254,41 @@ public final class PixelWatch {
                         Reducer.MEAN_LUMA, 4, 0),
                 new Entry("screen_grey_cells", Kind.ROI, 0, 0,
                         NATIVE_WIDTH, NATIVE_HEIGHT, Reducer.GREY_CELLS, 120, 25),
-                new Entry("cam01_button", Kind.PIXEL, 1412, 784, 1, 1,
+                new Entry(batteryBarName(1), Kind.ROI, BATTERY_BAR_X[0],
+                        BATTERY_BAR_Y, BATTERY_BAR_WIDTH, BATTERY_BAR_HEIGHT,
+                        Reducer.MEAN_LUMA, 4, 0),
+                new Entry(batteryBarName(2), Kind.ROI, BATTERY_BAR_X[1],
+                        BATTERY_BAR_Y, BATTERY_BAR_WIDTH, BATTERY_BAR_HEIGHT,
+                        Reducer.MEAN_LUMA, 4, 0),
+                new Entry(batteryBarName(3), Kind.ROI, BATTERY_BAR_X[2],
+                        BATTERY_BAR_Y, BATTERY_BAR_WIDTH, BATTERY_BAR_HEIGHT,
+                        Reducer.MEAN_LUMA, 4, 0),
+                new Entry(batteryBarName(4), Kind.ROI, BATTERY_BAR_X[3],
+                        BATTERY_BAR_Y, BATTERY_BAR_WIDTH, BATTERY_BAR_HEIGHT,
+                        Reducer.MEAN_LUMA, 4, 0),
+                new Entry(cameraButtonName(1), Kind.PIXEL, CAMERA_BUTTON_X[0], CAMERA_BUTTON_Y[0], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam02_button", Kind.PIXEL, 1720, 784, 1, 1,
+                new Entry(cameraButtonName(2), Kind.PIXEL, CAMERA_BUTTON_X[1], CAMERA_BUTTON_Y[1], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam03_button", Kind.PIXEL, 1411, 690, 1, 1,
+                new Entry(cameraButtonName(3), Kind.PIXEL, CAMERA_BUTTON_X[2], CAMERA_BUTTON_Y[2], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam04_button", Kind.PIXEL, 1728, 690, 1, 1,
+                new Entry(cameraButtonName(4), Kind.PIXEL, CAMERA_BUTTON_X[3], CAMERA_BUTTON_Y[3], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam05_button", Kind.PIXEL, 1424, 916, 1, 1,
+                new Entry(cameraButtonName(5), Kind.PIXEL, CAMERA_BUTTON_X[4], CAMERA_BUTTON_Y[4], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam06_button", Kind.PIXEL, 1696, 916, 1, 1,
+                new Entry(cameraButtonName(6), Kind.PIXEL, CAMERA_BUTTON_X[5], CAMERA_BUTTON_Y[5], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam07_button", Kind.PIXEL, 1776, 606, 1, 1,
+                new Entry(cameraButtonName(7), Kind.PIXEL, CAMERA_BUTTON_X[6], CAMERA_BUTTON_Y[6], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam08_button", Kind.PIXEL, 1412, 590, 1, 1,
+                new Entry(cameraButtonName(8), Kind.PIXEL, CAMERA_BUTTON_X[7], CAMERA_BUTTON_Y[7], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam09_button", Kind.PIXEL, 2144, 548, 1, 1,
+                new Entry(cameraButtonName(9), Kind.PIXEL, CAMERA_BUTTON_X[8], CAMERA_BUTTON_Y[8], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam10_button", Kind.PIXEL, 1984, 716, 1, 1,
+                new Entry(cameraButtonName(10), Kind.PIXEL, CAMERA_BUTTON_X[9], CAMERA_BUTTON_Y[9], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam11_button", Kind.PIXEL, 2228, 652, 1, 1,
+                new Entry(cameraButtonName(11), Kind.PIXEL, CAMERA_BUTTON_X[10], CAMERA_BUTTON_Y[10], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
-                new Entry("cam12_button", Kind.PIXEL, 2188, 784, 1, 1,
+                new Entry(cameraButtonName(12), Kind.PIXEL, CAMERA_BUTTON_X[11], CAMERA_BUTTON_Y[11], 1, 1,
                         Reducer.YELLOWNESS, 1, 0)
         });
     }

@@ -2,6 +2,7 @@
 # Talk to the cue helper's authenticated snapshot socket.
 #
 #   query-cue-helper.sh [loopback|forward]        one snapshot (default loopback)
+#   query-cue-helper.sh overlay                   authenticated HUD status/counters
 #   query-cue-helper.sh latency [count]           time device-local snapshot and grid reads
 #   query-cue-helper.sh watch SECONDS [out]       log the visual snapshot over time
 #   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
@@ -35,11 +36,12 @@ case "${1:-}" in
   watch) VERB=watch; shift ;;
   watchlist) VERB=watchlist; shift ;;
   read) VERB=read; shift ;;
+  overlay) VERB=overlay; shift ;;
   model) VERB=model; shift ;;
   arm) VERB=arm; shift ;;
   result) VERB=result; shift ;;
   '') ;;
-  *) echo "usage: query-cue-helper.sh [loopback|forward|grid|watch|watchlist|read]" >&2; exit 2 ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|overlay|grid|watch|watchlist|read]" >&2; exit 2 ;;
 esac
 case "$VERB" in
   record|log|model|arm|result)
@@ -303,6 +305,15 @@ if [ "$VERB" = read ]; then
   case "$response" in
     'OK read='*) exit 0 ;;
     *) exit 1 ;;
+  esac
+fi
+
+if [ "$VERB" = overlay ]; then
+  response="$(exchange "OVERLAY $token")"
+  printf '%s\n' "$response"
+  case "$response" in
+    'OK overlay='*) exit 0 ;;
+    *) echo "cue helper overlay query failed" >&2; exit 1 ;;
   esac
 fi
 

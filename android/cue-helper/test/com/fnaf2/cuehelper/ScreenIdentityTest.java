@@ -66,6 +66,12 @@ public final class ScreenIdentityTest {
         return grid;
     }
 
+    private static int[] ambiguousMenuWithRedAccent() {
+        int[] grid = titleMenu();
+        for (int x = 1; x < 10; x++) put(grid, x, 8, 0xc85a78);
+        return grid;
+    }
+
     public static void main(String[] args) {
         check("landscape helper frame is identified",
                 ScreenIdentity.classify(landscapeHelper()) == ScreenIdentity.CUE_HELPER);
@@ -77,6 +83,9 @@ public final class ScreenIdentityTest {
                 ScreenIdentity.classify(nightWithMask()) == ScreenIdentity.FNAF2_NIGHT);
         check("title menu is diagnostic menu, not night",
                 ScreenIdentity.classify(titleMenu()) == ScreenIdentity.FNAF2_MENU);
+        check("menu identity wins an ambiguous red-accent frame",
+                ScreenIdentity.classify(ambiguousMenuWithRedAccent())
+                        == ScreenIdentity.FNAF2_MENU);
         check("night label is explicit",
                 "FNAF2_NIGHT".equals(ScreenIdentity.label(ScreenIdentity.FNAF2_NIGHT)));
 

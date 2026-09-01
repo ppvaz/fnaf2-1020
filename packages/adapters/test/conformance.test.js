@@ -47,4 +47,34 @@ const cue = new CueHelperControlTransport({ token: '0123456789abcdef0123456789ab
 assert.deepEqual(cue.monitorMeasurement(await cue.snapshot()),
   { signal: 'monitorUp', state: 'OBSERVED', value: true, confidence: 1 });
 assert.equal(cue.monitorMeasurement({ ageUs: '900000', monitorUp: 'true' }).state, 'UNKNOWN');
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraSelected: 'cam:5', cameraReason: 'single-camera-highlight' }),
+  { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 });
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'false',
+  cameraSelected: 'cam:5' }),
+  { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'monitor-not-up' });
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraSelected: 'UNKNOWN', cameraReason: 'multiple-camera-highlight' }),
+  { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'multiple-camera-highlight' });
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraSelected: 'cam:13' }),
+  { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'sensor-mismatch' });
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '900000', monitorUp: 'true',
+  cameraSelected: 'cam:5' }),
+  { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'read-stale' });
+assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraSelected: 'UNKNOWN', cameraReason: 'untrusted-free-text' }),
+  { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'read-unavailable' });
+assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
+  batteryPercent: '75', batteryReason: 'bars-observed' }),
+  { signal: 'batteryPercent', state: 'OBSERVED', value: 75, confidence: 1 });
+assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_MENU',
+  batteryPercent: '100' }),
+  { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'screen-identity' });
+assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
+  batteryPercent: 'UNKNOWN', batteryReason: 'untrusted-free-text' }),
+  { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'read-unavailable' });
+assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
+  batteryPercent: '110' }),
+  { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'sensor-mismatch' });
 console.log('adapter contracts: fixture actuator result and profile refusal pass');

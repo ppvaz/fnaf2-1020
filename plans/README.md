@@ -147,3 +147,9 @@ Bot-research roadmap added 2026-08-26:
     shared ROI geometry authority, separate sensor/debug and decision/run
     modes, fail-closed cue expiry, and explicit touch-through, target-overlay-
     suppression, self-capture, latency, and lifecycle qualification gates.
+24. [24-adaptive-prediction-coach.md](24-adaptive-prediction-coach.md) — a
+    follow-up training layer for contextual prediction, recognition, timing,
+    and strategy micro-sims, with a conservative activity gate, independently
+    resolved outcomes, censored uncertainty, adaptive skill modeling, and a
+    strict separation between the non-interactive live HUD and measured
+    response channels.

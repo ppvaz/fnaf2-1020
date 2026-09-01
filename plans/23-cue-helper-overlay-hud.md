@@ -40,7 +40,7 @@ owned by the existing foreground capture service:
 
 ```text
 TYPE_APPLICATION_OVERLAY
-FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE
+FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE | FLAG_LAYOUT_IN_SCREEN
 PixelFormat.TRANSLUCENT
 ```
 
@@ -87,6 +87,7 @@ definition. Do not maintain parallel CV and UI coordinate tables.
 RoiSpec
   id
   normalizedRect        # game-content coordinates, not physical-display pixels
+  overlayRect           # optional larger display footprint for a point watch
   detectorId
   overlayAnchor
   debugStyle
@@ -99,10 +100,12 @@ Conceptually:
 record RoiSpec(
     String id,
     RectF normalizedRect,
+    RectF overlayRect,
     String detectorId,
     OverlayAnchor overlayAnchor,
     OverlayStyle debugStyle,
-    String calibrationBinding
+    String calibrationBinding,
+    ScreenScope screenScope
 ) {}
 ```
 
@@ -135,6 +138,7 @@ write detector, belief, policy, or actuator state:
 ```text
 OverlaySnapshot {
   sequence, t_rendered, screen, mode,
+  monitorState, monitorReason, selectedCamera, cameraReason,
   regions: [{roiId, factState, value, confidenceOrMargin, ageMs, latencyMs}],
   cue: {action, severity, expiresAt, rationaleFactIds}
 }
@@ -145,11 +149,20 @@ the producer stalls. Confidence is displayed only when it is defined by the
 detector contract; a separation margin, heuristic score, and calibrated
 probability must not all be labelled "confidence".
 
-Sensor/debug state uses a quiet monitored outline, a brief detected highlight,
-and explicit `UNKNOWN`/stale styling. Decision/run state suppresses detector
-detail and shows only critical cues. `SAFE` is allowed only when the decision
-contract has a positively qualified safe state; silence is not rendered as
-safe.
+Sensor/debug state is screen-aware: menu, helper, unknown, and other
+non-authorizing frames show no game-element annotations; a recognized night
+shows only regions established for the current surface. `MONITOR DOWN` shows
+office regions; `MONITOR UP` shows camera feed/map areas and the uniquely
+selected camera, while camera information is absent for down/unknown states.
+Normal monitored regions use a quiet thicker keyline and no verbose per-box
+telemetry, while detected/unknown/stale states may receive a short label.
+Profile-bound `game-hud-map-v1` zones are collision exclusions for frames and
+labels, and the renderer uses short state transitions plus restrained active-
+camera emphasis. Detailed age, latency, and typed score data remains in the
+signal feed/control socket.
+Decision/run state suppresses detector detail and shows only critical cues.
+`SAFE` is allowed only when the decision contract has a positively qualified
+safe state; silence is not rendered as safe.
 
 ## Self-observation and capture feedback gate
 
@@ -181,6 +194,12 @@ look like `FNAF2_NIGHT`.
   current wire grammar.
 - Add pure transforms for content -> capture and content -> display space.
 - Add immutable `OverlaySnapshot` validation, cue expiry, and `UNKNOWN` rules.
+- Add calibrated monitor-up/down and exactly-one-selected-camera facts to the
+  snapshot; gate office/camera regions on those facts.
+- Add a shared read-only flashlight-meter battery fact from the four visible
+  game-UI bar compartments; retain the last usable night snapshot through
+  short projection gaps without retaining decision cues.
+- Add profile-bound HUD exclusion zones and collision-safe annotation placement.
 - Test native g56 landscape, rotation, letterbox/insets, invalid rectangles,
   stale snapshots, and calibration/profile mismatch.
 
@@ -197,6 +216,12 @@ look like `FNAF2_NIGHT`.
 
 - Draw all regions in one custom `Canvas` pass.
 - Provide monitored, detected, `UNKNOWN`, stale, and unqualified styles.
+- Render the live monitor state and selected camera only on the recognized
+  night surface, with bounded transitions that do not change sensor geometry.
+- Keep camera annotations hidden while the monitor is down and hide any
+  frame/label that intersects a calibrated game-HUD exclusion zone.
+- Keep the last usable sensor/debug geometry through short UNKNOWN detector
+  gaps, clearing immediately on confirmed non-night identity or expiry.
 - Show typed score/margin, state, frame age, and measured detector latency.
 - Rate-limit redraws and coalesce snapshots so rendering cannot back-pressure
   acquisition or belief updates.
@@ -252,6 +277,9 @@ The plan is complete only when:
 - Plan 20 owns belief/fusion and the decision that the run HUD visualizes.
 - Plan 14 owns device/content/display geometry profiles.
 - Plan 12 owns any promotion from engineering display to a 10/20 claim.
+- Plan 24 owns optional contextual prediction/microtraining after this plan's
+  non-interactive overlay and safety gates are qualified; it cannot weaken
+  critical-cue priority or turn this window into a response surface.
 - [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](../docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md)
   remains authoritative for the contract boundary. An ESP32 is only one
   possible deployment node and may be a bridge, processor, reflex node, or

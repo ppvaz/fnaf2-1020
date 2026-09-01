@@ -12,12 +12,19 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = pidof ]; then
   echo 7007
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = meminfo ]; then
   echo 'TOTAL PSS: 51200 TOTAL RSS: 64000'
+elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = package ]; then
+  echo 'versionCode=26 versionName=2.0.7'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = cat ]; then
   printf '%s\n' 'Name: cue-helper' 'VmRSS: 64000 kB' 'Threads: 7'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = thermalservice ]; then
   echo 'Thermal Status: 0'
+elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = cpuinfo ]; then
+  echo '  2.0% 7007/com.fnaf2.cuehelper: 7007'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = window ]; then
   echo 'mCurrentFocus=Window{123 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.Main}'
+  echo '  Window #7 Window{456 u0 FNaF 2 Cue Helper HUD}'
+  echo '    WindowStateAnimator{789 FNaF 2 Cue Helper HUD}'
+  echo '    mAlertWindows={Window{456 u0 FNaF 2 Cue Helper HUD}}'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   cat >/dev/null
   # The latency verb sends PORT COUNT TOKEN, so an all-digit $6 is a sample
@@ -50,7 +57,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     # lags the device cannot catch it.
     #
     # cam05_mean_luma is deliberately unequal to luma so a transposed capture group shows.
-    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 ageUs=1200 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected' ;;
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 gridLuma=24 ageUs=1200 content=2400x1080 visible=1 screen=FNAF2_NIGHT screenScore=100 detectorLatencyMs=1 monitorUp=true monitorReason=anchors-up cameraSelected=cam:5 cameraReason=single-camera-highlight batteryPercent=75 batteryReason=bars-observed audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected' ;;
     GRID/*)
       # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
       printf 'OK grid=20x9 seq=121 '
@@ -60,9 +67,10 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
         i=$((i + 1))
       done
       echo ;;
-    WATCH/status) echo 'OK watch=OFF spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=4' ;;
-    WATCH/*) echo 'OK watch=ACTIVE spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=4' ;;
-    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 cam05_mean_luma=37 screen_grey_cells=142' ;;
+    WATCH/status) echo 'OK watch=OFF spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=20' ;;
+    WATCH/*) echo 'OK watch=ACTIVE spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=20' ;;
+    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 battery_bar_1=194 battery_bar_2=194 battery_bar_3=80 battery_bar_4=20 cam05_mean_luma=37 screen_grey_cells=142' ;;
+    OVERLAY/*) echo 'OK overlay=UNQUALIFIED(self-capture-unqualified) gate=UNQUALIFIED(self-capture-unqualified) updates=0 draws=0 dropped=0 cadenceSamples=0 updateToDrawMs=p50:0.00,p95:0.00,p99:0.00 drawIntervalMs=p50:0.00,p95:0.00,p99:0.00' ;;
     CAL/on) echo 'OK cal=on' ;;
     CAL/off) echo 'OK cal=off' ;;
     REC/*) echo 'OK rec=cue-1700000000000-p0-q1.wav frames=16000 rate=16000 bytes=32044' ;;

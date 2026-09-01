@@ -19,8 +19,12 @@ import sys
 # missing field does not degrade the parse, it kills the match outright.
 SNAPSHOT = (
     "OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 "
-    "grey=142 "
+    "grey=142 gridLuma=24 "
     "ageUs=1200 content=2400x1080 visible=1 "
+    "screen=FNAF2_NIGHT screenScore=100 detectorLatencyMs=1 "
+    "monitorUp=true monitorReason=anchors-up "
+    "cameraSelected=cam:5 cameraReason=single-camera-highlight "
+    "batteryPercent=75 batteryReason=bars-observed "
     "audio=EXTERNAL authority=audio-authority state=UNKNOWN "
     "reason=external-authority-not-connected"
 )
@@ -39,13 +43,21 @@ def answer(request):
         return "OK grid=20x9 seq=121 " + cells
     if field[0] == "WATCH" and len(field) == 3:
         if field[2] == "status":
-            return "OK watch=OFF spec=" + "a" * 64 + " entries=4"
-        return "OK watch=ACTIVE spec=" + "a" * 64 + " entries=4"
+            return "OK watch=OFF spec=" + "a" * 64 + " entries=20"
+        return "OK watch=ACTIVE spec=" + "a" * 64 + " entries=20"
     if field[0] == "READ" and len(field) == 2:
         return ("OK read=OBSERVED spec=" + "a" * 64 +
                 " seq=122 snapshotNs=10000 ageUs=1200 "
                 "bb_left_luma=194 bb_left_yellowness=-111 "
+                "battery_bar_1=194 battery_bar_2=194 "
+                "battery_bar_3=80 battery_bar_4=20 "
                 "cam05_mean_luma=37 screen_grey_cells=142")
+    if field[0] == "OVERLAY" and len(field) == 2:
+        return ("OK overlay=UNQUALIFIED(self-capture-unqualified) "
+                "gate=UNQUALIFIED(self-capture-unqualified) updates=0 draws=0 "
+                "dropped=0 cadenceSamples=0 "
+                "updateToDrawMs=p50:0.00,p95:0.00,p99:0.00 "
+                "drawIntervalMs=p50:0.00,p95:0.00,p99:0.00")
     if field[0] in {"CAL", "LOG", "REC", "MODEL", "ARM", "RESULT"}:
         return "ERROR audio-authority-external"
     return "ERROR unknown-verb"

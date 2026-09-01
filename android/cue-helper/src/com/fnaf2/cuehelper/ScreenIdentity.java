@@ -49,10 +49,13 @@ public final class ScreenIdentity {
                 || portraitScore(grid) >= PORTRAIT_THRESHOLD) {
             return CUE_HELPER;
         }
-        if (nightScore(grid) > 0) {
-            return FNAF2_NIGHT;
+        // A menu-like frame wins an ambiguous dark/red match. This keeps a
+        // title/menu accent from being mistaken for the night mask bar and
+        // prevents the overlay from annotating absent office elements.
+        if (menuScore(grid) >= 5) {
+            return FNAF2_MENU;
         }
-        return menuScore(grid) >= 5 ? FNAF2_MENU : UNKNOWN;
+        return nightScore(grid) > 0 ? FNAF2_NIGHT : UNKNOWN;
     }
 
     /** A bounded diagnostic score, useful for logs and offline calibration. */

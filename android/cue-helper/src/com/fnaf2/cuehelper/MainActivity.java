@@ -78,9 +78,11 @@ public final class MainActivity extends Activity {
     private static final int COLOR_FOXY_MANGLE_STROKE = Color.rgb(238, 154, 174);
     private static final String SESSION_DETAILS =
             "Each session uses user-approved MediaProjection screen capture "
-                    + "with a persistent 20x9 stream. Audio comes from the external "
-                    + "audio authority, using a transport-specific receiver. The phone "
-                    + "the optional phone monitor reproduces PCM returned by the ESP32. "
+                    + "with a persistent 20x9 stream. Audio is optional and comes from "
+                    + "the external audio authority, using a transport-specific receiver. The phone "
+                    + "optional phone monitor reproduces PCM returned by the ESP32. "
+                    + "The optional HUD is one non-interactive overlay window; it stays "
+                    + "disabled beside sensing until its self-capture qualification exists. "
                     + "Stop and restart for a fresh session, then open FNaF 2.";
 
     private MediaProjectionManager projectionManager;
@@ -96,6 +98,10 @@ public final class MainActivity extends Activity {
     private Button audioMonitorButton;
     private Button audioRecordButton;
     private Button shareAudioButton;
+    private Button overlayButton;
+    private Button overlayModeButton;
+    private Button overlayProbeButton;
+    private TextView overlayStatusView;
     private Typeface hudTypeface;
     private boolean captureRunning;
     private boolean audioMonitoring;
@@ -110,6 +116,11 @@ public final class MainActivity extends Activity {
     private boolean bluetoothConnected;
     private boolean firmwareAudioReceiverConnected;
     private boolean wifiEspConnected;
+    private boolean overlayEnabled;
+    private boolean overlayProbeActive;
+    private boolean overlayEnableAfterSettings;
+    private boolean audioSetupRequested;
+    private OverlaySnapshot.Mode overlayMode = OverlaySnapshot.Mode.SENSOR_DEBUG;
     private String audioStatusText = "AUDIO A2DP: checking receiver...\nreceiver = "
             + AUDIO_RECEIVER_NAME + " (discover by name)";
 
@@ -130,6 +141,7 @@ public final class MainActivity extends Activity {
                 if (audioAnalysisView != null) {
                     audioAnalysisView.setText(extractAudioStatus(status));
                 }
+                refreshOverlayControls(status);
                 if (status.startsWith("RUNNING") || status.startsWith("STARTING")) {
                     setCaptureRunning(true);
                 } else if (status.startsWith("UNAVAILABLE")) {
@@ -202,7 +214,14 @@ public final class MainActivity extends Activity {
             // Keep the helper usable if a stripped/custom build omits the optional asset.
             hudTypeface = Typeface.DEFAULT;
         }
+        overlayEnabled = getSharedPreferences(OverlayController.PREFS, MODE_PRIVATE)
+                .getBoolean(OverlayController.PREF_ENABLED, false);
+        overlayMode = "run".equals(getSharedPreferences(OverlayController.PREFS, MODE_PRIVATE)
+                .getString(OverlayController.PREF_MODE, "debug"))
+                ? OverlaySnapshot.Mode.DECISION_RUN : OverlaySnapshot.Mode.SENSOR_DEBUG;
         setContentView(buildUi());
+        refreshOverlayControls("overlay=" + (Settings.canDrawOverlays(this)
+                ? "READY" : "DISABLED(permission)"));
         refreshSetupGuide();
     }
 
@@ -226,7 +245,13 @@ public final class MainActivity extends Activity {
             registerReceiver(bluetoothReceiver, bluetoothFilter);
         }
         bluetoothReceiverRegistered = true;
-        ensureBluetoothReady();
+        if (audioSetupRequested) {
+            ensureBluetoothReady();
+        } else {
+            // Video capture has no audio dependency. Do not request the
+            // optional Bluetooth permission merely because the Activity opened.
+            refreshAudioStatus();
+        }
         // Configuration changes recreate this Activity. Ask the service for
         // its current combined state so portrait and landscape do not wait for
         // the next sensor heartbeat to redraw the signal feed.
@@ -237,8 +262,17 @@ public final class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        refreshAudioStatus();
+        if (audioSetupRequested) {
+            ensureBluetoothReady();
+        } else {
+            refreshAudioStatus();
+        }
         refreshSetupGuide();
+        if (overlayEnableAfterSettings && Settings.canDrawOverlays(this)) {
+            overlayEnableAfterSettings = false;
+            overlayEnabled = true;
+            sendOverlayAction(CaptureService.ACTION_OVERLAY_ENABLE);
+        }
     }
 
     @Override
@@ -393,6 +427,27 @@ public final class MainActivity extends Activity {
 
     private ScrollView configPage() {
         LinearLayout content = pageContent("CONFIGURATION");
+        overlayStatusView = statusTextView();
+        overlayStatusView.setText(Settings.canDrawOverlays(this)
+                ? "overlay=READY" : "overlay=DISABLED(permission)");
+        content.addView(overlayStatusView, matchWrap());
+        overlayButton = themedButton("Enable overlay", COLOR_CHICA,
+                COLOR_CHICA_PRESSED, COLOR_CHICA_STROKE,
+                Color.rgb(35, 24, 5));
+        overlayButton.setOnClickListener(view -> toggleOverlay());
+        content.addView(overlayButton, matchWrap());
+        overlayModeButton = themedButton("Overlay mode: SENSOR / DEBUG",
+                COLOR_BONNIE, COLOR_BONNIE_PRESSED, COLOR_BONNIE_STROKE, COLOR_TEXT);
+        overlayModeButton.setOnClickListener(view -> toggleOverlayMode());
+        content.addView(overlayModeButton, matchWrap());
+        if ((getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
+            overlayProbeButton = themedButton("Start qualification probe",
+                    COLOR_FOXY_MANGLE, COLOR_FOXY_MANGLE_PRESSED,
+                    COLOR_FOXY_MANGLE_STROKE, COLOR_TEXT);
+            overlayProbeButton.setOnClickListener(view -> toggleQualificationProbe());
+            content.addView(overlayProbeButton, matchWrap());
+        }
         Button importModel = themedButton("Import audio model", COLOR_BONNIE,
                 COLOR_BONNIE_PRESSED, COLOR_BONNIE_STROKE, COLOR_TEXT);
         importModel.setOnClickListener(view -> importAudioModel());
@@ -400,8 +455,85 @@ public final class MainActivity extends Activity {
         content.addView(settingsRow(), matchWrap());
         content.addView(bodyText(
                 "Runtime target: phone + ESP32. A computer is an optional offline "
-                        + "diagnostic and analysis tool."), matchWrap());
+                        + "diagnostic and analysis tool. HUD run cues appear only from "
+                        + "a qualified fused decision; raw sensor values never become "
+                        + "imperative text."), matchWrap());
         return scrollPage(content);
+    }
+
+    private void refreshOverlayControls(String status) {
+        if (status == null) return;
+        for (String line : status.split("\\n")) {
+            if (!line.startsWith("overlay=")) continue;
+            if (overlayStatusView != null) {
+                overlayStatusView.setText(line);
+            }
+            if (overlayButton != null) {
+                overlayButton.setText(overlayEnabled ? "Disable overlay" : "Enable overlay");
+            }
+            if (overlayModeButton != null) {
+                overlayModeButton.setText(overlayMode == OverlaySnapshot.Mode.SENSOR_DEBUG
+                        ? "Overlay mode: SENSOR / DEBUG"
+                        : "Overlay mode: DECISION / RUN");
+            }
+            overlayProbeActive = line.startsWith("overlay=PROBE");
+            if (overlayProbeButton != null) {
+                overlayProbeButton.setText(overlayProbeActive
+                        ? "Stop qualification probe" : "Start qualification probe");
+            }
+            return;
+        }
+    }
+
+    private void toggleOverlay() {
+        if (!Settings.canDrawOverlays(this)) {
+            overlayEnableAfterSettings = true;
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
+            intent.setData(Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+            Toast.makeText(this, "Allow display over other apps, then return here",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        overlayEnabled = !overlayEnabled;
+        sendOverlayAction(overlayEnabled
+                ? CaptureService.ACTION_OVERLAY_ENABLE
+                : CaptureService.ACTION_OVERLAY_DISABLE);
+        refreshOverlayControls("overlay=" + (overlayEnabled ? "READY" : "DISABLED(user)"));
+    }
+
+    private void toggleOverlayMode() {
+        if (overlayProbeActive) {
+            Toast.makeText(this, "Qualification probe is sensor/debug only",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        overlayMode = overlayMode == OverlaySnapshot.Mode.SENSOR_DEBUG
+                ? OverlaySnapshot.Mode.DECISION_RUN : OverlaySnapshot.Mode.SENSOR_DEBUG;
+        Intent intent = new Intent(this, CaptureService.class)
+                .setAction(CaptureService.ACTION_OVERLAY_MODE)
+                .putExtra(CaptureService.EXTRA_OVERLAY_MODE,
+                        overlayMode == OverlaySnapshot.Mode.DECISION_RUN ? "run" : "debug");
+        startService(intent);
+        refreshOverlayControls("overlay=" + (overlayEnabled ? "READY" : "DISABLED(user)"));
+    }
+
+    private void toggleQualificationProbe() {
+        if (!captureRunning) {
+            Toast.makeText(this, "Start video capture before probing the HUD",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+        overlayProbeActive = !overlayProbeActive;
+        sendOverlayAction(overlayProbeActive
+                ? CaptureService.ACTION_OVERLAY_PROBE_START
+                : CaptureService.ACTION_OVERLAY_PROBE_STOP);
+        refreshOverlayControls("overlay="
+                + (overlayProbeActive ? "PROBE" : "DISABLED(self-capture-unqualified)"));
+    }
+
+    private void sendOverlayAction(String action) {
+        startService(new Intent(this, CaptureService.class).setAction(action));
     }
 
     private String extractAudioStatus(String status) {
@@ -655,6 +787,7 @@ public final class MainActivity extends Activity {
                 "Connect audio receiver", COLOR_BONNIE, COLOR_BONNIE_PRESSED,
                 COLOR_BONNIE_STROKE, COLOR_TEXT);
         bluetoothButton.setOnClickListener(view -> {
+            audioSetupRequested = true;
             if (firmwareAudioReceiverConnected && !isEspWifiConnected()) {
                 connectEspWifi();
             } else {
@@ -845,12 +978,6 @@ public final class MainActivity extends Activity {
 
     private void toggleCapture() {
         if (!captureRunning) {
-            if (!bluetoothConnected
-                    || (firmwareAudioReceiverConnected && !isEspWifiConnected())) {
-                refreshSetupGuide();
-                showAudioSetupDialog();
-                return;
-            }
             requestProjection();
             return;
         }
@@ -1086,17 +1213,17 @@ public final class MainActivity extends Activity {
                     + " (password: " + WIFI_AP_PASSWORD + ")";
         } else if (firmwareAudioReceiverConnected) {
             wifiLine = "Wi-Fi: connect " + WIFI_AP_SSID
-                    + " (password: " + WIFI_AP_PASSWORD + ")";
+                    + " (password: " + WIFI_AP_PASSWORD + ") for optional audio";
         } else {
-            wifiLine = "Wi-Fi: not required for this A2DP receiver";
+            wifiLine = "Wi-Fi: optional audio path; not required for video capture";
         }
         String nextStep;
         if (!bluetoothConnected) {
-            nextStep = "Next: tap Connect audio receiver";
+            nextStep = "Audio optional: tap Start video capture";
         } else if (firmwareAudioReceiverConnected && !wifiEspConnected) {
-            nextStep = "Next: tap the audio button for Wi-Fi settings";
+            nextStep = "Audio optional: start video capture, or tap the audio button for Wi-Fi";
         } else {
-            nextStep = "SETUP READY: tap Start video capture";
+            nextStep = "SETUP READY: tap Start video capture (audio optional)";
         }
         audioStatusView.setText(audioStatusText + "\n" + wifiLine + "\n" + nextStep);
         updateAudioButton();
@@ -1228,17 +1355,6 @@ public final class MainActivity extends Activity {
                 + WIFI_AP_SSID);
     }
 
-    private void showAudioSetupDialog() {
-        String message = audioStatusView == null
-                ? "Connect the ESP32 Bluetooth receiver and Wi-Fi network first."
-                : audioStatusView.getText().toString();
-        new AlertDialog.Builder(this)
-                .setTitle("Prepare ESP32 audio")
-                .setMessage(message)
-                .setPositiveButton("Close", null)
-                .show();
-    }
-
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions,
             int[] grantResults) {
@@ -1261,6 +1377,7 @@ public final class MainActivity extends Activity {
         if (requestCode != REQUEST_BLUETOOTH_CONNECT) {
             return;
         }
+        bluetoothPermissionRequested = false;
         boolean granted = grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
         if (granted) {

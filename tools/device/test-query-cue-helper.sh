@@ -27,21 +27,33 @@ for transport in loopback forward; do
   status="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
     "$HERE/query-cue-helper.sh" watchlist status)"
   case "$status" in
-    *"watch=OFF"*"entries=4"*) ;;
+    *"watch=OFF"*"entries=20"*) ;;
     *) echo "unexpected $transport watch status: $status" >&2; exit 1 ;;
   esac
   loaded="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
     "$HERE/query-cue-helper.sh" watchlist load \
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)"
   case "$loaded" in
-    *"watch=ACTIVE"*"entries=4"*) ;;
+    *"watch=ACTIVE"*"entries=20"*) ;;
     *) echo "unexpected $transport watch load: $loaded" >&2; exit 1 ;;
   esac
   reading="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
     "$HERE/query-cue-helper.sh" read)"
   case "$reading" in
-    *"OK read=OBSERVED"*"bb_left_luma=194"*"screen_grey_cells=142"*) ;;
+    *"OK read=OBSERVED"*"bb_left_luma=194"*"battery_bar_4=20"*"screen_grey_cells=142"*) ;;
     *) echo "unexpected $transport watch read: $reading" >&2; exit 1 ;;
+  esac
+done
+
+# The HUD status is a separate authenticated read. It must remain usable
+# when the game is not focused so a lifecycle/target-hidden transition can be
+# retained instead of being lost behind the visual focus guard.
+for transport in loopback forward; do
+  overlay_status="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" overlay)"
+  case "$overlay_status" in
+    *"overlay=UNQUALIFIED(self-capture-unqualified)"*"updates=0"*) ;;
+    *) echo "unexpected $transport overlay status: $overlay_status" >&2; exit 1 ;;
   esac
 done
 

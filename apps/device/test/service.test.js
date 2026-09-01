@@ -23,6 +23,8 @@ const mcp = createActuatorMcp(service);
 assert.ok((await mcp.call('devices.list')).ok);
 assert.equal((await mcp.call('sensor.sample', { request: { id: 'mcp-frame', at: 1 } })).ok, true);
 assert.ok(!mcp.tools().includes('shell.exec'));
+assert.ok(mcp.tools().includes('cue.setup'));
+assert.ok(mcp.tools().includes('cue.queue.enqueue'));
 const started = await mcp.call('session.start', { idempotencyKey: 'start-1' });
 assert.equal(started.ok, true);
 assert.match(started.session.id, /^run-\d{14}-[0-9a-f-]+-/);
@@ -99,10 +101,15 @@ const ruleDigest = monitorRuleDigest(fittedRule);
       `anchor ${anchor.cell} must sit on its not-up edge in the down row`);
   }
   const hex = cells => `OK grid=20x9 seq=7 ${cells.map(cell => cell.toString(16).padStart(6, '0')).join(' ')}`;
-  const cueWith = (cells, { gridSeq = 7 } = {}) => ({
+  const cueWith = (cells, { gridSeq = 7, facts = false } = {}) => ({
     token: '0123456789abcdef0123456789abcdef',
     request: request => request.startsWith('GET ')
       ? 'OK snapshotNs=1 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
+        + (facts
+          ? ' monitorUp=true monitorReason=anchors-up '
+            + 'cameraSelected=cam:5 cameraReason=single-camera-highlight '
+            + 'batteryPercent=75 batteryReason=bars-observed'
+          : '')
       : request.startsWith('GRID ') ? hex(cells).replace('seq=7', `seq=${gridSeq}`) : 'ERROR unsupported',
   });
   const ports = {
@@ -127,12 +134,18 @@ const ruleDigest = monitorRuleDigest(fittedRule);
   const boundProfile = { ...ruleProfile };
   boundProfile.limits = { ...boundProfile.limits, dryRunOnly: false };
   const ruled = composeModernDevice({ profile: boundProfile, monitorRule: fittedRule,
-    cue: cueWith(upRow), ...ports });
+    cue: cueWith(upRow, { facts: true }), ...ports });
   const ruledSample = await ruled.sensor.sample({ id: 'probe-ruled', at: 0 });
   const ruledMeasurement = ruled.detector.detect(ruledSample);
   assert.equal(ruledMeasurement.state, 'OBSERVED');
   assert.equal(ruledMeasurement.value, true,
     'map-anchor presence must derive monitorUp through the bound rule');
+  assert.deepEqual(ruledSample.payload.measurements.cameraSelected,
+    { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 },
+    'the live observation payload must carry the sibling selected-camera fact');
+  assert.deepEqual(ruledSample.payload.measurements.batteryPercent,
+    { signal: 'batteryPercent', state: 'OBSERVED', value: 75, confidence: 1 },
+    'the live observation payload must carry the game-UI battery fact');
 
   // Full conditioned chain: rule-derived UP observations gate a camera select.
   let cameraSends = 0;
