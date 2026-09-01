@@ -16,6 +16,18 @@ provisioning now acquire the same kernel-released per-serial lease used by
 setup and queue execution. The independent-process lock regression and mock
 observer pass, so a second agent cannot mutate or invalidate an active trace.
 
+2026-09-01 Cue Helper night-check retry boundary — an authenticated menu result
+during a queued `night-check` now returns `SETUP HOLD reason=target-not-night`,
+stops the temporary projection inside the device lease, and preserves the job
+as `PENDING` for a later manually entered night. Setup, queue, and lock
+regressions pass; no game input is generated.
+
+2026-09-01 Cue Helper post-checkpoint device hold — the selected g56 remains
+connected but reports `mWakefulness=Dozing` and `isKeyguardShowing=true`.
+Direct image-free setup and the queue runner both returned
+`HOLD reason=device-not-awake` without waking or unlocking the phone; the safe
+menu baseline remains `PENDING` under its idempotency key.
+
 2026-09-01 Cue Helper native test coverage — `npm test` now includes
 `android/cue-helper/test.sh`, so the default contract lane exercises the
 native ROI geometry, screen identity, battery/monitor/camera facts, snapshot

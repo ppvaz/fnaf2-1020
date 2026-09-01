@@ -156,6 +156,11 @@ gate as `UNQUALIFIED(self-capture-unqualified)`, and cannot render decision
 cues. Use this only to obtain the HUD-on comparison needed before the reviewed
 sidecar exists; a probe trace is not itself qualification evidence.
 
+The queued `night-check` path treats an authenticated `FNAF2_MENU` result as a
+retryable hold (`target-not-night`): it releases the temporary projection while
+holding the per-device lease, leaves the job `PENDING`, and waits for the
+operator to enter night manually. It never sends game input.
+
 Until all five steps have a retained record, report
 `overlay=DISABLED(self-capture-unqualified)` or, for target suppression,
 `overlay=UNAVAILABLE(target-hidden) state=HIDDEN`. Do not describe the run HUD

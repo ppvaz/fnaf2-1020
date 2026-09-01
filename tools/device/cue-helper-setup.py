@@ -43,6 +43,10 @@ class SetupError(RuntimeError):
     pass
 
 
+class SetupHold(SetupError):
+    """A safe retryable state, not a failed setup or qualification result."""
+
+
 def adb(*args: str, check: bool = True, timeout: float = 30.0) -> str:
     command = ["adb", *args]
     try:
@@ -226,6 +230,8 @@ def wait_for_screen(screen: str, timeout: float) -> str:
         if code == 0 and "visual=OBSERVED" in output and f"screen={expected}" in output:
             return output
         time.sleep(0.5)
+    if screen == "night" and "screen=FNAF2_MENU" in last:
+        raise SetupHold("target-not-night")
     raise SetupError(f"target {expected} was not observed before timeout; last={last}")
 
 
@@ -298,7 +304,19 @@ def main() -> int:
             if args.probe:
                 start_probe()
             start(target_launcher)
-            snapshot = wait_for_screen(args.screen, args.wait)
+            try:
+                snapshot = wait_for_screen(args.screen, args.wait)
+            except SetupHold as error:
+                # Keep cleanup inside the lease: another agent must not
+                # observe or mutate the projection between the hold and the
+                # force-stop. The next runner will restart it after the
+                # operator manually enters night; no game input is generated.
+                try:
+                    stop_capture()
+                except SetupError:
+                    pass
+                print(f"SETUP HOLD reason={error}")
+                return 75
             overlay_code, overlay = query_snapshot_overlay()
             expected = "FNAF2_MENU" if args.screen == "menu" else "FNAF2_NIGHT"
             print(f"SCREEN_CHECK PASS screen={expected}")

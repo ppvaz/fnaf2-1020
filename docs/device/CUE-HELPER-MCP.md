@@ -13,7 +13,9 @@ operations:
 The queue is useful when the phone is away or locked. Enqueue and list do not
 need ADB. A runner started with `cue.queue.run` reports `HOLD` for an absent,
 locked, asleep, or ambiguous device and leaves the job `PENDING`; it never
-auto-unlocks the phone. `night-check` also waits for a manually entered night.
+auto-unlocks the phone. `night-check` also waits for a manually entered night:
+when the authenticated target is still at `FNAF2_MENU`, it stops the temporary
+projection and returns the job to `PENDING` instead of marking it failed.
 No operation accepts arbitrary shell text, coordinates, HID input, or game
 controls.
 

@@ -49,4 +49,15 @@ try:
     assert MODULE.projection_active() is False
 finally:
     MODULE.adb = original_adb
+
+original_query_snapshot = MODULE.query_snapshot
+try:
+    MODULE.query_snapshot = lambda: (0, "visual=OBSERVED screen=FNAF2_MENU")
+    try:
+        MODULE.wait_for_screen("night", 0.01)
+        raise AssertionError("menu should hold a queued night check")
+    except MODULE.SetupHold as error:
+        assert str(error) == "target-not-night"
+finally:
+    MODULE.query_snapshot = original_query_snapshot
 print("cue-helper setup parser and tap boundary passed")

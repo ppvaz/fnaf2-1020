@@ -118,4 +118,27 @@ with module.QueueRunnerLock(Path(sys.argv[2])):
     finally:
         MODULE.run_adb = original_run_adb
 
+    hold_script = Path(directory) / "hold-setup.sh"
+    hold_script.write_text(
+        "#!/bin/sh\necho 'SETUP HOLD reason=target-not-night'\nexit 75\n",
+        encoding="utf-8")
+    hold_script.chmod(0o755)
+    hold_job = MODULE.make_job("night-check", "night", False, False)
+    previous_queue = os.environ.get("CUE_HELPER_QUEUE_FILE")
+    previous_setup = MODULE.HELPER_SETUP
+    os.environ["CUE_HELPER_QUEUE_FILE"] = str(queue)
+    MODULE.HELPER_SETUP = hold_script
+    try:
+        queue.write_text(json.dumps([hold_job]) + "\n", encoding="utf-8")
+        assert MODULE.execute(hold_job, "fixture-device") == "target-not-night"
+        held_jobs = json.loads(queue.read_text(encoding="utf-8"))
+        assert held_jobs[0]["state"] == "PENDING"
+        assert "target-not-night" in held_jobs[0]["lastHold"]
+    finally:
+        MODULE.HELPER_SETUP = previous_setup
+        if previous_queue is None:
+            os.environ.pop("CUE_HELPER_QUEUE_FILE", None)
+        else:
+            os.environ["CUE_HELPER_QUEUE_FILE"] = previous_queue
+
 print("cue-helper queue persistence, closed vocabulary, and absent-device hold passed")
