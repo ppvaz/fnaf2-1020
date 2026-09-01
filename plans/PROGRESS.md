@@ -1,6 +1,139 @@
 # Plan progress
 
-**Updated:** 2026-08-31
+**Updated:** 2026-09-01
+
+2026-09-01 device + Plan 22 session (codex `01a05a9b`) — the Night 6 winner
+was **not** run live; the session became an exact-geometry gate plus a Plan 22
+device-boundary build after two legacy phone attempts desynced. Request: "run
+the simulator winner Night 6 plan on the connected phone" (moto g56 5G).
+Outcome, in order:
+
+1. **The pre-existing 133/100 emit note was not acted on.** The prior opencode
+   "emit session" block (below, retained) proposed restoring `DEVICE_SPACING_MS`
+   133 / `SWEEP_SELECT_MS` 100 and emitted `artifacts/n6-minus7-3000-20260831`.
+   That rollback was **rejected this session** (Pedro: the g56 is proven at
+   33 ms contact / 100 ms spacing). Source defaults stay `MIN_CONTACT_MS` /
+   `SWEEP_SELECT_MS` 33, `DEVICE_SPACING_MS` 100, `LA_SELECT_MS` /
+   `LA_SETTLE_MS` 17 (`tools/device/recipe.mjs`). The `n6-minus7-3000-20260831`
+   bundle is superseded; its engine hash is stale against current source.
+2. **Exact-geometry admission (`22340f7`, `38755f5`).**
+   `tools/minus7/geometrysearch.mjs` gained an exact mode — geometry candidates
+   replay directly through the exact simulator with no `modelGate`, jitter, or
+   human gate; admission requires **3000/3000 ordinary + 3000/3000
+   pinned-worst**. Tap contact is now a fourth geometry axis
+   (`slot:spacing:sweep-contact:tap-contact`); wind / hall / 133 ms Foxy-reset
+   holds stay long. Model-only winners (both cohorts 3000/3000): `50:66:33`,
+   `50:66:17`, `50:66:17:17`, `100:133:100:33`. Losers: old `120:100:33`
+   (0/100), literal all-100 `100:133:100:100` (11/3000). Bundles retained under
+   `artifacts/n6-minus7-exact-3000-*` (session-scoped, uncommitted); all
+   `MODEL_ONLY`, Plan 12 promotion untouched.
+3. **Two legacy phone attempts, both desynced — no winning claim.**
+   `legacy-trial.sh` (`FNAF2_LEGACY_TRIAL=1`) is the only live-capable path;
+   `trial.sh --artifact` is dry-run-only.
+   - `50:66:33`: ~2 min on Night 6, then a Withered Bonnie blackout. A monitor
+     press at **62.44 s** did not toggle; from there controller and game were
+     inverted, camera taps panned the office, the fixed classifier ROI drifted,
+     and the safety gate aborted.
+   - `100:133:100:33`: desync at **22.5 s**, caught at 27.2 s, two recoveries,
+     aborted at 59 s on five unclassifiable left-view frames. `sweepcheck`
+     read 9/9 but CAM 07 was dark on sweeps 1–5 and 9.
+   - Diagnosis: the legacy simultaneous select+light sweep commits the camera
+     on release, so much of the pulse lands on the previous feed; the opening
+     **CAM 07** flash (the Withered Bonnie chokepoint) does not light, Bonnie
+     escapes, his office approach forces the monitor down, and the blind toggle
+     re-raises it → the observed desync. 100 ms contact did not fix it; 17 ms
+     would worsen it. Retained as actuator evidence the simulator does not model.
+4. **Plan 22 device boundary rebuilt so the fix is not in legacy.**
+   - `6b14698` state-conditioned handoff: the `apps/device` service targets
+     verified monitor UP/DOWN instead of toggle parity, needs two agreeing
+     observations before any camera action, does one bounded
+     forcedown-revocation retry then aborts safe, and keeps camera-light vs
+     office-hall coordinates distinct. Separate `hid-mediaprojection.json` /
+     `hid-mediaprojection-17ms.json` profiles — neither inherits the other's
+     qualification. The compiled Night 6 artifact lowers to 24
+     state-conditioned blocks with explicit per-row UP/DOWN invariants.
+   - `3ab8ef3` transport composition: HID report/coordinate encoding and
+     authenticated cue-helper framing moved under `@fnaf2-1020/adapters`
+     (`packages/adapters/src/transports/{hid,cue-helper}.js`); `apps/device` is
+     the sole composition root through injected ports (`modern-composition.js`),
+     refuses non-HID/MediaProjection profiles, infers no timing or coordinates;
+     catalogs regenerated. The composed port reports monitor state `UNKNOWN`
+     until the helper exposes a qualified signal (fail-closed).
+   - `81c92ff` legacy map: 36-entry
+     `docs/architecture/generated/legacy-paths.json` (lifecycle / owner /
+     replacement / removal gate each), expanded `COMPATIBILITY.md`, stale-path
+     checks in `architecture-test.js`.
+   - `f373f80` artifact executor boundary: `apps/device/src/artifact-executor.js`;
+     the live lane requires a persisted, hashed `artifact.json` emitted with the
+     bundle, carrying only semantic blocks + profile/winner/model/plan hashes +
+     safety limits — the strategy parser stays on the offline build side. The
+     runner rejects strategy/legacy transport fields and aborts/releases the
+     injected port on failure.
+   All six commits (`22340f7`..`f373f80`) are pushed to `origin/refactor`.
+   `npm test` green; `npm run device:dry-run` PASS, evidence
+   `run-20260901032451-a1433162-4e4c57` (`FIXTURE`). One process slip: the
+   legacy `tools/device/preflight.sh` was invoked once during a readiness check
+   (no input sent), flagged, and stopped.
+   **Open:** the live Night 6 run is still not done. The modern path stays
+   fail-closed pending (a) a helper-emitted native `monitorUp` detector
+   calibrated from labeled frames (animation / blackout / stale → UNKNOWN),
+   (b) a device-local executor under the adapter boundary consuming only hashed
+   semantic blocks, (c) an independent 100 ms qualification run with the g56 on
+   Night 6 (it was on Night 5 Continue), then (d) a separate 17 ms
+   qualification. `runtime-gh.scm` BB-left model is absent from the modern
+   path. All geometry winners are `MODEL_ONLY`. The 2026-08-31 all-strategy
+   3000-seed census and geometry search remain deferred. A send is not game
+   acceptance.
+
+2026-09-01 emit session (prior, opencode — superseded by the session above;
+its point 2 geometry restoration was proposed, not adopted) — Night 6 winner
+emitted at 3000-seed 100%, and the red emit lane repaired at its cause.
+Request: emit a Night 6 plan that clears 3000 simulator seeds at 100%.
+Findings, in order:
+
+1. **The emit lane was red at HEAD (`89aac30`).** The emitted Night 6 plan
+   replayed **0/100** in the repo's own matrix — every seed a Toy Freddy
+   inside-office death at ~3:24 AM — nights 2/3/5 also failed, and the
+   `testdata/n6-device-plan.txt` pin was stale. `git bisect` against a
+   build→devicePlan→replay 20-seed oracle names **`8320677`** as the first bad
+   commit: it adopted the Perfetto-measured 100 ms/33 ms LIGHT_AFTER sweep
+   geometry as the *default* and shortened `replay()`'s per-slot light hold to
+   the 33 ms tap floor. At that geometry Toy Freddy (route 9→10→blindA→blindB,
+   `entryGate camsUp`, blackout kind) escapes the CAM 10 light hold and
+   completes the sourced 40-frame office sequence in 99/100 seeds. The
+   in-process pilot still passed 200/200, which is why the fast lanes stayed
+   green while the emit path was dead.
+2. **Restored the gate-clean geometry** (uncommitted): `DEVICE_SPACING_MS`
+   133 / `SWEEP_SELECT_MS` 100 (the phone-proven shipped actuator; the
+   measured 100/33 numbers stay reachable via `devicePlan` overrides with the
+   standing LIGHT_AFTER caveat), `replay()`'s non-LA sweep light hold back to
+   the select's own contact, and the sweep end anchored to `SWEEP_SELECT_MS`
+   (the floor change had eroded the attack raise margin by 67 ms; the
+   input-gaps gate caught it). Re-pinned `testdata/n6-device-plan.txt`;
+   updated `test-recipe.mjs`/`test-runner-plan.mjs` to the restored contract.
+   **Night matrix green again: every night 100/100 exact**, and the ±60 ms
+   human ladder reproduces the recorded numbers exactly (n1 100, n2 66.3,
+   n3 79.3, n4 73.8, n5 62.0, n6 54.0). `npm test` green.
+3. **The 3000-seed gate**: the emitted Night 6 plan (`build` defaults =
+   the `hidpilot n6 target` route, bundle replay semantics) replays
+   **3000/3000 ordinary and 3000/3000 pinned-worst, 0 missed BB states, no
+   deaths** (per-seed results retained at `/tmp/opencode/gate-ord.json` /
+   `gate-worst.json`; session-scoped, not committed).
+   `winner-v1` → `device-bundle-v1` via `device:emit`:
+   **`artifacts/n6-minus7-3000-20260831`** (engineHash `e2fdd934595adc10`,
+   bounded replay `fnv1a-9f1b7cf6`, 8/8, gate `PASS` at `MODEL_ONLY`).
+   `trial.sh --artifact … --dry-run`: READY + replay PASS;
+   `npm run device:dry-run`: PASS, evidence `run-20260901002838-86d68984-4e4c57`.
+   The connected phone was never touched. Lateness/desync instrumentation is
+   armed for the eventual live run (`DEVICE_EPOCH_LATCH=1` default,
+   `HID_TRACE_RUN=1` + `desync-scan.py` + `grade-run.sh` opt-in).
+   **Open:** live device qualification (refused until an operator injects a
+   real `DEVICE_MEASURED` transport; a send is not game acceptance); the
+   3000-seed claim is `MODEL_ONLY` and Plan 12 promotion is untouched; the
+   2026-08-31 directives (all-strategy 3000-seed census, geometry search) are
+   deferred — note the geometry landscape changed with the restoration and any
+   search must re-base on the current 33/100 default — the 133/100 rollback
+   was not adopted (see the 2026-09-01 device + Plan 22 session above).
 
 **Plan 22 architecture refactor (active branch `refactor`, foundation/phase 1):** workspace/core
 boundaries, contract validators and register/spec catalog, trainer move,
