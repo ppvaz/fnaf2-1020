@@ -22,6 +22,7 @@ function observe(cueTransport) {
     cells: grid.cells,
     measurements: {
       cameraSelected: cueTransport.cameraMeasurement(snapshot),
+      cameraHighlights: cueTransport.cameraHighlightsMeasurement(snapshot),
       batteryPercent: cueTransport.batteryMeasurement(snapshot),
     },
   };

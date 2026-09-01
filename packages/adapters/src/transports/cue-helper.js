@@ -107,6 +107,40 @@ export class CueHelperControlTransport {
     return { signal: 'cameraSelected', state: 'OBSERVED', value, confidence: 1 };
   }
 
+  /**
+   * Consume the complete set of highlighted camera buttons. Unlike
+   * cameraMeasurement(), this remains OBSERVED when the UI deliberately has
+   * two highlights for a split-camera glitch.
+   */
+  cameraHighlightsMeasurement(snapshot = {}) {
+    const unknown = reason => ({ signal: 'cameraHighlights', state: 'UNKNOWN', reason });
+    const ageUs = Number(snapshot.ageUs);
+    if (!Number.isFinite(ageUs) || ageUs < 0) return unknown('read-unavailable');
+    if (ageUs > this.maxAgeUs) return unknown('read-stale');
+    if (snapshot.monitorUp !== 'true') return unknown('monitor-not-up');
+
+    // Older helpers only exposed cameraSelected. Preserve a useful singleton
+    // observation while newer helpers provide the exact highlighted set.
+    const raw = snapshot.cameraHighlights === undefined
+      ? snapshot.cameraSelected : snapshot.cameraHighlights;
+    if (raw === 'UNKNOWN' || raw === undefined || raw === '') {
+      const reason = snapshot.cameraReason;
+      return unknown(typeof reason === 'string' && CAMERA_UNKNOWN_REASONS.has(reason)
+        ? reason : 'read-unavailable');
+    }
+    if (typeof raw !== 'string') return unknown('sensor-mismatch');
+    const values = raw.split(',');
+    if (values.length === 0 || values.some(value => !/^cam:(?:[1-9]|1[0-2])$/.test(value)))
+      return unknown('sensor-mismatch');
+    const numbers = values.map(value => Number(value.slice(4)));
+    if (new Set(numbers).size !== numbers.length) return unknown('sensor-mismatch');
+    numbers.sort((a, b) => a - b);
+    return {
+      signal: 'cameraHighlights', state: 'OBSERVED',
+      value: numbers.map(value => `cam:${value}`), confidence: 1,
+    };
+  }
+
   /** Consume the game-UI flashlight meter only from a fresh night snapshot. */
   batteryMeasurement(snapshot = {}) {
     const ageUs = Number(snapshot.ageUs);

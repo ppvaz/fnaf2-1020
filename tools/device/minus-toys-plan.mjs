@@ -14,6 +14,7 @@ import { Sim } from '@fnaf2-1020/core/mechanics';
 import { Observer } from '@fnaf2-1020/core/sensing';
 import { VentThreatReactive, guardIntents, GUARD_FRAMES } from '@fnaf2-1020/core/control';
 import { Rng } from '@fnaf2-1020/core/mechanics';
+import { DOUBLE_GLITCH_CAMERA_PAIRS, cameraPairHeader } from './arm-verification.mjs';
 
 // Every tunable number in the schedule. build(KNOBS0) reproduces the shipped
 // opening/loop byte-for-byte (asserted below). Each knob names one decision the
@@ -410,11 +411,14 @@ export function emitPlan(night, knobs) {
   if (kk.minimal) lines.push(`#loop-start ${kk.minLoopStartMs}`, `#stop-at ${kk.minStopAtMs}`,
     `#observe-until ${kk.minObserveUntilMs}`,
     // Tells trial.sh's on-phone driver to open the arm-verify window after the
-    // opening raise: the host classifies the raised monitor's CAM 11 button
-    // (cam11lit.py) and re-arms or aborts on a miss. The 200/200 gate above
+    // opening raise: the host classifies the raised monitor's declared camera
+    // pair and re-arms or aborts on a miss. The 200/200 gate above
     // replays at a fixed sampler phase and cannot see the arm's 3-of-12 miss
     // branch (--phasegate), so the runner closes it.
-    `#arm-verify 1`);
+    `#arm-verify 1`,
+    // The singular CAM 11 classifier proves only that the monitor returned to
+    // the viewed feed. The split verifier needs the marker as well.
+    `#arm-verify-cameras ${cameraPairHeader(DOUBLE_GLITCH_CAMERA_PAIRS.minusToys)}`);
   lines.push('#cycle opening');
   for (const row of opening) lines.push(row.join(' '));
   lines.push('#cycle toys');

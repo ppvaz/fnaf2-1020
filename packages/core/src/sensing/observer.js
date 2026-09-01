@@ -25,7 +25,8 @@ const O = (value) => ({ state: 'OBSERVED', value });
 const U = (reason) => ({ state: 'UNKNOWN', reason });
 
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
-                      'splitArmed', 'leftOpening', 'ventLightL',
+                      'cameraSelected', 'cameraHighlights', 'splitArmed',
+                      'leftOpening', 'ventLightL',
                       'bbVent', 'bbVentId', 'mangleStatic', 'mangleStaticCam'];
 
 // A complete fact set with every entry UNKNOWN -- what the controller sees
@@ -157,6 +158,13 @@ export class Observer {
     // exactly the night 6-38 false positive: refuse it.
     const officeVisible = sim.monitor === MON_DOWN && !midMon && !midMask;
     const feedVisible = sim.camsUp && !midMon;
+    const cameraUp = feedVisible && sim.viewing > 0;
+    const cameraNumbers = cameraUp
+      ? [...new Set([sim.cam, sim.viewing].filter(camera =>
+          Number.isInteger(camera) && camera > 0 && camera <= 12))]
+          .sort((a, b) => a - b)
+      : [];
+    const cameraNames = cameraNumbers.map(camera => `cam:${camera}`);
 
     return {
       frame: sim.frame,
@@ -177,6 +185,17 @@ export class Observer {
       boxPie: drop ? U('read-dropped')
         : (feedVisible && sim.viewing === C.BOX_CAM) ? O(sim.box)
         : U('box-not-on-screen'),
+
+      // A split glitch is an observed set, not a singular camera. Keep the
+      // exact marker/view pair so an arming verifier can distinguish CAM 08 +
+      // CAM 11 (Minus 3) from CAM 09 + CAM 11 (Minus Toys).
+      cameraHighlights: drop ? U('read-dropped')
+        : cameraUp && cameraNames.length ? O(cameraNames)
+        : U('cams-not-up'),
+      cameraSelected: drop ? U('read-dropped')
+        : cameraUp && cameraNames.length === 1 ? O(cameraNames[0])
+        : cameraUp ? U('multiple-camera-highlight')
+        : U('cams-not-up'),
 
       // both camera buttons lit == viewing marker disagree, monitor up
       splitArmed: drop ? U('read-dropped')

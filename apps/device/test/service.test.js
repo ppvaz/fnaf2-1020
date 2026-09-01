@@ -104,10 +104,10 @@ const ruleDigest = monitorRuleDigest(fittedRule);
   const cueWith = (cells, { gridSeq = 7, facts = false } = {}) => ({
     token: '0123456789abcdef0123456789abcdef',
     request: request => request.startsWith('GET ')
-      ? 'OK snapshotNs=1 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
+    ? 'OK snapshotNs=1 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
         + (facts
           ? ' monitorUp=true monitorReason=anchors-up '
-            + 'cameraSelected=cam:5 cameraReason=single-camera-highlight '
+            + 'cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight '
             + 'batteryPercent=75 batteryReason=bars-observed'
           : '')
       : request.startsWith('GRID ') ? hex(cells).replace('seq=7', `seq=${gridSeq}`) : 'ERROR unsupported',
@@ -143,6 +143,9 @@ const ruleDigest = monitorRuleDigest(fittedRule);
   assert.deepEqual(ruledSample.payload.measurements.cameraSelected,
     { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 },
     'the live observation payload must carry the sibling selected-camera fact');
+  assert.deepEqual(ruledSample.payload.measurements.cameraHighlights,
+    { signal: 'cameraHighlights', state: 'OBSERVED', value: ['cam:5'], confidence: 1 },
+    'the live observation payload must carry the complete highlighted-camera fact');
   assert.deepEqual(ruledSample.payload.measurements.batteryPercent,
     { signal: 'batteryPercent', state: 'OBSERVED', value: 75, confidence: 1 },
     'the live observation payload must carry the game-UI battery fact');

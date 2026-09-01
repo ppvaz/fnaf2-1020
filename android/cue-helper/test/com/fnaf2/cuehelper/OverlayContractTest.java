@@ -180,8 +180,13 @@ public final class OverlayContractTest {
         check("one highlighted camera is identified", selectedCamera.observed()
                 && "cam:5".equals(selectedCamera.selectedCamera));
         cameraReads[spec.indexOfName("cam06_button")] = 195;
-        check("multiple highlighted cameras refuse", "multiple-camera-highlight".equals(
-                CameraSelectionDetector.measure(spec, cameraReads, monitorUp).reason));
+        CameraSelectionDetector.Result splitCamera = CameraSelectionDetector.measure(
+                spec, cameraReads, monitorUp);
+        check("multiple highlighted cameras refuse singular selection",
+                "multiple-camera-highlight".equals(splitCamera.reason)
+                        && !splitCamera.observed());
+        check("multiple highlighted cameras remain available as a split pair",
+                Arrays.equals(new String[]{"cam:5", "cam:6"}, splitCamera.highlightedCameras()));
         check("camera selection is unavailable with monitor down",
                 "monitor-not-up".equals(CameraSelectionDetector.measure(
                         spec, cameraReads, monitorDown).reason));

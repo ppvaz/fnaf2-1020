@@ -23,7 +23,7 @@ SNAPSHOT = (
     "ageUs=1200 content=2400x1080 visible=1 "
     "screen=FNAF2_NIGHT screenScore=100 detectorLatencyMs=1 "
     "monitorUp=true monitorReason=anchors-up "
-    "cameraSelected=cam:5 cameraReason=single-camera-highlight "
+    "cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight "
     "batteryPercent=75 batteryReason=bars-observed "
     "audio=EXTERNAL authority=audio-authority state=UNKNOWN "
     "reason=external-authority-not-connected"

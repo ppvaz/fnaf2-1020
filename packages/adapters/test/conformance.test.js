@@ -65,6 +65,18 @@ assert.deepEqual(cue.cameraMeasurement({ ageUs: '900000', monitorUp: 'true',
 assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
   cameraSelected: 'UNKNOWN', cameraReason: 'untrusted-free-text' }),
   { signal: 'cameraSelected', state: 'UNKNOWN', reason: 'read-unavailable' });
+assert.deepEqual(cue.cameraHighlightsMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraHighlights: 'cam:9,cam:11', cameraReason: 'multiple-camera-highlight' }),
+  { signal: 'cameraHighlights', state: 'OBSERVED', value: ['cam:9', 'cam:11'], confidence: 1 });
+assert.deepEqual(cue.cameraHighlightsMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraSelected: 'cam:5', cameraReason: 'single-camera-highlight' }),
+  { signal: 'cameraHighlights', state: 'OBSERVED', value: ['cam:5'], confidence: 1 });
+assert.deepEqual(cue.cameraHighlightsMeasurement({ ageUs: '17', monitorUp: 'false',
+  cameraHighlights: 'cam:9,cam:11' }),
+  { signal: 'cameraHighlights', state: 'UNKNOWN', reason: 'monitor-not-up' });
+assert.deepEqual(cue.cameraHighlightsMeasurement({ ageUs: '17', monitorUp: 'true',
+  cameraHighlights: 'cam:9,cam:9' }),
+  { signal: 'cameraHighlights', state: 'UNKNOWN', reason: 'sensor-mismatch' });
 assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
   batteryPercent: '75', batteryReason: 'bars-observed' }),
   { signal: 'batteryPercent', state: 'OBSERVED', value: 75, confidence: 1 });

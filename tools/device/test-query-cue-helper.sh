@@ -83,7 +83,7 @@ done
 for transport in loopback forward; do
   response="$(PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" "$transport")"
   case "$response" in
-    'OK '*"visual=OBSERVED seq=121"*"audio=EXTERNAL authority=audio-authority"*) ;;
+    'OK '*"visual=OBSERVED seq=121"*"cameraHighlights=cam:5"*"audio=EXTERNAL authority=audio-authority"*) ;;
     *) echo "unexpected $transport response: $response" >&2; exit 1 ;;
   esac
   # The runner's own extraction, verbatim in shape. It must yield three fields.

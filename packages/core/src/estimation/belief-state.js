@@ -40,6 +40,7 @@ export function initialBelief({ nowMs = 0, calibrationProfiles = {} } = {}) {
       monitor: { value: 'unknown', confidence: 0, source: null },
       mask: { value: 'unknown', confidence: 0, source: null },
       viewedCamera: { value: null, confidence: 0, source: null },
+      cameraHighlights: { value: null, confidence: 0, source: null },
       actionLockout: false,
     },
     resources: { box: { min: 0, max: 1 }, foxy: { risk: 'unknown' } },
@@ -57,6 +58,18 @@ const controlFact = {
   monitorUp: 'monitor',
   maskOn: 'mask',
 };
+const cameraName = value => typeof value === 'string' &&
+  /^cam:(?:[1-9]|1[0-2])$/.test(value);
+
+function checkCameraFact(name, value) {
+  if (name === 'cameraSelected' && !cameraName(value))
+    throw new TypeError('cameraSelected must name one calibrated camera');
+  if (name === 'cameraHighlights' &&
+      (!Array.isArray(value) || value.length === 0 ||
+       value.some(camera => !cameraName(camera)) ||
+       new Set(value).size !== value.length))
+    throw new TypeError('cameraHighlights must contain unique calibrated cameras');
+}
 
 function recordHealth(next, factName, fact) {
   const old = next.sensorHealth[factName] ??
@@ -78,6 +91,7 @@ function applyFact(next, name, fact) {
     next.facts[name] = clone(fact);
     return;
   }
+  checkCameraFact(name, fact.value);
   next.facts[name] = clone(fact);
   next.lastKnown[name] = clone(fact);
 
@@ -97,6 +111,12 @@ function applyFact(next, name, fact) {
     }
   }
   if (name === 'blackout') next.hazards.blackout = fact.value ? 'active' : 'clear';
+  if (name === 'cameraSelected') next.control.viewedCamera = {
+    value: fact.value, confidence: fact.confidence, source: fact.source,
+  };
+  if (name === 'cameraHighlights') next.control.cameraHighlights = {
+    value: clone(fact.value), confidence: fact.confidence, source: fact.source,
+  };
   if (name === 'leftOpening') next.hazards.opening = fact.value;
   if (name === 'bbVent') next.routes.bb = fact.value;
   if (name === 'mangleOpening') next.routes.mangle = fact.value;

@@ -44,6 +44,20 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   f = obs.read(s);
   ok('observer', 'monitor up, settled -> monitorUp OBSERVED true',
     f.monitorUp.state === 'OBSERVED' && f.monitorUp.value === true);
+
+  // The source-level glitch is two simultaneous camera facts: the marker is
+  // parked on CAM 09 while the viewed feed remains CAM 11. A singular camera
+  // fact must refuse, while the complete highlight set remains actionable for
+  // an arming verifier.
+  s.cam = 9;
+  s.viewing = 11;
+  s.tick();
+  f = obs.read(s);
+  ok('observer', 'split camera arm preserves the exact highlighted pair',
+    f.cameraHighlights.state === 'OBSERVED' &&
+    JSON.stringify(f.cameraHighlights.value) === JSON.stringify(['cam:9', 'cam:11']) &&
+    f.cameraSelected.state === 'UNKNOWN' &&
+    f.cameraSelected.reason === 'multiple-camera-highlight');
 }
 
 // --- 2. Observer: cadence, latency, drops ------------------------------------

@@ -142,8 +142,8 @@ REMOTE_EPOCHFILE="$REMOTE_PIDFILE.epoch"
 # watchdog's force-stop/pidfile teardown is seconds; a file touch is one adb
 # round trip. The three arm-verify files carry the --minimal split-arm check
 # (see watch_arm_verify): the driver opens the window, the host classifies the
-# raised monitor's CAM 11 button and touches rearm on a miss or armfail when
-# the retries are spent.
+# raised monitor's expected camera pair and touches rearm on a miss or armfail
+# when the retries are spent.
 REMOTE_HALTFILE="$REMOTE_PIDFILE.halt"
 REMOTE_ARMWINDOW="$REMOTE_PIDFILE.armwin"
 REMOTE_REARM="$REMOTE_PIDFILE.rearm"
@@ -171,6 +171,7 @@ REMOTE_CAM05_MODEL_ARG="-"
 REMOTE_GF_MODEL_ARG="-"
 POST_CAPTURE_TOUCHES_EFFECTIVE=0
 RUN_TMP=""
+ARM_VERIFY_CAMERAS=""
 WATCHDOG_RESULT=""
 REC=""
 AUDIO_FACTS_PID=""
@@ -651,6 +652,16 @@ else
 fi
 cp "$RUN_TMP/device-plan.txt" "$LOCAL_DEVICE_PLAN"
 PLAN_SHA256="$(shasum -a 256 "$RUN_TMP/device-plan.txt" | awk '{print $1}')"
+ARM_VERIFY_CAMERAS="$(sed -n 's/^#arm-verify-cameras //p' "$RUN_TMP/device-plan.txt" | head -1)"
+if [ "$MINUS_TOYS_VARIANT" = minimal ] && [ -z "$ARM_VERIFY_CAMERAS" ]; then
+  echo 'Minus Toys minimal plan has no #arm-verify-cameras header' >&2
+  exit 44
+fi
+case "$ARM_VERIFY_CAMERAS" in
+  '') ;;
+  cam:[1-9],cam:[1-9]|cam:[1-9],cam:1[0-2]|cam:1[0-2],cam:[1-9]|cam:1[0-2],cam:1[0-2]) ;;
+  *) echo "invalid #arm-verify-cameras header: $ARM_VERIFY_CAMERAS" >&2; exit 44 ;;
+esac
 if [ "$DEVICE_POLICY" = minus-toys ]; then
   echo "Minus Toys $MINUS_TOYS_VARIANT device-plan status=$POLICY_GATE_STATUS for Night $STORY_NIGHT" >&2
 elif [ "${EXPERIMENT_UNGATED:-0}" = 1 ]; then
@@ -1043,17 +1054,40 @@ watch_focus() {
 #
 # Contract with the driver: after the opening raise the driver touches
 # REMOTE_ARMWINDOW and polls REMOTE_REARM until #loop-start minus a margin.
-# Here the raised monitor is photographed and classified by cam11lit.py (the
-# CAM 11 button is lit iff the raise restored CAM 11 -- the arm landed). unlit
-# or unknown touches REMOTE_REARM, which makes the driver re-run the opening's
-# camera rows as one macro; lit closes the check. Three attempts, then
+# Here the raised monitor is read from the native camera-highlight detector
+# when CUE_HELPER=1: the verifier requires the exact pair from the plan header
+# (CAM 09 + CAM 11 for Minus Toys, CAM 08 + CAM 11 for Minus 3). The legacy
+# cam11lit.py fallback still proves only the viewed CAM 11 when the helper is
+# not enabled. A mismatch or unknown touches REMOTE_REARM, which makes the
+# driver re-run the opening's camera rows as one macro; a match closes the
+# check. Three attempts, then
 # REMOTE_ARMFAIL: the driver exits 50 and the run ends named, not as a Puppet
 # death two hours later. Every verdict is logged and recorded so the manifest
 # carries what was seen, not just what was decided.
+camera_highlights_verdict() {
+  local response raw
+  if ! response=$("$HERE/query-cue-helper.sh" loopback 2>&1); then
+    printf 'cameraHighlights=UNKNOWN verdict=unknown note=query-failed detail=%s\n' "$response"
+    return 2
+  fi
+  raw=$(printf '%s\n' "$response" |
+    sed -n 's/.*cameraHighlights=\([^ ]*\).*/\1/p' | head -1)
+  [ -n "$raw" ] || raw=UNKNOWN
+  if [ "$raw" = "$ARM_VERIFY_CAMERAS" ]; then
+    printf 'cameraHighlights=%s verdict=match expected=%s\n' "$raw" "$ARM_VERIFY_CAMERAS"
+    return 0
+  fi
+  printf 'cameraHighlights=%s verdict=mismatch expected=%s\n' "$raw" "$ARM_VERIFY_CAMERAS"
+  return 1
+}
+
 watch_arm_verify() {
   [ "$MINUS_TOYS_VARIANT" = minimal ] || return 0
-  local i attempt=0 verdict
-  fnaf_session_event kind=sensor sensor=cam11lit "note=watcher-started" \
+  local i attempt=0 verdict verify_sensor=cam11lit
+  if [ "$CUE_HELPER" -eq 1 ] && [ -n "$ARM_VERIFY_CAMERAS" ]; then
+    verify_sensor=cameraHighlights
+  fi
+  fnaf_session_event kind=sensor sensor="$verify_sensor" "note=watcher-started" \
     "target=$REMOTE_ARMWINDOW"
   # The window opens ~117 s into the night (the opening raise) but loading and
   # menu selection happen before T0, so budget a generous 240 s of wall time.
@@ -1067,7 +1101,7 @@ watch_arm_verify() {
       # all, which is indistinguishable from this check not existing. Record
       # the gap instead of printing it into a pipe nobody keeps.
       echo "arm verify: driver never opened the arm window; continuing unverified" >&2
-      fnaf_session_event kind=fault sensor=cam11lit \
+      fnaf_session_event kind=fault sensor="$verify_sensor" \
         "fault.fault_kind=arm-window-never-opened" \
         "fault.detail=driver did not touch $REMOTE_ARMWINDOW within 240s; the arm went unverified" \
         "fault.degraded_to=unverified"
@@ -1075,17 +1109,21 @@ watch_arm_verify() {
     fi
   done
   # The raise animation finishes inside MONITOR_ANIM_UP (~0.3 s); leave the
-  # map a beat to settle before the first photograph.
+  # map a beat to settle before the first camera read.
   sleep 1.5
   while [ "$attempt" -lt 3 ]; do
     attempt=$((attempt + 1))
-    if ! verdict=$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/cam11lit.py"); then
+    if [ "$verify_sensor" = cameraHighlights ]; then
+      if ! verdict=$(camera_highlights_verdict); then
+        : # mismatch/unknown is the retry path below
+      fi
+    elif ! verdict=$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/cam11lit.py"); then
       verdict="cam11lit verdict=unknown note=classifier-failed"
     fi
     printf 'arm verify (attempt %d): %s\n' "$attempt" "$verdict"
-    fnaf_session_event kind=sensor sensor=cam11lit "attempt=$attempt" "note=$verdict"
+    fnaf_session_event kind=sensor sensor="$verify_sensor" "attempt=$attempt" "note=$verdict"
     case "$verdict" in
-      *verdict=lit*)
+      *verdict=lit*|*verdict=match*)
         return 0 ;;
       *)
         if [ "$attempt" -ge 3 ]; then
@@ -1433,6 +1471,7 @@ fnaf_session_probe_target "$SESSION_NIGHT" "$NIGHT-$PRESS_MODE-c$CYCLES" \
 fnaf_session_record env \
   "NIGHT=$NIGHT" "CYCLES=$CYCLES" "PRESS_MODE=$PRESS_MODE" \
   "DEVICE_POLICY=$DEVICE_POLICY" "MINUS_TOYS_VARIANT=${MINUS_TOYS_VARIANT:-none}" \
+  "ARM_VERIFY_CAMERAS=${ARM_VERIFY_CAMERAS:-none}" \
   "POLICY_GATE_STATUS=$POLICY_GATE_STATUS" "POLICY_EXECUTION_MODE=$POLICY_EXECUTION_MODE" \
   "CALIBRATION_STORY_NIGHT=$CALIBRATION_STORY_NIGHT" \
   "STORY_CURSOR_OBSERVED=${STORY_CURSOR_OBSERVED:-unread}" \
@@ -1594,7 +1633,7 @@ if [ "$CUE_HELPER" -eq 1 ]; then
   case "$CUE_PORT" in ''|*[!0-9]*) echo 'the cue helper has no live loopback port' >&2; exit 2 ;; esac
   [ "${#CUE_TOKEN}" -eq 32 ] || { echo 'no valid per-run cue-helper token' >&2; exit 2; }
   echo "cue helper: port $CUE_PORT, logging snapshots beside each left read"
-  if [ "$REACTIVE" = observe ]; then
+  if [ "$REACTIVE" = observe ] || [ -n "$ARM_VERIFY_CAMERAS" ]; then
     watch_status="$("$HERE/query-cue-helper.sh" watchlist status)" || {
       echo 'REACTIVE=observe but native watchlist status failed' >&2; exit 2;
     }
@@ -1611,8 +1650,12 @@ if [ "$CUE_HELPER" -eq 1 ]; then
       'OK watch=ACTIVE'*) ;;
       *) echo "native watchlist did not activate: $loaded" >&2; exit 2 ;;
     esac
-    CUE_READ_VERB="READ"
-    echo "reactive: observe-only native watch active spec=$WATCH_SPEC_HASH"
+    [ "$REACTIVE" = observe ] && CUE_READ_VERB="READ"
+    if [ "$REACTIVE" = observe ]; then
+      echo "reactive: observe-only native watch active spec=$WATCH_SPEC_HASH"
+    else
+      echo "arm verify: native camera watch active spec=$WATCH_SPEC_HASH"
+    fi
   fi
   if [ "$CUE_AUDIO" -eq 1 ]; then
     start_audio_facts

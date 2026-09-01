@@ -150,8 +150,9 @@ if [ "$NIGHT6_LEFT" -eq 2 ]; then
   # host passed the signal files). The split arm is a 3-of-12 phase coin flip
   # on the phone (minus-toys-plan.mjs --phasegate): when it misses, viewing
   # stays on CAM 09, the wind button does not exist, and the Puppet kills at
-  # ~4 AM. The host photographs the raised monitor (cam11lit.py) and touches
-  # REARM on a miss; re-running the opening's camera rows -- skipping row 1,
+  # ~4 AM. The host verifies the declared camera pair (native
+  # cameraHighlights when CUE_HELPER=1, cam11lit.py compatibility fallback)
+  # and touches REARM on a miss; re-running the opening's camera rows -- skipping row 1,
   # the monitor tap that would only LOWER the already-raised monitor -- is a
   # fresh coin flip. Three misses and the host touches ARMFAIL: exit 50 ends
   # the run named, hours before the guaranteed Puppet death. The window closes

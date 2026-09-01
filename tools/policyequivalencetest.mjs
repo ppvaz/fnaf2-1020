@@ -24,6 +24,10 @@ rejects(compiled.replace('115000 tap monitor', '114900 tap monitor'),
 // A hard-coded 10-second cadence must not replace the IR repeat period.
 rejects(compiled.replace('#period 5000', '#period 10000'),
   'hard-coded cadence defect was not caught');
+// The arming verifier is part of the policy projection: a valid schedule with
+// the wrong double-camera pair must not silently verify a different strategy.
+rejects(compiled.replace('#arm-verify-cameras cam:9,cam:11', '#arm-verify-cameras cam:8,cam:11'),
+  'wrong double-camera arm pair was not caught');
 // Removing the terminal proof and observation header must be a compile failure,
 // not a shorter plan that happens to have a matching prefix.
 rejects(compiled.replace(/#cycle finish[\s\S]*$/, '#cycle toys\n'),

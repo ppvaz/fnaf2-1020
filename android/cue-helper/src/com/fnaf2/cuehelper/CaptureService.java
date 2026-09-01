@@ -2370,7 +2370,8 @@ public final class CaptureService extends Service {
                     "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
                             + "grey=%d gridLuma=%d ageUs=%d content=%dx%d visible=%d "
                             + "screen=%s screenScore=%d detectorLatencyMs=%d "
-                            + "monitorUp=%s monitorReason=%s cameraSelected=%s cameraReason=%s "
+                            + "monitorUp=%s monitorReason=%s cameraSelected=%s cameraHighlights=%s "
+                            + "cameraReason=%s "
                             + "batteryPercent=%s batteryReason=%s",
                     visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
                     greyCells, gridMeanLuma, visualAgeUs,
@@ -2378,13 +2379,15 @@ public final class CaptureService extends Service {
                     capturedContentVisibility, ScreenIdentity.label(screenIdentity),
                     screenScore, detectorLatencyMs, monitorValue(monitor), monitor.reason,
                     camera.selectedCamera == null ? "UNKNOWN" : camera.selectedCamera,
-                    camera.reason, battery.observed() ? Integer.toString(battery.percent) : "UNKNOWN",
+                    cameraHighlightsValue(camera), camera.reason,
+                    battery.observed() ? Integer.toString(battery.percent) : "UNKNOWN",
                     battery.reason);
         } else {
             visual = String.format(Locale.US,
                     "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
                             + "screen=UNKNOWN screenScore=0 detectorLatencyMs=%d "
                             + "monitorUp=UNKNOWN monitorReason=%s cameraSelected=UNKNOWN "
+                            + "cameraHighlights=UNKNOWN "
                             + "cameraReason=%s batteryPercent=UNKNOWN batteryReason=%s",
                     visualSequenceSnapshot, invalidReason, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
@@ -2394,6 +2397,18 @@ public final class CaptureService extends Service {
 
         return "snapshotNs=" + nowNs + " " + visual + " "
                 + currentAudioStatus() + " " + watchStatus();
+    }
+
+    private static String cameraHighlightsValue(CameraSelectionDetector.Result camera) {
+        if (camera == null) return "UNKNOWN";
+        String[] highlighted = camera.highlightedCameras();
+        if (highlighted == null || highlighted.length == 0) return "UNKNOWN";
+        StringBuilder value = new StringBuilder();
+        for (int index = 0; index < highlighted.length; index++) {
+            if (index > 0) value.append(',');
+            value.append(highlighted[index]);
+        }
+        return value.toString();
     }
 
     private static String monitorValue(MonitorStateDetector.Result monitor) {

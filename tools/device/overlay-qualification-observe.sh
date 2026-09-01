@@ -197,6 +197,8 @@ while [ "$i" -le "$SAMPLES" ]; do
     's/.*monitorReason=\([^ ]*\).*/\1/p')"
   camera_selected="$(printf '%s\n' "$visual_status" | sed -n \
     's/.*cameraSelected=\([^ ]*\).*/\1/p')"
+  camera_highlights="$(printf '%s\n' "$visual_status" | sed -n \
+    's/.*cameraHighlights=\([^ ]*\).*/\1/p')"
   camera_reason="$(printf '%s\n' "$visual_status" | sed -n \
     's/.*cameraReason=\([^ ]*\).*/\1/p')"
   battery_percent="$(printf '%s\n' "$visual_status" | sed -n \
@@ -209,6 +211,7 @@ while [ "$i" -le "$SAMPLES" ]; do
   monitor_up="${monitor_up:-UNKNOWN}"
   monitor_reason="${monitor_reason:-UNKNOWN}"
   camera_selected="${camera_selected:-UNKNOWN}"
+  camera_highlights="${camera_highlights:-UNKNOWN}"
   camera_reason="${camera_reason:-UNKNOWN}"
   battery_percent="${battery_percent:-UNKNOWN}"
   battery_reason="${battery_reason:-UNKNOWN}"
@@ -226,8 +229,19 @@ while [ "$i" -le "$SAMPLES" ]; do
       failed=1
       ;;
   esac
+  case "$camera_highlights" in
+    UNKNOWN|cam:[1-9]|cam:1[0-2]|cam:[1-9],cam:[1-9]|cam:[1-9],cam:1[0-2]|cam:1[0-2],cam:[1-9]|cam:1[0-2],cam:1[0-2]) ;;
+    *)
+      echo "sample $i: invalid highlighted-camera set ($camera_highlights)" >&2
+      failed=1
+      ;;
+  esac
   if [ "$monitor_up" != true ] && [ "$camera_selected" != UNKNOWN ]; then
     echo "sample $i: camera selection leaked while monitor is not up" >&2
+    failed=1
+  fi
+  if [ "$monitor_up" != true ] && [ "$camera_highlights" != UNKNOWN ]; then
+    echo "sample $i: camera highlight set leaked while monitor is not up" >&2
     failed=1
   fi
   if [ "$monitor_up" != true ] && [ "$camera_reason" != monitor-not-up ]; then

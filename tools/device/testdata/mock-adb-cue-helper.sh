@@ -57,7 +57,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
     # lags the device cannot catch it.
     #
     # cam05_mean_luma is deliberately unequal to luma so a transposed capture group shows.
-    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 gridLuma=24 ageUs=1200 content=2400x1080 visible=1 screen=FNAF2_NIGHT screenScore=100 detectorLatencyMs=1 monitorUp=true monitorReason=anchors-up cameraSelected=cam:5 cameraReason=single-camera-highlight batteryPercent=75 batteryReason=bars-observed audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected' ;;
+    GET/*) echo 'OK snapshotNs=9000 visual=OBSERVED seq=121 rgba=1,2,3 luma=2 cam05_mean_luma=37 grey=142 gridLuma=24 ageUs=1200 content=2400x1080 visible=1 screen=FNAF2_NIGHT screenScore=100 detectorLatencyMs=1 monitorUp=true monitorReason=anchors-up cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight batteryPercent=75 batteryReason=bars-observed audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected' ;;
     GRID/*)
       # 180 cells, with the sampled cell (3,6) = index 123 made distinctive.
       printf 'OK grid=20x9 seq=121 '

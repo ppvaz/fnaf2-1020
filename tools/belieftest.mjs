@@ -31,6 +31,27 @@ check('delayed observations retain source and both clocks',
   belief.facts.bbVent.observedAtMs === 80 && belief.facts.bbVent.receivedAtMs === 200 &&
   belief.sensorHealth.bbVent.reads === 1);
 
+belief = reduceBelief(belief, { type: 'observation', nowMs: 205,
+  facts: { cameraHighlights: observed(['cam:9', 'cam:11'], {
+    source: 'cue-helper', receivedAtMs: 205 }) } });
+check('split-camera observations retain both highlighted buttons for strategy checks',
+  JSON.stringify(belief.control.cameraHighlights.value) ===
+    JSON.stringify(['cam:9', 'cam:11']));
+belief = reduceBelief(belief, { type: 'observation', nowMs: 210,
+  facts: { cameraHighlights: unknown('monitor-not-up', {
+    source: 'cue-helper', receivedAtMs: 210 }) } });
+check('an unknown split-camera read does not erase the last observed pair',
+  belief.facts.cameraHighlights.state === 'UNKNOWN' &&
+  JSON.stringify(belief.lastKnown.cameraHighlights.value) ===
+    JSON.stringify(['cam:9', 'cam:11']) &&
+  JSON.stringify(belief.control.cameraHighlights.value) ===
+    JSON.stringify(['cam:9', 'cam:11']));
+belief = reduceBelief(belief, { type: 'observation', nowMs: 215,
+  facts: { cameraSelected: observed('cam:11', {
+    source: 'cue-helper', receivedAtMs: 215 }) } });
+check('a singular camera observation updates the viewed-camera control fact',
+  belief.control.viewedCamera.value === 'cam:11');
+
 belief = reduceBelief(belief, { type: 'action-sent', nowMs: 220,
   action: 'maskOn', expected: false, token: 'm1' });
 check('sent actions enter lockout before verification',

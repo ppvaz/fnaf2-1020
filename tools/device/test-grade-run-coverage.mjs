@@ -38,6 +38,7 @@ const EXCLUDED = new Map([
   ['windtrace.mjs', 'grades a MODEL, not a run: it replays the plan and reports what fraction of its wind frames the engine credited. There is no device counterpart -- the box level is not observable on the phone beyond the CAM 11 pie that windpct.py reads -- so grade-run.sh has nothing to hand it'],
   ['recipe.mjs', 'library, gated by test-recipe.mjs'],
   ['minus-toys-plan.mjs', 'device plan emitter + model gate for Minus Toys, gated by test-minus-toys-plan.mjs; trial.sh runs its --gate, it has no run to grade'],
+  ['arm-verification.mjs', 'shared camera-pair constants for strategy arming headers and host verification; not a run grader, covered by test-minus-toys-plan.mjs'],
   ['policy-ir.mjs', 'finite policy artifact builder, gated by test-policy-ir.mjs; it creates a program rather than grading a run'],
   ['policy-interpreter.mjs', 'finite semantic compiler and exact-engine adapter, gated by test-policy-interpreter.mjs; it consumes policy data rather than a device run'],
   ['policy-grammar.mjs', 'finite policy grammar library, gated by tools/policygrammartest.mjs; it validates candidates rather than grading a device run'],

@@ -19,6 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, maskWindows, phaseScan } from './minus-toys-plan.mjs';
+import { DOUBLE_GLITCH_CAMERA_PAIRS } from './arm-verification.mjs';
 import * as C from '@fnaf2-1020/core/mechanics';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -160,6 +161,13 @@ for (const night of ['2', '7']) {
   check(plan.includes('#arm-verify 1'),
     'the minimal plan does not ask the driver for the arm-verify window -- the ' +
     'runner-side check is what closes the 3-of-12 arm miss branch');
+  check(plan.includes('#arm-verify-cameras cam:9,cam:11'),
+    'the minimal plan does not identify the required CAM 09 + CAM 11 split');
+  check(JSON.stringify(DOUBLE_GLITCH_CAMERA_PAIRS.minus3) ===
+      JSON.stringify(['cam:8', 'cam:11']) &&
+      JSON.stringify(DOUBLE_GLITCH_CAMERA_PAIRS.minusToys) ===
+      JSON.stringify(['cam:9', 'cam:11']),
+    'the double-glitch camera pair registry drifted from Minus 3/Minus Toys');
 
   // --gate exits 0; and it refuses any night but 1.
   execFileSync('node', [join(here, 'minus-toys-plan.mjs'), '--night=1', '--minimal', '--gate'],

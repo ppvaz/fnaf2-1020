@@ -14,6 +14,16 @@ const planAction = action => action.startsWith('cam') ? action
   : action === 'ventl' ? 'ventl' : action;
 const semanticAction = action => action.startsWith('cam') ? `cam:${action.slice(3)}`
   : action === 'ventl' ? 'light' : action;
+const cameraName = value => /^cam:(?:[1-9]|1[0-2])$/.test(value ?? '');
+
+function armVerifyCameras(value) {
+  if (value === undefined) return null;
+  if (!Array.isArray(value) || value.length < 2 ||
+      value.some(camera => !cameraName(camera)) || new Set(value).size !== value.length)
+    fail('metadata.armVerifyCameras must contain unique camera names');
+  const sorted = [...value].sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
+  return sorted.join(',');
+}
 
 function fail(message) { throw new TypeError(`policy equivalence: ${message}`); }
 
@@ -55,6 +65,8 @@ export function compileDevicePlan(program) {
     `#observe-until ${observe.endMs}`];
   if (idle && idle.endMs > 0) lines.push(`#idle-until ${idle.endMs}`);
   if (program.metadata.armVerify) lines.push('#arm-verify 1');
+  const verifyCameras = armVerifyCameras(program.metadata.armVerifyCameras);
+  if (verifyCameras) lines.push(`#arm-verify-cameras ${verifyCameras}`);
   lines.push('#cycle opening', ...(setup.actions ?? []).map(action => rowFor(action, false).join(' ')));
   lines.push('#cycle toys', ...(repeat.actions ?? []).map(action => rowFor(action, true).join(' ')));
   if (finish.actions?.length)
@@ -181,6 +193,10 @@ export function comparePolicyToDevice(program, text = compileDevicePlan(program)
     mismatches.push({ field: 'night', simulator: program.metadata.nights[0], phone: night });
   if (program.metadata.armVerify && parsed.headers['arm-verify'] !== '1')
     mismatches.push({ field: 'arm-verify', simulator: '1', phone: parsed.headers['arm-verify'] ?? null });
+  const verifyCameras = armVerifyCameras(program.metadata.armVerifyCameras);
+  if (verifyCameras && parsed.headers['arm-verify-cameras'] !== verifyCameras)
+    mismatches.push({ field: 'arm-verify-cameras', simulator: verifyCameras,
+      phone: parsed.headers['arm-verify-cameras'] ?? null });
   return { equal: mismatches.length === 0, mismatches,
     simulatorCount: simKeys.length, phoneCount: phoneKeys.length };
 }

@@ -2,6 +2,21 @@
 
 **Updated:** 2026-09-01
 
+2026-09-01 double-camera arming verification wiring — the native Cue Helper
+camera detector now preserves every firmly highlighted camera button, so a
+split remains `cameraHighlights=cam:9,cam:11` instead of collapsing to an
+unsafe singular selection. The host observation payload and belief reducer
+carry the complete pair; the simulated observer covers both the Minus Toys
+CAM 09 + CAM 11 pair and the Minus 3 CAM 08 + CAM 11 registry. Minimal device
+plans now declare `#arm-verify-cameras`, policy equivalence checks the header,
+and the live runner uses the exact pair when `CUE_HELPER=1`, retaining the
+CAM 11-only classifier as an explicit compatibility fallback. Adapter, native,
+mock transport, observer, belief, plan, typecheck, and full `npm test` lanes
+pass. Fixture device boundary record: `run-20260901221146-7c855d48-4e4c57`
+(`FIXTURE`, not gameplay or physical camera evidence). **Open:** install and
+run the rebuilt helper on a night surface to qualify the pair detector on the
+g56; no device claim is made by this implementation pass.
+
 2026-09-01 Cue Helper touch-evidence contract hardening — the Plan 23
 qualification validator now requires one retained trial record for each of
 `mask`, `leftVent`, `rightVent`, `flashlight`, `cameraMap`, and
@@ -156,11 +171,12 @@ and confirmed no helper process/projection remains; rotation is restored to
 `user_rotation=0`, `accelerometer_rotation=0`.
 
 The host `CueHelperControlTransport` now also exposes the helper's explicit
-`cameraSelected` fact, but only for a fresh snapshot whose monitor is observed
-up; stale, down, unknown, malformed, and out-of-range values remain UNKNOWN.
-Stale reads use `read-stale`, while invalid or untrusted reason text is reduced
-to `read-unavailable`, preserving the camera-rule vocabulary. Adapter contract
-tests and the Android host suite pass after this hardening.
+`cameraSelected` fact and complete `cameraHighlights` set, but only for a fresh
+snapshot whose monitor is observed up; stale, down, unknown, malformed, and
+out-of-range values remain UNKNOWN. Stale reads use `read-stale`, while invalid
+or untrusted reason text is reduced to `read-unavailable`, preserving the
+camera-rule vocabulary. Adapter contract tests and the Android host suite pass
+after this hardening.
 
 The qualification sampler now asserts the same visibility rule in retained
 telemetry: camera selection must be `UNKNOWN` with reason `monitor-not-up`
@@ -379,8 +395,9 @@ sent). Outcome, in order:
    twice across a night reset). Live READ on CAM 11 while winding: dimmed
    selected state 96 (≈50% alpha blend of the 194 fill), steady; CAM 12
    unwound: 193; unselected −19..−9 — the dimmed state is inside cam11's
-   fitted lit band (margin 52.5). Runtime wiring into the live observation
-   loop is NOT done yet: the fact exists as artifact + detector module only.
+   fitted lit band (margin 52.5). Runtime wiring now carries both the singular
+   fact and complete highlighted set through the live observation loop;
+   physical qualification remains open.
 6. **Tap coordinates corrected from the same captures** (both g56 profiles,
    geometry binding bumped to `moto-g56-fnaf2-default-controls-v2`):
    cam:4 → (1728,690), cam:7 → (1776,606), cam:9 → (2144,548),
@@ -401,15 +418,13 @@ sent). Outcome, in order:
    sourced rules), typechecks green, docs 253 tools indexed, Java host tests
    green, Python calibration suites green, `npm run device:dry-run` PASS,
    evidence `run-20260901060804-acf5ca2a-4e4c57` (`FIXTURE`).
-   **Open:** (a) cameraSelected runtime wiring (detector port, READ merge in
-   the composition, profile `calibrations.cameraRule` digest binding,
-   belief-state consumption) — the windHeld pixel + any other additions ride
-   the next APK rebuild; monitorUp/cameraSelected qualification runs on the
-   g56 (they are calibrated, unqualified); (b) device-local executor, (c)
-   100 ms Night 6 qualification, (d) 17 ms qualification, the BB-left model
-   gap, the deferred census/geometry search, and later-night re-validation of
-   both rules (corpus is Night 1) are unchanged. A send is not game
-   acceptance.
+   **Open:** (a) profile `calibrations.cameraRule` digest binding, the
+   windHeld pixel and any other additions on the next APK rebuild;
+   monitorUp/cameraSelected qualification runs on the g56 (they are
+   calibrated, unqualified); (b) device-local executor, (c) 100 ms Night 6
+   qualification, (d) 17 ms qualification, the BB-left model gap, the
+   deferred census/geometry search, and later-night re-validation of both
+   rules (corpus is Night 1) are unchanged. A send is not game acceptance.
 2026-09-01 device + Plan 22 session (codex `01a05a9b`) — the Night 6 winner
 was **not** run live; the session became an exact-geometry gate plus a Plan 22
 device-boundary build after two legacy phone attempts desynced. Request: "run
