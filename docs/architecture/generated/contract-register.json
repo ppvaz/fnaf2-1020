@@ -193,6 +193,18 @@
       "owner": "apps/device",
       "kind": "artifact",
       "validator": "apps/device/src/artifact-executor.js validateExecutorRequest"
+    },
+    {
+      "id": "monitor-rule-v1",
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "validator": "packages/adapters/src/monitor-rule.js parseMonitorRule"
+    },
+    {
+      "id": "camera-rule-v1",
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "validator": "packages/adapters/src/camera-rule.js parseCameraRule"
     }
   ]
 }

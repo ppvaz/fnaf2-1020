@@ -43,6 +43,24 @@
       }
     },
     {
+      "id": "packages/adapters/test/camera-rule.test.js",
+      "lane": "test:unit",
+      "owner": "package boundary",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
       "id": "packages/adapters/test/conformance.test.js",
       "lane": "test:unit",
       "owner": "package boundary",
@@ -54,6 +72,24 @@
       "sharedResources": [
         "device-transport"
       ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "packages/adapters/test/monitor-rule.test.js",
+      "lane": "test:unit",
+      "owner": "package boundary",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
       "subprocesses": false,
       "measurement": {
         "status": "NOT_MEASURED",
@@ -633,6 +669,24 @@
       }
     },
     {
+      "id": "tools/device/test-camera-calibrate.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
       "id": "tools/device/test-camtrace.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
@@ -1014,6 +1068,24 @@
         "device-transport"
       ],
       "subprocesses": true,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-monitor-calibrate.py",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
+      "subprocesses": false,
       "measurement": {
         "status": "NOT_MEASURED",
         "runs": 0,

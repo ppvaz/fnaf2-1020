@@ -9,6 +9,7 @@ import { DeviceControlService } from '../src/service.js';
 import { createActuatorMcp } from '../src/mcp.js';
 import { FixtureActuator } from '@fnaf2-1020/adapters/actuators';
 import { FixtureRawSensor } from '@fnaf2-1020/adapters/sensors';
+import { measureMonitorUp, monitorRuleDigest, parseMonitorRule } from '@fnaf2-1020/adapters';
 import { composeDevice } from '../src/composition.js';
 import { composeModernDevice } from '../src/modern-composition.js';
 import { DeviceArtifactExecutor, DEVICE_EXECUTOR_SCHEMA } from '../src/artifact-executor.js';
@@ -59,6 +60,121 @@ const modern = composeModernDevice({ profile: liveProfile,
     sampleCount: 1, verdict: 'PASS' }, artifactRoot });
 assert.equal(modern.mode, 'live');
 assert.equal(modern.profile.id, liveProfile.id);
+
+// MonitorUp rule binding: without a fitted rule the detector stays UNKNOWN,
+// and an injected rule must match the profile's declared digest exactly.
+// The committed g56 rule is anchored on the monitor map drawing; the test
+// synthesises grid rows from the anchors' own measured edges.
+const fittedRule = JSON.parse(await readFile(
+  fileURLToPath(new URL('../../../models/monitor-rule-moto-g56-v207.json', import.meta.url)), 'utf8'));
+const ruleDigest = monitorRuleDigest(fittedRule);
+{
+  const ruleProfile = JSON.parse(await readFile(
+    fileURLToPath(new URL('../profiles/hid-mediaprojection.json', import.meta.url)), 'utf8'));
+  assert.equal(ruleProfile.calibrations.monitorRule, ruleDigest,
+    'the committed profile must bind the committed rule artifact digest');
+
+  const luma = cell => (77 * ((cell >> 16) & 0xff) + 150 * ((cell >> 8) & 0xff)
+    + 29 * (cell & 0xff)) >> 8;
+  const greyTriple = value => value * 0x010101;
+  const anchorCells = up => {
+    const cells = Array.from({ length: 180 }, () => greyTriple(32));
+    for (const anchor of fittedRule.adapter.anchors) {
+      const { threshold, refuse_band: band } = anchor.rule;
+      const present = anchor.kind === 'present';
+      const edge = Math.round(up === present ? threshold + band : threshold - band);
+      cells[anchor.cell] = greyTriple(Math.max(0, Math.min(255, edge)));
+    }
+    return cells;
+  };
+  const upRow = anchorCells(true);
+  const downRow = anchorCells(false);
+  for (const anchor of fittedRule.adapter.anchors) {
+    const { threshold, refuse_band: band } = anchor.rule;
+    const upEdge = anchor.kind === 'present' ? threshold + band : threshold - band;
+    const notUpEdge = anchor.kind === 'present' ? threshold - band : threshold + band;
+    assert.equal(luma(upRow[anchor.cell]) === Math.round(upEdge), true,
+      `anchor ${anchor.cell} must sit on its up edge in the up row`);
+    assert.equal(luma(downRow[anchor.cell]) === Math.round(notUpEdge), true,
+      `anchor ${anchor.cell} must sit on its not-up edge in the down row`);
+  }
+  const hex = cells => `OK grid=20x9 seq=7 ${cells.map(cell => cell.toString(16).padStart(6, '0')).join(' ')}`;
+  const cueWith = (cells, { gridSeq = 7 } = {}) => ({
+    token: '0123456789abcdef0123456789abcdef',
+    request: request => request.startsWith('GET ')
+      ? 'OK snapshotNs=1 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
+      : request.startsWith('GRID ') ? hex(cells).replace('seq=7', `seq=${gridSeq}`) : 'ERROR unsupported',
+  });
+  const ports = {
+    hid: { write: async () => {}, ready: async () => {}, sleep: async () => {} },
+    qualification: { schema: 'qualification-v1', evidenceId: 'fixture-monitor-rule',
+      claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1',
+      sampleCount: 1, verdict: 'PASS' }, artifactRoot,
+  };
+  const unruled = composeModernDevice({ profile: ruleProfile, cue: cueWith(upRow), ...ports });
+  const unruledSample = await unruled.sensor.sample({ id: 'probe-unruled', at: 0 });
+  const unruledMeasurement = unruled.detector.detect(unruledSample);
+  assert.equal(unruledMeasurement.state, 'UNKNOWN');
+  assert.equal(unruledMeasurement.reason, 'monitor-rule-absent',
+    'without a fitted rule the monitor fact stays UNKNOWN even on a plausible frame');
+
+  const wrongDigestProfile = { ...ruleProfile,
+    calibrations: { ...ruleProfile.calibrations, monitorRule: '0'.repeat(64) } };
+  assert.throws(() => composeModernDevice({ profile: wrongDigestProfile, monitorRule: fittedRule,
+    cue: cueWith(upRow), ...ports }), /monitor rule digest/,
+    'a digest mismatch refuses composition');
+
+  const boundProfile = { ...ruleProfile };
+  boundProfile.limits = { ...boundProfile.limits, dryRunOnly: false };
+  const ruled = composeModernDevice({ profile: boundProfile, monitorRule: fittedRule,
+    cue: cueWith(upRow), ...ports });
+  const ruledSample = await ruled.sensor.sample({ id: 'probe-ruled', at: 0 });
+  const ruledMeasurement = ruled.detector.detect(ruledSample);
+  assert.equal(ruledMeasurement.state, 'OBSERVED');
+  assert.equal(ruledMeasurement.value, true,
+    'map-anchor presence must derive monitorUp through the bound rule');
+
+  // Full conditioned chain: rule-derived UP observations gate a camera select.
+  let cameraSends = 0;
+  const cameraTransport = { send: async () => { cameraSends += 1; }, abort: () => {}, releaseAll: () => {} };
+  const cameraService = composeDevice({
+    profile: boundProfile, mode: 'live', artifactRoot,
+    actuatorTransport: cameraTransport,
+    qualification: ports.qualification,
+    sensorTransport: { capture: () => ({ ageUs: 1, screen: 'FNAF2_NIGHT', seq: 7, gridSeq: 7,
+      gridLuma: 32, cells: upRow }) },
+    detectorRead: raw => measureMonitorUp(raw.payload, parseMonitorRule(fittedRule)),
+    now: () => 10, sleep: async () => {},
+  });
+  cameraService.startSession();
+  const camCommand = { schema: 'control-command-v1', id: 'ruled-cam7',
+    action: { kind: 'select', control: 'cam:7' },
+    requestedAt: { clock: 'device-monotonic-ms', value: 10 },
+    deadline: { clock: 'device-monotonic-ms', value: 1000 },
+    source: { controller: 'artifact-test', requiresMonitorUp: true } };
+  await cameraService.executeConditioned([camCommand]);
+  assert.equal(cameraSends, 1,
+    'two agreeing rule-derived UP observations must gate the camera select through');
+
+  // A stale grid (seq disagreement) must refuse the fact and never send.
+  let staleSends = 0;
+  const staleService = composeDevice({
+    profile: boundProfile, mode: 'live', artifactRoot,
+    actuatorTransport: { send: async () => { staleSends += 1; }, abort: () => {}, releaseAll: () => {} },
+    qualification: ports.qualification,
+    sensorTransport: { capture: () => ({ ageUs: 1, screen: 'FNAF2_NIGHT', seq: 7, gridSeq: 8,
+      gridLuma: 32, cells: upRow }) },
+    detectorRead: raw => measureMonitorUp(raw.payload, parseMonitorRule(fittedRule)),
+    now: () => 10, sleep: async () => {},
+  });
+  staleService.startSession();
+  await assert.rejects(() => staleService.executeConditioned([{ ...camCommand, id: 'stale-cam7' }]),
+    /monitor state UNKNOWN: grid-seq-mismatch/,
+    'a grid row from another frame must refuse the monitor fact');
+  assert.equal(staleSends, 0,
+    'an UNKNOWN monitor state must never put a camera coordinate onto the office');
+}
+
 liveProfile.limits.dryRunOnly = false;
 let sent = 0;
 const liveTransport = {

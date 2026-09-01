@@ -20,6 +20,27 @@ export function parseCueResponse(line) {
   return Object.freeze(fields);
 }
 
+/**
+ * Parse the GRID response: `OK grid=20x9 seq=<n> <180 hex RRGGBB cells>`.
+ * The cells are the helper's whole 20x9 point-sampled sensor, row-major;
+ * a calibrated anchor indexes this array. CONTRACT:cue-helper-control-v1.
+ */
+export function parseCueGrid(line) {
+  if (!bounded(line)) throw new TypeError('cue-helper grid response is missing or oversized');
+  const text = line.trim();
+  if (!text.startsWith('OK ')) throw new Error(text.startsWith('ERROR ') ? text : 'cue-helper response is not OK');
+  const tokens = text.slice(3).split(/\s+/);
+  if (!/^grid=20x9$/.test(tokens[0] ?? '') || !/^seq=\d+$/.test(tokens[1] ?? ''))
+    throw new Error('cue-helper grid response is malformed');
+  const cells = [];
+  for (let index = 2; index < tokens.length; index += 1) {
+    if (!/^[0-9a-f]{6}$/.test(tokens[index])) throw new Error('cue-helper grid cell is malformed');
+    cells.push(parseInt(tokens[index], 16));
+  }
+  if (cells.length !== 180) throw new TypeError('cue-helper grid must carry the 180-cell sensor');
+  return Object.freeze({ grid: '20x9', seq: Number(tokens[1].slice(4)), cells: Object.freeze(cells) });
+}
+
 export class CueHelperControlTransport {
   /** @param {any} options */
   constructor({ request, token, maxAgeUs = 500000 } = {}) {
@@ -29,7 +50,7 @@ export class CueHelperControlTransport {
   }
 
   snapshot() { return parseCueResponse(this.request(`GET ${this.token}`)); }
-  grid() { return parseCueResponse(this.request(`GRID ${this.token}`)); }
+  grid() { return parseCueGrid(this.request(`GRID ${this.token}`)); }
   watch(action) {
     if (action !== 'status' && !/^[0-9a-f]{64}$/.test(action)) throw new TypeError('cue-helper watch action is invalid');
     return parseCueResponse(this.request(`WATCH ${this.token} ${action}`));

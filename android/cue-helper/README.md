@@ -211,10 +211,10 @@ error and no sensor data.
 
 | Request | Response | Notes |
 |---|---|---|
-| `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. |
-| `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid. |
-| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist. |
-| `READ <token>` | `OK read=...` | Read the active visual watchlist. |
+| `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. The visual line carries the whole-grid statistics `grey` (near-grey cell count) and `gridLuma` (grid mean luma) — verdict-free features a calibrated consumer may fit rules against. |
+| `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid (180 point samples, row-major). |
+| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (16 entries: 4 sourced + 12 measured monitor-map camera buttons). |
+| `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. |
 
 `CAL`, `LOG`, `ARM`, and `RESULT` are no longer APK commands. Model import and
 PCM recording are APK UI operations; cue observation is shadow-only until

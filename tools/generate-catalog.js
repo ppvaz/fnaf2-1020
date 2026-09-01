@@ -82,6 +82,8 @@ const contractEvidence = {
   'pcm-udp-v1': ['tools/cue/test-audio-authority.py'],
   'hid-executor-v1': ['tools/device/test-runner-plan.mjs'],
   'device-executor-v1': ['apps/device/test/service.test.js'],
+  'monitor-rule-v1': ['packages/adapters/test/monitor-rule.test.js', 'tools/device/test-monitor-calibrate.py'],
+  'camera-rule-v1': ['packages/adapters/test/camera-rule.test.js', 'tools/device/test-camera-calibrate.py'],
 };
 const contractSpecifications = {
   schema: 'contract-specification-catalog-v1',

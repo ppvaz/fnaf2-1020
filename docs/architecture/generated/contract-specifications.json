@@ -647,6 +647,48 @@
       "conformanceFixtures": [
         "apps/device/test/service.test.js"
       ]
+    },
+    {
+      "contractId": "monitor-rule-v1",
+      "id": "monitor-rule-v1",
+      "version": 1,
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "purpose": "Stable monitor-rule-v1 boundary for packages/adapters; its validator is packages/adapters/src/monitor-rule.js parseMonitorRule.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "packages/adapters/src/monitor-rule.js parseMonitorRule",
+      "conformanceFixtures": [
+        "packages/adapters/test/monitor-rule.test.js",
+        "tools/device/test-monitor-calibrate.py"
+      ]
+    },
+    {
+      "contractId": "camera-rule-v1",
+      "id": "camera-rule-v1",
+      "version": 1,
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "purpose": "Stable camera-rule-v1 boundary for packages/adapters; its validator is packages/adapters/src/camera-rule.js parseCameraRule.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "packages/adapters/src/camera-rule.js parseCameraRule",
+      "conformanceFixtures": [
+        "packages/adapters/test/camera-rule.test.js",
+        "tools/device/test-camera-calibrate.py"
+      ]
     }
   ]
 }

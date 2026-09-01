@@ -33,6 +33,8 @@
     {"id":"pcm-udp-v1","owner":"firmware","kind":"wire","validator":"28-byte header"},
     {"id":"hid-executor-v1","owner":"apps/device","kind":"wire","validator":"trajectory JSONL"},
     {"id":"device-artifact-v1","owner":"tools/device","kind":"artifact","validator":"hashed semantic blocks"},
-    {"id":"device-executor-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/artifact-executor.js validateExecutorRequest"}
+    {"id":"device-executor-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/artifact-executor.js validateExecutorRequest"},
+    {"id":"monitor-rule-v1","owner":"packages/adapters","kind":"artifact","validator":"packages/adapters/src/monitor-rule.js parseMonitorRule"},
+    {"id":"camera-rule-v1","owner":"packages/adapters","kind":"artifact","validator":"packages/adapters/src/camera-rule.js parseCameraRule"}
   ]
 }

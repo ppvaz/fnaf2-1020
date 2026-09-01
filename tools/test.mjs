@@ -303,6 +303,15 @@ const ENGINE = [
   // Plan 19 P3: derive a native-resolution watch adapter from labelled frames;
   // weak separation is an explicit refusal and foreign geometry is not resized.
   ['watch calibration', ['device/test-watch-calibrate.py']],
+  // Plan 22 device boundary: fit the monitorUp rule over the helper grid from
+  // labelled frames. Mask/animation/blackout evidence is mandatory: a rule
+  // that cannot separate the mask, contain the animation, or clear a blackout
+  // refuses, and the artifact must drive the production JS detector.
+  ['monitor calibration', ['device/test-monitor-calibrate.py']],
+  // The cameraSelected rule: twelve measured map-button pixels; exactly one
+  // lit names the camera, zero and several are distinct refusals (a camera
+  // transition and the Android double-camera glitch must stay separable).
+  ['camera calibration', ['device/test-camera-calibrate.py']],
   // The cue-trace loop's kill switch must be a file the loop never writes:
   // the first form resurrected itself past cleanup's rm and orphaned ~14 Hz
   // stale-token loops that stalled 1-3% of live cue reads for ~1 s each.

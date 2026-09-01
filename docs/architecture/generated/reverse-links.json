@@ -73,6 +73,25 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/camera-rule.js",
+      "line": 15,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/camera-rule.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-camera-calibrate.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.capability-v1",
       "kind": "CONTRACT",
       "path": "packages/adapters/src/registry.js",
@@ -121,6 +140,13 @@
       "kind": "CONTRACT",
       "path": "packages/adapters/src/transports/cue-helper.js",
       "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 26,
       "relation": "REFERENCES"
     },
     {
@@ -236,6 +262,32 @@
       "id": "contract.measurement-v1",
       "kind": "CONTRACT",
       "path": "packages/core/test/contracts.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/monitor-rule.js",
+      "line": 16,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/monitor-rule.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "plans/PROGRESS.md",
+      "line": 26,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-monitor-calibrate.py",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {

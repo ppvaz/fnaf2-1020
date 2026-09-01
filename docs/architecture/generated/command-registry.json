@@ -37,7 +37,7 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
       "lifecycle": "supported"
     },
     {
@@ -785,6 +785,30 @@
     {
       "id": "tools/device/test-watch-calibrate.py",
       "invocation": "tools/device/test-watch-calibrate.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/monitor-calibrate.py",
+      "invocation": "tools/device/monitor-calibrate.py",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-monitor-calibrate.py",
+      "invocation": "tools/device/test-monitor-calibrate.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/camera-calibrate.py",
+      "invocation": "tools/device/camera-calibrate.py",
+      "kind": "module/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-camera-calibrate.py",
+      "invocation": "tools/device/test-camera-calibrate.py",
       "kind": "check",
       "lifecycle": "supported"
     },

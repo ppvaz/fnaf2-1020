@@ -78,6 +78,30 @@ public final class ScreenStatsTest {
         checkEquals("negative count is refused",
                 -1, ScreenStats.greyCells(new int[] {grey}, -1));
 
+        // meanLuma vectors. The luma weights match the watch: (77r+150g+29b)>>8.
+        // A zero mean is a valid reading (dark frame), distinct from -1, which
+        // means "no reading". The statistic guards darkness; it must never be
+        // turned into a classifier -- measured mean-luma bands overlap
+        // (camera 3.8-63.1 against office 28.6-35.6).
+        checkEquals("all-black grid has mean luma zero",
+                0, ScreenStats.meanLuma(grid(180, 0x000000, 0x000000, 0), 180));
+        checkEquals("all-white grid has mean luma 255",
+                255, ScreenStats.meanLuma(grid(180, 0xffffff, 0xffffff, 0), 180));
+        checkEquals("uniform mid-grey grid has mean luma 128",
+                128, ScreenStats.meanLuma(grid(180, grey, grey, 0), 180));
+        // (0x000000 -> 0) and (0xffffff -> 255): floor(255/2) = 127.
+        checkEquals("half-black half-white grid floors to 127",
+                127, ScreenStats.meanLuma(grid(180, 0x000000, 0xffffff, 90), 180));
+        // 0xc2dd00: r=194, g=221, b=0 -> (77*194 + 150*221 + 29*0) >> 8 = 187.
+        checkEquals("measured button lime carries luma 187",
+                187, ScreenStats.meanLuma(new int[] {lime}, 1));
+        checkEquals("mean luma refuses the null grid", -1, ScreenStats.meanLuma(null, 0));
+        checkEquals("mean luma refuses an empty grid", -1, ScreenStats.meanLuma(new int[] {grey}, 0));
+        checkEquals("mean luma refuses a count past the array",
+                -1, ScreenStats.meanLuma(new int[] {grey}, 2));
+        checkEquals("mean luma refuses a negative count",
+                -1, ScreenStats.meanLuma(new int[] {grey}, -1));
+
         if (failures > 0) {
             System.out.println(failures + " check(s) failed");
             System.exit(1);

@@ -68,6 +68,7 @@
         "../src/mcp.js",
         "../src/modern-composition.js",
         "../src/service.js",
+        "@fnaf2-1020/adapters",
         "@fnaf2-1020/adapters/actuators",
         "@fnaf2-1020/adapters/sensors",
         "@fnaf2-1020/core/contracts",
@@ -138,6 +139,12 @@
       ]
     },
     {
+      "file": "packages/adapters/src/camera-rule.js",
+      "imports": [
+        "node:crypto"
+      ]
+    },
+    {
       "file": "packages/adapters/src/clocks.js",
       "imports": [
         "@fnaf2-1020/core/timing"
@@ -147,11 +154,19 @@
       "file": "packages/adapters/src/index.js",
       "imports": [
         "./actuators.js",
+        "./camera-rule.js",
         "./clocks.js",
+        "./monitor-rule.js",
         "./registry.js",
         "./sensors.js",
         "./transports/cue-helper.js",
         "./transports/hid.js"
+      ]
+    },
+    {
+      "file": "packages/adapters/src/monitor-rule.js",
+      "imports": [
+        "node:crypto"
       ]
     },
     {
@@ -168,6 +183,13 @@
       ]
     },
     {
+      "file": "packages/adapters/test/camera-rule.test.js",
+      "imports": [
+        "../src/camera-rule.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/adapters/test/conformance.test.js",
       "imports": [
         "../src/actuators.js",
@@ -176,6 +198,13 @@
         "../src/sensors.js",
         "../src/transports/cue-helper.js",
         "../src/transports/hid.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/adapters/test/monitor-rule.test.js",
+      "imports": [
+        "../src/monitor-rule.js",
         "node:assert/strict"
       ]
     },

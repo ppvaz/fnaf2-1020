@@ -41,11 +41,26 @@ PROFILE_ID = "moto-g56-v207-landscape"
 
 # Keep this list mechanically aligned with PixelWatch.defaultSpec(). The hash
 # is checked in the output and is the value accepted by CaptureService.WATCH.
+# The camNN_button pixels are the measured monitor-map camera buttons
+# (selected button renders yellow, yellowness near 194; coordinates measured
+# on 2026-09-01 g56 captures) for the cameraSelected fact.
 ENTRIES = (
     ("bb_left_luma", "PIXEL", 451, 730, 1, 1, "LUMA", 1, 0),
     ("bb_left_yellowness", "PIXEL", 451, 730, 1, 1, "YELLOWNESS", 1, 0),
     ("cam05_mean_luma", "ROI", 600, 180, 520, 320, "MEAN_LUMA", 4, 0),
     ("screen_grey_cells", "ROI", 0, 0, 2400, 1080, "GREY_CELLS", 120, 25),
+    ("cam01_button", "PIXEL", 1412, 784, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam02_button", "PIXEL", 1720, 784, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam03_button", "PIXEL", 1411, 690, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam04_button", "PIXEL", 1728, 690, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam05_button", "PIXEL", 1424, 916, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam06_button", "PIXEL", 1696, 916, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam07_button", "PIXEL", 1776, 606, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam08_button", "PIXEL", 1412, 590, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam09_button", "PIXEL", 2144, 548, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam10_button", "PIXEL", 1984, 716, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam11_button", "PIXEL", 2228, 652, 1, 1, "YELLOWNESS", 1, 0),
+    ("cam12_button", "PIXEL", 2188, 784, 1, 1, "YELLOWNESS", 1, 0),
 )
 CANONICAL_SPEC = SPEC_VERSION + "\n" + "".join(
     "%s|%s|%d|%d|%d|%d|%s|%d|%d\n" % entry for entry in ENTRIES
@@ -116,24 +131,29 @@ def luma(rgb):
 
 
 def feature_values(image):
-    pixel = image.getpixel((451, 730))
-    values = {
-        "bb_left_luma": luma(pixel),
-        "bb_left_yellowness": min(pixel[0], pixel[1]) - pixel[2],
-    }
-    total = 0
-    for y in range(180, 500, 4):
-        for x in range(600, 1120, 4):
-            total += luma(image.getpixel((x, y)))
-    values["cam05_mean_luma"] = total // (130 * 80)
-
-    grey = 0
-    for y in range(0, HEIGHT, 120):
-        for x in range(0, WIDTH, 120):
-            r, g, b = image.getpixel((x, y))
-            if max(r, g, b) - min(r, g, b) < 25:
-                grey += 1
-    values["screen_grey_cells"] = grey
+    """Compute every ENTRIES feature from one frame; ENTRIES is the only authority."""
+    values = {}
+    for name, kind, x, y, width, height, reducer, step, grey_spread in ENTRIES:
+        if kind == "PIXEL":
+            pixel = image.getpixel((x, y))
+            values[name] = luma(pixel) if reducer == "LUMA" \
+                else min(pixel[0], pixel[1]) - pixel[2]
+        elif reducer == "GREY_CELLS":
+            grey = 0
+            for yy in range(y, y + height, step):
+                for xx in range(x, x + width, step):
+                    r, g, b = image.getpixel((xx, yy))
+                    if max(r, g, b) - min(r, g, b) < grey_spread:
+                        grey += 1
+            values[name] = grey
+        else:
+            total = 0
+            count = 0
+            for yy in range(y, y + height, step):
+                for xx in range(x, x + width, step):
+                    total += luma(image.getpixel((xx, yy)))
+                    count += 1
+            values[name] = total // count
     return values
 
 

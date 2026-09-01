@@ -1,0 +1,245 @@
+{
+  "adapter": {
+    "anchors": [
+      {
+        "cell": 112,
+        "feature": "luma",
+        "kind": "present",
+        "not_up": {
+          "down": [
+            0,
+            32
+          ],
+          "mask": [
+            18,
+            64
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 44.5,
+          "threshold": 108.5
+        },
+        "separation_margin": 44.5,
+        "up_range": [
+          153,
+          170
+        ],
+        "x": 1500,
+        "y": 660
+      },
+      {
+        "cell": 131,
+        "feature": "luma",
+        "kind": "present",
+        "not_up": {
+          "down": [
+            0,
+            21
+          ],
+          "mask": [
+            0,
+            0
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 16.0,
+          "threshold": 37.0
+        },
+        "separation_margin": 16.0,
+        "up_range": [
+          53,
+          53
+        ],
+        "x": 1380,
+        "y": 780
+      },
+      {
+        "cell": 132,
+        "feature": "luma",
+        "kind": "present",
+        "not_up": {
+          "down": [
+            0,
+            24
+          ],
+          "mask": [
+            0,
+            0
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 72.5,
+          "threshold": 96.5
+        },
+        "separation_margin": 72.5,
+        "up_range": [
+          169,
+          180
+        ],
+        "x": 1500,
+        "y": 780
+      },
+      {
+        "cell": 151,
+        "feature": "luma",
+        "kind": "present",
+        "not_up": {
+          "down": [
+            0,
+            18
+          ],
+          "mask": [
+            0,
+            0
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 17.5,
+          "threshold": 35.5
+        },
+        "separation_margin": 17.5,
+        "up_range": [
+          53,
+          53
+        ],
+        "x": 1380,
+        "y": 900
+      },
+      {
+        "cell": 165,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "down": [
+            182,
+            182
+          ],
+          "mask": [
+            182,
+            182
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 40.5,
+          "threshold": 141.5
+        },
+        "separation_margin": 40.5,
+        "up_range": [
+          0,
+          101
+        ],
+        "x": 660,
+        "y": 1020
+      },
+      {
+        "cell": 167,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "down": [
+            187,
+            187
+          ],
+          "mask": [
+            187,
+            187
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 78.5,
+          "threshold": 108.5
+        },
+        "separation_margin": 78.5,
+        "up_range": [
+          1,
+          30
+        ],
+        "x": 900,
+        "y": 1020
+      }
+    ],
+    "anim_reads": {
+      "false": 1,
+      "true": 1,
+      "unknown": 10
+    },
+    "calibration_frames": 42,
+    "class_counts": {
+      "anim": 12,
+      "down": 10,
+      "mask": 10,
+      "up": 10
+    },
+    "corpus_reads": {
+      "down": {
+        "false": 10,
+        "true": 0,
+        "unknown": 0
+      },
+      "mask": {
+        "false": 10,
+        "true": 0,
+        "unknown": 0
+      },
+      "up": {
+        "false": 0,
+        "true": 10,
+        "unknown": 0
+      }
+    },
+    "guard": {
+      "feature": "helper_grid_mean_luma",
+      "kind": "floor",
+      "min": 5,
+      "reason": "frame-dark"
+    },
+    "limitations": [
+      "night-1-corpus",
+      "blackout-unproven"
+    ],
+    "minimum_margin": 5.0,
+    "selection": "per-cell luma/yellowness worst-case gap, top margins, max 4 present + 2 absent"
+  },
+  "fact": {
+    "id": "monitorUp",
+    "labels": [
+      "anim",
+      "down",
+      "mask",
+      "up"
+    ],
+    "unknown_reasons": [
+      "frame-pending",
+      "frame-stale",
+      "screen-identity",
+      "frame-dark",
+      "feature-missing",
+      "ambiguous-threshold",
+      "sensor-mismatch",
+      "calibration-refused",
+      "monitor-rule-absent",
+      "monitor-state-unavailable",
+      "grid-seq-mismatch",
+      "grid-unavailable"
+    ]
+  },
+  "reason": null,
+  "schema": "monitor-rule-v1",
+  "schema_version": 1,
+  "sensor": {
+    "geometry": [
+      2400,
+      1080
+    ],
+    "id": "cue-helper-mediaprojection-2400x1080",
+    "profile_id": "moto-g56-v207-landscape",
+    "sampling": "helper-grid-20x9-cell-center"
+  },
+  "status": "calibrated"
+}

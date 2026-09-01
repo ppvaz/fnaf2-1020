@@ -44,9 +44,32 @@ MediaProjection profile. It accepts explicit adapter-owned HID and cue-helper
 ports; those ports must already use the device-local execution path. It does
 not import the legacy trial, infer coordinates, or turn transport availability
 into qualification evidence. Pass an explicit `DeviceArtifactExecutor` when
-consuming a compiled artifact; without it artifact execution is refused. The
-helper must expose a fresh `monitorUp` field;
-until then the detector returns `UNKNOWN` and the service refuses actuation.
+consuming a compiled artifact; without it artifact execution is refused.
+
+Monitor state comes from a calibrated `monitor-rule-v1` artifact
+(`packages/adapters/src/monitor-rule.js`), fitted offline from labeled
+2400x1080 frames by `tools/device/monitor-calibrate.py`. The rule anchors on
+the monitor's map layout drawing — present if and only if the monitor is up,
+independent of the camera feed — read through the helper's `GRID` verb. The
+fitted g56 rule (`models/monitor-rule-moto-g56-v207.json`) carries four map
+anchors plus two covered-office anchors; every anchor must agree before the
+fact votes. Without a fitted rule — or when the frame is stale, off-identity,
+blackout-dark, mid-animation, or otherwise ambiguous — the detector returns
+`UNKNOWN` with the reason and the service refuses actuation. Composition
+requires the profile's `calibrations.monitorRule` to carry the artifact
+digest, so an unbound or mismatched rule cannot drive a run. A future
+helper-emitted explicit `monitorUp` field supersedes the derived value
+frame-by-frame.
+
+`cameraSelected` is the sibling fact (`camera-rule-v1`,
+`packages/adapters/src/camera-rule.js`, fitted by
+`tools/device/camera-calibrate.py` from `models/camera-rule-moto-g56-v207.json`):
+the twelve map buttons are measured watch pixels, the selected one renders
+yellow (bright ~194, dimmed ~96 while the wind control is held) against
+cool-grey unselected. Exactly one lit button names the camera; zero and
+several lit buttons are distinct UNKNOWN reasons so a camera transition and
+the Android double-camera glitch stay separable in telemetry. The rule's
+runtime wiring into the live observation loop is still open.
 
 The Moto g56 100 ms and 17 ms profiles are deliberately separate
 qualification candidates. Both remain `dryRunOnly` until their own

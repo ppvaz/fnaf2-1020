@@ -9,7 +9,66 @@
   "visualSensor": "mediaprojection",
   "visualDetector": "cue-helper-detector",
   "geometry": "moto-g56-landscape-2400x1080-v1",
-  "calibrations": {"geometry":"moto-g56-fnaf2-default-controls-v1","actuator-timing":"hid-100ms-candidate-unqualified-v1","visual":"mediaprojection-v1","detector":"mediaprojection-v1"},
-  "controlMap": {"mask":{"x":600,"y":1015},"monitor":{"x":1780,"y":1015},"light":{"x":350,"y":615},"hall":{"x":1200,"y":540},"wind":{"x":430,"y":845},"ventL":{"x":350,"y":615},"ventR":{"x":2050,"y":615},"cam:4":{"x":1730,"y":710},"cam:7":{"x":1775,"y":615},"cam:9":{"x":2150,"y":555},"cam:10":{"x":2045,"y":720},"cam:11":{"x":2275,"y":685}},
-  "limits": {"maxActions":64,"maxDurationMs":15000,"dryRunOnly":true}
+  "calibrations": {
+    "geometry": "moto-g56-fnaf2-default-controls-v2",
+    "actuator-timing": "hid-100ms-candidate-unqualified-v1",
+    "visual": "mediaprojection-v1",
+    "detector": "mediaprojection-v1",
+    "monitorRule": "d4b2f7bfd1918d38eef04fb22a6d27754ad9d8a2ee23ac714f88286d5b6b30cd"
+  },
+  "controlMap": {
+    "mask": {
+      "x": 600,
+      "y": 1015
+    },
+    "monitor": {
+      "x": 1780,
+      "y": 1015
+    },
+    "light": {
+      "x": 350,
+      "y": 615
+    },
+    "hall": {
+      "x": 1200,
+      "y": 540
+    },
+    "wind": {
+      "x": 500,
+      "y": 888
+    },
+    "ventL": {
+      "x": 350,
+      "y": 615
+    },
+    "ventR": {
+      "x": 2050,
+      "y": 615
+    },
+    "cam:4": {
+      "x": 1728,
+      "y": 690
+    },
+    "cam:7": {
+      "x": 1776,
+      "y": 606
+    },
+    "cam:9": {
+      "x": 2144,
+      "y": 548
+    },
+    "cam:10": {
+      "x": 1984,
+      "y": 716
+    },
+    "cam:11": {
+      "x": 2228,
+      "y": 652
+    }
+  },
+  "limits": {
+    "maxActions": 64,
+    "maxDurationMs": 15000,
+    "dryRunOnly": true
+  }
 }

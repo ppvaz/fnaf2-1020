@@ -2,6 +2,89 @@
 
 **Updated:** 2026-09-01
 
+2026-09-01 monitorUp + cameraSelected calibration session (opencode) — both
+visual facts are now calibrated on real g56 frames, the helper watch carries
+the twelve measured map buttons, and the tap coordinates that were off are
+corrected. Request: continue codex open item "(a) a monitorUp detector
+calibrated from labeled frames"; Pedro then asked for the selected-camera
+fact via "the yellow pixels and their positions on the fixed monitor map".
+Read-only captures plus one helper APK reinstall (Pedro operated the phone;
+the only machine actuation candidates were refuses — no game input was ever
+sent). Outcome, in order:
+
+1. **Whole-frame signatures were measured and then rejected.** A first
+   design over the helper grid's whole-frame counts (grey cells + mean luma)
+   fitted a two-axis rule, but Pedro pushed back correctly: the up class is
+   bimodal by feed content (bright cameras grey 174–178/luma 45–50, dark
+   feeds grey 180/luma 26–30), so the signature is a correlated proxy, not
+   the state. The monitor map layout drawing — always present while the
+   monitor is up, fixed while feeds pan — is the causal signal.
+2. **Labeled corpus captured** (`captures/cue-helper/monitor-calibration-
+   20260901/`, git-ignored): monitor down 10, monitor up 10 (two cameras),
+   mask 10 (mask grey 169–173/luma 5–6 — inside the up band on grey, near
+   black on luma, as ScreenStats warned), animation 12. One anchor search on
+   those frames: 36 separating cells, margins up to 157.
+3. **Helper extended, verdict-free.** `ScreenStats.meanLuma` (grid mean luma)
+   is served as `gridLuma=` (darkness guard, never a classifier — measured
+   camera/office luma bands overlap 3.8–63.1 vs 28.6–35.6); `PixelWatch.
+   defaultSpec` gained twelve `camNN_button` PIXEL/YELLOWNESS entries at the
+   measured button centres (selected button renders yellow ~194; fixed map,
+   pan-proof). Host vectors updated; `test.sh` green; APK rebuilt
+   (`build.sh`, signed) and installed with Pedro's go-ahead; watch
+   `d82a2b0f4a5c94e370beb5c1bee850ccf47abacd4dd1388e73266dc421471bd1`
+   activated live and verified by READ.
+4. **monitorUp calibrated on anchors** (`models/monitor-rule-moto-g56-v207.
+   json`, digest `d4b2f7bf…`, bound into the 100 ms profile
+   `calibrations.monitorRule`): four present map anchors (cells 112/131/132/
+   151, margins 16–72.5) plus two absent covered-office anchors (165/167,
+   margins 40.5/78.5). Strict semantics: all anchors up-side → OBSERVED
+   true, all firmly not-up → OBSERVED false, anything mixed/in-band →
+   UNKNOWN. Corpus 30/30; animation reads 1 true (fully rendered), 1 false,
+   10 UNKNOWN; `night-1-corpus` + `blackout-unproven` recorded. Pedro
+   confirmed the top-left Night-1 tutorial region holds no selected anchors
+   (margins already refused it); the bottom strip is control-bar chrome,
+   causally sound. The earlier two-axis grey/luma grammar was replaced by
+   these anchors before anything shipped.
+5. **cameraSelected calibrated** (`models/camera-rule-moto-g56-v207.json`,
+   `camera-rule-v1`, `packages/adapters/src/camera-rule.js`): twelve button
+   pixels, exactly-one-lit names the camera, `no-camera-highlight` /
+   `multiple-camera-highlight` are distinct UNKNOWNs so a transition and the
+   Android double-camera glitch stay separable, in-band → `ambiguous-
+   threshold`, gate `monitor-not-up` otherwise. Corpus 39/39 named (cam08
+   twice across a night reset). Live READ on CAM 11 while winding: dimmed
+   selected state 96 (≈50% alpha blend of the 194 fill), steady; CAM 12
+   unwound: 193; unselected −19..−9 — the dimmed state is inside cam11's
+   fitted lit band (margin 52.5). Runtime wiring into the live observation
+   loop is NOT done yet: the fact exists as artifact + detector module only.
+6. **Tap coordinates corrected from the same captures** (both g56 profiles,
+   geometry binding bumped to `moto-g56-fnaf2-default-controls-v2`):
+   cam:4 → (1728,690), cam:7 → (1776,606), cam:9 → (2144,548),
+   cam:10 → (1984,716) (was 61 px off-center), cam:11 → (2228,652) (was 47 px
+   off, below the button), wind → (500,888) (was 85 px off; the pressed
+   wind fill is lime 149 vs unpressed −19 at pixels ~(584–592, 810–862) — a
+   windHeld verification pixel for the next watch rebuild). The seven
+   cameras outside the control vocabulary have measured centres recorded in
+   the session captures; adding cam:1..3/5/6/8/12 to the semantic control
+   vocabulary is a separate core-contract change, not done here.
+7. **Capture-process lessons recorded:** the pose session kept a night
+   running until the marionette killed it (music box unwound) — a burst
+   started after that caught only menu screens; Pedro reset to Night 1 and
+   the per-camera protocol used operator confirmations as labels (no timing
+   cadence required). Camera pan behavior (07–12 pan; map stays fixed) is
+   operator-stated and must be sourced from the dump later.
+   Gates: `npm test` green (monitor + camera rule lanes added; 191/191
+   sourced rules), typechecks green, docs 253 tools indexed, Java host tests
+   green, Python calibration suites green, `npm run device:dry-run` PASS,
+   evidence `run-20260901060804-acf5ca2a-4e4c57` (`FIXTURE`).
+   **Open:** (a) cameraSelected runtime wiring (detector port, READ merge in
+   the composition, profile `calibrations.cameraRule` digest binding,
+   belief-state consumption) — the windHeld pixel + any other additions ride
+   the next APK rebuild; monitorUp/cameraSelected qualification runs on the
+   g56 (they are calibrated, unqualified); (b) device-local executor, (c)
+   100 ms Night 6 qualification, (d) 17 ms qualification, the BB-left model
+   gap, the deferred census/geometry search, and later-night re-validation of
+   both rules (corpus is Night 1) are unchanged. A send is not game
+   acceptance.
 2026-09-01 device + Plan 22 session (codex `01a05a9b`) — the Night 6 winner
 was **not** run live; the session became an exact-geometry gate plus a Plan 22
 device-boundary build after two legacy phone attempts desynced. Request: "run
