@@ -1,17 +1,23 @@
 // Plan 16 package 1/3 gates: snapshot/restore fidelity, the semantic action
 // layer's clone, and the harness reproducing the 803feb3 ladder on a zero
 // perturbation.
-import * as C from '../../src/config.js';
-import { Sim } from '../../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 import { cloneSim, view, ACTIONS, run } from './sim.mjs';
 import { searchParams, baselineLadder, evalParams, SHIPPED_GEOM } from './paramsearch.mjs';
 import { enumeratePackage4 } from '../constrainedsearch.mjs';
-import { SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { makeSearchKnobs } from '../model/hid-device-pilot.mjs';
 import { build, devicePlan, idleUntilMs, replay } from '../device/recipe.mjs';
 import { modelGate } from '../device/human-gate.mjs';
 
 let fails = 0;
 const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`); if (!cond) fails++; };
+
+// Search inputs are values owned by one run, never a mutable module singleton.
+const frozenKnobs = makeSearchKnobs({ attackBangGateMs: 1 });
+ok('search knob assignments are frozen and reject unknown keys', Object.isFrozen(frozenKnobs));
+try { makeSearchKnobs({ madeUpKnob: 1 }); ok('unknown search knob is refused', false); }
+catch { ok('unknown search knob is refused', true); }
 
 // --- snapshot/restore: bit-identical continuation from an arbitrary frame
 {
@@ -111,27 +117,25 @@ const ok = (name, cond) => { console.log(`  ${cond ? 'ok  ' : 'FAIL'} ${name}`);
 //     coverage collapses below the blind baseline. Default-off; this pins both
 //     halves so the search cannot rediscover the lat=0 number as a win.
 {
-  const pt = (night) => {
-    const r = build({ night });
+  const pt = (night, knobs) => {
+    const r = build({ night, knobs });
     const p = devicePlan(r, {});
     let t = `#night ${r.night}\n#idle-until ${idleUntilMs(r.night)}\n`;
     for (const [n, l] of Object.entries(p)) t += `#cycle ${n} ${r.cycles[n].lengthMs}\n${l.join('\n')}\n`;
     return t;
   };
   const RUNS = 300;
-  const gate6 = (latMs) => modelGate(pt(6), {
+  const gate6 = (latMs, knobs) => modelGate(pt(6, knobs), {
     night: 6, runs: RUNS, slackMs: 60, shape: 'correlated',
     replayFn: (plan, o) => replay(plan, { ...o, bangLatencyMs: latMs }),
   }).survived;
 
   const blind = gate6(0);
   let text0, oracle, laggy;
-  SEARCH_KNOBS.attackBangGateMs = 1;
-  try {
-    text0 = pt(6);
-    oracle = gate6(0);      // perfect instant oracle
-    laggy = gate6(150);     // a realistic device bang-detection latency
-  } finally { SEARCH_KNOBS.attackBangGateMs = 0; }
+  const gatedKnobs = makeSearchKnobs({ attackBangGateMs: 1 });
+  text0 = pt(6, gatedKnobs);
+  oracle = gate6(0, gatedKnobs);      // perfect instant oracle
+  laggy = gate6(150, gatedKnobs);     // a realistic device bang-detection latency
 
   ok('item 10: the knob folds the recovery sweep into the maskraise row',
     /maskraise \d+ hall \d+ bang 1 \d+ \d+ \d+ [\d,]+ \d+/.test(text0));

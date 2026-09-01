@@ -1,0 +1,20 @@
+{
+  "schema": "claim-evidence-v1",
+  "version": 1,
+  "nodes": [
+    {"id":"claim.android-target","kind":"Claim","label":"modern Android target"},
+    {"id":"concept.core","kind":"Concept","label":"canonical mechanics model"},
+    {"id":"package.core","kind":"Package","label":"@fnaf2-1020/core"},
+    {"id":"contract.semantic-control-v1","kind":"Contract","label":"semantic control"},
+    {"id":"contract.device-profile-v1","kind":"Contract","label":"device profile"},
+    {"id":"run.fixture","kind":"Run","label":"fixture dry run"},
+    {"id":"claim.android.g779.empty-hall","kind":"Claim","label":"Android empty-hall observation"},
+    {"id":"runtime-gh","kind":"Run","label":"runtime evidence placeholder"}
+  ],
+  "edges": [
+    {"from":"claim.android-target","to":"concept.core","type":"SOURCED_BY","source":"docs/android/ANDROID-SOURCE-STATUS.md"},
+    {"from":"concept.core","to":"package.core","type":"IMPLEMENTED_BY","source":"packages/core/README.md"},
+    {"from":"package.core","to":"contract.semantic-control-v1","type":"OWNS","source":"packages/core/contracts/register.json"},
+    {"from":"contract.device-profile-v1","to":"run.fixture","type":"EVALUATED_ON","source":"apps/device/profiles/fixture-hid-screencap.json"}
+  ]
+}

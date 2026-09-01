@@ -5,7 +5,7 @@
 // be compared to the mocked phone trace before an adb action is allowed.
 import { createHash } from 'node:crypto';
 import { compilePolicy } from './policy-interpreter.mjs';
-import { canonicalPolicy, validatePolicy } from '../../src/policy-ir.js';
+import { canonicalPolicy, validatePolicy } from '@fnaf2-1020/core/control';
 
 const ACTIONS = new Set(['monitor', 'mask', 'cam9', 'cam11', 'ventl', 'light', 'wind', 'hall']);
 const finite = value => Number.isFinite(value);
@@ -26,7 +26,7 @@ function rowFor(action, repeat) {
   const at = repeat ? action.offsetMs : action.atMs;
   if (!finite(at) || at < 0) fail(`action ${action.action} has no valid plan time`);
   const mode = action.mode ?? 'tap';
-  const contact = action.contactMs ?? 100;
+  const contact = action.contactMs ?? 33;
   if (mode === 'camdrop')
     return [at, 'camdrop', action.leadMs, action.durationMs, action.tailMs];
   if (mode === 'hall') return [at, 'hall', action.durationMs];

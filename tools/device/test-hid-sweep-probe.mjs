@@ -5,7 +5,7 @@ import { stream, COORDS, toRaw } from './hid-sweep-probe.mjs';
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 const key = (point) => toRaw(point).join(',');
 
-const SPACINGS = [240, 160, 120];
+const SPACINGS = [240, 160, 120, 100];
 const events = stream(SPACINGS);   // the shipped geometry: no light lead
 check(events[0].command === 'register', 'must register first');
 check(events[1].command === 'delay' && events[1].duration >= 6000,
@@ -76,17 +76,17 @@ for (const [, , cam] of litPulses)
   check(cam === null || wanted.includes(cam),
     'the light must only be on while a target camera is selected (or its tail)');
 
-// The first two selections of each sweep get a plain 100 ms pulse (light and
+// The first two selections of each sweep get a plain 33 ms pulse (light and
 // select released together -- the next select keeps `viewing` covered). The
 // LAST selection holds the light `lightTailMs` (default 50) past its own Click
 // release, because there is no next select to cover it -- the CAM 07-dark-last
 // fix. Device-confirmed 2026-08-27: with the tail, every camera lights.
 for (let s = 0; s < SPACINGS.length; s++) {
   const [p10, p04, p07] = litPulses.slice(s * 3, s * 3 + 3);
-  check(p10[1] - p10[0] === 100 && p04[1] - p04[0] === 100,
-    `sweep ${s}: the first two pulses must be a plain 100 ms, got ${p10[1] - p10[0]}/${p04[1] - p04[0]}`);
-  check(p07[1] - p07[0] === 150,
-    `sweep ${s}: the last pulse must be 100 ms contact + 50 ms tail = 150, got ${p07[1] - p07[0]}`);
+  check(p10[1] - p10[0] === 33 && p04[1] - p04[0] === 33,
+    `sweep ${s}: the first two pulses must be a plain 33 ms, got ${p10[1] - p10[0]}/${p04[1] - p04[0]}`);
+  check(p07[1] - p07[0] === 83,
+    `sweep ${s}: the last pulse must be 33 ms contact + 50 ms tail = 83, got ${p07[1] - p07[0]}`);
 }
 // The 10 ms lead stays reachable so recordings taken under it stay
 // reproducible, and it must still be the shorter pulse it always was.
@@ -104,10 +104,9 @@ check(ledPulses.filter(d => d === 90).length === 3,
   `a 10 ms lead must leave three 90 ms pulses, got ${ledPulses.join('/')}`);
 // The point of the pulse: bounded light per camera instead of a hold that
 // would outspend night 6's 3000-frame flashlight. The budget is three
-// contacts plus the one last-camera tail: at the shipped 100 ms contact that
-// is 350 ms, at the c33 geometry (33 ms contact) it is ~150 ms.
+// 33 ms contacts plus the one last-camera tail: 149 ms.
 const litMs = litPulses.reduce((sum, [down, up]) => sum + (up - down), 0) / SPACINGS.length;
-const budget = 3 * 100 + 50;   // three 100 ms contacts + a 50 ms tail
+const budget = 3 * 33 + 50;   // three 33 ms contacts + a 50 ms tail
 check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${litMs}`);
 
 // HELD_LIGHT mode (plans/17): contact 0 goes down at the first select and

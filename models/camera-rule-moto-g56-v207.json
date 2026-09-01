@@ -1,0 +1,393 @@
+{
+  "adapter": {
+    "buttons": [
+      {
+        "control": "cam:1",
+        "entry": "cam01_button",
+        "feature": "yellowness",
+        "lit_range": [
+          195,
+          195
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 107.0,
+          "threshold": 88.0
+        },
+        "separation_margin": 107.0,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1412,
+        "y": 784
+      },
+      {
+        "control": "cam:2",
+        "entry": "cam02_button",
+        "feature": "yellowness",
+        "lit_range": [
+          193,
+          193
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.0,
+          "threshold": 87.0
+        },
+        "separation_margin": 106.0,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1720,
+        "y": 784
+      },
+      {
+        "control": "cam:3",
+        "entry": "cam03_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1411,
+        "y": 690
+      },
+      {
+        "control": "cam:4",
+        "entry": "cam04_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1728,
+        "y": 690
+      },
+      {
+        "control": "cam:5",
+        "entry": "cam05_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1424,
+        "y": 916
+      },
+      {
+        "control": "cam:6",
+        "entry": "cam06_button",
+        "feature": "yellowness",
+        "lit_range": [
+          195,
+          195
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 107.0,
+          "threshold": 88.0
+        },
+        "separation_margin": 107.0,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1696,
+        "y": 916
+      },
+      {
+        "control": "cam:7",
+        "entry": "cam07_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1776,
+        "y": 606
+      },
+      {
+        "control": "cam:8",
+        "entry": "cam08_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1412,
+        "y": 590
+      },
+      {
+        "control": "cam:9",
+        "entry": "cam09_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 2144,
+        "y": 548
+      },
+      {
+        "control": "cam:10",
+        "entry": "cam10_button",
+        "feature": "yellowness",
+        "lit_range": [
+          194,
+          194
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.5,
+          "threshold": 87.5
+        },
+        "separation_margin": 106.5,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 1984,
+        "y": 716
+      },
+      {
+        "control": "cam:11",
+        "entry": "cam11_button",
+        "feature": "yellowness",
+        "lit_range": [
+          96,
+          96
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 52.5,
+          "threshold": 43.5
+        },
+        "separation_margin": 52.5,
+        "unlit_range": [
+          -9,
+          -9
+        ],
+        "x": 2228,
+        "y": 652
+      },
+      {
+        "control": "cam:12",
+        "entry": "cam12_button",
+        "feature": "yellowness",
+        "lit_range": [
+          193,
+          193
+        ],
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 106.0,
+          "threshold": 87.0
+        },
+        "separation_margin": 106.0,
+        "unlit_range": [
+          -19,
+          -19
+        ],
+        "x": 2188,
+        "y": 784
+      }
+    ],
+    "calibration_frames": 39,
+    "class_counts": {
+      "cam:1": 3,
+      "cam:10": 3,
+      "cam:11": 3,
+      "cam:12": 3,
+      "cam:2": 3,
+      "cam:3": 3,
+      "cam:4": 3,
+      "cam:5": 3,
+      "cam:6": 3,
+      "cam:7": 3,
+      "cam:8": 6,
+      "cam:9": 3
+    },
+    "corpus_reads": {
+      "cam:1": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:10": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:11": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:12": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:2": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:3": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:4": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:5": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:6": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:7": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      },
+      "cam:8": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 6,
+        "none": 0
+      },
+      "cam:9": {
+        "ambiguous": 0,
+        "multiple": 0,
+        "named": 3,
+        "none": 0
+      }
+    },
+    "limitations": [
+      "night-1-corpus",
+      "cam08-repeat-included"
+    ],
+    "minimum_margin": 5.0
+  },
+  "fact": {
+    "id": "cameraSelected",
+    "labels": [
+      "cam:1",
+      "cam:2",
+      "cam:3",
+      "cam:4",
+      "cam:5",
+      "cam:6",
+      "cam:7",
+      "cam:8",
+      "cam:9",
+      "cam:10",
+      "cam:11",
+      "cam:12"
+    ],
+    "unknown_reasons": [
+      "monitor-not-up",
+      "no-camera-highlight",
+      "multiple-camera-highlight",
+      "ambiguous-threshold",
+      "feature-missing",
+      "read-unavailable",
+      "read-stale",
+      "sensor-mismatch",
+      "calibration-refused"
+    ]
+  },
+  "reason": null,
+  "schema": "camera-rule-v1",
+  "schema_version": 1,
+  "sensor": {
+    "geometry": [
+      2400,
+      1080
+    ],
+    "id": "cue-helper-watch-native-2400x1080",
+    "profile_id": "moto-g56-v207-landscape",
+    "sampling": "pixel-watch-native-2400x1080"
+  },
+  "status": "calibrated"
+}

@@ -24,11 +24,11 @@
 // failure mode this exercise exists to avoid.
 //
 // The local Minus 7 control is not reimplemented at all: it is
-// `tools/bbtest.mjs`'s `Bot`, driven through the adapter, so the control and
+// `tools/model/reactive-pilot.mjs`'s `Bot`, driven through the adapter, so the control and
 // the published reactive Minus 7 figure are the same code.
-import * as C from '../src/config.js';
-import { Rng } from '../src/rng.js';
-import { Bot, DEFAULT_CYCLE } from './bbtest.mjs';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Rng } from '@fnaf2-1020/core/mechanics';
+import { Bot, DEFAULT_CYCLE } from './model/reactive-pilot.mjs';
 
 const ms = (v) => Math.round(v * C.FPS / 1000);
 const MINUS7_SALT = 0x6d373037; // "m707"; its own stream, never the sim's
@@ -73,7 +73,7 @@ export function minus7Policy({ slackMs = 0, slackModel = 'iid', seed = 1,
       }
       // phaseA() normally obtains its rows through this.cycle(). Supply the
       // untransformed base explicitly so its rows take exactly one draw, not
-      // one here and one in cycle() -- bbtest.mjs's own jitter path does the
+      // one here and one in cycle() -- model/reactive-pilot.mjs's own jitter path does the
       // same for the same reason.
       bot.phaseA = (a) => jit(Bot.prototype.phaseA.call(
         bot, a, Bot.prototype.cycle.call(bot, a)));

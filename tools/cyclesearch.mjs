@@ -21,15 +21,15 @@
 //     uses no randomness, so it is a measurement of the model.
 //   --profile asks whether a cycle survives a *player* whose error is
 //     distributed unevenly across the steps. The weights are inferred, not
-//     sourced (see PROFILES in bbtest.mjs); this is a sensitivity analysis.
-import * as C from '../src/config.js';
-import { DEFAULT_CYCLE, labelCycle } from './bbtest.mjs';
+//     sourced (see PROFILES in model/reactive-pilot.mjs); this is a sensitivity analysis.
+import * as C from '@fnaf2-1020/core/mechanics';
+import { DEFAULT_CYCLE, labelCycle } from './model/reactive-pilot.mjs';
 import { pool, closePool } from './pool.mjs';
 
 // Every night this file simulates goes through the pool, so the hill-climb
 // spreads across cores instead of one. `--serial` pins it to a single worker,
 // which must produce identical output.
-const BBTEST = new URL('./bbtest.mjs', import.meta.url).href;
+const BBTEST = new URL('./model/reactive-pilot.mjs', import.meta.url).href;
 const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 
 // The current cycle, expressed as knobs. genCycle(KNOBS0) reproduces

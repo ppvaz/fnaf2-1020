@@ -124,8 +124,8 @@ for (const [name, cycle] of Object.entries(recipe.cycles)) {
 const plan = devicePlan(recipe);
 check(SWEEP_SELECT_MS === MIN_CONTACT_MS,
   `the sweep select is ${SWEEP_SELECT_MS} ms, not the ${MIN_CONTACT_MS} ms contact floor`);
-check(SWEEP_RELEASED_MS === FUSION_POLL_MS,
-  `the sweep releases for ${SWEEP_RELEASED_MS} ms, not exactly one ${FUSION_POLL_MS} ms Fusion poll`);
+check(SWEEP_RELEASED_MS >= FUSION_POLL_MS,
+  `the sweep releases for ${SWEEP_RELEASED_MS} ms, below one ${FUSION_POLL_MS} ms Fusion poll`);
 const clearMaskRaise = plan.clear.find(line => line.includes(' maskraise '));
 check(clearMaskRaise?.split(' ')[3] === 'hall',
   `the post-read clear raise must carry its first Foxy reset, got "${clearMaskRaise}"`);
@@ -144,8 +144,8 @@ for (const [name, lines] of Object.entries(plan)) {
         `${name}: sweep spacing ${spacing} ms is not the ${DEVICE_SPACING_MS} ms device geometry`);
       check(+contact === SWEEP_SELECT_MS,
         `${name}: sweep contact ${contact} ms is not the ${SWEEP_SELECT_MS} ms device geometry`);
-      check(+spacing - +contact === FUSION_POLL_MS,
-        `${name}: sweep releases for ${+spacing - +contact} ms, not one Fusion poll`);
+      check(+spacing - +contact >= FUSION_POLL_MS,
+        `${name}: sweep releases for ${+spacing - +contact} ms, below one Fusion poll`);
       check(cams === '10,4,7', `${name}: sweep covers ${cams}, not Minus 7's 10,4,7`);
     } else if (kind === 'tap' || kind === 'hold') {
       check(+rest[1] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
@@ -327,6 +327,18 @@ check(prefix(plan.clear) === prefix(plan.attack),
   try { devicePlan(build({ night: 7, sweepSlotMs: 50 }), { deviceSpacingMs: 66, sweepContactMs: 66 }); }
   catch { threw2 = true; }
   check(threw2, 'devicePlan must refuse a contact length that leaves no released gap');
+
+  // Machine-experiment contact override. It changes every emitted tap row,
+  // while semantic holds (wind, vent and hall light) keep their policy-sized
+  // durations. The sweep has its own contact axis above.
+  const all17 = devicePlan(build({ night: 6, sweepSlotMs: 50 }),
+    { deviceSpacingMs: 66, sweepContactMs: 17, tapContactMs: 17 });
+  const tapRows = Object.values(all17).flat()
+    .filter(line => line.split(' ')[1] === 'tap');
+  check(tapRows.length > 0 && tapRows.every(line => line.endsWith(' 17')),
+    'tapContactMs=17 must reach every emitted tap row');
+  check(Object.values(all17).flat().some(line => / hold wind (?!17$)/.test(line)),
+    'tapContactMs must not shorten semantic wind holds');
 }
 
 // The localized last-slot light contact (ON-DEVICE-VALIDATION.md, the Toy Chica

@@ -11,13 +11,13 @@
 //
 // --descend runs coordinate descent: apply each round's single best per-row
 // shift, re-measure, repeat until nothing helps. The output is a shift vector
-// over the plan's rows; translating it back into `tools/hidpilottest.mjs`
+// over the plan's rows; translating it back into `tools/model/hid-device-pilot.mjs`
 // timings (and re-gating at 1200 seeds) is a manual follow-up -- a hand-edited
 // plan is not shippable (CLAUDE.md: "port the table to recipe.mjs").
 import { execFileSync } from 'node:child_process';
 import { replay } from '../device/recipe.mjs';
 import { jitterPlan, parsePlanText } from '../device/human-gate.mjs';
-import { Rng } from '../../src/rng.js';
+import { Rng } from '@fnaf2-1020/core/mechanics';
 
 const arg = (k, d) => {
   const m = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -108,7 +108,7 @@ function main() {
       console.log(`  ${id.padEnd(14)} ${d > 0 ? '+' : ''}${d}fr  ${row.line}`);
     }
     console.log(`\n  iid +/-60 ms  ${base}/${seeds} -> ${cur}/${seeds}  (+${cur - base}, ${((cur - base) * 100 / seeds).toFixed(1)} pts)`);
-    console.log('  verify at 1200 seeds and translate to hidpilottest.mjs before shipping.');
+    console.log('  verify at 1200 seeds and translate to model/hid-device-pilot.mjs before shipping.');
   } else {
     console.log('\nno single-row shift within range improved survival -- the fragility is not one row.');
   }

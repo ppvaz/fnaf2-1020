@@ -1,0 +1,23 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "minus-toys",
+  "operation": "controller-synthesis",
+  "family": "minus-toys",
+  "evaluator": "minus-toys-v1",
+  "hypothesis": "the Android split-camera setup is load-bearing for the published Minus Toys loop",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "minus-toys-split-camera",
+  "observationPrivilege": "simulator-oracle",
+  "faultProfile": "none",
+  "seeds": [0, 2654435761, 1013904226, 3668339987],
+  "candidateParameters": [
+    {"label": "split", "splitCamera": true},
+    {"label": "no-split-control", "splitCamera": false}
+  ],
+  "sample": {"count": 8, "stoppingRule": "fixed family candidates and four deterministic seeds"},
+  "search": {"method": "exhaustive-enumeration", "candidateSpace": "split-camera policy plus no-split negative control"},
+  "objectives": ["survival", "split-armed", "control-separation"],
+  "controls": ["no-split-control"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

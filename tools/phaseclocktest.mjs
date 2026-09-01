@@ -1,7 +1,7 @@
 // Phone-free contract tests for the Plan 21 winding-tick estimator.
 import { EstimatedPhaseClock, LatencyCalibrator, PhaseClockEstimator,
-         WindTickFactAdapter, PHASE_STATES } from '../src/phase-clock.js';
-import { messageToFact } from '../src/fact-link.js';
+         WindTickFactAdapter, PHASE_STATES } from '@fnaf2-1020/core/timing';
+import { messageToFact } from '@fnaf2-1020/core/telemetry';
 
 let failures = 0;
 const check = (name, condition) => {

@@ -208,7 +208,7 @@ def serves(label):
 
 
 def can_act(night, ids):
-    src = ("import { canAct } from './src/config.js';"
+    src = ("import { canAct } from './packages/core/src/mechanics/config.js';"
            f"console.log(JSON.stringify({json.dumps(ids)}"
            f".map(i => canAct({int(night)}, i))));")
     out = subprocess.run(["node", "--input-type=module", "-e", src],

@@ -25,6 +25,14 @@ controller research, and device evidence form one program.
 | Understand the project's scope and claim discipline | [`../PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) |
 | Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
 | Pick up unfinished work | [`../plans/`](../plans/) |
+| Understand current package ownership | [`architecture/README.md`](architecture/README.md) |
+| Review dependency direction | [`architecture/DEPENDENCY-GRAPH.md`](architecture/DEPENDENCY-GRAPH.md) |
+| Review migration shims and removal gates | [`architecture/COMPATIBILITY.md`](architecture/COMPATIBILITY.md) |
+| Review the generated contract and command catalogs | [`architecture/generated/README.md`](architecture/generated/README.md) |
+| Read the workspace/core decision | [`decisions/0001-workspaces-and-core.md`](decisions/0001-workspaces-and-core.md) |
+| Inspect evidence retention and claim ceilings | [`evidence/README.md`](evidence/README.md) |
+| Run device work safely | [`operations/DEVICE-SAFETY.md`](operations/DEVICE-SAFETY.md) |
+| Understand research operations | [`research/ARCHITECTURE.md`](research/ARCHITECTURE.md) |
 
 ## Android source and fidelity
 

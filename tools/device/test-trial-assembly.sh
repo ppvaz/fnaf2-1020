@@ -27,15 +27,15 @@ bash "$HERE/trial/assemble.sh" > "$TMP/driver.sh"
 # The whole guarantee rests on there being one driver. A heredoc left behind in
 # the runner would be what the phone actually gets, while every check here
 # passed on a file nothing used.
-runner="$(cat "$HERE/trial.sh")"
+runner="$(cat "$HERE/legacy-trial.sh")"
 case "$runner" in
   *'< "$REMOTE_PROGRAM" &'*) ;;
-  *) fail "trial.sh does not send the assembled driver on stdin" ;;
+  *) fail "legacy-trial.sh does not send the assembled driver on stdin" ;;
 esac
 case "$runner" in
-  *"<<'REMOTE'"*) fail "trial.sh still carries an inline driver heredoc" ;;
+  *"<<'REMOTE'"*) fail "legacy-trial.sh still carries an inline driver heredoc" ;;
 esac
-grep -q 'trial/assemble.sh' "$HERE/trial.sh" || fail "trial.sh does not assemble the driver"
+grep -q 'trial/assemble.sh' "$HERE/legacy-trial.sh" || fail "legacy-trial.sh does not assemble the driver"
 
 # 2. It parses under the shell the PHONE actually runs.
 #

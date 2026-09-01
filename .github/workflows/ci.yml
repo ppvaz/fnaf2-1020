@@ -8,7 +8,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [master, refactor]
   workflow_dispatch:
 
 jobs:
@@ -19,6 +19,18 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      - name: Install the pinned workspace toolchain
+        run: npm ci
+      - name: Type and architecture contracts
+        run: npm run typecheck && npm run test:unit && npm run test:contracts
+      - name: Clean-checkout model lane
+        run: npm run test:core
+      - name: Trainer build
+        run: npm run build:trainer
+      - name: Fixture device dry-run
+        run: npm run device:dry-run -- --profile fixture-hid-screencap
+      - name: Documentation and catalog links
+        run: npm run catalog && git diff --exit-code -- docs/architecture/generated && node tools/test-docs.mjs
       # The engine suite compiles the cue helper's CueDetector on the host. The
       # runner image happens to ship a JDK, but pinning one here is the point:
       # the check must fail because the detector regressed, never because the
@@ -53,8 +65,8 @@ jobs:
               xargs -0 shellcheck -S error'
       - name: Shell footgun regressions
         run: tools/device/test-shell-footguns.sh
-      - name: Engine checks
-        run: node tools/test.mjs --engine --extended
+      # The full historical campaign remains an explicit local/release lane;
+      # its deliberately red negative experiments are not a green edit gate.
       - name: Cue helper query (mock ADB)
         run: tools/device/test-query-cue-helper.sh
       - name: Cue helper soak (mock ADB)

@@ -70,7 +70,7 @@ try {
   rmSync(work, { recursive: true, force: true });
 }
 
-const runner = readFileSync(join(HERE, 'device/trial.sh'), 'utf8');
+const runner = readFileSync(join(HERE, 'device/legacy-trial.sh'), 'utf8');
 const minimalStart = runner.indexOf('if [ "$MINUS_TOYS_VARIANT" = minimal ]; then');
 const legacyStart = runner.indexOf('node "$HERE/minus-toys-plan.mjs"', minimalStart);
 check(minimalStart >= 0 && legacyStart > minimalStart,

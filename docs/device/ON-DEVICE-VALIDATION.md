@@ -1,5 +1,11 @@
 # On-device validation (bot over adb)
 
+> Migration notice: new device composition goes through `@fnaf2-1020/device`
+> and `DeviceControlService` (`npm run device:dry-run`). The shell procedure
+> below is retained as historical characterization under
+> `tools/device/legacy-trial.sh`; it is not a source of new architecture or
+> claim promotion.
+
 Started 2026-08-20 with the Moto g56 5G plugged in over USB. Goal: test the
 decoded Android model's load-bearing rules against the real
 `com.scottgames.fnaf2` build instead of only the event-sheet reading.
@@ -249,7 +255,7 @@ Target build confirmed on device: **v2.0.7** (versionCode 26, updated
   and [`SHOOTER25-BOT-STATE-MACHINE.md`](../in-engine/SHOOTER25-BOT-STATE-MACHINE.md) for
   its controller, office-pan, and actuator reconstruction.
 - **A minimal stock-device visual path now exists.**
-  [`tools/device/screencheck.c`](../../tools/device/screencheck.c) builds to a
+  [`packages/screencheck/src/screencheck.c`](../../packages/screencheck/src/screencheck.c) builds to a
   12,680-byte static ARM64 helper and reduces raw `screencap` to color features,
   `match`/`clear`, or a compact nearest-template class entirely inside one
   device shell. No frame crosses USB and no APK/root/runtime dependency is
@@ -334,7 +340,7 @@ frame it already captures, so that path no longer requires one.
 
 ## Simulating the pilot (2026-08-20)
 
-`tools/pilottest.mjs` replays `trial.sh`'s millisecond table in the
+`tools/model/stock-device-pilot.mjs` replays `trial.sh`'s millisecond table in the
 sourced engine with no state reads, so schedule changes can be judged without
 spending a night on the phone. The shipped blind schedule dies **200/200 to
 Foxy**, with Balloon Boy as the cause rather than the recorded killer.
@@ -403,7 +409,7 @@ The chain is gone, under pinned worst-luck RNG as well as normal seeds: Balloon
 Boy never reaches the office, so Foxy never collects a run because of him. The
 blind schedule's Foxy deaths were never really Foxy's.
 
-`node tools/pilottest.mjs 200 --vent --sync --assert` guards exactly that
+`node tools/model/stock-device-pilot.mjs 200 --vent --sync --assert` guards exactly that
 claim and nothing more — it asserts BB never gets in and no Foxy death follows
 him, and deliberately does **not** assert survival. It runs in
 `tools/test.mjs --engine`, normal and `--worst`. The blind schedule fails it
@@ -1168,7 +1174,7 @@ The flip gate and the classifier checkpoint above are the two places
 contained them. Every actuator figure for Nights 2+ was therefore a statement
 about a controller the phone does not run, and plans/12 said so and left the
 number unmeasured. `tools/device/actuator.mjs` now carries `MonitorSupervisor`,
-and `tools/closedlooptest.mjs` prices it. **Everything below is in the
+and `tools/model/closed-loop-reclaim.mjs` prices it. **Everything below is in the
 simulator.** No phone was involved.
 
 ### What was modelled, from the shell rather than from an ideal

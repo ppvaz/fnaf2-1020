@@ -493,7 +493,7 @@ already assumed.
 
 `src/engine.js` emits `vent-bang` with a `who`, and two controllers consume it:
 `tools/minus6test.mjs` counts threats with `e.data?.who !== 'bb'`, and
-`tools/hidpilottest.mjs --vocal-cam5` resets its vocal count on
+`tools/model/hid-device-pilot.mjs --vocal-cam5` resets its vocal count on
 `who === 'bb' && leaving`. The source says every one of those events is sample
 17. No audio detector can recover `who`, so both controllers are using a sensor
 that does not exist.

@@ -1,6 +1,265 @@
 # Plan progress
 
-**Updated:** 2026-08-30
+**Updated:** 2026-09-01
+
+2026-09-01 monitorUp + cameraSelected calibration session (opencode) — both
+visual facts are now calibrated on real g56 frames, the helper watch carries
+the twelve measured map buttons, and the tap coordinates that were off are
+corrected. Request: continue codex open item "(a) a monitorUp detector
+calibrated from labeled frames"; Pedro then asked for the selected-camera
+fact via "the yellow pixels and their positions on the fixed monitor map".
+Read-only captures plus one helper APK reinstall (Pedro operated the phone;
+the only machine actuation candidates were refuses — no game input was ever
+sent). Outcome, in order:
+
+1. **Whole-frame signatures were measured and then rejected.** A first
+   design over the helper grid's whole-frame counts (grey cells + mean luma)
+   fitted a two-axis rule, but Pedro pushed back correctly: the up class is
+   bimodal by feed content (bright cameras grey 174–178/luma 45–50, dark
+   feeds grey 180/luma 26–30), so the signature is a correlated proxy, not
+   the state. The monitor map layout drawing — always present while the
+   monitor is up, fixed while feeds pan — is the causal signal.
+2. **Labeled corpus captured** (`captures/cue-helper/monitor-calibration-
+   20260901/`, git-ignored): monitor down 10, monitor up 10 (two cameras),
+   mask 10 (mask grey 169–173/luma 5–6 — inside the up band on grey, near
+   black on luma, as ScreenStats warned), animation 12. One anchor search on
+   those frames: 36 separating cells, margins up to 157.
+3. **Helper extended, verdict-free.** `ScreenStats.meanLuma` (grid mean luma)
+   is served as `gridLuma=` (darkness guard, never a classifier — measured
+   camera/office luma bands overlap 3.8–63.1 vs 28.6–35.6); `PixelWatch.
+   defaultSpec` gained twelve `camNN_button` PIXEL/YELLOWNESS entries at the
+   measured button centres (selected button renders yellow ~194; fixed map,
+   pan-proof). Host vectors updated; `test.sh` green; APK rebuilt
+   (`build.sh`, signed) and installed with Pedro's go-ahead; watch
+   `d82a2b0f4a5c94e370beb5c1bee850ccf47abacd4dd1388e73266dc421471bd1`
+   activated live and verified by READ.
+4. **monitorUp calibrated on anchors** (`models/monitor-rule-moto-g56-v207.
+   json`, digest `d4b2f7bf…`, bound into the 100 ms profile
+   `calibrations.monitorRule`): four present map anchors (cells 112/131/132/
+   151, margins 16–72.5) plus two absent covered-office anchors (165/167,
+   margins 40.5/78.5). Strict semantics: all anchors up-side → OBSERVED
+   true, all firmly not-up → OBSERVED false, anything mixed/in-band →
+   UNKNOWN. Corpus 30/30; animation reads 1 true (fully rendered), 1 false,
+   10 UNKNOWN; `night-1-corpus` + `blackout-unproven` recorded. Pedro
+   confirmed the top-left Night-1 tutorial region holds no selected anchors
+   (margins already refused it); the bottom strip is control-bar chrome,
+   causally sound. The earlier two-axis grey/luma grammar was replaced by
+   these anchors before anything shipped.
+5. **cameraSelected calibrated** (`models/camera-rule-moto-g56-v207.json`,
+   `camera-rule-v1`, `packages/adapters/src/camera-rule.js`): twelve button
+   pixels, exactly-one-lit names the camera, `no-camera-highlight` /
+   `multiple-camera-highlight` are distinct UNKNOWNs so a transition and the
+   Android double-camera glitch stay separable, in-band → `ambiguous-
+   threshold`, gate `monitor-not-up` otherwise. Corpus 39/39 named (cam08
+   twice across a night reset). Live READ on CAM 11 while winding: dimmed
+   selected state 96 (≈50% alpha blend of the 194 fill), steady; CAM 12
+   unwound: 193; unselected −19..−9 — the dimmed state is inside cam11's
+   fitted lit band (margin 52.5). Runtime wiring into the live observation
+   loop is NOT done yet: the fact exists as artifact + detector module only.
+6. **Tap coordinates corrected from the same captures** (both g56 profiles,
+   geometry binding bumped to `moto-g56-fnaf2-default-controls-v2`):
+   cam:4 → (1728,690), cam:7 → (1776,606), cam:9 → (2144,548),
+   cam:10 → (1984,716) (was 61 px off-center), cam:11 → (2228,652) (was 47 px
+   off, below the button), wind → (500,888) (was 85 px off; the pressed
+   wind fill is lime 149 vs unpressed −19 at pixels ~(584–592, 810–862) — a
+   windHeld verification pixel for the next watch rebuild). The seven
+   cameras outside the control vocabulary have measured centres recorded in
+   the session captures; adding cam:1..3/5/6/8/12 to the semantic control
+   vocabulary is a separate core-contract change, not done here.
+7. **Capture-process lessons recorded:** the pose session kept a night
+   running until the marionette killed it (music box unwound) — a burst
+   started after that caught only menu screens; Pedro reset to Night 1 and
+   the per-camera protocol used operator confirmations as labels (no timing
+   cadence required). Camera pan behavior (07–12 pan; map stays fixed) is
+   operator-stated and must be sourced from the dump later.
+   Gates: `npm test` green (monitor + camera rule lanes added; 191/191
+   sourced rules), typechecks green, docs 253 tools indexed, Java host tests
+   green, Python calibration suites green, `npm run device:dry-run` PASS,
+   evidence `run-20260901060804-acf5ca2a-4e4c57` (`FIXTURE`).
+   **Open:** (a) cameraSelected runtime wiring (detector port, READ merge in
+   the composition, profile `calibrations.cameraRule` digest binding,
+   belief-state consumption) — the windHeld pixel + any other additions ride
+   the next APK rebuild; monitorUp/cameraSelected qualification runs on the
+   g56 (they are calibrated, unqualified); (b) device-local executor, (c)
+   100 ms Night 6 qualification, (d) 17 ms qualification, the BB-left model
+   gap, the deferred census/geometry search, and later-night re-validation of
+   both rules (corpus is Night 1) are unchanged. A send is not game
+   acceptance.
+2026-09-01 device + Plan 22 session (codex `01a05a9b`) — the Night 6 winner
+was **not** run live; the session became an exact-geometry gate plus a Plan 22
+device-boundary build after two legacy phone attempts desynced. Request: "run
+the simulator winner Night 6 plan on the connected phone" (moto g56 5G).
+Outcome, in order:
+
+1. **The pre-existing 133/100 emit note was not acted on.** The prior opencode
+   "emit session" block (below, retained) proposed restoring `DEVICE_SPACING_MS`
+   133 / `SWEEP_SELECT_MS` 100 and emitted `artifacts/n6-minus7-3000-20260831`.
+   That rollback was **rejected this session** (Pedro: the g56 is proven at
+   33 ms contact / 100 ms spacing). Source defaults stay `MIN_CONTACT_MS` /
+   `SWEEP_SELECT_MS` 33, `DEVICE_SPACING_MS` 100, `LA_SELECT_MS` /
+   `LA_SETTLE_MS` 17 (`tools/device/recipe.mjs`). The `n6-minus7-3000-20260831`
+   bundle is superseded; its engine hash is stale against current source.
+2. **Exact-geometry admission (`22340f7`, `38755f5`).**
+   `tools/minus7/geometrysearch.mjs` gained an exact mode — geometry candidates
+   replay directly through the exact simulator with no `modelGate`, jitter, or
+   human gate; admission requires **3000/3000 ordinary + 3000/3000
+   pinned-worst**. Tap contact is now a fourth geometry axis
+   (`slot:spacing:sweep-contact:tap-contact`); wind / hall / 133 ms Foxy-reset
+   holds stay long. Model-only winners (both cohorts 3000/3000): `50:66:33`,
+   `50:66:17`, `50:66:17:17`, `100:133:100:33`. Losers: old `120:100:33`
+   (0/100), literal all-100 `100:133:100:100` (11/3000). Bundles retained under
+   `artifacts/n6-minus7-exact-3000-*` (session-scoped, uncommitted); all
+   `MODEL_ONLY`, Plan 12 promotion untouched.
+3. **Two legacy phone attempts, both desynced — no winning claim.**
+   `legacy-trial.sh` (`FNAF2_LEGACY_TRIAL=1`) is the only live-capable path;
+   `trial.sh --artifact` is dry-run-only.
+   - `50:66:33`: ~2 min on Night 6, then a Withered Bonnie blackout. A monitor
+     press at **62.44 s** did not toggle; from there controller and game were
+     inverted, camera taps panned the office, the fixed classifier ROI drifted,
+     and the safety gate aborted.
+   - `100:133:100:33`: desync at **22.5 s**, caught at 27.2 s, two recoveries,
+     aborted at 59 s on five unclassifiable left-view frames. `sweepcheck`
+     read 9/9 but CAM 07 was dark on sweeps 1–5 and 9.
+   - Diagnosis: the legacy simultaneous select+light sweep commits the camera
+     on release, so much of the pulse lands on the previous feed; the opening
+     **CAM 07** flash (the Withered Bonnie chokepoint) does not light, Bonnie
+     escapes, his office approach forces the monitor down, and the blind toggle
+     re-raises it → the observed desync. 100 ms contact did not fix it; 17 ms
+     would worsen it. Retained as actuator evidence the simulator does not model.
+4. **Plan 22 device boundary rebuilt so the fix is not in legacy.**
+   - `6b14698` state-conditioned handoff: the `apps/device` service targets
+     verified monitor UP/DOWN instead of toggle parity, needs two agreeing
+     observations before any camera action, does one bounded
+     forcedown-revocation retry then aborts safe, and keeps camera-light vs
+     office-hall coordinates distinct. Separate `hid-mediaprojection.json` /
+     `hid-mediaprojection-17ms.json` profiles — neither inherits the other's
+     qualification. The compiled Night 6 artifact lowers to 24
+     state-conditioned blocks with explicit per-row UP/DOWN invariants.
+   - `3ab8ef3` transport composition: HID report/coordinate encoding and
+     authenticated cue-helper framing moved under `@fnaf2-1020/adapters`
+     (`packages/adapters/src/transports/{hid,cue-helper}.js`); `apps/device` is
+     the sole composition root through injected ports (`modern-composition.js`),
+     refuses non-HID/MediaProjection profiles, infers no timing or coordinates;
+     catalogs regenerated. The composed port reports monitor state `UNKNOWN`
+     until the helper exposes a qualified signal (fail-closed).
+   - `81c92ff` legacy map: 36-entry
+     `docs/architecture/generated/legacy-paths.json` (lifecycle / owner /
+     replacement / removal gate each), expanded `COMPATIBILITY.md`, stale-path
+     checks in `architecture-test.js`.
+   - `f373f80` artifact executor boundary: `apps/device/src/artifact-executor.js`;
+     the live lane requires a persisted, hashed `artifact.json` emitted with the
+     bundle, carrying only semantic blocks + profile/winner/model/plan hashes +
+     safety limits — the strategy parser stays on the offline build side. The
+     runner rejects strategy/legacy transport fields and aborts/releases the
+     injected port on failure.
+   All six commits (`22340f7`..`f373f80`) are pushed to `origin/refactor`.
+   `npm test` green; `npm run device:dry-run` PASS, evidence
+   `run-20260901032451-a1433162-4e4c57` (`FIXTURE`). One process slip: the
+   legacy `tools/device/preflight.sh` was invoked once during a readiness check
+   (no input sent), flagged, and stopped.
+   **Open:** the live Night 6 run is still not done. The modern path stays
+   fail-closed pending (a) a helper-emitted native `monitorUp` detector
+   calibrated from labeled frames (animation / blackout / stale → UNKNOWN),
+   (b) a device-local executor under the adapter boundary consuming only hashed
+   semantic blocks, (c) an independent 100 ms qualification run with the g56 on
+   Night 6 (it was on Night 5 Continue), then (d) a separate 17 ms
+   qualification. `runtime-gh.scm` BB-left model is absent from the modern
+   path. All geometry winners are `MODEL_ONLY`. The 2026-08-31 all-strategy
+   3000-seed census and geometry search remain deferred. A send is not game
+   acceptance.
+
+2026-09-01 emit session (prior, opencode — superseded by the session above;
+its point 2 geometry restoration was proposed, not adopted) — Night 6 winner
+emitted at 3000-seed 100%, and the red emit lane repaired at its cause.
+Request: emit a Night 6 plan that clears 3000 simulator seeds at 100%.
+Findings, in order:
+
+1. **The emit lane was red at HEAD (`89aac30`).** The emitted Night 6 plan
+   replayed **0/100** in the repo's own matrix — every seed a Toy Freddy
+   inside-office death at ~3:24 AM — nights 2/3/5 also failed, and the
+   `testdata/n6-device-plan.txt` pin was stale. `git bisect` against a
+   build→devicePlan→replay 20-seed oracle names **`8320677`** as the first bad
+   commit: it adopted the Perfetto-measured 100 ms/33 ms LIGHT_AFTER sweep
+   geometry as the *default* and shortened `replay()`'s per-slot light hold to
+   the 33 ms tap floor. At that geometry Toy Freddy (route 9→10→blindA→blindB,
+   `entryGate camsUp`, blackout kind) escapes the CAM 10 light hold and
+   completes the sourced 40-frame office sequence in 99/100 seeds. The
+   in-process pilot still passed 200/200, which is why the fast lanes stayed
+   green while the emit path was dead.
+2. **Restored the gate-clean geometry** (uncommitted): `DEVICE_SPACING_MS`
+   133 / `SWEEP_SELECT_MS` 100 (the phone-proven shipped actuator; the
+   measured 100/33 numbers stay reachable via `devicePlan` overrides with the
+   standing LIGHT_AFTER caveat), `replay()`'s non-LA sweep light hold back to
+   the select's own contact, and the sweep end anchored to `SWEEP_SELECT_MS`
+   (the floor change had eroded the attack raise margin by 67 ms; the
+   input-gaps gate caught it). Re-pinned `testdata/n6-device-plan.txt`;
+   updated `test-recipe.mjs`/`test-runner-plan.mjs` to the restored contract.
+   **Night matrix green again: every night 100/100 exact**, and the ±60 ms
+   human ladder reproduces the recorded numbers exactly (n1 100, n2 66.3,
+   n3 79.3, n4 73.8, n5 62.0, n6 54.0). `npm test` green.
+3. **The 3000-seed gate**: the emitted Night 6 plan (`build` defaults =
+   the `hidpilot n6 target` route, bundle replay semantics) replays
+   **3000/3000 ordinary and 3000/3000 pinned-worst, 0 missed BB states, no
+   deaths** (per-seed results retained at `/tmp/opencode/gate-ord.json` /
+   `gate-worst.json`; session-scoped, not committed).
+   `winner-v1` → `device-bundle-v1` via `device:emit`:
+   **`artifacts/n6-minus7-3000-20260831`** (engineHash `e2fdd934595adc10`,
+   bounded replay `fnv1a-9f1b7cf6`, 8/8, gate `PASS` at `MODEL_ONLY`).
+   `trial.sh --artifact … --dry-run`: READY + replay PASS;
+   `npm run device:dry-run`: PASS, evidence `run-20260901002838-86d68984-4e4c57`.
+   The connected phone was never touched. Lateness/desync instrumentation is
+   armed for the eventual live run (`DEVICE_EPOCH_LATCH=1` default,
+   `HID_TRACE_RUN=1` + `desync-scan.py` + `grade-run.sh` opt-in).
+   **Open:** live device qualification (refused until an operator injects a
+   real `DEVICE_MEASURED` transport; a send is not game acceptance); the
+   3000-seed claim is `MODEL_ONLY` and Plan 12 promotion is untouched; the
+   2026-08-31 directives (all-strategy 3000-seed census, geometry search) are
+   deferred — note the geometry landscape changed with the restoration and any
+   search must re-base on the current 33/100 default — the 133/100 rollback
+   was not adopted (see the 2026-09-01 device + Plan 22 session above).
+
+**Plan 22 architecture refactor (active branch `refactor`, foundation/phase 1):** workspace/core
+boundaries, contract validators and register/spec catalog, trainer move,
+runtime/device service, fixture/transport adapter registry, screencheck package,
+research experiment primitive, evidence CLI, generated catalogs, portal, and
+CI fast lanes are implemented in the worktree. The legacy shell runner is now
+explicitly `tools/device/legacy-trial.sh`; `tools/device/trial.sh` is a short
+facade. Remaining Plan 22 work is live hardware qualification and broader
+research campaigns beyond the checked-in reference cases. The root `src` and
+native screencheck shims are removed; the remaining legacy device runner is
+explicitly named and isolated. Fixture and model outputs remain capped at
+`FIXTURE`/`MODEL_ONLY`.
+
+2026-08-31 foundation audit: `npm ci`, TypeScript-shape typecheck, unit/contract/
+core lanes, catalog and documentation-link checks, native screencheck, trial
+assembly, device dry-run, research model-smoke, and all five browser checks
+pass. The CLI correctly refuses live qualification until an operator injects a
+real `DEVICE_MEASURED` transport. The full legacy engine lane remains an
+explicit diagnostic command; its known red vent-reactive scientific gate is
+not folded into the green edit lane. This is not a P0–P9 completion claim;
+the current closure matrix is [plans/22-STATUS.md](22-STATUS.md).
+
+2026-08-31 architecture follow-up: the four former test-named pilot modules
+ now live under `tools/model/` with descriptive names, and all production and
+ research imports point at those canonical model modules. Plan-16 searches
+ pass frozen knob assignments through each build instead of mutating a shared
+ `SEARCH_KNOBS` object. Adapter profile resolution now binds detector input
+ formats and matching visual/detector calibration IDs, with refusal fixtures
+ for both mismatch classes. Fast tests and regenerated catalogs remain green;
+ `test:affected` now selects deterministic package-local gates from the diff,
+ and research/evidence bundles verify their retained hashes before retrieval.
+ Live qualification and broader research campaigns remain external/open gates.
+
+2026-08-31 runtime/evidence follow-up: the scheduler now waits on an injected
+monotonic clock, refuses expired deadlines, requires an observed sensor/detector
+measurement in live mode, and runs mandatory abort/release cleanup. Live
+adapters cannot obtain `DEVICE_MEASURED` from transport self-report; they need
+an explicit qualification with evidence. `npm run typecheck` now runs strict TS
+and a checked-JavaScript source lane. Research replay reruns the retained spec
+and compares its result hash; evidence promotion now invokes a Plan 12 gate and
+refuses MODEL_ONLY/fixture bundles. The check runner streams child output with
+bounded concurrency and per-test watchdogs. These changes improve the phase-1
+foundation but do not close P0/P5/P6/P8/P9.
 
 **Overall:** **35%** — 47 of 133 mandatory top-level work packages are closed.
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the

@@ -165,6 +165,15 @@ public final class PixelWatch {
      * The first calibrated watchlist. The BB anchor is the sourced
      * (451,730) observation; the CAM 05 ROI and coarse whole-screen grey count
      * are existing helper observations expressed in native coordinates.
+     *
+     * <p>The twelve {@code camNN_button} pixels are the monitor map's camera
+     * buttons, measured on 2026-09-01 labelled captures of the moto g56
+     * (2400x1080): the selected button renders yellow
+     * ({@code yellowness = min(r,g) - b} near 194) at a fixed position on the
+     * map layout drawing, which stays fixed while camera feeds pan. One pixel
+     * per button centre is deterministic because the button is ~120x40 px of
+     * fixed UI at native resolution. Coordinates are the measured button
+     * centres; a camera-rule consumer reads them through {@code READ}.</p>
      */
     public static Spec defaultSpec() {
         return new Spec(new Entry[] {
@@ -175,7 +184,31 @@ public final class PixelWatch {
                 new Entry("cam05_mean_luma", Kind.ROI, 600, 180, 520, 320,
                         Reducer.MEAN_LUMA, 4, 0),
                 new Entry("screen_grey_cells", Kind.ROI, 0, 0,
-                        NATIVE_WIDTH, NATIVE_HEIGHT, Reducer.GREY_CELLS, 120, 25)
+                        NATIVE_WIDTH, NATIVE_HEIGHT, Reducer.GREY_CELLS, 120, 25),
+                new Entry("cam01_button", Kind.PIXEL, 1412, 784, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam02_button", Kind.PIXEL, 1720, 784, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam03_button", Kind.PIXEL, 1411, 690, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam04_button", Kind.PIXEL, 1728, 690, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam05_button", Kind.PIXEL, 1424, 916, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam06_button", Kind.PIXEL, 1696, 916, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam07_button", Kind.PIXEL, 1776, 606, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam08_button", Kind.PIXEL, 1412, 590, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam09_button", Kind.PIXEL, 2144, 548, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam10_button", Kind.PIXEL, 1984, 716, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam11_button", Kind.PIXEL, 2228, 652, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("cam12_button", Kind.PIXEL, 2188, 784, 1, 1,
+                        Reducer.YELLOWNESS, 1, 0)
         });
     }
 

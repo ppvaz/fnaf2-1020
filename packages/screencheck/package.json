@@ -1,0 +1,8 @@
+{
+  "name": "@fnaf2-1020/screencheck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"build": "../../tools/device/build-screencheck.sh"},
+  "exports": {".": "./src/index.js"}
+}

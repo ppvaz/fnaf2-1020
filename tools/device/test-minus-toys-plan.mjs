@@ -19,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, maskWindows, phaseScan } from './minus-toys-plan.mjs';
-import * as C from '../../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const check = (ok, message) => { if (!ok) throw new Error(message); };

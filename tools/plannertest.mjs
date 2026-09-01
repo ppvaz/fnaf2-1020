@@ -1,8 +1,8 @@
 // Plan 20 package 5 foundation: worst-case finite-cycle selection.
-import { getCycle } from '../src/cycle-library.js';
-import { selectCycle } from '../src/cycle-planner.js';
-import { initialReducedState, advanceReduced, applyReduced } from '../src/reduced-model.js';
-import * as C from '../src/config.js';
+import { getCycle } from '@fnaf2-1020/core/control';
+import { selectCycle } from '@fnaf2-1020/core/control';
+import { initialReducedState, advanceReduced, applyReduced } from '@fnaf2-1020/core/mechanics';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const exactPass = (cycle, hypothesis) => ({ accepted: true, cycleId: `${cycle.id}/${hypothesis.id}` });

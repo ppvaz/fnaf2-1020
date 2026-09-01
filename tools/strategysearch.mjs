@@ -10,14 +10,14 @@
 //   node tools/strategysearch.mjs
 //   node tools/strategysearch.mjs --quick
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { DEFAULT_CYCLE } from './bbtest.mjs';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { DEFAULT_CYCLE } from './model/reactive-pilot.mjs';
 import { genCycle, KNOBS0 } from './cyclesearch.mjs';
 import { pool, closePool } from './pool.mjs';
 
 // Every night goes through the worker pool; `--serial` pins it to one thread
 // and must produce identical output.
-const BBTEST = new URL('./bbtest.mjs', import.meta.url).href;
+const BBTEST = new URL('./model/reactive-pilot.mjs', import.meta.url).href;
 const sweep = (optsList) => pool().map(BBTEST, 'summarize', optsList);
 
 const ALL_CAMS = Object.keys(C.CAMS).map(Number).filter(n => n !== C.BOX_CAM);

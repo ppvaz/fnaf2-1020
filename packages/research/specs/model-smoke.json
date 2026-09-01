@@ -1,0 +1,16 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "model-smoke",
+  "operation": "model-discrimination",
+  "hypothesis": "the canonical plant accepts semantic monitor/camera actions",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "fixture-semantic-controls",
+  "observationPrivilege": "none",
+  "faultProfile": "none",
+  "seeds": [1],
+  "sample": {"count": 1, "stoppingRule": "one deterministic trace"},
+  "objectives": ["trace-reproducibility"],
+  "controls": ["invalid-coordinate-command"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

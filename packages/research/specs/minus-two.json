@@ -1,0 +1,23 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "minus-two",
+  "operation": "model-discrimination",
+  "family": "minus-two",
+  "evaluator": "minus-two-v1",
+  "hypothesis": "the glitchless Minus Two cycle remains a distinct policy family and its published single-camera control is negative on the current model",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "minus-two-glitchless",
+  "observationPrivilege": "simulator-oracle",
+  "faultProfile": "none",
+  "seeds": [0, 2654435761, 1013904226, 3668339987],
+  "candidateParameters": [
+    {"label": "published-cam-3", "flashCams": [3]},
+    {"label": "pin-all-three-cameras-control", "flashCams": [3, 5, 6]}
+  ],
+  "sample": {"count": 8, "stoppingRule": "fixed family candidates and four deterministic seeds"},
+  "search": {"method": "comparative-enumeration", "candidateSpace": "published camera versus pin-all control"},
+  "objectives": ["terminal-cause", "resource-cost", "negative-control"],
+  "controls": ["pin-all-three-cameras-control"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

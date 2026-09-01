@@ -7,8 +7,8 @@
 // the worker inherits process.argv and would re-run the search, and on the
 // single-threaded path the self-import deadlocks against its own top-level
 // await.
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 
 export class GateBot {
   constructor(sim, policy) {

@@ -13,7 +13,7 @@
 //
 //   node tools/gatesearch.mjs [--quick]
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
+import * as C from '@fnaf2-1020/core/mechanics';
 import { pool, closePool } from './pool.mjs';
 
 // The controller itself lives in gatebot.mjs so the pool can import it as a
@@ -108,6 +108,6 @@ if (isMain) {
   const phaseJ200 = await sample(phaseBest.policy, validN, { jitter: Math.round(0.200 * F) });
   console.log(`\n  best clock-phased set      ${phaseBest.labels.join(' -> ')}`);
   console.log(`    clean ${pct(phaseClean).padStart(4)}  pinned ${pct(phasePinned).padStart(4)}  j100 ${pct(phaseJ100).padStart(4)}  j200 ${pct(phaseJ200).padStart(4)}  box ${(phaseClean.minBox * 100).toFixed(0)}%  pw ${phaseClean.minPower}  inputs ${phaseClean.inputs}`);
-  console.log('\nMinus 7 regression: node tools/bbtest.mjs 200');
+  console.log('\nMinus 7 regression: node tools/model/reactive-pilot.mjs 200');
   await closePool();
 }

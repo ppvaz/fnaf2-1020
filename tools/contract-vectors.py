@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+"""Cross-language smoke reader for the shared JSONL contract vectors."""
+import json
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+control = [json.loads(line) for line in (ROOT / "packages/core/test/fixtures/semantic-control-v1.jsonl").read_text().splitlines()]
+measurement = [json.loads(line) for line in (ROOT / "packages/core/test/fixtures/measurement-v1.jsonl").read_text().splitlines()]
+assert control[0]["case"] == "valid" and control[0]["action"]["control"] == "mask"
+assert control[1]["case"].startswith("invalid-") and "coordinates" in control[1]
+assert measurement[0]["state"] == "UNKNOWN" and "reason" in measurement[0] and "value" not in measurement[0]
+assert measurement[1]["case"] == "invalid-unknown-value" and "value" in measurement[1]
+print("contract vectors: Python reads shared valid/invalid semantic and measurement cases")

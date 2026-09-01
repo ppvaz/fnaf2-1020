@@ -57,4 +57,31 @@ public final class ScreenStats {
         }
         return grey;
     }
+
+    /**
+     * Integer mean luma over the first {@code count} entries of {@code grid},
+     * using the same weighted luma as the watch ({@code (77r+150g+29b)>>8}).
+     *
+     * <p>This statistic is a darkness guard, never a classifier: measured mean
+     * luma bands overlap (camera 3.8-63.1 against office 28.6-35.6, see the
+     * host test), so brightness must refuse a frame, not label it. Callers
+     * treat a value below the calibrated floor as out-of-distribution and
+     * report UNKNOWN rather than guessing.</p>
+     *
+     * @return the mean, or -1 if the arguments do not describe a non-empty grid
+     */
+    public static int meanLuma(int[] grid, int count) {
+        if (grid == null || count <= 0 || count > grid.length) {
+            return -1;
+        }
+        long total = 0;
+        for (int i = 0; i < count; i++) {
+            int cell = grid[i];
+            int r = (cell >> 16) & 0xff;
+            int g = (cell >> 8) & 0xff;
+            int b = cell & 0xff;
+            total += (77 * r + 150 * g + 29 * b) >> 8;
+        }
+        return (int) (total / count);
+    }
 }

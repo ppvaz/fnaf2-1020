@@ -1,0 +1,30 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "controller-synthesis",
+  "operation": "controller-synthesis",
+  "hypothesis": "semantic controller candidates can be compared without changing the plant evaluator",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "semantic-controller-reference",
+  "observationPrivilege": "none",
+  "faultProfile": "none",
+  "seeds": [1, 2, 3],
+  "candidateSpace": {
+    "kind": "cartesian",
+    "dimensions": {
+      "cameraOrder": [[10, 4, 7], [10, 7, 4], [4, 10, 7]],
+      "offsetFrames": [0, 2]
+    }
+  },
+  "commands": [
+    {"at": 0, "action": {"kind": "press", "control": "monitor"}},
+    {"at": 12, "action": {"kind": "select", "control": "cam:10"}},
+    {"at": 48, "action": {"kind": "release", "control": "monitor"}}
+  ],
+  "durationFrames": 90,
+  "sample": {"count": 18, "stoppingRule": "exhaustive cartesian candidate space over three seeds"},
+  "search": {"method": "exhaustive-enumeration", "candidateSpace": "camera order × declared label × timing offset"},
+  "objectives": ["candidate-comparison", "trace-reproducibility"],
+  "controls": ["invalid-coordinate-command"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

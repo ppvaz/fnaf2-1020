@@ -290,7 +290,7 @@ Then, before it enters the simulator:
 
 - Record the group numbers in `ANDROID-SOURCE-STATUS.md` and label the constant
   `[SOURCED]` in `src/config.js`. A rule with no group number is `[MODEL]`.
-- Add or update the engine test (`tools/bbtest.mjs`, `tools/simtest.mjs`,
+- Add or update the engine test (`tools/model/reactive-pilot.mjs`, `tools/simtest.mjs`,
   `tools/androidstalltest.mjs`) in the same commit.
 
 ---

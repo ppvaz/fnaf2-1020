@@ -4,7 +4,7 @@
 // claim that every syntactically legal policy survives a model gate; that is
 // the next search package.  Setup targets are named so a candidate cannot
 // smuggle in an unsourced opening as an anonymous list of taps.
-import { canonicalPolicy, POLICY_SCHEMA, validatePolicy } from '../../src/policy-ir.js';
+import { canonicalPolicy, POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
 import { minimalPolicy } from './policy-ir.mjs';
 
 export const GRAMMAR_SCHEMA = 'policy-grammar-v1';

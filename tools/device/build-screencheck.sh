@@ -3,6 +3,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+NATIVE_DIR="$HERE/../../packages/screencheck/src"
 OUTPUT="${1:-$HERE/fnaf-screencheck}"
 BUILD_DIR="${TMPDIR:-/tmp}/fnaf-screencheck-build"
 HOST_TRIPLE="$(rustc -vV | sed -n 's/^host: //p')"
@@ -17,9 +18,9 @@ mkdir -p "$BUILD_DIR"
 
 clang -target aarch64-linux-android -O3 -ffreestanding -fno-builtin \
   -fno-stack-protector -fno-unwind-tables -fno-asynchronous-unwind-tables \
-  -DSCREENCHECK_FREESTANDING -c "$HERE/screencheck.c" \
+  -DSCREENCHECK_FREESTANDING -c "$NATIVE_DIR/screencheck.c" \
   -o "$BUILD_DIR/screencheck.o"
-clang -target aarch64-linux-android -c "$HERE/screencheck-start.S" \
+clang -target aarch64-linux-android -c "$NATIVE_DIR/screencheck-start.S" \
   -o "$BUILD_DIR/screencheck-start.o"
 "$LINKER" -m aarch64elf -static --gc-sections -s \
   -e _start -o "$OUTPUT" \

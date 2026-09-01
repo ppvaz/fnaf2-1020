@@ -88,7 +88,7 @@ ok "snapshot answers, grey=$grey"
 # read returns `unknown` and the run exits 45 on its fifth cycle.
 BB_LEFT_MODEL="${BB_LEFT_MODEL:-$HERE/../../captures/screencheck/bb-left/models/runtime-gh.scm}"
 bb_can_act="$(node --input-type=module -e \
-  "import { canAct } from '$HERE/../../src/config.js';
+  "import { canAct } from '$HERE/../../packages/core/src/mechanics/config.js';
    process.stdout.write(canAct($NIGHT, 'bb') ? 'yes' : 'no');")" \
   || fail "could not ask the engine whether Balloon Boy can act on night $NIGHT"
 if [ "$bb_can_act" = yes ]; then

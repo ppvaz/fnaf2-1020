@@ -35,14 +35,20 @@
 //        --slots=40,44,48,52,56,60 --dev-offsets=8,12,16
 //   node tools/minus7/geometrysearch.mjs --mode=admit --runs=1200 \
 //        --configs=50:60:30,40:50:25
+//   node tools/minus7/geometrysearch.mjs --mode=exact --runs=3000 \
+//        --configs=50:66:33:33,50:60:33:33 --winner-out=winner.json
 //
-// `--configs` entries are slot:deviceSpacing:contact. `admit` mode re-scores at
+// `--configs` entries are slot:deviceSpacing:sweepContact[:tapContact].
+// `admit` mode re-scores at
 // --runs seeds under BOTH slack shapes and ALSO rebuilds+replays at
 // readLatencyMs 480 (the `hidpilot n6 target` latch), because a geometry that
 // wins only at 550 is a resonance -- exactly how the pkg-4 timing search failed
 // (plan 16 progress log).
 import { build, devicePlan, replay, idleUntilMs } from '../device/recipe.mjs';
 import { modelGate, jitterPlan } from '../device/human-gate.mjs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { canonicalJson } from '@fnaf2-1020/core/contracts';
 
 const arg = (k, d) => {
   const m = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -55,10 +61,23 @@ const NIGHTS = [1, 2, 3, 4, 5, 6, 7];
 const STORY = [2, 3, 4, 5, 6, 7];
 const CORE = [2, 3, 4, 5, 6]; // the search objective: min over these
 
+function configsArg(fallback = '50:66:33:33,50:60:33:33') {
+  return arg('configs', fallback).split(',').map(s => {
+    const values = s.split(':').map(Number);
+    const [slot, dev, con, tap = 33] = values;
+    if (values.length < 3 || values.length > 4 ||
+        ![slot, dev, con, tap].every(Number.isFinite) ||
+        slot <= 0 || dev <= 0 || con <= 0 || tap <= 0 || con >= dev)
+      throw new Error(`invalid geometry "${s}"; expected positive slot:spacing:sweep-contact[:tap-contact] with sweep-contact < spacing`);
+    return { slot, dev, con, tap };
+  });
+}
+
 // One geometry -> the emitted plan text for one night.
-function planText(night, { slot, dev, con }) {
+function planText(night, { slot, dev, con, tap = 33 }) {
   const recipe = build({ night, sweepSlotMs: slot });
-  const plan = devicePlan(recipe, (dev || con) ? { deviceSpacingMs: dev, sweepContactMs: con } : {});
+  const plan = devicePlan(recipe, (dev || con) ? { deviceSpacingMs: dev, sweepContactMs: con,
+    tapContactMs: tap } : {});
   let text = `#night ${recipe.night}\n#idle-until ${idleUntilMs(recipe.night)}\n`;
   for (const [name, lines] of Object.entries(plan))
     text += `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}\n`;
@@ -110,6 +129,8 @@ function ladder480(geom, runs, shape) {
 function grid() {
   const slots = arg('slots', '40,42,44,46,48,50,52,54,56,58,60').split(',').map(Number);
   const devOffsets = arg('dev-offsets', '8,11,14,17').split(',').map(Number);
+  const winnerOut = arg('winner-out', '');
+  const admitRuns = +arg('admit-runs', '0');
   console.log(`geometry grid  ${RUNS} seeds/night  correlated ±${SLACK}`);
   console.log(`slots ${slots.join(',')}   dev = slot + {${devOffsets.join(',')}}   con = round(slot*0.55)\n`);
 
@@ -138,6 +159,35 @@ function grid() {
   }
   console.log(`\nshipped baseline min(n2-6) ${minOf(base, CORE)} / n7 ${base[7]}.`);
   console.log(`Re-score the winners with:  --mode=admit --configs=${rows.slice(0, 4).map(r => `${r.geom.slot}:${r.geom.dev}:${r.geom.con}`).join(',')}`);
+  if (winnerOut) {
+    if (!admitRuns) throw new Error('--winner-out requires --admit-runs so the persisted gate is explicit');
+    const best = rows[0];
+    if (!best) throw new Error('geometry search produced no candidate to persist');
+    const byNight = [];
+    for (const shape of ['correlated', 'iid']) for (const night of NIGHTS) {
+      const result = modelGate(planText(night, best.geom), { night, runs: admitRuns, slackMs: SLACK, shape });
+      byNight.push({ shape, night, ...result, outcomes: undefined });
+    }
+    const status = byNight.every(result => result.ok) ? 'PASS'
+      : byNight.some(result => result.verdict === 'INCONCLUSIVE') ? 'INCONCLUSIVE' : 'FAIL';
+    if (status !== 'PASS')
+      throw new Error(`best geometry did not pass the persisted model gate (${status}); no winner was written`);
+    const seeds = Array.from({ length: admitRuns }, (_, index) => index + 1);
+    const winner = {
+      schema: 'winner-v1', strategy: 'minus7',
+      knobs: { night: NIGHTS[0], sweepSlotMs: best.geom.slot, readLatencyMs: 550,
+        hallPulseMs: 130, pilotOffset: 10, maskMarginMs: 900, search: {} },
+      planOptions: { deviceSpacingMs: best.geom.dev, sweepContactMs: best.geom.con },
+      nights: [...NIGHTS], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
+      profile: 'fixture-hid-screencap',
+      gate: { status, claimLevel: 'MODEL_ONLY', runs: admitRuns,
+        byNight: byNight.map(({ outcomes, ...result }) => result) },
+    };
+    if (existsSync(winnerOut)) throw new Error(`refusing to overwrite winner file ${winnerOut}`);
+    mkdirSync(dirname(winnerOut), { recursive: true });
+    writeFileSync(winnerOut, canonicalJson(winner));
+    console.log(`winner=${winnerOut} strategy=minus7 gate=${status} geometry=${best.geom.slot}:${best.geom.dev}:${best.geom.con}`);
+  }
 }
 
 // The n2-n6 basins are ~6 ms wide in emitted spacing (slot 46: dev 54 -> min
@@ -159,10 +209,7 @@ function neighbourhood(geom, runs, shape) {
 }
 
 function admit() {
-  const configs = arg('configs', '50:60:30,40:50:25').split(',').map(s => {
-    const [slot, dev, con] = s.split(':').map(Number);
-    return { slot, dev, con };
-  });
+  const configs = configsArg('50:60:30,40:50:25');
   const doNbhd = !process.argv.includes('--no-nbhd');
   console.log(`geometry admission  ${RUNS} seeds/night  ±${SLACK}\n`);
   const controls = [{ slot: 120, dev: 0, con: 0 }, ...configs];
@@ -189,5 +236,67 @@ function admit() {
   console.log('holds. n7 is a separate problem (jitter shape + bang-anchored reset).');
 }
 
-if (MODE === 'admit') admit();
+// Exact simulator admission for a device geometry. This deliberately does not
+// call modelGate or jitterPlan: a winner here means the emitted plan itself
+// survived every requested simulator seed. Pinned-worst is scored as a second
+// cohort so an RNG-mode artifact cannot be hidden by the ordinary sequence.
+function exactCohort(geom, runs, worst) {
+  const night = 6;
+  const recipe = build({ night, sweepSlotMs: geom.slot });
+  const plan = devicePlan(recipe, { deviceSpacingMs: geom.dev, sweepContactMs: geom.con,
+    tapContactMs: geom.tap });
+  let wins = 0;
+  const deaths = {};
+  for (let seed = 1; seed <= runs; seed++) {
+    const { sim } = replay(plan, { night, seed, worst,
+      attackWindowMs: recipe.cycles.attack.lengthMs });
+    if (sim.won) wins++;
+    else {
+      const reason = sim.death?.reason ?? 'unknown';
+      deaths[reason] = (deaths[reason] ?? 0) + 1;
+    }
+  }
+  return { wins, seeds: runs, deaths };
+}
+
+function exact() {
+  const configs = configsArg();
+  const winnerOut = arg('winner-out', '');
+  console.log(`geometry exact admission  night 6  ${RUNS} seeds/cohort  no human jitter`);
+  let winner = null;
+  for (const geom of configs) {
+    const ordinary = exactCohort(geom, RUNS, false);
+    const worst = exactCohort(geom, RUNS, true);
+    const pass = ordinary.wins === RUNS && worst.wins === RUNS;
+    console.log(`  ${geom.slot}:${geom.dev}:${geom.con}:${geom.tap}  ordinary ${ordinary.wins}/${RUNS}` +
+      `  pinned-worst ${worst.wins}/${RUNS}  ${pass ? 'PASS' : 'FAIL'}`);
+    if (!pass) {
+      if (Object.keys(ordinary.deaths).length) console.log(`    ordinary deaths ${JSON.stringify(ordinary.deaths)}`);
+      if (Object.keys(worst.deaths).length) console.log(`    pinned-worst deaths ${JSON.stringify(worst.deaths)}`);
+    }
+    if (!winner && pass) winner = { geom, ordinary, worst };
+  }
+  if (!winner) throw new Error(`no geometry cleared ${RUNS}/${RUNS} in both exact cohorts`);
+  if (!winnerOut) return;
+  if (existsSync(winnerOut)) throw new Error(`refusing to overwrite winner file ${winnerOut}`);
+  const seeds = Array.from({ length: RUNS }, (_, index) => index + 1);
+  const document = {
+    schema: 'winner-v1', strategy: 'minus7',
+    knobs: { night: 6, sweepSlotMs: winner.geom.slot, readLatencyMs: 550,
+      hallPulseMs: 130, pilotOffset: 10, maskMarginMs: 900, search: {} },
+    planOptions: { deviceSpacingMs: winner.geom.dev, sweepContactMs: winner.geom.con,
+      tapContactMs: winner.geom.tap },
+    nights: [6], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
+    profile: 'fixture-hid-screencap',
+    gate: { status: 'PASS', claimLevel: 'MODEL_ONLY', mode: 'exact', night: 6,
+      geometry: winner.geom, cohorts: { ordinary: winner.ordinary, worst: winner.worst } },
+  };
+  mkdirSync(dirname(winnerOut), { recursive: true });
+  writeFileSync(winnerOut, canonicalJson(document));
+  console.log(`winner=${winnerOut} strategy=minus7 gate=PASS geometry=` +
+    `${winner.geom.slot}:${winner.geom.dev}:${winner.geom.con}:${winner.geom.tap}`);
+}
+
+if (MODE === 'exact') exact();
+else if (MODE === 'admit') admit();
 else grid();

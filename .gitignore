@@ -1,6 +1,7 @@
 dist/
 artifacts/
 captures/
+node_modules/
 .DS_Store
 /tools/device/fnaf-screencheck
 __pycache__/

@@ -22,7 +22,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 // against host text or the reverse and nobody could see it. Five checks below
 // were reading the host for driver-side subjects until 2026-08-26; they only
 // passed because the driver happened to be inside the host file.
-const src = readFileSync(join(here, 'trial.sh'), 'utf8');
+const src = readFileSync(join(here, 'legacy-trial.sh'), 'utf8');
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
 // These values are carried into the session manifest and the remote driver's

@@ -822,15 +822,19 @@ def analyse_session(run_dir: pathlib.Path, refs: pathlib.Path,
 def create_run_dir(out_dir: pathlib.Path, name: str) -> pathlib.Path:
     if not SAFE_NAME.fullmatch(name):
         fail("name must contain only letters, numbers, ., _, and -")
-    out_dir = out_dir.expanduser().resolve()
-    if REPO == out_dir or REPO in out_dir.parents:
-        fail("refusing to write game audio inside the repository: %s" % out_dir)
+    # Keep the caller's spelling for the returned path (notably `/var` versus
+    # macOS's `/private/var` symlink), while resolving only for the repository
+    # safety check. This makes manifests reproducible without weakening it.
+    requested = out_dir.expanduser()
+    resolved = requested.resolve()
+    if REPO == resolved or REPO in resolved.parents:
+        fail("refusing to write game audio inside the repository: %s" % resolved)
     try:
-        out_dir.mkdir(parents=True, exist_ok=True)
+        requested.mkdir(parents=True, exist_ok=True)
     except OSError as error:
         fail("cannot create output directory %s: %s" % (out_dir, error))
     stamp = time.strftime("%Y%m%dT%H%M%S", time.localtime())
-    base = out_dir / (stamp + "-" + name)
+    base = requested / (stamp + "-" + name)
     candidate = base
     suffix = 2
     while candidate.exists():

@@ -34,7 +34,12 @@ public final class PixelWatchTest {
 
     public static void main(String[] args) {
         PixelWatch.Spec spec = PixelWatch.defaultSpec();
-        check("default spec has the fixed four-entry watchlist", spec.size() == 4);
+        check("default spec has the four sourced entries plus twelve map buttons",
+                spec.size() == 16);
+        check("the map buttons follow the sourced entries",
+                spec.entry(4).name.equals("cam01_button")
+                        && spec.entry(15).name.equals("cam12_button")
+                        && spec.entry(10).x == 1776 && spec.entry(10).y == 606);
         check("spec hash is stable and lowercase sha256",
                 spec.sha256().matches("[0-9a-f]{64}")
                         && spec.sha256().equals(PixelWatch.defaultSpec().sha256()));
@@ -42,6 +47,7 @@ public final class PixelWatchTest {
 
         Frame frame = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0x808080);
         frame.set(451, 730, 0x90d1ff);
+        frame.set(1776, 606, 0xc2dd00);
         int[] values = new int[spec.size()];
         check("readInto fills every entry",
                 PixelWatch.readInto(spec, frame, values) == spec.size());
@@ -50,6 +56,10 @@ public final class PixelWatchTest {
         check("uniform CAM ROI returns its mean luma",
                 values[2] == 128);
         check("uniform grey coarse screen is all grey cells", values[3] == 180);
+        check("an unselected map button reads grey, not yellow",
+                values[4] == 0);
+        check("the lit CAM 07 button reads the measured selected yellowness",
+                values[10] == 194);
 
         Frame mixed = new Frame(10, 10, 0x808080);
         mixed.set(0, 0, 0xc2dd00);

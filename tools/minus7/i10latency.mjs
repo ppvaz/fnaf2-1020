@@ -37,7 +37,7 @@
 // Item 10 is closed, not merely blocked on plan 08.
 //
 //   node tools/minus7/i10latency.mjs [--runs=800] [--latencies=0,17,33,50,67,83,100]
-import { SEARCH_KNOBS } from '../hidpilottest.mjs';
+import { makeSearchKnobs } from '../model/hid-device-pilot.mjs';
 import { build, devicePlan, replay, idleUntilMs } from '../device/recipe.mjs';
 import { jitterPlan } from '../device/human-gate.mjs';
 
@@ -49,12 +49,12 @@ const RUNS = +arg('runs', '800');
 const LATS = arg('latencies', '0,17,33,50,67,83,100').split(',').map(Number);
 const NIGHTS = [2, 5, 6, 7];
 
-function plan(night) {
-  const r = build({ night });
+function plan(night, knobs) {
+  const r = build({ night, knobs });
   return { p: devicePlan(r, {}), night: r.night, idle: idleUntilMs(r.night), aw: r.cycles.attack.lengthMs };
 }
-function score(night, opts) {
-  const { p, idle, aw } = plan(night);
+function score(night, opts, knobs) {
+  const { p, idle, aw } = plan(night, knobs);
   let won = 0;
   for (let seed = 1; seed <= RUNS; seed++) {
     const { sim } = replay(jitterPlan(p, seed, 60, 'correlated'),
@@ -66,19 +66,18 @@ function score(night, opts) {
 const row = (label, fn) => console.log(`  ${label.padEnd(22)} ${NIGHTS.map(n => String(fn(n)).padStart(6)).join(' ')}`);
 
 console.log(`item 10 / bang-read latency budget  ${RUNS} seeds correlated   (n2 n5 n6 n7)\n`);
-SEARCH_KNOBS.attackBangGateMs = 0;
 const blind = {};
-row('blind (no item 10)', n => (blind[n] = score(n, {})));
-SEARCH_KNOBS.attackBangGateMs = 1;
+const blindKnobs = makeSearchKnobs();
+row('blind (no item 10)', n => (blind[n] = score(n, {}, blindKnobs)));
+const gatedKnobs = makeSearchKnobs({ attackBangGateMs: 1 });
 let crossed = false;
 for (const lat of LATS) {
   const s = {};
-  NIGHTS.forEach(n => (s[n] = score(n, { bangLatencyMs: lat, bbOnlyBang: true })));
+  NIGHTS.forEach(n => (s[n] = score(n, { bangLatencyMs: lat, bbOnlyBang: true }, gatedKnobs)));
   const netLoss = NIGHTS.slice(1, 3).every(n => s[n] <= blind[n]); // n5 & n6 both <= blind
   row(`gate1  latency ${lat}`, n => s[n]);
   if (netLoss && !crossed) { console.log(`  ^ item 10 is a NET LOSS on n5/n6 at ${lat} ms and above`); crossed = true; }
 }
-SEARCH_KNOBS.attackBangGateMs = 0;
 console.log(`\nbudget: end-to-end bang latency must be < ~33 ms for a useful gain,`);
 console.log(`< ~50 ms to break even. Android CDD recommends <=30 ms for continuous`);
 console.log(`PCM delivery alone. Item 10 is closed on latency, not merely blocked.`);

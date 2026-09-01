@@ -6,7 +6,7 @@
 //   none     = every camera stall mechanism removed
 //   gateonly = marker hold alone (the disproved pre-XOR "gate replaces the
 //              timer" hypothesis, kept as a control)
-import { run } from './bbtest.mjs';
+import { run } from './model/reactive-pilot.mjs';
 
 const SEED = i => (i * 2246822519) >>> 0;
 const models = {

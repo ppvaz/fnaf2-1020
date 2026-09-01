@@ -4,11 +4,9 @@
 #
 # The select leads its light pulse by this much inside a sweep burst.
 #
-# Zero, and not by preference: the select and its light both need the full
-# phone-proven 100 ms contact. A positive lead spends that budget twice and
-# puts the light pulse under the same floor, which is how it once became 90 ms.
-# The emitted 133 ms slot leaves its separate 33 ms released gap after this
-# shared contact.
+# Zero keeps the select and its light on the same 33 ms contact. A positive lead
+# spends that budget twice and shrinks the light pulse. The active 100 ms slot
+# leaves 67 ms released between selections.
 SWEEP_LIGHT_LEAD_MS=0
 # LIGHT_AFTER sweep geometry (plans/17). When the plan's sweep CONTACT is
 # under 50 ms it is a light-after plan: the map button is a Fusion Click
@@ -30,7 +28,7 @@ SWEEP_SELECT_MS=17
 SWEEP_SETTLE_MS=17
 # A tap's contact. Named because the driver has to reason about when a tap
 # *finishes*, not just when it starts.
-TAP_CONTACT_MS=100
+TAP_CONTACT_MS=33
 # Fusion polls touch once per frame, so two different controls with no released
 # time between them can read as one finger moving from one to the other and the
 # second never fires. Mirrors MIN_RELEASED_MS in test-hid-trace.mjs.

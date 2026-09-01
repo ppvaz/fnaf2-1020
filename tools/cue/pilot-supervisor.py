@@ -21,7 +21,7 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[2]
 LATENCY = ROOT / "tools/cue/latency-experiment.py"
-TRIAL = ROOT / "tools/device/trial.sh"
+TRIAL = ROOT / "tools/device/legacy-trial.sh"
 
 
 def _children(pid: int) -> list[int]:
@@ -30,7 +30,11 @@ def _children(pid: int) -> list[int]:
     try:
         text = path.read_text(encoding="ascii")
     except (FileNotFoundError, PermissionError):
-        return []
+        # macOS has no /proc. `pgrep -P` is a narrow equivalent and keeps the
+        # supervisor dependency-free; it is used only for process discovery.
+        result = subprocess.run(["pgrep", "-P", str(pid)], text=True,
+                                capture_output=True, check=False)
+        return [int(value) for value in result.stdout.split() if value.isdigit()]
     return [int(value) for value in text.split()]
 
 
@@ -47,17 +51,26 @@ def descendants(pid: int) -> set[int]:
 
 
 def alive(pid: int) -> bool:
+    proc_stat = Path(f"/proc/{pid}/stat")
     try:
-        stat = Path(f"/proc/{pid}/stat").read_text(encoding="ascii")
+        stat = proc_stat.read_text(encoding="ascii")
         state = stat.rsplit(")", 1)[-1].lstrip().split(" ", 1)[0]
         if state == "Z":
             return False
     except (FileNotFoundError, PermissionError):
-        return False
+        pass
     try:
         os.kill(pid, 0)
     except (ProcessLookupError, PermissionError):
         return False
+    # On platforms without /proc, distinguish a live process from a zombie
+    # that has not yet been reaped by its parent.
+    if not proc_stat.exists():
+        result = subprocess.run(["ps", "-o", "state=", "-p", str(pid)],
+                                text=True, capture_output=True, check=False)
+        state = result.stdout.strip()
+        if not state or state.startswith("Z"):
+            return False
     return True
 
 

@@ -1,0 +1,23 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "model-probe",
+  "operation": "model-probe",
+  "hypothesis": "the canonical plant exposes a stable terminal trace for a semantic probe",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "plant-probe-reference",
+  "observationPrivilege": "simulator-oracle",
+  "faultProfile": "none",
+  "seeds": [21, 22],
+  "candidateParameters": [{"label": "probe-a"}, {"label": "probe-b"}],
+  "commands": [
+    {"at": 0, "action": {"kind": "press", "control": "monitor"}},
+    {"at": 15, "action": {"kind": "select", "control": "cam:11"}},
+    {"at": 30, "action": {"kind": "release", "control": "monitor"}}
+  ],
+  "durationFrames": 180,
+  "sample": {"count": 2, "stoppingRule": "fixed probe seeds"},
+  "objectives": ["plant-trace"],
+  "controls": ["invalid-coordinate-command"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

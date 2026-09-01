@@ -77,6 +77,7 @@ const EXCLUDED = new Map([
   ['preflight.sh', 'pre-run refusal check -- says whether a night CAN be run and prints the invocation; it launches nothing and has no run to grade, mock-gated by test-preflight.sh'],
   ['run-batch.sh', 'run launcher'],
   ['trial.sh', 'run launcher'],
+  ['legacy-trial.sh', 'legacy implementation is characterized by dedicated runner tests and is not a current grader input'],
   ['trial/assemble.sh', 'builds the program that runs on the phone from the named parts beside it; gated by test-trial-assembly.sh'],
   ['trial-maskcamp.sh', 'run launcher'],
   ['preflight.sh', 'pre-run gate on the phone and the helper -- it decides whether a run can observe anything, and has no run to grade; mock-gated by test-preflight.sh'],

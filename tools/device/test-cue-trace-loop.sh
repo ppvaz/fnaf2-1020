@@ -15,7 +15,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-RUNNER="$HERE/trial.sh"
+RUNNER="$HERE/legacy-trial.sh"
 TMP="$(mktemp -d "${TMPDIR:-/tmp}/fnaf2-cue-trace-test.XXXXXX")"
 loop=""
 cleanup() {

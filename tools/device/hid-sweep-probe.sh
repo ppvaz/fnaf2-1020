@@ -29,7 +29,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 PKG=com.scottgames.fnaf2
 OUT="${OUT:-hid-sweep-probe}"
 SPACINGS=("$@")
-[ "${#SPACINGS[@]}" -gt 0 ] || SPACINGS=(240 200 160 120)
+[ "${#SPACINGS[@]}" -gt 0 ] || SPACINGS=(240 160 120 100)
 # REPEAT=N runs the whole spacing list N times back to back -- a stability
 # probe: does EVERY sweep light all three cameras, or only most of them?
 if [ "${REPEAT:-1}" -gt 1 ]; then
@@ -71,10 +71,10 @@ mkdir -p "$CAPTURE_DIR"
 PROBE_GEN="${PROBE_GEN:-sweep}"
 case "$PROBE_GEN" in
   sweep)
-    echo "geometry: select ${SELECT_MS:-33} ms, contact ${CONTACT_MS:-100} ms, light-after ${LIGHT_AFTER:-0}, held ${HELD_LIGHT:-0}, ${#SPACINGS[@]} sweep(s) at ${SPACINGS[*]} ms, rec ${REC_SECONDS}s, camtrace floor ${MIN_MS:-50} ms"
+    echo "geometry: select ${SELECT_MS:-33} ms, contact ${CONTACT_MS:-33} ms, light-after ${LIGHT_AFTER:-0}, held ${HELD_LIGHT:-0}, ${#SPACINGS[@]} sweep(s) at ${SPACINGS[*]} ms, rec ${REC_SECONDS}s, camtrace floor ${MIN_MS:-50} ms"
     node "$HERE/hid-sweep-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   raise)
-    echo "raise probe: contact ${CONTACT_MS:-100} ms, mask-toggles ${MASK_TOGGLES:-0}, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
+    echo "raise probe: contact ${CONTACT_MS:-33} ms, mask-toggles ${MASK_TOGGLES:-0}, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     node "$HERE/hid-raise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   *) echo "unknown PROBE_GEN: $PROBE_GEN" >&2; exit 2 ;;
 esac

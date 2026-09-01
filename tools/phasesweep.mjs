@@ -4,8 +4,8 @@
 // retained so that failed "solve BB by phase alone" idea is not reinvented.
 //
 //   node tools/phasesweep.mjs [nights] [--sync]
-import { run } from './pilottest.mjs';
-import * as C from '../src/config.js';
+import { run } from './model/stock-device-pilot.mjs';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const N = +(process.argv[2] || 200);
 const SYNC = process.argv.includes('--sync');

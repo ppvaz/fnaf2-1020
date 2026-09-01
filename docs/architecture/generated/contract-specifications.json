@@ -1,0 +1,694 @@
+{
+  "schema": "contract-specification-catalog-v1",
+  "generatedFrom": "packages/core/contracts/register.json",
+  "specifications": [
+    {
+      "contractId": "plant-model-v1",
+      "id": "plant-model-v1",
+      "version": 1,
+      "owner": "core/mechanics",
+      "kind": "port",
+      "purpose": "Stable plant-model-v1 boundary for core/mechanics; its validator is PlantModel.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "PlantModel",
+      "conformanceFixtures": [
+        "tools/sourcetest.mjs",
+        "tools/simtest.mjs"
+      ]
+    },
+    {
+      "contractId": "semantic-control-v1",
+      "id": "semantic-control-v1",
+      "version": 1,
+      "owner": "core/contracts",
+      "kind": "data",
+      "purpose": "Stable semantic-control-v1 boundary for core/contracts; its validator is validateControlCommand.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateControlCommand",
+      "conformanceFixtures": [
+        "packages/core/test/contracts.test.js",
+        "tools/device/test-policy-interpreter.mjs"
+      ]
+    },
+    {
+      "contractId": "policy-program-v1",
+      "id": "policy-program-v1",
+      "version": 1,
+      "owner": "core/control",
+      "kind": "data",
+      "purpose": "Stable policy-program-v1 boundary for core/control; its validator is validatePolicy.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validatePolicy",
+      "conformanceFixtures": [
+        "tools/policygrammartest.mjs",
+        "tools/device/test-policy-ir.mjs"
+      ]
+    },
+    {
+      "contractId": "controller-v1",
+      "id": "controller-v1",
+      "version": 1,
+      "owner": "core/control",
+      "kind": "port",
+      "purpose": "Stable controller-v1 boundary for core/control; its validator is Controller.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "Controller",
+      "conformanceFixtures": [
+        "tools/reactivetest.mjs",
+        "tools/cyclecontrollertest.mjs"
+      ]
+    },
+    {
+      "contractId": "trajectory-v1",
+      "id": "trajectory-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "data",
+      "purpose": "Stable trajectory-v1 boundary for runtime; its validator is validateTrajectory.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateTrajectory",
+      "conformanceFixtures": [
+        "packages/runtime/test/scheduler.test.js"
+      ]
+    },
+    {
+      "contractId": "qualification-v1",
+      "id": "qualification-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "data",
+      "purpose": "Stable qualification-v1 boundary for runtime; its validator is validateQualification.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateQualification",
+      "conformanceFixtures": [
+        "apps/device/test/service.test.js"
+      ]
+    },
+    {
+      "contractId": "raw-sample-v1",
+      "id": "raw-sample-v1",
+      "version": 1,
+      "owner": "adapters",
+      "kind": "data",
+      "purpose": "Stable raw-sample-v1 boundary for adapters; its validator is validateRawSample.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateRawSample",
+      "conformanceFixtures": [
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "measurement-v1",
+      "id": "measurement-v1",
+      "version": 1,
+      "owner": "core/contracts",
+      "kind": "data",
+      "purpose": "Stable measurement-v1 boundary for core/contracts; its validator is validateMeasurement.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateMeasurement",
+      "conformanceFixtures": [
+        "packages/core/test/contracts.test.js",
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "detector-v1",
+      "id": "detector-v1",
+      "version": 1,
+      "owner": "adapters",
+      "kind": "port",
+      "purpose": "Stable detector-v1 boundary for adapters; its validator is Detector.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "Detector",
+      "conformanceFixtures": [
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "state-estimate-v1",
+      "id": "state-estimate-v1",
+      "version": 1,
+      "owner": "core/estimation",
+      "kind": "data",
+      "purpose": "Stable state-estimate-v1 boundary for core/estimation; its validator is validateStateEstimate.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateStateEstimate",
+      "conformanceFixtures": [
+        "tools/estimatortest.mjs"
+      ]
+    },
+    {
+      "contractId": "supervisor-v1",
+      "id": "supervisor-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "port",
+      "purpose": "Stable supervisor-v1 boundary for runtime; its validator is Supervisor.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "Supervisor",
+      "conformanceFixtures": [
+        "tools/cue/test-pilot-supervisor.py"
+      ]
+    },
+    {
+      "contractId": "clock-v1",
+      "id": "clock-v1",
+      "version": 1,
+      "owner": "core/timing",
+      "kind": "data",
+      "purpose": "Stable clock-v1 boundary for core/timing; its validator is validateClockRef.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateClockRef",
+      "conformanceFixtures": [
+        "tools/phaseclocktest.mjs"
+      ]
+    },
+    {
+      "contractId": "actuator-v1",
+      "id": "actuator-v1",
+      "version": 1,
+      "owner": "adapters",
+      "kind": "port",
+      "purpose": "Stable actuator-v1 boundary for adapters; its validator is validateActuationResult.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateActuationResult",
+      "conformanceFixtures": [
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "capability-v1",
+      "id": "capability-v1",
+      "version": 1,
+      "owner": "adapters",
+      "kind": "data",
+      "purpose": "Stable capability-v1 boundary for adapters; its validator is validateCapability.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateCapability",
+      "conformanceFixtures": [
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "calibration-v1",
+      "id": "calibration-v1",
+      "version": 1,
+      "owner": "adapters",
+      "kind": "data",
+      "purpose": "Stable calibration-v1 boundary for adapters; its validator is validateCalibration.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateCalibration",
+      "conformanceFixtures": [
+        "packages/adapters/test/conformance.test.js"
+      ]
+    },
+    {
+      "contractId": "device-profile-v1",
+      "id": "device-profile-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "data",
+      "purpose": "Stable device-profile-v1 boundary for apps/device; its validator is validateProfile.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateProfile",
+      "conformanceFixtures": [
+        "apps/device/test/service.test.js"
+      ]
+    },
+    {
+      "contractId": "telemetry-event-v1",
+      "id": "telemetry-event-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "data",
+      "purpose": "Stable telemetry-event-v1 boundary for runtime; its validator is validateTelemetry.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateTelemetry",
+      "conformanceFixtures": [
+        "tools/factlinktest.mjs"
+      ]
+    },
+    {
+      "contractId": "session-manifest-v1",
+      "id": "session-manifest-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "artifact",
+      "purpose": "Stable session-manifest-v1 boundary for runtime; its validator is validateManifest.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateManifest",
+      "conformanceFixtures": [
+        "tools/device/test-session-manifest.sh"
+      ]
+    },
+    {
+      "contractId": "experiment-spec-v1",
+      "id": "experiment-spec-v1",
+      "version": 1,
+      "owner": "research",
+      "kind": "data",
+      "purpose": "Stable experiment-spec-v1 boundary for research; its validator is validateExperiment.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateExperiment",
+      "conformanceFixtures": [
+        "packages/research/test/experiment.test.js"
+      ]
+    },
+    {
+      "contractId": "experiment-result-v1",
+      "id": "experiment-result-v1",
+      "version": 1,
+      "owner": "research",
+      "kind": "artifact",
+      "purpose": "Stable experiment-result-v1 boundary for research; its validator is validateExperimentResult.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateExperimentResult",
+      "conformanceFixtures": [
+        "packages/research/test/experiment.test.js"
+      ]
+    },
+    {
+      "contractId": "winner-v1",
+      "id": "winner-v1",
+      "version": 1,
+      "owner": "research/device",
+      "kind": "artifact",
+      "purpose": "Stable winner-v1 boundary for research/device; its validator is tools/device/bundle.mjs validateWinner.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "tools/device/bundle.mjs validateWinner",
+      "conformanceFixtures": [
+        "tools/device/test-bundle.mjs"
+      ]
+    },
+    {
+      "contractId": "device-bundle-v1",
+      "id": "device-bundle-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "artifact",
+      "purpose": "Stable device-bundle-v1 boundary for apps/device; its validator is tools/device/bundle.mjs validateBundle.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "tools/device/bundle.mjs validateBundle",
+      "conformanceFixtures": [
+        "tools/device/test-bundle.mjs"
+      ]
+    },
+    {
+      "contractId": "trainer-trace-v1",
+      "id": "trainer-trace-v1",
+      "version": 1,
+      "owner": "apps/trainer",
+      "kind": "artifact",
+      "purpose": "Stable trainer-trace-v1 boundary for apps/trainer; its validator is validateTrainerTrace.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateTrainerTrace",
+      "conformanceFixtures": [
+        "tools/tracereport.mjs"
+      ]
+    },
+    {
+      "contractId": "artifact-ref-v1",
+      "id": "artifact-ref-v1",
+      "version": 1,
+      "owner": "runtime",
+      "kind": "data",
+      "purpose": "Stable artifact-ref-v1 boundary for runtime; its validator is validateArtifactRef.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateArtifactRef",
+      "conformanceFixtures": [
+        "tools/evidence.js"
+      ]
+    },
+    {
+      "contractId": "claim-evidence-v1",
+      "id": "claim-evidence-v1",
+      "version": 1,
+      "owner": "evidence",
+      "kind": "data",
+      "purpose": "Stable claim-evidence-v1 boundary for evidence; its validator is validateClaimEvidence.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "validateClaimEvidence",
+      "conformanceFixtures": [
+        "tools/evidence.js"
+      ]
+    },
+    {
+      "contractId": "screencheck-process-v1",
+      "id": "screencheck-process-v1",
+      "version": 1,
+      "owner": "adapters/screencheck",
+      "kind": "process",
+      "purpose": "Stable screencheck-process-v1 boundary for adapters/screencheck; its validator is screencheck grammar.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "screencheck grammar",
+      "conformanceFixtures": [
+        "packages/screencheck/src/screencheck.c",
+        "packages/screencheck/src/screencheck-start.S"
+      ]
+    },
+    {
+      "contractId": "cue-helper-control-v1",
+      "id": "cue-helper-control-v1",
+      "version": 1,
+      "owner": "android/cue-helper",
+      "kind": "wire",
+      "purpose": "Stable cue-helper-control-v1 boundary for android/cue-helper; its validator is bounded ASCII codec.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "bounded ASCII codec",
+      "conformanceFixtures": [
+        "tools/cue/test-cue.py"
+      ]
+    },
+    {
+      "contractId": "fact-message-v1",
+      "id": "fact-message-v1",
+      "version": 1,
+      "owner": "core/telemetry",
+      "kind": "wire",
+      "purpose": "Stable fact-message-v1 boundary for core/telemetry; its validator is encodeFactMessage.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "encodeFactMessage",
+      "conformanceFixtures": [
+        "packages/core/test/fixtures/fact-message-v1.jsonl"
+      ]
+    },
+    {
+      "contractId": "pcm-udp-v1",
+      "id": "pcm-udp-v1",
+      "version": 1,
+      "owner": "firmware",
+      "kind": "wire",
+      "purpose": "Stable pcm-udp-v1 boundary for firmware; its validator is 28-byte header.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "28-byte header",
+      "conformanceFixtures": [
+        "tools/cue/test-audio-authority.py"
+      ]
+    },
+    {
+      "contractId": "hid-executor-v1",
+      "id": "hid-executor-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "wire",
+      "purpose": "Stable hid-executor-v1 boundary for apps/device; its validator is trajectory JSONL.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "trajectory JSONL",
+      "conformanceFixtures": [
+        "tools/device/test-runner-plan.mjs"
+      ]
+    },
+    {
+      "contractId": "device-artifact-v1",
+      "id": "device-artifact-v1",
+      "version": 1,
+      "owner": "tools/device",
+      "kind": "artifact",
+      "purpose": "Stable device-artifact-v1 boundary for tools/device; its validator is hashed semantic blocks.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "hashed semantic blocks",
+      "conformanceFixtures": [
+        "packages/core/test/contracts.test.js"
+      ]
+    },
+    {
+      "contractId": "device-executor-v1",
+      "id": "device-executor-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "artifact",
+      "purpose": "Stable device-executor-v1 boundary for apps/device; its validator is apps/device/src/artifact-executor.js validateExecutorRequest.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "apps/device/src/artifact-executor.js validateExecutorRequest",
+      "conformanceFixtures": [
+        "apps/device/test/service.test.js"
+      ]
+    },
+    {
+      "contractId": "monitor-rule-v1",
+      "id": "monitor-rule-v1",
+      "version": 1,
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "purpose": "Stable monitor-rule-v1 boundary for packages/adapters; its validator is packages/adapters/src/monitor-rule.js parseMonitorRule.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "packages/adapters/src/monitor-rule.js parseMonitorRule",
+      "conformanceFixtures": [
+        "packages/adapters/test/monitor-rule.test.js",
+        "tools/device/test-monitor-calibrate.py"
+      ]
+    },
+    {
+      "contractId": "camera-rule-v1",
+      "id": "camera-rule-v1",
+      "version": 1,
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "purpose": "Stable camera-rule-v1 boundary for packages/adapters; its validator is packages/adapters/src/camera-rule.js parseCameraRule.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "packages/adapters/src/camera-rule.js parseCameraRule",
+      "conformanceFixtures": [
+        "packages/adapters/test/camera-rule.test.js",
+        "tools/device/test-camera-calibrate.py"
+      ]
+    }
+  ]
+}

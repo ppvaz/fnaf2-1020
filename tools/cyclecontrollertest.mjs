@@ -3,11 +3,11 @@
 // The scenario injects a sourced five-second blackout at a bounded decision
 // boundary; it does not claim a full-night strategy or a device result.
 import { readFileSync } from 'node:fs';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
-import { Observer } from '../src/observer.js';
-import { Rng } from '../src/rng.js';
-import { CycleController, makeUnknownFacts } from '../src/cycle-controller.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
+import { Observer } from '@fnaf2-1020/core/sensing';
+import { Rng } from '@fnaf2-1020/core/mechanics';
+import { CycleController, makeUnknownFacts } from '@fnaf2-1020/core/control';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const RUNS = 80;
@@ -151,7 +151,7 @@ check(estimator.exactChecks > 0 && estimator.decisions > 0,
 check(stress.won > disabled.won && stress.won < oracle.won,
   `stress result did not remain between disabled and oracle (${stress.won})`);
 check(!/\bSim\b|engine\.js/.test(
-  readFileSync(new URL('../src/cycle-controller.js', import.meta.url), 'utf8')),
+  readFileSync(new URL('../packages/core/src/control/cycle-controller.js', import.meta.url), 'utf8')),
   'production cycle controller contains a privileged exact-engine read');
 
 console.log(`cycle controller: disabled ${disabled.won}/${RUNS}, ` +

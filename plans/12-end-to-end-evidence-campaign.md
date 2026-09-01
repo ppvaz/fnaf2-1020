@@ -46,7 +46,7 @@ is **in the simulator**; reproduce with
 
 ```sh
 node tools/device/test-night-matrix.mjs            # the human-gate column
-node tools/hidpilottest.mjs 200 --night=N --device-sweep --pulse-light \
+node tools/model/hid-device-pilot.mjs 200 --night=N --device-sweep --pulse-light \
   --sweep-slot-ms=120 --mask-margin-ms=900 --read-latency-ms=480 \
   --pilot-offset-ms=167 [--device-actuator] [--press-late-ms=MIN,MAX]
 ```
@@ -157,7 +157,7 @@ with a second read, correct only if both agree), the classifier checkpoint's
 `MASK_ALREADY_OFF`, the read costs, and the `desyncs -le 12` abort. It is
 deliberately not an idealised controller: it is one-directional, it looks twice
 a cycle and nowhere else, and it reads a screen state rather than a toggle
-parity. Reproduce with `node tools/closedlooptest.mjs`. **In the simulator:**
+parity. Reproduce with `node tools/model/closed-loop-reclaim.mjs`. **In the simulator:**
 
 | Night | exact | actuator, open loop | actuator + modelled loop | reclaim | free ideal bidirectional resync | `--vent --sync` route ref |
 |---|---|---|---|---|---|---|

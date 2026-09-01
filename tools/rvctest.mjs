@@ -6,8 +6,8 @@
 // result is PC history, not an Android calibration target. The reactive post-wind
 // branches are not encoded yet, so a mismatch is not a strategy refutation.
 import { pathToFileURL } from 'node:url';
-import * as C from '../src/config.js';
-import { Sim } from '../src/engine.js';
+import * as C from '@fnaf2-1020/core/mechanics';
+import { Sim } from '@fnaf2-1020/core/mechanics';
 
 const at = sec => C.s(sec);
 

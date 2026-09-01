@@ -4,8 +4,8 @@
 // Foxy/office deaths. Retained to prevent repeating that negative search.
 //
 //   node tools/periodicsweep.mjs [nights]
-import { run } from './pilottest.mjs';
-import * as C from '../src/config.js';
+import { run } from './model/stock-device-pilot.mjs';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const N = +(process.argv[2] || 200);
 console.log(`${N} nights per row. "every" is the response cadence in cycles;`);

@@ -1,0 +1,2 @@
+{"schema":"fact-message-v1","seq":0,"type":"wind-tick","state":"OBSERVED","value":true,"confidence":1,"source":"fixture","calibrationProfile":"fixture-audio-v1","t_observed":500,"t_received":501,"latencyMin":0,"latencyMax":10}
+{"schema":"fact-message-v1","seq":1,"type":"audio-route","state":"UNKNOWN","reason":"receiver-disconnected","confidence":0,"source":"fixture","calibrationProfile":"fixture-audio-v1","t_received":502,"latencyMin":0,"latencyMax":10}

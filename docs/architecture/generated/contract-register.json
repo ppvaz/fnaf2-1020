@@ -1,0 +1,210 @@
+{
+  "schema": "contract-register-v1",
+  "owner": "@fnaf2-1020/core",
+  "contracts": [
+    {
+      "id": "plant-model-v1",
+      "owner": "core/mechanics",
+      "kind": "port",
+      "validator": "PlantModel"
+    },
+    {
+      "id": "semantic-control-v1",
+      "owner": "core/contracts",
+      "kind": "data",
+      "validator": "validateControlCommand"
+    },
+    {
+      "id": "policy-program-v1",
+      "owner": "core/control",
+      "kind": "data",
+      "validator": "validatePolicy"
+    },
+    {
+      "id": "controller-v1",
+      "owner": "core/control",
+      "kind": "port",
+      "validator": "Controller"
+    },
+    {
+      "id": "trajectory-v1",
+      "owner": "runtime",
+      "kind": "data",
+      "validator": "validateTrajectory"
+    },
+    {
+      "id": "qualification-v1",
+      "owner": "runtime",
+      "kind": "data",
+      "validator": "validateQualification"
+    },
+    {
+      "id": "raw-sample-v1",
+      "owner": "adapters",
+      "kind": "data",
+      "validator": "validateRawSample"
+    },
+    {
+      "id": "measurement-v1",
+      "owner": "core/contracts",
+      "kind": "data",
+      "validator": "validateMeasurement"
+    },
+    {
+      "id": "detector-v1",
+      "owner": "adapters",
+      "kind": "port",
+      "validator": "Detector"
+    },
+    {
+      "id": "state-estimate-v1",
+      "owner": "core/estimation",
+      "kind": "data",
+      "validator": "validateStateEstimate"
+    },
+    {
+      "id": "supervisor-v1",
+      "owner": "runtime",
+      "kind": "port",
+      "validator": "Supervisor"
+    },
+    {
+      "id": "clock-v1",
+      "owner": "core/timing",
+      "kind": "data",
+      "validator": "validateClockRef"
+    },
+    {
+      "id": "actuator-v1",
+      "owner": "adapters",
+      "kind": "port",
+      "validator": "validateActuationResult"
+    },
+    {
+      "id": "capability-v1",
+      "owner": "adapters",
+      "kind": "data",
+      "validator": "validateCapability"
+    },
+    {
+      "id": "calibration-v1",
+      "owner": "adapters",
+      "kind": "data",
+      "validator": "validateCalibration"
+    },
+    {
+      "id": "device-profile-v1",
+      "owner": "apps/device",
+      "kind": "data",
+      "validator": "validateProfile"
+    },
+    {
+      "id": "telemetry-event-v1",
+      "owner": "runtime",
+      "kind": "data",
+      "validator": "validateTelemetry"
+    },
+    {
+      "id": "session-manifest-v1",
+      "owner": "runtime",
+      "kind": "artifact",
+      "validator": "validateManifest"
+    },
+    {
+      "id": "experiment-spec-v1",
+      "owner": "research",
+      "kind": "data",
+      "validator": "validateExperiment"
+    },
+    {
+      "id": "experiment-result-v1",
+      "owner": "research",
+      "kind": "artifact",
+      "validator": "validateExperimentResult"
+    },
+    {
+      "id": "winner-v1",
+      "owner": "research/device",
+      "kind": "artifact",
+      "validator": "tools/device/bundle.mjs validateWinner"
+    },
+    {
+      "id": "device-bundle-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "tools/device/bundle.mjs validateBundle"
+    },
+    {
+      "id": "trainer-trace-v1",
+      "owner": "apps/trainer",
+      "kind": "artifact",
+      "validator": "validateTrainerTrace"
+    },
+    {
+      "id": "artifact-ref-v1",
+      "owner": "runtime",
+      "kind": "data",
+      "validator": "validateArtifactRef"
+    },
+    {
+      "id": "claim-evidence-v1",
+      "owner": "evidence",
+      "kind": "data",
+      "validator": "validateClaimEvidence"
+    },
+    {
+      "id": "screencheck-process-v1",
+      "owner": "adapters/screencheck",
+      "kind": "process",
+      "validator": "screencheck grammar"
+    },
+    {
+      "id": "cue-helper-control-v1",
+      "owner": "android/cue-helper",
+      "kind": "wire",
+      "validator": "bounded ASCII codec"
+    },
+    {
+      "id": "fact-message-v1",
+      "owner": "core/telemetry",
+      "kind": "wire",
+      "validator": "encodeFactMessage"
+    },
+    {
+      "id": "pcm-udp-v1",
+      "owner": "firmware",
+      "kind": "wire",
+      "validator": "28-byte header"
+    },
+    {
+      "id": "hid-executor-v1",
+      "owner": "apps/device",
+      "kind": "wire",
+      "validator": "trajectory JSONL"
+    },
+    {
+      "id": "device-artifact-v1",
+      "owner": "tools/device",
+      "kind": "artifact",
+      "validator": "hashed semantic blocks"
+    },
+    {
+      "id": "device-executor-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/artifact-executor.js validateExecutorRequest"
+    },
+    {
+      "id": "monitor-rule-v1",
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "validator": "packages/adapters/src/monitor-rule.js parseMonitorRule"
+    },
+    {
+      "id": "camera-rule-v1",
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "validator": "packages/adapters/src/camera-rule.js parseCameraRule"
+    }
+  ]
+}

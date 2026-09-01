@@ -1,0 +1,2 @@
+{"case":"valid","schema":"control-command-v1","id":"vector-press","action":{"kind":"press","control":"mask"},"requestedAt":{"clock":"game-frame","value":0},"source":{"controller":"golden-vector"}}
+{"case":"invalid-physical","schema":"control-command-v1","id":"vector-coordinate","action":{"kind":"press","control":"mask"},"requestedAt":{"clock":"game-frame","value":0},"source":{"controller":"golden-vector"},"coordinates":{"x":1,"y":2}}

@@ -232,6 +232,9 @@ public final class CaptureService extends Service {
     // anchors it defeats (the lit camera button, 7 of 12 cameras) cannot be
     // repaired by a threshold. See ScreenStats and ONE-PIXEL-VISION.md section 3.
     private int snapshotGreyCells = -1;
+    // Whole-grid mean luma, or -1 when the grid is incomplete. A darkness
+    // guard for calibrated consumers, not a verdict: see ScreenStats.meanLuma.
+    private int snapshotGridMeanLuma = -1;
     // The whole 20x9 sensor, packed 0xRRGGBB per cell.
     //
     // The service already renders this grid every frame and was reporting one
@@ -898,6 +901,7 @@ public final class CaptureService extends Service {
             // recomputing there would both duplicate the pass and race the
             // next frame's writer.
             int greyCells;
+            int gridMeanLuma;
             int screenIdentity;
             int screenScore;
             if (!sessionActive(generation)) return;
@@ -933,11 +937,15 @@ public final class CaptureService extends Service {
                 snapshotGreyCells = complete
                         ? ScreenStats.greyCells(snapshotGrid, snapshotGrid.length)
                         : -1;
+                snapshotGridMeanLuma = complete
+                        ? ScreenStats.meanLuma(snapshotGrid, snapshotGrid.length)
+                        : -1;
                 snapshotScreenIdentity = complete
                         ? ScreenIdentity.classify(snapshotGrid) : ScreenIdentity.UNKNOWN;
                 snapshotScreenScore = complete
                         ? ScreenIdentity.score(snapshotGrid) : 0;
                 greyCells = snapshotGreyCells;
+                gridMeanLuma = snapshotGridMeanLuma;
                 screenIdentity = snapshotScreenIdentity;
                 screenScore = snapshotScreenScore;
                 if (watchActive && captureWidth == PixelWatch.NATIVE_WIDTH
@@ -968,10 +976,10 @@ public final class CaptureService extends Service {
                 if (invalidReason == null) {
                     lastVisual = String.format(Locale.US,
                             "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d "
-                                    + "cam05_mean_luma=%d grey=%d ageUs=%d content=%s "
+                                    + "cam05_mean_luma=%d grey=%d gridLuma=%d ageUs=%d content=%s "
                                     + "screen=%s screenScore=%d",
                             visualSequence, red, green, blue, luma, cam05MeanLuma,
-                            greyCells, ageUs, content,
+                            greyCells, gridMeanLuma, ageUs, content,
                             ScreenIdentity.label(screenIdentity), screenScore);
                 } else {
                     lastVisual = String.format(Locale.US,
@@ -2165,6 +2173,7 @@ public final class CaptureService extends Service {
         int luma;
         int cam05MeanLuma;
         int greyCells;
+        int gridMeanLuma;
         int screenIdentity;
         int screenScore;
         synchronized (snapshotLock) {
@@ -2176,6 +2185,7 @@ public final class CaptureService extends Service {
             luma = snapshotLuma;
             cam05MeanLuma = snapshotCam05MeanLuma;
             greyCells = snapshotGreyCells;
+            gridMeanLuma = snapshotGridMeanLuma;
             screenIdentity = snapshotScreenIdentity;
             screenScore = snapshotScreenScore;
         }
@@ -2192,10 +2202,10 @@ public final class CaptureService extends Service {
         if (invalidReason == null) {
             visual = String.format(Locale.US,
                     "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
-                            + "grey=%d ageUs=%d content=%dx%d visible=%d "
+                            + "grey=%d gridLuma=%d ageUs=%d content=%dx%d visible=%d "
                             + "screen=%s screenScore=%d",
                     visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
-                    greyCells, visualAgeUs,
+                    greyCells, gridMeanLuma, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility,
                     ScreenIdentity.label(screenIdentity), screenScore);

@@ -141,4 +141,4 @@ traffic destroys it from behind. Reproduce with `node tools/minus6test.mjs
   model.
 
 Reproduce with `node tools/gatesearch.mjs`; use `--quick` for a smoke sweep. The
-Minus 7 control is `node tools/bbtest.mjs 200`.
+Minus 7 control is `node tools/model/reactive-pilot.mjs 200`.

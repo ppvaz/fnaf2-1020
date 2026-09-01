@@ -1,0 +1,458 @@
+{
+  "schema": "reverse-links-v1",
+  "generatedFrom": [
+    "stable IDs in repository text",
+    "contractEvidence in tools/generate-catalog.js"
+  ],
+  "links": [
+    {
+      "id": "claim.android.g779.empty-hall",
+      "kind": "CLAIM",
+      "path": "plans/22-architecture-and-developer-experience-refactor.md",
+      "line": 1085,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/mcp.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/actuators.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/hid.js",
+      "line": 6,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/actuation/ports.js",
+      "line": 1,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "packages/runtime/src/scheduler/scheduler.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
+      "path": "plans/22-architecture-and-developer-experience-refactor.md",
+      "line": 1084,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.artifact-ref-v1",
+      "kind": "CONTRACT",
+      "path": "tools/evidence.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.calibration-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/camera-rule.js",
+      "line": 15,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/camera-rule.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.camera-rule-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-camera-calibrate.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.capability-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/registry.js",
+      "line": 3,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.capability-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.claim-evidence-v1",
+      "kind": "CONTRACT",
+      "path": "tools/evidence.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.clock-v1",
+      "kind": "CONTRACT",
+      "path": "tools/phaseclocktest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.controller-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/control/ports.js",
+      "line": 1,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.controller-v1",
+      "kind": "CONTRACT",
+      "path": "tools/cyclecontrollertest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.controller-v1",
+      "kind": "CONTRACT",
+      "path": "tools/reactivetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 26,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
+      "path": "tools/cue/test-cue.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.detector-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.detector-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/sensing/ports.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-bundle-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-bundle.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/artifact-executor.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/mcp.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/service.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/service.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-profile-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/service.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.experiment-result-v1",
+      "kind": "CONTRACT",
+      "path": "packages/research/test/experiment.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.experiment-spec-v1",
+      "kind": "CONTRACT",
+      "path": "packages/research/test/experiment.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.fact-message-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/test/fixtures/fact-message-v1.jsonl",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/hid.js",
+      "line": 6,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-runner-plan.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.measurement-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.measurement-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/contracts/index.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.measurement-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/sensing/ports.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.measurement-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/test/contracts.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/monitor-rule.js",
+      "line": 16,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/monitor-rule.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "plans/PROGRESS.md",
+      "line": 26,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.monitor-rule-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-monitor-calibrate.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.pcm-udp-v1",
+      "kind": "CONTRACT",
+      "path": "tools/cue/test-audio-authority.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.plant-model-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/mechanics/plant.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.plant-model-v1",
+      "kind": "CONTRACT",
+      "path": "tools/simtest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.plant-model-v1",
+      "kind": "CONTRACT",
+      "path": "tools/sourcetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.policy-program-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-policy-ir.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.policy-program-v1",
+      "kind": "CONTRACT",
+      "path": "tools/policygrammartest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.qualification-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/service.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.raw-sample-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/conformance.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.raw-sample-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/sensing/ports.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.screencheck-process-v1",
+      "kind": "CONTRACT",
+      "path": "packages/screencheck/src/screencheck-start.S",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.screencheck-process-v1",
+      "kind": "CONTRACT",
+      "path": "packages/screencheck/src/screencheck.c",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/contracts/index.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/mechanics/plant.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/test/contracts.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-policy-interpreter.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.session-manifest-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/service.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.session-manifest-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-session-manifest.sh",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.state-estimate-v1",
+      "kind": "CONTRACT",
+      "path": "tools/estimatortest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.supervisor-v1",
+      "kind": "CONTRACT",
+      "path": "packages/runtime/src/safety/supervisor.js",
+      "line": 1,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.supervisor-v1",
+      "kind": "CONTRACT",
+      "path": "tools/cue/test-pilot-supervisor.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.telemetry-event-v1",
+      "kind": "CONTRACT",
+      "path": "tools/factlinktest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.trainer-trace-v1",
+      "kind": "CONTRACT",
+      "path": "tools/tracereport.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.trajectory-v1",
+      "kind": "CONTRACT",
+      "path": "packages/runtime/src/scheduler/scheduler.js",
+      "line": 4,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.trajectory-v1",
+      "kind": "CONTRACT",
+      "path": "packages/runtime/test/scheduler.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.winner-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-bundle.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "evidence.runtime-gh",
+      "kind": "EVIDENCE",
+      "path": "plans/22-architecture-and-developer-experience-refactor.md",
+      "line": 1085,
+      "relation": "REFERENCES"
+    }
+  ]
+}

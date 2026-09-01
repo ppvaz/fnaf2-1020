@@ -1,0 +1,304 @@
+#!/usr/bin/env python3
+"""Fit the cameraSelected rule from labelled monitor captures.
+
+Each camera's map button renders yellow at a fixed position on the monitor
+map while it is selected -- bright (~194) in the normal view, dimmed (~96)
+while the music-box wind control is held -- and cool grey (~-19..-9) when
+unselected.  This tool measures the yellowness of the twelve watch pixels
+(mechanically aligned with ``PixelWatch.defaultSpec`` and
+``watch-calibrate.ENTRIES``) over labelled captures -- one label per camera --
+and emits the versioned ``camera-rule-v1`` artifact that
+``packages/adapters/src/camera-rule.js`` consumes.
+
+Verdict semantics are strict: exactly one lit button names the selected
+camera; zero and several are distinct UNKNOWN reasons (``no-camera-highlight``
+and ``multiple-camera-highlight``), so a camera transition and the known
+Android double-camera glitch stay separable in telemetry instead of being
+confounded; any in-band value refuses as ``ambiguous-threshold``.  The camera
+fact is meaningful only while the monitorUp fact is OBSERVED true; the JS
+detector enforces that gate.
+
+    camera-calibrate.py --output camera-rule.json \
+        cam:4=captures/cam04 cam:7=captures/cam07 ...
+
+Labels are semantic control names (``cam:1``..``cam:12``).  Foreign geometry
+is refused, never resized.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import pathlib
+import re
+import struct
+from dataclasses import dataclass
+
+try:
+    from PIL import Image
+except ImportError as error:  # pragma: no cover - exercised by the CLI
+    Image = None
+    PIL_ERROR = error
+
+WIDTH = 2400
+HEIGHT = 1080
+SCHEMA = "camera-rule-v1"
+SENSOR_ID = "cue-helper-watch-native-2400x1080"
+PROFILE_ID = "moto-g56-v207-landscape"
+
+# Mechanically aligned with PixelWatch.defaultSpec() / watch-calibrate.ENTRIES:
+# the monitor map's camera buttons, measured 2026-09-01 on g56 captures.
+BUTTON_PIXELS = (
+    ("cam01_button", 1412, 784),
+    ("cam02_button", 1720, 784),
+    ("cam03_button", 1411, 690),
+    ("cam04_button", 1728, 690),
+    ("cam05_button", 1424, 916),
+    ("cam06_button", 1696, 916),
+    ("cam07_button", 1776, 606),
+    ("cam08_button", 1412, 590),
+    ("cam09_button", 2144, 548),
+    ("cam10_button", 1984, 716),
+    ("cam11_button", 2228, 652),
+    ("cam12_button", 2188, 784),
+)
+UNKNOWN_REASONS = [
+    "monitor-not-up", "no-camera-highlight", "multiple-camera-highlight",
+    "ambiguous-threshold", "feature-missing", "read-unavailable", "read-stale",
+    "sensor-mismatch", "calibration-refused",
+]
+LABEL_RE = re.compile(r"^cam:[0-9]{1,2}$")
+
+
+class CalibrationError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class Button:
+    """One map button's measured selected/unselected separation."""
+
+    control: str
+    entry: str
+    x: int
+    y: int
+    feature: str
+    threshold: float
+    refuse_band: float
+    separation_margin: float
+    lit_range: tuple[int, int]
+    unlit_range: tuple[int, int]
+
+    def reads(self, value: float) -> str:
+        if value >= self.threshold + self.refuse_band:
+            return "lit"
+        if value <= self.threshold - self.refuse_band:
+            return "unlit"
+        return "in-band"
+
+    def record(self) -> dict:
+        return {
+            "control": self.control, "entry": self.entry, "x": self.x, "y": self.y,
+            "feature": self.feature,
+            "rule": {"kind": "threshold", "threshold": self.threshold,
+                     "refuse_band": self.refuse_band},
+            "separation_margin": self.separation_margin,
+            "lit_range": list(self.lit_range), "unlit_range": list(self.unlit_range),
+        }
+
+
+def load_raw(path: pathlib.Path) -> "Image.Image":
+    data = path.read_bytes()
+    if len(data) < 16:
+        raise CalibrationError(f"{path}: truncated raw screencap header")
+    width, height, pixel_format, _ = struct.unpack_from("<IIII", data)
+    if (width, height) != (WIDTH, HEIGHT):
+        raise CalibrationError(
+            f"{path}: sensor-geometry {width}x{height}; expected {WIDTH}x{HEIGHT}")
+    if pixel_format not in (1, 2):
+        raise CalibrationError(f"{path}: unsupported raw pixel format {pixel_format}")
+    size = WIDTH * HEIGHT * 4
+    if len(data) < 16 + size:
+        raise CalibrationError(f"{path}: truncated raw pixels")
+    return Image.frombytes("RGBA", (WIDTH, HEIGHT), data[16:16 + size]).convert("RGB")
+
+
+def load_frame(path: pathlib.Path) -> "Image.Image":
+    if Image is None:
+        raise CalibrationError(f"Pillow is required to read frames: {PIL_ERROR}")
+    if path.suffix.lower() == ".raw":
+        return load_raw(path)
+    if path.suffix.lower() != ".png":
+        raise CalibrationError(f"{path}: expected .png or .raw")
+    try:
+        image = Image.open(path).convert("RGB")
+    except OSError as error:
+        raise CalibrationError(f"{path}: unreadable frame: {error}") from error
+    if image.size != (WIDTH, HEIGHT):
+        raise CalibrationError(
+            f"{path}: sensor-geometry {image.width}x{image.height}; "
+            f"expected {WIDTH}x{HEIGHT}")
+    return image
+
+
+def paths_for(spec: str) -> tuple[str, list[pathlib.Path]]:
+    label, separator, raw_path = spec.partition("=")
+    if not separator or not LABEL_RE.fullmatch(label):
+        raise CalibrationError(f"labelled source must be cam:N=PATH: {spec!r}")
+    root = pathlib.Path(raw_path)
+    if root.is_dir():
+        paths = sorted(
+            p for p in root.rglob("*")
+            if p.is_file() and p.suffix.lower() in {".png", ".raw"})
+    elif root.is_file():
+        paths = [root]
+    else:
+        raise CalibrationError(f"{root}: no such frame or directory")
+    if not paths:
+        raise CalibrationError(f"{root}: no .png or .raw frames")
+    return label, paths
+
+
+def yellowness(rgb: tuple[int, int, int]) -> int:
+    return min(rgb[0], rgb[1]) - rgb[2]
+
+
+def calibrate(args) -> None:
+    sources = [paths_for(spec) for spec in args.labelled]
+    labels = [label for label, _ in sources]
+    if len(set(labels)) != len(labels):
+        raise CalibrationError("each label may appear only once")
+    if len(labels) < 2:
+        raise CalibrationError("at least two labelled cameras are required")
+
+    frames: dict[str, list[dict[str, int]]] = {label: [] for label in labels}
+    counts: dict[str, int] = {}
+    for label, paths in sources:
+        counts[label] = len(paths)
+        for path in paths:
+            image = load_frame(path)
+            frames[label].append({
+                entry: yellowness(image.getpixel((x, y)))
+                for entry, x, y in BUTTON_PIXELS
+            })
+
+    controls = sorted(frames, key=lambda label: int(label.split(":")[1]))
+    buttons = []
+    for entry, x, y in BUTTON_PIXELS:
+        control = f"cam:{entry[3:5].lstrip('0') or '0'}"
+        lit = [values[entry] for values in frames.get(control, [])]
+        unlit = [values[entry] for label in controls if label != control
+                 for values in frames[label]]
+        if not lit:
+            # This camera was not among the labelled sources: an unlit-only
+            # button still carries a threshold from its observed unlit band,
+            # but it cannot be named as a verdict until its own camera is
+            # captured.  Such buttons are refused into limitations instead.
+            continue
+        lit_lo, lit_hi = min(lit), max(lit)
+        unlit_hi = max(unlit) if unlit else lit_lo - 2 * args.min_margin
+        if lit_lo <= unlit_hi:
+            raise CalibrationError(
+                f"{control}: selected band {lit_lo}..{lit_hi} overlaps "
+                f"unselected {unlit_hi}")
+        threshold = (lit_lo + unlit_hi) / 2.0
+        band = (lit_lo - unlit_hi) / 2.0
+        if band < args.min_margin:
+            raise CalibrationError(
+                f"{control}: separation margin {band} below floor {args.min_margin}")
+        buttons.append(Button(
+            control=control, entry=entry, x=x, y=y, feature="yellowness",
+            threshold=round(threshold, 3), refuse_band=round(band, 3),
+            separation_margin=round(band, 3),
+            lit_range=(lit_lo, lit_hi),
+            unlit_range=(min(unlit) if unlit else 0, unlit_hi)))
+
+    corpus_reads: dict[str, dict[str, int]] = {}
+    reason = None
+    for label in controls:
+        reads = {"named": 0, "none": 0, "multiple": 0, "ambiguous": 0}
+        for values in frames[label]:
+            states = [(button, button.reads(values[button.entry]))
+                      for button in buttons]
+            lit = [button for button, state in states if state == "lit"]
+            in_band = any(state == "in-band" for _, state in states)
+            if len(lit) == 1 and not in_band:
+                named = lit[0].control
+                reads["named" if named == label else "ambiguous"] += 1
+            elif len(lit) > 1:
+                reads["multiple" if not in_band else "ambiguous"] += 1
+            elif in_band:
+                reads["ambiguous"] += 1
+            else:
+                reads["none"] += 1
+        corpus_reads[label] = reads
+        if reads["named"] != counts[label] and reason is None:
+            reason = "calibration-refused"
+    accepted = reason is None
+
+    limitations = list(args.note)
+    named_controls = {button.control for button in buttons}
+    missing = sorted(set(controls) - named_controls)
+    if missing:
+        limitations.append(f"no-calibrated-buttons-for:{','.join(missing)}")
+
+    output = {
+        "schema": SCHEMA,
+        "schema_version": 1,
+        "status": "calibrated" if accepted else "refuse",
+        "reason": None if accepted else reason,
+        "fact": {
+            "id": "cameraSelected",
+            "labels": controls,
+            "unknown_reasons": UNKNOWN_REASONS,
+        },
+        "sensor": {
+            "id": args.sensor_id,
+            "geometry": [WIDTH, HEIGHT],
+            "sampling": "pixel-watch-native-2400x1080",
+            "profile_id": args.profile_id,
+        },
+        "adapter": {
+            "buttons": [button.record() for button in buttons],
+            "minimum_margin": args.min_margin,
+            "calibration_frames": sum(counts.values()),
+            "class_counts": counts,
+            "corpus_reads": corpus_reads,
+            "limitations": limitations,
+        },
+    }
+    destination = pathlib.Path(args.output)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n")
+    print(json.dumps({
+        "status": output["status"], "reason": output["reason"],
+        "buttons": len(buttons),
+        "margins": [button.separation_margin for button in buttons],
+        "output": str(destination),
+    }, sort_keys=True))
+    if not accepted and args.strict:
+        raise SystemExit(1)
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", required=True, type=pathlib.Path)
+    parser.add_argument("--sensor-id", default=SENSOR_ID)
+    parser.add_argument("--profile-id", default=PROFILE_ID)
+    parser.add_argument("--min-margin", type=float, default=5.0)
+    parser.add_argument("--note", action="append", default=[],
+                        help="retained as a limitation in the artifact")
+    parser.add_argument("--strict", action="store_true",
+                        help="exit 1 when calibration emits status=refuse")
+    parser.add_argument("labelled", nargs="+", metavar="CAM:N=PATH")
+    args = parser.parse_args(argv)
+    if args.min_margin < 0:
+        parser.error("--min-margin must be non-negative")
+    try:
+        calibrate(args)
+    except CalibrationError as error:
+        parser.error(str(error))
+
+
+if __name__ == "__main__":
+    main()

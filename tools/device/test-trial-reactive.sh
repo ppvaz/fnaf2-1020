@@ -2,7 +2,7 @@
 # Phone-free contract for Plan 19 P4's observe-only branch.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-TRIAL="$HERE/trial.sh"
+TRIAL="$HERE/legacy-trial.sh"
 
 bash -n "$TRIAL"
 if REACTIVE=act "$TRIAL" reactive-contract 1 >/dev/null 2>&1; then

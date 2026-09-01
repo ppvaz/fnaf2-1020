@@ -1,0 +1,28 @@
+{
+  "schema": "experiment-spec-v1",
+  "id": "device-characterization",
+  "operation": "device-characterization",
+  "hypothesis": "a declared fixture profile can retain semantic timing observations without claiming game acceptance",
+  "modelHash": "model-sim-v1",
+  "policyFamily": "fixture-device-reference",
+  "profile": "fixture-hid-screencap",
+  "observationPrivilege": "fixture-measurement",
+  "faultProfile": "fixture-transport",
+  "seeds": [31, 32, 33],
+  "candidateParameters": [
+    {"label": "nominal", "offsetFrames": 0},
+    {"label": "jitter-low", "offsetFrames": 2},
+    {"label": "jitter-high", "offsetFrames": 5}
+  ],
+  "commands": [
+    {"at": 0, "action": {"kind": "press", "control": "monitor"}},
+    {"at": 12, "action": {"kind": "select", "control": "cam:10"}},
+    {"at": 48, "action": {"kind": "release", "control": "monitor"}}
+  ],
+  "durationFrames": 90,
+  "sample": {"count": 3, "stoppingRule": "fixed fixture timing ladder"},
+  "objectives": ["fixture-latency-envelope"],
+  "controls": ["nominal"],
+  "artifacts": ["experiment-result-v1", "session-manifest-v1"],
+  "claimLevel": "MODEL_ONLY"
+}

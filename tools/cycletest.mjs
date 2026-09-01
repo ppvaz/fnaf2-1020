@@ -1,7 +1,7 @@
 // Plan 20 package 4: finite cycle primitives and fail-closed constraint gate.
-import { DEVICE_CONSTRAINTS, gateCycle, getCycle } from '../src/cycle-library.js';
-import { initialReducedState, advanceReduced, applyReduced } from '../src/reduced-model.js';
-import * as C from '../src/config.js';
+import { DEVICE_CONSTRAINTS, gateCycle, getCycle } from '@fnaf2-1020/core/control';
+import { initialReducedState, advanceReduced, applyReduced } from '@fnaf2-1020/core/mechanics';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 

@@ -1,7 +1,7 @@
 // Plan 16: constrained policy search over the device plan's named timing
 // geometry, evaluated on the exact engine through recipe.build ->
 // devicePlan -> modelGate. Dominance-pruned beam search over a small, sourced-
-// floored parameter space (tools/hidpilottest.mjs SEARCH_KNOBS). No second
+// floored parameter space (tools/model/hid-device-pilot.mjs search knobs). No second
 // simulator, no semantic-action free search (Plan 16 non-goals).
 //
 //   node tools/minus7/paramsearch.mjs --nights=5,6,7 [--runs=400] [--admit=1200]
@@ -11,10 +11,13 @@
 // searched nights of modelGate survival under `--shape`. Frontier admission is
 // a --admit-seed re-evaluation; screening during beam expansion is at --runs.
 import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { build, devicePlan, idleUntilMs } from '../device/recipe.mjs';
 import { modelGate } from '../device/human-gate.mjs';
-import { SEARCH_KNOBS } from '../hidpilottest.mjs';
-import * as C from '../../src/config.js';
+import { makeSearchKnobs } from '../model/hid-device-pilot.mjs';
+import { canonicalJson } from '@fnaf2-1020/core/contracts';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const arg = (k, d) => {
   const m = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -66,8 +69,8 @@ const KNOBS = Object.keys(FLOORS);
 // mean devicePlan()'s own device-validated defaults (spacing 133, contact 100).
 export const SHIPPED_GEOM = { sweepSlotMs: 120, deviceSpacingMs: null, sweepContactMs: null };
 
-function planTextFor(night, geom = SHIPPED_GEOM) {
-  const recipe = build({ night, sweepSlotMs: geom.sweepSlotMs });
+function planTextFor(night, geom = SHIPPED_GEOM, knobs = undefined) {
+  const recipe = build({ night, sweepSlotMs: geom.sweepSlotMs, knobs });
   const plan = devicePlan(recipe,
     geom.deviceSpacingMs != null || geom.sweepContactMs != null
       ? { deviceSpacingMs: geom.deviceSpacingMs, sweepContactMs: geom.sweepContactMs }
@@ -95,11 +98,11 @@ export function evalParams(params, nights, runs, shape, seedStart = 1, geom = SH
   if (params.bangAgeFrames > 0 && !params.preReadHallMs)
     return { params: { ...params }, nights: {}, ok: false,
       error: 'bangAgeFrames may only control an in-read hall reset' };
-  for (const k of KNOBS) SEARCH_KNOBS[k] = params[k] || 0;
+  const knobs = makeSearchKnobs(params);
   const out = { params: { ...params }, nights: {}, ok: true };
   try {
     for (const night of nights) {
-      const text = planTextFor(night, geom);
+      const text = planTextFor(night, geom, knobs);
       // Keep the per-seed vector from modelGate itself so screening and
       // admission share exactly one jitter/replay implementation.
       const gate = modelGate(text, { night, runs, shape, seedStart, outcomes: true });
@@ -113,7 +116,6 @@ export function evalParams(params, nights, runs, shape, seedStart = 1, geom = SH
       out.nights[night] = { won, runs, pct: +(100 * won / runs).toFixed(1), cvar };
     }
   } catch (e) { out.ok = false; out.error = e.message; }
-  for (const k of KNOBS) SEARCH_KNOBS[k] = 0;
   return out;
 }
 
@@ -168,6 +170,39 @@ export function searchParams({ nights, runs = 400, beam = 12, rounds = 6, shape 
 }
 const bestDeltas = node => Object.fromEntries(Object.entries(node.params).filter(([, v]) => v));
 
+function persistWinner(path, node, nights, geom, runs, shape) {
+  if (!runs) throw new Error('--winner-out requires --admit so the persisted gate is explicit');
+  const gateByNight = nights.map(night => {
+    const text = planTextFor(night, geom, makeSearchKnobs(node.params));
+    const result = modelGate(text, { night, runs, shape });
+    return { night, ...result, outcomes: undefined };
+  });
+  const status = gateByNight.every(result => result.ok) ? 'PASS'
+    : gateByNight.some(result => result.verdict === 'INCONCLUSIVE') ? 'INCONCLUSIVE' : 'FAIL';
+  if (status !== 'PASS')
+    throw new Error(`best search candidate did not pass the persisted model gate (${status}); no winner was written`);
+  const knobs = {
+    night: nights[0], sweepSlotMs: geom.sweepSlotMs, readLatencyMs: 550,
+    hallPulseMs: 130, pilotOffset: 10, maskMarginMs: 900,
+    search: node.params,
+  };
+  const planOptions = {};
+  if (geom.deviceSpacingMs != null) planOptions.deviceSpacingMs = geom.deviceSpacingMs;
+  if (geom.sweepContactMs != null) planOptions.sweepContactMs = geom.sweepContactMs;
+  const seeds = Array.from({ length: runs }, (_, index) => index + 1);
+  const winner = {
+    schema: 'winner-v1', strategy: 'minus7', knobs, planOptions,
+    nights: [...nights], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
+    profile: 'fixture-hid-screencap',
+    gate: { status, claimLevel: 'MODEL_ONLY', shape, runs,
+      byNight: gateByNight.map(({ outcomes, ...result }) => result) },
+  };
+  if (existsSync(path)) throw new Error(`refusing to overwrite winner file ${path}`);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, canonicalJson(winner));
+  console.log(`winner=${path} strategy=minus7 gate=${status} nights=${nights.join(',')}`);
+}
+
 function main() {
   const nights = arg('nights', '5,6,7').split(',').map(Number);
   const runs = +arg('runs', '400');
@@ -175,6 +210,7 @@ function main() {
   const beam = +arg('beam', '12');
   const rounds = +arg('rounds', '6');
   const shape = arg('shape', 'correlated');
+  const winnerOut = arg('winner-out', '');
   // --geom=slot:dev:con fixes the sweep geometry the timing knobs search on top
   // of (see geometrysearch.mjs). Omitted = the shipped 120/133/100.
   const geomArg = arg('geom', '');
@@ -197,6 +233,7 @@ function main() {
     if (node.admit)
       console.log(`      @${admit}: ${nights.map(n => `n${n} ${node.admit[n].pct}%`).join('  ')}`);
   }
+  if (winnerOut) persistWinner(winnerOut, frontier[0], nights, geom, admit, shape);
 }
 
 if (process.argv[1] && process.argv[1].endsWith('paramsearch.mjs')) main();
