@@ -37,6 +37,13 @@ an observed sensor→detector result before each command. Transport self-report
 cannot create a `DEVICE_MEASURED` claim; the stock CLI refuses to invent that
 composition, so hardware qualification remains an operator-owned lane.
 
+`composeModernDevice` is the Plan 22 physical seam for the current HID +
+MediaProjection profile. It accepts explicit adapter-owned HID and cue-helper
+ports; those ports must already use the device-local execution path. It does
+not import the legacy trial, infer coordinates, or turn transport availability
+into qualification evidence. The helper must expose a fresh `monitorUp` field;
+until then the detector returns `UNKNOWN` and the service refuses actuation.
+
 The Moto g56 100 ms and 17 ms profiles are deliberately separate
 qualification candidates. Both remain `dryRunOnly` until their own
 MediaProjection monitor-state detector, HID transport, atomic compound macros,

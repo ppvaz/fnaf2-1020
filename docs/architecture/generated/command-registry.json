@@ -568,7 +568,7 @@
     },
     {
       "id": "tools/device/trial.sh",
-      "invocation": "tools/device/trial.sh --artifact artifacts/run-001 --dry-run [--night N]",
+      "invocation": "tools/device/trial.sh --artifact artifacts/run-001 (--dry-run \\| --live --confirm-live --qualification FILE) [--night N]",
       "kind": "artifact consumer",
       "lifecycle": "supported"
     },

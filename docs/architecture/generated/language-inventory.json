@@ -3,23 +3,23 @@
   "languages": {
     "Shell": {
       "files": 58,
-      "lines": 10127
+      "lines": 10140
     },
     "JavaScript": {
-      "files": 179,
-      "lines": 29868
+      "files": 183,
+      "lines": 30483
     },
     "TypeScript": {
       "files": 2,
       "lines": 97
     },
     "C": {
-      "files": 4,
-      "lines": 2125
+      "files": 13,
+      "lines": 8413
     },
     "Assembly": {
-      "files": 1,
-      "lines": 12
+      "files": 2,
+      "lines": 4404
     },
     "Python": {
       "files": 82,

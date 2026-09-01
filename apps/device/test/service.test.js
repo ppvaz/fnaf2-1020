@@ -10,6 +10,7 @@ import { createActuatorMcp } from '../src/mcp.js';
 import { FixtureActuator } from '@fnaf2-1020/adapters/actuators';
 import { FixtureRawSensor } from '@fnaf2-1020/adapters/sensors';
 import { composeDevice } from '../src/composition.js';
+import { composeModernDevice } from '../src/modern-composition.js';
 
 const here = fileURLToPath(new URL('../profiles/fixture-hid-screencap.json', import.meta.url));
 const profile = JSON.parse(await readFile(here, 'utf8'));
@@ -47,6 +48,15 @@ for (const candidate of [liveProfile, fastProfile]) {
 assert.notEqual(liveProfile.calibrations['actuator-timing'],
   fastProfile.calibrations['actuator-timing'],
   '17 ms must have qualification evidence distinct from the 100 ms candidate');
+const modern = composeModernDevice({ profile: liveProfile,
+  hid: { write: async () => {}, ready: async () => {}, sleep: async () => {} },
+  cue: { token: '0123456789abcdef0123456789abcdef', request: () =>
+    'OK snapshotNs=1 ageUs=1 monitorUp=true' },
+  qualification: { schema: 'qualification-v1', evidenceId: 'fixture-modern-composition',
+    claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1',
+    sampleCount: 1, verdict: 'PASS' }, artifactRoot });
+assert.equal(modern.mode, 'live');
+assert.equal(modern.profile.id, liveProfile.id);
 liveProfile.limits.dryRunOnly = false;
 let sent = 0;
 const liveTransport = {

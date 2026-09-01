@@ -3,3 +3,5 @@ export * from './registry.js';
 export * from './actuators.js';
 export * from './sensors.js';
 export * from './clocks.js';
+export * from './transports/hid.js';
+export * from './transports/cue-helper.js';

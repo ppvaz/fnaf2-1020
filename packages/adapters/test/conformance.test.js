@@ -4,6 +4,8 @@ import { FixtureActuator } from '../src/actuators.js';
 import { FixtureRawSensor, FixtureVisualDetector, ScreencapSensor, CueHelperDetector } from '../src/sensors.js';
 import { Clock } from '../src/clocks.js';
 import { getCapability, resolveProfile } from '../src/registry.js';
+import { HidWireTransport, toRaw, report } from '../src/transports/hid.js';
+import { CueHelperControlTransport, parseCueResponse } from '../src/transports/cue-helper.js';
 
 const actuator = new FixtureActuator({ now: () => 12 });
 const command = { schema: 'control-command-v1', id: 'fixture-1', action: { kind: 'select', control: 'cam:10' }, requestedAt: { clock: 'device-monotonic-ms', value: 0 }, source: { controller: 'conformance' } };
@@ -28,4 +30,21 @@ const profile = {
 assert.doesNotThrow(() => resolveProfile(profile));
 assert.throws(() => resolveProfile({ ...profile, visualDetector: 'screencheck-detector' }), /sensor format .* cannot consume/);
 assert.throws(() => resolveProfile({ ...profile, calibrations: { ...profile.calibrations, detector: 'other-visual-v1' } }), /incompatible visual\/detector calibrations/);
+assert.deepEqual(toRaw([2275, 685]), [877, 1023], 'HID transform must truncate at the adapter boundary');
+assert.deepEqual(report([{ flags: 3, point: { x: 350, y: 615 } }]).slice(0, 7),
+  [1, 1, 3, 9, 4, 157, 0], 'HID report must preserve contact flags and native transform');
+const lines = [];
+const hid = new HidWireTransport({ write: async line => lines.push(JSON.parse(line)), ready: async () => {}, sleep: async () => {} });
+await hid.send({ command: { action: { kind: 'press', control: 'light', durationMs: 17 }, source: { controller: 'test' } }, point: { x: 350, y: 615 } });
+assert.equal(lines[0].command, 'register');
+assert.deepEqual(lines.filter(line => line.command === 'report').map(line => line.report[2]), [3, 0]);
+await hid.abort();
+assert.equal(lines.at(-1).report[1], 2, 'abort must emit a two-contact release');
+assert.deepEqual(parseCueResponse('OK snapshotNs=3 ageUs=17 monitorUp=true'),
+  { snapshotNs: '3', ageUs: '17', monitorUp: 'true' });
+const cue = new CueHelperControlTransport({ token: '0123456789abcdef0123456789abcdef', request: request =>
+  request.startsWith('GET ') ? 'OK snapshotNs=3 ageUs=17 monitorUp=true' : 'ERROR unsupported' });
+assert.deepEqual(cue.monitorMeasurement(await cue.snapshot()),
+  { signal: 'monitorUp', state: 'OBSERVED', value: true, confidence: 1 });
+assert.equal(cue.monitorMeasurement({ ageUs: '900000', monitorUp: 'true' }).state, 'UNKNOWN');
 console.log('adapter contracts: fixture actuator result and profile refusal pass');

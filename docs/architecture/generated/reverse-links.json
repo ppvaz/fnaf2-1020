@@ -29,6 +29,13 @@
     {
       "id": "contract.actuator-v1",
       "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/hid.js",
+      "line": 6,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.actuator-v1",
+      "kind": "CONTRACT",
       "path": "packages/adapters/test/conformance.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
@@ -112,6 +119,13 @@
     {
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/cue-helper.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
       "path": "tools/cue/test-cue.py",
       "relation": "CONFORMANCE_FIXTURE"
     },
@@ -177,6 +191,13 @@
       "kind": "CONTRACT",
       "path": "packages/core/test/fixtures/fact-message-v1.jsonl",
       "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/transports/hid.js",
+      "line": 6,
+      "relation": "REFERENCES"
     },
     {
       "id": "contract.hid-executor-v1",

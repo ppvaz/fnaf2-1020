@@ -24,6 +24,7 @@
       "imports": [
         "./composition.js",
         "./mcp.js",
+        "./modern-composition.js",
         "./service.js"
       ]
     },
@@ -31,6 +32,13 @@
       "file": "apps/device/src/mcp.js",
       "imports": [
         "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "apps/device/src/modern-composition.js",
+      "imports": [
+        "./composition.js",
+        "@fnaf2-1020/adapters"
       ]
     },
     {
@@ -49,6 +57,7 @@
       "imports": [
         "../src/composition.js",
         "../src/mcp.js",
+        "../src/modern-composition.js",
         "../src/service.js",
         "@fnaf2-1020/adapters/actuators",
         "@fnaf2-1020/adapters/sensors",
@@ -130,7 +139,9 @@
         "./actuators.js",
         "./clocks.js",
         "./registry.js",
-        "./sensors.js"
+        "./sensors.js",
+        "./transports/cue-helper.js",
+        "./transports/hid.js"
       ]
     },
     {
@@ -153,6 +164,8 @@
         "../src/clocks.js",
         "../src/registry.js",
         "../src/sensors.js",
+        "../src/transports/cue-helper.js",
+        "../src/transports/hid.js",
         "node:assert/strict"
       ]
     },
@@ -488,7 +501,10 @@
     {
       "file": "tools/device/artifact-runner.mjs",
       "imports": [
-        "./bundle.mjs"
+        "./artifact-commands.mjs",
+        "./bundle.mjs",
+        "@fnaf2-1020/runtime",
+        "node:fs"
       ]
     },
     {
@@ -668,6 +684,7 @@
     {
       "file": "tools/device/test-bundle.mjs",
       "imports": [
+        "./artifact-commands.mjs",
         "./bundle.mjs",
         "node:child_process",
         "node:fs",
