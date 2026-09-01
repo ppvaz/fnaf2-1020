@@ -1,0 +1,243 @@
+{
+  "anim_count": 40,
+  "grid_luma": {
+    "band_false_positives": 0,
+    "mask_band": [
+      4,
+      6
+    ],
+    "ranges": {
+      "down": [
+        27,
+        27
+      ],
+      "mask": [
+        4,
+        6
+      ],
+      "up": [
+        32,
+        48
+      ]
+    }
+  },
+  "limitations": [
+    "one night, one story run, one device profile (moto g56, build 2.0.7)",
+    "upscaled transcoded sensor: thresholds here are not native thresholds",
+    "labels derived from a brightness classifier, not from press timing",
+    "no blackout frames in the corpus; the luma band is unproven against them"
+  ],
+  "provenance": {
+    "circularity": "grade-minus7's mask rule keys on the lower-left tab, so signature-A cells in that region are not independent evidence for the mask class",
+    "decode_fps": 12,
+    "decoded_frames": 3719,
+    "grids_sampled": 130,
+    "label_map": {
+      "camera": "up",
+      "mask": "mask",
+      "office": "down"
+    },
+    "labeler": "tools/device/grade-minus7.py classify/smooth/resolve_hall at 160x72 gray; desync-scan treats this model as the recording's ground truth",
+    "native_upscale": "1280x576 recording upscaled to 2400x1080 for cell sampling; not the helper's native sensor",
+    "params": {
+      "anim": 40,
+      "floor": 5.0,
+      "min_run": 4,
+      "per_class": 30,
+      "settle_frames": 2,
+      "top": 3,
+      "trim_s": 3.0
+    },
+    "video": "/Users/pedro.junior-ext/Projects/fnaf2-1020/captures/n1-minustoys-calib-01-aborted.mp4",
+    "video_sha256": "8223c2e94097f96a8aaf23aab5ac9cbc77c9e3d8392956b3a9ff5c708a3d74d6"
+  },
+  "reads": {
+    "anim": {
+      "transition": {
+        "down": 5,
+        "mask": 3,
+        "unknown": 32
+      }
+    },
+    "corpus": {
+      "down": {
+        "down": 30
+      },
+      "mask": {
+        "mask": 30
+      },
+      "up": {
+        "up": 30
+      }
+    }
+  },
+  "rule": {
+    "A": [
+      {
+        "cell": 97,
+        "feature": "luma",
+        "margin": 188,
+        "ranges": {
+          "down": [
+            0,
+            0
+          ],
+          "mask": [
+            0,
+            0
+          ],
+          "up": [
+            188,
+            213
+          ]
+        },
+        "side": "excluded-above",
+        "threshold": 94.0,
+        "x": 2100,
+        "y": 540
+      },
+      {
+        "cell": 132,
+        "feature": "luma",
+        "margin": 145,
+        "ranges": {
+          "down": [
+            0,
+            0
+          ],
+          "mask": [
+            0,
+            0
+          ],
+          "up": [
+            145,
+            190
+          ]
+        },
+        "side": "excluded-above",
+        "threshold": 72.5,
+        "x": 1500,
+        "y": 780
+      },
+      {
+        "cell": 167,
+        "feature": "luma",
+        "margin": 102,
+        "ranges": {
+          "down": [
+            175,
+            182
+          ],
+          "mask": [
+            175,
+            179
+          ],
+          "up": [
+            4,
+            73
+          ]
+        },
+        "side": "excluded-below",
+        "threshold": 124.0,
+        "x": 900,
+        "y": 1020
+      }
+    ],
+    "B": [
+      {
+        "cell": 174,
+        "feature": "luma",
+        "margin": 221,
+        "ranges": {
+          "down": [
+            226,
+            234
+          ],
+          "mask": [
+            0,
+            0
+          ],
+          "up": [
+            221,
+            242
+          ]
+        },
+        "side": "excluded-below",
+        "threshold": 110.5,
+        "x": 1740,
+        "y": 1020
+      },
+      {
+        "cell": 1,
+        "feature": "luma",
+        "margin": 181,
+        "ranges": {
+          "down": [
+            191,
+            196
+          ],
+          "mask": [
+            0,
+            0
+          ],
+          "up": [
+            181,
+            209
+          ]
+        },
+        "side": "excluded-below",
+        "threshold": 90.5,
+        "x": 180,
+        "y": 60
+      },
+      {
+        "cell": 172,
+        "feature": "luma",
+        "margin": 172,
+        "ranges": {
+          "down": [
+            195,
+            204
+          ],
+          "mask": [
+            0,
+            0
+          ],
+          "up": [
+            172,
+            218
+          ]
+        },
+        "side": "excluded-below",
+        "threshold": 86.0,
+        "x": 1500,
+        "y": 1020
+      }
+    ]
+  },
+  "samples": {
+    "down": {
+      "count": 30,
+      "span_s": [
+        67.75,
+        298.0
+      ]
+    },
+    "mask": {
+      "count": 30,
+      "span_s": [
+        12.92,
+        306.92
+      ]
+    },
+    "up": {
+      "count": 30,
+      "span_s": [
+        9.0,
+        301.92
+      ]
+    }
+  },
+  "schema": "hud-signature-probe-v1",
+  "status": "probed"
+}
