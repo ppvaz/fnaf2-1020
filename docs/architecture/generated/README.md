@@ -12,3 +12,8 @@ claim, and evidence references, including contract-to-fixture links. Run
 `npm run test:retrieval` to execute the newcomer retrieval benchmark; it guards
 the top-level routes without introducing a separately edited wiki or mandatory
 search service.
+
+`legacy-paths.json` is the generated compatibility/removal map. Each entry
+names the lifecycle, canonical replacement owner, and evidence gate required
+before a path can be deleted. It is intentionally generated from the registry
+in `tools/generate-catalog.js`, not edited independently.

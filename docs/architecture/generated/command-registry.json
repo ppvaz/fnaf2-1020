@@ -48,7 +48,7 @@
     {
       "id": "test:legacy:engine",
       "command": "node tools/test.mjs --engine",
-      "lifecycle": "supported"
+      "lifecycle": "legacy"
     },
     {
       "id": "test:affected",
@@ -564,6 +564,12 @@
       "id": "tools/device/artifact-runner.mjs",
       "invocation": "tools/device/artifact-runner.mjs --artifact artifacts/run-001 --dry-run [--night N]",
       "kind": "check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/artifact-commands.mjs",
+      "invocation": "tools/device/artifact-commands.mjs",
+      "kind": "module/check",
       "lifecycle": "supported"
     },
     {

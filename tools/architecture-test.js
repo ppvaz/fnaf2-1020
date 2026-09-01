@@ -27,6 +27,28 @@ async function files(directory) {
 }
 
 const core = await files(join(ROOT, 'packages/core/src'));
+const legacyCatalog = JSON.parse(await readFile(join(ROOT, 'docs/architecture/generated/legacy-paths.json'), 'utf8'));
+assert.equal(legacyCatalog.schema, 'legacy-path-map-v1');
+assert.ok(Array.isArray(legacyCatalog.entries) && legacyCatalog.entries.length > 0,
+  'legacy path catalog must contain migration entries');
+for (const entry of legacyCatalog.entries) {
+  assert.match(entry.id, /^[a-z0-9][a-z0-9.-]+$/,
+    'legacy path entries need stable ids');
+  assert.ok(['compatibility', 'transitional', 'legacy'].includes(entry.lifecycle),
+    `${entry.id} has an invalid lifecycle`);
+  assert.equal(typeof entry.replacement, 'string');
+  assert.ok(entry.replacement.length > 0, `${entry.id} has no replacement owner`);
+  assert.equal(typeof entry.removalGate, 'string');
+  assert.ok(entry.removalGate.length > 0, `${entry.id} has no removal gate`);
+  const target = entry.path.split('#', 1)[0];
+  assert.ok(target && !target.startsWith('/') && !target.includes('..'),
+    `${entry.id} has an unsafe path`);
+  try {
+    await readFile(join(ROOT, target));
+  } catch (error) {
+    assert.fail(`${entry.id} points at missing path ${entry.path}: ${error.message}`);
+  }
+}
 for (const shim of ['tools/device/trial.sh', 'tools/device/legacy-trial.sh']) {
   assert.match(compatibility, new RegExp(shim.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')), `${shim} is missing from the compatibility inventory`);
 }

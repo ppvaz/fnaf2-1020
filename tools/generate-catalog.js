@@ -39,7 +39,11 @@ for (const path of sourceFiles.filter(path => /\.(?:js|mjs|ts)$/.test(path))) {
 }
 
 const rootPackage = JSON.parse(await readFile(join(ROOT, 'package.json'), 'utf8'));
-const commandRegistry = Object.entries(rootPackage.scripts).map(([id, command]) => ({ id, command, lifecycle: id.includes('qualification') || id === 'device:run' ? 'supported-live' : 'supported' }));
+const commandRegistry = Object.entries(rootPackage.scripts).map(([id, command]) => ({
+  id, command,
+  lifecycle: id.includes('legacy') ? 'legacy'
+    : id.includes('qualification') || id === 'device:run' ? 'supported-live' : 'supported',
+}));
 const toolsIndex = await readFile(join(ROOT, 'tools/TOOLS.md'), 'utf8');
 const toolCommands = [...toolsIndex.matchAll(/^\| `([^`]+)` \| ([^|]+) \|/gm)].map(match => ({
   id: match[1].split(/\s+/)[0], invocation: match[1], kind: match[2].trim(), lifecycle: /legacy|historical/i.test(match[2]) ? 'legacy' : 'supported',
@@ -175,6 +179,195 @@ const duplicateResponsibilities = [
   { responsibility: 'research execution', owner: '@fnaf2-1020/research', legacy: ['tools/*search*', 'tools/*sweep*', 'tools/*probe*'] },
 ];
 
+// The compatibility page is the human view; this register is the machine view
+// used by migration checks and release reviews. Keep an entry for every
+// caller-visible legacy or transitional path, including the generated remote
+// driver pieces. A path is never removed merely because a replacement exists:
+// the removal gate records the evidence still needed to make deletion safe.
+const legacyPaths = [
+  {
+    id: 'device.trial-launcher', path: 'tools/device/trial.sh', category: 'device',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/device',
+    replacement: 'apps/device/src/cli.js + tools/device/artifact-runner.mjs',
+    removalGate: 'P5 command/trace equivalence, then P9 compatibility audit',
+    notes: 'Short facade only; positional legacy arguments require explicit FNAF2_LEGACY_TRIAL=1.',
+  },
+  {
+    id: 'device.legacy-runner', path: 'tools/device/legacy-trial.sh', category: 'device',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'device-bundle-v1 + DeviceControlService + device-executor-v1',
+    removalGate: 'P5 remote executor and trace equivalence, live qualification, then P9',
+    notes: 'Historical open-loop phone runner; diagnosis only and never a canonical authority.',
+  },
+  {
+    id: 'device.legacy-driver-assembly', path: 'tools/device/trial/assemble.sh', category: 'device',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'device-executor-v1 on-device executor',
+    removalGate: 'Remove with legacy-runner after byte/trace characterization is retained',
+    notes: 'Assembles the shell program sent to Android; it is not a policy module.',
+  },
+  ...[
+    '01-arguments.sh', '02-hid-wire.sh', '03-clock.sh', '04-session.sh',
+    '05-press.sh', '06-cams-up-anchor.sh', '07-light-and-capture.sh',
+    '08-bb-threat-response.sh', '09-constants.sh', '10-minus7-sweep.sh',
+    '11-plan-interpreter.sh', '12-night-loop.sh',
+  ].map(name => ({
+    id: `device.legacy-driver.${name.replace(/\.sh$/, '')}`,
+    path: `tools/device/trial/${name}`, category: 'device-driver-part',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'device-executor-v1 + semantic artifact blocks',
+    removalGate: 'Remove with legacy-runner after each responsibility has an adapter/test owner',
+    notes: 'Generated remote-driver fragment retained for historical characterization.',
+  })),
+  {
+    id: 'device.mask-camp-runner', path: 'tools/device/trial-maskcamp.sh', category: 'device-experiment',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'artifact-runner observation/qualification lane',
+    removalGate: 'Migrate or archive experiment recipes with retained evidence; no new runs',
+    notes: 'Second phone runner with its own cold-start and timing path.',
+  },
+  {
+    id: 'device.mask-camp-batch', path: 'tools/device/run-batch.sh', category: 'device-experiment',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'research experiment runner + retained device artifacts',
+    removalGate: 'Mask-camp results replayable from structured artifacts',
+    notes: 'Batch wrapper around the legacy mask-camp runner.',
+  },
+  {
+    id: 'device.shell-preflight', path: 'tools/device/preflight.sh', category: 'device',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/device',
+    replacement: 'DeviceControlService.preflight + profile/qualification checks',
+    removalGate: 'Modern CLI covers helper, focus, title, and qualification checks',
+    notes: 'Read-only shell gate; do not use it as the modern live entry point.',
+  },
+  {
+    id: 'device.shell-session', path: 'tools/device/session.sh', category: 'device',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/device',
+    replacement: 'DeviceControlService session manifest and retained result bundle',
+    removalGate: 'Legacy-runner migration retains equivalent session provenance',
+    notes: 'Sourced manifest bridge used by the historical shell runner.',
+  },
+  {
+    id: 'device.session-manifest-producer', path: 'tools/device/session-manifest.py', category: 'device',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'runtime `session-manifest-v1` emitter used by DeviceControlService',
+    removalGate: 'Historical manifests are indexed/replayable and the shell runner is removed',
+    notes: 'Plan 09 producer for the shell-specific `fnaf2.session-manifest` dialect.',
+  },
+  {
+    id: 'device.session-manifest-validator', path: 'tools/device/validate-session.py', category: 'device',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/evidence',
+    replacement: 'runtime manifest validator + evidence CLI',
+    removalGate: 'Historical shell manifests remain inspectable through the evidence boundary',
+    notes: 'Validator for the legacy shell manifest; its filename must not be confused with the runtime contract.',
+  },
+  {
+    id: 'device.session-manifest-schema', path: 'tools/device/schema/session-manifest-v1.json', category: 'device',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'runtime `session-manifest-v1` contract',
+    removalGate: 'Legacy `fnaf2.session-manifest` fixtures and consumers are archived',
+    notes: 'Legacy schema whose internal id is `fnaf2.session-manifest`; it is not the runtime JSON contract.',
+  },
+  {
+    id: 'device.legacy-grader', path: 'tools/device/grade-run.sh', category: 'device-evidence',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/evidence',
+    replacement: 'evidence CLI over content-addressed device bundles',
+    removalGate: 'Historical video/HID/session artifacts have an equivalent structured grader',
+    notes: 'Historical run grader that consumes shell-runner captures and manifests.',
+  },
+  {
+    id: 'cue.legacy-pilot-supervisor', path: 'tools/cue/pilot-supervisor.py', category: 'device-experiment',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/device',
+    replacement: 'device-executor-v1 supervisor with explicit transport ownership',
+    removalGate: 'Legacy pilot process-tree evidence is retained and no caller starts the old runner',
+    notes: 'External authority supervisor hard-wired to the historical runner.',
+  },
+  {
+    id: 'device.shell-adb-selector', path: 'tools/device/select-adb.sh', category: 'transport',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/adapters',
+    replacement: 'explicit injected transport selected by the device composition root',
+    removalGate: 'All direct-ADB probes either become adapters or are explicitly archived',
+    notes: 'Useful characterization guard, but it must not select a canonical live strategy.',
+  },
+  {
+    id: 'device.shell-coordinates', path: 'tools/device/coords.sh', category: 'transport',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/adapters',
+    replacement: 'resolved device profile controlMap',
+    removalGate: 'All device actions consume profile geometry; probe-only users are archived',
+    notes: 'Legacy shell coordinate authority; modern semantic commands carry no coordinates.',
+  },
+  {
+    id: 'device.shell-menu', path: 'tools/device/menu.sh', category: 'device',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/device',
+    replacement: 'title/menu detector and DeviceControlService state gate',
+    removalGate: 'Automated menu-state detector has calibrated evidence and a dry-run fixture',
+    notes: 'Human-safe selector retained because the current phone cursor is not machine-qualified.',
+  },
+  {
+    id: 'device.simulated-actuator', path: 'tools/device/actuator.mjs', category: 'simulation',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/adapters',
+    replacement: 'adapter actuator/error model with conformance fixtures',
+    removalGate: 'Pilot/model consumers migrate without changing measured error semantics',
+    notes: 'Historical device-lateness model; not a physical transport.',
+  },
+  {
+    id: 'device.recipe-emitter', path: 'tools/device/recipe.mjs', category: 'device-artifact',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/device',
+    replacement: 'package-owned winner/device-bundle emitter',
+    removalGate: 'Bundle emitter no longer imports the tools tree and replay hashes match',
+    notes: 'Still used by the bundle compiler, so removal is blocked until extraction.',
+  },
+  {
+    id: 'device.policy-ir-module', path: 'tools/device/policy-ir.mjs', category: 'policy',
+    lifecycle: 'transitional', owner: '@fnaf2-1020/core',
+    replacement: 'core policy-program contract and research package emitter',
+    removalGate: 'P3 policy vocabulary migration and fixed-seed artifact equivalence',
+    notes: 'Compatibility policy builder retained while policy ownership moves out of tools.',
+  },
+  {
+    id: 'research.stock-device-pilot', path: 'tools/model/stock-device-pilot.mjs', category: 'research',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/research',
+    replacement: 'experiment spec/runner with an explicit historical actuator model',
+    removalGate: 'Historical sweeps have structured, replayable experiment artifacts',
+    notes: 'Retired swipe-era schedule report; it is not a selectable device route.',
+  },
+  {
+    id: 'device.cue-model-provisioner', path: 'tools/device/provision-cue-model.sh', category: 'device',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/adapters',
+    replacement: 'cue-helper/screen detector profile with content-addressed model binding',
+    removalGate: 'No supported APK build loads the provisioned file and all holdouts are retained',
+    notes: 'Historical APK model installer; current visual-only helper does not consume it.',
+  },
+  {
+    id: 'cue.esp32-model-packer', path: 'tools/cue/pack-esp32-cues.py', category: 'firmware',
+    lifecycle: 'legacy', owner: '@fnaf2-1020/adapters',
+    replacement: 'transport-neutral cue authority and versioned firmware profile',
+    removalGate: 'Semantic-DSP fallback is archived with reproducible model artifacts',
+    notes: 'Retained fallback generator; production bridge does not link its generated assets.',
+  },
+  {
+    id: 'research.minus-toys-alias', path: 'tools/minustoystest.mjs', category: 'research-alias',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/research',
+    replacement: 'npm run research -- minus-toys',
+    removalGate: 'Package structured artifacts and fixed-seed output are equivalent',
+    notes: 'Compatibility alias for the research package family evaluator.',
+  },
+  {
+    id: 'research.minus-two-alias', path: 'tools/minus2test.mjs', category: 'research-alias',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/research',
+    replacement: 'npm run research -- minus-two',
+    removalGate: 'Package structured artifacts and fixed-seed output are equivalent',
+    notes: 'Compatibility alias for the research package family evaluator.',
+  },
+  {
+    id: 'package.legacy-engine-command', path: 'package.json#scripts.test:legacy:engine', category: 'command',
+    lifecycle: 'compatibility', owner: '@fnaf2-1020/core',
+    replacement: 'node tools/test.mjs --engine (canonical engine fixture lane)',
+    removalGate: 'Bare-Node compatibility lane is no longer needed and P9 audit is green',
+    notes: 'Retained package command for the old engine test entry point.',
+  },
+];
+
 const outputs = {
   'language-inventory.json': { schema: 'language-inventory-v1', languages: language },
   'import-graph.json': { schema: 'import-graph-v1', files: importGraph },
@@ -185,6 +378,7 @@ const outputs = {
   'adapter-registry.json': { schema: 'adapter-registry-v1', adapters: Object.values(ADAPTER_REGISTRY) },
   'test-manifest.json': { schema: 'test-manifest-v1', generatedFrom: 'source inventory', tests },
   'duplicate-responsibilities.json': { schema: 'duplicate-responsibility-map-v1', entries: duplicateResponsibilities },
+  'legacy-paths.json': { schema: 'legacy-path-map-v1', generatedFrom: 'tools/generate-catalog.js', entries: legacyPaths },
   'reverse-links.json': reverseLinks,
 };
 for (const [name, value] of Object.entries(outputs)) await writeFile(join(OUT, name), JSON.stringify(value, null, 2) + '\n');

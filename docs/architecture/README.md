@@ -22,5 +22,7 @@ The [generated catalogs](generated/README.md) are executable views of current
 package, command, contract, protocol, adapter, test, and responsibility data.
 The [workspaces ADR](../decisions/0001-workspaces-and-core.md) records why the
 development bootstrap is `npm ci` and why core/trainer have no runtime tools.
-The [compatibility inventory](COMPATIBILITY.md) names the remaining legacy
-launcher and its removal gate; the former root source shims are gone.
+The [compatibility inventory](COMPATIBILITY.md) names every remaining legacy or
+transitional path, its replacement owner, and removal gate. The generated
+[`legacy-paths.json`](generated/legacy-paths.json) view is checked for stale
+paths; the former root source shims are gone.
