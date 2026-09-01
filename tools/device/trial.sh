@@ -21,6 +21,9 @@ fi
 
 ARTIFACT=""
 DRY_RUN=0
+LIVE=0
+CONFIRM_LIVE=0
+QUALIFICATION=""
 ARTIFACT_NIGHT=""
 while (($#)); do
   case "$1" in
@@ -28,6 +31,11 @@ while (($#)); do
       [ "$#" -ge 2 ] || { echo "trial.sh: --artifact needs a directory" >&2; exit 2; }
       ARTIFACT=$2; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --live) LIVE=1; shift ;;
+    --confirm-live) CONFIRM_LIVE=1; shift ;;
+    --qualification)
+      [ "$#" -ge 2 ] || { echo "trial.sh: --qualification needs a file" >&2; exit 2; }
+      QUALIFICATION=$2; shift 2 ;;
     --night)
       [ "$#" -ge 2 ] || { echo "trial.sh: --night needs a number" >&2; exit 2; }
       ARTIFACT_NIGHT=$2; shift 2 ;;
@@ -37,11 +45,14 @@ while (($#)); do
 done
 
 if [ -n "$ARTIFACT" ]; then
-  if [ "$DRY_RUN" -ne 1 ]; then
-    echo "trial.sh: artifact handoff is validated, but live execution remains disabled until device qualification" >&2
-    exit 44
-  fi
-  artifact_args=("$ROOT/tools/device/artifact-runner.mjs" --artifact "$ARTIFACT" --dry-run)
+  [ $((DRY_RUN + LIVE)) -eq 1 ] || {
+    echo "trial.sh: choose exactly one of --dry-run or --live" >&2; exit 2;
+  }
+  artifact_args=("$ROOT/tools/device/artifact-runner.mjs" --artifact "$ARTIFACT")
+  [ "$DRY_RUN" -eq 0 ] || artifact_args+=(--dry-run)
+  [ "$LIVE" -eq 0 ] || artifact_args+=(--live)
+  [ "$CONFIRM_LIVE" -eq 0 ] || artifact_args+=(--confirm-live)
+  [ -z "$QUALIFICATION" ] || artifact_args+=(--qualification "$QUALIFICATION")
   [ -z "$ARTIFACT_NIGHT" ] || artifact_args+=(--night "$ARTIFACT_NIGHT")
   exec node "${artifact_args[@]}"
 fi

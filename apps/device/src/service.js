@@ -11,7 +11,25 @@ import { dispatchTrajectory, SafetySupervisor, makeEvent, makeManifest, validate
 import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
 
-const controls = Object.freeze(['monitor', 'mask', 'light', 'cam:10', 'cam:4', 'cam:7', 'cam:11', 'wind']);
+const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL',
+  'cam:10', 'cam:4', 'cam:7', 'cam:11', 'wind']);
+
+const cameraControl = control => typeof control === 'string' && control.startsWith('cam:');
+
+/**
+ * Return the monitor state an action requires, or null when the action carries
+ * no monitor invariant.  Compiled artifact commands state the invariant
+ * explicitly; the camera/wind defaults are a second line of defence so a
+ * malformed caller cannot put camera coordinates onto the office.
+ */
+export function requiredMonitorState(command) {
+  const declared = command?.source?.requiresMonitorUp;
+  if (typeof declared === 'boolean') return declared;
+  const control = command?.action?.control;
+  if (cameraControl(control) || control === 'wind' || control === 'light') return true;
+  if (control === 'mask' || control === 'hall' || control === 'ventL' || control === 'ventR') return false;
+  return null;
+}
 
 export class DeviceControlService {
   /** @param {any} options */
@@ -89,6 +107,95 @@ export class DeviceControlService {
     this.event('sensor.sample', { id: raw.id, format: raw.format, source: raw.source, loss: raw.loss ?? null, calibration: raw.calibration });
     this.event('measurement.observed', measurement);
     return measurement;
+  }
+
+  async observeMonitor({ id = 'monitor-state', confirmations = 2 } = {}) {
+    if (!this.sensor || !this.detector) throw new Error('monitor observation requires a sensor and detector');
+    if (!Number.isInteger(confirmations) || confirmations < 1 || confirmations > 3)
+      throw new Error('monitor observation confirmations must be in 1..3');
+    let agreed = null;
+    for (let index = 0; index < confirmations; index += 1) {
+      const at = this.now();
+      const raw = await this.sensor.sample({ id: `${id}-${index + 1}`, at, signal: 'monitorUp' });
+      const measurement = await this.detector.detect(raw);
+      this.event('sensor.sample', { id: raw.id, format: raw.format, source: raw.source,
+        loss: raw.loss ?? null, calibration: raw.calibration });
+      this.event('measurement.observed', measurement);
+      const current = measurement.state === 'OBSERVED' && measurement.signal === 'monitorUp' &&
+        typeof measurement.value === 'boolean' ? measurement.value : null;
+      if (current === null) return { state: 'UNKNOWN', reason: measurement.reason ?? 'monitor-state-unreadable', measurement };
+      if (agreed !== null && current !== agreed)
+        return { state: 'UNKNOWN', reason: 'monitor-state-disagrees', measurement };
+      agreed = current;
+    }
+    return { state: 'OBSERVED', value: agreed };
+  }
+
+  monitorCommand(target, id) {
+    const at = this.now();
+    return {
+      schema: 'control-command-v1', id,
+      action: { kind: 'press', control: 'monitor' },
+      requestedAt: { clock: 'device-monotonic-ms', value: at },
+      deadline: { clock: 'device-monotonic-ms', value: at + 1000 },
+      source: { controller: 'artifact-state-controller', targetMonitorUp: target,
+        requiresMonitorUp: !target },
+    };
+  }
+
+  /**
+   * Idempotent monitor transition.  Observation, not press parity, is the
+   * authority.  A forcedown between attempts therefore becomes an observed
+   * revocation rather than a permanent inversion.
+   */
+  async ensureMonitor(target, { id = `ensure-monitor-${target ? 'up' : 'down'}`,
+    settleMs = target ? 250 : 367, retries = 1 } = {}) {
+    if (typeof target !== 'boolean') throw new Error('ensureMonitor target must be boolean');
+    if (!Number.isInteger(retries) || retries < 0 || retries > 1)
+      throw new Error('ensureMonitor retries must be zero or one');
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const before = await this.observeMonitor({ id: `${id}-before-${attempt + 1}` });
+      if (before.state !== 'OBSERVED') throw new Error(`monitor state UNKNOWN: ${before.reason}`);
+      if (before.value === target) {
+        this.event('monitor.ensured', { target, attempt, acted: false });
+        return { state: 'VERIFIED', target, attempts: attempt, acted: attempt > 0 };
+      }
+      const command = this.monitorCommand(target, `${this.session.id}-${id}-press-${attempt + 1}`);
+      await this.applyCommand(command, { idempotencyKey: command.id });
+      await (this.sleep ?? (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))))(settleMs);
+      const after = await this.observeMonitor({ id: `${id}-after-${attempt + 1}` });
+      if (after.state !== 'OBSERVED') throw new Error(`monitor verification UNKNOWN: ${after.reason}`);
+      if (after.value === target) {
+        this.event('monitor.ensured', { target, attempt: attempt + 1, acted: true });
+        return { state: 'VERIFIED', target, attempts: attempt + 1, acted: true };
+      }
+      this.event('monitor.revoked', { target, attempt: attempt + 1, observed: after.value });
+    }
+    throw new Error(`monitor did not reach ${target ? 'UP' : 'DOWN'} after bounded retry`);
+  }
+
+  /** Execute a short artifact block, revalidating every deferred action. */
+  async executeConditioned(commands) {
+    if (!Array.isArray(commands) || commands.length > this.maxActions)
+      throw new Error('conditioned action block exceeds the bounded action budget');
+    const results = [];
+    try {
+      for (const command of commands) {
+        const required = requiredMonitorState(command);
+        if (required !== null) await this.ensureMonitor(required, { id: `${command.id}-precondition` });
+        if (command.action.control === 'monitor') {
+          const target = command.source?.targetMonitorUp;
+          if (typeof target !== 'boolean') throw new Error('artifact monitor action has no target state');
+          results.push(await this.ensureMonitor(target, { id: command.id }));
+        } else {
+          results.push(await this.applyCommand(command, { idempotencyKey: command.id }));
+        }
+      }
+      return results;
+    } catch (error) {
+      await this.abort(`conditioned-execution: ${error.message}`);
+      throw error;
+    }
   }
 
   schedulerOptions() {

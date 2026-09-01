@@ -1,15 +1,15 @@
 {
   "schema": "device-profile-v1",
   "id": "hid-mediaprojection",
-  "name": "HID multi + MediaProjection qualification",
-  "lifecycle": "qualification",
+  "name": "Moto g56 HID + MediaProjection 100 ms qualification candidate",
+  "lifecycle": "qualification-candidate",
   "targetBuild": "com.scottgames.fnaf2:2.0.7+26",
   "clock": "device-monotonic-ms",
   "actuator": "hid-multi",
   "visualSensor": "mediaprojection",
   "visualDetector": "cue-helper-detector",
-  "geometry": "fixture-landscape-v1",
-  "calibrations": {"geometry":"hid-geometry-v1","actuator-timing":"hid-timing-v1","visual":"mediaprojection-v1","detector":"mediaprojection-v1"},
-  "controlMap": {"mask":{"x":100,"y":100},"monitor":{"x":200,"y":100},"light":{"x":300,"y":100},"wind":{"x":400,"y":100},"ventL":{"x":500,"y":100},"ventR":{"x":600,"y":100},"cam:4":{"x":40,"y":40},"cam:7":{"x":70,"y":70},"cam:9":{"x":90,"y":90},"cam:10":{"x":100,"y":90},"cam:11":{"x":110,"y":110}},
+  "geometry": "moto-g56-landscape-2400x1080-v1",
+  "calibrations": {"geometry":"moto-g56-fnaf2-default-controls-v1","actuator-timing":"hid-100ms-candidate-unqualified-v1","visual":"mediaprojection-v1","detector":"mediaprojection-v1"},
+  "controlMap": {"mask":{"x":600,"y":1015},"monitor":{"x":1780,"y":1015},"light":{"x":350,"y":615},"hall":{"x":1200,"y":540},"wind":{"x":430,"y":845},"ventL":{"x":350,"y":615},"ventR":{"x":2050,"y":615},"cam:4":{"x":1730,"y":710},"cam:7":{"x":1775,"y":615},"cam:9":{"x":2150,"y":555},"cam:10":{"x":2045,"y":720},"cam:11":{"x":2275,"y":685}},
   "limits": {"maxActions":64,"maxDurationMs":15000,"dryRunOnly":true}
 }

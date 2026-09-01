@@ -36,6 +36,17 @@ assert.equal(duplicate.error.code, 'NO_SESSION');
 assert.equal((await mcp.call('actuator.apply', { lease, profileHash, idempotencyKey: 'bad-command', command: { ...trajectory.commands[0], source: { controller: 'mcp-test' } } })).error.code, 'NO_SESSION');
 
 const liveProfile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/hid-mediaprojection.json', import.meta.url)), 'utf8'));
+const fastProfile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/hid-mediaprojection-17ms.json', import.meta.url)), 'utf8'));
+for (const candidate of [liveProfile, fastProfile]) {
+  assert.equal(candidate.limits.dryRunOnly, true,
+    'an unqualified timing candidate must remain dry-run only');
+  assert.notDeepEqual(candidate.controlMap.light, candidate.controlMap.hall,
+    'camera light and office hall light must have distinct physical bindings');
+  assert.doesNotThrow(() => composeDevice({ profile: candidate }));
+}
+assert.notEqual(liveProfile.calibrations['actuator-timing'],
+  fastProfile.calibrations['actuator-timing'],
+  '17 ms must have qualification evidence distinct from the 100 ms candidate');
 liveProfile.limits.dryRunOnly = false;
 let sent = 0;
 const liveTransport = {
@@ -69,4 +80,53 @@ assert.equal(liveResult.status, 'SENT');
 assert.equal(sent, 1);
 await qualifiedService.abort('test-stop');
 assert.equal(sent, 1);
+
+function conditionedService(states) {
+  let sends = 0;
+  const readings = [...states];
+  const transport = {
+    send: async () => { sends += 1; }, abort: () => {}, releaseAll: () => {},
+  };
+  const instance = composeDevice({
+    profile: liveProfile, mode: 'live', artifactRoot,
+    actuatorTransport: transport,
+    qualification: { schema: 'qualification-v1', evidenceId: 'fixture-conditioned-evidence',
+      claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1',
+      modelHash: 'model-sim-v1', sampleCount: 2, verdict: 'PASS' },
+    sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
+    detectorRead: () => {
+      const value = readings.shift();
+      return value === null || value === undefined
+        ? { signal: 'monitorUp', state: 'UNKNOWN', reason: 'fixture-unknown' }
+        : { signal: 'monitorUp', state: 'OBSERVED', value, confidence: 1 };
+    },
+    now: () => 10, sleep: async () => {},
+  });
+  instance.startSession();
+  return { instance, sends: () => sends };
+}
+
+const lowering = conditionedService([true, true, true, false, false]);
+const lowered = await lowering.instance.ensureMonitor(false, { id: 'forcedown-safe-lower' });
+assert.equal(lowered.state, 'VERIFIED');
+assert.equal(lowering.sends(), 1, 'ensure-down must press exactly once when the monitor is up');
+
+const revoked = conditionedService([
+  false, false, false, false, false, // first raise is revoked/does not reach UP
+  false, false, false, true, true, // bounded retry reaches UP
+]);
+const raised = await revoked.instance.ensureMonitor(true, { id: 'forcedown-retry' });
+assert.equal(raised.state, 'VERIFIED');
+assert.equal(revoked.sends(), 2, 'forcedown recovery must be bounded at one retry');
+
+const guardedCamera = conditionedService([null]);
+const cameraAt = { clock: 'device-monotonic-ms', value: 10 };
+const cameraCommand = { schema: 'control-command-v1', id: 'guarded-cam7',
+  action: { kind: 'select', control: 'cam:7' }, requestedAt: cameraAt,
+  deadline: { clock: 'device-monotonic-ms', value: 1000 },
+  source: { controller: 'artifact-test', requiresMonitorUp: true } };
+await assert.rejects(() => guardedCamera.instance.executeConditioned([cameraCommand]),
+  /monitor state UNKNOWN/);
+assert.equal(guardedCamera.sends(), 0,
+  'an UNKNOWN monitor state must never put a camera coordinate onto the office');
 console.log('device service: profile lease, bounded trajectory, observation wiring, cleanup, and claim refusal pass');

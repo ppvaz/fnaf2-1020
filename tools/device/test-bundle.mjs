@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { compileBundle, parsePlan, validateBundle } from './bundle.mjs';
+import { compileArtifactPlans } from './artifact-commands.mjs';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const expectFailure = (fn, message) => {
@@ -35,6 +36,15 @@ try {
   const selected = validateBundle(bundlePath, { night: 7 });
   check(selected.plans.length === 1 && selected.plans[0].night === 7,
     'night selector did not bind to the requested plan');
+  const conditioned = compileArtifactPlans(selected.plans, parsePlan, selected.profile);
+  const actions = Object.values(conditioned[0].cycles).flatMap(cycle =>
+    cycle.blocks.flatMap(block => block.actions));
+  check(actions.filter(action => action.control?.startsWith('cam:'))
+    .every(action => action.requiresMonitorUp === true),
+  'artifact compiler emitted a camera action without an UP precondition');
+  check(actions.filter(action => action.control === 'monitor')
+    .every(action => typeof action.targetMonitorUp === 'boolean'),
+  'artifact compiler retained a parity-only monitor toggle');
 
   const cliWinner = join(root, 'winner-input.json');
   const cliBundle = join(root, 'cli-bundle');
@@ -71,6 +81,19 @@ try {
     'trial.sh did not consume the exact artifact');
   expectFailure(() => execFileSync(join(process.cwd(), 'tools/device/trial.sh'),
     ['--artifact', bundlePath]), 'trial.sh allowed artifact live execution');
+
+  const qualificationPath = join(root, 'qualification.json');
+  writeFileSync(qualificationPath, JSON.stringify({ schema: 'qualification-v1',
+    evidenceId: 'fixture-device-evidence', claimLevel: 'DEVICE_MEASURED',
+    policyHash: ready.manifest.winnerHash, modelHash: ready.manifest.engineHash,
+    sampleCount: 1, verdict: 'PASS' }) + '\n');
+  let liveError = '';
+  try {
+    execFileSync(join(process.cwd(), 'tools/device/trial.sh'), ['--artifact', bundlePath,
+      '--live', '--confirm-live', '--qualification', qualificationPath], { encoding: 'utf8' });
+  } catch (error) { liveError = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
+  check(liveError.includes('live artifact transport is not composed'),
+    'artifact live lane bypassed the explicit transport-composition gate');
 
   console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and trial artifact dry-run pass');
 } finally {

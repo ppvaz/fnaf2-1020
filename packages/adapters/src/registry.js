@@ -11,10 +11,10 @@ const deepFreeze = value => {
   return Object.freeze(value);
 };
 const capabilities = [
-  freeze({ schema: 'capability-v1', adapter: 'sim-actuator', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'simulator-frame', verification: 'internal', claimLevel: 'MODEL_ONLY', limitations: ['simulated plant only'] }),
-  freeze({ schema: 'capability-v1', adapter: 'fixture-hid', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'FIXTURE', limitations: ['no physical acceptance claim'] }),
-  freeze({ schema: 'capability-v1', adapter: 'adb-tap', actions: ['press', 'release'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['serialized host-mediated input', 'no multitouch'] }),
-  freeze({ schema: 'capability-v1', adapter: 'hid-multi', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['requires profile calibration', 'send is not game acceptance'] }),
+  freeze({ schema: 'capability-v1', adapter: 'sim-actuator', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'simulator-frame', verification: 'internal', claimLevel: 'MODEL_ONLY', limitations: ['simulated plant only'] }),
+  freeze({ schema: 'capability-v1', adapter: 'fixture-hid', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'FIXTURE', limitations: ['no physical acceptance claim'] }),
+  freeze({ schema: 'capability-v1', adapter: 'adb-tap', actions: ['press', 'release'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['serialized host-mediated input', 'no multitouch'] }),
+  freeze({ schema: 'capability-v1', adapter: 'hid-multi', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['requires profile calibration', 'send is not game acceptance'] }),
   freeze({ schema: 'capability-v1', adapter: 'screencap', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['raw visual samples only'] }),
   freeze({ schema: 'capability-v1', adapter: 'mediaprojection', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['requires MediaProjection permission and retained frame metadata'] }),
   freeze({ schema: 'capability-v1', adapter: 'a2dp-pcm', actions: [], controls: [], clock: 'audio-sample', format: 'pcm-s16le', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['audio samples do not prove game state'] }),
@@ -62,7 +62,11 @@ export function resolveProfile(profile, { requireCalibration = true } = {}) {
     const point = profile.controlMap[control];
     if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error(`profile ${profile.id} has no coordinate binding for ${control}`);
   }
-  return deepFreeze({ ...profile, capabilities: actuator, sensorCapabilities: sensor, detectorCapabilities: detector });
+  // Resolution owns the immutable result. Do not freeze nested objects in the
+  // caller's parsed JSON; qualification code may need to derive a candidate
+  // without having validation unexpectedly mutate its input.
+  return deepFreeze({ ...structuredClone(profile), capabilities: actuator,
+    sensorCapabilities: sensor, detectorCapabilities: detector });
 }
 
 export function listAdapters() { return Object.values(ADAPTER_REGISTRY); }

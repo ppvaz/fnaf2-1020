@@ -43,7 +43,7 @@ export function validateClockRef(value, label = 'clock') {
 
 function validateControl(control) {
   if (typeof control !== 'string' ||
-      !(['mask', 'monitor', 'light', 'wind', 'ventL', 'ventR'].includes(control) ||
+      !(['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR'].includes(control) ||
        /^cam:(?:[0-9]|1[0-2])$/.test(control)))
     fail('action.control must be semantic and must not contain coordinates or transport text');
   return control;
