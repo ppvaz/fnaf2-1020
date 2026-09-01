@@ -401,6 +401,10 @@ const ENGINE = [
   // Plan 18 Package 4: bounded dependency-free properties for Sim state,
   // event determinism, and sourced Night-1 reachability.
   ['engine properties', ['propertytest.mjs']],
+  // Plan 05 package 6a: the Custom Night observation surface has exactly
+  // eleven characters, a closed Plan 17 tuple boundary, complete provenance,
+  // and current-frame event wake flags.
+  ['invent observe', ['invent/test-observe.mjs']],
   // The indexes are how a cold session finds anything, and nothing recomputed
   // them: TOOLS.md was missing 47 of 137 scripts including grade-run.sh, and
   // docs/README.md was missing HID-MULTITOUCH.md. Cheap, so it runs here
