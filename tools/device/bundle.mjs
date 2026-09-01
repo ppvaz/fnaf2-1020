@@ -12,11 +12,13 @@ import { emitPlan as emitToysPlan, KNOBS0 as TOYS_KNOBS,
   replay as replayToys } from './minus-toys-plan.mjs';
 import { build as buildMinus7, devicePlan as emitMinus7Plan,
   idleUntilMs as minus7IdleUntil, replay as replayMinus7 } from './recipe.mjs';
+import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
 import { canonicalJson, stableHash, validateProfile } from '@fnaf2-1020/core/contracts';
 
 export const WINNER_SCHEMA = 'winner-v1';
 export const BUNDLE_SCHEMA = 'device-bundle-v1';
 export const REPLAY_SCHEMA = 'bundle-replay-v1';
+export const ARTIFACT_SCHEMA = 'device-artifact-v1';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..'));
 const PROFILE_DIR = join(ROOT, 'apps/device/profiles');
@@ -408,6 +410,12 @@ export function compileBundle(input, outDirectory) {
     writeFileSync(join(out, file), text);
     plans.push({ night, file, policy: winner.strategy, sha256: sha256(text), bytes: Buffer.byteLength(text) });
   }
+  const compiled = compileArtifactPlans(plans.map(plan => ({ ...plan, text: emitted.get(plan.night).text })), parsePlan, profile);
+  const artifact = {
+    schema: ARTIFACT_SCHEMA, version: 1, winnerHash: stableHash(finalWinner), engineHash: winner.engineHash,
+    profileHash: sha256(profileText), plans: persistArtifactPlans(compiled),
+  };
+  jsonWrite(join(out, 'artifact.json'), artifact);
   const manifest = {
     schema: BUNDLE_SCHEMA, version: 1, strategy: winner.strategy, policy: winner.strategy,
     winnerHash: stableHash(finalWinner), engineHash: winner.engineHash,
@@ -415,6 +423,7 @@ export function compileBundle(input, outDirectory) {
     plans, gate: finalWinner.gate, replay,
     source: { compiler: 'tools/device/bundle.mjs', registry: Object.keys(STRATEGY_REGISTRY) },
     engine: { declaredHash: winner.engineHash, sourceSha256: source.sha256, sources: source.sources },
+    artifact: { file: 'artifact.json', schema: ARTIFACT_SCHEMA, sha256: sha256(canonicalJson(artifact)) },
   };
   jsonWrite(join(out, 'manifest.json'), manifest);
   return validateBundle(out);
@@ -458,5 +467,24 @@ export function validateBundle(directory, { night } = {}) {
       actualReplay.hash !== manifest.replay.hash || actualReplay.hash !== winner.gate.replayHash)
     fail('candidate replay does not equal the winner replay hash');
   const selectedPlans = entries.filter(entry => selected.includes(entry.night));
-  return { manifest, winner, profile, plans: selectedPlans, replay: actualReplay, status: 'READY' };
+  let compiled;
+  if (manifest.artifact !== undefined) {
+    if (!isRecord(manifest.artifact) || manifest.artifact.file !== 'artifact.json' ||
+        manifest.artifact.schema !== ARTIFACT_SCHEMA || typeof manifest.artifact.sha256 !== 'string')
+      fail('manifest artifact reference is incomplete');
+    const artifactText = readFileSync(join(out, manifest.artifact.file), 'utf8');
+    if (sha256(artifactText) !== manifest.artifact.sha256) fail('compiled artifact hash does not match manifest');
+    const artifact = JSON.parse(artifactText);
+    if (!isRecord(artifact) || artifact.schema !== ARTIFACT_SCHEMA || artifact.version !== 1 ||
+        artifact.winnerHash !== manifest.winnerHash || artifact.engineHash !== manifest.engineHash ||
+        artifact.profileHash !== manifest.profile.sha256 || !Array.isArray(artifact.plans))
+      fail('compiled artifact identity is incomplete');
+    if (artifact.plans.length !== entries.length || artifact.plans.some(plan =>
+      !isRecord(plan) || !Number.isInteger(plan.night) || !isRecord(plan.cycles)))
+      fail('compiled artifact plan set is invalid');
+    const byNight = new Map(artifact.plans.map(plan => [plan.night, plan]));
+    if (entries.some(entry => !byNight.has(entry.night))) fail('compiled artifact plan nights do not match manifest');
+    compiled = selectedPlans.map(entry => byNight.get(entry.night));
+  }
+  return { manifest, winner, profile, plans: selectedPlans, compiled, replay: actualReplay, status: 'READY' };
 }

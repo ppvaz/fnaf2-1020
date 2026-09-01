@@ -28,10 +28,13 @@ supersession, retraction, and promotion edges.
 
 Device handoff is a separate `winner-v1` -> `device-bundle-v1` step:
 `npm run device:emit -- --winner winner.json --out artifacts/run-001` persists
-the winner, resolved profile, night plans, hashes, and bounded replay. The
-artifact consumer validates that exact bundle before any runner can use it;
+the winner, resolved profile, night plans, hashed semantic `artifact.json`, and
+bounded replay. The artifact consumer validates that exact bundle before any
+runner can use it;
 `trial.sh --artifact ... --dry-run` remains host/model-only while live device
-qualification is open.
+qualification is open. A live invocation must name an explicit device-local
+executor module; the module receives only compiled semantic blocks and bound
+hashes, never the strategy interpreter or legacy transport.
 
 The architecture generator also emits
 `docs/architecture/generated/reverse-links.json`. It is a navigational index

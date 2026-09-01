@@ -574,8 +574,14 @@
     },
     {
       "id": "tools/device/trial.sh",
-      "invocation": "tools/device/trial.sh --artifact artifacts/run-001 (--dry-run \\| --live --confirm-live --qualification FILE) [--night N]",
+      "invocation": "tools/device/trial.sh --artifact artifacts/run-001 (--dry-run \\| --live --confirm-live --qualification FILE --executor MODULE) [--night N]",
       "kind": "artifact consumer",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "apps/device/src/artifact-executor.js",
+      "invocation": "apps/device/src/artifact-executor.js",
+      "kind": "device boundary",
       "lifecycle": "supported"
     },
     {

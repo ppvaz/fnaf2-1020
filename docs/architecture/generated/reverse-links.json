@@ -151,6 +151,13 @@
     {
       "id": "contract.device-executor-v1",
       "kind": "CONTRACT",
+      "path": "apps/device/src/artifact-executor.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
       "path": "apps/device/src/mcp.js",
       "line": 5,
       "relation": "REFERENCES"

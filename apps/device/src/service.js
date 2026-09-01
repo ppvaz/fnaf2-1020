@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { dispatchTrajectory, SafetySupervisor, makeEvent, makeManifest, validateQualification } from '@fnaf2-1020/runtime';
 import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
+import { validateExecutorRequest } from './artifact-executor.js';
 
 const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL',
   'cam:10', 'cam:4', 'cam:7', 'cam:11', 'wind']);
@@ -34,7 +35,7 @@ export function requiredMonitorState(command) {
 export class DeviceControlService {
   /** @param {any} options */
   constructor(options = {}) {
-    const { profile, actuator, sensor = null, detector = null, artifactRoot = 'artifacts', mode = 'dry-run', maxActions, now = () => performance.now(), sleep } = options;
+    const { profile, actuator, sensor = null, detector = null, artifactRoot = 'artifacts', mode = 'dry-run', maxActions, now = () => performance.now(), sleep, executor = null } = options;
     this.profile = resolveProfile(profile);
     this.actuator = actuator;
     this.artifactRoot = artifactRoot;
@@ -44,6 +45,7 @@ export class DeviceControlService {
     this.sleep = sleep;
     this.sensor = sensor;
     this.detector = detector;
+    this.executor = executor;
     this.session = null;
     this.supervisor = null;
     this.commandKeys = new Set();
@@ -198,6 +200,50 @@ export class DeviceControlService {
     }
   }
 
+  /**
+   * Execute a previously compiled artifact through the explicit device port.
+   * The service checks the request/profile binding and owns session cleanup;
+   * the injected executor owns only device-local scheduling and I/O.
+   */
+  async executeArtifact(request) {
+    if (!this.session || this.session.status !== 'ACTIVE') throw new Error('session is not active');
+    if (!this.executor || typeof this.executor.execute !== 'function')
+      throw new Error('artifact execution requires an explicit device executor port');
+    const validated = validateExecutorRequest(request);
+    const expectedMode = this.mode === 'live' ? 'live' : 'dry-run';
+    if (validated.mode !== expectedMode) throw new Error(`artifact mode ${validated.mode} does not match service mode ${expectedMode}`);
+    let requestedProfile;
+    try { requestedProfile = resolveProfile(validated.profile); }
+    catch { throw new Error('artifact profile is not a valid device profile'); }
+    if (requestedProfile.id !== this.profile.id || stableHash(requestedProfile) !== stableHash(this.profile))
+      throw new Error('artifact profile does not match the resolved device profile');
+    this.event('artifact.accepted', {
+      winnerHash: validated.artifact.winnerHash,
+      engineHash: validated.artifact.engineHash,
+      profileHash: validated.artifact.profileHash,
+      planCount: validated.artifact.plans.length,
+      blockCount: validated.blocks.length,
+    });
+    try {
+      const execution = await this.executor.execute(validated);
+      if (execution?.results && Array.isArray(execution.results)) this.session.results.push(...execution.results);
+      const outcome = execution?.outcome ?? 'PASS';
+      this.session.status = outcome === 'ABORTED' ? 'ABORTED' : 'COMPLETED';
+      this.session.outcome = outcome;
+      this.event(outcome === 'ABORTED' ? 'session.aborted' : 'session.completed', {
+        outcome, artifactHash: validated.artifact.winnerHash,
+      });
+      return this.finish({
+        artifact: validated.artifact,
+        blockCount: validated.blocks.length,
+        executorResult: execution ?? null,
+      });
+    } catch (error) {
+      await this.abort(`artifact-execution: ${error.message}`);
+      throw error;
+    }
+  }
+
   schedulerOptions() {
     return {
       actuator: this.actuator, supervisor: this.supervisor, clock: this.now,
@@ -251,6 +297,10 @@ export class DeviceControlService {
     if (typeof this.actuator.abort !== 'function' || typeof this.actuator.releaseAll !== 'function')
       throw new Error('abort requires actuator.abort and actuator.releaseAll');
     await this.actuator.abort(reason); await this.actuator.releaseAll();
+    if (this.executor && this.executor !== this.actuator) {
+      if (typeof this.executor.abort === 'function') await this.executor.abort(reason);
+      if (typeof this.executor.releaseAll === 'function') await this.executor.releaseAll();
+    }
     return this.finish({ reason });
   }
 

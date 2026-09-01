@@ -34,9 +34,9 @@ function makeDetector(profile, mode, read) {
 
 /** @param {any} options */
 export function composeDevice(options = {}) {
-  const { profile, mode = 'dry-run', actuatorTransport, sensorTransport, detectorRead, qualification, artifactRoot = 'artifacts', now } = options;
+  const { profile, mode = 'dry-run', actuatorTransport, sensorTransport, detectorRead, qualification, artifactRoot = 'artifacts', now, sleep, executor } = options;
   const actuator = makeActuator(profile, mode, actuatorTransport, qualification);
   const sensor = makeSensor(profile, mode, sensorTransport);
   const detector = makeDetector(profile, mode, detectorRead);
-  return new DeviceControlService({ profile, actuator, sensor, detector, mode, artifactRoot, now });
+  return new DeviceControlService({ profile, actuator, sensor, detector, mode, artifactRoot, now, sleep, executor });
 }

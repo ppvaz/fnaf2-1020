@@ -21,11 +21,13 @@ profile; they are never inferred from a policy or conversation.
 
 Research winners use a separate, content-addressed handoff before any device
 lane is considered: `npm run device:emit -- --winner winner.json --out
-artifacts/run-001` writes `winner.json`, `manifest.json`, `night-N.plan`, and
-`profile.json`, then validates the interpreter vocabulary, timing/contact
+artifacts/run-001` writes `winner.json`, `manifest.json`, `night-N.plan`,
+`profile.json`, and a hashed `artifact.json` containing the transport-neutral
+semantic blocks, then validates the interpreter vocabulary, timing/contact
 budget, identity, hashes, and bounded replay. The shell facade consumes that
 exact bundle with `tools/device/trial.sh --artifact artifacts/run-001
---dry-run`. Plans are compiled into bounded state-conditioned blocks: monitor
+--dry-run` (or an explicit `--executor MODULE` for the qualified live lane).
+Plans are compiled into bounded state-conditioned blocks: monitor
 operations name an UP/DOWN target, camera coordinates require two agreeing UP
 observations, and office controls require DOWN. UNKNOWN or a failed bounded
 retry aborts and releases all contacts instead of continuing by toggle parity.
@@ -41,7 +43,9 @@ composition, so hardware qualification remains an operator-owned lane.
 MediaProjection profile. It accepts explicit adapter-owned HID and cue-helper
 ports; those ports must already use the device-local execution path. It does
 not import the legacy trial, infer coordinates, or turn transport availability
-into qualification evidence. The helper must expose a fresh `monitorUp` field;
+into qualification evidence. Pass an explicit `DeviceArtifactExecutor` when
+consuming a compiled artifact; without it artifact execution is refused. The
+helper must expose a fresh `monitorUp` field;
 until then the detector returns `UNKNOWN` and the service refuses actuation.
 
 The Moto g56 100 ms and 17 ms profiles are deliberately separate

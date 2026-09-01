@@ -104,3 +104,13 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
       cycles: Object.freeze(compiled) });
   });
 }
+
+/**
+ * Strip host-only policy labels before the compiled artifact is persisted for
+ * the device lane.  The executor needs cycles and semantic blocks, never the
+ * strategy name or plan interpreter inputs.
+ */
+export function persistArtifactPlans(compiledPlans) {
+  if (!Array.isArray(compiledPlans)) throw new TypeError('compiled plans are required');
+  return compiledPlans.map(plan => Object.freeze({ night: plan.night, cycles: plan.cycles }));
+}

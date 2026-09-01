@@ -2,6 +2,12 @@
   "schema": "import-graph-v1",
   "files": [
     {
+      "file": "apps/device/src/artifact-executor.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
       "file": "apps/device/src/cli.js",
       "imports": [
         "./composition.js",
@@ -22,6 +28,7 @@
     {
       "file": "apps/device/src/index.js",
       "imports": [
+        "./artifact-executor.js",
         "./composition.js",
         "./mcp.js",
         "./modern-composition.js",
@@ -44,6 +51,7 @@
     {
       "file": "apps/device/src/service.js",
       "imports": [
+        "./artifact-executor.js",
         "@fnaf2-1020/adapters/registry",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/runtime",
@@ -55,12 +63,14 @@
     {
       "file": "apps/device/test/service.test.js",
       "imports": [
+        "../src/artifact-executor.js",
         "../src/composition.js",
         "../src/mcp.js",
         "../src/modern-composition.js",
         "../src/service.js",
         "@fnaf2-1020/adapters/actuators",
         "@fnaf2-1020/adapters/sensors",
+        "@fnaf2-1020/core/contracts",
         "node:assert/strict",
         "node:fs/promises",
         "node:os",
@@ -501,15 +511,19 @@
     {
       "file": "tools/device/artifact-runner.mjs",
       "imports": [
+        "../../apps/device/src/artifact-executor.js",
         "./artifact-commands.mjs",
         "./bundle.mjs",
         "@fnaf2-1020/runtime",
-        "node:fs"
+        "node:fs",
+        "node:path",
+        "node:url"
       ]
     },
     {
       "file": "tools/device/bundle.mjs",
       "imports": [
+        "./artifact-commands.mjs",
         "./minus-toys-plan.mjs",
         "./recipe.mjs",
         "@fnaf2-1020/core/contracts",

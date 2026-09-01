@@ -24,6 +24,7 @@ export function composeModernDevice(options = {}) {
   const cueTransport = cue instanceof CueHelperControlTransport ? cue : new CueHelperControlTransport(cue);
   return composeDevice({
     profile, mode, qualification, artifactRoot, now, sleep,
+    executor: options.executor,
     actuatorTransport: hidTransport,
     sensorTransport: { capture: () => cueTransport.snapshot() },
     detectorRead: raw => cueTransport.monitorMeasurement(raw.payload),

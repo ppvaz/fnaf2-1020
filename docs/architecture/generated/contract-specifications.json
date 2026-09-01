@@ -609,12 +609,12 @@
       ]
     },
     {
-      "contractId": "device-executor-v1",
-      "id": "device-executor-v1",
+      "contractId": "device-artifact-v1",
+      "id": "device-artifact-v1",
       "version": 1,
-      "owner": "apps/device",
+      "owner": "tools/device",
       "kind": "artifact",
-      "purpose": "Stable device-executor-v1 boundary for apps/device; its validator is run bundle.",
+      "purpose": "Stable device-artifact-v1 boundary for tools/device; its validator is hashed semantic blocks.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"
@@ -623,7 +623,27 @@
       "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
       "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
       "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
-      "runtimeValidation": "run bundle",
+      "runtimeValidation": "hashed semantic blocks",
+      "conformanceFixtures": [
+        "packages/core/test/contracts.test.js"
+      ]
+    },
+    {
+      "contractId": "device-executor-v1",
+      "id": "device-executor-v1",
+      "version": 1,
+      "owner": "apps/device",
+      "kind": "artifact",
+      "purpose": "Stable device-executor-v1 boundary for apps/device; its validator is apps/device/src/artifact-executor.js validateExecutorRequest.",
+      "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
+      "clockDomains": [
+        "declared-by-payload-or-profile"
+      ],
+      "units": "Values carry explicit units or are documented by the owning validator.",
+      "unknownBehavior": "Invalid or unavailable data is rejected or represented as an explicit UNKNOWN state; it is never silently promoted.",
+      "errorBehavior": "Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.",
+      "compatibility": "Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.",
+      "runtimeValidation": "apps/device/src/artifact-executor.js validateExecutorRequest",
       "conformanceFixtures": [
         "apps/device/test/service.test.js"
       ]

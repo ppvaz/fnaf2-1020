@@ -24,6 +24,7 @@ DRY_RUN=0
 LIVE=0
 CONFIRM_LIVE=0
 QUALIFICATION=""
+EXECUTOR=""
 ARTIFACT_NIGHT=""
 while (($#)); do
   case "$1" in
@@ -36,6 +37,10 @@ while (($#)); do
     --qualification)
       [ "$#" -ge 2 ] || { echo "trial.sh: --qualification needs a file" >&2; exit 2; }
       QUALIFICATION=$2; shift 2 ;;
+    --executor)
+      [ "$#" -ge 2 ] || { echo "trial.sh: --executor needs a module path" >&2; exit 2; }
+      EXECUTOR=$2; shift 2 ;;
+    --executor=*) EXECUTOR=${1#*=}; shift ;;
     --night)
       [ "$#" -ge 2 ] || { echo "trial.sh: --night needs a number" >&2; exit 2; }
       ARTIFACT_NIGHT=$2; shift 2 ;;
@@ -53,6 +58,7 @@ if [ -n "$ARTIFACT" ]; then
   [ "$LIVE" -eq 0 ] || artifact_args+=(--live)
   [ "$CONFIRM_LIVE" -eq 0 ] || artifact_args+=(--confirm-live)
   [ -z "$QUALIFICATION" ] || artifact_args+=(--qualification "$QUALIFICATION")
+  [ -z "$EXECUTOR" ] || artifact_args+=(--executor "$EXECUTOR")
   [ -z "$ARTIFACT_NIGHT" ] || artifact_args+=(--night "$ARTIFACT_NIGHT")
   exec node "${artifact_args[@]}"
 fi

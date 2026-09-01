@@ -11,6 +11,8 @@ import { FixtureActuator } from '@fnaf2-1020/adapters/actuators';
 import { FixtureRawSensor } from '@fnaf2-1020/adapters/sensors';
 import { composeDevice } from '../src/composition.js';
 import { composeModernDevice } from '../src/modern-composition.js';
+import { DeviceArtifactExecutor, DEVICE_EXECUTOR_SCHEMA } from '../src/artifact-executor.js';
+import { stableHash } from '@fnaf2-1020/core/contracts';
 
 const here = fileURLToPath(new URL('../profiles/fixture-hid-screencap.json', import.meta.url));
 const profile = JSON.parse(await readFile(here, 'utf8'));
@@ -90,6 +92,84 @@ assert.equal(liveResult.status, 'SENT');
 assert.equal(sent, 1);
 await qualifiedService.abort('test-stop');
 assert.equal(sent, 1);
+
+// Plan 22 artifact boundary: only compiled semantic blocks and content
+// bindings reach the injected device-local executor; no strategy or legacy
+// transport selector is reconstructed at this layer.
+let artifactRequest;
+let executorAborts = 0;
+let executorReleases = 0;
+const artifactExecutor = new DeviceArtifactExecutor({
+  execute: async request => { artifactRequest = request; return { outcome: 'PASS', results: [] }; },
+  abort: async () => { executorAborts += 1; },
+  releaseAll: async () => { executorReleases += 1; },
+});
+const artifactService = composeDevice({
+  profile: liveProfile, mode: 'live', artifactRoot,
+  actuatorTransport: qualifiedTransport,
+  qualification: { schema: 'qualification-v1', evidenceId: 'fixture-artifact-evidence',
+    claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1',
+    sampleCount: 1, verdict: 'PASS' },
+  sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
+  detectorRead: () => ({ state: 'OBSERVED', value: true, confidence: 1 }),
+  executor: artifactExecutor, now: () => 0,
+});
+artifactService.startSession({ lease: 'artifact-live' });
+const artifactRequestInput = {
+  schema: DEVICE_EXECUTOR_SCHEMA, version: 1, mode: 'live',
+  artifact: { winnerHash: 'fnv1a-artifact', engineHash: 'engine-v1', profileHash: 'a'.repeat(64),
+    profileStableHash: stableHash(liveProfile), plans: [{ night: 6, sha256: 'b'.repeat(64) }] },
+  profile: liveProfile,
+  limits: { maxActions: 64, maxDurationMs: 15000 },
+  blocks: [{ schema: 'artifact-action-block-v1', id: 'opening-block-1', cycle: 'opening',
+    night: 6, atMs: 0, actions: [{ schema: 'artifact-action-v1', id: 'opening-1', cycle: 'opening',
+      atMs: 0, kind: 'press', control: 'mask', requiresMonitorUp: false, durationMs: 33 }] }],
+};
+const artifactResult = await artifactService.executeArtifact(artifactRequestInput);
+assert.equal(artifactResult.outcome, 'PASS');
+assert.equal(artifactRequest.artifact.profileStableHash, stableHash(liveProfile));
+assert.equal('strategy' in artifactRequest, false);
+assert.equal('policy' in artifactRequest, false);
+assert.equal('transport' in artifactRequest, false);
+assert.equal(executorAborts, 0);
+assert.equal(executorReleases, 0);
+
+const malformedArtifact = { ...artifactRequestInput, blocks: [{ ...artifactRequestInput.blocks[0],
+  actions: [{ ...artifactRequestInput.blocks[0].actions[0], command: 'legacy' }] }] };
+const refusalService = composeDevice({
+  profile: liveProfile, mode: 'live', artifactRoot,
+  actuatorTransport: qualifiedTransport,
+  qualification: { schema: 'qualification-v1', evidenceId: 'fixture-artifact-refusal',
+    claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1',
+    sampleCount: 1, verdict: 'PASS' },
+  sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
+  detectorRead: () => ({ state: 'OBSERVED', value: true, confidence: 1 }),
+  executor: artifactExecutor, now: () => 0,
+});
+refusalService.startSession({ lease: 'artifact-refusal' });
+await assert.rejects(() => refusalService.executeArtifact(malformedArtifact), /command is not allowed/);
+
+let failedExecutorAborts = 0;
+let failedExecutorReleases = 0;
+const failedExecutor = new DeviceArtifactExecutor({
+  execute: async () => { throw new Error('device-port-failure'); },
+  abort: async () => { failedExecutorAborts += 1; },
+  releaseAll: async () => { failedExecutorReleases += 1; },
+});
+const failedArtifactService = composeDevice({
+  profile: liveProfile, mode: 'live', artifactRoot,
+  actuatorTransport: qualifiedTransport,
+  qualification: { schema: 'qualification-v1', evidenceId: 'fixture-artifact-failure',
+    claimLevel: 'DEVICE_MEASURED', policyHash: 'policy-fixture-v1', modelHash: 'model-sim-v1',
+    sampleCount: 1, verdict: 'PASS' },
+  sensorTransport: { capture: () => new Uint8Array([0, 0, 0, 255]) },
+  detectorRead: () => ({ state: 'OBSERVED', value: true, confidence: 1 }),
+  executor: failedExecutor, now: () => 0,
+});
+failedArtifactService.startSession({ lease: 'artifact-failure' });
+await assert.rejects(() => failedArtifactService.executeArtifact(artifactRequestInput), /device-port-failure/);
+assert.equal(failedExecutorAborts, 1, 'artifact failure must abort the injected executor');
+assert.equal(failedExecutorReleases, 1, 'artifact failure must release the injected executor');
 
 function conditionedService(states) {
   let sends = 0;

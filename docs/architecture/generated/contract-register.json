@@ -183,10 +183,16 @@
       "validator": "trajectory JSONL"
     },
     {
+      "id": "device-artifact-v1",
+      "owner": "tools/device",
+      "kind": "artifact",
+      "validator": "hashed semantic blocks"
+    },
+    {
       "id": "device-executor-v1",
       "owner": "apps/device",
       "kind": "artifact",
-      "validator": "run bundle"
+      "validator": "apps/device/src/artifact-executor.js validateExecutorRequest"
     }
   ]
 }

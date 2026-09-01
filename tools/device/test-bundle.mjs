@@ -30,9 +30,13 @@ try {
     'compiled plan did not receive common timing headers');
   check(readFileSync(join(bundlePath, 'profile.json'), 'utf8').includes('fixture-hid-screencap'),
     'profile was not copied into the bundle');
+  const compiledArtifactText = readFileSync(join(bundlePath, 'artifact.json'), 'utf8');
+  check(compiledArtifactText.includes('device-artifact-v1') && !compiledArtifactText.includes('"strategy"') &&
+    !compiledArtifactText.includes('"policy"'), 'compiled artifact leaked host strategy metadata');
   const ready = validateBundle(bundlePath);
   check(ready.plans.length === 2 && ready.replay.results.length === 4,
     'bundle validator did not replay each selected night and seed');
+  check(ready.compiled?.length === 2, 'bundle validator did not return persisted semantic artifact plans');
   const selected = validateBundle(bundlePath, { night: 7 });
   check(selected.plans.length === 1 && selected.plans[0].night === 7,
     'night selector did not bind to the requested plan');
@@ -61,6 +65,12 @@ try {
     'validator accepted a manually edited plan');
   writeFileSync(planPath, originalPlan);
   check(validateBundle(bundlePath).status === 'READY', 'bundle did not recover after restoring the plan');
+  writeFileSync(join(bundlePath, 'artifact.json'), `${compiledArtifactText}\n`);
+  expectFailure(() => validateBundle(bundlePath),
+    'validator accepted a manually edited compiled artifact');
+  writeFileSync(join(bundlePath, 'artifact.json'), compiledArtifactText);
+  check(validateBundle(bundlePath).compiled?.length === 2,
+    'bundle did not recover after restoring the compiled artifact');
 
   const malformed = originalPlan.replace('tap cam11 33', 'tap unsupported 33');
   expectFailure(() => parsePlan(malformed, { strategy: 'minus-toys', night: 2 }),
@@ -92,8 +102,27 @@ try {
     execFileSync(join(process.cwd(), 'tools/device/trial.sh'), ['--artifact', bundlePath,
       '--live', '--confirm-live', '--qualification', qualificationPath], { encoding: 'utf8' });
   } catch (error) { liveError = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
-  check(liveError.includes('live artifact transport is not composed'),
-    'artifact live lane bypassed the explicit transport-composition gate');
+  check(liveError.includes('live artifact execution requires --executor MODULE'),
+    'artifact live lane bypassed the explicit executor-composition gate');
+
+  const executorModule = join(root, 'executor.mjs');
+  writeFileSync(executorModule, `
+    export function createExecutor() {
+      return {
+        execute: async request => {
+          if (request.schema !== 'device-executor-v1') throw new Error('wrong executor schema');
+          if (JSON.stringify(request).includes('"strategy"') || JSON.stringify(request).includes('"policy"'))
+            throw new Error('strategy leaked');
+          return { outcome: 'PASS', blockCount: request.blocks.length };
+        },
+        abort: async () => {}, releaseAll: async () => {},
+      };
+    }
+  `);
+  const liveOutput = execFileSync(join(process.cwd(), 'tools/device/trial.sh'), ['--artifact', bundlePath,
+    '--live', '--confirm-live', '--qualification', qualificationPath, '--executor', executorModule], { encoding: 'utf8' });
+  check(liveOutput.includes('artifact execution PASS') && liveOutput.includes('blocks='),
+    'artifact live lane did not pass the explicit executor boundary');
 
   console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and trial artifact dry-run pass');
 } finally {
