@@ -670,6 +670,7 @@ export function devicePlan(recipe, {
   deviceSpacingMs = DEVICE_SPACING_MS,
   sweepContactMs = SWEEP_SELECT_MS,
   sweepLastContactMs = null,
+  tapContactMs = MIN_CONTACT_MS,
   knobs = recipe.options?.knobs,
 } = {}) {
   const resolvedKnobs = makeSearchKnobs(knobs);
@@ -689,6 +690,8 @@ export function devicePlan(recipe, {
   // taken the 5 s move -- the Toy Chica escape traced in ON-DEVICE-VALIDATION.md
   // "The LIGHT_AFTER geometry's CAM 07, traced". 67 ms closes it in the model.
   const spacing = deviceSpacingMs;
+  if (!(tapContactMs > 0))
+    throw new Error(`tap contact ${tapContactMs} ms must be > 0`);
   if (!(sweepContactMs > 0) || sweepContactMs >= spacing)
     throw new Error(`sweep contact ${sweepContactMs} ms must be > 0 and < the ${spacing} ms spacing`);
   // The last slot has no select after it, so its light hold is not bound by the
@@ -781,7 +784,7 @@ export function devicePlan(recipe, {
         continue;
       }
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
-      lines.push(`${e.at} tap ${e.act} ${e.dur}`);
+      lines.push(`${e.at} tap ${e.act} ${tapContactMs}`);
     }
     out[name] = foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)), resolvedKnobs);
   }
@@ -1022,6 +1025,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       deviceSpacingMs: arg('device-spacing-ms', DEVICE_SPACING_MS),
       sweepContactMs: arg('sweep-contact-ms', SWEEP_SELECT_MS),
       sweepLastContactMs: argOpt('sweep-last-contact-ms'),
+      tapContactMs: arg('tap-contact-ms', MIN_CONTACT_MS),
     });
     // The plan names its own night, so the model gate prices it against the
     // AI table it was built for instead of assuming 6. The header precedes

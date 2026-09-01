@@ -327,6 +327,18 @@ check(prefix(plan.clear) === prefix(plan.attack),
   try { devicePlan(build({ night: 7, sweepSlotMs: 50 }), { deviceSpacingMs: 66, sweepContactMs: 66 }); }
   catch { threw2 = true; }
   check(threw2, 'devicePlan must refuse a contact length that leaves no released gap');
+
+  // Machine-experiment contact override. It changes every emitted tap row,
+  // while semantic holds (wind, vent and hall light) keep their policy-sized
+  // durations. The sweep has its own contact axis above.
+  const all17 = devicePlan(build({ night: 6, sweepSlotMs: 50 }),
+    { deviceSpacingMs: 66, sweepContactMs: 17, tapContactMs: 17 });
+  const tapRows = Object.values(all17).flat()
+    .filter(line => line.split(' ')[1] === 'tap');
+  check(tapRows.length > 0 && tapRows.every(line => line.endsWith(' 17')),
+    'tapContactMs=17 must reach every emitted tap row');
+  check(Object.values(all17).flat().some(line => / hold wind (?!17$)/.test(line)),
+    'tapContactMs must not shorten semantic wind holds');
 }
 
 // The localized last-slot light contact (ON-DEVICE-VALIDATION.md, the Toy Chica

@@ -36,9 +36,10 @@
 //   node tools/minus7/geometrysearch.mjs --mode=admit --runs=1200 \
 //        --configs=50:60:30,40:50:25
 //   node tools/minus7/geometrysearch.mjs --mode=exact --runs=3000 \
-//        --configs=50:66:33,50:60:33 --winner-out=winner.json
+//        --configs=50:66:33:33,50:60:33:33 --winner-out=winner.json
 //
-// `--configs` entries are slot:deviceSpacing:contact. `admit` mode re-scores at
+// `--configs` entries are slot:deviceSpacing:sweepContact[:tapContact].
+// `admit` mode re-scores at
 // --runs seeds under BOTH slack shapes and ALSO rebuilds+replays at
 // readLatencyMs 480 (the `hidpilot n6 target` latch), because a geometry that
 // wins only at 550 is a resonance -- exactly how the pkg-4 timing search failed
@@ -60,19 +61,23 @@ const NIGHTS = [1, 2, 3, 4, 5, 6, 7];
 const STORY = [2, 3, 4, 5, 6, 7];
 const CORE = [2, 3, 4, 5, 6]; // the search objective: min over these
 
-function configsArg(fallback = '50:66:33,50:60:33') {
+function configsArg(fallback = '50:66:33:33,50:60:33:33') {
   return arg('configs', fallback).split(',').map(s => {
-    const [slot, dev, con] = s.split(':').map(Number);
-    if (![slot, dev, con].every(Number.isFinite) || slot <= 0 || dev <= 0 || con <= 0 || con >= dev)
-      throw new Error(`invalid geometry "${s}"; expected positive slot:spacing:contact with contact < spacing`);
-    return { slot, dev, con };
+    const values = s.split(':').map(Number);
+    const [slot, dev, con, tap = 33] = values;
+    if (values.length < 3 || values.length > 4 ||
+        ![slot, dev, con, tap].every(Number.isFinite) ||
+        slot <= 0 || dev <= 0 || con <= 0 || tap <= 0 || con >= dev)
+      throw new Error(`invalid geometry "${s}"; expected positive slot:spacing:sweep-contact[:tap-contact] with sweep-contact < spacing`);
+    return { slot, dev, con, tap };
   });
 }
 
 // One geometry -> the emitted plan text for one night.
-function planText(night, { slot, dev, con }) {
+function planText(night, { slot, dev, con, tap = 33 }) {
   const recipe = build({ night, sweepSlotMs: slot });
-  const plan = devicePlan(recipe, (dev || con) ? { deviceSpacingMs: dev, sweepContactMs: con } : {});
+  const plan = devicePlan(recipe, (dev || con) ? { deviceSpacingMs: dev, sweepContactMs: con,
+    tapContactMs: tap } : {});
   let text = `#night ${recipe.night}\n#idle-until ${idleUntilMs(recipe.night)}\n`;
   for (const [name, lines] of Object.entries(plan))
     text += `#cycle ${name} ${recipe.cycles[name].lengthMs}\n${lines.join('\n')}\n`;
@@ -238,7 +243,8 @@ function admit() {
 function exactCohort(geom, runs, worst) {
   const night = 6;
   const recipe = build({ night, sweepSlotMs: geom.slot });
-  const plan = devicePlan(recipe, { deviceSpacingMs: geom.dev, sweepContactMs: geom.con });
+  const plan = devicePlan(recipe, { deviceSpacingMs: geom.dev, sweepContactMs: geom.con,
+    tapContactMs: geom.tap });
   let wins = 0;
   const deaths = {};
   for (let seed = 1; seed <= runs; seed++) {
@@ -262,7 +268,7 @@ function exact() {
     const ordinary = exactCohort(geom, RUNS, false);
     const worst = exactCohort(geom, RUNS, true);
     const pass = ordinary.wins === RUNS && worst.wins === RUNS;
-    console.log(`  ${geom.slot}:${geom.dev}:${geom.con}  ordinary ${ordinary.wins}/${RUNS}` +
+    console.log(`  ${geom.slot}:${geom.dev}:${geom.con}:${geom.tap}  ordinary ${ordinary.wins}/${RUNS}` +
       `  pinned-worst ${worst.wins}/${RUNS}  ${pass ? 'PASS' : 'FAIL'}`);
     if (!pass) {
       if (Object.keys(ordinary.deaths).length) console.log(`    ordinary deaths ${JSON.stringify(ordinary.deaths)}`);
@@ -278,7 +284,8 @@ function exact() {
     schema: 'winner-v1', strategy: 'minus7',
     knobs: { night: 6, sweepSlotMs: winner.geom.slot, readLatencyMs: 550,
       hallPulseMs: 130, pilotOffset: 10, maskMarginMs: 900, search: {} },
-    planOptions: { deviceSpacingMs: winner.geom.dev, sweepContactMs: winner.geom.con },
+    planOptions: { deviceSpacingMs: winner.geom.dev, sweepContactMs: winner.geom.con,
+      tapContactMs: winner.geom.tap },
     nights: [6], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
     profile: 'fixture-hid-screencap',
     gate: { status: 'PASS', claimLevel: 'MODEL_ONLY', mode: 'exact', night: 6,
@@ -287,7 +294,7 @@ function exact() {
   mkdirSync(dirname(winnerOut), { recursive: true });
   writeFileSync(winnerOut, canonicalJson(document));
   console.log(`winner=${winnerOut} strategy=minus7 gate=PASS geometry=` +
-    `${winner.geom.slot}:${winner.geom.dev}:${winner.geom.con}`);
+    `${winner.geom.slot}:${winner.geom.dev}:${winner.geom.con}:${winner.geom.tap}`);
 }
 
 if (MODE === 'exact') exact();
