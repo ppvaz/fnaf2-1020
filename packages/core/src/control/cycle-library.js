@@ -171,6 +171,53 @@ export const CYCLE_LIBRARY = Object.freeze([
     cost: { presses: 1, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
     hazardCoverage: ['control-verification'],
   }),
+  // The three primitives below exist because the library was not closed under
+  // its own prerequisites. `wind-and-anchor` demands monitor-up on the box
+  // camera, and nothing could establish either; measured 2026-09-02, a Night 1
+  // controller driven cycle by cycle selected `observe-and-hold` 241 times and
+  // died `death=puppet` at ~4 AM. These add no new timing: every duration is an
+  // existing sourced animation constant, and each is one engine-legal tap.
+  primitive({
+    id: 'select-box-cam', durationFrames: 2,
+    prerequisites: [
+      { field: 'monitor', equals: 'up' },
+      { field: 'maskOn', equals: false },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [{ atFrame: 0, kind: 'press', action: `cam:${C.BOX_CAM}`, contactMs: 33 }],
+    verifications: [{ atFrame: 0, fields: { viewedCamera: C.BOX_CAM } }],
+    cost: { presses: 1, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: ['box-access'],
+  }),
+  // Lowering clears viewedCamera and winding in the engine; that is the point
+  // of a separate primitive rather than a tail on the wind cycle.
+  primitive({
+    id: 'lower-monitor', durationFrames: C.MONITOR_ANIM_DOWN + 1,
+    prerequisites: [
+      { field: 'monitor', equals: 'up' },
+      { field: 'maskOn', equals: false },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [{ atFrame: 0, kind: 'press', action: 'monitor', contactMs: 33 }],
+    verifications: [{ atFrame: C.MONITOR_ANIM_DOWN, fields: { monitor: 'down' } }],
+    cost: { presses: 1, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: ['office-access'],
+  }),
+  // While the mask is on or animating the engine accepts no other action, so
+  // without this the defensive mask is a terminal state for the controller.
+  primitive({
+    id: 'unmask', durationFrames: C.MASK_ANIM_OFF + 1,
+    prerequisites: [
+      { field: 'maskOn', equals: true },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [{ atFrame: 0, kind: 'press', action: 'mask', contactMs: 33 }],
+    verifications: [{ atFrame: C.MASK_ANIM_OFF, fields: { maskOn: false } }],
+    cost: { presses: 1, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: ['mask-release'],
+  }),
 ]);
 
 for (const cycle of CYCLE_LIBRARY) validateCycle(cycle);

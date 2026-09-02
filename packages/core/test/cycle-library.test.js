@@ -53,13 +53,14 @@ console.log('cycle library: reviewed primitive, prerequisite, animation, contact
 //
 // A primitive whose prerequisites no sequence of library primitives can
 // establish is dead code: the planner can never legally select it. This is not
-// hypothetical. Measured 2026-09-02, driving CycleController cycle by cycle
-// over Night 1: `wind-and-anchor` is rejected at 1800/1800 decision boundaries
-// for
+// hypothetical -- it is why the check exists. Measured 2026-09-02, before
+// `select-box-cam` / `lower-monitor` / `unmask` were added: `wind-and-anchor`
+// was rejected at 1800/1800 decision boundaries for
 // `prerequisite:monitor="down" | prerequisite:viewedCamera=null`, the controller
-// the controller selects `observe-and-hold` 241 times and nothing else, and
-// Night 1 ends `death=puppet` at ~4 AM. No primitive emits a `cam:` action and
-// `C.initialCamera(1)` is CAM 09, not `C.BOX_CAM`.
+// selected `observe-and-hold` 241 times and nothing else, and Night 1 ended
+// `death=puppet` at ~4 AM. No primitive emitted a `cam:` action and
+// `C.initialCamera(1)` is CAM 09, not `C.BOX_CAM`. The register below is empty
+// because that gap is closed; an entry records a defect, it does not excuse one.
 //
 // Plan 20 P5's nine-second blackout fixture cannot see this, and the wind gate
 // above hand-builds the state the library cannot reach on its own.
@@ -118,11 +119,7 @@ for (const cycle of CYCLE_LIBRARY) {
 // Known-negative register. An entry records a defect, it does not excuse one:
 // shrinking this list is the fix, an unlisted gap fails, and a fixed entry that
 // is left behind also fails.
-const KNOWN_UNREACHABLE = new Map([
-  ['wind-and-anchor',
-   'no primitive emits a cam: action and initialCamera(1) is CAM 09; ' +
-   'measured 2026-09-02, Night 1 cycle-by-cycle ends death=puppet'],
-]);
+const KNOWN_UNREACHABLE = new Map();
 
 for (const id of unreachable) {
   check(KNOWN_UNREACHABLE.has(id),
