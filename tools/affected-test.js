@@ -37,6 +37,7 @@ if (changed.some(path => path.startsWith('tools/invent/'))) {
   add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
   add('observation-surface', 'node', ['tools/invent/test-observe.mjs']);
   add('difficulty-probe', 'node', ['tools/invent/targets.mjs', '--assert']);
+  add('rule-ablation', 'node', ['tools/invent/test-ablate.mjs']);
 }
 // The closed-family register is shared by both policy surfaces, so a change to
 // it must run the privileged gate as well as the observable one below. That is

@@ -2,6 +2,33 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 Plan 05 package 8 — the ablation instrument `fab5969` named is built.
+That commit recorded a 7c candidate at a mean 140.1 s against reaction's 49.4 s,
+0% clears, and degenerate: three different rule sets produced identical survival.
+Both duplicate controls passed it — the syntactic one because its rules do read
+observations, the behavioural one because its branches fire on 2.3–2.5% of
+decisions, above the declared 1% floor — and the commit refused to raise the
+floor, because tuning a control until it gives the wanted answer is not a
+control. `tools/invent/ablate.mjs` drops each rule and measures the survival
+delta, minimizes to the rules that carry it, and PROVES the drop by re-measuring
+instead of assuming the inert rules were independent (one-at-a-time under an
+explicit budget when they are not, with the truncation reported). Its
+`no-load-bearing-rule` verdict reaches the 7c case by measurement: a rule that
+fires on 100% of decisions and changes nothing is inert, which is precisely the
+shape a branch-rate floor cannot see. Inert means the SURVIVAL axis did not move
+over the stated cohort; input-cost and cause-of-death deltas are reported beside
+it rather than folded into the verdict. `campaign.mjs` runs it on every frontier
+entry at the admission cohort and the artifact travels with the frontier.
+
+First result, and it is about the BASELINE, not a survivor: on the `bb`
+single-threat target at 60 seeds only **4 of the reference policy's 16 rules**
+move survival at all, and the 12 others drop with identical measured survival.
+That is a statement about that target and that cohort — `bb` at cap with foxy at
+zero, where the whole night is the hall time budget — and NOT about `decide()`
+on Night 7, where the rules the target never exercises are the ones that were
+dropped. Package 8's naming and novelty review remain open; nothing is promoted
+and no ladder position moved.
+
 2026-09-02 Plan 05 package 6c — the two closed-family lists are one register.
 The Track B1 merge (`26df393`) recorded the duplication and left it: the
 privileged search classified against `KNOWN_FAMILIES`, two families asserted in

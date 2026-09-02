@@ -97,6 +97,13 @@ export function evaluate(runner, { seeds = ADMISSION_SEEDS, ...options } = {}) {
 // The floor is a declared knob, not a measurement: a genome whose branches are
 // taken on fewer than this fraction of decisions is reported as an EFFECTIVE
 // static cover and pruned from the frontier.
+//
+// It is a screen, not the verdict, and it has a known blind spot: a rule that
+// fires on every decision and changes nothing passes it at a 100% branch rate.
+// `tools/invent/ablate.mjs` is the instrument that reaches past it -- it drops
+// each rule and measures the survival delta -- and it decides by measurement
+// where raising this floor would only be tuning a control to give a wanted
+// answer.
 export const BRANCH_FLOOR = 0.01;
 
 export function effectiveStaticCover(genome, result) {

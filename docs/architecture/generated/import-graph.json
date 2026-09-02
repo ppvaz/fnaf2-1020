@@ -1347,8 +1347,15 @@
       ]
     },
     {
+      "file": "tools/invent/ablate.mjs",
+      "imports": [
+        "./policy-lang.mjs"
+      ]
+    },
+    {
       "file": "tools/invent/campaign.mjs",
       "imports": [
+        "./ablate.mjs",
         "./closed-families.mjs",
         "./policy-lang.mjs",
         "./reference-genome.mjs",
@@ -1402,6 +1409,18 @@
       "imports": [
         "./search.mjs",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/invent/test-ablate.mjs",
+      "imports": [
+        "./ablate.mjs",
+        "./policy-lang.mjs",
+        "./reference-genome.mjs",
+        "./search.mjs",
+        "./targets.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "the\n// branch mattered"
       ]
     },
     {

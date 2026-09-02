@@ -300,6 +300,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/ablate.mjs",
+      "invocation": "tools/invent/ablate.mjs",
+      "kind": "lib",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/test-ablate.mjs",
+      "invocation": "tools/invent/test-ablate.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/targets.mjs",
       "invocation": "tools/invent/targets.mjs",
       "kind": "check",

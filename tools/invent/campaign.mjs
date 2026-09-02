@@ -1,7 +1,8 @@
 // Plan 05 package 7c: run the search per warranted target.
 //
 //   node tools/invent/campaign.mjs [--target=foxy,bb] [--gens=12] [--pop=24]
-//                                  [--inner=120] [--admit=1200] [--out=DIR]
+//                                  [--inner=120] [--admit=1200] [--ablate=N]
+//                                  [--out=DIR]
 //
 // Two seed cohorts on purpose. The inner cohort drives selection cheaply; only
 // finalists are re-scored at the 1200-seed admission gate, so a frontier entry
@@ -20,6 +21,7 @@ import {
 } from './search.mjs';
 import { mutate, crossover, randomGenome, validateGenome } from './policy-lang.mjs';
 import { classifyFamily, closedFamilyRegister } from './closed-families.mjs';
+import { ablate } from './ablate.mjs';
 import { REACTIVE_GENOME } from './reference-genome.mjs';
 import { singleThreat } from './targets.mjs';
 
@@ -32,6 +34,9 @@ const GENS = Number(argOf('gens', 12));
 const POP = Number(argOf('pop', 24));
 const INNER = Number(argOf('inner', 120));
 const ADMIT = Number(argOf('admit', ADMISSION_SEEDS));
+// Package 8 runs on the frontier at the admission cohort by default, so a rule
+// delta is comparable to the rate printed beside it. `--ablate=0` turns it off.
+const ABLATE = Number(argOf('ablate', ADMIT));
 const OUT = argOf('out', 'captures/invent');
 
 function seededRng(seed) {
@@ -45,6 +50,13 @@ function searchTarget(target, rng) {
   const customNight = singleThreat(target);
   const score = (genome, seeds) =>
     evaluate(s => rollout(genome, { night: 7, seed: s, customNight }), { seeds });
+  // Package 8, per frontier survivor: which rules carry the survival and which
+  // are decoration. This is what catches a candidate whose branches fire often
+  // enough to clear the branch floor and still change nothing -- the 7c
+  // degenerate case the floor could not reach without being tuned.
+  const ablation = genome => (ABLATE > 0
+    ? ablate(genome, { measure: candidate => score(candidate, ABLATE) })
+    : null);
 
   // Controls, every generation. A "solved" claim always has a floor beside it.
   const controls = {
@@ -125,7 +137,7 @@ function searchTarget(target, rng) {
 
   return {
     target, customNight, generations: GENS, population: POP,
-    innerSeeds: INNER, admissionSeeds: ADMIT,
+    innerSeeds: INNER, admissionSeeds: ADMIT, ablationSeeds: ABLATE,
     controls, reactiveAdmitted,
     // The register travels with the frontier so a reader can check any prune
     // in the log against the recorded negative that justifies it.
@@ -143,6 +155,7 @@ function searchTarget(target, rng) {
         entry.result.meanFrames > reactiveAdmitted.meanFrames,
       genome: entry.genome,
       manifest: provenanceManifest(entry.genome),
+      ablation: ablation(entry.genome),
     })),
     pruned: pruningLog.length,
     pruningLog: pruningLog.slice(0, 200),
@@ -174,6 +187,11 @@ for (const target of TARGETS) {
       `beatsReaction=${best.beatsReaction}`);
     console.log(`    deaths ${JSON.stringify(best.deaths)}`);
     console.log(`    no-known-observable: ${best.manifest.noKnownObservable.join(', ') || 'none'}`);
+    if (best.ablation)
+      console.log(`    ablation (${best.ablation.seeds} seeds): ` +
+        `${best.ablation.essential.length}/${best.rules} rules carry survival, ` +
+        `verdict ${best.ablation.verdict}, minimized to ` +
+        `${best.ablation.minimized.rules} (${best.ablation.minimized.method})`);
   }
   if (!best || !best.beatsReaction)
     console.log(`  RESULT: nothing in the searched grammar beat reaction on ${target}.`);

@@ -276,6 +276,22 @@ from the "Online frontier refresh" section (record query date, creators,
 difference is not novelty). **Gate:** per target, a structurally distinct named
 policy with provenance + ablations, or an explicit negative.
 
+**The ablation instrument landed 2026-09-02; the package stays open on naming
+and novelty review.** `tools/invent/ablate.mjs` drops each rule, measures the
+survival delta, and minimizes to the rules that carry it — proving the drop by
+re-measuring rather than assuming the inert rules were independent, and falling
+back to one-at-a-time removal under an explicit budget when they are not. It
+exists because package 7c's degenerate candidate cleared both duplicate
+controls: its branches read observations, so the syntactic control passed it,
+and they fire on 2.3–2.5% of decisions, above the declared 1% branch floor. The
+new verdict `no-load-bearing-rule` reaches that case by measurement instead of
+by raising a threshold until it gave the wanted answer. `campaign.mjs` now runs
+it on every frontier entry at the admission cohort (`--ablate=N`, `0` disables)
+and the artifact travels with the frontier. First result, and it is about the
+BASELINE rather than a survivor: on the `bb` single-threat target at 60 seeds,
+only **4 of the reference policy's 16 rules** move survival at all. That is a
+statement about that target and that cohort, not about `decide()` on Night 7.
+
 ### Package 9 — cross the boundary
 
 Take the strongest survivor across targets, lower its semantic actions to
