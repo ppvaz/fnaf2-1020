@@ -7,7 +7,7 @@
 // explicit at the boundary.
 import * as C from '../mechanics/config.js';
 import { initialEstimator, update, reconcile, send, needsVerification } from '../estimation/estimator.js';
-import { initialReducedState, observeReduced, applyReduced, REDUCED_SCHEMA } from '../mechanics/reduced-model.js';
+import { initialReducedState, observeReduced, applyReduced, advanceReduced, REDUCED_SCHEMA } from '../mechanics/reduced-model.js';
 import { getCycle } from './cycle-library.js';
 import { selectCycle } from './cycle-planner.js';
 
@@ -206,7 +206,46 @@ export class CycleController {
     }
     this.activeCycleId = cycle.id;
     this.activeUntilFrame = frame + cycle.durationFrames;
-    return { cycleId: cycle.id, actions, deferred };
+    // `dueFrame` is absolute so the caller's queue never has to remember which
+    // frame the cycle was committed at.
+    return {
+      cycleId: cycle.id, actions,
+      deferred: deferred.map(action => ({ ...action, cycleId: cycle.id,
+        dueFrame: frame + action.atFrame })),
+    };
+  }
+
+  /**
+   * Release one deferred action at its own boundary. Scheduling is the
+   * caller's: it owns the queue and decides when an action is due, matching
+   * `tools/device/actuator.mjs`'s `[dueFrame, kind, act]` and the runtime's
+   * supervise-and-schedule role. Legality stays here, because the reduced
+   * model is core's to interpret.
+   *
+   * A release is REFUSED, never silently applied, when the cycle that owns it
+   * is no longer the active one, when its frame has not arrived, or when the
+   * engine rejects it. A refused release is returned with its reason so the
+   * caller can log a stuck control instead of assuming the input was lifted.
+   */
+  releaseDeferred(action, { frame = this.reduced.frame } = {}) {
+    if (!action || typeof action !== 'object') fail('deferred action is required');
+    if (!Number.isInteger(frame) || frame < 0) fail('release frame must be a frame');
+    const refuse = reason => ({ schema: 'deferred-release-v1', accepted: false,
+      reason, action: clone(action), frame });
+    if (action.cycleId !== this.activeCycleId) return refuse('cycle-no-longer-active');
+    if (frame < action.dueFrame) return refuse('not-due');
+    // A release lands on its own frame, not on an observation boundary: an
+    // action at C.s(4.5) is 270 frames in, which is not a multiple of the
+    // 4-frame read cadence. Advance the reduced state to the release frame
+    // rather than demanding the two coincide.
+    if (frame < this.reduced.frame) return refuse('release-frame-in-the-past');
+    const at = frame > this.reduced.frame
+      ? advanceReduced(this.reduced, frame) : this.reduced;
+    const applied = applyReduced(at, action.action, action.kind);
+    if (!applied.accepted) return refuse(`engine-rejected:${applied.reason}`);
+    this.reduced = applied.state;
+    return { schema: 'deferred-release-v1', accepted: true, reason: null,
+      action: clone(action), frame };
   }
 
   snapshot() {
