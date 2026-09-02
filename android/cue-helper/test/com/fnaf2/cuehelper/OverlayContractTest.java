@@ -32,12 +32,14 @@ public final class OverlayContractTest {
         RoiSpec camera = contract.find("cam01_button");
         RoiSpec battery = contract.find("battery_bar_1");
         RoiSpec identity = contract.find("screen_grey_cells");
+        RoiSpec foxy = contract.find("foxy_hall_mean_redness");
         check("screen scopes come from the shared PixelWatch contract",
                 bb != null && bb.screenScope == RoiSpec.ScreenScope.OFFICE
                         && camera != null && camera.screenScope == RoiSpec.ScreenScope.MONITOR
                         && battery != null
                         && battery.screenScope == RoiSpec.ScreenScope.NIGHT_HUD
-                        && identity != null && identity.screenScope == RoiSpec.ScreenScope.IDENTITY);
+                        && identity != null && identity.screenScope == RoiSpec.ScreenScope.IDENTITY
+                        && foxy != null && foxy.screenScope == RoiSpec.ScreenScope.OFFICE);
         check("menu hides regions that are not present on the menu",
                 !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_MENU, bb)
                         && !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_MENU, camera));

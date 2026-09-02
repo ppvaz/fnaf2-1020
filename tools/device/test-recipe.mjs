@@ -7,7 +7,7 @@
 // graded run that scheduled ten 83 ms hall pulses produced zero visible beams.
 // Nothing caught it, because nothing checked the stream the runner emits.
 import { build, track, devicePlan, replay, MIN_CONTACT_MS, DEVICE_SPACING_MS,
-         MODEL_SLOT_MS, FUSION_POLL_MS, SWEEP_SELECT_MS, LA_SELECT_MS, LA_SETTLE_MS,
+         MODEL_SLOT_MS, FUSION_POLL_MS, MASK_RAISE_GAP_MS, SWEEP_SELECT_MS, LA_SELECT_MS, LA_SETTLE_MS,
          SWEEP_RELEASED_MS, sweepCamMs, sweepCams, sweepSpanMs } from './recipe.mjs';
 import { MIN_RELEASED_MS } from './test-hid-trace.mjs';
 
@@ -153,9 +153,9 @@ for (const [name, lines] of Object.entries(plan)) {
       check(+rest[0] >= MIN_CONTACT_MS, `${name}: "${line}" is under the contact floor`);
     } else if (kind === 'maskraise') {
       const [gap, mode, duration] = rest;
-      check(+gap >= 180,
-        `${name}: maskraise puts the monitor ${gap} ms after the mask; the device ` +
-        'lost 9/15 below 180 ms and 0/17 at or above it');
+      check(+gap >= MASK_RAISE_GAP_MS,
+        `${name}: maskraise puts the monitor ${gap} ms after the mask; sourced ` +
+        `mask-off completion plus one Fusion poll requires ${MASK_RAISE_GAP_MS} ms`);
       check(mode === 'up' || mode === 'hall', `${name}: unknown maskraise mode "${mode}"`);
       if (mode === 'hall')
         check(+duration >= MIN_CONTACT_MS, `${name}: maskraise hall contact is under the floor`);

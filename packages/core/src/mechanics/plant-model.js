@@ -297,7 +297,12 @@ export class Sim {
     // checking what state the game is actually in: presses that the device
     // silently drops must be dropped here too, or the simulation flatters a
     // schedule that the phone would not execute.
-    if (this.maskOn && action !== 'mask') return;
+    // `maskOn` is the steady endpoint, while `maskAnim` also covers the
+    // lowering interval after the off press. During that interval the mask is
+    // still the visible/input-owning surface; clearing maskOn early must not
+    // make the simulator accept monitor, camera, light, or wind touches that
+    // the phone draws on the mask and drops.
+    if ((this.maskOn || this.maskAnim > 0) && action !== 'mask') return;
     if (action === 'mask' && !this.maskOn &&
         (this.monitor === MON_UP || this.monitor === MON_RAISING)) return;
     // Puppet at marker 123 has already written `being attacked by` (g574),

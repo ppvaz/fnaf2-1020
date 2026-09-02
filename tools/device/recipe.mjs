@@ -12,7 +12,7 @@
 import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { run, DEFAULT_SEARCH_KNOBS, makeSearchKnobs } from '../model/hid-device-pilot.mjs';
+import { run, DEFAULT_SEARCH_KNOBS, makeSearchKnobs, MASK_OFF_INPUT_FRAMES } from '../model/hid-device-pilot.mjs';
 
 // The phone's measured contact floor. The Moto g56 accepted 33 ms contacts
 // on camera-select, monitor, mask and hall controls; 100 ms was margin from
@@ -381,15 +381,16 @@ export function track(cycle) {
 // The released time the runner leaves between the vent light and the mask.
 export const MASK_GAP_MS = 40;
 
-// A monitor press following a mask press was lost 9/15 times below 180 ms and
-// 0/17 times at or above 180 ms in the retained device census. Keep the two
-// actions in one HID macro so shell launch spread cannot compress that seam.
-// Starting the compound 60 ms before the policy's mask-off row preserves the
-// following monitor-animation margin. The clear branch also carries its first
-// Foxy reset in this macro: the old standalone slot landed inside mask-off and
-// did nothing at the measured read latency. Replay is 100/100 exact and
-// 673/1200 under the model gate's +/-60 ms human slack at this geometry.
-export const MASK_RAISE_GAP_MS = 180;
+// The mask is not interactive merely because the off press was accepted. The
+// Android source state stays in its lowering animation for MASK_ANIM_OFF
+// (15 frames = 250 ms at the sourced 60 FPS), and a control touch before that
+// completion can be drawn on the mask and ignored. Leave one released Fusion
+// poll after completion before the monitor/hall compound begins. This is a
+// stronger invariant than the old 180 ms empirical seam: the phone may still
+// vary in visual presentation, but the schedule never intentionally places a
+// later control in the masked animation window.
+export const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
+export const MASK_RAISE_GAP_MS = Math.round(MASK_OFF_INPUT_FRAMES * 1000 / C.FPS);
 export const MASK_RAISE_SHIFT_MS = 60;
 
 // The sweep is the one instruction whose numbers are the *actuator's*, not the
@@ -518,9 +519,20 @@ function clearTheRaise(name, lines) {
         select.at = earliest;
         // The hold that follows the park is what pays for it.
         const hold = ins[ins.indexOf(select) + 1];
-        if (hold && hold.kind === 'hold' && +hold.rest[1] > shift) {
-          hold.at += shift;
-          hold.rest[1] = String(+hold.rest[1] - shift);
+        if (hold && hold.kind === 'hold') {
+          // Moving a tap later must also preserve the released Fusion poll
+          // after that tap. Merely shifting the hold by the same amount can
+          // leave the original 17 ms seam intact, which makes the runner
+          // treat the wind contact as a continuation of the camera tap.
+          const oldAt = hold.at;
+          const oldDuration = +hold.rest[1];
+          const minAt = select.at + MIN_CONTACT_MS + FUSION_POLL_MS;
+          hold.at = Math.max(oldAt + shift, minAt);
+          const consumed = hold.at - oldAt;
+          if (oldDuration <= consumed)
+            throw new Error(`${name}: moving the camera select to +${select.at} ms leaves no ` +
+              `wind contact before the next action`);
+          hold.rest[1] = String(oldDuration - consumed);
         }
       }
     }

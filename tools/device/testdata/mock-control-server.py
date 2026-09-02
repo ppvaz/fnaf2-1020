@@ -43,15 +43,17 @@ def answer(request):
         return "OK grid=20x9 seq=121 " + cells
     if field[0] == "WATCH" and len(field) == 3:
         if field[2] == "status":
-            return "OK watch=OFF spec=" + "a" * 64 + " entries=20"
-        return "OK watch=ACTIVE spec=" + "a" * 64 + " entries=20"
+            return "OK watch=OFF spec=" + "a" * 64 + " entries=23"
+        return "OK watch=ACTIVE spec=" + "a" * 64 + " entries=23"
     if field[0] == "READ" and len(field) == 2:
         return ("OK read=OBSERVED spec=" + "a" * 64 +
                 " seq=122 snapshotNs=10000 ageUs=1200 "
                 "bb_left_luma=194 bb_left_yellowness=-111 "
                 "battery_bar_1=194 battery_bar_2=194 "
                 "battery_bar_3=80 battery_bar_4=20 "
-                "cam05_mean_luma=37 screen_grey_cells=142")
+                "cam05_mean_luma=37 screen_grey_cells=142 "
+                "foxy_hall_mean_luma=37 foxy_hall_mean_redness=0 "
+                "foxy_hall_red_cells=0")
     if field[0] == "OVERLAY" and len(field) == 2:
         return ("OK overlay=UNQUALIFIED(self-capture-unqualified) "
                 "gate=UNQUALIFIED(self-capture-unqualified) updates=0 draws=0 "

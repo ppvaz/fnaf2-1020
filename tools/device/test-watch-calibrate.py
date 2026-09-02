@@ -14,16 +14,18 @@ HERE = Path(__file__).resolve().parent
 TOOL = HERE / "watch-calibrate.py"
 
 
-def frame(path, rgb):
+def frame(path, rgb, hall_rgb=None):
     image = Image.new("RGB", (2400, 1080), (24, 24, 24))
     image.putpixel((451, 730), rgb)
+    if hall_rgb is not None:
+        image.paste(hall_rgb, (1650, 300, 1650 + 450, 300 + 400))
     image.save(path)
 
 
-def run(output, *sources, extra=()):
+def run(output, *sources, fact="bb-left-opening", extra=()):
     return subprocess.run(
         [sys.executable, str(TOOL), "--output", str(output),
-         "--fact", "bb-left-opening", *extra, *sources],
+         "--fact", fact, *extra, *sources],
         capture_output=True, text=True, check=False,
     )
 
@@ -84,6 +86,23 @@ def main():
         bad = run(root / "bad.json", f"empty={foreign}", f"threat={foreign}")
         check("foreign geometry refuses without resizing",
               bad.returncode != 0 and "sensor-geometry" in bad.stderr)
+
+        foxy_empty = root / "foxy-empty"
+        foxy_present = root / "foxy-present"
+        foxy_empty.mkdir()
+        foxy_present.mkdir()
+        frame(foxy_empty / "a.png", (80, 80, 80), (24, 24, 24))
+        frame(foxy_empty / "b.png", (80, 80, 80), (28, 28, 28))
+        frame(foxy_present / "a.png", (80, 80, 80), (150, 30, 20))
+        frame(foxy_present / "b.png", (80, 80, 80), (130, 25, 18))
+        foxy_output = root / "foxy.json"
+        foxy = run(foxy_output, f"empty={foxy_empty}", f"foxy={foxy_present}",
+                   fact="foxy-hall")
+        foxy_doc = json.loads(foxy_output.read_text())
+        check("Foxy hall channel calibrates from separated labelled frames",
+              foxy.returncode == 0
+              and foxy_doc["status"] == "calibrated"
+              and foxy_doc["adapter"]["feature"] == "foxy_hall_red_cells")
 
     if failures:
         print(f"{failures} watch calibration check(s) failed")

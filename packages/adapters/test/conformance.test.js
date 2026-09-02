@@ -4,7 +4,7 @@ import { FixtureActuator } from '../src/actuators.js';
 import { FixtureRawSensor, FixtureVisualDetector, ScreencapSensor, CueHelperDetector } from '../src/sensors.js';
 import { Clock } from '../src/clocks.js';
 import { getCapability, resolveProfile } from '../src/registry.js';
-import { HidWireTransport, toRaw, report } from '../src/transports/hid.js';
+import { HID_DESCRIPTOR, HidWireTransport, toRaw, report } from '../src/transports/hid.js';
 import { CueHelperControlTransport, parseCueResponse } from '../src/transports/cue-helper.js';
 
 const actuator = new FixtureActuator({ now: () => 12 });
@@ -33,6 +33,9 @@ assert.throws(() => resolveProfile({ ...profile, calibrations: { ...profile.cali
 assert.deepEqual(toRaw([2275, 685]), [877, 1023], 'HID transform must truncate at the adapter boundary');
 assert.deepEqual(report([{ flags: 3, point: { x: 350, y: 615 } }]).slice(0, 7),
   [1, 1, 3, 9, 4, 157, 0], 'HID report must preserve contact flags and native transform');
+assert.equal(HID_DESCRIPTOR.length, 124, 'HID descriptor must declare both contact identifiers');
+assert.equal(report([{ flags: 0, point: { x: 350, y: 615 } }])[7], 4,
+  'single-contact release must consume the inactive second contact record');
 const lines = [];
 const hid = new HidWireTransport({ write: async line => lines.push(JSON.parse(line)), ready: async () => {}, sleep: async () => {} });
 await hid.send({ command: { action: { kind: 'press', control: 'light', durationMs: 17 }, source: { controller: 'test' } }, point: { x: 350, y: 615 } });

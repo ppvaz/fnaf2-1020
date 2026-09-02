@@ -205,6 +205,48 @@
       "owner": "packages/adapters",
       "kind": "artifact",
       "validator": "packages/adapters/src/camera-rule.js parseCameraRule"
+    },
+    {
+      "id": "device-campaign-v1",
+      "owner": "apps/device",
+      "kind": "data",
+      "validator": "apps/device/src/campaign.js CampaignStateMachine"
+    },
+    {
+      "id": "device-adb-preflight-v1",
+      "owner": "apps/device",
+      "kind": "port",
+      "validator": "apps/device/src/adb-bridge.js AdbDeviceBridge"
+    },
+    {
+      "id": "device-campaign-result-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/campaign.js CampaignStateMachine.result"
+    },
+    {
+      "id": "campaign-proof-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/campaign-proof.js makeAttemptProof"
+    },
+    {
+      "id": "custom-night-config-v1",
+      "owner": "apps/device",
+      "kind": "data",
+      "validator": "apps/device/src/custom-night.js validateCustomNightConfig"
+    },
+    {
+      "id": "custom-night-calibration-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/custom-night.js validateCustomNightCalibration"
+    },
+    {
+      "id": "device-campaign-preflight-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/campaign-preflight.js evaluateCampaignPreflight"
     }
   ]
 }

@@ -21,6 +21,12 @@ const artifactRoot = await mkdtemp(join(tmpdir(), 'fnaf2-device-contract-'));
 const service = new DeviceControlService({ profile, actuator: new FixtureActuator({ now: () => 1 }), sensor: new FixtureRawSensor(), artifactRoot });
 const mcp = createActuatorMcp(service);
 assert.ok((await mcp.call('devices.list')).ok);
+const physicalMcp = createActuatorMcp(service, { bridge: {
+  devices: async () => ({ status: 'READY', devices: [{ serial: 'fixture', status: 'device' }] }),
+  preflight: async () => ({ schema: 'device-preflight-v1', version: 1, status: 'HOLD', reason: 'fixture' }),
+} });
+assert.deepEqual((await physicalMcp.call('devices.list')).devices, [{ serial: 'fixture', status: 'device' }]);
+assert.equal((await physicalMcp.call('device.preflight', { physical: true })).preflight.status, 'HOLD');
 assert.equal((await mcp.call('sensor.sample', { request: { id: 'mcp-frame', at: 1 } })).ok, true);
 assert.ok(!mcp.tools().includes('shell.exec'));
 assert.ok(mcp.tools().includes('cue.setup'));
@@ -250,7 +256,9 @@ artifactService.startSession({ lease: 'artifact-live' });
 const artifactRequestInput = {
   schema: DEVICE_EXECUTOR_SCHEMA, version: 1, mode: 'live',
   artifact: { winnerHash: 'fnv1a-artifact', engineHash: 'engine-v1', profileHash: 'a'.repeat(64),
-    profileStableHash: stableHash(liveProfile), plans: [{ night: 6, sha256: 'b'.repeat(64) }] },
+    profileStableHash: stableHash(liveProfile), plans: [{ night: 6, sha256: 'b'.repeat(64),
+      timing: { periodMs: 5000, loopStartMs: 0, stopAtMs: 420000,
+        observeUntilMs: 420000, idleUntilMs: 0 } }] },
   profile: liveProfile,
   limits: { maxActions: 64, maxDurationMs: 15000 },
   blocks: [{ schema: 'artifact-action-block-v1', id: 'opening-block-1', cycle: 'opening',

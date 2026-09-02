@@ -169,8 +169,8 @@ plan_emit() {
       # Recovery may know from the retained frame that the mask is already off
       # (a mask press cannot land with the cams up). Preserve the compound's
       # timing in that case, but omit the toggle that would put it on.
-      [ "$pe_a" -gt "$TAP_CONTACT_MS" ] || {
-        echo "maskraise gap $pe_a ms leaves no released time after its mask contact" >&2
+      [ "$pe_a" -ge "$MASK_RAISE_GAP_MS" ] || {
+        echo "maskraise gap $pe_a ms ends inside the sourced mask-off animation; minimum is $MASK_RAISE_GAP_MS ms" >&2
         exit 47
       }
       if [ "${MASK_ALREADY_OFF:-0}" -eq 0 ]; then

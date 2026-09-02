@@ -42,6 +42,14 @@ TAP_CONTACT_MS=33
 # thing in two files and then quietly stop agreeing.
 MIN_RELEASED_MS=20
 FUSION_POLL_MS=33
+# Android build-296 mask-off endpoint: 15 sourced render frames at 60 FPS
+# (250 ms nominal), followed by one additional 60 Hz render frame before
+# another control. The resulting 267 ms boundary is the active model/runner
+# contract; the separate-control Fusion poll remains enforced elsewhere.
+# This is the lower bound for every maskraise compound; a shorter gap puts the
+# next touch on the still-visible mask and the game drops it.
+MASK_ANIM_OFF_MS=250
+MASK_RAISE_GAP_MS=$((MASK_ANIM_OFF_MS + 17))
 # src/config.js MONITOR_ANIM_DOWN = 22 frames. The office is not interactive
 # until the flip finishes, so a corrective lower has to be waited out.
 MONITOR_ANIM_DOWN_MS=367

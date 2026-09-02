@@ -174,7 +174,8 @@ export function createCueHelperMcp({ run = runCueCommand } = {}) {
   };
 }
 
-export function createActuatorMcp(service, { profiles = [service.profile], cueHelper = {} } = {}) {
+/** @param {any} service @param {{profiles?: any[], cueHelper?: any, bridge?: any}} options */
+export function createActuatorMcp(service, { profiles = [service.profile], cueHelper = {}, bridge = null } = {}) {
   if (!service || typeof service.preflight !== 'function') throw new TypeError('MCP needs DeviceControlService');
   const profileList = profiles.map(profile => ({ id: profile.id, targetBuild: profile.targetBuild, actuator: profile.actuator }));
   const idempotency = new Set();
@@ -203,11 +204,21 @@ export function createActuatorMcp(service, { profiles = [service.profile], cueHe
         const rejected = requireLease(args); if (rejected) return rejected;
       }
       try {
-        if (name === 'devices.list') return { ok: true, devices: [] };
+        if (name === 'devices.list') {
+          if (!bridge || typeof bridge.devices !== 'function') return { ok: true, devices: [] };
+          const result = await bridge.devices();
+          return { ok: true, ...result, devices: result.devices ?? [] };
+        }
         if (name === 'profiles.list') return { ok: true, profiles: profileList };
         if (name === 'profiles.resolve') return { ok: true, profile: service.profile, profileHash: service.session?.profileHash ?? null };
         if (name === 'device.capabilities') return { ok: true, capabilities: service.profile.capabilities };
-        if (name === 'device.preflight') return { ok: true, preflight: service.preflight() };
+        if (name === 'device.preflight') {
+          if (args.physical === true) {
+            if (!bridge || typeof bridge.preflight !== 'function') return error('UNAVAILABLE', 'physical ADB preflight is not composed');
+            return { ok: true, preflight: await bridge.preflight({ targetBuild: service.profile.targetBuild }) };
+          }
+          return { ok: true, preflight: service.preflight() };
+        }
         if (name === 'session.start') return { ok: true, session: service.startSession({ lease: args.lease }) };
         if (name === 'session.status') return { ok: true, status: service.session ? { ...service.session, results: undefined } : { status: 'IDLE' } };
         if (name === 'session.abort') return { ok: true, result: await service.abort(args.reason ?? 'mcp-abort') };

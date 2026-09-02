@@ -53,6 +53,10 @@ SWEEP_LIGHT_LEAD_MS="$(runner_const SWEEP_LIGHT_LEAD_MS)"
 SWEEP_SELECT_MS="$(runner_const SWEEP_SELECT_MS)"
 SWEEP_SETTLE_MS="$(runner_const SWEEP_SETTLE_MS)"
 READ_CAPTURE_DELAY_MS="$(runner_const READ_CAPTURE_DELAY_MS)"
+MASK_ANIM_OFF_MS="$(runner_const MASK_ANIM_OFF_MS)"
+MASK_RAISE_GAP_MS=$((MASK_ANIM_OFF_MS + 17))
+grep -q '^MASK_RAISE_GAP_MS=\$((MASK_ANIM_OFF_MS + 17))$' "$RUNNER" ||
+  { echo 'the runner must derive MASK_RAISE_GAP_MS from the sourced mask endpoint and one render frame' >&2; exit 1; }
 
 # Lift the interpreter out of the remote program. Extracting by name rather
 # than copying keeps this honest: the test runs the shipped source, and a
@@ -78,10 +82,11 @@ extract() {
 {
   # The runner's own constants, so the stubs cannot drift from them.
   for c in FUSION_POLL_MS MIN_RELEASED_MS TAP_CONTACT_MS SWEEP_LIGHT_LEAD_MS \
-           SWEEP_SELECT_MS SWEEP_SETTLE_MS READ_CAPTURE_DELAY_MS; do
+           SWEEP_SELECT_MS SWEEP_SETTLE_MS READ_CAPTURE_DELAY_MS MASK_ANIM_OFF_MS; do
     eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
   done
 } > "$TMP/harness.sh"
+printf 'MASK_RAISE_GAP_MS=%s\n' "$MASK_RAISE_GAP_MS" >> "$TMP/harness.sh"
 cat >> "$TMP/harness.sh" <<'HARNESS'
 PLAN_FILE="$1"
 SLIP=0
@@ -136,7 +141,14 @@ hid_down()         { printf '%s down\n' "$CLOCK"; }
 hid_release()      { printf '%s up\n' "$CLOCK"; }
 hid_two_down()     { printf '%s two-down\n' "$CLOCK"; }
 hid_second_up()    { printf '%s second-up\n' "$CLOCK"; }
-pulsed_cam_burst() { printf '%s cam\n' "$CLOCK"; CLOCK=$((CLOCK + $3)); }
+pulsed_cam_burst() {
+  printf '%s cam\n' "$CLOCK"
+  if [ "${4:-$3}" -lt 50 ]; then
+    CLOCK=$((CLOCK + SWEEP_SELECT_MS + SWEEP_SETTLE_MS + $3))
+  else
+    CLOCK=$((CLOCK + $3))
+  fi
+}
 wait_until()       { printf 'wait %s\n' "$1"; }
 HARNESS
 
@@ -201,13 +213,14 @@ set -- $attack_maskraise
 got="$(run 'SLIP=200; run_cycle opening 0 0 999')"
 [ "$(printf '%s\n' "$got" | head -1)" = '383 tap monitor' ] ||
   fail "a 200 ms slip did not move the opening's first press"
-# Re-pinned 2026-08-27 (was 800/5317). RAISE_JITTER_MARGIN_MS moved the
-# opening's CAM 11 park 36 ms later so it clears the monitor-raise animation
-# under the model gate's own jitter, and the wind that follows pays for it.
-# The 133 ms sweep begins 26 ms earlier while keeping its end fixed. makeRoom
-# takes 16 ms from this hold to preserve a full 33 ms released approach, so the
-# slip arithmetic is 636 + 200 = 836, 5465 - 200 = 5265.
-printf '%s\n' "$got" | grep -q '^836 hold wind 5265$' ||
+# The opening sweep is end-anchored. The first wind contact moves with the
+# epoch slip, while its duration loses the same amount and therefore ends at
+# the plan's unchanged sweep seam. Derive both values from the emitted plan;
+# this catches a broken anchor without baking the current geometry into the
+# test.
+opening_wind=($(awk '/^#cycle opening/{a=1;next} /^#cycle/{a=0} a && $2=="hold" && $3=="wind"{print $1, $4; exit}' "$TMP/plan.txt"))
+[ "$(printf '%s\n' "$got" | grep '^.* hold wind' | head -1)" = \
+  "$((opening_wind[0] + 200)) hold wind $((opening_wind[1] - 200))" ] ||
   fail "the opening's wind did not absorb the slip:\n$got"
 # Derived, not transcribed: the emitter anchors each sweep's END, so its start
 # moves whenever the spacing or the model's quantisation does. What must hold is
@@ -316,8 +329,8 @@ last_wait="$(printf '%s\n' "$out" | grep '^wait ' | tail -1 | awk '{print $2}')"
 # 5000 ms cycle while the emitter placed the sweep by its start; anchoring the
 # sweep's END instead brought it to 5000, which is the seam overrun disappearing
 # rather than a number to re-copy.
-cycle_end="$(awk '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF {
-    if ($2 == "sweep") e = $1 + 2*$3 + $4;
+cycle_end="$(awk -v select="$SWEEP_SELECT_MS" -v settle="$SWEEP_SETTLE_MS" '/^#cycle clear/{a=1;next} /^#cycle/{a=0} a && NF {
+    if ($2 == "sweep") e = $1 + 2*$3 + (($4 < 50) ? select + settle + $4 : $4);
     else if ($2 == "tap" || $2 == "hold") e = $1 + $4;
     else if ($2 == "hall" || $2 == "hallraise") e = $1 + $3;
     else if ($2 == "maskraise") e = $1 + $3 + ($4 == "hall" ? $5 : 100);
@@ -337,12 +350,12 @@ want_first=$((7000 + first_branch_at))
   fail "an unfloored window opened at $first_wait, want $want_first"
 
 # A desync frame proves the mask press inside the read was rejected while the
-# cams were up. Recovery keeps the maskraise row's 180 ms internal timing but
+# cams were up. Recovery keeps the maskraise row's sourced internal timing but
 # must omit its first contact, or it would put the mask on and lose the raise.
 out="$(run 'MASK_ALREADY_OFF=1; run_macro clear 7000 2 3')"
 first_down="$(printf '%s\n' "$out" | awk '/^[0-9]+ down$/{print $1; exit}')"
-[ "$first_down" = 180 ] ||
-  fail "mask-already-off recovery pressed before the compound raise at 180 ms:\n$out"
+[ "$first_down" = "$MASK_RAISE_GAP_MS" ] ||
+  fail "mask-already-off recovery pressed before the compound raise at ${MASK_RAISE_GAP_MS} ms:\n$out"
 
 # A macro must refuse the read rather than skip it: the classifier lives in the
 # shell, and a silently dropped read blinds the BB branch.

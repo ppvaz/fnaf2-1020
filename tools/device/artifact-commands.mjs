@@ -16,6 +16,17 @@ function initialState(cycle) {
   return { monitorUp: cycle === 'opening' ? false : true, maskOn: false };
 }
 
+function planTiming(parsed) {
+  const idleUntilMs = parsed.headers['idle-until'] === undefined
+    ? 0 : Number(parsed.headers['idle-until']);
+  if (!Number.isInteger(idleUntilMs) || idleUntilMs < 0)
+    throw new TypeError('artifact plan #idle-until must be a non-negative integer');
+  return Object.freeze({
+    periodMs: parsed.period, loopStartMs: parsed.loopStart, stopAtMs: parsed.stopAt,
+    observeUntilMs: parsed.observeUntil, idleUntilMs,
+  });
+}
+
 export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   if (!Array.isArray(rows)) throw new TypeError('artifact cycle rows must be an array');
   const state = { ...initial };
@@ -101,7 +112,7 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
       compiled[name] = compileCycle(name, value.rows, prior);
     }
     return Object.freeze({ night: plan.night, policy: plan.policy,
-      cycles: Object.freeze(compiled) });
+      timing: planTiming(parsed), cycles: Object.freeze(compiled) });
   });
 }
 
@@ -112,5 +123,5 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
  */
 export function persistArtifactPlans(compiledPlans) {
   if (!Array.isArray(compiledPlans)) throw new TypeError('compiled plans are required');
-  return compiledPlans.map(plan => Object.freeze({ night: plan.night, cycles: plan.cycles }));
+  return compiledPlans.map(plan => Object.freeze({ night: plan.night, timing: plan.timing, cycles: plan.cycles }));
 }

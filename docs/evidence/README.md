@@ -32,9 +32,17 @@ the winner, resolved profile, night plans, hashed semantic `artifact.json`, and
 bounded replay. The artifact consumer validates that exact bundle before any
 runner can use it;
 `trial.sh --artifact ... --dry-run` remains host/model-only while live device
-qualification is open. A live invocation must name an explicit device-local
-executor module; the module receives only compiled semantic blocks and bound
-hashes, never the strategy interpreter or legacy transport.
+qualification is open. The modern campaign CLI composes
+`apps/device/src/modern-campaign-ports.js` by default (or accepts an explicit
+port module); it receives only compiled semantic blocks and bound hashes,
+never the strategy interpreter or historical transport lane.
+
+The two-night campaign adds a second proof layer: `device-campaign-result-v1`
+records each bounded attempt, `campaign-proof-v1` requires a positive 6 AM
+observation plus save/menu advancement, and `custom-night-calibration-v1`
+binds all ten Custom Night dial controls to measured readback boxes. A local
+executor completing its schedule is therefore still `UNVERIFIED` until the
+terminal and save ports provide positive observations.
 
 The architecture generator also emits
 `docs/architecture/generated/reverse-links.json`. It is a navigational index

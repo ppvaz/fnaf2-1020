@@ -2,15 +2,86 @@
   "schema": "import-graph-v1",
   "files": [
     {
+      "file": "apps/device/src/adb-bridge.js",
+      "imports": [
+        "./physical-ports.js",
+        "node:child_process",
+        "node:util"
+      ]
+    },
+    {
+      "file": "apps/device/src/adb-device-local-executor.js",
+      "imports": [
+        "./artifact-executor.js",
+        "./device-local-executor.js",
+        "@fnaf2-1020/adapters",
+        "node:child_process"
+      ]
+    },
+    {
       "file": "apps/device/src/artifact-executor.js",
       "imports": [
         "@fnaf2-1020/core/contracts"
       ]
     },
     {
+      "file": "apps/device/src/campaign-bundle.js",
+      "imports": [
+        "./artifact-executor.js",
+        "./campaign.js",
+        "@fnaf2-1020/core/contracts",
+        "node:crypto"
+      ]
+    },
+    {
+      "file": "apps/device/src/campaign-composition.js",
+      "imports": [
+        "./campaign-bundle.js",
+        "./campaign-runner.js"
+      ]
+    },
+    {
+      "file": "apps/device/src/campaign-preflight.js",
+      "imports": [
+        "./campaign.js",
+        "./custom-night.js",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/runtime"
+      ]
+    },
+    {
+      "file": "apps/device/src/campaign-proof.js",
+      "imports": [
+        "./custom-night.js",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/device/src/campaign-runner.js",
+      "imports": [
+        "./campaign-proof.js",
+        "./campaign.js"
+      ]
+    },
+    {
+      "file": "apps/device/src/campaign.js",
+      "imports": [
+        "./custom-night.js",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
       "file": "apps/device/src/cli.js",
       "imports": [
+        "./adb-bridge.js",
+        "./campaign-bundle.js",
+        "./campaign-preflight.js",
+        "./campaign-runner.js",
+        "./campaign.js",
         "./composition.js",
+        "./custom-night.js",
         "@fnaf2-1020/adapters/registry",
         "node:fs/promises",
         "node:path",
@@ -26,26 +97,73 @@
       ]
     },
     {
+      "file": "apps/device/src/custom-night.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/device/src/device-local-executor.js",
+      "imports": [
+        "./artifact-executor.js"
+      ]
+    },
+    {
       "file": "apps/device/src/index.js",
       "imports": [
+        "./adb-bridge.js",
+        "./adb-device-local-executor.js",
         "./artifact-executor.js",
+        "./campaign-composition.js",
+        "./campaign-preflight.js",
+        "./campaign-proof.js",
+        "./campaign-runner.js",
+        "./campaign.js",
         "./composition.js",
+        "./custom-night.js",
+        "./device-local-executor.js",
         "./mcp.js",
+        "./modern-campaign-ports.js",
         "./modern-composition.js",
+        "./physical-ports.js",
         "./service.js"
       ]
     },
     {
       "file": "apps/device/src/mcp.js",
       "imports": [
-        "@fnaf2-1020/core/contracts"
+        "@fnaf2-1020/core/contracts",
+        "node:child_process",
+        "node:url",
+        "node:util"
+      ]
+    },
+    {
+      "file": "apps/device/src/modern-campaign-ports.js",
+      "imports": [
+        "./adb-bridge.js",
+        "./adb-device-local-executor.js",
+        "./campaign-composition.js",
+        "./campaign-runner.js",
+        "./custom-night.js",
+        "./physical-ports.js",
+        "@fnaf2-1020/adapters",
+        "node:child_process",
+        "node:fs/promises"
       ]
     },
     {
       "file": "apps/device/src/modern-composition.js",
       "imports": [
         "./composition.js",
+        "./physical-ports.js",
         "@fnaf2-1020/adapters"
+      ]
+    },
+    {
+      "file": "apps/device/src/physical-ports.js",
+      "imports": [
+        "node:child_process"
       ]
     },
     {
@@ -58,6 +176,63 @@
         "node:crypto",
         "node:fs/promises",
         "node:path"
+      ]
+    },
+    {
+      "file": "apps/device/test/adb-bridge.test.js",
+      "imports": [
+        "../src/adb-bridge.js",
+        "../src/physical-ports.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "apps/device/test/adb-device-local-executor.test.js",
+      "imports": [
+        "../src/adb-device-local-executor.js",
+        "@fnaf2-1020/core/contracts",
+        "node:assert/strict",
+        "node:fs/promises"
+      ]
+    },
+    {
+      "file": "apps/device/test/campaign-composition.test.js",
+      "imports": [
+        "../src/campaign-bundle.js",
+        "../src/campaign-composition.js",
+        "../src/campaign.js",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/test/campaign-infrastructure.test.js",
+      "imports": [
+        "../src/campaign-bundle.js",
+        "../src/campaign-preflight.js",
+        "../src/campaign.js",
+        "../src/custom-night.js",
+        "../src/device-local-executor.js",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/test/campaign-runner.test.js",
+      "imports": [
+        "../src/campaign-runner.js",
+        "../src/campaign.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "apps/device/test/campaign.test.js",
+      "imports": [
+        "../src/campaign.js",
+        "@fnaf2-1020/core/mechanics",
+        "node:assert/strict"
       ]
     },
     {
@@ -570,6 +745,12 @@
       ]
     },
     {
+      "file": "tools/device/cue-helper-mcp.mjs",
+      "imports": [
+        "../../apps/device/src/mcp.js"
+      ]
+    },
+    {
       "file": "tools/device/deathchart.mjs",
       "imports": [
         "../chrome.mjs",
@@ -641,6 +822,7 @@
     {
       "file": "tools/device/minus-toys-plan.mjs",
       "imports": [
+        "./arm-verification.mjs",
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "@fnaf2-1020/core/sensing",
@@ -684,6 +866,7 @@
     {
       "file": "tools/device/policy-ir.mjs",
       "imports": [
+        "./arm-verification.mjs",
         "./minus-toys-plan.mjs",
         "@fnaf2-1020/core/control"
       ]
@@ -733,6 +916,18 @@
         "node:fs",
         "node:os",
         "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/test-cue-helper-mcp.mjs",
+      "imports": [
+        "node:assert/strict",
+        "node:child_process",
+        "node:events",
+        "node:fs/promises",
+        "node:os",
+        "node:path",
+        "node:readline"
       ]
     },
     {
@@ -822,6 +1017,7 @@
     {
       "file": "tools/device/test-minus-toys-plan.mjs",
       "imports": [
+        "./arm-verification.mjs",
         "./minus-toys-plan.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:child_process",
@@ -956,6 +1152,20 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/invent/observe.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/invent/test-observe.mjs",
+      "imports": [
+        "./observe.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:assert/strict"
       ]
     },
     {

@@ -22,6 +22,7 @@ controller research, and device evidence form one program.
 | Read the game's event sheet yourself | [`android/SOURCE-DUMP-GUIDE.md`](android/SOURCE-DUMP-GUIDE.md) |
 | Decompile a Clickteam Android game | [`android/SOURCE-DUMP-GUIDE.md` §4](android/SOURCE-DUMP-GUIDE.md) — the handle scramble |
 | Run something against a real phone | [`device/ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) |
+| Recover stock-APK RNG seed candidates without modifying the APK | [`device/RNG-SEED-RECOVERY.md`](device/RNG-SEED-RECOVERY.md) |
 | Understand the project's scope and claim discipline | [`../PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) |
 | Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
 | Pick up unfinished work | [`../plans/`](../plans/) |
@@ -82,6 +83,8 @@ Fusion build 296, August 2025.
 
 - [`android/cue-helper/README.md`](../android/cue-helper/README.md) — the unified
   MediaProjection APK, its build/run procedure, and first target-device soak.
+- [`CUE-HELPER-MCP.md`](device/CUE-HELPER-MCP.md) — the bounded MCP/queue
+  interface for safe helper setup and read-only device readiness checks.
 - [`OVERLAY-QUALIFICATION.md`](device/OVERLAY-QUALIFICATION.md) — the retained
   evidence protocol and structural validator for the non-interactive HUD's
   touch, target-suppression, self-capture, latency, resource, and lifecycle
@@ -113,6 +116,9 @@ Fusion build 296, August 2025.
 - [`RUN-TELEMETRY.md`](device/RUN-TELEMETRY.md) — what a night run should
   record, ten diagnostic signals ranked by value per millisecond of a cycle
   that has only ~680 ms free.
+- [`RNG-SEED-RECOVERY.md`](device/RNG-SEED-RECOVERY.md) — sourced RNG facts,
+  device-time candidate windows, observation filters, and the boundary between
+  useful shadow evidence and live control authority.
 - [`../plans/19-video-reactive-controller.md`](../plans/19-video-reactive-controller.md)
   and [`../plans/20-belief-state-cycle-controller.md`](../plans/20-belief-state-cycle-controller.md)
   — the current stock-device sensing/controller build and its uncertainty-aware

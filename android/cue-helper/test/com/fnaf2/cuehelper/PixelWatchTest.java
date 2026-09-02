@@ -34,8 +34,8 @@ public final class PixelWatchTest {
 
     public static void main(String[] args) {
         PixelWatch.Spec spec = PixelWatch.defaultSpec();
-        check("default spec has the four sourced entries, battery bars, and map buttons",
-                spec.size() == 20);
+        check("default spec has the four sourced entries, battery bars, map buttons, and Foxy channels",
+                spec.size() == 23);
         check("the battery bars follow the sourced entries",
                 spec.entry(4).name.equals("battery_bar_1")
                         && spec.entry(7).name.equals("battery_bar_4")
@@ -44,6 +44,10 @@ public final class PixelWatchTest {
                 spec.entry(8).name.equals("cam01_button")
                         && spec.entry(19).name.equals("cam12_button")
                         && spec.entry(14).x == 1776 && spec.entry(14).y == 606);
+        check("the Foxy channels use the shared provisional hall envelope",
+                PixelWatch.isCanonicalFoxyHall(spec.entry(20), "luma")
+                        && PixelWatch.isCanonicalFoxyHall(spec.entry(21), "redness")
+                        && PixelWatch.isCanonicalFoxyHall(spec.entry(22), "red_cells"));
         check("spec hash is stable and lowercase sha256",
                 spec.sha256().matches("[0-9a-f]{64}")
                         && spec.sha256().equals(PixelWatch.defaultSpec().sha256()));
@@ -72,6 +76,17 @@ public final class PixelWatchTest {
                 values[spec.indexOfName("cam01_button")] == 0);
         check("the lit CAM 07 button reads the measured selected yellowness",
                 values[spec.indexOfName("cam07_button")] == 194);
+        check("the provisional Foxy luma channel reads its envelope mean",
+                values[spec.indexOfName("foxy_hall_mean_luma")] == 128);
+        check("the provisional Foxy redness channel reads neutral grey as zero",
+                values[spec.indexOfName("foxy_hall_mean_redness")] == 0);
+        check("the provisional Foxy red-cell channel ignores neutral samples",
+                values[spec.indexOfName("foxy_hall_red_cells")] == 0);
+
+        Frame redHall = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0x808080);
+        redHall.set(PixelWatch.FOXY_HALL_X, PixelWatch.FOXY_HALL_Y, 0xc21e14);
+        check("the provisional Foxy red-cell channel counts sampled red pixels",
+                PixelWatch.read(spec.entry(spec.indexOfName("foxy_hall_red_cells")), redHall) == 1);
 
         Frame mixed = new Frame(10, 10, 0x808080);
         mixed.set(0, 0, 0xc2dd00);

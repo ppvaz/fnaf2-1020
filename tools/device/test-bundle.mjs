@@ -37,6 +37,10 @@ try {
   check(ready.plans.length === 2 && ready.replay.results.length === 4,
     'bundle validator did not replay each selected night and seed');
   check(ready.compiled?.length === 2, 'bundle validator did not return persisted semantic artifact plans');
+  check(ready.compiled.every(plan => plan.timing?.periodMs > 0 &&
+    plan.timing.stopAtMs >= plan.timing.loopStartMs &&
+    plan.timing.observeUntilMs >= plan.timing.stopAtMs),
+  'persisted artifact plans did not retain their bounded full-night timing envelope');
   const selected = validateBundle(bundlePath, { night: 7 });
   check(selected.plans.length === 1 && selected.plans[0].night === 7,
     'night selector did not bind to the requested plan');

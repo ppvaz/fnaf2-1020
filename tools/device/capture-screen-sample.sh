@@ -14,9 +14,13 @@ HOLD_MS="${6:-900}"
 # not finish drawing a newly lit office vent by then. At 350 ms the light is
 # visibly stable on the calibrated Moto while a 900 ms hold still has margin.
 CAPTURE_DELAY="${CAPTURE_DELAY:-0.35}"
+SUPPRESS_TOUCH_INDICATORS="${SUPPRESS_TOUCH_INDICATORS:-1}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 OUTPUT="$HERE/../../captures/screencheck/$VIEW/$LABEL/$NAME.raw"
 REMOTE="/data/local/tmp/fnaf-screen-sample-$$.raw"
+PREVIOUS_SHOW_TOUCHES=""
+PREVIOUS_POINTER_LOCATION=""
+TOUCH_SETTINGS_ARMED=0
 
 plain_name() {
   case "$1" in
@@ -42,6 +46,10 @@ fi
 case "$CAPTURE_DELAY" in
   ''|*[!0-9.]*) echo "CAPTURE_DELAY must be a positive number" >&2; exit 2 ;;
 esac
+case "$SUPPRESS_TOUCH_INDICATORS" in
+  0|1) ;;
+  *) echo "SUPPRESS_TOUCH_INDICATORS must be 0 or 1" >&2; exit 2 ;;
+esac
 
 mkdir -p "$(dirname "$OUTPUT")"
 [ ! -e "$OUTPUT" ] || { echo "refusing to overwrite $OUTPUT" >&2; exit 2; }
@@ -54,10 +62,34 @@ case "$FOCUS" in
   *) echo "abort: game is not focused ($FOCUS)" >&2; exit 1 ;;
 esac
 
+restore_touch_indicators() {
+  [ "$TOUCH_SETTINGS_ARMED" = 1 ] || return 0
+  if [ -n "$PREVIOUS_SHOW_TOUCHES" ]; then
+    adb shell settings put system show_touches "$PREVIOUS_SHOW_TOUCHES" >/dev/null 2>&1 || true
+  fi
+  if [ -n "$PREVIOUS_POINTER_LOCATION" ]; then
+    adb shell settings put system pointer_location "$PREVIOUS_POINTER_LOCATION" >/dev/null 2>&1 || true
+  fi
+  TOUCH_SETTINGS_ARMED=0
+}
+
 cleanup() {
+  restore_touch_indicators
   adb shell rm -f "$REMOTE" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT HUP INT TERM
+
+if [ "$SUPPRESS_TOUCH_INDICATORS" = 1 ]; then
+  PREVIOUS_SHOW_TOUCHES="$(adb shell settings get system show_touches 2>/dev/null | tr -d '\r')"
+  PREVIOUS_POINTER_LOCATION="$(adb shell settings get system pointer_location 2>/dev/null | tr -d '\r')"
+  case "$PREVIOUS_SHOW_TOUCHES:$PREVIOUS_POINTER_LOCATION" in
+    0:0|0:1|1:0|1:1) ;;
+    *) echo "abort: could not read touch-indicator settings" >&2; exit 1 ;;
+  esac
+  TOUCH_SETTINGS_ARMED=1
+  adb shell settings put system show_touches 0 >/dev/null
+  adb shell settings put system pointer_location 0 >/dev/null
+fi
 
 if [ -n "$HOLD_X" ]; then
   # One device-side shell starts the held actuator, waits for its first stable

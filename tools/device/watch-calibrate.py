@@ -67,6 +67,11 @@ ENTRIES = (
     ("cam10_button", "PIXEL", 1984, 716, 1, 1, "YELLOWNESS", 1, 0),
     ("cam11_button", "PIXEL", 2228, 652, 1, 1, "YELLOWNESS", 1, 0),
     ("cam12_button", "PIXEL", 2188, 784, 1, 1, "YELLOWNESS", 1, 0),
+    # Provisional Foxy core envelope. These channels are collection
+    # features only until labelled Foxy/empty holdouts separate them.
+    ("foxy_hall_mean_luma", "ROI", 1650, 300, 450, 400, "MEAN_LUMA", 8, 0),
+    ("foxy_hall_mean_redness", "ROI", 1650, 300, 450, 400, "MEAN_REDNESS", 8, 0),
+    ("foxy_hall_red_cells", "ROI", 1650, 300, 450, 400, "RED_CELLS", 8, 15),
 )
 CANONICAL_SPEC = SPEC_VERSION + "\n" + "".join(
     "%s|%s|%d|%d|%d|%d|%s|%d|%d\n" % entry for entry in ENTRIES
@@ -152,12 +157,25 @@ def feature_values(image):
                     if max(r, g, b) - min(r, g, b) < grey_spread:
                         grey += 1
             values[name] = grey
+        elif reducer == "RED_CELLS":
+            total = 0
+            for yy in range(y, y + height, step):
+                for xx in range(x, x + width, step):
+                    pixel = image.getpixel((xx, yy))
+                    if pixel[0] - max(pixel[1], pixel[2]) >= grey_spread:
+                        total += 1
+            values[name] = total
+            continue
         else:
             total = 0
             count = 0
             for yy in range(y, y + height, step):
                 for xx in range(x, x + width, step):
-                    total += luma(image.getpixel((xx, yy)))
+                    pixel = image.getpixel((xx, yy))
+                    if reducer == "MEAN_REDNESS":
+                        total += pixel[0] - max(pixel[1], pixel[2])
+                    else:
+                        total += luma(pixel)
                     count += 1
             values[name] = total // count
     return values

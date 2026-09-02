@@ -12,17 +12,22 @@
 // possible streams. `next()` returns graine/65536, an exact power-of-two
 // float, which makes int(0, N-1) bit-exact to the source's Random(N) and
 // chance(k/N) bit-exact to `Random(N) < k` for any event-sheet-sized N.]
+export const RNG_MODULUS = 0x10000;
+export const RNG_MASK = RNG_MODULUS - 1;
+export const RNG_MULTIPLIER = 31415;
+export const RNG_INCREMENT = 1;
+
 export class Rng {
   constructor(seed = Date.now() >>> 0, worst = false) {
-    this.seed = seed & 0xffff;
+    this.seed = seed & RNG_MASK;
     this.state = this.seed;
     this.worst = worst;
   }
   next() {
     // Fusion's LCG (CRun.random). state * 31415 stays under 2^31, so plain
     // multiplication is exact.
-    this.state = (this.state * 31415 + 1) & 0xffff;
-    return this.state / 65536;
+    this.state = (this.state * RNG_MULTIPLIER + RNG_INCREMENT) & RNG_MASK;
+    return this.state / RNG_MODULUS;
   }
   // chance(p): does this roll succeed? In worst-luck mode the animatronic
   // always gets what it wants.

@@ -37,6 +37,9 @@ const ENGINE = [
   // than a wrong *outcome*: the population checks below all pass with a
   // corrupted sourced constant.
   ['sourcetest', ['sourcetest.mjs']],
+  // Stock-APK seed recovery is bounded to device-time windows or explicit
+  // observed outcomes; it never turns an inferred candidate into authority.
+  ['seed recovery', ['seed-recoverytest.mjs']],
   // Plan 18 package 3: JavaScript/Python statistical primitives agree on
   // Wilson intervals, planning-N, two-proportion tests and fail-closed bars.
   ['stat helper', ['test-stat.mjs']],

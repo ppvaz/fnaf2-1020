@@ -97,7 +97,11 @@ export function advanceReduced(input, targetFrame) {
 export function actionAllowed(state, action) {
   if (typeof action !== 'string') return false;
   if (action === 'release') return true;
-  if (state.maskOn && action !== 'mask') return false;
+  // The off press clears maskOn immediately but the mask surface remains in
+  // its lowering animation until maskAnim reaches zero. No later control is
+  // usable during that interval; keep the reduced model aligned with Sim and
+  // the phone-visible input lock.
+  if ((state.maskOn || state.maskAnim > 0) && action !== 'mask') return false;
   if (action === 'mask' && !state.maskOn &&
       (state.monitor === MONITOR.UP || state.monitor === MONITOR.RAISING)) return false;
   if (action.startsWith('cam:') && !isMonitorUp(state)) return false;

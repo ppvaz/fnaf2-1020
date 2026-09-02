@@ -27,7 +27,7 @@
     },
     {
       "id": "test",
-      "command": "npm run test:unit && npm run test:contracts && npm run test:core",
+      "command": "npm run typecheck && npm run test:unit && npm run test:contracts && npm run test:core",
       "lifecycle": "supported"
     },
     {
@@ -37,12 +37,12 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh",
       "lifecycle": "supported"
     },
     {
       "id": "test:core",
-      "command": "node tools/sourcetest.mjs && node tools/simtest.mjs",
+      "command": "node tools/sourcetest.mjs && node tools/simtest.mjs && node tools/belieftest.mjs && node tools/estimatortest.mjs",
       "lifecycle": "supported"
     },
     {
@@ -141,6 +141,16 @@
       "lifecycle": "supported-live"
     },
     {
+      "id": "device:preflight",
+      "command": "node apps/device/src/cli.js preflight",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:campaign",
+      "command": "node apps/device/src/cli.js campaign",
+      "lifecycle": "supported"
+    },
+    {
       "id": "device:grade",
       "command": "node apps/device/src/cli.js grade",
       "lifecycle": "supported"
@@ -148,6 +158,11 @@
     {
       "id": "device:emit",
       "command": "node tools/device/emit.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:mcp",
+      "command": "node tools/device/cue-helper-mcp.mjs",
       "lifecycle": "supported"
     }
   ],
@@ -239,6 +254,18 @@
     {
       "id": "tools/propertytest.mjs",
       "invocation": "tools/propertytest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/observe.mjs",
+      "invocation": "tools/invent/observe.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/test-observe.mjs",
+      "invocation": "tools/invent/test-observe.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -585,6 +612,36 @@
       "lifecycle": "supported"
     },
     {
+      "id": "npm",
+      "invocation": "npm run device:campaign -- --guided [--json]",
+      "kind": "guided preflight",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "npm",
+      "invocation": "npm run device:campaign -- --live --confirm-live --bundle DIR --calibration FILE --qualification FILE",
+      "kind": "supported-live gate",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "apps/device/src/custom-night.js",
+      "invocation": "apps/device/src/custom-night.js",
+      "kind": "device contract",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "apps/device/src/device-local-executor.js",
+      "invocation": "apps/device/src/device-local-executor.js",
+      "kind": "device boundary",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "apps/device/src/campaign-composition.js",
+      "invocation": "apps/device/src/campaign-composition.js",
+      "kind": "device composition",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/bundle.mjs",
       "invocation": "tools/device/bundle.mjs",
       "kind": "module/check",
@@ -628,8 +685,74 @@
     },
     {
       "id": "tools/device/query-cue-helper.sh",
-      "invocation": "tools/device/query-cue-helper.sh [loopback\\|forward\\|watch\\|watchlist\\|read\\|grid\\|latency]",
+      "invocation": "tools/device/query-cue-helper.sh [loopback\\|forward\\|overlay\\|watch\\|watchlist\\|read\\|grid\\|latency]",
       "kind": "device check/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue-helper-setup.sh",
+      "invocation": "tools/device/cue-helper-setup.sh [--install] [--probe] [--screen menu\\|night] [--stop] [--wait SECONDS]",
+      "kind": "device action/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue-helper-setup.py",
+      "invocation": "tools/device/cue-helper-setup.py",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cue-helper-setup.py",
+      "invocation": "tools/device/test-cue-helper-setup.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue-helper-queue.sh",
+      "invocation": "tools/device/cue-helper-queue.sh enqueue\\|list\\|run [--wait SECONDS] [--interval SECONDS]",
+      "kind": "device action/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue-helper-queue.py",
+      "invocation": "tools/device/cue-helper-queue.py",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cue-helper-queue.py",
+      "invocation": "tools/device/test-cue-helper-queue.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue_helper_device_lock.py",
+      "invocation": "tools/device/cue_helper_device_lock.py",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cue-helper-device-lock.py",
+      "invocation": "tools/device/test-cue-helper-device-lock.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/device-lock-exec.py",
+      "invocation": "tools/device/device-lock-exec.py",
+      "kind": "internal module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cue-helper-mcp.mjs",
+      "invocation": "tools/device/cue-helper-mcp.mjs",
+      "kind": "MCP server",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-cue-helper-mcp.mjs",
+      "invocation": "tools/device/test-cue-helper-mcp.mjs",
+      "kind": "check",
       "lifecycle": "supported"
     },
     {
@@ -702,6 +825,12 @@
       "id": "tools/device/minus-toys-plan.mjs",
       "invocation": "tools/device/minus-toys-plan.mjs --night=N [--gate] [--knobs=k=v,...]",
       "kind": "generator/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/arm-verification.mjs",
+      "invocation": "tools/device/arm-verification.mjs",
+      "kind": "module",
       "lifecycle": "supported"
     },
     {
@@ -1061,6 +1190,36 @@
     {
       "id": "tools/device/test-session-manifest.sh",
       "invocation": "tools/device/test-session-manifest.sh",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/validate-overlay-qualification.py",
+      "invocation": "tools/device/validate-overlay-qualification.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-overlay-qualification.py",
+      "invocation": "tools/device/test-overlay-qualification.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/provision-overlay-qualification.sh",
+      "invocation": "tools/device/provision-overlay-qualification.sh RECORD.json [--profile PROFILE] [--replace]",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/overlay-qualification-observe.sh",
+      "invocation": "tools/device/overlay-qualification-observe.sh [SAMPLES] [INTERVAL] [OUT.tsv]",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-overlay-qualification-observe.sh",
+      "invocation": "tools/device/test-overlay-qualification-observe.sh",
       "kind": "check",
       "lifecycle": "supported"
     },

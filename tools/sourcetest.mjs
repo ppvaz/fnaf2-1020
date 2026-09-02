@@ -58,6 +58,26 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
   ok('g75/g84', 'the mask itself still answers', !s.maskOn);
 }
 {
+  // g10/g11 plus the input surface: the off press clears the logical endpoint
+  // immediately, but the lowering animation still owns the screen. A schedule
+  // must not be allowed to raise the monitor or touch another control during
+  // that interval; the phone presents the mask and drops those touches.
+  const s = bare();
+  s.press('mask'); settle(s);
+  s.press('mask');
+  ok('g10/g11', 'mask-off enters the lowering animation', !s.maskOn && s.maskAnim > 0);
+  const frame = s.frame;
+  for (const action of ['monitor', 'cam:10', 'wind', 'light', 'ventL', 'ventR']) {
+    s.press(action);
+    ok('g10/g11 input lock', `${action} is rejected while the mask is lowering`,
+      s.frame === frame && !s.camsUp && !s.winding && !s.lightHeld &&
+      !s.ventLightL && !s.ventLightR);
+  }
+  step(s, C.MASK_ANIM_OFF);
+  s.press('monitor');
+  ok('g10/g11 input lock', 'monitor is accepted after the mask is fully off', s.monAnim > 0);
+}
+{
   // g75/g84 effect half: a masked player lights nothing.
   const s = bare();
   s.press('mask'); settle(s);

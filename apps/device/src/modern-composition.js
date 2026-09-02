@@ -7,6 +7,7 @@
 import { HidWireTransport, CueHelperControlTransport, measureMonitorUp,
   monitorRuleDigest, parseMonitorRule } from '@fnaf2-1020/adapters';
 import { composeDevice } from './composition.js';
+import { createAdbModernPorts } from './physical-ports.js';
 
 /**
  * One observation = one GET snapshot + one GRID sensor read. The detector
@@ -59,4 +60,23 @@ export function composeModernDevice(options = {}) {
     sensorTransport: { capture: () => observe(cueTransport) },
     detectorRead: raw => measureMonitorUp(raw.payload, boundedMonitorRule ?? null),
   });
+}
+
+/**
+ * Open the named physical ports from one explicitly selected ADB device.
+ * Profile, qualification, and artifact executor gates are still enforced by
+ * composeModernDevice and DeviceControlService.
+ */
+/** @param {any} options */
+export function composeAdbModernDevice(options = {}) {
+  const { serial, adb = 'adb' } = options;
+  const ports = createAdbModernPorts({ serial, adb });
+  try {
+    const service = composeModernDevice({ ...options, hid: ports.hid, cue: ports.cue });
+    /** @type {any} */ (service).closePhysicalPorts = ports.close;
+    return service;
+  } catch (error) {
+    void ports.close();
+    throw error;
+  }
 }

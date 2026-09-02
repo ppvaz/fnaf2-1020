@@ -262,6 +262,7 @@ function exactCohort(geom, runs, worst) {
 function exact() {
   const configs = configsArg();
   const winnerOut = arg('winner-out', '');
+  const profile = arg('profile', 'fixture-hid-screencap');
   console.log(`geometry exact admission  night 6  ${RUNS} seeds/cohort  no human jitter`);
   let winner = null;
   for (const geom of configs) {
@@ -287,7 +288,7 @@ function exact() {
     planOptions: { deviceSpacingMs: winner.geom.dev, sweepContactMs: winner.geom.con,
       tapContactMs: winner.geom.tap },
     nights: [6], engineHash: 'model-sim-v1', seeds, replaySeeds: seeds.slice(0, 8),
-    profile: 'fixture-hid-screencap',
+    profile,
     gate: { status: 'PASS', claimLevel: 'MODEL_ONLY', mode: 'exact', night: 6,
       geometry: winner.geom, cohorts: { ordinary: winner.ordinary, worst: winner.worst } },
   };

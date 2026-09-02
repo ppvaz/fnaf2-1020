@@ -7,9 +7,36 @@ resolved profile, bounded budget, and operator confirmation.
 
 Public API: `DeviceControlService`, `composeDevice`, the CLI, and the bounded
 JSON-RPC/MCP-shaped adapter. Dependencies: core, runtime, and adapters.
-Commands: `device:dry-run`, `device:bench`, `device:qualification`, and
-`device:grade`. Artifacts: resolved profiles, telemetry, manifests, and result
+Commands: `device:dry-run`, `device:bench`, `device:preflight`,
+`device:campaign`, `device:qualification`, and `device:grade`. Artifacts: resolved profiles, telemetry, manifests, and result
 bundles under ignored `artifacts/`.
+
+The campaign control plane is available as two safe entry points:
+
+```sh
+npm run device:campaign -- --dry-run --json
+npm run device:campaign -- --guided --json
+npm run device:preflight -- --profile hid-mediaprojection --json
+```
+
+The first validates the Night 6 story target followed by the Night 7 Custom
+Night 10/20 target and its bounded retry/proof contract without touching a
+phone. The second performs closed, read-only ADB discovery: exactly one ready
+device, the pinned FNaF 2 build, awake/unlocked state, game focus, `/system/bin/hid`,
+and Cue Helper. A `HOLD` is expected when the phone is absent or not ready; it
+does not become qualification evidence.
+
+`--guided` prints the one-time calibration checklist. A live campaign also
+requires `--bundle DIR` with one full-night plan per requested night,
+`--calibration FILE` containing measured Custom Night menu/dial readback
+geometry, and an artifact-bound `DEVICE_MEASURED` qualification. The campaign
+returns `HOLD` until those files and the modern device-local executor are
+present; it never guesses a Custom Night coordinate or treats a completed
+executor as a win. Night 6 selects the measured `6th Night` item by default
+and requires positive post-win Custom Night visibility (Continue is available
+only when its save cursor is separately observed at Night 7). Night 7 advances
+only after all ten 20 dials plus Puppet 15 are read back and the menu return is
+observed.
 
 ```sh
 npm run device:dry-run -- --profile fixture-hid-screencap
@@ -24,10 +51,10 @@ lane is considered: `npm run device:emit -- --winner winner.json --out
 artifacts/run-001` writes `winner.json`, `manifest.json`, `night-N.plan`,
 `profile.json`, and a hashed `artifact.json` containing the transport-neutral
 semantic blocks, then validates the interpreter vocabulary, timing/contact
-budget, identity, hashes, and bounded replay. The shell facade consumes that
-exact bundle with `tools/device/trial.sh --artifact artifacts/run-001
---dry-run` (or an explicit `--executor MODULE` for the qualified live lane).
-Plans are compiled into bounded state-conditioned blocks: monitor
+budget, identity, hashes, and bounded replay. The modern campaign CLI consumes
+that exact bundle through `modern-campaign-ports.js`; its device-local executor
+sends one bounded HID schedule to the phone and does not import the historical
+trial lane. Plans are compiled into bounded state-conditioned blocks: monitor
 operations name an UP/DOWN target, camera coordinates require two agreeing UP
 observations, and office controls require DOWN. UNKNOWN or a failed bounded
 retry aborts and releases all contacts instead of continuing by toggle parity.
@@ -45,6 +72,22 @@ ports; those ports must already use the device-local execution path. It does
 not import the legacy trial, infer coordinates, or turn transport availability
 into qualification evidence. Pass an explicit `DeviceArtifactExecutor` when
 consuming a compiled artifact; without it artifact execution is refused.
+
+`CampaignStateMachine` is the lifecycle seam above that executor. It requires
+positive menu and intro identity, records bounded attempts, treats unknown
+observations as `HOLD`, and only advances Night 6 after a verified save cursor
+or newly visible Custom Night item, and Night 7 after a verified return to the
+menu. `AdbDeviceBridge` supplies the read-only discovery/preflight port; it
+intentionally exposes no arbitrary shell or game-input method.
+
+`DeviceLocalArtifactExecutor` is the deterministic test/local adapter.
+`AdbDeviceLocalArtifactExecutor` is the physical adapter: it expands the
+declared opening and repeat-cycle blocks, encodes them through the HID adapter,
+and transfers one fixed script whose delays execute on the phone. Neither
+executor promotes a claim; `composeCampaignPorts` binds the selected executor
+to a validated campaign bundle. The result contract records every attempt,
+death retry, positive terminal proof, Custom Night readback, and save/menu
+proof.
 
 Monitor state comes from a calibrated `monitor-rule-v1` artifact
 (`packages/adapters/src/monitor-rule.js`), fitted offline from labeled

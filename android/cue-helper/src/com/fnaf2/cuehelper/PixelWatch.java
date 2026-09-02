@@ -27,6 +27,14 @@ public final class PixelWatch {
     /** Calibrated display footprint of one fixed monitor-map camera button. */
     public static final int CAMERA_BUTTON_OVERLAY_WIDTH = 120;
     public static final int CAMERA_BUTTON_OVERLAY_HEIGHT = 40;
+    /** Provisional Foxy core envelope, measured from native labelled frames. */
+    public static final int FOXY_HALL_X = 1650;
+    public static final int FOXY_HALL_Y = 300;
+    public static final int FOXY_HALL_WIDTH = 450;
+    public static final int FOXY_HALL_HEIGHT = 400;
+    public static final int FOXY_HALL_STEP = 8;
+    /** Redness floor used by the provisional Foxy red-cell channel. */
+    public static final int FOXY_HALL_REDNESS_FLOOR = 15;
     private static final int[] CAMERA_BUTTON_X = new int[] {
             1412, 1720, 1411, 1728, 1424, 1696,
             1776, 1412, 2144, 1984, 2228, 2188
@@ -44,7 +52,9 @@ public final class PixelWatch {
     private static final int BATTERY_BAR_HEIGHT = 32;
 
     public enum Kind { PIXEL, ROI }
-    public enum Reducer { LUMA, YELLOWNESS, MEAN_LUMA, GREY_CELLS }
+    public enum Reducer {
+        LUMA, YELLOWNESS, MEAN_LUMA, MEAN_REDNESS, GREY_CELLS, RED_CELLS
+    }
 
     /** One bounded pixel or ROI query. Coordinates are native display pixels. */
     public static final class Entry {
@@ -77,7 +87,9 @@ public final class PixelWatch {
                 throw new IllegalArgumentException("ROI needs an aggregate reducer");
             }
             if (kind == Kind.PIXEL && (reducer == Reducer.MEAN_LUMA
-                    || reducer == Reducer.GREY_CELLS)) {
+                    || reducer == Reducer.MEAN_REDNESS
+                    || reducer == Reducer.GREY_CELLS
+                    || reducer == Reducer.RED_CELLS)) {
                 throw new IllegalArgumentException("pixel needs a pixel reducer");
             }
             this.name = name;
@@ -188,6 +200,24 @@ public final class PixelWatch {
                 && entry.step == 4;
     }
 
+    public static boolean isCanonicalFoxyHall(Entry entry, String channel) {
+        if (entry == null || channel == null) return false;
+        Reducer reducer;
+        if ("luma".equals(channel)) reducer = Reducer.MEAN_LUMA;
+        else if ("redness".equals(channel)) reducer = Reducer.MEAN_REDNESS;
+        else if ("red_cells".equals(channel)) reducer = Reducer.RED_CELLS;
+        else return false;
+        String name = "red_cells".equals(channel)
+                ? "foxy_hall_red_cells" : "foxy_hall_mean_" + channel;
+        return entry.name.equals(name)
+                && entry.kind == Kind.ROI && entry.reducer == reducer
+                && entry.x == FOXY_HALL_X && entry.y == FOXY_HALL_Y
+                && entry.width == FOXY_HALL_WIDTH && entry.height == FOXY_HALL_HEIGHT
+                && entry.step == FOXY_HALL_STEP
+                && (!"red_cells".equals(channel)
+                    || entry.greySpread == FOXY_HALL_REDNESS_FLOOR);
+    }
+
     /** A reusable source view over an RGBA/RGB byte buffer. */
     public static final class ByteBufferFrame implements Frame {
         private ByteBuffer buffer;
@@ -230,7 +260,7 @@ public final class PixelWatch {
     private PixelWatch() {}
 
     /**
-     * The first calibrated watchlist. The BB anchor is the sourced
+     * The shared watchlist. The BB anchor is the sourced
      * (451,730) observation; the CAM 05 ROI, coarse whole-screen grey count,
      * and flashlight-meter bars are existing helper observations expressed in
      * native coordinates.
@@ -243,6 +273,11 @@ public final class PixelWatch {
      * per button centre is deterministic because the button is ~120x40 px of
      * fixed UI at native resolution. Coordinates are the measured button
      * centres; a camera-rule consumer reads them through {@code READ}.</p>
+     *
+     * <p>The three {@code foxy_hall_*} entries are deliberately provisional:
+     * they provide the native-resolution hall envelope needed to collect and
+     * calibrate Foxy/empty frames, but no live controller may treat any raw
+     * value as a qualified Foxy fact until a separated holdout artifact exists.</p>
      */
     public static Spec defaultSpec() {
         return new Spec(new Entry[] {
@@ -289,7 +324,16 @@ public final class PixelWatch {
                 new Entry(cameraButtonName(11), Kind.PIXEL, CAMERA_BUTTON_X[10], CAMERA_BUTTON_Y[10], 1, 1,
                         Reducer.YELLOWNESS, 1, 0),
                 new Entry(cameraButtonName(12), Kind.PIXEL, CAMERA_BUTTON_X[11], CAMERA_BUTTON_Y[11], 1, 1,
-                        Reducer.YELLOWNESS, 1, 0)
+                        Reducer.YELLOWNESS, 1, 0),
+                new Entry("foxy_hall_mean_luma", Kind.ROI,
+                        FOXY_HALL_X, FOXY_HALL_Y, FOXY_HALL_WIDTH, FOXY_HALL_HEIGHT,
+                        Reducer.MEAN_LUMA, FOXY_HALL_STEP, 0),
+                new Entry("foxy_hall_mean_redness", Kind.ROI,
+                        FOXY_HALL_X, FOXY_HALL_Y, FOXY_HALL_WIDTH, FOXY_HALL_HEIGHT,
+                        Reducer.MEAN_REDNESS, FOXY_HALL_STEP, 0),
+                new Entry("foxy_hall_red_cells", Kind.ROI,
+                        FOXY_HALL_X, FOXY_HALL_Y, FOXY_HALL_WIDTH, FOXY_HALL_HEIGHT,
+                        Reducer.RED_CELLS, FOXY_HALL_STEP, FOXY_HALL_REDNESS_FLOOR)
         });
     }
 
@@ -315,7 +359,7 @@ public final class PixelWatch {
         }
         long total = 0;
         int count = 0;
-        int grey = 0;
+        int counted = 0;
         for (int y = entry.y; y < entry.y + entry.height; y += entry.step) {
             for (int x = entry.x; x < entry.x + entry.width; x += entry.step) {
                 int rgb = frame.rgb(x, y);
@@ -326,19 +370,21 @@ public final class PixelWatch {
                     int b = rgb & 0xff;
                     int max = Math.max(r, Math.max(g, b));
                     int min = Math.min(r, Math.min(g, b));
-                    if (max - min < entry.greySpread) grey++;
+                    if (max - min < entry.greySpread) counted++;
+                } else if (entry.reducer == Reducer.RED_CELLS) {
+                    int r = (rgb >> 16) & 0xff;
+                    int g = (rgb >> 8) & 0xff;
+                    int b = rgb & 0xff;
+                    if (r - Math.max(g, b) >= entry.greySpread) counted++;
                 } else {
-                    // Aggregate reducers operate on the luma of each RGB
-                    // sample; YELLOWNESS is intentionally only a pixel
-                    // reducer so it cannot be mistaken for a ROI mean.
-                    total += reducePixel(Reducer.LUMA, rgb);
+                    total += reduceAggregate(entry.reducer, rgb);
                 }
                 count++;
             }
         }
         if (count == 0) return UNKNOWN;
-        return entry.reducer == Reducer.GREY_CELLS
-                ? grey : (int) (total / count);
+        return entry.reducer == Reducer.GREY_CELLS || entry.reducer == Reducer.RED_CELLS
+                ? counted : (int) (total / count);
     }
 
     private static int reducePixel(Reducer reducer, int rgb) {
@@ -354,6 +400,17 @@ public final class PixelWatch {
             default:
                 return UNKNOWN;
         }
+    }
+
+    private static int reduceAggregate(Reducer reducer, int rgb) {
+        if (rgb == UNKNOWN) return UNKNOWN;
+        if (reducer == Reducer.MEAN_REDNESS) {
+            int red = (rgb >> 16) & 0xff;
+            int green = (rgb >> 8) & 0xff;
+            int blue = rgb & 0xff;
+            return red - Math.max(green, blue);
+        }
+        return reducePixel(Reducer.LUMA, rgb);
     }
 
     private static String sha256(String text) {

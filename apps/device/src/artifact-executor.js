@@ -35,6 +35,17 @@ const text = (value, label) => {
   return value;
 };
 
+function validatePlanTiming(timing, path) {
+  if (!isRecord(timing)) fail(`${path} timing is missing`);
+  for (const key of ['periodMs', 'loopStartMs', 'stopAtMs', 'observeUntilMs', 'idleUntilMs'])
+    finite(timing[key], `${path}.${key}`, { integer: true });
+  if (timing.periodMs <= 0) fail(`${path}.periodMs must be positive`);
+  if (timing.stopAtMs <= timing.loopStartMs) fail(`${path} stopAtMs must be after loopStartMs`);
+  if (timing.observeUntilMs < timing.stopAtMs) fail(`${path} observeUntilMs must cover stopAtMs`);
+  if (timing.idleUntilMs > timing.loopStartMs) fail(`${path} idleUntilMs cannot exceed loopStartMs`);
+  return timing;
+}
+
 function rejectForbidden(value, path) {
   if (!isRecord(value)) return;
   for (const [key, child] of Object.entries(value)) {
@@ -133,7 +144,8 @@ function planReferences(manifest, compiledPlans) {
       fail(`compiled plan ${index} is not bound to the manifest`);
     const source = manifestPlans.get(plan.night);
     if (typeof source.sha256 !== 'string') fail(`manifest plan ${plan.night} hash is incomplete`);
-    return { night: plan.night, sha256: source.sha256 };
+    return { night: plan.night, sha256: source.sha256,
+      timing: validatePlanTiming(plan.timing, `compiled plan ${plan.night}`) };
   });
 }
 
@@ -191,6 +203,7 @@ export function validateExecutorRequest(request) {
   for (const [index, plan] of request.artifact.plans.entries()) {
     if (!isRecord(plan) || !Number.isInteger(plan.night) || plan.night < 1 || plan.night > 7 ||
         !/^[a-f0-9]{64}$/.test(plan.sha256)) fail(`artifact.plans[${index}] is invalid`);
+    validatePlanTiming(plan.timing, `artifact.plans[${index}]`);
   }
   const planNights = new Set(request.artifact.plans.map(plan => plan.night));
   if (planNights.size !== request.artifact.plans.length) fail('artifact plan references contain duplicate nights');

@@ -21,12 +21,19 @@ const mv = (x) => Math.round(x * C.FPS / 1000);   // ms -> frames
 const TARGETS = [10, 4, 7];
 const TARGET_OFFSETS = [1 / 60, 6 / 60, 11 / 60];
 
+// The sourced mask-off animation is 15 render frames. Leave one additional
+// render frame after its endpoint before another control is scheduled. A full
+// extra Fusion poll is already enforced between distinct steady contacts; it
+// is not needed inside this single maskraise HID stream. This is the model-side
+// frame form of the device recipe's 267 ms maskraise gap.
+export const MASK_OFF_INPUT_FRAMES = C.MASK_ANIM_OFF + 1;
+
 // Plan 16 (constrained policy search) parameter space: named device-plan
 // timing offsets, each defaulting to a no-op so an unset harness produces the
 // byte-identical 803feb3 plan. Search callers pass an immutable assignment to
 // each build; no process-global experiment state is shared between runs.
 export const DEFAULT_SEARCH_KNOBS = Object.freeze({
-  attackHallDeltaMs: 0,    // leftAttack post-mask reset, off+0.25 -> off+0.25+d  (floor: MASK_ANIM_OFF)
+  attackHallDeltaMs: 0,    // leftAttack post-mask reset, off+MASK_OFF_INPUT -> +d
   attackSweepDeltaMs: 0,   // leftAttack recovery sweep, off+0.45 -> off+0.45+d   (ceil: 400-fr Withered budget)
   attackRstDeltaMs: 0,     // leftAttack: an extra hall reset in the recovery, d ms into the wind (0 = none)
   clearHall2DeltaMs: 0,    // leftClear device branch, second reset b+3.10 -> +d
@@ -62,7 +69,8 @@ class HidPilot {
                      secondBeat = false, maskMarginMs = null,
                      readLatencyMs = 360, hallPulseMs = 83,
                      prophylacticMask = true, actuator = null,
-                     attackWindowMs = 10000, knobs = DEFAULT_SEARCH_KNOBS } = {}) {
+                     attackWindowMs = 10000, traceActions = false,
+                     knobs = DEFAULT_SEARCH_KNOBS } = {}) {
     this.sim = sim;
     this.knobs = makeSearchKnobs(knobs);
     // Plan 16 structural experiment: the BB-response cycle length. 10 s is the
@@ -152,6 +160,8 @@ class HidPilot {
     this.attacks = 0;
     this.missed = 0;
     this.eventCursor = 0;
+    this.traceActions = Boolean(traceActions);
+    this.trace = [];
     this.trueVocals = 0;
     this.vocalsSeen = vocalFalseCount;
     this.dropVocal = dropVocal;
@@ -366,15 +376,23 @@ class HidPilot {
     // put one ON and blind every later read.
     const maskOff = resultAt + s(0.02);
     if (this.prophylacticMask) this.tap(maskOff, 'mask');
-    // hallLightOn needs maskFullyOff and MASK_ANIM_OFF is 250 ms, so when the
+    // hallLightOn needs maskFullyOff and the sourced mask-off animation is 15
+    // frames, so when the
     // phone's read latency pushes this press late the pulse below sits
     // entirely inside that animation and reaches nobody -- 420 frames of
     // flashlight a night spent on nothing. The second beat's pulse is the
     // cycle's real Foxy reset either way; skipping this one when it cannot
     // land takes the night's power floor from 716 frames to 1111.
-    const earlyHallLands = maskOff + C.MASK_ANIM_OFF <= b + s(1.28);
+    // The result can arrive after the nominal first beat. Move that whole
+    // beat as a unit when necessary; otherwise the corrected input gate would
+    // leave the monitor press on the mask even though the off press landed.
+    const nominalRaise = b + s(1.38);
+    const raiseShift = Math.max(0, maskOff + MASK_OFF_INPUT_FRAMES - nominalRaise);
+    const firstHall = b + s(1.28) + raiseShift;
+    const raiseAt = nominalRaise + raiseShift;
+    const earlyHallLands = firstHall >= maskOff + MASK_OFF_INPUT_FRAMES;
     if (earlyHallLands)
-      this.hold(b + s(1.28), this.hallPulse, 'light');
+      this.hold(firstHall, this.hallPulse, 'light');
     // The measured read latency makes the old +1.28 s slot land inside the
     // mask-off animation, so the shipped route used to omit this reset and
     // leave Foxy for the second beat. Reuse the raise macro as the fallback:
@@ -384,9 +402,9 @@ class HidPilot {
     // sample this one reset moves Night 6 from 449/1200 to 673/1200 without
     // moving any camera-stun or read boundary.
     if (!earlyHallLands)
-      this.hold(b + s(1.38), this.hallPulse, 'light');
-    this.tap(b + s(1.38), 'monitor');
-    this.tap(b + s(1.62), 'cam:11');
+      this.hold(raiseAt, this.hallPulse, 'light');
+    this.tap(raiseAt, 'monitor');
+    this.tap(b + s(1.62) + raiseShift, 'cam:11');
     if (this.deviceSweep && !this.secondBeat) {
       // The phone's 790 ms sweep leaves the second wind window below one
       // frame, so the cycle drains. Spend the second monitor-down beat on
@@ -434,10 +452,13 @@ class HidPilot {
     // the branch floors off the result that happened, like leftClear's.
     const b = a + Math.max(0, resultAt - (a + 86 + s(0.26)));
     const sweepStart = b + s(5) - this.sweepFrames - this.sweepTail;
-    this.tap(resultAt + 1, 'mask');
-    this.tap(b + 119, 'monitor');
-    this.tap(b + 135, 'cam:11');
-    this.hold(b + 140, sweepStart - 1 - (b + 140), 'wind');
+    const maskOff = resultAt + 1;
+    const raiseAt = Math.max(b + 119, maskOff + MASK_OFF_INPUT_FRAMES);
+    const shift = raiseAt - (b + 119);
+    this.tap(maskOff, 'mask');
+    this.tap(raiseAt, 'monitor');
+    this.tap(b + 135 + shift, 'cam:11');
+    this.hold(b + 140 + shift, sweepStart - 1 - (b + 140 + shift), 'wind');
     this.flashTargets(sweepStart);
   }
 
@@ -463,9 +484,14 @@ class HidPilot {
     // The hall press is queued before the simultaneous monitor raise. It
     // therefore resets Foxy during the raise frame without spending another
     // 120 ms before the recovery sweep.
-    this.hold(off + s(0.25) + mv(this.knobs.attackHallDeltaMs), this.hallPulse, 'light');
-    this.tap(off + s(0.25) + mv(this.knobs.attackHallDeltaMs), 'monitor');
-    const end = this.flashTargets(off + s(0.45) + mv(this.knobs.attackSweepDeltaMs));
+    const inputAt = off + MASK_OFF_INPUT_FRAMES + mv(this.knobs.attackHallDeltaMs);
+    this.hold(inputAt, this.hallPulse, 'light');
+    this.tap(inputAt, 'monitor');
+    // The old off+450 ms expression was exactly one monitor-up animation after
+    // the old off+250 ms input. With the sourced mask clearance it would land
+    // the first camera two frames before the monitor is up; anchor the sweep
+    // to the actual raise instead.
+    const end = this.flashTargets(inputAt + C.MONITOR_ANIM_UP + mv(this.knobs.attackSweepDeltaMs));
     this.tap(end + s(0.05), 'cam:11');
     const windStart = end + (this.deviceSweep ? s(0.19) : s(0.13));
     const W = this.attackWindow;
@@ -504,9 +530,10 @@ class HidPilot {
     const lateSweepStart = b + s(10) - this.sweepFrames - this.sweepTail;
     const off = b + s(6.02);
     this.tap(off, 'mask');
-    this.hold(off + s(0.25), this.hallPulse, 'light');
-    this.tap(off + s(0.25), 'monitor');
-    const end = this.flashTargets(off + s(0.45));
+    const inputAt = off + MASK_OFF_INPUT_FRAMES;
+    this.hold(inputAt, this.hallPulse, 'light');
+    this.tap(inputAt, 'monitor');
+    const end = this.flashTargets(inputAt + C.MONITOR_ANIM_UP);
     this.tap(end + s(0.05), 'cam:11');
     const windEnd = this.deviceSweep ? lateSweepStart - 3 : b + s(9.46);
     this.hold(end + s(0.13), Math.max(1, windEnd - (end + s(0.13))), 'wind');
@@ -708,12 +735,37 @@ class HidPilot {
     if (f === this.nextAnchor) this.scheduleAnchor(f);
     while (this.queue.length && this.queue[0][0] <= f) {
       const [, kind, act] = this.queue.shift();
+      const before = this.traceActions ? {
+        frame: this.sim.frame, monitor: this.sim.monitor, monAnim: this.sim.monAnim,
+        maskOn: this.sim.maskOn, maskAnim: this.sim.maskAnim, cam: this.sim.cam,
+        winding: this.sim.winding, lightHeld: this.sim.lightHeld,
+        foxy: { loc: this.sim.foxy.loc, D: this.sim.foxy.D,
+          gotYou: this.sim.foxy.gotYou, exposure: this.sim.foxy.exposure,
+          pinUntil: this.sim.foxy.pinUntil },
+        bb: { stage: this.sim.bb.stage, inOpening: this.sim.bb.inOpening,
+          inside: this.sim.bb.inside, maskTicks: this.sim.bb.maskTicks },
+        units: this.sim.units.map(u => ({ id: u.id, idx: u.idx,
+          atOpening: u.atOpening, done: u.done, pending: u.pending,
+          stunUntil: u.stunUntil })),
+      } : null;
       if (kind === 'left-snapshot') this.onLeftSnapshot(act);
       else if (kind === 'left-result') this.onLeftResult(act);
       else if (kind === 'cam5-before') this.onCam5Before(act);
       else if (kind === 'cam5-after') this.onCam5After(act);
       else if (kind === 'up') this.act ? this.act.release(act) : this.sim.release(act);
       else this.act ? this.act.press(act) : this.sim.press(act);
+      if (before) this.trace.push({ ...before, kind, act,
+        after: { monitor: this.sim.monitor, monAnim: this.sim.monAnim,
+          maskOn: this.sim.maskOn, maskAnim: this.sim.maskAnim, cam: this.sim.cam,
+          winding: this.sim.winding, lightHeld: this.sim.lightHeld,
+          foxy: { loc: this.sim.foxy.loc, D: this.sim.foxy.D,
+            gotYou: this.sim.foxy.gotYou, exposure: this.sim.foxy.exposure,
+            pinUntil: this.sim.foxy.pinUntil },
+          bb: { stage: this.sim.bb.stage, inOpening: this.sim.bb.inOpening,
+            inside: this.sim.bb.inside, maskTicks: this.sim.bb.maskTicks },
+          units: this.sim.units.map(u => ({ id: u.id, idx: u.idx,
+            atOpening: u.atOpening, done: u.done, pending: u.pending,
+            stunUntil: u.stunUntil })) } });
     }
     if (this.act) this.act.deliver();
     this.minBox = Math.min(this.minBox, this.sim.box);
@@ -743,11 +795,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const exactArgs = new Set(['--worst', '--sparse-cam5', '--sparse-left',
     '--vocal-cam5', '--bang-cam5', '--device-sweep', '--cam5', '--no-bb', '--no-cam5',
     '--hypothetical-unlit', '--tick-aligned-mask', '--always-threat',
-    '--assert', '--assert-rejected', '--pulse-light', '--second-beat',
+    '--assert', '--assert-rejected', '--pulse-light', '--second-beat', '--trace-actions',
     '--device-actuator']);
   const valuedArgs = ['--hall-pulse-ms=', '--read-latency-ms=', '--mask-margin-ms=', '--sweep-slot-ms=', '--cam5-light-ms=',
     '--pilot-offset-ms=', '--drop-vocal=', '--vocal-false-count=',
-    '--drop-bang=', '--false-bang=', '--night=', '--press-late-ms=', '--attack-window-ms='];
+    '--drop-bang=', '--false-bang=', '--night=', '--press-late-ms=', '--attack-window-ms=',
+    '--knobs-json='];
   const unknownArgs = cliArgs.filter(arg => !exactArgs.has(arg) &&
     !valuedArgs.some(prefix => arg.startsWith(prefix)));
   if (unknownArgs.length) throw new Error(`unknown argument: ${unknownArgs.join(', ')}`);
@@ -789,6 +842,19 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const alwaysThreat = cliArgs.includes('--always-threat');
   const assertSurvival = cliArgs.includes('--assert');
   const assertRejected = cliArgs.includes('--assert-rejected');
+  const traceActions = cliArgs.includes('--trace-actions');
+  const knobsArg = (cliArgs.find(v => v.startsWith('--knobs-json=')) || '').slice('--knobs-json='.length);
+  let knobs = DEFAULT_SEARCH_KNOBS;
+  if (knobsArg) {
+    try {
+      const parsed = JSON.parse(knobsArg);
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object')
+        throw new Error('must be a JSON object');
+      knobs = makeSearchKnobs(parsed);
+    } catch (e) {
+      throw new Error(`--knobs-json= must be a valid HID knob object: ${e.message}`);
+    }
+  }
   const nightArg = (cliArgs.find(v => v.startsWith('--night=')) || '').split('=')[1];
   const night = nightArg ? +nightArg : 6;
   const lateArg = (cliArgs.find(v => v.startsWith('--press-late-ms=')) || '').split('=')[1];
@@ -835,6 +901,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   let wins = 0, minBox = 1, minPower = Infinity, checks = 0, detections = 0;
   let attacks = 0, missed = 0, audioMisses = 0;
   let actSent = 0, actDrops = 0, actDropNights = 0;
+  let trace = [];
   const fails = {};
   for (let i = 0; i < n; i++) {
     const { sim, bot, actuator } = run({ bbMode, cam5Light, sparseCam5, sparseLeft,
@@ -843,7 +910,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       phaseSafeMask, alwaysThreat, deviceSweep, sweepSlotMs, pulseLight,
       secondBeat, maskMarginMs, readLatencyMs, hallPulseMs, deviceActuator,
       attackWindowMs,
+      traceActions,
+      knobs,
       sim: { seed: (i * 2246822519) >>> 0, night, worst } });
+    if (traceActions && n === 1) trace = bot.trace;
     if (actuator) {
       actSent += actuator.sent; actDrops += actuator.seamDrops;
       if (actuator.seamDrops) actDropNights++;
@@ -887,4 +957,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       ` (${actDropNights}/${n} nights lost at least one)`);
   if (assertSurvival && (wins !== n || missed !== 0)) process.exitCode = 1;
   if (assertRejected && wins !== 0) process.exitCode = 1;
+  if (traceActions && n === 1)
+    for (const e of trace) console.log(JSON.stringify(e));
 }

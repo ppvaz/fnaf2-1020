@@ -67,9 +67,9 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
         i=$((i + 1))
       done
       echo ;;
-    WATCH/status) echo 'OK watch=OFF spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=20' ;;
-    WATCH/*) echo 'OK watch=ACTIVE spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=20' ;;
-    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 battery_bar_1=194 battery_bar_2=194 battery_bar_3=80 battery_bar_4=20 cam05_mean_luma=37 screen_grey_cells=142' ;;
+    WATCH/status) echo 'OK watch=OFF spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=23' ;;
+    WATCH/*) echo 'OK watch=ACTIVE spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=23' ;;
+    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 battery_bar_1=194 battery_bar_2=194 battery_bar_3=80 battery_bar_4=20 cam05_mean_luma=37 screen_grey_cells=142 foxy_hall_mean_luma=37 foxy_hall_mean_redness=0 foxy_hall_red_cells=0' ;;
     OVERLAY/*) echo 'OK overlay=UNQUALIFIED(self-capture-unqualified) gate=UNQUALIFIED(self-capture-unqualified) updates=0 draws=0 dropped=0 cadenceSamples=0 updateToDrawMs=p50:0.00,p95:0.00,p99:0.00 drawIntervalMs=p50:0.00,p95:0.00,p99:0.00' ;;
     CAL/on) echo 'OK cal=on' ;;
     CAL/off) echo 'OK cal=off' ;;

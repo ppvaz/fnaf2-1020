@@ -9,9 +9,9 @@
 export const HID_DESCRIPTOR = Object.freeze([
   5, 13, 9, 4, 161, 1, 133, 1, 9, 34, 161, 0, 9, 85, 21, 0, 37, 2,
   117, 8, 149, 1, 177, 2, 9, 84, 129, 2, 5, 13, 9, 34, 161, 2, 9,
-  66, 21, 0, 37, 1, 129, 2, 9, 50, 129, 2, 9, 81, 37, 63, 117, 6,
+  66, 21, 0, 37, 1, 117, 1, 129, 2, 9, 50, 129, 2, 9, 81, 37, 63, 117, 6,
   129, 2, 5, 1, 9, 48, 38, 95, 9, 117, 16, 129, 2, 9, 49, 38, 55,
-  4, 129, 2, 192, 5, 13, 9, 34, 161, 2, 9, 66, 21, 0, 37, 1, 129,
+  4, 129, 2, 192, 5, 13, 9, 34, 161, 2, 9, 66, 21, 0, 37, 1, 117, 1, 129,
   2, 9, 50, 129, 2, 9, 81, 37, 63, 117, 6, 129, 2, 5, 1, 9, 48,
   38, 95, 9, 117, 16, 129, 2, 9, 49, 38, 55, 4, 129, 2, 192, 192,
   192,
@@ -36,8 +36,17 @@ function record(flags, point) {
 export function report(records) {
   if (!Array.isArray(records) || records.length < 1 || records.length > 2)
     throw new TypeError('HID report needs one or two contact records');
+  // The hybrid descriptor consumes the filler record as contact 1 when a
+  // single contact is released.  Leaving it as all-zero bytes makes the
+  // kernel interpret the packet as an unnamed contact transition; the next
+  // Click can then stay latched and Fusion never receives the UP.  Active
+  // single-contact packets keep the historical zero filler; release packets
+  // explicitly name contact 1 as inactive.
+  const filler = records.length === 1
+    ? [records[0].flags === 0 ? 4 : 0, 0, 0, 0, 0]
+    : [];
   return [1, records.length, ...records.flatMap(({ flags, point }) => record(flags, point)),
-    ...(records.length === 1 ? [0, 0, 0, 0, 0] : [])];
+    ...filler];
 }
 
 export class HidWireTransport {

@@ -1,6 +1,52 @@
 # Plan progress
 
-**Updated:** 2026-09-01
+**Updated:** 2026-09-02
+
+2026-09-02 native Foxy hall collection — six empty and six operator-labelled
+Foxy frames were captured from the g56 at the native 2400x1080 RGBA sensor
+geometry (`captures/screencheck/foxy-hall/`, ignored with the other captures).
+The provisional `foxy_hall_red_cells` channel over `[1650,300,450,400]`, step
+8, redness floor 15 reads empty=0 and Foxy=32 on all six respective frames,
+with calibration margin 16.0 against the 5.0 floor. The 23-entry helper was
+rebuilt and installed as `com.fnaf2.cuehelper` version 10 (`0.1.9`). This is a
+single-session collection result, not an independent holdout or a Night 6
+claim; live Foxy promotion remains refused until a separated encounter and
+the pan-offset/view gate are implemented.
+
+2026-09-01 completed the campaign handoff and modern physical composition layer
+for the remaining Night 6 → Night 7 work. `custom-night-config-v1` now
+validates the ten 20 dials and Puppet 15; `custom-night-calibration-v1`
+requires measured Custom Night menu, dial, Start, and readback geometry; and
+the bounded configurator adjusts from an observed starting state before
+requiring a fresh full readback. The campaign bundle binds one compiled
+full-night plan per target. `DeviceLocalArtifactExecutor` remains the
+deterministic test adapter; `AdbDeviceLocalArtifactExecutor` expands the bound
+semantic schedule and transfers one device-local HID script with bounded
+contact/macro encoding. Both return `UNVERIFIED` until lifecycle proof accepts
+a positive 6 AM. `campaign-proof-v1` and `device-campaign-result-v1` retain
+terminal, retry, Custom Night readback, and save/menu advancement facts. The
+CLI exposes `--guided`, bundle/calibration/qualification inputs, and a combined
+campaign preflight. Offline campaign, physical-schedule, composition, bridge,
+typecheck, and affected gates pass. **Open:** the selected phone is connected
+but the candidate profile remains `dryRunOnly`; Custom Night calibration,
+external `DEVICE_MEASURED` qualification, and actual Night 6/Night 7 wins are
+still absent.
+Latest affected/device fixture evidence: `run-20260902005811-9d6124fd-4e4c57`
+(`FIXTURE`, not physical gameplay evidence).
+
+2026-09-01 integrated Night 6/7 device campaign infrastructure — added the
+versioned campaign spec and FSM (`device-campaign-v1`), ordered campaign
+runner, closed ADB discovery/preflight (`device-adb-preflight-v1`), physical
+HID/Cue Helper ports, and persisted full-night artifact timing bounds. The
+campaign distinguishes story Night 6 via Continue from Custom Night 7 with
+all ten dials at 20 and Puppet 15; it caps retries, holds on UNKNOWN, and
+requires positive 6 AM plus save/menu advancement before completion. The
+affected suite and full `npm test` pass. Fixture result:
+`run-20260902002645-90f6cddf-4e4c57` (`FIXTURE`, not physical gameplay
+evidence). **Open:** `adb devices` currently has no ready phone; the HID /
+MediaProjection candidate profiles remain `dryRunOnly`, Custom Night menu/dial
+coordinates remain unmeasured, and no qualified device-local executor or Night
+6/Night 7 win evidence exists yet.
 
 2026-09-01 double-camera arming verification wiring — the native Cue Helper
 camera detector now preserves every firmly highlighted camera button, so a

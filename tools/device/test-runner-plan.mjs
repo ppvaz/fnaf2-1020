@@ -12,29 +12,23 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { build, devicePlan, replay, DEVICE_SPACING_MS, MODEL_SLOT_MS,
-         MIN_CONTACT_MS } from './recipe.mjs';
+         MIN_CONTACT_MS, MASK_RAISE_GAP_MS } from './recipe.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 // Two sources, and the split made the difference visible for the first time.
-// `src` is the HOST script -- what runs on this machine: pushing the plan,
-// launching adb, the state helpers. `driver` is the program that runs on the
-// PHONE. They used to be one file, so a check could assert a device-side fact
-// against host text or the reverse and nobody could see it. Five checks below
-// were reading the host for driver-side subjects until 2026-08-26; they only
-// passed because the driver happened to be inside the host file.
+// `driver` is the program assembled and sent to the PHONE. The old compatibility
+// script remains only as the host-side plan-push fixture used by the checks below;
+// it is deliberately not used for the active runner's geometry defaults.
 const src = readFileSync(join(here, 'legacy-trial.sh'), 'utf8');
+const argsSrc = readFileSync(join(here, 'trial', '01-arguments.sh'), 'utf8');
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 
-// These values are carried into the session manifest and the remote driver's
-// argument header. They do not schedule the generated plan, which makes a stale
-// copy especially dangerous: the night behaves correctly while its evidence
-// claims a different actuator. Pin both defaults to the recipe authority.
-const spacingDefault = src.match(/^PLAN_SPACING_MS="\$\{PLAN_SPACING_MS:-(\d+)\}"$/m)?.[1];
-const contactDefault = src.match(/^PLAN_CONTACT_MS="\$\{PLAN_CONTACT_MS:-(\d+)\}"$/m)?.[1];
-check(+spacingDefault === DEVICE_SPACING_MS,
-  `runner records ${spacingDefault || 'no'} ms sweep spacing, recipe emits ${DEVICE_SPACING_MS}`);
-check(+contactDefault === MIN_CONTACT_MS,
-  `runner records ${contactDefault || 'no'} ms sweep contact, recipe emits ${MIN_CONTACT_MS}`);
+// The active runner receives these values as positional plan metadata. It must
+// not invent defaults or carry a second schedule-bearing copy.
+check(/^PLAN_SPACING_MS=\$1; shift$/m.test(argsSrc),
+  'the active runner must take sweep spacing from the emitted plan metadata');
+check(/^PLAN_CONTACT_MS=\$1; shift$/m.test(argsSrc),
+  'the active runner must take sweep contact from the emitted plan metadata');
 
 // The whole remote program, not a slice of it.
 //
@@ -216,8 +210,9 @@ check(/run_cycle opening "\$IDLE_UNTIL"/.test(block),
   'inline schedule the model gate exists to refuse');
 // The flick is one actuator row so human jitter shifts the two game inputs
 // together and the HID macro preserves the measured-safe seam.
-check(plan.clear[2].split(' ')[2] === '180' && plan.attack[2].split(' ')[2] === '180',
-  'maskraise must preserve the 180 ms device-safe press-to-press gap');
+check(plan.clear[2].split(' ')[2] === String(MASK_RAISE_GAP_MS) &&
+      plan.attack[2].split(' ')[2] === String(MASK_RAISE_GAP_MS),
+  `maskraise must preserve the sourced ${MASK_RAISE_GAP_MS} ms mask-off gap`);
 
 // The desync recovery must close its loop, because the cause is the engine.
 //

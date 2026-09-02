@@ -12,8 +12,8 @@ import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
 import { validateExecutorRequest } from './artifact-executor.js';
 
-const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL',
-  'cam:10', 'cam:4', 'cam:7', 'cam:11', 'wind']);
+const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR',
+  'cam:10', 'cam:4', 'cam:7', 'cam:9', 'cam:11', 'wind']);
 
 const cameraControl = control => typeof control === 'string' && control.startsWith('cam:');
 
@@ -35,7 +35,7 @@ export function requiredMonitorState(command) {
 export class DeviceControlService {
   /** @param {any} options */
   constructor(options = {}) {
-    const { profile, actuator, sensor = null, detector = null, artifactRoot = 'artifacts', mode = 'dry-run', maxActions, now = () => performance.now(), sleep, executor = null } = options;
+    const { profile, actuator, sensor = null, detector = null, artifactRoot = 'artifacts', mode = 'dry-run', maxActions, now = () => performance.now(), sleep, executor = null, modelHash = 'model-sim-v1', policyHash = 'policy-fixture-v1' } = options;
     this.profile = resolveProfile(profile);
     this.actuator = actuator;
     this.artifactRoot = artifactRoot;
@@ -46,6 +46,8 @@ export class DeviceControlService {
     this.sensor = sensor;
     this.detector = detector;
     this.executor = executor;
+    this.modelHash = modelHash;
+    this.policyHash = policyHash;
     this.session = null;
     this.supervisor = null;
     this.commandKeys = new Set();
@@ -77,7 +79,8 @@ export class DeviceControlService {
     if (this.session && this.session.status === 'ACTIVE') throw new Error('session lease already held');
     const id = `run-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}-${stableHash(lease).slice(-6)}`;
     const profileHash = stableHash(this.profile);
-    this.session = { id, lease, status: 'ACTIVE', profileHash, events: [], results: [], artifacts: {} };
+    this.session = { id, lease, status: 'ACTIVE', profileHash, modelHash: this.modelHash,
+      policyHash: this.policyHash, events: [], results: [], artifacts: {} };
     this.supervisor = new SafetySupervisor({ profile: this.profile, maxActions: this.maxActions, dryRun: this.mode !== 'live' });
     this.commandKeys.clear();
     this.event('session.started', { lease, mode: this.mode });
@@ -306,7 +309,7 @@ export class DeviceControlService {
 
   async finish(extra = {}) {
     this.session.artifacts = { manifest: 'session-manifest.json', result: 'result.json' };
-    const manifest = makeManifest({ id: this.session.id, profile: this.profile, profileHash: this.session.profileHash, modelHash: 'model-sim-v1', policyHash: 'policy-fixture-v1', events: this.session.events, artifacts: this.session.artifacts, outcome: this.session.outcome ?? 'IN_PROGRESS' });
+    const manifest = makeManifest({ id: this.session.id, profile: this.profile, profileHash: this.session.profileHash, modelHash: this.session.modelHash, policyHash: this.session.policyHash, events: this.session.events, artifacts: this.session.artifacts, outcome: this.session.outcome ?? 'IN_PROGRESS' });
     const claimLevel = this.mode === 'live' ? (this.actuator.capabilities?.().claimLevel ?? 'DEVICE_MEASURED') : 'FIXTURE';
     const result = { schema: 'device-run-result-v1', id: this.session.id, evidenceId: this.session.id, mode: this.mode, claimLevel, outcome: this.session.outcome, profile: this.profile.id, profileHash: this.session.profileHash, results: this.session.results, ...extra };
     await mkdir(join(this.artifactRoot, this.session.id), { recursive: true });

@@ -177,6 +177,10 @@ mask_and_raise_at() {
     echo "maskraise gap $gap ms is shorter than its $TAP_CONTACT_MS ms mask contact" >&2
     exit 47
   }
+  [ "$gap" -ge "$MASK_RAISE_GAP_MS" ] || {
+    echo "maskraise gap $gap ms ends inside the sourced mask-off animation; minimum is $MASK_RAISE_GAP_MS ms" >&2
+    exit 47
+  }
   wait_until "$offset"
   now_rel
   actual=$NOW_REL

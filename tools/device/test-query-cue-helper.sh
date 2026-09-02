@@ -27,14 +27,14 @@ for transport in loopback forward; do
   status="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
     "$HERE/query-cue-helper.sh" watchlist status)"
   case "$status" in
-    *"watch=OFF"*"entries=20"*) ;;
+    *"watch=OFF"*"entries=23"*) ;;
     *) echo "unexpected $transport watch status: $status" >&2; exit 1 ;;
   esac
   loaded="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \
     "$HERE/query-cue-helper.sh" watchlist load \
     aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa)"
   case "$loaded" in
-    *"watch=ACTIVE"*"entries=20"*) ;;
+    *"watch=ACTIVE"*"entries=23"*) ;;
     *) echo "unexpected $transport watch load: $loaded" >&2; exit 1 ;;
   esac
   reading="$(CUE_HELPER_TRANSPORT="$transport" PATH="$TEMP_DIR/bin:$PATH" \

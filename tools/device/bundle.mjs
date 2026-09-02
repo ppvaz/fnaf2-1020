@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { emitPlan as emitToysPlan, KNOBS0 as TOYS_KNOBS,
   replay as replayToys } from './minus-toys-plan.mjs';
 import { build as buildMinus7, devicePlan as emitMinus7Plan,
-  idleUntilMs as minus7IdleUntil, replay as replayMinus7 } from './recipe.mjs';
+  idleUntilMs as minus7IdleUntil, replay as replayMinus7, MASK_RAISE_GAP_MS } from './recipe.mjs';
 import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
 import { canonicalJson, stableHash, validateProfile } from '@fnaf2-1020/core/contracts';
 
@@ -136,7 +136,8 @@ function parseRow(line, cycle) {
     if (fields.length !== 3 || !['hall', 'up'].includes(fields[1])) fail(`${cycle} maskraise row shape is invalid`);
     const gap = numberToken(fields[0], `${cycle} maskraise gap`, { positive: true });
     const duration = numberToken(fields[2], `${cycle} maskraise duration`, { positive: true });
-    if (gap <= 33) fail(`${cycle} maskraise gap must leave released time after the 33 ms mask contact`);
+    if (gap < MASK_RAISE_GAP_MS)
+      fail(`${cycle} maskraise gap must be at least the sourced ${MASK_RAISE_GAP_MS} ms mask-off completion gap`);
     return { at, kind, gap, mode: fields[1], duration };
   }
   if (kind === 'camdrop') {

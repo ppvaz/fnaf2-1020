@@ -128,9 +128,13 @@ tools/device/capture-screen-sample.sh gf-hall empty empty-01 1200 540 900
 
 The optional coordinates hold a light/control on-device and capture after
 `CAPTURE_DELAY` (default 350 ms), without inserting a host round trip between
-the press and screenshot. Keep a hall hold below Golden Freddy's 1.67 s exposure
-fuse. The capture tool checks game focus and refuses overwrite, but the operator
-is still responsible for proving the label.
+the press and screenshot. For a clean calibration frame, the capture tool
+temporarily disables Android's `show_touches` and `pointer_location` overlays
+and restores their prior values on every exit; set
+`SUPPRESS_TOUCH_INDICATORS=0` only when deliberately recording those overlays.
+Keep a hall hold below Golden Freddy's 1.67 s exposure fuse. The capture tool
+checks game focus and refuses overwrite, but the operator is still responsible
+for proving the label.
 
 Build from calibration frames, requiring leave-one-out separation:
 
@@ -441,6 +445,34 @@ The immediate honest fix is to make a panned office a refusal rather than a
 verdict: measure pan alongside the read and return `UNKNOWN(panned)`, which the
 existing fail-closed rule already handles. Making the classifier pan-*aware*, or
 stopping the pan, are both larger and need the cause first.
+
+### The planned geometry: pan offset transforms office ROIs (2026-09-02)
+
+The long-term answer is not a second hand-maintained ROI table for the right
+vent. Keep office observations in a canonical, unpanned scene coordinate
+system and transform them with the measured pan offset for each native frame:
+
+```text
+screen_x = reference_x + pan_offset
+screen_y = reference_y
+```
+
+The offset must be an emitted sensor fact, with its residual and confidence,
+derived from a small static office edge/profile on the device. The existing
+`pan-shift.py` is an offline proof of the measurement; its full-frame
+correlation is not the live implementation because a screencap-sized operation
+spends too much of the cycle budget. The helper already owns the native frame,
+so the production detector should use a narrow, device-side reference profile
+and return `pan_offset`, confidence, and refusal on a weak or contradictory
+match.
+
+Only scene-anchored office ROIs are transformed. HUD, monitor-map, and other
+fixed-screen ROIs remain in screen coordinates. While the view is moving, or
+the offset is not confidently measured, all office facts are `UNKNOWN` and
+office-coordinate inputs are suppressed. An unexpected measurable pan still
+means desync and must enter recovery; measuring it does not make the already
+mislanded input safe. An intentional, stable pan may instead allow the same
+canonical Foxy/vent ROI to follow the scene into the right-vent view.
 
 
 ---

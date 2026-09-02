@@ -82,6 +82,13 @@ const contractEvidence = {
   'pcm-udp-v1': ['tools/cue/test-audio-authority.py'],
   'hid-executor-v1': ['tools/device/test-runner-plan.mjs'],
   'device-executor-v1': ['apps/device/test/service.test.js'],
+  'device-campaign-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-runner.test.js'],
+  'device-adb-preflight-v1': ['apps/device/test/adb-bridge.test.js'],
+  'device-campaign-result-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-runner.test.js'],
+  'campaign-proof-v1': ['apps/device/test/campaign-runner.test.js'],
+  'custom-night-config-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-infrastructure.test.js'],
+  'custom-night-calibration-v1': ['apps/device/test/campaign-infrastructure.test.js'],
+  'device-campaign-preflight-v1': ['apps/device/test/campaign-infrastructure.test.js'],
   'monitor-rule-v1': ['packages/adapters/test/monitor-rule.test.js', 'tools/device/test-monitor-calibrate.py'],
   'camera-rule-v1': ['packages/adapters/test/camera-rule.test.js', 'tools/device/test-camera-calibrate.py'],
 };

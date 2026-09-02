@@ -167,12 +167,16 @@ if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
       exit 44
     }
   done
-  rm -f "$epoch_raw" "$epoch_raw.clock" "$epoch_raw.flash" "$READYFILE"
+  # READYFILE means the HID device is attached to InputReader, not that the
+  # epoch latch is still pending. Keep it through the run so a caller that
+  # arms during the intro cannot lose the readiness edge while the first HUD
+  # capture is being classified; cleanup_remote removes it at exit.
+  rm -f "$epoch_raw" "$epoch_raw.clock" "$epoch_raw.flash"
 else
   while [ ! -e "$STARTFILE" ]; do
     sleep 0.02
   done
-  rm -f "$READYFILE" "$STARTFILE"
+  rm -f "$STARTFILE"
   T0=$(date +%s%3N)
   read start_up_u start_up_rest < /proc/uptime
   T0_UP_MS=$(( (${start_up_u%.*} * 100 + 10#${start_up_u#*.}) * 10 ))

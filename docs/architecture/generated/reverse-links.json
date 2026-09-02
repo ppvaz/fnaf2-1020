@@ -92,6 +92,19 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
+      "id": "contract.campaign-proof-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/campaign-proof.js",
+      "line": 3,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.campaign-proof-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-runner.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.capability-v1",
       "kind": "CONTRACT",
       "path": "packages/adapters/src/registry.js",
@@ -138,6 +151,13 @@
     {
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
+      "path": "apps/device/src/physical-ports.js",
+      "line": 9,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
       "path": "packages/adapters/src/transports/cue-helper.js",
       "line": 5,
       "relation": "REFERENCES"
@@ -146,13 +166,38 @@
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
       "path": "packages/adapters/src/transports/cue-helper.js",
-      "line": 26,
+      "line": 36,
       "relation": "REFERENCES"
     },
     {
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
       "path": "tools/cue/test-cue.py",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.custom-night-calibration-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-infrastructure.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.custom-night-config-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/custom-night.js",
+      "line": 7,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.custom-night-config-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-infrastructure.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.custom-night-config-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -169,10 +214,88 @@
       "relation": "REFERENCES"
     },
     {
+      "id": "contract.device-adb-preflight-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/adb-bridge.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-adb-preflight-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/adb-bridge.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.device-bundle-v1",
       "kind": "CONTRACT",
       "path": "tools/device/test-bundle.mjs",
       "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-campaign-preflight-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/campaign-preflight.js",
+      "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-campaign-preflight-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-infrastructure.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-campaign-result-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-runner.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-campaign-result-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-campaign-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/campaign-runner.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-campaign-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/campaign.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-campaign-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/modern-campaign-ports.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-campaign-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign-runner.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-campaign-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/campaign.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/adb-device-local-executor.js",
+      "line": 9,
+      "relation": "REFERENCES"
     },
     {
       "id": "contract.device-executor-v1",
@@ -184,8 +307,22 @@
     {
       "id": "contract.device-executor-v1",
       "kind": "CONTRACT",
+      "path": "apps/device/src/device-local-executor.js",
+      "line": 9,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
       "path": "apps/device/src/mcp.js",
       "line": 5,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/modern-campaign-ports.js",
+      "line": 8,
       "relation": "REFERENCES"
     },
     {
@@ -224,6 +361,20 @@
       "kind": "CONTRACT",
       "path": "packages/core/test/fixtures/fact-message-v1.jsonl",
       "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/adb-device-local-executor.js",
+      "line": 9,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.hid-executor-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/physical-ports.js",
+      "line": 9,
+      "relation": "REFERENCES"
     },
     {
       "id": "contract.hid-executor-v1",
@@ -276,13 +427,6 @@
       "kind": "CONTRACT",
       "path": "packages/adapters/test/monitor-rule.test.js",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.monitor-rule-v1",
-      "kind": "CONTRACT",
-      "path": "plans/PROGRESS.md",
-      "line": 26,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.monitor-rule-v1",
