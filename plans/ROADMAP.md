@@ -243,7 +243,8 @@ Kept visible so it is neither mistaken for a blocker nor for dead work:
   measured trainer timing by step — practice runs, not more modelling. Plan 24
   P1–P4 and P3A are offline foundations; the live pilots (P5, P6) depend on
   Plan 23's activity gate, so they queue behind A3 rather than gating it.
-  Plan 03 still needs its Android vent/endgame rules sourced.
+  Plan 03's Android vent/mask/light sourcing is complete; its reactive coach,
+  decision table, lesson ladder, and grading remain unimplemented.
 - **In-APK bot (Plan 17).** An independent route with its own ladder; the
   recompiled engine already renders on the g56. If it ever observes and acts
   internally with an auditable trace it changes which path climbs Track A — it
