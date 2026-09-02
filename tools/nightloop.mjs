@@ -90,7 +90,10 @@ function runOne(index, mode) {
   const controller = new CycleController({ cycles: LIBRARY });
   controller.reduced.night = NIGHT;
   const selected = {};
+  /** @type {any[]} */ const pending = [];
   let actions = 0;
+  let released = 0;
+  let refused = 0;
 
   while (sim.alive && !sim.won && sim.frame < C.NIGHT_FRAMES) {
     if (mode !== 'open-loop' && sim.frame % 4 === 0) {
@@ -101,10 +104,23 @@ function runOne(index, mode) {
         exactGate: cycle => exactGate(sim, cycle), score: route,
       });
       if (decision.selected) selected[decision.selected] = (selected[decision.selected] ?? 0) + 1;
-      for (const action of controller.commit(decision, { frame: sim.frame }).actions) {
+      const committed = controller.commit(decision, { frame: sim.frame });
+      for (const action of committed.actions) {
         sim[action.kind](action.action);
         actions++;
       }
+      // Scheduling is the caller's. The controller commits only an immediate
+      // prefix; without this queue a primitive's release is simply dropped and
+      // the input stays held -- on a phone, a touch contact never lifted.
+      for (const action of committed.deferred) pending.push(action);
+    }
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (sim.frame < pending[i].dueFrame) continue;
+      const action = pending[i];
+      const result = controller.releaseDeferred(action, { frame: sim.frame });
+      if (result.accepted) { sim[action.kind](action.action); released++; actions++; }
+      else refused++;
+      pending.splice(i, 1);
     }
     sim.tick();
     if (TRACE_PROGRESS && sim.frame % 4000 === 0)
@@ -113,16 +129,21 @@ function runOne(index, mode) {
         `cam=${controller.reduced.viewedCamera} dec=${controller.decisions.length} heap=${(process.memoryUsage().heapUsed/1e6).toFixed(0)}MB`);
   }
   return { won: sim.won, frame: sim.frame,
-    death: sim.death?.reason ?? null, actions, selected, gateCalls: GATE_CALLS };
+    death: sim.death?.reason ?? null, actions, selected, gateCalls: GATE_CALLS,
+    released, refused, stranded: pending.length };
 }
 
 function cohort(mode) {
-  const result = { mode, won: 0, deaths: {}, actions: 0, selected: {}, frames: 0, gateCalls: 0 };
+  const result = { mode, won: 0, deaths: {}, actions: 0, selected: {}, frames: 0,
+    gateCalls: 0, released: 0, refused: 0, stranded: 0 };
   for (let i = 0; i < RUNS; i++) {
     GATE_CALLS = 0;
     const at = Date.now();
     const run = runOne(i, mode);
     result.gateCalls += run.gateCalls;
+    result.released += run.released;
+    result.refused += run.refused;
+    result.stranded += run.stranded;
     if (!process.argv.includes('--quiet'))
       console.log(`    seed ${i} ${mode}: frame=${run.frame} death=${run.death ?? (run.won ? 'won' : 'none')} ` +
         `actions=${run.actions} gateCalls=${run.gateCalls} ${((Date.now() - at) / 1000).toFixed(1)}s`);
@@ -160,7 +181,8 @@ for (const arm of [estimator, disabled, openLoop]) {
   console.log(`  ${arm.mode.padEnd(10)} ${String(arm.won).padStart(3)}/${RUNS} survived, ` +
     `${(arm.seconds ?? 0).toFixed(1)}s, ` +
     `${String(arm.actions).padStart(5)} actions, ` +
-    `mean ${(arm.frames / RUNS / C.FPS).toFixed(1)}s alive, ${arm.gateCalls} exact checks`);
+    `mean ${(arm.frames / RUNS / C.FPS).toFixed(1)}s alive, ${arm.gateCalls} exact checks, ` +
+    `${arm.released} released / ${arm.refused} refused / ${arm.stranded} stranded`);
   console.log(`    deaths ${JSON.stringify(arm.deaths)}`);
   if (Object.keys(arm.selected).length)
     console.log(`    cycles ${JSON.stringify(arm.selected)}`);
@@ -172,6 +194,10 @@ if (ASSERT) {
     else console.log(`ok   ${message}`);
   };
   check(estimator.actions > 0, 'the acting arm actually acted');
+  check(estimator.released > 0,
+    `held inputs were released at their own boundary (${estimator.released})`);
+  check(estimator.stranded === 0,
+    `no deferred action was left holding an input at the end of a night (${estimator.stranded})`);
   check(Object.keys(estimator.selected).length >= 4,
     `the acting arm used a real primitive set (used ${Object.keys(estimator.selected).length})`);
   check(estimator.frames > disabled.frames,
