@@ -2,6 +2,51 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 ROADMAP A1 complete — the two items left open by the
+characterization above are closed, and A1's exit gate is now met on both halves.
+
+**Deferred actions are executed.** `commit()` computed them, returned them, and
+no caller consumed them, so every multi-action primitive ran half-executed and
+left an input held -- on a phone, a touch contact never lifted. Scheduling is
+now the caller's and legality core's, per Pedro's decision and matching
+`tools/device/actuator.mjs`'s existing queue: `commit()` stamps each deferred
+action with its owning cycle and an absolute `dueFrame`, and
+`releaseDeferred()` applies one at its own frame or refuses it with a reason.
+A release lands between observation boundaries -- `C.s(4.5)` is 270 frames,
+not a multiple of the 4-frame read cadence -- so the reduced state is advanced
+to the release frame; requiring the two to coincide refused 23/23 releases and
+was caught by the harness's own assertion.
+
+**The corrected survival number is worse, and that is the honest direction.**
+Night 1, three full nights per arm, seeds 0/1/2: estimator 0/3 survived, 88
+actions, mean 342.8s alive, 21 released / 0 refused / 0 stranded, deaths
+`{"inside-office": 3}`; observation-disabled and open-loop 0/3, 0 actions, mean
+299.3s alive, deaths `{"puppet": 3}`. The previously recorded 1/3 was partly an
+artifact of the defect: a `wind` press never released keeps the box topped up
+for free. The acting arm therefore does **not** beat the controls on survival.
+It beats them on time alive and on cause of death -- both controls die to the
+Puppet 3/3 and the acting arm never does, because it manages the box, dying
+instead to a threat the baseline route makes no attempt to defend against.
+
+**The recorded-facts half is met.** `tools/factreplay.mjs` records a night's
+observation/decision stream as `offline-fact-stream-v1` -- manifest header with
+night, seed, observer configuration, library, commit and a stable digest, then
+one JSON boundary per line -- and drives the controller from that stream alone.
+Full Night 1 seed 0: 5855 boundaries recorded, all 5855 decisions rebuilt
+identically, digest verified on load. Retained exact-gate verdicts travel with
+the stream so a replay has no engine to consult and cannot invent one. This is
+A1's clause, not A2's: Plan 09 P2's open item is a manifest from a **real phone
+run**, and this stream is simulator-produced, claims `MODEL_ONLY`, and says so
+in its own manifest. What it establishes is Plan 20 P1's own done-when.
+
+Typecheck, `test:unit`, `test:contracts`, `test:core`, fact-replay and dry-run
+lanes pass: `run-20260902172714-8770796f-4e4c57` (`FIXTURE`, not gameplay
+evidence). **Open:** Plan 15's fact/adapter contract, Plan 20 P6's real-time
+placement, and re-hosting Plan 19's reaction path on this controller. The
+baseline route scorer remains a declared control and is not a strategy; nothing
+here is promoted, no ladder position moved, and the 47/133 denominator is
+unchanged.
+
 2026-09-02 ROADMAP A1 closed-loop characterization — the belief-state cycle
 controller has now been driven cycle by cycle over a full night for the first
 time. Plan 20 P5's recorded gate is a nine-second horizon against one synthetic
