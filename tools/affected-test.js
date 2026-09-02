@@ -22,6 +22,11 @@ add('references', 'node', ['tools/validate-references.js']);
 if (changed.some(path => path.startsWith('packages/core/'))) {
   add('core-contracts', 'node', ['packages/core/test/contracts.test.js']);
   add('core-mechanics', 'node', ['tools/sourcetest.mjs']);
+  // The closed loop is the device work's spine (ROADMAP Track A); its gates
+  // belong in the same lane as the code they gate, not the legacy campaign.
+  // Keyed by path so an edit to the gate itself (below) dedupes against this.
+  for (const gate of ['cycle-library', 'cycle-planner', 'cycle-controller'])
+    add(`test:packages/core/test/${gate}.test.js`, 'node', [`packages/core/test/${gate}.test.js`]);
 }
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
@@ -32,6 +37,8 @@ if (changed.some(path => path.startsWith('packages/research/')))
   add('research-contracts', 'node', ['packages/research/test/experiment.test.js']);
 if (changed.some(path => path.startsWith('apps/trainer/')))
   add('trainer-build', 'python3', ['tools/build.py']);
+for (const path of changed.filter(p => /^packages\/[^/]+\/test\/.*\.test\.js$/.test(p)))
+  add(`test:${path}`, 'node', [path]);
 if (changed.some(path => path.startsWith('docs/') || path.startsWith('plans/')))
   add('documentation', 'node', ['tools/test-docs.mjs']);
 if (changed.some(path => path.startsWith('tools/model/') || path.startsWith('tools/minus7/')))

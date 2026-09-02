@@ -103,9 +103,6 @@ Paths in the tables are relative to the repository root.
 | `tools/belieftest.mjs` | check | Phone-free Plan 20 belief contract: deterministic replay, unknown-safe facts with provenance, calibration mismatch incidents, and sent-versus-verified control actions. |
 | `tools/reducedmodeltest.mjs` | check | Plan 20 package 2 reduced transition model: controller-visible monitor/mask locks and animation, camera sampling anchor, winding/box, power, and unknown/risk behavior against seeded Night 1 `Sim` traces. |
 | `tools/estimatortest.mjs` | check | Plan 20 package 3 estimator contract: delayed fact timing, UNKNOWN risk preservation, stale-control recovery, calibration refusal, contradictory sensors, and transactional verification. |
-| `tools/cycletest.mjs` | check | Plan 20 package 4 finite cycle gate: reviewed primitive prerequisites, animation-window and device-contact constraints, readable rejection records, and mandatory exact-engine proof callback. |
-| `tools/plannertest.mjs` | check | Plan 20 package 5 selector foundation: worst-case selection across plausible reduced states and visible rejection/selection records. |
-| `tools/cyclecontrollertest.mjs` | check | Plan 20 package 5 controller gate: exact-engine blackout scenarios compare fixed open-loop, truth-state oracle, observation-disabled, and delayed/dropped estimator control without a privileged production read. |
 | `tools/tracetest.mjs` | check | Gates the trainer's per-step trace: the Coach's census rows against scripted lateness, `tracereport.mjs` banding math, and serve.py's `/save-trace` against a temporary directory. No browser or phone. |
 | `tools/tracereport.mjs [dir]` | report | Bands the recorded trainer traces per step: lateness quantiles, wind-hold coverage, inter-press spacing, and provenance. Excludes webdriver and off-speed runs from the census. The measured replacement for plans/04's `[INFERRED]` human profile, once enough runs accumulate. |
 

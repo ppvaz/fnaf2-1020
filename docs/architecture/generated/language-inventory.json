@@ -2,28 +2,28 @@
   "schema": "language-inventory-v1",
   "languages": {
     "Shell": {
-      "files": 63,
-      "lines": 10927
+      "files": 126,
+      "lines": 21854
     },
     "JavaScript": {
-      "files": 237,
-      "lines": 40497
+      "files": 480,
+      "lines": 82645
     },
     "TypeScript": {
-      "files": 2,
-      "lines": 174
+      "files": 4,
+      "lines": 348
     },
     "C": {
-      "files": 4,
-      "lines": 2125
+      "files": 8,
+      "lines": 4250
     },
     "Assembly": {
-      "files": 1,
-      "lines": 12
+      "files": 2,
+      "lines": 24
     },
     "Python": {
-      "files": 96,
-      "lines": 19407
+      "files": 192,
+      "lines": 38814
     }
   }
 }

@@ -82,13 +82,10 @@ const ENGINE = [
   ['estimator', ['estimatortest.mjs']],
   // Plan 20 package 4: reviewed cycle data, reduced-model locks, device
   // contact floors, and mandatory exact-engine proof callback.
-  ['cycle library', ['cycletest.mjs']],
   // Plan 20 package 5 foundation: worst-case (not average) selection across
   // plausible reduced states with readable rejection records.
-  ['cycle planner', ['plannertest.mjs']],
   // Plan 20 package 5: exact-engine blackout controls compare fixed open-loop,
   // truth-state oracle, disabled observations, and the estimator controller.
-  ['cycle controller', ['cyclecontrollertest.mjs']],
   // Plan 21 package 1: the current Minimal Minus Toys headers are represented
   // once as finite policy IR and round-trip with a canonical hash.
   ['policy IR', ['device/test-policy-ir.mjs']],

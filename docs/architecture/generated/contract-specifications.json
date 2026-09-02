@@ -83,7 +83,7 @@
       "runtimeValidation": "Controller",
       "conformanceFixtures": [
         "tools/reactivetest.mjs",
-        "tools/cyclecontrollertest.mjs"
+        "packages/core/test/cycle-controller.test.js"
       ]
     },
     {

@@ -201,7 +201,7 @@ constraint, and every selected cycle has a readable decision record.
 `src/cycle-library.js` provides reviewed wind, mask, hall-reset, and
 monitor-verification primitives. Its gate checks reduced-model prerequisites,
 animation collisions, contact/released gaps, and a required exact-engine proof
-callback; `tools/cycletest.mjs` pins both accepted records and fail-closed
+callback; `packages/core/test/cycle-library.test.js` pins both accepted records and fail-closed
 controls.
 
 ### P5 -- robust short-horizon selector — DONE (worktree)
@@ -218,7 +218,7 @@ observation control without approaching the oracle through privileged state.
 library, and worst-case selector. It accepts only fact envelopes and commits
 the selected cycle's immediate prefix; delayed actions remain deferred until a
 new boundary and control actions stay locked until a matching observation
-reconciles them. `tools/cyclecontrollertest.mjs` runs the exact engine over a
+reconciles them. `packages/core/test/cycle-controller.test.js` runs the exact engine over a
 bounded, sourced five-second-blackout scenario: the fixed and observation-
 disabled controls score 0/80, the normal delayed/dropped estimator scores
 80/80, the deliberately harsh stress control scores 13/80, and the explicit

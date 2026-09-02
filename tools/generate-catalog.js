@@ -54,7 +54,7 @@ const contractEvidence = {
   'plant-model-v1': ['tools/sourcetest.mjs', 'tools/simtest.mjs'],
   'semantic-control-v1': ['packages/core/test/contracts.test.js', 'tools/device/test-policy-interpreter.mjs'],
   'policy-program-v1': ['tools/policygrammartest.mjs', 'tools/device/test-policy-ir.mjs'],
-  'controller-v1': ['tools/reactivetest.mjs', 'tools/cyclecontrollertest.mjs'],
+  'controller-v1': ['tools/reactivetest.mjs', 'packages/core/test/cycle-controller.test.js'],
   'trajectory-v1': ['packages/runtime/test/scheduler.test.js'],
   'qualification-v1': ['apps/device/test/service.test.js'],
   'raw-sample-v1': ['packages/adapters/test/conformance.test.js'],
