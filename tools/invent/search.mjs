@@ -89,7 +89,12 @@ export function rollout(genome, { night = 7, seed = 0, customNight = null } = {}
   const sim = new Sim({ night, seed, ...(customNight ? { customNight } : {}) });
   const constants = constantsFor(night, customNight);
   let registers = new Array(REGISTER_COUNT).fill(0);
-  let guard = 0, inputs = 0, decisions = 0, branchFires = 0;
+  // Winding is the ONLY box defence and it runs through the monitor (CAM 11),
+  // which is also what completes Balloon Boy's monitor-gated final hop (g417).
+  // Package 8's interrogation (box-anatomy.mjs) measured both committed bb
+  // frontiers at ZERO wind decisions -- a posture, not a strategy. The count
+  // travels with every result so a frontier entry self-declares its posture.
+  let guard = 0, inputs = 0, decisions = 0, branchFires = 0, windDecisions = 0;
   while (sim.alive && !sim.won && guard++ < GUARD) {
     const observation = view(sim);
     const step = interpret(genome, observation, { registers, constants });
@@ -98,31 +103,35 @@ export function rollout(genome, { night = 7, seed = 0, customNight = null } = {}
     // `rule: -1` means the fallback ran, i.e. no observation-conditioned
     // branch was taken on this decision.
     if (step.rule >= 0) branchFires++;
+    if (step.action === 'WIND' || step.action === 'WIND_LONG') windDecisions++;
     const plan = ACTIONS[step.action](observation);
     inputs += plan.steps.length;
     run(sim, plan);
   }
   return { won: sim.won, frames: sim.frame, inputs, decisions, branchFires,
-    death: sim.death?.reason ?? null };
+    windDecisions, death: sim.death?.reason ?? null };
 }
 
 /** The reactive baseline, run through the same harness for a fair comparison. */
 export function reactiveRollout({ night = 7, seed = 0, customNight = null } = {}) {
   const sim = new Sim({ night, seed, ...(customNight ? { customNight } : {}) });
-  let guard = 0, inputs = 0;
+  let guard = 0, inputs = 0, windDecisions = 0;
   while (sim.alive && !sim.won && guard++ < GUARD) {
     const observation = view(sim);
-    const plan = ACTIONS[decide(observation, night, customNight)](observation);
+    const action = decide(observation, night, customNight);
+    if (action === 'WIND' || action === 'WIND_LONG') windDecisions++;
+    const plan = ACTIONS[action](observation);
     inputs += plan.steps.length;
     run(sim, plan);
   }
-  return { won: sim.won, frames: sim.frame, inputs,
+  return { won: sim.won, frames: sim.frame, inputs, windDecisions,
     death: sim.death?.reason ?? null };
 }
 
 /** Survival over a seeded cohort. Deaths are reported, never averaged away. */
 export function evaluate(runner, { seeds = ADMISSION_SEEDS, ...options } = {}) {
-  let won = 0, inputs = 0, frames = 0, decisions = 0, branchFires = 0;
+  let won = 0, inputs = 0, frames = 0, decisions = 0, branchFires = 0,
+    windDecisions = 0;
   const deaths = {};
   for (let seed = 0; seed < seeds; seed++) {
     const result = runner(seed);
@@ -132,10 +141,11 @@ export function evaluate(runner, { seeds = ADMISSION_SEEDS, ...options } = {}) {
     frames += result.frames;
     decisions += result.decisions ?? 0;
     branchFires += result.branchFires ?? 0;
+    windDecisions += result.windDecisions ?? 0;
   }
   return { seeds, won, rate: won / seeds, deaths,
     meanInputs: inputs / seeds, meanFrames: frames / seeds,
-    decisions, branchFires,
+    decisions, branchFires, windDecisions,
     branchRate: decisions ? branchFires / decisions : 0, ...options };
 }
 
@@ -175,6 +185,29 @@ const registersUsed = genome => {
   for (const rule of genome.rules) if (rule.set !== undefined) used.add(rule.set);
   return used.size;
 };
+
+/**
+ * Package 8 (Pedro's ruling, 2026-09-02): holding the monitor down to keep
+ * Balloon Boy out is NEVER viable as a strategy, because there is ALWAYS a box
+ * to be wound -- admissible only at the very end of the night, once remaining
+ * charge provably outlasts it (the drain, g653-660, is deterministic). The
+ * committed bb/bb+foxy frontiers measured at ZERO wind decisions: their rate
+ * is P(AI-0 escape ladder outruns the residual night), not a defence. This is
+ * an annotation, not a prune -- the negative stays discoverable in the
+ * frontier rather than being deleted from it.
+ */
+export function boxPosture(result, { night = 7 } = {}) {
+  if (result.windDecisions > 0) return { posture: 'winds' };
+  return {
+    posture: 'box-refusal',
+    why: `zero wind decisions in ${result.seeds} seeds; the box drains ` +
+      `full -> empty in ${(C.boxDrainFrames(night) / C.FPS).toFixed(1)}s ` +
+      'regardless, so on a box-bearing target this rate is P(AI-0 escape ' +
+      'ladder outruns the residual night), not a defence. There is always a ' +
+      'box to be wound; refusal is admissible only as a provable endgame ' +
+      'cutoff.',
+  };
+}
 
 /**
  * Pareto front over (survival up, inputs down, registers down, rules down).

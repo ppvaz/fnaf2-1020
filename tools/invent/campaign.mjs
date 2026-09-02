@@ -18,7 +18,8 @@ import * as C from '@fnaf2-1020/core/mechanics';
 import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
 import {
   ADMISSION_SEEDS, evaluate, rollout, reactiveRollout, EMPTY_GENOME,
-  paretoFront, provenanceManifest, effectiveStaticCover, BRANCH_FLOOR,
+  paretoFront, provenanceManifest, effectiveStaticCover, boxPosture,
+  BRANCH_FLOOR,
 } from './search.mjs';
 import { mutate, crossover, randomGenome, validateGenome } from './policy-lang.mjs';
 import { classifyFamily, closedFamilyRegister } from './closed-families.mjs';
@@ -202,6 +203,10 @@ function searchTarget(target, rng) {
         entry.result.meanFrames > reactiveAdmitted.meanFrames,
       genome: entry.genome,
       manifest: provenanceManifest(entry.genome),
+      // Package 8, Pedro's ruling: a zero-wind genome on a box-bearing target
+      // is a posture, not a strategy. Annotated, never silently dropped.
+      windDecisionsPerSeed: entry.result.windDecisions / ADMIT,
+      boxPosture: boxPosture(entry.result),
       ablation: ablation(entry.genome),
     })),
     pruned: pruningLog.length,
@@ -253,6 +258,9 @@ for (const target of TARGETS) {
         `${best.ablation.essential.length}/${best.rules} rules carry survival, ` +
         `verdict ${best.ablation.verdict}, minimized to ` +
         `${best.ablation.minimized.rules} (${best.ablation.minimized.method})`);
+    for (const e of report.front)
+      console.log(`    posture ${e.boxPosture.posture}` +
+        (e.boxPosture.why ? ` -- ${e.boxPosture.why.split(';')[0]}` : ''));
   }
   if (!best || !best.beatsReaction)
     console.log(`  RESULT: nothing in the searched grammar beat reaction on ${target}.`);
