@@ -215,6 +215,23 @@ simulator" on all of them.
   Plan 06 phase schedule as genomes; the search's novelty filter must classify
   both as known-family and prune them. **Gate:** part of `test-policy-lang.mjs`.
 
+**Partial delivery against a different surface (2026-09-02) — package 6 stays
+open.** ROADMAP B1 needs the language to range over facts *the controller can
+observe within its measured budget*, which is the `Observer` surface, not 6a's
+privileged Custom Night view of `Sim` internals. What landed for that surface:
+`packages/core/src/control/observation-language.js` (the measured per-fact
+observation budget, with all four audio facts `UNKNOWN` and excluded, and the
+host round trip `UNKNOWN`), an observation-conditioned branch construct in
+`tools/device/policy-grammar.mjs`, and a mechanical duplicate control in
+`tools/device/closed-families.{json,mjs}` that classifies any unconditioned
+schedule into the family Plans 05/06/16 closed by recorded negative. That
+satisfies 6c's intent for the branch language and none of 6b's: there is no
+rule-list/register genome, no `serialize`/`parse` round trip, and no proof that
+the language contains `tools/minus7/policy.mjs`'s `decide()`. The two
+observation surfaces are disjoint in privilege and the plan must say which one
+the campaign searches before 6b is written. See `plans/PROGRESS.md`
+§"Plan 05 — Custom Night invention campaign", 2026-09-02.
+
 ### Package 7 — the search
 
 - **7a. Harness.** `tools/invent/search.mjs`: rollout = `interpret` →

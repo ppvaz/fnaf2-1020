@@ -2382,8 +2382,22 @@
         "./cycle-controller.js",
         "./cycle-library.js",
         "./cycle-planner.js",
+        "./observation-language.js",
         "./policy-ir.js",
         "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/observation-language.js",
+      "imports": [
+        "../mechanics/config.js",
+        "../sensing/observer.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/policy-ir.js",
+      "imports": [
+        "./observation-language.js"
       ]
     },
     {
@@ -2767,6 +2781,14 @@
       ]
     },
     {
+      "file": "tools/device/closed-families.mjs",
+      "imports": [
+        "./policy-grammar.mjs",
+        "@fnaf2-1020/core/control",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/device/cue-helper-mcp.mjs",
       "imports": [
         "../../apps/device/src/mcp.js"
@@ -2896,6 +2918,7 @@
     {
       "file": "tools/device/policy-search.mjs",
       "imports": [
+        "./closed-families.mjs",
         "./policy-equivalence.mjs",
         "./policy-grammar.mjs",
         "./policy-interpreter.mjs",
@@ -3478,6 +3501,18 @@
       "imports": [
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing"
+      ]
+    },
+    {
+      "file": "tools/observationlanguagetest.mjs",
+      "imports": [
+        "./device/closed-families.mjs",
+        "./device/policy-equivalence.mjs",
+        "./device/policy-grammar.mjs",
+        "./device/policy-interpreter.mjs",
+        "./device/policy-ir.mjs",
+        "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/sensing"
       ]
     },

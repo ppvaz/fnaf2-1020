@@ -6,7 +6,8 @@
 // gate; device-plan equivalence and contact floors are separate gates.
 import { createHash } from 'node:crypto';
 import { writeFileSync } from 'node:fs';
-import { canonicalPolicy } from '@fnaf2-1020/core/control';
+import { canonicalPolicy, observationLanguage } from '@fnaf2-1020/core/control';
+import { closedFamilyMatches } from './closed-families.mjs';
 import { classifyPolicy, validateGrammarPolicy } from './policy-grammar.mjs';
 import { compilePolicy, replayPolicy } from './policy-interpreter.mjs';
 import { compileDevicePlan, comparePolicyToDevice } from './policy-equivalence.mjs';
@@ -79,7 +80,10 @@ function replayMetrics(policy, { night, seeds, worst = false }) {
 /** Evaluate one candidate and retain every gate/provenance decision. */
 export function evaluateCandidate(policy, {
   night = 1, seeds = 1200, minContactMs = 33, exactDevice = true,
+  closedFamilyPolicy = 'reject',
 } = {}) {
+  if (closedFamilyPolicy !== 'reject' && closedFamilyPolicy !== 'record')
+    throw new RangeError("closedFamilyPolicy must be 'reject' or 'record'");
   if (!Number.isInteger(seeds) || seeds <= 0)
     throw new RangeError('policy search seeds must be a positive integer');
   const reasons = [];
@@ -90,6 +94,13 @@ export function evaluateCandidate(policy, {
   } catch (error) {
     reasons.push(`grammar:${error.message}`);
   }
+  // The duplicate control runs before any expensive gate: re-running a family
+  // Plans 05/06/16 already closed by negative costs seeds and proves nothing.
+  const closedFamilies = (() => {
+    try { return closedFamilyMatches(policy); } catch { return []; }
+  })();
+  if (!reasons.length && closedFamilyPolicy === 'reject' && closedFamilies.length)
+    reasons.push(...closedFamilies.map(match => `closed-family:${match.id}:${match.detail}`));
   if (!reasons.length) {
     const contact = contactGate(policy, minContactMs);
     if (contact.length) reasons.push(`device-contact:${contact.join(',')}`);
@@ -118,6 +129,7 @@ export function evaluateCandidate(policy, {
     policy: clone(policy), normal, device, metric,
   };
   result.knownFamily = classification.family;
+  result.closedFamilies = closedFamilies;
   result.dependencies = {
     sourceDependencies: [...(policy.metadata.sourceDependencies ?? [])],
     calibrationProfile: policy.metadata.calibrationProfile ?? null,
@@ -143,7 +155,9 @@ export function runSearch(base, options = {}) {
   const report = {
     schema: SEARCH_SCHEMA, baseId: base.metadata.id,
     options: { night: options.night ?? 1, seeds: options.seeds ?? 1200,
-      minContactMs: options.minContactMs ?? 33 },
+      minContactMs: options.minContactMs ?? 33,
+      closedFamilyPolicy: options.closedFamilyPolicy ?? 'reject' },
+    language: observationLanguage(),
     candidates, frontier: paretoFrontier(candidates).map(candidate => candidate.id),
   };
   if (options.output) writeFileSync(options.output, JSON.stringify(report, null, 2) + '\n');

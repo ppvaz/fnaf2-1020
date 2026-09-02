@@ -1539,6 +1539,73 @@ model dependency to carry into any result: `src/config.js:166` — Custom Night'
 `night` variable and the 0.75 s cams-up grace have never been read on a real
 Custom Night run.
 
+**2026-09-02 — the observation-conditioned branch language lands, and it is a
+DIFFERENT language from the one pkg 6b specifies. Read the divergence before
+counting anything closed.** ROADMAP B1 requires a grammar that ranges over
+branches conditioned on facts *the controller can actually observe within its
+measured budget*. Plan 21's `policy-v1` had no branch construct at all: its
+five phases are unconditional and its `observations` are recorded and never
+read, so before this change the grammar could not express an
+observation-conditioned branch of any kind. What landed:
+
+- `packages/core/src/control/observation-language.js`
+  (`observation-language-v1`) prices every one of `Observer.FACTS` and refuses
+  to invent a number. The ten **visual** facts carry the DEVICE_MEASURED
+  device-local snapshot read (p95 **59.5 ms**, 60 samples,
+  `docs/device/ON-DEVICE-VALIDATION.md`; reproduce with
+  `tools/device/query-cue-helper.sh latency`) and the modelled `OBSERVE_INTERVAL`
+  cadence (4 frames ≈ 66.7 ms). The four **audio** facts (`bbVent`,
+  `bbVentId`, `mangleStatic`, `mangleStaticCam`) are `UNKNOWN` and **excluded**:
+  the g56 audio path is unmeasured and the `ARM`/`HIT`/`MISS` protocol that
+  would measure it does not exist (`plans/08`). `Observer.audioLatencyFrames`
+  is a modelling knob, not a measurement, and is not promoted to one here.
+  The **host round trip is also `UNKNOWN`** (`readDelayFrames` defaults to 0;
+  the bench trace is host-only), so the budget is valid for a device-local
+  reader only.
+- Two rules the language enforces, both from measured numbers: a branch may not
+  demand a fact fresher than one sample interval plus one read, and may not act
+  on an observation sooner than one read costs.
+- `deviceAdmissibleFacts()` is **empty and stays empty**. Read cost is measured;
+  the classifier threshold on the projection path is *not calibrated* and no
+  per-fact cue model is provisioned, so no branch is device-promotable (Plan 15).
+- `tools/device/closed-families.json` + `closed-families.mjs` make Plans
+  05/06/16's closures mechanical. A candidate with **no** observation-conditioned
+  branch is classified into the family those plans closed by recorded negative;
+  a candidate whose timing-free shape equals a known family's is a Plan 16 knob
+  mutation; a branch on an audio fact is Plan 08 item 10. `policy-search.mjs`
+  runs the control by default in `reject` mode, and `policysearchtest.mjs` pins
+  that its own Minimal candidates are rejected under the default and admitted
+  only as declared controls (`closedFamilyPolicy: 'record'`).
+
+**Where this diverges from pkg 6b as written, and why nothing is marked
+closed.** Plan 05 §6b specifies an ordered rule-list + register-bank genome over
+`tools/invent/observe.mjs`'s **privileged** Custom Night surface (Sim internals:
+character stages, `foxy.d`, stun timers), with a gate that the language
+reproduces `tools/minus7/policy.mjs`'s `decide()` on a 200-seed sample. What
+landed instead branches over the **controller-observable** surface — the 14
+`Observer` facts with their `UNKNOWN` semantics and read preconditions — because
+that is what ROADMAP B1 asks for and what a device can execute. The two surfaces
+are disjoint in privilege and both are legitimate; they answer different
+questions. The 6b expressiveness gate is **not met**, no rule-list/register
+genome exists, and Plan 05 package 6 therefore remains **open**. The mandatory
+package counter is unchanged at 47/133.
+
+**Still blocking Plan 21 P7 / ROADMAP B1–B2 after this change:** the exact-engine
+adapter cannot evaluate a branch. `tools/device/policy-interpreter.mjs`
+`compilePolicy` produces one unconditional event stream, so a branched program
+now **refuses** to compile rather than being silently flattened into one arm and
+replayed under the branched program's name; `compileDevicePlan` refuses for the
+same reason (the device plan text is a static schedule). Until a branched
+interpreter exists — one that reads facts through the `Observer` as the night
+runs — no invention campaign can produce a survival number for a branched
+candidate, and none was run. Gates run for this change: `npm run test:affected`
+(architecture, references, core-contracts, core-mechanics, policy-grammar,
+policy-search, policy-equivalence, observation-language), `npm run typecheck`,
+`npm run test:unit`, `npm run test:contracts`, `npm run test:core`, and
+`npm run device:dry-run` (`result=PASS claim=FIXTURE
+evidence=run-20260902140933-c722e839-4e4c57` — a dry-run fixture, not gameplay
+evidence for anything above).
+
 ### Prior Minus 7 frontier (retained, now scoped)
 
 **2026-08-27 (`740f5b0`) — the plan-16 constrained search is done, both levers

@@ -270,6 +270,18 @@ export function crossover(a, b, rng) {
 
 // Families Plans 05/06/16 already closed by negative. The search must prune a
 // rediscovery mechanically rather than by anyone remembering the prior result.
+//
+// KNOWN DUPLICATION, recorded 2026-09-02 at the Track B1 merge. This list is a
+// weaker parallel of `tools/device/closed-families.json`
+// (`closed-policy-families-v1`), which covers the same charter rule for the
+// controller-observable surface and is better in three ways: it cites where
+// each negative is RECORDED rather than asserting it, it carries an explicit
+// `closure: recorded-negative`, and it holds two families this list does not --
+// `timing-only-mutation` (a known shape at different times, i.e. the knobs
+// Plan 16 swept) and `audio-anchored-branch` (closed on latency, Plan 08).
+// The privileged search is therefore pruning against less than the repository
+// knows. The fix is to consume that registry here rather than maintain two;
+// it is not done, and until it is, this is the weaker of the two controls.
 export const KNOWN_FAMILIES = Object.freeze([
   {
     id: 'static-cover',

@@ -27,6 +27,17 @@ function expandAction(action, baseMs, out) {
 
 export function compilePolicy(program, { untilMs = Infinity } = {}) {
   validatePolicy(program);
+  // This compiler produces one unconditional event stream. An
+  // observation-conditioned branch has no expansion here: flattening it into
+  // either arm would replay a DIFFERENT program from the one being searched,
+  // and the exact-engine replay built on this stream would report that
+  // program's survival under the branch's name. Refuse instead. A branched
+  // interpreter -- one that reads facts through the Observer as the night
+  // runs -- is the next prerequisite (Plan 21 package 2, unported).
+  for (const phase of program.phases) {
+    if ((phase.branches ?? []).length)
+      throw new TypeError(`policy interpreter: phase ${phase.id} carries observation-conditioned branches; this compiler evaluates unconditional programs only`);
+  }
   const events = [];
   for (const phase of program.phases) {
     if (phase.kind === 'repeat') {

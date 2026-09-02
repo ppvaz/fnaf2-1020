@@ -48,6 +48,13 @@ function rowFor(action, repeat) {
 /** Compile the supported policy-v1 phases to the phone's plan text. */
 export function compileDevicePlan(program) {
   validatePolicy(program);
+  // The device plan text is a static schedule: it has no construct for a
+  // decision taken at run time. Refuse rather than silently flatten a branch
+  // into one of its arms -- a flattened branch is a different program.
+  for (const phase of program.phases) {
+    if ((phase.branches ?? []).length)
+      fail(`phase ${phase.id} carries observation-conditioned branches; the device plan format cannot express them`);
+  }
   const byKind = kind => program.phases.find(phase => phase.kind === kind);
   const idle = byKind('idle');
   const setup = byKind('setup');

@@ -43,6 +43,13 @@ if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWit
   add('device-service', 'node', ['apps/device/test/service.test.js']);
   add('device-dry-run', 'node', ['apps/device/src/cli.js', 'dry-run']);
 }
+if (changed.some(path => path.startsWith('packages/core/src/control/') ||
+    path.startsWith('tools/device/policy-') || path.startsWith('tools/device/closed-families'))) {
+  add('policy-grammar', 'node', ['tools/policygrammartest.mjs']);
+  add('policy-search', 'node', ['tools/policysearchtest.mjs']);
+  add('policy-equivalence', 'node', ['tools/policyequivalencetest.mjs']);
+  add('observation-language', 'node', ['tools/observationlanguagetest.mjs']);
+}
 if (changed.some(path => path.startsWith('packages/research/')))
   add('research-contracts', 'node', ['packages/research/test/experiment.test.js']);
 if (changed.some(path => path.startsWith('apps/trainer/')))
