@@ -378,18 +378,28 @@ import { Coach } from '@fnaf2-1020/trainer';
     throw new Error('`office occupied` mutex admitted two shared attackers to marker 122');
 }
 
+// Keep the cycle's input offsets tied to the sourced animation lengths.  A
+// touch is queued at a frame boundary, before that frame's animation tick;
+// the extra three frames are an intentional small execution margin.
+const maskOffReady = 27 + C.MASK_ANIM_OFF + 3;
+const monitorUpTap = maskOffReady + 3;
+const firstCamera = monitorUpTap + C.MONITOR_ANIM_UP + 3;
+
 const CYCLE = [
   [0,  'tap',  'monitor'],   // cams down
   [18, 'tap',  'mask'],      // mask on  (clears Golden Freddy)
   [27, 'tap',  'mask'],      // mask off
-  [30, 'down', 'light'],     // flash the hall
-  [32, 'up',   'light'],
-  [36, 'tap',  'monitor'],   // cams up (fully up at +51)
-  [55, 'tap',  'cam:10'], [57, 'down', 'light'], [59, 'up', 'light'],
-  [67, 'tap',  'cam:4'],  [69, 'down', 'light'], [71, 'up', 'light'],
-  [79, 'tap',  'cam:7'],  [81, 'down', 'light'], [83, 'up', 'light'],
-  [90, 'tap',  'cam:11'],
-  [93, 'down', 'wind'],
+  // The mask-off animation owns the touch surface for MASK_ANIM_OFF frames;
+  // the old +30/+36 inputs were silently dropped.  Leave a small sourced
+  // animation margin before the hall flash and the monitor raise.
+  [maskOffReady,     'down', 'light'],
+  [maskOffReady + 2, 'up',   'light'],
+  [monitorUpTap,     'tap',  'monitor'],
+  [firstCamera,      'tap',  'cam:10'], [firstCamera + 2, 'down', 'light'], [firstCamera + 4, 'up', 'light'],
+  [firstCamera + 12, 'tap',  'cam:4'],  [firstCamera + 14, 'down', 'light'], [firstCamera + 16, 'up', 'light'],
+  [firstCamera + 24, 'tap',  'cam:7'],  [firstCamera + 26, 'down', 'light'], [firstCamera + 28, 'up', 'light'],
+  [firstCamera + 36, 'tap',  'cam:11'],
+  [firstCamera + 39, 'down', 'wind'],
 ];
 
 export function run(opts = {}) {
@@ -421,6 +431,13 @@ export function run(opts = {}) {
 
 const r = run({ record: true });   // this single diagnostic run reads sim.rec
 const s = r.sim;
+const targetStunMax = s.rec
+  ? s.rec.stun.map(frames => Math.max(...frames))
+  : [];
+if (!s.won || targetStunMax.some(max => max === 0)) {
+  throw new Error(`canonical cycle lost camera coverage: ${s.death?.reason ?? 'no win'}; ` +
+    `${C.TARGET_CAMS.map((cam, i) => `${cam}=${targetStunMax[i] ?? 0}`).join(', ')}`);
+}
 console.log(`result        : ${s.won ? 'SURVIVED to 6 AM' : 'DIED ' + s.death.reason}`);
 if (s.death) console.log(`               ${s.death.detail} @ ${(s.death.t).toFixed(2)}s`);
 console.log(`time          : ${(s.frame / 60).toFixed(1)}s of ${(C.NIGHT_FRAMES / 60)}s`);
@@ -448,6 +465,7 @@ if (process.argv.includes('--sweep')) {
     if (!r.sim.won) fails[r.sim.death.reason] = (fails[r.sim.death.reason] || 0) + 1;
   }
   const failed = Object.values(fails).reduce((a, b) => a + b, 0);
+  if (failed) throw new Error(`canonical cycle sweep had ${failed} death(s)`);
   console.log(`\nsweep of ${n} seeds: ${n - failed} survived, ${failed} died`);
   for (const [k, v] of Object.entries(fails)) console.log(`  ${k}: ${v}`);
   console.log(`worst Foxy D ${worstD} | min box ${(minBoxAll * 100).toFixed(0)}% | min power left ${minPower}`);
