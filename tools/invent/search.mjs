@@ -10,7 +10,44 @@
 // sensors a real controller would need. Nothing here is device-promotable.
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
-import { view, ACTIONS, run } from '../minus7/sim.mjs';
+import { view, ACTIONS as BASE_ACTIONS, run } from '../minus7/sim.mjs';
+
+// --- The eviction primitive (Plan 05 package 8, added 2026-09-02) ----------
+//
+// WHY IT IS NEEDED. Every genome the search produced controls Foxy by
+// SUPPRESSION: short `HALL_FLASH` taps that zero D and nothing more. The
+// published human strategies do something the grammar could not express --
+// they EVICT him. The mechanic (plant-model.js:712-724, g745/g855/g846):
+//
+//   while the hall light is on him:  exposure++ AND D = 0 every frame,
+//                                    and pinUntil = now + 50 is refreshed
+//   once the light is off:           exposure > 100*night AND 50 frames of
+//                                    darkness  ->  retreat, exposure = 0,
+//                                    D = 0, and he cannot move for
+//                                    500 + Random(500) frames
+//
+// Three things follow that suppression cannot buy. Holding is strictly better
+// for D than tapping (D is zeroed every lit frame, not just once). Exposure
+// ACCUMULATES across separate holds -- it only resets on retreat or arrival --
+// so eviction can be paid for in rounds, which is the "three rounds" of the
+// published strategy. And the retreat window is a GUARANTEED safe interval:
+// while he is in Parts before `readyAt` he cannot advance or lock on at all,
+// which is the only place 5 continuous masked ticks (VENT_MASK_TICKS) are safe
+// against Balloon Boy.
+//
+// `HALL_BANK` is one round: 300 lit frames, then 60 dark. 300 banks toward the
+// 700 threshold on night 7 and zeroes D throughout; the 60-frame tail exceeds
+// FOXY_HALL_PIN_FRAMES = 50, so the round that crosses the threshold is also
+// the round that triggers the retreat rather than deferring it.
+//
+// It is defined here, not in `tools/minus7/sim.mjs`, so the Minus 7 beam
+// search's own action space is unchanged.
+export const INVENT_ACTIONS = Object.freeze({
+  HALL_BANK: () => ({ frames: 360,
+    steps: [[0, 'press', 'light'], [300, 'release', 'light']] }),
+});
+
+export const ACTIONS = Object.freeze({ ...BASE_ACTIONS, ...INVENT_ACTIONS });
 import { decide } from '../minus7/policy.mjs';
 import {
   POLICY_LANG_SCHEMA, REGISTER_COUNT, interpret, validateGenome, randomGenome,

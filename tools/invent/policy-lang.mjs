@@ -60,7 +60,8 @@ export const REGISTER_COUNT = 4;
 // here so the language cannot silently invent a motor primitive.
 export const ACTION_NAMES = Object.freeze(['WAIT', 'LOWER', 'RAISE', 'MASK_ON',
   'MASK_OFF', 'FLICK', 'HOLD_MASK', 'HALL_FLASH', 'HALL_HOLD', 'SWEEP', 'WIND',
-  'WIND_LONG', 'VENTL']);
+  // HALL_BANK is the eviction round; see INVENT_ACTIONS in search.mjs.
+  'WIND_LONG', 'VENTL', 'HALL_BANK']);
 
 const COMPARISONS = Object.freeze(['<', '<=', '==', '!=', '>=', '>']);
 // Arithmetic is not in package 6b's bullet list, but its own gate requires the
