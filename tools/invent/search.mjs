@@ -36,16 +36,20 @@ export function rollout(genome, { night = 7, seed = 0, customNight = null } = {}
   const sim = new Sim({ night, seed, ...(customNight ? { customNight } : {}) });
   const constants = constantsFor(night, customNight);
   let registers = new Array(REGISTER_COUNT).fill(0);
-  let guard = 0, inputs = 0;
+  let guard = 0, inputs = 0, decisions = 0, branchFires = 0;
   while (sim.alive && !sim.won && guard++ < GUARD) {
     const observation = view(sim);
     const step = interpret(genome, observation, { registers, constants });
     registers = step.registers;
+    decisions++;
+    // `rule: -1` means the fallback ran, i.e. no observation-conditioned
+    // branch was taken on this decision.
+    if (step.rule >= 0) branchFires++;
     const plan = ACTIONS[step.action](observation);
     inputs += plan.steps.length;
     run(sim, plan);
   }
-  return { won: sim.won, frames: sim.frame, inputs,
+  return { won: sim.won, frames: sim.frame, inputs, decisions, branchFires,
     death: sim.death?.reason ?? null };
 }
 
@@ -65,7 +69,7 @@ export function reactiveRollout({ night = 7, seed = 0, customNight = null } = {}
 
 /** Survival over a seeded cohort. Deaths are reported, never averaged away. */
 export function evaluate(runner, { seeds = ADMISSION_SEEDS, ...options } = {}) {
-  let won = 0, inputs = 0, frames = 0;
+  let won = 0, inputs = 0, frames = 0, decisions = 0, branchFires = 0;
   const deaths = {};
   for (let seed = 0; seed < seeds; seed++) {
     const result = runner(seed);
@@ -73,9 +77,37 @@ export function evaluate(runner, { seeds = ADMISSION_SEEDS, ...options } = {}) {
     else if (result.death) deaths[result.death] = (deaths[result.death] ?? 0) + 1;
     inputs += result.inputs;
     frames += result.frames;
+    decisions += result.decisions ?? 0;
+    branchFires += result.branchFires ?? 0;
   }
   return { seeds, won, rate: won / seeds, deaths,
-    meanInputs: inputs / seeds, meanFrames: frames / seeds, ...options };
+    meanInputs: inputs / seeds, meanFrames: frames / seeds,
+    decisions, branchFires,
+    branchRate: decisions ? branchFires / decisions : 0, ...options };
+}
+
+// A branch that never fires is not a branch. `classifyFamily` is syntactic --
+// it asks whether a rule reads an observation -- and the first gradient run
+// exploited exactly that hole: its best candidate was `when gfInHall ->
+// WIND_LONG` with a HALL_FLASH fallback, and `gfInHall` is almost never true,
+// so the genome was "always flash the hall" wearing a rule it never took.
+// Functionally a Plan 05 static cover, syntactically not one.
+//
+// The floor is a declared knob, not a measurement: a genome whose branches are
+// taken on fewer than this fraction of decisions is reported as an EFFECTIVE
+// static cover and pruned from the frontier.
+export const BRANCH_FLOOR = 0.01;
+
+export function effectiveStaticCover(genome, result) {
+  if (!genome.rules.length) return { id: 'static-cover-empty',
+    why: 'no rules at all; every decision is the fallback' };
+  if (result.branchRate >= BRANCH_FLOOR) return null;
+  return {
+    id: 'effective-static-cover',
+    why: `branches fired on ${(result.branchRate * 100).toFixed(3)}% of ` +
+      `${result.decisions} decisions, under the ${BRANCH_FLOOR * 100}% floor: ` +
+      `this is a fixed action sequence wearing a rule it does not take`,
+  };
 }
 
 const registersUsed = genome => {

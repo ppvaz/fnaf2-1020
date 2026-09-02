@@ -16,7 +16,7 @@ import * as C from '@fnaf2-1020/core/mechanics';
 import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
 import {
   ADMISSION_SEEDS, evaluate, rollout, reactiveRollout, EMPTY_GENOME,
-  paretoFront, provenanceManifest,
+  paretoFront, provenanceManifest, effectiveStaticCover, BRANCH_FLOOR,
 } from './search.mjs';
 import { mutate, crossover, randomGenome, classifyFamily, validateGenome }
   from './policy-lang.mjs';
@@ -76,8 +76,18 @@ function searchTarget(target, rng) {
       scored.push({ genome, result: score(genome, INNER) });
     }
     evaluated = [...evaluated, ...scored];
-    // Rank by survival, then fewer inputs, then fewer rules.
+    // Rank by survival, then by SURVIVAL TIME, then cost.
+    //
+    // The time term is not a nicety. On a target where nothing survives yet,
+    // every candidate ties at rate 0 and selection falls through to the cost
+    // terms -- which selects for FEWEST INPUTS, i.e. for doing nothing. The
+    // first 7c run did exactly that and reported a flat 0.0% everywhere; that
+    // was a statement about this sort, not about the game. Mean frames alive
+    // is a real gradient (the reactive baseline reaches a mean 401.2s of 420
+    // on foxy while still scoring 0%), so it carries the search until a
+    // survivor appears.
     scored.sort((a, b) => b.result.rate - a.result.rate ||
+      b.result.meanFrames - a.result.meanFrames ||
       a.result.meanInputs - b.result.meanInputs ||
       a.genome.rules.length - b.genome.rules.length);
     const elite = scored.slice(0, Math.max(2, Math.floor(POP / 4)));
@@ -93,12 +103,22 @@ function searchTarget(target, rng) {
 
   // Only the inner-cohort leaders pay for the admission gate.
   const leaders = [...evaluated]
-    .sort((a, b) => b.result.rate - a.result.rate)
+    .sort((a, b) => b.result.rate - a.result.rate ||
+      b.result.meanFrames - a.result.meanFrames)
     .slice(0, 6);
-  const admitted = leaders.map(entry => ({
-    genome: entry.genome, inner: entry.result,
-    result: score(entry.genome, ADMIT),
-  }));
+  const admitted = [];
+  for (const entry of leaders) {
+    const result = score(entry.genome, ADMIT);
+    // Behavioural duplicate control, applied at the admission gate where the
+    // decision counts are real.
+    const degenerate = effectiveStaticCover(entry.genome, result);
+    if (degenerate) {
+      pruningLog.push({ gen: 'admission', reason: 'known-family',
+        family: degenerate.id, why: degenerate.why });
+      continue;
+    }
+    admitted.push({ genome: entry.genome, inner: entry.result, result });
+  }
   const reactiveAdmitted = evaluate(
     s => reactiveRollout({ night: 7, seed: s, customNight }), { seeds: ADMIT });
 
@@ -108,9 +128,15 @@ function searchTarget(target, rng) {
     controls, reactiveAdmitted,
     front: paretoFront(admitted).map(entry => ({
       rate: entry.result.rate, innerRate: entry.inner.rate,
+      meanAliveS: entry.result.meanFrames / C.FPS,
+      branchRate: entry.result.branchRate,
       meanInputs: entry.result.meanInputs, rules: entry.genome.rules.length,
       deaths: entry.result.deaths,
       beatsReaction: entry.result.rate > reactiveAdmitted.rate,
+      // A strictly longer mean survival at equal (zero) rate is progress, and
+      // is reported separately so it can never be mistaken for a clear.
+      outlivesReaction: entry.result.rate === reactiveAdmitted.rate &&
+        entry.result.meanFrames > reactiveAdmitted.meanFrames,
       genome: entry.genome,
       manifest: provenanceManifest(entry.genome),
     })),
@@ -134,10 +160,13 @@ for (const target of TARGETS) {
   console.log(`  reactive at the ${ADMIT}-seed admission gate: ` +
     `${(report.reactiveAdmitted.rate * 100).toFixed(1)}%  ` +
     `${JSON.stringify(report.reactiveAdmitted.deaths)}`);
-  console.log(`  frontier ${report.front.length} entries, ${report.pruned} pruned`);
+  console.log(`  frontier ${report.front.length} entries, ${report.pruned} pruned ` +
+    `(branch floor ${BRANCH_FLOOR * 100}%)`);
   if (best) {
     console.log(`  best ${(best.rate * 100).toFixed(1)}% at ${ADMIT} seeds ` +
       `(inner ${(best.innerRate * 100).toFixed(1)}%), ${best.rules} rules, ` +
+      `mean alive ${best.meanAliveS.toFixed(1)}s vs reaction ` +
+      `${(report.reactiveAdmitted.meanFrames / C.FPS).toFixed(1)}s, ` +
       `beatsReaction=${best.beatsReaction}`);
     console.log(`    deaths ${JSON.stringify(best.deaths)}`);
     console.log(`    no-known-observable: ${best.manifest.noKnownObservable.join(', ') || 'none'}`);
