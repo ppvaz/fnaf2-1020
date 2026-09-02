@@ -89,8 +89,24 @@ function searchTarget(target, rng) {
 
   // Seeded with the reference policy: the bar is beating reaction, not beating
   // nothing. Random genomes fill the rest so the seed cannot monopolise.
-  let population = [REACTIVE_GENOME,
-    ...Array.from({ length: POP - 1 }, () => randomGenome(rng, { rules: 3 + Math.floor(rng() * 6) }))];
+  // Seed the CORRECTED reference alongside the shipped one. `safeD` (20 - AI)
+  // is the always-safe RAW D, but the rules compare it against a PROJECTED D,
+  // so it fires a second early every cycle and burns light it does not need --
+  // measured 94.08% -> 99.92% on the foxy target when swapped for the firing
+  // threshold `fireD` (21 - AI). Seeding both lets selection keep whichever
+  // wins per target rather than inheriting the off-by-one.
+  const toFire = node => {
+    if (!node || typeof node !== 'object') return node;
+    if (node.t === 'param' && node.name === 'safeD') return { t: 'param', name: 'fireD' };
+    const copy = Array.isArray(node) ? [...node] : { ...node };
+    for (const key of ['a', 'b', 'x']) if (copy[key]) copy[key] = toFire(copy[key]);
+    if (copy.xs) copy.xs = copy.xs.map(toFire);
+    return copy;
+  };
+  const corrected = validateGenome({ ...REACTIVE_GENOME,
+    rules: REACTIVE_GENOME.rules.map(r => ({ ...r, when: toFire(r.when) })) });
+  let population = [REACTIVE_GENOME, corrected,
+    ...Array.from({ length: POP - 2 }, () => randomGenome(rng, { rules: 3 + Math.floor(rng() * 6) }))];
 
   const pruningLog = [];
   const seen = new Set();
