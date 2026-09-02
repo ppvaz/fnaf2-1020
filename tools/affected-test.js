@@ -39,6 +39,9 @@ if (changed.some(path => path.startsWith('tools/invent/'))) {
   add('difficulty-probe', 'node', ['tools/invent/targets.mjs', '--assert']);
   add('read-substitution-syntax', 'node', ['--check', 'tools/invent/read-substitution.mjs']);
   add('rule-ablation', 'node', ['tools/invent/test-ablate.mjs']);
+  // The RAISE->WIND chain is one refused cam press away from silently
+  // regressing to a frozen office; pin that the seeds really wind.
+  add('wind-seeds', 'node', ['tools/invent/test-wind-seeds.mjs']);
 }
 // The closed-family register is shared by both policy surfaces, so a change to
 // it must run the privileged gate as well as the observable one below. That is

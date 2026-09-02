@@ -25,6 +25,7 @@ import { mutate, crossover, randomGenome, validateGenome } from './policy-lang.m
 import { classifyFamily, closedFamilyRegister } from './closed-families.mjs';
 import { ablate } from './ablate.mjs';
 import { REACTIVE_GENOME } from './reference-genome.mjs';
+import { WIND_SEEDS } from './wind-seeds.mjs';
 import { threatSet } from './targets.mjs';
 
 const argOf = (name, fallback) => {
@@ -115,8 +116,16 @@ function searchTarget(target, rng) {
   };
   const corrected = validateGenome({ ...REACTIVE_GENOME,
     rules: REACTIVE_GENOME.rules.map(r => ({ ...r, when: toFire(r.when) })) });
-  let population = [REACTIVE_GENOME, corrected,
-    ...Array.from({ length: POP - 2 }, () => randomGenome(rng, { rules: 3 + Math.floor(rng() * 6) }))];
+  // The wind-bearing seeds (Pedro's ruling: there is always a box to be
+  // wound) start the population on the winding side of the space, so the
+  // search does not have to rediscover the RAISE->WIND chain by accident --
+  // the frozen-office local optimum is exactly what random mutation lands on
+  // when nothing winds. The seeds are candidates, not privileged: they are
+  // scored, ablated and admitted on the same terms as everything else.
+  let population = [REACTIVE_GENOME, corrected, ...WIND_SEEDS,
+    ...Array.from({ length: Math.max(0, POP - 2 - WIND_SEEDS.length) },
+      () => randomGenome(rng, { rules: 3 + Math.floor(rng() * 6) }))];
+  while (population.length < POP) population.push(randomGenome(rng));
 
   const pruningLog = [];
   const seen = new Set();
