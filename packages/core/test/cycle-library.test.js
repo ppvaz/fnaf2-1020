@@ -48,3 +48,93 @@ check(!result.accepted && result.reasons.includes('exact-model-gate-missing'),
 check(DEVICE_CONSTRAINTS.minContactMs === 33 && DEVICE_CONSTRAINTS.minReleasedMs === 33,
   'device constraint profile lost its measured floors');
 console.log('cycle library: reviewed primitive, prerequisite, animation, contact, and exact-proof gates pass');
+
+// --- Prerequisite reachability ------------------------------------------------
+//
+// A primitive whose prerequisites no sequence of library primitives can
+// establish is dead code: the planner can never legally select it. This is not
+// hypothetical. Measured 2026-09-02, driving CycleController cycle by cycle
+// over Night 1: `wind-and-anchor` is rejected at 1800/1800 decision boundaries
+// for
+// `prerequisite:monitor="down" | prerequisite:viewedCamera=null`, the controller
+// the controller selects `observe-and-hold` 241 times and nothing else, and
+// Night 1 ends `death=puppet` at ~4 AM. No primitive emits a `cam:` action and
+// `C.initialCamera(1)` is CAM 09, not `C.BOX_CAM`.
+//
+// Plan 20 P5's nine-second blackout fixture cannot see this, and the wind gate
+// above hand-builds the state the library cannot reach on its own.
+import { CYCLE_LIBRARY } from '@fnaf2-1020/core/control';
+
+const keyOf = reduced => JSON.stringify([reduced.monitor, reduced.maskOn,
+  reduced.viewedCamera, reduced.winding, reduced.lightHeld,
+  reduced.ventLightL, reduced.ventLightR]);
+
+// Bounded forward search over the library's own actions. Depth is small on
+// purpose: a prerequisite needing a long setup the planner would have to
+// discover is itself a finding, not a passing result.
+const SEARCH_DEPTH = 4;
+function reachableStates(depth) {
+  let frontier = [initialReducedState({ night: 1 })];
+  const seen = new Map([[keyOf(frontier[0]), frontier[0]]]);
+  for (let step = 0; step < depth; step++) {
+    const next = [];
+    for (const state of frontier) {
+      for (const cycle of CYCLE_LIBRARY) {
+        let candidate = state;
+        let ok = true;
+        for (const action of cycle.actions) {
+          candidate = advanceReduced(candidate, candidate.frame + action.atFrame);
+          const applied = applyReduced(candidate, action.action, action.kind);
+          if (!applied.accepted) { ok = false; break; }
+          candidate = applied.state;
+        }
+        if (!ok) continue;
+        candidate = advanceReduced(candidate, candidate.frame + cycle.durationFrames);
+        const key = keyOf(candidate);
+        if (seen.has(key)) continue;
+        seen.set(key, candidate);
+        next.push(candidate);
+      }
+    }
+    frontier = next;
+    if (!frontier.length) break;
+  }
+  return [...seen.values()];
+}
+
+const reachable = reachableStates(SEARCH_DEPTH);
+const satisfies = (state, prerequisite) => {
+  const field = prerequisite.field;
+  if (field.startsWith('controlUnknown.') || field.startsWith('hazards.')) return true;
+  return JSON.stringify(state[field]) === JSON.stringify(prerequisite.equals);
+};
+
+const unreachable = [];
+for (const cycle of CYCLE_LIBRARY) {
+  if (!reachable.some(state => cycle.prerequisites.every(p => satisfies(state, p))))
+    unreachable.push(cycle.id);
+}
+
+// Known-negative register. An entry records a defect, it does not excuse one:
+// shrinking this list is the fix, an unlisted gap fails, and a fixed entry that
+// is left behind also fails.
+const KNOWN_UNREACHABLE = new Map([
+  ['wind-and-anchor',
+   'no primitive emits a cam: action and initialCamera(1) is CAM 09; ' +
+   'measured 2026-09-02, Night 1 cycle-by-cycle ends death=puppet'],
+]);
+
+for (const id of unreachable) {
+  check(KNOWN_UNREACHABLE.has(id),
+    `primitive ${id} has prerequisites no library sequence can establish, ` +
+    `and is not recorded as a known negative`);
+}
+for (const id of KNOWN_UNREACHABLE.keys()) {
+  check(unreachable.includes(id),
+    `${id} is recorded as unreachable but the library can now establish it -- ` +
+    `remove it from KNOWN_UNREACHABLE`);
+}
+
+check(reachable.length > 1, 'reachability search explored no states');
+console.log(`cycle library: prerequisite reachability over ${reachable.length} states ` +
+  `(depth ${SEARCH_DEPTH}); unreachable = [${unreachable.join(', ')}], all recorded`);
