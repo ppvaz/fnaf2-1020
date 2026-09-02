@@ -833,10 +833,18 @@ export function replay(plan, { night, seed = 1, worst = false,
   const queue = [];
   const at = (frame, kind, act) => queue.push([frame, queue.length, kind, act]);
 
-  const parse = (lines, base) => {
+  const parse = (lines, base, floor = -Infinity) => {
+    // A classifier-selected branch is emitted after the read has completed.
+    // If its nominal first row is already due, the device runner floors the
+    // whole macro to the result plus one released Fusion poll. Applying that
+    // same shift here preserves the internal mask-off/raise gap; queueing only
+    // the overdue first press would compress the gap and drop the raise on the
+    // still-visible mask animation.
+    const firstAt = lines.length ? base + f(+lines[0].split(' ')[0]) : base;
+    const shift = Math.max(0, floor - firstAt);
     for (const line of lines) {
       const [offs, kind, ...rest] = line.split(' ');
-      const t = base + f(+offs);
+      const t = base + f(+offs) + shift;
       if (kind === 'tap') {
         at(t, 'press', rest[0] === 'monitor' ? 'monitor' : rest[0] === 'mask' ? 'mask'
           : 'cam:' + rest[0].slice(3));
@@ -1001,7 +1009,7 @@ export function replay(plan, { night, seed = 1, worst = false,
       if (!bb && inside) missed++;
       if (bb) detections++;
       const lines = bb ? plan.attack : plan.clear;
-      parse(lines.slice(2), b);             // the branch, after the read
+      parse(lines.slice(2), b, sim.frame + f(FUSION_POLL_MS)); // branch after the read
       base = b + f(bb ? attackWindowMs : 5000);
       parse(plan.clear.slice(0, 2), base);
     }
