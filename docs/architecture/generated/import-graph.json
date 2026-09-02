@@ -1377,6 +1377,17 @@
       ]
     },
     {
+      "file": "tools/invent/death-anatomy.mjs",
+      "imports": [
+        "../minus7/sim.mjs",
+        "./policy-lang.mjs",
+        "./search.mjs",
+        "./targets.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/invent/foxy-ceiling.mjs",
       "imports": [
         "./policy-lang.mjs",

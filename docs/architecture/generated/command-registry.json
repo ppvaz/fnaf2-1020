@@ -342,6 +342,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/death-anatomy.mjs",
+      "invocation": "tools/invent/death-anatomy.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/test-policy-lang.mjs",
       "invocation": "tools/invent/test-policy-lang.mjs",
       "kind": "check",

@@ -27,10 +27,25 @@ export const EMPTY_GENOME = validateGenome({
   schema: POLICY_LANG_SCHEMA, rules: [], fallback: 'WAIT',
 });
 
-export const constantsFor = (night, customNight = null) => ({
-  safeD: 20 - C.peakAi(night, 'foxy', customNight),
-  drain: C.boxDrainFrames(night),
-});
+export const constantsFor = (night, customNight = null) => {
+  const ai = C.peakAi(night, 'foxy', customNight);
+  return {
+    // The index's `Largest always-safe D = 20 - AI`: the highest RAW D at which
+    // the roll `21 + Random(0..4) - D <= AI` (g337) still cannot fire.
+    safeD: 20 - ai,
+    // The FIRING threshold, one higher. `decide()` compares its safeD against a
+    // PROJECTED D (`foxyD + seconds until the next check`), so using the raw
+    // always-safe value there fires a full second early on every cycle. That is
+    // not free: measured 2026-09-02 on the foxy single-dial target, the shipped
+    // comparison flashes every 1.14s against a mechanic needing only faster
+    // than 4s, consumes 2944 of the 3000-frame light budget, and every death in
+    // the residual is at power == 0 with the flashlight dead, so g745 can never
+    // zero D again. Anticipating to the firing threshold instead took the target
+    // from 94.08% to 99.92% at 1200 seeds (71 deaths to 1).
+    fireD: 21 - ai,
+    drain: C.boxDrainFrames(night),
+  };
+};
 
 /** One night. Returns survival plus the cost terms the Pareto front uses. */
 export function rollout(genome, { night = 7, seed = 0, customNight = null } = {}) {
