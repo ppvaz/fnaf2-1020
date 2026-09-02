@@ -282,6 +282,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/policy-lang.mjs",
+      "invocation": "tools/invent/policy-lang.mjs",
+      "kind": "lib",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/test-policy-lang.mjs",
+      "invocation": "tools/invent/test-policy-lang.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/model/reactive-pilot.mjs",
       "invocation": "tools/model/reactive-pilot.mjs [n]",
       "kind": "report/check",

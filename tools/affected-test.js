@@ -31,6 +31,12 @@ if (changed.some(path => path.startsWith('packages/core/'))) {
   // decisions, which is what makes a retained stream evidence rather than a log.
   add('fact-replay', 'node', ['tools/factreplay.mjs', '--assert']);
 }
+if (changed.some(path => path.startsWith('tools/invent/'))) {
+  // Plan 05 package 6b's expressiveness gate: the language must contain the
+  // known reactive policy before any search is allowed to run.
+  add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
+  add('observation-surface', 'node', ['tools/invent/test-observe.mjs']);
+}
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
   add('device-service', 'node', ['apps/device/test/service.test.js']);

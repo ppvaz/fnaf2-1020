@@ -3209,11 +3209,26 @@
       ]
     },
     {
+      "file": "tools/invent/policy-lang.mjs",
+      "imports": [
+        "./observe.mjs"
+      ]
+    },
+    {
       "file": "tools/invent/test-observe.mjs",
       "imports": [
         "./observe.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/invent/test-policy-lang.mjs",
+      "imports": [
+        "../minus7/policy.mjs",
+        "../minus7/sim.mjs",
+        "./policy-lang.mjs",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {
