@@ -545,11 +545,11 @@
         "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
       },
       "inHall": {
-        "coverage": "no-known-observable",
+        "coverage": "observable-not-in-vocabulary",
         "facts": [],
-        "note": "the hallway roll repeats every second and nothing is rendered until the hall light is on, at which point looking costs 1 exposure frame per frame toward a 100-frame kill",
-        "candidateSensor": null,
-        "sensorEvidence": "g781/g779/g780"
+        "note": "he IS rendered in the hall once the light is on, so a classifier is definable: g781 re-rolls his presence every second WHILE THE LIGHT IS OFF and holding the light FREEZES whatever is there (the dump's own words for why he seems to stay while you look); g865 zeroes his exposure when he is absent. Corrected 2026-09-02 (Pedro): the previous `no-known-observable` conflated read COST with invisibility. Correction to the correction, same day: the cost is NOT marginal. g779 adds +1/frame exposure WHILE THE LIGHT IS ON HIM (the summary table's 'lit empty hall' wording is looser than g779) and g780 kills above 100. A HALL_FLASH holds the light 8 frames, so flashing with him present is 8 toward a 101-frame kill -- the classification is free in pixels because the frame is already captured, but the FLASH is not free, and that is the real cost.",
+        "candidateSensor": "a hall-region apparition classifier with a Golden Freddy class, on the lit-hall frame the Foxy check already captures; the pixels are free, the flash is not",
+        "sensorEvidence": "UNKNOWN - no hall apparition classifier built or calibrated; rendering basis g781/g779/g780"
       },
       "stunRemaining": {
         "coverage": "constant",
@@ -642,5 +642,6 @@
         "sensorEvidence": "g530-g562"
       }
     }
-  }
+  },
+  "surfaceGapNote": "`winding` and the per-camera stun table are read by the rollout surface and by `decide()`, but package 6a's observation surface does not expose them, so they resolve `unmapped` rather than to a coverage. That is 6a's known hole, recorded rather than papered over. Note what `unmapped` does NOT mean here: `winding` is the CONTROLLER'S OWN ACTION STATE -- it knows whether it pressed wind -- so it is not a sensor requirement and should not be read as one. Closing 6a would almost certainly classify it `derivable` by own-action integration. Until 6a exposes it, `unmapped` is the honest answer: not knowing is a different claim from knowing it is invisible."
 }

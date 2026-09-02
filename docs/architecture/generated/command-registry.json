@@ -330,6 +330,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/read-substitution.mjs",
+      "invocation": "tools/invent/read-substitution.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/test-policy-lang.mjs",
       "invocation": "tools/invent/test-policy-lang.mjs",
       "kind": "check",
