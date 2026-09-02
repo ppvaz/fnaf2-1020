@@ -3153,6 +3153,18 @@
       ]
     },
     {
+      "file": "tools/factreplay.mjs",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/core/sensing",
+        "node:child_process",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
       "file": "tools/flicksweep.mjs",
       "imports": [
         "./model/stock-device-pilot.mjs",

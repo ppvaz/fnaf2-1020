@@ -372,6 +372,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/factreplay.mjs",
+      "invocation": "tools/factreplay.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/ventreacttest.mjs",
       "invocation": "tools/ventreacttest.mjs",
       "kind": "check/report",

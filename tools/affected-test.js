@@ -27,6 +27,9 @@ if (changed.some(path => path.startsWith('packages/core/'))) {
   // Keyed by path so an edit to the gate itself (below) dedupes against this.
   for (const gate of ['cycle-library', 'cycle-planner', 'cycle-controller'])
     add(`test:packages/core/test/${gate}.test.js`, 'node', [`packages/core/test/${gate}.test.js`]);
+  // Offline replay determinism: the same recorded facts must rebuild the same
+  // decisions, which is what makes a retained stream evidence rather than a log.
+  add('fact-replay', 'node', ['tools/factreplay.mjs', '--assert']);
 }
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
