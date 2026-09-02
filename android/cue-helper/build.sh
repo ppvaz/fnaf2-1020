@@ -72,6 +72,7 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PhaseClock.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CueDetector.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PixelWatch.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PanAnchor.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/ScreenStats.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/NormalizedRect.java" \

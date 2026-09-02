@@ -265,6 +265,14 @@ public final class CaptureService extends Service {
     private final PixelWatch.Spec watchSpec = PixelWatch.defaultSpec();
     private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
     private final int[] snapshotWatchValues = new int[PixelWatch.MAX_ENTRIES];
+    private final PanAnchor.Workspace panAnchorWorkspace = new PanAnchor.Workspace();
+    private final PanAnchor.Result framePanAnchor = new PanAnchor.Result();
+    private int snapshotPanAnchorX = PanAnchor.UNKNOWN;
+    private int snapshotPanAnchorY = PanAnchor.UNKNOWN;
+    private int snapshotPanAnchorArea = PanAnchor.UNKNOWN;
+    private int snapshotPanAnchorMargin = PanAnchor.UNKNOWN;
+    private int snapshotPanAnchorConfidence;
+    private String snapshotPanAnchorReason = "not-measured";
     private volatile boolean watchActive;
     private long lastOverlaySnapshotNs;
     private long overlaySequence;
@@ -927,6 +935,10 @@ public final class CaptureService extends Service {
             ByteBuffer buffer = plane.getBuffer();
             watchFrame.set(buffer, captureWidth, captureHeight,
                     plane.getRowStride(), plane.getPixelStride());
+            // The bulb anchor is measured from the same native frame as the
+            // watchlist. It is an observation only: ROI transformation still
+            // requires a separately calibrated camera-position mapping.
+            PanAnchor.measure(watchFrame, panAnchorWorkspace, framePanAnchor);
             int logicalX = Math.min(captureWidth - 1,
                     (int) (((long) VISUAL_X * 2 + 1) * captureWidth
                             / (VISUAL_WIDTH * 2L)));
@@ -968,6 +980,12 @@ public final class CaptureService extends Service {
                 snapshotBlue = blue;
                 snapshotLuma = luma;
                 snapshotCam05MeanLuma = cam05MeanLuma;
+                snapshotPanAnchorX = framePanAnchor.x;
+                snapshotPanAnchorY = framePanAnchor.y;
+                snapshotPanAnchorArea = framePanAnchor.area;
+                snapshotPanAnchorMargin = framePanAnchor.margin;
+                snapshotPanAnchorConfidence = framePanAnchor.confidence;
+                snapshotPanAnchorReason = framePanAnchor.reason;
                 boolean complete = true;
                 for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
                     for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
@@ -1288,10 +1306,22 @@ public final class CaptureService extends Service {
 
         long sequence;
         long timestampNs;
+        int panAnchorX;
+        int panAnchorY;
+        int panAnchorArea;
+        int panAnchorMargin;
+        int panAnchorConfidence;
+        String panAnchorReason;
         int[] values = new int[watchSpec.size()];
         synchronized (snapshotLock) {
             sequence = snapshotVisualSequence;
             timestampNs = snapshotVisualTimestampNs;
+            panAnchorX = snapshotPanAnchorX;
+            panAnchorY = snapshotPanAnchorY;
+            panAnchorArea = snapshotPanAnchorArea;
+            panAnchorMargin = snapshotPanAnchorMargin;
+            panAnchorConfidence = snapshotPanAnchorConfidence;
+            panAnchorReason = snapshotPanAnchorReason;
             System.arraycopy(snapshotWatchValues, 0, values, 0, values.length);
         }
         long nowNs = System.nanoTime();
@@ -1313,7 +1343,24 @@ public final class CaptureService extends Service {
             result.append(invalidReason != null || values[i] == PixelWatch.UNKNOWN
                     ? "UNKNOWN" : values[i]);
         }
+        appendPanAnchor(result, invalidReason, panAnchorX, panAnchorY, panAnchorArea,
+                panAnchorMargin, panAnchorConfidence, panAnchorReason);
         return result.toString();
+    }
+
+    private static void appendPanAnchor(StringBuilder result, String invalidReason,
+            int x, int y, int area, int margin, int confidence, String reason) {
+        boolean observed = invalidReason == null && x != PanAnchor.UNKNOWN;
+        result.append(" pan_anchor_state=").append(observed ? "OBSERVED" : "UNKNOWN")
+                .append(" pan_anchor_x=").append(observed ? Integer.toString(x) : "UNKNOWN")
+                .append(" pan_anchor_y=").append(observed ? Integer.toString(y) : "UNKNOWN")
+                .append(" pan_anchor_area=").append(observed ? Integer.toString(area) : "UNKNOWN")
+                .append(" pan_anchor_margin=").append(observed ? Integer.toString(margin) : "UNKNOWN")
+                .append(" pan_anchor_confidence=").append(observed
+                        ? Integer.toString(confidence) : "UNKNOWN")
+                .append(" pan_anchor_reason=")
+                .append(invalidReason != null ? invalidReason
+                        : reason == null ? "not-measured" : reason);
     }
 
     private void startControlServer(long generation) throws IOException {
@@ -2332,6 +2379,12 @@ public final class CaptureService extends Service {
         int screenIdentity;
         int screenScore;
         long detectorLatencyMs;
+        int panAnchorX;
+        int panAnchorY;
+        int panAnchorArea;
+        int panAnchorMargin;
+        int panAnchorConfidence;
+        String panAnchorReason;
         MonitorStateDetector.Result monitor;
         CameraSelectionDetector.Result camera;
         BatteryLifeDetector.Result battery;
@@ -2348,6 +2401,12 @@ public final class CaptureService extends Service {
             screenIdentity = snapshotScreenIdentity;
             screenScore = snapshotScreenScore;
             detectorLatencyMs = snapshotDetectorLatencyMs;
+            panAnchorX = snapshotPanAnchorX;
+            panAnchorY = snapshotPanAnchorY;
+            panAnchorArea = snapshotPanAnchorArea;
+            panAnchorMargin = snapshotPanAnchorMargin;
+            panAnchorConfidence = snapshotPanAnchorConfidence;
+            panAnchorReason = snapshotPanAnchorReason;
             monitor = MonitorStateDetector.measure(snapshotGridValid ? snapshotGrid : null,
                     snapshotScreenIdentity);
             camera = CameraSelectionDetector.measure(watchSpec, snapshotWatchValues,
@@ -2395,7 +2454,10 @@ public final class CaptureService extends Service {
                     camera.reason, invalidReason);
         }
 
-        return "snapshotNs=" + nowNs + " " + visual + " "
+        StringBuilder panAnchor = new StringBuilder(160);
+        appendPanAnchor(panAnchor, invalidReason, panAnchorX, panAnchorY,
+                panAnchorArea, panAnchorMargin, panAnchorConfidence, panAnchorReason);
+        return "snapshotNs=" + nowNs + " " + visual + panAnchor + " "
                 + currentAudioStatus() + " " + watchStatus();
     }
 
@@ -2592,6 +2654,12 @@ public final class CaptureService extends Service {
             snapshotGridValid = false;
             snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
             snapshotScreenScore = 0;
+            snapshotPanAnchorX = PanAnchor.UNKNOWN;
+            snapshotPanAnchorY = PanAnchor.UNKNOWN;
+            snapshotPanAnchorArea = PanAnchor.UNKNOWN;
+            snapshotPanAnchorMargin = PanAnchor.UNKNOWN;
+            snapshotPanAnchorConfidence = 0;
+            snapshotPanAnchorReason = "capture-stopped";
             watchActive = false;
         }
         lastOverlaySnapshotNs = 0L;

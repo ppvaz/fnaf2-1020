@@ -42,6 +42,7 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/src/com/fnaf2/cuehelper/AudioAnalyzer.java" \
   "$HERE/src/com/fnaf2/cuehelper/PhaseClock.java" \
   "$HERE/src/com/fnaf2/cuehelper/PixelWatch.java" \
+  "$HERE/src/com/fnaf2/cuehelper/PanAnchor.java" \
   "$HERE/src/com/fnaf2/cuehelper/ScreenIdentity.java" \
   "$HERE/src/com/fnaf2/cuehelper/ScreenStats.java" \
   "$HERE/src/com/fnaf2/cuehelper/NormalizedRect.java" \
@@ -61,6 +62,7 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/test/com/fnaf2/cuehelper/AudioAnalyzerTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/PhaseClockTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/PixelWatchTest.java" \
+  "$HERE/test/com/fnaf2/cuehelper/PanAnchorTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/BatteryLifeDetectorTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/ScreenIdentityTest.java" \
   "$HERE/test/com/fnaf2/cuehelper/ScreenStatsTest.java" \
@@ -71,6 +73,7 @@ JAVA="$JDK_ROOT/bin/java"
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.AudioAnalyzerTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PhaseClockTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PixelWatchTest
+$JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.PanAnchorTest
 $JAVA -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenIdentityTest
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.ScreenStatsTest
 "$JAVA" -cp "$TEST_TMP" com.fnaf2.cuehelper.OverlayContractTest

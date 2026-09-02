@@ -69,7 +69,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
       echo ;;
     WATCH/status) echo 'OK watch=OFF spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=23' ;;
     WATCH/*) echo 'OK watch=ACTIVE spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa entries=23' ;;
-    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 battery_bar_1=194 battery_bar_2=194 battery_bar_3=80 battery_bar_4=20 cam05_mean_luma=37 screen_grey_cells=142 foxy_hall_mean_luma=37 foxy_hall_mean_redness=0 foxy_hall_red_cells=0' ;;
+    READ/*|READ) echo 'OK read=OBSERVED spec=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa seq=122 snapshotNs=10000 ageUs=1200 bb_left_luma=194 bb_left_yellowness=-111 battery_bar_1=194 battery_bar_2=194 battery_bar_3=80 battery_bar_4=20 cam05_mean_luma=37 screen_grey_cells=142 foxy_hall_mean_luma=37 foxy_hall_mean_redness=0 foxy_hall_red_cells=0 pan_anchor_state=OBSERVED pan_anchor_x=1162 pan_anchor_y=116 pan_anchor_area=836 pan_anchor_margin=624 pan_anchor_confidence=746 pan_anchor_reason=component-margin' ;;
     OVERLAY/*) echo 'OK overlay=UNQUALIFIED(self-capture-unqualified) gate=UNQUALIFIED(self-capture-unqualified) updates=0 draws=0 dropped=0 cadenceSamples=0 updateToDrawMs=p50:0.00,p95:0.00,p99:0.00 drawIntervalMs=p50:0.00,p95:0.00,p99:0.00' ;;
     CAL/on) echo 'OK cal=on' ;;
     CAL/off) echo 'OK cal=off' ;;

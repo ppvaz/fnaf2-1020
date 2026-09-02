@@ -290,7 +290,7 @@ no sensor data.
 | `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. The visual line carries the whole-grid statistics `grey` (near-grey cell count) and `gridLuma` (grid mean luma) — verdict-free features a calibrated consumer may fit rules against. |
 | `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid (180 point samples, row-major). |
 | `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (23 entries: 4 existing anchors + 4 flashlight-meter bars + 12 measured monitor-map camera buttons + 3 provisional Foxy hall channels). |
-| `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. |
+| `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. The response also carries the observation-only bulb anchor (`pan_anchor_x`, `pan_anchor_y`, sampled component area/margin, confidence, and refusal reason). |
 | `OVERLAY <token>` | `OK overlay=...` | Read-only HUD lifecycle, qualification gate, and bounded update/draw/drop/latency counters for retained device evidence. |
 
 `CAL`, `LOG`, `ARM`, and `RESULT` are no longer APK commands. Model import and

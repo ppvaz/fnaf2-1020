@@ -446,25 +446,47 @@ verdict: measure pan alongside the read and return `UNKNOWN(panned)`, which the
 existing fail-closed rule already handles. Making the classifier pan-*aware*, or
 stopping the pan, are both larger and need the cause first.
 
-### The planned geometry: pan offset transforms office ROIs (2026-09-02)
+### The pan-anchor geometry: curved office travel (2026-09-02)
 
 The long-term answer is not a second hand-maintained ROI table for the right
 vent. Keep office observations in a canonical, unpanned scene coordinate
-system and transform them with the measured pan offset for each native frame:
+system and transform them through a calibrated camera parameter for each native
+frame:
 
 ```text
-screen_x = reference_x + pan_offset
-screen_y = reference_y
+camera_parameter = inverse_calibration(bulb_screen_x)
+screen_x(target) = target_curve(camera_parameter)
+screen_y(target) = target_curve_y(camera_parameter)
 ```
 
-The offset must be an emitted sensor fact, with its residual and confidence,
-derived from a small static office edge/profile on the device. The existing
-`pan-shift.py` is an offline proof of the measurement; its full-frame
+The bulb is a promising reference because it remains visible across the
+captured office-pan positions, but its screen position follows the camera with
+a curved/parabolic relationship rather than a constant pixel translation. The
+captured groups place its detected bright core at approximately x=1162 in the
+approximate-centre view, x=1898 at the extreme-left view, and x=547--549 at the
+extreme-right views. Those are anchor measurements, not yet a fitted curve.
+
+The emitted fact must not be `reference_x + bulb_delta`. It should be a
+calibrated camera parameter: detect the bulb's screen position, invert a
+monotonic lookup/polynomial calibration to obtain pan position, then apply a
+separately calibrated target curve to each scene-anchored ROI. A single bulb
+also cannot prove that every scene layer shares one transform, so intermediate
+pan positions and at least one additional static anchor are required before
+using the mapping live. If the inverse is ambiguous, the match residual is
+high, or the anchors disagree, return `UNKNOWN(pan-ambiguous)`.
+
+The first device-side sensor is now present in `CaptureService`: it scans the
+native frame's top 220 rows for the dominant warm bulb component and emits its
+sampled centroid, component area, component margin, confidence, and refusal
+reason alongside `READ`/`GET`. It returns UNKNOWN for non-native frames, a
+missing bulb, or a competing component. This is the measurement layer only;
+it does not yet transform live ROIs or authorize office-coordinate input.
+
+The existing `pan-shift.py` is an offline proof of displacement; its full-frame
 correlation is not the live implementation because a screencap-sized operation
 spends too much of the cycle budget. The helper already owns the native frame,
-so the production detector should use a narrow, device-side reference profile
-and return `pan_offset`, confidence, and refusal on a weak or contradictory
-match.
+so the device-side bulb scan is the measurement primitive. Calibration still
+needs to add the camera parameter, fit residual, and target-specific curves.
 
 Only scene-anchored office ROIs are transformed. HUD, monitor-map, and other
 fixed-screen ROIs remain in screen coordinates. While the view is moving, or
