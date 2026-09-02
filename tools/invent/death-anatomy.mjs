@@ -20,7 +20,7 @@ import { Sim } from '@fnaf2-1020/core/mechanics';
 import { view, ACTIONS, run } from '../minus7/sim.mjs';
 import { validateGenome, interpret, REGISTER_COUNT } from './policy-lang.mjs';
 import { constantsFor } from './search.mjs';
-import { singleThreat } from './targets.mjs';
+import { threatSet } from './targets.mjs';
 
 const argOf = (n, d) => {
   const f = process.argv.find(a => a.startsWith(`--${n}=`));
@@ -39,7 +39,7 @@ const essential = new Set(entry.ablation.essential);
 const genome = validateGenome({ ...entry.genome,
   rules: entry.genome.rules.filter((_, i) => essential.has(i)) });
 
-const customNight = singleThreat(TARGET);
+const customNight = threatSet(TARGET);
 const AI = C.peakAi(7, 'foxy', customNight);
 const THRESHOLD = 21 - AI;   // D >= THRESHOLD + r fires the roll
 

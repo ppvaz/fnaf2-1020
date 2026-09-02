@@ -24,7 +24,7 @@ import { mutate, crossover, randomGenome, validateGenome } from './policy-lang.m
 import { classifyFamily, closedFamilyRegister } from './closed-families.mjs';
 import { ablate } from './ablate.mjs';
 import { REACTIVE_GENOME } from './reference-genome.mjs';
-import { singleThreat } from './targets.mjs';
+import { threatSet } from './targets.mjs';
 
 const argOf = (name, fallback) => {
   const found = process.argv.find(a => a.startsWith(`--${name}=`));
@@ -69,7 +69,7 @@ function seededRng(seed) {
 const key = genome => stableHash(genome);
 
 function searchTarget(target, rng) {
-  const customNight = singleThreat(target);
+  const customNight = threatSet(target);
   const score = (genome, seeds) =>
     evaluate(s => rollout(genome, { night: 7, seed: s, customNight }), { seeds });
   // Package 8, per frontier survivor: which rules carry the survival and which

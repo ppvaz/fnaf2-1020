@@ -56,7 +56,20 @@ export const DIALS = Object.freeze([...C.AI_IDS]);
 // TIME BUDGET -- can it afford the hall while handling this dial -- and not
 // evidence that the named character is hard.
 export function singleThreat(id, level = SINGLE_THREAT_LEVEL) {
-  return Object.fromEntries(DIALS.map(dial => [dial, dial === id ? level : 0]));
+  return threatSet(id, level);
+}
+
+/**
+ * A target spec: one dial id, or several joined with `+` (e.g. `bb+foxy`).
+ * Every named dial goes to `level`, every other to 0 -- subject to the two
+ * characters a zeroed dial does not silence, above.
+ */
+export function threatSet(spec, level = SINGLE_THREAT_LEVEL) {
+  const named = new Set(String(spec).split('+').filter(Boolean));
+  for (const id of named) {
+    if (!DIALS.includes(id)) throw new Error(`unknown dial ${id} in target ${spec}`);
+  }
+  return Object.fromEntries(DIALS.map(dial => [dial, named.has(dial) ? level : 0]));
 }
 
 // The characters a zeroed dial does not silence. Asserted by the gate so a

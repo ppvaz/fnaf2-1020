@@ -23,7 +23,7 @@ import { readFileSync } from 'node:fs';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { ADMISSION_SEEDS, evaluate, rollout } from './search.mjs';
 import { validateGenome } from './policy-lang.mjs';
-import { singleThreat } from './targets.mjs';
+import { threatSet } from './targets.mjs';
 
 const argOf = (n, d) => {
   const f = process.argv.find(a => a.startsWith(`--${n}=`));
@@ -80,7 +80,7 @@ const essential = new Set(entry.ablation.essential);
 const base = validateGenome({ ...entry.genome,
   rules: entry.genome.rules.filter((_, i) => essential.has(i)) });
 
-const customNight = singleThreat('foxy');
+const customNight = threatSet('foxy');
 const score = g => evaluate(s => rollout(g, { night: 7, seed: s, customNight }), { seeds: SEEDS });
 const variant = (guard, frames) => validateGenome({ ...base,
   rules: base.rules.map(r => {

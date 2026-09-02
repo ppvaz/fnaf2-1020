@@ -16,7 +16,7 @@ import { readFileSync } from 'node:fs';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { ADMISSION_SEEDS, evaluate, rollout, reactiveRollout } from './search.mjs';
 import { validateGenome, provenanceManifest, readsOf } from './policy-lang.mjs';
-import { singleThreat } from './targets.mjs';
+import { threatSet } from './targets.mjs';
 
 const argOf = (name, fallback) => {
   const found = process.argv.find(a => a.startsWith(`--${name}=`));
@@ -75,7 +75,7 @@ const minimized = validateGenome({
   ...entry.genome,
   rules: entry.genome.rules.filter((_, index) => essential.has(index)),
 });
-const customNight = singleThreat(TARGET);
+const customNight = threatSet(TARGET);
 const score = genome =>
   evaluate(seed => rollout(genome, { night: 7, seed, customNight }), { seeds: SEEDS });
 
