@@ -53,8 +53,17 @@ function provenance() {
   };
   return {
     commit: git(['rev-parse', 'HEAD']),
-    // A dirty tree means the artifact does NOT correspond to any commit.
-    dirty: git(['status', '--porcelain']).length > 0,
+    // Only TRACKED modifications mean the artifact does not correspond to the
+    // commit. The first version used `git status --porcelain`, which counts
+    // untracked files too -- and this repo permanently carries an untracked
+    // `.claude/` worktree, so `dirty` was ALWAYS true and the field was noise
+    // that would have discredited every artifact it ever stamped.
+    dirty: git(['diff', 'HEAD', '--name-only']).length > 0,
+    // Untracked files are reported separately rather than folded into `dirty`:
+    // they usually do not affect the run, but an untracked module CAN be
+    // imported, so the count is retained instead of discarded.
+    untrackedFiles: git(['ls-files', '--others', '--exclude-standard'])
+      .split('\n').filter(Boolean).length,
     node: process.version,
     producedAt: new Date().toISOString(),
     argv: process.argv.slice(2),
