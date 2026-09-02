@@ -366,6 +366,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/nightloop.mjs",
+      "invocation": "tools/nightloop.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/ventreacttest.mjs",
       "invocation": "tools/ventreacttest.mjs",
       "kind": "check/report",
