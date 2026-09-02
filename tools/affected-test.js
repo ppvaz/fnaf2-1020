@@ -36,6 +36,7 @@ if (changed.some(path => path.startsWith('tools/invent/'))) {
   // known reactive policy before any search is allowed to run.
   add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
   add('observation-surface', 'node', ['tools/invent/test-observe.mjs']);
+  add('difficulty-probe', 'node', ['tools/invent/targets.mjs', '--assert']);
 }
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);

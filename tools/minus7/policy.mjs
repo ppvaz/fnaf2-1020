@@ -16,8 +16,11 @@ const arg = (k, d) => {
 const FLAG = k => process.argv.includes(`--${k}`);
 
 // Decide the next semantic action from the sourced state alone.
-export function decide(v, night) {
-  const safeD = 20 - C.peakAi(night, 'foxy');
+export function decide(v, night, customNight = null) {
+  // `peakAi` takes the Custom Night dials; without them this policy believes
+  // Foxy sits at the standard night's level whatever the dial says, which
+  // mis-sizes its own safety band under Custom Night (Plan 05 pkg 7b).
+  const safeD = 20 - C.peakAi(night, 'foxy', customNight);
   const drain = C.boxDrainFrames(night);
   const boxFramesLeft = v.winding ? Infinity : v.box * drain;
   const toCheck = (300 - (v.frame % 300)) % 300 || 300;

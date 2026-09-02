@@ -288,6 +288,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/search.mjs",
+      "invocation": "tools/invent/search.mjs",
+      "kind": "lib",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/targets.mjs",
+      "invocation": "tools/invent/targets.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/test-policy-lang.mjs",
       "invocation": "tools/invent/test-policy-lang.mjs",
       "kind": "check",

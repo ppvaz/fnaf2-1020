@@ -3215,6 +3215,22 @@
       ]
     },
     {
+      "file": "tools/invent/search.mjs",
+      "imports": [
+        "../minus7/policy.mjs",
+        "../minus7/sim.mjs",
+        "./policy-lang.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/invent/targets.mjs",
+      "imports": [
+        "./search.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
       "file": "tools/invent/test-observe.mjs",
       "imports": [
         "./observe.mjs",
