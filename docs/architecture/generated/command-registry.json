@@ -336,6 +336,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/foxy-ceiling.mjs",
+      "invocation": "tools/invent/foxy-ceiling.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/test-policy-lang.mjs",
       "invocation": "tools/invent/test-policy-lang.mjs",
       "kind": "check",

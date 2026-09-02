@@ -25,7 +25,7 @@ const argOf = (name, fallback) => {
 const FIELD = argOf('field', 'foxyD');
 const TARGET = argOf('target', 'foxy');
 const SEEDS = Number(argOf('seeds', ADMISSION_SEEDS));
-const FRONTIER = argOf('frontier', `captures/invent/frontier-${TARGET}.json`);
+const FRONTIER = argOf('frontier', `docs/evidence/invent/frontier-${TARGET}.json`);
 const [gridLo, gridHi] = String(argOf('grid', '-6..6')).split('..').map(Number);
 
 /** Replace every read of `field` with a constant, leaving the rest intact. */

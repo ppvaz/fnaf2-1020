@@ -38,7 +38,11 @@ const ADMIT = Number(argOf('admit', ADMISSION_SEEDS));
 // Package 8 runs on the frontier at the admission cohort by default, so a rule
 // delta is comparable to the rate printed beside it. `--ablate=0` turns it off.
 const ABLATE = Number(argOf('ablate', ADMIT));
-const OUT = argOf('out', 'captures/invent');
+// Retained, not ignored. Package 7c's gate is "a reproducible frontier file per
+// target plus the log", and `captures/` is gitignored -- a gate whose evidence
+// is deleted is not a gate. Frontiers are results, not raw captures, so they
+// live with the other retained evidence.
+const OUT = argOf('out', 'docs/evidence/invent');
 
 // A frontier that cannot be tied to the code that produced it is a number, not
 // evidence. `factreplay.mjs` already stamps this; this did not.

@@ -1377,6 +1377,16 @@
       ]
     },
     {
+      "file": "tools/invent/foxy-ceiling.mjs",
+      "imports": [
+        "./policy-lang.mjs",
+        "./search.mjs",
+        "./targets.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/invent/observe.mjs",
       "imports": [
         "@fnaf2-1020/core/mechanics"
