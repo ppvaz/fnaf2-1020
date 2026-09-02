@@ -1,0 +1,40 @@
+{
+  "schema": "closed-policy-families-v1",
+  "note": "Families already closed by a recorded negative. A search that admits a candidate from one of these is re-running a refuted experiment under a new name. Each rule is mechanical; the citation is where the negative is recorded, not a substitute for it.",
+  "families": [
+    {
+      "id": "unconditioned-schedule",
+      "rule": "no-observation-branch",
+      "plans": ["05", "06", "16"],
+      "closure": "recorded-negative",
+      "citations": [
+        "plans/05-derive-new-strategy.md: static covers refuted by the extracted Android route graph (CAM 06/07 crosses off-camera transit markers)",
+        "plans/06-hybrid-strategy-search.md: fixed CAM 03/06/07 anchors and all 125 three-phase clock schedules score 0/150 under the corrected office endgame",
+        "plans/16-constrained-policy-search.md: packages 4 and 5 closed by recorded negative; the constrained scheduling space -- timing knobs, cycle length, sweep geometry, the Night 7 opener -- is exhausted"
+      ],
+      "why": "Every family above is a program whose control flow never reads a game fact. plans/ROADMAP.md Track B states the consequence directly: 'A search over timing geometry has already been run to exhaustion and recorded as a wall. What has not been searched is the space of observation-conditioned programs.'"
+    },
+    {
+      "id": "timing-only-mutation",
+      "rule": "known-shape-different-times",
+      "plans": ["16"],
+      "closure": "recorded-negative",
+      "citations": [
+        "plans/16-constrained-policy-search.md package 4: the timing-knob space is exhausted and its best candidate is a gate-overfit that collapses at a second pinned readLatencyMs",
+        "plans/12-end-to-end-evidence-campaign.md 'No knob setting rescues Night 7': hallPulseMs, readLatencyMs, maskMarginMs and pilotOffset all swept; the best value is the shipped one"
+      ],
+      "why": "A candidate whose action shape equals a known family's and differs only in times is a knob setting, and the knobs were swept."
+    },
+    {
+      "id": "audio-anchored-branch",
+      "rule": "branch-on-audio-fact",
+      "plans": ["08", "16"],
+      "closure": "recorded-negative",
+      "citations": [
+        "plans/08-audio-cue-controller.md 'The latency budget an early-unmask would need -- and it is out of reach': the gain needs end-to-end bang latency < ~33 ms, is break-even at ~50 ms and a net loss above ~67 ms; the g56's audio path is unmeasured and the ARM/HIT/MISS protocol to measure it does not exist",
+        "plans/PROGRESS.md 'Item 10: closed on latency'"
+      ],
+      "why": "Independently of the closure, every audio fact's read cost is UNKNOWN in the observation budget, so it is excluded from the language."
+    }
+  ]
+}

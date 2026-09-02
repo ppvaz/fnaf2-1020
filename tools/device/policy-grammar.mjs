@@ -4,7 +4,9 @@
 // claim that every syntactically legal policy survives a model gate; that is
 // the next search package.  Setup targets are named so a candidate cannot
 // smuggle in an unsourced opening as an anonymous list of taps.
-import { canonicalPolicy, POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
+import {
+  BRANCH_SCHEMA, POLICY_SCHEMA, canonicalPolicy, validateBranch, validatePolicy,
+} from '@fnaf2-1020/core/control';
 import { minimalPolicy } from './policy-ir.mjs';
 
 export const GRAMMAR_SCHEMA = 'policy-grammar-v1';
@@ -156,8 +158,13 @@ function checkOrdering(phases, checked) {
       if (actions.length) fail(`${phase.kind} phases cannot emit actions`);
       continue;
     }
+    const entryState = clone(state);
     for (const item of actions) applySymbolicAction(state, item, phase.id);
     if (phase.kind === 'repeat') {
+      // A branch may re-select the viewed camera; both arms agree on which,
+      // so the body's end state stays determined.
+      const exit = checkBranches(phase, actions, entryState);
+      if (Object.hasOwn(exit, 'camera')) state.camera = exit.camera;
       // A body is repeated indefinitely.  Requiring its symbolic control state
       // to close prevents a one-mask/one-monitor body from alternating hidden
       // state on every iteration.
@@ -172,6 +179,78 @@ function checkOrdering(phases, checked) {
   }
 }
 
+// --- Observation-conditioned branches (Plan 05 package 6b) --------------
+//
+// A branch is the one construct policy-v1 was missing: a decision point inside
+// the repeat body that reads a fact and takes one of two reviewed arms. The
+// measured-budget half of the rules lives in core's observation language; the
+// engine-shaped half lives here.
+//
+// Reconvergence, in two parts:
+//
+//  - both arms must leave the SAME symbolic state, so everything scheduled
+//    after the branch is deterministic whichever arm ran; and
+//  - that state's monitor/mask mode must equal the decision point's, so the
+//    body's own close-your-state rule still holds.
+//
+// The viewed camera may differ from the decision point -- re-selecting a
+// camera is the point of a branch -- because no action's legality depends on
+// which camera is viewed, only on the monitor being up.
+function checkBranchArm(branch, arm, name, stateAtDecision, phaseId) {
+  const label = `${phaseId} branch ${branch.id} ${name}`;
+  const checked = arm.map((action, index) => checkAction(
+    { ...action, offsetMs: action.offsetMs }, { repeat: true, phase: label, index }));
+  for (let i = 1; i < checked.length; i++) {
+    if (checked[i - 1].end > checked[i].at) fail(`${label} actions overlap`);
+  }
+  const state = clone(stateAtDecision);
+  for (const item of checked) applySymbolicAction(state, item, label);
+  if (state.monitorUp !== stateAtDecision.monitorUp || state.maskOn !== stateAtDecision.maskOn)
+    fail(`${label} does not restore the monitor/mask state it started from`);
+  return { end: checked.length ? checked[checked.length - 1].end : 0, state };
+}
+
+function checkBranches(phase, unconditional, entryState) {
+  const branches = phase.branches ?? [];
+  if (!Array.isArray(branches)) fail(`${phase.id} branches must be an array`);
+  if (branches.length && phase.kind !== 'repeat')
+    fail(`${phase.id}: branches are only defined inside a repeat body`);
+  const ids = new Set();
+  const windows = [];
+  const exit = {};
+  for (const branch of branches) {
+    validateBranch(branch);
+    if (ids.has(branch.id)) fail(`${phase.id} has duplicate branch id ${branch.id}`);
+    ids.add(branch.id);
+    // Replay the unconditional body from the state the body is entered in, up
+    // to the decision point, to learn the symbolic state the arms start from.
+    const state = clone(entryState);
+    for (const item of unconditional) {
+      if (item.at > branch.atMs) break;
+      applySymbolicAction(state, item, phase.id);
+    }
+    const taken = checkBranchArm(branch, branch.then, 'then', state, phase.id);
+    const skipped = checkBranchArm(branch, branch.otherwise, 'otherwise', state, phase.id);
+    if (JSON.stringify(taken.state) !== JSON.stringify(skipped.state))
+      fail(`${phase.id} branch ${branch.id} arms leave different control states`);
+    exit.camera = taken.state.camera;
+    const span = Math.max(taken.end, skipped.end);
+    const window = { start: branch.atMs, end: branch.atMs + span, id: branch.id };
+    if (window.end > phase.periodMs)
+      fail(`${phase.id} branch ${branch.id} escapes its period`);
+    for (const item of unconditional) {
+      if (item.at < window.end && item.end > window.start)
+        fail(`${phase.id} branch ${branch.id} overlaps unconditional ${item.action.action}`);
+    }
+    for (const other of windows) {
+      if (window.start < other.end && window.end > other.start)
+        fail(`${phase.id} branch ${branch.id} overlaps branch ${other.id}`);
+    }
+    windows.push(window);
+  }
+  return exit;
+}
+
 /** Validate policy-v1 against the finite, engine-shaped structural grammar. */
 export function validateGrammarPolicy(program) {
   validatePolicy(program);
@@ -184,6 +263,8 @@ export function validateGrammarPolicy(program) {
   for (const phase of program.phases) {
     const actions = checkPhaseActions(phase, phase.kind === 'repeat');
     checked.push({ phase, actions });
+    if (phase.branches !== undefined && phase.kind !== 'repeat')
+      fail(`${phase.id}: branches are only defined inside a repeat body`);
     if (phase.kind === 'repeat') {
       if (phase.endMs <= phase.startMs) fail('repeat phase must have positive duration');
       if (phase.periodMs > phase.endMs - phase.startMs)
@@ -198,7 +279,7 @@ export function validateGrammarPolicy(program) {
 /** Construct a canonical five-phase program from grammar moves. */
 export function buildPolicy({ metadata, idleEndMs, loopStartMs, loopEndMs,
   periodMs, observeUntilMs, setupActions = [], repeatActions = [],
-  finishActions = [], observations = [], proof } = {}) {
+  repeatBranches = [], finishActions = [], observations = [], proof } = {}) {
   const target = metadata?.setupTarget;
   if (!metadata || !target || !proof) fail('metadata, setupTarget, and proof are required');
   const program = {
@@ -209,7 +290,8 @@ export function buildPolicy({ metadata, idleEndMs, loopStartMs, loopEndMs,
       { id: 'setup', kind: 'setup', startMs: idleEndMs, endMs: loopStartMs,
         actions: clone(setupActions) },
       { id: 'repeat', kind: 'repeat', startMs: loopStartMs, endMs: loopEndMs,
-        periodMs, actions: clone(repeatActions) },
+        periodMs, actions: clone(repeatActions),
+        ...(repeatBranches.length ? { branches: clone(repeatBranches) } : {}) },
       { id: 'finish', kind: 'finish', startMs: loopEndMs, endMs: loopEndMs,
         actions: clone(finishActions) },
       { id: 'observe', kind: 'observe', startMs: loopEndMs, endMs: observeUntilMs,
@@ -239,8 +321,41 @@ function structuralFingerprint(program) {
         return result;
       }),
       observations: phase.observations ?? [],
+      branches: (phase.branches ?? []).map(branch => ({
+        id: branch.id, atMs: branch.atMs, fact: branch.observe.fact,
+        op: branch.predicate.op,
+        then: branch.then.map(action => ({ action: action.action, mode: action.mode ?? 'tap', offsetMs: action.offsetMs })),
+        otherwise: branch.otherwise.map(action => ({ action: action.action, mode: action.mode ?? 'tap', offsetMs: action.offsetMs })),
+      })),
     })),
   });
+}
+
+// The same structure with every time removed. Two programs with the same shape
+// differ only in timing knobs -- which is the space Plan 16 closed by recorded
+// negative, so the duplicate control needs to see it.
+export function structuralShape(program) {
+  validateGrammarPolicy(program);
+  return JSON.stringify({
+    setupTarget: program.metadata.setupTarget,
+    family: program.metadata.family,
+    nights: program.metadata.nights,
+    phases: program.phases.map(phase => ({
+      kind: phase.kind,
+      actions: (phase.actions ?? []).map(action =>
+        `${action.action}:${action.mode ?? 'tap'}`),
+      observations: (phase.observations ?? []).map(observation => observation.fact),
+      branches: (phase.branches ?? []).map(branch =>
+        `${branch.observe.fact}:${branch.predicate.op}:` +
+        `${branch.then.map(a => a.action).join('+')}/` +
+        `${branch.otherwise.map(a => a.action).join('+')}`),
+    })),
+  });
+}
+
+/** Every observation-conditioned branch in the program, in document order. */
+export function policyBranches(program) {
+  return program.phases.flatMap(phase => phase.branches ?? []);
 }
 
 const MINIMAL = minimalPolicy();
@@ -264,4 +379,9 @@ export function classifyPolicy(program) {
 
 export function knownPolicyFamilies() {
   return [...new Set(KNOWN.values())].sort();
+}
+
+/** Timing-free shapes of the known families, for the duplicate control. */
+export function knownPolicyShapes() {
+  return new Map([[structuralShape(MINIMAL), 'minus-toys-minimal']]);
 }

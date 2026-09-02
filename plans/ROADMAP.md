@@ -219,6 +219,16 @@ programs.
   branches conditioned on facts the controller can actually observe within its
   measured budget. Plan 05 P6 defines and sources that language, with duplicate
   controls excluding Plans 05/06/16's closed families.
+  **Correction, 2026-09-02: P1–P6 are closed for the Night 1 Minimal target
+  only, and until this date the grammar had no branch construct at all — so B1
+  was never "run the campaign", it was "close the prerequisite".** The
+  observation-conditioned language, its measured budget (visual read 59.5 ms
+  p95 DEVICE_MEASURED; all four audio facts and the host round trip `UNKNOWN`
+  and excluded) and the mechanical duplicate control have landed. The remaining
+  B1 blocker is an evaluator: the exact-engine adapter compiles one
+  unconditional stream, so a branched program refuses to compile rather than
+  being flattened, and no campaign has been run. See `plans/PROGRESS.md`
+  §"Plan 05 — Custom Night invention campaign", 2026-09-02.
 - **B2 — the falsifiable target.** A route that survives ±1 frame of
   differential displacement *and* can reach the BB branch's mid-cycle 5 s check,
   which the two-row shared prefix cannot.

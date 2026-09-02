@@ -95,6 +95,23 @@ search labels a rediscovery rather than calling it novel.
 **Done when:** the grammar generates the existing families, rejects impossible
 action orderings, and identifies each known family from its canonical IR.
 
+**2026-09-02 — the grammar gains its first conditional construct.** Until this
+date the grammar could not express a branch on an observable fact at all: the
+five phases are unconditional, and `observations` were recorded and never read.
+`policy-grammar.mjs` now accepts `branches` on a `repeat` body, validated
+through `packages/core/src/control/observation-language.js`
+(`observation-language-v1`): a branch names one admissible fact, one predicate
+from a finite UNKNOWN-total vocabulary, and two reviewed arms that must leave
+the same control state as each other and restore the monitor/mask mode they
+started from. A fact is admissible only when its read cost is measured — which
+excludes all four audio facts as `UNKNOWN` — and a branch may not demand a fact
+fresher than one sample interval plus one read, nor act sooner after its
+observation than one read costs. `tools/observationlanguagetest.mjs` pins the
+budget, the two rules, the grammar constraints, and the duplicate control.
+
+The Minus 7 family is still unported, and the branch construct has no evaluator:
+see P2 below.
+
 `tools/device/policy-grammar.mjs` builds the finite five-phase program shape,
 requires a named sourced setup target, checks action timing/overlap and
 engine-shaped monitor/mask/camera ordering, and fingerprints the current
@@ -161,6 +178,15 @@ the session manifest, verifies the remote plan hash after `adb push`, and keeps
 phone. A physical run is still required before any live-device claim, and the
 standard Minus Toys/Minus 7 routes remain on their pre-IR paths until their
 family ports are complete.
+
+**2026-09-02 — P2 must be reopened for branches before P7 can run.**
+`compilePolicy` compiles one unconditional event stream. Flattening a branch
+into either arm would replay a different program under the branched program's
+name, so `compilePolicy` and `compileDevicePlan` now **refuse** a branched
+program instead. A branched interpreter — one that reads facts through
+`packages/core/src/sensing/observer.js` as the night runs, at the measured
+cadence, and honours `maxAgeMs`/`confidenceFloor`/UNKNOWN — does not exist. It
+is the prerequisite for P7 and for ROADMAP B2.
 
 ### P7 — invention campaign and promotion
 
