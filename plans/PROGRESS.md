@@ -2,6 +2,23 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 The checked-in inventories were counting a scratch worktree.
+`tools/generate-catalog.js` walked the working directory, so the agent worktree
+under `.claude/` was indexed as repository source. `26df393` committed a
+`language-inventory.json` claiming 126 shell files and 21854 shell lines against
+an actual 63 and 10927 -- every language count exactly DOUBLED -- plus 134
+foreign files in `import-graph.json`, 138 in `test-manifest.json` and 42 paths in
+`reverse-links.json`. Anyone quoting a repository size off those files between
+`26df393` and this commit was quoting two copies of it. The generator now
+enumerates from `git ls-files --cached --others --exclude-standard`, which
+reports a nested checkout as one opaque entry and also excludes the gitignored
+`android/cue-helper/build/` output the old `SKIP` list missed; `--others` keeps
+a new uncommitted tool in the catalog, so a tool and its row still land in one
+commit. Every count now equals `git ls-files` exactly. `tools/architecture-test.js`
+gates it: a generated catalog may not name a path outside this repository, so the
+next walk that reaches into a worktree fails the unit lane instead of being
+committed.
+
 2026-09-02 ROADMAP B1 / Plan 05 packages 6b-7b — the invention substrate is
 built on the PRIVILEGED surface and the campaign's first check-in has run.
 Privileged-first is Pedro's ordering and it is a refutation instrument, not a

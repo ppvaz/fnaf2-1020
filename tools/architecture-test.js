@@ -4,6 +4,7 @@
  * device boundaries remain.
  */
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -81,6 +82,30 @@ for (const entry of legacyCatalog.entries) {
   } catch (error) {
     assert.fail(`${entry.id} points at missing path ${entry.path}: ${error.message}`);
   }
+}
+// The checked-in inventories describe the REPOSITORY, and a directory walk
+// cannot tell that from the working directory it happens to run in. On
+// 2026-09-02 an agent worktree under `.claude/` was walked into three of them
+// and doubled every count (Shell 63 -> 126 files), so the catalogs asserted
+// code that is not in this repository. git already draws the line -- it
+// reports a nested checkout as one opaque directory entry -- so its
+// enumeration is the authority here.
+const enumerated = new Set(execFileSync('git',
+  ['ls-files', '--cached', '--others', '--exclude-standard'],
+  { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean));
+const catalogPaths = {
+  'import-graph.json': catalog => catalog.files.map(entry => entry.file),
+  'test-manifest.json': catalog => catalog.tests.map(entry => entry.id),
+  'reverse-links.json': catalog => catalog.links.map(link => link.path),
+};
+for (const [name, select] of Object.entries(catalogPaths)) {
+  const catalog = JSON.parse(await readFile(join(ROOT, 'docs/architecture/generated', name), 'utf8'));
+  const foreign = [...new Set(select(catalog)
+    .map(path => path.split('#', 1)[0])
+    .filter(path => !enumerated.has(path)))].sort();
+  assert.deepEqual(foreign, [],
+    `${name} names ${foreign.length} path(s) outside this repository, starting ` +
+    `with ${foreign[0]}; regenerate with npm run catalog`);
 }
 for (const shim of ['tools/device/trial.sh', 'tools/device/legacy-trial.sh']) {
   assert.match(compatibility, new RegExp(shim.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')), `${shim} is missing from the compatibility inventory`);

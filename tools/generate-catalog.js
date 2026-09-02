@@ -1,26 +1,30 @@
 #!/usr/bin/env node
 /** Generate checked-in inventories from executable repository truth. */
-import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ADAPTER_REGISTRY } from '@fnaf2-1020/adapters/registry';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const OUT = join(ROOT, 'docs/architecture/generated');
-const SKIP = new Set(['.git', 'node_modules', 'captures', 'artifacts', 'dist', '__pycache__']);
 
-async function walk(directory) {
-  const result = [];
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (SKIP.has(entry.name)) continue;
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) result.push(...await walk(path));
-    else result.push(path);
-  }
-  return result;
-}
-
-const files = (await walk(ROOT)).sort();
+// The inventories describe the REPOSITORY, not whatever the working directory
+// happens to hold. A directory walk cannot tell the two apart: on 2026-09-02 an
+// agent worktree under `.claude/` was walked into `import-graph`,
+// `reverse-links` and `test-manifest`, and doubled every language count
+// (Shell 63 -> 126 files, JavaScript 240 -> 491). git already draws that line --
+// a nested checkout comes back as a single opaque directory entry, and its
+// ignore rules cover the build output the old SKIP list missed
+// (`android/cue-helper/build/`) -- so git's enumeration is the boundary.
+// `--others` keeps a newly added, not-yet-committed file in the catalog, which
+// is what lets a tool and its catalog row land in one commit.
+const files = execFileSync('git',
+  ['ls-files', '--cached', '--others', '--exclude-standard'],
+  { cwd: ROOT, encoding: 'utf8' })
+  .split('\n').filter(Boolean)
+  .filter(path => !path.endsWith('/'))
+  .map(path => join(ROOT, path)).sort();
 const sourceFiles = files.filter(path => /\.(?:js|mjs|ts|py|sh|c|S)$/.test(path));
 const language = {};
 for (const path of sourceFiles) {

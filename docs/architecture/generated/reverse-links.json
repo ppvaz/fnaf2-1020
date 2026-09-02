@@ -8,13 +8,6 @@
     {
       "id": "claim.android.g779.empty-hall",
       "kind": "CLAIM",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/plans/22-architecture-and-developer-experience-refactor.md",
-      "line": 1085,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "claim.android.g779.empty-hall",
-      "kind": "CLAIM",
       "path": "plans/22-architecture-and-developer-experience-refactor.md",
       "line": 1085,
       "relation": "REFERENCES"
@@ -36,48 +29,6 @@
       "kind": "CONTRACT",
       "path": "tools/activitygatetest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/mcp.js",
-      "line": 5,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/actuators.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/transports/hid.js",
-      "line": 6,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/actuation/ports.js",
-      "line": 1,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/runtime/src/scheduler/scheduler.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.actuator-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/plans/22-architecture-and-developer-experience-refactor.md",
-      "line": 1084,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.actuator-v1",
@@ -154,13 +105,6 @@
     {
       "id": "contract.bench-transport-trace-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/telemetry/bench-trace.js",
-      "line": 1,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.bench-transport-trace-v1",
-      "kind": "CONTRACT",
       "path": "packages/core/src/telemetry/bench-trace.js",
       "line": 1,
       "relation": "REFERENCES"
@@ -176,13 +120,6 @@
       "kind": "CONTRACT",
       "path": "packages/adapters/test/conformance.test.js",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.camera-rule-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/camera-rule.js",
-      "line": 15,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.camera-rule-v1",
@@ -206,13 +143,6 @@
     {
       "id": "contract.campaign-proof-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/campaign-proof.js",
-      "line": 3,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.campaign-proof-v1",
-      "kind": "CONTRACT",
       "path": "apps/device/src/campaign-proof.js",
       "line": 3,
       "relation": "REFERENCES"
@@ -222,13 +152,6 @@
       "kind": "CONTRACT",
       "path": "apps/device/test/campaign-runner.test.js",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.capability-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/registry.js",
-      "line": 3,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.capability-v1",
@@ -264,13 +187,6 @@
     {
       "id": "contract.controller-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/control/ports.js",
-      "line": 1,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.controller-v1",
-      "kind": "CONTRACT",
       "path": "packages/core/src/control/ports.js",
       "line": 1,
       "relation": "REFERENCES"
@@ -286,27 +202,6 @@
       "kind": "CONTRACT",
       "path": "tools/reactivetest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.cue-helper-control-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/physical-ports.js",
-      "line": 9,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.cue-helper-control-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/transports/cue-helper.js",
-      "line": 5,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.cue-helper-control-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/transports/cue-helper.js",
-      "line": 36,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.cue-helper-control-v1",
@@ -344,13 +239,6 @@
     {
       "id": "contract.custom-night-config-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/custom-night.js",
-      "line": 7,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.custom-night-config-v1",
-      "kind": "CONTRACT",
       "path": "apps/device/src/custom-night.js",
       "line": 7,
       "relation": "REFERENCES"
@@ -370,13 +258,6 @@
     {
       "id": "contract.detector-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/sensing/ports.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.detector-v1",
-      "kind": "CONTRACT",
       "path": "packages/adapters/test/conformance.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
@@ -385,13 +266,6 @@
       "kind": "CONTRACT",
       "path": "packages/core/src/sensing/ports.js",
       "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-adb-preflight-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/adb-bridge.js",
-      "line": 8,
       "relation": "REFERENCES"
     },
     {
@@ -422,13 +296,6 @@
     {
       "id": "contract.device-campaign-preflight-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/campaign-preflight.js",
-      "line": 5,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-campaign-preflight-v1",
-      "kind": "CONTRACT",
       "path": "apps/device/src/campaign-preflight.js",
       "line": 5,
       "relation": "REFERENCES"
@@ -450,27 +317,6 @@
       "kind": "CONTRACT",
       "path": "apps/device/test/campaign.test.js",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.device-campaign-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/campaign-runner.js",
-      "line": 8,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-campaign-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/campaign.js",
-      "line": 8,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-campaign-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/modern-campaign-ports.js",
-      "line": 8,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.device-campaign-v1",
@@ -504,48 +350,6 @@
       "kind": "CONTRACT",
       "path": "apps/device/test/campaign.test.js",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/adb-device-local-executor.js",
-      "line": 9,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/artifact-executor.js",
-      "line": 8,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/device-local-executor.js",
-      "line": 9,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/mcp.js",
-      "line": 5,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/modern-campaign-ports.js",
-      "line": 8,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.device-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/service.js",
-      "line": 5,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.device-executor-v1",
@@ -652,27 +456,6 @@
     {
       "id": "contract.hid-executor-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/adb-device-local-executor.js",
-      "line": 9,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.hid-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/physical-ports.js",
-      "line": 9,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.hid-executor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/transports/hid.js",
-      "line": 6,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.hid-executor-v1",
-      "kind": "CONTRACT",
       "path": "apps/device/src/adb-device-local-executor.js",
       "line": 9,
       "relation": "REFERENCES"
@@ -696,20 +479,6 @@
       "kind": "CONTRACT",
       "path": "tools/device/test-runner-plan.mjs",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.measurement-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/contracts/index.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.measurement-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/sensing/ports.js",
-      "line": 4,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.measurement-v1",
@@ -746,13 +515,6 @@
     {
       "id": "contract.monitor-rule-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/adapters/src/monitor-rule.js",
-      "line": 16,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.monitor-rule-v1",
-      "kind": "CONTRACT",
       "path": "packages/adapters/src/monitor-rule.js",
       "line": 16,
       "relation": "REFERENCES"
@@ -774,13 +536,6 @@
       "kind": "CONTRACT",
       "path": "tools/cue/test-audio-authority.py",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.plant-model-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/mechanics/plant.js",
-      "line": 4,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.plant-model-v1",
@@ -822,13 +577,6 @@
     {
       "id": "contract.raw-sample-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/sensing/ports.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.raw-sample-v1",
-      "kind": "CONTRACT",
       "path": "packages/adapters/test/conformance.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
@@ -866,20 +614,6 @@
     {
       "id": "contract.semantic-control-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/contracts/index.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.semantic-control-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/core/src/mechanics/plant.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.semantic-control-v1",
-      "kind": "CONTRACT",
       "path": "packages/core/src/contracts/index.js",
       "line": 4,
       "relation": "REFERENCES"
@@ -906,13 +640,6 @@
     {
       "id": "contract.session-manifest-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/apps/device/src/service.js",
-      "line": 5,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.session-manifest-v1",
-      "kind": "CONTRACT",
       "path": "apps/device/src/service.js",
       "line": 5,
       "relation": "REFERENCES"
@@ -928,13 +655,6 @@
       "kind": "CONTRACT",
       "path": "tools/estimatortest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "contract.supervisor-v1",
-      "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/runtime/src/safety/supervisor.js",
-      "line": 1,
-      "relation": "REFERENCES"
     },
     {
       "id": "contract.supervisor-v1",
@@ -970,13 +690,6 @@
     {
       "id": "contract.trajectory-v1",
       "kind": "CONTRACT",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/packages/runtime/src/scheduler/scheduler.js",
-      "line": 4,
-      "relation": "REFERENCES"
-    },
-    {
-      "id": "contract.trajectory-v1",
-      "kind": "CONTRACT",
       "path": "packages/runtime/src/scheduler/scheduler.js",
       "line": 4,
       "relation": "REFERENCES"
@@ -992,13 +705,6 @@
       "kind": "CONTRACT",
       "path": "tools/device/test-bundle.mjs",
       "relation": "CONFORMANCE_FIXTURE"
-    },
-    {
-      "id": "evidence.runtime-gh",
-      "kind": "EVIDENCE",
-      "path": ".claude/worktrees/agent-adf6116b0d8b43f4e/plans/22-architecture-and-developer-experience-refactor.md",
-      "line": 1085,
-      "relation": "REFERENCES"
     },
     {
       "id": "evidence.runtime-gh",
