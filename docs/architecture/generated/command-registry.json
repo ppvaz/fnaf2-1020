@@ -300,6 +300,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/reference-genome.mjs",
+      "invocation": "tools/invent/reference-genome.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/invent/campaign.mjs",
+      "invocation": "tools/invent/campaign.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/test-policy-lang.mjs",
       "invocation": "tools/invent/test-policy-lang.mjs",
       "kind": "check",

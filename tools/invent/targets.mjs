@@ -40,6 +40,18 @@ export const DIALS = Object.freeze([...C.AI_IDS]);
 // AI 0, and Golden Freddy uses `Random(20) < GF AI`, also never at 0. Those
 // nine ARE isolated by this vector; Foxy and the Puppet are not.
 //
+// Cross-checked against the community record, 2026-09-02 (Plan 05 pkg 8's
+// novelty-review discipline). Technical-FNaF's Withered Foxy (FNaF 2) page
+// independently gives `random(0-4)` INCLUSIVE, D starting at 0 and rising ~1/s,
+// a hall flash resetting D to 0 while he is in the hall, D falling 1 per 0.5 s
+// of flashlight while he is in Parts/Service, and D paused during blackouts --
+// matching the sourced index above field for field. Community reports also
+// state Foxy remains active at AI 0 BY DESIGN, and give the reason as keeping
+// Balloon Boy meaningful in presets where BB is active and Foxy is dialled to
+// 0. That is precisely the interaction the probe below measures: bb=15 with
+// foxy=0 dies to FOXY at a mean 49.0 s. A loosely-worded secondary source says
+// `random 0-5`; the dump and Technical-FNaF agree on 0..4, so the index stands.
+//
 // Consequence for reading a probe: a low score is evidence about the policy's
 // TIME BUDGET -- can it afford the hall while handling this dial -- and not
 // evidence that the named character is hard.
@@ -69,6 +81,12 @@ export function probe(id, { seeds = ADMISSION_SEEDS, level = SINGLE_THREAT_LEVEL
   };
 }
 
+// Importing this module must not run the probe. `campaign.mjs` imports
+// `singleThreat`, and an unguarded CLI here ran a full 1200-seed probe as an
+// import side effect.
+const INVOKED_DIRECTLY = process.argv[1] &&
+  process.argv[1].endsWith('targets.mjs');
+
 const argOf = (name, fallback) => {
   const found = process.argv.find(a => a.startsWith(`--${name}=`));
   return found ? found.split('=')[1] : fallback;
@@ -76,7 +94,8 @@ const argOf = (name, fallback) => {
 const ASSERT = process.argv.includes('--assert');
 const seeds = Number(argOf('seeds', ASSERT ? 60 : ADMISSION_SEEDS));
 
-const results = DIALS.map(id => probe(id, { seeds }));
+const results = INVOKED_DIRECTLY ? DIALS.map(id => probe(id, { seeds })) : [];
+if (INVOKED_DIRECTLY) {
 
 if (process.argv.includes('--json')) {
   console.log(JSON.stringify({ schema: 'difficulty-probe-v1', seeds, results }, null, 2));
@@ -130,4 +149,5 @@ if (ASSERT) {
     LIVE_AT_ZERO.includes('puppet'));
   if (failures) process.exitCode = 1;
   else console.log('difficulty probe: dials, arms, caps and verdicts pass');
+}
 }

@@ -232,11 +232,22 @@ export function randomGenome(rng, { rules = 4 } = {}) {
 export function mutate(genome, rng) {
   const next = structuredClone(validateGenome(genome));
   const roll = rng();
-  if (!next.rules.length || roll < 0.3)
+  // Rule ORDER is semantics here, because first match wins. Plan 05 package
+  // 7b's check-in indicted an ordering specifically -- `bbOpening ->
+  // HOLD_MASK` sitting above the Foxy check starves the hall flash -- so a
+  // search that cannot move a rule cannot reach the fix.
+  if (next.rules.length > 1 && roll < 0.2) {
+    const from = Math.floor(rng() * next.rules.length);
+    let to = Math.floor(rng() * next.rules.length);
+    if (to === from) to = (to + 1) % next.rules.length;
+    next.rules.splice(to, 0, next.rules.splice(from, 1)[0]);
+    return validateGenome(next);
+  }
+  if (!next.rules.length || roll < 0.4)
     next.rules.splice(Math.floor(rng() * (next.rules.length + 1)), 0,
       { when: randomPredicate(rng), then: pick(rng, ACTION_NAMES) });
-  else if (roll < 0.5) next.rules.splice(Math.floor(rng() * next.rules.length), 1);
-  else if (roll < 0.75) next.rules[Math.floor(rng() * next.rules.length)].then = pick(rng, ACTION_NAMES);
+  else if (roll < 0.6) next.rules.splice(Math.floor(rng() * next.rules.length), 1);
+  else if (roll < 0.8) next.rules[Math.floor(rng() * next.rules.length)].then = pick(rng, ACTION_NAMES);
   else next.rules[Math.floor(rng() * next.rules.length)].when = randomPredicate(rng);
   return validateGenome(next);
 }

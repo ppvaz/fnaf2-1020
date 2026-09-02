@@ -3203,6 +3203,18 @@
       ]
     },
     {
+      "file": "tools/invent/campaign.mjs",
+      "imports": [
+        "./policy-lang.mjs",
+        "./reference-genome.mjs",
+        "./search.mjs",
+        "./targets.mjs",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/invent/observe.mjs",
       "imports": [
         "@fnaf2-1020/core/mechanics"
@@ -3212,6 +3224,13 @@
       "file": "tools/invent/policy-lang.mjs",
       "imports": [
         "./observe.mjs"
+      ]
+    },
+    {
+      "file": "tools/invent/reference-genome.mjs",
+      "imports": [
+        "./policy-lang.mjs",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {
@@ -3244,6 +3263,7 @@
         "../minus7/policy.mjs",
         "../minus7/sim.mjs",
         "./policy-lang.mjs",
+        "./reference-genome.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
