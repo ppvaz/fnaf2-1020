@@ -1384,7 +1384,8 @@
     {
       "file": "tools/invent/policy-lang.mjs",
       "imports": [
-        "./observe.mjs"
+        "./observe.mjs",
+        "node:fs"
       ]
     },
     {

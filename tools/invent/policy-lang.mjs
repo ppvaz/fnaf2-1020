@@ -16,6 +16,7 @@
 // the controller-observable surface -- a privileged read is a sensor
 // requirement in disguise, and a read with no observable counterpart is the
 // list of sensors a survivor would need and does not have.
+import { readFileSync } from 'node:fs';
 import { PROVENANCE, MODEL_FIELDS } from './observe.mjs';
 
 export const POLICY_LANG_SCHEMA = 'invent-policy-v1';
@@ -333,23 +334,69 @@ export function structuralShape(genome) {
 // would require and the project does not have. The mapping is deliberately
 // conservative -- an entry is only filled where the observable fact carries the
 // same information, not merely a correlated one.
-export const OBSERVABLE_COUNTERPART = Object.freeze({
-  blackout: 'blackout',
-  maskOn: 'maskOn',
-  monitor: 'monitorUp',
-  winding: null,
-  box: 'boxPie',
-  frame: 'amHour',
-  bbOpening: 'leftOpening',
-  power: null,
-  foxyD: null,
-  foxyLoc: null,
-  gfPresent: null,
-  committed: null,
-  stun: null,
-  hour: 'amHour',
-  ventLightL: 'ventLightL',
-});
+// Which controller-observable fact, if any, could stand in for a privileged
+// read -- lifted from `privileged-observable-map.json` (Track B1) rather than
+// asserted here. The map's seven-way taxonomy is the point: a flat
+// "counterpart or null" reports `characters.foxy.d` and
+// `characters.golden.present` identically, when the first is genuinely
+// invisible and the second is a sensor somebody could build. Telling a reader
+// to go build a sensor that is not needed, or hiding one that is, is the
+// failure this replaces.
+const OBSERVABLE_MAP = JSON.parse(readFileSync(
+  new URL('./privileged-observable-map.json', import.meta.url), 'utf8'));
+
+export const OBSERVABLE_MAP_SCHEMA = OBSERVABLE_MAP.schema;
+export const COVERAGE_KINDS = Object.freeze([...OBSERVABLE_MAP.coverageKinds]);
+export const AVAILABILITY = Object.freeze(OBSERVABLE_MAP.availability);
+
+/** availableToday | needsNewSensor | needsMeasuredAudio | unavailable */
+export function availabilityOf(coverage) {
+  for (const [bucket, kinds] of Object.entries(AVAILABILITY))
+    if (kinds.includes(coverage)) return bucket;
+  return 'unmapped';
+}
+
+// `characters.<id>.<field>` resolves through the map's per-class table; every
+// id without its own class is a stalled character.
+function coverageEntry(path) {
+  if (!path) return null;
+  const direct = OBSERVABLE_MAP.fields[path];
+  if (direct) return direct;
+  const parts = path.split('.');
+  if (parts.length === 3 && parts[0] === 'characters') {
+    const [, id, field] = parts;
+    const table = OBSERVABLE_MAP.characterFields[id] ??
+      OBSERVABLE_MAP.characterFields.stalled;
+    return table?.[field] ?? null;
+  }
+  return null;
+}
+
+/**
+ * Coverage for one dotted surface path. An unmapped path is reported as
+ * `unmapped`, never silently as "no counterpart": not knowing is a different
+ * claim from knowing it is invisible.
+ */
+export function observableCoverage(path) {
+  const entry = coverageEntry(path);
+  if (!entry) return { coverage: 'unmapped', facts: [], note: null,
+    candidateSensor: null, availability: 'unmapped' };
+  return {
+    coverage: entry.coverage,
+    facts: [...(entry.facts ?? [])],
+    note: entry.note ?? null,
+    candidateSensor: entry.candidateSensor ?? null,
+    availability: availabilityOf(entry.coverage),
+  };
+}
+
+// Kept for consumers that only need "is there a fact for this": derived from
+// the map so it cannot drift from it. `closed-families.mjs` reads this.
+export const OBSERVABLE_COUNTERPART = Object.freeze(Object.fromEntries(
+  Object.entries(SURFACE_PATH).map(([flat, path]) => {
+    const { facts } = observableCoverage(path);
+    return [flat, facts.length ? facts[0] : null];
+  })));
 
 /**
  * Per-rule manifest: which privileged reads justified which decision, and
@@ -372,14 +419,22 @@ export function provenanceManifest(genome) {
           provenance: path ? PROVENANCE[path] : '[GAP] not in the package 6a surface',
           model: path ? MODEL_FIELDS.includes(path) : false,
           observable: OBSERVABLE_COUNTERPART[name] ?? null,
+          ...observableCoverage(path),
         };
       }),
     };
   });
-  const unobservable = new Set();
-  for (const rule of rules)
-    for (const read of rule.reads)
-      if (read.observable === null) unobservable.add(read.field);
+  // Bucket every read by what it would actually take to run this candidate.
+  const buckets = { availableToday: new Set(), needsNewSensor: new Set(),
+    needsMeasuredAudio: new Set(), unavailable: new Set(), unmapped: new Set() };
+  const candidateSensors = new Set();
+  for (const rule of rules) {
+    for (const read of rule.reads) {
+      (buckets[read.availability] ?? buckets.unmapped).add(read.field);
+      if (read.candidateSensor) candidateSensors.add(read.candidateSensor);
+    }
+  }
+  const unobservable = buckets.unavailable;
   const surfaceGaps = new Set();
   for (const rule of rules)
     for (const read of rule.reads) if (!read.surface) surfaceGaps.add(read.field);
@@ -389,8 +444,22 @@ export function provenanceManifest(genome) {
     // Reads the rollout surface has and package 6a does not. A survivor that
     // depends on one of these has found a hole in 6a.
     surfaceGaps: [...surfaceGaps].sort(),
-    // The sensors a survivor would need and that do not exist today.
+    // What running this candidate would actually require. `noKnownObservable`
+    // is now only the genuinely invisible reads; a read a sensor could be built
+    // for is `needsNewSensor`, and one whose information is already there is
+    // `availableToday`. Conflating those is what the flat map did.
+    availableToday: [...buckets.availableToday].sort(),
+    needsNewSensor: [...buckets.needsNewSensor].sort(),
+    needsMeasuredAudio: [...buckets.needsMeasuredAudio].sort(),
     noKnownObservable: [...unobservable].sort(),
+    unmapped: [...buckets.unmapped].sort(),
+    candidateSensors: [...candidateSensors].sort(),
+    // The single bit stage 2 needs: could a real controller run this today?
+    fullyObservable: buckets.needsNewSensor.size === 0 &&
+      buckets.needsMeasuredAudio.size === 0 && unobservable.size === 0 &&
+      buckets.unmapped.size === 0,
+    blockedBy: [...buckets.needsNewSensor, ...buckets.needsMeasuredAudio,
+      ...unobservable, ...buckets.unmapped].sort(),
     modelReads: rules.flatMap(r => r.reads.filter(x => x.model).map(x => x.field)),
   };
 }

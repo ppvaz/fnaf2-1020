@@ -186,7 +186,16 @@ for (const target of TARGETS) {
       `${(report.reactiveAdmitted.meanFrames / C.FPS).toFixed(1)}s, ` +
       `beatsReaction=${best.beatsReaction}`);
     console.log(`    deaths ${JSON.stringify(best.deaths)}`);
-    console.log(`    no-known-observable: ${best.manifest.noKnownObservable.join(', ') || 'none'}`);
+    const m = best.manifest;
+    console.log(`    reads: ${m.availableToday.length} available today, ` +
+      `${m.needsNewSensor.length} need a new sensor, ` +
+      `${m.needsMeasuredAudio.length} need measured audio, ` +
+      `${m.noKnownObservable.length} unobservable` +
+      (m.unmapped.length ? `, ${m.unmapped.length} unmapped` : ''));
+    console.log(`    fullyObservable=${m.fullyObservable}` +
+      (m.blockedBy.length ? `  blockedBy: ${m.blockedBy.join(', ')}` : ''));
+    if (m.candidateSensors.length)
+      console.log(`    candidate sensors: ${m.candidateSensors.join(', ')}`);
     if (best.ablation)
       console.log(`    ablation (${best.ablation.seeds} seeds): ` +
         `${best.ablation.essential.length}/${best.rules} rules carry survival, ` +

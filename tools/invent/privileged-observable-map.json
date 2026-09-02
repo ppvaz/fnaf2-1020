@@ -1,0 +1,646 @@
+{
+  "schema": "privileged-observable-map-v2",
+  "observationLanguage": "observation-language-v1",
+  "note": "For every privileged leaf of the Custom Night observation surface (tools/invent/observe.mjs), what a real controller could put in its place. A privileged read is a sensor requirement in disguise, so this file is the bridge from a stage-1 survivor to stage 2's build list.",
+  "coverageKinds": [
+    "constant",
+    "equivalent",
+    "partial",
+    "derivable",
+    "observable-not-in-vocabulary",
+    "excluded-audio",
+    "no-known-observable"
+  ],
+  "coverageMeaning": {
+    "equivalent": "an admissible fact in observation-language-v1 carries the same information",
+    "partial": "an admissible fact carries some of the information; the note says what is lost",
+    "derivable": "recoverable from an admissible fact's observed edge (or the controller's own action) plus a sourced constant and the controller's clock. Needs memory, not a new sensor. Accuracy is bounded by the sampling cadence the observation language already prices",
+    "observable-not-in-vocabulary": "the information is rendered on screen, so a fact could be defined and calibrated, but none exists in the 14-fact vocabulary. candidateSensor names what would have to be built; sensorEvidence says whether the repository has measured that the element is readable, or UNKNOWN",
+    "excluded-audio": "a fact exists in the sensor vocabulary but the audio channel's read cost is UNKNOWN, so it is excluded from the language",
+    "no-known-observable": "genuinely invisible internal state with no rendered or admissible-audio counterpart",
+    "constant": "the field carries no information at all on this target (for example a stun timer on a stun-immune character); nothing has to be observed to know it"
+  },
+  "availability": {
+    "availableToday": [
+      "constant",
+      "equivalent",
+      "partial",
+      "derivable"
+    ],
+    "needsNewSensor": [
+      "observable-not-in-vocabulary"
+    ],
+    "needsMeasuredAudio": [
+      "excluded-audio"
+    ],
+    "unavailable": [
+      "no-known-observable"
+    ]
+  },
+  "fields": {
+    "frame": {
+      "coverage": "derivable",
+      "facts": [
+        "amHour"
+      ],
+      "note": "the controller has its own monotonic clock; amHour is the only in-game re-anchor and fires once per 70 s. This is the crux of the whole route problem, not a detail: the phone holds a clock to ~302 ms + drift against a 33 ms early / 99 ms late whole-schedule tolerance (n2-minustoys-0117), and the 2 Hz winding tick is the densest known re-anchor",
+      "candidateSensor": null,
+      "sensorEvidence": "plans/PROGRESS.md n2-minustoys-0117; tools/device/minus-toys-margin.mjs"
+    },
+    "hour": {
+      "coverage": "equivalent",
+      "facts": [
+        "amHour"
+      ],
+      "note": "the AM digit is exactly this field; its read is refused mid-animation and during a blackout",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js amHour"
+    },
+    "resources.power": {
+      "coverage": "observable-not-in-vocabulary",
+      "facts": [],
+      "note": "Pedro's correction, 2026-09-02: this is not invisible internal state. The flashlight battery has a HUD presence and only `lit?` drains it at 1/frame (g284), so the controller could also derive the drain from its own light-hold history plus the sourced per-night capacity. Either route is a build, not a read that exists today",
+      "candidateSensor": "an ROI over the office flashlight HUD widget (hudFlashlight / hudFlashlightHitbox), or own-action integration of light-held frames against the sourced 3000-frame night-5+ capacity",
+      "sensorEvidence": "UNKNOWN \u2014 g284 and the battery table source the drain, but the repository has not measured that any battery indicator is classifiable on the projection path, and no cue model provisions one"
+    },
+    "resources.box": {
+      "coverage": "partial",
+      "facts": [
+        "boxPie"
+      ],
+      "note": "legible only while the monitor is up on CAM 11, and as a pie fraction rather than box units",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js boxPie"
+    },
+    "monitor.state": {
+      "coverage": "equivalent",
+      "facts": [
+        "monitorUp"
+      ],
+      "note": "UNKNOWN(monitor-animating) during the transition",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js monitorUp"
+    },
+    "monitor.panelState": {
+      "coverage": "equivalent",
+      "facts": [
+        "monitorUp"
+      ],
+      "note": "same read as monitor.state",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js monitorUp"
+    },
+    "monitor.animationRemaining": {
+      "coverage": "derivable",
+      "facts": [
+        "monitorUp"
+      ],
+      "note": "the refusal reason monitor-animating marks the animation in flight; the remaining frames follow from the observed edge plus the sourced animation length, minus elapsed on the controller's clock",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/mechanics/config.js monitor animation constants"
+    },
+    "mask.state": {
+      "coverage": "equivalent",
+      "facts": [
+        "maskOn"
+      ],
+      "note": "UNKNOWN(mask-animating) during the transition",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js maskOn"
+    },
+    "mask.fullyOn": {
+      "coverage": "equivalent",
+      "facts": [
+        "maskOn"
+      ],
+      "note": "the fact is maskFullyOn by construction",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js maskOn"
+    },
+    "mask.fullyOff": {
+      "coverage": "derivable",
+      "facts": [
+        "maskOn"
+      ],
+      "note": "off and mid-animation-off are separated by the refusal reason plus the sourced MASK_ANIM_OFF length measured from the observed edge",
+      "candidateSensor": null,
+      "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a73.1 MASK_ANIM_OFF = 15 frames"
+    },
+    "mask.animationRemaining": {
+      "coverage": "derivable",
+      "facts": [
+        "maskOn"
+      ],
+      "note": "same derivation as mask.fullyOff",
+      "candidateSensor": null,
+      "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a73.1"
+    },
+    "mask.ticks.bb": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "v12 is a single shared counter (g907/g294) with no rendered counterpart. Partial derivation only: the controller knows how long its own mask has been fully on, but g293 zeroes the counter on every re-entry, and re-entry is not observable, so a tracked value is an upper bound",
+      "candidateSensor": null,
+      "sensorEvidence": "g907/g293/g294"
+    },
+    "mask.ticks.toychica": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "the same shared invisible counter",
+      "candidateSensor": null,
+      "sensorEvidence": "g907/g294"
+    },
+    "mask.ticks.mangle": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "the same shared invisible counter",
+      "candidateSensor": null,
+      "sensorEvidence": "g907/g294"
+    },
+    "camera.viewing": {
+      "coverage": "equivalent",
+      "facts": [
+        "cameraSelected"
+      ],
+      "note": "refused as UNKNOWN(multiple-camera-highlight) while a split glitch is armed",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js cameraSelected"
+    },
+    "camera.marker": {
+      "coverage": "partial",
+      "facts": [
+        "cameraHighlights",
+        "splitArmed"
+      ],
+      "note": "the highlight set reveals that marker and viewing disagree, and which pair is lit, but not the marker's identity on its own",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js cameraHighlights"
+    },
+    "camera.lastViewed": {
+      "coverage": "derivable",
+      "facts": [
+        "cameraSelected"
+      ],
+      "note": "the previous value of an admissible fact; memory, not a sensor",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js cameraSelected"
+    },
+    "blackout.active": {
+      "coverage": "equivalent",
+      "facts": [
+        "blackout"
+      ],
+      "note": "a whole-screen luma collapse is the one read a coarse sensor never misses",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js blackout"
+    },
+    "blackout.counter": {
+      "coverage": "derivable",
+      "facts": [
+        "blackout"
+      ],
+      "note": "Pedro's correction, 2026-09-02: the remaining duration follows from the observed rising edge of blackout plus the sourced blackout length, minus elapsed on the controller's clock. The error is bounded by the worst-case fact age the observation language prices (one sample interval plus one read)",
+      "candidateSensor": null,
+      "sensorEvidence": "g534-g537 blackout duration; packages/core/src/control/observation-language.js worstCaseFactAgeMs"
+    },
+    "blackout.forced": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "the internal drop-everything latch; the blackout it causes is observable, the latch is not",
+      "candidateSensor": null,
+      "sensorEvidence": "g612-g624, g718-g721"
+    },
+    "blackout.by": {
+      "coverage": "observable-not-in-vocabulary",
+      "facts": [],
+      "note": "Pedro's correction, 2026-09-02: the blackout renders the animatronic in the office, so a pixel/ROI classifier over the office during a blackout could identify the cause. That is a definable fact, not invisible state \u2014 it is simply not in the 14-fact vocabulary",
+      "candidateSensor": "an office-region apparition classifier sampled while blackout is OBSERVED true, one class per office-capable character",
+      "sensorEvidence": "UNKNOWN \u2014 docs/android/ANDROID-OFFICE-ENDGAME.md sources the per-character office sequence, but no apparition classifier has been built or calibrated (Plan 15)"
+    },
+    "blackout.unitId": {
+      "coverage": "observable-not-in-vocabulary",
+      "facts": [],
+      "note": "the same apparition classifier that would answer blackout.by identifies the unit",
+      "candidateSensor": "the office-region apparition classifier above",
+      "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+    },
+    "blackout.masked": {
+      "coverage": "derivable",
+      "facts": [
+        "blackout",
+        "maskOn"
+      ],
+      "note": "whether the mask was on when the blackout began is the conjunction of two admissible facts at the observed edge, subject to the sampling cadence against the 45-frame grace",
+      "candidateSensor": null,
+      "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md Night 7 blackout mask grace 45 frames"
+    },
+    "blackout.deadlineRemaining": {
+      "coverage": "derivable",
+      "facts": [
+        "blackout"
+      ],
+      "note": "the 45-frame grace counted from the observed rising edge. On Night 7 the grace is 0.75 s and the worst-case fact age is ~126 ms, so the derivation is usable but tight \u2014 that margin is a stage-2 result, not an assumption",
+      "candidateSensor": null,
+      "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a73; packages/core/src/control/observation-language.js"
+    },
+    "danger.active": {
+      "coverage": "partial",
+      "facts": [
+        "blackout"
+      ],
+      "note": "a blackout is visible; a committed office attack before its blackout is not",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js blackout"
+    },
+    "danger.committed": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "commitment is an internal latch that fires before anything is rendered",
+      "candidateSensor": null,
+      "sensorEvidence": "g530-g562"
+    },
+    "eventFlags.blackoutStart": {
+      "coverage": "equivalent",
+      "facts": [
+        "blackout"
+      ],
+      "note": "the rising edge of an OBSERVED fact, subject to the sampling cadence",
+      "candidateSensor": null,
+      "sensorEvidence": "packages/core/src/sensing/observer.js blackout"
+    },
+    "eventFlags.bbOpening": {
+      "coverage": "excluded-audio",
+      "facts": [
+        "bbVent",
+        "bbVentId"
+      ],
+      "note": "the vent bang is the practised cue, but the audio channel's read cost is UNKNOWN and Plan 08 item 10 closed the bang-anchored action on latency",
+      "candidateSensor": null,
+      "sensorEvidence": "plans/08-audio-cue-controller.md; plans/PROGRESS.md 'Item 10: closed on latency'"
+    },
+    "eventFlags.foxyDeparture": {
+      "coverage": "no-known-observable",
+      "facts": [],
+      "note": "Foxy's retreat has no rendered counterpart and the hall ambience is not in the fact vocabulary",
+      "candidateSensor": null,
+      "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72"
+    }
+  },
+  "characterFields": {
+    "stalled": {
+      "location": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "the camera feed renders an occupant, so a per-camera occupancy classifier is definable; only one animatronic is drawn per camera, so the classifier answers 'someone is here', not 'who and how many'",
+        "candidateSensor": "a per-target-camera occupancy classifier over the CAM 10 / 04 / 07 feeds",
+        "sensorEvidence": "UNKNOWN \u2014 docs/strategy/MINUS-7-STRATEGY.md \u00a72 records the one-per-camera rendering quirk; no occupancy classifier is calibrated (Plan 15)"
+      },
+      "stage": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "route progress is an internal index; an occupancy classifier would report presence, not stage",
+        "candidateSensor": null,
+        "sensorEvidence": "post-chokepoint routing is a [MODEL] approximation"
+      },
+      "stunRemaining": {
+        "coverage": "derivable",
+        "facts": [
+          "cameraSelected"
+        ],
+        "note": "the controller performed the flash, so the remaining stun is the sourced 400-frame stall minus elapsed on its own clock. What is NOT derivable is whether anyone is standing in that room to be stunned \u2014 that is the occupancy classifier above",
+        "candidateSensor": null,
+        "sensorEvidence": "g450-457, 400-frame stun; docs/android/ANDROID-CAMERA-STALL.md"
+      },
+      "pending": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "the latched movement roll (A = 2) is internal",
+        "candidateSensor": null,
+        "sensorEvidence": "g342/g359"
+      },
+      "atOpening": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "the right vent opening is rendered in the office the way the left one is; the left has a sourced one-pixel read and the right does not",
+        "candidateSensor": "a right-opening pixel read, the mirror of leftOpening's (451,730)",
+        "sensorEvidence": "UNKNOWN \u2014 docs/device/ONE-PIXEL-VISION.md sources the left opening only"
+      },
+      "inside": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "an animatronic in the office is rendered; the blackout apparition classifier is the same build",
+        "candidateSensor": "the office-region apparition classifier",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "committedAttack": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "an internal latch that fires before anything is rendered",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "committedAttackRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown behind an unobservable latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "dangerRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown behind an unobservable latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      }
+    },
+    "mangle": {
+      "location": {
+        "coverage": "excluded-audio",
+        "facts": [
+          "mangleStatic",
+          "mangleStaticCam"
+        ],
+        "note": "the sustained static loop separates office-edge from CAM 11 proximity, but its read cost is UNKNOWN",
+        "candidateSensor": null,
+        "sensorEvidence": "s0020, g732/g733"
+      },
+      "atOpening": {
+        "coverage": "excluded-audio",
+        "facts": [
+          "mangleStatic"
+        ],
+        "note": "the office-context static is the practised proximity cue; read cost UNKNOWN",
+        "candidateSensor": null,
+        "sensorEvidence": "s0020, g732/g733"
+      }
+    },
+    "foxy": {
+      "d": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "DECISIVE READ. D is an invisible accumulator (g337/g669/g679) with no rendered counterpart at any resolution. Partial derivation is possible and is an upper bound only: the increment is +1/s plus one per masked second, both of which the controller can count on its own clock, but the reset requires the hall light to be on WHILE FOXY IS IN THE HALL, and Foxy's presence is itself no-known-observable. So a tracking controller knows D <= tracked, never D. At the 10/20 cap the largest always-safe D is 3, which leaves an upper-bound tracker almost no room",
+        "candidateSensor": null,
+        "sensorEvidence": "g337/g669/g679; docs/strategy/MINUS-7-STRATEGY.md \u00a73.1"
+      },
+      "location": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "the hall ambience is audio and is not in the fact vocabulary, and the picture is documented unreliable: Foxy is invisible whenever another animatronic renders in front of him, so an empty hall does not mean a safe hall",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72 'Do not read an empty hall as a safe hall'"
+      },
+      "stage": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "same unreliable rendering as location",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72"
+      },
+      "stunRemaining": {
+        "coverage": "constant",
+        "facts": [],
+        "note": "Foxy is immune to camera stun, so this field is constant zero and carries no information at all; nothing has to be observed to know it",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72 'Withered Foxy - immune to camera stun'"
+      },
+      "committedAttack": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "committedAttackRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "dangerRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "exposure": {
+        "coverage": "derivable",
+        "facts": [],
+        "note": "the 700-frame cumulative light exposure accumulates only while the controller holds the hall light, which the controller knows it did; as with D, the accumulation is knowable and the precondition (Foxy present) is not, so the tracked value is an upper bound",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a73 '700 frames of cumulative light exposure'"
+      },
+      "gotYou": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "the lock is only observable as the death that follows it",
+        "candidateSensor": null,
+        "sensorEvidence": "g829"
+      },
+      "pinRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      }
+    },
+    "bb": {
+      "stage": {
+        "coverage": "excluded-audio",
+        "facts": [
+          "bbVent",
+          "bbVentId"
+        ],
+        "note": "the laugh/thud cue chain counts stages and the practised routine is built on it, but the audio read cost is UNKNOWN and his first move is silent (g413-417)",
+        "candidateSensor": null,
+        "sensorEvidence": "g413-g418; plans/08-audio-cue-controller.md"
+      },
+      "location": {
+        "coverage": "excluded-audio",
+        "facts": [
+          "bbVent"
+        ],
+        "note": "cue type stands in for route position; read cost UNKNOWN",
+        "candidateSensor": null,
+        "sensorEvidence": "g413-g418"
+      },
+      "inOpening": {
+        "coverage": "partial",
+        "facts": [
+          "leftOpening"
+        ],
+        "note": "leftOpening reads 'threat' for inOpening OR inside -- the two are conflated -- and only while the office is visible and not blacked out",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/device/ONE-PIXEL-VISION.md pixel (451,730)"
+      },
+      "inside": {
+        "coverage": "partial",
+        "facts": [
+          "leftOpening"
+        ],
+        "note": "conflated with inOpening as above",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/device/ONE-PIXEL-VISION.md pixel (451,730)"
+      },
+      "pending": {
+        "coverage": "excluded-audio",
+        "facts": [
+          "bbVent"
+        ],
+        "note": "the first thud means committed-but-not-yet-evictable; read cost UNKNOWN",
+        "candidateSensor": null,
+        "sensorEvidence": "g607; packages/core/src/sensing/observer.js cue semantics"
+      },
+      "stunRemaining": {
+        "coverage": "constant",
+        "facts": [],
+        "note": "Balloon Boy is immune to camera stun; constant zero, no information",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72"
+      },
+      "committedAttack": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "committedAttackRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "dangerRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      }
+    },
+    "golden": {
+      "location": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "Golden Freddy is rendered in the office when present; the hallway roll is not rendered until the light is on",
+        "candidateSensor": "the office-region apparition classifier, with a Golden Freddy class",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "stage": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "same classifier as location",
+        "candidateSensor": "the office-region apparition classifier",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "present": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "his office presence is rendered, which is why a classifier is definable; the practised routine flicks the mask unconditionally precisely because no such classifier exists",
+        "candidateSensor": "the office-region apparition classifier, with a Golden Freddy class",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "inHall": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "the hallway roll repeats every second and nothing is rendered until the hall light is on, at which point looking costs 1 exposure frame per frame toward a 100-frame kill",
+        "candidateSensor": null,
+        "sensorEvidence": "g781/g779/g780"
+      },
+      "stunRemaining": {
+        "coverage": "constant",
+        "facts": [],
+        "note": "immune to camera stun; constant zero, no information",
+        "candidateSensor": null,
+        "sensorEvidence": "docs/strategy/MINUS-7-STRATEGY.md \u00a72"
+      },
+      "committedAttack": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "committedAttackRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "dangerRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      }
+    },
+    "puppet": {
+      "location": {
+        "coverage": "partial",
+        "facts": [
+          "boxPie"
+        ],
+        "note": "box depletion is the visible proxy for the Puppet's progress, legible only from CAM 11",
+        "candidateSensor": null,
+        "sensorEvidence": "packages/core/src/sensing/observer.js boxPie"
+      },
+      "stage": {
+        "coverage": "partial",
+        "facts": [
+          "boxPie"
+        ],
+        "note": "the same proxy as location",
+        "candidateSensor": null,
+        "sensorEvidence": "packages/core/src/sensing/observer.js boxPie"
+      },
+      "stunRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "atOpening": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "the Puppet at the office edge is rendered",
+        "candidateSensor": "the office-region apparition classifier, with a Puppet class",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "inside": {
+        "coverage": "observable-not-in-vocabulary",
+        "facts": [],
+        "note": "the Puppet inside the office is rendered and is terminal",
+        "candidateSensor": "the office-region apparition classifier, with a Puppet class",
+        "sensorEvidence": "UNKNOWN \u2014 no apparition classifier built or calibrated"
+      },
+      "committedAttack": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal latch",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "committedAttackRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      },
+      "dangerRemaining": {
+        "coverage": "no-known-observable",
+        "facts": [],
+        "note": "internal countdown",
+        "candidateSensor": null,
+        "sensorEvidence": "g530-g562"
+      }
+    }
+  }
+}

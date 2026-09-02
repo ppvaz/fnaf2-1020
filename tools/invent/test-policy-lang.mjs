@@ -12,7 +12,7 @@ import { decide } from '../minus7/policy.mjs';
 import {
   POLICY_LANG_SCHEMA, REGISTER_COUNT, interpret, serialize, parse, validateGenome,
   randomGenome, mutate, crossover, provenanceManifest, readsOf, structuralShape,
-  OBSERVABLE_COUNTERPART,
+  OBSERVABLE_COUNTERPART, observableCoverage, SURFACE_PATH,
 } from './policy-lang.mjs';
 import {
   CLOSED_FAMILIES, CLOSED_FAMILIES_SCHEMA, IMPLEMENTED_RULES, classifyFamily,
@@ -152,14 +152,21 @@ const ok = (what, condition) => {
     structuralShape(reordered) !== structuralShape(DECIDE_GENOME) &&
     classifyFamily(reordered) === null);
 
-  // `audio-anchored-branch` is carried and matches nothing today, for a reason
-  // that is checked rather than asserted: the privileged surface reads
-  // simulator ground truth, so no privileged read maps onto an audio fact.
-  const audioCounterparts = Object.values(OBSERVABLE_COUNTERPART)
-    .filter(fact => fact && OBSERVATION_BUDGET[fact]?.channel === 'audio');
-  ok('no privileged read has an audio-channel counterpart, so the Plan 08 ' +
-     'closure is carried but unreachable on this surface',
-    audioCounterparts.length === 0 &&
+  // `audio-anchored-branch` is carried, and it is REACHABLE on this surface --
+  // corrected 2026-09-02 when `privileged-observable-map.json` replaced a flat
+  // counterpart table. The old table recorded no audio counterpart at all and
+  // this check asserted that as a property of the surface; it was a gap in the
+  // data, not a fact. `characters.bb.stage` maps onto `bbVent`, an audio fact,
+  // and the map classifies it `excluded-audio`: the counterpart exists and the
+  // channel's read cost is UNKNOWN, so it is excluded from the language rather
+  // than absent from it. That is what the Plan 08 closure is for.
+  const audioReads = Object.entries(OBSERVABLE_COUNTERPART)
+    .filter(([, fact]) => fact && OBSERVATION_BUDGET[fact]?.channel === 'audio');
+  ok('audio counterparts exist and are excluded on read cost, not absent',
+    audioReads.length > 0 &&
+    audioReads.every(([flat]) =>
+      observableCoverage(SURFACE_PATH[flat]).availability === 'needsMeasuredAudio'));
+  ok('the Plan 08 audio closure is carried in the register',
     CLOSED_FAMILIES.some(entry => entry.rule === 'branch-on-audio-fact'));
 }
 
@@ -188,7 +195,26 @@ const ok = (what, condition) => {
      `(${unobservable.join(', ') || 'none'})`, unobservable.length > 0);
   ok('foxyD has no observable counterpart and is reported as such',
     unobservable.includes('foxyD'));
+  // Pin the distinction the lifted map exists to make. A flat counterpart
+  // table reported foxyD and gfPresent identically; they are not the same
+  // claim, and treating them as one either sends someone to build a sensor
+  // that is not needed or hides one that is.
+  ok('a genuinely invisible read and a buildable one are not conflated',
+    manifest.noKnownObservable.includes('foxyD') &&
+    !manifest.noKnownObservable.includes('gfPresent') &&
+    manifest.needsNewSensor.includes('gfPresent'));
+  ok('a stun-immune character needs no observation at all (coverage: constant)',
+    observableCoverage('characters.foxy.stunRemaining').coverage === 'constant' &&
+    observableCoverage('characters.foxy.stunRemaining').availability === 'availableToday');
+  ok('an unmapped path reports `unmapped`, never silently "no counterpart"',
+    observableCoverage('nonsense.path').coverage === 'unmapped');
+  ok('the reference policy is not fully observable, and says what blocks it',
+    manifest.fullyObservable === false && manifest.blockedBy.length > 0);
   console.log(`      no-known-observable: ${unobservable.join(', ')}`);
+  console.log(`      needs a new sensor:  ${manifest.needsNewSensor.join(', ') || 'none'}`);
+  console.log(`      needs measured audio:${manifest.needsMeasuredAudio.join(', ') || 'none'}`);
+  console.log(`      available today:     ${manifest.availableToday.join(', ') || 'none'}`);
+  console.log(`      blockedBy:           ${manifest.blockedBy.join(', ')}`);
   console.log(`      model-tagged reads:  ${[...new Set(manifest.modelReads)].join(', ') || 'none'}`);
 }
 
