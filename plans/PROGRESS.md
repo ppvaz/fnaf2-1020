@@ -39,9 +39,19 @@ mean 401.2s of 420s. The entire unsolved region of the single-threat space is
 **the hall time budget**, not any animatronic.
 
 Two corrections the package forced. **There is no such thing as a single-threat
-vector:** Foxy's test is `21 + rng(0..4) - D <= ai.foxy`, so at AI 0 he still
-fires once D passes ~21, and with all eleven dials at zero the empty policy
-still dies to Foxy 20/20 while the baseline survives 100%. Every target carries
+vector**, and this is `[SOURCED]`, not read off the simulator: the Foxy roll is
+`21 + Random(0..4) - D <= Foxy AI` with operator `<=` at g337 every 5 s
+(UNIFIED-SOURCED-ENGINE-FACT-INDEX.md, "Withered Foxy"; `engine.js:874-889`),
+and `D` is a time counter (+1/s unengaged, +1/s more while masked with the
+threshold clear, drained by Parts/Service hall light; g824/g825, g864,
+g872-874). At AI 0 that reduces to `D >= 21 + Random(0..4)`, so Foxy fires
+after ~21-25 s of neglect. Checking the source rather than the simulator also
+found a SECOND character live at zero that had been missed: the Puppet's
+`Sockpuppet AI` uses bare `Random(20) <= AI`, succeeding for 0..AI, i.e.
+(AI+1)/20 -- 5% per roll at AI 0 `[SOURCED: g494-497]`. The seven stalled
+characters (`MO_CHANCE = ai/20`) and Golden Freddy (`Random(20) < GF AI`) ARE
+silenced at 0. With all eleven dials at zero the empty policy still dies to
+Foxy 20/20 while the baseline survives 100%. Every target carries
 Foxy-by-neglect, so a low probe score is evidence about the time budget rather
 than about that character. And **`decide()` was mis-parameterised under Custom
 Night** -- it called `peakAi(night, 'foxy')` while `peakAi` takes the dials as a

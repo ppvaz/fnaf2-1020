@@ -23,9 +23,33 @@ export const SINGLE_THREAT_LEVEL = 20;
 // meant to exclude is not stated, and guessing would be inventing.
 export const DIALS = Object.freeze([...C.AI_IDS]);
 
+// A dial at 0 does NOT disable every character, so this vector is "one dial at
+// cap", not "one threat". Two characters remain live at AI 0, both [SOURCED]:
+//
+//   Foxy   roll `21 + Random(0..4) - D <= Foxy AI`, operator `<=`, g337, every
+//          5 s (UNIFIED-SOURCED-ENGINE-FACT-INDEX.md, "Withered Foxy",
+//          engine.js:874-889). At AI 0 this is `D >= 21 + Random(0..4)`, and D
+//          is a TIME counter -- +1/s unengaged, +1/s more while masked with the
+//          threshold clear, drained by Parts/Service hall light (g824/g825,
+//          g864, g872-874). So Foxy fires at AI 0 after ~21-25 s of neglect.
+//   Puppet `Sockpuppet AI` uses bare `Random(20) <= AI`, succeeding for 0..AI,
+//          i.e. (AI+1)/20 -- so 5% per roll at AI 0 [SOURCED: g494-497],
+//          `PUPPET_MO_CHANCE` in config.js.
+//
+// The seven stalled characters use `MO_CHANCE = ai/20`, which is exactly 0 at
+// AI 0, and Golden Freddy uses `Random(20) < GF AI`, also never at 0. Those
+// nine ARE isolated by this vector; Foxy and the Puppet are not.
+//
+// Consequence for reading a probe: a low score is evidence about the policy's
+// TIME BUDGET -- can it afford the hall while handling this dial -- and not
+// evidence that the named character is hard.
 export function singleThreat(id, level = SINGLE_THREAT_LEVEL) {
   return Object.fromEntries(DIALS.map(dial => [dial, dial === id ? level : 0]));
 }
+
+// The characters a zeroed dial does not silence. Asserted by the gate so a
+// future engine change cannot quietly turn this comment into a lie.
+export const LIVE_AT_ZERO = Object.freeze(['foxy', 'puppet']);
 
 // A target the baseline clears above this needs no invention.
 export const NO_INVENTION_RATE = 0.95;
@@ -93,6 +117,17 @@ if (ASSERT) {
     results.some(r => r.reactive.rate >= r.empty.rate));
   ok('effective levels respect the engine cap',
     results.every(r => r.effective === Math.min(r.requested, C.aiCap(r.dial))));
+  // Pin the sourced AI-0 behaviour: a zeroed dial silences the seven stalled
+  // characters and Golden Freddy, but not Foxy (threshold on D) or the Puppet
+  // (bare `Random(20) <= AI`). If this ever changes, the probe's meaning
+  // changes with it and this gate must be the thing that says so.
+  ok('MO_CHANCE is exactly zero at AI 0 (the seven are isolated)',
+    C.MO_CHANCE(0) === 0);
+  ok('PUPPET_MO_CHANCE is non-zero at AI 0 (the Puppet is not isolated)',
+    C.PUPPET_MO_CHANCE(0) > 0);
+  ok('LIVE_AT_ZERO names exactly the characters a zeroed dial does not silence',
+    LIVE_AT_ZERO.length === 2 && LIVE_AT_ZERO.includes('foxy') &&
+    LIVE_AT_ZERO.includes('puppet'));
   if (failures) process.exitCode = 1;
   else console.log('difficulty probe: dials, arms, caps and verdicts pass');
 }
