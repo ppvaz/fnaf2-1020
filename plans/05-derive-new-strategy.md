@@ -214,6 +214,20 @@ simulator" on all of them.
 - **6c. Duplicate-policy control.** Encode one Plan 05 static cover and one
   Plan 06 phase schedule as genomes; the search's novelty filter must classify
   both as known-family and prune them. **Gate:** part of `test-policy-lang.mjs`.
+  **Closed 2026-09-02 against the register, not a local list.** The privileged
+  surface classified against its own `KNOWN_FAMILIES` — two families asserted in
+  prose — while `tools/device/closed-families.json` recorded three with
+  citations, so the search pruned against less than the repository knows.
+  `tools/invent/closed-families.mjs` now implements the register's rule names
+  against a genome, as `tools/device/closed-families.mjs` does against an
+  observation-language program: one register, two interpreters, and the gate
+  fails if the register names a rule this surface has not implemented. The
+  static cover and the phase schedule are now the SAME closure
+  (`unconditioned-schedule`, plans 05/06/16) because the frame clock is not a
+  game fact, and the two families the privileged list lacked are carried —
+  `timing-only-mutation` prunes a retune of the reference policy,
+  `audio-anchored-branch` matches nothing here and is checked to match nothing
+  for the right reason (no privileged read has an audio counterpart).
 
 **Partial delivery against a different surface (2026-09-02) — package 6 stays
 open.** ROADMAP B1 needs the language to range over facts *the controller can

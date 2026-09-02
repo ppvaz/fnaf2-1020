@@ -14,8 +14,9 @@ import { view, ACTIONS, run } from '../minus7/sim.mjs';
 import { decide } from '../minus7/policy.mjs';
 import {
   POLICY_LANG_SCHEMA, REGISTER_COUNT, interpret, validateGenome, randomGenome,
-  classifyFamily, provenanceManifest,
+  provenanceManifest,
 } from './policy-lang.mjs';
+import { classifyFamily } from './closed-families.mjs';
 
 // Package 7a: the admission gate is 1200 seeds, reused from the Minus 7 search.
 export const ADMISSION_SEEDS = 1200;

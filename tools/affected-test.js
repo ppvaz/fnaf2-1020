@@ -38,6 +38,11 @@ if (changed.some(path => path.startsWith('tools/invent/'))) {
   add('observation-surface', 'node', ['tools/invent/test-observe.mjs']);
   add('difficulty-probe', 'node', ['tools/invent/targets.mjs', '--assert']);
 }
+// The closed-family register is shared by both policy surfaces, so a change to
+// it must run the privileged gate as well as the observable one below. That is
+// what stops a family being added to the register and honoured on one surface.
+if (changed.some(path => path.startsWith('tools/device/closed-families')))
+  add('policy-language', 'node', ['tools/invent/test-policy-lang.mjs']);
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
   add('device-service', 'node', ['apps/device/test/service.test.js']);

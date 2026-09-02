@@ -18,8 +18,8 @@ import {
   ADMISSION_SEEDS, evaluate, rollout, reactiveRollout, EMPTY_GENOME,
   paretoFront, provenanceManifest, effectiveStaticCover, BRANCH_FLOOR,
 } from './search.mjs';
-import { mutate, crossover, randomGenome, classifyFamily, validateGenome }
-  from './policy-lang.mjs';
+import { mutate, crossover, randomGenome, validateGenome } from './policy-lang.mjs';
+import { classifyFamily, closedFamilyRegister } from './closed-families.mjs';
 import { REACTIVE_GENOME } from './reference-genome.mjs';
 import { singleThreat } from './targets.mjs';
 
@@ -67,7 +67,8 @@ function searchTarget(target, rng) {
     for (const genome of population) {
       const family = classifyFamily(genome);
       if (family) {
-        pruningLog.push({ gen, reason: 'known-family', family: family.id, why: family.why });
+        pruningLog.push({ gen, reason: 'known-family', family: family.id,
+          rule: family.rule, plans: family.plans, detail: family.detail });
         continue;
       }
       const id = key(genome);
@@ -113,8 +114,8 @@ function searchTarget(target, rng) {
     // decision counts are real.
     const degenerate = effectiveStaticCover(entry.genome, result);
     if (degenerate) {
-      pruningLog.push({ gen: 'admission', reason: 'known-family',
-        family: degenerate.id, why: degenerate.why });
+      pruningLog.push({ gen: 'admission', reason: 'behavioural-duplicate',
+        family: degenerate.id, detail: degenerate.why });
       continue;
     }
     admitted.push({ genome: entry.genome, inner: entry.result, result });
@@ -126,6 +127,9 @@ function searchTarget(target, rng) {
     target, customNight, generations: GENS, population: POP,
     innerSeeds: INNER, admissionSeeds: ADMIT,
     controls, reactiveAdmitted,
+    // The register travels with the frontier so a reader can check any prune
+    // in the log against the recorded negative that justifies it.
+    closedFamilies: closedFamilyRegister(),
     front: paretoFront(admitted).map(entry => ({
       rate: entry.result.rate, innerRate: entry.inner.rate,
       meanAliveS: entry.result.meanFrames / C.FPS,

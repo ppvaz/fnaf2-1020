@@ -265,47 +265,63 @@ export function crossover(a, b, rng) {
 }
 
 // ---------------------------------------------------------------------------
-// 6c -- duplicate-policy control
+// Structural shape
 // ---------------------------------------------------------------------------
 
-// Families Plans 05/06/16 already closed by negative. The search must prune a
-// rediscovery mechanically rather than by anyone remembering the prior result.
-//
-// KNOWN DUPLICATION, recorded 2026-09-02 at the Track B1 merge. This list is a
-// weaker parallel of `tools/device/closed-families.json`
-// (`closed-policy-families-v1`), which covers the same charter rule for the
-// controller-observable surface and is better in three ways: it cites where
-// each negative is RECORDED rather than asserting it, it carries an explicit
-// `closure: recorded-negative`, and it holds two families this list does not --
-// `timing-only-mutation` (a known shape at different times, i.e. the knobs
-// Plan 16 swept) and `audio-anchored-branch` (closed on latency, Plan 08).
-// The privileged search is therefore pruning against less than the repository
-// knows. The fix is to consume that registry here rather than maintain two;
-// it is not done, and until it is, this is the weaker of the two controls.
-export const KNOWN_FAMILIES = Object.freeze([
-  {
-    id: 'static-cover',
-    why: 'Plan 05 static cover: a rule list with no observation-conditioned ' +
-         'branch is a fixed schedule under another name',
-    matches: genome => genome.rules.every(rule => readsOf(rule.when).size === 0),
-  },
-  {
-    id: 'phase-schedule',
-    why: 'Plan 06 phase schedule: every branch keyed only on the frame clock ' +
-         'is a timing search, closed to exhaustion by Plan 16',
-    matches: genome => genome.rules.length > 0 && genome.rules.every(rule => {
-      const reads = readsOf(rule.when);
-      return reads.size > 0 && [...reads].every(name => name === 'frame' || name === 'hour');
-    }),
-  },
-]);
+/** Every privileged observation field the whole genome reads. */
+export function genomeReads(genome) {
+  const reads = new Set();
+  for (const rule of genome.rules) readsOf(rule.when, reads);
+  return reads;
+}
 
-/** `null` when the genome is not a known family, else the family it duplicates. */
-export function classifyFamily(genome) {
+// Fields that are not game facts. The frame clock and the in-game hour are
+// readable from a stopwatch, so a genome branching only on them has read
+// nothing about the game -- that is Plan 06's phase-schedule family, and the
+// registry files it under the same closure as a static cover.
+export const CLOCK_FIELDS = Object.freeze(new Set(['frame', 'hour']));
+
+function expressionShape(node) {
+  if (!node || typeof node !== 'object') return String(node);
+  switch (node.t) {
+    // A bare literal is a time or a threshold. Erasing it is the whole point:
+    // two genomes with the same shape are the same program at different times.
+    case 'const': return 'const';
+    case 'param': return `param:${node.name}`;
+    case 'field': return `field:${node.name}`;
+    case 'len': return `len:${node.name}`;
+    case 'reg': return `reg:${node.i}`;
+    // `eq` compares against a CATEGORICAL value (`monitor == 'up'`,
+    // `foxyLoc == 'parts'`). That names a game state, not a time, so it is
+    // kept: a genome watching a different location is a different program.
+    case 'eq': return `eq:${node.name}:${JSON.stringify(node.v)}`;
+    case 'ticksSince': return `ticksSince:${node.i}`;
+    case 'everyN': return `everyN(${expressionShape(node.a)},${expressionShape(node.b)})`;
+    case 'anyStun': return `anyStun:${node.op}(${expressionShape(node.a)})`;
+    case 'arith': return `arith:${node.op}(${expressionShape(node.a)},` +
+      `${node.b ? expressionShape(node.b) : ''})`;
+    case 'cmp': return `cmp:${node.op}(${expressionShape(node.a)},${expressionShape(node.b)})`;
+    case 'and': case 'or': return `${node.t}(${node.xs.map(expressionShape).join(',')})`;
+    case 'not': return `not(${expressionShape(node.x)})`;
+    default: return fail(`unknown node ${node.t}`);
+  }
+}
+
+/**
+ * The genome with every numeric literal erased: rule order, predicate
+ * structure, comparison operators, categorical values and actions survive.
+ * Counterpart of `tools/device/policy-grammar.mjs`'s `structuralShape` for the
+ * observation-language program, and the input to the registry's
+ * `known-shape-different-times` rule.
+ */
+export function structuralShape(genome) {
   validateGenome(genome);
-  for (const family of KNOWN_FAMILIES)
-    if (family.matches(genome)) return { id: family.id, why: family.why };
-  return null;
+  return JSON.stringify({
+    rules: genome.rules.map(rule => ({
+      when: expressionShape(rule.when), then: rule.then, set: rule.set ?? null,
+    })),
+    fallback: genome.fallback,
+  });
 }
 
 // ---------------------------------------------------------------------------

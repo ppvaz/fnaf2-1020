@@ -6,12 +6,17 @@
 // contain anything better, so this gate runs before any search does.
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
+import { OBSERVATION_BUDGET } from '@fnaf2-1020/core/control';
 import { view, ACTIONS, run } from '../minus7/sim.mjs';
 import { decide } from '../minus7/policy.mjs';
 import {
   POLICY_LANG_SCHEMA, REGISTER_COUNT, interpret, serialize, parse, validateGenome,
-  randomGenome, mutate, crossover, classifyFamily, provenanceManifest, readsOf,
+  randomGenome, mutate, crossover, provenanceManifest, readsOf, structuralShape,
+  OBSERVABLE_COUNTERPART,
 } from './policy-lang.mjs';
+import {
+  CLOSED_FAMILIES, CLOSED_FAMILIES_SCHEMA, IMPLEMENTED_RULES, classifyFamily,
+} from './closed-families.mjs';
 import { REACTIVE_GENOME as DECIDE_GENOME, K, F, cmp, and, arith } from './reference-genome.mjs';
 
 let failures = 0;
@@ -72,7 +77,23 @@ const ok = (what, condition) => {
 }
 
 // --- 4. package 6c: duplicate-policy control ---------------------------------
+//
+// The control classifies against `tools/device/closed-families.json`, the one
+// register of closures this repository keeps. The checks below are therefore
+// about the REGISTER being honoured on this surface, not about a list kept
+// here: the privileged search used to carry its own weaker copy, and the whole
+// point of the change is that adding a family to the register now fails this
+// gate until the privileged surface implements it too.
 {
+  ok(`the register is ${CLOSED_FAMILIES_SCHEMA} with ${CLOSED_FAMILIES.length} families`,
+    CLOSED_FAMILIES_SCHEMA === 'closed-policy-families-v1' && CLOSED_FAMILIES.length > 0);
+  const registered = [...new Set(CLOSED_FAMILIES.map(entry => entry.rule))].sort();
+  ok(`every registered rule is implemented here (${registered.join(', ')})`,
+    JSON.stringify(registered) === JSON.stringify([...IMPLEMENTED_RULES]));
+  ok('every family is closed by a RECORDED negative, with citations',
+    CLOSED_FAMILIES.every(entry => entry.closure === 'recorded-negative' &&
+      Array.isArray(entry.citations) && entry.citations.length > 0));
+
   const staticCover = validateGenome({
     schema: POLICY_LANG_SCHEMA,
     rules: [{ when: K(1), then: 'WIND' }, { when: K(1), then: 'SWEEP' }],
@@ -86,12 +107,60 @@ const ok = (what, condition) => {
     ],
     fallback: 'WIND',
   });
-  ok('a Plan 05 static cover is pruned as a known family',
-    classifyFamily(staticCover)?.id === 'static-cover');
-  ok('a Plan 06 phase schedule is pruned as a known family',
-    classifyFamily(phaseSchedule)?.id === 'phase-schedule');
-  ok('the reactive policy is NOT pruned as a known family',
+  // Both are the SAME closure in the register -- the frame clock is not a game
+  // fact -- where the old privileged list split them into two invented ids.
+  ok('a Plan 05 static cover is pruned as an unconditioned schedule',
+    classifyFamily(staticCover)?.id === 'unconditioned-schedule');
+  ok('a Plan 06 phase schedule is pruned as the same closure',
+    classifyFamily(phaseSchedule)?.id === 'unconditioned-schedule');
+  const cited = classifyFamily(phaseSchedule);
+  ok(`the prune cites where the negative is recorded (plans ${cited.plans.join('/')})`,
+    cited.closure === 'recorded-negative' && cited.citations.length >= 3 &&
+    cited.plans.includes('06'));
+
+  // The reference policy is the search's SEED and its bar. Pruning it would
+  // empty generation zero, so identity with a known shape is deliberately not
+  // a match.
+  ok('the reactive policy is NOT pruned; it is the declared bar',
     classifyFamily(DECIDE_GENOME) === null);
+
+  // `timing-only-mutation`: the family the privileged list did not have.
+  const bumpOneConstant = node => {
+    if (!node || typeof node !== 'object') return false;
+    if (node.t === 'const') { node.v += 1; return true; }
+    for (const key of ['a', 'b', 'x', 'value'])
+      if (node[key] && bumpOneConstant(node[key])) return true;
+    for (const child of node.xs ?? []) if (bumpOneConstant(child)) return true;
+    return false;
+  };
+  const retimed = structuredClone(DECIDE_GENOME);
+  let changed = false;
+  for (const rule of retimed.rules) if (!changed) changed = bumpOneConstant(rule.when);
+  ok('the retimed fixture really did change a threshold',
+    changed && serialize(retimed) !== serialize(DECIDE_GENOME));
+  ok('the same policy at a different threshold is pruned as a swept knob',
+    classifyFamily(retimed)?.id === 'timing-only-mutation');
+  ok('erasing times leaves the shape identical',
+    structuralShape(retimed) === structuralShape(DECIDE_GENOME));
+
+  // A structural change is what the campaign is FOR, so it must survive. Rule
+  // order is semantics here (first match wins), which is what package 7b
+  // indicted.
+  const reordered = structuredClone(DECIDE_GENOME);
+  reordered.rules.splice(2, 0, reordered.rules.splice(6, 1)[0]);
+  ok('a reordered policy is a different shape and is NOT pruned',
+    structuralShape(reordered) !== structuralShape(DECIDE_GENOME) &&
+    classifyFamily(reordered) === null);
+
+  // `audio-anchored-branch` is carried and matches nothing today, for a reason
+  // that is checked rather than asserted: the privileged surface reads
+  // simulator ground truth, so no privileged read maps onto an audio fact.
+  const audioCounterparts = Object.values(OBSERVABLE_COUNTERPART)
+    .filter(fact => fact && OBSERVATION_BUDGET[fact]?.channel === 'audio');
+  ok('no privileged read has an audio-channel counterpart, so the Plan 08 ' +
+     'closure is carried but unreachable on this surface',
+    audioCounterparts.length === 0 &&
+    CLOSED_FAMILIES.some(entry => entry.rule === 'branch-on-audio-fact'));
 }
 
 // --- 5. genome operators are seeded and keep the genome valid ----------------

@@ -288,6 +288,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/invent/closed-families.mjs",
+      "invocation": "tools/invent/closed-families.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/invent/search.mjs",
       "invocation": "tools/invent/search.mjs",
       "kind": "lib",

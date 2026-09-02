@@ -10,7 +10,8 @@
 // check, so a Balloon Boy in the opening starves the hall flash and Foxy's D
 // runs away. Reordering is therefore a first-class mutation, not a detail.
 import * as C from '@fnaf2-1020/core/mechanics';
-import { POLICY_LANG_SCHEMA, validateGenome } from './policy-lang.mjs';
+import { POLICY_LANG_SCHEMA, serialize, structuralShape, validateGenome }
+  from './policy-lang.mjs';
 
 const F = name => ({ t: 'field', name });
 const K = v => ({ t: 'const', v });
@@ -63,4 +64,20 @@ const DECIDE_GENOME = validateGenome({
 });
 
 export const REACTIVE_GENOME = DECIDE_GENOME;
+
+/**
+ * The policy shapes this repository already knows, by name. Counterpart of
+ * `tools/device/policy-grammar.mjs`'s `knownPolicyShapes()`, which names the
+ * shipped `MINIMAL` program on the observable surface.
+ *
+ * The serialized form travels with the shape because on THIS surface the known
+ * family is the search's own seed: a candidate identical to it is the bar the
+ * campaign planted, not a rediscovery, and only a variant differing purely in
+ * its numeric thresholds is the closed knob space.
+ */
+export function knownGenomeShapes() {
+  return new Map([[structuralShape(REACTIVE_GENOME),
+    { family: 'minus7-reactive', serialized: serialize(REACTIVE_GENOME) }]]);
+}
+
 export { F, K, P, cmp, and, or, not, eq, arith };

@@ -1349,12 +1349,22 @@
     {
       "file": "tools/invent/campaign.mjs",
       "imports": [
+        "./closed-families.mjs",
         "./policy-lang.mjs",
         "./reference-genome.mjs",
         "./search.mjs",
         "./targets.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/mechanics",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/invent/closed-families.mjs",
+      "imports": [
+        "./policy-lang.mjs",
+        "./reference-genome.mjs",
+        "@fnaf2-1020/core/control",
         "node:fs"
       ]
     },
@@ -1382,6 +1392,7 @@
       "imports": [
         "../minus7/policy.mjs",
         "../minus7/sim.mjs",
+        "./closed-families.mjs",
         "./policy-lang.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
@@ -1406,8 +1417,10 @@
       "imports": [
         "../minus7/policy.mjs",
         "../minus7/sim.mjs",
+        "./closed-families.mjs",
         "./policy-lang.mjs",
         "./reference-genome.mjs",
+        "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
       ]
     },

@@ -2,6 +2,29 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 Plan 05 package 6c — the two closed-family lists are one register.
+The Track B1 merge (`26df393`) recorded the duplication and left it: the
+privileged search classified against `KNOWN_FAMILIES`, two families asserted in
+prose, while `tools/device/closed-families.json` recorded three with citations
+and an explicit `closure: recorded-negative`. `tools/invent/closed-families.mjs`
+now reads that register and implements its RULE NAMES against a rule-list
+genome, exactly as the device module implements them against an
+observation-language program. One register, two interpreters, and
+`test-policy-lang.mjs` fails if the register names a rule a surface has not
+implemented — the property two lists could not have. Three consequences on the
+privileged surface: the Plan 05 static cover and the Plan 06 phase schedule are
+now the SAME closure (`unconditioned-schedule`, plans 05/06/16 cited) because the
+frame clock is not a game fact; `timing-only-mutation` prunes a candidate whose
+shape equals the reference policy's and differs only in numeric thresholds,
+which the privileged list could not see at all; and `audio-anchored-branch` is
+carried and matches nothing, checked mechanically rather than asserted — no
+privileged read has an audio-channel counterpart, so Plan 08's latency closure
+is unreachable here and will fire on its own if one is ever mapped. Identity
+with a known shape is deliberately NOT a match: the reference genome is the
+campaign's seed and bar, and pruning it would empty generation zero. Frontier
+reports now carry the register beside the pruning log, so a prune can be checked
+against the negative that justifies it without this repository in hand.
+
 2026-09-02 The checked-in inventories were counting a scratch worktree.
 `tools/generate-catalog.js` walked the working directory, so the agent worktree
 under `.claude/` was indexed as repository source. `26df393` committed a
