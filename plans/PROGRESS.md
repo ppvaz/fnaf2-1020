@@ -2,6 +2,69 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 ROADMAP B1 / Plan 05 packages 6b-7b — the invention substrate is
+built on the PRIVILEGED surface and the campaign's first check-in has run.
+Privileged-first is Pedro's ordering and it is a refutation instrument, not a
+route: the privileged surface is a strict upper bound, so a target it cannot
+clear is refuted without building the observable search out, and nothing
+expressed there is device-promotable.
+
+**6b/6c.** `tools/invent/policy-lang.mjs` is a first-match rule list with a
+predicate AST, four registers as the only retained state, seeded genome
+generation, mutate/crossover, exact-round-trip serialize/parse and a pure
+interpreter. Its load-bearing gate is expressiveness and it passes: a
+hand-written rule list reproduces `tools/minus7/policy.mjs`'s `decide()` over
+200 Night 7 seeds, 13848 decisions, 0 divergent. The duplicate control is
+mechanical -- a rule list with no observation-conditioned branch is pruned as a
+Plan 05 static cover, one branching only on the frame clock as a Plan 06 phase
+schedule -- so Plans 05/06/16's closed families cannot be rediscovered by
+anyone forgetting the prior result.
+
+**Per-rule privileged-read provenance (Pedro's requirement).** Every rule
+records which privileged reads justified which decision and whether each has an
+observable counterpart, because a privileged read is a sensor requirement in
+disguise. For `decide()` the no-known-observable set is **committed, foxyD,
+gfPresent, stun, winding**. Foxy's `D` is the most load-bearing quantity in the
+7b result below and is not observable; a 7c survivor leaning on it would be a
+negative of the second kind -- winnable in principle, unobservable in practice.
+
+**7b check-in: reaction already clears nine of eleven dials at cap**, 100% each
+at the full 1200-seed admission gate (withfreddy, withbonnie, withchica,
+toyfreddy, toybonnie, toychica, mangle, golden, puppet), stable against a
+120-seed preview. Only foxy and bb resist, both 0.0% -- and they are the SAME
+failure. With bb at cap and foxy at ZERO the baseline dies to Foxy 300/300 at a
+mean 49.0s, because `decide()`'s `bbOpening -> HOLD_MASK` (62 frames) sits above
+its Foxy check and starves the hall flash; the foxy target dies 300/300 at a
+mean 401.2s of 420s. The entire unsolved region of the single-threat space is
+**the hall time budget**, not any animatronic.
+
+Two corrections the package forced. **There is no such thing as a single-threat
+vector:** Foxy's test is `21 + rng(0..4) - D <= ai.foxy`, so at AI 0 he still
+fires once D passes ~21, and with all eleven dials at zero the empty policy
+still dies to Foxy 20/20 while the baseline survives 100%. Every target carries
+Foxy-by-neglect, so a low probe score is evidence about the time budget rather
+than about that character. And **`decide()` was mis-parameterised under Custom
+Night** -- it called `peakAi(night, 'foxy')` while `peakAi` takes the dials as a
+third argument, so it sized its Foxy band for the standard night whatever the
+dial said. An earlier probe table built on that bug showed reaction failing on
+9/11, the exact inverse of the truth; it was caught by checking the harness
+against the reference policy's own published numbers. Package 7b sanctions an
+adapted baseline, so the parameter is threaded through; the default is unchanged
+and the 6b gate still passes.
+
+The plan says ten single-threat vectors; the engine exposes eleven dials. All
+eleven are probed and the discrepancy is recorded rather than resolved by
+dropping one.
+
+Typecheck, `test:unit`, `test:core`, `test:affected` and dry-run lanes pass:
+`run-20260902181101-4f391063-4e4c57` (`FIXTURE`, not gameplay evidence).
+**Open:** package 7c (the search itself) is not started, and by the check-in
+rule it should target the hall time budget rather than nine already-cleared
+characters. Packages 8 and 9 are untouched. Plan 05 package 6a has a recorded
+hole -- its surface has no `winding` and no per-camera stun table, both of which
+the rollout surface has and `decide()` reads. Nothing is promoted, no ladder
+position moved, and the 47/133 denominator is unchanged.
+
 2026-09-02 ROADMAP A1 complete — the two items left open by the
 characterization above are closed, and A1's exit gate is now met on both halves.
 
