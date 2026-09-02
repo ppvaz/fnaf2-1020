@@ -38,7 +38,9 @@ function exactCycleGate(sim, cycle) {
   const origin = copy.frame;
   for (const action of cycle.actions) {
     const target = origin + action.atFrame;
-    while (copy.alive && copy.frame < target) copy.tick();
+    // `tick()` is a no-op once `won` is set and does not advance the frame,
+    // so a target past `durationFrames` spins forever without this guard.
+    while (copy.alive && !copy.won && copy.frame < target) copy.tick();
     if (!copy.alive) return { accepted: false, reason: 'exact-death-before-action' };
     copy[action.kind](action.action);
   }
