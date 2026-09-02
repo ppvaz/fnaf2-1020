@@ -235,7 +235,7 @@ if (process.argv.includes('--json'))
 
 // Retained evidence, same discipline as campaign.mjs: stamped, canonical, and
 // written next to the frontier it interrogates. `--out=PATH` opts in.
-const OUT = process.argv.find(a => a.startsWith('--out='));
+const OUT = process.argv.find(a => a.startsWith('--out='))?.split('=')[1];
 if (OUT) {
   const { canonicalJson } = await import('@fnaf2-1020/core/contracts');
   const { execFileSync } = await import('node:child_process');
