@@ -1363,6 +1363,7 @@
         "./targets.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/mechanics",
+        "node:child_process",
         "node:fs"
       ]
     },

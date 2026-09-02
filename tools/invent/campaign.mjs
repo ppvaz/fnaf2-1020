@@ -13,6 +13,7 @@
 // would need, and a survivor whose decisive reads are all unobservable is a
 // negative of the second kind: winnable in principle, unobservable in practice.
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
 import {
@@ -38,6 +39,23 @@ const ADMIT = Number(argOf('admit', ADMISSION_SEEDS));
 // delta is comparable to the rate printed beside it. `--ablate=0` turns it off.
 const ABLATE = Number(argOf('ablate', ADMIT));
 const OUT = argOf('out', 'captures/invent');
+
+// A frontier that cannot be tied to the code that produced it is a number, not
+// evidence. `factreplay.mjs` already stamps this; this did not.
+function provenance() {
+  const git = args => {
+    try { return execFileSync('git', args, { encoding: 'utf8' }).trim(); }
+    catch { return 'UNKNOWN'; }
+  };
+  return {
+    commit: git(['rev-parse', 'HEAD']),
+    // A dirty tree means the artifact does NOT correspond to any commit.
+    dirty: git(['status', '--porcelain']).length > 0,
+    node: process.version,
+    producedAt: new Date().toISOString(),
+    argv: process.argv.slice(2),
+  };
+}
 
 function seededRng(seed) {
   let state = seed >>> 0;
@@ -168,7 +186,12 @@ for (const target of TARGETS) {
   const started = Date.now();
   const report = searchTarget(target, rng);
   const path = `${OUT}/frontier-${target}.json`;
-  writeFileSync(path, canonicalJson({ schema: 'invention-frontier-v1', ...report }));
+  const stamped = { schema: 'invention-frontier-v1', provenance: provenance(),
+    rngSeed: 0x5eed, ...report };
+  writeFileSync(path, canonicalJson(stamped));
+  if (stamped.provenance.dirty)
+    console.log(`  WARNING: working tree is dirty; this frontier does not ` +
+      `correspond to commit ${stamped.provenance.commit.slice(0, 8)}`);
   const best = report.front.reduce((a, b) => (b.rate > (a?.rate ?? -1) ? b : a), null);
   console.log(`\ntarget ${target}  (${((Date.now() - started) / 1000).toFixed(1)}s) -> ${path}`);
   console.log(`  controls  empty ${(report.controls.empty.rate * 100).toFixed(1)}%  ` +
