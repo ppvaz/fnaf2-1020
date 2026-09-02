@@ -2,6 +2,36 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 Plan 05 package 8 — the box interrogation turned both bb frontiers
+into named negatives. `tools/invent/box-anatomy.mjs` measures the music-box
+axis at 300 seeds per target and encodes Pedro's ruling as a measured verdict:
+holding the monitor down to keep BB out is NEVER viable because there is ALWAYS
+a box to be wound — except as an endgame cutoff once remaining charge provably
+outlasts the night. Measured: both winners spend **zero wind decisions**; the
+box drains deterministically to empty at 16.7 s (g653-660); every death and
+every win is the AI-0 escape ladder (p50 ≈ 165 s, p90 ≈ 240 s against a 403.3 s
+residual); deaths are Puppet 298/300 and 299/300; all three wins had the box
+EMPTY at 6 AM with the Puppet out mid-hop — a dice race, no cutoff banked. The
+named mechanic is ONE mechanic, the **frozen office**: `press('cam:NN')` only
+selects while the monitor is up (plant-model.js:330), so SWEEP's cam presses
+are refused and its light presses land as hall-light pulses — the bb winner is
+a mis-compiled hall flasher; neither genome ever raises the monitor (0 up-
+frames), which freezes BB at his monitor-gated final hop (g417, 0/300 openings)
+while the pulses pin Foxy's D under the fire band at every 5 s roll (0/300
+locks). Novelty review (queries dated 2026-09-02): BB's monitor-gated entry
+and the "close enough to 6 AM" escape are prior public knowledge (wiki/Steam);
+the only music-box challenge found keeps the box ABOVE 50%, the opposite of
+refusal; no public strategy proposes full-night monitor refusal. Nothing is
+novel-claimed, nothing promoted. Harness: `rollout()` now counts
+`windDecisions` and frontier entries self-declare `boxPosture` (`winds` |
+`box-refusal`) as a retained annotation, never a prune. Artifacts:
+`docs/evidence/invent/box-anatomy-bb{,+foxy}.json`, stamped clean against
+`e47283c`. **Open:** the gate for any future bb/bb+foxy claim is a
+wind-bearing genome that keeps the box charged through the measured cutoff —
+which necessarily raises the monitor, unfreezes BB, and forces the mask game;
+the `foxy` and `golden` frontiers have ablations but no anatomy or novelty
+review yet; package 9 is untouched; the 47/133 denominator is unchanged.
+
 2026-09-02 Plan 05 package 8 — the ablation instrument `fab5969` named is built.
 That commit recorded a 7c candidate at a mean 140.1 s against reaction's 49.4 s,
 0% clears, and degenerate: three different rule sets produced identical survival.

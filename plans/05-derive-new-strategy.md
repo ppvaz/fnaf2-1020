@@ -292,6 +292,46 @@ BASELINE rather than a survivor: on the `bb` single-threat target at 60 seeds,
 only **4 of the reference policy's 16 rules** move survival at all. That is a
 statement about that target and that cohort, not about `decide()` on Night 7.
 
+**The box interrogation closed the naming and novelty review for the two bb
+frontiers, and both are recorded negatives (2026-09-02).**
+`tools/invent/box-anatomy.mjs` measures the axis `death-anatomy.mjs` cannot:
+the music box. Pedro's ruling — holding the monitor down to keep Balloon Boy
+out is NEVER viable as a strategy, because there is ALWAYS a box to be wound;
+admissible only as an endgame cutoff once remaining charge provably outlasts
+the night — is encoded as a measured verdict, not an assertion. At 300 seeds
+per target (`box-anatomy-bb{,+foxy}.json` beside the frontiers):
+
+- Both winners spend **zero wind decisions**. The box drains deterministically
+  (full → empty in 16.7 s, g653-660), and every death and every win is the
+  AI-0 escape ladder (g494-497: 3 stages then hops at 5%/s, then the 1-in-10
+  office roll): march p50 ≈ 165 s, p90 ≈ 240 s, max observed ≈ 370 s against a
+  403.3 s residual. Deaths are Puppet 298/300 and 299/300; all three wins had
+  the box EMPTY at 6 AM with the Puppet already out mid-hop. The frontier
+  rates are P(ladder outruns the residual), a dice race — no cutoff banked.
+- One mechanic, two clothes: the **frozen office**. `press('cam:NN')` selects
+  only while the monitor is already up (plant-model.js:330), so SWEEP's cam
+  presses are refused monitor-down and its light presses land as HALL-LIGHT
+  pulses — the bb winner is a mis-compiled hall flasher. Neither genome ever
+  raises the monitor (0 monitor-up frames), which freezes BB at his
+  monitor-gated final hop (g417; 0/300 openings, 0/300 inside) and lets the
+  pulses pin Foxy's D below the fire band at every 5 s roll (0/300 locks;
+  bb+foxy max D ≈ 12-16 with the roll instant zeroed, bb drifts to ≈ 27-30 in
+  Parts while pinned in the hall).
+- **Novelty review, queries dated 2026-09-02:** BB's monitor-gated entry and
+  the "close enough to 6 AM" escape are prior public knowledge (FNaF wiki BB
+  pages, Steam discussions — the same shape as the measured luck race), and
+  the only music-box challenge found keeps the box ABOVE 50% (a YouTube
+  self-imposed run), the opposite of refusal. No public strategy proposes
+  full-night monitor refusal, consistent with the ruling: the box forbids it.
+  Nothing here is claimed as novel and nothing is promotable.
+- **Harness consequence:** `rollout()` counts `windDecisions` and every
+  frontier entry now self-declares `boxPosture` (`winds` | `box-refusal`) —
+  an annotation retained beside the entry, never a silent prune. The gate for
+  a future bb/bb+foxy claim is now concrete: a wind-bearing genome that keeps
+  the box charged through the measured cutoff (~403.3 s frame-exact on a full
+  box), which necessarily raises the monitor (CAM 11), unfreezes BB, and
+  forces the mask game.
+
 ### Package 9 — cross the boundary
 
 Take the strongest survivor across targets, lower its semantic actions to
