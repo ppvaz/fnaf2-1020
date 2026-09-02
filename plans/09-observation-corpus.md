@@ -1,17 +1,17 @@
 # Stock-device observation corpus and replay contract
 
-**Status: package 1 complete 2026-08-26.** The read-only
+**Status: package 1 complete; package 2 foundation implemented, real-phone
+validation open (2026-09-02).** The read-only
 [`OBSERVATION-CORPUS-INVENTORY.md`](../docs/device/OBSERVATION-CORPUS-INVENTORY.md)
-accounts for every current producer and retained artifact family. It found only
-three files in the local capture root, no manifest, no durable PCM `startNs`
-sidecar, and no retained source/holdout frames for the operational BB model.
-**Package 2's contract slice landed 2026-08-26**—versioned schemas, a
-standard-library validator, and synthetic fixtures—and its **producer slice
-landed the same day**: `trial.sh`, cue-helper collection and the
-calibration capture helper now share one session id and one monotonic origin,
-and every exit path emits a manifest. Package 2 stays open on one item only:
-no manifest from a real phone run has been validated yet, because the device
-was in use by another stream when the producers were written.
+records the 2026-08-26 inventory baseline for every producer and retained
+artifact family. Its findings of a missing manifest, missing durable PCM
+`startNs` sidecar, and missing BB holdout are historical baseline findings, not
+the current producer contract. **Package 2's contract and producer slices
+landed 2026-08-26**: versioned schemas, a standard-library validator, synthetic
+fixtures, and shared session/monotonic-origin handling in `trial.sh`, Cue Helper
+collection, and calibration capture. Every exit path now emits a manifest.
+Package 2 stays open on one item only: no manifest from a real phone run has
+been validated yet. Fixture records do not close that gate.
 
 The repository has useful labeled visual sets, night recordings, HID traces,
 projection snapshots, and PCM captures, but they

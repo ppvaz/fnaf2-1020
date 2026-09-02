@@ -7,3 +7,4 @@ export * from './actuation/index.js';
 export * from './estimation/index.js';
 export * from './timing/index.js';
 export * from './telemetry/index.js';
+export * from './training/index.js';

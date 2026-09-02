@@ -1,10 +1,18 @@
 # Stock-device controller core and act-then-verify loop
 
-**Status: proposed 2026-08-26.** `trial.sh` is the sole current device
-route and already contains focus guards, an epoch latch, generated HID windows,
-visual reads, forcedown-aware recovery, a watchdog, and post-run grading. This
-plan makes those behaviors an explicit controller contract without rewriting a
-working runner all at once.
+**Status: active, incomplete — package 0 advanced (2026-09-02).** `trial.sh` is
+the retained legacy/comparison route, not the architecture boundary for new
+device work. The current path is split across canonical core contracts and
+estimation, adapter capabilities/calibration, and the `apps/device` composition
+root. It now has a versioned profile/preflight boundary, fixture and ADB/HID
+ports, a device-local artifact executor, and an ordered campaign runner. The
+candidate g56 profile remains `dryRunOnly`, so no live controller qualification
+has been claimed.
+
+This plan carries the stock-device observation → belief → policy → action →
+verification contract and the measured migration from the legacy shell route to
+the modern composition. Plan 22 owns the surrounding architecture; Plans 19
+and 20 provide the visual-reactive and belief-cycle foundations.
 
 ## Goal
 
@@ -17,16 +25,22 @@ It must preserve the existing exact-model and safety gates.
 
 ## Dependencies
 
-- Plan 09 supplies replayable observations and model provenance.
+- Plan 09 supplies replayable observations and model provenance; its real-phone
+  manifest validation is still open.
 - Plan 08 owns audio-specific observation gates; audio remains optional.
-- Plan 07's shared shell-lifecycle extraction may be done opportunistically,
-  but this controller must not wait for an unrelated refactor.
+- Plan 22 owns the package boundaries, capability registry, profile resolution,
+  and composition seams used by the modern path.
+- The legacy shell lifecycle remains a comparison lane while the modern
+  controller is characterized; it is not a reason to duplicate production
+  policy or device constants.
 - The exact simulator remains authoritative for policy deadlines and recovery
   safety.
 
 ## Architectural contract
 
-Use explicit records even if the first implementation remains generated shell:
+Use explicit records at the runtime boundary. The legacy generated shell may
+continue to emit comparison traces, but production composition must keep device
+I/O behind the declared sensor and actuator ports:
 
 ```text
 Observation { at, validUntil, kind, value|UNKNOWN, modelHash, margin, reason }
@@ -311,9 +325,10 @@ diagnoses. The shadow layer must not change device timing.
   projection loss, focus loss, death, and 6 AM.
 - Replay real observation logs through it.
 
-Do not choose a new runtime language until a thin prototype prices startup,
-IPC, p99 scheduling, packaging, and cleanup against the current mksh/HID path.
-Architecture first; rewrite only if measurements justify it.
+The existing modern path already prices startup, IPC, scheduling, packaging, and
+cleanup through injected ports and the device-local executor. Any remaining
+legacy-shell migration must be characterized against that boundary; rewrite
+only when semantic traces and timing justify it.
 
 ### 3. Close act-then-verify in priority order
 
@@ -359,13 +374,13 @@ feature to discard.
 Run modes, in order:
 
 1. replay only;
-2. shadow decisions beside the current runner;
+2. shadow decisions beside the legacy runner and modern composition;
 3. verification active, decisions unchanged;
 4. one bounded recovery branch active;
 5. full controller on Night 6;
 6. Night 7 only after plan 12's promotion gate.
 
-Keep the current open-loop/generated route available as a comparison until the
+Keep the legacy open-loop/generated route available as a comparison until the
 new controller matches its clean timing and improves its measured failure modes.
 
 ## Tests

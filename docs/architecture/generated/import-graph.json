@@ -15,7 +15,10 @@
         "./artifact-executor.js",
         "./device-local-executor.js",
         "@fnaf2-1020/adapters",
-        "node:child_process"
+        "node:child_process",
+        "node:crypto",
+        "node:fs/promises",
+        "node:util"
       ]
     },
     {
@@ -143,13 +146,16 @@
       "imports": [
         "./adb-bridge.js",
         "./adb-device-local-executor.js",
+        "./campaign-bundle.js",
         "./campaign-composition.js",
         "./campaign-runner.js",
         "./custom-night.js",
         "./physical-ports.js",
         "@fnaf2-1020/adapters",
         "node:child_process",
-        "node:fs/promises"
+        "node:fs/promises",
+        "node:url",
+        "node:util"
       ]
     },
     {
@@ -192,7 +198,10 @@
         "../src/adb-device-local-executor.js",
         "@fnaf2-1020/core/contracts",
         "node:assert/strict",
-        "node:fs/promises"
+        "node:fs",
+        "node:fs/promises",
+        "node:os",
+        "node:path"
       ]
     },
     {
@@ -236,6 +245,15 @@
       ]
     },
     {
+      "file": "apps/device/test/cli.test.js",
+      "imports": [
+        "node:assert/strict",
+        "node:child_process",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "apps/device/test/service.test.js",
       "imports": [
         "../src/artifact-executor.js",
@@ -255,6 +273,28 @@
       ]
     },
     {
+      "file": "apps/trainer/src/adaptive-coach.js",
+      "imports": [
+        "./microtrainer.js",
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/arcade-lab.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/training"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/arcade-ui.js",
+      "imports": [
+        "./arcade-lab.js",
+        "./microtrainer.js",
+        "./renderers.js"
+      ]
+    },
+    {
       "file": "apps/trainer/src/coach.js",
       "imports": [
         "@fnaf2-1020/core/mechanics"
@@ -269,7 +309,13 @@
     {
       "file": "apps/trainer/src/index.js",
       "imports": [
-        "./coach.js"
+        "./adaptive-coach.js",
+        "./arcade-lab.js",
+        "./coach.js",
+        "./microtrainer.js",
+        "./renderers.js",
+        "./rhythm-highway.js",
+        "./threat-constellation.js"
       ]
     },
     {
@@ -281,6 +327,7 @@
     {
       "file": "apps/trainer/src/main.js",
       "imports": [
+        "./arcade-ui.js",
         "./assets.js",
         "./audio.js",
         "./coach.js",
@@ -293,9 +340,37 @@
       ]
     },
     {
+      "file": "apps/trainer/src/microtrainer.js",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/training"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/renderers.js",
+      "imports": [
+        "./microtrainer.js",
+        "@fnaf2-1020/core/training"
+      ]
+    },
+    {
       "file": "apps/trainer/src/report.js",
       "imports": [
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/rhythm-highway.js",
+      "imports": [
+        "./lane.js",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/training"
+      ]
+    },
+    {
+      "file": "apps/trainer/src/threat-constellation.js",
+      "imports": [
+        "@fnaf2-1020/core/training"
       ]
     },
     {
@@ -453,7 +528,8 @@
         "./mechanics/index.js",
         "./sensing/index.js",
         "./telemetry/index.js",
-        "./timing/index.js"
+        "./timing/index.js",
+        "./training/index.js"
       ]
     },
     {
@@ -463,7 +539,8 @@
         "./plant-model.js",
         "./plant.js",
         "./reduced-model.js",
-        "./rng.js"
+        "./rng.js",
+        "./seed-recovery.js"
       ]
     },
     {
@@ -484,6 +561,13 @@
       "file": "packages/core/src/mechanics/reduced-model.js",
       "imports": [
         "./config.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/seed-recovery.js",
+      "imports": [
+        "./plant-model.js",
+        "./rng.js"
       ]
     },
     {
@@ -508,6 +592,7 @@
     {
       "file": "packages/core/src/telemetry/index.js",
       "imports": [
+        "./bench-trace.js",
         "./fact-link.js"
       ]
     },
@@ -516,6 +601,13 @@
       "imports": [
         "./phase-clock.js",
         "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/training/index.js",
+      "imports": [
+        "./activity-gate.js",
+        "./exercise.js"
       ]
     },
     {
@@ -616,6 +708,21 @@
       ]
     },
     {
+      "file": "tools/activitygatetest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/training",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "tools/adaptivecoachtest.mjs",
+      "imports": [
+        "../apps/trainer/src/adaptive-coach.js",
+        "../apps/trainer/src/microtrainer.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/affected-test.js",
       "imports": [
         "node:assert/strict",
@@ -631,6 +738,14 @@
       ]
     },
     {
+      "file": "tools/arcadelabtest.mjs",
+      "imports": [
+        "../apps/trainer/src/arcade-lab.js",
+        "../apps/trainer/src/microtrainer.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/architecture-test.js",
       "imports": [
         "node:assert/strict",
@@ -643,6 +758,25 @@
       "file": "tools/belieftest.mjs",
       "imports": [
         "@fnaf2-1020/core/estimation"
+      ]
+    },
+    {
+      "file": "tools/bench-trace.mjs",
+      "imports": [
+        "@fnaf2-1020/core/telemetry",
+        "node:fs/promises"
+      ]
+    },
+    {
+      "file": "tools/benchtracetest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/telemetry",
+        "node:assert/strict",
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
       ]
     },
     {
@@ -891,6 +1025,12 @@
       ]
     },
     {
+      "file": "tools/device/seed-clock.mjs",
+      "imports": [
+        "../../apps/device/src/adb-bridge.js"
+      ]
+    },
+    {
       "file": "tools/device/test-actuator.mjs",
       "imports": [
         "../model/closed-loop-reclaim.mjs",
@@ -1102,12 +1242,20 @@
     {
       "file": "tools/evidence.js",
       "imports": [
+        "./device/bundle.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/research",
         "@fnaf2-1020/runtime",
         "node:fs/promises",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/exercisetest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/training",
+        "node:assert/strict"
       ]
     },
     {
@@ -1203,6 +1351,13 @@
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "@fnaf2-1020/core/sensing"
+      ]
+    },
+    {
+      "file": "tools/microtrainertest.mjs",
+      "imports": [
+        "../apps/trainer/src/microtrainer.js",
+        "node:assert/strict"
       ]
     },
     {
@@ -1514,6 +1669,14 @@
       ]
     },
     {
+      "file": "tools/renderertest.mjs",
+      "imports": [
+        "../apps/trainer/src/microtrainer.js",
+        "../apps/trainer/src/renderers.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/retrieval-benchmark.mjs",
       "imports": [
         "node:assert/strict",
@@ -1523,10 +1686,33 @@
       ]
     },
     {
+      "file": "tools/rhythmhighwaytest.mjs",
+      "imports": [
+        "../apps/trainer/src/microtrainer.js",
+        "../apps/trainer/src/rhythm-highway.js",
+        "@fnaf2-1020/core/mechanics",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/rvctest.mjs",
       "imports": [
         "@fnaf2-1020/core/mechanics",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/seed-recovery.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:fs"
+      ]
+    },
+    {
+      "file": "tools/seed-recoverytest.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:assert/strict"
       ]
     },
     {
@@ -1579,6 +1765,14 @@
         "node:child_process",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/threatconstellationtest.mjs",
+      "imports": [
+        "../apps/trainer/src/microtrainer.js",
+        "../apps/trainer/src/threat-constellation.js",
+        "node:assert/strict"
       ]
     },
     {

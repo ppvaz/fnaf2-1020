@@ -21,7 +21,7 @@ Lifecycle meanings:
 | Surface | Lifecycle | Canonical replacement | Removal gate |
 |---|---|---|---|
 | `tools/device/trial.sh` | compatibility | `apps/device/src/cli.js` + `tools/device/artifact-runner.mjs` | P5 command/trace equivalence, then P9 audit |
-| `tools/device/legacy-trial.sh` | legacy | `device-bundle-v1` + `DeviceControlService` + `device-executor-v1` | remote executor and trace equivalence, live qualification, then P9 |
+| `tools/device/legacy-trial.sh` | legacy (deprecated 2026-09-02) | `device-bundle-v1` + `DeviceControlService` + `device-executor-v1` | remote executor and trace equivalence, live qualification, then P9 |
 | `tools/device/trial/*.sh` and `assemble.sh` | legacy | `device-executor-v1` semantic artifact stream | remove with the historical runner after each responsibility has an adapter/test owner |
 | `tools/device/trial-maskcamp.sh` and `run-batch.sh` | legacy | structured observation/qualification experiment artifacts | migrate or archive the experiment recipes; no new route work |
 | `tools/device/preflight.sh` | compatibility | `DeviceControlService.preflight` plus profile/qualification checks | modern CLI covers helper, focus, title, and qualification checks |
@@ -37,6 +37,14 @@ for historical characterization, callers must opt into
 `FNAF2_LEGACY_TRIAL=1`. The artifact facade never falls back to it. In
 particular, `preflight.sh` is a historical shell gate, not permission to start
 a modern live run.
+
+**Deprecated 2026-09-02.** `legacy-trial.sh` is reference and characterization
+input only. It may not produce new evidence on
+[Plan 12](../../plans/12-end-to-end-evidence-campaign.md)'s ladder; the modern
+path climbs it from Level 1. The runner's own historical results — including
+the Night 1 clear `n1-full-1640` — remain citable and remain attributed to it.
+Its device gates stay green as characterization tests and are not qualification
+of the path that climbs. See [`ROADMAP.md`](../../plans/ROADMAP.md).
 
 ## Transitional model and research paths
 

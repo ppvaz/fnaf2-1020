@@ -1,13 +1,19 @@
 # Campaign recovery and all-night support
 
-**Status: proposed 2026-08-26 after the target-device save was lost; package 1
-closed the same day.** The exact simulator already models story Nights 1–6 and
-Custom Night, but the
-stock-device workflow assumes the Sixth Night title item is unlocked. The
-current runner accepts `continue|6th`, then refuses everything except `6th`;
-its recipe and human gate are always generated as Night 6. A fresh save makes
-that shortcut unavailable and creates a one-time chance to validate the lower
-nights instead of treating them as a menu obstacle.
+**Status: active, incomplete — packages 1–2 closed; package 3 advanced
+(2026-09-02).** The old `trial.sh` workflow assumed that Sixth Night was already
+unlocked and generated every recipe as Night 6. That is historical opening
+context, not the current campaign boundary.
+
+The current implementation uses `device-campaign-v1` and an ordered campaign
+runner. It treats story Night 6 (`Continue` or `Sixth Night`) and Custom Night 7
+as separate targets, binds one compiled full-night artifact to each target, and
+requires positive 6 AM plus save/menu evidence. Custom Night configuration is
+explicitly modeled with ten 20 dials and Puppet 15, including measured menu,
+dial, Start, and readback calibration. The modern ADB/HID/Cue Helper ports and
+preflight are implemented, but the selected g56 profile is still `dryRunOnly`;
+Custom Night calibration, external `DEVICE_MEASURED` qualification, and actual
+Night 6/Night 7 wins remain open.
 
 ## Goal
 
@@ -24,10 +30,10 @@ only when exact simulation and device evidence support it.
 
 | Scope | Simulator | Device workflow | Gap |
 |---|---|---|---|
-| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | `New Game` coordinate exists but no gated route may select it | New Game resets progress; no save-state/night-card verification (recipe construction fixed by package 1) |
-| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | `Continue` can be tapped, but the runner refuses it | ~~The title button does not say which night the save cursor owns~~ — **wrong, corrected 2026-08-26: it does.** A real title frame prints the cursor as a sub-label under Continue ("Night 1"). No clear/advance proof yet |
-| Night 6 | Exact plan, human gate, runner, sensors, and graders exist | Current sole supported route through the `6th Night` title item | Still lacks a positive win classifier and manifested lifecycle record |
-| Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | No unlocked-menu setup or dial verification | Must distinguish Custom Night configuration from story progression and verify all ten dials before input |
+| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | Not a target of the current two-night device campaign; `New Game` remains explicitly save-destructive | Fresh-save story ladder and save-state verification remain open |
+| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | Not targets of the current campaign spec; menu observation can identify the save cursor, but no all-night route is promoted | Per-night lifecycle, policy, and save-advance evidence remain open |
+| Night 6 | Exact plan, human gate, runner, sensors, and graders exist | `device-campaign-v1` story target via `Continue` or `Sixth Night`, with a bound artifact and lifecycle/save proof ports | Profile is `dryRunOnly`; positive qualified device win is absent |
+| Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | `device-campaign-v1` custom target with ten dials, Puppet 15, bounded configurator, and full readback contract | Measured Custom Night calibration, qualification, and a positive device win remain open |
 
 A local probe on 2026-08-26 found that the unchanged generated policy clears
 Nights 2, 4, 5, and 6 at **300/300** exact replays and passes the current
@@ -501,7 +507,7 @@ real validated model remain open for package 3.
 human-slack, and observation-fault thresholds. Unsupported pairings are refused
 locally before ADB.
 
-### 5. Build a resumable campaign runner
+### 5. Build a resumable campaign runner — foundation landed 2026-09-01
 
 - Accept one requested story night at a time and an optional bounded campaign
   range; default to one night, not unattended progression.
@@ -512,6 +518,11 @@ locally before ADB.
   signal, or abort so a failed attempt can be replayed.
 - Resume only from a verified save cursor; never reconstruct progression from
   filenames or a prior command's exit code.
+
+The versioned `CampaignStateMachine`, `DeviceCampaignRunner`, campaign preflight,
+modern physical ports, and `device-campaign-result-v1` proof records now provide
+this foundation. The package remains open until a qualified device executor
+completes a real bounded attempt and retains the complete session evidence.
 
 **Gate:** mocked end-to-end tests cover one clear, one death, one abort, wrong
 intro, missing Continue, save not advanced, process interruption, and resume.
@@ -547,7 +558,8 @@ resolved or explicitly blocks progression claims.
 focus, watchdog, cleanup, and grader suites through the generic runner, plus a
 manifested device cohort defined by Plan 12.
 
-### 8. Configure and verify Custom Night / 10/20
+### 8. Configure and verify Custom Night / 10/20 — contract landed 2026-09-01;
+calibration and physical qualification open
 
 - Observe the Custom Night screen and map the ten dials and Start control on
   the canonical target build.
@@ -558,6 +570,12 @@ manifested device cohort defined by Plan 12.
   actuator configuration, and session manifest.
 - Promote stock-device actions only through Plan 12's separate 10/20 gate; a
   story-night clear does not waive it.
+
+`custom-night-config-v1` validates the requested ten dials and Puppet 15, while
+`custom-night-calibration-v1` requires measured menu, dial, Start, and readback
+geometry. The bounded configurator adjusts from an observed starting state and
+requires a fresh full readback; no coordinate is inferred from the old
+`trial.sh` table.
 
 **Gate:** synthetic and holdout fixtures detect every one-dial mismatch, stale
 screen, wrong order, and unknown value. A verified all-20 vector is required
@@ -576,10 +594,13 @@ before the controller can start the canonical target.
 
 ## Dependencies and sequencing
 
-- Plan 09 package 2 must freeze the manifest/event contract before new
-  fresh-save evidence is collected as promotion data.
+- Plan 09 owns the manifest/event contract; its real-phone validation remains
+  open, so new captures are not promotion evidence until that gate passes.
 - Plan 10 supplies the generic lifecycle/controller records and act-then-verify
-  interface; this plan supplies the campaign and game-configuration states.
+  interface through the modern composition boundary; the legacy shell is only a
+  comparison lane. This plan supplies campaign and game-configuration states.
+- Plan 22 owns the profile, capability, preflight, and composition boundaries;
+  this plan owns the campaign semantics and target-specific proof.
 - Plan 12 remains the authority for device promotion and claims. Lower story
   nights create evidence; they do not make 10/20 safe by proximity.
 - Plan 08 audio is optional for story progression and must not block menu,

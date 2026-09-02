@@ -15,7 +15,14 @@ export const CONTRACTS = Object.freeze([
   'fact-message-v1', 'pcm-udp-v1', 'hid-executor-v1', 'device-artifact-v1', 'device-executor-v1',
   'device-campaign-v1', 'device-adb-preflight-v1', 'device-campaign-result-v1',
   'campaign-proof-v1', 'custom-night-config-v1', 'custom-night-calibration-v1',
-  'device-campaign-preflight-v1',
+  'device-campaign-preflight-v1', 'bench-transport-trace-v1',
+  'exercise-v1', 'commitment-v1', 'resolution-v1', 'exercise-cancellation-v1',
+  'exercise-event-v1', 'exercise-attempt-v1',
+  'activity-gate-v1', 'activity-gate-profile-v1', 'activity-gate-decision-v1',
+  'microtrainer-session-v1',
+  'adaptive-skill-model-v1', 'adaptive-selection-v1',
+  'exercise-renderer-v1', 'arcade-lab-progress-v1', 'rhythm-highway-chart-v1',
+  'threat-constellation-layout-v1',
 ]);
 
 export const CLOCKS = Object.freeze([

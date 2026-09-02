@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": {"build": "../../tools/device/build-screencheck.sh"},
+  "scripts": {
+    "build": "../../tools/device/build-screencheck.sh",
+    "test": "python3 ../../tools/device/test-screencheck.py",
+    "bench": "../../tools/device/bench-screencheck.sh"
+  },
   "exports": {".": "./src/index.js"}
 }

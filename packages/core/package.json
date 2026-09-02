@@ -12,7 +12,8 @@
     "./actuation": "./src/actuation/index.js",
     "./estimation": "./src/estimation/index.js",
     "./timing": "./src/timing/index.js",
-    "./telemetry": "./src/telemetry/index.js"
+    "./telemetry": "./src/telemetry/index.js",
+    "./training": "./src/training/index.js"
   },
   "types": "./src/contracts/types.ts"
 }

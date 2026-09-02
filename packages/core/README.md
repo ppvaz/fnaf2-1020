@@ -5,7 +5,8 @@ The package owns the deterministic plant model, policy IR, reduced model,
 estimation foundations, clocks, and versioned data validators.
 
 Public entry points are `.`, `/mechanics`, `/control`, `/sensing`,
-`/actuation`, `/estimation`, `/timing`, `/telemetry`, and `/contracts`. Core has
+`/actuation`, `/estimation`, `/timing`, `/telemetry`, `/training`, and
+`/contracts`. Core has
 no runtime dependencies and no knowledge of DOM, shell, devices, transports,
 or trainer presentation. Applications select those adapters at their
 composition roots.

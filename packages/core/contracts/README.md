@@ -13,6 +13,13 @@ shell, Python, Java, C, and retained artifacts.
 | `capability-v1` | adapters | absent capability fails closed |
 | `device-profile-v1` | device | unresolved calibration/map is refused |
 | `fact-message-v1` | core telemetry | malformed, oversized, or out-of-order frames are rejected |
+| `bench-transport-trace-v1` | core telemetry | incomplete paths, mixed clocks, and unsafe continuation are rejected |
+| `exercise-v1` / `commitment-v1` / `resolution-v1` | core training | questions freeze; commitments and independently evidenced outcomes remain separate |
+| `exercise-cancellation-v1` / `exercise-event-v1` / `exercise-attempt-v1` | core training | interruption, deadline, ordering, and presentation data are explicit |
+| `activity-gate-v1` / `activity-gate-profile-v1` / `activity-gate-decision-v1` | core training | unknown, stale, risky, short, or unqualified quiet windows refuse |
+| `microtrainer-session-v1` | apps/trainer | replayable Plan 09-compatible prompt, response, outcome, latency, scheduler, and source-artifact record; censored exercises do not score |
+| `adaptive-skill-model-v1` / `adaptive-selection-v1` | apps/trainer | per-player scores carry denominators, Wilson uncertainty, holdout separation, exposure caps, and selection probability; they cannot affect safety or belief |
+| `exercise-renderer-v1` / `arcade-lab-progress-v1` / `rhythm-highway-chart-v1` / `threat-constellation-layout-v1` | apps/trainer | campaign, rhythm, and spatial renderers share frozen exercise semantics and accessibility capabilities; local progression, collision-safe charts, and profile-bound anchors treat censored/ambiguous outcomes as neutral |
 
 The complete register, including process and retained-artifact contracts, is
 [`register.json`](register.json). The existing Android, Python, Java, C, and

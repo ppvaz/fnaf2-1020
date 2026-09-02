@@ -262,7 +262,7 @@ counts and show uncertainty; a handful of prompts cannot name a stable
 
 ## Packages
 
-### P1 — replayable exercise and outcome contracts
+### P1 — replayable exercise and outcome contracts — FOUNDATION LANDED (2026-09-02)
 
 - Add versioned `Exercise`, `Commitment`, `Resolution`, and cancellation reason
   schemas with pure validators.
@@ -273,7 +273,19 @@ counts and show uncertainty; a handful of prompts cannot name a stable
 - Add deterministic replay tests for completed, cancelled, expired, ambiguous,
   and unobserved outcomes.
 
-### P2 — conservative activity-gate evaluator
+`@fnaf2-1020/core/training` now owns frozen `exercise-v1`, `commitment-v1`,
+`resolution-v1`, `exercise-cancellation-v1`, `exercise-event-v1`, and
+`exercise-attempt-v1` records. `replayExercise()` requires a prompt-first,
+monotonic event stream, freezes the question and deadlines, checks declared
+competing outcomes against the question choices, and keeps independently
+evidenced resolution separate from player commitment. Late commitments,
+duplicate/reordered events, missing evidence, and clock mismatches are
+refused; cancellation and expiry produce `CENSORED` outcomes. The deterministic
+`tools/exercisetest.mjs` lane covers completed, cancelled, expired, unresolved,
+and ambiguous-cancellation cases. Activity gating, scoring, and live rendering
+remain later packages.
+
+### P2 — conservative activity-gate evaluator — FOUNDATION LANDED (2026-09-02)
 
 - Build a pure gate over immutable belief/risk/latency snapshots.
 - Make unknown, stale, conflict, unsupported profile, and capability loss
@@ -283,7 +295,19 @@ counts and show uncertainty; a handful of prompts cannot name a stable
 - Replay retained sessions to measure false-quiet admissions before rendering
   any prompt live.
 
-### P3 — offline/replay microtrainer
+The pure `activity-gate-v1` evaluator now accepts only a positively qualified
+`FNAF2_NIGHT` screen, fresh and consistent belief, clear critical state,
+profile-bounded risk, a sufficiently long quiet horizon, and all three
+overlay/capture/response capabilities. Unknown, stale, conflicting, cooling,
+over-limit, short-horizon, profile-mismatch, and unqualified inputs retain
+stable refusal reasons. The profile carries versioned risk and prompt/reveal,
+cancellation, and human-recovery budgets; the gate sums those budgets rather
+than importing a fixed latency guess. `tools/activitygatetest.mjs` proves
+critical-cue priority and that increasing risk or measured cancellation latency
+cannot turn a refusal into an admission. This is an offline evaluator only;
+the retained false-quiet corpus and live prompt gate remain open.
+
+### P3 — offline/replay microtrainer — FOUNDATION LANDED (2026-09-02)
 
 - Implement prediction and timing first in `apps/trainer`, using retained
   state snapshots and resolved future facts.
@@ -294,7 +318,21 @@ counts and show uncertainty; a handful of prompts cannot name a stable
 - Retain prompt, commitment, resolution, latency, and scheduler provenance in
   Plan 09-compatible session records.
 
-### P3A — Arcade Lab campaign and shared renderer boundary
+`apps/trainer/src/microtrainer.js` now provides a DOM-free replay boundary over
+the core exercise contracts. Prediction exercises require an independently
+evidenced future fact; timing exercises classify a declared deadline against
+declared buckets and refuse deadlines already inside the measured response
+budget; recognition requires a retained, profile-bound crop, carries its
+artifact hash and label provenance, and always adds `UNKNOWN`; strategy cases
+require an exact-simulator result with visible `MODEL_ONLY` provenance. The
+immutable `microtrainer-session-v1` artifact retains prompt, commitment,
+resolution, latency, scheduler, source-fact, artifact, and split metadata, and
+replays to the same semantic grade. `tools/microtrainertest.mjs` covers scored,
+censored, abstention, timing-budget, provenance, and session-replay paths.
+This is the offline factory/session foundation; trainer UI integration,
+retained corpus loaders, and Plan 09 real-session joins remain open.
+
+### P3A — Arcade Lab campaign and shared renderer boundary — FOUNDATION LANDED (2026-09-02)
 
 - Extract the current trainer's lesson, combo, streak, milestone, and report
   concepts behind an `ExerciseRenderer`/`ExerciseAttempt` boundary without
@@ -305,7 +343,22 @@ counts and show uncertainty; a handful of prompts cannot name a stable
   `ARCADE LAB` entry so the bonus modes are delightful but discoverable.
 - Prove that cancelled/censored items neither score nor break progression.
 
-### P3B — Rhythm Highway pilot
+`apps/trainer/src/renderers.js` now defines the shared campaign,
+Rhythm Highway, and Threat Constellation renderer descriptors. Frozen views
+carry the same choices and deadlines, expose keyboard/switch/reduced-motion,
+muted-audio, haptics-off, non-color, scalable-text, and optional-pointer
+capabilities, and retain only recognition artifact references rather than raw
+media. `apps/trainer/src/arcade-lab.js` provides deterministic seeded sets and
+local per-player progress with reset/export; censored outcomes do not score or
+break combo. `tools/renderertest.mjs` and `tools/arcadelabtest.mjs` prove
+semantic invariance and progression neutrality. The shipped trainer now has a
+discoverable, explicitly `FIXTURE / PRACTICE` Arcade Lab drawer with local
+answer flow, progress export/reset, and a built-page smoke check. The drawer
+is an offline prediction fixture, not a retained/live corpus surface; lesson-
+ladder integration and actual rhythm/spatial canvases remain open for the
+pilot stages below.
+
+### P3B — Rhythm Highway chart foundation — FOUNDATION LANDED (2026-09-02)
 
 - Reuse `Lane`, `glyphFor`, measured tolerance windows, hold-note rendering,
   and coach judgments before introducing new chart machinery.
@@ -315,6 +368,16 @@ counts and show uncertainty; a handful of prompts cannot name a stable
   reduced motion, and deadlines near renderer/response latency limits.
 - Start with timing and fixed-routine sets; add prediction charts only after
   presentation-invariance and censoring tests pass.
+
+`apps/trainer/src/rhythm-highway.js` now derives deterministic chart records
+from a frozen exercise and routine steps carrying declared canonical timing
+windows. It reuses the trainer's `glyphFor` semantics, lays notes into lanes
+with a hold-aware minimum gap, refuses unrenderable dense collisions, retains
+bounded audio/haptic offsets, and adds a commit-then-reveal prediction fork
+without its outcome. `tools/rhythmhighwaytest.mjs` covers deterministic layout,
+hold notes, collision refusal, window reuse, offsets, and outcome exclusion.
+The real canvas pilot still needs refresh-rate/audio-offset/reduced-motion UX
+qualification and measured player trials.
 
 ### P3C — Threat Constellation pilot
 
@@ -328,7 +391,17 @@ counts and show uncertainty; a handful of prompts cannot name a stable
 - Qualify keyboard/switch alternatives, reduced motion, non-color labels, and
   touch-target sizing alongside pointer play.
 
-### P4 — player-skill model and adaptive scheduler
+`apps/trainer/src/threat-constellation.js` now provides the phone-free spatial
+layout foundation. It binds every semantic anchor and ordered gesture to one
+profile, enforces a minimum touch radius, supports tap/hold/slider records,
+requires keyboard/switch/reduced-motion/non-color/scalable-text alternatives,
+and marks pointer-path telemetry optional. Recognition layouts retain only the
+profile-bound source artifact reference; profile mismatches, unknown anchors,
+and raw-media fields refuse. `tools/threatconstellationtest.mjs` covers these
+boundaries. The actual hit-circle canvas, retained-corpus localization, and
+measured gesture qualification remain open.
+
+### P4 — player-skill model and adaptive scheduler — FOUNDATION LANDED (2026-09-02)
 
 - Produce per-state metrics with denominators, uncertainty, and selection-bias
   metadata.
@@ -338,6 +411,18 @@ counts and show uncertainty; a handful of prompts cannot name a stable
   the same examples as both training and proof.
 - Provide reset/export controls; never merge different players or profiles by
   default.
+
+`apps/trainer/src/adaptive-coach.js` now consumes only validated
+`microtrainer-session-v1` records. It keeps per-player/profile metrics separate,
+counts censored exposure without putting it in the correctness denominator,
+reports Wilson 95% intervals and selection-probability means, and stores
+holdout results in a separate bucket that never trains the model. The adaptive
+selector ranks candidates by conservative lower-bound weakness, excludes
+holdout candidates, records its conditional selection probability, and applies
+recent-state and per-session caps. Export, reset, duplicate-session, and
+profile-binding paths are deterministic and immutable. `tools/adaptivecoachtest.mjs`
+covers these boundaries. This remains a replay-only skill consumer; it cannot
+feed safety, belief, live prompting, or device policy.
 
 ### P5 — passive live prediction pilot
 

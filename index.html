@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Minus 7 Trainer</title>
 <link rel="icon" href="data:image/svg+xml,<svg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2064%2064'><rect%20width='64'%20height='64'%20rx='12'%20fill='%230A0C0A'/><text%20x='32'%20y='44'%20text-anchor='middle'%20font-family='monospace'%20font-weight='700'%20font-size='34'%20fill='%23FFB020'>-7</text></svg>">
-<script type="importmap">{"imports":{"@fnaf2-1020/core":"packages/core/src/index.js","@fnaf2-1020/core/mechanics":"packages/core/src/mechanics/index.js","@fnaf2-1020/core/control":"packages/core/src/control/index.js","@fnaf2-1020/core/sensing":"packages/core/src/sensing/index.js","@fnaf2-1020/core/estimation":"packages/core/src/estimation/index.js","@fnaf2-1020/core/timing":"packages/core/src/timing/index.js","@fnaf2-1020/core/telemetry":"packages/core/src/telemetry/index.js","@fnaf2-1020/core/contracts":"packages/core/src/contracts/index.js"}}</script>
+<script type="importmap">{"imports":{"@fnaf2-1020/core":"packages/core/src/index.js","@fnaf2-1020/core/mechanics":"packages/core/src/mechanics/index.js","@fnaf2-1020/core/control":"packages/core/src/control/index.js","@fnaf2-1020/core/sensing":"packages/core/src/sensing/index.js","@fnaf2-1020/core/estimation":"packages/core/src/estimation/index.js","@fnaf2-1020/core/timing":"packages/core/src/timing/index.js","@fnaf2-1020/core/telemetry":"packages/core/src/telemetry/index.js","@fnaf2-1020/core/contracts":"packages/core/src/contracts/index.js","@fnaf2-1020/core/training":"packages/core/src/training/index.js"}}</script>
 <link rel="stylesheet" href="apps/trainer/src/fonts.css">
 <link rel="stylesheet" href="apps/trainer/src/style.css">
 </head>
@@ -23,6 +23,7 @@
     <div class="anchor-badge"><b>:X2 / :X7</b><span>one pass every<br>five seconds</span></div>
     <div class="rail-spacer"></div>
     <nav class="menu-nav">
+      <button data-ui="arcade">ARCADE LAB</button>
       <button data-ui="settings">Settings</button>
       <button data-ui="about">How it works</button>
       <button id="btn-resetprogress" class="danger">Reset</button>
@@ -167,6 +168,31 @@
       <button id="btn-brief-go" class="primary">Start</button>
       <button id="btn-brief-back">Back</button>
     </nav>
+  </section>
+</div>
+
+<div id="arcade" class="panel arcade-panel">
+  <header class="board-head">
+    <div class="eyebrow">ARCADE LAB · OFFLINE REPLAY PRACTICE</div>
+    <h2 id="arcade-title">MISSION 1 / 3</h2>
+    <p id="arcade-meta" class="arcade-meta"></p>
+    <nav class="report-nav"><button data-close>Menu</button></nav>
+  </header>
+  <section class="arcade-card">
+    <div class="eyebrow">PREDICT BEFORE REVEAL</div>
+    <p id="arcade-prompt" class="arcade-prompt"></p>
+    <div id="arcade-choices" class="arcade-choices" role="group" aria-label="Prediction choices"></div>
+    <p id="arcade-feedback" class="arcade-feedback" aria-live="polite"></p>
+    <button id="btn-arcade-next" class="primary" hidden>Next mission</button>
+  </section>
+  <section class="arcade-foot">
+    <span>FIXTURE / PRACTICE · no live capture, no game input</span>
+    <span id="arcade-record">LOCAL BESTS · censored items score nothing</span>
+    <nav class="report-nav">
+      <button id="btn-arcade-export">Export progress</button>
+      <button id="btn-arcade-reset" class="danger">Reset Arcade Lab</button>
+    </nav>
+    <textarea id="arcade-export" class="mapjson" readonly hidden></textarea>
   </section>
 </div>
 

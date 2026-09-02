@@ -10,18 +10,22 @@ discipline. Suggested order and dependencies:
 **Current completion and the single next action:**
 [`PROGRESS.md`](PROGRESS.md).
 
-Current triage (2026-08-29):
+**Order and dependencies across all of it, keyed to Plan 12's claim ladder:**
+[`ROADMAP.md`](ROADMAP.md).
+
+Current triage (2026-09-02):
 
 - **Plan 02 remains open around Minus Toys.** Android can deliberately arm its
   split-camera state, and the glitch-aware engine probe is 200/200 normal plus
   100/100 pinned worst-luck; the no-split control is 0/200. The first graded
-  open-loop Night 2 run failed, while a later Night 1 calibration found no
-  measurable drift or desync but did not stress monitor transitions. The next
-  gate is a monitor-stressing observe-only run, followed by direct evidence
-  that a glitched CAM 09 flash holds the Toys. Glitchless Minus Two remains a
+  open-loop Night 2 run failed, while the later Night 1 run showed the expected
+  split arm and no measurable drift or desync. The remaining device gate is to
+  measure the glitched Toy stun and validate the winding-tick phase on hardware;
+  the selected profile is still dry-run-only. Glitchless Minus Two remains a
   separate 16/200 negative.
-- **Most untouched work:** Plan 03, a real reactive-grading mode; it is larger than
-  a script addition and still needs its Android vent/endgame rules sourced.
+- **Most untouched work:** Plan 03, a real reactive-grading mode; its Android
+  vent/mask/light sourcing is complete, but the reactive coach, decision table,
+  lesson ladder, and grading remain unimplemented.
 - **Plan 04's runnable experiment is complete:** per-step model windows and an
   explicitly inferred human-error profile now exist. The next useful input is
   measured trainer timing by step, not another invented profile.
@@ -36,30 +40,36 @@ Current triage (2026-08-29):
   by measured PAIRIP behavior, but same-process hooks, loader/runtime approaches,
   CCN mutation/rebuild and Chowdren recompilation are active hypotheses. The target
   is a traceable personal research APK with internal observation and actuation.
+- **Plans 22–24 are now active foundations.** Plan 22 owns the phase-1 workspace,
+  contracts, profiles, and composition boundaries; Plan 23 owns the read-only Cue
+  Helper HUD qualification; Plan 24 owns replay-only exercises, activity gating,
+  and adaptive training. None of these foundations is a live gameplay or training
+  claim.
 
-Bot-research roadmap added 2026-08-26:
+Current ownership and dependencies (2026-09-02):
 
-- **Plan 09 defines the shared evidence substrate.** Build its schema/replay
-  contract before collecting another unstructured detector corpus.
-- **Plan 10 closes the stock-device controller loop.** Start in shadow over the
-  current runner; it is an incremental extraction, not a big-bang rewrite.
+- **Plan 09 defines the shared evidence substrate.** Its schemas, validator, and
+  producers are implemented; one real phone manifest still needs validation.
+- **Plan 10 closes the stock-device controller loop.** The legacy `trial.sh` route
+  remains a comparison lane. The current boundary is split across core contracts,
+  adapter capabilities/calibration, and `apps/device` composition; it remains
+  unqualified for live execution.
 - **Plan 11 makes simulator policy comparisons fair.** It can proceed beside
   Plan 09 after their observation record is agreed, and does not require RL.
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
+- **Plan 13 owns campaign and all-night support.** The current campaign targets
+  story Night 6 and Custom Night 7 as separate configurations, with bound
+  full-night artifacts, Custom Night readback, lifecycle proof, and save/menu
+  advancement. The physical qualification gate remains open.
+- **Plan 14 owns device portability.** A versioned `device-profile-v1`, adapter
+  registry, profile-bound calibration IDs, semantic control maps, and mismatch
+  preflight now exist. Full calibration, profile completeness, and second-device
+  validation remain open; legacy constants are not evidence of portability.
 - **Plan 15 owns sensor independence.** A game fact is taught once and each
-  capture method reads it through a declared, calibrated adapter. Plan 19 P2
-  now owns the native-resolution visual watchlist that replaces the old
-  cue-helper/screencap threshold mismatch.
-- **Plan 14 owns device portability.** Every device-facing number in the repo
-  describes one handset; plan 14 makes the device an explicit record, separates
-  geometry (translates by arithmetic) from layout mode (must be measured) from
-  pixel models and timing (do not translate at all), and refuses mismatched
-  pairings.
-- **Plan 13 owns campaign and all-night support.** The target-device save loss
-  is treated as an evidence opportunity: safe New Game handling, verified
-  story progression, per-night policy gates, Sixth/Custom unlocks, and explicit
-  Custom Night configuration rather than a permanent Night 6 menu assumption.
+  capture method reads it through a declared, calibrated adapter. Plan 19 owns
+  the native-resolution visual watchlist; BB cross-sensor calibration remains
+  open.
 
 1. [01-research-pass.md](01-research-pass.md) — sourced docs for the 10/20 meta.
    Prerequisite for 02, 03 and the novelty check in 05.

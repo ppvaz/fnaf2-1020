@@ -2,6 +2,124 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 roadmap and legacy deprecation — the program now has one sequenced
+route, [`ROADMAP.md`](ROADMAP.md), keyed to Plan 12's claim ladder and derived
+from this file, the plan statuses and [`22-STATUS.md`](22-STATUS.md). Two
+decisions are recorded in it: the legacy shell runner is deprecated immediately
+(reference and characterization only, behind `FNAF2_LEGACY_TRIAL=1`, and it may
+not produce new ladder evidence), and the closed loop is the spine of the
+device work rather than a later package. The consequences are stated rather
+than absorbed: the Night 1 clear `n1-full-1640` stays attributed to the retired
+path, so the modern path enters the ladder at Level 1; the measured fork-free
+`/proc/uptime` clock and the `REACTIVE=observe` branch exist only in the retired
+binary and must be re-established, and measured, on the modern one; and
+`apps/device/src/adb-device-local-executor.js` still compiles one full-night HID
+script with a lifecycle abort poll, which is a correct actuation edge and the
+wrong control boundary. `COMPATIBILITY.md`, the generated legacy-path map and
+Plan 22 P5 now carry the deprecation. Catalog, reference, documentation,
+`npm run test:affected` and dry-run lanes pass:
+`run-20260902134404-09d341f9-4e4c57` (`FIXTURE`, not gameplay evidence).
+**Open:** everything the roadmap sequences — no ladder position moved, no
+package closed, and the 47/133 denominator is unchanged (Plans 22-24 are still
+absent from the dashboard).
+
+2026-09-02 Plan 22 control audit — the closure matrix now keeps P2/P3 distinct,
+reopens P7 until screencheck owns its operational lanes, and records the
+TypeScript migration as an open P9 gate rather than calling checked JavaScript
+strict TypeScript. The architecture guard now inspects module bodies,
+template interpolations, research/device boundaries, and physical actuator
+composition; CLI help/unknown commands are side-effect free; evidence indexing
+distinguishes session, device-bundle, and historical artifact schemas; and the
+catalog generator refuses missing contract fixtures. Workspace `npm test`,
+affected gates, catalog idempotence, CLI/architecture/activity/screencheck
+fixtures pass in the current workspace. This is a phase-1 control improvement, not P0–P9 closure:
+measured P0 characterization, strict migration, live qualification, broader
+research equivalence, and the legacy lane remain open in [the matrix](22-STATUS.md).
+
+2026-09-02 Plan 24 P4 adaptive skill foundation — the trainer now has an
+isolated per-player/profile skill model over validated replay sessions. It
+reports scored/censored denominators, Wilson 95% uncertainty, selection
+probability means, and a separate holdout bucket that never trains; the capped
+selector ranks conservative weak-state candidates, excludes holdout, records
+conditional selection probability, and refuses recent-state/session-cap
+violations. Export, reset, duplicate-session, and profile-binding checks pass
+in `tools/adaptivecoachtest.mjs`. This is replay-only and cannot affect safety,
+belief, live prompting, or device policy.
+
+2026-09-02 Plan 24 P3A Arcade Lab renderer/progression foundation — campaign,
+Rhythm Highway, and Threat Constellation now share validated renderer
+descriptors, frozen exercise views, accessibility capabilities, and semantic
+grade invariance. Raw live media is excluded from views; deterministic seeded
+sets and local per-player progress support reset/export, while censored
+exercises remain neutral for combo and correctness. The shipped trainer now
+has a discoverable `FIXTURE / PRACTICE` drawer with answer flow, export/reset,
+and a built-page smoke check. Actual retained/live corpus joins, lesson-ladder
+integration, and rhythm/spatial canvases remain open; this does not qualify a
+live surface.
+
+2026-09-02 Plan 24 P3B Rhythm Highway chart foundation — deterministic charts
+now derive from frozen exercises and routine steps carrying declared canonical
+timing windows. The chart reuses `glyphFor`, lays hold-aware notes into lanes,
+refuses dense collisions, records bounded audio/haptic offsets, and carries a
+commit-then-reveal prediction fork without the outcome. `tools/rhythmhighwaytest.mjs`
+passes. Canvas UX, refresh/audio/reduced-motion qualification, and measured
+player trials remain open; this is replay/practice evidence only.
+
+2026-09-02 Plan 24 P3C Threat Constellation spatial foundation — profile-bound
+semantic anchors now have fixed geometry, minimum touch targets, ordered
+tap/hold/slider gesture records, and required keyboard/switch/reduced-motion/
+non-color/scalable-text alternatives with optional pointer telemetry. Retained
+recognition layouts carry artifact references only; profile mismatches, unknown
+anchors, and raw media refuse. `tools/threatconstellationtest.mjs` passes. The
+hit-circle canvas, retained-corpus localization, and measured gesture trials
+remain open; this is replay/practice evidence only.
+
+2026-09-02 Plan 24 P3 offline/replay microtrainer foundation — the trainer now
+has a DOM-free factory for prediction, timing, retained/profile-bound
+recognition, and exact-simulator `MODEL_ONLY` strategy exercises. Future facts,
+timing buckets, retained crop hashes/labels, and simulator provenance are
+independent from the player's commitment; timing deadlines inside the measured
+response budget refuse; recognition always includes `UNKNOWN`. The frozen
+`microtrainer-session-v1` record retains prompt, commitment, resolution,
+latency, scheduler, source-fact, artifact, and split metadata and replays to
+the same grade. `tools/microtrainertest.mjs` passes. This is offline foundation
+evidence only: UI integration, retained corpus loaders, Plan 09 real-session
+joins, adaptive scheduling, and all live surfaces remain open.
+
+2026-09-02 Plan 24 P2 activity-gate foundation — core training now has a pure
+`activity-gate-v1` evaluator with versioned risk and prompt/reveal,
+cancellation, and human-recovery budgets. It admits only a qualified
+`FNAF2_NIGHT`, fresh/consistent belief, clear critical state, sufficient quiet
+horizon, profile match, and all overlay/capture/response capabilities; unknown,
+stale, conflicting, cooling, risky, short, or unqualified inputs retain stable
+refusals. A deterministic monotonicity lane proves increasing risk or
+cancellation latency cannot weaken admission and critical cues preempt every
+prompt. This remains offline foundation evidence, not a live activity or
+training-benefit claim.
+
+2026-09-02 Plan 24 P1 exercise/outcome foundation — `@fnaf2-1020/core/training`
+now owns frozen `exercise-v1`, `commitment-v1`, `resolution-v1`,
+`exercise-cancellation-v1`, `exercise-event-v1`, and `exercise-attempt-v1`
+contracts. `replayExercise()` enforces prompt-first monotonic event ordering,
+fixed choices/deadlines, independent evidence for outcomes, declared clock
+domains, and explicit `CENSORED` cancellation/expiry paths. The deterministic
+lane covers completed, cancelled, expired, unresolved, and ambiguous cases;
+late or duplicate commitments and reordered/mismatched events refuse. This is
+the replay/contract layer only: no activity gate, skill score, live prompt, or
+human-benefit claim is made.
+
+2026-09-02 Plan 20 P6 bench-trace foundation — the core telemetry package now
+owns `bench-transport-trace-v1`. A trace requires complete screen/audio event
+→ fact → executor receipt → actuator command → observed-result stages on one
+declared monotonic clock, and its summary reports nearest-rank p50/p95/p99/
+p99.9 for each leg and path while retaining UNKNOWN-result counts. The same
+contract requires a completed bounded safe-cycle continuation after an upstream
+drop and rejects replacement actions, incomplete approvals, mixed clocks,
+duplicate samples, and negative legs. The deterministic fixture lane is in the
+default suite and the contract catalog is regenerated. This is a host/fixture
+contract only: no USB, MCU, external-HID, audio, or physical timing claim is
+made; the real bench trace and Plan 20 P7 shadow campaign remain open.
+
 2026-09-02 native Foxy hall collection — six empty and six operator-labelled
 Foxy frames were captured from the g56 at the native 2400x1080 RGBA sensor
 geometry (`captures/screencheck/foxy-hall/`, ignored with the other captures).
@@ -2787,7 +2905,7 @@ on the next graded run remains the way to attribute them, since only
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 | [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Packages 4–5 bounded foundations landed, gates remain open.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 4 has the phone-free 64-seed property harness; Package 5 has the phone-free parser and capture wrapper, but three current direct-HID traces had no app MotionEvent rows, so dispatch/frame landing is unproven. | Reproduce the earlier positive input-trace configuration and place each camera-select event on an actual frame landing; expand the property campaign; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
 | [19 — video reactive controller](19-video-reactive-controller.md) | 3 / 6 | **50%** | **Proposed 2026-08-29; packages 1–3 are implemented in the worktree.** The observer/controller audit fixes cover deadline timing, stale cue identity, actual mask endpoints, UNKNOWN polarity, and rejected-intent rollback. `PixelWatch.java` / `CaptureService.java` provide the native watch protocol; `watch-calibrate.py` refuses weak or foreign calibration; `reactivetest.mjs` remains green and `ventreacttest.mjs --assert` is intentionally red on the survival-cost claims. P4 now has one Night 2 observe-only baseline (operator saw Foxy; machine cause remained unknown); the run is not a clean Night 5/7 promotion gate. P5 blackout attachment and P6 external audio remain open. | Run the observe-only branch on a monitor-stressing Night 5 or 7 session, then grade it. |
-| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 5 / 7 | **71%** | **Packages 1–5 implemented in the worktree.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` and `src/cycle-planner.js` provide reviewed primitives and worst-case selection; `src/cycle-controller.js` composes them without an engine read, and the exact-engine blackout control comparison is 0/80 disabled, 80/80 normal estimator, 13/80 harsh stress, 80/80 oracle. P6 now has the phone-free bounded fact-link and safe-cycle drain foundation; the bench transport trace and shadow campaign remain open. | Package 6: bench transport trace and safe-cycle continuation. |
+| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 5 / 7 | **71%** | **Packages 1–5 implemented in the worktree; P6 trace contract foundation added 2026-09-02.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` and `src/cycle-planner.js` provide reviewed primitives and worst-case selection; `src/cycle-controller.js` composes them without an engine read, and the exact-engine blackout control comparison is 0/80 disabled, 80/80 normal estimator, 13/80 harsh stress, 80/80 oracle. `bench-transport-trace-v1` now retains complete visual/audio latency legs and safe-cycle continuation proof in a deterministic host fixture. Physical bench timing and the shadow campaign remain open. | Package 6: real bench transport trace, then safe-cycle continuation under measured link loss. |
 | [21 — policy-program synthesis](21-policy-program-synthesis.md) | 6 / 7 | **86%** | **Packages 1–6 implemented for the initial Minimal target.** The finite named-target grammar fingerprints known families; IR/device/mock-phone equivalence rejects the three Night 1 defect controls; `policy-search.mjs` persists an exact-engine positive/negative mutation frontier with provenance; and `policy-artifact.mjs` binds the canonical program to the pushed plan and manifest while keeping grading opt-in. Broader 1200-seed invention, family ports, physical device evidence, and promotion remain open. The BB-only reactive experiment remains a failing release gate; Mangle audio-static handling is modeled, but device calibration/evidence remains open. | Package 7: scoped invention campaign and promotion. |
 
 ## Counting rule

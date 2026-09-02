@@ -19,6 +19,18 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
+      # Pin boundary toolchains before any contract lane can invoke them. The
+      # Cue Helper tests compile Java and the fixture classifiers use Pillow;
+      # neither may depend on whatever happens to be preinstalled on the image.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Fixture rendering dependency
+        run: python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
       - name: Install the pinned workspace toolchain
         run: npm ci
       - name: Type and architecture contracts
@@ -31,27 +43,6 @@ jobs:
         run: npm run device:dry-run -- --profile fixture-hid-screencap
       - name: Documentation and catalog links
         run: npm run catalog && git diff --exit-code -- docs/architecture/generated && node tools/test-docs.mjs
-      # The engine suite compiles the cue helper's CueDetector on the host. The
-      # runner image happens to ship a JDK, but pinning one here is the point:
-      # the check must fail because the detector regressed, never because the
-      # image's Java moved. test.sh refuses to run without a working javac
-      # rather than skipping, so an unpinned JDK would turn into a red build
-      # that says nothing about the code.
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 17
-      # Four device checks (menu selector, interaction classifier, screenstate,
-      # sensor) synthesise their fixtures with Pillow. The runner image ships
-      # no Pillow, so they failed on `ModuleNotFoundError: No module named
-      # 'PIL'` -- a red build that said nothing about the code. Pinned for the
-      # same reason as the JDK above: the check must fail because a classifier
-      # regressed, never because the image's Python moved.
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Fixture rendering dependency
-        run: python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
       # The repository has sourced mksh fragments as well as executable bash
       # scripts. ShellCheck's critical tier catches unknown shell context and
       # parse/expansion errors without pretending the existing warning backlog

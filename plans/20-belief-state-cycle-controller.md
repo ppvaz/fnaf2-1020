@@ -295,6 +295,17 @@ expired approval emits nothing. `tools/factlinktest.mjs` covers the contract
 and is in the normal suite. These are deliberate protocol bounds, not a
 measurement of USB timing or proof that an MCU/external HID accepts the wire.
 
+**Bench-trace contract foundation landed 2026-09-02.** Core telemetry now
+owns `bench-transport-trace-v1` and its derived summary. Each retained sample
+must connect a screen or audio event to a fact, executor receipt, actuator
+command, and observed result on one declared monotonic millisecond clock.
+Summaries report nearest-rank p50/p95/p99/p99.9 for every leg and path and
+retain UNKNOWN-result counts. The continuation record requires all actions in
+one bounded approval to drain after an upstream drop, while rejecting any
+replacement action. `tools/benchtracetest.mjs` is the deterministic fixture
+gate. This advances the contract and reporting layer only; a physical bench
+trace, measured external-HID timing, and P7 shadow campaign are still open.
+
 The visual fast path must also be measured, not assumed. A detector wired to a
 display/compositor can see a new frame quickly; the current phone helper is a
 ~59 ms read at ~14 Hz plus fact delivery. Its p99

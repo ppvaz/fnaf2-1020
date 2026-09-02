@@ -73,6 +73,7 @@ const contractEvidence = {
   'experiment-result-v1': ['packages/research/test/experiment.test.js'],
   'winner-v1': ['tools/device/test-bundle.mjs'],
   'device-bundle-v1': ['tools/device/test-bundle.mjs'],
+  'device-artifact-v1': ['tools/device/test-bundle.mjs'],
   'trainer-trace-v1': ['tools/tracereport.mjs'],
   'artifact-ref-v1': ['tools/evidence.js'],
   'claim-evidence-v1': ['tools/evidence.js'],
@@ -89,9 +90,36 @@ const contractEvidence = {
   'custom-night-config-v1': ['apps/device/test/campaign.test.js', 'apps/device/test/campaign-infrastructure.test.js'],
   'custom-night-calibration-v1': ['apps/device/test/campaign-infrastructure.test.js'],
   'device-campaign-preflight-v1': ['apps/device/test/campaign-infrastructure.test.js'],
+  'bench-transport-trace-v1': ['tools/benchtracetest.mjs'],
+  'exercise-v1': ['tools/exercisetest.mjs'],
+  'commitment-v1': ['tools/exercisetest.mjs'],
+  'resolution-v1': ['tools/exercisetest.mjs'],
+  'exercise-cancellation-v1': ['tools/exercisetest.mjs'],
+  'exercise-event-v1': ['tools/exercisetest.mjs'],
+  'exercise-attempt-v1': ['tools/exercisetest.mjs'],
+  'activity-gate-v1': ['tools/activitygatetest.mjs'],
+  'activity-gate-profile-v1': ['tools/activitygatetest.mjs'],
+  'activity-gate-decision-v1': ['tools/activitygatetest.mjs'],
+  'microtrainer-session-v1': ['tools/microtrainertest.mjs'],
+  'adaptive-skill-model-v1': ['tools/adaptivecoachtest.mjs'],
+  'adaptive-selection-v1': ['tools/adaptivecoachtest.mjs'],
+  'exercise-renderer-v1': ['tools/renderertest.mjs'],
+  'arcade-lab-progress-v1': ['tools/arcadelabtest.mjs'],
+  'rhythm-highway-chart-v1': ['tools/rhythmhighwaytest.mjs'],
+  'threat-constellation-layout-v1': ['tools/threatconstellationtest.mjs'],
   'monitor-rule-v1': ['packages/adapters/test/monitor-rule.test.js', 'tools/device/test-monitor-calibrate.py'],
   'camera-rule-v1': ['packages/adapters/test/camera-rule.test.js', 'tools/device/test-camera-calibrate.py'],
 };
+const repositoryPaths = new Set(files.map(path => relative(ROOT, path)));
+for (const contract of contractRegister.contracts) {
+  const fixtures = contractEvidence[contract.id];
+  if (!fixtures?.length)
+    throw new Error(`catalog: contract ${contract.id} has no conformance fixture`);
+  for (const fixture of fixtures) {
+    if (!repositoryPaths.has(fixture))
+      throw new Error(`catalog: conformance fixture for ${contract.id} is missing: ${fixture}`);
+  }
+}
 const contractSpecifications = {
   schema: 'contract-specification-catalog-v1',
   generatedFrom: 'packages/core/contracts/register.json',
@@ -109,7 +137,7 @@ const contractSpecifications = {
     errorBehavior: 'Reject malformed, incompatible, uncalibrated, or out-of-budget values at the boundary.',
     compatibility: 'Versioned IDs are additive by default; incompatible changes require a new version and retained fixtures.',
     runtimeValidation: item.validator,
-    conformanceFixtures: contractEvidence[item.id] ?? ['packages/core/test/contracts.test.js'],
+    conformanceFixtures: contractEvidence[item.id],
   })),
 };
 
@@ -206,7 +234,7 @@ const legacyPaths = [
     lifecycle: 'legacy', owner: '@fnaf2-1020/device',
     replacement: 'device-bundle-v1 + DeviceControlService + device-executor-v1',
     removalGate: 'P5 remote executor and trace equivalence, live qualification, then P9',
-    notes: 'Historical open-loop phone runner; diagnosis only and never a canonical authority.',
+    notes: 'Historical open-loop phone runner. Deprecated 2026-09-02: historical characterization and replay only, behind FNAF2_LEGACY_TRIAL=1. It may not produce new Plan 12 ladder evidence, and its own results stay attributed to it.',
   },
   {
     id: 'device.legacy-driver-assembly', path: 'tools/device/trial/assemble.sh', category: 'device',

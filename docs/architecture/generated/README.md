@@ -6,6 +6,9 @@ are migration maps, not a second manually edited authority. Review generated
 diffs with their source changes. Contract specifications are generated for every
 register entry and include purpose, non-purpose, clock/unit, unknown/error,
 compatibility, runtime-validator, and fixture fields.
+Catalog generation fails when a registered contract has no conformance fixture
+or when a listed fixture path is absent, so a green catalog cannot silently
+fall back to a generic test.
 
 `reverse-links.json` is the generated reverse view for stable contract, ADR,
 claim, and evidence references, including contract-to-fixture links. Run

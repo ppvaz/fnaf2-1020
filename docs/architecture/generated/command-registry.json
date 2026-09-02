@@ -37,12 +37,12 @@
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh",
+      "command": "node packages/core/test/contracts.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh",
       "lifecycle": "supported"
     },
     {
       "id": "test:core",
-      "command": "node tools/sourcetest.mjs && node tools/simtest.mjs && node tools/belieftest.mjs && node tools/estimatortest.mjs",
+      "command": "node tools/sourcetest.mjs && node tools/simtest.mjs && node tools/belieftest.mjs && node tools/estimatortest.mjs && node tools/seed-recoverytest.mjs",
       "lifecycle": "supported"
     },
     {
@@ -240,6 +240,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/seed-recovery.mjs",
+      "invocation": "tools/seed-recovery.mjs",
+      "kind": "report/module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/seed-recoverytest.mjs",
+      "invocation": "tools/seed-recoverytest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/test-stat.mjs",
       "invocation": "tools/test-stat.mjs",
       "kind": "check",
@@ -374,6 +386,66 @@
     {
       "id": "tools/factlinktest.mjs",
       "invocation": "tools/factlinktest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/benchtracetest.mjs",
+      "invocation": "tools/benchtracetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/bench-trace.mjs",
+      "invocation": "tools/bench-trace.mjs --input TRACE.json [--out SUMMARY.json]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/exercisetest.mjs",
+      "invocation": "tools/exercisetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/activitygatetest.mjs",
+      "invocation": "tools/activitygatetest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/microtrainertest.mjs",
+      "invocation": "tools/microtrainertest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/adaptivecoachtest.mjs",
+      "invocation": "tools/adaptivecoachtest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/renderertest.mjs",
+      "invocation": "tools/renderertest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/arcadelabtest.mjs",
+      "invocation": "tools/arcadelabtest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/rhythmhighwaytest.mjs",
+      "invocation": "tools/rhythmhighwaytest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/threatconstellationtest.mjs",
+      "invocation": "tools/threatconstellationtest.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -1377,6 +1449,12 @@
       "id": "tools/device/trial/12-night-loop.sh",
       "invocation": "tools/device/trial/12-night-loop.sh",
       "kind": "driver part",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/seed-clock.mjs",
+      "invocation": "tools/device/seed-clock.mjs",
+      "kind": "device report",
       "lifecycle": "supported"
     },
     {

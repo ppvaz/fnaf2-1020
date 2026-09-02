@@ -14,6 +14,11 @@ npm run evidence -- why RUN_ID
 npm run evidence -- promote RUN_ID
 ```
 
+`list`, `show`, `replay`, and `promote` recognize both runtime session bundles
+and validated `device-bundle-v1` handoffs; historical manifests are labelled as
+archives instead of being mistaken for malformed current sessions. Promotion
+of a handoff still refuses until the external and Plan 12 gates are present.
+
 Large or sensitive media is content-addressed and retained separately. The
 manifest retains profile, policy/model hashes, clocks, capabilities,
 calibrations, semantic commands, actuation results, lifecycle, grading, and

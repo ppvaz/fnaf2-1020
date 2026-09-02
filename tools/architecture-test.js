@@ -26,6 +26,39 @@ async function files(directory) {
   return output;
 }
 
+// Keep the guard deterministic without depending on a parser/toolchain in the
+// fast lane.  Strings/comments are removed before checking runtime globals so
+// prose such as `const window = ...` does not create a false boundary failure.
+function codeOnly(source) {
+  return source
+    .replace(/`(?:\\.|[^`\\])*`/gs, template =>
+      [...template.matchAll(/\$\{([\s\S]*?)\}/g)].map(match => match[1]).join('\n'))
+    .replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/gs, '')
+    .replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+}
+
+function importSpecifiers(source) {
+  return [...source.matchAll(/\b(?:from|import)\s*(?:\(\s*)?['"]([^'"]+)['"]/g)]
+    .map(match => match[1]);
+}
+
+const forbiddenCoreGlobal = /\b(?:document|window|fetch|process|globalThis|performance)\b/;
+const forbiddenCoreNames = ['document', 'window', 'fetch', 'process', 'globalThis', 'performance'];
+const unboundCoreCode = source => {
+  const code = codeOnly(source);
+  const bindings = [...code.matchAll(/\b(?:const|let|var|function|class)\s+([A-Za-z_$][\w$]*)/g)]
+    .map(match => match[1]).filter(name => forbiddenCoreNames.includes(name));
+  return bindings.length
+    ? code.replace(new RegExp(`\\b(?:${[...new Set(bindings)].join('|')})\\b`, 'g'), '')
+    : code;
+};
+assert.match(unboundCoreCode('const host = window;'), forbiddenCoreGlobal,
+  'architecture guard must recognize host-global access in module bodies');
+assert.doesNotMatch(unboundCoreCode('const window = 1; return window;'), forbiddenCoreGlobal,
+  'architecture guard must not mistake a local binding for a host global');
+assert.match(unboundCoreCode('const host = `${window}`;'), forbiddenCoreGlobal,
+  'architecture guard must inspect template interpolations');
+
 const core = await files(join(ROOT, 'packages/core/src'));
 const legacyCatalog = JSON.parse(await readFile(join(ROOT, 'docs/architecture/generated/legacy-paths.json'), 'utf8'));
 assert.equal(legacyCatalog.schema, 'legacy-path-map-v1');
@@ -60,7 +93,21 @@ try {
 }
 for (const path of core) {
   const source = await readFile(path, 'utf8');
-  assert.doesNotMatch(source, /^\s*(?:import|export).*?(?:from\s+|import\()[^\n]*(?:@fnaf2-1020\/(?:adapters|device|trainer)|node:|\b(?:document|window|process|fetch)\b)/m, `${path} crosses the core boundary`);
+  const imports = importSpecifiers(source);
+  assert.ok(!imports.some(spec => spec.startsWith('node:') ||
+    /^@fnaf2-1020\/(?:adapters|device|trainer)/.test(spec)),
+  `${path} crosses the core package boundary`);
+  assert.doesNotMatch(unboundCoreCode(source), forbiddenCoreGlobal,
+    `${path} uses a host/browser global in core`);
+}
+const research = await files(join(ROOT, 'packages/research/src'));
+for (const path of research) {
+  const source = await readFile(path, 'utf8');
+  const imports = importSpecifiers(source);
+  assert.ok(!imports.some(spec => spec.includes('tools/device') || spec.includes('apps/device') ||
+    spec === '@fnaf2-1020/device' ||
+    spec === 'node:child_process' || spec === 'node:net' || spec === 'node:dgram'),
+  `${path} imports a device-shell boundary directly`);
 }
 const production = await files(join(ROOT, 'packages'));
 for (const path of production) {
@@ -80,4 +127,19 @@ for (const path of operational) {
   assert.doesNotMatch(source, /(?:from\s+|import\s*\()['"][^'"]*(?:^|\/|[-_.])test[^'"]*['"]/i, `${path} imports a test module`);
   assert.doesNotMatch(source, /\bSEARCH_KNOBS(?:\s*\.\s*[A-Za-z_$][\w$]*|\s*\[[^\]]+\])\s*=/, `${path} mutates a process-global search knob`);
 }
+const physicalActuatorOwner = join(ROOT, 'apps/device/src/composition.js');
+for (const path of [...await files(join(ROOT, 'apps')), ...await files(join(ROOT, 'tools'))]
+  .filter(path => !/(?:^|\/)test[^/]*\.(?:js|mjs|ts)$/.test(path) &&
+                  !/(?:^|\/)report[^/]*\.(?:js|mjs|ts)$/.test(path) &&
+                  path !== fileURLToPath(import.meta.url))) {
+  const source = await readFile(path, 'utf8');
+  if (path !== physicalActuatorOwner &&
+      /\b(?:AdbTapActuator|HidActuator)\b/.test(codeOnly(source)))
+    assert.fail(`${path} reaches a physical actuator outside the device composition root`);
+}
+const cli = await readFile(join(ROOT, 'apps/device/src/cli.js'), 'utf8');
+assert.match(cli, /live execution requires both --live and --confirm-live/,
+  'device live execution lost its explicit confirmation gate');
+assert.match(cli, /live transport is not composed by this CLI/,
+  'device CLI must remain fail-closed until a qualified live composition exists');
 console.log(`architecture: ${core.length} core modules and ${production.length} package modules obey boundary checks`);

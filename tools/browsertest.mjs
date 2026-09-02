@@ -80,6 +80,24 @@ async function main() {
   await step('modes rendered', 'document.querySelectorAll("#mode-list .mode").length');
   await step('menu visible', 'document.getElementById("menu").classList.contains("shown")');
 
+  console.log('\n— arcade lab fixture path —');
+  await evalJs('localStorage.removeItem("m7.arcade.progress")');
+  await evalJs('document.querySelector(\'[data-ui="arcade"]\').click()');
+  await sleep(250);
+  await step('arcade panel shown', 'document.getElementById("arcade").classList.contains("shown")');
+  await step('fixture label visible', 'document.getElementById("arcade").textContent.includes("FIXTURE / PRACTICE")');
+  await step('prediction choices', 'document.querySelectorAll("#arcade-choices [data-arcade-answer]").length');
+  await evalJs('document.querySelector("#arcade-choices [data-arcade-answer]").click()');
+  await sleep(100);
+  await step('answer feedback', 'document.getElementById("arcade-feedback").textContent.length > 0');
+  await step('local score recorded', 'JSON.parse(localStorage["m7.arcade.progress"]).scored');
+  await evalJs('document.getElementById("btn-arcade-export").click()');
+  await step('progress export visible', '!document.getElementById("arcade-export").hidden');
+  await evalJs('document.getElementById("btn-arcade-reset").click()');
+  await step('reset clears score', 'JSON.parse(localStorage["m7.arcade.progress"]).scored');
+  await evalJs('document.querySelector("#arcade [data-close]").click()');
+  await sleep(150);
+
   console.log('\n— start a full night —');
   await evalJs('document.querySelector(\'[data-mode="night"]\').click()');
   await sleep(250);

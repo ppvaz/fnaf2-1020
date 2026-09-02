@@ -20,7 +20,7 @@
       "owner": "@fnaf2-1020/device",
       "replacement": "device-bundle-v1 + DeviceControlService + device-executor-v1",
       "removalGate": "P5 remote executor and trace equivalence, live qualification, then P9",
-      "notes": "Historical open-loop phone runner; diagnosis only and never a canonical authority."
+      "notes": "Historical open-loop phone runner. Deprecated 2026-09-02: historical characterization and replay only, behind FNAF2_LEGACY_TRIAL=1. It may not produce new Plan 12 ladder evidence, and its own results stay attributed to it."
     },
     {
       "id": "device.legacy-driver-assembly",

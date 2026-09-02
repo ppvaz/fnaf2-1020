@@ -13,6 +13,24 @@
       "relation": "REFERENCES"
     },
     {
+      "id": "contract.activity-gate-decision-v1",
+      "kind": "CONTRACT",
+      "path": "tools/activitygatetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.activity-gate-profile-v1",
+      "kind": "CONTRACT",
+      "path": "tools/activitygatetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.activity-gate-v1",
+      "kind": "CONTRACT",
+      "path": "tools/activitygatetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.actuator-v1",
       "kind": "CONTRACT",
       "path": "apps/device/src/mcp.js",
@@ -61,9 +79,40 @@
       "relation": "REFERENCES"
     },
     {
+      "id": "contract.adaptive-selection-v1",
+      "kind": "CONTRACT",
+      "path": "tools/adaptivecoachtest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.adaptive-skill-model-v1",
+      "kind": "CONTRACT",
+      "path": "tools/adaptivecoachtest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.arcade-lab-progress-v1",
+      "kind": "CONTRACT",
+      "path": "tools/arcadelabtest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.artifact-ref-v1",
       "kind": "CONTRACT",
       "path": "tools/evidence.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.bench-transport-trace-v1",
+      "kind": "CONTRACT",
+      "path": "packages/core/src/telemetry/bench-trace.js",
+      "line": 1,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.bench-transport-trace-v1",
+      "kind": "CONTRACT",
+      "path": "tools/benchtracetest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -127,6 +176,12 @@
       "id": "contract.clock-v1",
       "kind": "CONTRACT",
       "path": "tools/phaseclocktest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.commitment-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -224,6 +279,12 @@
       "id": "contract.device-adb-preflight-v1",
       "kind": "CONTRACT",
       "path": "apps/device/test/adb-bridge.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.device-artifact-v1",
+      "kind": "CONTRACT",
+      "path": "tools/device/test-bundle.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -345,6 +406,36 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
+      "id": "contract.exercise-attempt-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.exercise-cancellation-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.exercise-event-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.exercise-renderer-v1",
+      "kind": "CONTRACT",
+      "path": "tools/renderertest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.exercise-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.experiment-result-v1",
       "kind": "CONTRACT",
       "path": "packages/research/test/experiment.test.js",
@@ -413,6 +504,12 @@
       "id": "contract.measurement-v1",
       "kind": "CONTRACT",
       "path": "packages/core/test/contracts.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.microtrainer-session-v1",
+      "kind": "CONTRACT",
+      "path": "tools/microtrainertest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
@@ -491,6 +588,18 @@
       "relation": "REFERENCES"
     },
     {
+      "id": "contract.resolution-v1",
+      "kind": "CONTRACT",
+      "path": "tools/exercisetest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.rhythm-highway-chart-v1",
+      "kind": "CONTRACT",
+      "path": "tools/rhythmhighwaytest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.screencheck-process-v1",
       "kind": "CONTRACT",
       "path": "packages/screencheck/src/screencheck-start.S",
@@ -564,6 +673,12 @@
       "id": "contract.telemetry-event-v1",
       "kind": "CONTRACT",
       "path": "tools/factlinktest.mjs",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.threat-constellation-layout-v1",
+      "kind": "CONTRACT",
+      "path": "tools/threatconstellationtest.mjs",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {

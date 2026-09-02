@@ -1,10 +1,19 @@
 # Device portability and coordinate profiles
 
-**Status: proposed 2026-08-26.** Every device-facing number in this repository
-describes one handset — a Moto g56 5G at 2400x1080 landscape, running
-`com.scottgames.fnaf2` v2.0.7 with a particular set of in-game Options. Nothing
-says so in a machine-readable way, nothing refuses to run under a different one,
-and the constants are spread across nine `tools/device` scripts plus `coords.sh`.
+**Status: active, foundation landed; portability gates remain open
+(2026-09-02).** The original problem statement below was accurate on 2026-08-26
+and is retained as historical context. The current repository already has a
+versioned `device-profile-v1`, an explicit adapter/capability registry, profile-
+bound calibration IDs and semantic control maps, profile resolution, and
+fail-closed campaign preflight. The canonical candidate is still the Moto g56
+5G / `com.scottgames.fnaf2` v2.0.7 path, and its live profile remains
+`dryRunOnly`.
+
+The remaining work is to complete the profile's device/layout semantics, bind
+all models and timing to it, reproduce the calibrated profile through a
+manifested calibration session, and validate or refute the inferred rules on a
+second handset. Legacy `tools/device` scripts and `coords.sh` remain comparison
+surfaces; they are not the current composition boundary.
 
 This plan does not promise the project runs on a second device. It makes the
 device an explicit, checkable record, separates what translates by arithmetic
@@ -36,18 +45,22 @@ numbers that look fine and mean nothing.
   measured through it match the native screencap within noise (`newGame`
   0.069–0.072 upscaled against 0.067–0.072 native, 2026-08-26). Two sensors,
   one scale factor, agreeing. `[CALIBRATED]`
-- **A device-specific transform already exists and is already flagged.**
+- **A device-specific transform is now consumed by the modern boundary.**
   `HID-MULTITOUCH.md` §"Coordinate mapping on this phone" carries
   `rawX = (1080 - screenY) * 20 / 9`, `rawY = screenX * 9 / 20`, with the note
   "keep this device-specific mapping in the controller. Recalibrate it for a
-  different resolution or orientation." The need is recorded; the mechanism is
-  not built. `[SOURCED to the repo's own measurement]`
+  different resolution or orientation." `device-profile-v1` now supplies the
+  selected geometry/control-map and calibration bindings to the modern device
+  composition, while the complete normalized mapping and second-device proof
+  remain open. `[SOURCED to the repo's own measurement]`
 - **The game's Options are part of the profile.** A fresh install reports
   Display Mode `Full`, Perspective Effect `On`, Controller Size `120%`
   (2026-08-26). Controller Size moves and scales the on-screen controls;
   Display Mode decides whether the canvas stretches, letterboxes or crops;
-  Perspective Effect is what every office screen model was built under. None of
-  these was recorded anywhere before `coords.sh` gained a header note. `[CALIBRATED]`
+  Perspective Effect is what every office screen model was built under. The
+  current profile boundary records target/build, geometry, adapter, control-map,
+  and calibration provenance, but the full panel/options record planned here is
+  not yet complete. `[CALIBRATED]` for the measured g56 values only.
 
 ### What is not evidence
 
@@ -90,27 +103,34 @@ cross-aspect rule `[CALIBRATED]` on the strength of arithmetic alone.
 its kind and its acquisition cost, or explicitly marked unknown with a reason.
 The inventory names the ones no arithmetic can port.
 
-### 2. Introduce the device profile record
+### 2. Complete the device profile record — foundation exists; closure open
 
-- Add a versioned profile: panel resolution, aspect, orientation, the game
+- Extend the versioned profile with panel resolution, aspect, orientation, the game
   package and build, the in-game Options that affect layout (Display Mode,
   Controller Size, Perspective Effect), and the HID axis transform.
-- Bind the existing Moto g56 v2.0.7 values into the first profile, unchanged.
-- Make the profile the single source for the values `coords.sh` currently
-  hardcodes, without changing any emitted coordinate on the calibrated device.
+- Keep the existing Moto g56 v2.0.7 values bound to the first profile, unchanged.
+- Continue moving ownership from the legacy `coords.sh` values into the profile,
+  without changing any emitted coordinate on the calibrated device.
 - Follow Plan 09's manifest rules: the profile is provenance, and it belongs in
   a session manifest.
+
+The initial `device-profile-v1` and `resolveProfile()` boundary now exist in
+`packages/core` and `packages/adapters`; the profile is immutable after
+resolution and its adapter/calibration/control-map pairing is checked before
+composition. This is a foundation, not a portability qualification.
 
 **Gate:** the calibrated device's emitted coordinates and device plan are
 byte-identical before and after. A session records its profile. A missing or
 partial profile is refused.
 
-### 3. Separate the canvas mapping from the controller mapping
+### 3. Separate the canvas mapping from the controller mapping — partial foundation
 
 - Express game-art coordinates in a normalized canvas space and controller
   coordinates in their own, because Controller Size scales the on-screen bars
   independently of how Display Mode places the canvas.
 - Derive screen pixels from profile plus normalized coordinate.
+- The current g56 canvas mapping and corrected semantic control coordinates are
+  bound in the profile; the generic normalized derivation is not yet complete.
 - Prove the two mappings are genuinely separate on the calibrated device by
   changing Controller Size and re-measuring, rather than asserting it.
 
@@ -118,7 +138,8 @@ partial profile is refused.
 the office art, as predicted by the two mappings, and the prediction is recorded
 before the measurement is taken.
 
-### 4. Bind models and timing to their profile, fail closed
+### 4. Bind models and timing to their profile, fail closed — foundation exists;
+closure open
 
 - Every classifier model (title, SCM1/`screencheck`, BB left opening) records the
   profile it was built under and refuses a mismatch.
@@ -126,6 +147,12 @@ before the measurement is taken.
   different device may not silently inherit them.
 - Extend the existing preflight so a profile mismatch is refused with the same
   clarity as the wrong game package.
+
+The modern registry and campaign preflight already refuse missing/incompatible
+adapter, calibration, control-map, and candidate-profile combinations. The
+remaining gate is to bind every pixel model and timing artifact—not only the
+current geometry/visual/detector IDs—and retain the refusal fixtures and live
+qualification evidence.
 
 **Gate:** a synthetic mismatched pairing — right game, wrong panel; right panel,
 wrong Options; a model with no profile — is refused with a distinct reason for
@@ -167,11 +194,15 @@ refuted. Both close this package; neither may be skipped.
 
 ## Dependencies and sequencing
 
-- Plan 09 owns the manifest the profile is recorded in; do package 2 after its
-  contract is stable enough to carry a profile field.
-- Plan 10 package 0 owns the interaction vocabulary. A coordinate is only worth
-  porting once it is known what interaction it performs and under what
-  precondition, so package 0 should land first.
+- Plan 09 owns the manifest the profile is recorded in; its schema/producer
+  foundation is ready, while validation of a real phone manifest remains open.
+- Plan 10 package 0 owns the interaction vocabulary. The modern semantic
+  control-map already consumes that boundary; unresolved actions and the right-
+  vent geometry stay explicit UNKNOWNs rather than being copied from legacy
+  coordinate tables.
+- Plan 22 owns the current workspace, contract, capability, profile-resolution,
+  and composition architecture. This plan owns the portability-specific
+  calibration and cross-device gates.
 - Plan 12 remains the authority for claims. A second device that runs is not a
   second device that clears.
 - Packages 1–5 are local and need only the calibrated handset. Package 6 needs

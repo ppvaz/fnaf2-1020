@@ -79,3 +79,80 @@ export interface DeviceProfile {
   readonly clock: ClockName;
   readonly calibrations: Record<string, string>;
 }
+
+export type BenchTracePath = 'visual' | 'audio';
+
+export interface BenchTraceStage {
+  readonly atMs: number;
+  readonly [key: string]: unknown;
+}
+
+export interface BenchTraceSample {
+  readonly id: string;
+  readonly path: BenchTracePath;
+  readonly sourceEvent: BenchTraceStage;
+  readonly fact: BenchTraceStage;
+  readonly executorReceipt: BenchTraceStage;
+  readonly actuatorCommand: BenchTraceStage;
+  readonly observedResult: BenchTraceStage;
+}
+
+export interface BenchTransportTrace {
+  readonly schema: 'bench-transport-trace-v1';
+  readonly id: string;
+  readonly profile: string;
+  readonly clock: 'device-monotonic-ms' | 'host-monotonic-ms';
+  readonly claimLevel: 'MODEL_ONLY' | 'FIXTURE' | 'DEVICE_MEASURED';
+  readonly samples: readonly BenchTraceSample[];
+  readonly continuation: Record<string, unknown>;
+}
+
+export type ExerciseKind = 'prediction' | 'recognition' | 'timing' | 'strategy';
+export type ExerciseDisposition = 'COMPLETED' | 'CANCELLED' | 'EXPIRED' | 'UNRESOLVED';
+
+export interface Exercise {
+  readonly schema: 'exercise-v1';
+  readonly id: string;
+  readonly kind: ExerciseKind;
+  readonly sourceSessionId: string;
+  readonly beliefSequence: number;
+  readonly clock: 'host-monotonic-ms' | 'device-monotonic-ms';
+  readonly createdAtMs: number;
+  readonly promptAtMs: number;
+  readonly commitDeadlineMs: number;
+  readonly revealDeadlineMs: number;
+  readonly eligibility: Record<string, unknown>;
+  readonly question: { readonly target: string; readonly choices: readonly string[]; readonly horizonMs: number };
+  readonly commitment: Record<string, unknown> | null;
+  readonly resolution: Record<string, unknown> | 'CENSORED';
+  readonly cancellation: Record<string, unknown> | null;
+  readonly disposition: ExerciseDisposition;
+}
+
+export interface ExerciseAttempt {
+  readonly schema: 'exercise-attempt-v1';
+  readonly exerciseId: string;
+  readonly rendererId: string;
+  readonly rendererVersion: string;
+  readonly sessionId: string;
+  readonly clock: 'host-monotonic-ms' | 'device-monotonic-ms';
+  readonly shownAtMs: number;
+  readonly commitment: Record<string, unknown> | null;
+  readonly resolutionDisposition: ExerciseDisposition;
+  readonly motor: Record<string, unknown> | null;
+  readonly score: Record<string, number> | null;
+}
+
+export interface ActivityGateProfile {
+  readonly schema: 'activity-gate-profile-v1';
+  readonly id: string;
+  readonly version: string;
+  readonly profileLimit: number;
+  readonly timing: {
+    readonly promptMs: number;
+    readonly revealMs: number;
+    readonly cancelP99Ms: number;
+    readonly humanRecoveryBudgetMs: number;
+  };
+  readonly requiredCapabilities: readonly ('overlay' | 'capture' | 'response')[];
+}

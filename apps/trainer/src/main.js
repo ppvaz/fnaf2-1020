@@ -8,6 +8,7 @@ import { drawTimeline, buildSummary, fmtTime } from './report.js';
 import { sweepPattern } from './lane.js';
 import * as Assets from './assets.js';
 import { LESSONS, byId, loadProgress, saveProgress, markPassed, recordCombo, unlockedIndex } from './curriculum.js';
+import { ArcadeLab } from './arcade-ui.js';
 
 const HUGE = C.NIGHT_FRAMES * 10;
 
@@ -29,6 +30,7 @@ class App {
     this.audio = new Audio();
     this.stage = document.getElementById('stage');
     this.ui = new UI(this.stage);
+    this.arcade = new ArcadeLab(document.getElementById('arcade'));
     this.duel = new DuelTimer();
     this.running = false;
     this.acc = 0;
@@ -50,6 +52,7 @@ class App {
       if (!s) return;
       if (s.dataset.ui === 'settings') showPanel('settings');
       if (s.dataset.ui === 'about') showPanel('about');
+      if (s.dataset.ui === 'arcade') { this.arcade.open(); showPanel('arcade'); }
     });
     document.querySelectorAll('[data-close]').forEach(b =>
       b.addEventListener('click', () => showPanel('menu')));

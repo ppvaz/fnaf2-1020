@@ -49,7 +49,15 @@ Options:
 }
 
 function parse(argv) {
-  const [command = 'help', ...rest] = argv;
+  const [first = 'help', ...tail] = argv;
+  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign']);
+  if (first === '--help' || first === '-h') return { command: 'help', help: true };
+  // Options without an explicit command are accepted for the documented
+  // non-interactive default, but an unknown positional command must never
+  // silently become a dry-run.
+  const command = first.startsWith('-') ? 'dry-run' : first;
+  const rest = first.startsWith('-') ? argv : tail;
+  if (!knownCommands.has(command)) throw new Error(`unknown command: ${first}`);
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [6, 7], requireHelper: true, requireHid: true,
     guided: false, machineOnly: false, calibration: undefined, bundle: undefined,

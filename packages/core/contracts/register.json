@@ -42,6 +42,23 @@
     {"id":"campaign-proof-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/campaign-proof.js makeAttemptProof"},
     {"id":"custom-night-config-v1","owner":"apps/device","kind":"data","validator":"apps/device/src/custom-night.js validateCustomNightConfig"},
     {"id":"custom-night-calibration-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/custom-night.js validateCustomNightCalibration"},
-    {"id":"device-campaign-preflight-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/campaign-preflight.js evaluateCampaignPreflight"}
+    {"id":"device-campaign-preflight-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/campaign-preflight.js evaluateCampaignPreflight"},
+    {"id":"bench-transport-trace-v1","owner":"core/telemetry","kind":"artifact","validator":"validateBenchTrace"},
+    {"id":"exercise-v1","owner":"core/training","kind":"data","validator":"validateExercise"},
+    {"id":"commitment-v1","owner":"core/training","kind":"data","validator":"validateCommitment"},
+    {"id":"resolution-v1","owner":"core/training","kind":"data","validator":"validateResolution"},
+    {"id":"exercise-cancellation-v1","owner":"core/training","kind":"data","validator":"validateCancellation"},
+    {"id":"exercise-event-v1","owner":"core/training","kind":"data","validator":"validateExerciseEvent"},
+    {"id":"exercise-attempt-v1","owner":"core/training","kind":"data","validator":"validateExerciseAttempt"},
+    {"id":"activity-gate-v1","owner":"core/training","kind":"data","validator":"evaluateActivityGate"},
+    {"id":"activity-gate-profile-v1","owner":"core/training","kind":"data","validator":"validateActivityGateProfile"},
+    {"id":"activity-gate-decision-v1","owner":"core/training","kind":"data","validator":"evaluateActivityGate"},
+    {"id":"microtrainer-session-v1","owner":"apps/trainer","kind":"artifact","validator":"apps/trainer/src/microtrainer.js validateMicrotrainerSession"},
+    {"id":"adaptive-skill-model-v1","owner":"apps/trainer","kind":"artifact","validator":"apps/trainer/src/adaptive-coach.js validateSkillModel"},
+    {"id":"adaptive-selection-v1","owner":"apps/trainer","kind":"data","validator":"apps/trainer/src/adaptive-coach.js validateAdaptiveSelection"},
+    {"id":"exercise-renderer-v1","owner":"apps/trainer","kind":"data","validator":"apps/trainer/src/renderers.js validateRenderer"},
+    {"id":"arcade-lab-progress-v1","owner":"apps/trainer","kind":"data","validator":"apps/trainer/src/arcade-lab.js validateArcadeProgress"},
+    {"id":"rhythm-highway-chart-v1","owner":"apps/trainer","kind":"data","validator":"apps/trainer/src/rhythm-highway.js validateRhythmChart"},
+    {"id":"threat-constellation-layout-v1","owner":"apps/trainer","kind":"data","validator":"apps/trainer/src/threat-constellation.js validateThreatConstellation"}
   ]
 }
