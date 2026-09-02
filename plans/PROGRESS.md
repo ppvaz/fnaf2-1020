@@ -2,6 +2,75 @@
 
 **Updated:** 2026-09-02
 
+2026-09-02 ROADMAP A1 closed-loop characterization — the belief-state cycle
+controller has now been driven cycle by cycle over a full night for the first
+time. Plan 20 P5's recorded gate is a nine-second horizon against one synthetic
+blackout on Night 1; that horizon hid four defects, all of which are only
+reachable over a night's length and none of which is a flaw in the closed
+loop's design:
+
+1. **The finite cycle library was not closed under its own prerequisites.**
+   `wind-and-anchor` requires `viewedCamera === C.BOX_CAM`, no primitive emitted
+   a `cam:` action, and `C.initialCamera(1)` is CAM 09. Measured: the wind
+   primitive was rejected at 1800/1800 decision boundaries, the controller
+   selected `observe-and-hold` 241 times and nothing else all night, and Night 1
+   ended `death=puppet` at ~4 AM. The music box could not be wound on any night
+   under any scoring. Closed by `select-box-cam`, `lower-monitor` and `unmask`,
+   which add no new timing, plus a bounded-reachability gate whose
+   known-negative register fails in both directions.
+2. **`estimator.update()` deep-cloned an unbounded diagnostic trace.** One entry
+   per observed fact, 14 per boundary, so per-decision cost grew with elapsed
+   night time -- slowest at 5-6 AM, when deadlines are tightest. Wall clock per
+   equal 2000-frame chunk ran 1.4s, 4.3s, 7.5s, 10.8s, 14.2s, 17.6s, 20.9s, then
+   199s, with the trace at 56,016 entries by frame 16,000 while replayed engine
+   ticks stayed linear. The trace is now bounded with a reported `traceDropped`;
+   nothing reads it for logic, so it is a diagnostic window and not a replay
+   source. Flat ~1.75s per chunk after, roughly 20x faster. `belief-v1` is
+   unchanged.
+3. **The exact-gate replay could spin forever.** `tick()` is a no-op once `won`
+   is set and does not advance `frame`, so a primitive whose action lands past
+   `durationFrames` never terminated. Latent in the committed gate, unreachable
+   at a nine-second horizon.
+4. **`commit()`'s deferred actions are executed by nobody.** OPEN. The
+   controller computes and returns them and no caller in the repository consumes
+   them, so every multi-action primitive is committed half-executed:
+   `wind-and-anchor` presses `wind` and drops its release, `foxy-hall-reset`
+   holds the light forever. Simulation hides this because lowering the monitor
+   clears `winding` anyway; on a phone it is a touch contact that is never
+   released. Whether the queue is caller-owned or controller-owned is a Plan 20
+   P6 boundary decision and is not taken here.
+
+The closed loop's gates also moved out of the legacy campaign into
+`packages/core/test/cycle-{library,planner,controller}.test.js` and the
+`test:contracts` lane, since ROADMAP Track A names the closed loop as the spine
+of the device work and its gates ran only under `npm run test:legacy:engine`.
+`reducedmodeltest.mjs` deliberately stays in `tools/`: it imports
+`tools/device/minus-toys-plan.mjs`, so moving it would invert the charter's
+ownership direction. `affected-test.js` previously had no rule for a changed
+test file at all and now runs one directly.
+
+`tools/nightloop.mjs` is the campaign instrument. Night 1, three full nights per
+arm, seeds 0/1/2: estimator 1/3 survived (seed 0 reached frame 25200,
+`death=won`), 74 actions, mean 367.3s alive, 8336 exact checks, 7 of 8
+primitives used; observation-disabled 0/3, 0 actions, mean 299.3s alive, deaths
+`{"puppet": 3}`; open-loop identical to disabled. **This is a simulator plumbing
+result and nothing more:** the route scorer is a declared baseline control, not
+a sourced or promoted strategy, its `WIND_AT` is a harness knob and not a
+measured value, and the disabled arm reproduces the open-loop trajectory exactly
+because `plan()` correctly refuses to act on UNKNOWN -- so "beats the
+disabled-observation control" is one comparison, not two.
+
+Catalog, typecheck, `test:unit`, `test:core`, `test:affected`, documentation and
+dry-run lanes pass: `run-20260902161931-3cd53c01-4e4c57` (`FIXTURE`, not
+gameplay evidence). **Open:** A1's exit gate also requires *recorded* facts, and
+no manifested session exists -- `OBSERVATION-CORPUS-INVENTORY.md` records
+`captures/` as an unmanifested video, an epoch file and one SCM model, so that
+clause belongs to A2's Plan 09 P2 item and A1 cannot satisfy it as written.
+Plan 15's fact/adapter contract, Plan 20 P6's real-time placement, defect 4, and
+the re-hosting of Plan 19's reaction path on this controller all remain open. No
+ladder position moved, no package closed, and the 47/133 denominator is
+unchanged.
+
 2026-09-02 roadmap and legacy deprecation — the program now has one sequenced
 route, [`ROADMAP.md`](ROADMAP.md), keyed to Plan 12's claim ladder and derived
 from this file, the plan statuses and [`22-STATUS.md`](22-STATUS.md). Two
