@@ -29,9 +29,32 @@ function timeOf(fact, key, fallback) {
   return value === null || value === undefined ? fallback : value;
 }
 
+/**
+ * The trace is a bounded DIAGNOSTIC window, never a replay source: no logic in
+ * this module reads it, and a full-night record belongs in the caller's
+ * retained telemetry. It is bounded because `update`/`predict` deep-clone the
+ * estimator, so an unbounded accumulator makes every decision cost grow with
+ * elapsed night time -- measured 2026-09-02 at one entry per observed fact
+ * (14 per boundary, ~88k over Night 1), which turned a full-night closed-loop
+ * run quadratic and unrunnable. Dropped entries are counted, never silently
+ * discarded.
+ */
+export const TRACE_LIMIT = 4096;
+
+function appendTrace(state, entry) {
+  state.trace.push(entry);
+  const overflow = state.trace.length - TRACE_LIMIT;
+  if (overflow > 0) {
+    state.trace.splice(0, overflow);
+    state.traceDropped += overflow;
+  }
+}
+
 function appendIncident(state, incident) {
+  // Incidents stay unbounded: they are rare by construction (a desync or a
+  // sensor contradiction) and they are the record a retraction is argued from.
   state.belief.incidents.push({ ...incident, atMs: state.nowMs });
-  state.trace.push({ type: 'incident', ...incident, atMs: state.nowMs });
+  appendTrace(state, { type: 'incident', ...incident, atMs: state.nowMs });
 }
 
 function lockForControl(state, factName, reason) {
@@ -87,7 +110,7 @@ function applyUnknown(state, name, reason, fact, receivedAtMs) {
   state.belief = reduceBelief(state.belief, {
     type: 'observation', nowMs: state.nowMs, facts: { [name]: envelope },
   });
-  state.trace.push({ type: 'fact-rejected', fact: name, reason,
+  appendTrace(state, { type: 'fact-rejected', fact: name, reason,
     observedAtMs: envelope.observedAtMs, receivedAtMs, atMs: state.nowMs });
   lockForControl(state, name, reason);
 }
@@ -122,6 +145,7 @@ export function initialEstimator({ belief = null, nowMs = null,
     latest: {},
     verificationRequired: { monitor: false, mask: false },
     trace: [],
+    traceDropped: 0,
   };
 }
 
@@ -214,7 +238,7 @@ export function update(estimator, { facts = {}, nowMs = null, maxAgeMs = {} } = 
     next.belief = reduceBelief(next.belief, {
       type: 'observation', nowMs: receivedNow, facts: { [name]: timedFact },
     });
-    next.trace.push({ type: 'fact-accepted', fact: name,
+    appendTrace(next, { type: 'fact-accepted', fact: name,
       value: fact.state === FACT_STATES.OBSERVED ? fact.value : null,
       state: fact.state, observedAtMs: observed, receivedAtMs: received,
       delayedMs: received - observed, atMs: next.nowMs });
@@ -239,7 +263,7 @@ export function send(estimator, options = {}) {
   next.belief = reduceBelief(next.belief, {
     type: 'action-sent', action, expected, sentAtMs, token,
   });
-  next.trace.push({ type: 'action-sent', action, expected, sentAtMs, token });
+  appendTrace(next, { type: 'action-sent', action, expected, sentAtMs, token });
   return next;
 }
 
@@ -266,11 +290,11 @@ export function reconcile(estimator, options = {}) {
   });
   if (matches) {
     next.verificationRequired[control] = false;
-    next.trace.push({ type: 'action-verified', action, value, verifiedAtMs, token });
+    appendTrace(next, { type: 'action-verified', action, value, verifiedAtMs, token });
   } else {
     next.verificationRequired[control] = true;
     next.belief.control.actionLockout = true;
-    next.trace.push({ type: 'verification-failed', action, value,
+    appendTrace(next, { type: 'verification-failed', action, value,
       verifiedAtMs, token });
   }
   return next;
