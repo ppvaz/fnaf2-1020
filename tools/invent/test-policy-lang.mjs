@@ -170,6 +170,41 @@ const ok = (what, condition) => {
     CLOSED_FAMILIES.some(entry => entry.rule === 'branch-on-audio-fact'));
 }
 
+// --- 4b. phase alignment is expressible AND reachable ------------------------
+{
+  // The capability the published strategies rely on: place an action at a
+  // chosen phase of Foxy's 5-second roll (300 frames, g337), not merely at
+  // some cadence. `everyN` used to test an exact single-frame match, which a
+  // decision boundary 15-90 frames wide can essentially never hit.
+  const windowed = validateGenome({
+    schema: POLICY_LANG_SCHEMA, fallback: 'WAIT',
+    rules: [{ when: { t: 'everyN', a: K(300), b: K(270), w: K(60) }, then: 'HALL_FLASH' }],
+  });
+  let fired = 0;
+  for (let f = 0; f < 1200; f++) if (interpret(windowed, { frame: f }).action === 'HALL_FLASH') fired++;
+  ok('a phase window fires across its whole width, not one frame', fired === 240);
+
+  const exact = validateGenome({
+    schema: POLICY_LANG_SCHEMA, fallback: 'WAIT',
+    rules: [{ when: { t: 'everyN', a: K(300), b: K(0) }, then: 'HALL_FLASH' }],
+  });
+  let once = 0;
+  for (let f = 0; f < 1200; f++) if (interpret(exact, { frame: f }).action === 'HALL_FLASH') once++;
+  ok('omitting the width keeps the old exact-match semantics', once === 4);
+
+  // Reachability: the search must be able to GENERATE a phase predicate, not
+  // merely evaluate one. Before this it could not, so alignment was
+  // unreachable however well the evaluator worked.
+  let state = 777;
+  const rng = () => (state = (state * 1664525 + 1013904223) >>> 0) / 2 ** 32;
+  let sawPhase = false;
+  for (let i = 0; i < 200 && !sawPhase; i++) {
+    const g = randomGenome(rng, { rules: 6 });
+    sawPhase = JSON.stringify(g).includes('"everyN"');
+  }
+  ok('the random genome generator can emit a phase predicate', sawPhase);
+}
+
 // --- 5. genome operators are seeded and keep the genome valid ----------------
 {
   let state = 12345;

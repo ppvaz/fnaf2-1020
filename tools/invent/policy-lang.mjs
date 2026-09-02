@@ -104,10 +104,26 @@ function evalExpr(node, obs, registers, constants) {
     case 'len': return (obs[node.name] ?? []).length;
     case 'reg': return registers[node.i] ?? 0;
     case 'eq': return obs[node.name] === node.v ? 1 : 0;
+    // A phase WINDOW, not a single frame. The original tested
+    // `frame % period === phase`, an exact one-frame match -- and decisions
+    // land 15-90 frames apart, so it could essentially never fire and the
+    // grammar had no reachable way to express alignment at all. `w` is the
+    // window width in frames and defaults to 1, which preserves the old
+    // exact-match behaviour for any genome that omits it.
+    //
+    // Alignment is the capability the published strategies turn on and this
+    // language could not state: place an action at a chosen phase of Foxy's
+    // 5-second roll (300 frames, g337) rather than merely at some cadence.
     case 'everyN': {
       const period = evalExpr(node.a, obs, registers, constants);
       const phase = evalExpr(node.b, obs, registers, constants);
-      return period > 0 && obs.frame % period === phase ? 1 : 0;
+      const width = node.w === undefined ? 1 : evalExpr(node.w, obs, registers, constants);
+      if (!(period > 0) || !(width > 0)) return 0;
+      const at = ((obs.frame % period) + period) % period;
+      const from = ((phase % period) + period) % period;
+      // Wrap the window around the period boundary rather than truncating it.
+      const to = from + width;
+      return (at >= from && at < to) || (to > period && at < to - period) ? 1 : 0;
     }
     case 'ticksSince': {
       const at = registers[node.i] ?? 0;
@@ -209,13 +225,29 @@ const BOOL_FIELDS = Object.freeze(['blackout', 'maskOn', 'winding', 'bbOpening',
 
 function randomPredicate(rng, depth = 0) {
   const roll = rng();
-  if (depth >= 2 || roll < 0.45)
+  // Non-overlapping bands. An earlier version put the phase branch after the
+  // comparison branch with a LOWER threshold, which made it unreachable: every
+  // roll that would have selected a phase predicate had already returned a
+  // comparison. Alignment was in the grammar and still unreachable by search.
+  if (depth >= 2 || roll < 0.40)
     return { t: 'field', name: pick(rng, BOOL_FIELDS) };
-  if (roll < 0.75)
+  // Phase predicates, so the search can reach alignment. The periods are
+  // sourced, not free knobs: 300 frames is Foxy's roll interval (g337) and 600
+  // is the 10-second loop the published strategies run. Phase and width are
+  // quantised to 30-frame (0.5s) steps so a window is wide enough for a
+  // decision boundary to land inside it.
+  if (roll < 0.58) {
+    const period = pick(rng, [300, 600]);
+    return { t: 'everyN',
+      a: { t: 'const', v: period },
+      b: { t: 'const', v: 30 * Math.floor(rng() * (period / 30)) },
+      w: { t: 'const', v: 30 * (1 + Math.floor(rng() * 6)) } };
+  }
+  if (roll < 0.78)
     return { t: 'cmp', op: pick(rng, COMPARISONS),
       a: { t: 'field', name: pick(rng, NUMERIC_FIELDS) },
       b: { t: 'const', v: Math.floor(rng() * 400) } };
-  if (roll < 0.85) return { t: 'not', x: randomPredicate(rng, depth + 1) };
+  if (roll < 0.88) return { t: 'not', x: randomPredicate(rng, depth + 1) };
   return { t: rng() < 0.5 ? 'and' : 'or',
     xs: [randomPredicate(rng, depth + 1), randomPredicate(rng, depth + 1)] };
 }
@@ -298,7 +330,8 @@ function expressionShape(node) {
     // kept: a genome watching a different location is a different program.
     case 'eq': return `eq:${node.name}:${JSON.stringify(node.v)}`;
     case 'ticksSince': return `ticksSince:${node.i}`;
-    case 'everyN': return `everyN(${expressionShape(node.a)},${expressionShape(node.b)})`;
+    case 'everyN': return `everyN(${expressionShape(node.a)},${expressionShape(node.b)},` +
+      `${node.w === undefined ? '1' : expressionShape(node.w)})`;
     case 'anyStun': return `anyStun:${node.op}(${expressionShape(node.a)})`;
     case 'arith': return `arith:${node.op}(${expressionShape(node.a)},` +
       `${node.b ? expressionShape(node.b) : ''})`;
