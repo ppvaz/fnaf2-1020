@@ -151,6 +151,15 @@ The controller must be the thing that decides, before it is the thing that acts.
 - **Exit gate:** a full night driven cycle-by-cycle against recorded and
   synthetic facts, beating the disabled-observation control, with no compiled
   full-night schedule anywhere in the path.
+- **2026-09-03:** the synthetic-fact half is met on all seven nights and the
+  controller now SURVIVES four of them -- 92.0%, 50.5%, 83.5%, 82.5% and 37.5%
+  on Nights 1-5 over a held-out 200-seed cohort each, against controls that are
+  0/200 everywhere. Nights 6 and 7 are 0/200 against a measured resource wall
+  (the box period and the Foxy band are both shorter than one wind trip). The
+  recorded-fact half remains `tools/factreplay.mjs`'s simulator-produced
+  stream, which claims `MODEL_ONLY`; a manifest from a real phone run is still
+  A2's item. Detail and the seven defects this closed are in
+  [`PROGRESS.md`](PROGRESS.md), 2026-09-03.
 
 ### A2 — Level 1, replay: one real session validated
 

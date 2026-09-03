@@ -25,7 +25,8 @@ if (changed.some(path => path.startsWith('packages/core/'))) {
   // The closed loop is the device work's spine (ROADMAP Track A); its gates
   // belong in the same lane as the code they gate, not the legacy campaign.
   // Keyed by path so an edit to the gate itself (below) dedupes against this.
-  for (const gate of ['cycle-library', 'cycle-planner', 'cycle-controller'])
+  for (const gate of ['cycle-library', 'cycle-planner', 'cycle-controller',
+    'night-policy'])
     add(`test:packages/core/test/${gate}.test.js`, 'node', [`packages/core/test/${gate}.test.js`]);
   // Offline replay determinism: the same recorded facts must rebuild the same
   // decisions, which is what makes a retained stream evidence rather than a log.

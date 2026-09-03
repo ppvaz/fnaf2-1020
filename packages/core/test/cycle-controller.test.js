@@ -7,13 +7,77 @@ import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
 import { Observer } from '@fnaf2-1020/core/sensing';
 import { Rng } from '@fnaf2-1020/core/mechanics';
-import { CycleController, makeUnknownFacts } from '@fnaf2-1020/core/control';
+import { CycleController, getCycle, makeUnknownFacts } from '@fnaf2-1020/core/control';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const RUNS = 80;
 const HORIZON = C.s(9);
 
 const seedOf = index => (index * 2654435761) >>> 0;
+const O = value => ({ state: 'OBSERVED', value });
+
+function choose(controller, wanted) {
+  return controller.plan({
+    exactGate: cycle => ({ accepted: true, cycleId: cycle.id }),
+    score: cycle => ({ risk: cycle.id === wanted ? 0 : 1,
+      resourceMargin: cycle.id === wanted ? 10 : 0 }),
+  });
+}
+
+// ---------------------------------------------------------------- contacts
+// A cycle id names a reusable primitive, not one invocation. Releases survive
+// preemption only for the exact invocation that put that exact contact down.
+const contact = new CycleController({
+  cycles: [getCycle('vent-stall-right'), getCycle('mask-now')],
+});
+contact.observe({ blackout: O(false), monitorUp: O(false), maskOn: O(false) },
+  { frame: 0 });
+const contactCommit = contact.commit(choose(contact, 'vent-stall-right'), { frame: 0 });
+check(contact.outstandingHolds().length === 1,
+  'committing a held primitive did not record its physical contact');
+contact.observe({ blackout: O(true), monitorUp: O(false), maskOn: O(false) },
+  { frame: 4 });
+check(choose(contact, 'mask-now').selected === 'mask-now',
+  'a blackout did not preempt the held idle primitive');
+const preemptedRelease = contact.releaseDeferred(contactCommit.deferred[0], {
+  frame: contactCommit.deferred[0].dueFrame,
+});
+check(preemptedRelease.accepted && contact.outstandingHolds().length === 0,
+  'a preempted invocation could not release the contact it actually held');
+check(!contact.releaseDeferred(contactCommit.deferred[0], {
+  frame: contactCommit.deferred[0].dueFrame,
+}).accepted, 'a duplicate release was accepted after its contact was already lifted');
+
+const emergency = new CycleController({ cycles: [getCycle('vent-stall-right')] });
+emergency.observe({ blackout: O(false), monitorUp: O(false), maskOn: O(false) },
+  { frame: 0 });
+const emergencyCommit = emergency.commit(choose(emergency, 'vent-stall-right'), { frame: 0 });
+check(emergency.releaseDeferred(emergencyCommit.deferred[0], {
+  frame: 4, emergency: true,
+}).accepted && emergency.outstandingHolds().length === 0,
+  'terminal cleanup could not release a held contact before its scheduled due frame');
+
+// A later release from the same multi-action primitive must not match a
+// contact that an earlier press/release pair already closed.
+const stale = new CycleController({
+  cycles: [getCycle('sweep-routes'), getCycle('lower-monitor')],
+});
+stale.observe({ blackout: O(false), monitorUp: O(true), maskOn: O(false) },
+  { frame: 0 });
+const sweep = stale.commit(choose(stale, 'sweep-routes'), { frame: 0 });
+for (const atFrame of [2, 4, 6]) {
+  const action = sweep.deferred.find(candidate => candidate.atFrame === atFrame);
+  check(stale.releaseDeferred(action, { frame: atFrame }).accepted,
+    `sweep action at ${atFrame} was unexpectedly refused`);
+}
+stale.observe({ blackout: O(true), monitorUp: O(true), maskOn: O(false) },
+  { frame: 8 });
+check(choose(stale, 'lower-monitor').selected === 'lower-monitor',
+  'a blackout did not preempt the multi-action sweep');
+const staleRelease = sweep.deferred.find(action =>
+  action.kind === 'release' && action.action === 'light' && action.atFrame === 18);
+check(!stale.releaseDeferred(staleRelease, { frame: 18 }).accepted,
+  'a stale future release was allowed to lift a contact it never opened');
 
 function score(cycle, hypothesis) {
   if (hypothesis.hazard === 'active') {

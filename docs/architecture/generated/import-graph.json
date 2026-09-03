@@ -501,9 +501,16 @@
         "./cycle-controller.js",
         "./cycle-library.js",
         "./cycle-planner.js",
+        "./night-policy.js",
         "./observation-language.js",
         "./policy-ir.js",
         "./ports.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/control/night-policy.js",
+      "imports": [
+        "../mechanics/config.js"
       ]
     },
     {
@@ -520,9 +527,16 @@
       ]
     },
     {
+      "file": "packages/core/src/estimation/belief-state.js",
+      "imports": [
+        "./plain-clone.js"
+      ]
+    },
+    {
       "file": "packages/core/src/estimation/estimator.js",
       "imports": [
-        "./belief-state.js"
+        "./belief-state.js",
+        "./plain-clone.js"
       ]
     },
     {
@@ -653,6 +667,13 @@
     },
     {
       "file": "packages/core/test/cycle-planner.test.js",
+      "imports": [
+        "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/core/test/night-policy.test.js",
       "imports": [
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
@@ -1353,6 +1374,19 @@
       ]
     },
     {
+      "file": "tools/invent/box-anatomy.mjs",
+      "imports": [
+        "../minus7/sim.mjs",
+        "./policy-lang.mjs",
+        "./search.mjs",
+        "./targets.mjs",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics",
+        "node:child_process",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/invent/campaign.mjs",
       "imports": [
         "./ablate.mjs",
@@ -1361,6 +1395,7 @@
         "./reference-genome.mjs",
         "./search.mjs",
         "./targets.mjs",
+        "./wind-seeds.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/mechanics",
         "node:child_process",
@@ -1474,6 +1509,21 @@
         "./reference-genome.mjs",
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/invent/test-wind-seeds.mjs",
+      "imports": [
+        "./search.mjs",
+        "./targets.mjs",
+        "./wind-seeds.mjs",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/invent/wind-seeds.mjs",
+      "imports": [
+        "./policy-lang.mjs"
       ]
     },
     {
@@ -1683,11 +1733,20 @@
       ]
     },
     {
-      "file": "tools/nightloop.mjs",
+      "file": "tools/nightloop-run.mjs",
       "imports": [
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "@fnaf2-1020/core/sensing"
+      ]
+    },
+    {
+      "file": "tools/nightloop.mjs",
+      "imports": [
+        "./nightloop-run.mjs",
+        "./pool.mjs",
+        "./stat.mjs",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {

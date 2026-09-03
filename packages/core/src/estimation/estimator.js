@@ -5,12 +5,25 @@
 // it records when a fact was observed, when it arrived, and whether the fact
 // is still safe to use at the current decision boundary.
 import {
-  BELIEF_SCHEMA, FACT_STATES, initialBelief, reduceBelief,
+  BELIEF_SCHEMA, FACT_STATES, cloneBelief, initialBelief, reduceBelief,
 } from './belief-state.js';
+import { plainClone, appendLog, shareLog } from './plain-clone.js';
 
 export const ESTIMATOR_SCHEMA = 'estimator-v1';
 
-const clone = value => structuredClone(value);
+const clone = plainClone;
+
+// Copy the estimator without deep-copying the diagnostic trace. The trace is
+// append-only and its entries are frozen on append, so a copy shares the
+// entries and duplicates only the array spine. Measured 2026-09-02: the deep
+// copy of a saturated 4096-entry trace was 80% of a full closed-loop night.
+function cloneEstimator(estimator) {
+  const { trace, belief, ...rest } = estimator;
+  const next = clone(rest);
+  next.belief = cloneBelief(belief);
+  next.trace = shareLog(trace);
+  return next;
+}
 const finite = value => Number.isFinite(value);
 const CONTROL_FACT = Object.freeze({ monitorUp: 'monitor', maskOn: 'mask' });
 
@@ -42,7 +55,7 @@ function timeOf(fact, key, fallback) {
 export const TRACE_LIMIT = 4096;
 
 function appendTrace(state, entry) {
-  state.trace.push(entry);
+  appendLog(state.trace, entry);
   const overflow = state.trace.length - TRACE_LIMIT;
   if (overflow > 0) {
     state.trace.splice(0, overflow);
@@ -53,7 +66,7 @@ function appendTrace(state, entry) {
 function appendIncident(state, incident) {
   // Incidents stay unbounded: they are rare by construction (a desync or a
   // sensor contradiction) and they are the record a retraction is argued from.
-  state.belief.incidents.push({ ...incident, atMs: state.nowMs });
+  appendLog(state.belief.incidents, { ...incident, atMs: state.nowMs });
   appendTrace(state, { type: 'incident', ...incident, atMs: state.nowMs });
 }
 
@@ -123,7 +136,14 @@ function markStale(state, name, fact, receivedAtMs, observedAtMs, maxAgeMs) {
 
 /** Create an estimator around an existing belief-v1 value. */
 export function initialEstimator({ belief = null, nowMs = null,
-  staleAfterMs = {}, contradictionWindowMs = 1000 } = {}) {
+  staleAfterMs = {}, contradictionWindowMs = 1000,
+  // How long a sent control action may stay unverified before it is declared
+  // failed. This is a bounded CONTRACT parameter, not a measured device value:
+  // the point is only that the bound exists. Without it a control the game
+  // moved by itself -- a forcedown -- leaves a pending action that can never
+  // reconcile, and every later plan refuses with `control-verification-
+  // required` for the rest of the night (measured 2026-09-02).
+  verifyTimeoutMs = 1000 } = {}) {
   const base = belief ? clone(belief) : initialBelief({ nowMs: nowMs ?? 0 });
   if (!base || base.schema !== BELIEF_SCHEMA)
     throw new TypeError('estimator needs a belief-v1 value');
@@ -141,7 +161,8 @@ export function initialEstimator({ belief = null, nowMs = null,
     nowMs: clock,
     belief: clock === base.nowMs ? base
       : reduceBelief(base, { type: 'time', nowMs: clock }),
-    config: { staleAfterMs: clone(staleAfterMs), contradictionWindowMs },
+    config: { staleAfterMs: clone(staleAfterMs), contradictionWindowMs,
+      verifyTimeoutMs },
     latest: {},
     verificationRequired: { monitor: false, mask: false },
     trace: [],
@@ -164,9 +185,23 @@ export function predict(estimator, nowMs) {
   checkEstimator(estimator);
   if (!finite(nowMs) || nowMs < estimator.nowMs)
     throw new RangeError('estimator time must move forward');
-  const next = clone(estimator);
+  const next = cloneEstimator(estimator);
   next.nowMs = nowMs;
   next.belief = reduceBelief(next.belief, { type: 'time', nowMs });
+  // A control action that has not verified within its deadline is failed, not
+  // pending. Abandoning it releases the lockout but NOT the requirement to
+  // verify: `verificationRequired` stays set until a control fact is actually
+  // observed, which is what `update` below clears it on.
+  const pending = next.belief.pendingAction;
+  const timeout = next.config.verifyTimeoutMs;
+  if (pending && finite(timeout) &&
+      nowMs - (pending.sentAtMs ?? nowMs) > timeout) {
+    next.verificationRequired[pending.action] = true;
+    next.belief = reduceBelief(next.belief,
+      { type: 'action-abandoned', reason: 'verification-deadline' });
+    appendIncident(next, { type: 'action-abandoned', control: pending.action,
+      expected: pending.expected, sentAtMs: pending.sentAtMs ?? null });
+  }
   for (const [name, evidence] of Object.entries(next.latest)) {
     const control = CONTROL_FACT[name];
     if (!control || next.verificationRequired[control]) continue;
@@ -247,6 +282,14 @@ export function update(estimator, { facts = {}, nowMs = null, maxAgeMs = {} } = 
         state: fact.state, value: fact.value, source: fact.source ?? null,
         observedAtMs: observed, receivedAtMs: received,
       };
+      // A current, unambiguous reading of a control IS its verification. With
+      // no transaction outstanding for that control there is nothing left to
+      // reconcile against, and holding the requirement open would refuse every
+      // plan for the rest of the run. A transaction still in flight is left
+      // alone: `reconcile` owns that path and its mismatch stays locked.
+      const control = CONTROL_FACT[name];
+      if (control && next.belief.pendingAction?.action !== control)
+        next.verificationRequired[control] = false;
     }
   }
   return next;

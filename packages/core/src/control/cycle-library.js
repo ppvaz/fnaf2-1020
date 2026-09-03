@@ -17,8 +17,11 @@ export const DEVICE_CONSTRAINTS = Object.freeze({
 });
 
 const clone = value => structuredClone(value);
-const ACTIONS = new Set(['monitor', 'mask', 'cam:9', 'cam:11', 'ventL', 'ventR',
-  'light', 'wind']);
+// The sweep cameras are the ones the sourced routine touches (`CYCLE_SCRIPT`:
+// CAM 10, CAM 04, CAM 07, then CAM 11 to wind), which are also the rooms four
+// of the seven routes pass through.
+const ACTIONS = new Set(['monitor', 'mask', 'cam:4', 'cam:7', 'cam:9', 'cam:10',
+  'cam:11', 'ventL', 'ventR', 'light', 'wind']);
 const CONTROL_FIELDS = new Set(['monitor', 'maskOn', 'viewedCamera', 'winding',
   'lightHeld', 'ventLightL', 'ventLightR']);
 const finiteInt = value => Number.isInteger(value) && value >= 0;
@@ -118,6 +121,33 @@ export const CYCLE_LIBRARY = Object.freeze([
     cost: { presses: 1, heldFrames: C.s(4.5), maskFrames: 0, powerFrames: 0 },
     hazardCoverage: ['clock-anchor'],
   }),
+  // The same wind, sized to fit inside one hall-flash period.
+  //
+  // `wind-and-anchor` holds for 4.5 s, which is longer than the whole sourced
+  // movement period the hall flash has to be repeated in (`MO_FRAMES`, 5 s).
+  // On the late nights that makes the two tasks mutually exclusive: a wind
+  // trip guarantees a missed flash, and a flash guarantees the box keeps
+  // draining. `CYCLE_SCRIPT`, the routine this project already teaches, solves
+  // it by winding INSIDE the period rather than instead of it -- its wind runs
+  // 1.50 s to 5.00 s of a five-second cycle. This is that wind: same action,
+  // same anchor, a hold that leaves room for the flash and the trip around it.
+  primitive({
+    id: 'wind-short', durationFrames: C.s(2.5) + 6,
+    prerequisites: [
+      { field: 'monitor', equals: 'up' },
+      { field: 'maskOn', equals: false },
+      { field: 'viewedCamera', equals: C.BOX_CAM },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [
+      { atFrame: 0, kind: 'press', action: 'wind', contactMs: 33 },
+      { atFrame: C.s(2.5), kind: 'release', action: 'wind' },
+    ],
+    verifications: [{ atFrame: C.s(2.5), fields: { winding: false } }],
+    cost: { presses: 1, heldFrames: C.s(2.5), maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: ['clock-anchor'],
+  }),
   primitive({
     id: 'defensive-mask', durationFrames: C.MASK_ANIM_ON + C.s(5),
     prerequisites: [
@@ -131,6 +161,30 @@ export const CYCLE_LIBRARY = Object.freeze([
     cost: { presses: 1, heldFrames: 0, maskFrames: C.s(5), powerFrames: 0 },
     hazardCoverage: ['visible-office-threat', 'blackout'],
   }),
+  // The fast safety mask. `defensive-mask` bakes a five-second hold into its
+  // DURATION, which means committing to it: while a cycle is in flight the
+  // planner will not replan, so wearing the mask for one second costs the same
+  // 5.2 s as wearing it for five. That is the right shape for the sourced
+  // five-tick vent repel and the wrong shape for everything else -- clearing
+  // Golden Freddy needs only the press, and on the late nights the hall-flash
+  // cadence is shorter than the hold.
+  //
+  // This primitive ends the moment the mask is verifiably on. How long to keep
+  // it there then becomes a decision the policy takes at every boundary
+  // instead of a number frozen into the library.
+  primitive({
+    id: 'mask-now', durationFrames: C.MASK_ANIM_ON + 2,
+    prerequisites: [
+      { field: 'monitor', equals: 'down' },
+      { field: 'maskOn', equals: false },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [{ atFrame: 0, kind: 'press', action: 'mask', contactMs: 33 }],
+    verifications: [{ atFrame: C.MASK_ANIM_ON, fields: { maskOn: true } }],
+    cost: { presses: 1, heldFrames: 0, maskFrames: C.MASK_ANIM_ON, powerFrames: 0 },
+    hazardCoverage: ['visible-office-threat', 'blackout', 'golden-freddy'],
+  }),
   primitive({
     id: 'observe-and-hold', durationFrames: C.s(1),
     prerequisites: [
@@ -143,7 +197,13 @@ export const CYCLE_LIBRARY = Object.freeze([
     hazardCoverage: [],
   }),
   primitive({
-    id: 'foxy-hall-reset', durationFrames: C.s(1),
+    // Match the shipped device recipe's 130 ms hall pulse (eight 60 Hz
+    // frames) and the reviewed semantic action's short post-release boundary.
+    // The previous one-second primitive held the light for 0.55 s: more than
+    // four times the measured pulse, consuming the entire Night 7 battery
+    // budget merely to maintain the reset cadence while also delaying every
+    // reaction behind a full second of in-flight time.
+    id: 'foxy-hall-reset', durationFrames: 18,
     prerequisites: [
       { field: 'monitor', equals: 'down' },
       { field: 'maskOn', equals: false },
@@ -152,10 +212,10 @@ export const CYCLE_LIBRARY = Object.freeze([
     ],
     actions: [
       { atFrame: 0, kind: 'press', action: 'light', contactMs: 33 },
-      { atFrame: C.s(0.55), kind: 'release', action: 'light' },
+      { atFrame: 8, kind: 'release', action: 'light' },
     ],
-    verifications: [{ atFrame: C.s(0.55), fields: { lightHeld: false } }],
-    cost: { presses: 1, heldFrames: C.s(0.55), maskFrames: 0, powerFrames: C.s(0.55) },
+    verifications: [{ atFrame: 8, fields: { lightHeld: false } }],
+    cost: { presses: 1, heldFrames: 8, maskFrames: 0, powerFrames: 8 },
     hazardCoverage: ['foxy-reset'],
   }),
   primitive({
@@ -204,6 +264,78 @@ export const CYCLE_LIBRARY = Object.freeze([
     verifications: [{ atFrame: C.MONITOR_ANIM_DOWN, fields: { monitor: 'down' } }],
     cost: { presses: 1, heldFrames: 0, maskFrames: 0, powerFrames: 0 },
     hazardCoverage: ['office-access'],
+  }),
+  // The camera flash is the only thing in this library that acts on a
+  // character before it reaches an opening, and without it the controller can
+  // only ever react at the office door.
+  //
+  // [SOURCED] Groups 450-457: while the camera light is on, whoever the
+  // selected-camera marker overlaps has their B counter loaded with `stun
+  // time` -- `STUN_FRAMES` = 400, or 6.7 s against a 5 s movement roll. The
+  // stun is written on any frame the light is on, so the light needs to be
+  // held only for the device contact floor, not for the length of the look:
+  // this whole sweep costs SIX frames of battery, against 33 for one hall
+  // flash. The three cameras and their 0.2 s spacing are `CYCLE_SCRIPT`'s
+  // cam-10 / cam-04 / cam-07 steps unchanged, and between them they cover an
+  // edge on the Withered Freddy, Withered Bonnie, Withered Chica, Toy Freddy,
+  // Toy Bonnie, Toy Chica and Mangle routes.
+  //
+  // Note what this primitive deliberately does NOT do: CAM 08, CAM 09 and CAM
+  // 11 are the source's three flash immunities (`viewing` 8 excludes the
+  // Withereds, 9 the Toys, 11 Mangle), so sweeping them would look like work
+  // and stun nobody.
+  primitive({
+    id: 'sweep-routes', durationFrames: 32,
+    prerequisites: [
+      { field: 'monitor', equals: 'up' },
+      { field: 'maskOn', equals: false },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [
+      { atFrame: 0, kind: 'press', action: 'cam:10', contactMs: 33 },
+      { atFrame: 2, kind: 'release', action: 'cam:10' },
+      { atFrame: 4, kind: 'press', action: 'light', contactMs: 33 },
+      { atFrame: 6, kind: 'release', action: 'light' },
+      { atFrame: 12, kind: 'press', action: 'cam:4', contactMs: 33 },
+      { atFrame: 14, kind: 'release', action: 'cam:4' },
+      { atFrame: 16, kind: 'press', action: 'light', contactMs: 33 },
+      { atFrame: 18, kind: 'release', action: 'light' },
+      { atFrame: 24, kind: 'press', action: 'cam:7', contactMs: 33 },
+      { atFrame: 26, kind: 'release', action: 'cam:7' },
+      { atFrame: 28, kind: 'press', action: 'light', contactMs: 33 },
+      { atFrame: 30, kind: 'release', action: 'light' },
+    ],
+    verifications: [{ atFrame: 30, fields: { viewedCamera: 7, lightHeld: false } }],
+    cost: { presses: 6, heldFrames: 12, maskFrames: 0, powerFrames: 6 },
+    hazardCoverage: ['route-stun'],
+  }),
+  // The office lights are FREE -- only the flashlight drains the battery
+  // (g284) -- and a held vent light is three sourced movement blocks at once:
+  // it refuses Toy Bonnie's `camsDown` vent entry outright (g428's right-vent
+  // gate), it raises the one-second `new bonnie` latch that closes every
+  // route edge listed in a character's `lightStallAt`, and it pins hall
+  // occupants at the two blind transit markers for 40 more frames (g848-854).
+  // The library had no way to spend idle time on any of that.
+  //
+  // One second, not one movement period: the hold has to end at a boundary
+  // where the controller can still react to a blackout, and a 5 s commitment
+  // is longer than the sourced hall-flash cadence it has to fit inside.
+  primitive({
+    id: 'vent-stall-right', durationFrames: C.FPS,
+    prerequisites: [
+      { field: 'monitor', equals: 'down' },
+      { field: 'maskOn', equals: false },
+      { field: 'controlUnknown.monitor', equals: false },
+      { field: 'controlUnknown.mask', equals: false },
+    ],
+    actions: [
+      { atFrame: 0, kind: 'press', action: 'ventR', contactMs: 33 },
+      { atFrame: C.FPS - 1, kind: 'release', action: 'ventR' },
+    ],
+    verifications: [{ atFrame: C.FPS - 1, fields: { ventLightR: false } }],
+    cost: { presses: 1, heldFrames: C.FPS - 1, maskFrames: 0, powerFrames: 0 },
+    hazardCoverage: ['vent-entry-stall', 'route-stall'],
   }),
   // While the mask is on or animating the engine accepts no other action, so
   // without this the defensive mask is a terminal state for the controller.

@@ -87,9 +87,30 @@ export class CycleController {
     if (!this.cycles.length) fail('at least one cycle is required');
     this.facts = {};
     this.activeCycleId = null;
+    this.activeCycleRunId = null;
     this.activeUntilFrame = -1;
     this.decisions = [];
     this.nextToken = 1;
+    this.nextCycleRun = 1;
+    // Physical contacts opened by a cycle instance and not released yet.
+    //
+    // This is deliberately keyed by an invocation id rather than cycle.id. A
+    // policy may run the same primitive hundreds of times; accepting an old
+    // release merely because a newer invocation has the same id can lift the
+    // newer invocation's contact. The values are arrays so snapshots remain
+    // plain structured-clone data rather than acquiring Map/Set semantics.
+    this.heldContacts = {};
+  }
+
+  /**
+   * Does a positively observed hazard justify abandoning the running cycle?
+   * UNKNOWN never preempts: a coarse read that cannot see the office is not
+   * evidence of a threat in it.
+   */
+  preempts() {
+    if (observedBoolean(this.facts, 'blackout') !== true) return false;
+    const active = this.cycles.find(cycle => cycle.id === this.activeCycleId);
+    return !(active?.hazardCoverage ?? []).includes('blackout');
   }
 
   /** Apply one fact batch and reconcile only matching pending control actions. */
@@ -134,10 +155,32 @@ export class CycleController {
     const { exactGate, score } = options;
     if (typeof exactGate !== 'function' || typeof score !== 'function')
       fail('exactGate and score callbacks are required');
-    if (this.activeCycleId && this.reduced.frame < this.activeUntilFrame)
-      return noDecision(this, 'cycle-in-flight', { activeCycleId: this.activeCycleId });
+    // An observed hazard the in-flight cycle does not cover PREEMPTS it.
+    //
+    // Without this the controller is blind for the whole of whatever primitive
+    // it happens to be running, and several reviewed primitives are LONGER
+    // than the sourced office-defence fuse they would have to answer inside:
+    // the fuse is 100 frames on Night 1 but 50 on Nights 5-6 and 45 from Night
+    // 7, while `observe-and-hold` and `vent-stall-right` are 60. Measured
+    // 2026-09-02 over 20 nights per night: Night 5 lost 5 office cues and
+    // Night 6 lost 12 to `missed the office-defense fuse`, every one of them
+    // with an idle primitive in flight.
+    //
+    // This is Plan 20 P7's "fast safety actions first" and Plan 19's blackout
+    // fast path, and it is deliberately NARROW: only a positively observed
+    // hazard preempts, only when the running cycle does not already cover it,
+    // and the abandoned cycle's RELEASES still run (see `releaseDeferred`), so
+    // preemption can never leave an input held.
+    if (this.activeCycleId && this.reduced.frame < this.activeUntilFrame) {
+      if (!this.preempts())
+        return noDecision(this, 'cycle-in-flight', { activeCycleId: this.activeCycleId });
+      this.activeCycleId = null;
+      this.activeCycleRunId = null;
+      this.activeUntilFrame = -1;
+    }
     if (this.activeCycleId) {
       this.activeCycleId = null;
+      this.activeCycleRunId = null;
       this.activeUntilFrame = -1;
     }
     if (needsVerification(this.estimator, 'monitor') ||
@@ -183,6 +226,15 @@ export class CycleController {
     if (frame !== this.reduced.frame) fail('commit frame does not match reduced state');
     const immediate = cycle.actions.filter(action => action.atFrame === 0);
     const deferred = cycle.actions.filter(action => action.atFrame > 0).map(clone);
+    const cycleRunId = `cycle-run-${this.nextCycleRun++}`;
+    const opensContact = action => action.kind === 'press' && cycle.actions.some(
+      later => later.kind === 'release' && later.action === action.action &&
+        later.atFrame > action.atFrame);
+    const hold = action => {
+      const held = this.heldContacts[cycleRunId] ?? [];
+      if (!held.includes(action)) held.push(action);
+      this.heldContacts[cycleRunId] = held;
+    };
     const actions = [];
     for (const action of immediate) {
       let target = null;
@@ -203,14 +255,17 @@ export class CycleController {
         this.reduced = applyReduced(this.reduced, action.action, action.kind).state;
         actions.push(clone(action));
       }
+      if (opensContact(action)) hold(action.action);
     }
     this.activeCycleId = cycle.id;
+    this.activeCycleRunId = cycleRunId;
     this.activeUntilFrame = frame + cycle.durationFrames;
     // `dueFrame` is absolute so the caller's queue never has to remember which
     // frame the cycle was committed at.
     return {
-      cycleId: cycle.id, actions,
+      cycleId: cycle.id, cycleRunId, actions,
       deferred: deferred.map(action => ({ ...action, cycleId: cycle.id,
+        cycleRunId, opensContact: opensContact(action),
         dueFrame: frame + action.atFrame })),
     };
   }
@@ -227,13 +282,24 @@ export class CycleController {
    * engine rejects it. A refused release is returned with its reason so the
    * caller can log a stuck control instead of assuming the input was lifted.
    */
-  releaseDeferred(action, { frame = this.reduced.frame } = {}) {
+  releaseDeferred(action, { frame = this.reduced.frame, emergency = false } = {}) {
     if (!action || typeof action !== 'object') fail('deferred action is required');
     if (!Number.isInteger(frame) || frame < 0) fail('release frame must be a frame');
     const refuse = reason => ({ schema: 'deferred-release-v1', accepted: false,
-      reason, action: clone(action), frame });
-    if (action.cycleId !== this.activeCycleId) return refuse('cycle-no-longer-active');
-    if (frame < action.dueFrame) return refuse('not-due');
+      reason, action: clone(action), frame, emergency });
+    const runId = action.cycleRunId;
+    const held = this.heldContacts[runId] ?? [];
+    const heldIndex = held.indexOf(action.action);
+    const active = action.cycleId === this.activeCycleId &&
+      runId === this.activeCycleRunId;
+    // Deferred presses belong only to the exact active invocation. A release
+    // may outlive preemption or normal cycle expiry, but only when that same
+    // invocation actually has the corresponding physical contact down.
+    if (emergency && action.kind !== 'release') return refuse('emergency-release-only');
+    if (action.kind === 'release' && heldIndex < 0)
+      return refuse(active ? 'contact-not-held' : 'cycle-no-longer-active');
+    if (action.kind !== 'release' && !active) return refuse('cycle-no-longer-active');
+    if (!emergency && frame < action.dueFrame) return refuse('not-due');
     // A release lands on its own frame, not on an observation boundary: an
     // action at C.s(4.5) is 270 frames in, which is not a multiple of the
     // 4-frame read cadence. Advance the reduced state to the release frame
@@ -244,8 +310,24 @@ export class CycleController {
     const applied = applyReduced(at, action.action, action.kind);
     if (!applied.accepted) return refuse(`engine-rejected:${applied.reason}`);
     this.reduced = applied.state;
+    if (action.opensContact === true) {
+      const contacts = this.heldContacts[runId] ?? [];
+      if (!contacts.includes(action.action)) contacts.push(action.action);
+      this.heldContacts[runId] = contacts;
+    }
+    if (action.kind === 'release' && heldIndex >= 0) {
+      held.splice(heldIndex, 1);
+      if (held.length) this.heldContacts[runId] = held;
+      else delete this.heldContacts[runId];
+    }
     return { schema: 'deferred-release-v1', accepted: true, reason: null,
-      action: clone(action), frame };
+      action: clone(action), frame, emergency };
+  }
+
+  /** Plain-data census used by callers to prove shutdown released every touch. */
+  outstandingHolds() {
+    return Object.entries(this.heldContacts).flatMap(([cycleRunId, actions]) =>
+      actions.map(action => ({ cycleRunId, action })));
   }
 
   snapshot() {
@@ -253,8 +335,10 @@ export class CycleController {
       schema: CYCLE_CONTROLLER_SCHEMA,
       reduced: this.reduced, estimator: this.estimator, cycles: this.cycles,
       facts: this.facts, activeCycleId: this.activeCycleId,
+      activeCycleRunId: this.activeCycleRunId,
       activeUntilFrame: this.activeUntilFrame, decisions: this.decisions,
-      nextToken: this.nextToken,
+      nextToken: this.nextToken, nextCycleRun: this.nextCycleRun,
+      heldContacts: this.heldContacts,
     });
   }
 }

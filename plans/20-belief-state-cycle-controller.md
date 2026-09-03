@@ -221,9 +221,23 @@ new boundary and control actions stay locked until a matching observation
 reconciles them. `packages/core/test/cycle-controller.test.js` runs the exact engine over a
 bounded, sourced five-second-blackout scenario: the fixed and observation-
 disabled controls score 0/80, the normal delayed/dropped estimator scores
-80/80, the deliberately harsh stress control scores 13/80, and the explicit
-truth-state upper bound scores 80/80. The production controller has no exact
+80/80, the deliberately harsh stress control scores 46/80, and the explicit
+truth-state upper bound scores 80/80. (The stress control read 13/80 until
+2026-09-03; hazard preemption is what moved it, by letting a 70-frame-delayed,
+80%-dropped observer still act on the blackout it eventually sees instead of
+holding through the primitive it was already committed to.) The production controller has no exact
 engine import; the exact replay is confined to the test's proof callback.
+
+**Full-night survival landed 2026-09-03.** P5's recorded gate is a nine-second
+horizon against one synthetic blackout; driven over whole nights the same
+controller was 0/3 on Night 1 with a scorer its own harness called a baseline
+control. `packages/core/src/control/night-policy.js` supplies the sourced route
+model P5 leaves to the caller, and on a held-out 200-seed cohort per night
+(`--gate=static`, the device-realistic gate) the closed loop is 184/200,
+101/200, 167/200, 165/200, 75/200, 0/200 and 0/200 on Nights 1-7 against
+observation-disabled and open-loop controls that are 0/200 on every night.
+Nights 6 and 7 are a measured resource wall, not a tuning gap: see
+`plans/PROGRESS.md`, 2026-09-03. Simulation only -- no device has run it.
 
 ### P6 -- transport capabilities and real-time placement
 

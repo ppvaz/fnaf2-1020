@@ -1,6 +1,160 @@
 # Plan progress
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-03
+
+2026-09-03 ROADMAP A1 — the closed loop now survives whole nights. The
+belief-state cycle controller had been driven over a full night exactly once
+(2026-09-02), with a scorer its own file called a BASELINE CONTROL, and it went
+0/3 on Night 1 with `{"inside-office": 3}`. It now clears Nights 1-4 and about
+a third of Night 5 against its controls, from observed facts only, with no
+compiled schedule anywhere in the path. Nights 6 and 7 remain 0, for a reason
+that is measured below rather than guessed at.
+
+**Held-out cohort, 200 seeds a night, seeds 9000..9199, device-realistic
+`--gate=static`** (`node tools/nightloop.mjs --nights=1-7 --seeds=200
+--seed-base=9000`). Wilson 95%:
+
+| Night | closed loop | 95% CI | observation-disabled | open-loop |
+|---:|---:|---|---:|---:|
+| 1 | **184/200 (92.0%)** | [87.4, 95.0] | 0/200 | 0/200 |
+| 2 | **101/200 (50.5%)** | [43.6, 57.4] | 0/200 | 0/200 |
+| 3 | **167/200 (83.5%)** | [77.7, 88.0] | 0/200 | 0/200 |
+| 4 | **165/200 (82.5%)** | [76.6, 87.1] | 0/200 | 0/200 |
+| 5 | **75/200 (37.5%)** | [31.1, 44.4] | 0/200 | 0/200 |
+| 6 | 0/200 | [0.0, 1.9] | 0/200 | 0/200 |
+| 7 | 0/200 | [0.0, 1.9] | 0/200 | 0/200 |
+
+Both controls are 0/200 on every night and die at 20-282 s, so A1's "beats the
+disabled-observation control" is met on all seven. For scale, the repository's
+own SOURCED reactive reference (`tools/minus7/policy.mjs`, which reads the
+PRIVILEGED engine view -- Foxy's D, the stun table, Golden Freddy's presence,
+committed attacks) is 40/40, 0/40, 5/40, 1/40, 0/40, 0/40, 0/40 on the same
+nights. The observation-only controller is ahead of it on Nights 2, 3, 4 and 5.
+**None of this is gameplay evidence and none of it moves a rung of Plan 12's
+ladder**; it is a statement about the model, and the phone has not run it.
+
+Knobs were tuned on seeds 0..23 and 5000..5059 and the table above is a
+disjoint block. Gates, `--gate=static` vs `--gate=exact`, are separated in
+`tools/nightloop-run.mjs`: `static` attests reviewed-library membership, which
+is what a phone can do, while `exact` replays each candidate through the live
+engine and is a PRIVILEGED LOOKAHEAD kept as an upper bound.
+
+**What was actually wrong, in the order it was found.**
+
+1. **The decision path cost 95% `structuredClone`, 80% of it in one call.**
+   Profiling one full Night 1 run put 38.8 s of 48.5 s inside `clone(estimator)`
+   at the head of `predict()`: bounding the diagnostic trace at 4096 entries
+   (2026-09-02) stopped it growing but not being deep-copied, twice per
+   committed action. `packages/core/src/estimation/plain-clone.js` replaces it
+   with a plain-data copy plus structural sharing of the two append-only logs,
+   whose entries are frozen on append so the sharing cannot become a mutation
+   channel. **48.5 s -> 3.0 s for the same night, byte-identical trajectory**
+   (same terminal frame, same death, same cycle counts). It is stricter as well
+   as faster: it refuses a Date, Map or typed array by name, so `belief-v1` and
+   `estimator-v1` saying "plain data" is now enforced instead of asserted. This
+   is not a benchmark concern -- Plan 20 P6 places this controller against a
+   measured deadline beside the phone, and it was spending its budget copying a
+   buffer nothing reads.
+
+2. **The closed loop did not close on its two most important facts.**
+   `observeReduced` recorded an observed `monitorUp`/`maskOn` only as "no longer
+   UNKNOWN" and threw the value away, so the reduced model's monitor and mask
+   were pure dead reckoning from its own presses. The engine moves both with no
+   press behind them -- g718-721 slams the monitor down on a ten-second
+   boundary while a streak attacker waits at marker 122, and g262/g274's
+   forcedown takes the mask with it. Measured on Night 1 seed 11: a forcedown at
+   ~f=23800 left the controller believing the monitor was up for the remaining
+   24 s while the engine had it down, and **274 decision boundaries were spent
+   in `control-verification-required`** with the monitor stuck open. An observed
+   control now corrects the prediction.
+
+3. **The verification lockout was permanent.** A sent action that never
+   verifies kept `belief.control.actionLockout` set for the rest of the night,
+   because only a matching `reconcile` clears it and a control the game moved
+   will never match. The estimator now has a bounded verification deadline
+   (`verifyTimeoutMs`, a declared contract parameter, not a measured value)
+   after which the action is recorded as failed rather than pending, and a
+   current OBSERVED control fact with no transaction outstanding satisfies the
+   requirement -- an unambiguous reading of a control IS its verification. The
+   transactional mismatch path `tools/estimatortest.mjs` pins is untouched.
+
+4. **Foxy's D was modelled in the optimistic direction and called a lower
+   bound.** `stepResources` advanced it only while UNMASKED; the engine advances
+   it once a second with no mask condition at all (`tickFoxy`) and a SECOND time
+   per second while the mask is on with no vent opening occupied (`tickMask`).
+   A controller pricing a Foxy budget off that state believed camping in the
+   mask was free when it is twice as expensive as standing in the office. It is
+   now an upper bound, a hall flash resets it (the light zeroes D while he is in
+   the hall, which is the only place he can lock on), and `boxPie` corrects the
+   dead-reckoned box instead of running beside it.
+
+5. **Several reviewed primitives are longer than the office fuse they have to
+   answer inside.** The sourced fuse is 100 frames on Night 1 but 50 on Nights
+   5-6 and 45 from Night 7, while `observe-and-hold` is 60. Over 20 nights each,
+   Night 5 lost 5 office cues and Night 6 lost 12 to `missed the office-defense
+   fuse`, every one with an idle primitive in flight. `CycleController.plan()`
+   now preempts an in-flight cycle on a positively observed hazard the cycle
+   does not cover, and the abandoned invocation's RELEASES still run, so
+   preemption can never leave a contact down.
+
+6. **A livelock between the two recurring tasks.** Winding needs the monitor up
+   and the hall light needs it down, so ranking two overdue tasks on
+   lead-included slack flips the winner every time the loser's own prerequisite
+   lands. Measured on Night 3: `verify-and-resume`/`lower-monitor` alternated
+   for 2300 frames with the box at zero and the run died to the Puppet. They are
+   now ranked lead-free; the lead still decides WHEN a task is due, never WHICH
+   one wins.
+
+7. **A safety margin was the wrong instrument.** Moving a deadline earlier does
+   not only make its task safer, it makes it MORE FREQUENT, and on the late
+   nights the two tasks compete for the same seconds -- a one-second flash
+   margin is a fifth of the whole sourced flash period. Over 60 held-out seeds
+   Night 5 goes from 3-5 to 29-34 of 60 on that knob alone. Both margins are now
+   zero and what they were protecting against, idling through a deadline the
+   only idle primitive is a full second long, is a separate `actWithinFrames`.
+
+**The policy.** `packages/core/src/control/night-policy.js`
+(`night-policy-v1`) is a deadline race, not a schedule, and a pure function of
+the controller's belief -- it keeps no private bookkeeping, so it structurally
+cannot disagree with the controller about what it did. Its priorities are
+sourced, not preferences: every way into the office needs the monitor up except
+failing the fuse, so monitor-up time is the exposure; the mask is the universal
+marker-122 repel, so wearing it is the idle action; and the mask's price is
+Foxy, at twice the standing D rate with the hall light refusing to answer while
+it is on. `packages/core/test/night-policy.test.js` gates the priorities, the
+deadlines and the purity; survival stays in `tools/nightloop.mjs`.
+
+**Five primitives the library could not express**, each one added because
+something above was unreachable without it: `mask-now` (the fast safety mask,
+so the length of a camp is a decision taken every boundary rather than a
+duration frozen into `defensive-mask`), `wind-short` (a wind that fits inside
+one hall-flash period), `sweep-routes` (the sourced CAM 10/04/07 camera flash;
+the stun is written on any frame the light is on, so the whole sweep costs SIX
+frames of battery against 33 for one hall flash), `vent-stall-right` (the free
+right-vent hold, which refuses Toy Bonnie's vent entry outright), and the
+Golden Freddy clear, which is a rule rather than a primitive -- he can only
+appear while the monitor is up and the mask press clears him, and Night 7 was
+losing 10 of 20 to `golden-freddy` on the hall flash that follows a wind trip.
+
+**Why Nights 6 and 7 are still zero, measured rather than assumed.** Night 6's
+deaths are 156 Puppet, 35 Foxy, 9 inside-office: the box is what kills. Its box
+empties in 16.7 s and sustaining it needs about 25% of the night spent winding,
+while Foxy's band at his 2 AM level is 5 D -- one hall flash per 5 s movement
+period. The shortest useful wind plus its trip is longer than that period, so
+the two cannot both be served. Serving the box fully instead was measured: it
+moves Night 6 to 9 Puppet / 49 Foxy and buys 1 clear in 60 while costing Nights
+2 and 4 three and five runs in sixty. That is a redistribution, not a gain --
+a resource wall, and no ordering of the two tasks gets through it. The sourced
+`CYCLE_SCRIPT` solves it with a 5 s cycle that keeps the monitor up ~88% of the
+time and does every task every cycle; that shape is reachable from this library
+and is the next thing to try, not a fact yet.
+
+Typecheck, `test:unit`, `test:contracts`, `test:core` and the dry-run lane
+pass: `run-20260903031951-7c7336fd-4e4c57` (`FIXTURE`, not gameplay evidence).
+**Open:** Nights 6 and 7; a real bench trace for Plan 20 P6; Plan 15's
+fact/adapter contract; and every rung of Plan 12's ladder, since no phone has
+run any of this. No ladder position moved, no package closed, and the 47/133
+denominator is unchanged.
 
 2026-09-02 Plan 05 package 8 — the box interrogation turned both bb frontiers
 into named negatives. `tools/invent/box-anatomy.mjs` measures the music-box

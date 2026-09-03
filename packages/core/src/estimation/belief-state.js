@@ -4,10 +4,12 @@
 // not become false, delayed observations retain both timestamps, and control
 // actions are not considered executed until a matching verification arrives.
 
+import { plainClone, appendLog, shareLog } from './plain-clone.js';
+
 export const BELIEF_SCHEMA = 'belief-v1';
 export const FACT_STATES = Object.freeze({ OBSERVED: 'OBSERVED', UNKNOWN: 'UNKNOWN' });
 
-const clone = value => structuredClone(value);
+const clone = plainClone;
 const finite = value => Number.isFinite(value);
 
 export function observed(value, {
@@ -105,7 +107,7 @@ function applyFact(next, name, fact) {
     if (next.pendingAction && next.pendingAction.action === control &&
         next.pendingAction.expected !== fact.value) {
       next.control.actionLockout = true;
-      next.incidents.push({ type: 'control-disagreement', fact: name,
+      appendLog(next.incidents, { type: 'control-disagreement', fact: name,
         expected: next.pendingAction.expected, actual: fact.value,
         receivedAtMs: fact.receivedAtMs });
     }
@@ -126,12 +128,23 @@ function applyFact(next, name, fact) {
   }
 }
 
+/**
+ * Copy a belief without deep-copying its append-only incident log. Incidents
+ * are frozen on append and never revised, so copies share the entries.
+ */
+export function cloneBelief(belief) {
+  const { incidents, ...rest } = belief;
+  const next = clone(rest);
+  next.incidents = shareLog(incidents);
+  return next;
+}
+
 /** Apply one deterministic event and return a new plain-data belief. */
 export function reduceBelief(belief, event) {
   if (!belief || belief.schema !== BELIEF_SCHEMA)
     throw new TypeError('belief schema mismatch');
   if (!event || typeof event.type !== 'string') throw new TypeError('invalid belief event');
-  const next = clone(belief);
+  const next = cloneBelief(belief);
   if (event.nowMs !== undefined) {
     if (!finite(event.nowMs) || event.nowMs < next.nowMs)
       throw new RangeError('belief time must be monotonic');
@@ -146,7 +159,7 @@ export function reduceBelief(belief, event) {
           source: fact.source, calibrationProfile: fact.calibrationProfile,
           observedAtMs: fact.observedAtMs, receivedAtMs: fact.receivedAtMs,
         }));
-        next.incidents.push({ type: 'sensor-mismatch', fact: name,
+        appendLog(next.incidents, { type: 'sensor-mismatch', fact: name,
           expectedProfile, receivedProfile: fact.calibrationProfile });
       } else {
         applyFact(next, name, fact);
@@ -159,12 +172,24 @@ export function reduceBelief(belief, event) {
       expected: event.expected, sentAtMs: event.sentAtMs ?? next.nowMs,
       token: event.token ?? null };
     next.control.actionLockout = true;
+  } else if (event.type === 'action-abandoned') {
+    // A transaction that never verified is a FAILED action, not an eternally
+    // pending one. Clearing it here does not claim the control's state -- the
+    // estimator keeps `verificationRequired` set until something observes it.
+    if (next.pendingAction) {
+      appendLog(next.incidents, { type: 'action-abandoned',
+        action: next.pendingAction.action, expected: next.pendingAction.expected,
+        token: next.pendingAction.token ?? null,
+        reason: event.reason ?? 'verification-deadline' });
+      next.pendingAction = null;
+    }
+    next.control.actionLockout = false;
   } else if (event.type === 'action-verified') {
     if (!next.pendingAction || (event.token !== undefined &&
         event.token !== next.pendingAction.token)) {
-      next.incidents.push({ type: 'unexpected-action-verification', token: event.token ?? null });
+      appendLog(next.incidents, { type: 'unexpected-action-verification', token: event.token ?? null });
     } else if (event.value !== next.pendingAction.expected) {
-      next.incidents.push({ type: 'action-verification-mismatch',
+      appendLog(next.incidents, { type: 'action-verification-mismatch',
         action: next.pendingAction.action, expected: next.pendingAction.expected,
         actual: event.value });
     } else {

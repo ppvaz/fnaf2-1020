@@ -21,7 +21,34 @@ export function initialReducedState({ night = 7, frame = 0, box = 1,
     viewedCamera: null, lastViewedCamera: null, hasViewedCamera: false, winding: false,
     lightHeld: false, ventLightL: false, ventLightR: false,
     box, power,
+    // D under the HALL hypothesis: the value that decides `got you` if Foxy is
+    // standing in the hall, which is the only place he can lock on. A hall
+    // flash zeroes it there. The parts hypothesis -- where the same light only
+    // decays D by one per 30 frames -- is deliberately not carried as a second
+    // number, because a parts D is not lethal on its own; what it costs is an
+    // ARRIVAL, and `lastHallLightFrame` is what bounds the damage an arrival
+    // can do (see the policy's five-second cap).
     foxyD: 0,
+    lastHallLightFrame: -1,
+    // The last frame a CAMERA flash landed. The same button is the hall light
+    // monitor-down and the camera light monitor-up, and the two do completely
+    // different things: one zeroes Foxy's D, the other loads a 400-frame stun
+    // into whoever the selected-camera marker overlaps. A policy that wants to
+    // keep a route stunned has to know when the stun was last refreshed.
+    lastCameraFlashFrame: -1,
+    // Self-state, in the same family as `lastViewedCamera`: when this
+    // controller last had each control in its dangerous or protective
+    // position. A policy needs both to answer "has the office been open since
+    // I last wore the mask?", which is exactly the Golden Freddy question --
+    // he can only appear while the monitor is up and the mask press clears him
+    // outright, and nothing observable says whether he is there.
+    lastMaskOnFrame: -1,
+    lastMonitorUpFrame: -1,
+    // The frame the CURRENT mask period began, or -1 while it is off. The
+    // sourced vent repel is five continuous one-second ticks, so a policy that
+    // wants it has to know how long this mask has been worn, not merely that
+    // it is on.
+    maskSinceFrame: -1,
     controlUnknown: { monitor: true, mask: true },
     hazards: {
       blackout: { state: 'unknown', deadlineFrame: -1 },
@@ -62,6 +89,14 @@ function stepAnimation(state) {
     state.lastViewedCamera = state.viewedCamera;
 }
 
+function stepSelfState(state) {
+  if (isMonitorUp(state)) state.lastMonitorUpFrame = state.frame;
+  if (state.maskOn) {
+    state.lastMaskOnFrame = state.frame;
+    if (state.maskSinceFrame < 0) state.maskSinceFrame = state.frame;
+  } else state.maskSinceFrame = -1;
+}
+
 function stepResources(state) {
   const winding = state.winding && isMonitorUp(state) && state.viewedCamera === C.BOX_CAM;
   if (winding) {
@@ -70,14 +105,33 @@ function stepResources(state) {
     state.box = Math.max(0, state.box - 1 / C.boxDrainFrames(state.night));
   }
   if (state.lightHeld && !state.maskOn) state.power = Math.max(0, state.power - 1);
-  // This is a lower-bound risk accumulator, not hidden Foxy truth: the full
-  // engine can add more while a vent occupant is masked, which this reduced
-  // model intentionally cannot observe.
+  // A held hall light is a hall flash for as long as it is held, not only on
+  // its press: record the last frame one was actually lighting the hall.
+  if (state.lightHeld && !state.maskOn && !isMonitorUp(state))
+    state.lastHallLightFrame = state.frame;
+  if (state.lightHeld && !state.maskOn && isMonitorUp(state) &&
+      state.viewedCamera !== null)
+    state.lastCameraFlashFrame = state.frame;
+  // Foxy's D as an UPPER bound on the lethal path. The engine advances it once
+  // a second whenever no blackout covers the tick, with no mask condition at
+  // all, and a SECOND time per second while the mask is on and no vent opening
+  // is occupied.
+  //
+  // Corrected 2026-09-02. This accumulator ran only while UNMASKED and called
+  // itself a lower bound. Both halves were wrong in the optimistic direction:
+  // it dropped the base tick for the whole of a mask camp and the mask
+  // acceleration with it, so a controller pricing a Foxy budget off this state
+  // believed camping in the mask was free of Foxy risk when it is in fact
+  // twice as expensive as standing in the office. Opening occupancy is not
+  // observable, so the mask term is applied unconditionally: that can only
+  // over-state D, which is the safe direction for a budget.
   const foxyDormant = state.night === 1 ||
     (state.night === 2 && state.frame < 2 * C.HOUR_FRAMES);
-  if (!state.maskOn && state.hazards.blackout.state !== 'active' &&
-      !foxyDormant && state.frame % C.FPS === 0)
+  if (state.hazards.blackout.state !== 'active' && !foxyDormant &&
+      state.frame % C.FPS === 0) {
     state.foxyD++;
+    if (state.maskOn) state.foxyD++;
+  }
 }
 
 // Predict one or more frames. `state.frame` is the frame before the next
@@ -89,6 +143,7 @@ export function advanceReduced(input, targetFrame) {
   while (state.frame < targetFrame) {
     state.frame++;
     stepAnimation(state);
+    stepSelfState(state);
     stepResources(state);
   }
   return state;
@@ -147,7 +202,15 @@ export function applyReduced(input, action, kind = 'press') {
   } else if (action === 'monitor') {
     setMonitor(state, !(state.monitor === MONITOR.UP || state.monitor === MONITOR.RAISING));
   } else if (action === 'wind') state.winding = true;
-  else if (action === 'light') state.lightHeld = true;
+  else if (action === 'light') {
+    state.lightHeld = true;
+    // The hall light zeroes D outright while Foxy is standing in the hall, and
+    // the hall is the only place he can lock on: a hall flash is a D reset on
+    // the lethal path. While he is in parts the same light only decays D by
+    // one per 30 frames, which this deliberately does not model, because a
+    // parts D cannot kill -- it can only bring his arrival forward.
+    if (!isMonitorUp(state) && !state.maskOn) state.foxyD = 0;
+  }
   else if (action === 'ventL') state.ventLightL = true;
   else if (action === 'ventR') state.ventLightR = true;
   else if (action.startsWith('cam:')) {
@@ -165,15 +228,70 @@ function updateFact(state, name, fact) {
     state.controlUnknown[name === 'monitorUp' ? 'monitor' : name === 'maskOn' ? 'mask' : name] = true;
     return;
   }
-  if (name === 'monitorUp') state.controlUnknown.monitor = false;
-  if (name === 'maskOn') state.controlUnknown.mask = false;
-  if (name === 'blackout') state.hazards.blackout = {
-    state: fact.value ? 'active' : 'clear',
-    deadlineFrame: fact.value ? state.frame + C.maskGraceFrames(state.night) : -1,
-  };
+  // An observed control state CORRECTS the prediction; it does not merely mark
+  // it known. The engine moves both controls with no press behind them --
+  // g718-721 slam the monitor down on a ten-second boundary while a streak
+  // attacker waits at marker 122, and g262/g274's forcedown takes the mask
+  // with it -- so a predicted `up` that the sensor reports down is not a
+  // sensor fault, it is the game.
+  //
+  // This is the closed loop's whole point and it was missing. Measured
+  // 2026-09-02, Night 1 seed 11: a forcedown at ~f=23800 left the controller
+  // predicting `monitor: up` for the remaining 24 s while the engine had it
+  // down, and 274 decision boundaries were then spent in verification lockout
+  // with the monitor stuck open. Mid-animation reads arrive UNKNOWN, so this
+  // can only ever correct a settled disagreement, never race an animation.
+  if (name === 'monitorUp') {
+    state.controlUnknown.monitor = false;
+    if (fact.value === true && state.monitor === MONITOR.DOWN) {
+      state.monitor = MONITOR.UP;
+      state.monitorAnim = 0;
+      if (!state.hasViewedCamera) {
+        state.viewedCamera = C.initialCamera(state.night);
+        state.hasViewedCamera = true;
+      } else if (state.lastViewedCamera !== null) {
+        state.viewedCamera = state.lastViewedCamera;
+      }
+      record(state, 'control-corrected', { control: 'monitor', to: 'up' });
+    } else if (fact.value === false && state.monitor === MONITOR.UP) {
+      state.monitor = MONITOR.DOWN;
+      state.monitorAnim = 0;
+      state.viewedCamera = null;
+      state.winding = false;
+      record(state, 'control-corrected', { control: 'monitor', to: 'down' });
+    }
+  }
+  if (name === 'maskOn') {
+    state.controlUnknown.mask = false;
+    // The fact is the fully-on state, so it is only comparable once this
+    // model's own mask animation has settled.
+    if (state.maskAnim === 0 && fact.value !== state.maskOn) {
+      state.maskOn = fact.value === true;
+      record(state, 'control-corrected', { control: 'mask', to: state.maskOn });
+    }
+  }
+  // The office fuse starts when the encounter starts, so its deadline is set
+  // on the RISING edge only. Re-stamping it on every read of a blackout that
+  // is still up would push the deadline forward once per observation and make
+  // a fuse that has already burned look like one that has not.
+  if (name === 'blackout') {
+    const active = fact.value === true;
+    const wasActive = state.hazards.blackout.state === 'active';
+    state.hazards.blackout = {
+      state: active ? 'active' : 'clear',
+      deadlineFrame: !active ? -1
+        : wasActive ? state.hazards.blackout.deadlineFrame
+        : state.frame + C.maskGraceFrames(state.night),
+    };
+  }
   if (name === 'leftOpening') state.hazards.opening = {
     state: fact.value, observedAtFrame: state.frame,
   };
+  // The box gauge is directly legible on the CAM 11 feed, so an observed pie
+  // CORRECTS the dead-reckoned level instead of running beside it. Everywhere
+  // else it stays UNKNOWN and the prediction carries on undisturbed.
+  if (name === 'boxPie' && Number.isFinite(fact.value))
+    state.box = Math.max(0, Math.min(1, fact.value));
   if (name === 'bbVent' && ROUTE_RISK.includes(fact.value)) state.routeRisk.bb = fact.value;
   if (name === 'mangleOpening' && ROUTE_RISK.includes(fact.value)) state.routeRisk.mangle = fact.value;
 }
