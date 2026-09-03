@@ -246,7 +246,11 @@ if (OUT) {
   const stamped = {
     provenance: {
       commit: git(['rev-parse', 'HEAD']),
-      dirty: git(['diff', 'HEAD', '--name-only']).length > 0,
+      // Same rule as campaign.mjs: the artifact's own output path is part of
+      // this run, not pre-existing dirt -- otherwise a re-run of a tracked
+      // artifact could never stamp clean.
+      dirty: git(['diff', 'HEAD', '--name-only']).split('\n')
+        .filter(p => p && p !== OUT).length > 0,
       node: process.version,
       producedAt: new Date().toISOString(),
       argv: process.argv.slice(2),

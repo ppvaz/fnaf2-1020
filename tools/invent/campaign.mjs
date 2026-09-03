@@ -48,11 +48,23 @@ const OUT = argOf('out', 'docs/evidence/invent');
 
 // A frontier that cannot be tied to the code that produced it is a number, not
 // evidence. `factreplay.mjs` already stamps this; this did not.
-function provenance() {
+//
+// `exclude` lists the artifact paths THIS invocation is about to write. The
+// 2026-09-03 incident: a re-run of an already-tracked frontier could never
+// stamp clean, because provenance() ran while the file being rewritten sat in
+// `git diff HEAD` -- the check was self-referential, and a dirty-by-construction
+// stamp got committed as clean when the warning line was cut from the output.
+// An artifact does not stop corresponding to its commit because the run wrote
+// the artifact; sibling outputs of the same invocation are excluded for the
+// same reason (they are part of this run, not pre-existing dirt).
+function provenance(exclude = []) {
+  const skip = new Set(exclude);
   const git = args => {
     try { return execFileSync('git', args, { encoding: 'utf8' }).trim(); }
     catch { return 'UNKNOWN'; }
   };
+  const modified = git(['diff', 'HEAD', '--name-only'])
+    .split('\n').filter(Boolean).filter(path => !skip.has(path));
   return {
     commit: git(['rev-parse', 'HEAD']),
     // Only TRACKED modifications mean the artifact does not correspond to the
@@ -60,7 +72,7 @@ function provenance() {
     // untracked files too -- and this repo permanently carries an untracked
     // `.claude/` worktree, so `dirty` was ALWAYS true and the field was noise
     // that would have discredited every artifact it ever stamped.
-    dirty: git(['diff', 'HEAD', '--name-only']).length > 0,
+    dirty: modified.length > 0,
     // Untracked files are reported separately rather than folded into `dirty`:
     // they usually do not affect the run, but an untracked module CAN be
     // imported, so the count is retained instead of discarded.
@@ -225,11 +237,13 @@ function searchTarget(target, rng) {
 
 mkdirSync(OUT, { recursive: true });
 const rng = seededRng(0x5eed);
+const written = TARGETS.map(target => `${OUT}/frontier-${target}.json`);
 for (const target of TARGETS) {
   const started = Date.now();
   const report = searchTarget(target, rng);
   const path = `${OUT}/frontier-${target}.json`;
-  const stamped = { schema: 'invention-frontier-v1', provenance: provenance(),
+  const stamped = { schema: 'invention-frontier-v1',
+    provenance: provenance(written),
     rngSeed: 0x5eed, ...report };
   writeFileSync(path, canonicalJson(stamped));
   if (stamped.provenance.dirty)
