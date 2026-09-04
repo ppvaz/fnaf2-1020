@@ -5,7 +5,7 @@
 2026-09-04 ROADMAP A1 — Foxy is now priced on his roll grid, the sensor no
 longer throws away the cue for the game's most lethal character, and the
 composition of the two is UNTUNED AND CURRENTLY A REGRESSION. Everything below
-is on branch `closed-loop-late-nights`, commit `deb6463`, and nothing is
+is on master, commits `deb6463` and `e6483ad`, and nothing is
 merged, promoted, or claimed. Measured on 60 held-out seeds a night, seeds
 5000..5059, `--gate=static`.
 
@@ -114,7 +114,7 @@ against the wrong quantity.
    session and its items are not reflected here beyond this pointer.
 
 Typecheck and the gate lanes were NOT re-run after the last edits; the branch
-is a checkpoint and `npm test` is owed before any merge. No ladder position
+is a checkpoint and `npm test` is owed before anything here is relied on. No ladder position
 moved and the 47/133 denominator is unchanged.
 
 2026-09-03 ROADMAP A1 — the closed loop now survives whole nights. The
