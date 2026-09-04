@@ -37,9 +37,13 @@ They are real work with their own value; they are not on this critical path.
 
 ## Where we actually are
 
-Package completion is **47 / 133 mandatory packages (35%)**, and that measures
-written-plan completion, not probability of a clear. Plans 22, 23 and 24 are not
-yet in that denominator — a maintenance gap in the dashboard, not spare credit.
+Package completion is **49 / 158 mandatory packages (31%)**, and that measures
+written-plan completion, not probability of a clear. The maintenance gap this
+file recorded here is closed: the 2026-09-04 audit folded Plans 22, 23 and 24
+into the denominator (133 → 158, Plan 22 P1 the only closure among them) and
+corrected a one-package arithmetic error that had left the headline reading 47
+against rows that summed to 48. The figure fell 35% → 31% on that maintenance
+alone, with no package changing state — admitted scope, not lost ground.
 
 | Route | What it has | Ladder position |
 |---|---|---|

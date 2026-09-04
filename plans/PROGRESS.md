@@ -1203,7 +1203,9 @@ refuses MODEL_ONLY/fixture bundles. The check runner streams child output with
 bounded concurrency and per-test watchdogs. These changes improve the phase-1
 foundation but do not close P0/P5/P6/P8/P9.
 
-**Overall:** **35%** — 47 of 133 mandatory top-level work packages are closed.
+**Overall:** **31%** — 49 of 158 mandatory top-level work packages are closed.
+**Every `47/133` quotation earlier in this file is superseded by the 2026-09-04
+audit entry at the end of this list; those dated entries are left as written.**
 (2026-08-27: Plan 16 resolved — pkgs 1–3 were built in prior commits but the
 dashboard row was never updated off the plan's own `(done)` markers; pkgs 4 and
 5 closed by recorded negative in `740f5b0` / `4e7abce`; pkg 6 dropped (95 → 94
@@ -1276,6 +1278,44 @@ is n1 **100.0% [99.7%, 100.0%]**, n2 **66.3% [63.6%, 69.0%]**, n3
 **62.0% [59.2%, 64.7%]**, and n6 **54.0% [51.2%, 56.8%]** (95% Wilson;
 all n=1200). The other assertion CLIs and historical quotations remain to
 be migrated.
+2026-09-04 **dashboard audit — the counter was arithmetically wrong and the
+denominator was two plans short. No work was done to the target; this entry
+only re-reads the record.** All 24 plans were re-read off their own completion
+markers, per this file's own rule that a row is never read from memory.
+
+- **Every row 01–21 was already correct.** Confirmed marker by marker: Plan 01
+  `Status: done` (3/3); Plan 03 "Work item 1 is complete" (1/5); Plan 04 items
+  1–3 struck through (3/4); Plan 05 items 1–4 struck through plus item 5's
+  recorded refutation (5/9); Plan 06 all six recorded (6/6); Plan 07 items 1–5
+  each `Completed 2026-08-23` (5/8); Plan 08 pkg 0 `Closed 2026-08-24` and pkg 1
+  closed by its clean negative (2/7); Plan 09 item 1 `complete 2026-08-26`
+  (1/6); Plan 13 items 1–2 `complete 2026-08-26` (2/8); Plan 16 pkgs 1–3 built,
+  4–5 negative, 6 dropped (5/5); Plans 10, 11, 12, 14, 15, 17, 18 carry no
+  closure marker at all (0/7, 0/5, 0/7, 0/6, 0/5, 0/6, 0/9); Plans 19, 20, 21
+  as recorded (3/6, 5/7, 6/7). Plan 11 package 4 is marked `landed 2026-08-26`
+  but carries its own `#### Not done in this package` section, so it correctly
+  earns nothing; Plan 18 packages 1 and 3 are `foundation landed` with their
+  remaining work named, likewise nothing. **Partial is still zero.**
+- **The headline was one low: 47, not 48.** The rows sum to 48/133. The slip is
+  the 2026-08-30 entry above that closed four packages — Plan 19 packages 2–3,
+  Plan 20 package 1, Plan 21 package 1 — and moved the numerator 35 → **38**
+  instead of 39. Every later entry (40, 44, 45, 46, 47) chained off it. It hid
+  because 38/133 = 28.6% and 39/133 = 29.3% both round to the 29% that entry
+  quotes. This is an arithmetic correction, not credit: no package changed
+  state. It is also why the two 2026-08-30 entries above disagree with each
+  other about whether the numerator was 35 or 38.
+- **Plans 22, 23 and 24 are now in the denominator (133 → 158).** `ROADMAP.md`
+  had already recorded their absence as "a maintenance gap in the dashboard,
+  not spare credit"; this closes that gap. Plan 22 contributes ten packages
+  (P0–P9) of which [22-STATUS.md](22-STATUS.md) marks exactly one — P1 — as
+  `Closed`, so the numerator moves 48 → **49**. Plan 23 contributes six (P1–P6)
+  with no closure marker. Plan 24 contributes nine (P1, P2, P3, P3A, P3B, P3C,
+  P4, P5, P6), every one of them `FOUNDATION LANDED` with its remaining work
+  named, so none counts.
+- **Net: 49 of 158, 31%** — down from the 36% the rows actually said and the
+  35% the headline said, because admitted scope outran a one-package
+  correction. That is the honest direction and the same direction Plans 17, 18
+  and 21 moved it when they entered.
 
 **Expanded stock-device roadmap (Plans 09–15):** **7%** — 3 of 44 mandatory
 packages are closed.
@@ -3410,8 +3450,11 @@ on the next graded run remains the way to attribute them, since only
 | [17 — in-APK bot](17-in-apk-bot.md) | 0 / 6 | **0%** | **Opened 2026-08-28.** Naive retail re-sign is a measured PAIRIP negative; modified-package, runtime hook, loader/shim, CCN rebuild and faithful-recompile routes remain active. | Package 1, then 2: freeze the stock oracle and localize the known re-sign failure while preparing the smallest read-only runtime-attachment probe. |
 | [18 — modern tooling](18-modern-tooling.md) | 0 / 9 | **0%** | **Proposed 2026-08-28; Packages 4–5 bounded foundations landed, gates remain open.** Nine additions, each tied to a documented failure and none adding a runtime dependency or a build step. Package 4 has the phone-free 64-seed property harness; Package 5 has the phone-free parser and capture wrapper, but three current direct-HID traces had no app MotionEvent rows, so dispatch/frame landing is unproven. | Reproduce the earlier positive input-trace configuration and place each camera-select event on an actual frame landing; expand the property campaign; in parallel, Package 1 (`shellcheck` + the three footgun fixtures). |
 | [19 — video reactive controller](19-video-reactive-controller.md) | 3 / 6 | **50%** | **Proposed 2026-08-29; packages 1–3 are implemented in the worktree.** The observer/controller audit fixes cover deadline timing, stale cue identity, actual mask endpoints, UNKNOWN polarity, and rejected-intent rollback. `PixelWatch.java` / `CaptureService.java` provide the native watch protocol; `watch-calibrate.py` refuses weak or foreign calibration; `reactivetest.mjs` remains green and `ventreacttest.mjs --assert` is intentionally red on the survival-cost claims. P4 now has one Night 2 observe-only baseline (operator saw Foxy; machine cause remained unknown); the run is not a clean Night 5/7 promotion gate. P5 blackout attachment and P6 external audio remain open. | Run the observe-only branch on a monitor-stressing Night 5 or 7 session, then grade it. |
-| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 5 / 7 | **71%** | **Packages 1–5 implemented in the worktree; P6 trace contract foundation added 2026-09-02.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` and `src/cycle-planner.js` provide reviewed primitives and worst-case selection; `src/cycle-controller.js` composes them without an engine read, and the exact-engine blackout control comparison is 0/80 disabled, 80/80 normal estimator, 13/80 harsh stress, 80/80 oracle. `bench-transport-trace-v1` now retains complete visual/audio latency legs and safe-cycle continuation proof in a deterministic host fixture. Physical bench timing and the shadow campaign remain open. | Package 6: real bench transport trace, then safe-cycle continuation under measured link loss. |
+| [20 — belief-state cycle controller](20-belief-state-cycle-controller.md) | 5 / 7 | **71%** | **Packages 1–5 implemented in the worktree; P6 trace contract foundation added 2026-09-02.** `src/estimator.js` preserves delayed timing, refuses stale/uncalibrated/conflicting facts, and reconciles actions transactionally. `src/cycle-library.js` and `src/cycle-planner.js` provide reviewed primitives and worst-case selection; `src/cycle-controller.js` composes them without an engine read, and the exact-engine blackout control comparison is 0/80 disabled, 80/80 normal estimator, **46/80** harsh stress, 80/80 oracle (this row said 13/80 until the 2026-09-04 audit; the plan itself has said 46/80 since 2026-09-03, when hazard preemption moved it, and `cycle-controller.test.js` prints 46/80 today). `bench-transport-trace-v1` now retains complete visual/audio latency legs and safe-cycle continuation proof in a deterministic host fixture. Physical bench timing and the shadow campaign remain open. | Package 6: real bench transport trace, then safe-cycle continuation under measured link loss. |
 | [21 — policy-program synthesis](21-policy-program-synthesis.md) | 6 / 7 | **86%** | **Packages 1–6 implemented for the initial Minimal target.** The finite named-target grammar fingerprints known families; IR/device/mock-phone equivalence rejects the three Night 1 defect controls; `policy-search.mjs` persists an exact-engine positive/negative mutation frontier with provenance; and `policy-artifact.mjs` binds the canonical program to the pushed plan and manifest while keeping grading opt-in. Broader 1200-seed invention, family ports, physical device evidence, and promotion remain open. The BB-only reactive experiment remains a failing release gate; Mangle audio-static handling is modeled, but device calibration/evidence remains open. | Package 7: scoped invention campaign and promotion. |
+| [22 — architecture refactor](22-architecture-and-developer-experience-refactor.md) | 1 / 10 | **10%** | **Foundation/phase 1 on branch `refactor`; counted here from 2026-09-04.** Read off [22-STATUS.md](22-STATUS.md), which is the plan's own closure matrix: P1 (workspace/core front door) is the only `Closed` row. P0, P2, P3, P4, P6, P7 and P8 are `Foundation` — the boundary or scaffold exists and each names the gate it still owes. P5 (device execution) and P9 (compatibility removal/audit) are `Open`. The plan's release rule is explicit that a green scaffold or a CLI refusal is not a physical qualification result, so no `Foundation` row earns anything here. | P5: inject a qualified transport, run bounded temporal execution, retain a real session bundle. Since the 2026-09-02 legacy deprecation this row is the only path to new ladder evidence. |
+| [23 — cue helper overlay HUD](23-cue-helper-overlay-hud.md) | 0 / 6 | **0%** | **Proposed 2026-09-01; counted here from 2026-09-04.** Six packages, no closure marker of any kind in the plan. P1–P4 (ROI/snapshot contracts, overlay permission and lifecycle shell, sensor/debug renderer, decision/run renderer) are host-testable and phone-free; P5 (feasibility and interference qualification) and P6 (observe-only night, then player-facing) need the g56. The plan creates no gameplay claim on its own and defers any 10/20 use of overlay-derived human response to Plan 12's ladder. | P1: extract the versioned geometry contract from `PixelWatch` without changing its wire grammar, with the rotation/letterbox/stale/mismatch cases tested. |
+| [24 — adaptive prediction coach](24-adaptive-prediction-coach.md) | 0 / 9 | **0%** | **Proposed 2026-09-01, expanded 2026-09-02; counted here from 2026-09-04.** Nine packages — P1, P2, P3, P3A, P3B, P3C, P4, P5, P6 — and **every one of them is `FOUNDATION LANDED` with its own remaining work named**, which is exactly the partial state this file gives no fractional credit for. Real substance exists (`exercise-v1` replay contracts, the `activity-gate-v1` refusal evaluator, the DOM-free microtrainer, Arcade Lab campaign/Rhythm Highway/Threat Constellation layout foundations, the skill model), but each entry ends in retained-corpus, UI-integration, or measured-qualification work. The Arcade Lab trio is called optional prose-side yet is named by acceptance criteria 9 and 10, so it counts — the Plan 14 package 6 precedent, not the Plan 11 Gymnasium one. | Close one package outright rather than widening the foundation: P1 needs only the retained-corpus join to be a closure rather than a contract. |
 
 ## Counting rule
 
@@ -3470,6 +3513,25 @@ on the next graded run remains the way to attribute them, since only
   Packages 1–6 are now closed for the initial target by their canonical IR,
   grammar, constrained mutation campaign, compiler-equivalence checks, and
   safe artifact binding; package 7 remains open.
+- Plans 22, 23 and 24 add ten, six and nine mandatory packages on 2026-09-04
+  (133 -> 158 mandatory). They had been written, worked on and cited for weeks
+  while sitting outside the denominator; `ROADMAP.md` named that as a
+  maintenance gap. Plan 22's row is read off [22-STATUS.md](22-STATUS.md)
+  rather than its plan text, because that plan deliberately keeps status in a
+  separate closure matrix — one `Closed` row, so the numerator moves 48 -> 49
+  and the percentage falls 36% -> 31%. Plan 24's three Arcade Lab packages
+  (P3A/P3B/P3C) are counted despite the plan calling those surfaces
+  "optional": its acceptance criteria 9 and 10 name all three, so its done
+  criteria cannot close without them. That is the Plan 14 package 6 precedent,
+  not the Plan 11 Gymnasium exclusion — the test is whether the plan's own
+  goal can close without the package, not whether the prose says "optional".
+- The 2026-08-30 entry closing Plan 19 packages 2–3, Plan 20 package 1 and
+  Plan 21 package 1 moved the numerator 35 -> 38 for four packages. The
+  correct value was 39, and every later figure inherited the error, so the
+  headline read 47 while the rows summed to 48. Corrected 2026-09-04 by
+  re-reading all 24 plans. **Check the rows against the headline whenever
+  either changes: they are two representations of one number and they drifted
+  for five days without anything catching it.**
 - Prerequisite research outside a plan's numbered implementation packages is
   described in the state column but does not inflate its percentage.
 - Adding, removing, reopening, or closing a mandatory package changes the
