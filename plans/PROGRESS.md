@@ -117,6 +117,22 @@ Typecheck and the gate lanes were NOT re-run after the last edits; the branch
 is a checkpoint and `npm test` is owed before anything here is relied on. No ladder position
 moved and the 47/133 denominator is unchanged.
 
+**GitHub CI has been red since `7dd91b9` (2026-09-03) on two independent
+breaks, and one of them is closed here.** `fcd4312` added
+`tools/nightloop-run.mjs` without its `command-registry.json` row, so
+`npm run catalog && git diff --exit-code -- docs/architecture/generated` has
+failed every run since; the inventories are regenerated in this commit from a
+clean checkout of `6e87a5f`, so the counts do not carry the uncommitted
+`night-policy` edit sitting in the tree. Catalog generation is idempotent on
+the result, `node tools/test-docs.mjs` passes (337 links, 39 pages, 302 tool
+scripts), and `npm run device:dry-run -- --profile fixture-hid-screencap` is
+`PASS claim=FIXTURE evidence=run-20260904203302-6a0e878e-4e4c57`. The second
+break stays OPEN and is owned by the session holding that edit: `deb6463` left
+three `night-policy` contract assertions red -- `Balloon Boy in the opening
+takes the mask`, `Mangle static at the office edge takes the mask`, and
+`reaching the band is due, even with a fresh flash` -- and that lane runs
+before the catalog step, so CI does not go green on this commit alone.
+
 2026-09-03 ROADMAP A1 — the closed loop now survives whole nights. The
 belief-state cycle controller had been driven over a full night exactly once
 (2026-09-02), with a scorer its own file called a BASELINE CONTROL, and it went

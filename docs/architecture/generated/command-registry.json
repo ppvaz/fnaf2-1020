@@ -462,6 +462,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/nightloop-run.mjs",
+      "invocation": "tools/nightloop-run.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/factreplay.mjs",
       "invocation": "tools/factreplay.mjs",
       "kind": "check",
