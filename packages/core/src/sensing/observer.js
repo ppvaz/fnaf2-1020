@@ -27,7 +27,13 @@ const U = (reason) => ({ state: 'UNKNOWN', reason });
 export const FACTS = ['blackout', 'amHour', 'monitorUp', 'maskOn', 'boxPie',
                       'cameraSelected', 'cameraHighlights', 'splitArmed',
                       'leftOpening', 'ventLightL',
-                      'bbVent', 'bbVentId', 'mangleStatic', 'mangleStaticCam'];
+                      'bbVent', 'bbVentId', 'ventThud', 'ventThudId', 'ventThudAge',
+                      'mangleStatic', 'mangleStaticCam'];
+
+// How long a heard thud stays in the fact set. The same retention the Balloon
+// Boy opening cue already uses: the fact is an edge, and the consumer decides
+// what an edge of that age still means.
+const THUD_WINDOW = C.s(12);
 
 // A complete fact set with every entry UNKNOWN -- what the controller sees
 // before the first read completes.
@@ -69,6 +75,8 @@ export class Observer {
     /** @type {any} */ this.lastCueType = false; // 'route' | 'pending' | 'opening'
     this.lastCueId = null;                   // one engine event = one visit cue
     this.audioSeq = 0;
+    this.lastThudAt = -Infinity;             // device-frame the last thud became audible
+    this.lastThudId = null;
     this.mangleStaticByContext = { office: false, cam11: false };
     this.mangleStaticPending = [];
     this.mangleAudioSeq = 0;
@@ -90,6 +98,26 @@ export class Observer {
     let cueSeen = false;
     for (; this.evtCursor < sim.events.length; this.evtCursor++) {
       const e = sim.events[this.evtCursor];
+      // The marker-122 thud, WITHOUT an identity.
+      //
+      // `[SOURCED]` every vent-bang the engine raises carries the same
+      // `C.THUD_SAMPLE` (17) -- Balloon Boy's, Toy Chica's, Withered Bonnie's,
+      // an arrival and a departure alike -- and config.js's own note beside
+      // that constant says "Nothing in the audio distinguishes them". A
+      // detector that can hear Balloon Boy's thud therefore hears every other
+      // one too. This observer used to keep only `who === 'bb'` and drop the
+      // rest, which is not a coarser sensor than the device's: it is a
+      // DIFFERENT one, with a per-character discrimination the hardware does
+      // not have, and it hid the single most common cause of death in this
+      // repository's cohorts (Toy Chica walking into the office on a cams-up
+      // frame, 6/22/12/0/25/10/19 runs of 60 on Nights 1-7, measured
+      // 2026-09-04). The identity stays unavailable; the event does not.
+      if (e.type === 'vent-bang' &&
+          !(this.audioFalseNegativeRate > 0 &&
+            this._random() < this.audioFalseNegativeRate)) {
+        this.lastThudAt = e.f + this.audioLatencyFrames;
+        this.lastThudId = `${this.evtCursor}:${e.f}:thud`;
+      }
       let cue = null;
       if (e.type === 'laugh') cue = 'route';
       else if (e.type === 'vent-bang' && e.data?.who === 'bb') {
@@ -222,7 +250,23 @@ export class Observer {
   // animation, video read cadence, and video drop coins.
   _audioFacts(sim) {
     let bbVent = O(false), bbVentId = O(null);
-    if (this.audioDropRate > 0 && this._random() < this.audioDropRate) {
+    // One detector, one drop coin: the thud and the Balloon Boy classification
+    // are the same audio channel, so a dropped read loses both.
+    const audioDropped = this.audioDropRate > 0 && this._random() < this.audioDropRate;
+    let ventThud = O(false), ventThudId = O(null), ventThudAge = O(null);
+    if (audioDropped) {
+      ventThud = U('audio-dropped');
+      ventThudId = U('audio-dropped');
+      ventThudAge = U('audio-dropped');
+    } else if (this.lastThudId !== null) {
+      const age = sim.frame - this.lastThudAt;
+      if (age >= 0 && age <= THUD_WINDOW) {
+        ventThud = O(true);
+        ventThudId = O(this.lastThudId);
+        ventThudAge = O(age);
+      }
+    }
+    if (audioDropped) {
       bbVent = U('audio-dropped');
       bbVentId = U('audio-dropped');
     } else if (this.lastCueType !== false) {
@@ -249,7 +293,8 @@ export class Observer {
                this._random() < this.mangleAudioFalsePositiveRate) {
       mangleStatic = O(true);
     }
-    return { bbVent, bbVentId, mangleStatic, mangleStaticCam };
+    return { bbVent, bbVentId, ventThud, ventThudId, ventThudAge,
+             mangleStatic, mangleStaticCam };
   }
 }
 

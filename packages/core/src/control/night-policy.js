@@ -158,12 +158,27 @@ export class NightPolicy {
       // default is to sweep only when the monitor is up for the box anyway;
       // the periodic refresh stays available as a knob.
       sweepPeriodFrames = Infinity,
+      // Spend idle boundaries on the free office-light stall rather than on a
+      // mask camp. See the comment at the idle branch.
+      idleStall = true,
+      // Price Foxy on the 5 s roll grid instead of on the band alone. See
+      // `rollDeadline`. `false` restores the grid-free band rule, which is
+      // what every number before 2026-09-04 was measured with.
+      rollGrid = true,
+      // One D tick of slack on the grid rule. The reduced model advances D on
+      // `frame % FPS`, the engine on `(frame + blackoutCount) % FPS`, so the
+      // two can disagree by one tick either way; the guard keeps the estimate
+      // on the conservative side of that phase difference.
+      rollGuardTicks = 1,
     } = options;
     if (!Number.isInteger(night) || night < 1) fail('night must be a night');
     this.schema = NIGHT_POLICY_SCHEMA;
     this.night = night;
     this.customNight = customNight;
     this.campFrames = campFrames;
+    // The sourced repel itself, without the put-on animation or the boundary
+    // slack `campFrames` adds: five continuous one-second ticks fully on.
+    this.repelFrames = C.FPS * C.VENT_MASK_TICKS;
     this.minMaskFrames = minMaskFrames;
     this.windMarginFrames = windMarginFrames;
     this.flashMarginFrames = flashMarginFrames;
@@ -172,6 +187,9 @@ export class NightPolicy {
     this.sweepOnTrip = sweepOnTrip;
     this.topUpBelow = topUpBelow;
     this.sweepPeriodFrames = sweepPeriodFrames;
+    this.idleStall = idleStall;
+    this.rollGrid = rollGrid;
+    this.rollGuardTicks = rollGuardTicks;
     this.sweepFrames = 32;
     // `peakAi` reads the source's own AI rows, so a night that cannot arm Foxy
     // at all reports zero and the whole Foxy branch drops out by measurement
@@ -223,6 +241,42 @@ export class NightPolicy {
     if (!state.maskOn || state.maskSinceFrame < 0) return false;
     const fullyOnAt = state.maskSinceFrame + C.MASK_ANIM_ON;
     return fullyOnAt < hazard.deadlineFrame && state.frame >= fullyOnAt;
+  }
+
+  /**
+   * Has the sourced repel already been paid for the thud heard `age` frames
+   * ago?
+   *
+   * `[SOURCED]` The vent repel is FIVE CONTINUOUS one-second ticks with the
+   * mask fully on (`VENT_MASK_TICKS`, g292-294/400-401/907), and g293 zeroes
+   * the per-character tick counter on every fresh entry into the fully-on
+   * state -- so an interrupted camp buys the 10%-per-tick early leave rolls it
+   * paid for and nothing more. A camp therefore counts against a cue only if
+   * it BEGAN after the cue and RAN for the whole repel.
+   *
+   * This is answered entirely out of the belief's own self-state, so the
+   * policy still keeps no private bookkeeping: `maskSinceFrame` is the camp in
+   * flight, `lastMaskOffFrame`/`lastMaskRunFrames` the last completed one.
+   */
+  repelPaid(state, age) {
+    if (!Number.isFinite(age)) return false;
+    const heardAt = state.frame - age;
+    const answered = (start, end) => {
+      if (start < 0 || end < start) return false;
+      const fullyOn = start + C.MASK_ANIM_ON;
+      // Five continuous ticks that fall AFTER the cue repel whoever raised it.
+      if (end - Math.max(heardAt, fullyOn) >= this.repelFrames) return true;
+      // ...and a thud heard from INSIDE a camp that had already paid its five
+      // ticks is the departure that repel caused. Nothing in the audio
+      // separates an arrival from a leave -- config.js says so beside
+      // `THUD_SAMPLE` -- so the separation has to come from the controller's
+      // own action history, which is exactly what this is. Without it the
+      // repel's own echo reads as a fresh occupant and the policy camps for
+      // the rest of the night on the character it just evicted.
+      return heardAt >= fullyOn + this.repelFrames && heardAt <= end;
+    };
+    return answered(state.maskSinceFrame, state.frame) ||
+      answered(state.lastMaskOffFrame - state.lastMaskRunFrames, state.lastMaskOffFrame);
   }
 
   /** Frames of monitor/mask work between here and the first winding frame. */
@@ -279,13 +333,75 @@ export class NightPolicy {
     if (this.foxyDormant(state.frame)) return Infinity;
     if (state.power <= this.powerFloorFrames) return Infinity;  // nothing to spend
     const perSecond = masked ? 2 : 1;
-    const toBand = ((this.safeD - state.foxyD) * C.FPS) / perSecond;
+    // (b) THE FIVE-SECOND CHECK. It looks redundant under the grid rule and is
+    // not, and the difference is measured rather than argued.
+    //
+    // The tempting argument: arrival and lock-on are the SAME equation, so a D
+    // inside the band refuses BOTH, and `rollDeadline` already keeps D inside
+    // the band at every roll. That argument is WRONG, because `state.foxyD` is
+    // D under the HALL hypothesis: a flash zeroes it, which is true in the
+    // hall and false in Parts/Service, where the same light decays the real D
+    // by one per thirty frames (g824/g825). While Foxy is in parts the belief
+    // is not an upper bound at all, and nothing observable says which he is.
+    // What bounds that blind spot is exactly this cap: an arrival is always
+    // followed by a flash before the lock-on roll, because a whole roll period
+    // never passes unflashed.
+    //
+    // Measured 2026-09-04 over 60 held-out seeds with the grid rule on and the
+    // cap dropped: Night 4 goes 50/60 -> 8/60 and Night 5 17/60 -> 8/60, with
+    // Foxy taking 50 and 36 of them. The cap is retained under both rules.
+    const toBand = this.rollGrid
+      ? this.rollDeadline(state, perSecond)
+      : ((this.safeD - state.foxyD) * C.FPS) / perSecond;
     const sinceFlash = state.lastHallLightFrame < 0
       ? Infinity : state.frame - state.lastHallLightFrame;
-    const toCheck = C.MO_FRAMES - sinceFlash;
-    const raw = Math.min(toBand, toCheck);
+    const raw = Math.min(toBand, C.MO_FRAMES - sinceFlash);
     if (!lead) return raw;
     return raw - this.leadToFlash(state) - this.flashMarginFrames;
+  }
+
+  /**
+   * Frames until the first movement roll at which D could be out of the band.
+   *
+   * D IS ONLY LETHAL ON A GRID. `[SOURCED]` Foxy's arrival and his lock-on are
+   * the same equation, `21 + Random(0..4) - D <= AI`, and both are evaluated
+   * inside `onFiveSecond`, which the engine calls only when
+   * `frame % MO_FRAMES === 0` (plant-model.js:521, g337). Between two rolls D
+   * may cross the band with no consequence at all, provided a hall flash
+   * brings it back under before the next roll lands.
+   *
+   * The old rule read `(safeD - D) * FPS` -- the moment D crosses -- and used
+   * it as a deadline. On the late nights that is the whole failure: Night 7
+   * has `safeD` = 3, so the band rule demands a flash every three seconds
+   * while the shortest wind trip is four, and the two become mutually
+   * exclusive. Measured 2026-09-03 on Night 7 seed 5000, the controller wound
+   * TWICE in a 35 s life and died with the box at zero. On the grid the same
+   * state has ~5.5 s of Foxy slack after a flash, which is a wind trip.
+   *
+   * WHAT THIS READS, PRECISELY. `state.frame`: the controller's own
+   * elapsed-frame count since it began the night. That is a SELF-CLOCK, not a
+   * game fact -- nothing observable reports the grid phase, and on a device
+   * the count drifts against the engine's. It is the same class of quantity as
+   * `lastHallLightFrame`, which this policy already races against, but the
+   * exposure is different in kind: a drifting flash cadence is merely early or
+   * late, while a drifting grid phase can put every flash on the wrong side of
+   * the roll. `rollGrid: false` restores the grid-free band rule, and the
+   * `toCheck` cap in `foxySlack` -- never let a whole roll period pass
+   * unflashed -- is retained under BOTH rules precisely so that a lost phase
+   * degrades to the old cadence instead of to no cadence.
+   */
+  rollDeadline(state, perSecond) {
+    const phase = state.frame % C.MO_FRAMES;
+    // D climbs at least one per second, so at least MO_FRAMES/FPS = 5 per
+    // period; `safeD` never exceeds 20, so the answer is always within four
+    // periods. The bound is a loop guard, not a horizon.
+    for (let k = 1; k <= 8; k++) {
+      const dt = k * C.MO_FRAMES - phase;
+      const ticks = Math.floor((state.frame + dt) / C.FPS) -
+        Math.floor(state.frame / C.FPS) + this.rollGuardTicks;
+      if (state.foxyD + ticks * perSecond > this.safeD) return dt;
+    }
+    return Infinity;
   }
 
   /**
@@ -303,13 +419,40 @@ export class NightPolicy {
     return this.sweepPeriodFrames - since - lead;
   }
 
-  /** Frames a whole wind trip costs from here, including getting back down. */
+  /**
+   * The camera the feed will be showing once the monitor is up, which the
+   * source restores rather than re-selects: g1's child restores counter 55, so
+   * a raise comes back on `lastViewedCamera` (or `initialCamera` on the first
+   * raise of the night). `windTrip` branches on exactly this, so `tripFrames`
+   * has to predict it or it prices a trip nobody will take.
+   */
+  cameraOnRaise(state) {
+    if (state.monitor === 'up' || state.monitor === 'raising') return state.viewedCamera;
+    if (!state.hasViewedCamera) return C.initialCamera(state.night);
+    return state.lastViewedCamera;
+  }
+
+  /**
+   * Frames a whole wind trip costs from here, including getting back down.
+   *
+   * It must price the trip `windTrip` will ACTUALLY walk. It used to charge
+   * every trip for a route sweep and a box-camera select unconditionally,
+   * while `windTrip` skips both once the monitor comes back up already parked
+   * on the box camera -- which, after the first trip of the night, is every
+   * trip. That is 42 frames of imaginary cost on a Night 7 budget where the
+   * whole decision is `due > tripFrames`, and 42 frames is the difference
+   * between a wind that fits after a flash and one that does not.
+   */
   tripFrames(state, windFrames) {
     const up = state.monitor === 'up' || state.monitor === 'raising';
+    const camera = this.cameraOnRaise(state);
+    const sweep = this.sweepOnTrip && camera !== 7 && camera !== C.BOX_CAM;
+    const select = (sweep ? 7 : camera) !== C.BOX_CAM;
     return (state.maskOn ? C.MASK_ANIM_OFF + BOUNDARY : 0) +
       (up ? 0 : C.MONITOR_ANIM_UP + BOUNDARY) +
-      (this.sweepOnTrip ? this.sweepFrames + BOUNDARY : 0) +
-      2 + BOUNDARY + windFrames + BOUNDARY + C.MONITOR_ANIM_DOWN + BOUNDARY;
+      (sweep ? this.sweepFrames + BOUNDARY : 0) +
+      (select ? 2 + BOUNDARY : 0) +
+      BOUNDARY + windFrames + BOUNDARY + C.MONITOR_ANIM_DOWN + BOUNDARY;
   }
 
   /** Walk the prerequisites of a wind trip, ending in the named wind. */
@@ -371,10 +514,51 @@ export class NightPolicy {
     const bb = opening === 'threat' ||
       (opening !== 'empty' && observedValue(facts, 'bbVent') === 'opening');
     const mangle = observedValue(facts, 'mangleStatic') === true;
-    if (bb || mangle) {
-      const why = bb ? 'balloon boy in the opening' : 'mangle static in the office';
-      if (masked) {
-        const worn = state.maskSinceFrame < 0 ? 0 : state.frame - state.maskSinceFrame;
+    // 2b. The marker-122 thud, which names nobody and is the only cue that
+    //     reaches Toy Chica at all.
+    //
+    //     She is the most lethal character in this repository's cohorts and
+    //     the reason is her entry rule, not her route: `armedKill` for a
+    //     `mask`-rule occupant needs `openingTicks >= 6` AND `camsUp`, so she
+    //     waits at the left vent indefinitely and takes the FIRST cams-up
+    //     frame after six seconds -- and the office pixel that answers Balloon
+    //     Boy says nothing about her. What the device can hear is the thud she
+    //     makes arriving, `C.THUD_SAMPLE`, the same sample every other
+    //     occupant raises.
+    //
+    //     Two consequences, and the second is the load-bearing one: wear the
+    //     mask for the sourced repel, and DO NOT RAISE THE MONITOR until it is
+    //     paid. The monitor is what kills; the mask is only how the wait ends.
+    const thud = observedValue(facts, 'ventThud') === true &&
+      !this.repelPaid(state, observedValue(facts, 'ventThudAge'));
+    if (bb || mangle || thud) {
+      const why = bb ? 'balloon boy in the opening'
+        : mangle ? 'mangle static in the office'
+        : 'a marker-122 thud with the repel unpaid';
+      // The camp does not outrank Foxy, and pretending it does is how the
+      // thud cue turned Night 7 into 54 Foxy deaths in 60 the first time it
+      // was wired in. The office light is gated on `mask = 0` (g75/g84), so a
+      // camp in flight is a flash that cannot be taken, and the camp costs D
+      // at DOUBLE rate on top. Break it when the roll is due: the tick count
+      // is lost, but the monitor stays DOWN throughout, and the monitor is
+      // what an opening occupant actually needs to kill.
+      if (this.foxySlack(state) <= this.actWithinFrames) {
+        if (masked) return reason(UNMASK, `${why}: the roll is due, break the camp`);
+        if (up) return reason(LOWER, `${why}: the roll is due`);
+        return reason(FLASH, `${why}: reset D before the roll, then resume`);
+      }
+      // ...and it does not outrank the box either. An occupant at an opening
+      // is a reason not to raise the monitor, which is a reason not to wind,
+      // which on the late nights is a Puppet death on a timer: measured
+      // 2026-09-04, an absolute camp priority took Nights 4, 5 and 6 to 57,
+      // 59 and 60 Puppet deaths in 60 with Toy Chica down to one. Both tasks
+      // are lethal, so the camp joins the race instead of jumping it -- camp
+      // only while a whole camp AND the wind trip behind it still fit.
+      const campRoom = this.boxSlack(state) -
+        (masked ? 0 : C.MASK_ANIM_ON) - this.repelFrames - C.MASK_ANIM_OFF;
+      if (campRoom > this.tripFrames(state, C.s(2.5))) {
+        if (masked) {
+          const worn = state.maskSinceFrame < 0 ? 0 : state.frame - state.maskSinceFrame;
         // Audio facts intentionally outlive the impulse that created them (the
         // BB opening window is 12 s), while the sourced repel is complete after
         // five mask ticks. Treating that retained cue as a fresh occupant kept
@@ -382,12 +566,16 @@ export class NightPolicy {
         // and made every late night fail. Once this continuous mask period has
         // paid the complete repel, leave even if the old cue is still audible;
         // the office pixel can confirm the result when it becomes visible.
-        return worn < this.campFrames
-          ? reason(HOLD, `${why}: ${worn} of ${this.campFrames} repel frames`)
-          : reason(UNMASK, `${why}: sourced repel complete; ignore retained cue`);
+          return worn < this.campFrames
+            ? reason(HOLD, `${why}: ${worn} of ${this.campFrames} repel frames`)
+            : reason(UNMASK, `${why}: sourced repel complete; ignore retained cue`);
+        }
+        if (up) return reason(LOWER, why);
+        return reason(MASK, why);
       }
-      if (up) return reason(LOWER, why);
-      return reason(MASK, why);
+      // No room. Take the mask off if it is on -- the trip below needs it off
+      // anyway -- and let the deadline race have the boundary.
+      if (masked) return reason(UNMASK, `${why}: no room to camp; the box is due`);
     }
 
     // 3. Golden Freddy. He can only appear while the monitor is up (g336) and
@@ -440,8 +628,27 @@ export class NightPolicy {
         // level) cannot both be served by a controller whose shortest useful
         // wind plus trip is longer than the 5 s flash period. That is a
         // resource wall, and no ordering of these two tasks gets through it.
-        const wind = foxy > this.tripFrames(state, C.s(4.5)) ? WIND : WIND_SHORT;
-        return this.windTrip(state, wind, 'box', reason);
+        // Size the wind to the Foxy slack, and take NO wind at all when even
+        // the short one does not fit.
+        //
+        // A committed cycle is not interruptible on a deadline -- only on a
+        // positively observed hazard -- so a 156-frame wind started with 20
+        // frames of Foxy slack does not miss the roll by 20 frames, it misses
+        // it by 136 and cannot be recalled. That is what the old
+        // `foxy > longTrip ? WIND : WIND_SHORT` did on every late night:
+        // measured 2026-09-04 on Night 7 seed 5002, the engine's own roll log
+        // shows D = 4, 6, 6 at three consecutive checks against a band of 3,
+        // with a wind in flight across each of them. Serving the box FIRST
+        // when it is the more overdue task is right; serving it with a
+        // primitive that outlives the other deadline is not the same thing.
+        const wind = foxy > this.tripFrames(state, C.s(4.5)) ? WIND
+          : foxy > this.tripFrames(state, C.s(2.5)) ? WIND_SHORT
+          : null;
+        if (wind) return this.windTrip(state, wind, 'box', reason);
+        // Nothing fits. Fall through to the flash: it is 18 frames, it buys a
+        // whole roll period of Foxy slack, and a wind trip fits inside that.
+        // Refusing to wind here is not abandoning the box, it is paying for
+        // the room to wind at all.
       }
       if (masked) return reason(UNMASK, 'foxy: the hall light needs the mask off');
       if (up) return reason(LOWER, 'foxy: the hall light needs the monitor down');
@@ -491,6 +698,47 @@ export class NightPolicy {
         : reason(UNMASK, 'camp: nothing left to hold the mask for');
     }
     if (up) return reason(LOWER, 'idle: leave the monitor down');
+    // THE IDLE ACTION IS THE VENT LIGHT, NOT THE MASK.
+    //
+    // The header above says the mask is the idle action because it is the only
+    // state in which the office is closed. That is true at the OPENING and it
+    // is the wrong place to spend the night, because a held office light is a
+    // block on the ROUTE and it is free:
+    //
+    //  [SOURCED] g75/g301/g303/g320 gate every office light on `mask = 0`, and
+    //  only the flashlight drains the battery (g284) -- a vent light costs
+    //  nothing. While one is held with the cameras down the engine re-asserts
+    //  `new bonnie` on every one-second boundary (plant-model.js:599), and
+    //  that latch closes every route edge listed in a character's
+    //  `lightStallAt`: Toy Chica at CAM 07 and blindA, Withered Bonnie and Toy
+    //  Freddy at the same two, Withered Freddy one later, Mangle at her two.
+    //  It also pins whoever stands at the two blind transit markers for 40
+    //  more frames (g848-854), and the right vent light refuses Toy Bonnie's
+    //  vent hop outright (g428).
+    //
+    // Against that, the mask closes ONE opening for a character who has
+    // already arrived, costs Foxy's D at double rate, and forbids the hall
+    // flash while it is on. Toy Chica is the most lethal character in this
+    // repository's cohorts and every one of her kills is an arrival that was
+    // never stalled; camping in the mask does not prevent a single one of
+    // them. The mask is the ANSWER TO A CUE -- a blackout, a thud, Mangle's
+    // static -- and the stall is what the controller does with the rest of the
+    // night.
+    //
+    // WHEN each is right is decided by measurement, not by preference: a camp
+    // that cannot run the WHOLE five-tick repel buys 10%-per-tick leave rolls
+    // and nothing else, while costing D at double rate and forbidding the
+    // flash for its whole length. So the mask keeps the idle boundary only
+    // while a complete repel still fits before the nearer deadline; below
+    // that the free stall is strictly better. Measured 2026-09-04 over 60
+    // held-out seeds, moving Nights 3 and 4 from 29/60 and 12/60 to 37/60 and
+    // 16/60 -- and, with the mask kept for the nights that can still afford a
+    // whole camp, Night 1 stays at its ceiling.
+    const idleMasked = Math.min(
+      box - C.MASK_ANIM_OFF - BOUNDARY,
+      this.foxySlack(state, { masked: true }));
+    if (this.idleStall && idleMasked < this.campFrames && due > C.FPS + BOUNDARY)
+      return reason(STALL, `stall: no room for a whole repel (${Math.round(idleMasked)})`);
     // Wear the mask for whatever the nearer deadline leaves, rather than only
     // when the WHOLE five-tick repel fits.
     //

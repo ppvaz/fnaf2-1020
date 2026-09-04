@@ -49,6 +49,14 @@ export function initialReducedState({ night = 7, frame = 0, box = 1,
     // wants it has to know how long this mask has been worn, not merely that
     // it is on.
     maskSinceFrame: -1,
+    // The most recently COMPLETED mask period: how long it ran and the frame
+    // it ended. `maskSinceFrame` answers "how long have I been wearing this
+    // one"; these two answer "have I already paid a full repel, and was it
+    // after the cue I am looking at". Both are self-state in the same family
+    // as `lastMaskOnFrame` -- nothing here knows what a repel costs, which is
+    // a policy quantity.
+    lastMaskRunFrames: 0,
+    lastMaskOffFrame: -1,
     controlUnknown: { monitor: true, mask: true },
     hazards: {
       blackout: { state: 'unknown', deadlineFrame: -1 },
@@ -94,7 +102,13 @@ function stepSelfState(state) {
   if (state.maskOn) {
     state.lastMaskOnFrame = state.frame;
     if (state.maskSinceFrame < 0) state.maskSinceFrame = state.frame;
-  } else state.maskSinceFrame = -1;
+  } else {
+    if (state.maskSinceFrame >= 0) {
+      state.lastMaskRunFrames = state.frame - state.maskSinceFrame;
+      state.lastMaskOffFrame = state.frame;
+    }
+    state.maskSinceFrame = -1;
+  }
 }
 
 function stepResources(state) {

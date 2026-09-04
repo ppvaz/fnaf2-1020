@@ -124,6 +124,15 @@ const ENTRIES = [
   visual('ventLightL', 'office-visible', ['read-dropped', 'office-not-in-view']),
   audio('bbVent'),
   audio('bbVentId'),
+  // The identity-free marker-122 thud. Same channel, same detector, same
+  // unmeasured read cost as the Balloon Boy classification -- it is literally
+  // the same waveform (`C.THUD_SAMPLE`) with the `who` discrimination that the
+  // audio does not carry left off. It is priced here so nothing can branch on
+  // it without the exclusion being visible, and it stays inadmissible for the
+  // constrained search until Plan 08's latency measurement exists.
+  audio('ventThud'),
+  audio('ventThudId'),
+  audio('ventThudAge'),
   audio('mangleStatic'),
   audio('mangleStaticCam'),
 ];
