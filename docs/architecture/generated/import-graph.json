@@ -1883,6 +1883,16 @@
       ]
     },
     {
+      "file": "tools/push-gate.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/reactivetest.mjs",
       "imports": [
         "../tools/device/minus-toys-plan.mjs",

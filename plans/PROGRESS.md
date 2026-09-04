@@ -126,12 +126,29 @@ clean checkout of `6e87a5f`, so the counts do not carry the uncommitted
 `night-policy` edit sitting in the tree. Catalog generation is idempotent on
 the result, `node tools/test-docs.mjs` passes (337 links, 39 pages, 302 tool
 scripts), and `npm run device:dry-run -- --profile fixture-hid-screencap` is
-`PASS claim=FIXTURE evidence=run-20260904203302-6a0e878e-4e4c57`. The second
-break stays OPEN and is owned by the session holding that edit: `deb6463` left
-three `night-policy` contract assertions red -- `Balloon Boy in the opening
-takes the mask`, `Mangle static at the office edge takes the mask`, and
-`reaching the band is due, even with a fresh flash` -- and that lane runs
+`PASS claim=FIXTURE`, retained as `artifacts/run-20260904205429-28dd7481-4e4c57`.
+The second break stays OPEN and is owned by the session holding that edit:
+`deb6463` left three `night-policy` contract assertions red -- `Balloon Boy in
+the opening takes the mask`, `Mangle static at the office edge takes the mask`,
+and `reaching the band is due, even with a fresh flash` -- and that lane runs
 before the catalog step, so CI does not go green on this commit alone.
+
+**A THIRD break was hidden behind the second, and finding it is what the push
+gate is for.** `deb6463` also broke `tools/observationlanguagetest.mjs`: the
+thud facts joined `OBSERVATION_BUDGET`, so `excludedFacts()` is no longer 4 and
+the measured-budget check fails. It sits in the same `&&` chain as
+`night-policy.test.js`, thirty-one commands later, so CI stopped at the first
+and never printed the second -- nothing anywhere named it until a clean-checkout
+run enumerated the whole chain. `npm run push-gate` (`tools/push-gate.mjs`,
+`.githooks/pre-push`, enabled with `git config core.hooksPath .githooks`) now
+runs every `ci.yml` lane against the COMMIT BEING PUSHED in a throwaway
+`git worktree`, not against the working tree, because those are different
+measurements: the catalog break above was invisible in a dirty tree and red on
+every clean clone. It runs all nine lanes even after one fails, re-runs a
+failed lane's chain command by command, and refuses to run at all when its lane
+list has drifted from `ci.yml`. On `46a5f26` it takes 35 s and reports exactly
+the two open failures above. Its ShellCheck lane needs docker and prints a
+loud SKIP without it; that lane is then unverified locally, not passed.
 
 2026-09-03 ROADMAP A1 — the closed loop now survives whole nights. The
 belief-state cycle controller had been driven over a full night exactly once

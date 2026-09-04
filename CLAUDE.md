@@ -22,8 +22,11 @@ fail-safe release/abort. Never infer mode, geometry, coordinates, timing, ports,
 or calibration from prose or conversation. No arbitrary shell is exposed to an
 agent.
 
-Start with `npm ci` and run affected gates plus `npm run device:dry-run`. Finish
-by updating the structured progress/result record, citing its generated
+Start with `npm ci` and run affected gates plus `npm run device:dry-run`. Before
+pushing run `npm run push-gate`, which runs the CI lanes against the pushed
+commit in a throwaway worktree; the working tree is a different measurement
+from CI's clean clone. `git config core.hooksPath .githooks` makes it automatic.
+Finish by updating the structured progress/result record, citing its generated
 evidence ID, and stating exactly what remains open; do not create a parallel
 handwritten evidence log.
 

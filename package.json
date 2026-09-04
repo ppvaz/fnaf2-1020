@@ -27,6 +27,7 @@
     "policy": "node tools/policy-inspect.js",
     "evidence": "node tools/evidence.js",
     "catalog": "node tools/generate-catalog.js",
+    "push-gate": "node tools/push-gate.mjs",
     "test:retrieval": "node tools/retrieval-benchmark.mjs",
     "device:dry-run": "node apps/device/src/cli.js dry-run",
     "device:bench": "node apps/device/src/cli.js bench",

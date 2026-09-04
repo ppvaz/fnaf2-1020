@@ -116,6 +116,11 @@
       "lifecycle": "supported"
     },
     {
+      "id": "push-gate",
+      "command": "node tools/push-gate.mjs",
+      "lifecycle": "supported"
+    },
+    {
       "id": "test:retrieval",
       "command": "node tools/retrieval-benchmark.mjs",
       "lifecycle": "supported"
@@ -171,6 +176,12 @@
       "id": "tools/test.mjs",
       "invocation": "tools/test.mjs",
       "kind": "check runner",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/push-gate.mjs",
+      "invocation": "tools/push-gate.mjs",
+      "kind": "check",
       "lifecycle": "supported"
     },
     {
