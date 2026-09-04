@@ -1,6 +1,121 @@
 # Plan progress
 
-**Updated:** 2026-09-03
+**Updated:** 2026-09-04
+
+2026-09-04 ROADMAP A1 — Foxy is now priced on his roll grid, the sensor no
+longer throws away the cue for the game's most lethal character, and the
+composition of the two is UNTUNED AND CURRENTLY A REGRESSION. Everything below
+is on branch `closed-loop-late-nights`, commit `deb6463`, and nothing is
+merged, promoted, or claimed. Measured on 60 held-out seeds a night, seeds
+5000..5059, `--gate=static`.
+
+**Four mechanism findings, each separately measured.**
+
+1. **D is only lethal on a 5 s grid.** `[SOURCED]` Foxy's arrival and his
+   lock-on are the same equation, `21 + Random(0..4) - D <= AI`, and both are
+   evaluated inside `onFiveSecond`, which the engine calls only on
+   `frame % MO_FRAMES === 0` (plant-model.js:521, g337). The policy read
+   `(safeD - D) * FPS` -- the moment D crosses -- and used that as a deadline.
+   Night 7 has `safeD` = 3, so it demanded a flash every three seconds while
+   the shortest wind trip is four: measured on seed 5000, the controller wound
+   TWICE in a 35 s life and died with the box at zero. `rollDeadline` asks when
+   the first UNSAFE ROLL lands instead. Night 2 went 50.5% -> 65% on this
+   change alone. It reads `state.frame`, the controller's own elapsed-frame
+   count: a SELF-CLOCK, not a game fact, and it drifts on a device.
+   `rollGrid: false` restores the old rule.
+
+2. **The five-second cap is not redundant under the grid rule.** The tempting
+   argument -- a D inside the band refuses arrival and lock-on alike, so the
+   grid rule subsumes the cap -- is WRONG, and measurement is what said so.
+   `foxyD` is D under the HALL hypothesis; in Parts/Service the same flash only
+   decays the real D by one per thirty frames, so the belief is not an upper
+   bound there at all. Dropping the cap took Night 4 from 50/60 to 8/60 and
+   Night 5 from 17/60 to 8/60, Foxy taking 50 and 36. Both rules are kept.
+
+3. **A committed cycle is not interruptible on a deadline.** The race sized its
+   wind with `foxy > longTrip ? WIND : WIND_SHORT`, so it started 156-frame
+   winds inside 20-frame Foxy slacks; the engine's own roll log for Night 7
+   seed 5002 shows D = 4, 6, 6 at three consecutive checks against a band of 3
+   with a wind in flight across each. It now takes NO wind when none fits and
+   flashes first, which buys a whole roll period the wind then fits inside.
+   `tripFrames` was also charging every trip for a route sweep and a
+   box-camera select that `windTrip` skips once the monitor comes back up
+   parked on the box camera -- 42 imaginary frames on the exact comparison
+   that decides the late nights.
+
+4. **The sensor was discarding the only cue that reaches Toy Chica.**
+   `[SOURCED]` Every vent-bang the engine raises carries the same
+   `THUD_SAMPLE`, and config.js's own note beside that constant says "Nothing
+   in the audio distinguishes them". `Observer` kept only `who === 'bb'` and
+   dropped the rest -- not a coarser sensor than the device's but a DIFFERENT
+   one, with a per-character discrimination the hardware does not have. Toy
+   Chica is the dominant cause of death in every cohort here (6/22/12/0/25/
+   10/19 runs of 60 on Nights 1-7) because `armedKill` needs only
+   `openingTicks >= 6` and one cams-up frame, and the office pixel that answers
+   Balloon Boy says nothing about her. `ventThud`/`ventThudId`/`ventThudAge`
+   are priced in the observation budget as audio, inadmissible for the
+   constrained search, same unmeasured read cost as `bbVent`. With the thud
+   wired in and the camp given absolute priority, **Night 1 reached 60/60 and
+   Toy Chica vanished from every night**.
+
+**What is not solved, and it is a three-way resource conflict.** The camp that
+answers the thud forbids the hall flash (every office light is gated on
+`mask = 0`, g75/g84) and costs D at double rate, and it forbids the monitor,
+which is what the box needs. Three orderings were measured, 60 seeds a night:
+
+| ordering | N1 | N2 | N3 | N4 | N5 | N6 | N7 | dominant death |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| camp above everything | 60 | 3 | 13 | 0 | 0 | 0 | 0 | foxy |
+| camp yields to Foxy only | 60 | 13 | 8 | 0 | 0 | 0 | 0 | puppet |
+| camp races box and Foxy | 53 | 22 | 37 | 16 | 0 | 0 | 0 | mixed |
+| (before this session) | 55 | 38 | 49 | 49 | 14 | 0 | 0 | toy chica |
+
+So the branch is a REGRESSION on five nights and is committed as a checkpoint,
+not as an improvement. The mechanisms are sound and separately measured; their
+composition is not tuned.
+
+**One composition bug is already located and not yet fixed.** The idle branch
+chooses the mask only when a WHOLE five-tick repel fits, and the repel is 316
+frames while the retained five-second cap holds `foxySlack` at or below 300 --
+so on every night with Foxy live the mask idle is unreachable and the free
+office-light stall always wins. That is why Toy Chica returns in the third row
+above: the stall blocks two of her five route edges (`lightStallAt` [1,2]) but
+only the mask repels her once she is AT the opening. The gate is comparing
+against the wrong quantity.
+
+**Next steps, in order.**
+
+1. Fix the idle gate above, then run the knob factorial rather than guessing:
+   `rollGrid` x `idleStall` x thud-on/off over nights 1-7. The thud needs a
+   knob of its own first; the other two already have one. A sweep harness was
+   written and thrown away with the scratch directory -- it is ten lines over
+   `pool.mjs` and `runNight({ policyOptions })`.
+2. The remaining structural wall on Nights 6-7 is that a 300-frame continuous
+   repel and a 300-frame flash cadence do not both fit. Partial camps still buy
+   the 10%-per-tick leave rolls (g292/g400), so the question is a measured one:
+   how many partial camps per roll period, and whether `campFrames` should be
+   the sourced five ticks at all on those nights.
+3. Foxy EVICTION was priced and refused: `foxyExposureFrames(7)` is 700 frames
+   of cumulative hall light for ~750 frames of absence, against a 3000-frame
+   night-7 battery. It is not a Night 7 strategy. Recorded so it is not
+   re-derived.
+4. `sweepOnTrip` fires ONCE PER NIGHT in practice: the monitor comes back up
+   parked on the box camera, so `windTrip`'s `viewedCamera !== 7 && !== BOX_CAM`
+   test is false ever after. The route stun is therefore effectively never
+   refreshed. CAM 07 is on Toy Chica's path and the flash stuns her for 400
+   frames; a periodic sweep was measured as a Night 1 loss in 2026-09-02's
+   entry, but that was before the thud and before the grid rule.
+5. NOTHING IN THIS SESSION TOUCHED THE PHONE, and no device is attached
+   (`adb devices` empty). The closed-loop controller is still not wired into
+   `apps/device` at all -- `CycleController` and `NightPolicy` have zero
+   importers outside `packages/core` and `tools/` -- so "the bot on device"
+   remains an unstarted integration, not a tuning problem. A peer session's
+   audit of the device lane and of `tools/invent` was relayed during this
+   session and its items are not reflected here beyond this pointer.
+
+Typecheck and the gate lanes were NOT re-run after the last edits; the branch
+is a checkpoint and `npm test` is owed before any merge. No ladder position
+moved and the 47/133 denominator is unchanged.
 
 2026-09-03 ROADMAP A1 — the closed loop now survives whole nights. The
 belief-state cycle controller had been driven over a full night exactly once
