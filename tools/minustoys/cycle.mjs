@@ -90,7 +90,11 @@ export function runMinusToys7(seed, opts = {}) {
   const { night = 7, slackMs = 0, openLoop = false, cycle = CYCLE,
           simOpts = {} } = opts;
   const sim = new Sim({ seed, night, ...simOpts });
-  const shift = jitterer(seed, slackMs);
+  // `opts.shift` lets a caller supply its own executor error model in place
+  // of the iid-per-row one above -- (row, win) -> frames. Used by
+  // tools/phase-tolerance.mjs, whose latency model has to reach the same
+  // place the jitterer does. Omitted, nothing changes.
+  const shift = opts.shift ?? jitterer(seed, slackMs);
 
   const queue = new Map();
   const at = (frame, fn) => {

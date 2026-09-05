@@ -115,7 +115,11 @@ export function runCycle(seed, opts = {}) {
   const { night = 7, slackMs = 0, bangLatencyMs = 0, cycle = CYCLE,
           simOpts = {} } = opts;
   const sim = new Sim({ seed, night, ...simOpts });
-  const shift = jitterer(seed, slackMs);
+  // `opts.shift` lets a caller supply its own executor error model in place
+  // of the iid-per-row one above -- (row, win) -> frames. Used by
+  // tools/phase-tolerance.mjs, whose latency model has to reach the same
+  // place the jitterer does. Omitted, nothing changes.
+  const shift = opts.shift ?? jitterer(seed, slackMs);
   const bangLatency = Math.round(bangLatencyMs * C.FPS / 1000);
 
   const queue = new Map();
