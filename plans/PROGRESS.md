@@ -2,6 +2,65 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 FIRST LIVE NIGHT THROUGH THE FIXED OBSERVATION PATH — and it found
+three blockers no fixture could. Operator played a night on the attached moto
+g56 deliberately aiming to survive a masked blackout, and reported the
+sequence: Withered Chica present, the light flickers, then a TOTAL BLACKOUT
+DURING THE MASKED FRAMES. 4479 atomic FRAME observations over 280 s,
+read-only, no game input sent. Retained:
+`docs/evidence/live-observation-20260905-moto-g56.json` (the numbers below) and
+`docs/evidence/screen-grids-20260905-moto-g56-blackout.json` (the 73 blackout
+grids, labelled by the operator's account plus a direct measurement, never by a
+rule's verdict).
+
+1. **`blackout-unproven` CAN be lifted, but the guard has ZERO MARGIN.** All 73
+   frames at whole-grid mean luma exactly 0 are the blackout, all read mask ON,
+   and the guard floor of 5 refuses every one as `frame-dark` — so a blackout
+   is separable from a masked frame, which is what the limitation was waiting
+   on. But mask-ON frames span 0..39 and their lit population bottoms out at
+   EXACTLY 5, the floor itself; 58 further masked frames sit at 1..4 (the fade)
+   and are refused too. The floor is a boundary, not a margin. Entering the
+   blackout the grid mean ran 26 -> 33 -> 68 -> 11 -> 10 -> 9 -> 8 within a few
+   frames, so a single static threshold has to survive a violent flicker. DO
+   NOT bind the mask rule on this guard: the limitation should change from
+   "unproven" to "measured and too tight", which is a different and worse
+   thing.
+2. **THE BLOCKER: the helper cannot recognise a masked night.** Of 2818 mask-ON
+   frames, 2749 (97.5%) classify `screen=UNKNOWN`, 67 as `FNAF2_NIGHT`, 2 as
+   `FNAF2_MENU`. The cause is in `nightScore`: it requires either the lit
+   flashlight meter (row 0, cells 0-1) or the pink mask bar, and the opaque
+   mask covers both, so a masked night scores 0. `measureCalibrationState`
+   gates on `screen === 'FNAF2_NIGHT'`, so it refuses 97.5% of exactly the
+   state the seam runner must observe POSITIVELY — and the runner needs two
+   CONSECUTIVE positives. Only 67 frames in a whole night are both
+   `FNAF2_NIGHT` and above the guard. This blocks live seam calibration
+   independently of the actuator work.
+3. **The fitted monitor rule is ambiguous on half of live gameplay.** Over 774
+   `FNAF2_NIGHT` frames: 46.5% `ambiguous-threshold`, 38.5% DOWN, 15.0% UP. It
+   was fitted from 30 static frames on 2026-09-01; real play is not static.
+   It needs re-fitting from live frames before any live claim rests on it.
+
+Also measured this session: preflight is READY on all ten checks, and a fresh
+per-session clock map was taken (`clock-map-20260905-moto-g56-session2.json`,
+rate 0.999839, errorMs 28, 1740 ppm over 31.3 s, boot `711c3232`, no reboot) —
+so of the three holds the live calibrate CLI names, clock mapping is CLOSED for
+this session and positive state calibration is now blocked for a sharper reason
+than before.
+
+A tooling note, because it nearly cost the capture: the first recorder used an
+async write stream inside a fully synchronous adb capture loop. The event loop
+never got a turn, the stream never opened its file, and ~77 MB of a live night
+sat in memory until the loop ended. Nothing was lost, but nothing was readable
+for fifteen minutes either. `captures/night-record.mjs` now writes with
+`writeSync` so each frame is on disk as it is observed.
+
+NEXT, in dependency order: fix the screen gate (finding 2) — either teach
+`ScreenIdentity` a masked-night signature, or stop making a masked frame prove
+it is a night through a signal the mask covers; then re-fit the monitor and
+mask rules against live frames with a real margin (findings 1 and 3); only then
+does the seam-block actuator work become the binding constraint. Calibration
+remains UNVERIFIED; no no-input-loss and no Night 7 clear is claimed.
+
 2026-09-05 both live blockers are FIXED ON THE DEVICE, and the stale-build
 hypothesis I had dismissed was the right one. Attached moto g56
 (`ZF525F5BH5`); the helper was rebuilt from source and reinstalled.

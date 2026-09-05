@@ -1,0 +1,55 @@
+{
+ "schema": "live-observation-summary-v1",
+ "device": "ZF525F5BH5",
+ "capturedAt": "2026-09-05",
+ "capturedVia": "FRAME verb; read-only, no game input was sent",
+ "frames": 4479,
+ "spanSeconds": 280.294,
+ "maskGuardFloor": 5,
+ "blackout": {
+  "frames": 73,
+  "gridLuma": 0,
+  "allMaskOn": true,
+  "helperScreen": {
+   "UNKNOWN": 73
+  },
+  "refusedByGuard": true
+ },
+ "maskOn": {
+  "frames": 2818,
+  "gridLumaRange": [
+   0,
+   39
+  ],
+  "gridLumaHistogramLow": {
+   "0": 73,
+   "1": 4,
+   "2": 4,
+   "3": 41,
+   "4": 9,
+   "5": 409,
+   "6": 830,
+   "7": 254,
+   "8": 29,
+   "9": 762
+  },
+  "belowGuard": 131,
+  "helperScreen": {
+   "UNKNOWN": 2749,
+   "FNAF2_NIGHT": 67,
+   "FNAF2_MENU": 2
+  },
+  "usableForSeamRunner": 67
+ },
+ "monitorRuleOnLiveNight": {
+  "UNKNOWN:ambiguous-threshold": 360,
+  "DOWN": 298,
+  "UP": 116
+ },
+ "findings": [
+  "The darkness guard does separate a total blackout (gridLuma 0) from a masked frame, but with ZERO margin: masked-lit frames bottom out at exactly the floor of 5.",
+  "The helper's screen classifier cannot recognise a masked night: 2749/2818 mask-ON frames classify UNKNOWN because nightScore needs the flashlight meter or the mask bar, both of which the opaque mask covers.",
+  "measureCalibrationState gates on screen==FNAF2_NIGHT, so it refuses 97.5% of masked frames; only 67 of 2818 are usable, and the seam runner needs two consecutive positives.",
+  "The monitor rule fitted from 30 static 2026-09-01 frames returns ambiguous-threshold on 46.5% of live night frames."
+ ]
+}
