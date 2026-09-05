@@ -9,12 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { validateControlCommand } from '@fnaf2-1020/core/contracts';
 
-const MUTATING = new Set(['session.start', 'session.abort', 'actuator.apply', 'trajectory.execute']);
+const MUTATING = new Set(['session.start', 'session.abort', 'actuator.apply', 'trajectory.execute', 'calibration.execute']);
 const CUE_TOOLS = Object.freeze(['cue.setup', 'cue.queue.enqueue', 'cue.queue.list', 'cue.queue.run']);
 const TOOLS = Object.freeze([
   'devices.list', 'profiles.list', 'profiles.resolve', 'device.capabilities', 'device.preflight',
   'session.start', 'session.status', 'session.abort', 'sensor.sample', 'actuator.apply',
-  'trajectory.execute', 'artifacts.list', 'artifacts.read',
+  'trajectory.execute', 'calibration.execute', 'artifacts.list', 'artifacts.read',
   ...CUE_TOOLS,
 ]);
 
@@ -232,6 +232,11 @@ export function createActuatorMcp(service, { profiles = [service.profile], cueHe
           return { ok: true, result: await service.applyCommand(args.command, { idempotencyKey: args.idempotencyKey }) };
         }
         if (name === 'trajectory.execute') return { ok: true, runId: service.session.id, result: await service.execute(args.trajectory) };
+        if (name === 'calibration.execute') {
+          if (args.deadlineMs !== undefined && args.spec?.maxDurationMs > args.deadlineMs)
+            return error('DEADLINE_INVALID', 'seam spec exceeds caller deadline');
+          return { ok: true, result: await service.executeCalibration(args.spec) };
+        }
         if (name === 'artifacts.list') return { ok: true, artifacts: service.session?.artifacts ?? {} };
         if (name === 'artifacts.read') return error('UNAVAILABLE', 'artifact reads are served by the evidence CLI');
       } catch (cause) { return error('REJECTED', cause.message); }

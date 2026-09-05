@@ -12,6 +12,55 @@ decoded Android model's load-bearing rules against the real
 Target build confirmed on device: **v2.0.7** (versionCode 26, updated
 2026-08-14) — matches the ledger's "release 7" target.
 
+## Service-owned seam calibration (2026-09-05)
+
+`npm run device:calibrate -- --json` exercises the bounded runner through
+`DeviceControlService`, with the explicit
+`apps/device/fixtures/seam-calibration.json` protocol and synthetic state.
+The CLI opens no phone; `--live` refuses, and physical profiles cannot silently
+select this fixture. `--spec FILE` accepts only the versioned, bounded semantic
+protocol, not coordinates, shell text or an inferred game phase.
+
+The sequence is: two fresh positive NIGHT/monitor/mask observations → restore
+the observed state if needed → one mask-on/mask-off/probe timed block → two
+fresh state observations → measured-state restoration → next trial. Probes
+and restores use the same completion-aware actuator under one service writer
+lease. No host screenshot wait is inserted inside the mask-off→probe seam.
+A restore that does not change the observed state stops the campaign; it does
+not cause a blind repeated toggle. UNKNOWN states consume a bounded read/time
+budget. Late I/O, stale/repeated frames, terminal states, excessive uncertainty,
+unknown completion and overlapping writes cannot authorize a dependent trial.
+Emergency abort cancels the pending operation; failed cleanup quarantines that
+service composition. A transport must honor cancellation and release contacts.
+
+The service retains spec/profile hashes, capture and receipt timestamps,
+mapped uncertainty intervals, requested blocks, completion acknowledgements,
+restoration observations and a generated evidence ID. `calibration.execute`
+is the MCP counterpart and requires a lease, matching profile hash and an
+idempotency key. Both clients use the same runner. Completion remains
+`calibration: UNVERIFIED` and `gameAcceptance: UNKNOWN`, including when the
+fixture workflow is PASS. This is not a no-input-loss measurement.
+
+Capture timebases have a session identity; equal `*-monotonic-ms` labels are
+not enough. A different timebase requires an explicit `clock-map-v1` with
+source/target clock and session, evidence ID, anchor pair (`sourceAtMs`,
+`targetAtMs`), rate, offset error (`errorMs`), rate error (`rateErrorPpm`) and a
+valid source interval. The complete capture uncertainty interval must lie
+inside that interval; error grows with distance from the anchor. A sensor
+restart, invalid mapping, future capture or expired bound refuses the run.
+`startDelaysMs` deliberately names requested start delays, **not measured game
+phase**. Fixture millisecond values are test inputs, not recommended handset
+calibrations.
+
+Physical calibration remains OPEN: neither handset profile binds the required
+positive `calibration-state` rule, and neither has a qualified `seam-block-v1`
+actuator or measured clock mapping. Live qualification must explicitly bind
+that protocol and the resolved profile hash; FIFO-write success is insufficient.
+The historical watcher stays read-only and its live probe path stays held.
+App dispatch IDs and positive game effects still need independent measurement
+before injection, dispatch and effective-latency tails can be claimed.
+Regression gate: `npm run test:device:calibration` (also in CI's contracts lane).
+
 ## Validation targets, ranked
 
 1. **Consecutive-tick mask clears** (g292-294): a masked vent visitor should

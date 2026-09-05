@@ -32,7 +32,7 @@
     },
     {
       "id": "test:device:calibration",
-      "command": "python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs",
+      "command": "node apps/device/test/seam-calibration.test.js && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs",
       "lifecycle": "supported"
     },
     {
@@ -158,6 +158,11 @@
     {
       "id": "device:campaign",
       "command": "node apps/device/src/cli.js campaign",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:calibrate",
+      "command": "node apps/device/src/cli.js calibrate",
       "lifecycle": "supported"
     },
     {

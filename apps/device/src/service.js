@@ -11,6 +11,7 @@ import { dispatchTrajectory, SafetySupervisor, makeEvent, makeManifest, validate
 import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
 import { validateExecutorRequest } from './artifact-executor.js';
+import { SeamCalibrationRunner } from './seam-calibration.js';
 
 const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR',
   'cam:10', 'cam:4', 'cam:7', 'cam:9', 'cam:11', 'wind']);
@@ -33,6 +34,17 @@ export function requiredMonitorState(command) {
 }
 
 export class DeviceControlService {
+  #writer = null;
+  #calibrationAbort = null;
+  #abortPromise = null;
+  #cleanupFault = false;
+
+  async #withWriter(label, operation) {
+    if (this.#writer !== null) throw new Error(`actuation lease held by ${this.#writer}`);
+    this.#writer = label;
+    try { return await operation(); }
+    finally { this.#writer = null; }
+  }
   /** @param {any} options */
   constructor(options = {}) {
     const { profile, actuator, sensor = null, detector = null, artifactRoot = 'artifacts', mode = 'dry-run', maxActions, now = () => performance.now(), sleep, executor = null, modelHash = 'model-sim-v1', policyHash = 'policy-fixture-v1' } = options;
@@ -51,6 +63,9 @@ export class DeviceControlService {
     this.session = null;
     this.supervisor = null;
     this.commandKeys = new Set();
+    this.calibrationClock = options.calibrationClock ?? 'host-monotonic-ms';
+    this.calibrationClockSession = options.calibrationClockSession ?? null;
+    this.calibrationClockMap = options.calibrationClockMap ?? null;
   }
 
   preflight() {
@@ -75,6 +90,8 @@ export class DeviceControlService {
   }
 
   startSession({ lease = `lease-${stableHash({ profile: this.profile.id, mode: this.mode }).slice(-8)}` } = {}) {
+    if (this.#writer !== null) throw new Error('actuation lease is still held');
+    if (this.#cleanupFault) throw new Error('actuator cleanup is incomplete; composition is quarantined');
     this.preflight();
     if (this.session && this.session.status === 'ACTIVE') throw new Error('session lease already held');
     const id = `run-${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${randomUUID().slice(0, 8)}-${stableHash(lease).slice(-6)}`;
@@ -83,6 +100,7 @@ export class DeviceControlService {
       policyHash: this.policyHash, events: [], results: [], artifacts: {} };
     this.supervisor = new SafetySupervisor({ profile: this.profile, maxActions: this.maxActions, dryRun: this.mode !== 'live' });
     this.commandKeys.clear();
+    this.#abortPromise = null;
     this.event('session.started', { lease, mode: this.mode });
     return { id, lease, profile: this.profile.id, profileHash, mode: this.mode };
   }
@@ -163,7 +181,11 @@ export class DeviceControlService {
    * authority.  A forcedown between attempts therefore becomes an observed
    * revocation rather than a permanent inversion.
    */
-  async ensureMonitor(target, { id = `ensure-monitor-${target ? 'up' : 'down'}`,
+  async ensureMonitor(target, options = {}) {
+    return this.#withWriter('ensure-monitor', () => this.#ensureMonitorInternal(target, options));
+  }
+
+  async #ensureMonitorInternal(target, { id = `ensure-monitor-${target ? 'up' : 'down'}`,
     settleMs = target ? 250 : 367, retries = 1 } = {}) {
     if (typeof target !== 'boolean') throw new Error('ensureMonitor target must be boolean');
     if (!Number.isInteger(retries) || retries < 0 || retries > 1)
@@ -176,7 +198,7 @@ export class DeviceControlService {
         return { state: 'VERIFIED', target, attempts: attempt, acted: attempt > 0 };
       }
       const command = this.monitorCommand(target, `${this.session.id}-${id}-press-${attempt + 1}`);
-      await this.applyCommand(command, { idempotencyKey: command.id });
+      await this.#applyCommandInternal(command, { idempotencyKey: command.id });
       await (this.sleep ?? (milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))))(settleMs);
       const after = await this.observeMonitor({ id: `${id}-after-${attempt + 1}` });
       if (after.state !== 'OBSERVED') throw new Error(`monitor verification UNKNOWN: ${after.reason}`);
@@ -191,19 +213,23 @@ export class DeviceControlService {
 
   /** Execute a short artifact block, revalidating every deferred action. */
   async executeConditioned(commands) {
+    return this.#withWriter('conditioned-block', () => this.#executeConditionedInternal(commands));
+  }
+
+  async #executeConditionedInternal(commands) {
     if (!Array.isArray(commands) || commands.length > this.maxActions)
       throw new Error('conditioned action block exceeds the bounded action budget');
     const results = [];
     try {
       for (const command of commands) {
         const required = requiredMonitorState(command);
-        if (required !== null) await this.ensureMonitor(required, { id: `${command.id}-precondition` });
+        if (required !== null) await this.#ensureMonitorInternal(required, { id: `${command.id}-precondition` });
         if (command.action.control === 'monitor') {
           const target = command.source?.targetMonitorUp;
           if (typeof target !== 'boolean') throw new Error('artifact monitor action has no target state');
-          results.push(await this.ensureMonitor(target, { id: command.id }));
+          results.push(await this.#ensureMonitorInternal(target, { id: command.id }));
         } else {
-          results.push(await this.applyCommand(command, { idempotencyKey: command.id }));
+          results.push(await this.#applyCommandInternal(command, { idempotencyKey: command.id }));
         }
       }
       return results;
@@ -219,6 +245,10 @@ export class DeviceControlService {
    * the injected executor owns only device-local scheduling and I/O.
    */
   async executeArtifact(request) {
+    return this.#withWriter('artifact', () => this.#executeArtifactInternal(request));
+  }
+
+  async #executeArtifactInternal(request) {
     if (!this.session || this.session.status !== 'ACTIVE') throw new Error('session is not active');
     if (!this.executor || typeof this.executor.execute !== 'function')
       throw new Error('artifact execution requires an explicit device executor port');
@@ -268,6 +298,10 @@ export class DeviceControlService {
   }
 
   async execute(trajectory = this.trajectory()) {
+    return this.#withWriter('trajectory', () => this.#executeInternal(trajectory));
+  }
+
+  async #executeInternal(trajectory) {
     if (!this.session || this.session.status !== 'ACTIVE') throw new Error('session is not active');
     this.event('trajectory.accepted', { trajectory: trajectory.id, trajectoryHash: stableHash(trajectory), commandCount: trajectory.commands.length });
     let results;
@@ -288,7 +322,11 @@ export class DeviceControlService {
     return this.finish({ trajectoryHash: stableHash(trajectory), resultCount: results.length });
   }
 
-  async applyCommand(command, { idempotencyKey = command?.id } = {}) {
+  async applyCommand(command, options = {}) {
+    return this.#withWriter('command', () => this.#applyCommandInternal(command, options));
+  }
+
+  async #applyCommandInternal(command, { idempotencyKey = command?.id } = {}) {
     if (!this.session || this.session.status !== 'ACTIVE') throw new Error('session is not active');
     if (typeof idempotencyKey !== 'string' || idempotencyKey.length === 0) throw new Error('idempotency key is required');
     if (this.commandKeys.has(idempotencyKey)) throw new Error('idempotency key was already used');
@@ -302,9 +340,80 @@ export class DeviceControlService {
     return result;
   }
 
+  /** Exclusive seam campaign. No independent watcher can inject a cleanup;
+   * restores and probes use the SAME actuator and profile-bound semantic port.
+   * Completion is retained as UNVERIFIED, never promoted to game acceptance.
+   */
+  async executeCalibration(spec) {
+    return this.#withWriter('seam-calibration', async () => {
+      if (!this.session || this.session.status !== 'ACTIVE') throw new Error('session is not active');
+      this.preflight();
+      if (this.actuator.capabilities?.().calibrationProtocol !== 'seam-block-v1' ||
+          typeof this.actuator.executeCalibrationBlock !== 'function' ||
+          typeof this.actuator.abort !== 'function' || typeof this.actuator.releaseAll !== 'function')
+        throw new Error('calibration requires one completion-aware, abortable timed-block actuator');
+      if (!this.sensor || !this.detector) throw new Error('calibration requires a sensor and detector');
+      if (this.mode === 'live' && (this.actuator.qualification.calibrationProtocol !== 'seam-block-v1' ||
+          this.actuator.qualification.profileHash !== this.session.profileHash))
+        throw new Error('live calibration requires profile-bound timed-block qualification');
+      const abortController = new AbortController();
+      const runner = new SeamCalibrationRunner({
+        spec, profile: this.profile, profileHash: this.session.profileHash, runId: this.session.id,
+        now: this.now, clockName: this.calibrationClock, clockMap: this.calibrationClockMap,
+        clockSession: this.calibrationClockSession,
+        sleep: this.sleep ?? (ms => new Promise(resolve => setTimeout(resolve, ms))),
+        signal: abortController.signal, active: () => this.session.status === 'ACTIVE',
+        event: this.event.bind(this),
+        observe: async request => {
+          const raw = await this.sensor.sample({ ...request, at: this.now() });
+          if (abortController.signal.aborted) throw new Error('calibration capture returned after abort');
+          this.event('sensor.sample', { id: raw.id, acquisition: raw.acquisition,
+            receivedAt: raw.receivedAt ?? null, source: raw.source, loss: raw.loss ?? null });
+          return this.detector.detect(raw);
+        },
+        executeBlock: async (block, signal) => {
+          for (const step of block.steps) for (const control of step.controls) {
+            const command = { schema: 'control-command-v1', id: `${step.id}-${control}`,
+              action: { kind: 'press', control, durationMs: step.durationMs },
+              requestedAt: { clock: block.requestedAt.clock, value: block.requestedAt.value + step.atMs },
+              deadline: block.deadline, source: { controller: 'seam-calibration', blockId: block.id } };
+            if (!this.supervisor.review(command)) throw new Error('calibration supervisor refused block');
+          }
+          return this.actuator.executeCalibrationBlock(block, { signal });
+        },
+      });
+      this.#calibrationAbort = abortController;
+      this.event('calibration.started', { spec: runner.spec, specHash: stableHash(runner.spec),
+        executorClock: { clock: runner.clockName, session: runner.clockSession },
+        clockMap: runner.clockMap, clockMapHash: runner.clockMap ? stableHash(runner.clockMap) : null });
+      try {
+        const calibration = await runner.run();
+        await this.actuator.releaseAll();
+        if (this.session.status !== 'ACTIVE') throw new Error('calibration was aborted');
+        this.session.status = 'COMPLETED';
+        this.session.outcome = this.mode === 'live' ? 'UNVERIFIED' : 'PASS';
+        this.event('session.completed', { outcome: this.session.outcome, calibration: 'UNVERIFIED' });
+        return this.finish({ calibration });
+      } catch (error) {
+        await this.abort(error.message);
+        return this.finish({ calibration: { schema: 'seam-calibration-result-v1',
+          workflow: 'ABORTED', calibration: 'UNVERIFIED', reason: error.message,
+          trials: runner.trials, observationCount: runner.observationCount,
+          profileHash: this.session.profileHash, specHash: stableHash(runner.spec) } });
+      } finally { this.#calibrationAbort = null; }
+    });
+  }
+
   async abort(reason = 'operator-abort') {
+    this.#calibrationAbort?.abort();
     if (!this.session) return null;
+    if (!this.#abortPromise) this.#abortPromise = this.#abortInternal(reason);
+    return this.#abortPromise;
+  }
+
+  async #abortInternal(reason) {
     this.session.status = 'ABORTED'; this.session.outcome = 'ABORTED';
+    this.#cleanupFault = true;
     this.event('session.aborted', { reason });
     this.supervisor?.abort(reason);
     if (typeof this.actuator.abort !== 'function' || typeof this.actuator.releaseAll !== 'function')
@@ -314,7 +423,9 @@ export class DeviceControlService {
       if (typeof this.executor.abort === 'function') await this.executor.abort(reason);
       if (typeof this.executor.releaseAll === 'function') await this.executor.releaseAll();
     }
-    return this.finish({ reason });
+    const result = await this.finish({ reason });
+    this.#cleanupFault = false;
+    return result;
   }
 
   async finish(extra = {}) {

@@ -28,6 +28,14 @@
       ]
     },
     {
+      "file": "apps/device/src/calibration-fixture.js",
+      "imports": [
+        "./service.js",
+        "@fnaf2-1020/adapters/actuators",
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
       "file": "apps/device/src/campaign-bundle.js",
       "imports": [
         "./artifact-executor.js",
@@ -79,6 +87,7 @@
       "file": "apps/device/src/cli.js",
       "imports": [
         "./adb-bridge.js",
+        "./calibration-fixture.js",
         "./campaign-bundle.js",
         "./campaign-preflight.js",
         "./campaign-runner.js",
@@ -173,9 +182,17 @@
       ]
     },
     {
+      "file": "apps/device/src/seam-calibration.js",
+      "imports": [
+        "@fnaf2-1020/adapters",
+        "@fnaf2-1020/core/contracts"
+      ]
+    },
+    {
       "file": "apps/device/src/service.js",
       "imports": [
         "./artifact-executor.js",
+        "./seam-calibration.js",
         "@fnaf2-1020/adapters/registry",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/runtime",
@@ -251,6 +268,19 @@
         "node:child_process",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/test/seam-calibration.test.js",
+      "imports": [
+        "../src/calibration-fixture.js",
+        "../src/mcp.js",
+        "../src/seam-calibration.js",
+        "@fnaf2-1020/adapters",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:os",
+        "node:path"
       ]
     },
     {

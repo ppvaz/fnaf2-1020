@@ -24,4 +24,17 @@ assert.equal(unknown.status, 2);
 assert.match(unknown.stderr, /unknown command/);
 assert.doesNotMatch(unknown.stdout, /result=|evidence=/);
 
+for (const args of [['calibrate', '--live', '--confirm-live'],
+  ['calibrate', '--profile', 'hid-mediaprojection'], ['calibrate', '--spec'], ['calibrate', '--spec=']]) {
+  const result = run(args);
+  assert.equal(result.status, 2, args.join(' '));
+  assert.doesNotMatch(result.stdout, /result=|evidence=/);
+}
+const calibration = run(['calibrate', '--json']);
+assert.equal(calibration.status, 0, calibration.stderr);
+const result = JSON.parse(calibration.stdout);
+assert.equal(result.claimLevel, 'FIXTURE');
+assert.equal(result.calibration.workflow, 'COMPLETED');
+assert.equal(result.calibration.calibration, 'UNVERIFIED');
+
 console.log('device CLI: help is side-effect free and unknown commands fail closed');

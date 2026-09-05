@@ -36,6 +36,7 @@ assets.
 | Compare policy families under execution error | `tools/policytest.mjs` |
 | Explore a strategy or cycle | `tools/cyclesearch.mjs`, `tools/strategysearch.mjs`, `tools/gatesearch.mjs` |
 | Run a guarded phone trial | `npm run device:qualification` with an injected live composition; historical diagnosis uses `tools/device/legacy-trial.sh` |
+| Exercise serialized mask/monitor/flash calibration gates | `npm run device:calibrate -- --json` (FIXTURE only; physical calibration remains open) |
 | Analyze a recorded phone trial | `grade-minus7.py`, `camtrace.py`, `windpct.py`, `find-events.py` |
 | Classify a screenshot entirely on-device | the `tools/device/screencheck` pipeline |
 | Inspect the Android event-sheet dump | `tools/dump/readdump.py`, `tools/dump/coverage.py` |

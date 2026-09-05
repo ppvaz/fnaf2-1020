@@ -1,0 +1,19 @@
+{
+  "schema": "seam-calibration-spec-v1",
+  "id": "fixture-compound-seam",
+  "profileId": "fixture-hid-screencap",
+  "probe": "compound",
+  "contactMs": 17,
+  "maskOnMs": 800,
+  "probeContactMs": 133,
+  "restoreContactMs": 33,
+  "restoreSettleMs": 400,
+  "resetTimeoutMs": 1500,
+  "maxDurationMs": 15000,
+  "maxObservationAgeMs": 100,
+  "maxClockUncertaintyMs": 1,
+  "maxObservations": 64,
+  "rounds": 2,
+  "gapsMs": [267],
+  "startDelaysMs": [0, 17]
+}

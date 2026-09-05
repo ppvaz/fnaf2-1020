@@ -2,6 +2,44 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 service-owned seam runner — the clock audit is on `origin/master`;
+the follow-on pass adds `DeviceControlService.executeCalibration()` and the
+fixture-only `npm run device:calibrate -- --json`. The service writer lease
+covers observations, probes and restores, rejecting overlapping command,
+trajectory and artifact execution. Two fresh positive state observations gate
+each trial; the mask-off→probe seam stays in one bounded timed block. Restores
+use the same actuator and observed state, never a second shell writer or blind
+press parity. Missing/early completion, a failed restore, stale/duplicate
+capture, excessive uncertainty, a deadline or a terminal state withholds the
+next trial. Emergency abort remains available during pending I/O; failed
+cleanup quarantines the service.
+
+Clock domains now also require session identity or a retained, evidence-bound
+offset/rate mapping with finite validity and growing uncertainty. A reboot or
+same-name clock on another host is not treated as synchronized. Requested
+`startDelaysMs` are deliberately not called measured game phase. CLI and the
+lease/profile/idempotency-gated MCP `calibration.execute` share the runner.
+The protocol and regression tests travel with the project; the canonical
+[device validation route](../docs/device/ON-DEVICE-VALIDATION.md#service-owned-seam-calibration-2026-09-05)
+documents the envelope, holds and reproducer.
+
+Validation: full `npm test`, affected adapter/service/calibration gates and
+`npm run device:dry-run` pass. Generated fixture evidence
+`run-20260905192019-02a51090-4e4c57`: two restored trials, 12 synthetic
+observations, workflow COMPLETED / FIXTURE PASS, calibration UNVERIFIED and
+game acceptance UNKNOWN. Regression cases also cover late/hung I/O, cancellation,
+clock restarts, swallowed restore writes, early acknowledgements and lease
+contention. These are plumbing proofs, not handset timing measurements.
+
+Still OPEN: a qualified device-local `seam-block-v1` actuator with positive
+completion and cancellation, a profile-bound positive office/mask state rule,
+and measured clock alignment. Both handset profiles remain dry-run-only;
+the historical live watcher path remains held. No phone input or installation
+was performed. Only after these gates can independent physical runs measure
+ID-matched injection/dispatch/effect tails and qualify a timing region for
+Minus 7 and Minus Toys. Neither no-input-loss nor a Night 7 device clear is
+claimed by this pass.
+
 2026-09-05 calibration clock audit — pulled through `0640963`; physical
 calibration is still OPEN. The `29 ms` argument below is superseded as a
 device diagnosis: `tools/device/minus-toys-jitter.mjs` sources it from a

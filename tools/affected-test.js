@@ -52,6 +52,7 @@ if (changed.some(path => path.startsWith('tools/device/closed-families')))
 if (changed.some(path => path.startsWith('packages/adapters/') || path.startsWith('apps/device/'))) {
   add('adapter-contracts', 'node', ['packages/adapters/test/conformance.test.js']);
   add('device-service', 'node', ['apps/device/test/service.test.js']);
+  add('device-seam-calibration', 'node', ['apps/device/test/seam-calibration.test.js']);
   add('device-dry-run', 'node', ['apps/device/src/cli.js', 'dry-run']);
 }
 if (changed.some(path => path.startsWith('packages/core/src/control/') ||

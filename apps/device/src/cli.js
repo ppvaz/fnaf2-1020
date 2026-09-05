@@ -10,6 +10,7 @@ import { DeviceCampaignRunner } from './campaign-runner.js';
 import { guidedCalibrationSteps, validateCustomNightCalibration } from './custom-night.js';
 import { evaluateCampaignPreflight } from './campaign-preflight.js';
 import { validateCampaignBundle } from './campaign-bundle.js';
+import { composeSeamFixture } from './calibration-fixture.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PROFILES = join(ROOT, 'apps/device/profiles');
@@ -22,12 +23,14 @@ Usage:
   npm run device:run -- --profile PROFILE --live --confirm-live
   npm run device:preflight -- --profile hid-mediaprojection
   npm run device:campaign -- --guided
+  npm run device:calibrate -- --json
 
 Commands:
   dry-run       run fixture adapters and retain a replayable bundle (default)
   live          require --live --confirm-live and a non-fixture profile
   preflight     inspect one ADB phone without sending game input
   campaign      validate the Night 6 -> Night 7 campaign and its proof gates
+  calibrate     exercise the bounded seam runner with the explicit fixture
   bench         print registered capability descriptors
   grade RUN_ID  show a retained result
 
@@ -35,9 +38,10 @@ Options:
   --profile ID  resolved profile under apps/device/profiles
   --serial ID   select one explicit ADB device
   --nights 6,7  campaign target nights (default: 6,7)
-  --json        print machine-readable output for preflight/campaign
+  --json        print machine-readable output for preflight/campaign/calibrate
   --guided      print the one-time Custom Night calibration checklist
   --calibration FILE  measured Custom Night calibration artifact
+  --spec FILE   seam-calibration-spec-v1 (calibrate; fixture default)
   --bundle DIR  validated device bundle containing the requested plans
   --qualification FILE  DEVICE_MEASURED qualification artifact
   --ports MODULE  explicit campaign-port composition module
@@ -50,7 +54,7 @@ Options:
 
 function parse(argv) {
   const [first = 'help', ...tail] = argv;
-  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign']);
+  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign', 'calibrate']);
   if (first === '--help' || first === '-h') return { command: 'help', help: true };
   // Options without an explicit command are accepted for the documented
   // non-interactive default, but an unknown positional command must never
@@ -61,7 +65,7 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [6, 7], requireHelper: true, requireHid: true,
     guided: false, machineOnly: false, calibration: undefined, bundle: undefined,
-    qualification: undefined, ports: undefined };
+    qualification: undefined, ports: undefined, spec: undefined };
   for (let index = 0; index < rest.length; index += 1) {
     const item = rest[index];
     if (item === '--help' || item === '-h') options.command = 'help';
@@ -81,6 +85,14 @@ function parse(argv) {
     else if (item.startsWith('--profile=')) options.profile = item.slice('--profile='.length);
     else if (item === '--calibration') options.calibration = rest[++index];
     else if (item.startsWith('--calibration=')) options.calibration = item.slice('--calibration='.length);
+    else if (item === '--spec') {
+      options.spec = rest[++index];
+      if (!options.spec || options.spec.startsWith('--')) throw new Error('--spec requires a file');
+    }
+    else if (item.startsWith('--spec=')) {
+      options.spec = item.slice('--spec='.length);
+      if (!options.spec) throw new Error('--spec requires a file');
+    }
     else if (item === '--bundle') options.bundle = rest[++index];
     else if (item.startsWith('--bundle=')) options.bundle = item.slice('--bundle='.length);
     else if (item === '--qualification') options.qualification = rest[++index];
@@ -152,6 +164,17 @@ async function main(argv = process.argv.slice(2)) {
     console.log(await readFile(join(ROOT, 'artifacts', run, 'result.json'), 'utf8')); return;
   }
   const selected = await profile(options.profile);
+  if (options.command === 'calibrate') {
+    if (options.live) throw new Error('live seam calibration is HOLD: qualified timed-block actuator, positive state calibration and clock mapping are not composed');
+    const spec = await jsonFile(options.spec ?? join(ROOT, 'apps/device/fixtures/seam-calibration.json'), 'seam spec');
+    const { service } = composeSeamFixture({ profile: selected, artifactRoot: join(ROOT, 'artifacts') });
+    service.startSession();
+    const result = await service.executeCalibration(spec);
+    console.log(options.json ? JSON.stringify(result, null, 2) :
+      `result=${result.outcome} claim=${result.claimLevel} calibration=${result.calibration.calibration} evidence=${result.evidenceId}`);
+    if (result.outcome !== 'PASS') process.exitCode = 1;
+    return;
+  }
   if (options.command === 'preflight') {
     const bridge = new AdbDeviceBridge({ serial: options.serial });
     const result = await bridge.preflight({ targetBuild: selected.targetBuild,

@@ -13,7 +13,8 @@
     "geometry": "fixture-geometry-v1",
     "actuator-timing": "fixture-hid-timing-v1",
     "visual": "fixture-visual-v1",
-    "detector": "fixture-visual-v1"
+    "detector": "fixture-visual-v1",
+    "calibration-state": "fixture-seam-state-v1"
   },
   "controlMap": {
     "mask": {"x": 100, "y": 100},
