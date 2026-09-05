@@ -2,6 +2,61 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 calibration clock audit — pulled through `0640963`; physical
+calibration is still OPEN. The `29 ms` argument below is superseded as a
+device diagnosis: `tools/device/minus-toys-jitter.mjs` sources it from a
+**per-anchor drift residual**, and `drifttrace.mjs` pairs planned/actual
+driver marks before reports, not command IDs with Android app receipt. It is
+not an independently measured per-press dispatch sigma. The Gaussian sweeps
+remain useful MODEL_ONLY sensitivity experiments; neither `0/300 at sigma
+29` nor the conditional `4–6 ms` region establishes the handset's achievable
+budget. Command→event creation, creation→app dispatch, and command→positive
+game effect need separately clock-mapped, ID-matched measurements and tail
+quantiles. Choreographer adjacency is only an app-frame proxy.
+
+**Fixed and tested:** the shared scheduler now rechecks deadline/cancellation
+AFTER a blocking observation and aborts/releases before sending a late toggle
+or its dependent rows. MediaProjection composition retains the image capture
+timestamp and sequence instead of request time; receipt remains on the host
+clock. GET now exposes `visualCaptureNs`; older helpers retain a 1 us bracket
+from `snapshotNs - ageUs`, not false nanosecond precision. Duplicate frames
+cannot provide two monitor confirmations; failed asynchronous captures stay
+UNKNOWN. This does not calibrate a host/device/game clock mapping.
+
+**The historical monitor restorer is held, not repaired by a bigger delay.**
+Its screenshot-completion epoch included unknown input/animation/read latency;
+its second read could outlive the idle deadline; map absence was not office
+readiness. The watcher is now read-only, and the legacy live monitor probe
+refuses before any phone access. Resume requires a qualified single-writer
+service path, positive office/mask preconditions and measured restoration,
+with the next trial withheld until those gates pass. Connected g56 preflight
+is HOLD (game unfocused, capture helper stopped); the 17 ms candidate remains
+dry-run-only. No new live inputs or handset deployment in this audit.
+
+**Retained evidence:** the apparent four-success `phase517` capture has three
+candidate mask onsets 132–215 ms BEFORE their requested presses. Those trials
+are ambiguous, not proof of success or loss; a visible map cannot verify the
+hidden hall contact. `maskraise-grade-v2` emits hashes and exploratory evidence
+IDs, preserves unknown clock/terminal status, and rejects such causal onset
+attribution. `calibration-stability-v2` refuses duplicate captures, mixed
+stream/profile/grader bindings, unverified clocks/preconditions/contacts and
+misses; its Wilson unit is the independent capture run, not correlated trials.
+Reproducer: regrade `compound-calib-20260905-four-g267-c33` and its `-phase517`
+variant with `maskraise-grade.py VIDEO HID --json-out FILE`, then assess those
+two JSONs with `calibration-stability.py --mode compound --json-out FILE`.
+The generated [stability result](../docs/evidence/calibration-clock-audit-20260905.json)
+is REFUSED (`calibration-stability-506d4760b27e262ca31c`); no timing knob was
+promoted. The small structured report retains source hashes, timing and trial
+refusals for cross-machine review; large recordings stay separate.
+
+Validation: `npm test` (including the new `test:device:calibration` lane) and
+`npm run device:dry-run` pass; all Android helper sources also compile against
+API 36 (deprecation/module-path warnings only; nothing installed). Retained fixture evidence:
+`run-20260905062336-6c629a04-4e4c57`. The affected gate reaches documentation
+and stops only on the pre-existing untracked `tools/minus7/_m7.mjs` lacking a
+catalog row; that user scratch file is left untouched. No Night 7 device
+clear or no-input-loss claim follows from these changes.
+
 2026-09-05 ROADMAP A1 — the gate lane the last checkpoint never ran was red in
 TWO places and both are fixed; the idle gate that entry located is fixed and
 measured as a gain; the route-sweep hypothesis in its own next-step list is
@@ -128,19 +183,18 @@ the slip rate falls out rather than being assumed. Night 7, 300 seeds:
 
 Two things follow and both are load-bearing. **The routine is not
 frame-brittle**: at 4 ms sigma 3.7% of rows already land on the wrong frame and
-it still wins every seed, so single-frame slips are survivable and the budget
+it still wins 299/300 seeds, so single-frame slips are survivable and the budget
 is roughly sigma under 4-6 ms. And **the families are equivalent on this
 axis** -- Minus 7 is marginally better at 8-10 ms and identical below 5 -- so
 the family choice is not the lever the offset sweep made it look like.
 
-**`ON-DEVICE-VALIDATION.md` already measured the g56 at per-press jitter
-sigma 29 ms (p95 57 ms).** At that value the best policy in the model scores
-0/300. The external device route is therefore blocked by ACTUATOR JITTER, at
-roughly six times the budget -- not by strategy choice, and not by phase
-anchoring, which addresses the offset axis the joint map just showed is not
-binding. The AM-digit re-anchor remains necessary and is not close to
-sufficient. This reframes rather than contradicts the recorded refutation: the
-conclusion stands, the cause named for it was the wrong one.
+**Historical inference, superseded by the calibration clock audit above:**
+`ON-DEVICE-VALIDATION.md` used sigma 29 ms in a per-row Gaussian model; that
+model scores 0/300 at this setting. The value came from driver per-anchor
+residuals, NOT ID-matched command-to-app dispatch measurements. It cannot
+establish that actuator jitter rules out the external route, or that clock
+phase is irrelevant. The model result remains; that physical attribution is
+withdrawn pending measurements of actual delivery and its correlation shape.
 
 **Two measurements now closed.** The control arm re-run on the
 post-`66cff9f` engine returns 125/420 and 131/420, identical to the pre-fix
@@ -148,10 +202,10 @@ numbers, so the attribution fix moved no survival and the factorial stands.
 The `campMinTicks` interior is 120/125/124 at 2/3/4 against 131 at 1 and 125
 at 5, so 1 is the retained default and the interior buys nothing.
 
-**Open.** The decisive quantity is now named and measured: per-press dispatch
-jitter, 29 ms against a 4-6 ms budget. Two measurements are in flight and
-not yet recorded: the control arm re-run on the post-`66cff9f` engine, and the
-`campMinTicks` interior (2, 3, 4). NOTHING IN THIS SESSION TOUCHED THE PHONE
+**Open.** Actual per-press dispatch/effect latency, tail risk, within-cycle
+correlation and game-phase mapping remain unmeasured. The control-arm re-run
+and `campMinTicks` interior measurements are closed as recorded above.
+NOTHING IN THE REMOTE MODEL-SWEEP SESSION TOUCHED THE PHONE
 -- `adb devices` is empty -- and the closed loop still has zero importers
 outside `packages/core` and `tools/`, so `apps/device` dispatches precompiled
 trajectories and a closed loop on hardware remains an unstarted integration.

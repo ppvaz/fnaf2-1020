@@ -22,6 +22,15 @@
 # sweeps, which is why the sweeps run first.
 set -euo pipefail
 
+# The old monitor restorer was an independent ADB input writer anchored to a
+# screenshot's completion time. Disabling its taps without stopping this
+# prequeued toggle stream would silently corrupt every subsequent trial.
+# Refuse BEFORE device selection, app launch, recording or cleanup traps.
+if [ "${PROBE_GEN:-sweep}" = monitorraise ]; then
+  echo "REFUSED: monitorraise live restore lacks a qualified service-controlled clock/state gate; generate fixtures with hid-monitorraise-probe.mjs or inspect retained captures." >&2
+  exit 2
+fi
+
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=select-adb.sh
 . "$HERE/select-adb.sh"
@@ -82,8 +91,8 @@ case "$PROBE_GEN" in
       SPLIT_OUT="$CAPTURE_DIR/$OUT" \
       node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   monitorraise)
-    echo "monitorraise probe: contact ${CONTACT_MS:-33} ms, watcher-restored, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
-    SCHEDULE_OUT="$CAPTURE_DIR/$OUT.schedule.json" READY_MS="${READY_MS:-16000}" \
+    echo "monitorraise probe: contact ${CONTACT_MS:-33} ms, watcher-restored, ${ROUNDS:-3} ping-pong rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
+    SCHEDULE_OUT="$CAPTURE_DIR/$OUT.schedule.json" READY_MS="${READY_MS:-16000}" ROUNDS="${ROUNDS:-3}" \
       SPLIT_OUT="$CAPTURE_DIR/$OUT" \
       node "$HERE/hid-monitorraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
     # The watcher classifies frames with the project's monitor-ROI checker,
@@ -140,9 +149,10 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   # the ~5.1 s InputReader attach during the menu and intro; gating the
   # body on the office means the first press lands ~0.5 s after the night
   # is live instead of after a fixed prelude sized for the slowest load.
-  # STREAM_MODE=file falls back to one pre-registered stream with a long
-  # READY_MS (a trial pressed during the intro produces no mask interval
-  # and the grader invalidates it, so the fallback is safe, just wasteful).
+  # STREAM_MODE is retained as a label for old invocations, but both modes
+  # release the body only after the office gate below. A pre-registered stream
+  # with a fixed READY_MS would reintroduce the exact title/intro race this
+  # probe is meant to measure.
   STREAM_MODE="${STREAM_MODE:-stdin}"
   adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
   REC_PID=$!
@@ -153,18 +163,11 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   exec 3> "$FIFO"
   cat "$CAPTURE_DIR/$OUT.register.jsonl" >&3
   echo "hid registered over stdin at the title (pid $HID_PID, mode $STREAM_MODE)"
-  if [ "$STREAM_MODE" = file ]; then
-    cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
-    exec 3>&-
-  fi
   WATCH_PID=""
-  if [ "$PROBE_GEN" = monitorraise ]; then
-    # The monitorraise probe is the one blind stream that cannot restore
-    # its own state: the watcher gives it eyes during the idle windows only.
-    nohup python3 "$HERE/monitorraise-watch.py" "$CAPTURE_DIR/$OUT.schedule.json" \
-      > "$CAPTURE_DIR/$OUT.watch.log" 2>&1 &
-    WATCH_PID=$!
-  fi
+  # Start the monitor watcher only after the title selector has proved that
+  # the requested night is live. Starting it at the title lets a bright menu
+  # transition satisfy the map predicate and shifts every restore window
+  # before the teach raise; the monitor then toggles on every later trial.
   menu_select "$PROBE_NIGHT" || {
     echo "abort: could not select $PROBE_NIGHT on the title screen" >&2; exit 1; }
   for _ in $(seq 1 40); do
@@ -174,11 +177,18 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   done
   [ "$state" = night ] || {
     echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
-  if [ "$STREAM_MODE" = stdin ]; then
-    echo "office observed; releasing the trial body (${SPACINGS[*]} ms gaps)"
-    cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
-    exec 3>&-
+  if [ "$PROBE_GEN" = monitorraise ]; then
+    # The monitorraise probe is the one blind stream that cannot restore
+    # its own state: the watcher gives it eyes during the idle windows only.
+    # It starts here, while the office is already observed and before the HID
+    # body is released, so its first `match` can only be the teach raise.
+    nohup python3 "$HERE/monitorraise-watch.py" "$CAPTURE_DIR/$OUT.schedule.json" \
+      > "$CAPTURE_DIR/$OUT.watch.log" 2>&1 &
+    WATCH_PID=$!
   fi
+  echo "office observed; releasing the trial body (${SPACINGS[*]} ms gaps)"
+  cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
+  exec 3>&-
   # Ride out the stream; it ends on its own. Bound the wait so a hung hid
   # process cannot outlive the recording.
   for _ in $(seq 1 $((REC_SECONDS + 30))); do
@@ -248,7 +258,9 @@ if [ "$PROBE_GEN" = sweep ]; then
 elif [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   # The grader reads the emitted .hid stream for its clock, so it must be
   # handed exactly the file the phone consumed.
-  python3 "$HERE/maskraise-grade.py" "$LOCAL_VIDEO" "$CAPTURE_DIR/$OUT.hid" || GRADE_FAILED=1
+  GRADE_JSON_OUT="${GRADE_JSON_OUT:-$CAPTURE_DIR/$OUT.grade.json}"
+  python3 "$HERE/maskraise-grade.py" "$LOCAL_VIDEO" "$CAPTURE_DIR/$OUT.hid" \
+    --json-out "$GRADE_JSON_OUT" || GRADE_FAILED=1
   echo
   echo "per-gap landing is the no-control window after the mask-off press;"
   echo "compare the transition band against MASK_RAISE_GAP_MS (267) and the"

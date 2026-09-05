@@ -19,6 +19,9 @@
 //               is the phone's wall clock, not the game's.
 //     gauss   : per-press N(0, sigma). Default sigma 29 ms => p95 ~ 57 ms, the
 //               drift trace's per-anchor residual.
+//               PROVENANCE CAVEAT (2026-09-05): these are driver mark pairs,
+//               not matched request/app-dispatch IDs. Treat sigma as an
+//               assumed sensitivity parameter, not measured dispatch jitter.
 //   reanchor 'am': at each in-game hour edge (70 s -- verified from
 //               n2-minustoys-0117: HUD-first 7550 ms, 1 AM 77550 ms), a live
 //               clock read (cue helper, ~3 ms) zeroes the accumulated drift.

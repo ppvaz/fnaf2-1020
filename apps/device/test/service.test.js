@@ -110,7 +110,7 @@ const ruleDigest = monitorRuleDigest(fittedRule);
   const cueWith = (cells, { gridSeq = 7, facts = false } = {}) => ({
     token: '0123456789abcdef0123456789abcdef',
     request: request => request.startsWith('GET ')
-    ? 'OK snapshotNs=1 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
+    ? 'OK snapshotNs=10000000 visualCaptureNs=9999000 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
         + (facts
           ? ' monitorUp=true monitorReason=anchors-up '
             + 'cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight '
@@ -146,6 +146,12 @@ const ruleDigest = monitorRuleDigest(fittedRule);
   assert.equal(ruledMeasurement.state, 'OBSERVED');
   assert.equal(ruledMeasurement.value, true,
     'map-anchor presence must derive monitorUp through the bound rule');
+  assert.equal(ruledMeasurement.observedAt.value, 9.999,
+    'the capture timestamp must survive composition, instead of the request time 0');
+  assert.equal(ruledMeasurement.receivedAt.clock, 'host-monotonic-ms');
+  ruled.startSession();
+  assert.equal((await ruled.observeMonitor()).reason, 'monitor-frame-not-advancing',
+    'two reads of the same frame are not independent state confirmations');
   assert.deepEqual(ruledSample.payload.measurements.cameraSelected,
     { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 },
     'the live observation payload must carry the sibling selected-camera fact');

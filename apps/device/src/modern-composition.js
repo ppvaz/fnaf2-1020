@@ -57,7 +57,16 @@ export function composeModernDevice(options = {}) {
     profile, mode, qualification, artifactRoot, now, sleep,
     executor: options.executor,
     actuatorTransport: hidTransport,
-    sensorTransport: { capture: () => observe(cueTransport) },
+    sensorTransport: { capture: request => {
+      const payload = observe(cueTransport);
+      const { sequence, ...acquisition } = cueTransport.visualAcquisition(payload);
+      return {
+        schema: 'raw-sample-v1', id: `mediaprojection-${request.id ?? sequence}`,
+        format: 'rgba8888', dimensions: { width: 20, height: 9 }, rate: 60,
+        acquisition, source: { sensor: 'mediaprojection', sequence },
+        calibration: { profile: profile.calibrations.visual }, loss: null, payload,
+      };
+    } },
     detectorRead: raw => measureMonitorUp(raw.payload, boundedMonitorRule ?? null),
   });
 }

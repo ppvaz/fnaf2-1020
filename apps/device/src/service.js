@@ -109,7 +109,9 @@ export class DeviceControlService {
     if (!this.sensor || !this.detector) return null;
     const raw = await this.sensor.sample({ id: `${command.id}-sample`, at });
     const measurement = await this.detector.detect(raw);
-    this.event('sensor.sample', { id: raw.id, format: raw.format, source: raw.source, loss: raw.loss ?? null, calibration: raw.calibration });
+    this.event('sensor.sample', { id: raw.id, format: raw.format, source: raw.source,
+      acquisition: raw.acquisition, receivedAt: raw.receivedAt ?? null,
+      loss: raw.loss ?? null, calibration: raw.calibration });
     this.event('measurement.observed', measurement);
     return measurement;
   }
@@ -119,13 +121,21 @@ export class DeviceControlService {
     if (!Number.isInteger(confirmations) || confirmations < 1 || confirmations > 3)
       throw new Error('monitor observation confirmations must be in 1..3');
     let agreed = null;
+    let previousSequence = null;
     for (let index = 0; index < confirmations; index += 1) {
       const at = this.now();
       const raw = await this.sensor.sample({ id: `${id}-${index + 1}`, at, signal: 'monitorUp' });
       const measurement = await this.detector.detect(raw);
       this.event('sensor.sample', { id: raw.id, format: raw.format, source: raw.source,
+        acquisition: raw.acquisition, receivedAt: raw.receivedAt ?? null,
         loss: raw.loss ?? null, calibration: raw.calibration });
       this.event('measurement.observed', measurement);
+      const sequence = raw.source.sequence;
+      if (sequence !== undefined) {
+        if (!Number.isSafeInteger(sequence) || (previousSequence !== null && sequence <= previousSequence))
+          return { state: 'UNKNOWN', reason: 'monitor-frame-not-advancing', measurement };
+        previousSequence = sequence;
+      }
       const current = measurement.state === 'OBSERVED' && measurement.signal === 'monitorUp' &&
         typeof measurement.value === 'boolean' ? measurement.value : null;
       if (current === null) return { state: 'UNKNOWN', reason: measurement.reason ?? 'monitor-state-unreadable', measurement };

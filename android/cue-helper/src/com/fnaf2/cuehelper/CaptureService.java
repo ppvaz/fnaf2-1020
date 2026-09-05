@@ -2457,7 +2457,8 @@ public final class CaptureService extends Service {
         StringBuilder panAnchor = new StringBuilder(160);
         appendPanAnchor(panAnchor, invalidReason, panAnchorX, panAnchorY,
                 panAnchorArea, panAnchorMargin, panAnchorConfidence, panAnchorReason);
-        return "snapshotNs=" + nowNs + " " + visual + panAnchor + " "
+        return "snapshotNs=" + nowNs + " visualCaptureNs=" + visualTimestampNs
+                + " " + visual + panAnchor + " "
                 + currentAudioStatus() + " " + watchStatus();
     }
 

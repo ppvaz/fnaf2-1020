@@ -1,23 +1,15 @@
 #!/usr/bin/env python3
-"""State restorer for hid-monitorraise-probe: lowers the monitor, only in
-the stream's own idle windows, only when a raise actually landed.
+"""Read-only monitor-map telemetry; never a second input writer.
 
-The monitor is a toggle, so a blind stream cannot clean up after a
-swallowed probe press -- a cleanup tap raises instead of lowering, and one
-parity error inverts every later trial (the 2026-09-04 hall sweep's runs 3
-and 4 degraded exactly that way). This watcher gives the stream eyes:
+The historical restorer anchored a virtual HID schedule on completion of an
+ADB screenshot. That includes unknown dispatch, animation, capture and read
+latency. It checked idle deadlines BEFORE another blocking screenshot, and
+interpreted map absence as a settled office. Neither permits a toggle.
 
-  1. it polls the screen until the TEACH raise appears (the only map-up in
-     the stream's first ten seconds) and anchors the stream clock on it;
-  2. in every scheduled idle window it classifies one device-local frame
-     with the project's monitor-ROI checker and, only on a positive
-     `match`, taps the monitor bar through `input swipe` to lower it.
-
-Corrections never overlap a seam: idles follow the observe window and end
-at least ~1.2 s before the next trial's first press.
-
-Usage: monitorraise-watch.py SCHEDULE.json [--serial SERIAL]
-Stops when the schedule's last idle window closes.
+The legacy invocation now refuses before accessing the phone. --observe-only
+retains bounded request/receipt telemetry, NOT capture timestamps or a stream
+epoch. Restoring game state belongs to the qualified DeviceControlService;
+no future trial may be prequeued across an unverified restore.
 """
 import argparse
 import json
@@ -25,79 +17,55 @@ import subprocess
 import sys
 import time
 
-MONITOR_X, MONITOR_Y = 1780, 1015          # coords.sh TAP_MONITOR
 CHECKER = "/data/local/tmp/fnaf-monraise-check"
-FRAME = "/data/local/tmp/fnaf-monraise-frame.raw"
-# CUE_MONITOR_ROI from trial/06-cams-up-anchor.sh: the camera map's lime
-# selection highlight. Office frames read `clear`; the map reads `match`.
 ROI = "1300 350 2300 950 4 100 255 100 255 0 99 30"
 
 
-def adb(*args, binary=False):
-    result = subprocess.run(
-        ["adb"] + (["-s", SERIAL] if SERIAL else []) + list(args),
-        capture_output=True, timeout=10)
-    return result.stdout if binary else result.stdout.decode(errors="replace").strip()
+def observe_map(sequence, read, now=time.monotonic):
+    requested = now() * 1000
+    try:
+        output = read()
+        verdict = output.strip().splitlines()[-1] if output.strip() else ""
+        state = {"match": "MAP_PRESENT", "clear": "MAP_ABSENT"}.get(verdict, "UNKNOWN")
+        reason = None if state != "UNKNOWN" else "checker-unavailable"
+    except (OSError, subprocess.SubprocessError):
+        state, reason = "UNKNOWN", "capture-failed"
+    received = now() * 1000
+    return {
+        "schema": "monitor-map-observation-v1", "requestSequence": sequence,
+        "requestedAt": {"clock": "host-monotonic-ms", "value": requested},
+        "receivedAt": {"clock": "host-monotonic-ms", "value": received},
+        "captureTime": None, "frameSequence": None, "streamEpoch": None,
+        "readLatencyMs": received - requested, "state": state, "reason": reason,
+        "officeReady": "UNKNOWN", "actuation": "NONE",
+    }
 
 
-def map_is_up():
-    # One round trip, everything device-local: capture to a file, classify
-    # it where it lies. ~0.35 s on the reference phone.
-    out = adb("shell",
-              f"screencap > {FRAME} && {CHECKER} match {ROI} < {FRAME}; rm -f {FRAME}")
-    return out.splitlines()[-1].strip() if out else ""
-
-
-def lower_monitor():
-    # A zero-duration `input tap` is dropped by the per-frame touch poll;
-    # maskcamp established the 100 ms swipe form for host-side presses.
-    adb("shell", "input", "swipe", str(MONITOR_X), str(MONITOR_Y),
-        str(MONITOR_X), str(MONITOR_Y), "100")
-
-
-def main():
-    global SERIAL
-    ap = argparse.ArgumentParser()
-    ap.add_argument("schedule")
-    ap.add_argument("--serial")
-    ap.add_argument("--anchor-timeout", type=float, default=30.0)
-    args = ap.parse_args()
-    SERIAL = args.serial
-
-    with open(args.schedule, encoding="utf-8") as f:
-        schedule = json.load(f)
-    idles = schedule["idles"]
-    if not idles:
-        return 0
-    stream0 = schedule.get("streamStartMonotonicMs")
-
-    # 1. Anchor on the teach raise: poll until the map is up, then set
-    #    t0 so that virtual time teachRaiseAt is 'now' (the poll interval
-    #    makes this late by up to one poll; the idle windows absorb it).
-    deadline = time.monotonic() + args.anchor_timeout
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("schedule", nargs="?", help="historical schedule (never used as a clock)")
+    parser.add_argument("--observe-only", action="store_true")
+    parser.add_argument("--serial")
+    parser.add_argument("--seconds", type=float, default=5)
+    args = parser.parse_args(argv)
+    if not args.observe_only:
+        print("monitorraise-watch: REFUSED: screenshot completion is not a HID epoch; "
+              "concurrent ADB restore disabled. Use qualified DeviceControlService "
+              "or --observe-only for read-only telemetry.", file=sys.stderr)
+        return 2
+    if not 0 < args.seconds <= 30:
+        parser.error("--seconds must be in (0, 30]")
+    deadline = time.monotonic() + args.seconds
+    command = ["adb"] + (["-s", args.serial] if args.serial else [])
+    command += ["shell", f"screencap | {CHECKER} match {ROI}"]
+    def read():
+        return subprocess.run(command, check=True, capture_output=True, text=True,
+                              timeout=max(0.001, min(10, deadline - time.monotonic()))).stdout
+    sequence = 0
     while time.monotonic() < deadline:
-        if map_is_up() == "match":
-            t0 = time.monotonic() - schedule["teachRaiseAt"] / 1000.0
-            break
-        time.sleep(0.25)
-    else:
-        print("watcher: the teach raise was never seen; no corrections made", file=sys.stderr)
-        return 1
-    if stream0 is not None:
-        print(f"watcher: anchored (host->stream lag {(t0 - stream0 / 1000.0) * 1000:+.0f} ms)")
-
-    # 2. Correct inside idle windows only.
-    corrections = 0
-    for idle in idles:
-        target = t0 + idle["start"] / 1000.0 + 0.25
-        if target > time.monotonic():
-            time.sleep(target - time.monotonic())
-        window_end = t0 + idle["end"] / 1000.0
-        if time.monotonic() < window_end and map_is_up() == "match":
-            lower_monitor()
-            corrections += 1
-            print(f"watcher: lowered the monitor in idle at +{idle['start']} ms")
-    print(f"watcher: done, {corrections} correction(s) over {len(idles)} idles")
+        sequence += 1
+        print(json.dumps(observe_map(sequence, read)), flush=True)
+        time.sleep(min(0.05, max(0, deadline - time.monotonic())))
     return 0
 
 

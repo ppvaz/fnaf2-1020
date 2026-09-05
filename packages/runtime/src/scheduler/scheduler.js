@@ -83,6 +83,16 @@ export async function dispatchTrajectory(trajectory, options = {}) {
         await cleanup('observation-missing');
         break;
       }
+      // Observation may block for longer than the entire remaining window.
+      // A fresh-looking result is not permission to send an expired command.
+      // Abort the block so later toggle-dependent rows cannot inherit a state
+      // transition that never happened.
+      if (signal?.aborted) { await cleanup('signal-aborted'); break; }
+      if (command.deadline && now() > command.deadline.value) {
+        results.push(rejected(command, 'deadline-expired-during-observation'));
+        await cleanup('deadline-expired-during-observation');
+        break;
+      }
       const approved = supervisor?.review ? supervisor.review(command) : command;
       if (!approved) {
         results.push(rejected(command, 'supervisor-rejected'));

@@ -183,6 +183,10 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
+  // A calibration is not stable because one gap landed once. This pools only
+  // independent structured grades, refuses invalid/desynchronised samples,
+  // and exposes the statistical floor before a timing can become a rule.
+  ['calibration stability', ['device/test-calibration-stability.py']],
   // The device pilot's cycle recipes and their budgets: contact lengths above
   // the phone's floor, camera spacing it has actually landed, a hall flash per
   // cycle, wind above break-even, the flashlight inside night 6's 3000 frames,

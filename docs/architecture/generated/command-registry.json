@@ -31,13 +31,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "test:device:calibration",
+      "command": "python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs",
+      "lifecycle": "supported"
+    },
+    {
       "id": "test:unit",
       "command": "node tools/architecture-test.js && node tools/validate-references.js",
       "lifecycle": "supported"
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh",
+      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh && npm run test:device:calibration",
       "lifecycle": "supported"
     },
     {
@@ -492,14 +497,14 @@
     },
     {
       "id": "tools/device/hid-maskraise-probe.mjs",
-      "invocation": "tools/device/hid-maskraise-probe.mjs",
-      "kind": "device action",
+      "invocation": "tools/device/hid-maskraise-probe.mjs [gap ...]",
+      "kind": "generator",
       "lifecycle": "supported"
     },
     {
       "id": "tools/device/hid-monitorraise-probe.mjs",
-      "invocation": "tools/device/hid-monitorraise-probe.mjs",
-      "kind": "device action",
+      "invocation": "tools/device/hid-monitorraise-probe.mjs [gap ...]",
+      "kind": "generator",
       "lifecycle": "supported"
     },
     {
@@ -516,14 +521,14 @@
     },
     {
       "id": "tools/device/maskraise-grade.py",
-      "invocation": "tools/device/maskraise-grade.py",
+      "invocation": "tools/device/maskraise-grade.py VIDEO HID [--json-out FILE]",
       "kind": "report",
       "lifecycle": "supported"
     },
     {
       "id": "tools/device/monitorraise-watch.py",
-      "invocation": "tools/device/monitorraise-watch.py",
-      "kind": "device action",
+      "invocation": "tools/device/monitorraise-watch.py [--observe-only --seconds N]",
+      "kind": "read-only telemetry",
       "lifecycle": "supported"
     },
     {
@@ -1298,6 +1303,30 @@
       "id": "tools/device/hid-sweep-probe.sh",
       "invocation": "tools/device/hid-sweep-probe.sh [spacing ...]",
       "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/calibration-stability.py",
+      "invocation": "tools/device/calibration-stability.py [grade.json ...]",
+      "kind": "report/check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-calibration-stability.py",
+      "invocation": "tools/device/test-calibration-stability.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-monitorraise-watch.py",
+      "invocation": "tools/device/test-monitorraise-watch.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-maskraise-grade.py",
+      "invocation": "tools/device/test-maskraise-grade.py",
+      "kind": "check",
       "lifecycle": "supported"
     },
     {

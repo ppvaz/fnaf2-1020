@@ -67,6 +67,40 @@ export class CueHelperControlTransport {
   }
   read() { return parseCueResponse(this.request(`READ ${this.token}`)); }
 
+  /** Device capture time is not GET's snapshot time or the host request time.
+   * Old helpers expose only an integer ageUs: retain the 1 us bracket instead
+   * of claiming nanosecond precision. No host/device clock offset is inferred.
+   */
+  visualAcquisition(snapshot = {}) {
+    const integer = value => typeof value === 'string' && /^\d+$/.test(value);
+    if (!integer(snapshot.snapshotNs) || !integer(snapshot.ageUs) || !integer(snapshot.seq))
+      throw new Error('visual-capture-time-unavailable');
+    const sequence = Number(snapshot.seq);
+    const snapshotNs = BigInt(snapshot.snapshotNs);
+    const ageNs = BigInt(snapshot.ageUs) * 1000n;
+    if (!Number.isSafeInteger(sequence) || sequence < 1 || ageNs > snapshotNs)
+      throw new Error('visual-capture-time-invalid');
+    let captureNs;
+    let uncertaintyMs;
+    if (snapshot.visualCaptureNs !== undefined) {
+      if (!integer(snapshot.visualCaptureNs)) throw new Error('visual-capture-time-invalid');
+      captureNs = BigInt(snapshot.visualCaptureNs);
+      const measuredAgeNs = snapshotNs - captureNs;
+      if (captureNs <= 0n || measuredAgeNs < ageNs || measuredAgeNs >= ageNs + 1000n)
+        throw new Error('visual-capture-age-disagrees');
+      uncertaintyMs = 0;
+    } else {
+      captureNs = snapshotNs - ageNs;
+      if (captureNs <= 0n) throw new Error('visual-capture-time-invalid');
+      uncertaintyMs = 0.001;
+    }
+    return {
+      clock: 'device-monotonic-ms', at: Number(captureNs) / 1e6,
+      sourceNs: captureNs.toString(), uncertaintyMs, sequence,
+      basis: uncertaintyMs ? 'snapshot-minus-age-upper-bound' : 'image-timestamp',
+    };
+  }
+
   /** A transport measurement is fresh only when helper explicitly says so. */
   monitorMeasurement(snapshot = {}) {
     const ageUs = Number(snapshot.ageUs);

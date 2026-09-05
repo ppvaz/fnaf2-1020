@@ -2051,6 +2051,15 @@ deterministic engine. Measured this session, with the engine:
   the AM digit every 70 s** recovers it to N2 178, N3 211, N4 159, N5 101 of
   600 -- necessary, not sufficient.
 
+  **2026-09-05 provenance correction:** the 29 ms parameter is sourced by
+  `minus-toys-jitter.mjs` to a *per-anchor drift residual*. `drifttrace.mjs`
+  pairs driver marks preceding reports, not input event IDs with app receipt;
+  it does not measure command-to-game-effect latency. Treat this Gaussian
+  per-row ensemble as a sensitivity assumption, not a measured per-press
+  dispatch distribution or proof that actuator jitter alone blocks the route.
+  The current calibration clock audit and qualification hold are recorded in
+  [Plan progress](../../plans/PROGRESS.md).
+
 ### This is the margin the strategy write-up already predicted
 
 `docs/strategy/MINUS-3-STRATEGY.md` sec.3 states Minus Toys' error budget is

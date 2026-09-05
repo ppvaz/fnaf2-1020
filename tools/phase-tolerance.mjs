@@ -8,6 +8,10 @@
 // WHAT A NUMBER FROM HERE IS. A statement about the model, and nothing else.
 // It is not gameplay evidence, it is not a device claim, and it does not move
 // a rung of Plan 12's ladder.
+// In particular, sigma=29 is NOT a measured command-to-app distribution:
+// minus-toys-jitter.mjs sourced it from driver per-anchor residuals. This IID
+// Gaussian, nearest-frame experiment does not identify the phone's error
+// correlation, game-poll phase, clock drift, or effective input latency.
 //
 // ------------------------------------------------------------ why it exists
 //

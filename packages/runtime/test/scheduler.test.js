@@ -39,4 +39,27 @@ const blocked = await dispatchTrajectory(trajectory([command('unknown', 0)]), {
 assert.equal(blocked[0].reason, 'observation-unknown');
 assert.deepEqual(cleanup.at(-2), 'abort:observation-unknown');
 assert.equal(cleanup.at(-1), 'release');
-console.log('runtime scheduler: temporal dispatch, deadline refusal, observation gate, and cleanup pass');
+// A slow read must not inject a late toggle, or allow a dependent later row.
+const observedMeasurement = () => ({ schema: 'measurement-v1', id: 'observed',
+  signal: 'monitorUp', state: 'OBSERVED', value: true, confidence: 1,
+  observedAt: { clock: 'device-monotonic-ms', value: 0 },
+  receivedAt: { clock: 'device-monotonic-ms', value: current },
+  source: { sensor: 'fixture', detector: 'fixture' } });
+current = 0;
+const before = sent.length;
+const expired = await dispatchTrajectory(trajectory([command('slow-read', 0, 10), command('dependent', 20)]), {
+  actuator, clock: () => current, requireObserved: true,
+  observe: async () => { current = 11; return observedMeasurement(); },
+});
+assert.equal(sent.length, before, 'neither the expired toggle nor its dependent row may send');
+assert.equal(expired[0].reason, 'deadline-expired-during-observation');
+assert.deepEqual(cleanup.slice(-2), ['abort:deadline-expired-during-observation', 'release']);
+const controller = new AbortController();
+current = 0;
+await dispatchTrajectory(trajectory([command('cancel-read', 0)]), {
+  actuator, clock: () => current, signal: controller.signal,
+  observe: async () => { controller.abort(); return observedMeasurement(); },
+});
+assert.equal(sent.length, before, 'cancellation during capture must be checked before input');
+assert.deepEqual(cleanup.slice(-2), ['abort:signal-aborted', 'release']);
+console.log('runtime scheduler: temporal dispatch, post-observation deadline/cancellation, and cleanup pass');

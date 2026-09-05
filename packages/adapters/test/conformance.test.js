@@ -50,6 +50,33 @@ const cue = new CueHelperControlTransport({ token: '0123456789abcdef0123456789ab
 assert.deepEqual(cue.monitorMeasurement(await cue.snapshot()),
   { signal: 'monitorUp', state: 'OBSERVED', value: true, confidence: 1 });
 assert.equal(cue.monitorMeasurement({ ageUs: '900000', monitorUp: 'true' }).state, 'UNKNOWN');
+const captureTiming = cue.visualAcquisition({ snapshotNs: '5000000000',
+  visualCaptureNs: '4990000000', ageUs: '10000', seq: '12' });
+assert.equal(captureTiming.at, 4990);
+assert.equal(captureTiming.basis, 'image-timestamp');
+assert.equal(captureTiming.sequence, 12);
+const oldTiming = cue.visualAcquisition({ snapshotNs: '5000000000', ageUs: '10000', seq: '12' });
+assert.equal(oldTiming.at, 4990);
+assert.equal(oldTiming.uncertaintyMs, 0.001);
+assert.throws(() => cue.visualAcquisition({ snapshotNs: '1', ageUs: '1', seq: '1' }), /invalid/);
+assert.throws(() => cue.visualAcquisition({ snapshotNs: '5000000000',
+  visualCaptureNs: '4990000000', ageUs: '1', seq: '12' }), /disagrees/);
+let captureCompleteAt = 30;
+const stamped = await new ScreencapSensor({ now: () => captureCompleteAt, capture: async () => {
+  captureCompleteAt = 55;
+  return { ...raw, id: 'async-frame', source: { sensor: 'screencap', sequence: 12 },
+    acquisition: captureTiming };
+} }).sample({ id: 'request', at: 999 });
+assert.equal(stamped.acquisition.at, 4990, 'request time must not replace source time');
+const stampedMeasurement = new CueHelperDetector({ read: () => ({ value: true }) }).detect(stamped);
+assert.deepEqual(stampedMeasurement.observedAt, { clock: 'device-monotonic-ms', value: 4990 });
+assert.deepEqual(stampedMeasurement.receivedAt, { clock: 'host-monotonic-ms', value: 55 });
+assert.equal(stampedMeasurement.source.sequence, 12);
+const lost = await new ScreencapSensor({ capture: async () => { throw new Error('capture-timeout'); } }).sample();
+let readsOfLostFrames = 0;
+assert.equal(new CueHelperDetector({ read: () => { readsOfLostFrames++; return { value: true }; } })
+  .detect(lost).reason, 'capture-timeout');
+assert.equal(readsOfLostFrames, 0, 'a capture failure cannot become an observed state');
 assert.deepEqual(cue.cameraMeasurement({ ageUs: '17', monitorUp: 'true',
   cameraSelected: 'cam:5', cameraReason: 'single-camera-highlight' }),
   { signal: 'cameraSelected', state: 'OBSERVED', value: 'cam:5', confidence: 1 });

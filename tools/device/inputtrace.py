@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -310,6 +312,7 @@ def analyze(rows: Iterable[dict[str, Any]], frame_window_ms: float = DEFAULT_FRA
     origins = Counter(event["input_origin"] for event in events)
     return {
         "events": events,
+        "timing": timing_summary(events),
         "summary": {
             "dispatch_events": len(events),
             "unparsed_dispatch_slices": unparsed,
@@ -325,6 +328,44 @@ def analyze(rows: Iterable[dict[str, Any]], frame_window_ms: float = DEFAULT_FRA
             "finish_slices": len(finishes),
             "frame_slices": len(frames),
             "frame_window_ms": frame_window_ms,
+        },
+    }
+
+
+def distribution_ms(values):
+    """Latency distribution, not a claim that errors are IID or Gaussian."""
+    ordered = sorted(values)
+    if not ordered:
+        return None
+    def percentile(p):
+        return ordered[max(0, math.ceil(p * len(ordered)) - 1)]
+    return {"n": len(ordered), "median_ms": statistics.median(ordered),
+            "p90_ms": percentile(.90), "p95_ms": percentile(.95),
+            "p99_ms": percentile(.99), "max_ms": ordered[-1],
+            "sigma_ms": statistics.pstdev(ordered), "percentile_method": "nearest-rank"}
+
+
+def timing_summary(events):
+    presses = [event for event in events if event["action"] in ("DOWN", "POINTER_DOWN")]
+    # Perfetto normalizes slice timestamps onto its trace clock; Android's
+    # MotionEvent eventTimeNano is a source timestamp. Without clock snapshots
+    # mapping those domains, subtracting them would manufacture dispatch lag.
+    # A Choreographer slice is not a Fusion input poll or a visible game effect.
+    frame_delays = [event["frame_delta_ms"] for event in presses
+                    if event["frame_delta_ms"] is not None]
+    return {
+        "clock_domains": {"event_time_ns": "android-monotonic-ns",
+                          "dispatch_ts_ns": "perfetto-trace-ns", "frame_ts_ns": "perfetto-trace-ns"},
+        "press_count": len(presses),
+        "inject": {"status": "UNKNOWN", "reason": "no-id-matched-command-request-timestamps"},
+        "dispatch": {"status": "UNKNOWN", "reason": "no-event-clock-to-trace-clock-mapping"},
+        "effective": {"status": "UNKNOWN", "reason": "no-id-matched-request-and-positive-game-effect"},
+        "dispatch_to_next_app_frame_proxy": {
+            "status": "OBSERVED" if frame_delays else "UNKNOWN",
+            "distribution": distribution_ms(frame_delays),
+            "missing": len(presses) - len(frame_delays),
+            "out_of_window": sum(event["frame_status"] == "out-of-window" for event in presses),
+            "meaning": "next-Choreographer-slice-only; NOT game input acceptance or game-frame phase",
         },
     }
 
@@ -373,6 +414,9 @@ def _print_report(path: Path, package: str, report: dict[str, Any], sf: dict[str
     if sf is not None:
         print(f"SurfaceFlinger latency: {sf['frame_count']} frames, "
               f"refresh={sf['refresh_period_ns']} ns, intervals={sf['interval_ms'] or 'none'}")
+    print("inject / dispatch / effective latency: UNKNOWN (request IDs, clock mapping and game effects required)")
+    print("dispatch -> next app frame PROXY: "
+          + str(report["timing"]["dispatch_to_next_app_frame_proxy"]["distribution"]))
     if not report["events"]:
         print("NO APP EVENTS")
         return
@@ -406,6 +450,13 @@ def main(argv: list[str] | None = None) -> int:
         report = analyze(rows, args.frame_window_ms)
         report.update({"trace": str(args.trace), "package": args.package,
                        "trace_processor": processor})
+        trace_hash = hashlib.sha256(args.trace.read_bytes()).hexdigest()
+        report.update({"schema": "inputtrace-result-v2", "trace_sha256": trace_hash,
+                       "evidenceId": "inputtrace-" + hashlib.sha256(json.dumps({
+                           "trace": trace_hash, "package": args.package,
+                           "window": args.frame_window_ms,
+                           "analyzer": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                       }, sort_keys=True).encode()).hexdigest()[:20]})
         if args.sf_latency:
             if not args.sf_latency.is_file():
                 raise InputTraceError(f"SurfaceFlinger latency file does not exist: {args.sf_latency}")

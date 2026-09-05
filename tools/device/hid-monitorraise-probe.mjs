@@ -9,17 +9,18 @@
 // The monitor is a TOGGLE, so unlike the hall probe a blind stream cannot
 // restore state: a swallowed raise leaves the office down and the cleanup
 // tap raises it instead, inverting every later trial (the parity chaos
-// runs 3 and 4 of the 2026-09-04 hall sweep died of). Two things make the
-// sweep deterministic anyway:
+// runs 3 and 4 of the 2026-09-04 hall sweep died of). This is now an OFFLINE
+// schedule fixture, not an executable calibration guarantee. Its historical
+// structure is retained for replay of captures:
 //
 //   - a TEACH segment first: monitor raise, 800 ms, lower -- pressed from
-//     a quiet office with nothing before it, so both toggles land. The
-//     grader learns the map level from this window and the host watcher
-//     anchors the stream clock on its raise;
+//     a quiet office with nothing before it. Neither toggle is guaranteed.
+//     A visible map can teach a visual signature, NOT a dispatch epoch;
 //   - every trial ends with an idle window (default 1500 ms) in which the
-//     host watcher (monitorraise-watch.py) lowers the monitor ONLY if the
-//     raise landed. A swallowed probe needs no correction, so every trial
-//     starts office-down, mask-off, regardless of outcome.
+//     former host watcher attempted state restoration. That input path now
+//     refuses: read completion drifted the windows and map absence did not
+//     prove office-down/mask-off. Qualified service gates must restore and
+//     verify state BEFORE releasing another trial, not race this queued file.
 //
 // Trial shape reproduces the runner's seam semantics exactly: mask tap
 // (33 ms), delay(gap - 33), monitor DOWN -- `gap` is mask-DOWN to
@@ -50,7 +51,15 @@ export function stream(gaps, { readyMs = 5600,
                                observeMs = 900,
                                idleMs = 1500,
                                teachMs = 800,
-                               twoFinger = false } = {}) {
+                               teachSettleMs = 1200,
+                               twoFinger = false,
+                               rounds = 3 } = {}) {
+  for (const [name, value] of Object.entries({ readyMs, contactMs, maskOnMs, observeMs, idleMs, teachMs, teachSettleMs, rounds }))
+    if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
+  if (maskOnMs <= contactMs || idleMs <= 400 || teachSettleMs <= 400)
+    throw new Error('contact/idle geometry leaves no positive delay or restore window');
+  if (gaps.some(gap => !Number.isInteger(gap) || gap <= contactMs))
+    throw new Error('each gap must be an integer greater than contactMs');
   const out = [];
   let t = 0;
   const emit = (command, extra) => { out.push({ at: t, id: ID, command, ...extra }); };
@@ -71,6 +80,7 @@ export function stream(gaps, { readyMs = 5600,
     emit('report', { report: [1, 2, ...record(0x03, HALL), ...record(0x04, MONITOR)] });
     emit('report', { report: [1, 2, ...record(0x00, HALL), ...record(0x04, MONITOR)] });
   };
+  const idles = [];
 
   emit('register', {
     name: 'FNAF HID monitorraise probe',
@@ -79,13 +89,19 @@ export function stream(gaps, { readyMs = 5600,
   });
   delay(readyMs); // InputReader attaches ~5.1 s after registration
 
-  // Teach: guaranteed raise+lower from a quiet office. The grader learns
-  // the map level here; the watcher anchors its clock on the raise.
+  // Intended teach raise+lower. This is virtual input time, not observed
+  // execution; a visible transition does not establish an executor clock.
   const teachRaiseAt = t;  // the press DOWN, not the release
   press(MONITOR);
   delay(teachMs);
   press(MONITOR);
-  delay(800);
+  // The second teach tap is itself a toggle and must be observed before the
+  // trial body starts. Leave a watcher-only window before the preamble so a
+  // swallowed lower cannot poison every later parity-sensitive trial.
+  const teachRestoreStart = t;
+  delay(teachSettleMs);
+  idles.push({ start: teachRestoreStart, end: teachRestoreStart + teachSettleMs - 400,
+               reason: 'teach-restore' });
 
   // Preamble: three hall flashes, so the grader can cross-check the teach
   // anchor the same way the maskraise grader anchors on beams.
@@ -94,20 +110,23 @@ export function stream(gaps, { readyMs = 5600,
     delay(500);
   }
 
-  const idles = [];
-  const idleGuardMs = 400; // watcher-free tail so a correction can never
-                           // crowd the next trial's first press
-  for (const gap of gaps) {
-    if (gap <= contactMs) throw new Error(`gap ${gap} must exceed the ${contactMs} ms contact`);
-    press(MASK);
-    delay(maskOnMs - contactMs);
-    press(MASK);
-    delay(gap - contactMs);        // THE SEAM: next control down at off-down + gap
-    if (twoFinger) compoundPress(133);  // hall (contact 0) + monitor (contact 1)
-    else press(MONITOR);                // the single-finger measured press
-    delay(observeMs);
-    idles.push({ start: t, end: t + idleMs - idleGuardMs, reason: 'restore' });
-    delay(idleMs);
+  const idleGuardMs = 400; // nominal tail only; no measured dispatch bound
+  for (let round = 0; round < rounds; round++) {
+    // Alternate the order so a monotonic sweep cannot mistake clock drift,
+    // thermal change, or night age for a gap-dependent acceptance boundary.
+    const order = round % 2 === 0 ? gaps : [...gaps].reverse();
+    for (const gap of order) {
+      if (gap <= contactMs) throw new Error(`gap ${gap} must exceed the ${contactMs} ms contact`);
+      press(MASK);
+      delay(maskOnMs - contactMs);
+      press(MASK);
+      delay(gap - contactMs);        // THE SEAM: next control down at off-down + gap
+      if (twoFinger) compoundPress(133);  // hall (contact 0) + monitor (contact 1)
+      else press(MONITOR);                // the single-finger measured press
+      delay(observeMs);
+      idles.push({ start: t, end: t + idleMs - idleGuardMs, reason: 'restore', round, gap });
+      delay(idleMs);
+    }
   }
   return { events: out.map(({ at, ...e }) => e), teachRaiseAt, idles };
 }
@@ -133,6 +152,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     contactMs: env('CONTACT_MS'), maskOnMs: env('MASK_ON_MS'),
     observeMs: env('OBSERVE_MS'), idleMs: env('IDLE_MS'),
     twoFinger: process.env.TWO_FINGER === '1',
+    teachSettleMs: env('TEACH_SETTLE_MS') ?? 1200,
+    rounds: env('ROUNDS') ?? 3,
   });
   if (splitOut) {
     writeFileSync(`${splitOut}.register.jsonl`, JSON.stringify(events[0]) + '\n');
@@ -141,5 +162,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   for (const event of events) console.log(JSON.stringify(event));
   const scheduleOut = process.env.SCHEDULE_OUT;
   if (scheduleOut)
-    writeFileSync(scheduleOut, JSON.stringify({ teachRaiseAt, idles }));
+    writeFileSync(scheduleOut, JSON.stringify({ schema: 'monitorraise-schedule-v2',
+      clock: 'hid-virtual-ms', epoch: null, calibrationEligible: false, teachRaiseAt, idles }));
 }

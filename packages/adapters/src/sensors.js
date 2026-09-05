@@ -39,34 +39,44 @@ export class SimTruthSensor {
 class TransportRawSensor extends Sensor {
   /** @param {any} options */
   constructor(options = {}) {
-    const { id, format, capture, clock = 'device-monotonic-ms', dimensions = { width: 1, height: 1 }, rate = 60, calibration = `${id}-calibration-v1` } = options;
+    const { id, format, capture, clock = 'device-monotonic-ms', dimensions = { width: 1, height: 1 }, rate = 60, calibration = `${id}-calibration-v1`, now = () => performance.now() } = options;
     super();
     if (typeof id !== 'string' || typeof capture !== 'function') throw new TypeError('transport sensor needs an id and capture function');
     this.id = id; this.format = format; this.capture = capture; this.clock = clock;
     this.dimensions = dimensions; this.rate = rate; this.calibration = calibration;
+    this.now = now;
   }
 
   capabilities() { return { adapter: this.id, clock: this.clock, format: this.format, claimLevel: 'DEVICE_MEASURED' }; }
 
   sample(request = {}) {
     const at = request.at ?? 0;
-    try {
-      const payload = this.capture(request);
-      if (payload?.schema === 'raw-sample-v1') return validateRawSample(payload);
+    const captured = payload => {
+      if (payload?.schema === 'raw-sample-v1') return validateRawSample({
+        ...payload, receivedAt: { clock: 'host-monotonic-ms', value: this.now() },
+      });
       return validateRawSample({
         schema: 'raw-sample-v1', id: `${this.id}-${request.id ?? at}`, format: this.format,
         dimensions: this.dimensions, rate: this.rate,
-        acquisition: { clock: this.clock, at }, source: { sensor: this.id },
+        acquisition: { clock: this.clock, at, basis: 'request-not-capture' },
+        receivedAt: { clock: 'host-monotonic-ms', value: this.now() }, source: { sensor: this.id },
         calibration: { profile: this.calibration }, loss: null, payload,
       });
-    } catch (error) {
+    };
+    const failed = error => {
       return validateRawSample({
         schema: 'raw-sample-v1', id: `${this.id}-${request.id ?? at}`, format: this.format,
         dimensions: this.dimensions, rate: this.rate,
-        acquisition: { clock: this.clock, at }, source: { sensor: this.id },
+        acquisition: { clock: this.clock, at, basis: 'request-not-capture' },
+        receivedAt: { clock: 'host-monotonic-ms', value: this.now() }, source: { sensor: this.id },
         calibration: { profile: this.calibration }, loss: { reason: error.message }, payload: null,
       });
-    }
+    };
+    try {
+      const payload = this.capture(request);
+      return payload && typeof payload.then === 'function'
+        ? Promise.resolve(payload).then(captured).catch(failed) : captured(payload);
+    } catch (error) { return failed(error); }
   }
 }
 
@@ -99,22 +109,31 @@ class TransportDetector extends Detector {
   detect(rawSample) {
     validateRawSample(rawSample);
     const observedAt = { clock: rawSample.acquisition.clock, value: rawSample.acquisition.at };
+    const receivedAt = rawSample.receivedAt ?? observedAt;
+    const source = { sensor: rawSample.source.sensor, detector: this.id,
+      calibrationProfile: rawSample.calibration.profile,
+      ...(rawSample.source.sequence !== undefined ? { sequence: rawSample.source.sequence } : {}),
+      acquisitionBasis: rawSample.acquisition.basis ?? 'source-timestamp',
+      uncertaintyMs: rawSample.acquisition.uncertaintyMs ?? null };
     try {
+      if (rawSample.loss) return unknownMeasurement({
+        id: `${rawSample.id}-${this.id}`, signal: 'visual',
+        reason: rawSample.loss.reason ?? 'capture-loss', observedAt, receivedAt, source,
+      });
       const value = this.read(rawSample);
       if (value?.schema === 'measurement-v1') return validateMeasurement(value);
       if (!value || value.state === 'UNKNOWN') return unknownMeasurement({
         id: `${rawSample.id}-${this.id}`, signal: value?.signal ?? 'visual',
         reason: value?.reason ?? 'detector-unavailable', observedAt,
-        receivedAt: observedAt, source: { sensor: rawSample.source.sensor, detector: this.id, calibrationProfile: rawSample.calibration.profile },
+        receivedAt, source,
       });
       return validateMeasurement({
         schema: 'measurement-v1', id: `${rawSample.id}-${this.id}`, signal: value.signal ?? 'visual',
         state: 'OBSERVED', value: value.value ?? value, confidence: value.confidence ?? 1,
-        observedAt, receivedAt: observedAt,
-        source: { sensor: rawSample.source.sensor, detector: this.id, calibrationProfile: rawSample.calibration.profile },
+        observedAt, receivedAt, source,
       });
     } catch (error) {
-      return unknownMeasurement({ id: `${rawSample.id}-${this.id}`, signal: 'visual', reason: error.message, observedAt, receivedAt: observedAt, source: { sensor: rawSample.source.sensor, detector: this.id, calibrationProfile: rawSample.calibration.profile } });
+      return unknownMeasurement({ id: `${rawSample.id}-${this.id}`, signal: 'visual', reason: error.message, observedAt, receivedAt, source });
     }
   }
 }

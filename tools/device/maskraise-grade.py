@@ -27,7 +27,9 @@ office-load fade) and cross-checks that the mask intervals agree.
 Usage: maskraise-grade.py VIDEO.mp4 STREAM.hid
 """
 import argparse
+import hashlib
 import json
+import math
 import statistics
 import subprocess
 import sys
@@ -38,7 +40,18 @@ LV0, LV1 = 0, int(W * 0.16)           # left vent: visitor overlays live here
 RV0, RV1 = int(W * 0.84), W           # right vent
 SUSTAIN = 5   # frames a level must hold to count as reached
 BEAM_MARGIN = 3.0  # luma above office; plateau noise never reaches 0.5
-MAP_TOL = 3.0      # luma band around the learned map level
+MAP_SCORE_MIN = 8  # selected map button's yellow pixels at 160x72
+
+
+def mask_on_plausible(animation_ms):
+    # One analysis frame of rounding is tolerated. A transition hundreds of
+    # milliseconds BEFORE the requested mask press is not that press's mask.
+    return animation_ms is not None and -1000 / FPS <= animation_ms < 900
+
+
+def sha256_file(path):
+    with open(path, 'rb') as source:
+        return hashlib.file_digest(source, 'sha256').hexdigest()
 
 
 def parse_stream(path):
@@ -109,15 +122,18 @@ def parse_stream(path):
 
 
 def decode(path):
-    raw = subprocess.run(
+    decoded = subprocess.run(
         ["ffmpeg", "-v", "error", "-i", path, "-vf", f"fps={FPS},scale={W}:{H}",
          "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-        capture_output=True).stdout
+        capture_output=True)
+    if decoded.returncode:
+        raise SystemExit(f"ffmpeg failed ({decoded.returncode}); no partial capture grade")
+    raw = decoded.stdout
     sz = W * H * 3
     n = len(raw) // sz
     if n < FPS:
         raise SystemExit(f"only {n} frames decoded from {path}")
-    center, lvent, rvent, diff = [], [], [], [0.0]
+    center, lvent, rvent, diff, map_score = [], [], [], [0.0], []
     prev = None
     for i in range(n):
         f = raw[i * sz:(i + 1) * sz]
@@ -128,10 +144,19 @@ def decode(path):
         center.append(band(X0, X1))
         lvent.append(band(LV0, LV1))
         rvent.append(band(RV0, RV1))
+        # The center luma is useful for mask/office timing, but it is not a
+        # stable monitor signal: the camera feed behind the map changes the
+        # average by more than 10 luma points between trials. The selected
+        # camera button is a positive yellow anchor that survives that change.
+        map_score.append(sum(
+            1 for y in range(15, 70) for x in range(60, 160)
+            if (lambda q: q[0] > 100 and q[1] > 100 and q[2] < 100 and
+                q[1] > q[2] * 1.5)(f[(y * W + x) * 3:(y * W + x + 1) * 3])
+        ))
         if prev is not None:
             diff.append(sum(abs(a - b) for a, b in zip(luma, prev)) / (W * H))
         prev = luma
-    return center, lvent, rvent, diff, n
+    return center, lvent, rvent, diff, map_score, n
 
 
 def sustained_at(values, start, stop, level, tol):
@@ -141,6 +166,17 @@ def sustained_at(values, start, stop, level, tol):
         if len(window) < SUSTAIN:
             return None
         if all(abs(v - level) <= tol for v in window):
+            return i
+    return None
+
+
+def sustained_below(values, start, stop, threshold):
+    """First frame in [start,stop) below a recording-relative dark threshold."""
+    for i in range(start, stop):
+        window = values[i:i + SUSTAIN]
+        if len(window) < SUSTAIN:
+            return None
+        if all(v < threshold for v in window):
             return i
     return None
 
@@ -163,11 +199,12 @@ def main():
     ap.add_argument("video")
     ap.add_argument("stream")
     ap.add_argument("--land-window-ms", type=int, default=400)
+    ap.add_argument("--json-out", help="also write the structured grade to this path")
     args = ap.parse_args()
 
     parsed = parse_stream(args.stream)
     trials, mode, anchor_ms = parsed["trials"], parsed["mode"], parsed["anchor_ms"]
-    center, lvent, rvent, diff, n = decode(args.video)
+    center, lvent, rvent, diff, map_score, n = decode(args.video)
     t_of = lambda frame: frame / FPS * 1000.0
 
     # Levels from the recording's own steady states: the office plateau is
@@ -185,7 +222,10 @@ def main():
                      key=frames_near, default=None)
     if mask_level is None:
         raise SystemExit("no dark center level found; the recording shows no mask cycles")
-    mid = (mask_level + office_level) / 2
+    # The settled overlay can be brighter than the darkest level found in
+    # the intro or an earlier mask cycle. Keep a minimum separation from the
+    # office instead of making that incidental level the acceptance boundary.
+    mask_threshold = office_level - 3.0
 
     # The live region ends at the END OF THE LAST office-level run: death
     # (jumpscare into static, then the title menu) never returns to the
@@ -201,13 +241,14 @@ def main():
     live_end = office_runs[-1]
 
     # ---- mode-specific sync and landing evidence ----------------------
+    anchor_kind = "hall-preamble"
     if mode == "hall":
         # Mask intervals: sustained dark runs of exactly maskOnMs in a
         # periodic cluster (the office also LOADS dark once, so an isolated
         # run cannot start the sequence).
         mask_on_ms = trials[0]["mask_off_ms"] - trials[0]["mask_on_ms"]
         lo, hi = int((mask_on_ms - 300) * FPS / 1000), int((mask_on_ms + 300) * FPS / 1000)
-        candidates = [a for a, b in runs_where(center, lambda v: v < mid)
+        candidates = [a for a, b in runs_where(center, lambda v: v < mask_threshold)
                       if lo <= (b - a) <= hi]
         period_ms = next((b["mask_on_ms"] - a["mask_on_ms"] for a, b in zip(trials, trials[1:])
                           if b["mask_on_ms"] > a["mask_on_ms"]), None)
@@ -251,17 +292,39 @@ def main():
         if teach is None:
             raise SystemExit("the teach raise was not found; cannot sync monitor mode")
         map_level = statistics.median(center[teach + 5:teach + int(0.45 * FPS)])
-        offset = t_of(teach) - anchor_ms
-        # cross-check: mask intervals should agree with this offset
+        # `teach` is the first stable map band, but the stream clock is the
+        # monitor press DOWN. The transition begins several frames earlier;
+        # anchoring on the stable band made later mask trials appear hundreds
+        # of milliseconds early and inflated the reported drift. Walk back to
+        # the first frame after a clean office run instead.
+        teach_start = teach
+        for j in range(teach - 1, office_first + 1, -1):
+            lo = max(office_first, j - 2)
+            if all(abs(center[k] - office_level) <= 2.0 for k in range(lo, j + 1)):
+                teach_start = j + 1
+                break
+        offset = t_of(teach_start) - anchor_ms
+        anchor_kind = "monitor-teach-transition"
+        # Cross-check the transition ONSETS of the mask intervals, not the
+        # later fully-dark frames. The latter include animation latency and
+        # are not a clock anchor.
         checks = []
-        for tr in trials[:3]:
-            a = int((offset + tr["mask_on_ms"]) / 1000 * FPS)
-            f = sustained_at(center, max(0, a - int(0.3 * FPS)), min(live_end, a + int(0.9 * FPS)),
-                             mask_level, 2.5)
-            if f is not None:
-                checks.append(t_of(f) - tr["mask_on_ms"] - offset)
-        drift = (max(checks) - min(checks)) if len(checks) > 1 else 0.0
-        map_runs = [(a, b) for a, b in runs_where(center, lambda v: abs(v - map_level) <= MAP_TOL)
+        mask_on_ms = trials[0]["mask_off_ms"] - trials[0]["mask_on_ms"]
+        mask_lo = max(1, int((mask_on_ms - 300) * FPS / 1000))
+        mask_hi = int((mask_on_ms + 300) * FPS / 1000)
+        mask_candidates = [a for a, b in runs_where(center, lambda v: v < mask_threshold)
+                           if a >= office_first and mask_lo <= b - a <= mask_hi]
+        for tr in trials:
+            expected = int((offset + tr["mask_on_ms"]) / 1000 * FPS)
+            if not mask_candidates:
+                break
+            nearest = min(range(len(mask_candidates)),
+                          key=lambda i: abs(mask_candidates[i] - expected))
+            candidate = mask_candidates.pop(nearest)
+            if abs(candidate - expected) <= int(0.9 * FPS):
+                checks.append(t_of(candidate) - tr["mask_on_ms"] - offset)
+        drift = (max(checks) - min(checks)) if len(checks) > 1 else None
+        map_runs = [(a, b) for a, b in runs_where(map_score, lambda v: v >= MAP_SCORE_MIN)
                     if (b - a) >= 5]
         if mode == "compound":
             # The runner's two-finger press: hall on contact 0, the monitor
@@ -282,17 +345,21 @@ def main():
                 return any(v - 100 <= t_of(a) <= v + 800 for a, b in map_runs)  # the map flip is 367 ms; its signature stabilizes late
 
     by_gap, by_gap_hall, anim_on, anim_off = {}, {}, [], []
+    trial_results = []
     l_base = statistics.median(lvent[:live_end])
     r_base = statistics.median(rvent[:live_end])
-    print(f"{n} frames @ {FPS} fps  mode={mode}  mask-level {mask_level:.1f}  office-level {office_level:.1f}  "
+    print(f"{n} frames @ {FPS} fps  mode={mode}  mask-level {mask_level:.1f}  "
+          f"mask-threshold <{mask_threshold:.1f}  office-level {office_level:.1f}  "
           f"vent-bases L{l_base:.1f}/R{r_base:.1f}  "
-          + (f"map-level {map_level:.1f}  " if mode in ("monitor", "compound") else "")
-          + f"sync offset {offset:+.0f} ms (drift {drift:.0f} ms)"
-          + (f"  TERMINAL at {t_of(live_end) / 1000:.1f}s" if live_end < n else ""))
+          + (f"map-level {map_level:.1f} (yellow-score>={MAP_SCORE_MIN})  "
+             if mode in ("monitor", "compound") else "")
+          + f"visual alignment {offset:+.0f} ms (anchor spread {drift} ms; clock UNKNOWN)"
+          + (f"  analysis ends at {t_of(live_end) / 1000:.1f}s (terminal UNKNOWN)" if live_end < n else ""))
     print(f"{'gap':>5} {'landed':>12} {'anim-on':>8} {'anim-off':>8}  {'Lvent':>6} {'Rvent':>6}  note")
-    for tr in trials:
+    for index, tr in enumerate(trials):
         v_on = offset + tr["mask_on_ms"]
         v_off = offset + tr["mask_off_ms"]
+        ev = None
         if int(v_on / 1000 * FPS) > live_end + int(0.3 * FPS):
             landed, a_on, a_off, note = None, None, None, "post-terminal"
         else:
@@ -305,15 +372,24 @@ def main():
                 ev = None
             note = ""
             i0 = int(v_on / 1000 * FPS)
-            f = sustained_at(center, i0, min(live_end, i0 + int(0.9 * FPS)), mask_level, 1.5)
+            # Search slightly before the expected press so the measurement
+            # reports the actual animation completion even when the first
+            # stable map frame was used as the old sync anchor.
+            # The overlay's absolute luma is not fixed: the same phone can
+            # settle a mask at 8--10 while the intro's darkest plateau is 4--6.
+            # Use a recording-relative office separation for completion so a
+            # real mask cycle is not mislabeled as "no-mask-cycle" merely
+            # because its settled brightness moved a few points.
+            f = sustained_below(center, max(0, i0 - int(0.6 * FPS)),
+                                min(live_end, i0 + int(0.9 * FPS)), mask_threshold)
             a_on = t_of(f) - v_on if f is not None else None
             f = sustained_at(center, int(v_off / 1000 * FPS),
                              min(live_end, int((v_off + 900) / 1000 * FPS)), office_level, 1.5)
             a_off = t_of(f) - v_off if f is not None and not landed else None
-            if a_on is None:
+            if not mask_on_plausible(a_on):
                 # No mask interval where the stream pressed one: desync or
                 # quiet death. Such a window cannot grade the seam.
-                landed, note, ev = None, "no-mask-cycle (invalid)", None
+                landed, note, ev = None, "no-causal-mask-cycle (invalid)", None
         if a_on is not None and 0 < a_on < 900:
             anim_on.append(a_on)
         if a_off is not None and 0 < a_off < 900:
@@ -324,7 +400,9 @@ def main():
             g[0] += 1
         if landed is not None:
             g[1] += 1
-        if ev is not None and landed is not None:
+        # A landed monitor hides the hall beam. Hidden is UNKNOWN, not a
+        # failed hall contact and certainly not proof both contacts landed.
+        if ev is not None and landed is False:
             gh[1] += 1
             if ev.endswith("hall"):
                 gh[0] += 1
@@ -336,10 +414,28 @@ def main():
         shown = ev if ev is not None else str(landed)
         print(f"{tr['gap']:>5} {shown:>12} {fmt(a_on)} {fmt(a_off)}  "
               f"{lv:6.1f} {rv:6.1f}  {note}")
-    print("\nper-gap landing rate" + (" (monitor contact)" if mode == "compound" else ""))
+        trial_results.append({
+            "index": index,
+            "gap_ms": tr["gap"],
+            "landed": landed,
+            "valid": landed is not None,
+            "evidence": ev,
+            "controls": ({"monitor": landed,
+                          "hall": ev.endswith("hall") if ev is not None and landed is False else None}
+                         if mode == "compound" else {mode: landed}),
+            "precondition": "UNVERIFIED",
+            "note": note or None,
+            "mask_on_animation_ms": a_on,
+            "mask_off_animation_ms": a_off,
+            "vent_left": lv if math.isfinite(lv) else None,
+            "vent_right": rv if math.isfinite(rv) else None,
+        })
+    print("\nper-gap heuristic landing (interpretable trials only; NOT calibration)"
+          + (" (monitor contact)" if mode == "compound" else ""))
     for gap in sorted(by_gap):
         l, r = by_gap[gap]
-        print(f"  {gap:>4} ms  {l}/{r}  {'#' * l}{'.' * (r - l)}")
+        total = sum(tr["gap_ms"] == gap for tr in trial_results)
+        print(f"  {gap:>4} ms  {l}/{r}, {total - r}/{total} invalid  {'#' * l}{'.' * (r - l)}")
     if mode == "compound":
         print("per-gap landing rate (hall contact, visible only when the monitor missed)")
         for gap in sorted(by_gap_hall):
@@ -351,6 +447,79 @@ def main():
             xs = sorted(xs)
             print(f"{name}: n={len(xs)} min={xs[0]:.0f} p50={xs[len(xs) // 2]:.0f} "
                   f"p95={xs[min(len(xs) - 1, int(len(xs) * 0.95))]:.0f} max={xs[-1]:.0f} ms")
+
+    if args.json_out:
+        by_gap_result = []
+        for gap in sorted(by_gap):
+            landed_count, valid_count = by_gap[gap]
+            hall_landed, hall_valid = by_gap_hall.get(gap, [0, 0])
+            by_gap_result.append({
+                "gap_ms": gap,
+                "landed": landed_count,
+                "valid": valid_count,
+                "invalid": sum(tr["gap_ms"] == gap and not tr["valid"] for tr in trial_results),
+                "landing_rate": (landed_count / valid_count) if valid_count else None,
+                "hall_landed": hall_landed if mode == "compound" else None,
+                "hall_valid": hall_valid if mode == "compound" else None,
+            })
+
+        def distribution(values):
+            if not values:
+                return None
+            ordered = sorted(values)
+            return {
+                "n": len(ordered), "min_ms": ordered[0],
+                "p50_ms": ordered[len(ordered) // 2],
+                "p95_ms": ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))],
+                "max_ms": ordered[-1],
+            }
+
+        provenance = {"capture_sha256": sha256_file(args.video),
+                      "stream_sha256": sha256_file(args.stream),
+                      "grader_sha256": sha256_file(__file__),
+                      "profile_sha256": None}
+        evidence_id = "maskraise-" + hashlib.sha256(json.dumps(provenance, sort_keys=True).encode()).hexdigest()[:20]
+        payload = {
+            "schema": "maskraise-grade-v2", "evidenceId": evidence_id,
+            "status": "EXPLORATORY", "provenance": provenance,
+            "calibration_eligible": False,
+            "refusals": ["no-measured-stream-to-video-clock-map",
+                         "no-matched-request-to-app-dispatch-events",
+                         "office-and-mask-preconditions-unverified"],
+            "video": args.video,
+            "stream": args.stream,
+            "mode": mode,
+            "fps": FPS,
+            "frames": n,
+            "fps_basis": "resampled-analysis-not-game-clock",
+            "analysis_end_frame": live_end,
+            "terminal_frame": None, "terminal_status": "UNKNOWN",
+            "levels": {
+                "mask": mask_level, "mask_threshold": mask_threshold,
+                "office": office_level,
+                **({"map": map_level, "map_yellow_score_min": MAP_SCORE_MIN}
+                   if mode in ("monitor", "compound") else {}),
+            },
+            "sync": {
+                "status": "UNKNOWN", "uncertainty_ms": None,
+                "offset_ms": offset, "drift_ms": None,
+                "anchor_residual_range_ms": drift,
+                "anchor_count": len(offsets) if mode == "hall" else len(checks),
+                "anchor": anchor_kind,
+            },
+            "animation_ms": {
+                "on": distribution(anim_on), "off": distribution(anim_off),
+            },
+            "trials": trial_results,
+            "by_gap": by_gap_result,
+        }
+        try:
+            with open(args.json_out, "w", encoding="utf-8") as output:
+                json.dump(payload, output, indent=2, sort_keys=True)
+                output.write("\n")
+            print(f"evidence {evidence_id}: EXPLORATORY; not a stable calibration")
+        except OSError as error:
+            raise SystemExit(f"could not write grade JSON {args.json_out}: {error}") from error
 
 
 if __name__ == "__main__":

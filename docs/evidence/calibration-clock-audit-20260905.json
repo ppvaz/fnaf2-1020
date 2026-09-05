@@ -1,0 +1,242 @@
+{
+  "by_gap": [
+    {
+      "complete_runs": 0,
+      "failures": 0,
+      "gap_ms": 267,
+      "invalid_runs": 2,
+      "invalid_samples": 8,
+      "landing_rate": null,
+      "pass_runs": 0,
+      "reasons": [
+        "only 2/3 independent runs",
+        "only 0/12 valid samples",
+        "8 invalid sample(s)",
+        "independent-run Wilson lower bound 0.000 < 0.800"
+      ],
+      "runs": 2,
+      "status": "FAIL",
+      "successes": 0,
+      "valid_samples": 0,
+      "wilson_lower_95": 0.0,
+      "wilson_unit": "independent-capture-run"
+    }
+  ],
+  "evidenceId": "calibration-stability-506d4760b27e262ca31c",
+  "fps": 60,
+  "input_artifacts": [
+    {
+      "evidenceId": "maskraise-b619d9c4824f808bd0d6",
+      "grade_sha256": "a9d0cb936a7131a12bd8883a14d651ea2c7201569a3829f230920ca38b15dea5",
+      "path": "captures/compound-calib-20260905-four-g267-c33.clock-audit-v2.grade.json",
+      "provenance": {
+        "capture_sha256": "ea818ce48e9a5ec3d60da9a694ef326fd6d06d59f0b8bc05b0e5dca24c8ef323",
+        "grader_sha256": "8b6b5c3b568690f9c065fc00083bf726bfafa9c1c06a582bb2ff5a2b622101b6",
+        "profile_sha256": null,
+        "stream_sha256": "ce5a2a99127d14c110cb031ca645af273016a20d76d8b5a7dae14724338972d6"
+      },
+      "sync": {
+        "anchor": "monitor-teach-transition",
+        "anchor_count": 1,
+        "anchor_residual_range_ms": null,
+        "drift_ms": null,
+        "offset_ms": 8066.666666666666,
+        "status": "UNKNOWN",
+        "uncertainty_ms": null
+      },
+      "trials": [
+        {
+          "controls": {
+            "hall": null,
+            "monitor": true
+          },
+          "evidence": "landed",
+          "gap_ms": 267,
+          "index": 0,
+          "landed": true,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": 51.66666666666788,
+          "note": null,
+          "precondition": "UNVERIFIED",
+          "valid": true,
+          "vent_left": 29.071791561844865,
+          "vent_right": 25.325664156990804
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": null
+          },
+          "evidence": null,
+          "gap_ms": 267,
+          "index": 1,
+          "landed": null,
+          "mask_off_animation_ms": 418.33333333333576,
+          "mask_on_animation_ms": -81.66666666666606,
+          "note": "no-causal-mask-cycle (invalid)",
+          "precondition": "UNVERIFIED",
+          "valid": false,
+          "vent_left": 31.42609868972746,
+          "vent_right": 23.810435060877275
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": true
+          },
+          "evidence": "landed",
+          "gap_ms": 267,
+          "index": 2,
+          "landed": true,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": 18.33333333333576,
+          "note": null,
+          "precondition": "UNVERIFIED",
+          "valid": true,
+          "vent_left": 28.209527725366875,
+          "vent_right": 25.71130563618771
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": null
+          },
+          "evidence": null,
+          "gap_ms": 267,
+          "index": 3,
+          "landed": null,
+          "mask_off_animation_ms": 435.00000000000364,
+          "mask_on_animation_ms": -115.0,
+          "note": "no-causal-mask-cycle (invalid)",
+          "precondition": "UNVERIFIED",
+          "valid": false,
+          "vent_left": 31.727678459119495,
+          "vent_right": 23.5517155499113
+        }
+      ]
+    },
+    {
+      "evidenceId": "maskraise-74ffa1cfb6cbad32e569",
+      "grade_sha256": "04a367896f2a51db96ccbd955acbc0420fb82d1feec8c842df56c571b2438d2f",
+      "path": "captures/compound-calib-20260905-four-g267-c33-phase517.clock-audit-v2.grade.json",
+      "provenance": {
+        "capture_sha256": "5b0d197303f070dd9924824f9d3bf5f6f017dc787df7202f2e3f82d6a7996ebb",
+        "grader_sha256": "8b6b5c3b568690f9c065fc00083bf726bfafa9c1c06a582bb2ff5a2b622101b6",
+        "profile_sha256": null,
+        "stream_sha256": "bd7db935392a1f8d69fda1271213eddbcc27c2ce724630aa122bea732602da5c"
+      },
+      "sync": {
+        "anchor": "monitor-teach-transition",
+        "anchor_count": 2,
+        "anchor_residual_range_ms": 183.33333333333394,
+        "drift_ms": null,
+        "offset_ms": 7716.333333333332,
+        "status": "UNKNOWN",
+        "uncertainty_ms": null
+      },
+      "trials": [
+        {
+          "controls": {
+            "hall": null,
+            "monitor": true
+          },
+          "evidence": "landed",
+          "gap_ms": 267,
+          "index": 0,
+          "landed": true,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": 51.66666666666788,
+          "note": null,
+          "precondition": "UNVERIFIED",
+          "valid": true,
+          "vent_left": 28.91749617400419,
+          "vent_right": 25.29645798056765
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": null
+          },
+          "evidence": null,
+          "gap_ms": 267,
+          "index": 1,
+          "landed": null,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": -131.66666666666606,
+          "note": "no-causal-mask-cycle (invalid)",
+          "precondition": "UNVERIFIED",
+          "valid": false,
+          "vent_left": 29.239384958071277,
+          "vent_right": 30.198928600225766
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": null
+          },
+          "evidence": null,
+          "gap_ms": 267,
+          "index": 2,
+          "landed": null,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": -215.0,
+          "note": "no-causal-mask-cycle (invalid)",
+          "precondition": "UNVERIFIED",
+          "valid": false,
+          "vent_left": 28.271595911949685,
+          "vent_right": 27.891573586921464
+        },
+        {
+          "controls": {
+            "hall": null,
+            "monitor": null
+          },
+          "evidence": null,
+          "gap_ms": 267,
+          "index": 3,
+          "landed": null,
+          "mask_off_animation_ms": null,
+          "mask_on_animation_ms": -198.33333333333212,
+          "note": "no-causal-mask-cycle (invalid)",
+          "precondition": "UNVERIFIED",
+          "valid": false,
+          "vent_left": 28.001433595387837,
+          "vent_right": 27.731564666989197
+        }
+      ]
+    }
+  ],
+  "input_refusals": [
+    {
+      "path": "captures/compound-calib-20260905-four-g267-c33.clock-audit-v2.grade.json",
+      "reasons": [
+        "exploratory-or-legacy-grade",
+        "clock-mapping-unverified",
+        "missing-profile_sha256"
+      ]
+    },
+    {
+      "path": "captures/compound-calib-20260905-four-g267-c33-phase517.clock-audit-v2.grade.json",
+      "reasons": [
+        "exploratory-or-legacy-grade",
+        "clock-mapping-unverified",
+        "missing-profile_sha256"
+      ]
+    }
+  ],
+  "inputs": [
+    "captures/compound-calib-20260905-four-g267-c33.clock-audit-v2.grade.json",
+    "captures/compound-calib-20260905-four-g267-c33-phase517.clock-audit-v2.grade.json"
+  ],
+  "mode": "compound",
+  "recommendation": null,
+  "requirements": {
+    "max_sync_uncertainty_ms": 1.0,
+    "min_runs": 3,
+    "min_samples": 12,
+    "min_wilson_lower_95": 0.8,
+    "no_invalid_or_failed_samples": true
+  },
+  "schema": "calibration-stability-v2",
+  "status": "REFUSED"
+}

@@ -57,6 +57,15 @@ def test_correlation() -> None:
     check(events[0]["frame_id"] == 42 and events[0]["frame_delta_ms"] == 0.05,
           "dispatch must land on the next frame with measured delta")
     check(events[1]["event_id"] is None, "unmatched dispatch must not invent an id")
+    timing = report["timing"]
+    check(timing["press_count"] == 1, 'releases must not become independent presses')
+    for stage in ('inject', 'dispatch', 'effective'):
+        check(timing[stage]["status"] == "UNKNOWN", f'{stage} must not be invented from unrelated clocks')
+    check(timing["dispatch_to_next_app_frame_proxy"]["distribution"]["max_ms"] == .05,
+          'same-trace frame proxy remains measurable, without claiming gameplay acceptance')
+    tails = inputtrace.distribution_ms(list(range(1, 101)))
+    check(tails["p99_ms"] == 99 and tails["max_ms"] == 100 and tails["median_ms"] == 50.5,
+          'latency tails must not be replaced by average or Gaussian extrapolation')
 
 
 def test_csv_and_query() -> None:

@@ -31,6 +31,13 @@ refusal until external device evidence and a passing terminal result exist.
 Generators may propose graph edges; humans approve support, refutation,
 supersession, retraction, and promotion edges.
 
+The [2026-09-05 calibration clock audit](calibration-clock-audit-20260905.json)
+is a generated `calibration-stability-v2` REFUSED result, not a device-session
+qualification or a promotion edge. It retains hashes and ambiguous trial
+evidence so the project can distinguish exploratory map appearances from
+verified mask/monitor/flash calibration. Reproducer and current hold:
+[Plan progress](../../plans/PROGRESS.md).
+
 Device handoff is a separate `winner-v1` -> `device-bundle-v1` step:
 `npm run device:emit -- --winner winner.json --out artifacts/run-001` persists
 the winner, resolved profile, night plans, hashed semantic `artifact.json`, and
