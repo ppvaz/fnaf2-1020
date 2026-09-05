@@ -910,8 +910,11 @@ export class Sim {
         continue;
       }
       if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
-      // Toys and W. Freddy start the shared office sequence as soon as marker
-      // 122 is evaluated with the cameras down (groups 445-447 and 490).
+      // The three Withereds and Toy Freddy -- the four `streak` openers --
+      // start the shared office sequence as soon as marker 122 is evaluated
+      // with the cameras down (groups 445-447 and 490). "Toys and W. Freddy"
+      // was the pre-XOR attribution; config.js's entryStreakFrames note
+      // records the 2026-08-20 re-binding.
       if (u.atOpening && u.openingRule === 'streak' && !this.camsUp && !u.officeCue)
         this.startOfficeEncounter(u);
 
