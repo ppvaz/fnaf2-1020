@@ -76,6 +76,9 @@ case "$PROBE_GEN" in
   raise)
     echo "raise probe: contact ${CONTACT_MS:-33} ms, mask-toggles ${MASK_TOGGLES:-0}, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     node "$HERE/hid-raise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+  maskraise)
+    echo "maskraise probe: contact ${CONTACT_MS:-33} ms, hall ${HALL_MS:-133} ms, ${ROUNDS:-3} rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
+    ROUNDS="${ROUNDS:-3}" HALL_MS="${HALL_MS:-133}" node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   *) echo "unknown PROBE_GEN: $PROBE_GEN" >&2; exit 2 ;;
 esac
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
@@ -149,8 +152,10 @@ echo
 # A spacing probe only passes if every requested 10->04->07->11 sequence is
 # visible.  Without --expected, camtrace reports incomplete starts but exits
 # successfully, turning a partial sweep into a false pass.
-"$HERE/camtrace.py" --fps 60 --min-ms "${MIN_MS:-50}" \
-  --expected "${#SPACINGS[@]}" "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
+if [ "$PROBE_GEN" = sweep ]; then
+  "$HERE/camtrace.py" --fps 60 --min-ms "${MIN_MS:-50}" \
+    --expected "${#SPACINGS[@]}" "$LOCAL_VIDEO" || CAMTRACE_FAILED=1
+fi
 echo
 # camtrace answers "which camera was selected". A Minus 7 sweep exists to apply
 # the camera-light stun, which needs the light on *while* that camera is the
@@ -164,6 +169,14 @@ if [ "$PROBE_GEN" = sweep ]; then
   echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
   echo "requested: ${SPACINGS[*]} ms"
   echo "light lead ${LIGHT_LEAD_MS:-0} ms, contact ${CONTACT_MS:-100} ms"
+elif [ "$PROBE_GEN" = maskraise ]; then
+  # The grader reads the emitted .hid stream for its clock, so it must be
+  # handed exactly the file the phone consumed.
+  python3 "$HERE/maskraise-grade.py" "$LOCAL_VIDEO" "$CAPTURE_DIR/$OUT.hid" || GRADE_FAILED=1
+  echo
+  echo "per-gap landing is the no-control window after the mask-off press;"
+  echo "compare the transition band against MASK_RAISE_GAP_MS (267) and the"
+  echo "census' never-failed 180 ms compound."
 else
   echo "raise probe: each trial should show CAM 10 selected after the raise"
   echo "(CAM 11 straight through = the flip or the ${CONTACT_MS:-100} ms tap was swallowed)."
@@ -171,4 +184,5 @@ else
 fi
 [ -z "${CAMTRACE_FAILED:-}" ] || echo "camtrace reported a missing selection"
 [ -z "${SWEEPCHECK_FAILED:-}" ] || echo "sweepcheck reported a sweep that did not flash"
-[ -z "${CAMTRACE_FAILED:-}${SWEEPCHECK_FAILED:-}" ] || exit 1
+[ -z "${GRADE_FAILED:-}" ] || echo "maskraise-grade reported a grading failure"
+[ -z "${CAMTRACE_FAILED:-}${SWEEPCHECK_FAILED:-}${GRADE_FAILED:-}" ] || exit 1
