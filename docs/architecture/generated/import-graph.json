@@ -969,6 +969,22 @@
       ]
     },
     {
+      "file": "tools/device/hid-maskraise-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/hid-monitorraise-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/hid-raise-probe.mjs",
       "imports": [
         "./hid-sweep-probe.mjs",
@@ -1155,6 +1171,18 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-hid-maskraise-probe.mjs",
+      "imports": [
+        "./hid-maskraise-probe.mjs"
+      ]
+    },
+    {
+      "file": "tools/device/test-hid-monitorraise-probe.mjs",
+      "imports": [
+        "./hid-monitorraise-probe.mjs"
       ]
     },
     {
@@ -1527,6 +1555,13 @@
       ]
     },
     {
+      "file": "tools/knobsweep.mjs",
+      "imports": [
+        "./pool.mjs",
+        "@fnaf2-1020/core/control"
+      ]
+    },
+    {
       "file": "tools/latenesssweep.mjs",
       "imports": [
         "./model/closed-loop-reclaim.mjs",
@@ -1589,6 +1624,12 @@
       "file": "tools/minus7/constrained-worker.mjs",
       "imports": [
         "./paramsearch.mjs"
+      ]
+    },
+    {
+      "file": "tools/minus7/cycle.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {
@@ -1690,6 +1731,12 @@
       ]
     },
     {
+      "file": "tools/minustoys/cycle.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
       "file": "tools/minustoystest.mjs",
       "imports": [
         "./stat.mjs",
@@ -1766,6 +1813,13 @@
       "imports": [
         "./model/stock-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "tools/phase-tolerance.mjs",
+      "imports": [
+        "./minus7/cycle.mjs",
+        "./minustoys/cycle.mjs"
       ]
     },
     {

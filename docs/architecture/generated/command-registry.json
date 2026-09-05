@@ -479,6 +479,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/knobsweep.mjs",
+      "invocation": "tools/knobsweep.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/phase-tolerance.mjs",
+      "invocation": "tools/phase-tolerance.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/factreplay.mjs",
       "invocation": "tools/factreplay.mjs",
       "kind": "check",
