@@ -2,6 +2,109 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 ROADMAP A1 — the gate lane the last checkpoint never ran was red in
+TWO places and both are fixed; the idle gate that entry located is fixed and
+measured as a gain; the route-sweep hypothesis in its own next-step list is
+REFUTED; and the number that decides the device lane turns out to have been
+measured under the wrong error model. `npm test` passes end to end for the
+first time since `ef239e2`. Commits `d812980`, `a553804`, `03e8725`. Evidence
+`run-20260905054104-8c17917c-4e4c57` (`FIXTURE`, not gameplay evidence). No
+package closed and the 49/158 count is unchanged.
+
+**Two gates, and the second was hidden behind the first** (`d812980`).
+`test:contracts` runs `night-policy.test.js` before
+`observationlanguagetest.mjs`, so the suite aborted at the first failure and
+never reached the second.
+
+1. `foxySlack` treated "never flashed" as an infinite unflashed stretch, so
+   the retained five-second cap went negative-infinite on the FIRST FRAME of
+   every Foxy-live night and stayed there until the first flash. The defect
+   predates `deb6463`; that commit made it load-bearing by giving the camp
+   branch a Foxy race, after which the policy answered the first cue of the
+   night with a hall flash instead of the mask. Measured over 60 held-out
+   seeds 5000..5059, `--gate=static`, the fix is NOT an improvement: 128/420
+   to 125/420, Night 4 losing seven with Foxy deaths rising 22 to 31, Night 5
+   gaining three. Overlapping Wilson intervals, so not a demonstrated
+   regression, but the point estimate moved and it lands as a correctness fix
+   with a measured cost. The before row REPRODUCES the one this file already
+   carried -- the first independent confirmation of that table.
+2. `excludedFacts()` was still pinned at four after `deb6463` added the three
+   `ventThud*` facts as AUDIO with an UNKNOWN read cost sourced to plan 08.
+
+**The idle gate is fixed and it is worth something** (`a553804`). It compared
+against `campFrames` (316) while `foxySlack` is structurally bounded by one
+movement period (300), so on every night with Foxy live the mask idle was
+UNREACHABLE rather than unattractive. It now counts the repel TICKS the nearer
+deadline buys. 8 arms x 7 nights x 60 seeds: `campMinTicks` 1 over 5 is +6
+with the thud on (125 -> 131) and +25 without it (101 -> 126, Night 2 0 -> 22).
+The control arm reproduces the pre-knob row exactly.
+
+**Re-laying the route stun every wind trip is REFUTED.** The guard IS wrong --
+camera position standing in for stun freshness, which after the first trip
+reads "already swept" forever -- but the behaviour it produced by accident is
+the better one. `sweepRideFrames = 400` loses in ALL FOUR pairings and turns
+Foxy into the dominant death on Nights 2, 3 and 5.
+
+**A partial camp is worth more than the audio cue it competes with.** With
+`campMinTicks` = 1, dropping the thud costs five runs and GAINS two on Night 1,
+against 24 lost at 5. `ventThud` is audio, inadmissible in the observation
+budget, and a capability the g56 has never been measured for.
+
+**Night 6's recorded diagnosis is STALE.** The 2026-09-03 entry has it
+box-bound ("156 Puppet, 35 Foxy, 9 inside-office"). In all eight arms Foxy is
+the dominant Night 6 death (28-39 of 60) and the Puppet has essentially
+vanished. The roll-grid rule changed the failure mode without moving survival.
+NOTE: these censuses ran on the pre-`66cff9f` engine, which misattributed some
+Foxy kills to Golden Freddy, so they UNDERCOUNT Foxy -- the finding is a lower
+bound, not an artefact.
+
+**No knob reaches Nights 6 or 7.** Twelve arms now (eight factorial, four over
+`rollGuardTicks` x `topUpBelow`): the best Night 6 is 1/60 and Night 7 is 0/60
+everywhere. Night 6 has 3000 frames of light and Foxy's `safeD` is 5 from
+2 AM, so about 56 hall flashes at ~33 frames after 2 AM plus ~14 before it --
+Foxy alone claims ~77% of the battery, and the hall light needs the monitor
+DOWN while the box needs it UP. The closed loop is done as a Nights 6-7
+candidate; the remaining route is structural.
+
+**The number that decides the device lane was measured under the wrong error
+model** (`03e8725`), and this is the load-bearing finding. `9f81b5e` reports
+both frame-exact families collapsing at one frame of error (Minus 7 422/3000,
+Minus Toys 172/3000), which reads as "impossibly tight" -- but humans complete
+both routines on hardware, so the model is what is wrong. `--slack` draws an
+INDEPENDENT error per row per cycle, ~670 draws a night: it destroys the
+relative spacing the routine's safety lives in, and it compounds. A human runs
+the cycle as one motor program and re-anchors to the game clock every
+interval, so the human error is COMMON MODE. Sweeping that instead
+(`tools/phase-tolerance.mjs`, night 7, 300 seeds):
+
+| family | window | equivalent |
+|---|---|---|
+| Minus 7 | k = -14 to +16 frames | -233 ms to +267 ms at 299-300/300 |
+| Minus Toys | early cliff at k = -2 | -33 ms |
+
+Minus 7 holds a **500 ms wide** window with hard Foxy-shaped cliffs either
+side, against 16.7 ms under the iid model -- the two models disagree by more
+than an order of magnitude on the same routine and engine. The Minus Toys
+early cliff independently reproduces `tools/device/minus-toys-margin.mjs`'s
+33 ms early figure, which is the reason to trust the method.
+
+Consequence for the device lane, which has aimed at Minus Toys throughout:
+`n2-minustoys-0117` measured a 302 ms epoch bracket and 184 ms/min drift and
+was refuted against a 132 ms window. Minus 7's window is nearly four times
+wider and roughly symmetric, so the same bracket sits inside it and the drift
+needs re-anchoring roughly every 75 s rather than continuously. THIS IS NOT A
+DEVICE CLAIM -- no phone has run it -- but it says the family the device work
+is pointed at may be the wrong one, and that the executor's error SHAPE
+(common mode vs per row) is now the measurement that decides the route.
+
+**Open.** Whether the phone executor's error is common mode or per row is
+unmeasured and is now the decisive unknown. Two measurements are in flight and
+not yet recorded: the control arm re-run on the post-`66cff9f` engine, and the
+`campMinTicks` interior (2, 3, 4). NOTHING IN THIS SESSION TOUCHED THE PHONE
+-- `adb devices` is empty -- and the closed loop still has zero importers
+outside `packages/core` and `tools/`, so `apps/device` dispatches precompiled
+trajectories and a closed loop on hardware remains an unstarted integration.
+
 2026-09-05 DEAD FIELD — `STALLED[].kind` removed. It named each character's
 APPROACH ROUTE (`'vent'` vs `'blackout'`) but was never read: nothing in
 `packages/core/src/`, `tools/`, `apps/` or `packages/` consumed it, and
