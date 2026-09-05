@@ -66,9 +66,23 @@ untracked-but-not-ignored (deliberately, so a new tool cannot hide between
 creation and commit), so regenerating with the untracked scratch
 `tools/minus7/_m7.mjs` present baked it into `import-graph.json` — where a
 clean clone has no such file, failing both `architecture-test.js` and
-`git diff --exit-code -- docs/architecture/generated`. Regenerate the catalog
-with that scratch file moved out of the tree until it is either committed with
-a TOOLS.md row or removed.
+`git diff --exit-code -- docs/architecture/generated`.
+
+RESOLVED by removing it, after establishing it was a superseded draft of
+`tools/minus7/cycle.mjs` rather than an unrecorded result. Its knob block `K`
+carried `CYCLE`'s constants under other names (raise 2, raiseMax 210, lateMax
+261, windEnd 244, sweepB 245, lower 250, hall 270, mask 273), its hardcoded
+`f + 12`/`f + 16` were `sweepGap`/`windGap`, and `K.lateMin` was declared and
+never read. On the same engine over seeds 1..200 the two agree to the power
+unit: night 7 200/200 minPower 2418 for both, night 6 2415, night 2 5412. It
+modelled no executor error at all, so its 100% is the zero-jitter corner
+`cycle.mjs` already reaches with `slackMs: 0` — not a new result, and
+consistent with `n7probe.mjs`'s finding that the clear cycle has its two Foxy
+resets and they miss only under jitter. Its one extra flag, `--blind`, bought
+0 wins and 1 unit of power, so the `sim.foxy`/`sim.gf` guards it gated were
+vestigial. `cycle.mjs` keeps the documented row, the `pool.mjs` exports, and
+the `slackMs`/`bangLatencyMs` models the draft lacked. `npm run test-docs` is
+green for the first time since the entry below first recorded it red.
 
 Validation on pickup: `npm run test` passes end to end (typecheck, unit,
 contracts including `test:device:calibration`, core), `node tools/test-docs.mjs`
