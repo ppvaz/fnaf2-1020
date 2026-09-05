@@ -345,8 +345,14 @@ export class Sim {
 
   onLightPress() {
     if (this.hallView) {
-      if (this.gf.present) { this.kill('golden-freddy', 'Flashed the hall with Golden Freddy in the office'); return; }
+      // g573 (Foxy's instant kill on a monitor-down hall flash) precedes g778
+      // (Golden Freddy's flash kill) in event-group order, and g573 "kills
+      // through" Golden Freddy already being present -- his kill is not
+      // suppressed or gated by Golden Freddy's presence. Foxy is checked
+      // first so a simultaneous lock-on is never masked by the GF branch's
+      // early return.
       if (this.foxy.gotYou) { this.kill('foxy', 'Flashed the hall after Foxy locked on (D exceeded 3 at a 5s check)'); return; }
+      if (this.gf.present) { this.kill('golden-freddy', 'Flashed the hall with Golden Freddy in the office'); return; }
     }
   }
 
