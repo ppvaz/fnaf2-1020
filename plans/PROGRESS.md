@@ -97,8 +97,59 @@ DEVICE CLAIM -- no phone has run it -- but it says the family the device work
 is pointed at may be the wrong one, and that the executor's error SHAPE
 (common mode vs per row) is now the measurement that decides the route.
 
-**Open.** Whether the phone executor's error is common mode or per row is
-unmeasured and is now the decisive unknown. Two measurements are in flight and
+**The executor budget, and the number that closes the external route.** The
+two sweeps above are orthogonal components of timing error and neither alone
+is a device number, so the joint map was run: at ONE FRAME of per-row scatter
+Minus 7 is 1/20 at EVERY offset. Scatter dominates and the offset axis is not
+binding, which retires the "Minus 7's window is four times wider" reading --
+that is true only along the axis that does not decide anything.
+
+Neither existing model can express the range a handset lives in. `--slack`
+quantizes as `span = round(slackMs * FPS / 1000)`, so under ~8 ms it is no
+jitter at all and 8-25 ms is a uniform draw over three frames: it can say a 0%
+or a 67% per-row slip rate and nothing between. The published "collapses at
+one frame" figure is the 67% end -- not a demanding executor, a broken one.
+`--sigma` takes what a measurement actually yields instead: each row dispatched
+at its intended time plus a draw from N(mean, sigma) in ms, frame-quantized, so
+the slip rate falls out rather than being assumed. Night 7, 300 seeds:
+
+| sigma | Minus 7 | Minus Toys | rows slipped |
+|---:|---:|---:|---:|
+| 0-3 ms | 300/300 | 300/300 | 0.0-0.6% |
+| 4 ms | 299/300 | 299/300 | 3.7% |
+| 5 ms | 293/300 | 290/300 | 9.6% |
+| 6 ms | 275/300 | 262/300 | 16.5% |
+| 8 ms | 221/300 | 186/300 | 29.7% |
+| 10 ms | 125/300 | 109/300 | 40.4% |
+| 12 ms | 55/300 | 52/300 | 48.8% |
+| 15 ms | 11/300 | -- | 58.0% |
+| 20 ms | 2/300 | -- | 68.3% |
+| **29 ms** | **0/300** | -- | 77.3% |
+
+Two things follow and both are load-bearing. **The routine is not
+frame-brittle**: at 4 ms sigma 3.7% of rows already land on the wrong frame and
+it still wins every seed, so single-frame slips are survivable and the budget
+is roughly sigma under 4-6 ms. And **the families are equivalent on this
+axis** -- Minus 7 is marginally better at 8-10 ms and identical below 5 -- so
+the family choice is not the lever the offset sweep made it look like.
+
+**`ON-DEVICE-VALIDATION.md` already measured the g56 at per-press jitter
+sigma 29 ms (p95 57 ms).** At that value the best policy in the model scores
+0/300. The external device route is therefore blocked by ACTUATOR JITTER, at
+roughly six times the budget -- not by strategy choice, and not by phase
+anchoring, which addresses the offset axis the joint map just showed is not
+binding. The AM-digit re-anchor remains necessary and is not close to
+sufficient. This reframes rather than contradicts the recorded refutation: the
+conclusion stands, the cause named for it was the wrong one.
+
+**Two measurements now closed.** The control arm re-run on the
+post-`66cff9f` engine returns 125/420 and 131/420, identical to the pre-fix
+numbers, so the attribution fix moved no survival and the factorial stands.
+The `campMinTicks` interior is 120/125/124 at 2/3/4 against 131 at 1 and 125
+at 5, so 1 is the retained default and the interior buys nothing.
+
+**Open.** The decisive quantity is now named and measured: per-press dispatch
+jitter, 29 ms against a 4-6 ms budget. Two measurements are in flight and
 not yet recorded: the control arm re-run on the post-`66cff9f` engine, and the
 `campMinTicks` interior (2, 3, 4). NOTHING IN THIS SESSION TOUCHED THE PHONE
 -- `adb devices` is empty -- and the closed loop still has zero importers
