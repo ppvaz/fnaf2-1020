@@ -158,9 +158,42 @@ export class NightPolicy {
       // default is to sweep only when the monitor is up for the box anyway;
       // the periodic refresh stays available as a knob.
       sweepPeriodFrames = Infinity,
+      // How stale the route stun must be before a WIND TRIP picks the sweep
+      // leg up on its way to the box. This is the cheap sweep: the monitor is
+      // already up for the wind, so it costs `sweepFrames` and no extra
+      // cams-up exposure -- unlike the standalone trip `sweepPeriodFrames`
+      // governs, which was measured as a Night 1 loss. `Infinity` restores the
+      // once-per-night behaviour the old camera-position guard produced by
+      // accident, and it is the DEFAULT because re-laying the stun every trip
+      // was measured and refused: over 60 held-out seeds it lost in all four
+      // pairings (125->96, 131->104, 101->81, 126->113) and turned Foxy into
+      // the dominant death on Nights 2, 3 and 5. The sweep leg spends
+      // monitor-up time and delays the hall flash, and the route control it
+      // buys does not pay for that. See `stunStale`.
+      sweepRideFrames = Infinity,
       // Spend idle boundaries on the free office-light stall rather than on a
       // mask camp. See the comment at the idle branch.
       idleStall = true,
+      // How many complete one-second repel ticks an idle mask must buy to be
+      // worth taking over the free stall. `[SOURCED]` g292/g400 roll a 10%
+      // early leave on every cumulative second under the mask, so a camp pays
+      // out PER TICK; the choice against the stall is how many ticks are
+      // bought, not whether all five are. Five is the sourced full repel and
+      // reproduces the gate this replaced -- a threshold that cannot be met
+      // while Foxy is live, because `foxySlack` is capped at one movement
+      // period (300 frames) and five ticks plus the put-on animation need 316.
+      // Measured 2026-09-04 over the same 60 held-out seeds: 1 beats the
+      // sourced 5 with the thud on (125 -> 131, Night 3 +5 and Night 4 +5) and
+      // decisively without it (101 -> 126, Night 2 0 -> 22). A partial camp
+      // buys real leave rolls; demanding the whole repel bought nothing at all
+      // because the whole repel never fits. The interior (2, 3, 4) is NOT yet
+      // measured.
+      campMinTicks = 1,
+      // Act on the marker-122 vent thud, the only cue that reaches Toy Chica.
+      // It is priced in the observation budget as AUDIO, which the constrained
+      // search treats as inadmissible, so the arm that turns it off is not a
+      // straw man: it is the sensor a stock visual read actually has.
+      useThud = true,
       // Price Foxy on the 5 s roll grid instead of on the band alone. See
       // `rollDeadline`. `false` restores the grid-free band rule, which is
       // what every number before 2026-09-04 was measured with.
@@ -187,7 +220,10 @@ export class NightPolicy {
     this.sweepOnTrip = sweepOnTrip;
     this.topUpBelow = topUpBelow;
     this.sweepPeriodFrames = sweepPeriodFrames;
+    this.sweepRideFrames = sweepRideFrames;
     this.idleStall = idleStall;
+    this.campMinTicks = campMinTicks;
+    this.useThud = useThud;
     this.rollGrid = rollGrid;
     this.rollGuardTicks = rollGuardTicks;
     this.sweepFrames = 32;
@@ -454,13 +490,31 @@ export class NightPolicy {
   tripFrames(state, windFrames) {
     const up = state.monitor === 'up' || state.monitor === 'raising';
     const camera = this.cameraOnRaise(state);
-    const sweep = this.sweepOnTrip && camera !== 7 && camera !== C.BOX_CAM;
+    const sweep = this.sweepOnTrip && camera !== 7 && this.stunStale(state);
     const select = (sweep ? 7 : camera) !== C.BOX_CAM;
     return (state.maskOn ? C.MASK_ANIM_OFF + BOUNDARY : 0) +
       (up ? 0 : C.MONITOR_ANIM_UP + BOUNDARY) +
       (sweep ? this.sweepFrames + BOUNDARY : 0) +
       (select ? 2 + BOUNDARY : 0) +
       BOUNDARY + windFrames + BOUNDARY + C.MONITOR_ANIM_DOWN + BOUNDARY;
+  }
+
+  /**
+   * Is the route stun old enough that a wind trip should re-lay it?
+   *
+   * The guard this replaces asked where the camera was PARKED, not how old the
+   * stun was: `viewedCamera !== 7 && viewedCamera !== BOX_CAM`. The second
+   * clause was doing duty as a freshness test and cannot be one -- a trip ends
+   * by winding, so the monitor comes back up parked on the box camera and the
+   * test reads "already swept" for the rest of the night. The sweep therefore
+   * fired exactly ONCE per night and the route stun, which is what keeps Toy
+   * Chica off the opening instead of answering her at it, was never refreshed.
+   * `viewedCamera !== 7` is kept as the in-trip progress guard, because a
+   * landed sweep parks on CAM 07.
+   */
+  stunStale(state) {
+    if (state.lastCameraFlashFrame < 0) return true;
+    return state.frame - state.lastCameraFlashFrame >= this.sweepRideFrames;
   }
 
   /** Walk the prerequisites of a wind trip, ending in the named wind. */
@@ -473,8 +527,8 @@ export class NightPolicy {
     // the box rather than making a second cams-up trip for them. The sequence
     // is driven by the observed camera alone -- the sweep ends parked on CAM
     // 07 -- so there is no trip counter to get out of step.
-    if (this.sweepOnTrip && (forceSweep ||
-        (state.viewedCamera !== 7 && state.viewedCamera !== C.BOX_CAM)))
+    if (this.sweepOnTrip && state.viewedCamera !== 7 &&
+        (forceSweep || this.stunStale(state)))
       return reason(SWEEP, `${why}: stun the routes on the way to the box`);
     if (state.viewedCamera !== C.BOX_CAM)
       return reason(SELECT_BOX_CAM, `${why}: winding only counts on the box camera`);
@@ -537,7 +591,7 @@ export class NightPolicy {
     //     Two consequences, and the second is the load-bearing one: wear the
     //     mask for the sourced repel, and DO NOT RAISE THE MONITOR until it is
     //     paid. The monitor is what kills; the mask is only how the wait ends.
-    const thud = observedValue(facts, 'ventThud') === true &&
+    const thud = this.useThud && observedValue(facts, 'ventThud') === true &&
       !this.repelPaid(state, observedValue(facts, 'ventThudAge'));
     if (bb || mangle || thud) {
       const why = bb ? 'balloon boy in the opening'
@@ -745,8 +799,18 @@ export class NightPolicy {
     const idleMasked = Math.min(
       box - C.MASK_ANIM_OFF - BOUNDARY,
       this.foxySlack(state, { masked: true }));
-    if (this.idleStall && idleMasked < this.campFrames && due > C.FPS + BOUNDARY)
-      return reason(STALL, `stall: no room for a whole repel (${Math.round(idleMasked)})`);
+    // How many complete repel ticks the nearer deadline actually buys. The old
+    // test asked whether a WHOLE five-tick repel fits and compared against
+    // `campFrames` (316), a threshold `foxySlack` cannot reach: the sourced
+    // repel is exactly one movement period long and the retained cap never
+    // lets a movement period pass unflashed, so `foxySlack` is bounded by 300.
+    // On every night with Foxy live the answer was therefore no, the stall
+    // always won, and the mask idle was UNREACHABLE rather than unattractive.
+    // At the default `campMinTicks` = 5 this is `idleMasked < 316` again, so
+    // the quantity changes and the behaviour does not.
+    const campTicks = Math.floor((idleMasked - C.MASK_ANIM_ON - BOUNDARY) / C.FPS);
+    if (this.idleStall && campTicks < this.campMinTicks && due > C.FPS + BOUNDARY)
+      return reason(STALL, `stall: ${campTicks} of ${this.campMinTicks} repel ticks fit`);
     // Wear the mask for whatever the nearer deadline leaves, rather than only
     // when the WHOLE five-tick repel fits.
     //
