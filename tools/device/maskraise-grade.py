@@ -35,6 +35,8 @@ import sys
 
 W, H, FPS = 160, 72, 60
 X0, X1 = int(W * 0.38), int(W * 0.62)  # the hallway the beam lights
+LV0, LV1 = 0, int(W * 0.16)           # left vent: a visitor overlay darkens/brightens it
+RV0, RV1 = int(W * 0.84), W           # right vent
 SUSTAIN = 5  # frames a level must hold to count as reached
 BEAM_MARGIN = 3.0  # luma above the office level; plateau noise is < 0.5
 
@@ -82,17 +84,21 @@ def decode(path):
     n = len(raw) // sz
     if n < FPS:
         raise SystemExit(f"only {n} frames decoded from {path}")
-    center, diff = [], [0.0]
+    center, lvent, rvent, diff = [], [], [], [0.0]
     prev = None
     for i in range(n):
         f = raw[i * sz:(i + 1) * sz]
         luma = [0.3 * f[j] + 0.59 * f[j + 1] + 0.11 * f[j + 2] for j in range(0, len(f), 3)]
-        roi = [luma[r * W + x] for r in range(H) for x in range(X0, X1)]
-        center.append(sum(roi) / len(roi))
+        def band(x0, x1):
+            roi = [luma[r * W + x] for r in range(H) for x in range(x0, x1)]
+            return sum(roi) / len(roi)
+        center.append(band(X0, X1))
+        lvent.append(band(LV0, LV1))
+        rvent.append(band(RV0, RV1))
         if prev is not None:
             diff.append(sum(abs(a - b) for a, b in zip(luma, prev)) / (W * H))
         prev = luma
-    return center, diff, n
+    return center, lvent, rvent, diff, n
 
 
 def sustained_at(values, start, stop, level, tol, direction):
@@ -116,7 +122,7 @@ def main():
     args = ap.parse_args()
 
     trials = parse_stream(args.stream)
-    center, diff, n = decode(args.video)
+    center, lvent, rvent, diff, n = decode(args.video)
     t_of = lambda frame: frame / FPS * 1000.0
 
     # The two levels come from the trial structure itself, not from the
@@ -186,10 +192,6 @@ def main():
     offset = statistics.median(offsets)
     drift = max(offsets) - min(offsets)
 
-    print(f"{n} frames @ {FPS} fps  mask-level {mask_level:.1f}  office-level {office_level:.1f}  "
-          f"sync offset {offset:+.0f} ms (spread {drift:.0f} ms over {len(offsets)} anchors)"
-          + (f"  TERMINAL at {t_of(live_end) / 1000:.1f}s" if live_end < n else ""))
-
     beams = []
     run = None
     for i in range(live_end):
@@ -202,7 +204,17 @@ def main():
         beams.append((run, live_end))
 
     by_gap, anim_on, anim_off = {}, [], []
-    print(f"{'gap':>5} {'landed':>7} {'anim-on':>8} {'anim-off':>8}  note")
+    # A vent-visitor overlay sits on one side; the clean vent bands are each
+    # run's medians. Printed per trial so an encounter-confounded swallow
+    # (g75-77 block every light during an encounter) cannot read as an
+    # animation-window swallow.
+    l_base = statistics.median(lvent[:live_end])
+    r_base = statistics.median(rvent[:live_end])
+    print(f"{n} frames @ {FPS} fps  mask-level {mask_level:.1f}  office-level {office_level:.1f}  "
+          f"vent-bases L{l_base:.1f}/R{r_base:.1f}  "
+          f"sync offset {offset:+.0f} ms (spread {drift:.0f} ms over {len(offsets)} anchors)"
+          + (f"  TERMINAL at {t_of(live_end) / 1000:.1f}s" if live_end < n else ""))
+    print(f"{'gap':>5} {'landed':>7} {'anim-on':>8} {'anim-off':>8}  {'Lvent':>6} {'Rvent':>6}  note")
     for tr in trials:
         v_on = offset + tr["mask_on_ms"]
         v_off = offset + tr["mask_off_ms"]
@@ -215,7 +227,7 @@ def main():
                    and (b[1] - b[0]) <= 12]  # a beam is at most ~200 ms of bloom
             landed, note = bool(hit), ""
             # Animation completion, not mid-crossing: the first frame that
-            # HOLDS the target level. ON has no press near it; OFF is clean
+            # HOLDS the target level. ON has no other press near it; OFF is clean
             # only when no beam (or a swallowed one) left bloom behind.
             i0 = int(v_on / 1000 * FPS)
             f = sustained_at(center, i0, min(live_end, i0 + int(0.9 * FPS)), mask_level, 1.5, +1)
@@ -223,6 +235,11 @@ def main():
             f = sustained_at(center, int(v_off / 1000 * FPS),
                              min(live_end, int((v_off + 900) / 1000 * FPS)), office_level, 1.5, +1)
             a_off = t_of(f) - v_off if f is not None and not landed else None
+            if a_on is None:
+                # No mask interval where the stream pressed one: the run has
+                # desynced (swallowed toggle -> parity chaos) or died quietly.
+                # A window with no mask cycle cannot grade the seam.
+                landed, note = None, "no-mask-cycle (invalid)"
         if a_on is not None and 0 < a_on < 900:
             anim_on.append(a_on)
         if a_off is not None and 0 < a_off < 900:
@@ -232,8 +249,13 @@ def main():
             g[0] += 1
         if landed is not None:
             g[1] += 1
+        wa = max(0, int((v_on - 300) / 1000 * FPS))
+        wb = min(live_end, int((v_hall + 400) / 1000 * FPS))
+        lv = statistics.fmean(lvent[wa:wb]) if wb > wa else float("nan")
+        rv = statistics.fmean(rvent[wa:wb]) if wb > wa else float("nan")
         fmt = lambda v: f"{v:4.0f} ms" if v is not None else "     --"
-        print(f"{tr['gap']:>5} {str(landed):>7} {fmt(a_on)} {fmt(a_off)}  {note}")
+        print(f"{tr['gap']:>5} {str(landed):>7} {fmt(a_on)} {fmt(a_off)}  "
+              f"{lv:6.1f} {rv:6.1f}  {note}")
     print("\nper-gap landing rate")
     for gap in sorted(by_gap):
         l, r = by_gap[gap]
