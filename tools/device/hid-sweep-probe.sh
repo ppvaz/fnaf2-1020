@@ -50,7 +50,7 @@ REC_PID=""
 cleanup() {
   [ -n "$REC_PID" ] && kill "$REC_PID" 2>/dev/null || true
   adb shell "am force-stop $PKG" >/dev/null 2>&1 || true
-  adb shell "rm -f $REMOTE_STREAM" >/dev/null 2>&1 || true
+  adb shell "rm -f $REMOTE_STREAM /data/local/tmp/fnaf-monraise-check /data/local/tmp/fnaf-monraise-frame.raw" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -78,7 +78,19 @@ case "$PROBE_GEN" in
     node "$HERE/hid-raise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   maskraise)
     echo "maskraise probe: contact ${CONTACT_MS:-33} ms, hall ${HALL_MS:-133} ms, ${ROUNDS:-3} rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
-    ROUNDS="${ROUNDS:-3}" HALL_MS="${HALL_MS:-133}" node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+    READY_MS="${READY_MS:-16000}" ROUNDS="${ROUNDS:-3}" HALL_MS="${HALL_MS:-133}" \
+      node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+  monitorraise)
+    echo "monitorraise probe: contact ${CONTACT_MS:-33} ms, watcher-restored, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
+    SCHEDULE_OUT="$CAPTURE_DIR/$OUT.schedule.json" READY_MS="${READY_MS:-16000}" \
+      node "$HERE/hid-monitorraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
+    # The watcher classifies frames with the project's monitor-ROI checker,
+    # device-local, so it needs the binary on the phone.
+    LOCAL_CHECKER="$(mktemp)"
+    "$HERE/build-screencheck.sh" "$LOCAL_CHECKER" >/dev/null
+    adb push "$LOCAL_CHECKER" /data/local/tmp/fnaf-monraise-check >/dev/null
+    rm -f "$LOCAL_CHECKER"
+    adb shell "chmod +x /data/local/tmp/fnaf-monraise-check" >/dev/null ;;
   *) echo "unknown PROBE_GEN: $PROBE_GEN" >&2; exit 2 ;;
 esac
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
@@ -118,24 +130,71 @@ PROBE_NIGHT="${PROBE_NIGHT:-sixthNight}"
 . "$HERE/coords.sh"
 # shellcheck source=menu.sh
 . "$HERE/menu.sh"
-menu_select "$PROBE_NIGHT" || {
-  echo "abort: could not select $PROBE_NIGHT on the title screen" >&2; exit 1; }
-
-# And confirm the night actually started before a single report goes out. The
-# stream's timings are relative to an office that is already up.
-for _ in $(seq 1 40); do
-  state="$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/screenstate.py" 2>/dev/null | tail -1)"
-  [ "$state" = night ] && break
-  sleep 0.5
-done
-[ "$state" = night ] || {
-  echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
-
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
-REC_PID=$!
-sleep 1
-echo "running sweeps at ${SPACINGS[*]} ms spacing"
-adb shell "hid $REMOTE_STREAM" || echo "hid exited nonzero" >&2
+if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
+  # Pre-register the HID device at the title screen, the way the canonical
+  # runner does (legacy-trial.sh: "The remote driver pre-registers HID at
+  # the title screen and waits here"). InputReader takes ~5.1 s to attach
+  # after registration; burning that during the menu and intro instead of
+  # the live night reclaims ~6-8 s of trials before night-6 threats close
+  # in. The stream's READY_MS prelude (default 16000 here) spans menu
+  # selection plus night load; a trial whose presses land on the intro
+  # card produces no mask interval and the grader invalidates it, so an
+  # unlucky early tail costs nothing but footage.
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
+  REC_PID=$!
+  nohup adb shell "hid $REMOTE_STREAM" > "$CAPTURE_DIR/$OUT.hid.log" 2>&1 &
+  HID_PID=$!
+  echo "pre-registered hid (pid $HID_PID); entering the night while it attaches"
+  WATCH_PID=""
+  if [ "$PROBE_GEN" = monitorraise ]; then
+    # The monitorraise probe is the one blind stream that cannot restore
+    # its own state: the watcher gives it eyes during the idle windows only.
+    nohup python3 "$HERE/monitorraise-watch.py" "$CAPTURE_DIR/$OUT.schedule.json" \
+      > "$CAPTURE_DIR/$OUT.watch.log" 2>&1 &
+    WATCH_PID=$!
+  fi
+  menu_select "$PROBE_NIGHT" || {
+    echo "abort: could not select $PROBE_NIGHT on the title screen" >&2; exit 1; }
+  for _ in $(seq 1 40); do
+    state="$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/screenstate.py" 2>/dev/null | tail -1)"
+    [ "$state" = night ] && break
+    sleep 0.5
+  done
+  [ "$state" = night ] || {
+    echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
+  echo "night up; the stream owns everything from here (${SPACINGS[*]} ms gaps)"
+  # Ride out the stream; it ends on its own. Bound the wait so a hung hid
+  # process cannot outlive the recording.
+  for _ in $(seq 1 $((REC_SECONDS + 30))); do
+    kill -0 "$HID_PID" 2>/dev/null || break
+    sleep 1
+  done
+  kill "$HID_PID" 2>/dev/null || true
+  if [ -n "$WATCH_PID" ]; then
+    # The watcher stops after the last idle window; humour it for 5 s, then
+    # stop it so the wrapper never hangs on a missed anchor.
+    for _ in 1 2 3 4 5; do kill -0 "$WATCH_PID" 2>/dev/null || break; sleep 1; done
+    kill "$WATCH_PID" 2>/dev/null || true
+    cat "$CAPTURE_DIR/$OUT.watch.log" 2>/dev/null || true
+  fi
+else
+  menu_select "$PROBE_NIGHT" || {
+    echo "abort: could not select $PROBE_NIGHT on the title screen" >&2; exit 1; }
+  # And confirm the night actually started before a single report goes out. The
+  # stream's timings are relative to an office that is already up.
+  for _ in $(seq 1 40); do
+    state="$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/screenstate.py" 2>/dev/null | tail -1)"
+    [ "$state" = night ] && break
+    sleep 0.5
+  done
+  [ "$state" = night ] || {
+    echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
+  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
+  REC_PID=$!
+  sleep 1
+  echo "running sweeps at ${SPACINGS[*]} ms spacing"
+  adb shell "hid $REMOTE_STREAM" || echo "hid exited nonzero" >&2
+fi
 sleep 2
 kill "$REC_PID" 2>/dev/null || true
 wait "$REC_PID" 2>/dev/null || true
@@ -169,7 +228,7 @@ if [ "$PROBE_GEN" = sweep ]; then
   echo "one complete 10-04-07-11 sweep is expected per spacing, in the order"
   echo "requested: ${SPACINGS[*]} ms"
   echo "light lead ${LIGHT_LEAD_MS:-0} ms, contact ${CONTACT_MS:-100} ms"
-elif [ "$PROBE_GEN" = maskraise ]; then
+elif [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   # The grader reads the emitted .hid stream for its clock, so it must be
   # handed exactly the file the phone consumed.
   python3 "$HERE/maskraise-grade.py" "$LOCAL_VIDEO" "$CAPTURE_DIR/$OUT.hid" || GRADE_FAILED=1
