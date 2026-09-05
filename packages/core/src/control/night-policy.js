@@ -353,8 +353,16 @@ export class NightPolicy {
     const toBand = this.rollGrid
       ? this.rollDeadline(state, perSecond)
       : ((this.safeD - state.foxyD) * C.FPS) / perSecond;
-    const sinceFlash = state.lastHallLightFrame < 0
-      ? Infinity : state.frame - state.lastHallLightFrame;
+    // A night that has never been flashed has gone exactly `frame` frames
+    // unflashed, not an unbounded stretch. The `Infinity` sentinel made the
+    // cap below evaluate `MO_FRAMES - Infinity`, so the slack was -Infinity on
+    // the first frame of every Foxy-live night and stayed there until the
+    // first flash. That was inert while nothing read the slack that early;
+    // `deb6463` gave the camp branch a Foxy race, and the policy began
+    // answering the first cue of the night with a hall flash instead of the
+    // mask -- which is what the two camp priority gates caught.
+    const sinceFlash = state.frame -
+      (state.lastHallLightFrame < 0 ? 0 : state.lastHallLightFrame);
     const raw = Math.min(toBand, C.MO_FRAMES - sinceFlash);
     if (!lead) return raw;
     return raw - this.leadToFlash(state) - this.flashMarginFrames;

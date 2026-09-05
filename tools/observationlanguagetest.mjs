@@ -36,14 +36,20 @@ check(Object.keys(OBSERVATION_BUDGET).length === FACTS.length,
 check(OBSERVATION_BUDGET.leftOpening.readCostMs === VISUAL_READ_COST_MS &&
       VISUAL_READ_COST_MS === 59.5,
   'the visual read cost is not the measured p95 device-local snapshot read');
-for (const fact of ['bbVent', 'bbVentId', 'mangleStatic', 'mangleStaticCam']) {
+// The three `ventThud*` facts joined this list in `deb6463`: the marker-122
+// thud is the only cue that reaches Toy Chica, and it is AUDIO, whose read
+// cost plan 08 says is unmeasured. They are priced exactly like the other
+// unmeasured reads -- searchable by nothing until the ARM/HIT/MISS protocol
+// exists -- which is why the excluded count below moved from four to seven.
+for (const fact of ['bbVent', 'bbVentId', 'mangleStatic', 'mangleStaticCam',
+                    'ventThud', 'ventThudId', 'ventThudAge']) {
   check(OBSERVATION_BUDGET[fact].readCostMs === UNKNOWN,
     `${fact} was given a read cost the repository has not measured`);
   check(!OBSERVATION_BUDGET[fact].admissible &&
         OBSERVATION_BUDGET[fact].exclusion === 'read-cost-unmeasured',
     `${fact} is admissible despite an unmeasured read cost`);
 }
-check(admissibleFacts().length === 10 && excludedFacts().length === 4,
+check(admissibleFacts().length === 10 && excludedFacts().length === 7,
   'the admissible/excluded split does not match the measured budget');
 check(admissibleFacts().every(fact => OBSERVATION_BUDGET[fact].channel === 'visual'),
   'an audio fact reached the searchable vocabulary');

@@ -101,8 +101,24 @@ check(n5.foxySlack(settled(5, { frame: 600, foxyD: 0, lastHallLightFrame: 599 })
   'a fresh hall flash leaves Foxy slack');
 check(n5.foxySlack(settled(5, { frame: 600, foxyD: 0, lastHallLightFrame: 290 })) <= 0,
   'a whole five-second check period without a flash is due, even at D = 0');
-check(n5.foxySlack(settled(5, { frame: 600, foxyD: n5.safeD, lastHallLightFrame: 599 })) <= 0,
-  'reaching the band is due, even with a fresh flash');
+// D IS ONLY LETHAL ON A GRID, so "reaching the band" is not by itself a
+// deadline. `[SOURCED]` arrival and lock-on are the same equation and both are
+// evaluated inside `onFiveSecond`, so D crossing the band BETWEEN two rolls
+// costs nothing provided a flash lands before the next roll. What is due is
+// the first roll that would land unsafe. The pre-grid rule is retained under
+// `rollGrid: false` -- the fallback for a lost grid phase -- and still calls
+// the band itself due, so both rules are pinned here rather than only the
+// default.
+const atBand = settled(5, { frame: 600, foxyD: n5.safeD, lastHallLightFrame: 599 });
+check(n5.foxySlack(atBand) > 0,
+  'reaching the band between two rolls is not due under the grid rule');
+check(new NightPolicy({ night: 5, rollGrid: false }).foxySlack(atBand) <= 0,
+  'reaching the band is due under the retained grid-free rule');
+// ...and the grid rule is not merely permissive: with the same D one tick
+// before a roll, that roll is the one that lands unsafe and it is due.
+check(n5.foxySlack(settled(5, { frame: 880, foxyD: n5.safeD, lastHallLightFrame: 879 }))
+  <= n5.actWithinFrames,
+  'the roll that would land unsafe is due under the grid rule');
 check(n5.foxySlack(settled(5, { frame: 600, foxyD: 0, lastHallLightFrame: 599, power: 0 }))
   === Infinity, 'a flash that cannot be paid for is not scheduled');
 
