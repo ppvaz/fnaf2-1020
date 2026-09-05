@@ -53,7 +53,7 @@ Paths in the tables are relative to the repository root.
 | `tools/chrome.mjs` | internal module | Shared Chrome discovery and DevTools flags for browser tools. `$CHROME` overrides discovery; reuse this instead of adding another locator. |
 | `tools/architecture-test.js` | check | Fast package-boundary gate: core has no application/host imports and production packages do not import tests or reports. |
 | `tools/contract-vectors.py` | check | Dependency-free cross-language reader for the shared valid/invalid semantic-control and measurement JSONL vectors. |
-| `tools/generate-catalog.js` | generator | Generates checked-in language, import, command, contract, protocol, adapter, test, and duplicate-responsibility inventories under `docs/architecture/generated/`. |
+| `tools/generate-catalog.js` | generator | Generates checked-in import, command, contract, protocol, adapter, test, and duplicate-responsibility inventories under `docs/architecture/generated/`. |
 | `tools/evidence.js` | evidence CLI | Lists, shows, diffs, replays, and causally explains retained bundles; `promote` only proposes Plan 12 review and cannot raise a claim ceiling. |
 | `tools/policy-inspect.js` | inspection CLI | Prints the finite reviewed policy phases and canonical byte identity without executing a device path. |
 

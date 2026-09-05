@@ -12,8 +12,8 @@ const OUT = join(ROOT, 'docs/architecture/generated');
 // The inventories describe the REPOSITORY, not whatever the working directory
 // happens to hold. A directory walk cannot tell the two apart: on 2026-09-02 an
 // agent worktree under `.claude/` was walked into `import-graph`,
-// `reverse-links` and `test-manifest`, and doubled every language count
-// (Shell 63 -> 126 files, JavaScript 240 -> 491). git already draws that line --
+// `reverse-links` and `test-manifest`, doubling their file counts (Shell 63 ->
+// 126, JavaScript 240 -> 491). git already draws that line --
 // a nested checkout comes back as a single opaque directory entry, and its
 // ignore rules cover the build output the old SKIP list missed
 // (`android/cue-helper/build/`) -- so git's enumeration is the boundary.
@@ -26,15 +26,6 @@ const files = execFileSync('git',
   .filter(path => !path.endsWith('/'))
   .map(path => join(ROOT, path)).sort();
 const sourceFiles = files.filter(path => /\.(?:js|mjs|ts|py|sh|c|S)$/.test(path));
-const language = {};
-for (const path of sourceFiles) {
-  const ext = path.split('.').pop();
-  const languageName = { mjs: 'JavaScript', js: 'JavaScript', ts: 'TypeScript', py: 'Python', sh: 'Shell', c: 'C', S: 'Assembly' }[ext] ?? ext;
-  const lines = (await readFile(path, 'utf8')).split('\n').length - 1;
-  language[languageName] ??= { files: 0, lines: 0 };
-  language[languageName].files += 1; language[languageName].lines += lines;
-}
-
 const importGraph = [];
 for (const path of sourceFiles.filter(path => /\.(?:js|mjs|ts)$/.test(path))) {
   const source = await readFile(path, 'utf8');
@@ -410,7 +401,6 @@ const legacyPaths = [
 ];
 
 const outputs = {
-  'language-inventory.json': { schema: 'language-inventory-v1', languages: language },
   'import-graph.json': { schema: 'import-graph-v1', files: importGraph },
   'command-registry.json': { schema: 'command-registry-v1', source: ['package.json', 'tools/TOOLS.md'], commands: commandRegistry, tools: toolCommands },
   'contract-register.json': contractRegister,
