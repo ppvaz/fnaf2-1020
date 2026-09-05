@@ -1,6 +1,56 @@
 # Plan progress
 
-**Updated:** 2026-09-04
+**Updated:** 2026-09-05
+
+2026-09-05 DEAD FIELD — `STALLED[].kind` removed. It named each character's
+APPROACH ROUTE (`'vent'` vs `'blackout'`) but was never read: nothing in
+`packages/core/src/`, `tools/`, `apps/` or `packages/` consumed it, and
+`plant-model.js:120` merely spread it into each unit. It read as a behavioural
+classification and is not one — the office-encounter blackout is gated on
+`openingRule === 'streak'` (call sites at plant-model.js:915 and :970), whose
+members are the three Withereds AND Toy Freddy. So `kind: 'vent'` sat on
+W. Bonnie and W. Chica, who DO open a blackout, which is exactly the wrong
+inference the field invites; it was drawn in this session before the
+`openingRule` gate was checked. Also re-worded the stale "Toys and W. Freddy"
+comment above the :915 gate, which was the pre-XOR attribution that
+config.js's `entryStreakFrames` note already records as re-bound on
+2026-08-20.
+
+Checks: typecheck clean, `test:core` 200/200, `device:dry-run` result=PASS
+claim=FIXTURE evidence=`run-20260905014719-a111fb10-4e4c57`. No behaviour
+change — the field had no reader, so no survival number can move.
+
+Open: `STALLED[].kind` is gone rather than relabelled; if a future consumer
+wants the approach route it is recoverable from `path` (a route ending
+`ventL`/`ventR` is a vent entry, one ending `office` is a hall entry).
+
+2026-09-05 ENGINE FIX — `onLightPress` attributed a Foxy kill to Golden Freddy.
+`[SOURCED]` g573 (Foxy's instant kill on a monitor-down hall flash) precedes
+g778 (Golden Freddy's) in event-group order, and g573 carries no
+golden/yellowbear condition at all: his kill is not suppressed or gated by
+Golden Freddy's presence. The engine checked `gf.present` FIRST and returned,
+so with Foxy locked on and Golden Freddy in the office the same flash was
+recorded as `golden-freddy` and Foxy's branch never ran. The player dies either
+way — this is an ATTRIBUTION defect, not a survival one — but every death-cause
+statistic over a cams-up night undercounts Foxy by exactly the overlap, and the
+overlap is not rare: on night 6 Golden Freddy is `{ oneIn: 10 }` from midnight
+(g683) and a flat 3 from 2 AM (g684). Verified against a freshly regenerated
+dump rather than the derived docs.
+
+Checks: `tools/sourcetest.mjs` gains one case (g573) that fails on master and
+passes with the fix, naming the group. `test:core` 200/200. `device:dry-run`
+result=PASS claim=FIXTURE evidence=`run-20260905012546-03c6a166-4e4c57`.
+`test:simulation` reports 10 failed checks BOTH before and after the change —
+the identical set (reactivetest, vent reactive, minus7 search, hidpilot x2, hid
+sweep, device actuator, human gate, night matrix, grade-run coverage), so none
+are attributable here. `night-policy.test.js` likewise fails its same 3 cases on
+clean master.
+
+Open: those 13 pre-existing red checks are untouched and none were investigated.
+No survival number moved, nothing is promoted, and no device claim is made. Any
+previously recorded death-cause breakdown taken from a cams-up night is
+suspect on the Foxy/Golden-Freddy split and would need regenerating to be
+trusted.
 
 2026-09-04 ROADMAP A1 — Foxy is now priced on his roll grid, the sensor no
 longer throws away the cue for the game's most lethal character, and the

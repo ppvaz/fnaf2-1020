@@ -213,6 +213,19 @@ const settle = (s) => step(s, Math.max(C.MONITOR_ANIM_UP, C.MASK_ANIM_ON) + 2);
     s.death.reason === 'golden-freddy');
 }
 {
+  // g573 before g778. Both hazards read the same hall flash and neither gates
+  // the other, so with Foxy locked on AND Golden Freddy present the earlier
+  // group is the one that fires. Checking Golden Freddy first and returning --
+  // which the engine did until 2026-09-04 -- swallowed Foxy's kill entirely
+  // and misattributed the death.
+  const s = bare({ gfEnabled: true, foxyEnabled: true });
+  s.gf.present = true;
+  s.foxy.gotYou = true;
+  s.press('light');
+  ok('g573', 'a locked-on Foxy kills through Golden Freddy on the same flash',
+    !s.alive && s.death.reason === 'foxy');
+}
+{
   // g780: the hallway figure kills above 100 frames of held light, not at 100.
   ok('g780', 'the hall kill threshold is 100 frames', C.GF_HALL_KILL_FRAMES === 100);
   ok('g781', 'his hall presence is a 1-in-10 roll', C.GF_HALL_ROLL === 10);

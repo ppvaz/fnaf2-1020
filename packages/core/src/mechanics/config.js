@@ -638,13 +638,13 @@ export const DEFAULT_WIDGETS = {
 // (rare-event tier) and Paper Pals has its own single office hop; neither is
 // in this table.
 export const STALLED = [
-  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 7, 3, 'blindB', 'office'],   choke: 1, kind: 'blackout', entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true,  repelIdx: 0 },
-  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 7, 'blindA', 1, 5, 'ventL'], choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [1, 2], mutex: true,  repelIdx: 1 },
-  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 2, 6, 'ventR'],           choke: 1, kind: 'vent',     entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true,  repelIdx: 1 },
-  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 10, 'blindA', 'blindB', 'office'], choke: 1, kind: 'blackout', entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true, repelIdx: 0 },
-  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 3, 4, 2, 6, 'ventR'],        choke: 2, kind: 'vent',     entryGate: 'camsDown', openingRule: 'mask',   lightStallAt: [],     mutex: false, repelIdx: 1 },
-  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 'blindA', 1, 5, 'ventL'], choke: 1, kind: 'vent',     entryGate: null,       openingRule: 'mask',   lightStallAt: [1, 2], mutex: false, repelIdx: 1 },
-  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 7, 'blindA', 2, 6, 'ventR'], choke: 2, kind: 'vent', entryGate: 'camsUp', openingRule: 'raise', lightStallAt: [3, 4], mutex: false, repelIdx: 0 },
+  { id: 'withfreddy', name: 'Withered Freddy', short: 'WF',  path: [8, 7, 3, 'blindB', 'office'],   choke: 1, entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [2, 3], mutex: true,  repelIdx: 0 },
+  { id: 'withbonnie', name: 'Withered Bonnie', short: 'WB',  path: [8, 7, 'blindA', 1, 5, 'ventL'], choke: 1, entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [1, 2], mutex: true,  repelIdx: 1 },
+  { id: 'withchica',  name: 'Withered Chica',  short: 'WC',  path: [8, 4, 2, 6, 'ventR'],           choke: 1, entryGate: 'camsUp',   openingRule: 'streak', lightStallAt: [],     mutex: true,  repelIdx: 1 },
+  { id: 'toyfreddy',  name: 'Toy Freddy',      short: 'TF',  path: [9, 10, 'blindA', 'blindB', 'office'], choke: 1, entryGate: 'camsUp', openingRule: 'streak', lightStallAt: [1, 2], mutex: true, repelIdx: 0 },
+  { id: 'toybonnie',  name: 'Toy Bonnie',      short: 'TB',  path: [9, 3, 4, 2, 6, 'ventR'],        choke: 2, entryGate: 'camsDown', openingRule: 'mask',   lightStallAt: [],     mutex: false, repelIdx: 1 },
+  { id: 'toychica',   name: 'Toy Chica',       short: 'TC',  path: [9, 7, 'blindA', 1, 5, 'ventL'], choke: 1, entryGate: null,       openingRule: 'mask',   lightStallAt: [1, 2], mutex: false, repelIdx: 1 },
+  { id: 'mangle',     name: 'The Mangle',      short: 'MG',  path: [12, 11, 10, 7, 'blindA', 2, 6, 'ventR'], choke: 2, entryGate: 'camsUp', openingRule: 'raise', lightStallAt: [3, 4], mutex: false, repelIdx: 0 },
 ];
 // The blind transit rooms break the old "nobody passes through an unflashed
 // room" property: several routes now contain a stretch no camera can touch.
