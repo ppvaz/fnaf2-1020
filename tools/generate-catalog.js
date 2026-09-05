@@ -104,6 +104,8 @@ const contractEvidence = {
   'threat-constellation-layout-v1': ['tools/threatconstellationtest.mjs'],
   'monitor-rule-v1': ['packages/adapters/test/monitor-rule.test.js', 'tools/device/test-monitor-calibrate.py'],
   'camera-rule-v1': ['packages/adapters/test/camera-rule.test.js', 'tools/device/test-camera-calibrate.py'],
+  'calibration-state-v1': ['apps/device/test/calibration-state-rule.test.js'],
+  'seam-actuator-qualification-v1': ['apps/device/test/calibration-state-rule.test.js'],
 };
 const repositoryPaths = new Set(files.map(path => relative(ROOT, path)));
 for (const contract of contractRegister.contracts) {

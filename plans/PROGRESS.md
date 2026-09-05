@@ -2,6 +2,86 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 live-qualification prep — picked up from the Codex session at
+`63922ba` with the phone attached for the first time since the audit entries
+(`ZF525F5BH5`, moto g56; game observed FNAF2_NIGHT by the safe screen check,
+then MENU per the operator — no game input was sent by this work). The three
+physical gates from the seam entry are now two-and-a-bit:
+
+1. **Measured clock alignment is CLOSED for this boot, with a domain
+   finding.** `fitClockMap` fits `clock-map-v1` artifacts from bracketed
+   anchors using interval arithmetic only — every pairwise slope interval
+   must contain the true rate, so the intersection bounds it and an
+   inconsistent sample refuses rather than averages away; validity is
+   exactly the measured span. `npm run device:clockmap` is the read-only
+   producer. THE FINDING: the helper stamps `snapshotNs` with
+   `System.nanoTime()` (suspend-excluding) while `/proc/uptime` is boottime
+   (suspend-including) — different domains that diverge by cumulative
+   suspend. The artifact's `sourceSession` now carries the domain
+   (`<bootId>#monotonic` / `#boottime`), and live capture compositions must
+   stamp the matching session. Two retained measurements from the attached
+   phone: boottime rate 0.999891 / 35 ms / 1952 ppm over 30.7 s, and
+   System.nanoTime rate 0.999896 / 24 ms / 1551 ppm over 31.3 s — the two
+   rates agree while the phone stayed awake, as they must. These are
+   per-boot, ~30 s measurements to be re-taken per live session.
+2. **The positive state rule is scaffolded, not measured.**
+   `calibration-state-v1` binds a fitted `monitor-rule-v1` PLUS a fitted
+   `mask-rule-v1` under one digest; `composeModernDevice` enforces the
+   binding and `measureCalibrationState` resolves OBSERVED only when both
+   sub-rules read the same frame positively. The monitor rule is measured;
+   the mask rule has no fitted artifact, so neither handset profile binds
+   the digest and the runner keeps refusing live calibration — correct
+   default.
+3. **The seam actuator record is formal.** `seam-actuator-qualification-v1`
+   (QUALIFIED verdict, `seam-block-v1` protocol, resolved `fnv1a` profile
+   hash, named completion/cancellation mechanisms with evidence IDs)
+   replaces the live gate's ad-hoc field reads via `seamQualification`,
+   beside the transport `qualification-v1` that live preflight already
+   demanded. No physical transport qualifies yet.
+
+Validation: `test:device:calibration` (with the new clock-map and
+calibration-state lanes), adapters conformance/monitor-rule, service,
+adb-bridge and CLI tests pass. `live-seam-composition.js` is synthetic-port
+gate-conformance scaffolding, explicitly not a CLI path, and it strips
+`dryRunOnly` only for its own conformance profile.
+
+A MEASUREMENT-DISCIPLINE CORRECTION to the paragraph above, found on pickup:
+this entry originally claimed the catalog was regenerated, and it was not.
+The session ran its gates as `npm run catalog 2>&1 | tail -1 && ...`, and a
+pipeline exits with the status of `tail`, so a *failing* catalog printed its
+last line and the chain still echoed `ALL-GATES-OK`. The catalog was in fact
+refusing both new register rows for want of a conformance fixture, which left
+`contract-specifications.json` at 58 rows against a 60-row register and
+`packages/core/test/contracts.test.js` red. Fixed by naming the fixture that
+actually exercises them — `apps/device/test/calibration-state-rule.test.js`
+covers `parseCalibrationStateRule` and both seam-qualification refusals — in
+`contractEvidence` (`tools/generate-catalog.js`), then regenerating. A gate
+must be run for its exit status; a green echo downstream of a pipe is not a
+passing gate.
+
+`npm run push-gate` then caught the second half of the same error, which is
+the one the charter names: the working tree is a different measurement from
+CI's clean clone. `generate-catalog.js` enumerates working-tree files that are
+untracked-but-not-ignored (deliberately, so a new tool cannot hide between
+creation and commit), so regenerating with the untracked scratch
+`tools/minus7/_m7.mjs` present baked it into `import-graph.json` — where a
+clean clone has no such file, failing both `architecture-test.js` and
+`git diff --exit-code -- docs/architecture/generated`. Regenerate the catalog
+with that scratch file moved out of the tree until it is either committed with
+a TOOLS.md row or removed.
+
+Validation on pickup: `npm run test` passes end to end (typecheck, unit,
+contracts including `test:device:calibration`, core), `node tools/test-docs.mjs`
+stops only on the pre-existing untracked `tools/minus7/_m7.mjs`, and the
+dry-run fixture regression is `result=PASS claim=FIXTURE evidence=`
+`run-20260905200703-e4f83b9e-4e4c57` (`FIXTURE`, not gameplay evidence).
+Still OPEN: fitted mask rule (needs labelled frames), a physically qualified
+seam-block transport with positive completion, ID-matched dispatch/effect
+tails, and per-session clock maps. `clock-map-v1` itself stays out of the
+contract register, consistent with `mask-rule-v1` and `seam-block-v1`; only
+the two live *gates* are registered. No no-input-loss or Night 7 clear claim;
+calibration remains UNVERIFIED.
+
 2026-09-05 service-owned seam runner — the clock audit is on `origin/master`;
 the follow-on pass adds `DeviceControlService.executeCalibration()` and the
 fixture-only `npm run device:calibrate -- --json`. The service writer lease

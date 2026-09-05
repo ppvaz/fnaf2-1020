@@ -207,6 +207,18 @@
       "validator": "packages/adapters/src/camera-rule.js parseCameraRule"
     },
     {
+      "id": "calibration-state-v1",
+      "owner": "packages/adapters",
+      "kind": "artifact",
+      "validator": "packages/adapters/src/calibration-state-rule.js parseCalibrationStateRule"
+    },
+    {
+      "id": "seam-actuator-qualification-v1",
+      "owner": "apps/device",
+      "kind": "artifact",
+      "validator": "apps/device/src/seam-calibration.js parseSeamActuatorQualification"
+    },
+    {
       "id": "device-campaign-v1",
       "owner": "apps/device",
       "kind": "data",

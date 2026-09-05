@@ -11,7 +11,7 @@ import { dispatchTrajectory, SafetySupervisor, makeEvent, makeManifest, validate
 import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
 import { validateExecutorRequest } from './artifact-executor.js';
-import { SeamCalibrationRunner } from './seam-calibration.js';
+import { SeamCalibrationRunner, parseSeamActuatorQualification } from './seam-calibration.js';
 
 const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR',
   'cam:10', 'cam:4', 'cam:7', 'cam:9', 'cam:11', 'wind']);
@@ -353,9 +353,11 @@ export class DeviceControlService {
           typeof this.actuator.abort !== 'function' || typeof this.actuator.releaseAll !== 'function')
         throw new Error('calibration requires one completion-aware, abortable timed-block actuator');
       if (!this.sensor || !this.detector) throw new Error('calibration requires a sensor and detector');
-      if (this.mode === 'live' && (this.actuator.qualification.calibrationProtocol !== 'seam-block-v1' ||
-          this.actuator.qualification.profileHash !== this.session.profileHash))
-        throw new Error('live calibration requires profile-bound timed-block qualification');
+      if (this.mode === 'live') {
+        const seamQualification = parseSeamActuatorQualification(this.actuator.seamQualification);
+        if (seamQualification.profileHash !== this.session.profileHash)
+          throw new Error('live calibration requires profile-bound timed-block qualification');
+      }
       const abortController = new AbortController();
       const runner = new SeamCalibrationRunner({
         spec, profile: this.profile, profileHash: this.session.profileHash, runId: this.session.id,

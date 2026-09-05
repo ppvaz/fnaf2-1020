@@ -35,6 +35,7 @@ const run = async (args, options = {}) => {
   if (args.includes('pidof')) return { ok: true, stdout: '1234\n', stderr: '' };
   if (args.includes('logcat')) return { ok: true, stdout: 'I/FnafCueHelper: control=READY port=49707 token=0123456789abcdef0123456789abcdef\n', stderr: '' };
   if (args.includes('date')) return { ok: true, stdout: '1760000000123\n', stderr: '' };
+  if (args.at(-1)?.includes('boot_id')) return { ok: true, stdout: '377068.03 7654321.00\nb0c1d2e3-1111-2222-3333-444455556666\n', stderr: '' };
   throw new Error(`unexpected adb ${args.join(' ')}`);
 };
 const bridge = new AdbDeviceBridge({ serial: 'usb-1', run });
@@ -51,6 +52,26 @@ assert.ok(clock.roundTripMs >= 0);
 assert.ok(clock.uncertaintyMs >= 1);
 assert.equal(clock.deviceWindow.startMs, clock.deviceMs - clock.uncertaintyMs);
 assert.equal(clock.deviceWindow.endMs, clock.deviceMs + clock.uncertaintyMs);
+
+const uptime = await bridge.uptimeSample();
+assert.equal(uptime.status, 'READY');
+assert.equal(uptime.schema, 'device-uptime-sample-v1');
+assert.equal(uptime.serial, 'usb-1');
+assert.equal(uptime.bootId, 'b0c1d2e3-1111-2222-3333-444455556666');
+assert.equal(uptime.sourceMs, 377068030);
+assert.ok(uptime.targetAfterMs >= uptime.targetBeforeMs);
+assert.equal(uptime.quantizationMs, 5);
+const garbageUptime = new AdbDeviceBridge({ serial: 'usb-1',
+  run: async args => args.includes('uptime') ? { ok: true, stdout: 'garbage\n', stderr: '' } :
+    { ok: true, stdout: '', stderr: '' } });
+const unparseable = await garbageUptime.uptimeSample();
+assert.equal(unparseable.status, 'HOLD');
+assert.equal(unparseable.reason, 'device-uptime-unparseable');
+const missingUptime = new AdbDeviceBridge({ serial: undefined,
+  run: async () => ({ ok: false, code: 'ENOENT', stdout: '', stderr: 'adb missing' }) });
+const held = await missingUptime.uptimeSample();
+assert.equal(held.status, 'HOLD');
+assert.equal(held.reason, 'adb-unavailable');
 const captured = await bridge.capturePng('usb-1');
 assert.deepEqual(captured, Buffer.from('png'));
 

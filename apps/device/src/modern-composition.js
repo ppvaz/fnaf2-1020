@@ -5,7 +5,8 @@
  * does not hide an adb round trip in the control loop.
  */
 import { HidWireTransport, CueHelperControlTransport, measureMonitorUp,
-  monitorRuleDigest, parseMonitorRule } from '@fnaf2-1020/adapters';
+  monitorRuleDigest, parseMonitorRule, measureCalibrationState,
+  calibrationStateRuleDigest, parseCalibrationStateRule } from '@fnaf2-1020/adapters';
 import { composeDevice } from './composition.js';
 import { createAdbModernPorts } from './physical-ports.js';
 
@@ -41,7 +42,7 @@ function observe(cueTransport) {
 /** @param {any} options */
 export function composeModernDevice(options = {}) {
   const { profile, hid, cue, qualification, artifactRoot = 'artifacts', now,
-    mode = 'live', sleep, monitorRule } = options;
+    mode = 'live', sleep, monitorRule, calibrationStateRule } = options;
   if (!profile || profile.actuator !== 'hid-multi' || profile.visualSensor !== 'mediaprojection')
     throw new TypeError('modern composition requires the HID + MediaProjection profile');
   if (mode !== 'live') throw new TypeError('modern composition is explicitly live; use composeDevice for dry-run');
@@ -50,6 +51,18 @@ export function composeModernDevice(options = {}) {
     boundedMonitorRule = parseMonitorRule(monitorRule);
     if (profile.calibrations?.monitorRule !== monitorRuleDigest(boundedMonitorRule))
       throw new TypeError('monitor rule digest does not match the profile calibration binding');
+  }
+  // A profile that binds `calibration-state` demands the matching measured
+  // artifact at composition; without the binding the seam runner keeps
+  // refusing live calibration, which is the correct default.
+  let boundedCalibrationStateRule;
+  if (calibrationStateRule !== undefined || profile.calibrations?.['calibration-state'] !== undefined) {
+    if (calibrationStateRule === undefined)
+      throw new TypeError('profile binds calibration-state but no measured artifact was supplied');
+    boundedCalibrationStateRule = parseCalibrationStateRule(calibrationStateRule);
+    if (profile.calibrations?.['calibration-state'] !==
+        calibrationStateRuleDigest(boundedCalibrationStateRule))
+      throw new TypeError('calibration-state digest does not match the profile calibration binding');
   }
   const hidTransport = hid instanceof HidWireTransport ? hid : new HidWireTransport(hid);
   const cueTransport = cue instanceof CueHelperControlTransport ? cue : new CueHelperControlTransport(cue);
@@ -67,7 +80,9 @@ export function composeModernDevice(options = {}) {
         calibration: { profile: profile.calibrations.visual }, loss: null, payload,
       };
     } },
-    detectorRead: raw => measureMonitorUp(raw.payload, boundedMonitorRule ?? null),
+    detectorRead: raw => boundedCalibrationStateRule
+      ? measureCalibrationState(raw.payload, boundedCalibrationStateRule)
+      : measureMonitorUp(raw.payload, boundedMonitorRule ?? null),
   });
 }
 

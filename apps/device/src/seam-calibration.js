@@ -56,6 +56,32 @@ export function seamBlock(spec, gapMs, id) {
   };
 }
 
+/** Formal record of what the live gate informally read: a qualified
+ * seam-block actuator presents measured evidence that its transport
+ * completes timed blocks positively and cancels them. The record binds the
+ * profile hash, so a qualification measured against one composition cannot
+ * authorize another. FIFO-write success remains insufficient by shape.
+ * @param {any} artifact */
+export function parseSeamActuatorQualification(artifact) {
+  const failQualification = reason => { throw new Error(`seam actuator qualification: ${reason}`); };
+  if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact)) failQualification('record must be an object');
+  if (artifact.schema !== 'seam-actuator-qualification-v1') failQualification('schema mismatch');
+  if (artifact.schema_version !== 1) failQualification('unsupported schema_version');
+  if (artifact.verdict !== 'QUALIFIED') failQualification(`verdict is ${artifact.verdict ?? 'missing'}`);
+  if (artifact.calibrationProtocol !== 'seam-block-v1') failQualification('protocol must be seam-block-v1');
+  if (typeof artifact.actuator !== 'string' || !artifact.actuator) failQualification('actuator is unnamed');
+  if (typeof artifact.profileHash !== 'string' || !/^fnv1a-[0-9a-f]{8}$/.test(artifact.profileHash))
+    failQualification('profile hash must be a resolved fnv1a binding');
+  for (const half of ['completion', 'cancellation']) {
+    const record = artifact[half];
+    if (!record || typeof record !== 'object' || typeof record.mechanism !== 'string' || !record.mechanism ||
+        typeof record.evidenceId !== 'string' || !record.evidenceId)
+      failQualification(`${half} needs a named mechanism and evidence`);
+  }
+  if (typeof artifact.evidenceId !== 'string' || !artifact.evidenceId) failQualification('record evidence is unnamed');
+  return Object.freeze(structuredClone(artifact));
+}
+
 export class SeamCalibrationRunner {
   /** @param {any} options */
   constructor({ spec, profile, profileHash, runId, now, clockName, clockSession, sleep, observe, executeBlock, event,

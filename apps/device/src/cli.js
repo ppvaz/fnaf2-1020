@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /** CLI composition root; `dry-run` is the only non-interactive default. */
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { composeDevice } from './composition.js';
@@ -11,6 +11,9 @@ import { guidedCalibrationSteps, validateCustomNightCalibration } from './custom
 import { evaluateCampaignPreflight } from './campaign-preflight.js';
 import { validateCampaignBundle } from './campaign-bundle.js';
 import { composeSeamFixture } from './calibration-fixture.js';
+import { AdbCueHelperPort } from './physical-ports.js';
+import { fitClockMap, CueHelperControlTransport } from '@fnaf2-1020/adapters';
+import { stableHash } from '@fnaf2-1020/core/contracts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PROFILES = join(ROOT, 'apps/device/profiles');
@@ -24,6 +27,7 @@ Usage:
   npm run device:preflight -- --profile hid-mediaprojection
   npm run device:campaign -- --guided
   npm run device:calibrate -- --json
+  npm run device:clockmap -- --count 12 --span-ms 30000 --out FILE
 
 Commands:
   dry-run       run fixture adapters and retain a replayable bundle (default)
@@ -31,6 +35,7 @@ Commands:
   preflight     inspect one ADB phone without sending game input
   campaign      validate the Night 6 -> Night 7 campaign and its proof gates
   calibrate     exercise the bounded seam runner with the explicit fixture
+  clockmap      measure device->host monotonic clock anchors (read-only, no game input)
   bench         print registered capability descriptors
   grade RUN_ID  show a retained result
 
@@ -49,12 +54,16 @@ Options:
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
   --live        explicitly enable physical actuation
-  --confirm-live  acknowledge the bounded live-device safety gate`);
+  --confirm-live  acknowledge the bounded live-device safety gate
+  --count N     clockmap anchor count (default: 12)
+  --span-ms MS  clockmap measurement span (default: 30000)
+  --source WHO  clockmap device domain: uptime (/proc/uptime boottime) or helper (System.nanoTime capture domain)
+  --out FILE    retain the clock-map-v1 artifact at this path`);
 }
 
 function parse(argv) {
   const [first = 'help', ...tail] = argv;
-  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign', 'calibrate']);
+  const knownCommands = new Set(['help', 'bench', 'grade', 'dry-run', 'live', 'preflight', 'campaign', 'calibrate', 'clockmap']);
   if (first === '--help' || first === '-h') return { command: 'help', help: true };
   // Options without an explicit command are accepted for the documented
   // non-interactive default, but an unknown positional command must never
@@ -65,7 +74,8 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [6, 7], requireHelper: true, requireHid: true,
     guided: false, machineOnly: false, calibration: undefined, bundle: undefined,
-    qualification: undefined, ports: undefined, spec: undefined };
+    qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
+    source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
     const item = rest[index];
     if (item === '--help' || item === '-h') options.command = 'help';
@@ -97,6 +107,20 @@ function parse(argv) {
     else if (item.startsWith('--bundle=')) options.bundle = item.slice('--bundle='.length);
     else if (item === '--qualification') options.qualification = rest[++index];
     else if (item.startsWith('--qualification=')) options.qualification = item.slice('--qualification='.length);
+    else if (item === '--count') options.count = Number(rest[++index]);
+    else if (item.startsWith('--count=')) options.count = Number(item.slice('--count='.length));
+    else if (item === '--span-ms') options.spanMs = Number(rest[++index]);
+    else if (item.startsWith('--span-ms=')) options.spanMs = Number(item.slice('--span-ms='.length));
+    else if (item === '--source') options.source = rest[++index];
+    else if (item.startsWith('--source=')) options.source = item.slice('--source='.length);
+    else if (item === '--out') {
+      options.out = rest[++index];
+      if (!options.out || options.out.startsWith('--')) throw new Error('--out requires a file');
+    }
+    else if (item.startsWith('--out=')) {
+      options.out = item.slice('--out='.length);
+      if (!options.out) throw new Error('--out requires a file');
+    }
     else if (item === '--ports') options.ports = rest[++index];
     else if (item.startsWith('--ports=')) options.ports = item.slice('--ports='.length);
     else throw new Error(`unknown option: ${item}`);
@@ -162,6 +186,83 @@ async function main(argv = process.argv.slice(2)) {
   if (options.command === 'grade') {
     const run = argv[1]; if (!run) throw new Error('grade requires RUN_ID');
     console.log(await readFile(join(ROOT, 'artifacts', run, 'result.json'), 'utf8')); return;
+  }
+  if (options.command === 'clockmap') {
+    if (options.live) throw new Error('clockmap is a read-only measurement; --live does not apply');
+    if (!['uptime', 'helper'].includes(options.source))
+      throw new Error('--source must be uptime (device boottime via /proc/uptime) or helper (System.nanoTime, the capture domain)');
+    if (!Number.isInteger(options.count) || options.count < 4 || options.count > 64) throw new Error('--count must be 4..64');
+    if (!Number.isInteger(options.spanMs) || options.spanMs < 10000 || options.spanMs > 600000)
+      throw new Error('--span-ms must be 10000..600000');
+    const hostBoot = (await readFile('/proc/sys/kernel/random/boot_id', 'utf8')).trim();
+    if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(hostBoot))
+      throw new Error('host boot identity is unavailable; refusing to fabricate a clock session');
+    const bridge = new AdbDeviceBridge({ serial: options.serial });
+    let helperTransport = null;
+    if (options.source === 'helper') {
+      const selected = await bridge.selectDevice();
+      if (selected.status !== 'READY') throw new Error(`clockmap needs one ready device: ${selected.reason ?? 'unavailable'}`);
+      const port = new AdbCueHelperPort({ serial: selected.serial });
+      const endpoint = port.discover();
+      helperTransport = new CueHelperControlTransport({ request: line => port.request(line), token: endpoint.token });
+    }
+    const sleep = ms => new Promise(done => setTimeout(done, ms));
+    /** @type {{bootId: string, quantizationMs: number, sourceMs: number,
+     *   targetBeforeMs: number, targetAfterMs: number}[]} */
+    const samples = [];
+    for (let index = 0; index < options.count; index += 1) {
+      if (index) await sleep(Math.floor(options.spanMs / (options.count - 1)));
+      if (options.source === 'helper') {
+        const targetBeforeMs = Number(process.hrtime.bigint()) / 1e6;
+        const fields = /** @type {any} */ (helperTransport.snapshot());
+        const targetAfterMs = Number(process.hrtime.bigint()) / 1e6;
+        if (!/^\d+$/.test(fields.snapshotNs ?? '')) throw new Error('helper snapshot has no monotonic timestamp');
+        const identity = /** @type {any} */ (await bridge.uptimeSample());
+        if (identity.status !== 'READY') throw new Error(`boot identity is unavailable: ${identity.reason ?? 'unavailable'}`);
+        samples.push({ bootId: identity.bootId, quantizationMs: 1,
+          sourceMs: Number(BigInt(fields.snapshotNs) / 1000000n), targetBeforeMs, targetAfterMs });
+        continue;
+      }
+      const sample = /** @type {any} */ (await bridge.uptimeSample());
+      if (sample.status !== 'READY') throw new Error(`clockmap anchor ${index} is ${sample.status}: ${sample.reason ?? 'unavailable'}`);
+      samples.push({ bootId: sample.bootId, quantizationMs: sample.quantizationMs,
+        sourceMs: sample.sourceMs, targetBeforeMs: sample.targetBeforeMs, targetAfterMs: sample.targetAfterMs });
+    }
+    if (samples.some(sample => sample.bootId !== samples[0].bootId))
+      throw new Error('device rebooted during sampling; the clock session changed');
+    const anchors = samples.map(sample => ({ sourceMs: sample.sourceMs,
+      targetBeforeMs: sample.targetBeforeMs, targetAfterMs: sample.targetAfterMs }));
+    const quantizationMs = Math.max(...samples.map(sample => sample.quantizationMs));
+    // The session name carries the measured domain: helper GET stamps
+    // System.nanoTime (suspend-excluding), /proc/uptime is boottime
+    // (suspend-including). The two drift apart across device suspends, so a
+    // capture composition must stamp the matching convention.
+    const sourceSession = `${samples[0].bootId}#${options.source === 'helper' ? 'monotonic' : 'boottime'}`;
+    const stamp = new Date().toISOString().replace(/\D/g, '').slice(0, 14);
+    const suffix = stableHash({ anchors, sourceSession, hostBoot,
+      spanMs: options.spanMs, count: options.count }).slice(6, 12);
+    const id = `clockmap-${stamp}-${samples[0].bootId.slice(0, 8)}-${suffix}`;
+    const artifact = fitClockMap({ samples: anchors,
+      sourceClock: 'device-monotonic-ms', targetClock: 'host-monotonic-ms',
+      sourceSession, targetSession: hostBoot,
+      id, evidenceId: id, sourceUncertaintyMs: quantizationMs + (options.source === 'helper' ? 0 : 1) });
+    const { mapClockInterval } = await import('@fnaf2-1020/adapters');
+    const check = anchors[anchors.length - 2];
+    const mapped = mapClockInterval({ clock: 'device-monotonic-ms', value: check.sourceMs }, {
+      targetClock: 'host-monotonic-ms', targetSession: hostBoot, sourceSession,
+      uncertaintyMs: quantizationMs, mapping: artifact });
+    // Self-check: the conservative interval must still bracket the observed
+    // host bracket of an interior anchor it was fitted from. The final anchor
+    // sits on the validity edge by construction and cannot carry uncertainty.
+    if (mapped.latestMs < check.targetBeforeMs || mapped.earliestMs > check.targetAfterMs)
+      throw new Error('fitted map does not bracket its own anchors; refusing to retain it');
+    if (options.out) await writeFile(resolve(options.out), JSON.stringify(artifact, null, 2) + '\n');
+    console.log(options.json ? JSON.stringify(artifact, null, 2) :
+      `clockmap READY rate=${artifact.rate.toFixed(6)} errorMs=${artifact.errorMs} ` +
+      `rateErrorPpm=${artifact.rateErrorPpm} span=${artifact.spanMs}ms anchors=${artifact.sampleCount} ` +
+      `source=${artifact.sourceSession.replace(/^[0-9a-f-]+#/, '')} evidence=${artifact.evidenceId}` +
+      (options.out ? ` out=${resolve(options.out)}` : ''));
+    return;
   }
   const selected = await profile(options.profile);
   if (options.command === 'calibrate') {

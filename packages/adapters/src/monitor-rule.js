@@ -128,6 +128,8 @@ function anchorReadsUp(anchor, cells) {
   return 'in-band';
 }
 
+export { cellFeatures, anchorReadsUp };
+
 /**
  * Derive the monitorUp measurement from one cue-helper observation.
  * `snapshot` carries the GET fields; `cells` carries the GRID sensor rows

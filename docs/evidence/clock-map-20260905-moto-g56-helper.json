@@ -1,0 +1,18 @@
+{
+  "schema": "clock-map-v1",
+  "id": "clockmap-20260905194945-711c3232-1fd457",
+  "evidenceId": "clockmap-20260905194945-711c3232-1fd457",
+  "sourceClock": "device-monotonic-ms",
+  "targetClock": "host-monotonic-ms",
+  "sourceSession": "711c3232-2506-4d51-b64e-090b68373c74#monotonic",
+  "targetSession": "2b113fa5-78de-486c-9e06-f419f06b90c0",
+  "sourceAtMs": 378396922,
+  "targetAtMs": 25400986.2064555,
+  "rate": 0.9998955256878254,
+  "errorMs": 24,
+  "rateErrorPpm": 1551,
+  "validFromMs": 378382690,
+  "validUntilMs": 378413945,
+  "sampleCount": 12,
+  "spanMs": 31255
+}

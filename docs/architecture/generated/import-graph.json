@@ -94,7 +94,10 @@
         "./campaign.js",
         "./composition.js",
         "./custom-night.js",
+        "./physical-ports.js",
+        "@fnaf2-1020/adapters",
         "@fnaf2-1020/adapters/registry",
+        "@fnaf2-1020/core/contracts",
         "node:fs/promises",
         "node:path",
         "node:url"
@@ -139,6 +142,17 @@
         "./modern-composition.js",
         "./physical-ports.js",
         "./service.js"
+      ]
+    },
+    {
+      "file": "apps/device/src/live-seam-composition.js",
+      "imports": [
+        "./seam-calibration.js",
+        "./service.js",
+        "@fnaf2-1020/adapters",
+        "@fnaf2-1020/adapters/actuators",
+        "@fnaf2-1020/adapters/registry",
+        "@fnaf2-1020/core/contracts"
       ]
     },
     {
@@ -222,6 +236,17 @@
       ]
     },
     {
+      "file": "apps/device/test/calibration-state-rule.test.js",
+      "imports": [
+        "../src/live-seam-composition.js",
+        "@fnaf2-1020/adapters",
+        "node:assert/strict",
+        "node:fs/promises",
+        "node:os",
+        "node:path"
+      ]
+    },
+    {
       "file": "apps/device/test/campaign-composition.test.js",
       "imports": [
         "../src/campaign-bundle.js",
@@ -268,6 +293,13 @@
         "node:child_process",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/test/clock-map.test.js",
+      "imports": [
+        "@fnaf2-1020/adapters",
+        "node:assert/strict"
       ]
     },
     {
@@ -419,6 +451,13 @@
       ]
     },
     {
+      "file": "packages/adapters/src/calibration-state-rule.js",
+      "imports": [
+        "./monitor-rule.js",
+        "node:crypto"
+      ]
+    },
+    {
       "file": "packages/adapters/src/camera-rule.js",
       "imports": [
         "node:crypto"
@@ -434,6 +473,7 @@
       "file": "packages/adapters/src/index.js",
       "imports": [
         "./actuators.js",
+        "./calibration-state-rule.js",
         "./camera-rule.js",
         "./clocks.js",
         "./monitor-rule.js",

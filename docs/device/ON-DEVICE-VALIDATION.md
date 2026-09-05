@@ -61,6 +61,56 @@ App dispatch IDs and positive game effects still need independent measurement
 before injection, dispatch and effective-latency tails can be claimed.
 Regression gate: `npm run test:device:calibration` (also in CI's contracts lane).
 
+### Measured clock maps and live-gate scaffolding (2026-09-05, follow-on)
+
+`fitClockMap` (`packages/adapters/src/clocks.js`) produces `clock-map-v1`
+artifacts from bracketed anchor samples by interval arithmetic, not
+statistics: every pairwise slope interval must contain the true rate, so the
+intersection bounds it and one sample whose bounds are violated refuses the
+fit instead of averaging away. The validity window is exactly the measured
+span — extrapolation is refused by `mapClockInterval` by construction.
+`npm run device:clockmap` is the read-only producer (no game input): it
+brackets each device clock read in host-monotonic time and refuses reboots,
+short spans, inconsistent anchors, and blown `errorMs`/`rateErrorPpm` budgets.
+
+**The device has two monotonic domains and they are not interchangeable.**
+The Cue Helper stamps `snapshotNs` with `System.nanoTime()` (suspend-
+excluding), while `/proc/uptime` is boottime (suspend-including); the two
+drift apart by the cumulative suspend time. The map's `sourceSession`
+carries the measured domain — `<bootId>#monotonic` for `--source helper`
+(GET round trips, ns-exact, the capture domain) and `<bootId>#boottime` for
+`--source uptime`. A live capture composition must stamp sensor sessions
+with the matching convention or the mapping refuses. Retained evidence from
+the Moto g56 (boot `711c3232-…`, phone awake throughout):
+`docs/evidence/clock-map-20260905-moto-g56.json` (boottime, rate 0.999891,
+errorMs 35, 1952ppm over 30.7s) and
+`docs/evidence/clock-map-20260905-moto-g56-helper.json` (System.nanoTime,
+rate 0.999896, errorMs 24, 1551ppm over 31.3s). These are 30-second,
+per-boot measurements: re-measure per live session and never reuse across a
+reboot.
+
+Two live-gate contracts are now formal. A `calibration-state-v1` artifact
+(`packages/adapters/src/calibration-state-rule.js`) binds a fitted
+`monitor-rule-v1` plus a fitted `mask-rule-v1` under one sha256 digest;
+`composeModernDevice` enforces the digest when the profile binds
+`calibrations.calibration-state`, and `measureCalibrationState` resolves
+OBSERVED only when BOTH sub-rules read the same frame positively — any
+UNKNOWN refuses. Neither handset profile binds it yet: the monitor rule is
+measured, the mask rule is not, and until a fitted mask artifact exists the
+runner keeps refusing live calibration. A `seam-actuator-qualification-v1`
+record (`parseSeamActuatorQualification`, `apps/device/src/seam-calibration.js`)
+replaces the live gate's ad-hoc field reads: it demands a QUALIFIED verdict,
+the `seam-block-v1` protocol, a resolved `fnv1a` profile hash, and named
+completion/cancellation mechanisms with evidence IDs, bound to the actuator's
+`seamQualification` beside the transport-level `qualification-v1`. Both are
+exercised end-to-end over synthetic live ports by
+`apps/device/test/calibration-state-rule.test.js`
+(`live-seam-composition.js` is gate-conformance scaffolding, not a CLI path).
+Still OPEN: a fitted mask rule, a physically qualified seam-block transport
+(device-local executor with positive completion and cancellation), and the
+ID-matched injection/dispatch/effect evidence — the runner's UNVERIFIED
+reason is unchanged.
+
 ## Validation targets, ranked
 
 1. **Consecutive-tick mask clears** (g292-294): a masked vent visitor should

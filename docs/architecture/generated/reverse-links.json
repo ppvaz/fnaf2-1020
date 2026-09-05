@@ -116,6 +116,19 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
+      "id": "contract.calibration-state-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/calibration-state-rule.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.calibration-state-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/calibration-state-rule.js",
+      "line": 14,
+      "relation": "REFERENCES"
+    },
+    {
       "id": "contract.calibration-v1",
       "kind": "CONTRACT",
       "path": "packages/adapters/test/conformance.test.js",
@@ -609,6 +622,12 @@
       "id": "contract.screencheck-process-v1",
       "kind": "CONTRACT",
       "path": "packages/screencheck/src/screencheck.c",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
+      "id": "contract.seam-actuator-qualification-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/test/calibration-state-rule.test.js",
       "relation": "CONFORMANCE_FIXTURE"
     },
     {

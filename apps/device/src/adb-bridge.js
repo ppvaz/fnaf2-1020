@@ -16,6 +16,7 @@ const GAME_PACKAGE = 'com.scottgames.fnaf2';
 const HELPER_PACKAGE = 'com.fnaf2.cuehelper';
 const PRELIGHT_SCHEMA = 'device-preflight-v1';
 const CLOCK_SAMPLE_SCHEMA = 'device-clock-sample-v1';
+const UPTIME_SAMPLE_SCHEMA = 'device-uptime-sample-v1';
 const CAPTURE_MAX_BUFFER = 16 * 1024 * 1024;
 
 const check = (id, status, detail) => Object.freeze({ id, status, detail });
@@ -200,7 +201,48 @@ export class AdbDeviceBridge {
       }),
     });
   }
+
+  /**
+   * One monotonic anchor sample for clock-map-v1 fitting: the device's
+   * uptime (the CLOCK_BOOTTIME family the capture helpers stamp with) read
+   * through one fixed, read-only command inside a host-monotonic bracket.
+   * `/proc/uptime` reports centiseconds, so the source reading carries a
+   * ±5 ms quantization on top of the round-trip midpoint bound. The boot id
+   * is the source session identity: a reboot changes it and every map built
+   * on the previous boot must be refused. No game state is read or written.
+   */
+  async uptimeSample({ serial = this.serial } = {}) {
+    let selectedSerial = serial;
+    if (!selectedSerial) {
+      const selected = await this.selectDevice();
+      if (selected.status !== 'READY') return { schema: UPTIME_SAMPLE_SCHEMA, ...selected };
+      selectedSerial = selected.serial;
+    }
+    const beforeMonoMs = Number(process.hrtime.bigint()) / 1e6;
+    const result = await this.#command(
+      ['-s', selectedSerial, 'shell', 'cat /proc/uptime; cat /proc/sys/kernel/random/boot_id'],
+      { timeoutMs: Math.min(this.timeoutMs, 5000) });
+    const afterMonoMs = Number(process.hrtime.bigint()) / 1e6;
+    if (!result.ok) return {
+      schema: UPTIME_SAMPLE_SCHEMA, status: 'HOLD', serial: selectedSerial,
+      reason: 'device-uptime-unavailable', detail: result.stderr,
+    };
+    const [uptimeText, bootText] = String(result.stdout).trim().split(/\r?\n/);
+    const uptimeMatch = uptimeText?.match(/^(\d+)\.(\d{2})\s/);
+    const bootId = bootText?.match(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/)?.[0];
+    if (!uptimeMatch || !bootId) return {
+      schema: UPTIME_SAMPLE_SCHEMA, status: 'HOLD', serial: selectedSerial,
+      reason: 'device-uptime-unparseable', detail: String(result.stdout).trim().slice(0, 200),
+    };
+    const sourceMs = Number(uptimeMatch[1]) * 1000 + Number(uptimeMatch[2]) * 10;
+    return Object.freeze({
+      schema: UPTIME_SAMPLE_SCHEMA, version: 1, status: 'READY', serial: selectedSerial,
+      bootId, sourceMs, targetBeforeMs: beforeMonoMs, targetAfterMs: afterMonoMs,
+      roundTripMs: afterMonoMs - beforeMonoMs, quantizationMs: 5,
+    });
+  }
 }
 
 export const devicePreflightSchema = PRELIGHT_SCHEMA;
 export const deviceClockSampleSchema = CLOCK_SAMPLE_SCHEMA;
+export const deviceUptimeSampleSchema = UPTIME_SAMPLE_SCHEMA;

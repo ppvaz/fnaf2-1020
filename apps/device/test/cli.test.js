@@ -25,7 +25,8 @@ assert.match(unknown.stderr, /unknown command/);
 assert.doesNotMatch(unknown.stdout, /result=|evidence=/);
 
 for (const args of [['calibrate', '--live', '--confirm-live'],
-  ['calibrate', '--profile', 'hid-mediaprojection'], ['calibrate', '--spec'], ['calibrate', '--spec=']]) {
+  ['calibrate', '--profile', 'hid-mediaprojection'], ['calibrate', '--spec'], ['calibrate', '--spec='],
+  ['clockmap', '--live'], ['clockmap', '--count', '3'], ['clockmap', '--span-ms', '1000'], ['clockmap', '--out']]) {
   const result = run(args);
   assert.equal(result.status, 2, args.join(' '));
   assert.doesNotMatch(result.stdout, /result=|evidence=/);
