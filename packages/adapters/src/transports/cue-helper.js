@@ -42,12 +42,17 @@ export function parseCueGrid(line) {
   const tokens = text.slice(3).split(/\s+/);
   if (!/^grid=20x9$/.test(tokens[0] ?? '') || !/^seq=\d+$/.test(tokens[1] ?? ''))
     throw new Error('cue-helper grid response is malformed');
+  // The helper emits the sensor as ONE concatenated hex run -- 180 cells x 6
+  // chars, no separators (helper 0.1.9, confirmed against ZF525F5BH5 and the
+  // decoder in tools/device/query-cue-helper.sh). This parser previously split
+  // on whitespace and demanded 6-char tokens, a shape only its own fixture
+  // ever produced, so every live grid read threw. Joining first accepts the
+  // device's run and a separated one alike; the 180-cell length still decides.
+  const body = tokens.slice(2).join('');
+  if (!/^[0-9a-f]*$/.test(body)) throw new Error('cue-helper grid cell is malformed');
+  if (body.length !== 180 * 6) throw new TypeError('cue-helper grid must carry the 180-cell sensor');
   const cells = [];
-  for (let index = 2; index < tokens.length; index += 1) {
-    if (!/^[0-9a-f]{6}$/.test(tokens[index])) throw new Error('cue-helper grid cell is malformed');
-    cells.push(parseInt(tokens[index], 16));
-  }
-  if (cells.length !== 180) throw new TypeError('cue-helper grid must carry the 180-cell sensor');
+  for (let index = 0; index < body.length; index += 6) cells.push(parseInt(body.slice(index, index + 6), 16));
   return Object.freeze({ grid: '20x9', seq: Number(tokens[1].slice(4)), cells: Object.freeze(cells) });
 }
 

@@ -2,6 +2,93 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 on-device: the gate was admitting the menu, and the live path could
+never resolve — attached moto g56 (`ZF525F5BH5`), helper 10:0.1.9, all reads
+read-only, no game input sent. Three findings, one fix landed.
+
+1. **`parseCueGrid` could not read the live helper. FIXED.** The helper sends
+   the sensor as ONE concatenated hex run (180 cells x 6 chars, no separators,
+   `currentGrid()` in `CaptureService.java`). The parser split on whitespace and
+   demanded 6-char tokens — a shape only its own fixture ever produced
+   (`service.test.js:109`, `.join(' ')`). Every live grid read threw
+   `cue-helper grid cell is malformed`, so the live observation path in
+   `composeModernDevice` had never run. It now joins first and lets the
+   180-cell length decide, accepting the device's run and a separated one
+   alike. Verified against the handset.
+2. **The live observation can never return a positive state.** `observe()`
+   makes two adb round trips, `GET` then `GRID`, ~110 ms apart against a 60 fps
+   capture. Measured seq agreement: **0/12**, deltas 1-2. `measureMonitorUp`
+   and `measureCalibrationState` refuse on `grid-seq-mismatch`, correctly — but
+   the frames never agree, so OBSERVED is unreachable and the seam runner's
+   `stableState()` (two consecutive matching positives) can never be satisfied.
+   No fixture can catch this: fixtures return one synthetic snapshot whose
+   seqs match by construction. UNFIXED; it needs snapshot and grid in one
+   atomic response, or every fact derived from the `GRID` cells alone.
+3. **The helper called the menu a night, 24/24.** The operator was looking at
+   the menu; `GET` reported `screen=FNAF2_NIGHT screenScore=6` on 24
+   consecutive live grids. `measureCalibrationState` uses exactly that field as
+   its positive gate, so the gate does not exclude menu frames. Replaying the
+   checked-in `ScreenIdentity.java` on those same grids scores
+   `menuScore=5 >= 5` — i.e. the SOURCE says `FNAF2_MENU` 20/20 while the
+   device says NIGHT 20/20. The installed APK is byte-identical to
+   `android/cue-helper/build/cue-helper.apk`, and `menuScore` is absent from
+   its dex — which is equally explained by d8 inlining a single-call-site
+   private method, so that is NOT evidence of a stale build and the
+   contradiction is unresolved. Retained: 24 labelled live grids in
+   `docs/evidence/screen-grids-20260905-moto-g56-menu.json`, operator-labelled
+   `FNAF2_MENU`, each carrying the helper's wrong verdict beside it.
+
+**`mask-rule-v1` is fitted** (`models/mask-rule-moto-g56-v207.json`, 6 anchors,
+rows 0/7/8, margins to 114, corpus reads 10/10/10 clean) by the new
+`tools/device/mask-calibrate.py`, which reuses `monitor-calibrate.py`'s fitting
+core rather than copying it — `fit_anchor` now takes the positive/negative
+split and the monitor artifact still reproduces BYTE-IDENTICALLY from the same
+frames, digest `d4b2f7bf…`, matching the profile binding.
+
+THE CONTRACT CHANGED, for a measured reason. `parseMaskRule` demanded one
+`present` and one `absent` anchor, inherited from the monitor rule where the
+map drawing is ADDED when the monitor rises. The mask adds nothing: it is
+opaque, and the operator confirms its two eye holes show the LIT office —
+i.e. the same office as an unmasked frame. Measured over the corpus, the best
+positive gap across all 180 cells x both features is 0/255, and an eye-hole
+anchor would read bright in BOTH states, making mask-off resolve ambiguous
+instead of OBSERVED false. `present` is therefore unsatisfiable for this fact.
+It is replaced by spread: >=2 anchors over >=2 grid rows, so one occluded
+strip cannot carry the verdict. The darkness hazard it no longer covers is
+handled where it belongs — with the mask on almost every cell is black, so
+mask-on and a blacked-out screen differ only by the guard, and until a
+`blackout` class is captured `parseCalibrationStateRule` REFUSES to bind the
+rule live (`blackout-unproven`). The artifact is evidence; it is not yet a
+decision. Blackout capture is deferred to a Minus Toys run.
+
+**`screen-rule-v1` REFUSES, and the negative is the point.** Deriving screen
+identity host-side from the same 180 cells would fix findings 2 and 3 at once:
+one `GRID` response would carry screen, monitor and mask from one frame, with
+no `GET` pairing to mismatch. It does not work. Against a night class of only
+`up`/`down`/`mask` (30 frames) it separates from the menu at margin 109; widen
+the night class to the whole 20260901 corpus including the twelve camera views
+(173 frames) and ZERO cells separate — some camera feeds light the same
+saturated cells the menu does. Per-cell threshold anchors, the shape shared by
+monitorUp and maskOn, are not expressive enough for screen identity; that fact
+needs region aggregates, which is what `ScreenIdentity.java` already uses.
+`tools/device/screen-calibrate.py` and its refused artifact are retained.
+
+One method note, measured rather than assumed: the 20260901 PNG corpus and the
+live helper grid are the SAME sensor for fitting purposes. On one screen the
+between-path per-cell luma difference averaged 14.1 against within-path
+temporal spread of 53.7 (screencap) and 65.5 (helper), and was exactly 0 on
+every cell stable enough in both paths to compare. An earlier refusal to mix
+them was withdrawn on that measurement.
+
+Gates: `npm run test` passes end to end, `node tools/test-docs.mjs` is green
+for the first time since `_m7.mjs` was removed, catalog/references/architecture
+green by exit status, dry-run `result=PASS claim=FIXTURE evidence=`
+`run-20260905205119-53b57f5b-4e4c57` (`FIXTURE`, not gameplay evidence). Still
+OPEN and unchanged: atomic observation, a fitted screen identity, a captured
+blackout class, a physically qualified seam-block transport, ID-matched
+dispatch/effect tails, per-session clock maps. Calibration remains UNVERIFIED;
+no no-input-loss and no Night 7 clear is claimed.
+
 2026-09-05 live-qualification prep — picked up from the Codex session at
 `63922ba` with the phone attached for the first time since the audit entries
 (`ZF525F5BH5`, moto g56; game observed FNAF2_NIGHT by the safe screen check,

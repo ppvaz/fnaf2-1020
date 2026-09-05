@@ -195,17 +195,23 @@ class Anchor:
 
 
 def fit_anchor(cell_frames: dict, cell: int, feature: str,
-               min_margin: float) -> Anchor | None:
-    """Midpoint threshold over the worst-case up/not-up gap for one cell.
+               min_margin: float, positive: str = "up",
+               negatives: tuple[str, ...] = ("down", "mask")) -> Anchor | None:
+    """Midpoint threshold over the worst-case positive/negative gap for one cell.
 
-    ``not_up`` pools down and mask per class; the gap must hold against both.
-    Anchors are inclusive at both edges: the worst up frame and the worst
-    not-up frame classify, values between are in-band.
+    ``not_up`` pools the negative classes per class; the gap must hold against
+    every one of them. Anchors are inclusive at both edges: the worst positive
+    frame and the worst negative frame classify, values between are in-band.
+
+    ``positive``/``negatives`` name the fact being fitted. They default to the
+    monitorUp split so this module's own CLI is unchanged; `mask-calibrate.py`
+    passes the maskOn split. The record's ``up_range``/``not_up`` field names
+    are the shared artifact shape and read as positive/negative for any fact.
     """
-    up = [CELL_FEATURES[feature](cells[cell]) for cells in cell_frames["up"]]
+    up = [CELL_FEATURES[feature](cells[cell]) for cells in cell_frames[positive]]
     up_lo, up_hi = min(up), max(up)
     not_up = {}
-    for label in ("down", "mask"):
+    for label in negatives:
         values = [CELL_FEATURES[feature](cells[cell]) for cells in cell_frames[label]]
         not_up[label] = (min(values), max(values))
     neg_hi = max(hi for _, hi in not_up.values())

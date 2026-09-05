@@ -1,0 +1,244 @@
+{
+  "adapter": {
+    "anchor_rows": [
+      0,
+      7,
+      8
+    ],
+    "anchors": [
+      {
+        "cell": 1,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            190,
+            221
+          ],
+          "office": [
+            194,
+            194
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 95.0,
+          "threshold": 95.0
+        },
+        "separation_margin": 95.0,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 180,
+        "y": 60
+      },
+      {
+        "cell": 18,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            137,
+            202
+          ],
+          "office": [
+            147,
+            148
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 68.5,
+          "threshold": 68.5
+        },
+        "separation_margin": 68.5,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 2220,
+        "y": 60
+      },
+      {
+        "cell": 154,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            54,
+            54
+          ],
+          "office": [
+            137,
+            143
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 27.0,
+          "threshold": 27.0
+        },
+        "separation_margin": 27.0,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 1740,
+        "y": 900
+      },
+      {
+        "cell": 172,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            216,
+            217
+          ],
+          "office": [
+            216,
+            216
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 108.0,
+          "threshold": 108.0
+        },
+        "separation_margin": 108.0,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 1500,
+        "y": 1020
+      },
+      {
+        "cell": 174,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            228,
+            228
+          ],
+          "office": [
+            228,
+            228
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 114.0,
+          "threshold": 114.0
+        },
+        "separation_margin": 114.0,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 1740,
+        "y": 1020
+      },
+      {
+        "cell": 175,
+        "feature": "luma",
+        "kind": "absent",
+        "not_up": {
+          "cams": [
+            178,
+            184
+          ],
+          "office": [
+            194,
+            194
+          ]
+        },
+        "rule": {
+          "kind": "threshold",
+          "refuse_band": 89.0,
+          "threshold": 89.0
+        },
+        "separation_margin": 89.0,
+        "up_range": [
+          0,
+          0
+        ],
+        "x": 1860,
+        "y": 1020
+      }
+    ],
+    "anim_reads": null,
+    "calibration_frames": 30,
+    "class_counts": {
+      "cams": 10,
+      "office": 10,
+      "on": 10
+    },
+    "corpus_reads": {
+      "cams": {
+        "false": 10,
+        "true": 0,
+        "unknown": 0
+      },
+      "office": {
+        "false": 10,
+        "true": 0,
+        "unknown": 0
+      },
+      "on": {
+        "false": 0,
+        "true": 10,
+        "unknown": 0
+      }
+    },
+    "guard": {
+      "feature": "helper_grid_mean_luma",
+      "kind": "floor",
+      "min": 5,
+      "reason": "frame-dark"
+    },
+    "limitations": [
+      "night-1-corpus",
+      "animation-unproven",
+      "blackout-unproven"
+    ],
+    "minimum_margin": 5.0,
+    "selection": "per-cell luma/yellowness worst-case gap, top margins, max 6 anchors over >=2 grid rows; occlusion-only, the mask adds no bright cell"
+  },
+  "fact": {
+    "id": "maskOn",
+    "labels": [
+      "off",
+      "on"
+    ],
+    "unknown_reasons": [
+      "frame-pending",
+      "frame-stale",
+      "screen-identity",
+      "frame-dark",
+      "feature-missing",
+      "ambiguous-threshold",
+      "sensor-mismatch",
+      "calibration-refused",
+      "mask-rule-absent",
+      "monitor-state-unavailable",
+      "grid-seq-mismatch",
+      "grid-unavailable"
+    ]
+  },
+  "reason": null,
+  "schema": "mask-rule-v1",
+  "schema_version": 1,
+  "sensor": {
+    "geometry": [
+      2400,
+      1080
+    ],
+    "id": "cue-helper-mediaprojection-2400x1080",
+    "profile_id": "moto-g56-v207-landscape",
+    "sampling": "helper-grid-20x9-cell-center"
+  },
+  "status": "calibrated"
+}

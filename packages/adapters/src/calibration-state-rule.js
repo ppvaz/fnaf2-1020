@@ -59,10 +59,19 @@ function parseMaskAnchors(adapter) {
     if (seen.has(anchor.cell)) fail(`mask anchor cell ${anchor.cell} is repeated`);
     seen.add(anchor.cell);
   });
-  if (!adapter.anchors.some(anchor => anchor.kind === 'present'))
-    fail('at least one present (mask-visible) anchor is required');
-  if (!adapter.anchors.some(anchor => anchor.kind === 'absent'))
-    fail('at least one absent (office-visible) anchor is required');
+  // The monitor rule can demand one anchor of EACH polarity because raising
+  // the monitor ADDS its map drawing: some cells go bright and others are
+  // covered in the same frame. The mask adds nothing. It is opaque black, and
+  // its two eye holes show the SAME office as the unmasked frame, so no cell
+  // is brighter with the mask on -- measured over the 20260901 corpus, the
+  // best positive gap across all 180 cells x both features is 0/255. Demanding
+  // a `present` anchor here is unsatisfiable, and an eye-hole anchor would be
+  // actively wrong: reading bright in BOTH states, it would make mask-off
+  // resolve ambiguous instead of OBSERVED false. What a polarity-independent
+  // rule can still guarantee is spread -- one occluded strip must not carry
+  // the whole verdict, so the anchors must sit on at least two grid rows.
+  const rows = new Set(adapter.anchors.map(anchor => Math.floor(anchor.cell / 20)));
+  if (rows.size < 2) fail('mask anchors must span at least two of the nine grid rows');
 }
 
 /** @param {any} artifact */
@@ -109,6 +118,15 @@ export function parseCalibrationStateRule(artifact) {
     fail('bound monitor rule digest does not match its artifact');
   const mask = parseMaskRule(artifact.mask?.rule);
   if (artifact.mask.digest !== maskRuleDigest(mask)) fail('bound mask rule digest does not match its artifact');
+  // With the mask on almost every cell is black, so a mask-on frame and a
+  // blacked-out screen differ only by the whole-grid darkness guard. Until a
+  // blackout class has actually been captured that floor is unproven and the
+  // rule could read a dark screen as a positive mask state -- the exact false
+  // positive the seam runner admits trials on. The fitted artifact stays valid
+  // evidence; it just cannot become a live decision until the floor is
+  // measured. Capturing a blackout class lifts this by itself.
+  if (mask.adapter.limitations?.includes('blackout-unproven'))
+    fail('bound mask rule has an unproven darkness guard (blackout-unproven); it cannot gate live calibration');
   return Object.freeze(structuredClone(artifact));
 }
 

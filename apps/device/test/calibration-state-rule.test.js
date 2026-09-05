@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { calibrationStateRuleDigest, maskRuleDigest,
+import { calibrationStateRuleDigest, maskRuleDigest, parseMaskRule,
   parseCalibrationStateRule, measureCalibrationState } from '@fnaf2-1020/adapters';
 import { monitorRuleDigest } from '@fnaf2-1020/adapters';
 import { composeSeamFixtureLive } from '../src/live-seam-composition.js';
@@ -85,6 +85,35 @@ assert.throws(() => parseCalibrationStateRule({ ...stateRule,
   mask: { rule: { ...maskRule, adapter: { ...maskRule.adapter, anchors: maskRule.adapter.anchors.slice(0, 1) } },
     digest: maskRuleDigest({ ...maskRule, adapter: { ...maskRule.adapter, anchors: maskRule.adapter.anchors.slice(0, 1) } }) } }),
   /at least two anchors/);
+
+// Occlusion-only is legal, and spread replaces polarity. The mask adds no
+// bright cell (its body is opaque and the eye holes show the same office), so
+// an all-absent rule must parse -- but its anchors may not sit in one row.
+const absentOnly = { ...maskRule, adapter: { ...maskRule.adapter, anchors: [
+  { cell: 30, feature: 'luma', kind: 'absent', rule: { kind: 'threshold', threshold: 60, refuse_band: 10 }, separation_margin: 90 },
+  { cell: 50, feature: 'luma', kind: 'absent', rule: { kind: 'threshold', threshold: 60, refuse_band: 10 }, separation_margin: 90 },
+] } };
+assert.doesNotThrow(() => parseCalibrationStateRule({ ...stateRule,
+  mask: { rule: absentOnly, digest: maskRuleDigest(absentOnly) } }));
+const oneRow = { ...maskRule, adapter: { ...maskRule.adapter, anchors: [
+  { cell: 30, feature: 'luma', kind: 'absent', rule: { kind: 'threshold', threshold: 60, refuse_band: 10 }, separation_margin: 90 },
+  { cell: 31, feature: 'luma', kind: 'absent', rule: { kind: 'threshold', threshold: 60, refuse_band: 10 }, separation_margin: 90 },
+] } };
+assert.throws(() => parseCalibrationStateRule({ ...stateRule,
+  mask: { rule: oneRow, digest: maskRuleDigest(oneRow) } }), /span at least two/);
+
+// An unproven darkness guard is evidence, never a live gate: with the mask on
+// almost every cell is black, so without a captured blackout class the rule
+// cannot tell a masked frame from a dark screen.
+const unproven = { ...maskRule,
+  adapter: { ...maskRule.adapter, limitations: ['night-1-corpus', 'blackout-unproven'] } };
+assert.doesNotThrow(() => parseMaskRule(unproven));
+assert.throws(() => parseCalibrationStateRule({ ...stateRule,
+  mask: { rule: unproven, digest: maskRuleDigest(unproven) } }), /unproven darkness guard/);
+const proven = { ...maskRule,
+  adapter: { ...maskRule.adapter, limitations: ['night-1-corpus'] } };
+assert.doesNotThrow(() => parseCalibrationStateRule({ ...stateRule,
+  mask: { rule: proven, digest: maskRuleDigest(proven) } }));
 
 // The live seam composition gate: binding, digest match, and qualification.
 const handset = JSON.parse(await readFile(new URL('../profiles/hid-mediaprojection.json', import.meta.url), 'utf8'));
