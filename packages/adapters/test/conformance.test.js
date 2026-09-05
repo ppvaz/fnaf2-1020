@@ -58,6 +58,32 @@ assert.equal(captureTiming.sequence, 12);
 const oldTiming = cue.visualAcquisition({ snapshotNs: '5000000000', ageUs: '10000', seq: '12' });
 assert.equal(oldTiming.at, 4990);
 assert.equal(oldTiming.uncertaintyMs, 0.001);
+
+// FRAME: snapshot fields and the sensor from ONE device read. The helper emits
+// the 180 cells as a single concatenated hex run, no separators -- `parseCueGrid`
+// once demanded space-separated tokens, a shape only our own fixture produced,
+// and so threw on every real grid read. Both forms are accepted; the 180-cell
+// length decides.
+const runCells = Array.from({ length: 180 }, (_, index) => (index << 8) | 0x11);
+const runBody = runCells.map(cell => cell.toString(16).padStart(6, '0')).join('');
+const framed = new CueHelperControlTransport({ token: '0123456789abcdef0123456789abcdef',
+  request: request => request.startsWith('FRAME ')
+    ? `OK snapshotNs=3 seq=42 ageUs=17 screen=FNAF2_NIGHT grid=20x9 cells=${runBody}`
+    : request.startsWith('GRID ') ? `OK grid=20x9 seq=42 ${runBody}` : 'ERROR unsupported' });
+const oneRead = framed.frame();
+assert.equal(oneRead.cells.length, 180);
+assert.deepEqual([...oneRead.cells], runCells);
+// One read means one frame: the sequence a detector correlates on is shared by
+// construction, so grid-seq-mismatch cannot arise from the transport.
+assert.equal(oneRead.seq, oneRead.gridSeq);
+assert.equal(oneRead.screen, 'FNAF2_NIGHT');
+// The concatenated run parses identically through the GRID path.
+assert.deepEqual([...framed.grid().cells], runCells);
+for (const bad of [
+  'OK snapshotNs=3 seq=42 grid=20x9 cells=deadbeef',
+  'OK snapshotNs=3 seq=42 cells=' + runBody,
+]) assert.throws(() => new CueHelperControlTransport({ token: '0123456789abcdef0123456789abcdef',
+  request: () => bad }).frame(), /cue-helper frame/);
 assert.throws(() => cue.visualAcquisition({ snapshotNs: '1', ageUs: '1', seq: '1' }), /invalid/);
 assert.throws(() => cue.visualAcquisition({ snapshotNs: '5000000000',
   visualCaptureNs: '4990000000', ageUs: '1', seq: '12' }), /disagrees/);

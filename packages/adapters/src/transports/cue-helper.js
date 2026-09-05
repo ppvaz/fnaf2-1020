@@ -66,6 +66,27 @@ export class CueHelperControlTransport {
 
   snapshot() { return parseCueResponse(this.request(`GET ${this.token}`)); }
   grid() { return parseCueGrid(this.request(`GRID ${this.token}`)); }
+
+  /**
+   * One observation: the snapshot fields AND the 180-cell sensor from a single
+   * locked read on the device, so both describe the same frame.
+   *
+   * `snapshot()` + `grid()` cannot do this. They are two round trips against a
+   * 60 fps capture, and on the moto g56 their sequences agreed 0 times in 12
+   * (always 1-2 frames apart), so every detector that needs freshness AND
+   * cells refused with `grid-seq-mismatch` and no positive state was reachable.
+   * `gridSeq` is set from the same `seq` deliberately: one read, one frame.
+   */
+  frame() {
+    const fields = /** @type {any} */ (parseCueResponse(this.request(`FRAME ${this.token}`)));
+    if (fields.grid !== '20x9') throw new Error('cue-helper frame is missing its sensor');
+    const body = typeof fields.cells === 'string' ? fields.cells : '';
+    if (!/^[0-9a-f]*$/.test(body)) throw new Error('cue-helper frame cell is malformed');
+    if (body.length !== 180 * 6) throw new TypeError('cue-helper frame must carry the 180-cell sensor');
+    const cells = [];
+    for (let index = 0; index < body.length; index += 6) cells.push(parseInt(body.slice(index, index + 6), 16));
+    return Object.freeze({ ...fields, gridSeq: fields.seq, cells: Object.freeze(cells) });
+  }
   watch(action) {
     if (action !== 'status' && !/^[0-9a-f]{64}$/.test(action)) throw new TypeError('cue-helper watch action is invalid');
     return parseCueResponse(this.request(`WATCH ${this.token} ${action}`));

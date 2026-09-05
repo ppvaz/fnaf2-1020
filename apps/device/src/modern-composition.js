@@ -11,17 +11,23 @@ import { composeDevice } from './composition.js';
 import { createAdbModernPorts } from './physical-ports.js';
 
 /**
- * One observation = one GET snapshot + one GRID sensor read. The detector
- * refuses when the two frames disagree (grid-seq-mismatch), so anchors are
- * never evaluated against a stale sensor row.
+ * One observation = one FRAME read: snapshot fields and the sensor serialized
+ * from the same locked read on the device, so the detector's freshness, screen
+ * identity and anchor cells all describe one frame.
+ *
+ * This was GET followed by GRID, with the detector refusing when the two
+ * disagreed (grid-seq-mismatch). The refusal was right and the pairing was
+ * not: measured on the moto g56, the two sequences agreed 0 times in 12,
+ * always 1-2 frames apart, because they are separate round trips against a
+ * 60 fps capture. Every live observation refused, so no positive state was
+ * ever reachable and the seam runner's two-consecutive-positives could never
+ * be satisfied. No fixture could show it -- a fixture returns one synthetic
+ * snapshot whose sequences match by construction.
  * @param {any} cueTransport */
 function observe(cueTransport) {
-  const snapshot = cueTransport.snapshot();
-  const grid = cueTransport.grid();
+  const snapshot = cueTransport.frame();
   return {
     ...snapshot,
-    gridSeq: grid.seq,
-    cells: grid.cells,
     measurements: {
       cameraSelected: cueTransport.cameraMeasurement(snapshot),
       cameraHighlights: cueTransport.cameraHighlightsMeasurement(snapshot),

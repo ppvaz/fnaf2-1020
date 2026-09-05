@@ -106,16 +106,27 @@ const ruleDigest = monitorRuleDigest(fittedRule);
     assert.equal(luma(downRow[anchor.cell]) === Math.round(notUpEdge), true,
       `anchor ${anchor.cell} must sit on its not-up edge in the down row`);
   }
-  const hex = cells => `OK grid=20x9 seq=7 ${cells.map(cell => cell.toString(16).padStart(6, '0')).join(' ')}`;
+  // The device serves its sensor as ONE concatenated hex run, no separators.
+  // This fixture used to join the cells with spaces -- a shape the helper never
+  // emits -- and that invented format is why `parseCueGrid` threw on every real
+  // grid read while this test stayed green. Fixtures model the wire, not our
+  // convenience.
+  const body = cells => cells.map(cell => cell.toString(16).padStart(6, '0')).join('');
+  const hex = cells => `OK grid=20x9 seq=7 ${body(cells)}`;
+  const snapshotLine = (facts, seq) =>
+    `OK snapshotNs=10000000 visualCaptureNs=9999000 seq=${seq} ageUs=1 screen=FNAF2_NIGHT gridLuma=32`
+      + (facts
+        ? ' monitorUp=true monitorReason=anchors-up '
+          + 'cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight '
+          + 'batteryPercent=75 batteryReason=bars-observed'
+        : '');
   const cueWith = (cells, { gridSeq = 7, facts = false } = {}) => ({
     token: '0123456789abcdef0123456789abcdef',
-    request: request => request.startsWith('GET ')
-    ? 'OK snapshotNs=10000000 visualCaptureNs=9999000 seq=7 ageUs=1 screen=FNAF2_NIGHT gridLuma=32'
-        + (facts
-          ? ' monitorUp=true monitorReason=anchors-up '
-            + 'cameraSelected=cam:5 cameraHighlights=cam:5 cameraReason=single-camera-highlight '
-            + 'batteryPercent=75 batteryReason=bars-observed'
-          : '')
+    // FRAME carries the snapshot AND the sensor from one locked device read, so
+    // its sequence is necessarily shared -- that is the whole point of the verb.
+    request: request => request.startsWith('FRAME ')
+      ? `${snapshotLine(facts, 7)} grid=20x9 cells=${body(cells)}`
+      : request.startsWith('GET ') ? snapshotLine(facts, 7)
       : request.startsWith('GRID ') ? hex(cells).replace('seq=7', `seq=${gridSeq}`) : 'ERROR unsupported',
   });
   const ports = {

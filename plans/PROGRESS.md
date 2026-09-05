@@ -2,6 +2,58 @@
 
 **Updated:** 2026-09-05
 
+2026-09-05 both live blockers are FIXED ON THE DEVICE, and the stale-build
+hypothesis I had dismissed was the right one. Attached moto g56
+(`ZF525F5BH5`); the helper was rebuilt from source and reinstalled.
+
+**The screen classifier was a stale binary, not a logic bug.** `ebb7a8e`
+(2026-09-01 16:28:37) added `if (menuScore(grid) >= 5) return FNAF2_MENU;` to
+`ScreenIdentity.classify()`. The installed APK was built at 02:42 the same day
+— about fourteen hours EARLIER — so its `classify()` had no menu branch at all
+and fell straight through to `nightScore > 0 ? FNAF2_NIGHT`, which is exactly
+the 6 that was measured. I had rejected this: `menuScore` is absent from the
+installed dex, but it is ALSO absent from a fresh build of the current source,
+because d8 inlines a private static called from one site. That coincidence
+made the dex symbol test uninformative in both directions and I read it as
+evidence against staleness. It was not evidence of anything. After rebuild and
+reinstall the device reports `SCREEN_CHECK PASS screen=FNAF2_MENU` on the same
+screen it had called a night 24 times running.
+
+`ScreenIdentity.describe()` now emits the per-branch scores
+(`screenNight=6 screenMenu=5 screenLandscape=2 screenPortrait=0` on that menu),
+because `score()` reports only the maximum and so could not say which branch
+won. Three of the captured live menu grids are now fixtures in
+`ScreenIdentityTest`: the synthetic `titleMenu()` that existed left cells (0,0)
+and (1,0) dark, which is precisely the pair `nightScore` reads as the lit
+flashlight meter, so it could never provoke the failure.
+
+**The atomic observation exists: the `FRAME` verb.** `currentSnapshot(boolean)`
+serializes the 180-cell sensor from the SAME locked read as the snapshot
+fields, so freshness, screen identity and anchor cells describe one frame and
+share one `seq`. Measured on the handset: FRAME carries snapshot + 180 cells in
+one read **12/12**, and the live monitor rule over ten FRAME observations
+returns `grid-seq-mismatch` **0 times** where GET+GRID agreed **0/12**. It now
+refuses with `screen-identity` instead — correct, because the game is at the
+menu. That is the calibration-state gate behaving as designed for the first
+time. `observe()` in `modern-composition.js` uses FRAME; `AdbCueHelperPort`
+and its on-device query script both admit the verb (two allowlists, both
+updated).
+
+The service fixture used to join grid cells with spaces — a shape the helper
+never emits — which is why `parseCueGrid` threw on every real read while the
+test stayed green. It now models the wire: one concatenated hex run.
+
+Validation: `npm run test` passes end to end, `android/cue-helper/test.sh`
+passes including the new captured-menu cases, test-docs/catalog green by exit
+status, dry-run `result=PASS claim=FIXTURE evidence=`
+`run-20260905210101-d13923ad-4e4c57` (`FIXTURE`, not gameplay evidence). Still
+OPEN: a fitted screen rule remains refused (per-cell thresholds are not
+expressive enough — see the entry below), the mask rule's darkness guard is
+still `blackout-unproven` so `parseCalibrationStateRule` still refuses to bind
+it live, and the seam-block transport, ID-matched dispatch/effect tails and
+per-session clock maps are untouched. Calibration remains UNVERIFIED; no
+no-input-loss and no Night 7 clear is claimed.
+
 2026-09-05 on-device: the gate was admitting the menu, and the live path could
 never resolve — attached moto g56 (`ZF525F5BH5`), helper 10:0.1.9, all reads
 read-only, no game input sent. Three findings, one fix landed.

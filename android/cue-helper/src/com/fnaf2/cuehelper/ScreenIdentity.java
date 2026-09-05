@@ -67,6 +67,23 @@ public final class ScreenIdentity {
                 Math.max(nightScore(grid), menuScore(grid)));
     }
 
+    /**
+     * Verdict-free per-branch scores, so a host can see WHY a frame classified
+     * and calibrate against the same numbers the device used. On 2026-09-05
+     * this service reported FNAF2_NIGHT on 24 consecutive live grids while the
+     * operator was looking at the menu, and {@link #score} could not say which
+     * branch won because it only reports the maximum.
+     */
+    public static String describe(int[] grid) {
+        if (grid == null || grid.length != GRID_WIDTH * GRID_HEIGHT) {
+            return "screenNight=0 screenMenu=0 screenLandscape=0 screenPortrait=0";
+        }
+        return "screenNight=" + nightScore(grid)
+                + " screenMenu=" + menuScore(grid)
+                + " screenLandscape=" + landscapeScore(grid)
+                + " screenPortrait=" + portraitScore(grid);
+    }
+
     public static String label(int state) {
         switch (state) {
             case CUE_HELPER:

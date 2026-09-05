@@ -2299,6 +2299,11 @@ public final class CaptureService extends Service {
         switch (field[0]) {
             case "GET":
                 return "OK " + currentSnapshot();
+            case "FRAME":
+                // Snapshot fields AND the sensor from one locked read. GET+GRID
+                // can never agree on a sequence, so a live detector must use
+                // this verb instead of correlating two round trips.
+                return "OK " + currentSnapshot(true);
             case "GRID":
                 // The full sensor, 0xRRGGBB per cell, row-major, as hex. One
                 // line, no allocation on the capture thread -- the string is
@@ -2367,6 +2372,23 @@ public final class CaptureService extends Service {
     }
 
     private String currentSnapshot() {
+        return currentSnapshot(false);
+    }
+
+    /**
+     * One observation. With {@code withGrid} the 180-cell sensor is serialized
+     * from the SAME locked read as the snapshot fields, so both describe one
+     * frame and carry one sequence number.
+     *
+     * <p>Without it a host must call GET then GRID, two round trips against a
+     * 60 fps capture: measured on 2026-09-05 the two sequences agreed 0 times
+     * in 12, always 1-2 frames apart, so every consumer needing freshness AND
+     * cells refused with grid-seq-mismatch and no positive state was ever
+     * reachable. Atomicity here is the fix; the caller stops correlating.</p>
+     */
+    private String currentSnapshot(boolean withGrid) {
+        int[] gridCopy = null;
+        String screenDetail;
         long visualSequenceSnapshot;
         long visualTimestampNs;
         int red;
@@ -2413,6 +2435,8 @@ public final class CaptureService extends Service {
                     monitor);
             battery = BatteryLifeDetector.measureForScreen(watchSpec,
                     snapshotWatchValues, snapshotScreenIdentity);
+            gridCopy = withGrid && snapshotGridValid ? snapshotGrid.clone() : null;
+            screenDetail = ScreenIdentity.describe(snapshotGridValid ? snapshotGrid : null);
         }
 
         long nowNs = System.nanoTime();
@@ -2457,9 +2481,19 @@ public final class CaptureService extends Service {
         StringBuilder panAnchor = new StringBuilder(160);
         appendPanAnchor(panAnchor, invalidReason, panAnchorX, panAnchorY,
                 panAnchorArea, panAnchorMargin, panAnchorConfidence, panAnchorReason);
+        StringBuilder frame = new StringBuilder(64);
+        if (gridCopy != null) {
+            frame.append(" grid=").append(VISUAL_WIDTH).append('x').append(VISUAL_HEIGHT)
+                    .append(" cells=");
+            for (int cell : gridCopy) {
+                frame.append(HEX[(cell >> 20) & 0xf]).append(HEX[(cell >> 16) & 0xf])
+                        .append(HEX[(cell >> 12) & 0xf]).append(HEX[(cell >> 8) & 0xf])
+                        .append(HEX[(cell >> 4) & 0xf]).append(HEX[cell & 0xf]);
+            }
+        }
         return "snapshotNs=" + nowNs + " visualCaptureNs=" + visualTimestampNs
-                + " " + visual + panAnchor + " "
-                + currentAudioStatus() + " " + watchStatus();
+                + " " + visual + panAnchor + " " + screenDetail + " "
+                + currentAudioStatus() + " " + watchStatus() + frame;
     }
 
     private static String cameraHighlightsValue(CameraSelectionDetector.Result camera) {
