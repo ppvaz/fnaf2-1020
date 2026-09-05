@@ -479,6 +479,54 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/minus7/cycle.mjs",
+      "invocation": "tools/minus7/cycle.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/minustoys/cycle.mjs",
+      "invocation": "tools/minustoys/cycle.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-maskraise-probe.mjs",
+      "invocation": "tools/device/hid-maskraise-probe.mjs",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-monitorraise-probe.mjs",
+      "invocation": "tools/device/hid-monitorraise-probe.mjs",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-maskraise-probe.mjs",
+      "invocation": "tools/device/test-hid-maskraise-probe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-monitorraise-probe.mjs",
+      "invocation": "tools/device/test-hid-monitorraise-probe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/maskraise-grade.py",
+      "invocation": "tools/device/maskraise-grade.py",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/monitorraise-watch.py",
+      "invocation": "tools/device/monitorraise-watch.py",
+      "kind": "device action",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/knobsweep.mjs",
       "invocation": "tools/knobsweep.mjs",
       "kind": "report",
