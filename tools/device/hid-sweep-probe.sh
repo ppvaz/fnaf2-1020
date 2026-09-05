@@ -79,10 +79,12 @@ case "$PROBE_GEN" in
   maskraise)
     echo "maskraise probe: contact ${CONTACT_MS:-33} ms, hall ${HALL_MS:-133} ms, ${ROUNDS:-3} rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     READY_MS="${READY_MS:-16000}" ROUNDS="${ROUNDS:-3}" HALL_MS="${HALL_MS:-133}" \
+      SPLIT_OUT="$CAPTURE_DIR/$OUT" \
       node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   monitorraise)
     echo "monitorraise probe: contact ${CONTACT_MS:-33} ms, watcher-restored, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     SCHEDULE_OUT="$CAPTURE_DIR/$OUT.schedule.json" READY_MS="${READY_MS:-16000}" \
+      SPLIT_OUT="$CAPTURE_DIR/$OUT" \
       node "$HERE/hid-monitorraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid"
     # The watcher classifies frames with the project's monitor-ROI checker,
     # device-local, so it needs the binary on the phone.
@@ -131,20 +133,30 @@ PROBE_NIGHT="${PROBE_NIGHT:-sixthNight}"
 # shellcheck source=menu.sh
 . "$HERE/menu.sh"
 if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
-  # Pre-register the HID device at the title screen, the way the canonical
-  # runner does (legacy-trial.sh: "The remote driver pre-registers HID at
-  # the title screen and waits here"). InputReader takes ~5.1 s to attach
-  # after registration; burning that during the menu and intro instead of
-  # the live night reclaims ~6-8 s of trials before night-6 threats close
-  # in. The stream's READY_MS prelude (default 16000 here) spans menu
-  # selection plus night load; a trial whose presses land on the intro
-  # card produces no mask interval and the grader invalidates it, so an
-  # unlucky early tail costs nothing but footage.
+  # Register the HID device at the title screen and feed the trial body
+  # over stdin only once the office is observed -- the canonical runner's
+  # own architecture (trial/04-session.sh runs `/system/bin/hid -` as a
+  # co-process for exactly this reason). Registration at the title burns
+  # the ~5.1 s InputReader attach during the menu and intro; gating the
+  # body on the office means the first press lands ~0.5 s after the night
+  # is live instead of after a fixed prelude sized for the slowest load.
+  # STREAM_MODE=file falls back to one pre-registered stream with a long
+  # READY_MS (a trial pressed during the intro produces no mask interval
+  # and the grader invalidates it, so the fallback is safe, just wasteful).
+  STREAM_MODE="${STREAM_MODE:-stdin}"
   adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
   REC_PID=$!
-  nohup adb shell "hid $REMOTE_STREAM" > "$CAPTURE_DIR/$OUT.hid.log" 2>&1 &
+  FIFO="$(mktemp -u)"
+  mkfifo "$FIFO"
+  adb shell "hid -" < "$FIFO" > "$CAPTURE_DIR/$OUT.hid.log" 2>&1 &
   HID_PID=$!
-  echo "pre-registered hid (pid $HID_PID); entering the night while it attaches"
+  exec 3> "$FIFO"
+  cat "$CAPTURE_DIR/$OUT.register.jsonl" >&3
+  echo "hid registered over stdin at the title (pid $HID_PID, mode $STREAM_MODE)"
+  if [ "$STREAM_MODE" = file ]; then
+    cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
+    exec 3>&-
+  fi
   WATCH_PID=""
   if [ "$PROBE_GEN" = monitorraise ]; then
     # The monitorraise probe is the one blind stream that cannot restore
@@ -158,11 +170,15 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   for _ in $(seq 1 40); do
     state="$(adb exec-out screencap -p 2>/dev/null | python3 "$HERE/screenstate.py" 2>/dev/null | tail -1)"
     [ "$state" = night ] && break
-    sleep 0.5
+    sleep 0.25
   done
   [ "$state" = night ] || {
     echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
-  echo "night up; the stream owns everything from here (${SPACINGS[*]} ms gaps)"
+  if [ "$STREAM_MODE" = stdin ]; then
+    echo "office observed; releasing the trial body (${SPACINGS[*]} ms gaps)"
+    cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
+    exec 3>&-
+  fi
   # Ride out the stream; it ends on its own. Bound the wait so a hung hid
   # process cannot outlive the recording.
   for _ in $(seq 1 $((REC_SECONDS + 30))); do
@@ -170,6 +186,7 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
     sleep 1
   done
   kill "$HID_PID" 2>/dev/null || true
+  rm -f "$FIFO"
   if [ -n "$WATCH_PID" ]; then
     # The watcher stops after the last idle window; humour it for 5 s, then
     # stop it so the wrapper never hangs on a missed anchor.

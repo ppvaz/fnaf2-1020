@@ -63,10 +63,26 @@ def parse_stream(path):
         name = ("mask" if near(600, 1015) else
                 "hall" if near(1200, 540) else
                 "monitor" if near(1780, 1015) else "?")
+        if e["report"][1] == 2 and e["report"][2] & 1 and e["report"][7] & 2:
+            name = "compound"  # hall on contact 0, monitor tap on contact 1
         downs.append((t, name))
     masks = [t for t, n in downs if n == "mask"]
     halls = [t for t, n in downs if n == "hall"]
     monitors = [t for t, n in downs if n == "monitor"]
+    compounds = [t for t, n in downs if n == "compound"]
+    if compounds:
+        # compound mode: teach pair + preamble, then per trial the runner's
+        # exact two-finger press (hid-monitorraise-probe.mjs TWO_FINGER=1).
+        if len(monitors) < 2 or len(masks) != 2 * len(compounds):
+            raise SystemExit(f"compound stream shape unexpected: {len(masks)} mask, {len(compounds)} compound")
+        trials = []
+        for i, probe in enumerate(compounds):
+            on_t, off_t = masks[2 * i], masks[2 * i + 1]
+            if not (on_t < off_t < probe):
+                raise SystemExit(f"trial {i}: press order broke ({on_t}, {off_t}, {probe})")
+            trials.append({"gap": probe - off_t, "mask_on_ms": on_t,
+                           "mask_off_ms": off_t, "probe_ms": probe})
+        return {"mode": "compound", "anchor_ms": monitors[0], "trials": trials}
     if monitors:
         # monitor mode: teach pair, 3-flask preamble, then per trial
         # (mask, mask, monitor).
@@ -247,26 +263,47 @@ def main():
         drift = (max(checks) - min(checks)) if len(checks) > 1 else 0.0
         map_runs = [(a, b) for a, b in runs_where(center, lambda v: abs(v - map_level) <= MAP_TOL)
                     if (b - a) >= 5]
-        def evidence(tr):
-            v = offset + tr["probe_ms"]
-            return any(v - 100 <= t_of(a) <= v + args.land_window_ms + 100 for a, b in map_runs)
+        if mode == "compound":
+            # The runner's two-finger press: hall on contact 0, the monitor
+            # tap on contact 1. Both controls are graded per trial -- but a
+            # beam is invisible under a landed map, so the hall column is
+            # only meaningful when the monitor contact did not land.
+            beams = [(a, b) for a, b in runs_where(center, lambda v: v > office_level + BEAM_MARGIN)
+                     if (b - a) <= 12]
+            def evidence(tr):
+                v = offset + tr["probe_ms"]
+                mon = any(v - 100 <= t_of(a) <= v + 800 for a, b in map_runs)  # the map flip is 367 ms; its center-band signature stabilizes late
+                hall = (not mon) and any(v - 100 <= t_of(a) <= v + args.land_window_ms
+                                         for a, b in beams)
+                return ("landed" if mon else "miss") + ("/hall" if hall else "")
+        else:
+            def evidence(tr):
+                v = offset + tr["probe_ms"]
+                return any(v - 100 <= t_of(a) <= v + 800 for a, b in map_runs)  # the map flip is 367 ms; its signature stabilizes late
 
-    by_gap, anim_on, anim_off = {}, [], []
+    by_gap, by_gap_hall, anim_on, anim_off = {}, {}, [], []
     l_base = statistics.median(lvent[:live_end])
     r_base = statistics.median(rvent[:live_end])
     print(f"{n} frames @ {FPS} fps  mode={mode}  mask-level {mask_level:.1f}  office-level {office_level:.1f}  "
           f"vent-bases L{l_base:.1f}/R{r_base:.1f}  "
-          + (f"map-level {map_level:.1f}  " if mode == "monitor" else "")
+          + (f"map-level {map_level:.1f}  " if mode in ("monitor", "compound") else "")
           + f"sync offset {offset:+.0f} ms (drift {drift:.0f} ms)"
           + (f"  TERMINAL at {t_of(live_end) / 1000:.1f}s" if live_end < n else ""))
-    print(f"{'gap':>5} {'landed':>7} {'anim-on':>8} {'anim-off':>8}  {'Lvent':>6} {'Rvent':>6}  note")
+    print(f"{'gap':>5} {'landed':>12} {'anim-on':>8} {'anim-off':>8}  {'Lvent':>6} {'Rvent':>6}  note")
     for tr in trials:
         v_on = offset + tr["mask_on_ms"]
         v_off = offset + tr["mask_off_ms"]
         if int(v_on / 1000 * FPS) > live_end + int(0.3 * FPS):
             landed, a_on, a_off, note = None, None, None, "post-terminal"
         else:
-            landed, note = bool(evidence(tr)), ""
+            ev = evidence(tr)
+            if isinstance(ev, str):
+                # compound: "landed"/"landed/hall"/"miss"/"miss/hall"
+                landed = ev.startswith("landed")
+            else:
+                landed = bool(ev)
+                ev = None
+            note = ""
             i0 = int(v_on / 1000 * FPS)
             f = sustained_at(center, i0, min(live_end, i0 + int(0.9 * FPS)), mask_level, 1.5)
             a_on = t_of(f) - v_on if f is not None else None
@@ -276,27 +313,38 @@ def main():
             if a_on is None:
                 # No mask interval where the stream pressed one: desync or
                 # quiet death. Such a window cannot grade the seam.
-                landed, note = None, "no-mask-cycle (invalid)"
+                landed, note, ev = None, "no-mask-cycle (invalid)", None
         if a_on is not None and 0 < a_on < 900:
             anim_on.append(a_on)
         if a_off is not None and 0 < a_off < 900:
             anim_off.append(a_off)
         g = by_gap.setdefault(tr["gap"], [0, 0])
+        gh = by_gap_hall.setdefault(tr["gap"], [0, 0])
         if landed is True:
             g[0] += 1
         if landed is not None:
             g[1] += 1
+        if ev is not None and landed is not None:
+            gh[1] += 1
+            if ev.endswith("hall"):
+                gh[0] += 1
         wa = max(0, int((v_on - 300) / 1000 * FPS))
         wb = min(live_end, int((offset + tr["probe_ms"] + 400) / 1000 * FPS))
         lv = statistics.fmean(lvent[wa:wb]) if wb > wa else float("nan")
         rv = statistics.fmean(rvent[wa:wb]) if wb > wa else float("nan")
         fmt = lambda v: f"{v:4.0f} ms" if v is not None else "     --"
-        print(f"{tr['gap']:>5} {str(landed):>7} {fmt(a_on)} {fmt(a_off)}  "
+        shown = ev if ev is not None else str(landed)
+        print(f"{tr['gap']:>5} {shown:>12} {fmt(a_on)} {fmt(a_off)}  "
               f"{lv:6.1f} {rv:6.1f}  {note}")
-    print("\nper-gap landing rate")
+    print("\nper-gap landing rate" + (" (monitor contact)" if mode == "compound" else ""))
     for gap in sorted(by_gap):
         l, r = by_gap[gap]
         print(f"  {gap:>4} ms  {l}/{r}  {'#' * l}{'.' * (r - l)}")
+    if mode == "compound":
+        print("per-gap landing rate (hall contact, visible only when the monitor missed)")
+        for gap in sorted(by_gap_hall):
+            l, r = by_gap_hall[gap]
+            print(f"  {gap:>4} ms  {l}/{r}  {'#' * l}{'.' * (r - l)}")
     for name, xs in (("mask-ON animation (press -> mask fully on)", anim_on),
                      ("mask-OFF animation (press -> office fully back, no-landing trials)", anim_off)):
         if xs:

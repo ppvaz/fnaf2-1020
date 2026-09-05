@@ -35,6 +35,7 @@
 // Usage: node hid-maskraise-probe.mjs [gapMs ...]
 //   ROUNDS=3 (default) repeats the gap list, alternating direction each round
 //   so drift decorrelates from gap value.
+import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { COORDS, toRaw } from './hid-sweep-probe.mjs';
 
@@ -118,10 +119,24 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const v = Number(process.env[name]);
     return Number.isInteger(v) && v > 0 ? v : undefined;
   };
-  for (const event of stream(gaps, {
-    readyMs: env('READY_MS'), contactMs: env('CONTACT_MS'), maskOnMs: env('MASK_ON_MS'),
+  // SPLIT_OUT: stdin mode writes the register event and the body
+  // separately so the wrapper can register at the title screen (the ~5.1 s
+  // InputReader attach burns during menu and intro) and hold the body
+  // until the office is observed -- the fixed READY_MS prelude this file
+  // mode uses is sized for the slowest night load and wastes the
+  // difference on every faster one. The body keeps its own small settle
+  // delay; the .hid on stdout stays the exact event sequence consumed.
+  const splitOut = process.env.SPLIT_OUT;
+  const settleMs = env('SETTLE_MS') ?? 500;
+  const events = stream(gaps, {
+    readyMs: splitOut ? settleMs : (env('READY_MS') ?? 7000),
+    contactMs: env('CONTACT_MS'), maskOnMs: env('MASK_ON_MS'),
     hallMs: env('HALL_MS'), observeMs: env('OBSERVE_MS'), settleMs: env('SETTLE_MS'),
     rounds: env('ROUNDS'),
-  }))
-    console.log(JSON.stringify(event));
+  });
+  if (splitOut) {
+    writeFileSync(`${splitOut}.register.jsonl`, JSON.stringify(events[0]) + '\n');
+    writeFileSync(`${splitOut}.body.jsonl`, events.slice(1).map(e => JSON.stringify(e)).join('\n') + '\n');
+  }
+  for (const event of events) console.log(JSON.stringify(event));
 }

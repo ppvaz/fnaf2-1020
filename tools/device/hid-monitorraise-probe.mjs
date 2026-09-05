@@ -49,7 +49,8 @@ export function stream(gaps, { readyMs = 5600,
                                maskOnMs = 800,
                                observeMs = 900,
                                idleMs = 1500,
-                               teachMs = 800 } = {}) {
+                               teachMs = 800,
+                               twoFinger = false } = {}) {
   const out = [];
   let t = 0;
   const emit = (command, extra) => { out.push({ at: t, id: ID, command, ...extra }); };
@@ -58,6 +59,17 @@ export function stream(gaps, { readyMs = 5600,
     emit('report', { report: [1, 1, ...record(0x03, point), 0, 0, 0, 0, 0] });
     delay(hold);
     emit('report', { report: [1, 1, ...record(0x00, point), 4, 0, 0, 0, 0] });
+  };
+  // The runner's maskraise compound press (11-plan-interpreter.sh): hall
+  // held on contact 0, the monitor tap riding as contact 1 inside the hold
+  // -- the exact input path the desync census measured, and the one thing
+  // that can reconcile its 180 ms with the single-finger probes' ~270.
+  // SWEEP_LIGHT_LEAD_MS is 0 in the shipped geometry, so no lead.
+  const compoundPress = (holdMs = 133) => {
+    emit('report', { report: [1, 2, ...record(0x03, HALL), ...record(0x07, MONITOR)] });
+    delay(holdMs);
+    emit('report', { report: [1, 2, ...record(0x03, HALL), ...record(0x04, MONITOR)] });
+    emit('report', { report: [1, 2, ...record(0x00, HALL), ...record(0x04, MONITOR)] });
   };
 
   emit('register', {
@@ -90,8 +102,9 @@ export function stream(gaps, { readyMs = 5600,
     press(MASK);
     delay(maskOnMs - contactMs);
     press(MASK);
-    delay(gap - contactMs);        // THE SEAM: monitor down at off-down + gap
-    press(MONITOR);                // the measured press
+    delay(gap - contactMs);        // THE SEAM: next control down at off-down + gap
+    if (twoFinger) compoundPress(133);  // hall (contact 0) + monitor (contact 1)
+    else press(MONITOR);                // the single-finger measured press
     delay(observeMs);
     idles.push({ start: t, end: t + idleMs - idleGuardMs, reason: 'restore' });
     delay(idleMs);
@@ -113,10 +126,18 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const v = Number(process.env[name]);
     return Number.isInteger(v) && v > 0 ? v : undefined;
   };
+  const splitOut = process.env.SPLIT_OUT;
+  const settleMs = env('SETTLE_MS') ?? 500;
   const { events, teachRaiseAt, idles } = stream(gaps, {
-    readyMs: env('READY_MS'), contactMs: env('CONTACT_MS'), maskOnMs: env('MASK_ON_MS'),
+    readyMs: splitOut ? settleMs : (env('READY_MS') ?? 5600),
+    contactMs: env('CONTACT_MS'), maskOnMs: env('MASK_ON_MS'),
     observeMs: env('OBSERVE_MS'), idleMs: env('IDLE_MS'),
+    twoFinger: process.env.TWO_FINGER === '1',
   });
+  if (splitOut) {
+    writeFileSync(`${splitOut}.register.jsonl`, JSON.stringify(events[0]) + '\n');
+    writeFileSync(`${splitOut}.body.jsonl`, events.slice(1).map(e => JSON.stringify(e)).join('\n') + '\n');
+  }
   for (const event of events) console.log(JSON.stringify(event));
   const scheduleOut = process.env.SCHEDULE_OUT;
   if (scheduleOut)
