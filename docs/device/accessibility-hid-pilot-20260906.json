@@ -1,0 +1,62 @@
+{
+  "schema": "accessibility-vs-hid-pilot-v1",
+  "date": "2026-09-06",
+  "device": {
+    "model": "moto g56 5G",
+    "serial": "ZF525F5BH5",
+    "android": "16",
+    "api": 36,
+    "gameBuild": "com.scottgames.fnaf2:2.0.7+26",
+    "cueHelperTargetSdk": 36,
+    "landscapePixels": [2400, 1080],
+    "probeRefreshHz": 120.00001
+  },
+  "target": "synthetic foreground probe surface; no FNaF2 gameplay input",
+  "metric": "device-monotonic receiveUptimeMs minus MotionEvent eventTimeMs",
+  "sampleShape": "50 single contacts, each producing down/up (100 events) per cell",
+  "cells": [
+    {
+      "contactMs": 100,
+      "accessibilityService": {
+        "events": 100,
+        "p50Ms": 1,
+        "maxMs": 6,
+        "deviceId": -1,
+        "flags": "0x800"
+      },
+      "uhid": {
+        "events": 100,
+        "p50Ms": 5,
+        "maxMs": 9,
+        "flags": "0x0"
+      }
+    },
+    {
+      "contactMs": 17,
+      "accessibilityService": {
+        "events": 100,
+        "p50Ms": 4,
+        "maxMs": 7,
+        "deviceId": -1,
+        "flags": "0x800"
+      },
+      "uhid": {
+        "events": 100,
+        "p50Ms": 4,
+        "maxMs": 13,
+        "flags": "0x0"
+      }
+    }
+  ],
+  "contactFidelity": {
+    "accessibility": ["simultaneous-two-contact", "staggered-contact-addition", "replacement-cancel"],
+    "uhid": ["simultaneous-two-contact", "staggered-contact-addition"]
+  },
+  "verdict": "pilot-supports-hostless-menu-campaign-candidate; does-not-qualify-in-night-swap",
+  "limitations": [
+    "synthetic view rather than FNaF2 acceptance",
+    "receipt delay rather than physical-to-render end-to-end latency",
+    "small pilot; required 1000-repetition qualification remains open",
+    "UHID registration/startup overhead is excluded from per-event receipt delay"
+  ]
+}

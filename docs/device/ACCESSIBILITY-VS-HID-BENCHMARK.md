@@ -1,9 +1,10 @@
 # AccessibilityService versus on-device HID
 
-**Status: research conclusion and benchmark plan, 2026-09-06.** This note
-records the online search prompted by the hostless Cue Helper discussion. It
-separates framework facts, public claims, and the measurements this project
-still needs to make on the Moto g56 target.
+**Status: research conclusion plus device pilot, 2026-09-06.** This note
+records the online search prompted by the hostless Cue Helper discussion and
+the first safe phone-side comparison. It separates framework facts, public
+claims, and the measurements this project still needs to make on the Moto g56
+target.
 
 ## Short conclusion
 
@@ -79,6 +80,41 @@ FGA remains useful deployment precedent: it runs MediaProjection plus
 AccessibilityService on-device for a physical handset, but it is a
 turn-based game and is not a timing comparison with HID. The project survey
 continues in [ANDROID-BOT-LANDSCAPE.md](../research/ANDROID-BOT-LANDSCAPE.md).
+
+## First Moto g56 pilot — 120 Hz, synthetic target only
+
+On 2026-09-06 the connected Moto g56 5G (`ZF525F5BH5`, Android 16/API 36,
+Cue Helper target SDK 36, landscape `2400x1080`) ran both paths against the
+same foreground synthetic probe view. The display was temporarily requested
+at 120 Hz and the probe reported `refreshHz=120.00001`. The original refresh
+settings and disabled accessibility state were restored afterward; FNaF2 was
+never targeted and no gameplay input was sent.
+
+The probe received the same single, simultaneous-two-contact, and staggered
+contact sequences from both paths. AccessibilityService also demonstrated the
+framework cancellation rule: dispatching a second gesture produced
+`ACTION_CANCEL` for the first before the replacement `ACTION_DOWN`. The event
+provenance was distinct and stable: AccessibilityService used `deviceId=-1`
+and `flags=0x800` (`FLAG_IS_ACCESSIBILITY_EVENT`), while UHID used a virtual
+device ID and `flags=0x0`.
+
+The following is a receipt-delay pilot, not end-to-end game latency. It uses
+the probe's device-monotonic `receiveUptimeMs - eventTimeMs` for 100
+single-contact events per cell (50 down/up pairs):
+
+| contact | AccessibilityService | UHID via `/system/bin/hid` |
+|---|---:|---:|
+| 100 ms | p50 1 ms, max 6 ms; 100/100 events | p50 5 ms, max 9 ms; 100/100 events |
+| 17 ms | p50 4 ms, max 7 ms; 100/100 events | p50 4 ms, max 13 ms; 100/100 events |
+
+The 100 ms cell favors AccessibilityService on this target, while the 17 ms
+cell ties at the median and has a worse UHID tail in this small pilot. That is
+enough to promote AccessibilityService to a serious hostless menu/campaign
+candidate. It is not enough to replace UHID for in-night control: the probe
+does not model FNaF2's 30 Hz polling, app acceptance, contact continuation
+across real controls, or game survival.
+
+The retained summary is [`accessibility-hid-pilot-20260906.json`](accessibility-hid-pilot-20260906.json).
 
 ## Required project benchmark
 

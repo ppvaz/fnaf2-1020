@@ -68,6 +68,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -classpath "$ANDROID_JAR" \
     -d "$CLASSES_DIR" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/MainActivity.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/AccessibilityProbeActivity.java" \
+    "$SCRIPT_DIR/src/com/fnaf2/cuehelper/AccessibilityProbeService.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/AudioAnalyzer.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/PhaseClock.java" \
     "$SCRIPT_DIR/src/com/fnaf2/cuehelper/CueDetector.java" \
