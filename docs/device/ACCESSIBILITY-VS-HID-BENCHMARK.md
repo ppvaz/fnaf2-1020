@@ -108,13 +108,36 @@ single-contact events per cell (50 down/up pairs):
 | 17 ms | p50 4 ms, max 7 ms; 100/100 events | p50 4 ms, max 13 ms; 100/100 events |
 
 The 100 ms cell favors AccessibilityService on this target, while the 17 ms
-cell ties at the median and has a worse UHID tail in this small pilot. That is
-enough to promote AccessibilityService to a serious hostless menu/campaign
-candidate. It is not enough to replace UHID for in-night control: the probe
-does not model FNaF2's 30 Hz polling, app acceptance, contact continuation
-across real controls, or game survival.
+cell ties at the median and has a worse UHID tail in this small pilot. That was
+enough to justify a real-game acceptance gate, but not to promote the backend.
+The probe does not model FNaF2's 30 Hz polling, app acceptance, contact
+continuation across real controls, or game survival.
 
 The retained summary is [`accessibility-hid-pilot-20260906.json`](accessibility-hid-pilot-20260906.json).
+
+## First stock-game acceptance gate — FAIL, 2026-09-06
+
+The Moto g56 was returned to the FNaF2 title screen and the calibrated Custom
+Night point `(400,985)` was tested. The debug command was sent through a
+windowless broadcast receiver, so the command itself did not replace or focus
+the game window. With the service temporarily enabled through an adb secure
+setting override (not through a user grant in Android Settings),
+`dispatchGesture()` returned `accepted=true` and its callback returned
+`completed`; the title screen did not transition. The same 33 ms UHID control
+at the same point opened Custom Night.
+
+Earlier activity-based 33 ms, 100 ms, and delayed 100 ms AccessibilityService
+attempts produced the same non-transition. The windowless receiver removes
+the activity/window race as the explanation, but this test cannot distinguish
+whether the stock game filters accessibility-provenance events or Android
+routes them differently. It does establish the project-level result:
+framework completion was a false positive for FNaF2 acceptance.
+
+This is also not a permission/onboarding qualification. The service was
+enabled only for the controlled phone experiment and was disabled afterward;
+the user-facing Settings grant, persistence, revocation, and recovery flow
+remain untested. The retained gate result is
+[`accessibility-game-acceptance-20260906.json`](accessibility-game-acceptance-20260906.json).
 
 ## Required project benchmark
 
@@ -137,6 +160,8 @@ p99/p99.9, event gaps, contact-order errors, and game-acceptance rate over at
 least 1,000 repetitions per primitive. A successful API callback is not proof
 that FNaF2 accepted the contact.
 
-Until this exists, use AccessibilityService for the hostless menu/campaign
-spike and keep UHID as the qualified in-night candidate. The benchmark result,
-not an online latency anecdote, decides whether the backend changes.
+Until a new acceptance path is demonstrated, keep AccessibilityService
+debug-only and do not use it as the stock-game controller. UHID remains the
+qualified in-night and menu-control baseline. The benchmark result, not an
+online latency anecdote or a successful framework callback, decides whether
+the backend changes.

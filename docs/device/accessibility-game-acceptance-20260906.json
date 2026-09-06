@@ -1,0 +1,46 @@
+{
+  "schema": "accessibility-game-acceptance-gate-v1",
+  "date": "2026-09-06",
+  "device": {
+    "model": "Moto g56 5G",
+    "serial": "ZF525F5BH5",
+    "androidApi": 36,
+    "display": "2400x1080 landscape",
+    "package": "com.scottgames.fnaf2",
+    "cueHelperTargetSdk": 36
+  },
+  "screen": "FNaF2 title screen",
+  "point": {
+    "x": 400,
+    "y": 985,
+    "meaning": "Custom Night"
+  },
+  "accessibility": {
+    "permissionSource": "temporary adb secure-setting override",
+    "userGrantedInSettings": false,
+    "windowlessReceiverTrial": {
+      "durationMs": 33,
+      "dispatchDelayMs": 500,
+      "dispatchAccepted": true,
+      "gestureCallback": "completed",
+      "visibleTransition": "not-observed"
+    },
+    "earlierActivityTrials": [
+      {"durationMs": 33, "dispatchAccepted": true, "gestureCallback": "completed", "visibleTransition": "not-observed"},
+      {"durationMs": 100, "dispatchAccepted": true, "gestureCallback": "completed", "visibleTransition": "not-observed"},
+      {"durationMs": 100, "dispatchAccepted": true, "gestureCallback": "completed", "visibleTransition": "not-observed"}
+    ]
+  },
+  "uhidControl": {
+    "durationMs": 33,
+    "visibleTransition": "custom-night-observed"
+  },
+  "verdict": "FAIL",
+  "qualification": "not-promoted",
+  "reason": "AccessibilityService framework completion did not produce stock-game acceptance while UHID did",
+  "phoneRestored": {
+    "accessibilityEnabled": false,
+    "enabledServices": null,
+    "foregroundPackage": "com.scottgames.fnaf2"
+  }
+}

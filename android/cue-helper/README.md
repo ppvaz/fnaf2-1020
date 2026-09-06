@@ -9,14 +9,20 @@ The APK owns only the user-approved `MediaProjection` visual stream:
 
 ## Current boundary and hostless target
 
-This APK is still a read-only helper/measurement boundary: it does not yet
-own campaign decisions or inject game input. The architectural target is for
+This APK's production runtime is still a read-only helper/measurement
+boundary: it does not yet own campaign decisions or inject game input. It has
+debug-only AccessibilityService probes, but those are not a controller. The
+architectural target is for
 Cue Helper to become the full device authority — capture, lifecycle/game-state
 reducer, belief, safety arbiter, campaign controller, and a qualified local
 actuator — while the PC is retained only for build, calibration, replay,
 evidence, and telemetry.
 
-AccessibilityService is a candidate hostless actuator. Because this APK targets
+AccessibilityService remains a framework candidate, not a qualified FNaF2
+actuator. The 2026-09-06 real-game gate returned framework completion without
+the title screen accepting the tap, while the same UHID tap opened Custom
+Night; the service had also been enabled temporarily through adb rather than a
+user-facing Settings grant. Because this APK targets
 SDK 36 on the 120 Hz target phone, Android's modern gesture generator should
 sample paths at roughly 8 ms rather than the pre-Android-11 100 ms interval.
 That is not yet a FNaF2 timing or contact-fidelity result. A later dispatch can

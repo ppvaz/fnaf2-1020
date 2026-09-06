@@ -79,4 +79,27 @@ public final class AccessibilityProbeService extends AccessibilityService {
                 + " callElapsedMs=" + (returned - callStart));
         return accepted;
     }
+
+    static boolean dispatchSingle(String label, int x, int y, long durationMs) {
+        android.graphics.Path path = new android.graphics.Path();
+        path.moveTo(x, y);
+        return dispatch(label, new GestureDescription.Builder()
+                .addStroke(new GestureDescription.StrokeDescription(path, 0L, durationMs))
+                .build());
+    }
+
+    static boolean dispatchSingleAfter(String label, int x, int y, long durationMs, long delayMs) {
+        AccessibilityProbeService service = active;
+        if (service == null) {
+            Log.e(TAG, "dispatch-scheduled label=" + label
+                    + " accepted=false reason=service-not-connected");
+            return false;
+        }
+        service.callbackHandler.postDelayed(
+                () -> dispatchSingle(label, x, y, durationMs), Math.max(0L, delayMs));
+        Log.i(TAG, "dispatch-scheduled label=" + label
+                + " delayMs=" + Math.max(0L, delayMs)
+                + " atUptimeMs=" + SystemClock.uptimeMillis());
+        return true;
+    }
 }

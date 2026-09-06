@@ -109,10 +109,13 @@ The migration has two independent gates:
 2. qualify a hostless actuator. AccessibilityService is attractive for this
    purpose and, on this project's target SDK 36 / 120 Hz device, is
    theoretically sampled at about 8 ms rather than the old 100 ms behavior.
-   That is framework granularity, not end-to-end proof. UHID remains the
-   in-night baseline until the comparison and contact-fidelity benchmark in
+   That is framework granularity, not end-to-end proof. The first stock-game
+   acceptance gate on 2026-09-06 failed: the service callback completed but
+   FNaF2 ignored the tap that UHID accepted. AccessibilityService is therefore
+   not promoted; UHID remains the current in-night and menu-control baseline.
+   The user-facing accessibility grant flow is a separate untested gate. See
    [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md)
-   passes.
+   and its retained failed result.
 
 ## The debt the two directives create
 

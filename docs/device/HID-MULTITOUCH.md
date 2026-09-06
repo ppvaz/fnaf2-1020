@@ -28,10 +28,11 @@ hostless AccessibilityService backend; it does not establish lower end-to-end
 latency, contact continuation, or FNaF2 acceptance than this already-tested
 UHID path.
 
-Keep UHID as the in-night baseline. Evaluate AccessibilityService first for
-menu/campaign control, then benchmark the exact overlapping-contact primitives
-before considering a production swap. The evidence and test matrix are
-centralized in
+Keep UHID as the in-night and menu-control baseline. The first real-game
+AccessibilityService gate was run on the title screen: the framework callback
+completed, but FNaF2 ignored the tap that UHID accepted. Do not promote the
+AccessibilityService path until a new acceptance mechanism is demonstrated;
+the evidence and test matrix are centralized in
 [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](ACCESSIBILITY-VS-HID-BENCHMARK.md).
 
 ## Night 6 strategy consequence

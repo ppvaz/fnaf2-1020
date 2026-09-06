@@ -25,10 +25,11 @@ the intended authority during a finished run.
 This is not yet a live-runtime claim. The APK currently exposes a read-only
 helper boundary and the host composition remains the qualification lane. The
 lifecycle object must move into Cue Helper before host removal is complete.
-AccessibilityService is a hostless actuator candidate; `/system/bin/hid`
-UHID remains the current in-night baseline until the dedicated comparison
-benchmark in [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](ACCESSIBILITY-VS-HID-BENCHMARK.md)
-passes.
+AccessibilityService remains an unqualified framework candidate: its first
+stock-game acceptance gate completed at the framework but was ignored by
+FNaF2, while the same UHID tap was accepted. `/system/bin/hid` UHID remains
+the current in-night and menu-control baseline; see the dedicated comparison
+benchmark in [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](ACCESSIBILITY-VS-HID-BENCHMARK.md).
 
 The 2026-08-30 phone -> ESP32 A2DP -> Wi-Fi/UDP PCM -> same-phone-helper
 experiment had severe loss problems. No loss rate or latency percentile has yet
@@ -126,10 +127,11 @@ hold/recovery behavior rather than continuing a stale plan.
   to the model, not assumed to be real-time. Its lifecycle reducer and belief
   object must become the single device-local state authority during migration.
 - **Hostless input backend:** AccessibilityService is the ordinary-APK
-  candidate for menu/campaign actions and must be benchmarked for in-night
-  multi-contact control. UHID remains the existing in-night baseline. The
-  backends are interchangeable at the action-port boundary, not interchangeable
-  in evidence or timing until measured.
+  framework candidate, but its first stock-game acceptance gate failed and it
+  is not promoted for menu/campaign or in-night actions. UHID remains the
+  existing in-night and menu-control baseline. The backends are interchangeable
+  at the action-port boundary, not interchangeable in evidence or timing until
+  measured and accepted by FNaF2.
 - **Actuator:** owns monotonic input timing and reports command acceptance. A
   wired link is preferred between a deadline-critical reflex source and the
   actuator. The original ESP32-WROOM-32 has no native USB-device controller,

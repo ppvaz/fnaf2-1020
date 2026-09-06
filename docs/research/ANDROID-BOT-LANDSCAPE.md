@@ -348,8 +348,11 @@ path. The useful evidence is narrower:
   endpoint is tool completion and its comparison set contains no HID path.
   It is not evidence for this game's input latency.
 
-The project therefore records AccessibilityService as a hostless benchmark
-candidate, not as a measured replacement. The test protocol is in
+The project therefore records AccessibilityService as a hostless framework
+candidate, not as a replacement: our synthetic Moto g56 pilot measured useful
+receipt timing, but the first stock-FNaF2 acceptance gate failed while UHID
+accepted the same title-screen tap. The test protocol and retained failure
+record are in
 [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../device/ACCESSIBILITY-VS-HID-BENCHMARK.md).
 
 ### 5. Alas — the negative analogue

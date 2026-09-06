@@ -57,6 +57,12 @@
             android:exported="true"
             android:screenOrientation="landscape" />
 
+        <!-- Debug-only shell command bridge; it must not create a game-replacing window. -->
+        <receiver
+            android:name=".AccessibilityGameProbeReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
+
         <service
             android:name=".CaptureService"
             android:exported="false"

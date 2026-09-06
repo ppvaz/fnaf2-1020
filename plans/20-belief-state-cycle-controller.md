@@ -60,10 +60,11 @@ complete; visual detectors feed it but do not independently own campaign truth.
 The hostless input question is tracked separately in
 [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md).
 Online research found no credible AccessibilityService-versus-UHID
-head-to-head measurement. AccessibilityService is therefore a candidate
-backend for menu/campaign control and a benchmark candidate for in-night
-control, while the already-qualified `/system/bin/hid` path remains the
-in-night baseline.
+head-to-head measurement. The first stock-game acceptance gate then showed
+that AccessibilityService framework completion did not make FNaF2 accept the
+same title-screen tap that UHID accepted. It is not promoted as a game
+backend; the already-qualified `/system/bin/hid` path remains the in-night
+and menu-control baseline until a new acceptance path is proven.
 
 ## Why this is a separate plan
 
@@ -335,10 +336,12 @@ AccessibilityService is attractive because an ordinary, user-enabled APK can
 dispatch timed multi-stroke gestures without ADB. Android's current framework
 uses display-refresh gesture sampling for services targeting newer SDKs, but
 that does not establish FNaF2 contact fidelity, pointer-addition semantics,
-or end-to-end acceptance. A new dispatch also cancels a gesture already in
-progress, so this is especially important for overlapping pan/light/flash
-contacts. The exact benchmark and promotion gate are in the linked document;
-no AccessibilityService backend is promoted by this plan yet.
+or end-to-end acceptance. The first real-game gate failed even for a
+windowless receiver dispatch: the framework callback completed, but FNaF2 did
+not change screens while the same UHID tap did. A new dispatch also cancels a
+gesture already in progress, so this is especially important for overlapping
+pan/light/flash contacts. The exact benchmark and promotion gate are in the
+linked document; no AccessibilityService backend is promoted by this plan.
 
 **Phone-free foundation landed 2026-08-30.** `src/fact-link.js` now owns a
 bounded `fact-message-v1` newline contract: primitive observed values or
