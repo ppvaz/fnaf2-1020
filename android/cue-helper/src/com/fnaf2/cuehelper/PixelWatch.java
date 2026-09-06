@@ -50,6 +50,18 @@ public final class PixelWatch {
     private static final int BATTERY_BAR_Y = 70;
     private static final int BATTERY_BAR_WIDTH = 28;
     private static final int BATTERY_BAR_HEIGHT = 32;
+    /** Native bounds of the persistent lower-left mask control. */
+    public static final int MASK_BUTTON_X = 260;
+    public static final int MASK_BUTTON_Y = 1004;
+    public static final int MASK_BUTTON_WIDTH = 720;
+    public static final int MASK_BUTTON_HEIGHT = 36;
+    /** Native bounds of the lower-right open-monitor control. */
+    public static final int MONITOR_BUTTON_X = 1420;
+    public static final int MONITOR_BUTTON_Y = 1004;
+    public static final int MONITOR_BUTTON_WIDTH = 720;
+    public static final int MONITOR_BUTTON_HEIGHT = 36;
+    /** Sparse native sampling keeps the control watches cheaper than a frame. */
+    public static final int CONTROL_BUTTON_STEP = 16;
 
     public enum Kind { PIXEL, ROI }
     public enum Reducer {
@@ -218,6 +230,22 @@ public final class PixelWatch {
                     || entry.greySpread == FOXY_HALL_REDNESS_FLOOR);
     }
 
+    public static boolean isCanonicalMaskButton(Entry entry) {
+        return entry != null && "mask_button_mean_luma".equals(entry.name)
+                && entry.kind == Kind.ROI && entry.reducer == Reducer.MEAN_LUMA
+                && entry.x == MASK_BUTTON_X && entry.y == MASK_BUTTON_Y
+                && entry.width == MASK_BUTTON_WIDTH && entry.height == MASK_BUTTON_HEIGHT
+                && entry.step == CONTROL_BUTTON_STEP;
+    }
+
+    public static boolean isCanonicalMonitorButton(Entry entry) {
+        return entry != null && "monitor_button_mean_luma".equals(entry.name)
+                && entry.kind == Kind.ROI && entry.reducer == Reducer.MEAN_LUMA
+                && entry.x == MONITOR_BUTTON_X && entry.y == MONITOR_BUTTON_Y
+                && entry.width == MONITOR_BUTTON_WIDTH && entry.height == MONITOR_BUTTON_HEIGHT
+                && entry.step == CONTROL_BUTTON_STEP;
+    }
+
     /** A reusable source view over an RGBA/RGB byte buffer. */
     public static final class ByteBufferFrame implements Frame {
         private ByteBuffer buffer;
@@ -278,6 +306,14 @@ public final class PixelWatch {
      * they provide the native-resolution hall envelope needed to collect and
      * calibrate Foxy/empty frames, but no live controller may treat any raw
      * value as a qualified Foxy fact until a separated holdout artifact exists.</p>
+     *
+     * <p>The paired bottom-control ROIs are observation-only collection
+     * channels. The left mask control is present both in the office and while
+     * the mask is held; the right open-monitor control is present in the
+     * office and absent while the mask is held. The display annotations cover
+     * the inner chevrons rather than the full lower bars, leaving a clear
+     * center gap. A downstream calibration may therefore use the pair, but a
+     * raw value is not itself a qualified mask fact.</p>
      */
     public static Spec defaultSpec() {
         return new Spec(new Entry[] {
@@ -333,7 +369,13 @@ public final class PixelWatch {
                         Reducer.MEAN_REDNESS, FOXY_HALL_STEP, 0),
                 new Entry("foxy_hall_red_cells", Kind.ROI,
                         FOXY_HALL_X, FOXY_HALL_Y, FOXY_HALL_WIDTH, FOXY_HALL_HEIGHT,
-                        Reducer.RED_CELLS, FOXY_HALL_STEP, FOXY_HALL_REDNESS_FLOOR)
+                        Reducer.RED_CELLS, FOXY_HALL_STEP, FOXY_HALL_REDNESS_FLOOR),
+                new Entry("mask_button_mean_luma", Kind.ROI,
+                        MASK_BUTTON_X, MASK_BUTTON_Y, MASK_BUTTON_WIDTH, MASK_BUTTON_HEIGHT,
+                        Reducer.MEAN_LUMA, CONTROL_BUTTON_STEP, 0),
+                new Entry("monitor_button_mean_luma", Kind.ROI,
+                        MONITOR_BUTTON_X, MONITOR_BUTTON_Y, MONITOR_BUTTON_WIDTH, MONITOR_BUTTON_HEIGHT,
+                        Reducer.MEAN_LUMA, CONTROL_BUTTON_STEP, 0)
         });
     }
 

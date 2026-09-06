@@ -17,6 +17,23 @@ The working device fixture is
 It is a **device action**: it selects 6th Night and injects touches. Do not run
 it unless the game is focused and it is safe to start that night.
 
+## AccessibilityService comparison disposition (2026-09-06)
+
+The project searched for an online AccessibilityService-versus-UHID latency or
+reliability benchmark and found none that measures the same endpoint. Android's
+current framework can generate accessibility gesture steps at display-refresh
+timing for newer target SDKs, so the old 100 ms warning does not apply directly
+to Cue Helper's SDK-36 build. That improves the theoretical case for a
+hostless AccessibilityService backend; it does not establish lower end-to-end
+latency, contact continuation, or FNaF2 acceptance than this already-tested
+UHID path.
+
+Keep UHID as the in-night baseline. Evaluate AccessibilityService first for
+menu/campaign control, then benchmark the exact overlapping-contact primitives
+before considering a production swap. The evidence and test matrix are
+centralized in
+[`ACCESSIBILITY-VS-HID-BENCHMARK.md`](ACCESSIBILITY-VS-HID-BENCHMARK.md).
+
 ## Night 6 strategy consequence
 
 HID buys enough cycle time to change **where** Balloon Boy is detected; it does

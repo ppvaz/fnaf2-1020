@@ -14,6 +14,22 @@ roles may be implemented by the phone, a host, another MCU, or several nodes.
 Composition is valid when every selected component satisfies its declared
 capability, timing, health, and data contracts.
 
+**Deployment direction, 2026-09-06.** The role contract stays hardware-neutral,
+but the preferred eventual placement is now phone-first: Cue Helper should
+become the full device authority for capture, top-level lifecycle/game-state
+estimation, belief/fusion, safety arbitration, campaign supervision, and the
+selected input backend. The PC remains an offline build/calibration/replay/
+telemetry tool, and may host the controller during qualification, but it is not
+the intended authority during a finished run.
+
+This is not yet a live-runtime claim. The APK currently exposes a read-only
+helper boundary and the host composition remains the qualification lane. The
+lifecycle object must move into Cue Helper before host removal is complete.
+AccessibilityService is a hostless actuator candidate; `/system/bin/hid`
+UHID remains the current in-night baseline until the dedicated comparison
+benchmark in [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](ACCESSIBILITY-VS-HID-BENCHMARK.md)
+passes.
+
 The 2026-08-30 phone -> ESP32 A2DP -> Wi-Fi/UDP PCM -> same-phone-helper
 experiment had severe loss problems. No loss rate or latency percentile has yet
 been retained, so this is a **[CALIBRATED, qualitative]** rejection of that
@@ -72,8 +88,8 @@ missing audio/video into a confident boolean.
 |---|---:|---|---|
 | L0: I/O | sub-ms where hardware permits | acquisition / actuator MCU | timestamping, input delivery, watchdogs |
 | L1: reflex | ~1–5 ms after a local fact | qualified reflex and actuator capabilities | deadline actions, cancellation, safe hold |
-| L2: belief | ~10–30 ms | phone or controller host | event fusion, prediction, uncertainty, health |
-| L3: tactical | ~100–500 ms | controller host | select and revise a short safe action prefix |
+| L2: belief | ~10–30 ms | Cue Helper preferred; host during qualification | event fusion, prediction, uncertainty, health |
+| L3: tactical | ~100–500 ms | Cue Helper preferred; host during qualification | select and revise a short safe action prefix |
 | L4: strategic | 100 ms to seconds | optional planner/model | policy parameters, diagnostics, candidate plans |
 
 The budgets are design targets, **not measured device performance**. Promotion
@@ -104,10 +120,16 @@ hold/recovery behavior rather than continuing a stale plan.
   co-located with the source, bridge, belief host, reflex node, or actuator.
 - **Reflex node:** consumes qualified facts, owns deadline/cancellation state,
   and can issue only the bounded actions declared by its capability profile.
-- **Android Cue Helper:** produces visual events and control-state
-  confirmations, and may maintain a richer belief/planner. Its capture rate
-  and compositor delay are measured inputs to the model, not assumed to be
-  real-time.
+- **Android Cue Helper:** is the preferred eventual visual authority and
+  belief/planner host. It currently produces visual events and control-state
+  confirmations only; its capture rate and compositor delay are measured inputs
+  to the model, not assumed to be real-time. Its lifecycle reducer and belief
+  object must become the single device-local state authority during migration.
+- **Hostless input backend:** AccessibilityService is the ordinary-APK
+  candidate for menu/campaign actions and must be benchmarked for in-night
+  multi-contact control. UHID remains the existing in-night baseline. The
+  backends are interchangeable at the action-port boundary, not interchangeable
+  in evidence or timing until measured.
 - **Actuator:** owns monotonic input timing and reports command acceptance. A
   wired link is preferred between a deadline-critical reflex source and the
   actuator. The original ESP32-WROOM-32 has no native USB-device controller,

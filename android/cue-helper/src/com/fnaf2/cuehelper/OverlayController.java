@@ -62,7 +62,7 @@ public final class OverlayController {
                         boolean restore = captureActive && (enabled() || qualificationProbe)
                                 && (captureGate.qualified || qualificationProbe)
                                 && permissionGranted()
-                                && targetVisibility != 0 && capturedNightIdentity;
+                                && targetVisibility != 0 && capturedRecognizedIdentity;
                         detach(null);
                         emit("UNAVAILABLE(display-changed)");
                         if (restore) {
@@ -73,7 +73,7 @@ public final class OverlayController {
                                 if (captureActive && (enabled() || qualificationProbe)
                                         && (captureGate.qualified || qualificationProbe)
                                         && permissionGranted()
-                                        && targetVisibility != 0 && capturedNightIdentity) {
+                                        && targetVisibility != 0 && capturedRecognizedIdentity) {
                                     attachIfAllowed();
                                 }
                             });
@@ -92,9 +92,9 @@ public final class OverlayController {
             contract.profileId);
     private volatile boolean captureActive;
     private volatile int targetVisibility = -1;
-    /** Last positively identified night frame; UNKNOWN gets a short grace. */
-    private volatile boolean capturedNightIdentity;
-    private volatile long lastNightIdentityNs;
+    /** Last positively identified game/lifecycle frame; UNKNOWN gets a short grace. */
+    private volatile boolean capturedRecognizedIdentity;
+    private volatile long lastRecognizedIdentityNs;
     private final Runnable identityLossRunnable = this::finishIdentityLoss;
     private int captureWidth = PixelWatch.NATIVE_WIDTH;
     private int captureHeight = PixelWatch.NATIVE_HEIGHT;
@@ -179,7 +179,11 @@ public final class OverlayController {
     }
 
     public boolean wantsDebugSamples() {
-        return windowAttached && view != null && mode == OverlaySnapshot.Mode.SENSOR_DEBUG;
+        // Keep native identity-rescue samples alive during the debug probe's
+        // short hidden interval; otherwise a detached window cannot observe
+        // the persistent bottom controls needed to reattach itself.
+        return mode == OverlaySnapshot.Mode.SENSOR_DEBUG
+                && ((windowAttached && view != null) || qualificationProbe);
     }
 
     public boolean visible() {
@@ -251,8 +255,8 @@ public final class OverlayController {
 
     public void onCaptureStarted(int width, int height) {
         captureActive = true;
-        capturedNightIdentity = false;
-        lastNightIdentityNs = 0L;
+        capturedRecognizedIdentity = false;
+        lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
         metrics.reset();
         latestDecisionSnapshot = null;
@@ -267,8 +271,8 @@ public final class OverlayController {
         } else if (!captureGate.qualified && !qualificationProbe) {
             detach("self-capture-unqualified");
         } else {
-            // Wait for a positive captured night identity before creating the
-            // window. This avoids a helper/menu frame briefly showing a HUD.
+            // Wait for a positive captured game identity before creating the
+            // window. This avoids a helper/foreign frame briefly showing a HUD.
             emit("READY");
         }
     }
@@ -299,20 +303,20 @@ public final class OverlayController {
         targetVisibility = visibility;
         if (!captureActive || (!enabled() && !qualificationProbe)) return;
         if (visibility == 0) {
-            capturedNightIdentity = false;
-            lastNightIdentityNs = 0L;
+            capturedRecognizedIdentity = false;
+            lastRecognizedIdentityNs = 0L;
             mainHandler.removeCallbacks(identityLossRunnable);
             detach(null);
             emit("UNAVAILABLE(target-hidden) state=HIDDEN");
         } else if (visibility == 1) {
-            if (capturedNightIdentity) attachIfAllowed();
+            if (capturedRecognizedIdentity) attachIfAllowed();
         }
     }
 
     /**
      * Full-display MediaProjection reports content visibility, not the
      * foreground package. Keep the HUD fail-closed until the captured frame
-     * itself positively identifies the target night layout.
+     * itself positively identifies a supported FNaF 2 screen.
      */
     public void onCapturedScreenIdentity(int identity) {
         if (!isMainThread()) {
@@ -320,23 +324,33 @@ public final class OverlayController {
             return;
         }
         if (!captureActive || (!enabled() && !qualificationProbe)) return;
-        if (identity == ScreenIdentity.FNAF2_NIGHT) {
-            capturedNightIdentity = true;
-            lastNightIdentityNs = System.nanoTime();
+        if (ScreenIdentity.isRecognizedGameScreen(identity)) {
+            capturedRecognizedIdentity = true;
+            lastRecognizedIdentityNs = System.nanoTime();
             mainHandler.removeCallbacks(identityLossRunnable);
+            if (identity != ScreenIdentity.FNAF2_NIGHT) {
+                // A previous run-mode cue must not survive a transition to a
+                // lifecycle screen while the window remains attached.
+                latestDecisionSnapshot = null;
+                OverlayView current = view;
+                if (current != null && windowAttached) {
+                    updateViewSnapshot(current, OverlaySnapshot.empty(
+                            0L, System.nanoTime(), mode));
+                }
+            }
             attachIfAllowed();
         } else if (identity == ScreenIdentity.UNKNOWN) {
             // Point-sampled identity can miss a stable game frame for a few
             // callbacks. Keep the already-qualified window alive briefly, but
             // never restore it after the grace without another positive frame.
-            if (capturedNightIdentity && windowAttached) {
+            if (capturedRecognizedIdentity && windowAttached) {
                 mainHandler.removeCallbacks(identityLossRunnable);
                 mainHandler.postDelayed(identityLossRunnable,
                         IDENTITY_LOSS_GRACE_NS / 1_000_000L);
             }
         } else {
-            capturedNightIdentity = false;
-            lastNightIdentityNs = 0L;
+            capturedRecognizedIdentity = false;
+            lastRecognizedIdentityNs = 0L;
             mainHandler.removeCallbacks(identityLossRunnable);
             if (windowAttached) detach(null);
             emit("UNAVAILABLE(target-not-game) state=HIDDEN");
@@ -345,8 +359,8 @@ public final class OverlayController {
 
     public void onCaptureStopped() {
         captureActive = false;
-        capturedNightIdentity = false;
-        lastNightIdentityNs = 0L;
+        capturedRecognizedIdentity = false;
+        lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
         qualificationProbe = false;
         latestDecisionSnapshot = null;
@@ -358,8 +372,8 @@ public final class OverlayController {
 
     public void destroy() {
         captureActive = false;
-        capturedNightIdentity = false;
-        lastNightIdentityNs = 0L;
+        capturedRecognizedIdentity = false;
+        lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
         qualificationProbe = false;
         detach(null);
@@ -413,7 +427,7 @@ public final class OverlayController {
             emit(permissionGranted() ? "READY" : "DISABLED(permission)");
             return;
         }
-        if (!capturedNightIdentity) {
+        if (!capturedRecognizedIdentity) {
             if (windowAttached) detach(null);
             return;
         }
@@ -464,6 +478,23 @@ public final class OverlayController {
                             | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                     PixelFormat.TRANSLUCENT);
             layoutParams.gravity = Gravity.TOP | Gravity.START;
+            if (Build.VERSION.SDK_INT >= 30) {
+                // This overlay is drawn in the same edge-to-edge landscape
+                // buffer as MediaProjection. The default application-overlay
+                // policy fits system insets first. On this Moto g56 the
+                // landscape camera cutout then shrinks the view to 2285 px
+                // and places it at x=115. That is a WindowManager coordinate
+                // translation, not game content geometry; opt out so the
+                // canvas is 2400x1080 at 0,0.
+                layoutParams.setFitInsetsTypes(0);
+            }
+            if (Build.VERSION.SDK_INT >= 28) {
+                // The game itself is already rendered through the cutout and
+                // MediaProjection captures those pixels, so the overlay must
+                // share that edge-to-edge coordinate space.
+                layoutParams.layoutInDisplayCutoutMode =
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+            }
             layoutParams.alpha = touchThroughAlpha();
             layoutParams.packageName = context.getPackageName();
             layoutParams.setTitle("FNaF 2 Cue Helper HUD");
@@ -601,12 +632,16 @@ public final class OverlayController {
                     break;
             }
         }
+        rotation = OverlayGeometry.resolveContentRotation(width, height,
+                captureWidth, captureHeight, rotation);
+        // FNaF2 renders edge-to-edge into the same full-display 2400x1080
+        // surface that MediaProjection captures. System-bar insets describe
+        // safe touch/content areas, not a translation of the game pixels; do
+        // not apply them or every ROI shifts into its neighbour.
         return new OverlayGeometry.Transform(contract.profileId,
                 new OverlayGeometry.Viewport(0, 0, captureWidth, captureHeight,
                         OverlayGeometry.Rotation.ROTATION_0),
-                new OverlayGeometry.Viewport(insetLeft, insetTop,
-                        Math.max(insetLeft + 1, width - insetRight),
-                        Math.max(insetTop + 1, height - insetBottom), rotation));
+                new OverlayGeometry.Viewport(0, 0, width, height, rotation));
     }
 
     private void updateDisplayInsets(int left, int top, int right, int bottom) {
@@ -641,8 +676,8 @@ public final class OverlayController {
         }
         // This is also the detection path for an Android 12+ target that
         // suppresses application overlays while remaining the capture target.
-        capturedNightIdentity = false;
-        lastNightIdentityNs = 0L;
+        capturedRecognizedIdentity = false;
+        lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
         detach(null);
         emit("UNAVAILABLE(target-hidden) state=HIDDEN");
@@ -653,14 +688,15 @@ public final class OverlayController {
             mainHandler.post(this::finishIdentityLoss);
             return;
         }
-        if (!captureActive || !capturedNightIdentity || lastNightIdentityNs == 0L) return;
-        if (System.nanoTime() - lastNightIdentityNs < IDENTITY_LOSS_GRACE_NS) {
+        if (!captureActive || !capturedRecognizedIdentity
+                || lastRecognizedIdentityNs == 0L) return;
+        if (System.nanoTime() - lastRecognizedIdentityNs < IDENTITY_LOSS_GRACE_NS) {
             mainHandler.postDelayed(identityLossRunnable,
                     IDENTITY_LOSS_GRACE_NS / 1_000_000L);
             return;
         }
-        capturedNightIdentity = false;
-        lastNightIdentityNs = 0L;
+        capturedRecognizedIdentity = false;
+        lastRecognizedIdentityNs = 0L;
         detach(null);
         emit("UNAVAILABLE(target-not-game) state=HIDDEN");
     }

@@ -4,6 +4,32 @@ package com.fnaf2.cuehelper;
 public final class ScreenIdentityTest {
     private static int failures;
 
+    private static final class ArrayFrame implements PixelWatch.Frame {
+        private final int[] pixels = new int[PixelWatch.NATIVE_WIDTH
+                * PixelWatch.NATIVE_HEIGHT];
+
+        ArrayFrame(int colour) {
+            for (int index = 0; index < pixels.length; index++) pixels[index] = colour;
+        }
+
+        void fill(int x0, int y0, int x1, int y1, int colour) {
+            for (int y = y0; y < y1; y++) {
+                for (int x = x0; x < x1; x++) {
+                    pixels[y * PixelWatch.NATIVE_WIDTH + x] = colour;
+                }
+            }
+        }
+
+        @Override public int width() { return PixelWatch.NATIVE_WIDTH; }
+        @Override public int height() { return PixelWatch.NATIVE_HEIGHT; }
+
+        @Override public int rgb(int x, int y) {
+            return x < 0 || y < 0 || x >= width() || y >= height()
+                    ? PixelWatch.UNKNOWN
+                    : pixels[y * width() + x];
+        }
+    }
+
     private static void check(String what, boolean ok) {
         if (!ok) {
             System.out.println("FAIL " + what);
@@ -70,6 +96,28 @@ public final class ScreenIdentityTest {
         int[] grid = titleMenu();
         for (int x = 1; x < 10; x++) put(grid, x, 8, 0xc85a78);
         return grid;
+    }
+
+    private static ArrayFrame introCardFrame(boolean confetti) {
+        ArrayFrame frame = new ArrayFrame(0x020202);
+        // Sparse white clock/card strokes, matching the measured intro shape
+        // without turning the synthetic frame into a bright block.
+        for (int x = 900; x < 1500; x += 10) {
+            frame.fill(x, 486, x + 6, 513, 0xffffff);
+        }
+        if (confetti) {
+            for (int x = 200; x < 2200; x += 400) {
+                frame.fill(x, 60, x + 12, 72, 0xf04070);
+            }
+        }
+        return frame;
+    }
+
+    private static ArrayFrame gameOverFrame() {
+        ArrayFrame frame = new ArrayFrame(0x101010);
+        frame.fill(650, 450, 1750, 920, 0xd02020);
+        frame.fill(900, 950, 1450, 1040, 0xffffff);
+        return frame;
     }
 
     // -- Captured frames -----------------------------------------------------
@@ -144,6 +192,33 @@ public final class ScreenIdentityTest {
                         == ScreenIdentity.FNAF2_MENU);
         check("night label is explicit",
                 "FNAF2_NIGHT".equals(ScreenIdentity.label(ScreenIdentity.FNAF2_NIGHT)));
+        check("full-frame intro card is identified for the status bar",
+                ScreenIdentity.classify(introCardFrame(false),
+                        filled(0x020202)) == ScreenIdentity.FNAF2_INTRO);
+        check("full-frame game over is identified for the status bar",
+                ScreenIdentity.classify(gameOverFrame(), filled(0x101010))
+                        == ScreenIdentity.FNAF2_GAME_OVER);
+        check("intro negative control with win confetti is not intro",
+                ScreenIdentity.classify(introCardFrame(true), filled(0x020202))
+                        != ScreenIdentity.FNAF2_INTRO);
+        check("lifecycle labels are explicit",
+                "FNAF2_INTRO".equals(ScreenIdentity.label(ScreenIdentity.FNAF2_INTRO))
+                        && "FNAF2_GAME_OVER".equals(
+                        ScreenIdentity.label(ScreenIdentity.FNAF2_GAME_OVER))
+                        && ScreenIdentity.isRecognizedGameScreen(
+                        ScreenIdentity.FNAF2_INTRO)
+                        && ScreenIdentity.isRecognizedGameScreen(
+                        ScreenIdentity.FNAF2_GAME_OVER));
+        check("native control rescues a dark unknown night frame",
+                ScreenIdentity.refineWithNativeControls(ScreenIdentity.UNKNOWN, 34, 0)
+                        == ScreenIdentity.FNAF2_NIGHT
+                        && ScreenIdentity.refineWithNativeControls(ScreenIdentity.UNKNOWN, 0, 47)
+                        == ScreenIdentity.FNAF2_NIGHT);
+        check("native control rescue does not promote menu or low menu baseline",
+                ScreenIdentity.refineWithNativeControls(ScreenIdentity.FNAF2_MENU, 34, 0)
+                        == ScreenIdentity.FNAF2_MENU
+                        && ScreenIdentity.refineWithNativeControls(ScreenIdentity.UNKNOWN, 12, 12)
+                        == ScreenIdentity.UNKNOWN);
 
         // A real menu must never classify as a night: that verdict is the
         // host's positive gate for admitting calibration trials.

@@ -22,7 +22,9 @@ public final class OverlaySnapshot {
         UNKNOWN,
         CUE_HELPER,
         FNAF2_NIGHT,
-        FNAF2_MENU;
+        FNAF2_MENU,
+        FNAF2_INTRO,
+        FNAF2_GAME_OVER;
 
         public static Screen fromIdentity(int identity) {
             switch (identity) {
@@ -32,6 +34,10 @@ public final class OverlaySnapshot {
                     return FNAF2_NIGHT;
                 case ScreenIdentity.FNAF2_MENU:
                     return FNAF2_MENU;
+                case ScreenIdentity.FNAF2_INTRO:
+                    return FNAF2_INTRO;
+                case ScreenIdentity.FNAF2_GAME_OVER:
+                    return FNAF2_GAME_OVER;
                 default:
                     return UNKNOWN;
             }

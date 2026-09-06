@@ -93,6 +93,27 @@ Consequence: **Night 6 is an execution problem and can start now; Night 7 is a
 research problem and must run in parallel.** And by fact 2, the execution
 problem is not "run the macro more precisely" — it is "stop running a macro".
 
+## Hostless device direction (2026-09-06)
+
+The finished live runtime is intended to run on the phone: Cue Helper owns the
+capture path, top-level lifecycle/game-state object, belief/controller,
+safety arbiter, campaign supervision, and a qualified input backend. The PC
+continues as build, calibration, replay, evidence, and telemetry tooling. The
+host is still part of the current qualification composition, so this is a
+migration direction rather than a new claim-ladder rung.
+
+The migration has two independent gates:
+
+1. move lifecycle/state authority into Cue Helper without creating a second
+   host truth source; and
+2. qualify a hostless actuator. AccessibilityService is attractive for this
+   purpose and, on this project's target SDK 36 / 120 Hz device, is
+   theoretically sampled at about 8 ms rather than the old 100 ms behavior.
+   That is framework granularity, not end-to-end proof. UHID remains the
+   in-night baseline until the comparison and contact-fidelity benchmark in
+   [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md)
+   passes.
+
 ## The debt the two directives create
 
 Both directives are right and neither is free. Naming the cost is the point.

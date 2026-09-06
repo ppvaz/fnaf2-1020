@@ -1,10 +1,12 @@
 # Belief-state cycle controller
 
-**Status: proposed 2026-08-29, Pedro's architectural directive.** Build the
-controller as a small, explainable estimator and planner that runs beside the
-phone. It constructs each next control cycle from what audio, video, elapsed
-time, and action verification say about the night; it does not replay a fixed
-macro and call that a closed loop.
+**Status: proposed 2026-08-29, deployment direction amended 2026-09-06 by
+Pedro's architectural directive.** Build the controller as a small,
+explainable estimator and planner whose preferred eventual home is the Cue
+Helper APK. The current composition may still run beside the phone while the
+device-local contracts and actuator are qualified. It constructs each next
+control cycle from what audio, video, elapsed time, and action verification say
+about the night; it does not replay a fixed macro and call that a closed loop.
 
 ## The idea in one sentence
 
@@ -39,6 +41,29 @@ This is a practical partially-observable controller, not a claim that an
 external device can recover Fusion's hidden RNG state. When a route or an
 observation is uncertain, the belief records that uncertainty and the planner
 chooses only a cycle safe across the remaining plausible states.
+
+## Deployment direction
+
+The contract remains hardware-agnostic, but the project's preferred end state
+is now explicit: **Cue Helper is the full device authority**. Its device-local
+runtime should own capture, top-level lifecycle/game-state estimation,
+belief/fusion, safety arbitration, campaign supervision, and the selected
+actuator backend. The PC remains useful for build, replay, calibration,
+evidence, and telemetry; it is not the intended authority during a run.
+
+This is a migration target, not a claim that the APK already controls a night.
+The current APK is a read-only visual/audio helper, the modern host composition
+is still the qualification lane, and the lifecycle observer is still partly
+host-side. The lifecycle object must move into the APK before host removal is
+complete; visual detectors feed it but do not independently own campaign truth.
+
+The hostless input question is tracked separately in
+[`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md).
+Online research found no credible AccessibilityService-versus-UHID
+head-to-head measurement. AccessibilityService is therefore a candidate
+backend for menu/campaign control and a benchmark candidate for in-night
+control, while the already-qualified `/system/bin/hid` path remains the
+in-night baseline.
 
 ## Why this is a separate plan
 
@@ -297,6 +322,23 @@ fact messages, never a sequence of wall-timed commands:
 observation. In particular, A2DP PCM receipt is **not** game-event time; it
 updates the estimator over the interval implied by its measured transport
 latency, then predicts that historical state forward to `t_received`.
+
+**Hostless target profile, added 2026-09-06.** Once the APK owns the lifecycle
+and belief objects, the preferred stock-device topology is:
+
+```text
+Cue Helper capture -> lifecycle/state estimator -> belief/arbiter
+                   -> AccessibilityService or UHID actuator -> FNaF2
+```
+
+AccessibilityService is attractive because an ordinary, user-enabled APK can
+dispatch timed multi-stroke gestures without ADB. Android's current framework
+uses display-refresh gesture sampling for services targeting newer SDKs, but
+that does not establish FNaF2 contact fidelity, pointer-addition semantics,
+or end-to-end acceptance. A new dispatch also cancels a gesture already in
+progress, so this is especially important for overlapping pan/light/flash
+contacts. The exact benchmark and promotion gate are in the linked document;
+no AccessibilityService backend is promoted by this plan yet.
 
 **Phone-free foundation landed 2026-08-30.** `src/fact-link.js` now owns a
 bounded `fact-message-v1` newline contract: primitive observed values or

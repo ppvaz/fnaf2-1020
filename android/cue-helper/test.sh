@@ -123,7 +123,7 @@ identity_gate="$(awk '
   active && /^    public void onCaptureStopped\(\)/ { exit }
 ' "$HERE/src/com/fnaf2/cuehelper/OverlayController.java")"
 case "$identity_gate" in
-  *"identity == ScreenIdentity.FNAF2_NIGHT"*"detach(null)"*"target-not-game"*) ;;
-  *) echo "overlay identity gate: FAILED (non-game capture does not detach)" >&2; exit 1 ;;
+  *"ScreenIdentity.isRecognizedGameScreen(identity)"*"identity == ScreenIdentity.UNKNOWN"*"detach(null)"*"target-not-game"*) ;;
+  *) echo "overlay identity gate: FAILED (foreign capture does not detach)" >&2; exit 1 ;;
 esac
-echo "overlay identity gate: non-game capture detaches the HUD"
+echo "overlay identity gate: foreign capture detaches the HUD"

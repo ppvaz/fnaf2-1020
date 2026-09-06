@@ -29,9 +29,22 @@ public final class OverlayRegionFilter {
             return monitorState == OverlaySnapshot.MonitorState.UP;
         }
         if (roi.screenScope == RoiSpec.ScreenScope.NIGHT_HUD) {
+            // The bottom controls are part of the office HUD. They remain
+            // visible through blackout/unknown office frames, but both leave
+            // the screen when the monitor is raised. Keeping them tied to the
+            // monitor fact prevents stale button boxes from floating over the
+            // camera feed.
+            if (isBottomControl(roi.id)) {
+                return monitorState != OverlaySnapshot.MonitorState.UP;
+            }
             return true;
         }
         return false;
+    }
+
+    private static boolean isBottomControl(String roiId) {
+        return "mask_button_mean_luma".equals(roiId)
+                || "monitor_button_mean_luma".equals(roiId);
     }
 
     /** Map a fixed camera-button ROI to its semantic camera control. */
@@ -43,6 +56,13 @@ public final class OverlayRegionFilter {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    /** Human-readable labels for the paired bottom-control calibration ROIs. */
+    public static String controlDisplayLabel(String roiId) {
+        if ("mask_button_mean_luma".equals(roiId)) return "MASK BUTTON";
+        if ("monitor_button_mean_luma".equals(roiId)) return "OPEN MONITOR";
+        return null;
     }
 
     /** Normal telemetry stays quiet; labels are reserved for actionable states. */
@@ -59,6 +79,10 @@ public final class OverlayRegionFilter {
                 return "NIGHT";
             case FNAF2_MENU:
                 return "MENU";
+            case FNAF2_INTRO:
+                return "INTRO";
+            case FNAF2_GAME_OVER:
+                return "GAME OVER";
             case CUE_HELPER:
                 return "HELPER";
             case UNKNOWN:

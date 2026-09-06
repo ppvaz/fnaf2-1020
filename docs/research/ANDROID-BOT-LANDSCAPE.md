@@ -326,6 +326,32 @@ was not read]. **It works because FGO is turn-based.** And it sits on the wrong
 side of the detection line: every gesture it dispatches carries
 `FLAG_IS_ACCESSIBILITY_EVENT`.
 
+### AccessibilityService versus HID: online measurement check (2026-09-06)
+
+The follow-up search found no credible apples-to-apples public benchmark of
+`AccessibilityService.dispatchGesture()` against a local UHID/HID touchscreen
+path. The useful evidence is narrower:
+
+- AOSP says the old fixed 100 ms gesture sample period applies to services
+  targeting Android Q or earlier; newer targets calculate the sample period
+  from display refresh. See the [framework implementation](https://android.googlesource.com/platform/frameworks/base/+/c917c0a9e4ab2dd19b52c0acbacdccc055f4372e/core/java/android/accessibilityservice/AccessibilityService.java).
+- Android's official guide documents multi-stroke/multi-touch gestures, while
+  the API reference says dispatching a new gesture cancels one already in
+  progress. Neither publishes end-to-end latency or game-acceptance numbers:
+  [guide](https://developer.android.com/guide/topics/ui/accessibility/service),
+  [API reference](https://developer.android.com/reference/android/accessibilityservice/AccessibilityService).
+- [WALT](https://github.com/google/walt) and [Latens](https://github.com/Orange-OpenSource/latens)
+  measure physical touch/display latency, not a comparison of injected
+  AccessibilityService and UHID events.
+- A recent [NeuralBridge report](https://hackernoon.com/i-built-a-100x-faster-android-automation-tool-because-ai-agents-deserve-better)
+  claims ~2 ms local accessibility taps on a Pixel 7 over 100 runs, but its
+  endpoint is tool completion and its comparison set contains no HID path.
+  It is not evidence for this game's input latency.
+
+The project therefore records AccessibilityService as a hostless benchmark
+candidate, not as a measured replacement. The test protocol is in
+[`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../device/ACCESSIBILITY-VS-HID-BENCHMARK.md).
+
 ### 5. Alas — the negative analogue
 
 The most engineered bot in the field looked at physical handsets and walked

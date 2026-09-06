@@ -35,7 +35,7 @@ public final class PixelWatchTest {
     public static void main(String[] args) {
         PixelWatch.Spec spec = PixelWatch.defaultSpec();
         check("default spec has the four sourced entries, battery bars, map buttons, and Foxy channels",
-                spec.size() == 23);
+                spec.size() == 25);
         check("the battery bars follow the sourced entries",
                 spec.entry(4).name.equals("battery_bar_1")
                         && spec.entry(7).name.equals("battery_bar_4")
@@ -48,6 +48,9 @@ public final class PixelWatchTest {
                 PixelWatch.isCanonicalFoxyHall(spec.entry(20), "luma")
                         && PixelWatch.isCanonicalFoxyHall(spec.entry(21), "redness")
                         && PixelWatch.isCanonicalFoxyHall(spec.entry(22), "red_cells"));
+        check("the paired bottom controls use sparse native ROIs",
+                PixelWatch.isCanonicalMaskButton(spec.entry(23))
+                        && PixelWatch.isCanonicalMonitorButton(spec.entry(24)));
         check("spec hash is stable and lowercase sha256",
                 spec.sha256().matches("[0-9a-f]{64}")
                         && spec.sha256().equals(PixelWatch.defaultSpec().sha256()));
@@ -87,6 +90,21 @@ public final class PixelWatchTest {
         redHall.set(PixelWatch.FOXY_HALL_X, PixelWatch.FOXY_HALL_Y, 0xc21e14);
         check("the provisional Foxy red-cell channel counts sampled red pixels",
                 PixelWatch.read(spec.entry(spec.indexOfName("foxy_hall_red_cells")), redHall) == 1);
+
+        Frame controls = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0);
+        for (int y = PixelWatch.MASK_BUTTON_Y;
+                y < PixelWatch.MASK_BUTTON_Y + PixelWatch.MASK_BUTTON_HEIGHT;
+                y += PixelWatch.CONTROL_BUTTON_STEP) {
+            for (int x = PixelWatch.MASK_BUTTON_X;
+                    x < PixelWatch.MASK_BUTTON_X + PixelWatch.MASK_BUTTON_WIDTH;
+                    x += PixelWatch.CONTROL_BUTTON_STEP) {
+                controls.set(x, y, 0xffffff);
+            }
+        }
+        check("mask control ROI reads a visible sparse bar",
+                PixelWatch.read(spec.entry(spec.indexOfName("mask_button_mean_luma")), controls) == 255);
+        check("monitor control ROI reads absent as dark",
+                PixelWatch.read(spec.entry(spec.indexOfName("monitor_button_mean_luma")), controls) == 0);
 
         Frame mixed = new Frame(10, 10, 0x808080);
         mixed.set(0, 0, 0xc2dd00);

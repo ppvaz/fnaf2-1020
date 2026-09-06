@@ -26,6 +26,14 @@ This plan does not promise that one policy is optimal for every night. It first
 proves which existing policy is safe, then permits night-specific simplification
 only when exact simulation and device evidence support it.
 
+**Device-authority direction, 2026-09-06.** Campaign lifecycle truth is slated
+to come from Cue Helper's device-local state object (`MENU`, `INTRO`, `NIGHT`,
+`GAME_OVER`, `WIN`, or `UNKNOWN`), not from a second host-only observer. The
+current host lifecycle observer remains a compatibility/readback adapter until
+the APK reducer and its evidence contract are qualified. This plan owns the
+campaign semantics and save/menu proof; it does not promote a hostless runtime
+until the state-authority and actuator gates pass.
+
 ## Current capability and gap
 
 | Scope | Simulator | Device workflow | Gap |

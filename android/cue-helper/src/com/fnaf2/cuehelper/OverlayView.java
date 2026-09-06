@@ -6,14 +6,17 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PathEffect;
 import android.graphics.DashPathEffect;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Typeface;
+import android.util.Log;
 import android.view.View;
 
 import com.fnaf2.cuehelper.OverlayGeometry.PixelRect;
 
 /** One non-interactive, full-display HUD drawing pass. */
 public final class OverlayView extends View {
+    private static final String TAG = "FnafCueHelper";
     private static final long REDRAW_INTERVAL_NS = 33_000_000L;
     private static final long STATE_TRANSITION_NS = 220_000_000L;
     private static final long CAMERA_PULSE_NS = 1_600_000_000L;
@@ -30,6 +33,14 @@ public final class OverlayView extends View {
     private static final int COLOR_CAMERA_SELECTED = Color.rgb(255, 214, 74);
     private static final int COLOR_MENU = Color.rgb(255, 187, 64);
     private static final int COLOR_WAITING = Color.rgb(176, 154, 210);
+    private static final int COLOR_PAN = Color.rgb(255, 110, 196);
+    private static final NormalizedRect PAN_SEARCH_RECT = new NormalizedRect(
+            PanAnchor.SEARCH_X / (float) PixelWatch.NATIVE_WIDTH,
+            PanAnchor.SEARCH_Y / (float) PixelWatch.NATIVE_HEIGHT,
+            (PanAnchor.SEARCH_X + PanAnchor.SEARCH_WIDTH)
+                    / (float) PixelWatch.NATIVE_WIDTH,
+            (PanAnchor.SEARCH_Y + PanAnchor.SEARCH_HEIGHT)
+                    / (float) PixelWatch.NATIVE_HEIGHT);
 
     private final OverlayGeometry.Contract contract;
     private final RenderListener renderListener;
@@ -37,6 +48,7 @@ public final class OverlayView extends View {
     private final Paint outline = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final float[] debugColourHsv = new float[3];
     private final PathEffect dashed = new DashPathEffect(new float[]{8f, 6f}, 0f);
     private final OverlaySnapshotRetention snapshotRetention =
             new OverlaySnapshotRetention();
@@ -51,6 +63,7 @@ public final class OverlayView extends View {
             OverlaySnapshot.MonitorState.UNKNOWN;
     private long monitorTransitionStartNs;
     private long selectedCameraTransitionStartNs;
+    private String lastGeometryLog;
     private final Runnable expiryRunnable = this::onExpiry;
     private final Runnable retentionExpiryRunnable = this::onRetentionExpiry;
 
@@ -220,6 +233,7 @@ public final class OverlayView extends View {
         OverlaySnapshot render = snapshot.forRender(nowNs);
         OverlayGeometry.Transform currentTransform = transform;
         if (currentTransform == null) return;
+        logGeometry(currentTransform);
         if (render.mode == OverlaySnapshot.Mode.SENSOR_DEBUG) {
             drawDebug(canvas, render, currentTransform);
         } else {
@@ -228,19 +242,22 @@ public final class OverlayView extends View {
         if (renderListener != null) {
             renderListener.onRendered(render.sequence, nowNs);
         }
-        if (render.mode == OverlaySnapshot.Mode.SENSOR_DEBUG
-                && render.screen == OverlaySnapshot.Screen.FNAF2_NIGHT
-                && (transitionProgress(nowNs) < 1f || render.selectedCamera != null)) {
-            postInvalidateOnAnimation();
-        }
     }
 
     private void drawDebug(Canvas canvas, OverlaySnapshot snapshot,
             OverlayGeometry.Transform currentTransform) {
         // A short UNKNOWN identity grace keeps the window stable while the
         // classifier settles, but it must not paint helper/status content over
-        // a foreign screen. Positive night identity is the only drawable state.
+        // a foreign screen. Lifecycle identities get only the status badge;
+        // game-element boxes remain restricted to a positive night identity.
         if (snapshot.screen != OverlaySnapshot.Screen.FNAF2_NIGHT) {
+            if (snapshot.screen == OverlaySnapshot.Screen.FNAF2_MENU
+                    || snapshot.screen == OverlaySnapshot.Screen.FNAF2_INTRO
+                    || snapshot.screen == OverlaySnapshot.Screen.FNAF2_GAME_OVER) {
+                float scale = Math.max(1f,
+                        getResources().getDisplayMetrics().density);
+                drawDebugStatus(canvas, snapshot, 0, scale, new PixelRect[0]);
+            }
             outline.setPathEffect(null);
             outline.setAlpha(255);
             fill.setAlpha(255);
@@ -249,8 +266,13 @@ public final class OverlayView extends View {
         }
         float scale = Math.max(1f, getResources().getDisplayMetrics().density);
         long nowNs = System.nanoTime();
-        float transition = transitionProgress(nowNs);
+        // Calibration mode is deliberately a still image between sensor
+        // updates. Continuous transition/camera animation makes it difficult
+        // to tell whether a box moved because the mapping is wrong or because
+        // the renderer is pulsing it.
+        float transition = 1f;
         PixelRect[] hudZones = hudMap.displayZones(currentTransform, snapshot.screen);
+        drawPanOverlay(canvas, currentTransform, scale);
         PixelRect[] occupied = new PixelRect[contract.size() + 1];
         int occupiedCount = 0;
         int visibleCount = 0;
@@ -261,10 +283,20 @@ public final class OverlayView extends View {
             }
             visibleCount++;
         }
-        // The status badge is a non-game overlay affordance. It deliberately
-        // does not reserve collision space: game-region labels may choose the
-        // same corner when the calibrated game HUD leaves no other placement.
-        drawDebugStatus(canvas, snapshot, visibleCount, scale, hudZones);
+        PixelRect[] statusObstacles = new PixelRect[visibleCount + hudZones.length];
+        int statusObstacleCount = 0;
+        for (PixelRect hudZone : hudZones) {
+            statusObstacles[statusObstacleCount++] = hudZone;
+        }
+        for (int index = 0; index < contract.size(); index++) {
+            RoiSpec roi = contract.region(index);
+            if (OverlayRegionFilter.visible(snapshot.screen, snapshot.monitorState, roi)) {
+                statusObstacles[statusObstacleCount++] = currentTransform.display(roi);
+            }
+        }
+        // The status badge is a non-game overlay affordance. Keep it out of
+        // every calibrated ROI as well as explicit HUD exclusion zones.
+        drawDebugStatus(canvas, snapshot, visibleCount, scale, statusObstacles);
 
         for (int index = 0; index < contract.size(); index++) {
             RoiSpec roi = contract.region(index);
@@ -284,9 +316,11 @@ public final class OverlayView extends View {
             String cameraControl = OverlayRegionFilter.cameraControlFor(roi.id);
             boolean selectedCamera = cameraControl != null
                     && cameraControl.equals(snapshot.selectedCamera);
-            int colour = roi.screenScope == RoiSpec.ScreenScope.MONITOR
-                    ? selectedCamera ? COLOR_CAMERA_SELECTED : COLOR_CAMERA_IDLE
-                    : colourFor(state);
+            int colour = snapshot.mode == OverlaySnapshot.Mode.SENSOR_DEBUG
+                    ? debugRoiColour(roi.id)
+                    : roi.screenScope == RoiSpec.ScreenScope.MONITOR
+                            ? selectedCamera ? COLOR_CAMERA_SELECTED : COLOR_CAMERA_IDLE
+                            : colourFor(state);
             float visibility = regionVisibility(roi, snapshot, transition);
             outline.setColor(colour);
             outline.setAlpha((int) ((selectedCamera ? 255
@@ -306,8 +340,17 @@ public final class OverlayView extends View {
                 fill.setAlpha(42);
                 canvas.drawRect(rect, fill);
             }
-            drawStyledFrame(canvas, rect, scale, selectedCamera, visibility, nowNs);
-            if (selectedCamera) {
+            drawStyledFrame(canvas, rect, scale, selectedCamera, visibility, nowNs,
+                    snapshot.mode != OverlaySnapshot.Mode.SENSOR_DEBUG);
+            String controlLabel = OverlayRegionFilter.controlDisplayLabel(roi.id);
+            if (controlLabel != null) {
+                String value = region == null || region.value == PixelWatch.UNKNOWN
+                        ? "?" : Integer.toString(region.value);
+                PixelRect labelRect = drawRegionLabel(canvas,
+                        controlLabel + "  " + value, pixel, scale, colour,
+                        hudZones, occupied, occupiedCount, visibility);
+                if (labelRect != null) occupied[occupiedCount++] = labelRect;
+            } else if (selectedCamera) {
                 PixelRect labelRect = drawRegionLabel(canvas,
                         cameraDisplayLabel(cameraControl), pixel, scale, colour,
                         hudZones, occupied, occupiedCount, visibility);
@@ -323,15 +366,15 @@ public final class OverlayView extends View {
     }
 
     private void drawStyledFrame(Canvas canvas, RectF rect, float scale,
-            boolean selected, float opacity, long nowNs) {
+            boolean selected, float opacity, long nowNs, boolean animate) {
         outline.setStyle(Paint.Style.STROKE);
         float width = selected ? Math.max(3f, 2.2f * scale)
                 : Math.max(2f, 1.35f * scale);
         outline.setStrokeWidth(width);
         if (selected) {
-            float pulse = .72f + .28f * (float) Math.sin(
-                    (nowNs % CAMERA_PULSE_NS) * (Math.PI * 2d / CAMERA_PULSE_NS));
-            float entrance = selectedCameraTransitionStartNs == 0L ? 1f
+            float pulse = animate ? .72f + .28f * (float) Math.sin(
+                    (nowNs % CAMERA_PULSE_NS) * (Math.PI * 2d / CAMERA_PULSE_NS)) : 1f;
+            float entrance = !animate || selectedCameraTransitionStartNs == 0L ? 1f
                     : Math.min(1f, Math.max(0f,
                             (nowNs - selectedCameraTransitionStartNs)
                                     / (float) STATE_TRANSITION_NS));
@@ -427,11 +470,13 @@ public final class OverlayView extends View {
     }
 
     private void drawDebugStatus(Canvas canvas, OverlaySnapshot snapshot,
-            int visibleCount, float scale, PixelRect[] hudZones) {
+            int visibleCount, float scale, PixelRect[] obstacles) {
         setDebugTextSize(scale);
         int accent = statusColour(snapshot);
         String label;
-        if (snapshot.monitorState == OverlaySnapshot.MonitorState.UP) {
+        if (snapshot.screen != OverlaySnapshot.Screen.FNAF2_NIGHT) {
+            label = OverlayRegionFilter.screenLabel(snapshot.screen);
+        } else if (snapshot.monitorState == OverlaySnapshot.MonitorState.UP) {
             label = "NIGHT  •  MONITOR UP  •  "
                     + (snapshot.selectedCamera == null
                     ? "CAM ?" : cameraDisplayLabel(snapshot.selectedCamera))
@@ -449,15 +494,20 @@ public final class OverlayView extends View {
         float height = text.getTextSize() + padY * 2f;
         if (width > getWidth() - 16f * scale) return;
         float margin = 16f * scale;
+        float centerLeft = (getWidth() - width) * .5f;
         PixelRect[] candidates = new PixelRect[] {
-                annotationRect(margin, margin, width, height),
-                annotationRect(getWidth() - margin - width, margin, width, height),
+                // Leave the flashlight/meter corner and the Night/time corner
+                // to the game; the center of the lower office is the normal
+                // debug strip, above the two bottom controls.
+                annotationRect(centerLeft, getHeight() - height - 28f * scale,
+                        width, height),
+                annotationRect(centerLeft, margin, width, height),
                 annotationRect(margin, getHeight() - margin - height, width, height),
                 annotationRect(getWidth() - margin - width,
                         getHeight() - margin - height, width, height)
         };
         OverlayCollisionDetector.Placement placement = OverlayCollisionDetector.choose(
-                candidates, hudZones, null, 0, 8f * scale);
+                candidates, obstacles, null, 0, 8f * scale);
         if (placement == null || !placement.clear) return;
         RectF badge = rectF(placement.rect);
 
@@ -482,6 +532,41 @@ public final class OverlayView extends View {
         fill.setAlpha(255);
         outline.setAlpha(255);
         text.setAlpha(255);
+    }
+
+    /** Show the exact static search band used by the per-frame pan anchor. */
+    private void drawPanOverlay(Canvas canvas,
+            OverlayGeometry.Transform currentTransform, float scale) {
+        OverlayGeometry.PixelRect pixel = currentTransform.display.resolve(PAN_SEARCH_RECT);
+        RectF rect = new RectF(pixel.left, pixel.top, pixel.right, pixel.bottom);
+        outline.setStyle(Paint.Style.STROKE);
+        outline.setColor(COLOR_PAN);
+        outline.setAlpha(190);
+        outline.setStrokeWidth(Math.max(2f, 1.2f * scale));
+        outline.setPathEffect(dashed);
+        canvas.drawRect(rect, outline);
+
+        float oldTextSize = text.getTextSize();
+        text.setTextSize(Math.max(10f, Math.min(16f, getWidth() / 160f)));
+        String label = "PAN ANCHOR SEARCH  0,0-2400,220";
+        float padX = 7f * scale;
+        float padY = 4f * scale;
+        float labelWidth = text.measureText(label) + padX * 2f;
+        float labelHeight = text.getTextSize() + padY * 2f;
+        float left = Math.max(8f, (getWidth() - labelWidth) * .5f);
+        float top = Math.max(8f, pixel.bottom - labelHeight - 8f * scale);
+        RectF labelRect = new RectF(left, top, left + labelWidth, top + labelHeight);
+        fill.setColor(Color.rgb(8, 7, 14));
+        fill.setAlpha(180);
+        canvas.drawRoundRect(labelRect, 5f * scale, 5f * scale, fill);
+        text.setColor(COLOR_PAN);
+        text.setAlpha(235);
+        canvas.drawText(label, left + padX,
+                top + padY + text.getTextSize(), text);
+        text.setTextSize(oldTextSize);
+        fill.setAlpha(255);
+        outline.setAlpha(255);
+        outline.setPathEffect(null);
     }
 
     private float regionVisibility(RoiSpec roi, OverlaySnapshot snapshot,
@@ -532,6 +617,25 @@ public final class OverlayView extends View {
                 Math.min(16f * scale, getWidth() / 140f)));
     }
 
+    /** Log the actual canvas origin/size once per layout, not once per frame. */
+    private void logGeometry(OverlayGeometry.Transform currentTransform) {
+        int[] location = new int[2];
+        getLocationOnScreen(location);
+        Rect visibleFrame = new Rect();
+        getWindowVisibleDisplayFrame(visibleFrame);
+        OverlayGeometry.Viewport display = currentTransform.display;
+        String description = "overlay-geometry view=" + getWidth() + "x" + getHeight()
+                + " location=" + location[0] + "," + location[1]
+                + " visibleFrame=" + visibleFrame
+                + " displayViewport=" + display.left + "," + display.top + "-"
+                + display.right + "," + display.bottom
+                + " rotation=" + display.rotation;
+        if (!description.equals(lastGeometryLog)) {
+            lastGeometryLog = description;
+            Log.i(TAG, description);
+        }
+    }
+
     private int statusColour(OverlaySnapshot snapshot) {
         if (snapshot.screen == OverlaySnapshot.Screen.FNAF2_NIGHT) {
             switch (snapshot.monitorState) {
@@ -550,6 +654,10 @@ public final class OverlayView extends View {
                 return COLOR_NIGHT;
             case FNAF2_MENU:
                 return COLOR_MENU;
+            case FNAF2_INTRO:
+                return COLOR_MENU;
+            case FNAF2_GAME_OVER:
+                return COLOR_STALE;
             case CUE_HELPER:
                 return COLOR_UNQUALIFIED;
             case UNKNOWN:
@@ -633,6 +741,19 @@ public final class OverlayView extends View {
             default:
                 return COLOR_MONITORED;
         }
+    }
+
+    /** Stable pseudo-random calibration colour; it must not change per frame. */
+    private int debugRoiColour(String roiId) {
+        int hash = 0x811c9dc5;
+        for (int index = 0; index < roiId.length(); index++) {
+            hash ^= roiId.charAt(index);
+            hash *= 0x01000193;
+        }
+        debugColourHsv[0] = (hash & 0x7fffffff) % 360f;
+        debugColourHsv[1] = .78f;
+        debugColourHsv[2] = 1f;
+        return Color.HSVToColor(255, debugColourHsv);
     }
 
     private static Typeface loadHudTypeface(Context context) {

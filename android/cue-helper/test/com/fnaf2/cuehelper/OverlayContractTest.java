@@ -27,22 +27,68 @@ public final class OverlayContractTest {
         check("contract is versioned and derived from all PixelWatch entries",
                 OverlayGeometry.VERSION.equals(contract.version)
                         && contract.size() == PixelWatch.defaultSpec().size());
+        check("matching landscape output does not double-rotate content",
+                OverlayGeometry.resolveContentRotation(2400, 1080, 2400, 1080,
+                        OverlayGeometry.Rotation.ROTATION_90)
+                        == OverlayGeometry.Rotation.ROTATION_0
+                        && OverlayGeometry.resolveContentRotation(1080, 2400, 2400, 1080,
+                        OverlayGeometry.Rotation.ROTATION_90)
+                        == OverlayGeometry.Rotation.ROTATION_90);
 
         RoiSpec bb = contract.find("bb_left_luma");
         RoiSpec camera = contract.find("cam01_button");
         RoiSpec battery = contract.find("battery_bar_1");
         RoiSpec identity = contract.find("screen_grey_cells");
         RoiSpec foxy = contract.find("foxy_hall_mean_redness");
+        RoiSpec maskButton = contract.find("mask_button_mean_luma");
+        RoiSpec monitorButton = contract.find("monitor_button_mean_luma");
         check("screen scopes come from the shared PixelWatch contract",
                 bb != null && bb.screenScope == RoiSpec.ScreenScope.OFFICE
                         && camera != null && camera.screenScope == RoiSpec.ScreenScope.MONITOR
                         && battery != null
                         && battery.screenScope == RoiSpec.ScreenScope.NIGHT_HUD
                         && identity != null && identity.screenScope == RoiSpec.ScreenScope.IDENTITY
-                        && foxy != null && foxy.screenScope == RoiSpec.ScreenScope.OFFICE);
+                        && foxy != null && foxy.screenScope == RoiSpec.ScreenScope.OFFICE
+                        && maskButton != null && maskButton.screenScope == RoiSpec.ScreenScope.NIGHT_HUD
+                        && monitorButton != null && monitorButton.screenScope == RoiSpec.ScreenScope.NIGHT_HUD);
+        check("bottom-control regions follow the office button visibility",
+                !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.UP, maskButton)
+                        && !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.UP, monitorButton)
+                        && OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.DOWN, monitorButton)
+                        && OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.DOWN, maskButton)
+                        && OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.UNKNOWN, maskButton)
+                        && OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT,
+                        OverlaySnapshot.MonitorState.UNKNOWN, monitorButton)
+                        && "MASK BUTTON".equals(OverlayRegionFilter.controlDisplayLabel(
+                        "mask_button_mean_luma"))
+                        && "OPEN MONITOR".equals(OverlayRegionFilter.controlDisplayLabel(
+                        "monitor_button_mean_luma")));
+        check("bottom-control overlays use narrow, non-overlapping inner chevrons",
+                maskButton != null && monitorButton != null
+                        && Math.abs(maskButton.overlayRect.left
+                        - 260f / PixelWatch.NATIVE_WIDTH) < .00001f
+                        && Math.abs(maskButton.overlayRect.right
+                        - 980f / PixelWatch.NATIVE_WIDTH) < .00001f
+                        && Math.abs(monitorButton.overlayRect.left
+                        - 1420f / PixelWatch.NATIVE_WIDTH) < .00001f
+                        && Math.abs(monitorButton.overlayRect.right
+                        - 2140f / PixelWatch.NATIVE_WIDTH) < .00001f
+                        && maskButton.overlayRect.right < monitorButton.overlayRect.left);
         check("menu hides regions that are not present on the menu",
                 !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_MENU, bb)
                         && !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_MENU, camera));
+        check("lifecycle screen labels match the debug status bar",
+                "MENU".equals(OverlayRegionFilter.screenLabel(
+                        OverlaySnapshot.Screen.FNAF2_MENU))
+                        && "INTRO".equals(OverlayRegionFilter.screenLabel(
+                        OverlaySnapshot.Screen.FNAF2_INTRO))
+                        && "GAME OVER".equals(OverlayRegionFilter.screenLabel(
+                        OverlaySnapshot.Screen.FNAF2_GAME_OVER)));
         check("night debug keeps only currently established office regions",
                 OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT, bb)
                         && !OverlayRegionFilter.visible(OverlaySnapshot.Screen.FNAF2_NIGHT, camera)

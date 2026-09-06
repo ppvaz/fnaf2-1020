@@ -7,6 +7,24 @@ The APK owns only the user-approved `MediaProjection` visual stream:
 - the authenticated loopback/abstract control sockets used by the device
   harness.
 
+## Current boundary and hostless target
+
+This APK is still a read-only helper/measurement boundary: it does not yet
+own campaign decisions or inject game input. The architectural target is for
+Cue Helper to become the full device authority — capture, lifecycle/game-state
+reducer, belief, safety arbiter, campaign controller, and a qualified local
+actuator — while the PC is retained only for build, calibration, replay,
+evidence, and telemetry.
+
+AccessibilityService is a candidate hostless actuator. Because this APK targets
+SDK 36 on the 120 Hz target phone, Android's modern gesture generator should
+sample paths at roughly 8 ms rather than the pre-Android-11 100 ms interval.
+That is not yet a FNaF2 timing or contact-fidelity result. A later dispatch can
+cancel an active gesture, and the project must still measure staggered contact
+addition, pan/light overlap, release behavior, and game acceptance against the
+existing UHID path. The benchmark and online-research conclusion are recorded
+in [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](../../docs/device/ACCESSIBILITY-VS-HID-BENCHMARK.md).
+
 Audio uses the external loopback path:
 `FNaF 2 -> Bluetooth A2DP -> ESP32 -> PCM UDP 49710 -> APK`. The ESP32
 decodes the complete A2DP mix and sends the PCM to the phone on `FNAF2-AUDIO`.
@@ -74,9 +92,10 @@ temporarily permits only the sensor/debug renderer so the observer can measure
 HUD-on capture feedback; it reports `overlay=PROBE`, never accepts decision
 cues, never changes the qualification sidecar, and is not a supported run HUD.
 
-The debug HUD is screen-aware and intentionally quiet. Menu, helper, unknown,
-and other non-night frames render no game-element boxes. On a recognized night
-the compact badge reports `MONITOR UP`, `MONITOR DOWN`, or `MONITOR ?`. Office
+The debug HUD is screen-aware and intentionally quiet. Its status badge says
+`MENU`, `INTRO`, or `GAME OVER` on those positively identified lifecycle
+screens; those screens render no game-element boxes. On a recognized night the
+compact badge reports `MONITOR UP`, `MONITOR DOWN`, or `MONITOR ?`. Office
 regions are shown only while the monitor is down; the camera feed/map areas are
 shown only while it is up, and the one calibrated yellow map button is marked
 `CAM NN ACTIVE`. Camera selection is never retained or displayed while the
@@ -100,14 +119,16 @@ areas that have not been measured yet.
 
 The visual status also carries a fail-closed screen identity gate. It reports
 `screen=CUE_HELPER` only when the 20x9 sensor matches the stable helper layout
-calibrated from the retained portrait and landscape frames. A valid frame that
-does not match the helper is `screen=UNKNOWN`; it is not promoted to
-`FNAF_2`, Android settings, or any other semantic screen. This prevents a
-capture of the helper UI itself from being interpreted as game content. While
-the HUD is enabled, the controller also keeps the window detached unless the
-captured frame positively identifies `FNAF2_NIGHT`; an app switch therefore
-fails closed as `UNAVAILABLE(target-not-game) state=HIDDEN`, and a later valid
-game frame may reattach it.
+calibrated from the retained portrait and landscape frames. A native full-frame
+check adds the generic intro-card and Game Over labels; it does not read the
+night ordinal. A valid frame that does not match the helper or a supported
+FNaF 2 lifecycle screen is `screen=UNKNOWN`; it is not promoted to Android
+settings or any other semantic screen. This prevents a capture of the helper
+UI itself from being interpreted as game content. While the HUD is enabled, the
+controller attaches only for a positively identified FNaF 2 screen and keeps
+game-element annotations/cues restricted to `FNAF2_NIGHT`; an app switch
+therefore fails closed as `UNAVAILABLE(target-not-game) state=HIDDEN`, and a
+later valid game frame may reattach it.
 
 ## Build and install
 
@@ -125,6 +146,8 @@ The image-free setup/menu protocol can be run after the APK is built:
 ```sh
 tools/device/cue-helper-setup.sh --install       # install, start capture, check FNaF menu
 tools/device/cue-helper-setup.sh                 # reuse an active capture and check menu
+tools/device/cue-helper-setup.sh --overlay-mode debug # persist SENSOR / DEBUG mode
+tools/device/cue-helper-setup.sh --overlay-mode run   # persist DECISION / RUN mode
 tools/device/cue-helper-setup.sh --probe         # optional debug-only sensor probe
 tools/device/cue-helper-setup.sh --screen night --probe  # wait for a manually entered night
 tools/device/cue-helper-setup.sh --stop          # force-stop helper capture for cleanup
@@ -134,6 +157,9 @@ It resolves the target launcher and build, discovers helper/system buttons by
 UIAutomator text and bounds, handles projection consent, starts FNaF with
 `am start`, and verifies the requested screen identity through the authenticated
 socket (`FNAF2_MENU` by default, or `FNAF2_NIGHT`).
+When `--overlay-mode` is supplied, setup converges the helper's persisted mode
+through the named CONFIG button; without it, the existing mode is preserved.
+`--probe` remains debug-only and cannot be combined with `--overlay-mode run`.
 It never sends a game-control coordinate, takes a screenshot, or writes the
 qualification sidecar. Use `--probe` only for debug sensor observation; the
 production gate remains unqualified.
@@ -290,7 +316,7 @@ no sensor data.
 | `GET <token>` | `OK <snapshot>` | Current monotonic visual snapshot plus audio health/analyzer status; never PCM or an image. The visual line carries the whole-grid statistics `grey` (near-grey cell count) and `gridLuma` (grid mean luma) — verdict-free features a calibrated consumer may fit rules against. |
 | `GRID <token>` | `OK grid=20x9 ...` | Full visual sensor grid (180 point samples, row-major). |
 | `FRAME <token>` | `OK ...snapshot... grid=20x9 cells=<180x6 hex>` | The snapshot fields AND the sensor from ONE locked read, so both describe the same frame and share one `seq`. GET followed by GRID cannot: they are two round trips against a 60 fps capture, and on the moto g56 their sequences agreed 0 times in 12, always 1-2 frames apart, so any detector needing freshness AND cells refused every observation. Use this verb for live detection. |
-| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (23 entries: 4 existing anchors + 4 flashlight-meter bars + 12 measured monitor-map camera buttons + 3 provisional Foxy hall channels). |
+| `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (25 entries: 4 existing anchors + 4 flashlight-meter bars + 12 measured monitor-map camera buttons + 3 provisional Foxy hall channels + 2 paired bottom-control ROIs). |
 | `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. The response also carries the observation-only bulb anchor (`pan_anchor_x`, `pan_anchor_y`, sampled component area/margin, confidence, and refusal reason). |
 | `OVERLAY <token>` | `OK overlay=...` | Read-only HUD lifecycle, qualification gate, and bounded update/draw/drop/latency counters for retained device evidence. |
 

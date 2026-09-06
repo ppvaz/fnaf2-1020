@@ -6,7 +6,7 @@ package com.fnaf2.cuehelper;
  * A transient UNKNOWN frame is common while a projection buffer is being
  * replaced. Clearing the whole view for that one frame makes every ROI blink.
  * Retention is deliberately bounded and only applies to sensor/debug output:
- * confirmed menu/helper identity clears it immediately, and decision cues are
+ * confirmed non-night identity clears it immediately, and decision cues are
  * never retained by this class.
  */
 public final class OverlaySnapshotRetention {
@@ -32,8 +32,10 @@ public final class OverlaySnapshotRetention {
             clear();
             return next;
         }
-        if (next.screen == OverlaySnapshot.Screen.FNAF2_MENU
-                || next.screen == OverlaySnapshot.Screen.CUE_HELPER) {
+        if (next.screen == OverlaySnapshot.Screen.CUE_HELPER
+                || next.screen == OverlaySnapshot.Screen.FNAF2_MENU
+                || next.screen == OverlaySnapshot.Screen.FNAF2_INTRO
+                || next.screen == OverlaySnapshot.Screen.FNAF2_GAME_OVER) {
             clear();
             return next;
         }

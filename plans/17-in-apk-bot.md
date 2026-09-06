@@ -18,6 +18,13 @@ to a night, exposes a minimal internal state tuple, executes one closed-loop pol
 decision in process, and logs enough evidence to compare the result with the
 untouched stock game.
 
+This is the **exact-state research route**, not a prerequisite for the stock
+game becoming hostless through Cue Helper. The stock-device target may own an
+estimated lifecycle/belief and use a qualified AccessibilityService or UHID
+backend without access to Fusion's hidden engine state. A successful Plan 17
+artifact would be a stronger separate route and must remain clearly labeled as
+modified, rebuilt, or instrumented rather than stock-game evidence.
+
 ## Boundaries
 
 - Personal study of an owned copy only. Do not commit or distribute the APK, CCN,

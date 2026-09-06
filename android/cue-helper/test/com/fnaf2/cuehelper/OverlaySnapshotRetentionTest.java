@@ -44,6 +44,12 @@ public final class OverlaySnapshotRetentionTest {
         OverlaySnapshot menu = snapshot(4,
                 OverlaySnapshot.Screen.FNAF2_MENU,
                 OverlaySnapshot.MonitorState.UNKNOWN);
+        OverlaySnapshot intro = snapshot(8,
+                OverlaySnapshot.Screen.FNAF2_INTRO,
+                OverlaySnapshot.MonitorState.UNKNOWN);
+        OverlaySnapshot gameOver = snapshot(9,
+                OverlaySnapshot.Screen.FNAF2_GAME_OVER,
+                OverlaySnapshot.MonitorState.UNKNOWN);
 
         check("known night state is accepted", retention.accept(nightDown, 1_000L)
                 == nightDown);
@@ -55,6 +61,14 @@ public final class OverlaySnapshotRetentionTest {
                 retention.accept(menu, 1_081L) == menu);
         check("menu does not resurrect old elements",
                 retention.accept(unknown, 1_090L) == unknown);
+        check("intro clears retained night elements",
+                retention.accept(nightDown, 1_100L) == nightDown
+                        && retention.accept(intro, 1_101L) == intro
+                        && retention.accept(unknown, 1_102L) == unknown);
+        check("game over clears retained night elements",
+                retention.accept(nightDown, 1_200L) == nightDown
+                        && retention.accept(gameOver, 1_201L) == gameOver
+                        && retention.accept(unknown, 1_202L) == unknown);
 
         check("a later known night state starts a new hold",
                 retention.accept(nightDown, 2_000L) == nightDown);

@@ -1014,12 +1014,12 @@ public final class CaptureService extends Service {
                         ? ScreenStats.meanLuma(snapshotGrid, snapshotGrid.length)
                         : -1;
                 snapshotScreenIdentity = complete
-                        ? ScreenIdentity.classify(snapshotGrid) : ScreenIdentity.UNKNOWN;
+                        ? ScreenIdentity.classify(watchFrame, snapshotGrid)
+                        : ScreenIdentity.UNKNOWN;
                 snapshotScreenScore = complete
                         ? ScreenIdentity.score(snapshotGrid) : 0;
                 greyCells = snapshotGreyCells;
                 gridMeanLuma = snapshotGridMeanLuma;
-                screenIdentity = snapshotScreenIdentity;
                 screenScore = snapshotScreenScore;
                 boolean overlayDebug = overlayController != null
                         && overlayController.wantsDebugSamples();
@@ -1030,9 +1030,20 @@ public final class CaptureService extends Service {
                             snapshotWatchValues);
                 } else {
                     for (int i = 0; i < watchSpec.size(); i++) {
-                    snapshotWatchValues[i] = PixelWatch.UNKNOWN;
+                        snapshotWatchValues[i] = PixelWatch.UNKNOWN;
                     }
                 }
+                if (overlayDebug && snapshotScreenIdentity == ScreenIdentity.UNKNOWN) {
+                    int maskIndex = watchSpec.indexOfName("mask_button_mean_luma");
+                    int monitorIndex = watchSpec.indexOfName("monitor_button_mean_luma");
+                    int maskLuma = maskIndex < 0
+                            ? PixelWatch.UNKNOWN : snapshotWatchValues[maskIndex];
+                    int monitorLuma = monitorIndex < 0
+                            ? PixelWatch.UNKNOWN : snapshotWatchValues[monitorIndex];
+                    snapshotScreenIdentity = ScreenIdentity.refineWithNativeControls(
+                            snapshotScreenIdentity, maskLuma, monitorLuma);
+                }
+                screenIdentity = snapshotScreenIdentity;
                 snapshotDetectorLatencyMs = Math.max(0L,
                         (System.nanoTime() - detectorStartNs) / 1_000_000L);
             }

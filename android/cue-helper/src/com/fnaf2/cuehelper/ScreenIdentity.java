@@ -10,14 +10,17 @@ package com.fnaf2.cuehelper;
  * Bonnie/Freddy/Chica control colours. Dynamic status text is not used.</p>
  *
  * <p>Besides the helper, this class has a conservative FNaF 2 night/menu
- * diagnostic. Only {@link #FNAF2_NIGHT} can authorize audio observations; the
- * menu and every unrecognized frame remain non-authorizing.</p>
+ * diagnostic and a status-only lifecycle classifier. Only
+ * {@link #FNAF2_NIGHT} can authorize audio observations; menu, intro,
+ * game-over, and every unrecognized frame remain non-authorizing.</p>
  */
 public final class ScreenIdentity {
     public static final int UNKNOWN = 0;
     public static final int CUE_HELPER = 1;
     public static final int FNAF2_NIGHT = 2;
     public static final int FNAF2_MENU = 3;
+    public static final int FNAF2_INTRO = 4;
+    public static final int FNAF2_GAME_OVER = 5;
 
     private static final int GRID_WIDTH = PixelWatch.GRID_WIDTH;
     private static final int GRID_HEIGHT = PixelWatch.GRID_HEIGHT;
@@ -36,6 +39,17 @@ public final class ScreenIdentity {
     private static final int COLOR_TOLERANCE = 12;
     private static final int LANDSCAPE_THRESHOLD = 14;
     private static final int PORTRAIT_THRESHOLD = 8;
+    /** Native bottom-control luma that is above the observed menu baseline. */
+    private static final int NATIVE_CONTROL_NIGHT_FLOOR = 20;
+    private static final int LIFECYCLE_BRIGHT_MIN = 150;
+    private static final int LIFECYCLE_DARK_MEAN_MAX = 5;
+    private static final double GAME_OVER_RED_FACE_MIN = .05d;
+    private static final double GAME_OVER_BRIGHT_TEXT_MIN = .08d;
+    private static final double INTRO_CLOCK_COLUMNS_MIN = .10d;
+    private static final double INTRO_CONFETTI_MAX = .0002d;
+    private static final double INTRO_TEXT_MIN = .04d;
+    private static final double INTRO_OUTER_MAX = .005d;
+    private static final double INTRO_ROUGHNESS_MAX = 1.2d;
 
     private ScreenIdentity() {
     }
@@ -58,6 +72,32 @@ public final class ScreenIdentity {
         return nightScore(grid) > 0 ? FNAF2_NIGHT : UNKNOWN;
     }
 
+    /**
+     * Classify the current native-resolution frame for the debug status bar.
+     *
+     * <p>The 20x9 grid remains the authority for helper/menu/night identity.
+     * The two lifecycle labels need more spatial information than that grid
+     * has, so they use the already-captured full frame only after the grid has
+     * failed to identify a recognized game state. They are display labels, not
+     * alive/dead or cue-authorizing facts.</p>
+     */
+    public static int classify(PixelWatch.Frame frame, int[] grid) {
+        int gridIdentity = classify(grid);
+        if (gridIdentity == CUE_HELPER || gridIdentity == FNAF2_MENU
+                || gridIdentity == FNAF2_NIGHT || !nativeFrame(frame)) {
+            return gridIdentity;
+        }
+        if (gameOverScore(frame)) return FNAF2_GAME_OVER;
+        if (introCardScore(frame)) return FNAF2_INTRO;
+        return gridIdentity;
+    }
+
+    /** Return whether an identity is safe to keep the debug window attached. */
+    public static boolean isRecognizedGameScreen(int identity) {
+        return identity == FNAF2_NIGHT || identity == FNAF2_MENU
+                || identity == FNAF2_INTRO || identity == FNAF2_GAME_OVER;
+    }
+
     /** A bounded diagnostic score, useful for logs and offline calibration. */
     public static int score(int[] grid) {
         if (grid == null || grid.length != GRID_WIDTH * GRID_HEIGHT) {
@@ -65,6 +105,20 @@ public final class ScreenIdentity {
         }
         return Math.max(Math.max(landscapeScore(grid), portraitScore(grid)),
                 Math.max(nightScore(grid), menuScore(grid)));
+    }
+
+    /**
+     * Rescue a dark Night frame that the coarse identity grid cannot classify.
+     * This only promotes UNKNOWN: a positive menu/helper identity still wins.
+     * The values are observation-only native watch channels, not a qualified
+     * gameplay fact.
+     */
+    public static int refineWithNativeControls(int identity,
+            int maskButtonMeanLuma, int monitorButtonMeanLuma) {
+        if (identity != UNKNOWN) return identity;
+        return maskButtonMeanLuma >= NATIVE_CONTROL_NIGHT_FLOOR
+                || monitorButtonMeanLuma >= NATIVE_CONTROL_NIGHT_FLOOR
+                ? FNAF2_NIGHT : UNKNOWN;
     }
 
     /**
@@ -92,9 +146,157 @@ public final class ScreenIdentity {
                 return "FNAF2_NIGHT";
             case FNAF2_MENU:
                 return "FNAF2_MENU";
+            case FNAF2_INTRO:
+                return "FNAF2_INTRO";
+            case FNAF2_GAME_OVER:
+                return "FNAF2_GAME_OVER";
             default:
                 return "UNKNOWN";
         }
+    }
+
+    /** The screen identity itself remains grid-first and fail-closed. */
+    private static boolean nativeFrame(PixelWatch.Frame frame) {
+        return frame != null && frame.width() == PixelWatch.NATIVE_WIDTH
+                && frame.height() == PixelWatch.NATIVE_HEIGHT;
+    }
+
+    /** Port of the measured full-frame Game Over signature. */
+    private static boolean gameOverScore(PixelWatch.Frame frame) {
+        double redFace = fraction(frame, 650, 450, 1750, 920,
+                32, 32, true);
+        double brightText = fraction(frame, 900, 950, 1450, 1040,
+                32, 32, false);
+        return redFace > GAME_OVER_RED_FACE_MIN
+                && brightText > GAME_OVER_BRIGHT_TEXT_MIN;
+    }
+
+    /** Port of the measured generic intro-card conjunction. */
+    private static boolean introCardScore(PixelWatch.Frame frame) {
+        if (meanLuma(frame, 0, 0, PixelWatch.NATIVE_WIDTH,
+                PixelWatch.NATIVE_HEIGHT, 8) >= LIFECYCLE_DARK_MEAN_MAX) {
+            return false;
+        }
+        if (brightColumnFraction(frame, 936, 432, 1464, 605,
+                4, 4) < INTRO_CLOCK_COLUMNS_MIN) {
+            return false;
+        }
+        // A 6 AM win screen has the same dark clock/card geometry. Its sparse
+        // saturated confetti is the measured negative control for intro.
+        if (saturatedFraction(frame, 0, 0, PixelWatch.NATIVE_WIDTH, 486, 4)
+                >= INTRO_CONFETTI_MAX) {
+            return false;
+        }
+        if (fraction(frame, 864, 389, 1536, 648,
+                32, 32, false) < INTRO_TEXT_MIN) {
+            return false;
+        }
+        if (fraction(frame, 0, 0, PixelWatch.NATIVE_WIDTH, 270,
+                32, 8, false) > INTRO_OUTER_MAX) {
+            return false;
+        }
+        return roughness(frame, 240, 108, 2160, 972, 4)
+                <= INTRO_ROUGHNESS_MAX;
+    }
+
+    private static double fraction(PixelWatch.Frame frame, int x0, int y0,
+            int x1, int y1, int sampleWidth, int sampleHeight,
+            boolean redFace) {
+        int matches = 0;
+        int total = sampleWidth * sampleHeight;
+        for (int sy = 0; sy < sampleHeight; sy++) {
+            int y = sampleCoordinate(y0, y1, sy, sampleHeight);
+            for (int sx = 0; sx < sampleWidth; sx++) {
+                int rgb = frame.rgb(sampleCoordinate(x0, x1, sx, sampleWidth), y);
+                int red = (rgb >> 16) & 0xff;
+                int green = (rgb >> 8) & 0xff;
+                int blue = rgb & 0xff;
+                boolean match = redFace
+                        ? red > 80 && red > green * 1.5d && red > blue * 1.3d
+                        : red > LIFECYCLE_BRIGHT_MIN
+                                && green > LIFECYCLE_BRIGHT_MIN
+                                && blue > LIFECYCLE_BRIGHT_MIN;
+                if (match) matches++;
+            }
+        }
+        return matches / (double) total;
+    }
+
+    private static int sampleCoordinate(int start, int end, int index,
+            int sampleCount) {
+        return start + ((2 * index + 1) * (end - start)) / (2 * sampleCount);
+    }
+
+    private static int meanLuma(PixelWatch.Frame frame, int x0, int y0,
+            int x1, int y1, int step) {
+        long total = 0L;
+        int count = 0;
+        for (int y = y0; y < y1; y += step) {
+            for (int x = x0; x < x1; x += step) {
+                total += luma(frame.rgb(x, y));
+                count++;
+            }
+        }
+        return count == 0 ? 0 : (int) (total / count);
+    }
+
+    private static double brightColumnFraction(PixelWatch.Frame frame,
+            int x0, int y0, int x1, int y1, int xStep, int yStep) {
+        int columns = 0;
+        int litColumns = 0;
+        for (int x = x0; x < x1; x += xStep) {
+            columns++;
+            for (int y = y0; y < y1; y += yStep) {
+                int rgb = frame.rgb(x, y);
+                if (((rgb >> 16) & 0xff) > LIFECYCLE_BRIGHT_MIN
+                        && ((rgb >> 8) & 0xff) > LIFECYCLE_BRIGHT_MIN
+                        && (rgb & 0xff) > LIFECYCLE_BRIGHT_MIN) {
+                    litColumns++;
+                    break;
+                }
+            }
+        }
+        return litColumns / (double) Math.max(1, columns);
+    }
+
+    private static double saturatedFraction(PixelWatch.Frame frame,
+            int x0, int y0, int x1, int y1, int step) {
+        int saturated = 0;
+        int count = 0;
+        for (int y = y0; y < y1; y += step) {
+            for (int x = x0; x < x1; x += step) {
+                int rgb = frame.rgb(x, y);
+                int red = (rgb >> 16) & 0xff;
+                int green = (rgb >> 8) & 0xff;
+                int blue = rgb & 0xff;
+                int maximum = Math.max(red, Math.max(green, blue));
+                int minimum = Math.min(red, Math.min(green, blue));
+                if (maximum > 70 && maximum - minimum > 50) saturated++;
+                count++;
+            }
+        }
+        return saturated / (double) Math.max(1, count);
+    }
+
+    private static double roughness(PixelWatch.Frame frame, int x0, int y0,
+            int x1, int y1, int step) {
+        long total = 0L;
+        int count = 0;
+        for (int y = y0; y + 1 < y1; y += step) {
+            for (int x = x0; x < x1; x += step) {
+                total += Math.abs(luma(frame.rgb(x, y))
+                        - luma(frame.rgb(x, y + 1)));
+                count++;
+            }
+        }
+        return total / (double) Math.max(1, count);
+    }
+
+    private static int luma(int rgb) {
+        int red = (rgb >> 16) & 0xff;
+        int green = (rgb >> 8) & 0xff;
+        int blue = rgb & 0xff;
+        return (77 * red + 150 * green + 29 * blue) >> 8;
     }
 
     /**

@@ -95,6 +95,9 @@ Fusion build 296, August 2025.
   anything about a device run's configuration or its failure**; CLAUDE.md's
   read-before-concluding table points here, and it was missing from this index
   until 2026-08-26 despite being the most-cited device page in the repository.
+- [`ACCESSIBILITY-VS-HID-BENCHMARK.md`](device/ACCESSIBILITY-VS-HID-BENCHMARK.md)
+  — online evidence check and the qualification matrix for a hostless
+  AccessibilityService actuator versus the existing on-device UHID path.
 - [`ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) — the adb harness,
   its hard-won safety rules, and findings against the real build.
 - [`ON-DEVICE-SCREEN-CHECKS.md`](device/ON-DEVICE-SCREEN-CHECKS.md) — the

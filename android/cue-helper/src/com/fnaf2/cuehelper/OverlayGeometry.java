@@ -17,6 +17,24 @@ public final class OverlayGeometry {
         ROTATION_270
     }
 
+    /**
+     * Resolve platform rotation without rotating content that already occupies
+     * the output in its native orientation. Android may report the handset's
+     * physical rotation even while the target has a matching landscape output
+     * viewport; applying that rotation twice puts landscape ROIs on vertical
+     * strips.
+     */
+    public static Rotation resolveContentRotation(int outputWidth, int outputHeight,
+            int contentWidth, int contentHeight, Rotation reported) {
+        if (outputWidth > 0 && outputHeight > 0 && contentWidth > 0
+                && contentHeight > 0
+                && (long) outputWidth * contentHeight
+                        == (long) outputHeight * contentWidth) {
+            return Rotation.ROTATION_0;
+        }
+        return reported == null ? Rotation.ROTATION_0 : reported;
+    }
+
     /** Floating-point rectangle in an output coordinate space. */
     public static final class PixelRect {
         public final float left;
@@ -281,11 +299,14 @@ public final class OverlayGeometry {
             RoiSpec.OverlayStyle style = entry.kind == PixelWatch.Kind.ROI
                     ? RoiSpec.OverlayStyle.HIGHLIGHT
                     : RoiSpec.OverlayStyle.MONITORED;
-            String detector = entry.name.startsWith("screen_")
+            boolean bottomControl = "mask_button_mean_luma".equals(entry.name)
+                    || "monitor_button_mean_luma".equals(entry.name);
+            String detector = bottomControl ? "control-rule" : entry.name.startsWith("screen_")
                     ? "screen-identity" : entry.name.startsWith("cam")
                             ? "camera-rule" : entry.name.startsWith("battery_")
                                     ? "battery-rule" : "monitor-rule";
-            RoiSpec.ScreenScope screenScope = entry.name.startsWith("screen_")
+            RoiSpec.ScreenScope screenScope = bottomControl
+                    ? RoiSpec.ScreenScope.NIGHT_HUD : entry.name.startsWith("screen_")
                     ? RoiSpec.ScreenScope.IDENTITY
                     : entry.name.startsWith("cam")
                             ? RoiSpec.ScreenScope.MONITOR

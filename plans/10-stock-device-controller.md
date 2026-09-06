@@ -50,6 +50,15 @@ Action      { start, reports, finish, actuatorMode }
 Result      { accepted|rejected|unknown, observedAt, recoveryBudget }
 ```
 
+`Belief.lifecycle` is the device-owned top-level game-state object, not a raw
+classifier string. Its minimum vocabulary is `MENU`, `INTRO`, `NIGHT`,
+`GAME_OVER`, `WIN`, and `UNKNOWN`, with confidence, provenance, observation
+time, validity/age, and refusal reason. Cue Helper's visual/audio detectors
+may contribute facts, but the lifecycle reducer decides the current state and
+the campaign/controller consumes that one state. The host may mirror it for
+diagnostics while the migration is incomplete; it must not become a second
+authority.
+
 The policy transition should be pure and deterministic for a given belief,
 observation sequence, and clock. Device I/O belongs behind observation and
 actuator adapters. Do not let a classifier call directly press the game.
@@ -362,6 +371,12 @@ feature to discard.
 ### 5. Complete lifecycle ownership
 
 - Identify launch/menu/night/live/death/win screens through plan 09 models.
+- Move the lifecycle reducer and its state object into Cue Helper; the host
+  lifecycle observer becomes a compatibility/readback adapter during the
+  migration.
+- Preserve the distinction between `INTRO` (pre-night sequence) and `NIGHT`,
+  and between `GAME_OVER` and generic loss/UNKNOWN evidence, so the device HUD,
+  campaign runner, and safety arbiter consume the same state.
 - Start only from a verified configuration.
 - Latch epoch with provenance and a confidence interval.
 - End input immediately on terminal or focus loss.
