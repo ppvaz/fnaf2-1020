@@ -39,6 +39,11 @@ cue_grid() {
   printf 'GRID %s\n' "$CUE_TOKEN" | toybox nc -w 1 127.0.0.1 "$CUE_PORT" 2>/dev/null | tr -d '\r'
 }
 
+cue_frame() {
+  [ "$CUE_PORT" != "-" ] || return 0
+  printf 'FRAME %s\n' "$CUE_TOKEN" | toybox nc -w 1 127.0.0.1 "$CUE_PORT" 2>/dev/null | tr -d '\r'
+}
+
 hid_mark() {
   [ -z "$HID_TRACE" ] || printf '{"command":"mark","ms":%s}\n' "$1" >> "$HID_TRACE"
 }

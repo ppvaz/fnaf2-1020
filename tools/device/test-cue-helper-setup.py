@@ -38,6 +38,13 @@ assert MODULE.overlay_suppression_status(
     "requested permissions:\n      android.permission.ACCESS_NETWORK_STATE\n") == "NOT_REQUESTED"
 assert MODULE.overlay_suppression_status(
     "requested permissions:\n      android.permission.HIDE_NON_SYSTEM_OVERLAY_WINDOWS\n") == "REQUESTED_UNSUPPORTED"
+assert MODULE.overlay_mode_button_label("debug") == "Overlay mode: SENSOR / DEBUG"
+assert MODULE.overlay_mode_button_label("run") == "Overlay mode: DECISION / RUN"
+try:
+    MODULE.overlay_mode_button_label("invalid")
+    raise AssertionError("invalid overlay mode should refuse")
+except MODULE.SetupError:
+    pass
 original_adb = MODULE.adb
 try:
     MODULE.adb = lambda *args, **kwargs: (

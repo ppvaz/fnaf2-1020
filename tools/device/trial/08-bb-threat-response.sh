@@ -22,16 +22,15 @@ classify_left_and_queue_mask_at() {
   : > "$CAPTURE_LOCK"
   screencap > "$capture_raw" &
   capture_pid=$!
-  # Grab the cue helper's 20x9 sensor for the SAME moment, in parallel -- it is
-  # a device-local loopback read (~53 ms) launched alongside screencap, so it
-  # adds no serial latency to the mask that follows. This is the paired corpus
-  # plans/15 package 5 needs: a real VirtualDisplay-scaler grid line next to the
-  # screencap the BB model is trained on. Logged only; the read still decides on
-  # the screencap. Empty string when the helper is absent.
-  capture_grid="$PIDFILE.left.grid"
-  rm -f "$capture_grid"
+  # Read the helper's atomic snapshot/grid alongside the office capture. These
+  # are separate sensors and may latch at different times; retain the helper's
+  # age and sequence instead of claiming the two captures are the same frame.
+  # Only the screencap drives the BB classifier. The parallel FRAME replaces
+  # both the old GRID and the later synchronous GET used only for telemetry.
+  capture_frame="$PIDFILE.left.frame"
+  rm -f "$capture_frame"
   if [ "$CUE_PORT" != "-" ]; then
-    cue_grid > "$capture_grid" &
+    cue_frame > "$capture_frame" &
     grid_pid=$!
   else
     grid_pid=""
@@ -56,6 +55,11 @@ classify_left_and_queue_mask_at() {
   hid_down "$MASK_X" "$MASK_Y"
   hid_delay "$TAP_CONTACT_MS"
   hid_release
+  # This bounds when the response was submitted, not game acceptance. The
+  # attack branch must preserve its hold from this request even when the
+  # nominal cycle deadline is already behind the device clock.
+  now_rel
+  LAST_MASK_REQUEST_MS=$NOW_REL
   wait "$capture_pid" || true
   classification=$("$CHECKER" classify "$BB_MODEL" < "$capture_raw" 2>/dev/null) || \
     classification='unknown capture-or-classifier-error'
@@ -120,16 +124,13 @@ classify_left_and_queue_mask_at() {
       [ "$HID_LEFT_DEBUG_RAW" != "-" ] || rm -f "$capture_raw"
       ;;
   esac
-  # The paired grid line goes next to the frame for EVERY read, empty included
-  # -- `empty` is the class the screencap corpus already has plenty of and the
-  # grid corpus has none of, and one line is ~1.1 KB where the frame is 10 MB.
-  # Named to match the .raw so a later session pairs them by the timestamp
-  # prefix. Nothing reads these yet; plans/15 package 4 builds the signature.
+  # Keep the complete atomic helper observation beside each classified read.
+  # A .frame suffix preserves its wire shape without masquerading as GRID.
   if [ -n "$grid_pid" ]; then
     wait "$grid_pid" 2>/dev/null || true
-    if [ -n "$KEEP_DIR" ] && grep -q '^OK grid=' "$capture_grid" 2>/dev/null; then
+    if [ -n "$KEEP_DIR" ] && grep -q '^OK ' "$capture_frame" 2>/dev/null; then
       mkdir -p "$KEEP_DIR"
-      cp "$capture_grid" "$KEEP_DIR/$(printf '%06d' "$actual")-${classification%% *}.grid" \
+      cp "$capture_frame" "$KEEP_DIR/$(printf '%06d' "$actual")-${classification%% *}.frame" \
         2>/dev/null || true
     fi
   fi
@@ -152,15 +153,24 @@ classify_left_and_queue_mask_at() {
   # distribution for is the thing that keeps getting adopted.
   cue_line=""
   if [ "$CUE_PORT" != "-" ]; then
-    cl_snap=$(cue_snapshot)
-    cl_luma=$(printf '%s\n' "$cl_snap" | sed -n 's/.* luma=\([0-9-]*\).*/\1/p')
-    cl_cam05_mean_luma=$(printf '%s\n' "$cl_snap" | sed -n 's/.* cam05_mean_luma=\([0-9-]*\).*/\1/p')
-    cl_grey=$(printf '%s\n' "$cl_snap" | sed -n 's/.* grey=\([0-9-]*\).*/\1/p')
-    cl_age=$(printf '%s\n' "$cl_snap" | sed -n 's/.* ageUs=\([0-9-]*\).*/\1/p')
-    cl_grid=$(sed -n 's/^OK grid=[0-9x]* seq=\([0-9]*\).*/\1/p' "$capture_grid" 2>/dev/null)
+    cl_snap=""
+    read -r cl_snap < "$capture_frame" || true
+    # These are telemetry fields, yet the former five sed/subshell pipelines
+    # delayed every next macro by hundreds of ms on the handset. Parse the
+    # bounded k=v wire with builtins so logging does not move the response.
+    cl_luma=""; cl_cam05_mean_luma=""; cl_grey=""; cl_age=""; cl_grid=""
+    for cl_field in $cl_snap; do
+      case "$cl_field" in
+        luma=*) cl_luma=${cl_field#*=} ;;
+        cam05_mean_luma=*) cl_cam05_mean_luma=${cl_field#*=} ;;
+        grey=*) cl_grey=${cl_field#*=} ;;
+        ageUs=*) cl_age=${cl_field#*=} ;;
+        seq=*) cl_grid=${cl_field#*=} ;;
+      esac
+    done
     cue_line=" cue[luma=${cl_luma:-UNREAD} cam05_mean_luma=${cl_cam05_mean_luma:-UNREAD} grey=${cl_grey:-ABSENT} age=${cl_age:-UNREAD}us grid=${cl_grid:-MISS}]"
   fi
   printf '%6d ms  classify-bb-left %s %s%s\n' "$actual" "$classification" "$monitor_seen" "$cue_line" >&2
   hid_mark "$actual"
-  rm -f "$capture_grid"
+  rm -f "$capture_frame"
 }

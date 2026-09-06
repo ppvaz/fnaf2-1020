@@ -23,8 +23,13 @@
     "sixthNight": [
       400,
       880
+    ],
+    "customNight": [
+      400,
+      985
     ]
   },
+  "customNight_note": "measured 2026-09-06 after the operator beat 6th Night and the item first appeared: row span 953-1000 px, dense core 969-1000, bright centroid 982, band fraction 0.066-0.075 across 3 frames (one 0.113 with the title highlight); 0.0000 below y=1040. Same x-column and text signature as the other three items.",
   "title_gate": {
     "box": [
       150,

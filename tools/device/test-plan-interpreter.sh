@@ -54,6 +54,7 @@ SWEEP_SELECT_MS="$(runner_const SWEEP_SELECT_MS)"
 SWEEP_SETTLE_MS="$(runner_const SWEEP_SETTLE_MS)"
 READ_CAPTURE_DELAY_MS="$(runner_const READ_CAPTURE_DELAY_MS)"
 MASK_ANIM_OFF_MS="$(runner_const MASK_ANIM_OFF_MS)"
+MASK_RESPONSE_HOLD_MS="$(runner_const MASK_RESPONSE_HOLD_MS)"
 MASK_RAISE_GAP_MS=$((MASK_ANIM_OFF_MS + 17))
 grep -q '^MASK_RAISE_GAP_MS=\$((MASK_ANIM_OFF_MS + 17))$' "$RUNNER" ||
   { echo 'the runner must derive MASK_RAISE_GAP_MS from the sourced mask endpoint and one render frame' >&2; exit 1; }
@@ -72,7 +73,7 @@ extract() {
 {
   echo 'set -eu'
   for fn in plan_control_xy sweep_cam_ms sweep_cam_list sweep_last_contact \
-            plan_first_offset plan_header_number plan_step run_cycle plan_span plan_emit run_macro; do
+            plan_first_offset plan_header_number plan_step run_cycle plan_span plan_emit run_macro attack_mask_floor; do
     body="$(extract "$fn")"
     [ -n "$body" ] || { echo "could not extract $fn from the runner" >&2; exit 1; }
     printf '%s\n' "$body"
@@ -82,7 +83,7 @@ extract() {
 {
   # The runner's own constants, so the stubs cannot drift from them.
   for c in FUSION_POLL_MS MIN_RELEASED_MS TAP_CONTACT_MS SWEEP_LIGHT_LEAD_MS \
-           SWEEP_SELECT_MS SWEEP_SETTLE_MS READ_CAPTURE_DELAY_MS MASK_ANIM_OFF_MS; do
+           SWEEP_SELECT_MS SWEEP_SETTLE_MS READ_CAPTURE_DELAY_MS MASK_ANIM_OFF_MS MASK_RESPONSE_HOLD_MS; do
     eval "printf '%s=%s\\n' \"\$c\" \"\$$c\""
   done
 } > "$TMP/harness.sh"
@@ -343,6 +344,19 @@ want_seam=$((7000 + cycle_end + macro_shift + FUSION_POLL_MS))
   fail "the floor did not carry to the seam: last wait_until was $last_wait, want $want_seam"
 
 # Without a floor the window opens where the plan says.
+out="$(run 'LAST_MASK_REQUEST_MS=85756; now_rel() { NOW_REL=86496; };
+  attack_mask_floor; run_macro attack 77000 2 3 "$ATTACK_MASK_FLOOR_MS"')"
+first_wait="$(printf '%s\n' "$out" | grep -m1 '^wait ' | awk '{print $2}')"
+[ "$first_wait" = "$((85756 + MASK_RESPONSE_HOLD_MS))" ] ||
+  fail "a late cycle erased the current mask response: first release $first_wait"
+out="$(run 'LAST_MASK_REQUEST_MS=85756; now_rel() { NOW_REL=94000; };
+  attack_mask_floor; printf "%s\n" "$ATTACK_MASK_FLOOR_MS"')"
+[ "$out" = "$((94000 + FUSION_POLL_MS))" ] ||
+  fail "classification after a completed hold should only add the released gap"
+if run 'attack_mask_floor' >/dev/null 2>&1; then
+  fail 'an attack response accepted an absent mask request timestamp'
+fi
+
 out="$(run 'run_macro clear 7000 2 999')"
 first_wait="$(printf '%s\n' "$out" | grep -m1 '^wait ' | awk '{print $2}')"
 want_first=$((7000 + first_branch_at))

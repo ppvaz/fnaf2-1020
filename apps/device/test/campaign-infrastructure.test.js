@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { makeCampaignSpec } from '../src/campaign.js';
-import { configureCustomNight, makeCustomNightConfig, validateCustomNightCalibration } from '../src/custom-night.js';
+import { configureCustomNight, makeCustomNightConfig, selectCustomNightPreset,
+  validateCustomNightCalibration, validateCustomNightModel } from '../src/custom-night.js';
 import { evaluateCampaignPreflight } from '../src/campaign-preflight.js';
 import { validateCampaignBundle, makeCampaignExecutionRequest } from '../src/campaign-bundle.js';
 import { DeviceLocalArtifactExecutor, expandNightBlocks } from '../src/device-local-executor.js';
@@ -48,6 +49,33 @@ const configured = await configureCustomNight({ target: spec.nights[1], calibrat
     : { status: 'PASS', dials: spec.nights[1].dials, puppet: 15 } });
 assert.equal(configured.steps, 200);
 assert.equal(dialTaps.length, 200);
+assert.equal(dialTaps[0].holdMs, 17, 'Custom Night defaults to the measured one-frame contact');
+const cyclicCalibration = { ...calibration, dialWrap: 'cyclic' };
+const cyclicTaps = [];
+const cyclicConfigured = await configureCustomNight({ target: spec.nights[1], calibration: cyclicCalibration,
+  targetBuild: profile.targetBuild, tap: async value => cyclicTaps.push(value),
+  readback: async ({ phase }) => phase === 'before'
+    ? { status: 'PASS', dials: Object.fromEntries(Object.keys(spec.nights[1].dials).map(dial => [dial, 0])) }
+    : { status: 'PASS', dials: spec.nights[1].dials, puppet: 15 } });
+assert.equal(cyclicConfigured.steps, 10, 'cyclic dials use one decrement from 0 to 20');
+assert.equal(cyclicTaps.length, 10);
+assert.ok(cyclicTaps.every(value => value.point.x === 4), 'cyclic 0-to-20 uses each dial decrement');
+
+const screenModel = JSON.parse(await readFile(fileURLToPath(new URL('../../../tools/device/models/custom-night-moto-g56-v207.json', import.meta.url)), 'utf8'));
+assert.doesNotThrow(() => validateCustomNightModel(screenModel));
+assert.equal(screenModel.presets.length, 10, 'the measured cycle contains ten presets');
+let presetIndex = 0;
+const presetTaps = [];
+const selectedPreset = await selectCustomNightPreset({ preset: 'golden-freddy', model: screenModel,
+  tap: async value => {
+    presetTaps.push(value);
+    presetIndex = (presetIndex - 1 + screenModel.presets.length) % screenModel.presets.length;
+  },
+  readback: async () => ({ status: 'PASS', preset: screenModel.presets[presetIndex].id,
+    dials: screenModel.presets[presetIndex].dials }) });
+assert.equal(selectedPreset.steps, 1, 'auto selection chooses the measured previous-arrow shortcut');
+assert.deepEqual(presetTaps[0].point, { x: 300, y: 979 });
+assert.equal(presetTaps[0].holdMs, 17);
 const held = evaluateCampaignPreflight({ spec, profile, device: { status: 'READY', serial: 'fixture', checks: [] }, calibration, bundle,
   executor: { terminal: true, save: true, deviceLocal: true } });
 assert.equal(held.status, 'HOLD', 'fixture profile must never become live-ready');

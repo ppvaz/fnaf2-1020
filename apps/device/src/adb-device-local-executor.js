@@ -376,7 +376,7 @@ export class AdbDeviceLocalMachineExecutor {
   constructor(options = {}) {
     const { serial, adb = 'adb', driverProgram, planPath, planHash, modelPath, checkerPath,
       pilotOffsetMs = 10, deviceSpacingMs = 66, contactMs = 33, observe = null,
-      pollMs = 1000, cuePort = '-', cueToken = '-' } = options;
+      pollMs = 1000, cuePort = '-', cueToken = '-', onOutput = null } = options;
     if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('machine executor requires an ADB serial');
     if (typeof driverProgram !== 'string' || driverProgram.length === 0) throw new TypeError('machine executor requires the assembled device program');
     for (const [value, label] of [[planPath, 'planPath'], [planHash, 'planHash'], [modelPath, 'modelPath'], [checkerPath, 'checkerPath']])
@@ -385,6 +385,7 @@ export class AdbDeviceLocalMachineExecutor {
       if (!Number.isInteger(value) || value < 1 || value > 30000) throw new TypeError(`machine executor ${label} is outside 1..30000`);
     if (deviceSpacingMs <= contactMs) throw new TypeError('machine executor spacing must exceed contact');
     if (observe !== null && typeof observe !== 'function') throw new TypeError('machine executor observe must be a function');
+    if (onOutput !== null && typeof onOutput !== 'function') throw new TypeError('machine executor onOutput must be a function');
     if (!Number.isInteger(pollMs) || pollMs < 250 || pollMs > 10000)
       throw new TypeError('machine executor pollMs must be an integer in 250..10000');
     if (cuePort !== '-' && (!Number.isInteger(cuePort) || cuePort < 1 || cuePort > 65535))
@@ -395,6 +396,7 @@ export class AdbDeviceLocalMachineExecutor {
     this.planPath = planPath; this.planHash = planHash; this.modelPath = modelPath; this.checkerPath = checkerPath;
     this.pilotOffsetMs = pilotOffsetMs; this.deviceSpacingMs = deviceSpacingMs; this.contactMs = contactMs;
     this.cuePort = cuePort; this.cueToken = cueToken;
+    this.onOutput = onOutput;
     this.observe = observe; this.pollMs = pollMs; this.child = null; this.running = false;
     this.armed = false; this.armedBinding = null; this.processHandle = null;
     this.processPromise = null;
@@ -487,6 +489,10 @@ export class AdbDeviceLocalMachineExecutor {
       this.observedTerminal = null;
       this.stopObserver = false;
       const processHandle = runAdbProgram(this.adb, this.serial, this.driverProgram, args);
+      if (this.onOutput) {
+        processHandle.child.stdout.on('data', chunk => this.onOutput(chunk.toString()));
+        processHandle.child.stderr.on('data', chunk => this.onOutput(chunk.toString()));
+      }
       this.processHandle = processHandle;
       this.child = processHandle.child;
       this.processPromise = processHandle.promise.then(result => {
@@ -506,7 +512,7 @@ export class AdbDeviceLocalMachineExecutor {
           if (this.stopObserver || this.child !== processHandle.child || !this.running || this.processDone) break;
           try {
             const state = await this.observe();
-            if (state === 'gameover') {
+            if (state === 'gameover' || state === 'sixam') {
               this.observedTerminal = state;
               processHandle.child.kill('SIGTERM');
               break;
@@ -538,7 +544,7 @@ export class AdbDeviceLocalMachineExecutor {
     const cycles = Math.ceil((plan.timing.stopAtMs - plan.timing.loopStartMs - 7000) / plan.timing.periodMs);
     try {
       const result = await processPromise;
-      if (result.code !== 0 && this.observedTerminal !== 'gameover')
+      if (result.code !== 0 && !['gameover', 'sixam'].includes(this.observedTerminal))
         throw new Error(`machine device program exited with ${result.code}: ${result.stderr.trim() || result.stdout.trim()}`);
       return { status: 'COMPLETED', outcome: 'UNVERIFIED', night: 6,
         plannedUntilMs: plan.timing.observeUntilMs, cycles, deviceLocal: true,

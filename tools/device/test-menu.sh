@@ -84,7 +84,7 @@ expect_no_tap() {                           # name
     echo "FAIL $1 -- pressed something: $(cat "$TAPS")"; failed=1; }
 }
 expect_tap() {                              # name "x y"
-  grep -q "^input swipe $2 $2 120$" "$TAPS" || {
+  grep -q "^input swipe $2 $2 17$" "$TAPS" || {
     echo "FAIL $1 -- expected a tap at $2, got: $(cat "$TAPS")"; failed=1; }
 }
 
@@ -103,12 +103,10 @@ expect_tap 'story progress presses Continue' '400 730'
 attempt sixth-unlocked sixthNight
 expect_tap 'sixth unlocked presses Sixth Night' '400 880'
 
-# Observed, and still refused: the Custom Night item has never been on a
-# calibrated screen, so no coordinate for it has been measured. Seeing an item
-# is not the same as knowing where it is.
+# Observed and measured: the Custom Night item is now backed by the
+# independently band-scanned point in coords.sh/title-moto-g56-v207.json.
 attempt custom-unlocked customNight
-expect 'custom night has no measured coordinate' 'no measured coordinate'
-expect_no_tap 'custom night has no measured coordinate'
+expect_tap 'measured Custom Night presses' '400 985'
 
 # ------------------------------------------------------- New Game capability
 attempt fresh-save newGame

@@ -63,6 +63,18 @@ maskOnGrid[40] = cell(15, 15, 15);
 const masked = measureCalibrationState({ ...snapshot, cells: maskOnGrid }, parsed);
 assert.deepEqual(masked.value, { screen: 'NIGHT', monitor: 'DOWN', mask: 'ON' });
 
+// The opaque mask removes both nightScore inputs, so a real masked FRAME can
+// be UNKNOWN and the helper's own monitor detector can be UNKNOWN as well.
+// A positive bound mask is the secondary night proof for that exact case;
+// the bound monitor rule must then read the same atomic grid.
+const maskedUnknown = measureCalibrationState({ ...snapshot, screen: 'UNKNOWN',
+  monitorUp: 'UNKNOWN', monitorReason: 'screen-identity', cells: maskOnGrid }, parsed);
+assert.deepEqual(maskedUnknown.value, { screen: 'NIGHT', monitor: 'DOWN', mask: 'ON' });
+assert.equal(measureCalibrationState({ ...snapshot, screen: 'FNAF2_MENU', cells: maskOnGrid }, parsed).reason,
+  'screen-identity', 'an explicit menu identity cannot use the mask fallback');
+assert.equal(measureCalibrationState({ ...snapshot, screen: 'UNKNOWN', cells: grid }, parsed).reason,
+  'screen-identity', 'an unknown frame still needs a positive mask proof');
+
 // Any UNKNOWN refuses the whole state; both sub-rules must resolve.
 assert.equal(measureCalibrationState({ ...snapshot, screen: 'FNAF2_MENU' }, parsed).state, 'UNKNOWN');
 assert.equal(measureCalibrationState({ ...snapshot, ageUs: 900000 }, parsed).state, 'UNKNOWN');

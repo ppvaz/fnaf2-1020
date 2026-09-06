@@ -12,7 +12,7 @@ import { readFile } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { HidWireTransport } from '@fnaf2-1020/adapters';
-import { configureCustomNight, validateCustomNightCalibration } from './custom-night.js';
+import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
 import { AdbDeviceLocalArtifactExecutor, AdbDeviceLocalMachineExecutor } from './adb-device-local-executor.js';
@@ -126,15 +126,17 @@ function modelPoint(value, label) {
 }
 
 function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
+  const name = 'FNAF Campaign Menu';
   const transport = new HidWireTransport({
     write: line => hidProcess.write(line),
-    ready: () => hidProcess.ready(),
-    contactMs: 33,
+    ready: () => hidProcess.ready(name),
+    name,
+    contactMs: CUSTOM_NIGHT_CONTACT_MS,
     registerDelayMs,
   });
   return {
     transport,
-    send: ({ point: target, durationMs = 33 }) => transport.send({
+    send: ({ point: target, durationMs = CUSTOM_NIGHT_CONTACT_MS }) => transport.send({
       command: { action: { kind: 'press', durationMs }, source: { controller: 'modern-campaign-menu' } },
       point: target,
     }),
@@ -173,6 +175,7 @@ export async function createCampaignPorts(options = {}) {
       contactMs: bundle.machine?.contactMs ?? 33,
       cuePort: cueEndpoint.port,
       cueToken: cueEndpoint.token,
+      onOutput: chunk => process.stderr.write(chunk),
       observe: () => lifecycle(bridge, serial), pollMs: 1000 })
     : new AdbDeviceLocalArtifactExecutor({ serial, adb,
       observe: () => lifecycle(bridge, serial), pollMs: 1000 });
@@ -200,7 +203,7 @@ export async function createCampaignPorts(options = {}) {
     mode: 'live', artifact: bundle.artifact,
   });
 
-  const tap = async ({ point: target, holdMs = 33 }) => {
+  const tap = async ({ point: target, holdMs = CUSTOM_NIGHT_CONTACT_MS }) => {
     point(target, 'tap point');
     const sender = openMenuHid();
     await sender.transport.send({
@@ -217,27 +220,34 @@ export async function createCampaignPorts(options = {}) {
     // that bounded wait so the press is tied to a fresh target observation.
     const sender = openMenuHid();
     await sender.transport.start();
+    // Register and qualify the gameplay HID while the title is still visible.
+    // Doing this in intro() consumed the night opening during InputReader's
+    // attachment delay. The menu transport has a distinct device name so it
+    // cannot satisfy the gameplay driver's readiness check.
+    if (machineOnly) {
+      if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
+        throw new Error('machine campaign did not compose a machine executor');
+      await localExecutor.arm(machineRequestFor(target));
+    }
     const freshItems = await title(bridge, serial, modelPath);
     if (!freshItems.includes(targetName))
       return { target: targetName, visible: false, selected: false, observed: true, items: freshItems };
     const targetPoint = targetName === 'customNight'
       ? point(calibration?.menu?.point, 'calibration.menu.point')
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
-    const holdMs = targetName === 'customNight' ? calibration.menu.holdMs : 120;
+    const holdMs = targetName === 'customNight' ? calibration.menu.holdMs : CUSTOM_NIGHT_CONTACT_MS;
     await tap({ point: targetPoint, holdMs });
     return { target: targetName, visible: true, selected: true, observed: true };
   };
 
   const intro = async ({ target }) => {
-    // The menu HID is a separate short-lived channel. Close it before arming
-    // the full-night driver, then wait for that driver's READY marker before
-    // accepting the night transition. This puts InputReader attachment and
-    // the on-device classifier on the critical path before Night 6 starts.
+    // The gameplay driver is already attached and waiting for the office.
+    // Close the separate menu channel before accepting the night transition.
     await closeMenuHid();
     if (machineOnly) {
       if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
         throw new Error('machine campaign did not compose a machine executor');
-      await localExecutor.arm(machineRequestFor(target));
+      if (!localExecutor.armed) throw new Error('machine input was not armed before the night selection');
     }
     // A full-screen screencap over Wireless ADB can take longer than the
     // stock intro card remains visible.  The menu target (and, for Custom
@@ -252,7 +262,8 @@ export async function createCampaignPorts(options = {}) {
   };
 
   const terminal = async ({ target }) => {
-    const state = await lifecycle(bridge, serial);
+    const state = await waitFor(bridge, serial,
+      value => value === 'sixam' || value === 'gameover', 15000, 'night terminal');
     if (state === 'sixam') return { night: target.night, identity: target.mode,
       outcome: 'sixam', sixAm: true, positive: true, state };
     if (state === 'gameover') return { night: target.night, identity: target.mode,

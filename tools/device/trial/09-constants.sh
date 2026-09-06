@@ -50,6 +50,10 @@ FUSION_POLL_MS=33
 # next touch on the still-visible mask and the game drops it.
 MASK_ANIM_OFF_MS=250
 MASK_RAISE_GAP_MS=$((MASK_ANIM_OFF_MS + 17))
+# g907 counts five one-second ticks only while the mask is fully on. With
+# unknown tick phase, keep five whole seconds after the 12-frame raising
+# animation. Source: core/mechanics/config.js MASK_ANIM_ON, VENT_MASK_TICKS.
+MASK_RESPONSE_HOLD_MS=5200
 # src/config.js MONITOR_ANIM_DOWN = 22 frames. The office is not interactive
 # until the flip finishes, so a corrective lower has to be waited out.
 MONITOR_ANIM_DOWN_MS=367

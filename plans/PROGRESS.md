@@ -1,6 +1,196 @@
 # Plan progress
 
-**Updated:** 2026-09-05
+**Updated:** 2026-09-06
+
+2026-09-06 17 MS CONTACT QUALIFICATION — NOT PROMOTED. On the Moto g56
+(`ZF525F5BH5`, `2400x1080` landscape, build `com.scottgames.fnaf2:2.0.7+26`),
+the guarded HID probes were run with `CONTACT_MS=17` on 6th Night. The
+camera sweep landed all three `10 -> 04 -> 07 -> 11` selections in all three
+repeated sweeps (`camtrace.py`: `3/3`), but the independent light-effect gate
+accepted `0/3` sweeps (`sweepcheck.py`). The mask-raise repeat produced only
+`1/3` interpretable trials; two lacked a causal mask cycle, and the first
+single-trial recording visibly stayed masked after the second 17 ms contact.
+The retained 33 ms control recording visibly toggled the mask and produced the
+hall beam, separating the short-contact failure from a dead probe path. The
+Perfetto trace was retained, but host-side `inputtrace.py` could not parse it
+because the official `trace_processor` binary is not installed here.
+
+This is not a `qualification-v1` PASS: no profile promotion, `dryRunOnly`
+change, or positive qualification artifact is justified. The 17 ms contact
+remains appropriate for the measured Custom Night/title UI and camera-select
+observation, while gameplay remains bound to its separate qualified timing
+path. Full-night acceptance, ID-matched app dispatch/effect evidence, and the
+profile-bound live calibration gates remain open.
+
+2026-09-06 CUSTOM NIGHT UI CALIBRATION — the previously unseen title item was
+visually verified, the Custom Night screen was measured, and the phone was
+returned to the title with the Android back control. Phone: moto g56
+`ZF525F5BH5`, `2400x1080` landscape, build
+`com.scottgames.fnaf2:2.0.7+26`. No New Game, Ready, or gameplay/night input
+was sent.
+
+The three title frames `/tmp/opencode/title-custom-1.png`,
+`title-custom-2.png`, and `title-custom-3.png` show exactly `New Game`,
+`Continue` / `Night 5`, `6th Night`, and `Custom Night` in the left column;
+there is no other unlabeled item. The fourth row's independently measured
+bright band is `y=953..1000` (dense core `969..1000`, centroid `982`, fractions
+`0.0664/0.0752/0.1133`, and exactly `0.0000` below `y=1040`), so the measured
+title point is `[400,985]`. `title-observe.py --adb` returned
+`items=continue,customNight,newGame,sixthNight` before and after the session.
+The title model and guarded selector are updated in
+`tools/device/models/title-moto-g56-v207.json`, `tools/device/coords.sh`, and
+`tools/device/menu.sh`; `tools/device/test-menu.sh` passes.
+
+The dial labels were read exactly as `Freddy`, `Bonnie`, `Chica`, `Foxy`, `BB`,
+`Toy Freddy`, `Toy Bonnie`, `Toy Chica`, `Mangle`, and `Golden Freddy`, in the
+screen's top-five/bottom-five layout. Core mapping is explicit rather than
+positional: `AI_DIALS` order is `withfreddy, withbonnie, withchica, foxy,
+toyfreddy, toybonnie, toychica, mangle, bb, golden`.
+
+Measured from each control's own pixels in
+`/tmp/opencode/custom-night-dial-1.png`: top-row button rectangles are
+`y=315..404`, with decrement/increment x-ranges `132..242/357..467`,
+`582..692/807..917`, `1032..1142/1257..1367`, `1482..1592/1707..1817`, and
+`1932..2042/2157..2267`; their points are respectively
+`(187,360)/(412,360)`, `(637,360)/(862,360)`, `(1087,360)/(1312,360)`,
+`(1537,360)/(1762,360)`, and `(1987,360)/(2212,360)` for decrement/increment.
+Bottom-row rectangles are `y=698..786`, with the same five x pairs and points
+at `y=742`: `(187,742)/(412,742)`, `(637,742)/(862,742)`,
+`(1087,742)/(1312,742)`, `(1537,742)/(1762,742)`, and
+`(1987,742)/(2212,742)`. The bottom row's own labels bind those points to Toy
+Freddy, Toy Bonnie, Toy Chica, Mangle, and Golden Freddy; BB remains the top
+row's fifth column.
+
+The ten independently bounded readbacks are top row
+`withfreddy [145,195,132,55]`, `withbonnie [596,195,132,55]`,
+`withchica [1046,195,132,55]`, `foxy [1495,195,132,55]`, `bb [1948,195,132,55]`,
+and bottom row `toyfreddy [148,578,132,55]`, `toybonnie [598,578,132,55]`,
+`toychica [1048,578,132,55]`, `mangle [1498,578,132,55]`,
+`golden [1948,578,132,55]`, each with `maxValue=20`. The readback glyphs were
+seen at the measured per-dial bounds for both 0 and 20, and the retained
+Freddy sequence `/tmp/opencode/custom-night-freddy-value-{19..0}.png` covers
+the intermediate values.
+
+The measured preset controls are previous `(300,979)` in pixel rectangle
+`[245,934,110,89]` and next `(1425,979)` in `[1370,934,110,89]`. `Ready` is
+the Start control at `(2092,872)` from text bounds `[1934,846,315,53]`; `Back`
+was read at `(2126,980)` from `[2002,958,247,43]`. The opening state is the
+operator-identified `4/20` preset, displayed as `20/20/20/20`. The ten measured
+presets, in next-arrow order, are `20/20/20/20` (4/20), `New and Shiny`,
+`Double Trouble`, `Night of Misfits`, `Foxy Foxy`, `Ladies Night`,
+`Freddy's Circus`, `Cupcake Challenge`, `Fazbear Fever`, and `Golden Freddy`
+(operator's 10/20 wording). `next-1` through `next-10` and
+`custom-night-preset-previous-golden.png` retain the labels and vectors;
+previous from the opening state reaches Golden Freddy, and both arrow pairs
+wrap. `/tmp/opencode/custom-night-wrap-freddy-20-to-0.png` and
+`custom-night-wrap-freddy-0-to-20.png` show the endpoint behavior; the 17 ms
+endpoint checks are `custom-night-dial-17ms-freddy-20-to-0.png` and
+`custom-night-dial-17ms-freddy-0-to-20.png`.
+
+Written artifacts and code are `tools/device/models/custom-night-moto-g56-v207.json`
+and `tools/device/models/custom-night-calibration-v1.json`. The latter passes
+`validateCustomNightCalibration` against the target build and contains all ten
+dials, all ten readback boxes, menu `[400,985]`, Start, `holdMs=17`, and
+`dialWrap=cyclic`. `apps/device/src/custom-night.js` now validates the measured
+screen model, exposes bounded named-preset navigation with fresh readback after
+each arrow, and supports shortest-path cyclic per-dial customization. Generic
+UI/menu/HID defaults now use the measured one-frame `17 ms` contact in
+`tools/device/menu.sh`, `apps/device/src/modern-campaign-ports.js`,
+`packages/adapters/src/transports/hid.js`, and the Custom Night path. The
+already-qualified gameplay schedule constants remain `33 ms`: the separate
+`apps/device/profiles/hid-mediaprojection-17ms.json` remains a
+`dryRunOnly`/`hid-17ms-candidate-unqualified-v1` candidate. A 17 ms Custom
+Night contact is not gameplay qualification.
+
+Validation: `bash tools/device/test-menu.sh`, focused campaign-infrastructure
+and adapter tests, model/artifact validation, and full `npm test` all pass.
+The exact requested dry command without `--profile` exits 2 because the CLI
+defaults to fixture while this bundle is bound to `hid-mediaprojection`. With
+the explicit profile and calibration, the Night 7 command exits 2 with the
+expected `one compiled plan is required per campaign night`; the retained
+bundle contains only Night 6. The corresponding explicit-profile Night 6 dry
+run exits 0. Offline gate projection is `HOLD`: custom-menu-calibration PASS,
+terminal-proof PASS, campaign-ports PASS, device-local-scheduler PASS;
+Night-7-artifact HOLD, qualified-live-profile HOLD (`dryRunOnly`), and device
+readiness was intentionally not queried. Gameplay 17 ms qualification remains
+open because the standing safety rule forbids a live/night-driver run in this
+session and requires an operator-watched `--live --confirm-live` qualification
+session across the gameplay controls. The final back-out frame is
+`/tmp/opencode/custom-night-after-back.png`; no save-destructive action was
+taken.
+
+2026-09-05 NIGHT 6 ON-DEVICE — THE RUN ENDED IN A SAVE WIPE, AND THE FIRST
+READ OF ITS LOG WAS WRONG — picked up from the `~/.codex` session that hit
+its usage limit one second after launching its second retry (the run finished;
+its log was read here). Phone: moto g56 `ZF525F5BH5`, live `--machine-only`
+campaign, bundle `n6-minus7-exact-3000-50-66-33-20260904`.
+
+The composition and driver changes this pass stands: `menu()` arms the
+gameplay HID while the title is still visible (InputReader attach was
+consuming the night opening; the menu transport now carries a distinct device
+name), `terminal()` bounded-waits for `sixam`/`gameover`, the executor
+accepts `sixam` and streams driver output, the per-read telemetry reuses the
+parallel atomic `FRAME` (no second GET, no sed pipelines), and the attack
+branch holds its mask response a sourced 5200 ms
+(`MASK_ANIM_ON` + five `VENT_MASK_TICKS`, g907) floored on the frame's own
+mask-request timestamp — campaign 1's log showed releases 0.8 s after
+mask-on. Validation was real: focused runner/interpreter/wall-time checks
+and full `npm test` pass on this tree.
+
+WHAT ACTUALLY HAPPENED in the retry (campaign 2,
+`artifacts/night6-20260905-response-floor.log`), corrected by the operator's
+direct observation after the log was first misread here:
+
+1. Run A died at ~66 s (gameover): four monitor desyncs at almost exactly
+   the `drop everything` 10 s cadence, a fail-closed unknown mask hold at
+   61.2 s, then the campaign's designed gameover retry started run B.
+2. Run B's GAME ALSO ENDED QUICKLY. The driver never noticed: for minutes
+   its left-view reads classified dark post-night frames as `empty` and
+   bright ones as desyncs, and its blind presses on the post-night screens
+   STARTED A NEW GAME AND WIPED THE SAVE — the phone ended RESET TO NIGHT 1.
+   This is the save-wipe hazard the driver's own guard comments warn about,
+   realized across a gameover boundary nobody observed.
+3. The "survived 338 s with 13 recovered desyncs" reading recorded briefly
+   in this file was FALSE and is withdrawn: the driver's clock is not game
+   time. Only three frames (8 s, 50 s, 144–154 s) carry the lit-office
+   signature (`luma=102 score=0`); from 160 s on, 178 s of `luma=0` `empty`
+   reads without one lit office. No frames were retained (KEEP_DIR unset),
+   so the operator's account is the only evidence of what the screen showed.
+
+A `DESYNC_STREAK_MAX` streak cap was implemented on the false read and
+REVERTED: the lifetime cap of 12 is what finally stopped the blind cycling,
+and a streak reset by `empty` classifications would have cycled forever
+against a dead game. The tree is back to the codex-validated state (focused
+checks re-run green after the revert).
+
+OPEN, in order: (1) the driver has no night-identity gate — the per-cycle
+`FRAME` it already reads carries `screen=`, and a mid-night `FNAF2_MENU` (or
+sustained non-night with zero lit-office reads) must release input and exit
+like the halt path, BEFORE its presses can hit a menu; (2) the executor's
+1 s lifecycle observer never reported the gameover — the helper likely has
+no gameover screen class (it reads UNKNOWN); (3) WHY run B died quickly is
+unknown — the next campaign must set KEEP_DIR so every read's frame and
+`.frame` observation are retained; (4) THE SAVE IS WIPED TO NIGHT 1 — verify
+whether `6th Night` is still selectable on reconnect, and re-unlock or
+restore before any night 6 campaign; (5) the phone dropped off USB ~22:10
+and was still detached at session end. Nothing is committed (this entry, the
+codex calibration-state fallback, and the driver/campaign changes are all in
+the working tree). Calibration remains UNVERIFIED; no no-input-loss and no
+Night 6 clear is claimed.
+
+2026-09-05 RESUMED FROM THE PRIOR `~/.claude` SESSION — no second capture was
+needed or used. The existing atomic run remains authoritative:
+`docs/evidence/live-observation-20260905-moto-g56.json` plus the retained
+blackout grids in `docs/evidence/screen-grids-20260905-moto-g56-blackout.json`.
+The host `calibration-state-v1` gate now has the evidence-backed fallback the
+next step called for: when the helper reports `screen=UNKNOWN`, a positive,
+guard-qualified bound mask rule may establish NIGHT, and the bound monitor
+rule then reads the same atomic `FRAME` grid after ignoring the helper's
+screen-gated `monitorUp=UNKNOWN`. Explicit `FNAF2_MENU` and `CUE_HELPER`
+identities still refuse. This is only a code/test improvement: the current
+mask rule remains refused for `blackout-unproven` and zero margin, the monitor
+rule still needs live refitting, and no live calibration or Night 7 claim is
+made. Validation: `npm test` passed end to end.
 
 2026-09-05 FIRST LIVE NIGHT THROUGH THE FIXED OBSERVATION PATH — and it found
 three blockers no fixture could. Operator played a night on the attached moto

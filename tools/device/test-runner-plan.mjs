@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { MASK_ANIM_ON, VENT_MASK_TICKS, FPS } from '@fnaf2-1020/core/mechanics';
 import { build, devicePlan, replay, DEVICE_SPACING_MS, MODEL_SLOT_MS,
          MIN_CONTACT_MS, MASK_RAISE_GAP_MS } from './recipe.mjs';
 
@@ -158,8 +159,11 @@ check(/run_macro attack "\$base" 2 999/.test(block),
 check(/run_macro clear "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(block),
   'the clear branch macro has no floor: a stale resume offset becomes ' +
   'compression at the seam instead of rm_shift');
-check(/run_macro attack "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(block),
-  'the attack branch macro has no floor past classification');
+check(/attack_mask_floor[\s\S]*run_macro attack "\$base" 2 999 "\$ATTACK_MASK_FLOOR_MS"/.test(block),
+  'the attack branch must preserve the hold after the actual mask request');
+check(Number(driver.match(/^MASK_RESPONSE_HOLD_MS=(\d+)$/m)?.[1]) ===
+    Math.round(1000 * (MASK_ANIM_ON / FPS + VENT_MASK_TICKS)),
+  'the response floor must cover the sourced raise animation and five one-second ticks');
 
 // A dark vent lamp is not an observation, so it must not be a verdict.
 //
@@ -172,7 +176,7 @@ check(/run_macro attack "\$base" 2 999 \$\(\(actual \+ FUSION_POLL_MS\)\)/.test(
 // because g96/g301/g303 stop the vent lights answering once he is inside too.
 // So the read fails closed like any other unreadable frame and the *streak*
 // decides: a dropped press recovers on the next cycle, marker 123 never does.
-const noLightCase = block.match(/^\s*nolight\\ \*\)([\s\S]*?)^\s*;;/m);
+const noLightCase = block.match(/^\s*nolight\\ \*\|inside\\ \*\)([\s\S]*?)^\s*;;/m);
 check(noLightCase, 'the driver has no branch for a `nolight` read; an unlit ' +
   'opening would fall through to the catch-all with no streak of its own');
 check(/branch=attack/.test(noLightCase[1]),

@@ -37,6 +37,9 @@ MENU_STALE_MS="${MENU_STALE_MS:-2000}"
 # not a fallback.
 MENU_ALLOW_SAVE_RESET="${MENU_ALLOW_SAVE_RESET:-0}"
 MENU_PACKAGE="${MENU_PACKAGE:-com.scottgames.fnaf2}"
+# One-frame UI contact measured on the Custom Night screen at 60 fps.
+# Gameplay timing remains owned by the separately qualified night driver.
+MENU_CONTACT_MS=17
 # The canonical target build (README: v2.0.7, Fusion build 296). The version is
 # checked, but it cannot identify the game on its own -- see the comment on
 # menu_require_target_build.
@@ -64,11 +67,10 @@ menu_coord() {
     newGame)     printf '%s' "$TAP_NEWGAME" ;;
     continue)    printf '%s' "$TAP_CONTINUE" ;;
     sixthNight)  printf '%s' "$TAP_6TH" ;;
-    # Deliberately unset. The Custom Night item has never been on screen on the
-    # calibrated device, so no coordinate for it has been measured, and a
-    # plausible one derived from the spacing of the others would be a guess
-    # wearing the same clothes as a measurement.
-    customNight) echo 'menu: no measured coordinate for the Custom Night item' >&2; return 3 ;;
+    # Measured 2026-09-06 after the operator beat 6th Night and the item first
+    # appeared: see models/title-moto-g56-v207.json customNight_note. The row
+    # was band-scanned independently; this is not a spacing-derived point.
+    customNight) printf '%s' "$TAP_CUSTOM" ;;
     *)           echo "menu: not a MenuTarget: $1" >&2; return 3 ;;
   esac
 }
@@ -210,7 +212,8 @@ HINT
     return 3
   }
 
-  # A 120 ms contact. Fusion polls touch per frame and drops anything shorter.
-  adb shell input swipe $xy $xy 120
+  # A one-frame (17 ms) contact. Fusion polls touch per frame; this is the
+  # shortest contact measured to register on the calibrated Custom Night UI.
+  adb shell input swipe $xy $xy "$MENU_CONTACT_MS"
   echo "menu: pressed $target at $xy (observed ${age} ms earlier: $MENU_ITEMS)"
 }

@@ -202,6 +202,38 @@ def start_probe() -> None:
     print("PROBE requested (debug sensor-only; production gate is unchanged)")
 
 
+def overlay_mode_button_label(mode: str) -> str:
+    """Return the exact named UI control for one persisted overlay mode."""
+    if mode == "debug":
+        return "Overlay mode: SENSOR / DEBUG"
+    if mode == "run":
+        return "Overlay mode: DECISION / RUN"
+    raise SetupError(f"unsupported overlay mode: {mode}")
+
+
+def ensure_overlay_mode(mode: str | None) -> None:
+    """Converge the helper's persisted overlay mode through its named UI."""
+    if mode is None:
+        return
+    desired = overlay_mode_button_label(mode)
+    other = overlay_mode_button_label("run" if mode == "debug" else "debug")
+    start(f"{HELPER_PACKAGE}/.MainActivity")
+    if not tap_named("CONFIG", "helper"):
+        raise SetupError("helper CONFIG tab was not found")
+    if has_named(desired, "helper"):
+        print(f"OVERLAY_MODE already={mode}")
+        return
+    if not tap_named(other, "helper"):
+        raise SetupError(f"overlay mode control was not found; wanted {desired!r}")
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        if has_named(desired, "helper"):
+            print(f"OVERLAY_MODE set={mode}")
+            return
+        time.sleep(0.25)
+    raise SetupError(f"overlay mode did not become {mode}")
+
+
 def query_snapshot() -> tuple[int, str]:
     command = [str(ROOT / "tools/device/query-cue-helper.sh"), "loopback"]
     result = subprocess.run(
@@ -260,6 +292,8 @@ def main() -> int:
     )
     parser.add_argument("--install", action="store_true", help="install the checked-in APK first")
     parser.add_argument("--probe", action="store_true", help="start the debug-only sensor probe")
+    parser.add_argument("--overlay-mode", choices=("debug", "run"), default=None,
+                        help="set the persisted overlay mode (default: leave unchanged)")
     parser.add_argument("--stop", action="store_true", help="stop helper capture and leave target unchanged")
     parser.add_argument("--screen", choices=("menu", "night"), default="menu",
                         help="screen identity to wait for after setup (default: menu)")
@@ -267,8 +301,10 @@ def main() -> int:
     args = parser.parse_args()
     if args.wait <= 0 or args.wait > 300:
         parser.error("--wait must be between 0 and 300 seconds")
-    if args.stop and (args.install or args.probe):
-        parser.error("--stop cannot be combined with --install or --probe")
+    if args.stop and (args.install or args.probe or args.overlay_mode is not None):
+        parser.error("--stop cannot be combined with --install, --probe, or --overlay-mode")
+    if args.probe and args.overlay_mode == "run":
+        parser.error("--probe requires --overlay-mode debug or no explicit overlay mode")
 
     try:
         serial = os.environ.get("ANDROID_SERIAL", "")
@@ -301,6 +337,7 @@ def main() -> int:
                   f"permission={OVERLAY_SUPPRESSION_PERMISSION}")
 
             start_capture()
+            ensure_overlay_mode(args.overlay_mode)
             if args.probe:
                 start_probe()
             start(target_launcher)

@@ -109,14 +109,14 @@ export class AdbHidProcess {
     });
   }
 
-  async ready() {
+  async ready(deviceName = READY_DEVICE) {
     this.ensureStarted();
     const deadline = Date.now() + this.readyTimeoutMs;
     while (Date.now() < deadline) {
       if (this.failed) throw this.failed;
       try {
         const output = runSync(this.adb, ['-s', this.serial, 'shell', 'dumpsys', 'input'], { timeout: 2000 });
-        if (output.includes(READY_DEVICE)) return;
+        if (output.includes(deviceName)) return;
       } catch { /* a transient dumpsys failure stays inside the bounded wait */ }
       await sleep(100);
     }

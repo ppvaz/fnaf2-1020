@@ -1,0 +1,73 @@
+{
+  "schema": "custom-night-calibration-v1",
+  "version": 1,
+  "build": "com.scottgames.fnaf2:2.0.7+26",
+  "menu": {
+    "target": "customNight",
+    "point": { "x": 400, "y": 985 },
+    "holdMs": 17
+  },
+  "start": {
+    "point": { "x": 2092, "y": 872 },
+    "holdMs": 17
+  },
+  "dials": {
+    "withfreddy": { "increment": { "x": 412, "y": 360 }, "decrement": { "x": 187, "y": 360 }, "holdMs": 17 },
+    "withbonnie": { "increment": { "x": 862, "y": 360 }, "decrement": { "x": 637, "y": 360 }, "holdMs": 17 },
+    "withchica": { "increment": { "x": 1312, "y": 360 }, "decrement": { "x": 1087, "y": 360 }, "holdMs": 17 },
+    "foxy": { "increment": { "x": 1762, "y": 360 }, "decrement": { "x": 1537, "y": 360 }, "holdMs": 17 },
+    "toyfreddy": { "increment": { "x": 412, "y": 742 }, "decrement": { "x": 187, "y": 742 }, "holdMs": 17 },
+    "toybonnie": { "increment": { "x": 862, "y": 742 }, "decrement": { "x": 637, "y": 742 }, "holdMs": 17 },
+    "toychica": { "increment": { "x": 1312, "y": 742 }, "decrement": { "x": 1087, "y": 742 }, "holdMs": 17 },
+    "mangle": { "increment": { "x": 1762, "y": 742 }, "decrement": { "x": 1537, "y": 742 }, "holdMs": 17 },
+    "bb": { "increment": { "x": 2212, "y": 360 }, "decrement": { "x": 1987, "y": 360 }, "holdMs": 17 },
+    "golden": { "increment": { "x": 2212, "y": 742 }, "decrement": { "x": 1987, "y": 742 }, "holdMs": 17 }
+  },
+  "readback": {
+    "withfreddy": { "box": { "x": 145, "y": 195, "width": 132, "height": 55 }, "maxValue": 20 },
+    "withbonnie": { "box": { "x": 596, "y": 195, "width": 132, "height": 55 }, "maxValue": 20 },
+    "withchica": { "box": { "x": 1046, "y": 195, "width": 132, "height": 55 }, "maxValue": 20 },
+    "foxy": { "box": { "x": 1495, "y": 195, "width": 132, "height": 55 }, "maxValue": 20 },
+    "toyfreddy": { "box": { "x": 148, "y": 578, "width": 132, "height": 55 }, "maxValue": 20 },
+    "toybonnie": { "box": { "x": 598, "y": 578, "width": 132, "height": 55 }, "maxValue": 20 },
+    "toychica": { "box": { "x": 1048, "y": 578, "width": 132, "height": 55 }, "maxValue": 20 },
+    "mangle": { "box": { "x": 1498, "y": 578, "width": 132, "height": 55 }, "maxValue": 20 },
+    "bb": { "box": { "x": 1948, "y": 195, "width": 132, "height": 55 }, "maxValue": 20 },
+    "golden": { "box": { "x": 1948, "y": 578, "width": 132, "height": 55 }, "maxValue": 20 }
+  },
+  "titleModel": "tools/device/models/title-moto-g56-v207.json",
+  "configModel": "tools/device/models/custom-night-moto-g56-v207.json",
+  "dialWrap": "cyclic",
+  "provenance": {
+    "measuredAt": "2026-09-06",
+    "device": "moto g56 / ZF525F5BH5",
+    "screen": "2400x1080 landscape",
+    "titleEvidence": [
+      "/tmp/opencode/title-custom-1.png",
+      "/tmp/opencode/title-custom-2.png",
+      "/tmp/opencode/title-custom-3.png"
+    ],
+    "dialEvidence": [
+      "/tmp/opencode/custom-night-dial-1.png",
+      "/tmp/opencode/custom-night-dial-2.png",
+      "/tmp/opencode/custom-night-preset-next-1.png",
+      "/tmp/opencode/custom-night-preset-next-2.png",
+      "/tmp/opencode/custom-night-preset-next-3.png",
+      "/tmp/opencode/custom-night-preset-next-4.png",
+      "/tmp/opencode/custom-night-preset-next-5.png",
+      "/tmp/opencode/custom-night-preset-next-6.png",
+      "/tmp/opencode/custom-night-preset-next-7.png",
+      "/tmp/opencode/custom-night-preset-next-8.png",
+      "/tmp/opencode/custom-night-preset-next-9.png",
+      "/tmp/opencode/custom-night-preset-next-10.png",
+      "/tmp/opencode/custom-night-preset-previous-golden.png",
+      "/tmp/opencode/custom-night-wrap-freddy-20-to-0.png",
+      "/tmp/opencode/custom-night-wrap-freddy-0-to-20.png",
+      "/tmp/opencode/custom-night-dial-17ms-freddy-20-to-0.png",
+      "/tmp/opencode/custom-night-dial-17ms-freddy-0-to-20.png"
+    ],
+    "labels": "All ten labels were visually read as Freddy, Bonnie, Chica, Foxy, BB, Toy Freddy, Toy Bonnie, Toy Chica, Mangle, Golden Freddy; no extra dial row was present.",
+    "presetCycle": "Ten presets were captured with next-arrow traversal; previous from the opening 4/20 state reached Golden Freddy, and the arrows wrapped at both ends.",
+    "claimLevel": "DEVICE_MEASURED"
+  }
+}

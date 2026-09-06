@@ -159,7 +159,11 @@ function measureMaskOn(snapshot, rule, cells) {
 /**
  * Derive the calibrationState measurement from one cue-helper observation.
  * OBSERVED requires BOTH the bound monitor rule and mask rule to resolve
- * the same frame positively; any UNKNOWN refuses the state.
+ * the same frame positively; any UNKNOWN refuses the state. A positive,
+ * guard-qualified mask rule may also establish NIGHT when the helper reports
+ * UNKNOWN: the opaque mask is exactly why the helper cannot see its normal
+ * flashlight/mask-bar night signature. Explicit menu or helper identities
+ * never get this fallback.
  * @param {any} snapshot parsed `OK k=v` fields from GET
  * @param {any} rule parsed calibration-state-v1 artifact
  * @param {{maxAgeUs?: number, cells?: any}} options */
@@ -170,12 +174,30 @@ export function measureCalibrationState(snapshot, rule, { maxAgeUs = 500000, cel
   if (!Number.isFinite(ageUs) || ageUs < 0) return unknown('frame-pending');
   if (ageUs > maxAgeUs) return unknown('frame-stale');
   if (!rule) return unknown('calibration-refused');
-  if (fields.screen !== 'FNAF2_NIGHT') return unknown('screen-identity');
+  // Only the classifier's UNKNOWN branch can use a measured mask as a
+  // secondary identity. Known menu/helper frames must refuse before any
+  // sub-rule is allowed to inspect their pixels.
+  if (fields.screen !== 'FNAF2_NIGHT' && fields.screen !== 'UNKNOWN')
+    return unknown('screen-identity');
   const source = cells ?? fields.cells;
-  const monitor = measureMonitorUp(fields, parseMonitorRule(rule.monitor.rule), { maxAgeUs, cells: source });
-  if (monitor.state !== 'OBSERVED') return unknown(monitor.reason ?? 'monitor-state-unavailable');
-  const mask = measureMaskOn({ ...fields, cells: source }, parseMaskRule(rule.mask.rule), source);
+  const monitorRule = parseMonitorRule(rule.monitor.rule);
+  const maskRule = parseMaskRule(rule.mask.rule);
+  const mask = measureMaskOn({ ...fields, cells: source }, maskRule, source);
   if (mask.state !== 'OBSERVED') return unknown(mask.reason);
+  const screenIsNight = fields.screen === 'FNAF2_NIGHT';
+  const maskEstablishesNight = fields.screen === 'UNKNOWN' && mask.value === true;
+  if (!screenIsNight && !maskEstablishesNight) return unknown('screen-identity');
+
+  // CaptureService's monitor detector has the same screen gate as the old
+  // host path, so masked frames arrive with monitorUp=UNKNOWN. Once the
+  // bound mask rule has independently resolved ON, use the bound monitor
+  // anchors over this same atomic grid; do not let that helper-side UNKNOWN
+  // erase the combined rule's evidence. Direct measureMonitorUp() remains
+  // explicit-field-first for all other callers.
+  const monitorFields = maskEstablishesNight ? { ...fields,
+    screen: 'FNAF2_NIGHT', monitorUp: undefined, monitorReason: undefined } : fields;
+  const monitor = measureMonitorUp(monitorFields, monitorRule, { maxAgeUs, cells: source });
+  if (monitor.state !== 'OBSERVED') return unknown(monitor.reason ?? 'monitor-state-unavailable');
   return { signal: 'calibrationState', state: 'OBSERVED',
     value: { screen: 'NIGHT', monitor: monitor.value ? 'UP' : 'DOWN', mask: mask.value ? 'ON' : 'OFF' },
     confidence: 1 };

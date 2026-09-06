@@ -52,8 +52,10 @@ export function report(records) {
 export class HidWireTransport {
   /** @param {any} options */
   constructor(options = {}) {
+    // Generic contact default for discrete UI controls. Device-local gameplay
+    // schedules carry their own explicitly qualified duration.
     const { write, ready = async () => {}, sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
-      registerDelayMs = 0, contactMs = 33, deviceId = 92, name = 'FNAF Timed Touch',
+      registerDelayMs = 0, contactMs = 17, deviceId = 92, name = 'FNAF Timed Touch',
       vid = 6353, pid = 61959, bus = 'usb', descriptor = HID_DESCRIPTOR } = options;
     if (typeof write !== 'function') throw new TypeError('HID transport needs an injected line writer');
     if (typeof ready !== 'function' || typeof sleep !== 'function') throw new TypeError('HID transport ready/sleep ports are required');

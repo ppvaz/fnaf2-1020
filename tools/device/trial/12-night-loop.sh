@@ -113,6 +113,21 @@ run_cycle() {
   done 9< "$PLAN_FILE"
 }
 
+# The planned release may already be overdue after capture or prior-cycle
+# delays. A floor at "now" preserves the macro's internal spacing but erases
+# the response hold: the 20260905 Night 6 log shows releases only 0.8 s after
+# mask-on. Keep the sourced response duration relative to this frame's request.
+attack_mask_floor() {
+  [ "${LAST_MASK_REQUEST_MS:--1}" -ge 0 ] || {
+    echo 'attack response has no current mask request timestamp' >&2
+    exit 47
+  }
+  ATTACK_MASK_FLOOR_MS=$((LAST_MASK_REQUEST_MS + MASK_RESPONSE_HOLD_MS))
+  now_rel
+  [ "$ATTACK_MASK_FLOOR_MS" -ge $((NOW_REL + FUSION_POLL_MS)) ] ||
+    ATTACK_MASK_FLOOR_MS=$((NOW_REL + FUSION_POLL_MS))
+}
+
 
 if [ "$NIGHT6_LEFT" -eq 2 ]; then
   [ -s "$PLAN_FILE" ] || { echo 'Minus Toys needs its device plan' >&2; exit 47; }
@@ -368,7 +383,9 @@ elif [ "$NIGHT6_LEFT" -eq 1 ]; then
     case "$classification" in
       empty\ *) branch=clear; blind_streak=0; nolight_streak=0 ;;
       bb\ *)    branch=attack; blind_streak=0; nolight_streak=0 ;;
-      nolight\ *)
+      nolight\ *|inside\ *)
+        # Older retained SCM1 artifacts still emit the historical `inside`
+        # label for this same unlit class; it is not positive BB identity.
         # The lamp is dark, so this frame is not an observation of the opening.
         #
         # It was called `inside` and it ended the run (exit 49). It is not
@@ -469,9 +486,10 @@ elif [ "$NIGHT6_LEFT" -eq 1 ]; then
       # would turn the mask off and destroy the response.
       printf '%6d ms  left-view BB; keeping prophylactic mask through five ticks\n' "$actual"
       hid_mark "$actual"
-      # Floored past classification for the same reason the clear branch is: a
-      # stale resume offset must become rm_shift, not compression.
-      run_macro attack "$base" 2 999 $((actual + FUSION_POLL_MS))
+      attack_mask_floor
+      printf '%6d ms  mask response held until at least %d ms (request %d ms)\n' \
+        "$NOW_REL" "$ATTACK_MASK_FLOOR_MS" "$LAST_MASK_REQUEST_MS"
+      run_macro attack "$base" 2 999 "$ATTACK_MASK_FLOOR_MS"
       base=$((base + 10000))
     fi
     cycle=$((cycle + 1))

@@ -72,6 +72,12 @@ ENTRIES = (
     ("foxy_hall_mean_luma", "ROI", 1650, 300, 450, 400, "MEAN_LUMA", 8, 0),
     ("foxy_hall_mean_redness", "ROI", 1650, 300, 450, 400, "MEAN_REDNESS", 8, 0),
     ("foxy_hall_red_cells", "ROI", 1650, 300, 450, 400, "RED_CELLS", 8, 15),
+    # Paired bottom-control ROIs. These are collection features for the
+    # mask/monitor state rule; their combination, not either raw value alone,
+    # distinguishes mask-on from the ordinary office. Keep the sensor in the
+    # inner chevrons so the overlay does not span the whole lower bars.
+    ("mask_button_mean_luma", "ROI", 260, 1004, 720, 36, "MEAN_LUMA", 16, 0),
+    ("monitor_button_mean_luma", "ROI", 1420, 1004, 720, 36, "MEAN_LUMA", 16, 0),
 )
 CANONICAL_SPEC = SPEC_VERSION + "\n" + "".join(
     "%s|%s|%d|%d|%d|%d|%s|%d|%d\n" % entry for entry in ENTRIES

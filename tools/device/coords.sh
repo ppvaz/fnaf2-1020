@@ -34,6 +34,10 @@
 TAP_CONTINUE="400 730"     # title: Continue
 TAP_NEWGAME="400 640"
 TAP_6TH="400 880"          # title: 6th Night
+# Measured 2026-09-06 (models/title-moto-g56-v207.json customNight_note): the
+# row the save gained when the operator beat 6th Night. Band-scanned, not
+# derived from the other rows' spacing.
+TAP_CUSTOM="400 985"       # title: Custom Night
 TAP_MUTE="545 78"          # in night: MUTE CALL
 TAP_MONITOR="1780 1015"    # monitor toggle bar (right, white)
 TAP_MASK="600 1015"        # mask toggle bar (left, pink)
