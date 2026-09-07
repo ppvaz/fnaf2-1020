@@ -24,9 +24,10 @@ function statusOf(checks) {
  * The result is deliberately useful as the output of one guided preflight.
  */
 /** @param {{spec?: any, device?: any, profile?: any, calibration?: any,
- * bundle?: any, qualification?: any, machineOnly?: boolean, executor?: any}} options */
+ * bundle?: any, qualification?: any, allowSaveReset?: boolean,
+ * machineOnly?: boolean, executor?: any}} options */
 export function evaluateCampaignPreflight({ spec, device, profile, calibration,
-  bundle, qualification, machineOnly = false, executor } = {}) {
+  bundle, qualification, allowSaveReset = false, machineOnly = false, executor } = {}) {
   validateCampaignSpec(spec);
   const checks = [];
   const deviceChecks = Array.isArray(device?.checks) ? device.checks : [];
@@ -79,6 +80,11 @@ export function evaluateCampaignPreflight({ spec, device, profile, calibration,
         checks.push(check('qualification-binding', bound ? 'PASS' : 'FAIL', bound ? 'bundle winner/model hashes match' : 'qualification is not bound to bundle winner/model'));
       }
     } catch (error) { checks.push(check('qualified-live-profile', 'FAIL', error.message)); }
+  }
+  if (spec.nights[0]?.menuTarget === 'newGame') {
+    checks.push(check('save-reset-capability', allowSaveReset ? 'PASS' : 'HOLD', allowSaveReset
+      ? 'explicit fresh-story start authorization present'
+      : 'fresh-story start requires --allow-save-reset'));
   }
   checks.push(check('device-local-scheduler', executor?.deviceLocal === true ? 'PASS' : 'HOLD',
     executor?.deviceLocal === true ? 'full-night timing is device-local' : 'host round-trip scheduler is not accepted'));

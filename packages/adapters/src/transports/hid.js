@@ -17,6 +17,14 @@ export const HID_DESCRIPTOR = Object.freeze([
   192,
 ]);
 
+// The multitouch descriptor declares one one-byte feature report (report ID
+// 1). Recent Android hid implementations query it while attaching the UHID
+// device; omitting the response leaves the virtual device out of InputReader,
+// even though the hid process itself stays alive.
+export const HID_FEATURE_REPORTS = Object.freeze([
+  Object.freeze({ id: 1, data: Object.freeze([0]) }),
+]);
+
 const finitePoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
 const byte = value => value & 0xff;
 const high = value => (value >> 8) & 0xff;
@@ -56,21 +64,25 @@ export class HidWireTransport {
     // schedules carry their own explicitly qualified duration.
     const { write, ready = async () => {}, sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
       registerDelayMs = 0, contactMs = 17, deviceId = 92, name = 'FNAF Timed Touch',
-      vid = 6353, pid = 61959, bus = 'usb', descriptor = HID_DESCRIPTOR } = options;
+      vid = 6353, pid = 61959, bus = 'usb', descriptor = HID_DESCRIPTOR,
+      featureReports = HID_FEATURE_REPORTS } = options;
     if (typeof write !== 'function') throw new TypeError('HID transport needs an injected line writer');
     if (typeof ready !== 'function' || typeof sleep !== 'function') throw new TypeError('HID transport ready/sleep ports are required');
     if (!Number.isInteger(contactMs) || contactMs < 1 || contactMs > 1000)
       throw new TypeError('HID contact timing must be 1..1000 ms');
     this.write = write; this.ready = ready; this.sleep = sleep; this.registerDelayMs = registerDelayMs;
     this.contactMs = contactMs; this.deviceId = deviceId; this.name = name; this.vid = vid; this.pid = pid;
-    this.bus = bus; this.descriptor = [...descriptor]; this.started = false; this.aborted = false;
+    this.bus = bus; this.descriptor = [...descriptor];
+    this.featureReports = featureReports.map(report => ({ id: report.id, data: [...report.data] }));
+    this.started = false; this.aborted = false;
   }
 
   async start() {
     if (this.started) return;
     this.aborted = false;
     await this.write(JSON.stringify({ id: this.deviceId, command: 'register', name: this.name,
-      vid: this.vid, pid: this.pid, bus: this.bus, descriptor: this.descriptor }));
+      vid: this.vid, pid: this.pid, bus: this.bus, descriptor: this.descriptor,
+      feature_reports: this.featureReports }));
     if (this.registerDelayMs > 0) await this.sleep(this.registerDelayMs);
     await this.ready();
     this.started = true;

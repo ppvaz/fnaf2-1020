@@ -419,6 +419,21 @@ export function emitPlan(night, knobs) {
     // The singular CAM 11 classifier proves only that the monitor returned to
     // the viewed feed. The split verifier needs the marker as well.
     `#arm-verify-cameras ${cameraPairHeader(DOUBLE_GLITCH_CAMERA_PAIRS.minusToys)}`);
+  else lines.push('#loop-start 0', '#stop-at 420000', '#observe-until 420000',
+    '#arm-verify 1',
+    `#arm-verify-cameras ${cameraPairHeader(DOUBLE_GLITCH_CAMERA_PAIRS.minusToys)}`);
+  // Keep the first wind behind the visual arm gate. The native watch reaches
+  // the stable double-highlight pair about 350 ms after the second raise on
+  // the g56; the executor's readiness delay is added before these plan-relative
+  // times, so the cutoff is deliberately expressed in the opening timeline
+  // and leaves 50 ms before the first wind contact.
+  const openingRaise = kk.minimal
+    ? kk.minArmAtMs + kk.openArmMs + kk.armingGapMs + kk.openRaiseGapMs
+    : kk.openArmMs + kk.armingGapMs + kk.openRaiseGapMs;
+  const firstWind = kk.minimal
+    ? kk.minLoopStartMs + kk.minWindAtMs
+    : openingRaise + kk.openWindLeadMs;
+  lines.push('#arm-verify-viewing cam:11', `#arm-verify-until ${firstWind - 50}`);
   lines.push('#cycle opening');
   for (const row of opening) lines.push(row.join(' '));
   lines.push('#cycle toys');

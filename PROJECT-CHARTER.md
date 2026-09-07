@@ -45,3 +45,14 @@ result at a lower level.
 Every proposed effort must name: the layer it strengthens, the decision or user
 outcome it unlocks, its falsifiable hypothesis, its retained evidence artifact,
 and its promotion or stopping gate.
+
+## Consequence rule (2026-09-06)
+
+A session or commit is consequential only if it advances a Plan 12 rung above
+FIXTURE level or ships trainer functionality. Documentation, plans, gates,
+benchmarks, and refactors are bookkeeping: permitted only in direct attendance
+on consequential work. The consequence lock (the `commit-msg` hook plus the
+session protocol in `AGENTS.md`/`CLAUDE.md`) enforces this mechanically; its
+`PEDRO-OK` override key is reserved to Pedro. When a route is refuted, the next
+work item is the next route's physical test or a human decision — not further
+recording. Standing objective: 6 AM successes on-device, Night 6 first.

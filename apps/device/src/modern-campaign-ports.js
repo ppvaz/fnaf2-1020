@@ -8,10 +8,12 @@
  * CONTRACT:device-campaign-v1 CONTRACT:device-executor-v1.
  */
 import { execFile as execFileCallback, spawn } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readFile, mkdir, writeFile, appendFile } from 'node:fs/promises';
+import { appendFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { HidWireTransport } from '@fnaf2-1020/adapters';
+import { CueHelperControlTransport, HidWireTransport, parseCameraRule } from '@fnaf2-1020/adapters';
 import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
@@ -21,6 +23,7 @@ import { AdbCueHelperPort, AdbHidProcess } from './physical-ports.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 
 const TITLE_MODEL = new URL('../../../tools/device/models/title-moto-g56-v207.json', import.meta.url);
+const CAMERA_RULE = new URL('../../../models/camera-rule-moto-g56-v207.json', import.meta.url);
 const LIFECYCLE_OBSERVER = new URL('../../../tools/device/lifecycle-observe.py', import.meta.url);
 const TITLE_OBSERVER = new URL('../../../tools/device/title-observe.py', import.meta.url);
 const DRIVER_ASSEMBLER = new URL('../../../tools/device/trial/assemble.sh', import.meta.url);
@@ -81,7 +84,9 @@ function lastLine(output) {
 async function captureAndObserve(bridge, serial, script, args = []) {
   const png = await bridge.capturePng(serial);
   if (!png) throw new Error('observer capture failed');
-  return observePython(script, png, args);
+  const result = await observePython(script, png, args);
+  await bridge.recordObservation?.({ script: fileURLToPath(script).split('/').at(-1), png, ...result });
+  return result;
 }
 
 async function lifecycle(bridge, serial) {
@@ -125,6 +130,33 @@ function modelPoint(value, label) {
   return point({ x: value[0], y: value[1] }, label);
 }
 
+/**
+ * Read the exact camera highlight set from the authenticated native watch.
+ * The helper's singular `cameraSelected` fact deliberately becomes UNKNOWN
+ * for the Android double-camera glitch; the arm gate needs the complete set,
+ * so it consumes the calibrated button entries from that same READ frame.
+ */
+function nativeCameraHighlights(read, rule) {
+  const unknown = reason => ({ state: 'UNKNOWN', reason });
+  if (read?.read !== 'OBSERVED') return unknown('read-unavailable');
+  const ageUs = Number(read.ageUs);
+  if (!Number.isFinite(ageUs) || ageUs < 0) return unknown('read-unavailable');
+  if (ageUs > 500000) return unknown('read-stale');
+  const highlights = [];
+  for (const button of rule.adapter.buttons) {
+    const raw = read[button.entry];
+    if (raw === undefined || raw === 'UNKNOWN') return unknown('read-unavailable');
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return unknown('feature-missing');
+    const lower = button.rule.threshold - button.rule.refuse_band;
+    const upper = button.rule.threshold + button.rule.refuse_band;
+    if (value >= upper) highlights.push(button.control);
+    else if (value > lower) return unknown('ambiguous-threshold');
+  }
+  if (highlights.length === 0) return unknown('no-camera-highlight');
+  return { state: 'OBSERVED', value: highlights };
+}
+
 function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
   const name = 'FNAF Campaign Menu';
   const transport = new HidWireTransport({
@@ -155,17 +187,77 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 /** @param {any} options */
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
-    machineOnly = false } = options;
+    machineOnly = false, allowSaveReset = false } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
+  if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (profile?.actuator !== 'hid-multi' || profile?.visualSensor !== 'mediaprojection')
     throw new TypeError('modern campaign ports require a HID + MediaProjection profile');
   const bridge = new AdbDeviceBridge({ serial, adb });
+  const evidenceDirectory = resolve('artifacts', `campaign-${new Date().toISOString().replaceAll(':', '-')}`);
+  await mkdir(evidenceDirectory, { recursive: false });
+  await writeFile(join(evidenceDirectory, 'request.json'), JSON.stringify({ spec, bundle, profile }, null, 2));
+  const onEvent = event => {
+    const row = JSON.stringify({ at: new Date().toISOString(), ...event });
+    appendFileSync(join(evidenceDirectory, 'events.jsonl'), row + '\n');
+    process.stderr.write(row + '\n');
+  };
+  onEvent({ type: 'evidence.started', evidenceDirectory });
+  let lastLabel = null;
+  let lastFrameAt = 0;
+  let frameNumber = 0;
+  bridge.recordObservation = async ({ script, png, stdout, stderr, code }) => {
+    const label = lastLine(stdout);
+    const at = Date.now();
+    const retain = label !== lastLabel || !label.startsWith('state=night') || at - lastFrameAt >= 10000;
+    let frame;
+    if (retain) {
+      frame = `${String(++frameNumber).padStart(5, '0')}-${script}.png`;
+      await writeFile(join(evidenceDirectory, frame), png);
+      lastFrameAt = at;
+    }
+    await appendFile(join(evidenceDirectory, 'observations.jsonl'), JSON.stringify({ at, script, label, code, stderr, frame }) + '\n');
+    if (label !== lastLabel) onEvent({ type: 'observation', label, frame });
+    lastLabel = label;
+  };
   // The device-local runner is the only path that assembles the legacy shell
   // driver. Give that driver the already-running Cue Helper endpoint so its
   // lifecycle/read functions can use the authenticated visual sensor too.
   // Endpoint discovery is bounded and happens before the executor is armed;
   // no input is sent here.
-  const cueEndpoint = machineOnly ? new AdbCueHelperPort({ serial, adb }).discover() : null;
+  const cuePort = new AdbCueHelperPort({ serial, adb });
+  const cueEndpoint = cuePort.discover();
+  const cueTransport = new CueHelperControlTransport({
+    request: line => cuePort.request(line), token: cueEndpoint.token,
+  });
+  const cameraRule = parseCameraRule(await readJson(CAMERA_RULE));
+  let armWatchLoaded = false;
+  const ensureArmWatch = () => {
+    if (armWatchLoaded) return;
+    const status = cueTransport.watch('status');
+    if (typeof status.spec !== 'string' || !/^[0-9a-f]{64}$/.test(status.spec))
+      throw new Error('native camera watchlist status has no valid spec hash');
+    const active = status.watch === 'ACTIVE';
+    const loaded = active ? status : cueTransport.watch(status.spec);
+    if (loaded.watch !== 'ACTIVE' || loaded.spec !== status.spec)
+      throw new Error('native camera watchlist did not activate');
+    armWatchLoaded = true;
+  };
+  const observeArm = () => {
+    if (!armWatchLoaded) throw new Error('native camera watchlist is not active');
+    const read = cueTransport.read();
+    const highlights = nativeCameraHighlights(read, cameraRule);
+    const cameraValues = Object.fromEntries(cameraRule.adapter.buttons.map(button =>
+      [button.control, read[button.entry] ?? 'UNKNOWN']));
+    return {
+      sequence: read.seq,
+      highlights: highlights.state === 'OBSERVED' ? highlights.value : null,
+      cameraValues,
+      // A true double highlight intentionally has no singleton camera fact.
+      // The declared viewing camera is verified by the exact pair contract.
+      viewing: null,
+      reason: highlights.state === 'UNKNOWN' ? highlights.reason : null,
+    };
+  };
   const localExecutor = machineOnly
     ? new AdbDeviceLocalMachineExecutor({ serial, adb, ...(await machineAssets()),
       planPath: `${bundle.bundleDirectory}/night-6.plan`,
@@ -178,10 +270,15 @@ export async function createCampaignPorts(options = {}) {
       onOutput: chunk => process.stderr.write(chunk),
       observe: () => lifecycle(bridge, serial), pollMs: 1000 })
     : new AdbDeviceLocalArtifactExecutor({ serial, adb,
-      observe: () => lifecycle(bridge, serial), pollMs: 1000 });
+      observe: () => lifecycle(bridge, serial), observeArm, pollMs: 250, onEvent,
+      onOutput: output => onEvent({ type: 'hid.stderr', output }) });
   const titleModel = await readJson(TITLE_MODEL);
   const modelPath = TITLE_MODEL.pathname;
   let menuHid = null;
+  // Set when save() observes the game roll a 6 AM straight into the next
+  // night's gameplay (story Nights 1..4 on this build). The next night's
+  // menu step is then satisfied by the roll: there is no title to read.
+  let rolledIntoNight = 0;
 
   const openMenuHid = () => {
     if (!menuHid) {
@@ -213,9 +310,27 @@ export async function createCampaignPorts(options = {}) {
   };
 
   const menu = async ({ target }) => {
+    // A story night the game rolled straight into after the previous night's
+    // observed 6 AM: the roll performed the selection, no title exists to
+    // read, and no press may be sent. Anything else still goes through the
+    // observed-title path below.
+    if (rolledIntoNight === target.night && target.mode === 'story' && target.menuTarget === 'continue') {
+      const state = await lifecycle(bridge, serial);
+      if (state !== 'night')
+        throw new Error(`rolled-through night ${target.night} left gameplay before its attempt (state=${state})`);
+      if (machineOnly) {
+        if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
+          throw new Error('machine campaign did not compose a machine executor');
+        await localExecutor.arm(machineRequestFor(target));
+      }
+      return { target: target.menuTarget, visible: false, selected: true, observed: true,
+        rolledThrough: true, state };
+    }
     const items = await title(bridge, serial, modelPath);
     const targetName = target.menuTarget;
     if (!items.includes(targetName)) return { target: targetName, visible: false, selected: false, observed: true };
+    if (targetName === 'newGame' && !allowSaveReset)
+      throw new Error('New Game requires the explicit allow-save-reset capability');
     // HID registration waits for Android InputReader. Re-read the title after
     // that bounded wait so the press is tied to a fresh target observation.
     const sender = openMenuHid();
@@ -237,7 +352,41 @@ export async function createCampaignPorts(options = {}) {
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
     const holdMs = targetName === 'customNight' ? calibration.menu.holdMs : CUSTOM_NIGHT_CONTACT_MS;
     await tap({ point: targetPoint, holdMs });
-    return { target: targetName, visible: true, selected: true, observed: true };
+
+    // This build separates focusing a title row from activating it: the first
+    // press paints the `>>` cursor and the second press activates the focused
+    // row.  The old one-press path returned selected=true while the title was
+    // still on screen, so intro() later timed out without ever starting a
+    // night.  The lifecycle `title` result above is the focus confirmation;
+    // the title model intentionally does not re-read the transient cursor
+    // frame because it classifies that frame as unknown.
+    const firstSelectionState = await waitFor(bridge, serial,
+      value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
+      10000, 'title row focus or night start');
+    if (firstSelectionState === 'title') {
+      await tap({ point: targetPoint, holdMs });
+    }
+    if (targetName !== 'newGame')
+      return { target: targetName, visible: true, selected: true, observed: true,
+        menuPresses: firstSelectionState === 'title' ? 2 : 1 };
+
+    // New Game raises a measured confirmation dialog. The capability above
+    // authorizes the save reset; this second observation proves the dialog is
+    // actually present before the calibrated Yes coordinate is pressed. A
+    // direct transition is also accepted for builds/states that do not show
+    // the prompt, but no unobserved confirmation press is allowed.
+    const confirmationState = await waitFor(bridge, serial,
+      value => value === 'titleDialog' || value === 'intro' || value === 'night',
+      30000, 'new-game confirmation or night start');
+    if (confirmationState === 'titleDialog') {
+      const yesPoint = modelPoint(titleModel.items?.sixthNight,
+        'title model new-game confirmation yes');
+      await tap({ point: yesPoint });
+      return { target: targetName, visible: true, selected: true, observed: true,
+        saveResetAuthorized: true, confirmation: 'observed-and-accepted' };
+    }
+    return { target: targetName, visible: true, selected: true, observed: true,
+      saveResetAuthorized: true, confirmation: 'not-present' };
   };
 
   const intro = async ({ target }) => {
@@ -249,21 +398,51 @@ export async function createCampaignPorts(options = {}) {
         throw new Error('machine campaign did not compose a machine executor');
       if (!localExecutor.armed) throw new Error('machine input was not armed before the night selection');
     }
-    // A full-screen screencap over Wireless ADB can take longer than the
-    // stock intro card remains visible.  The menu target (and, for Custom
-    // Night, the dial readback) has already established identity before this
-    // boundary, so the authoritative `night` state is also a valid fresh
-    // start observation when the card has already elapsed.
-    const state = await waitFor(bridge, serial, value => value === 'intro' || value === 'night', 15000, 'night start');
+    // Do not start the device-local action clock on the newspaper/intro card.
+    // The arm macro and its camera readback are meaningful only after the
+    // office HUD exists; starting earlier allowed the lifecycle guard to
+    // mistake the expected newspaper transition for a dropped night and
+    // could spend the one-shot double-camera arm before gameplay was live.
+    // The menu selection has already established identity, so wait through
+    // the card and accept only the authoritative office `night` state here.
+    const state = await waitFor(bridge, serial, value => value === 'night', 30000, 'night start');
+    if (bundle.plans.find(plan => plan.night === target.night)?.armVerification)
+      ensureArmWatch();
+    // Night setup, not strategy: one bounded press on the office MUTE CALL
+    // button so the phone guy call is silent for the run. The measured point
+    // comes from the profile; without it the call simply plays.
+    if (target.mode === 'story' && isRecord(profile.controlMap?.mute)) {
+      const mutePoint = point(profile.controlMap.mute, 'profile.controlMap.mute');
+      try {
+        const sender = openMenuHid();
+        await sender.transport.start();
+        await sender.send({ point: mutePoint, durationMs: 33 });
+      } finally {
+        await closeMenuHid();
+      }
+    }
     // The 6th Night and Custom Night menu targets identify the configured
-    // night; Continue is deliberately not promoted to a night identity.
-    const identified = target.menuTarget === 'sixthNight' || target.menuTarget === 'customNight';
+    // night. A story night inside a chained campaign is identified by its
+    // selection chain: newGame on an observed fresh save, continue after the
+    // previous night's observed 6 AM, or continue from an operator-observed
+    // save cursor equal to the target night. A standalone continue with an
+    // unobserved cursor keeps its identity unknown and is not promoted.
+    const storyTargets = spec.nights.filter(entry => entry.mode === 'story');
+    const chainedStory = target.mode === 'story' &&
+      (target.menuTarget === 'newGame' ||
+        (target.menuTarget === 'continue' &&
+          (storyTargets.findIndex(entry => entry.night === target.night) > 0 ||
+            target.saveCursorObserved === target.night)));
+    const identified = target.menuTarget === 'sixthNight' || target.menuTarget === 'customNight' ||
+      chainedStory;
     return { night: target.night, identity: identified ? target.mode : 'unknown', observed: identified, state };
   };
 
   const terminal = async ({ target }) => {
+    // The schedule already spanned the night; the game clock can trail the
+    // plan by a minute, so the terminal window is generous, not 15 s.
     const state = await waitFor(bridge, serial,
-      value => value === 'sixam' || value === 'gameover', 15000, 'night terminal');
+      value => value === 'sixam' || value === 'gameover', 120000, 'night terminal');
     if (state === 'sixam') return { night: target.night, identity: target.mode,
       outcome: 'sixam', sixAm: true, positive: true, state };
     if (state === 'gameover') return { night: target.night, identity: target.mode,
@@ -277,7 +456,19 @@ export async function createCampaignPorts(options = {}) {
   };
 
   const save = async ({ target }) => {
-    await waitFor(bridge, serial, value => value === 'title', 15000, 'post-win title menu');
+    // Story Nights 1..4 roll a 6 AM straight into the next night's gameplay
+    // on this build — regardless of spec shape — while Night 5 (and 6) end
+    // in the paycheck/title instead. For a rolling night the observed roll
+    // into night N+1 is the advancement evidence; the deadline must span the
+    // 6 AM jingle, newspaper, and intro card, so it is generous like the
+    // terminal window, not 15 s.
+    const rollsIntoNext = target.night >= 1 && target.night <= 4;
+    if (rollsIntoNext) {
+      const state = await waitFor(bridge, serial, value => value === 'night', 90000, 'post-win next-night roll');
+      rolledIntoNight = target.night + 1;
+      return { observed: true, advanced: true, nextNightStarted: true, state };
+    }
+    await waitFor(bridge, serial, value => value === 'title', 90000, 'post-win title menu');
     const items = await title(bridge, serial, modelPath);
     if (target.night === 6) {
       // `sixthNight` is not evidence of advancement: it was already visible
@@ -286,7 +477,16 @@ export async function createCampaignPorts(options = {}) {
       return { observed: true, customNightVisible: items.includes('customNight'),
         cursorNight: undefined, items };
     }
-    return { observed: true, menuReturned: true, customCompleted: items.includes('customNight'), items };
+    if (target.night === 7) {
+      return { observed: true, menuReturned: true, customCompleted: items.includes('customNight'), items };
+    }
+    // Story Nights 1..5: the save advanced when Continue is visible after a
+    // 6 AM that this campaign started; Night 5's clear additionally reveals
+    // the measured sixthNight item.
+    return { observed: true, menuReturned: true,
+      continueVisible: items.includes('continue'),
+      ...(target.night === 5 ? { sixthNightVisible: items.includes('sixthNight') } : {}),
+      items };
   };
 
   const retryReady = async ({ target }) => {
@@ -324,7 +524,7 @@ export async function createCampaignPorts(options = {}) {
     },
   };
   return Object.freeze({ ports, runner: new DeviceCampaignRunner({ spec, ports }), deviceLocal: true,
-    close: closeMenuHid, qualification });
+    close: closeMenuHid, qualification, evidenceDirectory });
 }
 
 export default createCampaignPorts;

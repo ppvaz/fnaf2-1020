@@ -1,0 +1,14 @@
+{
+  "schema": "winner-v1",
+  "strategy": "minus-toys",
+  "knobs": { "minimal": true },
+  "nights": [1],
+  "engineHash": "minus-toys-engine-current-v1",
+  "seeds": [1, 2, 3, 4, 5, 6, 7, 8],
+  "profile": "hid-mediaprojection",
+  "gate": {
+    "status": "PASS",
+    "claimLevel": "MODEL_ONLY",
+    "evidence": "Night 1 minimal Minus Toys replay gate; physical success remains unproven"
+  }
+}

@@ -49,9 +49,13 @@ assert.equal((await mcp.call('actuator.apply', { lease, profileHash, idempotency
 
 const liveProfile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/hid-mediaprojection.json', import.meta.url)), 'utf8'));
 const fastProfile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/hid-mediaprojection-17ms.json', import.meta.url)), 'utf8'));
+assert.equal(liveProfile.limits.dryRunOnly, false,
+  'the operator-qualified 2026-09-06 transport profile is bound for live execution');
+assert.equal(liveProfile.limits.qualification, 'qualification-hid-mediaprojection-20260906',
+  'live execution must name the qualification evidence that authorizes it');
+assert.equal(fastProfile.limits.dryRunOnly, true,
+  'an unqualified timing candidate must remain dry-run only');
 for (const candidate of [liveProfile, fastProfile]) {
-  assert.equal(candidate.limits.dryRunOnly, true,
-    'an unqualified timing candidate must remain dry-run only');
   assert.notDeepEqual(candidate.controlMap.light, candidate.controlMap.hall,
     'camera light and office hall light must have distinct physical bindings');
   assert.doesNotThrow(() => composeDevice({ profile: candidate }));

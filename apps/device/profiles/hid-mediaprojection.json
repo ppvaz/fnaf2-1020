@@ -53,6 +53,10 @@
       "x": 1776,
       "y": 606
     },
+    "cam:8": {
+      "x": 1412,
+      "y": 590
+    },
     "cam:9": {
       "x": 2144,
       "y": 548
@@ -64,11 +68,16 @@
     "cam:11": {
       "x": 2228,
       "y": 652
+    },
+    "mute": {
+      "x": 545,
+      "y": 78
     }
   },
   "limits": {
     "maxActions": 64,
     "maxDurationMs": 15000,
-    "dryRunOnly": true
+    "dryRunOnly": false,
+    "qualification": "qualification-hid-mediaprojection-20260906"
   }
 }

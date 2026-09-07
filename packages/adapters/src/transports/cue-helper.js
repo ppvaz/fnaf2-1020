@@ -17,10 +17,12 @@ const BATTERY_UNKNOWN_REASONS = new Set([
   'timestamp-invalid',
 ]);
 
+  /** @param {string} line */
 export function parseCueResponse(line) {
   if (!bounded(line)) throw new TypeError('cue-helper response is missing or oversized');
   const text = line.trim();
   if (!text.startsWith('OK ')) throw new Error(text.startsWith('ERROR ') ? text : 'cue-helper response is not OK');
+  /** @type {Record<string, string>} */
   const fields = {};
   for (const token of text.slice(3).split(/\s+/)) {
     const separator = token.indexOf('=');

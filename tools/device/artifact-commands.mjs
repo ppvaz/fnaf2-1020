@@ -27,6 +27,30 @@ function planTiming(parsed) {
   });
 }
 
+function armVerification(parsed) {
+  const headers = parsed.headers;
+  const declared = headers['arm-verify'] !== undefined ||
+    headers['arm-verify-cameras'] !== undefined || headers['arm-verify-until'] !== undefined ||
+    headers['arm-verify-viewing'] !== undefined;
+  if (!declared) return undefined;
+  if (headers['arm-verify'] !== '1')
+    throw new TypeError('artifact plan #arm-verify must be 1 when arm verification is declared');
+  const cameras = (headers['arm-verify-cameras'] ?? '').split(',').filter(Boolean);
+  if (cameras.length !== 2 || cameras.some(camera => !/^cam:(?:[1-9]|1[0-2])$/.test(camera)) ||
+      new Set(cameras).size !== cameras.length)
+    throw new TypeError('artifact plan #arm-verify-cameras must contain two unique semantic cameras');
+  const viewing = headers['arm-verify-viewing'] ?? 'cam:11';
+  if (!/^cam:(?:[1-9]|1[0-2])$/.test(viewing) || !cameras.includes(viewing))
+    throw new TypeError('artifact plan #arm-verify-viewing must name one highlighted camera');
+  const untilMs = Number(headers['arm-verify-until']);
+  if (!Number.isInteger(untilMs) || untilMs < 1)
+    throw new TypeError('artifact plan #arm-verify-until must be a positive integer');
+  if (untilMs >= parsed.observeUntil)
+    throw new TypeError('artifact plan arm-verification must close before the observation envelope');
+  return Object.freeze({ cameras: Object.freeze([...cameras].sort((a, b) =>
+    Number(a.slice(4)) - Number(b.slice(4)))), viewing, untilMs });
+}
+
 export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   if (!Array.isArray(rows)) throw new TypeError('artifact cycle rows must be an array');
   const state = { ...initial };
@@ -112,7 +136,8 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
       compiled[name] = compileCycle(name, value.rows, prior);
     }
     return Object.freeze({ night: plan.night, policy: plan.policy,
-      timing: planTiming(parsed), cycles: Object.freeze(compiled) });
+      timing: planTiming(parsed), armVerification: armVerification(parsed),
+      cycles: Object.freeze(compiled) });
   });
 }
 
@@ -123,5 +148,6 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
  */
 export function persistArtifactPlans(compiledPlans) {
   if (!Array.isArray(compiledPlans)) throw new TypeError('compiled plans are required');
-  return compiledPlans.map(plan => Object.freeze({ night: plan.night, timing: plan.timing, cycles: plan.cycles }));
+  return compiledPlans.map(plan => Object.freeze({ night: plan.night, timing: plan.timing,
+    ...(plan.armVerification ? { armVerification: plan.armVerification } : {}), cycles: plan.cycles }));
 }

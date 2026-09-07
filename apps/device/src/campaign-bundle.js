@@ -1,4 +1,4 @@
-/** Bind compiled, full-night plans to the reviewed Night 6/7 campaign. */
+/** Bind compiled, full-night plans to the reviewed story/custom campaign chain. */
 import { createHash } from 'node:crypto';
 import { canonicalJson, stableHash } from '@fnaf2-1020/core/contracts';
 import { validateCampaignSpec } from './campaign.js';
@@ -25,6 +25,7 @@ export function validateCampaignBundle({ spec, plans } = {}) {
     if (!isRecord(plan.cycles) || !Array.isArray(plan.cycles.opening?.blocks)) fail(`plans[${index}] opening blocks are missing`);
     if (!Array.isArray(plan.cycles.toys?.blocks) && !Array.isArray(plan.cycles.clear?.blocks)) fail(`plans[${index}] steady blocks are missing`);
     return { night: plan.night, timing: structuredClone(plan.timing), cycles: structuredClone(plan.cycles),
+      ...(plan.armVerification ? { armVerification: structuredClone(plan.armVerification) } : {}),
       sha256: plan.sha256 ?? sha256(plan) };
   });
   if (seen.size !== spec.nights.length) fail('campaign plans do not cover every target');
@@ -38,7 +39,8 @@ export function validateCampaignBundle({ spec, plans } = {}) {
 export function makeCampaignExecutionRequest({ bundle, plan, profile, mode = 'live', artifact = {} } = {}) {
   if (!isRecord(bundle) || bundle.schema !== CAMPAIGN_BUNDLE_SCHEMA) fail('validated campaign bundle is required');
   const bound = isRecord(plan) && bundle.plans.find(item => item.night === plan.night);
-  if (!bound || plan.sha256 !== bound.sha256 || !same(plan.timing, bound.timing) || !same(plan.cycles, bound.cycles))
+  if (!bound || plan.sha256 !== bound.sha256 || !same(plan.timing, bound.timing) ||
+      !same(plan.cycles, bound.cycles) || !same(plan.armVerification, bound.armVerification))
     fail('plan is not bound immutably to bundle');
   if (!isRecord(profile)) fail('resolved profile is required');
   const request = {
@@ -46,7 +48,8 @@ export function makeCampaignExecutionRequest({ bundle, plan, profile, mode = 'li
     artifact: { winnerHash: artifact.winnerHash ?? stableHash({ bundle: bundle.bundleHash, kind: 'winner' }),
       engineHash: artifact.engineHash ?? stableHash({ bundle: bundle.bundleHash, kind: 'engine' }),
       profileHash: artifact.profileHash ?? sha256(profile), profileStableHash: stableHash(profile),
-      plans: [{ night: plan.night, sha256: plan.sha256, timing: plan.timing }] },
+      plans: [{ night: plan.night, sha256: plan.sha256, timing: plan.timing,
+        ...(plan.armVerification ? { armVerification: structuredClone(plan.armVerification) } : {}) }] },
     profile: structuredClone(profile), limits: { maxActions: profile.limits?.maxActions ?? 64,
       maxDurationMs: profile.limits?.maxDurationMs ?? 15000 },
     blocks: Object.values(plan.cycles).flatMap(cycle => cycle.blocks.map(block => ({ ...block, night: plan.night }))),

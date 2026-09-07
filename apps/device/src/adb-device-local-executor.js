@@ -12,7 +12,7 @@ import { execFile as execFileCallback, spawn } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
-import { HID_DESCRIPTOR, report } from '@fnaf2-1020/adapters';
+import { HID_DESCRIPTOR, HID_FEATURE_REPORTS, report } from '@fnaf2-1020/adapters';
 import { validateExecutorRequest } from './artifact-executor.js';
 import { expandNightBlocks } from './device-local-executor.js';
 
@@ -21,7 +21,17 @@ const HID_NAME = 'FNAF Timed Touch';
 const HID_VID = 6353;
 const HID_PID = 61959;
 const HID_BUS = 'usb';
-const DEFAULT_READY_DELAY_MS = 6000;
+// The menu HID waits for InputReader explicitly. The device-local stream
+// cannot query readiness without moving its clock, so use the measured
+// seven-second attachment bound on the Moto g56 rather than dropping the
+// opening reports at the six-second edge.
+const DEFAULT_READY_DELAY_MS = 7000;
+const MAX_ARM_ATTEMPTS = 3;
+const ARM_SETTLE_MS = 600;
+const ARM_CONFIRM_SAMPLES = 2;
+const ARM_OBSERVATION_WINDOW_MS = 3000;
+const STARTUP_GRACE_MS = 30000;
+const EXIT_CONFIRM_SAMPLES = 3;
 const execFile = promisify(execFileCallback);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -131,6 +141,68 @@ function actionsOf(block) {
     atMs: block.scheduleAtMs + action.atMs - block.atMs }));
 }
 
+function compileActionEvents(request, actions, { originAtMs = 0 } = {}) {
+  const events = [];
+  let cursor = originAtMs;
+  for (const { action, atMs } of actions) {
+    if (!Number.isFinite(atMs) || atMs < cursor)
+      fail(`action ${action.id} overlaps the previous HID macro`);
+    addDelay(events, atMs - cursor);
+    cursor = atMs + addAction(events, request, action);
+  }
+  return { events, cursor };
+}
+
+function compileArmSegments(request, actions, register, plan) {
+  const firstWind = actions.find(({ action }) =>
+    action.control === 'wind');
+  if (!firstWind) fail('arm-verified schedule has no wind action');
+
+  // The first HID stream ends after the opening raise and waits for the host
+  // to prove the exact double-camera state.  This keeps the first wind out of
+  // the stream until the gate has either passed or exhausted its re-arms.
+  const openingPrefix = actions.filter(item =>
+    item.action.cycle === 'opening' && item.atMs < firstWind.atMs);
+  if (openingPrefix.length < 2) fail('arm-verified schedule has no re-armable opening');
+  const prefix = openingPrefix;
+  // A minimal Night 1 has a steady CAM 09 flash at 140150 ms and its first
+  // wind at 140300 ms. That flash is not part of the arm prefix: it must stay
+  // behind the same host gate as the wind, otherwise a missed opening would
+  // sit idle until 2 AM before it was allowed to re-arm.
+  const remainder = actions.filter(item => !prefix.includes(item));
+  if (remainder.some(item => item.atMs < prefix[0].atMs))
+    fail('arm-verified schedule has an action before the opening arm');
+  const prefixCompiled = compileActionEvents(request, prefix);
+  const remainderCompiled = compileActionEvents(request, remainder,
+    { originAtMs: prefixCompiled.cursor });
+
+  // Re-arm from the already-raised monitor: CAM 11, CAM 09, drop, raise.
+  // Keep this derived from the authored opening so the physical retry cannot
+  // drift from the policy's own split-arm sequence.
+  // Production plans author the camera arm in `opening`; keep the retry
+  // sequence tied to that opening rather than any later steady action.
+  const rearmStart = prefix[1].atMs;
+  const rearmActions = prefix.slice(1).map(item => ({
+    ...item, atMs: item.atMs - rearmStart,
+  }));
+  const rearmCompiled = compileActionEvents(request, rearmActions);
+  if (rearmCompiled.cursor < 1) fail('arm re-arm sequence has no physical duration');
+
+  const remainderEvents = [...remainderCompiled.events];
+  const tail = plan.timing.observeUntilMs - remainderCompiled.cursor;
+  if (tail < 0) fail('HID schedule exceeds the observation envelope');
+  addDelay(remainderEvents, tail);
+  return Object.freeze({
+    register,
+    prefix: Object.freeze(prefixCompiled.events),
+    remainder: Object.freeze(remainderEvents),
+    rearm: Object.freeze(rearmCompiled.events),
+    armReadyAtMs: prefixCompiled.cursor,
+    rearmDurationMs: rearmCompiled.cursor,
+    firstWindAtMs: firstWind.atMs,
+  });
+}
+
 /**
  * Compile a validated one-night request to the device-local HID event stream.
  * The returned lines contain only the fixed hid vocabulary and are suitable
@@ -144,68 +216,165 @@ export function compileDeviceLocalHidSchedule(request, { readyDelayMs = DEFAULT_
   const night = request.artifact.plans[0].night;
   const blocks = expandNightBlocks(request, night);
   const actions = blocks.flatMap(actionsOf).sort((a, b) => a.atMs - b.atMs || a.action.id.localeCompare(b.action.id));
-  const events = [line('register', { name: HID_NAME, vid: HID_VID, pid: HID_PID,
-    bus: HID_BUS, descriptor: HID_DESCRIPTOR })];
+  const register = line('register', { name: HID_NAME, vid: HID_VID, pid: HID_PID,
+    bus: HID_BUS, descriptor: HID_DESCRIPTOR, feature_reports: HID_FEATURE_REPORTS });
+  const events = [register];
   addDelay(events, readyDelayMs);
-  let cursor = 0;
-  for (const { action, atMs } of actions) {
-    if (!Number.isFinite(atMs) || atMs < cursor) fail(`action ${action.id} overlaps the previous HID macro`);
-    addDelay(events, atMs - cursor);
-    cursor = atMs + addAction(events, request, action);
-  }
+  const compiled = compileActionEvents(request, actions);
+  events.push(...compiled.events);
+  const cursor = compiled.cursor;
   const plan = request.artifact.plans[0];
   if (cursor > plan.timing.observeUntilMs) fail('HID schedule exceeds the observation envelope');
   addDelay(events, plan.timing.observeUntilMs - cursor);
+  const gated = plan.armVerification
+    ? compileArmSegments(request, actions, register, plan) : undefined;
   return Object.freeze({ schema: 'device-local-hid-schedule-v1', version: 1, night,
     readyDelayMs, actionCount: actions.length, plannedUntilMs: plan.timing.observeUntilMs,
-    lines: Object.freeze(events) });
+    lines: Object.freeze(events), ...(gated ? { gated } : {}) });
 }
 
 function shellQuote(value) {
   return `'${String(value).replaceAll("'", "'\\''")}'`;
 }
 
-export function renderDeviceLocalScript(schedule) {
+function boundedRemotePath(value, label) {
+  if (typeof value !== 'string' ||
+      !/^\/data\/local\/tmp\/fnaf2-modern-(?:start|go|retry|fail|rearm)-[A-Za-z0-9._$-]+$/.test(value))
+    fail(`${label} is not a bounded device-local control path`);
+  return value;
+}
+
+function shellSleepMs(milliseconds) {
+  if (!Number.isInteger(milliseconds) || milliseconds < 1 || milliseconds > 30000)
+    fail('device-local setup delay is outside 1..30000');
+  return `sleep ${milliseconds / 1000}`;
+}
+
+function appendWrites(lines, path, values) {
+  lines.push(`rm -f ${path}`, `: > ${path}`);
+  for (const value of values)
+    lines.push(`printf '%s\\n' ${shellQuote(value)} >> ${path}`);
+}
+
+export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/tmp/fnaf2-modern-start-$$', armControl = null } = {}) {
   if (!schedule || schedule.schema !== 'device-local-hid-schedule-v1' ||
       !Array.isArray(schedule.lines))
     fail('render requires a compiled device-local HID schedule');
+  boundedRemotePath(startMarker, 'render startMarker');
+  if (armControl !== null) {
+    if (!isRecord(armControl)) fail('render armControl must be an object');
+    for (const key of ['go', 'retry', 'fail', 'rearm']) boundedRemotePath(armControl[key], `render armControl.${key}`);
+  }
+  if (schedule.gated && armControl === null)
+    fail('gated arm schedule requires render armControl');
+  if (!schedule.gated && armControl !== null)
+    fail('render armControl requires a gated arm schedule');
   // Android 16's shell domain denies named-pipe creation in /data/local/tmp.
   // A regular file is sufficient here: the complete bounded stream is
   // written before hid starts, and hid owns every inter-action delay locally.
   const stream = '/data/local/tmp/fnaf2-modern-hid-$$.jsonl';
-  const writes = schedule.lines.map(value => `printf '%s\\n' ${shellQuote(value)} >> "$stream"`).join('\n');
-  return [
+  if (!schedule.gated) {
+    const writes = schedule.lines.map(value => `printf '%s\\n' ${shellQuote(value)} >> "$stream"`).join('\n');
+    return [
     'set -eu',
     // `stream` is a fixed path prefix; leave the shell PID expansion active so
     // two bounded executor processes cannot share a remote stream file.
     `stream=${stream}`,
+    `start_marker=${startMarker}`,
     'hid_pid=',
     'cleanup() {',
     '  set +e',
     '  [ -z "$hid_pid" ] || kill "$hid_pid" 2>/dev/null',
     '  [ -z "$hid_pid" ] || wait "$hid_pid" 2>/dev/null',
+    '  rm -f "$start_marker"',
     '  rm -f "$stream"',
     '}',
     'trap cleanup EXIT HUP INT TERM',
     'rm -f "$stream"',
     ': > "$stream"',
     writes,
-    '/system/bin/hid - < "$stream" >/dev/null 2>&1 &',
+    'rm -f "$start_marker"',
+    // Anchor the host verifier to the phone-side HID launch, not to the ADB
+    // process spawn. The stream's ready delay starts only after this point.
+    ': > "$start_marker"',
+    '/system/bin/hid - < "$stream" >/dev/null &',
     'hid_pid=$!',
     'wait "$hid_pid"',
     'hid_pid=',
     'rm -f "$stream"',
     '',
-  ].join('\n');
+    ].join('\n');
+  }
+
+  const gated = schedule.gated;
+  const { go, retry, fail: failed, rearm } = armControl;
+  const armPrefix = '/data/local/tmp/fnaf2-modern-arm-prefix-$$.jsonl';
+  const armRemainder = '/data/local/tmp/fnaf2-modern-arm-remainder-$$.jsonl';
+  const armRetry = '/data/local/tmp/fnaf2-modern-arm-rearm-$$.jsonl';
+  const lines = [
+    'set -eu',
+    `arm_prefix=${armPrefix}`,
+    `arm_remainder=${armRemainder}`,
+    `arm_retry=${armRetry}`,
+    `start_marker=${startMarker}`,
+    `arm_go=${go}`,
+    `arm_retry_signal=${retry}`,
+    `arm_fail=${failed}`,
+    `arm_rearm=${rearm}`,
+    'hid_pid=',
+    'cleanup() {',
+    '  set +e',
+    '  [ -z "$hid_pid" ] || kill "$hid_pid" 2>/dev/null',
+    '  [ -z "$hid_pid" ] || wait "$hid_pid" 2>/dev/null',
+    '  rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm"',
+    '  rm -f "$arm_prefix" "$arm_remainder" "$arm_retry"',
+    '}',
+    'trap cleanup EXIT HUP INT TERM',
+  ];
+  appendWrites(lines, '"$arm_prefix"', gated.prefix);
+  appendWrites(lines, '"$arm_remainder"', gated.remainder);
+  appendWrites(lines, '"$arm_retry"', gated.rearm);
+  lines.push(
+    'rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm"',
+    // The setup delay happens after the registration line has reached hid.
+    // The marker therefore means "the first authored gameplay action is
+    // about to be emitted", not merely "the adb shell was spawned".
+    '(',
+    `  printf '%s\\n' ${shellQuote(gated.register)}`,
+    `  ${shellSleepMs(schedule.readyDelayMs)}`,
+    '  : > "$start_marker"',
+    '  cat "$arm_prefix"',
+    '  while [ ! -e "$arm_go" ] && [ ! -e "$arm_fail" ]; do',
+    '    if [ -e "$arm_retry_signal" ]; then',
+    '      rm -f "$arm_retry_signal"',
+    '      cat "$arm_retry"',
+    '    else',
+    '      sleep 0.05',
+    '    fi',
+    '  done',
+    '  [ -e "$arm_go" ] && cat "$arm_remainder"',
+    ') | /system/bin/hid - >/dev/null &',
+    'hid_pid=$!',
+    'wait "$hid_pid"',
+    'hid_pid=',
+    '',
+  );
+  return lines.join('\n');
 }
 
-function runAdbScript(adb, serial, script) {
+/**
+ * @param {string} adb
+ * @param {string} serial
+ * @param {string} script
+ * @param {(chunk: string) => void} [onOutput]
+ */
+function runAdbScript(adb, serial, script, onOutput = () => {}) {
   const child = spawn(adb, ['-s', serial, 'shell', 'sh', '-s'], {
     stdio: ['pipe', 'ignore', 'pipe'], shell: false,
   });
   let stderr = '';
   const promise = new Promise((resolve, reject) => {
-    child.stderr?.on('data', chunk => { stderr += chunk.toString(); });
+    child.stderr?.on('data', chunk => { stderr += chunk.toString(); onOutput(chunk.toString()); });
     child.on('error', reject);
     child.on('close', code => code === 0
       ? resolve()
@@ -288,18 +457,32 @@ async function waitForRemoteFile(adb, serial, path, {
   throw new Error(`machine HID readiness marker was not observed before ${timeoutMs}ms`);
 }
 
+async function touchRemote(adb, serial, path) {
+  boundedRemotePath(path, 'remote arm signal');
+  try {
+    await execFile(adb, ['-s', serial, 'shell', 'touch', path], {
+      timeout: 10000, maxBuffer: 1024 * 1024,
+    });
+  } catch (error) {
+    throw new Error(`could not signal device-local arm gate: ${error.stderr?.trim() || error.message}`);
+  }
+}
+
 export class AdbDeviceLocalArtifactExecutor {
   /** @param {any} options */
   constructor(options = {}) {
     const { serial, adb = 'adb', readyDelayMs = DEFAULT_READY_DELAY_MS,
-      observe = null, pollMs = 1000 } = options;
+      observe = null, observeArm = null, pollMs = 1000, onEvent = () => {}, onOutput = () => {} } = options;
     if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('device-local executor requires an ADB serial');
     if (observe !== null && typeof observe !== 'function') throw new TypeError('device-local executor observe must be a function');
+    if (observeArm !== null && typeof observeArm !== 'function') throw new TypeError('device-local executor observeArm must be a function');
     if (!Number.isInteger(pollMs) || pollMs < 250 || pollMs > 10000)
       throw new TypeError('device-local executor pollMs must be an integer in 250..10000');
     this.serial = serial; this.adb = adb; this.readyDelayMs = readyDelayMs;
-    this.observe = observe; this.pollMs = pollMs;
+    this.observe = observe; this.observeArm = observeArm; this.pollMs = pollMs;
+    this.onEvent = onEvent; this.onOutput = onOutput;
     this.child = null; this.running = false; this.aborted = false;
+    this.stopProcess = null;
     this.deviceLocal = true;
   }
 
@@ -307,57 +490,219 @@ export class AdbDeviceLocalArtifactExecutor {
     validateExecutorRequest(request);
     if (request.mode !== 'live') fail('physical executor accepts live requests only');
     if (this.running) fail('executor is already running');
+    const armVerification = request.artifact.plans[0].armVerification;
+    if (armVerification && typeof this.observeArm !== 'function')
+      fail('arm-verified artifact requires an exact camera observation port');
     const schedule = compileDeviceLocalHidSchedule(request, { readyDelayMs: this.readyDelayMs });
     this.running = true; this.aborted = false;
-    const process = runAdbScript(this.adb, this.serial, renderDeviceLocalScript(schedule));
+    const tag = `${globalThis.process.pid}-${Date.now()}`;
+    const startMarker = `/data/local/tmp/fnaf2-modern-start-${tag}`;
+    const armControl = schedule.gated ? {
+      go: `/data/local/tmp/fnaf2-modern-go-${tag}`,
+      retry: `/data/local/tmp/fnaf2-modern-retry-${tag}`,
+      fail: `/data/local/tmp/fnaf2-modern-fail-${tag}`,
+      rearm: `/data/local/tmp/fnaf2-modern-rearm-${tag}`,
+    } : null;
+    const process = runAdbScript(this.adb, this.serial,
+      renderDeviceLocalScript(schedule, { startMarker, armControl }), this.onOutput);
     this.child = process.child;
-    let observedTerminal = null;
-    let stopObserver = false;
-    const observer = this.observe ? (async () => {
-      while (!stopObserver && this.child === process.child && this.running) {
-        await new Promise(resolve => setTimeout(resolve, this.pollMs));
-        if (stopObserver || this.child !== process.child || !this.running) break;
-        try {
-          const state = await this.observe();
-          if (state === 'gameover') {
-            observedTerminal = state;
-            process.child.kill('SIGTERM');
-            break;
-          }
-        } catch { /* an unreadable sample is UNKNOWN, never a death claim */ }
+    this.stopProcess = async () => {
+      try {
+        if (armControl) await touchRemote(this.adb, this.serial, armControl.fail);
+      } finally {
+        process.child.kill('SIGTERM');
       }
-    })() : Promise.resolve();
+    };
+    let processDone = false;
+    const processPromise = process.promise.then(value => {
+      processDone = true;
+      return value;
+    }, error => {
+      processDone = true;
+      throw error;
+    });
+    // The marker wait below owns the first await; keep a launch failure from
+    // becoming an unhandled rejection while that wait is in progress.
+    processPromise.catch(() => {});
+    let observedTerminal = null;
+    let observedExitState = null;
+    let armVerified = !armVerification;
+    let armObservation = null;
+    let lastArmObservation = null;
+    let armFailure = null;
+    let armAttempt = 1;
+    let nightObserved = false;
+    let nonNightSamples = 0;
+    let stopObserver = false;
+    let observer = Promise.resolve();
+    let armObserver = Promise.resolve();
     try {
-      await process.promise;
+      // The marker is created on the phone immediately before `/system/bin/hid`
+      // starts consuming the preloaded stream. Anchoring here avoids charging
+      // ADB connection setup against the plan-relative ready delay and arm
+      // deadline.
+      await waitForRemoteFile(this.adb, this.serial, startMarker, {
+        timeoutMs: 60000,
+        processDone: () => processDone,
+        processResult: () => processPromise,
+      });
+      const startedAt = Date.now();
+      this.onEvent({ type: 'hid.schedule-start', startedAt, actionCount: schedule.actionCount });
+      const startupDeadline = startedAt + STARTUP_GRACE_MS;
+      // Native camera reads must not wait behind a full screencap + Python
+      // lifecycle classification. An UNKNOWN frame is a reason to resample,
+      // not permission to destroy a potentially successful arm.
+      armObserver = armVerification ? (async () => {
+        const gate = schedule.gated;
+        let nextCheckAt = startedAt + gate.armReadyAtMs + ARM_SETTLE_MS;
+        let deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
+        let lastSequence = null;
+        let candidate = null;
+        let confirmations = 0;
+        while (!stopObserver && !armVerified && this.child === process.child && this.running) {
+          await new Promise(resolve => setTimeout(resolve, this.pollMs));
+          if (stopObserver || this.child !== process.child || !this.running) break;
+          if (Date.now() < nextCheckAt) continue;
+          let sample = null;
+          try { sample = await this.observeArm(); }
+          catch { /* an unavailable frame remains UNKNOWN */ }
+          const elapsedMs = Date.now() - startedAt;
+          this.onEvent({ type: 'arm.sample', elapsedMs, attempt: armAttempt, sample });
+          lastArmObservation = sample;
+          const highlights = sample?.highlights ?? sample?.cameraHighlights;
+          const sequence = sample?.sequence;
+          const fresh = sequence !== undefined && sequence !== null && sequence !== lastSequence;
+          if (fresh) lastSequence = sequence;
+          if (fresh && Array.isArray(highlights)) {
+            const key = JSON.stringify([...highlights].sort());
+            confirmations = key === candidate ? confirmations + 1 : 1;
+            candidate = key;
+            if (confirmations >= ARM_CONFIRM_SAMPLES) {
+              const sameHighlights = key === JSON.stringify([...armVerification.cameras].sort());
+              if (sameHighlights) {
+                  if (stopObserver) break;
+                  armVerified = true;
+                  armObservation = sample;
+                  if (armControl) await touchRemote(this.adb, this.serial, armControl.go);
+                  this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs });
+              } else if (armAttempt < MAX_ARM_ATTEMPTS) {
+                  await touchRemote(this.adb, this.serial, armControl.retry);
+                  armAttempt += 1;
+                  // Anchor to the actual retry signal, not a theoretical
+                  // first-attempt timeline that observation latency can outrun.
+                  nextCheckAt = Date.now() + gate.rearmDurationMs + ARM_SETTLE_MS;
+                  deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
+                  candidate = null;
+                  confirmations = 0;
+                  this.onEvent({ type: 'arm.retry', attempt: armAttempt, elapsedMs });
+              } else {
+                deadlineAt = Date.now();
+              }
+            }
+          } else {
+            candidate = null;
+            confirmations = 0;
+          }
+          if (!armVerified && Date.now() >= deadlineAt) {
+              armFailure = new Error(`camera arm verification missed after ${armAttempt} attempt(s) ` +
+                `(expected=${JSON.stringify(armVerification.cameras)} ` +
+                `viewing=${armVerification.viewing} last=${JSON.stringify(lastArmObservation)})`);
+              await this.stopProcess();
+              break;
+          }
+        }
+      })().catch(async error => {
+        armFailure = error;
+        await this.stopProcess();
+      }) : Promise.resolve();
+      observer = this.observe ? (async () => {
+        while (!stopObserver && this.child === process.child && this.running) {
+          await new Promise(resolve => setTimeout(resolve, this.pollMs));
+          if (stopObserver || this.child !== process.child || !this.running) break;
+          try {
+            const state = this.observe ? await this.observe() : null;
+            // A lifecycle observer that positively names any other screen has
+            // proved that the scheduled night is gone once a night frame has
+            // been seen. Classifiers are frame-based and can produce one bad
+            // positive during a camera/monitor animation, so require a short
+            // consecutive run of positive non-night samples. A single bad
+            // frame, or an UNKNOWN capture, never kills the stream.
+            if (state === 'night') {
+              nightObserved = true;
+              nonNightSamples = 0;
+            } else if (!state) {
+              nonNightSamples = 0;
+            }
+            const startupTransition = !nightObserved &&
+              (state === 'intro' || state === 'newspaper') && Date.now() < startupDeadline;
+            if (startupTransition) {
+              nonNightSamples = 0;
+            } else if (state && state !== 'night') {
+              nonNightSamples += 1;
+              if (nonNightSamples >= EXIT_CONFIRM_SAMPLES) {
+                if (state === 'gameover' || state === 'sixam') {
+                  if (!armVerified) {
+                    armFailure = new Error(`camera arm verification ended with ${state} ` +
+                      `(expected=${JSON.stringify(armVerification.cameras)} ` +
+                      `viewing=${armVerification.viewing} last=${JSON.stringify(lastArmObservation)})`);
+                  }
+                  observedTerminal = state;
+                } else {
+                  observedExitState = state;
+                }
+                stopObserver = true;
+                await this.stopProcess();
+                break;
+              }
+            }
+          } catch {
+            // An unreadable frame breaks the consecutive evidence chain.
+            nonNightSamples = 0;
+          }
+        }
+      })() : Promise.resolve();
+      await processPromise;
+      if (observedExitState)
+        throw new Error(`device: lifecycle left night state (${observedExitState})`);
+      if (!armVerified) throw armFailure ?? new Error('camera arm verification did not produce a positive observation');
       return { status: 'COMPLETED', outcome: 'UNVERIFIED', night: schedule.night,
         plannedUntilMs: schedule.plannedUntilMs, blockCount: schedule.actionCount,
-        deviceLocal: true };
+        deviceLocal: true, ...(observedTerminal ? { terminal: observedTerminal } : {}),
+        ...(armVerification ? { armVerification: { status: 'PASS', cameras: armVerification.cameras,
+          viewing: armVerification.viewing, observation: armObservation } } : {}) };
     } catch (error) {
       // A fresh lifecycle observation is the only accepted reason to turn a
       // killed remote schedule into a normal failed attempt. Transport or
       // shell failures remain errors and are handled by the campaign abort
       // path.
-      if (observedTerminal === 'gameover') {
+      if (armFailure) throw armFailure;
+      if (observedTerminal === 'gameover' || observedTerminal === 'sixam') {
+        if (!armVerified) throw new Error(`camera arm verification ended with ${observedTerminal}`);
         return { status: 'COMPLETED', outcome: 'UNVERIFIED', night: schedule.night,
           plannedUntilMs: schedule.plannedUntilMs, blockCount: schedule.actionCount,
-          deviceLocal: true, terminal: observedTerminal };
+          deviceLocal: true, terminal: observedTerminal,
+          ...(armVerification ? { armVerification: { status: 'PASS', cameras: armVerification.cameras,
+            viewing: armVerification.viewing, observation: armObservation } } : {}) };
       }
+      if (observedExitState)
+        throw new Error(`device: lifecycle left night state (${observedExitState})`);
       throw error;
     } finally {
       stopObserver = true;
-      await observer;
+      await Promise.all([observer, armObserver]);
       this.child = null; this.running = false;
+      this.stopProcess = null;
     }
   }
 
   async abort(reason = 'aborted') {
     this.aborted = true;
-    if (this.child) this.child.kill('SIGTERM');
+    if (this.stopProcess) await this.stopProcess();
     return { status: 'ABORTED', reason: String(reason) };
   }
 
   async releaseAll() {
-    if (this.child) this.child.kill('SIGTERM');
+    if (this.stopProcess) await this.stopProcess();
   }
 }
 

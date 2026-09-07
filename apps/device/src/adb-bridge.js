@@ -59,6 +59,9 @@ function readyStatus(checks) {
 }
 
 export class AdbDeviceBridge {
+  /** @type {((observation: { script: string, png: Buffer, stdout: string, stderr: string, code: number }) => Promise<void>) | undefined} */
+  recordObservation;
+
   /** @param {{adb?: string, serial?: string, timeoutMs?: number, maxBuffer?: number, run?: Function}} options */
   constructor({ adb = 'adb', serial, timeoutMs = 10000, maxBuffer = 2 * 1024 * 1024, run } = {}) {
     this.adb = adb; this.serial = serial; this.timeoutMs = timeoutMs; this.maxBuffer = maxBuffer;

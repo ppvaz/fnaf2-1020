@@ -59,4 +59,80 @@ retry.acceptIntro({ night: 6, identity: 'story', observed: true });
 retry.beginAttempt();
 retry.acceptTerminal({ night: 6, outcome: 'unknown' });
 assert.equal(retry.snapshot().state, 'HOLD');
-console.log('device campaign: target validation, lifecycle gates, retry boundary, and completion proof pass');
+
+// Story chain Nights 1..5: fresh-save newGame start, chained continue, and
+// night-specific save advancement proof (Continue appears; Night 5 reveals
+// the measured sixthNight item).
+const storySpec = makeCampaignSpec({ profile: 'hid-mediaprojection',
+  targetBuild: 'com.scottgames.fnaf2:2.0.7+26', nights: [1, 2, 3, 4, 5] });
+assert.deepEqual(storySpec.nights.map(target => [target.night, target.menuTarget]), [
+  [1, 'newGame'], [2, 'continue'], [3, 'continue'], [4, 'continue'], [5, 'continue'],
+]);
+assert.throws(() => makeCampaignSpec({ profile: 'p', targetBuild: 'b', nights: [1, 3] }), /consecutive/);
+const standalone = makeCampaignSpec({ profile: 'p', targetBuild: 'b', nights: [2] });
+assert.equal(standalone.nights[0].menuTarget, 'continue');
+assert.throws(() => validateCampaignSpec({ ...storySpec,
+  nights: [{ ...storySpec.nights[0], menuTarget: 'sixthNight' }] }), /menuTarget/);
+assert.throws(() => makeCampaignSpec({ profile: 'p', targetBuild: 'b', nights: [2], storyStart: 'newGame' }), /storyStart/);
+assert.throws(() => validateCampaignSpec({ ...storySpec,
+  nights: [{ ...storySpec.nights[1], saveCursorObserved: 3 }, ...storySpec.nights.slice(2)] }), /saveCursorObserved/);
+
+// Mid-chain story Nights 1..4 roll their 6 AM straight into the next night
+// on this build: menu-mediated proof (menuReturned/continueVisible) is the
+// wrong evidence there and must abort, not pass.
+const titleProof = new CampaignStateMachine({ spec: storySpec });
+titleProof.startPreflight();
+titleProof.acceptPreflight({ status: 'READY' });
+titleProof.acceptMenu({ target: 'newGame', visible: true, selected: true });
+titleProof.acceptIntro({ night: 1, identity: 'story', observed: true });
+titleProof.beginAttempt();
+titleProof.acceptTerminal({ night: 1, outcome: 'sixam', sixAm: true });
+titleProof.acceptTerminalVerification({ sixAm: true, positive: true });
+titleProof.acceptSave({ observed: true, menuReturned: true, continueVisible: true });
+assert.equal(titleProof.state, 'ABORTED');
+
+const chain = new CampaignStateMachine({ spec: storySpec });
+chain.startPreflight();
+chain.acceptPreflight({ status: 'READY' });
+chain.acceptMenu({ target: 'newGame', visible: true, selected: true });
+chain.acceptIntro({ night: 1, identity: 'story', observed: true });
+chain.beginAttempt();
+chain.acceptTerminal({ night: 1, outcome: 'sixam', sixAm: true });
+chain.acceptTerminalVerification({ sixAm: true, positive: true });
+chain.acceptSave({ observed: true, nextNightStarted: true });
+assert.equal(chain.snapshot().state, 'MENU');
+assert.equal(chain.target.night, 2);
+for (const night of [2, 3, 4]) {
+  chain.acceptMenu({ target: 'continue', visible: false, selected: true, rolledThrough: true });
+  chain.acceptIntro({ night, identity: 'story', observed: true });
+  chain.beginAttempt();
+  chain.acceptTerminal({ night, outcome: 'sixam', sixAm: true });
+  chain.acceptTerminalVerification({ sixAm: true, positive: true });
+  chain.acceptSave({ observed: true, nextNightStarted: true });
+  assert.equal(chain.snapshot().state, 'MENU');
+  assert.equal(chain.target.night, night + 1);
+}
+// Night 5 never rolls: its 6 AM ends in the paycheck and the title, so the
+// roll-through payload must be refused there and only the measured title
+// items can prove the advancement.
+chain.acceptMenu({ target: 'continue', visible: false, selected: true, rolledThrough: true });
+chain.acceptIntro({ night: 5, identity: 'story', observed: true });
+chain.beginAttempt();
+chain.acceptTerminal({ night: 5, outcome: 'sixam', sixAm: true });
+chain.acceptTerminalVerification({ sixAm: true, positive: true });
+chain.acceptSave({ observed: true, nextNightStarted: true });
+assert.equal(chain.state, 'ABORTED');
+const chainResult = chain.result();
+assert.equal(chainResult.state, 'ABORTED');
+const proven5 = new CampaignStateMachine({ spec: { ...storySpec, nights: [storySpec.nights[4]] } });
+proven5.startPreflight();
+proven5.acceptPreflight({ status: 'READY' });
+proven5.acceptMenu({ target: 'continue', visible: true, selected: true });
+proven5.acceptIntro({ night: 5, identity: 'story', observed: true });
+proven5.beginAttempt();
+proven5.acceptTerminal({ night: 5, outcome: 'sixam', sixAm: true });
+proven5.acceptTerminalVerification({ sixAm: true, positive: true });
+proven5.acceptSave({ observed: true, menuReturned: true, continueVisible: true, sixthNightVisible: true });
+assert.equal(proven5.result().state, 'COMPLETE');
+assert.deepEqual(proven5.result().completedNights, [5]);
+console.log('device campaign: target validation, lifecycle gates, retry boundary, story Nights 1..5 chain, and completion proof pass');

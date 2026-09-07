@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { emitPlan as emitToysPlan, KNOBS0 as TOYS_KNOBS,
   replay as replayToys } from './minus-toys-plan.mjs';
 import { build as buildMinus7, devicePlan as emitMinus7Plan,
-  idleUntilMs as minus7IdleUntil, replay as replayMinus7, MASK_RAISE_GAP_MS } from './recipe.mjs';
+  idleUntilMs, replay as replayMinus7, MASK_RAISE_GAP_MS } from './recipe.mjs';
 import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
 import { canonicalJson, stableHash, validateProfile } from '@fnaf2-1020/core/contracts';
 
@@ -25,7 +25,7 @@ const PROFILE_DIR = join(ROOT, 'apps/device/profiles');
 const MAX_REPLAY_SEEDS = 8;
 const CONTROL_NAMES = new Set([
   'monitor', 'mask', 'wind', 'hall', 'ventl',
-  'cam4', 'cam5', 'cam7', 'cam9', 'cam10', 'cam11',
+  'cam4', 'cam5', 'cam7', 'cam8', 'cam9', 'cam10', 'cam11',
 ]);
 const ROW_KINDS = new Set(['tap', 'hold', 'hall', 'hallraise', 'maskraise', 'sweep', 'read', 'camdrop']);
 
@@ -151,7 +151,7 @@ function parseRow(line, cycle) {
     const spacing = numberToken(fields[0], `${cycle} sweep spacing`, { positive: true });
     const contact = numberToken(fields[1], `${cycle} sweep contact`, { positive: true });
     const cams = fields[2].split(',');
-    if (cams.length < 2 || cams.some(cam => !/^cam(?:4|5|7|9|10|11)(?::\d+)?$/.test(`cam${cam}`)))
+    if (cams.length < 2 || cams.some(cam => !/^cam(?:4|5|7|8|9|10|11)(?::\d+)?$/.test(`cam${cam}`)))
       fail(`${cycle} sweep contains an unsupported camera list`);
     if (spacing <= contact) fail(`${cycle} sweep spacing must exceed contact`);
     for (const cam of cams) {
@@ -254,7 +254,24 @@ export function parsePlan(text, { strategy, night, profile } = {}) {
       assertProfileControls(row, profile, name);
     }
   }
-  return { headers, night: actualNight, period, loopStart, stopAt, observeUntil, cycles };
+  const armDeclared = headers['arm-verify'] !== undefined ||
+    headers['arm-verify-cameras'] !== undefined || headers['arm-verify-until'] !== undefined ||
+    headers['arm-verify-viewing'] !== undefined;
+  let armVerification;
+  if (armDeclared) {
+    if (headers['arm-verify'] !== '1') fail('plan #arm-verify must be 1 when arm verification is declared');
+    const cameras = (headers['arm-verify-cameras'] ?? '').split(',').filter(Boolean);
+    if (cameras.length !== 2 || cameras.some(camera => !/^cam:(?:[1-9]|1[0-2])$/.test(camera)) ||
+        new Set(cameras).size !== cameras.length)
+      fail('plan #arm-verify-cameras must contain two unique semantic cameras');
+    const viewing = headers['arm-verify-viewing'] ?? 'cam:11';
+    if (!/^cam:(?:[1-9]|1[0-2])$/.test(viewing) || !cameras.includes(viewing))
+      fail('plan #arm-verify-viewing must name one highlighted camera');
+    const untilMs = numberToken(headers['arm-verify-until'], '#arm-verify-until', { integer: true, positive: true });
+    if (untilMs >= observeUntil) fail('plan arm-verification must close before the observation envelope');
+    armVerification = { cameras: [...cameras].sort((a, b) => Number(a.slice(4)) - Number(b.slice(4))), viewing, untilMs };
+  }
+  return { headers, night: actualNight, period, loopStart, stopAt, observeUntil, cycles, armVerification };
 }
 
 function addCommonHeaders(raw, { strategy, night, period, loopStart, stopAt, observeUntil, idleUntil, lengths }) {
@@ -290,8 +307,16 @@ function minusToysEmitter(winner, night) {
   const knobs = toysKnobs(winner.knobs);
   const period = knobs.minimal ? knobs.minPeriodMs : knobs.loopPeriodMs;
   const raw = emitToysPlan(night, knobs);
+  // Story-night pacing from the sourced rule (recipe.idleUntilMs): Night 1's
+  // first two in-game hours need nothing (Toys arm at 2 AM, g674; the box
+  // does not drain before 2 AM, g653-660), so the opening and the loop both
+  // wait for the first hour that can matter. Every other night acts from 0.
+  // The engine replay gates the full-cadence schedule; this emitted idle is
+  // the same schedule with its dead prefix removed, safe by the same sourced
+  // rule the minus7 recipe trusts.
+  const idleStart = Math.max(knobs.minimal ? knobs.minLoopStartMs : 0, idleUntilMs(night));
   const text = addCommonHeaders(raw, { strategy: 'minus-toys', night, period,
-    loopStart: knobs.minimal ? knobs.minLoopStartMs : 0,
+    loopStart: idleStart,
     stopAt: knobs.minimal ? knobs.minStopAtMs : 420000,
     observeUntil: knobs.minimal ? knobs.minObserveUntilMs : 420000,
     idleUntil: 0, lengths: { opening: 7000, toys: period, finish: 420000 } });
@@ -306,7 +331,7 @@ function minus7Emitter(winner, night) {
   const plan = emitMinus7Plan(recipe, { ...device, knobs: searchKnobs ?? search ?? {} });
   const lengths = Object.fromEntries(Object.entries(recipe.cycles).map(([name, cycle]) => [name, cycle.lengthMs]));
   const lines = [`#policy minus7`, `#night ${night}`, `#period 5000`, `#loop-start 0`,
-    `#stop-at 420000`, `#observe-until 420000`, `#idle-until ${minus7IdleUntil(night)}`];
+    `#stop-at 420000`, `#observe-until 420000`, `#idle-until ${idleUntilMs(night)}`];
   for (const [name, rows] of Object.entries(plan)) {
     lines.push(`#cycle ${name} ${lengths[name]}`);
     lines.push(...rows);
@@ -320,7 +345,7 @@ function minus7Emitter(winner, night) {
 // profile binding, hash checks, and trial handoff remain strategy-independent.
 export const STRATEGY_REGISTRY = Object.freeze({
   'minus-toys': Object.freeze({ emit: minusToysEmitter,
-    sources: Object.freeze(['tools/device/minus-toys-plan.mjs']) }),
+    sources: Object.freeze(['tools/device/minus-toys-plan.mjs', 'tools/device/recipe.mjs']) }),
   minus7: Object.freeze({ emit: minus7Emitter,
     sources: Object.freeze(['tools/device/recipe.mjs', 'tools/model/hid-device-pilot.mjs']) }),
 });

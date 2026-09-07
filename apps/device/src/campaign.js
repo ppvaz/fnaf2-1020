@@ -18,9 +18,10 @@ export const CAMPAIGN_STATES = Object.freeze([
 ]);
 
 const PACKAGE = 'com.scottgames.fnaf2';
+const NIGHT5 = 5;
 const NIGHT6 = 6;
 const NIGHT7 = 7;
-const MENU_TARGETS = new Set(['continue', 'sixthNight', 'customNight']);
+const MENU_TARGETS = new Set(['newGame', 'continue', 'sixthNight', 'customNight']);
 const TRANSITIONS = Object.freeze({
   IDLE: ['PREFLIGHT'],
   PREFLIGHT: ['MENU', 'HOLD', 'ABORTED'],
@@ -49,14 +50,8 @@ const integer = (value, label, { min = 0, max = Infinity } = {}) => {
 
 function validateNight(entry, index) {
   if (!isRecord(entry)) fail(`nights[${index}] must be an object`);
-  integer(entry.night, `nights[${index}].night`, { min: 6, max: 7 });
-  if (entry.night === NIGHT6) {
-    if (entry.mode !== 'story' || !['continue', 'sixthNight'].includes(entry.menuTarget))
-      fail('Night 6 must use mode=story and menuTarget=continue or sixthNight');
-    if (entry.menuTarget === 'continue' && entry.saveCursorObserved !== undefined &&
-        entry.saveCursorObserved !== null && entry.saveCursorObserved !== NIGHT6)
-      fail('Night 6 saveCursorObserved must be 6 when supplied');
-  } else {
+  integer(entry.night, `nights[${index}].night`, { min: 1, max: 7 });
+  if (entry.night === NIGHT7) {
     if (entry.mode !== 'custom' || entry.menuTarget !== 'customNight')
       fail('Night 7 must use mode=custom and menuTarget=customNight');
     if (!isRecord(entry.dials)) fail('Night 7 dials are required');
@@ -68,6 +63,17 @@ function validateNight(entry, index) {
     }
     const extras = Object.keys(entry.dials).filter(dial => !AI_DIALS.includes(dial));
     if (extras.length) fail(`Night 7 has unknown dials: ${extras.join(',')}`);
+  } else {
+    // Story nights 1..6. Night identity comes from the selection chain: a
+    // fresh-save newGame start, a chained continue after the previous
+    // night's observed 6 AM, or the measured sixthNight item for Night 6.
+    const allowedTargets = entry.night === 1 ? ['newGame', 'continue']
+      : entry.night === NIGHT6 ? ['continue', 'sixthNight'] : ['continue'];
+    if (entry.mode !== 'story' || !allowedTargets.includes(entry.menuTarget))
+      fail(`Night ${entry.night} must use mode=story and menuTarget=${allowedTargets.join(' or ')}`);
+    if (entry.menuTarget === 'continue' && entry.saveCursorObserved !== undefined &&
+        entry.saveCursorObserved !== null && entry.saveCursorObserved !== entry.night)
+      fail(`Night ${entry.night} saveCursorObserved must be ${entry.night} when supplied`);
   }
   if (entry.timing !== undefined) {
     if (!isRecord(entry.timing)) fail(`nights[${index}].timing must be an object`);
@@ -90,13 +96,15 @@ export function validateCampaignSpec(value) {
   if (value.target.package !== PACKAGE) fail(`target.package must be ${PACKAGE}`);
   text(value.target.build, 'target.build');
   text(value.profile, 'profile');
-  if (!Array.isArray(value.nights) || value.nights.length < 1 || value.nights.length > 2)
-    fail('nights must contain one or two targets');
+  if (!Array.isArray(value.nights) || value.nights.length < 1 || value.nights.length > 7)
+    fail('nights must contain one to seven targets');
   const seen = new Set();
   for (const [index, entry] of value.nights.entries()) {
     validateNight(entry, index);
     if (seen.has(entry.night)) fail(`night ${entry.night} is duplicated`);
     seen.add(entry.night);
+    if (index > 0 && entry.night !== value.nights[index - 1].night + 1)
+      fail('story nights must form one ascending consecutive chain');
   }
   if (!isRecord(value.retry) || !Number.isInteger(value.retry.maxAttempts) ||
       value.retry.maxAttempts < 1 || value.retry.maxAttempts > 5)
@@ -108,28 +116,48 @@ export function validateCampaignSpec(value) {
 
 /** Construct the reviewed default campaign: story Night 6, then 10/20 Night 7. */
 /** @param {{profile?: string, targetBuild?: string, maxAttempts?: number, night6MenuTarget?: string,
- *   timingByNight?: Record<string, object>}} options */
+ *   timingByNight?: Record<string, object>, nights?: number[], storyStart?: string,
+ *   storySaveCursor?: number}} options */
 export function makeCampaignSpec({ profile, targetBuild, maxAttempts = 3,
-  night6MenuTarget = 'sixthNight', timingByNight = {} } = {}) {
+  night6MenuTarget = 'sixthNight', timingByNight = {}, nights = [NIGHT6, NIGHT7],
+  storyStart = undefined, storySaveCursor = undefined } = {}) {
   text(profile, 'profile');
   text(targetBuild, 'targetBuild');
   if (!['continue', 'sixthNight'].includes(night6MenuTarget))
     fail('night6MenuTarget must be continue or sixthNight');
+  if (!Array.isArray(nights) || nights.length < 1 || nights.length > 7 ||
+      nights.some(night => !Number.isInteger(night) || night < 1 || night > 7) ||
+      new Set(nights).size !== nights.length)
+    fail('nights must be a unique set of nights in 1..7');
+  const storyNights = nights.filter(night => night !== NIGHT7);
+  if (storyStart !== undefined && !['newGame', 'continue'].includes(storyStart))
+    fail('storyStart must be newGame or continue');
+  if (storyStart === 'newGame' && storyNights[0] !== 1)
+    fail('storyStart=newGame requires the chain to begin at Night 1');
+  if (storySaveCursor !== undefined && (!Number.isInteger(storySaveCursor) ||
+      storySaveCursor !== storyNights[0]))
+    fail('storySaveCursor must equal the first story night of the chain');
   if (!isRecord(timingByNight)) fail('timingByNight must be an object');
   const dials = Object.fromEntries(AI_DIALS.map(dial => [dial, AI_10_20]));
   const timing = night => timingByNight[String(night)] ??
     { periodMs: 10000, loopStartMs: 0, stopAtMs: 420000, observeUntilMs: 420000, idleUntilMs: 0 };
+  const firstStoryNight = storyNights[0];
+  const defaultFirstTarget = firstStoryNight === 1 ? 'newGame' : 'continue';
+  const entries = nights.map(night => {
+    if (night === NIGHT7) return { night, mode: 'custom', menuTarget: 'customNight',
+      custom: makeCustomNightConfig(dials), dials, puppet: PUPPET_AI, timing: timing(night) };
+    const menuTarget = night === NIGHT6 ? night6MenuTarget
+      : night === firstStoryNight ? (storyStart ?? defaultFirstTarget) : 'continue';
+    return { night, mode: 'story', menuTarget,
+      ...(menuTarget === 'continue' ? {
+        saveCursorObserved: night === firstStoryNight ? (storySaveCursor ?? null) : null,
+      } : {}),
+      timing: timing(night) };
+  });
   return validateCampaignSpec({
     schema: CAMPAIGN_SCHEMA, version: 1,
     target: { package: PACKAGE, build: targetBuild }, profile,
-    nights: [
-      { night: NIGHT6, mode: 'story', menuTarget: night6MenuTarget,
-        ...(night6MenuTarget === 'continue' ? { saveCursorObserved: null } : {}),
-        timing: timing(NIGHT6) },
-      { night: NIGHT7, mode: 'custom', menuTarget: 'customNight',
-        custom: makeCustomNightConfig(dials), dials, puppet: PUPPET_AI,
-        timing: timing(NIGHT7) },
-    ],
+    nights: entries,
     retry: { maxAttempts },
     proof: { requireSixAm: true, requireSaveOrMenu: true },
   });
@@ -146,7 +174,7 @@ export function validateCampaignResult(value) {
   text(value.specHash, 'result.specHash');
   if (!Array.isArray(value.completedNights) || !Array.isArray(value.attempts) || !Array.isArray(value.events))
     fail('result attempts/events are required');
-  if (value.completedNights.some(night => night !== NIGHT6 && night !== NIGHT7))
+  if (value.completedNights.some(night => !Number.isInteger(night) || night < 1 || night > 7))
     fail('result completedNights contains an unsupported night');
   return value;
 }
@@ -207,9 +235,12 @@ export class CampaignStateMachine {
     return this.transition('MENU', { device: result.serial ?? null });
   }
 
-  /** @param {{target?: string, visible?: boolean, selected?: boolean}} options */
-  acceptMenu({ target, visible = false, selected = false } = {}) {
-    if (target !== this.target?.menuTarget || !visible || !selected)
+  /** @param {{target?: string, visible?: boolean, selected?: boolean, rolledThrough?: boolean}} options */
+  acceptMenu({ target, visible = false, selected = false, rolledThrough = false } = {}) {
+    // A story night the game rolled straight into after the previous night's
+    // observed 6 AM was selected by the roll itself: selected is required,
+    // visible is not, because no title screen ever appeared.
+    if (target !== this.target?.menuTarget || !(rolledThrough ? selected : visible && selected))
       return this.transition('HOLD', { reason: 'menu-observation-not-confirmed', target, expected: this.target?.menuTarget });
     return this.target?.mode === 'custom'
       ? this.transition('CUSTOM_VERIFY', { target })
@@ -281,17 +312,36 @@ export class CampaignStateMachine {
     return this.transition('SAVE_VERIFY', { sixAm: true });
   }
 
-  /** @param {{cursorNight?: number, customNightVisible?: boolean, menuReturned?: boolean, customCompleted?: boolean, observed?: boolean, dials?: object, puppet?: number, customReadback?: object, proofHash?: string}} options */
+  /** @param {{cursorNight?: number, customNightVisible?: boolean, menuReturned?: boolean, customCompleted?: boolean, observed?: boolean,
+    * continueVisible?: boolean, sixthNightVisible?: boolean, nextNightStarted?: boolean, dials?: object, puppet?: number, customReadback?: object, proofHash?: string}} options */
   acceptSave({ cursorNight, menuReturned = false, customCompleted = false, observed = false,
-    customNightVisible = false, dials, puppet, customReadback, proofHash } = {}) {
+    customNightVisible = false, continueVisible = false, sixthNightVisible = false, nextNightStarted = false,
+    dials, puppet, customReadback, proofHash } = {}) {
     const target = this.target;
+    // Save advancement is night-specific positive evidence: Night 6 unlocks
+    // Custom Night, Night 5 reveals the measured sixthNight item, and the
+    // fresh-save chain Nights 1..4 proves the cursor moved by the Continue
+    // item becoming visible after the 6 AM that New Game started.
+    // Nights 1..4 are the exception: on this build the game rolls a 6 AM
+    // straight into the next night's gameplay without any menu — regardless
+    // of whether the spec chains another night — so the observed roll into
+    // night N+1 is itself the advancement evidence and the Continue-visible
+    // proof is deferred to the chain's title return. Night 5 never rolls:
+    // its 6 AM ends in the paycheck and the title.
+    const rollsIntoNext = target?.night >= 1 && target?.night < NIGHT5;
     const valid = target?.night === NIGHT6
       ? observed === true && (cursorNight === NIGHT7 || customNightVisible === true)
-      : menuReturned === true && customCompleted === true && observed === true;
+      : target?.night === NIGHT7
+        ? menuReturned === true && customCompleted === true && observed === true
+        : rollsIntoNext
+          ? observed === true && nextNightStarted === true
+          : observed === true && menuReturned === true && continueVisible === true &&
+            (target.night < NIGHT5 || sixthNightVisible === true || cursorNight === 6);
     if (!valid) return this.transition('ABORTED', { reason: 'save-or-menu-advancement-not-proven', cursorNight });
     const completedNight = target.night;
     if (this.activeAttempt) {
-      this.activeAttempt.save = { cursorNight, customNightVisible, menuReturned, customCompleted, observed };
+      this.activeAttempt.save = { cursorNight, customNightVisible, continueVisible, sixthNightVisible,
+        menuReturned, customCompleted, nextNightStarted, observed };
       if (target.night === NIGHT7) this.activeAttempt.customReadback = { dials, puppet, ...customReadback };
       if (proofHash) this.activeAttempt.proofHash = proofHash;
       this.activeAttempt.status = 'WIN';

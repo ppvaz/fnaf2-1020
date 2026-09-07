@@ -33,7 +33,7 @@ Commands:
   dry-run       run fixture adapters and retain a replayable bundle (default)
   live          require --live --confirm-live and a non-fixture profile
   preflight     inspect one ADB phone without sending game input
-  campaign      validate the Night 6 -> Night 7 campaign and its proof gates
+  campaign      validate the story-night campaign chain and its proof gates
   calibrate     exercise the bounded seam runner with the explicit fixture
   clockmap      measure device->host monotonic clock anchors (read-only, no game input)
   bench         print registered capability descriptors
@@ -42,7 +42,7 @@ Commands:
 Options:
   --profile ID  resolved profile under apps/device/profiles
   --serial ID   select one explicit ADB device
-  --nights 6,7  campaign target nights (default: 6,7)
+  --nights 1-7  campaign target nights, one ascending chain (default: 6,7)
   --json        print machine-readable output for preflight/campaign/calibrate
   --guided      print the one-time Custom Night calibration checklist
   --calibration FILE  measured Custom Night calibration artifact
@@ -51,6 +51,7 @@ Options:
   --qualification FILE  DEVICE_MEASURED qualification artifact
   --ports MODULE  explicit campaign-port composition module
   --machine-only  run an explicit MODEL_ONLY machine-input experiment; no claim promotion
+  --allow-save-reset  authorize the measured New Game confirmation for a fresh story chain
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
   --live        explicitly enable physical actuation
@@ -72,8 +73,9 @@ function parse(argv) {
   const rest = first.startsWith('-') ? argv : tail;
   if (!knownCommands.has(command)) throw new Error(`unknown command: ${first}`);
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
-    json: false, serial: undefined, nights: [6, 7], requireHelper: true, requireHid: true,
-    guided: false, machineOnly: false, calibration: undefined, bundle: undefined,
+    json: false, serial: undefined, nights: [6, 7], storyStart: undefined, saveCursor: undefined,
+    requireHelper: true, requireHid: true,
+    guided: false, machineOnly: false, allowSaveReset: false, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
@@ -85,12 +87,17 @@ function parse(argv) {
     else if (item === '--json') options.json = true;
     else if (item === '--guided') options.guided = true;
     else if (item === '--machine-only') options.machineOnly = true;
+    else if (item === '--allow-save-reset') options.allowSaveReset = true;
     else if (item === '--no-helper') options.requireHelper = false;
     else if (item === '--no-hid') options.requireHid = false;
     else if (item === '--serial') options.serial = rest[++index];
     else if (item.startsWith('--serial=')) options.serial = item.slice('--serial='.length);
     else if (item === '--nights') options.nights = rest[++index].split(',').map(Number);
     else if (item.startsWith('--nights=')) options.nights = item.slice('--nights='.length).split(',').map(Number);
+    else if (item === '--story-start') options.storyStart = rest[++index];
+    else if (item.startsWith('--story-start=')) options.storyStart = item.slice('--story-start='.length);
+    else if (item === '--save-cursor') options.saveCursor = Number(rest[++index]);
+    else if (item.startsWith('--save-cursor=')) options.saveCursor = Number(item.slice('--save-cursor='.length));
     else if (item === '--profile') options.profile = rest[++index];
     else if (item.startsWith('--profile=')) options.profile = item.slice('--profile='.length);
     else if (item === '--calibration') options.calibration = rest[++index];
@@ -287,12 +294,13 @@ async function main(argv = process.argv.slice(2)) {
     return;
   }
   if (options.command === 'campaign') {
-    if (!options.nights.every(Number.isInteger) || options.nights.length < 1 || options.nights.length > 2 ||
-        options.nights.some(night => night !== 6 && night !== 7) || new Set(options.nights).size !== options.nights.length)
-      throw new Error('--nights must be a unique subset of 6,7');
+    if (!options.nights.every(Number.isInteger) || options.nights.length < 1 || options.nights.length > 7 ||
+        options.nights.some(night => night < 1 || night > 7) || new Set(options.nights).size !== options.nights.length)
+      throw new Error('--nights must be a unique set of nights in 1..7');
     const timingByNight = await campaignTiming(options.bundle, options.nights);
-    const fullSpec = makeCampaignSpec({ profile: selected.id, targetBuild: selected.targetBuild, timingByNight });
-    const spec = { ...fullSpec, nights: fullSpec.nights.filter(entry => options.nights.includes(entry.night)) };
+    const spec = makeCampaignSpec({ profile: selected.id, targetBuild: selected.targetBuild,
+      timingByNight, nights: options.nights, storyStart: options.storyStart,
+      storySaveCursor: options.saveCursor });
     const machine = new CampaignStateMachine({ spec });
     const calibration = await jsonFile(options.calibration, 'calibration');
     if (calibration) validateCustomNightCalibration(calibration, { targetBuild: selected.targetBuild });
@@ -330,7 +338,7 @@ async function main(argv = process.argv.slice(2)) {
       const factory = module.createCampaignPorts ?? module.default;
       if (typeof factory !== 'function') throw new Error('ports module must export createCampaignPorts()');
       composition = await factory({ spec, bundle, profile: selected, calibration, qualification,
-        serial: device.serial, machineOnly: options.machineOnly });
+        serial: device.serial, machineOnly: options.machineOnly, allowSaveReset: options.allowSaveReset });
     }
     const ports = composition?.ports ?? composition;
     const requiredPorts = ['preflight', 'menu', 'intro', 'executeAttempt', 'terminal',
@@ -342,15 +350,27 @@ async function main(argv = process.argv.slice(2)) {
       deviceLocal: composition?.deviceLocal === true || ports?.deviceLocal === true,
     };
     const campaignPreflight = evaluateCampaignPreflight({ spec, device, profile: selected,
-      calibration, bundle, qualification, machineOnly: options.machineOnly, executor: capabilities });
+      calibration, bundle, qualification, allowSaveReset: options.allowSaveReset,
+      machineOnly: options.machineOnly, executor: capabilities });
     const output = { status: campaignPreflight.status, mode: 'live', preflight: campaignPreflight,
       state: machine.snapshot(), reason: campaignPreflight.status === 'READY' ? null : 'campaign-gates-incomplete' };
-    console.log(JSON.stringify(output, null, 2));
+    console.log(JSON.stringify(output, (key, value) => key === 'token' ? '[REDACTED]' : value, 2));
     if (campaignPreflight.status === 'FAIL') process.exitCode = 1;
     if (campaignPreflight.status === 'READY') {
-      const result = await new DeviceCampaignRunner({ spec, ports }).run();
-      console.log(JSON.stringify({ status: result.state === 'COMPLETE' ? 'COMPLETE' : result.state,
-        mode: 'live', result }, null, 2));
+      try {
+        const result = await new DeviceCampaignRunner({ spec, ports }).run();
+        const retained = { status: result.state, mode: 'live', result };
+        if (composition?.evidenceDirectory)
+          await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify(retained, null, 2));
+        console.log(JSON.stringify(retained, null, 2));
+        if (result.state !== 'COMPLETE') process.exitCode = 1;
+      } catch (error) {
+        if (composition?.evidenceDirectory)
+          await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify({
+            status: 'ERROR', mode: 'live', error: error.message,
+          }, null, 2));
+        throw error;
+      }
     }
     return;
   }

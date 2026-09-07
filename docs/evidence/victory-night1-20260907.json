@@ -1,0 +1,40 @@
+{
+  "schema": "campaign-victory-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "victory-night1-20260907",
+  "recordedAt": "2026-09-07",
+  "qualifiedBy": "Pedro (operator)",
+  "claim": "Story Night 1 cleared with a 6 AM on the Moto g56 by the modern device-local artifact lane: one bounded HID schedule under the minus-toys policy, armed after a verified double-camera arm (cam:9+cam:11), observed to sixam in nine consecutive lifecycle frames",
+  "device": { "serial": "ZF525F5BH5", "build": "com.scottgames.fnaf2:2.0.7+26" },
+  "run": {
+    "evidenceDirectory": "artifacts/campaign-2026-09-07T05-05-15.429Z",
+    "mode": "live",
+    "profile": "hid-mediaprojection",
+    "qualification": "qualification-hid-mediaprojection-20260906",
+    "bundle": "artifacts/story-night1-minus-toys-20260907-armverify2",
+    "bundleHash": "fnv1a-9d085775",
+    "night1PlanSha256": "03705aa389aa5aa6a6b2154b2db07c76dac8c049c349148a4b760fadacd6b67a",
+    "observationsSha256": "b22b0392775094e3efedf546e3eb060b01dd5f30b4af276a5d621d2ada1963eb",
+    "eventsSha256": "d3ec7367390bd55bdf7e083a35414d4394c4310b7cbef694f8995b3af84ff54b",
+    "resultSha256": "40627ad0e5f9ede54e35d6a3796d8d9e254691e0d5a0d1d4f3f3509bf7a18f2f",
+    "armVerifiedEvent": { "type": "arm.verified", "attempt": 1, "elapsedMs": 2670 },
+    "sixamFrames": [
+      { "at": 1788757952732, "frame": "00053-lifecycle-observe.py.png" },
+      { "at": 1788757953609, "frame": "00054-lifecycle-observe.py.png" },
+      { "at": 1788757954278, "frame": "00055-lifecycle-observe.py.png" },
+      { "at": 1788757954939, "frame": "00056-lifecycle-observe.py.png" },
+      { "at": 1788757955577, "frame": "00057-lifecycle-observe.py.png" },
+      { "at": 1788757956366, "frame": "00058-lifecycle-observe.py.png" },
+      { "at": 1788757957137, "frame": "00059-lifecycle-observe.py.png" },
+      { "at": 1788757957948, "frame": "00060-lifecycle-observe.py.png" },
+      { "at": 1788757958732, "frame": "00061-lifecycle-observe.py.png" }
+    ]
+  },
+  "recordedError": "The run's own result.json grades this run ERROR with 'post-win title menu was not observed before the 15000ms deadline (last=night)': the then-current post-win gate demanded the title menu after every 6 AM, but story Nights 1..4 on this build roll straight into the next night's gameplay. The sixam observations above are the win; the grading gate, not the night, failed. The runner then exited, the rolled-into Night 2 ran unattended and died; the save cursor stands at Night 2 (title items continue,newGame observed 2026-09-07). Fixed in the same commit: mid-chain advancement is proven by the observed roll, Night 5/6 keep the title proof",
+  "openLimits": [
+    "Nights 2..5 remain unrun by the modern lane; the chain command validated dry-run READY for --nights 2,3,4,5 --save-cursor 2",
+    "the run was a standalone Night 1 spec (saveCursorObserved 1), not the full 1..5 chain",
+    "raw frame PNGs stay in the gitignored evidence directory; this manifest binds them by directory path and sha256 of the observation and event logs"
+  ]
+}

@@ -26,7 +26,13 @@ export function expandNightBlocks(request, night) {
   if (!opening.length || (!steady.length && !others.length)) fail(`night ${night} has no runnable opening/steady blocks`);
   const { periodMs, loopStartMs, stopAtMs, idleUntilMs } = plan.timing;
   const startMs = Math.max(loopStartMs, idleUntilMs);
-  const expanded = opening.map(block => ({ ...block, scheduleAtMs: startMs + block.atMs }));
+  // Opening rows are authored on the night timeline.  `loopStartMs` gates the
+  // repeatable steady cycle only; adding it to the opening moved Night 1's
+  // CAM09/CAM11 arm from the authored opening to 2 AM (its 140 s idle
+  // boundary), leaving the monitor in the wrong parity and making the wind
+  // contact inert.  This also preserves the minimal Night 1 emitter's
+  // deliberate 115 s pre-2-AM arm.
+  const expanded = opening.map(block => ({ ...block, scheduleAtMs: block.atMs }));
   for (let base = startMs; base < stopAtMs; base += periodMs) {
     for (const block of steady) {
       const scheduleAtMs = base + block.atMs;

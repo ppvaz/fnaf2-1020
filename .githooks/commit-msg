@@ -1,0 +1,43 @@
+#!/bin/sh
+# Consequence lock (2026-09-06). A commit that touches only bookkeeping
+# paths (docs/, plans/, markdown, agent instructions) must arrive with
+# device evidence: stage it under artifacts/ or docs/evidence/ in the same
+# commit, or reference prior evidence with EVIDENCE:<path> in the message.
+# PEDRO-OK in the message is the human-only override. Agents never write
+# the key and never bypass this hook (--no-verify, commit -n).
+
+msgfile="$1"
+staged=$(git diff --cached --name-only)
+[ -z "$staged" ] && exit 0
+
+# Paired evidence staged in this commit?
+if echo "$staged" | grep -Eq '^(artifacts/|docs/evidence/)'; then
+  exit 0
+fi
+
+# Human override. Agents never write this key.
+if grep -q 'PEDRO-OK' "$msgfile"; then
+  echo "consequence lock: human override accepted." >&2
+  exit 0
+fi
+
+# Reference to evidence from a prior commit?
+ref=$(sed -n 's/.*EVIDENCE:\([^ ,)"'"'"']*\).*/\1/p' "$msgfile" | head -n 1)
+if [ -n "$ref" ]; then
+  if [ -e "$ref" ] || git cat-file -e "HEAD:$ref" 2>/dev/null; then
+    exit 0
+  fi
+  echo "consequence lock: EVIDENCE ref not found: $ref" >&2
+  exit 1
+fi
+
+# Refuse only when every staged path is bookkeeping.
+if ! echo "$staged" | grep -Ev '^(docs/|plans/)|\.md$' > /dev/null; then
+  echo "consequence lock: refused — bookkeeping-only commit without evidence." >&2
+  echo "  - stage the device evidence (artifacts/, docs/evidence/) in this commit," >&2
+  echo "  - add EVIDENCE:<path> naming evidence from a prior commit, or" >&2
+  echo "  - have Pedro add PEDRO-OK to the message." >&2
+  exit 1
+fi
+
+exit 0

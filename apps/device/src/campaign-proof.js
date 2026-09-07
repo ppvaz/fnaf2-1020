@@ -31,8 +31,13 @@ export function validateSaveProof(value, target) {
     if (!isRecord(value) || value.observed !== true ||
         (value.cursorNight !== 7 && value.customNightVisible !== true))
       fail('Night 6 save proof must positively observe cursor Night 7 or Custom Night visibility');
-  } else if (!isRecord(value) || value.menuReturned !== true || value.customCompleted !== true || value.observed !== true) {
-    fail('Custom Night save proof must positively observe the completed menu return');
+  } else if (target?.night === 7) {
+    if (!isRecord(value) || value.menuReturned !== true || value.customCompleted !== true || value.observed !== true)
+      fail('Custom Night save proof must positively observe the completed menu return');
+  } else if (!isRecord(value) || value.observed !== true || value.menuReturned !== true ||
+      value.continueVisible !== true ||
+      (target?.night === 5 && value.sixthNightVisible !== true && value.cursorNight !== 6)) {
+    fail(`Story Night ${target?.night} save proof must positively observe the menu return and save advancement`);
   }
   return value;
 }
