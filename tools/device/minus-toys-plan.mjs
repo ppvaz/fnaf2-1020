@@ -541,7 +541,12 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`arm lands on ${landed}/${rows.length} epochs, never on ${missed}; ` +
       `device arm is a coin flip with P(miss) ~= ${missed}/${rows.length} per attempt`);
   } else if (process.argv.includes('--gate')) {
-    if (!gate(night, knobs)) process.exitCode = 1;
+    // The replay proof budget. The default 200 matches the historical gate;
+    // the winner record cites the exact run count it was proven with.
+    const runsArg = process.argv.find(v => v.startsWith('--runs='));
+    const runs = runsArg ? +(runsArg.slice(7)) : 200;
+    if (!Number.isInteger(runs) || runs < 1) throw new Error('--runs must be a positive integer');
+    if (!gate(night, knobs, runs)) process.exitCode = 1;
   } else {
     process.stdout.write(emitPlan(night, knobs));
   }

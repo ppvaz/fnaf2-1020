@@ -1562,6 +1562,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/pan-path-capture.py",
+      "invocation": "tools/device/pan-path-capture.py",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/pan-path-capture.sh",
+      "invocation": "tools/device/pan-path-capture.sh",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/pan-shift.py",
       "invocation": "tools/device/pan-shift.py before.png after.png",
       "kind": "report",

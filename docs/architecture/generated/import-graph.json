@@ -176,7 +176,9 @@
         "./physical-ports.js",
         "@fnaf2-1020/adapters",
         "node:child_process",
+        "node:fs",
         "node:fs/promises",
+        "node:path",
         "node:url",
         "node:util"
       ]
@@ -227,6 +229,7 @@
       "file": "apps/device/test/adb-device-local-executor.test.js",
       "imports": [
         "../src/adb-device-local-executor.js",
+        "../src/device-local-executor.js",
         "@fnaf2-1020/core/contracts",
         "node:assert/strict",
         "node:fs",
@@ -1357,6 +1360,7 @@
       "file": "tools/device/test-runner-plan.mjs",
       "imports": [
         "./recipe.mjs",
+        "@fnaf2-1020/core/mechanics",
         "node:child_process",
         "node:fs",
         "node:path",

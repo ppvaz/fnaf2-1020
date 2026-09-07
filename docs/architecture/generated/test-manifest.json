@@ -50,7 +50,9 @@
       "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
       "determinismSignals": [],
-      "fixedSleeps": [],
+      "fixedSleeps": [
+        "setTimeout(resolve, 2500"
+      ],
       "sharedResources": [
         "device-transport"
       ],
