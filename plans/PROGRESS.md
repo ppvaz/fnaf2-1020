@@ -41,6 +41,31 @@ arrival-reset engine corrected in this commit: Night 3 2993/3000, Night 4
 2977/3000, Night 5 2636/3000, Night 6 **1681/3000**, split armed 3000/3000 on
 every night, every loss `inside-office`. MODEL_ONLY; not a promotion.
 
+**Night 5 is refuted for this route, and the killers say why.** Five device
+attempts on the frame-light recipe: Marionette at 369.0 s, Mangle at 366.6 s,
+Foxy with Balloon Boy inside the office at 154.3 s, Marionette at 195.1 s,
+Mangle at 200.5 s. Every killer frame was recovered from the retained
+screenrecord -- the 5 s screencap cadence missed all five. **Every death is a
+Toy or the box; not one Withered.** That is Minus 3's documented boundary
+arriving a night early: the parked CAM 08 marker holds the three Withereds and
+leaves the Toys live, which is safe while Toy AI is 1-2 and is not safe here.
+The model cannot see it -- all 364/3000 of its Night 5 losses are Toy Bonnie,
+who killed us zero times on device.
+
+Minus Toys gates clean on both nights at the 3000-seed standard: night 5
+normal 3000/3000, worst 100/100, no-split control 1031/3000; night 6 normal
+3000/3000, worst 100/100, no-split control 71/3000. It is also the only route
+with live 6 AMs on this handset. **Nights 5 and 6 are Minus Toys targets.**
+
+Running it is blocked on one human act: `device:campaign --nights 5` refuses
+with `qualification-binding` because
+`qualification-hid-mediaprojection-20260907` is bound to the nights 1-2 winner,
+not the new night-5 winner (`tools/device/campaign-toys-night5-winner.json`,
+bundle replay `fnv1a-be6cbe76`). `--machine-only` is Night-6-scoped and is not
+a general hatch. A hand port of the emitted plan into the one-off runner
+aborted at ~45 s and is not faithful -- this profile resolves `hall`, `light`
+and `ventL` to the same point `{350,615}` -- so it must not be retried.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**

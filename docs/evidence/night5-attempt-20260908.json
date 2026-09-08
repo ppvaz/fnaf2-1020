@@ -41,14 +41,80 @@
   "divergence": {
     "summary": "The model does not reproduce this death, and the reason is a stated mechanic difference worth measuring before Night 6.",
     "modelSays": "minus3-frame-light.mjs --census reports minBox 0.6525 on Night 5 across 3000 seeds: the model never lets the music box approach empty on this schedule, so it cannot produce a Puppet kill. Its 364/3000 losses are all inside-office, spread across 1..5 AM.",
-    "deviceSaw": "the box ran down after a blackout and the Puppet took the kill at ~5 AM",
+    "deviceSaw": "two attempts died within 2.4 s of each other (368.97 s and 366.61 s) after a desync at ~5 AM, to two different animatronics (Puppet, then Mangle). The common cause is the desync and the box failure, not the animatronic.",
     "mechanism": "plant-model.js:306 drops every non-mask touch while the mask surface owns input (maskOn || maskAnim > 0), and the schedule's mask and monitor presses are toggles. A blackout that holds the masked state past the schedule's mask-off tap therefore eats the following monitor/wind/camera presses and can invert the schedule's mask/monitor phase for the rest of the night, which is what winding stopping looks like.",
     "whereTheModelDiffers": "startBlackout records masked = maskFullyOn and only requires the mask to have been fully on before maskGraceFrames; nothing re-checks that it is still on when BLACKOUT_FRAMES (5 s) expires. The model therefore lets the schedule pull the mask off mid-blackout and stay in phase. Whether the device holds the mask for the full blackout is the measurement that would settle it.",
-    "openQuestion": "measure, from the retained video, how long the masked state actually persists across a device blackout versus the 5 s BLACKOUT_FRAMES and the schedule's 5.18 s mask window, and whether any scheduled press between them was dropped"
+    "openQuestion": "measure, from the retained video, how long the masked state actually persists across a device blackout versus the 5 s BLACKOUT_FRAMES and the schedule's 5.18 s mask window, and whether any scheduled press between them was dropped",
+    "modelCannotAttribute": "all 364/3000 Night 5 model losses on this schedule are 'Toy Bonnie completed the sourced 40-frame marker-123 attack'. The model produces no Puppet and no Mangle office death here, so its 2636/3000 (87.9%) is both optimistic and mis-attributed for this route on device.",
+    "eatenCycleCost": "modelled by dropping every scheduled press for N consecutive clear cycles at 5 AM (600 seeds): 0 cycles 527/600 with minBox 0.652; 1 cycle 472/600 with minBox 0.160; 2 cycles 71/600 with minBox 0.000 and 371 puppet deaths; 3 cycles 0/600 with 482 puppet deaths. One eaten cycle costs almost the whole box margin and two empty it, which reproduces the device death. Extending the wind (windAtMs 5400, windMs 3600) raises the floor only 0.160 -> 0.176 and changes no win count, so this is not tunable by winding."
   },
   "openLimits": [
     "n=1 for Night 5 with this recipe; the model rate is 2636/3000 (87.9%), so a single death is not by itself a refutation of the schedule, only of it being sufficient",
     "the death cause is an operator observation, not a classifier read or a frame-level attribution",
-    "the save cursor stands at Night 5; a death does not roll it back"
-  ]
+    "the save cursor stands at Night 5; a death does not roll it back",
+    "the right-vent variant is refuted at n=1 only; before it is retried, capture the pan anchor during the contact to test the gesture hypothesis"
+  ],
+  "attempts": [
+    {
+      "run": "artifacts/minus3-device-20260908/night5-r1",
+      "terminalMs": 368967.4,
+      "killer": "puppet",
+      "observedBy": "operator, live",
+      "detail": "blackout held the masked state past the schedule's mask-off tap; inputs were eaten, the box ran down, the Marionette took the kill"
+    },
+    {
+      "run": "artifacts/minus3-device-20260908/night5-r2",
+      "terminalMs": 366606.6,
+      "killer": "mangle",
+      "observedBy": "operator, live",
+      "detail": "same desync and box failure, but the schedule's CAM 11 flashes held the Marionette off after the box emptied; the run ended when Mangle entered the office and killed after a delay. Video frames at 5 AM show the monitor up on Prize Corner with the box dial draining and the wind control unhighlighted."
+    },
+    {
+      "run": "artifacts/minus3-device-20260908/night5-r3-vent",
+      "terminalMs": 154312.5,
+      "killer": "UNKNOWN",
+      "variant": "frame-light-night5-ventr: the device-proven schedule plus a right-vent contact held concurrently with the hall contact at base+4700 (882 edges instead of 774)",
+      "detail": "REFUTED far earlier than either hall-only attempt: gameover at 154.3 s (~2 AM) against 366.6 s and 369.0 s without it. The model rates the right-vent half inert -- identical wins and identical loss counts on Nights 3, 4, 5 and 6 at 3000 seeds each -- so this is a device-only effect the model cannot see.",
+      "hypothesis": "hall+ventR is the schedule's only simultaneous two-contact gesture, and the office view pans under drags (pan-right-light-calibration-20260908). A two-finger contact plausibly registers as a gesture that moves the view, after which every fixed coordinate in the schedule is aimed at the wrong place. Untested: n=1, and no pan measurement was taken during this run.",
+      "protocolSha256": "47633aec3356e19219862a1522fa00d691b9458c6d6b5812bbd65bcb73a16160",
+      "videoSha256": "5a3d6d7a5a4ad58d2b5d1ef4549e4f79d3e0a01b97bd3c03634aa15c50e86e37"
+    },
+    {
+      "run": "artifacts/minus3-device-20260908/night5-r5",
+      "terminalMs": 200466.97,
+      "killer": "mangle",
+      "observedBy": "model read of the retained video frame",
+      "detail": "HUD read Night 5 / 2 AM with the flashlight battery still near full: neither box nor battery, Mangle simply entered early. Killer frame recovered from the retained video.",
+      "protocolSha256": "6bc0e2cf808531b25c513e08b19411152ce344d2329f6def1a02d80aa2dc282a"
+    }
+  ],
+  "puppetStun": {
+    "claim": "An empty music box is survivable: holding the camera light while viewing CAM 11 blocks the Puppet's escape rolls outright.",
+    "source": "plant-model.js, the g494/g495 branch: while box <= 0 and the Puppet has not escaped, each one-second roll is skipped entirely when camLightOn && viewing === BOX_CAM. It is a block, not a reduced chance.",
+    "observedOnDevice": "night5-r2: after the box failed, the schedule's CAM 11 flashes held the Marionette for the rest of the run; Mangle, not the Puppet, ended it (operator, live).",
+    "whyNotJustHoldTheLight": "refuted in the model before spending a device run: holding the light through the 3.2 s wind phase gives 0/3000 on Nights 5 and 6, minPower 0, with 2942/3000 Night 5 deaths to foxy -- pressing the light after Foxy has locked on is itself a kill (plant-model.js:354), and the added duty exhausts the flashlight.",
+    "whatItIsWorth": "a targeted emergency fallback rather than a schedule change: camp CAM 11 lit only once the box is actually empty. That requires observing the box level, so it is an argument for a box-level read in the Cue Helper, not something an open-loop schedule can spend."
+  },
+  "killerCensus": {
+    "claim": "Every Night 5 death on the Minus 3 route was a Toy or the box; not one Withered.",
+    "tally": {
+      "marionette": 2,
+      "mangle": 2,
+      "foxy-with-bb-inside": 1
+    },
+    "frames": "killer frames were recovered from each run's retained screenrecord, not from the 5 s screencap cadence, which missed every jumpscare. r3-vent additionally shows Balloon Boy's 'BALLOONS!' sign at the extreme left of the Foxy jumpscare: BB was inside the office, and plant-model.js gates anyOfficeLightHeld and hallLightOn on !bb.inside, so every hall flash was dead and Foxy's approach timer never reset.",
+    "conclusion": "This is the Minus 3 route's documented boundary arriving one night earlier than expected. The route parks the CAM 08 marker to hold the three Withereds and leaves the Toys live, which is safe while Toy AI is 1-2 on Nights 3-5 and is not safe here. The model cannot see it: all 364/3000 of its Night 5 losses are Toy Bonnie, an animatronic that killed us zero times on device."
+  },
+  "routeComparison": {
+    "minus3Night5": "2636/3000 model, 0/5 on device",
+    "minusToysNight5": "gate PASS at the 3000-seed standard: normal 3000/3000, worst 100/100, no-split control 1031/3000 (docs/evidence/gate-toys-night5-3000seeds-20260908.log)",
+    "minusToysNight6": "gate PASS: normal 3000/3000, worst 100/100, no-split control 71/3000 (docs/evidence/gate-toys-night6-3000seeds-20260908.log); the split carries almost the whole night there",
+    "recommendation": "Night 5 and Night 6 are Minus Toys targets, not Minus 3 ones."
+  },
+  "blockedOn": {
+    "gate": "qualification-binding",
+    "detail": "npm run device:campaign --nights 5 --bundle artifacts/toys-night5-20260908 --live refuses with 'qualification is not bound to bundle winner/model': qualification-hid-mediaprojection-20260907 is bound to the nights 1-2 minus-toys winner, not the new night-5 winner (tools/device/campaign-toys-night5-winner.json, bundle replay fnv1a-be6cbe76). Binding a qualification is a human act and was not performed by the agent.",
+    "machineOnlyNotApplicable": "--machine-only is scoped to Night 6 by AdbDeviceLocalMachineExecutor.validateRequest, so it is not a general escape hatch.",
+    "handPortRefuted": "artifacts/toys-night5-device-20260908/toys-n5-r1 ported the emitted plan into the one-off runner and ABORTed at ~45 s with 'unexpected lifecycle: state=title'. The port is not faithful: this profile resolves hall, light and ventL to the same point {350,615} (bundle.mjs profileControlKey maps hall -> light), so the ported camdrop flash and vent light actuate one button. Do not retry the hand port; use the qualified lane."
+  }
 }
