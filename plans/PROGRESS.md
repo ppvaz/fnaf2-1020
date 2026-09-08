@@ -66,6 +66,43 @@ a general hatch. A hand port of the emitted plan into the one-off runner
 aborted at ~45 s and is not faithful -- this profile resolves `hall`, `light`
 and `ventL` to the same point `{350,615}` -- so it must not be retried.
 
+**The Night 5 blocker is actuator-side, and the plan compiler does not enforce
+the constraint that explains it.** Minus Toys was ported to the sub-second
+one-off runner (the campaign lane starts 26-30 s late; see below) and run four
+times. Survival went 39 s and 42.6 s -> ~80 s -> 156.7 s from two changes that
+touched no strategy: the hall contact went 33 ms -> 350 ms, and the flash moved
+from cycle+9500 to cycle+9700. The killers moved with it, foxy at 12 AM ->
+withered bonnie at 2 AM. The strategy is byte-identical to the authoritative
+queue and the model gates it 3000/3000, so a 2/2 failure at 12 AM had to be
+actuation.
+
+Two contact-level facts explain it. A 33 ms contact registers as a UI tap but
+does not hold the hall light -- the 2026-09-06 17 ms probe landed 3/3 camera
+sweeps while the independent light-effect gate accepted 0/3. And a flash
+scheduled 300 ms after the mask-off tap clears the 244 ms `MASK_ANIM_OFF`
+window by only 56 ms, and `plant-model.js` drops every non-mask touch while
+that animation runs.
+
+`MASK_ANIM_OFF` appears in 16 files, including `minus-3-plan.mjs` where its
+author left explicit room for it, and **zero times in
+`tools/device/artifact-commands.mjs` or `tools/device/bundle.mjs`** -- the plan
+compiler and its validator. The emitted minus-toys loop is
+`[9200 tap mask 33][9500 hall 33][10100 tap monitor 33]`: 56 ms of margin,
+checked by nothing. `compileCycle` should refuse any non-mask action beginning
+within `MASK_ANIM_OFF` of a mask-off press, exactly as it already refuses a
+camdrop with the monitor down.
+
+**The qualified campaign lane starts 26-30 s into the night**, measured on every
+run that has ever recorded it: 30.2 s (Night 1 winner), 25.8 s (Night 2
+winner), 26.5 s (Night 5 tonight). The `intro()` pre-arm added in `27eed97` was
+written to remove exactly this and did not measurably change it. The cause is
+not the `night_go` gate -- the host touches that on its first office frame --
+but the device program's own push/assemble/spawn, which is longer than the
+intro card it was meant to hide behind. The model prices the consequence: at a
+26.5 s start delay minus-toys Night 1 still wins 1000/1000 while Night 5 wins
+**0/1000, killed by the Puppet**, which is what the device did. The one-off
+runner starts in 450-620 ms, so this is a lane defect, not a physical limit.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**

@@ -1,0 +1,45 @@
+{
+  "schema": "qualification-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "policyHash": "fnv1a-d48ce3da",
+  "modelHash": "minus-toys-engine-current-v1",
+  "sampleCount": 200,
+  "evidenceId": "qualification-hid-mediaprojection-night5-20260908",
+  "qualifiedBy": "Pedro (operator)",
+  "approvedAt": "2026-09-08",
+  "authorization": "Pedro directed this binding in session on 2026-09-08: 'qualify it, right now i only care about seeing the project win night 5'. The agent wrote the record; the qualification decision is the operator's.",
+  "scope": "third binding of the same measured hid-mediaprojection transport -- UHID game input via /system/bin/hid, MediaProjection visual observation via Cue Helper, one bounded device-local HID schedule per night with abort-on-gameover and releaseAll -- re-bound to the minus-toys story Night 5 winner (tools/device/campaign-toys-night5-winner.json, winnerHash fnv1a-d48ce3da, bundle replay fnv1a-be6cbe76, night-5 plan sha256 27aa0c1576fec88530065b5624acefa6cd7e04a9893b764666ba521720cad901)",
+  "bounds": "no new transport measurement was taken for this binding: it reuses the transport qualified on 2026-09-06 and re-bound on 2026-09-07, whose UHID receipt delay was measured at p50 4-5 ms, max 13 ms over 200 events. What is new is the plan text, which is gated MODEL_ONLY at the 3000-seed standard (night 5 normal 3000/3000, worst 100/100, no-split control 1031/3000). No claim beyond DEVICE_MEASURED transport qualification; in-game menu navigation stays limited to the measured title-model items; the save cursor was observed at Night 5 before this binding",
+  "evidence": [
+    {
+      "id": "qualification-hid-mediaprojection-20260907",
+      "date": "2026-09-07",
+      "claim": "the same transport bound to the minus-toys nights 1-2 winner; this record changes only the plan bytes"
+    },
+    {
+      "id": "victory-night1-20260907",
+      "date": "2026-09-07",
+      "claim": "story Night 1 cleared 6 AM on-device through this exact transport under minus-toys"
+    },
+    {
+      "id": "victory-night2-20260907",
+      "date": "2026-09-07",
+      "claim": "story Night 2 cleared 6 AM on-device through this exact transport under minus-toys"
+    },
+    {
+      "id": "gate-toys-night5-3000seeds-20260908",
+      "date": "2026-09-08",
+      "claim": "minus-toys night 5 normal 3000/3000, worst 100/100, no-split control 1031/3000"
+    },
+    {
+      "id": "night5-attempt-20260908",
+      "date": "2026-09-08",
+      "claim": "Minus 3 refuted on Night 5 across five device attempts; every killer a Toy or the box"
+    }
+  ],
+  "openLimits": [
+    "no minus-toys device run has yet been made on Night 5; this binding authorizes the attempt, it does not claim its outcome",
+    "the transport measurement behind it is the 2026-09-06 one, not a fresh sample for these plan bytes"
+  ]
+}
