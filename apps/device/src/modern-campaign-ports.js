@@ -299,6 +299,10 @@ export async function createCampaignPorts(options = {}) {
     bundle, plan: bundle.plans.find(item => item.night === target.night), profile,
     mode: 'live', artifact: bundle.artifact,
   });
+  // The artifact-lane request is identical in shape to the machine one; the
+  // pre-armed schedule below needs it before the runner calls executeAttempt.
+  const artifactRequestFor = machineRequestFor;
+  let pendingExecution = null;
 
   const tap = async ({ point: target, holdMs = CUSTOM_NIGHT_CONTACT_MS }) => {
     point(target, 'tap point');
@@ -398,13 +402,26 @@ export async function createCampaignPorts(options = {}) {
         throw new Error('machine campaign did not compose a machine executor');
       if (!localExecutor.armed) throw new Error('machine input was not armed before the night selection');
     }
-    // Do not start the device-local action clock on the newspaper/intro card.
-    // The arm macro and its camera readback are meaningful only after the
-    // office HUD exists; starting earlier allowed the lifecycle guard to
-    // mistake the expected newspaper transition for a dropped night and
-    // could spend the one-shot double-camera arm before gameplay was live.
-    // The menu selection has already established identity, so wait through
-    // the card and accept only the authoritative office `night` state here.
+    // Pre-arm the device-local schedule while the intro card plays. The
+    // executor's night_go gate holds every plan action -- arm taps included --
+    // until the lifecycle observer positively sees the office, so spawning
+    // during the intro no longer spends plan time on registration and ready
+    // delays: the grid origin lands within one poll of 12 AM instead of the
+    // measured 30-37 s post-intro offset that killed Night 2 to Foxy on
+    // 2026-09-07. The one-shot double-camera arm stays equally protected
+    // because the gate, not the spawn, releases the prefix.
+    if (!machineOnly) {
+      if (!(localExecutor instanceof AdbDeviceLocalArtifactExecutor))
+        throw new Error('artifact campaign did not compose an artifact executor');
+      if (!pendingExecution) {
+        pendingExecution = localExecutor.execute(artifactRequestFor(target));
+        // executeAttempt surfaces the failure; nothing else may await it.
+        pendingExecution.catch(() => {});
+      }
+    }
+    // Do not accept the night transition on the newspaper/intro card: the
+    // mute press and identity below need the office, and only the
+    // authoritative office `night` state establishes them.
     const state = await waitFor(bridge, serial, value => value === 'night', 30000, 'night start');
     if (bundle.plans.find(plan => plan.night === target.night)?.armVerification)
       ensureArmWatch();
@@ -514,11 +531,24 @@ export async function createCampaignPorts(options = {}) {
     terminal, terminalVerification, save, retryReady, localExecutor });
   const ports = {
     ...composed.ports,
+    executeAttempt: async ({ target }) => {
+      // intro() pre-armed the schedule during the intro card; the attempt
+      // owns that execution. A retry (or any path that skipped intro)
+      // falls back to composing the request here.
+      if (pendingExecution) {
+        const pending = pendingExecution;
+        pendingExecution = null;
+        return pending;
+      }
+      return localExecutor.execute(artifactRequestFor(target));
+    },
     releaseAll: async () => {
+      pendingExecution = null;
       await composed.ports.releaseAll();
       await closeMenuHid();
     },
     cleanup: async reason => {
+      pendingExecution = null;
       try { await composed.ports.cleanup(reason); }
       finally { await closeMenuHid(); }
     },

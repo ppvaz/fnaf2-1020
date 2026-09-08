@@ -1,0 +1,83 @@
+{
+  "schema": "campaign-victory-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "victory-night4-20260908",
+  "recordedAt": "2026-09-08",
+  "qualifiedBy": "Pedro (operator)",
+  "claim": "Story Night 4 cleared with a 6 AM on the Moto g56 through the Minus 3 route, open loop: the same 774-edge bounded HID schedule that cleared Night 3, fired blind with observation used only to arm and to detect the terminal state. Armed after a verified cam:8+cam:11 double-camera split, observed to sixam at 419.5 s in eight consecutive lifecycle frames; the save then advanced to Night 5",
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26"
+  },
+  "run": {
+    "evidenceDirectory": "artifacts/minus3-device-20260908/night4-r3",
+    "mode": "live",
+    "profile": "hid-mediaprojection",
+    "qualification": "qualification-hid-mediaprojection-20260907",
+    "experiment": "frame-light-night4",
+    "schema": "minus3-physical-experiment-v1",
+    "recipe": "tools/device/minus3-frame-light.mjs",
+    "recipeEdgesSha256": "8883626783fd81308103cea36601b805ea6d607e1e4fdd05d0cc7969c03f7d42",
+    "runnerSourceSha256": "6b8fb71a4052cd21910796c39719d69feba62f34eda547ec2221c5eb83003759",
+    "edges": 774,
+    "maskGapMs": 67,
+    "startedUtc": "2026-09-08T22:18:48.766Z",
+    "armPauseMs": 616.993,
+    "terminal": {
+      "code": 0,
+      "label": "state=sixam",
+      "elapsedMs": 419500.979192,
+      "frame": "frame-0097.png"
+    },
+    "protocolSha256": "6788c505c69778491031743c52068785c5b63e005be813cf70fbcd72834814f0",
+    "eventsSha256": "98e9e825b9af9faab8c8e366ab4df56530b8c78ffb7c2be2b248671e07314cda",
+    "observationsSha256": "f22375a7a4dcb45f9bd6421c6eb8193f6437322ce6c96a7afcb0e23b567ad128",
+    "runSourceSha256": "6b8fb71a4052cd21910796c39719d69feba62f34eda547ec2221c5eb83003759",
+    "terminalFrameSha256": "61fbf8bad27fd240e2dc9abf3f1c87098b56e8c03ee641d720df5a00611dca71",
+    "videoSha256": "ddab64e377bb3ff2442aeea252833a5cd8524595c2a807cc8ab649d07cc0a916",
+    "sixamFrames": [
+      "frame-0097.png",
+      "post-win-0.png",
+      "post-win-1.png",
+      "post-win-2.png",
+      "post-win-3.png",
+      "post-win-4.png",
+      "post-win-5.png",
+      "post-win-6.png"
+    ]
+  },
+  "saveAdvancement": {
+    "claim": "the title screen renders the save cursor as a Night label under Continue; the run's own cleanup frame read 'Continue / Night 5'",
+    "frame": "artifacts/minus3-device-20260908/night4-r3/title-after.png",
+    "frameSha256": "ae8506b06e71ab1915953df857ce28043487b095be99ec6dd83a387c0e41621a",
+    "observedBy": "operator and model read of the retained frame; no calibrated classifier reads the night label",
+    "titleObserver": "items=continue,newGame (title-observe.py, which reads item presence only)"
+  },
+  "knownNegatives": [
+    {
+      "run": "artifacts/minus3-device-20260908/night4-r2",
+      "status": "DEATH_OBSERVED_UNGRADED",
+      "detail": "identical schedule, died at 384.2 s (~5 AM) to Withered Foxy while the mask was held from 374.2 s. The jumpscare is in the retained video; hid.log and screenrecord.log are both empty and the runner's own guards did not trip, so the schedule kept firing to the end: this was a route tail, not an actuation stop.",
+      "protocolSha256": "d8208365246635ff8407fd4cc54424903e4a3849b3c2538f39475ed297c3dfa5",
+      "videoSha256": "072f3f1a4629e1fb39341ac8b0f5850aabbbdbed495fea921d2877cb6cb80cc8"
+    },
+    {
+      "run": "artifacts/minus3-device-20260908/night4-r1",
+      "status": "ABORT",
+      "detail": "aborted at 1.5 s before entering the game: the Cue Helper's READY endpoint had rotated out of its logcat buffer. Recovered with cue.setup; no game input was sent."
+    }
+  ],
+  "modelBacking": {
+    "claimLevel": "MODEL_ONLY",
+    "census": "tools/device/minus3-frame-light.mjs --census (3000 seeds, the project gate standard) against the arrival-reset engine: Night 3 2993/3000, Night 4 2977/3000, Night 5 2636/3000, Night 6 1681/3000; split armed 3000/3000 on every night; minPower 3452/2452/1451/1455; every loss inside-office. The two Night 4 device attempts, one death and one 6 AM, sit either side of a modelled 99.2% and are consistent with it at n=2.",
+    "note": "post-hoc and not a promotion gate; no 3000-seed gate has been run on these mask timings",
+    "night6Boundary": "All 1319 Night 6 losses in the 3000-seed census are Toy Bonnie completing the sourced 40-frame marker-123 office attack; no blackout-grace or puppet kills appear. Toy Bonnie is AI 1-2 only on Nights 3-5, so Night 6 is outside this route rather than a tuning target for it."
+  },
+  "openLimits": [
+    "the recipe is now tracked in tools/device/minus3-frame-light.mjs and edge-parity verified, but it is not yet wired into the device:emit bundle lane: the profile's 'light' control is {350,615} while the winning runs flashed {900,540}",
+    "one 6 AM at n=1 for Night 4; the sibling attempt on the identical schedule died at 5 AM",
+    "the census above is model-only: it is not a promoted Plan 12 gate, and no device run has been made on Nights 5 or 6 with these timings at the time of this record",
+    "raw frame PNGs stay in the gitignored evidence directory; this manifest binds them by directory path and sha256"
+  ]
+}

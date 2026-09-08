@@ -15,7 +15,7 @@ export const ARTIFACT_BLOCK_SCHEMA = 'artifact-action-block-v1';
 
 const controls = new Set(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR', 'wind',
   'cam:4', 'cam:5', 'cam:7', 'cam:8', 'cam:9', 'cam:10', 'cam:11']);
-const compounds = new Set(['hallraise', 'maskraise', 'camdrop']);
+const compounds = new Set(['hallvent', 'hallraise', 'maskraise', 'camdrop']);
 const actionKinds = new Set(['ensure', 'tap', 'press', 'hold', 'compound', 'sweep-slot', 'observe-left']);
 const forbidden = new Set([
   'strategy', 'policy', 'command', 'commands', 'trajectory', 'shell', 'adb',
@@ -91,6 +91,10 @@ function validateAction(action, path) {
     if (!compounds.has(action.compound)) fail(`${path}.compound is unsupported`);
     if (!controls.has(action.control)) fail(`${path}.control is unsupported`);
     if (typeof action.requiresMonitorUp !== 'boolean') fail(`${path}.requiresMonitorUp is required`);
+    if (action.compound === 'hallvent') {
+      if (action.control !== 'hall') fail(`${path}.hallvent control must be hall`);
+      if (action.ventControl !== 'ventR') fail(`${path}.hallvent ventControl must be ventR`);
+    }
     if (action.compound === 'camdrop' && action.control !== 'light') fail(`${path}.camdrop control must be light`);
     if (action.compound === 'hallraise' && action.control !== 'hall') fail(`${path}.hallraise control must be hall`);
     if (action.targetMonitorUp !== undefined && typeof action.targetMonitorUp !== 'boolean') fail(`${path}.targetMonitorUp must be boolean`);

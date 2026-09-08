@@ -1,0 +1,82 @@
+{
+  "schema": "campaign-victory-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "victory-night3-20260908",
+  "recordedAt": "2026-09-08",
+  "qualifiedBy": "Pedro (operator)",
+  "claim": "Story Night 3 cleared with a 6 AM on the Moto g56 through the Minus 3 route (CAM 11 viewing feed with a parked CAM 08 marker): one bounded device-local HID schedule of 774 contact edges, armed after a verified cam:8+cam:11 double-camera split, observed to sixam at 419.6 s in eight consecutive lifecycle frames; the save then advanced to Night 4",
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26"
+  },
+  "run": {
+    "evidenceDirectory": "artifacts/minus3-device-20260908/frame-only-r2",
+    "mode": "live",
+    "profile": "hid-mediaprojection",
+    "qualification": "qualification-hid-mediaprojection-20260907",
+    "experiment": "frame-light-night3",
+    "schema": "minus3-physical-experiment-v1",
+    "runnerSourceSha256": "d5adac65f3c9c01e6d8169fa2c399a39f07bac0990e60951b29980eb52e8b6a5",
+    "edges": 774,
+    "maskGapMs": 67,
+    "startedUtc": "2026-09-08T21:47:35.317Z",
+    "armPauseMs": 469.154,
+    "terminal": {
+      "code": 0,
+      "label": "state=sixam",
+      "elapsedMs": 419594.991292,
+      "frame": "frame-0093.png"
+    },
+    "protocolSha256": "dc407f3d52121c2991007eb8cf7614e0e52c407b459f5351634a8775aae65c6c",
+    "eventsSha256": "c5f1b7c565980e760c9c752d585b9ab027e8eef6f64ef4a3e9c5cc3d028a4799",
+    "observationsSha256": "82362b1cbef8b1a80afc24a95f7083d45263127297d24a738a4885093563b26a",
+    "runSourceSha256": "d5adac65f3c9c01e6d8169fa2c399a39f07bac0990e60951b29980eb52e8b6a5",
+    "terminalFrameSha256": "9d098c976ba5ab8be4cf17f0f596f87e214efa7016210197e7c6caf158b892bb",
+    "videoSha256": "64ad9fe1211c90aa5379cbd4369a5006872d844c5e1024d75001a79af97c3ef5",
+    "armVerifiedEvent": {
+      "type": "arm.verified",
+      "pair": [
+        "cam:8",
+        "cam:11"
+      ],
+      "sequence": "27588",
+      "ageUs": "75917"
+    },
+    "sixamFrames": [
+      "frame-0093.png",
+      "post-win-0.png",
+      "post-win-1.png",
+      "post-win-2.png",
+      "post-win-3.png",
+      "post-win-4.png",
+      "post-win-5.png",
+      "post-win-6.png"
+    ]
+  },
+  "saveAdvancement": {
+    "claim": "the title screen renders the save cursor as a Night label under Continue; it read 'Continue / Night 4' after this win",
+    "frame": "artifacts/minus3-device-20260908/night4-r2/title-before.png",
+    "frameSha256": "2fc280310c45d6aedf7133e0c83a0c65e35183039f9ceb00a88f482189705abc",
+    "observedBy": "operator and model read of the retained frame; no calibrated classifier reads the night label",
+    "note": "The run force-stopped the game after the win, so its own post-win loop recorded no saveTransition: lifecycle-observe reads the rolled-into Night 4 office as unknown=dark-frame-no-text. The advancement is therefore evidenced by the title frame above, captured at the start of the next run."
+  },
+  "knownNegatives": [
+    {
+      "run": "artifacts/minus3-device-20260908/frame-only-r1",
+      "status": "DEATH_OBSERVED_UNGRADED",
+      "detail": "same route, died at 126.8 s (state=gameover, frame-0032.png)"
+    }
+  ],
+  "modelBacking": {
+    "claimLevel": "MODEL_ONLY",
+    "atRunTime": "none: the run's own protocol records modelClaim 'None for these changed mask timings; prior 3000/3000 uses later masking and an unverified right-vent hold, omitted here'",
+    "postHoc": "tools/device/minus3-frame-light.mjs replays this exact schedule against the arrival-reset engine. tools/device/minus3-frame-light.mjs --census (3000 seeds, the project gate standard) against the arrival-reset engine: Night 3 2993/3000, Night 4 2977/3000, Night 5 2636/3000, Night 6 1681/3000; split armed 3000/3000 on every night; minPower 3452/2452/1451/1455; every loss inside-office. Post-hoc and not a promoted gate."
+  },
+  "openLimits": [
+    "the winning schedule was not emitted by the checked-in device lane at run time; it is an inline schedule in a one-off runner retained as run-source.mjs under a gitignored directory",
+    "no seed gate was run on these mask timings before the device run; the 3000-seed census recorded above is post-hoc and model-only",
+    "the measured right-vent hold is absent from this schedule, and the post-hoc census shows it model-inert on Nights 3-4",
+    "raw frame PNGs stay in the gitignored evidence directory; this manifest binds them by directory path and sha256 of the protocol, event and observation logs and the terminal frame"
+  ]
+}

@@ -89,6 +89,18 @@ try {
   }, join(root, 'minus7'));
   check(minus7.manifest.plans[0].policy === 'minus7', 'minus7 emitter was not registered');
 
+  const minus3 = compileBundle({
+    schema: 'winner-v1', strategy: 'minus3', knobs: 'KNOBS0', nights: [3],
+    engineHash: 'minus3-engine-fixture-v1', seeds: [1], profile: 'hid-mediaprojection',
+    gate: { status: 'PASS', claimLevel: 'MODEL_ONLY' },
+  }, join(root, 'minus3'));
+  check(minus3.manifest.plans[0].policy === 'minus3', 'minus3 emitter was not registered');
+  const minus3Actions = Object.values(minus3.compiled[0].cycles).flatMap(cycle =>
+    cycle.blocks.flatMap(block => block.actions));
+  check(minus3Actions.some(action => action.compound === 'hallvent' &&
+    action.control === 'hall' && action.ventControl === 'ventR'),
+  'minus3 did not compile the hall/right-vent compound');
+
   const output = execFileSync(join(process.cwd(), 'tools/device/trial.sh'),
     ['--artifact', bundlePath, '--dry-run', '--night', '2'], { encoding: 'utf8' });
   check(output.includes('artifact READY (dry-run)') && output.includes('night-2.plan'),

@@ -541,10 +541,11 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     console.log(`arm lands on ${landed}/${rows.length} epochs, never on ${missed}; ` +
       `device arm is a coin flip with P(miss) ~= ${missed}/${rows.length} per attempt`);
   } else if (process.argv.includes('--gate')) {
-    // The replay proof budget. The default 200 matches the historical gate;
-    // the winner record cites the exact run count it was proven with.
+    // Golden rule (Pedro, 2026-09-07): every simulation gate runs 3000
+    // seeds. Lower counts are for interactive probing only and are never
+    // proof; winner records cite the exact run count they were proven with.
     const runsArg = process.argv.find(v => v.startsWith('--runs='));
-    const runs = runsArg ? +(runsArg.slice(7)) : 200;
+    const runs = runsArg ? +(runsArg.slice(7)) : 3000;
     if (!Number.isInteger(runs) || runs < 1) throw new Error('--runs must be a positive integer');
     if (!gate(night, knobs, runs)) process.exitCode = 1;
   } else {

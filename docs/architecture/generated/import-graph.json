@@ -284,6 +284,7 @@
     {
       "file": "apps/device/test/campaign.test.js",
       "imports": [
+        "../src/campaign-proof.js",
         "../src/campaign.js",
         "@fnaf2-1020/core/mechanics",
         "node:assert/strict"
@@ -978,6 +979,7 @@
       "file": "tools/device/bundle.mjs",
       "imports": [
         "./artifact-commands.mjs",
+        "./minus-3-plan.mjs",
         "./minus-toys-plan.mjs",
         "./recipe.mjs",
         "@fnaf2-1020/core/contracts",
@@ -1081,6 +1083,14 @@
       ]
     },
     {
+      "file": "tools/device/minus-3-plan.mjs",
+      "imports": [
+        "./arm-verification.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/minus-toys-jitter.mjs",
       "imports": [
         "./minus-toys-plan.mjs",
@@ -1100,6 +1110,15 @@
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "@fnaf2-1020/core/sensing",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/minus3-frame-light.mjs",
+      "imports": [
+        "./minus-3-plan.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "node:crypto",
         "node:url"
       ]
     },
@@ -1314,6 +1333,16 @@
         "./minus-toys-plan.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-minus3-frame-light.mjs",
+      "imports": [
+        "./minus-3-plan.mjs",
+        "./minus3-frame-light.mjs",
         "node:fs",
         "node:path",
         "node:url"

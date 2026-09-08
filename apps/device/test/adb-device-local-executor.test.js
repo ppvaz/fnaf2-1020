@@ -31,6 +31,8 @@ const request = {
       { compound: 'maskraise', gapMs: 200, durationMs: 33, requiresMonitorUp: false, targetMonitorUp: true, targetMaskOn: false })]),
     block('toy-camdrop', 940, [action('toy-camdrop-action', 'compound', 'light', 940,
       { compound: 'camdrop', leadMs: 10, durationMs: 33, tailMs: 10, requiresMonitorUp: true, targetMonitorUp: false })]),
+    block('toy-hallvent', 1050, [action('toy-hallvent-action', 'compound', 'hall', 1050,
+      { compound: 'hallvent', ventControl: 'ventR', durationMs: 33, requiresMonitorUp: false })]),
   ],
 };
 
@@ -106,6 +108,7 @@ const armRemote = renderDeviceLocalScript(armSchedule, {
     retry: '/data/local/tmp/fnaf2-modern-retry-test',
     fail: '/data/local/tmp/fnaf2-modern-fail-test',
     rearm: '/data/local/tmp/fnaf2-modern-rearm-test',
+    nightGo: '/data/local/tmp/fnaf2-modern-night-go-test',
   },
 });
 assert.match(armRemote, /sleep 6/, 'the gated stream must place setup delay before the start marker');
@@ -188,11 +191,12 @@ try {
   assert.ok(armSequence >= 5, 'arming requires fresh confirming samples');
   assert.equal(armLog.filter(event => event.type === 'arm.retry').length, 0,
     'UNKNOWN and a single wrong frame must not cause a destructive re-arm');
-  assert.ok(armLog.find(event => event.type === 'arm.verified').elapsedMs < 5000,
-    'a slow lifecycle observer must not starve the native arm verifier');
+  assert.ok(armLog.find(event => event.type === 'arm.verified').elapsedMs < 7000,
+    'a slow lifecycle observer must not starve the native arm verifier after the night gate');
 
   const armFail = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250,
+    observe: async () => 'night',
     observeArm: async () => ({ sequence: ++armSequence, highlights: ['cam:9', 'cam:11'], viewing: null }) });
   await assert.rejects(() => armFail.execute(armRequest), /camera arm verification missed/,
     'a CAM09 + CAM11 observation must never be accepted for a CAM08 arm');

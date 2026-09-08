@@ -1,0 +1,85 @@
+{
+  "schema": "campaign-victory-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "victory-night2-20260907",
+  "recordedAt": "2026-09-08",
+  "qualifiedBy": "Pedro (operator)",
+  "claim": "Story Night 2 cleared with a 6 AM on the Moto g56 by the modern device-local campaign lane under the minus-toys policy: one bounded HID schedule from a hashed device-campaign bundle, armed after a verified cam:9+cam:11 double-camera split on the first attempt (elapsed 4465 ms), observed to sixam in eleven consecutive lifecycle frames",
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26"
+  },
+  "run": {
+    "evidenceDirectory": "artifacts/campaign-2026-09-07T15-40-41.895Z",
+    "mode": "live",
+    "profile": "hid-mediaprojection",
+    "qualification": "qualification-hid-mediaprojection-20260907",
+    "bundle": "artifacts/toys-nights1-2-minus-toys-20260907-gated",
+    "specHash": "fnv1a-f11b8673",
+    "bundleHash": "fnv1a-76a9ee56",
+    "night2PlanSha256": "6c9e89cce55da5d74195bd62e460f73a46ba1b4cdcdf4310e173071cf793459c",
+    "saveCursorObserved": 2,
+    "requestSha256": "b5f036ece753dccdbbb09dc910a7a06052a523de8e088a2ed9b35a376a7be7d7",
+    "eventsSha256": "593c0f7762c61a3643a23a2b37b634fb0be9cf0b8d96e7d902c0b09cbbb0ae7b",
+    "observationsSha256": "30b1d12fad413ee5a9b3d74b6ea57c02878ce135e34c85b40c1b9a096419fc97",
+    "resultSha256": "43bbadc338b5e9f5c238e23c27adc7c90781aa9158640a30d7225fd0d0940b49",
+    "armVerifiedEvent": {
+      "type": "arm.verified",
+      "attempt": 1,
+      "elapsedMs": 4465
+    },
+    "sixamFrames": [
+      {
+        "at": 1788796077742,
+        "frame": "00054-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796078590,
+        "frame": "00055-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796079425,
+        "frame": "00056-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796080073,
+        "frame": "00057-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796080696,
+        "frame": "00058-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796081271,
+        "frame": "00059-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796081994,
+        "frame": "00060-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796082772,
+        "frame": "00061-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796083500,
+        "frame": "00062-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796084244,
+        "frame": "00063-lifecycle-observe.py.png"
+      },
+      {
+        "at": 1788796084980,
+        "frame": "00064-lifecycle-observe.py.png"
+      }
+    ]
+  },
+  "recordedError": "The run's own result.json grades this run ERROR with 'campaign proof: Story Night 2 save proof must positively observe the menu return and save advancement'. This is the same defect already recorded against victory-night1-20260907: story Nights 1..4 on this build roll straight into the next night's gameplay, so no title menu exists to observe between them. The eleven sixam observations above are the win; the grading gate, not the night, failed. The gate is corrected in apps/device/src/campaign-proof.js in this commit, which accepts a positively observed next-night roll-through as Nights 1..4 save proof.",
+  "openLimits": [
+    "graded retrospectively on 2026-09-08 from the retained 2026-09-07 run; no new device run was made for this record",
+    "the corrected Nights 1..4 save proof is not re-exercised live here: the next live campaign-lane run is what will exercise it",
+    "raw frame PNGs stay in the gitignored evidence directory; this manifest binds them by directory path and sha256 of the request, event, observation and result logs"
+  ]
+}

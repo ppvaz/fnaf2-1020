@@ -34,6 +34,12 @@ export function validateSaveProof(value, target) {
   } else if (target?.night === 7) {
     if (!isRecord(value) || value.menuReturned !== true || value.customCompleted !== true || value.observed !== true)
       fail('Custom Night save proof must positively observe the completed menu return');
+  } else if (target?.night >= 1 && target?.night <= 4) {
+    // Story Nights 1..4 roll directly into the next night's gameplay on the
+    // target build. The observed next-night office is the save advancement
+    // proof; there is no title screen to inspect between the two nights.
+    if (!isRecord(value) || value.observed !== true || value.nextNightStarted !== true)
+      fail(`Story Night ${target?.night} save proof must positively observe the next-night roll-through`);
   } else if (!isRecord(value) || value.observed !== true || value.menuReturned !== true ||
       value.continueVisible !== true ||
       (target?.night === 5 && value.sixthNightVisible !== true && value.cursorNight !== 6)) {

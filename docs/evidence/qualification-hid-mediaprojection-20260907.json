@@ -1,0 +1,27 @@
+{
+  "schema": "qualification-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "policyHash": "fnv1a-ccaeed4e",
+  "modelHash": "minus-toys-engine-current-v1",
+  "sampleCount": 200,
+  "evidenceId": "qualification-hid-mediaprojection-20260907",
+  "qualifiedBy": "Pedro (operator)",
+  "approvedAt": "2026-09-07",
+  "scope": "transport-level physical qualification of the hid-mediaprojection profile: UHID game input via /system/bin/hid, MediaProjection visual observation via Cue Helper, one bounded device-local HID schedule per night with abort-on-gameover and releaseAll; re-bound to the 3000-seed minus-toys nights 1-2 winner (fnv1a-ccaeed4e) whose emitted plan bytes are sha256-identical to the plans the 2026-09-06 qualification authorized",
+  "bounds": "second binding of the same measured transport; plan text for nights 1 and 2 unchanged from bundle story-night1-minus-toys-20260907-armverify2 (night-1.plan sha256 03705aa389aa5aa6a6b2154b2db07c76dac8c049c349148a4b760fadacd6b67a); replay proof raised from 8 seeds to 3000 seeds per night; no claim beyond DEVICE_MEASURED transport qualification; in-game menu navigation limited to the measured title-model items",
+  "evidence": [
+    { "id": "victory-night1-20260907", "date": "2026-09-07", "claim": "Story Night 1 cleared 6 AM on-device through this exact transport and plan bytes; nine consecutive state=sixam lifecycle observations" },
+    { "id": "n1-full-1640", "date": "2026-08-26", "claim": "UHID in-night input is game-accepted for a full story night on this device and build; 420.2 s alive, save advanced to Night 2" },
+    { "id": "n1-minustoys-armverify-20260830", "date": "2026-08-30", "claim": "second full Night 1 pass under Minus Toys through the same UHID transport" },
+    { "id": "accessibility-hid-pilot-20260906", "date": "2026-09-06", "claim": "UHID receipt delay p50 4-5 ms, max 13 ms, 200 events, two-contact fidelity; accessibility route rejected by the game, leaving UHID the measured transport" },
+    { "id": "live-observation-20260905-moto-g56", "date": "2026-09-05", "claim": "MediaProjection observation live for 4479 frames / 280.3 s with guard refusals honored" },
+    { "id": "clock-map-20260905-moto-g56-helper", "date": "2026-09-05", "claim": "device->host clock domains measured; device-local schedule execution avoids the host-clock drift that refuted n2-minustoys-0117" },
+    { "id": "menu-check-20260906", "date": "2026-09-06", "claim": "fresh-install FNAF2_MENU identity observed with capture age 167 ms" },
+    { "id": "gate-toys-3000seeds-20260907", "date": "2026-09-07", "claim": "replay gate --runs=3000: night 1 normal 3000/3000 worst 100/100 control 2902/3000; night 2 normal 3000/3000 worst 100/100 control 2700/3000" }
+  ],
+  "openLimits": [
+    "Night 2 has no prior physical execution through this lane; this binding authorizes it",
+    "nights 3..6 move to the minus-three strategy per operator direction and need their own emitter, gate, winner, bundle, and qualification binding"
+  ]
+}

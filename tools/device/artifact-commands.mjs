@@ -78,6 +78,10 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     } else if (row.kind === 'hall') {
       actions.push(action(cycle, row, id, { kind: 'hold', control: 'hall',
         requiresMonitorUp: false, durationMs: row.duration }));
+    } else if (row.kind === 'hallvent') {
+      actions.push(action(cycle, row, id, { kind: 'compound', compound: 'hallvent',
+        control: 'hall', ventControl: 'ventR', requiresMonitorUp: false,
+        durationMs: row.duration }));
     } else if (row.kind === 'hallraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: hallraise starts with monitor up`);
       state.monitorUp = true;

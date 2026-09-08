@@ -1,0 +1,81 @@
+{
+  "schema": "calibration-observation-v1",
+  "verdict": "PARTIAL",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "pan-right-light-calibration-20260908",
+  "recordedAt": "2026-09-08",
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26",
+    "geometry": "2400x1080 landscape"
+  },
+  "scope": "What the 2026-09-08 pan-and-right-light probe (25.2 s, 36 edges, status PROBE_CAPTURED_UNGRADED) established about panning the office view and the controls it moves. Run on story Night 3 at 12 AM inside a live night, terminal probe-complete, title cleanup verified.",
+  "run": {
+    "evidenceDirectory": "artifacts/minus3-device-20260908/pan-r1",
+    "experiment": "pan-and-right-light-calibration",
+    "runnerSourceSha256": "d5adac65f3c9c01e6d8169fa2c399a39f07bac0990e60951b29980eb52e8b6a5",
+    "protocolSha256": "8e9373c0ca7a082c77746df96146fbf665dd6540f5eb2e05d1118693506b402a",
+    "observationsSha256": "49c0d2dd0c3c1c7a81a5705ce433581f8f08889f07476e9342c7043522e3719b",
+    "contactSheetSha256": "a35a0e60b03a4fecd13bd8f33b127a14c0548656692eb4deb32d8840e9abd1f4",
+    "videoSha256": "2281d508359acf721d55fa58ae37171ffb8fc2a0b5655c23c0034255f38a1e97"
+  },
+  "controlPoints": {
+    "note": "Points the winning runners actuate that the checked-in profile apps/device/profiles/hid-mediaprojection.json does not carry, or carries differently. Recorded here so they are not lost with the gitignored run directory.",
+    "runLocalOnly": {
+      "panRight": {
+        "x": 2200,
+        "y": 400
+      },
+      "panLeft": {
+        "x": 60,
+        "y": 400
+      },
+      "detail": "absent from the profile controlMap entirely; exercised only by this probe"
+    },
+    "overriddenFromProfile": {
+      "light": {
+        "runner": {
+          "x": 900,
+          "y": 540
+        },
+        "profile": {
+          "x": 350,
+          "y": 615
+        },
+        "detail": "the runner's flash point; the profile's 'light' is {350,615}, the same point as ventL, so the two names do not denote the same control. Flagged, not reconciled here."
+      },
+      "wind": {
+        "runner": {
+          "x": 430,
+          "y": 845
+        },
+        "profile": {
+          "x": 500,
+          "y": 888
+        }
+      }
+    },
+    "profileAgreeing": {
+      "hall": {
+        "x": 1200,
+        "y": 540
+      },
+      "ventR": {
+        "x": 2050,
+        "y": 615
+      }
+    }
+  },
+  "observed": [
+    "The office view pans horizontally under held contacts at panRight {2200,400} and panLeft {60,400}: the retained contact sheet shows the CELEBRATE poster, desk and monitor at different horizontal offsets across the probe.",
+    "The vent LIGHT buttons move with the view, appearing at different screen x in different pan states. A fixed vent-light coordinate is therefore only valid at a known pan position.",
+    "Six lifecycle observations across the probe all read state=night; the helper's own screen identity read FNAF2_MENU on two of them while lifecycle read night, consistent with the standing rule not to trust the helper for screen identity."
+  ],
+  "unknown": {
+    "panDisplacementPx": "UNKNOWN",
+    "reason": "tools/device/pan-shift.py refuses every pair of the six retained 2400x1080 screencaps: 'the two templates disagree ... the tracked content has probably left the strip' on five pairs and 'matched at the search bound ... saturated, not measured' on one. The 5 s capture cadence is far coarser than the 800 ms pan holds, and flashlight state changes between captures.",
+    "rightVentHitboxByPanPosition": "UNKNOWN",
+    "howToMeasureNext": "capture 2400x1080 screencaps at sub-second cadence spanning a single pan hold with the flashlight state held constant, then run pan-shift.py on adjacent pairs. Do not rescale screenrecord frames to the native geometry to feed it: sensor.open_frame refuses a geometry the caller did not declare rather than resizing, and that refusal is the point."
+  },
+  "modelNote": "The right-vent hold this probe was calibrating is model-inert on Nights 3-4. tools/device/minus3-frame-light.mjs census(night, {knobs: {...WIN_KNOBS, secondHallVent}}) returns identical wins, minPower and minBox with the second contact as hall-only versus hall+rightVent at 3000 seeds each: Night 3 2993/3000 and Night 4 2977/3000 either way, minPower 3452 and 2452 either way."
+}

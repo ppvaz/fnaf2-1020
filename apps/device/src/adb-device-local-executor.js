@@ -107,6 +107,10 @@ function addAction(events, request, action) {
     addSingle(events, request, 'light', action.lightMs);
     return action.selectMs + action.settleMs + action.lightMs;
   }
+  if (action.kind === 'compound' && action.compound === 'hallvent') {
+    addTwoContact(events, request, 'hall', 'ventR', duration);
+    return duration;
+  }
   if (action.kind === 'compound' && action.compound === 'hallraise') {
     addTwoContact(events, request, 'hall', 'monitor', duration);
     return duration;
@@ -239,7 +243,7 @@ function shellQuote(value) {
 
 function boundedRemotePath(value, label) {
   if (typeof value !== 'string' ||
-      !/^\/data\/local\/tmp\/fnaf2-modern-(?:start|go|retry|fail|rearm)-[A-Za-z0-9._$-]+$/.test(value))
+      !/^\/data\/local\/tmp\/fnaf2-modern-(?:start|go|retry|fail|rearm|night-go)-[A-Za-z0-9._$-]+$/.test(value))
     fail(`${label} is not a bounded device-local control path`);
   return value;
 }
@@ -263,7 +267,7 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
   boundedRemotePath(startMarker, 'render startMarker');
   if (armControl !== null) {
     if (!isRecord(armControl)) fail('render armControl must be an object');
-    for (const key of ['go', 'retry', 'fail', 'rearm']) boundedRemotePath(armControl[key], `render armControl.${key}`);
+    for (const key of ['go', 'retry', 'fail', 'rearm', 'nightGo']) boundedRemotePath(armControl[key], `render armControl.${key}`);
   }
   if (schedule.gated && armControl === null)
     fail('gated arm schedule requires render armControl');
@@ -307,7 +311,7 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
   }
 
   const gated = schedule.gated;
-  const { go, retry, fail: failed, rearm } = armControl;
+  const { go, retry, fail: failed, rearm, nightGo } = armControl;
   const armPrefix = '/data/local/tmp/fnaf2-modern-arm-prefix-$$.jsonl';
   const armRemainder = '/data/local/tmp/fnaf2-modern-arm-remainder-$$.jsonl';
   const armRetry = '/data/local/tmp/fnaf2-modern-arm-rearm-$$.jsonl';
@@ -321,12 +325,13 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
     `arm_retry_signal=${retry}`,
     `arm_fail=${failed}`,
     `arm_rearm=${rearm}`,
+    `night_go=${nightGo}`,
     'hid_pid=',
     'cleanup() {',
     '  set +e',
     '  [ -z "$hid_pid" ] || kill "$hid_pid" 2>/dev/null',
     '  [ -z "$hid_pid" ] || wait "$hid_pid" 2>/dev/null',
-    '  rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm"',
+    '  rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm" "$night_go"',
     '  rm -f "$arm_prefix" "$arm_remainder" "$arm_retry"',
     '}',
     'trap cleanup EXIT HUP INT TERM',
@@ -335,7 +340,7 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
   appendWrites(lines, '"$arm_remainder"', gated.remainder);
   appendWrites(lines, '"$arm_retry"', gated.rearm);
   lines.push(
-    'rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm"',
+    'rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm" "$night_go"',
     // The setup delay happens after the registration line has reached hid.
     // The marker therefore means "the first authored gameplay action is
     // about to be emitted", not merely "the adb shell was spawned".
@@ -343,6 +348,21 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
     `  printf '%s\\n' ${shellQuote(gated.register)}`,
     `  ${shellSleepMs(schedule.readyDelayMs)}`,
     '  : > "$start_marker"',
+    // The grid anchor: no plan-relative action may run before the office HUD
+    // exists. The host lifecycle observer touches night_go on the first
+    // positively observed night frame, aligning the timeline's origin to
+    // 12 AM within one poll instead of the measured 30-37 s post-intro
+    // spawn offset (2026-09-07 runs: the Night 2 Foxy death). Bounded at
+    // 120 s so a night that never starts fails instead of hanging.
+    '  night_waits=0',
+    '  while [ ! -e "$night_go" ] && [ ! -e "$arm_fail" ]; do',
+    '    night_waits=$((night_waits+1))',
+    '    if [ "$night_waits" -ge 2400 ]; then',
+    '      : > "$arm_fail"',
+    '      break',
+    '    fi',
+    '    sleep 0.05',
+    '  done',
     '  cat "$arm_prefix"',
     '  while [ ! -e "$arm_go" ] && [ ! -e "$arm_fail" ]; do',
     '    if [ -e "$arm_retry_signal" ]; then',
@@ -502,6 +522,7 @@ export class AdbDeviceLocalArtifactExecutor {
       retry: `/data/local/tmp/fnaf2-modern-retry-${tag}`,
       fail: `/data/local/tmp/fnaf2-modern-fail-${tag}`,
       rearm: `/data/local/tmp/fnaf2-modern-rearm-${tag}`,
+      nightGo: `/data/local/tmp/fnaf2-modern-night-go-${tag}`,
     } : null;
     const process = runAdbScript(this.adb, this.serial,
       renderDeviceLocalScript(schedule, { startMarker, armControl }), this.onOutput);
@@ -532,6 +553,8 @@ export class AdbDeviceLocalArtifactExecutor {
     let armFailure = null;
     let armAttempt = 1;
     let nightObserved = false;
+    /** @type {number | null} */
+    let nightAnchoredAt = null;
     let nonNightSamples = 0;
     let stopObserver = false;
     let observer = Promise.resolve();
@@ -554,14 +577,22 @@ export class AdbDeviceLocalArtifactExecutor {
       // not permission to destroy a potentially successful arm.
       armObserver = armVerification ? (async () => {
         const gate = schedule.gated;
-        let nextCheckAt = startedAt + gate.armReadyAtMs + ARM_SETTLE_MS;
-        let deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
+        // The arm taps only begin once night_go releases them, so the arm
+        // observation window is anchored to that same first night frame --
+        // not to the shell spawn, which now precedes night entry.
+        let nextCheckAt = Infinity;
+        let deadlineAt = Infinity;
         let lastSequence = null;
         let candidate = null;
         let confirmations = 0;
         while (!stopObserver && !armVerified && this.child === process.child && this.running) {
           await new Promise(resolve => setTimeout(resolve, this.pollMs));
           if (stopObserver || this.child !== process.child || !this.running) break;
+          if (nextCheckAt === Infinity) {
+            if (nightAnchoredAt === null) continue;
+            nextCheckAt = nightAnchoredAt + gate.armReadyAtMs + ARM_SETTLE_MS;
+            deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
+          }
           if (Date.now() < nextCheckAt) continue;
           let sample = null;
           try { sample = await this.observeArm(); }
@@ -628,6 +659,16 @@ export class AdbDeviceLocalArtifactExecutor {
             // consecutive run of positive non-night samples. A single bad
             // frame, or an UNKNOWN capture, never kills the stream.
             if (state === 'night') {
+              if (!nightObserved) {
+                // The first authoritative office frame is the timeline's
+                // 12 AM anchor: release the gated schedule and stamp the
+                // arm verifier's window origin.
+                nightAnchoredAt = Date.now();
+                if (armControl?.nightGo) {
+                  try { await touchRemote(this.adb, this.serial, armControl.nightGo); }
+                  catch { /* the drop guard below still governs the run */ }
+                }
+              }
               nightObserved = true;
               nonNightSamples = 0;
             } else if (!state) {

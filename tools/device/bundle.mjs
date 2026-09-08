@@ -10,6 +10,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { emitPlan as emitToysPlan, KNOBS0 as TOYS_KNOBS,
   replay as replayToys } from './minus-toys-plan.mjs';
+import { emitPlan as emitMinus3Plan, KNOBS0 as MINUS3_KNOBS,
+  replay as replayMinus3 } from './minus-3-plan.mjs';
 import { build as buildMinus7, devicePlan as emitMinus7Plan,
   idleUntilMs, replay as replayMinus7, MASK_RAISE_GAP_MS } from './recipe.mjs';
 import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
@@ -24,10 +26,10 @@ const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..')
 const PROFILE_DIR = join(ROOT, 'apps/device/profiles');
 const MAX_REPLAY_SEEDS = 8;
 const CONTROL_NAMES = new Set([
-  'monitor', 'mask', 'wind', 'hall', 'ventl',
+  'monitor', 'mask', 'wind', 'hall', 'ventl', 'ventr',
   'cam4', 'cam5', 'cam7', 'cam8', 'cam9', 'cam10', 'cam11',
 ]);
-const ROW_KINDS = new Set(['tap', 'hold', 'hall', 'hallraise', 'maskraise', 'sweep', 'read', 'camdrop']);
+const ROW_KINDS = new Set(['tap', 'hold', 'hall', 'hallvent', 'hallraise', 'maskraise', 'sweep', 'read', 'camdrop']);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 const fail = message => { throw new TypeError(`device bundle: ${message}`); };
@@ -41,9 +43,10 @@ const jsonWrite = (path, value) => writeFileSync(path, canonicalJson(value));
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 function normalizeStrategy(strategy) {
-  const aliases = { 'minus-7': 'minus7', 'minus-07': 'minus7', 'minus_toys': 'minus-toys' };
+  const aliases = { 'minus-3': 'minus3', 'minus_3': 'minus3',
+    'minus-7': 'minus7', 'minus-07': 'minus7', 'minus_toys': 'minus-toys' };
   const normalized = aliases[strategy] ?? strategy;
-  if (!['minus-toys', 'minus7'].includes(normalized))
+  if (!['minus-toys', 'minus3', 'minus7'].includes(normalized))
     fail(`no device emitter is registered for strategy ${JSON.stringify(strategy)}`);
   return normalized;
 }
@@ -86,7 +89,8 @@ export function validateWinner(input) {
   validateGate(input.gate, input.engineHash, nights, seeds);
   if (input.profile !== undefined && typeof input.profile !== 'string' && !isRecord(input.profile))
     fail('profile must be a profile id, path, or object');
-  const knobs = strategy === 'minus-toys' ? toysKnobs(input.knobs) : { ...input.knobs };
+  const knobs = strategy === 'minus-toys' ? toysKnobs(input.knobs)
+    : strategy === 'minus3' ? minus3Knobs(input.knobs) : { ...input.knobs };
   return { ...input, schema: WINNER_SCHEMA, strategy, nights, seeds, knobs };
 }
 
@@ -127,6 +131,10 @@ function parseRow(line, cycle) {
   if (kind === 'hall') {
     if (fields.length !== 1) fail(`${cycle} hall row shape is invalid`);
     return { at, kind, duration: numberToken(fields[0], `${cycle} hall contact`, { positive: true }) };
+  }
+  if (kind === 'hallvent') {
+    if (fields.length !== 1) fail(`${cycle} hallvent row shape is invalid`);
+    return { at, kind, duration: numberToken(fields[0], `${cycle} hall/right-vent contact`, { positive: true }) };
   }
   if (kind === 'hallraise') {
     if (fields.length !== 1) fail(`${cycle} hallraise row shape is invalid`);
@@ -177,6 +185,7 @@ function parseRow(line, cycle) {
 
 function profileControlKey(control) {
   if (control === 'ventl') return 'ventL';
+  if (control === 'ventr') return 'ventR';
   if (/^cam\d+$/.test(control)) return `cam:${control.slice(3)}`;
   if (control === 'hall') return 'light';
   return control;
@@ -189,6 +198,7 @@ function assertProfileControls(row, profile, cycle) {
       : row.kind === 'sweep' ? row.cams.map(cam => `cam${cam.split(':')[0]}`)
         : row.kind === 'read' ? ['ventl', 'mask', ...(row.hallAt === undefined ? [] : ['light'])]
           : row.kind === 'hall' || row.kind === 'hallraise' ? ['hall']
+            : row.kind === 'hallvent' ? ['hall', 'ventr']
             : row.kind === 'maskraise' ? ['mask', row.mode === 'hall' ? 'hall' : 'monitor'] : [];
   for (const control of controls) {
     const key = profileControlKey(control);
@@ -245,7 +255,7 @@ export function parsePlan(text, { strategy, night, profile } = {}) {
     for (const row of cycle.rows) {
       if (row.at < previous) fail(`${name} rows are not in non-decreasing time order`);
       previous = row.at;
-      const durations = row.kind === 'tap' || row.kind === 'hold' || row.kind === 'hall' || row.kind === 'hallraise'
+      const durations = row.kind === 'tap' || row.kind === 'hold' || row.kind === 'hall' || row.kind === 'hallvent' || row.kind === 'hallraise'
         ? [row.duration] : row.kind === 'camdrop' ? [row.lead, row.contact, row.tail]
           : row.kind === 'maskraise' ? [row.gap, row.duration] : row.kind === 'sweep'
             ? [row.spacing, row.contact, ...row.cams.map(cam => cam.includes(':') ? Number(cam.split(':')[1]) : row.contact)]
@@ -303,6 +313,13 @@ function toysKnobs(input) {
   return { ...TOYS_KNOBS, ...input };
 }
 
+function minus3Knobs(input) {
+  if (input === undefined || input === 'KNOBS0') return { ...MINUS3_KNOBS };
+  if (!isRecord(input)) fail('minus3 knobs must be an object or KNOBS0');
+  for (const key of Object.keys(input)) if (!Object.hasOwn(MINUS3_KNOBS, key)) fail(`unknown minus3 knob ${key}`);
+  return { ...MINUS3_KNOBS, ...input };
+}
+
 function minusToysEmitter(winner, night) {
   const knobs = toysKnobs(winner.knobs);
   const period = knobs.minimal ? knobs.minPeriodMs : knobs.loopPeriodMs;
@@ -321,6 +338,16 @@ function minusToysEmitter(winner, night) {
     observeUntil: knobs.minimal ? knobs.minObserveUntilMs : 420000,
     idleUntil: 0, lengths: { opening: 7000, toys: period, finish: 420000 } });
   return { text, knobs, replay: seed => replayToys({ night, seed, knobs }) };
+}
+
+function minus3Emitter(winner, night) {
+  const knobs = minus3Knobs(winner.knobs);
+  const raw = emitMinus3Plan(night, knobs);
+  const text = addCommonHeaders(raw, { strategy: 'minus3', night,
+    period: knobs.periodMs, loopStart: knobs.loopStartMs,
+    stopAt: knobs.stopAtMs, observeUntil: knobs.observeUntilMs,
+    idleUntil: 0, lengths: { opening: knobs.periodMs / 2, clear: knobs.periodMs } });
+  return { text, knobs, replay: seed => replayMinus3({ night, seed, knobs }) };
 }
 
 function minus7Emitter(winner, night) {
@@ -346,6 +373,8 @@ function minus7Emitter(winner, night) {
 export const STRATEGY_REGISTRY = Object.freeze({
   'minus-toys': Object.freeze({ emit: minusToysEmitter,
     sources: Object.freeze(['tools/device/minus-toys-plan.mjs', 'tools/device/recipe.mjs']) }),
+  minus3: Object.freeze({ emit: minus3Emitter,
+    sources: Object.freeze(['tools/device/minus-3-plan.mjs', 'tools/device/arm-verification.mjs']) }),
   minus7: Object.freeze({ emit: minus7Emitter,
     sources: Object.freeze(['tools/device/recipe.mjs', 'tools/model/hid-device-pilot.mjs']) }),
 });
@@ -414,7 +443,8 @@ export function compileBundle(input, outDirectory) {
   const out = resolve(outDirectory);
   mkdirSync(out, { recursive: true });
   if (readdirSync(out, { withFileTypes: true }).length > 0) fail(`refusing to overwrite non-empty output ${out}`);
-  const profile = resolveProfile(winner.profile);
+  const profile = resolveProfile(winner.profile ??
+    (winner.strategy === 'minus3' ? 'hid-mediaprojection' : undefined));
   const emitted = new Map(winner.nights.map(night => [night, emitterFor(winner, night)]));
   for (const [night, value] of emitted) parsePlan(value.text, { strategy: winner.strategy, night, profile });
   const replaySeeds = (winner.replaySeeds ?? winner.seeds.slice(0, MAX_REPLAY_SEEDS)).map((seed, index) =>

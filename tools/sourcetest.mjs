@@ -444,6 +444,22 @@ ok('time allowed', 'the fuse shortens every night up to 7', (() => {
 })());
 
 // Foxy
+{
+  // g389 explicitly zeroes D on arrival. A blackout starting on that same
+  // boundary freezes the new hall timer, not the accumulated approach timer.
+  const s = bare({ night: 3, foxyEnabled: true });
+  s.frame = C.MO_FRAMES;
+  s.foxy.readyAt = 0;
+  s.foxy.D = 100; // guarantees the approach roll succeeds for every RNG draw
+  s.startBlackout('arrival overlap');
+  s.blackout.masked = true;
+  s.onFiveSecond();
+  ok('g389', 'Foxy enters the hall during the blackout', s.foxy.loc === 'hall');
+  ok('g389', 'arrival starts a fresh hall timer without a flashlight', s.foxy.D === 0);
+  step(s, C.MO_FRAMES);
+  ok('g389/g745', 'the next boundary does not lock on using the old approach timer',
+    s.alive && !s.foxy.gotYou);
+}
 eq('g829', "Foxy's AI caps at 17, not the shared 15", C.FOXY_AI, 17);
 eq('g824/825', 'his exposure threshold is 100*night', C.foxyExposureFrames(7), 700);
 eq('g872-874', 'the lit hall pins him for 50 frames', C.FOXY_HALL_PIN_FRAMES, 50);

@@ -1,6 +1,71 @@
 # Plan progress
 
-**Updated:** 2026-09-06
+**Updated:** 2026-09-08
+
+2026-09-08 STORY NIGHTS 3 AND 4 CLEARED ON DEVICE, OPEN LOOP; NIGHT 2 GRADED
+FROM RETAINED EVIDENCE. Phone: moto g56 `ZF525F5BH5`, `2400x1080` landscape,
+build `com.scottgames.fnaf2:2.0.7+26`, profile `hid-mediaprojection`,
+qualification `qualification-hid-mediaprojection-20260907`.
+
+Four device 6 AMs now stand on the story ladder, three of them recorded today:
+
+* `victory-night2-20260907` — graded from the retained 2026-09-07 campaign run,
+  not a new run. Eleven consecutive `state=sixam` frames; the run's own
+  `result.json` says ERROR because the then-current proof gate demanded a menu
+  return that story Nights 1..4 never show. Same defect already recorded against
+  `victory-night1-20260907`. The gate is corrected in `campaign-proof.js` here:
+  a positively observed next-night roll-through is the Nights 1..4 save proof.
+* `victory-night3-20260908` — Minus 3 route, 774-edge bounded HID schedule,
+  `state=sixam` at 419.6 s in eight consecutive frames, save advanced to Night 4.
+* `victory-night4-20260908` — the same schedule, unchanged, `state=sixam` at
+  419.5 s in eight consecutive frames, save advanced to Night 5.
+* `night5-attempt-20260908` — REFUTED at 369.0 s of a 419.6 s night, recorded as
+  a known negative.
+
+All of it is open loop: a fixed schedule fired blind, with observation used only
+to arm the camera split and to detect the terminal state. No audio or video cue
+is read during the night.
+
+**The recipe that won is now tracked.** It existed only as an inline schedule in
+a one-off runner under the gitignored `artifacts/`, so a clean checkout could not
+reproduce the thing that cleared two nights. `tools/device/minus3-frame-light.mjs`
+carries it as a five-field delta on `minus-3-plan.mjs`'s `KNOBS0` — masking at
+the monitor press plus the measured 67 ms gap, the measured wind pair, and a
+hall-only second contact — and expands to the exact 774 contact edges the winning
+run actuated, bound by `EDGES_SHA256`. `test-minus3-frame-light.mjs` gates that
+parity, that the shipped default is not dragged along, and that `light` and
+`hall` stay distinct measured points.
+
+Model census of that exact schedule at the 3000-seed standard, against the
+arrival-reset engine corrected in this commit: Night 3 2993/3000, Night 4
+2977/3000, Night 5 2636/3000, Night 6 **1681/3000**, split armed 3000/3000 on
+every night, every loss `inside-office`. MODEL_ONLY; not a promotion.
+
+What remains open:
+
+* **Night 6 is a coin flip on this recipe (56%), and the losses name why.**
+  All 1319 are the same death: `Toy Bonnie completed the sourced 40-frame
+  marker-123 attack`. Not one `blackout` (mask-not-on-in-time) kill and not one
+  `puppet`. That is this route's own documented boundary rather than a tuning
+  problem: Toy Bonnie is AI 1-2 only on Nights 3-5, so at Night 6 the parked
+  CAM 08 marker stops holding him and a fixed mask cadence answers his office
+  entry too late. Night 6 is a Minus Toys target -- `campaign-night6-winner.json`
+  already exists -- not a Minus 3 one. Do not spend the phone on Minus 3 there.
+* **The Night 5 death is a model/device divergence, not just a tail.** The
+  operator watched a blackout hold the masked state past the schedule's mask-off
+  tap; the following presses were eaten and the box ran down to the Puppet. The
+  model cannot produce that death — `minBox` never falls below 0.6525 on Night 5
+  — because `startBlackout` only requires the mask to have been fully on before
+  the grace deadline and never re-checks it at `BLACKOUT_FRAMES`. Measuring the
+  real masked-state duration across a device blackout is the next Truth-layer
+  step, and it is what an open-loop schedule cannot survive without.
+* The recipe is not wired into the `device:emit` bundle lane: the profile's
+  `light` control is `{350,615}` (the same point as `ventL`) while both winning
+  runs flashed `{900,540}`. Recorded in `pan-right-light-calibration-20260908`
+  with the run-local `panLeft`/`panRight` points, whose displacement stays
+  UNKNOWN — `pan-shift.py` refuses every retained pair.
+* Nights 1..4 are device-proven but no single unattended run has chained them.
+
 
 2026-09-06 17 MS CONTACT QUALIFICATION — NOT PROMOTED. On the Moto g56
 (`ZF525F5BH5`, `2400x1080` landscape, build `com.scottgames.fnaf2:2.0.7+26`),

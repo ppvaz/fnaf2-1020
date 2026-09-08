@@ -3,6 +3,7 @@ import { AI_10_20, AI_DIALS, PUPPET_AI } from '@fnaf2-1020/core/mechanics';
 import {
   CAMPAIGN_STATES, CampaignStateMachine, makeCampaignSpec, validateCampaignSpec,
 } from '../src/campaign.js';
+import { makeAttemptProof } from '../src/campaign-proof.js';
 
 const spec = makeCampaignSpec({ profile: 'hid-mediaprojection', targetBuild: 'com.scottgames.fnaf2:2.0.7+26' });
 assert.deepEqual(spec.nights.map(target => target.night), [6, 7]);
@@ -76,6 +77,15 @@ assert.throws(() => validateCampaignSpec({ ...storySpec,
 assert.throws(() => makeCampaignSpec({ profile: 'p', targetBuild: 'b', nights: [2], storyStart: 'newGame' }), /storyStart/);
 assert.throws(() => validateCampaignSpec({ ...storySpec,
   nights: [{ ...storySpec.nights[1], saveCursorObserved: 3 }, ...storySpec.nights.slice(2)] }), /saveCursorObserved/);
+
+assert.doesNotThrow(() => makeAttemptProof({ target: storySpec.nights[1], attempt: 1,
+  terminal: { night: 2, identity: 'story', outcome: 'sixam', sixAm: true, positive: true },
+  terminalVerification: { sixAm: true, positive: true },
+  save: { observed: true, nextNightStarted: true } }));
+assert.throws(() => makeAttemptProof({ target: storySpec.nights[1], attempt: 1,
+  terminal: { night: 2, identity: 'story', outcome: 'sixam', sixAm: true, positive: true },
+  terminalVerification: { sixAm: true, positive: true },
+  save: { observed: true, menuReturned: true, continueVisible: true } }), /next-night roll-through/);
 
 // Mid-chain story Nights 1..4 roll their 6 AM straight into the next night
 // on this build: menu-mediated proof (menuReturned/continueVisible) is the

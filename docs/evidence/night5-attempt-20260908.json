@@ -1,0 +1,54 @@
+{
+  "schema": "device-attempt-v1",
+  "verdict": "REFUTED",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "night5-attempt-20260908",
+  "recordedAt": "2026-09-08",
+  "claim": "Story Night 5 was not cleared by the device-proven frame-light recipe. The run reached ~5 AM and died at 369.0 s of a 419.6 s night. This is a known negative for the recipe that cleared Nights 3 and 4, recorded so the route's ceiling stays discoverable.",
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26"
+  },
+  "run": {
+    "evidenceDirectory": "artifacts/minus3-device-20260908/night5-r1",
+    "mode": "live",
+    "profile": "hid-mediaprojection",
+    "recipe": "tools/device/minus3-frame-light.mjs",
+    "recipeEdgesSha256": "8883626783fd81308103cea36601b805ea6d607e1e4fdd05d0cc7969c03f7d42",
+    "experiment": "frame-light-night5",
+    "runnerSourceSha256": "b1c2eb7ca3bf9afe206f7fdef3a815dd9d878c47a20b5f6c64d4846d824a5bd4",
+    "edges": 774,
+    "startedUtc": "2026-09-08T22:28:20.080Z",
+    "armPauseMs": 454.004,
+    "terminal": {
+      "code": 0,
+      "label": "state=gameover",
+      "elapsedMs": 368967.367853,
+      "frame": "frame-0088.png"
+    },
+    "cleanup": "items=continue,newGame",
+    "protocolSha256": "3dd723ce55a6da1db466ee322b94dda7b2023bd4b7091edf741c70029b87351d",
+    "eventsSha256": "1931583aa0e3615f1c4a9e25b8c9c01147cf345861533cceb817bd4e92b981be",
+    "observationsSha256": "c1bf825469b486b5f639a96a1deb1ec7398930b4adfeb85d1e6f6c8895dc33e2",
+    "videoSha256": "a149d1ad93fbd0c45254829f39c81e5e55cd6978e28f554050b773134ff03ed2",
+    "lifecycleTrail": "state=night through 361 s, state=static at 365.5 s, state=gameover at 369.0 s"
+  },
+  "deathCause": {
+    "value": "puppet",
+    "observedBy": "operator, watching live: 'around 5am it defended against a blackout and lost its bearing, failed to wind the box and died to marionette'",
+    "confidence": "operator observation, not a classifier read. tools/device/death-cause.py is a shadow nearest-centroid model and was not run; the jumpscare is retained in video.mp4 above."
+  },
+  "divergence": {
+    "summary": "The model does not reproduce this death, and the reason is a stated mechanic difference worth measuring before Night 6.",
+    "modelSays": "minus3-frame-light.mjs --census reports minBox 0.6525 on Night 5 across 3000 seeds: the model never lets the music box approach empty on this schedule, so it cannot produce a Puppet kill. Its 364/3000 losses are all inside-office, spread across 1..5 AM.",
+    "deviceSaw": "the box ran down after a blackout and the Puppet took the kill at ~5 AM",
+    "mechanism": "plant-model.js:306 drops every non-mask touch while the mask surface owns input (maskOn || maskAnim > 0), and the schedule's mask and monitor presses are toggles. A blackout that holds the masked state past the schedule's mask-off tap therefore eats the following monitor/wind/camera presses and can invert the schedule's mask/monitor phase for the rest of the night, which is what winding stopping looks like.",
+    "whereTheModelDiffers": "startBlackout records masked = maskFullyOn and only requires the mask to have been fully on before maskGraceFrames; nothing re-checks that it is still on when BLACKOUT_FRAMES (5 s) expires. The model therefore lets the schedule pull the mask off mid-blackout and stay in phase. Whether the device holds the mask for the full blackout is the measurement that would settle it.",
+    "openQuestion": "measure, from the retained video, how long the masked state actually persists across a device blackout versus the 5 s BLACKOUT_FRAMES and the schedule's 5.18 s mask window, and whether any scheduled press between them was dropped"
+  },
+  "openLimits": [
+    "n=1 for Night 5 with this recipe; the model rate is 2636/3000 (87.9%), so a single death is not by itself a refutation of the schedule, only of it being sufficient",
+    "the death cause is an operator observation, not a classifier read or a frame-level attribution",
+    "the save cursor stands at Night 5; a death does not roll it back"
+  ]
+}

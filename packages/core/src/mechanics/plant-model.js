@@ -983,7 +983,10 @@ export class Sim {
       const eq = () => 21 + this.rng.int(0, 4, 0) - fx.D <= this.ai.foxy;
       if (fx.loc === 'parts') {
         if (this.frame >= fx.readyAt && eq()) {
-          fx.loc = 'hall'; fx.exposure = 0;
+          // Android Office g389 resets old foxy.v3 on CAM 08 -> hall stage 1.
+          // Arrival's accumulated D must not become the hall attack timer,
+          // especially when a simultaneous blackout prevents the next flash.
+          fx.loc = 'hall'; fx.exposure = 0; fx.D = 0;
           this.emit('foxy-arrive');
         }
       } else if (!fx.gotYou && this.frame >= fx.pinUntil && eq()) {
