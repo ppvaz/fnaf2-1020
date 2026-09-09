@@ -205,8 +205,16 @@ export class Sim {
   // masked player can only take the mask off.
   get lightStallOn() { return this.frame < this.lightLogicalUntil; }
   get anyOfficeLightHeld() {
+    // [SOURCED] g301/g303/g320 re-assert the vent lights every frame and each
+    // requires `mask` = 0 AND `viewing` = 0, so a vent light cannot be held
+    // while a camera is up. `lightHeld` keeps no view condition because
+    // g76/g77 is the camera light, which does answer with the monitor up.
+    // Correcting this on 2026-09-09: the vent terms were ungated, so the
+    // simulator credited a vent press taken with the monitor up. A device plan
+    // was built on that credit and scored 3000/3000 for a press the phone
+    // spends on the camera flash instead.
     return this.maskFullyOff && !this.bb.inside && !this.blackout.active &&
-      (this.lightHeld || this.ventLightL || this.ventLightR);
+      (this.lightHeld || ((this.ventLightL || this.ventLightR) && this.hallView));
   }
   // [SOURCED: g75 (hall), g76/g77 (camera), g301/g303/g320 (vent)] Every light
   // in the office is gated on `mask` = 0 and `in danger` = 0. The mask counter
@@ -325,8 +333,14 @@ export class Sim {
       this.setMonitor(!(this.monitor === MON_UP || this.monitor === MON_RAISING));
     } else if (action === 'wind') {
       this.winding = true;
-    } else if (action === 'ventL') { this.ventLightL = true; }
-    else if (action === 'ventR') { this.ventLightR = true; }
+    } else if (action === 'ventL' || action === 'ventR') {
+      // Loud rejection: the press is recorded, but a vent light asserted with a
+      // camera up lights nothing (g301/g303/g320 require `viewing` = 0). Flag it
+      // so a plan search or gate sees a wasted contact instead of silently
+      // banking an effect the phone cannot produce.
+      if (!this.hallView) this.flag('invalid-input', `${action} pressed with a camera up: g301/g303/g320 require viewing = 0`);
+      if (action === 'ventL') this.ventLightL = true; else this.ventLightR = true;
+    }
     else if (action.startsWith('cam:')) {
       const n = +action.slice(4);
       if (this.monitor === MON_UP && C.CAMS[n]) {

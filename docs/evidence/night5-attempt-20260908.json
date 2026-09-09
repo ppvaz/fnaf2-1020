@@ -170,7 +170,8 @@
       "moved_9750x300_monitorDown_valid": "1085/3000",
       "note": "The model scores the invalid arrangement far higher because press('ventL') sets ventLightL, which feeds anyOfficeLightHeld -- and that getter does NOT require hallView, unlike every ventLightOn getter. So the simulator credits an office-light hold that the device cannot produce with the monitor up. Removing the row entirely costs 3000/3000 -> 1046/3000, so it is load-bearing, not decorative."
     },
-    "consequence": "Enforcing the rule would refuse the currently shipped minus-toys plan, which is the device-proven nights 1-2 winner. The plan needs re-deriving under the constraint, not just re-timing, because the legal arrangements score far worse in the model. Flagged for Pedro; not changed by the agent."
+    "consequence": "Enforcing the rule would refuse the currently shipped minus-toys plan, which is the device-proven nights 1-2 winner. The plan needs re-deriving under the constraint, not just re-timing, because the legal arrangements score far worse in the model. Flagged for Pedro; not changed by the agent.",
+    "RETRACTED": "See RETRACTION_ventPress: ventl is the camera-feed light by design; this entry's premise is wrong."
   },
   "startDelayCensus": {
     "runs": 3000,
@@ -200,5 +201,26 @@
     "deviceEffect": "minus-toys Night 5 went from a box exhausted before the schedule began (operator: 'nope, box exhausted') to 283.8 s survived, the route's best by a wide margin over 171.3 s. Still not a win.",
     "remainingGap": "The model gives minus-toys Night 5 3000/3000 at zero latency but the device reached 68% of the night, which is consistent with the model's own 'without ventl' score of 1046/3000: the emitted vent press fires with the monitor up and lands on the camera flash, so the device is effectively running the variant the model scores at 35%. That is the compiler gap already recorded here.",
     "killer": "Balloon Boy (operator, live). The operator noted the run defended blackouts without a single forced-down monitor or missed mask window, which is structural rather than lucky: startBlackout records masked = maskFullyOn at the instant the encounter begins, and the cycle holds the mask ~4.8 s of every 10 s in fixed phase, so a large share of encounters find the mask already up and need no reaction. BB is the one threat the mask does not answer -- bb.inside kills every office light -- and his counter is the vent light, which is the press this plan fires with the monitor up. The best run therefore died to exactly the animatronic the broken press exists to stop."
+  },
+  "monitorRaiseNotPricedForDevice": {
+    "question": "is the monitor-up animation priced correctly? (operator, 2026-09-09)",
+    "answer": "No, not for the device.",
+    "modelSide": "MONITOR_ANIM_UP is 12 engine frames, commented 0.204 s, while C.FPS is 60 -- so the millisecond figure depends on an assumed frame rate. tools/sourcetest.mjs constrains it only relatively (MONITOR_ANIM_DOWN > MONITOR_ANIM_UP); there is no absolute assertion anywhere in the green lane.",
+    "profileSide": "apps/device/profiles/hid-mediaprojection.json calibrations['actuator-timing'] is the string 'hid-100ms-candidate-unqualified-v1'. No measured monitor-raise readiness exists, and the entry names itself unqualified.",
+    "deviceBracket": "a wind hold at raise+200 ms (5500, the earliest my new compiler gate allows, derived from the model constant) MISSED: the operator saw the wind taps not land and the run died to the Marionette at 44.3 s, against 195-369 s for the same schedule with the wind at raise+500 ms (5800). Earlier, raise+100 ms (5400) also missed. So device readiness is bracketed in (200 ms, 500 ms] after the press, and 200 ms is not it.",
+    "likelyMechanism": "the raise plausibly starts on RELEASE of the 33 ms tap rather than the press, putting the animation at [5333, 5533] and a 5500 press inside it. Untested.",
+    "consequenceForTheGate": "the animation-clearance rule I landed uses the model constant as the deadline, so it permits exactly the schedule that failed. It is still worth having -- it refuses the worse 5400 case -- but its threshold must become a measured readiness plus a jitter margin, which is what tools/device/recipe.mjs already does for Minus 7 via RAISE_JITTER_MARGIN_MS and RAISE_MARGIN_MS. Until measured, no plan may shave this gap.",
+    "howToMeasure": "tools/device/hid-monitorraise-probe.mjs, tools/device/monitorraise-watch.py and tools/device/monitor-calibrate.py exist for this; the output belongs in the profile's actuator-timing calibration, replacing the unqualified candidate string."
+  },
+  "RETRACTION_ventPress": {
+    "retracts": "compilerAcceptsInvalidInteraction and the related claims in plans/PROGRESS.md and commits 0eb0280 and 60cb462, which said the emitted minus-toys plan presses an office vent light with the monitor up, that the press is inert on device, and that the model wrongly credits it.",
+    "whatIsActuallyTrue": "`ventl` in minus-toys-plan.mjs is the CAMERA-FEED light, deliberately. actionFor maps `ventl` -> the sim action `light` (tools/device/minus-toys-plan.mjs:203), and the knobs document it as 'ventl (camera-feed light) glitch-stun refresh, right after the raise' and 'ventl (CAM 09 feed light) re-flash'. The row is named for the profile control whose coordinate coincides with the camera feed light. The sim receives press('light') with the monitor up, which is camLightOn -- the camera flash -- so the model and the device agree. The operator's observation that taps carrying the left-vent coordinate land inside the monitor and hit the cam flash is the plan working as intended, not a defect.",
+    "consequences": [
+      "the 3000/3000 night-5 gate is not built on a phantom effect; it rests on the camera-feed glitch-stun",
+      "the compiler rule drafted to refuse 'vent light with monitor up' would have refused an intentional press; it was never landed and must not be, at least not in that form",
+      "the 3000/3000 -> 1046/3000 figure came from deleting the row entirely, which removes a real camera-flash stun; it is not the cost of the press being inert",
+      "the anyOfficeLightHeld fix remains correct on its own terms -- the dump requires viewing = 0 for g301/g303/g320 -- but it does not touch these plans, because they never emit a ventL action at all. sourcetest stays 203/203 and the night-5 gate stays 3000/3000 with it applied"
+    ],
+    "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
   }
 }

@@ -12,6 +12,7 @@ import * as C from '@fnaf2-1020/core/mechanics';
 // enforced here rather than watched for on the phone.
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
+const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
 
 const camera = control => /^cam(?:[0-9]|1[0-2])$/.test(control);
 const semantic = control => camera(control) ? `cam:${Number(control.slice(3))}`
@@ -67,6 +68,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   // When the monitor raise and the mask-off press began, so a press cannot be
   // scheduled inside an animation the engine drops it during.
   let monitorUpAt = -Infinity;
+  let monitorDownAt = -Infinity;
   let maskOffAt = -Infinity;
   const blocks = [];
   for (const [rowIndex, row] of rows.entries()) {
@@ -84,12 +86,20 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
       throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
         `${MONITOR_ANIM_UP_MS} ms monitor raise from +${monitorUpAt} ms; the control is not on ` +
         'screen yet and the contact hits the office underneath');
+    // NO rule refuses a mask press inside the monitor LOWERING animation, and
+    // one must not be added. The engine accepts it -- it refuses a mask press
+    // only on MON_UP/MON_RAISING -- and the device says it is load-bearing: the
+    // frame-light flash masks 67 ms after the monitor press, while the monitor
+    // is still coming down and the light is still held, and that transition is
+    // the point of the flash. Moving it to +650 ms to 'clear' the animation
+    // cost a Night 5 run at 61 s against 157-369 s for the measured timing
+    // (2026-09-09).
     if (row.kind === 'tap' || row.kind === 'hold') {
       const control = semantic(row.control);
       if (control === 'monitor') {
         state.monitorUp = !state.monitorUp;
         if (state.monitorUp) monitorUpAt = row.at;
-        if (!state.monitorUp) state.camera = null;
+        if (!state.monitorUp) { monitorDownAt = row.at; state.camera = null; }
         actions.push(action(cycle, row, id, { kind: 'ensure', control,
           targetMonitorUp: state.monitorUp, durationMs: row.duration }));
       } else if (control === 'mask') {
@@ -142,6 +152,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     } else if (row.kind === 'camdrop') {
       if (!state.monitorUp) throw new TypeError(`${cycle}: camdrop requires monitor up`);
       state.monitorUp = false;
+      monitorDownAt = row.at + row.lead;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'camdrop',
         control: 'light', requiresMonitorUp: true, targetMonitorUp: false,
         leadMs: row.lead, durationMs: row.contact, tailMs: row.tail }));
