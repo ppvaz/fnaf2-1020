@@ -70,6 +70,14 @@ const MASK_SETTLE_MS = 750;
 // one that finishes.
 const GATE_READ_ATTEMPTS = 5;
 const GATE_RETRY_GAP_MS = 600;
+// Measured over 82 frames the fitted rule read confidently across today's
+// Night 5 runs: whole-grid mean luma reaches 10 at most with the mask on
+// (n=52) and 25 at least with it off (n=30) -- a gap with no overlap. That
+// bound refutes mask-on and nothing else. Asserting mask-on from darkness is
+// exactly what `mask-calibrate.py` forbids, because a blacked-out office
+// reads the same; refuting it is safe, and resolves 71% of the frames the
+// anchors refuse.
+const MASK_OFF_GRID_LUMA_FLOOR = 25;
 // A gate is only placed where the authored plan already has idle to pay for
 // it, so gating never displaces a contact the plan's timing was validated on.
 const GATE_MIN_SLACK_MS = 2600;
@@ -439,6 +447,8 @@ function compactControlSample(value) {
   // Which detector answered is part of the observation: the camera panel and
   // the office HUD see opposite halves of the monitor state.
   const monitorSource = boundedSampleText(sample.monitorSource);
+  const gridLuma = Number.isSafeInteger(sample.gridLuma) && sample.gridLuma >= 0
+    ? sample.gridLuma : null;
   // Only ever present on a frame the fitted rule refused, and bounded to the
   // helper's fixed 20x9 sensor so a run bundle cannot grow without limit.
   const maskCells = Array.isArray(sample.maskCells) && sample.maskCells.length === 180 &&
@@ -450,6 +460,7 @@ function compactControlSample(value) {
     sample.visualCaptureUncertaintyMs >= 0 ? sample.visualCaptureUncertaintyMs : null;
   return { sequence, ageUs, screen, monitorUp, monitorReason, maskOn, maskReason,
     ...(monitorSource ? { monitorSource } : {}),
+    ...(gridLuma === null ? {} : { gridLuma }),
     ...(maskCells ? { maskCells } : {}),
     ...(panelSequence === null ? {} : { panelSequence }),
     ...(maskEvidence ? { maskEvidence } : {}),
@@ -1052,17 +1063,27 @@ export class AdbDeviceLocalArtifactExecutor {
               reads.push({ startedAt: read.readStartedAt, finishedAt: read.readFinishedAt });
               sample = compactControlSample(read.sample);
               if (sample.maskOn !== null) break;
+              if (entry.believedMaskOn === true && sample.gridLuma !== null &&
+                sample.gridLuma >= MASK_OFF_GRID_LUMA_FLOOR) break;
             }
             if (!sample) break;
+            // A refused frame still refutes mask-on when the grid is far too
+            // bright for an opaque mask. That is the whole abort case: the
+            // plan believes the mask is on, and the device plainly shows it
+            // is not, so the gate corrects instead of ending the night.
+            const refutesMaskOn = sample.maskOn === null && entry.believedMaskOn === true &&
+              sample.gridLuma !== null && sample.gridLuma >= MASK_OFF_GRID_LUMA_FLOOR;
+            const observedMaskOn = sample.maskOn !== null ? sample.maskOn
+              : refutesMaskOn ? false : null;
             let corrected = false;
             let correctedAt = null;
             let status;
-            if (entry.believedMaskOn === null || sample.maskOn === null) {
+            if (entry.believedMaskOn === null || observedMaskOn === null) {
               // A gate that cannot see the state has not verified anything.
               // Releasing here would run the rest of the night on an
               // assumption, which is the failure this gate exists to end.
               status = 'UNKNOWN';
-            } else if (sample.maskOn === entry.believedMaskOn) {
+            } else if (observedMaskOn === entry.believedMaskOn) {
               status = 'AGREED';
             } else {
               status = 'CORRECTED';
@@ -1089,7 +1110,9 @@ export class AdbDeviceLocalArtifactExecutor {
             }
             this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
               cycle: entry.cycle, nextActionId: entry.nextActionId,
-              believedMaskOn: entry.believedMaskOn, observedMaskOn: sample.maskOn,
+              believedMaskOn: entry.believedMaskOn, observedMaskOn,
+              maskEvidence: sample.maskOn !== null ? 'mask-rule'
+                : refutesMaskOn ? 'grid-luma-refutation' : 'none',
               status, reachedAt, releaseAt, reads, sample,
               ...(correctedAt === null ? {} : { correctedAt }),
               ...(verify ? { verify } : {}) });

@@ -326,6 +326,12 @@ export async function createCampaignPorts(options = {}) {
       // bytes: retaining its sensor row is what lets a later refit cover the
       // state, instead of another night spent rediscovering that it exists.
       ...(mask.state === 'OBSERVED' ? {} : { maskCells: frame.cells }),
+      // The helper's darkness feature, carried so a refused frame can still
+      // refute mask-on. It is never used to assert mask-on: that is the one
+      // direction a blackout is indistinguishable from the mask.
+      gridLuma: Math.floor(frame.cells.reduce((sum, cell) =>
+        sum + (((77 * ((cell >> 16) & 0xff)) + (150 * ((cell >> 8) & 0xff)) +
+          (29 * (cell & 0xff))) >> 8), 0) / frame.cells.length),
       maskEvidence,
       ...(visualCapture ? { visualCaptureAt: visualCapture.at,
         visualCaptureUncertaintyMs: visualCapture.uncertaintyMs } : {}),

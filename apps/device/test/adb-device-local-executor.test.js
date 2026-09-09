@@ -230,6 +230,12 @@ const fakeRoot = mkdtempSync(join(tmpdir(), 'fnaf2-modern-executor-'));
 const fakeAdb = join(fakeRoot, 'adb');
 writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 10\n');
 chmodSync(fakeAdb, 0o755);
+// The gate fixtures have to outlive their gates: the stream parks at plan
+// time 2600 ms and the arm ahead of it costs seconds, so a 3 s child dies
+// before the first gate is ever reached.
+const gateAdb = join(fakeRoot, 'gate-adb');
+writeFileSync(gateAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 20\n');
+chmodSync(gateAdb, 0o755);
 const effectAdb = join(fakeRoot, 'effect-adb');
 writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" logcat "*) echo "I am_anr : [0,1,com.scottgames.fnaf2,0,Input dispatching timed out]"; exit 0;; *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 3\n');
 chmodSync(effectAdb, 0o755);
@@ -336,6 +342,46 @@ try {
     'the deciding detector must be retained in the sample');
   assert.equal(sourcedResult.samples[0].panelSequence, 900 + sourcedResult.samples[0].sequence,
     'the camera read sequence must be retained beside the frame sequence it was paired with');
+
+  // A frame the fitted rule refuses still refutes mask-on when the grid is far
+  // too bright for an opaque mask, so the gate corrects rather than ending the
+  // night. Darkness is never allowed to assert mask-on: a blackout reads the
+  // same, which is why only this direction is inferred.
+  const refuteLog = [];
+  let refuteSequence = 0;
+  const refuted = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: gateAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => refuteLog.push(event),
+    observeArm: async () => ({ sequence: ++refuteSequence + 500,
+      highlights: ['cam:8', 'cam:11'], viewing: null }),
+    observeControlState: async () => ({ sequence: ++refuteSequence, ageUs: 10,
+      screen: 'FNAF2_NIGHT', monitorUp: false, maskOn: null,
+      maskReason: 'ambiguous-threshold', gridLuma: 44, maskEvidence: 'fixture' }) });
+  await refuted.execute(gateRequest);
+  const refuteGates = refuteLog.filter(event => event.type === 'control.gate');
+  assert.ok(refuteGates.length > 0, 'the gated fixture must reach a gate');
+  assert.equal(refuteGates[0].observedMaskOn, false,
+    'a bright grid must refute mask-on even when the fitted rule refuses');
+  assert.equal(refuteGates[0].maskEvidence, 'grid-luma-refutation');
+  assert.equal(refuteGates[0].status, 'CORRECTED',
+    'a refuted mask-on must correct the parity, not abort the night');
+  assert.ok(!refuteLog.some(event => event.type === 'control.gate.abort'),
+    'a refutable frame must not end the night');
+
+  // Darkness stays unknown: mask-on and a blacked-out office read alike.
+  const darkLog = [];
+  let darkSequence = 0;
+  const dark = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: gateAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => darkLog.push(event),
+    observeArm: async () => ({ sequence: ++darkSequence + 500,
+      highlights: ['cam:8', 'cam:11'], viewing: null }),
+    observeControlState: async () => ({ sequence: ++darkSequence, ageUs: 10,
+      screen: 'FNAF2_NIGHT', monitorUp: false, maskOn: null,
+      maskReason: 'ambiguous-threshold', gridLuma: 4, maskEvidence: 'fixture' }) });
+  await dark.execute(gateRequest);
+  assert.ok(darkLog.some(event => event.type === 'control.gate.abort'),
+    'a dark ambiguous frame must still stop the night rather than guess');
 
   const anrEvent = sourcedLog.find(event => event.type === 'device.anr');
   assert.ok(anrEvent, 'every run must record its ANR query, hit or not');
