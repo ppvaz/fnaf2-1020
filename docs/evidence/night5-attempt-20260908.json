@@ -222,5 +222,18 @@
       "the anyOfficeLightHeld fix remains correct on its own terms -- the dump requires viewing = 0 for g301/g303/g320 -- but it does not touch these plans, because they never emit a ventL action at all. sourcetest stays 203/203 and the night-5 gate stays 3000/3000 with it applied"
     ],
     "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
+  },
+  "night5Conclusion": {
+    "attempts": 16,
+    "bestSurvival": "369.0 s of a 419.6 s night (Minus 3 frame-light, twice)",
+    "provenScheduleDistribution": "six Night 5 runs on the proven Minus 3 timing: 369, 367, 202, 200, 195, 157 s",
+    "whyRepetitionWillNotWin": "both best runs died at ~5 AM to the box, so the wall is not a tail. The operator watched the cause directly: a desync makes wind presses land while masked, where the engine drops every non-mask touch, so the box loses delivered wind rather than scheduled wind.",
+    "eatenCycleCost3000": {
+      "0": "2636/3000, minBox 0.6525",
+      "1": "2379/3000, minBox 0.1600",
+      "2": "353/3000, minBox 0.0000, 1903 of the losses puppet"
+    },
+    "boxMarginSearchExhausted": "within the device-validated invariants -- wind no earlier than raise+500 ms (raise+100 and raise+200 both missed on the phone), the mask at monitor+67 ms inside the lowering because that transition IS the flash, hall contact >= 350 ms -- no cycle variant improves the night-5 box floor. period 10000 holds minBox 0.6525 at every camdrop tried; period 12000 collapses it to 0.22-0.30; camdrop 10500 at period 10000 gives 0/600. The proven schedule is already the box-margin optimum of this knob space.",
+    "whatWouldActuallyCloseIt": "desync prevention, not box margin. The repo already contains the mechanism: apps/device/src/service.js drives target states via #ensureMonitorInternal(target) rather than toggling, and artifact-commands.mjs compiles ensure/targetMonitorUp/targetMaskOn actions for it. The campaign lane does not use that path -- it compiles the night into one device-local HID stream, open-loop by construction, because host round-trips per action reintroduce the clock drift that refuted an earlier lane. So the two available execution models are timing-accurate without feedback, or state-correct without a clock. Closing Night 5 needs the hybrid: device-local timing with periodic state resynchronisation. That is a design change, not a knob."
   }
 }

@@ -184,6 +184,34 @@ emitted vent press fires with the monitor up and lands on the camera flash, so
 the device is running the variant the model scores at 35% -- and BB, whose
 counter is that vent light, is what ended the best run.
 
+**Night 5 is refuted for open-loop actuation, and the reason is now measured.**
+Sixteen device attempts; best 369.0 s of a 419.6 s night, twice, both on the
+proven Minus 3 frame-light timing. Six runs on that timing gave 369, 367, 202,
+200, 195, 157 s, and both best runs died at ~5 AM to the box -- so the wall is
+not a tail. The operator watched the cause: a desync makes wind presses land
+while masked, where the engine drops every non-mask touch, so the box loses
+*delivered* wind rather than scheduled wind. Priced at 3000 seeds by dropping
+whole cycles of presses at 5 AM: 0 cycles 2636/3000 with minBox 0.6525, one
+cycle 2379/3000 with minBox 0.1600, two cycles **353/3000 with the box empty
+and 1903 of the losses the Puppet**.
+
+The box-margin knob space is exhausted under the device-validated invariants
+(wind no earlier than raise+500 ms, mask at monitor+67 ms inside the lowering
+because that transition is the flash, hall contact >= 350 ms): period 10000
+holds minBox 0.6525 at every camdrop tried, period 12000 collapses it to
+0.22-0.30, and camdrop 10500 gives 0/600. The proven schedule is already the
+optimum of this space.
+
+What closes Night 5 is desync prevention, and the repo already holds the
+mechanism it needs: `service.js` drives target states through
+`#ensureMonitorInternal(target)` instead of toggling, and `artifact-commands.mjs`
+compiles `ensure`/`targetMonitorUp`/`targetMaskOn` for it. The campaign lane
+does not use that path, because it compiles the night into one device-local HID
+stream to escape the host-clock drift that refuted an earlier lane. So the two
+execution models available are timing-accurate without feedback, or
+state-correct without a clock, and Night 5 needs the hybrid: device-local
+timing with periodic state resynchronisation. A design change, not a knob.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**
