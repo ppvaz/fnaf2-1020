@@ -972,6 +972,7 @@
     {
       "file": "tools/device/artifact-commands.mjs",
       "imports": [
+        "./recipe.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },

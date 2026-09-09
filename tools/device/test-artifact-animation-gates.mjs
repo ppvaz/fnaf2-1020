@@ -27,23 +27,29 @@ const refuses = (rows, initial, needle) => {
 };
 const down = { monitorUp: false, maskOn: false };
 
-// --- the monitor raise animation -------------------------------------------
+// --- monitor raise readiness, per control ------------------------------------
+// The bound is not the animation: it is a DEVICE BRACKET. A wind hold missed at
+// raise+100 ms and at raise+200 ms; the lowest gap observed to work is +434 ms,
+// the minus-toys opening that armed all four story-night wins. A camera select
+// is proven at +300 ms by that same arm.
 {
   const raise = { at: 5300, kind: 'tap', control: 'monitor', duration: 33 };
-  const early = [raise, { at: 5300 + MONITOR_ANIM_UP_MS - 1, kind: 'hold', control: 'wind', duration: 3200 }];
-  const clear = [raise, { at: 5300 + MONITOR_ANIM_UP_MS, kind: 'hold', control: 'wind', duration: 3200 }];
-  check(refuses(early, down, 'monitor raise'),
-    'a wind hold inside the monitor raise animation was compiled');
-  check(!refuses(clear, down, 'monitor raise'),
-    'a wind hold clearing the raise animation by 0 ms was refused');
-  // the exact regression: wind moved from +500 ms to +100 ms after the raise
-  check(refuses([raise, { at: 5400, kind: 'hold', control: 'wind', duration: 3600 }], down, 'monitor raise'),
-    'the 2026-09-08 wind-at-5400 regression still compiles');
-  check(!refuses([raise, { at: 5800, kind: 'hold', control: 'wind', duration: 3200 }], down, 'monitor raise'),
-    'the shipped wind-at-5800 timing was refused');
-  // a camera select is bound by the same window
-  check(refuses([raise, { at: 5350, kind: 'tap', control: 'cam11', duration: 33 }], down, 'monitor raise'),
-    'a camera select inside the monitor raise animation was compiled');
+  const wind = at => ({ at, kind: 'hold', control: 'wind', duration: 3200 });
+  const cam = at => ({ at, kind: 'tap', control: 'cam11', duration: 33 });
+  check(refuses([raise, wind(5400)], down, 'monitor raise'),
+    'the wind-at-raise+100 regression still compiles');
+  check(refuses([raise, wind(5500)], down, 'monitor raise'),
+    'wind at raise+200 ms still compiles, and that timing missed on device twice');
+  check(!refuses([raise, wind(5734)], down, 'monitor raise'),
+    'wind at raise+434 ms was refused, but that is the proven minus-toys opening gap');
+  check(!refuses([raise, wind(5800)], down, 'monitor raise'),
+    'the shipped Minus 3 wind timing at raise+500 ms was refused');
+  // a camera select is bound by the animation plus RAISE_MARGIN_MS, not by the
+  // wind bracket, because +300 ms is the arm that landed every win
+  check(!refuses([raise, cam(5600)], down, 'monitor raise'),
+    'a camera select at raise+300 ms was refused, but that is the proven arm');
+  check(refuses([raise, cam(5400)], down, 'monitor raise'),
+    'a camera select inside the raise animation still compiles');
 }
 
 // --- the mask-off animation -------------------------------------------------
@@ -60,6 +66,7 @@ const down = { monitorUp: false, maskOn: false };
 }
 
 console.log(
-  `artifact animation gates: a press needing the monitor refuses inside the ${MONITOR_ANIM_UP_MS} ms raise ` +
-  `(including the wind-at-5400 regression that wound nothing on device), and every non-mask press refuses ` +
-  `inside the ${MASK_ANIM_OFF_MS} ms mask-off animation, while the shipped timings still compile`);
+  'artifact animation gates: a wind hold refuses within the 434 ms device bracket after a monitor raise ' +
+  '(including the raise+100 and raise+200 timings that missed on the phone) while the proven +434 and +500 ' +
+  'gaps compile, a camera select refuses inside the raise animation while the proven +300 arm compiles, and ' +
+  `every non-mask press refuses inside the ${MASK_ANIM_OFF_MS} ms mask-off animation`);

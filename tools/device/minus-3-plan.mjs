@@ -52,8 +52,13 @@ export const KNOBS0 = Object.freeze({
   // MASK_ANIM_OFF is 15 frames (~250 ms); leave a full released poll before
   // the raise or the monitor press is swallowed by the mask surface.
   raiseMs: 5300,
-  windAtMs: 5500,
-  windMs: 3500,
+  // The wind hold must not start until the raise is reliably done. 5500 is
+  // raise+200 ms and MISSED on device twice (2026-09-09): the taps did not land
+  // and the box went unwound, killing a Night 5 at 44.3 s to the Marionette.
+  // 5800 is raise+500 ms and is the timing that reached 5 AM. Win-identical in
+  // the model at 3000 seeds on nights 3, 4 and 5.
+  windAtMs: 5800,
+  windMs: 3200,
   camdropMs: 9000,
   camdropLeadMs: 150,
   camdropMonitorMs: 33,

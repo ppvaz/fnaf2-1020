@@ -55,8 +55,11 @@ check(deviceEdges({ knobs: { ...WIN_KNOBS, windMs: WIN_KNOBS.windMs + 250 } }).l
 // --- 2. the recipe is a delta on KNOBS0, and the default is untouched --------
 {
   const changed = Object.keys(WIN_KNOBS).filter(k => WIN_KNOBS[k] !== KNOBS0[k]).sort();
+  // KNOBS0's wind timing was corrected to the device-proven raise+500 ms on
+  // 2026-09-09, so the recipe no longer has to override it: the delta shrank
+  // from five fields to three.
   check(JSON.stringify(changed) ===
-    JSON.stringify(['maskOnMs', 'openMaskAtMs', 'secondHallVent', 'windAtMs', 'windMs']),
+    JSON.stringify(['maskOnMs', 'openMaskAtMs', 'secondHallVent']),
     `the recipe now differs from KNOBS0 in ${JSON.stringify(changed)}; update this gate and the evidence record`);
   check(KNOBS0.secondHallVent === true,
     'the shipped default lost its right-vent second contact -- that is what the story gate measured');

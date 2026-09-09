@@ -4,6 +4,7 @@
 // a target state rather than a parity toggle.
 
 import * as C from '@fnaf2-1020/core/mechanics';
+import { RAISE_MARGIN_MS } from './recipe.mjs';
 
 // [SOURCED] The engine animates the monitor and the mask, and drops input that
 // lands inside those windows: a camera select or wind press during the raise
@@ -13,6 +14,25 @@ import * as C from '@fnaf2-1020/core/mechanics';
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
 const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
+// MONITOR_ANIM_UP alone is not the moment a control is usable, and the delay
+// is not the same for every control. The model constant is 12 engine frames and
+// the profile still carries no measured raise readiness
+// ('hid-100ms-candidate-unqualified-v1'), so these are DEVICE BRACKETS, not
+// measurements, and a measured readiness should replace them:
+//
+//   camera select  raise+300 ms works -- it is the arm that landed every one of
+//                  the four story-night wins, so the bound is the animation
+//                  plus recipe.mjs's RAISE_MARGIN_MS.
+//   wind hold      raise+100 ms and raise+200 ms both MISSED on the phone; the
+//                  taps did not land and the box went unwound. Observed to
+//                  work: +434 ms (the minus-toys opening, which armed all four
+//                  story-night wins), +450 ms (its loop) and +500 ms (the
+//                  Minus 3 loop that reached 5 AM). The bound is therefore the
+//                  LOWEST OBSERVED WORKING gap, not a measurement: it refuses
+//                  the failing region without refusing anything proven. The
+//                  true readiness lies somewhere in (200, 434].
+const MONITOR_READY_CAMERA_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS) + RAISE_MARGIN_MS;
+const MONITOR_READY_WIND_MS = 434;
 
 const camera = control => /^cam(?:[0-9]|1[0-2])$/.test(control);
 const semantic = control => camera(control) ? `cam:${Number(control.slice(3))}`
@@ -82,10 +102,14 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     const needsMonitorUp = row.kind === 'camdrop' || row.kind === 'sweep' ||
       ((row.kind === 'tap' || row.kind === 'hold') &&
         (camera(row.control) || semantic(row.control) === 'wind'));
-    if (needsMonitorUp && row.at - monitorUpAt < MONITOR_ANIM_UP_MS)
-      throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
-        `${MONITOR_ANIM_UP_MS} ms monitor raise from +${monitorUpAt} ms; the control is not on ` +
-        'screen yet and the contact hits the office underneath');
+    if (needsMonitorUp) {
+      const isWind = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === 'wind';
+      const readyMs = isWind ? MONITOR_READY_WIND_MS : MONITOR_READY_CAMERA_MS;
+      if (row.at - monitorUpAt < readyMs)
+        throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms is within ${readyMs} ms of the ` +
+          `monitor raise at +${monitorUpAt} ms; that control is not reliably on screen yet and the contact ` +
+          'hits the office underneath (device: wind missed at raise+200 ms, works at raise+450 ms)');
+    }
     // NO rule refuses a mask press inside the monitor LOWERING animation, and
     // one must not be added. The engine accepts it -- it refuses a mask press
     // only on MON_UP/MON_RAISING -- and the device says it is load-bearing: the
