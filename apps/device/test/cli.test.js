@@ -38,4 +38,13 @@ assert.equal(result.claimLevel, 'FIXTURE');
 assert.equal(result.calibration.workflow, 'COMPLETED');
 assert.equal(result.calibration.calibration, 'UNVERIFIED');
 
+const oneAttempt = run(['campaign', '--profile', 'fixture-hid-screencap', '--nights', '6',
+  '--max-attempts', '1', '--json']);
+assert.equal(oneAttempt.status, 0, oneAttempt.stderr);
+assert.equal(JSON.parse(oneAttempt.stdout).spec.retry.maxAttempts, 1,
+  'a diagnostic campaign must be able to retain one plan epoch');
+const invalidAttempts = run(['campaign', '--profile', 'fixture-hid-screencap',
+  '--max-attempts', '0']);
+assert.equal(invalidAttempts.status, 2);
+
 console.log('device CLI: help is side-effect free and unknown commands fail closed');
