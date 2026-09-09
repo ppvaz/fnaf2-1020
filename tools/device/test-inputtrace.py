@@ -25,6 +25,7 @@ def rows() -> list[dict[str, object]]:
         "dur_ns": 10,
         "thread_name": "main",
         "process_name": "com.scottgames.fnaf2",
+        "track_name": "com.scottgames.fnaf2/com.scottgames.fnaf2.Main",
     }
     return [
         {**common, "kind": "delivery", "dur_ns": 200_000, "ts_ns": 1_000_000, "name":
@@ -71,16 +72,17 @@ def test_correlation() -> None:
 def test_csv_and_query() -> None:
     csv_text = (
         "progress text\n"
-        '"kind","ts_ns","dur_ns","name","thread_name","process_name"\n'
+        '"kind","ts_ns","dur_ns","name","thread_name","process_name","track_name"\n'
         '"dispatch","1","2","dispatchInputEvent MotionEvent ACTION_DOWN '
-        'deviceId=1 source=0x1002 historySize=0","main","com.scottgames.fnaf2"\n'
+        'deviceId=1 source=0x1002 historySize=0","main","","28af0db com.scottgames.fnaf2/com.scottgames.fnaf2.Main"\n'
     )
     parsed = inputtrace.parse_query_csv(csv_text)
-    check(parsed[0]["ts_ns"] == 1 and parsed[0]["dur_ns"] == 2,
-          "CSV parser should skip processor progress text")
+    check(parsed[0]["ts_ns"] == 1 and parsed[0]["dur_ns"] == 2 and
+          parsed[0]["track_name"].endswith("Main"),
+          "CSV parser should retain a package-bearing track when process_name is empty")
     query = inputtrace.build_query("com.example.o'reilly")
-    check("com.example.o''reilly" in query and "process_name =" in query,
-          "package must be SQL-escaped and filtered in the query")
+    check(query.count("com.example.o''reilly") == 2 and "INSTR(track_name" in query,
+          "package must be SQL-escaped and matched through the process or track name")
 
 
 def test_surfaceflinger() -> None:
@@ -99,9 +101,9 @@ def test_fake_processor() -> None:
         processor = Path(directory) / "trace_processor"
         processor.write_text(
             "#!/bin/sh\n"
-            "printf '%s\\n' 'kind,ts_ns,dur_ns,name,thread_name,process_name' "
+            "printf '%s\\n' 'kind,ts_ns,dur_ns,name,thread_name,process_name,track_name' "
             "'dispatch,1,2,dispatchInputEvent MotionEvent ACTION_DOWN "
-            "deviceId=1 source=0x1002 historySize=0,main,com.scottgames.fnaf2'\n",
+            "deviceId=1 source=0x1002 historySize=0,main,,com.scottgames.fnaf2/Main'\n",
             encoding="utf-8",
         )
         processor.chmod(0o700)

@@ -49,29 +49,31 @@ WITH joined AS (
     s.dur AS dur_ns,
     s.name AS name,
     COALESCE(th.name, '') AS thread_name,
-    COALESCE(p.name, '') AS process_name
+    COALESCE(p.name, '') AS process_name,
+    COALESCE(t.name, '') AS track_name
   FROM slice s
   JOIN track t ON t.id = s.track_id
   LEFT JOIN thread_track tt ON tt.id = s.track_id
   LEFT JOIN thread th ON th.utid = tt.utid
   LEFT JOIN process p ON p.upid = th.upid
+),
+app_joined AS (
+  SELECT * FROM joined
+  WHERE process_name = '{package}' OR INSTR(track_name, '{package}') > 0
 )
-SELECT 'dispatch' AS kind, ts_ns, dur_ns, name, thread_name, process_name
-FROM joined
-WHERE process_name = '{package}'
-  AND name GLOB 'dispatchInputEvent MotionEvent *'
+SELECT 'dispatch' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
+FROM app_joined
+WHERE name GLOB 'dispatchInputEvent MotionEvent *'
 UNION ALL
-SELECT 'delivery' AS kind, ts_ns, dur_ns, name, thread_name, process_name
-FROM joined
-WHERE process_name = '{package}'
-  AND name GLOB 'deliverInputEvent src=* id=*'
+SELECT 'delivery' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
+FROM app_joined
+WHERE name GLOB 'deliverInputEvent src=* id=*'
 UNION ALL
-SELECT 'frame' AS kind, ts_ns, dur_ns, name, thread_name, process_name
-FROM joined
-WHERE process_name = '{package}'
-  AND name GLOB 'Choreographer#doFrame *'
+SELECT 'frame' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
+FROM app_joined
+WHERE name GLOB 'Choreographer#doFrame *'
 UNION ALL
-SELECT 'finish' AS kind, ts_ns, dur_ns, name, thread_name, process_name
+SELECT 'finish' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
 FROM joined
 WHERE lower(name) LIKE '%finishdispatchcycle%'
 ORDER BY ts_ns;
@@ -119,7 +121,7 @@ def parse_query_csv(stdout: str) -> list[dict[str, Any]]:
         reader = csv.DictReader(io.StringIO(_csv_body(stdout)))
     except csv.Error as error:
         raise InputTraceError(f"invalid trace-processor CSV: {error}") from error
-    required = {"kind", "ts_ns", "dur_ns", "name", "thread_name", "process_name"}
+    required = {"kind", "ts_ns", "dur_ns", "name", "thread_name", "process_name", "track_name"}
     if not required.issubset(reader.fieldnames or ()):
         got = ", ".join(reader.fieldnames or ())
         raise InputTraceError(f"trace-processor CSV lacks required columns (got {got})")
@@ -133,6 +135,7 @@ def parse_query_csv(stdout: str) -> list[dict[str, Any]]:
                 "name": row["name"],
                 "thread_name": row["thread_name"] or "",
                 "process_name": row["process_name"] or "",
+                "track_name": row["track_name"] or "",
             })
         except (KeyError, TypeError, ValueError) as error:
             raise InputTraceError(f"invalid CSV row {number}: {row}") from error
