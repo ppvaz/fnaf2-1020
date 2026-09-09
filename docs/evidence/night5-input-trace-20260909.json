@@ -5,20 +5,36 @@
   "evidenceId": "night5-input-trace-20260909",
   "recordedAt": "2026-09-09",
   "claim": "A Perfetto input-dispatch capture over a live Night 5 attempt shows the Android input system delivering ACTION_CANCEL to the game's input channel three times in 224 s. Injected touches are therefore lost below the application, not only refused by the game's own input rules. This is the first measurement of the sent-vs-delivered gap on a night-length run.",
-  "device": { "serial": "ZF525F5BH5", "build": "com.scottgames.fnaf2:2.0.7+26" },
+  "device": {
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26"
+  },
   "runs": [
     {
       "run": "artifacts/minus3-device-20260908/n5-fastsync",
       "experiment": "frame-light-night5-fastsync",
       "startedUtc": "2026-09-09T04:12:06.980Z",
-      "armPauseMs": 471.920,
+      "armPauseMs": 471.92,
       "status": "ABORT",
       "aliveAtMs": 388485.8,
       "deadByMs": 390911.8,
       "grading": "ungraded: the frame classifier read the auto-advancing game-over screen as state=title while the helper reported FNAF2_GAME_OVER, and the runner threw 'unexpected lifecycle'",
       "corrections": 12,
       "correctionKind": "resync.fast, cue.read() monitor-state disagreement, two consecutive before firing",
-      "correctionTimesMs": [61795.9, 173432.7, 191879.9, 268318.8, 272068.9, 342656.7, 343573.7, 367814.8, 371708.9, 376357.7, 382155.8, 385935.9],
+      "correctionTimesMs": [
+        61795.9,
+        173432.7,
+        191879.9,
+        268318.8,
+        272068.9,
+        342656.7,
+        343573.7,
+        367814.8,
+        371708.9,
+        376357.7,
+        382155.8,
+        385935.9
+      ],
       "note": "deepest Night 5 run to date; one correction in the first three minutes, seven in the last 45 s alternating direction every 3-6 s. The logs cannot separate compounding phase error from the corrector fighting the schedule's own toggles, because no record of accepted input existed."
     },
     {
@@ -27,7 +43,12 @@
       "startedUtc": "2026-09-09T04:25:29.135Z",
       "armPauseMs": 624.772,
       "status": "DEATH_OBSERVED_UNGRADED",
-      "terminal": { "code": 0, "label": "state=gameover", "elapsedMs": 224486.1, "frame": "frame-0074.png" },
+      "terminal": {
+        "code": 0,
+        "label": "state=gameover",
+        "elapsedMs": 224486.1,
+        "frame": "frame-0074.png"
+      },
       "gradedVia": "helper-screen",
       "corrections": 8,
       "plan": "byte-identical to n5-fastsync; the only changes were observation-side",
@@ -45,12 +66,75 @@
       "ACTION_POINTER_UP(1)": 24,
       "ACTION_CANCEL": 3
     },
-    "cancelTimestampsNs": [975291365604853, 975300258533777, 975310749828239],
-    "cancelRelativeToFirstPublishedTouchS": [72.7, 81.6, 92.1],
-    "cancelSpacingS": [8.9, 10.5],
+    "cancelTimestampsNs": [
+      975291365604853,
+      975300258533777,
+      975310749828239
+    ],
+    "cancelRelativeToFirstPublishedTouchS": [
+      72.7,
+      81.6,
+      92.1
+    ],
+    "cancelSpacingS": [
+      8.9,
+      10.5
+    ],
     "interpretation": "DOWN 66 vs UP 63 is exactly accounted for by the 3 CANCELs: three gestures began and were revoked rather than completed. The spacing sits within a few hundred ms of the schedule's 10 s period, so the cancelled gestures are plausibly the same action in three consecutive cycles rather than a random system event.",
     "whatCancelMeans": "ACTION_CANCEL is the input system telling the app to discard an in-progress touch stream. It is not the game's mask/monitor input rule and not a scheduling error; the touch was injected, dispatched, and then revoked.",
-    "leadNotChased": "the same trace shows every touch also copied to [Gesture Monitor] swipe-up, moto_actions_input_channel and sysui_input_dispatcher. A gesture monitor pilfering pointers is the standard cause of ACTION_CANCEL and would explain losses that correlate with screen position rather than with game state. Not tested."
+    "leadNotChased": "the same trace shows every touch also copied to [Gesture Monitor] swipe-up, moto_actions_input_channel and sysui_input_dispatcher. A gesture monitor pilfering pointers is the standard cause of ACTION_CANCEL and would explain losses that correlate with screen position rather than with game state. Not tested.",
+    "CORRECTION_traceCoverage": {
+      "issue": "the commit that first recorded these findings said '3 ACTION_CANCEL in 224 s'. The trace does not cover 224 s.",
+      "measured": "last published touch in the trace is at +115.2 s after the first; the run continued to +233 s. The 384 MB buffer filled and later data was dropped (the sched data source is the bulk of it).",
+      "corrected": "3 ACTION_CANCEL in the first ~106 s of night; the remaining ~118 s of the run is unobserved and may contain more.",
+      "nextCapture": "drop sched, or raise the buffer, or use a ring policy, so a full 420 s night fits."
+    },
+    "cancelsAllLandInsideTheWindHold": {
+      "cycleOrigin": "loop base = 5000 + 10000k ms of night; wind is contact(base+5800, 3200), so phase 5.80-9.00 s",
+      "cancels": [
+        {
+          "nightElapsedS": 63.7,
+          "k": 5,
+          "base": 55.0,
+          "phaseS": 8.72,
+          "heldControl": "wind"
+        },
+        {
+          "nightElapsedS": 72.6,
+          "k": 6,
+          "base": 65.0,
+          "phaseS": 7.61,
+          "heldControl": "wind"
+        },
+        {
+          "nightElapsedS": 83.1,
+          "k": 7,
+          "base": 75.0,
+          "phaseS": 8.1,
+          "heldControl": "wind"
+        }
+      ],
+      "anchor": "night start = first published touch + 8.98 s, from the runner's menu.selected (host 10716 ms) and night.running (host 19698 ms). Anchor slop is a few hundred ms; the phases sit 0.8-1.8 s inside a 3.2 s window, so the attribution survives it.",
+      "significance": "three consecutive cycles lost their music-box winding to a revoked gesture. The wind hold is 3200 ms, by far the longest contact in the cycle; every other contact is 33-583 ms and none was cancelled.",
+      "geometry": "wind is at (430,845), outside every measured system gesture inset, so the inset geometry does not explain these three."
+    },
+    "systemGestureInsets_measured": {
+      "navigationMode": 2,
+      "mandatorySystemGesturesBottom": "[0,1002][2400,1080]",
+      "systemGesturesLeft": "[0,0][188,1080]",
+      "systemGesturesRight": "[2327,0][2400,1080]",
+      "contactsInside": {
+        "mask": "y=1015 inside bottom",
+        "monitor": "y=1015 inside bottom",
+        "panLeft": "x=60 inside left"
+      },
+      "status": "measured but NOT implicated in these three cancels; recorded as a standing risk for the mask and monitor presses"
+    },
+    "refuted": {
+      "correctorTapsCauseTheCancels": "refuted for this run: the 8 resync corrections fired at 25.1, 33.7, 181.7, 183.6, 189.0, 192.5, 193.4 and 201.9 s of night; no cancel is within 30 s of one.",
+      "insetGeometryCausesTheCancels": "refuted for these three: wind is outside every inset."
+    },
+    "unattributed": "onPointerDownOutsideFocus fires 198 times, five per cycle at fixed phases (+0.00, +0.29, +0.89, +1.39, +4.59 s), every cycle. The slice name does not name the window, so it cannot be attributed to the game from this trace alone. If it is the game and a focus transfer completes mid-gesture, the longest-held contact is the likeliest casualty, which fits."
   },
   "toolDefect": {
     "tool": "tools/device/inputtrace.py",

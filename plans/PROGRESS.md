@@ -4760,3 +4760,32 @@ deepest graded 369.0 s. An earlier note this session quoted "24 attempts, best
 386 s"; neither number was derived, and both are corrected here.
 
 Evidence: `docs/evidence/night5-input-trace-20260909.json`.
+
+### Correction, same day: the cancels are the wind hold, and the trace was short
+
+Two errors in the entry above, both found by querying the same trace further.
+
+**Coverage.** The trace does not cover 224 s. Its last published touch is at
++115.2 s against a run that continued to +233 s: the 384 MB buffer filled and
+later data was dropped. The measurement is **3 cancels in the first ~106 s of
+night**, with the remaining ~118 s unobserved.
+
+**Attribution.** All three cancels land inside the 3.2 s wind hold
+(`contact(base + 5800, 'wind', 3200)`, phase 5.80-9.00 s of a 10 s cycle), in
+three consecutive cycles k=5,6,7, at phases 8.72, 7.61 and 8.10 s. No other
+contact was cancelled; every other contact in the cycle is 33-583 ms. Because
+ACTION_CANCEL truncates a gesture rather than preventing it, the cost is 0.28,
+1.39 and 0.90 s of winding, not three whole cycles.
+
+Refuted along the way: the corrector's own taps are not the cause (its 8
+resyncs fired at 25.1, 33.7, 181.7, 183.6, 189.0, 192.5, 193.4 and 201.9 s, none
+within 30 s of a cancel), and system-gesture geometry does not explain these
+three (wind is at (430,845), outside every measured inset). Measured but not
+implicated: `mask` and `monitor` at y=1015 sit inside the mandatory bottom
+gesture inset `[0,1002][2400,1080]`, and `panLeft` at x=60 inside the left inset
+`[0,0][188,1080]`, with `navigation_mode=2`. Unattributed:
+`onPointerDownOutsideFocus` fires 198 times, five per cycle at fixed phases,
+every cycle; the slice does not name the window.
+
+Evidence: `docs/evidence/night5-input-trace-20260909.json`.
+
