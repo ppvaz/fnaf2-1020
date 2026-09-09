@@ -5,19 +5,13 @@
 
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { validateExercise } from '@fnaf2-1020/core/training';
+import { freeze, validatorsFor } from './validate.js';
+const { fail, object, text } = validatorsFor('arcade lab');
 
 export const ARCADE_PROGRESS_SCHEMA = 'arcade-lab-progress-v1';
 export const ARCADE_SET_SCHEMA = 'arcade-lab-set-v1';
 
 const clone = value => structuredClone(value);
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = message => { throw new TypeError(`arcade lab: ${message}`); };
-
-function text(name, value, max = 128) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > max)
-    fail(`${name} must be a non-empty bounded string`);
-  return value;
-}
 
 function number(name, value, { min = 0, max = Infinity } = {}) {
   if (!Number.isFinite(value) || value < min || value > max)
@@ -27,19 +21,6 @@ function number(name, value, { min = 0, max = Infinity } = {}) {
 
 function integer(name, value) {
   if (!Number.isInteger(value) || value < 0) fail(`${name} must be a non-negative integer`);
-  return value;
-}
-
-function object(name, value) {
-  if (!isRecord(value)) fail(`${name} must be an object`);
-  return value;
-}
-
-function freeze(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) freeze(child);
-  }
   return value;
 }
 

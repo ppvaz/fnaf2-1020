@@ -6,6 +6,8 @@
 // belief state.
 
 import { validateExercise } from '@fnaf2-1020/core/training';
+import { freeze, validatorsFor } from './validate.js';
+const { fail, object, text } = validatorsFor('threat constellation');
 
 export const THREAT_CONSTELLATION_SCHEMA = 'threat-constellation-layout-v1';
 export const THREAT_CONSTELLATION_RENDERER_ID = 'threat-constellation';
@@ -13,14 +15,6 @@ export const THREAT_CONSTELLATION_GESTURES = Object.freeze(['tap', 'hold', 'slid
 export const MIN_TOUCH_RADIUS_PX = 24;
 
 const clone = value => structuredClone(value);
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = message => { throw new TypeError(`threat constellation: ${message}`); };
-
-function text(name, value, max = 128) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > max)
-    fail(`${name} must be a non-empty bounded string`);
-  return value;
-}
 
 function number(name, value, { min = -Infinity, max = Infinity } = {}) {
   if (!Number.isFinite(value) || value < min || value > max)
@@ -34,30 +28,9 @@ function integer(name, value, { min = 0, max = Infinity } = {}) {
   return value;
 }
 
-function object(name, value) {
-  if (!isRecord(value)) fail(`${name} must be an object`);
-  return value;
-}
-
 function exact(name, value, keys) {
   const allowed = new Set(keys);
   for (const key of Object.keys(value)) if (!allowed.has(key)) fail(`${name}.${key} is not allowed`);
-  return value;
-}
-
-function strings(name, values, { min = 1, max = 32 } = {}) {
-  if (!Array.isArray(values) || values.length < min || values.length > max ||
-      values.some(value => typeof value !== 'string' || value.length === 0 || value.length > 128))
-    fail(`${name} must be a bounded string array`);
-  if (new Set(values).size !== values.length) fail(`${name} must be unique`);
-  return values;
-}
-
-function freeze(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) freeze(child);
-  }
   return value;
 }
 

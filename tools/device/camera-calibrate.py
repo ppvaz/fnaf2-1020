@@ -28,20 +28,28 @@ is refused, never resized.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import pathlib
 import re
-import struct
+import sys
 from dataclasses import dataclass
 
-try:
-    from PIL import Image
-except ImportError as error:  # pragma: no cover - exercised by the CLI
-    Image = None
-    PIL_ERROR = error
+# One frame reader, not three: the .raw/.png loaders, the native-geometry
+# refusal and the error type live in monitor-calibrate.py and are imported
+# here, the way mask-calibrate.py and screen-calibrate.py already do. The
+# module name is hyphenated, so it is loaded by path.
+_SPEC = importlib.util.spec_from_file_location(
+    "_monitor_calibrate", pathlib.Path(__file__).with_name("monitor-calibrate.py"))
+_MC = importlib.util.module_from_spec(_SPEC)
+sys.modules["_monitor_calibrate"] = _MC
+_SPEC.loader.exec_module(_MC)
 
-WIDTH = 2400
-HEIGHT = 1080
+CalibrationError = _MC.CalibrationError
+WIDTH, HEIGHT = _MC.WIDTH, _MC.HEIGHT
+load_raw, load_frame = _MC.load_raw, _MC.load_frame
+
+# `paths_for` stays local: this tool's labels are CAM:N, not free-form names.
 SCHEMA = "camera-rule-v1"
 SENSOR_ID = "cue-helper-watch-native-2400x1080"
 PROFILE_ID = "moto-g56-v207-landscape"
@@ -68,11 +76,6 @@ UNKNOWN_REASONS = [
     "sensor-mismatch", "calibration-refused",
 ]
 LABEL_RE = re.compile(r"^cam:[0-9]{1,2}$")
-
-
-class CalibrationError(ValueError):
-    pass
-
 
 @dataclass(frozen=True)
 class Button:
@@ -106,41 +109,6 @@ class Button:
             "lit_range": list(self.lit_range), "unlit_range": list(self.unlit_range),
         }
 
-
-def load_raw(path: pathlib.Path) -> "Image.Image":
-    data = path.read_bytes()
-    if len(data) < 16:
-        raise CalibrationError(f"{path}: truncated raw screencap header")
-    width, height, pixel_format, _ = struct.unpack_from("<IIII", data)
-    if (width, height) != (WIDTH, HEIGHT):
-        raise CalibrationError(
-            f"{path}: sensor-geometry {width}x{height}; expected {WIDTH}x{HEIGHT}")
-    if pixel_format not in (1, 2):
-        raise CalibrationError(f"{path}: unsupported raw pixel format {pixel_format}")
-    size = WIDTH * HEIGHT * 4
-    if len(data) < 16 + size:
-        raise CalibrationError(f"{path}: truncated raw pixels")
-    return Image.frombytes("RGBA", (WIDTH, HEIGHT), data[16:16 + size]).convert("RGB")
-
-
-def load_frame(path: pathlib.Path) -> "Image.Image":
-    if Image is None:
-        raise CalibrationError(f"Pillow is required to read frames: {PIL_ERROR}")
-    if path.suffix.lower() == ".raw":
-        return load_raw(path)
-    if path.suffix.lower() != ".png":
-        raise CalibrationError(f"{path}: expected .png or .raw")
-    try:
-        image = Image.open(path).convert("RGB")
-    except OSError as error:
-        raise CalibrationError(f"{path}: unreadable frame: {error}") from error
-    if image.size != (WIDTH, HEIGHT):
-        raise CalibrationError(
-            f"{path}: sensor-geometry {image.width}x{image.height}; "
-            f"expected {WIDTH}x{HEIGHT}")
-    return image
-
-
 def paths_for(spec: str) -> tuple[str, list[pathlib.Path]]:
     label, separator, raw_path = spec.partition("=")
     if not separator or not LABEL_RE.fullmatch(label):
@@ -158,10 +126,8 @@ def paths_for(spec: str) -> tuple[str, list[pathlib.Path]]:
         raise CalibrationError(f"{root}: no .png or .raw frames")
     return label, paths
 
-
 def yellowness(rgb: tuple[int, int, int]) -> int:
     return min(rgb[0], rgb[1]) - rgb[2]
-
 
 def calibrate(args) -> None:
     sources = [paths_for(spec) for spec in args.labelled]
@@ -279,17 +245,9 @@ def calibrate(args) -> None:
     if not accepted and args.strict:
         raise SystemExit(1)
 
-
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", required=True, type=pathlib.Path)
-    parser.add_argument("--sensor-id", default=SENSOR_ID)
-    parser.add_argument("--profile-id", default=PROFILE_ID)
-    parser.add_argument("--min-margin", type=float, default=5.0)
-    parser.add_argument("--note", action="append", default=[],
-                        help="retained as a limitation in the artifact")
-    parser.add_argument("--strict", action="store_true",
-                        help="exit 1 when calibration emits status=refuse")
+    _MC.add_common_arguments(parser, SENSOR_ID, PROFILE_ID)
     parser.add_argument("labelled", nargs="+", metavar="CAM:N=PATH")
     args = parser.parse_args(argv)
     if args.min_margin < 0:
@@ -298,7 +256,6 @@ def main(argv: list[str] | None = None) -> None:
         calibrate(args)
     except CalibrationError as error:
         parser.error(str(error))
-
 
 if __name__ == "__main__":
     main()

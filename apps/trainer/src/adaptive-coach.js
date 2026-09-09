@@ -6,6 +6,8 @@
 
 import { stableHash } from '@fnaf2-1020/core/contracts';
 import { validateMicrotrainerSession } from './microtrainer.js';
+import { finite, freeze, isRecord, validatorsFor } from './validate.js';
+const { fail, object, text } = validatorsFor('adaptive coach', { textMax: 160 });
 
 export const ADAPTIVE_SKILL_SCHEMA = 'adaptive-skill-model-v1';
 export const ADAPTIVE_SELECTION_SCHEMA = 'adaptive-selection-v1';
@@ -17,20 +19,6 @@ export const DEFAULT_ADAPTIVE_POLICY = Object.freeze({
 });
 
 const clone = value => structuredClone(value);
-const finite = value => typeof value === 'number' && Number.isFinite(value);
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = message => { throw new TypeError(`adaptive coach: ${message}`); };
-
-function object(name, value) {
-  if (!isRecord(value)) fail(`${name} must be an object`);
-  return value;
-}
-
-function text(name, value, max = 160) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > max)
-    fail(`${name} must be a non-empty bounded string`);
-  return value;
-}
 
 function number(name, value, { min = 0, max = Infinity } = {}) {
   if (!finite(value) || value < min || value > max) fail(`${name} is outside its numeric bounds`);
@@ -39,14 +27,6 @@ function number(name, value, { min = 0, max = Infinity } = {}) {
 
 function integer(name, value) {
   if (!Number.isInteger(value) || value < 0) fail(`${name} must be a non-negative integer`);
-  return value;
-}
-
-function freeze(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) freeze(child);
-  }
   return value;
 }
 

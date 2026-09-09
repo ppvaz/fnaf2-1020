@@ -9,6 +9,24 @@ charter's own layering means the same idea legitimately appears once per layer.
 The point is that a cleanup should not have to rediscover the list, and that
 the ungated copies are separable from the gated ones.
 
+## Applied 2026-09-08
+
+The first cleanup pass off this page. Each entry keeps its original reasoning
+and gains its outcome in place, per the retraction convention in
+[`../README.md`](../README.md).
+
+| § | Family | Outcome |
+|---|---|---|
+| 1 | Frame ingest | **Resolved.** `camera-` and `watch-calibrate.py` now import the loaders instead of copying them; their dead PIL guards went with them |
+| 4 | Calibration CLI | **Resolved for four of five.** `add_common_arguments()` in `monitor-calibrate.py`; `screen-calibrate.py` left alone because it has no gate |
+| 13 | Grading census | **Resolved.** The coverage gate reads all three registries and is green; 22 exclusion rows added, one gate registered |
+| 16 | Trainer validators | **Resolved.** `apps/trainer/src/validate.js`; 34 duplicate definitions removed from six modules |
+| 17 | `tools/minustoys/` | **Decided: keep.** Route-per-directory is deliberate; see the row |
+| 19 | Dead citations | **Resolved.** Four files repointed at `plant-model.js` |
+
+Open gaps this pass created or exposed are in §22. Everything else on the page
+is untouched and still true.
+
 ## How to read it
 
 Every family names the **owner** (the implementation the charter or a contract
@@ -71,11 +89,19 @@ between `monitor-calibrate.py` and `camera-calibrate.py` (same MD5);
 `watch-calibrate.py` is the same code with type annotations removed. The clone
 detector puts 39 identical 7-line windows between the first two.
 
-So this family is half-converged: two of four dependants share, two copy.
-Cleanup decision: point `camera-calibrate.py` and `watch-calibrate.py` at the
-same import, and decide whether gen 1 should reach `sensor.py` at all — or
-declare gen 1 the calibration-time reader and gen 2 the run-time reader, in
-which case the split needs writing down, because nothing states it now.
+So this family was half-converged: two of four dependants shared, two copied.
+
+**RESOLVED 2026-09-08.** `camera-calibrate.py` and `watch-calibrate.py` now
+load `monitor-calibrate.py` by path and alias `CalibrationError`, `WIDTH`,
+`HEIGHT`, `load_raw` and `load_frame` from it; `watch-calibrate.py` also takes
+`paths_for`, whose `LABEL_RE` is identical. `camera-calibrate.py` keeps its own
+`paths_for` because its labels are `CAM:N`, not free-form names — verified by
+hashing the bodies before aliasing, since `paths_for` closes over each module's
+`LABEL_RE`. Both files' local PIL guards became dead once the loaders left and
+were removed. Net −95 lines; all four calibration gates green.
+
+Still open: whether gen 1 should reach `sensor.py` at all, or whether gen 1 is
+the calibration-time reader and gen 2 the run-time reader. Nothing states it.
 
 ## 2. Observer command-line shapes — binding: `NONE`
 
@@ -134,9 +160,15 @@ copied is the surrounding shell: the argparse block (`--output`, `--sensor-id`,
 reaches the gates too: `test-mask-calibrate.py:38` and
 `test-monitor-calibrate.py:30` share 12.
 
-Cleanup decision: this is the cheapest and lowest-risk item on the page — one
-shared `calibration_cli` helper for the parser and the report, with the fit
-already shared.
+**RESOLVED 2026-09-08 for four of the five.** `add_common_arguments(parser,
+sensor_id, profile_id, *, note=True)` in `monitor-calibrate.py` now declares
+the six options every fitter spelled identically (`--output`, `--sensor-id`,
+`--profile-id`, `--min-margin`, `--note`, `--strict`); each caller keeps its own
+extras and its own `labelled` positional, whose metavar differs.
+`screen-calibrate.py` was deliberately **not** changed: it is the one fitter
+with no gate (§22), so a change to it could not be proven. The JSON summary
+dict is still duplicated — it reads the local fit result, so sharing it needs a
+small result type first.
 
 ## 5. ADB transport — binding: `NONE`, against a stated owner
 
@@ -327,6 +359,25 @@ That is itself an instance of this page's subject: two registries for "gates
 that run" (`package.json` scripts and `tools/test.mjs`), with a checker that
 knows one of them.
 
+**RESOLVED 2026-09-08.** `runs()` now reads all three registries
+(`tools/test.mjs`, `package.json` scripts, `ci.yml`), which retired the eleven
+false complaints. `test-hid-maskraise-probe.mjs` — the one genuinely
+unregistered gate — passes, and is now registered in `test:device:calibration`
+beside its monitorraise sibling. The nineteen unwired scripts gained exclusion
+rows whose reasons were each checked against the gate or caller they name;
+three of them are honest `GAP:` rows (§22). The gate exits 0: "15 scripts
+invoked, 111 exclusions across device/cue/dump, every gate reachable, nothing
+unaccounted for".
+
+It stays in the legacy lane by decision (Pedro, 2026-09-08), so it remains
+advisory: adding an unwired instrument will not turn `test:contracts` red. Run
+it directly, or via `npm run test:legacy:engine`.
+
+While writing those rows the gate caught one of them: a reason that named a
+not-yet-existent `test-screen-calibrate.py` was refused, because an exclusion
+citing a gate that does not exist is the failure its header describes. The
+control works.
+
 ## 14. Trace readers — binding: `NONE`
 
 Nine readers of overlapping run telemetry: `clocktrace.mjs` (129),
@@ -354,6 +405,28 @@ into `apps/trainer/src/rhythm-highway.js:54` and `threat-constellation.js:52`
 overlap between `adaptive-coach.js:24` and `microtrainer.js:46` (7). One
 `validate.js` module under `apps/trainer/src` retires all of it.
 
+**Correction: six copies, not two.** The clone detector found the two biggest
+overlaps and I read that as the extent of it. Hashing each function body across
+all of `apps/trainer/src` found the kit in **six** modules — `adaptive-coach`,
+`arcade-lab`, `microtrainer`, `renderers`, `rhythm-highway`,
+`threat-constellation` — 34 definitions of nine functions. A window-overlap
+count is a lower bound on duplication, not a measure of it.
+
+**RESOLVED 2026-09-08.** `apps/trainer/src/validate.js` holds `isRecord`,
+`finite`, `freeze` and a `validatorsFor(subject, { textMax })` factory for the
+prefix-bound `fail`, `object`, `text` and `strings`. `fail` differed only in its
+message prefix and `text` only in its cap (160 in two modules, 128 in four), so
+both are parameters.
+
+`number` and `integer` were left in place deliberately: their copies disagree on
+more than a default — two modules admit negative numbers and bound their
+integers, three do neither, and the two `integer` variants raise different
+messages. Unifying them would change behaviour, so it is a decision, not a
+side effect of de-duplication. `threat-constellation.js` also turned out to
+define `strings` and never call it; that copy is simply gone. Net −122 lines
+across six modules, with all six gates, the typecheck and the trainer bundle
+green.
+
 ## 17. Same-name twins and orphans
 
 | Twin | Lines | Verdict |
@@ -361,7 +434,7 @@ overlap between `adaptive-coach.js:24` and `microtrainer.js:46` (7). One
 | `tools/stat.mjs` / `tools/stat.py` | 129 / 113 | **`GATE`, keep.** Same five functions; `tools/test-stat.mjs:49` spawns `python3` and compares. The model pair. |
 | `tools/device/closed-families.mjs` / `tools/invent/closed-families.mjs` | 70 / 134 | Two registers of closed policy families — device-plan surface vs privileged genome surface. Same register, two classifiers. |
 | `tools/invent/search.mjs` / `tools/minus7/search.mjs` | 248 / 189 | Two constrained searches; see §12. |
-| `tools/minus7/cycle.mjs` / `tools/minustoys/cycle.mjs` | 244 / 263 | Same shape, different route. `tools/minustoys/` holds **exactly one file** — an orphan directory. |
+| `tools/minus7/cycle.mjs` / `tools/minustoys/cycle.mjs` | 244 / 263 | Same shape, different route. `tools/minustoys/` holds **exactly one file**. **Decided 2026-09-08: keep.** One directory per route is the convention; a move would touch importers, the `TOOLS.md` row and the generated catalogs for no behaviour change, and Minus Toys is the live Night 5/6 route. |
 | `packages/core/src/control/policy-ir.js` / `tools/device/policy-ir.mjs` | 86 / 51 | Name collision only; see §9. |
 
 ## 18. Not duplication (checked, so a cleanup does not "fix" them)
@@ -378,12 +451,15 @@ overlap between `adaptive-coach.js:24` and `microtrainer.js:46` (7). One
 
 ## 19. Stale authority citations
 
-Four code files still name `src/engine.js` as the mechanics authority — a path
-that no longer exists (`packages/core/src/mechanics/plant-model.js` is the
-authority): `tools/policy.mjs`, `tools/constrainedsearch.mjs`,
-`tools/minus7/sim.mjs`, `tools/minus7/search.mjs`. Several docs and plans cite
-it too. `tools/validate-references.js` checks `CONTRACT:`/`ADR:`/`CLAIM:`/
-`EVIDENCE:` IDs, not paths named in prose, so nothing catches this.
+**RESOLVED 2026-09-08 in code.** `tools/policy.mjs`,
+`tools/constrainedsearch.mjs`, `tools/minus7/sim.mjs` and
+`tools/minus7/search.mjs` named `src/engine.js` as the mechanics authority — a
+path that no longer exists. All four now name
+`packages/core/src/mechanics/plant-model.js`.
+
+Still open: several docs and plans cite the dead path too, and nothing catches
+it. `tools/validate-references.js` resolves `CONTRACT:`/`ADR:`/`CLAIM:`/
+`EVIDENCE:` IDs, not file paths named in prose.
 
 ## 20. Remedies this repository has already proven
 
@@ -418,7 +494,8 @@ code-bearing lines, 7-line windows, hashes appearing in ≥2 distinct files) ove
 all 453 tracked `js/mjs/ts/py/sh` files, plus responsibility greps (direct
 `adb` invocation, `screencap`, input emission, PNG decode, frame loaders, CLI
 shape) and cross-language name matching. Line numbers and counts are against
-`a8260aa`.
+`a8260aa`, i.e. **before** the 2026-09-08 pass; sections carrying a RESOLVED
+note have moved since.
 
 **This page is hand-maintained, which is the weakness it documents.** The
 detector was a throwaway script, so nothing recomputes the clone-window
@@ -442,3 +519,33 @@ Ownership rules that decide most of these questions live in
 [`README.md`](README.md) and [`../../CLAUDE.md`](../../CLAUDE.md); shim
 lifecycles and removal gates live in [`COMPATIBILITY.md`](COMPATIBILITY.md);
 the command surface is [`../../tools/TOOLS.md`](../../tools/TOOLS.md).
+
+## 22. Open gaps
+
+The 2026-09-08 pass left these named rather than fixed. The first three are
+cited by name in `tools/device/test-grade-run-coverage.mjs`'s exclusion rows,
+which point here — so this list is load-bearing, not a wish list.
+
+- **`tools/device/screen-calibrate.py` has no gate.** The only one of the five
+  calibrate fitters without one; `test-screencheck.py` drives
+  `build-screen-model.py` and `replay-screen-model.py`, not this. It fits a rule
+  that adapters consume on device. Because nothing can prove a change to it, it
+  was excluded from §4's CLI consolidation — so it is now also the one fitter
+  still carrying its own copy of the shared argparse block. A synthetic-frame
+  gate modelled on the maskOn fitter's closes both.
+- **`tools/device/artifact-runner.mjs` has no gate.** Its only invoker is
+  `trial.sh:56`, a compatibility-lifecycle launcher in `legacy-paths.json`. A
+  legacy caller is not coverage, so the modern path does not exercise it.
+- **`tools/device/seed-clock.mjs` has no gate and no caller** in the
+  repository.
+- **Docs and plans still cite `src/engine.js`.** §19 fixed the four code files.
+  `tools/validate-references.js` resolves stable IDs, not file paths in prose,
+  so nothing catches the rest. A path-reference check would.
+- **The calibration JSON summary dict is still duplicated** across the fitters
+  (§4). It reads each fitter's own fit result, so sharing it wants a small
+  shared result type first.
+- **Gen 1 vs `sensor.py`** (§1): whether the calibration fitters should read
+  frames through `sensor.py`'s declared-sensor refusal, or whether gen 1 is the
+  calibration-time reader and gen 2 the run-time reader, is still unstated.
+- **This page does not recompute itself** (§21). That is the gap that makes
+  every count above a snapshot.

@@ -393,21 +393,35 @@ def calibrate(args) -> None:
         raise SystemExit(1)
 
 
+def add_common_arguments(parser, sensor_id, profile_id, *, note=True):
+    """The CLI core every calibrate fitter shares.
+
+    All five fitters declared these five options identically -- same flag,
+    same type, same default, same help -- beside their own one or two. The
+    copies were the argparse block, not the fit: the fit has been shared by
+    import since mask-calibrate.py. Each caller still adds its own extra
+    options and its own `labelled` positional, whose metavar differs.
+    """
+    parser.add_argument("--output", required=True, type=pathlib.Path)
+    parser.add_argument("--sensor-id", default=sensor_id)
+    parser.add_argument("--profile-id", default=profile_id)
+    parser.add_argument("--min-margin", type=float, default=5.0)
+    if note:
+        parser.add_argument("--note", action="append", default=[],
+                            help="retained as a limitation in the artifact")
+    parser.add_argument("--strict", action="store_true",
+                        help="exit 1 when calibration emits status=refuse")
+    return parser
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", required=True, type=pathlib.Path)
-    parser.add_argument("--sensor-id", default=SENSOR_ID)
-    parser.add_argument("--profile-id", default=PROFILE_ID)
-    parser.add_argument("--min-margin", type=float, default=5.0)
+    add_common_arguments(parser, SENSOR_ID, PROFILE_ID)
     parser.add_argument("--max-present", type=int, default=4)
     parser.add_argument("--max-absent", type=int, default=2)
     parser.add_argument("--exclude-rows", default="",
                         help="comma-separated grid rows to exclude from the search "
                              "(e.g. an on-screen tutorial overlay strip)")
-    parser.add_argument("--note", action="append", default=[],
-                        help="retained as a limitation in the artifact")
-    parser.add_argument("--strict", action="store_true",
-                        help="exit 1 when calibration emits status=refuse")
     parser.add_argument("labelled", nargs="+", metavar="LABEL=PATH")
     args = parser.parse_args(argv)
     if args.min_margin < 0:

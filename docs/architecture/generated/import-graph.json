@@ -342,12 +342,14 @@
       "file": "apps/trainer/src/adaptive-coach.js",
       "imports": [
         "./microtrainer.js",
+        "./validate.js",
         "@fnaf2-1020/core/contracts"
       ]
     },
     {
       "file": "apps/trainer/src/arcade-lab.js",
       "imports": [
+        "./validate.js",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/training"
       ]
@@ -408,6 +410,7 @@
     {
       "file": "apps/trainer/src/microtrainer.js",
       "imports": [
+        "./validate.js",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/training"
       ]
@@ -416,6 +419,7 @@
       "file": "apps/trainer/src/renderers.js",
       "imports": [
         "./microtrainer.js",
+        "./validate.js",
         "@fnaf2-1020/core/training"
       ]
     },
@@ -429,6 +433,7 @@
       "file": "apps/trainer/src/rhythm-highway.js",
       "imports": [
         "./lane.js",
+        "./validate.js",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/training"
       ]
@@ -436,6 +441,7 @@
     {
       "file": "apps/trainer/src/threat-constellation.js",
       "imports": [
+        "./validate.js",
         "@fnaf2-1020/core/training"
       ]
     },

@@ -1,6 +1,7 @@
-// A searchable wrapper over the authoritative transition model (src/engine.js).
+// A searchable wrapper over the authoritative transition model in
+// packages/core/src/mechanics/plant-model.js.
 //
-// Nothing here is a new game rule. `src/engine.js` is the only authority; this
+// Nothing here is a new game rule. That module is the only authority; this
 // file only (a) clones a Sim so a search can branch, (b) compiles a small set
 // of SEMANTIC player actions into the exact button presses the engine already
 // understands, and (c) exposes the sourced state a policy is allowed to read.

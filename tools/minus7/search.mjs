@@ -3,9 +3,10 @@
 //
 // This is the SEED-CONDITIONED optimiser: given one exact RNG stream it beam-
 // searches the semantic-action sequence that survives longest, using
-// src/engine.js as the authoritative transition model. Run over many seeds it
-// answers the question hand-tuning could not: is every night winnable at all,
-// and if so what does optimal play look like -- an upper bound on any policy.
+// packages/core/src/mechanics/plant-model.js as the authoritative transition
+// model. Run over many seeds it answers the question hand-tuning could not:
+// is every night winnable at all, and if so what does optimal play look
+// like -- an upper bound on any policy.
 //
 //   node tools/minus7/search.mjs --night=7 --seeds=20 [--beam=40] [--verbose]
 //   node tools/minus7/search.mjs --self-test

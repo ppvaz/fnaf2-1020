@@ -7,6 +7,8 @@
 
 import { validateExercise, validateExerciseAttempt } from '@fnaf2-1020/core/training';
 import { makeMicrotrainerAttempt, gradeMicrotrainerAttempt } from './microtrainer.js';
+import { freeze, validatorsFor } from './validate.js';
+const { fail, object, text } = validatorsFor('renderer');
 
 export const RENDERER_SCHEMA = 'exercise-renderer-v1';
 export const RENDERER_VIEW_SCHEMA = 'exercise-render-view-v1';
@@ -17,19 +19,6 @@ export const RENDERER_CAPABILITIES = Object.freeze([
 ]);
 
 const clone = value => structuredClone(value);
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = message => { throw new TypeError(`renderer: ${message}`); };
-
-function object(name, value) {
-  if (!isRecord(value)) fail(`${name} must be an object`);
-  return value;
-}
-
-function text(name, value, max = 128) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > max)
-    fail(`${name} must be a non-empty bounded string`);
-  return value;
-}
 
 function list(name, values) {
   if (!Array.isArray(values) || values.length === 0 ||
@@ -37,14 +26,6 @@ function list(name, values) {
     fail(`${name} must be a non-empty string array`);
   if (new Set(values).size !== values.length) fail(`${name} must be unique`);
   return values;
-}
-
-function freeze(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) freeze(child);
-  }
-  return value;
 }
 
 function validateAccessibility(input) {

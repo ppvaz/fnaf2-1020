@@ -239,18 +239,11 @@ def calibrate(args) -> None:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", required=True, type=pathlib.Path)
-    parser.add_argument("--sensor-id", default=SENSOR_ID)
-    parser.add_argument("--profile-id", default=PROFILE_ID)
-    parser.add_argument("--min-margin", type=float, default=5.0)
+    _MC.add_common_arguments(parser, SENSOR_ID, PROFILE_ID)
     parser.add_argument("--max-anchors", type=int, default=6)
     parser.add_argument("--exclude-rows", default="",
                         help="comma-separated grid rows to exclude from the search "
                              "(e.g. the persistent on-screen control strip)")
-    parser.add_argument("--note", action="append", default=[],
-                        help="retained as a limitation in the artifact")
-    parser.add_argument("--strict", action="store_true",
-                        help="exit 1 when calibration emits status=refuse")
     parser.add_argument("labelled", nargs="+", metavar="LABEL=PATH")
     args = parser.parse_args(argv)
     if args.min_margin < 0:

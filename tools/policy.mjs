@@ -3,9 +3,9 @@
 // One observation/action contract so that scripted schedules, priority
 // machines and belief-state controllers can be compared on the same engine,
 // the same seeds and the same error models. It creates NO second simulator:
-// `src/engine.js`'s `Sim` remains the sole mechanics authority and this file
-// only wraps construction, action delivery, observation privilege and the
-// terminal report.
+// the `Sim` in `packages/core/src/mechanics/plant-model.js` remains the sole
+// mechanics authority and this file only wraps construction, action
+// delivery, observation privilege and the terminal report.
 //
 // It is deliberately the same machinery the existing tools already use:
 //

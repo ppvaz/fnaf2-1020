@@ -18,6 +18,8 @@ import {
   validateCommitment,
 } from '@fnaf2-1020/core/training';
 import { stableHash } from '@fnaf2-1020/core/contracts';
+import { finite, freeze, isRecord, validatorsFor } from './validate.js';
+const { fail, object, text } = validatorsFor('microtrainer', { textMax: 160 });
 
 export const MICROTRAINER_SESSION_SCHEMA = 'microtrainer-session-v1';
 export const MICROTRAINER_EVENT_SCHEMA = 'microtrainer-event-v1';
@@ -30,9 +32,6 @@ export const MICROTRAINER_SPLITS = Object.freeze(['calibration', 'holdout', 'pra
 export const MICROTRAINER_SURFACES = Object.freeze(['campaign', 'rhythm-highway', 'threat-constellation', 'replay']);
 
 const clone = value => structuredClone(value);
-const finite = value => typeof value === 'number' && Number.isFinite(value);
-const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = message => { throw new TypeError(`microtrainer: ${message}`); };
 export class MicrotrainerIneligibleError extends Error {
   constructor(reason) {
     super(`microtrainer exercise is ineligible: ${reason}`);
@@ -42,17 +41,6 @@ export class MicrotrainerIneligibleError extends Error {
 }
 
 const reject = reason => new MicrotrainerIneligibleError(reason);
-
-function object(name, value) {
-  if (!isRecord(value)) fail(`${name} must be an object`);
-  return value;
-}
-
-function text(name, value, max = 160) {
-  if (typeof value !== 'string' || value.length === 0 || value.length > max)
-    fail(`${name} must be a non-empty bounded string`);
-  return value;
-}
 
 function number(name, value, { min = 0, max = Infinity } = {}) {
   if (!finite(value) || value < min || value > max) fail(`${name} is outside its numeric bounds`);
@@ -70,14 +58,6 @@ function list(name, values, { min = 0, max = 128 } = {}) {
     fail(`${name} must contain ${min}-${max} bounded strings`);
   if (new Set(values).size !== values.length) fail(`${name} must contain unique strings`);
   return values;
-}
-
-function freeze(value) {
-  if (value && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value)) freeze(child);
-  }
-  return value;
 }
 
 function clock(name, value) {

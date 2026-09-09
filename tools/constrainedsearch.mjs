@@ -2,8 +2,9 @@
 //
 // This searches only named device-plan geometry already implemented by
 // HidPilot.  Every trajectory goes through recipe.build -> devicePlan ->
-// jitterPlan -> replay over src/engine.js.  It is therefore a deterministic
-// enumeration of this finite family, not a new policy simulator.
+// jitterPlan -> replay over packages/core/src/mechanics/plant-model.js.
+// It is therefore a deterministic enumeration of this finite family, not a
+// new policy simulator.
 //
 //   node tools/constrainedsearch.mjs --mode=screen --workers=8
 //   node tools/constrainedsearch.mjs --mode=exhaustive --workers=8
