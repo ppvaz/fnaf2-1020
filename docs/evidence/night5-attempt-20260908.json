@@ -224,7 +224,7 @@
     "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
   },
   "night5Conclusion": {
-    "attempts": 21,
+    "attempts": 22,
     "bestSurvival": "369.0 s of a 419.6 s night (Minus 3 frame-light, twice)",
     "provenScheduleDistribution": "six Night 5 runs on the proven Minus 3 timing: 369, 367, 202, 200, 195, 157 s",
     "whyRepetitionWillNotWin": "both best runs died at ~5 AM to the box, so the wall is not a tail. The operator watched the cause directly: a desync makes wind presses land while masked, where the engine drops every non-mask touch, so the box loses delivered wind rather than scheduled wind.",
@@ -286,6 +286,13 @@
         "the correction could never have worked: a mask tap is refused while the monitor is up. The correct action there is a MONITOR tap to lower it first."
       ],
       "whatToBuildNext": "detect the monitor state from the FRAME rather than from the helper. The monitor view is unmistakable -- the camera map, the 'Prize Corner' label and the Wind Up Music Box widget -- and the runner already captures those frames every 5 s. The first corrector was the right tool with the wrong observable: its gate needed snapshot.screen === 'FNAF2_NIGHT' and the helper's monitorUp, and the helper never reported the disagreement this frame shows plainly. Pair a frame-derived monitor state with the monitor corrector, which already fired zero false positives across a full night."
+    },
+    "frameDerivedCorrector": {
+      "whatChanged": "the monitor state is now derived from the captured FRAME rather than from the helper: the camera map is far brighter than the office, so mean luma separates them, and the runner already captures a frame every 5 s. The correction is a MONITOR tap, which is the only one the engine accepts when the monitor is up.",
+      "result": "artifacts/minus3-device-20260908/n5-framesync: survived ~305 s with ZERO corrections fired, then went straight to title. Third best of 22 attempts and the deepest since the 367/369 s pair. Cleanup verified.",
+      "whyItMatters": "no phase disagreement was detected for the whole run, and the run went deep. The runs that die in the 157-202 s cluster are the ones where the operator and the frames show desyncs. That is consistent evidence that desync separates the shallow deaths from the deep ones, and it is the first run where the detector ran all night and stayed silent.",
+      "caveat": "silence is not proof the detector works -- a detector that never fires and one that cannot fire look the same. It must still be validated against a run where a desync is independently observed, e.g. by replaying retained frames through the same luma rule and checking it flags the frame-0012 case from the mask-resync run, where the monitor was up at a phase the schedule believed was masked.",
+      "attempts": 22
     }
   }
 }
