@@ -141,6 +141,15 @@
           156683
         ],
         "killer": "withered bonnie in the office at 2 AM after a phase desync (operator, live)"
+      },
+      {
+        "hallFlash": "350 ms at cycle+9700",
+        "ventHold": "350 ms (from 100 ms)",
+        "survivedMs": [
+          171329
+        ],
+        "killer": "UNKNOWN (frame retained)",
+        "note": "new best; the relaxed liveness guard correctly carried an office-hud-without-night frame at 144.9 s instead of aborting"
       }
     ],
     "actuatorHypothesis": "The strategy is byte-identical to the authoritative queue -- verified press for press against minus-toys-plan schedule() -- and the model gates it 3000/3000, so a 2/2 device failure at 12 AM had to be actuator-side. Two contact-level facts explain it: a 33 ms contact is long enough to register as a UI tap but not to hold the hall light (the repo's own 17 ms probe landed 3/3 camera sweeps while the independent light-effect gate accepted 0/3), and a flash scheduled 300 ms after the mask-off tap sits only ~56 ms clear of the 244 ms MASK_ANIM_OFF window, during which plant-model.js drops every non-mask touch.",
@@ -150,5 +159,17 @@
       "proposedRule": "compileCycle should track the mask-off press time and refuse any non-mask action that begins within MASK_ANIM_OFF of it, the same way it already refuses a camdrop with the monitor down."
     },
     "remaining": "Both routes now fail on Night 5 for the same reason: an eaten input inverts a toggle and the mask/monitor phase never recovers. Minus 3 lost the box to it; Minus Toys lost the mask to it. Open-loop cannot self-correct, so the next real step is state-aware actuation, not more knobs."
+  },
+  "compilerAcceptsInvalidInteraction": {
+    "finding": "tools/device/artifact-commands.mjs compileCycle declares a monitor precondition for a plain tap/hold row only when the control is a camera or wind: `const needsUp = camera(row.control) || control === 'wind'`. A raw `hold ventl` therefore declares no precondition and is compiled unguarded, even though plant-model.js gates every vent light on hallView (`monitor !== MON_UP`).",
+    "contrast": "The precondition system exists and is used: mask throws 'mask toggle requires monitor down', camdrop throws 'camdrop requires monitor up', and the `read` compound throws 'vent read requires monitor down'. The vent controls are guarded only in that compound, not as raw holds.",
+    "observedOnDevice": "Operator, watching with show_touches during toys-n5-vent350: taps carrying the left vent light coordinate land inside the monitor and hit the camera flash instead. The emitted minus-toys loop raises the monitor at 10100 and presses ventl at 10400, so every vent press in the plan happens with the monitor up.",
+    "modelDependsOnIt": {
+      "asEmitted_monitorUp_invalid": "3000/3000",
+      "moved_9700x350_monitorDown_valid": "1076/3000",
+      "moved_9750x300_monitorDown_valid": "1085/3000",
+      "note": "The model scores the invalid arrangement far higher because press('ventL') sets ventLightL, which feeds anyOfficeLightHeld -- and that getter does NOT require hallView, unlike every ventLightOn getter. So the simulator credits an office-light hold that the device cannot produce with the monitor up. Removing the row entirely costs 1000/1000 -> 368/1000, so it is load-bearing, not decorative."
+    },
+    "consequence": "Enforcing the rule would refuse the currently shipped minus-toys plan, which is the device-proven nights 1-2 winner. The plan needs re-deriving under the constraint, not just re-timing, because the legal arrangements score far worse in the model. Flagged for Pedro; not changed by the agent."
   }
 }

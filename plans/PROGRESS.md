@@ -103,6 +103,24 @@ intro card it was meant to hide behind. The model prices the consequence: at a
 **0/1000, killed by the Puppet**, which is what the device did. The one-off
 runner starts in 450-620 ms, so this is a lane defect, not a physical limit.
 
+**The plan compiler accepts an interaction the engine forbids, and the model
+banks a win on it.** `compileCycle` declares a monitor precondition for a plain
+tap/hold row only when the control is a camera or `wind`, so a raw
+`hold ventl` compiles unguarded -- while `mask`, `camdrop` and the `read`
+compound all throw on their preconditions. `plant-model.js` gates every vent
+light on `hallView` (`monitor !== MON_UP`), and the emitted minus-toys loop
+raises the monitor at 10100 and presses `ventl` at 10400, so every vent press
+in the shipped plan happens with the monitor up. The operator confirmed it on
+device with `show_touches`: taps carrying the left vent coordinate land inside
+the monitor and hit the camera flash.
+
+The model scores the invalid arrangement 3000/3000 and the legal ones
+1076/3000 and 1085/3000, because `press('ventL')` feeds `anyOfficeLightHeld`,
+and that getter alone does not require `hallView`. Removing the row costs
+1000/1000 -> 368/1000, so it is load-bearing. Enforcing the rule would refuse
+the shipped nights 1-2 winner bytes, so the plan needs re-deriving under the
+constraint rather than re-timing. Flagged, not changed.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**
