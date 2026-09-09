@@ -41,7 +41,22 @@ export const KNOBS0 = {
   maskOffMs: 9200,         // mask toggles OFF (~:X9), the cams-up / wind phase begins
   maskOnMs: 4400,          // mask toggles ON (~:X4). Used in the opening, and +loopPeriodMs in the loop.
   hallOffsetMs: 9500,      // Foxy-reset hall pulse offset
-  hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56 with no pan
+  hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56
+                           //   with no pan. Do NOT lengthen this to fix the 1-in-3
+                           //   drop measured 2026-09-09: the hall button is in the
+                           //   view region where a held touch pans, and 33 ms is the
+                           //   measured length that lights without panning. A longer
+                           //   pulse has to be qualified against a pan first.
+  loopContactMs: 33,       // steady-loop tap length for the parity toggles, separate
+                           //   from `contactMs` because the opening cannot take a
+                           //   long one: its cam9/monitor pair is 50 ms apart and
+                           //   would overlap. The loop's gaps are 300 ms, so this can
+                           //   go to ~200. Defaulted to the qualified 33 ms: every
+                           //   parity inversion the cycle gate repaired on 2026-09-09
+                           //   was a 33 ms tap (~2 frames), so 200 is the experiment
+                           //   worth running -- but a winner must opt in, because the
+                           //   qualification artifact is bound to a policy hash and
+                           //   only the operator can rebind it.
   raiseMs: 10100,          // monitor raise, just after the interval boundary
   stunRefreshMs: 10400,    // ventl (camera-feed light) glitch-stun refresh, right after the raise
   stunRefreshHoldMs: 100,  // its hold
@@ -134,12 +149,12 @@ export function build(knobs) {
   let loop;
   if (k.loopPeriodMs === 10000) {
     loop = [
-      [k.maskOffMs, 'tap', 'mask', c],
+      [k.maskOffMs, 'tap', 'mask', k.loopContactMs],
       [k.hallOffsetMs, 'hall', k.hallMs],
-      [k.raiseMs, 'tap', 'monitor', c],
+      [k.raiseMs, 'tap', 'monitor', k.loopContactMs],
       [k.windLeadMs, 'hold', 'wind', k.windMs],
       [k.camdropMs, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs],
-      [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', c],
+      [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', k.loopContactMs],
     ];
     if (k.preventiveVentLight)
       loop.splice(3, 0, [k.stunRefreshMs, 'hold', 'ventl', k.stunRefreshHoldMs]);
