@@ -276,6 +276,16 @@
       "result": "artifacts/minus3-device-20260908/n5-maskresync: FOUR corrections fired and the run died at 122.5 s, worse than the 175.1 s of the same schedule with the monitor-only corrector and worse than the 157-202 s band without any.",
       "readingOfIt": "this is the bad-proxy signature, not a fix. All four corrections carried the identical shape -- wantMask true, observed state=night, at phases 1273, 2665, 2679 and 3376, all early in the cycle. A genuine phase inversion is corrected once and then agrees; repeating at the same phase means either the corrective tap is not landing on the second HID device, or 'state=night' is observable while masked and the proxy is simply wrong. Both are unvalidated.",
       "conclusion": "the mask-phase corrector must NOT be reused until the proxy and the corrective tap are each validated in isolation: confirm on retained frames that a masked frame never classifies as state=night, and confirm on device that a tap sent on the second HID device actually toggles the mask. Injecting unvalidated corrections into a live night is worse than not correcting, and this run is the evidence."
+    },
+    "frameEvidenceResolvesIt": {
+      "frame": "artifacts/minus3-device-20260908/n5-maskresync/frame-0012.png, elapsed 37665 ms, schedule phase 2665",
+      "whatItShows": "the monitor UP on CAM 11 (Prize Corner, the camera map and Wind Up Music Box widget visible) with the HUD reading 'Night 5 / 12 AM'. The lifecycle classifier labelled it state=night.",
+      "threeConclusions": [
+        "the proxy is wrong: state=night means the Night/hour HUD text is visible, which is equally true with the monitor up. It does not mean the mask is off.",
+        "the desync it caught is nonetheless REAL. At phase 2665 the schedule believes the mask is on and the monitor is down; the frame shows the monitor up. Those states cannot coexist -- the engine refuses a mask press while the monitor is MON_UP and the mask cannot be held with a camera raised. So the schedule and the game were genuinely out of phase 37 s into the night.",
+        "the correction could never have worked: a mask tap is refused while the monitor is up. The correct action there is a MONITOR tap to lower it first."
+      ],
+      "whatToBuildNext": "detect the monitor state from the FRAME rather than from the helper. The monitor view is unmistakable -- the camera map, the 'Prize Corner' label and the Wind Up Music Box widget -- and the runner already captures those frames every 5 s. The first corrector was the right tool with the wrong observable: its gate needed snapshot.screen === 'FNAF2_NIGHT' and the helper's monitorUp, and the helper never reported the disagreement this frame shows plainly. Pair a frame-derived monitor state with the monitor corrector, which already fired zero false positives across a full night."
     }
   }
 }
