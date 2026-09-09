@@ -257,5 +257,11 @@
     "cycleSignatures": "all 54 loop cycles of the emitted Night 5 schedule share exactly ONE signature -- 14 contact edges each at identical offsets from their cycle base. There is no difference at cycle 20 or 37, or anywhere.",
     "compilerRounding": "the compiled HID stream's 719 delay commands sum to 544583 ms, which equals the last authored edge time exactly. The compiler contributes zero cumulative rounding error.",
     "consequence": "since the plan is bit-periodic and the compiler is exact, the device's tightly clustered deaths (three of six inside a 7 s window) cannot come from the schedule. They come from execution: either the device-side hid program's own delay accuracy, or presses being swallowed by animation windows and overlays. That narrows the remaining work to measuring on-device schedule position, which the artifact lane can carry and the one-off runner cannot."
+  },
+  "frameRateIsNotSystematicallyLow": {
+    "question": "operator, 2026-09-09: does the game hold a stable 60 fps, or degrade to ~57? is it relevant?",
+    "whyItWouldMatter": "structurally, yes: every game process is frame-denominated (MASK_ANIM_OFF 15, MONITOR_ANIM_UP 12, movement intervals, box drain) while the schedule is milliseconds. A game running below 60 fps makes the ms cycle run ahead of the frame clock, slipping a whole period after a fixed time, which is the shape of a wall at one cycle.",
+    "measurement": "ruled out as a systematic effect by the two 6 AM wins. NIGHT_FRAMES is s(420), so a night is 420.0 s at 60 fps. Night 3 reached sixam at 419.595 s and Night 4 at 419.501 s of wall clock, 0.10% and 0.12% under nominal. At 57 fps a night would run 442 s. The lifecycle classifier also lags by up to its ~5 s cadence, so the true 6 AM was at or before those times.",
+    "whatRemainsOpen": "transient dips. A few hundred ms lost in a heavy scene would not move a 420 s total measurably but is more than enough to slip a toggle's phase, which is consistent with the clustered walls. Measuring that needs a frame-time trace rather than a night total; tools/device/atrace-input.sh exists for it and no run this session captured one."
   }
 }
