@@ -187,7 +187,22 @@ for (const line of ci.split('\n')) {
   for (const m of line.matchAll(/([\w./-]+\.(?:py|mjs|sh))/g))
     ciNames.add(m[1].split('/').pop());
 }
-const runs = (gate) => registered.has(gate) || ciNames.has(gate.split('/').pop());
+// The third registry. CI's lanes are `npm run test:contracts` and
+// `npm run test:core`, so a gate whose only registration is a package.json
+// script command line IS run -- and reading only tools/test.mjs and ci.yml
+// reported eleven such gates as "a gate that nothing runs", including every
+// cue-helper gate and three of the calibration gates. A checker that knows
+// one of two registries measures the registry it knows, not the coverage.
+const pkgPath = join(HERE, '..', '..', 'package.json');
+const scriptNamesRun = new Set();
+for (const command of Object.values(JSON.parse(readFileSync(pkgPath, 'utf8')).scripts ?? {}))
+  for (const m of String(command).matchAll(/([\w./-]+\.(?:py|mjs|sh))/g))
+    scriptNamesRun.add(m[1].split('/').pop());
+
+const runs = (gate) => {
+  const base = gate.split('/').pop();
+  return registered.has(gate) || ciNames.has(base) || scriptNamesRun.has(base);
+};
 
 for (const name of readdirSync(HERE).sort()) {
   if (!/\.(py|mjs|sh)$/.test(name)) continue;

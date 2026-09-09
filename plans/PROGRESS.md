@@ -160,6 +160,30 @@ attempt at this claimed an improvement the measurement did not support, so the
 next campaign run must be checked by re-measuring office -> `hid.schedule-start`
 rather than by reading the diff.
 
+**The lane latency is fixed and measured, and it was neither of the two places
+it was looked for.** Startup anchors added to the executor
+(`hid.execute-entered`, `hid.shell-spawned`, `hid.night-go`) showed the
+schedule spawning 8.7 s *before* the office and still not starting for another
+23 s, which ruled out the spawn point that two earlier fixes had each claimed
+to correct. The cause was `appendWrites`: one shell command per HID stream
+line, several hundred `printf ... >> file` calls opening and closing a file on
+the phone before `/system/bin/hid` was registered. One `printf` per file --
+the format is reused for every argument -- collapses it:
+
+| | before | after |
+|---|---|---|
+| spawn -> start marker | 32.1 s | 7.4 s (the `readyDelayMs` itself) |
+| office -> first action | 25.3 s | **0.7 s** |
+
+On device minus-toys Night 5 went from a box exhausted before the schedule
+began to **283.8 s survived**, the route's best against 171.3 s, killed by
+Balloon Boy. Still not a win, and the remaining gap has a named cause: the
+model gives the route 3000/3000 at zero latency, the device reached 68% of the
+night, and the model's own score without the vent row is 1046/3000. The
+emitted vent press fires with the monitor up and lands on the camera flash, so
+the device is running the variant the model scores at 35% -- and BB, whose
+counter is that vent light, is what ended the best run.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**

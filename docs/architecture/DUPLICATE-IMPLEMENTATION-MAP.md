@@ -1,0 +1,444 @@
+# Duplicate implementation map
+
+Where this repository implements the same thing more than once, and what — if
+anything — keeps the copies honest.
+
+This is a **cleanup input, not a cleanup verdict**. No entry below is a claim
+that a duplicate is wrong: several are deliberate and correctly gated, and the
+charter's own layering means the same idea legitimately appears once per layer.
+The point is that a cleanup should not have to rediscover the list, and that
+the ungated copies are separable from the gated ones.
+
+## How to read it
+
+Every family names the **owner** (the implementation the charter or a contract
+puts in charge), the **other implementations**, and the **binding** — the thing
+that fails if the copies disagree:
+
+| Binding | Meaning |
+|---|---|
+| `GATE` | An executable check compares the implementations. Divergence turns a lane red. |
+| `COMMENT` | A source comment asks a human to keep them aligned. Divergence is silent. |
+| `NONE` | Nothing relates them. Divergence is silent and the reader cannot tell which copy is current. |
+
+`COMMENT` and `NONE` are the cleanup surface. `GATE` families are listed so a
+cleanup does not "simplify" away a disciplined pair, and so the four existing
+gate patterns (§20) can be reused instead of reinvented.
+
+## Relationship to the generated register
+
+[`generated/duplicate-responsibilities.json`](generated/duplicate-responsibilities.json)
+already exists and stays authoritative for **ownership drift** — which package
+owns a responsibility that a `tools/` path still implements. It has five
+entries and is a hand-maintained constant in `tools/generate-catalog.js:208`,
+so it is "generated" in name only; three of its five rows point at globs
+(`tools/*search*`, `tools/*sweep*`, `tools/*probe*`) rather than files.
+
+This page is the complementary axis: **implementation multiplicity** — the same
+job done twice in one layer, in two languages, or in three CLI shapes. It names
+files. Neither page derives itself from source yet; §21 records the command
+that produced this one.
+
+Scope of the survey: 453 tracked `js/mjs/ts/py/sh` files (84,977 lines, 147 of
+them test-shaped) plus 39 Java files under `android/cue-helper`. 215 of those
+files live in `tools/device`.
+
+---
+
+## 1. Frame ingest and sensor geometry (Python) — binding: `NONE`
+
+Two generations of "turn bytes into a frame, or refuse", live side by side.
+
+- **Owner (gen 2):** `tools/device/sensor.py` (74 lines) — `NATIVE =
+  "screencap-2400x1080"`, a `SENSORS` registry, and `open_frame(source,
+  declared)` that raises `SensorMismatch` rather than resizing an
+  uncalibrated capture into a plausible answer. Consumed by
+  `tools/device/title-observe.py:55` and `tools/device/lifecycle-observe.py:46`.
+- **Gen 1 library:** `tools/device/monitor-calibrate.py:55` declares
+  `WIDTH = 2400` / `HEIGHT = 1080` and owns `load_raw` + `load_frame` +
+  `paths_for`. `mask-calibrate.py:60` and `screen-calibrate.py:52` **import it
+  by path** (`importlib.util.spec_from_file_location`, because the module name
+  is hyphenated) and reuse those loaders. That is the sharing pattern, already
+  adopted, and `mask-calibrate.py:57` states it: "One fitting algorithm, not
+  two: the per-cell worst-case-gap fit, the grid replication and the frame
+  loaders all live in monitor-calibrate.py and are imported here."
+- **Gen 1 copies:** `tools/device/camera-calibrate.py:43` and
+  `tools/device/watch-calibrate.py:36` import nothing from it and instead
+  re-declare `WIDTH`/`HEIGHT` and re-implement the loaders.
+
+Measured: the `load_raw`/`load_frame`/`paths_for` block is **byte-identical**
+between `monitor-calibrate.py` and `camera-calibrate.py` (same MD5);
+`watch-calibrate.py` is the same code with type annotations removed. The clone
+detector puts 39 identical 7-line windows between the first two.
+
+So this family is half-converged: two of four dependants share, two copy.
+Cleanup decision: point `camera-calibrate.py` and `watch-calibrate.py` at the
+same import, and decide whether gen 1 should reach `sensor.py` at all — or
+declare gen 1 the calibration-time reader and gen 2 the run-time reader, in
+which case the split needs writing down, because nothing states it now.
+
+## 2. Observer command-line shapes — binding: `NONE`
+
+Four input conventions among sibling scripts in one directory:
+
+| Convention | Scripts |
+|---|---|
+| frame on **stdin only** | `title-observe.py`, `lifecycle-observe.py`, `screenstate.py` (plus its own `--adb-fast` capture path) |
+| positional path **or** stdin | `intro_card.py` |
+| `LABEL=PATH` corpus via argparse | `monitor-calibrate.py`, `camera-calibrate.py`, `watch-calibrate.py`, `mask-calibrate.py`, `screen-calibrate.py`, `grid-signature.py` |
+| bare positional paths | `region-classify.py` (3 frames), `maskraise-grade.py` (video + stream) |
+
+This one has a price on the record: `CLAUDE.md`'s mistake register, entry 1,
+is exactly this divergence — a positional path handed to `title-observe.py` is
+silently ignored and yields `unknown=unreadable-frame`, which cost a live
+attempt. The register's remedy is "read the tool's usage first"; a cleanup
+remedy is one shared frame-source argument helper.
+
+## 3. Cross-language spec mirrors — binding: `COMMENT`
+
+The on-device Java helper and the host tools implement the same two numeric
+models, aligned by comment only.
+
+- **Pixel watch spec.** `android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java`
+  (469 lines) owns `defaultSpec()`. `tools/device/watch-calibrate.py:42` says
+  "Keep this list mechanically aligned with `PixelWatch.defaultSpec()`" and
+  `tools/device/camera-calibrate.py:49` repeats the instruction against both
+  the Java spec *and* `watch-calibrate.ENTRIES`. `monitor-calibrate.py:23`
+  carries the same kind of note about grid replication. Each side has its own
+  tests (`PixelWatchTest.java`, `test-watch-calibrate.py`); no check compares
+  the two specs.
+- **Phase clock.** `android/cue-helper/src/com/fnaf2/cuehelper/PhaseClock.java`
+  (141 lines) and `packages/core/src/timing/phase-clock.js` (328 lines) both
+  fit onsets of the 2 Hz winding tick to a 500 ms index and report a residual.
+  Tested independently by `PhaseClockTest.java` and `tools/phaseclocktest.mjs`;
+  no shared vectors.
+
+Cleanup decision: these are the two strongest candidates for the shared-JSONL
+vector pattern already used by `tools/contract-vectors.py` (§20).
+
+## 4. Calibration fitters — binding: `COMMENT` (spec) / partial reuse (code)
+
+Five host-side fitters: `monitor-calibrate.py` (424), `camera-calibrate.py`
+(304), `watch-calibrate.py` (336), `mask-calibrate.py` (267),
+`screen-calibrate.py` (237). Their consumers on the JS side are
+`packages/adapters/src/monitor-rule.js`, `camera-rule.js`, and
+`calibration-state-rule.js`.
+
+The **fitting algorithm is not duplicated** — see §1: `mask-calibrate.py` and
+`screen-calibrate.py` import it from `monitor-calibrate.py`. What is still
+copied is the surrounding shell: the argparse block (`--output`, `--sensor-id`,
+`--profile-id`, `--min-margin`, `--max-anchors`, `--note`, `--strict`,
+`labelled`) and the JSON summary dict, near-verbatim across
+`mask-calibrate.py:235`, `screen-calibrate.py:205` and
+`monitor-calibrate.py:388` — 32, 28 and 14 shared 7-line windows pairwise. It
+reaches the gates too: `test-mask-calibrate.py:38` and
+`test-monitor-calibrate.py:30` share 12.
+
+Cleanup decision: this is the cheapest and lowest-risk item on the page — one
+shared `calibration_cli` helper for the parser and the report, with the fit
+already shared.
+
+## 5. ADB transport — binding: `NONE`, against a stated owner
+
+`CLAUDE.md` gives adapters ownership of transport, and
+`apps/device/src/adb-bridge.js` (251) is the closed, reviewable port. In
+practice **28 tracked files invoke `adb` directly**, led by
+`tools/device/legacy-trial.sh` (55 call sites), `trial-maskcamp.sh` (19),
+`hid-sweep-probe.sh` (16), `query-cue-helper.sh` and `capture-screen-sample.sh`
+(10 each). `apps/device/src/adb-device-local-executor.js` (974) holds the
+sanctioned device-local path; `packages/adapters/src/transports/hid.js` and
+`transports/cue-helper.js` hold the codecs and deliberately open nothing.
+
+`legacy-paths.json` already records the legacy runners with removal gates, so
+this family is partly tracked — what is not tracked is the long tail of probe
+and capture scripts that each re-derive device selection and command shape.
+
+## 6. Device-action shell preamble — binding: `NONE`
+
+The same opening — resolve one serial, refuse to overwrite an output, take the
+per-serial lease, re-exec under the lock — is copied across device scripts:
+
+- 17 scripts source `tools/device/select-adb.sh`.
+- The `[ ! -e "$OUTPUT" ] || { echo "refusing to overwrite: ...` idiom appears
+  in 14 files (8 times inside `legacy-trial.sh` alone, and in five
+  `tools/cue/*.py` scripts).
+- The `CUE_HELPER_DEVICE_LOCK_HELD` re-exec through `device-lock-exec.py`
+  appears in 4 scripts.
+
+Measured overlap: 11 shared 7-line windows between
+`overlay-qualification-observe.sh:36` and `soak-cue-helper.sh:29` — the
+output-path, lease, and `adb get-state` preamble verbatim.
+
+## 7. Composition roots — binding: `COMMENT` for the fixture pair, else `NONE`
+
+Four roots that each bind ports to a service, plus two that mirror each other:
+
+| File | Lines | Binds |
+|---|---|---|
+| `apps/device/src/composition.js` | 42 | profile name → adapters, shared runtime |
+| `apps/device/src/modern-composition.js` | 112 | Plan 22 physical seam (HID + cue-helper transports) |
+| `apps/device/src/modern-campaign-ports.js` | 580 | campaign root: title/lifecycle observers + physical ports |
+| `apps/device/src/campaign-composition.js` | 52 | reviewed bundle → runner |
+| `apps/device/src/calibration-fixture.js` | 80 | offline logical-clock fixture |
+| `apps/device/src/live-seam-composition.js` | 118 | "mirrors `calibration-fixture.js`" in `live` mode |
+
+The last pair says so in its own header, and the detector confirms 6 shared
+windows. The first four are a genuine question for a cleanup: which is *the*
+composition root, and are the others its callers or its rivals?
+
+## 8. Executors, runners, and pilots — binding: partial `GATE`
+
+Host-side schedulers and their simulator twins:
+
+- **Device executors:** `device-local-executor.js` (96),
+  `adb-device-local-executor.js` (974), `artifact-executor.js` (296),
+  `campaign-runner.js`, `service.js` (443) — all under `apps/device/src`, all
+  carrying `device-executor-v1`, which is the binding that makes this
+  family legible.
+- **Simulator pilots:** `tools/model/hid-device-pilot.mjs` (962),
+  `stock-device-pilot.mjs` (412), `reactive-pilot.mjs` (344),
+  `closed-loop-reclaim.mjs` (155). `stock-device-pilot.mjs:3` states its
+  relationship — it replays `tools/device/trial.sh`'s millisecond table — and
+  `hid-device-pilot.mjs:9` states that its CAM 05 policy is "retained as a
+  comparison, not the selected" one. Those two headers are the only thing
+  ordering the family.
+- **Shell runners:** `legacy-trial.sh` (1860), `trial.sh`, `trial-maskcamp.sh`,
+  and 12 `tools/device/trial/*.sh` stages. Already in `legacy-paths.json` with
+  removal gates.
+- Probe near-duplicates: `hid-maskraise-probe.mjs:108` and
+  `hid-monitorraise-probe.mjs:134` share 8 windows;
+  `tools/device/hid-raise-probe.mjs` is a third variant of the same
+  measurement.
+
+## 9. Policy representation — binding: `GATE` inside Plan 21, `NONE` across families
+
+Twelve modules spell "policy", in at least three unrelated vocabularies.
+
+- **policy-v1 IR (gated).** `packages/core/src/control/policy-ir.js` (86) owns
+  the schema with `observation-language.js`; `tools/device/policy-grammar.mjs`
+  (387), `policy-interpreter.mjs` (77), `policy-search.mjs` (169),
+  `policy-artifact.mjs` (142) build on it, and `policy-equivalence.mjs` (214)
+  is a real compiler-equivalence gate. `tools/device/policy-ir.mjs` (51) is a
+  **name collision, not a copy**: it converts one Night 1 plan into the IR.
+- **Invention language.** `tools/invent/policy-lang.mjs` (499) — a rule-list
+  genome over a privileged simulator surface, explicitly not device-promotable.
+  Its header states the duplication outright: first-match-wins "exactly like
+  the cascade in `tools/minus7/policy.mjs`'s `decide()`".
+- **Reactive rule cascade.** `tools/minus7/policy.mjs` (96).
+- **Comparison adapter.** `tools/policy.mjs` (361) and
+  `tools/policybaselines.mjs` (532) — the plans/11 observation/action contract.
+  `tools/policy-inspect.js` (12) is the CLI shim.
+
+Cleanup decision: the three vocabularies are probably all warranted (device IR,
+privileged genome, comparison adapter) — but nothing says so, and the shared
+name is what makes a newcomer read the wrong file.
+
+## 10. Route plan emitters — binding: `NONE` on the shape, `GATE` per route
+
+`tools/device/minus-toys-plan.mjs` (554) and `minus-3-plan.mjs` (239) implement
+the *same undeclared interface*: `KNOBS0`, `build()`, `schedule()`,
+`replay()`, `emitPlan()`, plus a census entry point (`phaseScan` / `gate`).
+`minus3-frame-light.mjs` (145) is a third shape for the same job
+(`winRows`/`deviceEdges`/`census` with a pinned `EDGES_SHA256`).
+`recipe.mjs` (1081) is the older monolith that emits cycle recipes directly,
+and `bundle.mjs` (546) compiles a winner into the device bundle.
+
+Each route has its own seed census, so the *results* are gated; the *interface*
+is not, which is why a fourth route means a fourth hand-written module.
+
+## 11. Plants and transition models — binding: `GATE` (the model to copy)
+
+- `packages/core/src/mechanics/plant-model.js` (1159) — `class Sim`, the sole
+  mechanics authority.
+- `plant.js` (44) — semantic facade over it (`plant-model-v1`).
+- `reduced-model.js` (334) — deliberately not a second engine; gated against
+  seeded `Sim` replays by `tools/reducedmodeltest.mjs`.
+- `tools/minus7/sim.mjs` (149) — searchable wrapper: clone, semantic actions,
+  privileged view.
+- `packages/research/src/families/minus-toys.js`, `minus-two.js` — exact
+  evaluators, with `packages/research/test/legacy-equivalence.test.js`.
+
+This is the family a cleanup should imitate: four things named like engines,
+one authority, an equivalence gate for each derived model.
+
+## 12. Search and sweep harnesses — binding: `NONE`
+
+Roughly twenty independent harnesses over the same engine. Already flagged as
+globs in the generated register; named here so they can be triaged:
+
+- `tools/minus7/`: `search.mjs` (189), `paramsearch.mjs` (239),
+  `geometrysearch.mjs` (303), `cyclelengthsearch.mjs` (129),
+  `devicetimesearch.mjs` (97), `robustify.mjs` (117), `constrained-worker.mjs`.
+- `tools/invent/`: `search.mjs` (248), `campaign.mjs` (290), `ablate.mjs` (151).
+- root: `constrainedsearch.mjs` (205), `cyclesearch.mjs` (251),
+  `gatesearch.mjs` (113), `strategysearch.mjs` (179), `knobsweep.mjs` (133),
+  `latenesssweep.mjs` (185), `phasesweep.mjs` (47), `periodicsweep.mjs` (40),
+  `flicksweep.mjs` (39), `phase-tolerance.mjs` (198).
+- `tools/device/policy-search.mjs` (169), `gate-worker.mjs` (42).
+- Owner per the charter: `packages/research/src/experiment.js` with specs under
+  `packages/research/specs/`.
+- Shared execution machinery that already exists: `tools/pool.mjs` (129) +
+  `pool-worker.mjs`.
+
+## 13. Grading instruments — binding: `GATE` on coverage only
+
+`tools/device/grade-run.sh` (330) exists **because** this family sprawled; its
+header is the best statement of the problem in the repository ("we have a
+drawer full of them ... and nothing that runs them"), and it records the false
+record that cost: nights 6-36 and 6-37 reported past 2 AM while the retained
+frames held a restart card and the death static, because the grading step
+graded `$OUT.mp4` while aborts save `$OUT-aborted.mp4`.
+
+Instruments: `grade-night.py` (278), `grade-minus7.py` (159),
+`maskraise-grade.py` (526), `death-cause.py` (224), `death-census.py` (145),
+`sweepcheck.py` (291), `windpct.py` (156), `camtrace.py` (140),
+`screenstate.py` (209), `replay-screen-model.py` (137), plus the `grade`
+verb in `apps/device/src/cli.js:193`.
+
+**The best existing inventory in the repository is this family's gate.**
+`tools/device/test-grade-run-coverage.mjs` enforces that every script in
+`tools/device`, `tools/cue` and `tools/dump` is either invoked by
+`grade-run.sh`, a gate the suite runs, or **excluded with a written reason** —
+and its `EXCLUDED` map carries ~90 one-line rationales ("simulator layer, gated
+by test-actuator.mjs"; "charts the model gate's death census for a PLAN ...
+a simulator result with no run artifact to read"). A cleanup should read that
+map before this page: it is the annotated census of `tools/device`, kept
+current by a gate rather than by memory.
+
+Two caveats, both measured on the clean tree at `a8260aa`:
+
+- It is registered only in `tools/test.mjs:440`, i.e. the explicit
+  `npm run test:legacy:engine` lane — not in `test:contracts`, so the green
+  edit lane never runs it.
+- Run directly, it **exits 1 with 31 complaints**. 19 are real gaps (scripts
+  added since the exclusion list was last extended: `bundle.mjs`,
+  `mask-calibrate.py`, `screen-calibrate.py`, `minus-3-plan.mjs`,
+  `minus3-frame-light.mjs`, `artifact-commands.mjs`, `artifact-runner.mjs`,
+  `emit.mjs`, `seed-clock.mjs`, `closed-families.mjs`, the five cue-helper
+  entry points, `cue_helper_device_lock.py`, `device-lock-exec.py`,
+  `pan-path-capture.py`/`.sh`, `cue-helper-mcp.mjs`). The other 12 are the gate
+  reading the wrong registry: it looks for gate registrations in
+  `tools/test.mjs` and `.github/workflows/ci.yml`, and 11 of those 12 gates are
+  registered in `package.json`'s `test:contracts` /
+  `test:device:calibration` instead — which CI does run, by script name. Only
+  `test-hid-maskraise-probe.mjs` is genuinely unregistered.
+
+That is itself an instance of this page's subject: two registries for "gates
+that run" (`package.json` scripts and `tools/test.mjs`), with a checker that
+knows one of them.
+
+## 14. Trace readers — binding: `NONE`
+
+Nine readers of overlapping run telemetry: `clocktrace.mjs` (129),
+`drifttrace.mjs` (211), `windtrace.mjs` (85), `camtrace.py` (140),
+`inputtrace.py` (484), `run-timeline.py` (478), `tools/bench-trace.mjs` (36)
+over `packages/core/src/telemetry/bench-trace.js`, `tracereport.mjs` (115),
+`atrace-input.sh`. `run-timeline.py` and `drifttrace.mjs` both join plan
+against phone on one clock.
+
+## 15. Audio cue authorities — binding: `NONE`
+
+Three "authority" implementations for one job — decide that a cue happened —
+one per transport: `tools/cue/audio-authority.py` (552),
+`bridge-audio-authority.py` (362), `esp32-audio-authority.py` (345); plus the
+phone-side `AudioAnalyzer.java` (365). The feature/decision chain behind them
+is itself staged across `features.py` (190), `detect.py` (348),
+`correlate.py` (177), `evaluate.py` (250) and `evaluate-shadow.py` (237) —
+the last pair being a live/shadow split worth confirming is still wanted.
+
+## 16. Trainer bounded-input validator — binding: `NONE`
+
+The same `fail`/`strings`/`freeze`/`object`/`number` validator kit is copied
+into `apps/trainer/src/rhythm-highway.js:54` and `threat-constellation.js:52`
+(24 shared windows — `strings` and `freeze` are verbatim), with a smaller
+overlap between `adaptive-coach.js:24` and `microtrainer.js:46` (7). One
+`validate.js` module under `apps/trainer/src` retires all of it.
+
+## 17. Same-name twins and orphans
+
+| Twin | Lines | Verdict |
+|---|---|---|
+| `tools/stat.mjs` / `tools/stat.py` | 129 / 113 | **`GATE`, keep.** Same five functions; `tools/test-stat.mjs:49` spawns `python3` and compares. The model pair. |
+| `tools/device/closed-families.mjs` / `tools/invent/closed-families.mjs` | 70 / 134 | Two registers of closed policy families — device-plan surface vs privileged genome surface. Same register, two classifiers. |
+| `tools/invent/search.mjs` / `tools/minus7/search.mjs` | 248 / 189 | Two constrained searches; see §12. |
+| `tools/minus7/cycle.mjs` / `tools/minustoys/cycle.mjs` | 244 / 263 | Same shape, different route. `tools/minustoys/` holds **exactly one file** — an orphan directory. |
+| `packages/core/src/control/policy-ir.js` / `tools/device/policy-ir.mjs` | 86 / 51 | Name collision only; see §9. |
+
+## 18. Not duplication (checked, so a cleanup does not "fix" them)
+
+- `tools/device/cue-helper-setup.sh` (12), `cue-helper-queue.sh` (7),
+  `pan-path-capture.sh` (17) are thin serial-selecting wrappers that delegate
+  to the same-named `.py`. `cue-helper-queue.sh:1` states why it must *not*
+  source `select-adb.sh`: enqueue and list have to work with no phone present.
+- `tools/device/hid-sweep-probe.mjs` / `.sh` are complementary: the `.mjs`
+  emits the report stream, the `.sh` drives and measures the phone.
+- The four `packages/core/src/*/ports.js` files are one port interface per
+  concern (actuation, control, sensing, timing), not four copies.
+- `index.js` barrels across packages.
+
+## 19. Stale authority citations
+
+Four code files still name `src/engine.js` as the mechanics authority — a path
+that no longer exists (`packages/core/src/mechanics/plant-model.js` is the
+authority): `tools/policy.mjs`, `tools/constrainedsearch.mjs`,
+`tools/minus7/sim.mjs`, `tools/minus7/search.mjs`. Several docs and plans cite
+it too. `tools/validate-references.js` checks `CONTRACT:`/`ADR:`/`CLAIM:`/
+`EVIDENCE:` IDs, not paths named in prose, so nothing catches this.
+
+## 20. Remedies this repository has already proven
+
+A cleanup should reuse one of these five rather than invent a sixth:
+
+1. **Extract to one definition with a caller-supplied sampler.**
+   `tools/device/nightpredicate.py` — "Is the office HUD on screen? One
+   definition, three callers." Its docstring records the exact failure this map
+   is for: the predicate existed in two copies until 2026-08-26, only one copy
+   got a correction, and the stale copy still carried the docstring claiming it
+   was frame-for-frame identical. The fix expresses boxes as **fractions** so a
+   2400x1080 screencap caller and a 1280x576 video caller evaluate one rule.
+2. **Cross-language spawn comparison.** `tools/test-stat.mjs` imports the JS
+   module and spawns `python3` against `stat.py` in the same test.
+3. **Shared JSONL vectors read from both languages.**
+   `tools/contract-vectors.py` over `packages/core/test/fixtures/*.jsonl`.
+4. **Equivalence gate between a model and its authority.**
+   `tools/reducedmodeltest.mjs` (reduced model vs seeded `Sim`),
+   `tools/device/policy-equivalence.mjs` (two compilers of one plan format),
+   `packages/research/test/legacy-equivalence.test.js`.
+5. **Enforced census with written exclusions** — the pattern that keeps an
+   inventory from rotting into prose. `tools/device/test-grade-run-coverage.mjs`
+   (every script is wired, gated, or excluded *with a reason*) and
+   `tools/test-docs.mjs` (every page indexed, every tool script carries a
+   `TOOLS.md` row, no stale row survives a deletion). This is the pattern this
+   very page needs applied to it; see §21.
+
+## 21. How this page was derived, and what it does not cover
+
+Derived on 2026-09-08 from a token-window clone detector (normalized
+code-bearing lines, 7-line windows, hashes appearing in ≥2 distinct files) over
+all 453 tracked `js/mjs/ts/py/sh` files, plus responsibility greps (direct
+`adb` invocation, `screencap`, input emission, PNG decode, frame loaders, CLI
+shape) and cross-language name matching. Line numbers and counts are against
+`a8260aa`.
+
+**This page is hand-maintained, which is the weakness it documents.** The
+detector was a throwaway script, so nothing recomputes the clone-window
+numbers, and nothing notices when a family gains a sixth member. That is the
+same failure as the register in
+[`generated/duplicate-responsibilities.json`](generated/duplicate-responsibilities.json)
+and as the two indexes `tools/test-docs.mjs` was written to stop. Promoting the
+detector into `tools/` — with its `tools/TOOLS.md` row, and a check that every
+family here still has the membership it claims — is the difference between this
+page being a map and being a snapshot. Until then, re-derive before trusting a
+count.
+
+Not surveyed: `apps/trainer` beyond §16, the `tools/cue` detection chain beyond
+§15, the 39-file Java overlay/capture family beyond §3, the 147 test-shaped
+files as a family of their own, and `tools/dump` / `tools/recompile`. For
+`tools/device` specifically, the `EXCLUDED` map in
+`tools/device/test-grade-run-coverage.mjs` is a more complete per-script census
+than anything here, and it is gate-enforced; read it alongside §13.
+
+Ownership rules that decide most of these questions live in
+[`README.md`](README.md) and [`../../CLAUDE.md`](../../CLAUDE.md); shim
+lifecycles and removal gates live in [`COMPATIBILITY.md`](COMPATIBILITY.md);
+the command surface is [`../../tools/TOOLS.md`](../../tools/TOOLS.md).

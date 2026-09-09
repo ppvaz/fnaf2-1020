@@ -29,6 +29,7 @@ controller research, and device evidence form one program.
 | Understand current package ownership | [`architecture/README.md`](architecture/README.md) |
 | Review dependency direction | [`architecture/DEPENDENCY-GRAPH.md`](architecture/DEPENDENCY-GRAPH.md) |
 | Review migration shims and removal gates | [`architecture/COMPATIBILITY.md`](architecture/COMPATIBILITY.md) |
+| Find where the same thing is implemented twice | [`architecture/DUPLICATE-IMPLEMENTATION-MAP.md`](architecture/DUPLICATE-IMPLEMENTATION-MAP.md) |
 | Review the generated contract and command catalogs | [`architecture/generated/README.md`](architecture/generated/README.md) |
 | Read the workspace/core decision | [`decisions/0001-workspaces-and-core.md`](decisions/0001-workspaces-and-core.md) |
 | Inspect evidence retention and claim ceilings | [`evidence/README.md`](evidence/README.md) |

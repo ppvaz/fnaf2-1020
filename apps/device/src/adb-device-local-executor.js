@@ -256,8 +256,16 @@ function shellSleepMs(milliseconds) {
 
 function appendWrites(lines, path, values) {
   lines.push(`rm -f ${path}`, `: > ${path}`);
-  for (const value of values)
-    lines.push(`printf '%s\\n' ${shellQuote(value)} >> ${path}`);
+  if (values.length === 0) return;
+  // One printf per file, not one per line. `printf '%s\n' a b c` reuses its
+  // format for every argument, so the whole stream is a single process and a
+  // single open/append/close instead of several hundred of them. The per-line
+  // form cost ~25 s on the phone before `/system/bin/hid` was even registered,
+  // which is the whole of the measured office-to-start-marker latency: the
+  // schedule spawned 8.7 s before the office and still did not begin for
+  // another 23 s (2026-09-09 instrumented run). On Night 5 that delay is
+  // 0/3000 in the model, and the device died to an exhausted music box.
+  lines.push(`printf '%s\\n' ${values.map(value => shellQuote(value)).join(' ')} >> ${path}`);
 }
 
 export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/tmp/fnaf2-modern-start-$$', armControl = null } = {}) {
@@ -514,6 +522,11 @@ export class AdbDeviceLocalArtifactExecutor {
     if (armVerification && typeof this.observeArm !== 'function')
       fail('arm-verified artifact requires an exact camera observation port');
     const schedule = compileDeviceLocalHidSchedule(request, { readyDelayMs: this.readyDelayMs });
+    // Startup phase anchors. Without them the only timestamp between night
+    // entry and the first action was the start marker, so two separate
+    // attempts to remove the measured 26-30 s office-to-marker latency each
+    // claimed success that the evidence did not support.
+    this.onEvent({ type: 'hid.execute-entered', at: Date.now() });
     this.running = true; this.aborted = false;
     const tag = `${globalThis.process.pid}-${Date.now()}`;
     const startMarker = `/data/local/tmp/fnaf2-modern-start-${tag}`;
@@ -526,6 +539,7 @@ export class AdbDeviceLocalArtifactExecutor {
     } : null;
     const process = runAdbScript(this.adb, this.serial,
       renderDeviceLocalScript(schedule, { startMarker, armControl }), this.onOutput);
+    this.onEvent({ type: 'hid.shell-spawned', at: Date.now(), readyDelayMs: schedule.readyDelayMs });
     this.child = process.child;
     this.stopProcess = async () => {
       try {
@@ -664,6 +678,7 @@ export class AdbDeviceLocalArtifactExecutor {
                 // 12 AM anchor: release the gated schedule and stamp the
                 // arm verifier's window origin.
                 nightAnchoredAt = Date.now();
+                this.onEvent({ type: 'hid.night-go', at: nightAnchoredAt });
                 if (armControl?.nightGo) {
                   try { await touchRemote(this.adb, this.serial, armControl.nightGo); }
                   catch { /* the drop guard below still governs the run */ }

@@ -186,5 +186,19 @@
       "night5": "0/3000 (puppet 2669, inside-office 304, foxy 27)"
     },
     "reading": "The lane's measured 26-30 s office-to-schedule-start latency is harmless on Night 1, marginal on Night 2 and fatal on Night 5. Night 2's device win therefore cleared a night the model gives 12.7% at that latency. With the latency removed the route is 3000/3000 on all three."
+  },
+  "laneLatencyFixed": {
+    "cause": "apps/device/src/adb-device-local-executor.js appendWrites emitted one shell command per HID stream line -- `printf '%s\\n' <line> >> file` for each of several hundred lines across prefix, remainder and rearm -- so the device script spent roughly 25 s opening, appending to and closing files before it registered /system/bin/hid at all.",
+    "foundBy": "startup phase anchors added to the executor (hid.execute-entered, hid.shell-spawned, hid.night-go). Two earlier fixes each claimed to remove this latency without measuring it; the anchors showed the schedule spawning 8.7 s BEFORE the office and still not starting for another 23 s, which ruled out the spawn point and pointed at the script itself.",
+    "fix": "one printf per file; `printf '%s\\n' a b c` reuses its format for every argument",
+    "measured": {
+      "spawnToMarkerBefore": "32.1 s",
+      "spawnToMarkerAfter": "7.4 s (the readyDelayMs itself)",
+      "officeToFirstActionBefore": "25.3 s",
+      "officeToFirstActionAfter": "0.7 s"
+    },
+    "deviceEffect": "minus-toys Night 5 went from a box exhausted before the schedule began (operator: 'nope, box exhausted') to 283.8 s survived, the route's best by a wide margin over 171.3 s. Still not a win.",
+    "remainingGap": "The model gives minus-toys Night 5 3000/3000 at zero latency but the device reached 68% of the night, which is consistent with the model's own 'without ventl' score of 1046/3000: the emitted vent press fires with the monitor up and lands on the camera flash, so the device is effectively running the variant the model scores at 35%. That is the compiler gap already recorded here.",
+    "killer": "Balloon Boy (operator, live). The operator noted the run defended blackouts without a single forced-down monitor or missed mask window, which is structural rather than lucky: startBlackout records masked = maskFullyOn at the instant the encounter begins, and the cycle holds the mask ~4.8 s of every 10 s in fixed phase, so a large share of encounters find the mask already up and need no reaction. BB is the one threat the mask does not answer -- bb.inside kills every office light -- and his counter is the vent light, which is the press this plan fires with the monitor up. The best run therefore died to exactly the animatronic the broken press exists to stop."
   }
 }
