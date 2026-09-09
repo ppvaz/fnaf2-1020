@@ -652,6 +652,23 @@ async function waitForRemoteFile(adb, serial, path, {
   throw new Error(`machine HID readiness marker was not observed before ${timeoutMs}ms`);
 }
 
+/**
+ * Retain the target's ANR record for the run.  An `Input dispatching timed
+ * out` entry says the app stopped consuming MotionEvents, which is the same
+ * class of fault as a swallowed control tap: the run bundle should carry that
+ * either way, so the absence of one is recorded as deliberately as a hit.
+ */
+async function readAnrEvents(adb, serial) {
+  try {
+    const { stdout } = await execFile(adb, ['-s', serial, 'logcat', '-b', 'events', '-d', '-s', 'am_anr'],
+      { timeout: 10000, maxBuffer: 1024 * 1024 });
+    return stdout.split('\n').filter(line => line.includes('am_anr'))
+      .slice(-8).map(line => line.trim().slice(0, 300));
+  } catch {
+    return null;
+  }
+}
+
 async function touchRemote(adb, serial, path) {
   boundedRemotePath(path, 'remote arm signal');
   try {
@@ -1038,6 +1055,8 @@ export class AdbDeviceLocalArtifactExecutor {
     } finally {
       stopObserver = true;
       await Promise.all([observer, armObserver, ...effectObservers]);
+      const anr = await readAnrEvents(this.adb, this.serial);
+      if (anr !== null) this.onEvent({ type: 'device.anr', count: anr.length, lines: anr });
       this.child = null; this.running = false;
       this.stopProcess = null;
     }

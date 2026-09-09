@@ -169,10 +169,10 @@ assert.deepEqual(effectSchedule.maskTransitions.map(item => [item.actionId, item
 
 const fakeRoot = mkdtempSync(join(tmpdir(), 'fnaf2-modern-executor-'));
 const fakeAdb = join(fakeRoot, 'adb');
-writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 10\n');
+writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 10\n');
 chmodSync(fakeAdb, 0o755);
 const effectAdb = join(fakeRoot, 'effect-adb');
-writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 3\n');
+writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" logcat "*) echo "I am_anr : [0,1,com.scottgames.fnaf2,0,Input dispatching timed out]"; exit 0;; *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 3\n');
 chmodSync(effectAdb, 0o755);
 try {
   let observations = 0;
@@ -277,6 +277,10 @@ try {
     'the deciding detector must be retained in the sample');
   assert.equal(sourcedResult.samples[0].panelSequence, 900 + sourcedResult.samples[0].sequence,
     'the camera read sequence must be retained beside the frame sequence it was paired with');
+
+  const anrEvent = sourcedLog.find(event => event.type === 'device.anr');
+  assert.ok(anrEvent, 'every run must record its ANR query, hit or not');
+  assert.equal(anrEvent.count, anrEvent.lines.length);
 
   let armSequence = 0;
   const armLog = [];
