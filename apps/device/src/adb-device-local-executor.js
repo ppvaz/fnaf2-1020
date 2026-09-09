@@ -40,6 +40,16 @@ const EXIT_CONFIRM_SAMPLES = 3;
 // missing effect may spend, since reads are serialised and the next
 // transition's sampling waits behind them.
 const CONTROL_EFFECT_MAX_SAMPLES = 6;
+// A cycle-boundary gate costs one helper READ (85-180 ms measured), one
+// corrective contact, and one verifying read. The mask effect appeared
+// 358-712 ms after contact across the 2026-09-09 Night 5 runs, so 1200 ms
+// covers observe + correct + verify. The budget is spent whether or not a
+// correction is needed: releasing early would let each gate advance the
+// stream and reintroduce the drift that refuted the per-action host lane.
+const GATE_BUDGET_MS = 1200;
+// A gate is only placed where the authored plan already has idle to pay for
+// it, so gating never displaces a contact the plan's timing was validated on.
+const GATE_MIN_SLACK_MS = 2000;
 const execFile = promisify(execFileCallback);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -223,6 +233,66 @@ function maskTransitionsOf(actions) {
     .sort((left, right) => left.atMs - right.atMs || left.actionId.localeCompare(right.actionId)));
 }
 
+/**
+ * Split the post-arm stream at the points where the authored plan already
+ * idles, and record the mask parity the plan believes holds there.
+ *
+ * A plan's `targetMaskOn` chain is a simulation: `artifact-commands.mjs`
+ * derives it by toggling a modelled state, so every target after the first
+ * missed contact describes a device state that no longer exists. Gating at a
+ * cycle boundary is what stops one missed toggle from re-aiming the whole
+ * night -- and mask-on and monitor-up are mutually exclusive on device, so
+ * one mask observation settles both halves of the parity.
+ *
+ * Gates are placed only where the idle is wide enough to pay for them, so no
+ * authored contact moves. The budget is carved out of that idle, never added
+ * to it.
+ */
+function compileGateSegments(request, actions, originAtMs) {
+  const ends = actions.map(({ action, atMs }) =>
+    atMs + compileActionEvents(request, [{ action, atMs }]).cursor - atMs);
+  const points = [];
+  for (let index = 0; index + 1 < actions.length; index += 1) {
+    const finishedAtMs = ends[index];
+    const nextAtMs = actions[index + 1].atMs;
+    if (nextAtMs - finishedAtMs < GATE_MIN_SLACK_MS) continue;
+    const gateAtMs = nextAtMs - GATE_BUDGET_MS;
+    if (gateAtMs <= finishedAtMs) continue;
+    points.push({ index: index + 1, gateAtMs });
+  }
+  const segments = [];
+  const gates = [];
+  let from = 0;
+  let cursor = originAtMs;
+  for (const point of points) {
+    const group = actions.slice(from, point.index);
+    const compiled = compileActionEvents(request, group, { originAtMs: cursor });
+    if (!group.length) fail('gate split produced an empty stream segment');
+    const events = [...compiled.events];
+    // Park the stream exactly on the gate instant. The host owns the budget
+    // between here and the next authored contact, and nothing else does.
+    addDelay(events, point.gateAtMs - compiled.cursor);
+    segments.push(Object.freeze(events));
+    // The plan's own belief about the mask at this instant is the assertion
+    // the gate checks; an unstated belief is not invented here.
+    const believed = maskTransitionsOf(actions.slice(0, point.index))
+      .filter(transition => transition.atMs <= point.gateAtMs).at(-1);
+    gates.push(Object.freeze({ gateAtMs: point.gateAtMs, budgetMs: GATE_BUDGET_MS,
+      nextActionId: actions[point.index].action.id,
+      cycle: actions[point.index].action.cycle,
+      believedMaskOn: believed ? believed.targetMaskOn : null }));
+    from = point.index;
+    // The host holds the stream for exactly `budgetMs` and releases on the
+    // next contact's authored instant, so the resumed segment starts with no
+    // lead-in. Compiling it against the gate instead would make every cycle
+    // wait the budget twice and drift a further 1200 ms late.
+    cursor = actions[point.index].atMs;
+  }
+  const tail = compileActionEvents(request, actions.slice(from), { originAtMs: cursor });
+  segments.push(Object.freeze(tail.events));
+  return { segments, gates, cursor: tail.cursor };
+}
+
 function compileArmSegments(request, actions, register, plan) {
   const firstWind = actions.find(({ action }) =>
     action.control === 'wind');
@@ -243,8 +313,7 @@ function compileArmSegments(request, actions, register, plan) {
   if (remainder.some(item => item.atMs < prefix[0].atMs))
     fail('arm-verified schedule has an action before the opening arm');
   const prefixCompiled = compileActionEvents(request, prefix);
-  const remainderCompiled = compileActionEvents(request, remainder,
-    { originAtMs: prefixCompiled.cursor });
+  const remainderCompiled = compileGateSegments(request, remainder, prefixCompiled.cursor);
 
   // Re-arm from the already-raised monitor: CAM 11, CAM 09, drop, raise.
   // Keep this derived from the authored opening so the physical retry cannot
@@ -258,14 +327,23 @@ function compileArmSegments(request, actions, register, plan) {
   const rearmCompiled = compileActionEvents(request, rearmActions);
   if (rearmCompiled.cursor < 1) fail('arm re-arm sequence has no physical duration');
 
-  const remainderEvents = [...remainderCompiled.events];
+  const remainderSegments = remainderCompiled.segments.map(events => [...events]);
   const tail = plan.timing.observeUntilMs - remainderCompiled.cursor;
   if (tail < 0) fail('HID schedule exceeds the observation envelope');
-  addDelay(remainderEvents, tail);
+  addDelay(remainderSegments.at(-1), tail);
+  // The corrective contact is the plan's own authored mask press, not a
+  // coordinate invented for the corrector. A plan with no mask action cannot
+  // be parity-corrected, and says so rather than pressing something else.
+  const maskAction = remainder.find(({ action }) => action.control === 'mask' &&
+    typeof action.targetMaskOn === 'boolean');
+  const maskCorrection = maskAction
+    ? compileActionEvents(request, [{ action: maskAction.action, atMs: 0 }]).events : null;
   return Object.freeze({
     register,
     prefix: Object.freeze(prefixCompiled.events),
-    remainder: Object.freeze(remainderEvents),
+    remainderSegments: Object.freeze(remainderSegments.map(events => Object.freeze(events))),
+    gates: Object.freeze(remainderCompiled.gates),
+    maskCorrection: maskCorrection ? Object.freeze(maskCorrection) : null,
     rearm: Object.freeze(rearmCompiled.events),
     monitorTransitions: Object.freeze({
       prefix: monitorTransitionsOf(prefix),
@@ -410,7 +488,7 @@ function shellQuote(value) {
 
 function boundedRemotePath(value, label) {
   if (typeof value !== 'string' ||
-      !/^\/data\/local\/tmp\/fnaf2-modern-(?:start|go|retry|fail|rearm|night-go)-[A-Za-z0-9._$-]+$/.test(value))
+      !/^\/data\/local\/tmp\/fnaf2-modern-(?:start|go|retry|fail|rearm|night-go|gate-go|gate-fix)-[A-Za-z0-9._$-]+$/.test(value))
     fail(`${label} is not a bounded device-local control path`);
   return value;
 }
@@ -442,7 +520,8 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
   boundedRemotePath(startMarker, 'render startMarker');
   if (armControl !== null) {
     if (!isRecord(armControl)) fail('render armControl must be an object');
-    for (const key of ['go', 'retry', 'fail', 'rearm', 'nightGo']) boundedRemotePath(armControl[key], `render armControl.${key}`);
+    for (const key of ['go', 'retry', 'fail', 'rearm', 'nightGo', 'gateGo', 'gateFix'])
+      boundedRemotePath(armControl[key], `render armControl.${key}`);
   }
   if (schedule.gated && armControl === null)
     fail('gated arm schedule requires render armControl');
@@ -486,14 +565,16 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
   }
 
   const gated = schedule.gated;
-  const { go, retry, fail: failed, rearm, nightGo } = armControl;
+  const { go, retry, fail: failed, rearm, nightGo, gateGo, gateFix } = armControl;
   const armPrefix = '/data/local/tmp/fnaf2-modern-arm-prefix-$$.jsonl';
-  const armRemainder = '/data/local/tmp/fnaf2-modern-arm-remainder-$$.jsonl';
+  const segmentDir = '/data/local/tmp/fnaf2-modern-seg-$$';
+  const gateCorrection = '/data/local/tmp/fnaf2-modern-gate-fix-$$.jsonl';
   const armRetry = '/data/local/tmp/fnaf2-modern-arm-rearm-$$.jsonl';
   const lines = [
     'set -eu',
     `arm_prefix=${armPrefix}`,
-    `arm_remainder=${armRemainder}`,
+    `seg_dir=${segmentDir}`,
+    `gate_correction=${gateCorrection}`,
     `arm_retry=${armRetry}`,
     `start_marker=${startMarker}`,
     `arm_go=${go}`,
@@ -501,21 +582,30 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
     `arm_fail=${failed}`,
     `arm_rearm=${rearm}`,
     `night_go=${nightGo}`,
+    `gate_go=${gateGo}`,
+    `gate_fix=${gateFix}`,
+    `seg_total=${gated.remainderSegments.length}`,
     'hid_pid=',
     'cleanup() {',
     '  set +e',
     '  [ -z "$hid_pid" ] || kill "$hid_pid" 2>/dev/null',
     '  [ -z "$hid_pid" ] || wait "$hid_pid" 2>/dev/null',
     '  rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm" "$night_go"',
-    '  rm -f "$arm_prefix" "$arm_remainder" "$arm_retry"',
+    '  rm -f "$gate_go" "$gate_fix" "$gate_correction"',
+    '  rm -f "$arm_prefix" "$arm_retry"',
+    '  rm -rf "$seg_dir"',
     '}',
     'trap cleanup EXIT HUP INT TERM',
   ];
   appendWrites(lines, '"$arm_prefix"', gated.prefix);
-  appendWrites(lines, '"$arm_remainder"', gated.remainder);
   appendWrites(lines, '"$arm_retry"', gated.rearm);
+  appendWrites(lines, '"$gate_correction"', gated.maskCorrection ?? []);
+  lines.push('rm -rf "$seg_dir"', 'mkdir -p "$seg_dir"');
+  gated.remainderSegments.forEach((events, index) =>
+    appendWrites(lines, `"$seg_dir/seg-${String(index).padStart(3, '0')}.jsonl"`, events));
   lines.push(
     'rm -f "$start_marker" "$arm_go" "$arm_retry_signal" "$arm_fail" "$arm_rearm" "$night_go"',
+    'rm -f "$gate_go" "$gate_fix"',
     // The setup delay happens after the registration line has reached hid.
     // The marker therefore means "the first authored gameplay action is
     // about to be emitted", not merely "the adb shell was spawned".
@@ -547,7 +637,30 @@ export function renderDeviceLocalScript(schedule, { startMarker = '/data/local/t
     '      sleep 0.05',
     '    fi',
     '  done',
-    '  [ -e "$arm_go" ] && cat "$arm_remainder"',
+    // Each segment ends parked on a cycle boundary the plan already idles
+    // through. The host owns that budget: it observes the mask parity, emits
+    // the authored corrective press through `gate_fix` if the device
+    // disagrees with the plan, and releases with `gate_go`. The stream never
+    // advances on its own here, so a host that goes quiet stops the night
+    // instead of running it blind.
+    '  if [ -e "$arm_go" ]; then',
+    '    seg_index=0',
+    '    for seg in "$seg_dir"/seg-*.jsonl; do',
+    '      cat "$seg"',
+    '      seg_index=$((seg_index+1))',
+    '      [ "$seg_index" -ge "$seg_total" ] && break',
+    '      while [ ! -e "$gate_go" ] && [ ! -e "$arm_fail" ]; do',
+    '        if [ -e "$gate_fix" ]; then',
+    '          rm -f "$gate_fix"',
+    '          cat "$gate_correction"',
+    '        else',
+    '          sleep 0.02',
+    '        fi',
+    '      done',
+    '      [ -e "$arm_fail" ] && break',
+    '      rm -f "$gate_go"',
+    '    done',
+    '  fi',
     ') | /system/bin/hid - >/dev/null &',
     'hid_pid=$!',
     'wait "$hid_pid"',
@@ -724,6 +837,8 @@ export class AdbDeviceLocalArtifactExecutor {
       fail: `/data/local/tmp/fnaf2-modern-fail-${tag}`,
       rearm: `/data/local/tmp/fnaf2-modern-rearm-${tag}`,
       nightGo: `/data/local/tmp/fnaf2-modern-night-go-${tag}`,
+      gateGo: `/data/local/tmp/fnaf2-modern-gate-go-${tag}`,
+      gateFix: `/data/local/tmp/fnaf2-modern-gate-fix-${tag}`,
     } : null;
     const process = runAdbScript(this.adb, this.serial,
       renderDeviceLocalScript(schedule, { startMarker, armControl }), this.onOutput);
@@ -866,6 +981,69 @@ export class AdbDeviceLocalArtifactExecutor {
         });
         effectObservers.push(ledger);
       };
+      /**
+       * Hold each cycle boundary until the device's mask parity matches what
+       * the plan believes. The plan's targets are a simulated toggle chain,
+       * so the first missed contact re-aims every action after it; this is
+       * what bounds that damage to a single cycle.
+       *
+       * Mask-on and monitor-up are mutually exclusive on the device, so one
+       * mask observation settles both halves -- and the mask detector is the
+       * one that held across both 2026-09-09 Night 5 runs.
+       */
+      const startGateLedger = (armGoAt, gated) => {
+        if (typeof this.observeControlState !== 'function' || !gated.gates.length) return;
+        const ledger = (async () => {
+          for (const entry of gated.gates) {
+            if (!controlStillRunning()) break;
+            const reachedAt = armGoAt + (entry.gateAtMs - gated.armReadyAtMs);
+            const releaseAt = reachedAt + entry.budgetMs;
+            if (!await waitUntil(reachedAt)) break;
+            const read = await readControlState();
+            const sample = compactControlSample(read.sample);
+            let corrected = false;
+            let status;
+            if (entry.believedMaskOn === null || sample.maskOn === null) {
+              // A gate that cannot see the state has not verified anything.
+              // Releasing here would run the rest of the night on an
+              // assumption, which is the failure this gate exists to end.
+              status = 'UNKNOWN';
+            } else if (sample.maskOn === entry.believedMaskOn) {
+              status = 'AGREED';
+            } else {
+              status = 'CORRECTED';
+              corrected = true;
+              await touchRemote(this.adb, this.serial, armControl.gateFix);
+            }
+            let verify = null;
+            if (corrected) {
+              // Re-read inside the same budget: an unconfirmed correction is
+              // recorded and retried at the next gate rather than aborting a
+              // night that may still recover.
+              if (await waitUntil(Math.min(releaseAt - 150, Date.now() + 800)))
+                verify = compactControlSample((await readControlState()).sample);
+              if (verify && verify.maskOn !== null && verify.maskOn !== entry.believedMaskOn)
+                status = 'CORRECTION-UNCONFIRMED';
+            }
+            this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
+              cycle: entry.cycle, nextActionId: entry.nextActionId,
+              believedMaskOn: entry.believedMaskOn, observedMaskOn: sample.maskOn,
+              status, reachedAt, releaseAt, sample,
+              ...(verify ? { verify } : {}) });
+            if (status === 'UNKNOWN') {
+              this.onEvent({ type: 'control.gate.abort', gateAtMs: entry.gateAtMs,
+                reason: sample.maskReason ?? 'mask-state-unavailable' });
+              await touchRemote(this.adb, this.serial, armControl.fail);
+              break;
+            }
+            if (!await waitUntil(releaseAt)) break;
+            await touchRemote(this.adb, this.serial, armControl.gateGo);
+          }
+        })().catch(() => {
+          this.onEvent({ type: 'control.gate.observer-error' });
+        });
+        effectObservers.push(ledger);
+      };
       if (!schedule.gated) {
         startControlEffectLedger('full', startedAt + schedule.readyDelayMs,
           schedule.monitorTransitions, schedule.maskTransitions,
@@ -922,6 +1100,7 @@ export class AdbDeviceLocalArtifactExecutor {
                       { timelineOffsetMs: gate.armReadyAtMs, originUncertaintyMs: 50,
                         attempt: armAttempt,
                         phaseEndMs: schedule.plannedUntilMs - gate.armReadyAtMs });
+                    startGateLedger(armGoAt, gate);
                   }
                   this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs,
                     ...(armGoAt === null ? {} : { armGoAt }) });

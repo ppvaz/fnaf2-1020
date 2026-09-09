@@ -109,9 +109,63 @@ const armRemote = renderDeviceLocalScript(armSchedule, {
     fail: '/data/local/tmp/fnaf2-modern-fail-test',
     rearm: '/data/local/tmp/fnaf2-modern-rearm-test',
     nightGo: '/data/local/tmp/fnaf2-modern-night-go-test',
+    gateGo: '/data/local/tmp/fnaf2-modern-gate-go-test',
+    gateFix: '/data/local/tmp/fnaf2-modern-gate-fix-test',
   },
 });
+// The cycle-boundary gate is placed only where the plan already idles, so no
+// authored contact moves, and it asserts the plan's own mask belief there.
+const gateRequest = structuredClone(armRequest);
+gateRequest.artifact.plans[0].timing = {
+  periodMs: 4000, loopStartMs: 0, stopAtMs: 12000, observeUntilMs: 16000, idleUntilMs: 0,
+};
+gateRequest.blocks = [gateRequest.blocks[0],
+  block('toy-mask', 2600, [action('toy-mask-action', 'press', 'mask', 2600,
+    { targetMaskOn: true, durationMs: 33 })]),
+  block('toy-wind', 3000, [action('toy-wind-action', 'hold', 'wind', 3000,
+    { durationMs: 33, requiresMonitorUp: true })])];
+const gateSchedule = compileDeviceLocalHidSchedule(gateRequest, { readyDelayMs: 6000 });
+const gates = gateSchedule.gated.gates;
+assert.ok(gates.length >= 2, 'each idle cycle boundary must offer a gate');
+assert.ok(gates.every(entry => entry.budgetMs === 1200),
+  'every gate must reserve the same measured observe/correct/verify budget');
+assert.ok(gates.every(entry => entry.believedMaskOn === true),
+  "a gate must carry the plan's own mask belief at that instant");
+assert.equal(gateSchedule.gated.remainderSegments.length, gates.length + 1,
+  'the stream must be split into one more segment than it has gates');
+assert.ok(gateSchedule.gated.maskCorrection.length > 0,
+  'the corrective contact must be compiled from the authored mask press');
+// The gate is carved out of existing idle: it never displaces a contact.
+for (const entry of gates)
+  assert.ok(gateRequest.blocks.every(item => item.actions.every(inner =>
+    inner.atMs !== entry.gateAtMs)), 'a gate must not land on an authored contact');
+
+// Timing neutrality is the whole claim: walk the gated stream the way the
+// phone will -- delays run, each gate consumes exactly its budget -- and every
+// authored contact must still land on the instant the plan authored it.
+{
+  let cursor = gateSchedule.gated.armReadyAtMs;
+  const contacts = [];
+  gateSchedule.gated.remainderSegments.forEach((segment, index) => {
+    for (const raw of segment) {
+      const item = JSON.parse(raw);
+      if (item.command === 'delay') cursor += item.duration;
+      else if (item.command === 'report' && item.report[1] > 0) contacts.push(Math.round(cursor));
+    }
+    const entry = gateSchedule.gated.gates[index];
+    if (entry) cursor = entry.gateAtMs + entry.budgetMs;
+  });
+  assert.equal(cursor, gateSchedule.plannedUntilMs,
+    'a gated stream must still end on the observation envelope');
+  assert.ok(contacts.includes(2600) && contacts.includes(3000),
+    'gating must not move the authored mask and wind contacts');
+}
+
 assert.match(armRemote, /sleep 6/, 'the gated stream must place setup delay before the start marker');
+assert.match(armRemote, /cat "\$gate_correction"/,
+  'the gated stream must be able to emit the corrective contact on demand');
+assert.match(armRemote, /rm -f "\$gate_go"/,
+  'each released gate must consume its marker so the next one blocks');
 assert.match(armRemote, /arm_retry_signal=/, 'the gated stream must expose a bounded retry signal');
 assert.match(armRemote, /cat "\$arm_prefix"/, 'the gated stream must emit the opening prefix first');
 assert.match(armRemote, /\) \| \/system\/bin\/hid -/, 'the gated stream must use a shell pipe, not a named fifo');
