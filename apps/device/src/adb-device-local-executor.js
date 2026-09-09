@@ -994,9 +994,15 @@ export class AdbDeviceLocalArtifactExecutor {
       const startGateLedger = (armGoAt, gated) => {
         if (typeof this.observeControlState !== 'function' || !gated.gates.length) return;
         const ledger = (async () => {
+          // The stream runs on the phone's own clock from the arm release, so
+          // a gate held past its budget leaves it behind this model. Carrying
+          // that lag forward keeps every later release after the stream has
+          // actually parked: releasing early would let the marker pre-exist,
+          // skip the gate, and fire the next contact a whole budget early.
+          let lagMs = 0;
           for (const entry of gated.gates) {
             if (!controlStillRunning()) break;
-            const reachedAt = armGoAt + (entry.gateAtMs - gated.armReadyAtMs);
+            const reachedAt = armGoAt + (entry.gateAtMs - gated.armReadyAtMs) + lagMs;
             const releaseAt = reachedAt + entry.budgetMs;
             if (!await waitUntil(reachedAt)) break;
             const read = await readControlState();
@@ -1038,9 +1044,14 @@ export class AdbDeviceLocalArtifactExecutor {
             }
             if (!await waitUntil(releaseAt)) break;
             await touchRemote(this.adb, this.serial, armControl.gateGo);
+            lagMs += Math.max(0, Date.now() - releaseAt);
           }
-        })().catch(() => {
+        })().catch(async () => {
+          // A parked stream never resumes on its own. An observer that dies
+          // silently would hang the night at a gate, so it fails the run
+          // instead and lets the shell unwind through its own trap.
           this.onEvent({ type: 'control.gate.observer-error' });
+          try { await touchRemote(this.adb, this.serial, armControl.fail); } catch { /* the run is ending */ }
         });
         effectObservers.push(ledger);
       };
