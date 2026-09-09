@@ -130,12 +130,32 @@ export function parseCalibrationStateRule(artifact) {
   return Object.freeze(structuredClone(artifact));
 }
 
-function measureMaskOn(snapshot, rule, cells) {
-  const unknown = reason => ({ state: 'UNKNOWN', reason });
-  const source = cells ?? snapshot.cells;
-  if (!rule.adapter.anchors.some(anchor => Number.isInteger(source?.[anchor.cell])))
+/**
+ * Derive the fitted `maskOn` fact from one atomic Cue Helper FRAME.
+ *
+ * This is deliberately a measurement, not an actuator gate: callers can
+ * retain its reason and the fitted rule's limitations in an evidence ledger.
+ * A masked FRAME may identify its screen as UNKNOWN, so that identity is
+ * allowed here; an explicit menu/helper identity is not.
+ *
+ * @param {any} snapshot parsed FRAME fields
+ * @param {any} rule parsed mask-rule-v1 artifact
+ * @param {{maxAgeUs?: number, cells?: any}} options
+ */
+export function measureMaskOn(snapshot, rule, { maxAgeUs = 500000, cells = null } = {}) {
+  const unknown = reason => ({ signal: 'maskOn', state: 'UNKNOWN', reason });
+  const fields = snapshot && typeof snapshot === 'object' ? snapshot : {};
+  const ageUs = Number(fields.ageUs);
+  if (!Number.isFinite(ageUs) || ageUs < 0) return unknown('frame-pending');
+  if (ageUs > maxAgeUs) return unknown('frame-stale');
+  if (!rule) return unknown('mask-rule-absent');
+  if (fields.screen !== 'FNAF2_NIGHT' && fields.screen !== 'UNKNOWN')
+    return unknown('screen-identity');
+  const source = cells ?? fields.cells;
+  if (!Array.isArray(source) ||
+      !rule.adapter.anchors.some(anchor => Number.isInteger(source[anchor.cell])))
     return unknown('grid-unavailable');
-  if (Number(snapshot.seq) !== Number(snapshot.gridSeq)) return unknown('grid-seq-mismatch');
+  if (Number(fields.seq) !== Number(fields.gridSeq)) return unknown('grid-seq-mismatch');
   const total = source.reduce((sum, cell) => {
     if (!Number.isInteger(cell)) return NaN;
     return sum + cellFeatures.luma(cell);
@@ -153,7 +173,7 @@ function measureMaskOn(snapshot, rule, cells) {
     return unknown('ambiguous-threshold');
   }
   if (sawOn && sawOff) return unknown('ambiguous-threshold');
-  return { state: 'OBSERVED', value: sawOn };
+  return { signal: 'maskOn', state: 'OBSERVED', value: sawOn, confidence: 1 };
 }
 
 /**
@@ -182,7 +202,8 @@ export function measureCalibrationState(snapshot, rule, { maxAgeUs = 500000, cel
   const source = cells ?? fields.cells;
   const monitorRule = parseMonitorRule(rule.monitor.rule);
   const maskRule = parseMaskRule(rule.mask.rule);
-  const mask = measureMaskOn({ ...fields, cells: source }, maskRule, source);
+  const mask = measureMaskOn({ ...fields, cells: source }, maskRule,
+    { maxAgeUs, cells: source });
   if (mask.state !== 'OBSERVED') return unknown(mask.reason);
   const screenIsNight = fields.screen === 'FNAF2_NIGHT';
   const maskEstablishesNight = fields.screen === 'UNKNOWN' && mask.value === true;

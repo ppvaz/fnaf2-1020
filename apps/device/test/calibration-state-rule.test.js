@@ -7,7 +7,7 @@ import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { calibrationStateRuleDigest, maskRuleDigest, parseMaskRule,
-  parseCalibrationStateRule, measureCalibrationState } from '@fnaf2-1020/adapters';
+  parseCalibrationStateRule, measureCalibrationState, measureMaskOn } from '@fnaf2-1020/adapters';
 import { monitorRuleDigest } from '@fnaf2-1020/adapters';
 import { composeSeamFixtureLive } from '../src/live-seam-composition.js';
 
@@ -53,6 +53,9 @@ const observed = measureCalibrationState(snapshot, parsed);
 assert.equal(observed.signal, 'calibrationState');
 assert.equal(observed.state, 'OBSERVED');
 assert.deepEqual(observed.value, { screen: 'NIGHT', monitor: 'UP', mask: 'OFF' });
+assert.deepEqual(measureMaskOn(snapshot, parsed.mask.rule),
+  { signal: 'maskOn', state: 'OBSERVED', value: false, confidence: 1 },
+  'one atomic FRAME can expose a fitted mask-off measurement for diagnostic ACKs');
 
 // Mask on, monitor down: invert both anchor pairs and the frame resolves.
 const maskOnGrid = [...grid];
@@ -62,6 +65,11 @@ maskOnGrid[30] = cell(210, 170, 120);
 maskOnGrid[40] = cell(15, 15, 15);
 const masked = measureCalibrationState({ ...snapshot, cells: maskOnGrid }, parsed);
 assert.deepEqual(masked.value, { screen: 'NIGHT', monitor: 'DOWN', mask: 'ON' });
+assert.deepEqual(measureMaskOn({ ...snapshot, cells: maskOnGrid }, parsed.mask.rule),
+  { signal: 'maskOn', state: 'OBSERVED', value: true, confidence: 1 },
+  'the same fitted mask rule exposes a mask-on measurement');
+assert.equal(measureMaskOn({ ...snapshot, screen: 'FNAF2_MENU' }, parsed.mask.rule).reason,
+  'screen-identity', 'an explicit menu frame cannot acknowledge a mask transition');
 
 // The opaque mask removes both nightScore inputs, so a real masked FRAME can
 // be UNKNOWN and the helper's own monitor detector can be UNKNOWN as well.
