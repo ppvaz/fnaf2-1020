@@ -32,6 +32,14 @@ const ARM_CONFIRM_SAMPLES = 2;
 const ARM_OBSERVATION_WINDOW_MS = 3000;
 const STARTUP_GRACE_MS = 30000;
 const EXIT_CONFIRM_SAMPLES = 3;
+// A monitor or mask edge is a game-state claim, not merely a HID report. No
+// settle constant is asserted here: nothing in the fitted monitor/mask rules
+// measures an animation duration, so the ledger samples from the contact
+// onward and reports the observed latency instead of grading against a guess.
+// This is a per-transition read budget, not a deadline: it bounds what one
+// missing effect may spend, since reads are serialised and the next
+// transition's sampling waits behind them.
+const CONTROL_EFFECT_MAX_SAMPLES = 6;
 const execFile = promisify(execFileCallback);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -157,6 +165,64 @@ function compileActionEvents(request, actions, { originAtMs = 0 } = {}) {
   return { events, cursor };
 }
 
+/**
+ * Return the point at which an artifact action actually asks the game to
+ * change monitor state.  A camdrop starts with a flashlight lead, so treating
+ * its block start as the monitor edge would falsely accuse a healthy
+ * transition before the monitor contact has even been sent.
+ */
+function monitorPressAtMs(action, atMs) {
+  if (action.kind === 'compound' && action.compound === 'camdrop')
+    return atMs + (action.leadMs ?? 0);
+  if (action.kind === 'compound' && action.compound === 'maskraise')
+    return atMs + (action.gapMs ?? 0);
+  return atMs;
+}
+
+/**
+ * The stream remains semantic at this boundary: retain only authored monitor
+ * targets and their actual contact times.  The IDs bind effect samples back
+ * to the artifact rather than asking a post-run reader to infer a control
+ * from otherwise identical HID DOWN/UP pairs.
+ */
+function monitorTransitionsOf(actions) {
+  return Object.freeze(actions
+    .filter(({ action }) => typeof action.targetMonitorUp === 'boolean')
+    .map(({ action, atMs }) => Object.freeze({
+      actionId: action.id,
+      cycle: action.cycle,
+      atMs: monitorPressAtMs(action, atMs),
+      targetMonitorUp: action.targetMonitorUp,
+    }))
+    .sort((left, right) => left.atMs - right.atMs || left.actionId.localeCompare(right.actionId)));
+}
+
+/** Return the actual contact where an action asks the game to toggle mask. */
+function maskPressAtMs(action, atMs) {
+  // An observe-left macro holds the vent button first, then presses mask. The
+  // target belongs to that latter contact, not the start of the visual read.
+  if (action.kind === 'observe-left')
+    return atMs + Math.max(action.durationMs ?? 33, action.maskGapMs ?? 0);
+  return atMs;
+}
+
+/**
+ * Retain authored mask targets beside their real HID contact times.  `true`
+ * means the mask should be on; `false` means it should be off.  This is an
+ * evidence ledger only and never feeds state back into the scheduled plan.
+ */
+function maskTransitionsOf(actions) {
+  return Object.freeze(actions
+    .filter(({ action }) => typeof action.targetMaskOn === 'boolean')
+    .map(({ action, atMs }) => Object.freeze({
+      actionId: action.id,
+      cycle: action.cycle,
+      atMs: maskPressAtMs(action, atMs),
+      targetMaskOn: action.targetMaskOn,
+    }))
+    .sort((left, right) => left.atMs - right.atMs || left.actionId.localeCompare(right.actionId)));
+}
+
 function compileArmSegments(request, actions, register, plan) {
   const firstWind = actions.find(({ action }) =>
     action.control === 'wind');
@@ -201,6 +267,16 @@ function compileArmSegments(request, actions, register, plan) {
     prefix: Object.freeze(prefixCompiled.events),
     remainder: Object.freeze(remainderEvents),
     rearm: Object.freeze(rearmCompiled.events),
+    monitorTransitions: Object.freeze({
+      prefix: monitorTransitionsOf(prefix),
+      remainder: monitorTransitionsOf(remainder),
+      rearm: monitorTransitionsOf(rearmActions),
+    }),
+    maskTransitions: Object.freeze({
+      prefix: maskTransitionsOf(prefix),
+      remainder: maskTransitionsOf(remainder),
+      rearm: maskTransitionsOf(rearmActions),
+    }),
     armReadyAtMs: prefixCompiled.cursor,
     rearmDurationMs: rearmCompiled.cursor,
     firstWindAtMs: firstWind.atMs,
@@ -234,7 +310,98 @@ export function compileDeviceLocalHidSchedule(request, { readyDelayMs = DEFAULT_
     ? compileArmSegments(request, actions, register, plan) : undefined;
   return Object.freeze({ schema: 'device-local-hid-schedule-v1', version: 1, night,
     readyDelayMs, actionCount: actions.length, plannedUntilMs: plan.timing.observeUntilMs,
-    lines: Object.freeze(events), ...(gated ? { gated } : {}) });
+    lines: Object.freeze(events), monitorTransitions: monitorTransitionsOf(actions),
+    maskTransitions: maskTransitionsOf(actions),
+    ...(gated ? { gated } : {}) });
+}
+
+function boundedSampleText(value) {
+  return typeof value === 'string' && value.length <= 160 ? value : null;
+}
+
+function compactControlSample(value) {
+  const sample = isRecord(value) ? value : {};
+  const sequence = typeof sample.sequence === 'string' || Number.isSafeInteger(sample.sequence)
+    ? sample.sequence : null;
+  const ageUs = typeof sample.ageUs === 'string' && /^\d+$/.test(sample.ageUs)
+    ? sample.ageUs : Number.isSafeInteger(sample.ageUs) && sample.ageUs >= 0 ? sample.ageUs : null;
+  const screen = typeof sample.screen === 'string' && sample.screen.length <= 80 ? sample.screen : null;
+  const monitorUp = typeof sample.monitorUp === 'boolean' ? sample.monitorUp : null;
+  const maskOn = typeof sample.maskOn === 'boolean' ? sample.maskOn : null;
+  const monitorReason = boundedSampleText(sample.monitorReason ?? sample.reason)
+    ?? (monitorUp === null ? 'monitor-state-unavailable' : null);
+  const maskReason = boundedSampleText(sample.maskReason)
+    ?? (maskOn === null ? 'mask-state-unavailable' : null);
+  const maskEvidence = boundedSampleText(sample.maskEvidence);
+  // Which detector answered is part of the observation: the camera panel and
+  // the office HUD see opposite halves of the monitor state.
+  const monitorSource = boundedSampleText(sample.monitorSource);
+  const panelSequence = typeof sample.panelSequence === 'string' ||
+    Number.isSafeInteger(sample.panelSequence) ? sample.panelSequence : null;
+  const visualCaptureAt = Number.isFinite(sample.visualCaptureAt) ? sample.visualCaptureAt : null;
+  const visualCaptureUncertaintyMs = Number.isFinite(sample.visualCaptureUncertaintyMs) &&
+    sample.visualCaptureUncertaintyMs >= 0 ? sample.visualCaptureUncertaintyMs : null;
+  return { sequence, ageUs, screen, monitorUp, monitorReason, maskOn, maskReason,
+    ...(monitorSource ? { monitorSource } : {}),
+    ...(panelSequence === null ? {} : { panelSequence }),
+    ...(maskEvidence ? { maskEvidence } : {}),
+    ...(visualCaptureAt === null ? {} : { visualCaptureAt }),
+    ...(visualCaptureUncertaintyMs === null ? {} : { visualCaptureUncertaintyMs }) };
+}
+
+/**
+ * Grade one authored transition from the samples taken after its contact.
+ *
+ * The latency is measured, not compared against a settle constant, and it is
+ * reported as the bracket of the read that first saw the target: the host
+ * cannot place a device frame inside its own read without inferring a clock
+ * offset, so both bounds are retained and neither is called the answer.
+ * `atFirstFrame` marks the case the series cannot separate — a state already
+ * at target before the contact looks exactly like an instant effect.
+ */
+function controlEffectVerdict(reads, signal, target, contactAt) {
+  const reasonKey = signal === 'monitorUp' ? 'monitorReason' : 'maskReason';
+  const samples = reads.map(read => ({ ...compactControlSample(read.sample),
+    readStartedAt: read.readStartedAt, readFinishedAt: read.readFinishedAt,
+    sinceContactLowerMs: read.readStartedAt === null ? null : read.readStartedAt - contactAt,
+    sinceContactUpperMs: read.readFinishedAt === null ? null : read.readFinishedAt - contactAt }));
+  const verdict = (status, reason, latency = null) => ({ status, reason, latency, samples });
+  if (samples.some(sample => sample.screen !== null &&
+      sample.screen !== 'FNAF2_NIGHT' && sample.screen !== 'UNKNOWN'))
+    return verdict('UNKNOWN', 'screen-identity');
+  // A repeated frame sequence is the helper's capture cadence, not a fault. It
+  // carries no new observation, so it can neither confirm nor refute a target.
+  const frames = [];
+  for (const sample of samples) {
+    if (sample.sequence === null || sample[signal] === null) continue;
+    if (frames.length && String(frames.at(-1).sequence) === String(sample.sequence)) continue;
+    frames.push(sample);
+  }
+  if (!frames.length)
+    return verdict('UNKNOWN', samples.find(sample => sample[reasonKey])?.[reasonKey]
+      ?? `${signal}-state-unavailable`);
+  // One frame decides nothing in either direction: a stalled capture shows the
+  // pre-contact state as convincingly as a genuinely lost effect does.
+  if (frames.length < 2) return verdict('UNKNOWN', 'insufficient-frames');
+  const held = frames.findIndex((sample, index) =>
+    sample[signal] === target && frames[index + 1]?.[signal] === target);
+  if (held !== -1)
+    return verdict('PASS', null, { lowerMs: frames[held].sinceContactLowerMs,
+      upperMs: frames[held].sinceContactUpperMs, frameAgeUs: frames[held].ageUs,
+      atFirstFrame: held === 0 });
+  if (frames.some(sample => sample[signal] === target))
+    return verdict('UNSTABLE', 'target-not-held-across-frames');
+  return verdict('MISSING', 'target-not-observed');
+}
+
+function effectTransitions(monitorTransitions = [], maskTransitions = []) {
+  return [
+    ...monitorTransitions.map(transition => ({ ...transition, signal: 'monitorUp',
+      target: transition.targetMonitorUp })),
+    ...maskTransitions.map(transition => ({ ...transition, signal: 'maskOn',
+      target: transition.targetMaskOn })),
+  ].sort((left, right) => left.atMs - right.atMs ||
+    left.actionId.localeCompare(right.actionId) || left.signal.localeCompare(right.signal));
 }
 
 function shellQuote(value) {
@@ -500,14 +667,18 @@ export class AdbDeviceLocalArtifactExecutor {
   /** @param {any} options */
   constructor(options = {}) {
     const { serial, adb = 'adb', readyDelayMs = DEFAULT_READY_DELAY_MS,
-      observe = null, observeArm = null, pollMs = 1000, onEvent = () => {}, onOutput = () => {} } = options;
+      observe = null, observeArm = null, observeControlState = null,
+      pollMs = 1000, onEvent = () => {}, onOutput = () => {} } = options;
     if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('device-local executor requires an ADB serial');
     if (observe !== null && typeof observe !== 'function') throw new TypeError('device-local executor observe must be a function');
     if (observeArm !== null && typeof observeArm !== 'function') throw new TypeError('device-local executor observeArm must be a function');
+    if (observeControlState !== null && typeof observeControlState !== 'function')
+      throw new TypeError('device-local executor observeControlState must be a function');
     if (!Number.isInteger(pollMs) || pollMs < 250 || pollMs > 10000)
       throw new TypeError('device-local executor pollMs must be an integer in 250..10000');
     this.serial = serial; this.adb = adb; this.readyDelayMs = readyDelayMs;
-    this.observe = observe; this.observeArm = observeArm; this.pollMs = pollMs;
+    this.observe = observe; this.observeArm = observeArm;
+    this.observeControlState = observeControlState; this.pollMs = pollMs;
     this.onEvent = onEvent; this.onOutput = onOutput;
     this.child = null; this.running = false; this.aborted = false;
     this.stopProcess = null;
@@ -573,6 +744,7 @@ export class AdbDeviceLocalArtifactExecutor {
     let stopObserver = false;
     let observer = Promise.resolve();
     let armObserver = Promise.resolve();
+    const effectObservers = [];
     try {
       // The marker is created on the phone immediately before `/system/bin/hid`
       // starts consuming the preloaded stream. Anchoring here avoids charging
@@ -586,6 +758,102 @@ export class AdbDeviceLocalArtifactExecutor {
       const startedAt = Date.now();
       this.onEvent({ type: 'hid.schedule-start', startedAt, actionCount: schedule.actionCount });
       const startupDeadline = startedAt + STARTUP_GRACE_MS;
+      // These are observation-only ACKs. They never alter the HID stream or
+      // its timing: a failed/late state acknowledgement is evidence of a
+      // desync, not a command to retry or compensate mid-night.
+      let controlReadTail = Promise.resolve();
+      const controlStillRunning = () => !stopObserver && this.child === process.child && this.running;
+      const waitUntil = async deadline => {
+        while (controlStillRunning()) {
+          const remainingMs = deadline - Date.now();
+          if (remainingMs <= 0) return true;
+          await new Promise(resolve => setTimeout(resolve, Math.min(remainingMs, 50)));
+        }
+        return false;
+      };
+      const readControlState = () => {
+        let readStartedAt = null;
+        const read = controlReadTail.then(async () => {
+          if (!controlStillRunning()) return { sample: null, readStartedAt, readFinishedAt: Date.now() };
+          readStartedAt = Date.now();
+          try {
+            const sample = await this.observeControlState();
+            return { sample, readStartedAt, readFinishedAt: Date.now() };
+          } catch {
+            return { sample: null, readStartedAt, readFinishedAt: Date.now() };
+          }
+        });
+        // A bad diagnostic read must not poison later, independent samples.
+        controlReadTail = read.then(() => {}, () => {});
+        return read;
+      };
+      const startControlEffectLedger = (phase, originAt, monitorTransitions, maskTransitions,
+        { timelineOffsetMs = 0, originUncertaintyMs = 0, attempt = null, phaseEndMs = null } = {}) => {
+        if (typeof this.observeControlState !== 'function') return;
+        const transitions = effectTransitions(monitorTransitions, maskTransitions)
+          .map(transition => ({ ...transition, relativeAtMs: transition.atMs - timelineOffsetMs }));
+        if (!transitions.length) return;
+        // Only the next authored transition of the SAME signal may legitimately
+        // change it, so that contact — or the phase's own end — bounds each
+        // observation window. Both come from the compiled plan, not a constant.
+        const windowEndsMs = transitions.map((transition, index) => transitions
+          .slice(index + 1).find(later => later.signal === transition.signal)?.relativeAtMs
+          ?? phaseEndMs);
+        this.onEvent({ type: 'control.effect.phase', phase, originAt, originUncertaintyMs,
+          ...(attempt === null ? {} : { attempt }), transitionCount: transitions.length });
+        const ledger = (async () => {
+          for (const [index, transition] of transitions.entries()) {
+            if (!controlStillRunning()) break;
+            const contactAt = originAt + transition.relativeAtMs;
+            const windowEndMs = windowEndsMs[index];
+            const windowEndAt = windowEndMs === null ? Infinity : originAt + windowEndMs;
+            this.onEvent({ type: 'control.effect.expected', phase, actionId: transition.actionId,
+              cycle: transition.cycle, signal: transition.signal, target: transition.target,
+              contactAt, windowEndAt, sampleBudget: CONTROL_EFFECT_MAX_SAMPLES,
+              originAt, originUncertaintyMs, ...(attempt === null ? {} : { attempt }) });
+            const reads = [];
+            if (!await waitUntil(contactAt)) break;
+            while (reads.length < CONTROL_EFFECT_MAX_SAMPLES && Date.now() < windowEndAt) {
+              if (!controlStillRunning()) break;
+              const read = await readControlState();
+              if (read.readStartedAt === null) break;
+              reads.push(read);
+              this.onEvent({ type: 'control.effect.sample', phase, actionId: transition.actionId,
+                cycle: transition.cycle, signal: transition.signal, target: transition.target,
+                sampleIndex: reads.length,
+                readStartedAt: read.readStartedAt, readFinishedAt: read.readFinishedAt,
+                sinceContactLowerMs: read.readStartedAt - contactAt,
+                sinceContactUpperMs: read.readFinishedAt - contactAt,
+                sample: compactControlSample(read.sample), ...(attempt === null ? {} : { attempt }) });
+              // Two distinct frames holding the target end the read early: the
+              // measurement is complete and the budget belongs to the next one.
+              if (controlEffectVerdict(reads, transition.signal, transition.target,
+                contactAt).status === 'PASS') break;
+            }
+            if (!reads.length) continue;
+            const verdict = controlEffectVerdict(reads, transition.signal, transition.target, contactAt);
+            const evidence = transition.signal === 'maskOn'
+              ? verdict.samples.find(sample => sample.maskEvidence)?.maskEvidence ?? 'diagnostic-unqualified'
+              : 'calibrated';
+            this.onEvent({ type: 'control.effect.result', phase, actionId: transition.actionId,
+              cycle: transition.cycle, signal: transition.signal, target: transition.target,
+              contactAt, windowEndAt, resultAt: Date.now(), status: verdict.status,
+              reason: verdict.reason, latency: verdict.latency, sampleCount: reads.length,
+              evidence, samples: verdict.samples, ...(attempt === null ? {} : { attempt }) });
+          }
+        })().catch(() => {
+          // A diagnostic observer must never become a second actuator failure
+          // mode. The absent result is visible from expected/sample events.
+          this.onEvent({ type: 'control.effect.observer-error', phase,
+            ...(attempt === null ? {} : { attempt }) });
+        });
+        effectObservers.push(ledger);
+      };
+      if (!schedule.gated) {
+        startControlEffectLedger('full', startedAt + schedule.readyDelayMs,
+          schedule.monitorTransitions, schedule.maskTransitions,
+          { phaseEndMs: schedule.plannedUntilMs });
+      }
       // Native camera reads must not wait behind a full screencap + Python
       // lifecycle classification. An UNKNOWN frame is a reason to resample,
       // not permission to destroy a potentially successful arm.
@@ -628,11 +896,26 @@ export class AdbDeviceLocalArtifactExecutor {
                   if (stopObserver) break;
                   armVerified = true;
                   armObservation = sample;
-                  if (armControl) await touchRemote(this.adb, this.serial, armControl.go);
-                  this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs });
+                  let armGoAt = null;
+                  if (armControl) {
+                    await touchRemote(this.adb, this.serial, armControl.go);
+                    armGoAt = Date.now();
+                    startControlEffectLedger('remainder', armGoAt,
+                      gate.monitorTransitions.remainder, gate.maskTransitions.remainder,
+                      { timelineOffsetMs: gate.armReadyAtMs, originUncertaintyMs: 50,
+                        attempt: armAttempt,
+                        phaseEndMs: schedule.plannedUntilMs - gate.armReadyAtMs });
+                  }
+                  this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs,
+                    ...(armGoAt === null ? {} : { armGoAt }) });
               } else if (armAttempt < MAX_ARM_ATTEMPTS) {
                   await touchRemote(this.adb, this.serial, armControl.retry);
+                  const rearmAt = Date.now();
                   armAttempt += 1;
+                  startControlEffectLedger('rearm', rearmAt,
+                    gate.monitorTransitions.rearm, gate.maskTransitions.rearm,
+                    { originUncertaintyMs: 50, attempt: armAttempt,
+                      phaseEndMs: gate.rearmDurationMs });
                   // Anchor to the actual retry signal, not a theoretical
                   // first-attempt timeline that observation latency can outrun.
                   nextCheckAt = Date.now() + gate.rearmDurationMs + ARM_SETTLE_MS;
@@ -680,7 +963,16 @@ export class AdbDeviceLocalArtifactExecutor {
                 nightAnchoredAt = Date.now();
                 this.onEvent({ type: 'hid.night-go', at: nightAnchoredAt });
                 if (armControl?.nightGo) {
-                  try { await touchRemote(this.adb, this.serial, armControl.nightGo); }
+                  try {
+                    await touchRemote(this.adb, this.serial, armControl.nightGo);
+                    const nightGoAt = Date.now();
+                    startControlEffectLedger('prefix', nightGoAt,
+                      schedule.gated.monitorTransitions.prefix, schedule.gated.maskTransitions.prefix,
+                      { originUncertaintyMs: 50, attempt: 1,
+                        phaseEndMs: schedule.gated.armReadyAtMs });
+                    this.onEvent({ type: 'hid.night-go-released', at: nightGoAt,
+                      originUncertaintyMs: 50 });
+                  }
                   catch { /* the drop guard below still governs the run */ }
                 }
               }
@@ -745,7 +1037,7 @@ export class AdbDeviceLocalArtifactExecutor {
       throw error;
     } finally {
       stopObserver = true;
-      await Promise.all([observer, armObserver]);
+      await Promise.all([observer, armObserver, ...effectObservers]);
       this.child = null; this.running = false;
       this.stopProcess = null;
     }

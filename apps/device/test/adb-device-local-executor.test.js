@@ -137,10 +137,43 @@ assert.equal(delayedSchedule.gated.firstWindAtMs, 140300,
 assert.equal(delayedSchedule.gated.armReadyAtMs, 1633,
   'minimal Night 1 must verify after the opening raise, not after the 140 s idle');
 
+// The effect ledger retains semantic targets in both directions. In
+// particular, a maskraise contains two distinct contacts: mask off at its
+// start and monitor up only at its declared gap.
+const effectRequest = structuredClone(request);
+effectRequest.artifact.plans[0].timing = {
+  periodMs: 1000, loopStartMs: 0, stopAtMs: 1000, observeUntilMs: 1600, idleUntilMs: 0,
+};
+effectRequest.blocks = [{ schema: 'artifact-action-block-v1', id: 'effect-opening',
+  cycle: 'opening', night: 6, atMs: 0, actions: [
+    action('effect-monitor-down', 'ensure', 'monitor', 0,
+      { cycle: 'opening', targetMonitorUp: false, durationMs: 33 }),
+    action('effect-mask-up', 'press', 'mask', 100,
+      { cycle: 'opening', targetMaskOn: true, durationMs: 33 }),
+    action('effect-monitor-up', 'ensure', 'monitor', 200,
+      { cycle: 'opening', targetMonitorUp: true, durationMs: 33 }),
+    action('effect-mask-down', 'press', 'mask', 300,
+      { cycle: 'opening', targetMaskOn: false, durationMs: 33 }),
+  ] },
+  // A night is only runnable with a repeatable cycle beside its opening. This
+  // wind hold carries no monitor/mask target, so the ledger below stays
+  // exactly the four authored transitions.
+  block('effect-steady', 400, [action('effect-wind', 'hold', 'wind', 400, { durationMs: 33 })])];
+const effectSchedule = compileDeviceLocalHidSchedule(effectRequest, { readyDelayMs: 1 });
+assert.deepEqual(effectSchedule.monitorTransitions.map(item => [item.actionId, item.atMs, item.targetMonitorUp]), [
+  ['effect-monitor-down', 0, false], ['effect-monitor-up', 200, true],
+], 'the compiled ledger must retain monitor-down and monitor-up targets');
+assert.deepEqual(effectSchedule.maskTransitions.map(item => [item.actionId, item.atMs, item.targetMaskOn]), [
+  ['effect-mask-up', 100, true], ['effect-mask-down', 300, false],
+], 'the compiled ledger must retain mask-on and mask-off targets');
+
 const fakeRoot = mkdtempSync(join(tmpdir(), 'fnaf2-modern-executor-'));
 const fakeAdb = join(fakeRoot, 'adb');
 writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 10\n');
 chmodSync(fakeAdb, 0o755);
+const effectAdb = join(fakeRoot, 'effect-adb');
+writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 3\n');
+chmodSync(effectAdb, 0o755);
 try {
   let observations = 0;
   const guarded = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
@@ -173,6 +206,77 @@ try {
   const transientResult = await transientFrame.execute(request);
   assert.equal(transientResult.outcome, 'UNVERIFIED',
     'one bad lifecycle frame must not abort an otherwise live schedule');
+
+  let controlSequence = 0;
+  const effectLog = [];
+  const effects = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => effectLog.push(event),
+    observeControlState: async () => ({ sequence: ++controlSequence, ageUs: 10,
+      screen: 'FNAF2_NIGHT', monitorUp: true, maskOn: false, maskEvidence: 'fixture' }) });
+  await effects.execute(effectRequest);
+  const effectResults = Object.fromEntries(effectLog
+    .filter(event => event.type === 'control.effect.result')
+    .map(event => [event.actionId, event]));
+  assert.equal(effectResults['effect-monitor-down']?.status, 'MISSING',
+    'a confirmed monitor-up after a monitor-down target must be logged as a missing effect');
+  assert.equal(effectResults['effect-monitor-up']?.status, 'PASS',
+    'a confirmed monitor-up must acknowledge the monitor-up target');
+  assert.equal(effectResults['effect-mask-up']?.status, 'MISSING',
+    'a confirmed mask-off after a mask-on target must be logged as a missing effect');
+  assert.equal(effectResults['effect-mask-down']?.status, 'PASS',
+    'a confirmed mask-off must acknowledge the mask-off target');
+  assert.equal(effectResults['effect-mask-down']?.evidence, 'fixture',
+    'mask effect results must retain their evidence qualification');
+  const passLatency = effectResults['effect-monitor-up'].latency;
+  assert.ok(passLatency.lowerMs <= passLatency.upperMs,
+    'a measured effect latency must be a bracket, not a point');
+  assert.equal(passLatency.atFirstFrame, true,
+    'a target already held on the first observed frame must be marked as indistinguishable');
+  assert.equal(effectResults['effect-monitor-down'].latency, null,
+    'a missing effect must not report a latency it never observed');
+  assert.ok(effectResults['effect-monitor-down'].sampleCount <= 6,
+    'a missing effect must not spend more than its read budget');
+  // The observation window is derived from the plan: the next authored
+  // transition of the same signal, never a settle constant.
+  const monitorDownExpected = effectLog.find(event => event.type === 'control.effect.expected' &&
+    event.actionId === 'effect-monitor-down');
+  assert.equal(monitorDownExpected.windowEndAt - monitorDownExpected.contactAt, 200,
+    'a monitor window must end at the next authored monitor transition');
+
+  // A capture whose sequence never advances cannot confirm or refute anything.
+  const stalledLog = [];
+  const stalled = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => stalledLog.push(event),
+    observeControlState: async () => ({ sequence: 7, ageUs: 10,
+      screen: 'FNAF2_NIGHT', monitorUp: true, maskOn: false, maskEvidence: 'fixture' }) });
+  await stalled.execute(effectRequest);
+  const stalledResult = stalledLog.find(event => event.type === 'control.effect.result' &&
+    event.actionId === 'effect-monitor-up');
+  assert.equal(stalledResult.status, 'UNKNOWN',
+    'a stalled helper capture must refuse, not confirm a target from one frame');
+  assert.equal(stalledResult.reason, 'insufficient-frames');
+
+  // Which detector answered travels with the observation: the camera panel
+  // and the office HUD see opposite halves of the monitor state.
+  const sourcedLog = [];
+  let sourcedSequence = 0;
+  const sourced = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => sourcedLog.push(event),
+    observeControlState: async () => ({ sequence: ++sourcedSequence, ageUs: 10,
+      screen: 'UNKNOWN', monitorUp: true, monitorSource: 'camera-panel',
+      panelSequence: 900 + sourcedSequence, maskOn: false, maskEvidence: 'fixture' }) });
+  await sourced.execute(effectRequest);
+  const sourcedResult = sourcedLog.find(event => event.type === 'control.effect.result' &&
+    event.actionId === 'effect-monitor-up');
+  assert.equal(sourcedResult.status, 'PASS',
+    'a camera panel observation must be able to acknowledge a monitor-up target');
+  assert.equal(sourcedResult.samples[0].monitorSource, 'camera-panel',
+    'the deciding detector must be retained in the sample');
+  assert.equal(sourcedResult.samples[0].panelSequence, 900 + sourcedResult.samples[0].sequence,
+    'the camera read sequence must be retained beside the frame sequence it was paired with');
 
   let armSequence = 0;
   const armLog = [];

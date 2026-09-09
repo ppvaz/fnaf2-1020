@@ -13,7 +13,8 @@ import { appendFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
-import { CueHelperControlTransport, HidWireTransport, parseCameraRule } from '@fnaf2-1020/adapters';
+import { CueHelperControlTransport, HidWireTransport, measureMaskOn, measureMonitorUp,
+  parseCameraRule, parseMaskRule, parseMonitorRule } from '@fnaf2-1020/adapters';
 import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
@@ -24,6 +25,8 @@ import { DeviceCampaignRunner } from './campaign-runner.js';
 
 const TITLE_MODEL = new URL('../../../tools/device/models/title-moto-g56-v207.json', import.meta.url);
 const CAMERA_RULE = new URL('../../../models/camera-rule-moto-g56-v207.json', import.meta.url);
+const MONITOR_RULE = new URL('../../../models/monitor-rule-moto-g56-v207.json', import.meta.url);
+const MASK_RULE = new URL('../../../models/mask-rule-moto-g56-v207.json', import.meta.url);
 const LIFECYCLE_OBSERVER = new URL('../../../tools/device/lifecycle-observe.py', import.meta.url);
 const TITLE_OBSERVER = new URL('../../../tools/device/title-observe.py', import.meta.url);
 const DRIVER_ASSEMBLER = new URL('../../../tools/device/trial/assemble.sh', import.meta.url);
@@ -229,7 +232,18 @@ export async function createCampaignPorts(options = {}) {
   const cueTransport = new CueHelperControlTransport({
     request: line => cuePort.request(line), token: cueEndpoint.token,
   });
-  const cameraRule = parseCameraRule(await readJson(CAMERA_RULE));
+  const [cameraRule, monitorRule, maskRule] = await Promise.all([
+    readJson(CAMERA_RULE).then(parseCameraRule),
+    readJson(MONITOR_RULE).then(parseMonitorRule),
+    readJson(MASK_RULE).then(parseMaskRule),
+  ]);
+  const maskLimitations = (maskRule.adapter?.limitations ?? []).filter(value =>
+    typeof value === 'string' && value.length <= 63);
+  // The fitted mask rule is intentionally diagnostic-only until its blackout
+  // and animation limitations are retired. Preserve that fact in each ACK so
+  // later analysis cannot mistake a useful trace clue for a live safety gate.
+  const maskEvidence = maskLimitations.length
+    ? `diagnostic-provisional:${maskLimitations.join(',')}` : 'calibrated';
   let armWatchLoaded = false;
   const ensureArmWatch = () => {
     if (armWatchLoaded) return;
@@ -258,6 +272,61 @@ export async function createCampaignPorts(options = {}) {
       reason: highlights.state === 'UNKNOWN' ? highlights.reason : null,
     };
   };
+  const observeControlState = () => {
+    // FRAME carries the snapshot and its 20x9 grid under one sequence. A
+    // GET/GRID pair is deliberately not used here: those reads cannot prove
+    // they describe the same image at the helper's capture cadence.
+    const frame = cueTransport.frame();
+    const monitor = measureMonitorUp(frame, monitorRule, { cells: frame.cells });
+    const mask = measureMaskOn(frame, maskRule, { cells: frame.cells });
+    // The fitted monitor rule answers only on the office HUD -- the screen a
+    // raised monitor hides. Measured on Night 5 (campaign-2026-09-09T14-14-39,
+    // 41 observations: 40 false, 1 true) it never once saw the monitor up,
+    // while the retained video shows the camera feed up for half the night.
+    // A visible camera highlight is the positive evidence it cannot give, so
+    // the two are read as complements rather than one replacing the other:
+    // highlights decide monitor-up, the office HUD decides monitor-down.
+    /** @type {{state: string, reason?: string, value?: string[]}} */
+    let panel = { state: 'UNKNOWN', reason: 'camera-watch-unavailable' };
+    let panelRead = null;
+    try {
+      ensureArmWatch();
+      panelRead = cueTransport.read();
+      panel = nativeCameraHighlights(panelRead, cameraRule);
+    } catch { /* the fitted rule still carries the monitor-down half */ }
+    // The camera rule is calibrated on monitor-up frames only; its behaviour
+    // over the office is unmeasured. The helper's own screen classifier is the
+    // independent guard: FNAF2_NIGHT is the office HUD, which a raised monitor
+    // covers, so a highlight claimed against it is a contradiction and not a
+    // state. FRAME and READ are separate round trips, so this also catches a
+    // pairing straddling a real transition.
+    const officeOnScreen = frame.screen === 'FNAF2_NIGHT';
+    const panelUp = panel.state === 'OBSERVED' && !officeOnScreen ? true : null;
+    const ruleUp = monitor.state === 'OBSERVED' ? monitor.value : null;
+    const contradicted = panel.state === 'OBSERVED' && officeOnScreen;
+    const monitorUp = panelUp ?? ruleUp;
+    const monitorSource = panelUp !== null ? 'camera-panel'
+      : ruleUp !== null ? 'monitor-rule' : null;
+    let visualCapture = null;
+    try { visualCapture = cueTransport.visualAcquisition(frame); }
+    catch { /* an unavailable timestamp leaves the state ACK usable but bounded */ }
+    return {
+      sequence: frame.seq,
+      ageUs: frame.ageUs,
+      screen: frame.screen,
+      monitorUp,
+      ...(monitorSource ? { monitorSource } : {}),
+      panelSequence: panelRead?.seq ?? null,
+      monitorReason: monitorUp !== null ? null
+        : contradicted ? 'camera-panel-over-office-hud'
+        : monitor.state === 'UNKNOWN' ? monitor.reason : panel.reason,
+      maskOn: mask.state === 'OBSERVED' ? mask.value : null,
+      maskReason: mask.state === 'UNKNOWN' ? mask.reason : null,
+      maskEvidence,
+      ...(visualCapture ? { visualCaptureAt: visualCapture.at,
+        visualCaptureUncertaintyMs: visualCapture.uncertaintyMs } : {}),
+    };
+  };
   const localExecutor = machineOnly
     ? new AdbDeviceLocalMachineExecutor({ serial, adb, ...(await machineAssets()),
       planPath: `${bundle.bundleDirectory}/night-6.plan`,
@@ -270,7 +339,8 @@ export async function createCampaignPorts(options = {}) {
       onOutput: chunk => process.stderr.write(chunk),
       observe: () => lifecycle(bridge, serial), pollMs: 1000 })
     : new AdbDeviceLocalArtifactExecutor({ serial, adb,
-      observe: () => lifecycle(bridge, serial), observeArm, pollMs: 250, onEvent,
+      observe: () => lifecycle(bridge, serial), observeArm, observeControlState,
+      pollMs: 250, onEvent,
       onOutput: output => onEvent({ type: 'hid.stderr', output }) });
   const titleModel = await readJson(TITLE_MODEL);
   const modelPath = TITLE_MODEL.pathname;
