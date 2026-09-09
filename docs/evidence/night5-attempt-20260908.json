@@ -292,7 +292,12 @@
       "result": "artifacts/minus3-device-20260908/n5-framesync: survived ~305 s with ZERO corrections fired, then went straight to title. Third best of 22 attempts and the deepest since the 367/369 s pair. Cleanup verified.",
       "whyItMatters": "no phase disagreement was detected for the whole run, and the run went deep. The runs that die in the 157-202 s cluster are the ones where the operator and the frames show desyncs. That is consistent evidence that desync separates the shallow deaths from the deep ones, and it is the first run where the detector ran all night and stayed silent.",
       "caveat": "silence is not proof the detector works -- a detector that never fires and one that cannot fire look the same. It must still be validated against a run where a desync is independently observed, e.g. by replaying retained frames through the same luma rule and checking it flags the frame-0012 case from the mask-resync run, where the monitor was up at a phase the schedule believed was masked.",
-      "attempts": 22
+      "attempts": 22,
+      "validated": {
+        "knownDesyncFrame": "n5-maskresync/frame-0012, the frame that shows the monitor up on CAM 11 at a phase where the schedule believed it was masked, reads luma 44.2 and the rule flags it (threshold 35). The detector catches the exact case it exists for.",
+        "separation": "across 60 frames of a full run the rule classifies 18 monitor-up at luma 35.9-43.5 and 42 monitor-down at 1.7-28.2. The gap between 28.2 and 35.9 is real, so the threshold sits in separation rather than in noise.",
+        "consequence": "the caveat is discharged: the silent 305 s run was silent because no desync occurred, not because the detector could not fire. A detector that never fires and one that cannot fire no longer look the same here."
+      }
     }
   }
 }
