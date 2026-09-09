@@ -322,6 +322,10 @@ export async function createCampaignPorts(options = {}) {
         : monitor.state === 'UNKNOWN' ? monitor.reason : panel.reason,
       maskOn: mask.state === 'OBSERVED' ? mask.value : null,
       maskReason: mask.state === 'UNKNOWN' ? mask.reason : null,
+      // A frame the fitted rule cannot classify is the only frame worth the
+      // bytes: retaining its sensor row is what lets a later refit cover the
+      // state, instead of another night spent rediscovering that it exists.
+      ...(mask.state === 'OBSERVED' ? {} : { maskCells: frame.cells }),
       maskEvidence,
       ...(visualCapture ? { visualCaptureAt: visualCapture.at,
         visualCaptureUncertaintyMs: visualCapture.uncertaintyMs } : {}),

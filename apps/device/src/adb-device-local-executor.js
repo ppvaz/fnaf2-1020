@@ -59,6 +59,9 @@ const MASK_SETTLE_MS = 750;
 // A single 10 fps frame can be ambiguous without the state being unreadable.
 // UNKNOWN still stops the night, but only once it has survived resampling.
 const GATE_READ_ATTEMPTS = 3;
+// Helper frames arrive every ~100 ms, so back-to-back reads describe the same
+// game moment. Spacing them lets a transient animation resolve between tries.
+const GATE_RETRY_GAP_MS = 350;
 // A gate is only placed where the authored plan already has idle to pay for
 // it, so gating never displaces a contact the plan's timing was validated on.
 const GATE_MIN_SLACK_MS = 2600;
@@ -426,6 +429,10 @@ function compactControlSample(value) {
   // Which detector answered is part of the observation: the camera panel and
   // the office HUD see opposite halves of the monitor state.
   const monitorSource = boundedSampleText(sample.monitorSource);
+  // Only ever present on a frame the fitted rule refused, and bounded to the
+  // helper's fixed 20x9 sensor so a run bundle cannot grow without limit.
+  const maskCells = Array.isArray(sample.maskCells) && sample.maskCells.length === 180 &&
+    sample.maskCells.every(Number.isSafeInteger) ? sample.maskCells : null;
   const panelSequence = typeof sample.panelSequence === 'string' ||
     Number.isSafeInteger(sample.panelSequence) ? sample.panelSequence : null;
   const visualCaptureAt = Number.isFinite(sample.visualCaptureAt) ? sample.visualCaptureAt : null;
@@ -433,6 +440,7 @@ function compactControlSample(value) {
     sample.visualCaptureUncertaintyMs >= 0 ? sample.visualCaptureUncertaintyMs : null;
   return { sequence, ageUs, screen, monitorUp, monitorReason, maskOn, maskReason,
     ...(monitorSource ? { monitorSource } : {}),
+    ...(maskCells ? { maskCells } : {}),
     ...(panelSequence === null ? {} : { panelSequence }),
     ...(maskEvidence ? { maskEvidence } : {}),
     ...(visualCaptureAt === null ? {} : { visualCaptureAt }),
@@ -1012,10 +1020,11 @@ export class AdbDeviceLocalArtifactExecutor {
           // actually parked: releasing early would let the marker pre-exist,
           // skip the gate, and fire the next contact a whole budget early.
           let lagMs = 0;
+          let releaseTouchMs = 0;
           for (const entry of gated.gates) {
             if (!controlStillRunning()) break;
             const reachedAt = armGoAt + (entry.gateAtMs - gated.armReadyAtMs) + lagMs;
-            const releaseAt = reachedAt + entry.budgetMs;
+            let releaseAt = reachedAt + entry.budgetMs;
             if (!await waitUntil(reachedAt)) break;
             // One ambiguous frame is not an unreadable state. Resample within
             // the budget so UNKNOWN means the state stayed unreadable, not
@@ -1024,6 +1033,11 @@ export class AdbDeviceLocalArtifactExecutor {
             let sample = null;
             for (let attempt = 0; attempt < GATE_READ_ATTEMPTS; attempt += 1) {
               if (!controlStillRunning()) break;
+              // Spaced, not back to back: consecutive reads a frame apart see
+              // the same game moment, so an animation that refuses one read
+              // refuses all three and a night ends on a state that would have
+              // resolved on its own.
+              if (attempt > 0) await waitUntil(Date.now() + GATE_RETRY_GAP_MS);
               const read = await readControlState();
               reads.push({ startedAt: read.readStartedAt, finishedAt: read.readFinishedAt });
               sample = compactControlSample(read.sample);
@@ -1051,6 +1065,10 @@ export class AdbDeviceLocalArtifactExecutor {
               // Anchored to the corrective contact, never to the release: the
               // effect cannot appear before its measured settle, so verifying
               // against the budget's remainder just re-reads the old state.
+              // The correction owns the settle it needs even when the reads
+              // above have eaten the budget; the overrun is carried as lag
+              // rather than verifying against a state that cannot have moved.
+              releaseAt = Math.max(releaseAt, correctedAt + MASK_SETTLE_MS + 250);
               await waitUntil(correctedAt + MASK_SETTLE_MS);
               if (controlStillRunning()) verify = compactControlSample((await readControlState()).sample);
               const staleFrame = verify !== null && verify.sequence !== null &&
@@ -1071,8 +1089,14 @@ export class AdbDeviceLocalArtifactExecutor {
               await touchRemote(this.adb, this.serial, armControl.fail);
               break;
             }
-            if (!await waitUntil(releaseAt)) break;
+            // The stream resumes when the marker appears, not when the
+            // release is decided, so the touch is started early by what the
+            // last one cost. Without this each gate paid its own adb latency
+            // again and the night drifted 50-130 ms per cycle.
+            if (!await waitUntil(releaseAt - releaseTouchMs)) break;
+            const touchStartedAt = Date.now();
             await touchRemote(this.adb, this.serial, armControl.gateGo);
+            releaseTouchMs = Math.min(GATE_BUDGET_MS / 2, Date.now() - touchStartedAt);
             lagMs += Math.max(0, Date.now() - releaseAt);
           }
         })().catch(async () => {
