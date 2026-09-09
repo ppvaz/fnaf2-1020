@@ -4728,3 +4728,35 @@ This percentage measures completion of the written plans, not probability of a
 clear. In particular, simulator success, a bounded device branch, a Night 6
 attempt, a Night 6 clear, and a 10/20 clear remain distinct claims under
 [Plan 12](12-end-to-end-evidence-campaign.md).
+
+## 2026-09-09 — Night 5 loses input below the application (measured)
+
+Two more Night 5 attempts on the Minus 3 frame-light recipe, plan byte-identical
+between them. `n5-fastsync` was alive at 388.5 s of 420 — the deepest Night 5 run
+so far — and lost its grade to an observation race: the frame classifier read the
+auto-advancing game-over screen as `state=title` while the helper still reported
+`FNAF2_GAME_OVER`. The runner now grades the death from the helper; `n5-trace`
+graded cleanly at 224.5 s on that same path.
+
+`n5-trace` was captured under `tools/device/atrace-input.sh`. On the game's own
+input channel the trace holds 66 `ACTION_DOWN`, 63 `ACTION_UP`, 24
+`POINTER_DOWN(1)`, 24 `POINTER_UP(1)` — and **3 `ACTION_CANCEL`**, which account
+for the DOWN/UP imbalance exactly. The cancels sit 8.9 s and 10.5 s apart against
+a 10 s schedule period. `ACTION_CANCEL` is the input system revoking an
+in-progress touch stream: injected touches are being lost *below* the game, which
+is a different failure from the mask/monitor input rules the plan compiler already
+gates. Cause not identified; the same trace shows every touch copied to
+`[Gesture Monitor] swipe-up`, `moto_actions_input_channel` and
+`sysui_input_dispatcher`, and pointer pilfering is the standard cause — untested.
+
+`tools/device/inputtrace.py` reports `NO APP EVENTS` on this trace despite 300
+`ACTION_DOWN` slices being present: its query filters on `process_name`, which is
+NULL for these slice tracks. Open defect, not fixed here; the numbers above came
+from querying `trace_processor` directly.
+
+Night 5 ledger, from the run directories rather than from memory: 22 runs have
+entered a Night 5 (17 Minus 3, 5 Minus Toys), 14 produced a graded terminal,
+deepest graded 369.0 s. An earlier note this session quoted "24 attempts, best
+386 s"; neither number was derived, and both are corrected here.
+
+Evidence: `docs/evidence/night5-input-trace-20260909.json`.

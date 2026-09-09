@@ -1,0 +1,81 @@
+{
+  "schema": "device-attempt-v1",
+  "verdict": "MEASURED",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "night5-input-trace-20260909",
+  "recordedAt": "2026-09-09",
+  "claim": "A Perfetto input-dispatch capture over a live Night 5 attempt shows the Android input system delivering ACTION_CANCEL to the game's input channel three times in 224 s. Injected touches are therefore lost below the application, not only refused by the game's own input rules. This is the first measurement of the sent-vs-delivered gap on a night-length run.",
+  "device": { "serial": "ZF525F5BH5", "build": "com.scottgames.fnaf2:2.0.7+26" },
+  "runs": [
+    {
+      "run": "artifacts/minus3-device-20260908/n5-fastsync",
+      "experiment": "frame-light-night5-fastsync",
+      "startedUtc": "2026-09-09T04:12:06.980Z",
+      "armPauseMs": 471.920,
+      "status": "ABORT",
+      "aliveAtMs": 388485.8,
+      "deadByMs": 390911.8,
+      "grading": "ungraded: the frame classifier read the auto-advancing game-over screen as state=title while the helper reported FNAF2_GAME_OVER, and the runner threw 'unexpected lifecycle'",
+      "corrections": 12,
+      "correctionKind": "resync.fast, cue.read() monitor-state disagreement, two consecutive before firing",
+      "correctionTimesMs": [61795.9, 173432.7, 191879.9, 268318.8, 272068.9, 342656.7, 343573.7, 367814.8, 371708.9, 376357.7, 382155.8, 385935.9],
+      "note": "deepest Night 5 run to date; one correction in the first three minutes, seven in the last 45 s alternating direction every 3-6 s. The logs cannot separate compounding phase error from the corrector fighting the schedule's own toggles, because no record of accepted input existed."
+    },
+    {
+      "run": "artifacts/minus3-device-20260908/n5-trace",
+      "experiment": "frame-light-night5-fastsync",
+      "startedUtc": "2026-09-09T04:25:29.135Z",
+      "armPauseMs": 624.772,
+      "status": "DEATH_OBSERVED_UNGRADED",
+      "terminal": { "code": 0, "label": "state=gameover", "elapsedMs": 224486.1, "frame": "frame-0074.png" },
+      "gradedVia": "helper-screen",
+      "corrections": 8,
+      "plan": "byte-identical to n5-fastsync; the only changes were observation-side",
+      "trace": "captures/n5trace-input.pftrace (402658959 bytes, not committed)",
+      "operatorObservation": "Pedro, watching live: 'i think i saw it attempt to mask off early during a blackout attack'"
+    }
+  ],
+  "traceFindings": {
+    "capture": "tools/device/atrace-input.sh n5trace 480 -- node .../run-night5.mjs n5-trace --live, PERFETTO_APP=com.scottgames.fnaf2, PERFETTO_BUFFER_MB=384",
+    "publishedToGameChannel": {
+      "channel": "28af0db com.scottgames.fnaf2/com.scottgames.fnaf2.Main",
+      "ACTION_DOWN": 66,
+      "ACTION_UP": 63,
+      "ACTION_POINTER_DOWN(1)": 24,
+      "ACTION_POINTER_UP(1)": 24,
+      "ACTION_CANCEL": 3
+    },
+    "cancelTimestampsNs": [975291365604853, 975300258533777, 975310749828239],
+    "cancelRelativeToFirstPublishedTouchS": [72.7, 81.6, 92.1],
+    "cancelSpacingS": [8.9, 10.5],
+    "interpretation": "DOWN 66 vs UP 63 is exactly accounted for by the 3 CANCELs: three gestures began and were revoked rather than completed. The spacing sits within a few hundred ms of the schedule's 10 s period, so the cancelled gestures are plausibly the same action in three consecutive cycles rather than a random system event.",
+    "whatCancelMeans": "ACTION_CANCEL is the input system telling the app to discard an in-progress touch stream. It is not the game's mask/monitor input rule and not a scheduling error; the touch was injected, dispatched, and then revoked.",
+    "leadNotChased": "the same trace shows every touch also copied to [Gesture Monitor] swipe-up, moto_actions_input_channel and sysui_input_dispatcher. A gesture monitor pilfering pointers is the standard cause of ACTION_CANCEL and would explain losses that correlate with screen position rather than with game state. Not tested."
+  },
+  "toolDefect": {
+    "tool": "tools/device/inputtrace.py",
+    "symptom": "reports 'NO APP EVENTS' and exits 3 on this trace despite 300 ACTION_DOWN dispatch slices being present",
+    "cause": "its QUERY_TEMPLATE filters on process_name, which is NULL for these slice tracks on this capture; the join to thread/process does not resolve",
+    "status": "OPEN, not fixed in this commit. The numbers above were obtained by querying trace_processor directly.",
+    "consequence": "a future session running this tool on a good trace will be told there is no data"
+  },
+  "runnerFix": {
+    "file": "artifacts/minus3-device-20260908/run-night5.mjs (untracked one-off runner)",
+    "change": "when the frame classifier says state=title but the helper says FNAF2_GAME_OVER, grade the death instead of aborting",
+    "verified": "n5-trace graded DEATH_OBSERVED_UNGRADED at 224.5 s where n5-fastsync had aborted on the same race"
+  },
+  "night5Ledger": {
+    "runsThatEnteredNight5": 22,
+    "minus3Lane": 17,
+    "minusToysLane": 5,
+    "gradedTerminals": 14,
+    "deepestGraded": 369.0,
+    "deepestOverall": "n5-fastsync, alive at 388.5 s of 420, ungraded",
+    "correction": "an earlier note in this session quoted '24 attempts, best 386 s'. Neither number was derived from the run directories; these are."
+  },
+  "openLimits": [
+    "one traced run, n=1. The 3 CANCELs are measured but their cause is not identified.",
+    "no clock mapping between the host schedule and the trace clock, so a cancelled gesture cannot yet be attributed to a named control (wind, mask, monitor).",
+    "the trace covers a 224 s run, not a full 420 s night."
+  ]
+}
