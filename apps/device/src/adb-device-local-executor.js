@@ -50,7 +50,10 @@ const CONTROL_EFFECT_MAX_SAMPLES = 6;
 // read is 190 ms at p50 and 374 ms at worst, and the mask effect needs up to
 // 712 ms to appear. A gate therefore has to afford up to three reads, a
 // corrective contact, and that settle before it may release.
-const GATE_BUDGET_MS = 2200;
+const GATE_BUDGET_MIN_MS = 2200;
+// A gate spends its idle rather than a fixed constant, so a plan that idles
+// longer buys more attempts and one that idles less is simply not gated.
+const GATE_BUDGET_MAX_MS = 4000;
 // The mask effect appeared 358-712 ms after contact across 15 transitions in
 // the 2026-09-09 runs. Verifying before that measures the old state: the
 // first gated run recorded CORRECTION-UNCONFIRMED from a frame captured
@@ -58,10 +61,15 @@ const GATE_BUDGET_MS = 2200;
 const MASK_SETTLE_MS = 750;
 // A single 10 fps frame can be ambiguous without the state being unreadable.
 // UNKNOWN still stops the night, but only once it has survived resampling.
-const GATE_READ_ATTEMPTS = 3;
-// Helper frames arrive every ~100 ms, so back-to-back reads describe the same
-// game moment. Spacing them lets a transient animation resolve between tries.
-const GATE_RETRY_GAP_MS = 350;
+// Measured over both 2026-09-09 gated runs: given one ambiguous read, the
+// chance the next is also ambiguous is 0.60 at 250 ms, 0.49 at 500 ms and
+// bottoms out at 0.37 around 600 ms before rising again. Refusals are
+// strongly correlated, so retries only buy anything when they are spaced at
+// that minimum -- and five of them are what takes a gate's refusal rate from
+// 8% to under 0.2%, which is the difference between a night that aborts and
+// one that finishes.
+const GATE_READ_ATTEMPTS = 5;
+const GATE_RETRY_GAP_MS = 600;
 // A gate is only placed where the authored plan already has idle to pay for
 // it, so gating never displaces a contact the plan's timing was validated on.
 const GATE_MIN_SLACK_MS = 2600;
@@ -271,9 +279,11 @@ function compileGateSegments(request, actions, originAtMs) {
     const finishedAtMs = ends[index];
     const nextAtMs = actions[index + 1].atMs;
     if (nextAtMs - finishedAtMs < GATE_MIN_SLACK_MS) continue;
-    const gateAtMs = nextAtMs - GATE_BUDGET_MS;
+    const budgetMs = Math.max(GATE_BUDGET_MIN_MS,
+      Math.min(GATE_BUDGET_MAX_MS, nextAtMs - finishedAtMs - 400));
+    const gateAtMs = nextAtMs - budgetMs;
     if (gateAtMs <= finishedAtMs) continue;
-    points.push({ index: index + 1, gateAtMs });
+    points.push({ index: index + 1, gateAtMs, budgetMs });
   }
   const segments = [];
   const gates = [];
@@ -292,7 +302,7 @@ function compileGateSegments(request, actions, originAtMs) {
     // the gate checks; an unstated belief is not invented here.
     const believed = maskTransitionsOf(actions.slice(0, point.index))
       .filter(transition => transition.atMs <= point.gateAtMs).at(-1);
-    gates.push(Object.freeze({ gateAtMs: point.gateAtMs, budgetMs: GATE_BUDGET_MS,
+    gates.push(Object.freeze({ gateAtMs: point.gateAtMs, budgetMs: point.budgetMs,
       nextActionId: actions[point.index].action.id,
       cycle: actions[point.index].action.cycle,
       believedMaskOn: believed ? believed.targetMaskOn : null }));
@@ -1096,7 +1106,7 @@ export class AdbDeviceLocalArtifactExecutor {
             if (!await waitUntil(releaseAt - releaseTouchMs)) break;
             const touchStartedAt = Date.now();
             await touchRemote(this.adb, this.serial, armControl.gateGo);
-            releaseTouchMs = Math.min(GATE_BUDGET_MS / 2, Date.now() - touchStartedAt);
+            releaseTouchMs = Math.min(entry.budgetMs / 2, Date.now() - touchStartedAt);
             lagMs += Math.max(0, Date.now() - releaseAt);
           }
         })().catch(async () => {

@@ -127,8 +127,13 @@ gateRequest.blocks = [gateRequest.blocks[0],
 const gateSchedule = compileDeviceLocalHidSchedule(gateRequest, { readyDelayMs: 6000 });
 const gates = gateSchedule.gated.gates;
 assert.ok(gates.length >= 2, 'each idle cycle boundary must offer a gate');
-assert.ok(gates.every(entry => entry.budgetMs === 2200),
-  'every gate must reserve the same measured observe/correct/verify budget');
+// The budget is spent out of the idle each gate actually has, never added to
+// it, so a wider idle buys more attempts and the authored contact never moves.
+assert.ok(gates.every(entry => entry.budgetMs >= 2200 && entry.budgetMs <= 4000),
+  'a gate must reserve a budget its own idle can pay for');
+assert.ok(gates.every(entry => entry.gateAtMs + entry.budgetMs === 6600 ||
+  entry.gateAtMs + entry.budgetMs === 10600),
+  'a gate must release exactly on the authored contact it guards');
 assert.ok(gates.every(entry => entry.believedMaskOn === true),
   "a gate must carry the plan's own mask belief at that instant");
 assert.equal(gateSchedule.gated.remainderSegments.length, gates.length + 1,
