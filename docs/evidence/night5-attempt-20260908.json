@@ -224,7 +224,7 @@
     "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
   },
   "night5Conclusion": {
-    "attempts": 16,
+    "attempts": 19,
     "bestSurvival": "369.0 s of a 419.6 s night (Minus 3 frame-light, twice)",
     "provenScheduleDistribution": "six Night 5 runs on the proven Minus 3 timing: 369, 367, 202, 200, 195, 157 s",
     "whyRepetitionWillNotWin": "both best runs died at ~5 AM to the box, so the wall is not a tail. The operator watched the cause directly: a desync makes wind presses land while masked, where the engine drops every non-mask touch, so the box loses delivered wind rather than scheduled wind.",
@@ -234,6 +234,28 @@
       "2": "353/3000, minBox 0.0000, 1903 of the losses puppet"
     },
     "boxMarginSearchExhausted": "within the device-validated invariants -- wind no earlier than raise+500 ms (raise+100 and raise+200 both missed on the phone), the mask at monitor+67 ms inside the lowering because that transition IS the flash, hall contact >= 350 ms -- no cycle variant improves the night-5 box floor. period 10000 holds minBox 0.6525 at every camdrop tried; period 12000 collapses it to 0.22-0.30; camdrop 10500 at period 10000 gives 0/600. The proven schedule is already the box-margin optimum of this knob space.",
-    "whatWouldActuallyCloseIt": "desync prevention, not box margin. The repo already contains the mechanism: apps/device/src/service.js drives target states via #ensureMonitorInternal(target) rather than toggling, and artifact-commands.mjs compiles ensure/targetMonitorUp/targetMaskOn actions for it. The campaign lane does not use that path -- it compiles the night into one device-local HID stream, open-loop by construction, because host round-trips per action reintroduce the clock drift that refuted an earlier lane. So the two available execution models are timing-accurate without feedback, or state-correct without a clock. Closing Night 5 needs the hybrid: device-local timing with periodic state resynchronisation. That is a design change, not a knob."
+    "whatWouldActuallyCloseIt": "desync prevention, not box margin. The repo already contains the mechanism: apps/device/src/service.js drives target states via #ensureMonitorInternal(target) rather than toggling, and artifact-commands.mjs compiles ensure/targetMonitorUp/targetMaskOn actions for it. The campaign lane does not use that path -- it compiles the night into one device-local HID stream, open-loop by construction, because host round-trips per action reintroduce the clock drift that refuted an earlier lane. So the two available execution models are timing-accurate without feedback, or state-correct without a clock. Closing Night 5 needs the hybrid: device-local timing with periodic state resynchronisation. That is a design change, not a knob.",
+    "sessionEnd": "Operator ended the session and took the phone. Device left in a known state: title screen, items=continue,newGame, save cursor Night 5, zero FNAF HID devices attached."
+  },
+  "notificationDesyncHypothesis": {
+    "raisedBy": "operator, 2026-09-09: 'i think a whatsapp notification desynced lol'",
+    "why it is plausible": "an incoming notification draws a heads-up banner over the game. It can swallow a touch without the window losing focus, so the runner's own guard -- which polls dumpsys window for mCurrentFocus=com.scottgames.fnaf2 -- would not fire. A swallowed mask or monitor tap is exactly the toggle inversion that costs delivered wind, and the cost is already priced: two lost cycles empty the box and hand 1903/3000 of the losses to the Puppet.",
+    "status": "UNTESTED. No run this session was made with notifications suppressed, so it is a hypothesis, not a cause.",
+    "mitigation": "put the phone in Do Not Disturb or airplane mode for the duration of a run, and record which mode was active in the run protocol so a desync can be attributed rather than guessed. Cheap, and it removes a whole class of unexplained variance from every future night.",
+    "howToTest": "run the proven Minus 3 Night 5 schedule several times with DND on and compare the survival distribution against tonight's six runs on the same schedule: 369, 367, 202, 200, 195, 157 s. If the short runs disappear, the banner was eating presses."
+  },
+  "wallsAreOursNotTheGames": {
+    "question": "operator, 2026-09-09: after which Nth cycle does the Minus 3 plan degrade or desync too much?",
+    "deviceDeaths": "six runs of the proven schedule on Night 5: 157, 195, 200, 202, 367, 369 s. With the loop starting at 5 s on a 10 s period that is cycles ~16, ~20, ~20, ~21, ~37 and ~37 -- two tight clusters, three deaths inside a 7 s window and two inside 2 s.",
+    "modelComparison": "the same schedule censused at 3000 seeds puts 364 deaths across the night almost uniformly: 14 in 50-100 s, 29 in 100-150, 52 in 150-200, 60 in 200-250, 67 in 250-300, 52 in 300-350, 64 in 350-400 and 26 in 400-450. There is no cluster at 195-205 or at 365-370.",
+    "conclusion": "the walls are not the game's difficulty curve. The engine offers no reason to die at 200 s in particular, so a device distribution that piles three of six deaths into a 7 s window is an artefact of our actuation, not of Night 5. Combined with the operator watching taps land in a masked state with the box neglected, and with two lost cycles costing 1903/3000 puppet deaths in the model, the Night 5 blocker is drift and desync rather than strategy.",
+    "nextTest": "re-run the same schedule with notifications suppressed (see notificationDesyncHypothesis). If the clusters survive DND, the drift is in the HID stream's own delay execution and wants an on-device schedule position to measure, which the artifact lane can carry and the one-off runner cannot."
+  },
+  "plannedInputsAreExact": {
+    "question": "operator: do the planned inputs differ or degrade at the cycles where the device dies?",
+    "answer": "No. The plan is exact and perfectly periodic; the degradation is introduced downstream of it.",
+    "cycleSignatures": "all 54 loop cycles of the emitted Night 5 schedule share exactly ONE signature -- 14 contact edges each at identical offsets from their cycle base. There is no difference at cycle 20 or 37, or anywhere.",
+    "compilerRounding": "the compiled HID stream's 719 delay commands sum to 544583 ms, which equals the last authored edge time exactly. The compiler contributes zero cumulative rounding error.",
+    "consequence": "since the plan is bit-periodic and the compiler is exact, the device's tightly clustered deaths (three of six inside a 7 s window) cannot come from the schedule. They come from execution: either the device-side hid program's own delay accuracy, or presses being swallowed by animation windows and overlays. That narrows the remaining work to measuring on-device schedule position, which the artifact lane can carry and the one-off runner cannot."
   }
 }

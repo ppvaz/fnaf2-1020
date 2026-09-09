@@ -212,6 +212,24 @@ execution models available are timing-accurate without feedback, or
 state-correct without a clock, and Night 5 needs the hybrid: device-local
 timing with periodic state resynchronisation. A design change, not a knob.
 
+**The Night 5 walls are ours, not the game's.** Six runs of the proven Minus 3
+schedule died at 157, 195, 200, 202, 367 and 369 s -- cycles ~16, ~20, ~20,
+~21, ~37, ~37, with three deaths inside a 7 s window and two inside 2 s. The
+same schedule censused at 3000 seeds spreads its 364 deaths almost uniformly
+across the night (14/29/52/60/67/52/64/26 per 50 s bin) with no cluster at
+either time. The engine offers no reason to die at 200 s in particular, so the
+clustering is an artefact of actuation. With the operator having watched taps
+land in a masked state while the box went unwound, and two lost cycles costing
+1903/3000 puppet deaths in the model, the blocker is drift and desync rather
+than strategy. A notification banner is one candidate cause and is untested:
+no run this session suppressed notifications. The plan itself is exonerated:
+all 54 loop cycles of the emitted schedule share one signature, 14 edges each
+at identical offsets, and the compiled stream's 719 delay commands sum to
+544583 ms against a last authored edge of 544583 ms -- bit-periodic, with zero
+compiler rounding. The drift is in execution, so the remaining work is to
+measure on-device schedule position, which the artifact lane can carry and the
+one-off runner cannot.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**
