@@ -144,6 +144,19 @@ gate (best legal 237/600 against 3000/3000 for the illegal one), so that route
 needs re-deriving under the constraint. Awaiting a decision between landing it
 red, allowlisting the legacy plan, or re-deriving first.
 
+**The artifact lane now spawns its schedule at the menu, not the intro.** The
+device script registers the HID device, waits `readyDelayMs` for Android
+InputReader, touches its start marker and only then blocks on `night_go`, so
+nothing can fire before the office is observed however early it spawns -- the
+gate releases the prefix, not the spawn. Spawning in `intro()` left that whole
+setup racing the intro card and lost: 30.2 s, 25.8 s and 26.5 s from the first
+observed office frame to the marker, measured across both story-night winners
+and the Night 5 attempt. The machine lane already armed at the menu for exactly
+this reason; the artifact lane did not. Unverified on device: the previous
+attempt at this claimed an improvement the measurement did not support, so the
+next campaign run must be checked by re-measuring office -> `hid.schedule-start`
+rather than by reading the diff.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**

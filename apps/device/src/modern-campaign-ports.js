@@ -351,6 +351,26 @@ export async function createCampaignPorts(options = {}) {
     const freshItems = await title(bridge, serial, modelPath);
     if (!freshItems.includes(targetName))
       return { target: targetName, visible: false, selected: false, observed: true, items: freshItems };
+    // Spawn the gameplay schedule here, not in intro(). The device script
+    // registers the HID device, waits readyDelayMs for Android InputReader,
+    // touches its start marker and only then blocks on night_go, so nothing
+    // can fire before the office is observed no matter how early it spawns --
+    // the gate, not the spawn, releases the prefix. Spawning in intro() left
+    // that whole setup racing the intro card and lost it: measured 30.2 s,
+    // 25.8 s and 26.5 s from the first observed office frame to the marker,
+    // across both story-night winners and the 2026-09-08 Night 5 attempt.
+    // The model prices that delay at 1000/1000 on Night 1 and 0/1000 on
+    // Night 5, which is what the phone did. The machine lane already armed at
+    // this point for the same reason; the artifact lane did not.
+    // Placed after the visibility check so an unselectable target cannot leave
+    // a spawned schedule waiting on a night that never starts.
+    if (!machineOnly && !pendingExecution) {
+      if (!(localExecutor instanceof AdbDeviceLocalArtifactExecutor))
+        throw new Error('artifact campaign did not compose an artifact executor');
+      pendingExecution = localExecutor.execute(artifactRequestFor(target));
+      // executeAttempt surfaces the failure; nothing else may await it.
+      pendingExecution.catch(() => {});
+    }
     const targetPoint = targetName === 'customNight'
       ? point(calibration?.menu?.point, 'calibration.menu.point')
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
