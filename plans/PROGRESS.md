@@ -121,6 +121,29 @@ and that getter alone does not require `hallView`. Removing the row costs
 the shipped nights 1-2 winner bytes, so the plan needs re-deriving under the
 constraint rather than re-timing. Flagged, not changed.
 
+**Two animation-clearance rules are now enforced at the compiler.** A press
+that needs the monitor up (camera select, wind, camdrop, sweep) is refused
+inside the 200 ms `MONITOR_ANIM_UP` window, and every non-mask press is refused
+inside the 250 ms `MASK_ANIM_OFF` window. Both shipped routes still compile;
+`test-artifact-animation-gates.mjs` pins the rules and the regression that
+motivated them.
+
+That regression is worth stating because the simulator cannot see it. Moving
+the Minus 3 wind hold from +500 ms to +100 ms after the monitor raise was
+model-identical on nights 3/4/5 at 3000 seeds and raised the modelled box
+floor, so it looked free. On the phone the monitor was still animating, the
+wind button was not drawn, the contact hit the office underneath, and the
+cycle wound nothing -- the operator saw the touches miss. `press('wind')`
+latches `winding = true` and `isWinding` waits for `MON_UP`, so the model
+credits a press the device never delivered. The simulator latches presses; the
+device needs the control to exist at contact time.
+
+The vent rule is written but **not landed**: gating a vent light on monitor-down
+refuses the shipped minus-toys plan, and no legal vent placement recovers its
+gate (best legal 237/600 against 3000/3000 for the illegal one), so that route
+needs re-deriving under the constraint. Awaiting a decision between landing it
+red, allowlisting the legacy plan, or re-deriving first.
+
 What remains open:
 
 * **Night 6 is a coin flip on this recipe (56%), and the losses name why.**

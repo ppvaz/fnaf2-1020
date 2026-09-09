@@ -964,6 +964,12 @@
       ]
     },
     {
+      "file": "tools/device/artifact-commands.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
       "file": "tools/device/artifact-runner.mjs",
       "imports": [
         "../../apps/device/src/artifact-executor.js",
@@ -1198,6 +1204,13 @@
         "./actuator.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-artifact-animation-gates.mjs",
+      "imports": [
+        "./artifact-commands.mjs",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {

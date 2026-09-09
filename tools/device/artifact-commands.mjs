@@ -3,9 +3,19 @@
 // Every block declares the monitor state it needs, and every monitor action is
 // a target state rather than a parity toggle.
 
+import * as C from '@fnaf2-1020/core/mechanics';
+
+// [SOURCED] The engine animates the monitor and the mask, and drops input that
+// lands inside those windows: a camera select or wind press during the raise
+// hits the office underneath, and every non-mask touch is dropped while the
+// mask-off animation runs. Both were costing live nights before they were
+// enforced here rather than watched for on the phone.
+const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
+const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
+
 const camera = control => /^cam(?:[0-9]|1[0-2])$/.test(control);
 const semantic = control => camera(control) ? `cam:${Number(control.slice(3))}`
-  : control === 'ventl' ? 'ventL' : control;
+  : control === 'ventl' ? 'ventL' : control === 'ventr' ? 'ventR' : control;
 
 function action(cycle, row, index, fields) {
   return Object.freeze({ schema: 'artifact-action-v1', id: `${cycle}-${index}`,
@@ -54,20 +64,38 @@ function armVerification(parsed) {
 export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   if (!Array.isArray(rows)) throw new TypeError('artifact cycle rows must be an array');
   const state = { ...initial };
+  // When the monitor raise and the mask-off press began, so a press cannot be
+  // scheduled inside an animation the engine drops it during.
+  let monitorUpAt = -Infinity;
+  let maskOffAt = -Infinity;
   const blocks = [];
   for (const [rowIndex, row] of rows.entries()) {
     const id = rowIndex + 1;
     const actions = [];
+    const isMaskRow = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === 'mask';
+    if (!isMaskRow && row.at - maskOffAt < MASK_ANIM_OFF_MS)
+      throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
+        `${MASK_ANIM_OFF_MS} ms mask-off animation from +${maskOffAt} ms, where the engine drops it`);
+    // rule: a press that needs the monitor up must clear the raise animation
+    const needsMonitorUp = row.kind === 'camdrop' || row.kind === 'sweep' ||
+      ((row.kind === 'tap' || row.kind === 'hold') &&
+        (camera(row.control) || semantic(row.control) === 'wind'));
+    if (needsMonitorUp && row.at - monitorUpAt < MONITOR_ANIM_UP_MS)
+      throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
+        `${MONITOR_ANIM_UP_MS} ms monitor raise from +${monitorUpAt} ms; the control is not on ` +
+        'screen yet and the contact hits the office underneath');
     if (row.kind === 'tap' || row.kind === 'hold') {
       const control = semantic(row.control);
       if (control === 'monitor') {
         state.monitorUp = !state.monitorUp;
+        if (state.monitorUp) monitorUpAt = row.at;
         if (!state.monitorUp) state.camera = null;
         actions.push(action(cycle, row, id, { kind: 'ensure', control,
           targetMonitorUp: state.monitorUp, durationMs: row.duration }));
       } else if (control === 'mask') {
         if (state.monitorUp) throw new TypeError(`${cycle}: mask toggle requires monitor down`);
         state.maskOn = !state.maskOn;
+        if (!state.maskOn) maskOffAt = row.at;
         actions.push(action(cycle, row, id, { kind: 'press', control,
           requiresMonitorUp: false, targetMaskOn: state.maskOn, durationMs: row.duration }));
       } else {
