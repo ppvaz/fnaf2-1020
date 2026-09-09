@@ -127,7 +127,7 @@ gateRequest.blocks = [gateRequest.blocks[0],
 const gateSchedule = compileDeviceLocalHidSchedule(gateRequest, { readyDelayMs: 6000 });
 const gates = gateSchedule.gated.gates;
 assert.ok(gates.length >= 2, 'each idle cycle boundary must offer a gate');
-assert.ok(gates.every(entry => entry.budgetMs === 1200),
+assert.ok(gates.every(entry => entry.budgetMs === 2200),
   'every gate must reserve the same measured observe/correct/verify budget');
 assert.ok(gates.every(entry => entry.believedMaskOn === true),
   "a gate must carry the plan's own mask belief at that instant");

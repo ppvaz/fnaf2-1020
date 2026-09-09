@@ -46,10 +46,22 @@ const CONTROL_EFFECT_MAX_SAMPLES = 6;
 // covers observe + correct + verify. The budget is spent whether or not a
 // correction is needed: releasing early would let each gate advance the
 // stream and reintroduce the drift that refuted the per-action host lane.
-const GATE_BUDGET_MS = 1200;
+// Measured on device 2026-09-09 (campaign-2026-09-09T15-18-01): one control
+// read is 190 ms at p50 and 374 ms at worst, and the mask effect needs up to
+// 712 ms to appear. A gate therefore has to afford up to three reads, a
+// corrective contact, and that settle before it may release.
+const GATE_BUDGET_MS = 2200;
+// The mask effect appeared 358-712 ms after contact across 15 transitions in
+// the 2026-09-09 runs. Verifying before that measures the old state: the
+// first gated run recorded CORRECTION-UNCONFIRMED from a frame captured
+// ~200 ms after the corrective press, which could not have shown it yet.
+const MASK_SETTLE_MS = 750;
+// A single 10 fps frame can be ambiguous without the state being unreadable.
+// UNKNOWN still stops the night, but only once it has survived resampling.
+const GATE_READ_ATTEMPTS = 3;
 // A gate is only placed where the authored plan already has idle to pay for
 // it, so gating never displaces a contact the plan's timing was validated on.
-const GATE_MIN_SLACK_MS = 2000;
+const GATE_MIN_SLACK_MS = 2600;
 const execFile = promisify(execFileCallback);
 
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -1005,9 +1017,21 @@ export class AdbDeviceLocalArtifactExecutor {
             const reachedAt = armGoAt + (entry.gateAtMs - gated.armReadyAtMs) + lagMs;
             const releaseAt = reachedAt + entry.budgetMs;
             if (!await waitUntil(reachedAt)) break;
-            const read = await readControlState();
-            const sample = compactControlSample(read.sample);
+            // One ambiguous frame is not an unreadable state. Resample within
+            // the budget so UNKNOWN means the state stayed unreadable, not
+            // that a single 10 fps capture landed mid-animation.
+            const reads = [];
+            let sample = null;
+            for (let attempt = 0; attempt < GATE_READ_ATTEMPTS; attempt += 1) {
+              if (!controlStillRunning()) break;
+              const read = await readControlState();
+              reads.push({ startedAt: read.readStartedAt, finishedAt: read.readFinishedAt });
+              sample = compactControlSample(read.sample);
+              if (sample.maskOn !== null) break;
+            }
+            if (!sample) break;
             let corrected = false;
+            let correctedAt = null;
             let status;
             if (entry.believedMaskOn === null || sample.maskOn === null) {
               // A gate that cannot see the state has not verified anything.
@@ -1020,21 +1044,26 @@ export class AdbDeviceLocalArtifactExecutor {
               status = 'CORRECTED';
               corrected = true;
               await touchRemote(this.adb, this.serial, armControl.gateFix);
+              correctedAt = Date.now();
             }
             let verify = null;
             if (corrected) {
-              // Re-read inside the same budget: an unconfirmed correction is
-              // recorded and retried at the next gate rather than aborting a
-              // night that may still recover.
-              if (await waitUntil(Math.min(releaseAt - 150, Date.now() + 800)))
-                verify = compactControlSample((await readControlState()).sample);
-              if (verify && verify.maskOn !== null && verify.maskOn !== entry.believedMaskOn)
+              // Anchored to the corrective contact, never to the release: the
+              // effect cannot appear before its measured settle, so verifying
+              // against the budget's remainder just re-reads the old state.
+              await waitUntil(correctedAt + MASK_SETTLE_MS);
+              if (controlStillRunning()) verify = compactControlSample((await readControlState()).sample);
+              const staleFrame = verify !== null && verify.sequence !== null &&
+                String(verify.sequence) === String(sample.sequence);
+              if (staleFrame) status = 'CORRECTION-UNREAD';
+              else if (verify && verify.maskOn !== null && verify.maskOn !== entry.believedMaskOn)
                 status = 'CORRECTION-UNCONFIRMED';
             }
             this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
               cycle: entry.cycle, nextActionId: entry.nextActionId,
               believedMaskOn: entry.believedMaskOn, observedMaskOn: sample.maskOn,
-              status, reachedAt, releaseAt, sample,
+              status, reachedAt, releaseAt, reads, sample,
+              ...(correctedAt === null ? {} : { correctedAt }),
               ...(verify ? { verify } : {}) });
             if (status === 'UNKNOWN') {
               this.onEvent({ type: 'control.gate.abort', gateAtMs: entry.gateAtMs,
