@@ -98,9 +98,12 @@ winner), 26.5 s (Night 5 tonight). The `intro()` pre-arm added in `27eed97` was
 written to remove exactly this and did not measurably change it. The cause is
 not the `night_go` gate -- the host touches that on its first office frame --
 but the device program's own push/assemble/spawn, which is longer than the
-intro card it was meant to hide behind. The model prices the consequence: at a
-26.5 s start delay minus-toys Night 1 still wins 1000/1000 while Night 5 wins
-**0/1000, killed by the Puppet**, which is what the device did. The one-off
+intro card it was meant to hide behind. The model prices the consequence at the
+3000-seed standard: at a 26.5 s start delay minus-toys Night 1 still wins
+3000/3000, Night 2 falls to 380/3000 (1879 foxy) and Night 5 to **0/3000,
+killed by the Puppet** (2669 of them), which is what the device did. With no
+delay all three are 3000/3000, so Night 2's own device win cleared a night the
+model gives 12.7% at that latency. The one-off
 runner starts in 450-620 ms, so this is a lane defect, not a physical limit.
 
 **The plan compiler accepts an interaction the engine forbids, and the model
@@ -117,7 +120,7 @@ the monitor and hit the camera flash.
 The model scores the invalid arrangement 3000/3000 and the legal ones
 1076/3000 and 1085/3000, because `press('ventL')` feeds `anyOfficeLightHeld`,
 and that getter alone does not require `hallView`. Removing the row costs
-1000/1000 -> 368/1000, so it is load-bearing. Enforcing the rule would refuse
+3000/3000 -> 1046/3000, so it is load-bearing. Enforcing the rule would refuse
 the shipped nights 1-2 winner bytes, so the plan needs re-deriving under the
 constraint rather than re-timing. Flagged, not changed.
 

@@ -168,8 +168,23 @@
       "asEmitted_monitorUp_invalid": "3000/3000",
       "moved_9700x350_monitorDown_valid": "1076/3000",
       "moved_9750x300_monitorDown_valid": "1085/3000",
-      "note": "The model scores the invalid arrangement far higher because press('ventL') sets ventLightL, which feeds anyOfficeLightHeld -- and that getter does NOT require hallView, unlike every ventLightOn getter. So the simulator credits an office-light hold that the device cannot produce with the monitor up. Removing the row entirely costs 1000/1000 -> 368/1000, so it is load-bearing, not decorative."
+      "note": "The model scores the invalid arrangement far higher because press('ventL') sets ventLightL, which feeds anyOfficeLightHeld -- and that getter does NOT require hallView, unlike every ventLightOn getter. So the simulator credits an office-light hold that the device cannot produce with the monitor up. Removing the row entirely costs 3000/3000 -> 1046/3000, so it is load-bearing, not decorative."
     },
     "consequence": "Enforcing the rule would refuse the currently shipped minus-toys plan, which is the device-proven nights 1-2 winner. The plan needs re-deriving under the constraint, not just re-timing, because the legal arrangements score far worse in the model. Flagged for Pedro; not changed by the agent."
+  },
+  "startDelayCensus": {
+    "runs": 3000,
+    "note": "an earlier 1000-seed version of this table was recorded in commit a8260aa and is superseded here",
+    "delay0ms": {
+      "night1": "3000/3000",
+      "night2": "3000/3000",
+      "night5": "3000/3000"
+    },
+    "delay26500ms": {
+      "night1": "3000/3000",
+      "night2": "380/3000 (foxy 1879, inside-office 741)",
+      "night5": "0/3000 (puppet 2669, inside-office 304, foxy 27)"
+    },
+    "reading": "The lane's measured 26-30 s office-to-schedule-start latency is harmless on Night 1, marginal on Night 2 and fatal on Night 5. Night 2's device win therefore cleared a night the model gives 12.7% at that latency. With the latency removed the route is 3000/3000 on all three."
   }
 }
