@@ -224,7 +224,7 @@
     "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
   },
   "night5Conclusion": {
-    "attempts": 19,
+    "attempts": 21,
     "bestSurvival": "369.0 s of a 419.6 s night (Minus 3 frame-light, twice)",
     "provenScheduleDistribution": "six Night 5 runs on the proven Minus 3 timing: 369, 367, 202, 200, 195, 157 s",
     "whyRepetitionWillNotWin": "both best runs died at ~5 AM to the box, so the wall is not a tail. The operator watched the cause directly: a desync makes wind presses land while masked, where the engine drops every non-mask touch, so the box loses delivered wind rather than scheduled wind.",
@@ -270,6 +270,12 @@
     "result": "artifacts/minus3-device-20260908/n5-resync3: died at 175.1 s with ZERO corrections fired. The mechanism is sound and cost nothing, but it caught nothing.",
     "whyItCaughtNothing": "it corrects the wrong half. The helper's snapshot carries monitorUp, so the corrector watches the MONITOR phase. The desync the operator actually observed is the MASK phase -- taps landing while masked, where the engine drops every non-mask touch and the box goes unwound. The helper exposes no mask state, so there was nothing for this corrector to compare.",
     "nextStep": "give the helper a mask-state observable, then correct the mask phase the same way. The mask is the phase that eats wind, and it is the one an open-loop toggle schedule cannot recover on its own. The monitor corrector can stay: it is cheap, it fired zero false positives across a full night, and it will matter once the mask half is closed.",
-    "attempts": 20
+    "attempts": 21,
+    "maskPhaseAttempt": {
+      "idea": "the helper has no mask observable, but the runner already had one it was not using: the mask covers the HUD text, so lifecycle-observe separates the states -- 'state=night' means the Night/hour text is visible and the mask is off, a dark frame with no text is the mask. No APK change needed.",
+      "result": "artifacts/minus3-device-20260908/n5-maskresync: FOUR corrections fired and the run died at 122.5 s, worse than the 175.1 s of the same schedule with the monitor-only corrector and worse than the 157-202 s band without any.",
+      "readingOfIt": "this is the bad-proxy signature, not a fix. All four corrections carried the identical shape -- wantMask true, observed state=night, at phases 1273, 2665, 2679 and 3376, all early in the cycle. A genuine phase inversion is corrected once and then agrees; repeating at the same phase means either the corrective tap is not landing on the second HID device, or 'state=night' is observable while masked and the proxy is simply wrong. Both are unvalidated.",
+      "conclusion": "the mask-phase corrector must NOT be reused until the proxy and the corrective tap are each validated in isolation: confirm on retained frames that a masked frame never classifies as state=night, and confirm on device that a tap sent on the second HID device actually toggles the mask. Injecting unvalidated corrections into a live night is worse than not correcting, and this run is the evidence."
+    }
   }
 }
