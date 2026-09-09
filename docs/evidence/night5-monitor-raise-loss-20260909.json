@@ -1,0 +1,76 @@
+{
+  "schema": "device-attempt-v1",
+  "verdict": "MEASURED",
+  "claimLevel": "DEVICE_MEASURED",
+  "evidenceId": "night5-monitor-raise-loss-20260909",
+  "recordedAt": "2026-09-09",
+  "claim": "A corrector-free run of the device-proven Minus 3 recipe on Night 5 lost the monitor raise in two consecutive cycles, spent both 3.2 s wind holds pressing the office floor, emptied the music box before 1 AM, and was killed by the Marionette at ~60 s. The retained video shows the wind contact landing on the correct button when the monitor is up, and on the office when it is not. This is the first direct visual capture of the failure the model prices at 0.2% survival.",
+  "device": { "serial": "ZF525F5BH5", "build": "com.scottgames.fnaf2:2.0.7+26" },
+  "run": {
+    "evidenceDirectory": "artifacts/minus3-device-20260908/n5-modal-once-20260909",
+    "runId": "n5-modal-once-20260909",
+    "experiment": "frame-light-night5-modal-measurement",
+    "startedUtc": "2026-09-09T05:09:43.107Z",
+    "armPauseMs": 648.328,
+    "status": "DEATH_OBSERVED_UNGRADED",
+    "terminal": { "code": 0, "label": "state=gameover", "elapsedMs": 67280.120, "frame": "frame-0023.png" },
+    "activeCorrection": false,
+    "resyncs": [],
+    "recipeEdgesSha256": "8883626783fd81308103cea36601b805ea6d607e1e4fdd05d0cc7969c03f7d42",
+    "edges": 774,
+    "scheduleNote": "the edge hash matches tools/device/minus3-frame-light.mjs EDGES_SHA256 exactly, so this was the unmodified schedule that cleared Nights 3 and 4. protocol.json's modelClaim field ('changed mask timings') is stale boilerplate and does not describe this run.",
+    "provenance": "run started by a concurrent Codex session; verified and completed here"
+  },
+  "killer": {
+    "value": "marionette",
+    "evidence": "artifacts/minus3-device-20260908/n5-modal-once-20260909/video.mp4 at t=68.8-69.5 s: the Puppet's white face with purple tear streaks, full-screen lunge. HUD reads Night 5 / 12 AM.",
+    "method": "frame extraction from the retained screenrecord, not a classifier",
+    "note": "the 5 s screencap cadence missed it: last live frame 58.60 s, first static 61.49 s"
+  },
+  "failureChain": {
+    "observed": [
+      { "nightS": 12.3, "monitor": "UP", "windContact": "on the Wind Up Music Box button, button lit", "winding": true },
+      { "nightS": 22.3, "monitor": "DOWN", "windContact": "on the office floor at ~(430,840)", "winding": false },
+      { "nightS": 32.3, "monitor": "DOWN", "windContact": "on the office floor", "winding": false },
+      { "nightS": 42.3, "monitor": "UP", "windContact": "on the button, button lit", "winding": true },
+      { "nightS": 52.3, "monitor": "UP", "windContact": "on the button, button lit", "winding": true }
+    ],
+    "reading": "the monitor raise tap at base+5300 failed in cycles k=1 and k=2 and succeeded before and after. The mask was OFF in the failed cycles (the office is plainly visible, not the mask overlay), so this is not the engine dropping input behind a stuck mask; the raise itself did not take.",
+    "recovery": "the monitor was up again by cycle k=3 with no corrective taps at all (resyncs is empty). The failure is intermittent and self-clearing, NOT a permanent toggle inversion.",
+    "modelAgreement": "artifacts/minus3-device-20260908/windloss.mjs, 3000 seeds: losing the wind hold entirely in three consecutive cycles takes Night 5 from 2636/3000 (87.9%) to 7/3000 (0.2%) with puppet=2976. The device died to the Puppet after two such cycles. Truncating holds rather than losing them costs zero wins, so this is the failure that matters."
+  },
+  "candidateMechanism": {
+    "hypothesis": "the monitor tap at (1780,1015) and the mask tap at (600,1015) sit inside the measured mandatory system gesture inset [0,1002][2400,1080] with navigation_mode=2, where an app cannot claim the touch",
+    "status": "PLAUSIBLE, NOT ESTABLISHED. The geometry is measured; that it swallowed these particular taps is not. No input trace was captured for this run.",
+    "againstIt": "the same coordinates work in most cycles and cleared Nights 3 and 4 outright",
+    "test": "capture a full-night Perfetto input trace (drop the sched data source so the buffer covers 420 s) and check whether a missing monitor raise coincides with a missing or cancelled dispatch"
+  },
+  "fixIsNotACoordinateNudge": {
+    "measured": "the drawn mask bar spans game y 992-1050; the inset begins at y=1002, leaving ~10 px of the button clear of it",
+    "consequence": "the tap cannot be moved out of the gesture region while staying on the drawn button",
+    "options": [
+      "probe the true touch hitbox above the drawn bar, which may extend higher than the artwork",
+      "switch navigation_mode to 3-button to remove the inset, after verifying the game still renders at 2400x1080 and no coordinate shifts",
+      "detect and correct, which is what the runner's resync path does"
+    ]
+  },
+  "observerTool": {
+    "tool": "tools/device/night5-modal-observer.mjs",
+    "samples": 568,
+    "readErrors": 0,
+    "roundTripMs": { "p50": 73.9, "p95": 129.8, "max": 232.8 },
+    "finding": "cue.frame() carries a monitorUp classification, but it returned 'ambiguous-threshold' on the majority of samples and exactly one 'true' across 67 s of a schedule that holds the monitor up ~38% of the time. Several confident 'anchors-down' reads land inside windows where the plan requires the monitor UP, and the disagreement is present from the first monitored cycle.",
+    "limitation": "the classifier's own start record declares its model limitations as night-1-corpus, animation-unproven, blackout-unproven. It is not yet trustworthy enough to quantify a rate or to drive a corrector; it needs a Night 5 corpus."
+  },
+  "corruptArtifact": {
+    "file": "artifacts/minus3-device-20260908/n5-modal-once-20260909/evidence-video.mp4",
+    "symptom": "moov atom not found; unreadable by ffmpeg",
+    "cause": "a derivative clip that was never finalised",
+    "note": "the runner's own pull, video.mp4 (84.19 s), is intact and is the source of every frame cited here. The corrupt derivative is why the original session reported the death sequence as missing."
+  },
+  "openLimits": [
+    "n=1 for this failure chain; the two lost cycles are visually confirmed but their cause is not identified",
+    "no input trace for this run, so the gesture-inset mechanism is untested here",
+    "the monitorUp classifier is too weak to say how often the monitor was actually down"
+  ]
+}

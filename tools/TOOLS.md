@@ -500,6 +500,7 @@ instruments and produce no evidence about a run.
 
 | Tool | Kind | Purpose and interface |
 |---|---|---|
+| `tools/device/night5-modal-observer.mjs` | report | Passive dual-modality observer for a live night: samples `cue.frame()` and `cue.read()` at 300 ms and logs each with its own host timestamps, so FRAME and READ are never conflated into one instant. Injects no input, runs no classifier, and requests no correction; the runner may forward a `clock` message to anchor the HID stream. Measured round trip 73.9 ms p50 / 129.8 ms p95 over 568 samples. Safe to run unattended alongside a run. |
 | `tools/device/testdata/mock-adb-cue-helper.sh` | mock | Stands in for `adb` in the cue-helper regressions. |
 | `tools/device/testdata/mock-control-server.py` | mock | Protocol stand-in for the helper's control socket over the forward transport, field-for-field with the device's `CaptureService.buildSnapshot()`. |
 | `tools/device/testdata/make-title-fixture.py` | fixture builder | Synthesises title-screen frames and a matching model for `test-menu.sh`. Requires Pillow. |

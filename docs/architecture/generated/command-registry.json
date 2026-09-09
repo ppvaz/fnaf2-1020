@@ -2180,6 +2180,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/night5-modal-observer.mjs",
+      "invocation": "tools/device/night5-modal-observer.mjs",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/testdata/mock-adb-cue-helper.sh",
       "invocation": "tools/device/testdata/mock-adb-cue-helper.sh",
       "kind": "mock",

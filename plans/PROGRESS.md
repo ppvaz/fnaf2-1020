@@ -4789,3 +4789,47 @@ every cycle; the slice does not name the window.
 
 Evidence: `docs/evidence/night5-input-trace-20260909.json`.
 
+## 2026-09-09 — The monitor raise is what fails, and the Marionette collects
+
+A corrector-free run of the device-proven recipe (`n5-modal-once-20260909`,
+edge hash `8883626783fd…`, byte-identical to the schedule that cleared Nights 3
+and 4) died on Night 5 at 67.3 s. The retained video answers the question the
+last three sessions have been circling.
+
+Sampled at the middle of five consecutive wind holds:
+
+| night | monitor | where the wind contact landed |
+| ---: | --- | --- |
+| 12.3 s | UP | on the Wind Up Music Box button, lit |
+| 22.3 s | **DOWN** | on the office floor at ~(430,840) |
+| 32.3 s | **DOWN** | on the office floor |
+| 42.3 s | UP | on the button, lit |
+| 52.3 s | UP | on the button, lit |
+
+The mask was off in both failed cycles — the office is plainly visible, not the
+mask overlay — so this is not the engine dropping input behind a stuck mask. The
+monitor raise itself did not take, and it recovered by cycle 3 **with no
+corrective taps** (`resyncs: []`). Intermittent and self-clearing, not a
+permanent toggle inversion.
+
+Two lost wind holds emptied the box before 1 AM and the Marionette killed the
+run at ~60 s, recovered from the video at t=68.8–69.5 s. `windloss.mjs` at 3000
+seeds prices exactly this: losing the hold entirely in three consecutive cycles
+takes Night 5 from 2636/3000 to **7/3000 with puppet=2976**, while *truncating*
+holds costs zero wins. The failure that matters is a press that never lands.
+
+Candidate mechanism, measured but not established: the monitor tap (1780,1015)
+and mask tap (600,1015) sit inside the mandatory system gesture inset
+`[0,1002][2400,1080]`. It is not a coordinate nudge away — the drawn mask bar
+spans y 992–1050, leaving ~10 px clear of the inset. Fixing it needs a hitbox
+probe above the artwork, or 3-button navigation with the viewport re-verified.
+
+Also landed: `tools/device/night5-modal-observer.mjs`, a passive dual-modality
+observer (568 samples, 0 errors, round trip 73.9 ms p50 / 129.8 ms p95). Its
+`monitorUp` classification is `ambiguous-threshold` on most samples and returned
+exactly one `true` in 67 s of a schedule that holds the monitor up ~38% of the
+time; it declares its own model as night-1-corpus and is not yet fit to drive a
+corrector.
+
+Evidence: `docs/evidence/night5-monitor-raise-loss-20260909.json`.
+

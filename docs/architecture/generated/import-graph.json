@@ -1136,6 +1136,15 @@
       ]
     },
     {
+      "file": "tools/device/night5-modal-observer.mjs",
+      "imports": [
+        "../../apps/device/src/physical-ports.js",
+        "../../packages/adapters/src/transports/cue-helper.js",
+        "node:fs/promises",
+        "node:timers/promises"
+      ]
+    },
+    {
       "file": "tools/device/policy-artifact.mjs",
       "imports": [
         "./policy-equivalence.mjs",
