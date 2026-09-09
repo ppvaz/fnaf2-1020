@@ -224,7 +224,7 @@
     "howItWasCaught": "printing the distinct sim actions in the emitted queue: ['monitor','cam:11','cam:9','wind','light','mask'] -- no vent action exists in it."
   },
   "night5Conclusion": {
-    "attempts": 22,
+    "attempts": 23,
     "bestSurvival": "369.0 s of a 419.6 s night (Minus 3 frame-light, twice)",
     "provenScheduleDistribution": "six Night 5 runs on the proven Minus 3 timing: 369, 367, 202, 200, 195, 157 s",
     "whyRepetitionWillNotWin": "both best runs died at ~5 AM to the box, so the wall is not a tail. The operator watched the cause directly: a desync makes wind presses land while masked, where the engine drops every non-mask touch, so the box loses delivered wind rather than scheduled wind.",
@@ -298,6 +298,14 @@
         "separation": "across 60 frames of a full run the rule classifies 18 monitor-up at luma 35.9-43.5 and 42 monitor-down at 1.7-28.2. The gap between 28.2 and 35.9 is real, so the threshold sits in separation rather than in noise.",
         "consequence": "the caveat is discharged: the silent 305 s run was silent because no desync occurred, not because the detector could not fire. A detector that never fires and one that cannot fire no longer look the same here."
       }
+    },
+    "validatedCorrectorRun": {
+      "run": "artifacts/minus3-device-20260908/n5-validated",
+      "result": "died at 172.1 s with THREE corrections fired, inside the 157-202 s cluster.",
+      "whatWorked": "the detector. It fired only when the monitor was genuinely up at a phase the schedule wanted it down (phases 1688, 2314 and one more, luma 37-42, solidly inside the measured up band of 35.9-43.5), and it stayed silent for the whole of the previous 305 s run where no desync occurred. Detection and correction are both real.",
+      "whatDidNot": "the cadence. Detection runs on a ~5 s screencap-and-Python loop against a 10 s cycle whose wind window is only 3.2 s, so a desync is seen up to 5 s after it begins and the corrective tap almost always lands after the wind window it was meant to protect. Correcting once per cycle keeps the state right at the moment of correction but does not restore the wind the cycle already lost.",
+      "theFix": "the Cue Helper's native watchlist evaluates at detectorLatencyMs 29, two orders of magnitude faster than the screencap path, and the transport already carries the WATCH/READ vocabulary for it. Reading monitor state from the watchlist rather than from a captured PNG would give a correction cadence fast enough to protect a 3.2 s window. That is the concrete next build, and it needs no new calibration -- only the state this session proved is visible.",
+      "attempts": 23
     }
   }
 }
