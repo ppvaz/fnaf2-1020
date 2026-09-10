@@ -25,14 +25,14 @@ const request = {
     block('toy-simple', 100, [action('toy-simple-action', 'hold', 'wind', 100, { durationMs: 33 })]),
     block('toy-sweep', 300, [action('toy-sweep-action', 'sweep-slot', 'cam:11', 300,
       { selectMs: 33, settleMs: 17, lightMs: 33, requiresMonitorUp: true })]),
-    block('toy-hallraise', 500, [action('toy-hallraise-action', 'compound', 'hall', 500,
+    block('toy-hallraise', 500, [action('toy-hallraise-action', 'compound', 'hallLight', 500,
       { compound: 'hallraise', durationMs: 33, requiresMonitorUp: false, targetMonitorUp: true })]),
     block('toy-maskraise', 700, [action('toy-maskraise-action', 'compound', 'monitor', 700,
       { compound: 'maskraise', gapMs: 200, durationMs: 33, requiresMonitorUp: false, targetMonitorUp: true, targetMaskOn: false })]),
-    block('toy-camdrop', 940, [action('toy-camdrop-action', 'compound', 'light', 940,
+    block('toy-camdrop', 940, [action('toy-camdrop-action', 'compound', 'cameraFeedLight', 940,
       { compound: 'camdrop', leadMs: 10, durationMs: 33, tailMs: 10, requiresMonitorUp: true, targetMonitorUp: false })]),
-    block('toy-hallvent', 1050, [action('toy-hallvent-action', 'compound', 'hall', 1050,
-      { compound: 'hallvent', ventControl: 'ventR', durationMs: 33, requiresMonitorUp: false })]),
+    block('toy-hallvent', 1050, [action('toy-hallvent-action', 'compound', 'hallLight', 1050,
+      { compound: 'hallvent', ventControl: 'rightVentLight', durationMs: 33, requiresMonitorUp: false })]),
   ],
 };
 

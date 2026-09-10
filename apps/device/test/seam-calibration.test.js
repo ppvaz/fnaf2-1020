@@ -47,7 +47,7 @@ assert.throws(() => validateSeamSpec(spec, { ...profile, limits: { ...profile.li
 const block = seamBlock(spec, 267, 'fixture');
 assert.equal(block.steps[2].atMs - block.steps[1].atMs, 267);
 assert.equal(block.steps[0].durationMs, 17);
-assert.deepEqual(block.steps[2].controls, ['hall', 'monitor']);
+assert.deepEqual(block.steps[2].controls, ['hallLight', 'monitor']);
 
 // Equal units/domain labels are NOT proof of a shared clock epoch.
 const map = { schema: 'clock-map-v1', id: 'map-fixture', evidenceId: 'fixture-map-evidence',

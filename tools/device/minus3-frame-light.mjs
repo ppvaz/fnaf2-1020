@@ -21,6 +21,7 @@
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { Sim } from '@fnaf2-1020/core/mechanics';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 import { KNOBS0, schedule } from './minus-3-plan.mjs';
 
 /** Measured monitor DOWN -> mask DOWN gap on the winning runs. */
@@ -79,8 +80,11 @@ export function deviceEdges({ knobs = WIN_KNOBS, untilMs = 540000 } = {}) {
       const when = base + at;
       if (kind === 'tap') contact(when, camName(a), b);
       else if (kind === 'hold') contact(when, a, b);
-      else if (kind === 'hall') contact(when, 'hall', a);
-      else if (kind === 'camdrop') { contact(when, 'light', a + b + tail); contact(when + a, 'monitor', b); }
+      else if (kind === 'hall') contact(when, V.hallLight, a);
+      else if (kind === 'camdrop') {
+        contact(when, V.cameraFeedLight, a + b + tail);
+        contact(when + a, V.monitor, b);
+      }
       else throw new Error(`minus3 frame light: unhandled row ${kind}`);
     }
   };
@@ -92,7 +96,11 @@ export function deviceEdges({ knobs = WIN_KNOBS, untilMs = 540000 } = {}) {
 }
 
 export function edgesSha256(edges = deviceEdges()) {
-  const canonical = JSON.stringify(edges.map(e => [e.atMs, e.control, e.down]));
+  // Keep the evidence identity stable across this vocabulary-only rename:
+  // these aliases are the historical labels for the same measured contacts,
+  // not accepted device input names.
+  const historical = { [V.cameraFeedLight]: 'light', [V.hallLight]: 'hall' };
+  const canonical = JSON.stringify(edges.map(e => [e.atMs, historical[e.control] ?? e.control, e.down]));
   return createHash('sha256').update(canonical).digest('hex');
 }
 

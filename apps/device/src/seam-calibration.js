@@ -2,6 +2,7 @@
  * or video-derived execution epochs. The service owns the sole input writer;
  * this runner owns state gates and retains UNKNOWN acceptance explicitly. */
 import { stableHash, validateMeasurement } from '@fnaf2-1020/core/contracts';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 import { mapClockInterval } from '@fnaf2-1020/adapters';
 
 const fail = reason => { throw new Error(`seam calibration: ${reason}`); };
@@ -16,7 +17,7 @@ export function validateSeamSpec(input, profile) {
     'maxObservations', 'maxClockUncertaintyMs', 'rounds', 'gapsMs', 'startDelaysMs'];
   if (Object.keys(input).some(key => !keys.includes(key))) fail('unknown spec field');
   if (input.profileId !== profile.id) fail('profile mismatch');
-  if (!['hall', 'monitor', 'compound'].includes(input.probe)) fail('unknown probe');
+  if (![V.hallLight, V.monitor, 'compound'].includes(input.probe)) fail('unknown probe');
   const spec = structuredClone(input);
   for (const key of ['contactMs', 'probeContactMs', 'restoreContactMs']) integer(key, spec[key], 1, 1000);
   integer('maskOnMs', spec.maskOnMs, spec.contactMs + 1, 2000);
@@ -51,7 +52,7 @@ export function seamBlock(spec, gapMs, id) {
       { id: `${id}-mask-on`, atMs: 0, controls: ['mask'], durationMs: spec.contactMs },
       { id: `${id}-mask-off`, atMs: spec.maskOnMs, controls: ['mask'], durationMs: spec.contactMs },
       { id: `${id}-probe`, atMs: spec.maskOnMs + gapMs,
-        controls: spec.probe === 'compound' ? ['hall', 'monitor'] : [spec.probe], durationMs: spec.probeContactMs },
+        controls: spec.probe === 'compound' ? [V.hallLight, V.monitor] : [spec.probe], durationMs: spec.probeContactMs },
     ],
   };
 }

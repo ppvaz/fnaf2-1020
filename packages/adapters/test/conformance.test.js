@@ -19,7 +19,7 @@ const frame = new ScreencapSensor({ capture: () => new Uint8Array([0, 0, 0, 255]
 assert.equal(new CueHelperDetector({ read: () => ({ state: 'UNKNOWN', reason: 'helper-timeout' }) }).detect(frame).state, 'UNKNOWN');
 assert.deepEqual(new Clock({ name: 'simulator-frame', read: () => 7 }).now(), { clock: 'simulator-frame', value: 7 });
 assert.throws(() => resolveProfile({ schema: 'device-profile-v1', id: 'bad', targetBuild: 'x', actuator: 'fixture-hid', visualSensor: 'fixture-visual', visualDetector: 'fixture-visual', clock: 'device-monotonic-ms', calibrations: { visual: '' } }), /unbound calibration/);
-const controls = ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'];
+const controls = ['mask', 'monitor', 'cameraFeedLight', 'hallLight', 'wind', 'leftVentLight', 'rightVentLight', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'];
 const profile = {
   schema: 'device-profile-v1', id: 'compatibility-fixture', targetBuild: 'fixture',
   actuator: 'fixture-hid', visualSensor: 'fixture-visual', visualDetector: 'fixture-detector',
@@ -38,7 +38,7 @@ assert.equal(report([{ flags: 0, point: { x: 350, y: 615 } }])[7], 4,
   'single-contact release must consume the inactive second contact record');
 const lines = [];
 const hid = new HidWireTransport({ write: async line => lines.push(JSON.parse(line)), ready: async () => {}, sleep: async () => {} });
-await hid.send({ command: { action: { kind: 'press', control: 'light', durationMs: 17 }, source: { controller: 'test' } }, point: { x: 350, y: 615 } });
+await hid.send({ command: { action: { kind: 'press', control: 'cameraFeedLight', durationMs: 17 }, source: { controller: 'test' } }, point: { x: 900, y: 540 } });
 assert.equal(lines[0].command, 'register');
 assert.deepEqual(lines.filter(line => line.command === 'report').map(line => line.report[2]), [3, 0]);
 await hid.abort();

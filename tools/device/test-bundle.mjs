@@ -12,6 +12,7 @@ const expectFailure = (fn, message) => {
   try { fn(); } catch { failed = true; }
   check(failed, message);
 };
+const ARTIFACT_RUNNER = join(process.cwd(), 'tools/device/artifact-runner.mjs');
 
 const root = mkdtempSync(join(tmpdir(), 'fnaf2-device-bundle-'));
 try {
@@ -98,15 +99,15 @@ try {
   const minus3Actions = Object.values(minus3.compiled[0].cycles).flatMap(cycle =>
     cycle.blocks.flatMap(block => block.actions));
   check(minus3Actions.some(action => action.compound === 'hallvent' &&
-    action.control === 'hall' && action.ventControl === 'ventR'),
+    action.control === 'hallLight' && action.ventControl === 'rightVentLight'),
   'minus3 did not compile the hall/right-vent compound');
 
-  const output = execFileSync(join(process.cwd(), 'tools/device/trial.sh'),
-    ['--artifact', bundlePath, '--dry-run', '--night', '2'], { encoding: 'utf8' });
+  const output = execFileSync(process.execPath, [ARTIFACT_RUNNER,
+    '--artifact', bundlePath, '--dry-run', '--night', '2'], { encoding: 'utf8' });
   check(output.includes('artifact READY (dry-run)') && output.includes('night-2.plan'),
-    'trial.sh did not consume the exact artifact');
-  expectFailure(() => execFileSync(join(process.cwd(), 'tools/device/trial.sh'),
-    ['--artifact', bundlePath]), 'trial.sh allowed artifact live execution');
+    'artifact-runner did not consume the exact artifact');
+  expectFailure(() => execFileSync(process.execPath, [ARTIFACT_RUNNER,
+    '--artifact', bundlePath]), 'artifact-runner allowed artifact execution without a mode');
 
   const qualificationPath = join(root, 'qualification.json');
   writeFileSync(qualificationPath, JSON.stringify({ schema: 'qualification-v1',
@@ -115,7 +116,7 @@ try {
     sampleCount: 1, verdict: 'PASS' }) + '\n');
   let liveError = '';
   try {
-    execFileSync(join(process.cwd(), 'tools/device/trial.sh'), ['--artifact', bundlePath,
+    execFileSync(process.execPath, [ARTIFACT_RUNNER, '--artifact', bundlePath,
       '--live', '--confirm-live', '--qualification', qualificationPath], { encoding: 'utf8' });
   } catch (error) { liveError = `${error.stdout ?? ''}${error.stderr ?? ''}`; }
   check(liveError.includes('live artifact execution requires --executor MODULE'),
@@ -135,12 +136,12 @@ try {
       };
     }
   `);
-  const liveOutput = execFileSync(join(process.cwd(), 'tools/device/trial.sh'), ['--artifact', bundlePath,
+  const liveOutput = execFileSync(process.execPath, [ARTIFACT_RUNNER, '--artifact', bundlePath,
     '--live', '--confirm-live', '--qualification', qualificationPath, '--executor', executorModule], { encoding: 'utf8' });
   check(liveOutput.includes('artifact execution PASS') && liveOutput.includes('blocks='),
     'artifact live lane did not pass the explicit executor boundary');
 
-  console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and trial artifact dry-run pass');
+  console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and artifact runner pass');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

@@ -59,7 +59,7 @@ for (const [i, spacing] of SPACINGS.entries()) {
 // menu_select and confirms a night started before a report goes out, so this
 // asserts the stream contains no title tap at all -- the strongest form of the
 // property, since a reintroduced one would have to appear here.
-const menuTaps = lightPulses.filter(([, , , xy]) => xy !== key(COORDS.light));
+const menuTaps = lightPulses.filter(([, , , xy]) => xy !== key(COORDS.cameraFeedLight));
 check(menuTaps.map(([, , , xy]) => xy).join(' ') ===
   // monitor raise, then a CAM 11 park BEFORE the first sweep and one after each
   [COORDS.monitor, ...Array(SPACINGS.length + 1).fill(COORDS.cam11)].map(key).join(' '),
@@ -67,7 +67,7 @@ check(menuTaps.map(([, , , xy]) => xy).join(' ') ===
   'and after each, and must not select a night itself -- that is menu_select\'s job');
 check(!('sixth' in COORDS),
   'COORDS must not carry a title coordinate; menu.sh owns night selection');
-const litPulses = lightPulses.filter(([, , , xy]) => xy === key(COORDS.light));
+const litPulses = lightPulses.filter(([, , , xy]) => xy === key(COORDS.cameraFeedLight));
 check(litPulses.length === SPACINGS.length * 3,
   'the light must be pulsed once per selection, not held across the sweep');
 for (const [, , cam] of litPulses)
@@ -90,13 +90,15 @@ for (let s = 0; s < SPACINGS.length; s++) {
 }
 // The 10 ms lead stays reachable so recordings taken under it stay
 // reproducible, and it must still be the shorter pulse it always was.
-const led = stream([120], { lightLeadMs: 10, lightTailMs: 0 });
+const led = stream([120], { lightLeadMs: 10, lightTailMs: 0, contactMs: 100 });
 let lt = 0, ldown = null, ledPulses = [];
+const [leadLightX, leadLightY] = toRaw(COORDS.cameraFeedLight);
 for (const event of led) {
   if (event.command === 'delay') { lt += event.duration; continue; }
   if (event.command !== 'report') continue;
   const r = event.report.slice(2, 7);
   if ((r[0] >> 2) !== 0) continue;
+  if ((r[1] | (r[2] << 8)) !== leadLightX || (r[3] | (r[4] << 8)) !== leadLightY) continue;
   if ((r[0] & 1) !== 0) { if (ldown === null) ldown = lt; }
   else if (ldown !== null) { ledPulses.push(lt - ldown); ldown = null; }
 }
@@ -125,7 +127,7 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
     for (const r of recs) {
       const id = r[0] >> 2, down = (r[0] & 1) !== 0;
       const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
-      if (id === 0 && xy === key(COORDS.light)) {
+      if (id === 0 && xy === key(COORDS.cameraFeedLight)) {
         if (down && hLightDown === null) hLightDown = ht;
         if (!down && hLightDown !== null) { hLightSpan = ht - hLightDown; hLightDown = null; }
       } else if (id === 1 && down && wanted.includes(xy)) hSelections.push(xy);
@@ -148,7 +150,7 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
     for (const r of recs) {
       const id = r[0] >> 2, down = (r[0] & 1) !== 0;
       const xy = `${r[1] | (r[2] << 8)},${r[3] | (r[4] << 8)}`;
-      if (id === 0 && xy === key(COORDS.light) && !down) tLightUp = tt;
+      if (id === 0 && xy === key(COORDS.cameraFeedLight) && !down) tLightUp = tt;
       if (id === 1 && !down && wanted.includes(xy)) tLastSelUp = tt;
     }
   }
@@ -184,7 +186,7 @@ check(litMs <= budget, `a sweep must draw at most ${budget} ms of light, got ${l
     const camXY = key(COORDS[cam]);
     const selDown = events.find(e => e.down && e.xy === camXY);
     const selUp = events.find(e => !e.down && e.xy === camXY && e.t >= (selDown?.t ?? 0));
-    const lightDown = events.find(e => e.down && e.xy === key(COORDS.light) && e.t > (selUp?.t ?? 0));
+    const lightDown = events.find(e => e.down && e.xy === key(COORDS.cameraFeedLight) && e.t > (selUp?.t ?? 0));
     check(selDown && selUp && lightDown,
       `LIGHT_AFTER ${cam}: expected select-down, select-up, then a light-down`);
     check(lightDown.t > selUp.t,
@@ -199,8 +201,8 @@ console.log(`HID sweep probe checks passed (${SPACINGS.join('/')} ms spacings, $
 // sweeps. A frame walk must find zero light-coordinate presses in a dark sweep.
 {
   const isLight = r => r[2] % 2 === 1
-    && (r[3] | (r[4] << 8)) === toRaw(COORDS.light)[0]
-    && (r[5] | (r[6] << 8)) === toRaw(COORDS.light)[1];
+    && (r[3] | (r[4] << 8)) === toRaw(COORDS.cameraFeedLight)[0]
+    && (r[5] | (r[6] << 8)) === toRaw(COORDS.cameraFeedLight)[1];
   const camKeys = [COORDS.cam10, COORDS.cam4, COORDS.cam7].map(key);
   const isTargetSelDown = r => r[2] === 3
     && camKeys.includes(`${r[3] | (r[4] << 8)},${r[5] | (r[6] << 8)}`);

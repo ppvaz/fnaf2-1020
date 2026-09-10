@@ -56,7 +56,7 @@ assert.equal(liveProfile.limits.qualification, 'qualification-hid-mediaprojectio
 assert.equal(fastProfile.limits.dryRunOnly, true,
   'an unqualified timing candidate must remain dry-run only');
 for (const candidate of [liveProfile, fastProfile]) {
-  assert.notDeepEqual(candidate.controlMap.light, candidate.controlMap.hall,
+  assert.notDeepEqual(candidate.controlMap.cameraFeedLight, candidate.controlMap.hallLight,
     'camera light and office hall light must have distinct physical bindings');
   assert.doesNotThrow(() => composeDevice({ profile: candidate }));
 }

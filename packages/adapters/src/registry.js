@@ -3,6 +3,7 @@
  * profiles; controllers never branch on adapter names. CONTRACT:capability-v1.
  */
 import { validateCapability, validateProfile } from '@fnaf2-1020/core/contracts';
+import { DEVICE_CONTROL_NAMES } from '@fnaf2-1020/core/control';
 
 const freeze = value => Object.freeze(value);
 const deepFreeze = value => {
@@ -10,11 +11,14 @@ const deepFreeze = value => {
   for (const child of Object.values(value)) deepFreeze(child);
   return Object.freeze(value);
 };
+const cameras = Object.freeze(['cam:4', 'cam:7', 'cam:8', 'cam:9', 'cam:10', 'cam:11']);
+const deviceControls = Object.freeze([...DEVICE_CONTROL_NAMES, ...cameras]);
+const modelControls = Object.freeze(['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', ...cameras]);
 const capabilities = [
-  freeze({ schema: 'capability-v1', adapter: 'sim-actuator', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'simulator-frame', verification: 'internal', claimLevel: 'MODEL_ONLY', limitations: ['simulated plant only'] }),
-  freeze({ schema: 'capability-v1', adapter: 'fixture-hid', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'FIXTURE', limitations: ['no physical acceptance claim'] }),
-  freeze({ schema: 'capability-v1', adapter: 'adb-tap', actions: ['press', 'release'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['serialized host-mediated input', 'no multitouch'] }),
-  freeze({ schema: 'capability-v1', adapter: 'hid-multi', actions: ['press', 'release', 'hold', 'select'], controls: ['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR', 'cam:4', 'cam:7', 'cam:8', 'cam:9', 'cam:10', 'cam:11'], clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['requires profile calibration', 'send is not game acceptance'] }),
+  freeze({ schema: 'capability-v1', adapter: 'sim-actuator', actions: ['press', 'release', 'hold', 'select'], controls: modelControls, clock: 'simulator-frame', verification: 'internal', claimLevel: 'MODEL_ONLY', limitations: ['simulated plant only'] }),
+  freeze({ schema: 'capability-v1', adapter: 'fixture-hid', actions: ['press', 'release', 'hold', 'select'], controls: deviceControls.filter(control => control !== 'cam:8'), clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'FIXTURE', limitations: ['no physical acceptance claim'] }),
+  freeze({ schema: 'capability-v1', adapter: 'adb-tap', actions: ['press', 'release'], controls: deviceControls.filter(control => control !== 'cam:8'), clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['serialized host-mediated input', 'no multitouch'] }),
+  freeze({ schema: 'capability-v1', adapter: 'hid-multi', actions: ['press', 'release', 'hold', 'select'], controls: deviceControls, clock: 'device-monotonic-ms', verification: 'external', claimLevel: 'DEVICE_MEASURED', limitations: ['requires profile calibration', 'send is not game acceptance'] }),
   freeze({ schema: 'capability-v1', adapter: 'screencap', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['raw visual samples only'] }),
   freeze({ schema: 'capability-v1', adapter: 'mediaprojection', actions: [], controls: [], clock: 'device-monotonic-ms', format: 'rgba8888', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['requires MediaProjection permission and retained frame metadata'] }),
   freeze({ schema: 'capability-v1', adapter: 'a2dp-pcm', actions: [], controls: [], clock: 'audio-sample', format: 'pcm-s16le', verification: 'none', claimLevel: 'DEVICE_MEASURED', limitations: ['audio samples do not prove game state'] }),

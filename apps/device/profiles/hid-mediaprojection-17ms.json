@@ -18,17 +18,17 @@
   "controlMap": {
     "mask": {
       "x": 600,
-      "y": 1015
+      "y": 995
     },
     "monitor": {
       "x": 1780,
-      "y": 1015
+      "y": 995
     },
-    "light": {
-      "x": 350,
-      "y": 615
+    "cameraFeedLight": {
+      "x": 900,
+      "y": 540
     },
-    "hall": {
+    "hallLight": {
       "x": 1200,
       "y": 540
     },
@@ -36,11 +36,11 @@
       "x": 500,
       "y": 888
     },
-    "ventL": {
+    "leftVentLight": {
       "x": 350,
       "y": 615
     },
-    "ventR": {
+    "rightVentLight": {
       "x": 2050,
       "y": 615
     },

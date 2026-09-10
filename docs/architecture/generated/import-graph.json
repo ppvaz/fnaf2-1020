@@ -15,6 +15,7 @@
         "./artifact-executor.js",
         "./device-local-executor.js",
         "@fnaf2-1020/adapters",
+        "@fnaf2-1020/core/control",
         "node:child_process",
         "node:crypto",
         "node:fs/promises",
@@ -24,7 +25,8 @@
     {
       "file": "apps/device/src/artifact-executor.js",
       "imports": [
-        "@fnaf2-1020/core/contracts"
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control"
       ]
     },
     {
@@ -201,7 +203,8 @@
       "file": "apps/device/src/seam-calibration.js",
       "imports": [
         "@fnaf2-1020/adapters",
-        "@fnaf2-1020/core/contracts"
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control"
       ]
     },
     {
@@ -211,6 +214,7 @@
         "./seam-calibration.js",
         "@fnaf2-1020/adapters/registry",
         "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control",
         "@fnaf2-1020/runtime",
         "node:crypto",
         "node:fs/promises",
@@ -502,7 +506,8 @@
     {
       "file": "packages/adapters/src/registry.js",
       "imports": [
-        "@fnaf2-1020/core/contracts"
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control"
       ]
     },
     {
@@ -545,6 +550,12 @@
       ]
     },
     {
+      "file": "packages/core/src/contracts/index.js",
+      "imports": [
+        "../control/vocabulary.js"
+      ]
+    },
+    {
       "file": "packages/core/src/control/controller.js",
       "imports": [
         "../mechanics/config.js",
@@ -584,7 +595,8 @@
         "./night-policy.js",
         "./observation-language.js",
         "./policy-ir.js",
-        "./ports.js"
+        "./ports.js",
+        "./vocabulary.js"
       ]
     },
     {
@@ -973,6 +985,7 @@
       "file": "tools/device/artifact-commands.mjs",
       "imports": [
         "./recipe.mjs",
+        "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -996,6 +1009,7 @@
         "./minus-toys-plan.mjs",
         "./recipe.mjs",
         "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/control",
         "node:crypto",
         "node:fs",
         "node:path",
@@ -1130,6 +1144,7 @@
       "file": "tools/device/minus3-frame-light.mjs",
       "imports": [
         "./minus-3-plan.mjs",
+        "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "node:crypto",
         "node:url"
@@ -1359,6 +1374,8 @@
       "file": "tools/device/test-minus-toys-plan.mjs",
       "imports": [
         "./arm-verification.mjs",
+        "./artifact-commands.mjs",
+        "./bundle.mjs",
         "./minus-toys-plan.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:child_process",

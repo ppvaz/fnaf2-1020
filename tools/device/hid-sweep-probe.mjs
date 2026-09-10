@@ -44,7 +44,8 @@ export const toRaw = ([x, y]) => [Math.floor((1080 - y) * 20 / 9), Math.floor(x 
 // now covers every language rather than *.sh.
 export const COORDS = {
   monitor: [1780, 1015],
-  light: [350, 615],
+  // Official camera-feed flash: the cam-flash/hall-flash intersection point.
+  cameraFeedLight: [900, 540],
   cam10: [2045, 720],
   cam4: [1730, 710],
   cam7: [1775, 615],
@@ -130,7 +131,7 @@ export function stream(spacings, { readyMs = 7000,
         // which the game did not read.
         c0Down(COORDS[cam]); delay(selectMs); c0Up(COORDS[cam]); // select Click -> viewing = N
         delay(17);                                              // one frame to settle
-        c0Down(COORDS.light); delay(contactMs); c0Up(COORDS.light);
+        c0Down(COORDS.cameraFeedLight); delay(contactMs); c0Up(COORDS.cameraFeedLight);
         delay(Math.max(1, spacing - selectMs - 17 - contactMs));
         continue;
       }
@@ -144,14 +145,14 @@ export function stream(spacings, { readyMs = 7000,
       // `viewing == lastCam` and "light held" never coincide -- which is
       // exactly the CAM 07 dark-last symptom the c33 probe showed.
       if (heldLight) {
-        report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
+        report([...record(0x03, COORDS.cameraFeedLight), ...record(0x07, COORDS[cam])]);
         delay(contactMs);
         if (k === cams.length - 1) {
-          report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]); // cam up, light HELD
+          report([...record(0x03, COORDS.cameraFeedLight), ...record(0x04, COORDS[cam])]); // cam up, light HELD
           delay(lightTailMs);
-          report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);                // light up alone
+          report([...record(0x00, COORDS.cameraFeedLight), 0, 0, 0, 0, 0]);                // light up alone
         } else {
-          report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]);
+          report([...record(0x03, COORDS.cameraFeedLight), ...record(0x04, COORDS[cam])]);
         }
         delay(Math.max(1, spacing - contactMs));
         continue;
@@ -162,10 +163,10 @@ export function stream(spacings, { readyMs = 7000,
       // zero lead for that reason and this defaults to it; the old 10 ms form
       // is kept reachable so the recordings taken under it stay reproducible.
       if (lightLeadMs > 0) {
-        report([...record(0x00, COORDS.light), ...record(0x07, COORDS[cam])]);
+        report([...record(0x00, COORDS.cameraFeedLight), ...record(0x07, COORDS[cam])]);
         delay(lightLeadMs);
       }
-      report([...record(0x03, COORDS.light), ...record(0x07, COORDS[cam])]);
+      report([...record(0x03, COORDS.cameraFeedLight), ...record(0x07, COORDS[cam])]);
       delay(contactMs - lightLeadMs);
       if (k === cams.length - 1 && lightTailMs > 0) {
         // Same lesson as HELD_LIGHT: on cameras 1..n-1 the NEXT select's
@@ -173,11 +174,11 @@ export function stream(spacings, { readyMs = 7000,
         // set `viewing`, so they light for free. The last camera has no next
         // select -- so release the SELECT here (Click completes, viewing = N)
         // and hold the light `lightTailMs` longer before lifting it.
-        report([...record(0x03, COORDS.light), ...record(0x04, COORDS[cam])]); // select up, light held
+        report([...record(0x03, COORDS.cameraFeedLight), ...record(0x04, COORDS[cam])]); // select up, light held
         delay(lightTailMs);
-        report([...record(0x00, COORDS.light), 0, 0, 0, 0, 0]);                // light up alone
+        report([...record(0x00, COORDS.cameraFeedLight), 0, 0, 0, 0, 0]);                // light up alone
       } else {
-        report([...record(0x00, COORDS.light), ...record(0x04, COORDS[cam])]);
+        report([...record(0x00, COORDS.cameraFeedLight), ...record(0x04, COORDS[cam])]);
       }
       delay(Math.max(1, spacing - contactMs));
     }

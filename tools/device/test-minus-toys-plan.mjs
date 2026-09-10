@@ -2,24 +2,26 @@
 //
 // minus-toys-plan.mjs is the device half of plan 02 package 2a: it ports the
 // engine-verified glitch-based Minus Toys loop (tools/minustoystest.mjs) into
-// the file format trial.sh's on-phone interpreter reads, and trial.sh runs its
-// `--gate` before its first adb command exactly as it runs human-gate.mjs for
-// Minus 7. This checks three things that can each go wrong silently:
+// the modern semantic artifact plan, whose bundle compiler and device
+// executor own the physical handoff. This checks three things that can each
+// go wrong silently:
 //
 //  1. the ported schedule still clears the night in the exact model, with the
 //     split actually armed (splitAt >= 0) and the no-split control still losing;
-//  2. the emitted plan is shaped the way the interpreter expects -- policy and
-//     night headers, the two named cycles, columns in the right order;
-//  3. every instruction kind and control the plan names is one the interpreter
-//     actually implements. A `hold light` row the plan interpreter has no
-//     `light` control for would abort the run at exit 47 on the phone; a plan
-//     control this test parses from the shipped source cannot drift from it.
+//  2. the emitted plan is shaped the way the artifact parser expects -- policy
+//     and night headers, the two named cycles, columns in the right order;
+//  3. every instruction kind and control the plan names compiles to the
+//     canonical device vocabulary. A cameraFeedLight row names the physical
+//     camera flash explicitly; the simulator maps it to its context-dependent
+//     action.
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { OPENING, LOOP, KNOBS0, build, replay, emitPlan, schedule, maskWindows, phaseScan } from './minus-toys-plan.mjs';
 import { DOUBLE_GLITCH_CAMERA_PAIRS } from './arm-verification.mjs';
+import { parsePlan } from './bundle.mjs';
+import { compileArtifactPlans } from './artifact-commands.mjs';
 import * as C from '@fnaf2-1020/core/mechanics';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -108,7 +110,7 @@ check(controlWins === 0,
 check(controlArmed === 0,
   `the no-split control reported the split armed ${controlArmed} times`);
 
-// The CLI entry point trial.sh actually calls: `--gate` exits 0, plain emits.
+// The CLI entry point uses the same gate before emitting a bundle plan.
 for (const night of ['2', '7']) {
   execFileSync('node', [join(here, 'minus-toys-plan.mjs'), `--night=${night}`, '--gate'],
     { stdio: 'ignore' });
@@ -141,9 +143,9 @@ for (const night of ['2', '7']) {
   ]), `the minimal plan has no CAM 09 proof visit then exact 5:08 AM monitor-down: ${JSON.stringify(m.finish)}`);
 
   const audioGated = build({ preventiveVentLight: false });
-  check(!audioGated.loop.some(row => row[2] === 'ventl'),
+  check(!audioGated.loop.some(row => row[2] === 'cameraFeedLight'),
     'the audio-gated observation variant removes the preventive vent light');
-  check(build().loop.some(row => row[2] === 'ventl'),
+  check(build().loop.some(row => row[2] === 'cameraFeedLight'),
     'the shipped standard schedule retains its preventive vent light');
   const queued = schedule({ opening: m.opening, loop: m.loop, finish: m.finish,
     periodMs: 5000, loopStartMs: 140000, untilMs: 360000 });
@@ -241,35 +243,26 @@ check(
 
 // --- 3. every kind and control the plan names is implemented -----------------
 
-// Parsed from the shipped interpreter, never restated here: a copied list is a
-// second source that drifts. `plan_step` names the kinds; `plan_control_xy`
-// (in 10-minus7-sweep.sh) names the tap/hold controls.
-const interp = readFileSync(join(here, 'trial', '11-plan-interpreter.sh'), 'utf8');
-const sweep = readFileSync(join(here, 'trial', '10-minus7-sweep.sh'), 'utf8');
-
-const stepBody = interp.slice(interp.indexOf('plan_step() {'), interp.indexOf('plan_span() {'));
-const KINDS = new Set(
-  [...stepBody.matchAll(/^\s{4}([a-z]+)\)$/gm)].map(m => m[1]));
-check(KINDS.has('camdrop') && KINDS.has('tap') && KINDS.has('hold') && KINDS.has('hall'),
-  `plan_step is missing a kind this plan needs; it knows: ${[...KINDS].join(', ')}`);
-
-const xyBody = sweep.slice(sweep.indexOf('plan_control_xy() {'));
-const CONTROLS = new Set(
-  [...xyBody.slice(0, xyBody.indexOf('\n}')).matchAll(/^\s{4}([a-z0-9]+)\)/gm)].map(m => m[1]));
-
-for (const [, kind, a] of [...OPENING, ...LOOP]) {
-  check(KINDS.has(kind), `the plan uses instruction "${kind}", which plan_step cannot execute`);
-  if (kind === 'tap' || kind === 'hold')
-    check(CONTROLS.has(a),
-      `the plan taps/holds control "${a}", which plan_control_xy does not resolve ` +
-      `(it knows: ${[...CONTROLS].join(', ')})`);
-}
-
-// plan_span must count camdrop's full light hold, or the macro seam wait is
-// written early and the next interval's first press lands on the light's tail.
-const spanBody = interp.slice(interp.indexOf('plan_span() {'), interp.indexOf('plan_emit() {'));
-check(/camdrop\)\s+PLAN_SPAN=\$\(\(pn_a \+ pn_b \+ pn_c\)\)/.test(spanBody),
-  'plan_span does not sum camdrop as light-lead + monitor-contact + light-tail');
+// Parse and compile through the active modern handoff. The profile is read
+// from the checked-in fixture so this test checks the same canonical bindings
+// that a bundle will carry to the device executor.
+const profile = JSON.parse(readFileSync(
+  join(here, '../../apps/device/profiles/fixture-hid-screencap.json'), 'utf8'));
+const parsed = parsePlan(plan, { strategy: 'minus-toys', night: 7, profile });
+const compiled = compileArtifactPlans(
+  [{ text: plan, policy: 'minus-toys', night: 7 }], parsePlan, profile)[0];
+const actions = Object.values(compiled.cycles).flatMap(cycle =>
+  cycle.blocks.flatMap(block => block.actions));
+check(parsed.cycles.opening.rows.some(row => row.kind === 'camdrop'),
+  'the parsed opening lost its camdrop compound');
+check(parsed.cycles.toys.rows.some(row => row.kind === 'hall'),
+  'the parsed toys loop lost its standalone hall row');
+check(actions.some(action => action.control === 'cameraFeedLight'),
+  'the artifact compiler did not emit cameraFeedLight');
+check(actions.some(action => action.control === 'hallLight'),
+  'the artifact compiler did not emit hallLight');
+check(actions.every(action => !['light', 'hall', 'ventL', 'ventR', 'ventl', 'ventr'].includes(action.control)),
+  'the modern artifact retained an ambiguous legacy control name');
 
 console.log(
   `minus toys device plan: nights 2 and 7 clear 200/200 + 100/100 worst with the ` +

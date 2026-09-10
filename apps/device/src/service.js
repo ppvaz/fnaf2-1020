@@ -10,11 +10,12 @@ import { join } from 'node:path';
 import { dispatchTrajectory, SafetySupervisor, makeEvent, makeManifest, validateQualification } from '@fnaf2-1020/runtime';
 import { resolveProfile } from '@fnaf2-1020/adapters/registry';
 import { stableHash, validateActuationResult } from '@fnaf2-1020/core/contracts';
+import { CONTROL_VOCABULARY as V, DEVICE_CONTROL_NAMES } from '@fnaf2-1020/core/control';
 import { validateExecutorRequest } from './artifact-executor.js';
 import { SeamCalibrationRunner, parseSeamActuatorQualification } from './seam-calibration.js';
 
-const controls = Object.freeze(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR',
-  'cam:10', 'cam:4', 'cam:7', 'cam:9', 'cam:11', 'wind']);
+const controls = Object.freeze([...DEVICE_CONTROL_NAMES,
+  'cam:10', 'cam:4', 'cam:7', 'cam:9', 'cam:11']);
 
 const cameraControl = control => typeof control === 'string' && control.startsWith('cam:');
 
@@ -28,8 +29,8 @@ export function requiredMonitorState(command) {
   const declared = command?.source?.requiresMonitorUp;
   if (typeof declared === 'boolean') return declared;
   const control = command?.action?.control;
-  if (cameraControl(control) || control === 'wind' || control === 'light') return true;
-  if (control === 'mask' || control === 'hall' || control === 'ventL' || control === 'ventR') return false;
+  if (cameraControl(control) || control === V.wind || control === V.cameraFeedLight) return true;
+  if (control === V.mask || control === V.hallLight || control === V.leftVentLight || control === V.rightVentLight) return false;
   return null;
 }
 
@@ -168,7 +169,7 @@ export class DeviceControlService {
     const at = this.now();
     return {
       schema: 'control-command-v1', id,
-      action: { kind: 'press', control: 'monitor' },
+      action: { kind: 'press', control: V.monitor },
       requestedAt: { clock: 'device-monotonic-ms', value: at },
       deadline: { clock: 'device-monotonic-ms', value: at + 1000 },
       source: { controller: 'artifact-state-controller', targetMonitorUp: target,
@@ -224,7 +225,7 @@ export class DeviceControlService {
       for (const command of commands) {
         const required = requiredMonitorState(command);
         if (required !== null) await this.#ensureMonitorInternal(required, { id: `${command.id}-precondition` });
-        if (command.action.control === 'monitor') {
+        if (command.action.control === V.monitor) {
           const target = command.source?.targetMonitorUp;
           if (typeof target !== 'boolean') throw new Error('artifact monitor action has no target state');
           results.push(await this.#ensureMonitorInternal(target, { id: command.id }));

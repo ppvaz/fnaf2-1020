@@ -3,6 +3,7 @@
  * This module has no Node, DOM, filesystem, subprocess, network, or wall-clock
  * dependency. CONTRACT:semantic-control-v1 CONTRACT:measurement-v1.
  */
+import { DEVICE_CONTROL_NAMES } from '../control/vocabulary.js';
 
 export const CONTRACTS = Object.freeze([
   'plant-model-v1', 'semantic-control-v1', 'policy-program-v1', 'controller-v1',
@@ -45,6 +46,10 @@ const requiredString = (value, label) => {
 };
 const fail = message => { throw new TypeError(`contract: ${message}`); };
 
+const MODEL_COMPATIBILITY_CONTROLS = Object.freeze([
+  'light', 'hall', 'ventL', 'ventR',
+]);
+
 export function validateClockRef(value, label = 'clock') {
   if (!isRecord(value) || !CLOCKS.includes(value.clock) || !finite(value.value) || value.value < 0)
     fail(`${label} must name a non-negative value in a declared clock domain`);
@@ -53,7 +58,7 @@ export function validateClockRef(value, label = 'clock') {
 
 function validateControl(control) {
   if (typeof control !== 'string' ||
-      !(['mask', 'monitor', 'light', 'hall', 'wind', 'ventL', 'ventR'].includes(control) ||
+      !([...DEVICE_CONTROL_NAMES, ...MODEL_COMPATIBILITY_CONTROLS].includes(control) ||
        /^cam:(?:[0-9]|1[0-2])$/.test(control)))
     fail('action.control must be semantic and must not contain coordinates or transport text');
   return control;

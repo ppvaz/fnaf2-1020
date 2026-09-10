@@ -8,12 +8,13 @@
  * CONTRACT:device-executor-v1.
  */
 import { stableHash } from '@fnaf2-1020/core/contracts';
+import { CONTROL_VOCABULARY as V, DEVICE_CONTROL_NAMES } from '@fnaf2-1020/core/control';
 
 export const DEVICE_EXECUTOR_SCHEMA = 'device-executor-v1';
 export const ARTIFACT_ACTION_SCHEMA = 'artifact-action-v1';
 export const ARTIFACT_BLOCK_SCHEMA = 'artifact-action-block-v1';
 
-const controls = new Set(['monitor', 'mask', 'light', 'hall', 'ventL', 'ventR', 'wind',
+const controls = new Set([...DEVICE_CONTROL_NAMES,
   'cam:4', 'cam:5', 'cam:7', 'cam:8', 'cam:9', 'cam:10', 'cam:11']);
 const compounds = new Set(['hallvent', 'hallraise', 'maskraise', 'camdrop']);
 const actionKinds = new Set(['ensure', 'tap', 'press', 'hold', 'compound', 'sweep-slot', 'observe-left']);
@@ -92,11 +93,13 @@ function validateAction(action, path) {
     if (!controls.has(action.control)) fail(`${path}.control is unsupported`);
     if (typeof action.requiresMonitorUp !== 'boolean') fail(`${path}.requiresMonitorUp is required`);
     if (action.compound === 'hallvent') {
-      if (action.control !== 'hall') fail(`${path}.hallvent control must be hall`);
-      if (action.ventControl !== 'ventR') fail(`${path}.hallvent ventControl must be ventR`);
+      if (action.control !== V.hallLight) fail(`${path}.hallvent control must be ${V.hallLight}`);
+      if (action.ventControl !== V.rightVentLight) fail(`${path}.hallvent ventControl must be ${V.rightVentLight}`);
     }
-    if (action.compound === 'camdrop' && action.control !== 'light') fail(`${path}.camdrop control must be light`);
-    if (action.compound === 'hallraise' && action.control !== 'hall') fail(`${path}.hallraise control must be hall`);
+    if (action.compound === 'camdrop' && action.control !== V.cameraFeedLight)
+      fail(`${path}.camdrop control must be ${V.cameraFeedLight}`);
+    if (action.compound === 'hallraise' && action.control !== V.hallLight)
+      fail(`${path}.hallraise control must be ${V.hallLight}`);
     if (action.targetMonitorUp !== undefined && typeof action.targetMonitorUp !== 'boolean') fail(`${path}.targetMonitorUp must be boolean`);
     if (action.targetMaskOn !== undefined && typeof action.targetMaskOn !== 'boolean') fail(`${path}.targetMaskOn must be boolean`);
     for (const key of ['durationMs', 'gapMs', 'leadMs', 'tailMs'])
@@ -104,10 +107,10 @@ function validateAction(action, path) {
   } else {
     if (!controls.has(action.control)) fail(`${path}.control is unsupported`);
     if (action.kind === 'ensure') {
-      if (action.control !== 'monitor' || typeof action.targetMonitorUp !== 'boolean')
+      if (action.control !== V.monitor || typeof action.targetMonitorUp !== 'boolean')
         fail(`${path} must be an explicit monitor target`);
-    } else if (action.kind === 'observe-left' && action.control !== 'ventL') {
-      fail(`${path}.observe-left control must be ventL`);
+    } else if (action.kind === 'observe-left' && action.control !== V.leftVentLight) {
+      fail(`${path}.observe-left control must be ${V.leftVentLight}`);
     }
     if (action.requiresMonitorUp !== undefined && typeof action.requiresMonitorUp !== 'boolean')
       fail(`${path}.requiresMonitorUp must be boolean`);
@@ -258,7 +261,7 @@ export function validateExecutorRequest(request) {
       .flatMap(block => block.actions.map(action => ({ action,
         atMs: block.cycle === 'opening' || block.cycle === 'finish'
           ? action.atMs : loopStart + action.atMs })))
-      .filter(item => item.action.control === 'wind')
+      .filter(item => item.action.control === V.wind)
       .map(item => item.atMs)
       .sort((a, b) => a - b)[0];
     if (firstWind === undefined)

@@ -4,6 +4,7 @@
 // a target state rather than a parity toggle.
 
 import * as C from '@fnaf2-1020/core/mechanics';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 import { RAISE_MARGIN_MS } from './recipe.mjs';
 
 // [SOURCED] The engine animates the monitor and the mask, and drops input that
@@ -36,7 +37,7 @@ const MONITOR_READY_WIND_MS = 434;
 
 const camera = control => /^cam(?:[0-9]|1[0-2])$/.test(control);
 const semantic = control => camera(control) ? `cam:${Number(control.slice(3))}`
-  : control === 'ventl' ? 'ventL' : control === 'ventr' ? 'ventR' : control;
+  : control === 'ventl' ? V.leftVentLight : control === 'ventr' ? V.rightVentLight : control;
 
 function action(cycle, row, index, fields) {
   return Object.freeze({ schema: 'artifact-action-v1', id: `${cycle}-${index}`,
@@ -94,16 +95,17 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   for (const [rowIndex, row] of rows.entries()) {
     const id = rowIndex + 1;
     const actions = [];
-    const isMaskRow = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === 'mask';
+    const isMaskRow = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === V.mask;
     if (!isMaskRow && row.at - maskOffAt < MASK_ANIM_OFF_MS)
       throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
         `${MASK_ANIM_OFF_MS} ms mask-off animation from +${maskOffAt} ms, where the engine drops it`);
     // rule: a press that needs the monitor up must clear the raise animation
     const needsMonitorUp = row.kind === 'camdrop' || row.kind === 'sweep' ||
       ((row.kind === 'tap' || row.kind === 'hold') &&
-        (camera(row.control) || semantic(row.control) === 'wind'));
+        (camera(row.control) || semantic(row.control) === V.wind ||
+          semantic(row.control) === V.cameraFeedLight));
     if (needsMonitorUp) {
-      const isWind = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === 'wind';
+      const isWind = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === V.wind;
       const readyMs = isWind ? MONITOR_READY_WIND_MS : MONITOR_READY_CAMERA_MS;
       if (row.at - monitorUpAt < readyMs)
         throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms is within ${readyMs} ms of the ` +
@@ -120,41 +122,41 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     // (2026-09-09).
     if (row.kind === 'tap' || row.kind === 'hold') {
       const control = semantic(row.control);
-      if (control === 'monitor') {
+      if (control === V.monitor) {
         state.monitorUp = !state.monitorUp;
         if (state.monitorUp) monitorUpAt = row.at;
         if (!state.monitorUp) { monitorDownAt = row.at; state.camera = null; }
         actions.push(action(cycle, row, id, { kind: 'ensure', control,
           targetMonitorUp: state.monitorUp, durationMs: row.duration }));
-      } else if (control === 'mask') {
+      } else if (control === V.mask) {
         if (state.monitorUp) throw new TypeError(`${cycle}: mask toggle requires monitor down`);
         state.maskOn = !state.maskOn;
         if (!state.maskOn) maskOffAt = row.at;
         actions.push(action(cycle, row, id, { kind: 'press', control,
           requiresMonitorUp: false, targetMaskOn: state.maskOn, durationMs: row.duration }));
       } else {
-        const needsUp = camera(row.control) || control === 'wind';
+        const needsUp = camera(row.control) || control === V.wind || control === V.cameraFeedLight;
         actions.push(action(cycle, row, id, { kind: row.kind, control,
           requiresMonitorUp: needsUp ? true : undefined, durationMs: row.duration }));
       }
     } else if (row.kind === 'hall') {
-      actions.push(action(cycle, row, id, { kind: 'hold', control: 'hall',
+      actions.push(action(cycle, row, id, { kind: 'hold', control: V.hallLight,
         requiresMonitorUp: false, durationMs: row.duration }));
     } else if (row.kind === 'hallvent') {
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'hallvent',
-        control: 'hall', ventControl: 'ventR', requiresMonitorUp: false,
+        control: V.hallLight, ventControl: V.rightVentLight, requiresMonitorUp: false,
         durationMs: row.duration }));
     } else if (row.kind === 'hallraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: hallraise starts with monitor up`);
       state.monitorUp = true;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'hallraise',
-        control: 'hall', requiresMonitorUp: false, targetMonitorUp: true,
+        control: V.hallLight, requiresMonitorUp: false, targetMonitorUp: true,
         durationMs: row.duration }));
     } else if (row.kind === 'maskraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: maskraise starts with monitor up`);
       state.maskOn = false; state.monitorUp = true;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'maskraise',
-        control: row.mode === 'hall' ? 'hall' : 'monitor', requiresMonitorUp: false,
+        control: row.mode === 'hall' ? V.hallLight : V.monitor, requiresMonitorUp: false,
         targetMaskOn: false, targetMonitorUp: true, gapMs: row.gap,
         durationMs: row.duration }));
     } else if (row.kind === 'sweep') {
@@ -170,7 +172,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     } else if (row.kind === 'read') {
       if (state.monitorUp) throw new TypeError(`${cycle}: vent read requires monitor down`);
       state.maskOn = true;
-      actions.push(action(cycle, row, id, { kind: 'observe-left', control: 'ventL',
+      actions.push(action(cycle, row, id, { kind: 'observe-left', control: V.leftVentLight,
         requiresMonitorUp: false, durationMs: row.duration, maskGapMs: row.gap,
         targetMaskOn: true }));
     } else if (row.kind === 'camdrop') {
@@ -178,7 +180,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
       state.monitorUp = false;
       monitorDownAt = row.at + row.lead;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'camdrop',
-        control: 'light', requiresMonitorUp: true, targetMonitorUp: false,
+        control: V.cameraFeedLight, requiresMonitorUp: true, targetMonitorUp: false,
         leadMs: row.lead, durationMs: row.contact, tailMs: row.tail }));
     } else {
       throw new TypeError(`${cycle}: unsupported artifact row ${row.kind}`);

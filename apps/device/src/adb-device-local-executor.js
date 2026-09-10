@@ -15,6 +15,7 @@ import { promisify } from 'node:util';
 import { HID_DESCRIPTOR, HID_FEATURE_REPORTS, report } from '@fnaf2-1020/adapters';
 import { validateExecutorRequest } from './artifact-executor.js';
 import { expandNightBlocks } from './device-local-executor.js';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 
 const HID_ID = 92;
 const HID_NAME = 'FNAF Timed Touch';
@@ -147,33 +148,33 @@ function addAction(events, request, action) {
     const maskGap = action.maskGapMs ?? 0;
     const released = Math.max(0, maskGap - duration);
     addDelay(events, released);
-    addSingle(events, request, 'mask', 33);
+    addSingle(events, request, V.mask, 33);
     return duration + released + 33;
   }
   if (action.kind === 'sweep-slot') {
     addSingle(events, request, action.control, action.selectMs);
     addDelay(events, action.settleMs);
-    addSingle(events, request, 'light', action.lightMs);
+    addSingle(events, request, V.cameraFeedLight, action.lightMs);
     return action.selectMs + action.settleMs + action.lightMs;
   }
   if (action.kind === 'compound' && action.compound === 'hallvent') {
-    addTwoContact(events, request, 'hall', 'ventR', duration);
+    addTwoContact(events, request, V.hallLight, V.rightVentLight, duration);
     return duration;
   }
   if (action.kind === 'compound' && action.compound === 'hallraise') {
-    addTwoContact(events, request, 'hall', 'monitor', duration);
+    addTwoContact(events, request, V.hallLight, V.monitor, duration);
     return duration;
   }
   if (action.kind === 'compound' && action.compound === 'maskraise') {
-    addSingle(events, request, 'mask', 33);
+    addSingle(events, request, V.mask, 33);
     const gap = action.gapMs ?? 0;
     addDelay(events, Math.max(0, gap - 33));
-    addSingle(events, request, action.control === 'hall' ? 'hall' : 'monitor', duration);
+    addSingle(events, request, action.control === V.hallLight ? V.hallLight : V.monitor, duration);
     return gap + duration;
   }
   if (action.kind === 'compound' && action.compound === 'camdrop') {
-    const lightPoint = controlPoint(request, 'light');
-    const monitorPoint = controlPoint(request, 'monitor');
+    const lightPoint = controlPoint(request, V.cameraFeedLight);
+    const monitorPoint = controlPoint(request, V.monitor);
     const lead = action.leadMs ?? 0;
     // camdrop's monitor transition is a second contact. The light is kept
     // active over the monitor press and for its declared tail.
@@ -328,7 +329,7 @@ function compileGateSegments(request, actions, originAtMs) {
 
 function compileArmSegments(request, actions, register, plan) {
   const firstWind = actions.find(({ action }) =>
-    action.control === 'wind');
+    action.control === V.wind);
   if (!firstWind) fail('arm-verified schedule has no wind action');
 
   // The first HID stream ends after the opening raise and waits for the host
@@ -367,7 +368,7 @@ function compileArmSegments(request, actions, register, plan) {
   // The corrective contact is the plan's own authored mask press, not a
   // coordinate invented for the corrector. A plan with no mask action cannot
   // be parity-corrected, and says so rather than pressing something else.
-  const maskAction = remainder.find(({ action }) => action.control === 'mask' &&
+  const maskAction = remainder.find(({ action }) => action.control === V.mask &&
     typeof action.targetMaskOn === 'boolean');
   const maskCorrection = maskAction
     ? compileActionEvents(request, [{ action: maskAction.action, atMs: 0 }]).events : null;
@@ -1465,8 +1466,8 @@ export class AdbDeviceLocalMachineExecutor {
         remotePid, remoteReady, remoteStart, remoteEpoch, remoteCapture, '1', String(cycles), 'hid-multi', '0', '-', '1',
         String(this.pilotOffsetMs), '-', String(this.deviceSpacingMs), String(this.contactMs),
         '0', '0', '0', '0', '0', '0', remoteKeep, remoteChecker, '-', remoteModel, '-', '0', '0',
-        ...point('mute', { x: 545, y: 78 }).split(' '), ...point('monitor').split(' '), ...point('mask').split(' '),
-        ...point('light').split(' '), ...point('hall').split(' '), ...point('wind').split(' '),
+        ...point('mute', { x: 545, y: 78 }).split(' '), ...point(V.monitor).split(' '), ...point(V.mask).split(' '),
+        ...point(V.cameraFeedLight).split(' '), ...point(V.hallLight).split(' '), ...point(V.wind).split(' '),
         ...point('cam:10').split(' '), ...point('cam:4').split(' '), ...point('cam:7').split(' '),
         ...point('cam:9').split(' '), ...point('cam:11').split(' '), ...point('cam:5', { x: 1, y: 1 }).split(' '),
         this.cuePort === '-' ? '-' : String(this.cuePort), this.cueToken, remoteKeep,

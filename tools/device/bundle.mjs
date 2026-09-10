@@ -16,6 +16,7 @@ import { build as buildMinus7, devicePlan as emitMinus7Plan,
   idleUntilMs, replay as replayMinus7, MASK_RAISE_GAP_MS } from './recipe.mjs';
 import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
 import { canonicalJson, stableHash, validateProfile } from '@fnaf2-1020/core/contracts';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 
 export const WINNER_SCHEMA = 'winner-v1';
 export const BUNDLE_SCHEMA = 'device-bundle-v1';
@@ -26,7 +27,8 @@ const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..')
 const PROFILE_DIR = join(ROOT, 'apps/device/profiles');
 const MAX_REPLAY_SEEDS = 8;
 const CONTROL_NAMES = new Set([
-  'monitor', 'mask', 'wind', 'hall', 'ventl', 'ventr',
+  V.monitor, V.mask, V.wind, V.cameraFeedLight, V.hallLight,
+  V.leftVentLight, V.rightVentLight,
   'cam4', 'cam5', 'cam7', 'cam8', 'cam9', 'cam10', 'cam11',
 ]);
 const ROW_KINDS = new Set(['tap', 'hold', 'hall', 'hallvent', 'hallraise', 'maskraise', 'sweep', 'read', 'camdrop']);
@@ -184,22 +186,19 @@ function parseRow(line, cycle) {
 }
 
 function profileControlKey(control) {
-  if (control === 'ventl') return 'ventL';
-  if (control === 'ventr') return 'ventR';
   if (/^cam\d+$/.test(control)) return `cam:${control.slice(3)}`;
-  if (control === 'hall') return 'light';
   return control;
 }
 
 function assertProfileControls(row, profile, cycle) {
   if (!profile?.controlMap) fail('profile has no controlMap');
   const controls = row.kind === 'tap' || row.kind === 'hold' ? [row.control]
-    : row.kind === 'camdrop' ? ['light', 'monitor']
+    : row.kind === 'camdrop' ? [V.cameraFeedLight, V.monitor]
       : row.kind === 'sweep' ? row.cams.map(cam => `cam${cam.split(':')[0]}`)
-        : row.kind === 'read' ? ['ventl', 'mask', ...(row.hallAt === undefined ? [] : ['light'])]
-          : row.kind === 'hall' || row.kind === 'hallraise' ? ['hall']
-            : row.kind === 'hallvent' ? ['hall', 'ventr']
-            : row.kind === 'maskraise' ? ['mask', row.mode === 'hall' ? 'hall' : 'monitor'] : [];
+        : row.kind === 'read' ? [V.leftVentLight, V.mask, ...(row.hallAt === undefined ? [] : [V.hallLight])]
+          : row.kind === 'hall' || row.kind === 'hallraise' ? [V.hallLight]
+            : row.kind === 'hallvent' ? [V.hallLight, V.rightVentLight]
+              : row.kind === 'maskraise' ? [V.mask, row.mode === 'hall' ? V.hallLight : V.monitor] : [];
   for (const control of controls) {
     const key = profileControlKey(control);
     if (!Object.hasOwn(profile.controlMap, key)) fail(`${cycle} control ${control} is absent from profile.controlMap`);
@@ -310,7 +309,12 @@ function toysKnobs(input) {
   if (input === undefined || input === 'KNOBS0') return { ...TOYS_KNOBS };
   if (!isRecord(input)) fail('minus-toys knobs must be an object or KNOBS0');
   for (const key of Object.keys(input)) if (!Object.hasOwn(TOYS_KNOBS, key)) fail(`unknown minus-toys knob ${key}`);
-  return { ...TOYS_KNOBS, ...input };
+  const defaults = { ...TOYS_KNOBS };
+  // A newly introduced default must not silently change the policy identity of
+  // an older winner. Its emitted behavior still receives the default through
+  // this function, while an explicit field remains an opt-in policy change.
+  if (!Object.hasOwn(input, 'loopContactMs')) delete defaults.loopContactMs;
+  return { ...defaults, ...input };
 }
 
 function minus3Knobs(input) {

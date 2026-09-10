@@ -13,8 +13,8 @@
 //     is not dragged along with it (the default is what the 3000-seed story
 //     gate measures; the recipe is what the device ran);
 //  3. every control the recipe names is one the resolved profile can actuate,
-//     and the two hall-flash points stay distinct -- the winning run pressed
-//     `light` and `hall` at different measured coordinates, and collapsing them
+//     and the two flash points stay distinct -- the winning run pressed
+//     `cameraFeedLight` and `hallLight` at different measured coordinates, and collapsing them
 //     onto one control would silently actuate a different schedule.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -81,10 +81,10 @@ check(deviceEdges({ knobs: { ...WIN_KNOBS, windMs: WIN_KNOBS.windMs + 250 } }).l
   const used = [...new Set(edges.map(e => e.control))].sort();
   for (const control of used)
     check(map[control] !== undefined, `the recipe actuates ${control}, absent from the profile controlMap`);
-  check(used.includes('light') && used.includes('hall'),
-    'the recipe no longer presses both flash controls; the winning run pressed two distinct points');
-  check(JSON.stringify(map.light) !== JSON.stringify(map.hall),
-    'profile light and hall collapsed onto one point -- the winning schedule pressed them apart');
+  check(used.includes('cameraFeedLight') && used.includes('hallLight'),
+    'the recipe no longer presses both distinct flash controls');
+  check(JSON.stringify(map.cameraFeedLight) !== JSON.stringify(map.hallLight),
+    'profile cameraFeedLight and hallLight collapsed onto one point -- the winning schedule pressed them apart');
   const { clear } = winRows();
   check(clear.some(row => row[1] === 'hall'), 'the recipe clear cycle lost its hall-only contact');
 }
@@ -101,4 +101,4 @@ check(deviceEdges({ knobs: { ...WIN_KNOBS, windMs: WIN_KNOBS.windMs + 250 } }).l
 console.log(
   'minus3 frame light: recipe expands to the 774 edges that cleared Nights 3 and 4 ' +
   `(sha256 ${EDGES_SHA256.slice(0, 12)}), contacts are balanced, it is a five-field delta on ` +
-  'KNOBS0 with the shipped default untouched, and every control resolves with light/hall distinct');
+  'KNOBS0 with the shipped default untouched, and every control resolves with cameraFeedLight/hallLight distinct');

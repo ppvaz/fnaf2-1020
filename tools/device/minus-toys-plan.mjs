@@ -1,5 +1,6 @@
 // Emit and replay the measured-device port of the Minus Toys schedule.
-// The file format is consumed by trial.sh's existing on-phone plan interpreter.
+// The modern bundle compiler turns these semantic rows into the device artifact
+// consumed by the local executor; the deprecated legacy lane is historical only.
 //
 // The schedule is no longer two hand-typed arrays: `build(knobs)` derives the
 // opening + steady loop from named knobs (KNOBS0 = the shipped values). This is
@@ -12,7 +13,8 @@ import { pathToFileURL } from 'node:url';
 import * as C from '@fnaf2-1020/core/mechanics';
 import { Sim } from '@fnaf2-1020/core/mechanics';
 import { Observer } from '@fnaf2-1020/core/sensing';
-import { VentThreatReactive, guardIntents, GUARD_FRAMES } from '@fnaf2-1020/core/control';
+import { CONTROL_VOCABULARY as V, MODEL_CONTEXT_LIGHT,
+  VentThreatReactive, guardIntents, GUARD_FRAMES } from '@fnaf2-1020/core/control';
 import { Rng } from '@fnaf2-1020/core/mechanics';
 import { DOUBLE_GLITCH_CAMERA_PAIRS, cameraPairHeader } from './arm-verification.mjs';
 
@@ -58,7 +60,7 @@ export const KNOBS0 = {
                            //   qualification artifact is bound to a policy hash and
                            //   only the operator can rebind it.
   raiseMs: 10100,          // monitor raise, just after the interval boundary
-  stunRefreshMs: 10400,    // ventl (camera-feed light) glitch-stun refresh, right after the raise
+  stunRefreshMs: 10400,    // cameraFeedLight glitch-stun refresh, right after the raise
   stunRefreshHoldMs: 100,  // its hold
   windLeadMs: 10550,       // loop wind start
   windMs: 3250,            // loop wind hold
@@ -68,7 +70,8 @@ export const KNOBS0 = {
   camdropTailMs: 67,       // camdrop: light-only tail after the monitor tap
 
   contactMs: 33,           // tap/hall contact length. The engine ignores it; the emitted plan carries it.
-  preventiveVentLight: true, // regular ventl refresh; false is an observation experiment
+  // Historical winner-field name; its device meaning is cameraFeedLight.
+  preventiveVentLight: true, // regular cameraFeedLight refresh; false is an observation experiment
   reactiveBB: false,       // optional BB-only left-opening/audio reactive layer
                            //   (Mangle audio is a separate policy, not part of
                            //   this device schedule yet).
@@ -89,7 +92,7 @@ export const KNOBS0 = {
   minLoopStartMs: 140000,  // first 2 AM interval: begin flash/wind work here.
   minStopAtMs: 360000,     // ~5:08 AM: no route can reach the office before 6.
   minObserveUntilMs: 420000, // stay hands-off but record through the 6 AM result.
-  minFlashAtMs: 150,       // ventl (CAM 09 feed light) re-flash, early in each 5 s window
+  minFlashAtMs: 150,       // cameraFeedLight (CAM 09 feed flash) re-flash, early in each 5 s window
   minFlashHoldMs: 100,     // its hold -- >= one Fusion poll past the 33 ms contact floor
   minWindAtMs: 300,        // wind start, just after the flash
   minWindHoldMs: 4400,     // wind hold -- nearly the whole 5 s window; box stays full
@@ -118,7 +121,7 @@ export function build(knobs) {
     open.push([raise, 'tap', 'monitor', c]);
     // Steady 5 s cycle: re-flash CAM 09, then wind. Nothing else.
     const loop = [
-      [k.minFlashAtMs, 'hold', 'ventl', k.minFlashHoldMs],
+      [k.minFlashAtMs, 'hold', V.cameraFeedLight, k.minFlashHoldMs],
       [k.minWindAtMs, 'hold', 'wind', k.minWindHoldMs],
     ];
     // The final wind ends at 5:08.  Select CAM 09 once more and leave a 300 ms
@@ -157,7 +160,7 @@ export function build(knobs) {
       [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', k.loopContactMs],
     ];
     if (k.preventiveVentLight)
-      loop.splice(3, 0, [k.stunRefreshMs, 'hold', 'ventl', k.stunRefreshHoldMs]);
+      loop.splice(3, 0, [k.stunRefreshMs, 'hold', V.cameraFeedLight, k.stunRefreshHoldMs]);
   } else {
     // Faithful per-interval routine, MINUS-3-STRATEGY sec.3: enter the cameras
     // just after the interval, refresh the CAM 09 stun and wind, exit at :X4
@@ -180,7 +183,7 @@ export function build(knobs) {
       [camEnd5 + 150, 'tap', 'mask', c],
     ];
     if (k.preventiveVentLight)
-      loop.splice(1, 0, [enter + 50, 'hold', 'ventl', k.stunRefreshHoldMs]);
+      loop.splice(1, 0, [enter + 50, 'hold', V.cameraFeedLight, k.stunRefreshHoldMs]);
   }
   return { opening, loop, finish: [] };
 }
@@ -200,7 +203,7 @@ export const LOOP = _default.loop;
   ];
   const LOOP0 = [
     [9200, 'tap', 'mask', 33], [9500, 'hall', 33], [10100, 'tap', 'monitor', 33],
-    [10400, 'hold', 'ventl', 100], [10550, 'hold', 'wind', 3250],
+    [10400, 'hold', V.cameraFeedLight, 100], [10550, 'hold', 'wind', 3250],
     [13850, 'camdrop', 150, 33, 67], [14400, 'tap', 'mask', 33],
   ];
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -212,10 +215,12 @@ export const LOOP = _default.loop;
 const frame = ms => Math.round(ms * C.FPS / 1000);
 
 // The interpreter's control vocabulary is not the engine's: a camera button is
-// `camN`, the feed light is `ventl`. Map both to the sim's action names.
+// `camN`, while the physical cameraFeedLight maps to the simulator's shared
+// context-dependent light action. The old `ventl` spelling is accepted only
+// here for replaying historical inputs; new emitted plans never produce it.
 const actionFor = action =>
-  action.startsWith('cam') ? `cam:${action.slice(3)}`
-  : action === 'ventl' ? 'light'
+  /^cam\d+$/.test(action) ? `cam:${action.slice(3)}`
+  : action === V.cameraFeedLight || action === 'ventl' ? MODEL_CONTEXT_LIGHT
   : action;
 
 // The frame-stamped sim queue for one night of the loop. `shift(cycle, index,
@@ -241,14 +246,14 @@ export function schedule({ splitCamera = true, shift = () => 0,
     const when = base + at + epochMs + shift(cycle, index, base + at);
     if (kind === 'tap') queue.push([frame(when), 'press', actionFor(a)]);
     else if (kind === 'hold' || kind === 'hall') {
-      const action = kind === 'hall' ? 'light' : actionFor(a);
+      const action = kind === 'hall' ? MODEL_CONTEXT_LIGHT : actionFor(a);
       const duration = kind === 'hall' ? a : b;
       queue.push([frame(when), 'press', action],
                  [frame(when + duration), 'release', action]);
     } else if (kind === 'camdrop') {
-      queue.push([frame(when), 'press', 'light'],
+      queue.push([frame(when), 'press', MODEL_CONTEXT_LIGHT],
                  [frame(when + a), 'press', 'monitor'],
-                 [frame(when + a + b + cc), 'release', 'light']);
+                 [frame(when + a + b + cc), 'release', MODEL_CONTEXT_LIGHT]);
     }
   };
   opening.forEach((row, i) => {
@@ -338,7 +343,7 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
   let i = 0, splitAt = -1, minBox = 1, minPower = sim.power;
   while (sim.alive && !sim.won) {
     if (reactive && reactive.lightReleaseAt >= 0 && sim.frame >= reactive.lightReleaseAt) {
-      sim.release('light');
+      sim.release(MODEL_CONTEXT_LIGHT);
       reactive.lightReleaseAt = -1;
     }
     // The schedule freezes only while the mask must be UP (securing/holding).
@@ -372,7 +377,7 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
           // light (press now, release after hallMs), so expand to that pair.
           // windRelease likewise closes a hold the controller opened.
           if (it.action === 'hall') {
-            sim.press('light');
+            sim.press(MODEL_CONTEXT_LIGHT);
             reactive.lightReleaseAt = sim.frame + hallFrames;
           } else if (it.action === 'windRelease') {
             sim.release('wind');

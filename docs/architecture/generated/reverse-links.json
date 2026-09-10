@@ -640,6 +640,13 @@
     {
       "id": "contract.semantic-control-v1",
       "kind": "CONTRACT",
+      "path": "packages/core/src/control/vocabulary.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
       "path": "packages/core/src/mechanics/plant.js",
       "line": 4,
       "relation": "REFERENCES"

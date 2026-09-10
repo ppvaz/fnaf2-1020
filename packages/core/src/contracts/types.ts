@@ -15,7 +15,8 @@ export interface ClockRef {
 }
 
 export type SemanticControl =
-  | 'mask' | 'monitor' | 'light' | 'wind' | 'ventL' | 'ventR'
+  | 'mask' | 'monitor' | 'light' | 'hall' | 'wind' | 'ventL' | 'ventR'
+  | 'cameraFeedLight' | 'hallLight' | 'leftVentLight' | 'rightVentLight'
   | `cam:${number}`;
 
 export type ControlKind = 'press' | 'release' | 'hold' | 'select';

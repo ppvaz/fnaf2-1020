@@ -1,14 +1,20 @@
 // Convert the current Night 1 Minimal Minus Toys plan into Plan 21's policy IR.
 import { build, KNOBS0 } from './minus-toys-plan.mjs';
 import { DOUBLE_GLITCH_CAMERA_PAIRS } from './arm-verification.mjs';
-import { POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
+import { CONTROL_VOCABULARY as V, POLICY_SCHEMA, validatePolicy } from '@fnaf2-1020/core/control';
 
 const rowAction = (row, defaultContactMs = 33) => {
   const [at, kind, action, duration] = row;
+  // The policy IR predates the device vocabulary split and intentionally keeps
+  // the simulator's context-dependent action names. Translate at this single
+  // boundary; emitted device plans remain explicit physical controls.
+  const policyAction = action === V.cameraFeedLight ? 'light'
+    : action === V.hallLight ? 'hall'
+      : action === V.leftVentLight ? 'ventl' : action;
   if (kind === 'camdrop')
     return { atMs: at, action: 'monitor', mode: 'camdrop', leadMs: row[2],
              durationMs: row[3], tailMs: row[4], contactMs: defaultContactMs };
-  return { atMs: at, action: action === 'ventl' ? 'ventl' : action,
+  return { atMs: at, action: policyAction,
            mode: kind, ...(kind === 'hold' || kind === 'hall'
              ? { durationMs: duration } : {}), contactMs: duration || defaultContactMs };
 };
