@@ -39,8 +39,20 @@ public final class OverlaySnapshotRetention {
             clear();
             return next;
         }
+        boolean batterySurfaceRefused = next.screen == OverlaySnapshot.Screen.FNAF2_NIGHT
+                && next.batteryPercent < 0
+                && !canRetainBatteryGap(next.batteryReason);
+        if (batterySurfaceRefused) {
+            // Do not fall through to the generic unknown-monitor retention
+            // path: an ambiguous stroke pair may leave monitorState UNKNOWN,
+            // but it still proves that the old battery fact is unsafe.
+            lastKnownNight = next;
+            lastKnownAtNs = nowNs;
+            return next;
+        }
         boolean batteryReadGap = next.batteryPercent < 0
-                && lastKnownNight != null && lastKnownNight.batteryPercent >= 0;
+                && lastKnownNight != null && lastKnownNight.batteryPercent >= 0
+                && canRetainBatteryGap(next.batteryReason);
         if (next.screen == OverlaySnapshot.Screen.FNAF2_NIGHT
                 && next.monitorState != OverlaySnapshot.MonitorState.UNKNOWN) {
             if (batteryReadGap && withinHold(nowNs)) {
@@ -62,6 +74,15 @@ public final class OverlaySnapshotRetention {
         }
         clear();
         return next;
+    }
+
+    private static boolean canRetainBatteryGap(String reason) {
+        // These are deliberate surface refusals, not transient read failures.
+        // Retaining the old percentage would make the overlay claim a battery
+        // fact while the pixels are covered by the mask or monitor.
+        return !"mask-on".equals(reason)
+                && !"monitor-up".equals(reason)
+                && !"control-state-unavailable".equals(reason);
     }
 
     /** Clear the retained state when the owner tears down or changes mode. */

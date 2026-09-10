@@ -14,7 +14,7 @@ const CAMERA_UNKNOWN_REASONS = new Set([
 const BATTERY_UNKNOWN_REASONS = new Set([
   'battery-unavailable', 'feature-missing', 'read-unavailable',
   'read-stale', 'sensor-mismatch', 'screen-identity', 'frame-stale',
-  'timestamp-invalid',
+  'timestamp-invalid', 'mask-on', 'monitor-up', 'control-state-unavailable',
 ]);
 
   /** @param {string} line */

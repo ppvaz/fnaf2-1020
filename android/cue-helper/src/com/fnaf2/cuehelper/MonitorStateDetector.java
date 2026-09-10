@@ -74,6 +74,30 @@ public final class MonitorStateDetector {
         return unknown("ambiguous-threshold");
     }
 
+    /**
+     * Adapt the already-measured native bottom-control strokes to the monitor
+     * fact used by the overlay and camera selector. This performs no pixel
+     * reads and intentionally has no fitted-grid fallback: the live path has
+     * one state source.
+     */
+    public static Result fromNativeControlStrokes(int screenIdentity,
+            int maskDownstroke, int monitorDownstroke) {
+        if (screenIdentity != ScreenIdentity.FNAF2_NIGHT) {
+            return unknown("screen-identity");
+        }
+        switch (PixelWatch.controlState(maskDownstroke, monitorDownstroke)) {
+            case MONITOR_UP:
+                return observed(State.UP, "native-stroke-monitor-up");
+            case MASK_ON:
+                return observed(State.DOWN, "native-stroke-mask-on");
+            case OFFICE_UNMASKED:
+                return observed(State.DOWN, "native-stroke-office");
+            case UNKNOWN:
+            default:
+                return unknown("native-stroke-ambiguous");
+        }
+    }
+
     private static Result observed(State state, String reason) {
         return new Result(state, reason);
     }

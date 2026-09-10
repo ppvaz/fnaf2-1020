@@ -60,12 +60,41 @@ public final class PixelWatch {
     public static final int MONITOR_BUTTON_Y = 1004;
     public static final int MONITOR_BUTTON_WIDTH = 720;
     public static final int MONITOR_BUTTON_HEIGHT = 36;
+    /** Both lower controls share the same native top edge. */
+    public static final int CONTROL_BUTTON_Y = MASK_BUTTON_Y;
     /** Sparse native sampling keeps the control watches cheaper than a frame. */
     public static final int CONTROL_BUTTON_STEP = 16;
+    /** Fixed native chevron geometry inside the lower-left mask control. */
+    public static final int MASK_STROKE_X_START = 90;
+    public static final int MASK_STROKE_X_CENTER = 370;
+    public static final int MASK_STROKE_X_END = 650;
+    /** Fixed native chevron geometry inside the lower-right monitor control. */
+    public static final int MONITOR_STROKE_X_START = 80;
+    public static final int MONITOR_STROKE_X_CENTER = 360;
+    public static final int MONITOR_STROKE_X_END = 650;
+    /** Both controls carry two parallel downward strokes. */
+    public static final int CONTROL_STROKE_Y_BASE = 2;
+    public static final int CONTROL_STROKE_Y_PEAK = 16;
+    public static final int CONTROL_STROKE_LINE_OFFSET = 16;
+    public static final int CONTROL_STROKE_SAMPLE_STEP = 8;
+    public static final int CONTROL_STROKE_RADIUS = 3;
+    /** Minimum local max-channel contrast for one stroke column. */
+    public static final int CONTROL_STROKE_CONTRAST = 35;
+    /** Settled-state bands measured by the native-stroke gate. */
+    public static final int CONTROL_STROKE_VISIBLE_MIN = 100;
+    public static final int CONTROL_STROKE_ABSENT_MAX = 40;
 
     public enum Kind { PIXEL, ROI }
     public enum Reducer {
         LUMA, YELLOWNESS, MEAN_LUMA, MEAN_REDNESS, GREY_CELLS, RED_CELLS
+    }
+
+    /** Settled UI surface states inferred from the paired bottom controls. */
+    public enum ControlState {
+        UNKNOWN,
+        MONITOR_UP,
+        MASK_ON,
+        OFFICE_UNMASKED
     }
 
     /** One bounded pixel or ROI query. Coordinates are native display pixels. */
@@ -210,6 +239,14 @@ public final class PixelWatch {
                 && entry.width == BATTERY_BAR_WIDTH
                 && entry.height == BATTERY_BAR_HEIGHT
                 && entry.step == 4;
+    }
+
+    /** Return whether an entry is one of the four flashlight-meter ROIs. */
+    public static boolean isBatteryBar(Entry entry) {
+        for (int number = 1; number <= BATTERY_BAR_COUNT; number++) {
+            if (isCanonicalBatteryBar(entry, number)) return true;
+        }
+        return false;
     }
 
     public static boolean isCanonicalFoxyHall(Entry entry, String channel) {
@@ -381,10 +418,24 @@ public final class PixelWatch {
 
     /** Fill {@code output} with one value per entry without allocating. */
     public static int readInto(Spec spec, Frame frame, int[] output) {
+        return readInto(spec, frame, output, false);
+    }
+
+    /**
+     * Fill {@code output} with one value per entry, optionally excluding the
+     * flashlight-meter ROIs. The safe default excludes those pixels because
+     * the mask covers them; callers must pass {@code true} only after the same
+     * frame has independently established the unmasked office state. Excluded
+     * entries are written as UNKNOWN and their pixels are never sampled.
+     */
+    public static int readInto(Spec spec, Frame frame, int[] output,
+            boolean readBattery) {
         if (spec == null || frame == null || output == null
                 || output.length < spec.size()) return -1;
         for (int i = 0; i < spec.size(); i++) {
-            output[i] = read(spec.entry(i), frame);
+            Entry entry = spec.entry(i);
+            output[i] = !readBattery && isBatteryBar(entry)
+                    ? UNKNOWN : read(entry, frame);
         }
         return spec.size();
     }
@@ -427,6 +478,103 @@ public final class PixelWatch {
         if (count == 0) return UNKNOWN;
         return entry.reducer == Reducer.GREY_CELLS || entry.reducer == Reducer.RED_CELLS
                 ? counted : (int) (total / count);
+    }
+
+    /**
+     * Count the fixed downward-chevron columns in one native lower control.
+     *
+     * <p>The controls are translucent, so their filled rectangle and whole-ROI
+     * mean luma move with the office background. This watch samples only the
+     * two known chevron strokes and requires local max-channel contrast against
+     * the pixels immediately above and below each stroke. It therefore accepts
+     * the neutral-white monitor chevron and the pink-tinted mask chevron by
+     * their fixed geometry, without treating either color or ROI brightness as
+     * a state fact. The result is a coverage score, not a boolean: zero means
+     * no stroke columns were observed, and UNKNOWN means the native frame was
+     * unavailable or incomplete.</p>
+     */
+    public static int controlDownStrokeScore(Frame frame, boolean maskControl) {
+        if (frame == null || frame.width() != NATIVE_WIDTH
+                || frame.height() != NATIVE_HEIGHT) return UNKNOWN;
+        int xStart = (maskControl ? MASK_BUTTON_X : MONITOR_BUTTON_X)
+                + (maskControl ? MASK_STROKE_X_START : MONITOR_STROKE_X_START);
+        int xCenter = (maskControl ? MASK_BUTTON_X : MONITOR_BUTTON_X)
+                + (maskControl ? MASK_STROKE_X_CENTER : MONITOR_STROKE_X_CENTER);
+        int xEnd = (maskControl ? MASK_BUTTON_X : MONITOR_BUTTON_X)
+                + (maskControl ? MASK_STROKE_X_END : MONITOR_STROKE_X_END);
+        int columns = 0;
+        int hits = 0;
+        for (int x = xStart; x <= xEnd; x += CONTROL_STROKE_SAMPLE_STEP) {
+            int yOffset = x <= xCenter
+                    ? CONTROL_STROKE_Y_BASE
+                            + (CONTROL_STROKE_Y_PEAK - CONTROL_STROKE_Y_BASE)
+                                    * (x - xStart) / (xCenter - xStart)
+                    : CONTROL_STROKE_Y_BASE
+                            + (CONTROL_STROKE_Y_PEAK - CONTROL_STROKE_Y_BASE)
+                                    * (xEnd - x) / (xEnd - xCenter);
+            int first = strokeColumnHit(frame, x, CONTROL_BUTTON_Y + yOffset);
+            if (first == UNKNOWN) return UNKNOWN;
+            int second = strokeColumnHit(frame, x,
+                    CONTROL_BUTTON_Y + yOffset + CONTROL_STROKE_LINE_OFFSET);
+            if (second == UNKNOWN) return UNKNOWN;
+            if (first != 0) hits++;
+            if (second != 0) hits++;
+            columns += 2;
+        }
+        return columns == 0 ? UNKNOWN : hits;
+    }
+
+    /**
+     * Infer the settled game surface from the paired native control strokes.
+     * A partial stroke, both absent, or an otherwise contradictory pair is
+     * deliberately refused rather than treated as a surface state.
+     */
+    public static ControlState controlState(int maskDownstroke,
+            int monitorDownstroke) {
+        if (maskDownstroke < 0 || monitorDownstroke < 0) {
+            return ControlState.UNKNOWN;
+        }
+        boolean maskVisible = maskDownstroke >= CONTROL_STROKE_VISIBLE_MIN;
+        boolean maskAbsent = maskDownstroke <= CONTROL_STROKE_ABSENT_MAX;
+        boolean monitorVisible = monitorDownstroke >= CONTROL_STROKE_VISIBLE_MIN;
+        boolean monitorAbsent = monitorDownstroke <= CONTROL_STROKE_ABSENT_MAX;
+        if (maskAbsent && monitorVisible) return ControlState.MONITOR_UP;
+        if (maskVisible && monitorAbsent) return ControlState.MASK_ON;
+        if (maskVisible && monitorVisible) return ControlState.OFFICE_UNMASKED;
+        return ControlState.UNKNOWN;
+    }
+
+    private static int strokeColumnHit(Frame frame, int x, int centerY) {
+        int lineMax = 0;
+        for (int y = centerY - CONTROL_STROKE_RADIUS;
+                y <= centerY + CONTROL_STROKE_RADIUS; y++) {
+            int rgb = frame.rgb(x, y);
+            if (rgb == UNKNOWN) return UNKNOWN;
+            lineMax = Math.max(lineMax, maxChannel(rgb));
+        }
+        long baselineTotal = 0;
+        int baselineCount = 0;
+        for (int y = centerY - 10; y <= centerY - 5; y++) {
+            int rgb = frame.rgb(x, y);
+            if (rgb == UNKNOWN) return UNKNOWN;
+            baselineTotal += maxChannel(rgb);
+            baselineCount++;
+        }
+        for (int y = centerY + 6; y <= centerY + 11; y++) {
+            int rgb = frame.rgb(x, y);
+            if (rgb == UNKNOWN) return UNKNOWN;
+            baselineTotal += maxChannel(rgb);
+            baselineCount++;
+        }
+        int baseline = baselineCount == 0 ? 0 : (int) (baselineTotal / baselineCount);
+        return lineMax - baseline >= CONTROL_STROKE_CONTRAST ? 1 : 0;
+    }
+
+    private static int maxChannel(int rgb) {
+        int red = (rgb >> 16) & 0xff;
+        int green = (rgb >> 8) & 0xff;
+        int blue = rgb & 0xff;
+        return Math.max(red, Math.max(green, blue));
     }
 
     private static int reducePixel(Reducer reducer, int rgb) {

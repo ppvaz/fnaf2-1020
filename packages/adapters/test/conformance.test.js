@@ -140,6 +140,9 @@ assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_MENU',
   batteryPercent: '100' }),
   { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'screen-identity' });
 assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
+  batteryPercent: 'UNKNOWN', batteryReason: 'mask-on' }),
+  { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'mask-on' });
+assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',
   batteryPercent: 'UNKNOWN', batteryReason: 'untrusted-free-text' }),
   { signal: 'batteryPercent', state: 'UNKNOWN', reason: 'read-unavailable' });
 assert.deepEqual(cue.batteryMeasurement({ ageUs: '17', screen: 'FNAF2_NIGHT',

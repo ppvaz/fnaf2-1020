@@ -12,6 +12,14 @@ public final class OverlaySnapshotRetentionTest {
             OverlaySnapshot.Screen screen,
             OverlaySnapshot.MonitorState monitorState,
             int batteryPercent) {
+        return snapshot(sequence, screen, monitorState, batteryPercent,
+                batteryPercent >= 0 ? "bars-observed" : "battery-unavailable");
+    }
+
+    private static OverlaySnapshot snapshot(long sequence,
+            OverlaySnapshot.Screen screen,
+            OverlaySnapshot.MonitorState monitorState,
+            int batteryPercent, String batteryReason) {
         return new OverlaySnapshot(sequence, 1_000_000L + sequence,
                 screen, OverlaySnapshot.Mode.SENSOR_DEBUG,
                 new OverlaySnapshot.Region[] {
@@ -23,7 +31,7 @@ public final class OverlaySnapshotRetentionTest {
                 monitorState == OverlaySnapshot.MonitorState.DOWN
                         ? "anchors-down" : "monitor-state-unavailable",
                 null, "monitor-not-up", batteryPercent,
-                batteryPercent >= 0 ? "bars-observed" : "battery-unavailable");
+                batteryReason);
     }
 
     private static void check(String what, boolean value) {
@@ -89,6 +97,20 @@ public final class OverlaySnapshotRetentionTest {
                         && retention.accept(batteryGap, 4_050L).batteryPercent == 100);
         check("battery read-gap retention remains bounded from the original read",
                 retention.accept(batteryGap, 4_101L).batteryPercent < 0);
+        OverlaySnapshotRetention coveredRetention = new OverlaySnapshotRetention(100L);
+        OverlaySnapshot coveredGap = snapshot(8,
+                OverlaySnapshot.Screen.FNAF2_NIGHT,
+                OverlaySnapshot.MonitorState.DOWN, -1, "mask-on");
+        check("covered battery is never retained from the prior office frame",
+                coveredRetention.accept(batteryNight, 5_000L) == batteryNight
+                        && coveredRetention.accept(coveredGap, 5_050L) == coveredGap
+                        && coveredGap.batteryPercent < 0);
+        OverlaySnapshot coveredUnknown = snapshot(9,
+                OverlaySnapshot.Screen.FNAF2_NIGHT,
+                OverlaySnapshot.MonitorState.UNKNOWN, -1, "mask-on");
+        check("covered battery is not resurrected through unknown monitor retention",
+                coveredRetention.accept(coveredUnknown, 5_060L) == coveredUnknown
+                        && coveredUnknown.batteryPercent < 0);
         check("decision snapshots are never retained",
                 retention.accept(new OverlaySnapshot(5, 1_005_000L,
                         OverlaySnapshot.Screen.FNAF2_NIGHT,

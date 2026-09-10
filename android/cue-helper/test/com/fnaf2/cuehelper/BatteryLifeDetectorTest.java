@@ -45,7 +45,20 @@ public final class BatteryLifeDetectorTest {
         values[spec.indexOfName("battery_bar_2")] = 255;
         check("night identity permits the shared battery read",
                 BatteryLifeDetector.measureForScreen(spec, values,
-                        ScreenIdentity.FNAF2_NIGHT).observed());
+                        ScreenIdentity.FNAF2_NIGHT,
+                        PixelWatch.ControlState.OFFICE_UNMASKED).observed());
+        check("mask state refuses the covered battery read",
+                "mask-on".equals(BatteryLifeDetector.measureForScreen(spec, values,
+                        ScreenIdentity.FNAF2_NIGHT,
+                        PixelWatch.ControlState.MASK_ON).reason));
+        check("monitor-up state refuses the covered battery read",
+                "monitor-up".equals(BatteryLifeDetector.measureForScreen(spec, values,
+                        ScreenIdentity.FNAF2_NIGHT,
+                        PixelWatch.ControlState.MONITOR_UP).reason));
+        check("unknown bottom controls refuse the battery read",
+                "control-state-unavailable".equals(BatteryLifeDetector.measureForScreen(
+                        spec, values, ScreenIdentity.FNAF2_NIGHT,
+                        PixelWatch.ControlState.UNKNOWN).reason));
         System.out.println("BatteryLifeDetectorTest: all checks passed");
     }
 }

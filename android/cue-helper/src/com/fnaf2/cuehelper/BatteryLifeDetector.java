@@ -59,14 +59,34 @@ public final class BatteryLifeDetector {
     }
 
     /**
-     * Bind the raw meter read to the only screen on which it has game meaning.
-     * A bright rectangle at the same coordinates on the menu or helper is not
+     * Bind the raw meter read to a confirmed unmasked night frame. A bright
+     * rectangle at the same coordinates on the menu, helper, or mask is not
      * evidence of flashlight battery.
      */
     public static Result measureForScreen(PixelWatch.Spec spec, int[] values,
             int screenIdentity) {
+        return measureForScreen(spec, values, screenIdentity,
+                PixelWatch.ControlState.UNKNOWN);
+    }
+
+    /**
+     * Measure only when the paired native bottom controls prove the unmasked
+     * office surface. The stroke sensor is the single state source; no grid
+     * mask model is consulted here.
+     */
+    public static Result measureForScreen(PixelWatch.Spec spec, int[] values,
+            int screenIdentity, PixelWatch.ControlState controlState) {
         if (screenIdentity != ScreenIdentity.FNAF2_NIGHT) {
             return unknown("screen-identity");
+        }
+        if (controlState == PixelWatch.ControlState.MASK_ON) {
+            return unknown("mask-on");
+        }
+        if (controlState == PixelWatch.ControlState.MONITOR_UP) {
+            return unknown("monitor-up");
+        }
+        if (controlState != PixelWatch.ControlState.OFFICE_UNMASKED) {
+            return unknown("control-state-unavailable");
         }
         return measure(spec, values);
     }

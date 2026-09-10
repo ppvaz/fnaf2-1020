@@ -15,6 +15,8 @@ public final class PixelWatchTest {
         private final int width;
         private final int height;
         private final int[] cells;
+        private boolean rejectBatterySamples;
+        private int batterySamples;
 
         Frame(int width, int height, int fill) {
             this.width = width;
@@ -27,8 +29,52 @@ public final class PixelWatchTest {
         @Override public int width() { return width; }
         @Override public int height() { return height; }
         @Override public int rgb(int x, int y) {
+            if (inBatteryBar(x, y)) {
+                batterySamples++;
+                if (rejectBatterySamples) {
+                    throw new AssertionError("covered battery ROI was sampled");
+                }
+            }
             return x < 0 || y < 0 || x >= width || y >= height
                     ? PixelWatch.UNKNOWN : cells[y * width + x];
+        }
+
+        private static boolean inBatteryBar(int x, int y) {
+            if (y < 70 || y >= 102) return false;
+            for (int bar = 0; bar < PixelWatch.BATTERY_BAR_COUNT; bar++) {
+                int left = 132 + bar * 40;
+                if (x >= left && x < left + 28) return true;
+            }
+            return false;
+        }
+    }
+
+    private static void drawControlStrokes(Frame frame, boolean maskControl, int rgb) {
+        int buttonX = maskControl ? PixelWatch.MASK_BUTTON_X : PixelWatch.MONITOR_BUTTON_X;
+        int start = buttonX + (maskControl
+                ? PixelWatch.MASK_STROKE_X_START : PixelWatch.MONITOR_STROKE_X_START);
+        int center = buttonX + (maskControl
+                ? PixelWatch.MASK_STROKE_X_CENTER : PixelWatch.MONITOR_STROKE_X_CENTER);
+        int end = buttonX + (maskControl
+                ? PixelWatch.MASK_STROKE_X_END : PixelWatch.MONITOR_STROKE_X_END);
+        for (int x = start; x <= end; x++) {
+            int offset = x <= center
+                    ? PixelWatch.CONTROL_STROKE_Y_BASE
+                            + (PixelWatch.CONTROL_STROKE_Y_PEAK
+                                    - PixelWatch.CONTROL_STROKE_Y_BASE)
+                                    * (x - start) / (center - start)
+                    : PixelWatch.CONTROL_STROKE_Y_BASE
+                            + (PixelWatch.CONTROL_STROKE_Y_PEAK
+                                    - PixelWatch.CONTROL_STROKE_Y_BASE)
+                                    * (end - x) / (end - center);
+            for (int line = 0; line < 2; line++) {
+                int y = PixelWatch.CONTROL_BUTTON_Y + offset
+                        + line * PixelWatch.CONTROL_STROKE_LINE_OFFSET;
+                for (int yy = y - PixelWatch.CONTROL_STROKE_RADIUS;
+                        yy <= y + PixelWatch.CONTROL_STROKE_RADIUS; yy++) {
+                    frame.set(x, yy, rgb);
+                }
+            }
         }
     }
 
@@ -67,7 +113,7 @@ public final class PixelWatchTest {
         }
         int[] values = new int[spec.size()];
         check("readInto fills every entry",
-                PixelWatch.readInto(spec, frame, values) == spec.size());
+                PixelWatch.readInto(spec, frame, values, true) == spec.size());
         check("BB anchor luma is native RGB luma", values[0] == 194);
         check("BB anchor yellowness preserves the channel reducer", values[1] == -111);
         check("uniform CAM ROI returns its mean luma",
@@ -105,6 +151,41 @@ public final class PixelWatchTest {
                 PixelWatch.read(spec.entry(spec.indexOfName("mask_button_mean_luma")), controls) == 255);
         check("monitor control ROI reads absent as dark",
                 PixelWatch.read(spec.entry(spec.indexOfName("monitor_button_mean_luma")), controls) == 0);
+
+        Frame chevrons = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0x202020);
+        drawControlStrokes(chevrons, true, 0xff90a0);
+        drawControlStrokes(chevrons, false, 0xffffff);
+        check("fixed mask chevron stroke coverage is observed without ROI luma",
+                PixelWatch.controlDownStrokeScore(chevrons, true) >= 100);
+        check("fixed monitor chevron stroke coverage is observed without ROI luma",
+                PixelWatch.controlDownStrokeScore(chevrons, false) >= 100);
+        Frame brightBackground = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0xffffff);
+        check("uniform translucent-control background does not fake a stroke",
+                PixelWatch.controlDownStrokeScore(brightBackground, true) == 0
+                        && PixelWatch.controlDownStrokeScore(brightBackground, false) == 0);
+        check("non-native stroke source is refused",
+                PixelWatch.controlDownStrokeScore(new Frame(100, 100, 0), true)
+                        == PixelWatch.UNKNOWN);
+        check("both bottom strokes identify the unmasked office",
+                PixelWatch.controlState(140, 140)
+                        == PixelWatch.ControlState.OFFICE_UNMASKED);
+        check("mask stroke absent plus monitor stroke visible identifies monitor up",
+                PixelWatch.controlState(0, 140)
+                        == PixelWatch.ControlState.MONITOR_UP);
+        check("monitor stroke absent plus mask stroke visible identifies mask on",
+                PixelWatch.controlState(140, 0)
+                        == PixelWatch.ControlState.MASK_ON);
+        check("partial bottom strokes refuse a surface state",
+                PixelWatch.controlState(60, 80) == PixelWatch.ControlState.UNKNOWN);
+
+        Frame masked = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0xffffff);
+        masked.rejectBatterySamples = true;
+        int[] maskedValues = new int[spec.size()];
+        java.util.Arrays.fill(maskedValues, PixelWatch.UNKNOWN);
+        check("safe readInto never samples covered battery ROIs",
+                PixelWatch.readInto(spec, masked, maskedValues, false) == spec.size()
+                        && masked.batterySamples == 0
+                        && maskedValues[spec.indexOfName("battery_bar_1")] == PixelWatch.UNKNOWN);
 
         Frame mixed = new Frame(10, 10, 0x808080);
         mixed.set(0, 0, 0xc2dd00);

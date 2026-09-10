@@ -201,6 +201,18 @@ public final class OverlayContractTest {
                 monitorDownGrid, ScreenIdentity.FNAF2_NIGHT);
         check("calibrated monitor anchors report DOWN", monitorDown.state
                 == MonitorStateDetector.State.DOWN);
+        MonitorStateDetector.Result nativeMonitorUp =
+                MonitorStateDetector.fromNativeControlStrokes(
+                        ScreenIdentity.FNAF2_NIGHT, 0, 140);
+        check("live monitor state uses the native bottom strokes",
+                nativeMonitorUp.state == MonitorStateDetector.State.UP
+                        && "native-stroke-monitor-up".equals(nativeMonitorUp.reason));
+        MonitorStateDetector.Result nativeMaskOn =
+                MonitorStateDetector.fromNativeControlStrokes(
+                        ScreenIdentity.FNAF2_NIGHT, 140, 0);
+        check("native mask-on stroke state keeps monitor down",
+                nativeMaskOn.state == MonitorStateDetector.State.DOWN
+                        && "native-stroke-mask-on".equals(nativeMaskOn.reason));
         int[] mixedGrid = monitorUpGrid.clone();
         mixedGrid[167] = 0xbbbbbb;
         check("mixed monitor anchors refuse", MonitorStateDetector.measure(

@@ -239,6 +239,16 @@ public final class CaptureService extends Service {
     private int snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
     private int snapshotScreenScore;
     private long snapshotDetectorLatencyMs;
+    // Native bottom-control means from the same image as the snapshot/grid.
+    // These are kept separate from the trace columns so a lightweight GET can
+    // gate an action without serializing the full 180-cell FRAME body.
+    private int snapshotMaskButtonMeanLuma = PixelWatch.UNKNOWN;
+    private int snapshotMonitorButtonMeanLuma = PixelWatch.UNKNOWN;
+    // Fixed downward-chevron coverage from the same native image. The luma
+    // fields above remain diagnostic only; a state gate must use these stroke
+    // scores because the button bars are translucent.
+    private int snapshotMaskButtonDownstroke = PixelWatch.UNKNOWN;
+    private int snapshotMonitorButtonDownstroke = PixelWatch.UNKNOWN;
     // Near-grey cells over the whole grid, or -1 when the grid is incomplete.
     //
     // A whole-frame count, because this sensor point-samples: the position
@@ -1018,6 +1028,28 @@ public final class CaptureService extends Service {
                         : ScreenIdentity.UNKNOWN;
                 snapshotScreenScore = complete
                         ? ScreenIdentity.score(snapshotGrid) : 0;
+                if (captureWidth == PixelWatch.NATIVE_WIDTH
+                        && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                    snapshotMaskButtonMeanLuma = blockLuma(watchFrame,
+                            PixelWatch.MASK_BUTTON_X, PixelWatch.MASK_BUTTON_Y,
+                            PixelWatch.MASK_BUTTON_X + PixelWatch.MASK_BUTTON_WIDTH,
+                            PixelWatch.MASK_BUTTON_Y + PixelWatch.MASK_BUTTON_HEIGHT,
+                            PixelWatch.CONTROL_BUTTON_STEP);
+                    snapshotMonitorButtonMeanLuma = blockLuma(watchFrame,
+                            PixelWatch.MONITOR_BUTTON_X, PixelWatch.MONITOR_BUTTON_Y,
+                            PixelWatch.MONITOR_BUTTON_X + PixelWatch.MONITOR_BUTTON_WIDTH,
+                            PixelWatch.MONITOR_BUTTON_Y + PixelWatch.MONITOR_BUTTON_HEIGHT,
+                            PixelWatch.CONTROL_BUTTON_STEP);
+                    snapshotMaskButtonDownstroke = PixelWatch.controlDownStrokeScore(
+                            watchFrame, true);
+                    snapshotMonitorButtonDownstroke = PixelWatch.controlDownStrokeScore(
+                            watchFrame, false);
+                } else {
+                    snapshotMaskButtonMeanLuma = PixelWatch.UNKNOWN;
+                    snapshotMonitorButtonMeanLuma = PixelWatch.UNKNOWN;
+                    snapshotMaskButtonDownstroke = PixelWatch.UNKNOWN;
+                    snapshotMonitorButtonDownstroke = PixelWatch.UNKNOWN;
+                }
                 greyCells = snapshotGreyCells;
                 gridMeanLuma = snapshotGridMeanLuma;
                 screenScore = snapshotScreenScore;
@@ -1026,8 +1058,13 @@ public final class CaptureService extends Service {
                 if ((watchActive || overlayDebug)
                         && captureWidth == PixelWatch.NATIVE_WIDTH
                         && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                    boolean readBattery = snapshotScreenIdentity == ScreenIdentity.FNAF2_NIGHT
+                            && PixelWatch.controlState(
+                                    snapshotMaskButtonDownstroke,
+                                    snapshotMonitorButtonDownstroke)
+                                    == PixelWatch.ControlState.OFFICE_UNMASKED;
                     PixelWatch.readInto(watchSpec, watchFrame,
-                            snapshotWatchValues);
+                            snapshotWatchValues, readBattery);
                 } else {
                     for (int i = 0; i < watchSpec.size(); i++) {
                         snapshotWatchValues[i] = PixelWatch.UNKNOWN;
@@ -1127,10 +1164,14 @@ public final class CaptureService extends Service {
                     ? OverlaySnapshot.Screen.fromIdentity(snapshotScreenIdentity)
                     : OverlaySnapshot.Screen.UNKNOWN;
             MonitorStateDetector.Result monitor = invalidReason == null
-                    ? MonitorStateDetector.measure(
-                            snapshotGridValid ? snapshotGrid : null,
-                            snapshotScreenIdentity)
-                    : MonitorStateDetector.measure(null, ScreenIdentity.UNKNOWN);
+                    ? MonitorStateDetector.fromNativeControlStrokes(
+                            snapshotScreenIdentity,
+                            snapshotMaskButtonDownstroke,
+                            snapshotMonitorButtonDownstroke)
+                    : MonitorStateDetector.fromNativeControlStrokes(
+                            ScreenIdentity.UNKNOWN,
+                            snapshotMaskButtonDownstroke,
+                            snapshotMonitorButtonDownstroke);
             CameraSelectionDetector.Result camera = CameraSelectionDetector.measure(
                     watchSpec, snapshotWatchValues, monitor);
             switch (monitor.state) {
@@ -1149,7 +1190,9 @@ public final class CaptureService extends Service {
             selectedCamera = camera.observed() ? camera.selectedCamera : null;
             cameraReason = camera.reason;
             battery = BatteryLifeDetector.measureForScreen(watchSpec,
-                    snapshotWatchValues, snapshotScreenIdentity);
+                    snapshotWatchValues, snapshotScreenIdentity,
+                    PixelWatch.controlState(snapshotMaskButtonDownstroke,
+                            snapshotMonitorButtonDownstroke));
             regions = new OverlaySnapshot.Region[overlayController.contract().size()];
             long ageMs = Math.max(0L,
                     snapshotVisualTimestampNs > 0L
@@ -1201,10 +1244,17 @@ public final class CaptureService extends Service {
     /** Mean luma over a half-open native rectangle, or -1 if it does not fit. */
     private static int blockLuma(PixelWatch.Frame frame,
             int x0, int y0, int x1, int y1) {
+        return blockLuma(frame, x0, y0, x1, y1, 1);
+    }
+
+    /** Mean luma over a rectangle with a bounded sampling step. */
+    private static int blockLuma(PixelWatch.Frame frame,
+            int x0, int y0, int x1, int y1, int step) {
+        if (step < 1) return -1;
         long total = 0;
         int count = 0;
-        for (int y = y0; y < y1; y++) {
-            for (int x = x0; x < x1; x++) {
+        for (int y = y0; y < y1; y += step) {
+            for (int x = x0; x < x1; x += step) {
                 int rgb = frame.rgb(x, y);
                 if (rgb == PixelWatch.UNKNOWN) {
                     return -1;
@@ -2411,6 +2461,10 @@ public final class CaptureService extends Service {
         int gridMeanLuma;
         int screenIdentity;
         int screenScore;
+        int maskButtonMeanLuma;
+        int monitorButtonMeanLuma;
+        int maskButtonDownstroke;
+        int monitorButtonDownstroke;
         long detectorLatencyMs;
         int panAnchorX;
         int panAnchorY;
@@ -2433,6 +2487,10 @@ public final class CaptureService extends Service {
             gridMeanLuma = snapshotGridMeanLuma;
             screenIdentity = snapshotScreenIdentity;
             screenScore = snapshotScreenScore;
+            maskButtonMeanLuma = snapshotMaskButtonMeanLuma;
+            monitorButtonMeanLuma = snapshotMonitorButtonMeanLuma;
+            maskButtonDownstroke = snapshotMaskButtonDownstroke;
+            monitorButtonDownstroke = snapshotMonitorButtonDownstroke;
             detectorLatencyMs = snapshotDetectorLatencyMs;
             panAnchorX = snapshotPanAnchorX;
             panAnchorY = snapshotPanAnchorY;
@@ -2440,12 +2498,15 @@ public final class CaptureService extends Service {
             panAnchorMargin = snapshotPanAnchorMargin;
             panAnchorConfidence = snapshotPanAnchorConfidence;
             panAnchorReason = snapshotPanAnchorReason;
-            monitor = MonitorStateDetector.measure(snapshotGridValid ? snapshotGrid : null,
-                    snapshotScreenIdentity);
+            monitor = MonitorStateDetector.fromNativeControlStrokes(
+                    snapshotScreenIdentity, maskButtonDownstroke,
+                    monitorButtonDownstroke);
             camera = CameraSelectionDetector.measure(watchSpec, snapshotWatchValues,
                     monitor);
             battery = BatteryLifeDetector.measureForScreen(watchSpec,
-                    snapshotWatchValues, snapshotScreenIdentity);
+                    snapshotWatchValues, snapshotScreenIdentity,
+                    PixelWatch.controlState(maskButtonDownstroke,
+                            monitorButtonDownstroke));
             gridCopy = withGrid && snapshotGridValid ? snapshotGrid.clone() : null;
             screenDetail = ScreenIdentity.describe(snapshotGridValid ? snapshotGrid : null);
         }
@@ -2466,7 +2527,9 @@ public final class CaptureService extends Service {
                             + "screen=%s screenScore=%d detectorLatencyMs=%d "
                             + "monitorUp=%s monitorReason=%s cameraSelected=%s cameraHighlights=%s "
                             + "cameraReason=%s "
-                            + "batteryPercent=%s batteryReason=%s",
+                            + "batteryPercent=%s batteryReason=%s "
+                            + "mask_button_mean_luma=%s monitor_button_mean_luma=%s "
+                            + "mask_button_downstroke=%s monitor_button_downstroke=%s",
                     visualSequenceSnapshot, red, green, blue, luma, cam05MeanLuma,
                     greyCells, gridMeanLuma, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
@@ -2475,18 +2538,26 @@ public final class CaptureService extends Service {
                     camera.selectedCamera == null ? "UNKNOWN" : camera.selectedCamera,
                     cameraHighlightsValue(camera), camera.reason,
                     battery.observed() ? Integer.toString(battery.percent) : "UNKNOWN",
-                    battery.reason);
+                    battery.reason, nativeLumaValue(maskButtonMeanLuma),
+                    nativeLumaValue(monitorButtonMeanLuma),
+                    nativeStrokeValue(maskButtonDownstroke),
+                    nativeStrokeValue(monitorButtonDownstroke));
         } else {
             visual = String.format(Locale.US,
                     "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
                             + "screen=UNKNOWN screenScore=0 detectorLatencyMs=%d "
                             + "monitorUp=UNKNOWN monitorReason=%s cameraSelected=UNKNOWN "
                             + "cameraHighlights=UNKNOWN "
-                            + "cameraReason=%s batteryPercent=UNKNOWN batteryReason=%s",
-                    visualSequenceSnapshot, invalidReason, visualAgeUs,
+                    + "cameraReason=%s batteryPercent=UNKNOWN batteryReason=%s "
+                    + "mask_button_mean_luma=%s monitor_button_mean_luma=%s "
+                    + "mask_button_downstroke=%s monitor_button_downstroke=%s",
+                    invalidReason, visualSequenceSnapshot, invalidReason, visualAgeUs,
                     capturedContentWidth, capturedContentHeight,
                     capturedContentVisibility, detectorLatencyMs, monitor.reason,
-                    camera.reason, invalidReason);
+                    camera.reason, invalidReason, nativeLumaValue(maskButtonMeanLuma),
+                    nativeLumaValue(monitorButtonMeanLuma),
+                    nativeStrokeValue(maskButtonDownstroke),
+                    nativeStrokeValue(monitorButtonDownstroke));
         }
 
         StringBuilder panAnchor = new StringBuilder(160);
@@ -2532,6 +2603,14 @@ public final class CaptureService extends Service {
         }
     }
 
+    private static String nativeLumaValue(int value) {
+        return value == PixelWatch.UNKNOWN ? "UNKNOWN" : Integer.toString(value);
+    }
+
+    private static String nativeStrokeValue(int value) {
+        return value == PixelWatch.UNKNOWN ? "UNKNOWN" : Integer.toString(value);
+    }
+
     private void publishCombinedStatus(String lifecycle) {
         publishStatus(lifecycle + "\n" + lastVisual + "\n" + currentAudioStatus()
                 + "\n" + currentBatteryStatus() + "\n" + lastControl + "\n"
@@ -2548,7 +2627,9 @@ public final class CaptureService extends Service {
             identity = snapshotScreenIdentity;
             timestampNs = snapshotVisualTimestampNs;
             battery = BatteryLifeDetector.measureForScreen(watchSpec,
-                    snapshotWatchValues, snapshotScreenIdentity);
+                    snapshotWatchValues, snapshotScreenIdentity,
+                    PixelWatch.controlState(snapshotMaskButtonDownstroke,
+                            snapshotMonitorButtonDownstroke));
         }
         long ageUs = timestampNs > 0L
                 ? (System.nanoTime() - timestampNs) / 1_000L : -1L;
@@ -2700,6 +2781,10 @@ public final class CaptureService extends Service {
             snapshotGridValid = false;
             snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
             snapshotScreenScore = 0;
+            snapshotMaskButtonMeanLuma = PixelWatch.UNKNOWN;
+            snapshotMonitorButtonMeanLuma = PixelWatch.UNKNOWN;
+            snapshotMaskButtonDownstroke = PixelWatch.UNKNOWN;
+            snapshotMonitorButtonDownstroke = PixelWatch.UNKNOWN;
             snapshotPanAnchorX = PanAnchor.UNKNOWN;
             snapshotPanAnchorY = PanAnchor.UNKNOWN;
             snapshotPanAnchorArea = PanAnchor.UNKNOWN;
