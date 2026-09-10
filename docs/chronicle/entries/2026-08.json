@@ -1,0 +1,844 @@
+{
+  "schema": "chronicle-entries-v1",
+  "checkpoint": "2026-08",
+  "label": "Source, model & first embodiment",
+  "entries": [
+    {
+      "id": "strategy-lineage",
+      "date": "2026-08-19",
+      "kind": "lesson",
+      "title": "The project inherited a century of strategy, then made the lineage explicit",
+      "body": "Reaction play, right-vent camp, stall strategies, and synthesis are different answers to the same question: how much chaos can be converted into a repeatable routine? That history became the baseline for every later route.",
+      "measured": null,
+      "label": "INFERRED",
+      "rung": null,
+      "plan": 1,
+      "night": null,
+      "route": "10/20",
+      "tags": [
+        "history",
+        "strategy"
+      ],
+      "sources": [
+        "docs/strategy/STRATEGY-HISTORY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "six-seven-refuted",
+      "date": "2026-08-19",
+      "kind": "refutation",
+      "title": "CAM 06/07 looked elegant until the route graph answered back",
+      "body": "The decompiled route graph admits no two-camera cover for the proposed Six-Seven strategy. The smallest robust cover is the already-known 4-7-10 Minus 7 loop; the search result was a strategy-shaped mirage.",
+      "measured": "4 · 7 · 10 · 7",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 6,
+      "night": null,
+      "route": "Cam 6/7",
+      "tags": [
+        "strategy",
+        "source",
+        "refutation"
+      ],
+      "sources": [
+        "docs/strategy/CAM-6-7-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "gate-search-zero",
+      "date": "2026-08-20",
+      "kind": "retraction",
+      "title": "A 150/150 gate result can still be a false positive",
+      "body": "The first gate-aware monitor-denial search scored 150/150 twice, then the source audit found that two exported UI states had been swapped. After correction every tested family was 0/150. The useful result is the refusal to trust a green number without a control.",
+      "measured": "150/150 · 0/150",
+      "label": "CALIBRATED",
+      "rung": 0,
+      "plan": 6,
+      "night": null,
+      "route": "10/20",
+      "tags": [
+        "gate",
+        "refutation",
+        "retraction",
+        "evidence"
+      ],
+      "sources": [
+        "docs/strategy/GATE-SEARCH.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "android-build-is-authority",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "The Android build, not the PC build, is the mechanics authority",
+      "body": "The canonical target is com.scottgames.fnaf2 v2.0.7 build 26, Clickteam Fusion 296. PC 1.033 is a deferred parity question; it cannot silently supply facts about the Android campaign.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "android",
+        "scope"
+      ],
+      "sources": [
+        "docs/android/ANDROID-SOURCE-STATUS.md",
+        "docs/android/PC-DECOMP-CHECKLIST.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "xor28-handle-scramble",
+      "date": "2026-08-20",
+      "kind": "retraction",
+      "title": "Every object name in the first dump was shifted by XOR-28",
+      "body": "OI/COI.loadHeader decodes handles as a short XORed with 28. The old dump readers omitted that transform, so Toy and Withered pairs were consistently swapped while still looking internally coherent. The corrected source model is why the later constants are trustworthy.",
+      "measured": "28",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "decomp",
+        "retraction"
+      ],
+      "sources": [
+        "docs/android/SOURCE-DUMP-GUIDE.md",
+        "docs/android/ANDROID-SOURCE-STATUS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "camera-stall-is-real",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "The camera-light stall is alive, and it lasts 400 frames",
+      "body": "The apparent dead counter was another handle-scramble artifact. Handle 152 is the 400-frame camera stun: 6.67 seconds, Android-backed, and aligned with the community's 6.66-second observation.",
+      "measured": "152 · 400 · 6.67 · 6.66",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "camera",
+        "timing"
+      ],
+      "sources": [
+        "docs/android/ANDROID-CAMERA-STALL.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "office-fuse-not-stun",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "100/80/60/55/50/50/45 is the office fuse, not the camera stun",
+      "body": "The night-dependent value is the office-defense fuse. The camera stun is flat at 400 frames, so Night 6 at 50 frames is not evidence that Night 7 has a shorter camera stall.",
+      "measured": "400 frames · 6 · 50 frames · 7",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "timing",
+        "night"
+      ],
+      "sources": [
+        "docs/android/ANDROID-OFFICE-ENDGAME.md",
+        "docs/android/ANDROID-CAMERA-STALL.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "source-test-sees-corruption",
+      "date": "2026-08-20",
+      "kind": "lesson",
+      "title": "The old simulator suite could miss a corrupted mechanic",
+      "body": "Ten sourced values were mutated one at a time: sourcetest caught 10/10 while the simulator plus BB test caught only 2/10. The misses included Foxy AI, vent-mask ticks, the hall kill frame count, the Night 7 fuse, and deleted input gates.",
+      "measured": "10/10 · 2/10 · 7",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 7,
+      "night": null,
+      "route": null,
+      "tags": [
+        "testing",
+        "source",
+        "model"
+      ],
+      "sources": [
+        "tools/sourcetest.mjs",
+        "docs/android/ANDROID-SOURCE-STATUS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "balloon-boy-five-moves",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "Balloon Boy is five moves from the office, not four",
+      "body": "The sourced path is CAM 10 → 07 → 03 → 01 → 05 → opening. The first hop is silent, which is why a camera count that begins at the visible move underestimates the route.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "Minus 7",
+      "tags": [
+        "source",
+        "bb",
+        "strategy"
+      ],
+      "sources": [
+        "docs/android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md",
+        "docs/strategy/MINUS-7-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "bb-mask-storage-does-not-exist",
+      "date": "2026-08-20",
+      "kind": "refutation",
+      "title": "BB mask storage was an invented mechanic",
+      "body": "The event sheet clears the tick counter every time BB enters mask state 2. Five ticks must be one continuous hold; splitting the hold across mask responses does not bank progress.",
+      "measured": "2",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "Minus 7",
+      "tags": [
+        "source",
+        "bb",
+        "mask"
+      ],
+      "sources": [
+        "docs/android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md",
+        "docs/strategy/MINUS-7-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "vent-lights-are-free",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "Vent lights do not drain the flashlight budget",
+      "body": "Only the lit? action drains battery. Hall and vent light controls are free, which later made the lit-left-opening read the cheapest Night 6 classifier.",
+      "measured": "6",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "Minus 7",
+      "tags": [
+        "source",
+        "battery",
+        "strategy"
+      ],
+      "sources": [
+        "docs/android/ANDROID-SOURCE-STATUS.md",
+        "docs/device/ONE-PIXEL-VISION.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "paper-pals-flash",
+      "date": "2026-08-20",
+      "kind": "fact",
+      "title": "The CAM 11 flash-stall belongs to Paper Pals",
+      "body": "The source gives Paper Pals the CAM 11 flash interaction; the Puppet has no flash group. The old claim that the selection gate covered Toys, Mangle, and Puppet had its direction inverted.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "Minus 7",
+      "tags": [
+        "source",
+        "camera",
+        "puppet"
+      ],
+      "sources": [
+        "docs/android/UNIFIED-SOURCED-ENGINE-FACT-INDEX.md",
+        "docs/android/ANDROID-CAMERA-STALL.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "golden-freddy-window-deleted",
+      "date": "2026-08-20",
+      "kind": "retraction",
+      "title": "Golden Freddy has no sourced 0.3-second unfair-raise window",
+      "body": "The event sheet requires the monitor raise to finish before the office check. No group backs the earlier calibrated-looking 0.3-second window, so it was removed rather than preserved as folklore.",
+      "measured": "0.3",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "10/20",
+      "tags": [
+        "source",
+        "golden",
+        "retraction"
+      ],
+      "sources": [
+        "docs/android/ANDROID-SOURCE-STATUS.md",
+        "docs/strategy/MINUS-7-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "pc-boundary-is-explicit",
+      "date": "2026-08-20",
+      "kind": "lesson",
+      "title": "PC-confirmed is not a substitute evidence label",
+      "body": "The project now distinguishes PC-confirmed, PC-observed, community-derived, mod-derived, Android-confirmed, and model-only claims. A source from the wrong build is a scope error, not a stronger citation.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 7,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "source",
+        "scope"
+      ],
+      "sources": [
+        "docs/android/PC-DECOMP-CHECKLIST.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "first-phone-session",
+      "date": "2026-08-23",
+      "kind": "milestone",
+      "title": "The phone became a game, not just a target",
+      "body": "The first real device gameplay session established the embodiment lane. From here on, model survival and handset survival had to be reported as different things.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 10,
+      "night": 1,
+      "route": null,
+      "tags": [
+        "device",
+        "milestone",
+        "embodiment"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "plans/10-stock-device-controller.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "hid-two-contact",
+      "date": "2026-08-24",
+      "kind": "milestone",
+      "title": "Stock Android can hold a light and select a camera at once",
+      "body": "The /system/bin/hid path drove two contacts without root: one held the camera light while the other selected CAM 10, 04, and 07. The recording captured the full 10 → 04 → 07 → 11 trace.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 10,
+      "night": 1,
+      "route": "Minus 7",
+      "tags": [
+        "device",
+        "hid",
+        "multitouch"
+      ],
+      "sources": [
+        "docs/device/HID-MULTITOUCH.md",
+        "docs/device/ON-DEVICE-VALIDATION.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "spacing-floor-was-a-decoder-floor",
+      "date": "2026-08-24",
+      "kind": "retraction",
+      "title": "The 240 ms input floor belonged to the decoder, not the phone",
+      "body": "The first camera trace was decoded at 30 fps with a 100 ms stable-run requirement, forcing every 160 ms dwell to report the same 0.10-second floor. Native-rate grading later showed the floor was an instrument artifact.",
+      "measured": "30 fps · 100 ms · 160 ms · 0.10",
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 10,
+      "night": 1,
+      "route": "Minus 7",
+      "tags": [
+        "device",
+        "timing",
+        "retraction"
+      ],
+      "sources": [
+        "docs/device/HID-MULTITOUCH.md",
+        "docs/device/ON-DEVICE-VALIDATION.md"
+      ],
+      "status": "superseded",
+      "supersededBy": "native-fps-regrade"
+    },
+    {
+      "id": "native-fps-regrade",
+      "date": "2026-08-24",
+      "kind": "fact",
+      "title": "At native 60 fps the sweep lands at 240, 160, and 120 ms",
+      "body": "The same three probes regraded at native rate were 4/4 at all three spacings. The 120 ms spacing left a 12-frame window against the roughly 80 ms device epoch latch; resolution changed the conclusion.",
+      "measured": "4/4 · 120 ms · 12 · 80 ms",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 10,
+      "night": 1,
+      "route": "Minus 7",
+      "tags": [
+        "device",
+        "timing",
+        "calibration"
+      ],
+      "sources": [
+        "docs/device/HID-MULTITOUCH.md",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "one-pixel-opening-read",
+      "date": "2026-08-24",
+      "kind": "fact",
+      "title": "One tested pixel answers the Night 6 opening question",
+      "body": "The logical pixel at (451,730) distinguishes the labeled-empty opening from the occupied-left opening in the retained corpus. A small positive anchor beats a full-screen classifier when the question is only which branch to take.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 2,
+      "plan": 15,
+      "night": 6,
+      "route": null,
+      "tags": [
+        "vision",
+        "device",
+        "night"
+      ],
+      "sources": [
+        "docs/device/ONE-PIXEL-VISION.md",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "camera-light-cadence",
+      "date": "2026-08-24",
+      "kind": "fact",
+      "title": "The camera-light loop is a five-second cadence",
+      "body": "The source movement tick is 5 seconds, so the light read, CAM selection, and flash-stall timing are related to a game cadence rather than arbitrary host sleeps. This became the timing unit for later route comparisons.",
+      "measured": "5",
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 1,
+      "night": null,
+      "route": "Minus 7",
+      "tags": [
+        "source",
+        "timing",
+        "strategy"
+      ],
+      "sources": [
+        "docs/strategy/MINUS-7-STRATEGY.md",
+        "docs/android/ANDROID-CAMERA-STALL.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "screenrecord-is-a-claim-boundary",
+      "date": "2026-08-25",
+      "kind": "lesson",
+      "title": "A 180-second recording cannot support a 420-second night",
+      "body": "A plausible-looking truncated video is worse than no video for a full-night claim. The device is refused when unlimited screen recording is unavailable; the grader never silently turns a partial artifact into a pass.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 13,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "device",
+        "video"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "run-length-is-graded",
+      "date": "2026-08-25",
+      "kind": "lesson",
+      "title": "A run length is a graded interval, not wall clock",
+      "body": "Every quoted device duration must come from grade-run.sh and retain its start and end evidence. Stopwatch time, shell lifetime, and the game's night interval are different clocks.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 13,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "timing",
+        "device"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "tools/device/grade-run.sh"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "index-drift-costs-a-tool",
+      "date": "2026-08-26",
+      "kind": "lesson",
+      "title": "An index nobody recomputes silently stops describing the project",
+      "body": "TOOLS.md was missing 47 of 137 scripts and docs/README.md was missing five pages, including the device page the run-claim table points to. A mention is not an entry; discoverability is part of evidence.",
+      "measured": "47 · 137",
+      "label": "CALIBRATED",
+      "rung": null,
+      "plan": 7,
+      "night": null,
+      "route": null,
+      "tags": [
+        "tooling",
+        "documentation",
+        "evidence"
+      ],
+      "sources": [
+        "tools/test-docs.mjs",
+        "docs/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "catalog-stays-in-repository",
+      "date": "2026-08-26",
+      "kind": "fact",
+      "title": "The repository boundary is git, not a directory walk",
+      "body": "A nested agent worktree doubled import-graph and test-manifest counts. Catalog generation now enumerates git files so a checkout under .claude cannot masquerade as project content.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "tooling",
+        "provenance"
+      ],
+      "sources": [
+        "tools/generate-catalog.js",
+        "docs/architecture/generated/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "claim-ceilings-are-separate",
+      "date": "2026-08-26",
+      "kind": "fact",
+      "title": "A model gate, a device attempt, and a device win are three claims",
+      "body": "Evidence records carry claim level and verdict separately. FIXTURE, MODEL_ONLY, and DEVICE_MEASURED cannot be collapsed into one green status, and a model gate cannot promote a physical run.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 12,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "proof",
+        "model"
+      ],
+      "sources": [
+        "docs/evidence/README.md",
+        "docs/architecture/COMPATIBILITY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "minus3-open-loop-refuted",
+      "date": "2026-08-28",
+      "kind": "refutation",
+      "title": "The first open-loop Minus Toys port cleared the model gate and died around 2 AM",
+      "body": "The phone held the Toys and the simulator reported zero desync, but the real schedule was phase-locked to a clock that drifted against a roughly 0.66-second cycle budget. A model pass did not transfer to the handset.",
+      "measured": "0.66",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 2,
+      "night": 2,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "strategy",
+        "timing",
+        "refutation"
+      ],
+      "sources": [
+        "docs/strategy/MINUS-3-STRATEGY.md",
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "plans/02-minus-3-mode.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "drift-not-reproduced",
+      "date": "2026-08-29",
+      "kind": "negative",
+      "title": "A clean calibration run did not reproduce the earlier drift",
+      "body": "The first Night 1 Minus Toys calibration held for about five minutes with zero measured desync and a cycle map of -51 ± 86 ppm. The result narrowed the question to load, route, or observation conditions instead of proving open-loop safe.",
+      "measured": "1 · 51 · 86",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 2,
+      "night": 1,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "timing",
+        "negative"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "audio-cues-dead-on-stock-phone",
+      "date": "2026-08-29",
+      "kind": "refutation",
+      "title": "The stock phone's game audio is not available to the live observer",
+      "body": "SoundPool tracks on the g56 fast mixer do not reach AudioPlaybackCapture. The cue detector can be proven offline, but live audio control needs a recompile, a rooted path, or an external mix.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 8,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "audio",
+        "refutation"
+      ],
+      "sources": [
+        "docs/device/ANDROID-AUDIO-CAPTURE.md",
+        "plans/08-audio-cue-controller.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "phase-estimation-is-the-binding-layer",
+      "date": "2026-08-30",
+      "kind": "lesson",
+      "title": "Reactive policy was not the wall; phase estimation was",
+      "body": "The first gated reactive cut handled BB and Foxy logic, but its ensemble still bound at roughly 63/600 because the phase clock was uncertain. The right next instrument was phase estimation, not more threat branches.",
+      "measured": null,
+      "label": "MODEL",
+      "rung": 2,
+      "plan": 21,
+      "night": 2,
+      "route": "Minus Toys",
+      "tags": [
+        "model",
+        "strategy",
+        "timing"
+      ],
+      "sources": [
+        "plans/21-policy-program-synthesis.md",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "story-transfer-is-not-automatic",
+      "date": "2026-08-30",
+      "kind": "lesson",
+      "title": "A strategy can transfer mechanics without transferring reliability",
+      "body": "The split-camera family became a story-night target: CAM 09 on Nights 1–2 and CAM 08 from Night 3. The source route transfers; the device policy still needs its own timing and observation evidence.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 1,
+      "plan": 2,
+      "night": 3,
+      "route": "Minus Toys",
+      "tags": [
+        "strategy",
+        "source",
+        "device"
+      ],
+      "sources": [
+        "docs/strategy/MINUS-3-STRATEGY.md",
+        "docs/device/ON-DEVICE-VALIDATION.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "moto-g56-is-the-testbed",
+      "date": "2026-08-30",
+      "kind": "fact",
+      "title": "Every physical claim is about one named handset and build",
+      "body": "The campaign target is a Moto g56 5G, Android 16/API 36, 2400×1080 at 120 Hz, running com.scottgames.fnaf2 v2.0.7+26. The identity is part of the claim, not boilerplate metadata.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 14,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "provenance",
+        "scope"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/device/OBSERVATION-CORPUS-INVENTORY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "two-clocks-never-merge",
+      "date": "2026-08-30",
+      "kind": "lesson",
+      "title": "Host time, device time, video time, and game time are not interchangeable",
+      "body": "The campaign records clock domains and maps them only when an artifact proves the mapping. A timestamp copied across executors without a bracket is an unknown, even when the number looks precise.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 14,
+      "night": null,
+      "route": null,
+      "tags": [
+        "timing",
+        "evidence",
+        "device"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/device/RUN-TELEMETRY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "unknown-is-a-verdict",
+      "date": "2026-08-30",
+      "kind": "lesson",
+      "title": "UNKNOWN(reason) is more useful than a plausible answer",
+      "body": "The project treats unreadable frames, missing clocks, unmeasured audio, and ungraded terminals as named unknowns. The observer can stop a run; it cannot convert an absence of evidence into a state.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 2,
+      "plan": 15,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "observation",
+        "discipline"
+      ],
+      "sources": [
+        "docs/evidence/README.md",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "seed-recovery-stays-shadow",
+      "date": "2026-08-30",
+      "kind": "fact",
+      "title": "RNG recovery is research and shadow tooling, not live authority",
+      "body": "The Android runtime uses one global 16-bit Fusion stream, but hidden Random calls advance it. Candidate seed recovery can explain a retained run; it cannot authorize a live press.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 2,
+      "plan": 15,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "rng",
+        "model"
+      ],
+      "sources": [
+        "docs/device/RNG-SEED-RECOVERY.md",
+        "docs/android/ANDROID-SOURCE-STATUS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "legacy-path-keeps-evidence",
+      "date": "2026-08-30",
+      "kind": "lesson",
+      "title": "Retiring a runner retires the path, not its measurements",
+      "body": "Historical clears and failures remain citable with their original method and claim ceiling. The modern path must climb the ladder again; a legacy Night 1 clear does not transfer automatically.",
+      "measured": "1",
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "history",
+        "provenance"
+      ],
+      "sources": [
+        "docs/evidence/README.md",
+        "docs/operations/CLAUDE-HISTORY.txt"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    }
+  ]
+}

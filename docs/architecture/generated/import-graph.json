@@ -958,6 +958,24 @@
       ]
     },
     {
+      "file": "tools/chronicle-harvest.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/chronicle.mjs",
+      "imports": [
+        "./chronicle-schema.mjs",
+        "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/constrainedsearch.mjs",
       "imports": [
         "./minus7/paramsearch.mjs",
@@ -2185,6 +2203,17 @@
       ]
     },
     {
+      "file": "tools/test-chronicle.mjs",
+      "imports": [
+        "./chronicle-schema.mjs",
+        "./chronicle.mjs",
+        "node:assert/strict",
+        "node:child_process",
+        "node:fs",
+        "node:path"
+      ]
+    },
+    {
       "file": "tools/test-docs.mjs",
       "imports": [
         "node:child_process",
@@ -2245,6 +2274,28 @@
       "file": "tools/validate-references.js",
       "imports": [
         "node:fs/promises",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/vault.mjs",
+      "imports": [
+        "@fnaf2-1020/core/contracts",
+        "node:child_process",
+        "node:crypto",
+        "node:fs",
+        "node:os",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/vaulttest.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:os",
         "node:path",
         "node:url"
       ]

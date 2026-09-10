@@ -42,7 +42,7 @@ jobs:
       - name: Fixture device dry-run
         run: npm run device:dry-run -- --profile fixture-hid-screencap
       - name: Documentation and catalog links
-        run: npm run catalog && git diff --exit-code -- docs/architecture/generated && node tools/test-docs.mjs
+        run: npm run catalog && npm run chronicle && git diff --exit-code -- docs/architecture/generated docs/portal && node tools/test-docs.mjs
       # The repository has sourced mksh fragments as well as executable bash
       # scripts. ShellCheck's critical tier catches unknown shell context and
       # parse/expansion errors without pretending the existing warning backlog

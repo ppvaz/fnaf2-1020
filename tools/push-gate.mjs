@@ -41,7 +41,7 @@ const LANES = [
   { name: 'Clean-checkout model lane', run: 'npm run test:core' },
   { name: 'Trainer build', run: 'npm run build:trainer' },
   { name: 'Fixture device dry-run', run: 'npm run device:dry-run -- --profile fixture-hid-screencap' },
-  { name: 'Documentation and catalog links', run: 'npm run catalog && git diff --exit-code -- docs/architecture/generated && node tools/test-docs.mjs' },
+  { name: 'Documentation and catalog links', run: 'npm run catalog && npm run chronicle && git diff --exit-code -- docs/architecture/generated docs/portal && node tools/test-docs.mjs' },
   { name: 'ShellCheck critical diagnostics', needs: 'docker', multiline: true },
   { name: 'Shell footgun regressions', run: 'tools/device/test-shell-footguns.sh' },
   { name: 'Cue helper query (mock ADB)', run: 'tools/device/test-query-cue-helper.sh' },

@@ -1,0 +1,1229 @@
+{
+  "schema": "chronicle-entries-v1",
+  "checkpoint": "2026-09",
+  "label": "Proof, device reality & the next wall",
+  "entries": [
+    {
+      "id": "closed-loop-branches-need-facts",
+      "date": "2026-09-02",
+      "kind": "lesson",
+      "title": "A closed loop only acts on facts it can observe within budget",
+      "body": "The policy language now carries branch conditions, freshness, reconvergence, and read cost. Audio remains UNKNOWN and a flattened branch is rejected rather than replayed under a different name.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 21,
+      "night": null,
+      "route": null,
+      "tags": [
+        "controller",
+        "observation",
+        "model"
+      ],
+      "sources": [
+        "plans/21-policy-program-synthesis.md",
+        "docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "cycle-prerequisites-are-gated",
+      "date": "2026-09-02",
+      "kind": "refutation",
+      "title": "The controller could select observe-and-hold forever and never wind the box",
+      "body": "The cycle library required a camera view that no primitive emitted. A nine-second synthetic gate missed the reachability defect; the full-night check found 1800/1800 wind decisions rejected and a Puppet death.",
+      "measured": "1800/1800",
+      "label": "CALIBRATED",
+      "rung": 2,
+      "plan": 20,
+      "night": 1,
+      "route": null,
+      "tags": [
+        "controller",
+        "testing",
+        "refutation"
+      ],
+      "sources": [
+        "plans/20-belief-state-cycle-controller.md",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "full-night-harness-is-baseline",
+      "date": "2026-09-02",
+      "kind": "fact",
+      "title": "A full-night closed-loop harness is plumbing evidence, not gameplay evidence",
+      "body": "The estimator arm survived 1/3 simulator nights with one 6 AM and 367.3 seconds mean alive; the disabled and open-loop controls survived 0/3. The result validates the loop's boundaries, not a device strategy.",
+      "measured": "1/3 · 6 · 367.3 · 0/3",
+      "label": "MODEL",
+      "rung": 1,
+      "plan": 20,
+      "night": 1,
+      "route": null,
+      "tags": [
+        "controller",
+        "model",
+        "evidence"
+      ],
+      "sources": [
+        "plans/20-belief-state-cycle-controller.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "offline-replay-is-deterministic",
+      "date": "2026-09-02",
+      "kind": "milestone",
+      "title": "5855 recorded boundaries replayed identically",
+      "body": "An offline fact stream now carries its own night, seed, observer configuration, cycle library, commit, and digest. Full Night 1 seed 0 rebuilt all 5855 decisions; the manifest still says MODEL_ONLY.",
+      "measured": null,
+      "label": "MODEL",
+      "rung": 1,
+      "plan": 20,
+      "night": 1,
+      "route": null,
+      "tags": [
+        "replay",
+        "model",
+        "provenance"
+      ],
+      "sources": [
+        "plans/20-belief-state-cycle-controller.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night1-device-clear",
+      "date": "2026-09-05",
+      "kind": "milestone",
+      "title": "Night 1 reached 6 AM on the modern campaign path",
+      "body": "The first retained modern victory is a graded device record, not an operator report. Its save advancement, terminal frame, video, event stream, and bundle hashes travel together.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 12,
+      "night": 1,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "victory",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/victory-night1-20260907.json",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night2-device-clear",
+      "date": "2026-09-05",
+      "kind": "milestone",
+      "title": "Night 2 reached 6 AM on the same evidence contract",
+      "body": "The second clear proved that the campaign can advance beyond Night 1 while retaining a structured terminal and save observation. Model backing remains separate from the device verdict.",
+      "measured": "1",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 12,
+      "night": 2,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "victory",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/victory-night2-20260907.json",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night3-device-clear",
+      "date": "2026-09-08",
+      "kind": "milestone",
+      "title": "Night 3 reached 6 AM with the split-camera recipe",
+      "body": "The device record retains the campaign bundle, terminal frame, video, and save advancement. This is a physical clear of Night 3, not a claim that the route is reliable for Night 5.",
+      "measured": "3 · 5",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 12,
+      "night": 3,
+      "route": "Minus 3",
+      "tags": [
+        "device",
+        "victory",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/victory-night3-20260908.json",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night4-device-clear",
+      "date": "2026-09-08",
+      "kind": "milestone",
+      "title": "Night 4 reached 6 AM, then the route met its first hard wall",
+      "body": "The fourth story clear established the recipe's current frontier. Night 5 is a separate claim: its open-loop timing was later refuted rather than inferred from the earlier wins.",
+      "measured": "5",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 12,
+      "night": 4,
+      "route": "Minus 3",
+      "tags": [
+        "device",
+        "victory",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/victory-night4-20260908.json",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night5-open-loop-refuted",
+      "date": "2026-09-08",
+      "kind": "refutation",
+      "title": "Night 5 is refuted for open-loop actuation",
+      "body": "Sixteen attempts on the Minus 3 timing reached a best of 369.0 seconds twice, but the route repeatedly lost the music-box margin near 5 AM. The model prices one or two dropped cycles as catastrophic; the device supplied the dropped press.",
+      "measured": "3 · 369.0 · 5",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus 3",
+      "tags": [
+        "device",
+        "strategy",
+        "refutation",
+        "timing"
+      ],
+      "sources": [
+        "docs/evidence/night5-attempt-20260908.json",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "box-margin-is-exhausted",
+      "date": "2026-09-08",
+      "kind": "negative",
+      "title": "The remaining box-margin knobs do not buy Night 5",
+      "body": "Under the device-validated invariants, period 10000 held the model margin at 0.6525 for every camdrop tried; period 12000 collapsed it, and camdrop 10500 produced 0/600. The proven schedule is already the optimum of that open-loop space.",
+      "measured": "10000 · 0.6525 · 12000 · 10500",
+      "label": "MODEL",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus 3",
+      "tags": [
+        "model",
+        "strategy",
+        "negative"
+      ],
+      "sources": [
+        "docs/evidence/gate-toys-night5-3000seeds-20260908.log",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "night5-wall-is-execution",
+      "date": "2026-09-08",
+      "kind": "fact",
+      "title": "The Night 5 wall is in execution, not the authored plan",
+      "body": "Six device deaths clustered at 157, 195, 200, 202, 367, and 369 seconds, while the same schedule's 3000-seed model deaths spread across the night. The compiled stream has exact authored timing; the handset is where the divergence lives.",
+      "measured": "157 · 195 · 200 · 202",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus 3",
+      "tags": [
+        "device",
+        "timing",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/night5-attempt-20260908.json",
+        "docs/evidence/night5-attempt-20260908.json",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "append-writes-cost-the-night",
+      "date": "2026-09-08",
+      "kind": "milestone",
+      "title": "One shell write per HID line cost 25 seconds before the night began",
+      "body": "Collapsing hundreds of phone-side printf calls moved spawn-to-start from 32.1 to 7.4 seconds and office-to-first-action from 25.3 to 0.7 seconds. The best Night 5 survival moved to 283.8 seconds before a later failure.",
+      "measured": "32.1 · 7.4 · 25.3 · 0.7",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "timing",
+        "tooling"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/evidence/night5-attempt-20260908.json"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "design-change-not-knob",
+      "date": "2026-09-08",
+      "kind": "lesson",
+      "title": "The next Night 5 route needs state resynchronisation, not another timing knob",
+      "body": "The repository already has ensure-monitor, target-mask, and state-gated controls. The two honest execution choices are timing-accurate without feedback or state-correct with a measured clock; the next route must combine those properties.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "controller",
+        "decision"
+      ],
+      "sources": [
+        "docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md",
+        "docs/evidence/night5-attempt-20260908.json"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "input-cancel-coverage",
+      "date": "2026-09-09",
+      "kind": "retraction",
+      "title": "The first ACTION_CANCEL headline overstated its coverage",
+      "body": "The trace showed three cancels, but its last published touch was at 115.2 seconds while the run continued to 233 seconds. It was three cancels in the first roughly 106 seconds, with about 118 seconds unobserved.",
+      "measured": "115.2 · 233 · 106 · 118",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "trace",
+        "retraction"
+      ],
+      "sources": [
+        "docs/evidence/night5-input-trace-20260909.json"
+      ],
+      "status": "superseded",
+      "supersededBy": "input-cancel-correction"
+    },
+    {
+      "id": "input-cancel-correction",
+      "date": "2026-09-09",
+      "kind": "retraction",
+      "title": "The cancels land inside the wind hold, not across whole cycles",
+      "body": "All three cancels fall inside the 3.2-second wind hold in cycles 5, 6, and 7. Their measured cost is 0.28, 1.39, and 0.90 seconds of winding; the corrected record preserves both the coverage limit and the attribution.",
+      "measured": "3.2 · 5 · 6 · 7",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "trace",
+        "retraction"
+      ],
+      "sources": [
+        "docs/evidence/night5-input-trace-20260909.json"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "inputtrace-process-name-blind",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "The inputtrace helper can report no app events on a trace full of app events",
+      "body": "Its process_name filter is NULL for the relevant slice tracks, so the helper prints NO APP EVENTS even when the trace contains 300 ACTION_DOWN slices. The reported numbers came from direct trace_processor queries while the parser defect remains open.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 14,
+      "night": 5,
+      "route": null,
+      "tags": [
+        "device",
+        "trace",
+        "tooling",
+        "negative"
+      ],
+      "sources": [
+        "docs/evidence/night5-input-trace-20260909.json",
+        "tools/device/inputtrace.py"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "monitor-raise-fails",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "The intermittent failure is the monitor raise, and it self-clears",
+      "body": "In a corrector-free run of the byte-identical winning schedule, the monitor was up at 12.3 seconds, down at 22.3 and 32.3, then up again. The mask was off in both failures, so this is not a stuck-mask explanation.",
+      "measured": "12.3 · 22.3 · 32.3",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "observation",
+        "timing"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "lost-wind-is-catastrophic",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "Missing the wind hold is the failure that matters",
+      "body": "The model prices three consecutive lost wind holds at 7/3000 wins with 2976 Puppet deaths, while truncating a hold costs no wins. A corrector that only notices late is solving the wrong failure mode.",
+      "measured": "7/3000 · 2976",
+      "label": "MODEL",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "model",
+        "device",
+        "decision"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/strategy/MINUS-3-STRATEGY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "gesture-inset-is-candidate",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "The monitor and mask taps sit inside a mandatory gesture inset, but that is not yet the cause",
+      "body": "The tap coordinates intersect the measured bottom gesture area. Against the hypothesis, the same coordinates worked for most cycles and cleared Nights 3 and 4. The next test is a hitbox probe above the artwork or a navigation-mode change, not a coordinate nudge guessed from the screen.",
+      "measured": "3 · 4",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "observation",
+        "negative"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/HID-MULTITOUCH.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "fastsync-lost-to-grade-race",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "The deepest run lost its grade to an observation race",
+      "body": "n5-fastsync stayed alive to 388.5 seconds of a 420-second envelope, but the frame classifier read the advancing game-over screen as title while the helper reported FNAF2_GAME_OVER. The grader now gives the helper terminal state precedence.",
+      "measured": "388.5 · 420",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 13,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "evidence",
+        "observation"
+      ],
+      "sources": [
+        "docs/evidence/night5-attempt-20260908.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "modal-observer-unfit",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "A modal observer can be fast and still be unfit to drive a corrector",
+      "body": "The observer sampled 568 times with a 73.9 ms median round trip and 129.8 ms p95, yet returned exactly one true monitorUp in 67 seconds of a schedule that held the monitor up about 38% of the time. It is a report tool, not live control authority.",
+      "measured": "568 · 73.9 ms · 129.8 ms · 67",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 15,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "observation",
+        "negative"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "corrupt-video-stays-corrupt",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "A retained artifact can be useful evidence of a broken artifact",
+      "body": "The Night 5 evidence video has a missing moov atom and is unreadable by ffmpeg. The record keeps the corruption and lowers what can be claimed; it does not silently substitute a nearby recording.",
+      "measured": "5",
+      "label": "UNKNOWN",
+      "rung": null,
+      "plan": 13,
+      "night": 5,
+      "route": null,
+      "tags": [
+        "evidence",
+        "provenance",
+        "artifact"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "model-device-blackout-gap",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "The model cannot produce the blackout the operator watched",
+      "body": "startBlackout checks whether the mask was fully on before the grace deadline but never rechecks it at BLACKOUT_FRAMES. The model therefore keeps minBox above 0.6525 while the device can lose the mask state; this is the next Truth-layer measurement.",
+      "measured": "0.6525",
+      "label": "MODEL",
+      "rung": 4,
+      "plan": 12,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "model",
+        "device",
+        "truth"
+      ],
+      "sources": [
+        "docs/evidence/night5-attempt-20260908.json",
+        "docs/android/ANDROID-OFFICE-ENDGAME.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "gates-catch-parity",
+      "date": "2026-09-09",
+      "kind": "milestone",
+      "title": "State gates catch a parity inversion before the death",
+      "body": "The first gated Night 5 caught a believed-on, observed-off mask state one cycle after it happened instead of sixty seconds later. The gate mechanism works; the observer and budget still determine whether it is safe to act on.",
+      "measured": "5",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "controller",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "gate-correction-verdict",
+      "date": "2026-09-09",
+      "kind": "retraction",
+      "title": "CORRECTION-UNCONFIRMED was itself an unmeasured verdict",
+      "body": "The verifying frame arrived about 200 ms after a corrective press while the mask effect takes 358–712 ms. The gate could not see its own correction, so the right result was unreadable, not failed.",
+      "measured": "200 ms · 358 · 712 ms",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "timing",
+        "retraction"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json"
+      ],
+      "status": "superseded",
+      "supersededBy": "gate-sized-from-device"
+    },
+    {
+      "id": "gate-sized-from-device",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "Gate budgets now come from the device bracket",
+      "body": "A control read is 190 ms at p50 and 374 ms at worst. The verifier owns its measured settle, refuses same-frame reads, and preserves the unknown rather than ending a night on a state the rule could resolve.",
+      "measured": "190 ms · 374 ms",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "timing",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "retry-spacing-decorrelates",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "Retries only help when refusals decorrelate",
+      "body": "Given one ambiguous-threshold read, the next read was also ambiguous at 0.60 after 250 ms, 0.49 after 500 ms, and a minimum 0.37 near 600 ms. The shipped 350 ms spacing sat on the wrong side of the curve.",
+      "measured": "0.60 · 250 ms · 0.49 · 500 ms",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 14,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "timing",
+        "evidence"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "bright-grid-refutes-mask-on",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "A bright grid can refute mask-on without proving mask-off",
+      "body": "Across 82 confident frames, mask-on whole-grid luma reached 10 at most and mask-off reached 25 at least. The gap lets a gate repair the obvious polarity inversion, while darkness remains ambiguous.",
+      "measured": "82 · 10 · 25",
+      "label": "CALIBRATED",
+      "rung": 4,
+      "plan": 15,
+      "night": 5,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "observation",
+        "calibration"
+      ],
+      "sources": [
+        "docs/evidence/night5-monitor-raise-loss-20260909.json",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "transition-probes-are-exploratory",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "A captured transition is not yet a qualified calibration",
+      "body": "The September transition and maskraise probes retain native timing, but the grades remain exploratory: no measured stream-to-video clock map, no matched request-to-dispatch events, and unverified office/mask preconditions.",
+      "measured": null,
+      "label": "UNKNOWN",
+      "rung": 2,
+      "plan": 15,
+      "night": 5,
+      "route": null,
+      "tags": [
+        "device",
+        "calibration",
+        "negative"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/evidence/calibration-clock-audit-20260905.json"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "intersection-probes-refuse-illegal-paths",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "State-gated probes make illegal control paths visible",
+      "body": "The intersection schedule registers camera light, monitor, and hall light separately, requires two consecutive positive state observations, and refuses mask-up to hall-light or monitor paths. Refusal is part of the probe result.",
+      "measured": null,
+      "label": "CALIBRATED",
+      "rung": 3,
+      "plan": 15,
+      "night": 5,
+      "route": null,
+      "tags": [
+        "device",
+        "calibration",
+        "controls"
+      ],
+      "sources": [
+        "docs/device/HID-MULTITOUCH.md",
+        "docs/device/ON-DEVICE-VALIDATION.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "simulator-prices-nothing",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "The simulator makes a press and a screencap equally free",
+      "body": "Any survival figure from pilottest or hidpilottest is a model statement. The device actuator narrows the gap but cannot make a simulator win a physical claim.",
+      "measured": null,
+      "label": "MODEL",
+      "rung": 0,
+      "plan": 12,
+      "night": null,
+      "route": null,
+      "tags": [
+        "model",
+        "evidence",
+        "device"
+      ],
+      "sources": [
+        "docs/evidence/README.md",
+        "docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "numbers-need-controls",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "A number needs a control that could have disproved it",
+      "body": "A detector once reported 22 thuds over 285 seconds; waveform correlation showed all 22 were false positives. A recording that cannot contain the cue and a second signature would have made the failure cheap.",
+      "measured": "22 · 285 · 22",
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 8,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "audio",
+        "testing"
+      ],
+      "sources": [
+        "docs/device/ANDROID-AUDIO-CAPTURE.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "retractions-stay",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "Retractions are part of the record, not cleanup",
+      "body": "When a result is corrected, the original reasoning stays with a dated correction. Wrong turns often contain the measurement design for the next successful test.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "history",
+        "evidence",
+        "retraction"
+      ],
+      "sources": [
+        "docs/README.md",
+        "docs/operations/CLAUDE-HISTORY.txt"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "finding-must-land-in-repo",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "An agent report is a delivery mechanism, not a destination",
+      "body": "A finding that is not in the repository cannot be retrieved, checked, or corrected by the next session. Contradictions are urgent because they leave the project actively misleading.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "agents",
+        "tooling",
+        "evidence"
+      ],
+      "sources": [
+        "docs/README.md",
+        "plans/PROGRESS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "three-audiences",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "The record serves agents, humans, and humans working with agents",
+      "body": "Rich self-describing records beat narrow numbers: name the clock, sensor, night, build, and claim ceiling. UNKNOWN(reason) is more valuable than a plausible value with no boundary.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "documentation",
+        "evidence",
+        "provenance"
+      ],
+      "sources": [
+        "docs/evidence/README.md",
+        "plans/PROGRESS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "fusion-rng-is-small-not-simple",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "A 16-bit RNG is recoverable in size but not automatically in state",
+      "body": "The runtime uses state = (state × 31415 + 1) mod 65536 and Random(N) = floor(state × N / 65536). Hidden Random calls advance the same stream, so seed recovery remains shadow explanation rather than exact live prediction.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": 0,
+      "plan": 15,
+      "night": null,
+      "route": null,
+      "tags": [
+        "source",
+        "rng",
+        "model"
+      ],
+      "sources": [
+        "docs/device/RNG-SEED-RECOVERY.md",
+        "docs/android/ANDROID-SOURCE-STATUS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "right-vent-pan-is-a-budget",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "Right-vent panning spends most of the free cycle",
+      "body": "The measured pan costs about 570 ms round trip against roughly 680 ms of free cycle. Any plan that depends on it must price the pan; none of the current schedules does.",
+      "measured": "570 ms · 680 ms",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 3,
+      "night": null,
+      "route": "Vent Camp",
+      "tags": [
+        "device",
+        "timing",
+        "negative"
+      ],
+      "sources": [
+        "docs/strategy/VENT-CAMP-STRATEGY.md",
+        "docs/device/RUN-TELEMETRY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "bot-census-gap",
+      "date": "2026-09-09",
+      "kind": "trivia",
+      "title": "The missing prior art is specifically external reactive control on a stock handset",
+      "body": "Published bots have beaten other FNaF titles and platforms, but no published result supplies measured closed-loop latency plus a graded clear for this stock Android combination. The gap is narrower than saying nobody has beaten a FNaF game with software.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 1,
+      "night": null,
+      "route": null,
+      "tags": [
+        "history",
+        "research",
+        "trivia"
+      ],
+      "sources": [
+        "docs/research/README.md",
+        "docs/research/FNAF-BOT-CENSUS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "shooter25-ceiling",
+      "date": "2026-09-09",
+      "kind": "trivia",
+      "title": "Shooter25 is the in-process benchmark",
+      "body": "Its practice mod reads danger, blackout, and the music-box counter frame-locked at roughly 104–1. External control has no equivalent live game-clock sync, which is the ceiling this project is trying to approach honestly.",
+      "measured": "104 · 1",
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 17,
+      "night": null,
+      "route": null,
+      "tags": [
+        "research",
+        "trivia",
+        "benchmark"
+      ],
+      "sources": [
+        "docs/in-engine/SHOOTER25-PRACTICE-MOD.md",
+        "docs/in-engine/SHOOTER25-BOT-STATE-MACHINE.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "toy-chica-unobserved",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "Toy Chica is the missing physical control",
+      "body": "The operator has seen Toy Chica in the live hall, but the repository still has no frame of an animatronic in the office. That is the test needed to validate whether the gray and yellow visual anchors survive a real occupant.",
+      "measured": null,
+      "label": "UNKNOWN",
+      "rung": 3,
+      "plan": 15,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "vision",
+        "negative"
+      ],
+      "sources": [
+        "docs/device/OBSERVATION-CORPUS-INVENTORY.md",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "white-bands-unexplained",
+      "date": "2026-09-09",
+      "kind": "negative",
+      "title": "The white recording bands are not a safe frame filter",
+      "body": "Cue-helper presence, lost-signal cues, and camera-switch phase were all tested against the bands. None explained them; filtering on per-frame variance already discarded a frame showing Toy Bonnie.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 2,
+      "plan": 15,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "vision",
+        "negative"
+      ],
+      "sources": [
+        "docs/device/OBSERVATION-CORPUS-INVENTORY.md",
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "puppet-seeds-repeat",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "The same seven simulator seeds kill Night 1 on every night",
+      "body": "Puppet deaths occur on seeds 136, 139, 403, 715, 825, 978, and 1197. Jitter changes where a hold lands, not its length: the limiting variable is wind timing, not wind budget.",
+      "measured": "136 · 139 · 403 · 715",
+      "label": "MODEL",
+      "rung": 0,
+      "plan": 12,
+      "night": 1,
+      "route": null,
+      "tags": [
+        "model",
+        "rng",
+        "strategy"
+      ],
+      "sources": [
+        "docs/strategy/MINUS-7-STRATEGY.md",
+        "docs/evidence/gate-toys-night1-3000seeds-20260907.log"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "dumpsys-focus-is-multi-line",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "The first mCurrentFocus line is often null during a transition",
+      "body": "Window identity must be matched across all dumpsys lines by package. Taking the first or last line alone makes a transition look like a missing game.",
+      "measured": null,
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 14,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "observation",
+        "tooling"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-SCREEN-CHECKS.md",
+        "docs/device/ON-DEVICE-VALIDATION.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "epoch-arithmetic-wraps",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "Android shell arithmetic can wrap a real epoch timestamp",
+      "body": "mksh signed 32-bit arithmetic cannot hold epoch milliseconds around 1.8e12. The corrected epoch helpers preserve the value as a string, and the interpreter test pins the exact case that first wrapped.",
+      "measured": "32 · 1",
+      "label": "DEVICE_MEASURED",
+      "rung": 3,
+      "plan": 14,
+      "night": null,
+      "route": null,
+      "tags": [
+        "device",
+        "timing",
+        "tooling"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/device/RUN-TELEMETRY.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "unlimited-recording-is-required",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "A device that cannot record the whole night is refused, not degraded",
+      "body": "A partial 180-second artifact can look convincing while proving nothing about a 420-second run. Refusal protects the claim boundary better than a plausible truncated video.",
+      "measured": "180 · 420",
+      "label": "SOURCED",
+      "rung": 3,
+      "plan": 13,
+      "night": null,
+      "route": null,
+      "tags": [
+        "evidence",
+        "device",
+        "video"
+      ],
+      "sources": [
+        "docs/device/ON-DEVICE-VALIDATION.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "dashboard-rows-are-derived",
+      "date": "2026-09-09",
+      "kind": "lesson",
+      "title": "Dashboard state is read from completion markers, never memory",
+      "body": "Package state changes with the work, the next step moves when it is finished, and partial is still zero. A stale dashboard can make five open packages read closed.",
+      "measured": null,
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 18,
+      "night": null,
+      "route": null,
+      "tags": [
+        "documentation",
+        "planning",
+        "evidence"
+      ],
+      "sources": [
+        "plans/PROGRESS.md",
+        "docs/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "headline-is-written-packages",
+      "date": "2026-09-09",
+      "kind": "fact",
+      "title": "49 of 158 mandatory packages are closed, and that is not a win probability",
+      "body": "The 31% headline measures completion of written plans; the expanded stock-device roadmap is 3 of 44. It is a bookkeeping signal, not a forecast of a Night 6 clear.",
+      "measured": "31 · 3 · 44 · 6",
+      "label": "SOURCED",
+      "rung": null,
+      "plan": 12,
+      "night": null,
+      "route": null,
+      "tags": [
+        "planning",
+        "evidence",
+        "trivia"
+      ],
+      "sources": [
+        "plans/PROGRESS.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    },
+    {
+      "id": "current-frontier",
+      "date": "2026-09-09",
+      "kind": "milestone",
+      "title": "Nights 1–4 are proven; Night 5 needs a new execution model; Night 6 is next",
+      "body": "The current frontier is explicit: four story clears are retained, open-loop Night 5 is refuted, and the Night 6 Minus Toys target remains ahead. Nothing in this digest quietly upgrades that frontier.",
+      "measured": "5 · 6",
+      "label": "DEVICE_MEASURED",
+      "rung": 4,
+      "plan": 12,
+      "night": 6,
+      "route": "Minus Toys",
+      "tags": [
+        "device",
+        "strategy",
+        "frontier"
+      ],
+      "sources": [
+        "plans/PROGRESS.md",
+        "docs/evidence/README.md"
+      ],
+      "status": "standing",
+      "supersededBy": null
+    }
+  ],
+  "outlook": {
+    "next": [
+      {
+        "title": "Make Night 5 state-correct",
+        "body": "Replace open-loop timing with device-local controls that observe monitor and mask state at each cycle boundary.",
+        "sources": [
+          "docs/device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md",
+          "docs/evidence/night5-attempt-20260908.json"
+        ]
+      },
+      {
+        "title": "Grade the next run as a Night 6 attempt",
+        "body": "Carry the proven bundle and evidence contract into a Night 6 Minus Toys run and retain the full 6 AM or terminal bundle.",
+        "sources": [
+          "plans/12-end-to-end-evidence-campaign.md",
+          "plans/PROGRESS.md"
+        ]
+      },
+      {
+        "title": "Turn calibration probes into qualified control facts",
+        "body": "Bind a native video and input clock, matched dispatch events, and preconditions before letting the observer drive a live corrector.",
+        "sources": [
+          "docs/evidence/calibration-clock-audit-20260905.json",
+          "docs/device/ON-DEVICE-VALIDATION.md"
+        ]
+      },
+      {
+        "title": "Chain the proven story clears",
+        "body": "Run the unattended sequence instead of treating Nights 1–4 as four isolated wins.",
+        "sources": [
+          "docs/evidence/README.md",
+          "plans/13-campaign-and-all-night-support.md"
+        ]
+      }
+    ],
+    "missing": [
+      {
+        "title": "A Night 6 device 6 AM",
+        "body": "The current frontier is Night 5 refuted for open-loop and Night 6 still a target; no page styling can substitute for that physical artifact.",
+        "sources": [
+          "plans/12-end-to-end-evidence-campaign.md",
+          "plans/PROGRESS.md"
+        ]
+      },
+      {
+        "title": "A trustworthy Night 5 state observer",
+        "body": "Monitor raise, mask polarity, blackout duration, and game-over must be measured on this handset rather than inferred from a Night 1 corpus.",
+        "sources": [
+          "docs/device/ON-DEVICE-SCREEN-CHECKS.md",
+          "docs/evidence/night5-monitor-raise-loss-20260909.json"
+        ]
+      },
+      {
+        "title": "A complete clock and input-loss explanation",
+        "body": "ACTION_CANCEL coverage is bounded, the monitor failure is intermittent, and the gesture-inset hypothesis is still only a candidate.",
+        "sources": [
+          "docs/evidence/night5-input-trace-20260909.json",
+          "docs/evidence/night5-monitor-raise-loss-20260909.json"
+        ]
+      },
+      {
+        "title": "The unobserved physical controls",
+        "body": "Toy Chica in-office, white recording bands, and live audio capture still lack the evidence needed to promote them into control authority.",
+        "sources": [
+          "docs/device/OBSERVATION-CORPUS-INVENTORY.md",
+          "docs/device/ANDROID-AUDIO-CAPTURE.md"
+        ]
+      }
+    ]
+  }
+}

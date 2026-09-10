@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && npm run test:vault && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -113,6 +113,31 @@
     {
       "id": "evidence",
       "command": "node tools/evidence.js",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "vault",
+      "command": "node tools/vault.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "chronicle",
+      "command": "node tools/chronicle.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "chronicle:harvest",
+      "command": "node tools/chronicle-harvest.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:vault",
+      "command": "node tools/vaulttest.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "test:chronicle",
+      "command": "node tools/test-chronicle.mjs",
       "lifecycle": "supported"
     },
     {
@@ -239,6 +264,42 @@
       "id": "tools/evidence.js",
       "invocation": "tools/evidence.js",
       "kind": "evidence CLI",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/vault.mjs",
+      "invocation": "tools/vault.mjs <export|import|verify|refs|list>",
+      "kind": "evidence CLI",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/vaulttest.mjs",
+      "invocation": "tools/vaulttest.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/chronicle.mjs",
+      "invocation": "tools/chronicle.mjs",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/chronicle-harvest.mjs",
+      "invocation": "tools/chronicle-harvest.mjs --since COMMIT [--until COMMIT] [--json]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/chronicle-schema.mjs",
+      "invocation": "tools/chronicle-schema.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-chronicle.mjs",
+      "invocation": "tools/test-chronicle.mjs",
+      "kind": "check",
       "lifecycle": "supported"
     },
     {

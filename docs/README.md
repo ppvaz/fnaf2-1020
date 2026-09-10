@@ -24,6 +24,7 @@ controller research, and device evidence form one program.
 | Run something against a real phone | [`device/ON-DEVICE-VALIDATION.md`](device/ON-DEVICE-VALIDATION.md) |
 | Recover stock-APK RNG seed candidates without modifying the APK | [`device/RNG-SEED-RECOVERY.md`](device/RNG-SEED-RECOVERY.md) |
 | Understand the project's scope and claim discipline | [`../PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) |
+| Read what the project has learned | [`chronicle/README.md`](chronicle/README.md) |
 | Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
 | Pick up unfinished work | [`../plans/`](../plans/) |
 | Understand current package ownership | [`architecture/README.md`](architecture/README.md) |
