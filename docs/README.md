@@ -158,6 +158,9 @@ Fusion build 296, August 2025.
 - [`ARCHITECTURE-AUDIT.md`](ARCHITECTURE-AUDIT.md) — ranked cross-cutting
   structural findings, each with what it costs the mission and where it is
   resolved. Retractions and resolutions are recorded in place.
+- [`architecture/LEGIBILITY-FOLLOWUPS.md`](architecture/LEGIBILITY-FOLLOWUPS.md)
+  — open architecture findings for human and agent legibility, with evidence,
+  owners, priorities, and acceptance checks.
 - [`HANDOVER.md`](HANDOVER.md) — historical snapshot of the iteration-time work.
 - [`../UPSTREAM-LEDGER.md`](../UPSTREAM-LEDGER.md) — give-back ledger: what this
   project owes upstream, and where each item stands.

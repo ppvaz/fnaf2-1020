@@ -20,6 +20,9 @@ commands never contain coordinates, shell text, ADB commands, or HID bytes.
 
 The [generated catalogs](generated/README.md) are executable views of current
 package, command, contract, protocol, adapter, test, and responsibility data.
+The [architecture legibility follow-up register](LEGIBILITY-FOLLOWUPS.md)
+tracks open risks affecting human and agent comprehension, with evidence and
+acceptance checks for each item.
 The [workspaces ADR](../decisions/0001-workspaces-and-core.md) records why the
 development bootstrap is `npm ci` and why core/trainer have no runtime tools.
 The [compatibility inventory](COMPATIBILITY.md) names every remaining legacy or
