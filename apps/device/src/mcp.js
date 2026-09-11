@@ -215,7 +215,9 @@ export function createActuatorMcp(service, { profiles = [service.profile], cueHe
         if (name === 'device.preflight') {
           if (args.physical === true) {
             if (!bridge || typeof bridge.preflight !== 'function') return error('UNAVAILABLE', 'physical ADB preflight is not composed');
-            return { ok: true, preflight: await bridge.preflight({ targetBuild: service.profile.targetBuild }) };
+            return { ok: true, preflight: await bridge.preflight({
+              targetBuild: service.profile.targetBuild, restartCapture: true,
+            }) };
           }
           return { ok: true, preflight: service.preflight() };
         }

@@ -51,7 +51,8 @@
       "deterministic": true,
       "determinismSignals": [],
       "fixedSleeps": [
-        "setTimeout(resolve, 2500"
+        "setTimeout(resolve, 125",
+        "setTimeout(("
       ],
       "sharedResources": [
         "device-transport"
@@ -136,6 +137,24 @@
       "sharedResources": [
         "device-transport"
       ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "apps/device/test/campaign-signal.test.js",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [],
       "subprocesses": false,
       "measurement": {
         "status": "NOT_MEASURED",
@@ -852,8 +871,6 @@
       "deterministic": true,
       "determinismSignals": [],
       "fixedSleeps": [
-        "time.sleep(60",
-        "time.sleep(60",
         "time.sleep(0.05"
       ],
       "sharedResources": [],
@@ -1097,9 +1114,7 @@
       "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
       "determinismSignals": [],
-      "fixedSleeps": [
-        "time.sleep(30"
-      ],
+      "fixedSleeps": [],
       "sharedResources": [],
       "subprocesses": false,
       "measurement": {
@@ -1135,9 +1150,7 @@
       "timeoutSource": "tools/test.mjs per-test watchdog",
       "deterministic": true,
       "determinismSignals": [],
-      "fixedSleeps": [
-        "time.sleep(30"
-      ],
+      "fixedSleeps": [],
       "sharedResources": [
         "device-transport"
       ],
@@ -3083,7 +3096,7 @@
       "fixedSleeps": [
         "setTimeout((",
         "setTimeout((",
-        "setTimeout(r, 250"
+        "setTimeout(r, 25"
       ],
       "sharedResources": [
         "browser",
@@ -3125,7 +3138,7 @@
       "deterministic": true,
       "determinismSignals": [],
       "fixedSleeps": [
-        "setTimeout(r, 250"
+        "setTimeout(r, 25"
       ],
       "sharedResources": [
         "local-http-port"

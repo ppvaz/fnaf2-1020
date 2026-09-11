@@ -59,6 +59,11 @@ export class DeviceCampaignRunner {
         machine.acceptTerminal(terminal);
 
         if (machine.state === 'RETRY_VERIFY') {
+          // A terminal observer is authoritative for the campaign state even
+          // when the device-local executor's own poll missed the short
+          // game-over/static transition. Stop the HID before waiting for the
+          // title, otherwise a buffered schedule can keep pressing the menu.
+          await ports.stopAttempt?.({ target, execution, terminal, reason: 'terminal-retry' });
           const retryReady = await ports.retryReady({ target, execution, spec: this.spec });
           machine.acceptRetry(retryReady);
           if (machine.state === 'HOLD' || machine.state === 'ABORTED') return machine.result();
@@ -69,6 +74,9 @@ export class DeviceCampaignRunner {
           return machine.result();
         }
 
+        // Six AM also ends the authored schedule before the save/menu proof
+        // starts. A successful terminal must not leak touches into the title.
+        await ports.stopAttempt?.({ target, execution, terminal, reason: 'terminal-proof' });
         const terminalVerification = await ports.terminalVerification({ target, execution, terminal, spec: this.spec });
         machine.acceptTerminalVerification(terminalVerification);
         if (machine.state !== 'SAVE_VERIFY') return machine.result();

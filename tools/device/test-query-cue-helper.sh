@@ -13,9 +13,9 @@ ln -s "$HERE/testdata/mock-adb-cue-helper.sh" "$TEMP_DIR/bin/adb"
 python3 "$HERE/testdata/mock-control-server.py" "$TEMP_DIR/port" &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true; rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
-for _ in 1 2 3 4 5 6 7 8 9 10; do
+for _ in $(seq 1 100); do
   [ -s "$TEMP_DIR/port" ] && break
-  sleep 0.2
+  sleep 0.02
 done
 
 MOCK_FORWARD_PORT="$(cat "$TEMP_DIR/port")"

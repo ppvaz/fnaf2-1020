@@ -4,6 +4,7 @@
     {
       "file": "apps/device/src/adb-bridge.js",
       "imports": [
+        "./cue-helper-capture.js",
         "./physical-ports.js",
         "node:child_process",
         "node:util"
@@ -93,6 +94,7 @@
         "./campaign-bundle.js",
         "./campaign-preflight.js",
         "./campaign-runner.js",
+        "./campaign-signal.js",
         "./campaign.js",
         "./composition.js",
         "./custom-night.js",
@@ -111,6 +113,14 @@
         "./service.js",
         "@fnaf2-1020/adapters/actuators",
         "@fnaf2-1020/adapters/sensors"
+      ]
+    },
+    {
+      "file": "apps/device/src/cue-helper-capture.js",
+      "imports": [
+        "node:child_process",
+        "node:url",
+        "node:util"
       ]
     },
     {
@@ -224,6 +234,7 @@
       "file": "apps/device/test/adb-bridge.test.js",
       "imports": [
         "../src/adb-bridge.js",
+        "../src/cue-helper-capture.js",
         "../src/physical-ports.js",
         "node:assert/strict"
       ]
@@ -282,6 +293,14 @@
         "../src/campaign-runner.js",
         "../src/campaign.js",
         "node:assert/strict"
+      ]
+    },
+    {
+      "file": "apps/device/test/campaign-signal.test.js",
+      "imports": [
+        "../src/campaign-signal.js",
+        "node:assert/strict",
+        "node:events"
       ]
     },
     {

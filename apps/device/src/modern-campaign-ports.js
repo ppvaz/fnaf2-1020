@@ -171,21 +171,31 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 /** @param {any} options */
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
-    machineOnly = false, allowSaveReset = false } = options;
+    machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
+  if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
+  if (!['blocking', 'observe-once'].includes(armMode))
+    throw new TypeError('armMode must be blocking or observe-once');
   if (profile?.actuator !== 'hid-multi' || profile?.visualSensor !== 'mediaprojection')
     throw new TypeError('modern campaign ports require a HID + MediaProjection profile');
   const bridge = new AdbDeviceBridge({ serial, adb });
+  if (!captureRestarted) {
+    const restarted = await bridge.restartCueHelperCapture({ screen: 'menu' });
+    if (restarted.status !== 'READY')
+      throw new Error(`Cue Helper capture restart failed: ${restarted.output ?? restarted.status}`);
+  }
   const evidenceDirectory = resolve('artifacts', `campaign-${new Date().toISOString().replaceAll(':', '-')}`);
   await mkdir(evidenceDirectory, { recursive: false });
-  await writeFile(join(evidenceDirectory, 'request.json'), JSON.stringify({ spec, bundle, profile }, null, 2));
+  await writeFile(join(evidenceDirectory, 'request.json'), JSON.stringify({ spec, bundle, profile,
+    execution: { armMode } }, null, 2));
   const onEvent = event => {
     const row = JSON.stringify({ at: new Date().toISOString(), ...event });
     appendFileSync(join(evidenceDirectory, 'events.jsonl'), row + '\n');
     process.stderr.write(row + '\n');
   };
   onEvent({ type: 'evidence.started', evidenceDirectory });
+  onEvent({ type: 'arm.mode', mode: armMode });
   let lastLabel = null;
   let lastFrameAt = 0;
   let frameNumber = 0;
@@ -207,10 +217,15 @@ export async function createCampaignPorts(options = {}) {
   // no input is sent here. The modern artifact executor consumes only the
   // validated semantic bundle and the authenticated Cue Helper read port.
   const cuePort = new AdbCueHelperPort({ serial, adb });
-  const cueEndpoint = cuePort.discover();
+  let cueEndpoint = cuePort.discover();
   const cueTransport = new CueHelperControlTransport({
     request: line => cuePort.request(line), token: cueEndpoint.token,
   });
+  const refreshCueEndpoint = () => {
+    cueEndpoint = cuePort.discover();
+    cueTransport.token = cueEndpoint.token;
+    return cueEndpoint;
+  };
   const [cameraRule, monitorRule, maskRule] = await Promise.all([
     readJson(CAMERA_RULE).then(parseCameraRule),
     readJson(MONITOR_RULE).then(parseMonitorRule),
@@ -337,13 +352,17 @@ export async function createCampaignPorts(options = {}) {
   // machine-only experiment must use this modern device-local artifact path so
   // every requested night gets its own bound plan and no legacy shell driver
   // can be selected by accident.
+  let menuHid = null;
   const localExecutor = new AdbDeviceLocalArtifactExecutor({ serial, adb,
       observe: () => lifecycle(bridge, serial), observeArm, observeControlState,
+      // The title transport is already InputReader-ready when the story row
+      // activates. Reuse that process through the intro so the night never
+      // pays a second /system/bin/hid registration delay.
+      sharedHid: () => menuHid?.process ?? null,
       pollMs: 250, onEvent,
       onOutput: output => onEvent({ type: 'hid.stderr', output }) });
   const titleModel = await readJson(TITLE_MODEL);
   const modelPath = TITLE_MODEL.pathname;
-  let menuHid = null;
   // Set when save() observes the game roll a 6 AM straight into the next
   // night's gameplay (story Nights 1..4 on this build). The next night's
   // menu step is then satisfied by the roll: there is no title to read.
@@ -366,10 +385,15 @@ export async function createCampaignPorts(options = {}) {
 
   const artifactRequestFor = target => makeCampaignExecutionRequest({
     bundle, plan: bundle.plans.find(item => item.night === target.night), profile,
-    mode: 'live', artifact: bundle.artifact,
+    mode: 'live', artifact: bundle.artifact, armMode,
   });
   let pendingExecution = null;
   const prearm = target => {
+    // The native watchlist is a synchronous Cue Helper operation. Load it
+    // before starting the held executor so its setup cannot block the
+    // phase-critical night release later in intro().
+    if (bundle.plans.find(plan => plan.night === target.night)?.armVerification)
+      ensureArmWatch();
     if (pendingExecution) return;
     pendingExecution = localExecutor.execute(artifactRequestFor(target));
     // executeAttempt surfaces the failure; nothing else may await it.
@@ -406,10 +430,8 @@ export async function createCampaignPorts(options = {}) {
     // that bounded wait so the press is tied to a fresh target observation.
     const sender = openMenuHid();
     await sender.transport.start();
-    // Register and qualify the gameplay HID while the title is still visible.
-    // Doing this in intro() consumed the night opening during InputReader's
-    // attachment delay. The menu transport has a distinct device name so it
-    // cannot satisfy the gameplay driver's readiness check.
+    // Register and qualify the one HID process while the title is still
+    // visible; the intro and gameplay schedule reuse this ready process.
     const freshItems = await title(bridge, serial, modelPath);
     if (!freshItems.includes(targetName))
       return { target: targetName, visible: false, selected: false, observed: true, items: freshItems };
@@ -437,18 +459,13 @@ export async function createCampaignPorts(options = {}) {
         menuPresses: firstSelectionState === 'title' ? 2 : 1 };
 
     // Continue/6th Night activates the intro after the focused-row press.
-    // Wait for that transition while the menu HID is still the only registered
-    // game device. Starting the gameplay schedule before this point races a
-    // second /system/bin/hid registration against the menu device (both use
-    // the same kernel id), which can show the Android touch indicator while
-    // Fusion remains on the title. Once the transition is observed, the menu
-    // device is closed and the modern schedule is pre-armed; its night_go gate
-    // still anchors the first authored action to the office frame.
+    // Keep the already-qualified menu HID open through the intro: the gameplay
+    // executor hands its first schedule lines to this same process after the
+    // office frame is observed.
     if (targetName !== 'newGame') {
       const entryState = await waitFor(bridge, serial,
         value => value === 'intro' || value === 'newspaper' || value === 'night',
         30000, 'night selection');
-      await closeMenuHid();
       prearm(target);
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1, entryState };
@@ -469,49 +486,30 @@ export async function createCampaignPorts(options = {}) {
       const newGameState = await waitFor(bridge, serial,
         value => value === 'intro' || value === 'newspaper' || value === 'night',
         30000, 'new-game night start');
-      await closeMenuHid();
       prearm(target);
       return { target: targetName, visible: true, selected: true, observed: true,
         saveResetAuthorized: true, confirmation: 'observed-and-accepted', entryState: newGameState };
     }
-    await closeMenuHid();
     prearm(target);
     return { target: targetName, visible: true, selected: true, observed: true,
       saveResetAuthorized: true, confirmation: 'not-present', entryState: confirmationState };
   };
 
   const intro = async ({ target }) => {
-    // The gameplay driver is already attached and waiting for the office.
-    // Close the separate menu channel before accepting the night transition.
-    await closeMenuHid();
     // Pre-arm the device-local schedule while the intro card plays. The
     // executor's night_go gate holds every plan action -- arm taps included --
-    // until the lifecycle observer positively sees the office, so spawning
-    // during the intro no longer spends plan time on registration and ready
-    // delays: the grid origin lands within one poll of 12 AM instead of the
-    // measured 30-37 s post-intro offset that killed Night 2 to Foxy on
-    // 2026-09-07. The one-shot double-camera arm stays equally protected
-    // because the gate, not the spawn, releases the prefix.
+    // until the lifecycle observer positively sees the office. The title HID
+    // stays alive, so spawning during the intro no longer spends plan time on
+    // a second registration and ready delay: the grid origin lands within one
+    // poll of 12 AM instead of the measured 7.8 s post-office handoff lag.
     prearm(target);
     // Do not accept the night transition on the newspaper/intro card: the
-    // mute press and identity below need the office, and only the
-    // authoritative office `night` state establishes them.
+    // authoritative office `night` state establishes the actuator origin.
     const state = await waitFor(bridge, serial, value => value === 'night', 30000, 'night start');
-    if (bundle.plans.find(plan => plan.night === target.night)?.armVerification)
-      ensureArmWatch();
-    // Night setup, not strategy: one bounded press on the office MUTE CALL
-    // button so the phone guy call is silent for the run. The measured point
-    // comes from the profile; without it the call simply plays.
-    if (target.mode === 'story' && isRecord(profile.controlMap?.mute)) {
-      const mutePoint = point(profile.controlMap.mute, 'profile.controlMap.mute');
-      try {
-        const sender = openMenuHid();
-        await sender.transport.start();
-        await sender.send({ point: mutePoint, durationMs: 33 });
-      } finally {
-        await closeMenuHid();
-      }
-    }
+    // This is the phase-critical handoff. The measurement deliberately leaves
+    // setup taps out of the path so the already-ready HID can act immediately
+    // after the first authoritative office frame.
+    localExecutor.releaseNight();
     // The 6th Night and Custom Night menu targets identify the configured
     // night. A story night inside a chained campaign is identified by its
     // selection chain: newGame on an observed fresh save, continue after the
@@ -599,12 +597,51 @@ export async function createCampaignPorts(options = {}) {
     return configured;
   };
 
-  const devicePreflight = args => bridge.preflight({ targetBuild: spec.target.build, ...args });
+  const devicePreflight = args => bridge.preflight({ targetBuild: spec.target.build,
+    restartCapture: false, ...args });
+  const restartAfterAbort = async reason => {
+    // The HID release stops input delivery; it does not rewind the game state.
+    // Close the shared title process before restarting the target so no stale
+    // input can land in the fresh title/menu instance.
+    await closeMenuHid();
+    const detail = String(reason?.message ?? reason ?? 'campaign stopped').slice(0, 240);
+    onEvent({ type: 'campaign.abort.restart', reason: detail });
+    try {
+      const restarted = await bridge.restartGame();
+      if (restarted.status !== 'READY')
+        throw new Error(`game restart failed at ${restarted.stage}: ${restarted.detail ?? 'unknown error'}`);
+      const state = await waitFor(bridge, serial, value => value === 'title', 30000,
+        'post-abort game restart');
+      const capture = await bridge.restartCueHelperCapture({ screen: 'menu' });
+      if (capture.status !== 'READY')
+        throw new Error(`Cue Helper capture restart failed: ${capture.output ?? capture.status}`);
+      const endpoint = refreshCueEndpoint();
+      const refreshedState = await waitFor(bridge, serial, value => value === 'title', 30000,
+        'post-abort game restart after Cue Helper capture');
+      onEvent({ type: 'campaign.abort.restarted', state: refreshedState ?? state,
+        launcher: restarted.launcher, cueHelperPort: endpoint.port });
+    } catch (error) {
+      onEvent({ type: 'campaign.abort.restart-failed', error: error.message });
+      throw error;
+    }
+  };
   const composed = composeCampaignPorts({ spec, bundle, profile,
-    artifact: bundle.artifact, devicePreflight, menu, customNight, intro,
-    terminal, terminalVerification, save, retryReady, localExecutor });
+    artifact: bundle.artifact, armMode, devicePreflight, menu, customNight, intro,
+    terminal, terminalVerification, save, retryReady, localExecutor, restartAfterAbort });
   const ports = {
     ...composed.ports,
+    stopAttempt: async ({ terminal, reason }) => {
+      // The terminal port may observe game-over before the executor's own
+      // lifecycle poll does. Stopping here is the last gate before retryReady
+      // or save() can read the title, so no stale HID stream can reach menu.
+      await localExecutor.abort(`campaign-${reason ?? 'terminal'}:${terminal?.outcome ?? 'unknown'}`);
+      // The shared title process is deliberately reused through a healthy
+      // intro, but a terminal ends that ownership. Closing it is what kills
+      // the already-buffered report stream; a retry will open a fresh process.
+      await closeMenuHid();
+      onEvent({ type: 'campaign.terminal.actuator-stopped',
+        outcome: terminal?.outcome ?? null, reason: reason ?? null, hidClosed: true });
+    },
     executeAttempt: async ({ target }) => {
       // intro() pre-armed the schedule during the intro card; the attempt
       // owns that execution. A retry (or any path that skipped intro)
@@ -614,12 +651,25 @@ export async function createCampaignPorts(options = {}) {
         pendingExecution = null;
         return pending;
       }
+      // A retry can reach the attempt port after intro has already returned;
+      // grant the shared HID handoff before starting a fresh executor.
+      localExecutor.releaseNight();
       return localExecutor.execute(artifactRequestFor(target));
     },
     releaseAll: async () => {
+      const hadPendingExecution = pendingExecution !== null;
       pendingExecution = null;
-      await composed.ports.releaseAll();
-      await closeMenuHid();
+      try {
+        await composed.ports.releaseAll();
+      } finally {
+        await closeMenuHid();
+        // The runner also uses releaseAll for a HOLD reached after menu()
+        // pre-armed the next attempt. That is an abort of a live game state,
+        // even though executeAttempt was never consumed, so leave no night
+        // running behind for the next attempt or operator.
+        if (hadPendingExecution)
+          await restartAfterAbort(new Error('campaign stopped with a pre-armed attempt'));
+      }
     },
     cleanup: async reason => {
       pendingExecution = null;

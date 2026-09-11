@@ -12,6 +12,7 @@ import { evaluateCampaignPreflight } from './campaign-preflight.js';
 import { validateCampaignBundle } from './campaign-bundle.js';
 import { composeSeamFixture } from './calibration-fixture.js';
 import { AdbCueHelperPort } from './physical-ports.js';
+import { installCampaignSignalHandlers } from './campaign-signal.js';
 import { fitClockMap, CueHelperControlTransport } from '@fnaf2-1020/adapters';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 
@@ -52,6 +53,7 @@ Options:
   --qualification FILE  DEVICE_MEASURED qualification artifact
   --ports MODULE  explicit campaign-port composition module
   --machine-only  run an explicit MODEL_ONLY machine-input experiment; no claim promotion
+  --arm-observe-once  run the double-camera check once without blocking the schedule; abort only on a definite mismatch
   --allow-save-reset  authorize the measured New Game confirmation for a fresh story chain
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
@@ -76,7 +78,7 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
-    guided: false, machineOnly: false, allowSaveReset: false, calibration: undefined, bundle: undefined,
+    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
@@ -88,6 +90,7 @@ function parse(argv) {
     else if (item === '--json') options.json = true;
     else if (item === '--guided') options.guided = true;
     else if (item === '--machine-only') options.machineOnly = true;
+    else if (item === '--arm-observe-once') options.armMode = 'observe-once';
     else if (item === '--allow-save-reset') options.allowSaveReset = true;
     else if (item === '--no-helper') options.requireHelper = false;
     else if (item === '--no-hid') options.requireHid = false;
@@ -289,7 +292,8 @@ async function main(argv = process.argv.slice(2)) {
   if (options.command === 'preflight') {
     const bridge = new AdbDeviceBridge({ serial: options.serial });
     const result = await bridge.preflight({ targetBuild: selected.targetBuild,
-      requireHelper: options.requireHelper, requireHid: options.requireHid });
+      requireHelper: options.requireHelper, requireHid: options.requireHid,
+      restartCapture: true });
     console.log(options.json ? JSON.stringify(result, null, 2) :
       `${result.status} ${result.serial ?? ''} ${result.reason ?? ''}\n` +
       result.checks.map(item => `  ${item.status.padEnd(7)} ${item.id}: ${typeof item.detail === 'string' ? item.detail : JSON.stringify(item.detail)}`).join('\n'));
@@ -327,7 +331,8 @@ async function main(argv = process.argv.slice(2)) {
     const bridge = new AdbDeviceBridge({ serial: options.serial });
     machine.startPreflight();
     const device = await bridge.preflight({ targetBuild: selected.targetBuild,
-      requireHelper: options.requireHelper, requireHid: options.requireHid });
+      requireHelper: options.requireHelper, requireHid: options.requireHid,
+      restartCapture: true });
     machine.acceptPreflight(device);
     const bundle = await campaignBundle(options.bundle, spec, selected.id);
     const qualification = await jsonFile(options.qualification, 'qualification');
@@ -341,9 +346,17 @@ async function main(argv = process.argv.slice(2)) {
       const factory = module.createCampaignPorts ?? module.default;
       if (typeof factory !== 'function') throw new Error('ports module must export createCampaignPorts()');
       composition = await factory({ spec, bundle, profile: selected, calibration, qualification,
-        serial: device.serial, machineOnly: options.machineOnly, allowSaveReset: options.allowSaveReset });
+        serial: device.serial, machineOnly: options.machineOnly, armMode: options.armMode,
+        allowSaveReset: options.allowSaveReset, captureRestarted: true });
     }
     const ports = composition?.ports ?? composition;
+    // Once a live composition exists, an operator interrupt must release the
+    // HID process before the Node process exits. The modern composition's
+    // cleanup also force-stops/restarts the game and verifies the title state.
+    const signalHandlers = installCampaignSignalHandlers({
+      cleanup: reason => typeof ports?.cleanup === 'function'
+        ? ports.cleanup(reason) : ports?.releaseAll?.(),
+    });
     const requiredPorts = ['preflight', 'menu', 'intro', 'executeAttempt', 'terminal',
       'terminalVerification', 'save', 'retryReady', 'releaseAll'];
     if (spec.nights.some(target => target.mode === 'custom')) requiredPorts.push('customNight');
@@ -358,22 +371,27 @@ async function main(argv = process.argv.slice(2)) {
     const output = { status: campaignPreflight.status, mode: 'live', preflight: campaignPreflight,
       state: machine.snapshot(), reason: campaignPreflight.status === 'READY' ? null : 'campaign-gates-incomplete' };
     console.log(JSON.stringify(output, (key, value) => key === 'token' ? '[REDACTED]' : value, 2));
-    if (campaignPreflight.status === 'FAIL') process.exitCode = 1;
-    if (campaignPreflight.status === 'READY') {
-      try {
-        const result = await new DeviceCampaignRunner({ spec, ports }).run();
-        const retained = { status: result.state, mode: 'live', result };
-        if (composition?.evidenceDirectory)
-          await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify(retained, null, 2));
-        console.log(JSON.stringify(retained, null, 2));
-        if (result.state !== 'COMPLETE') process.exitCode = 1;
-      } catch (error) {
-        if (composition?.evidenceDirectory)
-          await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify({
-            status: 'ERROR', mode: 'live', error: error.message,
-          }, null, 2));
-        throw error;
+    try {
+      if (campaignPreflight.status === 'FAIL') process.exitCode = 1;
+      if (campaignPreflight.status === 'READY') {
+        try {
+          const result = await new DeviceCampaignRunner({ spec, ports }).run();
+          const retained = { status: result.state, mode: 'live', result };
+          if (composition?.evidenceDirectory)
+            await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify(retained, null, 2));
+          console.log(JSON.stringify(retained, null, 2));
+          if (result.state !== 'COMPLETE') process.exitCode = 1;
+        } catch (error) {
+          if (composition?.evidenceDirectory)
+            await writeFile(join(composition.evidenceDirectory, 'result.json'), JSON.stringify({
+              status: 'ERROR', mode: 'live', error: error.message,
+            }, null, 2));
+          throw error;
+        }
       }
+    } finally {
+      signalHandlers.dispose();
+      await signalHandlers.done();
     }
     return;
   }

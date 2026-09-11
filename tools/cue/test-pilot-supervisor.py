@@ -18,13 +18,13 @@ spec.loader.exec_module(module)
 
 
 fixture = (
-    "import signal, subprocess, sys, time\n"
+    "import signal, subprocess, sys\n"
     "signal.signal(signal.SIGINT, lambda *_: sys.exit(130))\n"
     "child = subprocess.Popen([sys.executable, '-c', "
-    "'import signal,time; signal.signal(signal.SIGINT, signal.SIG_IGN); "
-    "signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)'], "
+    "'import signal; signal.signal(signal.SIGINT, signal.SIG_IGN); "
+    "signal.signal(signal.SIGTERM, signal.SIG_IGN); signal.pause()'], "
     "start_new_session=True)\n"
-    "time.sleep(60)\n"
+    "signal.pause()\n"
 )
 root = subprocess.Popen([sys.executable, "-c", fixture], start_new_session=True)
 tracked = module.TrackedProcess(root, "fixture")

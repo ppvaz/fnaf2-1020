@@ -64,7 +64,7 @@ with tempfile.TemporaryDirectory(prefix="cue-helper-queue-test-") as directory:
     child_code = """
 import importlib.util
 import sys
-import time
+import signal
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location('cue_helper_queue', sys.argv[1])
@@ -73,7 +73,7 @@ module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 with module.QueueRunnerLock(Path(sys.argv[2])):
     print('child-runner-lease-acquired', flush=True)
-    time.sleep(30)
+    signal.pause()
 """
     child = subprocess.Popen(
         [sys.executable, "-c", child_code, str(HERE / "cue-helper-queue.py"),

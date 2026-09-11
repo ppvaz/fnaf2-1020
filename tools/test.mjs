@@ -618,7 +618,7 @@ async function serve() {
     { cwd: ROOT, stdio: 'ignore' });
   for (let i = 0; i < 40; i++) {
     if (await reachable()) return child;
-    await new Promise(r => setTimeout(r, 250));
+    await new Promise(r => setTimeout(r, 25));
   }
   child.kill();
   throw new Error(`tools/serve.py never answered on ${PORT}`);

@@ -1,5 +1,6 @@
 /**
- * Closed ADB device port for read-only discovery and preflight.
+ * Closed ADB device port for discovery and preflight. The preflight capture
+ * restart is explicit; every other operation remains a fixed read-only query.
  *
  * This is deliberately not a generic shell wrapper.  Each operation below is
  * a fixed, reviewable command with bounded output and timeout.  Actuation is
@@ -10,6 +11,7 @@
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseCueHelperEndpoint } from './physical-ports.js';
+import { restartCueHelperCapture as defaultRestartCueHelperCapture } from './cue-helper-capture.js';
 
 const execFile = promisify(execFileCallback);
 const GAME_PACKAGE = 'com.scottgames.fnaf2';
@@ -62,9 +64,12 @@ export class AdbDeviceBridge {
   /** @type {((observation: { script: string, png: Buffer, stdout: string, stderr: string, code: number }) => Promise<void>) | undefined} */
   recordObservation;
 
-  /** @param {{adb?: string, serial?: string, timeoutMs?: number, maxBuffer?: number, run?: Function}} options */
-  constructor({ adb = 'adb', serial, timeoutMs = 10000, maxBuffer = 2 * 1024 * 1024, run } = {}) {
+  /** @param {{adb?: string, serial?: string, timeoutMs?: number, maxBuffer?: number, run?: Function, captureRestart?: Function}} options */
+  constructor({ adb = 'adb', serial, timeoutMs = 10000, maxBuffer = 2 * 1024 * 1024, run,
+    captureRestart = defaultRestartCueHelperCapture } = {}) {
     this.adb = adb; this.serial = serial; this.timeoutMs = timeoutMs; this.maxBuffer = maxBuffer;
+    if (typeof captureRestart !== 'function') throw new TypeError('captureRestart must be a function');
+    this.captureRestart = captureRestart;
     this.runPort = run ?? (async (args, options = {}) => {
       try {
         const result = await execFile(this.adb, args, { encoding: options.encoding === null ? null : (options.encoding ?? 'utf8'),
@@ -102,8 +107,9 @@ export class AdbDeviceBridge {
 
   async #shell(serial, args) { return this.#command(['-s', serial, 'shell', ...args]); }
 
-  /** @param {{targetPackage?: string, targetBuild?: string, requireHelper?: boolean, requireHid?: boolean}} options */
-  async preflight({ targetPackage = GAME_PACKAGE, targetBuild, requireHelper = true, requireHid = true } = {}) {
+  /** @param {{targetPackage?: string, targetBuild?: string, requireHelper?: boolean, requireHid?: boolean, restartCapture?: boolean}} options */
+  async preflight({ targetPackage = GAME_PACKAGE, targetBuild, requireHelper = true,
+    requireHid = true, restartCapture = false } = {}) {
     const selected = await this.selectDevice();
     if (selected.status !== 'READY') return {
       schema: PRELIGHT_SCHEMA, version: 1, status: 'HOLD', reason: selected.reason,
@@ -140,6 +146,18 @@ export class AdbDeviceBridge {
       checks.push(check('hid-transport', hid.ok && /\/system\/bin\/hid/.test(hid.stdout) ? 'PASS' : 'FAIL', hid.ok ? hid.stdout.trim() : hid.stderr.trim()));
     }
     if (requireHelper) {
+      if (restartCapture) {
+        let restarted;
+        try {
+          restarted = await this.restartCueHelperCapture({ serial });
+        } catch (error) {
+          restarted = { status: 'FAIL', detail: error.message };
+        }
+        const status = restarted?.status === 'READY' ? 'PASS'
+          : restarted?.status === 'HOLD' ? 'HOLD' : 'FAIL';
+        checks.push(check('cue-helper-capture-restart', status,
+          restarted?.output ?? restarted?.detail ?? 'capture restart returned no detail'));
+      }
       const helper = await this.#shell(serial, ['pidof', HELPER_PACKAGE]);
       checks.push(check('cue-helper-running', helper.ok && helper.stdout.trim().length > 0 ? 'PASS' : 'HOLD', helper.ok ? helper.stdout.trim() : helper.stderr.trim()));
       if (helper.ok && helper.stdout.trim().length > 0) {
@@ -151,11 +169,34 @@ export class AdbDeviceBridge {
     return { schema: PRELIGHT_SCHEMA, version: 1, status: readyStatus(checks), serial, checks };
   }
 
+  async restartCueHelperCapture({ serial = this.serial, screen = 'menu', waitSeconds = 30 } = {}) {
+    return this.captureRestart({ serial, adb: this.adb, screen, waitSeconds });
+  }
+
   async capturePng(serial) {
     const result = await this.#command(['-s', serial, 'exec-out', 'screencap', '-p'], {
       encoding: null, timeoutMs: 15000, maxBuffer: CAPTURE_MAX_BUFFER,
     });
     return result.ok && Buffer.isBuffer(result.stdout) ? result.stdout : null;
+  }
+
+  /**
+   * Return the game to a clean process before a failed attempt can be retried.
+   * This is deliberately a closed recovery operation: the package is fixed to
+   * the calibrated target and the launcher is resolved by Package Manager,
+   * rather than accepting arbitrary shell text from a caller.
+   */
+  async restartGame({ serial = this.serial } = {}) {
+    const stopped = await this.#command(['-s', serial, 'shell', 'am', 'force-stop', GAME_PACKAGE]);
+    if (!stopped.ok) return Object.freeze({ status: 'FAIL', stage: 'force-stop', detail: stopped.stderr });
+    const resolved = await this.#command(['-s', serial, 'shell', 'cmd', 'package', 'resolve-activity', '--brief', GAME_PACKAGE]);
+    const launcher = String(resolved.stdout ?? '').split(/\r?\n/).map(line => line.trim())
+      .reverse().find(line => line.startsWith(`${GAME_PACKAGE}/`));
+    if (!resolved.ok || !launcher)
+      return Object.freeze({ status: 'FAIL', stage: 'resolve-launcher', detail: resolved.stderr || resolved.stdout });
+    const started = await this.#command(['-s', serial, 'shell', 'am', 'start', '-n', launcher]);
+    return Object.freeze({ status: started.ok ? 'READY' : 'FAIL', stage: 'start', launcher,
+      detail: started.ok ? launcher : started.stderr });
   }
 
   /**

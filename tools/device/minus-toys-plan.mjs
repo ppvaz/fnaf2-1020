@@ -32,6 +32,8 @@ export const KNOBS0 = {
                            //   stale-sample window; 17 ms of it is released after the 33 ms contact.
                            //   The device run showed this collapse to 0 (drag, not two taps).
   openRaiseGapMs: 733,     // monitor-down -> monitor-up (the split is armed on this raise)
+  openStunLeadMs: 300,     // first safe camera-feed flash after the split raise
+  openStunHoldMs: 100,     // one Fusion poll window; contact taps remain 33 ms
   openWindLeadMs: 434,     // monitor-up -> opening wind start
   openWindMs: 1750,        // opening wind hold (shortened live by the epoch slip, up to its full length)
   openCamdropLeadMs: 200,  // opening camdrop: light-only lead before the monitor tap
@@ -120,6 +122,7 @@ export function build(knobs) {
     open.push([drop, 'tap', 'monitor', c]);
     const raise = drop + k.openRaiseGapMs;
     open.push([raise, 'tap', 'monitor', c]);
+    open.push([raise + k.openStunLeadMs, 'hold', V.cameraFeedLight, k.openStunHoldMs]);
     // Steady 5 s cycle: re-flash CAM 09, then wind. Nothing else.
     const loop = [
       [k.minFlashAtMs, 'hold', V.cameraFeedLight, k.minFlashHoldMs],
@@ -143,6 +146,9 @@ export function build(knobs) {
   opening.push([drop, 'tap', 'monitor', c]);
   const raise = drop + k.openRaiseGapMs;
   opening.push([raise, 'tap', 'monitor', c]);
+  // Once the raise restores CAM 11 as `viewing`, the parked CAM 09 marker
+  // makes this the first valid Toy stun. The later camdrop remains the exit.
+  opening.push([raise + k.openStunLeadMs, 'hold', V.cameraFeedLight, k.openStunHoldMs]);
   const windAt = raise + k.openWindLeadMs;
   opening.push([windAt, 'hold', 'wind', k.openWindMs]);
   const camdropAt = windAt + k.openWindMs;
@@ -199,7 +205,8 @@ export const LOOP = _default.loop;
 {
   const OPENING0 = [
     [0, 'tap', 'monitor', 33], [300, 'tap', 'cam11', 33], [833, 'tap', 'cam9', 33],
-    [883, 'tap', 'monitor', 33], [1616, 'tap', 'monitor', 33], [2050, 'hold', 'wind', 1750],
+    [883, 'tap', 'monitor', 33], [1616, 'tap', 'monitor', 33],
+    [1916, 'hold', V.cameraFeedLight, 100], [2050, 'hold', 'wind', 1750],
     [3800, 'camdrop', 200, 33, 67], [4400, 'tap', 'mask', 33],
   ];
   const LOOP0 = [

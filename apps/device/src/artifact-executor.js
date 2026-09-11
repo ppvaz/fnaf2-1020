@@ -66,8 +66,12 @@ function validateArmVerification(value, path) {
     fail(`${path}.viewing is not a semantic camera`);
   if (!cameras.includes(value.viewing)) fail(`${path}.viewing must be one of the highlighted cameras`);
   finite(value.untilMs, `${path}.untilMs`, { integer: true, positive: true });
+  const mode = value.mode ?? 'blocking';
+  if (!['blocking', 'observe-once'].includes(mode))
+    fail(`${path}.mode must be blocking or observe-once`);
   return Object.freeze({ cameras: Object.freeze([...cameras].sort((a, b) =>
-    Number(a.slice(4)) - Number(b.slice(4)))), viewing: value.viewing, untilMs: value.untilMs });
+    Number(a.slice(4)) - Number(b.slice(4)))), viewing: value.viewing, untilMs: value.untilMs,
+    ...(value.mode === undefined ? {} : { mode }) });
 }
 
 function rejectForbidden(value, path) {

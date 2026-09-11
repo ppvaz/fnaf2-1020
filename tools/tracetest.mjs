@@ -110,7 +110,7 @@ try {
   let up = false;
   for (let i = 0; i < 40 && !up; i++) {
     try { up = (await fetch(`http://127.0.0.1:${PORT}/index.html`)).ok; }
-    catch { await new Promise(r => setTimeout(r, 250)); }
+    catch { await new Promise(r => setTimeout(r, 25)); }
   }
   check('serve.py answered', up);
   if (up) {

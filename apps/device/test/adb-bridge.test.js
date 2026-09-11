@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { AdbDeviceBridge, parseAdbDevices } from '../src/adb-bridge.js';
+import { restartCueHelperCapture } from '../src/cue-helper-capture.js';
 import { AdbCueHelperPort, parseCueHelperEndpoint } from '../src/physical-ports.js';
 
 assert.deepEqual(parseAdbDevices('List of devices attached\nusb-1\tdevice product/foo transport_id:1\noffline\toffline\n'), [
@@ -44,6 +45,25 @@ assert.equal(ready.status, 'READY');
 assert.equal(ready.serial, 'usb-1');
 assert.ok(ready.checks.every(item => item.status === 'PASS'));
 
+let captureRestart;
+const restartedPreflightBridge = new AdbDeviceBridge({ serial: 'usb-1', run,
+  captureRestart: async options => { captureRestart = options; return { status: 'READY', output: 'CAPTURE started' }; } });
+const restartedPreflight = await restartedPreflightBridge.preflight({
+  targetBuild: 'com.scottgames.fnaf2:2.0.7+26', restartCapture: true });
+assert.equal(restartedPreflight.status, 'READY');
+assert.deepEqual(captureRestart, { serial: 'usb-1', adb: 'adb', screen: 'menu', waitSeconds: 30 });
+assert.deepEqual(restartedPreflight.checks.find(item => item.id === 'cue-helper-capture-restart'), {
+  id: 'cue-helper-capture-restart', status: 'PASS', detail: 'CAPTURE started',
+});
+
+let setupCall;
+const captureResult = await restartCueHelperCapture({ serial: 'usb-1', adb: '/mock/adb',
+  run: async (...args) => { setupCall = args; return { exitCode: 0, stdout: 'CAPTURE started\n', stderr: '' }; } });
+assert.equal(captureResult.status, 'READY');
+assert.deepEqual(setupCall[1], ['--restart-capture', '--screen', 'menu', '--wait', '30']);
+assert.equal(setupCall[2].env.ANDROID_SERIAL, 'usb-1');
+assert.equal(setupCall[2].env.ADB_BIN, '/mock/adb');
+
 const clock = await bridge.clockSample();
 assert.equal(clock.status, 'READY');
 assert.equal(clock.serial, 'usb-1');
@@ -74,5 +94,23 @@ assert.equal(held.status, 'HOLD');
 assert.equal(held.reason, 'adb-unavailable');
 const captured = await bridge.capturePng('usb-1');
 assert.deepEqual(captured, Buffer.from('png'));
+
+const restartCalls = [];
+const restartBridge = new AdbDeviceBridge({ serial: 'usb-1', run: async args => {
+  restartCalls.push(args);
+  if (args.includes('resolve-activity'))
+    return { ok: true, stdout: 'priority=0\ncom.scottgames.fnaf2/.Main\n', stderr: '' };
+  if (args.includes('force-stop') || args.includes('start'))
+    return { ok: true, stdout: '', stderr: '' };
+  throw new Error(`unexpected restart adb ${args.join(' ')}`);
+} });
+assert.deepEqual(await restartBridge.restartGame(), {
+  status: 'READY', stage: 'start', launcher: 'com.scottgames.fnaf2/.Main', detail: 'com.scottgames.fnaf2/.Main',
+});
+assert.deepEqual(restartCalls, [
+  ['-s', 'usb-1', 'shell', 'am', 'force-stop', 'com.scottgames.fnaf2'],
+  ['-s', 'usb-1', 'shell', 'cmd', 'package', 'resolve-activity', '--brief', 'com.scottgames.fnaf2'],
+  ['-s', 'usb-1', 'shell', 'am', 'start', '-n', 'com.scottgames.fnaf2/.Main'],
+]);
 
 console.log('adb bridge: closed command set, selection, build, lock, focus, HID, and helper gates pass');

@@ -57,6 +57,18 @@ try:
 finally:
     MODULE.adb = original_adb
 
+original_start_capture = MODULE.start_capture
+original_stop_capture = MODULE.stop_capture
+try:
+    calls = []
+    MODULE.stop_capture = lambda: calls.append("stop")
+    MODULE.start_capture = lambda: calls.append("start")
+    MODULE.restart_capture()
+    assert calls == ["stop", "start"]
+finally:
+    MODULE.start_capture = original_start_capture
+    MODULE.stop_capture = original_stop_capture
+
 original_query_snapshot = MODULE.query_snapshot
 try:
     MODULE.query_snapshot = lambda: (0, "visual=OBSERVED screen=FNAF2_MENU")

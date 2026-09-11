@@ -117,6 +117,53 @@ assert.equal(armSchedule.gated.firstWindAtMs, 2200,
   'the gated schedule must identify the opening wind boundary');
 assert.equal(armSchedule.gated.phaseBudgetMs, 2000,
   'the gated schedule must carry the arm phase budget');
+const observeOnceRequest = structuredClone(armRequest);
+observeOnceRequest.artifact.plans[0].armVerification.mode = 'observe-once';
+const observeOnceSchedule = compileDeviceLocalHidSchedule(observeOnceRequest, { readyDelayMs: 6000 });
+assert.equal(observeOnceSchedule.gated, undefined,
+  'observe-once arm verification must not park the HID stream');
+assert.equal(observeOnceSchedule.armObservation.firstWindAtMs, 2200,
+  'observe-once verification must retain the authored first-wind boundary');
+assert.equal(observeOnceSchedule.armObservation.armReadyAtMs, armSchedule.gated.armReadyAtMs,
+  'observe-once verification must use the same physical arm prefix timing');
+// Runtime executor tests use the same arm shape at a compressed authored
+// timeline. The physical production constants remain unchanged; the shorter
+// fixture keeps these tests event-driven instead of sleeping through a model
+// night just to reach the arm window.
+const runtimeArmRequest = structuredClone(armRequest);
+runtimeArmRequest.artifact.plans[0].timing = {
+  periodMs: 300, loopStartMs: 0, stopAtMs: 300, observeUntilMs: 400, idleUntilMs: 0,
+};
+runtimeArmRequest.artifact.plans[0].armVerification.untilMs = 100;
+runtimeArmRequest.blocks[0].actions = [
+  action('runtime-cam11', 'tap', 'cam:11', 0,
+    { cycle: 'opening', requiresMonitorUp: true, durationMs: 33 }),
+  action('runtime-cam8', 'tap', 'cam:8', 40,
+    { cycle: 'opening', requiresMonitorUp: true, durationMs: 33 }),
+  action('runtime-monitor-down', 'ensure', 'monitor', 80,
+    { cycle: 'opening', targetMonitorUp: false, durationMs: 33 }),
+  action('runtime-monitor-up', 'ensure', 'monitor', 120,
+    { cycle: 'opening', targetMonitorUp: true, durationMs: 33 }),
+  action('runtime-opening-wind', 'hold', 'wind', 160,
+    { cycle: 'opening', durationMs: 33, requiresMonitorUp: true }),
+];
+runtimeArmRequest.blocks = [runtimeArmRequest.blocks[0],
+  block('runtime-toy-tail', 240, [action('runtime-toy-wind', 'hold', 'wind', 240,
+    { durationMs: 33 })])];
+const runtimeObserveOnceRequest = structuredClone(runtimeArmRequest);
+runtimeObserveOnceRequest.artifact.plans[0].armVerification.mode = 'observe-once';
+const lateRuntimeArmRequest = structuredClone(runtimeArmRequest);
+lateRuntimeArmRequest.artifact.plans[0].armVerification.untilMs = 100;
+const fastGateRequest = structuredClone(runtimeArmRequest);
+fastGateRequest.artifact.plans[0].timing.periodMs = 400;
+fastGateRequest.artifact.plans[0].timing.stopAtMs = 400;
+fastGateRequest.artifact.plans[0].timing.observeUntilMs = 500;
+fastGateRequest.artifact.plans[0].armVerification.untilMs = 100;
+fastGateRequest.blocks = [fastGateRequest.blocks[0],
+  block('runtime-mask', 200, [action('runtime-mask-on', 'press', 'mask', 200,
+    { cycle: 'toys', targetMaskOn: true, durationMs: 33 })]),
+  block('runtime-gate-tail', 300, [action('runtime-gate-wind', 'hold', 'wind', 300,
+    { durationMs: 33 })])];
 const armRemote = renderDeviceLocalScript(armSchedule, {
   startMarker: '/data/local/tmp/fnaf2-modern-start-test',
   armControl: {
@@ -217,82 +264,161 @@ assert.equal(delayedSchedule.gated.armReadyAtMs, 1633,
 // start and monitor up only at its declared gap.
 const effectRequest = structuredClone(request);
 effectRequest.artifact.plans[0].timing = {
-  periodMs: 1000, loopStartMs: 0, stopAtMs: 1000, observeUntilMs: 1600, idleUntilMs: 0,
+  periodMs: 300, loopStartMs: 0, stopAtMs: 300, observeUntilMs: 400, idleUntilMs: 0,
 };
 effectRequest.blocks = [{ schema: 'artifact-action-block-v1', id: 'effect-opening',
   cycle: 'opening', night: 6, atMs: 0, actions: [
     action('effect-monitor-down', 'ensure', 'monitor', 0,
       { cycle: 'opening', targetMonitorUp: false, durationMs: 33 }),
-    action('effect-mask-up', 'press', 'mask', 100,
+    action('effect-mask-up', 'press', 'mask', 40,
       { cycle: 'opening', targetMaskOn: true, durationMs: 33 }),
-    action('effect-monitor-up', 'ensure', 'monitor', 200,
+    action('effect-monitor-up', 'ensure', 'monitor', 80,
       { cycle: 'opening', targetMonitorUp: true, durationMs: 33 }),
-    action('effect-mask-down', 'press', 'mask', 300,
+    action('effect-mask-down', 'press', 'mask', 120,
       { cycle: 'opening', targetMaskOn: false, durationMs: 33 }),
   ] },
   // A night is only runnable with a repeatable cycle beside its opening. This
   // wind hold carries no monitor/mask target, so the ledger below stays
   // exactly the four authored transitions.
-  block('effect-steady', 400, [action('effect-wind', 'hold', 'wind', 400, { durationMs: 33 })])];
+  block('effect-steady', 160, [action('effect-wind', 'hold', 'wind', 160, { durationMs: 33 })])];
 const effectSchedule = compileDeviceLocalHidSchedule(effectRequest, { readyDelayMs: 1 });
 assert.deepEqual(effectSchedule.monitorTransitions.map(item => [item.actionId, item.atMs, item.targetMonitorUp]), [
-  ['effect-monitor-down', 0, false], ['effect-monitor-up', 200, true],
+  ['effect-monitor-down', 0, false], ['effect-monitor-up', 80, true],
 ], 'the compiled ledger must retain monitor-down and monitor-up targets');
 assert.deepEqual(effectSchedule.maskTransitions.map(item => [item.actionId, item.atMs, item.targetMaskOn]), [
-  ['effect-mask-up', 100, true], ['effect-mask-down', 300, false],
+  ['effect-mask-up', 40, true], ['effect-mask-down', 120, false],
 ], 'the compiled ledger must retain mask-on and mask-off targets');
 
 const fakeRoot = mkdtempSync(join(tmpdir(), 'fnaf2-modern-executor-'));
 const fakeAdb = join(fakeRoot, 'adb');
-writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 10\n');
+writeFileSync(fakeAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nexec tail -f /dev/null\n');
 chmodSync(fakeAdb, 0o755);
-// The gate fixtures have to outlive their gates: the stream parks at plan
-// time 2600 ms and the arm ahead of it costs seconds, so a 3 s child dies
-// before the first gate is ever reached.
 const gateAdb = join(fakeRoot, 'gate-adb');
-writeFileSync(gateAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 20\n');
+writeFileSync(gateAdb, '#!/bin/sh\ncase "$*" in *" logcat "*|*" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nexec tail -f /dev/null\n');
 chmodSync(gateAdb, 0o755);
 const effectAdb = join(fakeRoot, 'effect-adb');
-writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" logcat "*) echo "I am_anr : [0,1,com.scottgames.fnaf2,0,Input dispatching timed out]"; exit 0;; *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nsleep 3\n');
+writeFileSync(effectAdb, '#!/bin/sh\ncase "$*" in *" logcat "*) echo "I am_anr : [0,1,com.scottgames.fnaf2,0,Input dispatching timed out]"; exit 0;; *" test -e "*|*" touch "*) exit 0;; esac\ncat >/dev/null\nexec tail -f /dev/null\n');
 chmodSync(effectAdb, 0o755);
+const finishAfter = (events, predicate) => {
+  let finished = false;
+  return {
+    observe: async () => finished ? 'gameover' : 'night',
+    onEvent: event => {
+      events.push(event);
+      if (predicate(event)) finished = true;
+    },
+  };
+};
 try {
   let observations = 0;
   const guarded = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
-    pollMs: 250, observe: async () => { observations += 1; return 'gameover'; } });
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 },
+    observe: async () => { observations += 1; return 'gameover'; } });
   const stopped = await guarded.execute(request);
   assert.equal(stopped.terminal, 'gameover', 'fresh game-over must stop the remote schedule as a failed attempt');
   assert.ok(observations >= 1, 'executor must sample the lifecycle while a schedule is running');
 
+  let terminalObservations = 0;
+  const immediateTerminal = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 },
+    observe: async () => terminalObservations++ === 0 ? 'night' : 'gameover' });
+  const immediateTerminalResult = await immediateTerminal.execute(request);
+  assert.equal(immediateTerminalResult.terminal, 'gameover',
+    'a definitive game-over must stop on its first positive terminal frame');
+  assert.equal(terminalObservations, 2,
+    'game-over must not spend the non-night confirmation window');
+
+  // A title HID is already registered and InputReader-ready. The gameplay
+  // handoff must append only the authored body to that process: a second
+  // register/ready prefix would recreate the opening delay this path removes.
+  const sharedWrites = [];
+  const sharedEvents = [];
+  const sharedHid = { write: async value => { sharedWrites.push(JSON.parse(value)); } };
+  let sharedObservations = 0;
+  const shared = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, sharedHid: () => sharedHid,
+    observe: async () => sharedObservations++ === 0 ? 'night' : 'gameover',
+    onEvent: event => sharedEvents.push(event) });
+  const sharedResult = await shared.execute(request);
+  assert.equal(sharedResult.terminal, 'gameover', 'shared HID handoff must retain terminal handling');
+  assert.ok(sharedWrites.length > 0, 'shared HID handoff must write the authored body');
+  assert.ok(sharedWrites.every(event => event.command !== 'register'),
+    'shared HID handoff must not register a second device');
+  assert.ok(!sharedWrites.some(event => event.command === 'delay' && event.duration === 1),
+    'shared HID handoff must not replay the ready delay');
+  assert.ok(sharedEvents.some(event => event.type === 'hid.handoff-reused'),
+    'shared HID handoff must be explicit in the run event stream');
+  assert.equal(sharedEvents.find(event => event.type === 'hid.night-go')?.source, 'lifecycle',
+    'the executor must release a shared HID on its own first authoritative night frame');
+  const sharedHandoff = sharedEvents.find(event => event.type === 'hid.handoff');
+  assert.ok(sharedHandoff, 'shared HID handoff must measure the first delivered action');
+  assert.ok(sharedHandoff.delayMs <= sharedHandoff.budgetMs,
+    'an on-time handoff must remain inside the fail-fast budget');
+
+  const lateEvents = [];
+  let lateWrites = 0;
+  const lateHid = { write: async value => {
+    if (lateWrites === 0) {
+      lateWrites += 1;
+      await new Promise(resolve => setTimeout(resolve, 125));
+    }
+    lateWrites += 1;
+    JSON.parse(value);
+  } };
+  const late = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, sharedHid: () => lateHid, observe: async () => 'night',
+    onEvent: event => lateEvents.push(event) });
+  const lateRelease = setTimeout(() => late.releaseNight(), 10);
+  await assert.rejects(() => late.execute(request), /night handoff was \d+ms late/,
+    'a delayed first HID action must invalidate the run');
+  clearTimeout(lateRelease);
+  const lateHandoff = lateEvents.find(event => event.type === 'hid.handoff');
+  assert.ok(lateHandoff && lateHandoff.delayMs > lateHandoff.budgetMs,
+    'the delayed handoff must be measured outside its budget');
+  assert.ok(lateEvents.some(event => event.type === 'hid.handoff.abort'),
+    'a late handoff must leave an explicit abort event');
+
   let startupObservations = 0;
+  let startupFinished = false;
   const startup = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
-    pollMs: 250, observe: async () => startupObservations++ === 0 ? 'newspaper' : 'night' });
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 },
+    observe: async () => startupFinished ? 'gameover'
+      : startupObservations++ === 0 ? 'newspaper' : 'night',
+    onEvent: event => { if (event.type === 'hid.night-go') startupFinished = true; } });
   const startupResult = await startup.execute(request);
   assert.equal(startupResult.outcome, 'UNVERIFIED',
     'the measured newspaper transition must be allowed before the first night frame');
 
   const dropped = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
-    pollMs: 250, observe: async () => 'title' });
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, observe: async () => 'title' });
   await assert.rejects(() => dropped.execute(request), /lifecycle left night state \(title\)/,
     'a positively observed non-night screen must abort the device-local stream');
 
   let postNightObservations = 0;
   const postNightDrop = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
-    pollMs: 250, observe: async () => postNightObservations++ === 0 ? 'night' : 'title' });
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 },
+    observe: async () => postNightObservations++ === 0 ? 'night' : 'title' });
   await assert.rejects(() => postNightDrop.execute(request), /lifecycle left night state \(title\)/,
     'a title observed after night entry must abort the device-local stream');
 
   let transientObservations = 0;
+  let transientFinished = false;
   const transientFrame = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
-    pollMs: 250, observe: async () => transientObservations++ === 0 ? 'static' : 'night' });
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 },
+    observe: async () => transientFinished ? 'gameover'
+      : transientObservations++ === 0 ? 'static' : 'night',
+    onEvent: event => { if (event.type === 'hid.night-go') transientFinished = true; } });
   const transientResult = await transientFrame.execute(request);
   assert.equal(transientResult.outcome, 'UNVERIFIED',
     'one bad lifecycle frame must not abort an otherwise live schedule');
 
   let controlSequence = 0;
   const effectLog = [];
+  const effectLifecycle = finishAfter(effectLog,
+    event => event.type === 'control.effect.result' && event.actionId === 'effect-mask-down');
   const effects = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
-    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
-    onEvent: event => effectLog.push(event),
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, observe: effectLifecycle.observe,
+    onEvent: effectLifecycle.onEvent,
     observeControlState: async () => ({ sequence: ++controlSequence, ageUs: 10,
       screen: 'FNAF2_NIGHT', monitorUp: true, maskOn: false, maskEvidence: 'fixture' }) });
   await effects.execute(effectRequest);
@@ -322,14 +448,16 @@ try {
   // transition of the same signal, never a settle constant.
   const monitorDownExpected = effectLog.find(event => event.type === 'control.effect.expected' &&
     event.actionId === 'effect-monitor-down');
-  assert.equal(monitorDownExpected.windowEndAt - monitorDownExpected.contactAt, 200,
+  assert.equal(monitorDownExpected.windowEndAt - monitorDownExpected.contactAt, 80,
     'a monitor window must end at the next authored monitor transition');
 
   // A capture whose sequence never advances cannot confirm or refute anything.
   const stalledLog = [];
+  const stalledLifecycle = finishAfter(stalledLog,
+    event => event.type === 'control.effect.result' && event.actionId === 'effect-mask-down');
   const stalled = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
-    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
-    onEvent: event => stalledLog.push(event),
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, observe: stalledLifecycle.observe,
+    onEvent: stalledLifecycle.onEvent,
     observeControlState: async () => ({ sequence: 7, ageUs: 10,
       screen: 'FNAF2_NIGHT', monitorUp: true, maskOn: false, maskEvidence: 'fixture' }) });
   await stalled.execute(effectRequest);
@@ -343,9 +471,11 @@ try {
   // and the office HUD see opposite halves of the monitor state.
   const sourcedLog = [];
   let sourcedSequence = 0;
+  const sourcedLifecycle = finishAfter(sourcedLog,
+    event => event.type === 'control.effect.result' && event.actionId === 'effect-mask-down');
   const sourced = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: effectAdb,
-    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
-    onEvent: event => sourcedLog.push(event),
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, observe: sourcedLifecycle.observe,
+    onEvent: sourcedLifecycle.onEvent,
     observeControlState: async () => ({ sequence: ++sourcedSequence, ageUs: 10,
       screen: 'UNKNOWN', monitorUp: true, monitorSource: 'camera-panel',
       panelSequence: 900 + sourcedSequence, maskOn: false, maskEvidence: 'fixture' }) });
@@ -364,16 +494,19 @@ try {
   // night. Darkness is never allowed to assert mask-on: a blackout reads the
   // same, which is why only this direction is inferred.
   const refuteLog = [];
+  const refuteLifecycle = finishAfter(refuteLog, event => event.type === 'control.gate');
   let refuteSequence = 0;
   const refuted = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: gateAdb,
-    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
-    onEvent: event => refuteLog.push(event),
+    readyDelayMs: 1, pollMs: 250, observe: refuteLifecycle.observe,
+    onEvent: refuteLifecycle.onEvent,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 500, gateRetryGapMs: 0, maskSettleMs: 0,
+      gateMinSlackMs: 10, gateBudgetMinMs: 10, gateBudgetMaxMs: 20, gateBudgetReserveMs: 40 },
     observeArm: async () => ({ sequence: ++refuteSequence + 500,
       highlights: ['cam:8', 'cam:11'], viewing: null }),
     observeControlState: async () => ({ sequence: ++refuteSequence, ageUs: 10,
       screen: 'FNAF2_NIGHT', monitorUp: false, maskOn: null,
       maskReason: 'ambiguous-threshold', gridLuma: 44, maskEvidence: 'fixture' }) });
-  await refuted.execute(gateRequest);
+  await refuted.execute(fastGateRequest);
   const refuteGates = refuteLog.filter(event => event.type === 'control.gate');
   assert.ok(refuteGates.length > 0, 'the gated fixture must reach a gate');
   assert.equal(refuteGates[0].observedMaskOn, false,
@@ -388,16 +521,19 @@ try {
 
   // Darkness stays unknown: mask-on and a blacked-out office read alike.
   const darkLog = [];
+  const darkLifecycle = finishAfter(darkLog, event => event.type === 'control.gate.abort');
   let darkSequence = 0;
   const dark = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: gateAdb,
-    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
-    onEvent: event => darkLog.push(event),
+    readyDelayMs: 1, pollMs: 250, observe: darkLifecycle.observe,
+    onEvent: darkLifecycle.onEvent,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 500, gateRetryGapMs: 0, maskSettleMs: 0,
+      gateMinSlackMs: 10, gateBudgetMinMs: 10, gateBudgetMaxMs: 20, gateBudgetReserveMs: 40 },
     observeArm: async () => ({ sequence: ++darkSequence + 500,
       highlights: ['cam:8', 'cam:11'], viewing: null }),
     observeControlState: async () => ({ sequence: ++darkSequence, ageUs: 10,
       screen: 'FNAF2_NIGHT', monitorUp: false, maskOn: null,
       maskReason: 'ambiguous-threshold', gridLuma: 4, maskEvidence: 'fixture' }) });
-  await dark.execute(gateRequest);
+  await dark.execute(fastGateRequest);
   assert.ok(darkLog.some(event => event.type === 'control.gate.abort'),
     'a dark ambiguous frame must still stop the night rather than guess');
 
@@ -407,16 +543,27 @@ try {
 
   let armSequence = 0;
   const armLog = [];
+  let armLifecycleCalls = 0;
+  let releaseArmLifecycle;
+  const armLifecycle = new Promise(resolve => { releaseArmLifecycle = resolve; });
   const armPass = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250,
-    observe: async () => { await new Promise(resolve => setTimeout(resolve, 2500)); return 'night'; },
-    onEvent: event => armLog.push(event),
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 2000, gateRetryGapMs: 0, maskSettleMs: 0 },
+    observe: async () => {
+      if (armLifecycleCalls++ === 0) return 'night';
+      await armLifecycle;
+      return 'gameover';
+    },
+    onEvent: event => {
+      armLog.push(event);
+      if (event.type === 'arm.verified') releaseArmLifecycle();
+    },
     observeArm: async () => {
       const sequence = ++armSequence;
       return { sequence, highlights: sequence === 2 ? ['cam:9']
         : sequence < 4 ? null : ['cam:8', 'cam:11'], viewing: null };
     } });
-  const armed = await armPass.execute(armRequest);
+  const armed = await armPass.execute(runtimeArmRequest);
   assert.equal(armed.armVerification.status, 'PASS',
     'an exact CAM08 + CAM11 observation must arm before the schedule continues');
   assert.ok(armSequence >= 5, 'arming requires fresh confirming samples');
@@ -424,6 +571,58 @@ try {
     'UNKNOWN and a single wrong frame must not cause a destructive re-arm');
   assert.ok(armLog.find(event => event.type === 'arm.verified').elapsedMs < 7000,
     'a slow lifecycle observer must not starve the native arm verifier after the night gate');
+
+  // The one-shot mode starts the full authored stream immediately. A clear
+  // exact pair is telemetry, while a clear wrong pair is a positive arm
+  // failure and aborts without a retry or a phase re-anchor.
+  const observeOnceLog = [];
+  const observeOnceLifecycle = finishAfter(observeOnceLog, event => event.type === 'arm.verified');
+  const observeOncePass = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 20, gateRetryGapMs: 0, maskSettleMs: 0 },
+    observe: observeOnceLifecycle.observe,
+    onEvent: observeOnceLifecycle.onEvent,
+    observeArm: async () => ({ sequence: 1, highlights: ['cam:8', 'cam:11'], viewing: null }) });
+  const observeOnceResult = await observeOncePass.execute(runtimeObserveOnceRequest);
+  assert.equal(observeOnceResult.armVerification.status, 'PASS',
+    'one-shot arm verification must record a clear exact pair');
+  assert.equal(observeOnceLog.filter(event => event.type === 'arm.sample').length, 1,
+    'one-shot arm verification must read exactly once');
+  assert.equal(observeOnceLog.filter(event => event.type === 'arm.retry').length, 0,
+    'one-shot arm verification must never re-arm');
+  assert.ok(!observeOnceLog.find(event => event.type === 'arm.verified').armGoAt,
+    'one-shot arm verification must not create a delayed arm release');
+
+  const observeOnceFailLog = [];
+  const observeOnceFail = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 0, gateRetryGapMs: 0, maskSettleMs: 0 },
+    observe: async () => 'night',
+    onEvent: event => observeOnceFailLog.push(event),
+    observeArm: async () => ({ sequence: 1, highlights: ['cam:9'], viewing: null }) });
+  await assert.rejects(() => observeOnceFail.execute(runtimeObserveOnceRequest), /identified a mismatch/,
+    'one-shot arm verification must abort on a definitive wrong pair');
+  assert.ok(observeOnceFailLog.some(event => event.type === 'arm.failed'),
+    'a definitive wrong pair must leave an arm.failed event');
+  assert.equal(observeOnceFailLog.filter(event => event.type === 'arm.sample').length, 1,
+    'a definitive wrong pair must be decided by the single observation');
+  assert.equal(observeOnceFailLog.filter(event => event.type === 'arm.retry').length, 0,
+    'a definitive wrong pair must abort instead of replaying the arm');
+
+  const observeOnceUnknownLog = [];
+  const observeOnceUnknownLifecycle = finishAfter(observeOnceUnknownLog,
+    event => event.type === 'arm.unresolved');
+  const observeOnceUnknown = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 0, gateRetryGapMs: 0, maskSettleMs: 0 },
+    observe: observeOnceUnknownLifecycle.observe,
+    onEvent: observeOnceUnknownLifecycle.onEvent,
+    observeArm: async () => ({ sequence: 1, highlights: null, reason: 'ambiguous-threshold' }) });
+  const observeOnceUnknownResult = await observeOnceUnknown.execute(runtimeObserveOnceRequest);
+  assert.equal(observeOnceUnknownResult.armVerification.status, 'UNRESOLVED',
+    'an unavailable one-shot frame must leave the run alone and remain unverified');
+  assert.ok(observeOnceUnknownLog.some(event => event.type === 'arm.unresolved'),
+    'an unavailable one-shot frame must be recorded as unresolved');
 
   // A fresh helper sequence can still be indeterminate for the whole first
   // camera window while the panel settles. That window must spend a bounded
@@ -433,6 +632,7 @@ try {
   let unknownRetryStarted = false;
   const unknownThenPass = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 500, gateRetryGapMs: 0, maskSettleMs: 0 },
     onEvent: event => {
       unknownRetryLog.push(event);
       if (event.type === 'arm.retry') unknownRetryStarted = true;
@@ -443,7 +643,7 @@ try {
         ? { sequence, highlights: ['cam:8', 'cam:11'], viewing: null }
         : { sequence, highlights: null, viewing: null, reason: 'ambiguous-threshold' };
     } });
-  await assert.rejects(() => unknownThenPass.execute(armRequest), /phase-invalid/,
+  await assert.rejects(() => unknownThenPass.execute(lateRuntimeArmRequest), /phase-invalid/,
     'an indeterminate arm window must refuse a late phase release');
   const unknownRetry = unknownRetryLog.filter(event => event.type === 'arm.retry');
   assert.equal(unknownRetry.length, 1,
@@ -456,9 +656,10 @@ try {
 
   const armFail = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 0, gateRetryGapMs: 0, maskSettleMs: 0 },
     observe: async () => 'night',
     observeArm: async () => ({ sequence: ++armSequence, highlights: ['cam:9', 'cam:11'], viewing: null }) });
-  await assert.rejects(() => armFail.execute(armRequest), /camera arm verification missed/,
+  await assert.rejects(() => armFail.execute(runtimeArmRequest), /camera arm verification missed/,
     'a CAM09 + CAM11 observation must never be accepted for a CAM08 arm');
 } finally {
   rmSync(fakeRoot, { recursive: true, force: true });

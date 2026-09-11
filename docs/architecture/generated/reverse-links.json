@@ -298,7 +298,14 @@
       "id": "contract.device-adb-preflight-v1",
       "kind": "CONTRACT",
       "path": "apps/device/src/adb-bridge.js",
-      "line": 8,
+      "line": 9,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.device-adb-preflight-v1",
+      "kind": "CONTRACT",
+      "path": "apps/device/src/cue-helper-capture.js",
+      "line": 5,
       "relation": "REFERENCES"
     },
     {

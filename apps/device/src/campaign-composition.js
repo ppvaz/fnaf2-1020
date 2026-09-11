@@ -15,11 +15,14 @@ const required = (value, name) => {
  * @param {{spec: any, bundle: any, profile: any, artifact?: any,
  *   devicePreflight: Function, menu: Function, customNight?: Function,
  *   intro: Function, terminal: Function, terminalVerification: Function,
- *   save: Function, retryReady: Function, localExecutor: {execute: Function, abort: Function, releaseAll: Function}}} options
+ *   save: Function, retryReady: Function, armMode?: string,
+ *   restartAfterAbort?: Function,
+ *   localExecutor: {execute: Function, abort: Function, releaseAll: Function}}} options
  */
 export function composeCampaignPorts(options) {
   const { spec, bundle, profile, artifact = {}, devicePreflight, menu, customNight,
-    intro, terminal, terminalVerification, save, retryReady, localExecutor } = options ?? {};
+    intro, terminal, terminalVerification, save, retryReady, armMode, restartAfterAbort,
+    localExecutor } = options ?? {};
   validateCampaignBundle({ spec, plans: bundle?.plans });
   for (const [name, port] of Object.entries({ devicePreflight, menu, intro, terminal,
     terminalVerification, save, retryReady })) required(port, name);
@@ -35,7 +38,7 @@ export function composeCampaignPorts(options) {
     intro: args => intro(args),
     executeAttempt: ({ target }) => {
       const plan = bundle.plans.find(item => item.night === target.night);
-      const request = makeCampaignExecutionRequest({ bundle, plan, profile, mode: 'live', artifact });
+      const request = makeCampaignExecutionRequest({ bundle, plan, profile, mode: 'live', artifact, armMode });
       return localExecutor.execute(request);
     },
     terminal: args => terminal(args),
@@ -45,7 +48,10 @@ export function composeCampaignPorts(options) {
     releaseAll: () => localExecutor.releaseAll(),
     cleanup: async reason => {
       try { await localExecutor.abort(`campaign-cleanup: ${reason?.message ?? 'campaign stopped'}`); }
-      finally { await localExecutor.releaseAll(); }
+      finally {
+        try { await localExecutor.releaseAll(); }
+        finally { await restartAfterAbort?.(reason); }
+      }
     },
   };
   return Object.freeze({ ports, runner: new DeviceCampaignRunner({ spec, ports }), deviceLocal: true });

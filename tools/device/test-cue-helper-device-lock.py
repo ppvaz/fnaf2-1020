@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix="cue-helper-device-lock-") as directory:
         child = subprocess.Popen(
             [sys.executable, str(HERE / "device-lock-exec.py"), "one-device", "--",
              sys.executable, "-c",
-             "import time; print('child-lease-acquired', flush=True); time.sleep(30)"],
+             "import signal; print('child-lease-acquired', flush=True); signal.pause()"],
             env=os.environ.copy(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True)
         try:

@@ -69,6 +69,17 @@ case "$line" in
 esac
 STUB
 chmod +x "$TMP/bin/toybox"
+# The shipped shadow loop owns a real 5.1 s window on the device. The test
+# only needs one complete protocol iteration before removing its sentinel, so
+# replace that window in the local fixture instead of waiting for wall time.
+cat > "$TMP/bin/sleep" <<'STUB'
+#!/bin/sh
+case "$1" in
+  5.1) exit 0 ;;
+  *) exec /bin/sleep "$@" ;;
+esac
+STUB
+chmod +x "$TMP/bin/sleep"
 PATH="$TMP/bin:$PATH"
 export PATH
 export CUE_TOKEN=0123456789abcdef0123456789abcdef

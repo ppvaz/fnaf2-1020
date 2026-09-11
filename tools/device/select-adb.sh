@@ -7,10 +7,10 @@
 # through a timed trial.
 
 fnaf_select_adb_transport() {
-  local listing usb_serials wireless_serials candidates transport state
+  local adb_bin="${ADB_BIN:-adb}" listing usb_serials wireless_serials candidates transport state
 
   if [ -n "${ANDROID_SERIAL:-}" ]; then
-    state=$(adb -s "$ANDROID_SERIAL" get-state 2>/dev/null || true)
+    state=$("$adb_bin" -s "$ANDROID_SERIAL" get-state 2>/dev/null || true)
     if [ "$state" != "device" ]; then
       echo "ANDROID_SERIAL is not a ready ADB device: $ANDROID_SERIAL" >&2
       return 1
@@ -20,7 +20,7 @@ fnaf_select_adb_transport() {
     return 0
   fi
 
-  if ! listing=$(adb devices -l); then
+  if ! listing=$("$adb_bin" devices -l); then
     echo "could not list ADB devices" >&2
     return 1
   fi
@@ -65,7 +65,7 @@ fnaf_select_adb_transport() {
 
   ANDROID_SERIAL=$1
   export ANDROID_SERIAL
-  state=$(adb -s "$ANDROID_SERIAL" get-state 2>/dev/null || true)
+  state=$("$adb_bin" -s "$ANDROID_SERIAL" get-state 2>/dev/null || true)
   if [ "$state" != "device" ]; then
     echo "selected $transport ADB device is no longer ready: $ANDROID_SERIAL" >&2
     return 1
@@ -79,8 +79,8 @@ fnaf_select_adb_transport() {
 # Keep the query here so every screenrecord caller uses the same device fact;
 # callers may still pass an explicit smaller size only for a derived capture.
 fnaf_native_screenrecord_size() {
-  local sizes pair width height
-  sizes=$(adb shell wm size 2>/dev/null | tr -d '\r' || true)
+  local adb_bin="${ADB_BIN:-adb}" sizes pair width height
+  sizes=$("$adb_bin" shell wm size 2>/dev/null | tr -d '\r' || true)
   pair=$(printf '%s\n' "$sizes" | awk '
     /[0-9]+x[0-9]+/ {
       line = $0

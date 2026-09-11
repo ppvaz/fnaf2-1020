@@ -46,9 +46,14 @@ assert.equal(cleaned, true);
 console.log('device campaign runner: ordered target execution, hold-before-actuation, and cleanup pass');
 
 let attempts = 0;
+let terminalStops = 0;
 const retryRunner = new DeviceCampaignRunner({ spec: { ...full, nights: [full.nights[0]] }, ports: {
   ...ports,
   executeAttempt: async ({ target, attempt }) => { attempts += 1; return { target, attempt }; },
+  stopAttempt: async ({ reason }) => {
+    terminalStops += 1;
+    assert.ok(['terminal-retry', 'terminal-proof'].includes(reason));
+  },
   terminal: async ({ target, execution }) => execution.attempt === 1
     ? { night: target.night, outcome: 'death', sixAm: false }
     : { night: target.night, identity: target.mode, outcome: 'sixam', sixAm: true },
@@ -57,6 +62,7 @@ const retryRunner = new DeviceCampaignRunner({ spec: { ...full, nights: [full.ni
 const retried = await retryRunner.run();
 assert.equal(retried.state, 'COMPLETE');
 assert.equal(attempts, 2);
+assert.equal(terminalStops, 2, 'each terminal must stop the actuator before retryReady or save proof');
 assert.equal(retried.attempts[0].status, 'DEATH');
 assert.equal(retried.attempts[1].status, 'WIN');
 assert.match(retried.attempts[1].proofHash, /^fnv1a-/);

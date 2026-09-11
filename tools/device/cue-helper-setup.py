@@ -48,7 +48,9 @@ class SetupHold(SetupError):
 
 
 def adb(*args: str, check: bool = True, timeout: float = 30.0) -> str:
-    command = ["adb", *args]
+    # Keep the executable injectable for the Node campaign wrapper and its
+    # closed test double; the argument vocabulary below remains fixed.
+    command = [os.environ.get("ADB_BIN", "adb"), *args]
     try:
         result = subprocess.run(
             command,
@@ -190,6 +192,13 @@ def start_capture() -> None:
     raise SetupError("capture did not reach the helper running state")
 
 
+def restart_capture() -> None:
+    """Replace an existing projection with a fresh user-approved session."""
+    print("CAPTURE restarting")
+    stop_capture()
+    start_capture()
+
+
 def start_probe() -> None:
     start(f"{HELPER_PACKAGE}/.MainActivity")
     if not tap_named("CONFIG", "helper"):
@@ -269,6 +278,11 @@ def wait_for_screen(screen: str, timeout: float) -> str:
 
 def stop_capture() -> None:
     adb("shell", "am", "force-stop", HELPER_PACKAGE)
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline and projection_active():
+        time.sleep(0.25)
+    if projection_active():
+        raise SetupError("helper projection did not stop before the restart deadline")
     print("CAPTURE stopped helper=force-stopped target=left-unchanged")
 
 
@@ -294,6 +308,8 @@ def main() -> int:
     parser.add_argument("--probe", action="store_true", help="start the debug-only sensor probe")
     parser.add_argument("--overlay-mode", choices=("debug", "run"), default=None,
                         help="set the persisted overlay mode (default: leave unchanged)")
+    parser.add_argument("--restart-capture", action="store_true",
+                        help="replace an active projection with a fresh consent session")
     parser.add_argument("--stop", action="store_true", help="stop helper capture and leave target unchanged")
     parser.add_argument("--screen", choices=("menu", "night"), default="menu",
                         help="screen identity to wait for after setup (default: menu)")
@@ -301,8 +317,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.wait <= 0 or args.wait > 300:
         parser.error("--wait must be between 0 and 300 seconds")
-    if args.stop and (args.install or args.probe or args.overlay_mode is not None):
-        parser.error("--stop cannot be combined with --install, --probe, or --overlay-mode")
+    if args.stop and (args.install or args.probe or args.restart_capture or args.overlay_mode is not None):
+        parser.error("--stop cannot be combined with --install, --probe, --restart-capture, or --overlay-mode")
     if args.probe and args.overlay_mode == "run":
         parser.error("--probe requires --overlay-mode debug or no explicit overlay mode")
 
@@ -336,7 +352,10 @@ def main() -> int:
                   f"{overlay_suppression_status(target_dump)} "
                   f"permission={OVERLAY_SUPPRESSION_PERMISSION}")
 
-            start_capture()
+            if args.restart_capture:
+                restart_capture()
+            else:
+                start_capture()
             ensure_overlay_mode(args.overlay_mode)
             if args.probe:
                 start_probe()

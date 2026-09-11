@@ -35,21 +35,27 @@ export function validateCampaignBundle({ spec, plans } = {}) {
 }
 
 /** Turn one validated campaign plan into the request consumed by the local executor. */
-/** @param {{bundle?: any, plan?: any, profile?: any, mode?: string, artifact?: any}} options */
-export function makeCampaignExecutionRequest({ bundle, plan, profile, mode = 'live', artifact = {} } = {}) {
+/** @param {{bundle?: any, plan?: any, profile?: any, mode?: string, artifact?: any, armMode?: string}} options */
+export function makeCampaignExecutionRequest({ bundle, plan, profile, mode = 'live', artifact = {}, armMode } = {}) {
   if (!isRecord(bundle) || bundle.schema !== CAMPAIGN_BUNDLE_SCHEMA) fail('validated campaign bundle is required');
   const bound = isRecord(plan) && bundle.plans.find(item => item.night === plan.night);
   if (!bound || plan.sha256 !== bound.sha256 || !same(plan.timing, bound.timing) ||
       !same(plan.cycles, bound.cycles) || !same(plan.armVerification, bound.armVerification))
     fail('plan is not bound immutably to bundle');
+  if (armMode !== undefined && !['blocking', 'observe-once'].includes(armMode))
+    fail('armMode must be blocking or observe-once');
+  if (armMode !== undefined && !plan.armVerification)
+    fail('armMode requires an arm-verified plan');
   if (!isRecord(profile)) fail('resolved profile is required');
+  const requestArmVerification = plan.armVerification && armMode !== undefined
+    ? { ...plan.armVerification, mode: armMode } : plan.armVerification;
   const request = {
     schema: 'device-executor-v1', version: 1, mode,
     artifact: { winnerHash: artifact.winnerHash ?? stableHash({ bundle: bundle.bundleHash, kind: 'winner' }),
       engineHash: artifact.engineHash ?? stableHash({ bundle: bundle.bundleHash, kind: 'engine' }),
       profileHash: artifact.profileHash ?? sha256(profile), profileStableHash: stableHash(profile),
       plans: [{ night: plan.night, sha256: plan.sha256, timing: plan.timing,
-        ...(plan.armVerification ? { armVerification: structuredClone(plan.armVerification) } : {}) }] },
+        ...(requestArmVerification ? { armVerification: structuredClone(requestArmVerification) } : {}) }] },
     profile: structuredClone(profile), limits: { maxActions: profile.limits?.maxActions ?? 64,
       maxDurationMs: profile.limits?.maxDurationMs ?? 15000 },
     blocks: Object.values(plan.cycles).flatMap(cycle => cycle.blocks.map(block => ({ ...block, night: plan.night }))),
