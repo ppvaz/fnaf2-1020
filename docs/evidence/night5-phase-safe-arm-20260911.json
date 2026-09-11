@@ -1,0 +1,122 @@
+{
+  "schema": "device-phase-safe-arm-evidence-v1",
+  "recordedAt": "2026-09-11",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-arm-calibration",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "the retained run ended in terminal static before a Night 5 win"
+  },
+  "device": {
+    "serial": "ZF525F5BH5",
+    "target": "com.scottgames.fnaf2",
+    "build": "2.0.7+26",
+    "profile": "hid-mediaprojection"
+  },
+  "plan": {
+    "strategy": "minus-toys",
+    "night": 5,
+    "phaseOffsetMs": 0,
+    "bundle": "artifacts/night5-device-20260910-qualified",
+    "qualification": "docs/evidence/qualification-hid-mediaprojection-night5-20260908.json"
+  },
+  "campaign": {
+    "directory": "artifacts/campaign-2026-09-11T18-25-52.415Z",
+    "exitCode": 2,
+    "error": "device: lifecycle left night state (static)"
+  },
+  "arm": {
+    "nightGoAt": 1789151176312,
+    "nightReleasedAt": 1789151176367,
+    "armReadyAtMs": 1649,
+    "phaseBudgetMs": 2000,
+    "attempt": 1,
+    "armGoAt": 1789151179336,
+    "phaseLagMs": 1320,
+    "status": "PASS",
+    "samples": [
+      {
+        "elapsedMs": 4625,
+        "sequence": "125542",
+        "cam9": 183,
+        "cam11": 96,
+        "highlights": ["cam:9", "cam:11"]
+      },
+      {
+        "elapsedMs": 5016,
+        "sequence": "125546",
+        "cam9": 183,
+        "cam11": 96,
+        "highlights": ["cam:9", "cam:11"]
+      }
+    ]
+  },
+  "cycles": [
+    {
+      "gateAtMs": 5200,
+      "status": "AGREED",
+      "believedMaskOn": true,
+      "observedMaskOn": true,
+      "gateLagMs": 0,
+      "deliveredOffsetMs": 1320
+    },
+    {
+      "gateAtMs": 15200,
+      "status": "CORRECTED",
+      "believedMaskOn": true,
+      "observedMaskOn": false,
+      "gateLagMs": 70,
+      "deliveredOffsetMs": 1390
+    },
+    {
+      "gateAtMs": 25200,
+      "status": "AGREED",
+      "believedMaskOn": true,
+      "observedMaskOn": true,
+      "gateLagMs": 70,
+      "deliveredOffsetMs": 1390
+    },
+    {
+      "gateAtMs": 35200,
+      "status": "AGREED",
+      "believedMaskOn": true,
+      "observedMaskOn": true,
+      "gateLagMs": 70,
+      "deliveredOffsetMs": 1390
+    },
+    {
+      "gateAtMs": 45200,
+      "status": "CORRECTED",
+      "believedMaskOn": true,
+      "observedMaskOn": false,
+      "gateLagMs": 101,
+      "deliveredOffsetMs": 1421,
+      "maskEvidence": "grid-luma-refutation"
+    }
+  ],
+  "terminal": {
+    "lifecycle": "static",
+    "videoOutcome": "death",
+    "videoEvidence": "terminal-static",
+    "videoAtSeconds": 80.0,
+    "visualCauseCandidates": []
+  },
+  "video": {
+    "path": "captures/night5-phase-safe-arm-20260911-r2.mp4",
+    "sha256": "77191cd0a74dcbb31022d9cb0fae747828ee295bf2dc2c40ae09ce015b59912c",
+    "bytes": 108737829,
+    "durationSeconds": 86.408322,
+    "resolution": "1280x576",
+    "retained": true
+  },
+  "postRunReset": {
+    "titleObserver": "items=continue,newGame",
+    "verified": true
+  },
+  "interpretation": {
+    "lateArm": "resolved for this run: first-attempt pair confirmation and phaseLagMs within budget",
+    "firstCycle": "no mask-state mismatch at the 5200 ms gate",
+    "secondCycle": "mask state disagreed at 15200 ms and was corrected; the measured phase drift was 70 ms",
+    "route": "not evidence of a win"
+  }
+}

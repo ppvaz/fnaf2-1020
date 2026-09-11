@@ -174,15 +174,15 @@
         "entry": "cam09_button",
         "feature": "yellowness",
         "lit_range": [
-          194,
+          183,
           194
         ],
         "rule": {
           "kind": "threshold",
-          "refuse_band": 106.5,
-          "threshold": 87.5
+          "refuse_band": 91.0,
+          "threshold": 82.0
         },
-        "separation_margin": 106.5,
+        "separation_margin": 101.0,
         "unlit_range": [
           -19,
           -19
@@ -345,7 +345,8 @@
     },
     "limitations": [
       "night-1-corpus",
-      "cam08-repeat-included"
+      "cam08-repeat-included",
+      "night5-phase-safe-arm-20260911-cam9-selected-183-194"
     ],
     "minimum_margin": 5.0
   },

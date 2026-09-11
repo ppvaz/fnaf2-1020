@@ -2511,9 +2511,11 @@ killer when the retained recording shows one. Reactive handling stays behind
 this gate: its Night 5 model result is **0/1080**, so it cannot be the next
 route claim.
 
-The next physical rung is a phase-safe execution test: a late arm is now
-marked `phase.invalid` and refused before the remainder starts; the failed
-attempt must be returned to the menu before another route attempt.
+The phase-safe execution test is now complete: the corrected camera model
+confirmed CAM09+CAM11 on the first arm attempt, delivered `1320 ms` of phase
+lag against a `2000 ms` budget, and the device returned to the menu after the
+run. The next physical rung is a short first-two-cycle test of the `15200 ms`
+mask correction before another full Night 5 route attempt.
 
 The completed experiment was:
 
@@ -4977,3 +4979,32 @@ Evidence: [night5-phase-control-20260911.json](../docs/evidence/night5-phase-con
 video SHA-256
 `fbcba7b826108aaf10b992db9600e81c61c17a24813e044a7dee8db58035f49c`, and
 model `tools/device/models/death-cause-withered-chica-moto-g56-v207.json`.
+
+## 2026-09-11 — phase-safe arm repeat and second-cycle correction
+
+The camera model was updated from the live arm evidence: CAM09 read `188` on
+the failed run and `183` on the repeat while CAM11 read `96`. The CAM09 rule
+now records the observed selected range `183..194` and retains an ambiguity
+band below the selected state. The repeat confirmed the pair twice on the
+first arm attempt, at elapsed `4625 ms` and `5016 ms`, with `armGoAt` phase lag
+**1320 ms** against the **2000 ms** budget.
+
+The first cycle did not show a state mismatch: the `5200 ms` gate was
+`AGREED`, with delivered offset `1320 ms` and gate lag `0 ms`. The first
+divergence was at the second cycle's `15200 ms` gate: the plan believed the
+mask was on, the phone observed it off, and the gate corrected it. Its phase
+lag was only **70 ms**, so this is a mask-state delivery/observation mismatch,
+not evidence of a large clock desynchronization. A later `45200 ms` gate also
+needed correction after a grid-luma refutation.
+
+The run is not a Night 5 win attempt: the lifecycle ended in `static` and the
+retained video ended in terminal static at `80.0 s`, with no visual killer
+candidate. The device was returned to the title and verified with
+`items=continue,newGame`.
+
+Evidence: [night5-phase-safe-arm-20260911.json](../docs/evidence/night5-phase-safe-arm-20260911.json),
+video SHA-256
+`77191cd0a74dcbb31022d9cb0fae747828ee295bf2dc2c40ae09ce015b59912c`.
+
+The next physical rung is to isolate the `15200 ms` mask correction with a
+short, retained first-two-cycle run before attempting a full Night 5 route.
