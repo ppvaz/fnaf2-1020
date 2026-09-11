@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { composeDevice } from './composition.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
-import { CampaignStateMachine, makeCampaignSpec } from './campaign.js';
+import { CampaignStateMachine, DEFAULT_CAMPAIGN_NIGHTS, makeCampaignSpec } from './campaign.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 import { guidedCalibrationSteps, validateCustomNightCalibration } from './custom-night.js';
 import { evaluateCampaignPreflight } from './campaign-preflight.js';
@@ -42,7 +42,7 @@ Commands:
 Options:
   --profile ID  resolved profile under apps/device/profiles
   --serial ID   select one explicit ADB device
-  --nights 1-7  campaign target nights, one ascending chain (default: 6,7)
+  --nights 1-7  campaign target nights, one ascending chain (default: 1,2,3,4,5,6,7)
   --max-attempts N  campaign attempts per target (default: 3)
   --json        print machine-readable output for preflight/campaign/calibrate
   --guided      print the one-time Custom Night calibration checklist
@@ -74,7 +74,7 @@ function parse(argv) {
   const rest = first.startsWith('-') ? argv : tail;
   if (!knownCommands.has(command)) throw new Error(`unknown command: ${first}`);
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
-    json: false, serial: undefined, nights: [6, 7], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
+    json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
     guided: false, machineOnly: false, allowSaveReset: false, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,

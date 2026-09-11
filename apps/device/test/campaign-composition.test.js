@@ -6,7 +6,7 @@ import { validateCampaignBundle } from '../src/campaign-bundle.js';
 import { composeCampaignPorts } from '../src/campaign-composition.js';
 
 const profile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/fixture-hid-screencap.json', import.meta.url)), 'utf8'));
-const full = makeCampaignSpec({ profile: profile.id, targetBuild: profile.targetBuild });
+const full = makeCampaignSpec({ profile: profile.id, targetBuild: profile.targetBuild, nights: [6, 7] });
 const spec = { ...full, nights: [full.nights[0]] };
 const block = { schema: 'artifact-action-block-v1', id: 'opening', cycle: 'opening', atMs: 0,
   actions: [{ schema: 'artifact-action-v1', id: 'opening-action', cycle: 'opening', atMs: 0,

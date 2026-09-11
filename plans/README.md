@@ -58,10 +58,10 @@ Current ownership and dependencies (2026-09-02):
   Plan 09 after their observation record is agreed, and does not require RL.
 - **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
   bounded action, full Night 6, reliability cohort, and only then 10/20.
-- **Plan 13 owns campaign and all-night support.** The current campaign targets
-  story Night 6 and Custom Night 7 as separate configurations, with bound
-  full-night artifacts, Custom Night readback, lifecycle proof, and save/menu
-  advancement. The physical qualification gate remains open.
+- **Plan 13 owns campaign and all-night support.** The campaign targets the
+  complete story ladder (Nights 1–6) and Custom Night 7 with bound full-night
+  artifacts, Custom Night readback, lifecycle proof, and save/menu advancement.
+  The physical qualification gate remains open.
 - **Plan 14 owns device portability.** A versioned `device-profile-v1`, adapter
   registry, profile-bound calibration IDs, semantic control maps, and mismatch
   preflight now exist. Full calibration, profile completeness, and second-device

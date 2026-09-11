@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { DeviceCampaignRunner } from '../src/campaign-runner.js';
 import { makeCampaignSpec } from '../src/campaign.js';
 
-const full = makeCampaignSpec({ profile: 'fixture-hid-screencap', targetBuild: 'com.scottgames.fnaf2:2.0.7+26' });
+const full = makeCampaignSpec({
+  profile: 'fixture-hid-screencap',
+  targetBuild: 'com.scottgames.fnaf2:2.0.7+26',
+  nights: [6, 7],
+});
 const calls = [];
 const ports = {
   preflight: async () => ({ status: 'READY', serial: 'fixture' }),

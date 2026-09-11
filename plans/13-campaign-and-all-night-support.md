@@ -6,14 +6,13 @@ unlocked and generated every recipe as Night 6. That is historical opening
 context, not the current campaign boundary.
 
 The current implementation uses `device-campaign-v1` and an ordered campaign
-runner. It treats story Night 6 (`Continue` or `Sixth Night`) and Custom Night 7
-as separate targets, binds one compiled full-night artifact to each target, and
-requires positive 6 AM plus save/menu evidence. Custom Night configuration is
-explicitly modeled with ten 20 dials and Puppet 15, including measured menu,
-dial, Start, and readback calibration. The modern ADB/HID/Cue Helper ports and
-preflight are implemented, but the selected g56 profile is still `dryRunOnly`;
-Custom Night calibration, external `DEVICE_MEASURED` qualification, and actual
-Night 6/Night 7 wins remain open.
+runner. It targets the complete story ladder, Nights 1 through 6, and Custom
+Night 7, binds one compiled full-night artifact to each target, and requires
+positive 6 AM plus save/menu evidence. Custom Night configuration is explicitly
+modeled with ten 20 dials and Puppet 15, including measured menu, dial, Start,
+and readback calibration. The modern ADB/HID/Cue Helper ports and preflight are
+implemented; Custom Night calibration, external `DEVICE_MEASURED`
+qualification, and actual qualified device wins remain open.
 
 ## Goal
 
@@ -38,8 +37,8 @@ until the state-authority and actuator gates pass.
 
 | Scope | Simulator | Device workflow | Gap |
 |---|---|---|---|
-| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | Not a target of the current two-night device campaign; `New Game` remains explicitly save-destructive | Fresh-save story ladder and save-state verification remain open |
-| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | Not targets of the current campaign spec; menu observation can identify the save cursor, but no all-night route is promoted | Per-night lifecycle, policy, and save-advance evidence remain open |
+| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | Modern campaign target from a verified fresh save; `New Game` remains explicitly save-destructive | Fresh-save story ladder and save-state verification remain open |
+| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | Modern campaign targets with per-night artifacts and roll-through/save proof | Per-night lifecycle, policy, and save-advance evidence remain open |
 | Night 6 | Exact plan, human gate, runner, sensors, and graders exist | `device-campaign-v1` story target via `Continue` or `Sixth Night`, with a bound artifact and lifecycle/save proof ports | Profile is `dryRunOnly`; positive qualified device win is absent |
 | Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | `device-campaign-v1` custom target with ten dials, Puppet 15, bounded configurator, and full readback contract | Measured Custom Night calibration, qualification, and a positive device win remain open |
 
@@ -597,7 +596,7 @@ before the controller can start the canonical target.
 | Exact simulator | ordinary and worst-source RNG, reachability of each threat branch, resource floors, deterministic replay |
 | Fault model | human slack, device actuator, dropped action, stale/missing observation, wrong save cursor |
 | Lifecycle fixtures | fresh title, Continue states, Sixth/Custom unlocks, six intro cards, 6 AM, death, minigame, static, focus loss |
-| Mocked device flow | destructive-action refusal, one-night default, bounded advance, abort cleanup, manifest finalization, safe resume |
+| Mocked device flow | destructive-action refusal, all-night target selection, bounded advance, abort cleanup, manifest finalization, safe resume |
 | Real device | session-separated per-night holdouts and promoted attempts only after all offline gates pass |
 
 ## Dependencies and sequencing

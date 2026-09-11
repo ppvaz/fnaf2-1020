@@ -9,7 +9,7 @@ import { validateCampaignBundle, makeCampaignExecutionRequest } from '../src/cam
 import { DeviceLocalArtifactExecutor, expandNightBlocks } from '../src/device-local-executor.js';
 
 const profile = JSON.parse(await readFile(fileURLToPath(new URL('../profiles/fixture-hid-screencap.json', import.meta.url)), 'utf8'));
-const spec = makeCampaignSpec({ profile: profile.id, targetBuild: profile.targetBuild });
+const spec = makeCampaignSpec({ profile: profile.id, targetBuild: profile.targetBuild, nights: [6, 7] });
 const block = (id, cycle, atMs) => ({ schema: 'artifact-action-block-v1', id, cycle, atMs,
   actions: [{ schema: 'artifact-action-v1', id: `${id}-action`, cycle, atMs,
     kind: 'press', control: 'mask', requiresMonitorUp: false, durationMs: 33 }] });

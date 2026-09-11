@@ -1,10 +1,10 @@
 /**
- * Campaign control plane for the two requested device targets.
+ * Campaign control plane for story Nights 1..6 and Custom Night 7.
  *
- * This module owns the distinction between a story Night 6 menu-target run and
- * a Night 7 Custom Night run.  It does not choose coordinates or send input;
- * those remain ports supplied by the composition root.  A campaign can only
- * become COMPLETE after positive 6 AM and save/menu evidence.
+ * This module owns the distinction between story-night menu targets and a
+ * Custom Night run. It does not choose coordinates or send input; those
+ * remain ports supplied by the composition root. A campaign can only become
+ * COMPLETE after positive 6 AM and save/menu evidence.
  * CONTRACT:device-campaign-v1.
  */
 import { AI_10_20, AI_DIALS, PUPPET_AI } from '@fnaf2-1020/core/mechanics';
@@ -21,6 +21,7 @@ const PACKAGE = 'com.scottgames.fnaf2';
 const NIGHT5 = 5;
 const NIGHT6 = 6;
 const NIGHT7 = 7;
+export const DEFAULT_CAMPAIGN_NIGHTS = Object.freeze([1, 2, 3, 4, 5, 6, NIGHT7]);
 const MENU_TARGETS = new Set(['newGame', 'continue', 'sixthNight', 'customNight']);
 const TRANSITIONS = Object.freeze({
   IDLE: ['PREFLIGHT'],
@@ -114,12 +115,12 @@ export function validateCampaignSpec(value) {
   return value;
 }
 
-/** Construct the reviewed default campaign: story Night 6, then 10/20 Night 7. */
+/** Construct a reviewed campaign over any consecutive story-night chain. */
 /** @param {{profile?: string, targetBuild?: string, maxAttempts?: number, night6MenuTarget?: string,
  *   timingByNight?: Record<string, object>, nights?: number[], storyStart?: string,
  *   storySaveCursor?: number}} options */
 export function makeCampaignSpec({ profile, targetBuild, maxAttempts = 3,
-  night6MenuTarget = 'sixthNight', timingByNight = {}, nights = [NIGHT6, NIGHT7],
+  night6MenuTarget = 'sixthNight', timingByNight = {}, nights = [...DEFAULT_CAMPAIGN_NIGHTS],
   storyStart = undefined, storySaveCursor = undefined } = {}) {
   text(profile, 'profile');
   text(targetBuild, 'targetBuild');

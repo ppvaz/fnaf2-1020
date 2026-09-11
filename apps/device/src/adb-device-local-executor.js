@@ -1353,10 +1353,12 @@ export class AdbDeviceLocalArtifactExecutor {
 }
 
 /**
- * Explicit machine-only executor for the research-emitted Minus 7 winner.
+ * Explicit compatibility executor for a research-emitted winner.
  *
- * This promotes the existing assembled device program into the modern campaign
- * composition without copying its strategy into a new host scheduler. The
+ * This retains the older assembled-program experiment without copying its
+ * strategy into a new host scheduler. The modern campaign composition does not
+ * select this compatibility class; its MODEL_ONLY lane uses the artifact
+ * executor above. The
  * program receives the exact validated emitted plan, checker, and model as
  * content-addressed files; all timing, screencheck classification, and HID
  * input remain on the phone. It is intentionally separate from the qualified
@@ -1401,8 +1403,8 @@ export class AdbDeviceLocalMachineExecutor {
   validateRequest(request) {
     validateExecutorRequest(request);
     if (request.mode !== 'live') fail('machine executor accepts live requests only');
-    if (request.artifact.plans.length !== 1 || request.artifact.plans[0].night !== 6)
-      fail('machine executor is scoped to one Night 6 request');
+    if (request.artifact.plans.length !== 1)
+      fail('machine executor is scoped to one night request');
     return request.artifact.plans[0];
   }
 
@@ -1463,7 +1465,7 @@ export class AdbDeviceLocalMachineExecutor {
         return `${value.x} ${value.y}`;
       };
       const cycles = Math.ceil((plan.timing.stopAtMs - plan.timing.loopStartMs - 7000) / plan.timing.periodMs);
-      if (!Number.isInteger(cycles) || cycles < 1 || cycles > 120) fail('Night 6 cycle count is outside 1..120');
+      if (!Number.isInteger(cycles) || cycles < 1 || cycles > 120) fail('cycle count is outside 1..120');
       const args = [
         remotePid, remoteReady, remoteStart, remoteEpoch, remoteCapture, '1', String(cycles), 'hid-multi', '0', '-', '1',
         String(this.pilotOffsetMs), '-', String(this.deviceSpacingMs), String(this.contactMs),
@@ -1518,7 +1520,7 @@ export class AdbDeviceLocalMachineExecutor {
       if (this.observedTerminal === 'gameover') throw new Error('machine input armed after game-over was observed');
       this.armed = true;
       this.armedBinding = this.binding(request);
-      return { status: 'ARMED', night: 6, deviceLocal: true, readyFile: remoteReady };
+      return { status: 'ARMED', night: plan.night, deviceLocal: true, readyFile: remoteReady };
     } catch (error) {
       await this.cleanupRun({ kill: true });
       throw error;
@@ -1537,7 +1539,7 @@ export class AdbDeviceLocalMachineExecutor {
       const result = await processPromise;
       if (result.code !== 0 && !['gameover', 'sixam'].includes(this.observedTerminal))
         throw new Error(`machine device program exited with ${result.code}: ${result.stderr.trim() || result.stdout.trim()}`);
-      return { status: 'COMPLETED', outcome: 'UNVERIFIED', night: 6,
+      return { status: 'COMPLETED', outcome: 'UNVERIFIED', night: plan.night,
         plannedUntilMs: plan.timing.observeUntilMs, cycles, deviceLocal: true,
         terminal: this.observedTerminal, programOutput: result.stdout.slice(-12000) };
     } finally {

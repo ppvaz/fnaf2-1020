@@ -5,7 +5,11 @@ import {
 } from '../src/campaign.js';
 import { makeAttemptProof } from '../src/campaign-proof.js';
 
-const spec = makeCampaignSpec({ profile: 'hid-mediaprojection', targetBuild: 'com.scottgames.fnaf2:2.0.7+26' });
+const defaultSpec = makeCampaignSpec({ profile: 'hid-mediaprojection', targetBuild: 'com.scottgames.fnaf2:2.0.7+26' });
+assert.deepEqual(defaultSpec.nights.map(target => target.night), [1, 2, 3, 4, 5, 6, 7]);
+assert.deepEqual(defaultSpec.nights.map(target => target.menuTarget),
+  ['newGame', 'continue', 'continue', 'continue', 'continue', 'sixthNight', 'customNight']);
+const spec = makeCampaignSpec({ profile: 'hid-mediaprojection', targetBuild: 'com.scottgames.fnaf2:2.0.7+26', nights: [6, 7] });
 assert.deepEqual(spec.nights.map(target => target.night), [6, 7]);
 assert.deepEqual(Object.values(spec.nights[1].dials), AI_DIALS.map(() => AI_10_20));
 assert.equal(spec.nights[1].puppet, PUPPET_AI);

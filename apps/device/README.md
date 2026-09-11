@@ -11,7 +11,8 @@ Commands: `device:dry-run`, `device:bench`, `device:preflight`,
 `device:campaign`, `device:qualification`, and `device:grade`. Artifacts: resolved profiles, telemetry, manifests, and result
 bundles under ignored `artifacts/`.
 
-The campaign control plane is available as two safe entry points:
+The campaign control plane is available through safe dry-run, guided, and
+read-only preflight entry points:
 
 ```sh
 npm run device:campaign -- --dry-run --json
@@ -19,9 +20,10 @@ npm run device:campaign -- --guided --json
 npm run device:preflight -- --profile hid-mediaprojection --json
 ```
 
-The first validates the Night 6 story target followed by the Night 7 Custom
-Night 10/20 target and its bounded retry/proof contract without touching a
-phone. The second performs closed, read-only ADB discovery: exactly one ready
+The first validates the complete story ladder, Nights 1 through 6 followed by
+the Night 7 Custom Night 10/20 target, and its bounded retry/proof contract
+without touching a phone. The second performs closed, read-only ADB discovery:
+exactly one ready
 device, the pinned FNaF 2 build, awake/unlocked state, game focus, `/system/bin/hid`,
 and Cue Helper. A `HOLD` is expected when the phone is absent or not ready; it
 does not become qualification evidence.
@@ -75,10 +77,12 @@ consuming a compiled artifact; without it artifact execution is refused.
 
 `CampaignStateMachine` is the lifecycle seam above that executor. It requires
 positive menu and intro identity, records bounded attempts, treats unknown
-observations as `HOLD`, and only advances Night 6 after a verified save cursor
-or newly visible Custom Night item, and Night 7 after a verified return to the
-menu. `AdbDeviceBridge` supplies the read-only discovery/preflight port; it
-intentionally exposes no arbitrary shell or game-input method.
+observations as `HOLD`, advances story Nights 1 through 5 through their
+night-specific save/roll-through proof, advances Night 6 after a verified save
+cursor or newly visible Custom Night item, and advances Night 7 after a
+verified return to the menu. `AdbDeviceBridge` supplies the read-only
+discovery/preflight port; it intentionally exposes no arbitrary shell or
+game-input method.
 
 `DeviceLocalArtifactExecutor` is the deterministic test/local adapter.
 `AdbDeviceLocalArtifactExecutor` is the physical adapter: it expands the

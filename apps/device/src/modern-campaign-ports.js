@@ -7,18 +7,17 @@
  * No legacy runner, strategy interpreter, or arbitrary shell port is used.
  * CONTRACT:device-campaign-v1 CONTRACT:device-executor-v1.
  */
-import { execFile as execFileCallback, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { readFile, mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { appendFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { CueHelperControlTransport, HidWireTransport, measureMaskOn, measureMonitorUp,
   parseCameraRule, parseMaskRule, parseMonitorRule, reconcileExclusiveControls } from '@fnaf2-1020/adapters';
 import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
-import { AdbDeviceLocalArtifactExecutor, AdbDeviceLocalMachineExecutor } from './adb-device-local-executor.js';
+import { AdbDeviceLocalArtifactExecutor } from './adb-device-local-executor.js';
 import { makeCampaignExecutionRequest } from './campaign-bundle.js';
 import { AdbCueHelperPort, AdbHidProcess } from './physical-ports.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
@@ -29,29 +28,11 @@ const MONITOR_RULE = new URL('../../../models/monitor-rule-moto-g56-v207.json', 
 const MASK_RULE = new URL('../../../models/mask-rule-moto-g56-v207.json', import.meta.url);
 const LIFECYCLE_OBSERVER = new URL('../../../tools/device/lifecycle-observe.py', import.meta.url);
 const TITLE_OBSERVER = new URL('../../../tools/device/title-observe.py', import.meta.url);
-const DRIVER_ASSEMBLER = new URL('../../../tools/device/trial/assemble.sh', import.meta.url);
-const SCREENCHECK_BUILDER = new URL('../../../tools/device/build-screencheck.sh', import.meta.url);
-const SCREENCHECK_BINARY = fileURLToPath(new URL('../../../tools/device/fnaf-screencheck', import.meta.url));
-const BB_LEFT_MODEL = fileURLToPath(new URL('../../../captures/screencheck/bb-left/models/runtime-gh.scm', import.meta.url));
-const execFile = promisify(execFileCallback);
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
 async function readJson(url) {
   return JSON.parse(await readFile(url, 'utf8'));
-}
-
-async function machineAssets() {
-  const [driver, model] = await Promise.all([
-    execFile('bash', [DRIVER_ASSEMBLER.pathname], { maxBuffer: 1024 * 1024 }),
-    readFile(BB_LEFT_MODEL),
-  ]);
-  try { await readFile(SCREENCHECK_BINARY); }
-  catch {
-    await execFile('bash', [SCREENCHECK_BUILDER.pathname, SCREENCHECK_BINARY], { timeout: 30000, maxBuffer: 1024 * 1024 });
-  }
-  return { driverProgram: driver.stdout, checkerPath: SCREENCHECK_BINARY,
-    modelPath: BB_LEFT_MODEL, modelBytes: model.length };
 }
 
 async function observePython(script, input, args = []) {
@@ -222,11 +203,9 @@ export async function createCampaignPorts(options = {}) {
     if (label !== lastLabel) onEvent({ type: 'observation', label, frame });
     lastLabel = label;
   };
-  // The device-local runner is the only path that assembles the legacy shell
-  // driver. Give that driver the already-running Cue Helper endpoint so its
-  // lifecycle/read functions can use the authenticated visual sensor too.
   // Endpoint discovery is bounded and happens before the executor is armed;
-  // no input is sent here.
+  // no input is sent here. The modern artifact executor consumes only the
+  // validated semantic bundle and the authenticated Cue Helper read port.
   const cuePort = new AdbCueHelperPort({ serial, adb });
   const cueEndpoint = cuePort.discover();
   const cueTransport = new CueHelperControlTransport({
@@ -354,18 +333,11 @@ export async function createCampaignPorts(options = {}) {
         visualCaptureUncertaintyMs: visualCapture.uncertaintyMs } : {}),
     };
   };
-  const localExecutor = machineOnly
-    ? new AdbDeviceLocalMachineExecutor({ serial, adb, ...(await machineAssets()),
-      planPath: `${bundle.bundleDirectory}/night-6.plan`,
-      planHash: bundle.planHashes?.[6],
-      pilotOffsetMs: bundle.machine?.pilotOffsetMs ?? 10,
-      deviceSpacingMs: bundle.machine?.deviceSpacingMs ?? 66,
-      contactMs: bundle.machine?.contactMs ?? 33,
-      cuePort: cueEndpoint.port,
-      cueToken: cueEndpoint.token,
-      onOutput: chunk => process.stderr.write(chunk),
-      observe: () => lifecycle(bridge, serial), pollMs: 1000 })
-    : new AdbDeviceLocalArtifactExecutor({ serial, adb,
+  // MODEL_ONLY is a claim level, not a different transport. Even an explicit
+  // machine-only experiment must use this modern device-local artifact path so
+  // every requested night gets its own bound plan and no legacy shell driver
+  // can be selected by accident.
+  const localExecutor = new AdbDeviceLocalArtifactExecutor({ serial, adb,
       observe: () => lifecycle(bridge, serial), observeArm, observeControlState,
       pollMs: 250, onEvent,
       onOutput: output => onEvent({ type: 'hid.stderr', output }) });
@@ -392,13 +364,10 @@ export async function createCampaignPorts(options = {}) {
     await current?.process.close();
   };
 
-  const machineRequestFor = target => makeCampaignExecutionRequest({
+  const artifactRequestFor = target => makeCampaignExecutionRequest({
     bundle, plan: bundle.plans.find(item => item.night === target.night), profile,
     mode: 'live', artifact: bundle.artifact,
   });
-  // The artifact-lane request is identical in shape to the machine one; the
-  // pre-armed schedule below needs it before the runner calls executeAttempt.
-  const artifactRequestFor = machineRequestFor;
   let pendingExecution = null;
 
   const tap = async ({ point: target, holdMs = CUSTOM_NIGHT_CONTACT_MS }) => {
@@ -419,11 +388,6 @@ export async function createCampaignPorts(options = {}) {
       const state = await lifecycle(bridge, serial);
       if (state !== 'night')
         throw new Error(`rolled-through night ${target.night} left gameplay before its attempt (state=${state})`);
-      if (machineOnly) {
-        if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
-          throw new Error('machine campaign did not compose a machine executor');
-        await localExecutor.arm(machineRequestFor(target));
-      }
       return { target: target.menuTarget, visible: false, selected: true, observed: true,
         rolledThrough: true, state };
     }
@@ -440,11 +404,6 @@ export async function createCampaignPorts(options = {}) {
     // Doing this in intro() consumed the night opening during InputReader's
     // attachment delay. The menu transport has a distinct device name so it
     // cannot satisfy the gameplay driver's readiness check.
-    if (machineOnly) {
-      if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
-        throw new Error('machine campaign did not compose a machine executor');
-      await localExecutor.arm(machineRequestFor(target));
-    }
     const freshItems = await title(bridge, serial, modelPath);
     if (!freshItems.includes(targetName))
       return { target: targetName, visible: false, selected: false, observed: true, items: freshItems };
@@ -457,13 +416,10 @@ export async function createCampaignPorts(options = {}) {
     // 25.8 s and 26.5 s from the first observed office frame to the marker,
     // across both story-night winners and the 2026-09-08 Night 5 attempt.
     // The model prices that delay at 1000/1000 on Night 1 and 0/1000 on
-    // Night 5, which is what the phone did. The machine lane already armed at
-    // this point for the same reason; the artifact lane did not.
+    // Night 5, which is what the phone did.
     // Placed after the visibility check so an unselectable target cannot leave
     // a spawned schedule waiting on a night that never starts.
-    if (!machineOnly && !pendingExecution) {
-      if (!(localExecutor instanceof AdbDeviceLocalArtifactExecutor))
-        throw new Error('artifact campaign did not compose an artifact executor');
+    if (!pendingExecution) {
       pendingExecution = localExecutor.execute(artifactRequestFor(target));
       // executeAttempt surfaces the failure; nothing else may await it.
       pendingExecution.catch(() => {});
@@ -514,11 +470,6 @@ export async function createCampaignPorts(options = {}) {
     // The gameplay driver is already attached and waiting for the office.
     // Close the separate menu channel before accepting the night transition.
     await closeMenuHid();
-    if (machineOnly) {
-      if (!(localExecutor instanceof AdbDeviceLocalMachineExecutor))
-        throw new Error('machine campaign did not compose a machine executor');
-      if (!localExecutor.armed) throw new Error('machine input was not armed before the night selection');
-    }
     // Pre-arm the device-local schedule while the intro card plays. The
     // executor's night_go gate holds every plan action -- arm taps included --
     // until the lifecycle observer positively sees the office, so spawning
@@ -527,14 +478,10 @@ export async function createCampaignPorts(options = {}) {
     // measured 30-37 s post-intro offset that killed Night 2 to Foxy on
     // 2026-09-07. The one-shot double-camera arm stays equally protected
     // because the gate, not the spawn, releases the prefix.
-    if (!machineOnly) {
-      if (!(localExecutor instanceof AdbDeviceLocalArtifactExecutor))
-        throw new Error('artifact campaign did not compose an artifact executor');
-      if (!pendingExecution) {
-        pendingExecution = localExecutor.execute(artifactRequestFor(target));
-        // executeAttempt surfaces the failure; nothing else may await it.
-        pendingExecution.catch(() => {});
-      }
+    if (!pendingExecution) {
+      pendingExecution = localExecutor.execute(artifactRequestFor(target));
+      // executeAttempt surfaces the failure; nothing else may await it.
+      pendingExecution.catch(() => {});
     }
     // Do not accept the night transition on the newspaper/intro card: the
     // mute press and identity below need the office, and only the

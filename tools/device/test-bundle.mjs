@@ -55,6 +55,15 @@ try {
     .every(action => typeof action.targetMonitorUp === 'boolean'),
   'artifact compiler retained a parity-only monitor toggle');
 
+  // The campaign target is an all-night target, not a Night 6 + Custom Night
+  // special case. Keep one fixture bundle covering the complete 1..7 chain so
+  // the emitter/parser/semantic compiler cannot regress to a two-night default.
+  const allNightBundle = compileBundle({ ...winner, nights: [1, 2, 3, 4, 5, 6, 7], seeds: [1] },
+    join(root, 'all-nights'));
+  check(allNightBundle.manifest.nights.join(',') === '1,2,3,4,5,6,7' &&
+    allNightBundle.compiled.length === 7,
+  'bundle compiler did not bind one semantic plan for every night');
+
   const cliWinner = join(root, 'winner-input.json');
   const cliBundle = join(root, 'cli-bundle');
   writeFileSync(cliWinner, JSON.stringify(winner) + '\n');

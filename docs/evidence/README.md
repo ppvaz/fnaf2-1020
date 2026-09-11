@@ -49,7 +49,7 @@ qualification is open. The modern campaign CLI composes
 port module); it receives only compiled semantic blocks and bound hashes,
 never the strategy interpreter or historical transport lane.
 
-The two-night campaign adds a second proof layer: `device-campaign-result-v1`
+The all-night campaign adds a second proof layer: `device-campaign-result-v1`
 records each bounded attempt, `campaign-proof-v1` requires a positive 6 AM
 observation plus save/menu advancement, and `custom-night-calibration-v1`
 binds all ten Custom Night dial controls to measured readback boxes. A local

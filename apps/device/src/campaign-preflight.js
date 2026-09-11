@@ -1,6 +1,6 @@
 /**
  * Campaign-specific readiness gate. Basic ADB readiness is not enough for an
- * unattended two-night run: this also checks the measured Custom Night UI,
+ * unattended multi-night run: this also checks the measured Custom Night UI,
  * a bound full-night artifact, proof adapters, and a qualified local runner.
  * CONTRACT:device-campaign-preflight-v1.
  */
