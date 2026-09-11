@@ -369,6 +369,12 @@ export async function createCampaignPorts(options = {}) {
     mode: 'live', artifact: bundle.artifact,
   });
   let pendingExecution = null;
+  const prearm = target => {
+    if (pendingExecution) return;
+    pendingExecution = localExecutor.execute(artifactRequestFor(target));
+    // executeAttempt surfaces the failure; nothing else may await it.
+    pendingExecution.catch(() => {});
+  };
 
   const tap = async ({ point: target, holdMs = CUSTOM_NIGHT_CONTACT_MS }) => {
     point(target, 'tap point');
@@ -407,23 +413,6 @@ export async function createCampaignPorts(options = {}) {
     const freshItems = await title(bridge, serial, modelPath);
     if (!freshItems.includes(targetName))
       return { target: targetName, visible: false, selected: false, observed: true, items: freshItems };
-    // Spawn the gameplay schedule here, not in intro(). The device script
-    // registers the HID device, waits readyDelayMs for Android InputReader,
-    // touches its start marker and only then blocks on night_go, so nothing
-    // can fire before the office is observed no matter how early it spawns --
-    // the gate, not the spawn, releases the prefix. Spawning in intro() left
-    // that whole setup racing the intro card and lost it: measured 30.2 s,
-    // 25.8 s and 26.5 s from the first observed office frame to the marker,
-    // across both story-night winners and the 2026-09-08 Night 5 attempt.
-    // The model prices that delay at 1000/1000 on Night 1 and 0/1000 on
-    // Night 5, which is what the phone did.
-    // Placed after the visibility check so an unselectable target cannot leave
-    // a spawned schedule waiting on a night that never starts.
-    if (!pendingExecution) {
-      pendingExecution = localExecutor.execute(artifactRequestFor(target));
-      // executeAttempt surfaces the failure; nothing else may await it.
-      pendingExecution.catch(() => {});
-    }
     const targetPoint = targetName === 'customNight'
       ? point(calibration?.menu?.point, 'calibration.menu.point')
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
@@ -443,9 +432,27 @@ export async function createCampaignPorts(options = {}) {
     if (firstSelectionState === 'title') {
       await tap({ point: targetPoint, holdMs });
     }
-    if (targetName !== 'newGame')
+    if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1 };
+
+    // Continue/6th Night activates the intro after the focused-row press.
+    // Wait for that transition while the menu HID is still the only registered
+    // game device. Starting the gameplay schedule before this point races a
+    // second /system/bin/hid registration against the menu device (both use
+    // the same kernel id), which can show the Android touch indicator while
+    // Fusion remains on the title. Once the transition is observed, the menu
+    // device is closed and the modern schedule is pre-armed; its night_go gate
+    // still anchors the first authored action to the office frame.
+    if (targetName !== 'newGame') {
+      const entryState = await waitFor(bridge, serial,
+        value => value === 'intro' || value === 'newspaper' || value === 'night',
+        30000, 'night selection');
+      await closeMenuHid();
+      prearm(target);
+      return { target: targetName, visible: true, selected: true, observed: true,
+        menuPresses: firstSelectionState === 'title' ? 2 : 1, entryState };
+    }
 
     // New Game raises a measured confirmation dialog. The capability above
     // authorizes the save reset; this second observation proves the dialog is
@@ -459,11 +466,18 @@ export async function createCampaignPorts(options = {}) {
       const yesPoint = modelPoint(titleModel.items?.sixthNight,
         'title model new-game confirmation yes');
       await tap({ point: yesPoint });
+      const newGameState = await waitFor(bridge, serial,
+        value => value === 'intro' || value === 'newspaper' || value === 'night',
+        30000, 'new-game night start');
+      await closeMenuHid();
+      prearm(target);
       return { target: targetName, visible: true, selected: true, observed: true,
-        saveResetAuthorized: true, confirmation: 'observed-and-accepted' };
+        saveResetAuthorized: true, confirmation: 'observed-and-accepted', entryState: newGameState };
     }
+    await closeMenuHid();
+    prearm(target);
     return { target: targetName, visible: true, selected: true, observed: true,
-      saveResetAuthorized: true, confirmation: 'not-present' };
+      saveResetAuthorized: true, confirmation: 'not-present', entryState: confirmationState };
   };
 
   const intro = async ({ target }) => {
@@ -478,11 +492,7 @@ export async function createCampaignPorts(options = {}) {
     // measured 30-37 s post-intro offset that killed Night 2 to Foxy on
     // 2026-09-07. The one-shot double-camera arm stays equally protected
     // because the gate, not the spawn, releases the prefix.
-    if (!pendingExecution) {
-      pendingExecution = localExecutor.execute(artifactRequestFor(target));
-      // executeAttempt surfaces the failure; nothing else may await it.
-      pendingExecution.catch(() => {});
-    }
+    prearm(target);
     // Do not accept the night transition on the newspaper/intro card: the
     // mute press and identity below need the office, and only the
     // authoritative office `night` state establishes them.
