@@ -799,14 +799,108 @@
     {
       "file": "packages/research/src/families/minus-toys.js",
       "imports": [
-        "@fnaf2-1020/core/contracts",
-        "@fnaf2-1020/core/mechanics"
+        "../strategies/minus-toys/model.js"
       ]
     },
     {
       "file": "packages/research/src/families/minus-two.js",
       "imports": [
         "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/seeds.js",
+      "imports": [
+        "node:crypto"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-3/index.js",
+      "imports": [
+        "./manifest.js",
+        "./model.js",
+        "./route.js"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-3/model.js",
+      "imports": [
+        "../../seeds.js",
+        "./route.js",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-3/route.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-7/index.js",
+      "imports": [
+        "./manifest.js",
+        "./model.js",
+        "./route.js"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-7/model.js",
+      "imports": [
+        "../../seeds.js",
+        "./route.js",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-7/route.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-toys/index.js",
+      "imports": [
+        "./manifest.js",
+        "./model.js",
+        "./route.js"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-toys/model.js",
+      "imports": [
+        "../../seeds.js",
+        "./route.js",
+        "@fnaf2-1020/core/contracts",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/minus-toys/route.js",
+      "imports": [
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/right-vent-camp/index.js",
+      "imports": [
+        "./manifest.js",
+        "./model.js",
+        "./route.js"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/right-vent-camp/model.js",
+      "imports": [
+        "../../seeds.js",
+        "./route.js",
+        "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/research/src/strategies/right-vent-camp/route.js",
+      "imports": [
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -1164,7 +1258,8 @@
       "file": "tools/device/minus-3-plan.mjs",
       "imports": [
         "./arm-verification.mjs",
-        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research/seeds",
+        "@fnaf2-1020/research/strategies/minus-3",
         "node:url"
       ]
     },
@@ -1188,6 +1283,7 @@
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
         "@fnaf2-1020/core/sensing",
+        "@fnaf2-1020/research/seeds",
         "node:url"
       ]
     },
@@ -1197,6 +1293,7 @@
         "./minus-3-plan.mjs",
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research/seeds",
         "node:crypto",
         "node:url"
       ]
@@ -1868,7 +1965,8 @@
     {
       "file": "tools/minus7/cycle.mjs",
       "imports": [
-        "@fnaf2-1020/core/mechanics"
+        "@fnaf2-1020/research/strategies/minus-7",
+        "node:url"
       ]
     },
     {
@@ -1972,7 +2070,8 @@
     {
       "file": "tools/minustoys/cycle.mjs",
       "imports": [
-        "@fnaf2-1020/core/mechanics"
+        "@fnaf2-1020/research/strategies/minus-toys",
+        "node:url"
       ]
     },
     {
@@ -1980,6 +2079,7 @@
       "imports": [
         "./stat.mjs",
         "@fnaf2-1020/research",
+        "@fnaf2-1020/research/seeds",
         "node:url"
       ]
     },
@@ -2232,7 +2332,7 @@
     {
       "file": "tools/rvctest.mjs",
       "imports": [
-        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research/strategies/right-vent-camp",
         "node:url"
       ]
     },

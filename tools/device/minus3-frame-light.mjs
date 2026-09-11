@@ -22,6 +22,7 @@ import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { Sim } from '@fnaf2-1020/core/mechanics';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
+import { GOLDEN_MODEL_SEED_SALT, randomSeedCohort, seedCohortDescriptor } from '@fnaf2-1020/research/seeds';
 import { KNOBS0, schedule } from './minus-3-plan.mjs';
 
 /** Measured monitor DOWN -> mask DOWN gap on the winning runs. */
@@ -104,16 +105,15 @@ export function edgesSha256(edges = deviceEdges()) {
   return createHash('sha256').update(canonical).digest('hex');
 }
 
-const seedsFor = i => (i * 2654435761) >>> 0;
-
 /** MODEL_ONLY census of this exact schedule. Not a promotion gate. */
-export function census(night, { runs = 3000, knobs = WIN_KNOBS } = {}) {
+export function census(night, { runs = 3000, seeds, knobs = WIN_KNOBS } = {}) {
+  const population = seeds ?? randomSeedCohort({ count: runs });
   const { opening, clear } = winRows(knobs);
   const queue = schedule({ opening, clear, knobs });
   let wins = 0, split = 0, minPower = Infinity, minBox = 1;
   const losses = new Map();
-  for (let i = 0; i < runs; i++) {
-    const sim = new Sim({ night, seed: seedsFor(i) });
+  for (const seed of population) {
+    const sim = new Sim({ night, seed });
     let cursor = 0, sawSplit = false;
     while (sim.alive && !sim.won) {
       while (cursor < queue.length && queue[cursor][0] <= sim.frame) {
@@ -133,7 +133,9 @@ export function census(night, { runs = 3000, knobs = WIN_KNOBS } = {}) {
     }
     cursor = 0;
   }
-  return { night, wins, runs, split, minPower, minBox: Number(minBox.toFixed(4)),
+  return { night, wins, runs: population.length, split, minPower,
+    minBox: Number(minBox.toFixed(4)),
+    seedCohort: seedCohortDescriptor(population, { salt: GOLDEN_MODEL_SEED_SALT }),
     losses: Object.fromEntries([...losses].sort((a, b) => b[1] - a[1])) };
 }
 

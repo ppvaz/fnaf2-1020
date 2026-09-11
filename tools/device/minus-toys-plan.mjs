@@ -16,6 +16,7 @@ import { Observer } from '@fnaf2-1020/core/sensing';
 import { CONTROL_VOCABULARY as V, MODEL_CONTEXT_LIGHT,
   VentThreatReactive, guardIntents, GUARD_FRAMES } from '@fnaf2-1020/core/control';
 import { Rng } from '@fnaf2-1020/core/mechanics';
+import { GOLDEN_MODEL_SEED_SALT, randomSeedCohort, seedCohortDescriptor } from '@fnaf2-1020/research/seeds';
 import { DOUBLE_GLITCH_CAMERA_PAIRS, cameraPairHeader } from './arm-verification.mjs';
 
 // Every tunable number in the schedule. build(KNOBS0) reproduces the shipped
@@ -407,12 +408,12 @@ export function replay({ night = 7, seed = 1, worst = false, splitCamera = true,
 export function phaseScan({ night = 1, seeds = 24, worst = false, knobs } = {}) {
   const step = 1000 / C.FPS;               // one frame in ms
   const n = Math.round(C.LAST_VIEW_SAMPLE_FRAMES); // one sampler period in frames
+  const population = randomSeedCohort({ count: seeds });
   const rows = [];
   for (let k = 0; k < n; k++) {
     let wins = 0, armed = 0;
-    for (let i = 0; i < seeds; i++) {
-      const r = replay({ night, worst, seed: (i * 2654435761) >>> 0,
-                         knobs, epochMs: k * step });
+    for (const seed of population) {
+      const r = replay({ night, worst, seed, knobs, epochMs: k * step });
       if (r.sim.won) wins++;
       if (r.splitAt >= 0) armed++;
     }
@@ -471,15 +472,17 @@ const REASON_AI = {
   foxy: 'foxy', puppet: 'puppet', 'balloon-boy': 'bb',
 };
 
-function gate(night, knobs, runs = 200) {
+function gate(night, knobs, runs = 3000) {
   const minimal = !!clone(knobs).minimal;
+  const population = randomSeedCohort({ count: runs });
+  const cohort = seedCohortDescriptor(population, { salt: GOLDEN_MODEL_SEED_SALT });
   for (const worst of [false, true]) {
-    const n = worst ? Math.min(100, runs) : runs;
+    const n = population.length;
     let wins = 0;
     const lossReasons = new Set();
     const lossFrames = [];
-    for (let i = 0; i < n; i++) {
-      const r = replay({ night, worst, seed: (i * 2654435761) >>> 0, knobs });
+    for (const seed of population) {
+      const r = replay({ night, worst, seed, knobs });
       if (r.sim.won && r.splitAt >= 0) wins++;
       else if (r.sim.death) {
         lossReasons.add(r.sim.death.reason);
@@ -487,7 +490,8 @@ function gate(night, knobs, runs = 200) {
       }
     }
     console.log(`Minus Toys device plan night ${night}${minimal ? ' minimal' : ''} ` +
-      `${worst ? 'worst' : 'normal'}: ${wins}/${n}`);
+      `${worst ? 'worst' : 'normal'}: ${wins}/${n} ` +
+      `cohort=${cohort.sha256.slice(0, 12)}`);
     if (wins === n) continue;
     // The minimal plan carries no defensive mask/monitor churn, so worst-mode
     // pinning -- which forces AI-0 animatronics to advance and spawn -- reaches
@@ -507,9 +511,10 @@ function gate(night, knobs, runs = 200) {
     return false;
   }
   let controlWins = 0;
-  for (let i = 0; i < runs; i++)
-    if (replay({ night, splitCamera: false, seed: (i * 2654435761) >>> 0, knobs }).sim.won) controlWins++;
-  console.log(`Minus Toys device plan night ${night} no-split control: ${controlWins}/${runs}`);
+  for (const seed of population)
+    if (replay({ night, splitCamera: false, seed, knobs }).sim.won) controlWins++;
+  console.log(`Minus Toys device plan night ${night} no-split control: ${controlWins}/${population.length} ` +
+    `cohort=${cohort.sha256.slice(0, 12)}`);
   // On early story nights the weak AI can let an unstalled control survive;
   // the load-bearing control is canonical 10/20, where it must clear none.
   return night === 7 ? controlWins === 0 : true;

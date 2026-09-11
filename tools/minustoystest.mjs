@@ -4,18 +4,20 @@
 // the package campaign remain equivalent on fixed seeds.
 import { pathToFileURL } from 'node:url';
 import { runMinusToys } from '@fnaf2-1020/research';
+import { GOLDEN_MODEL_SEED_SALT, randomSeedCohort, seedCohortDescriptor } from '@fnaf2-1020/research/seeds';
 import { formatRate } from './stat.mjs';
 
 const main = () => {
-  const runs = +(process.argv[2] || 200);
+  const runs = +(process.argv[2] || 3000);
+  const seeds = randomSeedCohort({ count: runs });
   const worst = process.argv.includes('--worst');
   const control = process.argv.includes('--no-split');
   const shouldAssert = process.argv.includes('--assert');
   const deaths = {};
   let wins = 0, minBox = 1, minPower = Infinity, splitMisses = 0;
   let maxBlackouts = 0, maxVentArrivals = 0;
-  for (let i = 0; i < runs; i++) {
-    const result = runMinusToys({ seed: (i * 2654435761) >>> 0, worst, splitCamera: !control });
+  for (const seed of seeds) {
+    const result = runMinusToys({ seed, worst, splitCamera: !control });
     if (result.sim.won) wins++;
     else deaths[result.sim.death?.reason || 'unknown'] = (deaths[result.sim.death?.reason || 'unknown'] || 0) + 1;
     if (result.splitAt < 0) splitMisses++;
@@ -28,6 +30,7 @@ const main = () => {
   for (const [reason, count] of Object.entries(deaths)) console.log(`  ${count}x ${reason}`);
   console.log(`split misses ${splitMisses} | min box ${(minBox * 100).toFixed(0)}% | ` +
     `min power ${minPower} | max blackouts ${maxBlackouts} | max vent arrivals ${maxVentArrivals}`);
+  console.log(`seed cohort ${JSON.stringify(seedCohortDescriptor(seeds, { salt: GOLDEN_MODEL_SEED_SALT }))}`);
   if (shouldAssert) {
     const passed = control ? wins === 0 : wins === runs && splitMisses === 0;
     if (!passed) process.exitCode = 1;
