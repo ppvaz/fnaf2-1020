@@ -2511,8 +2511,9 @@ killer when the retained recording shows one. Reactive handling stays behind
 this gate: its Night 5 model result is **0/1080**, so it cannot be the next
 route claim.
 
-The next physical rung is a phase-safe execution test: a late arm must be
-marked phase-invalid and returned to the menu before another route attempt.
+The next physical rung is a phase-safe execution test: a late arm is now
+marked `phase.invalid` and refused before the remainder starts; the failed
+attempt must be returned to the menu before another route attempt.
 
 The completed experiment was:
 

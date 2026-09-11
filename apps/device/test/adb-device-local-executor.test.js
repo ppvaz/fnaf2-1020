@@ -95,7 +95,7 @@ const armRequest = structuredClone(request);
 armRequest.blocks = [armRequest.blocks[0],
   block('toy-tail', 2500, [action('toy-tail-action', 'hold', 'wind', 2500, { durationMs: 33 })])];
 armRequest.artifact.plans[0].armVerification = {
-  cameras: ['cam:8', 'cam:11'], viewing: 'cam:11', untilMs: 1000,
+  cameras: ['cam:8', 'cam:11'], viewing: 'cam:11', untilMs: 2000,
 };
 armRequest.blocks[0].actions.push(
   action('opening-cam11', 'tap', 'cam:11', 200,
@@ -107,14 +107,16 @@ armRequest.blocks[0].actions.push(
   action('opening-monitor-up', 'ensure', 'monitor', 1600,
     { cycle: 'opening', targetMonitorUp: true, durationMs: 33 }),
 );
-armRequest.blocks[0].actions.push(action('opening-wind', 'hold', 'wind', 2000,
+armRequest.blocks[0].actions.push(action('opening-wind', 'hold', 'wind', 2200,
   { cycle: 'opening', durationMs: 33, requiresMonitorUp: true }));
 const armSchedule = compileDeviceLocalHidSchedule(armRequest, { readyDelayMs: 6000 });
 const armEvents = armSchedule.lines.map(line => JSON.parse(line));
 assert.ok(armEvents.some(event => event.command === 'report' && event.report.includes(0)),
   'the CAM08 arm request must compile into the same device-local HID stream');
-assert.equal(armSchedule.gated.firstWindAtMs, 2000,
+assert.equal(armSchedule.gated.firstWindAtMs, 2200,
   'the gated schedule must identify the opening wind boundary');
+assert.equal(armSchedule.gated.phaseBudgetMs, 2000,
+  'the gated schedule must carry the arm phase budget');
 const armRemote = renderDeviceLocalScript(armSchedule, {
   startMarker: '/data/local/tmp/fnaf2-modern-start-test',
   armControl: {
@@ -441,14 +443,16 @@ try {
         ? { sequence, highlights: ['cam:8', 'cam:11'], viewing: null }
         : { sequence, highlights: null, viewing: null, reason: 'ambiguous-threshold' };
     } });
-  const recoveredArm = await unknownThenPass.execute(armRequest);
-  assert.equal(recoveredArm.armVerification.status, 'PASS',
-    'an indeterminate first arm window must recover through the bounded re-arm');
+  await assert.rejects(() => unknownThenPass.execute(armRequest), /phase-invalid/,
+    'an indeterminate arm window must refuse a late phase release');
   const unknownRetry = unknownRetryLog.filter(event => event.type === 'arm.retry');
   assert.equal(unknownRetry.length, 1,
     'an unavailable camera window must consume one retry before fresh evidence');
   assert.equal(unknownRetry[0].reason, 'camera-observation-unavailable',
     'the retry reason must distinguish unavailable camera evidence from a wrong pair');
+  const phaseInvalid = unknownRetryLog.find(event => event.type === 'phase.invalid');
+  assert.ok(phaseInvalid && phaseInvalid.phaseLagMs > phaseInvalid.phaseBudgetMs,
+    'a recovered arm must be refused when its release is outside the phase budget');
 
   const armFail = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250,

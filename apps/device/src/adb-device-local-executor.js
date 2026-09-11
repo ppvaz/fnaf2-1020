@@ -390,6 +390,9 @@ function compileArmSegments(request, actions, register, plan) {
       rearm: maskTransitionsOf(rearmActions),
     }),
     armReadyAtMs: prefixCompiled.cursor,
+    // The authored arm window is also the maximum phase error the route can
+    // tolerate. A retry that resumes beyond it cannot claim the same stream.
+    phaseBudgetMs: plan.armVerification.untilMs,
     rearmDurationMs: rearmCompiled.cursor,
     firstWindAtMs: firstWind.atMs,
   });
@@ -924,6 +927,8 @@ export class AdbDeviceLocalArtifactExecutor {
     let nightObserved = false;
     /** @type {number | null} */
     let nightAnchoredAt = null;
+    /** @type {number | null} */
+    let nightReleasedAt = null;
     let nonNightSamples = 0;
     let stopObserver = false;
     let observer = Promise.resolve();
@@ -1215,12 +1220,25 @@ export class AdbDeviceLocalArtifactExecutor {
               const sameHighlights = key === JSON.stringify([...armVerification.cameras].sort());
               if (sameHighlights) {
                   if (stopObserver) break;
-                  armVerified = true;
-                  armObservation = sample;
                   let armGoAt = null;
                   if (armControl) {
                     await touchRemote(this.adb, this.serial, armControl.go);
                     armGoAt = Date.now();
+                    // The parked prefix has already consumed armReadyAtMs. Any
+                    // extra wall time before go is phase error, not harmless
+                    // observation latency: the game clock keeps running.
+                    const phaseLagMs = nightReleasedAt === null ? null
+                      : armGoAt - nightReleasedAt - gate.armReadyAtMs;
+                    if (phaseLagMs !== null && phaseLagMs > gate.phaseBudgetMs) {
+                      this.onEvent({ type: 'phase.invalid', reason: 'late-arm-release',
+                        phaseLagMs, phaseBudgetMs: gate.phaseBudgetMs,
+                        armAttempt, nightReleasedAt, armGoAt });
+                      armFailure = new Error(
+                        'phase-invalid: arm release lag ' + phaseLagMs +
+                        'ms exceeds budget ' + gate.phaseBudgetMs + 'ms');
+                      await this.stopProcess();
+                      break;
+                    }
                     // A gated stream has a timing-critical host-owned release at
                     // every cycle boundary. `observeControlState` is synchronous
                     // at the physical port and its diagnostic ledger can spend
@@ -1233,6 +1251,8 @@ export class AdbDeviceLocalArtifactExecutor {
                     // schedules still get the full diagnostic ledger below.
                     startGateLedger(armGoAt, gate);
                   }
+                  armVerified = true;
+                  armObservation = sample;
                   this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs,
                     ...(armGoAt === null ? {} : { armGoAt }) });
               } else if (armAttempt < MAX_ARM_ATTEMPTS) {
@@ -1290,6 +1310,7 @@ export class AdbDeviceLocalArtifactExecutor {
                   try {
                     await touchRemote(this.adb, this.serial, armControl.nightGo);
                     const nightGoAt = Date.now();
+                    nightReleasedAt = nightGoAt;
                     startControlEffectLedger('prefix', nightGoAt,
                       schedule.gated.monitorTransitions.prefix, schedule.gated.maskTransitions.prefix,
                       { originUncertaintyMs: 50, attempt: 1,
