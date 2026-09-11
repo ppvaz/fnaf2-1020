@@ -27,7 +27,8 @@ roughness fires on it constantly and cannot separate it from the death static,
 which on this build is DARK (frame mean 34.1) and not bright. A death is
 distinguished by being TERMINAL instead -- sustained static the HUD never
 returns from -- which terminal_outcome() decides. Optional shadow-only visual
-cause models may add Foxy or Marionette candidates to the terminal evidence,
+cause models may add Foxy, Marionette, or Withered Chica candidates to the
+terminal evidence,
 but no frame cause can make a live controller claim that the night is over.
 
 The terminal outcome is reported with its evidence and never inferred from
@@ -54,6 +55,7 @@ import nightpredicate  # noqa: E402
 W, H = 640, 288
 DEFAULT_MODEL = os.path.join(HERE, "models", "lifecycle-moto-g56-v207.json")
 DEFAULT_CAUSE_FPS = 12.0
+VISUAL_CAUSES = frozenset(("foxy", "marionette", "withered-chica"))
 
 
 def _lifecycle():
@@ -329,7 +331,7 @@ def terminal_outcome(runs, phases, roughnesses, fps, th, cause_labels=None,
         for event in sorted(cause_events, key=lambda row: row.get("at_s", float("inf"))):
             cause = event.get("cause", event.get("value"))
             at_s = event.get("at_s")
-            if cause not in ("foxy", "marionette") or not isinstance(at_s, (int, float)):
+            if cause not in VISUAL_CAUSES or not isinstance(at_s, (int, float)):
                 continue
             # The stock HUD remains drawn over the jumpscare, so this exact
             # frame may still satisfy the positive alive predicate. Compare

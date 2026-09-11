@@ -40,7 +40,7 @@ FEATURE_CROP = (0.18, 0.05, 0.82, 0.88)
 ASPECT = 20 / 9
 ASPECT_TOLERANCE = 0.025
 MIN_SAMPLES = 2
-SUPPORTED_LABELS = ("foxy", "marionette")
+SUPPORTED_LABELS = ("foxy", "marionette", "withered-chica")
 
 
 def _fail(message):

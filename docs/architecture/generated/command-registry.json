@@ -1925,7 +1925,7 @@
     },
     {
       "id": "tools/device/death-cause.py",
-      "invocation": "tools/device/death-cause.py build POSITIVE NEGATIVE --label {foxy,marionette} --output MODEL",
+      "invocation": "tools/device/death-cause.py build POSITIVE NEGATIVE --label {foxy,marionette,withered-chica} --output MODEL",
       "kind": "classifier/check",
       "lifecycle": "supported"
     },

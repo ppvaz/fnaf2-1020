@@ -42,6 +42,20 @@ def frame(kind, variant=0):
         d.rectangle((570, 220, 710, 390), fill=(100, 28, 125))
         d.rectangle((610, 370, 670, 510), fill=(100, 28, 125))
         d.arc((455, 305, 825, 520), 10, 170, fill=(190, 25, 35), width=16)
+    elif kind == "withered-chica":
+        # A coarse Withered Chica-shaped positive. The retained device model
+        # is trained from labelled video frames; this fixture only checks that
+        # the label is accepted and remains a shadow-only fact.
+        d.ellipse((220 + variant, 25, 1060, 575), fill=(190, 155, 45))
+        d.ellipse((330, 115, 520, 290), fill=(235, 230, 205))
+        d.ellipse((760, 115, 950, 290), fill=(235, 230, 205))
+        d.ellipse((375, 165, 485, 255), fill=(150, 35, 125))
+        d.ellipse((805, 165, 915, 255), fill=(150, 35, 125))
+        d.polygon(((390, 265), (890, 265), (780, 385), (500, 385)), fill=(210, 75, 25))
+        d.rectangle((350, 350, 930, 555), fill=(18, 15, 14))
+        for x in range(390, 900, 85):
+            d.polygon(((x, 340), (x + 45, 340), (x + 58, 410), (x + 12, 410)), fill=(230, 225, 190))
+            d.polygon(((x + 15, 475), (x + 58, 475), (x + 45, 535), (x + 2, 535)), fill=(230, 225, 190))
     elif kind == "office":
         d.rectangle((0, 500, 1280, 555), fill=(105, 25, 70))
         d.rectangle((30, 80, 220, 120), fill=(200, 200, 200))
@@ -68,11 +82,14 @@ def main():
         positive = root / "positive"
         negative = root / "negative"
         marionette_positive = root / "marionette-positive"
+        chica_positive = root / "withered-chica-positive"
         positive.mkdir(); negative.mkdir()
         marionette_positive.mkdir()
+        chica_positive.mkdir()
         for i in range(3):
             frame("foxy", i * 3).save(positive / f"p{i}.png")
             frame("marionette", i * 3).save(marionette_positive / f"p{i}.png")
+            frame("withered-chica", i * 3).save(chica_positive / f"p{i}.png")
         frame("office").save(negative / "office.png")
         frame("title").save(negative / "title.png")
         model = dc.build_model(positive, negative)
@@ -89,6 +106,12 @@ def main():
         check(marionette_model["label"] == "marionette" and
               dc.classify_image(frame("marionette", 1), marionette_model)["state"] == "OBSERVED",
               "a labelled Marionette-shaped frame was not observed")
+        chica_model = dc.build_model(positive_root=chica_positive,
+                                     negative_root=negative,
+                                     label="withered-chica")
+        check(chica_model["label"] == "withered-chica" and
+              dc.classify_image(frame("withered-chica", 1), chica_model)["state"] == "OBSERVED",
+              "a labelled Withered Chica-shaped frame was not observed")
         unknown = dc.classify_image(frame("office"), model)
         check(unknown["state"] == "UNKNOWN",
               "an office control became a Foxy cause")
@@ -127,6 +150,16 @@ def main():
               puppet_terminal["cause"] == "marionette" and
               puppet_terminal["evidence"] == "visual-marionette-jumpscare",
               "post-office Marionette cause did not produce shadow death evidence")
+        chica_terminal = timeline.terminal_outcome(
+            [["office", 0, 3], ["other", 3, 5]],
+            ["office", "office", "office", "other", "other"],
+            [0] * 5, 1, th,
+            cause_events=[{"cause": "withered-chica", "at_s": 3.0,
+                            "through_s": 3.5, "samples": 4}])
+        check(chica_terminal["outcome"] == "death" and
+              chica_terminal["cause"] == "withered-chica" and
+              chica_terminal["evidence"] == "visual-withered-chica-jumpscare",
+              "post-office Withered Chica cause did not produce shadow death evidence")
         latest_puppet_terminal = timeline.terminal_outcome(
             [["office", 0, 3], ["other", 3, 6]],
             ["office", "office", "office", "other", "other", "other"],
@@ -171,7 +204,7 @@ def main():
     if failed:
         print(f"{failed} death-cause check(s) failed")
         return 1
-    print("death cause: labelled visual Foxy/Marionette envelopes are shadow-only and lifecycle-safe")
+    print("death cause: labelled visual Foxy/Marionette/Withered-Chica envelopes are shadow-only and lifecycle-safe")
     return 0
 
 

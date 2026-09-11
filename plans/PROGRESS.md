@@ -2502,7 +2502,44 @@ packages are closed.
 
 ## Very next step
 
-### 2026-08-30 directive — LOCK: reactive handling is the top priority (Pedro)
+### 2026-09-11 directive — measure and control delivered phase before reactive handling
+
+This session completed the Night 5 phase-measurement run on the phone:
+unmodified Minus Toys, no phase offset, retained video, and a per-cycle phase
+reconstruction. The run must name both the delivered phase and the terminal
+killer when the retained recording shows one. Reactive handling stays behind
+this gate: its Night 5 model result is **0/1080**, so it cannot be the next
+route claim.
+
+The next physical rung is a phase-safe execution test: a late arm must be
+marked phase-invalid and returned to the menu before another route attempt.
+
+The completed experiment was:
+
+1. In one terminal, start retained recording at 1280x576 and 12 Mbps:
+   `adb -s ZF525F5BH5 shell screenrecord --size 1280x576 --bit-rate 12000000 --time-limit 0 /sdcard/night5-phase-control.mp4`.
+2. In a second terminal, run the qualified, no-offset artifact:
+   `npm run device:campaign -- --profile hid-mediaprojection --serial ZF525F5BH5 --nights 5 --max-attempts 1 --save-cursor 5 --bundle artifacts/night5-device-20260910-qualified --qualification docs/evidence/qualification-hid-mediaprojection-night5-20260908.json --live --confirm-live --json`.
+3. Stop the recording after the campaign exits, pull it, and run
+   `node tools/device/phase-reconstruct.mjs --run <campaign-dir> --night 5 --out docs/evidence/night5-phase-control-<date>.json`.
+4. Run
+   `python3 tools/device/run-timeline.py <video> --cause-model tools/device/models/death-cause-withered-chica-moto-g56-v207.json --json`.
+
+The report must retain `hid.schedule-start`, `hid.night-go`,
+`hid.night-go-released`, every `arm.*` row, every `control.gate` row, the
+video hash, and the timeline's shadow-only killer result. A retry or a
+delivered phase outside the measured model band invalidates a route claim; it
+is evidence about synchronization, not a win attempt.
+
+The arm-lag note is now executor-specific. The modern campaign port sets
+`pollMs: 250`; the old `pollMs: 1000` statement belongs to the machine/legacy
+lane and must not be reused here. The 2026-09-11 rows measured an arm retry at
+elapsed **7457 ms**, verification at **10357 ms**, and reconstructed lag
+**6695 ms**; the prior phase333 run measured **1263 ms**. Cite the actual
+`arm.retry`, `arm.verified`, and reconstructed `arm.lagMs` rows for each run
+instead of describing a fixed 600–2300 ms range.
+
+### 2026-08-30 directive — LOCK: reactive handling is the top priority (Pedro, superseded 2026-09-11)
 
 **"This project has stalled on delivering the reactive handling for far too
 long, I want it at the highest priority."** The BB-first detect-and-react
@@ -4904,9 +4941,38 @@ Open. The origin is a screenshot classification (`nightAnchoredAt`), and
 `PhaseClockEstimator` in `packages/core/src/timing/phase-clock.js` — with the
 on-device `PhaseClock.java` fitting the 500 ms winding tick — is built, tested,
 and wired to nothing. Until the executor's origin is a measured game phase, a
-6 AM attempt is a coin flip on a quantity the bundle does not record. The next
-device run should measure the delivered phase with retained video, not attempt
-a win.
+6 AM attempt is a coin flip on a quantity the bundle does not record. That
+measurement was completed by the 2026-09-11 no-offset run below; it was not a
+win attempt.
 
 Evidence: `docs/evidence/night5-delivered-phase-20260911.json`, regenerable with
 `node tools/device/phase-reconstruct.mjs --run <bundle> --night 5`.
+
+## 2026-09-11 — no-offset Night 5 phase-control run
+
+The phone ran the qualified `minus-toys` Night 5 artifact with
+`phaseOffsetMs: 0` and retained a 163.432-second 1280x576 recording. The
+reconstruction recovered the first delivered offset as **6695 ms** and the
+last as **6872 ms**; modulo the 1-second model phase those are **695 → 872
+ms**. The first five gates landed at 695, 792, 792, 799, and 799 ms, inside
+the measured Night 5 loss band **[416.67, 800) ms**, where the model scored
+0/100. Gate lag was 0 ms on the first gate, 97–110 ms through gate 8, then
+159 ms and 177 ms on the two corrected gates.
+
+The desynchronization entered at arm verification. Attempt 1 repeatedly saw
+`cam:9=188` and `cam:11=96` but no confident highlight pair, retried at
+7457 ms, and verified at 10357 ms on attempt 2. The reconstruction therefore
+reports `arm.lagMs: 6695`; this is the global phase error, while the later
+gate lag is the smaller per-cycle drift.
+
+The lifecycle authority observed `state=static` and then `state=title`; the
+campaign exited with `device: lifecycle left night state (title)`. The
+retained video shows a Withered Chica jumpscare at 149.5 s. The new
+shadow-only model reports six positive samples through 149.9167 s as
+`visual-withered-chica-jumpscare`. It names the killer for attribution while
+leaving the lifecycle terminal field independent.
+
+Evidence: [night5-phase-control-20260911.json](../docs/evidence/night5-phase-control-20260911.json),
+video SHA-256
+`fbcba7b826108aaf10b992db9600e81c61c17a24813e044a7dee8db58035f49c`, and
+model `tools/device/models/death-cause-withered-chica-moto-g56-v207.json`.
