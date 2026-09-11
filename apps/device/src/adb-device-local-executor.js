@@ -1212,11 +1212,16 @@ export class AdbDeviceLocalArtifactExecutor {
                   if (armControl) {
                     await touchRemote(this.adb, this.serial, armControl.go);
                     armGoAt = Date.now();
-                    startControlEffectLedger('remainder', armGoAt,
-                      gate.monitorTransitions.remainder, gate.maskTransitions.remainder,
-                      { timelineOffsetMs: gate.armReadyAtMs, originUncertaintyMs: 50,
-                        attempt: armAttempt,
-                        phaseEndMs: schedule.plannedUntilMs - gate.armReadyAtMs });
+                    // A gated stream has a timing-critical host-owned release at
+                    // every cycle boundary. `observeControlState` is synchronous
+                    // at the physical port and its diagnostic ledger can spend
+                    // six reads in one burst; on the 2026-09-11 Night 5 run it
+                    // occupied the event loop for ~870 ms exactly when the first
+                    // post-gate contact was due, delaying the gate release and
+                    // shifting the phone-local stream. The gate itself retains
+                    // the bounded state evidence, so do not run a competing
+                    // remainder ledger while the stream is parked. Ungated
+                    // schedules still get the full diagnostic ledger below.
                     startGateLedger(armGoAt, gate);
                   }
                   this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs,

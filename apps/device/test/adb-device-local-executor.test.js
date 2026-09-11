@@ -367,6 +367,8 @@ try {
     'a refuted mask-on must correct the parity, not abort the night');
   assert.ok(!refuteLog.some(event => event.type === 'control.gate.abort'),
     'a refutable frame must not end the night');
+  assert.ok(!refuteLog.some(event => event.type === 'control.effect.phase' && event.phase === 'remainder'),
+    'a gated remainder must not let diagnostic reads delay the physical gate release');
 
   // Darkness stays unknown: mask-on and a blacked-out office read alike.
   const darkLog = [];
