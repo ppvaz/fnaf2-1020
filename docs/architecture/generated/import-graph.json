@@ -1211,6 +1211,15 @@
       ]
     },
     {
+      "file": "tools/device/phase-reconstruct.mjs",
+      "imports": [
+        "@fnaf2-1020/core/mechanics",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/policy-artifact.mjs",
       "imports": [
         "./policy-equivalence.mjs",
@@ -1480,6 +1489,12 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-phase-reconstruct.mjs",
+      "imports": [
+        "./phase-reconstruct.mjs"
       ]
     },
     {

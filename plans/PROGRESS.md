@@ -4833,3 +4833,80 @@ corrector.
 
 Evidence: `docs/evidence/night5-monitor-raise-loss-20260909.json`.
 
+## 2026-09-11 — The Night 5 run was delivered at a phase no census has scored
+
+The `campaign-2026-09-11T03-38-02.390Z` Night 5 attempt ended in `static` at
+~119 s. It was not evidence about the Minus Toys route, because the stream the
+phone ran was not the stream the gate scored.
+
+The plan shipped `#phase-offset 333`, but `minusToysEmitter` replayed at epoch
+0. Emitting the same winner with and without the offset changes the plan text
+by exactly one line and leaves the replay summary **byte-identical**, so
+`gate.replayHash` matched and the winner's `MODEL_ONLY 3000/3000` evidence was
+re-certified for a rotation no census had seen. Fixed in `a44909b`: the offset
+now reaches `replayToys` as `epochMs`, and minus3/minus7 — which replay at
+epoch 0 only — refuse to carry one.
+
+333 ms was also never the delivered phase. Reconstructed from the run's own
+timestamps:
+
+| quantity | value | source |
+| --- | ---: | --- |
+| planned rotation | 333 ms | `#phase-offset`, `hid.schedule-start` |
+| prefix length `armReadyAtMs` | 1982 ms | recovered from gate 1 |
+| arm release lag | **1263 ms** | `armGoAt − (released + armReadyAtMs)` |
+| accumulated gate lag, 12 cycles | 0 → 116 ms | the 12 `control.gate` rows |
+| **delivered steady-loop offset** | **1596 → 1712 ms** | the three above |
+| origin error vs. the true 12 AM frame | **UNKNOWN**, bracket 1872 ms | lifecycle cadence |
+
+The arm lag is structural, not a glitch: `ARM_SETTLE_MS` 600 plus two confirming
+samples at `pollMs` 1000 plus the release touch, and `compileGateSegments`
+resumes the parked stream on the next authored instant with no lead-in, so the
+whole night inherits it. Per-gate drift, by contrast, is ~10 ms/cycle — the
+`releaseTouchMs` pre-compensation works.
+
+Why the phase matters at all: the sourced vent-mask rule accrues on
+`frame % FPS === 0`, i.e. the game's absolute one-second grid. The route's mask
+window is 4800 ms press-to-press, 4600 ms fully on — **exactly five grid
+instants and no more**. A full-second phase sweep at frame
+resolution puts the route at 4 ticks for epochs in **[416.67, 783.33] ms**, and
+at 0/100 wins across every phase in that band, foxy-dominated. The
+delivered offset mod 1000 was 596–712 ms: inside that band before the unmeasured
+origin error is even added. Under an uncontrolled phase the route is worth
+**1375/3000 (45.8 %)**, or 62.2 % conditioned on the arm landing — not 3000/3000.
+
+Refuted along the way. The phase probe's "333 ms → 0/100, Puppet" is the
+**arm sampler**, not Balloon Boy: `LAST_VIEW_SAMPLE_FRAMES` is 12 frames and
+the split misses on 3 of every 12, and 333 mod 200 = 133 lands in that band
+while 833 mod 200 = 33 does not. It says nothing about the mask rule. Minus 3
+is not the escape: its window is `maskOnMs 9600 → maskOffMs 4400`, the same
+4800 ms and the same zero margin. Widening the mask to a phase-independent
+≥5200 ms makes ticks 5 at every phase but costs 300 ms/cycle of winding and
+takes the mean from 46.7 % to 32.8 % — the 10 s cycle has no slack for both.
+And `reactiveBB`, the reserved feedback layer, is **0/1080 on Night 5** at every
+phase and at perfect, 15 Hz+100 ms, and 15 Hz+250 ms+10 %-drop observation,
+puppet-dominated: it is not a drop-in.
+
+Not established. The dump names no killer — the three `static` frames carry no
+animatronic, no text, no HUD, so "BB, with Foxy" remains operator context. The
+quoted "static 76 ms before the next scheduled action" compared a wall-clock
+observation against a *nominal* authored time; gate 12's actual release was
+120.909 s, the last `night` sample 117.657 s, and the reconstructed stream has
+**no delivered contact between 116.14 s and 120.91 s** — the death fell in an
+input-free window, which is consistent with a game-side interval check and not
+with a mis-delivered contact. Frame `00029` shows CAM 09 and CAM 11 both
+highlighted at 1 AM, so the split arm was alive 11 cycles in. The gates' 12
+AGREEDs are one read each from a rule whose own tag reads
+`diagnostic-provisional:night-1-corpus,animation-unproven,blackout-unproven`,
+and both opening `control.effect.result` rows were UNKNOWN/insufficient-frames.
+
+Open. The origin is a screenshot classification (`nightAnchoredAt`), and
+`PhaseClockEstimator` in `packages/core/src/timing/phase-clock.js` — with the
+on-device `PhaseClock.java` fitting the 500 ms winding tick — is built, tested,
+and wired to nothing. Until the executor's origin is a measured game phase, a
+6 AM attempt is a coin flip on a quantity the bundle does not record. The next
+device run should measure the delivered phase with retained video, not attempt
+a win.
+
+Evidence: `docs/evidence/night5-delivered-phase-20260911.json`, regenerable with
+`node tools/device/phase-reconstruct.mjs --run <bundle> --night 5`.
