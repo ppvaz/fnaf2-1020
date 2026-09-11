@@ -41,6 +41,22 @@ class WatchTest(unittest.TestCase):
         self.assertIn("service-controlled", result.stderr)
         self.assertNotIn("not found", result.stderr)
 
+    def test_maskraise_wrapper_refuses_open_loop_hall(self):
+        result = subprocess.run(["/bin/bash", str(HERE / "hid-sweep-probe.sh"), "267"],
+                                env={**os.environ, "PROBE_GEN": "maskraise", "PATH": "/nonexistent"},
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("mask-OFF", result.stderr)
+        self.assertNotIn("not found", result.stderr)
+
+    def test_raise_mask_toggles_refuse_dependent_input(self):
+        result = subprocess.run(["/bin/bash", str(HERE / "hid-sweep-probe.sh"), "300"],
+                                env={**os.environ, "PROBE_GEN": "raise", "MASK_TOGGLES": "1", "PATH": "/nonexistent"},
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("blind mask toggles", result.stderr)
+        self.assertNotIn("not found", result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

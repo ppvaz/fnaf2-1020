@@ -77,6 +77,8 @@ public final class PixelWatch {
     public static final int CONTROL_STROKE_Y_PEAK = 16;
     public static final int CONTROL_STROKE_LINE_OFFSET = 16;
     public static final int CONTROL_STROKE_SAMPLE_STEP = 8;
+    /** Trace-only sparse stroke sampling; the returned score is normalized. */
+    public static final int CONTROL_STROKE_TRACE_SAMPLE_STEP = 32;
     public static final int CONTROL_STROKE_RADIUS = 3;
     /** Minimum local max-channel contrast for one stroke column. */
     public static final int CONTROL_STROKE_CONTRAST = 35;
@@ -494,8 +496,29 @@ public final class PixelWatch {
      * unavailable or incomplete.</p>
      */
     public static int controlDownStrokeScore(Frame frame, boolean maskControl) {
+        return controlDownStrokeScore(frame, maskControl,
+                CONTROL_STROKE_SAMPLE_STEP, false);
+    }
+
+    /**
+     * Measure a control stroke with the trace-only sparse sampler.
+     *
+     * <p>The live gate keeps the dense calibrated score above. Trace mode only
+     * needs the same settled-state separation, so it samples every 32 native
+     * pixels and normalizes the result to the dense score's range. This keeps
+     * the native ImageReader callback below the display-frame budget without
+     * changing the live authority or its thresholds.</p>
+     */
+    public static int controlDownStrokeScoreFast(Frame frame, boolean maskControl) {
+        return controlDownStrokeScore(frame, maskControl,
+                CONTROL_STROKE_TRACE_SAMPLE_STEP, true);
+    }
+
+    private static int controlDownStrokeScore(Frame frame, boolean maskControl,
+            int sampleStep, boolean normalize) {
         if (frame == null || frame.width() != NATIVE_WIDTH
                 || frame.height() != NATIVE_HEIGHT) return UNKNOWN;
+        if (sampleStep < 1) return UNKNOWN;
         int xStart = (maskControl ? MASK_BUTTON_X : MONITOR_BUTTON_X)
                 + (maskControl ? MASK_STROKE_X_START : MONITOR_STROKE_X_START);
         int xCenter = (maskControl ? MASK_BUTTON_X : MONITOR_BUTTON_X)
@@ -504,7 +527,7 @@ public final class PixelWatch {
                 + (maskControl ? MASK_STROKE_X_END : MONITOR_STROKE_X_END);
         int columns = 0;
         int hits = 0;
-        for (int x = xStart; x <= xEnd; x += CONTROL_STROKE_SAMPLE_STEP) {
+        for (int x = xStart; x <= xEnd; x += sampleStep) {
             int yOffset = x <= xCenter
                     ? CONTROL_STROKE_Y_BASE
                             + (CONTROL_STROKE_Y_PEAK - CONTROL_STROKE_Y_BASE)
@@ -512,16 +535,24 @@ public final class PixelWatch {
                     : CONTROL_STROKE_Y_BASE
                             + (CONTROL_STROKE_Y_PEAK - CONTROL_STROKE_Y_BASE)
                                     * (xEnd - x) / (xEnd - xCenter);
-            int first = strokeColumnHit(frame, x, CONTROL_BUTTON_Y + yOffset);
+            int first = normalize
+                    ? fastStrokeColumnHit(frame, x, CONTROL_BUTTON_Y + yOffset)
+                    : strokeColumnHit(frame, x, CONTROL_BUTTON_Y + yOffset);
             if (first == UNKNOWN) return UNKNOWN;
-            int second = strokeColumnHit(frame, x,
-                    CONTROL_BUTTON_Y + yOffset + CONTROL_STROKE_LINE_OFFSET);
+            int second = normalize
+                    ? fastStrokeColumnHit(frame, x,
+                            CONTROL_BUTTON_Y + yOffset + CONTROL_STROKE_LINE_OFFSET)
+                    : strokeColumnHit(frame, x,
+                            CONTROL_BUTTON_Y + yOffset + CONTROL_STROKE_LINE_OFFSET);
             if (second == UNKNOWN) return UNKNOWN;
             if (first != 0) hits++;
             if (second != 0) hits++;
             columns += 2;
         }
-        return columns == 0 ? UNKNOWN : hits;
+        if (columns == 0) return UNKNOWN;
+        if (!normalize) return hits;
+        int denseColumns = ((xEnd - xStart) / CONTROL_STROKE_SAMPLE_STEP + 1) * 2;
+        return (hits * denseColumns + columns / 2) / columns;
     }
 
     /**
@@ -567,6 +598,20 @@ public final class PixelWatch {
             baselineCount++;
         }
         int baseline = baselineCount == 0 ? 0 : (int) (baselineTotal / baselineCount);
+        return lineMax - baseline >= CONTROL_STROKE_CONTRAST ? 1 : 0;
+    }
+
+    private static int fastStrokeColumnHit(Frame frame, int x, int centerY) {
+        int lineMax = 0;
+        for (int y = centerY - 1; y <= centerY + 1; y++) {
+            int rgb = frame.rgb(x, y);
+            if (rgb == UNKNOWN) return UNKNOWN;
+            lineMax = Math.max(lineMax, maxChannel(rgb));
+        }
+        int above = frame.rgb(x, centerY - 8);
+        int below = frame.rgb(x, centerY + 8);
+        if (above == UNKNOWN || below == UNKNOWN) return UNKNOWN;
+        int baseline = (maxChannel(above) + maxChannel(below)) / 2;
         return lineMax - baseline >= CONTROL_STROKE_CONTRAST ? 1 : 0;
     }
 

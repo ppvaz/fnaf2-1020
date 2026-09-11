@@ -213,6 +213,12 @@
       "validator": "packages/adapters/src/calibration-state-rule.js parseCalibrationStateRule"
     },
     {
+      "id": "control-exclusion-v1",
+      "owner": "packages/adapters",
+      "kind": "data",
+      "validator": "packages/adapters/src/control-exclusion.js reconcileExclusiveControls"
+    },
+    {
       "id": "seam-actuator-qualification-v1",
       "owner": "apps/device",
       "kind": "artifact",

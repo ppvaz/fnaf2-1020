@@ -81,8 +81,20 @@ def test_csv_and_query() -> None:
           parsed[0]["track_name"].endswith("Main"),
           "CSV parser should retain a package-bearing track when process_name is empty")
     query = inputtrace.build_query("com.example.o'reilly")
-    check(query.count("com.example.o''reilly") == 2 and "INSTR(track_name" in query,
-          "package must be SQL-escaped and matched through the process or track name")
+    check(query.count("com.example.o''reilly") >= 3 and
+          "INSTR(track_name" in query and
+          "deliverInputEvent src=* eventTimeNano=* id=*" in query and
+          "game_publish" in query,
+          "package must be SQL-escaped across process, track, and game-channel matches")
+    pointer = inputtrace.DISPATCH_RE.match(
+        "dispatchInputEvent MotionEvent ACTION_POINTER_DOWN(1) "
+        "deviceId=335 source=0x1002 historySize=0")
+    check(pointer and pointer.group("action") == "POINTER_DOWN(1)",
+          "pointer MotionEvents must remain parseable")
+    published = inputtrace.PUBLISHED_RE.match(
+        "publishMotionEvent(inputChannel=game, action=POINTER_UP(1))")
+    check(published and published.group("action") == "POINTER_UP(1)",
+          "parenthesized game-channel actions must remain parseable")
 
 
 def test_surfaceflinger() -> None:

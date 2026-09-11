@@ -42,6 +42,15 @@ public final class OverlayController {
     private final OverlayGeometry.Contract contract = OverlayGeometry.defaultContract();
     private final Listener listener;
     private final OverlayMetrics metrics = new OverlayMetrics();
+    private static final int NO_PENDING_IDENTITY = Integer.MIN_VALUE;
+    private final Object mainQueueLock = new Object();
+    private int pendingCapturedIdentity = NO_PENDING_IDENTITY;
+    private boolean capturedIdentityDispatchQueued;
+    private OverlayView pendingSnapshotView;
+    private OverlaySnapshot pendingSnapshot;
+    private boolean snapshotDispatchQueued;
+    private final Runnable capturedIdentityDispatch = this::drainCapturedIdentity;
+    private final Runnable snapshotDispatch = this::drainSnapshot;
     private final DisplayManager.DisplayListener displayListener =
             new DisplayManager.DisplayListener() {
                 @Override
@@ -133,6 +142,11 @@ public final class OverlayController {
 
     public boolean enabled() {
         return preferences.getBoolean(PREF_ENABLED, false);
+    }
+
+    /** Whether the capture thread needs to feed identity into this controller. */
+    public boolean needsCapturedIdentity() {
+        return enabled() || qualificationProbe;
     }
 
     /**
@@ -320,7 +334,12 @@ public final class OverlayController {
      */
     public void onCapturedScreenIdentity(int identity) {
         if (!isMainThread()) {
-            mainHandler.post(() -> onCapturedScreenIdentity(identity));
+            synchronized (mainQueueLock) {
+                pendingCapturedIdentity = identity;
+                if (capturedIdentityDispatchQueued) return;
+                capturedIdentityDispatchQueued = true;
+            }
+            mainHandler.post(capturedIdentityDispatch);
             return;
         }
         if (!captureActive || (!enabled() && !qualificationProbe)) return;
@@ -357,11 +376,35 @@ public final class OverlayController {
         }
     }
 
+    private void drainCapturedIdentity() {
+        if (!isMainThread()) {
+            mainHandler.post(capturedIdentityDispatch);
+            return;
+        }
+        int identity;
+        synchronized (mainQueueLock) {
+            identity = pendingCapturedIdentity;
+            pendingCapturedIdentity = NO_PENDING_IDENTITY;
+            capturedIdentityDispatchQueued = false;
+        }
+        if (identity != NO_PENDING_IDENTITY) {
+            onCapturedScreenIdentity(identity);
+        }
+        boolean repost;
+        synchronized (mainQueueLock) {
+            repost = pendingCapturedIdentity != NO_PENDING_IDENTITY
+                    && !capturedIdentityDispatchQueued;
+            if (repost) capturedIdentityDispatchQueued = true;
+        }
+        if (repost) mainHandler.post(capturedIdentityDispatch);
+    }
+
     public void onCaptureStopped() {
         captureActive = false;
         capturedRecognizedIdentity = false;
         lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
+        clearPendingMainWork();
         qualificationProbe = false;
         latestDecisionSnapshot = null;
         targetVisibility = -1;
@@ -375,6 +418,7 @@ public final class OverlayController {
         capturedRecognizedIdentity = false;
         lastRecognizedIdentityNs = 0L;
         mainHandler.removeCallbacks(identityLossRunnable);
+        clearPendingMainWork();
         qualificationProbe = false;
         detach(null);
         emit(permissionGranted() ? "READY" : "DISABLED(permission)");
@@ -534,6 +578,10 @@ public final class OverlayController {
         windowAttached = false;
         view = null;
         layoutParams = null;
+        synchronized (mainQueueLock) {
+            pendingSnapshotView = null;
+            pendingSnapshot = null;
+        }
         // A detached window must never resurrect an old imperative cue after
         // target hiding, permission/display loss, or any other lifecycle gap.
         latestDecisionSnapshot = null;
@@ -655,11 +703,55 @@ public final class OverlayController {
     private void updateViewSnapshot(OverlayView target, OverlaySnapshot snapshot) {
         if (target == null || snapshot == null) return;
         if (!isMainThread()) {
-            mainHandler.post(() -> updateViewSnapshot(target, snapshot));
+            synchronized (mainQueueLock) {
+                pendingSnapshotView = target;
+                pendingSnapshot = snapshot;
+                if (snapshotDispatchQueued) return;
+                snapshotDispatchQueued = true;
+            }
+            mainHandler.post(snapshotDispatch);
             return;
         }
         if (windowAttached && view == target) {
             target.setSnapshot(snapshot);
+        }
+    }
+
+    private void drainSnapshot() {
+        if (!isMainThread()) {
+            mainHandler.post(snapshotDispatch);
+            return;
+        }
+        OverlayView target;
+        OverlaySnapshot snapshot;
+        synchronized (mainQueueLock) {
+            target = pendingSnapshotView;
+            snapshot = pendingSnapshot;
+            pendingSnapshotView = null;
+            pendingSnapshot = null;
+            snapshotDispatchQueued = false;
+        }
+        if (target != null && snapshot != null
+                && windowAttached && view == target) {
+            target.setSnapshot(snapshot);
+        }
+        boolean repost;
+        synchronized (mainQueueLock) {
+            repost = pendingSnapshot != null && !snapshotDispatchQueued;
+            if (repost) snapshotDispatchQueued = true;
+        }
+        if (repost) mainHandler.post(snapshotDispatch);
+    }
+
+    private void clearPendingMainWork() {
+        mainHandler.removeCallbacks(capturedIdentityDispatch);
+        mainHandler.removeCallbacks(snapshotDispatch);
+        synchronized (mainQueueLock) {
+            pendingCapturedIdentity = NO_PENDING_IDENTITY;
+            capturedIdentityDispatchQueued = false;
+            pendingSnapshotView = null;
+            pendingSnapshot = null;
+            snapshotDispatchQueued = false;
         }
     }
 

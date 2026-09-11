@@ -490,6 +490,7 @@
         "./calibration-state-rule.js",
         "./camera-rule.js",
         "./clocks.js",
+        "./control-exclusion.js",
         "./monitor-rule.js",
         "./registry.js",
         "./sensors.js",
@@ -533,6 +534,13 @@
         "../src/sensors.js",
         "../src/transports/cue-helper.js",
         "../src/transports/hid.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/adapters/test/control-exclusion.test.js",
+      "imports": [
+        "../src/control-exclusion.js",
         "node:assert/strict"
       ]
     },
@@ -1089,6 +1097,14 @@
       ]
     },
     {
+      "file": "tools/device/hid-intersection-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/hid-maskraise-probe.mjs",
       "imports": [
         "./hid-sweep-probe.mjs",
@@ -1118,6 +1134,14 @@
       ]
     },
     {
+      "file": "tools/device/hid-transition-probe.mjs",
+      "imports": [
+        "./hid-sweep-probe.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/human-gate.mjs",
       "imports": [
         "../stat.mjs",
@@ -1125,6 +1149,16 @@
         "@fnaf2-1020/core/mechanics",
         "node:fs",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/intersection-state-gate.mjs",
+      "imports": [
+        "../../apps/device/src/physical-ports.js",
+        "@fnaf2-1020/adapters",
+        "node:fs",
+        "node:fs/promises",
+        "node:path"
       ]
     },
     {
@@ -1259,6 +1293,7 @@
       "file": "tools/device/test-artifact-animation-gates.mjs",
       "imports": [
         "./artifact-commands.mjs",
+        "./recipe.mjs",
         "@fnaf2-1020/core/mechanics"
       ]
     },
@@ -1328,6 +1363,14 @@
       ]
     },
     {
+      "file": "tools/device/test-hid-intersection-probe.mjs",
+      "imports": [
+        "./hid-intersection-probe.mjs",
+        "./hid-sweep-probe.mjs",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "tools/device/test-hid-maskraise-probe.mjs",
       "imports": [
         "./hid-maskraise-probe.mjs"
@@ -1353,6 +1396,12 @@
       ]
     },
     {
+      "file": "tools/device/test-hid-transition-probe.mjs",
+      "imports": [
+        "./hid-transition-probe.mjs"
+      ]
+    },
+    {
       "file": "tools/device/test-hid-walltime.mjs",
       "imports": [
         "./recipe.mjs",
@@ -1372,6 +1421,15 @@
         "node:os",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-intersection-state-gate.mjs",
+      "imports": [
+        "./intersection-state-gate.mjs",
+        "@fnaf2-1020/adapters",
+        "node:assert/strict",
+        "node:fs/promises"
       ]
     },
     {

@@ -37,6 +37,7 @@
     {"id":"monitor-rule-v1","owner":"packages/adapters","kind":"artifact","validator":"packages/adapters/src/monitor-rule.js parseMonitorRule"},
     {"id":"camera-rule-v1","owner":"packages/adapters","kind":"artifact","validator":"packages/adapters/src/camera-rule.js parseCameraRule"},
     {"id":"calibration-state-v1","owner":"packages/adapters","kind":"artifact","validator":"packages/adapters/src/calibration-state-rule.js parseCalibrationStateRule"},
+    {"id":"control-exclusion-v1","owner":"packages/adapters","kind":"data","validator":"packages/adapters/src/control-exclusion.js reconcileExclusiveControls"},
     {"id":"seam-actuator-qualification-v1","owner":"apps/device","kind":"artifact","validator":"apps/device/src/seam-calibration.js parseSeamActuatorQualification"},
     {"id":"device-campaign-v1","owner":"apps/device","kind":"data","validator":"apps/device/src/campaign.js CampaignStateMachine"},
     {"id":"device-adb-preflight-v1","owner":"apps/device","kind":"port","validator":"apps/device/src/adb-bridge.js AdbDeviceBridge"},

@@ -67,7 +67,7 @@ WHERE name GLOB 'dispatchInputEvent MotionEvent *'
 UNION ALL
 SELECT 'delivery' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
 FROM app_joined
-WHERE name GLOB 'deliverInputEvent src=* id=*'
+WHERE name GLOB 'deliverInputEvent src=* eventTimeNano=* id=*'
 UNION ALL
 SELECT 'frame' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
 FROM app_joined
@@ -76,11 +76,19 @@ UNION ALL
 SELECT 'finish' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
 FROM joined
 WHERE lower(name) LIKE '%finishdispatchcycle%'
+UNION ALL
+-- Some Android builds omit process/track names for app slices. The input
+-- dispatcher still preserves the package in this game-channel publication
+-- marker, so retain it as a separate, auditable delivery observation rather
+-- than declaring a good trace empty.
+SELECT 'game_publish' AS kind, ts_ns, dur_ns, name, thread_name, process_name, track_name
+FROM joined
+WHERE name GLOB 'publishMotionEvent(inputChannel=*{package}*, action=*)'
 ORDER BY ts_ns;
 """
 
 DISPATCH_RE = re.compile(
-    r"^dispatchInputEvent MotionEvent ACTION_(?P<action>[A-Z_]+) "
+    r"^dispatchInputEvent MotionEvent ACTION_(?P<action>[A-Z_]+(?:\(\d+\))?) "
     r"deviceId=(?P<device_id>-?\d+) source=(?P<source>0x[0-9a-fA-F]+) "
     r"historySize=(?P<history_size>\d+)$"
 )
@@ -90,6 +98,9 @@ DELIVERY_RE = re.compile(
 )
 ID_RE = re.compile(r"\bid=(?P<event_id>0x[0-9a-fA-F]+)\b")
 FRAME_RE = re.compile(r"^Choreographer#doFrame (?P<frame_id>\d+)$")
+PUBLISHED_RE = re.compile(
+    r"^publishMotionEvent\(inputChannel=.*?, action=(?P<action>.+)\)$"
+)
 
 
 class InputTraceError(RuntimeError):
@@ -168,6 +179,13 @@ def _parse_finish(row: dict[str, Any]) -> dict[str, Any] | None:
     return {**row, "event_id": match.group("event_id").lower()}
 
 
+def _parse_published(row: dict[str, Any]) -> dict[str, Any] | None:
+    match = PUBLISHED_RE.match(row["name"])
+    if not match:
+        return None
+    return {**row, "action": match.group("action")}
+
+
 def _nearest_delivery(event: dict[str, Any], deliveries: list[dict[str, Any]]) -> dict[str, Any] | None:
     """Find the smallest enclosing deliverInputEvent slice for a dispatch."""
 
@@ -241,6 +259,9 @@ def analyze(rows: Iterable[dict[str, Any]], frame_window_ms: float = DEFAULT_FRA
     deliveries = [parsed for row in all_rows
                    if row["kind"] == "delivery"
                    for parsed in [_parse_delivery(row)] if parsed]
+    published = [parsed for row in all_rows
+                 if row["kind"] == "game_publish"
+                 for parsed in [_parse_published(row)] if parsed]
     finishes = [parsed for row in all_rows
                 if row["kind"] == "finish"
                 for parsed in [_parse_finish(row)] if parsed]
@@ -323,6 +344,9 @@ def analyze(rows: Iterable[dict[str, Any]], frame_window_ms: float = DEFAULT_FRA
             "origins": dict(sorted(origins.items())),
             "delivery_matches": sum(event["event_id"] is not None for event in events),
             "finish_matches": sum(event["finish_ts_ns"] is not None for event in events),
+            "game_channel_publishes": len(published),
+            "game_channel_actions": dict(sorted(Counter(
+                item["action"] for item in published).items())),
             "frame_candidates": sum(event["frame_ts_ns"] is not None for event in events),
             "frame_matches": sum(event["frame_status"] == "matched" for event in events),
             "frame_out_of_window": sum(event["frame_status"] == "out-of-window" for event in events),
@@ -412,6 +436,8 @@ def _print_report(path: Path, package: str, report: dict[str, Any], sf: dict[str
           f"actions={summary['actions'] or 'none'}  origins={summary['origins'] or 'none'}")
     print(f"delivery matches: {summary['delivery_matches']}/{summary['dispatch_events']}  "
           f"finish matches: {summary['finish_matches']}/{summary['dispatch_events']}")
+    print(f"game-channel publishes: {summary['game_channel_publishes']}  "
+          f"actions={summary['game_channel_actions'] or 'none'}")
     print(f"frame candidates: {summary['frame_candidates']}/{summary['dispatch_events']}  "
           f"within {summary['frame_window_ms']} ms: {summary['frame_matches']}")
     if sf is not None:
@@ -421,7 +447,10 @@ def _print_report(path: Path, package: str, report: dict[str, Any], sf: dict[str
     print("dispatch -> next app frame PROXY: "
           + str(report["timing"]["dispatch_to_next_app_frame_proxy"]["distribution"]))
     if not report["events"]:
-        print("NO APP EVENTS")
+        if report["summary"]["game_channel_publishes"]:
+            print("NO APP DISPATCH SLICES; GAME CHANNEL PUBLISHES PRESENT")
+        else:
+            print("NO APP EVENTS")
         return
     origin = min(event["dispatch_ts_ns"] for event in report["events"])
     print("# action origin device dispatch_ms delivery event_id frame_id frame_delta_ms status")
@@ -471,7 +500,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             _print_report(args.trace, args.package, report,
                           report.get("surfaceflinger_latency"))
-        if not report["events"]:
+        if (not report["events"]
+                and not report["summary"]["game_channel_publishes"]):
             return 3
         if args.expected is not None and report["summary"]["dispatch_events"] != args.expected:
             print(f"expected {args.expected} dispatch events, found "

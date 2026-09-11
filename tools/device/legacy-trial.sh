@@ -707,6 +707,7 @@ MAXDUR_MS=$((25000 + POLICY_RUNTIME_MS + LEFT_SAMPLE_COUNT * 1500))
 MAXDUR=$(((MAXDUR_MS + 999) / 1000))
 
 . "$HERE/select-adb.sh"
+CAPTURE_SCREENRECORD_SIZE=$(fnaf_resolve_screenrecord_size "${CAPTURE_SCREENRECORD_SIZE:-native}") || exit 2
 
 # Capability discovery is read-only and happens before the session starts or
 # the game is launched. Do not turn a 420-second night into a plausible-looking
@@ -1744,7 +1745,7 @@ done
 if [ "$DEVICE_EPOCH_LATCH" -eq 1 ]; then
   # Record the visual transition itself during phase trials. The detector is
   # still entirely device-local; this recorder is evidence, not part of T0.
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
+  adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
   REC=$!
   RECORDING_STARTED=1
   sleep 0.5
@@ -1795,7 +1796,7 @@ else
     sleep 1
     [ "$i" = 40 ] && { echo "abort: $NIGHT night never started"; exit 1; }
   done
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
+  adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate 3000000 --time-limit $SCREENRECORD_LIMIT $REMOTE_VIDEO" &
   REC=$!
   RECORDING_STARTED=1
   adb shell "touch '$REMOTE_STARTFILE'"

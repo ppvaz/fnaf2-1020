@@ -8,6 +8,8 @@
 #   query-cue-helper.sh grid [out.png]            render the whole 20x9 sensor
 #   query-cue-helper.sh watchlist status|load HASH inspect/load native watchlist
 #   query-cue-helper.sh read                      read the active native watchlist
+#   query-cue-helper.sh trace start LABEL|stop|status
+#                                                    pull a device-local frame trace
 #
 # Transports:
 #   loopback  device-side nc to 127.0.0.1:PORT. The exchange happens entirely
@@ -36,12 +38,13 @@ case "${1:-}" in
   watch) VERB=watch; shift ;;
   watchlist) VERB=watchlist; shift ;;
   read) VERB=read; shift ;;
+  trace) VERB=trace; shift ;;
   overlay) VERB=overlay; shift ;;
   model) VERB=model; shift ;;
   arm) VERB=arm; shift ;;
   result) VERB=result; shift ;;
   '') ;;
-  *) echo "usage: query-cue-helper.sh [loopback|forward|overlay|grid|watch|watchlist|read]" >&2; exit 2 ;;
+  *) echo "usage: query-cue-helper.sh [loopback|forward|overlay|grid|watch|watchlist|read|trace]" >&2; exit 2 ;;
 esac
 case "$VERB" in
   record|log|model|arm|result)
@@ -132,6 +135,25 @@ if [ "$VERB" = result ]; then
   case "$WINDOW_ID" in *[!A-Za-z0-9._-]*) echo "window id must be a plain name" >&2; exit 2 ;; esac
 fi
 
+if [ "$VERB" = trace ]; then
+  TRACE_ACTION="${1:?trace needs start LABEL, stop, or status}"
+  case "$TRACE_ACTION" in
+    start)
+      TRACE_LABEL="${2:?trace start needs LABEL}"
+      case "$TRACE_LABEL" in
+        ''|*[!A-Za-z0-9._-]*) echo "trace label must be plain ASCII" >&2; exit 2 ;;
+      esac
+      [ "${#TRACE_LABEL}" -le 48 ] || {
+        echo "trace label must be at most 48 characters" >&2; exit 2; }
+      [ "$#" -eq 2 ] || { echo "trace start takes LABEL only" >&2; exit 2; }
+      ;;
+    stop|status)
+      [ "$#" -eq 1 ] || { echo "trace $TRACE_ACTION takes no arguments" >&2; exit 2; }
+      ;;
+    *) echo "trace takes start LABEL, stop, or status" >&2; exit 2 ;;
+  esac
+fi
+
 . "$HERE/select-adb.sh"
 adb get-state >/dev/null
 
@@ -144,11 +166,17 @@ esac
 # starting a recording is not a reading, and requiring focus there strands a
 # capture whenever a run ends with the game no longer in front.
 case "$VERB" in
-  snapshot|record|watch|watchlist|read|grid|arm|result)
-    if ! adb shell dumpsys window 2>/dev/null | \
-        awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
-      echo "FNaF is not the focused physical-display window" >&2
-      exit 1
+  snapshot|record|watch|watchlist|read|grid|trace|arm|result)
+    needs_focus=1
+    if [ "$VERB" = trace ] && [ "$TRACE_ACTION" != start ]; then
+      needs_focus=0 # teardown/status may follow a focus change
+    fi
+    if [ "$needs_focus" -eq 1 ]; then
+      if ! adb shell dumpsys window 2>/dev/null | \
+          awk '/mCurrentFocus=.*com\.scottgames\.fnaf2/ { found=1 } END { exit !found }'; then
+        echo "FNaF is not the focused physical-display window" >&2
+        exit 1
+      fi
     fi
     ;;
 esac
@@ -315,6 +343,65 @@ if [ "$VERB" = overlay ]; then
     'OK overlay='*) exit 0 ;;
     *) echo "cue helper overlay query failed" >&2; exit 1 ;;
   esac
+fi
+
+if [ "$VERB" = trace ]; then
+  case "$TRACE_ACTION" in
+    start)
+      response="$(exchange "TRACE $token start $TRACE_LABEL")"
+      printf '%s\n' "$response"
+      case "$response" in
+        'OK trace=ACTIVE'*) exit 0 ;;
+        *) echo "cue helper frame trace did not start" >&2; exit 1 ;;
+      esac
+      ;;
+    status)
+      response="$(exchange "TRACE $token status")"
+      printf '%s\n' "$response"
+      case "$response" in
+        'OK trace='*) exit 0 ;;
+        *) echo "cue helper frame trace status failed" >&2; exit 1 ;;
+      esac
+      ;;
+    stop)
+      response="$(exchange "TRACE $token stop")"
+      printf '%s\n' "$response"
+      case "$response" in
+        'OK trace=STOPPED '*|'OK trace=FULL '*) ;;
+        *) echo "cue helper frame trace did not stop" >&2; exit 1 ;;
+      esac
+      name="$(printf '%s\n' "$response" | sed -n 's/.* file=\([^ ]*\).*/\1/p')"
+      case "$name" in
+        ''|*[!A-Za-z0-9._-]*) echo "trace stop returned an unsafe file name" >&2; exit 1 ;;
+      esac
+      mkdir -p "${FRAME_TRACE_OUT:-captures/frame-traces}"
+      target="${FRAME_TRACE_OUT:-captures/frame-traces}/$name"
+      if [ -e "$target" ]; then
+        echo "refusing to overwrite $target" >&2
+        exit 1
+      fi
+      adb exec-out run-as "$PACKAGE" cat "files/frame-traces/$name" > "$target"
+      bytes="$(wc -c < "$target" | tr -d ' ')"
+      if [ "$bytes" -lt 200 ]; then
+        echo "pulled frame trace is empty ($bytes bytes)" >&2
+        exit 1
+      fi
+      adb shell run-as "$PACKAGE" rm -f "files/frame-traces/$name" >/dev/null 2>&1 || true
+      echo "wrote $target ($bytes bytes)"
+      metric_args=("$HERE/actuation-frame-metric.py" "$target")
+      if [ -n "${FRAME_TRACE_METRIC_START_NS:-}" ]; then
+        metric_args+=(--start-ns "$FRAME_TRACE_METRIC_START_NS")
+      fi
+      if [ -n "${FRAME_TRACE_METRIC_END_NS:-}" ]; then
+        metric_args+=(--end-ns "$FRAME_TRACE_METRIC_END_NS")
+      fi
+      # Keep this as the final line of a successful trace stop: every physical
+      # actuation report carries the native-frame UNKNOWN percentage, and an
+      # unbounded report says so explicitly instead of hiding setup frames.
+      python3 "${metric_args[@]}"
+      ;;
+  esac
+  exit 0
 fi
 
 if [ "$VERB" = latency ]; then

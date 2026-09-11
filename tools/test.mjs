@@ -183,6 +183,7 @@ const ENGINE = [
   // The sweep probe is a device action, but its report stream is not: the
   // trap-2 contact discipline and the pulsed light are checked without a phone.
   ['hid sweep probe', ['device/test-hid-sweep-probe.mjs']],
+  ['hid transition probe', ['device/test-hid-transition-probe.mjs']],
   // A calibration is not stable because one gap landed once. This pools only
   // independent structured grades, refuses invalid/desynchronised samples,
   // and exposes the statistical floor before a timing can become a rule.
@@ -429,6 +430,7 @@ const ENGINE = [
   // Same story: the transport helper every device runner picks its phone
   // with, whose exclusion reads "gated by test-select-adb.sh".
   ['select-adb', ['device/test-select-adb.sh']],
+  ['frame clock', ['device/test-frame-clock.py']],
   // The drawer itself: every tools/device script is either invoked by
   // grade-run.sh, a test- gate, or consciously excluded with a reason -- and
   // every test- gate is actually reachable from this list or from ci.yml.

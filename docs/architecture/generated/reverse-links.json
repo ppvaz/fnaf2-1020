@@ -198,6 +198,19 @@
       "relation": "CONFORMANCE_FIXTURE"
     },
     {
+      "id": "contract.control-exclusion-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/src/control-exclusion.js",
+      "line": 9,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.control-exclusion-v1",
+      "kind": "CONTRACT",
+      "path": "packages/adapters/test/control-exclusion.test.js",
+      "relation": "CONFORMANCE_FIXTURE"
+    },
+    {
       "id": "contract.controller-v1",
       "kind": "CONTRACT",
       "path": "packages/core/src/control/ports.js",

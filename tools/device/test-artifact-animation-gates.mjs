@@ -11,10 +11,13 @@
 // exist at contact time, and only the compiler can see the difference.
 import * as C from '@fnaf2-1020/core/mechanics';
 import { compileCycle } from './artifact-commands.mjs';
+import { MIN_CONTACT_MS } from './recipe.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
+const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
+const MONITOR_MASK_READY_MS = MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS;
 const refuses = (rows, initial, needle) => {
   try {
     compileCycle('probe', rows, initial);
@@ -65,8 +68,59 @@ const down = { monitorUp: false, maskOn: false };
     'a mask press inside its own animation was refused');
 }
 
+// --- monitor lowering -> mask availability -------------------------------
+{
+  const initial = { monitorUp: true, maskOn: false };
+  const lower = { at: 100, kind: 'tap', control: 'monitor', duration: 33 };
+  const mask = at => ({ at, kind: 'tap', control: 'mask', duration: 33 });
+  check(refuses([lower, mask(100 + MONITOR_MASK_READY_MS - 1)], initial, 'mask control'),
+    'a mask press before the monitor-down settle bracket was compiled');
+  check(!refuses([lower, mask(100 + MONITOR_MASK_READY_MS)], initial, 'mask control'),
+    'the Night 5 +400 ms mask timing was refused after monitor lowering');
+}
+
+// --- contact floor and semantic state ---------------------------------------
+{
+  check(refuses([{ at: 0, kind: 'hall', duration: 32 }], down, 'device floor'),
+    'a sub-floor hall contact was compiled');
+  check(refuses([{ at: 0, kind: 'sweep', spacing: 100, contact: 32, cams: ['cam10', 'cam4'] }],
+    { monitorUp: true, maskOn: false }, 'device floor'),
+  'a sub-floor camera contact was compiled');
+  check(refuses([{ at: 0, kind: 'tap', control: 'wind', duration: 33 }], down, 'requires monitor up'),
+    'wind while the monitor is down was compiled');
+  check(refuses([{ at: 0, kind: 'tap', control: 'cam11', duration: 33 }], down, 'requires monitor up'),
+    'camera select while the monitor is down was compiled');
+  check(refuses([{ at: 0, kind: 'hall', duration: 33 }], { monitorUp: true, maskOn: false },
+    'requires monitor down'), 'hall flash while the monitor is up was compiled');
+  check(refuses([{ at: 0, kind: 'tap', control: 'rightVentLight', duration: 33 }],
+    { monitorUp: true, maskOn: false }, 'requires monitor down'),
+  'right vent light while the monitor is up was compiled');
+  check(refuses([
+    { at: 0, kind: 'tap', control: 'mask', duration: 33 },
+    { at: 100, kind: 'hall', duration: 33 },
+  ], down, 'mask is up'), 'hall flash during mask-up ownership was compiled');
+  check(refuses([
+    { at: 0, kind: 'tap', control: 'monitor', duration: 33 },
+    { at: 5, kind: 'tap', control: 'monitor', duration: 33 },
+  ], down, 'reverses the monitor'), 'monitor reversal during raise was compiled');
+  check(refuses([{ at: 0, kind: 'read', duration: 33, gap: 32 }], down, 'released-input'),
+    'a read with no released Fusion poll was compiled');
+
+  // The reviewed maskraise is the explicit exception to the mask lock: it
+  // owns mask-off plus monitor-up/hall choreography as one compound.
+  const maskraise = { at: 0, kind: 'maskraise', gap: 180, mode: 'hall', duration: 33 };
+  const raised = compileCycle('probe', [maskraise,
+    { at: 600, kind: 'sweep', spacing: 100, contact: 33, cams: ['cam10', 'cam4'] }],
+  { monitorUp: false, maskOn: true });
+  check(raised.final.monitorUp && !raised.final.maskOn,
+    'the reviewed maskraise compound did not close in monitor-up/mask-off state');
+  check(refuses([maskraise], down, 'maskraise requires the mask to be up'),
+    'maskraise without a mask-up start state was compiled');
+}
+
 console.log(
   'artifact animation gates: a wind hold refuses within the 434 ms device bracket after a monitor raise ' +
   '(including the raise+100 and raise+200 timings that missed on the phone) while the proven +434 and +500 ' +
   'gaps compile, a camera select refuses inside the raise animation while the proven +300 arm compiles, and ' +
-  `every non-mask press refuses inside the ${MASK_ANIM_OFF_MS} ms mask-off animation`);
+  `every non-mask press refuses inside the ${MASK_ANIM_OFF_MS} ms mask-off animation; contact, semantic-state, ` +
+  `monitor-down mask readiness (${MONITOR_MASK_READY_MS} ms), mask ownership, and compound-transition gates pass`);

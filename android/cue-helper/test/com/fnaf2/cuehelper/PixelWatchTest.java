@@ -159,6 +159,10 @@ public final class PixelWatchTest {
                 PixelWatch.controlDownStrokeScore(chevrons, true) >= 100);
         check("fixed monitor chevron stroke coverage is observed without ROI luma",
                 PixelWatch.controlDownStrokeScore(chevrons, false) >= 100);
+        check("trace sparse mask chevron sampler preserves the visible band",
+                PixelWatch.controlDownStrokeScoreFast(chevrons, true) >= 100);
+        check("trace sparse monitor chevron sampler preserves the visible band",
+                PixelWatch.controlDownStrokeScoreFast(chevrons, false) >= 100);
         Frame brightBackground = new Frame(PixelWatch.NATIVE_WIDTH, PixelWatch.NATIVE_HEIGHT, 0xffffff);
         check("uniform translucent-control background does not fake a stroke",
                 PixelWatch.controlDownStrokeScore(brightBackground, true) == 0

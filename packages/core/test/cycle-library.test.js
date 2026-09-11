@@ -45,6 +45,18 @@ result = gateCycle(getCycle('wind-and-anchor'), state);
 check(!result.accepted && result.reasons.includes('exact-model-gate-missing'),
   'cycle without exact proof callback was admitted');
 
+// The reduced model must not report a no-op control as accepted merely because
+// the source stores its pressed bit. These are the same impossible surfaces the
+// device artifact compiler refuses by semantic name.
+const monitorRaising = applyReduced(initialReducedState({ night: 1 }), 'monitor').state;
+check(!applyReduced(monitorRaising, 'monitor').accepted,
+  'monitor reversal during its animation was accepted');
+check(!applyReduced(initialReducedState({ night: 1 }), 'wind').accepted,
+  'wind while the monitor is down was accepted');
+const monitorUp = advanceReduced(monitorRaising, C.MONITOR_ANIM_UP);
+check(!applyReduced(monitorUp, 'ventR').accepted,
+  'right vent light while the monitor is up was accepted');
+
 check(DEVICE_CONSTRAINTS.minContactMs === 33 && DEVICE_CONSTRAINTS.minReleasedMs === 33,
   'device constraint profile lost its measured floors');
 console.log('cycle library: reviewed primitive, prerequisite, animation, contact, and exact-proof gates pass');

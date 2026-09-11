@@ -8,37 +8,59 @@
 # *batched* `hid delay` macros -- wall-timed spacing below 240 ms has never
 # been tried, so the floor is unmeasured rather than known.
 #
-# This starts 6th Night, raises the monitor, runs one sweep per requested
-# spacing with the camera light pulsed inside each selection, and grades the
-# recording twice: camtrace.py for which camera was selected, sweepcheck.py for
-# whether the light actually flashed on it.
+# This starts the requested saved night and runs one camera sweep per requested
+# spacing with the camera light pulsed inside each selection. The seam probes
+# are not live routes: their open-loop toggles cannot prove mask/monitor state.
+# `transition` is the only live timing probe here; it sends independent mask and
+# monitor toggles and never sends a dependent hall/camera action.
 #
 # CONTACT_MS and LIGHT_LEAD_MS set the burst geometry. The runner ships a zero
 # lead so the select and the light share one 100 ms contact; a positive lead
 # spends the light's own contact and is kept only to reproduce older
 # recordings.
 #
-# It defends nothing: the night is expected to end to W. Foxy shortly after the
-# sweeps, which is why the sweeps run first.
+# The camera sweep still does not defend the night: it is a bounded actuator
+# experiment, not a survival route.
 set -euo pipefail
 
 # The old monitor restorer was an independent ADB input writer anchored to a
 # screenshot's completion time. Disabling its taps without stopping this
 # prequeued toggle stream would silently corrupt every subsequent trial.
 # Refuse BEFORE device selection, app launch, recording or cleanup traps.
-if [ "${PROBE_GEN:-sweep}" = monitorraise ]; then
-  echo "REFUSED: monitorraise live restore lacks a qualified service-controlled clock/state gate; generate fixtures with hid-monitorraise-probe.mjs or inspect retained captures." >&2
+case "${PROBE_GEN:-sweep}" in
+  monitorraise)
+    echo "REFUSED: monitorraise live restore lacks a qualified service-controlled clock/state gate; generate fixtures with hid-monitorraise-probe.mjs or inspect retained captures." >&2
+    exit 2
+    ;;
+  maskraise)
+    echo "REFUSED: maskraise is an open-loop seam schedule and cannot prove mask-OFF before hall input; use DeviceControlService state gates or the transition-only probe." >&2
+    exit 2
+    ;;
+esac
+if [ "${PROBE_GEN:-sweep}" = raise ] && [ "${MASK_TOGGLES:-0}" = 1 ]; then
+  echo "REFUSED: raise with blind mask toggles can queue dependent input after an unverified polarity; use the transition-only probe." >&2
   exit 2
 fi
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=select-adb.sh
 . "$HERE/select-adb.sh"
+CAPTURE_SCREENRECORD_SIZE=$(fnaf_resolve_screenrecord_size "${CAPTURE_SCREENRECORD_SIZE:-native}") || exit 2
 
 PKG=com.scottgames.fnaf2
 OUT="${OUT:-hid-sweep-probe}"
 SPACINGS=("$@")
 [ "${#SPACINGS[@]}" -gt 0 ] || SPACINGS=(240 160 120 100)
+# Perfetto's light app filter attaches to processes that are alive when the
+# trace starts. A transition run wrapped by atrace-input.sh therefore needs
+# the game process kept alive across the trace boundary; otherwise the runner's
+# normal force-stop/relaunch sequence produces a visually useful trace with
+# zero game input slices. The default remains the old clean-launch behavior.
+KEEP_APP_ALIVE="${KEEP_APP_ALIVE:-0}"
+case "$KEEP_APP_ALIVE" in
+  0|1) ;;
+  *) echo "KEEP_APP_ALIVE must be 0 or 1" >&2; exit 2 ;;
+esac
 # REPEAT=N runs the whole spacing list N times back to back -- a stability
 # probe: does EVERY sweep light all three cameras, or only most of them?
 if [ "${REPEAT:-1}" -gt 1 ]; then
@@ -49,15 +71,38 @@ fi
 # the 60 s a single run needs; the night still dies to Foxy eventually.
 REC_SECONDS="${REC_SECONDS:-60}"
 case "$REC_SECONDS" in ""|*[!0-9]*) echo "REC_SECONDS must be a whole number of seconds" >&2; exit 2 ;; esac
+CAPTURE_SCREENRECORD_BITRATE="${CAPTURE_SCREENRECORD_BITRATE:-12000000}"
+case "$CAPTURE_SCREENRECORD_BITRATE" in
+  ''|*[!0-9]*) echo "CAPTURE_SCREENRECORD_BITRATE must be a positive integer" >&2; exit 2 ;;
+esac
+[ "$CAPTURE_SCREENRECORD_BITRATE" -gt 0 ] || {
+  echo "CAPTURE_SCREENRECORD_BITRATE must be positive" >&2
+  exit 2
+}
+CAPTURE_SCREENRECORD="${CAPTURE_SCREENRECORD:-1}"
+case "$CAPTURE_SCREENRECORD" in
+  0|1) ;;
+  *) echo "CAPTURE_SCREENRECORD must be 0 or 1" >&2; exit 2 ;;
+esac
+FRAME_TRACE_AFTER_OFFICE="${FRAME_TRACE_AFTER_OFFICE:-0}"
+case "$FRAME_TRACE_AFTER_OFFICE" in
+  0|1) ;;
+  *) echo "FRAME_TRACE_AFTER_OFFICE must be 0 or 1" >&2; exit 2 ;;
+esac
 
 CAPTURE_DIR="$HERE/../../captures"
 LOCAL_VIDEO="$CAPTURE_DIR/$OUT.mp4"
 REMOTE_VIDEO="/sdcard/$OUT.mp4"
 REMOTE_STREAM="/data/local/tmp/$OUT-$$.hid"
 REC_PID=""
+FRAME_TRACE_STARTED=0
 
 cleanup() {
   [ -n "$REC_PID" ] && kill "$REC_PID" 2>/dev/null || true
+  if [ "$FRAME_TRACE_STARTED" -eq 1 ]; then
+    FRAME_TRACE_STARTED=0
+    bash "$HERE/query-cue-helper.sh" trace stop || true
+  fi
   adb shell "am force-stop $PKG" >/dev/null 2>&1 || true
   adb shell "rm -f $REMOTE_STREAM /data/local/tmp/fnaf-monraise-check /data/local/tmp/fnaf-monraise-frame.raw" >/dev/null 2>&1 || true
 }
@@ -86,10 +131,17 @@ case "$PROBE_GEN" in
     echo "raise probe: contact ${CONTACT_MS:-33} ms, mask-toggles ${MASK_TOGGLES:-0}, gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     node "$HERE/hid-raise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
   maskraise)
-    echo "maskraise probe: contact ${CONTACT_MS:-33} ms, hall ${HALL_MS:-133} ms, ${ROUNDS:-3} rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
-    READY_MS="${READY_MS:-16000}" ROUNDS="${ROUNDS:-3}" HALL_MS="${HALL_MS:-133}" \
+    # Kept as an unreachable label so the offline generator remains named in
+    # one place. The refusal above must stay before ADB selection and before
+    # any capture or cleanup trap.
+    echo "REFUSED: maskraise live execution is disabled" >&2
+    exit 2 ;;
+  transition)
+    echo "transition probe: contact ${CONTACT_MS:-100} ms, settle ${SETTLE_MS:-1400} ms, plan ${PLAN_MODE:-release-isolated}, reference-contact ${REFERENCE_CONTACT_MS:-33} ms, warmup ${WARMUP_NEUTRAL_MS:-0} ms, native ${CAPTURE_SCREENRECORD_SIZE}, rec ${REC_SECONDS}s"
+    READY_MS="${READY_MS:-7000}" SETTLE_MS="${SETTLE_MS:-1400}" \
+      WARMUP_NEUTRAL_MS="${WARMUP_NEUTRAL_MS:-0}" \
       SPLIT_OUT="$CAPTURE_DIR/$OUT" \
-      node "$HERE/hid-maskraise-probe.mjs" "${SPACINGS[@]}" > "$CAPTURE_DIR/$OUT.hid" ;;
+      node "$HERE/hid-transition-probe.mjs" > "$CAPTURE_DIR/$OUT.hid" ;;
   monitorraise)
     echo "monitorraise probe: contact ${CONTACT_MS:-33} ms, watcher-restored, ${ROUNDS:-3} ping-pong rounds over gaps ${SPACINGS[*]} ms, rec ${REC_SECONDS}s"
     SCHEDULE_OUT="$CAPTURE_DIR/$OUT.schedule.json" READY_MS="${READY_MS:-16000}" ROUNDS="${ROUNDS:-3}" \
@@ -106,7 +158,11 @@ case "$PROBE_GEN" in
 esac
 adb push "$CAPTURE_DIR/$OUT.hid" "$REMOTE_STREAM" >/dev/null
 
-adb shell "am force-stop $PKG" >/dev/null
+if [ "$KEEP_APP_ALIVE" -eq 0 ]; then
+  adb shell "am force-stop $PKG" >/dev/null
+else
+  echo "keeping $PKG process alive for pre-attached Perfetto app tracing"
+fi
 # `monkey -p` left this package stopped on the Moto g56 even though the same
 # game launches normally through its explicit activity.  Use the activity
 # contract already used by the collection harness, then retain the focus gate
@@ -141,7 +197,7 @@ PROBE_NIGHT="${PROBE_NIGHT:-sixthNight}"
 . "$HERE/coords.sh"
 # shellcheck source=menu.sh
 . "$HERE/menu.sh"
-if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
+if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ] || [ "$PROBE_GEN" = transition ]; then
   # Register the HID device at the title screen and feed the trial body
   # over stdin only once the office is observed -- the canonical runner's
   # own architecture (trial/04-session.sh runs `/system/bin/hid -` as a
@@ -154,8 +210,14 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   # with a fixed READY_MS would reintroduce the exact title/intro race this
   # probe is meant to measure.
   STREAM_MODE="${STREAM_MODE:-stdin}"
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
-  REC_PID=$!
+  # Transition timing is measured only after the office gate. Starting the
+  # recorder at the title used to spend its encoder warm-up on menu/intro
+  # frames and could create a false cadence hole exactly where the animation
+  # began. The other legacy probes retain their established recording point.
+  if [ "$PROBE_GEN" != transition ]; then
+    adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate $CAPTURE_SCREENRECORD_BITRATE --time-limit $REC_SECONDS $REMOTE_VIDEO" &
+    REC_PID=$!
+  fi
   FIFO="$(mktemp -u)"
   mkfifo "$FIFO"
   adb shell "hid -" < "$FIFO" > "$CAPTURE_DIR/$OUT.hid.log" 2>&1 &
@@ -186,16 +248,50 @@ if [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
       > "$CAPTURE_DIR/$OUT.watch.log" 2>&1 &
     WATCH_PID=$!
   fi
-  echo "office observed; releasing the trial body (${SPACINGS[*]} ms gaps)"
+  if [ "$PROBE_GEN" = transition ]; then
+    if [ "$FRAME_TRACE_AFTER_OFFICE" = 1 ]; then
+      bash "$HERE/query-cue-helper.sh" trace start "$OUT"
+      FRAME_TRACE_STARTED=1
+      echo "native frame trace started after office gate"
+    fi
+    if [ "$CAPTURE_SCREENRECORD" = 1 ]; then
+      adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate $CAPTURE_SCREENRECORD_BITRATE --time-limit $REC_SECONDS $REMOTE_VIDEO" &
+      REC_PID=$!
+      echo "office observed; recording native presentation from the transition body"
+    else
+      echo "office observed; screenrecord disabled for lossless helper frame tracing"
+    fi
+  else
+    echo "office observed; releasing the trial body (${SPACINGS[*]} ms gaps)"
+  fi
   cat "$CAPTURE_DIR/$OUT.body.jsonl" >&3
   exec 3>&-
   # Ride out the stream; it ends on its own. Bound the wait so a hung hid
-  # process cannot outlive the recording.
-  for _ in $(seq 1 $((REC_SECONDS + 30))); do
+  # process cannot outlive the recording. Transition plans are only a few
+  # seconds long; using the video recording budget here made a closed stdin
+  # HID process keep the lossless frame trace running until its 2,400-frame
+  # cap, truncating the final transition. Keep an explicit override for older
+  # probes whose schedule duration is not fixed.
+  if [ -z "${HID_WAIT_SECONDS:-}" ]; then
+    if [ "$PROBE_GEN" = transition ]; then
+      HID_WAIT_SECONDS=15
+    else
+      HID_WAIT_SECONDS=$((REC_SECONDS + 30))
+    fi
+  fi
+  case "$HID_WAIT_SECONDS" in
+    ''|*[!0-9]*) echo "HID_WAIT_SECONDS must be a whole number of seconds" >&2; exit 2 ;;
+  esac
+  [ "$HID_WAIT_SECONDS" -gt 0 ] || { echo "HID_WAIT_SECONDS must be positive" >&2; exit 2; }
+  for _ in $(seq 1 "$HID_WAIT_SECONDS"); do
     kill -0 "$HID_PID" 2>/dev/null || break
     sleep 1
   done
   kill "$HID_PID" 2>/dev/null || true
+  if [ "$FRAME_TRACE_STARTED" -eq 1 ]; then
+    FRAME_TRACE_STARTED=0
+    bash "$HERE/query-cue-helper.sh" trace stop
+  fi
   rm -f "$FIFO"
   if [ -n "$WATCH_PID" ]; then
     # The watcher stops after the last idle window; humour it for 5 s, then
@@ -216,19 +312,23 @@ else
   done
   [ "$state" = night ] || {
     echo "abort: $PROBE_NIGHT was selected but no night started (saw '$state')" >&2; exit 1; }
-  adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $REC_SECONDS $REMOTE_VIDEO" &
+  adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate $CAPTURE_SCREENRECORD_BITRATE --time-limit $REC_SECONDS $REMOTE_VIDEO" &
   REC_PID=$!
   sleep 1
   echo "running sweeps at ${SPACINGS[*]} ms spacing"
   adb shell "hid $REMOTE_STREAM" || echo "hid exited nonzero" >&2
 fi
 sleep 2
-kill "$REC_PID" 2>/dev/null || true
-wait "$REC_PID" 2>/dev/null || true
+if [ -n "$REC_PID" ]; then
+  kill "$REC_PID" 2>/dev/null || true
+  wait "$REC_PID" 2>/dev/null || true
+fi
 sleep 2
 
-adb pull "$REMOTE_VIDEO" "$LOCAL_VIDEO" >/dev/null
-adb shell "rm -f $REMOTE_VIDEO" >/dev/null || true
+if [ "$CAPTURE_SCREENRECORD" = 1 ]; then
+  adb pull "$REMOTE_VIDEO" "$LOCAL_VIDEO" >/dev/null
+  adb shell "rm -f $REMOTE_VIDEO" >/dev/null || true
+fi
 echo
 # screenrecord captures at the panel's 60 fps; camtrace's 30 fps / 100 ms
 # defaults cannot resolve a sweep this short and report its selections as
@@ -265,6 +365,13 @@ elif [ "$PROBE_GEN" = maskraise ] || [ "$PROBE_GEN" = monitorraise ]; then
   echo "per-gap landing is the no-control window after the mask-off press;"
   echo "compare the transition band against MASK_RAISE_GAP_MS (267) and the"
   echo "census' never-failed 180 ms compound."
+elif [ "$PROBE_GEN" = transition ]; then
+  if [ "$CAPTURE_SCREENRECORD" = 1 ]; then
+    python3 "$HERE/frame-clock.py" "$LOCAL_VIDEO"
+  else
+    echo "screenrecord omitted; helper frame trace owns the lossless visual clock"
+  fi
+  echo "transition artifact is visual timing evidence only; no seam or state qualification is claimed"
 else
   echo "raise probe: each trial should show CAM 10 selected after the raise"
   echo "(CAM 11 straight through = the flip or the ${CONTACT_MS:-100} ms tap was swallowed)."

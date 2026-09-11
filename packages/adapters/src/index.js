@@ -8,3 +8,4 @@ export * from './transports/cue-helper.js';
 export * from './monitor-rule.js';
 export * from './camera-rule.js';
 export * from './calibration-state-rule.js';
+export * from './control-exclusion.js';

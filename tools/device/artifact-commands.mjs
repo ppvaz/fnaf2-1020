@@ -5,7 +5,7 @@
 
 import * as C from '@fnaf2-1020/core/mechanics';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
-import { RAISE_MARGIN_MS } from './recipe.mjs';
+import { FUSION_POLL_MS, MIN_CONTACT_MS, RAISE_MARGIN_MS } from './recipe.mjs';
 
 // [SOURCED] The engine animates the monitor and the mask, and drops input that
 // lands inside those windows: a camera select or wind press during the raise
@@ -15,6 +15,11 @@ import { RAISE_MARGIN_MS } from './recipe.mjs';
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
 const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
+// The native trace showed the mask button absent throughout the first 322 ms
+// after monitor-down, only faint at ~337 ms, and fully visible at ~382.5 ms.
+// Require one proven 33 ms contact after the 367 ms animation bracket, which
+// is the +400 ms timing used by the Night 5 route.
+const MONITOR_MASK_READY_MS = MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS;
 // MONITOR_ANIM_UP alone is not the moment a control is usable, and the delay
 // is not the same for every control. The model constant is 12 engine frames and
 // the profile still carries no measured raise readiness
@@ -34,6 +39,39 @@ const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
 //                  true readiness lies somewhere in (200, 434].
 const MONITOR_READY_CAMERA_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS) + RAISE_MARGIN_MS;
 const MONITOR_READY_WIND_MS = 434;
+
+// Contact length is only the actuator floor.  It is deliberately checked
+// separately from the state/animation gates below: a 33 ms contact can still
+// miss a game sampler phase or land on a surface that is not present.
+const contactFloor = (cycle, label, value) => {
+  if (!Number.isFinite(value) || value < MIN_CONTACT_MS)
+    throw new TypeError(`${cycle}: ${label} contact ${value} ms is below the ` +
+      `measured device floor of ${MIN_CONTACT_MS} ms`);
+};
+
+function validateRowContacts(cycle, row) {
+  if (row.kind === 'tap' || row.kind === 'hold' || row.kind === 'hall' ||
+      row.kind === 'hallvent' || row.kind === 'hallraise' || row.kind === 'maskraise')
+    contactFloor(cycle, row.kind, row.duration);
+  else if (row.kind === 'camdrop') contactFloor(cycle, 'camdrop monitor', row.contact);
+  else if (row.kind === 'sweep') {
+    contactFloor(cycle, 'sweep select', row.contact);
+    for (const token of row.cams) {
+      const override = token.includes(':') ? Number(token.split(':')[1]) : row.contact;
+      contactFloor(cycle, `sweep ${token.split(':')[0]}`, override);
+    }
+  } else if (row.kind === 'read') {
+    contactFloor(cycle, 'read vent', row.duration);
+    if (row.hallAt !== undefined) contactFloor(cycle, 'read hall', row.hallDuration);
+    if (row.gap < FUSION_POLL_MS)
+      throw new TypeError(`${cycle}: read mask gap ${row.gap} ms is below the ` +
+        `released-input floor of ${FUSION_POLL_MS} ms`);
+    if (row.hallAt !== undefined &&
+        (row.hallAt <= 0 || row.hallAt >= row.duration ||
+         row.hallAt + row.hallDuration > row.duration))
+      throw new TypeError(`${cycle}: read hall contact must fit inside the held vent-light window`);
+  }
+}
 
 const camera = control => /^cam(?:[0-9]|1[0-2])$/.test(control);
 const semantic = control => camera(control) ? `cam:${Number(control.slice(3))}`
@@ -90,15 +128,52 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
   // scheduled inside an animation the engine drops it during.
   let monitorUpAt = -Infinity;
   let monitorDownAt = -Infinity;
+  let monitorTransitionAt = -Infinity;
+  let monitorTransitionMs = 0;
   let maskOffAt = -Infinity;
   const blocks = [];
   for (const [rowIndex, row] of rows.entries()) {
     const id = rowIndex + 1;
     const actions = [];
+    validateRowContacts(cycle, row);
     const isMaskRow = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === V.mask;
+
+    // Once the mask owns the surface, every other control is an impossible
+    // plan. `maskraise` is the one explicit exception: it is the reviewed
+    // mask-off + raise compound, and its internal timing owns the transition.
+    if (state.maskOn && !isMaskRow && row.kind !== 'maskraise')
+      throw new TypeError(`${cycle}: ${row.kind} is illegal while the mask is up; ` +
+        'only the mask-off control or maskraise may proceed');
+    if (row.kind === 'maskraise' && !state.maskOn)
+      throw new TypeError(`${cycle}: maskraise requires the mask to be up at its start`);
+
     if (!isMaskRow && row.at - maskOffAt < MASK_ANIM_OFF_MS)
       throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
         `${MASK_ANIM_OFF_MS} ms mask-off animation from +${maskOffAt} ms, where the engine drops it`);
+
+    const rawControl = row.kind === 'tap' || row.kind === 'hold' ? semantic(row.control) : null;
+    const needsMonitorDown = rawControl === V.hallLight || rawControl === V.leftVentLight ||
+      rawControl === V.rightVentLight || row.kind === 'hall' || row.kind === 'hallvent' ||
+      row.kind === 'hallraise' || row.kind === 'read';
+    const needsMonitorUpNow = camera(row.control) || row.kind === 'sweep' || row.kind === 'camdrop' ||
+      rawControl === V.cameraFeedLight || rawControl === V.wind;
+    if (needsMonitorDown && state.monitorUp)
+      throw new TypeError(`${cycle}: ${row.kind} ${rawControl ?? ''} requires monitor down`);
+    if (needsMonitorUpNow && !state.monitorUp)
+      throw new TypeError(`${cycle}: ${row.kind} ${rawControl ?? ''} requires monitor up`);
+
+    // A second monitor transition cannot reverse the first one mid-animation.
+    // Hall flashes during monitor lowering remain legal; the mask is different:
+    // its button is absent while the monitor is coming down, so a mask contact
+    // in this interval is an illegal device action even though the simulator
+    // accepts the semantic press.
+    const startsMonitorTransition = (row.kind === 'tap' || row.kind === 'hold') &&
+      rawControl === V.monitor || row.kind === 'hallraise' || row.kind === 'maskraise' ||
+      row.kind === 'camdrop';
+    if (startsMonitorTransition && row.at - monitorTransitionAt < monitorTransitionMs)
+      throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms reverses the monitor ` +
+        `inside its ${monitorTransitionMs} ms animation from +${monitorTransitionAt} ms`);
+
     // rule: a press that needs the monitor up must clear the raise animation
     const needsMonitorUp = row.kind === 'camdrop' || row.kind === 'sweep' ||
       ((row.kind === 'tap' || row.kind === 'hold') &&
@@ -112,18 +187,16 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
           `monitor raise at +${monitorUpAt} ms; that control is not reliably on screen yet and the contact ` +
           'hits the office underneath (device: wind missed at raise+200 ms, works at raise+450 ms)');
     }
-    // NO rule refuses a mask press inside the monitor LOWERING animation, and
-    // one must not be added. The engine accepts it -- it refuses a mask press
-    // only on MON_UP/MON_RAISING -- and the device says it is load-bearing: the
-    // frame-light flash masks 67 ms after the monitor press, while the monitor
-    // is still coming down and the light is still held, and that transition is
-    // the point of the flash. Moving it to +650 ms to 'clear' the animation
-    // cost a Night 5 run at 61 s against 157-369 s for the measured timing
-    // (2026-09-09).
+    if (isMaskRow && row.at - monitorTransitionAt < MONITOR_MASK_READY_MS)
+      throw new TypeError(`${cycle}: mask at +${row.at} ms lands before the mask ` +
+        `control reappears after monitor lowering from +${monitorTransitionAt} ms; ` +
+        `requires ${MONITOR_MASK_READY_MS} ms (device trace: fully visible at ~382.5 ms)`);
     if (row.kind === 'tap' || row.kind === 'hold') {
       const control = semantic(row.control);
       if (control === V.monitor) {
         state.monitorUp = !state.monitorUp;
+        monitorTransitionAt = row.at;
+        monitorTransitionMs = state.monitorUp ? MONITOR_ANIM_UP_MS : MONITOR_ANIM_DOWN_MS;
         if (state.monitorUp) monitorUpAt = row.at;
         if (!state.monitorUp) { monitorDownAt = row.at; state.camera = null; }
         actions.push(action(cycle, row, id, { kind: 'ensure', control,
@@ -149,12 +222,19 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     } else if (row.kind === 'hallraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: hallraise starts with monitor up`);
       state.monitorUp = true;
+      monitorTransitionAt = row.at;
+      monitorTransitionMs = MONITOR_ANIM_UP_MS;
+      monitorUpAt = row.at;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'hallraise',
         control: V.hallLight, requiresMonitorUp: false, targetMonitorUp: true,
         durationMs: row.duration }));
     } else if (row.kind === 'maskraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: maskraise starts with monitor up`);
       state.maskOn = false; state.monitorUp = true;
+      maskOffAt = row.at;
+      monitorTransitionAt = row.at + row.gap;
+      monitorTransitionMs = MONITOR_ANIM_UP_MS;
+      monitorUpAt = row.at + row.gap;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'maskraise',
         control: row.mode === 'hall' ? V.hallLight : V.monitor, requiresMonitorUp: false,
         targetMaskOn: false, targetMonitorUp: true, gapMs: row.gap,
@@ -179,6 +259,8 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
       if (!state.monitorUp) throw new TypeError(`${cycle}: camdrop requires monitor up`);
       state.monitorUp = false;
       monitorDownAt = row.at + row.lead;
+      monitorTransitionAt = monitorDownAt;
+      monitorTransitionMs = MONITOR_ANIM_DOWN_MS;
       actions.push(action(cycle, row, id, { kind: 'compound', compound: 'camdrop',
         control: V.cameraFeedLight, requiresMonitorUp: true, targetMonitorUp: false,
         leadMs: row.lead, durationMs: row.contact, tailMs: row.tail }));

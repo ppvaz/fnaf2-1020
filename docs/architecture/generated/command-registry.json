@@ -32,17 +32,17 @@
     },
     {
       "id": "test:device:calibration",
-      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs && node tools/device/test-hid-maskraise-probe.mjs",
+      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs && node tools/device/test-hid-maskraise-probe.mjs && node tools/device/test-hid-transition-probe.mjs",
       "lifecycle": "supported"
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && npm run test:vault && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
       "id": "test:contracts",
-      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/device/test-minus3-frame-light.mjs && node tools/device/test-artifact-animation-gates.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh && npm run test:device:calibration",
+      "command": "node packages/core/test/contracts.test.js && node packages/core/test/cycle-library.test.js && node packages/core/test/cycle-planner.test.js && node packages/core/test/cycle-controller.test.js && node packages/core/test/night-policy.test.js && node packages/adapters/test/conformance.test.js && node packages/adapters/test/monitor-rule.test.js && node packages/adapters/test/camera-rule.test.js && node packages/runtime/test/scheduler.test.js && node apps/device/test/service.test.js && node apps/device/test/cli.test.js && node apps/device/test/campaign.test.js && node apps/device/test/campaign-runner.test.js && node apps/device/test/campaign-infrastructure.test.js && node apps/device/test/campaign-composition.test.js && node apps/device/test/adb-bridge.test.js && node apps/device/test/adb-device-local-executor.test.js && node packages/research/test/experiment.test.js && node packages/research/test/legacy-equivalence.test.js && node tools/device/test-bundle.mjs && node tools/device/test-minus3-frame-light.mjs && node tools/device/test-artifact-animation-gates.mjs && node tools/vaulttest.mjs && node tools/factlinktest.mjs && node tools/benchtracetest.mjs && node tools/exercisetest.mjs && node tools/activitygatetest.mjs && node tools/microtrainertest.mjs && node tools/adaptivecoachtest.mjs && node tools/renderertest.mjs && node tools/arcadelabtest.mjs && node tools/rhythmhighwaytest.mjs && node tools/threatconstellationtest.mjs && node tools/phaseclocktest.mjs && node tools/observationlanguagetest.mjs && python3 tools/contract-vectors.py && python3 tools/device/test-cue-helper-setup.py && python3 tools/device/test-cue-helper-device-lock.py && python3 tools/device/test-cue-helper-queue.py && node tools/device/test-cue-helper-mcp.mjs && python3 tools/device/test-overlay-qualification.py && tools/device/test-overlay-qualification-observe.sh && android/cue-helper/test.sh && npm run test:device:calibration",
       "lifecycle": "supported"
     },
     {
@@ -128,11 +128,6 @@
     {
       "id": "chronicle:harvest",
       "command": "node tools/chronicle-harvest.mjs",
-      "lifecycle": "supported"
-    },
-    {
-      "id": "test:vault",
-      "command": "node tools/vaulttest.mjs",
       "lifecycle": "supported"
     },
     {
@@ -1419,6 +1414,24 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/hid-intersection-probe.mjs",
+      "invocation": "tools/device/hid-intersection-probe.mjs",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-intersection-probe.sh",
+      "invocation": "tools/device/hid-intersection-probe.sh",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/hid-transition-probe.mjs",
+      "invocation": "tools/device/hid-transition-probe.mjs",
+      "kind": "generator",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/calibration-stability.py",
       "invocation": "tools/device/calibration-stability.py [grade.json ...]",
       "kind": "report/check",
@@ -1437,6 +1450,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/test-hid-transition-probe.mjs",
+      "invocation": "tools/device/test-hid-transition-probe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/test-maskraise-grade.py",
       "invocation": "tools/device/test-maskraise-grade.py",
       "kind": "check",
@@ -1445,6 +1464,42 @@
     {
       "id": "tools/device/atrace-input.sh",
       "invocation": "tools/device/atrace-input.sh RUN SECONDS -- COMMAND [ARGS...]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/actuation-frame-metric.py",
+      "invocation": "tools/device/actuation-frame-metric.py TRACE [--start-ns N] [--end-ns N] [--json]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/frame-clock.py",
+      "invocation": "tools/device/frame-clock.py VIDEO [--json] [--bugreport]",
+      "kind": "module/report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-frame-clock.py",
+      "invocation": "tools/device/test-frame-clock.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/input-frame-align.py",
+      "invocation": "tools/device/input-frame-align.py INPUT.pftrace FRAME.tsv [--trace-processor PATH] [--json]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/intersection-state-gate.mjs",
+      "invocation": "tools/device/intersection-state-gate.mjs --target office\\|monitor-up [--timeout-ms N] [--poll-ms N] [--log FILE]",
+      "kind": "**device action**",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/touch-contamination-guard.sh",
+      "invocation": "tools/device/touch-contamination-guard.sh RUN -- COMMAND [ARGS...]",
       "kind": "**device action**",
       "lifecycle": "supported"
     },
@@ -1463,6 +1518,30 @@
     {
       "id": "tools/device/test-inputtrace.py",
       "invocation": "tools/device/test-inputtrace.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-actuation-frame-metric.py",
+      "invocation": "tools/device/test-actuation-frame-metric.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-hid-intersection-probe.mjs",
+      "invocation": "tools/device/test-hid-intersection-probe.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-input-frame-align.py",
+      "invocation": "tools/device/test-input-frame-align.py",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-intersection-state-gate.mjs",
+      "invocation": "tools/device/test-intersection-state-gate.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },

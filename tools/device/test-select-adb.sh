@@ -15,6 +15,10 @@ adb() {
     printf '%s\n' "$MOCK_ADB_STATE"
     return 0
   fi
+  if [ "${1:-}" = "shell" ] && [ "${2:-}" = "wm" ] && [ "${3:-}" = "size" ]; then
+    printf '%s\n' "${MOCK_ADB_SIZE:-Physical size: 1080x2400}"
+    return 0
+  fi
   echo "unexpected mock adb invocation: $*" >&2
   return 1
 }
@@ -48,6 +52,26 @@ explicit=$(
   printf '%s' "$ANDROID_SERIAL"
 )
 [ "$explicit" = chosen-device ] || { echo "explicit serial was replaced" >&2; exit 1; }
+
+native_size=$(
+  MOCK_ADB_LIST="$USB_LINE" MOCK_ADB_SIZE='Physical size: 1080x2400'
+  . "$SELECTOR" 2>/dev/null
+  fnaf_resolve_screenrecord_size native
+)
+[ "$native_size" = 2400x1080 ] || {
+  echo "native screenrecord size was not resolved in landscape order: $native_size" >&2
+  exit 1
+}
+
+explicit_size=$(
+  MOCK_ADB_LIST="$USB_LINE"
+  . "$SELECTOR" 2>/dev/null
+  fnaf_resolve_screenrecord_size 1280x576
+)
+[ "$explicit_size" = 1280x576 ] || {
+  echo "explicit derived screenrecord size was not preserved: $explicit_size" >&2
+  exit 1
+}
 
 ambiguous_output=""
 if ambiguous_output=$( (

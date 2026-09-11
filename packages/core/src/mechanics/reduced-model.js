@@ -171,8 +171,17 @@ export function actionAllowed(state, action) {
   // usable during that interval; keep the reduced model aligned with Sim and
   // the phone-visible input lock.
   if ((state.maskOn || state.maskAnim > 0) && action !== 'mask') return false;
+  // A monitor toggle during either monitor animation is not a reversal; the
+  // source setMonitor() refuses it and leaves the current transition intact.
+  if (action === 'monitor' && state.monitorAnim > 0) return false;
   if (action === 'mask' && !state.maskOn &&
       (state.monitor === MONITOR.UP || state.monitor === MONITOR.RAISING)) return false;
+  // These physical controls have no useful surface in the opposite monitor
+  // state.  The source may retain the pressed bit for wind/vent, but the
+  // effect is impossible, so the reduced gate must not call that a success.
+  if (action === 'wind' && !isMonitorUp(state)) return false;
+  if ((action === 'ventL' || action === 'ventR') && state.monitor !== MONITOR.DOWN)
+    return false;
   if (action.startsWith('cam:') && !isMonitorUp(state)) return false;
   if (!['monitor', 'mask', 'wind', 'light', 'ventL', 'ventR'].includes(action) &&
       !action.startsWith('cam:')) return false;

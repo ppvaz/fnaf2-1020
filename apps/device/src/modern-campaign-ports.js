@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { CueHelperControlTransport, HidWireTransport, measureMaskOn, measureMonitorUp,
-  parseCameraRule, parseMaskRule, parseMonitorRule } from '@fnaf2-1020/adapters';
+  parseCameraRule, parseMaskRule, parseMonitorRule, reconcileExclusiveControls } from '@fnaf2-1020/adapters';
 import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
@@ -302,11 +302,23 @@ export async function createCampaignPorts(options = {}) {
     // pairing straddling a real transition.
     const officeOnScreen = frame.screen === 'FNAF2_NIGHT';
     const panelUp = panel.state === 'OBSERVED' && !officeOnScreen ? true : null;
-    const ruleUp = monitor.state === 'OBSERVED' ? monitor.value : null;
+    // A positive monitor-rule result on a known office frame is impossible:
+    // the office HUD is covered by a raised monitor. Do not let a stale or
+    // overfit rule manufacture the illegal half of the pair.
+    const ruleUp = monitor.state === 'OBSERVED' &&
+      !(officeOnScreen && monitor.value === true) ? monitor.value : null;
     const contradicted = panel.state === 'OBSERVED' && officeOnScreen;
-    const monitorUp = panelUp ?? ruleUp;
+    const rawMonitorUp = panelUp ?? ruleUp;
+    const rawMaskOn = mask.state === 'OBSERVED' ? mask.value : null;
+    const exclusive = reconcileExclusiveControls({
+      monitorUp: rawMonitorUp, maskOn: rawMaskOn,
+    });
+    const monitorUp = exclusive.monitorUp;
     const monitorSource = panelUp !== null ? 'camera-panel'
-      : ruleUp !== null ? 'monitor-rule' : null;
+      : ruleUp !== null ? 'monitor-rule' : exclusive.monitorInference;
+    const maskOn = exclusive.maskOn;
+    const maskSource = exclusive.maskInference ??
+      (mask.state === 'OBSERVED' ? 'mask-rule' : null);
     let visualCapture = null;
     try { visualCapture = cueTransport.visualAcquisition(frame); }
     catch { /* an unavailable timestamp leaves the state ACK usable but bounded */ }
@@ -318,10 +330,14 @@ export async function createCampaignPorts(options = {}) {
       ...(monitorSource ? { monitorSource } : {}),
       panelSequence: panelRead?.seq ?? null,
       monitorReason: monitorUp !== null ? null
+        : exclusive.contradiction ? exclusive.reason
         : contradicted ? 'camera-panel-over-office-hud'
         : monitor.state === 'UNKNOWN' ? monitor.reason : panel.reason,
-      maskOn: mask.state === 'OBSERVED' ? mask.value : null,
-      maskReason: mask.state === 'UNKNOWN' ? mask.reason : null,
+      maskOn,
+      ...(maskSource ? { maskSource } : {}),
+      maskReason: maskOn !== null ? null
+        : exclusive.contradiction ? exclusive.reason
+        : mask.state === 'UNKNOWN' ? mask.reason : null,
       // A frame the fitted rule cannot classify is the only frame worth the
       // bytes: retaining its sensor row is what lets a later refit cover the
       // state, instead of another night spent rediscovering that it exists.
@@ -332,7 +348,8 @@ export async function createCampaignPorts(options = {}) {
       gridLuma: Math.floor(frame.cells.reduce((sum, cell) =>
         sum + (((77 * ((cell >> 16) & 0xff)) + (150 * ((cell >> 8) & 0xff)) +
           (29 * (cell & 0xff))) >> 8), 0) / frame.cells.length),
-      maskEvidence,
+      maskEvidence: exclusive.maskInference === 'monitor-up-complement'
+        ? 'exclusive-monitor-up' : maskEvidence,
       ...(visualCapture ? { visualCaptureAt: visualCapture.at,
         visualCaptureUncertaintyMs: visualCapture.uncertaintyMs } : {}),
     };

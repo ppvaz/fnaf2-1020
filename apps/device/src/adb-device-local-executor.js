@@ -445,6 +445,7 @@ function compactControlSample(value) {
   const maskReason = boundedSampleText(sample.maskReason)
     ?? (maskOn === null ? 'mask-state-unavailable' : null);
   const maskEvidence = boundedSampleText(sample.maskEvidence);
+  const maskSource = boundedSampleText(sample.maskSource);
   // Which detector answered is part of the observation: the camera panel and
   // the office HUD see opposite halves of the monitor state.
   const monitorSource = boundedSampleText(sample.monitorSource);
@@ -461,6 +462,7 @@ function compactControlSample(value) {
     sample.visualCaptureUncertaintyMs >= 0 ? sample.visualCaptureUncertaintyMs : null;
   return { sequence, ageUs, screen, monitorUp, monitorReason, maskOn, maskReason,
     ...(monitorSource ? { monitorSource } : {}),
+    ...(maskSource ? { maskSource } : {}),
     ...(gridLuma === null ? {} : { gridLuma }),
     ...(maskCells ? { maskCells } : {}),
     ...(panelSequence === null ? {} : { panelSequence }),

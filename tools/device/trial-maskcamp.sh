@@ -44,6 +44,7 @@ case "$NIGHT" in
 esac
 
 . "$HERE/select-adb.sh"
+CAPTURE_SCREENRECORD_SIZE=$(fnaf_resolve_screenrecord_size "${CAPTURE_SCREENRECORD_SIZE:-native}") || exit 2
 
 state() {
   local attempt result
@@ -113,7 +114,7 @@ for i in $(seq 1 40); do
 done
 echo "night detected"
 
-adb shell "screenrecord --size 1280x576 --bit-rate 3000000 --time-limit $MAXDUR /sdcard/$OUT.mp4" &
+adb shell "screenrecord --size $CAPTURE_SCREENRECORD_SIZE --bit-rate 3000000 --time-limit $MAXDUR /sdcard/$OUT.mp4" &
 REC=$!
 T0=$(date +%s)
 

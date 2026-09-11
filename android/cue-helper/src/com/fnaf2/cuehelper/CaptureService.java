@@ -58,6 +58,7 @@ import java.nio.charset.StandardCharsets;
 import java.net.StandardProtocolFamily;
 import java.security.SecureRandom;
 import java.util.Locale;
+import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.TimeUnit;
@@ -156,6 +157,17 @@ public final class CaptureService extends Service {
     private static final int CONTROL_READ_TIMEOUT_MS = 1_000;
     private static final String AUDIO_AUTHORITY = "audio-authority";
     private static final String AUDIO_MODEL_FILE = "cue-model-v1.txt";
+    // Keep enough rows for a complete ten-minute night at 60 Hz. At native
+    // 2400x1080 the retained 20x9 grid plus the calibrated control values is
+    // about 27 MB, which is materially cheaper than retaining image buffers.
+    // The trace is written only after STOP, on the control thread.
+    private static final int FRAME_TRACE_MAX_FRAMES = 36_000;
+    private static final int FRAME_TRACE_GRID_CELLS = VISUAL_WIDTH * VISUAL_HEIGHT;
+    // Three native RGBA buffers are enough for acquireLatestImage and keep the
+    // projection from reserving roughly 80 MB for eight 2400x1080 buffers.
+    // Trace mode still consumes them in timestamp order; the callback must
+    // remain below the 16.7 ms display budget to retain every presentation.
+    private static final int IMAGE_READER_MAX_IMAGES = 3;
 
     private final AtomicBoolean stopping = new AtomicBoolean(false);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -271,6 +283,7 @@ public final class CaptureService extends Service {
     // Preallocated and filled in place: the 60 fps callback must not allocate,
     // which is why the first long-running probe accumulated heap pressure.
     private final int[] snapshotGrid = new int[VISUAL_WIDTH * VISUAL_HEIGHT];
+    private final int[] frameTraceGrid = new int[FRAME_TRACE_GRID_CELLS];
     private boolean snapshotGridValid;
     private final PixelWatch.Spec watchSpec = PixelWatch.defaultSpec();
     private final PixelWatch.ByteBufferFrame watchFrame = new PixelWatch.ByteBufferFrame();
@@ -286,6 +299,139 @@ public final class CaptureService extends Service {
     private volatile boolean watchActive;
     private long lastOverlaySnapshotNs;
     private long overlaySequence;
+    private final Object frameTraceLock = new Object();
+    private volatile boolean frameTraceActive;
+    private FrameTrace frameTrace;
+    private volatile String lastFrameTrace = "trace=OFF";
+
+    /**
+     * Bounded, device-local visual trace. The Image timestamp and
+     * System.nanoTime callback timestamp stay in the helper's monotonic
+     * domain; the sampled grid and watch values are copied from that same
+     * image before it is closed. No host polling is involved.
+     */
+    private static final class FrameTrace {
+        private final String label;
+        private final File file;
+        private final long startNs;
+        private final long startElapsedNs;
+        private final long[] timestampNs = new long[FRAME_TRACE_MAX_FRAMES];
+        private final long[] elapsedNs = new long[FRAME_TRACE_MAX_FRAMES];
+        private final long[] callbackNs = new long[FRAME_TRACE_MAX_FRAMES];
+        private final long[] intervalNs = new long[FRAME_TRACE_MAX_FRAMES];
+        private final long[] sequence = new long[FRAME_TRACE_MAX_FRAMES];
+        private final int[] grid = new int[FRAME_TRACE_MAX_FRAMES * FRAME_TRACE_GRID_CELLS];
+        private final int[] maskLuma = new int[FRAME_TRACE_MAX_FRAMES];
+        private final int[] monitorLuma = new int[FRAME_TRACE_MAX_FRAMES];
+        private final int[] maskDownstroke = new int[FRAME_TRACE_MAX_FRAMES];
+        private final int[] monitorDownstroke = new int[FRAME_TRACE_MAX_FRAMES];
+        private final int[] screenIdentity = new int[FRAME_TRACE_MAX_FRAMES];
+        private final int[] gridMeanLuma = new int[FRAME_TRACE_MAX_FRAMES];
+        private int count;
+        private long lastTimestampNs;
+        private long maxIntervalNs;
+        private int intervalsOver25ms;
+        private boolean full;
+
+        FrameTrace(String label, File file, long startNs, long startElapsedNs) {
+            this.label = label;
+            this.file = file;
+            this.startNs = startNs;
+            this.startElapsedNs = startElapsedNs;
+        }
+
+        boolean record(long imageTimestampNs, long imageElapsedNs, long imageCallbackNs,
+                long visualSeq,
+                int[] sourceGrid, int sourceMaskLuma, int sourceMonitorLuma,
+                int sourceMaskDownstroke, int sourceMonitorDownstroke,
+                int sourceScreenIdentity, int sourceGridMeanLuma) {
+            // acquireNextImage may first return a frame that was queued just
+            // before START. It is not part of this measurement window and
+            // must not manufacture a false long interval at the front.
+            if (imageTimestampNs < startNs) return true;
+            if (count >= FRAME_TRACE_MAX_FRAMES) {
+                full = true;
+                return false;
+            }
+            int index = count++;
+            timestampNs[index] = imageTimestampNs;
+            elapsedNs[index] = imageElapsedNs;
+            callbackNs[index] = imageCallbackNs;
+            sequence[index] = visualSeq;
+            intervalNs[index] = lastTimestampNs == 0L
+                    ? 0L : Math.max(0L, imageTimestampNs - lastTimestampNs);
+            if (intervalNs[index] > maxIntervalNs) maxIntervalNs = intervalNs[index];
+            if (intervalNs[index] > 25_000_000L) intervalsOver25ms++;
+            lastTimestampNs = imageTimestampNs;
+            System.arraycopy(sourceGrid, 0, grid, index * FRAME_TRACE_GRID_CELLS,
+                    FRAME_TRACE_GRID_CELLS);
+            maskLuma[index] = sourceMaskLuma;
+            monitorLuma[index] = sourceMonitorLuma;
+            maskDownstroke[index] = sourceMaskDownstroke;
+            monitorDownstroke[index] = sourceMonitorDownstroke;
+            screenIdentity[index] = sourceScreenIdentity;
+            gridMeanLuma[index] = sourceGridMeanLuma;
+            return true;
+        }
+
+        String write() throws IOException {
+            try (FileOutputStream output = new FileOutputStream(file, false)) {
+                String header = "# schema=fnaf2-frame-trace-v3"
+                        + " image_clock=helper-monotonic-ns"
+                        + " elapsed_clock=android-elapsed-realtime-ns"
+                        + " image_timestamp=Image.getTimestamp"
+                        + " acquisition=ImageReader.acquireNextImage"
+                        + " max_images=" + IMAGE_READER_MAX_IMAGES
+                        + " capture=2400x1080"
+                        + " grid=20x9"
+                        + " watch_spec=" + PixelWatch.defaultSpec().sha256()
+                        + " start_ns=" + startNs
+                        + " start_elapsed_ns=" + startElapsedNs
+                        + " label=" + label + "\n"
+                        + "seq\timage_ns\telapsed_ns\tcallback_ns\tinterval_ns"
+                        + "\tgrid_mean_luma\tscreen_identity\tmask_luma"
+                        + "\tmonitor_luma\tmask_downstroke\tmonitor_downstroke"
+                        + "\tgrid_hex\n";
+                output.write(header.getBytes(StandardCharsets.US_ASCII));
+                for (int index = 0; index < count; index++) {
+                    StringBuilder line = new StringBuilder(1_400);
+                    line.append(sequence[index]).append('\t')
+                            .append(timestampNs[index]).append('\t')
+                            .append(elapsedNs[index]).append('\t')
+                            .append(callbackNs[index]).append('\t')
+                            .append(intervalNs[index]).append('\t')
+                            .append(gridMeanLuma[index]).append('\t')
+                            .append(screenIdentity[index]).append('\t')
+                            .append(maskLuma[index]).append('\t')
+                            .append(monitorLuma[index]).append('\t')
+                            .append(maskDownstroke[index]).append('\t')
+                            .append(monitorDownstroke[index]).append('\t');
+                    int offset = index * FRAME_TRACE_GRID_CELLS;
+                    for (int cell = 0; cell < FRAME_TRACE_GRID_CELLS; cell++) {
+                        int rgb = grid[offset + cell];
+                        line.append(HEX[(rgb >> 20) & 0xf])
+                                .append(HEX[(rgb >> 16) & 0xf])
+                                .append(HEX[(rgb >> 12) & 0xf])
+                                .append(HEX[(rgb >> 8) & 0xf])
+                                .append(HEX[(rgb >> 4) & 0xf])
+                                .append(HEX[rgb & 0xf]);
+                    }
+                    line.append('\n');
+                    output.write(line.toString().getBytes(StandardCharsets.US_ASCII));
+                }
+            }
+            return file.getName();
+        }
+
+        String status(String state) {
+            return "trace=" + state + " label=" + label + " file=" + file.getName()
+                    + " frames=" + count + " maxFrames=" + FRAME_TRACE_MAX_FRAMES
+                    + " full=" + full + " maxIntervalNs=" + maxIntervalNs
+                    + " intervalsOver25ms=" + intervalsOver25ms
+                    + " startNs=" + startNs
+                    + " startElapsedNs=" + startElapsedNs;
+        }
+    }
 
     /**
      * Development-only WAV sink for the authoritative PCM datagrams. The ESP
@@ -895,7 +1041,7 @@ public final class CaptureService extends Service {
                 captureWidth,
                 captureHeight,
                 PixelFormat.RGBA_8888,
-                2,
+                IMAGE_READER_MAX_IMAGES,
                 HardwareBuffer.USAGE_CPU_READ_OFTEN);
         imageReader.setOnImageAvailableListener(
                 reader -> onImageAvailable(reader, generation), visualHandler);
@@ -929,11 +1075,26 @@ public final class CaptureService extends Service {
     private void onImageAvailable(ImageReader reader, long generation) {
         if (!sessionActive(generation)) return;
         Image image = null;
+        boolean drainFrames = frameTraceActive;
         try {
-            image = reader.acquireLatestImage();
-            if (image == null) {
-                return;
-            }
+            do {
+                // Normal observation intentionally asks for the newest frame.
+                // A frame trace is different: latest would discard the exact
+                // presentation between two callbacks, so trace mode consumes
+                // the queue in order and keeps each Image timestamp.
+                image = drainFrames
+                        ? reader.acquireNextImage() : reader.acquireLatestImage();
+                if (image == null) {
+                    return;
+                }
+                if (frameTraceActive
+                        && captureWidth == PixelWatch.NATIVE_WIDTH
+                        && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                    recordTraceImage(image);
+                    image.close();
+                    image = null;
+                    continue;
+                }
             long detectorStartNs = System.nanoTime();
             Image.Plane[] planes = image.getPlanes();
             if (planes.length == 0) {
@@ -1083,9 +1244,20 @@ public final class CaptureService extends Service {
                 screenIdentity = snapshotScreenIdentity;
                 snapshotDetectorLatencyMs = Math.max(0L,
                         (System.nanoTime() - detectorStartNs) / 1_000_000L);
+                if (frameTraceActive && captureWidth == PixelWatch.NATIVE_WIDTH
+                        && captureHeight == PixelWatch.NATIVE_HEIGHT) {
+                    int maskIndex = watchSpec.indexOfName("mask_button_mean_luma");
+                    int monitorIndex = watchSpec.indexOfName("monitor_button_mean_luma");
+                    recordFrameTrace(snapshotGrid, timestampNs,
+                            SystemClock.elapsedRealtimeNanos(), callbackNs, visualSequence,
+                            maskIndex < 0 ? PixelWatch.UNKNOWN : snapshotWatchValues[maskIndex],
+                            monitorIndex < 0 ? PixelWatch.UNKNOWN : snapshotWatchValues[monitorIndex],
+                            snapshotMaskButtonDownstroke, snapshotMonitorButtonDownstroke,
+                            screenIdentity, gridMeanLuma);
+                }
             }
 
-            if (overlayController != null) {
+            if (overlayController != null && overlayController.needsCapturedIdentity()) {
                 overlayController.onCapturedScreenIdentity(screenIdentity);
             }
 
@@ -1129,6 +1301,11 @@ public final class CaptureService extends Service {
                 }
                 publishCombinedStatus("RUNNING");
             }
+                if (drainFrames) {
+                    image.close();
+                    image = null;
+                }
+            } while (drainFrames && frameTraceActive && sessionActive(generation));
         } catch (Throwable error) {
             lastVisual = "visual=UNAVAILABLE(" + error.getClass().getSimpleName() + ")";
             Log.e(TAG, "visual frame failed", error);
@@ -1138,6 +1315,144 @@ public final class CaptureService extends Service {
                 image.close();
             }
         }
+    }
+
+    /**
+     * The trace path intentionally does not run the live detector stack. A
+     * detector pass (pan anchor, identity, full watchlist) is useful for a
+     * current-state read but can itself make an ImageReader observer lossy.
+     * This path samples only the evidence retained in the trace and drains
+     * every queued Image in timestamp order.
+     */
+    private void recordTraceImage(Image image) {
+        long timestampNs = image.getTimestamp();
+        long callbackNs = System.nanoTime();
+        Image.Plane[] planes = image.getPlanes();
+        if (planes.length == 0) {
+            Arrays.fill(frameTraceGrid, PixelWatch.UNKNOWN);
+            recordFrameTrace(frameTraceGrid, timestampNs,
+                    SystemClock.elapsedRealtimeNanos(), callbackNs, ++visualSequence,
+                    PixelWatch.UNKNOWN, PixelWatch.UNKNOWN,
+                    PixelWatch.UNKNOWN, PixelWatch.UNKNOWN,
+                    ScreenIdentity.UNKNOWN, PixelWatch.UNKNOWN);
+            return;
+        }
+        Image.Plane plane = planes[0];
+        watchFrame.set(plane.getBuffer(), captureWidth, captureHeight,
+                plane.getRowStride(), plane.getPixelStride());
+        boolean gridComplete = true;
+        for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
+            for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
+                int x = Math.min(captureWidth - 1,
+                        (int) (((long) gx * 2 + 1) * captureWidth
+                                / (VISUAL_WIDTH * 2L)));
+                int y = Math.min(captureHeight - 1,
+                        (int) (((long) gy * 2 + 1) * captureHeight
+                                / (VISUAL_HEIGHT * 2L)));
+                int cell = watchFrame.rgb(x, y);
+                if (cell == PixelWatch.UNKNOWN) gridComplete = false;
+                frameTraceGrid[gy * VISUAL_WIDTH + gx] = cell;
+            }
+        }
+        int logicalX = Math.min(captureWidth - 1,
+                (int) (((long) VISUAL_X * 2 + 1) * captureWidth
+                        / (VISUAL_WIDTH * 2L)));
+        int logicalY = Math.min(captureHeight - 1,
+                (int) (((long) VISUAL_Y * 2 + 1) * captureHeight
+                        / (VISUAL_HEIGHT * 2L)));
+        int rgb = watchFrame.rgb(logicalX, logicalY);
+        int red = rgb == PixelWatch.UNKNOWN ? PixelWatch.UNKNOWN : (rgb >> 16) & 0xff;
+        int green = rgb == PixelWatch.UNKNOWN ? PixelWatch.UNKNOWN : (rgb >> 8) & 0xff;
+        int blue = rgb == PixelWatch.UNKNOWN ? PixelWatch.UNKNOWN : rgb & 0xff;
+        int luma = rgb == PixelWatch.UNKNOWN
+                ? PixelWatch.UNKNOWN : (77 * red + 150 * green + 29 * blue) >> 8;
+        // CAM05 is a diagnostic-only full ROI. Sampling its 520x320 native
+        // area here made the supposedly lossless trace callback scan roughly
+        // 166,000 pixels per frame. Leave that diagnostic absent in trace
+        // mode; the state authority is the paired fixed bottom strokes.
+        int cam05MeanLuma = PixelWatch.UNKNOWN;
+        int maskLuma = gridComplete ? blockLuma(watchFrame,
+                PixelWatch.MASK_BUTTON_X, PixelWatch.MASK_BUTTON_Y,
+                PixelWatch.MASK_BUTTON_X + PixelWatch.MASK_BUTTON_WIDTH,
+                PixelWatch.MASK_BUTTON_Y + PixelWatch.MASK_BUTTON_HEIGHT,
+                PixelWatch.CONTROL_BUTTON_STEP) : PixelWatch.UNKNOWN;
+        int monitorLuma = gridComplete ? blockLuma(watchFrame,
+                PixelWatch.MONITOR_BUTTON_X, PixelWatch.MONITOR_BUTTON_Y,
+                PixelWatch.MONITOR_BUTTON_X + PixelWatch.MONITOR_BUTTON_WIDTH,
+                PixelWatch.MONITOR_BUTTON_Y + PixelWatch.MONITOR_BUTTON_HEIGHT,
+                PixelWatch.CONTROL_BUTTON_STEP) : PixelWatch.UNKNOWN;
+        int maskDownstroke = gridComplete
+                ? PixelWatch.controlDownStrokeScoreFast(watchFrame, true)
+                : PixelWatch.UNKNOWN;
+        int monitorDownstroke = gridComplete
+                ? PixelWatch.controlDownStrokeScoreFast(watchFrame, false)
+                : PixelWatch.UNKNOWN;
+        int gridMeanLuma = gridComplete
+                ? ScreenStats.meanLuma(frameTraceGrid, frameTraceGrid.length)
+                : PixelWatch.UNKNOWN;
+        long sequence = ++visualSequence;
+
+        // Trace mode deliberately skips the full detector/watchlist pass so it
+        // can drain every ImageReader frame. Before this fix that also skipped
+        // the normal snapshot publication, leaving FRAME pinned to the image
+        // immediately before TRACE start while the trace itself advanced. A
+        // lightweight publication keeps FRAME atomic with the current trace
+        // image: the same grid, timestamp, sequence, identity, and scalar
+        // sample are exposed to a state gate without reintroducing the lossy
+        // detector stack that trace mode was designed to avoid.
+        int screenIdentity = gridComplete
+                ? ScreenIdentity.classify(frameTraceGrid) : ScreenIdentity.UNKNOWN;
+        int screenScore = gridComplete ? ScreenIdentity.score(frameTraceGrid) : 0;
+        synchronized (snapshotLock) {
+            // Trace mode skips the expensive full watchlist, but the live
+            // actuator still needs the twelve fixed camera pixels for its arm
+            // proof. Retain those cheap native reads (and the paired control
+            // means) without reintroducing the CAM05/Foxy ROI scans that made
+            // the original lossless path miss frames.
+            for (int index = 0; index < watchSpec.size(); index++) {
+                PixelWatch.Entry entry = watchSpec.entry(index);
+                if (entry.name.startsWith("cam") && entry.kind == PixelWatch.Kind.PIXEL) {
+                    snapshotWatchValues[index] = PixelWatch.read(entry, watchFrame);
+                } else if (PixelWatch.isCanonicalMaskButton(entry)) {
+                    snapshotWatchValues[index] = maskLuma;
+                } else if (PixelWatch.isCanonicalMonitorButton(entry)) {
+                    snapshotWatchValues[index] = monitorLuma;
+                } else {
+                    snapshotWatchValues[index] = PixelWatch.UNKNOWN;
+                }
+            }
+            snapshotVisualSequence = sequence;
+            snapshotVisualTimestampNs = timestampNs;
+            snapshotRed = red;
+            snapshotGreen = green;
+            snapshotBlue = blue;
+            snapshotLuma = luma;
+            snapshotCam05MeanLuma = cam05MeanLuma;
+            snapshotGridValid = gridComplete;
+            System.arraycopy(frameTraceGrid, 0, snapshotGrid, 0, frameTraceGrid.length);
+            snapshotGreyCells = gridComplete
+                    ? ScreenStats.greyCells(snapshotGrid, snapshotGrid.length)
+                    : PixelWatch.UNKNOWN;
+            snapshotGridMeanLuma = gridMeanLuma;
+            snapshotScreenIdentity = screenIdentity;
+            snapshotScreenScore = screenScore;
+            snapshotMaskButtonMeanLuma = maskLuma;
+            snapshotMonitorButtonMeanLuma = monitorLuma;
+            snapshotMaskButtonDownstroke = maskDownstroke;
+            snapshotMonitorButtonDownstroke = monitorDownstroke;
+            snapshotDetectorLatencyMs = Math.max(0L,
+                    (System.nanoTime() - callbackNs) / 1_000_000L);
+            snapshotPanAnchorX = PanAnchor.UNKNOWN;
+            snapshotPanAnchorY = PanAnchor.UNKNOWN;
+            snapshotPanAnchorArea = PanAnchor.UNKNOWN;
+            snapshotPanAnchorMargin = PanAnchor.UNKNOWN;
+            snapshotPanAnchorConfidence = 0;
+            snapshotPanAnchorReason = "trace-lightweight-publication";
+        }
+        recordFrameTrace(frameTraceGrid, timestampNs, SystemClock.elapsedRealtimeNanos(),
+                callbackNs, sequence, maskLuma, monitorLuma,
+                maskDownstroke, monitorDownstroke,
+                screenIdentity, gridMeanLuma);
     }
 
     /**
@@ -2356,6 +2671,98 @@ public final class CaptureService extends Service {
         output.flush();
     }
 
+    private static boolean validFrameTraceLabel(String label) {
+        if (label == null || label.length() < 1 || label.length() > 48) {
+            return false;
+        }
+        for (int index = 0; index < label.length(); index++) {
+            char value = label.charAt(index);
+            if (!((value >= 'a' && value <= 'z')
+                    || (value >= 'A' && value <= 'Z')
+                    || (value >= '0' && value <= '9')
+                    || value == '-' || value == '_' || value == '.')) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String startFrameTrace(String label) {
+        if (captureWidth != PixelWatch.NATIVE_WIDTH
+                || captureHeight != PixelWatch.NATIVE_HEIGHT) {
+            return "ERROR trace-native-resolution-required capture="
+                    + captureWidth + "x" + captureHeight;
+        }
+        if (!validFrameTraceLabel(label)) {
+            return "ERROR trace-label";
+        }
+        synchronized (frameTraceLock) {
+            if (frameTraceActive || frameTrace != null) {
+                return "ERROR trace-already-active";
+            }
+            File directory = new File(getFilesDir(), "frame-traces");
+            if (!directory.isDirectory() && !directory.mkdirs()) {
+                return "ERROR trace-directory";
+            }
+            long startNs = System.nanoTime();
+            long startElapsedNs = SystemClock.elapsedRealtimeNanos();
+            File file = new File(directory, label + "-" + startNs + ".tsv");
+            frameTrace = new FrameTrace(label, file, startNs, startElapsedNs);
+            frameTraceActive = true;
+            // The trace always carries the native control ROIs, independent
+            // of whether a live consumer previously loaded the watchlist.
+            synchronized (snapshotLock) {
+                watchActive = true;
+            }
+            lastFrameTrace = frameTrace.status("ACTIVE");
+            return "OK " + lastFrameTrace;
+        }
+    }
+
+    private String stopFrameTrace() {
+        FrameTrace trace;
+        synchronized (frameTraceLock) {
+            trace = frameTrace;
+            if (trace == null) {
+                return "ERROR trace-not-active";
+            }
+            frameTraceActive = false;
+            frameTrace = null;
+        }
+        try {
+            trace.write();
+            lastFrameTrace = trace.status(trace.full ? "FULL" : "STOPPED");
+            return "OK " + lastFrameTrace;
+        } catch (IOException error) {
+            lastFrameTrace = trace.status("WRITE-ERROR");
+            Log.e(TAG, "frame trace write failed", error);
+            return "ERROR trace-write " + error.getClass().getSimpleName();
+        }
+    }
+
+    private String frameTraceStatus() {
+        synchronized (frameTraceLock) {
+            if (frameTrace == null) return lastFrameTrace;
+            return frameTrace.status(frameTraceActive ? "ACTIVE" : "READY");
+        }
+    }
+
+    private void recordFrameTrace(int[] sourceGrid, long timestampNs, long elapsedNs,
+            long callbackNs, long sequence, int maskLuma, int monitorLuma,
+            int maskDownstroke, int monitorDownstroke,
+            int screenIdentity, int gridMeanLuma) {
+        synchronized (frameTraceLock) {
+            if (!frameTraceActive || frameTrace == null) return;
+            boolean retained = frameTrace.record(timestampNs, elapsedNs, callbackNs, sequence,
+                    sourceGrid, maskLuma, monitorLuma, maskDownstroke, monitorDownstroke,
+                    screenIdentity, gridMeanLuma);
+            if (!retained) {
+                frameTraceActive = false;
+                lastFrameTrace = frameTrace.status("FULL");
+            }
+        }
+    }
+
     private String dispatchControl(String[] field) {
         switch (field[0]) {
             case "GET":
@@ -2395,6 +2802,23 @@ public final class CaptureService extends Service {
                     return "ERROR read-usage";
                 }
                 return currentWatch();
+            case "TRACE":
+                if (field.length < 3) {
+                    return "ERROR trace-usage";
+                }
+                switch (field[2]) {
+                    case "start":
+                        return field.length == 4
+                                ? startFrameTrace(field[3]) : "ERROR trace-start-usage";
+                    case "stop":
+                        return field.length == 3
+                                ? stopFrameTrace() : "ERROR trace-stop-usage";
+                    case "status":
+                        return field.length == 3
+                                ? "OK " + frameTraceStatus() : "ERROR trace-status-usage";
+                    default:
+                        return "ERROR trace-usage";
+                }
             case "OVERLAY":
                 if (field.length != 2) {
                     return "ERROR overlay-usage";
@@ -2522,7 +2946,7 @@ public final class CaptureService extends Service {
         String visual;
         if (invalidReason == null) {
             visual = String.format(Locale.US,
-                    "visual=OBSERVED seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
+                    "visual=OBSERVED visualReason=none seq=%d rgba=%d,%d,%d luma=%d cam05_mean_luma=%d "
                             + "grey=%d gridLuma=%d ageUs=%d content=%dx%d visible=%d "
                             + "screen=%s screenScore=%d detectorLatencyMs=%d "
                             + "monitorUp=%s monitorReason=%s cameraSelected=%s cameraHighlights=%s "
@@ -2544,7 +2968,7 @@ public final class CaptureService extends Service {
                     nativeStrokeValue(monitorButtonDownstroke));
         } else {
             visual = String.format(Locale.US,
-                    "visual=UNKNOWN seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
+                    "visual=UNKNOWN visualReason=%s seq=%d reason=%s ageUs=%d content=%dx%d visible=%d "
                             + "screen=UNKNOWN screenScore=0 detectorLatencyMs=%d "
                             + "monitorUp=UNKNOWN monitorReason=%s cameraSelected=UNKNOWN "
                             + "cameraHighlights=UNKNOWN "
@@ -2673,6 +3097,13 @@ public final class CaptureService extends Service {
         releaseAudioWifi();
         synchronized (audioRecordingLock) {
             stopAudioRecordingLocked();
+        }
+        if (frameTrace != null) {
+            // Preserve an in-flight diagnostic trace across an app abort or
+            // projection teardown. The frame file is still written on the
+            // service thread and remains pullable through run-as.
+            String traceResult = stopFrameTrace();
+            Log.i(TAG, "frame trace during stop: " + traceResult);
         }
 
         controlRunning = false;
