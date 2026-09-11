@@ -133,9 +133,11 @@ function linkDependencies(worktree) {
 
 // --- Running the lanes -----------------------------------------------------
 
-function run(command, cwd) {
-  const result = spawnSync('sh', ['-c', command], { cwd, encoding: 'utf8' });
-  return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
+function run(command, cwd, { live = false } = {}) {
+  const result = spawnSync('sh', ['-c', command], live
+    ? { cwd, stdio: 'inherit' }
+    : { cwd, encoding: 'utf8' });
+  return { status: result.status, output: live ? '' : `${result.stdout ?? ''}${result.stderr ?? ''}` };
 }
 
 // The scripts of the CHECKOUT being validated, not of the working tree: a
@@ -221,8 +223,9 @@ function validate(sha, subject) {
         continue;
       }
       const command = lane.multiline ? shellcheckScript(worktree) : lane.run;
+      console.log(`  start ${lane.name}: ${command}`);
       const started = Date.now();
-      const result = run(command, worktree);
+      const result = run(command, worktree, { live: true });
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
       console.log(`  ${result.status === 0 ? 'ok  ' : 'FAIL'} ${lane.name} (${seconds}s)`);
       if (result.status !== 0) {
