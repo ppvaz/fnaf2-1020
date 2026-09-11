@@ -88,6 +88,9 @@ export function validateWinner(input) {
       fail('replaySeeds must be a non-empty array when present');
     input.replaySeeds.forEach((seed, index) => nonNegativeInt(seed, `replaySeeds[${index}]`));
   }
+  if (input.phaseOffsetMs !== undefined &&
+      (!Number.isInteger(input.phaseOffsetMs) || input.phaseOffsetMs < 0 || input.phaseOffsetMs > 2000))
+    fail('phaseOffsetMs must be an integer in 0..2000 ms');
   validateGate(input.gate, input.engineHash, nights, seeds);
   if (input.profile !== undefined && typeof input.profile !== 'string' && !isRecord(input.profile))
     fail('profile must be a profile id, path, or object');
@@ -283,11 +286,13 @@ export function parsePlan(text, { strategy, night, profile } = {}) {
   return { headers, night: actualNight, period, loopStart, stopAt, observeUntil, cycles, armVerification };
 }
 
-function addCommonHeaders(raw, { strategy, night, period, loopStart, stopAt, observeUntil, idleUntil, lengths }) {
+function addCommonHeaders(raw, { strategy, night, period, loopStart, stopAt, observeUntil, idleUntil,
+  phaseOffsetMs, lengths }) {
   const lines = raw.trimEnd().split(/\r?\n/).filter(Boolean);
   const insert = [`#policy ${strategy}`, `#night ${night}`, `#period ${period}`,
     `#loop-start ${loopStart}`, `#stop-at ${stopAt}`, `#observe-until ${observeUntil}`];
   if (idleUntil > 0) insert.push(`#idle-until ${idleUntil}`);
+  if (phaseOffsetMs !== undefined) insert.push(`#phase-offset ${phaseOffsetMs}`);
   const out = [];
   for (const line of lines) {
     if (line === `#policy ${strategy}`) {
@@ -340,8 +345,14 @@ function minusToysEmitter(winner, night) {
     loopStart: idleStart,
     stopAt: knobs.minimal ? knobs.minStopAtMs : 420000,
     observeUntil: knobs.minimal ? knobs.minObserveUntilMs : 420000,
-    idleUntil: 0, lengths: { opening: 7000, toys: period, finish: 420000 } });
-  return { text, knobs, replay: seed => replayToys({ night, seed, knobs }) };
+    idleUntil: 0, phaseOffsetMs: winner.phaseOffsetMs,
+    lengths: { opening: 7000, toys: period, finish: 420000 } });
+  // The emitted plan carries `#phase-offset`, so the replay that gates it must
+  // run at that phase. Without this the gate scores epoch 0 while the device
+  // runs a rotated stream, and `gate.replayHash` -- the check that is supposed
+  // to bind evidence to the artifact -- stays byte-identical across the change.
+  return { text, knobs,
+    replay: seed => replayToys({ night, seed, knobs, epochMs: winner.phaseOffsetMs ?? 0 }) };
 }
 
 function minus3Emitter(winner, night) {
@@ -374,8 +385,12 @@ function minus7Emitter(winner, night) {
 // This registry is the extension seam: a new strategy owns only its winner
 // normalization/emission and replay adapter. The bundle validator, manifest,
 // profile binding, hash checks, and trial handoff remain strategy-independent.
+// `phaseAware` names the strategies whose replay accepts an epoch. minus3 and
+// minus7 replay at epoch 0 only, so a phase offset on one of those winners
+// would be emitted into the plan and never scored; the validator refuses it
+// rather than certifying a phase no census has seen.
 export const STRATEGY_REGISTRY = Object.freeze({
-  'minus-toys': Object.freeze({ emit: minusToysEmitter,
+  'minus-toys': Object.freeze({ emit: minusToysEmitter, phaseAware: true,
     sources: Object.freeze(['tools/device/minus-toys-plan.mjs', 'tools/device/recipe.mjs']) }),
   minus3: Object.freeze({ emit: minus3Emitter,
     sources: Object.freeze(['tools/device/minus-3-plan.mjs', 'tools/device/arm-verification.mjs']) }),
@@ -385,7 +400,10 @@ export const STRATEGY_REGISTRY = Object.freeze({
 
 function emitterFor(winner, night) {
   const strategy = normalizeStrategy(winner.strategy);
-  return STRATEGY_REGISTRY[strategy].emit(winner, night);
+  const entry = STRATEGY_REGISTRY[strategy];
+  if (winner.phaseOffsetMs !== undefined && !entry.phaseAware)
+    fail(`${strategy} cannot replay a phase offset`);
+  return entry.emit(winner, night);
 }
 
 function strategySourceDigest(strategy) {

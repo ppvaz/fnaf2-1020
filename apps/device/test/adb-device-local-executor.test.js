@@ -54,6 +54,20 @@ assert.ok(events.some(event => event.command === 'report' && event.report[1] ===
 assert.equal(events.at(-1).command, 'delay');
 assert.equal(events.at(-1).duration, 7);
 
+// A live phase correction shifts the complete phone-local stream once, without
+// changing the authored intervals or the ready delay.
+const phaseRequest = structuredClone(request);
+phaseRequest.artifact.plans[0].timing = {
+  ...phaseRequest.artifact.plans[0].timing, observeUntilMs: 4000,
+  phaseOffsetMs: 333,
+};
+const phaseSchedule = compileDeviceLocalHidSchedule(phaseRequest, { readyDelayMs: 6000 });
+const phaseEvents = phaseSchedule.lines.map(line => JSON.parse(line));
+assert.equal(phaseSchedule.phaseOffsetMs, 333);
+assert.equal(phaseEvents[1].duration, 6000);
+assert.equal(phaseEvents[2].duration, 333,
+  'phase correction must be an initial phone-local delay after HID readiness');
+
 // A non-zero loop start is an idle prefix for the repeatable cycle, not an
 // offset to add to the authored opening. This is the Night 1 arm shape: the
 // opening must land at t=0 while steady work begins at the 2 AM boundary.

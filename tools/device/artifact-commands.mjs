@@ -91,9 +91,15 @@ function planTiming(parsed) {
     ? 0 : Number(parsed.headers['idle-until']);
   if (!Number.isInteger(idleUntilMs) || idleUntilMs < 0)
     throw new TypeError('artifact plan #idle-until must be a non-negative integer');
+  const phaseOffsetMs = parsed.headers['phase-offset'] === undefined
+    ? undefined : Number(parsed.headers['phase-offset']);
+  if (phaseOffsetMs !== undefined &&
+      (!Number.isInteger(phaseOffsetMs) || phaseOffsetMs < 0 || phaseOffsetMs > 2000))
+    throw new TypeError('artifact plan #phase-offset must be an integer in 0..2000 ms');
   return Object.freeze({
     periodMs: parsed.period, loopStartMs: parsed.loopStart, stopAtMs: parsed.stopAt,
     observeUntilMs: parsed.observeUntil, idleUntilMs,
+    ...(phaseOffsetMs === undefined ? {} : { phaseOffsetMs }),
   });
 }
 

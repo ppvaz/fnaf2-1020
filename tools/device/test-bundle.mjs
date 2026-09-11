@@ -150,6 +150,36 @@ try {
   check(liveOutput.includes('artifact execution PASS') && liveOutput.includes('blocks='),
     'artifact live lane did not pass the explicit executor boundary');
 
+  // A phase offset rotates the whole emitted stream against the game's own
+  // frame grid, so the replay that gates the winner has to score it. The
+  // 2026-09-11 Night 5 bundle shipped `#phase-offset 333` while its replay ran
+  // epoch 0: the plan text changed, the replay hash did not, and the winner's
+  // `MODEL_ONLY 3000/3000` evidence was re-certified for a stream no census had
+  // seen. These two checks are what makes that impossible.
+  const phased = { ...winner, nights: [7], phaseOffsetMs: 333 };
+  const unphased = { ...winner, nights: [7] };
+  const phasedPath = join(root, 'phased');
+  const unphasedPath = join(root, 'unphased');
+  const phasedBundle = compileBundle(phased, phasedPath);
+  const unphasedBundle = compileBundle(unphased, unphasedPath);
+  check(readFileSync(join(phasedPath, 'night-7.plan'), 'utf8').includes('#phase-offset 333'),
+    'phase offset did not reach the emitted plan');
+  check(phasedBundle.replay.hash !== unphasedBundle.replay.hash,
+    'replay hash ignored the phase offset: the gate cannot see the rotation it ships');
+
+  // minus3 and minus7 replay at epoch 0 only. Emitting an offset they cannot
+  // score would reopen the same hole through a different strategy.
+  // Assert the reason, not just the refusal: this winner also trips the
+  // profile's control map, and a test that accepts any error would pass with
+  // the phase check deleted.
+  let phaseRefusal = '';
+  try {
+    compileBundle({ ...winner, strategy: 'minus3', nights: [5], knobs: 'KNOBS0',
+      engineHash: 'minus3-engine-fixture-v1', phaseOffsetMs: 333 }, join(root, 'minus3-phased'));
+  } catch (error) { phaseRefusal = error.message; }
+  check(phaseRefusal.includes('minus3 cannot replay a phase offset'),
+    `a strategy whose replay cannot evaluate a phase offset still accepted one (${phaseRefusal})`);
+
   console.log('device bundle: winner-v1 -> manifest/plans/profile, hash+syntax+control+replay validation, and artifact runner pass');
 } finally {
   rmSync(root, { recursive: true, force: true });

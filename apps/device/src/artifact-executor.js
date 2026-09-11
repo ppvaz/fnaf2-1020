@@ -40,6 +40,10 @@ function validatePlanTiming(timing, path) {
   if (!isRecord(timing)) fail(`${path} timing is missing`);
   for (const key of ['periodMs', 'loopStartMs', 'stopAtMs', 'observeUntilMs', 'idleUntilMs'])
     finite(timing[key], `${path}.${key}`, { integer: true });
+  if (timing.phaseOffsetMs !== undefined)
+    finite(timing.phaseOffsetMs, `${path}.phaseOffsetMs`, { integer: true });
+  if (timing.phaseOffsetMs !== undefined && timing.phaseOffsetMs > 2000)
+    fail(`${path}.phaseOffsetMs must be in 0..2000 ms`);
   if (timing.periodMs <= 0) fail(`${path}.periodMs must be positive`);
   if (timing.stopAtMs <= timing.loopStartMs) fail(`${path} stopAtMs must be after loopStartMs`);
   if (timing.observeUntilMs < timing.stopAtMs) fail(`${path} observeUntilMs must cover stopAtMs`);

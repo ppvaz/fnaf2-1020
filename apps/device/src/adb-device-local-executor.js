@@ -407,7 +407,16 @@ export function compileDeviceLocalHidSchedule(request, { readyDelayMs = DEFAULT_
     fail('readyDelayMs must be an integer in 1..30000');
   const night = request.artifact.plans[0].night;
   const blocks = expandNightBlocks(request, night);
-  const actions = blocks.flatMap(actionsOf).sort((a, b) => a.atMs - b.atMs || a.action.id.localeCompare(b.action.id));
+  const plan = request.artifact.plans[0];
+  const phaseOffsetMs = plan.timing.phaseOffsetMs ?? 0;
+  if (!Number.isInteger(phaseOffsetMs) || phaseOffsetMs < 0 || phaseOffsetMs > 2000)
+    fail('plan phase offset is outside 0..2000 ms');
+  // The offset is applied once at the phone-local night origin. It preserves
+  // every authored interval and every gate budget while moving the complete
+  // stream against the game's one-second frame grid.
+  const actions = blocks.flatMap(actionsOf)
+    .map(item => ({ ...item, atMs: item.atMs + phaseOffsetMs }))
+    .sort((a, b) => a.atMs - b.atMs || a.action.id.localeCompare(b.action.id));
   const register = line('register', { name: HID_NAME, vid: HID_VID, pid: HID_PID,
     bus: HID_BUS, descriptor: HID_DESCRIPTOR, feature_reports: HID_FEATURE_REPORTS });
   const events = [register];
@@ -415,13 +424,12 @@ export function compileDeviceLocalHidSchedule(request, { readyDelayMs = DEFAULT_
   const compiled = compileActionEvents(request, actions);
   events.push(...compiled.events);
   const cursor = compiled.cursor;
-  const plan = request.artifact.plans[0];
   if (cursor > plan.timing.observeUntilMs) fail('HID schedule exceeds the observation envelope');
   addDelay(events, plan.timing.observeUntilMs - cursor);
   const gated = plan.armVerification
     ? compileArmSegments(request, actions, register, plan) : undefined;
   return Object.freeze({ schema: 'device-local-hid-schedule-v1', version: 1, night,
-    readyDelayMs, actionCount: actions.length, plannedUntilMs: plan.timing.observeUntilMs,
+    readyDelayMs, phaseOffsetMs, actionCount: actions.length, plannedUntilMs: plan.timing.observeUntilMs,
     lines: Object.freeze(events), monitorTransitions: monitorTransitionsOf(actions),
     maskTransitions: maskTransitionsOf(actions),
     ...(gated ? { gated } : {}) });
@@ -932,7 +940,8 @@ export class AdbDeviceLocalArtifactExecutor {
         processResult: () => processPromise,
       });
       const startedAt = Date.now();
-      this.onEvent({ type: 'hid.schedule-start', startedAt, actionCount: schedule.actionCount });
+      this.onEvent({ type: 'hid.schedule-start', startedAt, actionCount: schedule.actionCount,
+        phaseOffsetMs: schedule.phaseOffsetMs });
       const startupDeadline = startedAt + STARTUP_GRACE_MS;
       // These are observation-only ACKs. They never alter the HID stream or
       // its timing: a failed/late state acknowledgement is evidence of a

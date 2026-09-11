@@ -80,6 +80,8 @@ function validateNight(entry, index) {
     if (!isRecord(entry.timing)) fail(`nights[${index}].timing must be an object`);
     for (const key of ['periodMs', 'loopStartMs', 'stopAtMs', 'observeUntilMs', 'idleUntilMs'])
       integer(entry.timing[key], `nights[${index}].timing.${key}`);
+    if (entry.timing.phaseOffsetMs !== undefined)
+      integer(entry.timing.phaseOffsetMs, `nights[${index}].timing.phaseOffsetMs`, { max: 2000 });
     if (entry.timing.periodMs < 1 || entry.timing.stopAtMs <= entry.timing.loopStartMs ||
         entry.timing.observeUntilMs < entry.timing.stopAtMs || entry.timing.idleUntilMs > entry.timing.loopStartMs)
       fail(`nights[${index}].timing bounds are invalid`);
