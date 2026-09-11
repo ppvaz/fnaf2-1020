@@ -1162,6 +1162,23 @@ export class AdbDeviceLocalArtifactExecutor {
         let lastSequence = null;
         let candidate = null;
         let confirmations = 0;
+        const retryArm = async reason => {
+          await touchRemote(this.adb, this.serial, armControl.retry);
+          const rearmAt = Date.now();
+          armAttempt += 1;
+          startControlEffectLedger('rearm', rearmAt,
+            gate.monitorTransitions.rearm, gate.maskTransitions.rearm,
+            { originUncertaintyMs: 50, attempt: armAttempt,
+              phaseEndMs: gate.rearmDurationMs });
+          // Anchor to the actual retry signal, not a theoretical first-attempt
+          // timeline that observation latency can outrun.
+          nextCheckAt = Date.now() + gate.rearmDurationMs + ARM_SETTLE_MS;
+          deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
+          candidate = null;
+          confirmations = 0;
+          this.onEvent({ type: 'arm.retry', attempt: armAttempt,
+            elapsedMs: Date.now() - startedAt, reason });
+        };
         while (!stopObserver && !armVerified && this.child === process.child && this.running) {
           await new Promise(resolve => setTimeout(resolve, this.pollMs));
           if (stopObserver || this.child !== process.child || !this.running) break;
@@ -1205,22 +1222,9 @@ export class AdbDeviceLocalArtifactExecutor {
                   this.onEvent({ type: 'arm.verified', attempt: armAttempt, elapsedMs,
                     ...(armGoAt === null ? {} : { armGoAt }) });
               } else if (armAttempt < MAX_ARM_ATTEMPTS) {
-                  await touchRemote(this.adb, this.serial, armControl.retry);
-                  const rearmAt = Date.now();
-                  armAttempt += 1;
-                  startControlEffectLedger('rearm', rearmAt,
-                    gate.monitorTransitions.rearm, gate.maskTransitions.rearm,
-                    { originUncertaintyMs: 50, attempt: armAttempt,
-                      phaseEndMs: gate.rearmDurationMs });
-                  // Anchor to the actual retry signal, not a theoretical
-                  // first-attempt timeline that observation latency can outrun.
-                  nextCheckAt = Date.now() + gate.rearmDurationMs + ARM_SETTLE_MS;
-                  deadlineAt = nextCheckAt + ARM_OBSERVATION_WINDOW_MS;
-                  candidate = null;
-                  confirmations = 0;
-                  this.onEvent({ type: 'arm.retry', attempt: armAttempt, elapsedMs });
+                  await retryArm('camera-pair-mismatch');
               } else {
-                deadlineAt = Date.now();
+                  deadlineAt = Date.now();
               }
             }
           } else {
@@ -1228,6 +1232,16 @@ export class AdbDeviceLocalArtifactExecutor {
             confirmations = 0;
           }
           if (!armVerified && Date.now() >= deadlineAt) {
+              // A native watch can return a fresh sequence while the camera
+              // panel is still between frames. That is not evidence that the
+              // authored arm is wrong, but waiting longer on the same raised
+              // monitor cannot repair it. Replay the physical arm sequence so
+              // the next bounded window gets a new panel transition; keep the
+              // fail-closed result once all attempts are spent.
+              if (armAttempt < MAX_ARM_ATTEMPTS) {
+                await retryArm('camera-observation-unavailable');
+                continue;
+              }
               armFailure = new Error(`camera arm verification missed after ${armAttempt} attempt(s) ` +
                 `(expected=${JSON.stringify(armVerification.cameras)} ` +
                 `viewing=${armVerification.viewing} last=${JSON.stringify(lastArmObservation)})`);

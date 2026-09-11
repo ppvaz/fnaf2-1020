@@ -407,6 +407,33 @@ try {
   assert.ok(armLog.find(event => event.type === 'arm.verified').elapsedMs < 7000,
     'a slow lifecycle observer must not starve the native arm verifier after the night gate');
 
+  // A fresh helper sequence can still be indeterminate for the whole first
+  // camera window while the panel settles. That window must spend a bounded
+  // physical re-arm, then accept only two fresh matching frames.
+  const unknownRetryLog = [];
+  let unknownRetrySequence = 0;
+  let unknownRetryStarted = false;
+  const unknownThenPass = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250, observe: async () => 'night',
+    onEvent: event => {
+      unknownRetryLog.push(event);
+      if (event.type === 'arm.retry') unknownRetryStarted = true;
+    },
+    observeArm: async () => {
+      const sequence = ++unknownRetrySequence;
+      return unknownRetryStarted
+        ? { sequence, highlights: ['cam:8', 'cam:11'], viewing: null }
+        : { sequence, highlights: null, viewing: null, reason: 'ambiguous-threshold' };
+    } });
+  const recoveredArm = await unknownThenPass.execute(armRequest);
+  assert.equal(recoveredArm.armVerification.status, 'PASS',
+    'an indeterminate first arm window must recover through the bounded re-arm');
+  const unknownRetry = unknownRetryLog.filter(event => event.type === 'arm.retry');
+  assert.equal(unknownRetry.length, 1,
+    'an unavailable camera window must consume one retry before fresh evidence');
+  assert.equal(unknownRetry[0].reason, 'camera-observation-unavailable',
+    'the retry reason must distinguish unavailable camera evidence from a wrong pair');
+
   const armFail = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
     readyDelayMs: 1, pollMs: 250,
     observe: async () => 'night',
