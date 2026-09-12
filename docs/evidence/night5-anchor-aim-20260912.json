@@ -602,5 +602,67 @@
       },
       "note": "the schedule band lower edge minus nothing: 136.67 + 30 = 166.67 is the model edge, and 136.67 itself is a losing row -- the check is on aim + L, never on the aim alone"
     }
-  ]
+  ],
+  "gridOffsetHypothesis": {
+    "status": "HYPOTHESIS -- not measured; one run decides it",
+    "claim": "the game's one-second grid starts about +233 ms AFTER the first frame the helper calls FNAF2_NIGHT, so the model's effective epoch = schedule epoch + L + 233",
+    "method": "shift every measured-epoch death by Delta in [-600, +600] at 16.67 ms steps and score the model (100-seed rows); exactly one Delta (+233) puts all six deaths in losing bands; then 3000-seed replays at each shifted epoch compared with the by-eye killer and the observed death time",
+    "fits": [
+      {
+        "run": "rep2",
+        "measured": 365.1,
+        "effective": 598,
+        "model": "foxy 2072 / inside-office 920, death p50 150 s",
+        "observed": "149.6 s, BB then Foxy",
+        "seedsWithin30s": 1383
+      },
+      {
+        "run": "rep3",
+        "measured": 556.8,
+        "effective": 790,
+        "model": "foxy 2164 / inside-office 828, p50 150 s",
+        "observed": "193.1 s, BB then Foxy",
+        "seedsWithin30s": 747
+      },
+      {
+        "run": "anchor5",
+        "measured": 183.9,
+        "effective": 417,
+        "model": "inside-office 928 / foxy 2065, p90 235 s",
+        "observed": "278.2 s, Mangle with BB inside",
+        "seedsWithin30s": 160
+      },
+      {
+        "run": "anchor4",
+        "measured": 231.1,
+        "effective": 464,
+        "model": "inside-office 904 / foxy 2093",
+        "observed": "337.1 s, Mangle",
+        "seedsWithin30s": 37
+      }
+    ],
+    "doesNotFit": [
+      {
+        "run": "rep1",
+        "measured": 885.6,
+        "effective": 119,
+        "model": "puppet 3000, deaths 34-108 s",
+        "observed": "109.2 s, BB then Foxy by eye",
+        "note": "time fits, killer does not; the frame is to be re-checked for the puppet"
+      },
+      {
+        "run": "contact200a attempt 1",
+        "measured": 94.9,
+        "effective": 328,
+        "model": "puppet, deaths <= 121 s",
+        "observed": "372.5 s, dark-hall Foxy chain",
+        "note": "a hall-lockout death the model cannot produce (its hall never fails); excluded either way"
+      }
+    ],
+    "modelNote": "the model records a Mangle attack under the death reason inside-office (plant-model commitAttack \"Mangle armed while the cameras were up\" -> kill(\"inside-office\")), so its inside-office deaths in the 4-tick bands include the Mangle deaths seen on the device",
+    "underDeltaZero": "anchor4 and anchor5 sit at epochs the model wins 100/100; under Delta 233 they sit where it dies the way they died",
+    "consequenceIfTrue": "effective = schedule + L + 233 must lie in [166.67, 316.67]: the schedule aim must lie in [823.67, 1053.67] mod 1000, centre ~940; both 172 and 233 land in the 4-tick Balloon Boy band",
+    "decisiveRun": "aim 940 (maxK 2, getevent on): under Delta 0 the model puts 940 in the puppet band [916.67, 966.67) -> death by ~108 s to the puppet; under Delta 233 it is effective 173 + L -> 3000/3000. Binary; needs no L measurement first.",
+    "registerAction": "none until that run or a direct grid measurement (the wind tick's global Every 500 ms timer, config.js g637/g644) says which; the register keeps 172 for the L-only case"
+  }
 }
