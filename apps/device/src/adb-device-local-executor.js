@@ -1185,7 +1185,10 @@ export class AdbDeviceLocalArtifactExecutor {
             },
           });
           if (firstWriteAt === null) throw new Error('night handoff wrote no HID action');
-          nightReleasedAt = firstWriteAt;
+          // `firstWriteAt` is assigned inside the onFirstWrite callback, so the
+          // null check above does not narrow it for later uses. Snapshot it.
+          const releasedAt = firstWriteAt;
+          nightReleasedAt = releasedAt;
           if (schedule.gated) {
             startControlEffectLedger('prefix', firstWriteAt,
               schedule.gated.monitorTransitions.prefix, schedule.gated.maskTransitions.prefix,
@@ -1197,7 +1200,8 @@ export class AdbDeviceLocalArtifactExecutor {
             // it is started here rather than deferred: the release is the last
             // moment that knows it, and a one-shot drain installed earlier in
             // execute() would run BEFORE this ever set it.
-            if (armObserveOnce) requestGateLedger(firstWriteAt + schedule.gated.armReadyAtMs);
+            const prefixEndsAt = releasedAt + schedule.gated.armReadyAtMs;
+            if (armObserveOnce) requestGateLedger(prefixEndsAt);
           } else {
             startControlEffectLedger('full', firstWriteAt,
               schedule.monitorTransitions, schedule.maskTransitions,
@@ -1700,9 +1704,10 @@ export class AdbDeviceLocalArtifactExecutor {
                 // real observations; if neither exists the refinement is
                 // refused rather than guessed.
                 const lowerBound = lastNonNightObserveAt ?? nativeLastNotNightAt;
-                const refined = (nativeNightAt !== null && lowerBound !== null &&
-                  nativeNightAt >= lowerBound && nativeNightAt <= observeStartedAt)
-                  ? nativeNightAt : null;
+                const nativeAt = nativeNightAt;
+                const refined = (nativeAt !== null && lowerBound !== null &&
+                  nativeAt >= lowerBound && nativeAt <= observeStartedAt)
+                  ? nativeAt : null;
                 this.onEvent({ type: 'origin.refined',
                   authorityAtMs: observeStartedAt,
                   authorityBracketFromMs: lastNonNightObserveAt,
