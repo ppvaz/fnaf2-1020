@@ -34,9 +34,10 @@ controller research, and device evidence form one program.
 | Review the generated contract and command catalogs | [`architecture/generated/README.md`](architecture/generated/README.md) |
 | Read the workspace/core decision | [`decisions/0001-workspaces-and-core.md`](decisions/0001-workspaces-and-core.md) |
 | Inspect evidence retention and claim ceilings | [`evidence/README.md`](evidence/README.md) |
+| See why Night 5 still loses with clean contacts, and what to try next | [`evidence/night5-contacts-clean-still-losing-20260912.md`](evidence/night5-contacts-clean-still-losing-20260912.md) |
 | See the Night 5 mask window's measured position tolerance, and why the gate killed its own cycle | [`evidence/night5-mask-window-tolerance-20260912.md`](evidence/night5-mask-window-tolerance-20260912.md) |
 | See why longer loop cycles were refuted, and what route changes are now closed | [`evidence/night5-longer-cycle-refuted-20260912.md`](evidence/night5-longer-cycle-refuted-20260912.md) |
-| [night5-hall-lockout-and-offset-sweep-20260912.json](evidence/night5-hall-lockout-and-offset-sweep-20260912.json) | The hall flash graded per cycle from the native trace (grid cells over FOXY_HALL, office frames only) and cross-checked on video: 40% dark at 33 ms mask-off, 58-61% at 200 ms; the engine refuses the flash inside the mask-off animation and the +9500 hall tap clears it by ~56 ms. hallOffsetMs 9500-9900 gates 3000/3000 on nights 1, 2, 5, 6, 7. The two clean-contact deaths (372.5 s, 185.2 s) with their hypotheses. |
+| See the hall flash graded per cycle from the trace and the video, the mask-off lockout it runs into, where `hallOffsetMs` can move in the model, and the two clean-contact deaths | [`evidence/night5-hall-lockout-and-offset-sweep-20260912.json`](evidence/night5-hall-lockout-and-offset-sweep-20260912.json) |
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
 | Read why the Withered Bonnie visual cause model was withdrawn, and what metric replaced euclid | [`evidence/withered-bonnie-visual-model-withdrawn-20260912.md`](evidence/withered-bonnie-visual-model-withdrawn-20260912.md) |
 | Run device work safely | [`operations/DEVICE-SAFETY.md`](operations/DEVICE-SAFETY.md) |
