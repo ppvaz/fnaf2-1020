@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+# One command per Night 5 device attempt: record, run, reconstruct, reset.
+#
+# Every previous attempt was assembled by hand across two terminals (PROGRESS,
+# 2026-09-11): start `screenrecord`, run the campaign, stop the recording, pull
+# it, hash it, run `phase-reconstruct.mjs`, run `run-timeline.py`, then drive
+# the phone back to the title. Six manual steps is six ways to lose an attempt,
+# and mistake-register entry 6 says every aborted attempt leaves the game
+# mid-night. This script is that sequence with the failure handling attached:
+#
+#   - fail-fast: every input path, the serial, and every downstream tool are
+#     checked for EXISTENCE before the phone is touched (mistake 5: a wrong
+#     tool path failed silently behind `&& echo` twice).
+#   - fail-safe: an EXIT trap always stops the recording, always pulls what was
+#     captured, and always drives the game back to an OBSERVED title, whether
+#     the campaign passed, failed, or the operator killed it.
+#
+# Usage:
+#   tools/device/night5-run.sh --label baseline [--bundle DIR] [--night N]
+#                              [--serial ID] [--no-video] [--dry-run]
+set -Eeuo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/../.." && pwd)"
+cd "$ROOT"
+
+LABEL=""
+BUNDLE="artifacts/night5-head"
+QUALIFICATION="docs/evidence/qualification-hid-mediaprojection-night5-20260911.json"
+PROFILE="hid-mediaprojection"
+SERIAL="${FNAF_SERIAL:-ZF525F5BH5}"
+NIGHT=5
+SAVE_CURSOR=""
+ARM_MODE="observe-once"
+VIDEO=1
+DRY=0
+EXTRA=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --label) LABEL="$2"; shift 2 ;;
+    --bundle) BUNDLE="$2"; shift 2 ;;
+    --qualification) QUALIFICATION="$2"; shift 2 ;;
+    --profile) PROFILE="$2"; shift 2 ;;
+    --serial) SERIAL="$2"; shift 2 ;;
+    --night) NIGHT="$2"; shift 2 ;;
+    --save-cursor) SAVE_CURSOR="$2"; shift 2 ;;
+    --arm-blocking) ARM_MODE="blocking"; shift ;;
+    --arm-observe-once) ARM_MODE="observe-once"; shift ;;
+    --no-video) VIDEO=0; shift ;;
+    --dry-run) DRY=1; shift ;;
+    --) shift; EXTRA+=("$@"); break ;;
+    *) EXTRA+=("$1"); shift ;;
+  esac
+done
+
+die() { printf 'night5-run: %s\n' "$1" >&2; exit 2; }
+say() { printf '\n=== %s\n' "$1"; }
+
+[ -n "$LABEL" ] || die "--label is required (it names the artifacts)"
+[ "${SAVE_CURSOR:-}" != "" ] || SAVE_CURSOR="$NIGHT"
+
+# ---- fail-fast: inputs and tools exist before the phone is touched ----------
+TITLE_MODEL_PATH="tools/device/models/title-moto-g56-v207.json"
+CAUSE_MODEL_PATH="tools/device/models/death-cause-withered-chica-moto-g56-v207.json"
+for path in "$BUNDLE/manifest.json" "$QUALIFICATION" "$TITLE_MODEL_PATH" \
+            tools/device/phase-reconstruct.mjs tools/device/run-timeline.py \
+            tools/device/title-observe.py apps/device/src/cli.js; do
+  [ -e "$path" ] || die "missing required input: $path"
+done
+command -v adb >/dev/null || die "adb is not on PATH"
+adb -s "$SERIAL" get-state >/dev/null 2>&1 || die "device $SERIAL is not reachable"
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RUNID="night${NIGHT}-${LABEL}-${STAMP}"
+OUTDIR="artifacts/runs/$RUNID"
+mkdir -p "$OUTDIR" captures
+DEVICE_VIDEO="/sdcard/${RUNID}.mp4"
+HOST_VIDEO="captures/${RUNID}.mp4"
+
+printf 'run      %s\nbundle   %s\nserial   %s\nnight    %s (save cursor %s)\narm      %s\nout      %s\n' \
+  "$RUNID" "$BUNDLE" "$SERIAL" "$NIGHT" "$SAVE_CURSOR" "$ARM_MODE" "$OUTDIR"
+
+REC_PID=""
+RESET_DONE=0
+ANALYZED=0
+CAMPAIGN_CODE=""
+CAMPAIGN_DIR=""
+
+stop_recording() {
+  [ "$VIDEO" = 1 ] || return 0
+  [ -n "$REC_PID" ] || return 0
+  say "stopping recording"
+  adb -s "$SERIAL" shell 'pkill -INT screenrecord' >/dev/null 2>&1 || true
+  wait "$REC_PID" 2>/dev/null || true
+  REC_PID=""
+  # screenrecord needs a moment to finalize the container after SIGINT.
+  local waited=0
+  while [ "$waited" -lt 10 ]; do
+    sleep 1; waited=$((waited + 1))
+    adb -s "$SERIAL" shell "pgrep screenrecord" >/dev/null 2>&1 || break
+  done
+  sleep 2
+  if adb -s "$SERIAL" shell "test -s '$DEVICE_VIDEO'" 2>/dev/null; then
+    adb -s "$SERIAL" pull "$DEVICE_VIDEO" "$HOST_VIDEO" >/dev/null 2>&1 \
+      && adb -s "$SERIAL" shell "rm -f '$DEVICE_VIDEO'" >/dev/null 2>&1 || true
+  fi
+  if [ -s "$HOST_VIDEO" ]; then
+    printf 'video    %s (%s bytes)\n' "$HOST_VIDEO" "$(stat -c %s "$HOST_VIDEO")"
+    sha256sum "$HOST_VIDEO" | tee "$OUTDIR/video.sha256"
+  else
+    printf 'video    NONE RETAINED\n' >&2
+  fi
+}
+
+# Mistake-register 6: every aborted attempt leaves the game mid-night. The
+# reset is unconditional and its result is OBSERVED, never assumed.
+reset_device() {
+  [ "$RESET_DONE" = 0 ] || return 0
+  RESET_DONE=1
+  say "returning the phone to an observed title"
+  adb -s "$SERIAL" shell am force-stop com.scottgames.fnaf2 >/dev/null 2>&1 || true
+  sleep 2
+  adb -s "$SERIAL" shell monkey -p com.scottgames.fnaf2 -c android.intent.category.LAUNCHER 1 \
+    >/dev/null 2>&1 || true
+  local tries=0 state=""
+  while [ "$tries" -lt 20 ]; do
+    sleep 2; tries=$((tries + 1))
+    state="$(adb -s "$SERIAL" exec-out screencap -p \
+      | TITLE_MODEL="$TITLE_MODEL_PATH" python3 tools/device/title-observe.py 2>/dev/null || true)"
+    case "$state" in items=*) break ;; esac
+  done
+  printf 'title    %s\n' "${state:-unknown=no-read}" | tee "$OUTDIR/post-run-title.txt"
+  case "$state" in
+    items=*) ;;
+    *) printf 'night5-run: WARNING the phone did not return to an observed title\n' >&2 ;;
+  esac
+}
+
+# The full post-run pipeline. It runs from the EXIT trap, so it runs on a pass,
+# on a campaign failure, and on an operator Ctrl-C alike -- Pedro's standing
+# requirement is that no attempt depends on anyone remembering to invoke it.
+# Every stage is independently guarded: a stage with no input says so and the
+# rest still run.
+analyze() {
+  [ "$ANALYZED" = 0 ] || return 0
+  ANALYZED=1
+
+  CAMPAIGN_DIR="$(ls -dt artifacts/campaign-* 2>/dev/null | head -1 || true)"
+  # grade-run.sh resolves the bundle by this pointer, so its modern steps run
+  # without anyone passing a path.
+  [ -n "$CAMPAIGN_DIR" ] && printf '%s\n' "$CAMPAIGN_DIR" > "captures/$RUNID-campaign-dir.txt"
+  export GRADE_CAMPAIGN_DIR="$CAMPAIGN_DIR" GRADE_NIGHT="$NIGHT"
+  {
+    printf 'run          %s\n' "$RUNID"
+    printf 'bundle       %s\n' "$BUNDLE"
+    printf 'campaign dir %s\n' "${CAMPAIGN_DIR:-NONE}"
+    printf 'campaign exit %s\n' "${CAMPAIGN_CODE:-KILLED}"
+  } | tee "$OUTDIR/verdict.txt"
+
+  if [ -n "$CAMPAIGN_DIR" ]; then
+    say "modern campaign bundle"
+    node tools/device/run-report.mjs --run "$CAMPAIGN_DIR" 2>&1 \
+      | tee -a "$OUTDIR/verdict.txt" || true
+    node tools/device/run-report.mjs --run "$CAMPAIGN_DIR" --json \
+      > "$OUTDIR/run-report.json" 2>/dev/null || true
+
+    say "delivered phase against the model band"
+    node tools/device/phase-reconstruct.mjs --run "$CAMPAIGN_DIR" --night "$NIGHT" \
+      --out "$OUTDIR/phase.json" 2>&1 | tee "$OUTDIR/phase.log" || true
+  else
+    printf 'night5-run: no campaign directory was produced; executor facts UNKNOWN\n' >&2
+  fi
+
+  # Every video instrument this repository owns, through its own aggregator.
+  # grade-run.sh resolves captures/<RUN>.mp4 by name, which is why the harness
+  # names the recording after the run id.
+  if [ -s "$HOST_VIDEO" ]; then
+    say "video instruments (grade-run.sh)"
+    tools/device/grade-run.sh "$RUNID" > "$OUTDIR/grade.log" 2>&1 || true
+    sed -n '1,400p' "$OUTDIR/grade.log"
+    grep -E "^(outcome|terminal|survival|  clear|  death)" "$OUTDIR/grade.log" \
+      >> "$OUTDIR/verdict.txt" 2>/dev/null || true
+  else
+    printf 'night5-run: no retained video; every video instrument was skipped\n' >&2
+    printf 'video        NONE RETAINED\n' >> "$OUTDIR/verdict.txt"
+  fi
+
+  say "verdict"
+  cat "$OUTDIR/verdict.txt"
+}
+
+on_exit() {
+  local code=$?
+  set +e
+  stop_recording
+  analyze
+  reset_device
+  say "run $RUNID finished with exit code $code"
+  printf 'artifacts    %s\n' "$OUTDIR"
+  exit "$code"
+}
+trap on_exit EXIT
+
+# ---- the attempt -----------------------------------------------------------
+CAMPAIGN=(node apps/device/src/cli.js campaign
+  --profile "$PROFILE" --serial "$SERIAL" --nights "$NIGHT" --max-attempts 1
+  --save-cursor "$SAVE_CURSOR" --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
+# Pedro's standing direction: the arm check does not block the schedule.
+#
+# It is not a preference, it is the difference between a winnable night and an
+# unwinnable one. In `blocking` mode the executor parks the HID stream at the
+# end of the opening prefix, waits ARM_SETTLE_MS (600) plus at least one more
+# 250 ms poll for a second agreeing read, and then delivers EVERY later press
+# that much late -- `phaseLagMs` in adb-device-local-executor.js. The two
+# retained 2026-09-11 runs measured 1320 ms and 6695 ms of it.
+#
+# observe-once starts the schedule first and observes alongside it, so it adds
+# no suffix shift at all. That is worth having, but it is NOT by itself a phase
+# fix, and nothing here should be read as one: the model's response to
+# delivered phase is banded over each 1000 ms game second -- night 5 loses on
+# [116.67,166.67), [316.67,366.67), [416.67,800) and [916.67,966.67) -- and the
+# night origin is bracketed wider than that whole period (1852 ms on the
+# 2026-09-12 run). Until the origin is pinned the delivered phase is
+# effectively uniform, which is the model's own 1375/3000 uncontrolled-phase
+# result. Read phase-reconstruct.mjs, never a single tolerance number.
+[ "$ARM_MODE" = "observe-once" ] && CAMPAIGN+=(--arm-observe-once)
+if [ "$DRY" = 1 ]; then
+  printf 'DRY RUN, the phone is not actuated:\n  %s\n' "${CAMPAIGN[*]} ${EXTRA[*]:-}"
+  VIDEO=0
+  ANALYZED=1
+  exit 0
+fi
+CAMPAIGN+=(--live --confirm-live)
+[ "${#EXTRA[@]}" -eq 0 ] || CAMPAIGN+=("${EXTRA[@]}")
+
+if [ "$VIDEO" = 1 ]; then
+  say "starting retained recording"
+  adb -s "$SERIAL" shell "rm -f '$DEVICE_VIDEO'" >/dev/null 2>&1 || true
+  adb -s "$SERIAL" shell "screenrecord --size 1280x576 --bit-rate 12000000 --time-limit 0 '$DEVICE_VIDEO'" &
+  REC_PID=$!
+  sleep 2
+  adb -s "$SERIAL" shell "pgrep screenrecord" >/dev/null 2>&1 \
+    || die "screenrecord did not start"
+fi
+
+say "campaign"
+set +e
+"${CAMPAIGN[@]}" 2>&1 | tee "$OUTDIR/campaign.log"
+CAMPAIGN_CODE=${PIPESTATUS[0]}
+set -e
+printf 'campaign exit %s\n' "$CAMPAIGN_CODE" | tee "$OUTDIR/campaign.exit"
+
+exit "$CAMPAIGN_CODE"

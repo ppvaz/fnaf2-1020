@@ -70,6 +70,19 @@ for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
   [ -f "$candidate" ] && AUDIO="$candidate"
 done
 CUE="$CAPTURES/$RUN-cue.txt"
+# The modern campaign bundle for this run, when one exists. A device run driven
+# by night5-run.sh writes the pointer; GRADE_CAMPAIGN_DIR overrides it. The
+# legacy trial.sh lane has no bundle and every modern step below says so.
+CAMPAIGN_DIR="${GRADE_CAMPAIGN_DIR:-}"
+if [ -z "$CAMPAIGN_DIR" ] && [ -f "$CAPTURES/$RUN-campaign-dir.txt" ]; then
+  CAMPAIGN_DIR="$(cat "$CAPTURES/$RUN-campaign-dir.txt")"
+fi
+# Cue Helper native frame trace, pulled by `query-cue-helper.sh trace stop`
+# into captures/frame-traces/. Only present when a run asked for one.
+FRAME_TRACE=""
+for candidate in "$CAPTURES/frame-traces/$RUN".* "$CAPTURES/frame-traces/$RUN"; do
+  [ -f "$candidate" ] && FRAME_TRACE="$candidate"
+done
 KEEP="$CAPTURES/screencheck-keep/$RUN"
 MANIFEST="$CAPTURES/$RUN-session.json"
 
@@ -90,6 +103,8 @@ echo "capture: ${VIDEO##*/}"
 [ -f "$AUDIO_FACTS" ] && echo "audio facts: ${AUDIO_FACTS##*/}" || echo "audio facts: none (run with external authority socket)"
 [ -d "$KEEP" ] && echo "kept frames: $(find "$KEEP" -name '*.raw' | wc -l | tr -d ' ')"
 [ -f "$MANIFEST" ] && echo "session manifest: ${MANIFEST##*/}" || echo "session manifest: none (unmanifested run)"
+[ -n "$CAMPAIGN_DIR" ] && echo "campaign bundle: $CAMPAIGN_DIR" || echo "campaign bundle: none (legacy trial lane, or pointer not written)"
+[ -n "$FRAME_TRACE" ] && echo "frame trace: ${FRAME_TRACE##*/}" || echo "frame trace: none (run query-cue-helper.sh trace start/stop around the run)"
 
 fail=0
 
@@ -265,7 +280,66 @@ step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
 # 5b. What happened, in order, and how it ended. This is the only step that can
 # say `clear`: nothing else in this pipeline can recognise a 6 AM, which is why
 # a won night graded as `unknown` until 2026-08-26.
-step "run timeline and terminal outcome" python3 "$HERE/run-timeline.py" "$VIDEO"
+# Shadow-only visual cause models add a named killer candidate to the terminal
+# evidence. They never let a frame claim the night is over -- terminal_outcome()
+# stays the authority -- so every model present is passed by default rather than
+# being remembered per run. GRADE_CAUSE_MODELS overrides the set.
+TIMELINE_ARGS=(python3 "$HERE/run-timeline.py" "$VIDEO")
+if [ -n "${GRADE_CAUSE_MODELS:-}" ]; then
+  for model in $GRADE_CAUSE_MODELS; do
+    [ -f "$model" ] && TIMELINE_ARGS+=(--cause-model "$model")
+  done
+else
+  for model in "$HERE"/models/death-cause-*.json; do
+    [ -f "$model" ] && TIMELINE_ARGS+=(--cause-model "$model")
+  done
+fi
+step "run timeline and terminal outcome" "${TIMELINE_ARGS[@]}"
+
+# 5b-i. What the EXECUTOR knows, which no video instrument can see: when the
+# night started, what the arm gate cost, which cycle gates had to correct the
+# phone, and why the stream stopped. `phase-reconstruct.mjs` then states the
+# phase the run actually delivered against the model's own response to phase.
+#
+# These were run by hand after every attempt until 2026-09-12 -- they were the
+# slow half of each iteration, and `test-grade-run-coverage.mjs` had been
+# naming phase-reconstruct.mjs as unwired the whole time, into a lane CI does
+# not run.
+if [ -n "$CAMPAIGN_DIR" ] && [ -d "$CAMPAIGN_DIR" ]; then
+  step "campaign bundle (executor-owned facts)" \
+    node "$HERE/run-report.mjs" --run "$CAMPAIGN_DIR"
+  RUN_NIGHT_ARG=()
+  [ -n "${GRADE_NIGHT:-}" ] && RUN_NIGHT_ARG=(--night "$GRADE_NIGHT")
+  step "delivered phase vs the model band" \
+    node "$HERE/phase-reconstruct.mjs" --run "$CAMPAIGN_DIR" "${RUN_NIGHT_ARG[@]}"
+else
+  echo
+  echo "--- campaign bundle (executor-owned facts) ---"
+  echo "  no campaign directory for $RUN: delivered phase, arm cost and cycle"
+  echo "  gate corrections are UNKNOWN for this run. Nothing was reconstructed."
+fi
+
+# 5b-ii. Did the frames actually carry the state the actuation asked for, and
+# did Android's dispatch line up with the frames that were presented? Both read
+# the Cue Helper's native frame trace, which only a run that requested one has.
+if [ -n "$FRAME_TRACE" ]; then
+  step "native-frame state coverage for the actuation" \
+    python3 "$HERE/actuation-frame-metric.py" "$FRAME_TRACE"
+  if [ -f "$INPUT_TRACE" ]; then
+    step "input dispatch aligned to presented frames" \
+      python3 "$HERE/input-frame-align.py" "$INPUT_TRACE" "$FRAME_TRACE"
+  else
+    echo
+    echo "--- input dispatch aligned to presented frames ---"
+    echo "  a frame trace is present but no Perfetto input trace is: dispatch"
+    echo "  cannot be aligned to frames. Run atrace-input.sh around the command."
+  fi
+else
+  echo
+  echo "--- native-frame state coverage for the actuation ---"
+  echo "  no frame trace for $RUN: frame-level state coverage and input/frame"
+  echo "  alignment are UNKNOWN. Nothing was measured."
+fi
 
 # 5c. Elegance: how many inputs the run sent against how many that night needed.
 # The night comes from the session manifest, never guessed -- a route qualified

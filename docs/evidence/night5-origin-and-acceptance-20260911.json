@@ -1,0 +1,87 @@
+{
+  "schema": "device-night5-gap-evidence-v1",
+  "recordedAt": "2026-09-11",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-actuator-gap-measurement",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "the run ended in lifecycle static about 50 s into the night; this record measures two gaps and claims no win"
+  },
+  "device": {
+    "serial": "ZF525F5BH5",
+    "target": "com.scottgames.fnaf2",
+    "build": "2.0.7+26",
+    "profile": "hid-mediaprojection"
+  },
+  "plan": {
+    "strategy": "minus-toys",
+    "night": 5,
+    "phaseOffsetMs": 0,
+    "armMode": "observe-once",
+    "bundle": "artifacts/night5-head",
+    "winnerHash": "fnv1a-433ddeed",
+    "qualification": "docs/evidence/qualification-hid-mediaprojection-night5-20260911.json"
+  },
+  "campaign": {
+    "directory": "artifacts/campaign-2026-09-12T00-35-49.814Z",
+    "exitCode": 130,
+    "error": "device: lifecycle left night state (static)",
+    "operatorInterrupt": "Pedro called the abort from the phone on seeing drift; the campaign had already raised its own abort 2.065 s earlier, so the death is the run's and not the interrupt's"
+  },
+  "arm": {
+    "mode": "observe-once",
+    "attempt": 1,
+    "verifiedAtMs": 6890,
+    "phaseLagMs": 0,
+    "phaseLagNote": "observe-once never parks the HID stream, so it contributes no suffix shift at all. This removes the 1320 ms and 6695 ms lags the 2026-09-11 blocking runs measured, and it did not save the night.",
+    "cameras": { "cam9": 194, "cam11": 96 }
+  },
+  "gapA_origin": {
+    "finding": "the night origin, not the arm, is the uncontrolled phase term",
+    "bracketedByMs": 1852,
+    "errorVersusFirstNightFrameMs": "UNKNOWN",
+    "observationCadenceMs": { "min": 3, "p50": 1986, "max": 11301 },
+    "cause": "apps/device/src/modern-campaign-ports.js supplies the executor's `observe` as lifecycle(), which runs a full `adb exec-out screencap -p` at 2400x1080 into tools/device/lifecycle-observe.py on every poll. The executor's own poll interval is 250 ms, so the ~1.7 s residual is the capture-and-classify round trip, not the schedule.",
+    "why it governs": "the model's response to delivered phase repeats on a 1000 ms game second and loses on [116.67,166.67), [316.67,366.67), [416.67,800) and [916.67,966.67) -- 53.3% of phases. A 1852 ms bracket is wider than the whole period, so the delivered phase is unconstrained and the model's own uncontrolled-phase result, 1375/3000, is the ceiling for any arm mode until the origin is pinned.",
+    "candidate": "the native Cue Helper read already reports screen=FNAF2_NIGHT with a visualCaptureAt timestamp and visualCaptureUncertaintyMs 0 at ~43 ms detector latency, and the executor already calls it for control-effect sampling. Pinning the ORIGIN from that stream while leaving the Python lifecycle classifier as the AUTHORITY on whether a night is running respects the rule that a detector which knows one way to be dead must not be what says you are alive. Not implemented; not measured on device."
+  },
+  "gapB_acceptance": {
+    "finding": "two steady-loop presses are systematically not accepted by the game",
+    "graded": 25,
+    "tally": { "UNKNOWN": 11, "MISSING": 9, "PASS": 4, "UNSTABLE": 1 },
+    "systematicMisses": [
+      { "action": "toys-3 monitorUp->true", "planOffsetMs": 10100, "missingCycles": 4, "totalCycles": 5,
+        "precededBy": "toys-1 maskOn->false at plan offset 9200, i.e. 900 ms earlier" },
+      { "action": "toys-7 maskOn->true", "planOffsetMs": 14400, "missingCycles": 4, "totalCycles": 5,
+        "precededBy": "toys-6 monitorUp->false at plan offset 14000, i.e. 400 ms earlier" }
+    ],
+    "caveat": "MISSING means the target state was positively not observed; UNKNOWN rows (monitor-state-unavailable, screen-identity, insufficient-frames) are observation failures and are NOT counted as losses. The four PASS rows prove the grader can see a successful transition, so the MISSING rows are not a blind instrument.",
+    "candidate": "the mask seam is the standing explanation (tools/device/actuator.mjs SEAM_BANDS): a monitor press inside the mask-off animation has no control under it. `loopContactMs` is already flagged in minus-toys-plan.mjs KNOBS0 as the experiment worth running at 200 ms, because every parity inversion repaired on 2026-09-09 was a 33 ms tap. The per-instruction margin map allows the mask-off to move 198 ms early and the monitor raise 198 ms late, which would widen the 900 ms separation to about 1300 ms. Neither is measured yet."
+  },
+  "delivery": {
+    "finding": "the device-local stream itself does not drift",
+    "detail": "all 25 graded transitions carry a contactAt exactly on the planned offset from hid.night-go (delta +0 ms through 54.4 s). That is the scheduler's computed contact time, not a measured landing, so it proves the stream carried no internal drift and proves nothing about what the game received. Acceptance is graded separately above."
+  },
+  "survival": {
+    "hudFirstSeenAtSeconds": 29.0,
+    "hudLastSeenAtSeconds": 79.2,
+    "aliveAtLeastSeconds": 50.5,
+    "grader": "tools/device/grade-night.py, which reports a lower bound because nothing in the recording shows the run ending"
+  },
+  "video": {
+    "path": "captures/night5-observeonce-20260912T003535Z.mp4",
+    "sha256": "e8f26a0ef75732c315bf0360f7cb0d4d5d1602f9c7fcc5f1b074870f1ac33cd1",
+    "bytes": 127487822,
+    "resolution": "1280x576",
+    "retained": true,
+    "timelineTerminal": "unknown -- the recording was stopped by the harness before anything terminal was captured"
+  },
+  "postRunReset": {
+    "titleObserver": "items=continue,newGame",
+    "verified": true,
+    "by": "tools/device/night5-run.sh exit trap, which ran through the operator interrupt"
+  },
+  "retractions": [
+    "An earlier statement in this session that Night 5 tolerates at most 408 ms of arm-release lag was WRONG. It came from tools/device/minus-toys-margin.mjs's edge() scan, which stops at the first failure and is only valid for a contiguous basin. The response is banded and periodic, so 408 ms is one band edge and not a budget: the model scores 3000/3000 at 800-1400 ms of lag. The margin tool now reports bands and refuses the single-number reading, and phase-reconstruct.mjs's model.lossBands was already the authority."
+  ]
+}

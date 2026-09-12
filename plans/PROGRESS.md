@@ -5008,3 +5008,83 @@ video SHA-256
 
 The next physical rung is to isolate the `15200 ms` mask correction with a
 short, retained first-two-cycle run before attempting a full Night 5 route.
+
+## 2026-09-11 — the origin, not the arm, is what the phase error is made of
+
+This session ran Night 5 twice. The first attempt never reached a night: the
+2026-09-08 qualification is bound to `fnv1a-d48ce3da`, the bundle HEAD compiles
+is `fnv1a-433ddeed`, and the preflight refused it in about 60 s. Pedro granted
+the rebind explicitly in session; the new binding is
+[qualification-hid-mediaprojection-night5-20260911.json](../docs/evidence/qualification-hid-mediaprojection-night5-20260911.json)
+and it records both the plan delta (`ventl` renamed to `cameraFeedLight`, plus
+one added opening row `1916 hold cameraFeedLight 100`) and the reason the old
+binding broke without any plan byte changing: `validateWinner` expands the
+named preset `KNOBS0` into the full knob object before hashing, so `policyHash`
+tracks the knob-set shape. At 685fd01 the night-5 plan sha was still
+`27aa0c15` while `winnerHash` had already moved.
+
+The second attempt ran the rebound bundle with `--arm-observe-once`, which is
+Pedro's standing direction and which the harness now takes as its default.
+Observe-once starts the schedule and observes beside it, so it parks nothing
+and contributes **no suffix shift at all** — the 1320 ms and 6695 ms lags the
+blocking runs measured are gone. The night still ended in lifecycle static
+about 50 s in.
+
+The reconstruction says why. The delivered stream carries no internal drift:
+all 25 graded transitions sit exactly on their planned offset from
+`hid.night-go` (delta +0 ms through 54.4 s), which is the scheduler's computed
+contact time and therefore proves the stream and not the game. What is
+uncontrolled is where `hid.night-go` sits against the game's true 12 AM:
+`origin.bracketedByMs` is **1852 ms**, with a lifecycle observation cadence of
+p50 1986 ms and max 11301 ms. The executor's `observe` port is `lifecycle()`,
+a full 2400x1080 `screencap` piped into `lifecycle-observe.py` on every poll;
+the executor's own poll is 250 ms, so the residual is the capture-and-classify
+round trip. Because the model's response to phase repeats on a 1000 ms game
+second and loses on 53.3% of it, a bracket wider than the whole period leaves
+the delivered phase unconstrained, and the model's own uncontrolled-phase
+figure — 1375/3000 — is the ceiling for **any** arm mode until the origin is
+pinned.
+
+The run also measured a second, independent gap. Press acceptance graded 4
+PASS, 9 MISSING, 11 UNKNOWN, 1 UNSTABLE, and the MISSING rows are not scattered:
+`toys-3 monitorUp->true` (plan +10100, 900 ms after the mask-off) missed on 4
+of 5 cycles, and `toys-7 maskOn->true` (plan +14400, 400 ms after the monitor
+drop) missed on 4 of 5. The four PASS rows prove the grader can see a
+successful transition, so these are not a blind instrument. The mask seam is
+the standing explanation and `loopContactMs: 200` is already flagged in
+`KNOBS0` as the experiment; neither is measured.
+
+**Retraction.** An earlier claim in this session that Night 5 tolerates at most
+408 ms of arm-release lag was wrong. It came from reading
+`minus-toys-margin.mjs`'s `edge()`, which stops at the first failure and is
+valid only for a contiguous basin. The response is banded: the model scores
+3000/3000 at 800–1400 ms of lag, so 408 ms is one band edge and not a budget.
+`phase-reconstruct.mjs` already computed `model.lossBands` and was the
+authority all along. The margin tool now reports bands and says in as many
+words that `edge()` must not be used on this response.
+
+Tooling landed with it, because the measuring was the slow half of every
+attempt. `tools/device/night5-run.sh` drives one attempt end to end and runs
+the whole post-run pipeline plus the observed title reset from an EXIT trap, so
+it happens on a pass, a failure and an operator Ctrl-C alike — it was proven on
+this run's abort. `tools/device/run-report.mjs` states the executor-owned facts,
+including the press-acceptance tally and any systematically missed press, which
+is what surfaced gap B. And `test-grade-run-coverage.mjs`, which enforces that
+no instrument exists outside the pipeline, was registered only in
+`tools/test.mjs`'s ENGINE group — a lane CI never runs and one CLAUDE.md
+describes as holding intentionally red controls. It had been failing on 11
+scripts, `phase-reconstruct.mjs` among them, which is exactly why the last two
+sessions ran it by hand. It is now in `npm run test:unit`, the lane CI runs,
+and it is green.
+
+Evidence: [night5-origin-and-acceptance-20260911.json](../docs/evidence/night5-origin-and-acceptance-20260911.json),
+video SHA-256
+`e8f26a0ef75732c315bf0360f7cb0d4d5d1602f9c7fcc5f1b074870f1ac33cd1`.
+
+Open, in priority order: (1) pin the night origin from the native Cue Helper
+`screen=FNAF2_NIGHT` capture timestamp while leaving the Python classifier the
+authority on whether a night is running, and re-measure
+`origin.bracketedByMs`; (2) measure `loopContactMs: 200` and the 198 ms
+mask-off/monitor-raise separation against the 3000-seed gate, then test the
+survivor on device; (3) decide what replaces the cycle gates that observe-once
+removes, since blocking mode buys parity correction at the cost of phase.

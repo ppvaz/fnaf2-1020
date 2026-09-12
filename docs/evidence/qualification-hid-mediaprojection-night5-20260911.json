@@ -1,0 +1,46 @@
+{
+  "schema": "qualification-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "policyHash": "fnv1a-433ddeed",
+  "modelHash": "minus-toys-engine-current-v1",
+  "sampleCount": 3000,
+  "evidenceId": "qualification-hid-mediaprojection-night5-20260911",
+  "qualifiedBy": "Pedro (operator)",
+  "approvedAt": "2026-09-11",
+  "authorization": "Pedro granted this binding in session on 2026-09-11, in as many words: 'Te concedo autorizacao explicita para faze-lo', answering a request that named the old and new hashes, the exact plan-text delta, and both gate results. The agent wrote the record; the qualification decision is the operator's.",
+  "scope": "fourth binding of the same measured hid-mediaprojection transport -- UHID game input via /system/bin/hid, MediaProjection visual observation via Cue Helper, one bounded device-local HID schedule per night with abort-on-gameover and releaseAll -- re-bound to the minus-toys story Night 5 winner as HEAD emits it (tools/device/campaign-toys-night5-winner.json, winnerHash fnv1a-433ddeed, bundle replay fnv1a-be6cbe76, night-5 plan sha256 9fc44f87f927d3baa4186b1424a9d02992571eaad0aa12e215155a1722c5afc4, profile hid-mediaprojection sha256 c929d673a056b4d7ef1839bccc4666986e2a1991b39232c0869046b0d68ae6e0)",
+  "bounds": "no new transport measurement was taken for this binding: it reuses the transport qualified on 2026-09-06 and re-bound on 2026-09-07 and 2026-09-08, whose UHID receipt delay was measured at p50 4-5 ms, max 13 ms over 200 events. What is new is the plan text, gated MODEL_ONLY at the 3000-seed standard. No claim beyond DEVICE_MEASURED transport qualification; in-game menu navigation stays limited to the measured title-model items; the save cursor was observed at Night 5 before this binding via title-observe.py (items=continue,newGame) and the campaign's own --save-cursor 5 assertion.",
+  "supersedes": "qualification-hid-mediaprojection-night5-20260908",
+  "planDelta": "Against the 2026-09-08 binding (policyHash fnv1a-d48ce3da, plan sha256 27aa0c15...) the emitted night-5 plan differs in exactly two places, both introduced by commit e8af711 'wire canonical control vocabulary and modern device plans': the control token `ventl` is spelled `cameraFeedLight` (the same control under the canonical vocabulary, no timing or semantic change), and the opening gains one row, `1916 hold cameraFeedLight 100` -- the first safe camera-feed flash after the split raise, which makes the opening symmetric with the loop's existing 10400 ms stun refresh. Nothing else moved.",
+  "hashDrift": "The 2026-09-08 binding was also invalidated by two edits that changed NO plan byte: 685fd01 added the inert knob `loopContactMs` and e8af711 added `openStunLeadMs`/`openStunHoldMs`, and `validateWinner` expands the named preset \"KNOBS0\" into the full knob object before hashing, so policyHash tracks the knob-set SHAPE and not only the delivered plan. At 685fd01 the night-5 plan sha256 was still 27aa0c15 while winnerHash had already moved d48ce3da -> 229d59c4. This is recorded as a known brittleness of the binding, not as a reason to weaken it.",
+  "evidence": [
+    {
+      "id": "qualification-hid-mediaprojection-night5-20260908",
+      "date": "2026-09-08",
+      "claim": "the binding this record supersedes; same transport, same winner file, earlier plan bytes"
+    },
+    {
+      "id": "gate-toys-night5-3000seeds-20260908",
+      "date": "2026-09-08",
+      "claim": "the superseded plan: night 5 normal 3000/3000, worst 100/100, no-split control 1031/3000"
+    },
+    {
+      "id": "gate-toys-night5-3000seeds-20260911",
+      "date": "2026-09-11",
+      "claim": "the bound plan, re-gated at HEAD: night 5 normal 3000/3000, worst 3000/3000, no-split control 1032/3000 (cohort 5c54438d0aa3). The worst-case lane improves from 100/100 to 3000/3000 and the no-split control is unchanged within one seed, so the added opening flash is not a regression"
+    },
+    {
+      "id": "night5-phase-safe-arm-20260911",
+      "date": "2026-09-11",
+      "claim": "the last retained device run under the superseded binding: arm verified on the first attempt, 1320 ms of phase lag, terminal static at 80 s, no Night 5 win"
+    }
+  ],
+  "openLimits": [
+    "no minus-toys device run has yet reached 6 AM on Night 5 under any binding; this authorizes the attempt and claims nothing about its outcome",
+    "the transport measurement behind it is the 2026-09-06 one, not a fresh sample for these plan bytes",
+    "the added `1916 hold cameraFeedLight 100` row has model evidence only: no device run has yet delivered it",
+    "the model's response to delivered phase is BANDED, not a single budget: over one 1000 ms game second it loses on [116.67,166.67), [316.67,366.67), [416.67,800) and [916.67,966.67) (phase-reconstruct.mjs model.lossBands, night 5). 53.3% of phases lose, and the 2026-09-11 runs' 1320 ms and 6695 ms lags land at 320 ms and 695 ms -- inside two of those bands, which is consistent with both deaths.",
+    "the governing open gap is the night ORIGIN, not the arm: the 2026-09-12 observe-once run reconstructed origin.bracketedByMs = 1852 ms with a lifecycle observation cadence of p50 1986 ms and max 11301 ms. A bracket wider than the 1000 ms phase period leaves the delivered phase unconstrained, so the model's own uncontrolled-phase result -- 1375/3000 wins -- is the ceiling for any arm mode until the origin is pinned."
+  ]
+}

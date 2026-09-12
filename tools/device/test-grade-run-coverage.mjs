@@ -22,6 +22,12 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // deleting one is how a script gets promoted into grade-run.sh.
 const EXCLUDED = new Map([
   ['grade-run.sh', 'the pipeline itself'],
+  ['night5-run.sh', 'the attempt driver that CALLS grade-run.sh from its exit trap -- wiring it in would recurse; it produces the run this pipeline grades'],
+  ['night5-modal-observer.mjs', 'passive on-device collector -- it records FRAME/READ rows during a run and sends no input; the artifacts it writes are graded by the steps above rather than by itself'],
+  ['hid-intersection-probe.mjs', 'device probe generator -- emits an intersection stream to a phone rather than grading a night run'],
+  ['hid-intersection-probe.sh', 'device probe runner for hid-intersection-probe.mjs; it acts on a phone rather than grading a run'],
+  ['intersection-state-gate.mjs', 'pure control-intersection state gate consumed by the executor, gated by test-intersection-state-gate.mjs; it decides a press rather than grading a run'],
+  ['touch-contamination-guard.sh', 'pre-run guard that refuses a session whose touch state is already contaminated; it runs BEFORE a run exists to grade'],
   ['screenstate.py', 'the live alive/dead authority; grade-night.py and desync-scan.py apply its predicate to recordings'],
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
   ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],

@@ -32,12 +32,12 @@
     },
     {
       "id": "test:device:calibration",
-      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && node tools/device/test-hid-monitorraise-probe.mjs && node tools/device/test-hid-maskraise-probe.mjs && node tools/device/test-hid-transition-probe.mjs",
+      "command": "node apps/device/test/clock-map.test.js && node apps/device/test/seam-calibration.test.js && node apps/device/test/calibration-state-rule.test.js && python3 tools/device/test-mask-calibrate.py && python3 tools/device/test-monitorraise-watch.py && python3 tools/device/test-maskraise-grade.py && python3 tools/device/test-calibration-stability.py && python3 tools/device/test-inputtrace.py && python3 tools/device/test-input-frame-align.py && python3 tools/device/test-actuation-frame-metric.py && node tools/device/test-intersection-state-gate.mjs && node tools/device/test-hid-intersection-probe.mjs && node tools/device/test-hid-monitorraise-probe.mjs && node tools/device/test-hid-maskraise-probe.mjs && node tools/device/test-hid-transition-probe.mjs",
       "lifecycle": "supported"
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -1885,6 +1885,18 @@
       "id": "tools/device/test-grade-run-coverage.mjs",
       "invocation": "tools/device/test-grade-run-coverage.mjs",
       "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/night5-run.sh",
+      "invocation": "tools/device/night5-run.sh --label NAME [--bundle DIR] [--night N] [--arm-blocking] [--no-video] [--dry-run]",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/run-report.mjs",
+      "invocation": "tools/device/run-report.mjs --run artifacts/campaign-... [--json]",
+      "kind": "report",
       "lifecycle": "supported"
     },
     {

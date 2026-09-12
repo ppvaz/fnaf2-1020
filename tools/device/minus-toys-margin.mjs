@@ -20,6 +20,7 @@
 // it inherits the engine's Golden-Freddy-interval and Toy-cam-stall gaps
 // (plans/02 sec.5) -- read it as "the model has at most this much slack here".
 import { OPENING, LOOP, replay } from './minus-toys-plan.mjs';
+import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 
 const arg = (k, d) => {
   const v = process.argv.find(a => a.startsWith(`--${k}=`));
@@ -92,6 +93,55 @@ const phaseEarly = edge(k => () => -k);
 console.log(`\n  WHOLE-SCHEDULE PHASE (epoch/T0 error)   ` +
   `early ${String(phaseEarly).padStart(5)}   late ${String(phaseLate).padStart(5)}`);
 console.log(`  n2-minustoys-0117 reported a 302 ms epoch bracket alone.`);
+
+// Arm-gated SUFFIX phase: the error the device executor actually makes.
+//
+// The whole-schedule figure above prices an epoch/T0 misalignment, which moves
+// every press together. The modern executor does not do that in `blocking`
+// arm mode. It parks the opening prefix -- everything before the first wind --
+// runs it on the night's own clock, then blocks on the CAM 09 + CAM 11 arm
+// observation and releases the REMAINDER when the pair confirms. Whatever wall
+// time that observation costs past the plan's own cursor is added to every
+// press from the first wind onward and to nothing before it (`phaseLagMs` in
+// apps/device/src/adb-device-local-executor.js).
+//
+// **This response is BANDED, not a cliff, and `edge()` above must not be used
+// on it.** `edge()` scans outward and stops at the first failure, which is
+// correct only for a contiguous basin. The model's response to phase repeats
+// on the game's 1-second grid with several separate loss bands inside it, so a
+// stop-at-first-failure scan reports the first band edge and silently hides
+// every winning window beyond it. Read on 2026-09-11 that way, the first edge
+// (408 ms) was mistaken for the whole budget -- which would have condemned a
+// 1320 ms run that the model actually scores 3000/3000.
+//
+// `phase-reconstruct.mjs` is the authority here: it already computes the loss
+// bands and reports a measured run's delivered offset against them. This
+// section exists so the margin map does not imply a single number.
+const ARM_AT = OPENING.find(row => row[1] === 'hold' && row[2] === V.wind)?.[0];
+if (ARM_AT === undefined) {
+  console.log('\n  ARM-GATED SUFFIX PHASE  UNKNOWN (the opening has no wind row to park before)');
+} else {
+  const PERIOD = 1000;                   // the game second the response repeats on
+  const SCAN = Math.round(1000 / 60);    // one frame
+  const bands = [];
+  let open = null;
+  for (let lag = 0; lag <= PERIOD; lag += SCAN) {
+    const lost = !allSurvive((cycle, index, at) => (at >= ARM_AT ? lag : 0));
+    if (lost && open === null) open = lag;
+    if (!lost && open !== null) { bands.push([open, lag]); open = null; }
+  }
+  if (open !== null) bands.push([open, PERIOD]);
+  console.log(`\n  ARM-GATED SUFFIX PHASE (arm-release lag, from +${ARM_AT}), ` +
+    `over one ${PERIOD} ms game second:`);
+  if (!bands.length) console.log('    no loss band found at this seed count');
+  for (const [from, to] of bands)
+    console.log(`    LOSS band  ${String(from).padStart(4)}..${String(to).padStart(4)} ms`);
+  const lost = bands.reduce((total, [from, to]) => total + (to - from), 0);
+  console.log(`    ${((1 - lost / PERIOD) * 100).toFixed(1)}% of phases survive; ` +
+    'a lag is safe only INSIDE a winning window, and the windows repeat every second.');
+  console.log('    #arm-verify-until cannot be set from one number: it must land the ' +
+    'delivered\n    offset in a window, which requires the ORIGIN to be pinned first.');
+}
 
 const budget = 330;
 const tightPhase = [phaseEarly, phaseLate].some(v => /^\d+$/.test(v) && +v < budget);

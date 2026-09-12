@@ -1292,7 +1292,8 @@
     {
       "file": "tools/device/minus-toys-margin.mjs",
       "imports": [
-        "./minus-toys-plan.mjs"
+        "./minus-toys-plan.mjs",
+        "@fnaf2-1020/core/control"
       ]
     },
     {
@@ -1394,6 +1395,14 @@
       "imports": [
         "../model/hid-device-pilot.mjs",
         "@fnaf2-1020/core/mechanics",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/run-report.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
         "node:url"
       ]
     },
