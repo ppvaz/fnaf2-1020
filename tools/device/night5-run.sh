@@ -411,13 +411,26 @@ trap on_exit EXIT
 CAMPAIGN=(node apps/device/src/cli.js campaign
   --profile "$PROFILE" --serial "$SERIAL" --nights "$NIGHT" --max-attempts 1
   --save-cursor "$SAVE_CURSOR" --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
-# Place the schedule release at the helper's latched night onset + this epoch
+# Place the schedule release at the helper's latched night onset + an epoch
 # (mod one game second) instead of wherever the ~1 Hz office classifier fires.
-# 233 is the centre of the winning band [166.67, 300] that phase-reconstruct's
-# model reports for binding fnv1a-81b5e51c (epochs 233/1233/2233 all 3000/3000);
-# a different binding needs its own band. NIGHT_ANCHOR_AIM_MS=off releases on
-# the classifier as before. Every anchor refusal also releases at once.
-NIGHT_ANCHOR_AIM_MS="${NIGHT_ANCHOR_AIM_MS:-233}"
+# The aim is NOT a literal here: it is registered per binding in
+# tools/device/fact-register.mjs (ANCHOR_AIMS) next to the evidence that
+# derived it, and looked up by the bundle's own winner hash, so a rebinding
+# cannot inherit a number priced for another policy. No entry, or an entry
+# whose evidence fails its checks, means no anchor: the release happens the
+# old way and the reason is printed. NIGHT_ANCHOR_AIM_MS=off forces that;
+# NIGHT_ANCHOR_AIM_MS=<ms> overrides the register (say why in the label).
+# Every anchor refusal at run time also releases at once.
+BUNDLE_WINNER_HASH="$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).winnerHash ?? ""))' "$BUNDLE/manifest.json" 2>/dev/null || true)"
+if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
+  if aim="$(node tools/device/fact-register.mjs --anchor-aim "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-aim.err")"; then
+    NIGHT_ANCHOR_AIM_MS="$aim"
+    printf 'anchor   aim %s ms from the fact register for binding %s\n' "$aim" "$BUNDLE_WINNER_HASH"
+  else
+    NIGHT_ANCHOR_AIM_MS=off
+    printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-aim.err")"
+  fi
+fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
   CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS")
   printf 'anchor   release at night onset + %s ms (mod 1000)\n' "$NIGHT_ANCHOR_AIM_MS"

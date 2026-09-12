@@ -23,6 +23,7 @@
 // That disagreement is the signature of gold sitting under the project's nose.
 //
 //   node tools/device/fact-register.mjs [--json] [--out FILE]
+//   node tools/device/fact-register.mjs --anchor-aim WINNER_HASH   (prints the aim, exit 3 if none)
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,19 +77,75 @@ export const FACTS = Object.freeze({
     ],
   },
   // Same: the Python classifier is the authority that a night is running. The
-  // native read may only SHARPEN the timestamp inside the bracket the authority
-  // established (adb-device-local-executor.js, origin.refined).
+  // native reads may only SHARPEN the timestamp inside the bracket the authority
+  // established: `origin.refined` (adb-device-local-executor.js) and, since
+  // 2026-09-12, the helper's NightOnsetLatch, which places the RELEASE at the
+  // first held FNAF2_NIGHT frame + the registered aim (see ANCHOR_AIMS). The
+  // latch never authorises actuation -- lifecycle's state=night still does --
+  // and every anchor refusal releases as before (origin.anchor: unavailable).
   nightOrigin: {
     authorityFixedByCharter: true,
     question: 'when did the night actually start?',
-    evidenceRanking: ['native-screen', 'python-classifier', 'intro-handoff'],
+    evidenceRanking: ['native-onset-latch', 'native-screen', 'python-classifier', 'intro-handoff'],
     detect: [
+      { evidence: 'native-onset-latch', match: /nightOnsetImageNs|latchedNightOnsetMs|origin\.anchor|nightOnsetFromFrames/ },
       { evidence: 'native-screen', match: /NATIVE_NIGHT_SCREEN|nativeNightAt/ },
       { evidence: 'python-classifier', match: /'lifecycle'|lifecycle\(bridge/ },
       { evidence: 'intro-handoff', match: /intro-handoff/ },
     ],
   },
 });
+
+// Where the anchored release aims, PER BINDING. The aim is a number the
+// executor acts on, so it lives here with the evidence that derived it, not
+// as a flag default with a comment (mistake register 9: a measurement in a
+// comment is not a gate). A binding without an entry gets no anchor:
+// night5-run.sh asks `--anchor-aim <winnerHash>` and releases the old way
+// when this refuses. test-fact-register.mjs checks that every entry's
+// evidence names the same binding, that the aim sits inside one of that
+// evidence's winning bands with margin, that its 3000-seed confirmations are
+// clean, and that the binding the newest Night 5 qualification binds HAS an
+// entry -- so a rebinding cannot inherit an aim priced for another policy.
+export const ANCHOR_AIMS = Object.freeze({
+  'fnv1a-81b5e51c': Object.freeze({
+    night: 5,
+    aimMs: 233,
+    periodMs: 1000,
+    evidence: 'docs/evidence/night5-anchor-aim-20260912.json',
+    reason: 'centre of the winning band [166.67, 300]: every model row there is 5 mask ticks and 3000/3000; k is free (233/1233/2233 all 3000/3000)',
+  }),
+});
+
+/** Minimum distance, in ms, an aim must keep from both edges of its band. */
+export const ANCHOR_AIM_MIN_MARGIN_MS = 50;
+
+/**
+ * The registered aim for a binding, with its evidence read and checked, or a
+ * refusal naming why. Never guesses: an unknown binding is `null`.
+ * @param {string} winnerHash
+ */
+export function anchorAimFor(winnerHash) {
+  const entry = ANCHOR_AIMS[winnerHash];
+  if (!entry) return { ok: false, reason: `no anchor aim registered for binding ${winnerHash}` };
+  let evidence;
+  try {
+    evidence = JSON.parse(readFileSync(join(ROOT, entry.evidence), 'utf8'));
+  } catch (error) {
+    return { ok: false, reason: `anchor aim evidence ${entry.evidence} unreadable: ${error.message}` };
+  }
+  if (evidence.binding !== winnerHash)
+    return { ok: false, reason: `anchor aim evidence ${entry.evidence} is for binding ${evidence.binding}, not ${winnerHash}` };
+  if (evidence.night !== entry.night || evidence.aimMs !== entry.aimMs)
+    return { ok: false, reason: `anchor aim evidence ${entry.evidence} disagrees with the register (night ${evidence.night}, aim ${evidence.aimMs})` };
+  const band = (evidence.winningBands ?? []).find(b => b.fromMs + ANCHOR_AIM_MIN_MARGIN_MS <= entry.aimMs &&
+    entry.aimMs <= b.toMs - ANCHOR_AIM_MIN_MARGIN_MS);
+  if (!band)
+    return { ok: false, reason: `aim ${entry.aimMs} ms is not inside a winning band of ${entry.evidence} with ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin` };
+  const unclean = (evidence.confirmations3000 ?? []).filter(c => c.wins !== c.seeds);
+  if (!evidence.confirmations3000?.length || unclean.length)
+    return { ok: false, reason: `3000-seed confirmations in ${entry.evidence} are missing or not clean` };
+  return { ok: true, ...entry, band, winnerHash };
+}
 
 const SEARCH_DIRS = ['tools/device', 'apps/device/src', 'packages/adapters/src'];
 const SKIP = /^(test-|_)|\.test\.js$|fact-register/;
@@ -148,6 +205,15 @@ export function render(value) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  const aimIndex = process.argv.indexOf('--anchor-aim');
+  if (aimIndex >= 0) {
+    // `--anchor-aim WINNER_HASH`: print the registered aim (ms) and exit 0, or
+    // print the refusal and exit 3, so a shell caller can fall back loudly.
+    const found = anchorAimFor(process.argv[aimIndex + 1] ?? '');
+    if (found.ok) { process.stdout.write(`${found.aimMs}\n`); process.exit(0); }
+    process.stderr.write(`fact register: ${found.reason}\n`);
+    process.exit(3);
+  }
   const value = build();
   const index = process.argv.indexOf('--out');
   if (index >= 0 && process.argv[index + 1]) {

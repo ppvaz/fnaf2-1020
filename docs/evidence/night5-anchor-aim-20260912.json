@@ -1,0 +1,531 @@
+{
+  "schema": "device-night5-anchor-aim-v1",
+  "recordedAt": "2026-09-12",
+  "claimLevel": "MODEL_ONLY",
+  "binding": "fnv1a-81b5e51c",
+  "qualification": "docs/evidence/qualification-hid-mediaprojection-night5-20260912-contact-final.json",
+  "night": 5,
+  "aimMs": 233,
+  "periodMs": 1000,
+  "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame on the helper image clock (@fnaf2-1020/adapters/night-onset, NIGHT_ONSET_HOLD_MS 500); positive epoch fires the schedule later (minus-toys-plan: when = base + at + epochMs); the executor delivers T0 = onset + aimMs + k*1000",
+  "why": "of the three Night 5 epochs measured on 2026-09-12 (rep1 885.6, rep2 365.1, rep3 556.8), two fell in the model 4-mask-tick Balloon Boy bands and died the model way; the phone had drawn the epoch on every run. 233 is the centre of the winning band [166.67, 300]: every row is 3000/3000 and 5 ticks, +-67 ms to the nearest losing row",
+  "model": {
+    "tool": "tools/device/minus-toys-plan.mjs replay({night:5, seed, epochMs}) with the same seed cohort phase-reconstruct.mjs uses",
+    "fps": 60,
+    "ventMaskTicks": 5,
+    "rowSeeds": 100,
+    "rows": [
+      {
+        "epochMs": 0,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 16.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 33.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 50,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 66.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 83.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 100,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 116.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 133.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 150,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 166.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 183.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 200,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 216.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 233.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 250,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 266.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 283.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 300,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 316.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 333.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 350,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 366.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 383.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 416.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 433.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 450,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 24,
+          "foxy": 76
+        }
+      },
+      {
+        "epochMs": 466.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 35,
+          "foxy": 65
+        }
+      },
+      {
+        "epochMs": 483.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 516.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 533.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 550,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 566.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 583.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 616.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 633.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 650,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 666.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 683.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 68,
+          "inside-office": 32
+        }
+      },
+      {
+        "epochMs": 700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 66,
+          "inside-office": 34
+        }
+      },
+      {
+        "epochMs": 716.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 733.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 750,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 766.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 69,
+          "inside-office": 31
+        }
+      },
+      {
+        "epochMs": 783.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 69,
+          "inside-office": 31
+        }
+      },
+      {
+        "epochMs": 800,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 816.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 833.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 850,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 866.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 883.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 916.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 933.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 950,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochMs": 966.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 983.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      }
+    ]
+  },
+  "winningBands": [
+    {
+      "fromMs": 0,
+      "toMs": 116.67
+    },
+    {
+      "fromMs": 166.67,
+      "toMs": 316.67
+    },
+    {
+      "fromMs": 800,
+      "toMs": 916.67
+    },
+    {
+      "fromMs": 966.67,
+      "toMs": 1000
+    }
+  ],
+  "confirmations3000": [
+    {
+      "epochMs": 166.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 200,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 233.33,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 266.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 300,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 1233.33,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2233.33,
+      "seeds": 3000,
+      "wins": 3000
+    }
+  ],
+  "kIsFree": "epochs 233.33, 1233.33 and 2233.33 all score 3000/3000, so the executor may release a whole second later at no model cost",
+  "openLimits": [
+    "the aim is where the SCHEDULE lands; the actuation latency L (30-110 ms, unmeasured) shifts every effect later and is a separate quantity",
+    "the delivered epoch of an anchored run must be quoted from phase-reconstruct --frame-trace, never the lifecycle bracket; delivered minus aim is the clock estimator error plus release jitter",
+    "a rebinding changes the bands: derive a new file for its winner hash before anchoring on it"
+  ]
+}

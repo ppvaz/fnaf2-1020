@@ -185,6 +185,7 @@
         "./campaign-composition.js",
         "./campaign-runner.js",
         "./custom-night.js",
+        "./night-anchor.js",
         "./physical-ports.js",
         "@fnaf2-1020/adapters",
         "node:child_process",
@@ -203,9 +204,17 @@
       ]
     },
     {
+      "file": "apps/device/src/night-anchor.js",
+      "imports": [
+        "@fnaf2-1020/adapters/night-onset"
+      ]
+    },
+    {
       "file": "apps/device/src/physical-ports.js",
       "imports": [
-        "node:child_process"
+        "@fnaf2-1020/adapters/transports/cue-helper",
+        "node:child_process",
+        "node:net"
       ]
     },
     {
@@ -334,6 +343,13 @@
         "../src/modern-campaign-ports.js",
         "node:assert/strict",
         "node:test"
+      ]
+    },
+    {
+      "file": "apps/device/test/night-anchor.test.js",
+      "imports": [
+        "../src/night-anchor.js",
+        "node:assert/strict"
       ]
     },
     {
@@ -575,6 +591,13 @@
       "file": "packages/adapters/test/monitor-rule.test.js",
       "imports": [
         "../src/monitor-rule.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/adapters/test/night-onset.test.js",
+      "imports": [
+        "@fnaf2-1020/adapters/night-onset",
         "node:assert/strict"
       ]
     },
@@ -1355,6 +1378,7 @@
     {
       "file": "tools/device/phase-reconstruct.mjs",
       "imports": [
+        "@fnaf2-1020/adapters/night-onset",
         "@fnaf2-1020/core/mechanics",
         "node:fs",
         "node:path",
@@ -1524,7 +1548,11 @@
     {
       "file": "tools/device/test-fact-register.mjs",
       "imports": [
-        "./fact-register.mjs"
+        "./fact-register.mjs",
+        "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
       ]
     },
     {

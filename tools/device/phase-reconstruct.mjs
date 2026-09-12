@@ -22,6 +22,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { nightOnsetFromFrames } from '@fnaf2-1020/adapters/night-onset';
 
 export const SCHEMA = 'device-phase-reconstruction-v1';
 
@@ -41,8 +42,11 @@ const fail = message => { throw new Error(`phase reconstruction: ${message}`); }
 // bracketed it by 2358-3261 ms across the 2026-09-12 runs -- wider than the
 // 1000 ms phase period the model's loss bands live in.
 
-/** ScreenIdentity.java: UNKNOWN 0, CUE_HELPER 1, FNAF2_NIGHT 2, FNAF2_MENU 3. */
-export const SCREEN_FNAF2_NIGHT = 2;
+// The night's onset is defined ONCE, in @fnaf2-1020/adapters/night-onset, and
+// used on both sides: live by the executor's anchored release (the helper's
+// NightOnsetLatch) and post hoc here over the frame trace. `firstNightFrame`
+// stays as the name this tool's callers use; it is that rule.
+export { SCREEN_FNAF2_NIGHT, NIGHT_ONSET_HOLD_MS } from '@fnaf2-1020/adapters/night-onset';
 
 /** Rows of a `fnaf2-frame-trace-v3` TSV, in helper-monotonic milliseconds. */
 export function parseFrameTrace(text) {
@@ -57,26 +61,13 @@ export function parseFrameTrace(text) {
 }
 
 /**
- * The first frame the HELPER called FNAF2_NIGHT and then kept calling it.
- *
- * `holdFrames` guards against a single-frame flicker being read as the night;
- * the returned `resolutionMs` is the gap to the frame before, which is the
- * entire resolution this measurement has and is reported rather than hidden.
+ * The first frame the HELPER called FNAF2_NIGHT and then kept calling it for
+ * NIGHT_ONSET_HOLD_MS of image time (the shared rule; ~30 frames at 60 Hz).
+ * `resolutionMs` is the gap to the frame before: the entire resolution this
+ * measurement has, reported rather than hidden.
  */
-export function firstNightFrame(rows, { holdFrames = 30 } = {}) {
-  let run = 0;
-  let candidate = -1;
-  for (let index = 0; index < rows.length; index += 1) {
-    if (rows[index].screenIdentity !== SCREEN_FNAF2_NIGHT) { run = 0; continue; }
-    run += 1;
-    if (run === 1) candidate = index;
-    if (run < holdFrames) continue;
-    const prior = candidate > 0 ? rows[candidate - 1] : null;
-    return { imageMs: rows[candidate].imageMs, index: candidate,
-      resolutionMs: prior ? rows[candidate].imageMs - prior.imageMs : null,
-      priorIdentity: prior ? prior.screenIdentity : null };
-  }
-  return null;
+export function firstNightFrame(rows, { holdMs } = {}) {
+  return nightOnsetFromFrames(rows, holdMs === undefined ? {} : { holdMs });
 }
 
 /**

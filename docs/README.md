@@ -38,6 +38,7 @@ controller research, and device evidence form one program.
 | See the Night 5 mask window's measured position tolerance, and why the gate killed its own cycle | [`evidence/night5-mask-window-tolerance-20260912.md`](evidence/night5-mask-window-tolerance-20260912.md) |
 | See why longer loop cycles were refuted, and what route changes are now closed | [`evidence/night5-longer-cycle-refuted-20260912.md`](evidence/night5-longer-cycle-refuted-20260912.md) |
 | See the hall flash graded per cycle from the trace and the video, the mask-off lockout it runs into, where `hallOffsetMs` can move in the model, and the two clean-contact deaths | [`evidence/night5-hall-lockout-and-offset-sweep-20260912.json`](evidence/night5-hall-lockout-and-offset-sweep-20260912.json) |
+| See where the anchored Night 5 release aims and the model bands that priced it | [`evidence/night5-anchor-aim-20260912.json`](evidence/night5-anchor-aim-20260912.json) |
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
 | Read why the Withered Bonnie visual cause model was withdrawn, and what metric replaced euclid | [`evidence/withered-bonnie-visual-model-withdrawn-20260912.md`](evidence/withered-bonnie-visual-model-withdrawn-20260912.md) |
 | Run device work safely | [`operations/DEVICE-SAFETY.md`](operations/DEVICE-SAFETY.md) |

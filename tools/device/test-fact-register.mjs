@@ -18,7 +18,13 @@
 // the Python classifier is authoritative BECAUSE a detector that knows one way
 // to be dead must not be what says you are alive -- are reported and never
 // ranked.
-import { build, FACTS } from './fact-register.mjs';
+import { execSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { build, FACTS, ANCHOR_AIMS, ANCHOR_AIM_MIN_MARGIN_MS, anchorAimFor } from './fact-register.mjs';
+
+const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..'));
 
 const ACTUATING = 'apps/device/src';
 let failed = 0;
@@ -54,9 +60,44 @@ for (const [fact, info] of Object.entries(register.facts)) {
   }
 }
 
+// The anchored release aims where the register says, and the register says
+// where the evidence measured -- for the binding that is actually bound.
+for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
+  const found = anchorAimFor(hash);
+  if (!found.ok) { fail(`anchor aim ${hash}: ${found.reason}`); continue; }
+  process.stdout.write(`anchor aim ${hash}: ${entry.aimMs} ms inside [${found.band.fromMs}, ${found.band.toMs}] ` +
+    `with >= ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin, ${JSON.parse(readFileSync(join(ROOT, entry.evidence), 'utf8')).confirmations3000.length} clean 3000-seed rows\n`);
+}
+// The newest Night 5 qualification names the binding a run will carry; that
+// binding must have an aim, or the next run anchors on nothing (which
+// night5-run.sh treats as "release the old way" -- loudly, but silently to
+// the model).
+// "Newest" is by the commit that last touched the file, not by name: two
+// qualifications bound on the same day sort by name in the wrong order.
+const committedAt = name => {
+  try {
+    return Number(execSync(`git log -1 --format=%ct -- ${JSON.stringify(join('docs/evidence', name))}`,
+      { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()) || 0;
+  } catch { return 0; }
+};
+const qualifications = readdirSync(join(ROOT, 'docs/evidence'))
+  .filter(name => /^qualification-.*night5.*\.json$/.test(name))
+  .sort((a, b) => committedAt(a) - committedAt(b) || a.localeCompare(b));
+if (qualifications.length) {
+  const newest = qualifications.at(-1);
+  const bound = JSON.parse(readFileSync(join(ROOT, 'docs/evidence', newest), 'utf8'));
+  const hash = bound.policyHash ?? bound.winnerHash ?? bound.binding?.winnerHash;
+  if (!hash) fail(`${newest} names no policy/winner hash`);
+  else if (!ANCHOR_AIMS[hash])
+    fail(`${newest} binds ${hash}, which has no anchor aim in ANCHOR_AIMS: derive its winning bands ` +
+      '(docs/evidence/night5-anchor-aim-*.json) before a run anchors on a number priced for another policy');
+  else process.stdout.write(`anchor aim: newest qualification ${newest} binds ${hash}, registered\n`);
+}
+if (!ANCHOR_AIMS['fnv1a-81b5e51c'] || anchorAimFor('fnv1a-00000000').ok)
+  fail('anchorAimFor must refuse an unknown binding');
+
 if (failed) {
-  process.stdout.write(`\nfact register: ${failed} actuating consumer(s) on weaker evidence than ` +
-    'the tree already provides.\n');
+  process.stdout.write(`\nfact register: ${failed} finding(s).\n`);
   process.exit(1);
 }
 process.stdout.write('fact register: every actuating consumer decides on the strongest evidence ' +
