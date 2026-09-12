@@ -1143,6 +1143,10 @@ export class AdbDeviceLocalArtifactExecutor {
     let observer = Promise.resolve();
     let armObserver = Promise.resolve();
     const effectObservers = [];
+    // Correction read-backs, deliberately OFF the schedule's critical path:
+    // they are awaited at teardown so a night never ends with one in flight,
+    // but they never hold a gate release. See the gate body for why.
+    const verifyTasks = [];
     let completionTimer = null;
     /** @type {(phase: string, originAt: number, monitorTransitions: any[], maskTransitions: any[], options?: any) => void} */
     let startControlEffectLedger = () => {};
@@ -1451,22 +1455,51 @@ export class AdbDeviceLocalArtifactExecutor {
               else await touchRemote(this.adb, this.serial, armControl.gateFix);
               correctedAt = Date.now();
             }
-            let verify = null;
+            // The correction's read-back USED TO hold the stream:
+            //
+            //   releaseAt = Math.max(releaseAt, correctedAt + maskSettleMs + 250);
+            //   await waitUntil(correctedAt + maskSettleMs);
+            //
+            // which pushed the release up to 1000 ms past its scheduled point,
+            // because the mask effect needs 358-712 ms to become visible. That
+            // is a diagnostic cost charged to the schedule, and on 2026-09-12
+            // the model priced it: the Night 5 mask window tolerates almost
+            // nothing in POSITION. Holding its length fixed at 4751 ms and
+            // moving it later,
+            //
+            //     +0 ms   3000/3000        +400 ms   0/3000
+            //     +200 ms    0/3000        +800 ms   0/3000
+            //
+            // a 200 ms shift is total collapse, and 200 ms is exactly
+            // LAST_VIEW_SAMPLE_FRAMES (12 frames). So waiting to SEE the
+            // correction converted a cycle that might have been saved into one
+            // that was certainly lost: the gate existed to rescue the cycle and
+            // was reliably killing it instead.
+            //
+            // The corrective contact is already delivered above; the game does
+            // not care whether anyone watched. So release on schedule and read
+            // the verification frame afterwards, off the critical path. The
+            // diagnostic survives as a `control.gate.verify` event; only its
+            // bill to the schedule is gone.
             if (corrected) {
-              // Anchored to the corrective contact, never to the release: the
-              // effect cannot appear before its measured settle, so verifying
-              // against the budget's remainder just re-reads the old state.
-              // The correction owns the settle it needs even when the reads
-              // above have eaten the budget; the overrun is carried as lag
-              // rather than verifying against a state that cannot have moved.
-              releaseAt = Math.max(releaseAt, correctedAt + this.maskSettleMs + 250);
-              await waitUntil(correctedAt + this.maskSettleMs);
-              if (controlStillRunning()) verify = compactControlSample((await readControlState()).sample);
-              const staleFrame = verify !== null && verify.sequence !== null &&
-                String(verify.sequence) === String(sample.sequence);
-              if (staleFrame) status = 'CORRECTION-UNREAD';
-              else if (verify && verify.maskOn !== null && verify.maskOn !== entry.believedMaskOn)
-                status = 'CORRECTION-UNCONFIRMED';
+              const correctionAt = correctedAt;
+              const believed = entry.believedMaskOn;
+              const gateAt = entry.gateAtMs;
+              const priorSequence = sample.sequence;
+              verifyTasks.push((async () => {
+                try {
+                  await waitUntil(correctionAt + this.maskSettleMs);
+                  if (!controlStillRunning()) return;
+                  const verify = compactControlSample((await readControlState()).sample);
+                  const staleFrame = verify !== null && verify.sequence !== null &&
+                    String(verify.sequence) === String(priorSequence);
+                  this.onEvent({ type: 'control.gate.verify', gateAtMs: gateAt,
+                    outcome: staleFrame ? 'CORRECTION-UNREAD'
+                      : verify && verify.maskOn !== null && verify.maskOn !== believed
+                        ? 'CORRECTION-UNCONFIRMED' : 'CORRECTION-CONFIRMED',
+                    correctedAt: correctionAt, verify });
+                } catch { /* a verification that cannot run is not a night failure */ }
+              })());
             }
             this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
               cycle: entry.cycle, nextActionId: entry.nextActionId,
@@ -1474,8 +1507,7 @@ export class AdbDeviceLocalArtifactExecutor {
               maskEvidence: maskEvidenceSource,
               strokeSignature: strokes.signature,
               status, reachedAt, releaseAt, reads, sample,
-              ...(correctedAt === null ? {} : { correctedAt }),
-              ...(verify ? { verify } : {}) });
+              ...(correctedAt === null ? {} : { correctedAt }) });
             if (status === 'UNKNOWN') {
               this.onEvent({ type: 'control.gate.abort', gateAtMs: entry.gateAtMs,
                 reason: sample.maskReason ?? 'mask-state-unavailable' });
@@ -1893,7 +1925,7 @@ export class AdbDeviceLocalArtifactExecutor {
       if (completionTimer !== null) clearTimeout(completionTimer);
       this.nightReleaseAction = null;
       this.unblockNightRelease();
-      await Promise.all([observer, armObserver, ...effectObservers]);
+      await Promise.all([observer, armObserver, ...effectObservers, ...verifyTasks]);
       const anr = await readAnrEvents(this.adb, this.serial);
       if (anr !== null) this.onEvent({ type: 'device.anr', count: anr.length, lines: anr });
       this.child = null; this.running = false;

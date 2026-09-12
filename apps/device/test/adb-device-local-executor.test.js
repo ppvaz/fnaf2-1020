@@ -542,6 +542,52 @@ try {
   assert.ok(!refuteLog.some(event => event.type === 'control.effect.phase' && event.phase === 'remainder'),
     'a gated remainder must not let diagnostic reads delay the physical gate release');
 
+  // A CORRECTION MUST NOT MOVE THE RELEASE.
+  //
+  // The read-back used to hold the stream until `correctedAt + maskSettleMs`
+  // and push `releaseAt` to `correctedAt + maskSettleMs + 250`, so seeing
+  // whether the correction took cost the schedule up to a second. The model
+  // priced that on 2026-09-12: hold the Night 5 mask window at its full 4751 ms
+  // and merely move it later and it scores 3000/3000 at +0 ms and 0/3000 at
+  // +200 ms, +400 ms and +800 ms. The gate was reliably killing the cycle it
+  // existed to rescue.
+  //
+  // The fixture above cannot see this because it sets maskSettleMs to 0 -- it
+  // zeroes the exact constant that caused the defect. This one makes the settle
+  // enormous: if the release is still anchored to it, the delay is unmissable.
+  const settleLog = [];
+  const settleLifecycle = finishAfter(settleLog, event => event.type === 'control.gate');
+  let settleSequence = 0;
+  const settled = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: gateAdb,
+    readyDelayMs: 1, pollMs: 250, observe: settleLifecycle.observe,
+    onEvent: settleLifecycle.onEvent,
+    timing: { pollMs: 1, armSettleMs: 0, armObservationWindowMs: 500, gateRetryGapMs: 0,
+      maskSettleMs: 4000,
+      gateMinSlackMs: 10, gateBudgetMinMs: 10, gateBudgetMaxMs: 20, gateBudgetReserveMs: 40 },
+    observeArm: async () => ({ sequence: ++settleSequence + 500,
+      highlights: ['cam:8', 'cam:11'], viewing: null }),
+    observeControlState: async () => ({ sequence: ++settleSequence, ageUs: 10,
+      screen: 'FNAF2_NIGHT', monitorUp: false, maskOn: null,
+      maskReason: 'ambiguous-threshold', gridLuma: 44, maskEvidence: 'fixture' }) });
+  await settled.execute(fastGateRequest);
+  const settledGates = settleLog.filter(event => event.type === 'control.gate');
+  assert.ok(settledGates.length > 0, 'the settle fixture must reach a gate');
+  const correctedGate = settledGates.find(event => event.status === 'CORRECTED');
+  assert.ok(correctedGate, 'the settle fixture must produce a correction to measure');
+  assert.ok(correctedGate.releaseAt - correctedGate.reachedAt < 4000,
+    'a correction must not anchor the release to the mask settle: the schedule ' +
+    'tolerates ~200 ms of shift and the settle is measured in seconds');
+
+  // The verification is no longer part of the gate event: it cannot be, since
+  // the gate no longer waits for it.
+  assert.ok(!correctedGate.verify,
+    'the gate event must no longer carry a verification it waited for');
+  // It is deliberately NOT asserted to have fired here. This fixture ends the
+  // night on the first gate, so the read-back correctly finds the run already
+  // stopped and emits nothing -- best-effort is the contract, and a
+  // verification that cannot run must never be a night failure. What is
+  // asserted is that it was not paid for on the critical path, above.
+
   // Darkness stays unknown: mask-on and a blacked-out office read alike.
   const darkLog = [];
   const darkLifecycle = finishAfter(darkLog, event => event.type === 'control.gate.abort');

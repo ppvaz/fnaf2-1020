@@ -34,6 +34,7 @@ controller research, and device evidence form one program.
 | Review the generated contract and command catalogs | [`architecture/generated/README.md`](architecture/generated/README.md) |
 | Read the workspace/core decision | [`decisions/0001-workspaces-and-core.md`](decisions/0001-workspaces-and-core.md) |
 | Inspect evidence retention and claim ceilings | [`evidence/README.md`](evidence/README.md) |
+| See the Night 5 mask window's measured position tolerance, and why the gate killed its own cycle | [`evidence/night5-mask-window-tolerance-20260912.md`](evidence/night5-mask-window-tolerance-20260912.md) |
 | See why longer loop cycles were refuted, and what route changes are now closed | [`evidence/night5-longer-cycle-refuted-20260912.md`](evidence/night5-longer-cycle-refuted-20260912.md) |
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
 | Read why the Withered Bonnie visual cause model was withdrawn, and what metric replaced euclid | [`evidence/withered-bonnie-visual-model-withdrawn-20260912.md`](evidence/withered-bonnie-visual-model-withdrawn-20260912.md) |
