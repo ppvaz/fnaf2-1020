@@ -984,7 +984,18 @@ export class AdbDeviceLocalArtifactExecutor {
     this.nightReleaseAction = null;
     this.nightReleaseGranted = false;
     this.nightReleaseGrantedAt = null;
+    this.nightAuthorizedListeners = new Set();
     this.deviceLocal = true;
+  }
+
+  /**
+   * Resolves with the observer's sample time on the next authoritative office
+   * frame of a port-owned night. The composition places the release from this
+   * edge: its own lifecycle poll is slower, and on night5-anchor1 it planned
+   * 2134 ms after this edge, which cost the anchor two whole game seconds.
+   */
+  whenNightAuthorized() {
+    return new Promise(resolve => this.nightAuthorizedListeners.add(resolve));
   }
 
   // The modern campaign opens and qualifies one HID process on the title
@@ -1820,6 +1831,8 @@ export class AdbDeviceLocalArtifactExecutor {
                   // night-go when the port fires, so the schedule's origin is
                   // the placed instant, not this classifier sample.
                   this.onEvent({ type: 'hid.night-authorized', at: observeStartedAt, owner: 'port' });
+                  for (const resolve of this.nightAuthorizedListeners) resolve(observeStartedAt);
+                  this.nightAuthorizedListeners.clear();
                 } else {
                   recordNightGo(refined ?? observeStartedAt, 'lifecycle');
                 }

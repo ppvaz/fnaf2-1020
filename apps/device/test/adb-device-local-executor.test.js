@@ -388,9 +388,16 @@ try {
     readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, sharedHid: () => portHid, nightReleaseOwner: 'port',
     observe: async () => portReleasedAt === null || Date.now() - portReleasedAt < 40 ? 'night' : 'gameover',
     onEvent: event => portEvents.push(event) });
-  const portRelease = setTimeout(() => { portReleasedAt = Date.now(); portOwned.releaseNight(); }, 60);
+  // The port places its release from the executor's own authorization edge.
+  let portAuthorizedAt = null;
+  const portAuthorized = portOwned.whenNightAuthorized().then(at => {
+    portAuthorizedAt = at;
+    return new Promise(resolve => setTimeout(() => { portReleasedAt = Date.now(); portOwned.releaseNight(); resolve(); }, 30));
+  });
   const portResult = await portOwned.execute(request);
-  clearTimeout(portRelease);
+  await portAuthorized;
+  assert.equal(typeof portAuthorizedAt, 'number', 'the authorization edge must resolve with its sample time');
+  assert.ok(portReleasedAt >= portAuthorizedAt, 'the release follows the authorization it was placed from');
   assert.equal(portResult.terminal, 'gameover', 'a port-owned release must keep terminal handling');
   assert.ok(portEvents.some(event => event.type === 'hid.night-authorized'),
     'the office frame must be recorded as an authorization');

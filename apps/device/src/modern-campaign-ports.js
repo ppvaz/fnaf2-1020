@@ -202,12 +202,16 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
-    nightAnchorAimMs = null } = options;
+    nightAnchorAimMs = null, nightAnchorMaxK = null } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
   if (nightAnchorAimMs !== null && !(Number.isFinite(nightAnchorAimMs) && nightAnchorAimMs >= 0 && nightAnchorAimMs < 1000))
     throw new TypeError('nightAnchorAimMs must be null or a millisecond epoch in [0, 1000)');
+  // The aim is only as good as the whole seconds it was confirmed at: an aim
+  // without its register bound would anchor at an unscored k.
+  if (nightAnchorAimMs !== null && !(Number.isInteger(nightAnchorMaxK) && nightAnchorMaxK >= 0))
+    throw new TypeError('nightAnchorAimMs requires nightAnchorMaxK, a non-negative integer');
   if (!['blocking', 'observe-once'].includes(armMode))
     throw new TypeError('armMode must be blocking or observe-once');
   if (profile?.actuator !== 'hid-multi' || profile?.visualSensor !== 'mediaprojection')
@@ -548,7 +552,19 @@ export async function createCampaignPorts(options = {}) {
     const introStartedHostMs = performance.now();
     // Do not accept the night transition on the newspaper/intro card: the
     // authoritative office `night` state establishes the actuator origin.
-    const state = await waitFor(bridge, serial, value => value === 'night', 30000, 'night start');
+    // With an anchor, the executor's observer usually sees the office first
+    // (night5-anchor1: 307 ms after onset, while this poll planned at 2441 ms
+    // and the release slid from k=1 to k=3). Take whichever edge comes first;
+    // the slower poll then ends on its next sample instead of holding the
+    // release, and its failure cannot crash a night the executor authorized.
+    let executorAuthorized = false;
+    const lifecycleNight = waitFor(bridge, serial, value => value === 'night' || executorAuthorized,
+      30000, 'night start');
+    const state = nightAnchorAimMs === null ? await lifecycleNight : await Promise.race([
+      lifecycleNight,
+      localExecutor.whenNightAuthorized().then(() => { executorAuthorized = true; return 'night'; }),
+    ]);
+    if (executorAuthorized) lifecycleNight.catch(() => {});
     // This is the phase-critical handoff. The measurement deliberately leaves
     // setup taps out of the path so the already-ready HID can act immediately
     // after the first authoritative office frame. With an anchor aim the office
@@ -557,7 +573,7 @@ export async function createCampaignPorts(options = {}) {
     if (nightAnchorAimMs === null) localExecutor.releaseNight();
     else await anchorNightRelease({ probe: () => cuePort.probeClock(),
       release: () => localExecutor.releaseNight(), onEvent,
-      aimMs: nightAnchorAimMs, notBeforeHostMs: introStartedHostMs });
+      aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, notBeforeHostMs: introStartedHostMs });
     // The 6th Night and Custom Night menu targets identify the configured
     // night. A story night inside a chained campaign is identified by its
     // selection chain: newGame on an observed fresh save, continue after the

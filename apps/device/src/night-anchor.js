@@ -12,6 +12,13 @@
  * the release arithmetic live in @fnaf2-1020/adapters/night-onset so the live
  * origin and the post-hoc one are the same definition.
  *
+ * `maxK` bounds how many whole game seconds past the onset the release may
+ * land. The epoch response is periodic only so far: for binding fnv1a-81b5e51c
+ * epochs 233/1233/2233 score 3000/3000 but 3233 scores 2673/3000 (Balloon Boy),
+ * and night5-anchor1 released at k=3. The bound comes from the fact register
+ * with the aim; beyond it the anchor refuses rather than deliver a worse epoch
+ * under an "anchored" label.
+ *
  * Never blocks a night: every refusal releases at once, exactly as before
  * anchoring existed, and names why in an `origin.anchor` event. What the
  * events do NOT claim: the delivered epoch (released - onset, mod 1000) minus
@@ -25,18 +32,19 @@ const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, 
 /**
  * @param {{
  *   probe: () => Promise<{offsetMs: number, uncertaintyMs: number, rttMs: number, fields: Record<string, string>}>,
- *   release: () => void, onEvent?: (event: any) => void, aimMs: number, notBeforeHostMs: number,
+ *   release: () => void, onEvent?: (event: any) => void, aimMs: number, maxK: number, notBeforeHostMs: number,
  *   now?: () => number, wallNow?: () => number, sleep?: (ms: number) => Promise<void>,
  *   latchWaitMs?: number, latchPollMs?: number, minLeadMs?: number, maxUncertaintyMs?: number, periodMs?: number,
  * }} options
  */
-export async function anchorNightRelease({ probe, release, onEvent = () => {}, aimMs, notBeforeHostMs,
+export async function anchorNightRelease({ probe, release, onEvent = () => {}, aimMs, maxK, notBeforeHostMs,
   now = () => performance.now(), wallNow = () => Date.now(), sleep = defaultSleep,
   latchWaitMs = 1500, latchPollMs = 100, minLeadMs = 80, maxUncertaintyMs = 15, periodMs = 1000 }) {
   if (typeof probe !== 'function' || typeof release !== 'function')
     throw new TypeError('night anchor needs probe and release functions');
   if (!Number.isFinite(aimMs) || aimMs < 0 || aimMs >= periodMs)
     throw new RangeError('night anchor aim must lie in [0, period)');
+  if (!Number.isInteger(maxK) || maxK < 0) throw new TypeError('night anchor needs a non-negative integer maxK');
   if (!Number.isFinite(notBeforeHostMs)) throw new TypeError('night anchor needs a finite notBeforeHostMs');
 
   const fallback = (reason, detail = {}) => {
@@ -74,6 +82,9 @@ export async function anchorNightRelease({ probe, release, onEvent = () => {}, a
 
   const { releaseHostMs, k } = anchoredReleaseAt({ onsetDeviceMs, deviceToHostOffsetMs: clock.offsetMs,
     aimMs, periodMs, earliestHostMs: planAt + minLeadMs });
+  if (k > maxK)
+    return fallback('k-unreachable', { ...measured, onsetDeviceMs, onsetHostMs, k, maxK,
+      plannedAfterOnsetMs: planAt - onsetHostMs });
   onEvent({ type: 'origin.anchor', status: 'scheduled', aimMs, k, onsetDeviceMs, onsetHostMs, releaseHostMs,
     leadMs: releaseHostMs - planAt, hostClock: 'performance-now-ms', wallMinusHostMs: wallNow() - now(), ...measured });
 

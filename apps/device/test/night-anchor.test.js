@@ -28,7 +28,7 @@ const sample = (onsetNs, { offsetMs = 5000, uncertaintyMs = 3 } = {}) => ({
 // Latched on the first read: the next whole second that clears the lead.
 {
   const { state, options } = harness({ startMs: 6300, probes: [sample('1000000000')] });
-  const result = await anchorNightRelease({ ...options, aimMs: 233, notBeforeHostMs: 0 });
+  const result = await anchorNightRelease({ ...options, aimMs: 233, maxK: 2, notBeforeHostMs: 0 });
   assert.equal(result.status, 'released');
   assert.equal(result.k, 1);
   assert.deepEqual(state.releases, [7233], 'released exactly once, on the aim, never early');
@@ -41,7 +41,7 @@ const sample = (onsetNs, { offsetMs = 5000, uncertaintyMs = 3 } = {}) => ({
 // Not yet latched: keep reading inside the bound, then anchor.
 {
   const { state, options } = harness({ startMs: 6300, probes: [sample('-1'), sample('-1'), sample('1000000000')] });
-  const result = await anchorNightRelease({ ...options, aimMs: 233, notBeforeHostMs: 0 });
+  const result = await anchorNightRelease({ ...options, aimMs: 233, maxK: 2, notBeforeHostMs: 0 });
   assert.equal(result.status, 'released');
   assert.equal(state.probeCalls, 3);
   assert.equal(state.releases.length, 1);
@@ -57,11 +57,14 @@ const refusals = [
   ['offset-uncertain', [sample('1000000000', { uncertaintyMs: 40 })], {}],
   ['onset-predates-intro', [sample('1000000000')], { notBeforeHostMs: 6200 }],
   ['onset-in-future', [sample('9000000000')], {}],
+  // Planned 3.3 s after the onset: k=3 would be needed, outside the clean range.
+  ['k-unreachable', [sample('1000000000')], { startMs: 9300 }],
 ];
 for (const [reason, probes, extra] of refusals) {
-  const { state, options } = harness({ startMs: 6300, probes });
+  const { startMs = 6300, ...overrides } = extra;
+  const { state, options } = harness({ startMs, probes });
   const startedAt = state.t;
-  const result = await anchorNightRelease({ ...options, aimMs: 233, notBeforeHostMs: 0, ...extra });
+  const result = await anchorNightRelease({ ...options, aimMs: 233, maxK: 2, notBeforeHostMs: 0, ...overrides });
   assert.equal(result.status, 'unavailable', reason);
   assert.equal(result.reason, reason);
   assert.equal(state.releases.length, 1, `${reason} must still release the night once`);
@@ -70,5 +73,6 @@ for (const [reason, probes, extra] of refusals) {
 }
 
 assert.rejects(() => anchorNightRelease({ probe: async () => ({}), release: () => {}, aimMs: 1000, notBeforeHostMs: 0 }), RangeError);
+await assert.rejects(() => anchorNightRelease({ probe: async () => ({}), release: () => {}, aimMs: 233, notBeforeHostMs: 0 }), /maxK/);
 
-console.log('night anchor: aimed release, bounded latch wait, and every refusal releases once');
+console.log('night anchor: aimed release, bounded latch wait, k cap, and every refusal releases once');

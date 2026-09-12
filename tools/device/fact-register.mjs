@@ -24,6 +24,7 @@
 //
 //   node tools/device/fact-register.mjs [--json] [--out FILE]
 //   node tools/device/fact-register.mjs --anchor-aim WINNER_HASH   (prints the aim, exit 3 if none)
+//   node tools/device/fact-register.mjs --anchor-max-k WINNER_HASH (prints maxK, exit 3 if none)
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -225,6 +226,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     const found = anchorAimFor(process.argv[aimIndex + 1] ?? '');
     if (found.ok) { process.stdout.write(`${found.aimMs}\n`); process.exit(0); }
     process.stderr.write(`fact register: ${found.reason}\n`);
+    process.exit(3);
+  }
+  const maxKIndex = process.argv.indexOf('--anchor-max-k');
+  if (maxKIndex >= 0) {
+    // `--anchor-max-k WINNER_HASH`: the most whole seconds past the onset the
+    // aim is confirmed for. The executor refuses to anchor beyond it, and an
+    // aim with no bound is refused here, so no caller anchors at an unscored k.
+    const hash = process.argv[maxKIndex + 1] ?? '';
+    const found = anchorAimFor(hash);
+    if (found.ok && Number.isInteger(found.maxK)) { process.stdout.write(`${found.maxK}\n`); process.exit(0); }
+    process.stderr.write(`fact register: ${found.ok ? `binding ${hash} registers an aim but no maxK` : found.reason}\n`);
     process.exit(3);
   }
   const value = build();

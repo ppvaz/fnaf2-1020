@@ -420,7 +420,12 @@ CAMPAIGN=(node apps/device/src/cli.js campaign
 # whose evidence fails its checks, means no anchor: the release happens the
 # old way and the reason is printed. NIGHT_ANCHOR_AIM_MS=off forces that;
 # NIGHT_ANCHOR_AIM_MS=<ms> overrides the register (say why in the label).
-# Every anchor refusal at run time also releases at once.
+# The aim is confirmed only at whole seconds 0..maxK past the onset -- on
+# binding fnv1a-81b5e51c epoch 3233 scores 2673/3000 and night5-anchor1
+# delivered exactly that k -- so the register's maxK travels with the aim and
+# the executor refuses a later k. NIGHT_ANCHOR_MAX_K=<k> overrides it; with no
+# bound at all the anchor is OFF. Every anchor refusal at run time also
+# releases at once.
 BUNDLE_WINNER_HASH="$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).winnerHash ?? ""))' "$BUNDLE/manifest.json" 2>/dev/null || true)"
 if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
   if aim="$(node tools/device/fact-register.mjs --anchor-aim "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-aim.err")"; then
@@ -431,9 +436,17 @@ if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
     printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-aim.err")"
   fi
 fi
+if [ "$NIGHT_ANCHOR_AIM_MS" != off ] && [ -z "${NIGHT_ANCHOR_MAX_K:-}" ]; then
+  if max_k="$(node tools/device/fact-register.mjs --anchor-max-k "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-max-k.err")"; then
+    NIGHT_ANCHOR_MAX_K="$max_k"
+  else
+    NIGHT_ANCHOR_AIM_MS=off
+    printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-max-k.err")"
+  fi
+fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
-  CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS")
-  printf 'anchor   release at night onset + %s ms (mod 1000)\n' "$NIGHT_ANCHOR_AIM_MS"
+  CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS" --night-anchor-max-k "$NIGHT_ANCHOR_MAX_K")
+  printf 'anchor   release at night onset + %s ms + k s, k <= %s\n' "$NIGHT_ANCHOR_AIM_MS" "$NIGHT_ANCHOR_MAX_K"
 fi
 # Pedro's standing direction: the arm check does not block the schedule.
 #
