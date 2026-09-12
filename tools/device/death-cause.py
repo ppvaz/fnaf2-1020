@@ -72,10 +72,49 @@ def feature_from_bytes(data, width, height):
     return _feature(Image.frombytes("RGB", (width, height), data))
 
 
-def _distance(left, right):
+# Euclidean distance over raw RGB is dominated by BRIGHTNESS: every channel of
+# a dark cell sits near zero, so two dark frames of different colours are near
+# neighbours however differently they are coloured. That is how the withdrawn
+# withered-bonnie model -- a dark, mid-distance jumpscare -- came to sit next to
+# ordinary dark office and camera frames and fired 24 times on a run it had
+# never seen (docs/evidence/withered-bonnie-visual-model-withdrawn-20260912.md).
+#
+# Cosine distance compares the DIRECTION of the colour vector and discards its
+# magnitude, so it is brightness-invariant by construction. Measured against the
+# exact frames that broke that model, as the held-out run:
+#
+#     metric         positive max   negative min   margin   Foxy
+#     euclid               0.0697         0.0757    +8.7%   0.1018
+#     cosine               0.2897         0.3893   +34.4%   0.3367
+#     chromaticity         0.1218         0.1478   +21.4%   0.1120  <- collapses
+#
+# Per-cell chromaticity normalises brightness away entirely and is worse than it
+# looks: it pulls the Foxy jumpscare INSIDE the Bonnie envelope (0.1120 against
+# a 0.1218 positive maximum), collapsing two different deaths into one label.
+#
+# The metric is recorded IN the model. The three retained models were fitted
+# under euclid and their thresholds mean nothing under another metric, so a
+# model without the field keeps euclid rather than silently changing meaning.
+METRICS = ("euclid", "cosine")
+DEFAULT_METRIC = "euclid"
+
+
+def _euclid(left, right):
+    return math.sqrt(sum((a - b) ** 2 for a, b in zip(left, right)) / len(left))
+
+
+def _cosine(left, right):
+    dot = sum(a * b for a, b in zip(left, right))
+    norm = math.sqrt(sum(a * a for a in left)) * math.sqrt(sum(b * b for b in right))
+    return 1.0 if norm == 0 else 1 - dot / norm
+
+
+def _distance(left, right, metric=DEFAULT_METRIC):
     if len(left) != len(right):
         _fail("feature vectors have different lengths")
-    return math.sqrt(sum((a - b) ** 2 for a, b in zip(left, right)) / len(left))
+    if metric not in METRICS:
+        _fail(f"metric must be one of {', '.join(METRICS)}")
+    return _euclid(left, right) if metric == "euclid" else _cosine(left, right)
 
 
 def _centroid(rows):
@@ -103,14 +142,16 @@ def _label(label):
     return label
 
 
-def build_model(positive_root, negative_root, label="foxy"):
+def build_model(positive_root, negative_root, label="foxy", metric=DEFAULT_METRIC):
     label = _label(label)
     positive_paths, positive = _images(positive_root)
     negative_paths, negative = _images(negative_root)
     pos_centroid = _centroid(positive)
     neg_centroid = _centroid(negative)
-    pos_distances = [_distance(row, pos_centroid) for row in positive]
-    neg_distances = [_distance(row, pos_centroid) for row in negative]
+    if metric not in METRICS:
+        _fail(f"metric must be one of {', '.join(METRICS)}")
+    pos_distances = [_distance(row, pos_centroid, metric) for row in positive]
+    neg_distances = [_distance(row, pos_centroid, metric) for row in negative]
     positive_max = max(pos_distances)
     negative_min = min(neg_distances)
     if not positive_max < negative_min:
@@ -119,6 +160,7 @@ def build_model(positive_root, negative_root, label="foxy"):
     return {
         "schema": MODEL_SCHEMA,
         "label": label,
+        "metric": metric,
         "authorized_for": "shadow",
         "sensor": {"aspect": "20:9", "feature_grid": list(FEATURE_GRID),
                    "crop": list(FEATURE_CROP)},
@@ -165,8 +207,9 @@ def classify_image(im, model):
     except ValueError as exc:
         return {"schema": FACT_SCHEMA, "state": "UNKNOWN",
                 "reason": str(exc)}
-    positive = _distance(vector, model["positive_centroid"])
-    negative = _distance(vector, model["negative_centroid"])
+    metric = model.get("metric", DEFAULT_METRIC)
+    positive = _distance(vector, model["positive_centroid"], metric)
+    negative = _distance(vector, model["negative_centroid"], metric)
     threshold = model["training"]["threshold"]
     label = model["label"]
     if positive <= threshold and positive < negative:
@@ -198,6 +241,7 @@ def main(argv):
     build.add_argument("negative")
     build.add_argument("--output", required=True)
     build.add_argument("--label", choices=SUPPORTED_LABELS, default="foxy")
+    build.add_argument("--metric", choices=METRICS, default=DEFAULT_METRIC)
     classify = sub.add_parser("classify")
     classify.add_argument("image")
     classify.add_argument("--model", required=True)
@@ -205,7 +249,7 @@ def main(argv):
 
     try:
         if args.command == "build":
-            model = build_model(args.positive, args.negative, args.label)
+            model = build_model(args.positive, args.negative, args.label, args.metric)
             Path(args.output).write_text(json.dumps(model, indent=2) + "\n",
                                          encoding="utf-8")
             print(json.dumps({"schema": MODEL_SCHEMA,

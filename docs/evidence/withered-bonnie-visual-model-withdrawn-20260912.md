@@ -51,3 +51,38 @@ Positives from at least two separate Bonnie deaths, negatives from every run
 available, and a holdout run the corpus never saw. If the envelopes still do
 not separate, the answer is that this feature space cannot name this death —
 which is a result, and belongs here rather than in a model file.
+
+## Follow-up, same day: the metric was the defect, not just the corpus
+
+The feature vector was never the problem — `_feature` already keeps all three
+RGB channels. The **distance** was. Euclidean distance over raw RGB is
+dominated by magnitude, and magnitude here is brightness: every channel of a
+dark cell sits near zero, so two dark frames are near neighbours however
+differently they are coloured. A dark, mid-distance Bonnie and a dark office
+are exactly that pair.
+
+Measured against the 24 frames that broke the model, used as the held-out run:
+
+| metric | positive max | negative min (holdout) | margin | Foxy |
+|---|---|---|---|---|
+| euclid (what shipped) | 0.0697 | 0.0757 | +8.7% | 0.1018 |
+| **cosine** | 0.2897 | 0.3893 | **+34.4%** | 0.3367 |
+| chromaticity | 0.1218 | 0.1478 | +21.4% | 0.1120 |
+
+Cosine compares the direction of the colour vector and discards its magnitude,
+so it is brightness-invariant by construction, and it quadruples the margin on
+the frames that caused the failure while still refusing Foxy.
+
+Per-cell chromaticity looks like the obvious choice and is worse: normalising
+brightness away entirely pulls the Foxy jumpscare *inside* the Bonnie envelope
+(0.1120 against a 0.1218 positive maximum), collapsing two different deaths
+into one label.
+
+`death-cause.py` now records `metric` in the model and defaults to `euclid`
+when the field is absent, so the three retained models — fitted under euclid,
+and whose thresholds would mean nothing under another metric — are unchanged.
+
+**The model is still withdrawn.** Cosine was chosen *by looking at this
+holdout*, so the +34.4% is an optimistic number selected on the test set. A run
+the corpus has never seen is what would make it a real result, and that run has
+not happened yet.

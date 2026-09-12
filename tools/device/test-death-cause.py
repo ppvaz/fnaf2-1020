@@ -221,6 +221,45 @@ def main():
         check(chica_model["label"] == "withered-chica" and
               dc.classify_image(frame("withered-chica", 1), chica_model)["state"] == "OBSERVED",
               "a labelled Withered Chica-shaped frame was not observed")
+        # --- the metric, and why it is recorded in the model -----------------
+        # Euclidean distance over raw RGB is a brightness metric in disguise:
+        # it is what let the withdrawn withered-bonnie model put a dark
+        # jumpscare next to a dark office. Cosine compares colour DIRECTION, so
+        # dimming a frame must not move it out of its own envelope.
+        def dim(image, factor):
+            out = image.copy()
+            out.putdata([tuple(int(c * factor) for c in px) for px in out.getdata()])
+            return out
+
+        cosine_model = dc.build_model(positive_root=bonnie_positive,
+                                      negative_root=negative,
+                                      label="withered-bonnie", metric="cosine")
+        check(cosine_model["metric"] == "cosine",
+              "the model did not record the metric it was fitted under")
+        check(dc.classify_image(frame("withered-bonnie", 1), cosine_model)["state"] == "OBSERVED",
+              "a cosine model did not observe its own positive")
+        check(dc.classify_image(dim(frame("withered-bonnie", 1), 0.45), cosine_model)["state"]
+              == "OBSERVED",
+              "a cosine model lost its positive to a brightness change alone")
+        # And the failure it has to keep: a differently coloured frame at the
+        # same brightness is still refused, or the metric has bought nothing.
+        check(dc.classify_image(frame("toy-chica", 1), cosine_model)["state"] == "UNKNOWN",
+              "a cosine model accepted a different character")
+
+        # Backward compatibility is load-bearing: the three retained device
+        # models were fitted under euclid and carry no metric field, so their
+        # thresholds would mean nothing if the default moved.
+        check(dc.DEFAULT_METRIC == "euclid", "the default metric moved under the retained models")
+        legacy = dict(cosine_model)
+        legacy.pop("metric")
+        euclid_model = dc.build_model(positive_root=bonnie_positive,
+                                      negative_root=negative, label="withered-bonnie")
+        check(euclid_model.get("metric") == "euclid",
+              "a model built without a metric did not record euclid")
+        check(dc.classify_image(frame("withered-bonnie", 1), legacy)["distance"]
+              != dc.classify_image(frame("withered-bonnie", 1), cosine_model)["distance"],
+              "a model with no metric field was not read as euclid")
+
         unknown = dc.classify_image(frame("office"), model)
         check(unknown["state"] == "UNKNOWN",
               "an office control became a Foxy cause")
