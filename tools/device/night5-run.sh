@@ -476,13 +476,13 @@ BUNDLE_WINNER_HASH="$(node -e 'process.stdout.write(String(JSON.parse(require("f
 # to the outcome, and it is printed so the operator knows what the run claims.
 if node -e '
 const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-if (m.gate?.status !== "DEATH_TARGETED") process.exit(1);
+if (!m.gate?.prediction) process.exit(1);
 require("fs").writeFileSync(process.argv[2], JSON.stringify(m.gate.prediction, null, 2) + "\n");
 const p = m.gate.prediction;
-console.log(`predict  DEATH-TARGETING run: model wins ${p.wins}/${p.replays} over ${p.phasesMs.length} phases`);
+console.log(`predict  ${m.gate.status === "DEATH_TARGETED" ? "DEATH-TARGETING run" : "prediction on record (gate " + m.gate.status + ")"}: model wins ${p.wins}/${p.replays} over ${p.phasesMs.length} phases`);
 for (const k of p.killers) console.log(`predict  ${k.killer} ${(100 * k.share).toFixed(0)}%  t p10 ${k.tSeconds.p10.toFixed(0)} p50 ${k.tSeconds.p50.toFixed(0)} p90 ${k.tSeconds.p90.toFixed(0)} s`);
 ' "$BUNDLE/manifest.json" "$OUTDIR/prediction.json" 2>/dev/null; then
-  printf 'predict  retained %s/prediction.json -- this run is NOT a route claim\n' "$OUTDIR"
+  printf 'predict  retained %s/prediction.json\n' "$OUTDIR"
 fi
 if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
   if aim="$(node tools/device/fact-register.mjs --anchor-aim "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-aim.err")"; then

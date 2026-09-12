@@ -5299,3 +5299,14 @@ not have. Next death-targeting run: vary the reset cadence deliberately (skip
 the post-mask flash or the camdrop light) to measure Foxy's D growth directly.
 Night 5 is now 3 wins in 12 clean-contact nights; every Night 6 attempt has
 died to Foxy.
+
+**Later:** Pedro's bracket tell confirmed on the third win's video — the
+bottom-left touch-hint bracket blinks +7.5..+11 when the flashlight fires with
+the hall drawn dark (LIT +26 / doorway +55; FLAT +3..+4, no beam). Of the
+audit's 19 dark flashes, 12 fired and 7 did not (180, 250, 260, 310, 320, 360,
+400 s). Dark flashes follow a darker office (1.7 vs 3.3) and, in 13 of 19, a
+mask window with an occupant in the eyeholes (0 of 22 for lit) — the room is
+darker after a mask that repelled an encounter. The grid audit under-reads dim
+beams; the retained video is the hall instrument. What refuses the seven is
+open. Lit beams show Withered Bonnie and Foxy standing in the hall (30 s) and
+Foxy in a dim beam (390 s).

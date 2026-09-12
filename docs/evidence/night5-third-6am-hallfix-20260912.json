@@ -239,5 +239,57 @@
       "sha256": "cc5701df600e27517ca2fce0d5126daea338153cada8643774110299a7cbf667",
       "rows": 140
     }
+  },
+  "hallFlashVideoCensus": {
+    "method": "per flash, 60 fps frames of the retained 1280x576 recording, doorway region (video x780-1280, y100-420), window flash-0.10 s..+0.25 s ending before the monitor raise white-out; metrics: bottom-left touch-hint bracket (video x780-862, y383-422), top-left bracket, doorway interior; video time = 27.00 s + seconds after release (fixed to a frame by three flashes)",
+    "classes": {
+      "LIT": {
+        "n": 22,
+        "doorway": "+55",
+        "bracketBL": "+26",
+        "bracketTL": "+11",
+        "frames": "2-3"
+      },
+      "DARK-BLINK": {
+        "n": 12,
+        "doorway": "+12..+16 (dim beam)",
+        "bracketBL": "+7.5..+10.9",
+        "bracketTL": "+8",
+        "frames": "1-3",
+        "reading": "light on, hall drawn dark or dim (g202 while the g875-880 latch drains); 390 s shows Foxy inside the dim beam"
+      },
+      "FLAT": {
+        "n": 7,
+        "atMs": [
+          180060,
+          250060,
+          260060,
+          310060,
+          320060,
+          360060,
+          400060
+        ],
+        "doorway": "+10..+12",
+        "bracketBL": "+3.3..+4.0",
+        "frames": 0,
+        "reading": "no light rendered; 260 s shows a very faint glow, so the class boundary is soft"
+      }
+    },
+    "preFlashOffice": {
+      "LIT": "crop median 3.3, top strip 15.6 (all 22)",
+      "DARK": "crop median 1.7, top strip 6.6 (15 of 19)",
+      "reading": "the office is darker before a dark flash"
+    },
+    "maskWindowBefore": {
+      "LIT": "grid max 6 in 22/22",
+      "DARK": "grid max 7-8 in 13/19",
+      "reading": "dark flashes follow mask windows with something in the eyeholes; 400 s had an occupant at -3 s that was gone by -2 s"
+    },
+    "foxyInLitBeam": "30 s: Withered Bonnie and Withered Foxy standing in the hall; 390 s: Foxy in a dim beam",
+    "operatorHypothesis": "Pedro: the two bottom brackets blink during a movement flash with the hall dark (confirmed on the bottom-left bracket), and the office is darker after a mask that repelled an attack (consistent: darker pre-flash office and eyehole occupants precede dark flashes)",
+    "openQuestions": [
+      "what refuses the 7 FLAT flashes: the in-danger latch (g443-447) after a defended encounter, or a lost 33 ms contact",
+      "the audit grid calls some clearly lit dim beams DARK (100 s): its HALL_LIT_MIN / point sampling under-reads a dimmed beam"
+    ]
   }
 }

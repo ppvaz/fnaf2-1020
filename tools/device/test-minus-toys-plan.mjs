@@ -266,6 +266,17 @@ check(parsed.cycles.opening.rows.some(row => row.kind === 'camdrop'),
   'the parsed opening lost its camdrop compound');
 check(parsed.cycles.toys.rows.some(row => row.kind === 'hall'),
   'the parsed toys loop lost its standalone hall row');
+// hallMs 0 is the death-targeting knob that drops the post-mask flash; the
+// default keeps it, and nothing else in the loop may move when it goes.
+{
+  const withFlash = build({ ...KNOBS0 }).loop;
+  const noFlash = build({ ...KNOBS0, hallMs: 0 }).loop;
+  check(withFlash.some(row => row[1] === 'hall') && !noFlash.some(row => row[1] === 'hall'),
+    'hallMs 0 must drop the loop hall row and the default must keep it');
+  check(noFlash.length === withFlash.length - 1 &&
+    withFlash.filter(row => row[1] !== 'hall').every((row, i) => JSON.stringify(row) === JSON.stringify(noFlash[i])),
+    'dropping the flash must leave every other loop row byte-identical');
+}
 check(actions.some(action => action.control === 'cameraFeedLight'),
   'the artifact compiler did not emit cameraFeedLight');
 check(actions.some(action => action.control === 'hallLight'),

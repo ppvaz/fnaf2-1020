@@ -127,3 +127,25 @@ Model rigidity findings from the fix search (raise, CAM 09 stun refresh and
 camdrop each rigid to ~120 ms through Toy Bonnie's stun) stand: they were
 measured in the model, not on the phone, and this retraction does not touch
 them.
+
+## The refusal witness: the touch-hint bracket (later still)
+
+Pedro's observation, confirmed on the third win's recording: the game's
+touch-hint brackets around the hall doorway blink when the flashlight fires
+even while the hall is drawn dark. On the bottom-left bracket, per flash
+(60 fps, window ending before the monitor raise): **LIT** +26 with the
+doorway +55 (22 flashes); **DARK-BLINK** +7.5 to +10.9 with a dim beam
+(12 of the 19 audit-dark flashes — 390 s shows Foxy standing inside the dim
+beam); **FLAT** +3.3 to +4.0 with no beam at all (7: 180, 250, 260, 310,
+320, 360, 400 s). So of the audit's 19 dark flashes, 12 fired and 7 did not.
+Before every lit flash the office reads 3.3 (top strip 15.6); before 15 of
+the 19 dark ones 1.7 (6.6) — the office is darker before a dark flash — and
+13 of 19 dark flashes follow a mask window with something in the eyeholes
+(grid max 7–8; 400 s had an occupant at −3 s gone by −2 s), against 0 of 22
+lit ones. That is the second half of the same observation: after a mask that
+repelled an encounter the room is darker and the flash tends not to fire. What
+refuses the seven is open (the `in danger` latch g443–447, or a lost 33 ms
+contact). Census and per-flash values in
+[`night5-third-6am-hallfix-20260912.json`](night5-third-6am-hallfix-20260912.json)
+(`hallFlashVideoCensus`). The grid audit under-reads dim beams (100 s is a
+clearly lit dim beam it called dark); the video is the instrument for this.

@@ -219,14 +219,22 @@ export function build(knobs) {
   if (k.loopPeriodMs === 10000) {
     loop = [
       [k.maskOffMs, 'tap', 'mask', k.loopContactMs],
-      [k.hallOffsetMs, 'hall', k.hallMs],
+      // hallMs 0 drops the post-mask flash entirely: a death-targeting knob.
+      // In this model the row is inert on Nights 5 and 6 (3000 replays over 20
+      // phases, identical outcomes seed for seed) because the camdrop's held
+      // light already resets Foxy every cycle; the phone decides whether that
+      // credit is real. Never a route setting.
+      ...(k.hallMs > 0 ? [[k.hallOffsetMs, 'hall', k.hallMs]] : []),
       [k.raiseMs, 'tap', 'monitor', k.loopContactMs],
       [k.windLeadMs, 'hold', 'wind', k.windMs],
       [k.camdropMs, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs],
       [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', k.loopContactMs],
     ];
+    // The stun refresh sits just before the wind row: by content, not by
+    // index, so dropping the hall row (hallMs 0) cannot move it.
     if (k.preventiveVentLight)
-      loop.splice(3, 0, [k.stunRefreshMs, 'hold', V.cameraFeedLight, k.stunRefreshHoldMs]);
+      loop.splice(loop.findIndex(row => row[1] === 'hold' && row[2] === 'wind'), 0,
+        [k.stunRefreshMs, 'hold', V.cameraFeedLight, k.stunRefreshHoldMs]);
   } else {
     // Faithful per-interval routine, MINUS-3-STRATEGY sec.3: enter the cameras
     // just after the interval, refresh the CAM 09 stun and wind, exit at :X4
