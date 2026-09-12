@@ -1,0 +1,129 @@
+{
+  "schema": "device-night5-shared-budget-evidence-v1",
+  "recordedAt": "2026-09-11",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-shared-vent-eviction-budget",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "neither run reached 6 AM; this record names one budget that two independent death paths both fail through"
+  },
+  "finding": "Minus Toys' steady loop holds the mask for about 4.75 s. The sourced eviction needs FIVE continuous one-second ticks with the mask fully on, and Balloon Boy, Mangle and Toy Chica all share that one counter. A 4.75 s window minus the 0.2 s mask-on animation crosses the one-second grid four OR five times depending on phase, so the route's only defence against every vent occupant is decided by a phase the device does not control.",
+  "source": {
+    "rule": "packages/core/src/mechanics/config.js VENT_MASK_TICKS = 5 -- '[SOURCED: g294 (BB), g401 (Mangle), and Toy Chica's twin] five one-second ticks with the mask fully on force a vent occupant back to their route. g907 counts them and g293 zeroes the counter on every entry into the fully-on state, so this is a continuous hold: there is no mask storage on this build.'",
+    "animation": "config.js MASK_ANIM_ON = 12 frames (0.200 s); plant-model.js maskFullyOn excludes the animation",
+    "bbConsequence": "plant-model.js:806 flags 'Balloon Boy walked in -- the flashlight is gone for the rest of the night'",
+    "mangleConsequence": "plant-model.js: an unevicted Mangle rides the next COMPLETED monitor raise to marker 123, arms on a 1-in-20 cameras-up second, and the lowering edge commits the attack"
+  },
+  "measured": {
+    "maskWindowSeconds": {
+      "source": "tools/device/grade-minus7.py over captures/night5-gatesfired2-20260912T010304Z.mp4, 23 latched-mask intervals",
+      "histogram": {
+        "3.67": 1,
+        "3.75": 1,
+        "4.58": 3,
+        "4.67": 4,
+        "4.75": 8,
+        "4.83": 1,
+        "5.33": 1,
+        "5.42": 1,
+        "5.58": 2,
+        "5.67": 1
+      },
+      "note": "sixteen of twenty-three windows fall between 4.58 and 4.83 s, and two can never reach five ticks at any phase"
+    },
+    "maskParityCorrections": {
+      "night5-gatesfired2": {
+        "gates": 24,
+        "corrected": 3,
+        "atMs": [
+          35200,
+          125200,
+          235200
+        ]
+      },
+      "night5-repeat1": {
+        "gates": 15,
+        "corrected": 2,
+        "atMs": [
+          55200,
+          135200
+        ]
+      },
+      "rate": "3/24 and 2/15 -- about 13% of cycles in both runs, at positions that do not repeat between runs",
+      "interpretation": "the rate reproduces while the positions do not, which rules out a structurally mis-placed press in the schedule and is consistent with the uncontrolled delivered phase measured at origin.bracketedByMs 1852 against a 1000 ms model phase period"
+    },
+    "correctedWindowDeficit": {
+      "finding": "a CORRECTED gate costs that cycle 0.9 s of mask, and the deficit is arithmetic, not chance",
+      "byConstruction": "the loop's planned mask-on is at X4400 and every cycle gate sits at X5200, so a gate that repairs a lost mask press applies the correction exactly 800 ms after the press it is repairing. The corrected window then runs from the gate to the planned mask-off at X9200: 4000 ms instead of 4800 ms.",
+      "measuredOnDevice": {
+        "run": "night5-repeat1-20260912T012533Z",
+        "maskWindowsSeconds": [
+          4.67,
+          4.75,
+          4.83,
+          4.75,
+          4.75,
+          3.83,
+          4.67,
+          4.75,
+          4.67,
+          4.75,
+          4.75,
+          4.75,
+          5.33,
+          3.83,
+          2.5
+        ],
+        "correctedGatesAtMs": [
+          55200,
+          135200
+        ],
+        "shortWindowsAtVideoSeconds": [
+          85.67,
+          165.67
+        ],
+        "alignment": "85.67 - 55.2 = 30.47 and 165.67 - 135.2 = 30.47 -- the same video-to-night offset for both, so the two 3.83 s windows are the two corrected cycles and not a coincidence",
+        "control": "every other window in the run is 4.67-5.33 s; 3.83 s occurs exactly twice, and the 2.50 s window is the final one, truncated by the death",
+        "gateHold": "every gate held 4000 ms, AGREED and CORRECTED alike, so the hold is not the difference"
+      },
+      "consequence": "3.83 s minus the 0.2 s mask-on animation is 3.63 s of fully-on mask, which crosses the one-second grid three or four times and never five. A corrected cycle therefore cannot evict a vent occupant even when the gate works exactly as designed.",
+      "whyTheModelDidNotShowThis": "the model has no gates and no corrections, so widening the NOMINAL mask window changed nothing in it. The defect is the CORRECTED window, which only the device produces. This is why the 2026-09-11 mask-width hypothesis was refuted in the model and is still the right surface on the phone."
+    }
+  },
+  "deathPaths": [
+    {
+      "run": "night5-gatesfired2-20260912T010304Z",
+      "killer": "mangle",
+      "atSecondsIntoNight": 237.5,
+      "inGameClock": "3 AM",
+      "evidence": "docs/evidence/night5-mangle-attribution-20260911.json"
+    },
+    {
+      "run": "night5-repeat1",
+      "killer": "UNKNOWN by instrument; the operator observed Balloon Boy enter the office",
+      "expectedAttribution": "a death screen would name Foxy, because BB removes the flashlight for the rest of the night and Foxy then kills unflashed",
+      "warning": "this is exactly the misattribution death-census.py already records -- 19 Withered Foxy deaths that clustered at ~30 s, before BB could reach the office at all, were Foxy killing unflashed. A face without its time and its chain ships the wrong cause."
+    }
+  ],
+  "whyThisMatters": "the two runs died to different animatronics through the same budget. A fix aimed at Mangle alone would be a patch; the shared five-tick counter is the defect surface. Widening the mask window is therefore not a Mangle-specific change.",
+  "candidateFix": {
+    "executorSide": {
+      "change": "when a gate corrects the mask ON late by delta, delay that cycle's mask-OFF by delta so the window keeps its planned length",
+      "budget": "minus-toys-margin.mjs night 5 allows toys[0] +9200 tap mask to move 627 ms late, which covers most of the 800 ms deficit",
+      "advantage": "changes no plan bytes and therefore no policy hash; it is a delivery repair, not a new policy",
+      "status": "not implemented, not measured"
+    },
+    "policySide": {
+      "change": "loopContactMs: 200 to reduce the ~13% mask loss rate that triggers the correction at all",
+      "gate": "3000/3000 normal and worst on night 5",
+      "cost": "changes the plan bytes and therefore the policy hash; needs an operator binding",
+      "status": "gated in the model only, not bound, not tested on device"
+    },
+    "note": "these are complements, not alternatives: the first makes a correction survivable, the second makes corrections rarer."
+  },
+  "openLimits": [
+    "two runs is not a rate. 3/24 and 2/15 agree, but neither is a confidence interval and the 3000-seed standard does not apply to a per-cycle device rate",
+    "the repeat run's killer was named by the operator watching the phone, not by an instrument: no Foxy or Balloon Boy visual model exists, so the pipeline reports UNKNOWN for it",
+    "whether the device's mask window equals the model's is not established: grade-minus7 measures the LATCHED mask from the recording, which is not the same observation as the engine's maskFullyOn"
+  ]
+}
