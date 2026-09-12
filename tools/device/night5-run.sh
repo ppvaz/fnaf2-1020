@@ -25,8 +25,8 @@ ROOT="$(cd "$HERE/../.." && pwd)"
 cd "$ROOT"
 
 LABEL=""
-BUNDLE="artifacts/night5-head"
-QUALIFICATION="docs/evidence/qualification-hid-mediaprojection-night5-20260911.json"
+BUNDLE="artifacts/night5-moved"
+QUALIFICATION="docs/evidence/qualification-hid-mediaprojection-night5-20260911-seam-corrected.json"
 PROFILE="hid-mediaprojection"
 SERIAL="${FNAF_SERIAL:-ZF525F5BH5}"
 NIGHT=5

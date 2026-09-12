@@ -1,0 +1,35 @@
+{
+  "schema": "qualification-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "policyHash": "fnv1a-2fc303f1",
+  "modelHash": "minus-toys-engine-current-v1",
+  "sampleCount": 3000,
+  "evidenceId": "qualification-hid-mediaprojection-night5-20260911-seam-corrected",
+  "qualifiedBy": "Pedro (operator)",
+  "approvedAt": "2026-09-11",
+  "authorization": "Pedro directed the change and then bound it, in two steps and in as many words: asked whether to move the routes out of the timing floors or loosen the gate, he answered 'mova as rotas para fora dos pisos, sem duvida', and on the finished result 'concedendo autorizacao explicita para qualificar as correcoes'. The agent wrote the record; the qualification decision is the operator's.",
+  "supersedes": "qualification-hid-mediaprojection-night5-20260911",
+  "scope": "fifth binding of the same measured hid-mediaprojection transport -- UHID game input via /system/bin/hid, MediaProjection visual observation via Cue Helper, one bounded device-local HID schedule per night with abort-on-gameover and releaseAll -- re-bound to the minus-toys story Night 5 winner with every press moved clear of the compiler's device timing floors (tools/device/campaign-toys-night5-winner.json, winnerHash fnv1a-2fc303f1, bundle replay fnv1a-924edf66, night-5 plan sha256 8155f1d7cf4699c44ace7b6754756cdcc4cfe894e33ad6e36a0d7aca73096445, profile hid-mediaprojection sha256 c929d673a056b4d7ef1839bccc4666986e2a1991b39232c0869046b0d68ae6e0)",
+  "planDelta": "Four knobs moved, each out of a floor it was sitting exactly on: openWindLeadMs 434 -> 467, openMaskLeadMs 300 -> 349, maskOnMs 4400 -> 4449, windLeadMs 10550 -> 10570 with windMs 3250 -> 3230 so the hold still ends clear of the camdrop. The emitted night-5 plan moves the opening wind +2050 -> +2083, the opening camdrop +3800 -> +3833, the opening mask +4400 -> +4482, the loop wind +10550 -> +10570 and the loop mask +14400 -> +14449. Nothing else changed; the arm sequence, the hall pulse, the camdrops' geometry and the loop period are untouched.",
+  "whyItMoved": "MONITOR_MASK_READY_MS was `MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS` = 400 and its own comment said it was 'the +400 ms timing used by the Night 5 route'. The route pressed the mask at exactly +400, so `400 < 400` is false and the compile passed in silence, and test-artifact-animation-gates.mjs pinned that boundary as correct. On the phone the mask press was graded MISSING with the monitor observably down on about one cycle in eight, and because a corrected cycle's mask window is 4000 ms instead of 4800 ms, every correction handed a vent occupant a free pass against the five continuous mask ticks that Balloon Boy, Mangle and Toy Chica all share. The floor is now anchored to the native frame trace that measured the mask button absent through 322 ms, faint at ~337 ms and fully visible at ~382.5 ms: ceil(382.5 + 33) = 416.",
+  "bounds": "no new transport measurement was taken for this binding: it reuses the transport qualified on 2026-09-06 and re-bound on 2026-09-07, 2026-09-08 and 2026-09-11, whose UHID receipt delay was measured at p50 4-5 ms, max 13 ms over 200 events. What is new is the plan text. No claim beyond DEVICE_MEASURED transport qualification; in-game menu navigation stays limited to the measured title-model items; the save cursor was observed at Night 5 before this binding.",
+  "evidence": [
+    { "id": "qualification-hid-mediaprojection-night5-20260911", "date": "2026-09-11",
+      "claim": "the binding this supersedes; same transport, same winner file, pre-move plan bytes" },
+    { "id": "gate-toys-nights-1-2-5-6-3000seeds-20260911-moved", "date": "2026-09-11",
+      "claim": "the moved plan re-gated at HEAD: nights 1, 2, 5 and 6 all 3000/3000 normal; night 5 worst 3000/3000 and no-split control 1032/3000 (cohort 5c54438d0aa3). Identical to the pre-move figures, so the move costs the model nothing" },
+    { "id": "test-seam-slack", "date": "2026-09-11",
+      "claim": "green: every floor stands above its own measurement and every shipped plan clears every timing floor by at least 33 ms, two engine frames. It was red on 17 findings before the move" },
+    { "id": "night5-mask-tick-budget-20260911", "date": "2026-09-11",
+      "claim": "the device measurement that motivated the move: ~13% of cycles need a mask parity correction (3/24 and 2/15 across two runs), and a corrected cycle's mask window measures 3.83 s against 4.67-5.33 s otherwise" },
+    { "id": "night5-mangle-attribution-20260911", "date": "2026-09-11",
+      "claim": "one of three deaths through that budget, with the mechanism traced to the sourced five-tick eviction" }
+  ],
+  "openLimits": [
+    "no device run has been made on these plan bytes. This binding authorizes the attempt and claims nothing about its outcome",
+    "the move is a PREDICTION, not a confirmed fix: the loop mask is now pressed 449 ms after monitor-down instead of 400, which is 66 ms past the measured full-visibility point instead of 17.5. If the seam hypothesis is right the CORRECTED gate rate should fall from the ~13% that reproduced across two runs; if it does not fall, the hypothesis is refuted and the target is elsewhere",
+    "it does not address the other half of the same defect: a gate that corrects still fires 800 ms after the press it repairs, so a corrected cycle still delivers 4000 ms of mask. Fewer corrections make that rarer, not harmless",
+    "the transport measurement behind it is the 2026-09-06 one, not a fresh sample for these plan bytes"
+  ]
+}
