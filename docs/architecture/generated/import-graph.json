@@ -505,6 +505,7 @@
       "file": "packages/adapters/src/index.js",
       "imports": [
         "./actuators.js",
+        "./button-strokes.js",
         "./calibration-state-rule.js",
         "./camera-rule.js",
         "./clocks.js",

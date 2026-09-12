@@ -653,6 +653,13 @@
     {
       "id": "contract.semantic-control-v1",
       "kind": "CONTRACT",
+      "path": "packages/adapters/src/button-strokes.js",
+      "line": 18,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.semantic-control-v1",
+      "kind": "CONTRACT",
       "path": "packages/core/src/contracts/index.js",
       "line": 4,
       "relation": "REFERENCES"

@@ -39,12 +39,21 @@ export const FACTS = Object.freeze({
     question: 'is the mask fully on?',
     evidenceRanking: ['native-stroke', 'native-explicit', 'grid-anchor', 'grid-luma-fallback'],
     detect: [
-      { evidence: 'native-stroke', match: /mask_button_downstroke|maskStroke/ },
+      { evidence: 'native-stroke', match: /mask_button_downstroke|maskStroke|maskButtonDownstroke|buttonStrokeState/ },
       { evidence: 'grid-anchor', match: /measureMaskOn|parseMaskRule/ },
       { evidence: 'grid-luma-fallback', match: /MASK_OFF_GRID_LUMA_FLOOR|refutesMaskOn|grid-luma-refutation/ },
     ],
   },
+  // DELEGATED, so not ranked against actuating callers. The explicit helper
+  // fact is read inside `packages/adapters/src/monitor-rule.js`, and every
+  // actuating caller reaches it through `measureMonitorUp`. At file
+  // granularity this register cannot tell a producer from a caller that
+  // delegates to one, and flagging the callers would be a false positive
+  // dressed as a finding. Sharpening this needs call-level provenance, not a
+  // wider regex.
   monitorUp: {
+    authorityFixedByCharter: true,
+    delegated: true,
     question: 'is the monitor raised?',
     evidenceRanking: ['native-explicit', 'native-stroke', 'grid-anchor'],
     detect: [

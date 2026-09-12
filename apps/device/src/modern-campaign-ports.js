@@ -320,6 +320,12 @@ export async function createCampaignPorts(options = {}) {
       sequence: frame.seq,
       ageUs: frame.ageUs,
       screen: frame.screen,
+      // The helper's fixed downward-chevron scores, carried through untouched.
+      // They are the strongest tell the device offers for whether the office
+      // controls are drawn, and the cycle gate refuses rather than falling back
+      // to luma when they are missing (packages/adapters button-strokes.js).
+      maskButtonDownstroke: frame.mask_button_downstroke ?? null,
+      monitorButtonDownstroke: frame.monitor_button_downstroke ?? null,
       monitorUp,
       ...(monitorSource ? { monitorSource } : {}),
       panelSequence: panelRead?.seq ?? null,

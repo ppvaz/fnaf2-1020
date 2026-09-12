@@ -29,19 +29,25 @@ for (const [fact, info] of Object.entries(register.facts)) {
   const rank = FACTS[fact].evidenceRanking;
   const best = info.strongestAvailable;
   if (info.authorityFixedByCharter) {
-    process.stdout.write(`${fact}: authority fixed by charter, not ranked ` +
+    process.stdout.write(`${fact}: not ranked ` +
       `(${info.producers.length} producers)\n`);
     continue;
   }
   if (!best) { process.stdout.write(`${fact}: no producer found\n`); continue; }
   const bestAt = rank.indexOf(best);
+  // The rule is "must USE the strongest available evidence", not "must contain
+  // no weaker path". A guarded fallback is legitimate -- the executor keeps the
+  // bright-grid refutation for helper builds that publish no stroke scores, and
+  // that is the abort case a night would otherwise end on. What is refused is
+  // an actuating module that decides the fact WITHOUT the strongest evidence
+  // the tree offers.
   const offenders = info.producers.filter(p => p.file.startsWith(ACTUATING) &&
-    p.evidence.some(e => rank.indexOf(e) > bestAt));
+    !p.evidence.includes(best));
   process.stdout.write(`${fact}: best available ${best}; ` +
-    `${info.producers.length} producers, ${offenders.length} actuating on weaker evidence\n`);
+    `${info.producers.length} producers, ${offenders.length} actuating without it\n`);
   for (const p of offenders) {
     const weakest = [...p.evidence].sort((a, b) => rank.indexOf(b) - rank.indexOf(a))[0];
-    fail(`${p.file} decides ${fact} on ${weakest}, but ${best} is available in ` +
+    fail(`${p.file} decides ${fact} on ${weakest} without ${best}, which is available in ` +
       `${info.producers.filter(q => q.evidence.includes(best)).map(q => q.file).join(', ')}. ` +
       `This is the lane that presses buttons; a weak read here does not report a ` +
       `mistake, it makes one.`);

@@ -14,6 +14,7 @@ import { createHash } from 'node:crypto';
 import { promisify } from 'node:util';
 import { HID_DESCRIPTOR, HID_FEATURE_REPORTS, report } from '@fnaf2-1020/adapters';
 import { validateExecutorRequest } from './artifact-executor.js';
+import { buttonStrokeState } from '@fnaf2-1020/adapters';
 import { expandNightBlocks } from './device-local-executor.js';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
 
@@ -536,6 +537,14 @@ function compactControlSample(value) {
     sample.maskCells.every(Number.isSafeInteger) ? sample.maskCells : null;
   const panelSequence = typeof sample.panelSequence === 'string' ||
     Number.isSafeInteger(sample.panelSequence) ? sample.panelSequence : null;
+  // The helper's fixed downward-chevron scores. They are what the cycle gate
+  // decides a frame's readability on, so they are retained in the bundle.
+  const strokeScore = value => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+  };
+  const maskButtonDownstroke = strokeScore(sample.maskButtonDownstroke);
+  const monitorButtonDownstroke = strokeScore(sample.monitorButtonDownstroke);
   const visualCaptureAt = Number.isFinite(sample.visualCaptureAt) ? sample.visualCaptureAt : null;
   const visualCaptureUncertaintyMs = Number.isFinite(sample.visualCaptureUncertaintyMs) &&
     sample.visualCaptureUncertaintyMs >= 0 ? sample.visualCaptureUncertaintyMs : null;
@@ -546,6 +555,8 @@ function compactControlSample(value) {
     ...(maskCells ? { maskCells } : {}),
     ...(panelSequence === null ? {} : { panelSequence }),
     ...(maskEvidence ? { maskEvidence } : {}),
+    ...(maskButtonDownstroke === null ? {} : { maskButtonDownstroke }),
+    ...(monitorButtonDownstroke === null ? {} : { monitorButtonDownstroke }),
     ...(visualCaptureAt === null ? {} : { visualCaptureAt }),
     ...(visualCaptureUncertaintyMs === null ? {} : { visualCaptureUncertaintyMs }) };
 }
@@ -1366,19 +1377,63 @@ export class AdbDeviceLocalArtifactExecutor {
               const read = await readControlState();
               reads.push({ startedAt: read.readStartedAt, finishedAt: read.readFinishedAt });
               sample = compactControlSample(read.sample);
-              if (sample.maskOn !== null) break;
-              if (entry.believedMaskOn === true && sample.gridLuma !== null &&
+              // Keep reading until the STROKES answer. A grid answer on a
+              // frame with no button signature is what produced the spurious
+              // corrections; it is no longer a reason to stop looking.
+              const strokeRead = buttonStrokeState(sample);
+              if (strokeRead.maskOn !== null) break;
+              if (strokeRead.office && sample.maskOn !== null) break;
+              // No stroke source AT ALL is a different thing from a stroke
+              // source that sees no signature. A helper build that does not
+              // publish the chevrons must still be gradeable by the grid rule;
+              // what is removed is the luma GUESS, not the grid opinion.
+              if (!strokeRead.available && sample.maskOn !== null) break;
+              if ((!strokeRead.available || strokeRead.office) &&
+                entry.believedMaskOn === true && sample.gridLuma !== null &&
                 sample.gridLuma >= MASK_OFF_GRID_LUMA_FLOOR) break;
             }
             if (!sample) break;
-            // A refused frame still refutes mask-on when the grid is far too
-            // bright for an opaque mask. That is the whole abort case: the
-            // plan believes the mask is on, and the device plainly shows it
-            // is not, so the gate corrects instead of ending the night.
-            const refutesMaskOn = sample.maskOn === null && entry.believedMaskOn === true &&
-              sample.gridLuma !== null && sample.gridLuma >= MASK_OFF_GRID_LUMA_FLOOR;
-            const observedMaskOn = sample.maskOn !== null ? sample.maskOn
-              : refutesMaskOn ? false : null;
+            // The helper's fixed button chevrons decide this, not the 20x9 grid.
+            //
+            // Each state hides one button and keeps the other, so the pair is a
+            // direct read of both facts: both drawn is the office, a missing
+            // mask button is the monitor up, and a missing MONITOR button is
+            // the mask on -- the mirror the operator named on 2026-09-12, whose
+            // game fact actuator.mjs already records ("while the mask is up or
+            // coming off, the monitor bar is not drawn").
+            //
+            // The grid rule stays as a SECOND opinion and only where the
+            // strokes already say the office is drawn. What is gone is the
+            // grid-luma refutation: it let a gate correct on a frame whose
+            // screen the classifier could not even identify, and on the
+            // 2026-09-12T02-20 run every single correction did exactly that
+            // (71% across all runs, against 30% of gates that agreed). A
+            // correction ACTS -- it presses the mask -- so a wrong one does not
+            // report an inversion, it creates one.
+            // `tools/device/intersection-state-gate.mjs` has stated this rule
+            // all along: a missing stroke score is a refusal, never a luma
+            // fallback.
+            const strokes = buttonStrokeState(sample);
+            // The bright-grid refutation is KEPT -- it is the abort case, and
+            // without it a night ends instead of correcting -- but it may no
+            // longer decide a frame whose stroke source is present and shows no
+            // signature. That is the unreadable frame, and it is where the
+            // spurious corrections came from.
+            const lumaMayDecide = !strokes.available || strokes.office;
+            const refutesMaskOn = lumaMayDecide && sample.maskOn === null &&
+              entry.believedMaskOn === true && sample.gridLuma !== null &&
+              sample.gridLuma >= MASK_OFF_GRID_LUMA_FLOOR;
+            const observedMaskOn = strokes.maskOn !== null ? strokes.maskOn
+              : strokes.office && sample.maskOn !== null ? sample.maskOn
+                : !strokes.available && sample.maskOn !== null ? sample.maskOn
+                  : refutesMaskOn ? false
+                    : null;
+            const maskEvidenceSource = strokes.maskOn !== null
+              ? `button-stroke:${strokes.signature}`
+              : strokes.office && sample.maskOn !== null ? 'office-stroke+mask-rule'
+                : !strokes.available && sample.maskOn !== null ? 'mask-rule'
+                  : refutesMaskOn ? 'grid-luma-refutation'
+                    : strokes.available ? 'stroke-signature-absent' : 'stroke-unavailable';
             let corrected = false;
             let correctedAt = null;
             let status;
@@ -1416,8 +1471,8 @@ export class AdbDeviceLocalArtifactExecutor {
             this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
               cycle: entry.cycle, nextActionId: entry.nextActionId,
               believedMaskOn: entry.believedMaskOn, observedMaskOn,
-              maskEvidence: sample.maskOn !== null ? 'mask-rule'
-                : refutesMaskOn ? 'grid-luma-refutation' : 'none',
+              maskEvidence: maskEvidenceSource,
+              strokeSignature: strokes.signature,
               status, reachedAt, releaseAt, reads, sample,
               ...(correctedAt === null ? {} : { correctedAt }),
               ...(verify ? { verify } : {}) });
