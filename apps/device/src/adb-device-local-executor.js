@@ -985,16 +985,21 @@ export class AdbDeviceLocalArtifactExecutor {
     this.nightReleaseGranted = false;
     this.nightReleaseGrantedAt = null;
     this.nightAuthorizedListeners = new Set();
+    this.nightAuthorizedAt = null;
     this.deviceLocal = true;
   }
 
   /**
-   * Resolves with the observer's sample time on the next authoritative office
-   * frame of a port-owned night. The composition places the release from this
-   * edge: its own lifecycle poll is slower, and on night5-anchor1 it planned
-   * 2134 ms after this edge, which cost the anchor two whole game seconds.
+   * Resolves with the host time (Date.now) at which this execution's observer
+   * RETURNED its first authoritative office classification in a port-owned
+   * night -- immediately, if that already happened. It is the gate on the
+   * release, not the night's onset: the screencap + classifier takes 1.8-1.9 s
+   * (night5-anchor1/2), so a release planned from here reaches k<=2 only by
+   * luck. The anchor plans from the helper's latched onset and uses this to
+   * decide whether a planned instant may fire.
    */
   whenNightAuthorized() {
+    if (this.nightAuthorizedAt !== null) return Promise.resolve(this.nightAuthorizedAt);
     return new Promise(resolve => this.nightAuthorizedListeners.add(resolve));
   }
 
@@ -1043,6 +1048,7 @@ export class AdbDeviceLocalArtifactExecutor {
     const releaseAlreadyGrantedAt = this.nightReleaseGrantedAt;
     this.nightReleaseGranted = false;
     this.nightReleaseGrantedAt = null;
+    this.nightAuthorizedAt = null;
     this.nightReleaseAction = null;
     const tag = `${globalThis.process.pid}-${Date.now()}`;
     const startMarker = `/data/local/tmp/fnaf2-modern-start-${tag}`;
@@ -1830,8 +1836,13 @@ export class AdbDeviceLocalArtifactExecutor {
                   // Authorization only: releaseNight() records its own
                   // night-go when the port fires, so the schedule's origin is
                   // the placed instant, not this classifier sample.
-                  this.onEvent({ type: 'hid.night-authorized', at: observeStartedAt, owner: 'port' });
-                  for (const resolve of this.nightAuthorizedListeners) resolve(observeStartedAt);
+                  // `at` stays the sample's start for the timeline; the gate
+                  // opens only when the classification returned.
+                  const authorizedAt = Date.now();
+                  this.nightAuthorizedAt = authorizedAt;
+                  this.onEvent({ type: 'hid.night-authorized', at: observeStartedAt,
+                    sampleStartedAt: observeStartedAt, authorizedAt, owner: 'port' });
+                  for (const resolve of this.nightAuthorizedListeners) resolve(authorizedAt);
                   this.nightAuthorizedListeners.clear();
                 } else {
                   recordNightGo(refined ?? observeStartedAt, 'lifecycle');

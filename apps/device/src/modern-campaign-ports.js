@@ -552,28 +552,48 @@ export async function createCampaignPorts(options = {}) {
     const introStartedHostMs = performance.now();
     // Do not accept the night transition on the newspaper/intro card: the
     // authoritative office `night` state establishes the actuator origin.
-    // With an anchor, the executor's observer usually sees the office first
-    // (night5-anchor1: 307 ms after onset, while this poll planned at 2441 ms
-    // and the release slid from k=1 to k=3). Take whichever edge comes first;
-    // the slower poll then ends on its next sample instead of holding the
-    // release, and its failure cannot crash a night the executor authorized.
+    // With an anchor, the executor's observer usually sees the office first,
+    // so take whichever edge comes first; the slower poll then ends on its
+    // next sample, and its failure cannot crash a night the executor authorized.
     let executorAuthorized = false;
     const lifecycleNight = waitFor(bridge, serial, value => value === 'night' || executorAuthorized,
       30000, 'night start');
-    const state = nightAnchorAimMs === null ? await lifecycleNight : await Promise.race([
-      lifecycleNight,
-      localExecutor.whenNightAuthorized().then(() => { executorAuthorized = true; return 'night'; }),
-    ]);
-    if (executorAuthorized) lifecycleNight.catch(() => {});
-    // This is the phase-critical handoff. The measurement deliberately leaves
-    // setup taps out of the path so the already-ready HID can act immediately
-    // after the first authoritative office frame. With an anchor aim the office
-    // frame only authorizes, and the release lands at the helper's latched
-    // onset + aim (mod one game second); any refusal releases at once.
-    if (nightAnchorAimMs === null) localExecutor.releaseNight();
-    else await anchorNightRelease({ probe: () => cuePort.probeClock(),
-      release: () => localExecutor.releaseNight(), onEvent,
-      aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, notBeforeHostMs: introStartedHostMs });
+    let state;
+    if (nightAnchorAimMs === null) {
+      state = await lifecycleNight;
+      // This is the phase-critical handoff. The measurement deliberately leaves
+      // setup taps out of the path so the already-ready HID can act immediately
+      // after the first authoritative office frame.
+      localExecutor.releaseNight();
+    } else {
+      // The office classification only AUTHORIZES; the release is planned from
+      // the helper's latched onset while the intro card is still up, and fires
+      // at onset + aim + k s once authorized (night-anchor.js). Any refusal
+      // releases at authorization.
+      let authorizedAtHostMs = null;
+      const authorized = Promise.race([
+        lifecycleNight,
+        localExecutor.whenNightAuthorized().then(() => { executorAuthorized = true; return 'night'; }),
+      ]).then(value => { authorizedAtHostMs ??= performance.now(); return value; });
+      let clock = null;
+      try { clock = cuePort.openClock(); }
+      catch (error) { onEvent({ type: 'origin.anchor', status: 'unavailable', reason: 'probe-failed', error: String(error?.message ?? error) }); }
+      const anchoring = clock === null
+        ? authorized.then(() => { localExecutor.releaseNight(); })
+        : anchorNightRelease({ clock,
+          authorization: { isAuthorized: () => authorizedAtHostMs !== null, whenAuthorized: () => authorized,
+            authorizedAt: () => authorizedAtHostMs },
+          release: () => localExecutor.releaseNight(), onEvent,
+          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, notBeforeHostMs: introStartedHostMs });
+      anchoring.catch(() => {});
+      try {
+        state = await authorized;
+        await anchoring;
+      } finally {
+        clock?.close();
+        if (executorAuthorized) lifecycleNight.catch(() => {});
+      }
+    }
     // The 6th Night and Custom Night menu targets identify the configured
     // night. A story night inside a chained campaign is identified by its
     // selection chain: newGame on an observed fresh save, continue after the

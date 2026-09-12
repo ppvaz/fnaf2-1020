@@ -396,8 +396,13 @@ try {
   });
   const portResult = await portOwned.execute(request);
   await portAuthorized;
-  assert.equal(typeof portAuthorizedAt, 'number', 'the authorization edge must resolve with its sample time');
+  assert.equal(typeof portAuthorizedAt, 'number', 'the authorization edge must resolve with its return time');
   assert.ok(portReleasedAt >= portAuthorizedAt, 'the release follows the authorization it was placed from');
+  const authorizedEvent = portEvents.find(event => event.type === 'hid.night-authorized');
+  assert.equal(authorizedEvent.authorizedAt, portAuthorizedAt, 'the event must carry when the gate opened');
+  assert.ok(authorizedEvent.sampleStartedAt <= authorizedEvent.authorizedAt, 'the sample starts before it returns');
+  assert.equal(await portOwned.whenNightAuthorized(), portAuthorizedAt,
+    'a late subscriber to an already-authorized execution must resolve at once');
   assert.equal(portResult.terminal, 'gameover', 'a port-owned release must keep terminal handling');
   assert.ok(portEvents.some(event => event.type === 'hid.night-authorized'),
     'the office frame must be recorded as an authorization');

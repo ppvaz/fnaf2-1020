@@ -115,33 +115,54 @@ export class AdbCueHelperPort {
   }
 
   /**
-   * Device-monotonic -> host `performance.now()` offset, plus the newest GET
-   * fields. `request()` spawns an adb shell per read and cannot bound a clock:
-   * its reads cost 140-240 ms and its only offset estimate is late-biased by
-   * ~100-150 ms. This forwards the helper's loopback port once and times raw
-   * GETs over it; on ZF525F5BH5 (2026-09-12) 40 of them measured RTT min 5.6,
-   * p50 9.1, p90 14.6 ms, and the five fastest agreed on the offset within
-   * 0.46 ms. The fastest sample carries the offset; its bound is RTT/2.
-   * @param {{samples?: number, spacingMs?: number, timeoutMs?: number}} [options]
+   * One adb forward to the helper's loopback control port, and timed raw GETs
+   * over it. `request()` spawns an adb shell per read (140-240 ms) and cannot
+   * bound a clock; over the forward a GET measured RTT min 5.6, p50 9.1, p90
+   * 14.6 ms on ZF525F5BH5 (2026-09-12), the five fastest of 40 agreeing on the
+   * device->host offset within 0.46 ms. The forward is opened once, so polling
+   * the latched night onset costs a socket round trip, not a process spawn.
+   * `read()` is one exchange (offset bound RTT/2); `probe()` keeps the fastest
+   * of `samples` for the offset and the newest for the fields. Always close().
+   * @param {{timeoutMs?: number}} [options]
    */
-  async probeClock({ samples = 8, spacingMs = 15, timeoutMs = 1000 } = {}) {
-    if (!Number.isInteger(samples) || samples < 1 || samples > 64) throw new TypeError('clock probe samples must be 1..64');
+  openClock({ timeoutMs = 1000 } = {}) {
     const endpoint = this.endpoint ?? this.discover();
     const forwarded = runSync(this.adb, ['-s', this.serial, 'forward', 'tcp:0', `tcp:${endpoint.port}`]).trim().split(/\s+/).at(-1);
-    if (!/^\d+$/.test(forwarded ?? '')) throw new Error('cue-helper clock probe: adb forward returned no host port');
-    let best = null;
-    let latest = null;
-    try {
-      for (let index = 0; index < samples; index += 1) {
-        latest = await timedExchange(Number(forwarded), `GET ${endpoint.token}`, timeoutMs);
-        if (best === null || latest.rttMs < best.rttMs) best = latest;
-        if (index + 1 < samples) await sleep(spacingMs);
-      }
-    } finally {
-      try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
-    }
-    return { offsetMs: best.offsetMs, uncertaintyMs: best.rttMs / 2, rttMs: best.rttMs,
-      samples, hostClock: 'performance-now-ms', fields: latest.fields };
+    if (!/^\d+$/.test(forwarded ?? '')) throw new Error('cue-helper clock: adb forward returned no host port');
+    let closed = false;
+    const exchange = async () => {
+      if (closed) throw new Error('cue-helper clock is closed');
+      const sample = await timedExchange(Number(forwarded), `GET ${endpoint.token}`, timeoutMs);
+      return { ...sample, uncertaintyMs: sample.rttMs / 2, hostClock: 'performance-now-ms' };
+    };
+    return {
+      read: exchange,
+      /** @param {{samples?: number, spacingMs?: number}} [options] */
+      probe: async ({ samples = 8, spacingMs = 15 } = {}) => {
+        if (!Number.isInteger(samples) || samples < 1 || samples > 64) throw new TypeError('clock probe samples must be 1..64');
+        let best = null;
+        let latest = null;
+        for (let index = 0; index < samples; index += 1) {
+          latest = await exchange();
+          if (best === null || latest.rttMs < best.rttMs) best = latest;
+          if (index + 1 < samples) await sleep(spacingMs);
+        }
+        return { offsetMs: best.offsetMs, uncertaintyMs: best.uncertaintyMs, rttMs: best.rttMs,
+          samples, hostClock: 'performance-now-ms', fields: latest.fields };
+      },
+      close: () => {
+        if (closed) return;
+        closed = true;
+        try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
+      },
+    };
+  }
+
+  /** One offset measurement on a short-lived forward. @param {{samples?: number, spacingMs?: number, timeoutMs?: number}} [options] */
+  async probeClock({ timeoutMs = 1000, ...options } = {}) {
+    const clock = this.openClock({ timeoutMs });
+    try { return await clock.probe(options); }
+    finally { clock.close(); }
   }
 }
 
