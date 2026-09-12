@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -193,6 +193,11 @@
     {
       "id": "device:grade",
       "command": "node apps/device/src/cli.js grade",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:capabilities",
+      "command": "node tools/device/capabilities.mjs",
       "lifecycle": "supported"
     },
     {
@@ -1888,6 +1893,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/test-seam-slack.mjs",
+      "invocation": "tools/device/test-seam-slack.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/night5-run.sh",
       "invocation": "tools/device/night5-run.sh --label NAME [--bundle DIR] [--night N] [--arm-blocking] [--no-video] [--dry-run]",
       "kind": "check",
@@ -1937,7 +1948,7 @@
     },
     {
       "id": "tools/device/death-cause.py",
-      "invocation": "tools/device/death-cause.py build POSITIVE NEGATIVE --label {foxy,marionette,withered-chica} --output MODEL",
+      "invocation": "tools/device/death-cause.py build POSITIVE NEGATIVE --label {foxy,mangle,marionette,toy-chica,withered-chica} --output MODEL",
       "kind": "classifier/check",
       "lifecycle": "supported"
     },

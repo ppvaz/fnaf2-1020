@@ -43,6 +43,7 @@
     "device:calibrate": "node apps/device/src/cli.js calibrate",
     "device:clockmap": "node apps/device/src/cli.js clockmap",
     "device:grade": "node apps/device/src/cli.js grade",
+    "device:capabilities": "node tools/device/capabilities.mjs",
     "device:emit": "node tools/device/emit.mjs",
     "device:mcp": "node tools/device/cue-helper-mcp.mjs"
   },

@@ -91,12 +91,69 @@ Each entry below cost a live attempt or a false diagnosis on 2026-09-06.
    menu) and verify it with the title observer before starting new work or
    ending the session.
 
+## Mistake register (2026-09-11 — the floors, and the instruments)
+
+Each entry below cost a wrong diagnosis or a wasted device run on 2026-09-11.
+
+7. **A floor is anchored to a measurement plus a named margin, never to the
+   route it protects.** `MONITOR_MASK_READY_MS` was defined as
+   `MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS` = 400 with the comment "which is the
+   +400 ms timing used by the Night 5 route" — and the route presses at exactly
+   +400. `400 < 400` is false, so the one check that could have caught it passed
+   in silence, and `test-artifact-animation-gates.mjs` pinned that boundary as
+   correct. A constant defined as *what we already do* is a tautology that
+   survives review because it looks derived. On the phone that zero cost about
+   one cycle in eight. `test-seam-slack.mjs` now refuses a plan that clears any
+   timing floor by less than 33 ms, and refuses a floor that does not stand that
+   far above its own measurement.
+
+8. **Ask the phone what it offers before proposing an instrument.** Run
+   `npm run device:capabilities`. An agent proposed capturing Android input
+   dispatch to explain a lost press, wired `atrace-input.sh` into the harness
+   and spent a full night on it before learning this handset advertises
+   `android.inputmethod` and no `android.input.inputevent` — so `inputtrace.py`
+   had no app dispatch source and correctly reported NO APP DISPATCH SLICES.
+   `plans/PROGRESS.md` had already recorded the same negative on 2026-08-30.
+
+9. **A measurement in a comment is not a gate.** The native frame trace behind
+   the mask timing (button absent through 322 ms, faint at ~337 ms, fully
+   visible at ~382.5 ms) lived only in a comment while the constant carried the
+   route. If a number decides behaviour, put it where a check reads it.
+
+10. **A number measured in one direction does not transfer to the other.**
+    `actuator.mjs`'s seam table ("at 180 ms or more, 0 of 17 lost") is a MONITOR
+    press after a MASK press. The Night 5 defect is the reverse order. The same
+    error was made twice in one session: a `maskTicks: 4` band label was read as
+    "widen the mask window", and the model then scored a wider window identically
+    at every phase, refuting it.
+
+11. **Read a tool's own computed output before deriving the same quantity by
+    hand.** `phase-reconstruct.mjs` already reports `model.lossBands`. An agent
+    instead ran `minus-toys-margin.mjs`'s `edge()`, which stops at the first
+    failure and is valid only for a contiguous basin, and published a "408 ms
+    cliff" for a response that is banded and periodic — condemning a 1320 ms run
+    the model actually scores 3000/3000.
+
+12. **An absent observation is evidence only when the rule has read the positive
+    state in the same run.** `monitorUp->true` graded MISSING on 4 of 5 cycles
+    while the monitor rule read `true` twice in 266 samples: that is a blind
+    detector, not a lost press. `run-report.mjs` now refuses to call a miss
+    systematic below five positive reads of that target.
+
+13. **A gate registered only in a lane CI does not run is not a gate.**
+    `test-grade-run-coverage.mjs` sat in `tools/test.mjs`'s ENGINE group, which
+    only `npm run test:legacy:engine` invokes and which CLAUDE.md itself
+    describes as holding intentionally red controls. It had been failing on 11
+    scripts, `phase-reconstruct.mjs` among them — which is exactly why two
+    sessions ran that by hand. Structural gates belong in `npm run test:unit`.
+
 Canonical routes: [charter](PROJECT-CHARTER.md),
 [architecture](docs/architecture/README.md),
 [contracts](docs/architecture/generated/contract-register.json),
 [commands](docs/architecture/generated/command-registry.json),
 [evidence policy](docs/evidence/README.md),
 [device safety](docs/operations/DEVICE-SAFETY.md),
+[device capabilities](tools/device/capabilities.mjs),
 [progress](plans/PROGRESS.md). The full legacy campaign is explicit as
 `npm run test:legacy:engine`; intentionally red scientific controls are not
 part of the green edit lane. Historical incident notes remain in

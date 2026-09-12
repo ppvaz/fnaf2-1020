@@ -35,6 +35,7 @@ ARM_MODE="observe-once"
 VIDEO=1
 TRACE=1
 TRACE_SECONDS="${FNAF_TRACE_SECONDS:-900}"
+FRAME_TRACE=0
 DRY=0
 EXTRA=()
 
@@ -50,6 +51,7 @@ while [ $# -gt 0 ]; do
     --arm-blocking) ARM_MODE="blocking"; shift ;;
     --arm-observe-once) ARM_MODE="observe-once"; shift ;;
     --no-trace) TRACE=0; shift ;;
+    --frame-trace) FRAME_TRACE=1; shift ;;
     --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
     --dry-run) DRY=1; shift ;;
@@ -88,10 +90,52 @@ printf 'run      %s\nbundle   %s\nserial   %s\nnight    %s (save cursor %s)\narm
   "$RUNID" "$BUNDLE" "$SERIAL" "$NIGHT" "$SAVE_CURSOR" "$ARM_MODE" "$OUTDIR"
 
 REC_PID=""
+FRAME_TRACE_PID=""
+FRAME_TRACE_STARTED=0
 RESET_DONE=0
 ANALYZED=0
 CAMPAIGN_CODE=""
 CAMPAIGN_DIR=""
+
+# The Cue Helper's native frame trace, which is the instrument that measured
+# the mask button's appearance in the first place (absent to 322 ms after
+# monitor-down, faint at ~337 ms, fully visible at ~382.5 ms) and the one
+# `actuation-frame-metric.py` and `input-frame-align.py` both read.
+#
+# Perfetto cannot answer the same question on this handset: it advertises
+# `android.inputmethod` and no `android.input.inputevent`, so there is no app
+# dispatch source to capture and `inputtrace.py` correctly reports
+# NO APP DISPATCH SLICES.
+#
+# OPT-IN, deliberately. The trace drains the same ImageReader the executor's
+# own gate reads, so a traced run is a MEASUREMENT run and not a win attempt.
+# It also cannot start before the campaign: preflight force-stops the helper to
+# restart capture, which would kill an in-flight trace. So it waits for the
+# night to be live and starts there, covering the steady loop rather than the
+# opening.
+start_frame_trace() {
+  [ "$FRAME_TRACE" = 1 ] || return 0
+  ( waited=0
+    while [ "$waited" -lt 240 ]; do
+      if grep -q '"type":"hid.night-go"' "$OUTDIR/campaign.log" 2>/dev/null; then
+        tools/device/query-cue-helper.sh trace start "$RUNID" >/dev/null 2>&1           && printf '\nframe trace started (label %s)\n' "$RUNID"
+        return 0
+      fi
+      sleep 2; waited=$((waited + 2))
+    done
+    printf '\nframe trace: the night never went live; nothing was traced\n' >&2 ) &
+  FRAME_TRACE_PID=$!
+  FRAME_TRACE_STARTED=1
+}
+
+stop_frame_trace() {
+  [ "$FRAME_TRACE_STARTED" = 1 ] || return 0
+  FRAME_TRACE_STARTED=0
+  [ -n "$FRAME_TRACE_PID" ] && kill "$FRAME_TRACE_PID" 2>/dev/null
+  say "stopping the native frame trace"
+  FRAME_TRACE_OUT="captures/frame-traces" \
+    tools/device/query-cue-helper.sh trace stop 2>&1 | tail -2 || true
+}
 
 stop_recording() {
   [ "$VIDEO" = 1 ] || return 0
@@ -202,6 +246,7 @@ analyze() {
 on_exit() {
   local code=$?
   set +e
+  stop_frame_trace
   stop_recording
   analyze
   reset_device
@@ -276,6 +321,7 @@ if [ "$TRACE" = 1 ]; then
   printf 'trace    %s-input.pftrace (%ss)\n' "$RUNID" "$TRACE_SECONDS"
   CAMPAIGN_CMD=("$TRACE_TOOL" "$RUNID" "$TRACE_SECONDS" -- "${CAMPAIGN[@]}")
 fi
+start_frame_trace
 set +e
 "${CAMPAIGN_CMD[@]}" 2>&1 | tee "$OUTDIR/campaign.log"
 CAMPAIGN_CODE=${PIPESTATUS[0]}

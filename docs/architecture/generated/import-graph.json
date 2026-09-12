@@ -1155,6 +1155,14 @@
       ]
     },
     {
+      "file": "tools/device/capabilities.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/clocktrace.mjs",
       "imports": [
         "node:child_process",
@@ -1662,6 +1670,16 @@
       "imports": [
         "./hid-sweep-probe.mjs",
         "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-seam-slack.mjs",
+      "imports": [
+        "./artifact-commands.mjs",
+        "./bundle.mjs",
         "node:fs",
         "node:path",
         "node:url"
