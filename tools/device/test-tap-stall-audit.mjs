@@ -249,6 +249,12 @@ check(cycle1 && !cycle1.includes('monitor-up@+101') && cycle1.includes('monitor-
   check(parsed.devices['/dev/input/event7'] === 'FNAF Timed Touch' && parsed.events.length === 12, 'getevent devices and rows parse');
   const { node, edges: touch } = touchEdges(parsed);
   check(node === '/dev/input/event7' && touch.length === 3 && Math.round(touch[0].releaseMs - touch[0].pressMs) === 33, 'three press/release edges on the virtual device');
+  const reused = parseInputEvents(text.replace('FNAF Timed Touch', 'FNAF Campaign Menu'));
+  const reusedTouch = touchEdges(reused);
+  check(reusedTouch.node === '/dev/input/event7' && reusedTouch.edges.length === 3,
+    'a reused menu HID supplies the scheduled touch edges when no timed-touch node exists');
+  const both = parseInputEvents(text.replace('  name:     "some_touchscreen"', '  name:     "FNAF Campaign Menu"'));
+  check(touchEdges(both).node === '/dev/input/event7', 'the dedicated timed-touch node wins if both are present');
   const withL = audit({ events, plan, trace, inputEvents: parsed });
   const L = withL.actuationLatency;
   check(L && L.physicalClock === 'monotonic', `the image clock is the physical one, got ${JSON.stringify(L && { physical: L.physicalClock, edges: L.edges })}`);

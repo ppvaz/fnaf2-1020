@@ -413,9 +413,12 @@ function gradeHall(contact, trace, offsetMs, halfBracketMs, released) {
  * `add device N: /dev/input/eventX` + `  name: "..."` blocks, then rows
  * `[  sec.usec] /dev/input/eventX: EV_KEY BTN_TOUCH DOWN` (with -l names),
  * and a `# stopped ...` trailer. The virtual touch device the campaign
- * creates is resolved by NAME from its add-device block, never by number.
+ * uses is resolved by NAME from its add-device block, never by number. When
+ * the night reuses the already-attached menu HID, no "FNAF Timed Touch" node
+ * appears: the schedule's reports stay on "FNAF Campaign Menu".
  */
 export const VIRTUAL_TOUCH_DEVICE_NAME = /FNAF Timed Touch/i;
+const REUSED_MENU_TOUCH_DEVICE_NAME = /FNAF Campaign Menu/i;
 
 export function parseInputEvents(text) {
   const devices = {};
@@ -434,7 +437,11 @@ export function parseInputEvents(text) {
 
 /** Press/release edges of the virtual touch device, in the getevent clock (ms). */
 export function touchEdges(parsed, deviceName = VIRTUAL_TOUCH_DEVICE_NAME) {
-  const node = Object.entries(parsed.devices).find(([, name]) => deviceName.test(name))?.[0];
+  const entries = Object.entries(parsed.devices);
+  const node = entries.find(([, name]) => deviceName.test(name))?.[0]
+    ?? (deviceName === VIRTUAL_TOUCH_DEVICE_NAME
+      ? entries.find(([, name]) => REUSED_MENU_TOUCH_DEVICE_NAME.test(name))?.[0]
+      : null);
   if (!node) return { node: null, edges: [] };
   const edges = [];
   let down = null;

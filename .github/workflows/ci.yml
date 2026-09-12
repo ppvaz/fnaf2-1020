@@ -29,8 +29,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Fixture rendering dependency
-        run: python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
+      - name: Fixture rendering and video dependencies
+        run: |
+          python3 -m pip install --disable-pip-version-check 'pillow==12.3.0'
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Install the pinned workspace toolchain
         run: npm ci
       - name: Type and architecture contracts
