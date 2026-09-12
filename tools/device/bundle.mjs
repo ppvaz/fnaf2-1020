@@ -62,9 +62,48 @@ function nightsOf(winner) {
   return unique;
 }
 
+// A death-targeting bundle is built to test a model prediction of a DEATH, not
+// to win: the gate is honestly not PASS, and the prediction it carries is the
+// claim the run will be read against (killer shares and death-time quantiles
+// over the phases a drawn epoch can land on, at the 3000-replay standard).
+// It rides in the manifest so nothing downstream can mistake such a run for a
+// route claim. Written by tools/device/death-prediction.mjs.
+export const DEATH_PREDICTION_SCHEMA = 'death-prediction-v1';
+export const DEATH_TARGETED_STATUS = 'DEATH_TARGETED';
+const MIN_PREDICTION_REPLAYS = 3000;
+
+export function validateDeathPrediction(prediction, nights) {
+  if (!isRecord(prediction) || prediction.schema !== DEATH_PREDICTION_SCHEMA)
+    fail(`a ${DEATH_TARGETED_STATUS} gate requires a ${DEATH_PREDICTION_SCHEMA} prediction`);
+  if (!nights.includes(prediction.night)) fail('death prediction night is not a winner night');
+  if (!Number.isInteger(prediction.replays) || prediction.replays < MIN_PREDICTION_REPLAYS)
+    fail(`death prediction needs at least ${MIN_PREDICTION_REPLAYS} replays`);
+  if (!Array.isArray(prediction.phasesMs) || prediction.phasesMs.length < 2 ||
+      prediction.phasesMs.some(ms => !Number.isInteger(ms) || ms < 0 || ms >= 1000))
+    fail('death prediction must span several epoch phases in [0, 1000)');
+  if (!Number.isInteger(prediction.wins) || prediction.wins < 0 || prediction.wins > prediction.replays)
+    fail('death prediction wins is invalid');
+  if (!Array.isArray(prediction.killers) || prediction.killers.length === 0) fail('death prediction names no killer');
+  let counted = 0;
+  for (const entry of prediction.killers) {
+    if (!isRecord(entry) || typeof entry.killer !== 'string' || !Number.isInteger(entry.count) || entry.count < 1)
+      fail('death prediction killer entry is malformed');
+    const t = entry.tSeconds;
+    if (!isRecord(t) || ['min', 'p10', 'p50', 'p90', 'max'].some(k => typeof t[k] !== 'number' || !Number.isFinite(t[k])) ||
+        !(t.min <= t.p10 && t.p10 <= t.p50 && t.p50 <= t.p90 && t.p90 <= t.max))
+      fail(`death prediction quantiles for ${entry.killer} are malformed`);
+    counted += entry.count;
+  }
+  if (counted + prediction.wins !== prediction.replays) fail('death prediction counts do not add up to its replays');
+  if (typeof prediction.generatedBy !== 'string' || prediction.generatedBy.length === 0)
+    fail('death prediction must name its generator');
+  return prediction;
+}
+
 function validateGate(gate, engineHash, nights, seeds) {
   if (!isRecord(gate)) fail('gate is required');
-  if (gate.status !== 'PASS') fail(`gate status must be PASS, got ${JSON.stringify(gate.status)}`);
+  if (gate.status === DEATH_TARGETED_STATUS) validateDeathPrediction(gate.prediction, nights);
+  else if (gate.status !== 'PASS') fail(`gate status must be PASS or ${DEATH_TARGETED_STATUS}, got ${JSON.stringify(gate.status)}`);
   if (gate.engineHash !== undefined && gate.engineHash !== engineHash)
     fail('gate.engineHash does not match winner.engineHash');
   if (gate.nights !== undefined && !same(gate.nights, nights)) fail('gate.nights does not match winner.nights');

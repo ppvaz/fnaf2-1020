@@ -23,6 +23,31 @@ try {
     gate: { status: 'PASS', claimLevel: 'MODEL_ONLY' },
   };
   const bundlePath = join(root, 'minus-toys');
+
+  // A death-targeting bundle: the gate is honestly not PASS and carries the
+  // prediction the run will be read against. Without the prediction it is
+  // refused; with it the manifest carries it verbatim.
+  const targeted = { ...winner, nights: [6],
+    gate: { status: 'DEATH_TARGETED', claimLevel: 'MODEL_ONLY' } };
+  expectFailure(() => compileBundle(targeted, join(root, 'targeted-no-prediction')),
+    'a DEATH_TARGETED gate without its prediction must be refused');
+  const prediction = { schema: 'death-prediction-v1', night: 6, replays: 3000, phasesMs: [0, 500], wins: 0,
+    killers: [{ killer: 'foxy', count: 2250, share: 0.75, tSeconds: { min: 50, p10: 80, p50: 150, p90: 170, max: 230 } },
+      { killer: 'puppet', count: 750, share: 0.25, tSeconds: { min: 24.7, p10: 26.7, p50: 32.7, p90: 49.7, max: 82.7 } }],
+    generatedBy: 'test' };
+  expectFailure(() => compileBundle({ ...targeted, gate: { ...targeted.gate, prediction: { ...prediction, replays: 600, killers: [{ ...prediction.killers[0], count: 600 }] } } },
+    join(root, 'targeted-short')), 'a death prediction below 3000 replays must be refused');
+  expectFailure(() => compileBundle({ ...targeted, gate: { ...targeted.gate, prediction: { ...prediction, wins: 5 } } },
+    join(root, 'targeted-sum')), 'a death prediction whose counts do not add up must be refused');
+  const targetedPath = join(root, 'targeted');
+  check(compileBundle({ ...targeted, gate: { ...targeted.gate, prediction } }, targetedPath).status === 'READY',
+    'a DEATH_TARGETED gate with a valid prediction must compile');
+  const targetedManifest = JSON.parse(readFileSync(join(targetedPath, 'manifest.json'), 'utf8'));
+  check(targetedManifest.gate.status === 'DEATH_TARGETED' && targetedManifest.gate.prediction.killers[0].killer === 'foxy',
+    'the manifest must carry the death-targeted gate and its prediction');
+  check(validateBundle(targetedPath).plans.length === 1, 'a death-targeted bundle must validate like any other');
+  expectFailure(() => compileBundle({ ...winner, gate: { status: 'FAIL' } }, join(root, 'fail-gate')),
+    'a plain FAIL gate is still refused');
   const compiled = compileBundle(winner, bundlePath);
   check(compiled.status === 'READY', 'compiler did not return READY');
   check(readFileSync(join(bundlePath, 'manifest.json'), 'utf8').includes('device-bundle-v1'),

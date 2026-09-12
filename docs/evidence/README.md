@@ -61,3 +61,14 @@ The architecture generator also emits
 from stable IDs to source, test, fixture, and evidence references; it does not
 grant a claim or promotion authority. `npm run test:retrieval` keeps the main
 human-facing routes discoverable from newcomer questions.
+
+A `device-bundle-v1` whose manifest gate is `DEATH_TARGETED` was built to test
+a model prediction of a death, not to win. Its gate carries a
+`death-prediction-v1` record (killer shares and death-time quantiles over the
+epoch phases a drawn release can land on, 3000 replays minimum, written by
+`tools/device/death-prediction.mjs` before the run and retained beside it as
+`prediction.json`). Such a run is read as prediction versus observation; it is
+never a route claim and never a Plan 12 rung, whatever its terminal. The
+instrument and its first record are described in
+[`docs/device/ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md)
+("Death prediction and death targeting").

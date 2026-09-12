@@ -5241,3 +5241,35 @@ phase since anchor5 (authorization 1.9–2.5 s after onset against k ≤ 2); the
 64 ms gap between the anchored aim and the trace's delivered epoch on aim940
 is unexplained. Both wins were on the Codex session of 2026-09-12; the
 Claude sessions resumed from its cutoff.
+
+## 2026-09-12 — death prediction: Night 6 died to Foxy at 26 s, the model said 60–170 s, and the gap is a measured input
+
+Pedro asked for Night 6 on the phone as a test of the model's Foxy prediction,
+and proposed that runs aim at specific deaths rather than only at 6 AM. The
+run (`night6-foxytest-20260912T223944Z`, the second win's exact knobs, drawn
+epoch) died to **Withered Foxy at ~26 s** against a prediction of Foxy at
+80/150/170 s (p10/p50/p90) in 75 % of phases. Killer right, time wrong by 3×,
+and the same run's audit says why: the post-mask hall flash at +380 ms lands
+inside the mask-off refusal window (measured mask-off latency 312–315 ms plus
+the 244 ms animation during which g75 refuses every office light); it graded
+DARK, Foxy's D never reset, and the camdrop's held light on the monitor drop
+flashed a locked Foxy. Night 5 tolerated the same swallowed flashes (13/34 and
+22/41 dark on its traced runs) because Foxy at AI 5–7 needs D ≥ 14.
+Evidence: [night6-foxy-prediction-20260912.md](../docs/evidence/night6-foxy-prediction-20260912.md).
+
+Instrument: `tools/device/death-prediction.mjs` writes a `death-prediction-v1`
+record before a run (killer shares and death-time quantiles over 20 phases,
+3000 replays); `bundle.mjs` accepts a `DEATH_TARGETED` gate only with that
+record attached and carries it in the manifest; `night5-run.sh` retains it as
+`prediction.json` and prints it before the campaign. Documented in
+`ON-DEVICE-VALIDATION.md` and the evidence policy. Such runs are never route
+claims.
+
+Model findings from the fix search: the raise (10100), the CAM 09 stun refresh
+(10400) and the camdrop (13650) are each rigid to ~120 ms (Toy Bonnie's 6.66 s
+stun); the 10 s cycle is over-subscribed by 50–150 ms once the refusal window
+is real. The fit that survives: hall flash at mask-off + 600 ms with the mask
+window trimmed to 5.211 s — Night 5 3000/3000 normal and worst
+(`artifacts/night5-hallfix`, `fnv1a-34463603`); Night 6 a `DEATH_TARGETED`
+bundle predicting Foxy 80/150/170 s in 75 % of phases
+(`artifacts/night6-hallfix`, `fnv1a-44e8eff2`). Neither has run.

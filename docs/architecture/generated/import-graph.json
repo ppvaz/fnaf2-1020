@@ -1216,6 +1216,15 @@
       ]
     },
     {
+      "file": "tools/device/death-prediction.mjs",
+      "imports": [
+        "./bundle.mjs",
+        "./minus-toys-plan.mjs",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/deathchart.mjs",
       "imports": [
         "../chrome.mjs",

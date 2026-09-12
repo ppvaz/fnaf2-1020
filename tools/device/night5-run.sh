@@ -470,6 +470,20 @@ CAMPAIGN=(node apps/device/src/cli.js campaign
 # bound at all the anchor is OFF. Every anchor refusal at run time also
 # releases at once.
 BUNDLE_WINNER_HASH="$(node -e 'process.stdout.write(String(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).winnerHash ?? ""))' "$BUNDLE/manifest.json" 2>/dev/null || true)"
+# A death-targeting bundle (gate DEATH_TARGETED, tools/device/death-prediction.mjs)
+# exists to test a model prediction of a death. The prediction is retained
+# beside the run BEFORE the campaign starts, so the read-out cannot be fitted
+# to the outcome, and it is printed so the operator knows what the run claims.
+if node -e '
+const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+if (m.gate?.status !== "DEATH_TARGETED") process.exit(1);
+require("fs").writeFileSync(process.argv[2], JSON.stringify(m.gate.prediction, null, 2) + "\n");
+const p = m.gate.prediction;
+console.log(`predict  DEATH-TARGETING run: model wins ${p.wins}/${p.replays} over ${p.phasesMs.length} phases`);
+for (const k of p.killers) console.log(`predict  ${k.killer} ${(100 * k.share).toFixed(0)}%  t p10 ${k.tSeconds.p10.toFixed(0)} p50 ${k.tSeconds.p50.toFixed(0)} p90 ${k.tSeconds.p90.toFixed(0)} s`);
+' "$BUNDLE/manifest.json" "$OUTDIR/prediction.json" 2>/dev/null; then
+  printf 'predict  retained %s/prediction.json -- this run is NOT a route claim\n' "$OUTDIR"
+fi
 if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
   if aim="$(node tools/device/fact-register.mjs --anchor-aim "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-aim.err")"; then
     NIGHT_ANCHOR_AIM_MS="$aim"

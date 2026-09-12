@@ -42,6 +42,7 @@ controller research, and device evidence form one program.
 | See the first Night 5 6 AM on the phone: the run, its proof, and what it is and is not evidence for | [`evidence/night5-first-6am-20260912.md`](evidence/night5-first-6am-20260912.md) |
 | See what the first Night 5 6 AM cost: the nights, the killers, the wrong turns and what each one cost | [`evidence/night5-first-6am-cost-20260912.md`](evidence/night5-first-6am-cost-20260912.md) |
 | See the second Night 5 6 AM, the mask window that made it, and the first measured actuation latency | [`evidence/night5-second-6am-mask5plus-20260912.md`](evidence/night5-second-6am-mask5plus-20260912.md) |
+| See the first death-prediction run: Night 6, Foxy named and three times too early, and the swallowed hall flash that explains it | [`evidence/night6-foxy-prediction-20260912.md`](evidence/night6-foxy-prediction-20260912.md) |
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
 | Read why the Withered Bonnie visual cause model was withdrawn, and what metric replaced euclid | [`evidence/withered-bonnie-visual-model-withdrawn-20260912.md`](evidence/withered-bonnie-visual-model-withdrawn-20260912.md) |
 | Run device work safely | [`operations/DEVICE-SAFETY.md`](operations/DEVICE-SAFETY.md) |

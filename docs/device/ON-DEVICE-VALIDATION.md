@@ -2440,3 +2440,71 @@ load-bearing state is rendered, and how wide is its per-instruction margin map**
 guards are invisible is a policy whose failures are undiagnosable on the phone,
 which is the position this session ended in. Unbuilt, and offered as a design
 note rather than a result.
+
+## Death prediction and death targeting: measuring the model's error, not just the night (2026-09-12)
+
+Every device run until this evening aimed at one outcome, 6 AM, and read one
+bit: reached or not. A night that fails says that *something* did not hold; it
+does not say which mechanism, or by how much. Pedro's proposal on 2026-09-12
+was to aim runs at **specific deaths** instead, and the first such run paid
+for the idea within its first 30 seconds of game time.
+
+Two instruments, two names, deliberately distinct:
+
+- **`death-prediction`** is a property of a *run*: before the campaign
+  starts, the model writes down what should kill and when — killer shares and
+  death-time quantiles over every epoch phase a drawn release can land on, at
+  the 3000-replay standard — and the grader reads killer and time off the
+  frames afterwards. The residual is the measurement.
+  `tools/device/death-prediction.mjs` writes the `death-prediction-v1` record;
+  `night5-run.sh` retains it as `prediction.json` beside the run *before* the
+  campaign, so it cannot be fitted to the outcome, and prints it. A 6 AM
+  attempt carries the trivial prediction "no death".
+- **`death-targeting`** is a property of a *bundle*: a plan whose model gate
+  is honestly not PASS because the model expects a death, built to test that
+  expectation on the phone. `bundle.mjs` accepts `gate.status =
+  DEATH_TARGETED` only with the prediction attached, carries it in the
+  manifest, and nothing downstream may read such a run as a route claim. The
+  deliberate variants — skip the hall flash and time Foxy, wind nothing and
+  time the Puppet, hold four mask ticks and watch Balloon Boy — each measure
+  one constant that the 6 AM attempts had been guessing.
+
+**The first record: `night6-foxytest-20260912T223944Z`.** Bundle
+`artifacts/night6-mask5plus/bundle` (winner `fnv1a-05d2f9a6`, the exact knobs
+of the second Night 5 win), released at a drawn epoch. Prediction, stated
+before the run from the model's phase census: Foxy in 75 % of phases at
+80/150/170 s (p10/p50/p90), the Puppet in 25 % at 27/33/50 s, no wins.
+Observed: **Withered Foxy at ~26 s** — the killer the model named, at a time
+below its p10 by a factor of three. The frames
+(`captures/night6-foxytest-20260912T223944Z.mp4`, HUD at ~29.5 s, release at
+~31.6 s): mask 46.5–51.0 s, office 51.5 s, monitor up on CAM 11 winding
+52.5–55.5 s, monitor lowering 55.8 s, Foxy in the office 55.9 s, static
+56.0 s.
+
+The residual has a cause, and it was measurable on the same run. The contact
+audit reads the post-mask hall flash at +19 940 ms **DARK** (the one at
++9 940 lit), and the latency table it measured from `getevent` explains why:
+mask-off press→visible effect is 312–315 ms on this handset (286–374 on the
+run before), and for the 244 ms of the mask-off animation that follows the
+game refuses every office light (g75). The flash is scheduled 380 ms after the
+mask-off press with a 33 ms contact: it lands inside the refusal window and
+lights only when the latency comes in early. Without that reset Foxy's D
+climbs ~15 per cycle; at Night 6's AI 10 he locks at D ≥ 11 within two
+cycles, and the camdrop's held light on the monitor drop is then a hall flash
+on a locked Foxy — the model's own instant-kill path. Night 5 tolerated the
+same swallowed flashes (its earlier runs graded 13/34 and 22/41 dark) because
+Foxy at AI 5–7 needs D ≥ 14 on one roll in five.
+
+What the model was missing is therefore an *input* (the mask-off latency),
+not a mechanism: with the flash credited, its Night 6 Foxy is at 60–170 s. The
+follow-up bundle `artifacts/night6-hallfix` moves the flash to mask-off +
+600 ms (the only free knob: the raise, the CAM 09 stun refresh and the camdrop
+are each rigid in the model to within ~120 ms, each through Toy Bonnie's
+6.66 s stun) and trims the mask window to 5.211 s to make the 10 s cycle fit.
+It gates Night 5 at 3000/3000 normal and worst; on Night 6 the model still
+predicts Foxy at 80/150/170 s in 75 % of phases and the Puppet in the rest,
+and that is the prediction its `DEATH_TARGETED` gate carries. If the phone
+then delivers Foxy inside that band, the model's Foxy is right and Night 6
+needs a different cycle; if Foxy does not come, the model's D growth under the
+mask is wrong on this build, and Night 6 is more open than it says. Either
+answer is a measurement.

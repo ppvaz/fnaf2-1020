@@ -32,6 +32,7 @@ const EXCLUDED = new Map([
   ['intersection-state-gate.mjs', 'pure control-intersection state gate consumed by the executor, gated by test-intersection-state-gate.mjs; it decides a press rather than grading a run'],
   ['touch-contamination-guard.sh', 'pre-run guard that refuses a session whose touch state is already contaminated; it runs BEFORE a run exists to grade'],
   ['screenstate.py', 'the live alive/dead authority; grade-night.py and desync-scan.py apply its predicate to recordings'],
+  ['death-prediction.mjs', 'runs BEFORE a run, not after it: writes the model\'s death prediction (killer shares, time quantiles over phases) that night5-run.sh retains as prediction.json; grading reads that file, it does not regenerate it -- gated by test-bundle.mjs through the DEATH_TARGETED gate it produces'],
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
   ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],

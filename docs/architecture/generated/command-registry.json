@@ -1586,6 +1586,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/death-prediction.mjs",
+      "invocation": "tools/device/death-prediction.mjs --winner W.json --night N [--replays 3000] [--step-ms 50] [--out FILE] [--attach]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/test-hid-intersection-probe.mjs",
       "invocation": "tools/device/test-hid-intersection-probe.mjs",
       "kind": "check",
