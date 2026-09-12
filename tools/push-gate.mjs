@@ -68,7 +68,7 @@ function ciSteps(dir) {
 }
 
 function laneDrift(dir) {
-  const steps = ciSteps(dir).filter(step => !/^(Fixture rendering dependency|Install the pinned workspace toolchain)$/.test(step.name));
+  const steps = ciSteps(dir).filter(step => !/^(Fixture rendering (dependency|and video dependencies)|Install the pinned workspace toolchain)$/.test(step.name));
   const drift = [];
   const ciNames = steps.map(step => step.name);
   const laneNames = LANES.map(lane => lane.name);
