@@ -106,9 +106,11 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
       try { candidate = latchedNightOnsetMs(read.fields); }
       catch (error) { return fallback('onset-malformed', { error: String(error?.message ?? error), reads }); }
       if (candidate !== null) {
+        // `read` was just considered, so `best` is at least as fast as it.
+        const offsetMs = (best ?? read).offsetMs;
         latchedSeenDeviceMs = candidate;
-        latchedSeenOffsetMs = best.offsetMs;
-        if (candidate + best.offsetMs >= notBeforeHostMs) { onsetDeviceMs = candidate; break; }
+        latchedSeenOffsetMs = offsetMs;
+        if (candidate + offsetMs >= notBeforeHostMs) { onsetDeviceMs = candidate; break; }
         staleOnset = candidate;
       }
     }
@@ -124,10 +126,15 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
   }
   // The latch read itself may be the only clean sample; one more probe gives
   // the fastest a chance, and its failure is not fatal either.
-  if (!(best.uncertaintyMs <= maxUncertaintyMs)) {
+  // `best` is reassigned inside consider(), so the checker will not narrow it;
+  // read it once into a const.
+  const latchSample = best;
+  if (latchSample === null || !(latchSample.uncertaintyMs <= maxUncertaintyMs)) {
     try { consider(await clock.probe()); } catch (error) { failed(error); }
   }
   const measured = best;
+  if (measured === null)
+    return fallback('probe-failed', { reads, failures, onsetDeviceMs, ...(lastError ? { lastError } : {}) });
   if (!(measured.uncertaintyMs <= maxUncertaintyMs))
     return fallback('offset-uncertain', { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs,
       uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs, maxUncertaintyMs });
