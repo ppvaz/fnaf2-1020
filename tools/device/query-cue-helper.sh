@@ -187,6 +187,42 @@ port="$(printf '%s\n' "$control" | sed -n 's/.*control=[A-Z][A-Z]* [a-z]*=[^ ]* 
 [ -n "$port" ] || port="$(printf '%s\n' "$control" | sed -n 's/.* port=\([^ ]*\).*/\1/p')"
 socket="$(printf '%s\n' "$control" | sed -n 's/.* socket=\([^ ]*\).*/\1/p')"
 token="$(printf '%s\n' "$control" | sed -n 's/.*token=\([0-9a-f][0-9a-f]*\).*/\1/p')"
+
+# The endpoint is announced ONCE, as a logcat line, and this script used to
+# re-read it on every call. The handset's main log is a 256 KiB ring buffer, so
+# on a long, noisy night that line rotates out and every later call fails with
+# "no valid per-run cue-helper token found" although the helper is healthy.
+# That is how night5-final2 and night5-rep4 (2026-09-12) lost their frame
+# traces: `trace start` at night-go read a fresh line, `trace stop` at the end
+# of the night found none. (The executor's own gate reads are not exposed: its
+# AdbCueHelperPort discovers the endpoint once and reuses it.)
+#
+# So a valid endpoint is stashed the moment it is seen, keyed by the helper's
+# pid, and reused only for that same process. The token belongs to a capture
+# generation; restarting capture force-stops the helper, which gives a new pid
+# and so correctly invalidates the stash. A new generation inside the SAME
+# process would also mint a new token; that case is caught below by the
+# helper's own "ERROR unauthorized" reply rather than trusted.
+ENDPOINT_STASH="${CUE_HELPER_ENDPOINT_STASH:-$HERE/../../captures/.cue-helper-endpoint-${ANDROID_SERIAL:-default}}"
+ENDPOINT_FROM_STASH=0
+if [ "${#token}" -eq 32 ]; then
+  ( umask 077
+    mkdir -p "$(dirname "$ENDPOINT_STASH")" &&
+      printf 'pid=%s\nport=%s\nsocket=%s\ntoken=%s\n' "$pid" "$port" "$socket" "$token" \
+        > "$ENDPOINT_STASH.tmp" &&
+      mv -f "$ENDPOINT_STASH.tmp" "$ENDPOINT_STASH" ) 2>/dev/null || true
+elif [ -f "$ENDPOINT_STASH" ]; then
+  stash_pid="$(sed -n 's/^pid=//p' "$ENDPOINT_STASH")"
+  if [ -n "$stash_pid" ] && [ "$stash_pid" = "$pid" ]; then
+    port="$(sed -n 's/^port=//p' "$ENDPOINT_STASH")"
+    socket="$(sed -n 's/^socket=//p' "$ENDPOINT_STASH")"
+    token="$(sed -n 's/^token=//p' "$ENDPOINT_STASH")"
+    ENDPOINT_FROM_STASH=1
+    echo "cue helper endpoint line rotated out of logcat; using the endpoint stashed for helper pid $pid" >&2
+  else
+    echo "cue helper endpoint line rotated out of logcat, and the stashed endpoint belongs to helper pid ${stash_pid:-none}, not $pid" >&2
+  fi
+fi
 if [ "${#token}" -ne 32 ]; then
   echo "no valid per-run cue-helper token found" >&2
   exit 1
@@ -212,7 +248,20 @@ fi
 
 # One request, one bounded line back. REC holds the socket for its post-roll,
 # so the client timeout has to clear the longest window this script asks for.
+# A stashed endpoint is trusted only while the helper accepts it. If the
+# helper started a new capture generation in the same process it has a new
+# token, and it answers the old one with "ERROR unauthorized": say so, so a
+# stale stash reads as a stale stash and not as a mysterious failed command.
 exchange() {
+  local reply
+  reply="$(exchange_raw "$1")"
+  if [ "$ENDPOINT_FROM_STASH" = 1 ] && [ "$reply" = "ERROR unauthorized" ]; then
+    echo "stashed cue helper endpoint is stale: helper pid $pid rejected its token; rerun tools/device/cue-helper-setup.sh" >&2
+  fi
+  printf '%s\n' "$reply"
+}
+
+exchange_raw() {
   if [ "$TRANSPORT" = loopback ]; then
     # $1 is deliberately unquoted: adb shell concatenates its arguments and
     # re-splits them on the device, so a quoted request with spaces arrives as

@@ -9,7 +9,8 @@ elif [ "${1:-}" = -s ] && [ "${3:-}" = get-state ]; then
 elif [ "${1:-}" = get-state ]; then
   echo device
 elif [ "${1:-}" = shell ] && [ "${2:-}" = pidof ]; then
-  echo 7007
+  # MOCK_HELPER_PID lets a test present a restarted helper process.
+  echo "${MOCK_HELPER_PID:-7007}"
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = meminfo ]; then
   echo 'TOTAL PSS: 51200 TOTAL RSS: 64000'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = package ]; then
@@ -27,6 +28,9 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = window ]; th
   echo '    mAlertWindows={Window{456 u0 FNaF 2 Cue Helper HUD}}'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = sh ] && [ "${3:-}" = -s ]; then
   cat >/dev/null
+  # MOCK_UNAUTHORIZED answers every exchange the way the helper answers a token
+  # from an older capture generation (CaptureService.serveControlRequest).
+  if [ "${MOCK_UNAUTHORIZED:-0}" = 1 ]; then echo 'ERROR unauthorized'; exit 0; fi
   # The latency verb sends PORT COUNT TOKEN, so an all-digit $6 is a sample
   # loop, not an exchange. Emit COUNT samples per group for the reporter.
   case "${6:-}" in
@@ -90,7 +94,13 @@ elif [ "${1:-}" = forward ] && [ "${2:-}" = --remove ]; then
 elif [ "${1:-}" = forward ]; then
   echo "${MOCK_FORWARD_PORT:?mock adb forward needs MOCK_FORWARD_PORT}"
 elif [ "${1:-}" = logcat ]; then
-  echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY port=49707 socket=com.fnaf2.cuehelper.control token=0123456789abcdef0123456789abcdef"
+  # MOCK_LOGCAT_ROTATED models the endpoint announcement having rotated out of
+  # the 256 KiB ring buffer: the helper still logs, but no control= line is left.
+  if [ "${MOCK_LOGCAT_ROTATED:-0}" = 1 ]; then
+    echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=900 rgba=1,2,3 luma=2 ageUs=1500"
+  else
+    echo "$(date +%s).000 I/FnafCueHelper(7007): RUNNING visual=OBSERVED seq=120 rgba=1,2,3 luma=2 ageUs=1500 content=2400x1080 visible=1 audio=EXTERNAL authority=audio-authority state=UNKNOWN reason=external-authority-not-connected control=READY port=49707 socket=com.fnaf2.cuehelper.control token=0123456789abcdef0123456789abcdef"
+  fi
 else
   echo "unexpected mock adb invocation: $*" >&2
   exit 1

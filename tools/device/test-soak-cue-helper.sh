@@ -3,6 +3,8 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/cue-helper-soak-test.XXXXXX")"
+# query-cue-helper.sh stashes the endpoint it resolves; keep it out of captures/.
+export CUE_HELPER_ENDPOINT_STASH="$TEMP_DIR/endpoint-stash"
 trap 'rm -rf "$TEMP_DIR"' EXIT HUP INT TERM
 
 MOCK_BIN="$TEMP_DIR/bin"

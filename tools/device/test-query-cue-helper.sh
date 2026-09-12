@@ -21,6 +21,11 @@ done
 MOCK_FORWARD_PORT="$(cat "$TEMP_DIR/port")"
 export MOCK_FORWARD_PORT
 
+# Every call stashes the endpoint it resolves; keep that out of the real
+# captures/ directory.
+CUE_HELPER_ENDPOINT_STASH="$TEMP_DIR/endpoint-stash"
+export CUE_HELPER_ENDPOINT_STASH
+
 # The native-resolution watchlist is authenticated separately from the legacy
 # GET/GRID path. Status does not activate it; a 64-hex spec hash does.
 for transport in loopback forward; do
@@ -154,5 +159,44 @@ for label in "snapshot read" "grid read" "shell baseline"; do
     *) echo "latency summary lost the $label group: $summary" >&2; exit 1 ;;
   esac
 done
+
+# The endpoint is announced once in a 256 KiB logcat ring buffer. night5-final2
+# and night5-rep4 lost their frame traces when that line rotated out before
+# `trace stop`. A valid endpoint is stashed and reused only for the same pid.
+rm -f "$CUE_HELPER_ENDPOINT_STASH"
+PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" watchlist status >/dev/null
+[ -f "$CUE_HELPER_ENDPOINT_STASH" ] || { echo "a valid endpoint was not stashed" >&2; exit 1; }
+[ "$(stat -c %a "$CUE_HELPER_ENDPOINT_STASH")" = 600 ] || { echo "endpoint stash must be mode 600" >&2; exit 1; }
+grep -qx 'pid=7007' "$CUE_HELPER_ENDPOINT_STASH" || { echo "stash lost the helper pid" >&2; exit 1; }
+grep -qx 'token=0123456789abcdef0123456789abcdef' "$CUE_HELPER_ENDPOINT_STASH" || { echo "stash lost the token" >&2; exit 1; }
+
+# Scrape first, stash second: after a capture restart the helper keeps its pid
+# but mints a new token, and announces it in a fresh line. A stale stash must
+# never win over that line, and the line must replace the stale stash.
+printf 'pid=7007\nport=49707\nsocket=com.fnaf2.cuehelper.control\ntoken=ffffffffffffffffffffffffffffffff\n' \
+  > "$CUE_HELPER_ENDPOINT_STASH"
+PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" watchlist status >/dev/null
+grep -qx 'token=0123456789abcdef0123456789abcdef' "$CUE_HELPER_ENDPOINT_STASH" || {
+  echo "a fresh endpoint line must replace a stale stashed token" >&2; exit 1; }
+
+rotated_err="$TEMP_DIR/rotated.err"
+rotated="$(MOCK_LOGCAT_ROTATED=1 PATH="$TEMP_DIR/bin:$PATH" \
+  "$HERE/query-cue-helper.sh" watchlist status 2>"$rotated_err")" || {
+  echo "a rotated endpoint line must fall back to the same helper's stash: $(cat "$rotated_err")" >&2; exit 1; }
+case "$rotated" in *"watch=OFF"*) ;; *) echo "stash fallback returned: $rotated" >&2; exit 1 ;; esac
+grep -q 'using the endpoint stashed for helper pid 7007' "$rotated_err" || {
+  echo "stash fallback must say it used the stash" >&2; exit 1; }
+
+if MOCK_LOGCAT_ROTATED=1 MOCK_HELPER_PID=8008 PATH="$TEMP_DIR/bin:$PATH" \
+    "$HERE/query-cue-helper.sh" watchlist status >/dev/null 2>"$rotated_err"; then
+  echo "a stash from another helper pid must not be used" >&2; exit 1
+fi
+grep -q 'belongs to helper pid 7007, not 8008' "$rotated_err" || {
+  echo "a pid mismatch must be named: $(cat "$rotated_err")" >&2; exit 1; }
+
+MOCK_LOGCAT_ROTATED=1 MOCK_UNAUTHORIZED=1 PATH="$TEMP_DIR/bin:$PATH" \
+  "$HERE/query-cue-helper.sh" watchlist status >/dev/null 2>"$rotated_err" || true
+grep -q 'stashed cue helper endpoint is stale' "$rotated_err" || {
+  echo "a rejected stashed token must be reported as stale: $(cat "$rotated_err")" >&2; exit 1; }
 
 echo "cue-helper query tests passed"
