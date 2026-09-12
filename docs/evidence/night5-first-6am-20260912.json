@@ -1,0 +1,150 @@
+{
+  "schema": "night5-first-6am-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "one-off node script over the retained run files; every value below is read from them, none typed",
+  "run": "night5-anchor2-20260912T204002Z",
+  "campaignRunId": "campaign-2026-09-12T20-40-15.008Z",
+  "serial": "ZF525F5BH5",
+  "night": 5,
+  "outcome": {
+    "campaignResultSchema": "device-campaign-result-v1",
+    "campaignState": "COMPLETE",
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 5,
+      "outcome": "sixam",
+      "sixAm": true
+    },
+    "terminalVerification": {
+      "sixAm": true,
+      "positive": true
+    },
+    "save": {
+      "customNightVisible": false,
+      "continueVisible": true,
+      "sixthNightVisible": true,
+      "menuReturned": true,
+      "customCompleted": false,
+      "nextNightStarted": false,
+      "observed": true
+    },
+    "proof": true,
+    "proofHash": "fnv1a-e017f7c9",
+    "campaignExit": "campaign exit 0",
+    "sixAmObservedAfterReleaseMs": 419056,
+    "terminalFromExecutorAfterReleaseMs": 419221,
+    "videoTerminal": "clear -- sixam at 449.0s",
+    "videoHudFirst": "28.5s"
+  },
+  "schedule": {
+    "gates": 42,
+    "gateStatus": {
+      "AGREED": 42
+    },
+    "corrections": 0,
+    "gateAborts": 0,
+    "arm": {
+      "mode": "observe-once",
+      "attempts": 1,
+      "retries": 0,
+      "samples": 1,
+      "verifiedAtMs": 7258,
+      "armReadyAtMs": null,
+      "phaseLagMs": null,
+      "status": "VERIFIED",
+      "unresolvedReason": null
+    },
+    "stop": {
+      "reason": "actuator-stopped",
+      "detail": "",
+      "restarts": 0,
+      "interrupted": false
+    }
+  },
+  "origin": {
+    "anchor": [
+      {
+        "at": "2026-09-12T20:40:33.463Z",
+        "type": "origin.anchor",
+        "status": "unavailable",
+        "reason": "k-unreachable",
+        "aimMs": 233,
+        "probes": 1,
+        "offsetMs": -718801114.1546105,
+        "uncertaintyMs": 3.048435499998959,
+        "rttMs": 6.096870999997918,
+        "onsetDeviceMs": 718827811.031768,
+        "onsetHostMs": 26696.877157449722,
+        "k": 3,
+        "maxK": 2,
+        "plannedAfterOnsetMs": 2179.046846550278
+      }
+    ],
+    "nightAuthorized": {
+      "at": 1789245631429,
+      "type": "hid.night-authorized",
+      "owner": "port"
+    },
+    "releasedAtWallMs": 1789245633464,
+    "handoff": {
+      "at": "2026-09-12T20:40:33.464Z",
+      "type": "hid.handoff",
+      "requestedAt": 1789245633463,
+      "firstWriteAt": 1789245633464,
+      "delayMs": 1,
+      "budgetMs": 100
+    },
+    "deliveredEpochMs": "UNKNOWN",
+    "deliveredEpochWhyUnknown": "the frame trace was started on hid.night-go and opened after the release; phase.json reads errorVersusFirstNightFrameMs UNKNOWN (lifecycle bracket 1583 ms)",
+    "phaseOrigin": {
+      "kind": "lifecycle-classification",
+      "nightGoAt": 1789245633463,
+      "releasedAt": 1789245633464,
+      "errorVersusFirstNightFrameMs": "UNKNOWN",
+      "bracketedByMs": 1583,
+      "priorSampleLabel": "unknown=dark-frame-no-text",
+      "observationCadenceMs": {
+        "min": 0,
+        "p50": 956,
+        "max": 2851
+      }
+    }
+  },
+  "binding": {
+    "bundle": "artifacts/night5-contact-final",
+    "winnerHash": "fnv1a-81b5e51c",
+    "strategy": "minus-toys",
+    "engineSourceSha256": "55043e16ce7aca7b58eb3f913cf4e69e6fcd50d31b9ab5e2b13be106e48676cc",
+    "qualification": "docs/evidence/qualification-hid-mediaprojection-night5-20260912-contact-final.json",
+    "qualificationSha256": "839aca40ffd89ec7906bed04141dad9902c8f1987c1df2e57dbc1f32da2d043e",
+    "armMode": "observe-once"
+  },
+  "retained": {
+    "video": {
+      "path": "captures/night5-anchor2-20260912T204002Z.mp4",
+      "sha256": "161f0b6a011ab38c5c10186f1f97de6ba77be5f5e5db5b7f1871e2802b0bba3f"
+    },
+    "frameTrace": {
+      "path": "captures/frame-traces/night5-anchor2-20260912T204002Z-718831501559845.tsv",
+      "sha256": "a48f34de00eabdb53c162dffac23287899ad67e49d3fa9d1904ca4c1eb879e27"
+    },
+    "campaignResult": {
+      "path": "artifacts/campaign-2026-09-12T20-40-15.008Z/result.json",
+      "sha256": "5a13acae50e8fedc091ca1feba1fd3605b5aa596e35e0e6c9921960e40c7a6e8"
+    },
+    "campaignEvents": {
+      "path": "artifacts/campaign-2026-09-12T20-40-15.008Z/events.jsonl",
+      "sha256": "b0382cb186f7abc19dd2f05aa839218e292752d4860b38122d7f647cb9426eea",
+      "rows": 111
+    },
+    "runReport": {
+      "path": "artifacts/runs/night5-anchor2-20260912T204002Z/run-report.json",
+      "sha256": "b36951e3318a3825ef1a9f2c277dc00ae0eb2e7b89e59f2ec078d4e92a16b847"
+    },
+    "gradeLog": {
+      "path": "artifacts/runs/night5-anchor2-20260912T204002Z/grade.log",
+      "sha256": "25b312a05877f04b7dd3045086ebf176ac8f81fce56d13b11c3f75df7c847d13",
+      "verdict": "every instrument passed for night5-anchor2-20260912T204002Z"
+    }
+  }
+}

@@ -5159,3 +5159,22 @@ window 4.58 s, and the gate at +185.2 s read an unrecognisable screen before
 the abort — the death, on the monitor-down/mask-up edge of its cycle, is the
 Mangle shape of the shared five-tick budget at an unmeasured epoch. Evidence:
 [night5-hall-lockout-and-offset-sweep-20260912.json](../docs/evidence/night5-hall-lockout-and-offset-sweep-20260912.json).
+
+## 2026-09-12 — first Night 5 6 AM on the phone (night5-anchor2)
+
+`night5-anchor2-20260912T204002Z` won Night 5 on ZF525F5BH5 with binding
+`fnv1a-81b5e51c` (Minus Toys, bundle `artifacts/night5-contact-final`,
+observe-once): `device-campaign-result-v1` attempt `WIN`, positive `sixam`
+419 056 ms after the release, save advanced to the 6th Night entry,
+`campaign-proof-v1` `proofHash fnv1a-e017f7c9`; 42 gates all `AGREED`, 0
+corrections; the survival grader reads `TERMINAL: clear -- sixam at 449.0s`.
+The run released unanchored at a drawn epoch (`k-unreachable`, delivered epoch
+`UNKNOWN`), so the win is evidence for the route and the contact floors only.
+Evidence: [night5-first-6am-20260912.json](../docs/evidence/night5-first-6am-20260912.json),
+page [night5-first-6am-20260912.md](../docs/evidence/night5-first-6am-20260912.md).
+
+Open: the native origin anchor is unverified (released on its aim once, at
+k = 3; refused on the three runs since); the helper's onset latch clears on
+in-night `FNAF2_MENU` camera views and saw no frames while a frame trace ran
+(both fixed in source, not yet installed); no frame trace has yet covered a
+night onset (trigger moved to `evidence.started`).
