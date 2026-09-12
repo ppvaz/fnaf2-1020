@@ -111,6 +111,10 @@ export const ANCHOR_AIMS = Object.freeze({
     night: 5,
     aimMs: 233,
     periodMs: 1000,
+    // k = whole seconds added to the aim. 0-2 are 3000/3000; 3 and 4 lose ~11%
+    // to Balloon Boy (the response is not periodic past ~2.2 s), measured on
+    // the first anchored run, which delivered k=3.
+    maxK: 2,
     evidence: 'docs/evidence/night5-anchor-aim-20260912.json',
     reason: 'centre of the winning band [166.67, 300]: every model row there is 5 mask ticks and 3000/3000; k is free (233/1233/2233 all 3000/3000)',
   }),
@@ -144,6 +148,15 @@ export function anchorAimFor(winnerHash) {
   const unclean = (evidence.confirmations3000 ?? []).filter(c => c.wins !== c.seeds);
   if (!evidence.confirmations3000?.length || unclean.length)
     return { ok: false, reason: `3000-seed confirmations in ${entry.evidence} are missing or not clean` };
+  if (entry.maxK !== undefined) {
+    const covered = evidence.confirmations3000.filter(c => c.wins === c.seeds)
+      .map(c => Math.floor((c.epochMs - entry.aimMs + 1) / entry.periodMs));
+    for (let k = 0; k <= entry.maxK; k += 1)
+      if (!covered.includes(k))
+        return { ok: false, reason: `k=${k} is allowed by the register but ${entry.evidence} has no clean 3000-seed row for aim + ${k} s` };
+    if ((evidence.kLimit?.maxK ?? entry.maxK) !== entry.maxK)
+      return { ok: false, reason: `${entry.evidence} limits k to ${evidence.kLimit?.maxK}, the register says ${entry.maxK}` };
+  }
   return { ok: true, ...entry, band, winnerHash };
 }
 

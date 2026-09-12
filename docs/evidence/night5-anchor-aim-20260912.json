@@ -522,10 +522,48 @@
       "wins": 3000
     }
   ],
-  "kIsFree": "epochs 233.33, 1233.33 and 2233.33 all score 3000/3000, so the executor may release a whole second later at no model cost",
+  "kIsFree": "NO beyond k=2: epochs 233.33, 1233.33 and 2233.33 score 3000/3000, but 3233.33 scores 2673/3000 and 4233.33 2679/3000, all losses inside-office (Balloon Boy). The response is not periodic past ~2.2 s: a schedule that starts a third second late lets BB in on ~11% of seeds. The executor must cap k at 2 and, if it cannot reach k <= 2, release unanchored and say so.",
   "openLimits": [
     "the aim is where the SCHEDULE lands; the actuation latency L (30-110 ms, unmeasured) shifts every effect later and is a separate quantity",
     "the delivered epoch of an anchored run must be quoted from phase-reconstruct --frame-trace, never the lifecycle bracket; delivered minus aim is the clock estimator error plus release jitter",
     "a rebinding changes the bands: derive a new file for its winner hash before anchoring on it"
-  ]
+  ],
+  "kLimit": {
+    "maxK": 2,
+    "rows3000": [
+      {
+        "epochMs": 3166.67,
+        "seeds": 3000,
+        "wins": 2677,
+        "deaths": {
+          "inside-office": 323
+        }
+      },
+      {
+        "epochMs": 3233.33,
+        "seeds": 3000,
+        "wins": 2673,
+        "deaths": {
+          "inside-office": 327
+        }
+      },
+      {
+        "epochMs": 3300,
+        "seeds": 3000,
+        "wins": 2674,
+        "deaths": {
+          "inside-office": 326
+        }
+      },
+      {
+        "epochMs": 4233.33,
+        "seeds": 3000,
+        "wins": 2679,
+        "deaths": {
+          "inside-office": 321
+        }
+      }
+    ],
+    "measuredFor": "night5-anchor1-20260912T202654Z delivered k=3 (T0 = onset + 3233 ms) because the intro port planned from its own lifecycle wait, 2441 ms after the onset"
+  }
 }
