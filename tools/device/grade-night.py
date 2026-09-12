@@ -100,6 +100,79 @@ def describe_end(frame):
     return f"not a night HUD (mean {mean:.0f}, edge {edge:.0f})"
 
 
+# The death static this handset actually records is not the bright, violently
+# rough static describe_end() was written for: at 1280x576 after scaling and
+# H.264, it is a mid-grey noise field. Measured at 4 fps on the three retained
+# deaths of 2026-09-12 (subsampled red channel, every 53rd pixel):
+#
+#   run      window (video s)   mean        sd          tdiff       length
+#   anchor1  274.25-279.00      33.9-37.0   32.1-34.6   34.7-36.9   4.75 s
+#   rep1     147.50-152.50      33.9-37.0   32.9-35.4   35.5-37.5   5.0 s
+#   final2   213.75-218.50      33.9-37.0   32.1-35.5   34.7-37.2   4.75 s
+#   then the Game Over card:    21.4-23.7   35.9-36.6   10.6-11.6   ~10 s, constant
+#
+# and the controls that must NOT match: office HUD frames tdiff 5-17 (mean
+# 36-46, sd 52-57); the mask view mean ~4.5, sd 21, tdiff ~1.5; a monitor
+# transition tdiff 20-65 for one or two frames; the tear-banded raise of rep1
+# one frame at mean 190, tdiff 165; a jumpscare 2-3 frames at tdiff 45-75 with
+# the HUD still read. So the discriminator is TEMPORAL: only the death static
+# is decorrelated frame to frame for seconds on end. `tdiff` is the mean
+# absolute difference between consecutive subsampled frames. All four bounds
+# carry a margin over the measured rows; test-grade-night.py refuses a bound
+# that does not.
+STATIC_STRIDE = 53 * 3          # every 53rd pixel's red channel of an rgb24 buffer
+STATIC_TDIFF_MIN = 25.0         # measured 34.7-37.5 on the static, <= 17 on any HUD frame
+STATIC_MEAN_RANGE = (25.0, 50.0)   # measured 33.9-37.0
+STATIC_SD_RANGE = (25.0, 45.0)     # measured 32.1-35.5
+STATIC_MIN_SECONDS = 2.0        # measured >= 4.75 s; transitions and jumpscares last < 0.75 s
+
+
+def frame_stats(frame, prev_sample):
+    """(mean, sd, tdiff, sample) of the subsampled red channel; tdiff against `prev_sample`."""
+    sample = frame[0::STATIC_STRIDE]
+    n = len(sample)
+    mean = sum(sample) / max(n, 1)
+    sd = (sum((v - mean) ** 2 for v in sample) / max(n, 1)) ** 0.5
+    if prev_sample is None or len(prev_sample) != n:
+        tdiff = None
+    else:
+        tdiff = sum(abs(a - b) for a, b in zip(sample, prev_sample)) / max(n, 1)
+    return mean, sd, tdiff, sample
+
+
+def static_frame(stat):
+    """One frame's stats inside the death-static envelope."""
+    mean, sd, tdiff = stat
+    return (tdiff is not None and tdiff >= STATIC_TDIFF_MIN
+            and STATIC_MEAN_RANGE[0] <= mean <= STATIC_MEAN_RANGE[1]
+            and STATIC_SD_RANGE[0] <= sd <= STATIC_SD_RANGE[1])
+
+
+def temporal_static_runs(stats, flags, fps):
+    """Per-frame: is this frame inside a HUD-absent run of decorrelated grey
+    noise at least STATIC_MIN_SECONDS long? Returns a list of descriptions or
+    None, aligned with `stats`."""
+    need = max(1, int(round(STATIC_MIN_SECONDS * fps)))
+    out = [None] * len(stats)
+    i = 0
+    while i < len(stats):
+        if flags[i] or not static_frame(stats[i]):
+            i += 1
+            continue
+        j = i
+        while j < len(stats) and not flags[j] and static_frame(stats[j]):
+            j += 1
+        if j - i >= need:
+            means = [stats[k][0] for k in range(i, j)]
+            tdiffs = [stats[k][2] for k in range(i, j)]
+            text = (f"death static (temporal: {j - i} frames, {(j - i) / fps:.1f}s, "
+                    f"mean {sum(means) / len(means):.0f}, tdiff {sum(tdiffs) / len(tdiffs):.0f})")
+            for k in range(i, j):
+                out[k] = text
+        i = j
+    return out
+
+
 def hud_gaps(flags, frm=0):
     """Every [i, j) stretch where the HUD is absent, from index `frm`."""
     i, out = frm, []
@@ -154,10 +227,18 @@ def main():
     # Keep only the two facts this grader needs from each frame.  A 420-second
     # 1280x576 RGB recording is ~4.3 GB at 4 fps; retaining it here can freeze
     # the host before any verdict is printed.
-    flags, descriptions = [], []
+    flags, descriptions, stats = [], [], []
+    prev_sample = None
     for frame in decode(a.video, a.fps):
         flags.append(is_night(frame))
         descriptions.append(describe_end(frame))
+        mean, sd, tdiff, prev_sample = frame_stats(frame, prev_sample)
+        stats.append((mean, sd, tdiff))
+    # The temporal rule sees what describe_end cannot: this handset's death
+    # static is grey and decorrelated, not bright and rough.
+    for k, text in enumerate(temporal_static_runs(stats, flags, a.fps)):
+        if text:
+            descriptions[k] = text
     if not flags:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
