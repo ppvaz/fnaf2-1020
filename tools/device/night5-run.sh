@@ -343,7 +343,30 @@ analyze() {
     # pipeline gets mistaken for a stopped one; grade-run.sh now prints a
     # [k/N pct%] line per step and a heartbeat while a step runs, and that is
     # only useful if it arrives while it happens.
-    tools/device/grade-run.sh "$RUNID" 2>&1 | tee "$OUTDIR/grade.log" || true
+    # Headroom for the OS, as enforced numbers rather than a hope (Pedro,
+    # 2026-09-12: "never exhaust the machine"). This host has 12 cores and
+    # 7.8 GB, so memory is the real ceiling:
+    #   - the whole grading tree runs in a user scope with a kernel-enforced
+    #     MemoryMax, so an instrument that runs away is throttled or killed
+    #     inside the scope, never the desktop or a live night;
+    #   - it is pinned to cores 2-9 with taskset, leaving 0-1 and 10-11 free.
+    #     A user scope cannot pin CPUs here: only cpu/memory/pids are
+    #     delegated, so `-p AllowedCPUs=` is ACCEPTED AND SILENTLY IGNORED
+    #     (verified: the process still reported cpus=0-11). taskset is the
+    #     placement; the cgroup is the memory and CPU-time ceiling.
+    #   - GRADE_CPUSET must be passed: grade-run.sh re-pins every step to its
+    #     own default of core 0, which would override the outer taskset and
+    #     land every decoder on a reserved core.
+    # Without systemd-run the same placement and niceness still apply.
+    GRADE_ENV=(env GRADE_CPUSET="${GRADE_CPUSET:-2-9}")
+    GRADE_WRAP=(nice -n 10 taskset -c "${GRADE_CPUSET:-2-9}")
+    if command -v systemd-run >/dev/null 2>&1 &&
+       systemd-run --user --scope -q -p MemoryMax=64M true >/dev/null 2>&1; then
+      GRADE_WRAP=(systemd-run --user --scope -q -p MemoryMax="${GRADE_SCOPE_MEMORY_MAX:-3G}"
+                  -p MemoryHigh="${GRADE_SCOPE_MEMORY_HIGH:-2500M}" -p CPUQuota="${GRADE_SCOPE_CPU_QUOTA:-800%}"
+                  "${GRADE_WRAP[@]}")
+    fi
+    "${GRADE_ENV[@]}" "${GRADE_WRAP[@]}" tools/device/grade-run.sh "$RUNID" 2>&1 | tee "$OUTDIR/grade.log" || true
     grep -E "^(outcome|terminal|survival|  clear|  death)" "$OUTDIR/grade.log" \
       >> "$OUTDIR/verdict.txt" 2>/dev/null || true
   else
@@ -360,8 +383,14 @@ on_exit() {
   set +e
   stop_frame_trace
   stop_recording
-  analyze
+  # The phone is released BEFORE the analysis, not after it. Nothing in
+  # analyze() talks to the device: it reads the pulled video, the pulled frame
+  # trace and the host-side campaign bundle. With the old order the phone sat
+  # idle for the whole 12-39 min pipeline and the next attempt could not start
+  # until the grading of this one had finished.
   reset_device
+  say "phone released -- the next attempt may start; analysis continues host-side"
+  analyze
   say "run $RUNID finished with exit code $code"
   printf 'artifacts    %s\n' "$OUTDIR"
   exit "$code"
