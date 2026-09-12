@@ -81,10 +81,15 @@ const committedAt = name => {
   } catch { return 0; }
 };
 const qualifications = readdirSync(join(ROOT, 'docs/evidence'))
-  .filter(name => /^qualification-.*night5.*\.json$/.test(name))
-  .sort((a, b) => committedAt(a) - committedAt(b) || a.localeCompare(b));
-if (qualifications.length) {
-  const newest = qualifications.at(-1);
+  .filter(name => /^qualification-.*night5.*\.json$/.test(name));
+const times = new Map(qualifications.map(name => [name, committedAt(name)]));
+// A shallow clone (CI's checkout has depth 1) gives every file the same commit
+// time; there "newest by commit" is meaningless and the name tie-break picked
+// the wrong binding on 2026-09-12 (master red at d97cec8). Only judge the
+// newest where history can order the files; say so otherwise.
+const orderable = new Set(times.values()).size > 1 || qualifications.length === 1;
+if (qualifications.length && orderable) {
+  const newest = [...qualifications].sort((a, b) => times.get(a) - times.get(b) || a.localeCompare(b)).at(-1);
   const bound = JSON.parse(readFileSync(join(ROOT, 'docs/evidence', newest), 'utf8'));
   const hash = bound.policyHash ?? bound.winnerHash ?? bound.binding?.winnerHash;
   if (!hash) fail(`${newest} names no policy/winner hash`);
@@ -92,6 +97,13 @@ if (qualifications.length) {
     fail(`${newest} binds ${hash}, which has no anchor aim in ANCHOR_AIMS: derive its winning bands ` +
       '(docs/evidence/night5-anchor-aim-*.json) before a run anchors on a number priced for another policy');
   else process.stdout.write(`anchor aim: newest qualification ${newest} binds ${hash}, registered\n`);
+} else if (qualifications.length) {
+  const bound = qualifications.map(name => JSON.parse(readFileSync(join(ROOT, 'docs/evidence', name), 'utf8')))
+    .map(q => q.policyHash ?? q.winnerHash ?? q.binding?.winnerHash).filter(Boolean);
+  if (!bound.some(hash => ANCHOR_AIMS[hash]))
+    fail(`none of the ${qualifications.length} Night 5 qualifications binds a policy with an anchor aim`);
+  else process.stdout.write(`anchor aim: git history is shallow here, so the newest qualification cannot be ordered; ` +
+    `${bound.filter(hash => ANCHOR_AIMS[hash]).length} of ${bound.length} bound policies have an aim (the full-history push gate checks the newest)\n`);
 }
 if (!ANCHOR_AIMS['fnv1a-81b5e51c'] || anchorAimFor('fnv1a-00000000').ok)
   fail('anchorAimFor must refuse an unknown binding');
