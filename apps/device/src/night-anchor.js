@@ -58,9 +58,14 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
   if (!Number.isFinite(notBeforeHostMs)) throw new TypeError('night anchor needs a finite notBeforeHostMs');
 
   const authorizedAtHostMs = () => authorization.authorizedAt?.() ?? null;
+  // The latch sees the onset whenever the trace opened, so every attempt logs
+  // what it last read, refused or not: the latch-vs-frames check needs both.
+  let latchedSeenDeviceMs = null;
+  let latchedSeenOffsetMs = null;
   // A refusal still owes the night its release, at authorization -- never before.
   const fallback = async (reason, detail = {}) => {
-    onEvent({ type: 'origin.anchor', status: 'unavailable', reason, aimMs, maxK, ...detail });
+    onEvent({ type: 'origin.anchor', status: 'unavailable', reason, aimMs, maxK,
+      latchedOnsetDeviceMs: latchedSeenDeviceMs, latchedOffsetMs: latchedSeenOffsetMs, ...detail });
     await authorization.whenAuthorized();
     release();
     onEvent({ type: 'origin.anchor', status: 'released-unanchored', reason, firedHostMs: now(),
@@ -101,6 +106,8 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
       try { candidate = latchedNightOnsetMs(read.fields); }
       catch (error) { return fallback('onset-malformed', { error: String(error?.message ?? error), reads }); }
       if (candidate !== null) {
+        latchedSeenDeviceMs = candidate;
+        latchedSeenOffsetMs = best.offsetMs;
         if (candidate + best.offsetMs >= notBeforeHostMs) { onsetDeviceMs = candidate; break; }
         staleOnset = candidate;
       }

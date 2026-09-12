@@ -121,6 +121,10 @@ for (const [reason, extra] of refusals) {
   assert.equal(result.reason, reason, reason);
   assert.equal(state.releases.length, 1, `${reason} must still release the night once`);
   assert.ok(state.releases[0] >= authorizeAt, `${reason} must never release before authorization`);
+  const refusal = state.events.find(event => event.status === 'unavailable');
+  assert.ok('latchedOnsetDeviceMs' in refusal, `${reason} must log the latch it last read, even when null`);
+  if (reason === 'offset-uncertain' || reason === 'k-unreachable' || reason === 'onset-in-future')
+    assert.equal(typeof refusal.latchedOnsetDeviceMs, 'number', `${reason} read a latched onset and must log it`);
   // Grace after authorization, plus at most one exchange that times out (1 s) and one poll.
   assert.ok(state.releases[0] <= authorizeAt + 1500 + 1000 + 250, `${reason} must release within the latch grace`);
 }

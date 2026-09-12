@@ -1441,6 +1441,12 @@ public final class CaptureService extends Service {
                     : PixelWatch.UNKNOWN;
             snapshotGridMeanLuma = gridMeanLuma;
             snapshotScreenIdentity = screenIdentity;
+            // Traced frames never reach the full snapshot path above, so the
+            // onset latch must be fed here too: night5-anchor4 started its
+            // trace before the onset and the latch read -1 for 36 reads. This
+            // identity is the trace's own column, the same one the post-hoc
+            // rule reads.
+            nightOnsetLatch.onFrame(timestampNs, screenIdentity);
             snapshotScreenScore = screenScore;
             snapshotMaskButtonMeanLuma = maskLuma;
             snapshotMonitorButtonMeanLuma = monitorLuma;

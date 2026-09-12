@@ -47,12 +47,11 @@ public final class NightOnsetLatchTest {
         feed(latch, sustained + 100 * FRAME_NS, 60, night);
         check("a latched onset survives in-night non-night identities", latch.onsetNs() == latched);
 
-        t = feed(latch, sustained + 160 * FRAME_NS, 10, ScreenIdentity.FNAF2_MENU);
-        check("the menu between nights clears the latch", latch.onsetNs() == NightOnsetLatch.NOT_LATCHED);
-        t = feed(latch, t, 20, unknown);
-        long nextNight = t;
-        feed(latch, nextNight, 40, night);
-        check("the next night latches its own onset", latch.onsetNs() == nextNight);
+        // night5-anchor2: FNAF2_MENU runs of up to 3430 ms on in-night camera views.
+        feed(latch, sustained + 160 * FRAME_NS, 206, ScreenIdentity.FNAF2_MENU);
+        check("in-night FNAF2_MENU camera views must not clear the latch", latch.onsetNs() == latched);
+        feed(latch, sustained + 366 * FRAME_NS, 60, night);
+        check("the next office view must not re-latch a later onset", latch.onsetNs() == latched);
 
         latch.reset();
         check("reset clears the onset for a new capture generation",
@@ -74,6 +73,6 @@ public final class NightOnsetLatchTest {
             System.out.println(failures + " check(s) failed");
             System.exit(1);
         }
-        System.out.println("night onset latch: held-run onset, flicker rejection, menu re-arm, reset and ordering pass");
+        System.out.println("night onset latch: held-run onset, flicker rejection, survives in-night menu identity, reset and ordering pass");
     }
 }

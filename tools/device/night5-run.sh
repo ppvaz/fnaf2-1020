@@ -148,16 +148,16 @@ CAMPAIGN_DIR=""
 start_frame_trace() {
   [ "$FRAME_TRACE" = 1 ] || return 0
   printf 'PENDING\n' > "$OUTDIR/frame-trace.state"
-  # Start on hid.schedule-start, not hid.night-go. An anchored release comes
-  # AFTER the night's onset by design (onset + aim + k s), so a trace opened on
-  # night-go misses the onset: night5-anchor1's opened 4.0 s after it, and
-  # neither the latch nor the delivered epoch could be checked against frames.
-  # schedule-start follows the campaign preflight's helper restart (which would
-  # drop an earlier trace) and led that release by 5.6 s, while the onset led
-  # it by 3.2 s -- so the wait polls at 250 ms, not 2 s, to keep that margin.
+  # Start on evidence.started: the campaign emits it once its preflight has
+  # restarted the helper's capture (which would drop an earlier trace), about
+  # 16 s before the night's onset. Later triggers missed the onset: night-go
+  # opened night5-anchor1's trace 4.0 s after it, and hid.schedule-start
+  # (4.09 s before anchor3's release) plus the helper's ~1.4 s from start
+  # command to first frame opened anchor3's already inside the night -- so
+  # neither run could check the latch or the delivered epoch against frames.
   ( waited_ms=0 started=0
     while [ "$waited_ms" -lt 240000 ]; do
-      if grep -q '"type":"hid.schedule-start"' "$OUTDIR/campaign.log" 2>/dev/null; then
+      if grep -q '"type":"evidence.started"' "$OUTDIR/campaign.log" 2>/dev/null; then
         if tools/device/query-cue-helper.sh trace start "$RUNID" >/dev/null 2>&1; then
           printf '\nframe trace started (label %s)\n' "$RUNID"
           started=1

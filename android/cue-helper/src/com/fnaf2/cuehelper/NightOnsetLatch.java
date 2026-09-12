@@ -15,12 +15,16 @@ package com.fnaf2.cuehelper;
  * tools/device/phase-reconstruct.mjs): the onset is the first frame of the
  * first run of FNAF2_NIGHT identities that spans at least HOLD_NS of image
  * time. Any other identity before the hold is met restarts the run, so a
- * single-frame flicker is never an onset. Once latched it stays latched until
- * the game shows its menu (FNAF2_MENU), which only appears between nights:
- * capture can outlive an attempt, and a latch that survived the menu would
- * hand the next night the previous night's origin. A new capture generation
- * also calls reset(). Camera and static frames inside a night are not the
- * menu, so they never clear it.
+ * single-frame flicker is never an onset. Once latched it stays latched for
+ * the capture generation; a new generation calls reset(). The campaign's
+ * preflight restarts capture, so every attempt starts a generation, and the
+ * host refuses an onset older than its own intro as a second guard.
+ *
+ * It deliberately does NOT re-arm on FNAF2_MENU. An earlier version did, on
+ * the belief that the menu identity only appears between nights; night5-anchor2's
+ * frame trace has 520 FNAF2_MENU frames inside the night, in runs of up to
+ * 3430 ms on the opening's camera views, so that re-arm cleared a latched
+ * onset mid-night and re-latched a later, wrong one.
  *
  * Pure Java: no Android types, so android/cue-helper/test.sh exercises it on
  * the host.
@@ -41,12 +45,7 @@ final class NightOnsetLatch {
 
     /** Feed one captured frame in capture order. */
     synchronized void onFrame(long imageNs, int identity) {
-        if (imageNs <= 0L) return;
-        if (onsetNs != NOT_LATCHED) {
-            if (identity != ScreenIdentity.FNAF2_MENU) return;
-            onsetNs = NOT_LATCHED;
-            candidateNs = NOT_LATCHED;
-        }
+        if (imageNs <= 0L || onsetNs != NOT_LATCHED) return;
         // Image timestamps are monotonic per generation; a frame that goes
         // backwards cannot extend or start a run, it is ignored.
         if (lastImageNs != NOT_LATCHED && imageNs <= lastImageNs) return;
