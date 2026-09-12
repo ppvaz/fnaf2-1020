@@ -329,6 +329,14 @@
       ]
     },
     {
+      "file": "apps/device/test/modern-campaign-terminal.test.js",
+      "imports": [
+        "../src/modern-campaign-ports.js",
+        "node:assert/strict",
+        "node:test"
+      ]
+    },
+    {
       "file": "apps/device/test/seam-calibration.test.js",
       "imports": [
         "../src/calibration-fixture.js",
