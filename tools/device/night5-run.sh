@@ -177,8 +177,11 @@ analyze() {
   # names the recording after the run id.
   if [ -s "$HOST_VIDEO" ]; then
     say "video instruments (grade-run.sh)"
-    tools/device/grade-run.sh "$RUNID" > "$OUTDIR/grade.log" 2>&1 || true
-    sed -n '1,400p' "$OUTDIR/grade.log"
+    # Streamed, not buffered. Reading a finished log is how a still-decoding
+    # pipeline gets mistaken for a stopped one; grade-run.sh now prints a
+    # [k/N pct%] line per step and a heartbeat while a step runs, and that is
+    # only useful if it arrives while it happens.
+    tools/device/grade-run.sh "$RUNID" 2>&1 | tee "$OUTDIR/grade.log" || true
     grep -E "^(outcome|terminal|survival|  clear|  death)" "$OUTDIR/grade.log" \
       >> "$OUTDIR/verdict.txt" 2>/dev/null || true
   else

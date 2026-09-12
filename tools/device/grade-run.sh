@@ -154,15 +154,48 @@ limited() {
   )
 }
 
+# How many `step` calls this script can make. Conditional steps mean the real
+# count is at most this, so the progress line says so rather than pretending to
+# a precision it does not have.
+STEP_TOTAL="$(grep -c '^ *step "' "$0" 2>/dev/null || echo 0)"
+STEP_INDEX=0
+GRADE_STARTED_AT="$(date +%s)"
+# How often a running step reports that it is still alive. A video instrument
+# on a full-length capture can hold the CPU for minutes with nothing on stdout,
+# and a pipeline that looks stopped gets read as stopped -- that happened on
+# 2026-09-11, when a still-decoding windpct.py was reported as a pipeline that
+# had quit. Silence is not a status.
+GRADE_HEARTBEAT_SECONDS="${GRADE_HEARTBEAT_SECONDS:-20}"
+
 step() {
+  STEP_INDEX=$((STEP_INDEX + 1))
+  local pct=0
+  [ "${STEP_TOTAL:-0}" -gt 0 ] && pct=$((STEP_INDEX * 100 / STEP_TOTAL))
+  local label="$1"
+  local started elapsed total_elapsed
+  started="$(date +%s)"
   echo
-  echo "--- $1 ---"
+  printf '[%2d/%2d %3d%%] --- %s ---\n' "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label"
   shift
-  # `ulimit` is scoped to this subshell and inherited by ffmpeg/Python/Node;
-  # timeout's --foreground keeps Ctrl-C directed at the diagnostic rather than
-  # leaving a decoder behind.  nice makes an explicitly requested grade less
-  # likely to make the interactive desktop unusable.
+  # Heartbeat for the duration of this step, so a long decode is visibly alive.
+  (
+    while true; do
+      sleep "$GRADE_HEARTBEAT_SECONDS"
+      printf '           ... %s still running (%ds)\n' "$label" "$(( $(date +%s) - started ))"
+    done
+  ) &
+  local beat=$!
+  # `ulimit` is scoped to limited()'s subshell and inherited by
+  # ffmpeg/Python/Node; timeout's --foreground keeps Ctrl-C directed at the
+  # diagnostic rather than leaving a decoder behind. nice makes an explicitly
+  # requested grade less likely to make the interactive desktop unusable.
   limited "$@" || { echo "  ^ FAILED (resource-limited or diagnostic error)"; fail=1; }
+  kill "$beat" 2>/dev/null || true
+  wait "$beat" 2>/dev/null || true
+  elapsed=$(( $(date +%s) - started ))
+  total_elapsed=$(( $(date +%s) - GRADE_STARTED_AT ))
+  printf '[%2d/%2d %3d%%] %s took %ds (pipeline %ds)\n' \
+    "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label" "$elapsed" "$total_elapsed"
 }
 
 # 0. Does the run describe itself? A manifest is what turns a pile of

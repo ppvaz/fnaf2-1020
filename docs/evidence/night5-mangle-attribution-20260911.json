@@ -1,0 +1,73 @@
+{
+  "schema": "device-night5-death-attribution-v1",
+  "recordedAt": "2026-09-11",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-death-cause-and-mechanism",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "the run died to Mangle at 3 AM; this record names the killer and the mechanism and claims no win"
+  },
+  "device": {
+    "serial": "ZF525F5BH5",
+    "target": "com.scottgames.fnaf2",
+    "build": "2.0.7+26",
+    "profile": "hid-mediaprojection"
+  },
+  "run": {
+    "campaign": "artifacts/campaign-2026-09-12T01-03-20.271Z",
+    "bundle": "artifacts/night5-head",
+    "winnerHash": "fnv1a-433ddeed",
+    "armMode": "observe-once",
+    "note": "the first run with observe-once scoped to the arm alone, so the per-cycle state gates were present AND the stream carried no arm phase lag"
+  },
+  "survival": {
+    "hudFirstSeenAtSeconds": 29.8,
+    "jumpscareAtSeconds": 267.3,
+    "aliveSecondsIntoNight": 237.5,
+    "cyclesCompleted": 24,
+    "inGameClockAtDeath": "Night 5, 3 AM, read off the HUD in every positive frame"
+  },
+  "killer": {
+    "name": "mangle",
+    "attribution": "Pedro named it from the phone; the visual model built from this run's own frames agrees",
+    "model": "tools/device/models/death-cause-mangle-moto-g56-v207.json",
+    "modelEvidence": "7 positives OBSERVED, 23 negatives refused, the 3 held-out entry frames UNKNOWN, and the withered-chica model refuses these frames at distance 0.331-0.332"
+  },
+  "mechanism": {
+    "summary": "Minus Toys has NO stun for Mangle, by construction, and its one defence is a counter that every parity correction resets to zero.",
+    "chain": [
+      {
+        "step": "no stun exists for her on this route",
+        "source": "packages/core/src/mechanics/plant-model.js stunCam(): a unit is skipped when the viewed camera is its own marker -- `(u.id === 'mangle' && viewing === 11) continue`. Mangle's marker is CAM 11, and CAM 11 is exactly where the Minus Toys split arm parks `viewing` (minus-toys-plan.mjs openLastViewedMs: 300). The arm that makes the Toy stun work is the same condition that exempts Mangle from every cameraFeedLight flash."
+      },
+      {
+        "step": "the mask is her only defence, and it must be CONTINUOUS",
+        "source": "plant-model.js: at the vent opening with the mask fully on she takes a 10% leave roll per one-second event and is forced out after FIVE CONTINUOUS mask ticks (groups 292-294, 400-401, 907). `maskExposureTicks` is reset to 0 on every transition into the fully-on mask state (g293)."
+      },
+      {
+        "step": "an undefended raise takes her inside",
+        "source": "plant-model.js: `raiseSeen` is set when the monitor-raise object appears (g402) and the COMPLETED raise runs unitEnterInside(u, 'completed a monitor raise after Mangle reached marker 122') (g403). The Minus Toys loop completes a raise every 10 s cycle."
+      },
+      {
+        "step": "inside, the cameras-down edge is the kill",
+        "source": "plant-model.js monitor-lowering branch: `if (u.id === 'mangle') { if (u.insideArmed) this.commitAttack(u, 'Mangle armed while the cameras were up') }`. She arms on a 1-in-20 cameras-up second (g730-731); the loop gives roughly 3.7 s of cameras-up per 10 s cycle and a camdrop every cycle."
+      }
+    ],
+    "aiSchedule": "config.js night 5 sets mangle: 1 at hour 0 and mangle: 10 at hour 1 (g819, g682). The death is at 3 AM, two in-game hours after she reaches 10."
+  },
+  "confirmation": {
+    "maskCorrections": [35200, 125200, 235200],
+    "correctionCount": 3,
+    "gateCount": 24,
+    "agreedCount": 21,
+    "finding": "every CORRECTED gate read believedMaskOn=true, observedMaskOn=false -- the mask was OFF while the route believed it was ON. The LAST correction is at 235200 ms and the jumpscare is at 237.5 s into the night: 2.3 seconds later.",
+    "videoTrigger": "the three frames immediately before Mangle appears (266.90-267.00 s) show the monitor DESCENDING. That is the lowering edge commitAttack fires on.",
+    "interpretation": "a corrected gate is not only a repaired state. Because maskExposureTicks resets on each transition into fully-on, every correction also RESTARTS Mangle's five-tick eviction clock, so the repair hands her another chance instead of closing the one she had."
+  },
+  "openLimits": [
+    "the model scores this exact plan 3000/3000 on night 5 at epoch 0, so in the model these same edges do not kill. Either the model's Mangle is wrong or the device delivered something the model did not; this record does not decide which",
+    "three corrections in 24 cycles is one run. The rate is not established and the next physical step is to repeat the run unchanged and see whether it reproduces (Pedro's call, 2026-09-11)",
+    "the run-timeline terminal was `unknown`, so the pipeline did not exercise the new Mangle model on this recording: the campaign drives the phone back to the title inside its own process, so the recording ends on a lit menu instead of terminal static and no cause model is consulted",
+    "loopContactMs: 200 gates 3000/3000 normal and worst and is flagged in KNOBS0 as the experiment for dropped 33 ms taps, but it changes the plan bytes and therefore the policy hash; it is not bound and not tested"
+  ]
+}

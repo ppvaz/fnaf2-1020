@@ -56,6 +56,25 @@ def frame(kind, variant=0):
         for x in range(390, 900, 85):
             d.polygon(((x, 340), (x + 45, 340), (x + 58, 410), (x + 12, 410)), fill=(230, 225, 190))
             d.polygon(((x + 15, 475), (x + 58, 475), (x + 45, 535), (x + 2, 535)), fill=(230, 225, 190))
+    elif kind == "mangle":
+        # A coarse Mangle-shaped positive: the mangled white/pink endoskeleton
+        # face with the split jaw. The retained device model is trained from
+        # labelled video frames (death-cause-mangle-moto-g56-v207.json, built
+        # 2026-09-11 from the Night 5 jumpscare at 267.34-267.46 s); this
+        # fixture only checks that the label travels through the same
+        # shadow-only protocol as the others.
+        d.ellipse((235 + variant, 30, 1045, 570), fill=(238, 232, 220))
+        d.ellipse((300, 120, 470, 300), fill=(242, 150, 170))
+        d.ellipse((820, 120, 990, 300), fill=(242, 150, 170))
+        d.ellipse((355, 175, 420, 245), fill=(25, 20, 22))
+        d.ellipse((865, 175, 930, 245), fill=(25, 20, 22))
+        d.rectangle((360, 330, 930, 545), fill=(16, 14, 16))
+        for x in range(380, 900, 80):
+            d.polygon(((x, 320), (x + 52, 320), (x + 40, 400), (x + 12, 400)),
+                      fill=(245, 240, 225))
+            d.polygon(((x + 12, 470), (x + 52, 470), (x + 40, 540), (x, 540)),
+                      fill=(245, 240, 225))
+        d.ellipse((560, 250, 720, 340), fill=(240, 120, 150))
     elif kind == "office":
         d.rectangle((0, 500, 1280, 555), fill=(105, 25, 70))
         d.rectangle((30, 80, 220, 120), fill=(200, 200, 200))
@@ -83,13 +102,16 @@ def main():
         negative = root / "negative"
         marionette_positive = root / "marionette-positive"
         chica_positive = root / "withered-chica-positive"
+        mangle_positive = root / "mangle-positive"
         positive.mkdir(); negative.mkdir()
         marionette_positive.mkdir()
+        mangle_positive.mkdir()
         chica_positive.mkdir()
         for i in range(3):
             frame("foxy", i * 3).save(positive / f"p{i}.png")
             frame("marionette", i * 3).save(marionette_positive / f"p{i}.png")
             frame("withered-chica", i * 3).save(chica_positive / f"p{i}.png")
+            frame("mangle", i * 3).save(mangle_positive / f"p{i}.png")
         frame("office").save(negative / "office.png")
         frame("title").save(negative / "title.png")
         model = dc.build_model(positive, negative)
@@ -109,6 +131,18 @@ def main():
         chica_model = dc.build_model(positive_root=chica_positive,
                                      negative_root=negative,
                                      label="withered-chica")
+        mangle_model = dc.build_model(positive_root=mangle_positive,
+                                      negative_root=negative,
+                                      label="mangle")
+        check(mangle_model["label"] == "mangle" and
+              dc.classify_image(frame("mangle", 1), mangle_model)["state"] == "OBSERVED",
+              "a labelled Mangle envelope is built and observed")
+        # Two cause models must never both claim the same death: the retained
+        # Night 5 pair (mangle, withered-chica) is separable on real frames at
+        # distance 0.33, and the fixtures must not collapse that either.
+        check(dc.classify_image(frame("mangle", 1), chica_model)["state"] == "UNKNOWN" and
+              dc.classify_image(frame("withered-chica", 1), mangle_model)["state"] == "UNKNOWN",
+              "the Mangle and Withered Chica envelopes refuse each other")
         check(chica_model["label"] == "withered-chica" and
               dc.classify_image(frame("withered-chica", 1), chica_model)["state"] == "OBSERVED",
               "a labelled Withered Chica-shaped frame was not observed")
@@ -204,7 +238,7 @@ def main():
     if failed:
         print(f"{failed} death-cause check(s) failed")
         return 1
-    print("death cause: labelled visual Foxy/Marionette/Withered-Chica envelopes are shadow-only and lifecycle-safe")
+    print("death cause: labelled visual Foxy/Mangle/Marionette/Withered-Chica envelopes are shadow-only and lifecycle-safe")
     return 0
 
 
