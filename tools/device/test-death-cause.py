@@ -56,6 +56,29 @@ def frame(kind, variant=0):
         for x in range(390, 900, 85):
             d.polygon(((x, 340), (x + 45, 340), (x + 58, 410), (x + 12, 410)), fill=(230, 225, 190))
             d.polygon(((x + 15, 475), (x + 58, 475), (x + 45, 535), (x + 2, 535)), fill=(230, 225, 190))
+    elif kind == "toy-chica":
+        # A coarse Toy Chica-shaped positive: the bright yellow beaked face
+        # with the pink cheeks. The retained device model is trained from
+        # labelled video frames (death-cause-toy-chica-moto-g56-v207.json,
+        # built 2026-09-11 from the Night 5 jumpscare at 309.82-309.92 s);
+        # this fixture only checks that the label travels through the same
+        # shadow-only protocol as the others.
+        # Deliberately far from the Withered Chica fixture in the 16x9 BOX
+        # feature space: both characters are yellow birds, so the separation
+        # here rests on the large pink cheek blocks and the white bib, not on
+        # the beak. On the retained device frames the two separate at 0.264
+        # without any such help.
+        d.ellipse((215 + variant, 20, 1065, 575), fill=(255, 225, 60))
+        d.ellipse((330, 95, 545, 310), fill=(255, 255, 252))
+        d.ellipse((735, 95, 950, 310), fill=(255, 255, 252))
+        d.ellipse((395, 150, 490, 250), fill=(12, 10, 12))
+        d.ellipse((800, 150, 895, 250), fill=(12, 10, 12))
+        d.ellipse((200, 270, 420, 440), fill=(255, 95, 175))
+        d.ellipse((860, 270, 1080, 440), fill=(255, 95, 175))
+        d.rectangle((330, 470, 960, 575), fill=(255, 255, 250))
+        d.rectangle((400, 350, 890, 460), fill=(20, 16, 18))
+        for x in range(420, 870, 70):
+            d.rectangle((x, 345, x + 46, 395), fill=(255, 255, 250))
     elif kind == "mangle":
         # A coarse Mangle-shaped positive: the mangled white/pink endoskeleton
         # face with the split jaw. The retained device model is trained from
@@ -103,15 +126,18 @@ def main():
         marionette_positive = root / "marionette-positive"
         chica_positive = root / "withered-chica-positive"
         mangle_positive = root / "mangle-positive"
+        toychica_positive = root / "toy-chica-positive"
         positive.mkdir(); negative.mkdir()
         marionette_positive.mkdir()
         mangle_positive.mkdir()
+        toychica_positive.mkdir()
         chica_positive.mkdir()
         for i in range(3):
             frame("foxy", i * 3).save(positive / f"p{i}.png")
             frame("marionette", i * 3).save(marionette_positive / f"p{i}.png")
             frame("withered-chica", i * 3).save(chica_positive / f"p{i}.png")
             frame("mangle", i * 3).save(mangle_positive / f"p{i}.png")
+            frame("toy-chica", i * 3).save(toychica_positive / f"p{i}.png")
         frame("office").save(negative / "office.png")
         frame("title").save(negative / "title.png")
         model = dc.build_model(positive, negative)
@@ -137,6 +163,21 @@ def main():
         check(mangle_model["label"] == "mangle" and
               dc.classify_image(frame("mangle", 1), mangle_model)["state"] == "OBSERVED",
               "a labelled Mangle envelope is built and observed")
+        toychica_model = dc.build_model(positive_root=toychica_positive,
+                                        negative_root=negative,
+                                        label="toy-chica")
+        check(toychica_model["label"] == "toy-chica" and
+              dc.classify_image(frame("toy-chica", 1), toychica_model)["state"] == "OBSERVED",
+              "a labelled Toy Chica envelope is built and observed")
+        # Toy Chica and Withered Chica are the pair most likely to collapse into
+        # each other, and on the retained device frames they do not: the
+        # withered-chica model refuses the Toy Chica jumpscare at 0.264.
+        check(dc.classify_image(frame("toy-chica", 1), chica_model)["state"] == "UNKNOWN" and
+              dc.classify_image(frame("withered-chica", 1), toychica_model)["state"] == "UNKNOWN",
+              "the Toy Chica and Withered Chica envelopes refuse each other")
+        check(dc.classify_image(frame("toy-chica", 1), mangle_model)["state"] == "UNKNOWN" and
+              dc.classify_image(frame("mangle", 1), toychica_model)["state"] == "UNKNOWN",
+              "the Toy Chica and Mangle envelopes refuse each other")
         # Two cause models must never both claim the same death: the retained
         # Night 5 pair (mangle, withered-chica) is separable on real frames at
         # distance 0.33, and the fixtures must not collapse that either.
@@ -238,7 +279,7 @@ def main():
     if failed:
         print(f"{failed} death-cause check(s) failed")
         return 1
-    print("death cause: labelled visual Foxy/Mangle/Marionette/Withered-Chica envelopes are shadow-only and lifecycle-safe")
+    print("death cause: labelled visual Foxy/Mangle/Marionette/Toy-Chica/Withered-Chica envelopes are shadow-only and lifecycle-safe")
     return 0
 
 
