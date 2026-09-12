@@ -202,7 +202,23 @@ export function reconstruct(events, observations, frameTrace = null) {
   if (frameTrace?.length) {
     const clock = helperClockOffset(events);
     const night = firstNightFrame(frameTrace);
-    if (clock && night) {
+    // A trace that begins after the night began has no onset to offer: its
+    // first held FNAF2_NIGHT frame is merely its first frame. The first
+    // anchored run (night5-anchor1) released T0 3.2 s AFTER the onset and
+    // night5-run.sh starts the trace on hid.night-go, so the trace opened
+    // 0.8 s after the release and 4 s after the onset, and this measurement
+    // would have reported a delivered epoch of 908 for a run aimed at 233.
+    // Refuse, and say why, rather than measure the trace's own start.
+    const traceStartAt = clock ? frameTrace[0].imageMs + clock.offsetMs : null;
+    const startedAfterRelease = traceStartAt !== null && traceStartAt > released;
+    if (clock && night && (night.index === 0 || startedAfterRelease)) {
+      measuredOrigin = {
+        basis: 'cue-helper-native-frame-trace',
+        unavailable: night.index === 0 ? 'trace-begins-inside-the-night' : 'trace-begins-after-the-release',
+        traceStartAt, releasedAt: released,
+        note: 'the first FNAF2_NIGHT frame of this trace is not the night\'s first frame; start the trace before the onset (before hid.night-go on an anchored run)',
+      };
+    } else if (clock && night) {
       const firstNightFrameAt = night.imageMs + clock.offsetMs;
       const errorMs = firstNightFrameAt - nightGo.at;
       measuredOrigin = {
@@ -362,7 +378,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     report.model = { ...model, lossBands: bands,
       uncontrolledPhase: await uncontrolledPhase(+night, +(arg('runs', '3000'))) };
     const measured = report.origin.measured;
-    if (measured) {
+    if (measured && !measured.unavailable) {
       const band = bandFor(measured.deliveredEpochMs, bands);
       report.deliveredBand = { epochMs: measured.deliveredEpochMs,
         uncertaintyMs: measured.uncertaintyMs, band,

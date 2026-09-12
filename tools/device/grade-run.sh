@@ -429,8 +429,14 @@ if [ -n "$CAMPAIGN_DIR" ] && [ -d "$CAMPAIGN_DIR" ]; then
     node "$HERE/run-report.mjs" --run "$CAMPAIGN_DIR"
   RUN_NIGHT_ARG=()
   [ -n "${GRADE_NIGHT:-}" ] && RUN_NIGHT_ARG=(--night "$GRADE_NIGHT")
+  # With a frame trace the origin is measured to a frame instead of bracketed
+  # by the lifecycle sampler; without one the bracket stands. (Until
+  # 2026-09-12 this step never passed the trace and every graded phase.json
+  # read errorVersusFirstNightFrameMs UNKNOWN while the trace sat beside it.)
+  FRAME_TRACE_ARG=()
+  [ -n "$FRAME_TRACE" ] && FRAME_TRACE_ARG=(--frame-trace "$FRAME_TRACE")
   step "delivered phase vs the model band" \
-    node "$HERE/phase-reconstruct.mjs" --run "$CAMPAIGN_DIR" "${RUN_NIGHT_ARG[@]}"
+    node "$HERE/phase-reconstruct.mjs" --run "$CAMPAIGN_DIR" "${RUN_NIGHT_ARG[@]}" "${FRAME_TRACE_ARG[@]}"
 else
   echo
   echo "--- campaign bundle (executor-owned facts) ---"
