@@ -36,6 +36,7 @@ VIDEO=1
 TRACE=1
 TRACE_SECONDS="${FNAF_TRACE_SECONDS:-900}"
 FRAME_TRACE=0
+FORCE_TRACE=0
 DRY=0
 EXTRA=()
 
@@ -51,6 +52,7 @@ while [ $# -gt 0 ]; do
     --arm-blocking) ARM_MODE="blocking"; shift ;;
     --arm-observe-once) ARM_MODE="observe-once"; shift ;;
     --no-trace) TRACE=0; shift ;;
+    --force-trace) FORCE_TRACE=1; shift ;;
     --frame-trace) FRAME_TRACE=1; shift ;;
     --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
@@ -78,6 +80,36 @@ for path in "$BUNDLE/manifest.json" "$QUALIFICATION" "$TITLE_MODEL_PATH" \
 done
 command -v adb >/dev/null || die "adb is not on PATH"
 adb -s "$SERIAL" get-state >/dev/null 2>&1 || die "device $SERIAL is not reachable"
+
+# Mistake-register 8: ask the phone what it offers BEFORE paying for an
+# instrument. This handset advertises `android.inputmethod` and no
+# `android.input.inputevent`, so the Perfetto input trace can only ever produce
+# NO APP DISPATCH SLICES -- and it was still wired on by default, so every
+# attempt carried a 900 s trace and every pipeline printed a FAILED step for a
+# question this phone cannot answer. `plans/PROGRESS.md` recorded that negative
+# on 2026-08-30 and a full night was spent rediscovering it on 2026-09-11.
+#
+# capabilities.mjs is the one place that knows, so this asks it rather than
+# re-deriving the answer here. `--force-trace` keeps the trace anyway (a
+# different handset, or a deliberate SurfaceFlinger-only capture).
+if [ "$TRACE" = 1 ] && [ "$FORCE_TRACE" = 0 ]; then
+  if FNAF_SERIAL="$SERIAL" node -e '
+      import("./tools/device/capabilities.mjs").then(m => {
+        const d = m.probe(process.env.FNAF_SERIAL);
+        if (d.perfettoDataSources === null) process.exit(2);
+        process.exit(d.perfettoDataSources.includes("android.input.inputevent") ? 0 : 1);
+      }).catch(() => process.exit(2));' 2>/dev/null; then
+    :
+  else
+    case $? in
+      1) TRACE=0
+         printf 'trace    SKIPPED -- no android.input.inputevent on %s; the Perfetto\n' "$SERIAL"
+         printf '         input trace cannot produce app dispatch rows here (see\n'
+         printf '         npm run device:capabilities). --force-trace overrides.\n' ;;
+      *) printf 'trace    capability UNREADABLE; keeping the trace on\n' >&2 ;;
+    esac
+  fi
+fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUNID="night${NIGHT}-${LABEL}-${STAMP}"
