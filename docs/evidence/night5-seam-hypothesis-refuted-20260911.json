@@ -1,0 +1,53 @@
+{
+  "schema": "device-night5-refutation-v1",
+  "recordedAt": "2026-09-11",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-seam-hypothesis",
+    "verdict": "REFUTED",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "the run died in lifecycle static about 157 s into the night; it tested a prediction and did not attempt a win"
+  },
+  "thePrediction": "The qualification bound on 2026-09-11 (fnv1a-2fc303f1) moved the loop mask press from 400 ms after monitor-down to 449 ms -- from 17.5 ms past the measured ~382.5 ms full-visibility point to 66 ms past it. Its openLimits stated the falsifiable consequence: the CORRECTED gate rate should fall from the ~13% that reproduced across two runs, and if it did not fall the seam hypothesis was refuted.",
+  "theResult": {
+    "run": "artifacts/campaign-2026-09-12T02-20-25.154Z",
+    "gates": 16, "agreed": 12, "corrected": 4,
+    "rate": "4/16 = 25.0%",
+    "priors": ["3/24 = 12.5% (night5-gatesfired2)", "2/15 = 13.3% (night5-repeat1)"],
+    "verdict": "the rate did not fall. The seam between the camdrop's monitor-down animation and the loop mask press is NOT what loses that press.",
+    "caution": "25% against 12.5% and 13.3% is not a demonstrated increase: n=16 cannot separate those rates. The claim made here is only that the predicted FALL did not happen, which is what the run existed to test."
+  },
+  "whatTheRunFoundInstead": {
+    "finding": "every CORRECTED gate in this run decided on a frame whose screen the classifier could not identify",
+    "detail": "all four corrections carry sample.screen = UNKNOWN; three decided by the mask rule and one by the grid-luma refutation",
+    "acrossAllRuns": {
+      "note": "a gate is about 2.4x more likely to correct when the deciding frame is unidentifiable",
+      "agreedWithUnknownScreen": "21 of 69 = 30%",
+      "correctedWithUnknownScreen": "10 of 14 = 71%",
+      "perRun": {
+        "campaign-2026-09-12T01-03": "AGREED 4/21 UNKNOWN, CORRECTED 2/3",
+        "campaign-2026-09-12T01-25": "AGREED 4/13 UNKNOWN, CORRECTED 1/2",
+        "campaign-2026-09-12T01-48": "AGREED 10/23 UNKNOWN, CORRECTED 3/5",
+        "campaign-2026-09-12T02-20": "AGREED 3/12 UNKNOWN, CORRECTED 4/4"
+      }
+    },
+    "why it matters": "a correction ACTS: it presses the mask. On a cycle where the mask was in fact on and the frame merely unreadable, the gate turns it OFF and creates the inversion it believes it is repairing. Every gate in every run decided on a SINGLE read.",
+    "mechanism": "apps/device/src/adb-device-local-executor.js reads maskOn from the 20x9 grid rule without requiring screen identity, and when that rule returns null it falls back to a grid-luma refutation. tools/device/intersection-state-gate.mjs already consumes the helper's native button downstroke scores for the same question and states the opposite discipline in as many words: 'fitted grid anchors are a diagnostic fallback only' and 'a missing stroke score is a refusal, never a luma fallback'. It is not imported by apps/."
+  },
+  "retraction": "docs/evidence/night5-mask-tick-budget-20260911.json attributes the 0.9 s corrected-window deficit to a repair that arrives 800 ms late. The deficit remains measured, but that attribution is now uncertain: if part of the corrections are spurious, some of those short windows were CREATED by the gate rather than repaired by it. The arithmetic of the 800 ms gate offset stands; the causal reading of every short window does not.",
+  "notARegression": {
+    "question": "the operator observed that almost no hall flash lit during this run, and asked whether the knob move caused it",
+    "answer": "no. grade-minus7 counted visible hall flashes per run: 5 and 3 in the two runs with NO cycle gates, then 1, 0, 0 in the three gated runs BEFORE the knob move, and 1 in this run after it. The hall collapse precedes the move and tracks the presence of cycle gates, not the plan bytes.",
+    "openLead": "the loop's hall at +9500 clears the mask-off animation floor by 50 ms, the thinnest remaining margin in the plan, and that floor is the bare 250 ms animation with no contact allowance and no measured visibility anchor -- the same tautological shape the monitor-down floor had before it was re-anchored. Nobody has measured when the hall control becomes pressable after mask-off; the mask button's own 322/337/382.5 ms figures came from a native frame trace, and the equivalent for the hall does not exist."
+  },
+  "survival": {
+    "hudFirstSeenAtSeconds": 30.8,
+    "hudLastSeenAtSeconds": 187.8,
+    "aliveAtLeastSeconds": 157.2
+  },
+  "openLimits": [
+    "one run refutes the predicted fall, not the whole seam mechanism: the opening mask and the winds also moved, and this run cannot separate their effects",
+    "the move is kept regardless. Nights 1, 2, 5 and 6 all gate 3000/3000 with it, and a 33 ms margin against a 22-frame animation was indefensible whether or not it caused this particular loss",
+    "the stroke classifier is not yet wired into the cycle gate; until it is, the correction rate measures observer blindness and lost presses together and cannot be attributed to either"
+  ]
+}

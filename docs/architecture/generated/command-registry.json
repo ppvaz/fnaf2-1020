@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-fact-register.mjs && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -198,6 +198,11 @@
     {
       "id": "device:capabilities",
       "command": "node tools/device/capabilities.mjs",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "device:facts",
+      "command": "node tools/device/fact-register.mjs",
       "lifecycle": "supported"
     },
     {
@@ -1895,6 +1900,12 @@
     {
       "id": "tools/device/test-seam-slack.mjs",
       "invocation": "tools/device/test-seam-slack.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-fact-register.mjs",
+      "invocation": "tools/device/test-fact-register.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },

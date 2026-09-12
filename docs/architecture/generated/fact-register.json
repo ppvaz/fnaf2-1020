@@ -1,0 +1,177 @@
+{
+  "schema": "device-fact-register-v1",
+  "generatedFrom": [
+    "tools/device",
+    "apps/device/src",
+    "packages/adapters/src"
+  ],
+  "facts": {
+    "maskOn": {
+      "question": "is the mask fully on?",
+      "authorityFixedByCharter": false,
+      "evidenceRanking": [
+        "native-stroke",
+        "native-explicit",
+        "grid-anchor",
+        "grid-luma-fallback"
+      ],
+      "strongestAvailable": "native-stroke",
+      "weakestInUse": "grid-luma-fallback",
+      "producers": [
+        {
+          "file": "apps/device/src/adb-device-local-executor.js",
+          "evidence": [
+            "grid-luma-fallback"
+          ]
+        },
+        {
+          "file": "apps/device/src/modern-campaign-ports.js",
+          "evidence": [
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/calibration-state-rule.js",
+          "evidence": [
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "tools/device/intersection-state-gate.mjs",
+          "evidence": [
+            "native-stroke",
+            "grid-anchor"
+          ]
+        }
+      ]
+    },
+    "monitorUp": {
+      "question": "is the monitor raised?",
+      "authorityFixedByCharter": false,
+      "evidenceRanking": [
+        "native-explicit",
+        "native-stroke",
+        "grid-anchor"
+      ],
+      "strongestAvailable": "native-explicit",
+      "weakestInUse": "grid-anchor",
+      "producers": [
+        {
+          "file": "apps/device/src/modern-campaign-ports.js",
+          "evidence": [
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "apps/device/src/modern-composition.js",
+          "evidence": [
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/calibration-state-rule.js",
+          "evidence": [
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/monitor-rule.js",
+          "evidence": [
+            "native-explicit",
+            "grid-anchor"
+          ]
+        },
+        {
+          "file": "tools/device/intersection-state-gate.mjs",
+          "evidence": [
+            "native-stroke",
+            "native-explicit",
+            "grid-anchor"
+          ]
+        }
+      ]
+    },
+    "screenIdentity": {
+      "question": "which screen is on the display?",
+      "authorityFixedByCharter": true,
+      "evidenceRanking": [
+        "native-screen",
+        "python-classifier"
+      ],
+      "strongestAvailable": "native-screen",
+      "weakestInUse": "python-classifier",
+      "producers": [
+        {
+          "file": "apps/device/src/adb-device-local-executor.js",
+          "evidence": [
+            "native-screen"
+          ]
+        },
+        {
+          "file": "apps/device/src/modern-campaign-ports.js",
+          "evidence": [
+            "native-screen",
+            "python-classifier"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/calibration-state-rule.js",
+          "evidence": [
+            "native-screen"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/monitor-rule.js",
+          "evidence": [
+            "native-screen"
+          ]
+        },
+        {
+          "file": "packages/adapters/src/transports/cue-helper.js",
+          "evidence": [
+            "native-screen"
+          ]
+        },
+        {
+          "file": "tools/device/intersection-state-gate.mjs",
+          "evidence": [
+            "native-screen"
+          ]
+        },
+        {
+          "file": "tools/device/phase-reconstruct.mjs",
+          "evidence": [
+            "python-classifier"
+          ]
+        }
+      ]
+    },
+    "nightOrigin": {
+      "question": "when did the night actually start?",
+      "authorityFixedByCharter": true,
+      "evidenceRanking": [
+        "native-screen",
+        "python-classifier",
+        "intro-handoff"
+      ],
+      "strongestAvailable": "native-screen",
+      "weakestInUse": "intro-handoff",
+      "producers": [
+        {
+          "file": "apps/device/src/adb-device-local-executor.js",
+          "evidence": [
+            "native-screen",
+            "python-classifier",
+            "intro-handoff"
+          ]
+        },
+        {
+          "file": "apps/device/src/modern-campaign-ports.js",
+          "evidence": [
+            "python-classifier"
+          ]
+        }
+      ]
+    }
+  }
+}

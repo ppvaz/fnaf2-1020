@@ -1210,6 +1210,14 @@
       ]
     },
     {
+      "file": "tools/device/fact-register.mjs",
+      "imports": [
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/gate-worker.mjs",
       "imports": [
         "./human-gate.mjs",
@@ -1493,6 +1501,12 @@
         "node:fs",
         "node:os",
         "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/test-fact-register.mjs",
+      "imports": [
+        "./fact-register.mjs"
       ]
     },
     {
