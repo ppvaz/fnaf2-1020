@@ -5088,3 +5088,48 @@ authority on whether a night is running, and re-measure
 mask-off/monitor-raise separation against the 3000-seed gate, then test the
 survivor on device; (3) decide what replaces the cycle gates that observe-once
 removes, since blocking mode buys parity correction at the cost of phase.
+
+## 2026-09-12 — the lost press was a lost MONITOR tap, and a 33 ms contact has no slack
+
+The two CORRECTED cycles of night5-strokes3 had stood as "a lost mask press,
+~12.5% of cycles, a Bernoulli rate no estimator fixes". The run's native frame
+trace (`captures/frame-traces/night5-strokes3-20260912T035230Z-*.tsv`), read
+against the compiled schedule in its own `request.json`, says otherwise, and
+the reading holds at both ends of the clock bracket: in cycle 1 the camdrop's
+33 ms monitor tap at +24000 never lowered the monitor; in cycle 2 the 33 ms
+raise at +30100 never raised it (the wind was then held on the office) and the
+camdrop at +34000 raised it instead. In both, the mask tap at +14449 arrived
+with the monitor up — mask button absent — and lowered the monitor. Every mask
+tap sent with its button present landed. The raise at +30100 sits inside a
+40 ms capture interval at both ends of the bracket; the +24000 camdrop only at
+one end, so that coincidence is reported as ambiguous.
+
+The dump makes the mechanism legible: the flip is level-triggered with a
+one-shot latch (g257 raises on `Multiple Touch` over `white button`, g258
+re-arms when no touch is on `drop button`, g614 lowers via `MouseOnObject`),
+so a contact that fits between two event-loop ticks is invisible and a longer
+hold flips once. `MIN_CONTACT_MS` and `FUSION_POLL_MS` are both 33: mistake
+register #7 one level down.
+
+`tools/device/tap-stall-audit.mjs` now grades every scheduled contact against
+the frame trace inside `grade-run.sh` (exit 3 on a lost contact) and prices the
+exposure of 33/50/67/100 ms contacts to the trace's stalls: on strokes3, 1.8
+expected lost taps per 420 s night at 33 ms and 0.00 at 100 ms. The peer
+session bound `loopContactMs: 200` the same night; its first attempt
+(`artifacts/campaign-2026-09-12T05-57-49.259Z`) ran 37 cycles with **zero
+lost contacts** and died at ~370 s to something that was not a contact.
+Mask and monitor luma move at the same latency for 33 and 200 ms contacts, so
+the game acts on the press; the button strokes read blank for the whole hold.
+
+Two pipeline defects fixed with it: `night5-run.sh analyze()` took the newest
+`artifacts/campaign-*` directory, so night5-strokes4 (refused at preflight,
+no night) published strokes3's verdict as its own — it now reads the run's own
+`evidence.started` row; and strokes3 had been graded before the frame-trace
+glob fix, so the two instruments that needed its trace never ran on it — it is
+regraded into `grade.regrade-20260912.log` beside the original.
+
+Open: `camdropMonitorMs` and `hallMs` are still 33 ms after the binding, and
+the hall taps are the contacts the exposure now points at; the helper clock is
+only bracketed by the gate reads (~180 ms) and narrowed by a stated, unmeasured
+30–110 ms actuation latency — `hid-transition-probe.mjs` is the instrument
+that would measure it.

@@ -1438,6 +1438,15 @@
       ]
     },
     {
+      "file": "tools/device/tap-stall-audit.mjs",
+      "imports": [
+        "@fnaf2-1020/adapters",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/test-actuator.mjs",
       "imports": [
         "../model/closed-loop-reclaim.mjs",
@@ -1706,6 +1715,12 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-tap-stall-audit.mjs",
+      "imports": [
+        "./tap-stall-audit.mjs"
       ]
     },
     {

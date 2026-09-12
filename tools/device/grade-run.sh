@@ -373,6 +373,20 @@ fi
 if [ -n "$FRAME_TRACE" ]; then
   step "native-frame state coverage for the actuation" \
     python3 "$HERE/actuation-frame-metric.py" "$FRAME_TRACE"
+  # Every scheduled contact against the frames: was the button there, did the
+  # effect follow, did a stall longer than the contact cover it. This is the
+  # join that read night5-strokes3's two CORRECTED cycles as lost 33 ms MONITOR
+  # taps inside frame stalls, after the trace had sat ungraded; exit 3 names a
+  # lost contact as a fact about the run.
+  if [ -n "$CAMPAIGN_DIR" ]; then
+    step "scheduled contacts against frame stalls" \
+      node "$HERE/tap-stall-audit.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE"
+  else
+    echo
+    echo "--- scheduled contacts against frame stalls ---"
+    echo "  a frame trace is present but no campaign directory is: the schedule"
+    echo "  cannot be placed on the frames. Nothing was audited."
+  fi
   # Foxy is repelled by the hallway light, and grade-run's own video counter is
   # a rendering lower bound that read 4% where the plan records a 1-in-3 drop.
   # This reads the region PixelWatch.java defines and exits 3 on a dark hall.

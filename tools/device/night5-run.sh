@@ -284,7 +284,15 @@ analyze() {
   [ "$ANALYZED" = 0 ] || return 0
   ANALYZED=1
 
-  CAMPAIGN_DIR="$(ls -dt artifacts/campaign-* 2>/dev/null | head -1 || true)"
+  # This run's own campaign directory, read from the `evidence.started` row the
+  # campaign wrote to THIS run's log -- never the newest artifacts/campaign-*.
+  # night5-strokes4 (2026-09-12) was refused at preflight (manifest engine
+  # source hash mismatch), produced no campaign, and `ls -dt | head -1` handed
+  # it strokes3's directory: its verdict.txt and run-report.json were another
+  # run's facts, 16 gates and 2 corrections for a night that never ran.
+  CAMPAIGN_DIR="$(grep -o '"type":"evidence.started","evidenceDirectory":"[^"]*"' "$OUTDIR/campaign.log" 2>/dev/null \
+    | head -1 | sed 's/.*"evidenceDirectory":"//; s/"$//' || true)"
+  [ -n "$CAMPAIGN_DIR" ] && [ ! -d "$CAMPAIGN_DIR" ] && CAMPAIGN_DIR=""
   # grade-run.sh resolves the bundle by this pointer, so its modern steps run
   # without anyone passing a path.
   [ -n "$CAMPAIGN_DIR" ] && printf '%s\n' "$CAMPAIGN_DIR" > "captures/$RUNID-campaign-dir.txt"
