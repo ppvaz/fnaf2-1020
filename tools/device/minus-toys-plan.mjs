@@ -67,6 +67,23 @@ export const KNOBS0 = {
                            //   graded as missing. Raising it would trade a measured risk
                            //   for an unmeasured one. It needs a hall-side reader first.
   loopContactMs: 200,      // steady-loop tap length for the parity toggles, separate
+                           //   MASK SAFETY, checked in the dump 2026-09-12 after a peer
+                           //   session warned that only the MONITOR flip had been shown
+                           //   one-shot: both mask transitions are state-guarded too, so a
+                           //   200 ms hold cannot double-toggle and does not shorten the
+                           //   mask window.
+                           //     g270  Multiple Touch on `red button` AND mask == 0
+                           //             -> mask = 1   (start the ON animation)
+                           //     g615  MouseOnObject(`drop button`)   AND mask == 2
+                           //             -> drop everything = 1
+                           //     g274  mask == 2 AND drop everything == 1
+                           //             -> mask = 3   (start the OFF animation)
+                           //   g274 is the ONLY path to mask = 3, so there is no side door,
+                           //   and each touch condition is gated on the state its own
+                           //   transition leaves, so it is false on the next frame. g9
+                           //   confirms MASK_ANIM_ON: mmaskOn >= 12 frames -> mask = 2.
+                           //   Pedro observed mask time too short to repel Mangle on
+                           //   night5-final2; by this the cause is not the contact length.
                            //   RAISED 33 -> 200 on 2026-09-12. MIN_CONTACT_MS and
                            //   FUSION_POLL_MS are BOTH 33, so a 33 ms contact had zero
                            //   slack against the poll that has to see it, and the dump
