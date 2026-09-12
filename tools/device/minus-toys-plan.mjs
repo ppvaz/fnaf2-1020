@@ -39,7 +39,7 @@ export const KNOBS0 = {
                            //   it by 0 ms; +33 is two engine frames of room.
   openWindMs: 1750,        // opening wind hold (shortened live by the epoch slip, up to its full length)
   openCamdropLeadMs: 200,  // opening camdrop: light-only lead before the monitor tap
-  openMaskLeadMs: 349,     // opening camdrop end -> mask on. The mask button is absent through
+  openMaskLeadMs: 182,     // opening camdrop end -> mask on. The mask button is absent through
                            //   322 ms after monitor-down and only fully visible at ~382.5 ms
                            //   (native frame trace); 300 put the press at exactly the +400 ms
                            //   floor, clearing it by 0 ms.
@@ -53,25 +53,19 @@ export const KNOBS0 = {
                            //   the loop. 4400 put the loop press at exactly the +400 ms
                            //   monitor-down floor; see openMaskLeadMs.
   hallOffsetMs: 9500,      // Foxy-reset hall pulse offset
-  hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56.
-                           //   RETRACTED 2026-09-12 (Pedro): this used to read "do NOT
-                           //   lengthen this, the hall button is in the view region
-                           //   where a held touch pans". A held touch inside the region
-                           //   does NOT pan. That was a misreading of the mask/monitor
-                           //   state desync, diagnosed before the desync was understood,
-                           //   and it stood here as a standing refusal to try the
-                           //   obvious fix for the 1-in-3 drop measured 2026-09-09.
-                           //   Lengthening is therefore OPEN, not forbidden -- but it
-                           //   is still a route change: it moves the plan, so it needs
-                           //   qualification and an operator rebinding.
-                           //   NO CURRENT MEASUREMENT OF THE DROP EXISTS. An attempt on
-                           //   2026-09-12 to measure it from the native frame trace was
-                           //   withdrawn: it scored the camera-monitor screen instead of
-                           //   the office, because FOXY_HALL only means anything with
-                           //   the monitor down and the filter only required
-                           //   screen_identity == 2. See
-                           //   docs/evidence/night5-phase-measured-and-hall-open-20260912.md.
-                           //   The 2026-09-09 figure is the only one standing.
+  hallMs: 33,              // hall contact. NOT raised on 2026-09-12, deliberately, after
+                           //   it was proposed alongside camdropMonitorMs. Pedro retracted
+                           //   the pan constraint that used to forbid lengthening, so the
+                           //   knob is open -- but the model refuses it and the device
+                           //   evidence does not ask for it:
+                           //     night 1 worst: 33/50/67 clean, 100 and 133 -> 0/3000
+                           //     night 2 worst: 33..133 clean, 200 -> 0/100
+                           //   Two nights, two different ceilings, neither where a night-5
+                           //   sweep would have looked. And unlike camdropMonitorMs, no
+                           //   hall tap has been PROVEN lost: the four that sat on capture
+                           //   stalls in contact200a were ungradable by strokes, not
+                           //   graded as missing. Raising it would trade a measured risk
+                           //   for an unmeasured one. It needs a hall-side reader first.
   loopContactMs: 200,      // steady-loop tap length for the parity toggles, separate
                            //   RAISED 33 -> 200 on 2026-09-12. MIN_CONTACT_MS and
                            //   FUSION_POLL_MS are BOTH 33, so a 33 ms contact had zero
@@ -108,7 +102,16 @@ export const KNOBS0 = {
                            //   hold still ends clear of the camdrop.
   camdropMs: 13850,        // camdrop exit (~:X4 of the next interval)
   camdropLeadMs: 150,      // loop camdrop: light-only lead before the monitor tap
-  camdropMonitorMs: 33,    // camdrop: monitor contact
+  camdropMonitorMs: 200,   // camdrop: monitor contact. RAISED 33 -> 200 on 2026-09-12
+                           //   for the same reason as loopContactMs: it is a MONITOR tap
+                           //   at the 33 ms that equals FUSION_POLL_MS. On the
+                           //   contact200a trace it was the one loop contact still at 33,
+                           //   and two of attempt 2's three CORRECTED gates were exactly
+                           //   this tap swallowed (toys-6@14000 and @144000 MISSING at
+                           //   both ends of the clock bracket), after which the 200 ms
+                           //   mask press arrived under a monitor that was still raised.
+                           //   That is why attempt 1 was 0/37 and attempt 2 was 3/19 on
+                           //   the identical bundle. (audit: peer session fnaf2-1020-36)
   camdropTailMs: 67,       // camdrop: light-only tail after the monitor tap
 
   contactMs: 33,           // tap/hall contact length. The engine ignores it; the emitted plan carries it.
@@ -246,12 +249,12 @@ export const LOOP = _default.loop;
     [0, 'tap', 'monitor', 33], [300, 'tap', 'cam11', 33], [833, 'tap', 'cam9', 33],
     [883, 'tap', 'monitor', 33], [1616, 'tap', 'monitor', 33],
     [1916, 'hold', V.cameraFeedLight, 100], [2083, 'hold', 'wind', 1750],
-    [3833, 'camdrop', 200, 33, 67], [4482, 'tap', 'mask', 33],
+    [3833, 'camdrop', 200, 200, 67], [4482, 'tap', 'mask', 33],
   ];
   const LOOP0 = [
     [9200, 'tap', 'mask', 200], [9500, 'hall', 33], [10100, 'tap', 'monitor', 200],
     [10400, 'hold', V.cameraFeedLight, 100], [10570, 'hold', 'wind', 3230],
-    [13850, 'camdrop', 150, 33, 67], [14449, 'tap', 'mask', 200],
+    [13850, 'camdrop', 150, 200, 67], [14449, 'tap', 'mask', 200],
   ];
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   if (!eq(OPENING, OPENING0) || !eq(LOOP, LOOP0))
