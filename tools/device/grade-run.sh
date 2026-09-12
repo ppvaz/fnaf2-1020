@@ -380,7 +380,7 @@ if [ -n "$FRAME_TRACE" ]; then
   # lost contact as a fact about the run.
   if [ -n "$CAMPAIGN_DIR" ]; then
     step "scheduled contacts against frame stalls" \
-      node "$HERE/tap-stall-audit.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE"
+      node "$HERE/tap-stall-audit.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE" --transitions
   else
     echo
     echo "--- scheduled contacts against frame stalls ---"

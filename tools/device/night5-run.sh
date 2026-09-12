@@ -284,15 +284,23 @@ analyze() {
   [ "$ANALYZED" = 0 ] || return 0
   ANALYZED=1
 
-  # This run's own campaign directory, read from the `evidence.started` row the
-  # campaign wrote to THIS run's log -- never the newest artifacts/campaign-*.
+  # This run's own campaign directories, read from the `evidence.started` rows
+  # the campaign wrote to THIS run's log -- never the newest artifacts/campaign-*.
   # night5-strokes4 (2026-09-12) was refused at preflight (manifest engine
   # source hash mismatch), produced no campaign, and `ls -dt | head -1` handed
   # it strokes3's directory: its verdict.txt and run-report.json were another
-  # run's facts, 16 gates and 2 corrections for a night that never ran.
-  CAMPAIGN_DIR="$(grep -o '"type":"evidence.started","evidenceDirectory":"[^"]*"' "$OUTDIR/campaign.log" 2>/dev/null \
-    | head -1 | sed 's/.*"evidenceDirectory":"//; s/"$//' || true)"
-  [ -n "$CAMPAIGN_DIR" ] && [ ! -d "$CAMPAIGN_DIR" ] && CAMPAIGN_DIR=""
+  # run's facts, 16 gates and 2 corrections for a night that never ran. The
+  # same night, night5-contact200a's campaign restarted after an abort and
+  # produced TWO directories; `head -1` of an mtime sort picked the second
+  # (19 gates, 3 corrected) and the run's own 37-gate, 372.5 s first attempt
+  # appeared nowhere in its verdict. So every attempt is reported, in order,
+  # and the first one is the directory grade-run.sh's modern steps read.
+  ATTEMPT_DIRS=()
+  while IFS= read -r dir; do
+    [ -n "$dir" ] && [ -d "$dir" ] && ATTEMPT_DIRS+=("$dir")
+  done < <(grep -o '"type":"evidence.started","evidenceDirectory":"[^"]*"' "$OUTDIR/campaign.log" 2>/dev/null \
+    | sed 's/.*"evidenceDirectory":"//; s/"$//' || true)
+  CAMPAIGN_DIR="${ATTEMPT_DIRS[0]:-}"
   # grade-run.sh resolves the bundle by this pointer, so its modern steps run
   # without anyone passing a path.
   [ -n "$CAMPAIGN_DIR" ] && printf '%s\n' "$CAMPAIGN_DIR" > "captures/$RUNID-campaign-dir.txt"
@@ -301,19 +309,27 @@ analyze() {
     printf 'run          %s\n' "$RUNID"
     printf 'bundle       %s\n' "$BUNDLE"
     printf 'campaign dir %s\n' "${CAMPAIGN_DIR:-NONE}"
+    [ "${#ATTEMPT_DIRS[@]}" -gt 1 ] && printf 'attempts     %s (each reported below)\n' "${#ATTEMPT_DIRS[@]}"
     printf 'campaign exit %s\n' "${CAMPAIGN_CODE:-KILLED}"
   } | tee "$OUTDIR/verdict.txt"
 
-  if [ -n "$CAMPAIGN_DIR" ]; then
-    say "modern campaign bundle"
-    node tools/device/run-report.mjs --run "$CAMPAIGN_DIR" 2>&1 \
-      | tee -a "$OUTDIR/verdict.txt" || true
-    node tools/device/run-report.mjs --run "$CAMPAIGN_DIR" --json \
-      > "$OUTDIR/run-report.json" 2>/dev/null || true
+  if [ "${#ATTEMPT_DIRS[@]}" -gt 0 ]; then
+    attempt=0
+    for dir in "${ATTEMPT_DIRS[@]}"; do
+      attempt=$((attempt + 1))
+      suffix=""
+      [ "$attempt" -gt 1 ] && suffix="-attempt$attempt"
+      say "modern campaign bundle (attempt $attempt of ${#ATTEMPT_DIRS[@]}: $dir)"
+      printf -- '--- attempt %s of %s: %s ---\n' "$attempt" "${#ATTEMPT_DIRS[@]}" "$dir" | tee -a "$OUTDIR/verdict.txt"
+      node tools/device/run-report.mjs --run "$dir" 2>&1 \
+        | tee -a "$OUTDIR/verdict.txt" || true
+      node tools/device/run-report.mjs --run "$dir" --json \
+        > "$OUTDIR/run-report$suffix.json" 2>/dev/null || true
 
-    say "delivered phase against the model band"
-    node tools/device/phase-reconstruct.mjs --run "$CAMPAIGN_DIR" --night "$NIGHT" \
-      --out "$OUTDIR/phase.json" 2>&1 | tee "$OUTDIR/phase.log" || true
+      say "delivered phase against the model band (attempt $attempt)"
+      node tools/device/phase-reconstruct.mjs --run "$dir" --night "$NIGHT" \
+        --out "$OUTDIR/phase$suffix.json" 2>&1 | tee "$OUTDIR/phase$suffix.log" || true
+    done
   else
     printf 'night5-run: no campaign directory was produced; executor facts UNKNOWN\n' >&2
   fi

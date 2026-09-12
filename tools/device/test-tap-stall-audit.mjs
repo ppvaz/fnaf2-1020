@@ -4,7 +4,7 @@
 // a 60 ms capture gap covers the 33 ms monitor raise at +20100, the monitor
 // never goes up, the camdrop's tap at +24000 raises it instead, and the mask
 // tap at +24449 arrives with the mask button absent and lowers the monitor.
-import { audit, clockBracket, expandContacts, exposure, parseStrokeTrace, SCHEMA } from './tap-stall-audit.mjs';
+import { audit, clockBracket, expandContacts, exposure, formatReport, formatTransitions, parseStrokeTrace, SCHEMA } from './tap-stall-audit.mjs';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const expectFailure = (fn, message) => {
@@ -192,5 +192,14 @@ const wideMask = wideReport.contacts.find(row => row.id === 'toys-7' && row.atMs
 check(wideMask.buttonAbsent === false && wideMask.buttonAbsentAmbiguous && wideMask.atLate.buttonAbsent && !wideMask.atEarly.buttonAbsent,
   `a fact that holds at one end only is flagged ambiguous, never asserted: ${JSON.stringify({ status: wideMask.status, absent: wideMask.buttonAbsent, amb: wideMask.buttonAbsentAmbiguous })}`);
 check(wideReport.summary.ambiguous.includes('toys-7@14449'), 'the summary lists it as ambiguous');
+
+// The two text views render, and the transitions view shows the lost raise's
+// cycle without a monitor-up transition before the camdrop.
+const text = formatReport(report);
+check(text.includes('verdict: CONTACT_LOST') && text.includes('toys-3@20100'), 'the report names the lost raise');
+const transitions = formatTransitions(report, trace, plan);
+const cycle1 = transitions.split('\n').find(line => line.startsWith('  cycle 1 '));
+check(cycle1 && !cycle1.includes('monitor-up@+101') && cycle1.includes('monitor-up@+140'),
+  `cycle 1 shows no raise at +10100 and the camdrop raising at +14000: ${cycle1}`);
 
 console.log('test-tap-stall-audit: ok');

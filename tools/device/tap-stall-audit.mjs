@@ -424,6 +424,48 @@ export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CON
   };
 }
 
+/**
+ * One line per plan cycle: every signature transition, in milliseconds from
+ * that cycle's start, on the midpoint of the clock bracket (the bracket is
+ * stated in the header). This is the view that says in one glance whether a
+ * corrected cycle lost its MASK press or its MONITOR tap: strokes3's two read
+ * `... monitor-up@+14476 office@+14819 ... mask-on@+15385` -- the monitor
+ * came down 450 ms late (at the mask tap) and the mask came on at the gate's
+ * correction -- against `monitor-up@+14018 office@+14384 mask-on@+14469` on
+ * every clean cycle.
+ */
+export function formatTransitions(report, trace, plan) {
+  const { periodMs, loopStartMs, stopAtMs, idleUntilMs = 0 } = plan.timing;
+  const offset = (report.clock.earlyOffsetMs + report.clock.lateOffsetMs) / 2;
+  const half = report.clock.bracketMs / 2;
+  const transitions = [];
+  let previous;
+  for (const row of trace) {
+    const signature = signatureOf(row);
+    if (signature === previous) continue;
+    transitions.push({ at: row.imageMs + offset - report.releasedAt, signature });
+    previous = signature;
+  }
+  // Loop rows are authored from `firstRowMs` into the next period (the Night 5
+  // loop runs +9200..+14449), so iteration k's window starts there and its
+  // offsets are printed from the iteration BASE, matching the plan's atMs.
+  const startMs = Math.max(loopStartMs, idleUntilMs);
+  const steadyRows = Object.entries(plan.cycles).filter(([name]) => name !== 'opening' && name !== 'finish')
+    .flatMap(([, cycle]) => cycle.blocks.flatMap(block => block.actions.map(action => action.atMs)));
+  const firstRowMs = steadyRows.length ? Math.min(...steadyRows) : 0;
+  const lines = [`signature transitions per plan iteration, ms from the iteration base (loop rows run +${firstRowMs}..), ` +
+    `clock at the bracket midpoint (+-${half.toFixed(0)} ms):`];
+  const cycles = [{ label: 'opening', base: 0, from: 0, to: startMs + firstRowMs }];
+  for (let base = startMs, index = 0; base < stopAtMs; base += periodMs, index += 1)
+    cycles.push({ label: `cycle ${index}`, base, from: base + firstRowMs, to: base + firstRowMs + periodMs });
+  for (const cycle of cycles) {
+    const inside = transitions.filter(t => t.at >= cycle.from && t.at < cycle.to);
+    if (!inside.length) continue;
+    lines.push(`  ${cycle.label.padEnd(9)} ` + inside.map(t => `${t.signature ?? 'null'}@+${Math.round(t.at - cycle.base)}`).join(' '));
+  }
+  return lines.join('\n');
+}
+
 export function formatReport(report) {
   const lines = [];
   const { summary, frames, clock, exposure: table } = report;
@@ -474,7 +516,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const tracePath = arg('frame-trace');
   if (!run || !tracePath) {
     process.stderr.write('usage: tap-stall-audit.mjs --run artifacts/campaign-... --frame-trace FILE ' +
-      '[--night N] [--json] [--out FILE]\n');
+      '[--night N] [--transitions] [--json] [--out FILE]\n');
     process.exit(2);
   }
   try {
@@ -490,7 +532,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     report.frameTrace = tracePath;
     const out = arg('out');
     if (out) writeFileSync(out, JSON.stringify(report, null, 2) + '\n');
-    process.stdout.write((process.argv.includes('--json') ? JSON.stringify(report, null, 2) : formatReport(report)) + '\n');
+    const text = process.argv.includes('--json') ? JSON.stringify(report, null, 2)
+      : formatReport(report) + (process.argv.includes('--transitions') ? '\n' + formatTransitions(report, trace, plan) : '');
+    process.stdout.write(text + '\n');
     process.exit(report.verdict === 'CONTACT_LOST' ? 3 : 0);
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
