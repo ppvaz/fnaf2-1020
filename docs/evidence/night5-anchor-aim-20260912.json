@@ -5,10 +5,10 @@
   "binding": "fnv1a-81b5e51c",
   "qualification": "docs/evidence/qualification-hid-mediaprojection-night5-20260912-contact-final.json",
   "night": 5,
-  "aimMs": 233,
+  "aimMs": 172,
   "periodMs": 1000,
   "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame on the helper image clock (@fnaf2-1020/adapters/night-onset, NIGHT_ONSET_HOLD_MS 500); positive epoch fires the schedule later (minus-toys-plan: when = base + at + epochMs); the executor delivers T0 = onset + aimMs + k*1000",
-  "why": "of the three Night 5 epochs measured on 2026-09-12 (rep1 885.6, rep2 365.1, rep3 556.8), two fell in the model 4-mask-tick Balloon Boy bands and died the model way; the phone had drawn the epoch on every run. 233 is the centre of the winning band [166.67, 300]: every row is 3000/3000 and 5 ticks, +-67 ms to the nearest losing row",
+  "why": "of the three Night 5 epochs measured on 2026-09-12 (rep1 885.6, rep2 365.1, rep3 556.8), two fell in the model 4-mask-tick Balloon Boy bands and died the model way; the phone had drawn the epoch on every run. 233 is the centre of the winning band [166.67, 300]: every row is 3000/3000 and 5 ticks, +-67 ms to the nearest losing row Revised: the model epoch is the EFFECTIVE epoch (replay moves every action with zero latency); the phone delivers the schedule and the game acts L later, so the registered aim is a schedule value and the check is that [aim + Lmin, aim + Lmax] lies inside a winning band.",
   "model": {
     "tool": "tools/device/minus-toys-plan.mjs replay({night:5, seed, epochMs}) with the same seed cohort phase-reconstruct.mjs uses",
     "fps": 60,
@@ -520,6 +520,26 @@
       "epochMs": 2233.33,
       "seeds": 3000,
       "wins": 3000
+    },
+    {
+      "epochMs": 171.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 1171.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2171.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 206.67,
+      "seeds": 3000,
+      "wins": 3000
     }
   ],
   "kIsFree": "NO beyond k=2: epochs 233.33, 1233.33 and 2233.33 score 3000/3000, but 3233.33 scores 2673/3000 and 4233.33 2679/3000, all losses inside-office (Balloon Boy). The response is not periodic past ~2.2 s: a schedule that starts a third second late lets BB in on ~11% of seeds. The executor must cap k at 2 and, if it cannot reach k <= 2, release unanchored and say so.",
@@ -565,5 +585,22 @@
       }
     ],
     "measuredFor": "night5-anchor1-20260912T202654Z delivered k=3 (T0 = onset + 3233 ms) because the intro port planned from its own lifecycle wait, 2441 ms after the onset"
-  }
+  },
+  "latencyMs": {
+    "min": 30,
+    "max": 110,
+    "provenance": "stated (USB HID + Android input + one Fusion poll + one render frame + one capture frame); to be replaced by the getevent measurement per control"
+  },
+  "revision": "2026-09-12 late: aim moved from 233 (centre of the model band) to 172 (centre of the SCHEDULE band [136.67, 206.67] that keeps aim + L inside the model band for every stated L). Two deaths at model-winning epochs -- rep1 885.6, anchor4 231.1 -- both lie within L of a losing edge; 233 held only for L < 83 ms.",
+  "scheduleBandEdges3000": [
+    {
+      "epochMs": 136.67,
+      "seeds": 3000,
+      "wins": 0,
+      "deaths": {
+        "puppet": 3000
+      },
+      "note": "the schedule band lower edge minus nothing: 136.67 + 30 = 166.67 is the model edge, and 136.67 itself is a losing row -- the check is on aim + L, never on the aim alone"
+    }
+  ]
 }

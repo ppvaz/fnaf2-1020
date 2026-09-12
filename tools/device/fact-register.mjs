@@ -110,7 +110,13 @@ export const FACTS = Object.freeze({
 export const ANCHOR_AIMS = Object.freeze({
   'fnv1a-81b5e51c': Object.freeze({
     night: 5,
-    aimMs: 233,
+    // The aim is a SCHEDULE epoch; the game acts latencyMs later, and the
+    // model's bands are effective epochs. 233 was the model band's centre and
+    // held only for L < 83 ms (rep1 and anchor4 died within L of an edge);
+    // 172 is the centre of the schedule band [136.67, 206.67] that keeps
+    // aim + L inside [166.67, 316.67] for every stated L.
+    aimMs: 172,
+    latencyMs: { min: 30, max: 110, provenance: 'stated, unmeasured' },
     periodMs: 1000,
     // k = whole seconds added to the aim. 0-2 are 3000/3000; 3 and 4 lose ~11%
     // to Balloon Boy (the response is not periodic past ~2.2 s), measured on
@@ -121,8 +127,8 @@ export const ANCHOR_AIMS = Object.freeze({
   }),
 });
 
-/** Minimum distance, in ms, an aim must keep from both edges of its band. */
-export const ANCHOR_AIM_MIN_MARGIN_MS = 50;
+/** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */
+export const ANCHOR_AIM_MIN_MARGIN_MS = 30;
 
 /**
  * The registered aim for a binding, with its evidence read and checked, or a
@@ -142,10 +148,16 @@ export function anchorAimFor(winnerHash) {
     return { ok: false, reason: `anchor aim evidence ${entry.evidence} is for binding ${evidence.binding}, not ${winnerHash}` };
   if (evidence.night !== entry.night || evidence.aimMs !== entry.aimMs)
     return { ok: false, reason: `anchor aim evidence ${entry.evidence} disagrees with the register (night ${evidence.night}, aim ${evidence.aimMs})` };
-  const band = (evidence.winningBands ?? []).find(b => b.fromMs + ANCHOR_AIM_MIN_MARGIN_MS <= entry.aimMs &&
-    entry.aimMs <= b.toMs - ANCHOR_AIM_MIN_MARGIN_MS);
+  const latency = entry.latencyMs ?? { min: 0, max: 0 };
+  const effectiveMin = entry.aimMs + latency.min;
+  const effectiveMax = entry.aimMs + latency.max;
+  const band = (evidence.winningBands ?? []).find(b => b.fromMs + ANCHOR_AIM_MIN_MARGIN_MS <= effectiveMin &&
+    effectiveMax <= b.toMs - ANCHOR_AIM_MIN_MARGIN_MS);
   if (!band)
-    return { ok: false, reason: `aim ${entry.aimMs} ms is not inside a winning band of ${entry.evidence} with ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin` };
+    return { ok: false, reason: `aim ${entry.aimMs} ms + latency [${latency.min}, ${latency.max}] = effective [${effectiveMin}, ${effectiveMax}] ` +
+      `is not inside a winning band of ${entry.evidence} with ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin` };
+  if (evidence.latencyMs && (evidence.latencyMs.min !== latency.min || evidence.latencyMs.max !== latency.max))
+    return { ok: false, reason: `${entry.evidence} states latency [${evidence.latencyMs.min}, ${evidence.latencyMs.max}], the register [${latency.min}, ${latency.max}]` };
   const unclean = (evidence.confirmations3000 ?? []).filter(c => c.wins !== c.seeds);
   if (!evidence.confirmations3000?.length || unclean.length)
     return { ok: false, reason: `3000-seed confirmations in ${entry.evidence} are missing or not clean` };

@@ -65,7 +65,7 @@ for (const [fact, info] of Object.entries(register.facts)) {
 for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
   const found = anchorAimFor(hash);
   if (!found.ok) { fail(`anchor aim ${hash}: ${found.reason}`); continue; }
-  process.stdout.write(`anchor aim ${hash}: ${entry.aimMs} ms inside [${found.band.fromMs}, ${found.band.toMs}] ` +
+  process.stdout.write(`anchor aim ${hash}: ${entry.aimMs} ms + L [${entry.latencyMs?.min ?? 0}, ${entry.latencyMs?.max ?? 0}] inside [${found.band.fromMs}, ${found.band.toMs}] ` +
     `with >= ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin, ${JSON.parse(readFileSync(join(ROOT, entry.evidence), 'utf8')).confirmations3000.length} clean 3000-seed rows\n`);
 }
 // The newest Night 5 qualification names the binding a run will carry; that
