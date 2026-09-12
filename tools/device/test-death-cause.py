@@ -298,6 +298,20 @@ def main():
               puppet_terminal["cause"] == "marionette" and
               puppet_terminal["evidence"] == "visual-marionette-jumpscare",
               "post-office Marionette cause did not produce shadow death evidence")
+        # A sixam lookalike BEFORE the night (title/intro frames) is not a
+        # clear: night5-anchor4 graded "clear -- sixam at 24.5s" on a night
+        # whose HUD first appeared at 29.2 s and that died at 368 s.
+        pre_night = timeline.terminal_outcome(
+            [["sixam", 0, 2], ["intro", 2, 3], ["office", 3, 6], ["other", 6, 8]],
+            ["sixam", "sixam", "intro", "office", "office", "office", "other", "other"],
+            [0] * 8, 1, th)
+        check(pre_night["outcome"] != "clear",
+              "a sixam read before the night's first office frame was taken as a clear")
+        post_night = timeline.terminal_outcome(
+            [["office", 0, 6], ["sixam", 6, 8]],
+            ["office"] * 6 + ["sixam"] * 2, [0] * 8, 1, th)
+        check(post_night["outcome"] == "clear" and post_night["at_s"] == 6.0,
+              "a sixam after the night is the clear")
         chica_terminal = timeline.terminal_outcome(
             [["office", 0, 3], ["other", 3, 5]],
             ["office", "office", "office", "other", "other"],

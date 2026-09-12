@@ -292,11 +292,20 @@ def terminal_outcome(runs, phases, roughnesses, fps, th, cause_labels=None,
                          "through_s": round(index / fps, 4), "samples": 1}
                         for index, cause in enumerate(cause_labels) if cause]
 
+    # The 6 AM card counts only AFTER the night was seen: a pre-night frame
+    # (title, intro, the newspaper) that matches the sixam signature is not a
+    # clear. night5-anchor4 (2026-09-12) graded "clear -- sixam at 24.5s" on a
+    # recording whose night HUD first appeared at 29.2 s and whose death
+    # static came at 368 s; with the survival grader now naming that death,
+    # the same read would have called a death a win.
+    first_office = next((a for p, a, b in runs if p == "office"), None)
     for p, a, b in reversed(runs):
         if p == "sixam":
+            if first_office is None or a < first_office:
+                continue
             return {"outcome": "clear", "evidence": "sixam",
                     "at_s": round(a / fps, 2), "positive": True,
-                    "note": "the 6 AM win screen is in the recording"}
+                    "note": "the 6 AM win screen is in the recording, after the night"}
 
     # A visual cause is a candidate, not a lifecycle authority. Require
     # the candidate after the last positively observed office segment, require

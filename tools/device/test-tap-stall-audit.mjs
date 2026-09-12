@@ -5,7 +5,7 @@
 // never goes up, the camdrop's tap at +24000 raises it instead, and the mask
 // tap at +24449 arrives with the mask button absent and lowers the monitor.
 import { readFileSync } from 'node:fs';
-import { audit, clockBracket, expandContacts, exposure, formatReport, formatTransitions, hallCells, hallLumaOf, parseStrokeTrace, HALL_ROI, SCHEMA } from './tap-stall-audit.mjs';
+import { audit, clockBracket, expandContacts, exposure, formatReport, formatTransitions, hallCells, hallLumaOf, parseInputEvents, parseStrokeTrace, touchEdges, HALL_ROI, SCHEMA } from './tap-stall-audit.mjs';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const expectFailure = (fn, message) => {
@@ -80,7 +80,8 @@ function buildTrace() {
     if (t > 20090 && t < 20150) continue;
     const [mask, monitor] = strokes[signatureAt(t)];
     const imageNs = Math.round((NIGHT_GO + t) * 1e6);
-    lines.push([seq += 1, imageNs, imageNs, imageNs, 0, 10, 2, 0, 0, mask, monitor, gridHex(hallLitAt(t))].join('\t'));
+    // elapsed (boottime) runs 5 s ahead of the image clock: a phone that slept.
+    lines.push([seq += 1, imageNs, imageNs + 5_000_000_000, imageNs, 0, 10, 2, 0, 0, mask, monitor, gridHex(hallLitAt(t))].join('\t'));
   }
   return lines.join('\n') + '\n';
 }
@@ -232,5 +233,32 @@ const transitions = formatTransitions(report, trace, plan);
 const cycle1 = transitions.split('\n').find(line => line.startsWith('  cycle 1 '));
 check(cycle1 && !cycle1.includes('monitor-up@+101') && cycle1.includes('monitor-up@+140'),
   `cycle 1 shows no raise at +10100 and the camdrop raising at +14000: ${cycle1}`);
+
+// The getevent reader: presses stamped on the image (monotonic) clock,
+// effects 40 ms later in the trace. The boottime hypothesis (5 s off) must
+// match nothing; the monotonic one must give L per control, press and release
+// edges apart.
+{
+  const evt = (ms, code, value) => `[${String(Math.floor(ms / 1000)).padStart(8)}.${String(Math.round((ms % 1000) * 1000)).padStart(6, '0')}] /dev/input/event7: ${code.startsWith('BTN') ? 'EV_KEY' : 'EV_ABS'}       ${code.padEnd(20)} ${value}`;
+  const press = (atMs, holdMs) => [evt(NIGHT_GO + atMs, 'ABS_MT_TRACKING_ID', '00000001'), evt(NIGHT_GO + atMs, 'BTN_TOUCH', 'DOWN'),
+    evt(NIGHT_GO + atMs + holdMs, 'ABS_MT_TRACKING_ID', 'ffffffff'), evt(NIGHT_GO + atMs + holdMs, 'BTN_TOUCH', 'UP')];
+  const text = ['# getevent -lt on ZF525F5BH5, started host 1789240000.000000000, device uptime 100.00 200.00',
+    'add device 1: /dev/input/event3', '  name:     "some_touchscreen"', 'add device 2: /dev/input/event7', '  name:     "FNAF Timed Touch"',
+    ...press(10100, 33), ...press(14449, 33), ...press(20100, 33), '# stopped host 1789240100.000000000, device uptime 200.00 300.00'].join('\n');
+  const parsed = parseInputEvents(text);
+  check(parsed.devices['/dev/input/event7'] === 'FNAF Timed Touch' && parsed.events.length === 12, 'getevent devices and rows parse');
+  const { node, edges: touch } = touchEdges(parsed);
+  check(node === '/dev/input/event7' && touch.length === 3 && Math.round(touch[0].releaseMs - touch[0].pressMs) === 33, 'three press/release edges on the virtual device');
+  const withL = audit({ events, plan, trace, inputEvents: parsed });
+  const L = withL.actuationLatency;
+  check(L && L.physicalClock === 'monotonic', `the image clock is the physical one, got ${JSON.stringify(L && { physical: L.physicalClock, edges: L.edges })}`);
+  check(L.hypotheses.boottime.withEffect < L.hypotheses.monotonic.withEffect && L.hypotheses.monotonic.withEffect === 2,
+    `boottime (5 s off) matches fewer presses than monotonic, which matches the two landed ones: ${JSON.stringify(Object.fromEntries(Object.entries(L.hypotheses).map(([k, v]) => [k, v.withEffect])))}`);
+  const raise = L.hypotheses.monotonic.perControl['monitor-up'].pressToEffect;
+  check(raise && raise.n === 1 && raise.median >= 40 && raise.median <= 60, `raise L is the synthetic 40 ms plus one frame, got ${JSON.stringify(raise)}`);
+  const maskOn = L.hypotheses.monotonic.perControl['mask-on'];
+  check(maskOn && maskOn.releaseToEffect.median === maskOn.pressToEffect.median - 33, 'release-edge latency is the press-edge latency minus the hold');
+  check(formatReport(withL).includes('actuation latency (getevent'), 'the report prints the latency section');
+}
 
 console.log('test-tap-stall-audit: ok');

@@ -148,6 +148,7 @@ export function parseStrokeTrace(text) {
     rows.push({
       seq: Number(field[0]),
       imageMs: Number(field[1]) / 1e6,
+      elapsedMs: Number(field[2]) / 1e6,
       screenIdentity: Number(field[6]),
       maskButtonDownstroke: Number(field[9]),
       monitorButtonDownstroke: Number(field[10]),
@@ -406,6 +407,107 @@ function gradeHall(contact, trace, offsetMs, halfBracketMs, released) {
   return { startAt, status, landedAfterMs: litAfterMs, officeFrames: office };
 }
 
+/**
+ * `adb shell getevent -lt` as night5-run.sh records it beside the frame
+ * trace (artifacts/runs/<run>/input-events.txt): `# started ...` header,
+ * `add device N: /dev/input/eventX` + `  name: "..."` blocks, then rows
+ * `[  sec.usec] /dev/input/eventX: EV_KEY BTN_TOUCH DOWN` (with -l names),
+ * and a `# stopped ...` trailer. The virtual touch device the campaign
+ * creates is resolved by NAME from its add-device block, never by number.
+ */
+export const VIRTUAL_TOUCH_DEVICE_NAME = /FNAF Timed Touch/i;
+
+export function parseInputEvents(text) {
+  const devices = {};
+  const events = [];
+  let pendingNode = null;
+  for (const line of text.split('\n')) {
+    const add = line.match(/^add device \d+: (\/dev\/input\/event\d+)/);
+    if (add) { pendingNode = add[1]; devices[pendingNode] = devices[pendingNode] ?? ''; continue; }
+    const name = line.match(/^\s+name:\s+"([^"]*)"/);
+    if (name && pendingNode) { devices[pendingNode] = name[1]; continue; }
+    const row = line.match(/^\[\s*(\d+)\.(\d{6})\]\s+(\/dev\/input\/event\d+):\s+(\S+)\s+(\S+)\s+(\S+)/);
+    if (row) events.push({ ms: Number(row[1]) * 1000 + Number(row[2]) / 1000, node: row[3], type: row[4], code: row[5], value: row[6] });
+  }
+  return { devices, events };
+}
+
+/** Press/release edges of the virtual touch device, in the getevent clock (ms). */
+export function touchEdges(parsed, deviceName = VIRTUAL_TOUCH_DEVICE_NAME) {
+  const node = Object.entries(parsed.devices).find(([, name]) => deviceName.test(name))?.[0];
+  if (!node) return { node: null, edges: [] };
+  const edges = [];
+  let down = null;
+  for (const event of parsed.events) {
+    if (event.node !== node) continue;
+    const isDown = (event.code === 'BTN_TOUCH' && event.value === 'DOWN') ||
+      (event.code === 'ABS_MT_TRACKING_ID' && !/^f{8}$/i.test(event.value));
+    const isUp = (event.code === 'BTN_TOUCH' && event.value === 'UP') ||
+      (event.code === 'ABS_MT_TRACKING_ID' && /^f{8}$/i.test(event.value));
+    if (isDown && down === null) down = event.ms;
+    else if (isUp && down !== null) { edges.push({ pressMs: down, releaseMs: event.ms }); down = null; }
+  }
+  return { node, edges };
+}
+
+/**
+ * Actuation latency L per control: the first frame showing the contact's
+ * effect minus the press edge the kernel stamped -- both on the DEVICE, so no
+ * host bracket enters. The getevent clock is not assumed: every latency is
+ * computed against the trace's image clock (monotonic) and its elapsed clock
+ * (boottime), presses are matched to scheduled contacts under both, and the
+ * hypothesis that matches more presses with a visible effect is reported as
+ * the physical one. Press and release edges are reported separately.
+ */
+export function actuationLatency({ contacts, trace, edges, released, clock, windowMs = 250 }) {
+  if (!edges.length) return null;
+  const mid = (clock.earlyOffsetMs + clock.lateOffsetMs) / 2;
+  const bootMinusMono = trace[0].elapsedMs - trace[0].imageMs;
+  const hypotheses = {};
+  for (const [name, frameClock, toWall] of [
+    ['monotonic', row => row.imageMs, ms => ms + mid],
+    ['boottime', row => row.elapsedMs, ms => ms - bootMinusMono + mid],
+  ]) {
+    const matches = [];
+    for (const edge of edges) {
+      const pressWall = toWall(edge.pressMs);
+      let best = null;
+      for (const contact of contacts) {
+        const d = Math.abs(released + contact.atMs - pressWall);
+        if (d <= windowMs && (!best || d < best.d)) best = { contact, d };
+      }
+      if (!best || !best.contact.expect) continue;
+      const expect = best.contact.expect;
+      let effectMs = null;
+      for (const row of trace) {
+        const t = frameClock(row);
+        if (t <= edge.pressMs) continue;
+        if (t > edge.pressMs + 1500) break;
+        const sig = signatureOf(row);
+        const hit = expect.hall ? (sig === 'office' && row.hallLuma !== null && row.hallLuma >= HALL_LIT_MIN)
+          : expect.proofs.some(p => p.signature === sig);
+        if (hit) { effectMs = t; break; }
+      }
+      matches.push({ id: best.contact.id, atMs: best.contact.atMs, control: best.contact.control, name: expect.name,
+        pressMs: edge.pressMs, releaseMs: edge.releaseMs, holdMs: Math.round(edge.releaseMs - edge.pressMs),
+        pressToEffectMs: effectMs === null ? null : Math.round(effectMs - edge.pressMs),
+        releaseToEffectMs: effectMs === null ? null : Math.round(effectMs - edge.releaseMs) });
+    }
+    const perControl = {};
+    for (const m of matches) {
+      if (m.pressToEffectMs === null) continue;
+      const bucket = perControl[m.name] ?? (perControl[m.name] = { press: [], release: [] });
+      bucket.press.push(m.pressToEffectMs); bucket.release.push(m.releaseToEffectMs);
+    }
+    const stats = values => { const v = [...values].sort((a, b) => a - b); return v.length ? { n: v.length, min: v[0], median: v[v.length >> 1], max: v.at(-1) } : null; };
+    hypotheses[name] = { matched: matches.length, withEffect: matches.filter(m => m.pressToEffectMs !== null).length,
+      perControl: Object.fromEntries(Object.entries(perControl).map(([k, b]) => [k, { pressToEffect: stats(b.press), releaseToEffect: stats(b.release) }])),
+      matches };
+  }
+  const best = Object.entries(hypotheses).sort((a, b) => b[1].withEffect - a[1].withEffect)[0];
+  return { edges: edges.length, physicalClock: best && best[1].withEffect ? best[0] : null, hypotheses };
+}
+
 const LOST = new Set(['MISSING', 'INVERTED']);
 
 /**
@@ -413,7 +515,7 @@ const LOST = new Set(['MISSING', 'INVERTED']);
  * request.json's bundle.plans, `trace` the parsed stroke trace.
  */
 export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CONTACTS_MS,
-  anchor = 'schedule', actuationLatencyBoundsMs = ACTUATION_LATENCY_BOUNDS_MS }) {
+  anchor = 'schedule', actuationLatencyBoundsMs = ACTUATION_LATENCY_BOUNDS_MS, inputEvents = null }) {
   if (!Array.isArray(events)) fail('events must be an array');
   if (!Array.isArray(trace) || trace.length < 2) fail('frame trace has fewer than two frames');
   const first = type => events.find(event => event.type === type);
@@ -489,9 +591,17 @@ export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CON
   });
   const sorted = [...intervals].sort((a, b) => a - b);
 
+  let latency = null;
+  if (inputEvents) {
+    const { node, edges: touch } = touchEdges(inputEvents);
+    latency = node ? actuationLatency({ contacts, trace, edges: touch, released, clock })
+      : { edges: 0, physicalClock: null, hypotheses: {}, note: 'no device named like the virtual touch device in the getevent log' };
+  }
+
   return {
     schema: SCHEMA,
     nightGoAt: nightGo.at, releasedAt: released,
+    actuationLatency: latency,
     clock: { ...clock, samples: gate.samples,
       minLandedLatencyMs: { early: minLatency(atEarly), late: minLatency(atLate) } },
     frames: { count: trace.length, spanMs,
@@ -598,6 +708,20 @@ export function formatReport(report) {
   for (const row of table)
     lines.push(`  ${String(row.contactMs).padStart(5)} ms   ${(row.exposure * 100).toFixed(3).padStart(6)}%   ` +
       `${row.expectedLostPerNight.toFixed(2).padStart(8)}              ${(row.pZeroLost * 100).toFixed(0).padStart(3)}%`);
+  const L = report.actuationLatency;
+  if (L) {
+    if (!L.physicalClock) lines.push(`actuation latency (getevent): ${L.note ?? `${L.edges} press edges, none matched a scheduled contact with a visible effect under either clock`}`);
+    else {
+      const h = L.hypotheses[L.physicalClock];
+      lines.push(`actuation latency (getevent kernel press edge -> first effect frame, both on the device clock; ` +
+        `getevent clock read as ${L.physicalClock}: ${h.withEffect} of ${L.edges} edges matched with an effect; ` +
+        Object.entries(L.hypotheses).filter(([k]) => k !== L.physicalClock).map(([k, v]) => `${v.withEffect} under ${k}`).join(', ') + '):');
+      for (const [control, v] of Object.entries(h.perControl)) {
+        const p = v.pressToEffect, r = v.releaseToEffect;
+        lines.push(`  ${control.padEnd(13)} press->effect n=${p.n} min ${p.min} median ${p.median} max ${p.max} ms | release->effect median ${r.median} ms`);
+      }
+    }
+  }
   lines.push(`verdict: ${report.verdict}`);
   return lines.join('\n');
 }
@@ -614,9 +738,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   };
   const run = arg('run');
   const tracePath = arg('frame-trace');
+  const inputPath = arg('input-events');
   if (!run || !tracePath) {
     process.stderr.write('usage: tap-stall-audit.mjs --run artifacts/campaign-... --frame-trace FILE ' +
-      '[--night N] [--transitions] [--json] [--out FILE]\n');
+      '[--input-events FILE] [--night N] [--transitions] [--json] [--out FILE]\n');
     process.exit(2);
   }
   try {
@@ -627,7 +752,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const plan = night === undefined ? plans[0] : plans.find(entry => entry.night === Number(night));
     if (!plan) fail(`request.json binds no plan${night === undefined ? '' : ` for night ${night}`}`);
     const trace = parseStrokeTrace(readFileSync(tracePath, 'utf8'));
-    const report = audit({ events, plan, trace });
+    const inputEvents = inputPath ? parseInputEvents(readFileSync(inputPath, 'utf8')) : null;
+    const report = audit({ events, plan, trace, inputEvents });
     report.run = run;
     report.frameTrace = tracePath;
     const out = arg('out');

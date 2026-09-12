@@ -1575,7 +1575,7 @@
     },
     {
       "id": "tools/device/tap-stall-audit.mjs",
-      "invocation": "tools/device/tap-stall-audit.mjs --run DIR --frame-trace FILE [--night N] [--transitions] [--json] [--out FILE]",
+      "invocation": "tools/device/tap-stall-audit.mjs --run DIR --frame-trace FILE [--input-events FILE] [--night N] [--transitions] [--json] [--out FILE]",
       "kind": "report",
       "lifecycle": "supported"
     },

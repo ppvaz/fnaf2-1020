@@ -25,6 +25,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+RUNS_DIR="$HERE/../../artifacts/runs"
 CAPTURES="$HERE/../../captures"
 RUN="${1:?usage: grade-run.sh RUN_NAME [--require-seconds N]}"
 shift || true
@@ -456,8 +457,13 @@ if [ -n "$FRAME_TRACE" ]; then
   # taps inside frame stalls, after the trace had sat ungraded; exit 3 names a
   # lost contact as a fact about the run.
   if [ -n "$CAMPAIGN_DIR" ]; then
+    # With a getevent log beside the run (night5-run.sh records the virtual
+    # touch device's kernel timestamps), the audit also measures the
+    # actuation latency per control on the device clock.
+    INPUT_EVENTS_ARG=()
+    [ -f "$RUNS_DIR/$RUN/input-events.txt" ] && INPUT_EVENTS_ARG=(--input-events "$RUNS_DIR/$RUN/input-events.txt")
     step "scheduled contacts against frame stalls" \
-      node "$HERE/tap-stall-audit.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE" --transitions
+      node "$HERE/tap-stall-audit.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE" --transitions "${INPUT_EVENTS_ARG[@]}"
   else
     echo
     echo "--- scheduled contacts against frame stalls ---"
