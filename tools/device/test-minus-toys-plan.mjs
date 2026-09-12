@@ -47,8 +47,17 @@ const seed = i => (i * 2654435761) >>> 0;
   const exactQueue = schedule({ opening: OPENING, loop: LOOP, untilMs: 30000,
                                 periodMs: KNOBS0.loopPeriodMs });
   const exactWindows = maskWindows(exactQueue);
-  check(exactWindows[0].startFrame === 264 + C.MASK_ANIM_ON &&
-        exactWindows[0].endFrame === 552,
+  // DERIVED from the schedule, not pinned to frame literals. These used to be
+  // 264 and 552, the frames of the 4400 ms opening mask-on and the 9200 ms loop
+  // mask-off; moving either press out of a device timing floor then failed a
+  // check that was only ever asserting a relationship. The relationship is what
+  // this pins: coverage starts once the ON animation has run, and ends on the
+  // authored OFF press.
+  const frameOf = ms => Math.round(ms / 1000 * C.FPS);
+  const openingMaskAt = OPENING.find(row => row[2] === 'mask')[0];
+  const loopMaskOffAt = LOOP.find(row => row[2] === 'mask')[0];
+  check(exactWindows[0].startFrame === frameOf(openingMaskAt) + C.MASK_ANIM_ON &&
+        exactWindows[0].endFrame === frameOf(loopMaskOffAt),
     'mask coverage does not start after ON animation or end at the OFF press');
   const jitterQueue = schedule({ opening: OPENING, loop: LOOP, untilMs: 30000,
     periodMs: KNOBS0.loopPeriodMs,

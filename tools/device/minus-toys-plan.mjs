@@ -34,17 +34,24 @@ export const KNOBS0 = {
   openRaiseGapMs: 733,     // monitor-down -> monitor-up (the split is armed on this raise)
   openStunLeadMs: 300,     // first safe camera-feed flash after the split raise
   openStunHoldMs: 100,     // one Fusion poll window; contact taps remain 33 ms
-  openWindLeadMs: 434,     // monitor-up -> opening wind start
+  openWindLeadMs: 467,     // monitor-up -> opening wind start. 434 was EXACTLY the
+                           //   compiler's raise-readiness floor, so the opening wind cleared
+                           //   it by 0 ms; +33 is two engine frames of room.
   openWindMs: 1750,        // opening wind hold (shortened live by the epoch slip, up to its full length)
   openCamdropLeadMs: 200,  // opening camdrop: light-only lead before the monitor tap
-  openMaskLeadMs: 300,     // opening camdrop end -> mask on (gives the lower animation room)
+  openMaskLeadMs: 349,     // opening camdrop end -> mask on. The mask button is absent through
+                           //   322 ms after monitor-down and only fully visible at ~382.5 ms
+                           //   (native frame trace); 300 put the press at exactly the +400 ms
+                           //   floor, clearing it by 0 ms.
 
   // --- steady loop ---
   loopPeriodMs: 10000,     // 10 s cycle = 2x the 5 s GF interval. 5000 builds the faithful
                            //   per-interval routine (MINUS-3-STRATEGY sec.3) -- structurally it
                            //   cannot deliver a 5-tick mask window, see build() and cyclelengthsearch.
   maskOffMs: 9200,         // mask toggles OFF (~:X9), the cams-up / wind phase begins
-  maskOnMs: 4400,          // mask toggles ON (~:X4). Used in the opening, and +loopPeriodMs in the loop.
+  maskOnMs: 4449,          // mask toggles ON (~:X4). Used in the opening, and +loopPeriodMs in
+                           //   the loop. 4400 put the loop press at exactly the +400 ms
+                           //   monitor-down floor; see openMaskLeadMs.
   hallOffsetMs: 9500,      // Foxy-reset hall pulse offset
   hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56
                            //   with no pan. Do NOT lengthen this to fix the 1-in-3
@@ -65,8 +72,10 @@ export const KNOBS0 = {
   raiseMs: 10100,          // monitor raise, just after the interval boundary
   stunRefreshMs: 10400,    // cameraFeedLight glitch-stun refresh, right after the raise
   stunRefreshHoldMs: 100,  // its hold
-  windLeadMs: 10550,       // loop wind start
-  windMs: 3250,            // loop wind hold
+  windLeadMs: 10570,       // loop wind start. 10550 is raise+450 against a 434 ms floor:
+                           //   16 ms of room, under the two-frame allowance.
+  windMs: 3230,            // loop wind hold, shortened by the same 20 ms the start moved so the
+                           //   hold still ends clear of the camdrop.
   camdropMs: 13850,        // camdrop exit (~:X4 of the next interval)
   camdropLeadMs: 150,      // loop camdrop: light-only lead before the monitor tap
   camdropMonitorMs: 33,    // camdrop: monitor contact
@@ -206,13 +215,13 @@ export const LOOP = _default.loop;
   const OPENING0 = [
     [0, 'tap', 'monitor', 33], [300, 'tap', 'cam11', 33], [833, 'tap', 'cam9', 33],
     [883, 'tap', 'monitor', 33], [1616, 'tap', 'monitor', 33],
-    [1916, 'hold', V.cameraFeedLight, 100], [2050, 'hold', 'wind', 1750],
-    [3800, 'camdrop', 200, 33, 67], [4400, 'tap', 'mask', 33],
+    [1916, 'hold', V.cameraFeedLight, 100], [2083, 'hold', 'wind', 1750],
+    [3833, 'camdrop', 200, 33, 67], [4482, 'tap', 'mask', 33],
   ];
   const LOOP0 = [
     [9200, 'tap', 'mask', 33], [9500, 'hall', 33], [10100, 'tap', 'monitor', 33],
-    [10400, 'hold', V.cameraFeedLight, 100], [10550, 'hold', 'wind', 3250],
-    [13850, 'camdrop', 150, 33, 67], [14400, 'tap', 'mask', 33],
+    [10400, 'hold', V.cameraFeedLight, 100], [10570, 'hold', 'wind', 3230],
+    [13850, 'camdrop', 150, 33, 67], [14449, 'tap', 'mask', 33],
   ];
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   if (!eq(OPENING, OPENING0) || !eq(LOOP, LOOP0))

@@ -17,9 +17,17 @@ const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
 const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
 // The native trace showed the mask button absent throughout the first 322 ms
 // after monitor-down, only faint at ~337 ms, and fully visible at ~382.5 ms.
-// Require one proven 33 ms contact after the 367 ms animation bracket, which
-// is the +400 ms timing used by the Night 5 route.
-const MONITOR_MASK_READY_MS = MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS;
+//
+// This floor is anchored to THAT MEASUREMENT, not to the animation constant and
+// not to a route. It used to be `MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS` = 400,
+// whose own comment said it was "the +400 ms timing used by the Night 5 route"
+// -- and the route pressed at exactly 400, so `400 < 400` was false and the
+// check passed in silence while the phone lost that press on about one cycle
+// in eight (docs/evidence/night5-mask-tick-budget-20260911.json). A floor set
+// to what a route already does can never refuse that route.
+const MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS = 382.5;
+const MONITOR_MASK_READY_MS =
+  Math.ceil(MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS + MIN_CONTACT_MS);
 // MONITOR_ANIM_UP alone is not the moment a control is usable, and the delay
 // is not the same for every control. The model constant is 12 engine frames and
 // the profile still carries no measured raise readiness
@@ -148,7 +156,7 @@ export const SEAM_FLOORS = Object.freeze({
   // The native frame trace behind monitorMaskReadyMs: the mask button is absent
   // through the first 322 ms after monitor-down, faint at ~337 ms, and fully
   // visible at ~382.5 ms.
-  maskButtonFullyVisibleAfterMonitorDownMs: 382.5,
+  maskButtonFullyVisibleAfterMonitorDownMs: MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS,
 });
 
 export function compileCycle(cycle, rows, initial = initialState(cycle), seams = []) {

@@ -10,14 +10,19 @@
 // nothing. The simulator latches presses; the device needs the control to
 // exist at contact time, and only the compiler can see the difference.
 import * as C from '@fnaf2-1020/core/mechanics';
-import { compileCycle } from './artifact-commands.mjs';
+import { compileCycle, SEAM_FLOORS } from './artifact-commands.mjs';
 import { MIN_CONTACT_MS } from './recipe.mjs';
 
 const check = (ok, message) => { if (!ok) throw new Error(message); };
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
 const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
-const MONITOR_MASK_READY_MS = MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS;
+// IMPORTED, not restated. This line used to recompute the floor as
+// `MONITOR_ANIM_DOWN_MS + MIN_CONTACT_MS`, so when the compiler re-anchored it
+// to the measured ~382.5 ms mask-button visibility the test kept asserting the
+// old 400 and refused the corrected route. A second copy of a constant is how
+// a gate ends up protecting the value it was supposed to check.
+const MONITOR_MASK_READY_MS = SEAM_FLOORS.monitorMaskReadyMs;
 const refuses = (rows, initial, needle) => {
   try {
     compileCycle('probe', rows, initial);
@@ -76,7 +81,7 @@ const down = { monitorUp: false, maskOn: false };
   check(refuses([lower, mask(100 + MONITOR_MASK_READY_MS - 1)], initial, 'mask control'),
     'a mask press before the monitor-down settle bracket was compiled');
   check(!refuses([lower, mask(100 + MONITOR_MASK_READY_MS)], initial, 'mask control'),
-    'the Night 5 +400 ms mask timing was refused after monitor lowering');
+    'a mask press at exactly the monitor-down readiness floor was refused');
 }
 
 // --- contact floor and semantic state ---------------------------------------
