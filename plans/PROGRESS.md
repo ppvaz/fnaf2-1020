@@ -5149,3 +5149,13 @@ Open: `camdropMonitorMs` (the peer session is taking it to 200) and the hall
 tap's ~56 ms lockout slack; the helper clock is only bracketed by the gate
 reads (~180 ms) and narrowed by a stated, unmeasured 30–110 ms actuation
 latency — `hid-transition-probe.mjs` is the instrument that would measure it.
+
+Closed the same session: `hallOffsetMs` 9500–9900 gates 3000/3000 normal and
+worst on nights 1, 2, 5, 6 and 7 (25 runs), so the hall tap can move up to
+400 ms later at no model cost; and the video cross-check of the hall grader
+matches the trace census one for one on contact200a. `final2` (peer session,
+contact 200 everywhere, no trace): hall lit 12 of 16, every latched mask
+window 4.58 s, and the gate at +185.2 s read an unrecognisable screen before
+the abort — the death, on the monitor-down/mask-up edge of its cycle, is the
+Mangle shape of the shared five-tick budget at an unmeasured epoch. Evidence:
+[night5-hall-lockout-and-offset-sweep-20260912.json](../docs/evidence/night5-hall-lockout-and-offset-sweep-20260912.json).

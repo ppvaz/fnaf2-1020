@@ -1,0 +1,267 @@
+{
+  "schema": "device-night5-hall-lockout-evidence-v1",
+  "recordedAt": "2026-09-12",
+  "claimLevel": "DEVICE_MEASURED",
+  "claim": {
+    "kind": "night5-hall-flash-refused-inside-mask-off-lockout",
+    "routeClaim": "INVALID",
+    "routeClaimReason": "no run reached 6 AM; this record measures the hall flash per cycle on three traced nights and prices where the hall tap can move in the model"
+  },
+  "instrument": {
+    "tool": "tools/device/tap-stall-audit.mjs (hall grader, commit 64d10ae)",
+    "method": "mean luma of the 20x9 grid cells covering PixelWatch.java FOXY_HALL (1650,300 450x400: cols 13-17, rows 2-5), read only on frames whose button strokes read office, in a window around each scheduled hallLight contact on the clock-bracket midpoint",
+    "litSignature": "two frames at luma ~45 starting 20-40 ms after the 33 ms tap; dark reads 0-3",
+    "videoCrossCheck": "ffmpeg crop of the same rectangle scaled to the 1280x576 recording (880,160 240x213), 60 fps, spikes of 1-5 frames >= 15 over the trailing-second median: on night5-contact200a every +52..56 two-frame spike falls at hall-tap time and the lit/dark set per cycle matches the trace census one for one (attempt 1: 15 lit; attempt 2: 7 lit)",
+    "caveat": "DARK is an upper bound on refused flashes: the dump says the light stays on during hall movement (group 202 renders animation 99), which renders dark"
+  },
+  "census": [
+    {
+      "run": "night5-strokes3-20260912T035230Z",
+      "maskOffContactMs": 33,
+      "hallLit": 9,
+      "hallDark": 6,
+      "unreadable": 1,
+      "darkAtMs": [
+        19500,
+        89500,
+        99500,
+        109500,
+        119500,
+        149500
+      ]
+    },
+    {
+      "run": "night5-contact200a attempt 1 (campaign-2026-09-12T05-57-49.259Z)",
+      "maskOffContactMs": 200,
+      "hallLit": 15,
+      "hallDark": 21,
+      "unreadable": 1
+    },
+    {
+      "run": "night5-contact200a attempt 2 (campaign-2026-09-12T06-04-51.224Z)",
+      "maskOffContactMs": 200,
+      "hallLit": 7,
+      "hallDark": 11,
+      "unreadable": 1
+    },
+    {
+      "run": "night5-final2-20260912T070853Z (video only, no trace)",
+      "maskOffContactMs": 200,
+      "hallLit": 12,
+      "hallDark": 4,
+      "note": "16 hall taps before the death at +185.2 s; lit at video 38.7, 58.7 ... 178.7, dark at 28.7, 48.7, 118.7, 168.7"
+    }
+  ],
+  "mechanism": {
+    "engine": "packages/core/src/mechanics/plant-model.js maskFullyOff / hallLightOn: every office light is gated on mask == 0, and mask off is the END of the mask-off animation, not the press (\"the post-mask flash lockout IS that animation\")",
+    "plan": "the loop hall tap is at +9500, 300 ms after the mask-off press at +9200; MASK_ANIM_OFF is ~244 ms, so the tap clears the lockout by ~56 ms in the model",
+    "device": "per-contact actuation latency is bracketed at 30-110 ms (stated, unmeasured); the 200 ms mask-off hold raised the dark rate from 40% to 58-61%, measured, mechanism not derived"
+  },
+  "modelSweep": {
+    "tool": "tools/device/minus-toys-plan.mjs --night=N --gate --runs=3000 --knobs=hallOffsetMs=H",
+    "cohort": "5c54438d0aa3",
+    "allClean": true,
+    "rows": [
+      {
+        "night": 5,
+        "hallOffsetMs": 9500,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "1005/3000"
+      },
+      {
+        "night": 5,
+        "hallOffsetMs": 9600,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "1005/3000"
+      },
+      {
+        "night": 5,
+        "hallOffsetMs": 9700,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "1005/3000"
+      },
+      {
+        "night": 5,
+        "hallOffsetMs": 9800,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "1005/3000"
+      },
+      {
+        "night": 5,
+        "hallOffsetMs": 9900,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "1005/3000"
+      },
+      {
+        "night": 1,
+        "hallOffsetMs": 9500,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2873/3000"
+      },
+      {
+        "night": 1,
+        "hallOffsetMs": 9600,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2873/3000"
+      },
+      {
+        "night": 1,
+        "hallOffsetMs": 9700,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2873/3000"
+      },
+      {
+        "night": 1,
+        "hallOffsetMs": 9800,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2873/3000"
+      },
+      {
+        "night": 1,
+        "hallOffsetMs": 9900,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2873/3000"
+      },
+      {
+        "night": 2,
+        "hallOffsetMs": 9500,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2678/3000"
+      },
+      {
+        "night": 2,
+        "hallOffsetMs": 9600,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2678/3000"
+      },
+      {
+        "night": 2,
+        "hallOffsetMs": 9700,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2679/3000"
+      },
+      {
+        "night": 2,
+        "hallOffsetMs": 9800,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2680/3000"
+      },
+      {
+        "night": 2,
+        "hallOffsetMs": 9900,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "2679/3000"
+      },
+      {
+        "night": 6,
+        "hallOffsetMs": 9500,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "66/3000"
+      },
+      {
+        "night": 6,
+        "hallOffsetMs": 9600,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "66/3000"
+      },
+      {
+        "night": 6,
+        "hallOffsetMs": 9700,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "66/3000"
+      },
+      {
+        "night": 6,
+        "hallOffsetMs": 9800,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "66/3000"
+      },
+      {
+        "night": 6,
+        "hallOffsetMs": 9900,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "66/3000"
+      },
+      {
+        "night": 7,
+        "hallOffsetMs": 9500,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "0/3000"
+      },
+      {
+        "night": 7,
+        "hallOffsetMs": 9600,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "0/3000"
+      },
+      {
+        "night": 7,
+        "hallOffsetMs": 9700,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "0/3000"
+      },
+      {
+        "night": 7,
+        "hallOffsetMs": 9800,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "0/3000"
+      },
+      {
+        "night": 7,
+        "hallOffsetMs": 9900,
+        "normal": "3000/3000",
+        "worst": "3000/3000",
+        "noSplitControl": "0/3000"
+      }
+    ],
+    "reading": "moving the hall tap 100-400 ms later costs nothing in the model on nights 1, 2, 5, 6 and 7; a later offset buys the lockout the slack the mistake register demands. Not bound, not tested on device."
+  },
+  "deaths": [
+    {
+      "run": "night5-contact200a attempt 1",
+      "atSecondsIntoNight": 372.5,
+      "deliveredEpochMs": "94.9 +- 33.1 (phase-reconstruct with the native trace), 21.7 ms outside the [116.67,166.67) puppet band, inconclusive",
+      "modelInsideThatBand": "puppet deaths at 27.7-107.7 s (3000 seeds), never near 372 s",
+      "hall": "15 of 36 lit",
+      "hypothesis": "Foxy through a dark hall; no cause model fired -- a hypothesis, not a finding"
+    },
+    {
+      "run": "night5-final2",
+      "atSecondsIntoNight": 185.2,
+      "evidence": "the gate at +185200 read a screen with no stroke signature (grid luma 36) on all five reads from +185.2 s; static observed at +187.1 s; the gate-abort at +188.3 s is the consequence of the death, not its cause",
+      "hall": "12 of 16 lit",
+      "maskWindows": "every latched mask window 4.58 s on the video (grade-minus7.py), uniform",
+      "deliveredEpoch": "UNKNOWN (no native trace)",
+      "hypothesis": "the death lands on the cycle edge where the monitor lowers and the mask rises, which is where the model puts an unevicted Mangle; consistent with the shared five-tick budget at a losing epoch, i.e. the model's own uncontrolled-epoch loss (1233-1375/3000). Pedro watched the run and reported mask time insufficient to repel Mangle."
+    }
+  ],
+  "openLimits": [
+    "the hall grader reads a rendered flash; a refused flash and a flash rendered dark by hall movement are not separated",
+    "the clock bracket is 80 ms after schedule anchoring, under stated latency bounds",
+    "n=1 per death; neither death has an instrument-named cause"
+  ]
+}
