@@ -604,7 +604,7 @@
     }
   ],
   "gridOffsetHypothesis": {
-    "status": "HYPOTHESIS -- not measured; one run decides it",
+    "status": "HYPOTHESIS -- not measured; scored on killers it matches 4 of 5 counted runs and misses rep1; selected from 72 candidate offsets with correlated bands, so \"unique\" is weaker than it sounds",
     "claim": "the game's one-second grid starts about +233 ms AFTER the first frame the helper calls FNAF2_NIGHT, so the model's effective epoch = schedule epoch + L + 233",
     "method": "shift every measured-epoch death by Delta in [-600, +600] at 16.67 ms steps and score the model (100-seed rows); exactly one Delta (+233) puts all six deaths in losing bands; then 3000-seed replays at each shifted epoch compared with the by-eye killer and the observed death time",
     "fits": [
@@ -648,7 +648,7 @@
         "effective": 119,
         "model": "puppet 3000, deaths 34-108 s",
         "observed": "109.2 s, BB then Foxy by eye",
-        "note": "time fits, killer does not; the frame is to be re-checked for the puppet"
+        "note": "re-checked by eye 2026-09-12 (frames 144.50-147.50 of the rep1 video): Balloon Boy inside the office through the mask, then Withered Foxy; no puppet in any frame. Time fits the puppet band, the killer does not: one real miss, not noise"
       },
       {
         "run": "contact200a attempt 1",
@@ -663,6 +663,7 @@
     "underDeltaZero": "anchor4 and anchor5 sit at epochs the model wins 100/100; under Delta 233 they sit where it dies the way they died",
     "consequenceIfTrue": "effective = schedule + L + 233 must lie in [166.67, 316.67]: the schedule aim must lie in [823.67, 1053.67] mod 1000, centre ~940; both 172 and 233 land in the 4-tick Balloon Boy band",
     "decisiveRun": "aim 940 (maxK 2, getevent on): under Delta 0 the model puts 940 in the puppet band [916.67, 966.67) -> death by ~108 s to the puppet; under Delta 233 it is effective 173 + L -> 3000/3000. Binary; needs no L measurement first.",
-    "registerAction": "none until that run or a direct grid measurement (the wind tick's global Every 500 ms timer, config.js g637/g644) says which; the register keeps 172 for the L-only case"
+    "registerAction": "none until that run or a direct grid measurement (the wind tick's global Every 500 ms timer, config.js g637/g644) says which; the register keeps 172 for the L-only case",
+    "indistinguishable": "an actuation latency L of ~233 ms (outside the stated 30-110) produces the identical effective shift; the aim-940 run cannot tell Delta from L -- the getevent capture on the same night can, because it measures L directly"
   }
 }

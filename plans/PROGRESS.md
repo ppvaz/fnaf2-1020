@@ -5204,8 +5204,11 @@ constant, exactly one value, **+233 ms**, puts all six in losing bands; at
 3000 seeds it reproduces rep2, rep3, anchor5 and anchor4 with the by-eye
 killers (the model records Mangle's attack as `inside-office`) and death
 times inside the predicted distributions, and fails only rep1's killer
-(puppet predicted, BB then Foxy seen — to be re-checked) and contact200a
-(a dark-hall death the model cannot produce). If the game's second grid
+(puppet predicted; BB then Foxy re-confirmed by eye, no puppet in any frame —
+a real miss, not noise) and contact200a (a dark-hall death the model cannot
+produce). A latency L of ~233 ms would produce the identical shift, and the
+aim-940 run cannot tell the two apart; the getevent capture on the same night
+can. If the game's second grid
 starts ~233 ms after the helper's first night frame, the schedule aim must be
 ~940, and both 172 and 233 are certain losses. One run at aim 940 decides
 it: puppet death by ~108 s under Δ = 0, 3000/3000 under Δ = 233. Recorded as
