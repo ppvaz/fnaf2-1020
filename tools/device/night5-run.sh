@@ -36,6 +36,7 @@ VIDEO=1
 TRACE=1
 TRACE_SECONDS="${FNAF_TRACE_SECONDS:-900}"
 FRAME_TRACE=0
+INPUT_TRACE=1
 FORCE_TRACE=0
 DRY=0
 EXTRA=()
@@ -54,6 +55,7 @@ while [ $# -gt 0 ]; do
     --no-trace) TRACE=0; shift ;;
     --force-trace) FORCE_TRACE=1; shift ;;
     --frame-trace) FRAME_TRACE=1; shift ;;
+    --no-input-trace) INPUT_TRACE=0; shift ;;
     --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
     --dry-run) DRY=1; shift ;;
@@ -123,6 +125,7 @@ printf 'run      %s\nbundle   %s\nserial   %s\nnight    %s (save cursor %s)\narm
 
 REC_PID=""
 FRAME_TRACE_PID=""
+INPUT_TRACE_PID=""
 FRAME_TRACE_STARTED=0
 RESET_DONE=0
 ANALYZED=0
@@ -231,6 +234,37 @@ stop_frame_trace() {
   pull_frame_trace "the campaign process exited"
   printf 'frame trace  %s%s\n' "$(cat "$OUTDIR/frame-trace.state" 2>/dev/null || echo UNKNOWN)" \
     "$([ -s "$OUTDIR/frame-trace.file" ] && printf ' (%s)' "$(cat "$OUTDIR/frame-trace.file")")"
+}
+
+# Kernel input events for the whole attempt: the injection side of actuation
+# latency. L = the frame where a control's effect appears (frame trace) minus
+# the kernel timestamp of the HID report that caused it. getevent is streamed
+# to the host with no device argument, so it also reports the "FNAF Timed
+# Touch" device the campaign creates after this starts. Which clock its
+# timestamps use is NOT assumed: the device's /proc/uptime and the helper's
+# monotonic/boottime pair in the frame trace header let the reader decide,
+# because the two clocks differ by the phone's suspended time. Only runs with
+# a frame trace capture it -- without the effect side it measures nothing.
+start_input_trace() {
+  [ "$INPUT_TRACE" = 1 ] && [ "$FRAME_TRACE" = 1 ] || return 0
+  printf '# getevent -lt on %s, started host %s, device uptime %s\n' "$SERIAL" \
+    "$(date +%s.%N)" "$(adb -s "$SERIAL" shell cat /proc/uptime 2>/dev/null | tr -d '\r')" \
+    > "$OUTDIR/input-events.txt"
+  adb -s "$SERIAL" shell getevent -lt >> "$OUTDIR/input-events.txt" 2>&1 &
+  INPUT_TRACE_PID=$!
+  printf 'input    %s/input-events.txt\n' "$OUTDIR"
+}
+
+stop_input_trace() {
+  [ -n "$INPUT_TRACE_PID" ] || return 0
+  kill "$INPUT_TRACE_PID" 2>/dev/null || true
+  wait "$INPUT_TRACE_PID" 2>/dev/null || true
+  INPUT_TRACE_PID=""
+  # A killed adb client can leave the remote reader running.
+  adb -s "$SERIAL" shell 'pkill -x getevent' >/dev/null 2>&1 || true
+  printf '# stopped host %s, device uptime %s\n' "$(date +%s.%N)" \
+    "$(adb -s "$SERIAL" shell cat /proc/uptime 2>/dev/null | tr -d '\r')" >> "$OUTDIR/input-events.txt"
+  printf 'input    %s lines retained\n' "$(grep -c '' "$OUTDIR/input-events.txt" 2>/dev/null || echo 0)"
 }
 
 stop_recording() {
@@ -400,6 +434,7 @@ on_exit() {
   local code=$?
   set +e
   stop_frame_trace
+  stop_input_trace
   stop_recording
   # The phone is released BEFORE the analysis, not after it. Nothing in
   # analyze() talks to the device: it reads the pulled video, the pulled frame
@@ -518,6 +553,7 @@ if [ "$TRACE" = 1 ]; then
   CAMPAIGN_CMD=("$TRACE_TOOL" "$RUNID" "$TRACE_SECONDS" -- "${CAMPAIGN[@]}")
 fi
 start_frame_trace
+start_input_trace
 set +e
 "${CAMPAIGN_CMD[@]}" 2>&1 | tee "$OUTDIR/campaign.log"
 CAMPAIGN_CODE=${PIPESTATUS[0]}
