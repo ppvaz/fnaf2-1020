@@ -9,7 +9,7 @@ const ONSET_HOST_MS = 10000;
 const ns = hostMs => String(Math.round((hostMs - OFFSET_MS) * 1e6));
 
 function harness({ startMs = 8000, authorizeAt, latchAt = ONSET_HOST_MS + 500, onsetHostMs = ONSET_HOST_MS,
-  field = 'present', readError = null, uncertaintyMs = 3, staleUntil = null } = {}) {
+  field = 'present', readError = null, failUntil = null, uncertaintyMs = 3, staleUntil = null } = {}) {
   const state = { t: startMs, releases: [], events: [], reads: 0 };
   const fields = () => {
     if (field === 'absent') return {};
@@ -26,8 +26,16 @@ function harness({ startMs = 8000, authorizeAt, latchAt = ONSET_HOST_MS + 500, o
     release: () => state.releases.push(state.t),
     onEvent: event => state.events.push(event),
     clock: {
-      read: async () => { state.reads += 1; state.t += 10; if (readError) throw readError; return sample(); },
-      probe: async () => { state.t += 170; if (readError) throw readError; return sample(); },
+      read: async () => {
+        state.reads += 1; state.t += 10;
+        if (readError || (failUntil !== null && state.t < failUntil)) { state.t += 1000; throw readError ?? new Error('cue-helper clock probe timed out'); }
+        return sample();
+      },
+      probe: async () => {
+        state.t += 170;
+        if (readError || (failUntil !== null && state.t < failUntil)) { state.t += 1000; throw readError ?? new Error('cue-helper clock probe timed out'); }
+        return sample();
+      },
     },
     authorization: {
       isAuthorized: () => state.t >= authorizeAt,
@@ -82,6 +90,17 @@ const released = state => state.events.find(event => event.status === 'released'
   assert.deepEqual(state.releases, [ONSET_HOST_MS + 2233]);
 }
 
+// night5-anchor3: exchanges time out while the event loop is blocked during
+// the intro. Transient failures must not refuse the anchor.
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 1953, failUntil: ONSET_HOST_MS - 500 });
+  const result = await anchorNightRelease(options);
+  assert.equal(result.status, 'released', 'timeouts before the onset must not cost the anchor');
+  assert.equal(result.k, 2);
+  assert.deepEqual(state.releases, [ONSET_HOST_MS + 2233]);
+  assert.ok(state.events.find(event => event.status === 'scheduled').failures >= 1, 'the failures must be counted');
+}
+
 // Every refusal releases exactly once, and never before authorization.
 const refusals = [
   ['onset-not-latched', { latchAt: Infinity }],
@@ -102,7 +121,8 @@ for (const [reason, extra] of refusals) {
   assert.equal(result.reason, reason, reason);
   assert.equal(state.releases.length, 1, `${reason} must still release the night once`);
   assert.ok(state.releases[0] >= authorizeAt, `${reason} must never release before authorization`);
-  assert.ok(state.releases[0] <= authorizeAt + 1500 + 250, `${reason} must release within the latch grace`);
+  // Grace after authorization, plus at most one exchange that times out (1 s) and one poll.
+  assert.ok(state.releases[0] <= authorizeAt + 1500 + 1000 + 250, `${reason} must release within the latch grace`);
 }
 
 // The invariant across the whole authorization range: never early, always once.

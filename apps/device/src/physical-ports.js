@@ -60,12 +60,21 @@ function timedExchange(hostPort, line, timeoutMs) {
     const socket = connect({ host: '127.0.0.1', port: hostPort });
     let sentAt = null;
     let text = '';
-    const timer = setTimeout(() => { socket.destroy(); rejectPromise(new Error('cue-helper clock probe timed out')); }, timeoutMs);
+    let settled = false;
     const settle = (error, value) => {
+      if (settled) return;
+      settled = true;
       clearTimeout(timer);
       socket.destroy();
       if (error) rejectPromise(error); else resolvePromise(value);
     };
+    // The composition's other helper reads are execFileSync adb shells that
+    // block this event loop for 140-240 ms at a time. When the loop frees up,
+    // Node runs expired timers BEFORE pending socket I/O, so a reply that
+    // arrived in time would lose to its own timeout (night5-anchor3: "clock
+    // probe timed out" during the intro, while the native anchor loop polled).
+    // Defer the verdict one turn so arrived bytes are read first.
+    const timer = setTimeout(() => setImmediate(() => settle(new Error('cue-helper clock probe timed out'))), timeoutMs);
     socket.setNoDelay(true);
     socket.on('connect', () => { sentAt = performance.now(); socket.write(`${line}\n`); });
     socket.on('data', chunk => {

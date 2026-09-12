@@ -68,15 +68,21 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
     return { status: 'unavailable', reason };
   };
 
-  // 1. Measure the offset first, while the intro card is still up: the clocks
-  // drift 0.33 ms per 1000 s, so it is still good when the latch appears, and
-  // the plan is then made on the very read that finds the onset.
-  let measured;
-  try { measured = await clock.probe(); }
-  catch (error) { return fallback('probe-failed', { error: String(error?.message ?? error), stage: 'offset' }); }
-  if (!(measured.uncertaintyMs <= maxUncertaintyMs))
-    return fallback('offset-uncertain', { offsetMs: measured.offsetMs, uncertaintyMs: measured.uncertaintyMs,
-      rttMs: measured.rttMs, maxUncertaintyMs });
+  // Every exchange is a clock sample: the offset is the one with the fastest
+  // round trip seen so far (bound RTT/2). A failed exchange is transient --
+  // the composition's execFileSync helper reads block this event loop for
+  // 140-240 ms at a time during the intro (night5-anchor3 lost its only
+  // probe to that) -- so the anchor keeps reading until its deadline instead
+  // of refusing on the first one.
+  let best = null;
+  let failures = 0;
+  let lastError = null;
+  const consider = sample => { if (best === null || sample.rttMs < best.rttMs) best = sample; };
+  const failed = error => { failures += 1; lastError = String(error?.message ?? error); };
+
+  // 1. A first offset measurement while the intro card is still up (the clocks
+  // drift 0.33 ms per 1000 s); the latch reads below keep improving it.
+  try { consider(await clock.probe()); } catch (error) { failed(error); }
 
   // 2. Wait for a latched onset that belongs to THIS night.
   const startedAt = now();
@@ -85,29 +91,41 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
   let staleOnset = null;
   let reads = 0;
   let onsetDeviceMs = null;
-  let read = null;
   for (;;) {
-    try { read = await clock.read(); }
-    catch (error) { return fallback('probe-failed', { error: String(error?.message ?? error), reads }); }
-    reads += 1;
-    fieldPresent ||= read.fields?.nightOnsetImageNs !== undefined;
-    let candidate;
-    try { candidate = latchedNightOnsetMs(read.fields); }
-    catch (error) { return fallback('onset-malformed', { error: String(error?.message ?? error), reads }); }
-    if (candidate !== null) {
-      if (candidate + measured.offsetMs >= notBeforeHostMs) { onsetDeviceMs = candidate; break; }
-      staleOnset = candidate;
+    let read = null;
+    try { read = await clock.read(); consider(read); reads += 1; }
+    catch (error) { failed(error); }
+    if (read !== null) {
+      fieldPresent ||= read.fields?.nightOnsetImageNs !== undefined;
+      let candidate;
+      try { candidate = latchedNightOnsetMs(read.fields); }
+      catch (error) { return fallback('onset-malformed', { error: String(error?.message ?? error), reads }); }
+      if (candidate !== null) {
+        if (candidate + best.offsetMs >= notBeforeHostMs) { onsetDeviceMs = candidate; break; }
+        staleOnset = candidate;
+      }
     }
     if (authorization.isAuthorized()) authorizedSeenAt ??= now();
     const graceSpent = authorizedSeenAt !== null && now() - authorizedSeenAt >= latchGraceAfterAuthorizationMs;
     if (graceSpent || now() - startedAt >= latchWaitMs) {
-      const reason = staleOnset !== null ? 'onset-predates-intro' : fieldPresent ? 'onset-not-latched' : 'helper-has-no-onset';
-      return fallback(reason, { reads, ...(staleOnset !== null ? { staleOnsetDeviceMs: staleOnset } : {}) });
+      const reason = reads === 0 ? 'probe-failed'
+        : staleOnset !== null ? 'onset-predates-intro' : fieldPresent ? 'onset-not-latched' : 'helper-has-no-onset';
+      return fallback(reason, { reads, failures, ...(lastError ? { lastError } : {}),
+        ...(staleOnset !== null ? { staleOnsetDeviceMs: staleOnset } : {}) });
     }
     await sleep(latchPollMs);
   }
+  // The latch read itself may be the only clean sample; one more probe gives
+  // the fastest a chance, and its failure is not fatal either.
+  if (!(best.uncertaintyMs <= maxUncertaintyMs)) {
+    try { consider(await clock.probe()); } catch (error) { failed(error); }
+  }
+  const measured = best;
+  if (!(measured.uncertaintyMs <= maxUncertaintyMs))
+    return fallback('offset-uncertain', { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs,
+      uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs, maxUncertaintyMs });
 
-  const detail = { reads, onsetDeviceMs, offsetMs: measured.offsetMs, uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs };
+  const detail = { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs, uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs };
   const onsetHostMs = onsetDeviceMs + measured.offsetMs;
   const planAt = now();
   if (onsetHostMs > planAt + measured.uncertaintyMs)
