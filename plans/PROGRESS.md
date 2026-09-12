@@ -5178,3 +5178,19 @@ k = 3; refused on the three runs since); the helper's onset latch clears on
 in-night `FNAF2_MENU` camera views and saw no frames while a frame trace ran
 (both fixed in source, not yet installed); no frame trace has yet covered a
 night onset (trigger moved to `evidence.started`).
+
+What it cost is written as its own ledger,
+[night5-first-6am-cost-20260912.md](../docs/evidence/night5-first-6am-cost-20260912.md):
+four days from the first Night 5 attempt, thirty run directories on the day,
+seventeen nights that reached the loop, one clear; every night's gates, ending
+and by-eye killer; the wrong turns priced in nights and instruments. After the
+contact fix the loop ran 124 gates with zero corrections across seven nights
+and won once, against a model price of 41–46 % at drawn epochs. Two of those
+deaths — rep1 at a measured 885.6 ms, anchor4 at 231.1 ms (the first epoch
+measured from a trace that opened before the onset) — sit at epochs the model
+scores 100/100 and both lie within the stated actuation latency L (30–110 ms)
+of a losing band's edge: the model's epoch is the *effective* one, the phone's
+is the schedule's, and L separates them. The aim of 233 keeps the effective
+epoch in the winning band only for L < 83 ms; measuring L, or aiming at 172
+until it is measured, is the next question, and anchor5 at 233 is its first
+read.
