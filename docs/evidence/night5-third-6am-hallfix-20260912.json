@@ -1,0 +1,243 @@
+{
+  "schema": "night5-third-6am-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "one-off node script over the retained run files; every value read from them",
+  "run": "night5-hallfix-20260912T230319Z",
+  "campaignRunId": "campaign-2026-09-12T23-03-32.431Z",
+  "night": 5,
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 5,
+      "outcome": "sixam",
+      "sixAm": true
+    },
+    "terminalVerification": {
+      "sixAm": true,
+      "positive": true
+    },
+    "save": {
+      "customNightVisible": false,
+      "continueVisible": true,
+      "sixthNightVisible": true,
+      "menuReturned": true,
+      "customCompleted": false,
+      "nextNightStarted": false,
+      "observed": true
+    },
+    "proof": true,
+    "proofHash": "fnv1a-e017f7c9",
+    "sixAmObservedAfterReleaseMs": 419688,
+    "videoTerminal": "clear -- sixam at 447.5s",
+    "videoHudFirst": "26.8s"
+  },
+  "schedule": {
+    "gates": 42,
+    "gateStatus": {
+      "AGREED": 42
+    },
+    "corrections": 0,
+    "gateAborts": 0,
+    "stop": {
+      "reason": "actuator-stopped",
+      "detail": "",
+      "restarts": 0,
+      "interrupted": false
+    }
+  },
+  "binding": {
+    "bundle": "artifacts/night5-hallfix/bundle",
+    "winnerHash": "fnv1a-34463603",
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 13650,
+      "maskOnMs": 4249,
+      "maskOffMs": 9460,
+      "hallOffsetMs": 10060
+    },
+    "gate": {
+      "claimLevel": "MODEL_ONLY",
+      "engineHash": "minus-toys-engine-current-v1",
+      "evidence": "Night 5 hall flash moved past the measured mask-off refusal window (mask-off + 600 ms; latency 315 ms + 244 ms animation), mask window 5.211 s: normal 3000/3000, worst 3000/3000, no-split control 1253/3000, 2026-09-12 (minus-toys-plan.mjs --gate --knobs=...)",
+      "nights": [
+        5
+      ],
+      "replayHash": "fnv1a-68744f84",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "status": "PASS"
+    },
+    "changeVersusSecondWin": "hallOffsetMs 9940->10060 (mask-off + 600 ms), maskOffMs 9560->9460 (window 5.311->5.211 s); everything else identical",
+    "premise": "the post-mask hall flash was being swallowed by the mask-off refusal window (latency 315 + animation 244 > 380)",
+    "premiseVerdict": "REFUTED by this run: see hallFlashes"
+  },
+  "hallFlashes": {
+    "total": 41,
+    "lit": 22,
+    "dark": 19,
+    "priorWinLitDark": "19 lit / 22 dark at hall = mask-off + 380 (night5-mask5plus)",
+    "maskOffPressToEffectMs": {
+      "lit": {
+        "n": 22,
+        "min": 273,
+        "p50": 314,
+        "max": 350
+      },
+      "dark": {
+        "n": 19,
+        "min": 283,
+        "p50": 314,
+        "max": 358
+      }
+    },
+    "darkAtMs": [
+      20060,
+      100060,
+      110060,
+      120060,
+      170060,
+      180060,
+      210060,
+      230060,
+      240060,
+      250060,
+      260060,
+      310060,
+      320060,
+      330060,
+      350060,
+      360060,
+      370060,
+      390060,
+      400060
+    ],
+    "reading": "DARK is uncorrelated with the mask-off latency and arrives in runs of consecutive cycles. Sourced: g875-880 set `hall movement` to 300 frames whenever a hall-routed character overlaps the hall, g202 renders the held hall light dark while it drains, and g489/g745/g855 still assert Foxy's logical light, reset D and pin B regardless. A dark flash is a landed flash with the beam hidden; the flashes reset Foxy dark or lit. The model puts the latch at 96% of flash instants (Foxy standing in the hall 94% of the night) against 46% dark observed: the model's hall occupancy is too high on this build. The hall cells cannot separate a refused flash from a landed dark one.",
+    "modelLatchAtFlashInstants": {
+      "night5": 0.961,
+      "night6": 0.943,
+      "basis": "scratch replay of the hallfix knobs, 20 phases x 12 seeds, sim.hallMovementUntil sampled at each scheduled post-mask flash"
+    },
+    "observedDarkByHour": {
+      "0AM": "1/6",
+      "1AM": "3/7",
+      "2AM": "2/7",
+      "3AM": "5/7",
+      "4AM": "3/7",
+      "5AM": "5/7"
+    }
+  },
+  "maskWindowsVideo12fps": {
+    "count": 42,
+    "minS": 3.33,
+    "medianS": 5,
+    "maxS": 5.58,
+    "below5s": 2
+  },
+  "latency": {
+    "monitor-up": {
+      "pressToEffect": {
+        "n": 29,
+        "min": 98,
+        "median": 261,
+        "max": 304
+      },
+      "releaseToEffect": {
+        "n": 29,
+        "min": 29,
+        "median": 64,
+        "max": 105
+      }
+    },
+    "monitor-down": {
+      "pressToEffect": {
+        "n": 42,
+        "min": 574,
+        "median": 600,
+        "max": 840
+      },
+      "releaseToEffect": {
+        "n": 42,
+        "min": 225,
+        "median": 249,
+        "max": 491
+      }
+    },
+    "mask-on": {
+      "pressToEffect": {
+        "n": 42,
+        "min": 99,
+        "median": 262,
+        "max": 274
+      },
+      "releaseToEffect": {
+        "n": 42,
+        "min": 27,
+        "median": 62,
+        "max": 74
+      }
+    },
+    "mask-off": {
+      "pressToEffect": {
+        "n": 41,
+        "min": 273,
+        "median": 314,
+        "max": 358
+      },
+      "releaseToEffect": {
+        "n": 41,
+        "min": 73,
+        "median": 114,
+        "max": 165
+      }
+    },
+    "hall-lit": {
+      "pressToEffect": {
+        "n": 31,
+        "min": 1,
+        "median": 47,
+        "max": 82
+      },
+      "releaseToEffect": {
+        "n": 31,
+        "min": -198,
+        "median": 14,
+        "max": 49
+      }
+    }
+  },
+  "retained": {
+    "video": {
+      "path": "captures/night5-hallfix-20260912T230319Z.mp4",
+      "sha256": "dcd1d5b42aa1aac65e1f5d1961b339b1449da09909675b2512a19af281e26933"
+    },
+    "frameTrace": {
+      "path": "captures/frame-traces/night5-hallfix-20260912T230319Z-727409450583356.tsv",
+      "sha256": "6f5cad163fe3e7ddc32ded708d46bab80e7bb15aad6b1e62146c24eb7e99e7db"
+    },
+    "inputEvents": {
+      "path": "artifacts/runs/night5-hallfix-20260912T230319Z/input-events.txt",
+      "sha256": "21027c47e1ed6b1f9d8a11bf644e4e60b52d5a2839f50486148fb3439f7e8704"
+    },
+    "audit": {
+      "path": "artifacts/runs/night5-hallfix-20260912T230319Z/audit-live.json",
+      "sha256": "6ee6b4b4cac5a300fe20d7f4dff976cb47a71e67196e70df3f516320f082c4ff"
+    },
+    "campaignResult": {
+      "path": "artifacts/campaign-2026-09-12T23-03-32.431Z/result.json",
+      "sha256": "c31dd5f00fc7875635a02cc2e8b056a23460196b50803f24daeb4e7978bcb408"
+    },
+    "campaignEvents": {
+      "path": "artifacts/campaign-2026-09-12T23-03-32.431Z/events.jsonl",
+      "sha256": "cc5701df600e27517ca2fce0d5126daea338153cada8643774110299a7cbf667",
+      "rows": 140
+    }
+  }
+}

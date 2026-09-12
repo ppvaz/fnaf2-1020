@@ -2508,3 +2508,20 @@ then delivers Foxy inside that band, the model's Foxy is right and Night 6
 needs a different cycle; if Foxy does not come, the model's D growth under the
 mask is wrong on this build, and Night 6 is more open than it says. Either
 answer is a measurement.
+
+**Retracted later the same evening.** The mechanism named above — the
+post-mask flash swallowed by the mask-off refusal window — was tested by the
+`hallfix` runs it motivated and refuted: with the flash at mask-off + 600 ms
+the Night 5 audit still read 19 of 41 flashes dark, DARK is uncorrelated with
+the cycle's mask-off latency (both p50 314 ms), and the dark flashes cluster in
+consecutive cycles — the sourced g202 rendering: the held hall light is drawn
+dark while the g875–880 `hall movement` counter drains, and g489/g745/g855
+reset Foxy regardless (see the hall-calibration entry above). The flashes land
+and reset Foxy, dark or lit; the model's latch occupancy (96 %) against the
+phone's dark fraction (46 %) is itself a model-error measurement of hall
+occupancy. The 26 s Foxy death
+is unexplained; the third Night 5 6 AM on that binding owes nothing to the
+change. The second death-targeting run (`night6-foxyfix-20260912T231146Z`)
+died to Foxy at ~238 s against 80/150/170 s: killer right, time in the upper
+tail. Details and the next experiment in
+[`night6-foxy-prediction-20260912.md`](../evidence/night6-foxy-prediction-20260912.md).

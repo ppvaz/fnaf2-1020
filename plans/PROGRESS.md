@@ -5273,3 +5273,29 @@ window trimmed to 5.211 s — Night 5 3000/3000 normal and worst
 (`artifacts/night5-hallfix`, `fnv1a-34463603`); Night 6 a `DEATH_TARGETED`
 bundle predicting Foxy 80/150/170 s in 75 % of phases
 (`artifacts/night6-hallfix`, `fnv1a-44e8eff2`). Neither has run.
+
+## 2026-09-12 — third Night 5 6 AM, and the swallowed-flash mechanism retracted by its own test
+
+`night5-hallfix-20260912T230319Z` (`fnv1a-34463603`: hall flash at mask-off +
+600 ms, mask window 5.211 s, otherwise the second win's knobs) reached 6 AM —
+the third Night 5 win, 42/42 gates, 0 corrections. Its audit refutes the
+premise it was built on: 22 lit / 19 dark hall flashes, the same census as
+before the change; DARK uncorrelated with the cycle's mask-off latency (LIT
+p50 314 ms, DARK p50 314 ms); dark flashes in runs of consecutive cycles — the
+sourced g202 rendering of a held hall light while the g875–880 `hall movement`
+counter drains, during which g489/g745/g855 still reset Foxy. The flashes land
+and reset Foxy, dark or lit; the phone's 46 % dark against the model's 96 %
+latch occupancy measures Foxy's hall presence as far below the model.
+The "swallowed flash" explanation of the 26 s Night 6 death is retracted; that
+death is unexplained. Evidence:
+[night5-third-6am-hallfix-20260912.json](../docs/evidence/night5-third-6am-hallfix-20260912.json).
+
+Chained on the win as Pedro asked: `night6-foxyfix-20260912T231146Z`, the
+first `DEATH_TARGETED` bundle (prediction on record: Foxy 75 % at 80/150/170 s,
+Puppet 25 %, no wins), died to Withered Foxy at ~238 s the instant the mask
+dropped, 24/24 gates. Killer right, time in the model's upper tail (max 280).
+Two Night 6 deaths, both Foxy, at 26 s and 238 s: a dispersion the model does
+not have. Next death-targeting run: vary the reset cadence deliberately (skip
+the post-mask flash or the camdrop light) to measure Foxy's D growth directly.
+Night 5 is now 3 wins in 12 clean-contact nights; every Night 6 attempt has
+died to Foxy.

@@ -69,3 +69,61 @@ prediction and death targeting").
   rest, no wins — and that prediction is the claim the next run tests.
 
 Not a route claim. `MODEL_ONLY` prediction, `DEVICE_MEASURED` observation.
+
+## Retraction and second run, later the same evening
+
+**The "swallowed flash" mechanism above is retracted.** It was tested by the
+runs it motivated, and it failed the test.
+
+- `night5-hallfix-20260912T230319Z` (winner `fnv1a-34463603`: hall flash at
+  mask-off + 600 ms, mask window 5.211 s) **won Night 5** — the third 6 AM,
+  42/42 gates, 0 corrections — and its audit read the hall flashes **22 lit,
+  19 dark**: the same census as the win before the change (19 lit, 22 dark at
+  mask-off + 380). Per cycle, DARK does not correlate with that cycle's
+  mask-off latency (LIT: p50 314 ms, 273–350; DARK: p50 314 ms, 283–358), and
+  the dark flashes arrive in runs of consecutive cycles (100–120 s, 230–260 s,
+  310–330 s, …). The dump says what a dark hall is: g875–880 set `hall
+  movement` to 300 frames whenever a hall-routed character overlaps the hall,
+  **g202 renders the held hall light dark while it drains, and g489/g745/g855
+  still assert Foxy's logical light, reset D and pin B without consulting it**
+  (`ON-DEVICE-VALIDATION.md`, hall calibration). A dark flash is a landed
+  flash with the beam hidden. The flashes were landing, and resetting Foxy,
+  dark or lit. Record:
+  [`night5-third-6am-hallfix-20260912.json`](night5-third-6am-hallfix-20260912.json).
+- Consequently the win owes nothing to the change, and the causal chain for
+  the 26 s Foxy death (no reset → early lock → camdrop flash on a locked Foxy)
+  has no measured support. The 26 s death is **unexplained**.
+- `night6-foxyfix-20260912T231146Z` (winner `fnv1a-44e8eff2`, the first
+  `DEATH_TARGETED` bundle; prediction on record before the run: Foxy 75 % at
+  80/150/170 s, Puppet 25 % at 27/33/50 s, no wins): died to **Withered Foxy
+  at ~238 s**, 24/24 gates agreed. The frames: mask on to video 271.3 s, the
+  office reappears at 271.4 s, Foxy's jumpscare at 271.5 s — he attacks the
+  instant the mask drops, the model's "locked on, no blackout covered the 10 s
+  interval" path. Killer as predicted; time beyond the model's p90 (170 s),
+  inside its range (max 280 s).
+
+The dark census is a measurement in its own right. P(dark | landed) is the
+probability that the `hall movement` latch is running at the flash instant;
+the model puts that at 96 % (Night 5) / 94 % (Night 6), because it refreshes
+the latch every frame Foxy *stands* in the hall (94 % of the night). The
+phone reads 46 % / 43 %, rising through the night (Night 5: 1/6 at 12 AM →
+5/7 at 5 AM). Refusals cannot lower a dark count below its landed-dark floor,
+so the model's hall occupancy is too high on this build — Foxy stands there
+less than modelled, or standing does not overlap g875's object and only
+transits do. The hall cells cannot separate a refused flash from a landed
+dark one; a refusal witness has to come from the light's own HUD/SFX or from
+Foxy's behaviour in a death-targeting run. Open.
+
+What the two Night 6 runs say together: Foxy is the killer both times, at 26 s
+and 238 s, on the same route with two flash offsets that made no measurable
+difference to whether flashes land. The model's Night 6 Foxy (80/150/170 s)
+brackets one and misses the other by 3×; with n = 2 that is a dispersion
+problem before it is a bias problem. The next death-targeting run on Night 6
+should deliberately *vary the reset cadence* (skip the post-mask flash, or
+skip the camdrop light) so Foxy's D growth on this build is measured directly
+rather than inferred from a death time.
+
+Model rigidity findings from the fix search (raise, CAM 09 stun refresh and
+camdrop each rigid to ~120 ms through Toy Bonnie's stun) stand: they were
+measured in the model, not on the phone, and this retraction does not touch
+them.
