@@ -5215,3 +5215,29 @@ it: puppet death by ~108 s under Δ = 0, 3000/3000 under Δ = 233. Recorded as
 a hypothesis with its arithmetic in
 [night5-anchor-aim-20260912.json](../docs/evidence/night5-anchor-aim-20260912.json);
 the register keeps 172 until that run. Runs are paused by Pedro.
+
+## 2026-09-12 — second Night 5 6 AM (night5-mask5plus), and latency measured
+
+`night5-mask5plus-aim172-20260912T220100Z` won Night 5 on binding
+`fnv1a-de41e791` (Minus Toys; wind 3030, camdrop 13650, mask on/off
+4249/9560, hall 9940 — a commanded mask window of 5.311 s instead of 4.751 s):
+`WIN`, positive `sixam` at +419 s, save advanced, 42/42 gates `AGREED`, 0
+corrections; the mask was visible 5.04–5.67 s (median 5.17) on 40 of 42
+windows. Released unanchored (`authorization-late`), delivered epoch 429 ±
+54 ms by the trace. Evidence:
+[night5-second-6am-mask5plus-20260912.json](../docs/evidence/night5-second-6am-mask5plus-20260912.json),
+page [night5-second-6am-mask5plus-20260912.md](../docs/evidence/night5-second-6am-mask5plus-20260912.md).
+
+The run before it, `night5-aim940` (aim 940, anchored k = 1, delivered 876.7 ±
+56 ms, died ~340 s BB→Foxy), measured actuation latency for the first time:
+press→effect medians 253 ms monitor-up, 254 mask-on, 314 mask-off, 595
+monitor-down, 64 hall; release→effect 55 / 55 / 114 / 244 / 28 ms. The
+register's stated 30–110 ms is refuted; the aim arithmetic must be redone on
+the measured edge the game counts.
+
+Open: Night 6 with the winning knobs wins in the model at one phase in twenty
+(Foxy/puppet elsewhere), so it cannot be run blind; the anchor has not hit a
+phase since anchor5 (authorization 1.9–2.5 s after onset against k ≤ 2); the
+64 ms gap between the anchored aim and the trace's delivered epoch on aim940
+is unexplained. Both wins were on the Codex session of 2026-09-12; the
+Claude sessions resumed from its cutoff.

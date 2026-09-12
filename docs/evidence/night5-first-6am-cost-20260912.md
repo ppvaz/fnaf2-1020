@@ -124,3 +124,37 @@ Not yet moved, and the next cost: the epoch is still drawn (anchor3 is the
 first run that can verify the anchor against the trace), Balloon Boy's
 eviction is not fully in the model (rep1), and the actuation latency L is
 still a stated 30–110 ms rather than a measured one.
+
+## Addendum, later the same evening — the second 6 AM and the timing changes
+
+Written at Pedro's request after the runs the ledger above closes on. Two
+more Night 5 nights were spent, one of them the second win.
+
+**night5-aim940** (binding `fnv1a-81b5e51c`, the win's): the decisive
+grid-offset run. Anchored at k = 1, aim 940.97 ms; the trace measured
+876.7 ± 56 ms delivered. Died at ~340 s, Balloon Boy then Foxy. It did not
+decide the hypothesis (no puppet by 108 s refutes the literal Δ = 0 row, but
+the latency it measured moves every band). Its lasting yield is the first
+**measured actuation latency**: press→visible effect medians 253 ms
+(monitor-up), 254 (mask-on), 314 (mask-off), 595 (monitor-down), 64 (hall);
+release→effect 55 / 55 / 114 / 244 / 28 ms. The "30–110 ms" every earlier
+band argument used was a statement, and it was wrong by 2–5×.
+
+**night5-mask5plus** (binding `fnv1a-de41e791`): the second win. Three timing
+decisions, all made because the trace showed the mask visible for a median
+4.57 s against a five-tick count: wind shortened 200 ms (3230→3030), the
+mask window lengthened from 4.751 s to 5.311 s between commands (maskOnMs
+4449→4249, maskOffMs 9200→9560, camdrop 13850→13650), and the hall flash
+moved to 380 ms after mask-off (hallOffsetMs 9500→9940). Measured on the
+win: mask visible 5.04–5.67 s on 40 of 42 windows, median 5.17 s; 42/42
+gates agreed; 6 AM at +419 s; delivered epoch 429 ± 54 ms, released
+unanchored again (authorization-late). The music box's minimum charge in
+replay fell from ~66 % to ~65 % for the shorter wind.
+
+What it cost: two nights, ~50 minutes of phone time, and a compile refusal
+on the first widening (the mask would have landed before its button
+reappeared after the monitor drop; the wind cut is what made room). What it
+did not buy: Night 6. The same knobs win Night 6 in the model at one phase in
+twenty; the search for a Night 6 knob set is where the evening ended.
+Ledger for the win itself:
+[night5-second-6am-mask5plus-20260912.md](night5-second-6am-mask5plus-20260912.md).

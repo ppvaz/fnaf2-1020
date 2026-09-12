@@ -1,0 +1,201 @@
+{
+  "schema": "night5-second-6am-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "one-off node script over the retained run files; every value read from them",
+  "run": "night5-mask5plus-aim172-20260912T220100Z",
+  "campaignRunId": "campaign-2026-09-12T22-01-16.359Z",
+  "night": 5,
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 5,
+      "outcome": "sixam",
+      "sixAm": true
+    },
+    "terminalVerification": {
+      "sixAm": true,
+      "positive": true
+    },
+    "save": {
+      "customNightVisible": false,
+      "continueVisible": true,
+      "sixthNightVisible": true,
+      "menuReturned": true,
+      "customCompleted": false,
+      "nextNightStarted": false,
+      "observed": true
+    },
+    "proof": true,
+    "proofHash": "fnv1a-e017f7c9",
+    "campaignExit": "campaign exit 0",
+    "sixAmObservedAfterReleaseMs": 419073,
+    "videoTerminal": "clear -- sixam at 450.5s",
+    "videoHudFirst": "29.5s"
+  },
+  "schedule": {
+    "gates": 42,
+    "gateStatus": {
+      "AGREED": 42
+    },
+    "corrections": 0,
+    "gateAborts": 0,
+    "arm": {
+      "mode": "observe-once",
+      "attempts": 1,
+      "retries": 0,
+      "samples": 1,
+      "verifiedAtMs": 7450,
+      "armReadyAtMs": null,
+      "phaseLagMs": null,
+      "status": "VERIFIED",
+      "unresolvedReason": null
+    },
+    "stop": {
+      "reason": "actuator-stopped",
+      "detail": "",
+      "restarts": 0,
+      "interrupted": false
+    }
+  },
+  "binding": {
+    "bundle": "artifacts/night5-mask5plus/bundle3",
+    "winnerHash": "fnv1a-de41e791",
+    "strategy": "minus-toys",
+    "knobs": {
+      "armingGapMs": 50,
+      "camdropLeadMs": 150,
+      "camdropMonitorMs": 200,
+      "camdropMs": 13650,
+      "camdropTailMs": 67,
+      "contactMs": 33,
+      "hallMs": 33,
+      "hallOffsetMs": 9940,
+      "loopPeriodMs": 10000,
+      "maskOffMs": 9560,
+      "maskOnMs": 4249,
+      "minArmAtMs": 115000,
+      "minFlashAtMs": 150,
+      "minFlashHoldMs": 100,
+      "minLoopStartMs": 140000,
+      "minObserveUntilMs": 420000,
+      "minPeriodMs": 5000,
+      "minProofCam09AtMs": 359700,
+      "minStopAtMs": 360000,
+      "minWindAtMs": 300,
+      "minWindHoldMs": 4400,
+      "minimal": false,
+      "openArm": true,
+      "openArmMs": 833,
+      "openCamdropLeadMs": 200,
+      "openLastViewedMs": 300,
+      "openMaskLeadMs": 182,
+      "openRaiseGapMs": 733,
+      "openStunHoldMs": 100,
+      "openStunLeadMs": 300,
+      "openViewMs": 0,
+      "openWindLeadMs": 467,
+      "openWindMs": 1750,
+      "preventiveVentLight": true,
+      "raiseMs": 10100,
+      "reactiveBB": false,
+      "stunRefreshHoldMs": 100,
+      "stunRefreshMs": 10400,
+      "windLeadMs": 10570,
+      "windMs": 3030
+    },
+    "gate": {
+      "claimLevel": "MODEL_ONLY",
+      "engineHash": "minus-toys-engine-current-v1",
+      "evidence": "Night 5 variant windMs=3030,camdropMs=13650,maskOnMs=4249,maskOffMs=9560,hallOffsetMs=9940: normal 3000/3000, worst 3000/3000, no-split control 1226/3000, 2026-09-12",
+      "nights": [
+        5
+      ],
+      "replayHash": "fnv1a-c08db392",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "status": "PASS"
+    },
+    "baselineWinnerHash": "fnv1a-81b5e51c",
+    "knobDeltaVersusBaseline": "windMs 3230->3030, camdropMs 13850->13650, maskOnMs 4449->4249, maskOffMs 9200->9560, hallOffsetMs 9500->9940 (per Codex session log; commanded mask interval 4.751 s -> 5.311 s)",
+    "qualification": "artifacts/night5-mask5plus/qualification-test.json",
+    "qualificationNote": "experimental, operator-selected; not a docs/evidence qualification"
+  },
+  "origin": {
+    "anchor": [
+      {
+        "status": "scheduled",
+        "aimMs": 172
+      },
+      {
+        "status": "skipped",
+        "reason": "not-authorized",
+        "k": 1
+      },
+      {
+        "status": "skipped",
+        "reason": "not-authorized",
+        "k": 2
+      },
+      {
+        "status": "unavailable",
+        "reason": "authorization-late",
+        "aimMs": 172
+      },
+      {
+        "status": "released-unanchored",
+        "reason": "authorization-late"
+      }
+    ],
+    "deliveredEpochMs": 429.002197265625,
+    "deliveredEpochUncertaintyMs": 54.08528399467468,
+    "note": "released unanchored (authorization-late, aim 172, maxK 2): the epoch was drawn, then measured post hoc from the frame trace"
+  },
+  "maskWindowsVideo12fps": {
+    "count": 42,
+    "minS": 3.08,
+    "medianS": 5.17,
+    "maxS": 5.67,
+    "below5s": 2,
+    "note": "latched-mask intervals from grade-run video instruments; the two below 5 s are the opening window and the 6 AM cut"
+  },
+  "retained": {
+    "video": {
+      "path": "captures/night5-mask5plus-aim172-20260912T220100Z.mp4",
+      "sha256": "055328de8b2d0f34320261f3e6a2e119f24e137740f3ecc9780b56f5d9cd8ded"
+    },
+    "frameTrace": {
+      "path": "captures/frame-traces/night5-mask5plus-aim172-20260912T220100Z-723673275553365.tsv",
+      "sha256": "13bfd6263a71578481be0efb44cb0121d15e588952bc98e2a7c80a2cca5c8aed"
+    },
+    "inputEvents": {
+      "path": "artifacts/runs/night5-mask5plus-aim172-20260912T220100Z/input-events.txt",
+      "sha256": "2e85fd9f4cd8373785e1299702e7038f780b7fef5dd891802f4e3ba0397842ad"
+    },
+    "campaignResult": {
+      "path": "artifacts/campaign-2026-09-12T22-01-16.359Z/result.json",
+      "sha256": "af732f4f0deb30cf680c24af185728e1b00d1233adcd952768f1973365f0e2fe"
+    },
+    "campaignEvents": {
+      "path": "artifacts/campaign-2026-09-12T22-01-16.359Z/events.jsonl",
+      "sha256": "2a57e09a33a8fb7551174fd348d4f4d512676c43deb8b489fd8d0d5a988b2435",
+      "rows": 138
+    },
+    "runReport": {
+      "path": "artifacts/runs/night5-mask5plus-aim172-20260912T220100Z/run-report.json",
+      "sha256": "d0f151d1565645b9154fd785f54b53788fb2c609c2a7f326dc51af82f0e02ed3"
+    },
+    "gradeLog": {
+      "path": "artifacts/runs/night5-mask5plus-aim172-20260912T220100Z/grade.log",
+      "sha256": "0013882f10f389bb8f4992c9f10ce3b3c7892508a1bee7472912e6ff706f407b",
+      "verdict": "every instrument passed for night5-mask5plus-aim172-20260912T220100Z"
+    }
+  }
+}
