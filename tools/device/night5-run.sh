@@ -33,6 +33,8 @@ NIGHT=5
 SAVE_CURSOR=""
 ARM_MODE="observe-once"
 VIDEO=1
+TRACE=1
+TRACE_SECONDS="${FNAF_TRACE_SECONDS:-900}"
 DRY=0
 EXTRA=()
 
@@ -47,6 +49,8 @@ while [ $# -gt 0 ]; do
     --save-cursor) SAVE_CURSOR="$2"; shift 2 ;;
     --arm-blocking) ARM_MODE="blocking"; shift ;;
     --arm-observe-once) ARM_MODE="observe-once"; shift ;;
+    --no-trace) TRACE=0; shift ;;
+    --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
     --dry-run) DRY=1; shift ;;
     --) shift; EXTRA+=("$@"); break ;;
@@ -63,9 +67,11 @@ say() { printf '\n=== %s\n' "$1"; }
 # ---- fail-fast: inputs and tools exist before the phone is touched ----------
 TITLE_MODEL_PATH="tools/device/models/title-moto-g56-v207.json"
 CAUSE_MODEL_PATH="tools/device/models/death-cause-withered-chica-moto-g56-v207.json"
+TRACE_TOOL="tools/device/atrace-input.sh"
 for path in "$BUNDLE/manifest.json" "$QUALIFICATION" "$TITLE_MODEL_PATH" \
             tools/device/phase-reconstruct.mjs tools/device/run-timeline.py \
-            tools/device/title-observe.py apps/device/src/cli.js; do
+            tools/device/title-observe.py tools/device/inputtrace.py \
+            "$TRACE_TOOL" apps/device/src/cli.js; do
   [ -e "$path" ] || die "missing required input: $path"
 done
 command -v adb >/dev/null || die "adb is not on PATH"
@@ -247,9 +253,31 @@ if [ "$VIDEO" = 1 ]; then
     || die "screenrecord did not start"
 fi
 
+# Perfetto input dispatch, bracketing the campaign.
+#
+# This is the one instrument that can say whether the GAME received a press or
+# whether it never arrived -- `inputtrace.py` reports app MotionEvents, contact
+# lengths and latched contacts. grade-run.sh has always had the slot and has
+# always printed "input trace: none" because nothing captured one.
+#
+# It answers the standing question about the ~13% of cycles whose mask press is
+# lost: the loop presses the camdrop's monitor at +14000, the sourced
+# monitor-down animation is 367 ms, and the mask press follows at +14400 -- a
+# 33 ms margin. If the app received that MotionEvent and the mask did not
+# toggle, the game refused it inside the animation; if the event never arrived,
+# the cause is below the game and the seam is innocent.
+#
+# atrace-input.sh runs the command only once Perfetto reports its data sources
+# started, so a trace that cannot start fails the attempt instead of quietly
+# producing an untraced run.
 say "campaign"
+CAMPAIGN_CMD=("${CAMPAIGN[@]}")
+if [ "$TRACE" = 1 ]; then
+  printf 'trace    %s-input.pftrace (%ss)\n' "$RUNID" "$TRACE_SECONDS"
+  CAMPAIGN_CMD=("$TRACE_TOOL" "$RUNID" "$TRACE_SECONDS" -- "${CAMPAIGN[@]}")
+fi
 set +e
-"${CAMPAIGN[@]}" 2>&1 | tee "$OUTDIR/campaign.log"
+"${CAMPAIGN_CMD[@]}" 2>&1 | tee "$OUTDIR/campaign.log"
 CAMPAIGN_CODE=${PIPESTATUS[0]}
 set -e
 printf 'campaign exit %s\n' "$CAMPAIGN_CODE" | tee "$OUTDIR/campaign.exit"

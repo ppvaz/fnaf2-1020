@@ -22,6 +22,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // deleting one is how a script gets promoted into grade-run.sh.
 const EXCLUDED = new Map([
   ['grade-run.sh', 'the pipeline itself'],
+  ['test-seam-slack.mjs', 'a gate, not an instrument: it audits compiled plans and the timing floors themselves, and is registered in npm run test:unit'],
   ['night5-run.sh', 'the attempt driver that CALLS grade-run.sh from its exit trap -- wiring it in would recurse; it produces the run this pipeline grades'],
   ['night5-modal-observer.mjs', 'passive on-device collector -- it records FRAME/READ rows during a run and sends no input; the artifacts it writes are graded by the steps above rather than by itself'],
   ['hid-intersection-probe.mjs', 'device probe generator -- emits an intersection stream to a phone rather than grading a night run'],

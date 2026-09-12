@@ -127,7 +127,36 @@ function armVerification(parsed) {
     Number(a.slice(4)) - Number(b.slice(4)))), viewing, untilMs });
 }
 
-export function compileCycle(cycle, rows, initial = initialState(cycle)) {
+// Every timing gate below is a floor, and a plan that CLEARS a floor by zero
+// is indistinguishable here from one that clears it by half a second. That is
+// how the Night 5 mask timing survived: its +400 ms sits exactly on
+// MONITOR_MASK_READY_MS, `400 < 400` is false, and the compile passed in
+// silence while the phone lost the press on about one cycle in eight.
+//
+// So each gate now records what it had to spare. `seams` is collected into a
+// caller-supplied array and attached at PLAN level, never inside `cycles`, so
+// it never reaches persistArtifactPlans and never moves an artifact hash.
+// `test-seam-slack.mjs` is what turns the record into a refusal.
+/** The timing floors these gates enforce, so no auditor has to restate one. */
+export const SEAM_FLOORS = Object.freeze({
+  maskAnimOffMs: MASK_ANIM_OFF_MS,
+  monitorAnimDownMs: MONITOR_ANIM_DOWN_MS,
+  monitorAnimUpMs: MONITOR_ANIM_UP_MS,
+  monitorMaskReadyMs: MONITOR_MASK_READY_MS,
+  monitorReadyCameraMs: MONITOR_READY_CAMERA_MS,
+  monitorReadyWindMs: MONITOR_READY_WIND_MS,
+  // The native frame trace behind monitorMaskReadyMs: the mask button is absent
+  // through the first 322 ms after monitor-down, faint at ~337 ms, and fully
+  // visible at ~382.5 ms.
+  maskButtonFullyVisibleAfterMonitorDownMs: 382.5,
+});
+
+export function compileCycle(cycle, rows, initial = initialState(cycle), seams = []) {
+  const seam = (relation, row, gapMs, floorMs) => {
+    if (!Number.isFinite(gapMs)) return;   // no prior transition to measure against
+    seams.push(Object.freeze({ cycle, relation, atMs: row.at, kind: row.kind,
+      gapMs, floorMs, slackMs: gapMs - floorMs }));
+  };
   if (!Array.isArray(rows)) throw new TypeError('artifact cycle rows must be an array');
   const state = { ...initial };
   // When the monitor raise and the mask-off press began, so a press cannot be
@@ -156,6 +185,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     if (!isMaskRow && row.at - maskOffAt < MASK_ANIM_OFF_MS)
       throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms lands inside the ` +
         `${MASK_ANIM_OFF_MS} ms mask-off animation from +${maskOffAt} ms, where the engine drops it`);
+    if (!isMaskRow) seam('after-mask-off-animation', row, row.at - maskOffAt, MASK_ANIM_OFF_MS);
 
     const rawControl = row.kind === 'tap' || row.kind === 'hold' ? semantic(row.control) : null;
     const needsMonitorDown = rawControl === V.hallLight || rawControl === V.leftVentLight ||
@@ -179,6 +209,8 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     if (startsMonitorTransition && row.at - monitorTransitionAt < monitorTransitionMs)
       throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms reverses the monitor ` +
         `inside its ${monitorTransitionMs} ms animation from +${monitorTransitionAt} ms`);
+    if (startsMonitorTransition)
+      seam('monitor-reversal', row, row.at - monitorTransitionAt, monitorTransitionMs);
 
     // rule: a press that needs the monitor up must clear the raise animation
     const needsMonitorUp = row.kind === 'camdrop' || row.kind === 'sweep' ||
@@ -188,11 +220,15 @@ export function compileCycle(cycle, rows, initial = initialState(cycle)) {
     if (needsMonitorUp) {
       const isWind = (row.kind === 'tap' || row.kind === 'hold') && semantic(row.control) === V.wind;
       const readyMs = isWind ? MONITOR_READY_WIND_MS : MONITOR_READY_CAMERA_MS;
+      seam(isWind ? 'after-monitor-raise-wind' : 'after-monitor-raise-camera',
+        row, row.at - monitorUpAt, readyMs);
       if (row.at - monitorUpAt < readyMs)
         throw new TypeError(`${cycle}: ${row.kind} at +${row.at} ms is within ${readyMs} ms of the ` +
           `monitor raise at +${monitorUpAt} ms; that control is not reliably on screen yet and the contact ` +
           'hits the office underneath (device: wind missed at raise+200 ms, works at raise+450 ms)');
     }
+    if (isMaskRow)
+      seam('mask-after-monitor-down', row, row.at - monitorTransitionAt, MONITOR_MASK_READY_MS);
     if (isMaskRow && row.at - monitorTransitionAt < MONITOR_MASK_READY_MS)
       throw new TypeError(`${cycle}: mask at +${row.at} ms lands before the mask ` +
         `control reappears after monitor lowering from +${monitorTransitionAt} ms; ` +
@@ -286,15 +322,16 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
   return plans.map(plan => {
     const parsed = parsePlan(plan.text, { strategy: plan.policy, night: plan.night, profile });
     const compiled = {};
-    compiled.opening = compileCycle('opening', parsed.cycles.opening.rows);
+    const seams = [];
+    compiled.opening = compileCycle('opening', parsed.cycles.opening.rows, undefined, seams);
     for (const [name, value] of Object.entries(parsed.cycles)) {
       if (name === 'opening') continue;
       const prior = name === 'finish' && compiled.toys ? compiled.toys.final : compiled.opening.final;
-      compiled[name] = compileCycle(name, value.rows, prior);
+      compiled[name] = compileCycle(name, value.rows, prior, seams);
     }
     return Object.freeze({ night: plan.night, policy: plan.policy,
       timing: planTiming(parsed), armVerification: armVerification(parsed),
-      cycles: Object.freeze(compiled) });
+      cycles: Object.freeze(compiled), seams: Object.freeze(seams) });
   });
 }
 
