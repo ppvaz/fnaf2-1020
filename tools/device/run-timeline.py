@@ -48,6 +48,8 @@ import os
 import subprocess
 import sys
 
+import framesource
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import nightpredicate  # noqa: E402
@@ -76,23 +78,7 @@ def _death_cause():
 
 def decode(path, fps):
     """Yield frames; the timeline retains labels and roughness, never video."""
-    proc = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={W}:{H}",
-         "-pix_fmt", "rgb24", "-f", "rawvideo", "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    size = W * H * 3
-    try:
-        while True:
-            frame = proc.stdout.read(size)
-            if len(frame) < size:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(path, f"fps={fps},scale={W}:{H}", "rgb24", W * H * 3)
 
 
 def sampler(frame):

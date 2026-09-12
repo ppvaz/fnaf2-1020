@@ -34,6 +34,8 @@ import argparse
 import subprocess
 import sys
 
+import framesource
+
 # The recording is 1280x576; screenstate.py's rows are in 2400x1080 device
 # coordinates. Same regions, scaled once here rather than in three places.
 WIDTH, HEIGHT = 1280, 576
@@ -44,23 +46,7 @@ MASKBAR = (int(70 * SCALE_X), int(1004 * SCALE_Y), int(1180 * SCALE_X), int(1044
 
 def decode(path, fps):
     """Yield decoded frames without retaining the recording in host memory."""
-    proc = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
-         "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    size = WIDTH * HEIGHT * 3
-    try:
-        while True:
-            frame = proc.stdout.read(size)
-            if len(frame) < size:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(path, f"fps={fps},scale={WIDTH}:{HEIGHT}", "rgb24", WIDTH * HEIGHT * 3)
 
 
 def channel_mean(frame, box, step=2):

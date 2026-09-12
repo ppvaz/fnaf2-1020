@@ -74,6 +74,8 @@ import statistics
 import subprocess
 import sys
 
+import framesource
+
 WIDTH, HEIGHT = 1280, 576
 MAP = {10: (1091, 384), 4: (923, 379), 7: (947, 328), 11: (1213, 365)}
 CROP = (300, 150, 980, 340)
@@ -81,23 +83,7 @@ DEFAULT_SIG = os.path.join(os.path.dirname(__file__), "sweepcheck-signature.json
 
 
 def stream(path, fps, pix, depth):
-    size = WIDTH * HEIGHT * depth
-    proc = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path, "-vf", f"fps={fps},scale={WIDTH}:{HEIGHT}",
-         "-f", "rawvideo", "-pix_fmt", pix, "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        while True:
-            buf = proc.stdout.read(size)
-            if len(buf) < size:
-                break
-            yield buf
-    finally:
-        proc.stdout.close()
-        err = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(err)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(path, f"fps={fps},scale={WIDTH}:{HEIGHT}", pix, WIDTH * HEIGHT * depth)
 
 
 def selected(frame):

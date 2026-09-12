@@ -14,6 +14,8 @@ import argparse
 import subprocess
 import sys
 
+import framesource
+
 
 WIDTH = 160
 HEIGHT = 72
@@ -101,24 +103,7 @@ def resolve_hall(states):
 
 def decode(path):
     """Yield frames; this report only retains classification labels."""
-    command = [
-        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
-        "-vf", f"fps={FPS},scale={WIDTH}:{HEIGHT}",
-        "-f", "rawvideo", "-pix_fmt", "gray", "-",
-    ]
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        while True:
-            frame = proc.stdout.read(FRAME_SIZE)
-            if len(frame) < FRAME_SIZE:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(path, f"fps={FPS},scale={WIDTH}:{HEIGHT}", "gray", FRAME_SIZE)
 
 
 def main():

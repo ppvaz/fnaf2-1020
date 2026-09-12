@@ -14,6 +14,8 @@ import statistics
 import subprocess
 import sys
 
+import framesource
+
 
 WIDTH = 320
 HEIGHT = 80
@@ -44,24 +46,8 @@ BUTTON_POINTS = [
 
 def decode(path):
     """Yield cropped frames so a long recording stays O(seconds), not O(video)."""
-    command = [
-        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
-        "-vf", f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:120:400",
-        "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
-    ]
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        while True:
-            frame = proc.stdout.read(FRAME_SIZE)
-            if len(frame) < FRAME_SIZE:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(
+        path, f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:120:400", "rgb24", FRAME_SIZE)
 
 
 def pixel(frame, x, y):

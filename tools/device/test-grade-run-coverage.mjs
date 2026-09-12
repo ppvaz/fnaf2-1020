@@ -78,6 +78,7 @@ const EXCLUDED = new Map([
   ['death-cause.py', 'shadow-only labelled visual-cause model builder used by run-timeline.py when explicitly supplied; it builds a model rather than grading a run, gated by test-death-cause.py'],
   ['atrace-input.sh', 'trace capture wrapper that brackets a command and writes device evidence; inputtrace.py grades the resulting trace when present'],
   ['frame-clock.py', 'presentation-time and cadence library for capture measurement; gated by test-frame-clock.py and not a normal night-run grader'],
+  ['framesource.py', 'the one frame source every video instrument decodes through (ffmpeg privately, or the shared single decode when the pipeline offers a pipe); a library, gated by test-framesource.py'],
   ['hid-sweep-probe.mjs', 'device probe'],
   ['hid-sweep-probe.sh', 'device probe'],
   ['calibration-stability.py', 'multi-run calibration report; it aggregates retained mask/monitor grades rather than grading a night run, gated by test-calibration-stability.py'],
@@ -171,12 +172,19 @@ const complain = (message) => { console.error(message); failed = 1; };
 // into one Python byte string costs gigabytes before the classifier starts.
 // These are the full-run graders grade-run.sh invokes; keep their decoders
 // streaming and leave the runner's memory/time fuse visible in the contract.
+// A grader streams either through its own `subprocess.Popen` or through
+// framesource.frames(), the shared seam that streams from ffmpeg or from the
+// single shared decode's pipe; framesource.py itself must stream.
 for (const name of ['grade-night.py', 'camtrace.py', 'windpct.py',
-                    'grade-minus7.py', 'run-timeline.py', 'keyframes.py']) {
+                    'grade-minus7.py', 'run-timeline.py', 'keyframes.py', 'sweepcheck.py']) {
   const body = readFileSync(join(HERE, name), 'utf8');
-  if (!body.includes('subprocess.Popen') || body.includes('capture_output=True'))
+  const streams = body.includes('framesource.frames(') || body.includes('subprocess.Popen');
+  if (!streams || body.includes('capture_output=True'))
     complain(`${name} is a full-run grader but no longer has a streaming decoder`);
 }
+const framesource = readFileSync(join(HERE, 'framesource.py'), 'utf8');
+if (!framesource.includes('subprocess.Popen') || framesource.includes('capture_output=True'))
+  complain('framesource.py must stream frames, never buffer a decode');
 const sweepcheck = readFileSync(join(HERE, 'sweepcheck.py'), 'utf8');
 if (/list\(stream\(/.test(sweepcheck))
   complain('sweepcheck.py buffers full decoded streams instead of derived features');

@@ -15,6 +15,8 @@ import argparse
 import subprocess
 import sys
 
+import framesource
+
 
 WIDTH = 430
 HEIGHT = 110
@@ -32,25 +34,12 @@ CAMERAS = {
 
 
 def decode(path):
-    """Yield frames; a full 60 fps night is far too large for capture_output."""
-    command = [
-        "ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", path,
-        "-vf", f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:{CROP_X}:{CROP_Y}",
-        "-f", "rawvideo", "-pix_fmt", "rgb24", "-",
-    ]
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    try:
-        while True:
-            frame = proc.stdout.read(FRAME_SIZE)
-            if len(frame) < FRAME_SIZE:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    """Yield frames; a full 60 fps night is far too large for capture_output.
+
+    The chain is the instrument's own; framesource decodes it privately or
+    hands it the shared decode's pipe when the pipeline offers one."""
+    yield from framesource.frames(
+        path, f"fps={FPS},scale=1280:576,crop={WIDTH}:{HEIGHT}:{CROP_X}:{CROP_Y}", "rgb24", FRAME_SIZE)
 
 
 def lime_score(frame, center):

@@ -27,6 +27,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import framesource
+
 # Small enough that the distance metric is about layout and brightness rather
 # than film grain, which is what makes static and a dark office separable.
 FW, FH = 32, 18
@@ -36,23 +38,7 @@ TW, TH = 480, 216
 
 def decode(path, fps, w, h, pix, depth):
     """Yield frames so full-night contact-sheet generation stays bounded."""
-    proc = subprocess.Popen(
-        ["ffmpeg", "-v", "error", "-threads", "1", "-filter_threads", "1", "-i", str(path), "-vf", f"fps={fps},scale={w}:{h}",
-         "-f", "rawvideo", "-pix_fmt", pix, "-"],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    size = w * h * depth
-    try:
-        while True:
-            frame = proc.stdout.read(size)
-            if len(frame) < size:
-                break
-            yield frame
-    finally:
-        proc.stdout.close()
-        stderr = proc.stderr.read()
-        if proc.wait():
-            sys.stderr.buffer.write(stderr)
-            raise SystemExit(proc.returncode)
+    yield from framesource.frames(str(path), f"fps={fps},scale={w}:{h}", pix, w * h * depth)
 
 
 def distance(a, b):
