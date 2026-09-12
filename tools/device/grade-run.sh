@@ -376,14 +376,6 @@ if [ -n "$FRAME_TRACE" ]; then
   # Foxy is repelled by the hallway light, and grade-run's own video counter is
   # a rendering lower bound that read 4% where the plan records a 1-in-3 drop.
   # This reads the region PixelWatch.java defines and exits 3 on a dark hall.
-  if [ -n "$CAMPAIGN_DIR" ]; then
-    step "hallway light actually firing (native ROI)" \
-      node "$HERE/hall-flash-metric.mjs" --run "$CAMPAIGN_DIR" --frame-trace "$FRAME_TRACE"
-  else
-    echo
-    echo "--- hallway light actually firing (native ROI) ---"
-    echo "  no campaign bundle resolved; the gate releases it aligns to are not available."
-  fi
   if [ -f "$INPUT_TRACE" ]; then
     step "input dispatch aligned to presented frames" \
       python3 "$HERE/input-frame-align.py" "$INPUT_TRACE" "$FRAME_TRACE"

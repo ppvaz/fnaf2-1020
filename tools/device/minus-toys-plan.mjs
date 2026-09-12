@@ -53,12 +53,25 @@ export const KNOBS0 = {
                            //   the loop. 4400 put the loop press at exactly the +400 ms
                            //   monitor-down floor; see openMaskLeadMs.
   hallOffsetMs: 9500,      // Foxy-reset hall pulse offset
-  hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56
-                           //   with no pan. Do NOT lengthen this to fix the 1-in-3
-                           //   drop measured 2026-09-09: the hall button is in the
-                           //   view region where a held touch pans, and 33 ms is the
-                           //   measured length that lights without panning. A longer
-                           //   pulse has to be qualified against a pan first.
+  hallMs: 33,              // hall contact; a 33 ms hold lights the hallway on the g56.
+                           //   RETRACTED 2026-09-12 (Pedro): this used to read "do NOT
+                           //   lengthen this, the hall button is in the view region
+                           //   where a held touch pans". A held touch inside the region
+                           //   does NOT pan. That was a misreading of the mask/monitor
+                           //   state desync, diagnosed before the desync was understood,
+                           //   and it stood here as a standing refusal to try the
+                           //   obvious fix for the 1-in-3 drop measured 2026-09-09.
+                           //   Lengthening is therefore OPEN, not forbidden -- but it
+                           //   is still a route change: it moves the plan, so it needs
+                           //   qualification and an operator rebinding.
+                           //   NO CURRENT MEASUREMENT OF THE DROP EXISTS. An attempt on
+                           //   2026-09-12 to measure it from the native frame trace was
+                           //   withdrawn: it scored the camera-monitor screen instead of
+                           //   the office, because FOXY_HALL only means anything with
+                           //   the monitor down and the filter only required
+                           //   screen_identity == 2. See
+                           //   docs/evidence/night5-phase-measured-and-hall-open-20260912.md.
+                           //   The 2026-09-09 figure is the only one standing.
   loopContactMs: 33,       // steady-loop tap length for the parity toggles, separate
                            //   from `contactMs` because the opening cannot take a
                            //   long one: its cam9/monitor pair is 50 ms apart and

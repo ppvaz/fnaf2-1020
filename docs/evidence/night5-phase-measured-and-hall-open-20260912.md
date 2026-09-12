@@ -55,64 +55,55 @@ phase uncertainty from 124.1 ms to 38.1 ms.
 A Kalman filter would have been wrong twice: symmetric-noise assumption the
 data violates, and a drift state with nothing to track.
 
-## 2. The hall is still open, and the numbers do not agree
+## 2. The hall: measured twice, wrong twice, retracted
 
-`minus-toys-plan.mjs` sets `hallMs: 33`, exactly `MIN_CONTACT_MS`. Unlike the
-floors corrected earlier this session, **this is not a tautology**: 33 ms is a
-measured length that lights the hallway without panning, and the comment
-records a reasoned refusal to lengthen it, because the hall button sits in the
-view region where a held touch pans. That is a documented trade-off.
+This section previously reported that the hallway light fails on 31% of loop
+cycles, that the failure was perfectly separated by the office-reveal onset
+(408-445 ms lit 9/9, 208-244 ms dark 4/4), and that `hall-flash-metric.mjs`
+measured it. **All of that is withdrawn. It was measured on the wrong screen.**
 
-What does not fit is the rate. The comment records a **1-in-3 drop measured
-2026-09-09** — about 67% success. The video instrument reports **1 visible hall
-flash in ~24 loop cycles** (and 1 in ~28 on strokes1), about 4%.
+Pedro asked to see example frames. One look settled it: the frames the tool
+scored as "hall lit" and "hall dark" are the **camera monitor screen** — the
+CAM map and the Prize Corner feed — not the office. The `FOXY_HALL` rectangle
+only means anything with the monitor down, and the measurement never required
+that. It filtered on `screen_identity == 2`, which only says a night is in
+progress and is equally true with the monitor raised. What was actually being
+compared was the brightness of a camera feed.
 
-That is a 16x discrepancy between a recorded measurement and the current one,
-and it is unresolved. Either the hall degraded, or the instrument is blind. Its
-own note says visible flashes are a *rendering lower bound* — the sourced
-movement blackout can hide logically accepted flashes — so blindness is live.
+A second attempt added an office filter — both button strokes drawn, per
+`buttonStrokeState` — and selected the *same frames*, so that filter does not
+exclude the camera screen either. That is a second, separate defect and it is
+unexplained: the stroke pair is supposed to read monitor-up as mask-absent.
 
-### Settled by the frame trace: the instrument was blind, the hall is 31%
+`tools/device/hall-flash-metric.mjs` is removed rather than patched. It was
+wrong twice in one session, in the same direction both times — a number that
+looked like a finding because it agreed with a remembered one (the 1-in-3 drop
+of 2026-09-09). Agreement with a prior is not verification.
 
-A first pass with hand-picked screen thirds could not separate a 33 ms hall
-pulse from the office reveal, and this document said no hall region signature
-existed. **That was wrong.** `PixelWatch.java` has carried one all along:
+### What still stands
 
-    FOXY_HALL_X 1650  Y 300  WIDTH 450  HEIGHT 400  STEP 8
-    foxy_hall_mean_luma | foxy_hall_mean_redness | foxy_hall_red_cells
+- `PixelWatch.java` does define a hall ROI (`FOXY_HALL` 1650, 300, 450x400,
+  plus `foxy_hall_mean_luma|redness|red_cells`). It is real and it is not in
+  the frame-trace v3 schema, only the watch spec's sha256 is.
+- The dump settles the semantics, and this part was never in doubt: during a
+  hall occupant's movement the light is still ON (`lit?` stays 1, group 202
+  renders animation 99 instead of 36) and `viewing hall light` is set from
+  `lit?` with **no movement condition** (group 489), so Foxy's reset still
+  applies. Any future instrument must treat a dark-looking hall as an upper
+  bound on failure, never as a failure. Pedro's judgement that separating
+  animation 99 from 35 is too subtle to be worth chasing stands.
+- `hallMs` is 33 ms, exactly `MIN_CONTACT_MS`. The standing refusal to lengthen
+  it — "the hall button is in the view region where a held touch pans" — is
+  **retracted by Pedro on 2026-09-12**: a held touch inside the region does not
+  pan; that was a misreading of the mask/monitor state desync, made before the
+  desync was understood. Lengthening is open, and still needs qualification and
+  an operator rebinding.
 
-Those ROIs are readable live through the watch API but are **not** in the
-frame-trace v3 schema, which carries only the watch spec's sha256, the 20x9
-`grid_hex`, and the mask/monitor luma and downstrokes. So the hall is measured
-from `grid_hex` through the cells covering that rectangle -- a coarser
-superset (600x480 at 1560,240 against 450x400 at 1650,300), derived from the
-Java constants rather than typed by hand.
+### The lesson, which is the same one twice
 
-Reading that window against an office window away from it separates the two
-events, which is what the thirds could not do: if both brighten the mask came
-off and the hall lit; if only the office does, the hall did not light.
-
-    gateAtMs   HALL     DESK    verdict
-       5200   +41.1    +21.6    hall lit
-      15200    +1.9    +18.2    HALL DARK
-      25200   +44.0    +21.6    hall lit
-      ...
-      85200    -0.4     +4.8    mask never came off
-      95200    +0.8    +18.2    HALL DARK
-     105200    +1.6     +4.8    mask never came off
-     115200    -0.3    +18.2    HALL DARK
-     145200    +0.5    +15.0    HALL DARK
-
-**4 of 13 revealed cycles are HALL DARK -- 31%** -- against the plan's recorded
-1-in-3 drop from 2026-09-09. The two measurements agree. The 4% the video
-instrument reported was its own blindness, exactly as its note warned; the hall
-has not degraded. Separately, 2 of 15 cycles never took the mask off at all,
-which is a different defect and is counted as one.
-
-`tools/device/hall-flash-metric.mjs` is this measurement, so it is not
-rediscovered. The exact fix is a frame-trace v4 carrying the three
-`foxy_hall_*` values directly instead of a grid proxy; that is an APK change
-and an operator decision.
+Both the withdrawn withered-bonnie model and this measurement produced a
+confident number from data that was never looked at. In both cases one glance
+at the actual frames ended it. **Look at the frames before reporting a rate.**
 
 ## 3. How strokes3 actually ended
 
