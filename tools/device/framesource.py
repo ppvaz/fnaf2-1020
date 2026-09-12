@@ -38,6 +38,7 @@ pipeline, not here.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
@@ -46,6 +47,11 @@ from dataclasses import dataclass
 from typing import Iterable, Iterator
 
 ENV_DIR = "FNAF2_FRAME_SOURCE_DIR"
+# Set by decode-once.py: an instrument that finds no pipe for its spec
+# ANNOUNCES it (a json beside a fresh fifo) and blocks on the fifo until the
+# orchestrator's ffmpeg opens it. Without this flag a missing pipe falls back
+# to a private ffmpeg, so nothing ever waits on a decoder that is not coming.
+ENV_RENDEZVOUS = "FNAF2_FRAME_SOURCE_RENDEZVOUS"
 
 # The decoder flags every instrument already uses. `-threads 1` is the
 # resource contract with grade-run.sh's per-step cpuset; it stays.
@@ -103,6 +109,18 @@ def frames(path: str, chain: str, pix_fmt: str, frame_size: int) -> Iterator[byt
     shared = os.environ.get(ENV_DIR)
     if shared:
         pipe = pathlib.Path(shared) / spec.name
+        if not pipe.exists() and os.environ.get(ENV_RENDEZVOUS) == "1":
+            # One pipe per consumer PROCESS: a fifo has one stream, and two
+            # readers of one fifo would each get half the frames. The name
+            # carries the pid so identical chains in two instruments become
+            # two branches of the same decode, never one shared pipe.
+            pipe = pathlib.Path(shared) / f"{os.getpid()}-{spec.name}"
+            announce = pipe.with_suffix(pipe.suffix + ".json")
+            tmp = announce.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps({"path": os.path.realpath(path), "chain": chain, "pix_fmt": pix_fmt,
+                                       "frame_size": frame_size, "pid": os.getpid(), "pipe": str(pipe)}))
+            os.mkfifo(pipe)
+            os.replace(tmp, announce)   # the fifo exists before the announcement is visible
         if pipe.exists():
             with open(pipe, "rb", buffering=frame_size * 4) as handle:
                 yield from _read_frames(handle, frame_size)
@@ -121,22 +139,28 @@ def frames(path: str, chain: str, pix_fmt: str, frame_size: int) -> Iterator[byt
             raise SystemExit(proc.returncode)
 
 
-def plan_split(specs: Iterable[Spec], directory: str | os.PathLike) -> tuple[list[str], list[pathlib.Path]]:
+def plan_split(specs: Iterable[Spec], directory: str | os.PathLike,
+               pipes_by_name: dict[str, pathlib.Path] | None = None) -> tuple[list[str], list[pathlib.Path]]:
     """One ffmpeg command decoding each distinct recording once and writing
     every branch to its pipe under `directory`.
 
     Returns (command, pipes). Specs over the same recording share one decode;
-    a second recording gets its own input and split. Duplicate specs collapse
-    to one branch, which is how sweepcheck's rgb and gray reads of the same
-    chain become one decode with two outputs.
+    a second recording gets its own input and split. Without `pipes_by_name`,
+    duplicate specs collapse to one branch named by the spec; with it (the
+    rendezvous), each entry is one announced pipe and identical chains from
+    two consumers become two branches of the same decode.
     """
     directory = pathlib.Path(directory)
     unique: dict[str, Spec] = {}
-    for spec in specs:
-        unique.setdefault(spec.name, spec)
-    by_path: dict[str, list[Spec]] = {}
-    for spec in unique.values():
-        by_path.setdefault(os.path.realpath(spec.path), []).append(spec)
+    if pipes_by_name is None:
+        for spec in specs:
+            unique.setdefault(spec.name, spec)
+    else:
+        for name, spec in zip(pipes_by_name, specs):
+            unique[name] = spec
+    by_path: dict[str, list[tuple[str, Spec]]] = {}
+    for name, spec in unique.items():
+        by_path.setdefault(os.path.realpath(spec.path), []).append((name, spec))
 
     command = FFMPEG_PREFIX + ["-nostdin"]
     filters: list[str] = []
@@ -146,10 +170,10 @@ def plan_split(specs: Iterable[Spec], directory: str | os.PathLike) -> tuple[lis
         command += ["-i", path]
         labels = [f"i{index}b{k}" for k in range(len(group))]
         filters.append(f"[{index}:v]split={len(group)}" + "".join(f"[{label}]" for label in labels))
-        for label, spec in zip(labels, group):
+        for label, (name, spec) in zip(labels, group):
             out = f"{label}o"
             filters.append(f"[{label}]{spec.chain}[{out}]")
-            pipe = directory / spec.name
+            pipe = pipes_by_name[name] if pipes_by_name else directory / name
             pipes.append(pipe)
             outputs += ["-map", f"[{out}]", "-f", "rawvideo", "-pix_fmt", spec.pix_fmt, "-y", str(pipe)]
     command += ["-filter_complex", ";".join(filters)] + outputs

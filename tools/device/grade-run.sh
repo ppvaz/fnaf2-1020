@@ -159,10 +159,27 @@ limited() {
   )
 }
 
+# The shared-decode step applies the same fuse per instrument itself
+# (RLIMIT_AS, affinity, nice, timeout), and its ONE ffmpeg carries several
+# filter branches, which need more address space than one branch did while
+# staying a few frames resident per branch. So it runs without the outer
+# `ulimit -v`: a hard limit here cannot be raised by a child, and the first
+# end-to-end run under it died with "Cannot allocate memory" in the filter
+# graph and let four instruments finish on truncated streams. Residency is
+# the cgroup slice's job (night5-run.sh's systemd-run wrapper); the step's
+# timeout and cpuset stay.
+limited_shared() {
+  if command -v taskset >/dev/null 2>&1; then
+    nice -n 10 taskset -c "$GRADE_CPUSET" timeout --foreground "$GRADE_STEP_TIMEOUT_SECONDS" "$@"
+    return
+  fi
+  nice -n 10 timeout --foreground "$GRADE_STEP_TIMEOUT_SECONDS" "$@"
+}
+
 # How many `step` calls this script can make. Conditional steps mean the real
 # count is at most this, so the progress line says so rather than pretending to
 # a precision it does not have.
-STEP_TOTAL="$(grep -c '^ *step "' "$0" 2>/dev/null || echo 0)"
+STEP_TOTAL="$(grep -cE '^ *step(_shared)? "' "$0" 2>/dev/null || echo 0)"
 STEP_INDEX=0
 GRADE_STARTED_AT="$(date +%s)"
 # How often a running step reports that it is still alive. A video instrument
@@ -213,6 +230,49 @@ step() {
     "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label" "$elapsed" "$total_elapsed"
 }
 
+# The shared-decode step: identical framing and exit semantics, but the
+# instruments and their one ffmpeg run under limited_shared (see above).
+step_shared() {
+  STEP_INDEX=$((STEP_INDEX + 1))
+  local pct=0
+  [ "${STEP_TOTAL:-0}" -gt 0 ] && pct=$((STEP_INDEX * 100 / STEP_TOTAL))
+  local label="$1"
+  local started elapsed total_elapsed
+  started="$(date +%s)"
+  echo
+  printf '[%2d/%2d %3d%%] --- %s ---\n' "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label"
+  shift
+  # Heartbeat for the duration of this step, so a long decode is visibly alive.
+  (
+    while true; do
+      sleep "$GRADE_HEARTBEAT_SECONDS"
+      printf '           ... %s still running (%ds)\n' "$label" "$(( $(date +%s) - started ))"
+    done
+  ) &
+  local beat=$!
+  # `ulimit` is scoped to limited()'s subshell and inherited by
+  # ffmpeg/Python/Node; timeout's --foreground keeps Ctrl-C directed at the
+  # diagnostic rather than leaving a decoder behind. nice makes an explicitly
+  # requested grade less likely to make the interactive desktop unusable.
+  # Exit 3 means the instrument ran and is reporting something about the RUN
+  # (a dark sweep, a night that died before 1 AM). Calling that a failure
+  # teaches the reader to ignore the loudest lines in the log.
+  limited_shared "$@" || {
+    local status=$?
+    if [ "$status" -eq 3 ]; then
+      echo "  ^ a result about the run, not an instrument failure"
+    else
+      echo "  ^ FAILED (resource-limited or diagnostic error)"; fail=1
+    fi
+  }
+  kill "$beat" 2>/dev/null || true
+  wait "$beat" 2>/dev/null || true
+  elapsed=$(( $(date +%s) - started ))
+  total_elapsed=$(( $(date +%s) - GRADE_STARTED_AT ))
+  printf '[%2d/%2d %3d%%] %s took %ds (pipeline %ds)\n' \
+    "$STEP_INDEX" "$STEP_TOTAL" "$pct" "$label" "$elapsed" "$total_elapsed"
+}
+
 # 0. Does the run describe itself? A manifest is what turns a pile of
 #    same-basename files into one session: which game build, which model
 #    hashes, which clocks, which terminal outcome and on what evidence. The
@@ -248,13 +308,10 @@ fi
 # 1. Was it alive, and for how long? This one decides what the run *means*, so
 #    it goes first: every other number below is only interesting for the
 #    interval the game was actually running.
-if [ -n "$REQUIRE" ]; then
-  step "survival (the only number that is a run length)" \
-    python3 "$HERE/grade-night.py" "$VIDEO" --require-seconds "$REQUIRE"
-else
-  step "survival (the only number that is a run length)" \
-    python3 "$HERE/grade-night.py" "$VIDEO"
-fi
+# It runs inside the shared-decode step below (section 3), first in its
+# output order, with the same arguments it always had.
+SURVIVAL_ARGS=(python3 "$HERE/grade-night.py" "$VIDEO")
+[ -n "$REQUIRE" ] && SURVIVAL_ARGS+=(--require-seconds "$REQUIRE")
 
 # 1a. What did Android's InputDispatcher deliver? This is a source-side
 #     control for the rendered-video inference. A trace artifact without a
@@ -311,19 +368,24 @@ fi
 # 3. Did the sweeps select, and did they flash? Two independent signals that
 #    fail differently -- camtrace at the recording's real 60 fps, because its
 #    30 fps default is what produced the withdrawn 240 ms spacing figure.
-step "camera selections" python3 "$HERE/camtrace.py" --fps "$GRADE_FPS" --min-ms 50 "$VIDEO"
-step "camera light actually flashing" python3 "$HERE/sweepcheck.py" --fps "$GRADE_FPS" "$VIDEO"
-
+#    Both run inside the shared-decode step below, with these exact arguments.
+#
 # 4. What did this run actually contain? A dozen maximally-different frames,
 #    tiled. The one time the frames were looked at, the whole failure was
 #    obvious at a glance -- and everything needed to see it had been on disk for
 #    hours. Cheap enough to do every time, so nobody has to decide to.
-step "keyframes (what the run contained)" \
-  python3 "$HERE/keyframes.py" "$VIDEO" --count 12
-
+#
 # 5. The box, and the office/mask/camera state intervals.
-step "music box" python3 "$HERE/windpct.py" "$VIDEO"
-step "office / mask / camera intervals" python3 "$HERE/grade-minus7.py" "$VIDEO"
+#
+# 3-5b run as ONE step over ONE decode of the recording (decode-once.py):
+# every instrument keeps its own arguments and chain and reads its frames
+# through framesource.py, so its bytes and its output are what they were when
+# it spawned its own ffmpeg (characterised byte-identical on a final2 clip);
+# what changes is that the recording is decoded once (twice, for the two
+# instruments that read it a second time) instead of nine times, and the
+# instruments run concurrently on GRADE_CPUSET under the per-step fuse.
+# Their outputs are replayed in the order given, each under its own header,
+# each with its own exit code -- 3 stays "a fact about the run".
 
 # 5b. What happened, in order, and how it ended. This is the only step that can
 # say `clear`: nothing else in this pipeline can recognise a 6 AM, which is why
@@ -342,7 +404,16 @@ else
     [ -f "$model" ] && TIMELINE_ARGS+=(--cause-model "$model")
   done
 fi
-step "run timeline and terminal outcome" "${TIMELINE_ARGS[@]}"
+step_shared "video instruments over one shared decode (survival, cameras, light, keyframes, box, intervals, timeline)" \
+  python3 "$HERE/decode-once.py" --cpuset "$GRADE_CPUSET" --vmem-kb "$GRADE_MAX_VMEM_KB" \
+    --timeout "$GRADE_STEP_TIMEOUT_SECONDS" --max-concurrent "${GRADE_DECODE_CONCURRENCY:-7}" \
+    --step "survival (the only number that is a run length)" -- "${SURVIVAL_ARGS[@]}" \
+    --step "camera selections" -- python3 "$HERE/camtrace.py" --fps "$GRADE_FPS" --min-ms 50 "$VIDEO" \
+    --step "camera light actually flashing" -- python3 "$HERE/sweepcheck.py" --fps "$GRADE_FPS" "$VIDEO" \
+    --step "keyframes (what the run contained)" -- python3 "$HERE/keyframes.py" "$VIDEO" --count 12 \
+    --step "music box" -- python3 "$HERE/windpct.py" "$VIDEO" \
+    --step "office / mask / camera intervals" -- python3 "$HERE/grade-minus7.py" "$VIDEO" \
+    --step "run timeline and terminal outcome" -- "${TIMELINE_ARGS[@]}"
 
 # 5b-i. What the EXECUTOR knows, which no video instrument can see: when the
 # night started, what the arm gate cost, which cycle gates had to correct the

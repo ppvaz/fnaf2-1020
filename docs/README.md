@@ -41,6 +41,7 @@ controller research, and device evidence form one program.
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
 | Read why the Withered Bonnie visual cause model was withdrawn, and what metric replaced euclid | [`evidence/withered-bonnie-visual-model-withdrawn-20260912.md`](evidence/withered-bonnie-visual-model-withdrawn-20260912.md) |
 | Run device work safely | [`operations/DEVICE-SAFETY.md`](operations/DEVICE-SAFETY.md) |
+| See what each grade-run.sh video step feeds, which a frame trace can replace, and how the recording is decoded once | [`operations/GRADE-PIPELINE-STEPS.md`](operations/GRADE-PIPELINE-STEPS.md) |
 | Understand research operations | [`research/ARCHITECTURE.md`](research/ARCHITECTURE.md) |
 
 ## Android source and fidelity
