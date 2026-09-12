@@ -20,6 +20,7 @@ import { composeCampaignPorts } from './campaign-composition.js';
 import { AdbDeviceLocalArtifactExecutor } from './adb-device-local-executor.js';
 import { makeCampaignExecutionRequest } from './campaign-bundle.js';
 import { AdbCueHelperPort, AdbHidProcess } from './physical-ports.js';
+import { anchorNightRelease } from './night-anchor.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 
 const TITLE_MODEL = new URL('../../../tools/device/models/title-moto-g56-v207.json', import.meta.url);
@@ -200,10 +201,13 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 /** @param {any} options */
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
-    machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false } = options;
+    machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
+    nightAnchorAimMs = null } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
+  if (nightAnchorAimMs !== null && !(Number.isFinite(nightAnchorAimMs) && nightAnchorAimMs >= 0 && nightAnchorAimMs < 1000))
+    throw new TypeError('nightAnchorAimMs must be null or a millisecond epoch in [0, 1000)');
   if (!['blocking', 'observe-once'].includes(armMode))
     throw new TypeError('armMode must be blocking or observe-once');
   if (profile?.actuator !== 'hid-multi' || profile?.visualSensor !== 'mediaprojection')
@@ -394,6 +398,7 @@ export async function createCampaignPorts(options = {}) {
       // activates. Reuse that process through the intro so the night never
       // pays a second /system/bin/hid registration delay.
       sharedHid: () => menuHid?.process ?? null,
+      nightReleaseOwner: nightAnchorAimMs === null ? 'observer' : 'port',
       pollMs: 250, onEvent,
       onOutput: output => onEvent({ type: 'hid.stderr', output }) });
   const titleModel = await readJson(TITLE_MODEL);
@@ -538,13 +543,21 @@ export async function createCampaignPorts(options = {}) {
     // a second registration and ready delay: the grid origin lands within one
     // poll of 12 AM instead of the measured 7.8 s post-office handoff lag.
     prearm(target);
+    // Any onset the helper latched before this instant belongs to an earlier
+    // night; the anchor refuses it.
+    const introStartedHostMs = performance.now();
     // Do not accept the night transition on the newspaper/intro card: the
     // authoritative office `night` state establishes the actuator origin.
     const state = await waitFor(bridge, serial, value => value === 'night', 30000, 'night start');
     // This is the phase-critical handoff. The measurement deliberately leaves
     // setup taps out of the path so the already-ready HID can act immediately
-    // after the first authoritative office frame.
-    localExecutor.releaseNight();
+    // after the first authoritative office frame. With an anchor aim the office
+    // frame only authorizes, and the release lands at the helper's latched
+    // onset + aim (mod one game second); any refusal releases at once.
+    if (nightAnchorAimMs === null) localExecutor.releaseNight();
+    else await anchorNightRelease({ probe: () => cuePort.probeClock(),
+      release: () => localExecutor.releaseNight(), onEvent,
+      aimMs: nightAnchorAimMs, notBeforeHostMs: introStartedHostMs });
     // The 6th Night and Custom Night menu targets identify the configured
     // night. A story night inside a chained campaign is identified by its
     // selection chain: newGame on an observed fresh save, continue after the

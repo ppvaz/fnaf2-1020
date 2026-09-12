@@ -932,7 +932,8 @@ export class AdbDeviceLocalArtifactExecutor {
   constructor(options = {}) {
     const { serial, adb = 'adb', readyDelayMs = DEFAULT_READY_DELAY_MS,
       observe = null, observeArm = null, observeControlState = null,
-      sharedHid = null, pollMs = 1000, onEvent = () => {}, onOutput = () => {}, timing = {} } = options;
+      sharedHid = null, pollMs = 1000, onEvent = () => {}, onOutput = () => {}, timing = {},
+      nightReleaseOwner = 'observer' } = options;
     if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('device-local executor requires an ADB serial');
     if (observe !== null && typeof observe !== 'function') throw new TypeError('device-local executor observe must be a function');
     if (observeArm !== null && typeof observeArm !== 'function') throw new TypeError('device-local executor observeArm must be a function');
@@ -940,6 +941,8 @@ export class AdbDeviceLocalArtifactExecutor {
       throw new TypeError('device-local executor observeControlState must be a function');
     if (sharedHid !== null && typeof sharedHid !== 'function')
       throw new TypeError('device-local executor sharedHid must be a function');
+    if (!['observer', 'port'].includes(nightReleaseOwner))
+      throw new TypeError('device-local executor nightReleaseOwner must be observer or port');
     if (!Number.isInteger(pollMs) || pollMs < 250 || pollMs > 10000)
       throw new TypeError('device-local executor pollMs must be an integer in 250..10000');
     const timingValues = {
@@ -968,6 +971,12 @@ export class AdbDeviceLocalArtifactExecutor {
       budgetMinMs: timingValues.gateBudgetMinMs, budgetMaxMs: timingValues.gateBudgetMaxMs,
       budgetReserveMs: timingValues.gateBudgetReserveMs };
     this.sharedHid = sharedHid;
+    // `observer`: the first authoritative office frame releases the shared
+    // schedule (the 1 Hz classifier draws the night's epoch). `port`: that
+    // frame only authorizes the night, and the composition calls
+    // releaseNight() at an instant it placed against the game's grid
+    // (night-anchor.js). Unshared runs ignore it.
+    this.nightReleaseOwner = nightReleaseOwner;
     this.onEvent = onEvent; this.onOutput = onOutput;
     this.child = null; this.running = false; this.aborted = false;
     this.stopProcess = null;
@@ -1805,8 +1814,18 @@ export class AdbDeviceLocalArtifactExecutor {
                   nativeSamples: nativeAnchorSamples,
                   accepted: refined !== null,
                   shrunkByMs: refined === null ? 0 : observeStartedAt - refined });
-                recordNightGo(refined ?? observeStartedAt, 'lifecycle');
-                if (sharedMode) {
+                const portOwnsRelease = sharedMode && this.nightReleaseOwner === 'port';
+                if (portOwnsRelease) {
+                  // Authorization only: releaseNight() records its own
+                  // night-go when the port fires, so the schedule's origin is
+                  // the placed instant, not this classifier sample.
+                  this.onEvent({ type: 'hid.night-authorized', at: observeStartedAt, owner: 'port' });
+                } else {
+                  recordNightGo(refined ?? observeStartedAt, 'lifecycle');
+                }
+                if (portOwnsRelease) {
+                  /* the composition's releaseNight() starts the schedule */
+                } else if (sharedMode) {
                   try {
                     if (!sharedReleaseInFlight) await startSharedSchedule(Date.now());
                     if (stopObserver) break;

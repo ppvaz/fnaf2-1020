@@ -10,6 +10,8 @@
  */
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
+import { connect } from 'node:net';
+import { parseCueResponse } from '@fnaf2-1020/adapters/transports/cue-helper';
 const HELPER_PACKAGE = 'com.fnaf2.cuehelper';
 const READY_DEVICE = 'FNAF Timed Touch';
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -46,6 +48,44 @@ case "$1" in GET|GRID|FRAME|WATCH|READ) ;; *) exit 64 ;; esac
 printf '%s\\n' "$*" | toybox nc -w 2 127.0.0.1 "$port"
 `;
 
+/**
+ * One timed GET over a host-local forwarded port. The helper stamps
+ * `snapshotNs` with System.nanoTime() while answering, so that instant lies
+ * inside [sentAt, receivedAt] on the host clock whatever the path's asymmetry:
+ * the midpoint is off by at most half the round trip.
+ * @param {number} hostPort @param {string} line @param {number} timeoutMs
+ */
+function timedExchange(hostPort, line, timeoutMs) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const socket = connect({ host: '127.0.0.1', port: hostPort });
+    let sentAt = null;
+    let text = '';
+    const timer = setTimeout(() => { socket.destroy(); rejectPromise(new Error('cue-helper clock probe timed out')); }, timeoutMs);
+    const settle = (error, value) => {
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) rejectPromise(error); else resolvePromise(value);
+    };
+    socket.setNoDelay(true);
+    socket.on('connect', () => { sentAt = performance.now(); socket.write(`${line}\n`); });
+    socket.on('data', chunk => {
+      text += chunk.toString('utf8');
+      const newline = text.indexOf('\n');
+      if (newline < 0) { if (text.length > 65536) settle(new Error('cue-helper clock probe reply is oversized')); return; }
+      const receivedAt = performance.now();
+      try {
+        const fields = parseCueResponse(text.slice(0, newline));
+        if (!/^\d+$/.test(fields.snapshotNs ?? '')) throw new Error('cue-helper reply has no snapshotNs');
+        const deviceMs = Number(BigInt(fields.snapshotNs)) / 1e6;
+        const rttMs = receivedAt - sentAt;
+        settle(null, { offsetMs: (sentAt + receivedAt) / 2 - deviceMs, rttMs, fields });
+      } catch (error) { settle(error); }
+    });
+    socket.on('error', error => settle(error));
+    socket.on('end', () => settle(new Error('cue-helper closed the clock probe without a reply')));
+  });
+}
+
 export class AdbCueHelperPort {
   /** @param {{serial: string, adb?: string}} options */
   constructor(options) {
@@ -72,6 +112,36 @@ export class AdbCueHelperPort {
     const endpoint = this.endpoint ?? this.discover();
     const args = ['-s', this.serial, 'shell', 'sh', '-s', '--', String(endpoint.port), ...line.split(/\s+/)];
     return runSync(this.adb, args, { timeout: 10000, input: HELPER_QUERY_SCRIPT });
+  }
+
+  /**
+   * Device-monotonic -> host `performance.now()` offset, plus the newest GET
+   * fields. `request()` spawns an adb shell per read and cannot bound a clock:
+   * its reads cost 140-240 ms and its only offset estimate is late-biased by
+   * ~100-150 ms. This forwards the helper's loopback port once and times raw
+   * GETs over it; on ZF525F5BH5 (2026-09-12) 40 of them measured RTT min 5.6,
+   * p50 9.1, p90 14.6 ms, and the five fastest agreed on the offset within
+   * 0.46 ms. The fastest sample carries the offset; its bound is RTT/2.
+   * @param {{samples?: number, spacingMs?: number, timeoutMs?: number}} [options]
+   */
+  async probeClock({ samples = 8, spacingMs = 15, timeoutMs = 1000 } = {}) {
+    if (!Number.isInteger(samples) || samples < 1 || samples > 64) throw new TypeError('clock probe samples must be 1..64');
+    const endpoint = this.endpoint ?? this.discover();
+    const forwarded = runSync(this.adb, ['-s', this.serial, 'forward', 'tcp:0', `tcp:${endpoint.port}`]).trim().split(/\s+/).at(-1);
+    if (!/^\d+$/.test(forwarded ?? '')) throw new Error('cue-helper clock probe: adb forward returned no host port');
+    let best = null;
+    let latest = null;
+    try {
+      for (let index = 0; index < samples; index += 1) {
+        latest = await timedExchange(Number(forwarded), `GET ${endpoint.token}`, timeoutMs);
+        if (best === null || latest.rttMs < best.rttMs) best = latest;
+        if (index + 1 < samples) await sleep(spacingMs);
+      }
+    } finally {
+      try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
+    }
+    return { offsetMs: best.offsetMs, uncertaintyMs: best.rttMs / 2, rttMs: best.rttMs,
+      samples, hostClock: 'performance-now-ms', fields: latest.fields };
   }
 }
 

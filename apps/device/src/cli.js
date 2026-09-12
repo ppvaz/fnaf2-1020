@@ -55,6 +55,7 @@ Options:
   --machine-only  run an explicit MODEL_ONLY machine-input experiment; no claim promotion
   --arm-observe-once  run the double-camera check once without blocking the schedule; abort only on a definite mismatch
   --allow-save-reset  authorize the measured New Game confirmation for a fresh story chain
+  --night-anchor-aim-ms N  release the night schedule at the helper's latched onset + N ms (mod 1000)
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
   --live        explicitly enable physical actuation
@@ -78,7 +79,7 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
-    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, calibration: undefined, bundle: undefined,
+    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
@@ -92,6 +93,7 @@ function parse(argv) {
     else if (item === '--machine-only') options.machineOnly = true;
     else if (item === '--arm-observe-once') options.armMode = 'observe-once';
     else if (item === '--allow-save-reset') options.allowSaveReset = true;
+    else if (item === '--night-anchor-aim-ms') options.nightAnchorAimMs = Number(rest[++index]);
     else if (item === '--no-helper') options.requireHelper = false;
     else if (item === '--no-hid') options.requireHid = false;
     else if (item === '--serial') options.serial = rest[++index];
@@ -347,7 +349,8 @@ async function main(argv = process.argv.slice(2)) {
       if (typeof factory !== 'function') throw new Error('ports module must export createCampaignPorts()');
       composition = await factory({ spec, bundle, profile: selected, calibration, qualification,
         serial: device.serial, machineOnly: options.machineOnly, armMode: options.armMode,
-        allowSaveReset: options.allowSaveReset, captureRestarted: true });
+        allowSaveReset: options.allowSaveReset, captureRestarted: true,
+        nightAnchorAimMs: options.nightAnchorAimMs });
     }
     const ports = composition?.ports ?? composition;
     // Once a live composition exists, an operator interrupt must release the

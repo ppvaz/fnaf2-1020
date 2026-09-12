@@ -249,6 +249,10 @@ public final class CaptureService extends Service {
     private int snapshotLuma;
     private int snapshotCam05MeanLuma;
     private int snapshotScreenIdentity = ScreenIdentity.UNKNOWN;
+    // Image time of this night's first held FNAF2_NIGHT frame, published in
+    // GET/FRAME so the host can place the schedule release against the game's
+    // own one-second grid instead of a ~1 Hz screenshot classifier.
+    private final NightOnsetLatch nightOnsetLatch = new NightOnsetLatch();
     private int snapshotScreenScore;
     private long snapshotDetectorLatencyMs;
     // Native bottom-control means from the same image as the snapshot/grid.
@@ -1031,6 +1035,7 @@ public final class CaptureService extends Service {
     }
 
     private void startVisualCapture(long generation) {
+        nightOnsetLatch.reset();
         visualThread = new HandlerThread(
                 "cue-visual",
                 Process.THREAD_PRIORITY_DISPLAY);
@@ -1242,6 +1247,7 @@ public final class CaptureService extends Service {
                             snapshotScreenIdentity, maskLuma, monitorLuma);
                 }
                 screenIdentity = snapshotScreenIdentity;
+                nightOnsetLatch.onFrame(timestampNs, screenIdentity);
                 snapshotDetectorLatencyMs = Math.max(0L,
                         (System.nanoTime() - detectorStartNs) / 1_000_000L);
                 if (frameTraceActive && captureWidth == PixelWatch.NATIVE_WIDTH
@@ -2998,6 +3004,7 @@ public final class CaptureService extends Service {
             }
         }
         return "snapshotNs=" + nowNs + " visualCaptureNs=" + visualTimestampNs
+                + " nightOnsetImageNs=" + nightOnsetLatch.onsetNs()
                 + " " + visual + panAnchor + " " + screenDetail + " "
                 + currentAudioStatus() + " " + watchStatus() + frame;
     }

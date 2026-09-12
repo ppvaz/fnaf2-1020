@@ -378,6 +378,29 @@ try {
   assert.ok(sharedHandoff.delayMs <= sharedHandoff.budgetMs,
     'an on-time handoff must remain inside the fail-fast budget');
 
+  // A port-owned release: the office frame authorizes, and nothing is written
+  // until the composition calls releaseNight() at its placed instant.
+  const portEvents = [];
+  const portWrites = [];
+  let portReleasedAt = null;
+  const portHid = { write: async value => { portWrites.push({ at: Date.now(), value: JSON.parse(value) }); } };
+  const portOwned = new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', adb: fakeAdb,
+    readyDelayMs: 1, pollMs: 250, timing: { pollMs: 1 }, sharedHid: () => portHid, nightReleaseOwner: 'port',
+    observe: async () => portReleasedAt === null || Date.now() - portReleasedAt < 40 ? 'night' : 'gameover',
+    onEvent: event => portEvents.push(event) });
+  const portRelease = setTimeout(() => { portReleasedAt = Date.now(); portOwned.releaseNight(); }, 60);
+  const portResult = await portOwned.execute(request);
+  clearTimeout(portRelease);
+  assert.equal(portResult.terminal, 'gameover', 'a port-owned release must keep terminal handling');
+  assert.ok(portEvents.some(event => event.type === 'hid.night-authorized'),
+    'the office frame must be recorded as an authorization');
+  assert.equal(portEvents.find(event => event.type === 'hid.night-go')?.source, 'intro-handoff',
+    'a port-owned night must take its origin from the placed release, not the classifier');
+  assert.ok(portWrites.length > 0 && portWrites[0].at >= portReleasedAt,
+    'nothing may reach the HID before the port releases the night');
+  assert.throws(() => new AdbDeviceLocalArtifactExecutor({ serial: 'fixture-device', nightReleaseOwner: 'host' }),
+    /nightReleaseOwner must be observer or port/);
+
   const lateEvents = [];
   let lateWrites = 0;
   const lateHid = { write: async value => {

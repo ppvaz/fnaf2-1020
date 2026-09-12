@@ -411,6 +411,17 @@ trap on_exit EXIT
 CAMPAIGN=(node apps/device/src/cli.js campaign
   --profile "$PROFILE" --serial "$SERIAL" --nights "$NIGHT" --max-attempts 1
   --save-cursor "$SAVE_CURSOR" --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
+# Place the schedule release at the helper's latched night onset + this epoch
+# (mod one game second) instead of wherever the ~1 Hz office classifier fires.
+# 233 is the centre of the winning band [166.67, 300] that phase-reconstruct's
+# model reports for binding fnv1a-81b5e51c (epochs 233/1233/2233 all 3000/3000);
+# a different binding needs its own band. NIGHT_ANCHOR_AIM_MS=off releases on
+# the classifier as before. Every anchor refusal also releases at once.
+NIGHT_ANCHOR_AIM_MS="${NIGHT_ANCHOR_AIM_MS:-233}"
+if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
+  CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS")
+  printf 'anchor   release at night onset + %s ms (mod 1000)\n' "$NIGHT_ANCHOR_AIM_MS"
+fi
 # Pedro's standing direction: the arm check does not block the schedule.
 #
 # It is not a preference, it is the difference between a winnable night and an
