@@ -1720,7 +1720,8 @@
     {
       "file": "tools/device/test-tap-stall-audit.mjs",
       "imports": [
-        "./tap-stall-audit.mjs"
+        "./tap-stall-audit.mjs",
+        "node:fs"
       ]
     },
     {

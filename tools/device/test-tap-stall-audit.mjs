@@ -4,7 +4,8 @@
 // a 60 ms capture gap covers the 33 ms monitor raise at +20100, the monitor
 // never goes up, the camdrop's tap at +24000 raises it instead, and the mask
 // tap at +24449 arrives with the mask button absent and lowers the monitor.
-import { audit, clockBracket, expandContacts, exposure, formatReport, formatTransitions, parseStrokeTrace, SCHEMA } from './tap-stall-audit.mjs';
+import { readFileSync } from 'node:fs';
+import { audit, clockBracket, expandContacts, exposure, formatReport, formatTransitions, hallCells, hallLumaOf, parseStrokeTrace, HALL_ROI, SCHEMA } from './tap-stall-audit.mjs';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
 const expectFailure = (fn, message) => {
@@ -64,6 +65,13 @@ function signatureAt(t) {
 }
 const strokes = { office: [142, 144], 'monitor-up': [4, 144], 'mask-on': [142, 0] };
 
+const HALL = new Set(hallCells());
+// A grid whose hall cells are bright (luma 255) or dark (0); every other cell dark.
+const gridHex = lit => Array.from({ length: HALL_ROI.gridCols * HALL_ROI.gridRows },
+  (_, cell) => lit && HALL.has(cell) ? 'ffffff' : '000000').join('');
+// The cycle-0 hall tap at 9500 lights the hall for two frames; the cycle-1
+// tap at 19500 is refused (inside the mask-off animation) and stays dark.
+const hallLitAt = t => t >= 9530 && t < 9565;
 function buildTrace() {
   const lines = ['# schema=fnaf2-frame-trace-v3', 'seq\timage_ns\telapsed_ns\tcallback_ns\tinterval_ns\tgrid_mean_luma\tscreen_identity\tmask_luma\tmonitor_luma\tmask_downstroke\tmonitor_downstroke\tgrid_hex'];
   let seq = 0;
@@ -72,7 +80,7 @@ function buildTrace() {
     if (t > 20090 && t < 20150) continue;
     const [mask, monitor] = strokes[signatureAt(t)];
     const imageNs = Math.round((NIGHT_GO + t) * 1e6);
-    lines.push([seq += 1, imageNs, imageNs, imageNs, 0, 10, 2, 0, 0, mask, monitor, ''].join('\t'));
+    lines.push([seq += 1, imageNs, imageNs, imageNs, 0, 10, 2, 0, 0, mask, monitor, gridHex(hallLitAt(t))].join('\t'));
   }
   return lines.join('\n') + '\n';
 }
@@ -152,7 +160,30 @@ check(maskTap.atEarly.preSignature === 'monitor-up' && maskTap.atLate.preSignatu
 check(maskTap.status === 'MISSING', 'and the mask never came on');
 // Holds with no readable effect are UNGRADED, never MISSING.
 check(byKey.get('toys-5@10570').status === 'UNGRADED', 'a wind hold is ungraded');
-check(byKey.get('toys-2@9500').status === 'UNGRADED', 'a hall hold is ungraded');
+// The hall is graded from the grid cells over FOXY_HALL, on office frames only.
+check(byKey.get('toys-2@9500').status === 'LIT' && byKey.get('toys-2@9500').atLate.landedAfterMs <= 60,
+  `the cycle-0 hall tap reads LIT within two frames, got ${JSON.stringify(byKey.get('toys-2@9500').atLate)}`);
+check(byKey.get('toys-2@19500').status === 'DARK', `the refused cycle-1 hall tap reads DARK, got ${byKey.get('toys-2@19500').status}`);
+check(report.summary.hall.lit === 1 && report.summary.hall.dark === 1 && report.summary.hall.darkAt.includes('toys-2@19500'),
+  `hall summary counts one lit and one dark, got ${JSON.stringify(report.summary.hall)}`);
+// A trace without grid_hex leaves the hall UNREADABLE rather than DARK.
+{
+  const bare = parseStrokeTrace(buildTrace().split('\n').map(line => line.split('\t').slice(0, 11).join('\t')).join('\n'));
+  const bareReport = audit({ events, plan, trace: bare });
+  check(bareReport.contacts.find(row => row.id === 'toys-2' && row.atMs === 9500).status === 'UNREADABLE',
+    'no grid_hex means an unreadable hall, never a dark one');
+}
+// The ROI constants match PixelWatch.java, the one place they are defined.
+{
+  const java = readFileSync(new URL('../../android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java', import.meta.url), 'utf8');
+  const constant = name => Number(java.match(new RegExp(`${name}\\s*=\\s*(\\d+)`))[1]);
+  check(constant('NATIVE_WIDTH') === HALL_ROI.nativeWidth && constant('NATIVE_HEIGHT') === HALL_ROI.nativeHeight &&
+    constant('FOXY_HALL_X') === HALL_ROI.x && constant('FOXY_HALL_Y') === HALL_ROI.y &&
+    constant('FOXY_HALL_WIDTH') === HALL_ROI.width && constant('FOXY_HALL_HEIGHT') === HALL_ROI.height,
+    'HALL_ROI matches PixelWatch.java');
+  check(hallCells().length === 20 && hallLumaOf(gridHex(true)) === 255 && hallLumaOf(gridHex(false)) === 0 && hallLumaOf('') === null,
+    'the hall covers 20 cells (cols 13-17, rows 2-5) and its luma reads the grid');
+}
 
 check(report.summary.coveredAndLost.includes('toys-3@20100'), 'summary names the covered-and-lost contact');
 check(report.summary.ambiguous.length === 0, `nothing is ambiguous across a 20 ms bracket, got ${report.summary.ambiguous}`);

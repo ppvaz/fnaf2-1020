@@ -77,6 +77,49 @@ export const ACTUATION_LATENCY_BOUNDS_MS = Object.freeze([30, 110]);
 export const ANCHOR_CONTACT_MAX_MS = 50;
 
 /**
+ * The hall ROI, from android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java
+ * (NATIVE_WIDTH/HEIGHT, FOXY_HALL_X/Y/WIDTH/HEIGHT). test-tap-stall-audit.mjs
+ * reads the Java file and refuses a drift. The frame-trace v3 schema carries
+ * no foxy_hall reducer, only the 20x9 grid_hex, so the hall is read from the
+ * grid cells that rectangle covers -- and ONLY on frames whose strokes read
+ * office: hall-flash-metric.mjs was retracted on 2026-09-12 for scoring the
+ * camera-monitor screen, which is what reading this rectangle without that
+ * gate does.
+ */
+export const HALL_ROI = Object.freeze({ nativeWidth: 2400, nativeHeight: 1080,
+  x: 1650, y: 300, width: 450, height: 400, gridCols: 20, gridRows: 9 });
+
+/** Lit hall frames read ~45 on this grid, dark ones 0-3 (strokes3, contact200a). */
+export const HALL_LIT_MIN = 20;
+
+/** A 33 ms flash shows for two frames starting 20-40 ms after the tap. */
+export const HALL_WINDOW_MS = 160;
+
+/** Grid cells (row-major indices) the hall rectangle covers. */
+export function hallCells(roi = HALL_ROI) {
+  const cellW = roi.nativeWidth / roi.gridCols;
+  const cellH = roi.nativeHeight / roi.gridRows;
+  const cells = [];
+  for (let row = 0; row < roi.gridRows; row += 1)
+    for (let col = 0; col < roi.gridCols; col += 1)
+      if (col * cellW < roi.x + roi.width && (col + 1) * cellW > roi.x &&
+          row * cellH < roi.y + roi.height && (row + 1) * cellH > roi.y)
+        cells.push(row * roi.gridCols + col);
+  return cells;
+}
+
+const HALL_CELLS = hallCells();
+const cellLuma = rgb => ((77 * ((rgb >> 16) & 255) + 150 * ((rgb >> 8) & 255) + 29 * (rgb & 255)) >> 8);
+
+/** Mean luma of the hall cells of one grid_hex field, or null when absent. */
+export function hallLumaOf(gridHex) {
+  if (typeof gridHex !== 'string' || gridHex.length < HALL_ROI.gridCols * HALL_ROI.gridRows * 6) return null;
+  let sum = 0;
+  for (const cell of HALL_CELLS) sum += cellLuma(parseInt(gridHex.slice(cell * 6, cell * 6 + 6), 16));
+  return sum / HALL_CELLS.length;
+}
+
+/**
  * How long after a contact its effect must show in the strokes before it is
  * MISSING. Monitor lowering is fully visible at ~382.5 ms (native trace,
  * 2026-09-11); the mask-off animation is ~220 ms; raising and masking are
@@ -108,6 +151,7 @@ export function parseStrokeTrace(text) {
       screenIdentity: Number(field[6]),
       maskButtonDownstroke: Number(field[9]),
       monitorButtonDownstroke: Number(field[10]),
+      hallLuma: hallLumaOf(field[11]?.trim()),
     });
   }
   return rows;
@@ -145,6 +189,13 @@ function expectation(action) {
     return action.targetMaskOn
       ? { name: 'mask-on', proofs: [proof('mask-on', 300)], inverse: 'office' }
       : { name: 'mask-off', proofs: [proof('office', 500), proof('monitor-up', 1200)], inverse: 'mask-on' };
+  // The hall flash: proven by the hall cells lighting while the strokes read
+  // office. The engine refuses the flash during the mask-off animation
+  // (plant-model.js maskFullyOff: "the post-mask flash lockout IS that
+  // animation"), so DARK is a refused or lost flash -- and, per the dump, an
+  // upper bound: the light stays on during hall movement, which renders dark.
+  if (action.control === 'hallLight')
+    return { name: 'hall-lit', hall: true, proofs: [], inverse: null, windowMs: HALL_WINDOW_MS + d };
   return null;
 }
 
@@ -306,7 +357,8 @@ function gradeContacts(contacts, trace, offsetMs, released) {
     };
     let status = 'UNGRADED';
     let landedAfterMs = null;
-    if (contact.expect) {
+    if (contact.expect?.hall) status = 'HALL'; // graded once on the midpoint clock, see gradeHall
+    else if (contact.expect) {
       const expect = contact.expect;
       const longest = Math.max(...expect.proofs.map(p => p.windowMs));
       if (preSignature === null) status = 'UNREADABLE';
@@ -325,6 +377,33 @@ function gradeContacts(contacts, trace, offsetMs, released) {
     return { startAt, preSignature, maxGapMs: Math.round(maxGapMs * 10) / 10,
       coveredByStall, buttonAbsent, status, landedAfterMs };
   });
+}
+
+/**
+ * The hall flash is graded ONCE, on the bracket's midpoint, with the window
+ * widened by the half-bracket: the flash is two frames (33 ms) and the hall
+ * tap sits ~17 ms after the office appears, so grading it at each end of an
+ * 80 ms bracket puts the pre-frame on the mask-off animation at one end and
+ * the flash outside the window at the other, and every tap reads AMBIGUOUS.
+ * The screen gate is on the frames themselves: a lit frame counts only if its
+ * strokes read office, and a window with no office frame at all is UNREADABLE.
+ */
+function gradeHall(contact, trace, offsetMs, halfBracketMs, released) {
+  const startAt = released + contact.atMs;
+  const from = startAt - halfBracketMs;
+  const to = startAt + contact.expect.windowMs + halfBracketMs;
+  let office = 0;
+  let litAfterMs = null;
+  for (const row of trace) {
+    const wallMs = row.imageMs + offsetMs;
+    if (wallMs < from) continue;
+    if (wallMs > to) break;
+    if (signatureOf(row) !== 'office' || row.hallLuma === null) continue;
+    office += 1;
+    if (row.hallLuma >= HALL_LIT_MIN) { litAfterMs = Math.round(wallMs - startAt); break; }
+  }
+  const status = !office ? 'UNREADABLE' : litAfterMs === null ? 'DARK' : 'LIT';
+  return { startAt, status, landedAfterMs: litAfterMs, officeFrames: office };
 }
 
 const LOST = new Set(['MISSING', 'INVERTED']);
@@ -356,11 +435,18 @@ export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CON
   const atEarly = gradeContacts(contacts, trace, clock.earlyOffsetMs, released);
   const atLate = gradeContacts(contacts, trace, clock.lateOffsetMs, released);
 
+  const midOffset = (clock.earlyOffsetMs + clock.lateOffsetMs) / 2;
   const graded = contacts.map((contact, index) => {
     const early = atEarly[index];
     const late = atLate[index];
     if (early.status === 'OUTSIDE_TRACE' || late.status === 'OUTSIDE_TRACE')
       return { ...contact, status: 'OUTSIDE_TRACE' };
+    if (contact.expect?.hall) {
+      const hall = gradeHall(contact, trace, midOffset, clock.bracketMs / 2, released);
+      return { ...contact, ...hall, buttonAbsent: false, coveredByStall: early.coveredByStall && late.coveredByStall,
+        buttonAbsentAmbiguous: false, coveredAmbiguous: early.coveredByStall !== late.coveredByStall,
+        maxGapMs: Math.max(early.maxGapMs, late.maxGapMs), atEarly: early, atLate: late };
+    }
     const agree = early.status === late.status;
     return {
       ...contact,
@@ -383,6 +469,8 @@ export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CON
   const lost = inTrace.filter(row => LOST.has(row.status));
   const covered = inTrace.filter(row => row.coveredByStall);
   const absent = inTrace.filter(row => row.buttonAbsent);
+  const hall = inTrace.filter(row => row.expect?.hall);
+  const hallDark = hall.filter(row => row.status === 'DARK');
   const ambiguous = inTrace.filter(row => row.status === 'AMBIGUOUS' || row.buttonAbsentAmbiguous || row.coveredAmbiguous);
 
   // Physics check on the bracket: an effect cannot be rendered in under one
@@ -418,9 +506,14 @@ export function audit({ events, plan, trace, referenceContactsMs = REFERENCE_CON
       buttonAbsentAtContact: absent.map(key),
       ambiguous: ambiguous.map(key),
       nightTapsPriced: nightTaps,
+      hall: { lit: hall.filter(row => row.status === 'LIT').length, dark: hallDark.length,
+        unreadable: hall.filter(row => row.status === 'UNREADABLE').length,
+        ambiguous: hall.filter(row => row.status === 'AMBIGUOUS').length,
+        darkAt: hallDark.map(key) },
     },
     exposure: exposureTable,
-    verdict: lost.length || absent.length ? 'CONTACT_LOST' : ambiguous.length ? 'AMBIGUOUS' : 'ALL_CONTACTS_LANDED',
+    verdict: lost.length || absent.length ? 'CONTACT_LOST' : hallDark.length ? 'HALL_DARK'
+      : ambiguous.length ? 'AMBIGUOUS' : 'ALL_CONTACTS_LANDED',
   };
 }
 
@@ -493,6 +586,13 @@ export function formatReport(report) {
         `  [early: ${side(row.atEarly)} | late: ${side(row.atLate)}]`);
     }
   } else lines.push('no contact was covered by a stall, arrived with its button absent, or missed its effect');
+  const hall = summary.hall;
+  if (hall.lit + hall.dark + hall.unreadable + hall.ambiguous)
+    lines.push(`hall flashes (grid cells over PixelWatch FOXY_HALL, read on office frames only): lit ${hall.lit}, ` +
+      `DARK ${hall.dark}, unreadable ${hall.unreadable}, ambiguous ${hall.ambiguous}` +
+      `${hall.dark ? ' -- dark is an upper bound on refused flashes (the light stays on during hall movement, which renders dark); ' +
+        'the engine refuses a flash inside the mask-off animation' : ''}` +
+      `${hall.darkAt.length ? '\n  dark at ' + hall.darkAt.join(' ') : ''}`);
   lines.push(`exposure of a contact to this trace's stalls (clock-free), priced over the ${summary.nightTapsPriced} taps the plan schedules per night:`);
   lines.push('  contact   exposure   expected lost/night   P(zero lost)');
   for (const row of table)
@@ -535,7 +635,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const text = process.argv.includes('--json') ? JSON.stringify(report, null, 2)
       : formatReport(report) + (process.argv.includes('--transitions') ? '\n' + formatTransitions(report, trace, plan) : '');
     process.stdout.write(text + '\n');
-    process.exit(report.verdict === 'CONTACT_LOST' ? 3 : 0);
+    process.exit(report.verdict === 'CONTACT_LOST' || report.verdict === 'HALL_DARK' ? 3 : 0);
   } catch (error) {
     process.stderr.write(`${error.message}\n`);
     process.exit(2);

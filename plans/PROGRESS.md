@@ -5128,8 +5128,24 @@ no night) published strokes3's verdict as its own — it now reads the run's own
 glob fix, so the two instruments that needed its trace never ran on it — it is
 regraded into `grade.regrade-20260912.log` beside the original.
 
-Open: `camdropMonitorMs` and `hallMs` are still 33 ms after the binding, and
-the hall taps are the contacts the exposure now points at; the helper clock is
-only bracketed by the gate reads (~180 ms) and narrowed by a stated, unmeasured
-30–110 ms actuation latency — `hid-transition-probe.mjs` is the instrument
-that would measure it.
+The hall is gradable from the same trace, and the audit now does it: the
+20x9 grid cells over PixelWatch's `FOXY_HALL`, read only on frames whose
+strokes say office (the retracted hall-flash-metric scored the camera screen
+for want of that gate). A lit flash is two frames at luma ~45 starting 20–40 ms
+after the 33 ms hall tap; dark is 0–3. Census: strokes3 (mask-off 33 ms) lit 9,
+dark 6; contact200a attempt 1 (mask-off 200 ms) lit 15, dark 21; attempt 2
+lit 7, dark 11. The engine refuses a flash inside the mask-off animation
+(`plant-model.js` `maskFullyOff`), and the loop's hall tap at +9500 clears
+that ~244 ms animation by ~56 ms — the mistake-7 shape on a third knob. Dark is
+an upper bound (the light stays on during hall movement, which renders dark),
+but 21 of 36 is not movement. The 372.5 s death is not the epoch: the delivered
+epoch was 94.9 ± 33 ms, 21.7 ms outside the puppet band, and inside that band
+the model's puppet deaths land at 28–108 s, never near 372 s. A night that lit
+the hall 15 times in 36 cycles points at Foxy; no cause model fired, so that is
+the hypothesis, not a finding. A `hallOffsetMs` sweep (9500–9900, nights 5, 1,
+2, 6, 7, 3000 seeds) is the next model question.
+
+Open: `camdropMonitorMs` (the peer session is taking it to 200) and the hall
+tap's ~56 ms lockout slack; the helper clock is only bracketed by the gate
+reads (~180 ms) and narrowed by a stated, unmeasured 30–110 ms actuation
+latency — `hid-transition-probe.mjs` is the instrument that would measure it.
