@@ -80,7 +80,12 @@ fi
 # Cue Helper native frame trace, pulled by `query-cue-helper.sh trace stop`
 # into captures/frame-traces/. Only present when a run asked for one.
 FRAME_TRACE=""
-for candidate in "$CAPTURES/frame-traces/$RUN".* "$CAPTURES/frame-traces/$RUN"; do
+# The helper names the file LABEL-<startNs>.tsv, so the run id is a HYPHEN
+# prefix, not a dot stem: on 2026-09-12 (night5-strokes3) an 11 MB trace was
+# captured, pulled and then ignored because only "$RUN".* was globbed, and the
+# pipeline reported "frame trace: none" for a trace sitting next to it.
+for candidate in "$CAPTURES/frame-traces/$RUN".* "$CAPTURES/frame-traces/$RUN"-* \
+                 "$CAPTURES/frame-traces/$RUN"; do
   [ -f "$candidate" ] && FRAME_TRACE="$candidate"
 done
 KEEP="$CAPTURES/screencheck-keep/$RUN"
@@ -189,7 +194,17 @@ step() {
   # ffmpeg/Python/Node; timeout's --foreground keeps Ctrl-C directed at the
   # diagnostic rather than leaving a decoder behind. nice makes an explicitly
   # requested grade less likely to make the interactive desktop unusable.
-  limited "$@" || { echo "  ^ FAILED (resource-limited or diagnostic error)"; fail=1; }
+  # Exit 3 means the instrument ran and is reporting something about the RUN
+  # (a dark sweep, a night that died before 1 AM). Calling that a failure
+  # teaches the reader to ignore the loudest lines in the log.
+  limited "$@" || {
+    local status=$?
+    if [ "$status" -eq 3 ]; then
+      echo "  ^ a result about the run, not an instrument failure"
+    else
+      echo "  ^ FAILED (resource-limited or diagnostic error)"; fail=1
+    fi
+  }
   kill "$beat" 2>/dev/null || true
   wait "$beat" 2>/dev/null || true
   elapsed=$(( $(date +%s) - started ))

@@ -266,8 +266,22 @@ def cmd_grade(a):
         detail = "  ".join(f"cam{c:02d}={'lit' if per[c] else 'dark'}" for c in want)
         print(f"  sweep {s + 1:2d}: {detail}   -> {'LIT' if ok else 'DARK'}")
     print(f"summary: {lit_sweeps}/{total} sweeps lit (>=2 of 3 cameras)")
+    # Exit 3 is grade-run.sh's "information about the run, not an instrument
+    # failure" code, the same one clocktrace.mjs uses for a night that died
+    # before 1 AM. A dark sweep IS the finding: the camera light did not
+    # render. Exiting 1 made grade-run print "FAILED (resource-limited or
+    # diagnostic error)" over a real result, which is an invitation to
+    # dismiss it -- on 2026-09-12 (night5-strokes3) all three cameras read
+    # dark and the line was labelled a tool fault.
+    if total == 0:
+        # And this used to pass SILENTLY: `0 < 0` is false, so a run with no
+        # gradable sweep at all -- the louder of the two outcomes -- exited 0
+        # and said nothing (night5-strokes2, same day).
+        print("NO GRADABLE SWEEP: no sweep window was found in this run, so "
+              "this instrument says nothing about whether the light fired.")
+        sys.exit(3)
     if lit_sweeps < total:
-        sys.exit(1)
+        sys.exit(3)
 
 
 def main():
