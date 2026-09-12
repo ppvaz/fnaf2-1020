@@ -34,29 +34,57 @@
     "verifiedAtMs": 6890,
     "phaseLagMs": 0,
     "phaseLagNote": "observe-once never parks the HID stream, so it contributes no suffix shift at all. This removes the 1320 ms and 6695 ms lags the 2026-09-11 blocking runs measured, and it did not save the night.",
-    "cameras": { "cam9": 194, "cam11": 96 }
+    "cameras": {
+      "cam9": 194,
+      "cam11": 96
+    }
   },
   "gapA_origin": {
     "finding": "the night origin, not the arm, is the uncontrolled phase term",
     "bracketedByMs": 1852,
     "errorVersusFirstNightFrameMs": "UNKNOWN",
-    "observationCadenceMs": { "min": 3, "p50": 1986, "max": 11301 },
+    "observationCadenceMs": {
+      "min": 3,
+      "p50": 1986,
+      "max": 11301
+    },
     "cause": "apps/device/src/modern-campaign-ports.js supplies the executor's `observe` as lifecycle(), which runs a full `adb exec-out screencap -p` at 2400x1080 into tools/device/lifecycle-observe.py on every poll. The executor's own poll interval is 250 ms, so the ~1.7 s residual is the capture-and-classify round trip, not the schedule.",
     "why it governs": "the model's response to delivered phase repeats on a 1000 ms game second and loses on [116.67,166.67), [316.67,366.67), [416.67,800) and [916.67,966.67) -- 53.3% of phases. A 1852 ms bracket is wider than the whole period, so the delivered phase is unconstrained and the model's own uncontrolled-phase result, 1375/3000, is the ceiling for any arm mode until the origin is pinned.",
-    "candidate": "the native Cue Helper read already reports screen=FNAF2_NIGHT with a visualCaptureAt timestamp and visualCaptureUncertaintyMs 0 at ~43 ms detector latency, and the executor already calls it for control-effect sampling. Pinning the ORIGIN from that stream while leaving the Python lifecycle classifier as the AUTHORITY on whether a night is running respects the rule that a detector which knows one way to be dead must not be what says you are alive. Not implemented; not measured on device."
+    "candidate": "the native Cue Helper read already reports screen=FNAF2_NIGHT with a visualCaptureAt timestamp and visualCaptureUncertaintyMs 0 at ~43 ms detector latency, and the executor already calls it for control-effect sampling. Pinning the ORIGIN from that stream while leaving the Python lifecycle classifier as the AUTHORITY on whether a night is running respects the rule that a detector which knows one way to be dead must not be what says you are alive. Not implemented; not measured on device.",
+    "secondOriginPath": "the 2026-09-12T00-50 run stamped hid.night-go with source `intro-handoff`, not `lifecycle`: in shared mode startSharedSchedule() records the origin from the handoff request instead. There are therefore TWO origin paths and the refinement added in this session covers only the lifecycle one. Which path a run takes was not predicted in advance and is itself open."
   },
   "gapB_acceptance": {
-    "finding": "two steady-loop presses are systematically not accepted by the game",
+    "finding": "one steady-loop press is systematically not accepted by the game; a second apparent miss was the OBSERVER being blind and is retracted",
     "graded": 25,
-    "tally": { "UNKNOWN": 11, "MISSING": 9, "PASS": 4, "UNSTABLE": 1 },
+    "tally": {
+      "UNKNOWN": 11,
+      "MISSING": 9,
+      "PASS": 4,
+      "UNSTABLE": 1
+    },
     "systematicMisses": [
-      { "action": "toys-3 monitorUp->true", "planOffsetMs": 10100, "missingCycles": 4, "totalCycles": 5,
-        "precededBy": "toys-1 maskOn->false at plan offset 9200, i.e. 900 ms earlier" },
-      { "action": "toys-7 maskOn->true", "planOffsetMs": 14400, "missingCycles": 4, "totalCycles": 5,
-        "precededBy": "toys-6 monitorUp->false at plan offset 14000, i.e. 400 ms earlier" }
+      {
+        "action": "toys-7 maskOn->true",
+        "planOffsetMs": 14400,
+        "missingCycles": 4,
+        "totalCycles": 5,
+        "precededBy": "toys-6 monitorUp->false at plan offset 14000, i.e. 400 ms earlier",
+        "verdict": "ACTUATOR-GAP",
+        "backing": "the mask rule positively read maskOn=true 17 times elsewhere in the same run (34 true reads across all samples), so it demonstrably can see the state it graded MISSING here"
+      }
     ],
-    "caveat": "MISSING means the target state was positively not observed; UNKNOWN rows (monitor-state-unavailable, screen-identity, insufficient-frames) are observation failures and are NOT counted as losses. The four PASS rows prove the grader can see a successful transition, so the MISSING rows are not a blind instrument.",
-    "candidate": "the mask seam is the standing explanation (tools/device/actuator.mjs SEAM_BANDS): a monitor press inside the mask-off animation has no control under it. `loopContactMs` is already flagged in minus-toys-plan.mjs KNOBS0 as the experiment worth running at 200 ms, because every parity inversion repaired on 2026-09-09 was a 33 ms tap. The per-instruction margin map allows the mask-off to move 198 ms early and the monitor raise 198 ms late, which would widen the 900 ms separation to about 1300 ms. Neither is measured yet."
+    "caveat": "MISSING means the target state was positively not observed. That is only evidence of a lost press when the grading rule has shown it can read that state at all, so run-report.mjs now qualifies every systematic miss by the rule's positive-read count in the same run and marks the rest UNPROVEN-OBSERVER-BLIND.",
+    "candidate": "for the surviving miss, the mask seam is the standing explanation (tools/device/actuator.mjs SEAM_BANDS). `loopContactMs: 200` is flagged in minus-toys-plan.mjs KNOBS0 as the experiment worth running because every parity inversion repaired on 2026-09-09 was a 33 ms tap; it gates 3000/3000 normal and worst on night 5, as does maskOffMs=9050 with raiseMs=10250, and so does the combination. None is bound to a qualification and none is tested on device.",
+    "retractedMisses": [
+      {
+        "action": "toys-3 monitorUp->true",
+        "planOffsetMs": 10100,
+        "missingCycles": 4,
+        "totalCycles": 5,
+        "verdict": "UNPROVEN-OBSERVER-BLIND",
+        "reason": "the monitor rule read monitorUp=true only 2 times in 266 samples across this run, while the schedule raised the monitor 6 times and the recording shows the camera feed up. Its MISSING rows are the rule failing to see a raised monitor, not the press being lost. modern-campaign-ports.js already records the same blindness on Night 5 (campaign-2026-09-09T14-14-39: 41 observations, 40 false, 1 true). This was first written up here as an actuator gap and is retracted."
+      }
+    ]
   },
   "delivery": {
     "finding": "the device-local stream itself does not drift",
@@ -82,6 +110,7 @@
     "by": "tools/device/night5-run.sh exit trap, which ran through the operator interrupt"
   },
   "retractions": [
-    "An earlier statement in this session that Night 5 tolerates at most 408 ms of arm-release lag was WRONG. It came from tools/device/minus-toys-margin.mjs's edge() scan, which stops at the first failure and is only valid for a contiguous basin. The response is banded and periodic, so 408 ms is one band edge and not a budget: the model scores 3000/3000 at 800-1400 ms of lag. The margin tool now reports bands and refuses the single-number reading, and phase-reconstruct.mjs's model.lossBands was already the authority."
+    "An earlier statement in this session that Night 5 tolerates at most 408 ms of arm-release lag was WRONG. It came from tools/device/minus-toys-margin.mjs's edge() scan, which stops at the first failure and is only valid for a contiguous basin. The response is banded and periodic, so 408 ms is one band edge and not a budget: the model scores 3000/3000 at 800-1400 ms of lag. The margin tool now reports bands and refuses the single-number reading, and phase-reconstruct.mjs's model.lossBands was already the authority.",
+    "An earlier version of THIS record named `toys-3 monitorUp->true` as a systematic actuator gap. It is retracted: the monitor rule is near-blind to a raised monitor on this night, so the MISSING rows are observation failure. The instrument was changed rather than only the text -- run-report.mjs now refuses to call a miss systematic unless the same rule positively read that target state at least 5 times in the same run."
   ]
 }

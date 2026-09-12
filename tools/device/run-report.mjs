@@ -40,7 +40,14 @@ export function report(events) {
   const nightGo = first('hid.night-go');
   const released = first('hid.night-go-released');
   const armVerified = first('arm.verified');
-  const armFailed = first('arm.failed') ?? first('arm.unresolved');
+  // `arm.failed` aborts the run. `arm.unresolved` does NOT: in observe-once
+  // mode an unreadable camera frame leaves the one-shot observation unresolved
+  // and the night keeps running, so it is an arm STATUS and never a stop
+  // reason. Reporting it as one made a run that died of lifecycle static read
+  // as an arm failure.
+  const armAborted = first('arm.failed');
+  const armUnresolved = first('arm.unresolved');
+  const armFailed = armAborted ?? armUnresolved;
   const phaseInvalid = first('phase.invalid');
   const gates = all('control.gate');
   const gateAborts = all('control.gate.abort');
@@ -60,19 +67,50 @@ export function report(events) {
     into[event.status ?? 'UNKNOWN'] = (into[event.status ?? 'UNKNOWN'] ?? 0) + 1;
     return into;
   }, {});
+  // Before any MISSING row is called an actuator gap, ask whether the rule
+  // that graded it can see the state it was looking for AT ALL in this run.
+  //
+  // On the 2026-09-12 observe-once run the monitor rule read `monitorUp: true`
+  // twice in 266 samples while the schedule raised the monitor six times and
+  // the recording shows the camera feed up -- so its MISSING rows are the rule
+  // being blind, not the press being lost. Reporting them as an actuator gap
+  // is exactly the mistake the register warns about: an observation-based
+  // claim has to cite the measured row that backs it. A miss is only called
+  // systematic when the same rule positively read that target elsewhere.
+  const positiveReads = new Map();
+  for (const event of effects) {
+    const samples = [...(event.samples ?? [])];
+    for (const sample of samples) {
+      for (const signal of ['monitorUp', 'maskOn']) {
+        const value = sample?.[signal];
+        if (value === true || value === false) {
+          const key = `${signal}->${value}`;
+          positiveReads.set(key, (positiveReads.get(key) ?? 0) + 1);
+        }
+      }
+    }
+  }
+
   // A press that is MISSING on most of its cycles is a systematic actuator
   // gap, not a bad frame. Group by the action and the state it asked for.
   const byAction = new Map();
   for (const event of effects) {
     const key = `${event.actionId} ${event.signal}->${event.target}`;
-    const row = byAction.get(key) ?? { key, total: 0, missing: 0, pass: 0 };
+    const row = byAction.get(key) ?? { key, total: 0, missing: 0, pass: 0,
+      signal: event.signal, target: event.target };
     row.total += 1;
     if (event.status === 'MISSING') row.missing += 1;
     if (event.status === 'PASS') row.pass += 1;
     byAction.set(key, row);
   }
+  const MIN_POSITIVE_READS = 5;   // below this the rule has not shown it can see the state
   const systematicMisses = [...byAction.values()]
     .filter(row => row.total >= 2 && row.missing * 2 > row.total)
+    .map(row => {
+      const seen = positiveReads.get(`${row.signal}->${row.target}`) ?? 0;
+      return { ...row, positiveReadsOfTarget: seen,
+        verdict: seen >= MIN_POSITIVE_READS ? 'ACTUATOR-GAP' : 'UNPROVEN-OBSERVER-BLIND' };
+    })
     .sort((a, b) => b.missing - a.missing);
 
   const anr = all('device.anr').find(event => (event.count ?? 0) > 0);
@@ -103,9 +141,10 @@ export function report(events) {
   let stop = UNKNOWN;
   let stopDetail = '';
   if (phaseInvalid) { stop = 'phase-invalid'; stopDetail = phaseInvalid.reason ?? ''; }
-  else if (armFailed) { stop = 'arm-unresolved'; stopDetail = armFailed.reason ?? ''; }
+  else if (armAborted) { stop = 'arm-failed'; stopDetail = armAborted.reason ?? ''; }
   else if (gateAborts.length) { stop = 'gate-abort'; stopDetail = gateAborts[0].reason ?? ''; }
   else if (abortReason) { stop = 'campaign-abort'; stopDetail = abortReason; }
+  else if (armUnresolved) { stop = 'arm-unresolved'; stopDetail = armUnresolved.reason ?? ''; }
   else if (anr) { stop = 'device-anr'; stopDetail = `${anr.count} traces`; }
   else if (interrupted) { stop = 'operator-interrupt'; stopDetail = 'SIGINT'; }
   else if (first('campaign.terminal.actuator-stopped')) stop = 'actuator-stopped';
@@ -121,7 +160,9 @@ export function report(events) {
       samples: armSamples.length,
       verifiedAtMs: armVerified?.elapsedMs ?? null,
       armReadyAtMs, phaseLagMs,
-      status: armVerified ? 'VERIFIED' : (armFailed ? 'UNRESOLVED' : UNKNOWN),
+      status: armVerified ? 'VERIFIED'
+        : (armAborted ? 'FAILED' : (armUnresolved ? 'UNRESOLVED (non-fatal)' : UNKNOWN)),
+      unresolvedReason: armUnresolved?.reason ?? null,
     },
     cycles: {
       gates: gates.length, agreed: agreed.length, corrected: corrected.length,
@@ -169,7 +210,12 @@ export function render(value) {
   row('press acceptance', value.effects.total
     ? `${value.effects.total} graded -- ${tally}` : 'no transition was graded');
   for (const miss of value.effects.systematicMisses)
-    row('  SYSTEMATIC MISS', `${miss.key} missing on ${miss.missing} of ${miss.total} cycles`);
+    row(miss.verdict === 'ACTUATOR-GAP' ? '  SYSTEMATIC MISS' : '  miss, but UNPROVEN',
+      `${miss.key} missing on ${miss.missing} of ${miss.total} cycles` +
+      (miss.verdict === 'ACTUATOR-GAP'
+        ? ` (the rule read this state ${miss.positiveReadsOfTarget}x elsewhere, so it can see it)`
+        : ` -- the rule read this state only ${miss.positiveReadsOfTarget}x in the whole run, ` +
+          'so this is observer blindness until the rule is fixed'));
   row('stop reason', value.stop.reason + (value.stop.detail ? ` (${value.stop.detail})` : ''));
   return lines.join('\n');
 }

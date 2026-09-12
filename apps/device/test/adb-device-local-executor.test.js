@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { stableHash } from '@fnaf2-1020/core/contracts';
-import { AdbDeviceLocalArtifactExecutor, compileDeviceLocalHidSchedule, renderDeviceLocalScript } from '../src/adb-device-local-executor.js';
+import { AdbDeviceLocalArtifactExecutor, compileDeviceLocalHidSchedule, renderDeviceLocalScript, sharedScheduleBody } from '../src/adb-device-local-executor.js';
 import { expandNightBlocks } from '../src/device-local-executor.js';
 
 const profile = JSON.parse(await readFile(new URL('../profiles/hid-mediaprojection.json', import.meta.url), 'utf8'));
@@ -120,8 +120,31 @@ assert.equal(armSchedule.gated.phaseBudgetMs, 2000,
 const observeOnceRequest = structuredClone(armRequest);
 observeOnceRequest.artifact.plans[0].armVerification.mode = 'observe-once';
 const observeOnceSchedule = compileDeviceLocalHidSchedule(observeOnceRequest, { readyDelayMs: 6000 });
-assert.equal(observeOnceSchedule.gated, undefined,
-  'observe-once arm verification must not park the HID stream');
+// Observe-once scopes to the ARM ONLY (Pedro, 2026-09-12). It must not park
+// the stream -- and it must still compile the per-cycle state gates, which the
+// old contract threw away with the blocking wait. A 2026-09-12 device run
+// under the old behaviour had zero gates, inverted mask parity at the 1 AM
+// edge, and nothing left that could repair it.
+assert.ok(observeOnceSchedule.gated,
+  'observe-once must still compile the per-cycle state gates');
+assert.deepEqual(observeOnceSchedule.gated.gates, armSchedule.gated.gates,
+  'observe-once must compile exactly the cycle gates blocking mode compiles');
+assert.deepEqual(observeOnceSchedule.gated.maskCorrection, armSchedule.gated.maskCorrection,
+  'observe-once must retain the same authored mask correction');
+assert.deepEqual(observeOnceSchedule.gated.remainderSegments, armSchedule.gated.remainderSegments,
+  'the two arm modes must differ only in the handover, never in the schedule');
+{
+  const parked = sharedScheduleBody(observeOnceSchedule, { armObserveOnce: false });
+  const unparked = sharedScheduleBody(observeOnceSchedule, { armObserveOnce: true });
+  assert.deepEqual(parked, observeOnceSchedule.gated.prefix,
+    'blocking hands over the prefix alone, which is what parks the stream');
+  assert.deepEqual(unparked,
+    [...observeOnceSchedule.gated.prefix, ...observeOnceSchedule.gated.remainderSegments[0]],
+    'observe-once must hand over the prefix AND the first gated segment, so ' +
+    'the stream runs through the arm point and adds no phase lag');
+  assert.ok(unparked.length > parked.length,
+    'the observe-once handover must be strictly longer than the parked one');
+}
 assert.equal(observeOnceSchedule.armObservation.firstWindAtMs, 2200,
   'observe-once verification must retain the authored first-wind boundary');
 assert.equal(observeOnceSchedule.armObservation.armReadyAtMs, armSchedule.gated.armReadyAtMs,

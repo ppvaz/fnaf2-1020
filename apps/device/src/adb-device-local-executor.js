@@ -29,10 +29,20 @@ const HID_BUS = 'usb';
 const DEFAULT_READY_DELAY_MS = 7000;
 const MAX_ARM_ATTEMPTS = 3;
 const ARM_SETTLE_MS = 600;
+// The native screen identity the Cue Helper reports for the office HUD, and
+// how often the origin anchor asks for it. The helper's own detector latency
+// was measured at 43 ms, so this cadence -- not the classifier round trip --
+// becomes the origin's resolution.
+const NATIVE_NIGHT_SCREEN = 'FNAF2_NIGHT';
+const NATIVE_ANCHOR_POLL_MS = 120;
 const ARM_CONFIRM_SAMPLES = 2;
 const ARM_OBSERVATION_WINDOW_MS = 3000;
 const STARTUP_GRACE_MS = 30000;
 const EXIT_CONFIRM_SAMPLES = 3;
+// Screens that end a scheduled night on their FIRST positive read once a night
+// has been observed. These are not animations a healthy run passes through,
+// and two of them put menu controls under the schedule's own tap coordinates.
+const TERMINAL_SCREENS = new Set(['title', 'gameover', 'sixam']);
 // The title HID is already ready when the intro observes the office. A
 // handoff that takes longer than this has already spent the model's measured
 // late margin, so the attempt is invalid rather than a silently phase-shifted
@@ -117,8 +127,14 @@ const SHARED_HID_RELEASE = line('report', {
   report: [1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 });
 
-function sharedScheduleBody(schedule) {
-  if (schedule.gated) return schedule.gated.prefix;
+export function sharedScheduleBody(schedule, { armObserveOnce = false } = {}) {
+  // Blocking mode hands over only the prefix and waits for the arm to confirm
+  // before the remainder is released. Observe-once hands over the prefix and
+  // the first gated segment together, so the stream never parks and adds no
+  // phase lag -- the later cycle gates are unchanged and still fire.
+  if (schedule.gated) return armObserveOnce
+    ? [...schedule.gated.prefix, ...schedule.gated.remainderSegments[0]]
+    : schedule.gated.prefix;
   const register = JSON.parse(schedule.lines[0]);
   const readyDelay = JSON.parse(schedule.lines[1]);
   if (register.command !== 'register' || readyDelay.command !== 'delay' ||
@@ -467,8 +483,19 @@ export function compileDeviceLocalHidSchedule(request, {
   addDelay(events, plan.timing.observeUntilMs - cursor);
   const armWindow = plan.armVerification
     ? compileArmWindow(request, actions) : undefined;
-  const blockingArm = plan.armVerification && (plan.armVerification.mode ?? 'blocking') === 'blocking';
-  const gated = blockingArm
+  // The cycle gates are compiled for BOTH arm modes.
+  //
+  // `observe-once` used to skip compileArmSegments entirely, which silently
+  // threw away the per-cycle state gates and the authored mask correction
+  // along with the blocking wait. The 2026-09-12 run showed what that costs:
+  // zero gates, a mask parity inversion at the 1 AM edge, and nothing left in
+  // the run that could repair it -- every later mask press was swallowed.
+  //
+  // Only the double-camera ARM is observed once. Everything else keeps
+  // observing, which is Pedro's standing direction (2026-09-12). The two modes
+  // now differ in one thing only: whether the opening prefix is PARKED on the
+  // arm observation, which is what costs delivered phase.
+  const gated = armWindow
     ? compileArmSegments(request, actions, register, plan, armWindow, gateTiming) : undefined;
   return Object.freeze({ schema: 'device-local-hid-schedule-v1', version: 1, night,
     readyDelayMs, phaseOffsetMs, actionCount: actions.length, plannedUntilMs: plan.timing.observeUntilMs,
@@ -1068,6 +1095,23 @@ export class AdbDeviceLocalArtifactExecutor {
     let armFailure = null;
     let armAttempt = 1;
     let nightObserved = false;
+    // The night ORIGIN, sharpened. `observe` is a full 2400x1080 screencap
+    // piped into the Python lifecycle classifier, so a night confirmed by it
+    // is stamped up to a capture-and-classify round trip after the frame that
+    // showed it: the 2026-09-11 observe-once run reconstructed
+    // origin.bracketedByMs = 1852 against a 1000 ms model phase period, which
+    // leaves the delivered phase unconstrained.
+    //
+    // The native Cue Helper read already names the screen at ~43 ms, so it can
+    // say WHEN inside the bracket the authority establishes. It is never
+    // allowed to say WHETHER: `observe` remains the authority on a night
+    // running, per the rule that a detector which knows one way to be dead is
+    // not what says you are alive. The refinement is clamped to the
+    // authority's own bracket, so it can only ever SHRINK it.
+    let nativeNightAt = null;
+    let nativeLastNotNightAt = null;
+    let lastNonNightObserveAt = null;
+    let nativeAnchorSamples = 0;
     /** @type {number | null} */
     let nightAnchoredAt = null;
     /** @type {number | null} */
@@ -1091,6 +1135,22 @@ export class AdbDeviceLocalArtifactExecutor {
     let completionTimer = null;
     /** @type {(phase: string, originAt: number, monitorTransitions: any[], maskTransitions: any[], options?: any) => void} */
     let startControlEffectLedger = () => {};
+    // Hoisted for the same reason `startControlEffectLedger` is: the shared
+    // night release can fire BEFORE execute() reaches the const that defines
+    // the real gate ledger, and a direct reference there is a temporal dead
+    // zone error that kills the run ("startGateLedger is not defined",
+    // observed on device 2026-09-12). The release records its origin; whoever
+    // is later -- the release or the definition -- starts the ledger.
+    let startGateLedgerHook = null;
+    let pendingGateLedgerAt = null;
+    const requestGateLedger = at => {
+      pendingGateLedgerAt = at;
+      if (startGateLedgerHook && schedule.gated) {
+        const origin = pendingGateLedgerAt;
+        pendingGateLedgerAt = null;
+        startGateLedgerHook(origin, schedule.gated);
+      }
+    };
     const recordNightGo = (at, source) => {
       if (nightAnchoredAt === null) nightAnchoredAt = at;
       if (nightGoEmitted) return;
@@ -1108,7 +1168,7 @@ export class AdbDeviceLocalArtifactExecutor {
         nightObserved = true;
         let firstWriteAt = null;
         try {
-          await feedShared(sharedScheduleBody(schedule), {
+          await feedShared(sharedScheduleBody(schedule, { armObserveOnce }), {
             onFirstWrite: at => {
               firstWriteAt = at;
               handoffDelayMs = at - requestedAt;
@@ -1131,6 +1191,13 @@ export class AdbDeviceLocalArtifactExecutor {
               schedule.gated.monitorTransitions.prefix, schedule.gated.maskTransitions.prefix,
               { originUncertaintyMs: 50, attempt: 1,
                 phaseEndMs: schedule.gated.armReadyAtMs });
+            // Observe-once never waits for an arm release, so the wall time
+            // that corresponds to plan cursor `armReadyAtMs` is simply where
+            // the unparked prefix ends. That is the gate ledger's origin, and
+            // it is started here rather than deferred: the release is the last
+            // moment that knows it, and a one-shot drain installed earlier in
+            // execute() would run BEFORE this ever set it.
+            if (armObserveOnce) requestGateLedger(firstWriteAt + schedule.gated.armReadyAtMs);
           } else {
             startControlEffectLedger('full', firstWriteAt,
               schedule.monitorTransitions, schedule.maskTransitions,
@@ -1440,6 +1507,12 @@ export class AdbDeviceLocalArtifactExecutor {
           reason: 'camera-pair-mismatch', expected: JSON.parse(expected), observed: JSON.parse(key) });
         await this.stopProcess();
       };
+      startGateLedgerHook = startGateLedger;
+      if (pendingGateLedgerAt !== null && schedule.gated) {
+        const origin = pendingGateLedgerAt;
+        pendingGateLedgerAt = null;
+        startGateLedger(origin, schedule.gated);
+      }
       const armObservationTask = armObserveOnce ? observeArmOnce() : (async () => {
         const gate = schedule.gated;
         // The arm taps only begin once night_go releases them, so the arm
@@ -1570,10 +1643,34 @@ export class AdbDeviceLocalArtifactExecutor {
         armFailure = error;
         await this.stopProcess();
       }) : Promise.resolve();
+      // Runs beside the authority, not instead of it. It only records WHEN the
+      // native read first named the night screen; nothing here releases a
+      // stream, ends a run, or decides that a night is running.
+      const nativeAnchor = (this.observe && typeof this.observeControlState === 'function')
+        ? (async () => {
+          while (!stopObserver && this.child === processIdentity && this.running &&
+                 nativeNightAt === null && !nightObserved) {
+            const startedAt = Date.now();
+            let sample = null;
+            try { ({ sample } = await readControlState()); } catch { sample = null; }
+            nativeAnchorSamples += 1;
+            if (sample?.screen === NATIVE_NIGHT_SCREEN) { nativeNightAt = startedAt; break; }
+            // A read that positively named some OTHER screen is the native
+            // stream's own lower bound on the transition. An UNKNOWN read
+            // names nothing and must not move it.
+            if (typeof sample?.screen === 'string' && sample.screen !== 'UNKNOWN')
+              nativeLastNotNightAt = startedAt;
+            const spent = Date.now() - startedAt;
+            if (spent < NATIVE_ANCHOR_POLL_MS)
+              await new Promise(resolve => setTimeout(resolve, NATIVE_ANCHOR_POLL_MS - spent));
+          }
+        })().catch(() => {})
+        : Promise.resolve();
       observer = this.observe ? (async () => {
         while (!stopObserver && this.child === processIdentity && this.running) {
           await new Promise(resolve => setTimeout(resolve, this.pollMs));
           if (stopObserver || this.child !== processIdentity || !this.running) break;
+          const observeStartedAt = Date.now();
           try {
             const state = this.observe ? await this.observe() : null;
             // A lifecycle observer that positively names any other screen has
@@ -1590,7 +1687,33 @@ export class AdbDeviceLocalArtifactExecutor {
                 // the shared title HID; waiting for the separate intro
                 // observer would spend the handoff budget on PNG retention
                 // and let a healthy run abort before its first contact.
-                recordNightGo(Date.now(), 'lifecycle');
+                // Clamp: the refined origin must lie inside the window the
+                // authority itself bracketed -- after the last frame it called
+                // NOT a night, and not after the capture that proved one. A
+                // native read outside that window is discarded rather than
+                // trusted, so a premature FNAF2_NIGHT on an intro or dark
+                // frame cannot pull the origin earlier than the evidence.
+                // The authority's own previous sample is the preferred lower
+                // bound. When the authority found the night on its first look
+                // it has none, and the native stream supplies one instead: the
+                // last read that positively named a DIFFERENT screen. Both are
+                // real observations; if neither exists the refinement is
+                // refused rather than guessed.
+                const lowerBound = lastNonNightObserveAt ?? nativeLastNotNightAt;
+                const refined = (nativeNightAt !== null && lowerBound !== null &&
+                  nativeNightAt >= lowerBound && nativeNightAt <= observeStartedAt)
+                  ? nativeNightAt : null;
+                this.onEvent({ type: 'origin.refined',
+                  authorityAtMs: observeStartedAt,
+                  authorityBracketFromMs: lastNonNightObserveAt,
+                  nativeBracketFromMs: nativeLastNotNightAt,
+                  bracketSource: lastNonNightObserveAt !== null ? 'authority'
+                    : (nativeLastNotNightAt !== null ? 'native' : 'none'),
+                  nativeAtMs: nativeNightAt,
+                  nativeSamples: nativeAnchorSamples,
+                  accepted: refined !== null,
+                  shrunkByMs: refined === null ? 0 : observeStartedAt - refined });
+                recordNightGo(refined ?? observeStartedAt, 'lifecycle');
                 if (sharedMode) {
                   try {
                     if (!sharedReleaseInFlight) await startSharedSchedule(Date.now());
@@ -1620,7 +1743,11 @@ export class AdbDeviceLocalArtifactExecutor {
               nightObserved = true;
               nonNightSamples = 0;
             } else if (!state) {
-              nonNightSamples = 0;
+              // An UNKNOWN classification withholds a vote; see the catch below.
+            } else if (!nightObserved) {
+              // The authority's own lower bound on the origin: it looked at a
+              // frame captured about now and did not call it a night.
+              lastNonNightObserveAt = observeStartedAt;
             }
             if (state === 'gameover' || state === 'sixam') {
               if (!armVerified) {
@@ -1629,6 +1756,18 @@ export class AdbDeviceLocalArtifactExecutor {
                   `viewing=${armVerification.viewing} last=${JSON.stringify(lastArmObservation)})`);
               }
               observedTerminal = state;
+              stopObserver = true;
+              await this.stopProcess();
+              break;
+            }
+            // Once a night has been seen, the TITLE is not a transient
+            // animation the way an intro or a dark frame is: the night is over
+            // and the schedule is now pressing into a menu. `coords.sh` puts
+            // New Game on that screen, so continuing to actuate there risks
+            // the save, not just the run. It stops on the first positive read,
+            // like gameover and sixam above.
+            if (nightObserved && TERMINAL_SCREENS.has(state)) {
+              observedExitState = state;
               stopObserver = true;
               await this.stopProcess();
               break;
@@ -1647,12 +1786,21 @@ export class AdbDeviceLocalArtifactExecutor {
               }
             }
           } catch {
-            // An unreadable frame breaks the consecutive evidence chain.
-            nonNightSamples = 0;
+            // An unreadable frame does NOT reset the evidence.
+            //
+            // It used to. The 2026-09-12 origin run read `state=title`
+            // alternating with `unknown=no-signature-matched` for over a
+            // minute while the schedule kept pressing into the title screen:
+            // every UNKNOWN zeroed the counter, so three CONSECUTIVE non-night
+            // samples never accumulated and the run could not end itself. An
+            // unreadable frame is an absence of evidence, so it withholds a
+            // vote rather than destroying the votes already cast.
           }
         }
       })() : Promise.resolve();
       await processPromise;
+      stopObserver = true;
+      await nativeAnchor;
       if (handoffFailure) throw handoffFailure;
       if (observedExitState)
         throw new Error(`device: lifecycle left night state (${observedExitState})`);
