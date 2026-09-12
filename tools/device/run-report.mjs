@@ -131,6 +131,13 @@ export function report(events) {
     ? armGoAt - nightAt - armReadyAtMs
     : (phaseInvalid?.phaseLagMs ?? null);
 
+  // The correction read-back moved OFF the gate's critical path on 2026-09-12:
+  // waiting for it cost up to 1000 ms of release delay against a mask window
+  // that tolerates +-185 ms, so the gate was killing the cycle it existed to
+  // rescue. It now lands afterwards as its own event, which is the first time
+  // "did the correction actually take?" can be answered without paying for the
+  // answer with the cycle.
+  const verifies = all('control.gate.verify');
   const corrected = gates.filter(gate => gate.status === 'CORRECTED');
   const agreed = gates.filter(gate => gate.status === 'AGREED');
   const gateLags = gates.map(gate => gate.gateLagMs).filter(Number.isFinite);
@@ -172,6 +179,14 @@ export function report(events) {
       deliveredFirstMs: delivered.length ? delivered[0] : null,
       deliveredLastMs: delivered.length ? delivered[delivered.length - 1] : null,
       correctedAtMs: corrected.map(gate => gate.gateAtMs),
+      correctionOutcomes: {
+        confirmed: verifies.filter(v => v.outcome === 'CORRECTION-CONFIRMED').length,
+        unconfirmed: verifies.filter(v => v.outcome === 'CORRECTION-UNCONFIRMED').length,
+        unread: verifies.filter(v => v.outcome === 'CORRECTION-UNREAD').length,
+        // A correction whose read-back never ran is not a failed correction:
+        // the night can simply have ended first, and it is best-effort.
+        notRead: Math.max(0, corrected.length - verifies.length),
+      },
     },
     effects: { total: effects.length, tally: effectTally, systematicMisses },
     stop: { reason: stop, detail: stopDetail, restarts: restarts.length, interrupted },
@@ -205,6 +220,11 @@ export function render(value) {
     : `${value.cycles.deliveredFirstMs} -> ${value.cycles.deliveredLastMs} ms`);
   if (value.cycles.correctedAtMs.length)
     row('corrections at', value.cycles.correctedAtMs.map(at => `${at} ms`).join(', '));
+    if (value.cycles.correctionOutcomes) {
+      const o = value.cycles.correctionOutcomes;
+      row('corrections landed', `${o.confirmed} confirmed, ${o.unconfirmed} unconfirmed, ` +
+        `${o.unread} unread, ${o.notRead} never read back`);
+    }
   const tally = Object.entries(value.effects.tally)
     .sort((a, b) => b[1] - a[1]).map(([status, count]) => `${count} ${status}`).join(', ');
   row('press acceptance', value.effects.total

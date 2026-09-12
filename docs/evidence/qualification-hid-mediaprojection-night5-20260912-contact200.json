@@ -1,0 +1,34 @@
+{
+  "schema": "qualification-v1",
+  "verdict": "PASS",
+  "claimLevel": "DEVICE_MEASURED",
+  "policyHash": "fnv1a-9011768d",
+  "modelHash": "minus-toys-engine-current-v1",
+  "sampleCount": 3000,
+  "evidenceId": "qualification-hid-mediaprojection-night5-20260912-contact200",
+  "qualifiedBy": "Pedro (operator)",
+  "approvedAt": "2026-09-12",
+  "authorization": "Pedro, 2026-09-12, in as many words: 'eu aprovo explicitamente a religa\u00e7ao do hash e a mudan\u00e7a no atuador'. He had already retracted, the same day, the standing refusal to lengthen a contact in the view region ('um toque prolongado dentro da regiao nao faz pan, isso e um mau entendido de quando nao sabiamos sobre o desync de estado de mascara/monitor'), which is what reopened this knob. He also asked, before this binding, whether the change degrades Nights 6 and 7; it does not.",
+  "supersedes": "qualification-hid-mediaprojection-night5-20260911-seam-corrected",
+  "scope": "fifth binding of the same measured hid-mediaprojection transport -- UHID game input via /system/bin/hid, MediaProjection visual observation via Cue Helper, one bounded device-local HID schedule per night with abort-on-gameover and releaseAll -- re-bound to the minus-toys story Night 5 winner with every press moved clear of the compiler's device timing floors (tools/device/campaign-toys-night5-winner.json, winnerHash fnv1a-2fc303f1, bundle replay fnv1a-924edf66, night-5 plan sha256 8155f1d7cf4699c44ace7b6754756cdcc4cfe894e33ad6e36a0d7aca73096445, profile hid-mediaprojection sha256 c929d673a056b4d7ef1839bccc4666986e2a1991b39232c0869046b0d68ae6e0)",
+  "planDelta": "One knob: loopContactMs 33 -> 200, the steady-loop tap length for the mask and monitor parity toggles. hallMs (33), contactMs (33) and camdropMonitorMs (33) are DELIBERATELY UNCHANGED so this binding tests one thing. LOOP0's frozen table moved with it (mask and monitor taps 33 -> 200); the hall row and the camdrop row are untouched.",
+  "whyItMoved": "MIN_CONTACT_MS and FUSION_POLL_MS are both 33 in recipe.mjs, so a 33 ms contact had zero slack against the poll that has to observe it -- the same zero-slack shape this session removed from MONITOR_MASK_READY_MS. The event dump makes a longer hold safe: the monitor flip is level-triggered with a one-shot latch (g257 raise, g258 re-arm when no touch is on the drop button, g614 lower), so a contact that fits between two event-loop ticks is invisible while a longer one still flips exactly once. On the night5-strokes3 native frame trace both CORRECTED cycles were lost 33 ms MONITOR taps inside capture stalls -- 2 of the only 3 stall-overlapped contacts out of ~75 -- and exposure per 420 s night is 1.49 expected lost taps at 33 ms against 0 at 200 ms. 200 rather than 100 because the longest observed interval was 96.8 ms and 100 would sit 3.2 ms above the measured maximum, which is the error being fixed.",
+  "bounds": "No new transport measurement was taken for this binding: it reuses the hid-mediaprojection transport qualified on 2026-09-06 and rebound since, and changes only a plan knob. The model CANNOT show a benefit here -- it does not simulate a swallowed tap, and scores 33, 100 and 200 identically at 3000/3000 on night 5 and 3000/3000 normal and worst on nights 6 and 7. The model evidence is therefore ABSENCE OF HARM, not benefit. The benefit is a device prediction and only a device run can test it.",
+  "evidence": [
+    {
+      "id": "qualification-hid-mediaprojection-night5-20260911-seam-corrected",
+      "date": "2026-09-11",
+      "claim": "the binding this supersedes; same transport, four floor knobs"
+    },
+    {
+      "id": "night5-mask-window-tolerance-20260912",
+      "date": "2026-09-12",
+      "claim": "the mask window tolerates [-200, +175] ms of position, so a corrected cycle arriving 800-950 ms late is dead regardless -- the loss has to be prevented, not corrected"
+    }
+  ],
+  "openLimits": [
+    "no device run has been made on these plan bytes; this binding authorizes the attempt and claims nothing about its outcome",
+    "the lost-tap reading of the strokes3 trace comes from peer session fnaf2-1020-36 and was not independently reconstructed here; what was verified here is that MIN_CONTACT_MS == FUSION_POLL_MS == 33 and that 33/100/200 score identically in the model",
+    "only loopContactMs moved; the opening taps and the hall pulse are still 33 ms and carry the same exposure"
+  ]
+}

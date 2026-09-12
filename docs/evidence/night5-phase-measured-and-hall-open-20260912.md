@@ -116,12 +116,12 @@ stayed silent on the actual Foxy jumpscare, and has been withdrawn
 
 ## Open, in the order they are worth attacking
 
-1. **The hall drops 31% of cycles**, now measured rather than disputed. Foxy is
-   repelled by that light and Foxy ended this run. `hallMs` is 33 ms, exactly
-   `MIN_CONTACT_MS` -- but unlike the floors corrected earlier today this is not
-   a tautology: 33 ms is measured to light without panning, and the plan records
-   a reasoned refusal to lengthen it because the button sits in the pan region.
-   Any change has to be qualified against a pan first.
+1. **The hall drop rate is UNKNOWN.** The 31% figure this list used to quote is
+   withdrawn in section 2 -- it was measured on the camera-monitor screen. The
+   only standing figure is the 1-in-3 drop recorded 2026-09-09. The pan
+   constraint on lengthening `hallMs` is also retracted (Pedro, 2026-09-12): a
+   held touch inside the region does not pan. Lengthening is open and needs
+   qualification, but there is no current measurement to aim it at.
 2. **Accumulate the phase measurement across traced runs.** One run cannot say
    which side of a band edge 307.5 ± 38.1 sits on; the epoch is redrawn every
    run, so the distribution is what carries the claim.

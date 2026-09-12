@@ -72,7 +72,24 @@ export const KNOBS0 = {
                            //   screen_identity == 2. See
                            //   docs/evidence/night5-phase-measured-and-hall-open-20260912.md.
                            //   The 2026-09-09 figure is the only one standing.
-  loopContactMs: 33,       // steady-loop tap length for the parity toggles, separate
+  loopContactMs: 200,      // steady-loop tap length for the parity toggles, separate
+                           //   RAISED 33 -> 200 on 2026-09-12. MIN_CONTACT_MS and
+                           //   FUSION_POLL_MS are BOTH 33, so a 33 ms contact had zero
+                           //   slack against the poll that has to see it, and the dump
+                           //   says the monitor flip is level-triggered with a one-shot
+                           //   latch (g257 raise / g258 re-arm / g614 lower): a contact
+                           //   that fits between two event-loop ticks is invisible, and
+                           //   a longer hold still flips exactly once.
+                           //   On the night5-strokes3 frame trace both CORRECTED cycles
+                           //   were lost 33 ms MONITOR taps inside capture stalls, not
+                           //   lost mask taps -- 2 of the only 3 stall-overlapped
+                           //   contacts out of ~75. Exposure per 420 s night: 33 ms ->
+                           //   1.49 expected lost taps (P(zero) 22%); 100 ms -> 0.17;
+                           //   200 ms -> 0. 100 would sit 3.2 ms above the longest
+                           //   observed interval (96.8 ms), which is the same zero-slack
+                           //   shape this session spent the day removing, so 200.
+                           //   Free in the model: 33/100/200 all score 3000/3000.
+                           //   (analysis: peer session fnaf2-1020-36)
                            //   from `contactMs` because the opening cannot take a
                            //   long one: its cam9/monitor pair is 50 ms apart and
                            //   would overlap. The loop's gaps are 300 ms, so this can
@@ -232,9 +249,9 @@ export const LOOP = _default.loop;
     [3833, 'camdrop', 200, 33, 67], [4482, 'tap', 'mask', 33],
   ];
   const LOOP0 = [
-    [9200, 'tap', 'mask', 33], [9500, 'hall', 33], [10100, 'tap', 'monitor', 33],
+    [9200, 'tap', 'mask', 200], [9500, 'hall', 33], [10100, 'tap', 'monitor', 200],
     [10400, 'hold', V.cameraFeedLight, 100], [10570, 'hold', 'wind', 3230],
-    [13850, 'camdrop', 150, 33, 67], [14449, 'tap', 'mask', 33],
+    [13850, 'camdrop', 150, 33, 67], [14449, 'tap', 'mask', 200],
   ];
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   if (!eq(OPENING, OPENING0) || !eq(LOOP, LOOP0))
