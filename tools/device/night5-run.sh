@@ -346,9 +346,9 @@ analyze() {
     # Headroom for the OS, as enforced numbers rather than a hope (Pedro,
     # 2026-09-12: "never exhaust the machine"). This host has 12 cores and
     # 7.8 GB, so memory is the real ceiling:
-    #   - the whole grading tree runs in a user scope with a kernel-enforced
-    #     MemoryMax, so an instrument that runs away is throttled or killed
-    #     inside the scope, never the desktop or a live night;
+    #   - the whole grading tree runs in a user scope inside a shared slice
+    #     with a kernel-enforced MemoryMax, so an instrument that runs away is
+    #     throttled or killed inside the slice, never the desktop or a live night;
     #   - it is pinned to cores 2-9 with taskset, leaving 0-1 and 10-11 free.
     #     A user scope cannot pin CPUs here: only cpu/memory/pids are
     #     delegated, so `-p AllowedCPUs=` is ACCEPTED AND SILENTLY IGNORED
@@ -360,11 +360,21 @@ analyze() {
     # Without systemd-run the same placement and niceness still apply.
     GRADE_ENV=(env GRADE_CPUSET="${GRADE_CPUSET:-2-9}")
     GRADE_WRAP=(nice -n 10 taskset -c "${GRADE_CPUSET:-2-9}")
+    # ONE ceiling for all grading, not one per run. With the phone released
+    # before the analysis, gradings overlap by design (and other sessions
+    # regrade in parallel), so a per-run MemoryMax would multiply: two live
+    # 3G scopes can exceed this 7.8 GB host. Every grading scope therefore
+    # joins fnaf2-grade.slice, and the SLICE carries the limit, so the kernel
+    # enforces it across everything placed there however many overlap.
+    # Verified: set-property --runtime works on a slice before it exists, the
+    # limit lands on the slice, and concurrent scopes share it.
+    GRADE_SLICE="${GRADE_SLICE:-fnaf2-grade.slice}"
     if command -v systemd-run >/dev/null 2>&1 &&
-       systemd-run --user --scope -q -p MemoryMax=64M true >/dev/null 2>&1; then
-      GRADE_WRAP=(systemd-run --user --scope -q -p MemoryMax="${GRADE_SCOPE_MEMORY_MAX:-3G}"
-                  -p MemoryHigh="${GRADE_SCOPE_MEMORY_HIGH:-2500M}" -p CPUQuota="${GRADE_SCOPE_CPU_QUOTA:-800%}"
-                  "${GRADE_WRAP[@]}")
+       systemctl --user set-property --runtime "$GRADE_SLICE" \
+         MemoryMax="${GRADE_SLICE_MEMORY_MAX:-3G}" MemoryHigh="${GRADE_SLICE_MEMORY_HIGH:-2500M}" \
+         CPUQuota="${GRADE_SLICE_CPU_QUOTA:-800%}" >/dev/null 2>&1 &&
+       systemd-run --user --scope -q --slice="$GRADE_SLICE" true >/dev/null 2>&1; then
+      GRADE_WRAP=(systemd-run --user --scope -q --slice="$GRADE_SLICE" "${GRADE_WRAP[@]}")
     fi
     "${GRADE_ENV[@]}" "${GRADE_WRAP[@]}" tools/device/grade-run.sh "$RUNID" 2>&1 | tee "$OUTDIR/grade.log" || true
     grep -E "^(outcome|terminal|survival|  clear|  death)" "$OUTDIR/grade.log" \
