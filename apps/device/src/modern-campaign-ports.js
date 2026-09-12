@@ -101,6 +101,35 @@ async function waitFor(bridge, serial, predicate, timeoutMs, label) {
   throw new Error(`${label} was not observed before the ${timeoutMs}ms deadline (last=${last ?? 'unknown'})`);
 }
 
+/** Resolve a night terminal from what the executor already observed.
+ *
+ * The device-local executor stops on the FIRST positive terminal read and
+ * publishes it as `execution.terminal`. That screen is TRANSIENT: in
+ * night5-strokes1 (2026-09-12) the executor consumed `gameover` at
+ * 03:06:42.950 and the game was already back at `title` by 03:06:44.823. The
+ * terminal port then started observing at 03:06:43.956 and spent its whole
+ * 120 s deadline polling title/night for a screen that had gone, aborting a
+ * night that had ended normally two minutes earlier and reporting
+ * `campaign-abort` instead of the death as the run's stop reason.
+ *
+ * `campaign-runner.js` still calls a terminal observer "authoritative ... even
+ * when the device-local executor's own poll missed the short game-over/static
+ * transition", and that stays true: this only short-circuits when the executor
+ * DID publish a terminal. Returning null means nothing trustworthy was
+ * published and the caller must observe for itself.
+ *
+ * @param {{target: {night: number, mode: string},
+ *   execution?: {terminal?: string} | null}} args
+ */
+export function terminalFromExecution({ target, execution }) {
+  const observed = execution?.terminal;
+  if (observed !== 'sixam' && observed !== 'gameover') return null;
+  const sixAm = observed === 'sixam';
+  return { night: target.night, identity: target.mode,
+    outcome: sixAm ? 'sixam' : 'death', sixAm, positive: sixAm,
+    state: observed, source: 'executor' };
+}
+
 function point(value, label) {
   if (!isRecord(value) || !Number.isInteger(value.x) || !Number.isInteger(value.y) ||
       value.x < 0 || value.y < 0 || value.x >= 2400 || value.y >= 1080)
@@ -533,7 +562,13 @@ export async function createCampaignPorts(options = {}) {
     return { night: target.night, identity: identified ? target.mode : 'unknown', observed: identified, state };
   };
 
-  const terminal = async ({ target }) => {
+  const terminal = async ({ target, execution }) => {
+    const published = terminalFromExecution({ target, execution });
+    if (published) {
+      onEvent({ type: 'campaign.terminal.from-executor',
+        state: published.state, outcome: published.outcome });
+      return published;
+    }
     // The schedule already spanned the night; the game clock can trail the
     // plan by a minute, so the terminal window is generous, not 15 s.
     const state = await waitFor(bridge, serial,

@@ -115,26 +115,82 @@ CAMPAIGN_DIR=""
 # opening.
 start_frame_trace() {
   [ "$FRAME_TRACE" = 1 ] || return 0
+  printf 'PENDING\n' > "$OUTDIR/frame-trace.state"
   ( waited=0
     while [ "$waited" -lt 240 ]; do
       if grep -q '"type":"hid.night-go"' "$OUTDIR/campaign.log" 2>/dev/null; then
-        tools/device/query-cue-helper.sh trace start "$RUNID" >/dev/null 2>&1           && printf '\nframe trace started (label %s)\n' "$RUNID"
-        return 0
+        if tools/device/query-cue-helper.sh trace start "$RUNID" >/dev/null 2>&1; then
+          printf '\nframe trace started (label %s)\n' "$RUNID"
+        else
+          printf '\nframe trace: START FAILED -- nothing will be captured\n' >&2
+          printf 'START-FAILED\n' > "$OUTDIR/frame-trace.state"
+          return 0
+        fi
+        break
       fi
       sleep 2; waited=$((waited + 2))
     done
-    printf '\nframe trace: the night never went live; nothing was traced\n' >&2 ) &
+    if ! grep -q '"type":"hid.night-go"' "$OUTDIR/campaign.log" 2>/dev/null; then
+      printf '\nframe trace: the night never went live; nothing was traced\n' >&2
+      printf 'NO-NIGHT\n' > "$OUTDIR/frame-trace.state"
+      return 0
+    fi
+
+    # The trace lives in the Cue Helper's projection. `restartAfterAbort` in
+    # modern-campaign-ports.js calls `restartCueHelperCapture`, whose contract
+    # is "stop any current helper projection" -- which drops the in-flight
+    # buffer. On 2026-09-12 (night5-strokes1) that path ran after a 120 s
+    # terminal-wait abort and the whole trace was lost: start reported OK, stop
+    # reported "did not stop", status read OFF, and no file was ever written.
+    # So the trace must be pulled the moment the NIGHT ends, never when the
+    # campaign PROCESS ends. gameover/sixam lead the restart by minutes; the
+    # abort event itself still leads the capture restart by a game relaunch and
+    # a title wait, so it is a usable last resort.
+    waited=0
+    while [ "$waited" -lt 1200 ]; do
+      if grep -qE '"label":"state=(gameover|sixam)"|"type":"campaign\.abort\.restart"|"type":"campaign\.attempt\.(complete|failed)"' \
+           "$OUTDIR/campaign.log" 2>/dev/null; then
+        pull_frame_trace "the night ended"
+        return 0
+      fi
+      sleep 1; waited=$((waited + 1))
+    done
+    pull_frame_trace "the trace hit its own 1200 s cap" ) &
   FRAME_TRACE_PID=$!
   FRAME_TRACE_STARTED=1
+}
+
+# Pulls once and records what actually landed. Never pipes the stop into a
+# pager: mistake-register "gates are verified by exit status" applies to any
+# command whose exit code is the answer, and `| tail` returns tail's 0.
+pull_frame_trace() {
+  local why="$1" out="${FRAME_TRACE_OUT:-captures/frame-traces}" state before after
+  state="$(cat "$OUTDIR/frame-trace.state" 2>/dev/null || echo PENDING)"
+  case "$state" in PULLED|START-FAILED|NO-NIGHT|LOST) return 0 ;; esac
+  printf 'PULLING\n' > "$OUTDIR/frame-trace.state"
+  mkdir -p "$out"
+  before="$(ls -1 "$out" 2>/dev/null | wc -l)"
+  say "pulling the native frame trace ($why)"
+  if FRAME_TRACE_OUT="$out" tools/device/query-cue-helper.sh trace stop; then
+    after="$(ls -1 "$out" 2>/dev/null | wc -l)"
+    if [ "$after" -gt "$before" ]; then
+      printf 'PULLED\n' > "$OUTDIR/frame-trace.state"
+      ls -1t "$out" | head -1 | tee "$OUTDIR/frame-trace.file"
+      return 0
+    fi
+  fi
+  printf 'LOST\n' > "$OUTDIR/frame-trace.state"
+  printf 'night5-run: FRAME TRACE LOST -- stop did not yield a file (%s)\n' "$why" >&2
+  tools/device/query-cue-helper.sh trace status 2>&1 | tail -1 >&2 || true
 }
 
 stop_frame_trace() {
   [ "$FRAME_TRACE_STARTED" = 1 ] || return 0
   FRAME_TRACE_STARTED=0
   [ -n "$FRAME_TRACE_PID" ] && kill "$FRAME_TRACE_PID" 2>/dev/null
-  say "stopping the native frame trace"
-  FRAME_TRACE_OUT="captures/frame-traces" \
-    tools/device/query-cue-helper.sh trace stop 2>&1 | tail -2 || true
+  pull_frame_trace "the campaign process exited"
+  printf 'frame trace  %s%s\n' "$(cat "$OUTDIR/frame-trace.state" 2>/dev/null || echo UNKNOWN)" \
+    "$([ -s "$OUTDIR/frame-trace.file" ] && printf ' (%s)' "$(cat "$OUTDIR/frame-trace.file")")"
 }
 
 stop_recording() {
