@@ -30,6 +30,120 @@ const readJsonl = path => readFileSync(path, 'utf8').trim().split('\n')
 
 const fail = message => { throw new Error(`phase reconstruction: ${message}`); };
 
+
+// --- the game's own first night frame, from the Cue Helper native trace ------
+//
+// The header above says the interval between the game's true first night frame
+// and the classifier calling it is what the bundle cannot pin. The native frame
+// trace pins it: it carries `screen_identity` per frame at ~60 Hz on the
+// helper's monotonic clock, so the transition is bracketed by one frame
+// interval (~17 ms) instead of by the lifecycle sampler's ~1 s cadence, which
+// bracketed it by 2358-3261 ms across the 2026-09-12 runs -- wider than the
+// 1000 ms phase period the model's loss bands live in.
+
+/** ScreenIdentity.java: UNKNOWN 0, CUE_HELPER 1, FNAF2_NIGHT 2, FNAF2_MENU 3. */
+export const SCREEN_FNAF2_NIGHT = 2;
+
+/** Rows of a `fnaf2-frame-trace-v3` TSV, in helper-monotonic milliseconds. */
+export function parseFrameTrace(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line || line.startsWith('#') || line.startsWith('seq')) continue;
+    const field = line.split('\t');
+    if (field.length < 7) continue;
+    rows.push({ imageMs: Number(field[1]) / 1e6, screenIdentity: Number(field[6]) });
+  }
+  return rows;
+}
+
+/**
+ * The first frame the HELPER called FNAF2_NIGHT and then kept calling it.
+ *
+ * `holdFrames` guards against a single-frame flicker being read as the night;
+ * the returned `resolutionMs` is the gap to the frame before, which is the
+ * entire resolution this measurement has and is reported rather than hidden.
+ */
+export function firstNightFrame(rows, { holdFrames = 30 } = {}) {
+  let run = 0;
+  let candidate = -1;
+  for (let index = 0; index < rows.length; index += 1) {
+    if (rows[index].screenIdentity !== SCREEN_FNAF2_NIGHT) { run = 0; continue; }
+    run += 1;
+    if (run === 1) candidate = index;
+    if (run < holdFrames) continue;
+    const prior = candidate > 0 ? rows[candidate - 1] : null;
+    return { imageMs: rows[candidate].imageMs, index: candidate,
+      resolutionMs: prior ? rows[candidate].imageMs - prior.imageMs : null,
+      priorIdentity: prior ? prior.screenIdentity : null };
+  }
+  return null;
+}
+
+/**
+ * Map the helper's monotonic clock onto the executor's wall clock.
+ *
+ * A gate sample carries `visualCaptureAt` (helper ms) and `ageUs` -- how old
+ * the frame already was when it was read -- and its read carries `finishedAt`
+ * on the wall clock. `finishedAt - ageUs` is therefore the capture instant in
+ * wall time, and differencing the two clocks at that same instant removes most
+ * of the read latency. Differencing the EMITTED event time instead leaves all
+ * of it in: on night5-strokes3 that spread the estimate over 1011 ms against
+ * 105 ms for this anchor.
+ *
+ * What is left is still a LATENCY, so it is one-sided: the residual can only
+ * push an estimate later, never earlier. The measured residuals say so plainly
+ * -- 0 17 18 18 19 20 21 22 35 38 44 60 61 66 70 105 on strokes3, and the same
+ * right-skewed shape on strokes2 -- so the MINIMUM is the estimator, the way
+ * NTP takes the minimum round trip rather than the average. A median sits
+ * about 28 ms above the floor on both runs, and a Kalman filter would be the
+ * wrong instrument twice over: it assumes symmetric noise this does not have,
+ * and its drift state has nothing to track (the two clocks drift 0.33 ms per
+ * 1000 s, which is 0.05 ms across a whole night).
+ *
+ * `uncertaintyMs` is therefore how fast the distribution rises off its own
+ * floor (the first quartile above the minimum), not the full spread: the
+ * spread is the dispersion of ONE sample, and quoting it as the uncertainty of
+ * an estimate built from 16 of them overstates it by roughly six times.
+ */
+export function helperClockOffset(events) {
+  const offsets = [];
+  for (const event of events) {
+    const sample = event?.sample;
+    const finishedAt = event?.reads?.at?.(-1)?.finishedAt;
+    if (!sample?.visualCaptureAt || !sample?.ageUs || !finishedAt) continue;
+    offsets.push((finishedAt - Number(sample.ageUs) / 1000) - sample.visualCaptureAt);
+  }
+  if (!offsets.length) return null;
+  offsets.sort((a, b) => a - b);
+  const floor = offsets[0];
+  const quartile = offsets[Math.floor(offsets.length / 4)];
+  return { offsetMs: floor,
+    uncertaintyMs: quartile - floor,
+    medianMs: offsets[Math.floor(offsets.length / 2)],
+    spreadMs: offsets.at(-1) - floor,
+    samples: offsets.length };
+}
+
+/**
+ * The epoch this run actually delivered, in the model's own sign convention.
+ *
+ * `minus-toys-plan.mjs` computes `when = base + at + epochMs` in game-relative
+ * time, so a POSITIVE `epochMs` fires the schedule later against the game's
+ * frame grid. On the phone the plan is anchored to T0 while the game's night
+ * starts `errorMs` later, which places every action `errorMs` EARLY in
+ * game-relative time -- so the delivered epoch is the NEGATIVE of that error,
+ * modulo one game second. Getting this sign backwards would name the opposite
+ * band, so it is stated here rather than left to the reader.
+ */
+export function deliveredEpochMs(errorVersusFirstNightFrameMs) {
+  return ((-errorVersusFirstNightFrameMs % 1000) + 1000) % 1000;
+}
+
+/** Which loss band, if any, an epoch falls in. */
+export function bandFor(epochMs, bands) {
+  return bands.find(band => epochMs >= band.fromMs && epochMs < band.toMs) ?? null;
+}
+
 /**
  * Derive the delivered timeline from one run's events.
  *
@@ -37,7 +151,7 @@ const fail = message => { throw new Error(`phase reconstruction: ${message}`); }
  * gate: that gate is reached at `armGoAt + (gateAtMs - armReadyAtMs)` with no
  * accumulated lag, which pins the prefix length exactly.
  */
-export function reconstruct(events, observations) {
+export function reconstruct(events, observations, frameTrace = null) {
   const first = type => events.find(event => event.type === type);
   const start = first('hid.schedule-start');
   const nightGo = first('hid.night-go');
@@ -91,14 +205,44 @@ export function reconstruct(events, observations) {
   const lastNight = lifecycle.filter(row => row.label === 'state=night').at(-1);
   const terminal = lifecycle.find(row => lastNight && row.at > lastNight.at && row.label !== 'state=night');
 
+  // A trace measures the origin error only if its clock can be tied to the
+  // executor's. Either half missing leaves the bracket standing, unchanged.
+  let measuredOrigin = null;
+  if (frameTrace?.length) {
+    const clock = helperClockOffset(events);
+    const night = firstNightFrame(frameTrace);
+    if (clock && night) {
+      const firstNightFrameAt = night.imageMs + clock.offsetMs;
+      const errorMs = firstNightFrameAt - nightGo.at;
+      measuredOrigin = {
+        basis: 'cue-helper-native-frame-trace',
+        firstNightFrameAt,
+        errorMs,
+        deliveredEpochMs: deliveredEpochMs(errorMs),
+        // Frame resolution and clock spread are independent; the honest bound
+        // is their sum, and it is quoted next to the number it qualifies.
+        uncertaintyMs: (night.resolutionMs ?? 0) + clock.uncertaintyMs,
+        frameResolutionMs: night.resolutionMs,
+        clockUncertaintyMs: clock.uncertaintyMs,
+        clockSpreadMs: clock.spreadMs,
+        clockSamples: clock.samples,
+        priorFrameIdentity: night.priorIdentity,
+      };
+    }
+  }
+
   return {
     schema: SCHEMA,
     origin: {
       kind: 'lifecycle-classification',
       nightGoAt: nightGo.at,
       releasedAt: released,
-      // UNKNOWN, deliberately: no recorded quantity measures it.
-      errorVersusFirstNightFrameMs: 'UNKNOWN',
+      // UNKNOWN unless a native frame trace was supplied: without one no
+      // recorded quantity measures it.
+      ...measuredOrigin
+        ? { errorVersusFirstNightFrameMs: measuredOrigin.errorMs,
+            measured: measuredOrigin }
+        : { errorVersusFirstNightFrameMs: 'UNKNOWN' },
       bracketedByMs: beforeNight && firstNight ? firstNight.at - beforeNight.at : null,
       priorSampleLabel: beforeNight?.label ?? null,
       observationCadenceMs: gaps.length
@@ -210,18 +354,36 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const run = arg('run');
   if (!run) {
     process.stderr.write('usage: phase-reconstruct.mjs --run artifacts/campaign-... ' +
-      '[--night N] [--seeds N] [--out FILE]\n');
+      '[--night N] [--seeds N] [--frame-trace FILE] [--out FILE]\n');
     process.exit(2);
   }
   const events = readJsonl(join(run, 'events.jsonl'));
   const observations = readJsonl(join(run, 'observations.jsonl'));
-  const report = reconstruct(events, observations);
+  const tracePath = arg('frame-trace');
+  const frameTrace = tracePath ? parseFrameTrace(readFileSync(tracePath, 'utf8')) : null;
+  const report = reconstruct(events, observations, frameTrace);
+  if (tracePath) report.frameTrace = tracePath;
   report.run = run;
   const night = arg('night');
   if (night !== undefined) {
     const model = await phaseResponse(+night, +(arg('seeds', '100')));
-    report.model = { ...model, lossBands: lossBands(model.rows),
+    const bands = lossBands(model.rows);
+    report.model = { ...model, lossBands: bands,
       uncontrolledPhase: await uncontrolledPhase(+night, +(arg('runs', '3000'))) };
+    const measured = report.origin.measured;
+    if (measured) {
+      const band = bandFor(measured.deliveredEpochMs, bands);
+      report.deliveredBand = { epochMs: measured.deliveredEpochMs,
+        uncertaintyMs: measured.uncertaintyMs, band,
+        verdict: band ? 'IN A LOSS BAND' : 'outside every loss band',
+        // Naming a band the uncertainty straddles would overstate the
+        // measurement, so say so instead.
+        edgeMs: bands.map(b => Math.min(Math.abs(measured.deliveredEpochMs - b.fromMs),
+          Math.abs(measured.deliveredEpochMs - b.toMs))).sort((a, b) => a - b)[0] ?? null };
+      report.deliveredBand.conclusive =
+        report.deliveredBand.edgeMs === null ? false
+          : report.deliveredBand.edgeMs > measured.uncertaintyMs;
+    }
   }
   const text = `${JSON.stringify(report, null, 2)}\n`;
   const out = arg('out');
