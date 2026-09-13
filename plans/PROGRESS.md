@@ -5446,3 +5446,8 @@ the 50-100 ms before the flash press). Two aborted attempts fixed on the way
 hold; the audio reader ignored SIGINT and held the PCM). Binding g = mask off
 9360 (flash margin 150-200 ms), same aim. Evidence:
 [night6-anchoredf3-20260913.md](../docs/evidence/night6-anchoredf3-20260913.md).
+Binding g (mask off 9360) died at 195.5 s, five cycles after e/f, same
+mechanism: the lock on the roll that follows the flash press by ~130 ms,
+before or as the flash lands. Binding h moves the flash and mask-off 100 ms
+earlier (9960/9260). Evidence:
+[night6-anchoredg1-20260913.md](../docs/evidence/night6-anchoredg1-20260913.md).
