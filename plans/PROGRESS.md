@@ -5421,3 +5421,12 @@ UI click 0.99, vent bang 0.79, scream 0.75, mask breathing 0.59, monitor
 button 0.60, Mangle movement 0.54; footsteps and WinD fold-only; BB vocals
 absent (he never came in). Evidence:
 [night6-anchorede2-audio-census-20260913.json](../docs/evidence/night6-anchorede2-audio-census-20260913.json).
+Grid origin hypothesis withdrawn the same afternoon: the g571 kill on the
+10 s tick sits at schedule phase 0.2 s in the video, so the game's five-second
+ticks land at 0.186 + 5k after the release -- where the model already puts
+them. The mask-on touch sound (s0007, g267) is a per-cycle audio anchor
+(spread 40 ms over 110 s; the 16 s loss is one early gap, not drift). The
+Night 6 death mode at AI 15 is a missed D reset (post-mask flash refused by
+the mask-off latency tail, or camdrop light released before the drop's
+effect) followed by a 20 %-per-tick lock at D >= 6. Next instrument: per-cycle
+doorway state at every camdrop and flash, beside the audio anchor.

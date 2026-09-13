@@ -92,3 +92,36 @@ first, and it is measurable per run from the WinD fold. Not corrected here.
 Evidence artifacts: `artifacts/runs/night6-anchorede2-20260913T170041Z`
 (bt-audio.json, tickphase.json, frame trace, campaign.log); the PCM at
 `~/fnaf-apks/bt-audio-captures/night6-anchorede2-20260913T170041Z.bt.{raw,wav,json}`.
+
+## Later the same day: the loss is one early gap, the mask-on sound is a per-cycle anchor, and the kill pins the grid
+
+- **s0007 is the mask-on touch sound** (g267 plays sample 7 on the red
+  button; g254 plays sample 5 on the monitor button). Its eight onsets sit at
+  audio time 7.76-7.80 mod 10 s over 110 s: a 40 ms spread. The audio clock
+  does not drift and does not lose samples during the run; the 16 s deficit is
+  one gap before or around the release (A2DP suspends while the phone is
+  silent and `bluealsa-cli open` writes nothing for the pause). With SBC or
+  not, the axis needs a per-run anchor, and the mask-on sound is it: schedule
+  mask-on at 4.249 + delivered 4.814 = 9.063 mod 10 versus audio 7.77 puts
+  this capture 1.29 s (+10k) early.
+- **The kill instant pins the game's grid.** The video shows mask on at
+  183.7 s, the office forced lit at 184.1 (g624 drop-everything), Foxy at
+  184.5: the g571 kill on the `Every 10000 ms` tick, at schedule time
+  150.2 s -- cycle phase 0.2, i.e. the game's five-second ticks land at
+  0.186 + 5k after the release, exactly where a first-night-frame origin with
+  the delivered epoch 4814 puts them. **The grid origin is not the error**;
+  the model's placement of the ticks is right to ~100 ms.
+- **So why Foxy?** At AI 15 (2 AM+) g337 locks when 21 + Random(5) - D <= 15,
+  i.e. D >= 6 with 20 % per tick, D >= 10 with certainty. The mid-cycle tick
+  at 5.186 comes ~0.9 s after the camdrop light and ~0.7 s into the mask
+  window; if the camdrop reset lands, D is 1 there. The tick at 0.186 comes
+  ~80 ms after the post-mask flash lights; if the flash lands, D is 0. Foxy
+  therefore killed on a cycle where a reset did not land: the post-mask flash
+  is refused when the mask-off effect (307 ms median, 352 max) plus the
+  244 ms animation reaches past the flash press at +600 (margin ~50 ms), and
+  the camdrop light overlaps `viewing` = 0 only if the drop's effect precedes
+  the light's release. Both are actuation-latency edges the model does not
+  carry; on Night 5 (AI 7) a missed reset costs nothing, on Night 6 (AI 15)
+  one missed reset followed by a lucky roll kills. The instrument for the
+  next run: the hall doorway at 60 fps during every camdrop and every
+  post-mask flash (lit / dark / flat), per cycle, next to the audio anchor.
