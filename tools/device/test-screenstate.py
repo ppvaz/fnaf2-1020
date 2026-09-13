@@ -34,6 +34,29 @@ def frame(bg, flash=False, maskbar=False):
     return im
 
 
+def gameover_frame(bg, portraits=False):
+    """The game over decision's two features, and the dial screen's third.
+
+    Solid fills, not measured shapes: the face box wants red at >5% and the
+    text box bright at >8% of a 32x32 downsample, so a 400x300 red block and
+    16-of-80 px white bars clear both by a wide margin. The portraits are five
+    grey blocks across the top band; the real band reads 0.215 bright against
+    the 0.000 of every real game over, and the fixture only has to be on the
+    same side of GAMEOVER_TOP_BRIGHT_MAX as the real dial screen."""
+    im = frame(bg)
+    d = ImageDraw.Draw(im)
+    d.rectangle((1000, 550, 1400, 850), fill=(180, 40, 40))
+    for x in range(920, 1430, 80):
+        d.rectangle((x, 960, x + 16, 1030), fill=(255, 255, 255))
+    if portraits:
+        # Clear of the flashlight-meter box (x < 260): a bright block there
+        # would make the fixture a night, not a dial screen.
+        for i in range(5):
+            x = 320 + i * 420
+            d.rectangle((x, 50, x + 300, 250), fill=(150, 150, 150))
+    return im
+
+
 def noise_frame(seed=12345):
     """Deterministic per-pixel noise: the death static's signature is roughness,
     not brightness. The real one is DARK (frame mean 34.1), the same as the
@@ -78,6 +101,16 @@ def main():
             # brightness that is not a meter. It must not read as a night.
             ("a uniformly bright cutscene", frame(bright, flash=True), "other"),
             ("a uniformly bright screen", frame(bright), "other"),
+            # The game over screen: red face mid-frame, bright text below it,
+            # black above. The Custom Night dial screen has the same two
+            # features (orange arrows and red portraits in the face box, the
+            # white preset name in the text box) plus a band of bright
+            # portraits along the top, and read as a game over on 2026-09-13,
+            # which pulled the frame trace before the night began.
+            ("a game over: red face, bright text, black above",
+             gameover_frame(dark), "gameover"),
+            ("the Custom Night dial screen: the same plus bright portraits",
+             gameover_frame(dark, portraits=True), "other"),
         ]
         for name, im, want in cases:
             got = verdict(im, tmp)
@@ -168,6 +201,7 @@ def main():
             ("the New Game confirmation", dialog, "state=titleDialog"),
             ("the Options screen", options, "state=options"),
             ("a night is left to the authority", frame(dark, flash=True), "state=night"),
+            ("a game over is the authority's too", gameover_frame(dark), "state=gameover"),
         ]
         with tempfile.TemporaryDirectory() as tmp2:
             for name, im, want in lifecycle_cases:
@@ -175,6 +209,12 @@ def main():
                 if got != want:
                     print(f"FAIL lifecycle {name}: expected {want!r}, got {got!r}")
                     failed += 1
+            # Whatever the dial screen is called, it is not a game over: that
+            # label ends a night in night-run.sh's trace watcher.
+            got = lifecycle(gameover_frame(dark, portraits=True), tmp2)
+            if got == "state=gameover":
+                print("FAIL lifecycle the Custom Night dial screen reads as a game over")
+                failed += 1
         # --- the two callers must agree, at their two geometries.
         #
         # This is the control that would have caught the drift. grade-night.py

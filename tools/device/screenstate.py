@@ -24,6 +24,18 @@ over, jumpscare and static otherwise read "other". `gameover` additionally
 requires both the red face and bright lower-center text, avoiding false
 positives on a jumpscare or title screen. 2400x1080 landscape.
 
+Correction 2026-09-13: the Custom Night dial screen read as `gameover`. With
+every dial at 20 (the Golden Freddy preset) the orange preset arrows and the
+red-faced portraits fill the face box (0.078 against the 0.05 floor) and the
+white preset name fills the text box (0.142 against 0.08). The runner's
+end-of-night watcher pulled the frame trace on that label, 6-8 s before the
+night began, on seven of twelve Night 7 runs. The guard is the portrait band:
+the game over screen is black above the face (bright fraction 0.000 on all ten
+real game overs from Nights 5-6, 2026-09-12/13), while the dial screen's
+portraits read 0.215 on all seven captured dial frames. GAMEOVER_TOP_BRIGHT_MAX
+sits at 0.05, four times the nearest dial reading below and a decade above the
+measured zero. Like the night guard it can only take `gameover` away.
+
 Default mode reads a PNG from stdin. `--adb-fast [timeout]` captures a raw
 frame on-device and transfers only ten scanlines used by the night predicate.
 That avoids moving a multi-megabyte PNG over USB for every safety-watch poll.
@@ -42,6 +54,12 @@ warnings.simplefilter("ignore")
 # The fast path keeps its own arithmetic because it only has twelve scanlines
 # to work with, but the threshold and the rule are nightpredicate's.
 GLOBAL_BRIGHT_MAX = nightpredicate.GLOBAL_BRIGHT_MAX
+
+# The portrait band of the Custom Night dial screen (x 100-2300, y 40-260),
+# bright fraction at max-channel > 120: real game overs 0.000 (n=10), dial
+# screens 0.215 (n=7). See the module docstring for the correction record.
+GAMEOVER_TOP_BAND = (100, 40, 2300, 260)
+GAMEOVER_TOP_BRIGHT_MAX = 0.05
 
 # Device geometry the scanline plan below is expressed in.
 DEVICE_W, DEVICE_H = 2400, 1080
@@ -186,7 +204,12 @@ def png_state():
         (900, 950, 1450, 1040),
         lambda r, g, b: min(r, g, b) > 150,
     )
-    gameover = red_face > 0.05 and bright_text > 0.08
+    top_bright = fraction(
+        GAMEOVER_TOP_BAND,
+        lambda r, g, b: max(r, g, b) > 120,
+    )
+    gameover = (red_face > 0.05 and bright_text > 0.08
+                and top_bright < GAMEOVER_TOP_BRIGHT_MAX)
 
     if night:
         print("night")

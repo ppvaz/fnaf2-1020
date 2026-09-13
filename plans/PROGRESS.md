@@ -5484,3 +5484,21 @@ confirmed twice. Evidence:
 [night7-anchoredi6-20260913.md](../docs/evidence/night7-anchoredi6-20260913.md).
 Open: the model lets Balloon Boy leave/enter mask windows differently from
 the phone (the Night 6 finding), decisive at AI 20.
+
+2026-09-13, late: the Night 7 "trace dies ~3 s before the onset" is the
+runner, not the helper. On seven of twelve traced runs (i5, i6, j4-j8) the
+lifecycle observer read the Custom Night dial screen (all dials at 20) as
+`state=gameover`, and `night-run.sh`'s watcher pulled the trace on that label
+6-8 s before the first `state=night`; the helper then ran the night on its
+slow path (8 fps, 400 ms reads). Reproduced the entry without the campaign:
+the trace survives the intro (5857 frames, one 1.24 s black gap). Fixed:
+`screenstate.py` refuses a game over with a bright portrait band (measured
+0.000 on ten real game overs, 0.215 on seven dial frames, floor 0.05), and
+the watcher requires a `state=night` observation before a terminal label.
+Evidence:
+[night7-trace-pulled-on-dial-screen-20260913.md](../docs/evidence/night7-trace-pulled-on-dial-screen-20260913.md).
+Open: the delivered epochs of those seven runs are UNKNOWN; the next Night 7
+run is a measurement run for the instrument before any new band is priced.
+Also this session: the Digital Wellbeing "Used for 40m" bubble was the
+screen-time reminder (no app timer existed); it is off for FNaF 2 and the
+Companion.

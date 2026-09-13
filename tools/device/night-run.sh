@@ -198,10 +198,25 @@ start_frame_trace() {
     # campaign PROCESS ends. gameover/sixam lead the restart by minutes; the
     # abort event itself still leads the capture restart by a game relaunch and
     # a title wait, so it is a usable last resort.
+    #
+    # A terminal label counts only AFTER a `state=night` observation. On
+    # 2026-09-13 the Custom Night dial screen (every dial at 20) read as
+    # `state=gameover` to the lifecycle observer, and this loop pulled the
+    # trace on it 6-8 s before the night began on seven of twelve Night 7
+    # runs (i5, i6, j4-j8): every one of those traces ends in the black intro
+    # with no NIGHT frame, and the helper spent the night on its slow
+    # detector path (about 8 fps, 400 ms old reads) because the trace was
+    # already stopped. screenstate.py now refuses that screen too; this
+    # ordering rule is the instrument's own guard against the next lookalike.
     waited=0
     while [ "$waited" -lt 1200 ]; do
-      if grep -qE '"label":"state=(gameover|sixam)"|"type":"campaign\.abort\.restart"|"type":"campaign\.attempt\.(complete|failed)"' \
-           "$OUTDIR/campaign.log" 2>/dev/null; then
+      if awk '
+            /"type":"observation","label":"state=night"/ { seen = 1 }
+            seen && /"label":"state=(gameover|sixam)"/ { found = 1; exit }
+            /"type":"campaign\.abort\.restart"/ { found = 1; exit }
+            /"type":"campaign\.attempt\.(complete|failed)"/ { found = 1; exit }
+            END { exit found ? 0 : 1 }
+          ' "$OUTDIR/campaign.log" 2>/dev/null; then
         pull_frame_trace "the night ended"
         return 0
       fi
