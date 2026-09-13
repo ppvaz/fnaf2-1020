@@ -375,7 +375,8 @@ export class Sim {
     this.maskOn = on;
     this.maskAnim = on ? C.MASK_ANIM_ON : C.MASK_ANIM_OFF;
     if (on) {
-      if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
+      // g776 dismisses him only once `mask` = 2 -- after the put-on animation
+      // (see the maskAnim completion in tick()), not at the press.
     } else {
       // For the four shared office attackers, taking the mask back off after
       // they have reached marker 123 immediately raises `danger 2`
@@ -524,6 +525,9 @@ export class Sim {
     if (this.maskAnim > 0 && --this.maskAnim === 0 && this.maskOn) {
       // g911 mirrors monitor-down's counter clear without moving the marker.
       this.viewing = 0;
+      // g776: `yellowbear` present AND `mask` = 2 -> alt0 = 1, fade (g1040)
+      // and destroy. A fully-on mask is his only dismissal.
+      if (this.gf.present) { this.gf.present = false; this.emit('gf-cleared'); }
       // Group 293 resets the local mask-duration counters on each transition
       // into the fully-on mask state. They are continuous holds, not storage.
       for (const u of this.units) {
@@ -603,6 +607,21 @@ export class Sim {
   }
 
   tickLight() {
+    // [SOURCED: g778] `yellowbear` present AND `viewing hall light` = 1 AND
+    // alt0 = 0 (not yet dismissed by a fully-on mask, g776) -> Golden Freddy
+    // takes the got-you box, and g570 attacks a second later. The condition is
+    // re-read every frame, not only on a light PRESS: the Minus Toys camdrop
+    // holds the camera light THROUGH the monitor drop, so the instant
+    // `viewing` reaches 0 with the light still held, g489 sets the latch and
+    // g778 fires. He is created only while the cameras are up (g336, at the
+    // five-second ticks) and shown at the drop (g775), so the drop with a
+    // held light is exactly when this lands. Measured on the phone on
+    // 2026-09-13: night6-anchored2 (199 s) and night6-anchored3 (219 s) both
+    // died to Golden Freddy the second after a camdrop, after 2 AM (AI 3).
+    if (this.gf.present && this.hallLightOn) {
+      this.kill('golden-freddy', 'The hall light met Golden Freddy in the office (g778: held through the drop)');
+      return;
+    }
     // Only `lit?` — the office/camera flashlight — drains the battery
     // (group 284). Vent lights are free.
     if (this.lightHeld && this.opts.powerEnabled && !this.blackout.active && !this.maskOn) {

@@ -44,6 +44,9 @@ controller research, and device evidence form one program.
 | See the second Night 5 6 AM, the mask window that made it, and the first measured actuation latency | [`evidence/night5-second-6am-mask5plus-20260912.md`](evidence/night5-second-6am-mask5plus-20260912.md) |
 | See the first death-prediction run: Night 6, Foxy named and three times too early, and the swallowed hall flash that explains it | [`evidence/night6-foxy-prediction-20260912.md`](evidence/night6-foxy-prediction-20260912.md) |
 | See where the anchored Night 6 release aims: Foxy's five-second roll grid, the winning band 2.9-4.95 s, and the 50 ms split-arming holes | [`evidence/night6-anchor-aim-20260913.json`](evidence/night6-anchor-aim-20260913.json) |
+| See the anchored Night 6 binding refuted twice by Golden Freddy, the g778 read the model lacked, and the corrected model's verdict | [`evidence/night6-anchored-golden-freddy-20260913.md`](evidence/night6-anchored-golden-freddy-20260913.md) |
+| See where the corrected Night 6 release aims: mask off at 8960, band 5033-5417 on the Foxy roll grid, aim 0 with k=1 | [`evidence/night6-anchor-aim-b-20260913.json`](evidence/night6-anchor-aim-b-20260913.json) |
+| See three anchored Night 6 runs inside the band: the measured input latency and onset bias, and the mask window that does not hold Balloon Boy | [`evidence/night6-anchored-band-runs-20260913.md`](evidence/night6-anchored-band-runs-20260913.md) |
 | See the encounter corpus: which Withered the mask met, per cycle, labelled by the operator from the eyehole view | [`evidence/encounter-corpus-20260912.json`](evidence/encounter-corpus-20260912.json) |
 | See the fourth Night 5 6 AM: the hallfix knobs with no post-mask hall flash at all (the camdrop reset alone), with its camdrop encounter census | [`evidence/night5-fourth-6am-noflash-20260913.json`](evidence/night5-fourth-6am-noflash-20260913.json) |
 | See the measured Night 5 delivered phase, and a hall measurement retracted twice | [`evidence/night5-phase-measured-and-hall-open-20260912.md`](evidence/night5-phase-measured-and-hall-open-20260912.md) |
@@ -127,6 +130,7 @@ Fusion build 296, August 2025.
   study in reducing a visual bot sensor from a full screenshot to one tested
   logical pixel, with Android capture and audio analogues.
 - [`ANDROID-AUDIO-CAPTURE.md`](device/ANDROID-AUDIO-CAPTURE.md) — the mobile
+| See the audio witness map: every night-frame sample handle, what it would tell the pilot, and the instruments to build (the five-second grid phase first) | [`device/AUDIO-WITNESS-MAP.md`](device/AUDIO-WITNESS-MAP.md) |
   recording bug that exposes normally inaudible Mangle/music-box loops, its
   evidence boundary, and the implications for an audio-cue detector.
 - [`REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md`](device/REAL-TIME-CLOSED-LOOP-ARCHITECTURE.md)

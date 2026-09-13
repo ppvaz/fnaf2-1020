@@ -2583,3 +2583,27 @@ What this changes:
   The first anchored Night 6 run tests the origin as much as the route.
 
 Evidence: [`night6-anchor-aim-20260913.json`](../evidence/night6-anchor-aim-20260913.json).
+
+### Golden Freddy through the camdrop: the anchored binding refuted twice, the model corrected (2026-09-13)
+
+`night6-anchored` (fnv1a-bc5e044c) released anchored twice at k=0 (0.16 ms
+late) and died at 199 s and 219 s -- both to Golden Freddy, both the second
+after a camdrop, both after 2 AM. The dump has it: g336 creates `yellowbear`
+on a five-second tick with the cameras up; g778 kills the instant a lit hall
+light finds him with alt0 = 0, and the camdrop holds the camera light through
+the drop. The model read g778 only on a light press and cleared him at the
+mask press instead of at `mask` = 2 (g776). Corrected in `plant-model.js`;
+the refuted binding then scores 8/600 at its epoch (592 Golden Freddy). At
+that phase a five-second tick lands at cycle phase 1.15 s with the cameras
+up: 15 % per cycle after 2 AM. Details and frames:
+[`night6-anchored-golden-freddy-20260913.md`](../evidence/night6-anchored-golden-freddy-20260913.md).
+
+The corrected model's Night 6 search (ten knob variants, 0-10 s at 100 ms):
+the only survivors move the mask off earlier so the flash precedes the second
+tick, with both ticks falling after the drop and before the raise -- where he
+cannot be created. `night6-anchored-b` (fnv1a-94baf687: mask off 8960, flash
+9560, anchorEpochMs 5253; aim 0 on 5000 with k=1) is banded at effective
+5033-5417 and confirmed 3000/3000 at 5200/5250/5285 and 200/250/285
+([`night6-anchor-aim-b-20260913.json`](../evidence/night6-anchor-aim-b-20260913.json)).
+A no-light camdrop (`camdropLight: false`, new plan knob) wins nowhere: the
+drop's Foxy reset is required at AI 15.

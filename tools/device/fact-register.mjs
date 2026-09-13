@@ -143,6 +143,81 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 3850,
     evidence: 'docs/evidence/night6-anchor-aim-20260913.json',
     reason: 'window [3766.67, 3916.67) of the Foxy-roll band: 3783.33/3816.67/3850/3883.33/3900 all 3000/3000; 3750 and 3916.67 are Puppet holes (split arming)',
+    // REFUTED on the phone 2026-09-13 (night6-anchored2 199 s, night6-anchored3
+    // 219 s, both Golden Freddy the second after a camdrop): the model lacked
+    // g778's continuous read, and at this phase a five-second tick lands with
+    // the cameras up, where he is created. Kept for the record; do not run.
+    refuted: 'docs/evidence/night6-anchored-golden-freddy-20260913.md',
+  }),
+  // Night 6, second binding (model corrected for g778): mask off 500 ms
+  // earlier and the flash at 9560 put the band where neither five-second tick
+  // sees the cameras up -- Golden Freddy is never created -- and the flash
+  // precedes the second tick. Band 5033-5417 effective, holes at 5117-5150
+  // and 5317-5350; the aim keeps [5200, 5285] inside [5166.67, 5316.67).
+  'fnv1a-94baf687': Object.freeze({
+    night: 6,
+    aimMs: 0,
+    latencyMs: { min: 200, max: 285, provenance: 'monitor-up press-to-effect median 253 ms measured 2026-09-12; arming CAM taps unmeasured, bounds stated' },
+    periodMs: 5000,
+    // k=0 is the onset itself (never authorized in time); k=1 is the delivery.
+    maxK: 1,
+    qualifiedEpochMs: 5253,
+    evidence: 'docs/evidence/night6-anchor-aim-b-20260913.json',
+    reason: 'window [5166.67, 5316.67) of the Foxy-roll band with the g778 model: 5200/5250/5285 and 200/250/285 all 3000/3000',
+    // night6-anchoredb1 (effective 5253): 32 gates, died at 320 s to Foxy at
+    // the post-mask flash -- the band's Foxy edge is lower on the phone. The
+    // same knobs re-bound with the aim 83 ms lower (next entry). Do not run.
+    refuted: 'docs/evidence/night6-anchor-aim-c-20260913.json',
+  }),
+  // Same knobs, aim in the low half of the band: k=0 at onset + 4917 ms.
+  // The model's 50 ms arming holes are bridged in the evidence on 9/9 phone
+  // arms; the Foxy edge, measured once on the phone, is ~100 ms below the
+  // model's 5417.
+  'fnv1a-5d414fce': Object.freeze({
+    night: 6,
+    aimMs: 4917,
+    latencyMs: { min: 200, max: 285, provenance: 'monitor-up press-to-effect median 253 ms measured 2026-09-12; arming CAM taps unmeasured, bounds stated' },
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 5170,
+    evidence: 'docs/evidence/night6-anchor-aim-c-20260913.json',
+    reason: 'low half of the bridged band [5033.33, 5416.67): effective [5117, 5202]; 5166.67/5200 3000/3000, the model hole 5117-5150 bridged on 9/9 phone arms',
+    // night6-anchoredc1: delivered 4842 ms by frame trace (latched onset leads
+    // the first night frame by 75 ms) and the true input latency is ~50 ms,
+    // not the 253 ms proxy: effective ~4900, below the band; died at 81 s to
+    // Balloon Boy as the model does there. Do not run.
+    refuted: 'docs/evidence/night6-anchor-aim-d-20260913.json',
+  }),
+  // Same knobs, latency register corrected (hall-lit 47 ms, 1-82) and the
+  // 75 ms onset bias applied: aim 240 with k=1 lands effective ~5225, the
+  // centre of the band 5033-5417.
+  'fnv1a-1292e481': Object.freeze({
+    night: 6,
+    aimMs: 240,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12); mask/monitor effects include animations the model already carries' },
+    periodMs: 5000,
+    maxK: 1,
+    qualifiedEpochMs: 5300,
+    evidence: 'docs/evidence/night6-anchor-aim-d-20260913.json',
+    reason: 'centre of the band [5033.33, 5416.67): naive effective [5287, 5322], bias-corrected [5212, 5247]; 5200/5250/5285/5300 3000/3000',
+    // night6-anchoredd2: delivered 5175 ms by frame trace (effective ~5225,
+    // the band's centre) and Balloon Boy walked in at 150 s: the 4.5 s
+    // fully-on window of this family does not hold him on the phone. Do not run.
+    refuted: 'docs/evidence/night6-anchored-band-runs-20260913.md',
+  }),
+  // hallfix knobs (5.2 s mask window) with the g778 model: the only band is
+  // where the second tick falls between the flash and the raise, 150 ms wide.
+  // Onset bias measured by frame trace on two runs; input latency hall-lit.
+  'fnv1a-1cd7cd43': Object.freeze({
+    night: 6,
+    aimMs: 4870,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 4850,
+    evidence: 'docs/evidence/night6-anchor-aim-e-20260913.json',
+    reason: 'band [4766.67, 4916.67): effective [4847, 4882]; 4816.67/4850/4883.33/4900 3000/3000',
   }),
 });
 
@@ -168,8 +243,12 @@ export function anchorAimFor(winnerHash) {
   if (evidence.night !== entry.night || evidence.aimMs !== entry.aimMs)
     return { ok: false, reason: `anchor aim evidence ${entry.evidence} disagrees with the register (night ${evidence.night}, aim ${evidence.aimMs})` };
   const latency = entry.latencyMs ?? { min: 0, max: 0 };
-  const effectiveMin = entry.aimMs + latency.min;
-  const effectiveMax = entry.aimMs + latency.max;
+  // The helper's latched onset leads the frame trace's first night frame
+  // (measured -65..-75 ms on 2026-09-13); an entry that states the bias is
+  // checked at the epoch the phone actually delivers.
+  const bias = entry.onsetBiasMs ?? 0;
+  const effectiveMin = entry.aimMs + bias + latency.min;
+  const effectiveMax = entry.aimMs + bias + latency.max;
   const band = (evidence.winningBands ?? []).find(b => b.fromMs + ANCHOR_AIM_MIN_MARGIN_MS <= effectiveMin &&
     effectiveMax <= b.toMs - ANCHOR_AIM_MIN_MARGIN_MS);
   if (!band)
@@ -178,10 +257,13 @@ export function anchorAimFor(winnerHash) {
   if (evidence.latencyMs && (evidence.latencyMs.min !== latency.min || evidence.latencyMs.max !== latency.max))
     return { ok: false, reason: `${entry.evidence} states latency [${evidence.latencyMs.min}, ${evidence.latencyMs.max}], the register [${latency.min}, ${latency.max}]` };
   // A bundle gated at an anchor epoch (winner.anchorEpochMs) must be gated at
-  // an epoch this aim can deliver: inside the effective interval.
-  if (entry.qualifiedEpochMs !== undefined &&
-      !(entry.qualifiedEpochMs >= effectiveMin && entry.qualifiedEpochMs <= effectiveMax))
-    return { ok: false, reason: `qualified epoch ${entry.qualifiedEpochMs} ms lies outside the effective interval [${effectiveMin}, ${effectiveMax}] of aim ${entry.aimMs}` };
+  // an epoch this aim can deliver: inside the effective interval at some k.
+  if (entry.qualifiedEpochMs !== undefined) {
+    const period = entry.periodMs ?? 1000;
+    const ks = Array.from({ length: (entry.maxK ?? 0) + 1 }, (_, k) => k);
+    if (!ks.some(k => entry.qualifiedEpochMs - k * period >= effectiveMin && entry.qualifiedEpochMs - k * period <= effectiveMax))
+      return { ok: false, reason: `qualified epoch ${entry.qualifiedEpochMs} ms lies outside the effective interval [${effectiveMin}, ${effectiveMax}] + k x ${period} of aim ${entry.aimMs} for k <= ${entry.maxK ?? 0}` };
+  }
   const unclean = (evidence.confirmations3000 ?? []).filter(c => c.wins !== c.seeds);
   if (!evidence.confirmations3000?.length || unclean.length)
     return { ok: false, reason: `3000-seed confirmations in ${entry.evidence} are missing or not clean` };

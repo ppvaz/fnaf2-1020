@@ -227,7 +227,13 @@ export function build(knobs) {
       ...(k.hallMs > 0 ? [[k.hallOffsetMs, 'hall', k.hallMs]] : []),
       [k.raiseMs, 'tap', 'monitor', k.loopContactMs],
       [k.windLeadMs, 'hold', 'wind', k.windMs],
-      [k.camdropMs, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs],
+      // camdropLight false drops the monitor WITHOUT the camera light held
+      // through it: no Foxy reset at the drop, and no g778 Golden Freddy kill
+      // when he was created during that cams-up (2026-09-13: two Night 6
+      // deaths the second after a camdrop, after 2 AM). A search knob.
+      ...(k.camdropLight === false
+        ? [[k.camdropMs + k.camdropLeadMs, 'tap', 'monitor', k.camdropMonitorMs]]
+        : [[k.camdropMs, 'camdrop', k.camdropLeadMs, k.camdropMonitorMs, k.camdropTailMs]]),
       [k.maskOnMs + k.loopPeriodMs, 'tap', 'mask', k.loopContactMs],
     ];
     // The stun refresh sits just before the wind row: by content, not by

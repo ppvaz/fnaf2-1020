@@ -5364,3 +5364,37 @@ its manifest replay shows 8/8 Foxy deaths. Open: no phone run has delivered an
 epoch in [2900, 4950]; the grid origin (first held night frame) is assumed;
 the arming CAM tap latency is a stated proxy. Next physical step: run
 `artifacts/night6-anchored` -- Pedro's call.
+
+Night 6 on the phone (2026-09-13): `night6-anchored` released anchored twice
+(k=0, 0.16 ms late) and died at 199 s and 219 s to Golden Freddy the second
+after a camdrop. Sourced: g336 creates him on a five-second tick with the
+cameras up, g778 kills when the light held through the drop meets him, g776
+dismisses only at `mask` = 2. The model read g778 only on a light press --
+corrected (plant-model.js); the refuted binding now scores 8/600. Second
+binding `night6-anchored-b` (fnv1a-94baf687: mask off 8960, flash 9560, aim 0
+on 5000, k=1, qualified epoch 5253): both five-second ticks fall between the
+drop and the raise, so he is never created, and the flash precedes the second
+tick. 3000/3000 across the window. Evidence:
+[night6-anchored-golden-freddy-20260913.md](../docs/evidence/night6-anchored-golden-freddy-20260913.md),
+[night6-anchor-aim-b-20260913.json](../docs/evidence/night6-anchor-aim-b-20260913.json).
+
+Night 6, later on 2026-09-13 (Pedro AFK, then left with the phone): three
+more anchored runs on the mask-8960 family, all inside or just below the
+model's band, all dead -- b1 320 s (Foxy at the flash, below the band), c1
+81 s and d2 150 s (Balloon Boy walked in; d2 at the band's centre, delivered
+5175 ms by frame trace). Two measurements: the input latency is ~50 ms
+(hall-lit 47; the 253 ms proxy included the raise animation) and the latched
+onset leads the frame-trace onset by ~70 ms. The 4.5 s fully-on mask window
+does not hold Balloon Boy on this phone; the 5.2 s window has held him in
+every run. Model error open: Balloon Boy leaves short windows too easily.
+Binding e = hallfix knobs anchored at effective ~4850 (0.2 s band), ready
+for the next session. Evidence:
+[night6-anchored-band-runs-20260913.md](../docs/evidence/night6-anchored-band-runs-20260913.md).
+Audio witness map written at Pedro's request:
+[AUDIO-WITNESS-MAP.md](../docs/device/AUDIO-WITNESS-MAP.md) -- every
+night-frame sample handle mapped to its event group, the five open questions
+each would answer (the five-second grid phase via the vent bang s0017 and the
+footsteps s0025-29 first; BB inside via s0016/s0021-24; `in danger` via s0010;
+death via s0012/s0062; arming via s0033), and seven offline instruments in
+order. Nothing built; the BlueALSA capture is validated but not wired into the
+run script, and `cue-refs` holds only handles 15-33.
