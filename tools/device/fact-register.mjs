@@ -252,6 +252,22 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 4850,
     evidence: 'docs/evidence/night6-anchor-aim-g-20260913.json',
     reason: 'band [4766.67, 4916.67) as e; mask off 9360 confirmed at 3000 seeds (see evidence)',
+    // night6-anchoredg1: delivered 4821, died 195.5 s -- five cycles later
+    // than e/f, same lock on the roll ~130 ms after the flash press.
+    refuted: 'docs/evidence/night6-anchoredg1-20260913.md',
+  }),
+  // Flash 9960 and mask off 9260: the flash lights ~150 ms before the roll
+  // it must beat instead of 50-80. Same aim and band.
+  'fnv1a-37278c63': Object.freeze({
+    night: 6,
+    aimMs: 4870,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 4850,
+    evidence: 'docs/evidence/night6-anchor-aim-h-20260913.json',
+    reason: 'band [4766.67, 4916.67) as e; flash 9960 / mask off 9260 confirmed at 3000 seeds (see evidence)',
   }),
 });
 
