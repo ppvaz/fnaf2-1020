@@ -149,3 +149,13 @@ contact). Census and per-flash values in
 [`night5-third-6am-hallfix-20260912.json`](night5-third-6am-hallfix-20260912.json)
 (`hallFlashVideoCensus`). The grid audit under-reads dim beams (100 s is a
 clearly lit dim beam it called dark); the video is the instrument for this.
+
+The same census on this run's own recording (`night6-foxyfix`, release =
+video 33.97 s, pinned by the two-frame hall flashes 10.02 s apart): **13 LIT,
+10 DARK-BLINK, 0 FLAT** — every flash fired. On both nights the dark flashes
+split into two signatures: bracket +10.9 / doorway +12 with the office at its
+normal 3.3 (a dimmed beam in an ordinary room — the g202 latch), and bracket
++7.5 / doorway +15.6 with the office at 1.6 (the darker post-encounter room).
+The seven never-fired flashes occur only on Night 5 from 2 AM on; this run
+ended at 238 s (~3:24 AM), so the two nights do not yet overlap enough to say
+whether refusals belong to the late hours or to the route.

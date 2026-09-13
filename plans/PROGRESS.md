@@ -5309,4 +5309,6 @@ mask window with an occupant in the eyeholes (0 of 22 for lit) — the room is
 darker after a mask that repelled an encounter. The grid audit under-reads dim
 beams; the retained video is the hall instrument. What refuses the seven is
 open. Lit beams show Withered Bonnie and Foxy standing in the hall (30 s) and
-Foxy in a dim beam (390 s).
+Foxy in a dim beam (390 s). Night 6 (`night6-foxyfix`, same census): 13 lit, 10 blink, 0 flat — every
+flash fired; dark flashes on both nights split into "dim beam, office 3.3"
+(bracket +10.9) and "darker office 1.6" (bracket +7.5), two mechanisms.
