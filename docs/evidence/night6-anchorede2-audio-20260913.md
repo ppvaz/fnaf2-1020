@@ -125,3 +125,48 @@ Evidence artifacts: `artifacts/runs/night6-anchorede2-20260913T170041Z`
   one missed reset followed by a lucky roll kills. The instrument for the
   next run: the hall doorway at 60 fps during every camdrop and every
   post-mask flash (lit / dark / flat), per cycle, next to the audio anchor.
+
+## The per-cycle ledger (video + audio, same run)
+
+[`night6-anchorede2-cycle-ledger-20260913.json`](night6-anchorede2-cycle-ledger-20260913.json).
+Geometry: 640x288 frames; doorway region x240-453, y80-213; the camdrop
+light never renders a lit hall at any cycle (released before the drop
+completes: the reset, if it lands, is invisible, via `viewing` = 0 at the
+press); the post-mask flash read at +0.05..+0.18 s after its press, before
+the raise white-out, against the 0.2 s before it.
+
+| cycle | occupant at the drop (colour rule) | post-mask flash (door, pre) | office after mask-off |
+|---|---|---|---|
+| 0 | empty | 28.8 / 9.4 LIT | 15.9 |
+| 1 | empty | 10.4 / 9.0 **FLAT** | 15.9 |
+| 2 | empty | 28.9 / 9.5 LIT | 16.0 |
+| 3 | empty | 28.9 / 8.6 LIT | 15.7 |
+| 4 | empty | 28.9 / 9.5 LIT (Withered Foxy standing in the beam) | 15.9 |
+| 5 | occupant, hue 57 (27 k px; not in the corpus rule) | 15.5 / 9.5 DIM | 16.0 |
+| 6 | empty | 8.1 / 1.7 **FLAT** | **3.3** (defended) |
+| 7 | empty | 15.5 / 8.6 DIM | 15.8 |
+| 8 | **Withered Freddy** (38 k px, hue 19) | 15.4 / 9.1 DIM | 15.9 |
+| 9 | empty | 8.1 / 1.7 **FLAT** | **3.4** (defended) |
+| 10 | empty | 28.9 / 9.0 LIT | 15.8 |
+| 11 | **Withered Bonnie** (28 k px, hue 227) | 28.9 / 8.6 LIT | 15.8 |
+| 12 | empty | 8.1 / 1.6 **FLAT** | **3.3** (defended) |
+| 13 | empty | 15.4 / 8.6 DIM | 15.8 |
+| 14 | empty (cams never dropped: dead at 150.2) | 28.2 / 9.5 LIT | 16.0 |
+
+Audio agrees cycle for cycle: the blackout / signal-lost loop (s0010) starts
+at schedule 58.1, 88.2, 118.1 s (cycle phase 8.1-8.2 in cycles 5, 8, 11, the
+three occupied drops), and the office is darker after the mask window that
+followed each (6, 9, 12), whose flash is FLAT -- the hallfix finding again:
+after a defended encounter the flash does not fire. Three flash classes on
+this geometry: LIT ~29, DIM ~15.5, FLAT ~8-10.
+
+What killed: the last reset before the death was cycle 13's DIM flash at
+140.11 s (dark-rendered beams still reset, g489/g745); the mid-cycle tick at
+145.186 saw D = 5 + the masked second = 6, which at AI 15 locks with
+Random(5) = 0 (g337), and g571 killed on the 10 s tick at 150.186 with no
+blackout to cover it. The camdrop reset at 143.85-144.12 (light held while
+`viewing` = 0) would have zeroed D first -- it did not: either Foxy was not
+at hall stage 1 for g745 (the light only decays D by one per 500 ms while he
+is at CAM 08, g864) or the overlap did not happen. With one reset per cycle
+this binding carries a ~20 % lock per tick from 2 AM; the Night 6 route needs
+D < 6 at BOTH ticks, i.e. a reset that lands within ~4 s before each tick.

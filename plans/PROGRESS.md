@@ -5430,3 +5430,11 @@ Night 6 death mode at AI 15 is a missed D reset (post-mask flash refused by
 the mask-off latency tail, or camdrop light released before the drop's
 effect) followed by a 20 %-per-tick lock at D >= 6. Next instrument: per-cycle
 doorway state at every camdrop and flash, beside the audio anchor.
+Per-cycle ledger on night6-anchorede2 (video + audio): occupants at the drop
+in cycles 5 (hue 57, unlabelled), 8 (W. Freddy), 11 (W. Bonnie); s0010 audio
+onsets at the same cycles; FLAT flashes after the three defended windows;
+the camdrop beam never renders. Death mechanism: cycle 13's DIM flash was the
+last reset, the mid-cycle tick saw D = 6 at AI 15 (20 % lock), g571 killed
+on the 10 s tick. A Night 6 route needs D < 6 at both five-second ticks.
+Evidence:
+[night6-anchorede2-cycle-ledger-20260913.json](../docs/evidence/night6-anchorede2-cycle-ledger-20260913.json).
