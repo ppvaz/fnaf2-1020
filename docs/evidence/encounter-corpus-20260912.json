@@ -133,7 +133,9 @@
       ],
       "verdict": "classifier + this session by eye; operator verdict pending"
     },
-    "reading": "the camdrop instant shows the encounter itself: the character is already in the office when the monitor drops, and the mask goes on 0.45 s later to repel it; the same frame shows who stands in the hall"
+    "reading": "the camdrop instant shows the encounter itself: the character is already in the office when the monitor drops, and the mask goes on 0.45 s later to repel it; the same frame shows who stands in the hall",
+    "operatorReading": "2026-09-12: the hue-21/sat-0.32 signature is Withered Freddy lit in the hall during the monitor-down animation; the grey signatures are an empty hall, dark or lit; hallfix 320 s is Freddy inside the office (check.png: Chica in the office at 90 s, Freddy in the office at 320 s). All camdrop classes confirmed.",
+    "hallSightingsAndFlashes": "Freddy in the hall at the camdrops of foxyfix 70-100 s; the flashes 6.4 s later (80-110 s) were all LIT -- consistent with the 300-frame hall-movement latch having expired if he stood still"
   },
   "operatorVerdict2": "2026-09-12: every '?' in the eyehole corpus is a dark (empty) eyehole; every other colour guess correct except hallfix 210 s (Chica, not Freddy). Eyehole rule 19/20; eyehole + camdrop 20/20.",
   "identitiesOnRecord": {
