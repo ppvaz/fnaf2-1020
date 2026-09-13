@@ -429,7 +429,20 @@ export function run(opts = {}) {
   return { sim, minBox, maxD };
 }
 
-const r = run({ record: true });   // this single diagnostic run reads sim.rec
+// The published cycle drops the cameras with the flashlight held and flashes
+// the hall before masking. Since 2026-09-13 the model reads g778 every frame:
+// a Golden Freddy created while the cameras were up (g336) is killed into by
+// that held light the instant `viewing` reaches 0. Two Night 6 phone deaths
+// (night6-anchored2/3) measured exactly that. The coverage diagnostic below
+// is about the Toy stuns, so it runs with Golden Freddy off; the control run
+// here keeps the finding visible: the canonical cycle, as published, dies to
+// him at this seed once he can spawn.
+{
+  const control = run({ record: false }).sim;
+  if (control.won || control.death?.reason !== 'golden-freddy')
+    throw new Error(`canonical cycle with Golden Freddy enabled was expected to die to him (g778 through the held camdrop light); got ${control.won ? 'a win' : control.death?.reason}`);
+}
+const r = run({ record: true, gfEnabled: false });   // this single diagnostic run reads sim.rec
 const s = r.sim;
 const targetStunMax = s.rec
   ? s.rec.stun.map(frames => Math.max(...frames))
