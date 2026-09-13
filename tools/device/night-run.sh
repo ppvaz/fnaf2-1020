@@ -124,6 +124,15 @@ fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUNID="night${NIGHT}-${LABEL}-${STAMP}"
+# The helper's trace label is at most 48 plain-ASCII characters
+# (query-cue-helper.sh refuses longer ones). A --frame-trace run whose run id
+# is longer starts normally, loses its trace at `trace start`, and finishes as
+# a blind attempt: night7-night7-anchoredj9-aim2315-tf-20260913T233252Z (52
+# characters, the label already carried the night prefix) did exactly that on
+# 2026-09-13. Refuse before touching the phone.
+if [ "$FRAME_TRACE" = 1 ] && [ "${#RUNID}" -gt 48 ]; then
+  die "--frame-trace needs a run id of at most 48 characters; '$RUNID' has ${#RUNID} (the label gets 'night${NIGHT}-' and a 16-character stamp)"
+fi
 OUTDIR="artifacts/runs/$RUNID"
 mkdir -p "$OUTDIR" captures
 DEVICE_VIDEO="/sdcard/${RUNID}.mp4"
