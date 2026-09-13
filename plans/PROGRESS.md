@@ -5473,3 +5473,14 @@ satisfies both is the ~100 ms between the post-mask flash landing and the
 monitor raise. Search under way: a later raise (shorter wind) to widen that
 window. Minus 7 (the community's RNG-proof 10/20 route) is reactive and has
 no qualified device lane.
+
+Night 7 (10/20) on the phone, 2026-09-13 evening: binding i (loop -2500,
+opening wind 50, aim 2510 k=0) reached the night on the sixth attempt after
+five flow fixes (save cursor, observation envelope, readback race, Ready
+contact 100 ms, latch authorization) and died at ~140 s to Balloon Boy
+through the mask window, then Foxy. The Custom Night configuration (Golden
+Freddy preset + dial readback) is now DEVICE_MEASURED: all ten at 20,
+confirmed twice. Evidence:
+[night7-anchoredi6-20260913.md](../docs/evidence/night7-anchoredi6-20260913.md).
+Open: the model lets Balloon Boy leave/enter mask windows differently from
+the phone (the Night 6 finding), decisive at AI 20.
