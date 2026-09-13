@@ -9,7 +9,7 @@
     },
     {
       "id": "cue-helper-control-v1",
-      "owner": "android/cue-helper",
+      "owner": "android/companion",
       "kind": "wire",
       "validator": "bounded ASCII codec"
     },

@@ -106,7 +106,7 @@ want "sends no grey=" \
 # consent. If it comes forward, the runner's own focus guard refuses partway
 # through a night and the failure reads as a transient.
 want "cue helper's activity is focused" \
-  "$(MOCK_FOCUS='  mCurrentFocus=Window{9f8e7d u0 com.fnaf2.cuehelper/com.fnaf2.cuehelper.MainActivity}' run 1)" \
+  "$(MOCK_FOCUS='  mCurrentFocus=Window{9f8e7d u0 com.ppvaz.fnafcompanion/com.ppvaz.fnafcompanion.MainActivity}' run 1)" \
   "helper in front"
 want "not the focused window" "$(MOCK_FOCUS='  mCurrentFocus=null' run 1)" "nothing focused"
 # The game must be matched across ALL mCurrentFocus lines, not just the first:

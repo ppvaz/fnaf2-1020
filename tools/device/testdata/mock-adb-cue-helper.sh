@@ -20,7 +20,7 @@ elif [ "${1:-}" = shell ] && [ "${2:-}" = cat ]; then
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = thermalservice ]; then
   echo 'Thermal Status: 0'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = cpuinfo ]; then
-  echo '  2.0% 7007/com.fnaf2.cuehelper: 7007'
+  echo '  2.0% 7007/com.ppvaz.fnafcompanion: 7007'
 elif [ "${1:-}" = shell ] && [ "${2:-}" = dumpsys ] && [ "${3:-}" = window ]; then
   echo 'mCurrentFocus=Window{123 u0 com.scottgames.fnaf2/com.scottgames.fnaf2.Main}'
   echo '  Window #7 Window{456 u0 FNaF 2 Cue Helper HUD}'

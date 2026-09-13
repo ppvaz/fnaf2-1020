@@ -16,13 +16,13 @@ SPEC.loader.exec_module(MODULE)
 
 XML = """
 <hierarchy>
-  <node index="0" package="com.fnaf2.cuehelper" class="android.widget.Button"
+  <node index="0" package="com.ppvaz.fnafcompanion" class="android.widget.Button"
         text="Start video capture" clickable="true" enabled="true"
         bounds="[49,1306][1031,1423]" />
   <node index="1" package="com.scottgames.fnaf2" class="android.widget.Button"
         text="Start video capture" clickable="true" enabled="true"
         bounds="[0,0][100,100]" />
-  <node index="2" package="com.fnaf2.cuehelper" class="android.widget.TextView"
+  <node index="2" package="com.ppvaz.fnafcompanion" class="android.widget.TextView"
         text="Share screen" clickable="true" enabled="true"
         bounds="[550,1457][1002,1574]" />
 </hierarchy>
@@ -48,7 +48,7 @@ except MODULE.SetupError:
 original_adb = MODULE.adb
 try:
     MODULE.adb = lambda *args, **kwargs: (
-        "Media Projection: (com.fnaf2.cuehelper, uid=10351): TYPE_SCREEN_CAPTURE"
+        "Media Projection: (com.ppvaz.fnafcompanion, uid=10351): TYPE_SCREEN_CAPTURE"
         if args == ("shell", "dumpsys", "media_projection") else ""
     )
     assert MODULE.projection_active() is True

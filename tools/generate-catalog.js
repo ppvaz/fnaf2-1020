@@ -16,7 +16,7 @@ const OUT = join(ROOT, 'docs/architecture/generated');
 // 126, JavaScript 240 -> 491). git already draws that line --
 // a nested checkout comes back as a single opaque directory entry, and its
 // ignore rules cover the build output the old SKIP list missed
-// (`android/cue-helper/build/`) -- so git's enumeration is the boundary.
+// (`android/companion/build/`) -- so git's enumeration is the boundary.
 // `--others` keeps a newly added, not-yet-committed file in the catalog, which
 // is what lets a tool and its catalog row land in one commit.
 const files = execFileSync('git',

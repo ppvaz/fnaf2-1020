@@ -381,7 +381,7 @@ const ENGINE = [
   // FABRICATE the detector's answers, so before this entry the detector's own
   // fail-closed behaviour -- shadow evidence cannot arm control, silence is
   // UNKNOWN, an unsupported rate refuses -- was asserted by nothing that ran.
-  ['cue detector (java)', ['../android/cue-helper/test.sh']],
+  ['cue detector (java)', ['../android/companion/test.sh']],
   // The device driver is assembled from named parts and piped to the phone.
   // `sh` executes a script before it has read all of it, so a truncated or
   // misordered driver does not fail at launch -- it presses real buttons and

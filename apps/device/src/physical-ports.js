@@ -12,7 +12,7 @@ import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
 import { connect } from 'node:net';
 import { parseCueResponse } from '@fnaf2-1020/adapters/transports/cue-helper';
-const HELPER_PACKAGE = 'com.fnaf2.cuehelper';
+const HELPER_PACKAGE = 'com.ppvaz.fnafcompanion';
 const READY_DEVICE = 'FNAF Timed Touch';
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 

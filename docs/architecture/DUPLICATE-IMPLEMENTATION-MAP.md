@@ -58,7 +58,7 @@ files. Neither page derives itself from source yet; §21 records the command
 that produced this one.
 
 Scope of the survey: 453 tracked `js/mjs/ts/py/sh` files (84,977 lines, 147 of
-them test-shaped) plus 39 Java files under `android/cue-helper`. 215 of those
+them test-shaped) plus 39 Java files under `android/companion`. 215 of those
 files live in `tools/device`.
 
 ---
@@ -125,7 +125,7 @@ remedy is one shared frame-source argument helper.
 The on-device Java helper and the host tools implement the same two numeric
 models, aligned by comment only.
 
-- **Pixel watch spec.** `android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java`
+- **Pixel watch spec.** `android/companion/src/com/ppvaz/fnafcompanion/PixelWatch.java`
   (469 lines) owns `defaultSpec()`. `tools/device/watch-calibrate.py:42` says
   "Keep this list mechanically aligned with `PixelWatch.defaultSpec()`" and
   `tools/device/camera-calibrate.py:49` repeats the instruction against both
@@ -133,7 +133,7 @@ models, aligned by comment only.
   carries the same kind of note about grid replication. Each side has its own
   tests (`PixelWatchTest.java`, `test-watch-calibrate.py`); no check compares
   the two specs.
-- **Phase clock.** `android/cue-helper/src/com/fnaf2/cuehelper/PhaseClock.java`
+- **Phase clock.** `android/companion/src/com/ppvaz/fnafcompanion/PhaseClock.java`
   (141 lines) and `packages/core/src/timing/phase-clock.js` (328 lines) both
   fit onsets of the 2 Hz winding tick to a 500 ms index and report a residual.
   Tested independently by `PhaseClockTest.java` and `tools/phaseclocktest.mjs`;

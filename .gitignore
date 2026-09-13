@@ -6,5 +6,5 @@ node_modules/
 .DS_Store
 /tools/device/fnaf-screencheck
 __pycache__/
-/android/cue-helper/build/
-/android/cue-helper/debug.keystore
+/android/companion/build/
+/android/companion/debug.keystore

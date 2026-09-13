@@ -32,7 +32,7 @@ import sys
 import time
 
 
-PACKAGE = "com.fnaf2.cuehelper"
+PACKAGE = "com.ppvaz.fnafcompanion"
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 SCREENSTATE = REPO / "tools/device/screenstate.py"

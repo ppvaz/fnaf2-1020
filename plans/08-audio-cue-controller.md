@@ -289,7 +289,7 @@ controller must use monotonic timestamps and must never block its HID schedule
 waiting for a reply. A result arriving after its action deadline is `UNKNOWN`,
 not a late command.
 
-The first protocol slice now exists in `android/cue-helper`: a per-run 128-bit
+The first protocol slice now exists in `android/companion`: a per-run 128-bit
 token protects a length-bounded `GET` request, and the response contains a
 fresh monotonic visual/audio snapshot without PCM or image payloads. It is
 served on two channels — a `127.0.0.1:49707` loopback port for the on-device

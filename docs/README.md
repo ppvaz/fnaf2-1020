@@ -106,7 +106,7 @@ Fusion build 296, August 2025.
 
 ## On-device
 
-- [`android/cue-helper/README.md`](../android/cue-helper/README.md) — the unified
+- [`android/companion/README.md`](../android/companion/README.md) — the unified
   MediaProjection APK, its build/run procedure, and first target-device soak.
 - [`CUE-HELPER-MCP.md`](device/CUE-HELPER-MCP.md) — the bounded MCP/queue
   interface for safe helper setup and read-only device readiness checks.

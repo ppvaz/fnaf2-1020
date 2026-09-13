@@ -28,7 +28,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 TARGET="files/overlay-qualification.properties"
 STAGED="files/overlay-qualification.properties.new"
 

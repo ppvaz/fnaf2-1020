@@ -20,7 +20,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 SECONDS_TOTAL="${1:-180}"
 LABEL="${2:-vent}"
 OUT_DIR="${CUE_HELPER_CALIBRATION:-captures/cue-helper/calibration}"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 
 case "$SECONDS_TOTAL" in *[!0-9]*) echo "seconds must be whole" >&2; exit 2 ;; esac
 [ "$SECONDS_TOTAL" -le 420 ] || { echo "helper buffers 480 s; keep under 420" >&2; exit 2; }

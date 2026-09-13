@@ -15,7 +15,7 @@ import { restartCueHelperCapture as defaultRestartCueHelperCapture } from './cue
 
 const execFile = promisify(execFileCallback);
 const GAME_PACKAGE = 'com.scottgames.fnaf2';
-const HELPER_PACKAGE = 'com.fnaf2.cuehelper';
+const HELPER_PACKAGE = 'com.ppvaz.fnafcompanion';
 const PRELIGHT_SCHEMA = 'device-preflight-v1';
 const CLOCK_SAMPLE_SCHEMA = 'device-clock-sample-v1';
 const UPTIME_SAMPLE_SCHEMA = 'device-uptime-sample-v1';

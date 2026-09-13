@@ -532,9 +532,9 @@
       "contractId": "cue-helper-control-v1",
       "id": "cue-helper-control-v1",
       "version": 1,
-      "owner": "android/cue-helper",
+      "owner": "android/companion",
       "kind": "wire",
-      "purpose": "Stable cue-helper-control-v1 boundary for android/cue-helper; its validator is bounded ASCII codec.",
+      "purpose": "Stable cue-helper-control-v1 boundary for android/companion; its validator is bounded ASCII codec.",
       "nonPurpose": "Does not grant capabilities beyond the fields and actions explicitly validated by the contract.",
       "clockDomains": [
         "declared-by-payload-or-profile"

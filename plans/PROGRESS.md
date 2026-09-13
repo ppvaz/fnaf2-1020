@@ -546,7 +546,7 @@ The service fixture used to join grid cells with spaces — a shape the helper
 never emits — which is why `parseCueGrid` threw on every real read while the
 test stayed green. It now models the wire: one concatenated hex run.
 
-Validation: `npm run test` passes end to end, `android/cue-helper/test.sh`
+Validation: `npm run test` passes end to end, `android/companion/test.sh`
 passes including the new captured-menu cases, test-docs/catalog green by exit
 status, dry-run `result=PASS claim=FIXTURE evidence=`
 `run-20260905210101-d13923ad-4e4c57` (`FIXTURE`, not gameplay evidence). Still
@@ -586,7 +586,7 @@ read-only, no game input sent. Three findings, one fix landed.
    checked-in `ScreenIdentity.java` on those same grids scores
    `menuScore=5 >= 5` — i.e. the SOURCE says `FNAF2_MENU` 20/20 while the
    device says NIGHT 20/20. The installed APK is byte-identical to
-   `android/cue-helper/build/cue-helper.apk`, and `menuScore` is absent from
+   `android/companion/build/cue-helper.apk`, and `menuScore` is absent from
    its dex — which is equally explained by d8 inlining a single-call-site
    private method, so that is NOT evidence of a stale build and the
    contradiction is unresolved. Retained: 24 labelled live grids in
@@ -1426,7 +1426,7 @@ foreign files in `import-graph.json`, 138 in `test-manifest.json` and 42 paths i
 `26df393` and this commit was quoting two copies of it. The generator now
 enumerates from `git ls-files --cached --others --exclude-standard`, which
 reports a nested checkout as one opaque entry and also excludes the gitignored
-`android/cue-helper/build/` output the old `SKIP` list missed; `--others` keeps
+`android/companion/build/` output the old `SKIP` list missed; `--others` keeps
 a new uncommitted tool in the catalog, so a tool and its row still land in one
 commit. Every count now equals `git ls-files` exactly. `tools/architecture-test.js`
 gates it: a generated catalog may not name a path outside this repository, so the
@@ -1826,7 +1826,7 @@ Direct image-free setup and the queue runner both returned
 menu baseline remains `PENDING` under its idempotency key.
 
 2026-09-01 Cue Helper native test coverage — `npm test` now includes
-`android/cue-helper/test.sh`, so the default contract lane exercises the
+`android/companion/test.sh`, so the default contract lane exercises the
 native ROI geometry, screen identity, battery/monitor/camera facts, snapshot
 retention, overlay metrics, collision/lifecycle contracts, optional-audio
 capture gate, and non-game identity detachment. The expanded suite passes.

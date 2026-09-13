@@ -1625,7 +1625,7 @@ CUE_PORT="-"
 CUE_TOKEN="-"
 CUE_READ_VERB="GET"
 if [ "$CUE_HELPER" -eq 1 ]; then
-  cue_pid="$(adb shell pidof com.fnaf2.cuehelper 2>/dev/null | tr -d '\r' | awk '{print $1}')"
+  cue_pid="$(adb shell pidof com.ppvaz.fnafcompanion 2>/dev/null | tr -d '\r' | awk '{print $1}')"
   [ -n "$cue_pid" ] || { echo 'CUE_HELPER=1 but the helper is not running' >&2; exit 2; }
   cue_control="$(adb logcat -d --pid="$cue_pid" -v brief -s FnafCueHelper:I '*:S' 2>/dev/null |
     tr -d '\r' | awk '/control=(READY|DEGRADED)/ { line=$0 } END { print line }')"

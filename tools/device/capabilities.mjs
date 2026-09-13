@@ -41,7 +41,7 @@ export function probe(serial) {
       .map(line => line.trim().split(/\s+/)[0])
       .filter(name => /^(android|linux|track_event)[.a-z_]*$/.test(name)))].sort();
   })();
-  const helper = sh(serial, ['shell', 'dumpsys', 'package', 'com.fnaf2.cuehelper'])
+  const helper = sh(serial, ['shell', 'dumpsys', 'package', 'com.ppvaz.fnafcompanion'])
     ?.split('\n').find(line => line.includes('versionName'))?.trim() ?? null;
   return {
     serial: serial ?? UNKNOWN,

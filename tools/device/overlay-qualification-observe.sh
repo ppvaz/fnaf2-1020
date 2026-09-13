@@ -15,7 +15,7 @@ OUTPUT="${3:-}"
 PHASE="${CUE_HELPER_OVERLAY_PHASE:-on}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 TARGET_PACKAGE="com.scottgames.fnaf2"
 
 case "$SAMPLES" in

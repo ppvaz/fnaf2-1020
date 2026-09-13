@@ -1,7 +1,7 @@
 #!/bin/bash
 # Sample the already-running visual MediaProjection helper without touching
 # the game. Defaults to 41 one-minute samples: a 40-minute endpoint-to-endpoint
-# soak matching the unresolved memory gate in android/cue-helper/README.md.
+# soak matching the unresolved memory gate in android/companion/README.md.
 set -euo pipefail
 
 SAMPLES="${1:-41}"
@@ -9,7 +9,7 @@ INTERVAL_SECONDS="${2:-60}"
 OUTPUT="${3:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 
 case "$SAMPLES" in
   ''|*[!0-9]*) echo "samples must be a positive integer" >&2; exit 2 ;;

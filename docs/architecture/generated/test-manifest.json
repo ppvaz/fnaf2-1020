@@ -3,7 +3,7 @@
   "generatedFrom": "source inventory",
   "tests": [
     {
-      "id": "android/cue-helper/test.sh",
+      "id": "android/companion/test.sh",
       "lane": "test:unit",
       "owner": "legacy migration",
       "timeoutMs": 180000,

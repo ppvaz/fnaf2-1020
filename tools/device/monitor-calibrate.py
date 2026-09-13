@@ -26,7 +26,7 @@ CaptureService.onImageAvailable: cell (gx, gy) samples the native pixel
     y = ((2*gy + 1) * height) // (2 * VISUAL_HEIGHT)
 with VISUAL_WIDTH x VISUAL_HEIGHT = 20x9, and ScreenStats treats a cell as
 near-grey below a 25-channel-spread.  The host vectors in
-android/cue-helper/test/com/fnaf2/cuehelper/ScreenStatsTest.java pin the same
+android/companion/test/com/ppvaz/fnafcompanion/ScreenStatsTest.java pin the same
 constants from the Java side.
 
     monitor-calibrate.py --output monitor-rule.json \

@@ -24,7 +24,7 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 OUT_DIR="${CUE_HELPER_CALIBRATION:-captures/cue-helper/calibration}"
 
 VERB=snapshot

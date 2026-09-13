@@ -13,7 +13,7 @@ for argument in "$@"; do
   esac
 done
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PACKAGE="com.fnaf2.cuehelper"
+PACKAGE="com.ppvaz.fnafcompanion"
 TARGET="files/cue-model-v1.txt"
 STAGED="files/cue-model-v1.txt.new"
 

@@ -26,7 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 HELPER = ROOT / "tools/device/query-cue-helper.sh"
 TARGET_PACKAGE = "com.scottgames.fnaf2"
-HELPER_PACKAGE = "com.fnaf2.cuehelper"
+HELPER_PACKAGE = "com.ppvaz.fnafcompanion"
 REMOTE_PREFIX = "/data/local/tmp/fnaf2-pan-path"
 NATIVE_SIZE = "2400x1080"
 

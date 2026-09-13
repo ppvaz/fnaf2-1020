@@ -28,7 +28,7 @@
     {"id":"artifact-ref-v1","owner":"runtime","kind":"data","validator":"validateArtifactRef"},
     {"id":"claim-evidence-v1","owner":"evidence","kind":"data","validator":"validateClaimEvidence"},
     {"id":"screencheck-process-v1","owner":"adapters/screencheck","kind":"process","validator":"screencheck grammar"},
-    {"id":"cue-helper-control-v1","owner":"android/cue-helper","kind":"wire","validator":"bounded ASCII codec"},
+    {"id":"cue-helper-control-v1","owner":"android/companion","kind":"wire","validator":"bounded ASCII codec"},
     {"id":"fact-message-v1","owner":"core/telemetry","kind":"wire","validator":"encodeFactMessage"},
     {"id":"pcm-udp-v1","owner":"firmware","kind":"wire","validator":"28-byte header"},
     {"id":"hid-executor-v1","owner":"apps/device","kind":"wire","validator":"trajectory JSONL"},

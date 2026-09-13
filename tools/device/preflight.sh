@@ -20,7 +20,7 @@ case "$NIGHT" in
 esac
 [ "$NIGHT" -ge 1 ] && [ "$NIGHT" -le 6 ] || { echo "night $NIGHT is not 1-6" >&2; exit 2; }
 
-HELPER_PKG=com.fnaf2.cuehelper
+HELPER_PKG=com.ppvaz.fnafcompanion
 GAME_PKG=com.scottgames.fnaf2
 OUT_DIR="${PREFLIGHT_OUT:-$HERE/../../captures/preflight}"
 fail() { echo "REFUSED: $*" >&2; exit 1; }
@@ -69,7 +69,7 @@ case "$snap" in
 esac
 grey="$(sed -n 's/.* grey=\([0-9-]*\).*/\1/p' <<<"$snap")"
 
-[ -n "$grey" ] || fail "this helper build sends no grey= -- rebuild and reinstall android/cue-helper"
+[ -n "$grey" ] || fail "this helper build sends no grey= -- rebuild and reinstall android/companion"
 ok "snapshot answers, grey=$grey"
 
 # 6. A left-opening read is configured, and its model file is actually there.

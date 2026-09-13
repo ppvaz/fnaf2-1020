@@ -77,7 +77,7 @@ export const ACTUATION_LATENCY_BOUNDS_MS = Object.freeze([30, 110]);
 export const ANCHOR_CONTACT_MAX_MS = 50;
 
 /**
- * The hall ROI, from android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java
+ * The hall ROI, from android/companion/src/com/ppvaz/fnafcompanion/PixelWatch.java
  * (NATIVE_WIDTH/HEIGHT, FOXY_HALL_X/Y/WIDTH/HEIGHT). test-tap-stall-audit.mjs
  * reads the Java file and refuses a drift. The frame-trace v3 schema carries
  * no foxy_hall reducer, only the 20x9 grid_hex, so the hall is read from the

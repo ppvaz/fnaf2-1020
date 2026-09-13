@@ -176,7 +176,7 @@ check(report.summary.hall.lit === 1 && report.summary.hall.dark === 1 && report.
 }
 // The ROI constants match PixelWatch.java, the one place they are defined.
 {
-  const java = readFileSync(new URL('../../android/cue-helper/src/com/fnaf2/cuehelper/PixelWatch.java', import.meta.url), 'utf8');
+  const java = readFileSync(new URL('../../android/companion/src/com/ppvaz/fnafcompanion/PixelWatch.java', import.meta.url), 'utf8');
   const constant = name => Number(java.match(new RegExp(`${name}\\s*=\\s*(\\d+)`))[1]);
   check(constant('NATIVE_WIDTH') === HALL_ROI.nativeWidth && constant('NATIVE_HEIGHT') === HALL_ROI.nativeHeight &&
     constant('FOXY_HALL_X') === HALL_ROI.x && constant('FOXY_HALL_Y') === HALL_ROI.y &&

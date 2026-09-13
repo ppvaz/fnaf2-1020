@@ -22,7 +22,7 @@ from cue_helper_device_lock import DeviceBusy, DeviceLock
 
 
 ROOT = Path(__file__).resolve().parents[2]
-HELPER_PACKAGE = "com.fnaf2.cuehelper"
+HELPER_PACKAGE = "com.ppvaz.fnafcompanion"
 TARGET_PACKAGE = "com.scottgames.fnaf2"
 OVERLAY_SUPPRESSION_PERMISSION = "android.permission.HIDE_NON_SYSTEM_OVERLAY_WINDOWS"
 UI_REMOTE = "/sdcard/cue-helper-setup-ui.xml"
@@ -172,7 +172,7 @@ def has_named(label: str, audience: str) -> bool:
 
 
 def start_capture() -> None:
-    start(f"{HELPER_PACKAGE}/.MainActivity")
+    start(f"{HELPER_PACKAGE}/com.ppvaz.fnafcompanion.MainActivity")
     if projection_active() or has_named("Stop video capture", "helper"):
         print("CAPTURE already-running")
         return
@@ -200,7 +200,7 @@ def restart_capture() -> None:
 
 
 def start_probe() -> None:
-    start(f"{HELPER_PACKAGE}/.MainActivity")
+    start(f"{HELPER_PACKAGE}/com.ppvaz.fnafcompanion.MainActivity")
     if not tap_named("CONFIG", "helper"):
         raise SetupError("helper CONFIG tab was not found")
     if has_named("Stop qualification probe", "helper"):
@@ -226,7 +226,7 @@ def ensure_overlay_mode(mode: str | None) -> None:
         return
     desired = overlay_mode_button_label(mode)
     other = overlay_mode_button_label("run" if mode == "debug" else "debug")
-    start(f"{HELPER_PACKAGE}/.MainActivity")
+    start(f"{HELPER_PACKAGE}/com.ppvaz.fnafcompanion.MainActivity")
     if not tap_named("CONFIG", "helper"):
         raise SetupError("helper CONFIG tab was not found")
     if has_named(desired, "helper"):
@@ -337,7 +337,7 @@ def main() -> int:
 
             adb("get-state")
             if args.install:
-                apk = ROOT / "android/cue-helper/build/cue-helper.apk"
+                apk = ROOT / "android/companion/build/fnaf2-companion.apk"
                 if not apk.is_file():
                     raise SetupError(f"APK does not exist: {apk}")
                 adb("install", "-r", str(apk), timeout=60.0)

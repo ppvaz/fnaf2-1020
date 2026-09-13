@@ -43,7 +43,7 @@ Cue Helper manifest targets SDK 36, so the old 100 ms rule is not the expected
 path for this APK. This is a framework scheduling fact, not a measurement of
 the Moto g56's delivery or the game's response. See [AOSP's gesture sample-time
 code](https://android.googlesource.com/platform/frameworks/base/+/c917c0a9e4ab2dd19b52c0acbacdccc055f4372e/core/java/android/accessibilityservice/AccessibilityService.java)
-and [our target SDK](../../android/cue-helper/AndroidManifest.xml#L4).
+and [our target SDK](../../android/companion/AndroidManifest.xml#L4).
 
 The API still has a structural limitation relevant to FNaF2: a later gesture
 cannot freely add a new pointer to an already-running gesture. The documented
