@@ -2138,6 +2138,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/custom-night-readback.py",
+      "invocation": "tools/device/custom-night-readback.py --calibration CAL.json --glyphs GLYPHS.json < frame.png",
+      "kind": "device observer",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/find-events.py",
       "invocation": "tools/device/find-events.py VIDEO",
       "kind": "report",

@@ -18,7 +18,7 @@
 #
 # Usage:
 #   tools/device/night-run.sh --label baseline [--bundle DIR] [--night N]
-#                              [--serial ID] [--no-video] [--bt-audio] [--dry-run]
+#                              [--serial ID] [--calibration FILE] [--no-video] [--bt-audio] [--dry-run]
 set -Eeuo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,6 +32,10 @@ PROFILE="hid-mediaprojection"
 SERIAL="${FNAF_SERIAL:-ZF525F5BH5}"
 NIGHT=5
 SAVE_CURSOR=""
+# Night 7 is the Custom Night: the campaign sets the ten dials to 20 through
+# the measured dial screen (custom-night-calibration-v1, one guided session
+# on this build) and refuses without it. Story nights ignore it.
+CALIBRATION=""
 ARM_MODE="observe-once"
 VIDEO=1
 BT_AUDIO=0            # --bt-audio: retain the phone's A2DP mix via BlueALSA (tools/cue/capture-bt-audio.sh)
@@ -53,6 +57,7 @@ while [ $# -gt 0 ]; do
     --serial) SERIAL="$2"; shift 2 ;;
     --night) NIGHT="$2"; shift 2 ;;
     --save-cursor) SAVE_CURSOR="$2"; shift 2 ;;
+    --calibration) CALIBRATION="$2"; shift 2 ;;
     --arm-blocking) ARM_MODE="blocking"; shift ;;
     --arm-observe-once) ARM_MODE="observe-once"; shift ;;
     --no-trace) TRACE=0; shift ;;
@@ -468,9 +473,14 @@ on_exit() {
 trap on_exit EXIT
 
 # ---- the attempt -----------------------------------------------------------
+if [ "$NIGHT" = 7 ] && [ -z "$CALIBRATION" ]; then
+  CALIBRATION="tools/device/models/custom-night-calibration-v1.json"
+fi
+[ -z "$CALIBRATION" ] || [ -f "$CALIBRATION" ] || die "calibration file not found: $CALIBRATION"
 CAMPAIGN=(node apps/device/src/cli.js campaign
   --profile "$PROFILE" --serial "$SERIAL" --nights "$NIGHT" --max-attempts 1
   --save-cursor "$SAVE_CURSOR" --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
+[ -z "$CALIBRATION" ] || CAMPAIGN+=(--calibration "$CALIBRATION")
 # Place the schedule release at the helper's latched night onset + an epoch
 # (mod one game second) instead of wherever the ~1 Hz office classifier fires.
 # The aim is NOT a literal here: it is registered per binding in
@@ -540,6 +550,8 @@ if [ -n "$BUNDLE_ANCHOR_EPOCH_MS" ] && [ "$NIGHT_ANCHOR_AIM_MS" = off ]; then
 fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
   CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS" --night-anchor-max-k "$NIGHT_ANCHOR_MAX_K" --night-anchor-period-ms "$NIGHT_ANCHOR_PERIOD_MS")
+  # An anchor-qualified bundle must never run at a drawn phase: strict.
+  [ -z "$BUNDLE_ANCHOR_EPOCH_MS" ] || CAMPAIGN+=(--night-anchor-strict)
   printf 'anchor   release at night onset + %s ms + k x %s ms, k <= %s\n' "$NIGHT_ANCHOR_AIM_MS" "$NIGHT_ANCHOR_PERIOD_MS" "$NIGHT_ANCHOR_MAX_K"
 fi
 # Pedro's standing direction: the arm check does not block the schedule.

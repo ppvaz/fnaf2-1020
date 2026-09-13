@@ -1,0 +1,257 @@
+{
+  "schema": "device-night5-anchor-aim-v1",
+  "recordedAt": "2026-09-13",
+  "claimLevel": "MODEL_ONLY",
+  "binding": "fnv1a-7e2ccff2",
+  "qualification": "artifacts/night7-anchored-i/qualification-test.json",
+  "night": 7,
+  "aimMs": 2510,
+  "periodMs": 5000,
+  "latencyMs": {
+    "min": 47,
+    "max": 82
+  },
+  "onsetBiasMs": -70,
+  "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame; the executor delivers T0 = latched onset + aimMs + k*periodMs; the latched onset leads the first night frame by 54-75 ms (three frame-traced runs); effective epoch = aim + onsetBiasMs + input latency (hall-lit 47-82 ms). Period 5000 = Withered Foxy's roll timer (g337).",
+  "why": "Night 7 (10/20): Foxy at 17 (g829 cap) needs D <= 3 at every roll and Golden Freddy at 20 is created on every roll the cameras are up, so the roll must land between the post-mask flash lighting and the monitor raise. With the Night 6 loop that is epoch 0-100 ms after the first frame, unreachable (the night is authorized 1.7-3.5 s after its first frame). Every loop row moved 2500 ms earlier and the opening wind cut to 50 ms puts the same loop phase at epoch 2433-2633, reachable at k=0. Split-arming holes at 2517-2550 (Puppet) are the model's g263 sampler; 15 of 15 anchored runs on this phone armed on attempt 1, so the band is bridged across them. Aim 2510: effective [2487, 2522].",
+  "model": {
+    "tool": "tools/device/epoch-scan.mjs (minus-toys-plan replay) with the g778 plant-model",
+    "fps": 60,
+    "rowSeeds": 60,
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 11150,
+      "maskOnMs": 1749,
+      "maskOffMs": 6560,
+      "hallOffsetMs": 7260,
+      "camdropTailMs": 200,
+      "raiseMs": 7600,
+      "stunRefreshMs": 7900,
+      "windLeadMs": 8070,
+      "openWindMs": 50
+    },
+    "rowsFrames": [
+      {
+        "epochMs": 2300.0,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 11,
+          "foxy": 49
+        }
+      },
+      {
+        "epochMs": 2333.33,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "puppet": 50,
+          "inside-office": 10
+        }
+      },
+      {
+        "epochMs": 2366.66,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 11,
+          "foxy": 49
+        }
+      },
+      {
+        "epochMs": 2399.99,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 11,
+          "foxy": 49
+        }
+      },
+      {
+        "epochMs": 2433.32,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2466.65,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2499.98,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2533.31,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "puppet": 51,
+          "inside-office": 9
+        }
+      },
+      {
+        "epochMs": 2566.64,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2599.97,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2633.3,
+        "seeds": 60,
+        "wins": 60,
+        "deaths": {}
+      },
+      {
+        "epochMs": 2666.63,
+        "seeds": 60,
+        "wins": 32,
+        "deaths": {
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2699.96,
+        "seeds": 60,
+        "wins": 32,
+        "deaths": {
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2733.29,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2766.62,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2799.95,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2833.28,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2866.61,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      },
+      {
+        "epochMs": 2899.94,
+        "seeds": 60,
+        "wins": 0,
+        "deaths": {
+          "foxy": 32,
+          "golden-freddy": 28
+        }
+      }
+    ]
+  },
+  "winningBandsModel": [
+    {
+      "fromMs": 2433.32,
+      "toMs": 2516.65
+    },
+    {
+      "fromMs": 2549.98,
+      "toMs": 2649.97
+    }
+  ],
+  "winningBands": [
+    {
+      "fromMs": 2433.32,
+      "toMs": 2649.97
+    }
+  ],
+  "armingHolesBridged": "2516.65-2549.98: the split-camera arming hole; never observed on the phone (15/15 arms on 2026-09-13)",
+  "confirmations3000": [
+    {
+      "epochMs": 2466.65,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2499.98,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2566.64,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2599.97,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2450.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 2616.64,
+      "seeds": 3000,
+      "wins": 3000
+    }
+  ],
+  "lossRows3000": [
+    {
+      "epochMs": 2533.31,
+      "seeds": 3000,
+      "wins": 0,
+      "deaths": {
+        "puppet": 2474,
+        "inside-office": 526
+      }
+    }
+  ],
+  "kIsFree": "k=0 only: aim 2510 needs authorization by ~2.43 s after the first frame, which 5 of 10 runs today met; a later authorization must NOT release unanchored (strict anchor). k=1 (7510) is not scored.",
+  "kLimit": {
+    "maxK": 0,
+    "rows3000": []
+  },
+  "openLimits": [
+    "the loop shift and the 50 ms opening wind are MODEL_ONLY: the phone has never run this opening",
+    "the 10/20 Toys at 20 need the split stun every cycle; one missed stun refresh is a death",
+    "authorization timing decides whether the anchor can fire at all; a strict anchor aborts the attempt instead of releasing at a losing phase"
+  ]
+}

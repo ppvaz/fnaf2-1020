@@ -10,7 +10,7 @@
 import { spawn } from 'node:child_process';
 import { readFile, mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { appendFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CueHelperControlTransport, HidWireTransport, measureMaskOn, measureMonitorUp,
   parseCameraRule, parseMaskRule, parseMonitorRule, reconcileExclusiveControls } from '@fnaf2-1020/adapters';
@@ -29,6 +29,7 @@ const MONITOR_RULE = new URL('../../../models/monitor-rule-moto-g56-v207.json', 
 const MASK_RULE = new URL('../../../models/mask-rule-moto-g56-v207.json', import.meta.url);
 const LIFECYCLE_OBSERVER = new URL('../../../tools/device/lifecycle-observe.py', import.meta.url);
 const TITLE_OBSERVER = new URL('../../../tools/device/title-observe.py', import.meta.url);
+const CUSTOM_NIGHT_READBACK = new URL('../../../tools/device/custom-night-readback.py', import.meta.url);
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -200,9 +201,9 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
  */
 /** @param {any} options */
 export async function createCampaignPorts(options = {}) {
-  const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
+  const { spec, bundle, profile, calibration, calibrationPath = null, qualification, serial, adb = 'adb',
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
-    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000 } = options;
+    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
@@ -589,7 +590,7 @@ export async function createCampaignPorts(options = {}) {
           authorization: { isAuthorized: () => authorizedAtHostMs !== null, whenAuthorized: () => authorized,
             authorizedAt: () => authorizedAtHostMs },
           release: () => localExecutor.releaseNight(), onEvent,
-          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, periodMs: nightAnchorPeriodMs,
+          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, periodMs: nightAnchorPeriodMs, strict: nightAnchorStrict === true,
           notBeforeHostMs: introStartedHostMs });
       anchoring.catch(() => {});
       try {
@@ -680,6 +681,18 @@ export async function createCampaignPorts(options = {}) {
     return { menuReady: items.includes(target.menuTarget), observed: true, items };
   };
 
+  // The Custom Night dial readback: tools/device/custom-night-readback.py over
+  // a screenshot, with the measured calibration and the glyph fingerprints
+  // that sit beside it (models/custom-night-glyphs-v1.json). An explicit
+  // `configReadback` in options still wins (tests, fixtures).
+  const configReadback = options.configReadback ?? (calibrationPath === null ? undefined
+    : async ({ bridge: readBridge, serial: readSerial }) => {
+      const glyphs = join(dirname(resolve(calibrationPath)), 'custom-night-glyphs-v1.json');
+      const result = await captureAndObserve(readBridge, readSerial, CUSTOM_NIGHT_READBACK,
+        ['--calibration', resolve(calibrationPath), '--glyphs', glyphs, '--sensor', 'screencap-2400x1080']);
+      try { return JSON.parse(lastLine(result.stdout)); }
+      catch { return { status: 'UNKNOWN', reason: `readback observer exit ${result.code}: ${lastLine(result.stderr)}` }; }
+    });
   const customNight = async ({ target }) => {
     validateCustomNightCalibration(calibration, { targetBuild: spec.target.build });
     if (typeof configReadback !== 'function')

@@ -40,13 +40,13 @@ const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, 
  *   release: () => void, onEvent?: (event: any) => void, aimMs: number, maxK: number, notBeforeHostMs: number,
  *   now?: () => number, wallNow?: () => number, sleep?: (ms: number) => Promise<void>,
  *   latchPollMs?: number, latchWaitMs?: number, latchGraceAfterAuthorizationMs?: number,
- *   minLeadMs?: number, maxUncertaintyMs?: number, periodMs?: number,
+ *   minLeadMs?: number, maxUncertaintyMs?: number, periodMs?: number, strict?: boolean,
  * }} options
  */
 export async function anchorNightRelease({ clock, authorization, release, onEvent = () => {}, aimMs, maxK, notBeforeHostMs,
   now = () => performance.now(), wallNow = () => Date.now(), sleep = defaultSleep,
   latchPollMs = 100, latchWaitMs = 35000, latchGraceAfterAuthorizationMs = 1500,
-  minLeadMs = 80, maxUncertaintyMs = 15, periodMs = 1000 }) {
+  minLeadMs = 80, maxUncertaintyMs = 15, periodMs = 1000, strict = false }) {
   if (typeof clock?.read !== 'function' || typeof clock?.probe !== 'function')
     throw new TypeError('night anchor needs a clock with read and probe');
   if (typeof authorization?.isAuthorized !== 'function' || typeof authorization?.whenAuthorized !== 'function')
@@ -66,6 +66,13 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
   const fallback = async (reason, detail = {}) => {
     onEvent({ type: 'origin.anchor', status: 'unavailable', reason, aimMs, maxK,
       latchedOnsetDeviceMs: latchedSeenDeviceMs, latchedOffsetMs: latchedSeenOffsetMs, ...detail });
+    // A bundle qualified at its anchor epoch holds only there (bundle.mjs
+    // winner.anchorEpochMs): releasing it at a drawn phase spends a night on a
+    // stream no census has seen. Strict refuses instead; the attempt aborts.
+    if (strict) {
+      onEvent({ type: 'origin.anchor', status: 'refused', reason, strict: true });
+      throw new Error(`anchored release refused (${reason}); strict anchor does not release unanchored`);
+    }
     await authorization.whenAuthorized();
     release();
     onEvent({ type: 'origin.anchor', status: 'released-unanchored', reason, firedHostMs: now(),

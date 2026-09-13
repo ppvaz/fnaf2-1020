@@ -36,6 +36,7 @@ const EXCLUDED = new Map([
   ['tickphase.py', 'reads the retained Bluetooth audio (night-run.sh --bt-audio) after a run: roll-witness onsets and WinD folds. Run by hand while its thresholds and the clock-rate correction are being calibrated (2026-09-13); it joins grade-run.sh once a fold-based phase read survives a second run'],
   ['epoch-scan.mjs', 'runs BEFORE a run: a model census over release epochs (the bands an anchor aim is priced on); never reads a recording'],
   ['cycle-ledger.py', 'reads the retained video (and audio census) after a run; run by hand while its flash classes and colour rule are calibrated on Night 6 recordings (2026-09-13); joins grade-run.sh with tickphase.py'],
+  ['custom-night-readback.py', 'a Custom Night observer the campaign composes before a Night 7 run (dial readback); not a grader'],
   ['death-census.py', 'cross-run census -- answers "what keeps happening", not "what happened in this run"'],
   ['deathchart.mjs', 'charts the model gate\'s death census for a PLAN under modeled human slack -- a simulator result with no run artifact to read; gated by test-deathchart.mjs'],
   ['find-events.py', 'mask-camp trial scrubber, not a night-run grader'],

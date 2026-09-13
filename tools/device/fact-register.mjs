@@ -268,6 +268,21 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 4850,
     evidence: 'docs/evidence/night6-anchor-aim-h-20260913.json',
     reason: 'band [4766.67, 4916.67) as e; flash 9960 / mask off 9260 confirmed at 3000 seeds (see evidence)',
+    // WON: night6-anchoredh1-20260913T180208Z, 6 AM, 42/42, delivered 4816.
+  }),
+  // Night 7 (10/20): the Night 6 loop shifted 2500 ms earlier with a 50 ms
+  // opening wind, so the reachable release 2.45-2.62 s after the first frame
+  // lands the roll ~100 ms after the post-mask flash. Strict anchor only.
+  'fnv1a-7e2ccff2': Object.freeze({
+    night: 7,
+    aimMs: 2510,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 2500,
+    evidence: 'docs/evidence/night7-anchor-aim-i-20260913.json',
+    reason: 'bridged band [2433.32, 2649.97): effective [2487, 2522]; 2450/2466.67/2500/2566.67/2600/2616.67 3000/3000, the 2517-2550 arming hole bridged on 15/15 phone arms',
   }),
 });
 

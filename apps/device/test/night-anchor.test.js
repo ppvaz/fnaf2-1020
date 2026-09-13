@@ -168,6 +168,16 @@ for (let authorizeOffset = 0; authorizeOffset <= 4000; authorizeOffset += 137) {
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, aimMs: 3600 }), RangeError,
   'an aim past the period is refused: a Night 6 aim needs its period');
 
+// Strict: a late authorization refuses instead of releasing unanchored, and
+// releases nothing.
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 4200 });
+  await assert.rejects(() => anchorNightRelease({ ...options, aimMs: 3600, maxK: 0, periodMs: 5000, strict: true }),
+    /anchored release refused \(authorization-late\)/);
+  assert.equal(state.releases.length, 0, 'strict must not release');
+  assert.ok(state.events.some(event => event.status === 'refused'));
+}
+
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, aimMs: 1000 }), RangeError);
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, maxK: undefined }), /maxK/);
 
