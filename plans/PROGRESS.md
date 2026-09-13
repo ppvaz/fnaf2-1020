@@ -5326,3 +5326,22 @@ of the Night 6 run (70-100 s). Corpus: encounter-corpus-20260912.json. Operator 
 attack on the record); 210 s is Chica, not Freddy; every other eyehole guess
 held and every '?' was an empty eyehole -- 19/20 for the colour rule alone,
 20/20 with the camdrop witness as tie-break. Twenty labelled encounters.
+
+Fourth Night 5 win, `night5-noflash-20260913T003456Z` (fnv1a-9f883b27: the
+hallfix knobs with `hallMs 0`, no post-mask hall flash at all; gate PASS with a
+prediction on record, model 2250/3000 over 20 phases): 6 AM at 419.7 s, 42/42
+gates AGREED, 0 visible hall flashes by construction, masks median 5.08 s
+(3 under 5.0), mask-off latency 278/307/352, monitor-down 535/600/672 ms.
+This is the model's camdrop-reset credit (hallView = monitor not up during the
+drop) confirmed on Night 5 at n=1, and ~620 ms of cycle freed. Camdrop
+witness: 9 encounters in 41 windows (Chica 5, Bonnie 4, Freddy 0; 22 %).
+Evidence:
+[night5-fourth-6am-noflash-20260913.json](../docs/evidence/night5-fourth-6am-noflash-20260913.json).
+Operator concern recorded there: every fixed-ROI witness assumes no office pan;
+no run has panned since the monitor/mask desync fix (sourced gate: frame 3
+groups 220-225, XMouse <= XLeftFrame+367 / >= +648 with viewing = 0), and a
+partial pan-shift.py scan of three runs measured 0 px on every measurable
+frame. Right-vent-light strategies would need the pan; deferred. Dormant Mangle
+was confirmed by the operator in the top-right office corner on anchor1/4/5
+(cycle before the kill), but the only detector feature tried (warm pink) is the
+ceiling lamp: no detector yet.

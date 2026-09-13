@@ -152,5 +152,24 @@
       "WitheredFreddyInHall": 4,
       "encountersTotal": 6
     }
+  },
+  "mangleWitness": {
+    "method": "camdrop frames (monitor just down), 640x288 downscale, region x190-500 y20-145 (upper-centre of the office, where she hangs from the ceiling; the top-right box first used caught only the tip of her arm); score = pale/white-pink pixels (luma >= 110, |r-g| < 40) and red pixels (r >= 120, g < 90)",
+    "calibration": {
+      "anchor1 273.85-273.90 s": "pale 2924-3843, red 1332",
+      "anchor4 367.82 s": "pale 1928, red 1317",
+      "anchor5 306.48-306.53 s": "pale 2280-2927, red 3144-3160",
+      "frame before she is drawn": "pale 58-207"
+    },
+    "calibrationFrames": "the monitor-down frame ~0.1 s before her jumpscare on night5-anchor1, anchor4, anchor5 -- read as Mangle by this session; operator confirmation pending (Pedro noted no Mangle frame had been confirmed by him)",
+    "traced runs": "night5-hallfix and night6-foxyfix camdrop frames: pale max 34 px over 64 cycles -- zero Mangle sightings, now a measurement rather than a blind spot",
+    "alsoInThoseFrames": "anchor1: Withered Bonnie in the hall doorway behind her; anchor5: Balloon Boy in the office beside her",
+    "operatorCorrection": "2026-09-13: the calibration frames show Mangle's JUMPSCARE ONSET, not Mangle dormant in the office waiting to confirm the kill; frame 2 (anchor1 273.85) also shows Foxy and Bonnie in a lit hall; frame 4 (anchor4 367.67) shows only the monitor down/lowering; frame 6 a lit hall; frames 8-9 (anchor5) Balloon Boy in the office while Mangle finishes. The detector is therefore validated on the attack pose only; the dormant pose is still unconfirmed.",
+    "dormantConfirmedByOperator": {
+      "anchor1 (jumpscare 273.85 s)": "dormant top-right at -10.25/-10.0 s and -4.75/-4.5/-4.25 s",
+      "anchor4 (367.77 s)": "dormant at -10.0 s and -4.75..-4.0 s",
+      "anchor5 (306.48 s)": "dormant at -10.0 s (also visible through the eyehole at -9.75 s during the mask animation) and -4.75/-4.5/-4.25 s",
+      "reading": "she waits in the top-right corner of the office through the cycle before the kill: visible in both office windows (after the camdrop and after mask-off); the first detector box was in the right place and its feature (pink) was the ceiling lamp -- calibration in progress on these frames"
+    }
   }
 }

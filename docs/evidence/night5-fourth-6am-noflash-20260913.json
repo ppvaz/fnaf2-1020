@@ -1,0 +1,158 @@
+{
+  "schema": "night5-fourth-6am-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "one-off node script over the retained run files; every value read from them",
+  "run": "night5-noflash-20260913T003456Z",
+  "campaignRunId": "campaign-2026-09-13T00-35-09.321Z",
+  "night": 5,
+  "experiment": {
+    "kind": "death-prediction",
+    "prediction": {
+      "wins": 2250,
+      "replays": 3000,
+      "killers": [
+        {
+          "killer": "puppet",
+          "share": 0.25,
+          "tSeconds": {
+            "max": 98.66666666666667,
+            "min": 27.666666666666668,
+            "p10": 32.666666666666664,
+            "p50": 40.666666666666664,
+            "p90": 58.666666666666664
+          }
+        }
+      ]
+    },
+    "modelClaim": "identical to the hallfix binding seed for seed: the post-mask hall flash is inert because the camdrop light is credited as Foxy reset",
+    "communityClaim": "without the post-mask flash Foxy comes",
+    "observed": "no Foxy; 6 AM"
+  },
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 5,
+      "outcome": "sixam",
+      "sixAm": true
+    },
+    "terminalVerification": {
+      "sixAm": true,
+      "positive": true
+    },
+    "save": {
+      "customNightVisible": false,
+      "continueVisible": true,
+      "sixthNightVisible": true,
+      "menuReturned": true,
+      "customCompleted": false,
+      "nextNightStarted": false,
+      "observed": true
+    },
+    "proof": true,
+    "proofHash": "fnv1a-e017f7c9",
+    "sixAmObservedAfterReleaseMs": 419658,
+    "videoTerminal": "clear -- sixam at 447.5s",
+    "videoHudFirst": "26.5s"
+  },
+  "schedule": {
+    "gates": 42,
+    "gateStatus": {
+      "AGREED": 42
+    },
+    "corrections": 0,
+    "gateAborts": 0,
+    "contactsScheduled": 256,
+    "hallFlashesScheduled": 0
+  },
+  "binding": {
+    "bundle": "artifacts/night5-noflash/bundle",
+    "winnerHash": "fnv1a-9f883b27",
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 13650,
+      "maskOnMs": 4249,
+      "maskOffMs": 9460,
+      "hallMs": 0
+    },
+    "changeVersusThirdWin": "hallMs 0: the post-mask hall flash row is dropped; everything else identical to fnv1a-34463603"
+  },
+  "maskWindowsVideo12fps": {
+    "count": 42,
+    "minS": 3.5,
+    "medianS": 5.08,
+    "maxS": 5.58,
+    "below5s": 3
+  },
+  "latency": {
+    "maskOffPressToEffectMs": "278 median 307 max 352",
+    "monitorDownPressToEffectMs": "535 median 600 max 672"
+  },
+  "retained": {
+    "video": {
+      "path": "captures/night5-noflash-20260913T003456Z.mp4",
+      "sha256": "b02a1fb41eb236e930b4af0e408e369ae0cb5e76558bea36c39ac82bddb5e5d9"
+    },
+    "frameTrace": {
+      "path": "captures/frame-traces/night5-noflash-20260913T003456Z-732906221888915.tsv",
+      "sha256": "ef94a090286646af010dde9cb3f87b51b66d96ce9612a9e9fbd83425514fc8cc"
+    },
+    "inputEvents": {
+      "path": "artifacts/runs/night5-noflash-20260913T003456Z/input-events.txt",
+      "sha256": "7eb62faed06bf898b639793570d46d0e319d5fc6fcee11c02484fa9298ca5f6b"
+    },
+    "prediction": {
+      "path": "artifacts/runs/night5-noflash-20260913T003456Z/prediction.json",
+      "sha256": "ebc0f9c207a7ace16d76a073b4d98a0122d50f9f102bbc80a7a22bb63a91bc1d"
+    },
+    "campaignResult": {
+      "path": "artifacts/campaign-2026-09-13T00-35-09.321Z/result.json",
+      "sha256": "5e87b43a27de2c3df445b88c08f0173d7597730479fde7d9566f0fff0dd4b8d4"
+    },
+    "campaignEvents": {
+      "path": "artifacts/campaign-2026-09-13T00-35-09.321Z/events.jsonl",
+      "sha256": "f5d527732ed8c1a506c47f7ce7d61f6542043c6ba56892cf955d9d6d12fda264",
+      "rows": 142
+    }
+  },
+  "camdropWitness": {
+    "method": "same instrument as docs/evidence/encounter-corpus-20260912.json camdropWitness (release = video 28.28 s; camdrop frame sampled at each flash slot X belongs to mask window X+10 s)",
+    "tally": {
+      "empty": 32,
+      "W.Chica": 5,
+      "W.Bonnie": 4,
+      "W.Freddy": 0
+    },
+    "encounters": [
+      110,
+      160,
+      180,
+      220,
+      250,
+      300,
+      310,
+      370,
+      390
+    ],
+    "byId": {
+      "W.Chica": [
+        110,
+        180,
+        250,
+        300,
+        370
+      ],
+      "W.Bonnie": [
+        160,
+        220,
+        310,
+        390
+      ]
+    },
+    "encounterRate": "9 of 41 camdrop frames (22%); hallfix read 34%, model 38%",
+    "note": "no post-mask flash in this bundle (hallMs 0), so the camdrop frame is the only encounter witness; two grey-signature frames (120 s, 260 s: 2571/1563 px hue 229) read empty by the colour rule and are not operator-checked"
+  },
+  "operatorConcern": {
+    "raisedOn": "2026-09-12",
+    "text": "every fixed-ROI reading (eyehole, camdrop, corner) assumes no office pan; operator states no run has panned since the monitor/mask desync fix. Sourced: pan is gated on viewing=0 and being-attacked=0 with XMouse <= XLeftFrame+367 (left) / >= +648 (right), frame 3 groups 220-225; a partial pan-shift.py scan of hallfix/noflash/anchor1 measured shift 0 on every measurable frame. Right-vent-light strategies would need pan and are deferred."
+  }
+}
