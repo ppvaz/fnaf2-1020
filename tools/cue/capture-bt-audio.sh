@@ -91,8 +91,11 @@ pcm_format() {
 if [ "$MODE" = stop ]; then
   [ -f "$BASE.bt.json" ] || { echo "no capture sidecar at $BASE.bt.json" >&2; exit 2; }
   PID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["pid"])' "$BASE.bt.json")"
-  kill -INT "$PID" 2>/dev/null || true
-  for _ in $(seq 1 30); do kill -0 "$PID" 2>/dev/null || break; sleep 0.1; done
+  # bluealsa-cli open ignored SIGINT on night6-anchoredf1 and kept the PCM
+  # (the next run's --start got "Device or resource busy"): TERM, then KILL.
+  kill -TERM "$PID" 2>/dev/null || true
+  for _ in $(seq 1 20); do kill -0 "$PID" 2>/dev/null || break; sleep 0.1; done
+  if kill -0 "$PID" 2>/dev/null; then kill -KILL "$PID" 2>/dev/null || true; sleep 0.3; fi
   STOP_WALL="$(date +%s%3N)"; STOP_MONO="$(mono_ms)"
   read -r FMT RATE CH < <(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["format"], d["rate"], d["channels"])' "$BASE.bt.json")
   case "$FMT" in S16_LE) F=s16le; GAIN=1 ;; S24_LE|S24_3LE|S32_LE) F=s32le; GAIN=256 ;; *) F=s16le; GAIN=1 ;; esac
@@ -141,6 +144,9 @@ if [ "$MODE" = start ]; then
   esac
   if pgrep -x bluealsa-aplay >/dev/null; then
     echo "bluealsa-aplay holds the PCM (root service); stop it first: sudo systemctl stop bluealsa-aplay" >&2; exit 3
+  fi
+  if pgrep -f "bluealsa-cli open $PCM" >/dev/null; then
+    echo "a previous capture still holds the PCM: $(pgrep -fa "bluealsa-cli open $PCM" | head -1); stop it (--stop) before starting another" >&2; exit 3
   fi
   read -r FMT RATE CH < <(pcm_format)
   [ -n "$FMT" ] && [ -n "$RATE" ] || { echo "could not read the PCM format from bluealsa-cli info" >&2; exit 3; }

@@ -2,7 +2,7 @@
   "schema": "device-night5-anchor-aim-v1",
   "recordedAt": "2026-09-13",
   "claimLevel": "MODEL_ONLY",
-  "binding": "fnv1a-e671c931",
+  "binding": "fnv1a-3554e353",
   "qualification": "artifacts/night6-anchored-f/qualification-test.json",
   "night": 6,
   "aimMs": 4870,
@@ -13,7 +13,7 @@
   },
   "onsetBiasMs": -70,
   "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame on the helper image clock; the executor delivers T0 = latched onset + aimMs + k*periodMs; the latched onset leads the frame-trace onset by 65-75 ms (night6-anchoredc1: 4917.5 -> 4842; night6-anchoredd2: 5240.2 -> 5175), so effective epoch = aim + k*period + onsetBiasMs + input latency (hall-lit 47 ms, 1-82). The period is Withered Foxy's five-second roll timer (g337); the model carries g778.",
-  "why": "Binding e died at 155.5 s with the mid-cycle tick seeing D = 6 (docs/evidence/night6-anchorede2-audio-20260913.md): the camdrop reset did not count. On the phone the camdrop light is released ~270 ms after viewing reaches 0; this binding holds it 450 ms past the monitor tap (until the mask press) for a ~600 ms overlap. Same aim, same band, same latency and onset bias as e.",
+  "why": "Binding e died at 155.5 s with the mid-cycle tick seeing D = 6 (docs/evidence/night6-anchorede2-audio-20260913.md): the camdrop reset did not count. On the phone the camdrop light is released ~270 ms after viewing reaches 0; this binding holds it 200 ms past the monitor tap (until the mask press) for a ~400 ms overlap. Same aim, same band, same latency and onset bias as e.",
   "model": {
     "tool": "tools/device/minus-toys-plan.mjs replay({night:6, seed, epochMs}) with the g778 plant-model correction",
     "fps": 60,
@@ -1064,7 +1064,7 @@
         }
       }
     ],
-    "note": "rows are binding e's (tail 67); the model is indifferent to camdropTailMs (300/300 at 67/300/450 across the band); the 3000-seed confirmations below are at tail 450"
+    "note": "rows are binding e's (tail 67); the model is indifferent to camdropTailMs (300/300 at 67/300/450 across the band); the 3000-seed confirmations below are at tail 200"
   },
   "winningBands": [
     {

@@ -222,9 +222,10 @@ export const ANCHOR_AIMS = Object.freeze({
     // mid-cycle tick -- the camdrop reset did not count. Superseded by f.
     refuted: 'docs/evidence/night6-anchorede2-audio-20260913.md',
   }),
-  // Same knobs and aim as e with the camdrop light held 450 ms past the
-  // monitor tap (lit-with-viewing-0 overlap ~600 ms instead of ~270).
-  'fnv1a-e671c931': Object.freeze({
+  // Same knobs and aim as e with the camdrop light held 200 ms past the
+  // monitor tap (lit-with-viewing-0 overlap ~400 ms instead of ~270; a 450 ms
+  // tail overlapped the mask tap and the executor refused the macro).
+  'fnv1a-3554e353': Object.freeze({
     night: 6,
     aimMs: 4870,
     latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
@@ -233,7 +234,7 @@ export const ANCHOR_AIMS = Object.freeze({
     maxK: 0,
     qualifiedEpochMs: 4850,
     evidence: 'docs/evidence/night6-anchor-aim-f-20260913.json',
-    reason: 'band [4766.67, 4916.67) as e; tail 450 confirmed 3000/3000 at 4816.67/4850/4883.33/4900',
+    reason: 'band [4766.67, 4916.67) as e; tail 200 (model indifferent to the tail) confirmed 3000/3000 at 4816.67/4850/4883.33/4900',
   }),
 });
 
