@@ -178,3 +178,25 @@ departure time (medians −4.0 vs −4.4 s); the encounter's identity is the
 open candidate. Values per cycle in
 [`night5-third-6am-hallfix-20260912.json`](night5-third-6am-hallfix-20260912.json)
 (`encounterCensus`).
+
+## The 26 s death, explained (2026-09-13)
+
+The first run's death is now sourced and measured, and the mechanism is the
+one the 2026-09-12 retraction left open: the FLAT flash. `night6-foxytest` ran
+the mask5plus knobs (hall at mask-off + 380 ms, `hallMs` 33). The doorway trace
+at 60 fps shows no beam at either post-mask flash (cycle 1: 6 -> 11 -> raise;
+cycle 2: 11 -> 12 -> raise; a lit beam is +55). The phone's mask-off
+press-to-effect is 307 ms median, 352 max, and g75 lights the hall only at
+`mask` = 0; the 33 ms tap fell inside the lowering animation both times. With
+no post-mask reset, D ran from the camdrop at 15.5 s through the 5.2 s mask
+window to 13.7 at the 25.0 s roll (g337: 21 + Random(5) - D <= 10 locks with
+Random(5) <= 3), and g573 kills the instant the held camdrop light meets a
+locked Foxy at the 25.6 s drop -- the frame shows Withered Foxy over the
+lowering monitor. The model's floor of 40 s (60 000 replays) comes from its
+244 ms `MASK_ANIM_OFF` with zero actuation latency: its flash lands.
+
+The second run's 238 s death is where the model puts it once the epoch is
+read on the five-second grid: delivered epoch 2569 ms, where the same knobs
+win 3.5 % (2500) to 70 % (2800). See
+[`night6-anchor-aim-20260913.json`](night6-anchor-aim-20260913.json) and
+ON-DEVICE-VALIDATION "Night 6 is a phase problem on the five-second grid".

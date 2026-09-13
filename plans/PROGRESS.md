@@ -5345,3 +5345,22 @@ frame. Right-vent-light strategies would need the pan; deferred. Dormant Mangle
 was confirmed by the operator in the top-right office corner on anchor1/4/5
 (cycle before the kill), but the only detector feature tried (warm pink) is the
 ceiling lamp: no detector yet.
+
+Night 6 roadmap (2026-09-13, host-side): the 26 s death is explained (33 ms
+hall contact swallowed by the phone's 307-352 ms mask-off latency, doorway
+trace flat at both flashes; model floor 40 s because its mask-off is 244 ms
+with no latency), and the Night 6 loss is a PHASE loss on Withered Foxy's
+five-second roll grid (g337): the hallfix knobs score 0/3000 at every epoch in
+[0, 1000) and 3000/3000 across effective epochs 2900-4950, perforated every
+200 ms by 50 ms split-arming holes (g263). Shipped: `winner.anchorEpochMs`
+(gate replays at the anchor's epoch, manifest carries it, run script refuses
+to run it unanchored), `--night-anchor-period-ms` through CLI, campaign port,
+fact register and run script, a Night 6 anchor aim (3600 on 5000, maxK 0,
+qualified epoch 3850) with evidence
+[night6-anchor-aim-20260913.json](../docs/evidence/night6-anchor-aim-20260913.json),
+and `artifacts/night6-anchored` (fnv1a-bc5e044c, PASS at 3850). Corrected:
+night6-hallfix's qualification-test.json claimed 3000/3000 at epoch 0 while
+its manifest replay shows 8/8 Foxy deaths. Open: no phone run has delivered an
+epoch in [2900, 4950]; the grid origin (first held night frame) is assumed;
+the arming CAM tap latency is a stated proxy. Next physical step: run
+`artifacts/night6-anchored` -- Pedro's call.

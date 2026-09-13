@@ -25,6 +25,7 @@
 //   node tools/device/fact-register.mjs [--json] [--out FILE]
 //   node tools/device/fact-register.mjs --anchor-aim WINNER_HASH   (prints the aim, exit 3 if none)
 //   node tools/device/fact-register.mjs --anchor-max-k WINNER_HASH (prints maxK, exit 3 if none)
+//   node tools/device/fact-register.mjs --anchor-period-ms WINNER_HASH (prints the aim's timer period, exit 3 if none)
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -125,6 +126,24 @@ export const ANCHOR_AIMS = Object.freeze({
     evidence: 'docs/evidence/night5-anchor-aim-20260912.json',
     reason: 'centre of the winning band [166.67, 300]: every model row there is 5 mask ticks and 3000/3000; k is free (233/1233/2233 all 3000/3000)',
   }),
+  // Night 6: the band is on Withered Foxy's five-second roll grid (g337), not
+  // the one-second grid. The hallfix knobs lose at every epoch in [0, 1000)
+  // and win 3000/3000 across effective epochs 2900-4950, perforated every
+  // 200 ms by the 50 ms split-arming hole (g263). The aim keeps the effective
+  // interval inside the window [3766.67, 3916.67) with 33 ms to each hole;
+  // the bundle's gate replays at qualifiedEpochMs (winner.anchorEpochMs).
+  'fnv1a-bc5e044c': Object.freeze({
+    night: 6,
+    aimMs: 3600,
+    latencyMs: { min: 200, max: 285, provenance: 'monitor-up press-to-effect median 253 ms measured 2026-09-12; arming CAM taps unmeasured, bounds stated' },
+    periodMs: 5000,
+    // k=1 is aim + 5 s: the opening wind starts 8.85 s after onset and the
+    // model loses 3000/3000 to a Withered inside the office.
+    maxK: 0,
+    qualifiedEpochMs: 3850,
+    evidence: 'docs/evidence/night6-anchor-aim-20260913.json',
+    reason: 'window [3766.67, 3916.67) of the Foxy-roll band: 3783.33/3816.67/3850/3883.33/3900 all 3000/3000; 3750 and 3916.67 are Puppet holes (split arming)',
+  }),
 });
 
 /** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */
@@ -158,6 +177,11 @@ export function anchorAimFor(winnerHash) {
       `is not inside a winning band of ${entry.evidence} with ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin` };
   if (evidence.latencyMs && (evidence.latencyMs.min !== latency.min || evidence.latencyMs.max !== latency.max))
     return { ok: false, reason: `${entry.evidence} states latency [${evidence.latencyMs.min}, ${evidence.latencyMs.max}], the register [${latency.min}, ${latency.max}]` };
+  // A bundle gated at an anchor epoch (winner.anchorEpochMs) must be gated at
+  // an epoch this aim can deliver: inside the effective interval.
+  if (entry.qualifiedEpochMs !== undefined &&
+      !(entry.qualifiedEpochMs >= effectiveMin && entry.qualifiedEpochMs <= effectiveMax))
+    return { ok: false, reason: `qualified epoch ${entry.qualifiedEpochMs} ms lies outside the effective interval [${effectiveMin}, ${effectiveMax}] of aim ${entry.aimMs}` };
   const unclean = (evidence.confirmations3000 ?? []).filter(c => c.wins !== c.seeds);
   if (!evidence.confirmations3000?.length || unclean.length)
     return { ok: false, reason: `3000-seed confirmations in ${entry.evidence} are missing or not clean` };
@@ -249,6 +273,17 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1
     const found = anchorAimFor(hash);
     if (found.ok && Number.isInteger(found.maxK)) { process.stdout.write(`${found.maxK}\n`); process.exit(0); }
     process.stderr.write(`fact register: ${found.ok ? `binding ${hash} registers an aim but no maxK` : found.reason}\n`);
+    process.exit(3);
+  }
+  const periodIndex = process.argv.indexOf('--anchor-period-ms');
+  if (periodIndex >= 0) {
+    // `--anchor-period-ms WINNER_HASH`: the game timer period the aim is a
+    // phase of. k steps by this period, so an executor given the aim without
+    // it would anchor a Night 6 aim against the one-second grid.
+    const hash = process.argv[periodIndex + 1] ?? '';
+    const found = anchorAimFor(hash);
+    if (found.ok && Number.isInteger(found.periodMs) && found.periodMs > 0) { process.stdout.write(`${found.periodMs}\n`); process.exit(0); }
+    process.stderr.write(`fact register: ${found.ok ? `binding ${hash} registers an aim but no period` : found.reason}\n`);
     process.exit(3);
   }
   const value = build();

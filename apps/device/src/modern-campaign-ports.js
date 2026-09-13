@@ -202,12 +202,17 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, qualification, serial, adb = 'adb', configReadback,
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
-    nightAnchorAimMs = null, nightAnchorMaxK = null } = options;
+    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000 } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
-  if (nightAnchorAimMs !== null && !(Number.isFinite(nightAnchorAimMs) && nightAnchorAimMs >= 0 && nightAnchorAimMs < 1000))
-    throw new TypeError('nightAnchorAimMs must be null or a millisecond epoch in [0, 1000)');
+  // The aim is a phase of the game timer the route is banded against: the
+  // one-second grid on Night 5 (Balloon Boy), the five-second Foxy roll grid
+  // on Night 6 (g337). The period travels with the aim from the fact register.
+  if (!(Number.isInteger(nightAnchorPeriodMs) && nightAnchorPeriodMs > 0))
+    throw new TypeError('nightAnchorPeriodMs must be a positive integer number of milliseconds');
+  if (nightAnchorAimMs !== null && !(Number.isFinite(nightAnchorAimMs) && nightAnchorAimMs >= 0 && nightAnchorAimMs < nightAnchorPeriodMs))
+    throw new TypeError(`nightAnchorAimMs must be null or a millisecond epoch in [0, ${nightAnchorPeriodMs})`);
   // The aim is only as good as the whole seconds it was confirmed at: an aim
   // without its register bound would anchor at an unscored k.
   if (nightAnchorAimMs !== null && !(Number.isInteger(nightAnchorMaxK) && nightAnchorMaxK >= 0))
@@ -584,7 +589,8 @@ export async function createCampaignPorts(options = {}) {
           authorization: { isAuthorized: () => authorizedAtHostMs !== null, whenAuthorized: () => authorized,
             authorizedAt: () => authorizedAtHostMs },
           release: () => localExecutor.releaseNight(), onEvent,
-          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, notBeforeHostMs: introStartedHostMs });
+          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, periodMs: nightAnchorPeriodMs,
+          notBeforeHostMs: introStartedHostMs });
       anchoring.catch(() => {});
       try {
         state = await authorized;

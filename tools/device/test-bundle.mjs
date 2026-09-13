@@ -192,6 +192,22 @@ try {
   check(phasedBundle.replay.hash !== unphasedBundle.replay.hash,
     'replay hash ignored the phase offset: the gate cannot see the rotation it ships');
 
+  // An anchored winner replays at the epoch the anchor delivers, and the
+  // manifest carries that epoch so the run script can refuse to run it
+  // unanchored. 10 s covers the longest game timer the routes are banded on.
+  const anchored = { ...winner, nights: [7], anchorEpochMs: 3850 };
+  const anchoredPath = join(root, 'anchored');
+  const anchoredBundle = compileBundle(anchored, anchoredPath);
+  check(anchoredBundle.replay.hash !== unphasedBundle.replay.hash,
+    'replay hash ignored the anchor epoch: the gate cannot see the phase the anchor delivers');
+  check(JSON.parse(readFileSync(join(anchoredPath, 'manifest.json'), 'utf8')).anchorEpochMs === 3850,
+    'anchor epoch did not reach the manifest');
+  let anchorRefusal = '';
+  try { compileBundle({ ...winner, nights: [7], anchorEpochMs: 10001 }, join(root, 'anchored-late')); }
+  catch (error) { anchorRefusal = error.message; }
+  check(anchorRefusal.includes('anchorEpochMs must be an integer in 0..10000'),
+    `an anchor epoch past the longest game timer was accepted (${anchorRefusal})`);
+
   // minus3 and minus7 replay at epoch 0 only. Emitting an offset they cannot
   // score would reopen the same hole through a different strategy.
   // Assert the reason, not just the refusal: this winner also trips the

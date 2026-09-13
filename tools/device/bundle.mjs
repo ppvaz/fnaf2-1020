@@ -130,6 +130,13 @@ export function validateWinner(input) {
   if (input.phaseOffsetMs !== undefined &&
       (!Number.isInteger(input.phaseOffsetMs) || input.phaseOffsetMs < 0 || input.phaseOffsetMs > 2000))
     fail('phaseOffsetMs must be an integer in 0..2000 ms');
+  // The epoch the anchored release is registered to deliver (fact-register
+  // ANCHOR_AIMS: aim + actuation latency), so the gate replays the phase the
+  // phone will actually run. Night 6 wins only in a band of the five-second
+  // Foxy roll grid; a gate scored at epoch 0 says nothing about that band.
+  if (input.anchorEpochMs !== undefined &&
+      (!Number.isInteger(input.anchorEpochMs) || input.anchorEpochMs < 0 || input.anchorEpochMs > 10000))
+    fail('anchorEpochMs must be an integer in 0..10000 ms');
   validateGate(input.gate, input.engineHash, nights, seeds);
   if (input.profile !== undefined && typeof input.profile !== 'string' && !isRecord(input.profile))
     fail('profile must be a profile id, path, or object');
@@ -390,8 +397,11 @@ function minusToysEmitter(winner, night) {
   // run at that phase. Without this the gate scores epoch 0 while the device
   // runs a rotated stream, and `gate.replayHash` -- the check that is supposed
   // to bind evidence to the artifact -- stays byte-identical across the change.
+  // The device applies `#phase-offset` after the anchored release, so the
+  // delivered epoch is the anchor's plus the offset.
   return { text, knobs,
-    replay: seed => replayToys({ night, seed, knobs, epochMs: winner.phaseOffsetMs ?? 0 }) };
+    replay: seed => replayToys({ night, seed, knobs,
+      epochMs: (winner.anchorEpochMs ?? 0) + (winner.phaseOffsetMs ?? 0) }) };
 }
 
 function minus3Emitter(winner, night) {
@@ -442,6 +452,8 @@ function emitterFor(winner, night) {
   const entry = STRATEGY_REGISTRY[strategy];
   if (winner.phaseOffsetMs !== undefined && !entry.phaseAware)
     fail(`${strategy} cannot replay a phase offset`);
+  if (winner.anchorEpochMs !== undefined && !entry.phaseAware)
+    fail(`${strategy} cannot replay an anchor epoch`);
   return entry.emit(winner, night);
 }
 
@@ -537,6 +549,7 @@ export function compileBundle(input, outDirectory) {
     schema: BUNDLE_SCHEMA, version: 1, strategy: winner.strategy, policy: winner.strategy,
     winnerHash: stableHash(finalWinner), engineHash: winner.engineHash,
     nights: winner.nights, profile: { id: profile.id, file: 'profile.json', sha256: sha256(profileText) },
+    ...(winner.anchorEpochMs === undefined ? {} : { anchorEpochMs: winner.anchorEpochMs }),
     plans, gate: finalWinner.gate, replay,
     source: { compiler: 'tools/device/bundle.mjs', registry: Object.keys(STRATEGY_REGISTRY) },
     engine: { declaredHash: winner.engineHash, sourceSha256: source.sha256, sources: source.sources },

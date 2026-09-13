@@ -2525,3 +2525,61 @@ change. The second death-targeting run (`night6-foxyfix-20260912T231146Z`)
 died to Foxy at ~238 s against 80/150/170 s: killer right, time in the upper
 tail. Details and the next experiment in
 [`night6-foxy-prediction-20260912.md`](../evidence/night6-foxy-prediction-20260912.md).
+
+## Night 6 is a phase problem on the five-second grid, not a route problem (2026-09-13)
+
+The 26 s Night 6 death (`night6-foxytest`, mask5plus knobs, epoch 139 ms) is
+explained, sourced and measured. The post-mask hall contact is 33 ms
+(`hallMs`), pressed at mask-off + 380 ms; the phone's mask-off press-to-effect
+is 307 ms median, 352 max, and g75 lights the hall only at `mask` = 0, after
+the lowering animation. The 33 ms tap fell inside the animation on both cycles:
+the doorway trace at 60 fps shows no beam at either flash (6 -> 11 -> raise,
+never the +55 of a lit beam). With no post-mask reset, D ran from the camdrop
+at 15.5 s through the 5.2 s mask window to 13.7 at the 25.0 s roll; at AI 10
+that locks with Random(5) <= 3, and g573 kills the instant the held camdrop
+light meets a locked Foxy at the 25.6 s drop. The model gives that bundle a
+Foxy floor of 40 s in 60 000 replays because its `MASK_ANIM_OFF` is 244 ms
+with zero actuation latency, so its flash lands. The retraction of 2026-09-12
+stands for DARK flashes (sourced rendering); the swallowed flash is the FLAT
+one, and the hallfix move to +600 ms is what removed it.
+
+The larger finding came from tracing the model's own Foxy on the hallfix
+knobs. Withered Foxy rolls on a global five-second timer (g337, `Every 5000
+ms`), and the route's cycle is 10 s: which cycle phase the roll ticks land on is
+fixed for the whole night by the epoch. At epoch 0 the ticks land at phases
+0.0 and 5.0, and phase 10.0 is the instant before the flash at 10.06, where
+D = 6.35 s + 5.21 s masked = 11 -- exactly the AI-10 threshold, and far past
+the AI-15 one after 2 AM. Every epoch in [0, 1000) dies (`night6-hallfix`
+prediction: 0 wins, Foxy 75 %). Shifting the whole schedule by 2.9-4.95 s
+against the same grid wins 3000/3000 at 3000, 3500, 4000, 4500 (18 Golden
+Freddy), 4900, and the same knobs lose 3000/3000 again at 5100: the period is
+5 s, and the one-second scans (`death-prediction` phases 0..950, the Night 5
+anchor bands) never see it. `night6-noflash` never wins at any epoch: the
+post-mask flash is required at AI 15.
+
+The band is perforated. Every 200 ms a 50 ms hole loses 100 % to the Puppet at
+36-50 s: g263 samples `last viewed` on a 200 ms timer, and when a tick falls
+between the opening's CAM 09 tap and the monitor drop 50 ms later, the raise
+restores CAM 09, the box is never wound, and the Puppet walks. The Night 5
+anchor evidence carries the same holes ([116.67, 166.67), [316.67, 366.67),
+[916.67, 966.67)) under the Balloon Boy label. The phone's arm check sees a
+failed split and aborts.
+
+What this changes:
+
+- A bundle can now be qualified at the epoch its anchor delivers
+  (`winner.anchorEpochMs`, `tools/device/bundle.mjs`): the gate replays there,
+  the manifest carries it, and `night5-run.sh` refuses to run such a bundle
+  unanchored. `artifacts/night6-anchored` (fnv1a-bc5e044c) is the hallfix
+  knobs at anchorEpochMs 3850 with an honest PASS.
+- The anchor aim carries its timer period: `--night-anchor-period-ms` from
+  the CLI to `night-anchor.js`, `--anchor-period-ms` in the fact register, and
+  the run script passes it. Night 5 stays on 1000; Night 6 aims at 3600 on
+  5000 with maxK 0 (aim + 5 s loses to a Withered inside the office).
+- The five-second grid origin is assumed to be the first held FNAF2_NIGHT
+  frame, as the one-second origin was for Night 5. No phone run has delivered
+  an epoch in [2900, 4950): the six graded runs sat at 59-2569 ms, and the
+  238 s death (`night6-foxyfix`, 2569 ms) sits where the model gives 3.5-70 %.
+  The first anchored Night 6 run tests the origin as much as the route.
+
+Evidence: [`night6-anchor-aim-20260913.json`](../evidence/night6-anchor-aim-20260913.json).

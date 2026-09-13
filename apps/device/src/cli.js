@@ -56,7 +56,8 @@ Options:
   --arm-observe-once  run the double-camera check once without blocking the schedule; abort only on a definite mismatch
   --allow-save-reset  authorize the measured New Game confirmation for a fresh story chain
   --night-anchor-aim-ms N  release the night schedule at the helper's latched onset + N ms (mod 1000)
-  --night-anchor-max-k K  refuse (release unanchored) when the aim needs more than K whole seconds past the onset
+  --night-anchor-max-k K  refuse (release unanchored) when the aim needs more than K whole periods past the onset
+  --night-anchor-period-ms P  the game timer period the aim is a phase of (default 1000; Night 6's Foxy roll grid is 5000)
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
   --live        explicitly enable physical actuation
@@ -80,7 +81,7 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
-    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, nightAnchorMaxK: null, calibration: undefined, bundle: undefined,
+    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, nightAnchorMaxK: null, nightAnchorPeriodMs: 1000, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
@@ -96,6 +97,7 @@ function parse(argv) {
     else if (item === '--allow-save-reset') options.allowSaveReset = true;
     else if (item === '--night-anchor-aim-ms') options.nightAnchorAimMs = Number(rest[++index]);
     else if (item === '--night-anchor-max-k') options.nightAnchorMaxK = Number(rest[++index]);
+    else if (item === '--night-anchor-period-ms') options.nightAnchorPeriodMs = Number(rest[++index]);
     else if (item === '--no-helper') options.requireHelper = false;
     else if (item === '--no-hid') options.requireHid = false;
     else if (item === '--serial') options.serial = rest[++index];
@@ -352,7 +354,8 @@ async function main(argv = process.argv.slice(2)) {
       composition = await factory({ spec, bundle, profile: selected, calibration, qualification,
         serial: device.serial, machineOnly: options.machineOnly, armMode: options.armMode,
         allowSaveReset: options.allowSaveReset, captureRestarted: true,
-        nightAnchorAimMs: options.nightAnchorAimMs, nightAnchorMaxK: options.nightAnchorMaxK });
+        nightAnchorAimMs: options.nightAnchorAimMs, nightAnchorMaxK: options.nightAnchorMaxK,
+        nightAnchorPeriodMs: options.nightAnchorPeriodMs });
     }
     const ports = composition?.ports ?? composition;
     // Once a live composition exists, an operator interrupt must release the

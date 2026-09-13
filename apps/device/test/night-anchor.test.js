@@ -142,6 +142,32 @@ for (let authorizeOffset = 0; authorizeOffset <= 4000; authorizeOffset += 137) {
   }
 }
 
+// Night 6 aims on the five-second Foxy roll grid (g337): the aim may exceed one
+// second, k steps by the period, and the released aim is quoted mod the period.
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 2400 });
+  const result = await anchorNightRelease({ ...options, aimMs: 3600, maxK: 0, periodMs: 5000 });
+  assert.equal(result.status, 'released');
+  assert.equal(result.k, 0);
+  assert.deepEqual(state.releases, [ONSET_HOST_MS + 3600]);
+  assert.equal(released(state).releasedAimMs, 3600);
+}
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 4200 });
+  const result = await anchorNightRelease({ ...options, aimMs: 3600, maxK: 1, periodMs: 5000 });
+  assert.equal(result.status, 'released');
+  assert.equal(result.k, 1, 'a late authorization steps one PERIOD, not one second');
+  assert.deepEqual(state.releases, [ONSET_HOST_MS + 8600]);
+}
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 4200 });
+  const result = await anchorNightRelease({ ...options, aimMs: 3600, maxK: 0, periodMs: 5000 });
+  assert.equal(result.status, 'unavailable', 'k=1 is refused when the register caps k at 0');
+  assert.equal(state.releases.length, 1);
+}
+await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, aimMs: 3600 }), RangeError,
+  'an aim past the period is refused: a Night 6 aim needs its period');
+
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, aimMs: 1000 }), RangeError);
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, maxK: undefined }), /maxK/);
 

@@ -501,9 +501,29 @@ if [ "$NIGHT_ANCHOR_AIM_MS" != off ] && [ -z "${NIGHT_ANCHOR_MAX_K:-}" ]; then
     printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-max-k.err")"
   fi
 fi
+# The aim is a phase of ONE game timer, and the timer differs by night: Night
+# 5's bands are on the one-second grid, Night 6's on the five-second Foxy roll
+# (g337). The period is registered beside the aim; an override must state it
+# (NIGHT_ANCHOR_PERIOD_MS=<ms>).
+if [ "$NIGHT_ANCHOR_AIM_MS" != off ] && [ -z "${NIGHT_ANCHOR_PERIOD_MS:-}" ]; then
+  if period="$(node tools/device/fact-register.mjs --anchor-period-ms "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-period.err")"; then
+    NIGHT_ANCHOR_PERIOD_MS="$period"
+  else
+    NIGHT_ANCHOR_AIM_MS=off
+    printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-period.err")"
+  fi
+fi
+# A bundle whose gate was scored at an anchor epoch (manifest.anchorEpochMs,
+# tools/device/bundle.mjs) holds only there: released unanchored it runs a phase
+# no census has seen, on Night 6 one the model loses to Foxy. Refuse, do not
+# "release the old way".
+BUNDLE_ANCHOR_EPOCH_MS="$(node -e 'const v = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).anchorEpochMs; process.stdout.write(v === undefined ? "" : String(v))' "$BUNDLE/manifest.json" 2>/dev/null || true)"
+if [ -n "$BUNDLE_ANCHOR_EPOCH_MS" ] && [ "$NIGHT_ANCHOR_AIM_MS" = off ]; then
+  die "bundle $BUNDLE_WINNER_HASH is qualified at anchor epoch $BUNDLE_ANCHOR_EPOCH_MS ms but no anchor is available; refusing to release it at a drawn phase"
+fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
-  CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS" --night-anchor-max-k "$NIGHT_ANCHOR_MAX_K")
-  printf 'anchor   release at night onset + %s ms + k s, k <= %s\n' "$NIGHT_ANCHOR_AIM_MS" "$NIGHT_ANCHOR_MAX_K"
+  CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS" --night-anchor-max-k "$NIGHT_ANCHOR_MAX_K" --night-anchor-period-ms "$NIGHT_ANCHOR_PERIOD_MS")
+  printf 'anchor   release at night onset + %s ms + k x %s ms, k <= %s\n' "$NIGHT_ANCHOR_AIM_MS" "$NIGHT_ANCHOR_PERIOD_MS" "$NIGHT_ANCHOR_MAX_K"
 fi
 # Pedro's standing direction: the arm check does not block the schedule.
 #

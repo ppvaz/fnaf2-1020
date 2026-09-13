@@ -1,0 +1,2235 @@
+{
+  "schema": "device-night5-anchor-aim-v1",
+  "recordedAt": "2026-09-13",
+  "claimLevel": "MODEL_ONLY",
+  "binding": "fnv1a-bc5e044c",
+  "qualification": "artifacts/night6-anchored/qualification-test.json",
+  "night": 6,
+  "aimMs": 3600,
+  "periodMs": 5000,
+  "latencyMs": {
+    "min": 200,
+    "max": 285
+  },
+  "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame on the helper image clock (@fnaf2-1020/adapters/night-onset, NIGHT_ONSET_HOLD_MS 500); positive epoch fires the schedule later (minus-toys-plan: when = base + at + epochMs); the executor delivers T0 = onset + aimMs + k*periodMs. The period is 5000 ms because the band is set by Withered Foxy's roll timer (g337, Every 5000 ms: 21 + Random(5) - D <= AI) against the route's 10 s cycle; a one-second scan (death-prediction phases 0..950) never sees it.",
+  "why": "Night 6 with the hallfix knobs (fnv1a-44e8eff2) scores 0/3000 at every epoch in [0, 1000) and dies to Foxy on the phone (26 s, 238 s). The same knobs score 3000/3000 across effective epochs 2900-4950: there the 5 s roll ticks fall at cycle phases where D (reset by the camdrop at phase 3.65 and the flash at 10.06, doubled while masked 4.25-9.46) is below 21 + Random(5) - AI. The band is perforated every 200 ms by 50 ms holes where the split-camera arming fails (g263 samples last viewed on a 200 ms timer; the CAM 09 tap and the monitor drop 50 ms apart straddle a tick, the raise restores CAM 09, the box is never wound and the Puppet kills at ~36-50 s). The aim 3600 puts the effective interval [3800, 3885] inside the window [3766.67, 3916.67) with 33 ms to each hole. The latency is the measured monitor-up press-to-effect median 253 ms (2026-09-12) with stated bounds; the arming CAM taps themselves are unmeasured.",
+  "model": {
+    "tool": "tools/device/minus-toys-plan.mjs replay({night:6, seed, epochMs}) on the night6-hallfix knobs (windMs 3030, camdropMs 13650, maskOnMs 4249, maskOffMs 9460, hallOffsetMs 10060; hallMs 33)",
+    "fps": 60,
+    "rowSeeds": 100,
+    "rows100ms": [
+      {
+        "epochMs": 0,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 800,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 900,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 1800,
+        "seeds": 100,
+        "wins": 2,
+        "deaths": {
+          "foxy": 98
+        }
+      },
+      {
+        "epochMs": 1900,
+        "seeds": 100,
+        "wins": 2,
+        "deaths": {
+          "foxy": 98
+        }
+      },
+      {
+        "epochMs": 2000,
+        "seeds": 100,
+        "wins": 4,
+        "deaths": {
+          "foxy": 96
+        }
+      },
+      {
+        "epochMs": 2100,
+        "seeds": 100,
+        "wins": 4,
+        "deaths": {
+          "foxy": 96
+        }
+      },
+      {
+        "epochMs": 2200,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochMs": 2300,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochMs": 2400,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochMs": 2500,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochMs": 2600,
+        "seeds": 100,
+        "wins": 4,
+        "deaths": {
+          "foxy": 96
+        }
+      },
+      {
+        "epochMs": 2700,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochMs": 2800,
+        "seeds": 100,
+        "wins": 70,
+        "deaths": {
+          "foxy": 30
+        }
+      },
+      {
+        "epochMs": 2900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3000,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3100,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3200,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3300,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3400,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3500,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3600,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3700,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3800,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 3900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 4000,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 4100,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 4200,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4300,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4400,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4500,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4600,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4700,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4800,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 4900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 5000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5800,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 5900,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 6000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 6100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 6200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochMs": 6300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 6400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 6500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 6600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "foxy": 1,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 6700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 6800,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 6900,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 7000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "foxy": 1,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "foxy": 1,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "foxy": 1,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "foxy": 1,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 7700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "foxy": 1
+        }
+      },
+      {
+        "epochMs": 7800,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 7900,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 8000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 8100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 8200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 8300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 8400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 8500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 8600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 8700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 8800,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 8900,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 9000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 100
+        }
+      },
+      {
+        "epochMs": 9200,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9300,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9400,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9500,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9600,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochMs": 9700,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 98,
+          "golden-freddy": 2
+        }
+      },
+      {
+        "epochMs": 9800,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochMs": 9900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      }
+    ],
+    "rowsFrames": [
+      {
+        "epochFrames": 160,
+        "epochMs": 2666.67,
+        "seeds": 100,
+        "wins": 5,
+        "deaths": {
+          "foxy": 95
+        }
+      },
+      {
+        "epochFrames": 161,
+        "epochMs": 2683.33,
+        "seeds": 100,
+        "wins": 5,
+        "deaths": {
+          "foxy": 95
+        }
+      },
+      {
+        "epochFrames": 162,
+        "epochMs": 2700,
+        "seeds": 100,
+        "wins": 6,
+        "deaths": {
+          "foxy": 94
+        }
+      },
+      {
+        "epochFrames": 163,
+        "epochMs": 2716.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 164,
+        "epochMs": 2733.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 165,
+        "epochMs": 2750,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 166,
+        "epochMs": 2766.67,
+        "seeds": 100,
+        "wins": 57,
+        "deaths": {
+          "foxy": 43
+        }
+      },
+      {
+        "epochFrames": 167,
+        "epochMs": 2783.33,
+        "seeds": 100,
+        "wins": 65,
+        "deaths": {
+          "foxy": 35
+        }
+      },
+      {
+        "epochFrames": 168,
+        "epochMs": 2800,
+        "seeds": 100,
+        "wins": 70,
+        "deaths": {
+          "foxy": 30
+        }
+      },
+      {
+        "epochFrames": 169,
+        "epochMs": 2816.67,
+        "seeds": 100,
+        "wins": 74,
+        "deaths": {
+          "foxy": 26
+        }
+      },
+      {
+        "epochFrames": 170,
+        "epochMs": 2833.33,
+        "seeds": 100,
+        "wins": 78,
+        "deaths": {
+          "foxy": 22
+        }
+      },
+      {
+        "epochFrames": 171,
+        "epochMs": 2850,
+        "seeds": 100,
+        "wins": 91,
+        "deaths": {
+          "foxy": 9
+        }
+      },
+      {
+        "epochFrames": 172,
+        "epochMs": 2866.67,
+        "seeds": 100,
+        "wins": 97,
+        "deaths": {
+          "foxy": 3
+        }
+      },
+      {
+        "epochFrames": 173,
+        "epochMs": 2883.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "foxy": 1
+        }
+      },
+      {
+        "epochFrames": 174,
+        "epochMs": 2900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 175,
+        "epochMs": 2916.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 176,
+        "epochMs": 2933.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 177,
+        "epochMs": 2950,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 178,
+        "epochMs": 2966.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 179,
+        "epochMs": 2983.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 180,
+        "epochMs": 3000,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 181,
+        "epochMs": 3016.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 182,
+        "epochMs": 3033.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 183,
+        "epochMs": 3050,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 184,
+        "epochMs": 3066.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 185,
+        "epochMs": 3083.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 186,
+        "epochMs": 3100,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 187,
+        "epochMs": 3116.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 188,
+        "epochMs": 3133.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 189,
+        "epochMs": 3150,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 190,
+        "epochMs": 3166.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 191,
+        "epochMs": 3183.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 192,
+        "epochMs": 3200,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 193,
+        "epochMs": 3216.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 194,
+        "epochMs": 3233.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 195,
+        "epochMs": 3250,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 196,
+        "epochMs": 3266.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 197,
+        "epochMs": 3283.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 198,
+        "epochMs": 3300,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 199,
+        "epochMs": 3316.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 200,
+        "epochMs": 3333.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 201,
+        "epochMs": 3350,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 202,
+        "epochMs": 3366.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 203,
+        "epochMs": 3383.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 204,
+        "epochMs": 3400,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 205,
+        "epochMs": 3416.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 206,
+        "epochMs": 3433.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 207,
+        "epochMs": 3450,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 208,
+        "epochMs": 3466.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 209,
+        "epochMs": 3483.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 210,
+        "epochMs": 3500,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 211,
+        "epochMs": 3516.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 212,
+        "epochMs": 3533.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 213,
+        "epochMs": 3550,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 214,
+        "epochMs": 3566.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 215,
+        "epochMs": 3583.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 216,
+        "epochMs": 3600,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 217,
+        "epochMs": 3616.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 218,
+        "epochMs": 3633.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 219,
+        "epochMs": 3650,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 220,
+        "epochMs": 3666.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 221,
+        "epochMs": 3683.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 222,
+        "epochMs": 3700,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 223,
+        "epochMs": 3716.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 224,
+        "epochMs": 3733.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 225,
+        "epochMs": 3750,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 226,
+        "epochMs": 3766.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 227,
+        "epochMs": 3783.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 228,
+        "epochMs": 3800,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 229,
+        "epochMs": 3816.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 230,
+        "epochMs": 3833.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 231,
+        "epochMs": 3850,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 232,
+        "epochMs": 3866.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 233,
+        "epochMs": 3883.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 234,
+        "epochMs": 3900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 235,
+        "epochMs": 3916.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 236,
+        "epochMs": 3933.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 237,
+        "epochMs": 3950,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 238,
+        "epochMs": 3966.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 239,
+        "epochMs": 3983.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 240,
+        "epochMs": 4000,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 241,
+        "epochMs": 4016.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 242,
+        "epochMs": 4033.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 243,
+        "epochMs": 4050,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 244,
+        "epochMs": 4066.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 245,
+        "epochMs": 4083.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 246,
+        "epochMs": 4100,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 247,
+        "epochMs": 4116.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 248,
+        "epochMs": 4133.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 249,
+        "epochMs": 4150,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 250,
+        "epochMs": 4166.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 251,
+        "epochMs": 4183.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 252,
+        "epochMs": 4200,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 253,
+        "epochMs": 4216.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 254,
+        "epochMs": 4233.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 255,
+        "epochMs": 4250,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 256,
+        "epochMs": 4266.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 257,
+        "epochMs": 4283.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 258,
+        "epochMs": 4300,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 259,
+        "epochMs": 4316.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 260,
+        "epochMs": 4333.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 261,
+        "epochMs": 4350,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 262,
+        "epochMs": 4366.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 263,
+        "epochMs": 4383.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 264,
+        "epochMs": 4400,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 265,
+        "epochMs": 4416.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 266,
+        "epochMs": 4433.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 267,
+        "epochMs": 4450,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 268,
+        "epochMs": 4466.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 269,
+        "epochMs": 4483.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 270,
+        "epochMs": 4500,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 271,
+        "epochMs": 4516.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 272,
+        "epochMs": 4533.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 273,
+        "epochMs": 4550,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 274,
+        "epochMs": 4566.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 275,
+        "epochMs": 4583.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 276,
+        "epochMs": 4600,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 277,
+        "epochMs": 4616.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 278,
+        "epochMs": 4633.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 279,
+        "epochMs": 4650,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 280,
+        "epochMs": 4666.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 281,
+        "epochMs": 4683.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 282,
+        "epochMs": 4700,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 283,
+        "epochMs": 4716.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 284,
+        "epochMs": 4733.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 285,
+        "epochMs": 4750,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 99,
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 286,
+        "epochMs": 4766.67,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 287,
+        "epochMs": 4783.33,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 288,
+        "epochMs": 4800,
+        "seeds": 100,
+        "wins": 99,
+        "deaths": {
+          "golden-freddy": 1
+        }
+      },
+      {
+        "epochFrames": 289,
+        "epochMs": 4816.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 290,
+        "epochMs": 4833.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 291,
+        "epochMs": 4850,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 292,
+        "epochMs": 4866.67,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 293,
+        "epochMs": 4883.33,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 294,
+        "epochMs": 4900,
+        "seeds": 100,
+        "wins": 100,
+        "deaths": {}
+      },
+      {
+        "epochFrames": 295,
+        "epochMs": 4916.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 83,
+          "foxy": 17
+        }
+      },
+      {
+        "epochFrames": 296,
+        "epochMs": 4933.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 297,
+        "epochMs": 4950,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 298,
+        "epochMs": 4966.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 299,
+        "epochMs": 4983.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 300,
+        "epochMs": 5000,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 301,
+        "epochMs": 5016.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 302,
+        "epochMs": 5033.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 303,
+        "epochMs": 5050,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 304,
+        "epochMs": 5066.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 305,
+        "epochMs": 5083.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 306,
+        "epochMs": 5100,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      },
+      {
+        "epochFrames": 307,
+        "epochMs": 5116.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 308,
+        "epochMs": 5133.33,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 309,
+        "epochMs": 5150,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "puppet": 100
+        }
+      },
+      {
+        "epochFrames": 310,
+        "epochMs": 5166.67,
+        "seeds": 100,
+        "wins": 0,
+        "deaths": {
+          "foxy": 100
+        }
+      }
+    ]
+  },
+  "winningBands": [
+    {
+      "fromMs": 2900,
+      "toMs": 2916.67
+    },
+    {
+      "fromMs": 2966.67,
+      "toMs": 3116.67
+    },
+    {
+      "fromMs": 3166.67,
+      "toMs": 3316.67
+    },
+    {
+      "fromMs": 3366.67,
+      "toMs": 3516.67
+    },
+    {
+      "fromMs": 3566.67,
+      "toMs": 3716.67
+    },
+    {
+      "fromMs": 3766.67,
+      "toMs": 3916.67
+    },
+    {
+      "fromMs": 3966.67,
+      "toMs": 4116.67
+    },
+    {
+      "fromMs": 4816.67,
+      "toMs": 4916.67
+    }
+  ],
+  "winningBands100ms": [
+    {
+      "fromMs": 2900,
+      "toMs": 4200
+    },
+    {
+      "fromMs": 4900,
+      "toMs": 5000
+    },
+    {
+      "fromMs": 9800,
+      "toMs": 10000
+    }
+  ],
+  "confirmations3000": [
+    {
+      "epochMs": 3000.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3500.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3783.33,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3816.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3850.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3883.33,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 3900.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 4000.0,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 4900.0,
+      "seeds": 3000,
+      "wins": 3000
+    }
+  ],
+  "lossRows3000": [
+    {
+      "epochMs": 3750.0,
+      "seeds": 3000,
+      "wins": 0,
+      "deaths": {
+        "puppet": 2998,
+        "golden-freddy": 2
+      }
+    },
+    {
+      "epochMs": 3916.67,
+      "seeds": 3000,
+      "wins": 0,
+      "deaths": {
+        "puppet": 2998,
+        "golden-freddy": 2
+      }
+    },
+    {
+      "epochMs": 4500.0,
+      "seeds": 3000,
+      "wins": 2982,
+      "deaths": {
+        "golden-freddy": 18
+      }
+    }
+  ],
+  "kIsFree": "NO: k steps by 5000 ms and epoch 8850 (aim + 1 period + 250) scores 0/3000 (inside-office 2971, Golden Freddy 29) -- the opening wind starts 8.85 s after onset and the first mask window is late. maxK is 0; authorization later than onset + 3600 - minLead releases unanchored, and night5-run.sh refuses to run this binding unanchored at all.",
+  "kLimit": {
+    "maxK": 0,
+    "rows3000": [
+      {
+        "epochMs": 5100.0,
+        "seeds": 3000,
+        "wins": 0,
+        "deaths": {
+          "foxy": 3000
+        }
+      },
+      {
+        "epochMs": 5500.0,
+        "seeds": 3000,
+        "wins": 0,
+        "deaths": {
+          "foxy": 3000
+        }
+      },
+      {
+        "epochMs": 8850.0,
+        "seeds": 3000,
+        "wins": 0,
+        "deaths": {
+          "inside-office": 2971,
+          "golden-freddy": 29
+        }
+      }
+    ]
+  },
+  "openLimits": [
+    "the five-second grid origin is assumed to be the first held FNAF2_NIGHT frame, as the one-second grid was for Night 5 (bands corroborated there by deaths at band edges); a whole-second error would move this band by that much. No phone run has delivered an epoch in [2900, 4950); the first anchored Night 6 run tests the origin as much as the route",
+    "the actuation latency of the arming CAM taps is unmeasured; the register carries the monitor-up press-to-effect median as its proxy",
+    "the 50 ms split-arming holes are sourced (g263) but have never been observed on the phone: six graded runs armed on attempt 1",
+    "a rebinding changes the bands: derive a new file for its winner hash before anchoring on it"
+  ]
+}
