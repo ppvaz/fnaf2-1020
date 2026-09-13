@@ -2,7 +2,7 @@
   "schema": "device-night5-anchor-aim-v1",
   "recordedAt": "2026-09-13",
   "claimLevel": "MODEL_ONLY",
-  "binding": "fnv1a-7e2ccff2",
+  "binding": "fnv1a-651ed623",
   "qualification": "artifacts/night7-anchored-i/qualification-test.json",
   "night": 7,
   "aimMs": 2510,

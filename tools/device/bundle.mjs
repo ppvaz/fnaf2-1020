@@ -390,7 +390,7 @@ function minusToysEmitter(winner, night) {
   const text = addCommonHeaders(raw, { strategy: 'minus-toys', night, period,
     loopStart: idleStart,
     stopAt: knobs.minimal ? knobs.minStopAtMs : 420000,
-    observeUntil: knobs.minimal ? knobs.minObserveUntilMs : 420000,
+    observeUntil: knobs.minimal ? knobs.minObserveUntilMs : knobs.observeUntilMs,
     idleUntil: 0, phaseOffsetMs: winner.phaseOffsetMs,
     lengths: { opening: 7000, toys: period, finish: 420000 } });
   // The emitted plan carries `#phase-offset`, so the replay that gates it must

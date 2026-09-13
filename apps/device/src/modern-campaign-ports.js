@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CueHelperControlTransport, HidWireTransport, measureMaskOn, measureMonitorUp,
   parseCameraRule, parseMaskRule, parseMonitorRule, reconcileExclusiveControls } from '@fnaf2-1020/adapters';
-import { configureCustomNight, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
+import { configureCustomNight, selectCustomNightPreset, validateCustomNightCalibration, CUSTOM_NIGHT_CONTACT_MS } from './custom-night.js';
 import { AdbDeviceBridge } from './adb-bridge.js';
 import { composeCampaignPorts } from './campaign-composition.js';
 import { AdbDeviceLocalArtifactExecutor } from './adb-device-local-executor.js';
@@ -30,6 +30,7 @@ const MASK_RULE = new URL('../../../models/mask-rule-moto-g56-v207.json', import
 const LIFECYCLE_OBSERVER = new URL('../../../tools/device/lifecycle-observe.py', import.meta.url);
 const TITLE_OBSERVER = new URL('../../../tools/device/title-observe.py', import.meta.url);
 const CUSTOM_NIGHT_READBACK = new URL('../../../tools/device/custom-night-readback.py', import.meta.url);
+const AI_DIALS_ALL = ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy', 'toybonnie', 'toychica', 'mangle', 'bb', 'golden'];
 const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -203,7 +204,7 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, calibrationPath = null, qualification, serial, adb = 'adb',
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
-    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false } = options;
+    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false, nightAnchorAuthorizeOnLatch = false } = options;
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
@@ -590,7 +591,7 @@ export async function createCampaignPorts(options = {}) {
           authorization: { isAuthorized: () => authorizedAtHostMs !== null, whenAuthorized: () => authorized,
             authorizedAt: () => authorizedAtHostMs },
           release: () => localExecutor.releaseNight(), onEvent,
-          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, periodMs: nightAnchorPeriodMs, strict: nightAnchorStrict === true,
+          aimMs: nightAnchorAimMs, maxK: nightAnchorMaxK, periodMs: nightAnchorPeriodMs, strict: nightAnchorStrict === true, authorizeOnLatch: nightAnchorAuthorizeOnLatch === true,
           notBeforeHostMs: introStartedHostMs });
       anchoring.catch(() => {});
       try {
@@ -688,19 +689,45 @@ export async function createCampaignPorts(options = {}) {
   const configReadback = options.configReadback ?? (calibrationPath === null ? undefined
     : async ({ bridge: readBridge, serial: readSerial }) => {
       const glyphs = join(dirname(resolve(calibrationPath)), 'custom-night-glyphs-v1.json');
-      const result = await captureAndObserve(readBridge, readSerial, CUSTOM_NIGHT_READBACK,
-        ['--calibration', resolve(calibrationPath), '--glyphs', glyphs, '--sensor', 'screencap-2400x1080']);
-      try { return JSON.parse(lastLine(result.stdout)); }
-      catch { return { status: 'UNKNOWN', reason: `readback observer exit ${result.code}: ${lastLine(result.stderr)}` }; }
+      // The dial screen follows the title tap after a transition of variable
+      // length: night7-anchoredi3 read the title (">> Custom Night" selected)
+      // and refused. Re-read until the dials are legible, within a budget.
+      let last = { status: 'UNKNOWN', reason: 'no readback attempted' };
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const result = await captureAndObserve(readBridge, readSerial, CUSTOM_NIGHT_READBACK,
+          ['--calibration', resolve(calibrationPath), '--glyphs', glyphs, '--sensor', 'screencap-2400x1080']);
+        try { last = JSON.parse(lastLine(result.stdout)); }
+        catch { last = { status: 'UNKNOWN', reason: `readback observer exit ${result.code}: ${lastLine(result.stderr)}` }; }
+        if (last.status === 'PASS') return last;
+        await new Promise(resolveSleep => setTimeout(resolveSleep, 500));
+      }
+      return last;
     });
   const customNight = async ({ target }) => {
     validateCustomNightCalibration(calibration, { targetBuild: spec.target.build });
     if (typeof configReadback !== 'function')
       throw new Error('Custom Night readback adapter is not composed; refusing to change dials');
+    const dialTap = ({ point: targetPoint, holdMs }) => tap({ point: targetPoint, holdMs });
+    const dialReadback = args => configReadback({ ...args, bridge, serial });
+    // The measured preset ring (custom-night-moto-g56-v207.json) has a preset
+    // whose dials are exactly the target: reach it through the arrow pair
+    // first (Pedro, 2026-09-13: "use o preset golden freddy" -- one contact
+    // from the opening state instead of six dial taps), then let the per-dial
+    // routine confirm with a fresh readback and touch nothing.
+    if (calibrationPath !== null && typeof calibration.configModel === 'string') {
+      const modelPath = join(dirname(resolve(calibrationPath)), calibration.configModel.split('/').at(-1));
+      const model = JSON.parse(await readFile(modelPath, 'utf8'));
+      const wanted = model.presets?.find(item => AI_DIALS_ALL.every(dial => item.dials?.[dial] === target.dials?.[dial]));
+      if (wanted) {
+        const selected = await selectCustomNightPreset({ preset: wanted.id, model, tap: dialTap, readback: dialReadback,
+          direction: 'auto', targetBuild: spec.target.build });
+        onEvent({ type: 'custom-night.preset', preset: wanted.id, steps: selected.steps });
+      }
+    }
     const configured = await configureCustomNight({ target, calibration,
       targetBuild: spec.target.build,
-      tap: ({ point: targetPoint, holdMs }) => tap({ point: targetPoint, holdMs }),
-      readback: args => configReadback({ ...args, bridge, serial }),
+      tap: dialTap,
+      readback: dialReadback,
     });
     await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
     return configured;

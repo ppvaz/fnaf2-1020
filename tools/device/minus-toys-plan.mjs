@@ -154,6 +154,10 @@ export const KNOBS0 = {
   minLoopStartMs: 140000,  // first 2 AM interval: begin flash/wind work here.
   minStopAtMs: 360000,     // ~5:08 AM: no route can reach the office before 6.
   minObserveUntilMs: 420000, // stay hands-off but record through the 6 AM result.
+  observeUntilMs: 420000,  // full-cadence plans: how far the executor's observation
+                           //   envelope reaches. A loop shifted earlier in its cycle
+                           //   (Night 7 binding i, rows -2500 ms) ends its last wind
+                           //   hold past 420 s; the night still ends at 420 s.
   minFlashAtMs: 150,       // cameraFeedLight (CAM 09 feed flash) re-flash, early in each 5 s window
   minFlashHoldMs: 100,     // its hold -- >= one Fusion poll past the 33 ms contact floor
   minWindAtMs: 300,        // wind start, just after the flash

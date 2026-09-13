@@ -41,12 +41,14 @@ const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, 
  *   now?: () => number, wallNow?: () => number, sleep?: (ms: number) => Promise<void>,
  *   latchPollMs?: number, latchWaitMs?: number, latchGraceAfterAuthorizationMs?: number,
  *   minLeadMs?: number, maxUncertaintyMs?: number, periodMs?: number, strict?: boolean,
+ *   authorizeOnLatch?: boolean, latchHoldMs?: number,
  * }} options
  */
 export async function anchorNightRelease({ clock, authorization, release, onEvent = () => {}, aimMs, maxK, notBeforeHostMs,
   now = () => performance.now(), wallNow = () => Date.now(), sleep = defaultSleep,
   latchPollMs = 100, latchWaitMs = 35000, latchGraceAfterAuthorizationMs = 1500,
-  minLeadMs = 80, maxUncertaintyMs = 15, periodMs = 1000, strict = false }) {
+  minLeadMs = 80, maxUncertaintyMs = 15, periodMs = 1000, strict = false,
+  authorizeOnLatch = false, latchHoldMs = 500 }) {
   if (typeof clock?.read !== 'function' || typeof clock?.probe !== 'function')
     throw new TypeError('night anchor needs a clock with read and probe');
   if (typeof authorization?.isAuthorized !== 'function' || typeof authorization?.whenAuthorized !== 'function')
@@ -172,11 +174,20 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
       if (left <= 0) break;
       await sleep(left > 25 ? left - 20 : 0);
     }
-    if (!authorization.isAuthorized()) {
+    // The helper's latched onset is the first FNAF2_NIGHT frame held for
+    // latchHoldMs of image time -- the same native identity the plan is made
+    // from. With authorizeOnLatch an aim that falls after that hold is
+    // released on the latch alone: the Night 7 band (aim 2510) is reachable
+    // only 5 of 10 times through the ~1 Hz office classifier (1.7-3.5 s), and
+    // that classifier still runs behind the release and aborts a false night.
+    const latchAuthorized = authorizeOnLatch && releaseHostMs >= onsetHostMs + latchHoldMs + minLeadMs;
+    if (!authorization.isAuthorized() && !latchAuthorized) {
       onEvent({ type: 'origin.anchor', status: 'skipped', k, releaseHostMs, reason: 'not-authorized',
         afterOnsetMs: releaseHostMs - onsetHostMs });
       continue;
     }
+    if (latchAuthorized && !authorization.isAuthorized())
+      onEvent({ type: 'origin.anchor', status: 'latch-authorized', k, releaseHostMs, afterOnsetMs: releaseHostMs - onsetHostMs });
     const firedHostMs = now();
     const firedWallMs = wallNow();
     release();

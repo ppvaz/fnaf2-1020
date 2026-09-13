@@ -479,7 +479,10 @@ fi
 [ -z "$CALIBRATION" ] || [ -f "$CALIBRATION" ] || die "calibration file not found: $CALIBRATION"
 CAMPAIGN=(node apps/device/src/cli.js campaign
   --profile "$PROFILE" --serial "$SERIAL" --nights "$NIGHT" --max-attempts 1
-  --save-cursor "$SAVE_CURSOR" --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
+  --bundle "$BUNDLE" --qualification "$QUALIFICATION" --json)
+# The save cursor is a STORY observation (campaign.js: storySaveCursor must
+# equal the first story night of the chain); the Custom Night has none.
+[ "$NIGHT" = 7 ] || CAMPAIGN+=(--save-cursor "$SAVE_CURSOR")
 [ -z "$CALIBRATION" ] || CAMPAIGN+=(--calibration "$CALIBRATION")
 # Place the schedule release at the helper's latched night onset + an epoch
 # (mod one game second) instead of wherever the ~1 Hz office classifier fires.
@@ -551,7 +554,7 @@ fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ]; then
   CAMPAIGN+=(--night-anchor-aim-ms "$NIGHT_ANCHOR_AIM_MS" --night-anchor-max-k "$NIGHT_ANCHOR_MAX_K" --night-anchor-period-ms "$NIGHT_ANCHOR_PERIOD_MS")
   # An anchor-qualified bundle must never run at a drawn phase: strict.
-  [ -z "$BUNDLE_ANCHOR_EPOCH_MS" ] || CAMPAIGN+=(--night-anchor-strict)
+  [ -z "$BUNDLE_ANCHOR_EPOCH_MS" ] || CAMPAIGN+=(--night-anchor-strict --night-anchor-authorize-on-latch)
   printf 'anchor   release at night onset + %s ms + k x %s ms, k <= %s\n' "$NIGHT_ANCHOR_AIM_MS" "$NIGHT_ANCHOR_PERIOD_MS" "$NIGHT_ANCHOR_MAX_K"
 fi
 # Pedro's standing direction: the arm check does not block the schedule.

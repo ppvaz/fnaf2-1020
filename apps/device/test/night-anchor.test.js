@@ -168,6 +168,23 @@ for (let authorizeOffset = 0; authorizeOffset <= 4000; authorizeOffset += 137) {
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, aimMs: 3600 }), RangeError,
   'an aim past the period is refused: a Night 6 aim needs its period');
 
+// authorizeOnLatch: the latched onset alone releases an aim past the latch
+// hold; the classifier's authorization (here at +4200) is not waited for.
+{
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 4200 });
+  const result = await anchorNightRelease({ ...options, aimMs: 2510, maxK: 0, periodMs: 5000, strict: true, authorizeOnLatch: true });
+  assert.equal(result.status, 'released');
+  assert.equal(result.k, 0);
+  assert.deepEqual(state.releases, [ONSET_HOST_MS + 2510]);
+  assert.ok(state.events.some(event => event.status === 'latch-authorized'));
+}
+{
+  // An aim inside the latch hold is still not released on the latch.
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 4200 });
+  await assert.rejects(() => anchorNightRelease({ ...options, aimMs: 300, maxK: 0, periodMs: 5000, strict: true, authorizeOnLatch: true }), /refused/);
+  assert.equal(state.releases.length, 0);
+}
+
 // Strict: a late authorization refuses instead of releasing unanchored, and
 // releases nothing.
 {

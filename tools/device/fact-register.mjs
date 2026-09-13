@@ -273,7 +273,7 @@ export const ANCHOR_AIMS = Object.freeze({
   // Night 7 (10/20): the Night 6 loop shifted 2500 ms earlier with a 50 ms
   // opening wind, so the reachable release 2.45-2.62 s after the first frame
   // lands the roll ~100 ms after the post-mask flash. Strict anchor only.
-  'fnv1a-7e2ccff2': Object.freeze({
+  'fnv1a-651ed623': Object.freeze({
     night: 7,
     aimMs: 2510,
     latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
