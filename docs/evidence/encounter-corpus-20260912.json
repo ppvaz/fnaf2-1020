@@ -1,0 +1,80 @@
+{
+  "schema": "encounter-corpus-v1",
+  "recordedAt": "2026-09-12",
+  "source": "right eyehole of the masked office view at mask-on, 1280x576 screenrecord downscaled to 320x144, crop x175-270 y55-110; frames at 5 fps from flash-5.6 s; occupant = pixels with luma >= 12 in the crop (an empty window shows only the mask rim, ~500 px at hue ~352)",
+  "videoMapping": {
+    "night5-hallfix-20260912T230319Z": "video s = 27.00 + s after release",
+    "night6-foxyfix-20260912T231146Z": "video s = 33.97 + s after release"
+  },
+  "labelledByOperator": [
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 100,
+      "label": "Withered Chica",
+      "flashClass": "BLINK",
+      "hue": 36
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 180,
+      "label": "Withered Bonnie",
+      "flashClass": "FLAT",
+      "hue": 242
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 260,
+      "label": "Withered Chica",
+      "flashClass": "FLAT",
+      "hue": 38
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 390,
+      "label": "Withered Chica",
+      "flashClass": "BLINK",
+      "hue": 40
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 400,
+      "label": "Withered Bonnie",
+      "flashClass": "FLAT",
+      "hue": 243
+    }
+  ],
+  "colourRule": {
+    "WitheredChica": "hue 35-75, saturation > 0.35 (observed 36-42, sat 0.63-0.66)",
+    "WitheredBonnie": "hue 200-300 (observed 241-247, sat 0.39)",
+    "WitheredFreddyCandidate": "hue 10-35, sat > 0.3",
+    "empty": "~500 px at hue ~352 = the mask rim",
+    "verdictOnLabelled": "5/5"
+  },
+  "classifierGuesses": {
+    "night5-hallfix": {
+      "90": "W.Chica",
+      "110": "W.Bonnie",
+      "170": "W.Chica",
+      "210": "W.Freddy? (hue 34, borderline)",
+      "240": "W.Bonnie",
+      "310": "W.Bonnie",
+      "320": "W.Chica",
+      "330": "W.Freddy? (hue 16, sat 0.79 -- strongest candidate, awaiting the operator)",
+      "360": "W.Chica"
+    },
+    "night6-foxyfix": {
+      "130": "W.Chica",
+      "140": "W.Bonnie",
+      "170": "W.Bonnie",
+      "180": "W.Chica",
+      "210": "W.Chica",
+      "220": "W.Bonnie"
+    }
+  },
+  "limits": [
+    "Mangle hangs from the ceiling top-right, outside the eyeholes (operator): this corpus sees Withered encounters only, so encounter counts from it are lower bounds",
+    "Balloon Boy stands front-left; no left-eyehole event was seen in 64 windows",
+    "Toy characters were not seen; the route pins them on stage"
+  ],
+  "purpose": "training and validation corpus for attack identification in the masked view; per-cycle encounter identity is the open candidate for what separates a dimmed flash from a refused one after an encounter"
+}
