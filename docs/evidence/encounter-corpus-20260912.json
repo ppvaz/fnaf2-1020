@@ -41,14 +41,32 @@
       "label": "Withered Bonnie",
       "flashClass": "FLAT",
       "hue": 243
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 330,
+      "label": "Withered Freddy",
+      "flashClass": "BLINK",
+      "hue": 16,
+      "note": "the first Withered Freddy attack on the record: in the office at the 320 s camdrop, then filling the right eyehole (frame 2 of the mask window; frame 1 dark)"
+    },
+    {
+      "run": "night5-hallfix",
+      "flashAtS": 210,
+      "label": "Withered Chica",
+      "flashClass": "BLINK",
+      "hue": 34,
+      "note": "eyehole colour rule said Freddy? (borderline hue 34); the camdrop witness said Chica (hue 49); operator: Chica"
     }
   ],
   "colourRule": {
-    "WitheredChica": "hue 35-75, saturation > 0.35 (observed 36-42, sat 0.63-0.66)",
-    "WitheredBonnie": "hue 200-300 (observed 241-247, sat 0.39)",
-    "WitheredFreddyCandidate": "hue 10-35, sat > 0.3",
-    "empty": "~500 px at hue ~352 = the mask rim",
-    "verdictOnLabelled": "5/5"
+    "WitheredChica": "eyehole hue 34-49 sat >= 0.6; office (camdrop) hue ~49 sat 0.6",
+    "WitheredBonnie": "hue 239-247 sat 0.3-0.39",
+    "WitheredFreddy": "hue <= 21 sat >= 0.66 (office 20; eyehole 16)",
+    "WitheredFreddyInHall": "office hue ~21 sat ~0.32 with the doorway beam (not an encounter)",
+    "empty": "eyehole: ~500 px at hue ~352 (mask rim); office: grey 7 700 px (full beam) or 2 730 px (faint beam), sat <= 0.17",
+    "tieBreak": "the camdrop frame (higher resolution, unmasked) decides when the eyehole hue sits at the Chica/Freddy border",
+    "verdictOnLabelled": "20/20 with both witnesses"
   },
   "classifierGuesses": {
     "night5-hallfix": {
@@ -116,5 +134,21 @@
       "verdict": "classifier + this session by eye; operator verdict pending"
     },
     "reading": "the camdrop instant shows the encounter itself: the character is already in the office when the monitor drops, and the mask goes on 0.45 s later to repel it; the same frame shows who stands in the hall"
+  },
+  "operatorVerdict2": "2026-09-12: every '?' in the eyehole corpus is a dark (empty) eyehole; every other colour guess correct except hallfix 210 s (Chica, not Freddy). Eyehole rule 19/20; eyehole + camdrop 20/20.",
+  "identitiesOnRecord": {
+    "night5-hallfix (41 cycles)": {
+      "WitheredChica": 7,
+      "WitheredBonnie": 5,
+      "WitheredFreddy": 1,
+      "encountersTotal": 14,
+      "note": "eyehole 90 s Chica-hued with no camdrop occupant in the previous cycle's frame -- counted from the eyehole"
+    },
+    "night6-foxyfix (23 cycles)": {
+      "WitheredChica": 3,
+      "WitheredBonnie": 3,
+      "WitheredFreddyInHall": 4,
+      "encountersTotal": 6
+    }
   }
 }

@@ -5322,4 +5322,7 @@ stands in the hall. Re-indexed to the following mask window it agrees with
 the eyehole witness cycle for cycle (13/13 on the win), and it found the
 Withered Freddy Pedro asked for: in the office at 320 s on the win (mask
 window 330 s), and standing in the hall doorway on four consecutive cycles
-of the Night 6 run (70-100 s). Corpus: encounter-corpus-20260912.json.
+of the Night 6 run (70-100 s). Corpus: encounter-corpus-20260912.json. Operator verdict: the 330 s occupant IS Withered Freddy (the first Freddy
+attack on the record); 210 s is Chica, not Freddy; every other eyehole guess
+held and every '?' was an empty eyehole -- 19/20 for the colour rule alone,
+20/20 with the camdrop witness as tie-break. Twenty labelled encounters.
