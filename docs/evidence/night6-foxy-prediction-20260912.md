@@ -159,3 +159,22 @@ normal 3.3 (a dimmed beam in an ordinary room — the g202 latch), and bracket
 The seven never-fired flashes occur only on Night 5 from 2 AM on; this run
 ended at 238 s (~3:24 AM), so the two nights do not yet overlap enough to say
 whether refusals belong to the late hours or to the route.
+
+**The encounter census closes the loop on the dark flashes** (third win,
+41 mask windows, eyehole luma at 5 fps): "something in the eyehole" and "a
+darker office behind the mask afterwards" never occur apart — one state, an
+encounter the mask met, always in the right eyehole, present at mask-on and
+gone within 0.2–2.4 s. Encounter cycles (14): the following flash was LIT 1,
+BLINK 7, FLAT 6. No-encounter cycles (27): LIT 21, BLINK 5 (the hall-transit
+latch), FLAT 1 (250 s, the one flash refused for a reason not yet seen).
+After a mask that repelled someone, the light fires dark or not at all 13
+times in 14 — Pedro's hypothesis, measured. The model meets an occupant at
+the opening in 38 % of masked cycles on this route (592/1557) against 34 %
+on the phone: it has the frequency and lacks the consequence. Since g489/
+g745/g855 reset Foxy for a dark flash too, the only cycles where Foxy is not
+reset are the six FLAT ones, all post-encounter, plus 250 s. What separates
+dark-fired from never-fired after an encounter is not the occupant's
+departure time (medians −4.0 vs −4.4 s); the encounter's identity is the
+open candidate. Values per cycle in
+[`night5-third-6am-hallfix-20260912.json`](night5-third-6am-hallfix-20260912.json)
+(`encounterCensus`).

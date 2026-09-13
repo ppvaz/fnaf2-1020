@@ -5311,4 +5311,9 @@ beams; the retained video is the hall instrument. What refuses the seven is
 open. Lit beams show Withered Bonnie and Foxy standing in the hall (30 s) and
 Foxy in a dim beam (390 s). Night 6 (`night6-foxyfix`, same census): 13 lit, 10 blink, 0 flat — every
 flash fired; dark flashes on both nights split into "dim beam, office 3.3"
-(bracket +10.9) and "darker office 1.6" (bracket +7.5), two mechanisms.
+(bracket +10.9) and "darker office 1.6" (bracket +7.5), two mechanisms. Encounter census on the same 41 windows: an occupant in the right eyehole at
+mask-on plus a darker office after = one state (14 cycles); the next flash
+was LIT 1 / BLINK 7 / FLAT 6 after an encounter and LIT 21 / BLINK 5 / FLAT 1
+without. Model encounter rate 38 % vs phone 34 %: frequency right, consequence
+missing. Only the six post-encounter FLAT flashes (and 250 s) leave Foxy
+un-reset.

@@ -291,5 +291,50 @@
       "what refuses the 7 FLAT flashes: the in-danger latch (g443-447) after a defended encounter, or a lost 33 ms contact",
       "the audit grid calls some clearly lit dim beams DARK (100 s): its HALL_LIT_MIN / point sampling under-reads a dimmed beam"
     ]
+  },
+  "encounterCensus": {
+    "method": "per mask window (flash-5.6 s..-0.8 s, 5 fps, 1280x576 video downscaled to 320x144): mean luma of the two eyehole regions (left 75-160 x 55-110, right 175-270 x 55-110); event = any frame with an eyehole >= 12; darker office = median of both eyeholes over the last 3.5 s <= 4.0 (normal 4.4-4.6)",
+    "finding": "event and darker-office never occur apart: one state, an encounter the mask met. All 14 encounters were in the RIGHT eyehole, present at mask-on (-5.6/-5.4 s) and gone by -3.4..-5.4 s.",
+    "contingency": {
+      "encounter": {
+        "n": 14,
+        "LIT": 1,
+        "BLINK": 7,
+        "FLAT": 6
+      },
+      "noEncounter": {
+        "n": 27,
+        "LIT": 21,
+        "BLINK": 5,
+        "FLAT": 1
+      }
+    },
+    "encounterCycles": {
+      "LIT": [
+        90
+      ],
+      "BLINK": [
+        100,
+        110,
+        170,
+        210,
+        240,
+        330,
+        390
+      ],
+      "FLAT": [
+        180,
+        260,
+        310,
+        320,
+        360,
+        400
+      ]
+    },
+    "unexplained": "250 s: FLAT with no encounter -- the one flash refused for a reason not yet seen",
+    "flatVsBlinkAfterEncounter": "occupant lastSeen median FLAT -4.0 s, BLINK -4.4 s: departure time does not separate them; encounter type is the open candidate",
+    "modelEncounterRate": "38% of masked cycles have an occupant at the opening (592/1557, 48 replays, hallfix knobs) vs 34% on the phone (14/41): the model gets the frequency right and lacks the consequence (after a defended encounter the next flash fires dark or not at all, 13 of 14)",
+    "foxyResetImplication": "g489/g745/g855 reset Foxy even for a dark flash, so the only cycles without a reset are the six FLAT ones, all post-encounter (plus 250 s)",
+    "deviceArtifact": "an Android notification toast (\"Used for 3h 25m\") appeared over the game at flash-1.2 s in the 400 s window; harmless here, but an overlay that can eat a touch"
   }
 }
