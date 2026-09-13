@@ -1,0 +1,28 @@
+#policy minus-toys
+#night 6
+#period 10000
+#loop-start 0
+#stop-at 420000
+#observe-until 420000
+#arm-verify 1
+#arm-verify-cameras cam:9,cam:11
+#arm-verify-viewing cam:11
+#arm-verify-until 2033
+#cycle opening 7000
+0 tap monitor 33
+300 tap cam11 33
+833 tap cam9 33
+883 tap monitor 33
+1616 tap monitor 33
+1916 hold cameraFeedLight 100
+2083 hold wind 1750
+3833 camdrop 200 200 67
+4482 tap mask 33
+#cycle toys 10000
+9200 tap mask 200
+9500 hall 33
+10100 tap monitor 200
+10400 hold cameraFeedLight 100
+10570 hold wind 3230
+13850 camdrop 150 200 67
+14449 tap mask 200

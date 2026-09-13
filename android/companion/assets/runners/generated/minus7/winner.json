@@ -1,0 +1,1 @@
+{"engineHash":"android-catalog-minus7-v1","gate":{"claimLevel":"MODEL_ONLY","engineHash":"android-catalog-minus7-v1","nights":[1,2,3,4,5,6,7],"replayHash":"fnv1a-e82ce799","seeds":[1,2,3,4,5,6,7,8],"status":"PASS"},"knobs":{},"nights":[1,2,3,4,5,6,7],"profile":"hid-mediaprojection","schema":"winner-v1","seeds":[1,2,3,4,5,6,7,8],"strategy":"minus7"}

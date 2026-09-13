@@ -1,0 +1,117 @@
+{
+  "schema": "runner-catalog-v1",
+  "version": 1,
+  "readiness": {
+    "enabled": false,
+    "state": "BLOCKED",
+    "claimLevel": "MODEL_ONLY",
+    "sixAmProof": false,
+    "planBoundToProof": false,
+    "adaptersReady": false,
+    "reason": "Disabled until this exact plan has a device-proven 6 AM result, a bound manifest, and the required visual adapters."
+  },
+  "strategies": [
+    {
+      "id": "minus3",
+      "label": "Minus 3",
+      "planRoot": "runners/generated/minus3",
+      "nights": [1, 2, 3, 4, 5, 6, 7],
+      "reason": "The canonical Minus 3 emitter currently has no plan for Night 1, 2, or 7."
+    },
+    {
+      "id": "minus7",
+      "label": "Minus 7",
+      "planRoot": "runners/generated/minus7",
+      "nights": [1, 2, 3, 4, 5, 6, 7],
+      "reason": "This strategy also needs a visual read and reactive cycle adapter."
+    },
+    {
+      "id": "minus-toys",
+      "label": "Minus Toys",
+      "planRoot": "runners/generated/minus-toys",
+      "nights": [1, 2, 3, 4, 5, 6, 7]
+    }
+  ],
+  "night7Presets": [
+    {
+      "id": "default-4-20",
+      "label": "20/20/20/20",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "new-and-shiny",
+      "label": "New and Shiny",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "double-trouble",
+      "label": "Double Trouble",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "night-of-misfits",
+      "label": "Night of Misfits",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "foxy-foxy",
+      "label": "Foxy Foxy",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "ladies-night",
+      "label": "Ladies Night",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "freddys-circus",
+      "label": "Freddy's Circus",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "cupcake-challenge",
+      "label": "Cupcake Challenge",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "fazbear-fever",
+      "label": "Fazbear Fever",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    },
+    {
+      "id": "golden-freddy",
+      "label": "Golden Freddy",
+      "night": 7,
+      "enabled": false,
+      "sixAmProof": false,
+      "reason": "Disabled: this preset has no device-proven 6 AM result bound to a local route."
+    }
+  ]
+}

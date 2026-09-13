@@ -11,24 +11,27 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 /**
- * Device-local consumer for the reviewed Night 6 semantic plan.
+ * Device-local consumer for canonical strategy plans.
  *
- * <p>The plan is the same compiled plan emitted by {@code device:emit}; this
- * class only expands its repeatable cycle and encodes the fixed HID transport.
- * The visual arm gate is deliberately not guessed here. A run is therefore
- * marked model-only in the UI and stops if the capture leaves the night screen.
+ * <p>The APK consumes the finite plan vocabulary emitted by the host bundle
+ * compiler. It does not recreate a strategy from knobs. Routes are selected
+ * from {@link RunnerCatalog}, and the catalog must explicitly allow a route
+ * before this class will open the HID stream. Visual arm/read and reactive
+ * cycle adapters are intentionally fail-closed until they are qualified.</p>
  */
 public final class NightRunner {
     private static final int HID_ID = 92;
     private static final int READY_DELAY_MS = 7_000;
     private static final int PORTION_UPDATE_MS = 5_000;
-    private static final String PLAN_ASSET = "runners/night-6.plan";
+    private static final int DEFAULT_MASK_CONTACT_MS = 33;
     private static final String[] DESCRIPTOR = {
             "5", "13", "9", "4", "161", "1", "133", "1", "9", "34", "161", "0", "9", "85", "21", "0", "37", "2",
             "117", "8", "149", "1", "177", "2", "9", "84", "129", "2", "5", "13", "9", "34", "161", "2", "9",
@@ -80,9 +83,11 @@ public final class NightRunner {
         final int first;
         final int second;
         final int third;
+        final int fourth;
+        final String[] tokens;
 
         Action(String cycle, int atMs, String kind, String control,
-                int first, int second, int third) {
+                int first, int second, int third, int fourth, String[] tokens) {
             this.cycle = cycle;
             this.atMs = atMs;
             this.kind = kind;
@@ -90,10 +95,13 @@ public final class NightRunner {
             this.first = first;
             this.second = second;
             this.third = third;
+            this.fourth = fourth;
+            this.tokens = tokens;
         }
     }
 
     private static final class Plan {
+        String policy;
         int night = -1;
         int periodMs = -1;
         int loopStartMs = -1;
@@ -101,6 +109,8 @@ public final class NightRunner {
         int observeUntilMs = -1;
         int idleUntilMs = 0;
         boolean armVerify;
+        boolean visualRead;
+        final Set<String> cycles = new HashSet<>();
         final List<Action> actions = new ArrayList<>();
     }
 
@@ -115,10 +125,12 @@ public final class NightRunner {
     }
 
     private final AssetManager assets;
+    private final RunnerCatalog.Route route;
     private final AtomicBoolean cancelled = new AtomicBoolean(false);
 
-    public NightRunner(AssetManager assets) {
+    public NightRunner(AssetManager assets, RunnerCatalog.Route route) {
         this.assets = assets;
+        this.route = route;
     }
 
     public void stop() {
@@ -127,6 +139,10 @@ public final class NightRunner {
 
     public void execute(TermuxBridge bridge, BooleanSupplier nightStillVisible,
             ProgressListener listener) throws IOException {
+        if (route == null || !route.isRunnable()) {
+            throw new IOException("selected route is disabled: "
+                    + (route == null ? "no route selected" : route.disabledReason()));
+        }
         if (bridge == null || !bridge.isConnected()) {
             throw new IOException("Termux bridge is not connected");
         }
@@ -135,8 +151,17 @@ public final class NightRunner {
         }
         cancelled.set(false);
         Plan plan = readPlan();
+        if (plan.armVerify && !route.adaptersReady) {
+            throw new IOException("route requires a qualified visual arm adapter");
+        }
+        if (plan.visualRead) {
+            throw new IOException("route requires a qualified visual read adapter");
+        }
         List<String> stream = compile(plan);
-        if (listener != null) listener.onProgress("Sending Night 6 model route...");
+        if (listener != null) {
+            listener.onProgress("Sending Night " + plan.night + " "
+                    + plan.policy + " route...");
+        }
         for (String line : stream) {
             if (cancelled.get()) throw new IOException("runner stopped");
             bridge.send(line);
@@ -154,7 +179,7 @@ public final class NightRunner {
             }
             if (listener != null && SystemClock.elapsedRealtime() >= nextUpdate) {
                 long percent = Math.min(99L, elapsed * 100L / total);
-                listener.onProgress("Night 6 route active: " + percent + "%");
+                listener.onProgress("Night " + plan.night + " route active: " + percent + "%");
                 nextUpdate += PORTION_UPDATE_MS;
             }
             try {
@@ -165,12 +190,19 @@ public final class NightRunner {
             }
         }
         if (cancelled.get()) throw new IOException("runner stopped");
-        if (listener != null) listener.onProgress("Night 6 route stream complete; outcome requires visual grading.");
+        if (listener != null) {
+            listener.onProgress("Night " + plan.night
+                    + " route stream complete; outcome requires visual grading.");
+        }
     }
 
     private Plan readPlan() throws IOException {
+        if (assets == null || route.planAsset == null || route.planAsset.contains("..")
+                || !route.planAsset.startsWith("runners/")) {
+            throw new IOException("route plan asset is unsafe");
+        }
         Plan plan = new Plan();
-        try (InputStream input = assets.open(PLAN_ASSET);
+        try (InputStream input = assets.open(route.planAsset);
                 BufferedReader reader = new BufferedReader(new InputStreamReader(
                         input, StandardCharsets.US_ASCII))) {
             String cycle = "";
@@ -179,64 +211,145 @@ public final class NightRunner {
                 String line = raw.trim();
                 if (line.isEmpty()) continue;
                 if (line.startsWith("#")) {
-                    String[] fields = line.substring(1).trim().split("\\s+");
-                    if (fields.length == 0) continue;
+                    String header = line.substring(1).trim();
+                    if (header.isEmpty()) throw new IOException("plan header is empty");
+                    String[] fields = header.split("\\s+");
                     switch (fields[0]) {
-                        case "night": plan.night = integer(fields, 1, "night"); break;
-                        case "period": plan.periodMs = integer(fields, 1, "period"); break;
-                        case "loop-start": plan.loopStartMs = integer(fields, 1, "loop-start"); break;
-                        case "stop-at": plan.stopAtMs = integer(fields, 1, "stop-at"); break;
-                        case "observe-until": plan.observeUntilMs = integer(fields, 1, "observe-until"); break;
-                        case "idle-until": plan.idleUntilMs = integer(fields, 1, "idle-until"); break;
-                        case "arm-verify": plan.armVerify = fields.length > 1 && "1".equals(fields[1]); break;
+                        case "policy":
+                            plan.policy = requiredField(fields, 1, "policy");
+                            break;
+                        case "night":
+                            plan.night = integer(fields, 1, "night");
+                            break;
+                        case "period":
+                            plan.periodMs = integer(fields, 1, "period");
+                            break;
+                        case "loop-start":
+                            plan.loopStartMs = integer(fields, 1, "loop-start");
+                            break;
+                        case "stop-at":
+                            plan.stopAtMs = integer(fields, 1, "stop-at");
+                            break;
+                        case "observe-until":
+                            plan.observeUntilMs = integer(fields, 1, "observe-until");
+                            break;
+                        case "idle-until":
+                            plan.idleUntilMs = integer(fields, 1, "idle-until");
+                            break;
+                        case "arm-verify":
+                            plan.armVerify = fields.length > 1 && "1".equals(fields[1]);
+                            break;
                         case "cycle":
-                            if (fields.length < 2) throw new IOException("plan cycle is incomplete");
-                            cycle = fields[1];
+                            cycle = requiredField(fields, 1, "cycle");
+                            if (!isCycle(cycle)) throw new IOException("unsupported plan cycle: " + cycle);
+                            plan.cycles.add(cycle);
                             break;
                         default:
-                            // Other headers are identity metadata, not executable input.
+                            // Arm camera metadata, phase offsets, and other
+                            // identity headers are intentionally not guessed.
                             break;
                     }
                     continue;
                 }
                 if (cycle.isEmpty()) throw new IOException("plan action has no cycle");
-                String[] fields = line.split("\\s+");
-                if (fields.length < 3) throw new IOException("plan action is incomplete");
-                int at = parseInt(fields[0], "action time");
-                String kind = fields[1];
-                if ("tap".equals(kind) || "hold".equals(kind)) {
-                    if (fields.length != 4) throw new IOException("plan contact shape is invalid");
-                    plan.actions.add(new Action(cycle, at, kind, normalizeControl(fields[2]),
-                            parseInt(fields[3], "contact"), 0, 0));
-                } else if ("hall".equals(kind)) {
-                    if (fields.length != 3) throw new IOException("plan hall shape is invalid");
-                    plan.actions.add(new Action(cycle, at, kind, "hallLight",
-                            parseInt(fields[2], "hall contact"), 0, 0));
-                } else if ("camdrop".equals(kind)) {
-                    if (fields.length != 5) throw new IOException("plan camdrop shape is invalid");
-                    plan.actions.add(new Action(cycle, at, kind, "cameraFeedLight",
-                            parseInt(fields[2], "camdrop lead"),
-                            parseInt(fields[3], "camdrop contact"),
-                            parseInt(fields[4], "camdrop tail")));
-                } else {
-                    throw new IOException("unsupported Night 6 plan action: " + kind);
-                }
+                parseAction(plan, cycle, line.split("\\s+"));
             }
         }
-        if (plan.night != 6 || plan.periodMs <= 0 || plan.loopStartMs < 0
-                || plan.stopAtMs <= plan.loopStartMs || plan.observeUntilMs < plan.stopAtMs
-                || plan.actions.isEmpty() || !plan.armVerify) {
-            throw new IOException("Night 6 plan identity or timing is invalid");
+        if (plan.night < 1 || plan.night > 7 || plan.periodMs <= 0
+                || plan.loopStartMs < 0 || plan.stopAtMs <= plan.loopStartMs
+                || plan.observeUntilMs < plan.stopAtMs || plan.actions.isEmpty()
+                || !plan.cycles.contains("opening")) {
+            throw new IOException("plan identity or timing is invalid");
+        }
+        boolean hasLoop = false;
+        for (String name : plan.cycles) {
+            if (!"opening".equals(name) && !"finish".equals(name)) {
+                hasLoop = true;
+                break;
+            }
+        }
+        if (!hasLoop) throw new IOException("plan has no repeatable cycle");
+        if (route.night != plan.night || !route.strategy.equals(plan.policy)) {
+            throw new IOException("plan identity does not match the selected route");
         }
         return plan;
     }
 
+    private static void parseAction(Plan plan, String cycle, String[] fields)
+            throws IOException {
+        if (fields.length < 3) throw new IOException("plan action is incomplete");
+        int at = parseInt(fields[0], "action time");
+        String kind = fields[1];
+        if ("tap".equals(kind) || "hold".equals(kind)) {
+            if (fields.length != 4) throw new IOException("plan contact shape is invalid");
+            plan.actions.add(new Action(cycle, at, kind, normalizeControl(fields[2]),
+                    parseInt(fields[3], "contact"), 0, 0, 0, null));
+        } else if ("hall".equals(kind) || "hallvent".equals(kind)
+                || "hallraise".equals(kind)) {
+            if (fields.length != 3) throw new IOException("plan compound shape is invalid");
+            plan.actions.add(new Action(cycle, at, kind, null,
+                    parseInt(fields[2], "compound contact"), 0, 0, 0, null));
+        } else if ("maskraise".equals(kind)) {
+            if (fields.length != 5 || !("hall".equals(fields[3]) || "up".equals(fields[3]))) {
+                throw new IOException("plan maskraise shape is invalid");
+            }
+            plan.actions.add(new Action(cycle, at, kind, fields[3],
+                    parseInt(fields[2], "maskraise gap"),
+                    parseInt(fields[4], "maskraise contact"), 0, 0, null));
+        } else if ("camdrop".equals(kind)) {
+            if (fields.length != 5) throw new IOException("plan camdrop shape is invalid");
+            plan.actions.add(new Action(cycle, at, kind, "cameraFeedLight",
+                    parseInt(fields[2], "camdrop lead"),
+                    parseInt(fields[3], "camdrop contact"),
+                    parseInt(fields[4], "camdrop tail"), 0, null));
+        } else if ("sweep".equals(kind)) {
+            if (fields.length != 5) throw new IOException("plan sweep shape is invalid");
+            String[] cameras = fields[4].split(",");
+            if (cameras.length < 2) throw new IOException("plan sweep needs two cameras");
+            for (int index = 0; index < cameras.length; index++) {
+                cameras[index] = normalizeCameraToken(cameras[index]);
+            }
+            plan.actions.add(new Action(cycle, at, kind, null,
+                    parseInt(fields[2], "sweep spacing"),
+                    parseInt(fields[3], "sweep contact"), 0, 0, cameras));
+        } else if ("read".equals(kind)) {
+            if (fields.length != 4 && fields.length != 6 && fields.length != 8) {
+                throw new IOException("plan read shape is invalid");
+            }
+            if (fields.length >= 6 && fields.length < 6) {
+                throw new IOException("plan read hall fields are incomplete");
+            }
+            int hallAt = fields.length >= 6 ? parseInt(fields[4], "read hall offset") : 0;
+            int hallDuration = fields.length >= 6 ? parseInt(fields[5], "read hall contact") : 0;
+            if (fields.length == 8 && !"bangage".equals(fields[6])) {
+                throw new IOException("plan read conditional hall fields are invalid");
+            }
+            plan.visualRead = true;
+            plan.actions.add(new Action(cycle, at, kind, "leftVentLight",
+                    parseInt(fields[2], "read duration"),
+                    parseInt(fields[3], "read gap"), hallAt, hallDuration, null));
+        } else {
+            throw new IOException("unsupported canonical plan action: " + kind);
+        }
+    }
+
     private List<String> compile(Plan plan) throws IOException {
+        String loopCycle = null;
+        for (String cycle : plan.cycles) {
+            if ("opening".equals(cycle) || "finish".equals(cycle)) continue;
+            if (loopCycle != null && !loopCycle.equals(cycle)) {
+                throw new IOException("route requires a reactive cycle selector for "
+                        + loopCycle + " and " + cycle);
+            }
+            loopCycle = cycle;
+        }
+        if (loopCycle == null) throw new IOException("route has no loop cycle");
+
         List<ScheduledAction> scheduled = new ArrayList<>();
         for (Action action : plan.actions) {
-            if ("opening".equals(action.cycle)) {
+            if ("opening".equals(action.cycle) || "finish".equals(action.cycle)) {
                 scheduled.add(new ScheduledAction(action.atMs, action));
-            } else if ("toys".equals(action.cycle)) {
+            } else if (loopCycle.equals(action.cycle)) {
                 for (int base = Math.max(plan.loopStartMs, plan.idleUntilMs);
                         base < plan.stopAtMs; base += plan.periodMs) {
                     int at = base + action.atMs;
@@ -251,48 +364,164 @@ public final class NightRunner {
         int cursor = 0;
         for (ScheduledAction scheduledAction : scheduled) {
             if (scheduledAction.atMs < cursor) {
-                throw new IOException("Night 6 HID actions overlap at " + scheduledAction.atMs + " ms");
+                throw new IOException("canonical HID actions overlap at "
+                        + scheduledAction.atMs + " ms");
             }
             addDelay(lines, scheduledAction.atMs - cursor);
             int duration = addAction(lines, scheduledAction.action);
             cursor = scheduledAction.atMs + duration;
         }
-        if (cursor > plan.observeUntilMs) throw new IOException("Night 6 route exceeds its observation envelope");
+        if (cursor > plan.observeUntilMs) {
+            throw new IOException("route exceeds its observation envelope");
+        }
         addDelay(lines, plan.observeUntilMs - cursor);
         return lines;
     }
 
     private int addAction(List<String> lines, Action action) throws IOException {
-        if ("camdrop".equals(action.kind)) {
-            Point light = point("cameraFeedLight");
-            Point monitor = point("monitor");
-            lines.add(reportSingle(active(light)));
-            addDelay(lines, action.first);
-            lines.add(reportTwo(active(light), active(monitor)));
-            addDelay(lines, action.second);
-            lines.add(reportTwo(active(light), released(monitor)));
-            addDelay(lines, action.third);
-            lines.add(reportTwo(released(light), released(monitor)));
-            return action.first + action.second + action.third;
+        switch (action.kind) {
+            case "tap":
+            case "hold":
+                return addSingle(lines, action.control, action.first);
+            case "hall":
+                return addSingle(lines, "hallLight", action.first);
+            case "hallvent":
+                return addTwo(lines, "hallLight", "rightVentLight", action.first);
+            case "hallraise":
+                return addTwo(lines, "hallLight", "monitor", action.first);
+            case "maskraise":
+                return addMaskRaise(lines, action);
+            case "camdrop":
+                return addCameraDrop(lines, action);
+            case "sweep":
+                return addSweep(lines, action);
+            case "read":
+                throw new IOException("visual read adapter is not available for this route");
+            default:
+                throw new IOException("unsupported executable action: " + action.kind);
         }
-        Point target = point(action.control);
+    }
+
+    private int addSingle(List<String> lines, String control, int duration)
+            throws IOException {
+        Point target = point(control);
         lines.add(reportSingle(active(target)));
-        addDelay(lines, action.first);
+        addDelay(lines, duration);
         lines.add(reportSingle(released(target)));
-        return action.first;
+        return duration;
+    }
+
+    private int addTwo(List<String> lines, String firstControl, String secondControl,
+            int duration) throws IOException {
+        Point first = point(firstControl);
+        Point second = point(secondControl);
+        lines.add(reportTwo(active(first), active(second)));
+        addDelay(lines, duration);
+        lines.add(reportTwo(released(first), released(second)));
+        return duration;
+    }
+
+    private int addMaskRaise(List<String> lines, Action action) throws IOException {
+        Point mask = point("mask");
+        lines.add(reportSingle(active(mask)));
+        addDelay(lines, DEFAULT_MASK_CONTACT_MS);
+        lines.add(reportSingle(released(mask)));
+        addDelay(lines, action.first);
+        if ("hall".equals(action.control)) {
+            lines.add(reportTwo(active(point("hallLight")), active(point("monitor"))));
+        } else {
+            lines.add(reportSingle(active(point("monitor"))));
+        }
+        addDelay(lines, action.second);
+        if ("hall".equals(action.control)) {
+            lines.add(reportTwo(released(point("hallLight")), released(point("monitor"))));
+        } else {
+            lines.add(reportSingle(released(point("monitor"))));
+        }
+        return DEFAULT_MASK_CONTACT_MS + action.first + action.second;
+    }
+
+    private int addCameraDrop(List<String> lines, Action action) throws IOException {
+        Point light = point("cameraFeedLight");
+        Point monitor = point("monitor");
+        lines.add(reportSingle(active(light)));
+        addDelay(lines, action.first);
+        lines.add(reportTwo(active(light), active(monitor)));
+        addDelay(lines, action.second);
+        lines.add(reportTwo(active(light), released(monitor)));
+        addDelay(lines, action.third);
+        lines.add(reportTwo(released(light), released(monitor)));
+        return action.first + action.second + action.third;
+    }
+
+    private int addSweep(List<String> lines, Action action) throws IOException {
+        int duration = 0;
+        for (int index = 0; index < action.tokens.length; index++) {
+            String camera = action.tokens[index];
+            int lightMs = action.second;
+            int split = camera.indexOf(':', 4);
+            if (split > 0) {
+                lightMs = parseInt(camera.substring(split + 1), "sweep camera contact");
+                camera = camera.substring(0, split);
+            }
+            Point selected = point(camera);
+            lines.add(reportSingle(active(selected)));
+            addDelay(lines, action.second);
+            lines.add(reportSingle(released(selected)));
+            int settle = action.second < 50 ? 17 : 0;
+            addDelay(lines, settle);
+            lines.add(reportSingle(active(point("cameraFeedLight"))));
+            addDelay(lines, lightMs);
+            lines.add(reportSingle(released(point("cameraFeedLight"))));
+            duration += action.second + settle + lightMs;
+            if (index + 1 < action.tokens.length) {
+                int minimum = action.second + settle + lightMs;
+                if (action.first < minimum) {
+                    throw new IOException("sweep spacing is shorter than its HID contacts");
+                }
+                addDelay(lines, action.first - minimum);
+                duration += action.first - minimum;
+            }
+        }
+        return duration;
+    }
+
+    private static boolean isCycle(String cycle) {
+        return "opening".equals(cycle) || "toys".equals(cycle)
+                || "clear".equals(cycle) || "attack".equals(cycle)
+                || "finish".equals(cycle);
+    }
+
+    private static String normalizeCameraToken(String token) throws IOException {
+        String value = token.trim();
+        if (value.startsWith("cam:") && value.length() > 4) {
+            String number = value.substring(4);
+            if (number.matches("\\d+(?::\\d+)?")) {
+                String[] pieces = number.split(":", 2);
+                String camera = normalizeControl("cam:" + pieces[0]);
+                return pieces.length == 1 ? camera : camera + ":" + parseInt(pieces[1], "camera contact");
+            }
+        }
+        if (value.startsWith("cam") && value.length() > 3) {
+            return normalizeCameraToken("cam:" + value.substring(3));
+        }
+        if (value.matches("\\d+(?::\\d+)?")) {
+            return normalizeCameraToken("cam:" + value);
+        }
+        throw new IOException("unknown sweep camera: " + token);
     }
 
     private static String normalizeControl(String control) throws IOException {
         if (control.startsWith("cam") && !control.startsWith("cam:")) {
             control = "cam:" + control.substring(3);
         }
-        if (!CONTROL_MAP.containsKey(control)) throw new IOException("unknown Night 6 control: " + control);
+        if (!CONTROL_MAP.containsKey(control)) throw new IOException("unknown plan control: " + control);
         return control;
     }
 
     private static Point point(String control) throws IOException {
         Point point = CONTROL_MAP.get(control);
-        if (point == null) throw new IOException("missing Night 6 control map: " + control);
+        if (point == null) throw new IOException("missing HID control map: " + control);
         return point;
     }
 
@@ -327,7 +556,8 @@ public final class NightRunner {
     private static String reportSingle(String contact) {
         String filler = contact.startsWith("[0,") ? "[4,0,0,0,0]" : "[0,0,0,0,0]";
         return "{\"id\":92,\"command\":\"report\",\"report\":[1,1,"
-                + contact.substring(1, contact.length() - 1) + "," + filler.substring(1, filler.length() - 1) + "]}";
+                + contact.substring(1, contact.length() - 1) + ","
+                + filler.substring(1, filler.length() - 1) + "]}";
     }
 
     private static String reportTwo(String first, String second) {
@@ -340,9 +570,16 @@ public final class NightRunner {
         if (duration > 0) lines.add("{\"id\":92,\"command\":\"delay\",\"duration\":" + duration + "}");
     }
 
+    private static String requiredField(String[] fields, int index, String label)
+            throws IOException {
+        if (fields.length <= index || fields[index].isEmpty()) {
+            throw new IOException("plan " + label + " is missing");
+        }
+        return fields[index];
+    }
+
     private static int integer(String[] fields, int index, String label) throws IOException {
-        if (fields.length <= index) throw new IOException("plan " + label + " is missing");
-        return parseInt(fields[index], label);
+        return parseInt(requiredField(fields, index, label), label);
     }
 
     private static int parseInt(String value, String label) throws IOException {

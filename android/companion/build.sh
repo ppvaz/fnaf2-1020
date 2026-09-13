@@ -57,8 +57,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     --auto-add-overlay \
     --min-sdk-version 29 \
     --target-sdk-version 36 \
-    --version-code 13 \
-    --version-name 0.1.12 \
+    --version-code 14 \
+    --version-name 0.1.13 \
     -o "$BUILD_DIR/base-unsigned.apk"
 
 "$JAVAC" \
@@ -68,6 +68,7 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     -classpath "$ANDROID_JAR" \
     -d "$CLASSES_DIR" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/MainActivity.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/RunnerCatalog.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/NightRunner.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/TermuxBridge.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/AccessibilityProbeActivity.java" \

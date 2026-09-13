@@ -36,11 +36,15 @@ import android.provider.Settings;
 import android.content.res.Configuration;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowInsets;
+import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import java.io.File;
@@ -49,6 +53,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.List;
 import java.security.SecureRandom;
 import android.widget.Toast;
 
@@ -103,6 +108,8 @@ public final class MainActivity extends Activity {
     private Button termuxButton;
     private Button runNightButton;
     private Button stopNightButton;
+    private Spinner routeSpinner;
+    private Spinner presetSpinner;
     private TextView audioAnalysisView;
     private TextView audioStatusView;
     private ScrollView landscapeStatusScroll;
@@ -140,6 +147,9 @@ public final class MainActivity extends Activity {
     private TermuxBridge termuxBridge;
     private NightRunner nightRunner;
     private Thread nightRunnerThread;
+    private RunnerCatalog runnerCatalog;
+    private RunnerCatalog.Route selectedRoute;
+    private RunnerCatalog.Preset selectedPreset;
     private int selectedTab;
     private OverlaySnapshot.Mode overlayMode = OverlaySnapshot.Mode.SENSOR_DEBUG;
     private String audioStatusText = "AUDIO A2DP: checking receiver...\nreceiver = "
@@ -250,6 +260,12 @@ public final class MainActivity extends Activity {
         overlayMode = "run".equals(getSharedPreferences(OverlayController.PREFS, MODE_PRIVATE)
                 .getString(OverlayController.PREF_MODE, "debug"))
                 ? OverlaySnapshot.Mode.DECISION_RUN : OverlaySnapshot.Mode.SENSOR_DEBUG;
+        try {
+            runnerCatalog = RunnerCatalog.load(getAssets());
+        } catch (IOException error) {
+            runnerCatalog = RunnerCatalog.unavailable(
+                    "Runner catalog unavailable: " + error.getMessage());
+        }
         setContentView(buildUi());
         refreshOverlayControls("overlay=" + (Settings.canDrawOverlays(this)
                 ? "READY" : "DISABLED(permission)"));
@@ -460,18 +476,24 @@ public final class MainActivity extends Activity {
         state.addView(sectionLabel("LOCAL RUNNER"), matchWrap());
         runnerStatusView = bodyText("");
         state.addView(runnerStatusView, matchWrap());
+        state.addView(sectionLabel("RUNNER ROUTE"), matchWrap());
+        routeSpinner = routeSpinner();
+        state.addView(routeSpinner, spinnerLayoutParams());
+        state.addView(sectionLabel("NIGHT 7 PRESET"), matchWrap());
+        presetSpinner = presetSpinner();
+        state.addView(presetSpinner, spinnerLayoutParams());
         termuxButton = themedButton("Termux setup", COLOR_PANEL,
                 COLOR_FREDDY_PRESSED, COLOR_PANEL_BORDER, COLOR_TEXT);
         termuxButton.setOnClickListener(view -> openTermux());
         state.addView(termuxButton, matchWrap());
-        runNightButton = themedButton("Run Night 6", COLOR_FOXY_MANGLE,
+        runNightButton = themedButton("Run selected route", COLOR_FOXY_MANGLE,
                 COLOR_FOXY_MANGLE_PRESSED, COLOR_FOXY_MANGLE_STROKE, COLOR_TEXT);
-        runNightButton.setOnClickListener(view -> runNightSix());
+        runNightButton.setOnClickListener(view -> runSelectedRoute());
         state.addView(runNightButton, matchWrap());
         stopNightButton = themedButton("Stop local route", COLOR_PANEL,
                 COLOR_FREDDY_PRESSED, COLOR_PANEL_BORDER, COLOR_TEXT);
         stopNightButton.setEnabled(false);
-        stopNightButton.setOnClickListener(view -> stopNightSix());
+        stopNightButton.setOnClickListener(view -> stopSelectedRoute());
         state.addView(stopNightButton, matchWrap());
 
         if (landscape) {
@@ -488,6 +510,95 @@ public final class MainActivity extends Activity {
             content.addView(state, matchWrap());
         }
         return scrollPage(content);
+    }
+
+    private Spinner routeSpinner() {
+        Spinner spinner = new Spinner(this);
+        CatalogAdapter adapter = new CatalogAdapter(runnerCatalog == null
+                ? java.util.Collections.emptyList() : runnerCatalog.routes);
+        spinner.setAdapter(adapter);
+        spinner.setMinimumHeight(dp(48));
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view,
+                    int position, long id) {
+                selectedRoute = runnerCatalog == null ? null : runnerCatalog.routeAt(position);
+                refreshRunnerReadiness();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                selectedRoute = null;
+                refreshRunnerReadiness();
+            }
+        });
+        return spinner;
+    }
+
+    private Spinner presetSpinner() {
+        Spinner spinner = new Spinner(this);
+        CatalogAdapter adapter = new CatalogAdapter(runnerCatalog == null
+                ? java.util.Collections.emptyList() : runnerCatalog.presets);
+        spinner.setAdapter(adapter);
+        spinner.setMinimumHeight(dp(48));
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view,
+                    int position, long id) {
+                selectedPreset = runnerCatalog == null ? null : runnerCatalog.presetAt(position);
+                refreshRunnerReadiness();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                selectedPreset = null;
+                refreshRunnerReadiness();
+            }
+        });
+        return spinner;
+    }
+
+    private final class CatalogAdapter extends ArrayAdapter<RunnerCatalog.Item> {
+        CatalogAdapter(List<? extends RunnerCatalog.Item> items) {
+            super(MainActivity.this, android.R.layout.simple_spinner_item);
+            if (items != null) {
+                for (RunnerCatalog.Item item : items) add(item);
+            }
+            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        }
+
+        @Override
+        public boolean areAllItemsEnabled() {
+            return false;
+        }
+
+        @Override
+        public boolean isEnabled(int position) {
+            RunnerCatalog.Item item = getItem(position);
+            return item != null && item.isRunnable();
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            return bind(super.getView(position, convertView, parent), position);
+        }
+
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
+            return bind(super.getDropDownView(position, convertView, parent), position);
+        }
+
+        private View bind(View view, int position) {
+            RunnerCatalog.Item item = getItem(position);
+            if (view instanceof TextView && item != null) {
+                TextView text = (TextView) view;
+                text.setText(item.displayLabel());
+                text.setTextColor(item.isRunnable() ? COLOR_TEXT : COLOR_MUTED);
+                text.setAlpha(item.isRunnable() ? 1f : 0.58f);
+                text.setPadding(dp(12), dp(8), dp(12), dp(8));
+            }
+            return view;
+        }
     }
 
     private ScrollView audioPage() {
@@ -587,22 +698,53 @@ public final class MainActivity extends Activity {
         if (runnerStatusView == null || termuxButton == null) return;
         boolean installed = isTermuxInstalled();
         boolean connected = termuxBridge != null && termuxBridge.isConnected();
-        if (!installed) {
-            runnerStatusView.setText("Termux is not installed. Install it to enable local HID.");
-        } else if (nightRunnerRunning) {
-            // The runner thread owns progress text while the route is active.
-        } else if (connected) {
-            runnerStatusView.setText("Termux bridge connected. Night 6 is a MODEL_ONLY route; visual arm proof is required separately.");
-        } else {
-            runnerStatusView.setText("Termux is installed. Copy the bridge command, paste it in Termux, then return here.");
+        if (!nightRunnerRunning) {
+            StringBuilder status = new StringBuilder();
+            if (runnerCatalog != null && runnerCatalog.loadWarning != null) {
+                status.append(runnerCatalog.loadWarning);
+            } else if (selectedRoute == null) {
+                status.append("Select a runner route. Unqualified routes stay disabled.");
+            } else {
+                status.append(selectedRoute.displayLabel()).append("\n")
+                        .append(selectedRoute.statusLine());
+                if (requiresNight7Preset(selectedRoute)) {
+                    status.append("\n");
+                    if (selectedPreset == null) {
+                        status.append("Disabled: select a Night 7 preset.");
+                    } else {
+                        status.append("Preset: ").append(selectedPreset.displayLabel())
+                                .append("\n");
+                        status.append(selectedPreset.isRunnable() ? "Preset ready."
+                                : "Disabled: ").append(selectedPreset.disabledReason());
+                    }
+                }
+            }
+            status.append("\n");
+            if (!installed) {
+                status.append("Termux is not installed. Install it to enable local HID.");
+            } else if (connected) {
+                status.append("Termux bridge connected.");
+            } else {
+                status.append("Termux is installed. Copy the bridge command, paste it in Termux, then return here.");
+            }
+            runnerStatusView.setText(status.toString());
         }
         termuxButton.setText(installed ? "Prepare Termux bridge" : "Install Termux");
+        boolean routeReady = selectedRoute != null && selectedRoute.isRunnable()
+                && (!requiresNight7Preset(selectedRoute)
+                || (selectedPreset != null && selectedPreset.isRunnable()));
         if (runNightButton != null) {
-            runNightButton.setEnabled(installed && captureRunning && !nightRunnerRunning);
+            runNightButton.setEnabled(installed && captureRunning
+                    && "FNAF2_NIGHT".equals(lastScreen)
+                    && routeReady && !nightRunnerRunning);
         }
         if (stopNightButton != null) {
             stopNightButton.setEnabled(nightRunnerRunning);
         }
+    }
+
+    private boolean requiresNight7Preset(RunnerCatalog.Route route) {
+        return route != null && route.night == 7 && "minus7".equals(route.strategy);
     }
 
     private void openTermux() {
@@ -644,8 +786,23 @@ public final class MainActivity extends Activity {
         return bridgeToken;
     }
 
-    private void runNightSix() {
+    private void runSelectedRoute() {
         if (nightRunnerRunning) return;
+        if (selectedRoute == null) {
+            runnerStatusView.setText("Runner blocked: select a route first.");
+            return;
+        }
+        if (!selectedRoute.isRunnable()) {
+            runnerStatusView.setText("Runner blocked: " + selectedRoute.disabledReason());
+            Toast.makeText(this, "Selected route is disabled", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if (requiresNight7Preset(selectedRoute)
+                && (selectedPreset == null || !selectedPreset.isRunnable())) {
+            runnerStatusView.setText("Runner blocked: the selected Night 7 preset is disabled.");
+            Toast.makeText(this, "Selected Night 7 preset is disabled", Toast.LENGTH_LONG).show();
+            return;
+        }
         if (!isTermuxInstalled()) {
             openTermux();
             return;
@@ -656,21 +813,23 @@ public final class MainActivity extends Activity {
             return;
         }
         if (!"FNAF2_NIGHT".equals(lastScreen)) {
-            runnerStatusView.setText("Runner blocked: enter Night 6 and wait for FNAF2_NIGHT observation.");
-            Toast.makeText(this, "Open Night 6 before starting the route", Toast.LENGTH_LONG).show();
+            runnerStatusView.setText("Runner blocked: enter the selected night and wait for FNAF2_NIGHT observation.");
+            Toast.makeText(this, "Open the selected night before starting the route", Toast.LENGTH_LONG).show();
             return;
         }
         final String token = bridgeToken();
         nightRunnerRunning = true;
         refreshRunnerReadiness();
-        nightRunner = new NightRunner(getAssets());
+        final RunnerCatalog.Route route = selectedRoute;
+        nightRunner = new NightRunner(getAssets(), route);
         nightRunnerThread = new Thread(() -> {
             TermuxBridge bridge = new TermuxBridge(token);
             termuxBridge = bridge;
             try {
                 postRunnerStatus("Connecting to Termux bridge...");
                 bridge.connect(2_000);
-                postRunnerStatus("Bridge connected. Starting the bounded Night 6 stream...");
+                postRunnerStatus("Bridge connected. Starting the bounded "
+                        + route.displayLabel() + " stream...");
                 nightRunner.execute(bridge, () -> "FNAF2_NIGHT".equals(lastScreen), this::postRunnerStatus);
             } catch (Exception error) {
                 postRunnerStatus("Route stopped: " + error.getMessage());
@@ -681,11 +840,11 @@ public final class MainActivity extends Activity {
                 nightRunnerRunning = false;
                 runOnUiThread(this::refreshRunnerReadiness);
             }
-        }, "night6-local-runner");
+        }, "local-route-runner");
         nightRunnerThread.start();
     }
 
-    private void stopNightSix() {
+    private void stopSelectedRoute() {
         if (!nightRunnerRunning) return;
         if (nightRunner != null) nightRunner.stop();
         TermuxBridge bridge = termuxBridge;
@@ -693,7 +852,7 @@ public final class MainActivity extends Activity {
             bridge.sendRelease();
             bridge.close();
         }
-        postRunnerStatus("Stopping local Night 6 route...");
+        postRunnerStatus("Stopping local route...");
     }
 
     private void postRunnerStatus(String text) {
@@ -1686,6 +1845,13 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
+        params.setMargins(0, dp(4), 0, dp(4));
+        return params;
+    }
+
+    private LinearLayout.LayoutParams spinnerLayoutParams() {
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(56));
         params.setMargins(0, dp(4), 0, dp(4));
         return params;
     }

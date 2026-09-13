@@ -130,3 +130,39 @@ case "$identity_gate" in
   *) echo "overlay identity gate: FAILED (foreign capture does not detach)" >&2; exit 1 ;;
 esac
 echo "overlay identity gate: foreign capture detaches the HUD"
+
+catalog="$HERE/assets/runners/catalog.json"
+if [ ! -f "$catalog" ]; then
+  echo "runner catalog: FAILED (catalog asset is missing)" >&2
+  exit 1
+fi
+for required in '"schema": "runner-catalog-v1"' '"enabled": false' '"claimLevel": "MODEL_ONLY"' \
+                '"id": "minus-toys"' '"id": "minus3"' '"id": "minus7"' \
+                '"id": "golden-freddy"'; do
+  if ! rg -F -q "$required" "$catalog"; then
+    echo "runner catalog: FAILED (missing $required)" >&2
+    exit 1
+  fi
+done
+runner_gate="$HERE/src/com/ppvaz/fnafcompanion/RunnerCatalog.java"
+for required in '"READY".equals(readiness)' '"DEVICE_MEASURED".equals(gateClaimLevel)' \
+                'sixAmProof && planBoundToProof && adaptersReady'; do
+  if ! rg -F -q "$required" "$runner_gate"; then
+    echo "runner readiness gate: FAILED (missing $required)" >&2
+    exit 1
+  fi
+done
+echo "runner catalog: unready and unproven routes remain disabled"
+
+if ! rg -F -q 'for (int night = 1; night <= 7; night++)' "$runner_gate" \
+    || ! rg -F -q 'for (JSONObject strategy : strategyEntries)' "$runner_gate"; then
+  echo "runner catalog: FAILED (route picker is not ordered by night)" >&2
+  exit 1
+fi
+echo "runner catalog: route picker is ordered by night"
+
+if [ "$(node -p "require('$catalog').strategies.at(-1).id")" != "minus-toys" ]; then
+  echo "runner catalog: FAILED (Minus Toys is not last within each night)" >&2
+  exit 1
+fi
+echo "runner catalog: Minus Toys is last within each night"

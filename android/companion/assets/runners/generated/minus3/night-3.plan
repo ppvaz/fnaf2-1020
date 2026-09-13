@@ -1,0 +1,26 @@
+#policy minus3
+#night 3
+#period 10000
+#loop-start 5000
+#stop-at 419600
+#observe-until 420000
+#arm-verify 1
+#arm-verify-cameras cam:8,cam:11
+#arm-verify-viewing cam:11
+#arm-verify-until 2000
+#cycle opening 5000
+0 tap monitor 33
+300 tap cam11 33
+833 tap cam8 33
+883 tap monitor 33
+1616 tap monitor 33
+2050 hold wind 1800
+4000 camdrop 150 33 400
+4650 tap mask 33
+#cycle clear 10000
+4400 tap mask 33
+4700 hallvent 400
+5300 tap monitor 33
+5800 hold wind 3200
+9000 camdrop 150 33 400
+9600 tap mask 33
