@@ -1251,6 +1251,13 @@
       ]
     },
     {
+      "file": "tools/device/epoch-scan.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/device/fact-register.mjs",
       "imports": [
         "node:fs",

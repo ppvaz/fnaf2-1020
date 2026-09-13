@@ -121,7 +121,12 @@ fi
 
 if [ "$MODE" = start ]; then
   # --start prints only the pid on stdout; the route verdict goes to stderr.
-  if ! check_route >&2; then exit 3; fi
+  # A connected transport that is not yet streaming (the title can be silent)
+  # is accepted: `bluealsa-cli open` blocks until the phone resumes the stream.
+  if ! check_route >&2; then
+    bluealsa-cli info "$PCM" >/dev/null 2>&1 || exit 3
+    echo "bt-audio: transport connected but not streaming yet; opening anyway" >&2
+  fi
 elif check_route; then
   :
 else

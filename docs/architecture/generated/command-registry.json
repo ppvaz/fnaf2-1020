@@ -2126,6 +2126,18 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/epoch-scan.mjs",
+      "invocation": "tools/device/epoch-scan.mjs --winner W.json --night N [--from MS] [--to MS] [--step MS] [--seeds N] [--knobs JSON] [--epochs a,b] [--json OUT]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/cycle-ledger.py",
+      "invocation": "tools/device/cycle-ledger.py RUN_DIR [--release-video-s S] [--cycles N] [--json OUT]",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/find-events.py",
       "invocation": "tools/device/find-events.py VIDEO",
       "kind": "report",
