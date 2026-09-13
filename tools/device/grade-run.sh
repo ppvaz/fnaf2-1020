@@ -72,7 +72,7 @@ for candidate in "$CAPTURES/cue-helper/calibration/$RUN"-cue-*.wav; do
 done
 CUE="$CAPTURES/$RUN-cue.txt"
 # The modern campaign bundle for this run, when one exists. A device run driven
-# by night5-run.sh writes the pointer; GRADE_CAMPAIGN_DIR overrides it. The
+# by night-run.sh writes the pointer; GRADE_CAMPAIGN_DIR overrides it. The
 # legacy trial.sh lane has no bundle and every modern step below says so.
 CAMPAIGN_DIR="${GRADE_CAMPAIGN_DIR:-}"
 if [ -z "$CAMPAIGN_DIR" ] && [ -f "$CAPTURES/$RUN-campaign-dir.txt" ]; then
@@ -167,7 +167,7 @@ limited() {
 # `ulimit -v`: a hard limit here cannot be raised by a child, and the first
 # end-to-end run under it died with "Cannot allocate memory" in the filter
 # graph and let four instruments finish on truncated streams. Residency is
-# the cgroup slice's job (night5-run.sh's systemd-run wrapper); the step's
+# the cgroup slice's job (night-run.sh's systemd-run wrapper); the step's
 # timeout and cpuset stay.
 limited_shared() {
   if command -v taskset >/dev/null 2>&1; then
@@ -457,7 +457,7 @@ if [ -n "$FRAME_TRACE" ]; then
   # taps inside frame stalls, after the trace had sat ungraded; exit 3 names a
   # lost contact as a fact about the run.
   if [ -n "$CAMPAIGN_DIR" ]; then
-    # With a getevent log beside the run (night5-run.sh records the virtual
+    # With a getevent log beside the run (night-run.sh records the virtual
     # touch device's kernel timestamps), the audit also measures the
     # actuation latency per control on the device clock.
     INPUT_EVENTS_ARG=()

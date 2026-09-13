@@ -13,7 +13,7 @@ capture paths is from [`ANDROID-AUDIO-CAPTURE.md`](ANDROID-AUDIO-CAPTURE.md).
 | path | status | what it carries |
 |---|---|---|
 | on-device `AudioPlaybackCapture` (Cue Helper `audioRecord`) | works, wrong stream | the deep-buffer loops only (music box s0015, Mangle s0020, ambience). Every discrete `Play sample` cue is on the FAST mixer and absent. Settled 2026-08-29. |
-| phone -> Bluetooth A2DP -> Linux BlueALSA (`bluealsa-cli open`, SBC) | validated 2026-08-29, manual | the full HAL mix: the winding tick s0033 matched at 0.44-0.56 NC while winding, 0.09-0.15 not winding. Not wired into `night5-run.sh`; no host-clock stamp on the capture. |
+| phone -> Bluetooth A2DP -> Linux BlueALSA (`bluealsa-cli open`, SBC) | validated 2026-08-29, manual | the full HAL mix: the winding tick s0033 matched at 0.44-0.56 NC while winding, 0.09-0.15 not winding. Not wired into `night-run.sh`; no host-clock stamp on the capture. |
 | phone -> ESP32 A2DP sink -> Wi-Fi PCM -> same phone | retracted 2026-08-31 (loss) | -- |
 | ESP32 as local DSP -> timestamped cue facts | firmware exists (`firmware/esp32-audio-consumer`), one shadow model (`~/fnaf-apks/cue-models/bang-shadow-g56-bluealsa-20260830.txt`, cue=bang id=17, threshold 0.35) | never connected on a graded run: every 2026-09-12/13 run reports `audio=ESP32 state=UNKNOWN reason=esp32-not-connected`, `audioAnalyzer=UNAVAILABLE reason=model-missing`. |
 | extracted references (`~/fnaf-apks/cue-refs`) | partial | s0015-s0033 as wav (s0015/s0020 also ogg). Handles 3-14 and 34-66 are not extracted. `tools/dump/extract-samples.sh` pulls from `base.apk`. |
@@ -77,7 +77,7 @@ alt21 writers before trusting it as a BB cue).
 
 | instrument | consumes | produces | gate it feeds |
 |---|---|---|---|
-| `tools/device/bt-audio-capture.sh` | BlueALSA capture started/stopped by `night5-run.sh` (new `--bt-audio`), host-clock stamped at start, aligned to the release by the HID release event | `captures/<run>.bt.wav` + `<run>.bt.json` (start stamp, rate, drops) | none (retention) |
+| `tools/device/bt-audio-capture.sh` | BlueALSA capture started/stopped by `night-run.sh` (new `--bt-audio`), host-clock stamped at start, aligned to the release by the HID release event | `captures/<run>.bt.wav` + `<run>.bt.json` (start stamp, rate, drops) | none (retention) |
 | `tools/device/tickphase.py` | the capture + `cue-refs` s0017, s0025-29, s0030-32 | onset list per handle; `gridPhaseMs` (mod 5000 vs release), per-cycle drift, NC scores | `phase-reconstruct.mjs` gains a `deliveredGridPhaseMs` beside `deliveredEpochMs`; the anchor evidence's `onsetBiasMs` becomes a measurement per run |
 | `tools/device/bb-inside.py` | s0016, s0021/23/24 | BB-at-opening and BB-inside intervals | run-report's `encounter` section; the model's BB entry rule test |
 | `tools/device/danger-windows.py` | s0010 envelope (loop un-muted) | `in danger` intervals per cycle | the FLAT-flash census (`bracket`), blackout timing vs model |
@@ -92,7 +92,7 @@ video instruments in `grade-run.sh`; none touches the live loop, which
 ## Order
 
 1. Extend `extract-samples.sh` to every night-frame handle (no device needed).
-2. Wire the BlueALSA capture into `night5-run.sh` with a host-clock stamp and
+2. Wire the BlueALSA capture into `night-run.sh` with a host-clock stamp and
    verify alignment on one Night 5 run (the WinD ticks at 500 ms are the
    check: they must land on the wind holds the plan emitted).
 3. `tickphase.py` on that capture: the first direct measurement of the game's

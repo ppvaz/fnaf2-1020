@@ -43,7 +43,7 @@ OUTPUT
 
 Each instrument's stdout and stderr are captured and replayed in the order
 given, each under its own `--- label ---` header with its exit code and wall
-time, so the log keeps the shape night5-run.sh's verdict grep and a reader
+time, so the log keeps the shape night-run.sh's verdict grep and a reader
 expect. Exit code: 0 when every instrument exited 0 or 3 (3 is grade-run's
 "a fact about the run"); otherwise the first other non-zero code.
 

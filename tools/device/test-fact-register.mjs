@@ -70,7 +70,7 @@ for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
 }
 // The newest Night 5 qualification names the binding a run will carry; that
 // binding must have an aim, or the next run anchors on nothing (which
-// night5-run.sh treats as "release the old way" -- loudly, but silently to
+// night-run.sh treats as "release the old way" -- loudly, but silently to
 // the model).
 // "Newest" is by the commit that last touched the file, not by name: two
 // qualifications bound on the same day sort by name in the wrong order.

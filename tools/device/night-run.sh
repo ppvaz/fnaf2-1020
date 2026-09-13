@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# One command per Night 5 device attempt: record, run, reconstruct, reset.
+# One command per device attempt, any night: record, run, reconstruct, reset.
+# (Named night5-run.sh until 2026-09-13; it drove Nights 5 and 6 alike.)
 #
 # Every previous attempt was assembled by hand across two terminals (PROGRESS,
 # 2026-09-11): start `screenrecord`, run the campaign, stop the recording, pull
@@ -16,8 +17,8 @@
 #     the campaign passed, failed, or the operator killed it.
 #
 # Usage:
-#   tools/device/night5-run.sh --label baseline [--bundle DIR] [--night N]
-#                              [--serial ID] [--no-video] [--dry-run]
+#   tools/device/night-run.sh --label baseline [--bundle DIR] [--night N]
+#                              [--serial ID] [--no-video] [--bt-audio] [--dry-run]
 set -Eeuo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,6 +34,8 @@ NIGHT=5
 SAVE_CURSOR=""
 ARM_MODE="observe-once"
 VIDEO=1
+BT_AUDIO=0            # --bt-audio: retain the phone's A2DP mix via BlueALSA (tools/cue/capture-bt-audio.sh)
+BT_AUDIO_BASE=""
 TRACE=1
 TRACE_SECONDS="${FNAF_TRACE_SECONDS:-900}"
 FRAME_TRACE=0
@@ -58,13 +61,14 @@ while [ $# -gt 0 ]; do
     --no-input-trace) INPUT_TRACE=0; shift ;;
     --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
+    --bt-audio) BT_AUDIO=1; shift ;;
     --dry-run) DRY=1; shift ;;
     --) shift; EXTRA+=("$@"); break ;;
     *) EXTRA+=("$1"); shift ;;
   esac
 done
 
-die() { printf 'night5-run: %s\n' "$1" >&2; exit 2; }
+die() { printf 'night-run: %s\n' "$1" >&2; exit 2; }
 say() { printf '\n=== %s\n' "$1"; }
 
 [ -n "$LABEL" ] || die "--label is required (it names the artifacts)"
@@ -223,7 +227,7 @@ pull_frame_trace() {
     fi
   fi
   printf 'LOST\n' > "$OUTDIR/frame-trace.state"
-  printf 'night5-run: FRAME TRACE LOST -- stop did not yield a file (%s)\n' "$why" >&2
+  printf 'night-run: FRAME TRACE LOST -- stop did not yield a file (%s)\n' "$why" >&2
   tools/device/query-cue-helper.sh trace status 2>&1 | tail -1 >&2 || true
 }
 
@@ -267,7 +271,20 @@ stop_input_trace() {
   printf 'input    %s lines retained\n' "$(grep -c '' "$OUTDIR/input-events.txt" 2>/dev/null || echo 0)"
 }
 
+stop_bt_audio() {
+  [ "$BT_AUDIO" = 1 ] && [ -n "$BT_AUDIO_BASE" ] || return 0
+  local wav
+  if wav="$("$HERE/../cue/capture-bt-audio.sh" --stop "$BT_AUDIO_BASE" 2>>"$OUTDIR/bt-audio.err")"; then
+    cp "$BT_AUDIO_BASE.bt.json" "$OUTDIR/bt-audio.json"
+    printf 'bt-audio %s (%s bytes raw)\n' "$wav" "$(stat -c %s "$BT_AUDIO_BASE.bt.raw")"
+  else
+    printf 'bt-audio NONE RETAINED (%s)\n' "$(tail -1 "$OUTDIR/bt-audio.err")" >&2
+  fi
+  BT_AUDIO_BASE=""
+}
+
 stop_recording() {
+  stop_bt_audio
   [ "$VIDEO" = 1 ] || return 0
   [ -n "$REC_PID" ] || return 0
   say "stopping recording"
@@ -313,7 +330,7 @@ reset_device() {
   printf 'title    %s\n' "${state:-unknown=no-read}" | tee "$OUTDIR/post-run-title.txt"
   case "$state" in
     items=*) ;;
-    *) printf 'night5-run: WARNING the phone did not return to an observed title\n' >&2 ;;
+    *) printf 'night-run: WARNING the phone did not return to an observed title\n' >&2 ;;
   esac
 }
 
@@ -373,7 +390,7 @@ analyze() {
         --out "$OUTDIR/phase$suffix.json" 2>&1 | tee "$OUTDIR/phase$suffix.log" || true
     done
   else
-    printf 'night5-run: no campaign directory was produced; executor facts UNKNOWN\n' >&2
+    printf 'night-run: no campaign directory was produced; executor facts UNKNOWN\n' >&2
   fi
 
   # Every video instrument this repository owns, through its own aggregator.
@@ -422,7 +439,7 @@ analyze() {
     grep -E "^(outcome|terminal|survival|  clear|  death)" "$OUTDIR/grade.log" \
       >> "$OUTDIR/verdict.txt" 2>/dev/null || true
   else
-    printf 'night5-run: no retained video; every video instrument was skipped\n' >&2
+    printf 'night-run: no retained video; every video instrument was skipped\n' >&2
     printf 'video        NONE RETAINED\n' >> "$OUTDIR/verdict.txt"
   fi
 
@@ -561,6 +578,20 @@ if [ "$VIDEO" = 1 ]; then
   sleep 2
   adb -s "$SERIAL" shell "pgrep screenrecord" >/dev/null 2>&1 \
     || die "screenrecord did not start"
+fi
+# The audible mix over Bluetooth A2DP (docs/device/AUDIO-WITNESS-MAP.md): the
+# only path that carries the FAST-mixer cues -- the vent bang and the footsteps
+# that fire on the game's five-second grid. Game audio never lives inside the
+# repository; the capture goes beside the other Bluetooth captures and the run
+# directory keeps its sidecar (host-clock stamps) and a pointer.
+if [ "$BT_AUDIO" = 1 ]; then
+  BT_AUDIO_BASE="$HOME/fnaf-apks/bt-audio-captures/$RUNID"
+  mkdir -p "$(dirname "$BT_AUDIO_BASE")"
+  if bt_pid="$("$HERE/../cue/capture-bt-audio.sh" --start "$BT_AUDIO_BASE" 2>"$OUTDIR/bt-audio.err")"; then
+    printf 'bt-audio capturing (pid %s) -> %s.bt.raw\n' "$bt_pid" "$BT_AUDIO_BASE"
+  else
+    die "bt-audio capture refused: $(cat "$OUTDIR/bt-audio.err")"
+  fi
 fi
 
 # Perfetto input dispatch, bracketing the campaign.

@@ -1,7 +1,7 @@
 # grade-run.sh: what each video step feeds, what a frame trace can replace, and why the decode is shared
 
 Written 2026-09-12 while the Night 5 repetition series ran. Ground truth: grade-run.sh
-step list at HEAD, night5-run.sh's verdict grep (`^(outcome|terminal|survival|
+step list at HEAD, night-run.sh's verdict grep (`^(outcome|terminal|survival|
   clear|  death)`), and the frame-trace v3 columns (seq, image_ns, elapsed_ns,
 callback_ns, interval_ns, grid_mean_luma, screen_identity, mask_luma,
 monitor_luma, mask_downstroke, monitor_downstroke, grid_hex 20x9).
@@ -43,7 +43,7 @@ structural fix is decode-once with concurrent consumers, not skipping.
   stays at pipe-buffer size. grade-run.sh runs it as ONE step in place of the
   seven video steps; the outputs are replayed in the old order under their old
   headers with their own exit codes.
-- Resource shape: consumers spread over `GRADE_CPUSET` (night5-run.sh passes
+- Resource shape: consumers spread over `GRADE_CPUSET` (night-run.sh passes
   2-9) inside the `systemd-run --scope -p MemoryMax=3G -p MemoryHigh=2500M
   -p CPUQuota=800%` wrapper, each under the per-step `ulimit -v` and timeout;
   `GRADE_DECODE_CONCURRENCY` (default 7, from measured peaks of 95-116 MB per instrument) caps how many run at once, sized from

@@ -408,7 +408,7 @@ function gradeHall(contact, trace, offsetMs, halfBracketMs, released) {
 }
 
 /**
- * `adb shell getevent -lt` as night5-run.sh records it beside the frame
+ * `adb shell getevent -lt` as night-run.sh records it beside the frame
  * trace (artifacts/runs/<run>/input-events.txt): `# started ...` header,
  * `add device N: /dev/input/eventX` + `  name: "..."` blocks, then rows
  * `[  sec.usec] /dev/input/eventX: EV_KEY BTN_TOUCH DOWN` (with -l names),

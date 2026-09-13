@@ -102,7 +102,7 @@ export const FACTS = Object.freeze({
 // executor acts on, so it lives here with the evidence that derived it, not
 // as a flag default with a comment (mistake register 9: a measurement in a
 // comment is not a gate). A binding without an entry gets no anchor:
-// night5-run.sh asks `--anchor-aim <winnerHash>` and releases the old way
+// night-run.sh asks `--anchor-aim <winnerHash>` and releases the old way
 // when this refuses. test-fact-register.mjs checks that every entry's
 // evidence names the same binding, that the aim sits inside one of that
 // evidence's winning bands with margin, that its 3000-seed confirmations are

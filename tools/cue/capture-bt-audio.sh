@@ -3,6 +3,20 @@
 #
 #   tools/cue/capture-bt-audio.sh <seconds> [outdir] [bt-mac]
 #   tools/cue/capture-bt-audio.sh --check [bt-mac]
+#   tools/cue/capture-bt-audio.sh --start OUT_BASENAME [bt-mac]   # open-ended, host-clock stamped
+#   tools/cue/capture-bt-audio.sh --stop  OUT_BASENAME            # -> OUT_BASENAME.bt.wav + .bt.json
+#
+# --start/--stop exist for night-run.sh (--bt-audio): the capture brackets a
+# whole run and its sidecar carries the host wall clock and CLOCK_MONOTONIC
+# instant `bluealsa-cli open` was spawned -- an UPPER bound on the first
+# sample's time, since the transport was already streaming. The run's HID
+# release event is on the same host clock, so audio time = release +
+# (t_audio - startMonotonicMs), to be CHECKED against a known event (the
+# winding ticks at the emitted wind holds) before any phase is read off it.
+# The PCM format is read from `bluealsa-cli info`, not assumed: the link is
+# aptX HD (S24 in 32-bit, 48 kHz) or SBC (S16, 44.1 kHz) depending on the
+# phone's codec pick. bluealsa-aplay runs as root here; a user pkill cannot
+# stop it, so --start refuses while it holds the PCM.
 #
 # This is the non-root path to the discrete `Play sample` cues (winding tick,
 # BB's laughs). On the g56 those are on the `AUDIO_OUTPUT_FLAG_FAST` mixer,
@@ -26,6 +40,14 @@ MODE=record
 if [ "${1:-}" = "--check" ]; then
   MODE=check
   MAC=${2:-$DEFAULT_MAC}
+elif [ "${1:-}" = "--start" ]; then
+  MODE=start
+  BASE=${2:?usage: capture-bt-audio.sh --start OUT_BASENAME [bt-mac]}
+  MAC=${3:-$DEFAULT_MAC}
+elif [ "${1:-}" = "--stop" ]; then
+  MODE=stop
+  BASE=${2:?usage: capture-bt-audio.sh --stop OUT_BASENAME}
+  MAC=$DEFAULT_MAC
 else
   SECS=${1:?usage: capture-bt-audio.sh <seconds> [outdir] [bt-mac]}
   OUT=${2:-$HOME/fnaf-apks/bt-audio-captures}
@@ -60,13 +82,63 @@ check_route() {
   return 3
 }
 
-if check_route; then
+mono_ms() { awk '{printf "%.0f", $1 * 1000}' /proc/uptime; }
+pcm_format() {
+  # "S24_LE 48000 2" from bluealsa-cli info; the raw is S24 in a 32-bit
+  # container, which ffmpeg reads as s32le.
+  bluealsa-cli info "$PCM" 2>/dev/null | awk -F': ' '/^Format/ {f=$2} /^Channels/ {c=$2} /^Sampling/ {r=$2} END {sub(/ Hz.*/, "", r); print f, r, c}'
+}
+if [ "$MODE" = stop ]; then
+  [ -f "$BASE.bt.json" ] || { echo "no capture sidecar at $BASE.bt.json" >&2; exit 2; }
+  PID="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["pid"])' "$BASE.bt.json")"
+  kill -INT "$PID" 2>/dev/null || true
+  for _ in $(seq 1 30); do kill -0 "$PID" 2>/dev/null || break; sleep 0.1; done
+  STOP_WALL="$(date +%s%3N)"; STOP_MONO="$(mono_ms)"
+  read -r FMT RATE CH < <(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d["format"], d["rate"], d["channels"])' "$BASE.bt.json")
+  case "$FMT" in S16_LE) F=s16le; GAIN=1 ;; S24_LE|S24_3LE|S32_LE) F=s32le; GAIN=256 ;; *) F=s16le; GAIN=1 ;; esac
+  ffmpeg -hide_banner -loglevel error -y -f "$F" -ar "$RATE" -ac "$CH" -i "$BASE.bt.raw" -af "volume=$GAIN" "$BASE.bt.wav"
+  BYTES="$(stat -c %s "$BASE.bt.raw")"
+  python3 - "$BASE.bt.json" "$STOP_WALL" "$STOP_MONO" "$BYTES" <<'PY'
+import json, sys
+p, w, m, b = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+d = json.load(open(p))
+d.update({'stopWallMs': w, 'stopMonotonicMs': m, 'rawBytes': b, 'wallDurationMs': w - d['startWallMs']})
+json.dump(d, open(p, 'w'), indent=2); open(p, 'a').write('\n')
+PY
+  echo "$BASE.bt.wav"
+  exit 0
+fi
+
+if [ "$MODE" = start ]; then
+  # --start prints only the pid on stdout; the route verdict goes to stderr.
+  if ! check_route >&2; then exit 3; fi
+elif check_route; then
   :
 else
   ROUTE_STATUS=$?
   exit "$ROUTE_STATUS"
 fi
 [ "$MODE" = check ] && exit 0
+
+if [ "$MODE" = start ]; then
+  case "$(cd "$(dirname "$BASE")" && pwd)/" in
+    "$REPO"/*) echo "refusing to write game audio inside the repository: $BASE" >&2; exit 1 ;;
+  esac
+  if pgrep -x bluealsa-aplay >/dev/null; then
+    echo "bluealsa-aplay holds the PCM (root service); stop it first: sudo systemctl stop bluealsa-aplay" >&2; exit 3
+  fi
+  read -r FMT RATE CH < <(pcm_format)
+  [ -n "$FMT" ] && [ -n "$RATE" ] || { echo "could not read the PCM format from bluealsa-cli info" >&2; exit 3; }
+  START_WALL="$(date +%s%3N)"; START_MONO="$(mono_ms)"
+  nohup bluealsa-cli open "$PCM" > "$BASE.bt.raw" 2> "$BASE.bt.err" &
+  PID=$!
+  printf '{"schema":"bt-audio-capture-v1","mac":"%s","pcm":"%s","format":"%s","rate":%s,"channels":%s,"startWallMs":%s,"startMonotonicMs":%s,"startIsUpperBound":true,"pid":%s}\n' \
+    "$MAC" "$PCM" "$FMT" "$RATE" "$CH" "$START_WALL" "$START_MONO" "$PID" > "$BASE.bt.json"
+  sleep 1
+  if ! kill -0 "$PID" 2>/dev/null; then cat "$BASE.bt.err" >&2; echo "bluealsa-cli open exited at once" >&2; exit 3; fi
+  echo "$PID"
+  exit 0
+fi
 
 ABS_OUT="$(mkdir -p "$OUT" && cd "$OUT" && pwd)"
 case "$ABS_OUT/" in

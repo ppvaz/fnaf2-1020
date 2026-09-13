@@ -2457,7 +2457,7 @@ Two instruments, two names, deliberately distinct:
   the 3000-replay standard — and the grader reads killer and time off the
   frames afterwards. The residual is the measurement.
   `tools/device/death-prediction.mjs` writes the `death-prediction-v1` record;
-  `night5-run.sh` retains it as `prediction.json` beside the run *before* the
+  `night-run.sh` retains it as `prediction.json` beside the run *before* the
   campaign, so it cannot be fitted to the outcome, and prints it. A 6 AM
   attempt carries the trivial prediction "no death".
 - **`death-targeting`** is a property of a *bundle*: a plan whose model gate
@@ -2569,7 +2569,7 @@ What this changes:
 
 - A bundle can now be qualified at the epoch its anchor delivers
   (`winner.anchorEpochMs`, `tools/device/bundle.mjs`): the gate replays there,
-  the manifest carries it, and `night5-run.sh` refuses to run such a bundle
+  the manifest carries it, and `night-run.sh` refuses to run such a bundle
   unanchored. `artifacts/night6-anchored` (fnv1a-bc5e044c) is the hallfix
   knobs at anchorEpochMs 3850 with an honest PASS.
 - The anchor aim carries its timer period: `--night-anchor-period-ms` from

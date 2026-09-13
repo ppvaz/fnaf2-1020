@@ -5398,3 +5398,16 @@ footsteps s0025-29 first; BB inside via s0016/s0021-24; `in danger` via s0010;
 death via s0012/s0062; arming via s0033), and seven offline instruments in
 order. Nothing built; the BlueALSA capture is validated but not wired into the
 run script, and `cue-refs` holds only handles 15-33.
+
+2026-09-13 afternoon: the Bluetooth audio sink is connected and wired
+(`night-run.sh --bt-audio`, `tools/cue/capture-bt-audio.sh --start/--stop`
+with host-clock stamps, `tools/device/tickphase.py`). Binding e
+(`night6-anchorede2`, delivered 4814 ms by frame trace, inside the model band)
+died at 155.5 s to Foxy at the post-mask flash: the fourth such death, the
+model's grid origin is the suspect (Fusion's `Every 5000 ms` runs from the
+frame start, not the first night frame). First audio read: vent bang NC 0.79
+but the detected bangs are endpoint bangs, not roll witnesses; WinD ticks all
+present under a 500 ms fold (z 6-16 per cycle) with a linear -0.35 % clock
+drift audio-vs-host that must be corrected before any phase is read.
+`night5-run.sh` renamed `night-run.sh` (Pedro). Evidence:
+[night6-anchorede2-audio-20260913.md](../docs/evidence/night6-anchorede2-audio-20260913.md).

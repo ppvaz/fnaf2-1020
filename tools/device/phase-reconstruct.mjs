@@ -205,7 +205,7 @@ export function reconstruct(events, observations, frameTrace = null) {
     // A trace that begins after the night began has no onset to offer: its
     // first held FNAF2_NIGHT frame is merely its first frame. The first
     // anchored run (night5-anchor1) released T0 3.2 s AFTER the onset and
-    // night5-run.sh starts the trace on hid.night-go, so the trace opened
+    // night-run.sh starts the trace on hid.night-go, so the trace opened
     // 0.8 s after the release and 4 s after the onset, and this measurement
     // would have reported a delivered epoch of 908 for a run aimed at 233.
     // Refuse, and say why, rather than measure the trace's own start.

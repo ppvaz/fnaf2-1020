@@ -73,7 +73,7 @@ const INSTRUMENTS = [
   { tool: 'tools/device/actuation-frame-metric.py',
     needs: 'the Cue Helper native frame trace',
     capture: 'tools/device/query-cue-helper.sh trace start LABEL / trace stop ' +
-      '(night5-run.sh --frame-trace does it around a run)',
+      '(night-run.sh --frame-trace does it around a run)',
     available: d => d.cueHelper !== null,
     ifMissing: 'install/verify the Cue Helper; without it there is no native frame stream to grade.' },
   { tool: 'tools/device/input-frame-align.py',
@@ -84,7 +84,7 @@ const INSTRUMENTS = [
     ifMissing: 'alignment needs dispatch on one side; with no app dispatch source this cannot run here.' },
   { tool: 'tools/device/run-timeline.py, grade-night.py, grade-minus7.py, windpct.py, camtrace.py',
     needs: 'screenrecord',
-    capture: 'night5-run.sh records at 1280x576 automatically',
+    capture: 'night-run.sh records at 1280x576 automatically',
     available: d => d.screenrecord, ifMissing: 'no video means no video instrument runs.' },
   { tool: 'apps/device HID execution',
     needs: '/system/bin/hid',

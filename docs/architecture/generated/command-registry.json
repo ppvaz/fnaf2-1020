@@ -1952,8 +1952,8 @@
       "lifecycle": "supported"
     },
     {
-      "id": "tools/device/night5-run.sh",
-      "invocation": "tools/device/night5-run.sh --label NAME [--bundle DIR] [--night N] [--arm-blocking] [--no-video] [--dry-run]",
+      "id": "tools/device/night-run.sh",
+      "invocation": "tools/device/night-run.sh --label NAME [--bundle DIR] [--night N] [--arm-blocking] [--no-video] [--dry-run]",
       "kind": "check",
       "lifecycle": "supported"
     },
@@ -2116,6 +2116,12 @@
     {
       "id": "tools/device/windpct.py",
       "invocation": "tools/device/windpct.py [--samples] VIDEO",
+      "kind": "report",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/tickphase.py",
+      "invocation": "tools/device/tickphase.py RUN_DIR [--refs DIR] [--rate HZ] [--json OUT]",
       "kind": "report",
       "lifecycle": "supported"
     },
