@@ -76,5 +76,45 @@
     "Balloon Boy stands front-left; no left-eyehole event was seen in 64 windows",
     "Toy characters were not seen; the route pins them on stage"
   ],
-  "purpose": "training and validation corpus for attack identification in the masked view; per-cycle encounter identity is the open candidate for what separates a dimmed flash from a refused one after an encounter"
+  "purpose": "training and validation corpus for attack identification in the masked view; per-cycle encounter identity is the open candidate for what separates a dimmed flash from a refused one after an encounter",
+  "camdropWitness": {
+    "method": "frames at camdrop tap +0.20..+0.75 s (10 fps, 640x288 downscale), region x300-600 y40-140 (upper-right office below the HUD text); monitor-map frames (>=2500 near-grey bright px) skipped; occupant = saturated mass: Chica hue ~49 sat 0.6 (~10 000 px), Bonnie hue 239 sat 0.3 (~7 600 px), Freddy-in-office hue 20 sat 0.66 (8 400 px), Freddy-in-hall hue 21 sat 0.32 (~7 840 px, the doorway beam lighting him); empty office = grey 7 700 px (full beam) or 2 730 px (faint beam), sat <= 0.17",
+    "indexRule": "the camdrop sampled at \"flash X\" is the one 3.6 s AFTER that flash and belongs to mask window X+10 s; re-indexed, it agrees with the eyehole witness cycle for cycle",
+    "crossCheck": {
+      "hallfix": {
+        "90->100": "Chica=Chica (operator)",
+        "100->110": "Bonnie=Bonnie",
+        "160->170": "Chica=Chica",
+        "170->180": "Bonnie=Bonnie (operator)",
+        "200->210": "Chica=Chica (eyehole hue 34 was borderline)",
+        "230->240": "Bonnie=Bonnie",
+        "250->260": "Chica=Chica (operator)",
+        "300->310": "Bonnie=Bonnie",
+        "310->320": "Chica=Chica",
+        "320->330": "FREDDY in the office = eyehole brown candidate",
+        "350->360": "Chica=Chica",
+        "380->390": "Chica=Chica (operator)",
+        "390->400": "Bonnie=Bonnie (operator)"
+      },
+      "foxyfix": {
+        "120->130": "Chica",
+        "130->140": "Bonnie",
+        "160->170": "Bonnie",
+        "170->180": "Chica",
+        "200->210": "Chica",
+        "210->220": "Bonnie"
+      }
+    },
+    "freddy": {
+      "inOfficeAtDesk": [
+        "hallfix 320 s camdrop (mask window 330 s)"
+      ],
+      "inHallDoorway": [
+        "foxyfix 70, 80, 90, 100 s camdrops (four consecutive cycles, his approach)",
+        "hallfix 400 s camdrop"
+      ],
+      "verdict": "classifier + this session by eye; operator verdict pending"
+    },
+    "reading": "the camdrop instant shows the encounter itself: the character is already in the office when the monitor drops, and the mask goes on 0.45 s later to repel it; the same frame shows who stands in the hall"
+  }
 }

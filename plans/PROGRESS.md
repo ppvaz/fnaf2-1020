@@ -5316,4 +5316,10 @@ mask-on plus a darker office after = one state (14 cycles); the next flash
 was LIT 1 / BLINK 7 / FLAT 6 after an encounter and LIT 21 / BLINK 5 / FLAT 1
 without. Model encounter rate 38 % vs phone 34 %: frequency right, consequence
 missing. Only the six post-encounter FLAT flashes (and 250 s) leave Foxy
-un-reset.
+un-reset. A third witness, the camdrop frame (monitor just down, mask not yet on),
+shows the encounter itself: the character already in the office, and who
+stands in the hall. Re-indexed to the following mask window it agrees with
+the eyehole witness cycle for cycle (13/13 on the win), and it found the
+Withered Freddy Pedro asked for: in the office at 320 s on the win (mask
+window 330 s), and standing in the hall doorway on four consecutive cycles
+of the Night 6 run (70-100 s). Corpus: encounter-corpus-20260912.json.
