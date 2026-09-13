@@ -5462,3 +5462,14 @@ must beat. Evidence:
 [night6-first-6am-anchoredh-20260913.json](../docs/evidence/night6-first-6am-anchoredh-20260913.json).
 Open: n=1; the per-cycle ledger and the audio anchors of the win are retained
 for the next reading; the phone still streams aptX-HD (SBC pending).
+
+Night 7 (10/20), first look after the Night 6 win: the winning knobs score
+3000/3000 at epoch 0 and 8.33 ms and 0/3000 at 16.67 ms -- a one-frame band,
+the model's deterministic epoch-0 case, unreachable with +-30 ms of delivery
+jitter. Why: at AI 20 Golden Freddy is created on every five-second tick the
+cameras are up and the held camdrop light kills him into you (g778), while
+Foxy (capped 17, g829) needs D <= 3 at every tick; the only tick phase that
+satisfies both is the ~100 ms between the post-mask flash landing and the
+monitor raise. Search under way: a later raise (shorter wind) to widen that
+window. Minus 7 (the community's RNG-proof 10/20 route) is reactive and has
+no qualified device lane.
