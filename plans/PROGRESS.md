@@ -5411,3 +5411,13 @@ present under a 500 ms fold (z 6-16 per cycle) with a linear -0.35 % clock
 drift audio-vs-host that must be corrected before any phase is read.
 `night5-run.sh` renamed `night-run.sh` (Pedro). Evidence:
 [night6-anchorede2-audio-20260913.md](../docs/evidence/night6-anchorede2-audio-20260913.md).
+Same afternoon, correction: the aptX-HD capture lost 7.6 % of its samples
+(195.6 s in 211.6 s of wall), so its time axis is broken and the "-0.35 %
+drift" was loss; the scream sits 7 s early. `capture-bt-audio.sh --stop` now
+records `missingFraction`/`timeAxis` and `tickphase.py` refuses a phase on a
+broken axis. Next capture on SBC (phone developer options). Detectability
+census on the run (NC max): hall presence 0.95, blackout/signal-lost 1.00,
+UI click 0.99, vent bang 0.79, scream 0.75, mask breathing 0.59, monitor
+button 0.60, Mangle movement 0.54; footsteps and WinD fold-only; BB vocals
+absent (he never came in). Evidence:
+[night6-anchorede2-audio-census-20260913.json](../docs/evidence/night6-anchorede2-audio-census-20260913.json).

@@ -52,6 +52,19 @@ Unresolved: 60's volume gate; whether 17 also fires for BB's vent hop
 (`bb.pending` in the model emits `THUD_SAMPLE` -- verify against g691-694's
 alt21 writers before trusting it as a BB cue).
 
+## Measured on the first capture (night6-anchorede2, 2026-09-13)
+
+See [`night6-anchorede2-audio-20260913.md`](../evidence/night6-anchorede2-audio-20260913.md).
+Strong at single-onset level: s0060 (0.95), s0010 (1.00), s0013 (0.99),
+s0017 (0.79), s0062 (0.75), s0009 (0.59), s0005 (0.60), s0031 (0.54).
+Fold-only: s0033 (WinD, z 6-16 per hold), s0025-29 (footsteps, NC <= 0.40).
+Not detected on a run without Balloon Boy inside: s0016, s0021-24 (hi at 0.35).
+Two corrections to the table above: s0017 also fires for the ENDPOINT bang
+(g538-548, five seconds after an encounter), so it is a roll witness only when
+no encounter precedes it; and the capture's time axis is only as good as the
+transport -- aptX-HD through BlueALSA lost 7.6 % of samples, SBC is the
+validated codec, and the sidecar now says CONTINUOUS or BROKEN.
+
 ## What the open questions need, and which handle answers them
 
 1. **The five-second grid phase.** Night 6 is won or lost by where the g337

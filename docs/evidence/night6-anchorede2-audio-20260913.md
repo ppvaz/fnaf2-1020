@@ -35,6 +35,18 @@ here and must be stopped with sudo before the PCM is free.
 | s0025-29 footsteps | NC max 0.29-0.40 at a 0.25 threshold: mostly noise. Not usable at single-onset level. |
 | s0033 WinD | 6 of ~90 ticks above 0.30 single-onset. **Folded on the 500 ms grid per wind hold: z 6-16 in every cycle that wound** (13 of 13), max NC 0.20-0.36. The ticks are all there, buried. |
 
+**Correction, later the same day: the audio time axis is broken.** The
+sidecar shows 195.55 s of samples in 211.59 s of wall clock: 16.0 s (7.6 %)
+of the aptX-HD stream never reached the raw. The death scream (s0062, NC 0.75)
+sits at 143.6 s after release in audio time while the video puts the jumpscare
+at ~150.2 s and the campaign's static read at 156 s. The "clock drift" below is
+that loss accumulating, not a rate. Every audio time in this record is early by
+an amount that grows through the run; onsets are real, their times are not.
+`capture-bt-audio.sh --stop` now writes `missingFraction`/`timeAxis` and
+`tickphase.py` refuses to read a phase above 0.5 % loss. The August 2026
+validation of this path was on SBC; the transport was switched to SBC for the
+next run.
+
 **The fold's phase drifts linearly**: 308, 278, 238, 208, 178, 138, 108, 48,
 498, 458, 428, 378, 368 ms mod 500 across cycles 0-12 -- about -35 ms per
 10 s cycle, -0.35 %. The schedule is host-timed and the wind holds are
@@ -43,7 +55,32 @@ fast against the host (or the game's 500 ms timer runs 0.35 % slow against
 wall time). Either way any phase read off the audio needs this rate correction
 first, and it is measurable per run from the WinD fold. Not corrected here.
 
+## Detectability census on this capture (NC max / onsets > 0.35, 0.5 s refractory; times early by the loss above)
+
+[`night6-anchorede2-audio-census-20260913.json`](night6-anchorede2-audio-census-20260913.json)
+
+| handle | meaning (AUDIO-WITNESS-MAP) | NC max | onsets | reading |
+|---|---|---|---|---|
+| s0060 | hall presence loop | **0.95** | 56 | the loop is trivially detectable; a per-cycle level, not an onset, is the right read |
+| s0010 | blackout / camera-signal-lost | **1.00** | 7 | encounters at ~57, 87-90, 117-120 s: the `in danger` witness works |
+| s0062 / s0012 | jumpscare scream | 0.75 | 1 | death instant to the frame (once the axis is continuous) |
+| s0017 | vent bang | 0.79 | 8 | strong; endpoint vs route-move bangs still to be separated |
+| s0009 | mask breathing | 0.59 | 3 | detected on some windows only; the loop's onset is soft |
+| s0007 | mask/monitor button sound | 0.49 | 8 | every 10 s (27.8, 47.8, 67.8 ...): a per-cycle press witness |
+| s0031 / s0030 / s0032 | Mangle movement | 0.54 / 0.40 / 0.40 | 1 each | present, near threshold |
+| s0005 | monitor button | 0.60 | 1 | weak at 0.35 |
+| s0013 | UI click | 0.99 | 4 | strong when present |
+| s0021 bb-hi | Balloon Boy "hi" | 0.35 | 1 | at threshold; s0023 hello 0.34, s0024 laugh 0.17: NOT detected this run (BB never inside) |
+| s0016 | light click with BB inside | 0.17 | 0 | not present (no BB inside on this run) |
+| s0020 | Mangle radio loop | 0.20 | 0 | not detected; loop bed, needs a level read |
+| s0025-29 | Foxy footsteps | 0.29-0.40 | 0-1 | below single-onset detectability; fold only |
+| s0034 / s0043 | encounter-30 / Puppet tune | 0.25 / 0.07 | 0 | not present or not detectable |
+| s0033 | WinD | 0.36 | 1 | buried; per-hold fold z 6-16 (above) |
+
 ## What remains before the audio can price a Night 6 aim
+
+0. A continuous capture: SBC transport (August's validated codec), and the
+   sidecar's `timeAxis` CONTINUOUS.
 
 1. Separate route-move bangs from endpoint bangs (both s0017): the route move
    is preceded by no encounter; the endpoint bang comes 5 s after one (the

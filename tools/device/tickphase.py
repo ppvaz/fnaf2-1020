@@ -133,10 +133,18 @@ def main():
         print('UNKNOWN  no hid.night-go-released in campaign.log'); return 3
     release_wall = int(m.group(1))
     start_wall = int(side['startWallMs'])
+    # A capture that lost samples has no usable time axis (see capture-bt-audio.sh --stop).
+    if side.get('timeAxis') == 'BROKEN' or (side.get('missingFraction') is not None and abs(side['missingFraction']) > 0.005):
+        print(f"UNKNOWN  the capture lost {side.get('missingMs')} ms of samples ({100*side.get('missingFraction', 0):.1f} %): "
+              "the audio time axis is broken; onsets can be listed but no phase can be read")
+        broken = True
+    else:
+        broken = False
     rate = a.rate
     sig = load_mono(wav, rate)
     t0_rel = (start_wall - release_wall) / 1000.0  # audio t=0 in release-relative seconds (upper bound)
-    result = {'schema': 'tickphase-v1', 'run': run.name, 'wav': str(wav), 'rate': rate,
+    result = {'schema': 'tickphase-v1', 'run': run.name, 'wav': str(wav), 'rate': rate, 'timeAxis': 'BROKEN' if broken else 'CONTINUOUS',
+              'missingFraction': side.get('missingFraction'),
               'audioStartVsReleaseS': t0_rel, 'startIsUpperBound': True, 'handles': {}}
     all_roll = []
     for h in list(ROLL_HANDLES) + [WIND_HANDLE]:
@@ -163,11 +171,15 @@ def main():
     result['windTicks'] = len(wind)
     result['windPhaseMod500Ms'] = None if wmean is None else round(wmean, 1)
     result['windPhaseConcentration'] = round(wr, 3)
-    print(f"tickphase {run.name}: audio starts {t0_rel:+.3f} s vs release (upper bound)")
+    if broken:
+        result['gridPhaseMs'] = None; result['windPhaseMod500Ms'] = None
+    print(f"tickphase {run.name}: audio starts {t0_rel:+.3f} s vs release (upper bound); time axis {result['timeAxis']}")
     for h, v in result['handles'].items():
         if 'onsets' in v:
             print(f"  s{int(h):04d} {v['name']:<12} onsets {len(v['onsets']):3d}  curve max {v['curveMax']:.3f}  thr {v['threshold']}")
-    if mean is None:
+    if broken:
+        print('  gridPhaseMs UNKNOWN (broken time axis)'); mean = None; wmean = None
+    if mean is None and not broken:
         print('  gridPhaseMs UNKNOWN (no roll onsets above threshold)')
     else:
         print(f"  gridPhaseMs {mean:.1f} (mod 5000 from release; concentration {r:.2f} over {len(all_roll)} onsets)")

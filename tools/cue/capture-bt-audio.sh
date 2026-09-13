@@ -103,6 +103,16 @@ import json, sys
 p, w, m, b = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
 d = json.load(open(p))
 d.update({'stopWallMs': w, 'stopMonotonicMs': m, 'rawBytes': b, 'wallDurationMs': w - d['startWallMs']})
+# Samples against the wall clock: the A2DP link drops blocks and the raw has
+# no timestamps, so a short raw is a broken time axis, not a short capture.
+# night6-anchorede2 (aptX-HD): 195.6 s of samples in 211.6 s of wall, 7.6 %
+# missing, the death scream 7 s early. Any reader must refuse above 0.5 %.
+width = 4 if d['format'] in ('S24_LE', 'S24_3LE', 'S32_LE') else 2
+audio_ms = 1000.0 * b / (d['rate'] * d['channels'] * width)
+d['audioDurationMs'] = round(audio_ms, 1)
+d['missingMs'] = round(d['wallDurationMs'] - audio_ms, 1)
+d['missingFraction'] = round((d['wallDurationMs'] - audio_ms) / d['wallDurationMs'], 4) if d['wallDurationMs'] > 0 else None
+d['timeAxis'] = 'CONTINUOUS' if d['missingFraction'] is not None and abs(d['missingFraction']) <= 0.005 else 'BROKEN'
 json.dump(d, open(p, 'w'), indent=2); open(p, 'a').write('\n')
 PY
   echo "$BASE.bt.wav"
