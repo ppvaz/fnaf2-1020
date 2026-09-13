@@ -1,0 +1,69 @@
+{
+  "schema": "device-night-win-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "session 2026-09-13 (Claude), from the run directory and grade.log",
+  "run": "night6-anchoredh1-20260913T180208Z",
+  "night": 6,
+  "experiment": "Night 6 binding h: hallfix knobs with flash 9960 / mask off 9260 / camdrop tail 200, anchored release at aim 4870 on the 5000 ms Foxy roll grid (k=0)",
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 6,
+      "outcome": "sixam",
+      "executor": "campaign.terminal.from-executor state=sixam at 18:09:38.694Z",
+      "video": "TERMINAL: clear -- sixam at 448.5 s, the 6 AM win screen is in the recording",
+      "aliveLowerBoundS": 420.2
+    },
+    "postRunTitle": "items=continue,customNight,newGame,sixthNight -- Custom Night is now offered, which the title never showed before this run"
+  },
+  "binding": {
+    "winnerHash": "fnv1a-37278c63",
+    "bundle": "artifacts/night6-anchored-h/bundle",
+    "qualification": "artifacts/night6-anchored-h/qualification-test.json",
+    "anchorEvidence": "docs/evidence/night6-anchor-aim-h-20260913.json",
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 13650,
+      "maskOnMs": 4249,
+      "maskOffMs": 9260,
+      "hallOffsetMs": 9960,
+      "camdropTailMs": 200
+    }
+  },
+  "anchor": {
+    "aimMs": 4870,
+    "periodMs": 5000,
+    "k": 0,
+    "releasedAimMs": 4870.45,
+    "lateMs": 0.45,
+    "deliveredEpochMsFrameTrace": 4816.1,
+    "onsetBiasMs": -54
+  },
+  "gates": {
+    "agreed": 42,
+    "corrected": 0,
+    "aborted": 0
+  },
+  "latency": {
+    "maskOffPressToEffectMs": "294 median 324 max 356",
+    "monitorDownPressToEffectMs": "561 median 612 max 867",
+    "hallFlashes": "LIT 17, DARK 24 of 41 graded (verdict HALL_DARK: the dark flashes are the sourced g202 rendering, not refusals)"
+  },
+  "audio": {
+    "capture": "~/fnaf-apks/bt-audio-captures/night6-anchoredh1-20260913T180208Z.bt.{raw,wav,json}",
+    "missingFraction": 0.0132,
+    "timeAxis": "BROKEN (aptX-HD; per-cycle mask-on anchors, 20 detected)",
+    "cues": {
+      "s0017 vent bang": "65 onsets, NC 0.83",
+      "s0010 blackout": "37 onsets, NC 0.55",
+      "s0009 breath": "9, NC 0.73",
+      "s0062 scream": "none (no death)"
+    }
+  },
+  "lineage": "e (155.5 s) -> f (165.5 s) -> g (195.5 s) -> h (6 AM): each moved the post-mask flash further ahead of the five-second roll it must beat; docs/evidence/night6-anchoredg1-20260913.md",
+  "retained": [
+    "artifacts/runs/night6-anchoredh1-20260913T180208Z",
+    "captures/night6-anchoredh1-20260913T180208Z.mp4",
+    "captures/frame-traces/night6-anchoredh1-20260913T180208Z-*.tsv"
+  ]
+}

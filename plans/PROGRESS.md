@@ -5451,3 +5451,14 @@ mechanism: the lock on the roll that follows the flash press by ~130 ms,
 before or as the flash lands. Binding h moves the flash and mask-off 100 ms
 earlier (9960/9260). Evidence:
 [night6-anchoredg1-20260913.md](../docs/evidence/night6-anchoredg1-20260913.md).
+
+**2026-09-13, 18:09 UTC: Night 6 reached 6 AM on the device.**
+`night6-anchoredh1-20260913T180208Z` (binding h, fnv1a-37278c63: hallfix
+knobs, flash 9960, mask off 9260, camdrop tail 200, anchored at aim 4870 on
+the 5000 ms grid, delivered 4816): executor terminal sixam, video 6 AM screen
+at 448.5 s, 42/42 gates AGREED, the title now offers Custom Night. Lineage
+e -> f -> g -> h moved the post-mask flash ahead of the five-second roll it
+must beat. Evidence:
+[night6-first-6am-anchoredh-20260913.json](../docs/evidence/night6-first-6am-anchoredh-20260913.json).
+Open: n=1; the per-cycle ledger and the audio anchors of the win are retained
+for the next reading; the phone still streams aptX-HD (SBC pending).
