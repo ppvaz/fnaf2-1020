@@ -283,6 +283,26 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 2500,
     evidence: 'docs/evidence/night7-anchor-aim-i-20260913.json',
     reason: 'bridged band [2433.32, 2649.97): effective [2487, 2522]; 2450/2466.67/2500/2566.67/2600/2616.67 3000/3000, the 2517-2550 arming hole bridged on 15/15 phone arms',
+    // night7-anchoredi6: released 0.014 ms from aim, died ~140 s (2 AM) to
+    // Balloon Boy through the mask window. The earlier-onset answer is
+    // compiler-illegal (mask control reappears lowering+416 ms) and moving the
+    // lowering refutes the model; superseded by the widened-window binding j.
+    refuted: 'docs/evidence/night7-anchoredi6-20260913.md',
+  }),
+  // Night 7, second binding: the mask window widened at its END (mask off
+  // 6760, hall 7460; mask-on pinned at 1749 by the lowering+416 compiler
+  // floor). Band 2383.33-2483.32 at 3000 seeds; the aim keeps the effective
+  // interval inside it with the 30 ms register margin.
+  'fnv1a-f337717a': Object.freeze({
+    night: 7,
+    aimMs: 2440,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 2450,
+    evidence: 'docs/evidence/night7-anchor-aim-j-20260913.json',
+    reason: 'band [2383.33, 2483.32): effective [2417, 2452]; 2383.33/2416.66/2449.99/2483.32 all 3000/3000; 2350 and 2516.65 refuted at 60 seeds',
   }),
 });
 

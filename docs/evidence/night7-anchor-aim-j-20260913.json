@@ -1,0 +1,51 @@
+{
+ "schema": "anchor-aim-v1",
+ "binding": "fnv1a-f337717a",
+ "night": 7,
+ "aimMs": 2440,
+ "derived": "2026-09-13",
+ "winner": "artifacts/night7-anchored-j/winner.json",
+ "knobDelta": "binding i (fnv1a-651ed623) with maskOffMs 6560->6760 and hallOffsetMs 7260->7460; maskOnMs pinned 1749",
+ "motivation": "night7-anchoredi6 died at ~140 s (2 AM) to Balloon Boy through the mask window; j widens the window's end by 200 ms. The earlier-onset answer is compiler-illegal: the loop lowering sits at camdropMs+camdropLeadMs = 11300 and the mask control reappears only after MONITOR_MASK_READY_MS = 416 ms (device trace fully visible ~382.5 ms), so emit refuses any maskOnMs below 1716; moving the lowering earlier to legalize it refutes the model outright (camdropMs 11050 and camdropLeadMs 50, both 0/60 at 60 seeds, all inside-office).",
+ "census": "epoch-scan.mjs --winner artifacts/night7-anchored-i/winner.json --night 7 --knobs '{\"maskOffMs\":6760,\"hallOffsetMs\":7460}' --epochs 2383.33,2416.66,2449.99,2483.32 --seeds 3000 (retained /tmp/opencode/n7/v1-census-3000.json); 60-seed edges: 2350 and 2516.65 lose (puppet/inside-office/foxy), so the band is stated as the gated extent.",
+ "winningBands": [
+  {
+   "fromMs": 2383.33,
+   "toMs": 2483.32
+  }
+ ],
+ "confirmations3000": [
+  {
+   "epochMs": 2383.33,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2416.66,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2449.99,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2483.32,
+   "wins": 3000,
+   "seeds": 3000
+  }
+ ],
+ "latencyMs": {
+  "min": 47,
+  "max": 82,
+  "provenance": "hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)"
+ },
+ "onsetBiasMs": -70,
+ "kLimit": {
+  "maxK": 0
+ },
+ "qualifiedEpochMs": 2450,
+ "aimReason": "effective [2417, 2452] with the -70 ms onset bias and hall-lit latency [47, 82], inside the gated band with the 30 ms register margin on both sides; anchorEpochMs 2450 is a censused 3000/3000 epoch inside the effective window",
+ "claimLevel": "MODEL_ONLY"
+}
