@@ -139,7 +139,7 @@ fi
 for required in '"schema": "runner-catalog-v1"' '"enabled": false' '"claimLevel": "MODEL_ONLY"' \
                 '"id": "minus-toys"' '"id": "minus3"' '"id": "minus7"' \
                 '"id": "golden-freddy"'; do
-  if ! rg -F -q "$required" "$catalog"; then
+  if ! grep -F -q "$required" "$catalog"; then
     echo "runner catalog: FAILED (missing $required)" >&2
     exit 1
   fi
@@ -147,15 +147,15 @@ done
 runner_gate="$HERE/src/com/ppvaz/fnafcompanion/RunnerCatalog.java"
 for required in '"READY".equals(readiness)' '"DEVICE_MEASURED".equals(gateClaimLevel)' \
                 'sixAmProof && planBoundToProof && adaptersReady'; do
-  if ! rg -F -q "$required" "$runner_gate"; then
+  if ! grep -F -q "$required" "$runner_gate"; then
     echo "runner readiness gate: FAILED (missing $required)" >&2
     exit 1
   fi
 done
 echo "runner catalog: unready and unproven routes remain disabled"
 
-if ! rg -F -q 'for (int night = 1; night <= 7; night++)' "$runner_gate" \
-    || ! rg -F -q 'for (JSONObject strategy : strategyEntries)' "$runner_gate"; then
+if ! grep -F -q 'for (int night = 1; night <= 7; night++)' "$runner_gate" \
+    || ! grep -F -q 'for (JSONObject strategy : strategyEntries)' "$runner_gate"; then
   echo "runner catalog: FAILED (route picker is not ordered by night)" >&2
   exit 1
 fi
