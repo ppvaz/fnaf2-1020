@@ -235,6 +235,23 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 4850,
     evidence: 'docs/evidence/night6-anchor-aim-f-20260913.json',
     reason: 'band [4766.67, 4916.67) as e; tail 200 (model indifferent to the tail) confirmed 3000/3000 at 4816.67/4850/4883.33/4900',
+    // night6-anchoredf3: delivered 4802, died 165.5 s exactly as e2 -- the
+    // camdrop tail is not the lever; FLAT post-mask flashes precede both.
+    refuted: 'docs/evidence/night6-anchoredf3-20260913.md',
+  }),
+  // Mask off 100 ms earlier (9360): 150-200 ms between mask = 0 and the
+  // flash press instead of 50-100, so the mask-off latency tail cannot
+  // refuse the flash. Same aim and band.
+  'fnv1a-e89a28ca': Object.freeze({
+    night: 6,
+    aimMs: 4870,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 4850,
+    evidence: 'docs/evidence/night6-anchor-aim-g-20260913.json',
+    reason: 'band [4766.67, 4916.67) as e; mask off 9360 confirmed at 3000 seeds (see evidence)',
   }),
 });
 

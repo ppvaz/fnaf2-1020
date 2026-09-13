@@ -5438,3 +5438,11 @@ last reset, the mid-cycle tick saw D = 6 at AI 15 (20 % lock), g571 killed
 on the 10 s tick. A Night 6 route needs D < 6 at both five-second ticks.
 Evidence:
 [night6-anchorede2-cycle-ledger-20260913.json](../docs/evidence/night6-anchorede2-cycle-ledger-20260913.json).
+Binding f (camdrop light held 200 ms past the monitor tap) died at 165.5 s
+exactly as e (155.5 s): the tail is not the lever. Both ledgers show a run
+of FLAT post-mask flashes before the death (the mask-off latency tail eating
+the 50-100 ms before the flash press). Two aborted attempts fixed on the way
+(executor refuses overlapping macros: tail 450 put the mask tap inside the
+hold; the audio reader ignored SIGINT and held the PCM). Binding g = mask off
+9360 (flash margin 150-200 ms), same aim. Evidence:
+[night6-anchoredf3-20260913.md](../docs/evidence/night6-anchoredf3-20260913.md).
