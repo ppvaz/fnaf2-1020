@@ -2,8 +2,8 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 0,
- "wins": 0,
+ "counted": 1,
+ "wins": 1,
  "deaths": 0,
  "slots": [
   {
@@ -13,6 +13,34 @@
    "status": "EXCLUDED",
    "reason": "preflight refusal before any gameplay input: fact register has no anchor aim registered for binding fnv1a-7e4bf3e8; the runner refused to release a bundle qualified at anchor epoch 2433 at a drawn phase. The winning run carried its aim through the NIGHT_ANCHOR_AIM_MS operator override; the predeclared command omitted it. Phone returned to an observed title (items=continue,customNight,newGame,sixthNight).",
    "countsTowardTen": false
+  },
+  {
+   "slot": "r01b",
+   "run": "night7-night7-k2-cohort-r01b-20260914T220233Z",
+   "startedAt": "2026-09-14T22:02:33Z",
+   "commit": "9050a7e",
+   "status": "WIN",
+   "countsTowardTen": true,
+   "executorTerminal": "campaign.terminal.from-executor state=sixam at 2026-09-14T22:10:09.964Z",
+   "videoTerminal": "TERMINAL: clear -- sixam at 455.0s",
+   "survivalSeconds": 455.0,
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2434.672,
+    "lateMs": 1.67,
+    "uncertaintyMs": 3.02
+   },
+   "gates": {
+    "cycle": 42,
+    "agreed": 42,
+    "corrected": 0,
+    "aborted": 0
+   },
+   "arm": "observe-once, UNRESOLVED (non-fatal, ambiguous-threshold) as in the winning run",
+   "pressAcceptance": "3 graded: 1 PASS, 1 UNSTABLE, 1 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r01b-20260914T220233Z.mp4 sha256 166fd4d5bea2dcb0999f59a1ee7a5df79518d91bdaca3b5785ba5fff9e148a72"
   }
  ],
  "amendments": [
