@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 3,
+ "counted": 4,
  "wins": 2,
- "deaths": 1,
+ "deaths": 2,
  "slots": [
   {
    "slot": "r01",
@@ -111,6 +111,43 @@
    "pressAcceptance": "3 graded: 1 PASS, 2 UNKNOWN",
    "postRunTitle": "items=continue,customNight,newGame,sixthNight",
    "video": "captures/night7-night7-k2-cohort-r03-20260914T223207Z.mp4 sha256 54cc9acf84e1299b3544815fdc0d98564ccb43b2ea84f45e7ebdafdcf1e34159"
+  },
+  {
+   "slot": "r04",
+   "run": "night7-night7-k2-cohort-r04-20260914T224934Z",
+   "startedAt": "2026-09-14T22:49:34Z",
+   "commit": "6968199",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "none: campaign.abort.restart 'device: lifecycle left night state (static)' at 22:50:33.323Z; gate abort mask-state-unavailable at gateAtMs 23000, 22:50:33.182Z",
+   "videoTerminal": "TERMINAL: unknown (game restarted before a game-over screen); survival instrument: HUD gone for good from 52.8 s, death static 20 frames / 5.0 s",
+   "whyCountedNotInvalid": "lifecycle read state=static at 22:50:30.031Z before the gate abort (22:50:33.182Z, night 23 s); the HUD left at video 52.8 s, night ~20.6 s from HUD first 32.180 s. The route died; the campaign did not stop it.",
+   "survivalSeconds": 20.6,
+   "clock": "12 AM on the HUD in the jumpscare frames",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "visual read: video 52.0 s office empty at 12 AM, 52.5 s Foxy jumpscare; retained under the run's death-frames/",
+    "instrument": "no Foxy death-cause model exists",
+    "ledger": "cycle-ledger.py --release-video-s 34.543 (HUD first 32.180 + 2.433 - 0.070): cycle 0 empty hue None flash FLAT (26.0/29.2) office 38.3; cycle 1 W.Chica hue 33.3 flash DIM (39.7/34.8) office 34.0; cycle 2 W.Chica hue 32.3 flash FLAT (37.8/37.0) office 27.7"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2434.254,
+    "lateMs": 1.25,
+    "uncertaintyMs": 3.08,
+    "anomaly": "authorized at host 28593.6 ms, 1819 ms before the latched onset; the lifecycle observer read state=night at 22:50:05.221Z BEFORE state=intro at 22:50:05.826Z",
+    "phaseCheckFromVideo": "HUD first 32.180 s, first CAM 11 raise 35.18 s: gap 3.00 s (other k2 runs 2.93-2.98 s)"
+   },
+   "gates": {
+    "cycle": 3,
+    "agreed": 2,
+    "corrected": 0,
+    "aborted": 1
+   },
+   "pressAcceptance": "3 graded -- 1 UNSTABLE, 1 PASS, 1 UNKNOWN",
+   "postRunTitle": "title    items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r04-20260914T224934Z.mp4 sha256 59df79e63ea329b647a9d3ed624f42964cdffa2750f7c758f805cd5e56f27b69"
   }
  ],
  "amendments": [
@@ -134,6 +171,17 @@
     "2449.99": "65536/65536"
    },
    "reading": "Under the model k2 wins every night the phone can generate at the delivered phase. r02 delivered that phase (video CAM 11 gaps within 30 ms of both wins) and died to Withered Foxy at ~300 s, so r02 is not a losing seed under the model: it is a model error or a delivery error below the video's resolution. Not a change to the cohort; analysis only."
+  }
+ ],
+ "openObservations": [
+  {
+   "at": "2026-09-14T23:00:00Z",
+   "status": "OPEN, not acted on inside the cohort",
+   "observation": "Both deaths (r02, r04) were Withered Foxy kills after a hall occupant the ledger labels W.Chica with a non-FLAT flash, and both had the lifecycle observer read state=night before state=intro, so the anchor was authorized before it was scheduled. All three k2 wins (original, r01b, r03) read intro then night and authorized on the latch. n=2 vs 3; the release time and the video phase were the same either way.",
+   "questions": [
+    "Does an early state=night read change anything in the executor besides authorization?",
+    "Is the ledger's W.Chica label at hue ~32 actually Withered Foxy in the hall?"
+   ]
   }
  ]
 }
