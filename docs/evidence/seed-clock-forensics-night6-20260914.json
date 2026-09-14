@@ -38,7 +38,12 @@
    "analysis.txt": "13aad537b00df98098c37333f3e711f6d0b4b1f1895c1fec60dc06e0b3430b59",
    "clock-after-r03.json": "3598bb183e6174779705f4e7dab0c49cb955ea691e37a68af1b6a86d876ad1cc",
    "e2-onsets.json": "fce140fe88981468990ba76ef0d12598cb4bf88ecf60c32926bdd02a3d94a2a9",
+   "encounter-cut.mjs": "345d15e6e2374297ebb097ec6b58cba854953eecc7d9d8726230ade087f55c94",
+   "encounter-lock.mjs": "defc45b6ad6c44f9a6c7436d2c94106a42cf25ade9fe96508730213b09e82346",
+   "eyehole-hallfix-v3.json": "566c0c5ea75158c91ef055bcabd08db8e146ce8a77725f5f7069d06455a83025",
+   "eyehole-read.py": "0771fdfed53dc3559373216dae783fb7b11139645be584f6837a82fab992a074",
    "h1-onsets.json": "b8f6fee6041f0769625bed6c15cc675cb249cda4b9c7217f1286760200cce700",
+   "lock-seconds.mjs": "d00c2fde09914c991876fe2e3b7c3f773bbcc2dcff160508d4df5d938214b018",
    "seed-scan-analyze.py": "f68f6e7e0555c5feb807d678ae1c81b6b0577ae0419681c0bf38efc1e6a5089d",
    "seed-scan.mjs": "fb53732e889ed7a2a57c430f5e945c13fcae5bcee92910da1200ce3f575f834a",
    "seed-signatures.mjs": "5a47a800de9c3e72dfd758009a448b60009b0ccdded589d47570e6715e5ccfec"
@@ -49,5 +54,121 @@
   "modelSide": "k2 at 2433 ms over seeds 1..3000 (encounter-lock.mjs): office-cue identities withchica 39577, withbonnie 34566, withfreddy 28741; 30-39 encounters per night (median 34). Largest share of seeds with the same first-N identity+cycle prefix: N=12 31/3000, N=16 9/3000, N=24 2/3000; identity without cycle is much weaker (N=24 14/3000).",
   "reading": "Rolled, non-lethal, frequent and video-visible, unlike the s0010 onsets. With the ~41-seed clock window about ten identified encounters should lock a seed; without it roughly a whole night is needed. The phone ledger marks 13-26 defended cycles per run against ~34 model encounters, so matching must tolerate missed encounters.",
   "status": "model side measured 2026-09-14; phone-side eyehole reader for k2 timing not yet built or validated"
+ },
+ "seedLockObservables": {
+  "claimLevel": "MODEL_ONLY except the eyehole validation (DEVICE_MEASURED recording, operator labels)",
+  "binding": "k2 at 2433 ms, seeds 1..3000, scaled to 65,536",
+  "movementModel": "Withered, toy and Mangle routes are fixed camera paths (config.js STALLED); WHERE a unit goes is not random, WHEN it steps is: the per-frame cap holds every unit but Foxy (17), Golden Freddy (10) and the Puppet at AI 15, so each movement opportunity succeeds 75% at 10/20.",
+  "encounterCut": {
+   "script": "encounter-cut.mjs",
+   "rows": [
+    {
+     "n": 1,
+     "medianNightS": 23.8,
+     "cutFactor": 4.2,
+     "leftOf65536": 15609,
+     "leftIn41SeedWindow": 9.76
+    },
+    {
+     "n": 2,
+     "medianNightS": 43.8,
+     "cutFactor": 1.74,
+     "leftOf65536": 8981,
+     "leftIn41SeedWindow": 5.62
+    },
+    {
+     "n": 4,
+     "medianNightS": 63.8,
+     "cutFactor": 1.77,
+     "leftOf65536": 3840,
+     "leftIn41SeedWindow": 2.4
+    },
+    {
+     "n": 6,
+     "medianNightS": 83.8,
+     "cutFactor": 1.79,
+     "leftOf65536": 1333,
+     "leftIn41SeedWindow": 0.83
+    },
+    {
+     "n": 10,
+     "medianNightS": 133.8,
+     "cutFactor": 1.64,
+     "leftOf65536": 188,
+     "leftIn41SeedWindow": 0.12
+    },
+    {
+     "n": 15,
+     "medianNightS": 193.8,
+     "cutFactor": 1.25,
+     "leftOf65536": 34,
+     "leftIn41SeedWindow": 0.02
+    },
+    {
+     "n": 20,
+     "medianNightS": 243.8,
+     "cutFactor": 1.02,
+     "leftOf65536": 23,
+     "leftIn41SeedWindow": 0.01
+    }
+   ],
+   "reading": "first encounter ~2 bits, later ones 0.4-0.85 bits; with the clock window ~6 encounters (~84 s) lock; alone it floors at ~22 seeds with identical encounter sequences"
+  },
+  "movementLock": {
+   "script": "lock-seconds.mjs (wraps Sim.prototype.tick; snapshot each second of every unit's path step, opening and inside flags, Foxy and Puppet loc)",
+   "largestClassOf3000": {
+    "full positions": {
+     "5": 943,
+     "10": 313,
+     "15": 146,
+     "20": 55,
+     "30": 17,
+     "45": 5,
+     "60": 2
+    },
+    "CAM 11 only": {
+     "5": 2254,
+     "10": 1679,
+     "20": 1679,
+     "45": 1679,
+     "60": 487
+    },
+    "encounters": {
+     "20": 1397,
+     "30": 730,
+     "60": 694
+    }
+   },
+   "leftInWindow": {
+    "41 seeds (+-20 ms)": {
+     "10": 4.28,
+     "20": 0.75,
+     "30": 0.23
+    },
+    "201 seeds (+-100 ms)": {
+     "10": 20.97,
+     "20": 3.69,
+     "30": 1.14,
+     "45": 0.34
+    }
+   },
+   "reading": "a full camera view of where every unit is locks a seed within ~20 s given the clock window, ~30 s at +-100 ms jitter, and nearly alone by 60 s; CAM 11, the only camera k2 watches, cannot"
+  },
+  "eyeholeReaderValidation": {
+   "script": "eyehole-read.py",
+   "recording": "captures/night5-hallfix-20260912T230319Z.mp4",
+   "method": "corpus crop x175-270 y55-110 at 320x144; mask-on found in the video (top-left 120x40 mean luma < 8), grey camera map skipped; the largest occupant among the first six masked frames (1.2 s at 5 fps) is classified by the corpus colour rule, Bonnie saturation ceiling 0.40 (corpus 0.39; hallfix 110 s reads at the edge)",
+   "result": "12/14 operator-labelled encounters correct, 25/25 unlabelled cycles read empty. Misses: 90 s (the corpus notes it was counted from the eyehole with no camdrop witness) and 360 s. The attacker typically fills the eyehole ~1.0 s after mask-on (contact sheet 340-356 s). First attempts that took the window from the corpus prose (flash - 5.6 s) read the camera map: 0/14; the fix was reading the frames.",
+   "notYet": "not validated on k2 timing or on the Night 6 foxyfix labels"
+  },
+  "firstFrameClockSeeding": {
+   "claim": "every Fusion frame (scene) load reseeds from (short) System.currentTimeMillis() -- sourced from the decompile, not measured on this phone",
+   "whatIsMeasured": "the latched first office image in host wall ms (every anchored run) and the host-to-phone wall offset (~-1401 ms, 7 ms spread)",
+   "unknown": "the gap from the scene load to the first office image and its jitter; each ms of jitter is one more candidate seed",
+   "tests": [
+    "K consistency across the recovered seeds of r01b, r03 and r05 (eyehole encounters over whole nights), host-side",
+    "twin nights: two night loads exactly 65,536 ms apart in phone time should replay identical movement and a +30 s control should not; model-free, and it measures the load jitter; needs phone time outside the cohort"
+   ]
+  }
  }
 }
