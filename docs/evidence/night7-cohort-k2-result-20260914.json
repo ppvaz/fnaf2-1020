@@ -40,7 +40,31 @@
    "arm": "observe-once, UNRESOLVED (non-fatal, ambiguous-threshold) as in the winning run",
    "pressAcceptance": "3 graded: 1 PASS, 1 UNSTABLE, 1 UNKNOWN",
    "postRunTitle": "items=continue,customNight,newGame,sixthNight",
-   "video": "captures/night7-night7-k2-cohort-r01b-20260914T220233Z.mp4 sha256 166fd4d5bea2dcb0999f59a1ee7a5df79518d91bdaca3b5785ba5fff9e148a72"
+   "video": "captures/night7-night7-k2-cohort-r01b-20260914T220233Z.mp4 sha256 166fd4d5bea2dcb0999f59a1ee7a5df79518d91bdaca3b5785ba5fff9e148a72",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b (timings from the run's winner, reads stop at the death)",
+    "cyclesRead": 42,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "releaseVideoS": 36.294,
+    "flash": {
+     "DIM": 26,
+     "LIT": 12,
+     "FLAT": 4
+    },
+    "defended": 25,
+    "occupiedAtDrop": 15,
+    "backToBackFlatPairsEndingAt": [],
+    "lastRows": [
+     "cycle 39 empty flash LIT (28.9/4.8) office 16.0",
+     "cycle 40 empty flash FLAT (4.3/1.9) office 3.9 defended",
+     "cycle 41 empty flash DIM (7.5/2.2) office 4.0 defended"
+    ]
+   }
   },
   {
    "slot": "r02",
@@ -83,7 +107,36 @@
     "artifacts/runs/night7-night7-k2-cohort-r02-20260914T221655Z/cycle-ledger.json",
     "artifacts/runs/night7-night7-k2-cohort-r02-20260914T221655Z/death-frames/",
     "captures/night7-night7-k2-cohort-r02-20260914T221655Z.mp4"
-   ]
+   ],
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b (timings from the run's winner, reads stop at the death)",
+    "cyclesRead": 29,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "releaseVideoS": 34.714,
+    "flash": {
+     "LIT": 7,
+     "DIM": 9,
+     "FLAT": 13
+    },
+    "defended": 18,
+    "occupiedAtDrop": 7,
+    "backToBackFlatPairsEndingAt": [
+     8,
+     16,
+     22,
+     28
+    ],
+    "lastRows": [
+     "cycle 26 empty flash LIT (29.6/5.5) office 19.0",
+     "cycle 27 empty flash FLAT (3.2/2.5) office 3.3 defended",
+     "cycle 28 empty flash FLAT (3.3/2.5) office 3.3 defended"
+    ]
+   }
   },
   {
    "slot": "r03",
@@ -111,7 +164,31 @@
    },
    "pressAcceptance": "3 graded: 1 PASS, 2 UNKNOWN",
    "postRunTitle": "items=continue,customNight,newGame,sixthNight",
-   "video": "captures/night7-night7-k2-cohort-r03-20260914T223207Z.mp4 sha256 54cc9acf84e1299b3544815fdc0d98564ccb43b2ea84f45e7ebdafdcf1e34159"
+   "video": "captures/night7-night7-k2-cohort-r03-20260914T223207Z.mp4 sha256 54cc9acf84e1299b3544815fdc0d98564ccb43b2ea84f45e7ebdafdcf1e34159",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b (timings from the run's winner, reads stop at the death)",
+    "cyclesRead": 42,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "releaseVideoS": 36.242,
+    "flash": {
+     "LIT": 12,
+     "DIM": 27,
+     "FLAT": 3
+    },
+    "defended": 24,
+    "occupiedAtDrop": 9,
+    "backToBackFlatPairsEndingAt": [],
+    "lastRows": [
+     "cycle 39 empty flash LIT (28.9/3.6) office 15.7",
+     "cycle 40 empty flash LIT (28.9/3.9) office 15.8",
+     "cycle 41 empty flash DIM (7.5/2.1) office 3.5 defended"
+    ]
+   }
   },
   {
    "slot": "r04",
@@ -149,7 +226,27 @@
    },
    "pressAcceptance": "3 graded -- 1 UNSTABLE, 1 PASS, 1 UNKNOWN",
    "postRunTitle": "title    items=continue,customNight,newGame,sixthNight",
-   "video": "captures/night7-night7-k2-cohort-r04-20260914T224934Z.mp4 sha256 59df79e63ea329b647a9d3ed624f42964cdffa2750f7c758f805cd5e56f27b69"
+   "video": "captures/night7-night7-k2-cohort-r04-20260914T224934Z.mp4 sha256 59df79e63ea329b647a9d3ed624f42964cdffa2750f7c758f805cd5e56f27b69",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b (timings from the run's winner, reads stop at the death)",
+    "cyclesRead": 1,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "releaseVideoS": 34.543,
+    "flash": {
+     "DIM": 1
+    },
+    "defended": 0,
+    "occupiedAtDrop": 0,
+    "backToBackFlatPairsEndingAt": [],
+    "lastRows": [
+     "cycle 0 empty flash DIM (15.5/4.0) office 14.5"
+    ]
+   }
   }
  ],
  "amendments": [
@@ -213,7 +310,7 @@
     "pendingCorrections[0] (superseded by this entry)"
    ],
    "cause": "tools/device/cycle-ledger.py hard-codes MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS = 4249, 9460, 10060, 13650 (Night 6 bindings e/h). Binding k2 runs maskOn 1749, maskOff 7000, hall flash 7460, camdrop 11150, so every column the ledger printed for r02 and r04 was sampled 2.46-2.60 s after the event it names. For r02 the rows 29-30 and for r04 the rows 1-2 were additionally read after the death (static and restart frames). Mistake register entry 4: a tool ported across nights without re-deriving its timings.",
-   "consequence": "The predeclared rule 'cause from the per-cycle ledger' cannot be met on Night 7 until cycle-ledger reads the bundle's own knobs. Until then both causes stand as visual reads of the recording (Withered Foxy), and the ledger fields above carry no evidence.",
+   "consequence": "Superseded by d29fa6b: cycle-ledger now reads each run's own winner timings and stops at the death, so the predeclared cause rule can be applied. The retracted fields stay retracted; the corrected reads are under each slot's ledgerCorrected.",
    "whatTheFramesDoShow": {
     "r02": "video 331.75 s mask on; 332.00 s office empty, mask off; 332.25 s Foxy entering; 332.50 s jumpscare. With release at video 34.714 s, Foxy first appears 7.29-7.54 s into cycle 29.",
     "r04": "video 52.00 s office empty at 12 AM; 52.25 s Foxy mid-lunge; 52.50 s jumpscare. With release at video 34.543 s, Foxy first appears 7.46-7.71 s into cycle 1.",
@@ -222,6 +319,20 @@
    "stillStands": "Both runs were early-authorized (lifecycle state=night read before state=intro); every latch-authorized k2 run won. That part of the open observation is unaffected.",
    "atSource": "commit time of a494218, which recorded it",
    "atCorrected": "was an estimate (2026-09-14T23:05:00Z) written by the agent; replaced by the commit time on 2026-09-14"
+  }
+ ],
+ "candidateMechanisms": [
+  {
+   "recordedAtCommitAfter": "d29fa6b",
+   "status": "CANDIDATE, not a finding; not acted on inside the cohort",
+   "claimLevel": "DEVICE_MEASURED reads, MODEL_ONLY interpretation",
+   "observation": "Refused (FLAT) post-mask hall flashes: r01b win 4/42 with no back-to-back pair, r03 win 3/42 with none, r02 death 13/30 with back-to-back pairs ending at cycles 8, 16, 22 and 28; Foxy struck in cycle 29. FLAT reads a door level ~3.3 and DIM ~7.5 on this geometry, two separate clusters rather than a threshold edge. r04 died in cycle 1, before any streak could form.",
+   "candidate": "A hall flash refused after a defended encounter leaves Withered Foxy un-reset; two refusals in a row let him reach the office. The Night 5 encounter census (2026-09-12) recorded the same consequence (dark or refused flash after a defended encounter; only post-encounter FLAT flashes leave Foxy un-reset) and that the model has the encounter frequency but not this consequence. That would explain k2 winning all 65,536 seeds in the model while the phone loses.",
+   "whatWouldTestIt": [
+    "the FLAT rate and back-to-back pairs of every remaining cohort run, read before its outcome is known where possible",
+    "the model given the refusal consequence, re-censused at 65,536 seeds at the delivered phase"
+   ],
+   "doesNotExplain": "r04's death at ~20.6 s"
   }
  ]
 }
