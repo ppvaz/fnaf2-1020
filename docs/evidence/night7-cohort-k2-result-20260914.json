@@ -163,7 +163,7 @@
  ],
  "analysis": [
   {
-   "at": "2026-09-14T22:45:00Z",
+   "at": "2026-09-14T22:49:33Z",
    "kind": "exhaustive-seed-census",
    "claimLevel": "MODEL_ONLY",
    "command": "epoch-scan.mjs --winner artifacts/night7-anchored-k2/bundle/winner.json --night 7 --epochs E --seeds 65536 (seeds 1..65536 cover every 16-bit Fusion RNG stream; k2 does not enable the reactive observer's second RNG)",
@@ -172,33 +172,39 @@
     "2433": "65536/65536",
     "2449.99": "65536/65536"
    },
-   "reading": "Under the model k2 wins every night the phone can generate at the delivered phase. r02 delivered that phase (video CAM 11 gaps within 30 ms of both wins) and died to Withered Foxy at ~300 s, so r02 is not a losing seed under the model: it is a model error or a delivery error below the video's resolution. Not a change to the cohort; analysis only."
+   "reading": "Under the model k2 wins every night the phone can generate at the delivered phase. r02 delivered that phase (video CAM 11 gaps within 30 ms of both wins) and died to Withered Foxy at ~300 s, so r02 is not a losing seed under the model: it is a model error or a delivery error below the video's resolution. Not a change to the cohort; analysis only.",
+   "atSource": "commit time of 6968199, which recorded it",
+   "atCorrected": "was an estimate (2026-09-14T22:45:00Z) written by the agent; replaced by the commit time on 2026-09-14"
   }
  ],
  "openObservations": [
   {
-   "at": "2026-09-14T23:00:00Z",
+   "at": "2026-09-14T22:54:40Z",
    "status": "OPEN, not acted on inside the cohort",
    "observation": "Both deaths (r02, r04) were Withered Foxy kills after a hall occupant the ledger labels W.Chica with a non-FLAT flash, and both had the lifecycle observer read state=night before state=intro, so the anchor was authorized before it was scheduled. All three k2 wins (original, r01b, r03) read intro then night and authorized on the latch. n=2 vs 3; the release time and the video phase were the same either way.",
    "questions": [
     "Does an early state=night read change anything in the executor besides authorization?",
     "Is the ledger's W.Chica label at hue ~32 actually Withered Foxy in the hall?"
    ],
-   "amended": "2026-09-14T23:05Z: the W.Chica/flash clause is retracted (see corrections); the early-authorization clause stands"
+   "amended": "2026-09-14T23:05Z: the W.Chica/flash clause is retracted (see corrections); the early-authorization clause stands",
+   "atSource": "commit time of 5ba74b7, which recorded it",
+   "atCorrected": "was an estimate (2026-09-14T23:00:00Z) written by the agent; replaced by the commit time on 2026-09-14"
   }
  ],
  "predictions": [
   {
-   "at": "2026-09-14T22:58:30Z",
+   "at": "2026-09-14T22:56:35Z",
    "beforeOutcomeOf": "r05 (night7-night7-k2-cohort-r05, released 22:55:18.002Z, 0.70 ms late)",
    "fact": "r05 was authorized early: authorizedAfterOnsetMs -1569, the third early-authorized k2 run (r02 -2368 died, r04 -1819 died; r01b, r03 and the original win authorized on the latch and won)",
    "prediction": "If early authorization is causal for the Foxy deaths, r05 dies to Withered Foxy near cycle phase 7.5 s. A win refutes early authorization as sufficient for a death.",
-   "status": "OPEN until r05 grades; recorded before the outcome so the read-out cannot be fitted to it"
+   "status": "OPEN until r05 grades; recorded before the outcome so the read-out cannot be fitted to it",
+   "atSource": "commit time of c96d19d, which recorded it; r05 was mid-night then (gate 183 s agreed at 22:58:21Z)",
+   "atCorrected": "was an estimate (2026-09-14T22:58:30Z) written by the agent; replaced by the commit time on 2026-09-14"
   }
  ],
  "corrections": [
   {
-   "at": "2026-09-14T23:05:00Z",
+   "at": "2026-09-14T22:57:54Z",
    "kind": "RETRACTION",
    "retracts": [
     "slots[r02].cause.ledger",
@@ -213,7 +219,9 @@
     "r04": "video 52.00 s office empty at 12 AM; 52.25 s Foxy mid-lunge; 52.50 s jumpscare. With release at video 34.543 s, Foxy first appears 7.46-7.71 s into cycle 1.",
     "together": "Both windows contain the 7.46 s hall flash, within the ~150 ms uncertainty of the video-to-release mapping (HUD first + aim - 70 ms onset bias). Candidate mechanism, not a finding: Foxy is not reset by the hall flash that follows mask-off, as k1's refutation described at 60 ms spacing."
    },
-   "stillStands": "Both runs were early-authorized (lifecycle state=night read before state=intro); every latch-authorized k2 run won. That part of the open observation is unaffected."
+   "stillStands": "Both runs were early-authorized (lifecycle state=night read before state=intro); every latch-authorized k2 run won. That part of the open observation is unaffected.",
+   "atSource": "commit time of a494218, which recorded it",
+   "atCorrected": "was an estimate (2026-09-14T23:05:00Z) written by the agent; replaced by the commit time on 2026-09-14"
   }
  ]
 }
