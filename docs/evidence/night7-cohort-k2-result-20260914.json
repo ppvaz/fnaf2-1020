@@ -183,5 +183,20 @@
     "Is the ledger's W.Chica label at hue ~32 actually Withered Foxy in the hall?"
    ]
   }
+ ],
+ "predictions": [
+  {
+   "at": "2026-09-14T22:58:30Z",
+   "beforeOutcomeOf": "r05 (night7-night7-k2-cohort-r05, released 22:55:18.002Z, 0.70 ms late)",
+   "fact": "r05 was authorized early: authorizedAfterOnsetMs -1569, the third early-authorized k2 run (r02 -2368 died, r04 -1819 died; r01b, r03 and the original win authorized on the latch and won)",
+   "prediction": "If early authorization is causal for the Foxy deaths, r05 dies to Withered Foxy near cycle phase 7.5 s. A win refutes early authorization as sufficient for a death.",
+   "status": "OPEN until r05 grades; recorded before the outcome so the read-out cannot be fitted to it"
+  }
+ ],
+ "pendingCorrections": [
+  {
+   "at": "2026-09-14T22:58:30Z",
+   "note": "The open observation 'both deaths followed a hall occupant labelled W.Chica' is under review: cycle-ledger reads the camdrop frame after the cycle's camdrop, and for r02 cycle 30 and r04 cycle 1 that frame falls after the death (static/restart). A retraction with the exact frame times follows in the next commit."
+  }
  ]
 }
