@@ -1,0 +1,47 @@
+{
+ "schema": "forensics-result-v1",
+ "id": "seed-clock-forensics-night6-20260914",
+ "claimLevel": "MODEL_ONLY",
+ "status": "INCONCLUSIVE",
+ "question": "Does the stock game seed its 16-bit Fusion RNG from the phone's wall clock at night load (packages/core/src/mechanics/rng.js, sourced from the decompile), so that a recovered seed minus the low 16 bits of the logged onset time is the same constant K in every run of a session?",
+ "whyItMatters": "Plan 25 horizons and the 'choose your luck' / precognition paths depend on it: a calibrated K turns every run's logged onset into a ~40-seed window.",
+ "established": {
+  "rngSpace": "65,536 possible nights; k2 wins 65536/65536 in the model at 2416.66, 2433 and 2449.99 ms (docs/evidence/night7-cohort-k2-result-20260914.json, analysis)",
+  "seedDependenceAt10of20": "k2 replayed over seeds 1..3000 at 2433 ms: 2995 distinct event sequences, 2995 distinct video-visible and audio-visible sequences (seed-signatures.mjs) -- the outcome ignores the seed, the events do not",
+  "hostPhoneWallClock": "seed-clock.mjs after cohort r03 (2026-09-14): phone wall clock = host - ~1401 ms, spread 7 ms over 8 samples, 16-20 ms bound per sample (offsetMs = deviceMs - hostMidMs)",
+  "onsetMarkers": "every anchored run logs onsetHostMs and wallMinusHostMs, so the latched onset is known in host wall ms (h1 1789322556522.2, e2 1789318871194.5)"
+ },
+ "method": {
+  "runs": [
+   "night6-anchoredh1-20260913T180208Z (binding h, won, delivered 4816.10 ms, 37 s0010 blackout-loop onsets)",
+   "night6-anchorede2-20260913T170041Z (binding e, died 155.5 s, delivered 4813.98 ms, 7 onsets)"
+  ],
+  "onsets": "cycle-ledger.py at d29fa6b (the run's own winner timings), encountersFromAudio: audio-census s0010 onsets mapped to night time through the per-cycle s0007 mask-on anchor",
+  "scan": "seed-scan.mjs: for seeds 1..65536, replay the run's winner at its delivered epoch (tools/device/minus-toys-plan.mjs replay, Night 6); an onset is matched when it lies inside a model 'blackout' span [start - 0.5 s, start + 5 s + 0.5 s]; startMatched counts onsets within 0.5 s of a span start",
+  "test": "seed-scan-analyze.py: rank seeds by matched then startMatched; K = (seed - low16(onset host wall ms)) mod 65536; look for h1/e2 top candidates with K within +-30 ms"
+ },
+ "result": {
+  "h1": "nine seeds tie at 36/37 matched (runner-up also 36) with identical residual lists; start matches peak at 8/37",
+  "e2": "1687 seeds tie at 6/7; start matches peak at 3/7",
+  "kAgreement": "0 pairs within +-30 ms among the top 10 x 10 (chance of >= 1 by luck 8.9%)",
+  "reading": "INCONCLUSIVE, not a refutation. The s0010 onsets fall inside the route's own scheduled blackout windows for thousands of seeds, and they are not model blackout starts (residuals 0.3-3.7 s): this observable cannot identify a seed, so K cannot be tested with it."
+ },
+ "doNotRepeat": "Scoring s0010 blackout-loop onsets against model blackout spans; it is schedule-determined under these routes.",
+ "next": [
+  "an observable that is ROLLED rather than scheduled: Foxy roll witnesses (tools/device/tickphase.py) or exact-roll observations for seed-recovery.mjs filter --mode=rolls",
+  "source s0010's trigger from the event dump before using it again (feedback: dump is ground truth)",
+  "a run with --bt-audio and a seed-clock sample taken in the same session, outside the Night 7 cohort"
+ ],
+ "retained": {
+  "directory": "artifacts/forensics/seed-clock-20260914",
+  "files": {
+   "analysis.txt": "13aad537b00df98098c37333f3e711f6d0b4b1f1895c1fec60dc06e0b3430b59",
+   "clock-after-r03.json": "3598bb183e6174779705f4e7dab0c49cb955ea691e37a68af1b6a86d876ad1cc",
+   "e2-onsets.json": "fce140fe88981468990ba76ef0d12598cb4bf88ecf60c32926bdd02a3d94a2a9",
+   "h1-onsets.json": "b8f6fee6041f0769625bed6c15cc675cb249cda4b9c7217f1286760200cce700",
+   "seed-scan-analyze.py": "f68f6e7e0555c5feb807d678ae1c81b6b0577ae0419681c0bf38efc1e6a5089d",
+   "seed-scan.mjs": "fb53732e889ed7a2a57c430f5e945c13fcae5bcee92910da1200ce3f575f834a",
+   "seed-signatures.mjs": "5a47a800de9c3e72dfd758009a448b60009b0ccdded589d47570e6715e5ccfec"
+  }
+ }
+}
