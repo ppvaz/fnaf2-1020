@@ -551,6 +551,38 @@
     "reading": "A hall flash pressed up to 7540 ms still stops the roll; at 7560 ms every seed dies to Foxy. k2 plans 7460 ms, so one flash whose effect lands ~90 ms late kills in that cycle. The register prices the release at effective epoch 2410-2445 ms including the hall light's measured 47-82 ms latency, leaving ~55-70 ms to the Foxy edge at 2500 ms. The phone's four deaths (cycles 1, 20, 22, 29; ~4 in ~200 exposed cycles, ~2%/cycle) all show Foxy first visible at 7.29-7.73 s, around the 7.567 s roll.",
     "status": "CANDIDATE mechanism consistent with all four deaths and the model cliff; not yet a finding",
     "nextTest": "delay only the hall-flash rows through schedule({shift}) with a per-cycle latency tail and find the tail beyond the cliff that reproduces a ~2%/cycle hazard; an earlier flash is a new binding and a new cohort, never a change inside this one"
+   },
+   "modelTest-cliffAcrossEpoch": {
+    "claimLevel": "MODEL_ONLY",
+    "seeds": 3000,
+    "result": {
+     "epoch 2410": {
+      "7530": "3000/3000",
+      "7540": "3000/3000",
+      "7550": "3000/3000",
+      "7560": "3000/3000"
+     },
+     "epoch 2445": {
+      "7530": "0/3000 foxy",
+      "7540": "0/3000 foxy",
+      "7550": "0/3000 foxy",
+      "7560": "0/3000 foxy"
+     }
+    },
+    "rule": "epoch + hallOffsetMs + the flash's effect latency must land before ~9983 ms of night time, one frame ahead of Foxy's 10 000 ms roll; k2 plans 2433 + 7460 = 9893 ms, 90 ms of slack at the aim and less at later delivered epochs",
+    "retained": "artifacts/forensics/seed-clock-20260914/cliff-E-H.json"
+   },
+   "candidateNextBinding-earlierFlash": {
+    "claimLevel": "MODEL_ONLY",
+    "status": "PROPOSAL for after this cohort, not a change inside it",
+    "census3000": {
+     "hall 7400": "3000/3000",
+     "hall 7360": "3000/3000",
+     "hall 7300": "3000/3000"
+    },
+    "band60AtHall7400": "wins 2366.68-2500.04 (same extent as k2); edges 2350.01 puppet/inside-office and 2516.71-2550.05 puppet/inside-office; 2566.72 wins; Foxy edge moved from 2516.71 (k2) to 2583.39",
+    "reading": "moving the hall flash to 7400 ms buys ~60 ms against a single late flash in any cycle without shrinking the whole-schedule band; mask-off contact would end 200 ms before the flash (k1 was refuted at 60 ms). Needs its own 60/3000-seed band, anchor aim and a new predeclared cohort.",
+    "deviceTestGap": "no live-capable hall-latency probe exists (hid-maskraise-probe is offline-only; maskraise-grade is exploratory); the latency-tail prediction (~2% of flashes landing >~90 ms late) needs a new instrument"
    }
   }
  ]
