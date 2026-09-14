@@ -19,12 +19,66 @@ For every 10 s cycle after the release it reads, at 60 fps on the retained
     sound (s0007, g267) as the per-cycle anchor.
 The release's video time is HUD-first (grade.log clocktrace) + the delivered
 epoch (grade.log phase reconstruction) unless --release-video-s is given.
+
+The cycle timings (mask on, mask off, hall flash, camdrop) are the RUN's own:
+read from the minus-toys winner of the bundle named in the run's verdict.txt,
+or from --winner. Until 2026-09-14 they were constants copied from Night 6
+bindings e/f (4249/9460/10060/13650); every Night 7 k2 read was then sampled
+2.5 s after its event (docs/evidence/night7-cohort-k2-result-20260914.json,
+corrections). A run whose timings cannot be resolved is refused, never
+defaulted.
 Reads only; every number is a measurement on this recording's geometry.
 """
 import argparse, json, pathlib, re, subprocess, sys, colorsys
 import numpy as np
 
-MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS = 4249, 9460, 10060, 13650
+LOOP_PERIOD_MS = 10000
+TIMING_KNOBS = ('maskOnMs', 'maskOffMs', 'hallOffsetMs', 'camdropMs')
+
+
+def timings_from_winner(winner):
+    """(MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS) of a minus-toys winner, or a refusal string."""
+    if not isinstance(winner, dict) or winner.get('strategy') != 'minus-toys':
+        return f"winner strategy {winner.get('strategy') if isinstance(winner, dict) else None!r} is not minus-toys; this ledger reads the minus-toys loop only"
+    knobs = winner.get('knobs')
+    if not isinstance(knobs, dict):
+        return 'winner knobs are not an object (a named preset cannot be read for timings)'
+    if knobs.get('loopPeriodMs') != LOOP_PERIOD_MS:
+        return f"loopPeriodMs {knobs.get('loopPeriodMs')!r} is not {LOOP_PERIOD_MS}; the ledger counts 10 s cycles"
+    values = []
+    for name in TIMING_KNOBS:
+        v = knobs.get(name)
+        if not isinstance(v, (int, float)) or isinstance(v, bool) or v < 0:
+            return f'winner knob {name} is missing or not a non-negative number'
+        values.append(v)
+    return tuple(values)
+
+
+def death_video_s(grade_text):
+    """Video second the survival instrument saw the HUD leave for good, or None (a clear or an unread run)."""
+    m = re.search(r'HUD gone for good from ([0-9.]+)s', grade_text or '')
+    return float(m.group(1)) if m else None
+
+
+def resolve_timings(run, winner_path=None):
+    """Timings for this run from --winner, else the bundle its verdict.txt names; a string is a refusal."""
+    if winner_path is None:
+        verdict = run / 'verdict.txt'
+        if not verdict.exists():
+            return f'no verdict.txt in {run} to name the bundle; pass --winner'
+        m = re.search(r'^bundle\s+(\S+)', verdict.read_text(errors='ignore'), re.M)
+        if not m:
+            return f'{verdict} names no bundle; pass --winner'
+        winner_path = pathlib.Path(m.group(1)) / 'winner.json'
+    winner_path = pathlib.Path(winner_path)
+    if not winner_path.exists():
+        return f'winner {winner_path} does not exist; pass --winner'
+    try:
+        winner = json.load(open(winner_path))
+    except ValueError as error:
+        return f'winner {winner_path} is not JSON: {error}'
+    return timings_from_winner(winner)
+
 
 
 def series(video, t0, t1):
@@ -55,8 +109,14 @@ def occupant(frame):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('run_dir'); ap.add_argument('--release-video-s', type=float); ap.add_argument('--cycles', type=int, default=42); ap.add_argument('--json')
+    ap.add_argument('--winner', help='winner.json whose knobs time the cycle (default: the bundle named in RUN_DIR/verdict.txt)')
     a = ap.parse_args()
     run = pathlib.Path(a.run_dir)
+    timings = resolve_timings(run, a.winner)
+    if isinstance(timings, str):
+        print('UNKNOWN  cycle timings:', timings); return 3
+    MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS = timings
+    print(f'timings  mask on {MASK_ON_MS} ms, mask off {MASK_OFF_MS} ms, hall flash {FLASH_MS} ms, camdrop {CAMDROP_MS} ms (from the run\'s winner)')
     video = pathlib.Path('captures') / f'{run.name}.mp4'
     if not video.exists():
         print('UNKNOWN  no retained video at', video); return 3
@@ -88,10 +148,17 @@ def main():
                     enc.append({'audioS': t, 'nc': s, 'anchorAudioS': x, 'cycle': n,
                                 'scheduleS': round(t - x + (MASK_ON_MS / 1000 + epoch_s + 10 * n), 2)})
     rows = []
+    grade = run / 'grade.log'
+    death_s = death_video_s(grade.read_text(errors='ignore')) if grade.exists() else None
+    if death_s is not None:
+        print(f'death    HUD gone for good at video {death_s} s: cycles whose reads fall after it are not read (static and restart frames)')
     print('cycle | occupant at drop | flash door/pre class | office after mask-off')
     for n in range(a.cycles):
         base = rel + 10 * n
         if base + CAMDROP_MS / 1000 + 0.9 > dur: break
+        if death_s is not None and base + CAMDROP_MS / 1000 + 0.82 > death_s:
+            print(f'{n:5d} | not read: its camdrop read ends after the death at {death_s} s')
+            break
         drop = series(video, base + CAMDROP_MS / 1000 + 0.62, base + CAMDROP_MS / 1000 + 0.82)
         who, px, h = occupant(drop[len(drop) // 2])
         fl = series(video, base + FLASH_MS / 1000 + 0.05, base + FLASH_MS / 1000 + 0.19)
@@ -107,7 +174,9 @@ def main():
     if enc:
         print('blackout loop (s0010) onsets in schedule time:', [(e['scheduleS'], e['nc']) for e in enc])
     if a.json:
-        json.dump({'schema': 'cycle-ledger-v1', 'run': run.name, 'releaseVideoS': rel, 'encountersFromAudio': enc, 'cycles': rows}, open(a.json, 'w'), indent=1)
+        json.dump({'schema': 'cycle-ledger-v1', 'run': run.name, 'releaseVideoS': rel,
+                   'timingsMs': dict(zip(('maskOn', 'maskOff', 'hallFlash', 'camdrop'), (MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS))),
+                   'encountersFromAudio': enc, 'cycles': rows}, open(a.json, 'w'), indent=1)
     return 0
 
 
