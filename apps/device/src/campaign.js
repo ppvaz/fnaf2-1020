@@ -120,7 +120,7 @@ export function validateCampaignSpec(value) {
 /** Construct a reviewed campaign over any consecutive story-night chain. */
 /** @param {{profile?: string, targetBuild?: string, maxAttempts?: number, night6MenuTarget?: string,
  *   timingByNight?: Record<string, object>, nights?: number[], storyStart?: string,
- *   storySaveCursor?: number}} options */
+ *   storySaveCursor?: number, night7Dials?: Record<string, number>}} options */
 export function makeCampaignSpec({ profile, targetBuild, maxAttempts = 3,
   night6MenuTarget = 'sixthNight', timingByNight = {}, nights = [...DEFAULT_CAMPAIGN_NIGHTS],
   storyStart = undefined, storySaveCursor = undefined, night7Dials = undefined } = {}) {

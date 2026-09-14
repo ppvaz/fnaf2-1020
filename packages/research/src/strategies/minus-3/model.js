@@ -4,7 +4,8 @@ import { GOLDEN_MODEL_SEED_SALT, randomSeedCohort, seedCohortDescriptor } from '
 import { build, schedule, REACTIVE_KNOBS, MINUS3_STORY_NIGHTS } from './route.js';
 
 /**
- * @param {{night?: number, seed?: number, worst?: boolean, splitCamera?: boolean, knobs?: Record<string, any>}} options
+ * @param {{night?: number, seed?: number, worst?: boolean, splitCamera?: boolean, knobs?: Record<string, any>,
+ *   customNight?: Record<string, number>}} options
  */
 export function replay({ night, seed = 1, worst = false, splitCamera = true, knobs, customNight } = {}) {
   const storyNight = Number.isInteger(night) && night >= 3 && night <= 6;
