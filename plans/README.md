@@ -163,3 +163,9 @@ Current ownership and dependencies (2026-09-02):
     resolved outcomes, censored uncertainty, adaptive skill modeling, and a
     strict separation between the non-interactive live HUD and measured
     response channels.
+25. [25-horizons-beyond-the-ladder.md](25-horizons-beyond-the-ladder.md) —
+    five horizons after the Night 7 clear, each with what exists, a first
+    physical milestone and a success condition: solve the game across all
+    Custom Night vectors, a clean-room recompile verified against the phone by
+    trace equivalence, a self-running experiment loop, machine-found routes a
+    human can hold, and the method moved to a second Clickteam game.
