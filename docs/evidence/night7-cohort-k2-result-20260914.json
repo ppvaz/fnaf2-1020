@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 1,
+ "counted": 2,
  "wins": 1,
- "deaths": 0,
+ "deaths": 1,
  "slots": [
   {
    "slot": "r01",
@@ -41,6 +41,48 @@
    "pressAcceptance": "3 graded: 1 PASS, 1 UNSTABLE, 1 UNKNOWN",
    "postRunTitle": "items=continue,customNight,newGame,sixthNight",
    "video": "captures/night7-night7-k2-cohort-r01b-20260914T220233Z.mp4 sha256 166fd4d5bea2dcb0999f59a1ee7a5df79518d91bdaca3b5785ba5fff9e148a72"
+  },
+  {
+   "slot": "r02",
+   "run": "night7-night7-k2-cohort-r02-20260914T221655Z",
+   "startedAt": "2026-09-14T22:16:55Z",
+   "commit": "e8cf08e",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "none: campaign.abort.restart 'device: lifecycle left night state (static)' at 22:22:34.704Z; stop reason gate-abort (mask-state-unavailable) at gateAtMs 303000, 22:22:34.572Z",
+   "videoTerminal": "TERMINAL: unknown (the campaign restarted the game before a game-over screen was recorded); survival instrument: HUD gone for good from 332.8 s, death static 21 frames / 5.2 s",
+   "whyCountedNotInvalid": "the death precedes the abort: HUD gone at video 332.8 s (night time ~300.4 s from HUD first 32.351 s), lifecycle read state=static at 22:22:31.226Z, gate abort at 22:22:34.572Z and night time 303 s because the static screen has no mask state. The campaign did not stop the route; the route died.",
+   "survivalSeconds": 300.4,
+   "clock": "4 AM on the HUD in the jumpscare frames",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "visual read of the recording frames at video 331.75 s (mask on), 332.25 s (office, Foxy entering), 332.50 s (Foxy jumpscare); retained under the run's death-frames/",
+    "instrument": "death-cause.py models (mangle, toy-chica, withered-chica) all UNKNOWN: no Foxy death model exists, so the killer is an agent visual read, not an instrument fact",
+    "ledger": "cycle-ledger.py with --release-video-s 34.714 (HUD first 32.351 + aim 2.433 - onset bias 0.070): cycles 0-29 empty at every drop; cycle 30 occupant W.Chica (hue 32.3, 20893 px), hall flash LIT (door 47.3 vs pre 23.3), office after mask-off 25.4, defended false. The ledger's occupant label disagrees with the jumpscare identity; both are recorded, neither is promoted."
+   },
+   "flashlight": "three of four bars in the jumpscare frames",
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.037,
+    "lateMs": 0.04,
+    "uncertaintyMs": 3.43,
+    "anomaly": "authorization (office observation racing the executor) arrived at host 28187.8 ms, 2368 ms before the latched onset the scheduler used; the other two k2 runs authorized after scheduling. The release was still planned from the latched onset.",
+    "phaseCheckFromVideo": "HUD-first to CAM 11 raise gaps: original win 2.93/20.43 s, r01b 2.98/20.45 s, r02 2.97/20.42 s (first/fourth raise). r02 delivered the same loop phase as both wins to within 30 ms, so the anomaly did not move the phase."
+   },
+   "gates": {
+    "cycle": 31,
+    "agreed": 30,
+    "corrected": 0,
+    "aborted": 1
+   },
+   "pressAcceptance": "3 graded: 1 PASS, 1 UNSTABLE, 1 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "retained": [
+    "artifacts/runs/night7-night7-k2-cohort-r02-20260914T221655Z/cycle-ledger.json",
+    "artifacts/runs/night7-night7-k2-cohort-r02-20260914T221655Z/death-frames/",
+    "captures/night7-night7-k2-cohort-r02-20260914T221655Z.mp4"
+   ]
   }
  ],
  "amendments": [
