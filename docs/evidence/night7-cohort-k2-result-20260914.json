@@ -2,8 +2,8 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 2,
- "wins": 1,
+ "counted": 3,
+ "wins": 2,
  "deaths": 1,
  "slots": [
   {
@@ -83,6 +83,34 @@
     "artifacts/runs/night7-night7-k2-cohort-r02-20260914T221655Z/death-frames/",
     "captures/night7-night7-k2-cohort-r02-20260914T221655Z.mp4"
    ]
+  },
+  {
+   "slot": "r03",
+   "run": "night7-night7-k2-cohort-r03-20260914T223207Z",
+   "startedAt": "2026-09-14T22:32:07Z",
+   "commit": "d62a217",
+   "status": "WIN",
+   "countsTowardTen": true,
+   "executorTerminal": "campaign.terminal.from-executor state=sixam at 2026-09-14T22:39:44.045Z",
+   "videoTerminal": "TERMINAL: clear -- sixam at 454.5s",
+   "survivalSeconds": 454.5,
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.487,
+    "lateMs": 0.49,
+    "uncertaintyMs": 5.5
+   },
+   "phaseCheckFromVideo": "HUD first 33.879 s; CAM 11 raises at 36.84 s and 54.29 s: gaps 2.96/20.41 s, the same loop phase as the other k2 runs",
+   "gates": {
+    "cycle": 42,
+    "agreed": 42,
+    "corrected": 0,
+    "aborted": 0
+   },
+   "pressAcceptance": "3 graded: 1 PASS, 2 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r03-20260914T223207Z.mp4 sha256 54cc9acf84e1299b3544815fdc0d98564ccb43b2ea84f45e7ebdafdcf1e34159"
   }
  ],
  "amendments": [
@@ -92,6 +120,20 @@
    "change": "registered the k2 anchor aim in tools/device/fact-register.mjs (ANCHOR_AIMS fnv1a-7e4bf3e8: aim 2433, maxK 0, period 5000) with evidence docs/evidence/night7-anchor-aim-k2-20260914.json",
    "whyNotANewCohort": "made before any counted run, and it does not change what runs: the winning run released at aim 2433, k 0, strict and latch-authorized through the NIGHT_ANCHOR_AIM_MS override; the predeclared command now reaches the same values from the register. Bundle, plan sha256, replay hash, arm mode and flags are unchanged.",
    "commitNote": "runs from here carry the commit that contains this amendment; the predeclaration's commit field (181563c) predates it"
+  }
+ ],
+ "analysis": [
+  {
+   "at": "2026-09-14T22:45:00Z",
+   "kind": "exhaustive-seed-census",
+   "claimLevel": "MODEL_ONLY",
+   "command": "epoch-scan.mjs --winner artifacts/night7-anchored-k2/bundle/winner.json --night 7 --epochs E --seeds 65536 (seeds 1..65536 cover every 16-bit Fusion RNG stream; k2 does not enable the reactive observer's second RNG)",
+   "result": {
+    "2416.66": "65536/65536",
+    "2433": "65536/65536",
+    "2449.99": "65536/65536"
+   },
+   "reading": "Under the model k2 wins every night the phone can generate at the delivered phase. r02 delivered that phase (video CAM 11 gaps within 30 ms of both wins) and died to Withered Foxy at ~300 s, so r02 is not a losing seed under the model: it is a model error or a delivery error below the video's resolution. Not a change to the cohort; analysis only."
   }
  ]
 }
