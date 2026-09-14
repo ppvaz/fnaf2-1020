@@ -1,0 +1,27 @@
+{
+ "schema": "cohort-result-v1",
+ "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
+ "status": "IN_PROGRESS",
+ "counted": 0,
+ "wins": 0,
+ "deaths": 0,
+ "slots": [
+  {
+   "slot": "r01",
+   "run": "night7-night7-k2-cohort-r01-20260914T215639Z",
+   "startedAt": "2026-09-14T21:56:39Z",
+   "status": "EXCLUDED",
+   "reason": "preflight refusal before any gameplay input: fact register has no anchor aim registered for binding fnv1a-7e4bf3e8; the runner refused to release a bundle qualified at anchor epoch 2433 at a drawn phase. The winning run carried its aim through the NIGHT_ANCHOR_AIM_MS operator override; the predeclared command omitted it. Phone returned to an observed title (items=continue,customNight,newGame,sixthNight).",
+   "countsTowardTen": false
+  }
+ ],
+ "amendments": [
+  {
+   "at": "2026-09-14T22:10:00Z",
+   "countedRunsBefore": 0,
+   "change": "registered the k2 anchor aim in tools/device/fact-register.mjs (ANCHOR_AIMS fnv1a-7e4bf3e8: aim 2433, maxK 0, period 5000) with evidence docs/evidence/night7-anchor-aim-k2-20260914.json",
+   "whyNotANewCohort": "made before any counted run, and it does not change what runs: the winning run released at aim 2433, k 0, strict and latch-authorized through the NIGHT_ANCHOR_AIM_MS override; the predeclared command now reaches the same values from the register. Bundle, plan sha256, replay hash, arm mode and flags are unchanged.",
+   "commitNote": "runs from here carry the commit that contains this amendment; the predeclaration's commit field (181563c) predates it"
+  }
+ ]
+}

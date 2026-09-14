@@ -303,6 +303,26 @@ export const ANCHOR_AIMS = Object.freeze({
     qualifiedEpochMs: 2450,
     evidence: 'docs/evidence/night7-anchor-aim-j-20260913.json',
     reason: 'band [2383.33, 2483.32): effective [2417, 2452]; 2383.33/2416.66/2449.99/2483.32 all 3000/3000; 2350 and 2516.65 refuted at 60 seeds',
+    // night7-anchoredj12 (aim 2433): died ~61 s to Balloon Boy through the
+    // 840 ms off-mask office gap, then Foxy; superseded by k2 (mask off 7000).
+    refuted: 'docs/evidence/night7-first-6am-k2-20260914.json',
+  }),
+  // Night 7, binding k2: j with the masked end extended to 7000 (hall pinned
+  // 7460, mask on pinned 1749). WON night7-k2-aim2433-maskoff7000-20260914T004106Z
+  // (6 AM at 455.0 s, released 2435.5) with this aim passed as an operator
+  // override; registered 2026-09-14 from a re-run census so the cohort takes
+  // it from here. Band [2366.68, 2500.04] at 60 seeds; the aim keeps the
+  // effective interval inside it with the 30 ms register margin.
+  'fnv1a-7e4bf3e8': Object.freeze({
+    night: 7,
+    aimMs: 2433,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 2433,
+    evidence: 'docs/evidence/night7-anchor-aim-k2-20260914.json',
+    reason: 'band [2366.68, 2500.04]: effective [2410, 2445]; 2374/2416.66/2433/2449.99 all 3000/3000; 2350.01 (puppet) and 2516.71 (foxy) refuted at 60 seeds',
   }),
 });
 
