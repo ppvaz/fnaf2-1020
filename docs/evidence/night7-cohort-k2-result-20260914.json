@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 6,
+ "counted": 7,
  "wins": 3,
- "deaths": 3,
+ "deaths": 4,
  "slots": [
   {
    "slot": "r01",
@@ -376,6 +376,62 @@
    "reason": "helper failure before any route input: origin.anchor unavailable 'onset-not-latched' (6 reads, 1 failure, lastError 'cue-helper clock probe timed out') at 23:25:46.115Z during the intro; the strict anchor refused and the campaign aborted and restarted to the title (23:26:03.593Z). No gameplay input from the plan was released.",
    "ruleNote": "The predeclaration lists helper failure under EXCLUDED. The log does carry a state=night label at 23:25:43.834Z, but it precedes state=intro (23:25:44.809Z): the known pre-intro misread seen on r02, r04 and r05. Read literally as 'observed the night with no terminal', the slot would be INVALID instead; both classes re-run the slot and neither counts.",
    "rerunAs": "r07b"
+  },
+  {
+   "slot": "r07b",
+   "run": "night7-night7-k2-cohort-r07b-20260914T232905Z",
+   "startedAt": "2026-09-14T23:29:05Z",
+   "commit": "d7af491",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "none: lifecycle read state=static at 23:33:13.090Z, then gate abort mask-state-unavailable at gateAtMs 213000 (23:33:16.283Z) and campaign.abort.restart; restarted to the title 23:33:35.590Z",
+   "videoTerminal": "TERMINAL: unknown; survival instrument: HUD gone for good from 244.8 s, death static 20 frames / 5.0 s",
+   "whyCountedNotInvalid": "the static read precedes the gate abort; the HUD left at video 244.8 s (night ~210.5 s from HUD first 34.339 s). The route died; the campaign did not stop it.",
+   "survivalSeconds": 210.5,
+   "clock": "2 AM turning to 3 AM on the HUD at the moment of entry",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "contact sheet from video 242.5 s at 4 fps: 242.50-243.75 s mask up with empty eyeholes; 244.00 s mask off, office empty; 244.25 s Foxy entering; 244.50 s jumpscare; 244.75 s static. Retained as the run's death-frames/sheet.png",
+    "foxyFirstVisible": "7.30-7.55 s into cycle 20 (release at video 36.702 s = HUD first 34.339 + 2.433 - 0.070)",
+    "instrument": "no Foxy death-cause model exists"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.424,
+    "lateMs": 0.42,
+    "uncertaintyMs": 2.83,
+    "authorizedAfterOnsetMs": 2433.41,
+    "earlyAuthorized": false
+   },
+   "phaseCheckFromVideo": "HUD first 34.339 s; CAM 11 raises at 37.25 s and 54.71 s: gaps 2.91/20.37 s",
+   "gates": {
+    "cycle": 22,
+    "agreed": 21,
+    "corrected": 0,
+    "aborted": 1
+   },
+   "pressAcceptance": "3 graded: 3 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r07b-20260914T232905Z.mp4 sha256 289d7ddaa1e79ef5ce90a40169699155394fff96e8eebd8b52735ccbc13fd122",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 36.702,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 20,
+    "flash": {
+     "LIT": 5,
+     "DIM": 13,
+     "FLAT": 2
+    },
+    "defended": 11,
+    "backToBackFlatPairsEndingAt": []
+   }
   }
  ],
  "amendments": [
@@ -476,7 +532,8 @@
    "whatWouldTestIt": [
     "the hall-flash class and Foxy hall presence in the cycle BEFORE each death versus the same cycles in the wins, read with the corrected ledger",
     "the model's Foxy roll and lock at the 7.46 s flash on the 5 s roll grid at the delivered phase, against the phone's first-visible window"
-   ]
+   ],
+   "update-r07b": "Four of four deaths now: r07b Withered Foxy first visible 7.30-7.55 s into cycle 20, mask off at 7.00 s and office empty at 244.00 s. Across the four deaths the windows span 7.29-7.73 s; the deaths cover early and latch authorization and FLAT counts from 2/20 to 13/29."
   }
  ]
 }
