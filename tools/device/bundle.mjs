@@ -581,8 +581,14 @@ export function validateBundle(directory, { night } = {}) {
   const out = resolve(directory);
   const manifest = jsonRead(join(out, 'manifest.json'));
   validateManifestShape(manifest);
-  const winner = validateWinner(jsonRead(join(out, 'winner.json')));
-  if (stableHash(winner) !== manifest.winnerHash) fail('winner hash does not match manifest');
+  // Hash the winner exactly as the emitter stored it. validateWinner fills
+  // knob defaults, and a default added after a bundle was built (observeUntilMs,
+  // added 2026-09-13 16:03, refused the 15:00 Night 6 binding-h bundle on
+  // 2026-09-14 with byte-identical plans) must not refuse the bundle: the
+  // plan-hash checks below are what catch a default that changes what runs.
+  const storedWinner = jsonRead(join(out, 'winner.json'));
+  if (stableHash(storedWinner) !== manifest.winnerHash) fail('winner hash does not match manifest');
+  const winner = validateWinner(storedWinner);
   if (winner.strategy !== manifest.strategy || manifest.policy !== manifest.strategy ||
       manifest.engineHash !== winner.engineHash || !same(winner.nights, manifest.nights))
     fail('manifest strategy/night/engine identity mismatch');

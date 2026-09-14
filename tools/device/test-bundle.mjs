@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { compileBundle, parsePlan, validateBundle } from './bundle.mjs';
+import { stableHash } from '@fnaf2-1020/core/contracts';
 import { compileArtifactPlans } from './artifact-commands.mjs';
 
 const check = (condition, message) => { if (!condition) throw new Error(message); };
@@ -110,6 +111,24 @@ try {
   writeFileSync(join(bundlePath, 'artifact.json'), compiledArtifactText);
   check(validateBundle(bundlePath).compiled?.length === 2,
     'bundle did not recover after restoring the compiled artifact');
+
+  // The manifest's winner hash pins winner.json exactly as the emitter stored
+  // it, not the winner after validateWinner fills knob defaults: a default
+  // added after a bundle was built must fail the engine-source gate (if it
+  // changes the digest) or the plan gate (if it changes the emission), never
+  // masquerade as a tampered winner. A real edit to the stored file still does.
+  const winnerPath = join(bundlePath, 'winner.json');
+  const storedWinnerText = readFileSync(winnerPath, 'utf8');
+  const storedManifest = JSON.parse(readFileSync(join(bundlePath, 'manifest.json'), 'utf8'));
+  check(stableHash(JSON.parse(storedWinnerText)) === storedManifest.winnerHash,
+    'manifest winnerHash must be the hash of the stored winner.json');
+  writeFileSync(winnerPath, storedWinnerText.replace('"seeds":[1,2]', '"seeds":[1,3]'));
+  let tamperMessage = '';
+  try { validateBundle(bundlePath); } catch (error) { tamperMessage = error.message; }
+  check(tamperMessage.includes('winner hash does not match manifest'),
+    `an edited stored winner must be refused as a winner hash mismatch, got: ${tamperMessage}`);
+  writeFileSync(winnerPath, storedWinnerText);
+  check(validateBundle(bundlePath).status === 'READY', 'bundle did not recover after restoring the winner');
 
   const malformed = originalPlan.replace('tap cam11 33', 'tap unsupported 33');
   expectFailure(() => parsePlan(malformed, { strategy: 'minus-toys', night: 2 }),

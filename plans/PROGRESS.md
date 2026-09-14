@@ -5502,3 +5502,46 @@ run is a measurement run for the instrument before any new band is priced.
 Also this session: the Digital Wellbeing "Used for 40m" bubble was the
 screen-time reminder (no app timer existed); it is off for FNaF 2 and the
 Companion.
+
+**2026-09-14, 00:48 UTC: Night 7 (10/20) reached 6 AM on the device.**
+Binding k2 (all ten dials 20, puppet 15, Minus Toys; the j loop with only its
+masked end extended, maskOffMs 6760 -> 7000, hall pinned 7460), anchored at
+aim 2433 on the 5000 ms grid (k=0, released 2435.5, 2.5 ms late): executor
+terminal sixam at 455.0 s, 42/42 cycle gates agreed, post-run title carries
+customNight. Lineage i6 -> j10/j11 -> j12 -> k1 (device-refuted, dead ~20 s)
+-> k2. Evidence:
+[night7-first-6am-k2-20260914.json](../docs/evidence/night7-first-6am-k2-20260914.json),
+run `night7-k2-aim2433-maskoff7000-20260914T004106Z`, commit 6d0a5c3. Claim
+ladder level 7 (10/20 clear) has one artifact; Gate G promotion is not
+invoked (no cohort, no fault-injected simulator run, no safety review).
+
+**2026-09-14, 02:13 UTC: the Night 7 4/20 preset reached 6 AM** with the
+minus3 loop reduced to four rows per 10 s (hall flash, monitor up, wind,
+camdrop; no mask input exists in the plan): sixam at 453.5 s, 41/41 gates
+agreed. Evidence:
+[night7-420-first-6am-minimal3-20260914.json](../docs/evidence/night7-420-first-6am-minimal3-20260914.json),
+run `night7-n7-420-minimal-m3-20260914T020543Z`, commit a018875.
+
+2026-09-14, 02:30-02:43 UTC, three runs that never entered a night (all
+recorded, none a route claim): `night7-m4-catalog` aborted before arming
+("armMode requires an arm-verified plan"); `night7-m5-catalog` aborted at its
+first action ("action clear-1 overlaps the previous HID macro") -- the Minus 7
+catalog lane has no qualified run; `night6-h2-reliability` was refused by the
+bundle validator with "winner hash does not match manifest" and graded as
+unmanifested. Diagnosis (host, 2026-09-14): the binding-h bundle was emitted
+2026-09-13 15:00; commit f00fca3 (16:03) added the `observeUntilMs` knob
+default to `tools/device/minus-toys-plan.mjs`, which is in that bundle's
+engine-source digest. Re-emitting the same winner.json under HEAD yields a
+byte-identical night-6.plan and the same replay hash fnv1a-c651e2ff; the only
+winner difference is the explicit `observeUntilMs: 420000`, the value that was
+hard-coded when h won. The validator now hashes winner.json as stored, so a
+later default reports as the engine-source change it is, not as a tampered
+winner. The Night 6 cohort runs the re-emitted bundle
+`artifacts/night6-cohort-h/bundle`; its identity to the winning binding is the
+plan sha256 and replay hash above. Nothing on the phone was involved in the
+h2 refusal.
+
+Open: Plan 12 level 6 (Night 6 reliability cohort) is empty and not yet
+predeclared; Gate G is not invoked; the Minus 7 catalog lane has two pre-night
+aborts; the delivered epochs of the seven dial-screen-pulled traces remain
+UNKNOWN.
