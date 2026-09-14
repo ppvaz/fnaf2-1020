@@ -123,11 +123,20 @@ export function validateCampaignSpec(value) {
  *   storySaveCursor?: number}} options */
 export function makeCampaignSpec({ profile, targetBuild, maxAttempts = 3,
   night6MenuTarget = 'sixthNight', timingByNight = {}, nights = [...DEFAULT_CAMPAIGN_NIGHTS],
-  storyStart = undefined, storySaveCursor = undefined } = {}) {
+  storyStart = undefined, storySaveCursor = undefined, night7Dials = undefined } = {}) {
   text(profile, 'profile');
   text(targetBuild, 'targetBuild');
   if (!['continue', 'sixthNight'].includes(night6MenuTarget))
     fail('night6MenuTarget must be continue or sixthNight');
+  if (night7Dials !== undefined) {
+    if (!isRecord(night7Dials)) fail('night7Dials must be an object of dial -> AI');
+    for (const dial of AI_DIALS) {
+      if (!Number.isInteger(night7Dials[dial]) || night7Dials[dial] < 0 || night7Dials[dial] > AI_10_20)
+        fail(`night7Dials.${dial} must be an integer in 0..${AI_10_20}`);
+    }
+    for (const key of Object.keys(night7Dials)) if (!AI_DIALS.includes(key))
+      fail(`night7Dials has unknown dial ${key}`);
+  }
   if (!Array.isArray(nights) || nights.length < 1 || nights.length > 7 ||
       nights.some(night => !Number.isInteger(night) || night < 1 || night > 7) ||
       new Set(nights).size !== nights.length)
@@ -141,7 +150,8 @@ export function makeCampaignSpec({ profile, targetBuild, maxAttempts = 3,
       storySaveCursor !== storyNights[0]))
     fail('storySaveCursor must equal the first story night of the chain');
   if (!isRecord(timingByNight)) fail('timingByNight must be an object');
-  const dials = Object.fromEntries(AI_DIALS.map(dial => [dial, AI_10_20]));
+  const dials = night7Dials ? { ...night7Dials }
+    : Object.fromEntries(AI_DIALS.map(dial => [dial, AI_10_20]));
   const timing = night => timingByNight[String(night)] ??
     { periodMs: 10000, loopStartMs: 0, stopAtMs: 420000, observeUntilMs: 420000, idleUntilMs: 0 };
   const firstStoryNight = storyNights[0];

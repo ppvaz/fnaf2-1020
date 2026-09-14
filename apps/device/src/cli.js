@@ -96,6 +96,13 @@ function parse(argv) {
     else if (item === '--guided') options.guided = true;
     else if (item === '--machine-only') options.machineOnly = true;
     else if (item === '--arm-observe-once') options.armMode = 'observe-once';
+    else if (item === '--arm-none') options.armMode = 'none';
+    else if (item === '--night7-dials') {
+      const raw = rest[++index];
+      if (!raw || raw.startsWith('--')) throw new Error('--night7-dials requires a JSON object');
+      try { options.night7Dials = JSON.parse(raw); }
+      catch { throw new Error('--night7-dials must be valid JSON'); }
+    }
     else if (item === '--allow-save-reset') options.allowSaveReset = true;
     else if (item === '--night-anchor-aim-ms') options.nightAnchorAimMs = Number(rest[++index]);
     else if (item === '--night-anchor-max-k') options.nightAnchorMaxK = Number(rest[++index]);
@@ -317,7 +324,8 @@ async function main(argv = process.argv.slice(2)) {
     const timingByNight = await campaignTiming(options.bundle, options.nights);
     const spec = makeCampaignSpec({ profile: selected.id, targetBuild: selected.targetBuild,
       timingByNight, nights: options.nights, maxAttempts: options.maxAttempts, storyStart: options.storyStart,
-      storySaveCursor: options.saveCursor });
+      storySaveCursor: options.saveCursor,
+      ...(options.night7Dials ? { night7Dials: options.night7Dials } : {}) });
     const machine = new CampaignStateMachine({ spec });
     const calibration = await jsonFile(options.calibration, 'calibration');
     if (calibration) validateCustomNightCalibration(calibration, { targetBuild: selected.targetBuild });
@@ -356,7 +364,8 @@ async function main(argv = process.argv.slice(2)) {
       const factory = module.createCampaignPorts ?? module.default;
       if (typeof factory !== 'function') throw new Error('ports module must export createCampaignPorts()');
       composition = await factory({ spec, bundle, profile: selected, calibration, calibrationPath: options.calibration ?? null, qualification,
-        serial: device.serial, machineOnly: options.machineOnly, armMode: options.armMode,
+        serial: device.serial, machineOnly: options.machineOnly,
+        armMode: options.armMode === 'none' ? undefined : options.armMode,
         allowSaveReset: options.allowSaveReset, captureRestarted: true,
         nightAnchorAimMs: options.nightAnchorAimMs, nightAnchorMaxK: options.nightAnchorMaxK,
         nightAnchorPeriodMs: options.nightAnchorPeriodMs, nightAnchorStrict: options.nightAnchorStrict,

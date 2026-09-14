@@ -406,12 +406,29 @@ function minusToysEmitter(winner, night) {
 
 function minus3Emitter(winner, night) {
   const knobs = minus3Knobs(winner.knobs);
+  const customNight = night === 7 ? minus3CustomNight(winner) : undefined;
   const raw = emitMinus3Plan(night, knobs);
   const text = addCommonHeaders(raw, { strategy: 'minus3', night,
     period: knobs.periodMs, loopStart: knobs.loopStartMs,
     stopAt: knobs.stopAtMs, observeUntil: knobs.observeUntilMs,
     idleUntil: 0, lengths: { opening: knobs.periodMs / 2, clear: knobs.periodMs } });
-  return { text, knobs, replay: seed => replayMinus3({ night, seed, knobs }) };
+  return { text, knobs, replay: seed => replayMinus3({ night, seed, knobs, customNight }) };
+}
+
+// A night-7 minus3 winner must name the Custom Night dial vector it was gated
+// on; the replay plays that vector and the campaign is fed the same expectation.
+const MINUS3_DIALS = ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy',
+  'toybonnie', 'toychica', 'mangle', 'bb', 'golden'];
+function minus3CustomNight(winner) {
+  if (!isRecord(winner.dials)) fail('minus3 night 7 requires winner.dials (the Custom Night vector)');
+  for (const dial of MINUS3_DIALS) {
+    const value = winner.dials[dial];
+    if (!Number.isInteger(value) || value < 0 || value > 20)
+      fail(`winner.dials.${dial} must be an integer in 0..20`);
+  }
+  for (const key of Object.keys(winner.dials)) if (!MINUS3_DIALS.includes(key))
+    fail(`winner.dials has unknown dial ${key}`);
+  return { ...winner.dials };
 }
 
 function minus7Emitter(winner, night) {

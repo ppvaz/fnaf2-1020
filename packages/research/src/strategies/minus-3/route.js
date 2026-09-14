@@ -33,6 +33,14 @@ export const KNOBS0 = Object.freeze({
   secondHallHoldMs: 400,
   secondHallVent: true,
   maskOnMs: 9600,
+  // Minimal-input modes for dial vectors that do not need the leg. Both were
+  // derived for the 4/20 Custom Night vector (withered four at 20, rest 0):
+  // maskless drops every mask row (3000/3000 at the 4/20 vector; the mask is
+  // dead weight when the office-entry pressure is the capped withered trio),
+  // ventless narrows the hall+vent composite flash to the plain hall flash
+  // (ventR is droppable; the hall leg alone resets Foxy at his 17 cap).
+  maskless: false,
+  ventless: false,
 });
 
 const clone = overrides => ({ ...KNOBS0, ...(overrides ?? {}) });

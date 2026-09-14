@@ -1,0 +1,39 @@
+{
+  "schema": "device-night-win-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "session 2026-09-14 (opencode/GLM), from the run directory and grade.log",
+  "run": "night7-n7-420-minimal-m3-20260914T020543Z",
+  "night": 7,
+  "experiment": "Night 7 Custom Night 4/20 preset (withered Freddy/Bonnie/Chica/Foxy 20, all toys/Mangle/BB/Golden Freddy 0, puppet pinned 15): the minus3 clear loop reduced to four rows per 10 s -- hall flash, monitor up, wind, camdrop -- with every mask row and the vent flash dropped (no mask input exists in the plan)",
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 7,
+      "outcome": "sixam",
+      "executor": "campaign.terminal.from-executor state=sixam at 2026-09-14T02:13:18.782Z",
+      "video": "TERMINAL: clear -- sixam at 453.5 s"
+    },
+    "postRunTitle": "items=continue,customNight,newGame,sixthNight"
+  },
+  "binding": {
+    "winnerHash": "fnv1a-15124c58",
+    "bundle": "artifacts/night7-420-minus3/bundle",
+    "qualification": "artifacts/night7-420-minus3/qualification-test.json",
+    "knobs": "minus3 KNOBS0 with maskless=true, ventless=true, secondHallHoldMs=200",
+    "dials": { "withfreddy": 20, "withbonnie": 20, "withchica": 20, "foxy": 20,
+      "toyfreddy": 0, "toybonnie": 0, "toychica": 0, "mangle": 0, "bb": 0, "golden": 0 }
+  },
+  "gates": {
+    "agreed": 41,
+    "corrected": 0,
+    "aborted": 0,
+    "stopReason": "actuator-stopped (post-terminal)"
+  },
+  "model": "Replay 8/8 seeds (fnv1a-f1b23729); maskless+ventless sealed 3000/3000 at the 4/20 vector. Component refutations at 3000 seeds: light, wind, monitor, one-sub-block-per-10s, the camdrop light, and the cam:8 split are all load-bearing; mask and ventR are dead weight at this vector.",
+  "deviceHistory": "m1 died ~20 s to a gate-abort (the mask-parity gate cannot read mask evidence from a plan with no mask rows; fixed with a vacuous no-mask-in-plan agreement). m2 died ~56 s night: the monitor tap 200 ms after the 400 ms hall hold's release lost the press at cycle 5 and the toggle chain inverted -- the camdrop then raised the monitor, every later hall flash landed cams-up and was engine-dropped, and an unmasked withered ended the night. Fixed by shortening the hold to 200 ms (a 400 ms seam) and by adding monitor-parity correction at cycle-boundary gates for maskless plans (armed, never needed in m3). The sim's press() is absolute, not a toggle: it cannot represent chain inversion, so this failure mode was invisible to the model.",
+  "retained": [
+    "artifacts/runs/night7-n7-420-minimal-m3-20260914T020543Z",
+    "artifacts/night7-420-minus3",
+    "captures/night7-n7-420-minimal-m3-20260914T020543Z.mp4"
+  ]
+}

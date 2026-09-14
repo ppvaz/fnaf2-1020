@@ -60,6 +60,11 @@ while [ $# -gt 0 ]; do
     --calibration) CALIBRATION="$2"; shift 2 ;;
     --arm-blocking) ARM_MODE="blocking"; shift ;;
     --arm-observe-once) ARM_MODE="observe-once"; shift ;;
+    # For plans with no #arm-verify declaration (the minus7 catalog): the
+    # campaign layer refuses an armMode without an arm-verified plan, and the
+    # executor itself treats a missing armVerification as pre-verified.
+    --arm-none) ARM_MODE="none"; shift ;;
+    --dials) DIALS="$2"; shift 2 ;;
     --no-trace) TRACE=0; shift ;;
     --force-trace) FORCE_TRACE=1; shift ;;
     --frame-trace) FRAME_TRACE=1; shift ;;
@@ -600,6 +605,12 @@ fi
 # effectively uniform, which is the model's own 1375/3000 uncontrolled-phase
 # result. Read phase-reconstruct.mjs, never a single tolerance number.
 [ "$ARM_MODE" = "observe-once" ] && CAMPAIGN+=(--arm-observe-once)
+# --arm-none must be forwarded too: the CLI defaults armMode to blocking, and
+# blocking is refused for plans with no #arm-verify (the minus7 catalog).
+[ "$ARM_MODE" = "none" ] && CAMPAIGN+=(--arm-none)
+# Night 7 dial vector (JSON). The Custom Night menu opens with the 4/20 preset
+# by default; passing the vector here only fixes the readback expectation.
+[ -n "${DIALS:-}" ] && CAMPAIGN+=(--night7-dials "$DIALS")
 if [ "$DRY" = 1 ]; then
   printf 'DRY RUN, the phone is not actuated:\n  %s\n' "${CAMPAIGN[*]} ${EXTRA[*]:-}"
   VIDEO=0

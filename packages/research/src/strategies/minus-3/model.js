@@ -6,12 +6,17 @@ import { build, schedule, REACTIVE_KNOBS, MINUS3_STORY_NIGHTS } from './route.js
 /**
  * @param {{night?: number, seed?: number, worst?: boolean, splitCamera?: boolean, knobs?: Record<string, any>}} options
  */
-export function replay({ night, seed = 1, worst = false, splitCamera = true, knobs } = {}) {
-  if (!Number.isInteger(night) || night < 3 || night > 6)
-    throw new Error('Minus 3 replay requires story night 3..6');
-  const sim = new Sim({ night, seed, worst });
+export function replay({ night, seed = 1, worst = false, splitCamera = true, knobs, customNight } = {}) {
+  const storyNight = Number.isInteger(night) && night >= 3 && night <= 6;
+  const customNightOk = night === 7 && customNight !== null && typeof customNight === 'object';
+  if (!storyNight && !customNightOk)
+    throw new Error('Minus 3 replay requires story night 3..6, or night 7 with a customNight dial vector');
+  const sim = new Sim({ night, seed, worst, ...(customNightOk ? { customNight } : {}) });
   const k = { ...knobs };
-  const queue = schedule({ ...build(k), knobs: k });
+  let queue = schedule({ ...build(k), knobs: k });
+  if (k.maskless || k.ventless)
+    queue = queue.filter(([, , , action]) =>
+      !(k.maskless && action === 'mask') && !(k.ventless && action === 'ventR'));
   let cursor = 0;
   let splitAt = -1;
   let minBox = 1;

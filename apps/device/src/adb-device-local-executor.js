@@ -356,10 +356,13 @@ function compileGateSegments(request, actions, originAtMs, {
     // the gate checks; an unstated belief is not invented here.
     const believed = maskTransitionsOf(actions.slice(0, point.index))
       .filter(transition => transition.atMs <= point.gateAtMs).at(-1);
+    const believedMonitor = monitorTransitionsOf(actions.slice(0, point.index))
+      .filter(transition => transition.atMs <= point.gateAtMs).at(-1);
     gates.push(Object.freeze({ gateAtMs: point.gateAtMs, budgetMs: point.budgetMs,
       nextActionId: actions[point.index].action.id,
       cycle: actions[point.index].action.cycle,
-      believedMaskOn: believed ? believed.targetMaskOn : null }));
+      believedMaskOn: believed ? believed.targetMaskOn : null,
+      believedMonitorUp: believedMonitor ? believedMonitor.targetMonitorUp : null }));
     from = point.index;
     // The host holds the stream for exactly `budgetMs` and releases on the
     // next contact's authored instant, so the resumed segment starts with no
@@ -423,12 +426,23 @@ function compileArmSegments(request, actions, register, plan,
     typeof action.targetMaskOn === 'boolean');
   const maskCorrection = maskAction
     ? compileActionEvents(request, [{ action: maskAction.action, atMs: 0 }]).events : null;
+  // The monitor chain has the same single-miss fragility the mask chain has:
+  // one lost monitor press inverts every later toggle (observed on device
+  // 2026-09-14, night7-n7-420-minimal-m2: the +5300 monitor tap of cycle 5
+  // never raised the monitor, the camdrop then raised it, and every later
+  // hall flash landed cams-up and was dropped). The boundary correction for
+  // a maskless plan is the plan's own monitor-down tap.
+  const monitorDownAction = remainder.find(({ action }) => action.control === V.monitor &&
+    action.targetMonitorUp === false);
+  const monitorCorrection = monitorDownAction && !maskCorrection
+    ? compileActionEvents(request, [{ action: monitorDownAction.action, atMs: 0 }]).events : null;
   return Object.freeze({
     register,
     prefix: Object.freeze(prefixCompiled.events),
     remainderSegments: Object.freeze(remainderSegments.map(events => Object.freeze(events))),
     gates: Object.freeze(remainderCompiled.gates),
     maskCorrection: maskCorrection ? Object.freeze(maskCorrection) : null,
+    monitorCorrection: monitorCorrection ? Object.freeze(monitorCorrection) : null,
     rearm: Object.freeze(rearmCompiled.events),
     monitorTransitions: Object.freeze({
       prefix: monitorTransitionsOf(prefix),
@@ -1458,16 +1472,39 @@ export class AdbDeviceLocalArtifactExecutor {
                 : !strokes.available && sample.maskOn !== null ? sample.maskOn
                   : refutesMaskOn ? false
                     : null;
-            const maskEvidenceSource = strokes.maskOn !== null
+            let maskEvidenceSource = strokes.maskOn !== null
               ? `button-stroke:${strokes.signature}`
               : strokes.office && sample.maskOn !== null ? 'office-stroke+mask-rule'
                 : !strokes.available && sample.maskOn !== null ? 'mask-rule'
                   : refutesMaskOn ? 'grid-luma-refutation'
                     : strokes.available ? 'stroke-signature-absent' : 'stroke-unavailable';
             let corrected = false;
+            let monitorCorrected = false;
             let correctedAt = null;
             let status;
-            if (entry.believedMaskOn === null || observedMaskOn === null) {
+            // Monitor parity, maskless plans only: a lost monitor press
+            // inverts the whole toggle chain, and with no mask in the plan
+            // the mask gate cannot bound that damage. At the boundary the
+            // plan believes the monitor DOWN; a POSITIVE read of UP means
+            // the chain flipped, and the plan's own monitor-down tap restores
+            // it. The cost is one cycle's wind, which the box tolerates.
+            const monitorInverted = gated.maskCorrection === null &&
+              entry.believedMonitorUp === false && sample.monitorUp === true;
+            if (monitorInverted && gated.monitorCorrection) {
+              status = 'CORRECTED';
+              corrected = true;
+              monitorCorrected = true;
+              if (sharedMode) await feedShared(gated.monitorCorrection);
+              else await touchRemote(this.adb, this.serial, armControl.gateFix);
+              correctedAt = Date.now();
+            } else if (entry.believedMaskOn === null && gated.maskCorrection === null) {
+              // A plan that authors no mask press anywhere (the minimal 4/20
+              // route) has no mask parity to verify. The gate still parks the
+              // stream and the ledger still records it -- as a vacuous
+              // agreement, not as evidence it can never read.
+              status = 'AGREED';
+              maskEvidenceSource = 'no-mask-in-plan';
+            } else if (entry.believedMaskOn === null || observedMaskOn === null) {
               // A gate that cannot see the state has not verified anything.
               // Releasing here would run the rest of the night on an
               // assumption, which is the failure this gate exists to end.
@@ -1519,13 +1556,20 @@ export class AdbDeviceLocalArtifactExecutor {
                   const verify = compactControlSample((await readControlState()).sample);
                   const staleFrame = verify !== null && verify.sequence !== null &&
                     String(verify.sequence) === String(priorSequence);
+                  const unresolved = monitorCorrected
+                    ? verify === null || verify.monitorUp === null
+                    : verify === null || verify.maskOn === null;
+                  const mismatched = monitorCorrected
+                    ? verify !== null && verify.monitorUp === true
+                    : verify !== null && verify.maskOn !== null && verify.maskOn !== believed;
                   this.onEvent({ type: 'control.gate.verify', gateAtMs: gateAt,
                     outcome: staleFrame ? 'CORRECTION-UNREAD'
-                      : verify && verify.maskOn !== null && verify.maskOn !== believed
-                        ? 'CORRECTION-UNCONFIRMED' : 'CORRECTION-CONFIRMED',
+                      : unresolved ? 'CORRECTION-UNCONFIRMED'
+                        : mismatched ? 'CORRECTION-UNCONFIRMED' : 'CORRECTION-CONFIRMED',
+                    ...(monitorCorrected ? { monitorCorrected: true } : {}),
                     correctedAt: correctionAt, verify });
                 } catch { /* a verification that cannot run is not a night failure */ }
-              })());
+              }));
             }
             this.onEvent({ type: 'control.gate', gateAtMs: entry.gateAtMs,
               cycle: entry.cycle, nextActionId: entry.nextActionId,
@@ -1533,6 +1577,7 @@ export class AdbDeviceLocalArtifactExecutor {
               maskEvidence: maskEvidenceSource,
               strokeSignature: strokes.signature,
               status, reachedAt, releaseAt, reads, sample,
+              ...(monitorCorrected ? { monitorCorrected: true } : {}),
               ...(correctedAt === null ? {} : { correctedAt }) });
             if (status === 'UNKNOWN') {
               this.onEvent({ type: 'control.gate.abort', gateAtMs: entry.gateAtMs,

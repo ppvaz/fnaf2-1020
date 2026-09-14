@@ -21,10 +21,16 @@ const clone = overrides => ({ ...KNOBS0, ...(overrides ?? {}) });
 
 /** Emit the established unconditional phone-plan vocabulary. */
 export function emitPlan(night, overrides = {}) {
-  if (!Number.isInteger(night) || night < 3 || night > 6)
-    throw new Error('Minus 3 plan requires night 3..6');
+  if (!Number.isInteger(night) || night < 3 || night > 7)
+    throw new Error('Minus 3 plan requires night 3..7 (night 7 is Custom Night with a dial vector)');
   const k = clone(overrides);
   const { opening, clear } = build(k);
+  const keep = row => {
+    if (k.maskless && row[1] === 'tap' && row[2] === 'mask') return false;
+    return true;
+  };
+  const narrowVent = row =>
+    (k.ventless && row[1] === 'hallvent') ? [row[0], 'hall', ...row.slice(2)] : row;
   const firstWind = k.openWindAtMs;
   const lines = [
     '#policy minus3',
@@ -38,9 +44,9 @@ export function emitPlan(night, overrides = {}) {
     '#arm-verify-viewing cam:11',
     `#arm-verify-until ${firstWind - 50}`,
     `#cycle opening ${k.periodMs / 2}`,
-    ...opening.map(row => row.join(' ')),
+    ...opening.filter(keep).map(narrowVent).map(row => row.join(' ')),
     `#cycle clear ${k.periodMs}`,
-    ...clear.map(row => row.join(' ')),
+    ...clear.filter(keep).map(narrowVent).map(row => row.join(' ')),
   ];
   return lines.join('\n') + '\n';
 }
