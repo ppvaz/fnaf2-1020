@@ -58,7 +58,8 @@
     "killer": "Withered Foxy",
     "source": "visual read of the recording frames at video 331.75 s (mask on), 332.25 s (office, Foxy entering), 332.50 s (Foxy jumpscare); retained under the run's death-frames/",
     "instrument": "death-cause.py models (mangle, toy-chica, withered-chica) all UNKNOWN: no Foxy death model exists, so the killer is an agent visual read, not an instrument fact",
-    "ledger": "cycle-ledger.py with --release-video-s 34.714 (HUD first 32.351 + aim 2.433 - onset bias 0.070): cycles 0-29 empty at every drop; cycle 30 occupant W.Chica (hue 32.3, 20893 px), hall flash LIT (door 47.3 vs pre 23.3), office after mask-off 25.4, defended false. The ledger's occupant label disagrees with the jumpscare identity; both are recorded, neither is promoted."
+    "ledger": "cycle-ledger.py with --release-video-s 34.714 (HUD first 32.351 + aim 2.433 - onset bias 0.070): cycles 0-29 empty at every drop; cycle 30 occupant W.Chica (hue 32.3, 20893 px), hall flash LIT (door 47.3 vs pre 23.3), office after mask-off 25.4, defended false. The ledger's occupant label disagrees with the jumpscare identity; both are recorded, neither is promoted.",
+    "ledgerStatus": "RETRACTED 2026-09-14T23:05Z: sampled with Night 6 timing constants; see corrections"
    },
    "flashlight": "three of four bars in the jumpscare frames",
    "anchor": {
@@ -128,7 +129,8 @@
     "killer": "Withered Foxy",
     "source": "visual read: video 52.0 s office empty at 12 AM, 52.5 s Foxy jumpscare; retained under the run's death-frames/",
     "instrument": "no Foxy death-cause model exists",
-    "ledger": "cycle-ledger.py --release-video-s 34.543 (HUD first 32.180 + 2.433 - 0.070): cycle 0 empty hue None flash FLAT (26.0/29.2) office 38.3; cycle 1 W.Chica hue 33.3 flash DIM (39.7/34.8) office 34.0; cycle 2 W.Chica hue 32.3 flash FLAT (37.8/37.0) office 27.7"
+    "ledger": "cycle-ledger.py --release-video-s 34.543 (HUD first 32.180 + 2.433 - 0.070): cycle 0 empty hue None flash FLAT (26.0/29.2) office 38.3; cycle 1 W.Chica hue 33.3 flash DIM (39.7/34.8) office 34.0; cycle 2 W.Chica hue 32.3 flash FLAT (37.8/37.0) office 27.7",
+    "ledgerStatus": "RETRACTED 2026-09-14T23:05Z: sampled with Night 6 timing constants; see corrections"
    },
    "anchor": {
     "aimMs": 2433,
@@ -181,7 +183,8 @@
    "questions": [
     "Does an early state=night read change anything in the executor besides authorization?",
     "Is the ledger's W.Chica label at hue ~32 actually Withered Foxy in the hall?"
-   ]
+   ],
+   "amended": "2026-09-14T23:05Z: the W.Chica/flash clause is retracted (see corrections); the early-authorization clause stands"
   }
  ],
  "predictions": [
@@ -193,10 +196,24 @@
    "status": "OPEN until r05 grades; recorded before the outcome so the read-out cannot be fitted to it"
   }
  ],
- "pendingCorrections": [
+ "corrections": [
   {
-   "at": "2026-09-14T22:58:30Z",
-   "note": "The open observation 'both deaths followed a hall occupant labelled W.Chica' is under review: cycle-ledger reads the camdrop frame after the cycle's camdrop, and for r02 cycle 30 and r04 cycle 1 that frame falls after the death (static/restart). A retraction with the exact frame times follows in the next commit."
+   "at": "2026-09-14T23:05:00Z",
+   "kind": "RETRACTION",
+   "retracts": [
+    "slots[r02].cause.ledger",
+    "slots[r04].cause.ledger",
+    "openObservations[0]: the clause 'after a hall occupant the ledger labels W.Chica with a non-FLAT flash'",
+    "pendingCorrections[0] (superseded by this entry)"
+   ],
+   "cause": "tools/device/cycle-ledger.py hard-codes MASK_ON_MS, MASK_OFF_MS, FLASH_MS, CAMDROP_MS = 4249, 9460, 10060, 13650 (Night 6 bindings e/h). Binding k2 runs maskOn 1749, maskOff 7000, hall flash 7460, camdrop 11150, so every column the ledger printed for r02 and r04 was sampled 2.46-2.60 s after the event it names. For r02 the rows 29-30 and for r04 the rows 1-2 were additionally read after the death (static and restart frames). Mistake register entry 4: a tool ported across nights without re-deriving its timings.",
+   "consequence": "The predeclared rule 'cause from the per-cycle ledger' cannot be met on Night 7 until cycle-ledger reads the bundle's own knobs. Until then both causes stand as visual reads of the recording (Withered Foxy), and the ledger fields above carry no evidence.",
+   "whatTheFramesDoShow": {
+    "r02": "video 331.75 s mask on; 332.00 s office empty, mask off; 332.25 s Foxy entering; 332.50 s jumpscare. With release at video 34.714 s, Foxy first appears 7.29-7.54 s into cycle 29.",
+    "r04": "video 52.00 s office empty at 12 AM; 52.25 s Foxy mid-lunge; 52.50 s jumpscare. With release at video 34.543 s, Foxy first appears 7.46-7.71 s into cycle 1.",
+    "together": "Both windows contain the 7.46 s hall flash, within the ~150 ms uncertainty of the video-to-release mapping (HUD first + aim - 70 ms onset bias). Candidate mechanism, not a finding: Foxy is not reset by the hall flash that follows mask-off, as k1's refutation described at 60 ms spacing."
+   },
+   "stillStands": "Both runs were early-authorized (lifecycle state=night read before state=intro); every latch-authorized k2 run won. That part of the open observation is unaffected."
   }
  ]
 }
