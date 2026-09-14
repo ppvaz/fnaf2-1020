@@ -533,7 +533,25 @@
     "the hall-flash class and Foxy hall presence in the cycle BEFORE each death versus the same cycles in the wins, read with the corrected ledger",
     "the model's Foxy roll and lock at the 7.46 s flash on the 5 s roll grid at the delivered phase, against the phone's first-visible window"
    ],
-   "update-r07b": "Four of four deaths now: r07b Withered Foxy first visible 7.30-7.55 s into cycle 20, mask off at 7.00 s and office empty at 244.00 s. Across the four deaths the windows span 7.29-7.73 s; the deaths cover early and latch authorization and FLAT counts from 2/20 to 13/29."
+   "update-r07b": "Four of four deaths now: r07b Withered Foxy first visible 7.30-7.55 s into cycle 20, mask off at 7.00 s and office empty at 244.00 s. Across the four deaths the windows span 7.29-7.73 s; the deaths cover early and latch authorization and FLAT counts from 2/20 to 13/29.",
+   "modelTest-hallFlashSlide": {
+    "claimLevel": "MODEL_ONLY",
+    "command": "epoch-scan.mjs --winner artifacts/night7-anchored-k2/bundle/winner.json --night 7 --epochs 2433 --seeds 3000 --knobs '{\"hallOffsetMs\":H}'",
+    "result": {
+     "7460": "3000/3000",
+     "7480": "3000/3000",
+     "7500": "3000/3000",
+     "7520": "3000/3000",
+     "7540": "3000/3000",
+     "7560": "0/3000 foxy",
+     "7580": "0/3000 foxy"
+    },
+    "retained": "artifacts/forensics/seed-clock-20260914/hall-slide-H.json",
+    "mechanismInCode": "plant-model.js onFiveSecond evaluates Foxy's roll 21 + Random(0..4) - D <= 17 on the 5 s grid from night start: at epoch 2433 that is 2.567 and 7.567 s into every cycle. The hall flash zeroes D and pins him for FOXY_HALL_PIN_FRAMES = 50; a flash that lands after the 7.567 s roll leaves ten seconds of D and he locks.",
+    "reading": "A hall flash pressed up to 7540 ms still stops the roll; at 7560 ms every seed dies to Foxy. k2 plans 7460 ms, so one flash whose effect lands ~90 ms late kills in that cycle. The register prices the release at effective epoch 2410-2445 ms including the hall light's measured 47-82 ms latency, leaving ~55-70 ms to the Foxy edge at 2500 ms. The phone's four deaths (cycles 1, 20, 22, 29; ~4 in ~200 exposed cycles, ~2%/cycle) all show Foxy first visible at 7.29-7.73 s, around the 7.567 s roll.",
+    "status": "CANDIDATE mechanism consistent with all four deaths and the model cliff; not yet a finding",
+    "nextTest": "delay only the hall-flash rows through schedule({shift}) with a per-cycle latency tail and find the tail beyond the cliff that reproduces a ~2%/cycle hazard; an earlier flash is a new binding and a new cohort, never a change inside this one"
+   }
   }
  ]
 }
