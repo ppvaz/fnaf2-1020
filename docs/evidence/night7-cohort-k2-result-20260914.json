@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 7,
+ "counted": 8,
  "wins": 3,
- "deaths": 4,
+ "deaths": 5,
  "slots": [
   {
    "slot": "r01",
@@ -432,6 +432,63 @@
     "defended": 11,
     "backToBackFlatPairsEndingAt": []
    }
+  },
+  {
+   "slot": "r08",
+   "run": "night7-night7-k2-cohort-r08-20260914T233902Z",
+   "startedAt": "2026-09-14T23:39:02Z",
+   "commit": "a90e1a7",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "lifecycle state=static 23:44:11.033Z, state=gameover 23:44:14.601Z, gate abort mask-state-unavailable at gateAtMs 273000 (23:44:14.618Z), campaign.terminal.from-executor gameover/death 23:44:14.760Z, actuator stopped terminal-retry",
+   "videoTerminal": "TERMINAL: unknown; survival instrument: HUD gone for good from 304.8 s, death static 20 frames / 5.0 s",
+   "survivalSeconds": 270.5,
+   "clock": "3 AM on the HUD",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "contact sheet from video 302.5 s at 4 fps: 302.50-303.75 s mask up with empty eyeholes; 304.00 s mask off, office empty at 3 AM; 304.25 s Foxy entering; 304.50 s jumpscare; 304.75 s static. Retained as death-frames/sheet.png",
+    "foxyFirstVisible": "7.31-7.56 s into cycle 26 (release at video 36.691 s = HUD first 34.328 + 2.433 - 0.070)",
+    "instrument": "no Foxy death-cause model exists"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.389,
+    "lateMs": 0.39,
+    "uncertaintyMs": 3.04,
+    "authorizedAfterOnsetMs": 1914.3,
+    "earlyAuthorized": false
+   },
+   "phaseCheckFromVideo": "HUD first 34.328 s; CAM 11 raises at 37.28 s and 54.74 s: gaps 2.95/20.41 s",
+   "gates": {
+    "cycle": 28,
+    "agreed": 27,
+    "corrected": 0,
+    "aborted": 1
+   },
+   "pressAcceptance": "3 graded: 3 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r08-20260914T233902Z.mp4 sha256 22601da19fc489ee609c3d29cd264faac12c84c2c22fa9a536b40b90439df158",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 36.691,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 26,
+    "flash": {
+     "LIT": 6,
+     "DIM": 13,
+     "FLAT": 7
+    },
+    "defended": 15,
+    "backToBackFlatPairsEndingAt": [
+     20
+    ]
+   }
   }
  ],
  "amendments": [
@@ -583,7 +640,8 @@
     "band60AtHall7400": "wins 2366.68-2500.04 (same extent as k2); edges 2350.01 puppet/inside-office and 2516.71-2550.05 puppet/inside-office; 2566.72 wins; Foxy edge moved from 2516.71 (k2) to 2583.39",
     "reading": "moving the hall flash to 7400 ms buys ~60 ms against a single late flash in any cycle without shrinking the whole-schedule band; mask-off contact would end 200 ms before the flash (k1 was refuted at 60 ms). Needs its own 60/3000-seed band, anchor aim and a new predeclared cohort.",
     "deviceTestGap": "no live-capable hall-latency probe exists (hid-maskraise-probe is offline-only; maskraise-grade is exploratory); the latency-tail prediction (~2% of flashes landing >~90 ms late) needs a new instrument"
-   }
+   },
+   "update-r08": "Five of five deaths: r08 Withered Foxy first visible 7.31-7.56 s into cycle 26. All five windows lie in 7.29-7.73 s and contain the model's 7.567 s Foxy roll."
   }
  ]
 }
