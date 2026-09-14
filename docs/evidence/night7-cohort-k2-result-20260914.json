@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 5,
+ "counted": 6,
  "wins": 3,
- "deaths": 2,
+ "deaths": 3,
  "slots": [
   {
    "slot": "r01",
@@ -304,6 +304,67 @@
      37
     ]
    }
+  },
+  {
+   "slot": "r06",
+   "run": "night7-night7-k2-cohort-r06-20260914T231510Z",
+   "startedAt": "2026-09-14T23:15:10Z",
+   "commit": "dd3f6e7",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "campaign.terminal.from-executor state=gameover outcome=death at 2026-09-14T23:19:42.401Z; actuator stopped on terminal-retry; gate abort mask-state-unavailable afterwards (23/24 gates agreed)",
+   "videoTerminal": "TERMINAL: unknown; survival instrument: HUD gone for good from 264.8 s, death static 20 frames / 5.0 s",
+   "survivalSeconds": 230.6,
+   "clock": "3 AM on the HUD in the jumpscare frames",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "visual read: video 264.00 s office empty at 3 AM; 264.25 s Foxy mid-lunge; 264.50 s jumpscare; retained under the run's death-frames/",
+    "instrument": "no Foxy death-cause model exists",
+    "foxyFirstVisible": "7.48-7.73 s into cycle 22 (release at video 36.518 s = HUD first 34.155 + 2.433 - 0.070)"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.702,
+    "lateMs": 0.7,
+    "uncertaintyMs": 4.16,
+    "authorizedAfterOnsetMs": 171.9,
+    "earlyAuthorized": false
+   },
+   "phaseCheckFromVideo": "HUD first 34.155 s; CAM 11 raises at 37.10 s and 54.59 s: gaps 2.95/20.44 s, the same loop phase as every k2 run",
+   "gates": {
+    "cycle": 24,
+    "agreed": 23,
+    "corrected": 0,
+    "aborted": 1
+   },
+   "pressAcceptance": "3 graded: 1 PASS, 1 UNKNOWN, 1 UNSTABLE",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r06-20260914T231510Z.mp4 sha256 b88f2e22c5b7b3ac7477d549798082e2c70721a431eebf0de7411f08444836c4",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 36.518,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 22,
+    "flash": {
+     "LIT": 5,
+     "DIM": 13,
+     "FLAT": 4
+    },
+    "defended": 13,
+    "occupiedAtDrop": 7,
+    "backToBackFlatPairsEndingAt": [],
+    "lastRows": [
+     "cycle 19 empty flash DIM (10.4/4.0) office 15.4",
+     "cycle 20 unlabelled hue 57 flash DIM (7.3/2.2) office 3.6 defended",
+     "cycle 21 empty flash FLAT (3.3/2.5) office 3.5 defended"
+    ]
+   }
   }
  ],
  "amendments": [
@@ -343,7 +404,8 @@
    "amended": "2026-09-14T23:05Z: the W.Chica/flash clause is retracted (see corrections); the early-authorization clause stands",
    "atSource": "commit time of 5ba74b7, which recorded it",
    "atCorrected": "was an estimate (2026-09-14T23:00:00Z) written by the agent; replaced by the commit time on 2026-09-14",
-   "early-authorization update": "r05 was early-authorized and won: 2 of 3 early-authorized runs died, 0 of 3 latch-authorized runs died. Not sufficient; still unexplained."
+   "early-authorization update": "r05 was early-authorized and won: 2 of 3 early-authorized runs died, 0 of 3 latch-authorized runs died. Not sufficient; still unexplained.",
+   "early-authorization update 2": "r06 was latch-timed (authorized 172 ms after onset) and died: early authorization is neither sufficient (r05) nor necessary (r06) for a death."
   }
  ],
  "predictions": [
@@ -393,6 +455,17 @@
    ],
    "doesNotExplain": "r04's death at ~20.6 s",
    "refutedBy": "r05 won with 19/42 FLAT flashes and back-to-back FLAT pairs ending at cycles [11, 18, 21, 24, 27, 32, 37]; r02 died with 13/29 and pairs ending at 8, 16, 22, 28. FLAT rate and FLAT streaks do not separate the deaths from the wins."
+  },
+  {
+   "recordedAfter": "r06",
+   "status": "CANDIDATE (timing pattern, not a mechanism); not acted on inside the cohort",
+   "claimLevel": "DEVICE_MEASURED frame reads, uncertainty ~150 ms from the video-to-release mapping",
+   "observation": "All three deaths are Withered Foxy, first visible in the office inside the same cycle window: r02 7.29-7.54 s (cycle 29), r04 7.46-7.71 s (cycle 1), r06 7.48-7.73 s (cycle 22). Every window contains the 7.46 s hall flash, with the 7.60 s monitor raise just after and mask off at 7.00 s.",
+   "whatItIsNot": "Not a why: every win passes this phase 42 times. Not explained by early authorization (r06 latch-timed) or refused-flash streaks (r06 had no back-to-back FLAT pair).",
+   "whatWouldTestIt": [
+    "the hall-flash class and Foxy hall presence in the cycle BEFORE each death versus the same cycles in the wins, read with the corrected ledger",
+    "the model's Foxy roll and lock at the 7.46 s flash on the 5 s roll grid at the delivered phase, against the phone's first-visible window"
+   ]
   }
  ]
 }
