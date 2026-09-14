@@ -2,9 +2,9 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 8,
+ "counted": 9,
  "wins": 3,
- "deaths": 5,
+ "deaths": 6,
  "slots": [
   {
    "slot": "r01",
@@ -489,6 +489,59 @@
      20
     ]
    }
+  },
+  {
+   "slot": "r09",
+   "run": "night7-night7-k2-cohort-r09-20260914T234919Z",
+   "startedAt": "2026-09-14T23:49:19Z",
+   "commit": "b947d66",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "none: lifecycle state=static at 23:50:16.595Z, then campaign.abort.restart 'device: lifecycle left night state (static)' at 23:50:19.839Z; restarted to the title 23:50:37.398Z; 2/2 cycle gates agreed",
+   "videoTerminal": "TERMINAL: unknown; survival instrument: HUD gone for good from 55.5 s, death static 18 frames / 4.5 s",
+   "whyCountedNotInvalid": "the static read precedes the abort and the HUD left at video 55.5 s (night ~20.6 s from HUD first 34.918 s); the route died",
+   "survivalSeconds": 20.6,
+   "clock": "12 AM",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "contact sheet from video 53.0 s at 4 fps: 53.00-54.25 s mask up with empty eyeholes; 54.50 s mask lowering; 54.75 s office empty at 12 AM; 55.00 s Foxy mid-lunge; 55.25 s jumpscare. Retained as death-frames/sheet.png",
+    "foxyFirstVisible": "7.47-7.72 s into cycle 1 (release at video 37.281 s = HUD first 34.918 + 2.433 - 0.070)",
+    "instrument": "no Foxy death-cause model exists"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2434.003,
+    "lateMs": 1.0,
+    "uncertaintyMs": 5.2,
+    "authorizedAfterOnsetMs": 1531.1,
+    "earlyAuthorized": false
+   },
+   "phaseCheckFromVideo": "HUD first 34.918 s; first CAM 11 raise 37.98 s: gap 3.06 s",
+   "gates": {
+    "cycle": 2,
+    "agreed": 2,
+    "corrected": 0,
+    "aborted": 0
+   },
+   "pressAcceptance": "3 graded: 3 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r09-20260914T234919Z.mp4 sha256 2bc46df2bcfb33fb094dbbdfe4d3610ab3e4526270a9e6ae7312be5e331d332d",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 37.281,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 1,
+    "flash": {
+     "DIM": 1
+    },
+    "defended": 0
+   }
   }
  ],
  "amendments": [
@@ -530,6 +583,13 @@
    "atCorrected": "was an estimate (2026-09-14T23:00:00Z) written by the agent; replaced by the commit time on 2026-09-14",
    "early-authorization update": "r05 was early-authorized and won: 2 of 3 early-authorized runs died, 0 of 3 latch-authorized runs died. Not sufficient; still unexplained.",
    "early-authorization update 2": "r06 was latch-timed (authorized 172 ms after onset) and died: early authorization is neither sufficient (r05) nor necessary (r06) for a death."
+  },
+  {
+   "recordedAfter": "r09",
+   "status": "OPEN, not acted on inside the cohort; two points inside the video's ~30 ms interpolation noise",
+   "observation": "First CAM 11 gap (HUD first to first raise): wins 2.93 (original), 2.98 (r01b), 2.96 (r03), 2.98 (r05); deaths 2.97 (r02), 3.00 (r04, dead at 20.6 s), 2.95 (r06), 2.91 (r07b), 2.95 (r08), 3.06 (r09, dead at 20.6 s). The two 20-second deaths carry the two largest gaps.",
+   "whyItMatters": "a later delivered phase leaves less margin before Foxy's 7.567 s roll (the model cliff), so early deaths would be expected from the latest deliveries",
+   "whatWouldTestIt": "a frame-trace delivered epoch (native helper trace) for every run, not the 4 fps video interpolation"
   }
  ],
  "predictions": [
@@ -641,7 +701,8 @@
     "reading": "moving the hall flash to 7400 ms buys ~60 ms against a single late flash in any cycle without shrinking the whole-schedule band; mask-off contact would end 200 ms before the flash (k1 was refuted at 60 ms). Needs its own 60/3000-seed band, anchor aim and a new predeclared cohort.",
     "deviceTestGap": "no live-capable hall-latency probe exists (hid-maskraise-probe is offline-only; maskraise-grade is exploratory); the latency-tail prediction (~2% of flashes landing >~90 ms late) needs a new instrument"
    },
-   "update-r08": "Five of five deaths: r08 Withered Foxy first visible 7.31-7.56 s into cycle 26. All five windows lie in 7.29-7.73 s and contain the model's 7.567 s Foxy roll."
+   "update-r08": "Five of five deaths: r08 Withered Foxy first visible 7.31-7.56 s into cycle 26. All five windows lie in 7.29-7.73 s and contain the model's 7.567 s Foxy roll.",
+   "update-r09": "Six of six deaths: r09 Withered Foxy first visible 7.47-7.72 s into cycle 1."
   }
  ]
 }
