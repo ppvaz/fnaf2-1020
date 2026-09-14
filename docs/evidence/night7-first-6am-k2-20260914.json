@@ -1,0 +1,59 @@
+{
+  "schema": "device-night-win-v1",
+  "claimLevel": "DEVICE_MEASURED",
+  "generatedBy": "session 2026-09-14 (opencode/GLM), from the run directory and grade.log",
+  "run": "night7-k2-aim2433-maskoff7000-20260914T004106Z",
+  "night": 7,
+  "experiment": "Night 7 Custom Night, all ten dials 20, puppet 15 (Golden Freddy preset): binding k2, the j loop with the masked end extended (maskOffMs 6760 -> 7000, hall pinned 7460), anchored release at aim 2433 on the 5000 ms grid (k=0)",
+  "outcome": {
+    "attemptStatus": "WIN",
+    "terminal": {
+      "night": 7,
+      "outcome": "sixam",
+      "executor": "campaign.terminal.from-executor state=sixam at 2026-09-14T00:48:43.360Z",
+      "video": "TERMINAL: clear -- sixam at 455.0 s, the 6 AM win screen is in the recording; HUD first 33.862 s, 1 AM at 103.879 s (delta 70.017 s, resolution 17 ms)"
+    },
+    "postRunTitle": "items=continue,customNight,newGame,sixthNight"
+  },
+  "binding": {
+    "winnerHash": "fnv1a-7e4bf3e8",
+    "bundle": "artifacts/night7-anchored-k2/bundle",
+    "qualification": "artifacts/night7-anchored-k2/qualification-test.json",
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 11150,
+      "maskOnMs": 1749,
+      "maskOffMs": 7000,
+      "hallOffsetMs": 7460,
+      "camdropTailMs": 200,
+      "raiseMs": 7600,
+      "stunRefreshMs": 7900,
+      "windLeadMs": 8070,
+      "openWindMs": 50,
+      "observeUntilMs": 425000
+    },
+    "census": "3000/3000 at epochs 2374, 2416.66, 2433, 2449.99 (hall pinned 7460, maskOff 7000); 60-seed band 2366-2499"
+  },
+  "anchor": {
+    "aimMs": 2433,
+    "periodMs": 5000,
+    "k": 0,
+    "releasedAimMs": 2435.485,
+    "lateMs": 2.49
+  },
+  "gates": {
+    "agreed": 42,
+    "corrected": 0,
+    "aborted": 0,
+    "stopReason": "arm-unresolved (ambiguous-threshold), non-fatal: the night ran observe-once and every cycle gate agreed on the mask stroke"
+  },
+  "audio": "none (receiver path OFF this run; screenrecord on this build is video-only)",
+  "lineage": "i6 (BB through the mask window at ~140 s) -> j10/j11 (epoch errors 2315/2515, dead ~20 s) -> j12 aim 2433 (BB entered during the 840 ms off-mask office gap at ~61 s, then Foxy through the disabled flashlight) -> k1 maskOff 7200 (device-refuted: the 200 ms mask contact leaves 60 ms to the pinned 7460 hall and the flash did not reset Foxy, dead ~20 s, run night7-k1-aim2433-maskoff7200-20260914T003625Z) -> k2 maskOff 7000 (6 AM). The mask-on front and the camdrop phase are grid-illegal (maskOnMs 1320/camdrop 10720: inside-office 60/60); maskOff 7400 collides with the hall flash in the model (golden-freddy/foxy 60/60).",
+  "retained": [
+    "artifacts/runs/night7-k2-aim2433-maskoff7000-20260914T004106Z",
+    "artifacts/night7-anchored-k2",
+    "artifacts/night7-anchored-k",
+    "captures/night7-k2-aim2433-maskoff7000-20260914T004106Z.mp4 (sha256 450d4daf...)",
+    "captures/night7-victory-share.mp4 (1280x576 share cut, silent)"
+  ]
+}

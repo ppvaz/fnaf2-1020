@@ -179,7 +179,7 @@ def main():
             print(f"  s{int(h):04d} {v['name']:<12} onsets {len(v['onsets']):3d}  curve max {v['curveMax']:.3f}  thr {v['threshold']}")
     if broken:
         print('  gridPhaseMs UNKNOWN (broken time axis)'); mean = None; wmean = None
-    if mean is None and not broken:
+    elif mean is None:
         print('  gridPhaseMs UNKNOWN (no roll onsets above threshold)')
     else:
         print(f"  gridPhaseMs {mean:.1f} (mod 5000 from release; concentration {r:.2f} over {len(all_roll)} onsets)")
