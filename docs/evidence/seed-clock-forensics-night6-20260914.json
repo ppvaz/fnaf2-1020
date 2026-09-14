@@ -43,5 +43,11 @@
    "seed-scan.mjs": "fb53732e889ed7a2a57c430f5e945c13fcae5bcee92910da1200ce3f575f834a",
    "seed-signatures.mjs": "5a47a800de9c3e72dfd758009a448b60009b0ccdded589d47570e6715e5ccfec"
   }
+ },
+ "nextObservableMeasured": {
+  "observable": "defended office encounters identified through the right eyehole (encounter-corpus-20260912 colour rule; Withered Chica, Bonnie, Freddy)",
+  "modelSide": "k2 at 2433 ms over seeds 1..3000 (encounter-lock.mjs): office-cue identities withchica 39577, withbonnie 34566, withfreddy 28741; 30-39 encounters per night (median 34). Largest share of seeds with the same first-N identity+cycle prefix: N=12 31/3000, N=16 9/3000, N=24 2/3000; identity without cycle is much weaker (N=24 14/3000).",
+  "reading": "Rolled, non-lethal, frequent and video-visible, unlike the s0010 onsets. With the ~41-seed clock window about ten identified encounters should lock a seed; without it roughly a whole night is needed. The phone ledger marks 13-26 defended cycles per run against ~34 model encounters, so matching must tolerate missed encounters.",
+  "status": "model side measured 2026-09-14; phone-side eyehole reader for k2 timing not yet built or validated"
  }
 }

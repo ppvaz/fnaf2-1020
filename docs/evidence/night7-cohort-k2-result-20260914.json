@@ -365,6 +365,17 @@
      "cycle 21 empty flash FLAT (3.3/2.5) office 3.5 defended"
     ]
    }
+  },
+  {
+   "slot": "r07",
+   "run": "night7-night7-k2-cohort-r07-20260914T232510Z",
+   "startedAt": "2026-09-14T23:25:10Z",
+   "commit": "a015f4d",
+   "status": "EXCLUDED",
+   "countsTowardTen": false,
+   "reason": "helper failure before any route input: origin.anchor unavailable 'onset-not-latched' (6 reads, 1 failure, lastError 'cue-helper clock probe timed out') at 23:25:46.115Z during the intro; the strict anchor refused and the campaign aborted and restarted to the title (23:26:03.593Z). No gameplay input from the plan was released.",
+   "ruleNote": "The predeclaration lists helper failure under EXCLUDED. The log does carry a state=night label at 23:25:43.834Z, but it precedes state=intro (23:25:44.809Z): the known pre-intro misread seen on r02, r04 and r05. Read literally as 'observed the night with no terminal', the slot would be INVALID instead; both classes re-run the slot and neither counts.",
+   "rerunAs": "r07b"
   }
  ],
  "amendments": [
