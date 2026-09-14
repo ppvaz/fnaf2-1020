@@ -1,0 +1,48 @@
+{
+ "schema": "cohort-predeclaration-v1",
+ "declaredAt": "2026-09-14T21:56:23Z",
+ "declaredBy": "Pedro (operator) chose the target and the default rules on 2026-09-14; written by Claude Fable 5.1 in the same session before run 1",
+ "ladder": "Plan 12 level 7 (10/20 attempt/clear) under the Gate F cohort protocol: predeclared size and rules, no tuning inside the cohort, every outcome reported",
+ "night": 7,
+ "configuration": {
+  "dials": "all ten at 20 via the measured Golden Freddy preset, puppet 15",
+  "dialReadback": "custom-night-calibration-v1 (DEVICE_MEASURED 2026-09-13)"
+ },
+ "binding": {
+  "name": "k2",
+  "bundle": "artifacts/night7-anchored-k2/bundle",
+  "winnerHash": "fnv1a-7e4bf3e8",
+  "planSha256": "ac68e343b0d5f00a9a08032b0d638331ae252ebace71310f0ea941c83024d082",
+  "replayHash": "fnv1a-1c9c6847",
+  "engineSourceSha256": "beeb5d5a6152b7bca60bb5102dff0c9615567532fde0e4979f0701018c913ebe",
+  "profile": {
+   "id": "hid-mediaprojection",
+   "sha256": "c929d673a056b4d7ef1839bccc4666986e2a1991b39232c0869046b0d68ae6e0"
+  },
+  "anchor": {
+   "aimMs": 2433,
+   "periodMs": 5000,
+   "maxK": 0,
+   "mode": "strict, latch-authorized"
+  },
+  "armMode": "observe-once",
+  "qualification": "artifacts/night7-anchored-k2/qualification-test.json (evidenceId night7-anchored-k2-qualification-20260914)",
+  "winningRun": "night7-k2-aim2433-maskoff7000-20260914T004106Z (docs/evidence/night7-first-6am-k2-20260914.json)"
+ },
+ "commit": "181563c",
+ "command": "tools/device/night-run.sh --label night7-k2-cohort-rNN --bundle artifacts/night7-anchored-k2/bundle --night 7 --qualification artifacts/night7-anchored-k2/qualification-test.json",
+ "commandNote": "Identical to the winning run's configuration: no frame trace, no receiver audio, video on. The instrument measurement run for delivered epochs stays outside this cohort.",
+ "size": 10,
+ "rules": {
+  "counted": "a run counts once the campaign observes state=night; its outcome is the executor terminal (sixam or gameover) cross-checked by the video terminal grade",
+  "win": "executor terminal sixam and video TERMINAL clear",
+  "death": "gameover; cause taken from the per-cycle ledger, survival time from the video",
+  "excluded": "a run that never enters the night (preflight refusal, pre-night abort, helper or capture failure, dial readback failure) is excluded, recorded with its reason, and the slot is re-run; it never counts toward the ten",
+  "invalid": "a counted run with an operator input during the night, a truncated capture, or a campaign exit without a terminal is INVALID: recorded, not a win, not a death, and the slot is re-run",
+  "noTuning": "no knob, aim, flag, calibration or code change inside the cohort; any change closes this cohort where it stands and starts a versioned successor",
+  "stop": "after ten counted runs, or earlier only by an operator decision recorded in the result"
+ },
+ "modelPrediction": "k2 census 3000/3000 at epochs 2374, 2416.66, 2433, 2449.99 with hall pinned 7460 and maskOff 7000; 60-seed band 2366-2499. If delivery stays inside the band the model predicts 10/10; the cohort is the first phone measurement of that rate.",
+ "report": "wins, deaths by cause, excluded and invalid runs with reasons, survival-time list, released aim and lateness per run, run directory per slot, and the exact commit for every run",
+ "labels": "night7-k2-cohort-r01 .. night7-k2-cohort-r10 (excluded or invalid slots re-run as rNNb, rNNc, ...)"
+}
