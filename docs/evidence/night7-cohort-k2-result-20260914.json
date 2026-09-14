@@ -2,8 +2,8 @@
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
  "status": "IN_PROGRESS",
- "counted": 4,
- "wins": 2,
+ "counted": 5,
+ "wins": 3,
  "deaths": 2,
  "slots": [
   {
@@ -247,6 +247,63 @@
      "cycle 0 empty flash DIM (15.5/4.0) office 14.5"
     ]
    }
+  },
+  {
+   "slot": "r05",
+   "run": "night7-night7-k2-cohort-r05-20260914T225440Z",
+   "startedAt": "2026-09-14T22:54:40Z",
+   "commit": "5ba74b7",
+   "status": "WIN",
+   "countsTowardTen": true,
+   "executorTerminal": "campaign.terminal.from-executor state=sixam at 2026-09-14T23:02:17.425Z",
+   "videoTerminal": "TERMINAL: clear -- sixam at 455.0s",
+   "survivalSeconds": 455.0,
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2433.696,
+    "lateMs": 0.7,
+    "uncertaintyMs": 3.86,
+    "authorizedAfterOnsetMs": -1569.4,
+    "earlyAuthorized": true
+   },
+   "phaseCheckFromVideo": "HUD first 34.276 s; CAM 11 raises at 37.26 s and 54.72 s: gaps 2.98/20.44 s, the same loop phase as every k2 run",
+   "gates": {
+    "cycle": 42,
+    "agreed": 42,
+    "corrected": 0,
+    "aborted": 0
+   },
+   "pressAcceptance": "3 graded: 1 UNSTABLE, 2 UNKNOWN",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r05-20260914T225440Z.mp4 sha256 018827fff2b5dd1004c266d87c402a960bff59a970ab9aa637ccdbfda0894cef",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 36.639,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 42,
+    "flash": {
+     "DIM": 20,
+     "LIT": 3,
+     "FLAT": 19
+    },
+    "defended": 26,
+    "occupiedAtDrop": 17,
+    "backToBackFlatPairsEndingAt": [
+     11,
+     18,
+     21,
+     24,
+     27,
+     32,
+     37
+    ]
+   }
   }
  ],
  "amendments": [
@@ -285,7 +342,8 @@
    ],
    "amended": "2026-09-14T23:05Z: the W.Chica/flash clause is retracted (see corrections); the early-authorization clause stands",
    "atSource": "commit time of 5ba74b7, which recorded it",
-   "atCorrected": "was an estimate (2026-09-14T23:00:00Z) written by the agent; replaced by the commit time on 2026-09-14"
+   "atCorrected": "was an estimate (2026-09-14T23:00:00Z) written by the agent; replaced by the commit time on 2026-09-14",
+   "early-authorization update": "r05 was early-authorized and won: 2 of 3 early-authorized runs died, 0 of 3 latch-authorized runs died. Not sufficient; still unexplained."
   }
  ],
  "predictions": [
@@ -294,9 +352,10 @@
    "beforeOutcomeOf": "r05 (night7-night7-k2-cohort-r05, released 22:55:18.002Z, 0.70 ms late)",
    "fact": "r05 was authorized early: authorizedAfterOnsetMs -1569, the third early-authorized k2 run (r02 -2368 died, r04 -1819 died; r01b, r03 and the original win authorized on the latch and won)",
    "prediction": "If early authorization is causal for the Foxy deaths, r05 dies to Withered Foxy near cycle phase 7.5 s. A win refutes early authorization as sufficient for a death.",
-   "status": "OPEN until r05 grades; recorded before the outcome so the read-out cannot be fitted to it",
+   "status": "REFUTED",
    "atSource": "commit time of c96d19d, which recorded it; r05 was mid-night then (gate 183 s agreed at 22:58:21Z)",
-   "atCorrected": "was an estimate (2026-09-14T22:58:30Z) written by the agent; replaced by the commit time on 2026-09-14"
+   "atCorrected": "was an estimate (2026-09-14T22:58:30Z) written by the agent; replaced by the commit time on 2026-09-14",
+   "outcome": "r05 won (executor sixam, video clear at 455.0 s) despite early authorization; early authorization is not sufficient for a death. Deaths so far: r02 and r04, both early-authorized; wins: original, r01b, r03 (latch) and r05 (early)."
   }
  ],
  "corrections": [
@@ -324,7 +383,7 @@
  "candidateMechanisms": [
   {
    "recordedAtCommitAfter": "d29fa6b",
-   "status": "CANDIDATE, not a finding; not acted on inside the cohort",
+   "status": "REFUTED as stated (two refused flashes in a row are not sufficient for a Foxy kill); kept discoverable",
    "claimLevel": "DEVICE_MEASURED reads, MODEL_ONLY interpretation",
    "observation": "Refused (FLAT) post-mask hall flashes: r01b win 4/42 with no back-to-back pair, r03 win 3/42 with none, r02 death 13/30 with back-to-back pairs ending at cycles 8, 16, 22 and 28; Foxy struck in cycle 29. FLAT reads a door level ~3.3 and DIM ~7.5 on this geometry, two separate clusters rather than a threshold edge. r04 died in cycle 1, before any streak could form.",
    "candidate": "A hall flash refused after a defended encounter leaves Withered Foxy un-reset; two refusals in a row let him reach the office. The Night 5 encounter census (2026-09-12) recorded the same consequence (dark or refused flash after a defended encounter; only post-encounter FLAT flashes leave Foxy un-reset) and that the model has the encounter frequency but not this consequence. That would explain k2 winning all 65,536 seeds in the model while the phone loses.",
@@ -332,7 +391,8 @@
     "the FLAT rate and back-to-back pairs of every remaining cohort run, read before its outcome is known where possible",
     "the model given the refusal consequence, re-censused at 65,536 seeds at the delivered phase"
    ],
-   "doesNotExplain": "r04's death at ~20.6 s"
+   "doesNotExplain": "r04's death at ~20.6 s",
+   "refutedBy": "r05 won with 19/42 FLAT flashes and back-to-back FLAT pairs ending at cycles [11, 18, 21, 24, 27, 32, 37]; r02 died with 13/29 and pairs ending at 8, 16, 22, 28. FLAT rate and FLAT streaks do not separate the deaths from the wins."
   }
  ]
 }
