@@ -22,7 +22,13 @@ $FNAF2_DUMP) at it; regenerate it with tools/dump/regen-dump.sh.
   readdump.py sounds 3 21                the groups that play one sample handle
   readdump.py instances 3 [pattern]      placed scene objects: X, Y, layer, extent
 
-PC dumps (Fusion builds before the Android scramble) need --xor 0.
+PC dumps (Fusion builds before the Android scramble) need --xor 0 --lo-xor 0.
+
+Placed frame instances are scrambled again, with their own constant: the
+runtime's layout loader (Frame/CLO.load) reads an instance's object handle as
+`readAShort() ^ 48`, and only then looks it up in the post-XOR-28 item table.
+So an ` I` line's OI is neither an event handle nor an item-table row: the
+event handle is OI ^ 48 and the item-table row is OI ^ 48 ^ 28.
 """
 import argparse
 import os
@@ -40,8 +46,9 @@ PARAMOBJECT_RE = re.compile(r"Object (\d+) (\d+) (\d+)")
 
 
 class Dump:
-    def __init__(self, path, xor=28):
+    def __init__(self, path, xor=28, lo_xor=48):
         self.xor = xor
+        self.lo_xor = lo_xor       # Frame/CLO.load: loOiHandle = readAShort() ^ 48
         self.objects = {}          # stored handle -> name as the item table has it
         self.types = {}            # stored handle -> TYPE as the item table has it
         self.images = {}           # stored handle -> (W, H, HOTX, HOTY) as the dumper read that row
@@ -79,31 +86,37 @@ class Dump:
         """True name of the object an event addresses by `handle`."""
         return self.objects.get(handle ^ self.xor, "?%d" % handle)
 
-    def placed(self, instance):
-        """True name of a placed scene object.
+    def handle(self, instance):
+        """The event-space handle of a placed scene object.
 
-        A frame instance addresses its object in the same space as the events:
-        the `OI` on an ` I` line is the handle an event uses, so its true name is
-        `name(OI)`, through the XOR. Instances and event handles share numbers --
-        the recompiled Office init creates each object at the (X, Y) of the dump
-        instance with the same raw OI (186 of 189 exact; through the XOR, 2).
-        The 2026-08-26 "instances are not scrambled" rule was backwards: its
-        TYPE-vs-image check compared an item-table row with that same row's
-        image, so it could not fail. See docs/android/SOURCE-DUMP-GUIDE.md 4.
+        The runtime's layout loader (Frame/CLO.load) XORs an instance's stored
+        object handle with 48 and only then resolves it through the item table
+        that COI.loadHeader already XORed with 28. So an ` I` line's OI is its
+        own space: the event handle is OI ^ 48, and the item-table row is
+        OI ^ 48 ^ 28. Neither earlier rule was right: "not scrambled"
+        (2026-08-26) and "same space as events" (2026-09-15) each left the
+        Office without five of its twelve camera markers, and the recompile
+        join that backed the second read the same chunk with the same mistake.
+        See docs/android/SOURCE-DUMP-GUIDE.md 4.
         """
-        return self.name(int(instance["OI"]))
+        return int(instance["OI"]) ^ self.lo_xor
+
+    def placed(self, instance):
+        """True name of a placed scene object."""
+        return self.name(self.handle(instance))
 
     def extent(self, instance):
         """(left, top, right, bottom) in scene units, or None with no image.
 
         The dumper read W/H/HOTX/HOTY from the item-table row equal to the raw
-        OI, which is the object OI ^ xor -- the same shift as the names. So the
-        true object's image is the row OI ^ xor, taken from any instance line
-        (in any frame) whose OI is that row. Fusion draws an image with its
-        hotspot on the object's position. Animation 0 / direction 0 / frame 0 --
-        the default appearance, not whatever is showing at runtime.
+        OI, which is not the object's row. The true object's row is
+        OI ^ lo_xor ^ xor, and its image is what the dumper printed on any
+        instance line (in any frame) whose OI equals that row. Fusion draws an
+        image with its hotspot on the object's position. Animation 0 /
+        direction 0 / frame 0 -- the default appearance, not whatever is
+        showing at runtime.
         """
-        image = self.images.get(int(instance["OI"]) ^ self.xor)
+        image = self.images.get(self.handle(instance) ^ self.xor)
         if image is None:
             return None
         w, h, hot_x, hot_y = image
@@ -113,7 +126,7 @@ class Dump:
 
     def image_known(self, instance):
         """False when the true object is an Active whose image no instance line carries."""
-        row = int(instance["OI"]) ^ self.xor
+        row = self.handle(instance) ^ self.xor
         return row in self.images or self.types.get(row) != "2"
 
     def render(self, line):
@@ -166,6 +179,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--dump", default=DEFAULT_DUMP)
+    parser.add_argument("--lo-xor", type=int, default=48,
+                        help="layout-instance handle scramble (Frame/CLO.load); "
+                             "48 on this Android build, 0 on PC builds")
     parser.add_argument("--xor", type=int, default=28,
                         help="handle scramble; 28 on Android, 0 on PC builds")
     parser.add_argument("command", choices=["frames", "objects", "group", "find",
@@ -175,7 +191,7 @@ def main():
 
     if not os.path.exists(opts.dump):
         sys.exit("no dump at %s -- see docs/android/SOURCE-DUMP-GUIDE.md" % opts.dump)
-    dump = Dump(opts.dump, opts.xor)
+    dump = Dump(opts.dump, opts.xor, opts.lo_xor)
 
     if opts.command == "frames":
         for frame in dump.frames:
@@ -250,8 +266,8 @@ def main():
             if pattern and pattern not in name.lower():
                 continue
             box = dump.extent(instance)
-            print("  %-30s oi=%-5s X=%-6s Y=%-6s layer=%-3s %s" % (
-                name[:30], instance["OI"],
+            print("  %-30s h=%-4d oi=%-5s X=%-6s Y=%-6s layer=%-3s %s" % (
+                name[:30], dump.handle(instance), instance["OI"],
                 instance["X"], instance["Y"], instance["LAYER"],
                 "box x[%d..%d] y[%d..%d]" % (box[0], box[2], box[1], box[3])
                 if box else "(no image)" if dump.image_known(instance)

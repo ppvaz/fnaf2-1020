@@ -43,7 +43,13 @@ CTFAK is .NET 6 and this Mac has no `dotnet`, so the script runs it in the
 `mcr.microsoft.com/dotnet/sdk:6.0` image. `tools/dump/EventTextDumper.cs` is our
 own CTFAK tool — drop it into a CTFAK checkout at
 `Core/CTFAK.Core/Tools/`, `dotnet build -c Release`, and CTFAK offers it as
-"Event Text Dumper" in its tool list. It is 99 lines and writes the format
+"Event Text Dumper" in its tool list. The checkout is upstream
+`github.com/CTFAK/CTFAK2.0` plus the Linux port described in
+`UPSTREAM-LEDGER.md` §1 (retarget to `net6.0`, `System.Drawing.Common`
+6.0.0 with `EnableUnixSupport`, platform-guarded `CTFAKCore.Init` using
+`libz.so.1`, `EditBox.png` case, `Console.Title`/`DrawArt2` guards); it was
+rebuilt from that description on 2026-09-15 and the dump it produced is
+byte-identical across runs. It is 99 lines and writes the format
 below; extend it there rather than post-processing.
 
 ---
@@ -161,45 +167,50 @@ survived the correction while every *character identity* had to be redone.
 PC builds (e.g. the Shooter25 practice mod, build 295) are **not** scrambled:
 pass `--xor 0`.
 
-### Frame instances share the event space (corrected 2026-09-15)
+### Frame instances carry their own scramble: XOR 48 (corrected 2026-09-15, second pass)
 
-The `OI` on an ` I` line is in the **same space as an event handle**: the
-object a placed instance belongs to is `item_table[OI XOR 28]`, exactly as for
-an event. The same integer names the same object on both line types -- `94` is
-`left light` as an instance and as an event handle.
+The `OI` on an ` I` line is in **neither** of the two spaces above. The
+runtime's layout loader reads it with its own constant (`Frame/CLO.load`,
+decompiled from the APK's dex):
 
-The dumper reads an instance's `NAME` and its `W`/`H`/`HOTX`/`HOTY` from the raw
-row `item_table[OI]`, so both come out shifted: the printed name is the XOR
-partner's, and so is the image. `readdump.py` names an instance with `name(OI)`
-and takes its image from row `OI XOR 28`, that is, from any instance line (in
-any frame) whose `OI` is that row. An Active whose row no instance line carries
-prints `(image not in dump)`.
+```java
+this.loOiHandle = (short) (cFile.readAShort() ^ 48);
+```
 
-**Proof: positions from an independent build.** The recompiled game's Office
-init (local only, never committed) creates each object by handle at an (X, Y).
-Joined to the dump's frame-3 instances:
+and only then resolves it through the item table that `COI.loadHeader`
+already XORed with 28 (`COIList.getOIFromHandle`). So for a placed instance:
 
-| Join | exact (handle, X, Y) matches of 189 creates |
-| --- | ---: |
-| raw `OI` = event handle | **186** |
-| `OI XOR 28` = event handle | 2 |
+```
+event handle of instance OI s   =   s ^ 48
+true object of instance OI s    =   item_table[s ^ 48 ^ 28]  =  item_table[s ^ 44]
+```
 
-Examples: `mask` (event 89) at (762, 821), `hear footsteps` (149) at
-(-128, 970), `your view` (126) at (748, -23).
+`readdump.py` applies this (`--lo-xor`, default 48; `0` on PC builds), and
+`tools/dump/test-instances.py` pins it. The two earlier rules were both wrong,
+and the way each one failed is the check to keep:
 
-**Retracted: "frame instances are not scrambled at all" (2026-08-26).** Its
-TYPE-vs-image table (914/914 raw, 52% post-XOR) compared an item-table row's
-`TYPE` with the image the dumper read from *that same row*. The raw reading
-could not fail and the XOR reading was a coin flip by construction; it never
-tested which object an instance is. Every placed-object name and box that
-`readdump.py instances` printed before 2026-09-15 belongs to the XOR partner.
+| Reading of instance OI | Office camera markers placed | frame-3 instances joined to an event-referenced object |
+| --- | --- | ---: |
+| raw row (2026-08-26) | 8, 9, 10, 11, 12 | 158 / 205 |
+| event handle (2026-09-15, first pass) | 01, 2, 5, 9, 10, 11, 12 | 154 / 205 |
+| **`^ 48` (runtime)** | **all twelve** | **196 / 205** |
 
-The warning it drew still holds, narrowed: XOR-28 flips bits 2-4 and keeps a
-handle inside its 32-aligned block, so any control that stays inside the item
-table -- names, types, the same row's image -- cannot separate the readings.
-Join the instance to something the item table did not produce.
+Under either wrong reading five camera markers had no Office instance, and a
+Fusion `Set position` onto a missing object does nothing -- Withered Foxy could
+never have left CAM 08. Under the runtime's reading the twelve markers sit in
+the camera-map area (x 602-950, y 390-651) and the four approach markers form
+one column at x = 668: `hall stage 1` (668, 481), `hall stage 2` (668, 550),
+`in office` (668, 612), `got you box` (670, 681), with the static hitboxes the
+characters are tested against on the same column (`hall movement` (669, 503),
+`hear footsteps` (670, 533), `close by` (669, 606)). The animatronic objects
+themselves are parked in a row at y = 793-822, below the 768-high window.
 
----
+**Retracted: the 186-of-189 recompile join (2026-09-15, first pass).** The
+recompile's Office init was generated by mmfparser from the same instance
+chunk with the same raw OI, so "raw OI = recompile handle" compared the chunk
+with itself. The warning of 2026-08-26 stands and now reads: join an instance
+to the *events* (which are certainly in handle space) or to the *runtime
+source*, never to anything derived from the instance chunk or the item table.
 
 ## 5. The vocabulary you need to read a group
 
