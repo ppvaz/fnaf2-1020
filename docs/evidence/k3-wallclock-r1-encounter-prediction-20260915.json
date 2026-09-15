@@ -1,0 +1,141 @@
+{
+ "schema": "encounter-prediction-record-v1",
+ "claimLevel": "MODEL_ONLY",
+ "status": "PUBLISHED BEFORE GRADING",
+ "run": "night7-night7-k3-wallclock-r1-20260915T002238Z",
+ "binding": "k3 fnv1a-5c8dcb5f",
+ "night": 7,
+ "publishedAt": "2026-09-15T00:24:04.873Z",
+ "scheduledEventAt": "2026-09-15T00:23:14.846Z",
+ "timing": "published ~50 s after the night onset, while the night was still running on the phone and before its recording was pulled or graded; cycles 2-3 had already happened, so this is a prediction against an unseen recording, not a forecast of future game time",
+ "clock": {
+  "onsetPhoneWallMs": 1789431792824.2085,
+  "onsetLow16": 17592,
+  "source": "helper GET reply wallMs beside snapshotNs (installed 2026-09-15); phone wall minus host wall at onset -1361 ms"
+ },
+ "hypothesis": "the game seeds its 16-bit RNG from the phone's System.currentTimeMillis() at scene load, an unknown gap of 0-8 s before the latched office onset",
+ "candidates": 8001,
+ "gapWindowMs": [
+  0,
+  8000
+ ],
+ "epochMs": 2433,
+ "firstEncounter": [
+  {
+   "first": "withchica@2",
+   "share": 0.333
+  },
+  {
+   "first": "withbonnie@3",
+   "share": 0.25
+  },
+  {
+   "first": "withfreddy@2",
+   "share": 0.206
+  },
+  {
+   "first": "withchica@3",
+   "share": 0.165
+  },
+  {
+   "first": "withfreddy@3",
+   "share": 0.034
+  },
+  {
+   "first": "withbonnie@4",
+   "share": 0.011
+  }
+ ],
+ "perCycle": [
+  {
+   "cycle": 2,
+   "pEncounter": 0.538,
+   "chica": 0.62,
+   "bonnie": 0,
+   "freddy": 0.38
+  },
+  {
+   "cycle": 3,
+   "pEncounter": 0.936,
+   "chica": 0.26,
+   "bonnie": 0.57,
+   "freddy": 0.18
+  },
+  {
+   "cycle": 4,
+   "pEncounter": 0.958,
+   "chica": 0.46,
+   "bonnie": 0.38,
+   "freddy": 0.15
+  },
+  {
+   "cycle": 5,
+   "pEncounter": 0.915,
+   "chica": 0.38,
+   "bonnie": 0.1,
+   "freddy": 0.52
+  },
+  {
+   "cycle": 6,
+   "pEncounter": 0.812,
+   "chica": 0.3,
+   "bonnie": 0.42,
+   "freddy": 0.28
+  },
+  {
+   "cycle": 7,
+   "pEncounter": 0.862,
+   "chica": 0.41,
+   "bonnie": 0.47,
+   "freddy": 0.12
+  },
+  {
+   "cycle": 8,
+   "pEncounter": 0.852,
+   "chica": 0.46,
+   "bonnie": 0.23,
+   "freddy": 0.31
+  },
+  {
+   "cycle": 9,
+   "pEncounter": 0.86,
+   "chica": 0.32,
+   "bonnie": 0.31,
+   "freddy": 0.37
+  },
+  {
+   "cycle": 10,
+   "pEncounter": 0.874,
+   "chica": 0.36,
+   "bonnie": 0.42,
+   "freddy": 0.21
+  },
+  {
+   "cycle": 11,
+   "pEncounter": 0.863,
+   "chica": 0.44,
+   "bonnie": 0.3,
+   "freddy": 0.26
+  },
+  {
+   "cycle": 12,
+   "pEncounter": 0.839,
+   "chica": 0.36,
+   "bonnie": 0.3,
+   "freddy": 0.34
+  },
+  {
+   "cycle": 13,
+   "pEncounter": 0.862,
+   "chica": 0.37,
+   "bonnie": 0.38,
+   "freddy": 0.25
+  }
+ ],
+ "scoring": "after the run, read every cycle's right-eyehole encounter from the recording (eyehole-read.py, mask-on found in the frames) and keep the candidates whose identity+cycle sequence matches; the surviving gap is the load gap. A second wall-stamped run landing on the same gap within a few ms supports clock seeding; no surviving candidate refutes it inside this window or exposes a model error",
+ "retained": {
+  "file": "artifacts/forensics/k3-wallclock-r1/k3r1-encounter-prediction.json",
+  "sha256": "31edbba7cf5c436eaca452ddd8326ff9a586f49a6df5931f9792b223ad4a33e8",
+  "generator": "artifacts/forensics/k3-wallclock-r1/encounter-predict.mjs"
+ }
+}
