@@ -5545,3 +5545,40 @@ Open: Plan 12 level 6 (Night 6 reliability cohort) is empty and not yet
 predeclared; Gate G is not invoked; the Minus 7 catalog lane has two pre-night
 aborts; the delivered epochs of the seven dial-screen-pulled traces remain
 UNKNOWN.
+
+**2026-09-14/15: the first predeclared Night 7 (10/20) cohort is complete --
+binding k2 won 3 of 10 on the phone.** Predeclared before run 1
+([predeclaration](../docs/evidence/night7-cohort-k2-predeclaration-20260914.json)):
+ten counted k2 runs, aim 2433 on the 5000 ms grid, observe-once, no tuning.
+Result ([cohort record](../docs/evidence/night7-cohort-k2-result-20260914.json),
+commit f6eb1f4): 3 wins (r01b, r03, r05), 7 deaths, 0 invalid, 2 excluded (r01:
+the fact register had no k2 aim, now registered from a re-run census; r07:
+helper clock probe timeout, onset never latched). 3/10, Wilson 95% [0.108,
+0.603]. Every release landed 0.04-1.25 ms late and every run delivered the
+same loop phase by video (first CAM 11 gap 2.91-3.06 s).
+
+The model is refuted at that phase: under the 16-bit Fusion RNG there are only
+65,536 nights and k2 wins all of them at 2416.66, 2433 and 2449.99 ms. All seven
+phone deaths are Withered Foxy, first visible 7.29-7.73 s into a cycle, around
+the model's 7.567 s Foxy roll and just after the 7.46 s hall flash. Candidate
+mechanism (not a finding): a hall flash whose effect lands after that roll;
+the model cliff is 7540-7560 ms at epoch 2433 and moves with the delivered
+epoch, and the model applies presses with no per-press latency. Refuted along
+the way: early authorization as cause, refused-flash streaks as cause, and the
+r02/r04 ledger reads (cycle-ledger.py used Night 6 constants; fixed at
+d29fa6b, gated by test-cycle-ledger.py).
+
+Also this session, host-side: seed-clock forensics
+([record](../docs/evidence/seed-clock-forensics-night6-20260914.json)) --
+blackout-loop onsets cannot identify a seed; in the model, full camera
+positions lock a seed in ~20 s given a +-20 ms clock window, encounters in ~84 s;
+the eyehole reader reproduces 12/14 corpus labels. Plan 25 records the
+horizons beyond the ladder.
+
+Open: (1) k3 = k2 with the hall flash at 7400 ms (model 3000/3000, band
+unchanged, Foxy edge 2516 -> 2583 ms) needs its anchor-aim record and a new
+predeclared cohort; (2) no live hall-light latency probe exists to test the
+~90 ms tail; (3) the lifecycle observer reads state=night before the intro on
+some runs; (4) helper wall-clock stamp at the onset latch and a twin-nights
+test of clock seeding; (5) the peer session's uncommitted Minus 7 catalog lane
+(custom7 target, arm-less mode) is untouched. Gate G is not invoked.
