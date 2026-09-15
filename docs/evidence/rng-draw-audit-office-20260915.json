@@ -84,5 +84,32 @@
   "Measure the phone's rendered frame count across a night (frame trace or video frame timestamps) to fix the stream position at each roll",
   "Only then rescore seeds against eyehole reads inside the logged seed bracket"
  ],
- "retained": "artifacts/forensics/rng-draw-audit-20260915 (dump-draw-groups.json, dump-draw-sites.json, SHA256SUMS)"
+ "retained": "artifacts/forensics/rng-draw-audit-20260915 (dump-draw-groups.json, dump-draw-sites.json, SHA256SUMS)",
+ "classification": {
+  "source": "Chowdren generated bodies (real names), with the dump for the two stubbed conditions (g517/g518) and the monitor-down draw (g807)",
+  "unconditional": "g822 every frame (Paper Pals AI); g58 and g192 every 100 ms; g59 every 490 ms; g497 and g744 every 1000 ms",
+  "onModelledEvents": [
+   "e475-e492: a Withered or Toy unit resolved out of the office -> cooldown Random(500)/night (the model has one repel-cooldown draw; the sheet has one group per unit and outcome)",
+   "e479-e482: streak threshold with cameras up -> Random(500)/night",
+   "e610-e615: a unit reaching CAM 05/06 (once while true) -> sound selector Random(4)",
+   "e620-e628: a unit with its fade counter > 0 overlapping hear-footsteps (once while true) -> Random(5) or Random(3)",
+   "e237, e324, e338, e351-e354, e377: Balloon Boy / Toy / Withered Chica position steps -> Random(4)",
+   "e548: cam01 value 6 == 4 -> Random(3)"
+  ],
+  "perFrameDuringEncounters": "dump g517: blackout (OI 131) value 0 in [20,100) -> Random(50); g518: value 0 in [100,200) -> Random(50)+20; value 0 is the encounter clock counted to 300 (g514/g537), so ~180 draws per encounter",
+  "perFrameWhileViewing": [
+   "e405-e414: viewing > 0, your-view over a unit whose value 2 (fade counter) > 0 -> Random(100)",
+   "e303, e305, e356: a Toy in state 2 under your-view -> Random(100)",
+   "e437-e440: Puppet camera static glitch rolls Random(50) (lit 0, static value 5 == 1); e442: Random(150) per frame while static value 4 > 0"
+  ],
+  "monitorDownImage": "dump g807: the monitor-down sprite (OI 84) visible and its value 2 == 0, then Random(1000000) == 1 inside the condition -> a draw every frame that holds; how long the sprite stays visible is not yet established",
+  "oncePerNight": "e601-e608 story-night Golden Freddy AI; e724 random image once per monitor drop (viewing becomes 0)",
+  "implementationOrder": [
+   "1 unconditional draws with the Android countdown timers (needs the rendered frame count)",
+   "2 draws on events the model already simulates, in sheet order",
+   "3 encounter blackout flicker from the encounter clock",
+   "4 camera-view draws (needs your-view camera and per-unit fade counters)",
+   "5 the monitor-down image draw, once its sprite visibility is pinned down"
+  ]
+ }
 }
