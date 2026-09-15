@@ -202,6 +202,10 @@ export class Sim {
       // window. Under lethal: false a model kill returns early and
       // skips that frame's countdown reaches, so hooked cadences slip a frame per
       // non-lethal kill (frames the phone never plays).
+      // g263 places its 200 ms countdown after `viewing > 0`, so the countdown only runs on
+      // frames a camera is displayed and its phase follows the accumulated camera-up time,
+      // not frame 0. Off keeps the model's global f % 12 sample (dump g263).
+      sourcedLastViewPause: false,
       frameMs: /** @type {null | ((frame: number) => number)} */ (null),
       frameValue5: /** @type {null | ((frame: number) => number)} */ (null),
     }, opts);
@@ -301,6 +305,7 @@ export class Sim {
                         sample: { v: 0, init: false }, ten: { v: 0, init: false } };
     // this loop's shared cadence events under the hook (1000 / 500 / 200 / 10000 ms)
     this.secTick = false; this.halfTick = false; this.sampleTick = false; this.tenTick = false;
+    this.lastViewTimer = { v: 0, init: false };   // g263 under sourcedLastViewPause
     this.am = 0;
     this.hour = 0;
     this.blackoutClock = 0;
@@ -1051,7 +1056,8 @@ export class Sim {
 
     // g263 is the only writer of `last viewed`: a global 200 ms sample of the
     // live feed. It runs only while a camera is displayed.
-    if (this.viewing > 0 && (this.hooked ? this.sampleTick : f % C.LAST_VIEW_SAMPLE_FRAMES === 0))
+    if (this.viewing > 0 && (this.opts.sourcedLastViewPause ? this.passEvery(this.lastViewTimer, 200)
+        : this.hooked ? this.sampleTick : f % C.LAST_VIEW_SAMPLE_FRAMES === 0))
       this.lastViewed = this.viewing;
 
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('early');   // g58/g59/g192
