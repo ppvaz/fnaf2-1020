@@ -118,6 +118,13 @@ if ! pcm_up; then
   fi
 fi
 
+# The capture is a single consumer of the PCM. A root bluealsa-aplay.service
+# (enabled at boot on this host, seen 2026-09-15) holds it and cannot be
+# stopped by a user; say so with the command, before a run is launched on it.
+if pgrep -x bluealsa-aplay >/dev/null && [ "$(ps -o user= -p "$(pgrep -x bluealsa-aplay | head -1)")" = root ]; then
+  echo "bt-link: root bluealsa-aplay holds the PCM; run: sudo systemctl disable --now bluealsa-aplay" >&2
+  exit 3
+fi
 result="$(check || true)"
 printf '%s\n' "$result"
 case "$result" in audio-route=READY*) exit 0 ;; *) exit 1 ;; esac
