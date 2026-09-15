@@ -854,6 +854,13 @@
       ]
     },
     {
+      "file": "packages/core/test/footstep-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/core/test/foxy-chain.test.js",
       "imports": [
         "../src/mechanics/plant-model.js",

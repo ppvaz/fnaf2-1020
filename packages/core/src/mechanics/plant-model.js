@@ -1,6 +1,8 @@
 import * as C from './config.js';
 import { Rng } from './rng.js';
 
+/** route nodes whose marker overlaps `hear footsteps` (cams 01/2/3/4, hall stage 1/2) */
+const FOOTSTEP_NODES = new Set([1, 2, 3, 4, 'blindA', 'blindB']);
 const MON_DOWN = 'down', MON_RAISING = 'raising', MON_UP = 'up', MON_LOWERING = 'lowering';
 
 export class Sim {
@@ -179,6 +181,22 @@ export class Sim {
       // the light is on that Puppet. Placed after the camera-view draws (g498) and
       // before the monitor-down draw (g807).
       sourcedPuppetGlitchDraws: false,
+      // The footstep cues (dump g695-g703, generated e620-e628): while a
+      // hall-routed character's value 2 is above zero (the 5 s move groups
+      // g344-g359 write 10, g458-g466 drain 1 per loop) and it overlaps
+      // `hear footsteps` (149), one draw per continuous overlap (the "only one
+      // action when event loops" flag): cam01 value 5 = Random(5)+1, or for
+      // Mangle value 12 = Random(3)+1. With the instance layout read through
+      // the runtime's XOR (docs/evidence/hall-movement-trigger-20260915.json)
+      // the marker is overlapped from cam 01, cam 2, cam 3, cam 4, hall stage 1
+      // and hall stage 2; `in office` only by some sprites and is left out.
+      // So: one draw per roll hop onto one of those markers, in sheet order
+      // g695-g703 (W. Freddy, W. Bonnie, W. Chica, W. Foxy, T. Freddy,
+      // T. Bonnie, T. Chica, Balloon Boy, Mangle), between the hour table and
+      // g730. Foxy's sprite moves at g389 when the hall latch clears, so his
+      // draw needs the move within ten loops of g349's acceptance. Requires
+      // sourcedSheetOrder.
+      sourcedFootstepDraws: false,
       // Sheet order for the draws the model otherwise places by hand (requires
       // sourcedSecondPass). g213-g497 run where the view draws ran, with g366/g368
       // after g294, g419 after g401 and g468-g476 after g440, then g498, g500-g506
@@ -263,7 +281,7 @@ export class Sim {
     this.applyAiHour(0);
 
     // --- Foxy
-    this.foxy = { loc: 'parts', hallColumn: false, D: 0, exposure: 0, gotYou: false, pinUntil: -1, A: 0, B: 0,
+    this.foxy = { loc: 'parts', hallColumn: false, footstep: false, acceptedAt: -100, D: 0, exposure: 0, gotYou: false, pinUntil: -1, A: 0, B: 0,
                   readyAt: this.opts.sourcedFoxyChain ? 0
                     : this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
     this.maskDAccum = 0;
@@ -279,7 +297,7 @@ export class Sim {
     this.hallColumnOccupied = false;
 
     // --- Balloon Boy
-    this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
+    this.bb = { stage: 0, footstep: false, pending: false, inOpening: false, openingAtCamsUp: -1,
                 maskTicks: 0, inside: false };
     // Mangle's s0020 static is raised in two proximity contexts: while she is
     // on CAM 11 (the winding/Prize Corner camera) and at the office/right-vent
@@ -327,6 +345,7 @@ export class Sim {
       openingTicks: 0, maskExposureTicks: 0, raiseSeen: false, inside: false,
       insideArmed: false, insideDangerAt: -1, committedAt: -1, done: false,
       hallColumn: false,   // overlapping `hall movement` last frame (sourcedHallEntry)
+      footstep: false,     // a roll hop onto a `hear footsteps` marker, drawn at g695-g703 (sourcedFootstepDraws)
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
@@ -340,6 +359,8 @@ export class Sim {
       throw new Error('the frame-time hook drives the sheet-ordered countdowns: it requires sourcedSheetOrder');
     if ((this.opts.frameMs || this.opts.frameValue5) && this.opts.foxyEnabled && !this.opts.sourcedFoxyChain)
       throw new Error('the frame-time hook times Foxy through g824/g825/g864: it requires sourcedFoxyChain');
+    if (this.opts.sourcedFootstepDraws && !this.opts.sourcedSheetOrder)
+      throw new Error('sourcedFootstepDraws draws in the sheet-ordered pass: it requires sourcedSheetOrder');
     if (this.opts.sourcedSheetOrder && !this.opts.sourcedSecondPass)
       throw new Error('sourcedSheetOrder orders the per-second pass: it requires sourcedSecondPass');
     if (this.opts.sourcedUnconditionalDraws && C.FPS !== 60)
@@ -833,6 +854,7 @@ export class Sim {
       this.emit('puppet-attack', { at: 123 });
     }
     if (sheet && !this.hooked && f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);          // g673-g684
+    if (sheet && this.opts.sourcedFootstepDraws) this.footstepDraws();                    // g695-g703
     if (this.hooked) {                                                                   // g627, g629/g630, g673-g684
       if (this.passEvery(this.hookTimers.g627, 1000)) this.am++;
       if (this.am >= 70) { this.am = 0; this.hour++; this.applyAiHour(this.hour); }
@@ -881,6 +903,16 @@ export class Sim {
     if (t.v > 0) return false;
     t.v += ms * 3;
     return true;
+  }
+
+  /** g695-g703: one draw per pending footstep cue, in sheet order (sourcedFootstepDraws). */
+  footstepDraws() {
+    for (const id of ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy', 'toybonnie', 'toychica', 'bb', 'mangle']) {
+      const holder = id === 'foxy' ? this.foxy : id === 'bb' ? this.bb : this.units.find(x => x.id === id);
+      if (!holder || !holder.footstep) continue;
+      holder.footstep = false;
+      this.rng.int(0, id === 'mangle' ? 2 : 4, 0);   // cam01 value 5 = Random(5)+1; Mangle: value 12 = Random(3)+1
+    }
   }
 
   /** your-view overlaps the Puppet: his route camera when out, CAM 11 in the box. */
@@ -1329,11 +1361,12 @@ export class Sim {
   foxyChainTransitions() {
     if (!this.opts.foxyEnabled) return;
     const fx = this.foxy;
-    if (fx.A === 1 && fx.B === 0) { fx.A = 2; if (this.opts.sourcedViewDraws) this.fadeUntil.foxy = this.frame + 8; }   // g349: C = 10
+    if (fx.A === 1 && fx.B === 0) { fx.A = 2; fx.acceptedAt = this.frame; if (this.opts.sourcedViewDraws) this.fadeUntil.foxy = this.frame + 8; }   // g349: C = 10, value 2 = 10
     if (fx.B > 0) fx.B = Math.max(0, fx.B - 1);      // g364
     if (fx.A !== 2 || this.hallLatch) return;       // the latch g489 left on the previous frame
     if (fx.loc === 'parts') {                        // g389
       fx.A = 0; fx.loc = 'hall'; fx.D = 0;
+      if (this.opts.sourcedFootstepDraws && this.frame - (fx.acceptedAt ?? -100) < 10) fx.footstep = true;   // hall stage 1, value 2 still > 0
       this.emit('foxy-arrive');
     } else if (fx.loc === 'hall' && !fx.gotYou) {    // g390
       fx.A = 0; fx.gotYou = true;
@@ -1491,6 +1524,7 @@ export class Sim {
   // the "laugh" a player counts. Reaching CAM 05 is the vent-camera cue.
   bbHop() {
     this.bb.stage++;
+    if (this.opts.sourcedFootstepDraws && FOOTSTEP_NODES.has([10, 7, 3, 1, 5][this.bb.stage])) this.bb.footstep = true;
     if (this.opts.sourcedEventDraws && this.bb.stage >= 2) {            // e351/e352/e353
       const cue = this.rng.int(0, 3, 0) + 1;                              // cam01 value 6
       if (this.bb.stage === C.BB_STAGES - 1) this.rng.int(0, 3, 0);       // e353 also writes value 21
@@ -1777,6 +1811,7 @@ export class Sim {
         const at = u.basePath.indexOf(2);
         u.path = [...u.basePath.slice(0, at + 1), 1, 2, ...u.basePath.slice(at + 1)];
         u.idx = at;
+        if (this.opts.sourcedFootstepDraws) u.footstep = true;   // cam 01 overlaps the marker
         this.emit('route-fork', { who: u.id, at: 2, to: 1 });
       } else if (u.id === 'mangle' && here === 1 && u.basePath) {                                      // g399
         u.path = u.basePath;
@@ -1787,6 +1822,7 @@ export class Sim {
       this.rng.int(0, 3, 0);                                               // e324
     u.idx++;
     const node = u.path[u.idx];
+    if (this.opts.sourcedFootstepDraws && FOOTSTEP_NODES.has(node)) u.footstep = true;   // g695-g703, next pass
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
       u.atOpening = true; u.openingSince = this.frame; u.openingTicks = 0;
       // Toy Bonnie's opening timer IS his B counter (group 428 writes
