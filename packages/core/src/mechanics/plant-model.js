@@ -97,6 +97,20 @@ export class Sim {
       // values are cosmetic. g497 and g744 are already drawn (tickPuppet,
       // rollDecidePath), but in the opposite order to the sheet -- not fixed here.
       sourcedUnconditionalDraws: false,
+      // One draw at events the model already simulates (docs/evidence/
+      // rng-draw-audit-office-20260915.json, classification.onModelledEvents):
+      //   e478/e484-e487/e489  the resolution that lets a unit inside also draws
+      //                        its Random(500) cooldown, not only the defended one
+      //   e479-e482  the cameras-up streak sending a unit inside: Random(500)
+      //   e351/e352  Balloon Boy CAM 07->03, 03->01: cue Random(4)
+      //   e353       CAM 01->05: cue Random(4), then a second Random(4)
+      //   e548       after either, a cue of 4 is redrawn with Random(3)
+      //   e354       into the opening: Random(4)
+      //   e237/e338/e377  the five-tick mask sendback (BB, Mangle, Toy Chica): Random(4),
+      //              and the early-leave roll is drawn on that tick too (no short-circuit)
+      //   e324       Withered Chica CAM 02->06: Random(4)
+      // Values only matter where the sheet branches on them (e548).
+      sourcedEventDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -702,7 +716,10 @@ export class Sim {
             // repelled to their sourced mid-route room with a fresh approach
             // cooldown B = Random(500)/night.
             if (ended.masked) this.unitLeave(u, { cooldown: this.repelCooldown() });
-            else this.unitEnterInside(u, 'missed the 45-frame office-defense fuse');
+            else {
+              if (this.opts.sourcedEventDraws) this.rng.int(0, C.REPEL_COOLDOWN_ROLL - 1, 0);   // e478/e484-e489
+              this.unitEnterInside(u, 'missed the 45-frame office-defense fuse');
+            }
           }
         } else if (!ended.masked) {
           this.kill('blackout', `${ended.by} got you: the mask was not fully on within 0.75s`);
@@ -981,7 +998,11 @@ export class Sim {
     // does not do for any of the three.
     if (this.bb.inOpening && this.maskFullyOn && this.frame % C.FPS === 0) {
       this.bb.maskTicks++;
-      if (this.bb.maskTicks >= C.VENT_MASK_TICKS ||
+      if (this.opts.sourcedEventDraws) {
+        const early = this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false);   // g292 draws on every tick
+        if (this.bb.maskTicks >= C.VENT_MASK_TICKS) { this.rng.int(0, 3, 0); this.bbLeave(); }   // e237
+        else if (early) this.bbLeave();
+      } else if (this.bb.maskTicks >= C.VENT_MASK_TICKS ||
           this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) this.bbLeave();
     }
   }
@@ -1034,6 +1055,11 @@ export class Sim {
   // the "laugh" a player counts. Reaching CAM 05 is the vent-camera cue.
   bbHop() {
     this.bb.stage++;
+    if (this.opts.sourcedEventDraws && this.bb.stage >= 2) {            // e351/e352/e353
+      const cue = this.rng.int(0, 3, 0) + 1;                              // cam01 value 6
+      if (this.bb.stage === C.BB_STAGES - 1) this.rng.int(0, 3, 0);       // e353 also writes value 21
+      if (cue === 4) this.rng.int(0, 2, 0);                               // e548 redraws a 4
+    }
     if (this.bb.stage > C.BB_SILENT_HOPS)
       this.emit('laugh', { samples: C.BB_VOCAL_SAMPLES });
     if (this.bb.stage === C.BB_STAGES - 1) {
@@ -1043,6 +1069,7 @@ export class Sim {
   }
 
   bbEnterOpening() {
+    if (this.opts.sourcedEventDraws) this.rng.int(0, 3, 0);              // e354
     this.bb.stage = C.BB_STAGES; this.bb.inOpening = true;
     this.bb.openingAtCamsUp = this.camsUpCount;
     // g417 plays only the movement sample every hop shares -- no laugh here,
@@ -1214,7 +1241,11 @@ export class Sim {
       if ((u.id === 'toychica' || u.id === 'mangle') && u.atOpening &&
           this.maskFullyOn && f % C.FPS === 0) {
         u.maskExposureTicks++;
-        if (u.maskExposureTicks >= 5 || this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) {
+        if (this.opts.sourcedEventDraws) {
+          const early = this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false);   // drawn on every tick
+          if (u.maskExposureTicks >= 5) { this.rng.int(0, 3, 0); this.unitLeave(u); continue; }   // e338/e377
+          if (early) { this.unitLeave(u); continue; }
+        } else if (u.maskExposureTicks >= 5 || this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false)) {
           this.unitLeave(u);
           continue;
         }
@@ -1234,6 +1265,7 @@ export class Sim {
         const why = streakKill
           ? `cams stayed up ${((f - this.camsUpSince) / C.FPS).toFixed(1)}s with someone at the opening`
           : 'their sourced opening timer armed before the next cams-up trip';
+        if (streakKill && this.opts.sourcedEventDraws) this.rng.int(0, C.REPEL_COOLDOWN_ROLL - 1, 0);   // e479-e482
         this.unitEnterInside(u, why);
       }
     }
@@ -1260,6 +1292,8 @@ export class Sim {
         u.idx = u.basePath.indexOf(2) - 1;
       }
     }
+    if (this.opts.sourcedEventDraws && u.id === 'withchica' && u.path[u.idx] === 2 && u.path[u.idx + 1] === 6)
+      this.rng.int(0, 3, 0);                                               // e324
     u.idx++;
     const node = u.path[u.idx];
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
