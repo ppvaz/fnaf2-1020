@@ -120,6 +120,21 @@ export class Sim {
       // start; a dropped frame on the phone advances the clock by 2 and removes
       // a draw, like g822.
       sourcedBlackoutDraws: false,
+      // Camera-view draws (dump g344-g360, g458-g477, g366/g368/g419, g498):
+      //   an accepted move writes the unit's fade counter C = 10 (g344-g360,
+      //   Foxy g349); g458-g467 then take one per frame before g468-g476 draw
+      //   Random(100) each frame C > 0 while the your-view marker is on that
+      //   unit and a camera is up -- up to 9 frames per accepted move;
+      //   g366/g368/g419 draw Random(100) each frame Toy Bonnie / Toy Chica /
+      //   Toy Freddy waits in state 2 under your-view with a camera up;
+      //   g498 draws Random(100) every 200 ms (timer first, no camera-up
+      //   condition) while your-view is on the Puppet (CAM 11 in the box).
+      // your-view is `this.cam`, the last camera selected. Approximations: the
+      // model marks C at the roll even when the source would hold A = 1 behind a
+      // gate, and a toy that moves on its roll frame never waits in state 2.
+      // Not emulated: the Puppet's static glitch chain (g500-g505, needs the
+      // Puppet out and static value 5) and Paper Pals (g477, not in the model).
+      sourcedViewDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -199,6 +214,9 @@ export class Sim {
     this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
     this.blackoutCount = 0;
     this.blackoutStartFrame = -1;   // the frame the running encounter began (sourcedBlackoutDraws)
+    this.puppetStaticTimer = 600;   // g498 200 ms countdown in 1/3 ms units (sourcedViewDraws)
+    /** @type {Record<string, number>} last frame each unit's fade counter is above 0 (sourcedViewDraws) */
+    this.fadeUntil = {};
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -563,6 +581,37 @@ export class Sim {
     }
   }
 
+  /**
+   * Camera-view draws in sheet order (sourcedViewDraws); `this.cam` is the
+   * your-view marker, the last camera selected.
+   * @param {number} f
+   */
+  drawViewed(f) {
+    const up = this.viewing > 0;
+    /** @param {string} id */
+    const nodeOf = id => {
+      if (id === 'bb') return this.bb.inOpening || this.bb.inside ? null : ([10, 7, 3, 1, 5][this.bb.stage] ?? null);
+      if (id === 'foxy') return this.opts.foxyEnabled && this.foxy.loc === 'parts' ? 8 : null;
+      const u = this.units.find(x => x.id === id);
+      return !u || u.done || u.atOpening || u.inside ? null : u.path[u.idx];
+    };
+    if (up) for (const id of ['toybonnie', 'toychica', 'toyfreddy']) {                       // g366, g368, g419
+      const u = this.units.find(x => x.id === id);
+      if (u?.pending && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
+    }
+    if (up) for (const id of ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy',
+                              'toybonnie', 'toychica', 'mangle', 'bb']) {                      // g468-g476
+      if (f <= (this.fadeUntil[id] ?? -1) && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
+    }
+    this.puppetStaticTimer -= 50;                                                             // g498
+    if (this.puppetStaticTimer <= 0) {
+      this.puppetStaticTimer += 600;
+      const p = /** @type {any} */ (this.puppet);
+      const at = !p.out ? C.BOX_CAM : (typeof p.loc === 'number' ? p.loc : null);
+      if (at === this.cam) this.rng.int(0, 99, 0);
+    }
+  }
+
   startBlackout(by, unitId = null) {
     this.blackoutStartFrame = this.frame;
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
@@ -704,6 +753,7 @@ export class Sim {
       return;
     }
 
+    if (this.opts.sourcedViewDraws) this.drawViewed(f);   // g366/g368/g419, g468-g476, g498
     // --- blackout flicker: g514 clock, g517/g518 draws (sourcedBlackoutDraws)
     if (this.opts.sourcedBlackoutDraws && this.blackout.active) {
       const clock = f - this.blackoutStartFrame + 1;
@@ -910,7 +960,7 @@ export class Sim {
   foxyChainTransitions() {
     if (!this.opts.foxyEnabled) return;
     const fx = this.foxy;
-    if (fx.A === 1 && fx.B === 0) fx.A = 2;          // g349
+    if (fx.A === 1 && fx.B === 0) { fx.A = 2; if (this.opts.sourcedViewDraws) this.fadeUntil.foxy = this.frame + 8; }   // g349: C = 10
     if (fx.B > 0) fx.B = Math.max(0, fx.B - 1);      // g364
     if (fx.A !== 2 || this.hallLatch) return;       // the latch g489 left on the previous frame
     if (fx.loc === 'parts') {                        // g389
@@ -1367,8 +1417,11 @@ export class Sim {
           // equally load-bearing. Keep the move pending until every gate opens.
           const step = this.sourcedRouteStep(u, this.frame);
           if (step === 'discard' || step === 'returned') { /* A = 0: the roll is spent */ }
-          else if (step !== 'hold' && this.canAdvance(u, this.frame)) this.advance(u);
-          else u.pending = true;
+          else {
+            if (this.opts.sourcedViewDraws) this.fadeUntil[u.id] = this.frame + 8;   // g344-g358: A = 2, C = 10
+            if (step !== 'hold' && this.canAdvance(u, this.frame)) this.advance(u);
+            else u.pending = true;
+          }
         }
       }
     }
@@ -1378,6 +1431,7 @@ export class Sim {
     // the monitor: that roll latches until the next raise completes.
     if (this.opts.bbEnabled && !this.bb.inOpening) {
       if (this.rng.chance(C.MO_CHANCE(this.ai.bb), true)) {
+        if (this.opts.sourcedViewDraws) this.fadeUntil.bb = this.frame + 8;   // g359: C = 10
         if (this.bb.stage === C.BB_STAGES - 1) {
           if (this.monitor === MON_UP) this.bbEnterOpening();
           else this.bb.pending = true;
