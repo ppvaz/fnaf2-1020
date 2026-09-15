@@ -57,7 +57,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "No lock. Strongest candidate: full-02 seed 34934. Next: resolve the runtime marker layout, then add the hall-flash classes as a second per-cycle observable.",
+ "notYetScored": "No lock. Strongest candidate is still full-02 seed 34934, from encounters alone. Next: resolve the runtime marker layout (cams 3/4/6/7/8 and the hall movement trigger) before using the hall flash.",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -203,6 +203,35 @@
     "model": "on living nights the model's hall latch reads dark at 99.5% of flashes (wrong). The dump's rule (g875-g880 set `hall movement` to 300 once when a hall-routed character starts overlapping it, g881 drains it by global value 5, g202 draws the held light dark while it is above 0) gives 40.7% dark, with seeds disagreeing on 40/42 cycles, if the trigger is blindA/blindB/Foxy-in-hall",
     "blocked": "the placed `hall movement` object sits at (1, 914), 16x125; no placed marker with a 24x24 unit sprite overlaps it, and cam markers 3/4/6/7/8 have no Office instance, so which positions trigger it is unresolved -- the same runtime-layout gap as the footstep cues"
    }
+  },
+  "combinedEncountersAndHall": {
+   "assumption": "hall counter trigger ASSUMED: entering blindA/blindB or Foxy entering the hall sets 300; it drains 1 per frame (by global value 5 on the trace); model LIT = counter 0, DIM = counter > 0, sampled at flash + 50 ms; phone BLACK cycles skipped",
+   "predeclaredRule": "unique best window seed on (total conflicts, -total hits); control as good < 5%; the hold-out best-fit seed must be that seed, with tie-corrected control share < 5%",
+   "full04": {
+    "best": {
+     "low16": 34047,
+     "encounter": "0 conflicts / 4 hits",
+     "hall": "3 conflicts / 6 hits",
+     "epochMs": 2364
+    },
+    "controlAsGood": "3.3%",
+    "unique": true,
+    "holdOut": "fit on cycles 0-4 picks 34046; its test on cycles 5-9 is matched by 90.7% of controls",
+    "verdict": "NO LOCK"
+   },
+   "full02": {
+    "best": {
+     "low16": 34934,
+     "encounter": "6 conflicts / 17 hits",
+     "hall": "17 conflicts / 14 hits",
+     "epochMs": 2447.333
+    },
+    "controlAsGood": "13.3% (encounters alone: 2.0%)",
+    "unique": true,
+    "holdOut": "fit on cycles 0-20 picks 34933; its test on cycles 21-41 is matched by 98.0% of controls",
+    "verdict": "NO LOCK"
+   },
+   "reading": "under the assumed trigger the hall flash adds no seed signal: 34934's hall score is below half, and the combined control share rises from 2% to 13.3%. That hall-counter model does not reproduce the phone's LIT/DIM pattern, so the runtime marker layout that decides the trigger has to be resolved before the hall flash can help"
   }
  }
 }
