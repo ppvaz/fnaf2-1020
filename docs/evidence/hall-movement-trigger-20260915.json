@@ -120,8 +120,7 @@
  "status": "SOURCED end to end: trigger markers (hall stage 1/2), entry semantics (C -7) in the model behind sourcedHallEntry, the drain's dt term, and the three hall images by eye. Open: switch sourcedHallEntry on by default, and re-score the k3 nights' hall flashes against the model's latch.",
  "openQuestions": [
   "re-score full-02 / full-04 hall flashes against sim.hallMovementFrames > 0 at each flash (sourcedHallEntry on) instead of the scorer's own assumed latch",
-  "switch sourcedHallEntry on by default once the seed-lock scorer has consumed it (census is identical either way)",
-  "the standing-character hall frames 84/76/98/50 are identified by group only; look at images 554/524/569/479 before using them as per-character flash classes"
+  "switch sourcedHallEntry on by default once the seed-lock scorer has consumed it (census is identical either way)"
  ],
  "census": {
   "method": "tools/device/human-gate.mjs modelGate on recipe.mjs --device-plan for nights 5/6/7 and minus-toys-plan.mjs replay night 7; 3000 seeds each, seedStart 1, epochMs 0 (single phase); mode injected through Sim.prototype.tick; run twice (before and after the tickHallMovement refactor), identical",
@@ -144,7 +143,7 @@
   "animation 36 -> image 463": "hall lit and empty: the beam fills the doorway (g203 with the light held and hall movement 0, no Golden Freddy)",
   "animation 99 -> image 570": "hall with no beam: doorway black, ceiling lamp still lit (g202 with the light held while hall movement > 0) = the phone census's DIM class",
   "animation 93 -> image 564": "Golden Freddy in the lit hall (g204)",
-  "animations 84 / 76 / 98 / 50": "images 554 / 524 / 569 / 479, the standing-character hall frames of g205-208 (exported handles listed; identities by group, not yet by eye)",
+  "animations 84 / 76 / 98 / 50": "images 554 / 524 / 569 / 479, seen: Mangle hanging in the lit hall (g205), Withered Foxy standing in the lit hall (g206), both together (g207), Toy Chica standing in the lit hall (g208); every one is a full-beam LIT frame, so a standing character never reads as DIM",
   "viewsPatch animations 12 / 13 -> images 255 / 257": "the left-wall poster patch (g1034 / g1035), near-identical 249x378 crops",
   "reading": "LIT = 36 or a standing-character frame; DIM = 99 = a hall-column entry within the last five real seconds; BLACK = the light not held. The seed-lock scorer can read sim.hallMovementFrames > 0 at each flash for DIM."
  }
