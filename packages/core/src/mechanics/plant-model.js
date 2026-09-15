@@ -135,6 +135,14 @@ export class Sim {
       // Not emulated: the Puppet's static glitch chain (g500-g505, needs the
       // Puppet out and static value 5) and Paper Pals (g477, not in the model).
       sourcedViewDraws: false,
+      // The eleven 5 s movement rolls as the sheet runs them (dump g333-g343):
+      // each is a 5000 ms timer then its Random compare, before any state
+      // condition, so every roll draws every 5 s whatever the character is doing,
+      // in sheet order -- Withered Freddy, Withered Bonnie, Withered Chica, Golden
+      // Freddy (g336), Foxy (g337, Random(5)), Toy Freddy, Toy Bonnie, Toy Chica,
+      // Mangle, Balloon Boy, Paper Pals (g343). State only gates the outcome.
+      // Paper Pals' AI is (Random(100)+1)/100 <= 1, so its roll is spent as a draw.
+      sourcedRollDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -1149,6 +1157,60 @@ export class Sim {
   // its room until every gate on the next hop is open (mirrors the state-2
   // transition groups, which retry continuously until their conditions hold).
   /** g744: decide path = Random(2) + 1, bit-exact to Fusion's Random(2). */
+  /** g333-g343 in sheet order under sourcedRollDraws: every roll draws; state gates only the outcome. */
+  rollAllFiveSecond() {
+    /** @param {string} id */
+    const rollUnit = id => {                                                   // g333-g335, g338-g341
+      const hit = this.rng.chance(C.MO_CHANCE(this.ai[id]), true);
+      const u = this.units.find(x => x.id === id);
+      if (!hit || !this.opts.stalledEnabled || !u || u.done || u.atOpening) return;
+      const step = this.sourcedRouteStep(u, this.frame);
+      if (step === 'discard' || step === 'returned') return;
+      if (this.opts.sourcedViewDraws) this.fadeUntil[u.id] = this.frame + 8;
+      if (step !== 'hold' && this.canAdvance(u, this.frame)) this.advance(u);
+      else u.pending = true;
+    };
+    rollUnit('withfreddy'); rollUnit('withbonnie'); rollUnit('withchica');
+    {                                                                          // g336 Golden Freddy
+      const hit = this.rng.chance(C.MO_CHANCE(this.ai.golden), true);
+      if (hit && this.opts.gfEnabled && !this.gf.present && !this.maskOn && this.monitor === MON_UP) {
+        this.gf.present = true;
+        this.emit('gf-appear');
+      }
+    }
+    {                                                                          // g337 Foxy
+      const fx = this.foxy;
+      const ok = 21 + this.rng.int(0, 4, 0) - fx.D <= this.ai.foxy;
+      if (this.opts.foxyEnabled) {
+        if (this.opts.sourcedFoxyChain) { if (ok) { fx.A = 1; fx.D = 0; } }
+        else if (this.opts.sourcedDropLightOrder && (fx.arrivalPending || fx.lockPending)) { /* waiting on the latch */ }
+        else if (this.opts.sourcedDropLightOrder && fx.loc === 'parts') { if (this.frame >= fx.readyAt && ok) { fx.D = 0; fx.arrivalPending = true; } }
+        else if (this.opts.sourcedDropLightOrder) { if (!fx.gotYou && this.frame >= fx.pinUntil && ok) { fx.D = 0; fx.lockPending = true; } }
+        else if (fx.loc === 'parts') {
+          if (this.frame >= fx.readyAt && ok) { fx.loc = 'hall'; fx.exposure = 0; fx.D = 0; this.emit('foxy-arrive'); }
+        } else if (!fx.gotYou && this.frame >= fx.pinUntil && ok) {
+          fx.gotYou = true;
+          this.emit('foxy-lock');
+          this.flag('foxy-lock', `Foxy locked on with D = ${fx.D}`);
+        }
+      }
+    }
+    rollUnit('toyfreddy'); rollUnit('toybonnie'); rollUnit('toychica'); rollUnit('mangle');
+    {                                                                          // g342 Balloon Boy
+      const hit = this.rng.chance(C.MO_CHANCE(this.ai.bb), true);
+      if (hit && this.opts.bbEnabled && !this.bb.inOpening) {
+        if (this.opts.sourcedViewDraws) this.fadeUntil.bb = this.frame + 8;
+        if (this.bb.stage === C.BB_STAGES - 1) {
+          if (this.monitor === MON_UP) this.bbEnterOpening();
+          else this.bb.pending = true;
+        } else {
+          this.bbHop();
+        }
+      }
+    }
+    this.rng.int(0, 19, 0);                                                    // g343 Paper Pals
+  }
+
   rollDecidePath() {
     this.decidePath = this.rng.int(0, 1) + 1;
     return this.decidePath;
@@ -1379,6 +1441,7 @@ export class Sim {
   }
 
   onFiveSecond() {
+    if (this.opts.sourcedRollDraws) { this.rollAllFiveSecond(); return; }
     // 1. Foxy. The same equation decides his arrival and his kill.
     if (this.opts.foxyEnabled) {
       const fx = this.foxy;
