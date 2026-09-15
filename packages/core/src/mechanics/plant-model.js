@@ -183,6 +183,23 @@ export class Sim {
       // rolls read the previous frame's box. g556-g781 run after tickBox, with the
       // hour table (g673-g684) between g623 and g730 and g774 between g750 and g781.
       sourcedSheetOrder: false,
+      // Frame-time hook (requires sourcedSheetOrder). frameMs(frame) is the loop's
+      // rhTimerDelta in whole ms and frameValue5(frame) its global value 5; both
+      // are measured inputs, UNKNOWN until the phone supplies them. Null keeps 50
+      // timer units (1/3 ms) and 1 per frame, which is trace-identical to no hook.
+      // With a hook, the CND_EVERY2 countdowns spend round(ms * 3) units: the
+      // per-second pass, g58/g59/g192, g498, g500-g506, and -- as countdowns in
+      // place of f % N -- g497, g744, the 5 s rolls (g333-g343, timer first) and
+      // the hour clock (g627 adds 1 to AM value 0 each second, g629/g630 advance
+      // the hour at 70, the table g673-g684 follows, six hours win). The g514
+      // blackout clock adds global value 5 per frame. Still frame-counted: the
+      // monitor and mask animations, the encounter and attack fuses, g263's
+      // 200 ms sample, g488, Foxy's D tick, the other per-second state cadences
+      // and the wind ticks. Under lethal: false a model kill returns early and
+      // skips that frame's countdown reaches, so hooked cadences slip a frame per
+      // non-lethal kill (frames the phone never plays).
+      frameMs: /** @type {null | ((frame: number) => number)} */ (null),
+      frameValue5: /** @type {null | ((frame: number) => number)} */ (null),
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -271,6 +288,15 @@ export class Sim {
     this.passTimers = {};
     // the Puppet static glitch chain (sourcedPuppetGlitchDraws); timer units are 1/3 ms
     this.glitch = { value4: 0, value5: 0, g503: { v: 0, init: false }, g506: { v: 0, init: false } };
+    // the frame-time hook: this loop's timer units, the countdowns that replace f % N, the AM clock, the g514 clock
+    this.hooked = !!(this.opts.frameMs || this.opts.frameValue5);
+    this.frameUnits = 50;
+    this.hookTimers = { five: { v: 0, init: false }, g497: { v: 0, init: false },
+                        g744: { v: 0, init: false }, g627: { v: 0, init: false } };
+    this.am = 0;
+    this.hour = 0;
+    this.blackoutClock = 0;
+    this.blackoutClockFrame = -1;
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -291,6 +317,8 @@ export class Sim {
     this.hallLatch = false;   // `viewing hall light` under sourcedDropLightOrder
     this.hallLit = false;     // `lit?` (g75/g84/g94) from frame-start state, under sourcedFoxyChain
     // g58, g59, g192 countdowns in 1/3 ms units (sourcedUnconditionalDraws)
+    if ((this.opts.frameMs || this.opts.frameValue5) && !this.opts.sourcedSheetOrder)
+      throw new Error('the frame-time hook drives the sheet-ordered countdowns: it requires sourcedSheetOrder');
     if (this.opts.sourcedSheetOrder && !this.opts.sourcedSecondPass)
       throw new Error('sourcedSheetOrder orders the per-second pass: it requires sourcedSecondPass');
     if (this.opts.sourcedUnconditionalDraws && C.FPS !== 60)
@@ -663,7 +691,7 @@ export class Sim {
       if (f <= (this.fadeUntil[id] ?? -1) && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
     }
     if (!all && part !== 'g498') return;
-    this.puppetStaticTimer -= 50;                                                             // g498
+    this.puppetStaticTimer -= this.frameUnits;                                                           // g498
     if (this.puppetStaticTimer <= 0) {
       this.puppetStaticTimer += 600;
       const p = /** @type {any} */ (this.puppet);
@@ -760,7 +788,8 @@ export class Sim {
           this.rng.int(0, 19, 0) <= this.ai.puppet && this.viewing !== C.BOX_CAM) stage();                      // g495
       if (every('496', 1000) && this.rng.int(0, 19, 0) <= this.ai.puppet &&
           p.out && !p.atOpening && !p.inside && f >= p.stunUntil) p.pending = true;                             // g496
-      if (f % C.FPS === 0) p.pathChoice = this.rng.int(1, 2, 1) === 1 ? 'left' : 'right';                       // g497
+      if (this.hooked ? this.passEvery(this.hookTimers.g497, 1000) : f % C.FPS === 0)                          // g497
+        p.pathChoice = this.rng.int(1, 2, 1) === 1 ? 'left' : 'right';
     }
     if (views) this.drawViewed(f, 'g498');
     if (sheet && this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchEarly();          // g500-g506
@@ -782,13 +811,17 @@ export class Sim {
       this.dropEverything = true;
       this.emit('puppet-attack', { at: 123 });
     }
-    if (sheet && f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);          // g673-g684
+    if (sheet && !this.hooked && f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);          // g673-g684
+    if (this.hooked) {                                                                   // g627, g629/g630, g673-g684
+      if (this.passEvery(this.hookTimers.g627, 1000)) this.am++;
+      if (this.am >= 70) { this.am = 0; this.hour++; this.applyAiHour(this.hour); }
+    }
     { const u = unit('mangle');
       if (u && u.inside && this.viewing > 0 && every('730', 1000) && one(20)) u.insideArmed = true;             // g730
       for (const [g, cue] of /** @type {[string, boolean][]} */ ([['739', true], ['740', true], ['741', true], ['742', false], ['743', false]]))
         if (u && u.inside && every(g, 1000) && one(20) && cue) this.rng.int(0, 2, 0);                          // g739-g743
     }
-    if (f % C.FPS === 0) this.rollDecidePath();                                           // g744
+    if (this.hooked ? this.passEvery(this.hookTimers.g744, 1000) : f % C.FPS === 0) this.rollDecidePath();   // g744
     for (const id of ['withfreddy', 'withbonnie', 'withchica', 'toyfreddy']) {           // g747-g750
       const u = unit(id);
       if (u && u.inside && mask2 && every('747' + id, 1000) && one(10)) {
@@ -823,7 +856,7 @@ export class Sim {
       t.init = true; t.v = ms * 3;
       if (this.frame !== 1) return false;
     }
-    t.v -= 50;
+    t.v -= this.frameUnits;
     if (t.v > 0) return false;
     t.v += ms * 3;
     return true;
@@ -866,12 +899,20 @@ export class Sim {
   /** Blackout flicker: the g514 clock and the g517/g518 draw (sourcedBlackoutDraws). @param {number} f */
   blackoutFlicker(f) {
     if (!this.opts.sourcedBlackoutDraws || !this.blackout.active) return;
-    const clock = f - this.blackoutStartFrame + 1;
+    let clock = f - this.blackoutStartFrame + 1;
+    if (this.hooked) {                                                                   // g514: += global value 5
+      const v5 = this.opts.frameValue5 ? this.opts.frameValue5(f) : 1;
+      this.blackoutClock += v5 * (f - this.blackoutClockFrame);
+      this.blackoutClockFrame = f;
+      clock = this.blackoutClock;
+    }
     if (clock > 20 && clock < 200) this.rng.int(0, 49, 0);
   }
 
   startBlackout(by, unitId = null) {
     this.blackoutStartFrame = this.frame;
+    this.blackoutClock = 0;
+    this.blackoutClockFrame = this.frame - 1;
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
                       unitId, masked: this.maskFullyOn,
                       deadline: this.frame + C.maskGraceFrames(this.opts.night) };
@@ -944,6 +985,7 @@ export class Sim {
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
+    if (this.opts.frameMs) this.frameUnits = Math.round(this.opts.frameMs(f) * 3);
     if (this.opts.sourcedFoxyChain) this.updateLitCounter();   // events 74-83 (g84-g94) before the drop; g488/g489 run in tickFoxyChain
     else if (this.opts.sourcedDropLightOrder) this.updateHallLatch(f);
 
@@ -996,7 +1038,7 @@ export class Sim {
 
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('early');   // g58/g59/g192
     // --- 5-second interval: Foxy's kill check runs before anything else
-    if (f % C.MO_FRAMES === 0) this.onFiveSecond();
+    if (this.hooked ? this.passEvery(this.hookTimers.five, 5000) : f % C.MO_FRAMES === 0) this.onFiveSecond();
     if (this.opts.sourcedFoxyChain) this.foxyChainTransitions();   // g349/g364/g389/g390
 
     // --- 10-second interval: g718-721 slam everything down while one of the
@@ -1076,7 +1118,7 @@ export class Sim {
     if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
-    if (f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
+    if (this.hooked ? this.hour >= 6 : f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
   }
 
   /**
@@ -1087,7 +1129,7 @@ export class Sim {
   drawUnconditional(phase) {
     if (phase === 'late') { this.rng.next(); this.unconditionalDraws++; return; }
     for (const t of this.unconditionalTimers) {
-      t.counter -= 50;
+      t.counter -= this.frameUnits;
       if (t.counter <= 0) { t.counter += t.delayUnits; this.rng.next(); this.unconditionalDraws++; }
     }
   }
