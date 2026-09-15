@@ -1,0 +1,88 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "rng-draw-audit-office-20260915",
+ "claimLevel": "SOURCED (dump FRAME 3, every Random( token in conditions and actions) cross-checked against the Chowdren recompile's generated source; MODEL_ONLY for the consequence",
+ "question": "Which random draws does the game's Office frame make that the model does not, and can seed-specific encounter predictions line up with the phone at all?",
+ "dump": {
+  "groupsWithRandom": 113,
+  "randomTokens": 123,
+  "byTrigger": {
+   "timer 100 ms only": 2,
+   "timer 490 ms only": 1,
+   "timer 1000 ms + N conds": 25,
+   "3 state conds": 34,
+   "timer 5000 ms + N conds": 12,
+   "2 state conds": 6,
+   "4 state conds": 2,
+   "timer 500 ms + N conds": 1,
+   "timer 1000 ms only": 2,
+   "timer 200 ms + N conds": 1,
+   "6 state conds": 3,
+   "1 state conds": 2,
+   "once-while-true + N conds": 21,
+   "always": 1
+  },
+  "unconditional": [
+   {
+    "group": 822,
+    "trigger": "Always (C -1 only)",
+    "draw": "Paper Pals AI = (Random(100)+1)/100",
+    "rate": "every frame (60/s at 60 fps)"
+   },
+   {
+    "group": 58,
+    "trigger": "every 100 ms only",
+    "draw": "static AV0 = Random(50)+125",
+    "rate": "10/s"
+   },
+   {
+    "group": 192,
+    "trigger": "every 100 ms only",
+    "draw": "static AV2 = (Random(31)/30)*50",
+    "rate": "10/s"
+   },
+   {
+    "group": 59,
+    "trigger": "every 490 ms only",
+    "draw": "static AV1 = Random(5)*10",
+    "rate": "~2/s"
+   },
+   {
+    "group": 497,
+    "trigger": "every 1000 ms only",
+    "draw": "OI 103 Random(2)",
+    "rate": "1/s"
+   },
+   {
+    "group": 744,
+    "trigger": "every 1000 ms only",
+    "draw": "decide path Random(2)",
+    "rate": "1/s (the only one the model has, under sourcedRouteForks)"
+   }
+  ],
+  "largeStateGatedClasses": [
+   "camera views: g366/368/419/468-477 draw Random(100) each frame your-view overlaps a unit on the viewed camera",
+   "monitor-down image: g807 draws Random(1000000) in a condition each frame the monitor-down object is visible with AV2 = 0",
+   "blackout flicker: g517/518 draw Random(50) each frame the blackout object's counters qualify",
+   "static glitch: g505 draws Random(150) each frame static AV4 > 0",
+   "encounter resolution: g538-555 Random(500) cooldowns (modelled as the repel cooldown)",
+   "21 run-once-while-true groups (movement sound cues and similar) and 39 timer+state groups (5 s movement rolls, 1 s checks)"
+  ],
+  "evaluationRule": "Fusion evaluates conditions in order and stops at the first false one, so a Random in a condition is drawn only when every earlier condition holds; the Android timer (CND_EVERY2) counts down by real elapsed ms only when reached"
+ },
+ "model": {
+  "drawSites": 22,
+  "note": "plant-model.js draws only gameplay rolls (unit movement, Foxy, BB, Golden Freddy, Puppet, cooldowns, g744); no cosmetic, camera-view, monitor-down, blackout or Paper Pals draws"
+ },
+ "consequence": [
+  "The game spends at least ~84 draws per second unconditionally, plus state-dependent per-frame draws (camera views, monitor-down image, blackout, static glitches); the model spends almost none, so its stream diverges from the phone's from the first frame for every seed.",
+  "Seed-specific encounter predictions and seed scoring on the current model cannot identify a phone night even at the true seed; the modest rank signals in docs/evidence/night7-k3-twin-nights-result-20260915.json are most likely coincidence. Rates are unaffected.",
+  "g822 draws once per rendered frame, so aligning the stream also needs the phone's real frame count between the seed and each roll (a dropped frame shifts every later draw by one)."
+ ],
+ "next": [
+  "Emulate every Office draw site in sheet order behind an option, driven by the model's own camera/monitor/mask/encounter state",
+  "Measure the phone's rendered frame count across a night (frame trace or video frame timestamps) to fix the stream position at each roll",
+  "Only then rescore seeds against eyehole reads inside the logged seed bracket"
+ ],
+ "retained": "artifacts/forensics/rng-draw-audit-20260915 (dump-draw-groups.json, dump-draw-sites.json, SHA256SUMS)"
+}
