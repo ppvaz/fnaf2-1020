@@ -1,0 +1,138 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "vent-anchors-office-layout-20260915",
+ "claimLevel": "SOURCED for every position (regenerated Android event dump, frame 3 Office, instances read through the runtime's Frame/CLO.load rule OI ^ 48); CALIBRATED for the physical-pixel rows (the 2026-08-26 stretch mapping, itself checked on the phone); INFERRED for the millisecond costs (sourced pan rates, assumed 60 fps)",
+ "parentCommit": "e096401",
+ "question": "Re-read the 2026-08-26 'vent-light anchors contradict the phone' finding with the corrected instance rule: where are left light, right light and the light hitboxes really placed, and does the phone's left-LIGHT tap agree?",
+ "positions": {
+  "left light (94)": {
+   "xy": [
+    147,
+    429
+   ],
+   "layer": 0,
+   "box": [
+    119,
+    387,
+    177,
+    475
+   ]
+  },
+  "right light (95)": {
+   "xy": [
+    1444,
+    427
+   ],
+   "layer": 0,
+   "box": [
+    1415,
+    385,
+    1473,
+    473
+   ]
+  },
+  "honk (171)": {
+   "xy": [
+    153,
+    167
+   ],
+   "layer": 0
+  },
+  "lightLeftHitbox.Active (200)": {
+   "xy": [
+    24,
+    804
+   ],
+   "layer": 0,
+   "note": "parked; g1223 positions it onto left light at frame start"
+  },
+  "lightRightHitbox.Active (201)": {
+   "xy": [
+    47,
+    804
+   ],
+   "layer": 0,
+   "note": "parked; g1223 positions it onto right light"
+  },
+  "hudFlashlightHitbox.Active (195)": {
+   "xy": [
+    [
+     76,
+     844
+    ],
+    [
+     0,
+     0
+    ]
+   ],
+   "note": "parked; g1072 / g1077 create the live one at (290,145) layer 4 or (32,96) layer 3"
+  },
+  "mute call (153)": {
+   "xy": [
+    232,
+    57
+   ],
+   "layer": 4,
+   "box": [
+    172,
+    42,
+    293,
+    73
+   ]
+  }
+ },
+ "phoneAgreement": {
+  "left LIGHT tap physical": [
+   350,
+   615
+  ],
+  "virtual (stretch mapping 2400/1024, 1080/768)": [
+   149.3,
+   437.3
+  ],
+  "inside left light box": true,
+  "left light box in physical pixels at rest": {
+   "x": [
+    279,
+    415
+   ],
+   "y": [
+    544,
+    668
+   ]
+  },
+  "shooter25 gates": "X <= 680 implies ~168, X >= 910 implies ~1422; both within 22 units of the sourced 147 / 1444"
+ },
+ "reachability": {
+  "viewport": "scene [c-512, c+512], c clamped 512..1088 (g247), rest 512",
+  "right light box enters at c": 903,
+  "travel": 391,
+  "right light centred at c": 932,
+  "travelToCentre": 420,
+  "whole box on screen at c": 961,
+  "travelWhole": 449,
+  "left light screen X at max pan": -429,
+  "one-way ms at 60 fps to centre the right light": {
+   "fast band 25/frame": 280,
+   "mid 17/frame": 412,
+   "outer 8/frame": 875
+  },
+  "right light at max pan, physical": {
+   "x": [
+    1966,
+    2102
+   ],
+   "y": [
+    541,
+    665
+   ]
+  },
+  "2026-08-26 estimate": "~427 units, ~285 ms: within 5%, now sourced"
+ },
+ "retracted": [
+  "2026-08-26: 'the instance list places both anchors off the frame (X -274/-276), an authoring park stack' -- the XOR partners' positions",
+  "2026-08-26: 'lightLeftHitbox / lightRightHitbox / hudFlashlightHitbox have no frame-3 instance; something outside the event sheet must instantiate them' -- they are parked at y 804-844 and moved/created by g1223 and g1072-1081",
+  "2026-08-26: 'a placed position in this dump is not evidence of a runtime position for any mobile HUD object' -- withdrawn with the contradiction it explained"
+ ],
+ "status": "CLOSED at the source level; no device run was needed because the phone's existing left-LIGHT measurement is the corroboration"
+}

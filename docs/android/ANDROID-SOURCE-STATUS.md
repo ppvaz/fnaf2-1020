@@ -779,16 +779,59 @@ already asserted. [CALIBRATED]
 the light is even held, against the roughly 680 ms the cycle has free. That is
 the number plan 03's right-vent camp has to be priced against.
 
-### The vent-light anchors contradict the phone, and that is the finding
+### Corrected 2026-09-15 (second pass): the anchors are on-frame, and the phone was right all along
+
+The section below this one is **retracted** and kept as the record of a wrong
+reading. Both of its instance tables read the layout list with the wrong
+handle rule (raw row, then event handle); the runtime's own rule is
+`OI ^ 48` (`Frame/CLO.load`, `SOURCE-DUMP-GUIDE.md` §4). Under it the vent
+anchors sit exactly where the phone and Shooter25 said they would:
+
+| Object | handle | scene X, Y | layer | scene box | phone / Shooter25 said |
+| --- | --- | --- | --- | --- | --- |
+| `left light` | 94 | **147, 429** | 0 | x[119..177] y[387..475] | ~149 (phone, rest), ~168 (Shooter25) |
+| `right light` | 95 | **1444, 427** | 0 | x[1415..1473] y[385..473] | ~1422 (Shooter25), ~1451 (symmetry) |
+| `honk` | 171 | 153, 167 | 0 | 16x16 | -- |
+| `lightLeftHitbox.Active` | 200 | 24, 804 (parked; g1223 moves it onto `left light`) | 0 | 16x16 | -- |
+| `lightRightHitbox.Active` | 201 | 47, 804 (parked; g1223 moves it onto `right light`) | 0 | 16x16 | -- |
+| `hudFlashlightHitbox.Active` | 195 | 76, 844 and 0, 0 (parked; g1072/g1077 create the live one) | 3 / 0 | 16x16 | -- |
+| `mute call` | 153 | 232, 57 | 4 | x[172..293] y[42..73] | the top-left mute button |
+
+The phone's left `LIGHT` tap at physical (350, 615) is virtual (149, 437),
+inside the `left light` box; at rest the box spans physical x 279-415,
+y 544-668 under the stretch mapping above. The touch test itself is g301/g303
+"touch over `left light` / `right light`" (the 58x88 objects), not the 16x16
+hitboxes, which are the `Perspective` zones of g1226-1231. **[SOURCED]** The
+reachability arithmetic that stood on the phone now stands on the source:
+
+| Quantity | Value | Label |
+| --- | --- | --- |
+| centre at which the right light's box enters the viewport | 903 (travel 391 of 576, 68%) | [SOURCED] |
+| centre at which the right light is centred on screen | 932 (travel 420, 73%) | [SOURCED] |
+| centre at which the whole box is on screen | 961 (travel 449, 78%) | [SOURCED] |
+| left light's screen X at maximum pan | 147 - 576 = **-429**, off screen | [SOURCED] |
+| one-way travel to centre the right light, 60 fps | **280 ms** fast band / 412 ms / 875 ms | [INFERRED -- sourced rates, assumed 60 fps] |
+| right light at maximum pan, physical | x ~1966-2102, y ~541-665 | [CALIBRATED mapping] |
+
+So the 2026-08-26 pricing (~427 units, ~285 ms each way) was right to within
+5% and is no longer `[CALIBRATED]`: no single pan position reaches both vents,
+and the right vent costs about 560 ms of round trip before the light is held.
+The "runtime lays out the HUD from code" explanation is withdrawn with the
+contradiction it explained: the three hitboxes have frame-3 instances (parked
+below the window at y 804-844, exactly like the HUD buttons at y 793-821),
+and every mobile HUD object the earlier text placed on "layer 8 at negative Y"
+was an XOR partner. What the port does from code is what the groups already
+said: g1223 moves the light hitboxes onto the lights, g1072-1081 create and
+place the flashlight ones.
+
+### ~~The vent-light anchors contradict the phone, and that is the finding~~ (retracted 2026-09-15, second pass)
+
+*(Retained as the record of a wrong reading. Its table was corrected once on
+2026-09-15 to the event-handle rule, which was also wrong; the runtime rule
+and the true positions are in the section above.)*
 
 The instance list does **not** corroborate any of the above. It places both
 anchors off the frame entirely:
-
-*(Corrected 2026-09-15: the first version of this table joined instances to
-objects through the XOR and printed each object's XOR partner — see
-`SOURCE-DUMP-GUIDE.md` §4. The rows below use the corrected join. The
-conclusion stands: the anchors are still parked off-frame, and the light
-hitboxes turn out to have no frame-3 instance at all.)*
 
 | Object | handle | scene X, Y | layer | scene box |
 | --- | --- | --- | --- | --- |
@@ -1070,7 +1113,7 @@ is a grading-model correction, not a new simulated rule.
 | P0 | ~~Selected-camera movement gate~~ **Implemented 2026-08-20** | Post-XOR: the `your view` marker holds pending rolls for the three Withereds (344-348, no monitor condition — persists monitor-down via the parked marker) and monitor-up Mangle (357). Toys have Show Stage leave-order gates instead (350-356). Engine default `selectedCameraGate: true`. |
 | P0 | ~~Dormant camera-light countdown~~ **Resolved 2026-08-20: live** | Groups 450-457 feed B from `stun time` = 400 (never written); the pre-XOR audit was reading the wrong counter. `STUN_FRAMES = 400` is Android-sourced, with per-group camera exclusions (8/9/11) and the Paper-Pals `- night*50` variant. See [`ANDROID-CAMERA-STALL.md`](ANDROID-CAMERA-STALL.md). |
 | P1 | Display-camera mapping | Replace the two route-fitted low-confidence room mappings with direct Android UI/object anchors. `mapLocation.Active` / `mapPortrait.Active` (g1167-1169) look like the anchor pair; the logic-only dumper cannot close the artwork half |
-| P1 | Office pan position | **Sourced 2026-08-26, deliberately not modelled as a gate.** `camera follow 2` v23 integrates to a clamped 512-1088 and the office opens at 512 (g228/g247/g252); the Android drive is a hold-at-edge (g235-246) with no inertia. **No game rule reads it** — the vent lights (g313/g320) and hall light (g83-86) have no view-position condition — so the engine needs no pan state. What remains is a *cost*, now priced: the frame instance list (added 2026-08-26) gives the office as **1600x768**, which makes the 512-1088 clamp exactly "do not scroll past the edges" and lets the phone's own left-`LIGHT` measurement fix the vents at scene X ~149 and ~1451. A right-vent read costs **~427 of the 576 units, ~285 ms of pan each way**. The dump's *own* placement of `left light`/`right light` is off-frame and **contradicts** both the phone and Shooter25 — see the 2026-08-26 section |
+| P1 | Office pan position | **Sourced 2026-08-26, deliberately not modelled as a gate.** `camera follow 2` v23 integrates to a clamped 512-1088 and the office opens at 512 (g228/g247/g252); the Android drive is a hold-at-edge (g235-246) with no inertia. **No game rule reads it** — the vent lights (g313/g320) and hall light (g83-86) have no view-position condition — so the engine needs no pan state. What remains is a *cost*, now priced: the frame instance list (added 2026-08-26) gives the office as **1600x768**, which makes the 512-1088 clamp exactly "do not scroll past the edges" and lets the phone's own left-`LIGHT` measurement fix the vents at scene X ~149 and ~1451. A right-vent read costs **~427 of the 576 units, ~285 ms of pan each way**. ~~The dump's *own* placement of `left light`/`right light` is off-frame and **contradicts** both the phone and Shooter25~~ **Corrected 2026-09-15 (second pass):** under the runtime's instance rule (`OI ^ 48`) the dump places `left light` at scene (147, 429) and `right light` at (1444, 427), matching the phone within 2 units; the vent numbers are now [SOURCED] — see that section's correction |
 | P1 | ~~In-office auxiliary mover~~ **Resolved 2026-08-20** | The pre-XOR "`in office` object" is Balloon Boy himself (dump oi 102 = `balloon boy`); his 122/123 monitor-raise branch is BB's office behavior, not an extra mover |
 | P1 | ~~Puppet~~ **Sourced 2026-08-20** | Post-box route is g404-411: CAM 11 → 10 → 07, then his own `decide path` value picks 1 → 03 → 01 or 2 → 04 → 02, both arriving at marker 122 (g574 turns that into the encounter). Five hops on the ordinary movement roll replace the old flat 5-20 s timer, so a dry box is slower to kill than the engine assumed. (The supposed CAM 11 flash-stall event, group 457, actually targets Paper Pals with `stun time - night*50`; the Puppet has no flash group.) |
 | P1 | ~~Balloon Boy inside-office behavior~~ **Sourced 2026-08-20** | Roll g342, look-hold g359, hops g413-418 (g417 is the only monitor-gated edge), office entry g290-291, mask clears g292/294. Inside: g96 forces `lit?` to zero every frame, g301/303 stop the vent lights answering, g75/g85 exclude him while g77/g86 do not — so CAM 10 keeps its light — and **no group moves him out of 123**. He never attacks; the engine no longer kills on entry, it takes the lights away and lets Foxy finish |

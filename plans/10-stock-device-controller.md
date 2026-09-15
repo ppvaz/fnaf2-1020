@@ -291,6 +291,14 @@ derivation and evidence labels in
   has free. `[INFERRED — sourced rates, assumed 60 fps]` **Plan 03's right-vent
   camp should be re-priced against this before it is scheduled.**
 
+> **Corrected 2026-09-15 (second pass).** The paragraph below read the layout
+> list with the wrong handle rule. Under the runtime's rule (`OI ^ 48`,
+> `SOURCE-DUMP-GUIDE.md` §4) the dump places `left light` at scene (147, 429)
+> and `right light` at (1444, 427): the phone's ~149 and Shooter25's ~168 /
+> ~1422 were right, the reachability numbers above are now [SOURCED], and the
+> right light is centred on screen after a travel of 420 units (~280 ms in the
+> fast band). See `ANDROID-SOURCE-STATUS.md`, 2026-09-15 second pass.
+
 **What the dump refused, which is the more useful half.** The instance list
 places `left light` and `right light` at scene X = **-276** — off the frame,
 both at the same X, 28 units apart: an authoring park stack. Nothing in any of

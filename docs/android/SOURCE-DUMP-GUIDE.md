@@ -329,13 +329,15 @@ Then, before it enters the simulator:
   (§1). Since
   2026-08-26 it does emit each frame's size, layers and placed-object list
   (§3), which is where the office's 1600×768 came from.
-- **No guarantee that a placed position is a runtime position.** The instance
-  list is what the *editor* holds. The Android port creates and moves part of
-  its HUD from code — `hudFlashlightHitbox.Active`, `lightLeftHitbox.Active`
-  and `lightRightHitbox.Active` have no frame-3 instance at all, yet groups
-  1072-1081 position objects relative to the first — so an off-canvas
-  parked object may still be on screen at run time. See
-  `ANDROID-SOURCE-STATUS.md` §"the vent-light anchors contradict the phone".
+- **A placed position is the editor's position, and the sheet may move it.**
+  Read through the runtime's instance rule (§4) the Office is coherent: the
+  vent anchors sit at (147, 429) and (1444, 427), where the phone taps them,
+  and the HUD's hitboxes are parked below the window until g1223 and
+  g1072-1081 move or create them. Before trusting a position, scan the
+  frame's `Position`, `SetX`/`SetY` and `Create` parameters for that handle
+  (`readdump.py object 3 <name>`). The 2026-08-26 "the port lays out its HUD
+  from code, so no placement is evidence" reading was an artifact of the wrong
+  instance rule; see `ANDROID-SOURCE-STATUS.md` 2026-09-15 (second pass).
 - **No group comments or names.** Fusion's event-sheet comments are not in the
   CCN, so intent is always inferred.
 - **No expression tree.** `ExpressionParameter` items are flattened to a linear

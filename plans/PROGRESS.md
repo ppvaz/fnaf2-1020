@@ -5718,3 +5718,14 @@ g881 drains by `1 * Global(5)`, the dt term of g535/g745/g779, so the 300 is fiv
 LIT = 36 or a standing character, DIM = 99 = a hall-column entry within five seconds, BLACK = light
 not held. Evidence:
 [hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).
+
+**2026-09-15 (later): the vent anchors never contradicted the phone.**
+Re-read with the runtime's instance rule, the dump places `left light` at scene (147, 429) and
+`right light` at (1444, 427); the phone's left-LIGHT tap at physical (350, 615) is virtual
+(149, 437), inside the left box, and Shooter25's ~168 / ~1422 are within 22 units. The three light
+hitboxes have Office instances (parked at y 804-844, moved or created by g1223 and g1072-1081). The
+2026-08-26 "anchors off-frame, HUD laid out from code" finding is retracted; its reachability
+arithmetic was right within 5% and is now sourced: the right light is centred after 420 of the 576
+pan units (~280 ms in the fast band), the left light is at screen x -429 at maximum pan, so no
+single pan position reaches both. Evidence:
+[vent-anchors-office-layout-20260915.json](../docs/evidence/vent-anchors-office-layout-20260915.json).
