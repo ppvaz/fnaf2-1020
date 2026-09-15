@@ -911,7 +911,9 @@ export class Sim {
       const holder = id === 'foxy' ? this.foxy : id === 'bb' ? this.bb : this.units.find(x => x.id === id);
       if (!holder || !holder.footstep) continue;
       holder.footstep = false;
-      this.rng.int(0, id === 'mangle' ? 2 : 4, 0);   // cam01 value 5 = Random(5)+1; Mangle: value 12 = Random(3)+1
+      const value = this.rng.int(0, id === 'mangle' ? 2 : 4, 0) + 1;   // cam01 value 5 = Random(5)+1; Mangle: value 12 = Random(3)+1
+      // g704-g708 play samples 25-29 from value 5; g709-g711 play 30-32 from value 12: the draw is audible
+      this.emit('footstep', { who: id, value, sample: id === 'mangle' ? 29 + value : 24 + value });
     }
   }
 
@@ -1525,13 +1527,15 @@ export class Sim {
   bbHop() {
     this.bb.stage++;
     if (this.opts.sourcedFootstepDraws && FOOTSTEP_NODES.has([10, 7, 3, 1, 5][this.bb.stage])) this.bb.footstep = true;
+    let vocal = null;   // which of his three vocals the cue selects (g608 -> 21 "hi", g609 -> 24 laugh, g610 -> 23 "hello")
     if (this.opts.sourcedEventDraws && this.bb.stage >= 2) {            // e351/e352/e353
-      const cue = this.rng.int(0, 3, 0) + 1;                              // cam01 value 6
+      let cue = this.rng.int(0, 3, 0) + 1;                                // cam01 value 6
       if (this.bb.stage === C.BB_STAGES - 1) this.rng.int(0, 3, 0);       // e353 also writes value 21
-      if (cue === 4) this.rng.int(0, 2, 0);                               // e548 redraws a 4
+      if (cue === 4) cue = this.rng.int(0, 2, 0) + 1;                     // e548 redraws a 4
+      vocal = [null, 21, 24, 23][cue];
     }
     if (this.bb.stage > C.BB_SILENT_HOPS)
-      this.emit('laugh', { samples: C.BB_VOCAL_SAMPLES });
+      this.emit('laugh', { samples: C.BB_VOCAL_SAMPLES, vocal });
     if (this.bb.stage === C.BB_STAGES - 1) {
       this.emit('vent-bang', {
         who: 'bb', leaving: false, cam: true, sample: C.THUD_SAMPLE });
