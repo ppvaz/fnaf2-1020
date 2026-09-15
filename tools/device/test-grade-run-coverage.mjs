@@ -21,6 +21,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 // Not instruments, and why. An entry here is a decision, not a formality:
 // deleting one is how a script gets promoted into grade-run.sh.
 const EXCLUDED = new Map([
+  ['office-seed-bracket.py', 'the office frame seed bracket from a live MMFRuntime logcat; consumed by the seed-lock scorer, not by a run grade yet -- it joins grade-run.sh once runs retain mmfruntime.logcat'],
   ['grade-run.sh', 'the pipeline itself'],
   ['fact-register.mjs', 'a generated register of which producer answers each semantic fact and on what evidence; it reads source, not a run, and test-fact-register.mjs is the gate over it'],
   ['capabilities.mjs', 'a read-only capability query about the PHONE, not a grader of a run: it sends no input and reads no pixels, and it answers which instruments this handset can feed before one is proposed'],
