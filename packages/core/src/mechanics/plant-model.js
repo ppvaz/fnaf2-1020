@@ -36,6 +36,22 @@ export class Sim {
       cameraLightStunFrames: C.STUN_FRAMES,
       passiveWitheredLookStunFrames: 0,
       selectedCameraGate: true,
+      // Route forks and gates read from the post-scramble Android dump on
+      // 2026-09-15 (docs/evidence/withered-freddy-route-night7-20260915.json).
+      // Off by default while the censuses are compared; switching it on moves
+      // every replay hash, so bundles must be re-emitted when the default flips.
+      //   g744      every 1000 ms: decide path = Random(2) + 1 (a global draw)
+      //   g376/g377 W. Freddy at CAM 03: decide path 1 -> hall stage 2, 2 -> CAM 07
+      //   g378      W. Freddy at hall stage 2, mask fully on, hall light latch
+      //             clear -> CAM 03 with B = 5000 - night * 500
+      //   g396/g397/g399 Mangle at CAM 02: 1 -> CAM 06, 2 -> CAM 01 -> (hall
+      //             light clear) CAM 02
+      //   g384/g388 W. Bonnie / W. Chica final hop also needs `in danger` = 0
+      //   g344/g347 off Night 7: W. Freddy waits for W. Chica and W. Bonnie to
+      //             leave CAM 08; W. Chica waits for W. Bonnie
+      //   g352/g356 off Night 7: Toy Freddy / Toy Chica's accepted roll is
+      //             discarded while Toy Chica / Toy Bonnie is on CAM 09
+      sourcedRouteForks: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -125,6 +141,9 @@ export class Sim {
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
+    // g744's `decide path` (1 or 2). Rolled at 1 s, before any unit can reach
+    // a fork (first movement roll at 5 s), so the unread initial value is moot.
+    this.decidePath = 0;
 
     // --- puppet
     this.puppet = {
@@ -589,6 +608,10 @@ export class Sim {
       }
     }
 
+    // g744 sits after the repel rolls (g538-555, blackout resolution above) and
+    // before the inside-attack rolls (g747-750, tickUnits) and Golden Freddy's
+    // hall roll (g781). The model's other draws are not all in group order.
+    if (this.opts.sourcedRouteForks && f % C.FPS === 0) this.rollDecidePath();
     this.tickLight();
     this.tickGoldenHall(f);
     this.tickFoxy(f);
@@ -853,6 +876,42 @@ export class Sim {
   // Sourced hop gates: a unit whose movement roll has passed still waits at
   // its room until every gate on the next hop is open (mirrors the state-2
   // transition groups, which retry continuously until their conditions hold).
+  /** g744: decide path = Random(2) + 1, bit-exact to Fusion's Random(2). */
+  rollDecidePath() {
+    this.decidePath = this.rng.int(0, 1) + 1;
+    return this.decidePath;
+  }
+
+  /**
+   * The dump's look-hold and route rules the base gates do not express, for a
+   * unit whose movement roll has passed (A = 1 or 2). Returns 'hold' (keep it
+   * pending), 'discard' (A = 0, roll spent), 'returned' (g378 moved it), or
+   * null (fall through to canAdvance). Null whenever sourcedRouteForks is off.
+   * @param {any} u
+   * @param {number} f
+   */
+  sourcedRouteStep(u, f) {
+    if (!this.opts.sourcedRouteForks) return null;
+    const onCam = (id, cam) => this.units.some(o => o.id === id && !o.done && !o.atOpening && o.path[o.idx] === cam);
+    if (this.opts.night !== 7) {
+      if (u.id === 'withfreddy' && (onCam('withchica', 8) || onCam('withbonnie', 8))) return 'hold';   // g344
+      if (u.id === 'withchica' && onCam('withbonnie', 8)) return 'hold';                               // g347
+      if (u.id === 'toyfreddy' && f >= u.stunUntil && onCam('toychica', 9)) return 'discard';          // g352
+      if (u.id === 'toychica' && f >= u.stunUntil && onCam('toybonnie', 9)) return 'discard';          // g356
+    }
+    if (u.id === 'withfreddy' && u.path[u.idx] === 3 && this.decidePath !== 1 && this.decidePath !== 2)
+      return 'hold';
+    if (u.id === 'withfreddy' && u.path[u.idx] === 'blindB' && f >= u.stunUntil &&
+        this.maskFullyOn && !this.lightStallOn) {                                                       // g378
+      u.idx = u.path.indexOf(3);
+      u.stunUntil = f + (5000 - this.opts.night * 500);
+      this.emit('route-return', { who: u.id, from: 'blindB', to: 3 });
+      this.flag('broke-loose', `${u.name} returned from hall stage 2 to CAM 03 under a fully-on mask`);
+      return 'returned';
+    }
+    return null;
+  }
+
   canAdvance(u, f) {
     if (f < u.stunUntil) return false;
     // Android Office groups 344-348 and 357 (post-XOR decode): the
@@ -875,6 +934,13 @@ export class Sim {
       // — holding it stalls his entry (the Shooter25 stall).
       if (u.entryGate === 'camsDown' && (this.camsUp || this.ventLightROn)) return false;
       if (u.mutex && this.engagedToy && this.engagedToy !== u.id) return false;
+      // g384/g388: W. Bonnie's and W. Chica's final hops also need `in danger`
+      // = 0, the encounter latch the model carries as the running blackout.
+      if (this.opts.sourcedRouteForks && (u.id === 'withbonnie' || u.id === 'withchica') &&
+          this.blackout.active) return false;
+    } else if (this.opts.sourcedRouteForks && u.id === 'mangle' && u.path[u.idx] === 1 &&
+               !this.camsUp && this.lightStallOn) {
+      return false; // g399: CAM 01 -> CAM 02 needs the hall light latch clear
     } else if (u.lightStallAt.includes(u.idx) && !this.camsUp && this.lightStallOn) {
       return false; // only source edges guarded by `new bonnie = 0`
     }
@@ -942,7 +1008,11 @@ export class Sim {
         }
         continue;
       }
-      if (u.pending && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
+      if (u.pending) {
+        const step = this.sourcedRouteStep(u, f);
+        if (step === 'discard' || step === 'returned') u.pending = false;
+        else if (step !== 'hold' && this.canAdvance(u, f)) { u.pending = false; this.advance(u); }
+      }
       // The three Withereds and Toy Freddy -- the four `streak` openers --
       // start the shared office sequence as soon as marker 122 is evaluated
       // with the cameras down (groups 445-447 and 490). "Toys and W. Freddy"
@@ -991,6 +1061,26 @@ export class Sim {
   }
 
   advance(u) {
+    if (this.opts.sourcedRouteForks) {
+      const here = u.path[u.idx];
+      if (u.id === 'withfreddy' && here === 3 && this.decidePath === 2) {                              // g377
+        u.idx = u.path.indexOf(7);
+        this.emit('route-fork', { who: u.id, at: 3, to: 7 });
+        this.flag('broke-loose', `${u.name} moved to CAM 07 (decide path 2)`);
+        return;
+      }
+      if (u.id === 'mangle' && here === 2 && this.decidePath === 2) {                                  // g397
+        // Replace, never mutate: units spread the shared route table.
+        u.basePath ??= u.path;
+        const at = u.basePath.indexOf(2);
+        u.path = [...u.basePath.slice(0, at + 1), 1, 2, ...u.basePath.slice(at + 1)];
+        u.idx = at;
+        this.emit('route-fork', { who: u.id, at: 2, to: 1 });
+      } else if (u.id === 'mangle' && here === 1 && u.basePath) {                                      // g399
+        u.path = u.basePath;
+        u.idx = u.basePath.indexOf(2) - 1;
+      }
+    }
     u.idx++;
     const node = u.path[u.idx];
     if (node === 'office' || node === 'ventL' || node === 'ventR') {
@@ -1037,7 +1127,9 @@ export class Sim {
           // Stun is only one of the reasons that transition may be closed:
           // monitor polarity, the office-light stall and the one-toy mutex are
           // equally load-bearing. Keep the move pending until every gate opens.
-          if (this.canAdvance(u, this.frame)) this.advance(u);
+          const step = this.sourcedRouteStep(u, this.frame);
+          if (step === 'discard' || step === 'returned') { /* A = 0: the roll is spent */ }
+          else if (step !== 'hold' && this.canAdvance(u, this.frame)) this.advance(u);
           else u.pending = true;
         }
       }
