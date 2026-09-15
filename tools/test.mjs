@@ -268,6 +268,7 @@ const ENGINE = [
   // The external audio recorder must expose a fail-closed, phone-free route
   // preflight before it can create an output directory or stop monitoring.
   ['BT audio route', ['cue/test-capture-bt-audio.sh']],
+  ['BT audio link', ['cue/test-bt-audio-link.sh']],
   // The external authority owns rendered audio and publishes the same bounded
   // fact contract regardless of whether its receiver is BlueALSA or an ESP32.
   ['audio authority', ['cue/test-audio-authority.py']],

@@ -166,6 +166,7 @@ const SIBLING_EXCLUDED = new Map([
   ['coverage.py', 'group-coverage report over the dump; answers what is unread, not what a run did'],
   ['extract-samples.sh', 'asset extraction helper for the audio path'],
   ['capture-bt-audio.sh', 'records the phone A2DP mix via BlueALSA for offline cue proofing; a recorder that writes game audio outside the repo, grades no run'],
+  ['bt-audio-link.sh', 'brings the phone A2DP link up before a capture (night-run.sh --bt-audio); a link action on the phone and BlueALSA, grades no run'],
   ['regen-dump.sh', 'regenerates the event-sheet dump from the APK'],
 ]);
 

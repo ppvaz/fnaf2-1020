@@ -641,6 +641,14 @@ fi
 if [ "$BT_AUDIO" = 1 ]; then
   BT_AUDIO_BASE="$HOME/fnaf-apks/bt-audio-captures/$RUNID"
   mkdir -p "$(dirname "$BT_AUDIO_BASE")"
+  # The link is not assumed up: after a host reboot the bond survives and the
+  # transport does not. bt-audio-link.sh connects the A2DP profile from this
+  # side, or taps the paired host in the phone's Bluetooth settings, and exits
+  # 0 only on capture-bt-audio.sh --check READY. Runs before any game input.
+  if ! "$HERE/../cue/bt-audio-link.sh" --ensure >"$OUTDIR/bt-audio-link.txt" 2>&1; then
+    die "bt-audio link not READY: $(tail -1 "$OUTDIR/bt-audio-link.txt")"
+  fi
+  printf 'bt-audio link %s\n' "$(tail -1 "$OUTDIR/bt-audio-link.txt")"
   if bt_pid="$("$HERE/../cue/capture-bt-audio.sh" --start "$BT_AUDIO_BASE" 2>"$OUTDIR/bt-audio.err")"; then
     printf 'bt-audio capturing (pid %s) -> %s.bt.raw\n' "$bt_pid" "$BT_AUDIO_BASE"
   else
