@@ -1,0 +1,39 @@
+{
+  "schema": "fnaf2-1020.evidence.v1",
+  "id": "night7-k3-twin-nights-predeclaration-20260915",
+  "claimLevel": "PREDECLARATION (rules fixed before run A)",
+  "question": "Does the phone seed each night's 16-bit Fusion RNG from its wall clock, so that two nights started at the same wall-clock residue modulo 65 536 ms replay the same encounter sequence?",
+  "basis": [
+    "packages/core/src/mechanics/rng.js: CRun.random is (state * 31415 + 1) mod 2^16, seeded from (short) System.currentTimeMillis() at frame load (decompile 2026-08-25)",
+    "apps/device/src/timed-start.js and modern-campaign-ports.js (c37362a): FNAF_START_PHONE_WALL_RESIDUE_MS places the Custom Night Start tap when the phone wall clock reaches the residue; a timed start refuses rather than falling back",
+    "night-anchor.js records the night's onsetPhoneWallMs from the helper's wallMs stamp"
+  ],
+  "binding": {
+    "name": "k3",
+    "bundle": "artifacts/night7-anchored-k3/bundle",
+    "winnerHash": "fnv1a-5c8dcb5f",
+    "aim": "2433 ms, registered in tools/device/fact-register.mjs",
+    "dials": "all ten at 20 via custom-night-calibration-v1, readback required"
+  },
+  "runs": [
+    {"slot": "A", "residueMs": 20000, "label": "night7-k3-twin-a"},
+    {"slot": "B", "residueMs": 20000, "label": "night7-k3-twin-b"},
+    {"slot": "C", "residueMs": 50000, "label": "night7-k3-twin-c", "role": "control, 30 000 ms off the twins' residue"}
+  ],
+  "command": "FNAF_START_PHONE_WALL_RESIDUE_MS=<residue> tools/device/night-run.sh --label <label> --bundle artifacts/night7-anchored-k3/bundle --night 7 --qualification artifacts/night7-anchored-k3/qualification-test.json",
+  "hostConditions": "no other CPU-heavy host job while a run is live (a parallel seed census is stopped or finished first)",
+  "observables": {
+    "startTap": "custom-night.start event: tapPhoneWallMs, tapPhoneWallLow16, lateMs, uncertaintyMs",
+    "onset": "anchor scheduled event: onsetPhoneWallMs, onsetPhoneWallLow16",
+    "encounters": "eyehole-read.py on the retained video, one window per cycle at release + 1.0 + 10 c s, 2.6 s at 5 fps (release = HUD first + 2.433 - 0.070 s), cycles 0..41 or up to a death",
+    "deathOrWin": "executor terminal and video TERMINAL as in the k2 cohort"
+  },
+  "comparison": {
+    "perPair": "for each pair (A,B), (A,C), (B,C): cycles where both runs have an identified Withered read; agreement = same identity; disagreement = different identity or one identified and the other empty",
+    "twinSupport": "clock seeding is SUPPORTED if A and B agree on every cycle both identified (at least 8 such cycles) while C disagrees with both on at least 3 of its jointly identified cycles",
+    "twinRefutation": "NOT SUPPORTED if A and B disagree on 3 or more jointly identified cycles and their onset low-16 residues differ by at most 50 ms",
+    "otherwise": "INCONCLUSIVE, with the onset residue difference reported: the tap-to-load jitter decides whether the twins could share a seed at all (one millisecond apart is a different seed)"
+  },
+  "exclusions": "a run that never reaches the night, a refused timed start, a dial readback failure, or a helper/capture failure is excluded with its reason and the slot is re-run at the same residue; nothing is tuned between runs",
+  "modelUse": "none for the verdict; seed matching against the model is analysis only and recorded separately"
+}
