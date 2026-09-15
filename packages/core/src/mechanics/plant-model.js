@@ -82,6 +82,21 @@ export class Sim {
       // Foxy's B starts at 0 (no night-start writer, empty object values), so
       // the constructor's readyAt draw is not spent under this option.
       sourcedFoxyChain: false,
+      // The Office frame's unconditional random draws (docs/evidence/
+      // rng-draw-audit-office-20260915.json). Every Random( advances the one
+      // global LCG, cosmetic or not, so without these the stream leaves the
+      // phone's on the first frame:
+      //   g58   every 100 ms  static AV0 = Random(50)+125
+      //   g59   every 490 ms  static AV1 = Random(5)*10
+      //   g192  every 100 ms  static AV2 = (Random(31)/30)*50   (all three before the g337 rolls)
+      //   g822  Always        Paper Pals AI = (Random(100)+1)/100, every frame, late in the sheet
+      // The countdowns (CND_EVERY2: minus the frame delta, fire at <= 0, add the
+      // delay back) start from the same instant as the model's own f % N timers,
+      // in exact units of 1/3 ms (a 60 fps frame is 50 units), so g58/g192 fire
+      // every 6 frames and g59 alternates 29/30. Only the draws are emulated; the
+      // values are cosmetic. g497 and g744 are already drawn (tickPuppet,
+      // rollDecidePath), but in the opposite order to the sheet -- not fixed here.
+      sourcedUnconditionalDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -179,6 +194,13 @@ export class Sim {
     this.decidePath = 0;
     this.hallLatch = false;   // `viewing hall light` under sourcedDropLightOrder
     this.hallLit = false;     // `lit?` (g75/g84/g94) from frame-start state, under sourcedFoxyChain
+    // g58, g59, g192 countdowns in 1/3 ms units (sourcedUnconditionalDraws)
+    if (this.opts.sourcedUnconditionalDraws && C.FPS !== 60)
+      throw new Error('sourcedUnconditionalDraws assumes a 60 fps frame (50 timer units)');
+    this.unconditionalTimers = [{ group: 58, delayUnits: 300, counter: 300 },
+                                { group: 59, delayUnits: 1470, counter: 1470 },
+                                { group: 192, delayUnits: 300, counter: 300 }];
+    this.unconditionalDraws = 0;
 
     // --- puppet
     this.puppet = {
@@ -639,6 +661,7 @@ export class Sim {
     if (this.viewing > 0 && f % C.LAST_VIEW_SAMPLE_FRAMES === 0)
       this.lastViewed = this.viewing;
 
+    if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('early');   // g58/g59/g192
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (f % C.MO_FRAMES === 0) this.onFiveSecond();
     if (this.opts.sourcedFoxyChain) this.foxyChainTransitions();   // g349/g364/g389/g390
@@ -705,8 +728,22 @@ export class Sim {
     // counter (g333-342 and g494-496), so a new hour's levels reach the rolls
     // on the frame after the hour ticks over, not on it.
     if (f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);
+    if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
     if (f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
+  }
+
+  /**
+   * The Office frame's unconditional draws: 'early' runs the g58/g59/g192
+   * countdowns (before the g337 rolls), 'late' is g822's every-frame draw.
+   * @param {'early' | 'late'} phase
+   */
+  drawUnconditional(phase) {
+    if (phase === 'late') { this.rng.next(); this.unconditionalDraws++; return; }
+    for (const t of this.unconditionalTimers) {
+      t.counter -= 50;
+      if (t.counter <= 0) { t.counter += t.delayUnits; this.rng.next(); this.unconditionalDraws++; }
+    }
   }
 
   tickLight() {
