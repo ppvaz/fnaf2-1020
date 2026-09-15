@@ -57,7 +57,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "The 13 candidates are not scored. Scoring needs a replay harness that feeds the trace's frame intervals to frameMs, places the k3 presses by cumulative real ms, and compares the model's office encounters with an eyehole read of full-04's video, which has not been run.",
+ "notYetScored": "full-04's 13 seeds have no valid score (see seedLockAttempt.full04); full-02's 16 seeds scored NO LOCK at 60 fps.",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -71,6 +71,30 @@
    "full-04.trace": "4b2e164e17baa9976df57595a884a1220d176cdfb7354907a52f664eafb09e61",
    "seedlog-ft2.sh": "f5b13d347f7235a3bb61163f5ca1d76927a72bf37b9cba360222541b7a45a3fe",
    "seedlog-ft.sh": "e8baa31e1be793e11f63bb7ca100014082b65e1b9ebe32dcb3dfecaa3c112138"
+  }
+ },
+ "seedLockAttempt": {
+  "harness": "research script outside the repo: every sourced option + sourcedSheetOrder, lethal false, k3 presses from build(winner.knobs) placed by cumulative real ms (frame-rounded, it matches minus-toys-plan.mjs schedule() on 517/517 rows at three epochs); schedule epoch swept 2514 +/- 150 ms in frame steps; scored like twin-analyze (conflict / hit / miss per 10 s cycle) against a 300-seed random control on the same grid",
+  "predeclaredLockRule": "one window seed with 0 conflicts and >= 4 hits, strictly better than the other window seeds, matched by < 5% of control seeds",
+  "full02": {
+   "reads": "42 cycles, 23 identified, 18 empty",
+   "timing": "60 fps (no trace for that night)",
+   "bestWindowSeed": {
+    "low16": 34938,
+    "conflicts": 6,
+    "hits": 17,
+    "misses": 7
+   },
+   "controlAsGood": "7/300 (2.3%)",
+   "multipleComparison": "the best of 16 window seeds would match that by chance about 31% of the time (1 - 0.977^16)",
+   "verdict": "NO LOCK (6 conflicts)",
+   "note": "every seed reproduces much of the phone's Bonnie/Chica alternation (control best hits 7-18), so encounter identity per cycle separates seeds weakly"
+  },
+  "full04": {
+   "reads": "10 cycles before the death: 4 identified (Chica, Chica, Bonnie, Chica), 5 empty",
+   "verdict": "INVALID -- not a seed result",
+   "why": "the first traced scoring fed the 1262 ms office load gap as model frame 1; after that fix the traced model still makes 1.15 office encounters per 10 cycles against 3.60 untraced. A constant 17.032 ms hook (full-04's mean frame) gives 1.12 and a constant 16.667 ms hook 3.57, so the frame rate alone collapses encounters: the hook moves the 5 s rolls, g497/g744, the per-second pass and the hour clock to real ms, while other per-second state cadences (f % 60: g488, Foxy's D tick, the unit, Balloon Boy and Golden Freddy per-second rules, the wind ticks) still count frames and drift against the real-ms presses. The hook is incomplete, not the phone.",
+   "next": "convert those cadences to countdowns under the hook after confirming each is a CND_EVERY2 timer in the dump, then rescore full-04 on its trace"
   }
  }
 }

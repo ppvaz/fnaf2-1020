@@ -187,6 +187,7 @@
         "./custom-night.js",
         "./night-anchor.js",
         "./physical-ports.js",
+        "./timed-start.js",
         "@fnaf2-1020/adapters",
         "node:child_process",
         "node:fs",
@@ -382,6 +383,13 @@
         "node:os",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "apps/device/test/timed-start.test.js",
+      "imports": [
+        "../src/timed-start.js",
+        "node:assert/strict"
       ]
     },
     {
@@ -789,6 +797,13 @@
       ]
     },
     {
+      "file": "packages/core/test/blackout-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/core/test/contracts.test.js",
       "imports": [
         "../src/contracts/index.js",
@@ -823,10 +838,102 @@
       ]
     },
     {
+      "file": "packages/core/test/drop-light-order.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/event-draws.test.js",
+      "imports": [
+        "../src/mechanics/config.js",
+        "../src/mechanics/plant-model.js",
+        "../src/mechanics/rng.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/foxy-chain.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "../src/mechanics/rng.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/frame-time-hook.test.js",
+      "imports": [
+        "../src/mechanics/config.js",
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/monitor-down-draw.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/core/test/night-policy.test.js",
       "imports": [
         "@fnaf2-1020/core/control",
         "@fnaf2-1020/core/mechanics"
+      ]
+    },
+    {
+      "file": "packages/core/test/puppet-glitch-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/roll-draws.test.js",
+      "imports": [
+        "../src/mechanics/config.js",
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/route-forks.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "../src/mechanics/rng.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/second-pass.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/sheet-order.test.js",
+      "imports": [
+        "../src/mechanics/config.js",
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/unconditional-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "../src/mechanics/rng.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/view-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
       ]
     },
     {
@@ -1516,6 +1623,7 @@
       "imports": [
         "./artifact-commands.mjs",
         "./bundle.mjs",
+        "@fnaf2-1020/core/contracts",
         "node:child_process",
         "node:fs",
         "node:os",
