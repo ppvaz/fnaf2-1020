@@ -63,10 +63,12 @@ for (const night of [7, 3]) {
 }
 // Off: no rule fires and a full night is trace-identical to the default.
 {
-  const off = new Sim({ night: 7, seed: 7, lethal: false }); const u = unit(off, 'withfreddy'); u.idx = u.path.indexOf(3);
+  const off = new Sim({ night: 7, seed: 7, lethal: false, sourcedRouteForks: false }); const u = unit(off, 'withfreddy'); u.idx = u.path.indexOf(3);
   off.decidePath = 2; assert.equal(off.sourcedRouteStep(u, 1), null); off.advance(u); assert.equal(u.path[u.idx], 'blindB');
   const run = opts => { const s = new Sim({ night: 7, seed: 11, lethal: false, durationFrames: 3600, ...opts }); for (let i = 0; i < 3600; i++) s.tick(); return JSON.stringify(s.events); };
-  assert.equal(run({}), run({ sourcedRouteForks: false }), 'explicit off equals the default');
-  assert.notEqual(run({}), run({ sourcedRouteForks: true }), 'on changes the night (at least the per-second draw)');
+  assert.notEqual(run({ sourcedRouteForks: false }), run({ sourcedRouteForks: true }), 'on changes the night (at least the per-second draw)');
+  // Until the default flips (bundles must be re-emitted first), the default is off and equals explicit off.
+  if (new Sim({ night: 7, seed: 1 }).opts.sourcedRouteForks === false)
+    assert.equal(run({}), run({ sourcedRouteForks: false }), 'explicit off equals the default');
 }
 console.log('route forks: g744 draw, W. Freddy g377/g378, Mangle g397/g399, Bonnie/Chica in-danger, off-Night-7 departure order and toy discard; off is trace-identical');

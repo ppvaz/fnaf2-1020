@@ -1,7 +1,7 @@
 {
  "schema": "encounter-prediction-record-v1",
  "claimLevel": "MODEL_ONLY",
- "status": "SCORED 2026-09-15: NOT SUPPORTED (see docs/evidence/night7-k3-wallclock-r1-20260915.json)",
+ "status": "SCORED 2026-09-15: NOT SUPPORTED on the pre-fix model; REOPENED 2026-09-15 (model missed g744's per-second draw), rescore inconclusive",
  "run": "night7-night7-k3-wallclock-r1-20260915T002238Z",
  "binding": "k3 fnv1a-5c8dcb5f",
  "night": 7,
@@ -137,5 +137,18 @@
   "file": "artifacts/forensics/k3-wallclock-r1/k3r1-encounter-prediction.json",
   "sha256": "31edbba7cf5c436eaca452ddd8326ff9a586f49a6df5931f9792b223ad4a33e8",
   "generator": "artifacts/forensics/k3-wallclock-r1/encounter-predict.mjs"
- }
+ },
+ "reopened": [
+  {
+   "at": "2026-09-15",
+   "status": "REOPENED",
+   "why": "The model used for this prediction and its scoring lacked g744's per-second decide path draw (one global RNG draw per second), so every candidate's predicted night ran on a random stream out of step with the game's from the first second, and it predicted W. Freddy encounters the phone does not have (docs/evidence/withered-freddy-route-night7-20260915.json). A 'not supported' verdict from that model is not evidence against clock seeding.",
+   "rescoreWithRouteFixOn": "k3 run 1's 18 eyehole reads against all 65,536 seeds with sourcedRouteForks on: 7 seeds at 17/18 hits, 26 at 16, median 5; none of the 17-hit seeds implies a load gap inside 0-6.9 s; the best in-window seeds score 16 (gaps 2480 and 2612 ms, rank 30), which 33 seeds at >=16 hits would reach by chance ~97% of the time. Still inconclusive.",
+   "stillOpen": [
+    "other model draws run out of group order (a stream-order audit is pending)",
+    "the camdrop light-order error (the model lights the hall at a drop the dump never lights) changes Foxy's lock and death timing",
+    "eyehole identity is a blunt observable; twin nights remain the model-free test"
+   ]
+  }
+ ]
 }
