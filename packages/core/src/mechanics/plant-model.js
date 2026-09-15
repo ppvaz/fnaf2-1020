@@ -175,6 +175,14 @@ export class Sim {
       // the light is on that Puppet. Placed after the camera-view draws (g498) and
       // before the monitor-down draw (g807).
       sourcedPuppetGlitchDraws: false,
+      // Sheet order for the draws the model otherwise places by hand (requires
+      // sourcedSecondPass). g213-g497 run where the view draws ran, with g366/g368
+      // after g294, g419 after g401 and g468-g476 after g440, then g498, g500-g506
+      // and g517/g518 -- all before the blackout resolution (g537-g555) and before
+      // tickBox: every music box write (g638-g823) sits below g494/g495, so those
+      // rolls read the previous frame's box. g556-g781 run after tickBox, with the
+      // hour table (g673-g684) between g623 and g730 and g774 between g750 and g781.
+      sourcedSheetOrder: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -283,6 +291,8 @@ export class Sim {
     this.hallLatch = false;   // `viewing hall light` under sourcedDropLightOrder
     this.hallLit = false;     // `lit?` (g75/g84/g94) from frame-start state, under sourcedFoxyChain
     // g58, g59, g192 countdowns in 1/3 ms units (sourcedUnconditionalDraws)
+    if (this.opts.sourcedSheetOrder && !this.opts.sourcedSecondPass)
+      throw new Error('sourcedSheetOrder orders the per-second pass: it requires sourcedSecondPass');
     if (this.opts.sourcedUnconditionalDraws && C.FPS !== 60)
       throw new Error('sourcedUnconditionalDraws assumes a 60 fps frame (50 timer units)');
     this.unconditionalTimers = [{ group: 58, delayUnits: 300, counter: 300 },
@@ -633,8 +643,10 @@ export class Sim {
    * your-view marker, the last camera selected.
    * @param {number} f
    */
-  drawViewed(f) {
-    const up = this.viewing > 0;
+  drawViewed(f, part = 'all') {
+    const up = this.viewing > 0, all = part === 'all';
+    /** @type {Record<string, string>} */
+    const toyGroup = { toybonnie: 'g366', toychica: 'g368', toyfreddy: 'g419' };
     /** @param {string} id */
     const nodeOf = id => {
       if (id === 'bb') return this.bb.inOpening || this.bb.inside ? null : ([10, 7, 3, 1, 5][this.bb.stage] ?? null);
@@ -644,12 +656,13 @@ export class Sim {
     };
     if (up) for (const id of ['toybonnie', 'toychica', 'toyfreddy']) {                       // g366, g368, g419
       const u = this.units.find(x => x.id === id);
-      if (u?.pending && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
+      if ((all || part === toyGroup[id]) && u?.pending && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
     }
-    if (up) for (const id of ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy',
+    if (up && (all || part === 'fades')) for (const id of ['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy',
                               'toybonnie', 'toychica', 'mangle', 'bb']) {                      // g468-g476
       if (f <= (this.fadeUntil[id] ?? -1) && nodeOf(id) === this.cam) this.rng.int(0, 99, 0);
     }
+    if (!all && part !== 'g498') return;
     this.puppetStaticTimer -= 50;                                                             // g498
     if (this.puppetStaticTimer <= 0) {
       this.puppetStaticTimer += 600;
@@ -687,7 +700,10 @@ export class Sim {
    * false) and then counts down only on frames it is reached.
    * @param {number} f
    */
-  secondPass(f) {
+  secondPass(f) { this.secondPassEarly(f); this.secondPassLate(f); }
+
+  /** The per-second pass helpers; mask2 is read when each part starts. @param {number} f */
+  passTools(f) {
     /** @param {string} key @param {number} ms */
     const every = (key, ms) => this.passEvery(this.passTimers[key] ??= { v: 0, init: false }, ms);
     /** Random(n) == 1 @param {number} n */
@@ -699,6 +715,13 @@ export class Sim {
     const mask2 = this.maskFullyOn;
     const p = /** @type {any} */ (this.puppet);
     const danger2 = () => this.units.some(x => x.committedAt >= 0) || p.attackAt >= 0;
+    return { every, one, unit, at122, mask2, p, danger2 };
+  }
+
+  /** g213-g497; under sourcedSheetOrder also g366/g368, g419, g468-g476, g498, g500-g506 and g517/g518 in sheet order. */
+  secondPassEarly(f) {
+    const { every, one, unit, at122, mask2, p } = this.passTools(f);
+    const sheet = this.opts.sourcedSheetOrder, views = sheet && this.opts.sourcedViewDraws;
 
     { const u = unit('toyfreddy');                                                    // g213
       if (this.viewing === 0 && !this.lightHeld && u && !u.atOpening && !u.inside &&
@@ -708,9 +731,11 @@ export class Sim {
       } }
     if (this.bb.inOpening && mask2 && every('292', 1000) && one(10)) { this.rng.int(0, 3, 0); this.bbLeave(); }   // g292
     if (this.bb.inOpening && this.bb.maskTicks >= C.VENT_MASK_TICKS && mask2) { this.rng.int(0, 3, 0); this.bbLeave(); }   // g294
+    if (views) { this.drawViewed(f, 'g366'); this.drawViewed(f, 'g368'); }
     { const u = unit('mangle');
       if (at122(u) && mask2 && every('400', 1000) && one(10)) { this.rng.int(0, 3, 0); this.unitLeave(u); }       // g400
       if (at122(u) && u.maskExposureTicks >= 5 && mask2) { this.rng.int(0, 3, 0); this.unitLeave(u); } }          // g401
+    if (views) this.drawViewed(f, 'g419');
     { const u = unit('toybonnie');
       const overlays = this.units.some(x => (x.id === 'toybonnie' || x.id === 'toychica') && x.officeCue);
       if (at122(u) && mask2 && !this.blackout.active && !overlays && every('436', 500) && one(2))
@@ -722,6 +747,7 @@ export class Sim {
     { const u = unit('toychica');
       if (at122(u) && mask2 && every('439', 1000) && one(10)) { this.rng.int(0, 3, 0); this.unitLeave(u); }       // g439
       if (at122(u) && u.maskExposureTicks >= 5 && mask2) { this.rng.int(0, 3, 0); this.unitLeave(u); } }          // g440
+    if (views) this.drawViewed(f, 'fades');                                             // g468-g476
     {
       const stage = () => {
         p.stage++;
@@ -736,6 +762,15 @@ export class Sim {
           p.out && !p.atOpening && !p.inside && f >= p.stunUntil) p.pending = true;                             // g496
       if (f % C.FPS === 0) p.pathChoice = this.rng.int(1, 2, 1) === 1 ? 'left' : 'right';                       // g497
     }
+    if (views) this.drawViewed(f, 'g498');
+    if (sheet && this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchEarly();          // g500-g506
+    if (sheet) this.blackoutFlicker(f);                                                  // g517/g518
+  }
+
+  /** g556-g781; under sourcedSheetOrder also the hour table (g673-g684) and g774 in sheet order. */
+  secondPassLate(f) {
+    const { every, one, unit, mask2, p, danger2 } = this.passTools(f);
+    const sheet = this.opts.sourcedSheetOrder;
     for (const id of ['withfreddy', 'withbonnie', 'withchica', 'toyfreddy']) {           // g556-g559
       const u = unit(id);
       if (u && u.inside && !danger2() && mask2 && every('556' + id, 1000) && one(2))
@@ -747,6 +782,7 @@ export class Sim {
       this.dropEverything = true;
       this.emit('puppet-attack', { at: 123 });
     }
+    if (sheet && f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);          // g673-g684
     { const u = unit('mangle');
       if (u && u.inside && this.viewing > 0 && every('730', 1000) && one(20)) u.insideArmed = true;             // g730
       for (const [g, cue] of /** @type {[string, boolean][]} */ ([['739', true], ['740', true], ['741', true], ['742', false], ['743', false]]))
@@ -760,6 +796,7 @@ export class Sim {
         this.unitLeave(u, { idx: 0, cooldown: C.INSIDE_LEAVE_COOLDOWN });
       }
     }
+    if (sheet && this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchLate();           // g774
     { const latch = this.opts.sourcedFoxyChain ? this.hallLatch : this.hallLightOn;    // g781
       if (this.ai.golden > 0 && !latch && every('781', 1000)) {
         const there = this.rng.int(0, C.GF_HALL_ROLL - 1, 1) === 1;
@@ -824,6 +861,13 @@ export class Sim {
   puppetGlitchLate() {
     if (this.puppetUnderYourView() && !this.puppetAtBoxCam() && this.viewing > 0 && this.litCounter())
       this.glitch.value5 = 1;
+  }
+
+  /** Blackout flicker: the g514 clock and the g517/g518 draw (sourcedBlackoutDraws). @param {number} f */
+  blackoutFlicker(f) {
+    if (!this.opts.sourcedBlackoutDraws || !this.blackout.active) return;
+    const clock = f - this.blackoutStartFrame + 1;
+    if (clock > 20 && clock < 200) this.rng.int(0, 49, 0);
   }
 
   startBlackout(by, unitId = null) {
@@ -968,12 +1012,11 @@ export class Sim {
       return;
     }
 
-    if (this.opts.sourcedViewDraws) this.drawViewed(f);   // g366/g368/g419, g468-g476, g498
-    if (this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchEarly();   // g500-g506
-    // --- blackout flicker: g514 clock, g517/g518 draws (sourcedBlackoutDraws)
-    if (this.opts.sourcedBlackoutDraws && this.blackout.active) {
-      const clock = f - this.blackoutStartFrame + 1;
-      if (clock > 20 && clock < 200) this.rng.int(0, 49, 0);
+    if (this.opts.sourcedSheetOrder) this.secondPassEarly(f);   // g213..g518 in sheet order
+    else {
+      if (this.opts.sourcedViewDraws) this.drawViewed(f);   // g366/g368/g419, g468-g476, g498
+      if (this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchEarly();   // g500-g506
+      this.blackoutFlicker(f);                              // g514 clock, g517/g518
     }
     // --- blackout resolution
     if (this.blackout.active) {
@@ -1021,14 +1064,15 @@ export class Sim {
     this.tickUnits(f);
     this.syncMangleStatic();
     this.tickBox();
-    if (this.opts.sourcedSecondPass) this.secondPass(f);   // g213..g781 per-second groups
+    if (this.opts.sourcedSheetOrder) this.secondPassLate(f);   // g556..g781 in sheet order
+    else if (this.opts.sourcedSecondPass) this.secondPass(f);   // g213..g781 per-second groups
     if (this.opts.record) this.record();
 
     // The table groups sit at g673-684, below every group that reads an AI
     // counter (g333-342 and g494-496), so a new hour's levels reach the rolls
     // on the frame after the hour ticks over, not on it.
-    if (f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);
-    if (this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchLate();              // g774
+    if (f % C.HOUR_FRAMES === 0 && !this.opts.sourcedSheetOrder) this.applyAiHour(f / C.HOUR_FRAMES);
+    if (this.opts.sourcedPuppetGlitchDraws && !this.opts.sourcedSheetOrder) this.puppetGlitchLate();   // g774
     if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
