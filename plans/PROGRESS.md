@@ -5582,3 +5582,28 @@ predeclared cohort; (2) no live hall-light latency probe exists to test the
 some runs; (4) helper wall-clock stamp at the onset latch and a twin-nights
 test of clock seeding; (5) the peer session's uncommitted Minus 7 catalog lane
 (custom7 target, arm-less mode) is untouched. Gate G is not invoked.
+
+**2026-09-15: k3 won its first Night 7 (10/20) run, the helper stamps the phone
+wall clock, and the striped intro card no longer reads as night.** k3 = k2 with
+the hall flash at 7400 ms ([aim](../docs/evidence/night7-anchor-aim-k3-20260915.json));
+run `night7-night7-k3-wallclock-r1` reached 6 AM, 42/42 gates, released 0.27 ms
+late ([record](../docs/evidence/night7-k3-wallclock-r1-20260915.json), commit e00ab25).
+One win, not a rate. Video beam onsets from the k2 cohort put only 2 of 7
+death-cycle hall flashes late, so the late-flash mechanism k3 targets is not
+the main one.
+
+The companion now returns `wallMs` beside `snapshotNs`, and the anchor's
+scheduled event carries `onsetPhoneWallMs` (9b2b017). The encounter
+prediction published before grading
+([record](../docs/evidence/k3-wallclock-r1-encounter-prediction-20260915.json))
+was not supported, and clock seeding remains untested: eyehole identity reads
+miss Withered Freddy and leave tied seeds, and neither k3's nor r03's best
+seeds sit in the 0-6.9 s window a night-load seed allows. nightpredicate
+refuses night on a bright full-width band at the meter's height (stripes 149.1
+on six cards, real nights at most 56.6).
+
+Open: (1) a k3 cohort if its rate matters; (2) twin nights with a Start tap
+timed on the phone wall clock; (3) why the eyehole never shows Withered Freddy
+on k2/k3; (4) the lifecycle frames that exist only after the intro now carry the
+guard -- confirm no new false `other` on a live night; (5) the peer session's
+uncommitted Minus 7 lane is untouched.
