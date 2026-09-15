@@ -43,6 +43,8 @@ class Dump:
     def __init__(self, path, xor=28):
         self.xor = xor
         self.objects = {}          # stored handle -> name as the item table has it
+        self.types = {}            # stored handle -> TYPE as the item table has it
+        self.images = {}           # stored handle -> (W, H, HOTX, HOTY) as the dumper read that row
         self.frames = []           # [{idx, name, size, layers, instances, groups}]
         frame = group = None
         with open(path, errors="replace") as handle:
@@ -51,6 +53,7 @@ class Dump:
                 field = line.split("\t")
                 if field[0] == "OBJECT":
                     self.objects[int(field[1])] = field[5]
+                    self.types[int(field[1])] = field[3]
                 elif field[0] == "FRAME":
                     frame = {"idx": int(field[1]), "name": field[2], "groups": [],
                              "size": {}, "layers": [], "instances": []}
@@ -60,7 +63,11 @@ class Dump:
                 elif field[0] == " L":
                     frame["layers"].append(dict(zip(field[1::2], field[2::2])))
                 elif field[0] == " I":
-                    frame["instances"].append(dict(zip(field[1::2], field[2::2])))
+                    instance = dict(zip(field[1::2], field[2::2]))
+                    frame["instances"].append(instance)
+                    if instance.get("W"):
+                        self.images.setdefault(int(instance["OI"]), tuple(
+                            int(instance[k]) for k in ("W", "H", "HOTX", "HOTY")))
                 elif field[0] == "GROUP":
                     group = {"idx": int(field[1]), "header": dict(zip(field[2::2], field[3::2])),
                              "lines": []}
@@ -75,26 +82,39 @@ class Dump:
     def placed(self, instance):
         """True name of a placed scene object.
 
-        Frame instances are NOT scrambled: the XOR-28 rule applies to event
-        handles only (see docs/android/SOURCE-DUMP-GUIDE.md section 4). Proven
-        against the item table's own TYPE column -- every Active instance
-        resolves to an object that has an image and every non-Active one to an
-        object that has none, 914/914, where the XOR reading scores 52%.
+        A frame instance addresses its object in the same space as the events:
+        the `OI` on an ` I` line is the handle an event uses, so its true name is
+        `name(OI)`, through the XOR. Instances and event handles share numbers --
+        the recompiled Office init creates each object at the (X, Y) of the dump
+        instance with the same raw OI (186 of 189 exact; through the XOR, 2).
+        The 2026-08-26 "instances are not scrambled" rule was backwards: its
+        TYPE-vs-image check compared an item-table row with that same row's
+        image, so it could not fail. See docs/android/SOURCE-DUMP-GUIDE.md 4.
         """
-        return self.objects.get(int(instance["OI"]), "?%s" % instance["OI"])
+        return self.name(int(instance["OI"]))
 
     def extent(self, instance):
         """(left, top, right, bottom) in scene units, or None with no image.
 
-        Fusion draws an image with its hotspot on the object's position, so the
-        box is the position minus the hotspot. This is animation 0 / direction 0
-        / frame 0 -- the default appearance, not whatever is showing at runtime.
+        The dumper read W/H/HOTX/HOTY from the item-table row equal to the raw
+        OI, which is the object OI ^ xor -- the same shift as the names. So the
+        true object's image is the row OI ^ xor, taken from any instance line
+        (in any frame) whose OI is that row. Fusion draws an image with its
+        hotspot on the object's position. Animation 0 / direction 0 / frame 0 --
+        the default appearance, not whatever is showing at runtime.
         """
-        if not instance["W"]:
+        image = self.images.get(int(instance["OI"]) ^ self.xor)
+        if image is None:
             return None
+        w, h, hot_x, hot_y = image
         x, y = int(instance["X"]), int(instance["Y"])
-        left, top = x - int(instance["HOTX"]), y - int(instance["HOTY"])
-        return (left, top, left + int(instance["W"]), top + int(instance["H"]))
+        left, top = x - hot_x, y - hot_y
+        return (left, top, left + w, top + h)
+
+    def image_known(self, instance):
+        """False when the true object is an Active whose image no instance line carries."""
+        row = int(instance["OI"]) ^ self.xor
+        return row in self.images or self.types.get(row) != "2"
 
     def render(self, line):
         field = line.split("\t")
@@ -230,11 +250,12 @@ def main():
             if pattern and pattern not in name.lower():
                 continue
             box = dump.extent(instance)
-            print("  %-30s ev=%-5d stored=%-5s X=%-6s Y=%-6s layer=%-3s %s" % (
-                name[:30], int(instance["OI"]) ^ opts.xor, instance["OI"],
+            print("  %-30s oi=%-5s X=%-6s Y=%-6s layer=%-3s %s" % (
+                name[:30], instance["OI"],
                 instance["X"], instance["Y"], instance["LAYER"],
                 "box x[%d..%d] y[%d..%d]" % (box[0], box[2], box[1], box[3])
-                if box else "(no image)"))
+                if box else "(no image)" if dump.image_known(instance)
+                else "(image not in dump)"))
         return
 
     if opts.command == "writes":

@@ -48,9 +48,11 @@ pre‑XOR *timings* survived the correction while every character *identity* had
 to be redone. FNaF 1's runtime uses **no** XOR; PC builds (e.g. the Shooter25
 mod, Fusion 295) use XOR 0. Full method: [`SOURCE-DUMP-GUIDE.md`](SOURCE-DUMP-GUIDE.md) §4.
 
-**Frame instances are *not* scrambled** (2026‑08‑26): the `OI` on an ` I` line
-is the raw item-table handle. The same integer names different objects by line
-type. Use a property of the object (type, image bank), never its bare handle.
+**Frame instances share the event space** (corrected 2026‑09‑15): the `OI` on
+an ` I` line names `item_table[OI ^ 28]`, like an event handle, and its dumped
+image is the XOR partner's too. The 2026‑08‑26 "not scrambled" rule is
+retracted (§14): the recompiled Office init matches 186/189 positions by raw
+handle and 2/189 through the XOR.
 
 **Name glosses the scramble hid** (every one is now a resolved true name, not an
 inference): `Multiple Touch` → **`viewing`** · `white button` → **`lit?`** ·
@@ -659,7 +661,7 @@ full derivation in `ANDROID-SOURCE-STATUS.md` (2026‑08‑26 sections).
   to panning" were the **finger missing the hitbox** and landing in the edge
   band, not the game preferring pan over press. `[SOURCED]`
 - **The dump's own placement contradicts the phone.** The instance list puts
-  `left light`/`right light` at scene X = −276 (an authoring park stack) and
+  `left light`/`right light` at scene X = −274 (an authoring park stack; the pre‑2026‑09‑15 reader said −276) and
   nothing in any of the 33 frames moves them. The phone measures the left LIGHT
   actuable at rest (~149) and Shooter25 independently says ~168. **A placed
   position in this dump is not evidence of a runtime position for a mobile HUD
@@ -745,6 +747,7 @@ a small dispatch bank turns it into sound:
 | `sweepcheck.py` "every flash lands 68/75" via feed brightness | Withdrawn — the stun has no rendering term; feed brightness measures nothing. Use `camtrace.py` (button highlight driven from `viewing` by g46‑57). | 2026‑08‑26 |
 | The simulator's `vent-bang` event carried a `who` field | Every such event is sample 17; no audio detector can recover `who`. `minus6test.mjs` and `hid-device-pilot.mjs --vocal-cam5` used a sensor that does not exist. A `sample` field was added. | 2026‑08‑24 |
 | "Minus Toys cannot transfer (no double-camera state, CAM 09 flash-excluded)" | **Withdrawn and corrected.** The sourced split is implemented in the engine; the deterministic split policy clears 200/200 normal and 100/100 pinned-worst seeds, with a 0/200 no-split control. The 2026-08-28 open-loop device attempt failed, while a 2026-08-29 Night 1 calibration removed the previously measured drift/desync explanation only for an unstressed run. The current question is full-policy device transfer under load. | 2026‑08‑29 |
+| Frame instances are **not** XOR-scrambled (TYPE vs image, 914/914) | They share the event space: an instance `OI` names `item_table[OI ^ 28]` and its dumped image is the partner's. The 914/914 check compared a row with its own image. Recompiled Office positions match 186/189 by raw handle, 2/189 through the XOR. Every `readdump.py instances` name and box before the fix was the partner's; the vent anchors stay off-frame (X −274), and `lightLeftHitbox`/`lightRightHitbox` have no frame-3 instance. | 2026‑09‑15 |
 
 ---
 

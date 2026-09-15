@@ -719,14 +719,20 @@ the number plan 03's right-vent camp has to be priced against.
 The instance list does **not** corroborate any of the above. It places both
 anchors off the frame entirely:
 
-| Object | event / stored handle | scene X, Y | layer | scene box |
+*(Corrected 2026-09-15: the first version of this table joined instances to
+objects through the XOR and printed each object's XOR partner — see
+`SOURCE-DUMP-GUIDE.md` §4. The rows below use the corrected join. The
+conclusion stands: the anchors are still parked off-frame, and the light
+hitboxes turn out to have no frame-3 instance at all.)*
+
+| Object | handle | scene X, Y | layer | scene box |
 | --- | --- | --- | --- | --- |
-| `left light` | 94 / 66 | **-276, 634** | 3 | x[-304..-246] y[592..680] |
-| `right light` | 95 / 67 | **-276, 662** | 3 | x[-305..-247] y[620..708] |
-| `honk` | 171 / 183 | 1, 1018 | 4 | x[-6..10] y[1011..1027] |
-| `lightLeftHitbox.Active` | 200 / 212 | 225, -61 | 8 | x[217..233] y[-69..-53] |
-| `lightRightHitbox.Active` | 201 / 213 | 273, -61 | 8 | x[265..281] y[-69..-53] |
-| `hudFlashlightHitbox.Active` | 195 / 223 | **no frame-3 instance** | — | — |
+| `left light` | 94 | **-274, 482** | 3 | x[-302..-244] y[440..528] |
+| `right light` | 95 | **-274, 510** | 3 | x[-303..-245] y[468..556] |
+| `honk` | 171 | 0, 0 | 0 | x[-7..9] y[-7..9] |
+| `lightLeftHitbox.Active` | 200 | **no frame-3 instance** | — | — |
+| `lightRightHitbox.Active` | 201 | **no frame-3 instance** | — | — |
+| `hudFlashlightHitbox.Active` | 195 | **no frame-3 instance** | — | — |
 
 Both anchors sit at the same X, 28 units apart vertically: an authoring park
 stack, not a placement. And **nothing in the game moves them** — every
@@ -734,7 +740,7 @@ stack, not a placement. And **nothing in the game moves them** — every
 scanned for handles 94 and 95, and the only hit is g1223 moving the *hitboxes
 onto them*. [SOURCED]
 
-Read literally, then, g1223 puts the vent-light hitboxes at scene X = -276,
+Read literally, then, g1223 puts the vent-light hitboxes at scene X = -274,
 where no viewport can ever reach them. The phone says the left `LIGHT` is
 actuable at rest (scene X ~ 149, brightening the left vent region by +8.87
 luma), and Shooter25 independently says ~168. **The two controls agree with each
@@ -744,13 +750,17 @@ The dump is not wrong about what it holds; it is wrong about what it means. The
 instance list is the *editor's* placement, and the Android port lays out part of
 its HUD from code:
 
-- every mobile HUD object is parked on **layer 8 at negative Y** in a neat row —
-  `hudFlashlightCorner` (137,-101), `hudFlashlightText` (137,-61),
-  `lightLeftHitbox` (225,-61), `lightRightHitbox` (273,-61), `lightsRight`
-  (193,-85) — the signature of an off-canvas prefab strip; [SOURCED]
-- `hudFlashlightHitbox.Active` has **no frame-3 instance at all**, yet g1072-1081
-  create objects positioned relative to it. Something outside the event sheet
-  must instantiate it. [SOURCED]
+- **layer 8 at negative Y** holds a neat off-canvas row of touch and helper
+  objects — `Multiple Touch` (89,-61), `olivier_touchDectA`/`B` (193,-85 and
+  225,-93), `views` (265,-93), `music box counter` (225,-61) and the
+  `olivier_*.KYSO` objects — the signature of an off-canvas prefab strip;
+  [SOURCED] (the pre-2026-09-15 reader named this row `hudFlashlightCorner`,
+  `lightLeftHitbox`, `lightRightHitbox`, … — each object's XOR partner)
+- `hudFlashlightHitbox.Active`, `lightLeftHitbox.Active` and
+  `lightRightHitbox.Active` have **no frame-3 instance at all**, yet g1072-1081
+  create objects positioned relative to the first and g1223 moves the other two
+  onto the vent anchors. Something outside the event sheet must instantiate
+  them. [SOURCED]
 
 So: **a placed position in this dump is not evidence of a runtime position for
 any mobile HUD or interaction object.** [SOURCED for the placements and for the

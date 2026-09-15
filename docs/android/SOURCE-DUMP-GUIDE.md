@@ -161,34 +161,43 @@ survived the correction while every *character identity* had to be redone.
 PC builds (e.g. the Shooter25 practice mod, build 295) are **not** scrambled:
 pass `--xor 0`.
 
-### …but frame instances are not scrambled at all (2026-08-26)
+### Frame instances share the event space (corrected 2026-09-15)
 
-The XOR applies to **event** handles. The `OI` on an ` I` line is the **raw
-item-table handle** and must be looked up directly. The same integer therefore
-names two different objects depending on which line type it came from — `66` is
-`left light` as an instance and `cam 11` as an event handle, and `94` is the
-reverse. Applying the XOR to an instance silently renames every placed object,
-which is §4's original failure running backwards.
+The `OI` on an ` I` line is in the **same space as an event handle**: the
+object a placed instance belongs to is `item_table[OI XOR 28]`, exactly as for
+an event. The same integer names the same object on both line types -- `94` is
+`left light` as an instance and as an event handle.
 
-This is not a guess. The item table's own `TYPE` column decides it: an Active
-(`TYPE 2`) has an animation and therefore an image-bank entry, and a counter,
-string or extension does not. Across all 33 frames:
+The dumper reads an instance's `NAME` and its `W`/`H`/`HOTX`/`HOTY` from the raw
+row `item_table[OI]`, so both come out shifted: the printed name is the XOR
+partner's, and so is the image. `readdump.py` names an instance with `name(OI)`
+and takes its image from row `OI XOR 28`, that is, from any instance line (in
+any frame) whose `OI` is that row. An Active whose row no instance line carries
+prints `(image not in dump)`.
 
-| Reading | instances whose TYPE matches image-presence |
+**Proof: positions from an independent build.** The recompiled game's Office
+init (local only, never committed) creates each object by handle at an (X, Y).
+Joined to the dump's frame-3 instances:
+
+| Join | exact (handle, X, Y) matches of 189 creates |
 | --- | ---: |
-| `OI` is the raw handle | **914 / 914 (100%)** |
-| `OI` is post-XOR | 477 / 914 (52%) |
+| raw `OI` = event handle | **186** |
+| `OI XOR 28` = event handle | 2 |
 
-52% is a coin flip. `readdump.py`'s `placed()` uses the raw handle and
-`name()` keeps the XOR; `tools/dump/test-instances.py` asserts they disagree.
+Examples: `mask` (event 89) at (762, 821), `hear footsteps` (149) at
+(-128, 970), `your view` (126) at (748, -23).
 
-Weaker controls were tried first and could not separate the two readings —
-name plausibility, and overlap with the objects a frame's events address (frame
-3 scored 132 both ways). XOR-28 only flips bits 2-4, so it maps a handle to a
-neighbour inside the same 32-aligned block, and Fusion allocates a frame's
-objects in contiguous blocks. **Any control that stays inside one frame's
-handle block will look ambiguous.** Reach for a property of the object (its
-type, its image) rather than its identity.
+**Retracted: "frame instances are not scrambled at all" (2026-08-26).** Its
+TYPE-vs-image table (914/914 raw, 52% post-XOR) compared an item-table row's
+`TYPE` with the image the dumper read from *that same row*. The raw reading
+could not fail and the XOR reading was a coin flip by construction; it never
+tested which object an instance is. Every placed-object name and box that
+`readdump.py instances` printed before 2026-09-15 belongs to the XOR partner.
+
+The warning it drew still holds, narrowed: XOR-28 flips bits 2-4 and keeps a
+handle inside its 32-aligned block, so any control that stays inside the item
+table -- names, types, the same row's image -- cannot separate the readings.
+Join the instance to something the item table did not produce.
 
 ---
 
@@ -303,8 +312,9 @@ Then, before it enters the simulator:
   (§3), which is where the office's 1600×768 came from.
 - **No guarantee that a placed position is a runtime position.** The instance
   list is what the *editor* holds. The Android port creates and moves part of
-  its HUD from code — `hudFlashlightHitbox.Active` has no frame-3 instance at
-  all, yet groups 1072-1081 position objects relative to it — so an off-canvas
+  its HUD from code — `hudFlashlightHitbox.Active`, `lightLeftHitbox.Active`
+  and `lightRightHitbox.Active` have no frame-3 instance at all, yet groups
+  1072-1081 position objects relative to the first — so an off-canvas
   parked object may still be on screen at run time. See
   `ANDROID-SOURCE-STATUS.md` §"the vent-light anchors contradict the phone".
 - **No group comments or names.** Fusion's event-sheet comments are not in the

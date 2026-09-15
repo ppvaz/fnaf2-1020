@@ -335,11 +335,11 @@ const ENGINE = [
   ['camtrace', ['device/test-camtrace.py']],
   // Plan 09's read-only corpus index: classify existing artifacts without
   // rewriting them, preserve basename joins, and surface unknown/empty files.
-  // The dump's frame instance list, and the trap that comes with it: frame
-  // instance handles are NOT XOR-28 scrambled while event handles are, so the
-  // same integer names two different objects depending on line type. Name
-  // plausibility cannot separate the readings; the item table's TYPE column
-  // does, 914/914 against a coin flip.
+  // The dump's frame instance list, and the trap that comes with it: an
+  // instance OI is in event space, named through the same XOR-28 lookup, and
+  // the image the dumper wrote beside it is the XOR partner's. The 2026-08-26
+  // reading had it backwards; recompiled Office positions decide it, 186/189.
+  // Also gated in npm run test:unit.
   ['dump instances', ['dump/test-instances.py']],
   // Unwired since it was written; the AI table is what every survival figure
   // in this repository is computed against.
