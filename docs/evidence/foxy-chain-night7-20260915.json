@@ -1,0 +1,112 @@
+{
+  "schema": "fnaf2-1020.evidence.v1",
+  "id": "foxy-chain-night7-20260915",
+  "claimLevel": "MODEL_ONLY for the model options and censuses; DEVICE_MEASURED video reads for the k2 cohort death cycles; the dump is the source for every mechanic",
+  "parentCommit": "ff145b7",
+  "question": "Why does the phone lose k2 to Withered Foxy (7 of 10 counted runs) while the model wins every seed, and do the model's Foxy errors touch encounter predictions?",
+  "dumpFacts": {
+    "source": "Office frame (FRAME 3) of the retained event dump; object identities confirmed against the Chowdren recompile's generated names (oldfoxy_105, indanger_125, viewinghalllight_127, mask_89, viewing_55, night_108, oldfoxyai_112, beingattackedby_136). The CTFAK dump's object NAMES are shifted; its OI numbers are right.",
+    "chain": {
+      "g337": "every 5000 ms, no location/pin/state condition: (21 + Random(5)) - D <= Foxy AI (cap 17, g829); success writes A=1 and D=0. The Random draw is spent every 5 s.",
+      "g349": "A=1 and B=0 -> A=2",
+      "g364": "B > 0 -> B decays one per frame",
+      "g389": "A=2, at CAM 08, latch 0 -> hall (A=0, D=0)",
+      "g390": "A=2, in the hall, latch 0 -> marker 123 (the lock, A=0)",
+      "g488/g489": "latch cleared every 1000 ms, then set from lit? (viewing 0, power > 0)",
+      "g571/g572": "every 10000 ms, at 123, not being attacked, in danger 0 -> attack (either viewing state)",
+      "g573": "at 123, viewing 0, latch 1, in danger 0 -> attack",
+      "g745": "in the hall with the latch -> D=0, exposure += 1",
+      "g824": "in danger 0, every 1000 ms -> D += 1",
+      "g825": "in danger 0, mask fully on, nobody at 122, every 1000 ms -> D += 1",
+      "g846": "exposure > 100 x night, lit? 0, latch 0, B 0 -> CAM 08, A=0, D=0, exposure 0, B = 500 + Random(500); no position condition",
+      "g855": "in the hall with the latch -> B = 50",
+      "g864": "every 500 ms, D > 0, at CAM 08, latch 1 -> D -= 1",
+      "startState": "no night-start writer for Foxy's alterable values and empty object values: B starts at 0"
+    },
+    "timerOrder": {
+      "claimLevel": "SUPPORTING (Chowdren is a Fusion reimplementation, not the Android runtime)",
+      "reading": "Chowdren generates each Every condition as an accumulator placed in condition order (`every += dt; if (every < T) skip; every -= T`, dt real elapsed time). g824 and g825 test in danger BEFORE their 1 s accumulator, so those timers pause during encounters and keep their remainder; g337, g864, g488, g571 and g572 put the timer first.",
+      "consequence": "The model's D tick `(f + blackoutCount) % 60` and its mask-on accumulator that resets on mask-off are approximations of this; neither the per-encounter offset nor the reset is sourced."
+    }
+  },
+  "modelGapsFound": [
+    "The default model skips Foxy's roll, and its Random(5) draw, while he is pinned or not ready; g337 has no such gate.",
+    "The constructor draws Foxy's readyAt (5-10 s); the dump has no such draw, so every later draw is one step out of line.",
+    "A successful roll during the 50-frame pin is dropped by the model; the dump holds it in A and locks once B drains and the latch clears.",
+    "The model ticks D before the latch reset (the dump resets in g745 before g824 ticks)."
+  ],
+  "modelChanges": {
+    "file": "packages/core/src/mechanics/plant-model.js",
+    "options": {
+      "sourcedDropLightOrder": "drop latency (g614/g262), the hall latch from frame-start lit? (g75/g84/g94, g488/g489), g745/g573 from the latch",
+      "sourcedFoxyChain": "requires sourcedDropLightOrder; Foxy as the literal chain above, no constructor draw, g824/g825 on the plain frame grid (see timerOrder: not yet the paused accumulator)"
+    },
+    "defaults": "both false; tests pin that off is trace-identical, and the k2/k3/h bundles validate READY",
+    "tests": ["packages/core/test/drop-light-order.test.js", "packages/core/test/foxy-chain.test.js"]
+  },
+  "censuses": {
+    "method": "3000 seeds each; options enabled at frame 0 by a tick wrapper (the bundle-digested replay is unchanged); under sourcedFoxyChain the wrapper rewinds the RNG one LCG step to undo the constructor draw",
+    "rows": [
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "default", "wins": 3000, "foxyLocksPerNight": 0},
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder", "wins": 41, "foxyDeaths": 2959, "deathPhaseBin": "7.25-7.5 s (all)", "deathTimeS": {"p10": 29.9, "p50": 229.9, "p90": 309.9}},
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder + sourcedRouteForks", "wins": 205, "foxyDeaths": 2795, "deathTimeS": {"p10": 39.9, "p50": 279.9, "p90": 369.9}},
+      {"winner": "night7-anchored-k3", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder", "wins": 46, "foxyDeaths": 2954},
+      {"winner": "night7-anchored-k3", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder + sourcedRouteForks", "wins": 226, "foxyDeaths": 2774},
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder + sourcedFoxyChain", "wins": 1, "foxyDeaths": 2999, "deathTimeS": {"p10": 29.9, "p50": 59.9, "p90": 149.9}},
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "chain + sourcedRouteForks", "wins": 14, "foxyDeaths": 2986},
+      {"winner": "night7-anchored-k3", "night": 7, "epochMs": 2433, "options": "sourcedDropLightOrder + sourcedFoxyChain", "wins": 2, "foxyDeaths": 2998},
+      {"winner": "night7-anchored-k3", "night": 7, "epochMs": 2433, "options": "chain + sourcedRouteForks", "wins": 11, "foxyDeaths": 2989},
+      {"winner": "night6-cohort-h", "night": 6, "epochMs": 4850, "options": "drop order + route forks", "wins": 3000},
+      {"winner": "night6-cohort-h", "night": 6, "epochMs": 4850, "options": "chain + route forks", "wins": 3000},
+      {"winner": "night7-anchored-k2", "night": 7, "epochMs": 2433, "options": "chain, 7.46 s hall contact eaten 10/20/30%", "wins": [0, 0, 0], "note": "moot while the chain already kills 2999/3000 with no loss"}
+    ],
+    "mechanismInTheModel": "an encounter that starts at the camdrop (every model encounter starts at cycle phase ~1.32 s and lasts 300 frames) blocks the camdrop hall flash, D is not reset, the 2.567 s roll locks at D=4 one draw in five, and the 7.46 s flash kills through g573",
+    "phone": "k2 cohort 3/10 (Wilson 95% 0.108-0.603), every death Withered Foxy, death video times 20.6, 20.6, 210.5, 230.6, 270.5, 300.4, 390.6 s"
+  },
+  "encounterPredictionEffect": {
+    "claimLevel": "MODEL_ONLY",
+    "question": "do the Foxy draw errors touch blackout encounter predictions?",
+    "method": "k2, Night 7, epoch 2433, seeds 1-3000, default model; variants add one draw at each 5 s Foxy roll the model skips, or remove only the constructor draw; office encounter sequence (who + frame) compared per seed",
+    "base": {"wins": 3000, "encountersPerNight": 34.29, "skippedFoxyDrawsPerNight": 42},
+    "restoreSkippedDraws": {"wins": 3000, "encountersPerNight": 34.24, "sameFirstEncounter": 656, "sameSequenceFirst120s": 13, "sameSequenceWholeNight": 0},
+    "removeConstructorDraw": {"wins": 3000, "encountersPerNight": 34.25, "sameFirstEncounter": 657, "sameSequenceFirst120s": 20, "sameSequenceWholeNight": 7},
+    "reading": "Rates are unchanged, but seed-specific predictions are not: with either fix the first encounter differs on ~78% of seeds and the 120 s sequence on >99%. Every seed-matched encounter prediction and seed-clock test scored on the default model ran on a stream out of step with g337, in addition to the g744 gap already recorded in docs/evidence/withered-freddy-route-night7-20260915.json."
+  },
+  "deviceReads": {
+    "claimLevel": "DEVICE_MEASURED reads of retained k2 cohort recordings; interpretation MODEL_ONLY",
+    "eyeholeDeathCycles": {
+      "tool": "scratchpad eyehole reader (corpus colour rule), windows release + 1.0 + 10 c s, 2.6 s at 5 fps; retained locally under artifacts/forensics/k2-death-cycles-20260915 with SHA256SUMS",
+      "rows": [
+        {"slot": "r06", "deathCycle": 22, "deathCycle_read": "empty", "previousCycle": "WitheredChica", "earlierOccupied": "13/22"},
+        {"slot": "r07b", "deathCycle": 20, "deathCycle_read": "empty", "previousCycle": "WitheredBonnie", "earlierOccupied": "11/20"},
+        {"slot": "r08", "deathCycle": 26, "deathCycle_read": "empty", "previousCycle": "empty", "earlierOccupied": "13/26"},
+        {"slot": "r09", "deathCycle": 1, "deathCycle_read": "empty", "previousCycle": "empty", "earlierOccupied": "0/1"},
+        {"slot": "r10", "deathCycle": 38, "deathCycle_read": "empty", "previousCycle": "WitheredBonnie", "earlierOccupied": "24/38"}
+      ],
+      "baseRate": "r03 (a win) 22/42 occupied; the five death runs' earlier cycles 61/107",
+      "reading": "All five timed deaths came in cycles with no office encounter at the camdrop (~1.5% if death cycles followed the base rate). The model's only Foxy-death path (lock after an encounter-blocked camdrop flash) is not the phone's."
+    },
+    "deathCycleHallFlash": {
+      "tool": "cycle-ledger door region (640x288, rows 80:213, cols 240:453) at 60 fps, phase 7.16-7.76 s",
+      "lit": ["r06 c22", "r08 c26", "r02 c29", "r04 c1"],
+      "noFlashPeak": ["r07b c20", "r09 c1", "r10 c38"],
+      "jumpscareOnset": "door brightness rises to ~12-13 at ~7.70-7.73 s video phase in all seven, lit or not",
+      "reading": "The kill's visible onset does not wait on the flash; with ~160 ms capture latency (flash press 7.46 -> peak ~7.62) it sits nearer g571's 10 s attack at 7.567 s than the flash latch at ~7.48 s. Not resolved at this frame rate."
+    },
+    "camdropHallRead": {
+      "status": "UNCALIBRATED, not evidence",
+      "reading": "A door-brightness series around every camdrop (phase 1.50-1.95 s) does not separate lit from unlit: the monitor-lowering animation covers the office until ~1.68 s, encounter cycles flicker, and no known-unlit camdrop exists to calibrate against."
+    }
+  },
+  "status": "OPEN",
+  "conclusions": [
+    "The dump's Foxy is an A/B chain the default model does not implement; the literal chain is now in the model behind sourcedFoxyChain (default off).",
+    "Neither sourcedDropLightOrder nor sourcedFoxyChain reproduces the phone: both kill k2 on nearly every seed, through encounter-blocked camdrop flashes, while the phone's Foxy deaths come in encounter-free cycles.",
+    "The Foxy draw errors scramble seed-specific encounter predictions (not rates)."
+  ],
+  "openQuestions": [
+    "Why phone blocked-camdrop cycles do not lock Foxy: the paused g824 accumulator (Chowdren order) and the real in-danger duration are the untested candidates.",
+    "What locks Foxy in an encounter-free cycle on the phone: a lost 33 ms hall contact at 7.46 s (three of seven death cycles show no flash peak) or a camdrop flash that did not latch; hallMs is still 33 ms, which equals FUSION_POLL_MS.",
+    "A calibrated camdrop hall-light reader, and g571 versus g573 as the kill."
+  ]
+}

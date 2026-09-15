@@ -52,10 +52,42 @@ export class Sim {
       //   g352/g356 off Night 7: Toy Freddy / Toy Chica's accepted roll is
       //             discarded while Toy Chica / Toy Bonnie is on CAM 09
       sourcedRouteForks: false,
+      // Frame order at a monitor drop and the hall-light latch, read from the
+      // dump on 2026-09-15 (docs/evidence/withered-freddy-route-night7-20260915.json):
+      //   g614/g618 a drop press only sets `drop everything` (monitor fully up,
+      //             mask off); g262 lowers and zeroes `viewing` next frame
+      //   g75/g84   `lit?` needs viewing = 0 and mask = 0 as the frame starts
+      //             (they run before g262), g94 clears it while in danger,
+      //             g445-447/g490 raise in danger later in the frame
+      //   g488/g489 the hall latch clears every 1000 ms, then latches from lit?
+      //   g745/g855/g864/g846 Foxy's D reset, pin, CAM 08 decrement and retreat
+      //             read the latch; g337 zeroes D on every successful roll;
+      //             g389/g390 arrival and lock wait while the latch is set;
+      //             g573 kills from the latch on any frame, not only on a press
+      // So an encounter that starts at a camdrop never lets the hall light
+      // latch, and D is not reset. Off by default until the censuses compare.
+      sourcedDropLightOrder: false,
+      // Foxy as the dump's literal A/B chain (requires sourcedDropLightOrder):
+      //   g337  every 5 s, no location/pin/state condition: the Random(5) draw
+      //         is spent every time; success writes A=1 and D=0
+      //   g349  A=1 -> 2 only once B=0;  g364 B decays one per frame
+      //   g389/g390  A=2 moves CAM 08 -> hall, or hall -> marker 123, once the
+      //         latch g489 left on the previous frame is clear
+      //   g573  123 + viewing 0 + latch + not in danger kills (g571/572: 10 s)
+      //   g745 then g824: the latch zeroes D before the 1 s tick adds to it;
+      //   g825  the masked +1 runs on the same global 1 s timer
+      //   g846  exposure over threshold + lit? 0 + latch 0 + B 0 retreats,
+      //         with no position condition, B = 500+Random(500)
+      //   g855  B=50 while latched in the hall;  g864 -1 per 500 ms on CAM 08
+      // Foxy's B starts at 0 (no night-start writer, empty object values), so
+      // the constructor's readyAt draw is not spent under this option.
+      sourcedFoxyChain: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
       throw new Error('customNight requires night: 7 (Custom Night is night 7 in the menus)');
+    if (this.opts.sourcedFoxyChain && !this.opts.sourcedDropLightOrder)
+      throw new Error('sourcedFoxyChain reads the hall latch: it requires sourcedDropLightOrder');
 
     this.rng = new Rng(this.opts.seed, this.opts.worst);
     this.frame = 0;
@@ -101,8 +133,9 @@ export class Sim {
     this.applyAiHour(0);
 
     // --- Foxy
-    this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false, pinUntil: -1,
-                  readyAt: this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
+    this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false, pinUntil: -1, A: 0, B: 0,
+                  readyAt: this.opts.sourcedFoxyChain ? 0
+                    : this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
     this.maskDAccum = 0;
 
     // --- Golden Freddy (office) + the separate hallway version
@@ -144,6 +177,8 @@ export class Sim {
     // g744's `decide path` (1 or 2). Rolled at 1 s, before any unit can reach
     // a fork (first movement roll at 5 s), so the unread initial value is moot.
     this.decidePath = 0;
+    this.hallLatch = false;   // `viewing hall light` under sourcedDropLightOrder
+    this.hallLit = false;     // `lit?` (g75/g84/g94) from frame-start state, under sourcedFoxyChain
 
     // --- puppet
     this.puppet = {
@@ -349,7 +384,14 @@ export class Sim {
     } else if (action === 'mask') {
       this.setMask(!this.maskOn);
     } else if (action === 'monitor') {
-      this.setMonitor(!(this.monitor === MON_UP || this.monitor === MON_RAISING));
+      const lower = this.monitor === MON_UP || this.monitor === MON_RAISING;
+      if (lower && this.opts.sourcedDropLightOrder) {
+        // g614/g618: the drop button only raises the flag, and only from a
+        // fully-up monitor with the mask off; g262 performs it next frame.
+        if (this.monitor === MON_UP && this.maskFullyOff) this.dropEverything = true;
+        return;
+      }
+      this.setMonitor(!lower);
     } else if (action === 'wind') {
       this.winding = true;
     } else if (action === 'ventL' || action === 'ventR') {
@@ -376,7 +418,25 @@ export class Sim {
     else if (action === 'ventR') this.ventLightR = false;
   }
 
+  /** g75/g84 -> g94 -> (g262, g445-447 later) -> g488 -> g489, from frame-start state. */
+  updateHallLatch(f, lit = this.hallLitNow()) {
+    if (f % C.FPS === 0) this.hallLatch = false;   // g488
+    if (lit) this.hallLatch = true;                // g489
+  }
+
+  /** g75/g84 set lit? with viewing 0 and the mask off; g94 clears it in danger. */
+  hallLitNow() {
+    return this.lightHeld && this.viewing === 0 && this.maskFullyOff &&
+      !this.blackout.active && !this.bb.inside && this.power > 0;
+  }
+
   onLightPress() {
+    if (this.opts.sourcedDropLightOrder) {
+      // g573 reads the latch every frame (tickFoxy); only Golden Freddy's
+      // press branch stays here.
+      if (this.hallView && this.gf.present) { this.kill('golden-freddy', 'Flashed the hall with Golden Freddy in the office'); }
+      return;
+    }
     if (this.hallView) {
       // g573 (Foxy's instant kill on a monitor-down hall flash) precedes g778
       // (Golden Freddy's flash kill) in event-group order, and g573 "kills
@@ -513,6 +573,8 @@ export class Sim {
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
+    if (this.opts.sourcedFoxyChain) this.hallLit = this.hallLitNow();   // g75-g94; g488/g489 run in tickFoxyChain
+    else if (this.opts.sourcedDropLightOrder) this.updateHallLatch(f);
 
     // g262/g274 execute the forcedown near the top of the sheet, while
     // g612 clears it and g624/g718-721 set it near the bottom -- so a flag
@@ -562,6 +624,7 @@ export class Sim {
 
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (f % C.MO_FRAMES === 0) this.onFiveSecond();
+    if (this.opts.sourcedFoxyChain) this.foxyChainTransitions();   // g349/g364/g389/g390
 
     // --- 10-second interval: g718-721 slam everything down while one of the
     // four streak attackers is waiting at marker 122 with the cameras up.
@@ -756,8 +819,52 @@ export class Sim {
     return n === 1 || (n === 2 && this.frame < 2 * C.HOUR_FRAMES);
   }
 
+  /** g349 -> g364 -> g389/g390, after g337 and before g488/g489 in the sheet. */
+  foxyChainTransitions() {
+    if (!this.opts.foxyEnabled) return;
+    const fx = this.foxy;
+    if (fx.A === 1 && fx.B === 0) fx.A = 2;          // g349
+    if (fx.B > 0) fx.B = Math.max(0, fx.B - 1);      // g364
+    if (fx.A !== 2 || this.hallLatch) return;       // the latch g489 left on the previous frame
+    if (fx.loc === 'parts') {                        // g389
+      fx.A = 0; fx.loc = 'hall'; fx.D = 0;
+      this.emit('foxy-arrive');
+    } else if (fx.loc === 'hall' && !fx.gotYou) {    // g390
+      fx.A = 0; fx.gotYou = true;
+      this.emit('foxy-lock');
+      this.flag('foxy-lock', 'g390: Foxy reached marker 123 (A=2, B=0, latch clear)');
+    }
+  }
+
+  /** g488/g489, g573, g745, g824, g825, g846, g855, g864, g872-874 in sheet order. */
+  tickFoxyChain(f) {
+    const fx = this.foxy;
+    const second = f % C.FPS === 0;
+    const danger = this.blackout.active;
+    this.updateHallLatch(f, this.hallLit);                                   // g488/g489
+    if (fx.gotYou && this.viewing === 0 && this.hallLatch && !danger) {      // g573
+      this.kill('foxy', 'g573: the hall light latched while Foxy was at marker 123');
+      return;
+    }
+    const atHall = fx.loc === 'hall' && !fx.gotYou;
+    if (atHall && this.hallLatch) { fx.D = 0; fx.exposure++; }               // g745
+    if (second && !danger) fx.D++;                                           // g824
+    const someoneInOpening = this.bb.inOpening || this.units.some(u => u.atOpening);
+    if (second && !danger && this.maskFullyOn && !someoneInOpening) fx.D++;  // g825
+    if (fx.exposure > C.foxyExposureFrames(this.opts.night) && !this.hallLit && // g846
+        !this.hallLatch && fx.B === 0) {
+      fx.loc = 'parts'; fx.gotYou = false; fx.A = 0; fx.D = 0; fx.exposure = 0;
+      fx.B = this.rng.int(C.FOXY_RETURN_MIN, C.FOXY_RETURN_MAX, C.FOXY_RETURN_MIN);
+      this.emit('foxy-leave');
+    }
+    if (fx.loc === 'hall' && !fx.gotYou && this.hallLatch) fx.B = C.FOXY_HALL_PIN_FRAMES; // g855
+    if (f % (C.FPS / 2) === 0 && fx.D > 0 && fx.loc === 'parts' && this.hallLatch) fx.D--; // g864
+    if (this.foxyDormant) fx.D = 0;                                          // g872-874
+  }
+
   tickFoxy(f) {
     if (!this.opts.foxyEnabled) return;
+    if (this.opts.sourcedFoxyChain) { this.tickFoxyChain(f); return; }
     const fx = this.foxy;
     if (this.foxyDormant) fx.D = 0;
 
@@ -766,13 +873,31 @@ export class Sim {
     const dTick = ((f + this.blackoutCount) % C.FPS) === 0;
     if (dTick && !this.blackout.active && !this.foxyDormant) fx.D++;
 
+    const hallLit = this.opts.sourcedDropLightOrder ? this.hallLatch : this.hallLightOn;
+    if (this.opts.sourcedDropLightOrder) {
+      // g573: locked at marker 123, monitor down, latch set, no encounter.
+      if (fx.gotYou && this.hallLatch && this.viewing === 0 && !this.blackout.active) {
+        this.kill('foxy', 'g573: the hall light latched while Foxy was at marker 123');
+        return;
+      }
+      // g389/g390: an accepted move waits while the latch is set, then lands.
+      if (fx.arrivalPending && !this.hallLatch && f >= fx.readyAt) {
+        fx.arrivalPending = false; fx.loc = 'hall'; fx.exposure = 0; fx.D = 0;
+        this.emit('foxy-arrive');
+      }
+      if (fx.lockPending && !this.hallLatch && f >= fx.pinUntil) {
+        fx.lockPending = false; fx.gotYou = true;
+        this.emit('foxy-lock');
+        this.flag('foxy-lock', 'Foxy reached marker 123 once the hall latch cleared');
+      }
+    }
     if (fx.loc === 'parts') {
       // Light still reaches him: it pushes D back down and delays his return.
-      if (this.hallLightOn && f % 30 === 0) fx.D = Math.max(0, fx.D - 1);
+      if (hallLit && f % 30 === 0) fx.D = Math.max(0, fx.D - 1);
       return;
     }
 
-    if (this.hallLightOn) {
+    if (hallLit) {
       fx.exposure++;
       fx.D = 0; // the hall light zeroes it outright while he is standing there
       // While lit at hall stage 1 his B is pinned to 50 (group 855): eviction
@@ -790,7 +915,7 @@ export class Sim {
     if (!this.maskOn) { this.maskDAccum = 0; return; }
     // Mask time also feeds Foxy's D when nobody is in a vent opening
     const someoneInOpening = this.bb.inOpening || this.units.some(u => u.atOpening);
-    if (!this.blackout.active && !someoneInOpening) {
+    if (!this.blackout.active && !someoneInOpening && !this.opts.sourcedFoxyChain) {   // g825 runs in tickFoxyChain
       if (++this.maskDAccum >= C.FPS) { this.maskDAccum = 0; if (!this.foxyDormant) this.foxy.D++; }
     }
     // [SOURCED] BB is on the same counter as Toy Chica and Mangle: g907 adds
@@ -1104,7 +1229,16 @@ export class Sim {
     if (this.opts.foxyEnabled) {
       const fx = this.foxy;
       const eq = () => 21 + this.rng.int(0, 4, 0) - fx.D <= this.ai.foxy;
-      if (fx.loc === 'parts') {
+      if (this.opts.sourcedFoxyChain) {
+        // g337: no location, pin or state condition, so the draw is spent every 5 s.
+        if (21 + this.rng.int(0, 4, 0) - fx.D <= this.ai.foxy) { fx.A = 1; fx.D = 0; }
+      } else if (this.opts.sourcedDropLightOrder && (fx.arrivalPending || fx.lockPending)) {
+        // an accepted move is already waiting for the latch (g389/g390)
+      } else if (this.opts.sourcedDropLightOrder && fx.loc === 'parts') {
+        if (this.frame >= fx.readyAt && eq()) { fx.D = 0; fx.arrivalPending = true; }            // g337 -> g389
+      } else if (this.opts.sourcedDropLightOrder) {
+        if (!fx.gotYou && this.frame >= fx.pinUntil && eq()) { fx.D = 0; fx.lockPending = true; } // g337 -> g390
+      } else if (fx.loc === 'parts') {
         if (this.frame >= fx.readyAt && eq()) {
           // Android Office g389 resets old foxy.v3 on CAM 08 -> hall stage 1.
           // Arrival's accumulated D must not become the hall attack timer,

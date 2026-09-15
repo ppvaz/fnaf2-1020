@@ -5607,3 +5607,30 @@ timed on the phone wall clock; (3) why the eyehole never shows Withered Freddy
 on k2/k3; (4) the lifecycle frames that exist only after the intro now carry the
 guard -- confirm no new false `other` on a live night; (5) the peer session's
 uncommitted Minus 7 lane is untouched.
+
+**2026-09-15: Foxy's dump chain is in the model behind an option, and it does
+not reproduce the phone; the phone's Foxy deaths come in encounter-free
+cycles.** Record: [foxy-chain-night7-20260915](../docs/evidence/foxy-chain-night7-20260915.json).
+The Office sheet runs Foxy as an A/B chain the default model never had: the
+5 s roll (g337) draws Random(5) every time and only writes A=1/D=0; A becomes 2
+once B drains (g349/g364); the move and the lock (g389/g390) wait on a clear
+hall latch. The default model skips 42 of ~84 Foxy draws per night and spends
+one unsourced draw at construction. That leaves rates alone but scrambles
+seed-specific encounter predictions: restoring the draws changes the first
+encounter on ~78% of 3000 k2 seeds and the 120 s sequence on >99%.
+
+`sourcedDropLightOrder` and `sourcedFoxyChain` (both default off; off is
+trace-identical and k2/k3/h validate READY) kill k2 on 2959/3000 and 2999/3000
+seeds, every lock following an encounter that blocks the camdrop flash. The
+phone refutes that path: all five timed k2 deaths read an empty right eyehole
+in the death cycle (base rate ~57% occupied). Chowdren's generated source
+(supporting, not the Android runtime) puts g824/g825's in-danger test before
+their 1 s accumulators, so D's tick pauses during encounters; the model's
+per-encounter offset is unsourced. Three of seven death-cycle 7.46 s flashes
+show no peak, consistent with a lost 33 ms hall contact.
+
+Open: (1) why blocked-camdrop cycles do not lock Foxy on the phone (the paused
+g824 accumulator, the real in-danger length); (2) what locks him in an
+encounter-free cycle (a lost 33 ms hall contact, or a camdrop flash that did not
+latch); (3) a calibrated camdrop hall-light reader; (4) the peer session's
+uncommitted Minus 7 lane and configure-custom-night.mjs are untouched.
