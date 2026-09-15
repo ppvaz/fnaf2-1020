@@ -1,0 +1,73 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "night7-k3-seedlog-nights-20260915",
+ "claimLevel": "DEVICE_MEASURED (live MMFRuntime logcat on the phone wall clock, helper onset, graded runs, eyehole reads)",
+ "question": "Where does each night's office frame take its clock seed, measured on full nights with the game's own log streamed live?",
+ "method": "tools/device/night-run.sh with k3 (fnv1a-5c8dcb5f, aim 2433), video on, adb logcat -v epoch -s MMFRuntime streamed from before the run; the seed is taken in CRun.initRunLoop -> allocRunHeader, which runs after the logged 'Starting new frame' and before the logged 'startTheFrame() called' (docs/evidence/night7-k3-twin-nights-result-20260915.json, seedLog.placement)",
+ "runs": [
+  {
+   "run": "night7-night7-k3-seedlog-full-01-20260915T032213Z",
+   "status": "WIN",
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 456.0 s; 42/42 gates agreed; every instrument passed",
+   "onsetPhoneWallMs": 1789442567242.2683,
+   "hudFirstVideoS": 35.034,
+   "startTap": {
+    "tapPhoneWallLow16": 39109,
+    "timed": false
+   },
+   "seedBracket": null,
+   "seedBracketLost": "the watcher waited on the setsid wrapper's PID, which exits at once, and its cleanup stopped the live log stream ~3 s after launch; the phone's 256 KiB log buffer had rolled over before the lines could be read back (memory feedback_setsid_wrapper_pid)",
+   "eyehole": {
+    "identified": 26,
+    "empty": 15,
+    "unreadable": 1
+   }
+  },
+  {
+   "run": "night7-night7-k3-full-02-20260915T033615Z",
+   "status": "WIN",
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 456.0 s; 42/42 gates agreed; every instrument passed",
+   "onsetPhoneWallMs": 1789443410115.4744,
+   "hudFirstVideoS": 35.155,
+   "officeLog": {
+    "loading frame #:4": 1789443408676,
+    "Starting new frame": 1789443410027,
+    "startTheFrame() called": 1789443410042
+   },
+   "seedBracket": {
+    "fromMs": 1789443410027,
+    "toMs": 1789443410042,
+    "low16": [
+     34923,
+     34938
+    ],
+    "candidates": 16,
+    "beforeHelperOnsetMs": [
+     73.5,
+     88.5
+    ]
+   },
+   "eyehole": {
+    "identified": 23,
+    "empty": 18,
+    "unreadable": 1
+   }
+  }
+ ],
+ "withEarlierBracket": {
+  "seedlog-01 (aborted run)": {
+   "beforeHelperOnsetMs": [
+    64,
+    76
+   ],
+   "low16": [
+    19850,
+    19862
+   ]
+  },
+  "overlap": "the two measured seed-to-onset gaps overlap at 73.5-76 ms; the gap is roughly constant to about +-12 ms"
+ },
+ "k3OnThePhone": "run 1, twin A, B, C, full-01 and full-02: six wins in six nights (not a predeclared cohort, not a rate)",
+ "notYetScored": "The 16 candidate seeds of full-02 are not scored: the model's random stream still lacks the monitor-down image draw (g807), the g497/g744 order, the Puppet static glitch chain, Paper Pals and the camera-arrival/footstep cues, and it assumes an exact 60 fps where the phone's rendered frame count is unknown (docs/evidence/rng-draw-audit-office-20260915.json).",
+ "retained": "artifacts/forensics/k3-seedlog-nights-20260915 (full-01/full-02 logcat and runner output, eyehole reads, launcher script, SHA256SUMS)"
+}
