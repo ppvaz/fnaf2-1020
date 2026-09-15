@@ -305,12 +305,16 @@ stop_input_trace() {
   printf 'input    %s lines retained\n' "$(grep -c '' "$OUTDIR/input-events.txt" 2>/dev/null || echo 0)"
 }
 
+# GNU stat prints a size with -c, BSD stat (macOS) with -f; the run summary
+# must not lose the size line on either host.
+file_bytes() { stat -c %s "$1" 2>/dev/null || stat -f %z "$1"; }
+
 stop_bt_audio() {
   [ "$BT_AUDIO" = 1 ] && [ -n "$BT_AUDIO_BASE" ] || return 0
   local wav
   if wav="$("$HERE/../cue/capture-bt-audio.sh" --stop "$BT_AUDIO_BASE" 2>>"$OUTDIR/bt-audio.err")"; then
     cp "$BT_AUDIO_BASE.bt.json" "$OUTDIR/bt-audio.json"
-    printf 'bt-audio %s (%s bytes raw)\n' "$wav" "$(stat -c %s "$BT_AUDIO_BASE.bt.raw")"
+    printf 'bt-audio %s (%s bytes raw)\n' "$wav" "$(file_bytes "$BT_AUDIO_BASE.bt.raw")"
   else
     printf 'bt-audio NONE RETAINED (%s)\n' "$(tail -1 "$OUTDIR/bt-audio.err")" >&2
   fi
@@ -337,7 +341,7 @@ stop_recording() {
       && adb -s "$SERIAL" shell "rm -f '$DEVICE_VIDEO'" >/dev/null 2>&1 || true
   fi
   if [ -s "$HOST_VIDEO" ]; then
-    printf 'video    %s (%s bytes)\n' "$HOST_VIDEO" "$(stat -c %s "$HOST_VIDEO")"
+    printf 'video    %s (%s bytes)\n' "$HOST_VIDEO" "$(file_bytes "$HOST_VIDEO")"
     sha256sum "$HOST_VIDEO" | tee "$OUTDIR/video.sha256"
   else
     printf 'video    NONE RETAINED\n' >&2

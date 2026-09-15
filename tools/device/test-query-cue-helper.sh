@@ -166,7 +166,9 @@ done
 rm -f "$CUE_HELPER_ENDPOINT_STASH"
 PATH="$TEMP_DIR/bin:$PATH" "$HERE/query-cue-helper.sh" watchlist status >/dev/null
 [ -f "$CUE_HELPER_ENDPOINT_STASH" ] || { echo "a valid endpoint was not stashed" >&2; exit 1; }
-[ "$(stat -c %a "$CUE_HELPER_ENDPOINT_STASH")" = 600 ] || { echo "endpoint stash must be mode 600" >&2; exit 1; }
+# GNU stat prints the octal mode with -c; BSD stat (macOS) with -f. Try both.
+file_mode() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+[ "$(file_mode "$CUE_HELPER_ENDPOINT_STASH")" = 600 ] || { echo "endpoint stash must be mode 600" >&2; exit 1; }
 grep -qx 'pid=7007' "$CUE_HELPER_ENDPOINT_STASH" || { echo "stash lost the helper pid" >&2; exit 1; }
 grep -qx 'token=0123456789abcdef0123456789abcdef' "$CUE_HELPER_ENDPOINT_STASH" || { echo "stash lost the token" >&2; exit 1; }
 

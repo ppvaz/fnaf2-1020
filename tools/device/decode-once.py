@@ -110,6 +110,38 @@ def parse_steps(argv: list[str]) -> tuple[argparse.Namespace, list[tuple[str, li
     return args, steps
 
 
+# The fuse is a Linux contract: CPU affinity is os.sched_setaffinity, which
+# only Linux exposes, and macOS refuses a finite RLIMIT_AS ("current limit
+# exceeds maximum limit"). On a host without them the decode still runs -- the
+# test lanes exercise the pipeline on a developer Mac -- but says so once on
+# stderr, so a grade run that expected the fuse can see it was not armed.
+HAS_AFFINITY = hasattr(os, "sched_setaffinity")
+HAS_RLIMIT_AS = sys.platform.startswith("linux")
+_fuse_warned = False
+
+
+def child_limits(cpus: set[int], vmem_kb: int):
+    """The preexec_fn for one consumer or the shared ffmpeg: affinity, nice 10, RLIMIT_AS."""
+    global _fuse_warned
+    missing = []
+    if cpus and not HAS_AFFINITY:
+        missing.append("cpu affinity")
+    if vmem_kb > 0 and not HAS_RLIMIT_AS:
+        missing.append("RLIMIT_AS")
+    if missing and not _fuse_warned:
+        _fuse_warned = True
+        print(f"decode-once: {' and '.join(missing)} not enforceable on {sys.platform}; running without that fuse",
+              file=sys.stderr, flush=True)
+
+    def limits():
+        if cpus and HAS_AFFINITY:
+            os.sched_setaffinity(0, cpus)
+        os.nice(10)
+        if vmem_kb > 0 and HAS_RLIMIT_AS:
+            resource.setrlimit(resource.RLIMIT_AS, (vmem_kb * 1024, vmem_kb * 1024))
+    return limits
+
+
 def cpu_list(spec: str) -> set[int]:
     cpus: set[int] = set()
     for part in spec.split(","):
@@ -137,14 +169,9 @@ class Consumer:
         self.decode_failed: int | None = None   # the shared ffmpeg's exit code, when it died under this consumer
 
     def start(self, env: dict, cpus: set[int], vmem_kb: int) -> None:
-        def limits():
-            if cpus:
-                os.sched_setaffinity(0, cpus)
-            os.nice(10)
-            if vmem_kb > 0:
-                resource.setrlimit(resource.RLIMIT_AS, (vmem_kb * 1024, vmem_kb * 1024))
         self.started = time.monotonic()
-        self.proc = subprocess.Popen(self.cmd, stdout=self.out, stderr=self.err, env=env, preexec_fn=limits)
+        self.proc = subprocess.Popen(self.cmd, stdout=self.out, stderr=self.err, env=env,
+                                     preexec_fn=child_limits(cpus, vmem_kb))
 
     def poll(self, timeout: float) -> bool:
         """True once finished (or killed for timeout)."""
@@ -201,13 +228,8 @@ def run_decode(announced: list[dict], directory: pathlib.Path, cpus: set[int], t
     pipes = {entry["announce"]: pathlib.Path(entry["pipe"]) for entry in live}
     command, _ = fs.plan_split(specs, directory, pipes_by_name=pipes)
 
-    def limits():
-        if cpus:
-            os.sched_setaffinity(0, cpus)
-        os.nice(10)
-        if vmem_kb > 0:
-            resource.setrlimit(resource.RLIMIT_AS, (vmem_kb * 1024, vmem_kb * 1024))
-    proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, preexec_fn=limits)
+    proc = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+                            preexec_fn=child_limits(cpus, vmem_kb))
     try:
         _, err = proc.communicate(timeout=timeout)
     except subprocess.TimeoutExpired:

@@ -101,6 +101,14 @@ def main() -> int:
     # an address-space cap of 1 MB kills ffmpeg at start, the consumers see EOF
     # on their fifos, and the orchestrator must report them FAILED with the
     # decode's exit code rather than replay their truncated results as ok.
+    # The starvation itself is RLIMIT_AS, a Linux contract (decode-once.py
+    # HAS_RLIMIT_AS): a macOS host cannot arm it, so this block is reported as
+    # skipped there rather than passed, and the instrument's own stderr line
+    # is the evidence that it knew.
+    if not sys.platform.startswith("linux"):
+        print(f"test-decode-once: starved-ffmpeg block SKIPPED on {sys.platform} (RLIMIT_AS is a Linux fuse)")
+        print("test-decode-once: ok")
+        return 0
     with tempfile.TemporaryDirectory(prefix="decode-once-test-") as tmp:
         tmp_path = pathlib.Path(tmp)
         video = tmp_path / "clip.mp4"
