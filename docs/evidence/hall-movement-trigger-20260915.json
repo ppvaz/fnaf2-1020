@@ -1,0 +1,42 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "hall-movement-trigger-20260915",
+ "claimLevel": "SOURCED: every fact below is a line of the regenerated Android event dump (CTFAK Event Text Dumper over the owned application.ccn, sha256 835655e6..., frame 3 Office) or a line of the APK's own runtime decompiled from its dex; no device run and no model census in this record",
+ "parentCommit": "ad4fcad",
+ "question": "Which markers, when a character moves onto them, set the `hall movement` counter (g875-g881) to 300 -- and why did the dump's Office layout show no object touching it and no instance for CAM 03/04/06/07/08?",
+ "runtimeFacts": {
+  "COI.loadHeader": "this.oiHandle = (short) (cFile.readAShort() ^ 28);  -- item-table handles (already known)",
+  "CLO.load": "this.loOiHandle = (short) (cFile.readAShort() ^ 48);  -- placed-instance handles, resolved afterwards through COIList.getOIFromHandle on the ^28 table",
+  "consequence": "instance OI s -> event handle s ^ 48 -> item-table row s ^ 44. The 2026-08-26 (raw row) and 2026-09-15 first-pass (event handle) readings were both wrong; the 186/189 recompile join was the chunk compared with itself."
+ },
+ "layoutChecks": {
+  "office instances joined to an event-referenced object": {"raw": "158/205", "event-handle": "154/205", "xor48": "196/205"},
+  "camera markers placed in the Office": {"raw": "8,9,10,11,12", "event-handle": "01,2,5,9,10,11,12", "xor48": "all twelve, x 602-950 y 390-651"},
+  "approach column (xor48)": {"hall stage 1": [668, 481], "hall stage 2": [668, 550], "in office": [668, 612], "got you box": [670, 681]},
+  "hitboxes (xor48, hotspot-corrected boxes)": {
+   "hall movement (180)": {"pos": [669, 503], "box": [661, 441, 677, 566], "g989": "Start of frame: SetXScale(14 / width) -> 14 px wide", "overlappedFrom": ["hall stage 1", "hall stage 2"]},
+   "hear footsteps (149)": {"pos": [670, 533], "box": [538, 458, 802, 609], "overlappedFrom": ["cam 01", "cam 2", "cam 3", "cam 4", "hall stage 1", "hall stage 2", "in office (bottom/centre-hotspot sprites only)"]},
+   "close by (185)": {"pos": [669, 606], "box": [537, 532, 801, 682], "overlappedFrom": ["cam 01", "cam 2", "cam 5", "cam 6", "hall stage 2", "in office", "got you box"]}
+  }
+ },
+ "dumpFacts": {
+  "g875-g880": "C -4 <character> overlapping hall movement (180) + C -7 'only one action when event loops' -> A 31 hall movement v0 = 300; characters: old freddy (g875), old bonnie (876), new freddy (877), new chica (878), new foxy (879), old foxy (880)",
+  "g881": "hall movement v0 > 0 -> v0 = Max(0, v0 - 1 * <global 24 expression>) -- the drain; rate not re-derived here",
+  "writes onto hall stage 1 (120)": "g381 old bonnie, g389 old foxy, g394 new foxy, g421 new freddy, g431/g434 new chica",
+  "writes onto hall stage 2 (121)": "g376 old freddy, g422 new freddy",
+  "consumers": "g779 (Golden Freddy hall exposure requires v0 == 0 and no character on 120/121); g202 (viewing 0, lit, v0 > 0 -> views.Active frame 99); g203 (v0 == 0, golden v1 != 1 -> frame 36); g204 (golden v1 == 1, v0 == 0 -> frame 93); g205-g209 (character on 120/121 and v0 == 0 -> frames 84/76/98/50/...); g1034/g1035 (lit and v0 == 0 / > 0 -> viewsPatch frame 12 / 13)",
+  "actions 85-88 on Actives": "SetScale / SetXScale / SetYScale / SetAngle (angle, quality) pinned from g1027-g1028 (angle 270), g1074 (angle 90) and the (target / width, 0) shape of g981-g989; the mmfparser-293 table ends at 81",
+  "DoubleExp rendering": "the dumper prints Fusion doubles as a garbled denormal; the integer part is the high 32 bits (g981: 1624, g983: 1048/787, g989: 14, g1027: 46.5625)"
+ },
+ "modelGapsFound": [
+  "plant-model.js refreshes hallMovementUntil every frame a unit is at blindA/blindB or Foxy is in the hall; source writes 300 once per entry into the column (C -7) and never while standing, so the engine over-blocks Golden Freddy's hall exposure after any stay longer than 300 frames",
+  "the hall's rendered frame while the light is on is gated by hall movement (g202/g1035 vs g203/g1034 vs g205-g209); the model has no such state, which is a candidate source for the LIT/DIM/BLACK mismatch in the hall-flash seed signal"
+ ],
+ "modelChanges": ["none in this record; readdump.py instance resolution corrected (tools/dump/readdump.py --lo-xor, test-instances.py)"],
+ "status": "SOURCED; the marker set for the latch is closed (hall stage 1, hall stage 2). Open: the drain rate of g881 (global 24 expression), which of frames 36/99/93 the phone's LIT and DIM classes correspond to, and the entry-triggered model change with its census.",
+ "openQuestions": [
+  "g881 drain: decode the global-value-24 expression (the -65531 token) to confirm one per frame at 60 fps",
+  "map views.Active frames 36 / 99 / 93 / 84 / 76 / 98 / 50 to the phone's LIT / DIM / character / Golden Freddy hall images (needs the image bank or a labelled run)",
+  "port the entry-triggered, per-character latch into plant-model.js with a sourcetest case and a 3000-seed census before/after"
+ ]
+}

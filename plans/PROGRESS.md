@@ -5673,3 +5673,23 @@ first loss on the phone (6 wins, 1 loss). The cause is unidentified; its gate 11
 unreadable mask only after the static. The 13 seeds are not scored yet; that needs a replay
 harness driven by the trace's frame times and an eyehole read of full-04's video. Evidence:
 [night7-k3-frametrace-nights-20260915.json](../docs/evidence/night7-k3-frametrace-nights-20260915.json).
+
+**2026-09-15: the `hall movement` trigger is sourced, and placed instances had a third scramble.**
+The APK's layout loader reads every placed instance's object handle as `readAShort() ^ 48`
+(`Frame/CLO.load`), then resolves it through the item table `COI.loadHeader` already XORed
+with 28. Both earlier instance rules (raw row, 2026-08-26; event handle, 2026-09-15 first
+pass) left the Office without five of its twelve camera markers, which a Fusion `Set position`
+silently skips; the 186/189 recompile join behind the first pass compared the chunk with
+itself. Under the runtime's rule all twelve markers are placed (196/205 Office instances join
+to event-referenced objects, against 154 and 158), and the approach markers form one column at
+x = 668: `hall stage 1` (481), `hall stage 2` (550), `in office` (612), `got you box` (681).
+`hall movement` (669, 503; 16x125, X-scaled to 14 px by g989) is overlapped only from the two
+hall stages, so g875-880 arm the 300 on **entry into the hall column** by W. Freddy, W. Bonnie,
+T. Freddy, T. Chica, Mangle or W. Foxy, once per continuous overlap (`C -7`), never while
+standing; g881 drains it; g779, g202-209 and g1034/1035 read it. `hear footsteps` and
+`close by` fall out of the same table. `readdump.py --lo-xor` (default 48) and
+`test-instances.py` carry the rule; the CTFAK checkout was rebuilt from upstream plus the
+ledger's Linux port and reproduces the dump byte for byte. Rung: none above FIXTURE (source
+work). Open: the g881 drain expression, which `views.Active` frames the phone's LIT/DIM are,
+and the entry-triggered per-character latch in `plant-model.js` with a census. Evidence:
+[hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).

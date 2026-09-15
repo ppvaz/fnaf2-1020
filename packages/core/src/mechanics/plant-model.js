@@ -1267,8 +1267,9 @@ export class Sim {
       }
     }
     if (!this.gf.inHall) return;
-    // g779 also requires the `hall movement` latch to be zero; that latch is
-    // not modelled, which can only ever make the engine stricter than source.
+    // g779 also requires the `hall movement` latch to be zero (hallOccupied
+    // above). Source writes the 300 once per entry into hall stage 1/2 (C -7);
+    // this refreshes it every transit frame, so it can only over-block.
     if (this.hallLightOn && !hallOccupied) {
       if (++this.gf.hallExposure > C.GF_HALL_KILL_FRAMES) {
         this.gf.inHall = false;

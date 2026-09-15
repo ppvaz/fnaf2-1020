@@ -250,10 +250,15 @@ export const GF_HALL_ROLL = 10;
 // g779 adds one per frame while the light is on him and the hall is otherwise
 // empty; g780 kills above 100, so 101 frames.
 export const GF_HALL_KILL_FRAMES = 100;
-// `hall movement` [SOURCED: g875-880 set it to 300 the moment any of the
-// hall-routed characters overlaps it, g881 drains it per frame]. g779 needs it
-// at zero, so for five seconds after anyone passes through the hallway Golden
-// Freddy cannot accumulate exposure there at all.
+// `hall movement` [SOURCED: g875-880 set it to 300 when W. Freddy, W. Bonnie,
+// T. Freddy, T. Chica, Mangle or W. Foxy overlaps the `hall movement` hitbox
+// (669, 503; 16x125, X-scaled to 14 px by g989), which only `hall stage 1`
+// (668, 481) and `hall stage 2` (668, 550) overlap -- no camera marker does;
+// g881 drains it]. Each group carries Fusion's "only one action when event
+// loops" flag (C -7), so the 300 is written once per *entry* into the hall
+// column, not refreshed while the character stands there. g779 needs it at
+// zero (and the column empty), and g202/g1035 draw the hall's "movement"
+// frame while it is above zero. Ledger: ANDROID-SOURCE-STATUS.md 2026-09-15.
 export const HALL_MOVEMENT_FRAMES = 300;
 // [SOURCED: g848-854.] The office-light latch rewrites movement countdown B
 // to 40 every frame for these hall occupants. After g488 clears the latch on

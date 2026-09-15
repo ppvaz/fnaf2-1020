@@ -33,6 +33,55 @@ failure names the group rather than the symptom. **When a row in this ledger
 changes, add or update its case there** — otherwise the row is documentation,
 not a constraint.
 
+## 2026-09-15: placed instances have their own scramble (XOR 48), and the hall column is sourced
+
+The runtime's layout loader reads every placed instance's object handle as
+`readAShort() ^ 48` (`Frame/CLO.load`, decompiled from the APK's dex) and
+only then resolves it in the item table `COI.loadHeader` XORed with 28. An
+` I` line's OI is therefore its own space: event handle `OI ^ 48`, item-table
+row `OI ^ 44`. Both earlier instance rules (raw row, 2026-08-26; event handle,
+2026-09-15 first pass) left the Office without five of its twelve camera
+markers -- a `Set position` onto a missing marker does nothing in Fusion, so
+under either reading W. Foxy could never have left CAM 08. Under the runtime's
+rule all twelve markers are placed once, 196 of 205 Office instances join to
+an object the Office events reference (154 and 158 under the wrong rules),
+and the approach markers form one column. `readdump.py --lo-xor` (default 48)
+and `tools/dump/test-instances.py` carry it; `SOURCE-DUMP-GUIDE.md` §4 has the
+table and the retraction of the recompile join that backed the first pass.
+
+The Office layout that falls out (frame units, hotspot-corrected boxes):
+
+| Object | Position | Box | Overlapped by a 24x24 character standing on |
+| --- | --- | --- | --- |
+| `hall stage 1` (120) | (668, 481) | 32x32 | -- |
+| `hall stage 2` (121) | (668, 550) | 32x32 | -- |
+| `in office` (122) | (668, 612) | 32x32 | -- |
+| `got you box` (123) | (670, 681) | 32x32 | -- |
+| `hall movement` (180) | (669, 503) | x 661-677, y 441-566 (x 662-676 after g989's X-scale 14/16) | `hall stage 1`, `hall stage 2`; no camera marker |
+| `hear footsteps` (149) | (670, 533) | x 538-802, y 458-609 | CAM 01, 02, 03, 04, `hall stage 1`, `hall stage 2`; `in office` only for the bottom/centre-hotspot sprites (W. Bonnie, T. Bonnie, Mangle, W. Foxy, BB, Puppet) |
+| `close by` (185) | (669, 606) | x 537-801, y 532-682 | CAM 01, 02, 05, 06, `hall stage 2`, `in office`, `got you box` |
+| camera markers 01-12 | x 602-950, y 390-651 | 59x40 | (the camera-map buttons: g13/g14 hide and show them, g45-57 pick their frame) |
+
+**`g875-881` — `hall movement`, sourced end to end.** g875-880 are
+`<character> is overlapping hall movement` for W. Freddy, W. Bonnie, T.
+Freddy, T. Chica, Mangle and W. Foxy (W. Chica, T. Bonnie, BB and the Puppet
+have no group and never move onto 120/121: g376, g381, g389, g394, g421,
+g422, g431, g434 are the only writes onto the two hall stages, and they name
+exactly those six). The overlap is geometric and only `hall stage 1` and
+`hall stage 2` provide it, so the latch arms on **entry into the hall column**
+-- and, because each group carries Fusion's "only one action when event loops"
+flag (`C -7`), it is written once per continuous overlap, not refreshed every
+frame while the character stands there. Moving from stage 1 to stage 2 keeps
+the overlap continuous, so it does not re-arm. g881 drains it while it is
+above zero. Consumers: g779 (Golden Freddy's hall exposure needs it at zero
+and the column empty), g202 and g1035 (with the hall light on and the value
+above zero, `views.Active` frame 99 and `viewsPatch` frame 13 are drawn
+instead of the empty-hall frame 36 / patch 12 of g203/g1034, and the
+character-specific hall frames of g205-209 also require it at zero). The
+engine's `HALL_MOVEMENT_FRAMES` keeps the value; its refresh-while-in-transit
+semantics over-block relative to source and are the next model change
+(entry-triggered, per character).
+
 ## 2026-08-20: handle-scramble correction pass
 
 The APK's runtime XORs every object handle with 28 at load
@@ -107,7 +156,9 @@ Running down the two largest blocks immediately paid for the exercise:
   sets it to 300 frames and g881 drains it. g779 requires it at zero, so for
   five seconds after anyone transits the hallway Golden Freddy cannot
   accumulate exposure there at all. Flagged as unmodelled during the Golden
-  Freddy pass; now implemented.
+  Freddy pass; now implemented. (2026-09-15: the overlap is with a hitbox
+  only `hall stage 1`/`hall stage 2` touch, and it is written once per entry,
+  not while standing -- see the 2026-09-15 section above.)
 - **`g458-477` — inert.** A per-character drain of the `C` counter. Nothing
   anywhere gates on `C` except the Puppet's branch selector (g406/407), so it
   is bookkeeping, not a mechanic.
