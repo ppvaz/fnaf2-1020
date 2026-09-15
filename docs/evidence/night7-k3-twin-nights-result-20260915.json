@@ -246,6 +246,38 @@
   "C": {
    "bestConflicts": 6,
    "bestHits": 18
+  },
+  "logWindowRescore": {
+   "claimLevel": "MODEL_ONLY",
+   "method": "for each night, the fixed-model rank of the seeds at onset residue minus 55..90 ms (the seed-log bracket widened; those nights had no log stream, so their load-to-onset gap is assumed similar)",
+   "best": {
+    "k3r1": {
+     "gapMs": 90,
+     "rank": 150,
+     "conflicts": 4,
+     "hits": 14
+    },
+    "A": {
+     "gapMs": 57,
+     "rank": 450,
+     "conflicts": 8,
+     "hits": 18
+    },
+    "B": {
+     "gapMs": 66,
+     "rank": 125,
+     "conflicts": 7,
+     "hits": 16
+    },
+    "C": {
+     "gapMs": 83,
+     "rank": 157,
+     "conflicts": 9,
+     "hits": 15
+    }
+   },
+   "chance": "best of 36 random seeds ranks ~1820 typically; P(best <= R) ~ 36R/65536, so four nights this good together ~1e-4",
+   "reading": "Suggestive of clock seeding near the pinned moment, not confirmation: the best seeds sit at different gaps (57-90 ms), only B's is inside the logged 64-76 ms bracket, and each still conflicts with correct eyehole reads on 4-9 cycles, so the model's encounter sequence remains the limit."
   }
  },
  "verdict": {
@@ -264,8 +296,38 @@
   "No constant seed-to-onset offset ranks the nights' seeds well beyond chance."
  ],
  "next": [
-  "Stream the game's MMFRuntime 'loading frame #:4' log line live (the phone's 256 KiB buffer rolls over in ~60 s) to bracket the seed between load start and the first office frame",
-  "A stronger seed observable than eyehole identities (camera positions)",
-  "Find which model draws still fall out of line with the dump before scoring seeds again"
- ]
+  "A full k3 night with MMFRuntime streamed live and video on: a 13-seed bracket plus a night of eyehole reads decides clock seeding directly",
+  "Audit the model's remaining RNG draws against the dump (conflicts of 4-9 at the best seeds)",
+  "A stronger seed observable than eyehole identities (camera positions)"
+ ],
+ "seedLog": {
+  "claimLevel": "DEVICE_MEASURED (live logcat, phone wall clock ms) + DECOMPILED placement",
+  "run": "night7-night7-k3-seedlog-01-20260915T031307Z (aborted 3 s into the night by SIGINT to the runner group; the runner's EXIT trap reset the game; title observed items=continue,customNight,newGame,sixthNight)",
+  "method": "adb logcat -v epoch -s MMFRuntime streamed from before the run (the phone's 256 KiB main buffer rolls over in ~60 s under the helper's status lines); Runtime.Log.Log is android.util.Log.i(\"MMFRuntime\", msg), unconditional",
+  "frameSequence": "loading frame #:13 (customize) -> #:3 (what day, the card) -> #:8 (wait, the black stretch) -> #:4 (Office)",
+  "officeLines": {
+   "loading frame #:4": 1789442017457,
+   "Starting new frame": 1789442018698,
+   "startTheFrame() called": 1789442018710,
+   "All loaded in frame: 4 and took: 1228 (msecs)": 1789442018711,
+   "helper onsetPhoneWallMs": 1789442018774.002
+  },
+  "placement": [
+   "CRunApp.startTheFrame: loadFullFrame (logs 'loading frame #:N' at its start) -> log 'Starting new frame' -> centerDisplay, CreateLayerEffects, flushKeyboard, new CRun -> initRunLoop (first call allocRunHeader = the clock seed) -> followToFades",
+   "CRunApp.playApplication logs 'startTheFrame() called' after startTheFrame returns"
+  ],
+  "seedBracket": {
+   "fromMs": 1789442018698,
+   "toMs": 1789442018710,
+   "low16": [
+    19850,
+    19862
+   ],
+   "beforeHelperOnsetMs": [
+    64,
+    76
+   ]
+  },
+  "reading": "The office frame's seed is taken inside a 12 ms bracket that ends 64 ms before the helper's onset; allocRunHeader is the run loop's first call, so the seed most likely sits at the bracket's start."
+ }
 }
