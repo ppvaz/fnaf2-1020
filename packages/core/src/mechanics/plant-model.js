@@ -192,10 +192,14 @@ export class Sim {
       // place of f % N -- g497, g744, the 5 s rolls (g333-g343, timer first) and
       // the hour clock (g627 adds 1 to AM value 0 each second, g629/g630 advance
       // the hour at 70, the table g673-g684 follows, six hours win). The g514
-      // blackout clock adds global value 5 per frame. Still frame-counted: the
-      // monitor and mask animations, the encounter and attack fuses, g263's
-      // 200 ms sample, g488, Foxy's D tick, the other per-second state cadences
-      // and the wind ticks. Under lethal: false a model kill returns early and
+      // blackout clock adds global value 5 per frame. The model's shared state
+      // cadences run on four more countdowns, each a CND_EVERY2 timer in the dump
+      // at that period: 1000 ms (g488 latch reset, g570, g824/g825 Foxy D, g904,
+      // g907 mask ticks), 500 ms (g864, the g637/g644 wind ticks), 200 ms (g263)
+      // and 10000 ms (g571/g572, g718-g721, g722). Foxy's cadences need
+      // sourcedFoxyChain. Still frame-counted: the monitor and mask animations,
+      // the encounter and attack fuses, pins and stuns, and the entry streak
+      // window. Under lethal: false a model kill returns early and
       // skips that frame's countdown reaches, so hooked cadences slip a frame per
       // non-lethal kill (frames the phone never plays).
       frameMs: /** @type {null | ((frame: number) => number)} */ (null),
@@ -292,7 +296,11 @@ export class Sim {
     this.hooked = !!(this.opts.frameMs || this.opts.frameValue5);
     this.frameUnits = 50;
     this.hookTimers = { five: { v: 0, init: false }, g497: { v: 0, init: false },
-                        g744: { v: 0, init: false }, g627: { v: 0, init: false } };
+                        g744: { v: 0, init: false }, g627: { v: 0, init: false },
+                        sec: { v: 0, init: false }, half: { v: 0, init: false },
+                        sample: { v: 0, init: false }, ten: { v: 0, init: false } };
+    // this loop's shared cadence events under the hook (1000 / 500 / 200 / 10000 ms)
+    this.secTick = false; this.halfTick = false; this.sampleTick = false; this.tenTick = false;
     this.am = 0;
     this.hour = 0;
     this.blackoutClock = 0;
@@ -319,6 +327,8 @@ export class Sim {
     // g58, g59, g192 countdowns in 1/3 ms units (sourcedUnconditionalDraws)
     if ((this.opts.frameMs || this.opts.frameValue5) && !this.opts.sourcedSheetOrder)
       throw new Error('the frame-time hook drives the sheet-ordered countdowns: it requires sourcedSheetOrder');
+    if ((this.opts.frameMs || this.opts.frameValue5) && this.opts.foxyEnabled && !this.opts.sourcedFoxyChain)
+      throw new Error('the frame-time hook times Foxy through g824/g825/g864: it requires sourcedFoxyChain');
     if (this.opts.sourcedSheetOrder && !this.opts.sourcedSecondPass)
       throw new Error('sourcedSheetOrder orders the per-second pass: it requires sourcedSecondPass');
     if (this.opts.sourcedUnconditionalDraws && C.FPS !== 60)
@@ -568,7 +578,7 @@ export class Sim {
 
   /** g75/g84 -> g94 -> (g262, g445-447 later) -> g488 -> g489, from frame-start state. */
   updateHallLatch(f, lit = this.hallLitNow()) {
-    if (f % C.FPS === 0) this.hallLatch = false;   // g488
+    if (this.hooked ? this.secTick : f % C.FPS === 0) this.hallLatch = false;   // g488
     if (lit) this.hallLatch = true;                // g489
   }
 
@@ -986,6 +996,14 @@ export class Sim {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
     if (this.opts.frameMs) this.frameUnits = Math.round(this.opts.frameMs(f) * 3);
+    if (this.hooked) {
+      const t = this.hookTimers;
+      this.secTick = this.passEvery(t.sec, 1000);
+      this.halfTick = this.passEvery(t.half, 500);
+      this.sampleTick = this.passEvery(t.sample, 200);
+      this.tenTick = this.passEvery(t.ten, 10000);
+      if (this.secTick) this.lightLogicalUntil = -1;   // the new bonnie reset on the global one-second event
+    }
     if (this.opts.sourcedFoxyChain) this.updateLitCounter();   // events 74-83 (g84-g94) before the drop; g488/g489 run in tickFoxyChain
     else if (this.opts.sourcedDropLightOrder) this.updateHallLatch(f);
 
@@ -1033,7 +1051,7 @@ export class Sim {
 
     // g263 is the only writer of `last viewed`: a global 200 ms sample of the
     // live feed. It runs only while a camera is displayed.
-    if (this.viewing > 0 && f % C.LAST_VIEW_SAMPLE_FRAMES === 0)
+    if (this.viewing > 0 && (this.hooked ? this.sampleTick : f % C.LAST_VIEW_SAMPLE_FRAMES === 0))
       this.lastViewed = this.viewing;
 
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('early');   // g58/g59/g192
@@ -1043,13 +1061,13 @@ export class Sim {
 
     // --- 10-second interval: g718-721 slam everything down while one of the
     // four streak attackers is waiting at marker 122 with the cameras up.
-    if (f % (C.MO_FRAMES * 2) === 0 && this.camsUp &&
+    if ((this.hooked ? this.tenTick : f % (C.MO_FRAMES * 2) === 0) && this.camsUp &&
         this.units.some(u => u.atOpening && u.openingRule === 'streak')) {
       this.dropEverything = true;
     }
 
     // --- 10-second interval: locked-on Foxy strikes if no blackout is covering
-    if (f % (C.MO_FRAMES * 2) === 0 && this.foxy.gotYou && !this.blackout.active) {
+    if ((this.hooked ? this.tenTick : f % (C.MO_FRAMES * 2) === 0) && this.foxy.gotYou && !this.blackout.active) {
       this.kill('foxy', 'Foxy had locked on and no blackout covered the 10s interval');
       return;
     }
@@ -1164,7 +1182,7 @@ export class Sim {
     // asserted again if the office light is still held. A released tap thus
     // remains a movement blocker only until the next scheduler boundary.
     if (this.anyOfficeLightHeld && !this.camsUp)
-      this.lightLogicalUntil = Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
+      this.lightLogicalUntil = this.hooked ? Number.MAX_SAFE_INTEGER : Math.ceil((this.frame + 1) / C.FPS) * C.FPS;
     // Groups 450-457 split their reads: marker overlap chooses the target,
     // while `viewing` supplies the CAM 08/09/11 immunity. A desynced marker
     // on 09 with viewing=11 therefore stuns the Toys for Minus Toys.
@@ -1215,7 +1233,7 @@ export class Sim {
       if (this.gf.attackAt >= 0) {
         if (f >= this.gf.attackAt)
           this.kill('golden-freddy-hall', 'Hall Golden Freddy completed the marker-123 attack');
-      } else if (f % C.FPS === 0) {
+      } else if (this.hooked ? this.secTick : f % C.FPS === 0) {           // g570
         this.gf.attackAt = f + C.INSIDE_ATTACK_FRAMES;
         this.dropEverything = true;
         this.emit('gf-hall-attack');
@@ -1281,7 +1299,7 @@ export class Sim {
   /** g488/g489, g573, g745, g824, g825, g846, g855, g864, g872-874 in sheet order. */
   tickFoxyChain(f) {
     const fx = this.foxy;
-    const second = f % C.FPS === 0;
+    const second = this.hooked ? this.secTick : f % C.FPS === 0;
     const danger = this.blackout.active;
     this.updateHallLatch(f, this.hallLit && this.viewing === 0 && this.power > 0);  // g488 (425) / g489 (426): viewing read after the drop
     if (fx.gotYou && this.viewing === 0 && this.hallLatch && !danger) {      // g573
@@ -1300,7 +1318,7 @@ export class Sim {
       this.emit('foxy-leave');
     }
     if (fx.loc === 'hall' && !fx.gotYou && this.hallLatch) fx.B = C.FOXY_HALL_PIN_FRAMES; // g855
-    if (f % (C.FPS / 2) === 0 && fx.D > 0 && fx.loc === 'parts' && this.hallLatch) fx.D--; // g864
+    if ((this.hooked ? this.halfTick : f % (C.FPS / 2) === 0) && fx.D > 0 && fx.loc === 'parts' && this.hallLatch) fx.D--; // g864
     if (this.foxyDormant) fx.D = 0;                                          // g872-874
   }
 
@@ -1367,7 +1385,7 @@ export class Sim {
     // entry into the fully-on state (see setMask/maskAnim). The old cumulative
     // MASK_LEAVE_FRAMES path let separate flicks add up, which the source
     // does not do for any of the three.
-    if (this.bb.inOpening && this.maskFullyOn && this.frame % C.FPS === 0) {
+    if (this.bb.inOpening && this.maskFullyOn && (this.hooked ? this.secTick : this.frame % C.FPS === 0)) {   // g907
       this.bb.maskTicks++;
       if (this.opts.sourcedSecondPass) return;   // g292/g294 decide in secondPass
       if (this.opts.sourcedEventDraws) {
@@ -1623,7 +1641,7 @@ export class Sim {
           // In addition to the shared monitor-lowering trigger, Toy Bonnie at
           // marker 123 raises danger every ten seconds spent cameras-up
           // (group 722).
-          if (this.camsUp && f % (C.FPS * 10) === 0)
+          if (this.camsUp && (this.hooked ? this.tenTick : f % (C.FPS * 10) === 0))   // g722
             this.commitAttack(u, 'Toy Bonnie remained inside with cameras up');
         } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0 && !this.opts.sourcedSecondPass) {
           // Groups 556-559 precede the 10% return groups 747-750. Preserve
@@ -1665,7 +1683,7 @@ export class Sim {
       // fully on they get a 10% leave roll per one-second event and are forced
       // out after five continuous mask ticks (groups 292-294, 400-401, 907).
       if ((u.id === 'toychica' || u.id === 'mangle') && u.atOpening &&
-          this.maskFullyOn && f % C.FPS === 0) {
+          this.maskFullyOn && (this.hooked ? this.secTick : f % C.FPS === 0)) {   // g907
         u.maskExposureTicks++;
         if (this.opts.sourcedSecondPass) { /* g400/g401/g439/g440 decide in secondPass */ }
         else if (this.opts.sourcedEventDraws) {
@@ -1680,7 +1698,7 @@ export class Sim {
       // g903 zeroes Toy Chica's v8 on arrival; g904 increments it on every
       // global one-second event at marker 122. g905 needs v8 > 5 and cameras
       // up, so this is six scheduler ticks, not a fixed five-second delay.
-      if (u.id === 'toychica' && u.atOpening && f % C.FPS === 0)
+      if (u.id === 'toychica' && u.atOpening && (this.hooked ? this.secTick : f % C.FPS === 0))   // g904
         u.openingTicks++;
       const streakKill = u.atOpening && u.openingRule === 'streak' && this.camsUpSince >= 0 &&
         f - this.camsUpSince >= C.entryStreakFrames(this.opts.night);
@@ -1819,7 +1837,7 @@ export class Sim {
     if (this.isWinding) {
       // g637/g644: the 'WinD' ratchet on a global 500 ms timer. Frame-locked
       // grid, so the edge carries the game's phase mod WIND_TICK_FRAMES.
-      if (this.frame % C.WIND_TICK_FRAMES === 0)
+      if (this.hooked ? this.halfTick : this.frame % C.WIND_TICK_FRAMES === 0)   // g637/g644
         this.emit('wind-tick', { sample: C.WIND_TICK_SAMPLE });
       // g639/g645: a wind below 300 snaps the counter to 300 first. The climb
       // rate below is already the 300 -> 2000 one, so without this the engine

@@ -11,6 +11,28 @@ const QUIET = { night: 7, seed: 91, lethal: false, stalledEnabled: false, bbEnab
                 boxEnabled: false, foxyEnabled: false };
 
 assert.throws(() => new Sim({ night: 7, frameMs: () => 17 }), /requires sourcedSheetOrder/);
+{
+  const { sourcedFoxyChain, ...noChain } = SOURCED;
+  assert.throws(() => new Sim({ night: 7, foxyEnabled: true, ...noChain, sourcedDropLightOrder: true, frameMs: () => 17 }),
+    /requires sourcedFoxyChain/);
+}
+
+// The shared cadences at 20 ms loops (60 units): 1 s every 50 frames, 500 ms every 25, 200 ms every 10, 10 s every 500.
+{
+  const s = new Sim({ ...QUIET, ...SOURCED, frameMs: () => 20 });
+  const seen = { sec: [], half: [], sample: [], ten: [] };
+  while (s.frame < 1000) {
+    s.tick();
+    if (s.secTick) seen.sec.push(s.frame);
+    if (s.halfTick) seen.half.push(s.frame);
+    if (s.sampleTick) seen.sample.push(s.frame);
+    if (s.tenTick) seen.ten.push(s.frame);
+  }
+  assert.deepEqual(seen.sec.slice(0, 3), [50, 100, 150]);
+  assert.deepEqual(seen.half.slice(0, 3), [25, 50, 75]);
+  assert.deepEqual(seen.sample.slice(0, 3), [10, 20, 30]);
+  assert.deepEqual(seen.ten, [500, 1000]);
+}
 
 // A 60 fps hook (50/3 ms, value 5 = 1) is trace-identical to no hook: lethal nights with every character through
 // their deaths, and a quiet night to 6 AM. (Under lethal: false a model kill returns early and skips that frame's
