@@ -1,7 +1,7 @@
 {
  "schema": "encounter-prediction-record-v1",
  "claimLevel": "MODEL_ONLY",
- "status": "PUBLISHED BEFORE GRADING",
+ "status": "SCORED 2026-09-15: NOT SUPPORTED (see docs/evidence/night7-k3-wallclock-r1-20260915.json)",
  "run": "night7-night7-k3-wallclock-r1-20260915T002238Z",
  "binding": "k3 fnv1a-5c8dcb5f",
  "night": 7,

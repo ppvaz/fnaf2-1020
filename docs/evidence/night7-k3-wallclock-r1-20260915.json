@@ -1,0 +1,64 @@
+{
+ "schema": "device-night-run-v1",
+ "claimLevel": "DEVICE_MEASURED",
+ "run": "night7-night7-k3-wallclock-r1-20260915T002238Z",
+ "binding": {
+  "name": "k3",
+  "winnerHash": "fnv1a-5c8dcb5f",
+  "delta": "k2 with hallOffsetMs 7460 -> 7400",
+  "bundle": "artifacts/night7-anchored-k3/bundle",
+  "anchorAim": "docs/evidence/night7-anchor-aim-k3-20260915.json"
+ },
+ "kind": "exploratory single run at Pedro's request (2026-09-15), not a cohort and not a rate",
+ "outcome": {
+  "status": "WIN",
+  "executorTerminal": "campaign.terminal.from-executor state=sixam at 2026-09-15T00:30:16.232Z",
+  "videoTerminal": "TERMINAL: clear -- sixam at 456.5s",
+  "gates": {
+   "cycle": 42,
+   "agreed": 42,
+   "corrected": 0,
+   "aborted": 0
+  },
+  "anchor": {
+   "aimMs": 2433,
+   "k": 0,
+   "releasedAimMs": 2433.267,
+   "lateMs": 0.27,
+   "uncertaintyMs": 3.43,
+   "authorization": "latch"
+  },
+  "phaseCheckFromVideo": "HUD first 35.638 s; CAM 11 raises at 38.55 s and 56.02 s: gaps 2.91/20.38 s, the k2 cohort's phase",
+  "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+  "video": "captures/night7-night7-k3-wallclock-r1-20260915T002238Z.mp4 sha256 016ce178dfb69566e2d8ec5dae09148ea93eade41f537acaf143340256aca504"
+ },
+ "wallClock": {
+  "onsetPhoneWallMs": 1789431792824.2085,
+  "onsetLow16": 17592,
+  "phoneMinusHostAtOnsetMs": -1361.2,
+  "source": "helper GET wallMs beside snapshotNs (9b2b017); first live night with the stamp"
+ },
+ "whatOneWinMeans": "k2 won 3 of 10 in its cohort; one k3 win is compatible with anything from a small improvement to none. The late-flash mechanism k3 targets explains at most 2 of k2's 7 deaths by video beam onsets (55e5fa3).",
+ "encounterPrediction": {
+  "record": "docs/evidence/k3-wallclock-r1-encounter-prediction-20260915.json",
+  "published": "2026-09-15T00:24:04.873Z, before the recording left the phone",
+  "scoring": {
+   "eyeholeReads": "artifacts/forensics/k3-wallclock-r1/eyehole-k3r1.json: 42 cycle windows from release video 38.001 s (HUD first + 2.433 - 0.070) +1.0 s, 2.6 s at 5 fps; 18 identified (10 Withered Chica, 8 Withered Bonnie), 18 empty, 6 unlabelled (3 at hue ~231 sat 0.52, 3 at hue ~45 sat 0.56), 0 Withered Freddy",
+   "firstEncounter": "observed Withered Chica in cycle 4; the published top shares were Chica@2 33%, Bonnie@3 25%, Freddy@2 21%, Chica@3 17% -- the observed first encounter was not among them",
+   "allSeedMatch": "scored against every k3 seed (seq-shard.mjs over 1..65536): 2 seeds match all 18 reads with no conflict (57558, 48318), 16 match 17; median seed 5 hits",
+   "impliedLoadGaps": "from the phone wall onset: 57558 -> 25 570 ms, 48318 -> 34 810 ms before the onset; three 17-hit seeds fall inside 0-6 900 ms (361, 1213, 6865 ms), which 16 candidates would do by chance most of the time",
+   "verdict": "The prediction is not supported: its first-encounter call missed and no strong seed sits inside the load-gap window it assumed."
+  }
+ },
+ "seedClockTest": {
+  "status": "INCONCLUSIVE",
+  "nightLoadSeeding": "expects a gap of 0 to ~6.9 s (the preset tap sits 6.83-6.95 s before the onset in r01b, r03, r05, k3; the start tap follows it and is not logged). Neither k3's perfect matches (25.6 s, 34.8 s) nor r03's best seeds (9.5, 27.6, 29.0, 44.2, 50.1 s, host-mapped with the phone at -1401/-1350 ms) land there.",
+  "earlierLoadSeeding": "checked: no logged event in either run lines up with a perfect-match gap; k3's gaps fall 1.4 s and 10.6 s after its launch and before the campaign log starts, r03's 6.9-8.3 s after its launch or before it -- no common event type",
+  "whyTheObservableFails": "the right-eyehole reader never sees Withered Freddy (27.9% of model encounters), leaves 2-6 reads unlabelled per run, and near-duplicate encounter schedules across seeds leave several seeds tied at the top (r03: 5 seeds at 19/21, k3: 2 at 18/18)",
+  "next": [
+   "twin nights: two Start taps placed exactly 65 536 ms apart on the phone wall clock should replay identical movement if the night load seeds from the clock (needs a timed start tap in modern-campaign-ports.js customNight)",
+   "a sharper observable than eyehole identity (camera positions need a route that sweeps cameras)"
+  ]
+ },
+ "retained": "artifacts/forensics/k3-wallclock-r1/ (SHA256SUMS)"
+}
