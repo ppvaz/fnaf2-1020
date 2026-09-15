@@ -5660,3 +5660,16 @@ phone's log rolls over in ~60 s); (2) a stronger seed observable (camera
 positions); (3) remaining model draws out of line before seed scoring; (4) why
 k2's camdrops fail to latch; (5) a predeclared k3 cohort for its rate; (6) the
 peer session's uncommitted Minus 7 lane is untouched.
+
+**2026-09-15: a k3 Night 7 carried the native frame trace; that night died at about 105 s.**
+`night7-night7-k3-full-04-20260915T051327Z` kept a 6556-frame Cue Helper trace from about 3 s
+before the office loaded through the death. Its only gap over 100 ms is the 1.26 s office load.
+It also kept the office seed window from the live game log: 13 candidates, low16 34042-34054,
+74-86 ms before the night onset. The trace was started directly over an adb forward just after
+`custom-night.start`. The previous attempt (`full-03`) used `night-run.sh --frame-trace`, whose
+trace start overlapped the Custom Night clock-stamp probe; the probe timed out, adb timed out, and
+the campaign aborted before any night. That overlap is suspected, not proven. full-04 is k3's
+first loss on the phone (6 wins, 1 loss). The cause is unidentified; its gate 11 aborted on an
+unreadable mask only after the static. The 13 seeds are not scored yet; that needs a replay
+harness driven by the trace's frame times and an eyehole read of full-04's video. Evidence:
+[night7-k3-frametrace-nights-20260915.json](../docs/evidence/night7-k3-frametrace-nights-20260915.json).

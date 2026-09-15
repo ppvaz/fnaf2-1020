@@ -1,0 +1,76 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "night7-k3-frametrace-nights-20260915",
+ "claimLevel": "DEVICE_MEASURED (live MMFRuntime logcat on the phone wall clock, helper onset, graded runs, eyehole reads)",
+ "question": "Can a full k3 Night 7 (10/20) carry the Cue Helper native frame trace -- per displayed frame times for the model's frameMs hook -- together with the live game log's office seed bracket?",
+ "method": "Same launch as full-02 (tools/device/night-run.sh, k3 bundle, observe-once arm, MMFRuntime logcat streamed live). full-03 used night-run.sh --frame-trace (trace start at evidence.started). full-04 ran without that flag; a scratch watcher discovered the helper endpoint after custom-night.preset and sent TRACE start directly over a pre-opened adb forward once custom-night.start was logged (after the clock-stamp probe), and pulled the trace when the night ended.",
+ "runs": [
+  {
+   "run": "night7-night7-k3-full-03-20260915T050517Z",
+   "status": "ABORTED_BEFORE_NIGHT",
+   "terminal": "custom-night.start unstamped (cue-helper clock probe timed out) at 05:05:48.5Z, then campaign.abort.restart (spawnSync adb ETIMEDOUT) at 05:05:58.6Z; the game was relaunched to the title; no night was played",
+   "frameTrace": "START-FAILED: night-run.sh sent trace start at evidence.started (05:05:32.7Z); it reported failure only after the abort",
+   "cause": "UNKNOWN. The trace start overlapped the Custom Night setup and its clock-stamp probe; that overlap is suspected, not proven. On the title screen, trace start alone answered OK trace=ACTIVE in 298 ms and adb round trips were 21-34 ms."
+  },
+  {
+   "run": "night7-night7-k3-full-04-20260915T051327Z",
+   "status": "LOSS",
+   "terminal": "lifecycle static at 05:15:47.249Z and gameover at 05:15:50.381Z, about 105 s after onset; death cause not identified (TERMINAL unknown). Gate 11 (gateAtMs 103000) was reached at phone wall 1789449348826, after the static, and aborted mask-state-unavailable; the 10 earlier gates agreed; every instrument passed.",
+   "onsetPhoneWallMs": 1789449241936.3757,
+   "hudFirstVideoS": 35.125,
+   "officeLog": {
+    "loading frame #:4": 1789449240593,
+    "Starting new frame": 1789449241850,
+    "startTheFrame() called": 1789449241862,
+    "All loaded in frame: 4 took ms": 1248
+   },
+   "seedBracket": {
+    "fromMs": 1789449241850,
+    "toMs": 1789449241862,
+    "low16": [
+     34042,
+     34054
+    ],
+    "candidates": 13,
+    "beforeHelperOnsetMs": [
+     74.4,
+     86.4
+    ]
+   },
+   "frameTrace": {
+    "start": "direct TRACE start 20 ms after custom-night.start was logged; reply OK trace=ACTIVE in 24.5 ms",
+    "file": "ft2-full-04-844533048365184.tsv",
+    "sha256": "1dd475ded11300436efcf8226f6b56aaf4a0917ffc89818ad5ca5ba1262721bc",
+    "frames": 6556,
+    "spanS": 112.82,
+    "firstFrameAfterStartMs": 67,
+    "maxIntervalMs": 1262.5,
+    "maxIntervalIs": "the office load (black frames), 4.61 s into the trace",
+    "intervalsOver25ms": 138,
+    "intervalsOver100ms": 1,
+    "coverage": "from about 3 s before the office loaded through the death"
+   }
+  }
+ ],
+ "titleScreenTests": {
+  "traceStartAlone": "OK trace=ACTIVE in 298 ms; first frame 55.8 ms after start; 146 frames in 2.42 s",
+  "directStatusOverForward": "TRACE status answered in 25.3 ms"
+ },
+ "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
+ "notYetScored": "The 13 candidates are not scored. Scoring needs a replay harness that feeds the trace's frame intervals to frameMs, places the k3 presses by cumulative real ms, and compares the model's office encounters with an eyehole read of full-04's video, which has not been run.",
+ "retained": {
+  "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
+  "sha256": {
+   "ft2-full-04-844533048365184.tsv": "1dd475ded11300436efcf8226f6b56aaf4a0917ffc89818ad5ca5ba1262721bc",
+   "full-03.driver": "d98d0e0ebe2722abf2f8a41815e8b0480033fa2adacc57728e7bbafa28935235",
+   "full-03.logcat": "219915d83dbbc1de073c82dfe7f89e0c32ba965a594c7a56debe317b7a5e15e9",
+   "full-03.out": "09081310fb077dbbd789c8d09d480a77176bfdb2af29729b90a8661ea3fdbfaa",
+   "full-04.driver": "2f056259d3171142b44d515ec5abd2d4db4354a7a24be2a43d651cb36d60dc80",
+   "full-04.logcat": "bd9587a323164c19650b809eb0050886b42886e5b7ff773b27cd3c0bbb00d190",
+   "full-04.out": "c139d2e9e56a30e8bfdcbe8280f0e03bb73be023b87f4fc60586505e99cb662e",
+   "full-04.trace": "4b2e164e17baa9976df57595a884a1220d176cdfb7354907a52f664eafb09e61",
+   "seedlog-ft2.sh": "f5b13d347f7235a3bb61163f5ca1d76927a72bf37b9cba360222541b7a45a3fe",
+   "seedlog-ft.sh": "e8baa31e1be793e11f63bb7ca100014082b65e1b9ebe32dcb3dfecaa3c112138"
+  }
+ }
+}
