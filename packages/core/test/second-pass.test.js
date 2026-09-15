@@ -28,6 +28,17 @@ const at = (log, f) => log.filter(([fr]) => fr === f).map(([, k]) => k);
   assert.equal(u.inside, true, 'Random(10) = 0 does not leave');
 }
 
+// A group reachable from the first frame loaded on the dump's first loop (model frame 0): g496 fires with g497 at 60.
+{
+  const s = new Sim({ ...QUIET, sourcedSecondPass: true });
+  s.ai.golden = 0; s.box = 99;
+  const log = script(s, {});
+  for (let i = 0; i < 121; i++) s.tick();
+  assert.deepEqual(at(log, 60), ['0,19', '1,2', '0,1'], 'g496, g497, g744 on frame 60');
+  assert.deepEqual(at(log, 120), ['0,19', '1,2', '0,1'], 'and again on 120');
+  assert.deepEqual(at(log, 61), [], 'nothing on 61');
+}
+
 // A countdown only runs on frames its earlier conditions hold: g730 pauses while no camera is up.
 {
   const s = new Sim({ ...QUIET, sourcedSecondPass: true });

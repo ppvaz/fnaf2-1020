@@ -689,14 +689,7 @@ export class Sim {
    */
   secondPass(f) {
     /** @param {string} key @param {number} ms */
-    const every = (key, ms) => {
-      const t = this.passTimers[key] ??= { v: 0, init: false };
-      if (!t.init) { t.init = true; t.v = ms * 3; return false; }
-      t.v -= 50;
-      if (t.v > 0) return false;
-      t.v += ms * 3;
-      return true;
-    };
+    const every = (key, ms) => this.passEvery(this.passTimers[key] ??= { v: 0, init: false }, ms);
     /** Random(n) == 1 @param {number} n */
     const one = n => this.rng.int(0, n - 1, 1) === 1;
     /** @param {string} id */
@@ -778,6 +771,27 @@ export class Sim {
       } }
   }
 
+  /**
+   * One reach of a CND_EVERY2 countdown, in 1/3 ms units at 50 per 60 fps frame.
+   * CND_EVERY2.eva2 (classes.dex) loads the delay on the first reach and returns
+   * false (PARAM_INT value2 is the load flag); later reaches subtract
+   * rhTimerDelta, fire at <= 0 and add the delay back. The model's f % N timers
+   * fire at frame N where a countdown loaded on the dump's first loop fires on
+   * loop N + 1, so model frame f is dump loop f + 1 and the loading loop is the
+   * model's frame 0: a group first reached on frame 1 has already loaded.
+   * @param {{v: number, init: boolean}} t @param {number} ms
+   */
+  passEvery(t, ms) {
+    if (!t.init) {
+      t.init = true; t.v = ms * 3;
+      if (this.frame !== 1) return false;
+    }
+    t.v -= 50;
+    if (t.v > 0) return false;
+    t.v += ms * 3;
+    return true;
+  }
+
   /** your-view overlaps the Puppet: his route camera when out, CAM 11 in the box. */
   puppetUnderYourView() {
     const p = /** @type {any} */ (this.puppet);
@@ -801,17 +815,9 @@ export class Sim {
     const one = () => this.rng.int(0, 49, 1) === 1;
     for (let i = 0; i < 3; i++)                                                       // g500-g502
       if (lead() && !this.puppetAtBoxCam() && one()) g.value4 = 1;
-    /** CND_EVERY2: loads on the first reach and returns false @param {{v: number, init: boolean}} t @param {number} ms */
-    const every = (t, ms) => {
-      if (!t.init) { t.init = true; t.v = ms * 3; return false; }
-      t.v -= 50;
-      if (t.v > 0) return false;
-      t.v += ms * 3;
-      return true;
-    };
-    if (lead() && every(g.g503, 1000) && !this.puppetAtBoxCam() && one()) g.value4 = 1;   // g503: countdown after lit == 0
+    if (lead() && this.passEvery(g.g503, 1000) && !this.puppetAtBoxCam() && one()) g.value4 = 1;   // g503: countdown after lit == 0
     if (g.value4 > 0) { g.value4 -= 1; this.rng.int(0, 149, 0); }                     // g505
-    if (every(g.g506, 110)) g.value5 = 0;                                             // g506
+    if (this.passEvery(g.g506, 110)) g.value5 = 0;                                             // g506
   }
 
   /** g774: the light on the Puppet away from CAM 11 raises the glitch flag. */

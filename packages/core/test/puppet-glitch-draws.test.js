@@ -36,6 +36,16 @@ const view = (s, cam) => { s.monitor = 'up'; s.monAnim = 0; s.viewing = cam; s.c
   assert.ok(cleared > 0 && cleared <= 7, `cleared after ${cleared} frames`);
 }
 
+// g506 from the start of the night: loaded before frame 1, it clears the flag on frame 7 (330 units, 50 a frame),
+// the same origin as g498's 200 ms countdown firing on frame 12.
+{
+  const s = new Sim({ ...QUIET, sourcedPuppetGlitchDraws: true });
+  s.glitch.value5 = 1;
+  let cleared = -1;
+  for (let i = 0; i < 10 && cleared < 0; i++) { s.tick(); if (s.glitch.value5 === 0) cleared = s.frame; }
+  assert.equal(cleared, 7);
+}
+
 // With the Foxy chain on, both groups read the lit? counter (events 74-83): held light raises the flag, no rolls while lit.
 {
   const s = new Sim({ ...QUIET, sourcedDropLightOrder: true, sourcedFoxyChain: true, sourcedPuppetGlitchDraws: true }); s.frame = 1000;
