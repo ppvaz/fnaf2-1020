@@ -111,6 +111,15 @@ export class Sim {
       //   e324       Withered Chica CAM 02->06: Random(4)
       // Values only matter where the sheet branches on them (e548).
       sourcedEventDraws: false,
+      // The blackout flicker's per-frame draws (dump g514/g517/g518): while an
+      // encounter runs, g514 adds global value 5 -- the frame's elapsed time in
+      // 60 fps frames, capped at 4 -- to the blackout clock (OI 131 value 0) from
+      // the frame in danger rises; g517 draws Random(50) at clock 21-99 and g518
+      // Random(50)+20 at 100-199, both before the g537/g538-555 resolution. At an
+      // exact 60 fps that is 179 draws per encounter, on frames 20..198 after the
+      // start; a dropped frame on the phone advances the clock by 2 and removes
+      // a draw, like g822.
+      sourcedBlackoutDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -189,6 +198,7 @@ export class Sim {
     // --- blackout
     this.blackout = { active: false, until: 0, by: null, unitId: null, masked: false, deadline: 0 };
     this.blackoutCount = 0;
+    this.blackoutStartFrame = -1;   // the frame the running encounter began (sourcedBlackoutDraws)
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -554,6 +564,7 @@ export class Sim {
   }
 
   startBlackout(by, unitId = null) {
+    this.blackoutStartFrame = this.frame;
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
                       unitId, masked: this.maskFullyOn,
                       deadline: this.frame + C.maskGraceFrames(this.opts.night) };
@@ -693,6 +704,11 @@ export class Sim {
       return;
     }
 
+    // --- blackout flicker: g514 clock, g517/g518 draws (sourcedBlackoutDraws)
+    if (this.opts.sourcedBlackoutDraws && this.blackout.active) {
+      const clock = f - this.blackoutStartFrame + 1;
+      if (clock > 20 && clock < 200) this.rng.int(0, 49, 0);
+    }
     // --- blackout resolution
     if (this.blackout.active) {
       // Android group 533 only defuses while the 45-frame fuse is still in
