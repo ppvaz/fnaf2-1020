@@ -26,8 +26,8 @@
 // stopped mirroring is worse than no mirror.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, rmSync, symlinkSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
@@ -131,12 +131,50 @@ function linkDependencies(worktree) {
   }
 }
 
+// --- CI's Python, not this machine's -----------------------------------------
+
+// CI's runner gets setup-python's interpreter plus the `pip install` pins in
+// ci.yml and nothing else. This machine's python3 carries numpy and more, so a
+// test that imports an unpinned package passes here and fails online: on
+// 2026-09-15 tools/device/test-cycle-ledger.py (numpy through cycle-ledger.py)
+// failed CI on four pushes that this gate had passed. So the lanes run on an
+// isolated interpreter whose packages are exactly the pins, or the gate says it
+// could not check Python dependencies instead of passing them.
+const CI_PYTHON = process.env.FNAF2_CI_PYTHON ?? join(homedir(), '.cache/fnaf2-ci-py312/bin/python3');
+
+/** The Python version and exact pip pins ci.yml gives the runner. */
+function ciPythonSpec(dir) {
+  const text = readFileSync(join(dir, '.github/workflows/ci.yml'), 'utf8');
+  const version = text.match(/python-version:\s*'([\d.]+)'/)?.[1] ?? null;
+  const pins = {};
+  for (const line of text.split('\n').filter(l => /pip install/.test(l)))
+    for (const m of line.matchAll(/'([A-Za-z0-9_.-]+)==([^']+)'/g)) pins[m[1].toLowerCase()] = m[2];
+  return { version, pins };
+}
+
+/** { env } running the lanes on the CI-like interpreter, or { why } it cannot be trusted. */
+function ciPythonEnv(dir) {
+  const { version, pins } = ciPythonSpec(dir);
+  const build = `build it: micromamba create -p ~/.cache/fnaf2-ci-py312 -c conda-forge python=${version} pip, then pip install ${Object.entries(pins).map(([n, v]) => `'${n}==${v}'`).join(' ')} (or set FNAF2_CI_PYTHON)`;
+  if (!existsSync(CI_PYTHON)) return { why: `no CI-like Python at ${CI_PYTHON}; ${build}` };
+  const got = spawnSync(CI_PYTHON, ['-c', 'import sys; print("%d.%d" % sys.version_info[:2])'], { encoding: 'utf8' }).stdout?.trim();
+  if (got !== version) return { why: `${CI_PYTHON} is Python ${got}, ci.yml pins ${version}; ${build}` };
+  const freeze = spawnSync(CI_PYTHON, ['-m', 'pip', 'list', '--format=freeze', '--disable-pip-version-check'], { encoding: 'utf8' }).stdout ?? '';
+  const installed = Object.fromEntries(freeze.split('\n').filter(Boolean).map(l => l.split('==')).map(([n, v]) => [n.toLowerCase(), v])
+    .filter(([n]) => !['pip', 'setuptools', 'wheel'].includes(n)));
+  const same = JSON.stringify(Object.entries(installed).sort()) === JSON.stringify(Object.entries(pins).sort());
+  if (!same) return { why: `${CI_PYTHON} has ${JSON.stringify(installed)}, ci.yml pins ${JSON.stringify(pins)}; ${build}` };
+  return { env: { ...process.env, PATH: `${dirname(CI_PYTHON)}:${process.env.PATH}` } };
+}
+
+let LANE_ENV = process.env;
+
 // --- Running the lanes -----------------------------------------------------
 
 function run(command, cwd, { live = false } = {}) {
   const result = spawnSync('sh', ['-c', command], live
-    ? { cwd, stdio: 'inherit' }
-    : { cwd, encoding: 'utf8' });
+    ? { cwd, stdio: 'inherit', env: LANE_ENV }
+    : { cwd, encoding: 'utf8', env: LANE_ENV });
   return { status: result.status, output: live ? '' : `${result.stdout ?? ''}${result.stderr ?? ''}` };
 }
 
@@ -216,6 +254,15 @@ function validate(sha, subject) {
     }
     SCRIPTS = JSON.parse(readFileSync(join(worktree, 'package.json'), 'utf8')).scripts;
     linkDependencies(worktree);
+    const python = ciPythonEnv(worktree);
+    if (python.env) {
+      LANE_ENV = python.env;
+      console.log(`  python3 for every lane: ${CI_PYTHON} (the ci.yml version and pins, nothing else)`);
+    } else {
+      LANE_ENV = process.env;
+      console.log(`  SKIP CI Python dependencies (${python.why}); the lanes run on this machine's python3, which may hold packages CI does not`);
+      skipped.push('CI Python dependencies');
+    }
     for (const lane of LANES) {
       if (lane.needs && spawnSync('sh', ['-c', `command -v ${lane.needs} >/dev/null 2>&1 && ${lane.needs} info >/dev/null 2>&1`]).status !== 0) {
         console.log(`  SKIP ${lane.name} (${lane.needs} is not available here; CI still runs it)`);

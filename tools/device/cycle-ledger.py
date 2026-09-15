@@ -30,7 +30,7 @@ defaulted.
 Reads only; every number is a measurement on this recording's geometry.
 """
 import argparse, json, pathlib, re, subprocess, sys, colorsys
-import numpy as np
+# numpy is imported where video is decoded: the timing resolution and refusals need only the standard library
 
 LOOP_PERIOD_MS = 10000
 TIMING_KNOBS = ('maskOnMs', 'maskOffMs', 'hallOffsetMs', 'camdropMs')
@@ -82,6 +82,7 @@ def resolve_timings(run, winner_path=None):
 
 
 def series(video, t0, t1):
+    import numpy as np
     n = max(1, int((t1 - t0) * 60))
     out = subprocess.run(['ffmpeg', '-nostdin', '-loglevel', 'error', '-ss', f'{t0:.3f}', '-i', str(video), '-frames:v', str(n),
                           '-vf', 'scale=640:288', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], capture_output=True).stdout
@@ -92,6 +93,7 @@ def door(a): return a[:, 80:213, 240:453].mean(axis=(1, 2, 3))
 
 
 def occupant(frame):
+    import numpy as np
     f = frame[30:260].astype(float) / 255
     mx, mn = f.max(2), f.min(2)
     sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
