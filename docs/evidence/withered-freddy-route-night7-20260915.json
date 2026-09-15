@@ -1,0 +1,78 @@
+{
+ "schema": "model-vs-dump-v1",
+ "id": "withered-freddy-route-night7-20260915",
+ "claimLevel": "MODEL_ONLY for the census; the group facts are read from the regenerated post-scramble Android event dump (CTFAK Event Text Dumper over the owned application.ccn, frame 3 Office, 1332 groups; the dump itself stays outside the repository)",
+ "question": "Why does the right-eyehole reader never see Withered Freddy on k2/k3 Night 7 runs, and does the model queue simultaneous encounters the way the dump does?",
+ "phone": {
+  "k3r1": "25 defended encounter cycles by cycle-ledger (d29fa6b); 18 eyehole-identified, all on defended cycles (10 Chica, 8 Bonnie), 6 unlabelled at Chica/Bonnie-like hues, 1 empty; camdrop frames in the 9 'hue 57' cycles show Withered Chica or no one; hall at the flash peak empty in all 12 LIT cycles",
+  "k2 r03": "21 eyehole-identified (11 Chica, 10 Bonnie), 0 Freddy"
+ },
+ "dumpFacts": {
+  "operatorCodes": "expression tokens: op 4 = minus, op 6 = times, op 8 = divide, function 1 = Random(, -1/-2 = parentheses -- fixed by g542 (streak >= 20 - (night * 2), the sourced entry streak) and its B = Random(500) / night",
+  "g744": "every 1000 ms, unconditional: decide path = Random(2) + 1 (a global RNG draw every second, shared by W. Freddy g376-377 and Mangle g396-397)",
+  "g374-g379 Withered Freddy route (all require A = 2)": {
+   "g374": "CAM 08 -> CAM 07",
+   "g375": "CAM 07 -> CAM 03",
+   "g376": "CAM 03 -> hall stage 2 if viewing hall light = 0 and decide path = 1",
+   "g377": "CAM 03 -> CAM 07 if viewing hall light = 0 and decide path = 2",
+   "g378": "hall stage 2 -> CAM 03 if mask = 2 (fully on) and viewing hall light = 0; B = 5000 - night * 500 (1500 frames = 25 s on Night 7)",
+   "g379": "hall stage 2 -> in office if viewing > 0 and office occupied = 0; sets office occupied = 1"
+  },
+  "look-hold g344-g360": "a passed roll (A = 1) with B = 0 becomes A = 2 and sets C = 10. W. Freddy: g344 (night != 7) also needs neither W. Chica nor W. Bonnie on CAM 08; g345 (night 7) only the camera marker off him. W. Chica: g347 (night != 7) also needs W. Bonnie off CAM 08; g348 (night 7) marker only. W. Bonnie g346 marker only.",
+  "C": "alterable value 2 is set to 10 by g344-g360 and read only by g458 (C = max(0, C - 1 * a global time scale) each frame), g468 and g695 (camera/footstep effects); no movement group reads it",
+  "final hops and the lock": "g379 W. Freddy, g384 W. Bonnie, g388 W. Chica, g423 Toy Freddy each need viewing > 0 and office occupied = 0 and set it to 1; g384 and g388 also need in danger = 0. g713 clears office occupied every 490 ms; g714-g717 set it back while any of the four is on the in-office marker. Same-frame priority is group order: Freddy, Bonnie, Chica, Toy Freddy."
+ },
+ "model": {
+  "has": "same-frame priority (units iterate withfreddy, withbonnie, withchica, toyfreddy), the one-occupant lock held from arrival to entry or repel, the sourced resolve order g538-555, the hall-light stall on the CAM 03 and hall-stage-2 outgoing hops",
+  "lacks": [
+   "g744's per-second decide path draw -- the model's RNG stream therefore drifts from the game's one draw per second from the first second, which by itself defeats seed matching",
+   "g377: W. Freddy's CAM 03 -> CAM 07 branch (his path is linear 8, 7, 3, hall stage 2, office)",
+   "g378: W. Freddy's return from hall stage 2 to CAM 03 on a fully-on mask with a 5000 - night*500 cooldown",
+   "the in danger = 0 gate on W. Bonnie's and W. Chica's final hops was not found in canAdvance",
+   "the night != 7 CAM 08 departure order (Bonnie, then Chica, then Freddy) -- irrelevant on Night 7"
+  ],
+  "notSupportedByDump": "a Night 7 office queue that advances only every 10 s: no movement group reads C"
+ },
+ "census": {
+  "baseline": {
+   "mode": "baseline",
+   "seeds": 3000,
+   "wins": 3000,
+   "deaths": {},
+   "encountersPerNight": {
+    "withchica": 13.19,
+    "withbonnie": 11.52,
+    "withfreddy": 9.58
+   },
+   "encounterCyclesPerNight": 34.3,
+   "g378ReturnsPerNight": 0,
+   "g377BacksPerNight": 0,
+   "phoneK3r1": {
+    "encounters": 25,
+    "freddy": 0,
+    "won": true
+   }
+  },
+  "patched_g744_g377_g378": {
+   "mode": "patched",
+   "seeds": 3000,
+   "wins": 3000,
+   "deaths": {},
+   "encountersPerNight": {
+    "withchica": 12.9,
+    "withbonnie": 11.38,
+    "withfreddy": 2.96
+   },
+   "encounterCyclesPerNight": 27.2,
+   "g378ReturnsPerNight": 6.43,
+   "g377BacksPerNight": 9.61,
+   "phoneK3r1": {
+    "encounters": 25,
+    "freddy": 0,
+    "won": true
+   }
+  },
+  "reading": "Adding the three dump rules drops W. Freddy from 9.58 to 2.96 encounters per night and encounter cycles from 34.3 to 27.2, against the phone's 25 defended cycles with no Freddy read; k3 still wins 3000/3000 in both. The rules explain most of the gap. Open: ~3 Freddy encounters per night remain in the patched model, the eyehole reader's Freddy class was validated on one Night 5 example only, and the patch is an approximation (the per-second draw is placed after the tick's other logic, not in exact group order)."
+ },
+ "retained": "artifacts/forensics/freddy-route-20260915/ (SHA256SUMS)"
+}
