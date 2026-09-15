@@ -2198,6 +2198,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/dump/ctfak-gdiplus.Dockerfile",
+      "invocation": "tools/dump/ctfak-gdiplus.Dockerfile",
+      "kind": "extraction",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/dump/EventTextDumper.cs",
       "invocation": "tools/dump/EventTextDumper.cs",
       "kind": "CTFAK plugin source",
