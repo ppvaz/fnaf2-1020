@@ -1,10 +1,10 @@
 {
  "schema": "cohort-result-v1",
  "predeclaration": "docs/evidence/night7-cohort-k2-predeclaration-20260914.json",
- "status": "IN_PROGRESS",
- "counted": 9,
+ "status": "COMPLETE",
+ "counted": 10,
  "wins": 3,
- "deaths": 6,
+ "deaths": 7,
  "slots": [
   {
    "slot": "r01",
@@ -542,6 +542,67 @@
     },
     "defended": 0
    }
+  },
+  {
+   "slot": "r10",
+   "run": "night7-night7-k2-cohort-r10-20260914T235238Z",
+   "startedAt": "2026-09-14T23:52:38Z",
+   "commit": "a307e61",
+   "status": "DEATH",
+   "countsTowardTen": true,
+   "executorTerminal": "none: lifecycle state=static at 23:59:44.628Z, then campaign.abort.restart 'device: lifecycle left night state (static)' at 23:59:47.906Z; restarted to the title 00:00:05.476Z; 39/39 cycle gates agreed",
+   "videoTerminal": "TERMINAL: unknown; survival instrument: HUD gone for good from 425.0 s, death static 19 frames / 4.8 s",
+   "whyCountedNotInvalid": "the static read precedes the abort and the HUD left at video 425.0 s (night ~390.6 s from HUD first 34.448 s); the route died ~30 s before 6 AM",
+   "survivalSeconds": 390.6,
+   "clock": "5 AM",
+   "cause": {
+    "killer": "Withered Foxy",
+    "source": "contact sheet from video 422.5 s at 4 fps: 422.50-423.75 s mask up with empty eyeholes; 424.00 s mask lowering; 424.25 s office empty at 5 AM; 424.50 s Foxy mid-lunge; 424.75 s jumpscare. Retained as death-frames/sheet.png",
+    "foxyFirstVisible": "7.44-7.69 s into cycle 38 (release at video 36.811 s = HUD first 34.448 + 2.433 - 0.070)",
+    "instrument": "no Foxy death-cause model exists"
+   },
+   "anchor": {
+    "aimMs": 2433,
+    "k": 0,
+    "releasedAimMs": 2434.203,
+    "lateMs": 1.2,
+    "uncertaintyMs": 3.66,
+    "authorizedAfterOnsetMs": -1402.5,
+    "earlyAuthorized": true
+   },
+   "phaseCheckFromVideo": "HUD first 34.448 s; CAM 11 raises at 37.38 s and 54.86 s: gaps 2.93/20.41 s",
+   "gates": {
+    "cycle": 39,
+    "agreed": 39,
+    "corrected": 0,
+    "aborted": 0
+   },
+   "pressAcceptance": "3 graded: 2 UNKNOWN, 1 UNSTABLE",
+   "postRunTitle": "items=continue,customNight,newGame,sixthNight",
+   "video": "captures/night7-night7-k2-cohort-r10-20260914T235238Z.mp4 sha256 b303b543824bb055845dfee61463dedda8e1d1b199cf5af86f5e1a1499040766",
+   "ledgerCorrected": {
+    "tool": "tools/device/cycle-ledger.py at d29fa6b",
+    "releaseVideoS": 36.811,
+    "timingsMs": {
+     "maskOn": 1749,
+     "maskOff": 7000,
+     "hallFlash": 7460,
+     "camdrop": 11150
+    },
+    "cyclesRead": 38,
+    "flash": {
+     "LIT": 10,
+     "DIM": 17,
+     "FLAT": 11
+    },
+    "defended": 24,
+    "backToBackFlatPairsEndingAt": [
+     24,
+     28,
+     31,
+     34
+    ]
+   }
   }
  ],
  "amendments": [
@@ -704,5 +765,103 @@
    "update-r08": "Five of five deaths: r08 Withered Foxy first visible 7.31-7.56 s into cycle 26. All five windows lie in 7.29-7.73 s and contain the model's 7.567 s Foxy roll.",
    "update-r09": "Six of six deaths: r09 Withered Foxy first visible 7.47-7.72 s into cycle 1."
   }
- ]
+ ],
+ "summary": {
+  "completedAt": "2026-09-15T00:00:05Z (r10 restarted to the title)",
+  "counted": 10,
+  "wins": 3,
+  "deaths": 7,
+  "invalid": 0,
+  "excluded": [
+   {
+    "slot": "r01",
+    "reason": "preflight refusal before any gameplay input: fact register has no anchor aim registered for binding fnv1a-7e4bf3e8; the runner refused to release a bundle quali"
+   },
+   {
+    "slot": "r07",
+    "reason": "helper failure before any route input: origin.anchor unavailable 'onset-not-latched' (6 reads, 1 failure, lastError 'cue-helper clock probe timed out') at 23:25"
+   }
+  ],
+  "winRate": "3/10",
+  "wilson95": [
+   0.108,
+   0.603
+  ],
+  "winsBySlot": [
+   "r01b",
+   "r03",
+   "r05"
+  ],
+  "deathsBySlot": [
+   {
+    "slot": "r02",
+    "survivalS": 300.4,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": null
+   },
+   {
+    "slot": "r04",
+    "survivalS": 20.6,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": null
+   },
+   {
+    "slot": "r06",
+    "survivalS": 230.6,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": "7.48-7.73 s into cycle 22 (release at video 36.518 s = HUD first 34.155 + 2.433 - 0.070)"
+   },
+   {
+    "slot": "r07b",
+    "survivalS": 210.5,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": "7.30-7.55 s into cycle 20 (release at video 36.702 s = HUD first 34.339 + 2.433 - 0.070)"
+   },
+   {
+    "slot": "r08",
+    "survivalS": 270.5,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": "7.31-7.56 s into cycle 26 (release at video 36.691 s = HUD first 34.328 + 2.433 - 0.070)"
+   },
+   {
+    "slot": "r09",
+    "survivalS": 20.6,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": "7.47-7.72 s into cycle 1 (release at video 37.281 s = HUD first 34.918 + 2.433 - 0.070)"
+   },
+   {
+    "slot": "r10",
+    "survivalS": 390.6,
+    "killer": "Withered Foxy",
+    "foxyFirstVisible": "7.44-7.69 s into cycle 38 (release at video 36.811 s = HUD first 34.448 + 2.433 - 0.070)"
+   }
+  ],
+  "releaseLatenessMs": [
+   1.67,
+   0.04,
+   0.49,
+   1.25,
+   0.7,
+   0.7,
+   0.42,
+   0.39,
+   1.0,
+   1.2
+  ],
+  "modelPredictionOutcome": "REFUTED: the predeclaration recorded the model's 10/10 if delivery stayed in the band (k2 3000/3000 at four epochs; later 65536/65536 at 2416.66, 2433, 2449.99). The phone won 3 of 10 at the same delivered phase (CAM 11 gaps 2.91-3.06 s across all runs).",
+  "killerPattern": "all seven deaths Withered Foxy, first visible 7.29-7.73 s into a cycle, around the model's 7.567 s Foxy roll and just after the 7.46 s hall flash; across early and latch authorization and FLAT counts from 2/20 to 13/29",
+  "refutedAlongTheWay": [
+   "early authorization is neither sufficient (r05) nor necessary (r06, r07b, r08, r09) for a death",
+   "back-to-back refused hall flashes do not separate deaths from wins (r05 won with seven pairs)",
+   "the r02/r04 ledger reads sampled with Night 6 constants (retracted, tool fixed at d29fa6b)"
+  ],
+  "candidateMechanism": "a hall flash whose effect lands after the 7.567 s roll leaves Foxy's D un-zeroed: the model cliff sits between 7540 and 7560 ms at epoch 2433 and moves with the delivered epoch (7560 wins at 2410, 7530 loses at 2445); the model applies presses with no per-press latency, which would explain 65536/65536 in the model against 3/10 on the phone. CANDIDATE, not a finding.",
+  "claimLevel": "DEVICE_MEASURED cohort result for Plan 12 level 7 (10/20); not a promotion; Gate G not invoked",
+  "openNext": [
+   "k3: k2 with the hall flash at 7400 ms (model 3000/3000 at 2433, band unchanged, Foxy edge 2516 -> 2583 ms): own anchor-aim record and a new predeclared cohort",
+   "a live hall-light latency probe to test the ~90 ms tail the candidate predicts",
+   "the lifecycle observer's pre-intro state=night misread (r02, r04, r05, r07, r10)",
+   "helper wall-clock stamp at the night-onset latch (System.nanoTime + currentTimeMillis pair) and a twin-nights test of clock seeding"
+  ]
+ }
 }
