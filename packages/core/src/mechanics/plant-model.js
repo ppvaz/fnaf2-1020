@@ -165,6 +165,16 @@ export class Sim {
       // camera-view draws (g366-g498), the blackout flicker and the resolution run
       // earlier in the model's frame.
       sourcedSecondPass: false,
+      // The Puppet's static glitch chain (dump g500-g506, g774): while your-view is
+      // on the Puppet out of his box, away from CAM 11, with a camera up and the
+      // light off and the glitch flag (static value 5) at 1, g500-g502 each draw
+      // Random(50) (== 1 sets static value 4) and g503 does the same on a 1000 ms
+      // countdown placed after the light test; g505 draws Random(150) for the
+      // static alpha while value 4 > 0 and takes one off; g506 clears the flag
+      // every 110 ms (timer only); g774, later in the sheet, sets the flag while
+      // the light is on that Puppet. Placed after the camera-view draws (g498) and
+      // before the monitor-down draw (g807).
+      sourcedPuppetGlitchDraws: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -251,6 +261,8 @@ export class Sim {
     this.monDown = { visible: false, av0: 0, av2: 0, pendingDrop: false, hidePrev: false, invPrev: false, visPrev: false };
     /** @type {Record<string, {v: number, init: boolean}>} per-group CND_EVERY2 countdowns (sourcedSecondPass) */
     this.passTimers = {};
+    // the Puppet static glitch chain (sourcedPuppetGlitchDraws); timer units are 1/3 ms
+    this.glitch = { value4: 0, value5: 0, g503: { v: 0, init: false }, g506: { v: 0, init: false } };
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -766,6 +778,48 @@ export class Sim {
       } }
   }
 
+  /** your-view overlaps the Puppet: his route camera when out, CAM 11 in the box. */
+  puppetUnderYourView() {
+    const p = /** @type {any} */ (this.puppet);
+    const at = !p.out ? C.BOX_CAM : (typeof p.loc === 'number' ? p.loc : null);
+    return at !== null && at === this.cam;
+  }
+
+  /** the Puppet sits on the CAM 11 marker (in his box or just escaped) */
+  puppetAtBoxCam() {
+    const p = /** @type {any} */ (this.puppet);
+    return !p.out || p.loc === C.BOX_CAM;
+  }
+
+  /** `lit?` (OI 75): the events 74-83 counter under sourcedFoxyChain, else the camera light. */
+  litCounter() { return this.opts.sourcedFoxyChain ? this.hallLit : this.camLightOn; }
+
+  /** g500-g502, g503, g505 (take one off, then 100-Random(150)), g506 in sheet order (sourcedPuppetGlitchDraws). */
+  puppetGlitchEarly() {
+    const g = this.glitch;
+    const lead = () => this.puppetUnderYourView() && this.viewing > 0 && g.value5 === 1 && !this.litCounter();
+    const one = () => this.rng.int(0, 49, 1) === 1;
+    for (let i = 0; i < 3; i++)                                                       // g500-g502
+      if (lead() && !this.puppetAtBoxCam() && one()) g.value4 = 1;
+    /** CND_EVERY2: loads on the first reach and returns false @param {{v: number, init: boolean}} t @param {number} ms */
+    const every = (t, ms) => {
+      if (!t.init) { t.init = true; t.v = ms * 3; return false; }
+      t.v -= 50;
+      if (t.v > 0) return false;
+      t.v += ms * 3;
+      return true;
+    };
+    if (lead() && every(g.g503, 1000) && !this.puppetAtBoxCam() && one()) g.value4 = 1;   // g503: countdown after lit == 0
+    if (g.value4 > 0) { g.value4 -= 1; this.rng.int(0, 149, 0); }                     // g505
+    if (every(g.g506, 110)) g.value5 = 0;                                             // g506
+  }
+
+  /** g774: the light on the Puppet away from CAM 11 raises the glitch flag. */
+  puppetGlitchLate() {
+    if (this.puppetUnderYourView() && !this.puppetAtBoxCam() && this.viewing > 0 && this.litCounter())
+      this.glitch.value5 = 1;
+  }
+
   startBlackout(by, unitId = null) {
     this.blackoutStartFrame = this.frame;
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
@@ -909,6 +963,7 @@ export class Sim {
     }
 
     if (this.opts.sourcedViewDraws) this.drawViewed(f);   // g366/g368/g419, g468-g476, g498
+    if (this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchEarly();   // g500-g506
     // --- blackout flicker: g514 clock, g517/g518 draws (sourcedBlackoutDraws)
     if (this.opts.sourcedBlackoutDraws && this.blackout.active) {
       const clock = f - this.blackoutStartFrame + 1;
@@ -967,6 +1022,7 @@ export class Sim {
     // counter (g333-342 and g494-496), so a new hour's levels reach the rolls
     // on the frame after the hour ticks over, not on it.
     if (f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);
+    if (this.opts.sourcedPuppetGlitchDraws) this.puppetGlitchLate();              // g774
     if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
