@@ -151,6 +151,20 @@ export class Sim {
       // visible frame, and e7 hides it the first frame value 0 reaches 22. So one
       // draw per drop, none for a re-drop while the sprite is still showing.
       sourcedMonitorDownDraw: false,
+      // The per-second draw groups as one pass in sheet order (dump g213, g292,
+      // g294, g400, g401, g436, g437, g439, g440, g494-g497, g556-g559, g623, g730,
+      // g739-g744, g747-g750, g781). Each conditional group has its own CND_EVERY2
+      // countdown that starts the first frame its earlier conditions hold and only
+      // runs on such frames; every roll compares Random(N) == 1 (the Puppet's
+      // Random(20) <= AI), and the hits of g292/g400/g439/g748/g749 draw a
+      // Random(4) cue, g739-g741 a Random(3). g496 and g497 draw every second
+      // whatever the Puppet is doing; g497 and g744 keep the model's f % 60 origin.
+      // Adds three groups the model lacked: g213 (Toy Freddy leaves from under the
+      // table), g437 (Toy Bonnie leaves during another encounter), g739-g743
+      // (Mangle's inside cues). Still not in sheet position relative to these: the
+      // camera-view draws (g366-g498), the blackout flicker and the resolution run
+      // earlier in the model's frame.
+      sourcedSecondPass: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -235,6 +249,8 @@ export class Sim {
     this.fadeUntil = {};
     // the monitor-down sprite (sourcedMonitorDownDraw)
     this.monDown = { visible: false, av0: 0, av2: 0, pendingDrop: false, hidePrev: false, invPrev: false, visPrev: false };
+    /** @type {Record<string, {v: number, init: boolean}>} per-group CND_EVERY2 countdowns (sourcedSecondPass) */
+    this.passTimers = {};
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -653,6 +669,103 @@ export class Sim {
     if (m.visible) m.av0 += 1;
   }
 
+  /**
+   * The per-second draw groups in sheet order (sourcedSecondPass). A group's
+   * countdown loads on the first frame its earlier conditions hold (returning
+   * false) and then counts down only on frames it is reached.
+   * @param {number} f
+   */
+  secondPass(f) {
+    /** @param {string} key @param {number} ms */
+    const every = (key, ms) => {
+      const t = this.passTimers[key] ??= { v: 0, init: false };
+      if (!t.init) { t.init = true; t.v = ms * 3; return false; }
+      t.v -= 50;
+      if (t.v > 0) return false;
+      t.v += ms * 3;
+      return true;
+    };
+    /** Random(n) == 1 @param {number} n */
+    const one = n => this.rng.int(0, n - 1, 1) === 1;
+    /** @param {string} id */
+    const unit = id => /** @type {any} */ (this.units.find(x => x.id === id));
+    /** @param {any} u */
+    const at122 = u => !!u && u.atOpening && !u.inside;
+    const mask2 = this.maskFullyOn;
+    const p = /** @type {any} */ (this.puppet);
+    const danger2 = () => this.units.some(x => x.committedAt >= 0) || p.attackAt >= 0;
+
+    { const u = unit('toyfreddy');                                                    // g213
+      if (this.viewing === 0 && !this.lightHeld && u && !u.atOpening && !u.inside &&
+          u.path[u.idx] === 'blindB' && mask2 && every('213', 1000) && one(10)) {
+        u.idx = 0; u.pending = false;
+        this.emit('route-return', { who: u.id, to: 9, group: 213 });
+      } }
+    if (this.bb.inOpening && mask2 && every('292', 1000) && one(10)) { this.rng.int(0, 3, 0); this.bbLeave(); }   // g292
+    if (this.bb.inOpening && this.bb.maskTicks >= C.VENT_MASK_TICKS && mask2) { this.rng.int(0, 3, 0); this.bbLeave(); }   // g294
+    { const u = unit('mangle');
+      if (at122(u) && mask2 && every('400', 1000) && one(10)) { this.rng.int(0, 3, 0); this.unitLeave(u); }       // g400
+      if (at122(u) && u.maskExposureTicks >= 5 && mask2) { this.rng.int(0, 3, 0); this.unitLeave(u); } }          // g401
+    { const u = unit('toybonnie');
+      const overlays = this.units.some(x => (x.id === 'toybonnie' || x.id === 'toychica') && x.officeCue);
+      if (at122(u) && mask2 && !this.blackout.active && !overlays && every('436', 500) && one(2))
+        this.startOfficeEncounter(u);                                                  // g436
+      if (at122(u) && mask2 && this.blackout.active && !u.officeCue && every('437', 1000) && one(3)) {
+        u.pending = false;
+        this.unitLeave(u, { idx: u.path.indexOf(3) });                                 // g437
+      } }
+    { const u = unit('toychica');
+      if (at122(u) && mask2 && every('439', 1000) && one(10)) { this.rng.int(0, 3, 0); this.unitLeave(u); }       // g439
+      if (at122(u) && u.maskExposureTicks >= 5 && mask2) { this.rng.int(0, 3, 0); this.unitLeave(u); } }          // g440
+    {
+      const stage = () => {
+        p.stage++;
+        this.emit('puppet-stage', p.stage);
+        if (p.stage >= C.PUPPET_ESCAPE_STAGES) { p.out = true; this.emit('puppet-out'); }
+      };
+      if (this.box <= 0 && every('494', 1000) && p.stage < C.PUPPET_ESCAPE_STAGES &&
+          this.rng.int(0, 19, 0) <= this.ai.puppet && !this.camLightOn && this.viewing === C.BOX_CAM) stage();   // g494
+      if (this.box <= 0 && every('495', 1000) && p.stage < C.PUPPET_ESCAPE_STAGES &&
+          this.rng.int(0, 19, 0) <= this.ai.puppet && this.viewing !== C.BOX_CAM) stage();                      // g495
+      if (every('496', 1000) && this.rng.int(0, 19, 0) <= this.ai.puppet &&
+          p.out && !p.atOpening && !p.inside && f >= p.stunUntil) p.pending = true;                             // g496
+      if (f % C.FPS === 0) p.pathChoice = this.rng.int(1, 2, 1) === 1 ? 'left' : 'right';                       // g497
+    }
+    for (const id of ['withfreddy', 'withbonnie', 'withchica', 'toyfreddy']) {           // g556-g559
+      const u = unit(id);
+      if (u && u.inside && !danger2() && mask2 && every('556' + id, 1000) && one(2))
+        this.commitAttack(u, 'inside-office mask attack roll');
+    }
+    if (p.atOpening && every('623', 1000) && one(10)) {                                  // g623
+      p.atOpening = false; p.inside = true; p.loc = 'inside';
+      p.attackAt = f + C.INSIDE_ATTACK_FRAMES;
+      this.dropEverything = true;
+      this.emit('puppet-attack', { at: 123 });
+    }
+    { const u = unit('mangle');
+      if (u && u.inside && this.viewing > 0 && every('730', 1000) && one(20)) u.insideArmed = true;             // g730
+      for (const [g, cue] of /** @type {[string, boolean][]} */ ([['739', true], ['740', true], ['741', true], ['742', false], ['743', false]]))
+        if (u && u.inside && every(g, 1000) && one(20) && cue) this.rng.int(0, 2, 0);                          // g739-g743
+    }
+    if (f % C.FPS === 0) this.rollDecidePath();                                           // g744
+    for (const id of ['withfreddy', 'withbonnie', 'withchica', 'toyfreddy']) {           // g747-g750
+      const u = unit(id);
+      if (u && u.inside && mask2 && every('747' + id, 1000) && one(10)) {
+        if (id === 'withbonnie' || id === 'withchica') this.rng.int(0, 3, 0);
+        this.unitLeave(u, { idx: 0, cooldown: C.INSIDE_LEAVE_COOLDOWN });
+      }
+    }
+    { const latch = this.opts.sourcedFoxyChain ? this.hallLatch : this.hallLightOn;    // g781
+      if (this.ai.golden > 0 && !latch && every('781', 1000)) {
+        const there = this.rng.int(0, C.GF_HALL_ROLL - 1, 1) === 1;
+        if (this.opts.gfEnabled && !this.gf.hallInside && there !== this.gf.inHall) {
+          this.gf.inHall = there;
+          this.gf.hallExposure = 0;
+          if (there) this.emit('gf-hall');
+        }
+      } }
+  }
+
   startBlackout(by, unitId = null) {
     this.blackoutStartFrame = this.frame;
     this.blackout = { active: true, until: this.frame + C.BLACKOUT_FRAMES, by,
@@ -839,7 +952,7 @@ export class Sim {
     // g744 sits after the repel rolls (g538-555, blackout resolution above) and
     // before the inside-attack rolls (g747-750, tickUnits) and Golden Freddy's
     // hall roll (g781). The model's other draws are not all in group order.
-    if (this.opts.sourcedRouteForks && f % C.FPS === 0) this.rollDecidePath();
+    if (this.opts.sourcedRouteForks && f % C.FPS === 0 && !this.opts.sourcedSecondPass) this.rollDecidePath();
     this.tickLight();
     this.tickGoldenHall(f);
     this.tickFoxy(f);
@@ -847,6 +960,7 @@ export class Sim {
     this.tickUnits(f);
     this.syncMangleStatic();
     this.tickBox();
+    if (this.opts.sourcedSecondPass) this.secondPass(f);   // g213..g781 per-second groups
     if (this.opts.record) this.record();
 
     // The table groups sit at g673-684, below every group that reads an AI
@@ -972,7 +1086,7 @@ export class Sim {
 
     // g781: his presence is not a latch. Every one-second event with the hall
     // light off re-rolls it, so holding the light freezes whatever is there.
-    if (f % C.FPS === 0 && !this.hallLightOn) {
+    if (f % C.FPS === 0 && !this.hallLightOn && !this.opts.sourcedSecondPass) {
       const there = this.rng.int(0, C.GF_HALL_ROLL - 1, 1) === 1;
       if (there !== this.gf.inHall) {
         this.gf.inHall = there;
@@ -1107,6 +1221,7 @@ export class Sim {
     // does not do for any of the three.
     if (this.bb.inOpening && this.maskFullyOn && this.frame % C.FPS === 0) {
       this.bb.maskTicks++;
+      if (this.opts.sourcedSecondPass) return;   // g292/g294 decide in secondPass
       if (this.opts.sourcedEventDraws) {
         const early = this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false);   // g292 draws on every tick
         if (this.bb.maskTicks >= C.VENT_MASK_TICKS) { this.rng.int(0, 3, 0); this.bbLeave(); }   // e237
@@ -1351,7 +1466,7 @@ export class Sim {
       }
       if (u.inside) {
         if (u.id === 'mangle') {
-          if (this.camsUp && f % C.FPS === 0 &&
+          if (!this.opts.sourcedSecondPass && this.camsUp && f % C.FPS === 0 &&
               this.rng.chance(C.MANGLE_INSIDE_ARM_CHANCE, true))
             u.insideArmed = true;
           if (!this.camsUp && u.insideArmed)
@@ -1362,7 +1477,7 @@ export class Sim {
           // (group 722).
           if (this.camsUp && f % (C.FPS * 10) === 0)
             this.commitAttack(u, 'Toy Bonnie remained inside with cameras up');
-        } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0) {
+        } else if (u.openingRule === 'streak' && this.maskFullyOn && f % C.FPS === 0 && !this.opts.sourcedSecondPass) {
           // Groups 556-559 precede the 10% return groups 747-750. Preserve
           // that order: a simultaneous attack roll is not cancelled by leave.
           // g556-559 set `being attacked by` outright: this is stage 2, not a
@@ -1392,7 +1507,7 @@ export class Sim {
 
       // Toy Bonnie creates his separate visible overlay on a 500 ms / 50% roll
       // while the Freddy mask is fully on (groups 436 and 443).
-      if (u.id === 'toybonnie' && u.atOpening && this.maskFullyOn && !u.officeCue &&
+      if (!this.opts.sourcedSecondPass && u.id === 'toybonnie' && u.atOpening && this.maskFullyOn && !u.officeCue &&
           !this.blackout.active && f % C.TOY_BONNIE_CUE_FRAMES === 0 &&
           this.rng.chance(C.TOY_BONNIE_CUE_CHANCE, false)) {
         this.startOfficeEncounter(u);
@@ -1404,7 +1519,8 @@ export class Sim {
       if ((u.id === 'toychica' || u.id === 'mangle') && u.atOpening &&
           this.maskFullyOn && f % C.FPS === 0) {
         u.maskExposureTicks++;
-        if (this.opts.sourcedEventDraws) {
+        if (this.opts.sourcedSecondPass) { /* g400/g401/g439/g440 decide in secondPass */ }
+        else if (this.opts.sourcedEventDraws) {
           const early = this.rng.chance(C.VENT_EARLY_LEAVE_CHANCE, false);   // drawn on every tick
           if (u.maskExposureTicks >= 5) { this.rng.int(0, 3, 0); this.unitLeave(u); continue; }   // e338/e377
           if (early) { this.unitLeave(u); continue; }
@@ -1590,7 +1706,7 @@ export class Sim {
       this.advancePuppet();
     }
 
-    if (f % C.FPS === 0) {
+    if (f % C.FPS === 0 && !this.opts.sourcedSecondPass) {
       // g494/g495: three successful one-second rolls while the box is empty.
       // CAM 11 light blocks the viewing=11 branch; every other view rolls.
       if (this.box <= 0 && !p.out && p.stage < C.PUPPET_ESCAPE_STAGES) {
