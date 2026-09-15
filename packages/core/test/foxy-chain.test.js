@@ -80,6 +80,20 @@ assert.throws(() => new Sim({ night: 7, seed: 1, sourcedFoxyChain: true }), /req
   assert.equal(s.rng.state, lcg(before)); assert.ok(fx.B >= 500 && fx.B <= 999);
 }
 
+// Events 75 -> 211 -> 382 -> 426: a camera light held through the drop latches the hall on the drop
+// frame, even when the encounter starts that frame; the next frame's lit? is cleared by in danger (81).
+{
+  const s = fresh(); const fx = s.foxy; fx.loc = 'hall'; fx.D = 4;
+  s.monitor = 'up'; s.viewing = 11; s.lightHeld = true; s.frame = 1300;
+  s.updateLitCounter(); assert.equal(s.hallLit, true, 'camera light sets lit? (75)');
+  s.viewing = 0;                                     // the drop (211) later in the frame
+  s.blackout = { active: true, until: 9999, by: 'x', unitId: null, masked: false, deadline: 0 };  // in danger (382) later still
+  s.tickFoxyChain(1301); assert.equal(s.hallLatch, true, 'latched on the drop frame (426)'); assert.equal(fx.D, 0, 'g745 reset');
+  s.updateLitCounter(); assert.equal(s.hallLit, false, 'in danger clears lit? next frame (81)');
+  const c = fresh(); c.monitor = 'up'; c.viewing = 11; c.lightHeld = true; c.updateLitCounter(); c.hallLatch = false;
+  c.tickFoxyChain(1302); assert.equal(c.hallLatch, false, 'no latch while a camera is still up');
+}
+
 // g573: at 123 with the latch set, viewing 0 and no encounter.
 {
   const s = fresh({ lethal: true }); const fx = s.foxy; fx.loc = 'hall'; fx.gotYou = true; s.hallLit = true;

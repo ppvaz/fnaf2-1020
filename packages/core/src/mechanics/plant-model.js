@@ -424,6 +424,23 @@ export class Sim {
     if (lit) this.hallLatch = true;                // g489
   }
 
+  /**
+   * `lit?` as the persistent counter the touch events leave it before the drop
+   * (Chowdren names, Office events 74-83): held light sets it with viewing 0 and
+   * the mask off (74), on any camera but 10 (75) or on CAM 10 (76); release (79),
+   * no battery (80), in danger (81), the mask reaching fully on (82) and Balloon
+   * Boy inside (83) clear it. The drop (211) zeroes viewing later in the same
+   * frame and in danger rises later still (382-384), so a camera light held
+   * through the drop still latches the hall on the drop frame (426).
+   */
+  updateLitCounter() {
+    if (!this.lightHeld) this.hallLit = false;                                    // 79
+    else if ((this.viewing === 0 && this.maskFullyOff && !this.bb.inside) ||      // 74
+             (this.viewing > 0 && this.viewing !== 10 && !this.bb.inside) ||      // 75
+             this.viewing === 10) this.hallLit = true;                            // 76
+    if (this.power <= 0 || this.blackout.active || this.maskFullyOn || this.bb.inside) this.hallLit = false; // 80-83
+  }
+
   /** g75/g84 set lit? with viewing 0 and the mask off; g94 clears it in danger. */
   hallLitNow() {
     return this.lightHeld && this.viewing === 0 && this.maskFullyOff &&
@@ -573,7 +590,7 @@ export class Sim {
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
-    if (this.opts.sourcedFoxyChain) this.hallLit = this.hallLitNow();   // g75-g94; g488/g489 run in tickFoxyChain
+    if (this.opts.sourcedFoxyChain) this.updateLitCounter();   // events 74-83 (g84-g94) before the drop; g488/g489 run in tickFoxyChain
     else if (this.opts.sourcedDropLightOrder) this.updateHallLatch(f);
 
     // g262/g274 execute the forcedown near the top of the sheet, while
@@ -841,7 +858,7 @@ export class Sim {
     const fx = this.foxy;
     const second = f % C.FPS === 0;
     const danger = this.blackout.active;
-    this.updateHallLatch(f, this.hallLit);                                   // g488/g489
+    this.updateHallLatch(f, this.hallLit && this.viewing === 0 && this.power > 0);  // g488 (425) / g489 (426): viewing read after the drop
     if (fx.gotYou && this.viewing === 0 && this.hallLatch && !danger) {      // g573
       this.kill('foxy', 'g573: the hall light latched while Foxy was at marker 123');
       return;
