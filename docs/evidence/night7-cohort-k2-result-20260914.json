@@ -703,7 +703,7 @@
   },
   {
    "recordedAfter": "r06",
-   "status": "CANDIDATE (timing pattern, not a mechanism); not acted on inside the cohort",
+   "status": "CANDIDATE (timing pattern); the late-flash mechanism explains at most 2 of 7 deaths by video beam onsets",
    "claimLevel": "DEVICE_MEASURED frame reads, uncertainty ~150 ms from the video-to-release mapping",
    "observation": "All three deaths are Withered Foxy, first visible in the office inside the same cycle window: r02 7.29-7.54 s (cycle 29), r04 7.46-7.71 s (cycle 1), r06 7.48-7.73 s (cycle 22). Every window contains the 7.46 s hall flash, with the 7.60 s monitor raise just after and mask off at 7.00 s.",
    "whatItIsNot": "Not a why: every win passes this phase 42 times. Not explained by early authorization (r06 latch-timed) or refused-flash streaks (r06 had no back-to-back FLAT pair).",
@@ -763,7 +763,64 @@
     "deviceTestGap": "no live-capable hall-latency probe exists (hid-maskraise-probe is offline-only; maskraise-grade is exploratory); the latency-tail prediction (~2% of flashes landing >~90 ms late) needs a new instrument"
    },
    "update-r08": "Five of five deaths: r08 Withered Foxy first visible 7.31-7.56 s into cycle 26. All five windows lie in 7.29-7.73 s and contain the model's 7.567 s Foxy roll.",
-   "update-r09": "Six of six deaths: r09 Withered Foxy first visible 7.47-7.72 s into cycle 1."
+   "update-r09": "Six of six deaths: r09 Withered Foxy first visible 7.47-7.72 s into cycle 1.",
+   "deviceTest-hallBeamOnset": {
+    "claimLevel": "DEVICE_MEASURED video reads",
+    "recordedAt": "2026-09-15",
+    "method": "hall-onset.py on each counted recording: frames on a 60 fps grid from the mapped press (release video + 7.46 s + 10 s n) -0.10 to +0.45 s; baseline = median door brightness over -0.10..+0.02 s; onset = first frame at >= -0.05 s with door gain > 4 (LIT when peak gain > 12), stopping at the raise white-out; deviation = onset minus the run's median onset, which cancels each run's constant video-mapping offset",
+    "result": {
+     "visibleFlashes": 249,
+     "deviationPercentilesMs": {
+      "p1": -50,
+      "p5": -34,
+      "p50": 0,
+      "p95": 33,
+      "p99": 233,
+      "max": 234
+     },
+     "lateTailAtOrAbove50Ms": [
+      {
+       "run": "r07b",
+       "cycle": 20,
+       "devMs": 234,
+       "class": "LIT",
+       "deathCycle": true
+      },
+      {
+       "run": "r05",
+       "cycle": 27,
+       "devMs": 233,
+       "class": "DIM",
+       "deathCycle": false
+      },
+      {
+       "run": "r05",
+       "cycle": 17,
+       "devMs": 233,
+       "class": "DIM",
+       "deathCycle": false
+      },
+      {
+       "run": "r09",
+       "cycle": 1,
+       "devMs": 134,
+       "class": "LIT",
+       "deathCycle": true
+      }
+     ],
+     "deathCycleFlashDevMs": {
+      "r02": -17,
+      "r04": 8,
+      "r06": 16,
+      "r07b": 234,
+      "r08": 0,
+      "r09": 134,
+      "r10": 33
+     }
+    },
+    "reading": "Only 2 of the 7 death-cycle flashes were late (r07b +234 ms, r09 +134 ms); the other 5 flashes before a death landed within -17..+33 ms of their run's median, and r05 survived two flashes read +233 ms late. A late hall flash can explain at most two deaths, so it is not the main mechanism. The earlier-flash binding k3 is weakened as a fix accordingly; the DIM +233 ms reads may be detection artifacts.",
+    "retained": "artifacts/forensics/seed-clock-20260914/hall-onset.py and hall-onset-cohort.json"
+   }
   }
  ],
  "summary": {
