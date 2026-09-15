@@ -50,6 +50,58 @@
     "intervalsOver100ms": 1,
     "coverage": "from about 3 s before the office loaded through the death"
    }
+  },
+  {
+   "run": "night7-night7-k3-full-06-20260915T225056Z",
+   "status": "WIN",
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 459.0 s; 42/42 gates agreed; every instrument passed",
+   "onsetPhoneWallMs": 1789512694330.005,
+   "hudFirstVideoS": 38.276,
+   "officeLog": {
+    "loading frame #:4": 1789512692920,
+    "Starting new frame": 1789512694248,
+    "startTheFrame() called": 1789512694261,
+    "All loaded in frame: 4 took ms": 1307
+   },
+   "seedBracket": {
+    "fromMs": 1789512694248,
+    "toMs": 1789512694261,
+    "low16": [
+     47592,
+     47605
+    ],
+    "candidates": 14,
+    "beforeHelperOnsetMs": [
+     69.0,
+     82.0
+    ],
+    "tool": "tools/device/office-seed-bracket.py"
+   },
+   "frameTrace": {
+    "file": "ft2-full-06-875229878053244.tsv",
+    "frames": 25185,
+    "spanS": 428.1,
+    "meanIntervalMs": 16.997,
+    "officeAtTraceFrame": 200,
+    "gapsOver100ms": 2,
+    "intervalsOver25ms": 376,
+    "start": "direct TRACE start 20 ms after custom-night.start, before the office load; whole night"
+   },
+   "btAudio": {
+    "link": "bt-audio-link.sh --ensure READY (host-side profile connect) after the root bluealsa-aplay was disabled",
+    "rawBytes": 84988928,
+    "sidecar": "full-06.bt.json in forensics"
+   },
+   "eyehole": {
+    "identified": 27,
+    "empty": 15,
+    "unreadable": 0
+   },
+   "hallFlash": {
+    "LIT": 10,
+    "DIM": 21,
+    "BLACK": 11
+   }
   }
  ],
  "titleScreenTests": {
@@ -57,7 +109,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "No lock. Strongest candidate remains full-02 seed 34934 from encounters alone. The hall flash cannot help until the model reproduces the phone's DIM rate.",
+ "notYetScored": "No lock on three nights. RNG, seed cast and bracket verified in the dex. The footstep draws as implemented degrade the fit and are refuted for now. Next: the audio onsets (full-06 capture) as a timing observable, and a per-cycle divergence diagnosis of the best window seeds.",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -258,6 +310,136 @@
    },
    "reading": "with the trigger sourced, the hall flash still carries no seed signal: the phone reads DIM on 20 of 31 readable full-02 flashes, and the model's counter is above zero at about 40% of flashes, agreeing with 34934 on 14/31, below chance. Either the phone's DIM class is not only g202's animation 99, or something besides hall entry keeps `hall movement` above zero on the phone. Open for the model, not for the scorer.",
    "reproducibility": "the session scratchpad (tmpfs) was wiped by a reboot; the eyehole reader was recovered from the session transcript and reproduced full-04's labels exactly. eyehole-read.py, eyehole-full-04.json and the patched seedlock.mjs are now in artifacts/forensics/k3-frametrace-nights-20260915."
+  },
+  "full06": {
+   "encountersOnly": {
+    "traceStart200": {
+     "bestWindow": {
+      "low16": 47598,
+      "conflicts": 12,
+      "hits": 15
+     },
+     "controlAsGood": "23.0%",
+     "controlBest": "6 conflicts / 21 hits"
+    },
+    "sixtyFps": {
+     "bestWindow": {
+      "low16": 47602,
+      "conflicts": 10,
+      "hits": 17
+     }
+    },
+    "verdict": "NO LOCK: the window seeds score like random seeds"
+   },
+   "combinedWithHall": {
+    "bestWindow": {
+     "low16": 47598,
+     "totalConflicts": 28,
+     "totalHits": 30
+    },
+    "controlAsGood": "15.7%",
+    "holdOut": "fit picks 47603, test matched by 99%",
+    "verdict": "NO LOCK"
+   },
+   "prefixTracking": {
+    "definition": "cycles from the start with no conflict (a wrong identity, or a model encounter on a phone-empty cycle), best over epoch and trace offset per seed",
+    "full06": {
+     "windowPrefixes": [
+      16,
+      13,
+      11,
+      10,
+      9,
+      6,
+      6,
+      6,
+      3,
+      3,
+      3,
+      3,
+      2,
+      2
+     ],
+     "controlMedian": 6,
+     "controlP90": 13,
+     "controlsAtOrAboveWindowBest": "21/300 (7%)"
+    },
+    "full02": {
+     "windowPrefixes": [
+      8,
+      5,
+      5,
+      4,
+      4,
+      4,
+      4,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      3,
+      2
+     ],
+     "controlMedian": 3,
+     "controlP90": 4,
+     "controlsAtOrAboveWindowBest": "5/300 (1.7%)"
+    },
+    "reading": "the model tracks the phone for a couple of minutes at most and then loses the stream; a weak seed signal on both nights, not a lock"
+   },
+   "rngVerified": "classes.dex CRun.random(short n): state = (state*31415+1) & 0xFFFF, value = (state*n) >>> 16; allocRunHeader seeds rh3Graine = (short)currentTimeMillis (congruent mod 65536); startTheFrame logs 'Starting new frame' at instruction 42 and calls initRunLoop at 231, the caller logs 'startTheFrame() called' after it returns -- the bracket is where the model assumed"
+  },
+  "footstepDrawsRescore": {
+   "model": "fcbbd45 sourcedFootstepDraws (one Random(5) per roll hop onto cams 01/2/3/4 or hall stage 1/2, Random(3) for Mangle, Foxy within ten loops of g349), on top of the sourced hall entry and the paused g263",
+   "full06": {
+    "windowPrefixes": [
+     13,
+     10,
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     6,
+     4,
+     4,
+     3,
+     3
+    ],
+    "controlsAtOrAboveWindowBest": "32/300 (from 21/300 without)",
+    "bestCombined": {
+     "low16": 47602,
+     "totalConflicts": 27,
+     "totalHits": 31
+    }
+   },
+   "full02": {
+    "windowPrefixes": [
+     4,
+     4,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     3,
+     2,
+     2,
+     2
+    ],
+    "controlsAtOrAboveWindowBest": "58/300 (from 5/300 without)",
+    "seed34934": "encounters 14 conflicts / 9 hits (from 6 / 17 without)"
+   },
+   "reading": "worse on both nights while the control distributions barely move: the draws as placed are not the game's, or not at those moments (the `in office` marker, the exact hop-to-overlap frame, or the ONCE gating are the open details). The option stays default off and is not promoted; the pre-footstep fits are the reference."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
