@@ -22,8 +22,11 @@ CLI="$CTFAK_SRC/Interface/CTFAK.Cli/bin/Release/net6.0/CTFAK.Cli.dll"
 # One mount root keeps the container paths identical to the host paths, so the
 # -path argument and CTFAK_EVENT_DUMP can be passed through unchanged.
 mkdir -p "$(dirname "$OUT")"
+# CTFAK_IMAGE_DIR + CTFAK_IMAGE_HANDLES (comma-separated image handles) also
+# write those images as PNG; that needs GDI+, i.e. an image built from
+# tools/dump/ctfak-gdiplus.Dockerfile passed as CTFAK_IMAGE.
 docker run --rm -v /private/tmp:/private/tmp -w /private/tmp \
-  -e CTFAK_EVENT_DUMP="$OUT" "$IMAGE" \
+  -e CTFAK_EVENT_DUMP="$OUT" -e CTFAK_IMAGE_DIR -e CTFAK_IMAGE_HANDLES "$IMAGE" \
   dotnet "$CLI" -path "$CCN" -parameters "" -forcetype ccn \
   -tool "Event Text Dumper" -closeonfinish
 

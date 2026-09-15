@@ -43,7 +43,12 @@ CTFAK is .NET 6 and this Mac has no `dotnet`, so the script runs it in the
 `mcr.microsoft.com/dotnet/sdk:6.0` image. `tools/dump/EventTextDumper.cs` is our
 own CTFAK tool — drop it into a CTFAK checkout at
 `Core/CTFAK.Core/Tools/`, `dotnet build -c Release`, and CTFAK offers it as
-"Event Text Dumper" in its tool list. The checkout is upstream
+"Event Text Dumper" in its tool list. With `CTFAK_IMAGE_DIR` and
+`CTFAK_IMAGE_HANDLES` (comma-separated image handles) set, the same run also
+writes those images as PNG; that needs GDI+, so run it in the image built
+from `tools/dump/ctfak-gdiplus.Dockerfile` (`CTFAK_IMAGE=fnaf2-ctfak-gdiplus:local`).
+The pictures are game content: keep them beside the dump, never in the repo.
+The checkout is upstream
 `github.com/CTFAK/CTFAK2.0` plus the Linux port described in
 `UPSTREAM-LEDGER.md` §1 (retarget to `net6.0`, `System.Drawing.Common`
 6.0.0 with `EnableUnixSupport`, platform-guarded `CTFAKCore.Init` using
@@ -93,6 +98,7 @@ Seven line types, all tab-separated:
 | `GAME` | name, Fusion build (296), frame count (33) |
 | `OBJECTS` | section marker |
 | `OBJECT h TYPE t NAME n VALUES … STRINGS …` | one row of the **item table**: `h` is the *stored* handle |
+| `OBJANIM OI h ANIM a DIR d FRAMES i,j,…` | the image handles behind one animation direction of that row (**added 2026-09-15**); `ForceAnimation a` on the object draws image `i` |
 | `FRAME i name GROUPS k` | a frame (scene) and how many groups it has |
 | `GROUP g FLAGS f RESTRICT r CONDS c ACTS a` | one event group |
 | ` C OT … NUM … OI … NAME … OIL … CFLAGS … COTHER … PARAMS …` | a condition of the group above |
@@ -317,8 +323,10 @@ Then, before it enters the simulator:
 
 ## 8. What the dump does *not* contain
 
-- **No images, sounds, or animations** — the dumper emits logic plus scene
-  *geometry*; the pixels themselves need a different CTFAK tool. Since
+- **No sounds, and no pixels in the text** — the dumper emits logic plus scene
+  *geometry*, and since 2026-09-15 the `OBJANIM` rows that name each
+  animation's image handles, with an opt-in PNG export of named handles
+  (§1). Since
   2026-08-26 it does emit each frame's size, layers and placed-object list
   (§3), which is where the office's 1600×768 came from.
 - **No guarantee that a placed position is a runtime position.** The instance

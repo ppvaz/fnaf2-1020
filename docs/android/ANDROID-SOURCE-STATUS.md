@@ -78,9 +78,23 @@ and the column empty), g202 and g1035 (with the hall light on and the value
 above zero, `views.Active` frame 99 and `viewsPatch` frame 13 are drawn
 instead of the empty-hall frame 36 / patch 12 of g203/g1034, and the
 character-specific hall frames of g205-209 also require it at zero). The
-engine's `HALL_MOVEMENT_FRAMES` keeps the value; its refresh-while-in-transit
-semantics over-block relative to source and are the next model change
-(entry-triggered, per character).
+engine's `HALL_MOVEMENT_FRAMES` keeps the value; `sourcedHallEntry` carries
+the entry semantics (outcome-neutral at 3000 seeds on four plans), and the
+latch is readable every frame as `sim.hallMovementFrames`.
+
+**The hall's three flash images, by eye (2026-09-15, same day).** `views.Active`
+(handle 211) has 90 single-frame animations; g202-209 pick one with
+`ForceAnimation`. Exported through the dumper's `OBJANIM` rows and PNG export:
+animation 36 (image 463) is the hall **lit and empty** -- the flashlight beam
+fills the doorway; animation 99 (image 570) is the hall with **no beam** -- the
+doorway black while the ceiling lamp still shows, which is what g202 draws
+while `hall movement` is above zero; animation 93 (image 564) is Golden Freddy
+in the lit hall. So the phone's LIT / DIM / BLACK census reads as: LIT = 36 or
+a character frame (g203, g205-209; 84/76/98/50 are the standing characters),
+DIM = 99 = a hall-column entry within the last 300 dt-frames (5 s), BLACK =
+the light not held. g881's drain is `Max(0, v0 - 1 * Global(5))`, the same
+`1 * Global(5)` dt term g535, g745 and g779 use, so the 300 is five real
+seconds, not 300 rendered frames.
 
 ## 2026-08-20: handle-scramble correction pass
 

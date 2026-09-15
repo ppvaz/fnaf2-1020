@@ -5707,3 +5707,14 @@ the scorer had been assuming. Gates seen green: `sourcetest` 209/209, `test:core
 `test:contracts` fails on `test-decode-once.py` (`preexec_fn`) on the committed HEAD as well, so
 that lane is environmental here, not this change. Evidence:
 [hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).
+
+**2026-09-15 (later still): the hall's DIM flash is g202's animation 99, seen.**
+The dumper now emits `OBJANIM` rows (image handles per animation direction) and, with
+`CTFAK_IMAGE_DIR`/`CTFAK_IMAGE_HANDLES` in the libgdiplus image (`tools/dump/ctfak-gdiplus.Dockerfile`),
+writes named images as PNG. `views.Active` animation 36 (image 463) is the lit empty hall, 99
+(image 570) is the hall with no beam in the doorway while the ceiling lamp still shows -- what g202
+draws while `hall movement` is above zero -- and 93 (image 564) is Golden Freddy in the lit hall.
+g881 drains by `1 * Global(5)`, the dt term of g535/g745/g779, so the 300 is five real seconds.
+LIT = 36 or a standing character, DIM = 99 = a hall-column entry within five seconds, BLACK = light
+not held. Evidence:
+[hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).

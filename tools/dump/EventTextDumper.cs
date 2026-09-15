@@ -38,7 +38,23 @@ namespace CTFAK.Tools
                         strings = string.Join("|", common.Strings.Items.Select(Clean));
                 }
                 writer.WriteLine($"OBJECT\t{pair.Key}\tTYPE\t{info.ObjectType}\tNAME\t{Clean(info.name)}\tVALUES\t{values}\tSTRINGS\t{strings}");
+                // One row per animation direction: the image handles its frames
+                // draw, so `ForceAnimation N` on an object can be followed to a
+                // picture. Keyed by the stored handle like the OBJECT row above.
+                if (info.properties is ObjectCommon animated && animated.Animations?.AnimationDict != null)
+                    foreach (var animation in animated.Animations.AnimationDict.OrderBy(a => a.Key))
+                    {
+                        var directions = animation.Value?.DirectionDict;
+                        if (directions == null) continue;
+                        foreach (var direction in directions.OrderBy(d => d.Key))
+                        {
+                            var frames = direction.Value?.Frames;
+                            if (frames == null || frames.Count == 0) continue;
+                            writer.WriteLine($"OBJANIM\tOI\t{pair.Key}\tANIM\t{animation.Key}\tDIR\t{direction.Key}\tFRAMES\t{string.Join(",", frames)}");
+                        }
+                    }
             }
+            ExportImages(game);
 
             for (int frameIndex = 0; frameIndex < game.frames.Count; frameIndex++)
             {
@@ -110,6 +126,25 @@ namespace CTFAK.Tools
                     $"\tPTYPE\t{instance.parentType}\tPARENT\t{instance.parentHandle}" +
                     $"\tINSTNUM\t{instance.instance}" +
                     $"\tW\t{w}\tH\t{h}\tHOTX\t{hotX}\tHOTY\t{hotY}");
+            }
+        }
+
+        /// <summary>
+        /// Optional: write the images named by CTFAK_IMAGE_HANDLES (comma-separated
+        /// image handles) as PNG files into CTFAK_IMAGE_DIR. Needs a GDI+ host
+        /// (libgdiplus on Linux). Off unless both variables are set.
+        /// </summary>
+        private static void ExportImages(GameData game)
+        {
+            string dir = Environment.GetEnvironmentVariable("CTFAK_IMAGE_DIR");
+            string handles = Environment.GetEnvironmentVariable("CTFAK_IMAGE_HANDLES");
+            if (string.IsNullOrEmpty(dir) || string.IsNullOrEmpty(handles)) return;
+            Directory.CreateDirectory(dir);
+            foreach (var token in handles.Split(','))
+            {
+                if (!int.TryParse(token.Trim(), out int handle)) continue;
+                if (!game.Images.Items.TryGetValue(handle, out FusionImage image)) continue;
+                image.bitmap.Save(Path.Combine(dir, $"{handle}.png"));
             }
         }
 

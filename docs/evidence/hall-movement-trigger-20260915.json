@@ -102,7 +102,7 @@
  },
  "dumpFacts": {
   "g875-g880": "C -4 <character> overlapping hall movement (180) + C -7 'only one action when event loops' -> A 31 hall movement v0 = 300; characters: old freddy (g875), old bonnie (876), new freddy (877), new chica (878), new foxy (879), old foxy (880)",
-  "g881": "hall movement v0 > 0 -> v0 = Max(0, v0 - 1 * <global 24 expression>) -- the drain; rate not re-derived here",
+  "g881": "hall movement v0 > 0 -> v0 = Max(0, v0 - 1 * Global(5)); the `1 * Global(5)` dt term is the one g535, g745 and g779 use (27 tokens each of the two encodings 5 / -65531 in frame 3), so the 300 is five real seconds",
   "writes onto hall stage 1 (120)": "g381 old bonnie, g389 old foxy, g394 new foxy, g421 new freddy, g431/g434 new chica",
   "writes onto hall stage 2 (121)": "g376 old freddy, g422 new freddy",
   "consumers": "g779 (Golden Freddy hall exposure requires v0 == 0 and no character on 120/121); g202 (viewing 0, lit, v0 > 0 -> views.Active frame 99); g203 (v0 == 0, golden v1 != 1 -> frame 36); g204 (golden v1 == 1, v0 == 0 -> frame 93); g205-g209 (character on 120/121 and v0 == 0 -> frames 84/76/98/50/...); g1034/g1035 (lit and v0 == 0 / > 0 -> viewsPatch frame 12 / 13)",
@@ -117,12 +117,11 @@
   "readdump.py instance resolution corrected (tools/dump/readdump.py --lo-xor, test-instances.py)",
   "plant-model.js: `hall movement` now ticks every frame in tickHallMovement (independent of gfEnabled), is readable as sim.hallMovementFrames, and emits `hall-movement` {who} on arm; under sourcedHallEntry (default off) the 300 is written once per entry into the hall column per character (C -7), the legacy mode keeps refreshing it every transit frame; sourcetest g875-880/g202/g881 cases"
  ],
- "status": "SOURCED; the marker set for the latch is closed (hall stage 1, hall stage 2) and the model carries the entry semantics behind sourcedHallEntry with a readable per-frame value. Open: switching the default on (outcome-neutral at 3000 seeds x 4 plans), the g881 drain expression, and which of frames 36/99/93 the phone's LIT and DIM classes are (the k3 census read DIM as g202's dark rendering).",
+ "status": "SOURCED end to end: trigger markers (hall stage 1/2), entry semantics (C -7) in the model behind sourcedHallEntry, the drain's dt term, and the three hall images by eye. Open: switch sourcedHallEntry on by default, and re-score the k3 nights' hall flashes against the model's latch.",
  "openQuestions": [
-  "g881 drain: decode the global-value-5 expression (the -65531 token) to confirm one per frame at 60 fps; the k3 frame-trace record already reads it as 'drains by global value 5'",
-  "map views.Active frames 36 / 99 / 93 / 84 / 76 / 98 / 50 to the phone's LIT / DIM / character / Golden Freddy hall images (needs the image bank or a labelled run)",
   "re-score full-02 / full-04 hall flashes against sim.hallMovementFrames > 0 at each flash (sourcedHallEntry on) instead of the scorer's own assumed latch",
-  "switch sourcedHallEntry on by default once the seed-lock scorer has consumed it (census is identical either way)"
+  "switch sourcedHallEntry on by default once the seed-lock scorer has consumed it (census is identical either way)",
+  "the standing-character hall frames 84/76/98/50 are identified by group only; look at images 554/524/569/479 before using them as per-character flash classes"
  ],
  "census": {
   "method": "tools/device/human-gate.mjs modelGate on recipe.mjs --device-plan for nights 5/6/7 and minus-toys-plan.mjs replay night 7; 3000 seeds each, seedStart 1, epochMs 0 (single phase); mode injected through Sim.prototype.tick; run twice (before and after the tickHallMovement refactor), identical",
@@ -139,5 +138,14 @@
    "minus-toys-n7": "3000/3000"
   },
   "reading": "outcome-neutral: every death row identical, and the hallway Golden Freddy never got inside (gf-hall-inside = 0 in all 24,000 nights), so the latch's only observable on these plans is the hall render (g202: DIM while > 0), not survival. That is the seed-lock signal, and it can now be read from the model instead of assumed."
+ },
+ "hallImages": {
+  "source": "OBJANIM rows of the regenerated dump (views.Active = stored row 207 / event handle 211, 90 single-frame animations) and the dumper's PNG export run in the libgdiplus image; the pictures stay beside the dump, outside the repo",
+  "animation 36 -> image 463": "hall lit and empty: the beam fills the doorway (g203 with the light held and hall movement 0, no Golden Freddy)",
+  "animation 99 -> image 570": "hall with no beam: doorway black, ceiling lamp still lit (g202 with the light held while hall movement > 0) = the phone census's DIM class",
+  "animation 93 -> image 564": "Golden Freddy in the lit hall (g204)",
+  "animations 84 / 76 / 98 / 50": "images 554 / 524 / 569 / 479, the standing-character hall frames of g205-208 (exported handles listed; identities by group, not yet by eye)",
+  "viewsPatch animations 12 / 13 -> images 255 / 257": "the left-wall poster patch (g1034 / g1035), near-identical 249x378 crops",
+  "reading": "LIT = 36 or a standing-character frame; DIM = 99 = a hall-column entry within the last five real seconds; BLACK = the light not held. The seed-lock scorer can read sim.hallMovementFrames > 0 at each flash for DIM."
  }
 }
