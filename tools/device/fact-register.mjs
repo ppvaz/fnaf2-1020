@@ -339,6 +339,33 @@ export const ANCHOR_AIMS = Object.freeze({
   }),
 });
 
+// Anchor bindings whose winner.json was never committed. A binding is keyed
+// by stableHash(winner.json); if that file lives only in a gitignored
+// artifacts/ directory on one machine, the binding cannot be rebuilt anywhere
+// else -- the evidence records keep knob deltas, and the i -> j -> k2 -> k3
+// chain did not reproduce k2's plan hash on 2026-09-15. Pedro, that day:
+// "the run that wins on the device, the repository's most precious product,
+// is not even part of it." This set is CLOSED: test-fact-register.mjs refuses
+// any other ANCHOR_AIMS entry without a tracked tools/device/*-winner.json of
+// the same hash, and refuses additions here. Remove an entry by committing
+// its winner (tools/device/campaign-night<N>-<name>-winner.json) from the
+// path each line names.
+export const UNTRACKED_WINNER_DEBT = Object.freeze({
+  'fnv1a-81b5e51c': 'night 5 (2026-09-12): winner path not named by its evidence',
+  'fnv1a-bc5e044c': 'night 6 a: winner path not named by its evidence',
+  'fnv1a-94baf687': 'night 6 b: winner path not named by its evidence',
+  'fnv1a-5d414fce': 'night 6 c: winner path not named by its evidence',
+  'fnv1a-1292e481': 'night 6 d: winner path not named by its evidence',
+  'fnv1a-1cd7cd43': 'night 6 e: winner path not named by its evidence',
+  'fnv1a-3554e353': 'night 6 f: winner path not named by its evidence',
+  'fnv1a-e89a28ca': 'night 6 g: winner path not named by its evidence',
+  'fnv1a-37278c63': 'night 6 h: winner path not named by its evidence',
+  'fnv1a-651ed623': 'night 7 i: winner path not named by its evidence',
+  'fnv1a-f337717a': 'night 7 j: artifacts/night7-anchored-j/winner.json (peer machine)',
+  'fnv1a-7e4bf3e8': 'night 7 k2 (WON 2026-09-14): artifacts/night7-anchored-k2/bundle/winner.json (peer machine)',
+  'fnv1a-5c8dcb5f': 'night 7 k3 (WON 2026-09-15): artifacts/night7-anchored-k3/winner.json (peer machine)',
+});
+
 /** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */
 export const ANCHOR_AIM_MIN_MARGIN_MS = 30;
 

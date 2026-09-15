@@ -52,6 +52,12 @@ refactors — is **bookkeeping**.
   physical test or a decision request to Pedro — never further documentation
   of the refutation.
 - End every session by reporting the consequential:bookkeeping commit ratio.
+- A binding that wins on the phone, or that gets an `ANCHOR_AIMS` entry, is
+  committed as `tools/device/campaign-night<N>-<name>-winner.json` in the same
+  commit (`test-fact-register.mjs` refuses otherwise). `artifacts/` is
+  gitignored: a winner that lives only there cannot be re-run on another
+  machine, and on 2026-09-15 the k3 Night 7 bundle could not be rebuilt from
+  the evidence records' knob deltas.
 
 Standing directive (Pedro, 2026-09-06): **laser-focus on 6 AM successes
 on-device.** Night 6 is the current execution target; nothing outranks the

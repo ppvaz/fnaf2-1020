@@ -5729,3 +5729,19 @@ arithmetic was right within 5% and is now sourced: the right light is centred af
 pan units (~280 ms in the fast band), the left light is at screen x -429 at maximum pan, so no
 single pan position reaches both. Evidence:
 [vent-anchors-office-layout-20260915.json](../docs/evidence/vent-anchors-office-layout-20260915.json).
+
+**2026-09-15 (evening): a local k3 run was requested and is blocked on the bundle, and that is a defect.**
+The moto g56 is on this machine's adb, `device:dry-run` passes (`run-20260915142753-b0e55bd0-4e4c57`),
+the HID qualification and the Custom Night calibration are in the tree -- but the k3 binding
+(`fnv1a-5c8dcb5f`, one 6 AM on 2026-09-15) exists only as `artifacts/night7-anchored-k3/winner.json`
+on the peer machine, and `artifacts/` is gitignored. Rebuilding it from the recorded knob chain
+(i -> j -> k2 -> k3) does not reproduce k2's plan hash (`e5259e0f...` vs `ac68e343...`) with an
+identical emitter digest, so the evidence records do not carry the whole winner. None of the
+thirteen `ANCHOR_AIMS` bindings (Night 5, 6 a-h, 7 i/j/k2/k3) has a tracked winner; the four
+tracked `campaign-*-winner.json` are other bindings. Pedro: "the run that wins on the device, the
+repository's most precious product, is not even part of it." `test-fact-register.mjs` now refuses a
+register entry without a tracked winner of the same `stableHash`, carrying the thirteen as a closed
+`UNTRACKED_WINNER_DEBT` list; CLAUDE.md carries the rule. To run k3 here: copy
+`artifacts/night7-anchored-k3/` (bundle + winner.json) from the peer machine, commit the winner as
+`tools/device/campaign-night7-k3-winner.json` (the gate confirms the hash), then
+`tools/device/night-run.sh --label k3-local --night 7 --bundle artifacts/night7-anchored-k3/bundle --frame-trace`.

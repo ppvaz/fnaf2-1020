@@ -22,7 +22,8 @@ import { execSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { build, FACTS, ANCHOR_AIMS, ANCHOR_AIM_MIN_MARGIN_MS, anchorAimFor } from './fact-register.mjs';
+import { build, FACTS, ANCHOR_AIMS, ANCHOR_AIM_MIN_MARGIN_MS, UNTRACKED_WINNER_DEBT, anchorAimFor } from './fact-register.mjs';
+import { stableHash } from '@fnaf2-1020/core/contracts';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..'));
 
@@ -67,6 +68,29 @@ for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
   if (!found.ok) { fail(`anchor aim ${hash}: ${found.reason}`); continue; }
   process.stdout.write(`anchor aim ${hash}: ${entry.aimMs} ms + L [${entry.latencyMs?.min ?? 0}, ${entry.latencyMs?.max ?? 0}] inside [${found.band.fromMs}, ${found.band.toMs}] ` +
     `with >= ${ANCHOR_AIM_MIN_MARGIN_MS} ms margin, ${JSON.parse(readFileSync(join(ROOT, entry.evidence), 'utf8')).confirmations3000.length} clean 3000-seed rows\n`);
+}
+// A registered binding must be rebuildable from the tree: its winner.json,
+// hashed as stored, must be committed under tools/device/*-winner.json. The
+// thirteen bindings registered before 2026-09-15 are carried as a closed debt
+// list; anything else without a tracked winner is refused, and so is any
+// growth of that list.
+const trackedWinners = new Map(readdirSync(join(ROOT, 'tools/device'))
+  .filter(name => name.endsWith('-winner.json'))
+  .map(name => [stableHash(JSON.parse(readFileSync(join(ROOT, 'tools/device', name), 'utf8'))), name]));
+const DEBT_CEILING = 13;
+if (Object.keys(UNTRACKED_WINNER_DEBT).length > DEBT_CEILING)
+  fail(`UNTRACKED_WINNER_DEBT grew past its ${DEBT_CEILING} closed entries: commit the winner instead`);
+for (const hash of Object.keys(UNTRACKED_WINNER_DEBT))
+  if (!ANCHOR_AIMS[hash]) fail(`UNTRACKED_WINNER_DEBT names ${hash}, which has no anchor entry`);
+for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
+  if (trackedWinners.has(hash)) {
+    process.stdout.write(`binding ${hash} (night ${entry.night}): tracked winner ${trackedWinners.get(hash)}\n`);
+    if (UNTRACKED_WINNER_DEBT[hash]) fail(`binding ${hash} is tracked now: remove it from UNTRACKED_WINNER_DEBT`);
+  } else if (UNTRACKED_WINNER_DEBT[hash]) {
+    process.stdout.write(`binding ${hash} (night ${entry.night}): UNTRACKED winner -- ${UNTRACKED_WINNER_DEBT[hash]}\n`);
+  } else {
+    fail(`binding ${hash} (night ${entry.night}) has an anchor aim but no tracked tools/device/*-winner.json with that stableHash`);
+  }
 }
 // The newest Night 5 qualification names the binding a run will carry; that
 // binding must have an aim, or the next run anchors on nothing (which
