@@ -143,6 +143,14 @@ export class Sim {
       // Mangle, Balloon Boy, Paper Pals (g343). State only gates the outcome.
       // Paper Pals' AI is (Random(100)+1)/100 <= 1, so its roll is spent as a draw.
       sourcedRollDraws: false,
+      // The monitor-down image's draw (generated source e7, e211, e720-e722,
+      // e871-e872; dump g807): the drop shows the sprite; e720 draws
+      // Random(1000000) on a frame it is visible with value 2 = 0 and e721 sets
+      // value 2 = 1; e722 resets value 2 the first frame it is invisible; e871
+      // zeroes value 0 the first visible frame, e872 adds global value 5 (~1) per
+      // visible frame, and e7 hides it the first frame value 0 reaches 22. So one
+      // draw per drop, none for a re-drop while the sprite is still showing.
+      sourcedMonitorDownDraw: false,
     }, opts);
 
     if (this.opts.customNight && this.opts.night !== 7)
@@ -225,6 +233,8 @@ export class Sim {
     this.puppetStaticTimer = 600;   // g498 200 ms countdown in 1/3 ms units (sourcedViewDraws)
     /** @type {Record<string, number>} last frame each unit's fade counter is above 0 (sourcedViewDraws) */
     this.fadeUntil = {};
+    // the monitor-down sprite (sourcedMonitorDownDraw)
+    this.monDown = { visible: false, av0: 0, av2: 0, pendingDrop: false, hidePrev: false, invPrev: false, visPrev: false };
     // `drop everything` (g141): the forcedown flag. Set by g718-721, g624 and
     // g574; executed on the monitor by g262 and on the mask by g274, then
     // cleared by g612.
@@ -570,6 +580,7 @@ export class Sim {
       this.camsUpSince = this.frame; // the source counter runs from the tap
     } else {
       this.monitor = MON_LOWERING; this.monAnim = C.MONITOR_ANIM_DOWN;
+      if (this.opts.sourcedMonitorDownDraw) this.monDown.pendingDrop = true;   // e211 shows the sprite
       // g262 clears the displayed feed immediately but leaves the marker and
       // sampled last-viewed camera untouched.
       this.viewing = 0;
@@ -618,6 +629,28 @@ export class Sim {
       const at = !p.out ? C.BOX_CAM : (typeof p.loc === 'number' ? p.loc : null);
       if (at === this.cam) this.rng.int(0, 99, 0);
     }
+  }
+
+  /** e7 (hide once value 0 reaches 22), then the drop's e211 (show). */
+  monitorDownEarly() {
+    const m = this.monDown;
+    const reached = m.av0 >= 22;
+    if (reached && !m.hidePrev) m.visible = false;
+    m.hidePrev = reached;
+    if (m.pendingDrop) { m.visible = true; m.pendingDrop = false; }
+  }
+
+  /** e720 draw + e721, e722 (once invisible), e871 (once visible), e872. */
+  monitorDownLate() {
+    const m = this.monDown;
+    if (m.visible && m.av2 === 0) { this.rng.int(0, 999999, 0); m.av2 = 1; }
+    const inv = !m.visible;
+    if (inv && !m.invPrev) m.av2 = 0;
+    m.invPrev = inv;
+    const vis = m.visible;
+    if (vis && !m.visPrev) m.av0 = 0;
+    m.visPrev = vis;
+    if (m.visible) m.av0 += 1;
   }
 
   startBlackout(by, unitId = null) {
@@ -702,6 +735,7 @@ export class Sim {
     // raised this frame is spent on the next one. Running it first keeps that
     // one-frame latency and the ordering against the player's own presses.
     this.tickForcedown();
+    if (this.opts.sourcedMonitorDownDraw) this.monitorDownEarly();   // e7 hide, then e211 show
 
     if (this.monAnim > 0 && --this.monAnim === 0) {
       if (this.monitor === MON_RAISING) {
@@ -819,6 +853,7 @@ export class Sim {
     // counter (g333-342 and g494-496), so a new hour's levels reach the rolls
     // on the frame after the hour ticks over, not on it.
     if (f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);
+    if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
     if (f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
