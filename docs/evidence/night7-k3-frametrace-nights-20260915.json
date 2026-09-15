@@ -57,7 +57,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "No lock. Strongest candidate is still full-02 seed 34934, from encounters alone. Next: resolve the runtime marker layout (cams 3/4/6/7/8 and the hall movement trigger) before using the hall flash.",
+ "notYetScored": "No lock. Strongest candidate remains full-02 seed 34934 from encounters alone. The hall flash cannot help until the model reproduces the phone's DIM rate.",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -232,6 +232,33 @@
     "verdict": "NO LOCK"
    },
    "reading": "under the assumed trigger the hall flash adds no seed signal: 34934's hall score is below half, and the combined control share rises from 2% to 13.3%. That hall-counter model does not reproduce the phone's LIT/DIM pattern, so the runtime marker layout that decides the trigger has to be resolved before the hall flash can help"
+  },
+  "sourcedHallEntryRescore": {
+   "date": "2026-09-15 (evening), after pulling 8004a1a/395fd99",
+   "hallModel": "plant-model.js sourcedHallEntry: g875-g880 arm `hall movement` = 300 once per entry into hall stage 1/2 (or Foxy into the hall), g881 drains it; the scorer reads sim.hallMovementFrames > 0 as DIM. This is the rule the assumed scorer used, now sourced from the corrected instance layout (OI ^ 48), so the numbers are unchanged.",
+   "full04": {
+    "best": {
+     "low16": 34047,
+     "encounter": "0 conflicts / 4 hits",
+     "hall": "3 conflicts / 6 hits"
+    },
+    "controlAsGood": "2.7%",
+    "holdOut": "fit picks 34046, test matched by 90.3% of controls",
+    "verdict": "NO LOCK"
+   },
+   "full02": {
+    "best": {
+     "low16": 34934,
+     "encounter": "6 conflicts / 17 hits",
+     "hall": "17 conflicts / 14 hits"
+    },
+    "controlAsGood": "13.7% (encounters alone 2.0%)",
+    "holdOut": "fit picks 34933, test matched by 98.0%",
+    "verdict": "NO LOCK"
+   },
+   "reading": "with the trigger sourced, the hall flash still carries no seed signal: the phone reads DIM on 20 of 31 readable full-02 flashes, and the model's counter is above zero at about 40% of flashes, agreeing with 34934 on 14/31, below chance. Either the phone's DIM class is not only g202's animation 99, or something besides hall entry keeps `hall movement` above zero on the phone. Open for the model, not for the scorer.",
+   "reproducibility": "the session scratchpad (tmpfs) was wiped by a reboot; the eyehole reader was recovered from the session transcript and reproduced full-04's labels exactly. eyehole-read.py, eyehole-full-04.json and the patched seedlock.mjs are now in artifacts/forensics/k3-frametrace-nights-20260915."
   }
- }
+ },
+ "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
 }
