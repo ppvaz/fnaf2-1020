@@ -1,0 +1,271 @@
+{
+ "schema": "fnaf2-1020.evidence.v1",
+ "id": "night7-k3-twin-nights-result-20260915",
+ "claimLevel": "DEVICE_MEASURED (taps, onsets, video timelines, eyehole reads, terminals); model seed scores MODEL_ONLY analysis",
+ "predeclaration": "docs/evidence/night7-k3-twin-nights-predeclaration-20260915.json (commit be18489, before run A)",
+ "status": "COMPLETE",
+ "slots": [
+  {
+   "slot": "A",
+   "run": "night7-night7-k3-twin-a-20260915T022120Z",
+   "status": "EXCLUDED",
+   "reason": "preflight HOLD game-focused (the game was not the focused window); the campaign stopped with campaign-gates-incomplete before any game input; the phone was observed on the title afterwards; re-run at the same residue per the predeclaration"
+  },
+  {
+   "slot": "A",
+   "run": "night7-night7-k3-twin-a2-20260915T022337Z",
+   "status": "WIN",
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 479.0 s; 42/42 gates agreed; every instrument passed",
+   "startTap": {
+    "residueMs": 20000,
+    "tapPhoneWallLow16": 20006,
+    "lateMs": 7.06,
+    "uncertaintyMs": 3.35
+   },
+   "onsetPhoneWallLow16": 25097,
+   "hudFirstVideoS": 58.19
+  },
+  {
+   "slot": "B",
+   "run": "night7-night7-k3-twin-b-20260915T023828Z",
+   "status": "WIN",
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 505.0 s; 42/42 gates agreed; every instrument passed",
+   "startTap": {
+    "residueMs": 20000,
+    "tapPhoneWallLow16": 20001,
+    "lateMs": 0.01,
+    "uncertaintyMs": 4.62
+   },
+   "onsetPhoneWallLow16": 25035,
+   "hudFirstVideoS": 84.293
+  },
+  {
+   "slot": "C",
+   "run": "night7-night7-k3-twin-c-20260915T025403Z",
+   "status": "WIN",
+   "startTap": {
+    "residueMs": 50000,
+    "tapPhoneWallLow16": 50046,
+    "lateMs": 46.71,
+    "uncertaintyMs": 4.42
+   },
+   "terminal": "executor sixam; video TERMINAL clear -- sixam at 518.5 s; 42/42 gates agreed; every instrument passed",
+   "onsetPhoneWallLow16": 55059,
+   "hudFirstVideoS": 97.707
+  }
+ ],
+ "loadTimeline": {
+  "method": "60 fps resample of the retained 1280x576 recording (scaled 640x288): whole-frame mean, card region mean, bottom-right spinner max; converted to phone wall residue as onsetPhoneWallLow16 + (video time - HUD first), assuming the helper onset and the video's first HUD frame are the same event; +-17 ms",
+  "sequence": "dial screen -> '12:00 AM 7th Night' card -> black -> black with a loading spinner -> first office frame",
+  "residues": {
+   "A": {
+    "startTap": 20006,
+    "cardAppears": 20497,
+    "cardEnds": 22814,
+    "spinnerAppears": 23614,
+    "firstOfficeFrame": 25097
+   },
+   "B": {
+    "startTap": 20001,
+    "cardAppears": 20502,
+    "cardEnds": 22818,
+    "spinnerAppears": 23602,
+    "firstOfficeFrame": 25035
+   },
+   "C": {
+    "startTap": 50046,
+    "cardAppears": 50526,
+    "cardEnds": 52842,
+    "spinnerAppears": 53626,
+    "firstOfficeFrame": 55059
+   }
+  },
+  "reading": "All three nights run the same sequence within ~30 ms of their Start taps up to the spinner; the first office frame lands 5013-5091 ms after the tap, the spread accumulating during loading (spinner 1433-1483 ms). A and B's onset residues are 62 ms apart.",
+  "afterTapMs": {
+   "A": {
+    "cardAppears": 491,
+    "cardEnds": 2808,
+    "spinnerAppears": 3608,
+    "firstOfficeFrame": 5091
+   },
+   "B": {
+    "cardAppears": 501,
+    "cardEnds": 2817,
+    "spinnerAppears": 3601,
+    "firstOfficeFrame": 5034
+   },
+   "C": {
+    "cardAppears": 480,
+    "cardEnds": 2796,
+    "spinnerAppears": 3580,
+    "firstOfficeFrame": 5013
+   }
+  }
+ },
+ "seedMomentFromRuntime": {
+  "claimLevel": "DECOMPILED (classes.dex, minimal reader; PAIRIP untouched)",
+  "facts": [
+   "CRunFrame.loadFullFrame sets m_wRandomSeed = -1 and replaces it only from a frame seed chunk",
+   "CRun.allocRunHeader: m_wRandomSeed == -1 -> rh3Graine = (short) System.currentTimeMillis(); CRun.random is rh3Graine = rh3Graine * 31415 + 1 & 0xFFFF",
+   "callers: CRunApp.startTheFrame -> new CRun -> initRunLoop -> allocRunHeader (after loadFullFrame); CRun.doRunLoop -> allocRunHeader",
+   "CND_EVERY2 is a countdown advanced by CRun.rhTimerDelta (currentTimeMillis differences) only when evaluated"
+  ],
+  "reading": "Every frame start reseeds from the phone clock, so launch time cannot matter. The office frame seeds at the end of its loading, just before its first frame is built and drawn (see pinned).",
+  "pinned": {
+   "claimLevel": "DECOMPILED (classes.dex call order)",
+   "callOrder": [
+    "CRunApp.startTheFrame: new CRunFrame -> loadFullFrame -> (screen zoom, collision masks, layer effects) -> new CRun -> initRunLoop -> followToFades",
+    "CRunFrame.loadFullFrame loads the frame's heavy data: COIList.load, CSoundBank.load, CMusicBank.load, CImageBank.load, CFontBank.load (the black-with-spinner stretch)",
+    "CRun.initRunLoop: allocRunHeader FIRST (the clock seed), then initAsmLoop, y_InitLevel, prepareFrame, createFrameObjects, redrawLevel, loadGlobalObjectsData, event program prepare/assemble, f_InitLoop"
+   ],
+   "instant": "the office frame's seed is taken after all of its loading finishes and before its objects are created and first drawn: at the end of the spinner, a short roughly constant delay before the first office frame the helper stamps as onset (expected under ~100 ms, not measured)"
+  }
+ },
+ "encounters": {
+  "tool": "eyehole-read.py, windows release + 1.0 + 10 c s, 2.6 s at 5 fps, release = HUD first + 2.433 - 0.070 s",
+  "A": {
+   "identified": 26,
+   "empty": 15,
+   "unreadable": 1
+  },
+  "B": {
+   "identified": 23,
+   "empty": 18,
+   "unreadable": 1
+  },
+  "readerCheck": {
+   "claimLevel": "DEVICE_MEASURED frames, checked by eye",
+   "method": "contact sheet of twin A built from eyehole-read.py's own decode (frames(video, startS, 2.6, 5)), tile = the reader's bestFrame, occupant pixel count recomputed on that exact frame (42/42 equal to the reader's), measured region boxed and enlarged",
+   "result": "12 Withered Chica and 12 Withered Bonnie labels show that animatronic in the eyehole; 15 empty labels show only the mask rim; cycles 22 and 36 (Withered Freddy) show a brown-orange torn face, an animatronic whose identity is plausible but not confirmed by eye; cycle 20 (unlabelled) is Chica mid-motion at the region edge",
+   "correction": "An earlier statement in this session that ~1 in 7 eyehole labels are wrong (from the 12/14 hallfix calibration) does not describe this night and is withdrawn as the explanation for the seed scores. A first check sheet that re-seeked the video instead of using the reader's decode showed mismatched frames; that sheet was wrong, not the reader.",
+   "limit": "the window covers 2.6 s per cycle, so an empty read can miss an encounter; misses are not counted as conflicts",
+   "retained": "scratchpad eyehole-check-twin-a-exact.png (copied to artifacts/forensics/k3-twin-nights-20260915)"
+  },
+  "C": {
+   "identified": 24,
+   "empty": 17,
+   "unreadable": 1
+  },
+  "pairs": {
+   "method": "jointly identified = both runs read a Withered identity that cycle; disagreements count different identities and identified-vs-empty",
+   "AB": {
+    "jointlyIdentified": 12,
+    "agree": 0,
+    "disagreements": 35
+   },
+   "AC": {
+    "jointlyIdentified": 15,
+    "agree": 3,
+    "disagreements": 31
+   },
+   "BC": {
+    "jointlyIdentified": 16,
+    "agree": 7,
+    "disagreements": 22
+   }
+  }
+ },
+ "modelSeedScores": {
+  "claimLevel": "MODEL_ONLY",
+  "model": "k3 at epoch 2433 with sourcedRouteForks + sourcedDropLightOrder + sourcedFoxyChain (lit counter, commit 64cd7c5), constructor draw undone; all 65,536 seeds; conflicts = different identity or read identity the model lacks",
+  "A": {
+   "bestConflicts": 3,
+   "bestHits": 23,
+   "seedsAtBest": 2,
+   "seedsWithin4Conflicts": 9
+  },
+  "B": {
+   "bestConflicts": 4,
+   "bestHits": 19,
+   "seedsAtBest": 5
+  },
+  "nearMomentBestRank": {
+   "note": "best rank among the 121 seeds within +-60 ms of each moment; a random 121 gives ~540",
+   "A": {
+    "startTap": 448,
+    "cardAppears": 1030,
+    "cardEnds": 381,
+    "spinnerAppears": 52,
+    "firstOfficeFrame": 450
+   },
+   "B": {
+    "startTap": 210,
+    "cardAppears": 795,
+    "cardEnds": 160,
+    "spinnerAppears": 301,
+    "firstOfficeFrame": 4
+   },
+   "C": {
+    "startTap": 668,
+    "cardAppears": 414,
+    "cardEnds": 1043,
+    "spinnerAppears": 861,
+    "firstOfficeFrame": 462
+   }
+  },
+  "commonTop200": 0,
+  "reading": "No moment ranks well for both nights and no seed sits in both nights' top 200. The eyehole labels are not the cause (see readerCheck): the best model seeds still conflict with correct reads on 3 (A) and 4 (B) cycles, so the model's encounter sequence or the assumed seed moment is still wrong.",
+  "constantOffsetScan": {
+   "claimLevel": "MODEL_ONLY",
+   "method": "seed residue = onset residue + d for d in -300..+100 ms; rank of that seed per night (k3 run 1 onset 17592, A 25097, B 25035); joint score = sum of log(rank/65536); null = the same best-over-offsets score for 40 random onset triples",
+   "best": [
+    {
+     "d": 18,
+     "score": -14.0,
+     "ranks": {
+      "k3r1": 2767,
+      "A": 21226,
+      "B": 4
+     }
+    },
+    {
+     "d": -135,
+     "score": -10.56,
+     "ranks": {
+      "k3r1": 149,
+      "A": 3611,
+      "B": 13508
+     }
+    },
+    {
+     "d": -57,
+     "score": -9.36,
+     "ranks": {
+      "k3r1": 10134,
+      "A": 450,
+      "B": 5299
+     }
+    }
+   ],
+   "null": {
+    "median": -10.07,
+    "bestOf40": -12.99
+   },
+   "reading": "No single offset ranks all three nights well; the best joint score is carried by B alone and sits at the edge of what random onsets reach. With the reads verified correct on A, the limit is the model's encounter prediction (or the seed-moment assumption), not the observable's labels."
+  },
+  "C": {
+   "bestConflicts": 6,
+   "bestHits": 18
+  }
+ },
+ "verdict": {
+  "result": "INCONCLUSIVE",
+  "byRule": {
+   "twinSupport": "not met: A and B agree on 0 of 12 jointly identified cycles (needs all of at least 8)",
+   "twinRefutation": "not met: A and B disagree on 12 of 12, but their onset residues are 62 ms apart (the rule needs <= 50 ms)"
+  },
+  "reading": "The twins could not share a seed: the seed is taken at the end of the office frame's loading, and the nights' clocks there differed by tens of milliseconds, from loading jitter the Start tap cannot control. A and B agree less than either agrees with the control (C), as expected for three unrelated seeds. The design cannot force a seed; it can only locate the seed moment."
+ },
+ "conclusions": [
+  "k3 won all three counted twin nights (A, B, C): with k3 run 1, four wins in four phone nights; not a rate.",
+  "The timed Start tap lands within 0-47 ms of its planned phone wall-clock residue.",
+  "The office frame reseeds from the phone clock after its loading finishes (decompiled call order), 5.0-5.1 s after the Start tap, with tens of ms of loading jitter, so same-residue taps do not give the same seed.",
+  "Eyehole labels on A are correct by eye; the best fixed-model seeds still conflict with correct reads on 3 (A), 4 (B) and 6 (C) cycles, so the model's encounter sequence or the seed-moment assumption remains wrong.",
+  "No constant seed-to-onset offset ranks the nights' seeds well beyond chance."
+ ],
+ "next": [
+  "Stream the game's MMFRuntime 'loading frame #:4' log line live (the phone's 256 KiB buffer rolls over in ~60 s) to bracket the seed between load start and the first office frame",
+  "A stronger seed observable than eyehole identities (camera positions)",
+  "Find which model draws still fall out of line with the dump before scoring seeds again"
+ ]
+}

@@ -5634,3 +5634,29 @@ g824 accumulator, the real in-danger length); (2) what locks him in an
 encounter-free cycle (a lost 33 ms hall contact, or a camdrop flash that did not
 latch); (3) a calibrated camdrop hall-light reader; (4) the peer session's
 uncommitted Minus 7 lane and configure-custom-night.mjs are untouched.
+
+**2026-09-15: the lit counter removes the model's Foxy death path; k3 won
+three twin nights; the office frame's seed moment is pinned but not
+reproducible.** Records: [foxy-chain-night7-20260915](../docs/evidence/foxy-chain-night7-20260915.json),
+[night7-k3-twin-nights-result-20260915](../docs/evidence/night7-k3-twin-nights-result-20260915.json).
+Office events 74-83/211/382-384/426 (Chowdren real names) make lit? a
+persistent counter, so a camera light held through the drop latches the hall on
+the drop frame even when an encounter starts there (64cd7c5). The literal Foxy
+chain then wins k2, k3 and Night 6 h 3000/3000; the phone shows 0/107 FLAT
+undefended flashes, so the k2 cohort's encounter-free Foxy deaths still need a
+camdrop that fails to latch, which the video cannot see.
+
+Twin nights (predeclared be18489): A, B at Start-tap residue 20000, C at 50000;
+all three won (k3 is 4/4 on the phone, not a rate). The runtime reseeds every
+frame start (CRun.allocRunHeader, first call of initRunLoop, after
+loadFullFrame's image/sound loading), so the office seed lands just before its
+first frame, 5.0-5.1 s after the tap with tens of ms of loading jitter: A and B
+started 62 ms apart and could not share a seed. Verdict INCONCLUSIVE by the
+predeclared rules. A's eyehole labels are correct by eye on the reader's own
+frames; the best fixed-model seeds still conflict on 3/4/6 cycles.
+
+Open: (1) stream MMFRuntime "loading frame #:4" live to bracket the seed (the
+phone's log rolls over in ~60 s); (2) a stronger seed observable (camera
+positions); (3) remaining model draws out of line before seed scoring; (4) why
+k2's camdrops fail to latch; (5) a predeclared k3 cohort for its rate; (6) the
+peer session's uncommitted Minus 7 lane is untouched.
