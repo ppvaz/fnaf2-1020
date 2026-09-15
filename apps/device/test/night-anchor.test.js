@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { anchorNightRelease } from '../src/night-anchor.js';
+import { anchorNightRelease, phoneWallOnset } from '../src/night-anchor.js';
 
 // Fake host clock in ms. The helper's device clock is host - 5000; the night's
 // onset is at host 10000 (device 5000). The latch reads -1 until host 10500
@@ -199,3 +199,28 @@ await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).o
 await assert.rejects(() => anchorNightRelease({ ...harness({ authorizeAt: 0 }).options, maxK: undefined }), /maxK/);
 
 console.log('night anchor: plans from the latch, fires only once authorized, k cap, and every refusal releases once');
+
+// The phone wall clock: onset 5000 ms monotonic, the helper's wall read 1 700 000 012 345 ms
+// beside snapshotNs 12 000 ms monotonic, so wall - mono = 1 699 999 999 345 + 1000? -- computed exactly below.
+{
+  const fields = { wallMs: '1700000012345', snapshotNs: String(12000n * 1000000n) };
+  const got = phoneWallOnset(5000, fields);
+  assert.equal(got.phoneWallMinusMonoMs, 1700000012345 - 12000);
+  assert.equal(got.onsetPhoneWallMs, 5000 + 1700000012345 - 12000);
+  assert.equal(got.onsetPhoneWallLow16, Math.floor(5000 + 1700000012345 - 12000) % 65536);
+  assert.deepEqual(phoneWallOnset(5000, { snapshotNs: '1' }), {}, 'an older helper without wallMs adds nothing');
+  assert.deepEqual(phoneWallOnset(5000, undefined), {});
+}
+{
+  // The scheduled event carries the phone wall onset when the helper reports wallMs.
+  const { state, options } = harness({ authorizeAt: ONSET_HOST_MS + 1953 });
+  const read = options.clock.read, probe = options.clock.probe;
+  const withWall = s => ({ ...s, fields: { ...s.fields, wallMs: String(1_700_000_000_000 + Math.round(state.t) - OFFSET_MS), snapshotNs: ns(state.t) } });
+  options.clock.read = async () => withWall(await read());
+  options.clock.probe = async () => withWall(await probe());
+  await anchorNightRelease(options);
+  const scheduled = state.events.find(event => event.status === 'scheduled');
+  assert.equal(typeof scheduled.onsetPhoneWallMs, 'number', 'the scheduled event must carry onsetPhoneWallMs');
+  assert.ok(Math.abs(scheduled.phoneWallMinusMonoMs - 1_700_000_000_000) < 20, `wall - mono ${scheduled.phoneWallMinusMonoMs}`);
+}
+console.log('night anchor: phone wall onset carried when the helper reports wallMs');

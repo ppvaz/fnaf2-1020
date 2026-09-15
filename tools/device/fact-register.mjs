@@ -324,6 +324,19 @@ export const ANCHOR_AIMS = Object.freeze({
     evidence: 'docs/evidence/night7-anchor-aim-k2-20260914.json',
     reason: 'band [2366.68, 2500.04]: effective [2410, 2445]; 2374/2416.66/2433/2449.99 all 3000/3000; 2350.01 (puppet) and 2516.71 (foxy) refuted at 60 seeds',
   }),
+  // Night 7, binding k3: k2 with the hall flash at 7400 ms (Foxy edge of the
+  // band 2516.71 -> 2583.39 ms). Exploratory single run, 2026-09-15.
+  'fnv1a-5c8dcb5f': Object.freeze({
+    night: 7,
+    aimMs: 2433,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 2433,
+    evidence: 'docs/evidence/night7-anchor-aim-k3-20260915.json',
+    reason: 'band [2366.68, 2500.04]: effective [2410, 2445]; 2374/2416.66/2433/2449.99 all 3000/3000; edges puppet at 2350.01 and 2516.71 (60 seeds)',
+  }),
 });
 
 /** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */

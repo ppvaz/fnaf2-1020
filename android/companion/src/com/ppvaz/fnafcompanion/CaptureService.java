@@ -2948,6 +2948,10 @@ public final class CaptureService extends Service {
         }
 
         long nowNs = System.nanoTime();
+        // The game seeds its RNG from System.currentTimeMillis() at scene load;
+        // read the wall clock beside the monotonic one so the host can place a
+        // monotonic image timestamp (nightOnsetImageNs) on the phone's wall clock.
+        long nowWallMs = System.currentTimeMillis();
         long visualAgeUs = visualTimestampNs > 0
                 ? (nowNs - visualTimestampNs) / 1_000L : -1;
         String invalidReason = visualAgeUs < 0
@@ -3009,7 +3013,7 @@ public final class CaptureService extends Service {
                         .append(HEX[(cell >> 4) & 0xf]).append(HEX[cell & 0xf]);
             }
         }
-        return "snapshotNs=" + nowNs + " visualCaptureNs=" + visualTimestampNs
+        return "snapshotNs=" + nowNs + " wallMs=" + nowWallMs + " visualCaptureNs=" + visualTimestampNs
                 + " nightOnsetImageNs=" + nightOnsetLatch.onsetNs()
                 + " " + visual + panAnchor + " " + screenDetail + " "
                 + currentAudioStatus() + " " + watchStatus() + frame;

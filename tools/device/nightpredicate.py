@@ -35,12 +35,25 @@ MASKBAR = (70 / 2400, 1000 / 1080, 1180 / 2400, 1045 / 1080)
 # scanlines for the adb fast path, which otherwise cannot see global brightness.
 GLOBAL_ROWS = ((0.0, 500 / 1080, 1.0, 501 / 1080), (0.0, 700 / 1080, 1.0, 701 / 1080))
 GLOBAL_BRIGHT_MAX = 80.0
+# The Night 7 intro card animates in with full-width white stripes. One stripe
+# can cover the flashlight-meter box while both GLOBAL_ROWS fall in black
+# stripes, so the card read `night` on the first lifecycle frame of r02, r04,
+# r05, r06, r07 and r10 (2026-09-14 cohort) and authorized the anchor early.
+# The office never paints the full width bright at the meter's height:
+# measured full-width mean over this band 149.1 on all six striped cards,
+# at most 56.6 on 146 real night frames (lifecycle screencaps, same runs).
+# The ceiling reuses GLOBAL_BRIGHT_MAX (80): 23.4 above the brightest night,
+# 69.1 below the stripes. Like the other guard it can only take `night` away.
+TOP_BAND = (0.0, 40 / 1080, 1.0, 95 / 1080)
+TOP_BAND_BRIGHT_MAX = GLOBAL_BRIGHT_MAX
 
 
 def is_night(sample):
     """True when the office HUD is on screen. `sample` returns an (r,g,b) mean."""
     overall = [sample(*box) for box in GLOBAL_ROWS]
     if sum(sum(o) for o in overall) / (3 * len(overall)) >= GLOBAL_BRIGHT_MAX:
+        return False
+    if sum(sample(*TOP_BAND)) / 3 >= TOP_BAND_BRIGHT_MAX:
         return False
     flash = sample(*FLASH)
     if flash[0] > 90:

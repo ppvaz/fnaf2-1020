@@ -31,6 +31,23 @@ import { latchedNightOnsetMs } from '@fnaf2-1020/adapters/night-onset';
 const defaultSleep = milliseconds => new Promise(resolve => setTimeout(resolve, Math.max(0, milliseconds)));
 
 /**
+ * The latched onset on the PHONE's wall clock, when the helper reports one.
+ * The helper reads System.currentTimeMillis() beside the System.nanoTime() it
+ * reports as snapshotNs (CaptureService GET reply, 2026-09-15), so wall minus
+ * monotonic is exact to the two reads' spacing, not to an adb round trip. The
+ * game seeds its 16-bit RNG from currentTimeMillis() at scene load, so this is
+ * the clock a seed window is measured on. Older helpers omit the field.
+ * @param {number} onsetDeviceMs
+ * @param {Record<string, string> | undefined} fields
+ */
+export function phoneWallOnset(onsetDeviceMs, fields) {
+  if (!fields || !/^\d+$/.test(fields.wallMs ?? '') || !/^\d+$/.test(fields.snapshotNs ?? '')) return {};
+  const phoneWallMinusMonoMs = Number(fields.wallMs) - Number(BigInt(fields.snapshotNs)) / 1e6;
+  const onsetPhoneWallMs = onsetDeviceMs + phoneWallMinusMonoMs;
+  return { phoneWallMinusMonoMs, onsetPhoneWallMs, onsetPhoneWallLow16: Math.floor(onsetPhoneWallMs) % 65536 };
+}
+
+/**
  * @param {{
  *   clock: {
  *     read: () => Promise<{offsetMs: number, uncertaintyMs: number, rttMs: number, fields: Record<string, string>}>,
@@ -148,7 +165,8 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
     return fallback('offset-uncertain', { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs,
       uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs, maxUncertaintyMs });
 
-  const detail = { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs, uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs };
+  const detail = { reads, failures, onsetDeviceMs, offsetMs: measured.offsetMs, uncertaintyMs: measured.uncertaintyMs, rttMs: measured.rttMs,
+    ...phoneWallOnset(onsetDeviceMs, measured.fields) };
   const onsetHostMs = onsetDeviceMs + measured.offsetMs;
   const planAt = now();
   if (onsetHostMs > planAt + measured.uncertaintyMs)

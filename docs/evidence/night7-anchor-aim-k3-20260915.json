@@ -1,0 +1,199 @@
+{
+ "schema": "anchor-aim-v1",
+ "binding": "fnv1a-5c8dcb5f",
+ "night": 7,
+ "aimMs": 2433,
+ "derived": "2026-09-15",
+ "winner": "artifacts/night7-anchored-k3/winner.json",
+ "knobDelta": "binding k2 (fnv1a-7e4bf3e8) with hallOffsetMs 7460 -> 7400; everything else pinned",
+ "motivation": "Night 7 k2 cohort 3/10 (docs/evidence/night7-cohort-k2-result-20260914.json): seven Withered Foxy deaths first visible 7.29-7.73 s into a cycle; the model's hall-flash cliff sits at 7540-7560 ms at epoch 2433, and 7400 ms moves the band's Foxy edge from 2516.71 to 2583.39 ms. Weakened before the run by video beam onsets (5 of 7 death-cycle flashes on time). Exploratory single run at Pedro's request 2026-09-15.",
+ "census": "epoch-scan.mjs --winner artifacts/night7-anchored-k3/bundle/winner.json --night 7 --from 2300 --to 2620 --step 16.67 --seeds 60 (sweep60) and --epochs E --seeds 3000 (confirmations3000)",
+ "winningBands": [
+  {
+   "fromMs": 2366.68,
+   "toMs": 2500.04
+  }
+ ],
+ "bandEdges": "2316.67-2350.01 lose (puppet/inside-office); 2516.71-2550.05 lose (puppet/inside-office); Foxy edge from 2583.39",
+ "sweep60": [
+  {
+   "epochMs": 2300.0,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2316.67,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 49,
+    "inside-office": 11
+   }
+  },
+  {
+   "epochMs": 2333.34,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 49,
+    "inside-office": 11
+   }
+  },
+  {
+   "epochMs": 2350.01,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 49,
+    "inside-office": 11
+   }
+  },
+  {
+   "epochMs": 2366.68,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2383.35,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2400.02,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2416.69,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2433.36,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2450.03,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2466.7,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2483.37,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2500.04,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2516.71,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 52,
+    "inside-office": 8
+   }
+  },
+  {
+   "epochMs": 2533.38,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 52,
+    "inside-office": 8
+   }
+  },
+  {
+   "epochMs": 2550.05,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "puppet": 52,
+    "inside-office": 8
+   }
+  },
+  {
+   "epochMs": 2566.72,
+   "wins": 60,
+   "seeds": 60,
+   "deaths": {}
+  },
+  {
+   "epochMs": 2583.39,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "foxy": 60
+   }
+  },
+  {
+   "epochMs": 2600.06,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "foxy": 60
+   }
+  },
+  {
+   "epochMs": 2616.73,
+   "wins": 0,
+   "seeds": 60,
+   "deaths": {
+    "foxy": 60
+   }
+  }
+ ],
+ "confirmations3000": [
+  {
+   "epochMs": 2374,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2416.66,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2433,
+   "wins": 3000,
+   "seeds": 3000
+  },
+  {
+   "epochMs": 2449.99,
+   "wins": 3000,
+   "seeds": 3000
+  }
+ ],
+ "latencyMs": {
+  "min": 47,
+  "max": 82,
+  "provenance": "hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)"
+ },
+ "onsetBiasMs": -70,
+ "kLimit": {
+  "maxK": 0
+ },
+ "periodMs": 5000,
+ "qualifiedEpochMs": 2433,
+ "aimReason": "effective [2410, 2445] inside [2366.68, 2500.04] with 43 and 55 ms to the edges (register margin 30); same aim as k2 so the only change on the phone is the hall flash",
+ "claimLevel": "MODEL_ONLY"
+}

@@ -65,7 +65,7 @@ GAMEOVER_TOP_BRIGHT_MAX = 0.05
 DEVICE_W, DEVICE_H = 2400, 1080
 
 # The rule's regions, in the order the fast path fetches rows for them.
-RULE_BOXES = (nightpredicate.FLASH, nightpredicate.MASKBAR,
+RULE_BOXES = (nightpredicate.FLASH, nightpredicate.MASKBAR, nightpredicate.TOP_BAND,
               *nightpredicate.GLOBAL_ROWS)
 
 

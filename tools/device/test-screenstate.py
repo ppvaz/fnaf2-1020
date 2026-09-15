@@ -34,6 +34,15 @@ def frame(bg, flash=False, maskbar=False):
     return im
 
 
+def striped_card(bg):
+    """Full-width white stripes at the meter's height and mid-frame, black at y 500 and 700."""
+    im = Image.new("RGB", GEOMETRY, (0, 0, 0))
+    d = ImageDraw.Draw(im)
+    for y0, y1 in ((62, 454), (594, 668), (757, 945)):
+        d.rectangle((0, y0, GEOMETRY[0], y1), fill=(255, 255, 255))
+    return im
+
+
 def gameover_frame(bg, portraits=False):
     """The game over decision's two features, and the dial screen's third.
 
@@ -101,6 +110,10 @@ def main():
             # brightness that is not a meter. It must not read as a night.
             ("a uniformly bright cutscene", frame(bright, flash=True), "other"),
             ("a uniformly bright screen", frame(bright), "other"),
+            # The Night 7 intro card animating in (2026-09-14): full-width white
+            # stripes, one across the flashlight meter, black at both global rows.
+            # Six real cards read `night` and authorized the anchor early.
+            ("the striped intro card", striped_card(dark), "other"),
             # The game over screen: red face mid-frame, bright text below it,
             # black above. The Custom Night dial screen has the same two
             # features (orange arrows and red portraits in the face box, the
