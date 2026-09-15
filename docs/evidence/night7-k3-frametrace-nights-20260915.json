@@ -440,6 +440,40 @@
     "seed34934": "encounters 14 conflicts / 9 hits (from 6 / 17 without)"
    },
    "reading": "worse on both nights while the control distributions barely move: the draws as placed are not the game's, or not at those moments (the `in office` marker, the exact hop-to-overlap frame, or the ONCE gating are the open details). The option stays default off and is not promoted; the pre-footstep fits are the reference."
+  },
+  "audioFull06": {
+   "capture": "481.8 s of A2DP audio (SBC), 1.3% of samples missing so the axis is 0.9867 of real time; detect.py --scan --subtract found 58 onsets, 32 of them sample 17 (the vent bang), plus samples 7, 13, 30, 32",
+   "scorer": "the model's vent-bang frames per seed and epoch, mapped to audio time with the 0.9867 scale and a fitted offset (converges at ~38.0 s for every seed), scored as phone onsets matched within 0.4 s",
+   "result": "window seeds match 10-12 of 32; 24 control seeds match 10-13 (median 12)",
+   "reading": "seed-blind at 10/20: the bang is one sample for every unit and every movement roll succeeds, so the model puts a bang in nearly every 5 s slot for every seed. The seed enters this night only through the secondary rolls (repel cooldown, decide path, early leaves), which show as encounter identity and gaps -- the observable already scored. Unit-specific sounds (BB vocals, Mangle, footsteps) are deterministic at this AI for the same reason."
+  },
+  "audibleDrawsFull06": {
+   "sheet": "g608/g609/g610: cam01 value 6 (the e351-e353 Random(4) cue, a 4 redrawn by e548) selects sample 21 'hi' / 24 laugh / 23 'hello'; g704-g708: cam01 value 5 (e620-e627 Random(5)) selects samples 25-29; g709-g711: cam01 value 12 (e628 Random(3)) selects 30-32; each value is reset to 0 after playing",
+   "meaning": "the outcome of these draws is audible: about 1.6 bits per Balloon Boy hop and 2.3 per footstep sound, the seed observables the vent bang is not",
+   "mangleSoundsFull06": {
+    "detected": "8 (five of sample 30, three of 32) plus two of 25-29 at threshold 0.45",
+    "modelFootstepEvents": "105-117 per night under sourcedFootstepDraws",
+    "match": "1-2 of 10 sounds within 0.4 s of a model footstep for every window seed and every control at any offset -- chance level",
+    "reading": "the phone plays far fewer footstep sounds than 'every hop onto six markers' and not where the model's hops are: the trigger as implemented is refuted by audio as well as by fit"
+   },
+   "vocals": "no sample 21/23/24 onset at threshold 0.45 although the model expects ~30 laughs; a 0.30 scan is in progress",
+   "modelChange": "bbHop's laugh event carries the selected vocal; footstep draws emit {who, value, sample}",
+   "timeAxis": {
+    "sidecarScale": "0.9867 from missingFraction (wrong for the night: the ten Mangle sounds drift +4.5 s across the 5 s grid over 385 s under it)",
+    "fittedScale": "0.99890 (maximal concentration of the Mangle sounds' phase on the 5 s grid, 0.944); the missing samples sit mostly in the pre-roll",
+    "mangleSoundsOnGrid": "at a constant ~0.3 s after a 5 s roll: game 20.6, 80.0, 120.7, 150.1, 260.2, 300.2, 310.9, 330.3, 370.3, 400.3 s (offset ~39.95 s)",
+    "modelMangleHallEntries47598": [
+     20.0,
+     90.0,
+     140.0,
+     210.0,
+     265.0,
+     335.0
+    ],
+    "reading": "the first hop agrees; every later approach the phone makes is 5-10 s earlier than the model's. The model returns Mangle from her send-back slower than the phone (opening at 40.3 s, CAM 12 at 49.0 s): a Mangle send-back/return timing discrepancy to source, independent of the seed",
+    "footstepSounds25to29": "none detected at threshold 0.45 against 100+ predicted by 'every hop onto cams 01-4 / hall stages': the trigger is narrower than the marker box, most likely the hall stages only, as for hall movement",
+    "bangsWithFittedScale": "window 14-17 of 32 matched (from 10-12 with the wrong scale)"
+   }
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
