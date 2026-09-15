@@ -5693,3 +5693,17 @@ ledger's Linux port and reproduces the dump byte for byte. Rung: none above FIXT
 work). Open: the g881 drain expression, which `views.Active` frames the phone's LIT/DIM are,
 and the entry-triggered per-character latch in `plant-model.js` with a census. Evidence:
 [hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).
+
+**2026-09-15 (later): the entry-triggered `hall movement` is in the model, and it is outcome-neutral.**
+`plant-model.js` ticks the latch every frame in `tickHallMovement` (no longer inside the Golden
+Freddy hall tick, so it lives with `gfEnabled` off), exposes it as `sim.hallMovementFrames`, and
+emits `hall-movement {who}` when it arms. Under `sourcedHallEntry` (default off) the 300 is written
+once per entry into the hall column per character, as g875-880's `C -7` says; the legacy mode keeps
+refreshing it every transit frame. Census at 3000 seeds, `epochMs` 0: device plans nights 5/6/7
+699, 645, 149 of 3000 and Minus Toys night 7 3000/3000 in **both** modes, every death row identical,
+and the hallway Golden Freddy never got inside in 24 000 nights -- the latch's only observable on
+these plans is the hall render g202 draws while it is above zero, which is the k3 seed-lock signal
+the scorer had been assuming. Gates seen green: `sourcetest` 209/209, `test:core`, `test:unit`.
+`test:contracts` fails on `test-decode-once.py` (`preexec_fn`) on the committed HEAD as well, so
+that lane is environmental here, not this change. Evidence:
+[hall-movement-trigger-20260915.json](../docs/evidence/hall-movement-trigger-20260915.json).

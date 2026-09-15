@@ -52,6 +52,10 @@ export class Sim {
       //   g352/g356 off Night 7: Toy Freddy / Toy Chica's accepted roll is
       //             discarded while Toy Chica / Toy Bonnie is on CAM 09
       sourcedRouteForks: false,
+      // g875-880 write `hall movement` = 300 once per entry into the hall
+      // column (C -7), not every frame someone stands there. Read from the
+      // dump on 2026-09-15 (docs/evidence/hall-movement-trigger-20260915.json).
+      sourcedHallEntry: false,
       // Frame order at a monitor drop and the hall-light latch, read from the
       // dump on 2026-09-15 (docs/evidence/withered-freddy-route-night7-20260915.json):
       //   g614/g618 a drop press only sets `drop everything` (monitor fully up,
@@ -259,7 +263,7 @@ export class Sim {
     this.applyAiHour(0);
 
     // --- Foxy
-    this.foxy = { loc: 'parts', D: 0, exposure: 0, gotYou: false, pinUntil: -1, A: 0, B: 0,
+    this.foxy = { loc: 'parts', hallColumn: false, D: 0, exposure: 0, gotYou: false, pinUntil: -1, A: 0, B: 0,
                   readyAt: this.opts.sourcedFoxyChain ? 0
                     : this.rng.int(C.FOXY_ENTER_MIN, C.FOXY_ENTER_MAX, C.FOXY_ENTER_MIN) };
     this.maskDAccum = 0;
@@ -272,6 +276,7 @@ export class Sim {
     // `hall movement`: refreshed to 300 frames whenever someone transits the
     // hall, and Golden Freddy's hall exposure is blocked while it runs.
     this.hallMovementUntil = -1;
+    this.hallColumnOccupied = false;
 
     // --- Balloon Boy
     this.bb = { stage: 0, pending: false, inOpening: false, openingAtCamsUp: -1,
@@ -321,6 +326,7 @@ export class Sim {
       openingSince: -1, openingReadyAt: -1, officeCue: false,
       openingTicks: 0, maskExposureTicks: 0, raiseSeen: false, inside: false,
       insideArmed: false, insideDangerAt: -1, committedAt: -1, done: false,
+      hallColumn: false,   // overlapping `hall movement` last frame (sourcedHallEntry)
     }));
     // sourced `chicalookatyou` lock: one mutex-flagged attacker engages at a time
     this.engagedToy = null;
@@ -1124,6 +1130,7 @@ export class Sim {
     // hall roll (g781). The model's other draws are not all in group order.
     if (this.opts.sourcedRouteForks && f % C.FPS === 0 && !this.opts.sourcedSecondPass) this.rollDecidePath();
     this.tickLight();
+    this.tickHallMovement(f);
     this.tickGoldenHall(f);
     this.tickFoxy(f);
     this.tickMask();
@@ -1227,6 +1234,43 @@ export class Sim {
     }
   }
 
+  // `hall movement` (object 180): the hitbox at (669, 503) that only the two
+  // hall stages overlap. g779 needs it at zero, and with the hall light held
+  // g202/g1035 draw the dark "movement" hall (frame 99 / patch 13) while it is
+  // above zero instead of the empty hall (g203/g1034) or a standing character
+  // (g205-209) -- the phone's DIM flash class. Ticked every frame, whether or
+  // not Golden Freddy is enabled, so a trace can read it at each flash.
+  get hallMovementFrames() { return Math.max(0, this.hallMovementUntil - this.frame); }
+  tickHallMovement(f) {
+    const foxyHere = this.foxy.loc === 'hall';
+    let occupied = foxyHere, entered = null;
+    for (const u of this.units) {
+      const here = !u.done && (u.path[u.idx] === 'blindA' || u.path[u.idx] === 'blindB');
+      if (here && !u.hallColumn) entered = entered || u.id;
+      u.hallColumn = here;
+      occupied = occupied || here;
+    }
+    if (foxyHere && !this.foxy.hallColumn) entered = entered || 'foxy';
+    this.foxy.hallColumn = foxyHere;
+    this.hallColumnOccupied = occupied;
+    if (this.opts.sourcedHallEntry) {
+      // g875-880: each hall-routed character writes 300 when it overlaps the
+      // hitbox, and every one of those groups carries C -7 ("only one action
+      // when event loops"). So the write lands once per continuous overlap:
+      // on entry into the hall column, never while standing there, and a
+      // stage-1 -> stage-2 hop keeps the overlap continuous. g881 drains it.
+      // (ANDROID-SOURCE-STATUS.md 2026-09-15.)
+      if (entered) {
+        this.hallMovementUntil = f + C.HALL_MOVEMENT_FRAMES;
+        this.emit('hall-movement', { who: entered });
+      }
+    } else if (occupied) {
+      // Legacy reading: refreshed every frame anyone is in the hall, so the
+      // block outlasts a long stay by 300 frames the source does not have.
+      this.hallMovementUntil = f + C.HALL_MOVEMENT_FRAMES;
+    }
+  }
+
   // Hallway Golden Freddy: he can only take the hall when it is genuinely
   // empty, which in Minus 7 means the windows where Foxy has been evicted.
   tickGoldenHall(f) {
@@ -1249,12 +1293,7 @@ export class Sim {
     // g779's empty-hall test names exactly the characters whose routes pass
     // through the two off-camera transit markers: `hall stage 1` (120) is
     // blindA and `hall stage 2` (121) is blindB, plus W. Foxy in the hall.
-    const inTransit = this.foxy.loc === 'hall' ||
-      this.units.some(u => !u.done &&
-        (u.path[u.idx] === 'blindA' || u.path[u.idx] === 'blindB'));
-    // g875-880 refresh the latch while anyone is in the hall; g881 drains it.
-    if (inTransit) this.hallMovementUntil = f + C.HALL_MOVEMENT_FRAMES;
-    const hallOccupied = inTransit || f < this.hallMovementUntil;
+    const hallOccupied = this.hallColumnOccupied || f < this.hallMovementUntil;
 
     // g781: his presence is not a latch. Every one-second event with the hall
     // light off re-rolls it, so holding the light freezes whatever is there.

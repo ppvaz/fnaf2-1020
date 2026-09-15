@@ -10,13 +10,94 @@
   "consequence": "instance OI s -> event handle s ^ 48 -> item-table row s ^ 44. The 2026-08-26 (raw row) and 2026-09-15 first-pass (event handle) readings were both wrong; the 186/189 recompile join was the chunk compared with itself."
  },
  "layoutChecks": {
-  "office instances joined to an event-referenced object": {"raw": "158/205", "event-handle": "154/205", "xor48": "196/205"},
-  "camera markers placed in the Office": {"raw": "8,9,10,11,12", "event-handle": "01,2,5,9,10,11,12", "xor48": "all twelve, x 602-950 y 390-651"},
-  "approach column (xor48)": {"hall stage 1": [668, 481], "hall stage 2": [668, 550], "in office": [668, 612], "got you box": [670, 681]},
+  "office instances joined to an event-referenced object": {
+   "raw": "158/205",
+   "event-handle": "154/205",
+   "xor48": "196/205"
+  },
+  "camera markers placed in the Office": {
+   "raw": "8,9,10,11,12",
+   "event-handle": "01,2,5,9,10,11,12",
+   "xor48": "all twelve, x 602-950 y 390-651"
+  },
+  "approach column (xor48)": {
+   "hall stage 1": [
+    668,
+    481
+   ],
+   "hall stage 2": [
+    668,
+    550
+   ],
+   "in office": [
+    668,
+    612
+   ],
+   "got you box": [
+    670,
+    681
+   ]
+  },
   "hitboxes (xor48, hotspot-corrected boxes)": {
-   "hall movement (180)": {"pos": [669, 503], "box": [661, 441, 677, 566], "g989": "Start of frame: SetXScale(14 / width) -> 14 px wide", "overlappedFrom": ["hall stage 1", "hall stage 2"]},
-   "hear footsteps (149)": {"pos": [670, 533], "box": [538, 458, 802, 609], "overlappedFrom": ["cam 01", "cam 2", "cam 3", "cam 4", "hall stage 1", "hall stage 2", "in office (bottom/centre-hotspot sprites only)"]},
-   "close by (185)": {"pos": [669, 606], "box": [537, 532, 801, 682], "overlappedFrom": ["cam 01", "cam 2", "cam 5", "cam 6", "hall stage 2", "in office", "got you box"]}
+   "hall movement (180)": {
+    "pos": [
+     669,
+     503
+    ],
+    "box": [
+     661,
+     441,
+     677,
+     566
+    ],
+    "g989": "Start of frame: SetXScale(14 / width) -> 14 px wide",
+    "overlappedFrom": [
+     "hall stage 1",
+     "hall stage 2"
+    ]
+   },
+   "hear footsteps (149)": {
+    "pos": [
+     670,
+     533
+    ],
+    "box": [
+     538,
+     458,
+     802,
+     609
+    ],
+    "overlappedFrom": [
+     "cam 01",
+     "cam 2",
+     "cam 3",
+     "cam 4",
+     "hall stage 1",
+     "hall stage 2",
+     "in office (bottom/centre-hotspot sprites only)"
+    ]
+   },
+   "close by (185)": {
+    "pos": [
+     669,
+     606
+    ],
+    "box": [
+     537,
+     532,
+     801,
+     682
+    ],
+    "overlappedFrom": [
+     "cam 01",
+     "cam 2",
+     "cam 5",
+     "cam 6",
+     "hall stage 2",
+     "in office",
+     "got you box"
+    ]
+   }
   }
  },
  "dumpFacts": {
@@ -32,11 +113,31 @@
   "plant-model.js refreshes hallMovementUntil every frame a unit is at blindA/blindB or Foxy is in the hall; source writes 300 once per entry into the column (C -7) and never while standing, so the engine over-blocks Golden Freddy's hall exposure after any stay longer than 300 frames",
   "the hall's rendered frame while the light is on is gated by hall movement (g202/g1035 vs g203/g1034 vs g205-g209); the model has no such state, which is a candidate source for the LIT/DIM/BLACK mismatch in the hall-flash seed signal"
  ],
- "modelChanges": ["none in this record; readdump.py instance resolution corrected (tools/dump/readdump.py --lo-xor, test-instances.py)"],
- "status": "SOURCED; the marker set for the latch is closed (hall stage 1, hall stage 2). Open: the drain rate of g881 (global 24 expression), which of frames 36/99/93 the phone's LIT and DIM classes correspond to, and the entry-triggered model change with its census.",
+ "modelChanges": [
+  "readdump.py instance resolution corrected (tools/dump/readdump.py --lo-xor, test-instances.py)",
+  "plant-model.js: `hall movement` now ticks every frame in tickHallMovement (independent of gfEnabled), is readable as sim.hallMovementFrames, and emits `hall-movement` {who} on arm; under sourcedHallEntry (default off) the 300 is written once per entry into the hall column per character (C -7), the legacy mode keeps refreshing it every transit frame; sourcetest g875-880/g202/g881 cases"
+ ],
+ "status": "SOURCED; the marker set for the latch is closed (hall stage 1, hall stage 2) and the model carries the entry semantics behind sourcedHallEntry with a readable per-frame value. Open: switching the default on (outcome-neutral at 3000 seeds x 4 plans), the g881 drain expression, and which of frames 36/99/93 the phone's LIT and DIM classes are (the k3 census read DIM as g202's dark rendering).",
  "openQuestions": [
-  "g881 drain: decode the global-value-24 expression (the -65531 token) to confirm one per frame at 60 fps",
+  "g881 drain: decode the global-value-5 expression (the -65531 token) to confirm one per frame at 60 fps; the k3 frame-trace record already reads it as 'drains by global value 5'",
   "map views.Active frames 36 / 99 / 93 / 84 / 76 / 98 / 50 to the phone's LIT / DIM / character / Golden Freddy hall images (needs the image bank or a labelled run)",
-  "port the entry-triggered, per-character latch into plant-model.js with a sourcetest case and a 3000-seed census before/after"
- ]
+  "re-score full-02 / full-04 hall flashes against sim.hallMovementFrames > 0 at each flash (sourcedHallEntry on) instead of the scorer's own assumed latch",
+  "switch sourcedHallEntry on by default once the seed-lock scorer has consumed it (census is identical either way)"
+ ],
+ "census": {
+  "method": "tools/device/human-gate.mjs modelGate on recipe.mjs --device-plan for nights 5/6/7 and minus-toys-plan.mjs replay night 7; 3000 seeds each, seedStart 1, epochMs 0 (single phase); mode injected through Sim.prototype.tick; run twice (before and after the tickHallMovement refactor), identical",
+  "legacy": {
+   "device-plan-n5": "699/3000",
+   "device-plan-n6": "645/3000 (72 Golden Freddy office deaths)",
+   "device-plan-n7": "149/3000 (683 Golden Freddy office deaths)",
+   "minus-toys-n7": "3000/3000"
+  },
+  "sourcedHallEntry": {
+   "device-plan-n5": "699/3000",
+   "device-plan-n6": "645/3000 (72)",
+   "device-plan-n7": "149/3000 (683)",
+   "minus-toys-n7": "3000/3000"
+  },
+  "reading": "outcome-neutral: every death row identical, and the hallway Golden Freddy never got inside (gf-hall-inside = 0 in all 24,000 nights), so the latch's only observable on these plans is the hall render (g202: DIM while > 0), not survival. That is the seed-lock signal, and it can now be read from the model instead of assumed."
+ }
 }

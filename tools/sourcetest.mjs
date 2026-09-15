@@ -499,6 +499,45 @@ eq('g538-555', 'a defended repel rolls Random(500)/night', C.REPEL_COOLDOWN_ROLL
 // Golden Freddy
 eq('g830', 'his office roll is 1 in 2 at the 10 cap', C.GF_SPAWN_CHANCE, 0.5);
 eq('g875-880', '`hall movement` blocks him for 300 frames', C.HALL_MOVEMENT_FRAMES, 300);
+{
+  // g875-880 carry C -7 ("only one action when event loops"): the 300 is
+  // written once per continuous overlap of the hitbox, i.e. on entry into the
+  // hall column, and a hall-stage-1 -> hall-stage-2 hop keeps it continuous.
+  const drive = (opts) => {
+    const s = bare({ stalledEnabled: true, gfEnabled: true, ...opts });
+    const tf = s.units.find(u => u.id === 'toyfreddy');
+    for (const u of s.units) if (u !== tf) u.done = true;
+    s.ai.toyfreddy = 0;          // no movement roll can move him off the stage
+    tf.idx = 2;                  // hall stage 1 (`blindA`)
+    s.tick();
+    const armedAt = s.hallMovementUntil;
+    step(s, 400);                // stands there longer than the 300
+    const afterStay = s.hallMovementUntil;
+    tf.idx = 3;                  // hall stage 2 (`blindB`): still overlapping
+    s.tick();
+    return { s, armedAt, afterStay, afterHop: s.hallMovementUntil };
+  };
+  const src = drive({ sourcedHallEntry: true });
+  ok('g875-880', 'entering the hall column arms the 300',
+    src.armedAt === src.s.frame - 401 + C.HALL_MOVEMENT_FRAMES);
+  ok('g875-880', 'standing there does not refresh it', src.afterStay === src.armedAt);
+  ok('g875-880', 'a stage-1 -> stage-2 hop does not re-arm it', src.afterHop === src.armedAt);
+  const old = drive({});
+  ok('g875-880', 'the legacy reading refreshed it every frame of the stay',
+    old.afterStay > old.armedAt && old.afterHop > old.afterStay);
+  // The latch is readable at any frame and ticks without Golden Freddy, so a
+  // trace can score the phone's DIM hall flash (g202) against it.
+  const t = bare({ stalledEnabled: true, gfEnabled: false, sourcedHallEntry: true });
+  const tf = t.units.find(u => u.id === 'toyfreddy');
+  for (const u of t.units) if (u !== tf) u.done = true;
+  t.ai.toyfreddy = 0;
+  tf.idx = 2; t.tick();
+  const armed = t.events.filter(e => e.type === 'hall-movement').map(e => e.data.who);
+  ok('g202', 'hallMovementFrames reads the 300 with Golden Freddy disabled',
+    t.hallMovementFrames === C.HALL_MOVEMENT_FRAMES && armed.join() === 'toyfreddy');
+  step(t, C.HALL_MOVEMENT_FRAMES);
+  ok('g881', 'and it drains to zero while he stands there', t.hallMovementFrames === 0);
+}
 
 // the shared cap and the movement roll
 eq('g830', 'everyone else caps at 15 AI', C.STALLED_AI, 15);
