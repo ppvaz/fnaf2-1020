@@ -21,6 +21,7 @@ import { AdbDeviceLocalArtifactExecutor } from './adb-device-local-executor.js';
 import { makeCampaignExecutionRequest } from './campaign-bundle.js';
 import { AdbCueHelperPort, AdbHidProcess } from './physical-ports.js';
 import { anchorNightRelease } from './night-anchor.js';
+import { phoneWallAt, planTimedStart, waitUntilHostMs } from './timed-start.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 
 const TITLE_MODEL = new URL('../../../tools/device/models/title-moto-g56-v207.json', import.meta.url);
@@ -729,7 +730,40 @@ export async function createCampaignPorts(options = {}) {
       tap: dialTap,
       readback: dialReadback,
     });
-    await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
+    // Twin-nights test of clock seeding (docs/evidence/night7-k3-wallclock-r1-20260915.json):
+    // FNAF_START_PHONE_WALL_RESIDUE_MS places the Start tap when the phone's wall clock
+    // reaches that residue modulo 65 536 ms (apps/device/src/timed-start.js). The tap's
+    // phone wall time is logged either way; a requested timed start never falls back to
+    // an untimed tap.
+    const residueText = process.env.FNAF_START_PHONE_WALL_RESIDUE_MS ?? '';
+    const timed = residueText !== '';
+    let startClock = null;
+    let plan = null;
+    let tapped = false;
+    try {
+      startClock = cuePort.openClock();
+      const before = await startClock.probe({ samples: 8 });
+      if (timed) {
+        plan = planTimedStart({ sample: before, residueMs: Number(residueText), nowHostMs: performance.now() });
+        onEvent({ type: 'custom-night.start-planned', residueMs: Number(residueText), targetPhoneWallMs: plan.targetPhoneWallMs,
+          waitMs: plan.waitMs, uncertaintyMs: before.uncertaintyMs });
+        await waitUntilHostMs(plan.targetHostMs);
+      }
+      const tapHostMs = performance.now();
+      tapped = true;
+      await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
+      const after = await startClock.probe({ samples: 4 });
+      const tapPhoneWallMs = phoneWallAt(after, tapHostMs);
+      onEvent({ type: 'custom-night.start', tapHostMs, tapPhoneWallMs, tapPhoneWallLow16: Math.floor(tapPhoneWallMs) % 65536,
+        plannedPhoneWallMs: plan?.targetPhoneWallMs ?? null, lateMs: plan ? tapHostMs - plan.targetHostMs : null,
+        uncertaintyMs: after.uncertaintyMs });
+    } catch (error) {
+      if (timed) throw new Error(`timed Custom Night start refused: ${error?.message ?? error}`);
+      onEvent({ type: 'custom-night.start', status: 'unstamped', reason: String(error?.message ?? error) });
+      if (!tapped) await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
+    } finally {
+      startClock?.close();
+    }
     return configured;
   };
 
