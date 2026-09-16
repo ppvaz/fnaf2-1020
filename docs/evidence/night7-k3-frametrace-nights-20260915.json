@@ -637,7 +637,13 @@
     "holdOut": "47592 halves: 0-200 s 3 hits/0 mism/6 unmatched, 200-440 s 1/0/8; controls p95 of hits-mismatches is 3 in either half",
     "coverage": "a surviving control night has a model laugh within 0.6 s of any given strong phone vocal 32-46% of the time (72% at 20 s), so 4 hits with 0 mismatches over 18 vocals is inside chance"
    },
-   "verdict": "NO LOCK. The vocal observable is real but weak in the Bluetooth capture, and the model puts no laugh near 10-14 of the 18 strong phone vocals under every window seed and epoch: Balloon Boy's modelled timeline (hop period, office and vent dwell) disagrees with the phone before the seed can be read from it. Next: verify BB's move timer and dwell against the dump; a wired or on-phone audio capture for the vocals; the detector is not the lever."
+   "verdict": "NO LOCK. The vocal observable is real but weak in the Bluetooth capture, and the model puts no laugh near 10-14 of the 18 strong phone vocals under every window seed and epoch: Balloon Boy's modelled timeline (hop period, office and vent dwell) disagrees with the phone before the seed can be read from it. Next: verify BB's move timer and dwell against the dump; a wired or on-phone audio capture for the vocals; the detector is not the lever.",
+   "routeSoundConfound": {
+    "phaseHistogram": "z>3 local maxima of the three vocal curves inside the 10 s cycle (1 s bins from game-time phase 0): 21 [6,0,0,0,0,1,4,0,0,5], 23 [7,1,0,0,1,1,0,1,0,7], 24 [5,0,0,0,2,3,1,1,3,8]",
+    "route": "k3 loop (period 10 s, epoch ~2.5 s): mask tap at phase 9.5, hall flash 9.9, monitor 10.1, light 10.4, wind 10.6-13.6, camdrop 13.65, mask 14.25",
+    "reading": "most vocal peaks sit at phase 9-11, on the mask/monitor/light presses, not on the 5 s hop rolls (phase 5 holds 1-3 peaks per template). The Bluetooth capture mixes the route's own sounds into the vocal templates; the seed-bearing vocals cannot be separated from them here.",
+    "verdict": "the vocal channel is closed for this capture method; not a lever for the lock."
+   }
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
