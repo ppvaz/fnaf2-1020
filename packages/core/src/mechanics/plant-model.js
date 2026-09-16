@@ -221,6 +221,15 @@ export class Sim {
       // drop, not once per night. Sits after the monitor-down draw (g807) and
       // before g822.
       sourcedRandomImageDraw: false,
+      // The monitor raise (dump g254 click / g257 touch on the white button)
+      // needs the panel down and still (flip panel v0 = 0 and v1 = 0), the
+      // mask fully off (mask v0 = 0), `in danger` = 0 and `being attacked by`
+      // = 0. A raise pressed during an encounter's blackout, during a committed
+      // attack, with the mask on or mid-animation, or while the panel moves is
+      // refused outright. Without this the k3 loop's raise at cycle phase 7.6
+      // goes up inside a Toy Bonnie overlay encounter and g546 walks him to
+      // marker 123 (observed-press probe, full-06, 2026-09-15).
+      sourcedMonitorRaiseGate: false,
       // Sheet order for the draws the model otherwise places by hand (requires
       // sourcedSecondPass). g213-g497 run where the view draws ran, with g366/g368
       // after g294, g419 after g401 and g468-g476 after g440, then g498, g500-g506
@@ -605,6 +614,11 @@ export class Sim {
       this.setMask(!this.maskOn);
     } else if (action === 'monitor') {
       const lower = this.monitor === MON_UP || this.monitor === MON_RAISING;
+      if (!lower && this.opts.sourcedMonitorRaiseGate &&
+          (this.monitor !== MON_DOWN || !this.maskFullyOff || this.blackout.active || this.attackExecuting)) {
+        this.flag('invalid-input', 'g254/g257: monitor raise refused (panel moving, mask not fully off, in danger, or being attacked)');
+        return;
+      }
       if (lower && this.opts.sourcedDropLightOrder) {
         // g614/g618: the drop button only raises the flag, and only from a
         // fully-up monitor with the mask off; g262 performs it next frame.
