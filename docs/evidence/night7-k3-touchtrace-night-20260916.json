@@ -1,0 +1,68 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night7-k3-touchtrace-night-20260916",
+ "claimLevel": "DEVICE_EVIDENCE",
+ "date": "2026-09-16",
+ "question": "Can the model be driven with the phone's actual presses, on the game's frame clock, and does it then reproduce the phone's night (survival, death, eyehole) for one seed of the logged office bracket?",
+ "run": {
+  "id": "night7-night7-k3-full-07d-20260916T031042Z",
+  "route": "k3 (artifacts/night7-anchored-k3/bundle), Night 7 Golden Freddy preset",
+  "instruments": [
+   "MMFRuntime logcat streamed (office seed bracket)",
+   "Cue Helper native frame trace ft2-full-07d-887476369337743.tsv (18,248 frames)",
+   "adb getevent -lt kernel input events (HID device /dev/input/event10, multitouch protocol B, 254 contacts)",
+   "Bluetooth A2DP audio (60 MB raw)",
+   "1280x576 video captures/night7-night7-k3-full-07d-20260916T031042Z.mp4"
+  ],
+  "retained": "artifacts/forensics/k3-frametrace-nights-20260916/ (SHA256SUMS)",
+  "outcome": "LOSS at 4 AM: Withered Foxy jumpscare in the video at 333.4 s (game 300.6 s; phase.json lastNightAt 300.6 s after the office start); the campaign kept pressing until 304.3 s",
+  "earlierAttempts": "full-07 refused (a2dp-stream-not-running before the campaign; the launcher now ensures the link), full-07b started without audio and was stopped on Pedro's instruction, full-07c refused by the bundle replay hash (fixed in 8b92c5a)"
+ },
+ "officeSeedBracket": {
+  "fromMs": 1789528275235,
+  "toMs": 1789528275249,
+  "candidates": 15,
+  "low16": [
+   31011,
+   31025
+  ]
+ },
+ "clocks": {
+  "trace": "image_ns is the helper monotonic clock; getevent stamps are CLOCK_MONOTONIC in the same domain (887470 s vs 887481 s at the office)",
+  "firstOfficeFrame": "201 in both full-06 and full-07d: the first frame with both bottom-button strokes visible, one frame after the last dark frame (t = 4.60 s after trace start)",
+  "epochFromTrace": "median 2539.5 ms (per cycle 2476-2560) from the cameras-up static frames; full-06 gave 2582, full-04 3848"
+ },
+ "pressTiming": {
+  "controls": "mask (188,270) 200 ms; monitor (188,801) 200 ms; hall flash (1200,540) 33 ms; camera/context light (1200,405) 100 ms and 550 ms (the camdrop); wind (426,225) 3030 ms; the camdrop monitor tap is a second multitouch slot (slot 1, 197 ms) 150 ms into the light hold; opening cam taps (951,1002)=CAM 11, (1182,964)=CAM 09",
+  "flashVsRoll": "the 33 ms hall-flash touch-down lands 83-110 ms (mean ~100 ms, 5-6 frames) BEFORE the 5 s roll frame in every cycle (first office frame 201)",
+  "touchToCamerasUp": "248-291 ms from monitor touch-down to the white static frame = 200 ms raise + 50-90 ms input-to-game latency"
+ },
+ "harness": {
+  "tools": "presses-from-touches.py (touch -> model action at touch time + latency L on the trace frame clock), seedlock-touch.mjs (cfg.presses), input-vs-trace.py, probe-touch.mjs",
+  "latencySweep": {
+   "L<=75ms": "every seed, bracket and 100 controls, survives until the presses stop (deaths 310-320 s on the first Foxy tick after 304 s)",
+   "L83ms": "3/15 bracket and 18-24/100 controls die at exactly 300.0 s (Foxy g571/g572 tick) with presses still running: the phone's death reproduced for a fifth of seeds",
+   "L90ms": "1/15 bracket (31017, 8 hits / 10 conflicts) and 0-2/100 controls at 300 s; other seeds die 180-290",
+   "L>=100ms": "the opening breaks (deaths at 10-20 s)"
+  },
+  "eyehole": "30 windows read at officeVideo 33.3 s + epoch + 0.76 + 10c, 3 s long: 3:WC 4:WB 7:WB 8:WC 9:WF 10:WB 11:WC 13:WB 14:WC 16:WC 20:WC 22:WC 23:WB 25:WC 26:WF 27:WB 28:WC; best bracket fit under true presses 31021 10 hits / 7 conflicts (gate, L67)",
+  "reading": "With the real touches the model is NOT lethal: every seed survives as long as the phone did, so the earlier all-runs-die result was an artefact of schedule-derived press times. The input-to-game latency is the parameter that decides the flash-versus-roll edge: 75 ms keeps Foxy out for every seed, 83-90 ms lets him through on the phone's own death tick for a seed-dependent fifth. The phone's death at 300.6 s is a Foxy tick kill, consistent with that edge."
+ },
+ "consequence": [
+  "The seed search must run on the kernel touches, not on any schedule; the harness exists now.",
+  "The unknown that remains is the input-to-game latency to about one frame; it is measurable from this run (touch to visible effect) and should be pinned before a census is read as a lock."
+ ],
+ "next": [
+  "measure the per-touch registration loop directly: a probe run tapping a control whose effect is visible next frame (mask sprite) at known kernel times, to fix Lsys and its jitter",
+  "a Night 7 route with the hall flash placed mid-cycle (off the roll frame) for seed work",
+  "keep getevent in every logged night (launcher does)"
+ ],
+ "censusL83": {
+  "setup": "all 65,536 seeds on full-07d's kernel touches at L = 83 ms (reference options), 30 eyehole cycles, lethal",
+  "deaths": "320 s: 27,615; 300 s: 14,848 (22.7%); 310 s: 14,752; 190 s: 8,292 -- the phone died on the 300 s Foxy tick, so death-at-300 is a 2-bit observable",
+  "eyehole": "best fit 30831 with 16 hits / 1 conflict / 2 misses of 17 phone encounters (Freddy at cycles 9 and 26 included); four seeds have >= 15 hits; the cycle alignment was checked by +-1/+-2 cycle shifts (shift 0 is best)",
+  "bracket": "31011-31025 rank 569-63,406 by fit; 31021/31022/31025 die at 300 s with 5-6 hits / 12-13 conflicts",
+  "30831": "is 180 ms before the office seed bracket. classes.dex: CRun.allocRunHeader (currentTimeMillis -> rh3Graine) is called only from CRun.initRunLoop, which CRunApp.startTheFrame calls at instruction 231 after logging \"Starting new frame\" at 42, and \"startTheFrame() called\" is logged by the caller afterwards -- the seed is drawn inside the logged 14 ms bracket, so 30831 is excluded. Its fit collapses to 2-11 hits at every other latency (75-90 ms), as does every seed's: the modelled night changes wholesale with 2 ms of input latency."
+ },
+ "verdict": "NO LOCK. With the phone's real touches the model reproduces the phone's 300 s survival span for every seed and its Foxy tick death for a fifth of seeds at 83-85 ms latency, but the night outcome is chaotic in the input latency at the 2 ms level, and the eyehole fit at any one latency is a noisy landscape whose global best (30831, 16/17) lies outside the dex-verified bracket. A lock needs the registration loop of each touch to the frame, which this instrumentation gives only to +-1 frame, or a route whose hall flash is not on the roll frame."
+}
