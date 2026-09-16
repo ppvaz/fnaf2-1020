@@ -912,6 +912,13 @@
       ]
     },
     {
+      "file": "packages/core/test/random-image-draw.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/core/test/roll-draws.test.js",
       "imports": [
         "../src/mechanics/config.js",
@@ -947,6 +954,13 @@
       "imports": [
         "../src/mechanics/plant-model.js",
         "../src/mechanics/rng.js",
+        "node:assert/strict"
+      ]
+    },
+    {
+      "file": "packages/core/test/vent-cam-draws.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
         "node:assert/strict"
       ]
     },
