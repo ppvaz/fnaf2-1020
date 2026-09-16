@@ -644,6 +644,68 @@
     "reading": "most vocal peaks sit at phase 9-11, on the mask/monitor/light presses, not on the 5 s hop rolls (phase 5 holds 1-3 peaks per template). The Bluetooth capture mixes the route's own sounds into the vocal templates; the seed-bearing vocals cannot be separated from them here.",
     "verdict": "the vocal channel is closed for this capture method; not a lever for the lock."
    }
+  },
+  "censusFull06": {
+   "setup": "all 65,536 starting states on full-06 under the best configuration so far: per-frame trace clock (first office frame 200), epoch 2364 ms, every sourced option plus sourcedLastViewPause, sourcedHallEntry, sourcedFootstepDraws (hall stages, Foxy on); eyehole encounters over 42 cycles plus hall classes; lethal on",
+   "encounters": {
+    "minConflicts": 3,
+    "seedsAtMin": 1,
+    "conflictDistribution0to12": [
+     0,
+     0,
+     0,
+     1,
+     1,
+     9,
+     30,
+     77,
+     182,
+     343,
+     671,
+     1066,
+     1632
+    ],
+    "longestExactPrefix": 27,
+    "seedsPrefixAtLeast20": 90,
+    "seedsPrefixAtLeast25": 1,
+    "top": [
+     [
+      17287,
+      3,
+      24
+     ],
+     [
+      20744,
+      4,
+      23
+     ],
+     [
+      5150,
+      5,
+      22
+     ],
+     [
+      4570,
+      5,
+      22
+     ]
+    ],
+    "bonnieCyclesExact": 9,
+    "chicaCyclesExact": 0,
+    "bothExact": 0
+   },
+   "window": {
+    "47598": {
+     "conflicts": 9,
+     "hits": 18,
+     "prefix": 20,
+     "rankByFit": 301,
+     "rankByPrefix": 48
+    },
+    "others": "ranks 4013-56722 by fit, i.e. random"
+   },
+   "reading": "No starting state reproduces the night: the best of 65,536 still conflicts on 3 cycles, none reproduces Withered Chica's cycle sequence, and the longest exact prefix anywhere is 27 of 42. The window seed 47598 is 48th by prefix and 301st by fit. Same picture as full-02 (rank 67). The observable is not the problem and neither is the seed bracket: the mechanics diverge from the phone for every seed within 27 cycles, so no search over seeds can lock one until the model itself tracks a whole night.",
+   "verdict": "SEED LOCK NOT ACHIEVABLE with the current model. Decision needed: a model-fidelity programme against the dump (Withered leave/return timing first: the phone's Bonnie periods 4,3,3,4,3,4,3,3,3,3 cycles vs the model's one-cycle-late returns around cycles 20-22 and 26-29), or a device-side read of the RNG state."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
