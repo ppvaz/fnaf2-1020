@@ -473,6 +473,11 @@
     "reading": "the first hop agrees; every later approach the phone makes is 5-10 s earlier than the model's. The model returns Mangle from her send-back slower than the phone (opening at 40.3 s, CAM 12 at 49.0 s): a Mangle send-back/return timing discrepancy to source, independent of the seed",
     "footstepSounds25to29": "none detected at threshold 0.45 against 100+ predicted by 'every hop onto cams 01-4 / hall stages': the trigger is narrower than the marker box, most likely the hall stages only, as for hall movement",
     "bangsWithFittedScale": "window 14-17 of 32 matched (from 10-12 with the wrong scale)"
+   },
+   "vocalWindows": {
+    "method": "4 s clips of full-06's audio around the model's first Balloon Boy laughs (game 10, 15, 20, 25, 30 s; audio = (game + 39.95) * 0.99890), detect.py in window mode at threshold 0.30",
+    "found": "sample 17 in every clip (scores 0.80-0.91) and Mangle's 30/31/32 at nearly equal scores (0.877/0.880/0.881 in one clip); no 21/23/24 above 0.30 in any clip",
+    "reading": "the vocals are not detectable with this detector, which matches a reference's transient core (the bang has one; a voiced vocal does not), and Mangle's three sounds are not separable by it either. The audible-draw observables need a detector for voiced samples (spectrogram correlation over the whole sample) before they can be scored. The whole-file 0.30 scan (pure-Python FFT and template match per frame, one core, ~30k frames x 31 references) was stopped after 40 min: it cannot find what the targeted clips did not."
    }
   },
   "footstepTriggerHallStages": {
