@@ -782,6 +782,31 @@
    },
    "consequence": "Every seed-lock run so far drove the model with the nominal k3 schedule at one epoch. The phone's per-cycle press timings are in the frame trace (mask luma, monitor luma, the white static frame at cameras-up), and they differ from the schedule by more than the g378/g379 margin. The seed search must be re-run with the OBSERVED per-cycle press times (mask on/off, monitor up/down) fed to the model instead of the schedule, on full-06, full-04 and full-02.",
    "verdict": "NO LOCK yet; method change required before the next census (observed presses, not nominal). Decision for Pedro: proceed with the observed-press harness, or read the RNG state on the device."
+  },
+  "pressAlignmentFull06": {
+   "traceColumns": "mask_downstroke / monitor_downstroke are the two bottom buttons (actuation-frame-metric.py: both visible = office, mask absent + monitor visible = cameras up); grid row 4 cells show the mask sprite, the hall flash and the camera-up static frame",
+   "perCyclePhase(epoch 2364, cycles 10/22/30)": {
+    "maskSpriteLeaves": "7.212 / 7.236 / 7.235 (schedule: mask tap 7.0)",
+    "maskTakeOffBand": "7.263-7.297",
+    "officeButtonsVisible": "7.464 / 7.483 / 7.487",
+    "hallFlash": "7.620-7.637 / 7.616-7.636 / 7.618-7.637, two frames (schedule: 7.400, 33 ms)",
+    "monitorRaiseStarts": "7.814 / 7.820 / 7.820 (schedule: monitor tap 7.6)",
+    "camerasUpStaticFrame": "8.015 / 8.037 / 8.036",
+    "monitorLowers": "11.497 / 11.529 (schedule: camdrop monitor press 11.30)",
+    "maskBackOn": "12.148 / 12.167 (schedule: mask tap 11.749 + put-on)"
+   },
+   "reading": "every press, hold or tap, takes effect 212-220 ms after its scheduled time, identically in all three cycles: a uniform latency, i.e. the true epoch for full-06 is ~2580 ms (2364 + 216), not a tap-on-release rule. A taps-on-release variant was tried and kills the model at 20 s (the hall flash falls inside the mask take-off; the dump's g84 needs mask value0 == 0), so it is wrong. In game time the hall flash lands on the roll frame itself (109.98-110.00 s in cycle 10): the k3 flash sits on the 5 s roll by design (hallOffsetMs 7400), a razor edge the phone resolves per cycle.",
+   "alignedRescore": {
+    "epochs": [
+     2564,
+     2580.667,
+     2597.333,
+     2614
+    ],
+    "ref": "window prefixes [10,7,7,6,6,6], best 47605 prefix 10 (25/300 controls at or above); best fit 47602 16/11 (10/300)",
+    "image": "window prefixes [7,6,6,6,6,6]; best fit 47598 19 hits / 8 conflicts at 2564/first 198, 2/300 controls at or above; prefix 6"
+   },
+   "consequence": "the 20-22 cycle prefixes reported at epoch 2364 were obtained with presses ~200 ms earlier than the phone pressed; at the press-aligned epoch every seed, window and control, diverges within 10 cycles. The epoch must be fixed from the trace, not fitted. A 65,536-seed census at epoch 2564 with the random-image draw is running to rank 47598's 19/8 whole-night fit."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
