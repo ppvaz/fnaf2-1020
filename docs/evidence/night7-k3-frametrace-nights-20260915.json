@@ -770,6 +770,18 @@
    },
    "reading": "Neither draw site separates the window from the controls. The random-image draw lengthens prefixes across the board and every seed then stops at cycle 22, where the phone read Withered Freddy: under this configuration no seed of the 314 puts Freddy in the office on that cycle, so cycle 22 is a mechanic (or eyehole-read) wall rather than a seed signal. The vent-camera draw alone shortens every prefix. Both stay default-off; they are dump-sourced draw sites, not fits.",
    "verdict": "NO LOCK. Next lead: the cycle-22 Withered Freddy encounter (phone read vs the model's g377/g379 route gating), checked on the frames first."
+  },
+  "cycle22Freddy": {
+   "dump": "g376/g377: Freddy at CAM 03 with a passed roll goes to hall stage 2 (decide path 1) or back to CAM 07 (decide path 2), hall light off; g378: at hall stage 2 with a passed roll and the mask fully on (mask value0 == 2), back to CAM 03 with value1 = 5000 - 500*night; g379: at hall stage 2 with a passed roll, viewing > 0 and office occupied == 0, into the office. A passed roll waits for whichever comes first.",
+   "dex": "Conditions/CND_EVERY2.eva2: on the first evaluation the countdown loads the delay and returns false; afterwards it subtracts rhTimerDelta and, at <= 0, ADDS THE DELAY BACK (value += timer). The 5 s roll grid does not drift; the model's passEvery matches.",
+   "modelUnderK3": "roll at cycle phase 7.636 (epoch 2364); mask tap 7.0, fully on ~7.38; monitor tap 7.6, up 7.804. At the roll the mask is fully on and viewing is 0, so g378 fires and Freddy retreats every cycle; he cannot enter under any seed.",
+   "phoneTrace": {
+    "cycle10": "mask off 7.212, mask on 7.396 (maskDS 142), monitor marker 7.464, mask drops 7.814-7.847, cameras fully up 8.000-8.015 (white static frame), up until 11.497, mask back on 12.148",
+    "cycle22": "mask off 7.236, mask on 7.423, monitor marker 7.483, mask drops 7.820-7.849, cameras fully up 8.022-8.037, up until 11.529, mask on 12.167",
+    "reading": "at the 7.636 roll the phone's mask had been on for ~0.2 s and was still animating (fully on needs ~0.38 s), and the monitor raise at ~7.8 removed it before it reached value0 == 2; g378 never fired, the pending roll met viewing > 0 at 8.02 and g379 put Freddy in the office. The phone's presses land 0.2-0.4 s later in the cycle than the nominal schedule, and not uniformly (mask ~+0.4, monitor ~+0.2), so no single epoch aligns them."
+   },
+   "consequence": "Every seed-lock run so far drove the model with the nominal k3 schedule at one epoch. The phone's per-cycle press timings are in the frame trace (mask luma, monitor luma, the white static frame at cameras-up), and they differ from the schedule by more than the g378/g379 margin. The seed search must be re-run with the OBSERVED per-cycle press times (mask on/off, monitor up/down) fed to the model instead of the schedule, on full-06, full-04 and full-02.",
+   "verdict": "NO LOCK yet; method change required before the next census (observed presses, not nominal). Decision for Pedro: proceed with the observed-press harness, or read the RNG state on the device."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
