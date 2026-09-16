@@ -1606,7 +1606,7 @@ export class Sim {
       vocal = [null, 21, 24, 23][cue];
     }
     if (this.bb.stage > C.BB_SILENT_HOPS)
-      this.emit('laugh', { samples: C.BB_VOCAL_SAMPLES, vocal });
+      this.emit('laugh', vocal === null ? { samples: C.BB_VOCAL_SAMPLES } : { samples: C.BB_VOCAL_SAMPLES, vocal });   // shape unchanged when no cue is drawn: the device bundles hash the event stream
     if (this.bb.stage === C.BB_STAGES - 1) {
       this.emit('vent-bang', {
         who: 'bb', leaving: false, cam: true, sample: C.THUD_SAMPLE });
