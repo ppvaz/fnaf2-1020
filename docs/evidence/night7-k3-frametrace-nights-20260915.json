@@ -870,6 +870,19 @@
    },
    "reading": "With the epoch fixed from the trace instead of fitted, the bracket candidate 47598 ranks 15th of 65,536 by whole-night fit (top 0.02%); the chance that one of 14 bracket seeds lands in the top 15 is about 0.3%. It is the sharpest seed signal of the three nights, and it appears only under the press-aligned epoch and the random-image draw. It is not a lock: 14 seeds fit better, the best still conflicts on 4 cycles, and 47598's exact prefix is 2 (its early cycles conflict while its later ones match, which points at an opening-phase model error rather than the loop).",
    "verdict": "NO LOCK by the predeclared rule (0 conflicts). Candidate: 47598 at 0.3% chance level. Next: the opening-phase presses (cycles 0-4) aligned from the trace the same way, then repeat on full-04 and full-02 with their own trace-fixed epochs."
+  },
+  "observedPressesFull06": {
+   "epochFromTrace": {
+    "tool": "epoch-from-trace.py (forensics): cameras-up = the white static frame (grid_mean_luma >= 180, mask_luma >= 250) = monitor tap + 200 ms; epoch_c = t_static - 7800 - 10000c",
+    "full06": "median 2581.6 ms, per-cycle 2546-2615, drifting ~+40 ms across the night (cycle 0-12 ~2560-2580, cycle 21-40 ~2600)",
+    "full04": "median 3847.8 ms (n 10): a different offset from full-06 by 1.27 s, so the epoch is per night and must always come from the trace"
+   },
+   "harness": "seedlock-obs.mjs: cfg.cycleEpochs[c] replaces the constant epoch for loop c (observed presses)",
+   "result": "14 window seeds x 300 controls x 7 first frames, reference and random-image options: ALL 2,198 runs die (0 alive). Deaths cluster at 60 s (13%), 160 s, 180 s (Foxy, g571/g572 10 s kill after g390 put him at marker 123) and 27-35 s (Toy Bonnie: inside at the 30.17 s camera raise via g546, being attacked = 5 at the 33.86 s monitor lowering via g568, killed 0.67 s later; the route's mask tap follows at 34.31 s). The phone won this night with these exact timings.",
+   "dumpForToyBonnie": "g568: new bonnie at 123 + being attacked == 0 + mmonitorDown.Active (-29) -> being attacked = 5; g722: at 123 + viewing > 0 + every 10 s -> 5. No mask escape exists once 136 > 0 (g624 forces everything down). So on the phone Toy Bonnie was NOT at marker 123 when the monitor came down: the model's vent-to-office transition (g546 / entryGate camsDown / vent light) or his stun clock is wrong at the true timing.",
+   "dumpForFoxy": "g389/g390 advance Foxy on a passed roll only while viewing hall light == 0; g489 sets it on any loop with lit? == 1 and viewing == 0, g488 clears it every 1 s. The phone's 33 ms flash straddles the roll frame (109.98-110.00 s in cycle 10) and Foxy never reached 123 in 42 cycles; the model at the same timings lets him through in 13% of runs at 60 s. The latch/flash ordering at the roll frame is the suspect (press and release applied at frame midpoints; g389 evaluated before g488 in the sheet).",
+   "consequence": "The k3 route as the phone actually executes it is lethal in the model and safe on the phone. The nominal-schedule scoring that made the model survive did so by pressing 200 ms early. Until the Toy Bonnie vent/office transition and the flash-on-roll latch match the phone under observed presses, no seed score means anything, and the route model itself is wrong where it matters (Night 7 deaths).",
+   "verdict": "NO LOCK. Two model defects isolated with reproducers (probe-tb-obs.mjs seed 47598 first 200 22-34.7 s; probe-foxy-obs.mjs). These outrank the seed search."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
