@@ -725,6 +725,51 @@
     "draw-consuming groups not in the model (a census of every Random( in frame 3 against the model's draw sites)",
     "rhGameFlags & 2 in this build"
    ]
+  },
+  "ventCamRandomImageRescore": {
+   "change": "sourcedVentCamDraws (g685-g690) and sourcedRandomImageDraw (g811) on top of the reference configuration (per-frame trace, hall-stage footsteps, Foxy draw, sourcedLastViewPause/HallEntry); 14 window seeds and the 300 controls, 19 epochs x 7 first frames",
+   "reference": "prefix 20 (47598), 7/300 controls at or above; fit 18 hits / 9 conflicts",
+   "vent": {
+    "windowPrefixes": [
+     16,
+     16,
+     16,
+     16,
+     15,
+     13
+    ],
+    "best": "47595 prefix 16",
+    "controlsAtOrAbove": "103/300",
+    "bestFit": "47596 18/9, 100/300"
+   },
+   "image": {
+    "windowPrefixes": [
+     22,
+     22,
+     21,
+     20,
+     16,
+     16
+    ],
+    "best": "47599 prefix 22 (epoch 2414, first 200)",
+    "controlsAtOrAbove": "17/300 (controls p95 22, max 22)",
+    "bestFit": "47600 20/7, 21/300"
+   },
+   "both": {
+    "windowPrefixes": [
+     22,
+     17,
+     17,
+     16,
+     16,
+     16
+    ],
+    "best": "47599 prefix 22",
+    "controlsAtOrAbove": "8/300",
+    "bestFit": "47594 19/8, 65/300"
+   },
+   "reading": "Neither draw site separates the window from the controls. The random-image draw lengthens prefixes across the board and every seed then stops at cycle 22, where the phone read Withered Freddy: under this configuration no seed of the 314 puts Freddy in the office on that cycle, so cycle 22 is a mechanic (or eyehole-read) wall rather than a seed signal. The vent-camera draw alone shortens every prefix. Both stay default-off; they are dump-sourced draw sites, not fits.",
+   "verdict": "NO LOCK. Next lead: the cycle-22 Withered Freddy encounter (phone read vs the model's g377/g379 route gating), checked on the frames first."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
