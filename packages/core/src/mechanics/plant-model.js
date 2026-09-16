@@ -207,6 +207,20 @@ export class Sim {
       // Every other unit's repelIdx matches its dump endpoint (g538-g555, g213, g437, g439/g440, g292/g294).
       // On full-06 the phone's Mangle returned 5-10 s faster than the model on every approach.
       sourcedMangleReturn: false,
+      // The vent-camera sound selectors (dump g685-g690, generated e610-e615):
+      // one Random(4) into cam01 value 21 the first loop a unit stands on CAM 05
+      // (Toy Chica g685, Withered Bonnie g686) or CAM 06 (Toy Bonnie g687,
+      // Withered Chica g688, Mangle g689, the Puppet g690), under the "only one
+      // action when event loops" flag, which re-arms once the unit has left.
+      // They sit between the hour table (g673-g684) and the footstep cues
+      // (g695-g703). Requires sourcedSheetOrder.
+      sourcedVentCamDraws: false,
+      // The office's random image (dump g811, generated e724): Random(1000)
+      // into the `random image` counter on the first loop `viewing` is 0
+      // after it was above 0 -- once at night start and once per monitor
+      // drop, not once per night. Sits after the monitor-down draw (g807) and
+      // before g822.
+      sourcedRandomImageDraw: false,
       // Sheet order for the draws the model otherwise places by hand (requires
       // sourcedSecondPass). g213-g497 run where the view draws ran, with g366/g368
       // after g294, g419 after g401 and g468-g476 after g440, then g498, g500-g506
@@ -269,6 +283,10 @@ export class Sim {
     this.cam = C.parkedCamera(this.opts.night);
     this.viewing = 0;
     this.lastViewed = 0;
+    /** g685-g690 "only one action" flags per unit (sourcedVentCamDraws) */
+    this.ventCamDrawn = {};
+    /** g811 "only one action" flag: armed until the draw, re-armed while viewing > 0 (sourcedRandomImageDraw) */
+    this.randomImageArmed = true;
     this.hasViewedCamera = false;
     this.maskOn = false;
     this.maskAnim = 0;
@@ -369,6 +387,8 @@ export class Sim {
       throw new Error('the frame-time hook drives the sheet-ordered countdowns: it requires sourcedSheetOrder');
     if ((this.opts.frameMs || this.opts.frameValue5) && this.opts.foxyEnabled && !this.opts.sourcedFoxyChain)
       throw new Error('the frame-time hook times Foxy through g824/g825/g864: it requires sourcedFoxyChain');
+    if (this.opts.sourcedVentCamDraws && !this.opts.sourcedSheetOrder)
+      throw new Error('sourcedVentCamDraws draws in the sheet-ordered pass: it requires sourcedSheetOrder');
     if (this.opts.sourcedFootstepDraws && !this.opts.sourcedSheetOrder)
       throw new Error('sourcedFootstepDraws draws in the sheet-ordered pass: it requires sourcedSheetOrder');
     if (this.opts.sourcedSheetOrder && !this.opts.sourcedSecondPass)
@@ -864,6 +884,7 @@ export class Sim {
       this.emit('puppet-attack', { at: 123 });
     }
     if (sheet && !this.hooked && f % C.HOUR_FRAMES === 0) this.applyAiHour(f / C.HOUR_FRAMES);          // g673-g684
+    if (sheet && this.opts.sourcedVentCamDraws) this.ventCamDraws();                      // g685-g690
     if (sheet && this.opts.sourcedFootstepDraws) this.footstepDraws();                    // g695-g703
     if (this.hooked) {                                                                   // g627, g629/g630, g673-g684
       if (this.passEvery(this.hookTimers.g627, 1000)) this.am++;
@@ -913,6 +934,31 @@ export class Sim {
     if (t.v > 0) return false;
     t.v += ms * 3;
     return true;
+  }
+
+  /** g685-g690: Random(4) the first loop a unit stands on CAM 05/06, re-armed when it leaves (sourcedVentCamDraws). */
+  ventCamDraws() {
+    /** @type {[string, number][]} */
+    const sites = [['toychica', 5], ['withbonnie', 5], ['toybonnie', 6], ['withchica', 6], ['mangle', 6], ['puppet', 6]];
+    for (const [id, cam] of sites) {
+      let here;
+      if (id === 'puppet') {
+        const p = this.puppet;
+        here = p.out && !p.atOpening && !p.inside && p.route ? p.route[p.idx] === cam : false;
+      } else {
+        const u = this.units.find(x => x.id === id);
+        here = !!u && !u.done && !u.atOpening && !u.inside && u.path[u.idx] === cam;
+      }
+      if (here && !this.ventCamDrawn[id]) { this.ventCamDrawn[id] = true; this.rng.int(0, 3, 0); }
+      else if (!here) this.ventCamDrawn[id] = false;
+    }
+  }
+
+  /** g811: Random(1000) once per stretch of viewing == 0 (sourcedRandomImageDraw). */
+  randomImageDraw() {
+    if (this.viewing === 0) {
+      if (this.randomImageArmed) { this.randomImageArmed = false; this.rng.int(0, 999, 0); }
+    } else this.randomImageArmed = true;
   }
 
   /** g695-g703: one draw per pending footstep cue, in sheet order (sourcedFootstepDraws). */
@@ -1191,6 +1237,7 @@ export class Sim {
     if (f % C.HOUR_FRAMES === 0 && !this.opts.sourcedSheetOrder) this.applyAiHour(f / C.HOUR_FRAMES);
     if (this.opts.sourcedPuppetGlitchDraws && !this.opts.sourcedSheetOrder) this.puppetGlitchLate();   // g774
     if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
+    if (this.opts.sourcedRandomImageDraw) this.randomImageDraw();                 // g811
     if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
     if (this.hooked ? this.hour >= 6 : f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
