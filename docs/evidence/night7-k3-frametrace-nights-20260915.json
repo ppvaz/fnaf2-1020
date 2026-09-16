@@ -706,6 +706,25 @@
    },
    "reading": "No starting state reproduces the night: the best of 65,536 still conflicts on 3 cycles, none reproduces Withered Chica's cycle sequence, and the longest exact prefix anywhere is 27 of 42. The window seed 47598 is 48th by prefix and 301st by fit. Same picture as full-02 (rank 67). The observable is not the problem and neither is the seed bracket: the mechanics diverge from the phone for every seed within 27 cycles, so no search over seeds can lock one until the model itself tracks a whole night.",
    "verdict": "SEED LOCK NOT ACHIEVABLE with the current model. Decision needed: a model-fidelity programme against the dump (Withered leave/return timing first: the phone's Bonnie periods 4,3,3,4,3,4,3,3,3,3 cycles vs the model's one-cycle-late returns around cycles 20-22 and 26-29), or a device-side read of the RNG state."
+  },
+  "witheredRulesVsDump": {
+   "question": "why the model's Withered Bonnie returns one cycle late (cycles 20-22, 26-29) for the best full-06 seed 47598 while the phone's Bonnie periods run 4,3,3,4,3,4,3,3,3,3 cycles",
+   "probe": "probe-bonnie.mjs / probe-rolls.mjs (forensics): per-frame Bonnie state and every rng.chance call, seed 47598 epoch 2364, 194-211 s",
+   "found": "Bonnie hops 1 -> 5 on the 194.98 s roll; the 199.98 s roll is chance(0.75) and FAILS, so she has no pending hop while the monitor is up 200.17-203.68 s and enters only after the 204.98 s roll at the next monitor raise (210.17 s). The cycle is lost to a failed roll, not to a gate.",
+   "dumpChecks": {
+    "aiCap": "g856-g863 hold old/new Freddy, Bonnie, Chica, new Foxy and Balloon Boy at 15 (g829 Foxy 17, g830 Golden Freddy 10): a 20 dial rolls at 15/20 = 0.75; the model does the same (STALLED_AI cap, MO_CHANCE, chance(p) equivalent to (state*20)>>>16 <= 14)",
+    "rollNeverLost": "g334 sets value0=1 every 5 s on a pass, g346 promotes 1->2 when value1==0 and your view is off her cam, g381/g382 need viewing hall light == 0, g384 (cam 5 -> office) needs viewing > 0, in danger == 0, office occupied == 0 and fires on the first loop the conditions hold; the model keeps the same pending hop (rollUnit pending, tickUnits consumes when canAdvance)",
+    "officeOccupied": "global 150: set by g379/g384/g388/g423 (three Withereds, Toy Freddy) and held by g714-g717 while any of the four is in office; g713 clears it every 490 ms. Balloon Boy never touches it, and the model does not gate a Withered entry on him either",
+    "inDanger": "global 125: raised by g443/g444 (Active 19, chicalookatyou), g445-g447 (a Withered in office with viewing == 0), g490 (Toy Freddy under the table); cleared by the g538-g555 leaves. The model carries it as the running blackout",
+    "leaveCooldown": "g539/g543: leaving the office writes value1 = Random(500) and value0 = 0; g362 drains value1 one per loop; g451 also writes value1 from counter 152 when her cam is viewed and lit",
+    "balloonBoy": "g342 -> value0=1 every 5 s; g359 promotes 1->2 in the same loop (nothing writes his value1 above 0); g413-g418 hop on value0==2; g417 needs viewing>0 and monitorUp. Matches the model."
+   },
+   "reading": "The Withered movement, entry and Balloon Boy rules the model implements match the dump. The lost cycle for 47598 is a legitimate 25% roll failure under the 15 cap, which means that if 47598 is the true seed the RNG stream had already desynchronised from the phone by 200 s (a differing number of draws), and if it is not, nothing here separates the candidates. The divergence source is a draw-count or roll-phase difference not yet located, not a movement rule.",
+   "openLeads": [
+    "the exact phase of the 5 s roll timer on the phone (CND_EVERY with rhTimerDelta) against a phone-side anchor that is not itself fitted to the rolls",
+    "draw-consuming groups not in the model (a census of every Random( in frame 3 against the model's draw sites)",
+    "rhGameFlags & 2 in this build"
+   ]
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
