@@ -1,8 +1,10 @@
 import * as C from './config.js';
 import { Rng } from './rng.js';
 
-/** route nodes whose marker overlaps `hear footsteps` (cams 01/2/3/4, hall stage 1/2) */
-const FOOTSTEP_NODES = new Set([1, 2, 3, 4, 'blindA', 'blindB']);
+/** route nodes whose entry plays a footstep sound. The marker box is overlapped from cams 01/2/3/4 too,
+ * but full-06's audio has no footstep sound (25-29) on any Withered hop onto them (100+ predicted), so the
+ * trigger is the hall stages, as for `hall movement` (docs/evidence/night7-k3-frametrace-nights-20260915.json). */
+const FOOTSTEP_NODES = /** @type {Set<string | number>} */ (new Set(['blindA', 'blindB']));
 const MON_DOWN = 'down', MON_RAISING = 'raising', MON_UP = 'up', MON_LOWERING = 'lowering';
 
 export class Sim {
@@ -197,6 +199,14 @@ export class Sim {
       // draw needs the move within ten loops of g349's acceptance. Requires
       // sourcedSheetOrder.
       sourcedFootstepDraws: false,
+      // Research knob under sourcedFootstepDraws: Foxy's hall-stage entry draw (g698 via g389), the least
+      // sourced part of the trigger. Off leaves the other eight characters' draws in place.
+      footstepFoxy: true,
+      // Mangle's mask leaves (dump g400: the 10%/s roll under the mask; g401: five mask ticks) place her at
+      // CAM 7 (marker 62), three hops from the vent, not at the route start the unit table's repelIdx 0 gives.
+      // Every other unit's repelIdx matches its dump endpoint (g538-g555, g213, g437, g439/g440, g292/g294).
+      // On full-06 the phone's Mangle returned 5-10 s faster than the model on every approach.
+      sourcedMangleReturn: false,
       // Sheet order for the draws the model otherwise places by hand (requires
       // sourcedSecondPass). g213-g497 run where the view draws ran, with g366/g368
       // after g294, g419 after g401 and g468-g476 after g440, then g498, g500-g506
@@ -1368,7 +1378,7 @@ export class Sim {
     if (fx.A !== 2 || this.hallLatch) return;       // the latch g489 left on the previous frame
     if (fx.loc === 'parts') {                        // g389
       fx.A = 0; fx.loc = 'hall'; fx.D = 0;
-      if (this.opts.sourcedFootstepDraws && this.frame - (fx.acceptedAt ?? -100) < 10) fx.footstep = true;   // hall stage 1, value 2 still > 0
+      if (this.opts.sourcedFootstepDraws && this.opts.footstepFoxy && this.frame - (fx.acceptedAt ?? -100) < 10) fx.footstep = true;   // hall stage 1, value 2 still > 0
       this.emit('foxy-arrive');
     } else if (fx.loc === 'hall' && !fx.gotYou) {    // g390
       fx.A = 0; fx.gotYou = true;
@@ -1486,7 +1496,7 @@ export class Sim {
 
   unitLeave(u, opts = {}) {
     u.atOpening = false; u.inside = false;
-    u.idx = opts.idx ?? u.repelIdx ?? 0;
+    u.idx = opts.idx ?? (this.opts.sourcedMangleReturn && u.id === 'mangle' ? u.path.findIndex(n => n === 7) : u.repelIdx) ?? 0;   // g400/g401: CAM 7
     // Repels write the unit's B: the movement pipeline requires B = 0, so the
     // cooldown is the same counter as the flash stun (and Toy Bonnie's
     // opening timer).
@@ -1815,7 +1825,6 @@ export class Sim {
         const at = u.basePath.indexOf(2);
         u.path = [...u.basePath.slice(0, at + 1), 1, 2, ...u.basePath.slice(at + 1)];
         u.idx = at;
-        if (this.opts.sourcedFootstepDraws) u.footstep = true;   // cam 01 overlaps the marker
         this.emit('route-fork', { who: u.id, at: 2, to: 1 });
       } else if (u.id === 'mangle' && here === 1 && u.basePath) {                                      // g399
         u.path = u.basePath;

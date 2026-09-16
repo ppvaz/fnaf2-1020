@@ -109,7 +109,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "No lock on three nights. RNG, seed cast and bracket verified in the dex. The footstep draws as implemented degrade the fit and are refuted for now. Next: the audio onsets (full-06 capture) as a timing observable, and a per-cycle divergence diagnosis of the best window seeds.",
+ "notYetScored": "No lock on three nights. Best tracking: full-06 seed 47598, 20 exact cycles (2.3% of controls). Leads: Mangle's send-back/return is faster on the phone than in the model; full-02 loses under footsteps; BB vocal detection pending; the loop-clock flag unverified.",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -474,6 +474,46 @@
     "footstepSounds25to29": "none detected at threshold 0.45 against 100+ predicted by 'every hop onto cams 01-4 / hall stages': the trigger is narrower than the marker box, most likely the hall stages only, as for hall movement",
     "bangsWithFittedScale": "window 14-17 of 32 matched (from 10-12 with the wrong scale)"
    }
+  },
+  "footstepTriggerHallStages": {
+   "change": "FOOTSTEP_NODES narrowed to hall stage 1/2 (full-06 audio: no footstep sound 25-29 on any Withered hop onto cams 01-4); footstepFoxy knob (default on) isolates Foxy's g389 entry draw",
+   "full06": {
+    "windowPrefixes": [
+     20,
+     12,
+     10,
+     6,
+     6,
+     6
+    ],
+    "bestSeed": 47598,
+    "controlsAtOrAbove": "7/300 (2.3%)",
+    "foxyOff": "16 (18/300)"
+   },
+   "full02": {
+    "windowPrefixes": [
+     4,
+     4,
+     3,
+     3,
+     3,
+     3
+    ],
+    "controlsAtOrAbove": "48/300",
+    "foxyOff": "4 (62/300)",
+    "noFootsteps": "8 (5/300)"
+   },
+   "reading": "the longest exact tracking so far (200 s on full-06, seed 47598 at epoch 2364 on the per-frame trace), helped by Foxy's hall entry; full-02 still loses under any footstep variant, unexplained. Not a lock: seven controls track as long."
+  },
+  "loopClock": {
+   "dex": "CRun.f_GameLoop: with rhGameFlags & 2 the runtime compares rh4LoopTheoric (newGetCptVbl = (currentTimeMillis - refTime) * gaFrameRate / 1000) with rhLoopCount and runs the shortfall, at most 3 loops per pass, dropping the excess; rhTimerDelta is exact real ms (no clamp)",
+   "meaning": "if the flag is set, logic loops (and the per-loop g822 draw) follow the nominal rate, not the captured frames; a stall of k frames loses k-3 loops; 25-35 ms hiccups lose nothing. The per-captured-frame hook models the wrong clock",
+   "threeClocksFull06": {
+    "perFrame": "best 12c/15h, longest prefix 16",
+    "catchUp": "best 10c/17h, longest prefix 13",
+    "sixtyFps": "best 10c/17h, longest prefix 10"
+   },
+   "reading": "the clocks differ little; catch-up equals 60 fps on fit as expected. The clock is not the main residual. The flag itself (rhGameFlags & 2) is unverified for this build."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"

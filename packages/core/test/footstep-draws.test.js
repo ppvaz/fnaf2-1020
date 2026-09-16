@@ -9,22 +9,22 @@ const script = s => { const log = []; s.rng.int = (a, b) => { log.push([s.frame,
 
 assert.throws(() => new Sim({ night: 7, sourcedFootstepDraws: true }), /requires sourcedSheetOrder/);
 
-// Withered Chica hops 8 -> 4 (cam 4 overlaps the marker): one Random(5) that frame; 4 -> 2 (cam 2): another.
+// Withered Bonnie hops 7 -> hall stage 1 (blindA): one Random(5) that frame; a further hop off it draws nothing.
 {
   const s = new Sim({ ...BASE, sourcedFootstepDraws: true }); s.frame = 1000;
-  const u = s.units.find(x => x.id === 'withchica');
+  const u = s.units.find(x => x.id === 'withbonnie'); u.idx = u.path.indexOf(7);
   const log = script(s);
   s.advance(u); s.tick();
-  assert.equal(u.path[u.idx], 4);
+  assert.equal(u.path[u.idx], 'blindA');
   assert.deepEqual(log.filter(([, k]) => k === '0,4').map(([f]) => f), [1001], 'one Random(5) on the hop frame');
-  s.advance(u); s.tick();
-  assert.equal(u.path[u.idx], 2);
-  assert.equal(log.filter(([, k]) => k === '0,4').length, 2, 'a second hop onto a marker draws again');
   s.tick(); s.tick();
-  assert.equal(log.filter(([, k]) => k === '0,4').length, 2, 'no draw while standing there');
+  assert.equal(log.filter(([, k]) => k === '0,4').length, 1, 'no draw while standing there');
+  s.advance(u); s.tick();
+  assert.equal(u.path[u.idx], 1);
+  assert.equal(log.filter(([, k]) => k === '0,4').length, 1, 'cam 01 is not a footstep trigger');
 }
 
-// Withered Freddy 8 -> 7: cam 7 does not overlap the marker, no draw; 7 -> 3 draws.
+// Withered Freddy 8 -> 7 -> 3: neither is a hall stage, no draw; 3 -> hall stage 2 draws.
 {
   const s = new Sim({ ...BASE, sourcedFootstepDraws: true }); s.frame = 1000;
   const u = s.units.find(x => x.id === 'withfreddy');
@@ -32,7 +32,9 @@ assert.throws(() => new Sim({ night: 7, sourcedFootstepDraws: true }), /requires
   s.advance(u); s.tick(); assert.equal(u.path[u.idx], 7);
   assert.equal(log.filter(([, k]) => k === '0,4').length, 0, 'cam 7 is not a footstep marker');
   s.advance(u); s.tick(); assert.equal(u.path[u.idx], 3);
-  assert.equal(log.filter(([, k]) => k === '0,4').length, 1);
+  assert.equal(log.filter(([, k]) => k === '0,4').length, 0, 'cam 3 neither');
+  s.advance(u); s.tick(); assert.equal(u.path[u.idx], 'blindB');
+  assert.equal(log.filter(([, k]) => k === '0,4').length, 1, 'hall stage 2 draws');
 }
 
 // Mangle onto hall stage 1 (blindA) draws Random(3), not Random(5).
@@ -50,4 +52,4 @@ assert.throws(() => new Sim({ night: 7, sourcedFootstepDraws: true }), /requires
   if (new Sim({ night: 7, seed: 1 }).opts.sourcedFootstepDraws === false)
     assert.equal(run({}), run({ sourcedFootstepDraws: false }), 'explicit off equals the default');
 }
-console.log('footstep draws: one Random(5) per roll hop onto cams 01/2/3/4 or the hall stages, Random(3) for Mangle, none elsewhere or while standing; off unchanged');
+console.log('footstep draws: one Random(5) per roll hop onto hall stage 1 or 2, Random(3) for Mangle, none elsewhere or while standing; off unchanged');

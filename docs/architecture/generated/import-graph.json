@@ -884,6 +884,13 @@
       ]
     },
     {
+      "file": "packages/core/test/mangle-return.test.js",
+      "imports": [
+        "../src/mechanics/plant-model.js",
+        "node:assert/strict"
+      ]
+    },
+    {
       "file": "packages/core/test/monitor-down-draw.test.js",
       "imports": [
         "../src/mechanics/plant-model.js",
