@@ -109,7 +109,7 @@
   "directStatusOverForward": "TRACE status answered in 25.3 ms"
  },
  "k3OnThePhone": "6 wins, 1 loss (full-04); full-03 was not a night. Not a cohort; a traced run is a measurement run.",
- "notYetScored": "No lock on three nights. Best tracking: full-06 seed 47598, 20 exact cycles (2.3% of controls). Leads: Mangle's send-back/return is faster on the phone than in the model; full-02 loses under footsteps; BB vocal detection pending; the loop-clock flag unverified.",
+ "notYetScored": "No lock on three nights; the 65,536-seed census shows the encounter/hall observable cannot lock one on this model. Best window tracking: full-06 seed 47598 (per-frame clock, 20 cycles, 7/300 controls). Sourced corrections found tonight: hall-stage footsteps, Mangle's CAM 7 return; leads: her g397/g399 fork timing, full-02's footstep loss, BB vocal detection (0.30 scan pending).",
  "retained": {
   "forensics": "artifacts/forensics/k3-frametrace-nights-20260915 (gitignored)",
   "sha256": {
@@ -514,7 +514,99 @@
     "sixtyFps": "best 10c/17h, longest prefix 10"
    },
    "reading": "the clocks differ little; catch-up equals 60 fps on fit as expected. The clock is not the main residual. The flag itself (rhGameFlags & 2) is unverified for this build."
-  }
+  },
+  "mangleReturnRescore": {
+   "change": "sourcedMangleReturn (g400/g401: a mask leave lands on CAM 7, not CAM 12) on top of the per-frame trace, hall-stage footsteps and Foxy's draw",
+   "full06": {
+    "windowPrefixes": [
+     16,
+     16,
+     14,
+     6,
+     6,
+     6
+    ],
+    "controlsAtOrAbove": "20/300",
+    "bestFit": {
+     "low16": 47592,
+     "conflicts": 7,
+     "hits": 20
+    },
+    "reference": "prefix 20 (7/300), fit 9 conflicts / 18 hits without the return"
+   },
+   "reading": "the exact prefix shortens while the whole-night fit improves, and different window seeds top each metric; the window seeds remain indistinguishable from one another and the fits are dominated by model error. The correction is validated separately against the phone's Mangle sounds (mangleSoundMatch)."
+  },
+  "mangleSoundMatch": {
+   "phoneMangleSounds": "game 20.6, 80.0, 120.7, 150.1, 260.2, 300.2, 310.9, 330.3, 370.3, 400.3 s (scale 0.99890, offset ~39.95): on the 5 s grid, with a late burst every 10-20 s that is a masked Mangle sent to CAM 7 and re-entering the hall stage five seconds later",
+   "modelMangleHallEntries47598": {
+    "withCam7Return": [
+     30,
+     70,
+     130,
+     180,
+     270,
+     380
+    ]
+   },
+   "match": "1-3 of 10 for every window seed and control, before and after the CAM 7 return",
+   "modelDiscrepancies": [
+    "at the start the model holds Mangle at CAM 11 from 5 to 20 s (two rolls) while the phone's first hall entry sound is at 20.6 s, four uninterrupted hops; dump g391/g392 carry no condition beyond her position and a pending move, so the hold is the model's own (the k3 opening's cam 11 -> cam 9 -> wind sequence)",
+    "from 280 to 345 s the model bounces her CAM 2 <-> CAM 01 on the g397/g399 fork (decide path 2; hall light off) while the phone's sounds say she reached the vent every cycle"
+   ],
+   "reading": "the Mangle timeline is the model's, not the seed's; her CAM 11 hold and the fork timing are the next sourced-rule checks"
+  },
+  "censusFull02": {
+   "setup": "all 65,536 starting states on full-02 at epoch 2447.333 (the epoch that fitted 34934), 60 fps, encounters plus hall classes, sourcedLastViewPause and sourcedHallEntry on",
+   "encounters": {
+    "top": [
+     [
+      45285,
+      3,
+      20
+     ],
+     [
+      24221,
+      4,
+      19
+     ],
+     [
+      65386,
+      4,
+      19
+     ],
+     [
+      48690,
+      4,
+      19
+     ],
+     [
+      42445,
+      5,
+      18
+     ]
+    ],
+    "rank34934": 67,
+    "seedsAtOrAbove34934": 72,
+    "otherWindowRanks": "6135 .. 62835, i.e. random"
+   },
+   "combined": {
+    "top": [
+     [
+      11736,
+      17,
+      37
+     ],
+     [
+      48690,
+      17,
+      37
+     ]
+    ],
+    "rank34934": 314
+   },
+   "reading": "34934 is in the top 0.1% but about seventy seeds fit the night as well or better, and the best random seed beats it outright: the observable's noise floor on this model holds tens of seeds, so no search over seeds can lock one"
+  },
+  "clockLesson": "the 'Mangle held at CAM 11 for two rolls' seen under the per-frame trace clock is absent at 60 fps (she hops at 5, 10, 15, 20 s, matching the phone's first sound at 20.6 s): the per-frame hook misplaces the rolls, as the dex's catch-up loop predicts; the 60 fps / catch-up clock is the one to trust"
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
 }
