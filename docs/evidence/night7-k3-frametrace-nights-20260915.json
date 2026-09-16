@@ -807,6 +807,69 @@
     "image": "window prefixes [7,6,6,6,6,6]; best fit 47598 19 hits / 8 conflicts at 2564/first 198, 2/300 controls at or above; prefix 6"
    },
    "consequence": "the 20-22 cycle prefixes reported at epoch 2364 were obtained with presses ~200 ms earlier than the phone pressed; at the press-aligned epoch every seed, window and control, diverges within 10 cycles. The epoch must be fixed from the trace, not fitted. A 65,536-seed census at epoch 2564 with the random-image draw is running to rank 47598's 19/8 whole-night fit."
+  },
+  "censusFull06Aligned": {
+   "setup": "all 65,536 seeds on full-06 at the press-aligned epoch 2564 ms (first office frame 198), per-frame trace clock, reference options plus sourcedRandomImageDraw",
+   "encounters": {
+    "minConflicts": 4,
+    "seedsAtMin": 1,
+    "conflictDistribution0to12": [
+     0,
+     0,
+     0,
+     0,
+     1,
+     1,
+     2,
+     10,
+     13,
+     29,
+     68,
+     80,
+     164
+    ],
+    "longestExactPrefix": 26,
+    "top": [
+     [
+      42530,
+      4,
+      23,
+      "prefix 22"
+     ],
+     [
+      41486,
+      5,
+      22
+     ],
+     [
+      27568,
+      6,
+      21
+     ],
+     [
+      63144,
+      6,
+      21
+     ]
+    ]
+   },
+   "window": {
+    "47598": {
+     "conflicts": 8,
+     "hits": 19,
+     "prefix": 2,
+     "rankByFit": 15,
+     "of": 65536
+    },
+    "47599": {
+     "conflicts": 13,
+     "hits": 14,
+     "rankByFit": 380
+    },
+    "others": "ranks 2069-52854"
+   },
+   "reading": "With the epoch fixed from the trace instead of fitted, the bracket candidate 47598 ranks 15th of 65,536 by whole-night fit (top 0.02%); the chance that one of 14 bracket seeds lands in the top 15 is about 0.3%. It is the sharpest seed signal of the three nights, and it appears only under the press-aligned epoch and the random-image draw. It is not a lock: 14 seeds fit better, the best still conflicts on 4 cycles, and 47598's exact prefix is 2 (its early cycles conflict while its later ones match, which points at an opening-phase model error rather than the loop).",
+   "verdict": "NO LOCK by the predeclared rule (0 conflicts). Candidate: 47598 at 0.3% chance level. Next: the opening-phase presses (cycles 0-4) aligned from the trace the same way, then repeat on full-04 and full-02 with their own trace-fixed epochs."
   }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
