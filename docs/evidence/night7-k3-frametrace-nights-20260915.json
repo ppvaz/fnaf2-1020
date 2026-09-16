@@ -611,7 +611,34 @@
    },
    "reading": "34934 is in the top 0.1% but about seventy seeds fit the night as well or better, and the best random seed beats it outright: the observable's noise floor on this model holds tens of seeds, so no search over seeds can lock one"
   },
-  "clockLesson": "the 'Mangle held at CAM 11 for two rolls' seen under the per-frame trace clock is absent at 60 fps (she hops at 5, 10, 15, 20 s, matching the phone's first sound at 20.6 s): the per-frame hook misplaces the rolls, as the dex's catch-up loop predicts; the 60 fps / catch-up clock is the one to trust"
+  "clockLesson": "the 'Mangle held at CAM 11 for two rolls' seen under the per-frame trace clock is absent at 60 fps (she hops at 5, 10, 15, 20 s, matching the phone's first sound at 20.6 s): the per-frame hook misplaces the rolls, as the dex's catch-up loop predicts; the 60 fps / catch-up clock is the one to trust",
+  "voicedDetectorFull06": {
+   "scripts": "artifacts/forensics/k3-frametrace-nights-20260915/{voiced.py,voiced2.py,laughs.mjs,vocal-score2.py,vocal-strong.py,curves-meta.json,vocal-grid-full-06.json}",
+   "detector": "whole-sample spectrogram correlation (16 kHz, STFT 512/256, 48 log bands 150-6000 Hz, log power, per-frame mean removed), 'band' variant: per-band centring inside every slice, so a static speaker+Bluetooth colouration cannot lower the score; curves z-scored per template because 'hi' (21) has a higher floor",
+   "validation": {
+    "injected23AtCaptureRms": "peak 0.32 at the injected time vs p99 0.15; -6 dB 0.22; -12 dB lost",
+    "knownVentBangs": "0.24-0.27 at the four transient-detector bangs vs p99 0.15 (the transient detector scored them 0.63-0.65)",
+    "crossTemplate": "21/23/24 mutual peaks 0.15-0.21; Mangle 30-32 mutual 0.11-0.24"
+   },
+   "phoneVocals": {
+    "grid": "the per-5 s-slot argmax over 21/23/24 puts z>=3.0 with a 1.0 margin at game 5:23 10:23 20:21 95:24 110:24 115:24 140:24 180:24 185:23 200:21 240:23 260:23 280:21 290:24 335:21 340:24 380:23 420:23; the strong laugh (24) hits sit on the 10 s grid",
+    "caveat": "21 exceeds z 1.5 in most slots; only the >=3.5 hits (13) are plausibly real cues"
+   },
+   "scoring": {
+    "model": "laughs.mjs: every sourced option + sourcedLastViewPause/HallEntry/FootstepDraws on full-06 per-frame clock (first office frame 201), 19 epochs 2364-2664 ms, only model nights that survive (the phone won)",
+    "seeds": "window 47592-47605 and the same 300 controls",
+    "margin": "vocal-score2.py: sum over model laughs of z(own template) - max z(other two) in [t-0.35, t+0.9] s, per-seed best epoch",
+    "strongHits": "vocal-strong.py: hits/mismatches/unmatched of the strong phone vocals against model laughs within 0.6 s"
+   },
+   "results": {
+    "margin460": "window best 47604 z -0.38, 47/300 controls above; 200 s: 47592 +0.12, 63/300",
+    "strong3.0": "47592 (epoch 2397.3) 4 hits 0 mismatches 14 unmatched, 5/300 controls above; 47604 5 hits 2 mismatches 11 unmatched, 10/300",
+    "strong3.5": "47592 3 hits 0 mismatches, 4/300",
+    "holdOut": "47592 halves: 0-200 s 3 hits/0 mism/6 unmatched, 200-440 s 1/0/8; controls p95 of hits-mismatches is 3 in either half",
+    "coverage": "a surviving control night has a model laugh within 0.6 s of any given strong phone vocal 32-46% of the time (72% at 20 s), so 4 hits with 0 mismatches over 18 vocals is inside chance"
+   },
+   "verdict": "NO LOCK. The vocal observable is real but weak in the Bluetooth capture, and the model puts no laugh near 10-14 of the 18 strong phone vocals under every window seed and epoch: Balloon Boy's modelled timeline (hop period, office and vent dwell) disagrees with the phone before the seed can be read from it. Next: verify BB's move timer and dwell against the dump; a wired or on-phone audio capture for the vocals; the detector is not the lever."
+  }
  },
  "regrade20260915": "grade-run.sh re-run on full-02 and full-04 after pulling 2d7f437 (decode-once.py portable fuse): both exit 0, grade.log unchanged apart from step timings; verdicts as recorded"
 }
