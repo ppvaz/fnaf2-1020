@@ -5788,3 +5788,21 @@ the rest of the night left alone so the run is still a graded 6 AM attempt. Evid
 others, so the survey route needs **no new geometry** -- and that calibrated set beats the
 {8,7,4,3,10,9} set proposed above: 15.54 bits and 76% of seeds uniquely named by raise 7, 90% by
 raise 8 (75 s), 98% by raise 10. Build the route on the six cameras the phone can already tap.
+
+**2026-09-16 (late): one seed picked out of the sixteen the clock brackets.** Scoring the
+observations in time order and stopping at the first mismatch -- so lucky late agreement cannot
+rescue a wrong seed -- the hall reads bound the first encounter on their own: flash 3 (44.9 s) is
+lit with no blackout and window 4 (49.2 s) shows Withered Chica, so the night's first encounter
+began between 44.9 and 50.5 s and it was Withered Chica. Of the 656 (bracket seed, latency) pairs
+only 34 reproduce that, all of them seeds 51380 or 51381 and all at L >= 68 ms -- which refutes
+the 52 ms this run's monitor-to-static measurement gave and agrees with the k3 night's 83 ms.
+51381 then fails at observation 3. **Seed 51380 tracks the phone for 16 consecutive observations,
+to about 85 s, while every other bracket seed stops at 8 or earlier, at every latency from 68 to
+100 ms.** At a fixed L = 84 ms only 0.496% of all 65,536 seeds reach an unbroken prefix of 16, so
+the odds within the bracket are about 13:1 for 51380. That is a **pick, not a lock**: the global
+best prefix over the whole seed space is 26, outside the bracket, so the model is still unfaithful
+enough for chance to beat the truth over a full night. Two defects are now isolated: the model's
+encounter timing slips whole 10 s cycles (three of 51380's cue pairs land exactly on the phone's,
+others sit one cycle out), and at L >= 68 ms Foxy's g573 kills at 225-265 s on a night the phone
+won. Fixing the cycle slip is the shortest path from pick to lock. Evidence:
+[night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
