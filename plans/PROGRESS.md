@@ -5908,7 +5908,7 @@ Survival is a **240 ms band that recurs every 5000 ms**, the movement-roll perio
 +10000 ms at 100 ms steps, nothing outside those bands lives. Corrected to one clock the origin is
 **4972.2 ms**, and the anchor's own record predicts 4972 independently (aim 4870, fired 0.73 ms late,
 10 ms handoff, its phone-wall onset estimate 91.2 ms after the true seed). The model then reaches
-6 AM on every seed censused.
+6 AM on **all 65,536 seeds** -- the whole space, with no death of any cause.
 
 `phase-reconstruct.mjs` now names the clock and carries a `phoneWall` block with the skew, derived
 from the anchor's own two conversions of the same onset, so the comparison cannot be made silently

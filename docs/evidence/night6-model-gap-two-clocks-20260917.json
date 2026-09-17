@@ -5,7 +5,7 @@
  "date": "2026-09-17",
  "supersedes": "night6-h-seedlock-census-20260916 (the 600/600 model-gap measurement) and the Foxy-chain reading in the two commits that followed it",
  "question": "The model killed all 600 censused seeds on night6-c2-01, a Night 6 run that reached 6 AM on the phone with 42 of 42 cycle gates AGREED. Which rule was wrong?",
- "verdict": "No rule was wrong. The reconstruction compared two different wall clocks. `phase.json`'s origin and every cycle gate's `reachedAt` are stamped on the HOST's wall clock; the office seed is read out of the phone's logcat on the PHONE's wall clock. On this run the two stood 1374.8 ms apart, so the schedule was placed 1.37 s late against the game's own clock. Corrected, the model reaches 6 AM on every seed tested.",
+ "verdict": "No rule was wrong. The reconstruction compared two different wall clocks. `phase.json`'s origin and every cycle gate's `reachedAt` are stamped on the HOST's wall clock; the office seed is read out of the phone's logcat on the PHONE's wall clock. On this run the two stood 1374.8 ms apart, so the schedule was placed 1.37 s late against the game's own clock. Corrected, the model reaches 6 AM on all 65536 seeds, with no death of any cause.",
  "howTheRuleOutWasDone": {
   "principle": "Before moving any press, every rule that could produce the death was read out of the event dump and compared to the model line by line. The fix had to not be a rule change.",
   "groupsVerified": [
@@ -29,9 +29,9 @@
   "crossCheck": "The anchor aimed at onset + 4870 ms with k = 0 and fired 0.73 ms late, the handoff added 10 ms, and its own phone-wall onset estimate sat 91.2 ms after the true seed (its low16 24942 against the seed's 24851). That predicts 4961.2 + 0.7 + 10 = 4972, which is the corrected origin to 0.2 ms. The two paths agree."
  },
  "measured": {
-  "census": "PENDING",
-  "at3000Seeds": "3000/3000 reached 6 AM at origin 9903 (the same band, one 5000 ms period later), before the skew was derived.",
-  "atTheCorrectedOrigin": "512/512 reached 6 AM at origin 4972.2.",
+  "census": "EXHAUSTIVE: 65536/65536. Every seed in the 16-bit space reaches 6 AM at the corrected origin 4972.2 ms, with no death of any cause. The route is not merely survivable on this phase, it is seed-independent there.",
+  "at3000Seeds": "3000/3000 at origin 4972.2 on a spread panel, and 3000/3000 at origin 9903 -- the same band one 5000 ms period later, scored before the skew was derived.",
+  "atTheCorrectedOrigin": "512/512, then 3000/3000, then the exhaustive 65536/65536.",
   "before": "0/600 at origin 6347: 368 Foxy, 220 Golden Freddy, 12 inside-office.",
   "bands": "Survival is a 240 ms band that recurs every 5000 ms, which is the game's own movement-roll period. Swept -1000 to +10000 ms around the used origin at 100 ms steps, the only survivors are in those bands; everywhere else at most 1 seed in 64 lives. Measured edges at 20 ms resolution: origin 9767 to 10007 survives, 9747 and 10027 do not. The corrected origin 4972.2 sits in the band one period earlier, whose upper edge is between 4997 and 5047.",
   "whyTheUsedOriginWasTheWorstCase": "6347 is 1477 ms past the band centre, close to the middle of the 5000 ms period -- the furthest a phase error can be from a surviving band."
