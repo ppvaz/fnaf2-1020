@@ -31,6 +31,27 @@ predeclared ten-run cohort: [**3 wins, 7 deaths**](docs/evidence/night7-cohort-k
 A single clear and a reliability claim are different claims, and
 [Plan 12](plans/12-end-to-end-evidence-campaign.md) owns the ladder between them.
 
+**All ten Custom Night presets are viable — in the model.** Night 7 here had only
+ever meant canonical 10/20; the other nine menu presets are different AI vectors
+on the same night-7 rules and had never been asked. On 2026-09-17 all ten cleared
+**3000/3000 in all four lanes** — exact, exact worst, device, device worst — at a
+per-press lateness band wider than the phone's own worst measured per-cycle
+spread on this route. That is 120,000 simulated nights with no loss, and it is
+`MODEL_ONLY`: **no phone was run for it.**
+
+The ten green rows are not the finding. Getting them took one knob, and the
+reason is a floor. `hallOffsetMs` 9500 put the Foxy-reset hall pulse 300 ms after
+the mask-OFF press; `MASK_ANIM_OFF` is 250 ms and `lit?` needs `mask = 0`, so the
+pulse cleared the animation it depends on by **50 ms** — narrower than the
+phone's own measured displacement. When that gap closes there is no light, Foxy
+is never reset, and he takes the night: at a 0–100 ms band the shipped offset
+scored 107/200 on 10/20 with *every* loss to Foxy, while the exact lane stayed
+200/200, which is why no existing gate saw it. The offset now sits at 9613, the
+centre of a measured 141 ms plateau, clearing each edge by about 70 ms; the upper
+edge has no mechanism yet and is recorded as a measured edge rather than dressed
+in an inequality
+([`night7-preset-sweep`](docs/evidence/night7-preset-sweep-20260917.json)).
+
 **What is open.** The bottleneck is model fidelity, not execution. The model had
 been killing every censused seed on nights the phone won; on 2026-09-17 that was
 traced to an instrument error rather than a rule — the reconstruction compared
@@ -38,9 +59,10 @@ the host's wall clock against the phone's, 1374.8 ms apart, and placed the whole
 schedule 1.37 s late. Corrected to one clock, the same route reaches 6 AM on all
 65,536 seeds. That record explicitly does *not* claim the model now predicts the
 phone ([`night6-model-gap-two-clocks`](docs/evidence/night6-model-gap-two-clocks-20260917.json)).
-Still load-bearing: the census assumes a constant 16.667 ms frame, and the next
-physical test is one binding re-run with `--frame-trace` so the phone's own frame
-deltas replace that constant.
+Still load-bearing: the census assumes a constant 16.667 ms frame. Two physical
+tests are outstanding — one binding re-run with `--frame-trace`, so the phone's
+own frame deltas replace that constant, and one graded Night 7 run on a preset
+other than 10/20 at `hallOffsetMs` 9613.
 
 Current state is maintained in [`plans/PROGRESS.md`](plans/PROGRESS.md); the
 rung-by-rung reading of what "solved" would even mean is in
