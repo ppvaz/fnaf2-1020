@@ -21,7 +21,10 @@
   "fromMs": 1789598222512,
   "toMs": 1789598222527,
   "candidates": 16,
-  "low16": [51376, 51391],
+  "low16": [
+   51376,
+   51391
+  ],
   "newConfirmation": "The bracket is now placed by the frame trace itself, not only by the helper's night onset: converted to the helper's monotonic clock through the campaign's paired sample (snapshotNs 928705139012432 = wallMs 1789598207421), it falls 1290.3-1305.3 ms into the trace's own 1335.1 ms office-load gap (rows 765 -> 766), ending 29.8 ms before the first frame after the gap and 59.6 ms before the first office frame (row 767). Two independent clocks agree on where the office frame was seeded."
  },
  "observables": {
@@ -68,5 +71,18 @@
   "greenHere": "npm run typecheck, npm run test:unit, node packages/core/test/unconditional-draws.test.js, node packages/core/test/frame-time-hook.test.js, node tools/device/test-fact-register.mjs (all exit 0)",
   "known-red": "npm run test:contracts fails only on tools/device/test-decode-once.py, which fails identically on the committed HEAD with the working tree stashed: environmental here, not from this change"
  },
- "retained": "artifacts/forensics/seedlock-night6-20260916/ (run.sh, attempt.log, mmfruntime.logcat, office-seed-bracket.json, touch-frames.py, n6-presses.py, n6-score.mjs, n6-compare.py, n6-census-compare.py, n6-eyehole.json, n6-hall-labels.json, the contact sheets, SHA256SUMS). artifacts/ is gitignored, so the binding that won is committed as tools/device/campaign-night6-h-winner.json (fnv1a-3d5b2167; the register's h entry is the pre-migration fnv1a-37278c63)."
+ "retained": "artifacts/forensics/seedlock-night6-20260916/ (run.sh, attempt.log, mmfruntime.logcat, office-seed-bracket.json, touch-frames.py, n6-presses.py, n6-score.mjs, n6-compare.py, n6-census-compare.py, n6-eyehole.json, n6-hall-labels.json, the contact sheets, SHA256SUMS). artifacts/ is gitignored, so the binding that won is committed as tools/device/campaign-night6-h-winner.json (fnv1a-3d5b2167; the register's h entry is the pre-migration fnv1a-37278c63).",
+ "nextRoute": {
+  "question": "How much sooner would a route that surveys cameras during its monitor time name the seed?",
+  "method": "n6-positions.mjs records every unit's node, Foxy's and the Puppet's at each monitor raise. Censused over all 65,536 seeds on this run's own presses (first 8,000 frames), the survey signature is, per raise, the sorted unit set standing on each surveyed camera.",
+  "result": {
+   "6 cams {8,7,4,3,10,9}": "12.08 bits / 17% of seeds uniquely named by raise 5, 15.08 / 65% by raise 7, 15.65 / 83% by raise 8 (75 s), 15.96 / 97% by raise 10",
+   "8 cams {8,7,4,3,2,1,10,9}": "13.02 / 31% by raise 5, 15.49 / 82% by raise 7, 15.98 / 98% by raise 10",
+   "12 cams": "14.28 / 51% by raise 5, 15.78 / 91% by raise 7",
+   "this run's eyehole route": "2.02 bits / 0% by window 5, 4.18 / 0% by window 7, 7.51 / 1% by window 10, 14.81 / 49% by window 18"
+  },
+  "decorrelation": "the survey signature is no more stable than the eyehole under latency error (first differing raise at 6 ms: median 9-14, p10 5-6), so the gain is entirely in speed: a six-camera survey delivers 16 bits at raise 7-8, before the median decorrelation point, where the eyehole route needs window 18, well after it.",
+  "caveat": "on night 6 the three Toys sit at CAM 9 until 2 AM, so the early bits come from the three Withereds and Mangle; a night whose dials are all live from the first hour would separate faster.",
+  "proposal": "a Night 6 seed-lock route identical to binding h except that the monitor-up stretch steps through {8,7,4,3,10,9} instead of parking on CAM 11, reading each feed from the video. Lock decided on raises 0-8 (the first 75 s), with the rest of the night unchanged so the 6 AM result is still a graded run."
+ }
 }

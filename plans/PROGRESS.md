@@ -5769,3 +5769,17 @@ g822 is an application StartOfFrame condition (object type -3, num -1), not the 
 it now draws once, before g811. Rung: none above FIXTURE (the night is device evidence for the
 binding, not a promotion). Evidence:
 [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
+
+**2026-09-16 (same night, sizing the fix): a camera survey would name the seed in 75 s where
+the eyehole route needs 190.** `n6-positions.mjs` records every unit's node at each monitor
+raise; censused over all 65,536 seeds on the same run's presses, a six-camera survey
+{8,7,4,3,10,9} reaches 15.08 bits and names 65% of seeds uniquely by raise 7, 83% by raise 8
+(75 s) and 97% by raise 10; eight cameras reach 82% by raise 7. The route actually flown reads
+2.02 bits by window 5, 4.18 by window 7 and 14.81 (49% unique) only by window 18. The survey
+signature is no more stable under latency error than the eyehole (first differing raise at 6 ms:
+median 9-14, p10 5-6), so the whole gain is speed: it delivers its sixteen bits before the median
+decorrelation point instead of long after it. Night 6 understates this, because its three Toys
+sit at CAM 9 until 2 AM. Proposed next physical test: binding h unchanged except that the
+monitor-up stretch steps through those six cameras, with the lock decided on the first 75 s and
+the rest of the night left alone so the run is still a graded 6 AM attempt. Evidence:
+[night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
