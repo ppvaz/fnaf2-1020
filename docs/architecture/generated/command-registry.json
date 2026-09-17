@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -1304,6 +1304,12 @@
       "lifecycle": "supported"
     },
     {
+      "id": "tools/device/test-night7-presets.mjs",
+      "invocation": "tools/device/test-night7-presets.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
       "id": "tools/device/test-minus-toys-plan.mjs",
       "invocation": "tools/device/test-minus-toys-plan.mjs",
       "kind": "check",
@@ -1331,6 +1337,12 @@
       "id": "tools/device/test-artifact-animation-gates.mjs",
       "invocation": "tools/device/test-artifact-animation-gates.mjs",
       "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/night7-presets.mjs",
+      "invocation": "tools/device/night7-presets.mjs [--gate] [--epochs] [--bands] [--preset=id] [--runs=N] [--band=name]",
+      "kind": "generator/check",
       "lifecycle": "supported"
     },
     {

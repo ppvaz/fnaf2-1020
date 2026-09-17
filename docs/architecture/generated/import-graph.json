@@ -1542,6 +1542,17 @@
       ]
     },
     {
+      "file": "tools/device/night7-presets.mjs",
+      "imports": [
+        "./actuator.mjs",
+        "./minus-toys-plan.mjs",
+        "@fnaf2-1020/core/mechanics",
+        "@fnaf2-1020/research/seeds",
+        "node:fs",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/phase-reconstruct.mjs",
       "imports": [
         "@fnaf2-1020/adapters/night-onset",
@@ -1850,6 +1861,14 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-night7-presets.mjs",
+      "imports": [
+        "./minus-toys-plan.mjs",
+        "./night7-presets.mjs",
+        "@fnaf2-1020/core/mechanics"
       ]
     },
     {

@@ -5917,3 +5917,39 @@ census assumes a constant 16.667 ms frame, and the route lives at 16.6667 and 17
 16.60, 16.64, 16.70, 16.80 and 17.065. `night6-c2-01` was run `--no-trace`, so the phone's real frame
 deltas do not exist for it. The next physical test is that binding re-run with `--frame-trace`.
 Evidence: [night6-model-gap-two-clocks-20260917](../docs/evidence/night6-model-gap-two-clocks-20260917.json).
+
+**2026-09-17: all ten Custom Night presets, 3000/3000, and the 50 ms floor that found.** Night 7
+in this repository had only ever meant canonical 10/20; the other nine menu presets are different
+AI vectors on the same night-7 rules and had never been asked. `night7-presets.mjs` asks them, at
+the golden standard, in two lanes -- exact delivery, and the same presses through `actuator.mjs` --
+with the presets read from the calibrated menu model the phone's dial driver sets rather than
+retyped. **All ten clear 3000/3000 in all four lanes (exact, exact worst, device, device worst):
+120,000 simulated nights, no loss**, at a band wider than the phone's own worst measured spread.
+
+The ten green rows are not the finding. Getting them required moving one knob, and the reason is
+the mistake register's item 7 in a new place. `KNOBS0.hallOffsetMs` = 9500 puts the Foxy-reset hall
+pulse 300 ms after the mask-OFF press; `MASK_ANIM_OFF` is 250 ms and `lit?` needs `mask` = 0 (g75),
+so **the pulse cleared the animation it depends on by 50 ms** -- narrower than the phone's own
+per-cycle displacement, fitted at **44.6 ms span on k3 full-04 and 81.5 ms on full-06** from the
+retained frame traces. When the gap closes there is no light, Foxy is never reset, and he takes the
+night: at a 0-100 ms band the shipped offset is 107/200 on 10/20 and *every* loss is `foxy`, while
+the exact lane stays 200/200 -- which is exactly why no existing gate saw it. `hallMs` was swept
+33..200 ms first and scored **identically at every value**, the item-10 signature: the pulse's
+length is not the mechanism, its placement is. 9613 is the centre of the plateau measured across
+offset x epoch, `[9542, 9683]`, clearing each edge by ~70 ms. The lower edge has a mechanism and
+the arithmetic agrees with it (9200 + 250 + 82 = 9532 against a measured 9542); **the upper edge
+does not**, and is recorded as a measured edge rather than dressed in an inequality that would pass
+at 9700, which the +11f epoch column measures as a loss.
+
+One more thing the epoch scan settles. Across 12 epochs x 10 presets at 300 seeds, **wins equals
+armed in every single cell, and the armed counts are identical across all ten presets** (300, 274,
+232, 166, 137, 122, 125, 168, 223, 277, 300, 300). The split arm depends on the schedule and the
+epoch, not on the AI dials, so under the measured band the only thing that costs any preset a night
+at any epoch is a missed arm -- the branch the emitted plan already closes on the phone with
+`#arm-verify`. There is no preset-specific device failure left to find in the model.
+
+Scope, stated plainly: **this is MODEL_ONLY and no phone was run for it** (Pedro's instruction for
+the session). It does not touch the model gap measured earlier today on a Night 6 the phone won.
+The physical test it implies is one graded Night 7 run on a preset other than 10/20 at
+`hallOffsetMs` 9613. Evidence:
+[night7-preset-sweep-20260917](../docs/evidence/night7-preset-sweep-20260917.json).

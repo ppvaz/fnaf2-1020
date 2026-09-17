@@ -1,0 +1,402 @@
+{
+  "schema": "evidence-record-v1",
+  "id": "night7-preset-sweep-20260917",
+  "claimLevel": "MODEL_ONLY",
+  "date": "2026-09-17",
+  "question": "Night 7 in this repository has only ever meant canonical 10/20. Does the shipped Minus Toys schedule clear ALL TEN Custom Night presets at the golden 3000-seed standard -- and does it still clear them when the presses are delivered with the lateness the phone actually shows on this route?",
+  "whyItIsModelOnly": "No device run. Pedro's instruction this session was to answer this in the model with realistic device numbers and not to touch the phone today. Every figure below is a simulator figure; the 'device' lane is `tools/device/actuator.mjs` wrapped around the same schedule, not a phone. Survival under an actuator is still survival in a model.",
+  "harness": {
+    "tool": "tools/device/night7-presets.mjs --gate --runs=3000 --preset=<id>",
+    "epochTool": "tools/device/night7-presets.mjs --epochs --runs=300 --preset=<id>",
+    "gate": "tools/device/test-night7-presets.mjs, registered in npm run test:unit",
+    "schedule": "tools/device/minus-toys-plan.mjs build()/schedule(), KNOBS0 with one change (hallOffsetMs)",
+    "presetSource": "tools/device/models/custom-night-moto-g56-v207.json -- the same calibrated menu model the phone's dial driver sets, so a preset this clears is a preset the runner can actually dial",
+    "seedCohort": "packages/research seeds, randomSeedCohort({count:3000}) at GOLDEN_MODEL_SEED_SALT; identical cohort for every cell",
+    "winCondition": "sim.won AND splitAt >= 0, the same condition minus-toys-plan.mjs --gate uses",
+    "lanes": {
+      "exact": "every press lands on its scheduled frame; normal and worst RNG",
+      "device": "the same presses through DeviceActuator at a 0-100 ms per-press lateness band, queue serialized, mask seam modelled; normal and worst. worst pins the seam coin flip, not the lateness draw"
+    }
+  },
+  "measuredDeviceNumber": {
+    "what": "the phone's own per-cycle press displacement about a run's mean, on THIS route -- the quantity the epoch offset cannot dial out",
+    "how": "each cycle's cameras-up static flash located in the retained k3 frame traces, the longest 10 s chain fitted with a straight line, the residual read off",
+    "source": "artifacts/forensics/k3-frametrace-nights-20260915/ft2-full-04-844533048365184.tsv and ft2-full-06-875229878053244.tsv",
+    "full04": {
+      "n": 9,
+      "minMs": -21.5,
+      "p10Ms": -15.2,
+      "medianMs": 1.8,
+      "p90Ms": 13.8,
+      "maxMs": 23.0,
+      "spanMs": 44.6
+    },
+    "full06": {
+      "n": 41,
+      "minMs": -52.3,
+      "p10Ms": -20.3,
+      "medianMs": 2.2,
+      "p90Ms": 14.6,
+      "maxMs": 29.3,
+      "spanMs": 81.5
+    },
+    "caveat": "read at the screen, so each end carries up to one capture frame (16.7 ms) of quantisation: 82 ms is an UPPER bound on the actuator's own spread",
+    "bandUsed": "0-100 ms -- the wider night's FULL span rounded up with margin, deliberately not its p10-p90, because a route that only survives the typical cycle has not survived the night that contains the tail"
+  },
+  "theFix": {
+    "knob": "hallOffsetMs",
+    "from": 9500,
+    "to": 9613,
+    "defect": "KNOBS0 puts the Foxy-reset hall pulse 300 ms after the mask-OFF press, and MASK_ANIM_OFF is 250 ms while `lit?` needs mask = 0 (g75). The pulse clears the animation it depends on by 50 ms -- narrower than the phone's own measured spread. When the gap closes there is no light, Foxy is never reset, and he takes the night.",
+    "symptom": "at a 0-82 ms band the shipped offset is 147/200 on 10/20 and EVERY loss is `foxy`; at 0-100 ms it is 107/200, again all Foxy. The exact lane is 200/200 throughout, which is why no existing gate saw it.",
+    "inertKnobChecked": "hallMs was swept 33..200 ms first and scored IDENTICALLY at every value (147/200 at each) -- the pulse LENGTH is not the mechanism, its PLACEMENT is. Recorded because an identical score at every setting is the 2026-09-11 item 10 signature.",
+    "plateau": {
+      "loMs": 9542,
+      "hiMs": 9683,
+      "measuredAt": "300 seeds per edge, 0-100 ms band; 9525 and 9533 give 284/300 at epoch 0, 9692 and 9700 give 165/300 and 163/300 at epoch +11f",
+      "chosen": 9613,
+      "clearsEachEdgeByMs": 70
+    },
+    "twoFloors": {
+      "lower": "the mask-OFF animation, epoch-independent. maskOffMs 9200 + MASK_ANIM_OFF 250 + spread 82 = 9532, against a measured lower edge of 9542 -- mechanism and measurement agree.",
+      "upper": "NOT yet explained. 9683 passes and 9692 fails at epoch +11f, far below the 10000 ms roll boundary, so something between the pulse and the roll closes first and this record does not claim to know what. The test pins the MEASURED edge rather than an inequality that would pass at 9700."
+    },
+    "costsNothing": "the exact lane is 200/200 at every offset in the sweep, so this buys device margin and gives up no model ground"
+  },
+  "results": {
+    "cupcake-challenge": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "default-4-20": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "double-trouble": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "fazbear-fever": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "foxy-foxy": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "freddys-circus": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "golden-freddy": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "ladies-night": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "new-and-shiny": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    },
+    "night-of-misfits": {
+      "exact": "3000/3000",
+      "exactWorst": "3000/3000",
+      "device": "3000/3000",
+      "deviceWorst": "3000/3000",
+      "epochWinsOverArmed": [
+        "300/300",
+        "274/274",
+        "232/232",
+        "166/166",
+        "137/137",
+        "122/122",
+        "125/125",
+        "168/168",
+        "223/223",
+        "277/277",
+        "300/300",
+        "300/300"
+      ]
+    }
+  },
+  "dials": {
+    "default-4-20": {
+      "withfreddy": 20,
+      "withbonnie": 20,
+      "withchica": 20,
+      "foxy": 20,
+      "toyfreddy": 0,
+      "toybonnie": 0,
+      "toychica": 0,
+      "mangle": 0,
+      "bb": 0,
+      "golden": 0
+    },
+    "new-and-shiny": {
+      "withfreddy": 0,
+      "withbonnie": 0,
+      "withchica": 0,
+      "foxy": 0,
+      "toyfreddy": 10,
+      "toybonnie": 10,
+      "toychica": 10,
+      "mangle": 10,
+      "bb": 10,
+      "golden": 0
+    },
+    "double-trouble": {
+      "withfreddy": 0,
+      "withbonnie": 20,
+      "withchica": 0,
+      "foxy": 5,
+      "toyfreddy": 0,
+      "toybonnie": 20,
+      "toychica": 0,
+      "mangle": 0,
+      "bb": 0,
+      "golden": 0
+    },
+    "night-of-misfits": {
+      "withfreddy": 0,
+      "withbonnie": 0,
+      "withchica": 0,
+      "foxy": 0,
+      "toyfreddy": 0,
+      "toybonnie": 0,
+      "toychica": 0,
+      "mangle": 20,
+      "bb": 20,
+      "golden": 10
+    },
+    "foxy-foxy": {
+      "withfreddy": 0,
+      "withbonnie": 0,
+      "withchica": 0,
+      "foxy": 20,
+      "toyfreddy": 0,
+      "toybonnie": 0,
+      "toychica": 0,
+      "mangle": 20,
+      "bb": 0,
+      "golden": 0
+    },
+    "ladies-night": {
+      "withfreddy": 0,
+      "withbonnie": 0,
+      "withchica": 20,
+      "foxy": 0,
+      "toyfreddy": 0,
+      "toybonnie": 0,
+      "toychica": 20,
+      "mangle": 0,
+      "bb": 0,
+      "golden": 0
+    },
+    "freddys-circus": {
+      "withfreddy": 20,
+      "withbonnie": 0,
+      "withchica": 0,
+      "foxy": 10,
+      "toyfreddy": 20,
+      "toybonnie": 0,
+      "toychica": 0,
+      "mangle": 0,
+      "bb": 10,
+      "golden": 10
+    },
+    "cupcake-challenge": {
+      "withfreddy": 5,
+      "withbonnie": 5,
+      "withchica": 5,
+      "foxy": 5,
+      "toyfreddy": 5,
+      "toybonnie": 5,
+      "toychica": 5,
+      "mangle": 5,
+      "bb": 5,
+      "golden": 5
+    },
+    "fazbear-fever": {
+      "withfreddy": 10,
+      "withbonnie": 10,
+      "withchica": 10,
+      "foxy": 10,
+      "toyfreddy": 10,
+      "toybonnie": 10,
+      "toychica": 10,
+      "mangle": 10,
+      "bb": 10,
+      "golden": 10
+    },
+    "golden-freddy": {
+      "withfreddy": 20,
+      "withbonnie": 20,
+      "withchica": 20,
+      "foxy": 20,
+      "toyfreddy": 20,
+      "toybonnie": 20,
+      "toychica": 20,
+      "mangle": 20,
+      "bb": 20,
+      "golden": 20
+    }
+  },
+  "epochScan": {
+    "what": "the schedule's phase against the game's own frame counter, which the phone re-rolls every run and no knob controls; 12 epochs = one LAST_VIEW_SAMPLE_FRAMES period, 300 seeds a cell, 0-100 ms band",
+    "finding": "wins EQUALS armed in every cell of every preset, and the armed counts are IDENTICAL across all ten presets (300, 274, 232, 166, 137, 122, 125, 168, 223, 277, 300, 300). The split arm depends on the schedule and the epoch, not on the AI dials. So under the measured band the only thing that costs any preset a night at any epoch is a missed arm -- there is no preset-specific device failure left.",
+    "whyTheGateIsAtEpochZero": "the same reason minus-toys-plan.mjs --gate is: the miss branch is closed on the phone by the emitted plan's `#arm-verify`, which re-arms or aborts on a miss. The arm is a coin flip the runner re-takes, not a night the route loses."
+  },
+  "verdict": "ALL TEN CUSTOM NIGHT PRESETS CLEAR 3000/3000 IN ALL FOUR LANES, at a device band wider than the phone's worst measured per-cycle spread on this route -- 120,000 simulated nights, no loss. This is a MODEL result and nothing on the phone was run for it. It required one change to the shipped schedule: the Foxy-reset hall pulse moves from 9500 to 9613 ms, off a 50 ms clearance it had inherited from the route it protects and onto the centre of a measured 141 ms plateau. Before that change 10/20 is 107/200 at the same band with every loss to Foxy, so the sweep's real product is not the ten green rows -- it is the floor the ten green rows found.",
+  "openItems": [
+    "The upper plateau edge (9683/9692) has no mechanism. It is 300 ms below the roll boundary the obvious explanation would predict.",
+    "Nothing here is a device result. The physical test is one graded Night 7 run on a preset other than 10/20 with hallOffsetMs 9613; the presets the phone can dial are exactly the ten in the menu model.",
+    "This does not touch the open model gap measured on 2026-09-17 (the model kills all 600 seeds on a Night 6 route the phone won). That gap is about the model disagreeing with the phone; this record is entirely inside the model."
+  ],
+  "retained": "per-preset gate and epoch outputs were produced by the two commands in `harness` and are reproducible from them; no artifact directory is required because both commands are deterministic given --runs and the fixed seed cohort."
+}
