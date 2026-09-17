@@ -175,23 +175,31 @@ universe whose causal structure is fully accessible.
 
 ## Where this project actually is
 
-Marked honestly, rung by rung, as of 2026-09-17.
+Marked honestly, rung by rung, as of 2026-09-17. The first two rows were
+rewritten late that day: this page was written on the evening of 09-16, and the
+model gap it called the sharpest open defect turned out to be an instrument
+error rather than a rule
+([`night6-model-gap-two-clocks`](../evidence/night6-model-gap-two-clocks-20260917.json)).
 
 | Rung | Where we are |
 |---|---|
-| Mechanically solved | Partly. The event dump is the ground truth and a large part of the Office sheet is sourced group by group — the 5 s rolls, Foxy's A/B chain, the hall-movement latch, the hour table, the blackout clock and its flicker draws, the random image, the monitor raise gate. The model still diverges from the phone on a winning night, and that divergence is the open work. |
-| No mysterious deaths | No. Every clock-named seed for the 2026-09-16 Night 6 dies to Foxy at 260-285 s on a night the phone won. That is the sharpest open defect. |
+| Mechanically solved | Partly. The event dump is the ground truth and a large part of the Office sheet is sourced group by group — the 5 s rolls, Foxy's A/B chain, the hall-movement latch, the hour table, the blackout clock and its flicker draws, the random image, the monitor raise gate. Every group that could produce the disputed death was then read out of the dump line by line and found faithful. What is still free is the **frame period**: the census assumes a constant 16.667 ms, and the route lives at 16.6667 and 17.00 ms but dies at 16.60, 16.64, 16.70, 16.80 and 17.065. |
+| No mysterious deaths | Closer than this page first said. The deaths that looked mysterious — every clock-named seed for the 2026-09-16 Night 6 dying to Foxy at 260-285 s on a night the phone won — were a **two-wall-clock reconstruction error**, not a rule: host and phone stamps stood 1374.8 ms apart, placing the schedule 1.37 s late against the game's own clock, near the worst phase available. On one clock the same route reaches 6 AM on all 65,536 seeds. That record does **not** claim the model now predicts the phone; it claims the wipeout was an instrument error and the remaining uncertainty is named. |
 | State estimation | The hidden state's *root* is now readable rather than inferred: the office seed is bracketed to one or two milliseconds from the game's own log, because the seeding call is the first instruction of the run loop. Two nights are pinned to a single seed. Belief over the rest of the state is still coarse. |
 | Control | Hand-built open-loop bindings with a belief-gated supervisor, not a policy. |
 | Globally optimised | Not attempted. Exhaustive 65,536-seed censuses are routine, but over fixed schedules, not over policies. |
 | Constraint-relative | This is where the project lives: measured input latency, a contact floor, anchor bands, and a device lane that refuses claims the transport cannot support. |
 | Viability kernel, robustness field, tablebase | Not started. The robustness field is the nearest: the harness already measures per-cycle timing slack. |
 
-The practical consequence is that the ladder's first two rungs are the bottleneck, and they are
-where the current work sits. A model that cannot reproduce one observed winning night at its own
-named seed cannot be used to compute a policy, let alone prove one optimal. Everything above
-mechanical fidelity waits on mechanical fidelity.
+The practical consequence is unchanged even though its cause moved: the ladder's first two rungs
+are the bottleneck, and they are where the current work sits. A model that cannot reproduce one
+observed winning night at its own named seed cannot be used to compute a policy, let alone prove
+one optimal. Everything above mechanical fidelity waits on mechanical fidelity. The next physical
+test is one binding re-run with `--frame-trace`, which replaces the last free parameter with the
+phone's own frame deltas.
 
-Related: [seed-lock census and the first-frame timing rule](../evidence/night6-h-seedlock-census-20260916.json),
+Related: [the model gap resolved as two wall clocks](../evidence/night6-model-gap-two-clocks-20260917.json),
+[all ten Custom Night presets at 3000 seeds](../evidence/night7-preset-sweep-20260917.json),
+[seed-lock census and the first-frame timing rule](../evidence/night6-h-seedlock-census-20260916.json),
 [twin nights predeclaration](../evidence/night6-twin-nights-predeclaration-20260916.json),
 [the charter](../../PROJECT-CHARTER.md), [evidence policy](../evidence/README.md).
