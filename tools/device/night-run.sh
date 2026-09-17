@@ -438,7 +438,7 @@ analyze() {
   # grade-run.sh resolves captures/<RUN>.mp4 by name, which is why the harness
   # names the recording after the run id.
   if [ -s "$HOST_VIDEO" ] && [ "$GRADE" = 0 ]; then
-    say "video instruments skipped (--no-grade); grade later with tools/device/grade-run.sh $RUN"
+    say "video instruments skipped (--no-grade); grade later with tools/device/grade-run.sh $RUNID"
   elif [ -s "$HOST_VIDEO" ]; then
     say "video instruments (grade-run.sh)"
     # Streamed, not buffered. Reading a finished log is how a still-decoding

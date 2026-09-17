@@ -388,6 +388,7 @@
     {
       "file": "apps/device/test/timed-start.test.js",
       "imports": [
+        "../src/modern-campaign-ports.js",
         "../src/timed-start.js",
         "node:assert/strict"
       ]

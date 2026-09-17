@@ -587,22 +587,36 @@ export async function createCampaignPorts(options = {}) {
     // stays untimed and lands harmlessly in the intro when the first already activated the row.
     // Whether the timed press was the activating one is then read back from the seed itself
     // (timedStartHeld), not guessed here.
+    // Which press activates the row, and so fixes the seed, depends on where the title cursor sits.
+    // A game the harness has just launched or restarted has it off the row, so the first press
+    // focuses and the SECOND activates; an attempt that left it on the row has the first one
+    // activate. The seed follows the activating press by a steady 4849 ms either way (3556 to the
+    // office load and 1293 through it, measured over the 2026-09-17 cohorts), so a timed start
+    // places BOTH presses it may send and reads back from the seed which one did the work
+    // (timedStartHeld). Waiting here to find out instead is what made the strict anchor refuse a
+    // perfectly placed press as onset-predates-intro: intro() must stamp its start before the
+    // office appears, 4.8 s after the activating press.
     const residueMs = startResidueMs();
     const timedStory = residueMs !== null && targetName !== 'customNight';
-    if (timedStory) await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
-      refusal: `timed ${targetName} start refused` });
-    else await tap({ point: targetPoint, holdMs });
+    await tap({ point: targetPoint, holdMs });
     const firstSelectionState = await waitFor(bridge, serial,
       value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
       10000, 'title row focus or night start');
-    // The untimed second press is what makes an unaimed night: the seed follows the ACTIVATING
-    // press by a steady 4849 ms (3556 to the office load, 1293 through it, measured over the
-    // 2026-09-17 cohort), so a night the second press started lands wherever that press happened
-    // to fall -- 1.9 s off the residue in twin-02. A timed start therefore sends one press and
-    // no more. If the row was not already focused the press only focuses it, the night does not
-    // begin, and intro() fails this attempt in half a minute instead of playing a wrong-seeded
-    // night for eight; the row is focused for the next attempt, which then activates directly.
-    if (firstSelectionState === 'title' && !timedStory) await tap({ point: targetPoint, holdMs });
+    if (firstSelectionState === 'title') {
+      // The SECOND press is the activating one on a freshly launched or restarted game, whose
+      // title cursor sits off the row, and the activating press is what fixes the seed: it
+      // follows by a steady 4849 ms, 3556 to the office load and 1293 through it, measured over
+      // the 2026-09-17 cohorts. Waiting here for its residue is safe because the first press only
+      // focused: no night has begun, so nothing is latched while we wait. What is NOT safe is
+      // waiting to find out whether the first press activated -- intro() has to stamp its start
+      // before the office appears 4.8 s later, and holding this phase open across that is what
+      // made the strict anchor refuse a perfectly placed press as onset-predates-intro. So the
+      // caller keeps the cursor off the row (a restarted game does), and timedStartHeld reads
+      // back from the seed whether the timed press was in fact the one that started the night.
+      if (timedStory) await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+        refusal: `timed ${targetName} start refused` });
+      else await tap({ point: targetPoint, holdMs });
+    }
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1 };
