@@ -1441,7 +1441,11 @@ export class Sim {
     if (!this.opts.foxyEnabled) return;
     const fx = this.foxy;
     if (fx.A === 1 && fx.B === 0) { fx.A = 2; fx.acceptedAt = this.frame; if (this.opts.sourcedViewDraws) this.fadeUntil.foxy = this.frame + 8; }   // g349: C = 10, value 2 = 10
-    if (fx.B > 0) fx.B = Math.max(0, fx.B - 1);      // g364
+    // g364: B = Max(0, B - 1 * Global(5)). The dump's expression is Max( 0 , AV1 - 1 * global -65531 ),
+    // and global value 5 is the frame-delta term the same sheet drains `hall movement` with
+    // (g881), so a long frame drains this pin by more than one. Read 2026-09-17; the model had
+    // been subtracting exactly 1 per frame, which is right only at 60 fps.
+    if (fx.B > 0) fx.B = Math.max(0, fx.B - (this.opts.frameValue5 ? this.opts.frameValue5(this.frame) : 1));   // g364
     if (fx.A !== 2 || this.hallLatch) return;       // the latch g489 left on the previous frame
     if (fx.loc === 'parts') {                        // g389
       fx.A = 0; fx.loc = 'hall'; fx.D = 0;

@@ -107,4 +107,28 @@ assert.throws(() => new Sim({ night: 7, seed: 1, sourcedFoxyChain: true }), /req
   if (new Sim({ night: 7, seed: 1 }).opts.sourcedFoxyChain === false)
     assert.equal(run({}), run({ sourcedFoxyChain: false }), 'explicit off equals the default');
 }
+
+// g364 drains the hall pin by 1 * Global(5), not by 1: the dump's expression is
+// Max(0, AV1 - 1 * global -65531), the same frame-delta term g881 drains `hall movement` with,
+// so a long frame drains it by more. Read from the CCN dump on 2026-09-17.
+{
+  const base = { night: 7, seed: 11, sourcedDropLightOrder: true, sourcedFoxyChain: true,
+    sourcedSheetOrder: true, sourcedSecondPass: true };
+  const drain = frameValue5 => {
+    const s = new Sim({ ...base, frameMs: () => 1000 / 60, frameValue5 });
+    s.foxy.B = 50;
+    const before = s.foxy.B;
+    s.tick();
+    return before - s.foxy.B;
+  };
+  assert.equal(drain(() => 1), 1, 'a 60 fps frame drains the pin by one');
+  assert.equal(drain(() => 2), 2, 'a frame worth two drains it by two');
+  assert.equal(drain(() => 4), 4, 'the term is capped at four by the runtime, and the pin follows it');
+  const unhooked = new Sim({ ...base });
+  unhooked.foxy.B = 50;
+  const was = unhooked.foxy.B;
+  unhooked.tick();
+  assert.equal(was - unhooked.foxy.B, 1, 'with no frame-time hook the term is one, as before');
+}
+
 console.log('foxy chain: g337 draws every 5 s, g349/g364 order, g389/g390 on the latch, g745 before g824, g825 masked tick, g846 retreat lifts a lock, g855 pin, g864, g573; no constructor draw; off unchanged');
