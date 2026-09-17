@@ -31,6 +31,40 @@ const readJsonl = path => readFileSync(path, 'utf8').trim().split('\n')
 
 const fail = message => { throw new Error(`phase reconstruction: ${message}`); };
 
+/**
+ * Host wall clock minus phone wall clock, from the anchor's own measurements.
+ *
+ * The anchor converts the night onset twice: to the host's monotonic clock
+ * (`offsetMs`, then `wallMinusHostMs` to host wall) and to the phone's wall
+ * clock (`phoneWallMinusMonoMs`). Both start from the same device-monotonic
+ * instant, so their difference is the skew and the instant cancels out.
+ *
+ * It is not a rounding term. On `night6-c2-01-20260917T021417Z` the host wall
+ * clock stood 1374.8 ms ahead of the phone's, and a press reconstruction that
+ * compared `releasedAt` (host wall) against the office seed read from logcat
+ * (phone wall) placed the whole schedule 1.37 s late -- which the model then
+ * scored as a route that kills every seed, on a night the phone won 42/42.
+ *
+ * @param {Record<string, unknown> | undefined} anchor `origin.anchor` status=scheduled
+ * @param {{released: number, nightGoAt: number}} stamps host-wall stamps to convert
+ */
+export function phoneWallFrom(anchor, { released, nightGoAt }) {
+  if (!anchor) return null;
+  const parts = [anchor.offsetMs, anchor.wallMinusHostMs, anchor.phoneWallMinusMonoMs].map(Number);
+  if (!parts.every(Number.isFinite)) return null;
+  const [offsetMs, wallMinusHostMs, phoneWallMinusMonoMs] = parts;
+  const skewMs = offsetMs + wallMinusHostMs - phoneWallMinusMonoMs;
+  const round = value => Math.round(value * 1000) / 1000;
+  return {
+    basis: 'origin.anchor',
+    hostWallMinusPhoneWallMs: round(skewMs),
+    releasedAtPhoneWallMs: round(released - skewMs),
+    nightGoAtPhoneWallMs: round(nightGoAt - skewMs),
+    onsetPhoneWallMs: Number.isFinite(Number(anchor.onsetPhoneWallMs)) ? Number(anchor.onsetPhoneWallMs) : null,
+    onsetPhoneWallLow16: Number.isFinite(Number(anchor.onsetPhoneWallLow16)) ? Number(anchor.onsetPhoneWallLow16) : null,
+  };
+}
+
 
 // --- the game's own first night frame, from the Cue Helper native trace ------
 //
@@ -153,6 +187,8 @@ export function reconstruct(events, observations, frameTrace = null) {
   const releasedEvent = first('hid.night-go-released');
   const released = releasedEvent?.at ?? nightGo.at;
   const phaseOffsetMs = start.phaseOffsetMs ?? 0;
+  const phoneWall = phoneWallFrom(events.find(
+    event => event.type === 'origin.anchor' && event.status === 'scheduled'), { released, nightGoAt: nightGo.at });
 
   let arm = null;
   if (armVerified?.armGoAt && gates.length) {
@@ -242,8 +278,13 @@ export function reconstruct(events, observations, frameTrace = null) {
     schema: SCHEMA,
     origin: {
       kind: 'lifecycle-classification',
+      // `nightGoAt`, `releasedAt` and every cycle's `reachedAt` are the HOST's
+      // wall clock. Name it: the phone reports on its own (a logcat epoch line,
+      // the office frame's RNG seed), and the two are not the same clock.
+      clock: 'host-wall',
       nightGoAt: nightGo.at,
       releasedAt: released,
+      phoneWall,
       // UNKNOWN unless a native frame trace was supplied: without one no
       // recorded quantity measures it.
       ...measuredOrigin

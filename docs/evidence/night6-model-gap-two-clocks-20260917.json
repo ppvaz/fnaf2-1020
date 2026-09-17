@@ -1,0 +1,53 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-model-gap-two-clocks-20260917",
+ "claimLevel": "DEVICE_MEASURED for the clock skew and the origin (the run's own origin.anchor record and the streamed MMFRuntime log); MODEL_ONLY for the seed censuses",
+ "date": "2026-09-17",
+ "supersedes": "night6-h-seedlock-census-20260916 (the 600/600 model-gap measurement) and the Foxy-chain reading in the two commits that followed it",
+ "question": "The model killed all 600 censused seeds on night6-c2-01, a Night 6 run that reached 6 AM on the phone with 42 of 42 cycle gates AGREED. Which rule was wrong?",
+ "verdict": "No rule was wrong. The reconstruction compared two different wall clocks. `phase.json`'s origin and every cycle gate's `reachedAt` are stamped on the HOST's wall clock; the office seed is read out of the phone's logcat on the PHONE's wall clock. On this run the two stood 1374.8 ms apart, so the schedule was placed 1.37 s late against the game's own clock. Corrected, the model reaches 6 AM on every seed tested.",
+ "howTheRuleOutWasDone": {
+  "principle": "Before moving any press, every rule that could produce the death was read out of the event dump and compared to the model line by line. The fix had to not be a rule change.",
+  "groupsVerified": [
+   "g75/g76/g77/g79/g84/g85/g86/g89/g93/g94/g95/g96 -- `lit?` is the flashlight flag, one button, set in the office and on the cameras, cleared by release, dead battery, in danger, the mask reaching fully on, and Balloon Boy inside. Matches updateLitCounter.",
+   "g488/g489 -- the hall latch is zeroed by a fixed 1000 ms timer and re-set every frame `viewing == 0 && battery > 0 && lit? == 1`. Matches updateHallLatch.",
+   "g337 -- the 5 s roll is `21 + Random(5) - old foxy.AlterableValue3 <= old Foxy AI`, with no location or state condition, and writes AV0 = 1, AV3 = 0. Matches.",
+   "g349 -> g364 -> g389 -> g390 -- A = 1 and B = 0 gives A = 2; B drains by `1 * Global(5)`; A = 2 at cam 8 with the latch clear moves Foxy to hall stage 1; A = 2 at hall stage 1 with the latch clear moves him to the got you box. Matches foxyChainTransitions.",
+   "g573 -- at the got you box, viewing 0, being attacked by 0, latch 1, in danger 0, sets `being attacked by = 4`. Nothing in frame 3 writes that global back to 0, so the commit is terminal. The model's kill is faithful; its only omission is the `being attacked by == 0` guard, which can only make the kill rarer.",
+   "g745 -- at hall stage 1 with the latch set, AV3 = 0 and AV9 += 1 * Global(5). g846 -- AV9 > 100 * night with the flashlight off, the latch clear and B = 0 sends him back to cam 8 with B = 500 + Random(500). Matches, including the 600-frame Night 6 threshold and the 500..999 return.",
+   "g824/g825 -- D rises once a second, and again while the mask is fully on with nobody at `in office`. g864 -- D falls twice a second at cam 8 while the latch is set. g872-g874 -- D is held at 0 on Night 1 and at the ends of Night 2. All match.",
+   "g855 -- at hall stage 1 with the latch set, B is pinned to 50. Matches."
+  ],
+  "conclusion": "Every group that decides a Foxy death on this route is a faithful transcription. So the wrong premise was upstream of the rules: the presses."
+ },
+ "theTwoClocks": {
+  "whatIsOnWhich": "hid.night-go, hid.night-go-released and every control.gate reachedAt are host wall. The MMFRuntime log read with `logcat -v epoch`, and therefore the office frame's RNG seed, are phone wall.",
+  "derivation": "The anchor converts the same device-monotonic onset twice: to host monotonic with `offsetMs` and on to host wall with `wallMinusHostMs`, and to phone wall with `phoneWallMinusMonoMs`. The onset cancels, so the skew is `offsetMs + wallMinusHostMs - phoneWallMinusMonoMs`.",
+  "measuredMs": 1374.823,
+  "originUsed": 6347,
+  "originCorrected": 4972.2,
+  "crossCheck": "The anchor aimed at onset + 4870 ms with k = 0 and fired 0.73 ms late, the handoff added 10 ms, and its own phone-wall onset estimate sat 91.2 ms after the true seed (its low16 24942 against the seed's 24851). That predicts 4961.2 + 0.7 + 10 = 4972, which is the corrected origin to 0.2 ms. The two paths agree."
+ },
+ "measured": {
+  "census": "PENDING",
+  "at3000Seeds": "3000/3000 reached 6 AM at origin 9903 (the same band, one 5000 ms period later), before the skew was derived.",
+  "atTheCorrectedOrigin": "512/512 reached 6 AM at origin 4972.2.",
+  "before": "0/600 at origin 6347: 368 Foxy, 220 Golden Freddy, 12 inside-office.",
+  "bands": "Survival is a 240 ms band that recurs every 5000 ms, which is the game's own movement-roll period. Swept -1000 to +10000 ms around the used origin at 100 ms steps, the only survivors are in those bands; everywhere else at most 1 seed in 64 lives. Measured edges at 20 ms resolution: origin 9767 to 10007 survives, 9747 and 10027 do not. The corrected origin 4972.2 sits in the band one period earlier, whose upper edge is between 4997 and 5047.",
+  "whyTheUsedOriginWasTheWorstCase": "6347 is 1477 ms past the band centre, close to the middle of the 5000 ms period -- the furthest a phase error can be from a surviving band."
+ },
+ "stillOpen": {
+  "theFrameClock": "The census assumes a constant 16.667 ms frame. That assumption is load-bearing: at the three surviving origins the route lives at 16.6667 and at 17.00 ms and dies at 16.60, 16.64, 16.70, 16.80 and 17.065 ms, mostly to toys reaching the office, which is the mask window moving against frame-counted animations. night6-c2-01 was run with --no-trace, so the phone's real frame deltas for this night do not exist and the constant cannot be replaced by a measurement.",
+  "whatWouldCloseIt": "Re-run the binding with --frame-trace. That supplies deltasFor() with the run's own frame intervals, removes the only remaining free parameter, and makes the census a statement about the night the phone actually played rather than about a nominal 60 fps.",
+  "notClaimed": "This record does not claim the model now predicts the phone. It claims the 600/600 wipeout was an instrument error, that the route is survivable at the phase the run delivered once both stamps are on one clock, and that the remaining uncertainty is named and bounded."
+ },
+ "fix": {
+  "tools/device/phase-reconstruct.mjs": "The origin block now carries `clock: 'host-wall'` and a `phoneWall` block with the skew, the released instant converted, and the anchor's own phone-wall onset. A run with the anchor off reports `phoneWall: null` rather than a guess, and a non-finite anchor field refuses instead of coercing.",
+  "tools/device/test-phase-reconstruct.mjs": "Pins the skew, the converted origin, both refusals, and the fact that the unconverted stamp is 6347 ms, using this run's numbers as the fixture."
+ },
+ "artifacts": {
+  "run": "artifacts/runs/night6-c2-01-20260917T021417Z (6 AM, 42/42 gates AGREED, office seed low16 24851 to a single millisecond)",
+  "log": "artifacts/forensics/twin-nights-night6-cohort2/c2-01.logcat",
+  "binding": "tools/device/campaign-night6-h-winner.json"
+ }
+}

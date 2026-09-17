@@ -5890,3 +5890,30 @@ that sprite is visible while the monitor is up, the source creates him far more 
 model does. Foxy is the bigger fish at 92% of the remaining deaths. The pass mark for any fix is
 simple: some seed must survive this route. Evidence:
 [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
+
+**2026-09-17: the model gap was two wall clocks, not a Foxy rule.**
+The model killed all 600 censused seeds on `night6-c2-01`, a Night 6 run that reached 6 AM with 42 of
+42 cycle gates AGREED. Before moving anything, every group that can produce that death was read out
+of the event dump and compared line by line: `lit?` (g75-g96), the hall latch (g488/g489), the 5 s
+roll (g337), the A/B chain (g349, g364, g389, g390), the kill (g573), exposure and retreat (g745,
+g846), the pin (g855) and all four D terms (g824, g825, g864, g872-g874). Every one is a faithful
+transcription -- including `100 * night` and `500 + Random(500)`, and the fact that g573 commits
+`being attacked by = 4` which nothing in frame 3 ever writes back to 0. So no rule was wrong.
+
+The presses were. `phase.json`'s origin and every gate's `reachedAt` are stamped on the **host's**
+wall clock; the office seed is read out of the phone's logcat on the **phone's**. On this run the two
+stood **1374.8 ms** apart, so the reconstruction placed the whole schedule 1.37 s late against the
+game's own clock -- and 6347 ms is nearly the worst phase available, 1477 ms from a surviving band.
+Survival is a **240 ms band that recurs every 5000 ms**, the movement-roll period: swept -1000 to
++10000 ms at 100 ms steps, nothing outside those bands lives. Corrected to one clock the origin is
+**4972.2 ms**, and the anchor's own record predicts 4972 independently (aim 4870, fired 0.73 ms late,
+10 ms handoff, its phone-wall onset estimate 91.2 ms after the true seed). The model then reaches
+6 AM on every seed censused.
+
+`phase-reconstruct.mjs` now names the clock and carries a `phoneWall` block with the skew, derived
+from the anchor's own two conversions of the same onset, so the comparison cannot be made silently
+again; a run without an anchor reports `null` rather than a guess. Still open and load-bearing: the
+census assumes a constant 16.667 ms frame, and the route lives at 16.6667 and 17.00 ms but dies at
+16.60, 16.64, 16.70, 16.80 and 17.065. `night6-c2-01` was run `--no-trace`, so the phone's real frame
+deltas do not exist for it. The next physical test is that binding re-run with `--frame-trace`.
+Evidence: [night6-model-gap-two-clocks-20260917](../docs/evidence/night6-model-gap-two-clocks-20260917.json).
