@@ -9,6 +9,17 @@ ports, a device-local artifact executor, and an ordered campaign runner. The
 candidate g56 profile remains `dryRunOnly`, so no live controller qualification
 has been claimed.
 
+**Correction, 2026-09-17.** The sentence above is a 2026-09-02 state and is no
+longer true of the path that runs. The g56 is qualified as
+`hid-mediaprojection` (`qualification-hid-mediaprojection-20260907`) and has
+executed live nights through it, up to and including a 10/20 clear on
+2026-09-14. What is still accurate is the *narrower* reading: no **closed-loop
+controller** has been qualified. Every one of those wins is an open-loop binding
+with an anchored release and a belief-gated supervisor, which is this plan's
+package 0 boundary and not its act-then-verify loop. See
+[`PROGRESS.md`](PROGRESS.md) and the
+[device record](../README.md).
+
 This plan carries the stock-device observation → belief → policy → action →
 verification contract and the measured migration from the legacy shell route to
 the modern composition. Plan 22 owns the surrounding architecture; Plans 19

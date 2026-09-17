@@ -1,9 +1,25 @@
 # End-to-end stock-device evidence campaign
 
-**Status: proposed 2026-08-26.** This is the promotion plan, not a strategy plan.
-It defines what must be captured before the project can claim an operational
-controller, a full Night 6 clear, or a 10/20 attempt. It does not authorize a
-device run by itself.
+**Status: proposed 2026-08-26; rungs reached but not promoted, 2026-09-17.**
+This is the promotion plan, not a strategy plan. It defines what must be
+captured before the project can claim an operational controller, a full Night 6
+clear, or a 10/20 attempt. It does not authorize a device run by itself.
+
+**Where the ladder actually stands.** Levels 4 and 5 were reached for Night 6 on
+2026-09-13 and level 7's clear on 2026-09-14 (10/20, `golden-freddy`), with a
+predeclared ten-run Night 7 cohort at **3 wins, 7 deaths**. Level 6 was never
+run for Night 6. **No promotion edge has been recorded in
+[`docs/evidence/graph.json`](../docs/evidence/graph.json) for any of them**, so
+every one of those results is a retained `DEVICE_MEASURED` run and none is a
+promoted claim. Reaching a rung and promoting it are separate acts, and this
+plan owns the second one.
+
+**The Night 7 table below is route-scoped.** Its 12/100 row measures
+`recipe.devicePlan` (Minus 7) and nothing else. Minus Toys clears Night 7
+3000/3000 exact, and all ten Custom Night presets clear 3000/3000 in four lanes
+([`night7-preset-sweep`](../docs/evidence/night7-preset-sweep-20260917.json)).
+Read "the route cannot run at all" as "that route cannot", not as a property of
+Night 7.
 
 ## Goal
 

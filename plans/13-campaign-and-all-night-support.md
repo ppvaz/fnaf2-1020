@@ -11,8 +11,17 @@ Night 7, binds one compiled full-night artifact to each target, and requires
 positive 6 AM plus save/menu evidence. Custom Night configuration is explicitly
 modeled with ten 20 dials and Puppet 15, including measured menu, dial, Start,
 and readback calibration. The modern ADB/HID/Cue Helper ports and preflight are
-implemented; Custom Night calibration, external `DEVICE_MEASURED`
-qualification, and actual qualified device wins remain open.
+implemented.
+
+**Correction, 2026-09-17.** The original status closed with "Custom Night
+calibration, external `DEVICE_MEASURED` qualification, and actual qualified
+device wins remain open." All three have since landed. Custom Night is
+calibrated against measured readback boxes
+(`tools/device/models/custom-night-moto-g56-v207.json`), the g56 is qualified as
+`hid-mediaprojection`, and every story night plus Custom Night 7 has a
+`DEVICE_MEASURED` 6 AM — Nights 1–4 on 2026-09-07/08, Night 5 on 09-12, Night 6
+on 09-13, Night 7 on 09-14. What remains open is reliability: the only declared
+cohort is Night 7's, at 3 wins in 10 runs.
 
 ## Goal
 
@@ -37,10 +46,14 @@ until the state-authority and actuator gates pass.
 
 | Scope | Simulator | Device workflow | Gap |
 |---|---|---|---|
-| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | Modern campaign target from a verified fresh save; `New Game` remains explicitly save-destructive | Fresh-save story ladder and save-state verification remain open |
-| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | Modern campaign targets with per-night artifacts and roll-through/save proof | Per-night lifecycle, policy, and save-advance evidence remain open |
-| Night 6 | Exact plan, human gate, runner, sensors, and graders exist | `device-campaign-v1` story target via `Continue` or `Sixth Night`, with a bound artifact and lifecycle/save proof ports | Profile is `dryRunOnly`; positive qualified device win is absent |
-| Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | `device-campaign-v1` custom target with ten dials, Puppet 15, bounded configurator, and full readback contract | Measured Custom Night calibration, qualification, and a positive device win remain open |
+| Night 1 | AI table, resources, fuses, and lifecycle duration modeled | Modern campaign target from a verified fresh save; `New Game` remains explicitly save-destructive | **Closed 2026-09-07** (`victory-night1`) |
+| Nights 2–5 | Per-night/per-hour AI and resource tables modeled | Modern campaign targets with per-night artifacts and roll-through/save proof | **Closed 2026-09-07/08 and 09-12** (`victory-night2`..`4`, `night5-first-6am`) |
+| Night 6 | Exact plan, human gate, runner, sensors, and graders exist | `device-campaign-v1` story target via `Continue` or `Sixth Night`, with a bound artifact and lifecycle/save proof ports | **Closed 2026-09-13** (`night6-first-6am-anchoredh`); no reliability cohort was run |
+| Night 7 / Custom | Custom AI dials modeled; 10/20 is the canonical target | `device-campaign-v1` custom target with ten dials, Puppet 15, bounded configurator, and full readback contract | **Closed 2026-09-14** (`night7-first-6am-k2`, `golden-freddy`); reliability is 3 wins in 10 predeclared runs |
+
+*Gap column corrected 2026-09-17. The four gaps above were all open on
+2026-09-02 and all closed by the campaign; the Simulator and Device workflow
+columns are unchanged. Records are in [`docs/evidence/`](../docs/evidence/).*
 
 A local probe on 2026-08-26 found that the unchanged generated policy clears
 Nights 2, 4, 5, and 6 at **300/300** exact replays and passes the current

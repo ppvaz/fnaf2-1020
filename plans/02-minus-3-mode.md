@@ -3,7 +3,11 @@
 **Status:** engine-first Minus Toys probe complete 2026-08-28; first device run
 the same day (`n2-minustoys-0117`) **refutes the open-loop policy on the phone**
 — it clears the deterministic model but not the ~0.66 s/cycle margin the
-strategy needs, dying to a BB→Foxy chain (pkg 2a). Step 2's original
+strategy needs, dying to a BB→Foxy chain (pkg 2a). *Correction, 2026-09-17: that
+refutation was of an unanchored open-loop release. The same family, released
+against the game's own 5000 ms movement-roll grid, has since cleared Nights 5, 6
+and 7 on the phone; the defect `n2-minustoys-0117` found was phase, not the
+policy class. See [`PROGRESS.md`](PROGRESS.md).* Step 2's original
 pass established that the *glitchless*
 member is NOT zero-RNG on the canonical Android model — the adapted Minus Two
 probe (`tools/minus2test.mjs`) scores 16/200 with a structural Toy Chica failure

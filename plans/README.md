@@ -5,7 +5,8 @@ constrained controllers, one file per ask, written to be picked up cold in any
 later session. The trainer remains the current public application, but it is one
 consumer of the canonical model rather than the architectural root. See the
 [`PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) for the shared scope and claim
-discipline. Suggested order and dependencies:
+discipline. Listed below in plan order; each entry names its own
+dependencies.
 
 **Current completion and the single next action:**
 [`PROGRESS.md`](PROGRESS.md).
@@ -13,59 +14,71 @@ discipline. Suggested order and dependencies:
 **Order and dependencies across all of it, keyed to Plan 12's claim ladder:**
 [`ROADMAP.md`](ROADMAP.md).
 
-Current triage (2026-09-02):
+Current triage (2026-09-17):
 
-- **Plan 02 remains open around Minus Toys.** Android can deliberately arm its
-  split-camera state, and the glitch-aware engine probe is 200/200 normal plus
-  100/100 pinned worst-luck; the no-split control is 0/200. The first graded
-  open-loop Night 2 run failed, while the later Night 1 run showed the expected
-  split arm and no measurable drift or desync. The remaining device gate is to
-  measure the glitched Toy stun and validate the winding-tick phase on hardware;
-  the selected profile is still dry-run-only. Glitchless Minus Two remains a
-  separate 16/200 negative.
+- **The device campaign has cleared every night.** Nights 1–4 on 2026-09-07/08,
+  Night 5 on 09-12, Night 6 on 09-13, and Night 7 — Custom Night `golden-freddy`,
+  all ten dials 20 — on 09-14, all `DEVICE_MEASURED` under profile
+  `hid-mediaprojection`. None of them has a Plan 12 promotion edge, and the only
+  reliability cohort is Night 7's, at **3 wins in 10 predeclared runs**. This
+  supersedes the 2026-09-02 triage that reported the profile as dry-run-only.
+- **What won is not what the plans predicted.** The winning bindings are
+  open-loop Minus Toys schedules whose *release* is anchored to the game's own
+  5000 ms movement-roll grid, supervised by a belief gate. That is neither the
+  blind macro Plan 10 deprecates nor the closed loop Plan 20 designs, and no
+  plan owned it when it landed.
+- **The bottleneck is now model fidelity, not execution.** Until 2026-09-17 the
+  model killed every censused seed on nights the phone had won; the cause was a
+  two-wall-clock instrument error, not a rule. The remaining free parameter is
+  the frame period, and the next physical test is one binding re-run with
+  `--frame-trace`. Nothing above mechanical fidelity — policy search, optimality,
+  a viability kernel — can start before that closes.
+- **Plan 02 is closed as a device question and open as a trainer one.** Minus
+  Toys is the route that wins on hardware; what Plan 02 still asks for is the
+  second *trainer mode*, which no device result delivers.
 - **Most untouched work:** Plan 03, a real reactive-grading mode; its Android
   vent/mask/light sourcing is complete, but the reactive coach, decision table,
   lesson ladder, and grading remain unimplemented.
 - **Plan 04's runnable experiment is complete:** per-step model windows and an
   explicitly inferred human-error profile now exist. The next useful input is
-  measured trainer timing by step, not another invented profile.
-  *(2026-08-25: the collection pipeline for exactly that now exists —
-  `/save-trace` + `tools/tracereport.mjs`. What remains is practice runs.)*
+  measured trainer timing by step — practice runs through `/save-trace` and
+  `tools/tracereport.mjs`, not another invented profile.
 - **Plan 05 is reopened for invention.** Its original static-cover pass remains a
-  sourced negative; the new campaign searches policy structure with the exact RNG,
-  stateful probes, dominance pruning and 1200-seed gates now available. Do not rerun
-  Plan 06's closed 125-schedule family or Plan 16's Minus 7 timing grid and call it
-  novelty.
+  sourced negative. Do not rerun Plan 06's closed 125-schedule family or
+  Plan 16's Minus 7 timing grid and call it novelty. Note that its admission
+  gate is described at 1200 seeds while the project's census standard is 3000;
+  the gate, not the prose, is what lags.
 - **Plan 17 is the focused in-APK campaign.** Straight re-signing remains blocked
   by measured PAIRIP behavior, but same-process hooks, loader/runtime approaches,
   CCN mutation/rebuild and Chowdren recompilation are active hypotheses. The target
   is a traceable personal research APK with internal observation and actuation.
-- **Plans 22–24 are now active foundations.** Plan 22 owns the phase-1 workspace,
-  contracts, profiles, and composition boundaries; Plan 23 owns the read-only Cue
-  Helper HUD qualification; Plan 24 owns replay-only exercises, activity gating,
-  and adaptive training. None of these foundations is a live gameplay or training
-  claim.
+- **Plans 22–24 are foundations, not claims.** Plan 22 owns the phase-1
+  workspace, contracts, profiles, and composition boundaries; Plan 23 owns the
+  read-only Cue Helper HUD qualification; Plan 24 owns replay-only exercises,
+  activity gating, and adaptive training.
+- **Plan 25 is the horizon list** written after the Night 7 clear, and is the
+  only plan authored with that clear as its premise.
 
-Current ownership and dependencies (2026-09-02):
+Ownership and dependencies (2026-09-17):
 
 - **Plan 09 defines the shared evidence substrate.** Its schemas, validator, and
-  producers are implemented; one real phone manifest still needs validation.
-- **Plan 10 closes the stock-device controller loop.** The legacy `trial.sh` route
-  remains a comparison lane. The current boundary is split across core contracts,
-  adapter capabilities/calibration, and `apps/device` composition; it remains
-  unqualified for live execution.
+  producers are implemented, and real phone manifests now exist from the
+  campaign runs.
+- **Plan 10 closes the stock-device controller loop.** The legacy `trial.sh`
+  route remains a comparison lane. Its package 0 boundary is qualified and
+  flying; its act-then-verify loop is not.
 - **Plan 11 makes simulator policy comparisons fair.** It can proceed beside
   Plan 09 after their observation record is agreed, and does not require RL.
-- **Plan 12 owns promotion and claims.** It is the gate from replay to shadow,
-  bounded action, full Night 6, reliability cohort, and only then 10/20.
-- **Plan 13 owns campaign and all-night support.** The campaign targets the
-  complete story ladder (Nights 1–6) and Custom Night 7 with bound full-night
-  artifacts, Custom Night readback, lifecycle proof, and save/menu advancement.
-  The physical qualification gate remains open.
+- **Plan 12 owns promotion and claims.** Rungs 4, 5 and 7 have been reached on
+  the phone and **none has been promoted**; recording those promotions, or
+  declining to, is live work.
+- **Plan 13 owns campaign and all-night support.** The full story ladder and
+  Custom Night 7 are cleared with bound artifacts, Custom Night readback,
+  lifecycle proof, and save/menu advancement. Reliability is what remains.
 - **Plan 14 owns device portability.** A versioned `device-profile-v1`, adapter
   registry, profile-bound calibration IDs, semantic control maps, and mismatch
-  preflight now exist. Full calibration, profile completeness, and second-device
-  validation remain open; legacy constants are not evidence of portability.
+  preflight exist. Second-device validation remains open; every number above was
+  measured on one handset.
 - **Plan 15 owns sensor independence.** A game fact is taught once and each
   capture method reads it through a declared, calibrated adapter. Plan 19 owns
   the native-resolution visual watchlist; BB cross-sensor calibration remains
@@ -73,11 +86,11 @@ Current ownership and dependencies (2026-09-02):
 
 1. [01-research-pass.md](01-research-pass.md) — sourced docs for the 10/20 meta.
    Prerequisite for 02, 03 and the novelty check in 05.
-2. [04-optimize-minus-7.md](04-optimize-minus-7.md) — slack-maximise the existing
-   script. No dependencies; runnable today.
-3. [02-minus-3-mode.md](02-minus-3-mode.md) — Minus 3 as a second trainer mode.
-4. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
+2. [02-minus-3-mode.md](02-minus-3-mode.md) — Minus 3 as a second trainer mode.
+3. [03-right-vent-camp-mode.md](03-right-vent-camp-mode.md) — right vent camp mode;
    needs a reactive coaching model, the biggest piece.
+4. [04-optimize-minus-7.md](04-optimize-minus-7.md) — slack-maximise the existing
+   script. No dependencies; runnable today.
 5. [05-derive-new-strategy.md](05-derive-new-strategy.md) — first derivation pass
    produced **Six-Seven**, then the sourced route graph refuted it; reopened for a
    broader stateful/event-driven policy invention campaign that excludes the closed
@@ -108,13 +121,13 @@ Current ownership and dependencies (2026-09-02):
 13. [13-campaign-and-all-night-support.md](13-campaign-and-all-night-support.md)
     — save-safe lifecycle, per-night policy qualification, fresh-save story
     progression, and verified Custom Night configuration.
-15. [15-sensor-independent-observations.md](15-sensor-independent-observations.md)
-    — one definition per game fact, one calibrated adapter per capture method,
-    and a refusal for every pairing that has not been calibrated.
 14. [14-device-portability-and-profiles.md](14-device-portability-and-profiles.md)
     — normalized canvas/controller coordinates behind a device profile, models
     and timing bound to the profile they were measured under, and a bounded
     new-device calibration session.
+15. [15-sensor-independent-observations.md](15-sensor-independent-observations.md)
+    — one definition per game fact, one calibrated adapter per capture method,
+    and a refusal for every pairing that has not been calibrated.
 16. [16-constrained-policy-search.md](16-constrained-policy-search.md) —
     dominance-pruned beam search over the device plan's timing geometry
     (evaluated through `human-gate.mjs` at 1200 seeds), targeting the item 10/11

@@ -1,5 +1,8 @@
 # Plan 22 closure matrix
 
+**Rows last reconciled against the device record on 2026-09-17.** P5 moved to
+`Closed`; every other row is as it stood on 2026-09-02.
+
 Status is intentionally separate from the plan text and the historical progress
 log. `Foundation` means the boundary or scaffold exists; `Closed` means the
 plan's stated Done when is evidenced; `Open` means a required gate remains.
@@ -11,7 +14,7 @@ plan's stated Done when is evidenced; `Open` means a required gate remains.
 | P2 — extract canonical mechanics | Foundation | `packages/core/src/mechanics`, `packages/core/src/control`, `packages/core/src/estimation`, `node tools/sourcetest.mjs`, `node tools/simtest.mjs`, core boundary audit | Broader controller/trainer equivalence and measured migration fixtures remain open. |
 | P3 — define contracts and ports | Foundation | `packages/core/contracts/register.json`, runtime validators, adapter conformance, `packages/runtime/test/scheduler.test.js`, shared contract vectors | Complete detector/calibration protocol detail and external qualification contract. |
 | P4 — adapters and runtime composition | Foundation | `node packages/adapters/test/conformance.test.js`, `node apps/device/test/service.test.js`, `npm run device:dry-run` | Live executor remains blocked until temporal, observation, cleanup, and qualification gates are promoted together. |
-| P5 — device execution | Open | CLI refusal test; `DEVICE_MEASURED` is no longer accepted from transport self-report | Inject a qualified transport, run bounded temporal execution, and retain a real session bundle. **The crossover is decided (2026-09-02): the legacy runner is deprecated, so this row is the only path to new ladder evidence.** |
+| P5 — device execution | Closed 2026-09-14 | Qualified transport `hid-mediaprojection` (`qualification-hid-mediaprojection-20260907`); bounded temporal execution on every story night and Custom Night 7; real session bundles retained per run under `artifacts/` with their evidence records in `docs/evidence/` | Closed by execution, not by reliability: the only declared cohort is Night 7's at 3 wins in 10 runs, and no Plan 12 promotion edge has been recorded. **The crossover is decided (2026-09-02): the legacy runner is deprecated, so this row was the only path to new ladder evidence — and it carried it.** |
 | P6 — research/evidence path | Foundation | Generic reference cases plus real family evaluators for Minus Toys and Minus Two; legacy aliases call the same evaluators; family campaigns emit candidate statistics, terminal causes, trace hashes, artifact refs, and effective replay; `promote` invokes a structured Plan 12 gate; `winner-v1` now compiles into a replay-checked device bundle | Port a broader real synthesis/optimization/robustness campaign set and retain external evidence before closing. |
 | P7 — screencheck extraction | Foundation | native source moved to `packages/screencheck/src`; existing native fixture lane passes | Move ownership of build, benchmark, and host conformance into the screencheck package; preserve freestanding/no-APK property. |
 | P8 — docs/indexes/evidence | Foundation | generated catalogs, static portal, evidence CLI, hash-checked replay, Plan 12 promotion refusal, claim graph, generated reverse links, five-query retrieval benchmark, `node tools/test-docs.mjs` | Promotion remains blocked without external evidence. |

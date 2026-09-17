@@ -1,6 +1,17 @@
 # Plan progress
 
-**Updated:** 2026-09-08
+**Updated:** 2026-09-17.
+
+**How to read this file.** It is a log, not a summary, and it grew in two
+directions. The block immediately below is a **2026-09-08 snapshot**, retained
+where it was written; from there the top section runs newest-first back to
+2026-08-20, and from roughly line 1000 onward the file is append-ordered, so
+**the newest work is at the bottom**. Read the last entry first.
+
+Since that 09-08 snapshot: Night 5 reached 6 AM on 2026-09-12, Night 6 on
+09-13, and Night 7 (10/20, `golden-freddy`) on 09-14, with a ten-run Night 7
+cohort at 3 wins. The current open work is model fidelity — see the last
+entries and [`../docs/research/SOLVING-FNAF2.md`](../docs/research/SOLVING-FNAF2.md).
 
 2026-09-08 STORY NIGHTS 3 AND 4 CLEARED ON DEVICE, OPEN LOOP; NIGHT 2 GRADED
 FROM RETAINED EVIDENCE. Phone: moto g56 `ZF525F5BH5`, `2400x1080` landscape,

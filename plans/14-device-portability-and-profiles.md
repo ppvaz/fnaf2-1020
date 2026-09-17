@@ -6,8 +6,12 @@ and is retained as historical context. The current repository already has a
 versioned `device-profile-v1`, an explicit adapter/capability registry, profile-
 bound calibration IDs and semantic control maps, profile resolution, and
 fail-closed campaign preflight. The canonical candidate is still the Moto g56
-5G / `com.scottgames.fnaf2` v2.0.7 path, and its live profile remains
-`dryRunOnly`.
+5G / `com.scottgames.fnaf2` v2.0.7 path. *Correction, 2026-09-17: the sentence
+that stood here — "its live profile remains `dryRunOnly`" — was true on
+2026-09-02 and is not now. The g56 flies as `hid-mediaprojection` under
+`qualification-hid-mediaprojection-20260907`. Portability is untouched by that:
+every calibration, band and timing number in this repository was measured on
+one handset, and this plan's second-device gate is exactly as open as it was.*
 
 The remaining work is to complete the profile's device/layout semantics, bind
 all models and timing to it, reproduce the calibrated profile through a

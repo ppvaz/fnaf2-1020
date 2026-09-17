@@ -1,5 +1,51 @@
 # Roadmap
 
+> ## Superseded, 2026-09-17 — read this first
+>
+> **This file's ladder position, its Track A milestones, and Track B's premise
+> were all overtaken by device results between 2026-09-07 and 2026-09-14.** The
+> reasoning below is retained unedited because the order it chose is still the
+> useful part; its *status* claims are not current. For where the work actually
+> stands, read [`PROGRESS.md`](PROGRESS.md), the
+> [device record in the root README](../README.md), and
+> [`SOLVING-FNAF2.md`](../docs/research/SOLVING-FNAF2.md).
+>
+> What is refuted, precisely:
+>
+> - **"Where we actually are" is wrong in every row.** It says every device
+>   record is `FIXTURE`, the candidate profile is `dryRunOnly`, and "Nights 3–6
+>   have no graded device attempt". The modern path cleared Nights 1–4 on
+>   2026-09-07/08, Night 5 on 09-12, Night 6 on 09-13 and Night 7 (10/20,
+>   `golden-freddy`, all ten dials 20) on 09-14, all `DEVICE_MEASURED` under
+>   profile `hid-mediaprojection`. Its "honest one-line summary" — that the only
+>   real clear belongs to the retired path — no longer holds.
+> - **Track A's exit gates A2 through A5 were met**, in order, by that campaign.
+>   A6 was not: Night 6 has no declared reliability cohort. The one cohort that
+>   exists is Night 7's, at **3 wins in 10 predeclared runs**
+>   ([`night7-cohort-k2-result`](../docs/evidence/night7-cohort-k2-result-20260914.json)).
+> - **Structural fact 1 was never route-general.** "Night 7 is the first night
+>   the route cannot run at all" is a measurement of `recipe.devicePlan`
+>   (Minus 7) at 12/100, and the sentence around it drops that scope. Minus Toys
+>   clears Night 7 3000/3000 exact, and on 2026-09-17 all ten Custom Night
+>   presets cleared 3000/3000 in all four lanes
+>   ([`night7-preset-sweep`](../docs/evidence/night7-preset-sweep-20260917.json)).
+> - **Track B's premise is therefore refuted.** Night 7 was not reached by
+>   inventing an observation-conditioned grammar. It was reached by a Minus Toys
+>   binding whose release is *anchored* to the game's own 5000 ms movement-roll
+>   grid — which directive 2 had no name for. What won is open loop plus a
+>   measured anchor and a belief-gated supervisor, not a closed loop and not a
+>   blind macro.
+> - **Directive 2 still names a real defect, and it is no longer the top one.**
+>   The current bottleneck is model fidelity: until 2026-09-17 the model killed
+>   every censused seed on nights the phone had won, which turned out to be a
+>   two-wall-clock instrument error rather than a rule
+>   ([`night6-model-gap-two-clocks`](../docs/evidence/night6-model-gap-two-clocks-20260917.json)).
+>
+> The rule this file wrote for itself — *"when one of those changes a ladder
+> position, this file changes in the same commit; when they disagree with this
+> file, they win"* — was not kept for fifteen days. That is the defect this
+> block exists to stop repeating.
+
 **Written 2026-09-02.** One sequenced route from the current evidence state to
 the charter's goal: a graded 10/20 clear on the canonical Android target, with
 evidence that survives replay and scrutiny.
