@@ -1,0 +1,53 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-twin-nights-result-20260916",
+ "claimLevel": "DEVICE_EVIDENCE",
+ "date": "2026-09-17",
+ "question": "Can two Night 6 runs be made to share an office seed by placing the activating press at a fixed phone wall-clock residue?",
+ "predeclaration": "docs/evidence/night6-twin-nights-predeclaration-20260916.json",
+ "verdict": "NO TWINS in six nights, and the reason is now a number rather than a mystery. The mechanism works: the activating press is placed to 0.007 ms on an idle host and the seed follows it by a steady 4849 ms, so four aimed nights landed their seeds within 14 ms of each other (24850, 24851, 24853, 24864). Twins need two on the same millisecond, and the measured window -- 37 ms of delay spread plus the press error a busy host adds -- asks for about eight aimed nights. Six were run, four of them aimed. Nothing about the result says twins are out of reach; it says the cohort was two or three nights short.",
+ "whatWasBuilt": {
+  "timedStoryStart": "FNAF_START_PHONE_WALL_RESIDUE_MS now governs a story night's title press, sharing the stamping and refusal path with the Custom Night Start tap. The press is stamped in phone wall time either way and a requested timed start never falls back to an untimed tap.",
+  "precision": "0.030, 0.007 ms from the planned instant on an idle host; 21.6, 31.8 and 40.7 ms when the host was busy (video decoding, or this session's own polling). The press is thirty times more precise than the millisecond it has to hit, when nothing else runs.",
+  "whichPress": "The seed follows the press that ACTIVATES the focused title row, never the one that merely focuses it. Which press that is depends on where the title cursor already sits, and the cursor survives an attempt. Holding the menu phase open to find out is not allowed: intro() stamps the instant after which a latched onset counts as this night's, and the office appears 4.8 s after the activating press, so two perfectly placed presses were refused as onset-predates-intro before the ordering was understood."
+ },
+ "measured": {
+  "pressToSeed": "4849.5, 6724.3, 4813.2, 4850.2 ms over four nights. The 6724 is the focus path: the timed press only focused the row and the untimed second press activated it 1.9 s later.",
+  "decomposition": "press to office load 3556.5 / 5437.3 / 3561.2 / 3566.2 ms; office load to seed 1293.0 / 1287.0 / 1252.0 / 1284.0 ms. The load is the steady part, spanning 41 ms; the transition is steady to 10 ms on the activating path.",
+  "seeds": "aimed nights landed at low16 24850, 24851 and 24853 -- a 3 ms cluster -- against 26756 for the one the untimed press started.",
+  "birthday": "a 1906 ms two-path spread needs about 55 attempts for a collision; the one-path spread needs about four to eight, and press error on a busy host is now the widest term."
+ },
+ "artifacts": {
+  "winningNight": "night6-c2-01-20260917T021417Z reached 6 AM with its office seed named to a single millisecond, low16 24851. This is the first 6 AM in this project whose seed is known exactly: 617 MB of video, the streamed game log, kernel touches. It has no frame trace (--no-trace), so placing its presses on the game's frame clock for a model comparison needs a repeat run with --frame-trace.",
+  "cohorts": "artifacts/forensics/twin-nights-night6-20260916/ (cohort 1, three nights, stopped early for a measured reason -- STOPPED.md) and artifacts/forensics/twin-nights-night6-cohort2/ (cohort 2)."
+ },
+ "toolNotes": {
+  "twinDetector": "The seed is the low 16 bits of the wall clock, so two attempts a whole number of 65,536 ms periods apart share a seed while their absolute milliseconds differ. The first detector grouped by absolute time and would have missed a real twin; both cohorts' loops now group by low16.",
+  "eyeholeReader": "artifacts/forensics/twin-nights-night6-20260916/twin-compare.py reads a night's 42 mask windows from the video alone, aligning on the cameras-up statics rather than on any model. Calibrated against the corpus hand read of night6-seedlock-h-20260916T223633Z: 40 of 42 agree, and both differences are misses, never a wrong character. So true twins should agree on about 38-40 of 42 here, not 42.",
+  "runnerFlag": "night-run.sh gained --no-grade so a cohort is not serialised behind an 18-minute grading pipeline; its first version referenced an undefined RUN and aborted the runner after the phone was already released."
+ },
+ "nights": {
+  "c1-1": "seed 24850, single ms, aimed, death",
+  "c1-2": "seed 26756, single ms, UNAIMED (the untimed second press started it), death",
+  "c1-3": "seed 24853, two-candidate bracket, aimed, death",
+  "c2-1": "seed 24851, single ms, aimed, SIX AM",
+  "c2-2": "seed 24864, single ms, aimed, death",
+  "c2-3": "void: the press only focused the row, no night began, no seed spent, 90 seconds",
+  "c2-4": "seed 30152, single ms, UNAIMED: the office loaded 56.7 s BEFORE the timed press, so the first press had already started the night and the timed one landed inside it; the strict anchor refused it and the loop stopped"
+ },
+ "whyTheCohortStopped": "The loop treats a 6 AM and a death as samples and a no-office-load attempt as void, but it stops on any other refusal. c2-4 was refused by the anchor after the office had loaded, which is neither, so it stopped one attempt short of its bound. The next cohort should treat an anchor refusal whose seed predates the timed press as another kind of void -- it is the cursor case, not a fault.",
+ "whatWouldFinishIt": [
+  "Two or three more aimed nights at the same residue, on an idle host. The window is 37 ms and the bound is about eight.",
+  "Cheaper attempts: the seed is readable from the streamed log about five seconds after the press, so a loop can abort an attempt whose seed misses the target and spend ninety seconds instead of nine minutes on it. That turns the birthday search from an hour into a few minutes.",
+  "Run with --frame-trace. night6-c2-01 is a 6 AM whose seed is known exactly, which is the artifact the model most needs, but without a frame trace its presses cannot be placed on the game's frame clock for the comparison."
+ ],
+ "clockLever": {
+  "question": "Pedro, 2026-09-17: can the phone's wall clock be manipulated, or currentTimeMillis hooked, to force the seed?",
+  "insideTheGame": "No, not without root or repackaging. Hooking System.currentTimeMillis in com.scottgames.fnaf2 needs code injection into a release build. Repackaging and re-signing is possible on an unrooted phone but changes the target: every qualification here names com.scottgames.fnaf2:2.0.7+26, and a modified APK would make the device evidence about a different program.",
+  "systemClock": "Yes, and it needs no root. `adb shell date -s` is refused (Operation not permitted), but `adb shell cmd alarm set-time <epochMs>` works: tested on 2026-09-17, the clock moved by the requested amount and was restored to within 6 ms of the host's.",
+  "whyItDoesNotBeatTheJitter": "The seed's uncertainty is the interval between whatever anchor we control and the game's own read of the clock, and the closest log line before that read is 1-15 ms ahead of it -- shorter than an adb round trip (46-62 ms measured). Setting the clock earlier, from the office-load line, leaves the same 41 ms of load-to-seed jitter it was meant to remove.",
+  "pinningLoop": "Pedro's follow-up -- loop the set until the night starts -- is the right shape, because then the uncertainty becomes the SET PERIOD rather than the natural jitter. Measured: one `cmd alarm set-time` costs 46-62 ms from the host and 34 ms in an on-device loop, so a single loop does not beat the ~40 ms it must. Eight parallel on-device loops do: sampled 40 times while they ran, the clock sat a median 7 ms above the pin, p90 23, max 38 -- and each sample's own `date` spawn costs 10-25 ms, so the true pin is tighter than that. Concentrating the seed near one value raises the collision probability several-fold over the flat 1-in-37 the natural jitter gives.",
+  "next": "Pin the clock with parallel on-device loops through the office load, targeting a seed already held by a completed night, and measure the resulting seed distribution before spending nights on it. If the pin holds within a few milliseconds, twins need two or three attempts rather than eight."
+ },
+ "shortNights": "Pedro, 2026-09-17: a full night is not necessary. The comparison only needs the stretch where encounters happen, and the first two minutes hold several, so the matching attempt can be stopped at about 120 s. Only the night already in hand needs to be long."
+}

@@ -5826,3 +5826,51 @@ first office encounter at 78.8 s, the right character three cycles after the pho
 `office-seed-bracket.py` applies the sourced rule by default, keeps the old one behind
 `--legacy-pair`, names the rule it used, and its test (in `test:contracts`) covers both.
 Evidence: [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
+
+**2026-09-17: a timed start for Night 6, and the seed forced to a three-millisecond cluster.**
+`FNAF_START_PHONE_WALL_RESIDUE_MS` now governs a story night's title press, sharing the stamping
+and refusal path with the Custom Night Start tap. On an idle host the press lands **0.007 ms** from
+the planned phone wall instant; on a busy one it drifts 20-40 ms, and that error goes straight into
+the seed. Three attempts taught the ordering the hard way. The title cursor survives an attempt, so
+the first press sometimes activates the row and sometimes only focuses it, and only the
+**activating** press fixes the seed -- it follows by a steady **4849 ms**, 3556 to the office load
+and 1293 through it. Waiting to observe which press activated is not allowed: `intro()` stamps the
+instant after which a latched onset counts as this night's, and the office appears 4.8 s after the
+activating press, so two perfectly placed presses were refused as `onset-predates-intro` before the
+ordering was understood. The press is now placed and the phase returns at once, and
+`timedStartHeld` reads back from the seed which press did the work.
+
+Cohort 1 (three nights) spread 1906 ms because half its nights were started by the untimed second
+press; it was stopped at three of its eight allowed attempts because those three showed eight could
+not produce a twin. Cohort 2 runs the corrected start. Aimed nights land their seeds in a
+**3 ms cluster** (24850, 24851, 24853), and `night6-c2-01-20260917T021417Z` reached **6 AM with its
+office seed named to a single millisecond, 24851** -- the first 6 AM in this project whose seed is
+known exactly. Twins still need two attempts on the same millisecond: the measured window is 37 ms
+of delay plus the press error, about eight attempts on an idle host.
+
+Two tool corrections worth keeping. The seed is the low 16 bits of the wall clock, so attempts a
+whole number of 65,536 ms periods apart share a seed while their absolute milliseconds differ; the
+first twin detector grouped by absolute time and would have missed a real pair. And
+`twin-compare.py` reads a night's 42 mask windows from the video alone, aligning on the cameras-up
+statics rather than on any model: it agrees with the corpus hand read on 40 of 42 windows, and both
+differences are misses rather than wrong characters, so true twins should agree on about 38-40.
+`night-run.sh` gained `--no-grade` so a cohort is not serialised behind an 18-minute pipeline.
+Evidence: [night6-twin-nights-result-20260916](../docs/evidence/night6-twin-nights-result-20260916.json),
+predeclared in [night6-twin-nights-predeclaration-20260916](../docs/evidence/night6-twin-nights-predeclaration-20260916.json).
+
+**2026-09-17 (same night): the phone's wall clock is settable without root, and pinning it is the
+lever that would finish twin nights.** `adb shell date -s` is refused, but
+`adb shell cmd alarm set-time <epochMs>` works from the shell: tested, the clock moved by the
+requested amount and was restored to within 6 ms of the host. Hooking `currentTimeMillis` inside
+the game is not available without root or repackaging, and a repackaged APK would change the
+target every qualification names. Setting the clock does not by itself beat the seed jitter -- the
+uncertainty lives between any anchor we control and the game's own read, and the nearest log line
+before that read is 1-15 ms ahead of it, shorter than the 46-62 ms an adb round trip costs. What
+does help is **pinning**: loop the set so the uncertainty becomes the set period instead of the
+natural 40 ms. One `cmd alarm set-time` costs 34 ms in an on-device loop, which does not beat it;
+**eight parallel on-device loops hold the clock a median 7 ms above the pin (p90 23, max 38), and
+each sample's own `date` spawn costs 10-25 ms of that**, so the true pin is tighter. Next: pin
+through the office load at a seed already held by a completed night, measure the resulting seed
+distribution before spending nights on it, and stop the matching attempt at about 120 s -- a full
+night is not needed to compare encounters. Evidence:
+[night6-twin-nights-result-20260916](../docs/evidence/night6-twin-nights-result-20260916.json).
