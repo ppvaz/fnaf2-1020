@@ -18,7 +18,8 @@
 #
 # Usage:
 #   tools/device/night-run.sh --label baseline [--bundle DIR] [--night N]
-#                              [--serial ID] [--calibration FILE] [--no-video] [--bt-audio] [--dry-run]
+#                              [--serial ID] [--calibration FILE] [--no-video] [--no-grade]
+#                              [--bt-audio] [--dry-run]
 set -Eeuo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -38,6 +39,7 @@ SAVE_CURSOR=""
 CALIBRATION=""
 ARM_MODE="observe-once"
 VIDEO=1
+GRADE=1               # --no-grade: keep and hash the recording, skip grade-run.sh (cohort loops grade later)
 BT_AUDIO=0            # --bt-audio: retain the phone's A2DP mix via BlueALSA (tools/cue/capture-bt-audio.sh)
 BT_AUDIO_BASE=""
 TRACE=1
@@ -71,6 +73,7 @@ while [ $# -gt 0 ]; do
     --no-input-trace) INPUT_TRACE=0; shift ;;
     --trace-seconds) TRACE_SECONDS="$2"; shift 2 ;;
     --no-video) VIDEO=0; shift ;;
+    --no-grade) GRADE=0; shift ;;
     --bt-audio) BT_AUDIO=1; shift ;;
     --dry-run) DRY=1; shift ;;
     --) shift; EXTRA+=("$@"); break ;;
@@ -434,7 +437,9 @@ analyze() {
   # Every video instrument this repository owns, through its own aggregator.
   # grade-run.sh resolves captures/<RUN>.mp4 by name, which is why the harness
   # names the recording after the run id.
-  if [ -s "$HOST_VIDEO" ]; then
+  if [ -s "$HOST_VIDEO" ] && [ "$GRADE" = 0 ]; then
+    say "video instruments skipped (--no-grade); grade later with tools/device/grade-run.sh $RUN"
+  elif [ -s "$HOST_VIDEO" ]; then
     say "video instruments (grade-run.sh)"
     # Streamed, not buffered. Reading a finished log is how a still-decoding
     # pipeline gets mistaken for a stopped one; grade-run.sh now prints a

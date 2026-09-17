@@ -1,0 +1,24 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-twin-nights-predeclaration-20260916",
+ "claimLevel": "PREDECLARATION",
+ "date": "2026-09-16",
+ "question": "Can two Night 6 runs be made to share an office seed, by placing the activating press at a fixed phone wall-clock residue and reading each night's seed from the game log?",
+ "whyNow": "The 2026-09-15 twin nights were INCONCLUSIVE because same-residue Start taps could not be shown to share a seed: the seed itself was never measured, only the tap. Two things changed on 2026-09-16. The seed is now read from the game log to one or two milliseconds (allocRunHeader is instruction 0 of CRun.initRunLoop, so it falls between the last line logged before initRunLoop and the first logged inside it), and the tap-to-seed delay has been measured on four runs: the menu transition is tight (3612.2, 3613.6, 3614.0 ms on the Custom Night path) and all the looseness is the office load itself (1241, 1258, 1260, 1329 ms). A fixed residue therefore lands the seed in a window of roughly twenty milliseconds, and two nights collide by the birthday bound in about five to eight attempts.",
+ "predeclaredBefore": "any attempt of this cohort was run",
+ "setup": {
+  "binding": "Night 6 h, artifacts/night6-cohort-h/bundle, unchanged -- the binding that reached 6 AM on 2026-09-13 and again on 2026-09-16",
+  "anchor": "NIGHT_ANCHOR_AIM_MS 4870, period 5000, maxK 0, as in both winning runs",
+  "timedStart": "FNAF_START_PHONE_WALL_RESIDUE_MS=20000 on every attempt, the residue the 2026-09-15 twins A and B used. The story-night path now honours it: the press that activates the focused title row is the one that loads the office frame, and it is placed when the phone's wall clock reaches the residue. A requested timed start never falls back to an untimed tap; if the first press already leaves the title there is no activating press to place and the attempt refuses.",
+  "instruments": "MMFRuntime logcat streamed from before each attempt (the phone's log ring rolls over in about a minute), 1280x576 video, kernel touches. Grading is deferred with --no-grade so the loop is not serialised behind an 18-minute pipeline.",
+  "bound": "at most 8 attempts; the loop stops at the first proven twin pair, or when an attempt cannot be returned to an observed title."
+ },
+ "rules": {
+  "seedOfAnAttempt": "tools/device/office-seed-bracket.py on that attempt's streamed log, default (sourced) rule. An attempt whose log has no office load, or whose bracket cannot be formed, is void and does not count against the bound.",
+  "twins": "PROVEN TWINS are two attempts whose brackets are each a single millisecond and are the same millisecond. A pair whose brackets merely overlap is a CANDIDATE pair, not twins, and is reported as such.",
+  "thenWhat": "For a proven pair, read both nights' eyehole windows with the same reader and compare the encounter sequences. The predeclared comparison is the number of agreeing mask windows over the first 42, against the same count for every non-twin pair in the cohort. Twins that share a seed and a compiled plan should agree far more than any non-twin pair; if they do not, the seed is not what drives the night, and that is the finding.",
+  "notClaimed": "This measures whether the seed can be forced and whether a shared seed reproduces a night. It is not a win-rate cohort, and no rate will be quoted from it."
+ },
+ "qualification": "artifacts/night6-cohort-h/qualification-twins.json",
+ "retained": "artifacts/forensics/twin-nights-night6-20260916/"
+}

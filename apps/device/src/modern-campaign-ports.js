@@ -202,6 +202,21 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
  * reviewed; a missing reader refuses before a dial is changed.
  */
 /** @param {any} options */
+/**
+ * Why a requested timed start cannot be honoured on this press, or null when it can.
+ * On a story night the press that activates the focused title row is the one that loads
+ * the office frame and so fixes the seed; if the first press already left the title there
+ * is no second press to place, and a twin-night measurement must refuse rather than fall
+ * back to an untimed tap. Custom Night times its own Start tap instead.
+ * @param {{targetName: string, firstSelectionState: string, residueMs: number | null}} state
+ */
+export function timedStartRefusal({ targetName, firstSelectionState, residueMs }) {
+  if (residueMs === null || targetName === 'customNight') return null;
+  if (firstSelectionState === 'title') return null;
+  return `timed ${targetName} start refused: the first press already left the title `
+    + `(state=${firstSelectionState}), so no activating press could be timed`;
+}
+
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, calibrationPath = null, qualification, serial, adb = 'adb',
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
@@ -461,6 +476,50 @@ export async function createCampaignPorts(options = {}) {
     });
   };
 
+  // Twin-nights clock seeding. FNAF_START_PHONE_WALL_RESIDUE_MS places the press that
+  // starts a night when the phone's wall clock reaches that residue modulo 65 536 ms.
+  // The stock game seeds its 16-bit RNG from (short) System.currentTimeMillis() in
+  // CRun.allocRunHeader, the first instruction of CRun.initRunLoop, which the office
+  // frame's load reaches a fixed transition after this press: 3612-3614 ms on the
+  // Custom Night path over three runs, with the load itself the only loose part
+  // (docs/evidence/night6-h-seedlock-census-20260916.json). The press is stamped in
+  // phone wall time either way, and a requested timed start never falls back to an
+  // untimed tap.
+  const startResidueMs = () => {
+    const text = process.env.FNAF_START_PHONE_WALL_RESIDUE_MS ?? '';
+    return text === '' ? null : Number(text);
+  };
+  const stampedStartTap = async ({ point: target, holdMs, kind, refusal }) => {
+    const residueMs = startResidueMs();
+    let clock = null;
+    let plan = null;
+    let tapped = false;
+    try {
+      clock = cuePort.openClock();
+      const before = await clock.probe({ samples: 8 });
+      if (residueMs !== null) {
+        plan = planTimedStart({ sample: before, residueMs, nowHostMs: performance.now() });
+        onEvent({ type: `${kind}.start-planned`, residueMs, targetPhoneWallMs: plan.targetPhoneWallMs,
+          waitMs: plan.waitMs, uncertaintyMs: before.uncertaintyMs });
+        await waitUntilHostMs(plan.targetHostMs);
+      }
+      const tapHostMs = performance.now();
+      tapped = true;
+      await tap({ point: target, holdMs });
+      const after = await clock.probe({ samples: 4 });
+      const tapPhoneWallMs = phoneWallAt(after, tapHostMs);
+      onEvent({ type: `${kind}.start`, tapHostMs, tapPhoneWallMs, tapPhoneWallLow16: Math.floor(tapPhoneWallMs) % 65536,
+        plannedPhoneWallMs: plan?.targetPhoneWallMs ?? null, lateMs: plan ? tapHostMs - plan.targetHostMs : null,
+        uncertaintyMs: after.uncertaintyMs });
+    } catch (error) {
+      if (residueMs !== null) throw new Error(`${refusal}: ${error?.message ?? error}`);
+      onEvent({ type: `${kind}.start`, status: 'unstamped', reason: String(error?.message ?? error) });
+      if (!tapped) await tap({ point: target, holdMs });
+    } finally {
+      clock?.close();
+    }
+  };
+
   const menu = async ({ target }) => {
     // A story night the game rolled straight into after the previous night's
     // observed 6 AM: the roll performed the selection, no title exists to
@@ -504,7 +563,15 @@ export async function createCampaignPorts(options = {}) {
       value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
       10000, 'title row focus or night start');
     if (firstSelectionState === 'title') {
-      await tap({ point: targetPoint, holdMs });
+      // The second press activates the focused row. On a story night that press is what
+      // loads the office frame, so it is the one a timed start must place; on Custom
+      // Night it only opens the dial screen and the Start tap below carries the timing.
+      if (targetName === 'customNight') await tap({ point: targetPoint, holdMs });
+      else await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+        refusal: `timed ${targetName} start refused` });
+    } else {
+      const refused = timedStartRefusal({ targetName, firstSelectionState, residueMs: startResidueMs() });
+      if (refused) throw new Error(refused);
     }
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
@@ -735,35 +802,8 @@ export async function createCampaignPorts(options = {}) {
     // reaches that residue modulo 65 536 ms (apps/device/src/timed-start.js). The tap's
     // phone wall time is logged either way; a requested timed start never falls back to
     // an untimed tap.
-    const residueText = process.env.FNAF_START_PHONE_WALL_RESIDUE_MS ?? '';
-    const timed = residueText !== '';
-    let startClock = null;
-    let plan = null;
-    let tapped = false;
-    try {
-      startClock = cuePort.openClock();
-      const before = await startClock.probe({ samples: 8 });
-      if (timed) {
-        plan = planTimedStart({ sample: before, residueMs: Number(residueText), nowHostMs: performance.now() });
-        onEvent({ type: 'custom-night.start-planned', residueMs: Number(residueText), targetPhoneWallMs: plan.targetPhoneWallMs,
-          waitMs: plan.waitMs, uncertaintyMs: before.uncertaintyMs });
-        await waitUntilHostMs(plan.targetHostMs);
-      }
-      const tapHostMs = performance.now();
-      tapped = true;
-      await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
-      const after = await startClock.probe({ samples: 4 });
-      const tapPhoneWallMs = phoneWallAt(after, tapHostMs);
-      onEvent({ type: 'custom-night.start', tapHostMs, tapPhoneWallMs, tapPhoneWallLow16: Math.floor(tapPhoneWallMs) % 65536,
-        plannedPhoneWallMs: plan?.targetPhoneWallMs ?? null, lateMs: plan ? tapHostMs - plan.targetHostMs : null,
-        uncertaintyMs: after.uncertaintyMs });
-    } catch (error) {
-      if (timed) throw new Error(`timed Custom Night start refused: ${error?.message ?? error}`);
-      onEvent({ type: 'custom-night.start', status: 'unstamped', reason: String(error?.message ?? error) });
-      if (!tapped) await tap({ point: calibration.start.point, holdMs: calibration.start.holdMs });
-    } finally {
-      startClock?.close();
-    }
+    await stampedStartTap({ point: calibration.start.point, holdMs: calibration.start.holdMs,
+      kind: 'custom-night', refusal: 'timed Custom Night start refused' });
     return configured;
   };
 
