@@ -59,9 +59,22 @@ refactors — is **bookkeeping**.
   machine, and on 2026-09-15 the k3 Night 7 bundle could not be rebuilt from
   the evidence records' knob deltas.
 
-Standing directive (Pedro, 2026-09-06): **laser-focus on 6 AM successes
-on-device.** Night 6 is the current execution target; nothing outranks the
-next graded run bundle.
+Standing directive (Pedro, 2026-09-06; target moved 2026-09-17): **laser-focus
+on 6 AM successes on-device.** Night 6 is done (first 6 AM 2026-09-13) and so is
+Night 7 (10/20, `golden-freddy`, 2026-09-14). The current execution target is
+**Night 7 reliability and the promotion of what is already won**: the only
+cohort is 3 wins in 10, and no result has a Plan 12 promotion edge. Nothing
+outranks the next graded run bundle.
+
+**Promotion is blocked on custody, not on merit (measured 2026-09-17).**
+`npm run evidence -- list` sees 79 runs on this machine and **zero**
+`DEVICE_MEASURED`: every winning bundle — Night 5's, Night 6 h's, Night 7 k2's —
+is on the peer machine under gitignored `artifacts/`, so `evidence -- promote`
+cannot be run against any of them here. Three winners are committed
+(`campaign-night1-minimal`, `campaign-night6`, `campaign-night6-h`); the 10/20
+winner is not. `UNTRACKED_WINNER_DEBT` stands at 13 of its ceiling of 13, so the
+next untracked winner fails `test-fact-register.mjs`. Recovering those bundles is
+the first step of any promotion, not a chore after it.
 
 ## Mistake register (2026-09-06 — check before acting; never repeat)
 

@@ -55,4 +55,6 @@ on consequential work. The consequence lock (the `commit-msg` hook plus the
 session protocol in `AGENTS.md`/`CLAUDE.md`) enforces this mechanically; its
 `PEDRO-OK` override key is reserved to Pedro. When a route is refuted, the next
 work item is the next route's physical test or a human decision — not further
-recording. Standing objective: 6 AM successes on-device, Night 6 first.
+recording. Standing objective: 6 AM successes on-device. Nights 1-7 have each
+reached 6 AM; as of 2026-09-17 the objective is Night 7 reliability and the
+promotion of results already won, neither of which any run yet holds.
