@@ -202,19 +202,25 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
  * reviewed; a missing reader refuses before a dial is changed.
  */
 /** @param {any} options */
+/** How long a title press gets to act before the state is read again. The office frame began
+ * loading 0.6 s after the activating press on 2026-09-17 (twin-01) and the night state follows
+ * it, so this only has to outlast that transition. */
+export const MENU_ACTIVATION_SETTLE_MS = 4000;
+
 /**
- * Why a requested timed start cannot be honoured on this press, or null when it can.
- * On a story night the press that activates the focused title row is the one that loads
- * the office frame and so fixes the seed; if the first press already left the title there
- * is no second press to place, and a twin-night measurement must refuse rather than fall
- * back to an untimed tap. Custom Night times its own Start tap instead.
- * @param {{targetName: string, firstSelectionState: string, residueMs: number | null}} state
+ * Why a requested timed start could not be honoured, or null when it was.
+ * On a story night the press that ACTIVATES the focused title row is the one that loads the
+ * office frame and so fixes the seed, and which press that is depends on where the title cursor
+ * already sits: after a previous attempt it is already on the row and the first press activates.
+ * So a timed story start places every press on the residue and stops as soon as the game leaves
+ * the title; if two presses leave it there, nothing was timed and the attempt refuses rather
+ * than fall back to an untimed tap. Custom Night times its own Start tap instead.
+ * @param {{targetName: string, stateAfterPresses: string, residueMs: number | null}} state
  */
-export function timedStartRefusal({ targetName, firstSelectionState, residueMs }) {
+export function timedStartRefusal({ targetName, stateAfterPresses, residueMs }) {
   if (residueMs === null || targetName === 'customNight') return null;
-  if (firstSelectionState === 'title') return null;
-  return `timed ${targetName} start refused: the first press already left the title `
-    + `(state=${firstSelectionState}), so no activating press could be timed`;
+  if (stateAfterPresses !== 'title') return null;
+  return `timed ${targetName} start refused: two presses on the residue left the game on the title`;
 }
 
 export async function createCampaignPorts(options = {}) {
@@ -550,28 +556,43 @@ export async function createCampaignPorts(options = {}) {
       ? point(calibration?.menu?.point, 'calibration.menu.point')
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
     const holdMs = targetName === 'customNight' ? calibration.menu.holdMs : CUSTOM_NIGHT_CONTACT_MS;
-    await tap({ point: targetPoint, holdMs });
-
     // This build separates focusing a title row from activating it: the first
     // press paints the `>>` cursor and the second press activates the focused
     // row.  The old one-press path returned selected=true while the title was
     // still on screen, so intro() later timed out without ever starting a
-    // night.  The lifecycle `title` result above is the focus confirmation;
+    // night.  The lifecycle `title` result below is the focus confirmation;
     // the title model intentionally does not re-read the transient cursor
     // frame because it classifies that frame as unknown.
-    const firstSelectionState = await waitFor(bridge, serial,
-      value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
-      10000, 'title row focus or night start');
-    if (firstSelectionState === 'title') {
-      // The second press activates the focused row. On a story night that press is what
-      // loads the office frame, so it is the one a timed start must place; on Custom
-      // Night it only opens the dial screen and the Start tap below carries the timing.
-      if (targetName === 'customNight') await tap({ point: targetPoint, holdMs });
-      else await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
-        refusal: `timed ${targetName} start refused` });
-    } else {
-      const refused = timedStartRefusal({ targetName, firstSelectionState, residueMs: startResidueMs() });
+    //
+    // The cursor survives an attempt, so on the next one the FIRST press activates.
+    // An untimed path does not care which press did it; a timed story start does,
+    // because only the activating press fixes the seed. On 2026-09-17 (twin-01) the
+    // office began loading 0.6 s after the first press while the wait below had
+    // already returned `title` -- its own starting state -- and the timed second press
+    // landed 15 s into a night that was already running, which the strict anchor then
+    // refused as onset-predates-intro. So a timed story start places EVERY press on the
+    // residue and reads the state only after a press has had longer than that
+    // transition to act.
+    const residueMs = startResidueMs();
+    const timedStory = residueMs !== null && targetName !== 'customNight';
+    let firstSelectionState = 'title';
+    if (timedStory) {
+      for (let press = 1; press <= 2 && firstSelectionState === 'title'; press++) {
+        await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+          refusal: `timed ${targetName} start refused` });
+        try {
+          firstSelectionState = await waitFor(bridge, serial, value => value !== 'title',
+            MENU_ACTIVATION_SETTLE_MS, `night start after timed press ${press}`);
+        } catch { firstSelectionState = 'title'; }
+      }
+      const refused = timedStartRefusal({ targetName, stateAfterPresses: firstSelectionState, residueMs });
       if (refused) throw new Error(refused);
+    } else {
+      await tap({ point: targetPoint, holdMs });
+      firstSelectionState = await waitFor(bridge, serial,
+        value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
+        10000, 'title row focus or night start');
+      if (firstSelectionState === 'title') await tap({ point: targetPoint, holdMs });
     }
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,

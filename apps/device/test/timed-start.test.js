@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { phoneWallAt, planTimedStart, waitUntilHostMs, SEED_PERIOD_MS } from '../src/timed-start.js';
-import { timedStartRefusal } from '../src/modern-campaign-ports.js';
+import { timedStartRefusal, MENU_ACTIVATION_SETTLE_MS } from '../src/modern-campaign-ports.js';
 
 // Helper sample: snapshot at device mono 5000 ms, host perf = device mono + 1000, wall 1 789 431 000 000 at the snapshot.
 const sample = { offsetMs: 1000, fields: { snapshotNs: String(5000n * 1000000n), wallMs: '1789431000000' } };
@@ -33,14 +33,18 @@ console.log('timed start: phone wall mapping, residue planning with the lead rol
 
 // A story night's activating press is the one that loads the office frame, so it carries the
 // timing; Custom Night times its own Start tap. A timed start never falls back to an untimed tap.
-assert.equal(timedStartRefusal({ targetName: 'sixthNight', firstSelectionState: 'title', residueMs: 20000 }), null,
-  'the second press is available, so the story night can be timed');
-assert.equal(timedStartRefusal({ targetName: 'sixthNight', firstSelectionState: 'title', residueMs: null }), null,
+assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'night', residueMs: 20000 }), null,
+  'a press on the residue started the night, so nothing is refused');
+assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'intro', residueMs: 20000 }), null,
+  'the intro counts as left the title');
+assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'title', residueMs: null }), null,
   'no residue requested, nothing to refuse');
-assert.equal(timedStartRefusal({ targetName: 'customNight', firstSelectionState: 'intro', residueMs: 20000 }), null,
+assert.equal(timedStartRefusal({ targetName: 'customNight', stateAfterPresses: 'title', residueMs: 20000 }), null,
   'Custom Night times its Start tap, not the menu press');
-assert.match(timedStartRefusal({ targetName: 'sixthNight', firstSelectionState: 'intro', residueMs: 20000 }) ?? '',
-  /first press already left the title \(state=intro\)/, 'a one-press activation refuses a timed story start');
-assert.match(timedStartRefusal({ targetName: 'continue', firstSelectionState: 'night', residueMs: 0 }) ?? '',
+assert.match(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'title', residueMs: 20000 }) ?? '',
+  /two presses on the residue left the game on the title/, 'a timed story start never falls back to an untimed tap');
+assert.match(timedStartRefusal({ targetName: 'continue', stateAfterPresses: 'title', residueMs: 0 }) ?? '',
   /timed continue start refused/, 'residue 0 is a request, not an absence');
+assert.ok(MENU_ACTIVATION_SETTLE_MS > 600,
+  'a press gets longer than the 0.6 s press-to-office transition before the state is read');
 console.log('timed start: phone wall mapping, residue plan, host wait, and the story-night activating press');
