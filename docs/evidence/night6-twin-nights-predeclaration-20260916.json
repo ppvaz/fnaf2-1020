@@ -20,5 +20,18 @@
   "notClaimed": "This measures whether the seed can be forced and whether a shared seed reproduces a night. It is not a win-rate cohort, and no rate will be quoted from it."
  },
  "qualification": "artifacts/night6-cohort-h/qualification-twins.json",
- "retained": "artifacts/forensics/twin-nights-night6-20260916/"
+ "retained": "artifacts/forensics/twin-nights-night6-20260916/",
+ "cohort1Result": {
+  "attempts": "3 of the 8 allowed, then stopped for a measured reason (artifacts/forensics/twin-nights-night6-20260916/STOPPED.md)",
+  "seeds": "24850 (1 candidate), 26756 (1), 24853 (2); all three nights died, none reached 6 AM",
+  "pressPlacement": "+0.030, +31.812 and +40.694 ms from the planned phone wall instant; the late two were placed while the host was busy decoding video, which is the thing to keep off the machine during a press",
+  "decomposition": "press to office load 3556.5, 5437.3, 3561.2 ms; office load to seed 1293.0, 1287.0, 1252.0 ms. The load is the steady part. The transition is bimodal because the title cursor survives an attempt: a press onto an already focused row activates it directly (attempts 1 and 3, 4.7 ms apart), while a press onto an unfocused row only focuses it and the untimed second press activates it 1.9 s later (attempt 2).",
+  "whyStopped": "The seed follows the ACTIVATING press by a steady 4849 ms, so a night the untimed second press started lands wherever that press fell. Over both modes the seeds spread 1906 ms, which needs about 55 attempts for a birthday collision. Eight could not have produced a twin, so five more nights would have bought nothing."
+ },
+ "cohort2": {
+  "change": "A timed start now sends exactly one press and no second. If the row was already focused the press activates it and the night is aimed; if it was not, the press only focuses it, the night does not start, and the attempt fails in half a minute instead of playing a wrong-seeded night for eight minutes -- leaving the row focused, so the next attempt activates directly.",
+  "expected": "With every attempt on the activating path the spread is the office load's, which cohort 1 measured at 4.7 ms press-to-load and 41 ms load-to-seed. A window that wide needs about four to eight attempts.",
+  "bound": "at most 5 attempts, same residue 20000, same binding, same rules for what counts as proven twins",
+  "hostQuiet": "no video decoding or census work on this machine while an attempt is in its press window"
+ }
 }

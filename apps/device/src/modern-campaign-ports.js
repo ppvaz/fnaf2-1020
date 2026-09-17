@@ -588,14 +588,21 @@ export async function createCampaignPorts(options = {}) {
     // Whether the timed press was the activating one is then read back from the seed itself
     // (timedStartHeld), not guessed here.
     const residueMs = startResidueMs();
-    if (residueMs !== null && targetName !== 'customNight')
-      await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
-        refusal: `timed ${targetName} start refused` });
+    const timedStory = residueMs !== null && targetName !== 'customNight';
+    if (timedStory) await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+      refusal: `timed ${targetName} start refused` });
     else await tap({ point: targetPoint, holdMs });
     const firstSelectionState = await waitFor(bridge, serial,
       value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
       10000, 'title row focus or night start');
-    if (firstSelectionState === 'title') await tap({ point: targetPoint, holdMs });
+    // The untimed second press is what makes an unaimed night: the seed follows the ACTIVATING
+    // press by a steady 4849 ms (3556 to the office load, 1293 through it, measured over the
+    // 2026-09-17 cohort), so a night the second press started lands wherever that press happened
+    // to fall -- 1.9 s off the residue in twin-02. A timed start therefore sends one press and
+    // no more. If the row was not already focused the press only focuses it, the night does not
+    // begin, and intro() fails this attempt in half a minute instead of playing a wrong-seeded
+    // night for eight; the row is focused for the next attempt, which then activates directly.
+    if (firstSelectionState === 'title' && !timedStory) await tap({ point: targetPoint, holdMs });
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1 };
