@@ -202,25 +202,29 @@ function createHidSender(hidProcess, { registerDelayMs = 0 } = {}) {
  * reviewed; a missing reader refuses before a dial is changed.
  */
 /** @param {any} options */
-/** How long a title press gets to act before the state is read again. The office frame began
- * loading 0.6 s after the activating press on 2026-09-17 (twin-01) and the night state follows
- * it, so this only has to outlast that transition. */
-export const MENU_ACTIVATION_SETTLE_MS = 4000;
+/** The measured window between a title press and the office frame beginning to load: 0.6 s when
+ * the cursor already sat on the row, 3.6 s when the press had to focus it first (2026-09-17).
+ * A timed start must not hold the menu phase open across it. */
+export const PRESS_TO_OFFICE_MS = [600, 3600];
 
 /**
- * Why a requested timed start could not be honoured, or null when it was.
- * On a story night the press that ACTIVATES the focused title row is the one that loads the
- * office frame and so fixes the seed, and which press that is depends on where the title cursor
- * already sits: after a previous attempt it is already on the row and the first press activates.
- * So a timed story start places every press on the residue and stops as soon as the game leaves
- * the title; if two presses leave it there, nothing was timed and the attempt refuses rather
- * than fall back to an untimed tap. Custom Night times its own Start tap instead.
- * @param {{targetName: string, stateAfterPresses: string, residueMs: number | null}} state
+ * Whether the seed a run measured belongs to the press that was timed, or why it does not.
+ * The activating press fixes the seed, and which press that is depends on where the title cursor
+ * already sat. A run whose office seed falls the measured interval after the planned instant was
+ * timed; one outside it was started by some other press, its residue means nothing, and the
+ * attempt is void rather than a sample.
+ * @param {{plannedPhoneWallMs: number | null, seedPhoneWallMs: number | null}} run
  */
-export function timedStartRefusal({ targetName, stateAfterPresses, residueMs }) {
-  if (residueMs === null || targetName === 'customNight') return null;
-  if (stateAfterPresses !== 'title') return null;
-  return `timed ${targetName} start refused: two presses on the residue left the game on the title`;
+export function timedStartHeld({ plannedPhoneWallMs, seedPhoneWallMs }) {
+  if (plannedPhoneWallMs === null || seedPhoneWallMs === null)
+    return { held: false, reason: 'no planned instant, or no seed was read' };
+  const delayMs = seedPhoneWallMs - plannedPhoneWallMs;
+  const [lo, hi] = PRESS_TO_OFFICE_MS;
+  if (delayMs < lo)
+    return { held: false, delayMs, reason: `the seed is ${Math.round(delayMs)} ms after the planned press, sooner than any office load` };
+  if (delayMs > hi + 2000)
+    return { held: false, delayMs, reason: `the seed is ${Math.round(delayMs)} ms after the planned press, too late to be its night` };
+  return { held: true, delayMs };
 }
 
 export async function createCampaignPorts(options = {}) {
@@ -573,27 +577,25 @@ export async function createCampaignPorts(options = {}) {
     // refused as onset-predates-intro. So a timed story start places EVERY press on the
     // residue and reads the state only after a press has had longer than that
     // transition to act.
+    // The FIRST press carries the timing. Waiting here to learn whether it activated or only
+    // focused is not an option: intro() stamps the instant after which a latched onset counts as
+    // this night's, and the helper latches that onset when the office appears, 0.6-3.6 s after
+    // the activating press. Holding the menu phase open across the office load therefore makes
+    // the strict anchor refuse a perfectly timed night as onset-predates-intro -- twin-01 twice
+    // on 2026-09-17, the second time with the press on the residue to 0.013 ms. So the press is
+    // placed and this phase returns at once, exactly as the untimed path does; the second press
+    // stays untimed and lands harmlessly in the intro when the first already activated the row.
+    // Whether the timed press was the activating one is then read back from the seed itself
+    // (timedStartHeld), not guessed here.
     const residueMs = startResidueMs();
-    const timedStory = residueMs !== null && targetName !== 'customNight';
-    let firstSelectionState = 'title';
-    if (timedStory) {
-      for (let press = 1; press <= 2 && firstSelectionState === 'title'; press++) {
-        await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
-          refusal: `timed ${targetName} start refused` });
-        try {
-          firstSelectionState = await waitFor(bridge, serial, value => value !== 'title',
-            MENU_ACTIVATION_SETTLE_MS, `night start after timed press ${press}`);
-        } catch { firstSelectionState = 'title'; }
-      }
-      const refused = timedStartRefusal({ targetName, stateAfterPresses: firstSelectionState, residueMs });
-      if (refused) throw new Error(refused);
-    } else {
-      await tap({ point: targetPoint, holdMs });
-      firstSelectionState = await waitFor(bridge, serial,
-        value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
-        10000, 'title row focus or night start');
-      if (firstSelectionState === 'title') await tap({ point: targetPoint, holdMs });
-    }
+    if (residueMs !== null && targetName !== 'customNight')
+      await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+        refusal: `timed ${targetName} start refused` });
+    else await tap({ point: targetPoint, holdMs });
+    const firstSelectionState = await waitFor(bridge, serial,
+      value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
+      10000, 'title row focus or night start');
+    if (firstSelectionState === 'title') await tap({ point: targetPoint, holdMs });
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1 };

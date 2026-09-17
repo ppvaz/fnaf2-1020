@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { phoneWallAt, planTimedStart, waitUntilHostMs, SEED_PERIOD_MS } from '../src/timed-start.js';
-import { timedStartRefusal, MENU_ACTIVATION_SETTLE_MS } from '../src/modern-campaign-ports.js';
+import { timedStartHeld, PRESS_TO_OFFICE_MS } from '../src/modern-campaign-ports.js';
 
 // Helper sample: snapshot at device mono 5000 ms, host perf = device mono + 1000, wall 1 789 431 000 000 at the snapshot.
 const sample = { offsetMs: 1000, fields: { snapshotNs: String(5000n * 1000000n), wallMs: '1789431000000' } };
@@ -33,18 +33,23 @@ console.log('timed start: phone wall mapping, residue planning with the lead rol
 
 // A story night's activating press is the one that loads the office frame, so it carries the
 // timing; Custom Night times its own Start tap. A timed start never falls back to an untimed tap.
-assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'night', residueMs: 20000 }), null,
-  'a press on the residue started the night, so nothing is refused');
-assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'intro', residueMs: 20000 }), null,
-  'the intro counts as left the title');
-assert.equal(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'title', residueMs: null }), null,
-  'no residue requested, nothing to refuse');
-assert.equal(timedStartRefusal({ targetName: 'customNight', stateAfterPresses: 'title', residueMs: 20000 }), null,
-  'Custom Night times its Start tap, not the menu press');
-assert.match(timedStartRefusal({ targetName: 'sixthNight', stateAfterPresses: 'title', residueMs: 20000 }) ?? '',
-  /two presses on the residue left the game on the title/, 'a timed story start never falls back to an untimed tap');
-assert.match(timedStartRefusal({ targetName: 'continue', stateAfterPresses: 'title', residueMs: 0 }) ?? '',
-  /timed continue start refused/, 'residue 0 is a request, not an absence');
-assert.ok(MENU_ACTIVATION_SETTLE_MS > 600,
-  'a press gets longer than the 0.6 s press-to-office transition before the state is read');
-console.log('timed start: phone wall mapping, residue plan, host wait, and the story-night activating press');
+// Whether the timed press was the one that started the night is read back from the seed, not
+// guessed while the menu phase is open: holding that phase across the office load is what made
+// the strict anchor refuse twin-01 twice on 2026-09-17.
+{
+  const planned = 1789609004576;
+  assert.equal(timedStartHeld({ plannedPhoneWallMs: planned, seedPhoneWallMs: planned + 3566 }).held, true,
+    'a seed 3.57 s after the planned press is that press\'s night');
+  assert.equal(timedStartHeld({ plannedPhoneWallMs: planned, seedPhoneWallMs: planned + 1900 }).held, true,
+    'so is one 1.9 s after it');
+  const early = timedStartHeld({ plannedPhoneWallMs: planned, seedPhoneWallMs: planned - 15410 });
+  assert.equal(early.held, false, 'a seed before the planned press cannot be its night');
+  assert.match(early.reason, /sooner than any office load/);
+  const late = timedStartHeld({ plannedPhoneWallMs: planned, seedPhoneWallMs: planned + 12000 });
+  assert.equal(late.held, false, 'a seed 12 s later belongs to some other press');
+  assert.match(late.reason, /too late to be its night/);
+  assert.equal(timedStartHeld({ plannedPhoneWallMs: null, seedPhoneWallMs: planned }).held, false,
+    'an untimed run holds nothing');
+  assert.ok(PRESS_TO_OFFICE_MS[0] < PRESS_TO_OFFICE_MS[1], 'the measured window is a range');
+}
+console.log('timed start: phone wall mapping, residue plan, host wait, and the seed-side check that the timed press started the night');
