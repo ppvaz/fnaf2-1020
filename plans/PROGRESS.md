@@ -5745,3 +5745,27 @@ register entry without a tracked winner of the same `stableHash`, carrying the t
 `artifacts/night7-anchored-k3/` (bundle + winner.json) from the peer machine, commit the winner as
 `tools/device/campaign-night7-k3-winner.json` (the gate confirms the hash), then
 `tools/device/night-run.sh --label k3-local --night 7 --bundle artifacts/night7-anchored-k3/bundle --frame-trace`.
+
+**2026-09-16 (night): Night 6 h won again, and the seed search now has a measured blocker
+instead of a suspected one.** `night6-seedlock-h-20260916T223633Z` reached 6 AM with the game
+log, the native frame trace (25,565 frames), kernel touches and video all kept. Converted to
+the helper's monotonic clock, the logged 16-candidate office bracket falls 1290-1305 ms into
+the trace's own 1335 ms office-load gap, 59.6 ms before the first office frame: two independent
+clocks now agree on where the frame was seeded, so the bracket is not the weak link. Driving the
+model with the run's own 338 kernel contacts at L = 52 ms and censusing all 65,536 seeds, the
+best whole-night fit is 5 of 42 eyehole windows (seed 39435) while the bracket seeds score 16-26
+and rank 1,673-57,383 -- and no bracket seed reaches a good fit at any stream offset up to 2,000
+burned draws (one state at <= 6 errors against 0.98 expected by chance). The observable is not
+the limit: against a known model night the true seed scores 0 and the best wrong seed 4-13
+(400 targets), and the 42 windows carry 59.7 bits against the 16 needed. **The limit is that
+the model decorrelates under the input-latency uncertainty at the same point the information
+arrives**: a 6 ms change in L changes the night from window 11-16 (p10 = 7), 16 bits have
+accumulated only by window ~16, and seed 39435's fit falls from 5 errors to 18 at L = 40, 46, 58
+and 64, with a different best seed at every latency. A lock therefore needs the bits inside the
+first 6-8 cycles -- a route whose monitor time surveys several cameras per raise, rather than
+parking on CAM 11 -- or the per-touch registration loop pinned to about one frame. Also fixed:
+g822 is an application StartOfFrame condition (object type -3, num -1), not the system Always
+(-1, -1), so the model drew Paper Pals' AI every frame and spent ~60 spurious draws per second;
+it now draws once, before g811. Rung: none above FIXTURE (the night is device evidence for the
+binding, not a promotion). Evidence:
+[night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).

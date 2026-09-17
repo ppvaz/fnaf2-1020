@@ -1,0 +1,72 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-h-seedlock-census-20260916",
+ "claimLevel": "DEVICE_EVIDENCE",
+ "date": "2026-09-16",
+ "question": "On a Night 6 the phone won, driven by its own kernel touches on the game's frame clock, does any of the 65,536 seeds reproduce the night well enough to name the office seed -- and does the logged 16-candidate bracket contain it?",
+ "run": {
+  "id": "night6-seedlock-h-20260916T223633Z",
+  "route": "Night 6 binding h (artifacts/night6-cohort-h/bundle), strict anchor aim 4870 ms on 5000, maxK 0",
+  "outcome": "WIN, 6 AM. 42 cycle gates (41 agreed, 0 corrected, 1 aborted on mask-state-unavailable at the terminal); arm VERIFIED at 9843 ms; press acceptance 3 graded (1 PASS, 2 UNKNOWN); grade-run: every instrument passed",
+  "instruments": [
+   "MMFRuntime logcat streamed live (office seed bracket)",
+   "Cue Helper native frame trace, 25,565 frames, 437 s",
+   "adb getevent -lt kernel input events, 340 classified contacts",
+   "1280x576 video (595 MB)"
+  ],
+  "launcher": "artifacts/forensics/seedlock-night6-20260916/run.sh (a peer Codex session started the run; this session did the analysis)",
+  "retained": "artifacts/forensics/seedlock-night6-20260916/"
+ },
+ "officeSeedBracket": {
+  "fromMs": 1789598222512,
+  "toMs": 1789598222527,
+  "candidates": 16,
+  "low16": [51376, 51391],
+  "newConfirmation": "The bracket is now placed by the frame trace itself, not only by the helper's night onset: converted to the helper's monotonic clock through the campaign's paired sample (snapshotNs 928705139012432 = wallMs 1789598207421), it falls 1290.3-1305.3 ms into the trace's own 1335.1 ms office-load gap (rows 765 -> 766), ending 29.8 ms before the first frame after the gap and 59.6 ms before the first office frame (row 767). Two independent clocks agree on where the office frame was seeded."
+ },
+ "observables": {
+  "eyehole": "42 mask windows read with eyehole-read.py at video 30.284 s + game ms + 0.2 s, 3 s long: 18 occupied (4 WC, 9 WB... see string) giving ....C....BC....CB.CFB.CB..C.BC...BC..BC..B",
+  "hall": "41 hall flashes read by eye at full resolution. Three luma classes: L (frame mean ~35) the beam lit, characters readable; d (~25-28) office normal but the doorway pure black, the beamless hall of g202 animation 99; D (~10-14) the whole office darkened, which is the encounter blackout sprite still fading (g535/g536 ~250 frames, cut only by a monitor raise (g845), and this route raises 140 ms AFTER the flash)",
+  "crossCheck": "The 17 D flashes are exactly the 17 eyehole windows before them that showed an occupant. Two independent readers of the same video agree cycle for cycle, so class D carries no information the eyehole does not; the independent parts are the d class, the standing characters (W. Bonnie at 12/17/21/30, W. Freddy at 14/35/36, the hallway Golden Freddy at 25, Mangle at 31) and Foxy's hall presence (13 present, 2 absent, 4 unreadable behind a large sprite)"
+ },
+ "harness": {
+  "presses": "n6-presses.py: each kernel contact (multitouch protocol B, per-slot tracking ids) is classified against the profile's controlMap through the executor's landscape transform and placed on the trace frame at touch-down + L; 338 contacts -> 505 model actions, 2 unclassified",
+  "scorer": "n6-score.mjs: the model under cfg.presses with frameMs from the trace's own per-frame deltas (Fusion catch-up, at most three loops per pass), every sourced draw option on, lethal. Per mask-on press it records the office encounter active in the next 1.5 s; per hall flash it records the beam state, the hall-column occupants, Foxy and the hallway Golden Freddy",
+  "frameOneOrder": "On night 6 the model's constructor spends one draw (the g683 one-in-ten Golden Freddy roll) before any tick, while the game spends g822 (StartOfFrame) first. The scorer builds the sim one LCG step ahead and rewinds the state so tick 1's g822 draw re-spends that step; without it every seed is scored one step out of phase",
+  "latency": "L = 52 ms, from this run's own monitor touch -> cameras-up static frame (269 ms - 200 ms raise - 17 ms frame)"
+ },
+ "census": {
+  "setup": "all 65,536 seeds at L = 52 ms, 42 eyehole windows and 41 hall flashes, 12 shards",
+  "eyeholeErrors": "best 5 (seed 39435, unique), 2nd 6, 10th 10, median 23",
+  "totalErrors": "best 29 (39435, 37732, 37937), a smooth dense distribution with no standout",
+  "bracketRanks": "the 16 bracket seeds rank 1673-57383 of 65,536 by eyehole error (16-26 errors, mean rank 37,553): they fit the phone's night no better than random seeds",
+  "burnScan": "for each bracket seed, walking its LCG orbit and reading the census gives the fit for any number of missing initial draws. Over 16 orbits x 2001 burns exactly one state reaches <= 6 errors (51376 + 1589 draws), against 0.98 expected by chance: no small stream offset rescues the bracket"
+ },
+ "discriminatingPower": {
+  "selfRecovery": "Using each of 400 model nights as the target, the true seed scores 0 and the best wrong seed scores 4-13 (mean 8.7, sd 1.4). So the observable can separate a true seed from 65,535 wrong ones -- when the target really is a model night",
+  "phoneAgainstThat": "The phone's best (5) is reached by a wrong seed in 1.0% of model nights (4/400), and <= 6 in 4.8%. Suggestive, not a lock",
+  "informationContent": "the 42 windows carry 59.7 bits against the 16 needed; matching the phone window by window narrows 65,536 seeds to 6 by window 16, 1 by window 18 (seed 59936) and 0 by window 19 -- the funnel a chance cascade produces, since 59936's whole-night error is 16"
+ },
+ "latencyRobustness": {
+  "setup": "1,539 probe seeds (the L=52 top 40, the 16 bracket seeds, 1,500 random) rescored at L = 40, 46, 58 and 64 ms",
+  "result": "seed 39435 goes from 5 errors at L=52 to 18 at all four other latencies. Each latency has a different best seed (32027, 32889, 39435, 14304, 51386) at 5-12 errors; the whole L=52 top 40 degrades to 15-24. The fit landscape is reshuffled by a 6 ms change in the assumed latency, so any best seed at a fixed L is an artefact of that L",
+  "decorrelation": "for the same seed, a 6 ms change in L changes the night from eyehole window 11-16 (median; p10 = 7) and a 12 ms change from window 11-13; 0 of 1,539 nights are identical at any of the four offsets"
+ },
+ "verdict": "NO LOCK, and the blocker is now measured rather than assumed. The observable has enough information (59.7 bits, 16 needed) and enough separating power (wrong seeds floor at 6-13 errors against a known model night). What defeats it is that the model's trajectory decorrelates under the input-latency uncertainty at the same point the information arrives: 16 bits have accumulated only by window ~16, while a 6 ms latency error already changes the night by window ~11. The seed bracket is not the problem -- it is confirmed by a second clock, and no bracket seed fits at any stream offset up to 2000 draws.",
+ "consequence": [
+  "A seed lock needs the information delivered inside the first 6-8 cycles, before the latency uncertainty decorrelates the trajectory. The current route gives 4.4 bits in windows 0-7 and 1.3 bits per cycle at steady state.",
+  "The cheapest way to get there is more observations per cycle, not more cycles: a route whose monitor time steps through several cameras would read a position vector per raise instead of one office cue, and the video already resolves those feeds.",
+  "Failing that, the per-touch registration loop must be pinned to about one frame, which is the same blocker the k3 touch-trace night recorded on 2026-09-16."
+ ],
+ "modelFix": {
+  "change": "g822 (Paper Pals AI = (Random(100)+1)/100) is an application StartOfFrame event, not Always: its condition is (objectType -3, num -1), and only num -1 on objectType -1 is the system Always. The model drew it once per frame, about 60 spurious draws per second",
+  "checked": "regenerated the CCN dump from ~/fnaf-tools/ctfak-src and read the group directly; mmfparser's condition name table (chunkloaders/conditions/names.py) gives -3/-1 = StartOfFrame and -1/-1 = Always; the Chowdren recompile puts the same draw in on_frame_4_start_events",
+  "now": "one draw before the first loop, ahead of g811's first viewing = 0 draw; g58/g192 every 6 frames and g59 at 29/30 are unchanged",
+  "credit": "found and written by a peer Codex session in the same worktree; verified here against the dump before committing"
+ },
+ "gates": {
+  "greenHere": "npm run typecheck, npm run test:unit, node packages/core/test/unconditional-draws.test.js, node packages/core/test/frame-time-hook.test.js, node tools/device/test-fact-register.mjs (all exit 0)",
+  "known-red": "npm run test:contracts fails only on tools/device/test-decode-once.py, which fails identically on the committed HEAD with the working tree stashed: environmental here, not from this change"
+ },
+ "retained": "artifacts/forensics/seedlock-night6-20260916/ (run.sh, attempt.log, mmfruntime.logcat, office-seed-bracket.json, touch-frames.py, n6-presses.py, n6-score.mjs, n6-compare.py, n6-census-compare.py, n6-eyehole.json, n6-hall-labels.json, the contact sheets, SHA256SUMS). artifacts/ is gitignored, so the binding that won is committed as tools/device/campaign-night6-h-winner.json (fnv1a-3d5b2167; the register's h entry is the pre-migration fnv1a-37278c63)."
+}

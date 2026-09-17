@@ -97,7 +97,9 @@ export class Sim {
       //   g58   every 100 ms  static AV0 = Random(50)+125
       //   g59   every 490 ms  static AV1 = Random(5)*10
       //   g192  every 100 ms  static AV2 = (Random(31)/30)*50   (all three before the g337 rolls)
-      //   g822  Always        Paper Pals AI = (Random(100)+1)/100, every frame, late in the sheet
+      //   g822  StartOfFrame  Paper Pals AI = (Random(100)+1)/100, once before the loop
+      // g822's condition is (OT=-3, NUM=-1), not Always (OT=-1, NUM=-1).
+      // The regenerated CCN dump and on_frame_4_start_events both confirm it.
       // The countdowns (CND_EVERY2: minus the frame delta, fire at <= 0, add the
       // delay back) start from the same instant as the model's own f % N timers,
       // in exact units of 1/3 ms (a 60 fps frame is 50 units), so g58/g192 fire
@@ -126,7 +128,7 @@ export class Sim {
       // Random(50)+20 at 100-199, both before the g537/g538-555 resolution. At an
       // exact 60 fps that is 179 draws per encounter, on frames 20..198 after the
       // start; a dropped frame on the phone advances the clock by 2 and removes
-      // a draw, like g822.
+      // a draw.
       sourcedBlackoutDraws: false,
       // Camera-view draws (dump g344-g360, g458-g477, g366/g368/g419, g498):
       //   an accepted move writes the unit's fade counter C = 10 (g344-g360,
@@ -1110,6 +1112,13 @@ export class Sim {
   tick() {
     if (!this.alive || this.won) return;
     const f = ++this.frame;
+    // g822 is an application StartOfFrame event, dispatched before ordinary
+    // loop events, including g811's first viewing=0 draw. Its condition's
+    // object type matters: NUM=-1 alone also names the system Always event.
+    if (f === 1 && this.opts.sourcedUnconditionalDraws) {
+      this.rng.next();
+      this.unconditionalDraws++;
+    }
     if (this.opts.frameMs) this.frameUnits = Math.round(this.opts.frameMs(f) * 3);
     if (this.hooked) {
       const t = this.hookTimers;
@@ -1170,7 +1179,7 @@ export class Sim {
         : this.hooked ? this.sampleTick : f % C.LAST_VIEW_SAMPLE_FRAMES === 0))
       this.lastViewed = this.viewing;
 
-    if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('early');   // g58/g59/g192
+    if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional();   // g58/g59/g192
     // --- 5-second interval: Foxy's kill check runs before anything else
     if (this.hooked ? this.passEvery(this.hookTimers.five, 5000) : f % C.MO_FRAMES === 0) this.onFiveSecond();
     if (this.opts.sourcedFoxyChain) this.foxyChainTransitions();   // g349/g364/g389/g390
@@ -1252,18 +1261,15 @@ export class Sim {
     if (this.opts.sourcedPuppetGlitchDraws && !this.opts.sourcedSheetOrder) this.puppetGlitchLate();   // g774
     if (this.opts.sourcedMonitorDownDraw) this.monitorDownLate();                // e720-e722, e871-e872
     if (this.opts.sourcedRandomImageDraw) this.randomImageDraw();                 // g811
-    if (this.opts.sourcedUnconditionalDraws) this.drawUnconditional('late');    // g822
 
     if (this.hooked ? this.hour >= 6 : f >= this.opts.durationFrames) { this.won = true; this.emit('win'); }
   }
 
   /**
-   * The Office frame's unconditional draws: 'early' runs the g58/g59/g192
-   * countdowns (before the g337 rolls), 'late' is g822's every-frame draw.
-   * @param {'early' | 'late'} phase
+   * The Office frame's unconditional timer draws, g58/g59/g192, before g337.
+   * The separate g822 StartOfFrame draw runs once, before the first loop.
    */
-  drawUnconditional(phase) {
-    if (phase === 'late') { this.rng.next(); this.unconditionalDraws++; return; }
+  drawUnconditional() {
     for (const t of this.unconditionalTimers) {
       t.counter -= this.frameUnits;
       if (t.counter <= 0) { t.counter += t.delayUnits; this.rng.next(); this.unconditionalDraws++; }
