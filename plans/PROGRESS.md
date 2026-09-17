@@ -5874,3 +5874,19 @@ through the office load at a seed already held by a completed night, measure the
 distribution before spending nights on it, and stop the matching attempt at about 120 s -- a full
 night is not needed to compare encounters. Evidence:
 [night6-twin-nights-result-20260916](../docs/evidence/night6-twin-nights-result-20260916.json).
+
+**2026-09-17: the model gap, measured on a night the phone won.** `night6-c2-01-20260917T021417Z`
+reached 6 AM with all 42 cycle gates agreeing and its office seed named to a single millisecond
+(24851). No frame trace was kept and none is needed: the plan is deterministic, every gate agreed,
+and the release instant and the seed instant are the same phone wall clock, so the presses sit
+6347 ms after the model's frame 1. **At its own seed the model dies at 150.2 s to Golden Freddy,
+and censused over 600 seeds on the same presses it dies in all 600** -- 368 Foxy, 220 Golden
+Freddy, 12 inside-office. With Golden Freddy disabled it still dies in all 600: **551 Foxy**, 46
+inside-office, 3 Puppet. So this is not a seeding artefact; no seed survives a route the phone
+survived, and both dominant causes are hall-flash kill rules on a route that flashes every cycle.
+A lead on the Golden Freddy half: g336's fifth condition is `mmonitorUp.Active` **invisible**
+(mmfparser condition -28 is ObjectInvisible), which the model folds into `monitor === MON_UP`; if
+that sprite is visible while the monitor is up, the source creates him far more rarely than the
+model does. Foxy is the bigger fish at 92% of the remaining deaths. The pass mark for any fix is
+simple: some seed must survive this route. Evidence:
+[night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
