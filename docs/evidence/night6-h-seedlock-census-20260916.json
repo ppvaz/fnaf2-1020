@@ -83,6 +83,7 @@
   },
   "decorrelation": "the survey signature is no more stable than the eyehole under latency error (first differing raise at 6 ms: median 9-14, p10 5-6), so the gain is entirely in speed: a six-camera survey delivers 16 bits at raise 7-8, before the median decorrelation point, where the eyehole route needs window 18, well after it.",
   "caveat": "on night 6 the three Toys sit at CAM 9 until 2 AM, so the early bits come from the three Withereds and Mangle; a night whose dials are all live from the first hour would separate faster.",
-  "proposal": "a Night 6 seed-lock route identical to binding h except that the monitor-up stretch steps through {8,7,4,3,10,9} instead of parking on CAM 11, reading each feed from the video. Lock decided on raises 0-8 (the first 75 s), with the rest of the night unchanged so the 6 AM result is still a graded run."
+  "proposal": "a Night 6 seed-lock route identical to binding h except that the monitor-up stretch steps through the six already-calibrated cameras {4,7,8,9,10,11} instead of parking on CAM 11, reading each feed from the video. Lock decided on raises 0-8 (the first 75 s), with the rest of the night unchanged so the 6 AM result is still a graded run.",
+  "calibratedSet": "The profile already carries tap points for cams 4, 7, 8, 9, 10 and 11 and for no others, so no new geometry is needed -- and that set is better than the {8,7,4,3,10,9} guessed above: 13.42 bits / 26% of seeds uniquely named by raise 5, 15.54 / 76% by raise 7, 15.84 / 90% by raise 8 (75 s), 15.99 / 98% by raise 10. Adding cam 3 would need a calibrated tap and buys only 82% vs 76% at raise 7. Build the route on {4,7,8,9,10,11}."
  }
 }

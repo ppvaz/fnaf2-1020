@@ -5783,3 +5783,8 @@ sit at CAM 9 until 2 AM. Proposed next physical test: binding h unchanged except
 monitor-up stretch steps through those six cameras, with the lock decided on the first 75 s and
 the rest of the night left alone so the run is still a graded 6 AM attempt. Evidence:
 [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
+
+**Correction, same night:** the profile carries tap points for cams 4, 7, 8, 9, 10 and 11 and no
+others, so the survey route needs **no new geometry** -- and that calibrated set beats the
+{8,7,4,3,10,9} set proposed above: 15.54 bits and 76% of seeds uniquely named by raise 7, 90% by
+raise 8 (75 s), 98% by raise 10. Build the route on the six cameras the phone can already tap.
