@@ -5806,3 +5806,23 @@ encounter timing slips whole 10 s cycles (three of 51380's cue pairs land exactl
 others sit one cycle out), and at L >= 68 ms Foxy's g573 kills at 225-265 s on a night the phone
 won. Fixing the cycle slip is the shortest path from pick to lock. Evidence:
 [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).
+
+**2026-09-16 (last): the seed is picked by timing the first frame, and two earlier nights collapse
+to a single candidate.** Read from classes.dex, `CRunApp.startTheFrame` logs "Starting new frame"
+at instruction 42, runs `MMFRuntime.updateViewport` at 113 (its block ends "Setting renderer
+limits..."), and only calls `CRun.initRunLoop` at 231 -- whose **instruction 0** is
+`allocRunHeader`, the one `currentTimeMillis` that becomes `rh3Graine`. Everything that logs from
+inside initRunLoop is therefore after the seed: `createFrameObjects` (29) reaches
+`CExtLoad.loadRunObject` and prints "Created extension: ", and `f_InitLoop` (57) prints
+"iPhoneOptions are ". So the seed sits between the last line before initRunLoop and the first line
+inside it, which is one or two milliseconds -- not the 13-16 ms of the "Starting new frame" to
+next "startTheFrame() called" pair the tool used. Re-derived on every retained log: tonight's
+Night 6 **16 -> 2 (51376 or 51377)**, k3 full-07d 15 -> 2, twin A 13 -> 2, and **k3 full-06
+14 -> 1 (47593)** and **k3 full-04 13 -> 1 (34043)** -- two nights named outright by the clock.
+This **retracts the 51380 pick** made earlier tonight: 51380 is four milliseconds past the first
+"Created extension" line, so it was the 7% false positive its own statistics allowed. It also
+sharpens the model's defect to a single sentence: for the clock's candidates the model puts the
+first office encounter at 78.8 s, the right character three cycles after the phone's 49 s.
+`office-seed-bracket.py` applies the sourced rule by default, keeps the old one behind
+`--legacy-pair`, names the rule it used, and its test (in `test:contracts`) covers both.
+Evidence: [night6-h-seedlock-census-20260916](../docs/evidence/night6-h-seedlock-census-20260916.json).

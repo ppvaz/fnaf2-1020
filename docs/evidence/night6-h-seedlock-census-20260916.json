@@ -55,7 +55,7 @@
   "result": "seed 39435 goes from 5 errors at L=52 to 18 at all four other latencies. Each latency has a different best seed (32027, 32889, 39435, 14304, 51386) at 5-12 errors; the whole L=52 top 40 degrades to 15-24. The fit landscape is reshuffled by a 6 ms change in the assumed latency, so any best seed at a fixed L is an artefact of that L",
   "decorrelation": "for the same seed, a 6 ms change in L changes the night from eyehole window 11-16 (median; p10 = 7) and a 12 ms change from window 11-13; 0 of 1,539 nights are identical at any of the four offsets"
  },
- "verdict": "NO LOCK, and the blocker is now measured rather than assumed. The observable has enough information (59.7 bits, 16 needed) and enough separating power (wrong seeds floor at 6-13 errors against a known model night). What defeats it is that the model's trajectory decorrelates under the input-latency uncertainty at the same point the information arrives: 16 bits have accumulated only by window ~16, while a 6 ms latency error already changes the night by window ~11. The seed bracket is not the problem -- it is confirmed by a second clock, and no bracket seed fits at any stream offset up to 2000 draws.",
+ "verdict": "SEED PICKED BY TIMING THE FIRST FRAME. The bytecode places the seeding call between two adjacent log lines, which pins this night to 51376 or 51377 and pins two earlier k3 nights to a single seed each (full-06 47593, full-04 34043). The model-based census and the 51380 pick are superseded: the model is not faithful enough to name a seed, and it does not have to be, because the clock does it. NO LOCK, and the blocker is now measured rather than assumed. The observable has enough information (59.7 bits, 16 needed) and enough separating power (wrong seeds floor at 6-13 errors against a known model night). What defeats it is that the model's trajectory decorrelates under the input-latency uncertainty at the same point the information arrives: 16 bits have accumulated only by window ~16, while a 6 ms latency error already changes the night by window ~11. The seed bracket is not the problem -- it is confirmed by a second clock, and no bracket seed fits at any stream offset up to 2000 draws.",
  "consequence": [
   "A seed lock needs the information delivered inside the first 6-8 cycles, before the latency uncertainty decorrelates the trajectory. The current route gives 4.4 bits in windows 0-7 and 1.3 bits per cycle at steady state.",
   "The cheapest way to get there is more observations per cycle, not more cycles: a route whose monitor time steps through several cameras would read a position vector per raise instead of one office cue, and the video already resolves those feeds.",
@@ -98,5 +98,20 @@
    "At L >= 68 ms the model kills through Foxy's g573 at 225-265 s on a night the phone won, for every seed tried. Suppressing that kill (it has no RNG side effects) does not change any prefix, so it is a separate defect, but it means model survival cannot be used as an observable at the latency the first encounter requires."
   ],
   "next": "Fix the cycle slip in the encounter timing and rescore: if 51380 then tracks well past 85 s while the other fifteen stay at 8, the pick becomes a lock. Independently, a second night with the pick predeclared -- predict the first encounter's character and time from the clock bracket alone, then read the video -- would confirm it without any further model work."
+ },
+ "firstFrameTiming": {
+  "question": "Can the office frame's seed be pinned by timing the first frame, instead of searching seeds against the model?",
+  "bytecode": "classes.dex, read with dexread3.py. CRunApp.startTheFrame logs \"Starting new frame\" at instruction 42, calls MMFRuntime.updateViewport at 113 (whose block ends with \"Setting renderer limits...\"), then centerDisplay, CreateLayerEffects, flushKeyboard and new CRun, and only calls CRun.initRunLoop at 231. allocRunHeader -- the one currentTimeMillis that becomes rh3Graine -- is instruction 0 of initRunLoop, ahead of initAsmLoop (16), y_InitLevel (19), prepareFrame (22), createFrameObjects (29, whose object creation reaches CExtLoad.loadRunObject and logs \"Created extension: \") and f_InitLoop (57, which logs \"iPhoneOptions are \"). initRunLoop then takes a second currentTimeMillis at 64 into rhTimerOld, the loop clock's origin.",
+  "rule": "The seed is taken strictly between the last line logged before initRunLoop and the first line logged inside it. The old bracket -- \"Starting new frame\" to the next \"startTheFrame() called\" -- spans the whole of createFrameObjects and is 13 to 16 ms wide; the sourced one is one or two.",
+  "reDerived": {
+   "night6-seedlock-h-20260916 (this run)": "16 candidates -> 2: 51376 or 51377 (1789598222512-513)",
+   "k3 full-07d 20260916": "15 -> 2: 31011 or 31012",
+   "k3 full-06 20260915": "14 -> 1: 47593",
+   "k3 full-04 20260915": "13 -> 1: 34043",
+   "twin A seedlog-01 20260915": "13 -> 2: 19850 or 19851"
+  },
+  "retraction": "This refutes the model-based pick of 51380 recorded above: 51380 is 1789598222516, four milliseconds past the first \"Created extension\" line, so the runtime had already seeded and moved on. The pick was a 7% false positive and is withdrawn. The clock, not the model, names the seed.",
+  "consequenceForTheModel": "For the clock's candidates the model puts the night's first office encounter at 78.8 s (Withered Chica, at L = 84-92 ms) where the phone had it at about 49 s: the right character, three cycles late. That is now a sharply localised defect to fix -- a named seed, a named moment, a named error -- rather than a diffuse divergence.",
+  "tooling": "tools/device/office-seed-bracket.py applies the sourced rule by default and keeps the old one behind --legacy-pair; it names which rule it used in its JSON. test-office-seed-bracket.py covers both and the fallback for a log with nothing from inside initRunLoop, and runs in npm run test:contracts."
  }
 }
