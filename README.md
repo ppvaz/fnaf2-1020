@@ -10,19 +10,23 @@ The canonical target is Android. PC equivalence, device-general calibration, and
 a live controller result above its evidence rung are not claimed. Game assets
 and decompiled content are never distributed.
 
-![One full 10-second cycle of Night 7 at 3 AM, with the teach panel enlarged underneath](docs/img/night7-teach-panel-cycle22.gif)
+![One full 10-second Minus Toys cycle of Night 7 at 3 AM, with the teach panel enlarged underneath](docs/img/night7-teach-panel-cycle22.gif)
 
-*One whole 10-second cycle of Night 7, all ten dials at 20, at 3 AM on the phone
-(cycle 22, 2026-09-18, from the run's video). The panel at the left, enlarged 2x
-in the strip underneath, is the Cue Helper's teach panel
+*The **Minus Toys** cycle, played by the bot on the phone. Minus Toys is
+Zach_Scream's 2025 zero-RNG technique for 10/20
+([the lineage](docs/strategy/MINUS-3-STRATEGY.md)); this is binding k3's version
+of it, one whole 10-second cycle of Night 7 with all ten dials at 20, at 3 AM
+(cycle 22, 2026-09-18, from the run's video). A double camera glitch leaves the
+feed on Prize Corner with the marker parked on CAM 09, so every camera flash
+freezes all three Toys on the Show Stage for 6.7 s. The cycle: mask off, a hall
+flash for Foxy, cams up onto that split, the camera flash, three seconds of
+winding for the Puppet, the cams dropped with the light held so it flashes the
+hall, and the mask worn for the remaining 5.25 s. The panel at the left, enlarged
+2x in the strip underneath, is the Cue Helper's teach panel
 (`night-run.sh --teach-overlay`) for someone watching: the ring is the cycle
 (outer band: mask, cams or office; inner band: the flashes and the wind; the hand
 is now), the title is the step the schedule is on, and `seen` is what the helper
-reads off the screen, trailing each press by the game's own animation. The cycle:
-mask off, a hall flash for Foxy, cams up with the marker parked on CAM 09 while
-the feed stays on Prize Corner, a camera flash that freezes CAM 09 for 6.7 s,
-three seconds of winding for the Puppet, the cams dropped with the light held so
-it flashes the hall, and the mask worn for the remaining 5.25 s.*
+reads off the screen, trailing each press by the game's own animation.*
 
 ## Where this stands — 2026-09-18
 
