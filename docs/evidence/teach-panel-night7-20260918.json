@@ -37,7 +37,7 @@
   "One night is one night: no rate, and the run is outside the predeclared k3 cohort",
   "The panel narrates the schedule's press times; the lag from a named press to its visible effect was not measured here (the title-colour reader read the title on only 813 of 14,574 frames)"
  ],
- "shareable": "artifacts/forensics/teach-panel-20260918/fnaf2-night7-teach-panel.mp4 (68 s, 1280x696, 9.1 MB: the opening through three cycles, then the last cycle and 6 AM, the panel enlarged underneath); docs/img/night7-teach-panel-3am.png (native screenshot) and docs/img/night7-teach-panel-cycle22.gif (cycle 22 from the video) in the README",
+ "shareable": "artifacts/forensics/teach-panel-20260918/fnaf2-night7-teach-panel.mp4 (68 s, 1280x696, 9.1 MB: the opening through three cycles, then the last cycle and 6 AM, the panel enlarged underneath); docs/img/night7-teach-panel-cycle22.gif (cycle 22 from the video) in the README",
  "artifacts": "artifacts/forensics/teach-panel-20260918/ (teach-run.sh, per-run .out and helper logcat, make-share.sh, panel-sheet.py, panel-timeline.py, teach-02.timeline.json)",
  "sources": [
   "android/companion/src/com/ppvaz/fnafcompanion/CycleLesson.java",

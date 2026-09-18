@@ -10,24 +10,19 @@ The canonical target is Android. PC equivalence, device-general calibration, and
 a live controller result above its evidence rung are not claimed. Game assets
 and decompiled content are never distributed.
 
-![Night 7 at 3 AM on the phone: the cams up on Prize Corner with the marker split onto CAM 09, the music box winding, and the teach panel at left naming the step](docs/img/night7-teach-panel-3am.png)
-
-*Night 7, all ten dials at 20, 3 AM, as the phone drew it (2400x1080 screenshot,
-2026-09-18). The bot has the cameras up on Prize Corner with the marker parked
-on CAM 09, so both buttons are lit, and is winding the music box. The panel at
-the left is the Cue Helper's teach panel (`night-run.sh --teach-overlay`) for
-someone watching: the ring is the 10-second cycle (outer band: mask, cams or
-office; inner band: the flashes and the wind; the hand is now), the title is the
-step the schedule is on, and `seen` is what the helper reads off the screen.*
-
 ![One full 10-second cycle of Night 7 at 3 AM, with the teach panel enlarged underneath](docs/img/night7-teach-panel-cycle22.gif)
 
-*The same night, one whole cycle (cycle 22, 3 AM, 10 s, from the run's video; the
-strip underneath is the panel enlarged 2x). Mask off, a hall flash for Foxy,
-cams up onto the split, a camera flash that freezes CAM 09 for 6.7 s, three
-seconds of winding for the Puppet, the cams dropped with the light held so it
-flashes the hall, and the mask worn for the remaining 5.25 s. `seen` trails each
-press by the game's own animation.*
+*One whole 10-second cycle of Night 7, all ten dials at 20, at 3 AM on the phone
+(cycle 22, 2026-09-18, from the run's video). The panel at the left, enlarged 2x
+in the strip underneath, is the Cue Helper's teach panel
+(`night-run.sh --teach-overlay`) for someone watching: the ring is the cycle
+(outer band: mask, cams or office; inner band: the flashes and the wind; the hand
+is now), the title is the step the schedule is on, and `seen` is what the helper
+reads off the screen, trailing each press by the game's own animation. The cycle:
+mask off, a hall flash for Foxy, cams up with the marker parked on CAM 09 while
+the feed stays on Prize Corner, a camera flash that freezes CAM 09 for 6.7 s,
+three seconds of winding for the Puppet, the cams dropped with the light held so
+it flashes the hall, and the mask worn for the remaining 5.25 s.*
 
 ## Where this stands — 2026-09-18
 
