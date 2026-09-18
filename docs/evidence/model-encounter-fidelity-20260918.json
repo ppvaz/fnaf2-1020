@@ -1,0 +1,28 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "model-encounter-fidelity-20260918",
+ "claimLevel": "DEVICE_MEASURED for the phone's encounter reads and frames; MODEL_ONLY for every model string",
+ "date": "2026-09-18",
+ "question": "The model predicts survival on the phone's own frame clock. Does it also predict which animatronic is in which mask window -- and if not, is the gap only an offset in the random sequence?",
+ "verdict": "NO on both. On the traced Night 6 6 AM (night6-tw-04-20260918T014915Z) the phone shows 11 occupied mask windows, and the model at the night's own seed, frame trace and phase matches 2 of them. Stepping the seed up to 300 draws forward or back reaches at best 8 of 11, and so does the best of 1,202 random seeds: the offset fit is at chance. The gap is systematic rather than seed-specific: across every seed the model's nights are about half again as busy as the phone's and start two cycles earlier.",
+ "night6": {
+  "phoneWindows": ".........CB......B..C.....B...BC...BC..BC.",
+  "phone": "11 occupied windows out of 42: Withered Bonnie 6, Withered Chica 5, Withered Freddy 0; first encounter at window 9",
+  "modelAnySeed": "over 1,202 random seeds: median 17 occupied windows (p10 15, p90 19); first encounter median window 7; per night on average Withered Chica 8.4, Withered Bonnie 6.9, Withered Freddy 1.6",
+  "readerCheck": "Video frames at +1.5 s into windows 5-8 show both eyeholes on an empty office, so the reader's empty reads there are right while the model's median first encounter is window 7; window 10 shows Withered Bonnie, matching the read. The excess is Withered Chica and Withered Freddy, not Bonnie.",
+  "offsetFit": {
+   "method": "seed replaced by LCG^k(seed) for k in [-300, 300] on both candidate seeds, scored by the phone's occupied windows matched",
+   "atOffsetZero": "2/11 and 1/11",
+   "best": "8/11 (k = -193 and -3 on 24883; +57 on 24884)",
+   "null": "best 8/11, 99th percentile 6/11, median 2/11 over 1,202 random seeds",
+   "reading": "a small offset (-3) scoring 8/11 would be a ~3.5 % coincidence only under a window chosen after seeing it; the matches come from the regular late-night Bonnie/Chica alternation that most seeds produce"
+  }
+ },
+ "night7": {
+  "nights": "k3 full-06 (seed 47593, one candidate, 6 AM on the phone) and full-04 (seed 34043, one candidate, death), both frame-traced on 2026-09-15; schedules released 2516.8 and 2521.4 ms after their seeds after removing host/phone skews of 1402.2 and 1445.6 ms",
+  "model": "on each night's own trace and phase the model kills both: full-06 inside-office at 295 s (the phone won), full-04 inside-office at 175 s. A +/-300 ms phase sweep keeps full-06 alive only at -275..-200 and -150 ms and never keeps full-04 alive.",
+  "reading": "Night 7's model gap is open: the model can re-aim Night 6 but cannot guide Night 7, which is why the k3 reliability cohort (night7-cohort-k3-predeclaration-20260918) predicts no model rate."
+ },
+ "whatItMeans": "The model is right about outcomes on Night 6 because the route survives every encounter it throws, not because it knows the encounters. The next rung of mechanical fidelity is rule work on Withered Chica's and Withered Freddy's approach and entry on Night 6 -- the characters the model over-produces -- and on the inside-office entries that kill its Night 7 nights. No offset or seed search can close a gap that holds for every seed.",
+ "artifacts": "artifacts/forensics/frametrace-night6-20260918/ (offset-fit.py and outputs, enc and neighbour runs), artifacts/forensics/k3-frametrace-nights-20260915/ (traces and logs)"
+}

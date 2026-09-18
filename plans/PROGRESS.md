@@ -1,6 +1,6 @@
 # Plan progress
 
-**Updated:** 2026-09-17.
+**Updated:** 2026-09-18.
 
 **How to read this file.** It is a log, not a summary, and it grew in two
 directions. The block immediately below is a **2026-09-08 snapshot**, retained
@@ -10,7 +10,8 @@ where it was written; from there the top section runs newest-first back to
 
 Since that 09-08 snapshot: Night 5 reached 6 AM on 2026-09-12, Night 6 on
 09-13, and Night 7 (10/20, `golden-freddy`) on 09-14, with a ten-run Night 7
-cohort at 3 wins. The current open work is model fidelity — see the last
+cohort at 3 wins (k2, 09-14) and a predeclared one at 8 of 10 (k3, 09-18). The
+current open work is model fidelity — see the last
 entries and [`../docs/research/SOLVING-FNAF2.md`](../docs/research/SOLVING-FNAF2.md).
 
 2026-09-08 STORY NIGHTS 3 AND 4 CLEARED ON DEVICE, OPEN LOOP; NIGHT 2 GRADED
@@ -5997,3 +5998,26 @@ focus-versus-activation race (`b63ead9`), and loop aborts that never landed (SIG
 job is ignored). Next: a same-phase twin with both eyeholes read. Evidence:
 [night6-twin-nights-proven-20260918](../docs/evidence/night6-twin-nights-proven-20260918.json),
 [night6-model-traced-clock-20260918](../docs/evidence/night6-model-traced-clock-20260918.json).
+
+**2026-09-18: the model does not know the encounters, and the gap is not an offset.** On the traced
+Night 6 6 AM `night6-tw-04-20260918T014915Z` the phone shows 11 occupied mask windows out of 42; the
+model at that night's own seed, frame trace and phase matches 2. Stepping the seed up to 300 draws
+either way reaches at best 8 of 11, which is also the best of 1,202 random seeds, so the offset fit
+is at chance. The gap is systematic: across every seed the model's nights carry a median 17 occupied
+windows and start about two cycles earlier, and the excess is Withered Chica and Withered Freddy
+(video frames confirm an empty office where the model has its first encounter). Night 6 outcomes
+are right because the route survives every encounter the model throws, not because the model
+knows them; on Night 7 the model kills both traced k3 nights, including one the phone won. Next is
+rule work on those approaches and entries, not a seed search. Evidence:
+[model-encounter-fidelity-20260918](../docs/evidence/model-encounter-fidelity-20260918.json).
+
+**2026-09-18: the predeclared k3 Night 7 cohort -- 8 of 10 nights to 6 AM.** Ten runs of binding k3
+(`fnv1a-5c8dcb5f`, Night 7 10/20) under the predeclared protocol, no tuning inside, none excluded or
+invalid: 8 wins, each executor `sixam` and video TERMINAL clear (453-456 s of recording), and two
+deaths, both Withered Foxy on the first office frame after a mask-off press, 20.0 s and 70.2 s into
+the night (r03, r04; read frame by frame, since the recordings stop before a game-over screen). The
+anchor landed 0.06-1.05 ms after its 2433 ms aim on every run. This is one ten-run measurement of
+one binding; the model predicted no rate for it. The deaths point at the hall flash scheduled
+400 ms after mask-off against a 314 ms median press-to-effect plus the mask animation: a later
+flash is a new binding and its own cohort. Evidence:
+[night7-cohort-k3-result-20260918](../docs/evidence/night7-cohort-k3-result-20260918.json).
