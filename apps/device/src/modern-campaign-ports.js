@@ -94,6 +94,37 @@ async function title(bridge, serial, model) {
   return line.slice(6).split(',').filter(Boolean);
 }
 
+/** A press that activates a title row loads the next frame about 260 ms later (frame #3 at
+ * +262 ms on 2026-09-18, night6-ft-01) and the office about 3.5 s later. A read whose screen
+ * capture precedes that first frame shows the title whether the press focused the row or started
+ * the night, so a read may only answer once this long has passed since the press was stamped. */
+export const FIRST_PRESS_SETTLE_MS = 400;
+/** No read may start later than this after the press: a lifecycle read takes 1.1-1.8 s, and its
+ * answer has to be in before the office appears so intro() stamps first. */
+export const FIRST_PRESS_LAST_READ_MS = 1400;
+
+/**
+ * The lifecycle state a title press left behind, read only once the press has had time to act.
+ * `title` means the press focused the row; any other state means the screen moved on, and the
+ * caller must not press again. When only unknown reads arrive before the last read may start,
+ * the answer is `unknown`, which callers treat as a press that activated: a second press into a
+ * night that may already have begun is the failure this exists to prevent.
+ * @param {() => Promise<string | null>} read
+ * @param {{settleMs?: number, lastReadMs?: number, now?: () => number,
+ *   pause?: (ms: number) => Promise<unknown>}} [options]
+ */
+export async function settledAfterPress(read, { settleMs = FIRST_PRESS_SETTLE_MS,
+  lastReadMs = FIRST_PRESS_LAST_READ_MS, now = Date.now, pause = sleep } = {}) {
+  const calledAt = now();
+  await pause(settleMs);
+  for (;;) {
+    const state = await read();
+    if (typeof state === 'string' && state !== '') return state;
+    if (now() - calledAt >= lastReadMs) return 'unknown';
+    await pause(100);
+  }
+}
+
 async function waitFor(bridge, serial, predicate, timeoutMs, label) {
   const deadline = Date.now() + timeoutMs;
   let last = null;
@@ -560,62 +591,42 @@ export async function createCampaignPorts(options = {}) {
       ? point(calibration?.menu?.point, 'calibration.menu.point')
       : modelPoint(titleModel.items?.[targetName], `title model ${targetName}`);
     const holdMs = targetName === 'customNight' ? calibration.menu.holdMs : CUSTOM_NIGHT_CONTACT_MS;
-    // This build separates focusing a title row from activating it: the first
-    // press paints the `>>` cursor and the second press activates the focused
-    // row.  The old one-press path returned selected=true while the title was
-    // still on screen, so intro() later timed out without ever starting a
-    // night.  The lifecycle `title` result below is the focus confirmation;
-    // the title model intentionally does not re-read the transient cursor
-    // frame because it classifies that frame as unknown.
+    // This build separates focusing a title row from activating it: the first press paints the
+    // `>>` cursor and a second press activates the focused row -- unless the row was already
+    // focused, and then the FIRST press activates. An untimed start does not care which press
+    // did it. A timed story start does, because only the activating press fixes the office seed.
     //
-    // The cursor survives an attempt, so on the next one the FIRST press activates.
-    // An untimed path does not care which press did it; a timed story start does,
-    // because only the activating press fixes the seed. On 2026-09-17 (twin-01) the
-    // office began loading 0.6 s after the first press while the wait below had
-    // already returned `title` -- its own starting state -- and the timed second press
-    // landed 15 s into a night that was already running, which the strict anchor then
-    // refused as onset-predates-intro. So a timed story start places EVERY press on the
-    // residue and reads the state only after a press has had longer than that
-    // transition to act.
-    // The FIRST press carries the timing. Waiting here to learn whether it activated or only
-    // focused is not an option: intro() stamps the instant after which a latched onset counts as
-    // this night's, and the helper latches that onset when the office appears, 0.6-3.6 s after
-    // the activating press. Holding the menu phase open across the office load therefore makes
-    // the strict anchor refuse a perfectly timed night as onset-predates-intro -- twin-01 twice
-    // on 2026-09-17, the second time with the press on the residue to 0.013 ms. So the press is
-    // placed and this phase returns at once, exactly as the untimed path does; the second press
-    // stays untimed and lands harmlessly in the intro when the first already activated the row.
-    // Whether the timed press was the activating one is then read back from the seed itself
-    // (timedStartHeld), not guessed here.
-    // Which press activates the row, and so fixes the seed, depends on where the title cursor sits.
-    // A game the harness has just launched or restarted has it off the row, so the first press
-    // focuses and the SECOND activates; an attempt that left it on the row has the first one
-    // activate. The seed follows the activating press by a steady 4849 ms either way (3556 to the
-    // office load and 1293 through it, measured over the 2026-09-17 cohorts), so a timed start
-    // places BOTH presses it may send and reads back from the seed which one did the work
-    // (timedStartHeld). Waiting here to find out instead is what made the strict anchor refuse a
-    // perfectly placed press as onset-predates-intro: intro() must stamp its start before the
-    // office appears, 4.8 s after the activating press.
+    // A read taken just after a press shows the title whether the press focused the row or
+    // started the night, and returning on that read is the race that cost two timed attempts. On
+    // 2026-09-17 (twin-01) the timed second press landed 15 s into a night the first press had
+    // started. On 2026-09-18 (tw-01) the untimed first press started Night 6 on a freshly
+    // relaunched game, the read came back `title`, and the night ran 47 s with no executor while
+    // this phase waited for the residue -- so "a relaunched game has the cursor off the row" is
+    // not a premise this path may rest on.
+    //
+    // A timed start therefore places EVERY press it may send on the residue, and after the first
+    // one it reads the state only once the press has had time to act (settledAfterPress), with
+    // the answer in before the office appears. Holding this phase open across the office load is
+    // what makes the strict anchor refuse a night as onset-predates-intro, so when that read
+    // already shows the night beginning it is used as the entry state and no further read is
+    // spent. Whichever press activated, the seed follows a timed instant; timedStartHeld reads
+    // back from the seed which one.
     const residueMs = startResidueMs();
     const timedStory = residueMs !== null && targetName !== 'customNight';
-    await tap({ point: targetPoint, holdMs });
-    const firstSelectionState = await waitFor(bridge, serial,
-      value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
-      10000, 'title row focus or night start');
-    if (firstSelectionState === 'title') {
-      // The SECOND press is the activating one on a freshly launched or restarted game, whose
-      // title cursor sits off the row, and the activating press is what fixes the seed: it
-      // follows by a steady 4849 ms, 3556 to the office load and 1293 through it, measured over
-      // the 2026-09-17 cohorts. Waiting here for its residue is safe because the first press only
-      // focused: no night has begun, so nothing is latched while we wait. What is NOT safe is
-      // waiting to find out whether the first press activated -- intro() has to stamp its start
-      // before the office appears 4.8 s later, and holding this phase open across that is what
-      // made the strict anchor refuse a perfectly placed press as onset-predates-intro. So the
-      // caller keeps the cursor off the row (a restarted game does), and timedStartHeld reads
-      // back from the seed whether the timed press was in fact the one that started the night.
-      if (timedStory) await stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
+    let firstSelectionState;
+    if (timedStory) {
+      const timedTap = () => stampedStartTap({ point: targetPoint, holdMs, kind: 'menu',
         refusal: `timed ${targetName} start refused` });
-      else await tap({ point: targetPoint, holdMs });
+      await timedTap();
+      firstSelectionState = await settledAfterPress(() => lifecycle(bridge, serial));
+      onEvent({ type: 'menu.press-settled', press: 1, state: firstSelectionState });
+      if (firstSelectionState === 'title') await timedTap();
+    } else {
+      await tap({ point: targetPoint, holdMs });
+      firstSelectionState = await waitFor(bridge, serial,
+        value => value === 'title' || value === 'titleDialog' || value === 'intro' || value === 'night',
+        10000, 'title row focus or night start');
+      if (firstSelectionState === 'title') await tap({ point: targetPoint, holdMs });
     }
     if (targetName === 'customNight')
       return { target: targetName, visible: true, selected: true, observed: true,
@@ -626,9 +637,13 @@ export async function createCampaignPorts(options = {}) {
     // executor hands its first schedule lines to this same process after the
     // office frame is observed.
     if (targetName !== 'newGame') {
-      const entryState = await waitFor(bridge, serial,
-        value => value === 'intro' || value === 'newspaper' || value === 'night',
-        30000, 'night selection');
+      // A first read that already saw the night begin is the entry state: another read costs
+      // 1-2 s, and intro() has to stamp before the office appears.
+      const entryState = ['intro', 'newspaper', 'night'].includes(firstSelectionState)
+        ? firstSelectionState
+        : await waitFor(bridge, serial,
+          value => value === 'intro' || value === 'newspaper' || value === 'night',
+          30000, 'night selection');
       prearm(target);
       return { target: targetName, visible: true, selected: true, observed: true,
         menuPresses: firstSelectionState === 'title' ? 2 : 1, entryState };

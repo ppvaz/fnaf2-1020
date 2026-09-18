@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { phoneWallAt, planTimedStart, waitUntilHostMs, SEED_PERIOD_MS } from '../src/timed-start.js';
-import { timedStartHeld, PRESS_TO_OFFICE_MS } from '../src/modern-campaign-ports.js';
+import { timedStartHeld, PRESS_TO_OFFICE_MS, settledAfterPress, FIRST_PRESS_SETTLE_MS,
+  FIRST_PRESS_LAST_READ_MS } from '../src/modern-campaign-ports.js';
 
 // Helper sample: snapshot at device mono 5000 ms, host perf = device mono + 1000, wall 1 789 431 000 000 at the snapshot.
 const sample = { offsetMs: 1000, fields: { snapshotNs: String(5000n * 1000000n), wallMs: '1789431000000' } };
@@ -53,3 +54,51 @@ console.log('timed start: phone wall mapping, residue planning with the lead rol
   assert.ok(PRESS_TO_OFFICE_MS[0] < PRESS_TO_OFFICE_MS[1], 'the measured window is a range');
 }
 console.log('timed start: phone wall mapping, residue plan, host wait, and the seed-side check that the timed press started the night');
+
+// --- the title-press race (tw-01, 2026-09-18) ------------------------------------------------
+// A fake screen: an ACTIVATING press shows the title until the next frame loads at +262 ms, the
+// Night 6 card until +3457 ms, then a dark office load. A FOCUSING press leaves the title up. A
+// lifecycle read captures the screen when it starts and returns after readMs.
+{
+  const screen = ({ activates }) => t => (!activates || t < 262) ? 'title' : t < 3457 ? 'intro' : null;
+  const rig = (show, readMs) => {
+    let t = 0; const starts = [];
+    return {
+      now: () => t,
+      pause: async ms => { t += ms; },
+      read: async () => { starts.push(t); const seen = show(t); t += readMs; return seen; },
+      starts,
+    };
+  };
+  {
+    // The old path read at once: an activating press still showed the title, and a timed start
+    // then waited 48.8 s for its residue while the night ran without an executor.
+    const r = rig(screen({ activates: true }), 1200);
+    assert.equal(await r.read(), 'title', 'a read taken at the press itself cannot see the activation');
+  }
+  {
+    const r = rig(screen({ activates: true }), 1200);
+    const state = await settledAfterPress(r.read, { now: r.now, pause: r.pause });
+    assert.equal(state, 'intro', 'a settled read sees the night begin');
+    assert.ok(r.starts[0] >= FIRST_PRESS_SETTLE_MS, 'no read starts before the settle');
+    assert.ok(r.now() < 3457, `the answer (${r.now()} ms) is in before the office load`);
+  }
+  {
+    const r = rig(screen({ activates: false }), 1200);
+    assert.equal(await settledAfterPress(r.read, { now: r.now, pause: r.pause }), 'title',
+      'a focusing press leaves the title, and only then may a second press follow');
+  }
+  {
+    // Unknown reads retry while a read may still start, then answer `unknown` (treated as activated).
+    const r = rig(() => null, 700);
+    assert.equal(await settledAfterPress(r.read, { now: r.now, pause: r.pause }), 'unknown');
+    assert.equal(r.starts.length, 2, `two reads fit before the last start (${r.starts.join(', ')})`);
+    assert.ok(r.starts.every(start => start < FIRST_PRESS_LAST_READ_MS), 'no read starts past the last-read bound');
+  }
+  {
+    const r = rig(() => null, 1500);
+    assert.equal(await settledAfterPress(r.read, { now: r.now, pause: r.pause }), 'unknown');
+    assert.equal(r.starts.length, 1, 'a slow read that ends past the bound is not repeated');
+  }
+}
+console.log('title-press settle: an activating press is seen as such before the office loads');
