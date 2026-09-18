@@ -7,6 +7,7 @@ import { canonicalJson, stableHash, validateArtifactRef } from '@fnaf2-1020/core
 import { validateManifest } from '@fnaf2-1020/runtime';
 import { replayModelResult } from '@fnaf2-1020/research';
 import { BUNDLE_SCHEMA, validateBundle } from './device/bundle.mjs';
+import { isCampaignResult, campaignEntry, campaignPromotionChecks } from './evidence-campaign.mjs';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '..'));
 const ARTIFACTS = join(ROOT, 'artifacts');
@@ -73,11 +74,21 @@ async function loadDeviceBundle(run) {
   return { bundle: validateBundle(base), kind: 'device-bundle' };
 }
 
+async function loadCampaign(run) {
+  const base = join(ARTIFACTS, run);
+  const wrapper = JSON.parse(await readFile(join(base, 'result.json'), 'utf8'));
+  if (!isCampaignResult(wrapper)) throw new Error('not a device campaign result');
+  return { kind: 'device-campaign', entry: campaignEntry(run, wrapper), wrapper, files: await readdir(base) };
+}
+
 async function loadAny(run) {
   try { return { ...(await load(run)), kind: 'session' }; }
   catch (sessionError) {
     try { return await loadDeviceBundle(run); }
-    catch { throw sessionError; }
+    catch {
+      try { return await loadCampaign(run); }
+      catch { throw sessionError; }
+    }
   }
 }
 
@@ -98,6 +109,13 @@ async function list() {
       if (SESSION_RESULT_SCHEMAS.has(result.schema)) {
         runs.push({ id: result.evidenceId ?? entry.name, kind: 'session', outcome: 'INVALID_SESSION',
           reason: 'session result or manifest failed validation' });
+        continue;
+      }
+      if (isCampaignResult(result)) {
+        try { runs.push(campaignEntry(entry.name, result)); }
+        catch (error) {
+          runs.push({ id: entry.name, kind: 'device-campaign', outcome: 'INVALID_CAMPAIGN', reason: error.message });
+        }
         continue;
       }
     } catch { /* not a session result; inspect device and historical schemas */ }
@@ -136,7 +154,13 @@ const stable = value => canonicalJson(value);
 async function main([operation = 'help', first, second]) {
   if (operation === 'help' || operation === '--help') return help();
   if (operation === 'list') return list();
-  if (operation === 'show') return console.log(JSON.stringify(await loadAny(first), null, 2));
+  if (operation === 'show') {
+    const loaded = await loadAny(first);
+    if (loaded.kind === 'device-campaign')
+      return console.log(JSON.stringify({ kind: loaded.kind, ...loaded.entry, mode: loaded.wrapper.mode,
+        status: loaded.wrapper.status, files: loaded.files }, null, 2));
+    return console.log(JSON.stringify(loaded, null, 2));
+  }
   if (operation === 'diff') {
     const [left, right] = await Promise.all([load(first), load(second)]);
     const changes = [];
@@ -146,6 +170,8 @@ async function main([operation = 'help', first, second]) {
   }
   if (operation === 'replay') {
     const loaded = await loadAny(first);
+    if (loaded.kind === 'device-campaign')
+      return console.log(`replay=${first} status=NOT_REPLAYABLE reason="a night on the phone is not a deterministic replay; replay its bundle"`);
     if (loaded.kind === 'device-bundle') {
       const { bundle } = loaded;
       return console.log(`replay=${first} evaluations=${bundle.replay.results.length} resultHash=${bundle.manifest.replay.hash} status=REPLAYED`);
@@ -164,6 +190,17 @@ async function main([operation = 'help', first, second]) {
   }
   if (operation === 'promote') {
     const loaded = await loadAny(first);
+    if (loaded.kind === 'device-campaign') {
+      const checks = campaignPromotionChecks(loaded.wrapper, loaded.files);
+      const accepted = Object.values(checks).every(Boolean);
+      return console.log(JSON.stringify({
+        schema: 'plan12-promotion-gate-v1', evidenceId: first, kind: 'device-campaign',
+        nights: loaded.entry.nights, outcome: loaded.entry.outcome,
+        authority: 'plans/12-end-to-end-evidence-campaign.md', accepted, checks,
+        status: accepted ? 'READY_FOR_REVIEW' : 'REFUSED',
+        reason: accepted ? null : 'Plan 12 requires external evidence, a passing terminal result, and an explicit gate attestation',
+      }, null, 2));
+    }
     if (loaded.kind === 'device-bundle') {
       const { bundle } = loaded;
       const gate = bundle.manifest.gate ?? {};

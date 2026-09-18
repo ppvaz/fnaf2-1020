@@ -1963,9 +1963,16 @@
       ]
     },
     {
+      "file": "tools/evidence-campaign.mjs",
+      "imports": [
+        "../apps/device/src/campaign.js"
+      ]
+    },
+    {
       "file": "tools/evidence.js",
       "imports": [
         "./device/bundle.mjs",
+        "./evidence-campaign.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/research",
         "@fnaf2-1020/runtime",
@@ -2699,6 +2706,13 @@
         "node:fs",
         "node:path",
         "node:url"
+      ]
+    },
+    {
+      "file": "tools/test-evidence-campaign.mjs",
+      "imports": [
+        "./evidence-campaign.mjs",
+        "node:assert/strict"
       ]
     },
     {

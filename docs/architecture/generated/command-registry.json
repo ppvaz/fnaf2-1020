@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-seedpin.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -1000,6 +1000,18 @@
     {
       "id": "tools/device/test-seedpin.mjs",
       "invocation": "tools/device/test-seedpin.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/evidence-campaign.mjs",
+      "invocation": "tools/evidence-campaign.mjs",
+      "kind": "module",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/test-evidence-campaign.mjs",
+      "invocation": "tools/test-evidence-campaign.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
