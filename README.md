@@ -72,6 +72,17 @@ edge has no mechanism yet and is recorded as a measured edge rather than dressed
 in an inequality
 ([`night7-preset-sweep`](docs/evidence/night7-preset-sweep-20260917.json)).
 
+**On story Night 3 and the Night 7 4/20 preset, prefer Minus 3 to Minus Toys.**
+Both nights are carried by the Withereds, and Minus 3's double camera glitch
+parks the marker on CAM 08, where Withered Freddy, Bonnie and Chica cannot leave
+— so the night reduces to Foxy and the music box, and becomes trivial. On the
+phone, Night 3 cleared on Minus 3
+([`victory-night3`](docs/evidence/victory-night3-20260908.json)), and 4/20
+cleared on a Minus 3 loop of four rows per 10 s — hall flash, monitor up, wind,
+cams down — with no mask input in the plan at all
+([`night7-420-first-6am-minimal3`](docs/evidence/night7-420-first-6am-minimal3-20260914.json)).
+Each is a single run, not a cohort.
+
 **What is open.** The bottleneck is model fidelity, not execution. The model had
 been killing every censused seed on nights the phone won; on 2026-09-17 that was
 traced to an instrument error rather than a rule — the reconstruction compared
