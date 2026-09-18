@@ -60,6 +60,7 @@ Options:
   --night-anchor-period-ms P  the game timer period the aim is a phase of (default 1000; Night 6's Foxy roll grid is 5000)
   --night-anchor-strict  refuse (abort the attempt) instead of releasing unanchored when the aim cannot be met
   --night-anchor-authorize-on-latch  release on the helper's latched onset alone once the aim is past its hold
+  --teach-overlay  narrate the schedule on the Cue Helper's teach panel for a person watching (needs an anchor)
   --no-helper   preflight without requiring Cue Helper
   --no-hid      preflight without requiring /system/bin/hid
   --live        explicitly enable physical actuation
@@ -83,7 +84,7 @@ function parse(argv) {
   const options = { command, profile: 'fixture-hid-screencap', live: false, confirmLive: false,
     json: false, serial: undefined, nights: [...DEFAULT_CAMPAIGN_NIGHTS], maxAttempts: 3, storyStart: undefined, saveCursor: undefined,
     requireHelper: true, requireHid: true,
-    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, nightAnchorMaxK: null, nightAnchorPeriodMs: 1000, nightAnchorStrict: false, nightAnchorAuthorizeOnLatch: false, calibration: undefined, bundle: undefined,
+    guided: false, machineOnly: false, armMode: 'blocking', allowSaveReset: false, nightAnchorAimMs: null, nightAnchorMaxK: null, nightAnchorPeriodMs: 1000, nightAnchorStrict: false, nightAnchorAuthorizeOnLatch: false, teachOverlay: false, calibration: undefined, bundle: undefined,
     qualification: undefined, ports: undefined, spec: undefined, count: 12, spanMs: 30000, out: undefined,
     source: 'uptime' };
   for (let index = 0; index < rest.length; index += 1) {
@@ -109,6 +110,7 @@ function parse(argv) {
     else if (item === '--night-anchor-period-ms') options.nightAnchorPeriodMs = Number(rest[++index]);
     else if (item === '--night-anchor-strict') options.nightAnchorStrict = true;
     else if (item === '--night-anchor-authorize-on-latch') options.nightAnchorAuthorizeOnLatch = true;
+    else if (item === '--teach-overlay') options.teachOverlay = true;
     else if (item === '--no-helper') options.requireHelper = false;
     else if (item === '--no-hid') options.requireHid = false;
     else if (item === '--serial') options.serial = rest[++index];
@@ -369,7 +371,8 @@ async function main(argv = process.argv.slice(2)) {
         allowSaveReset: options.allowSaveReset, captureRestarted: true,
         nightAnchorAimMs: options.nightAnchorAimMs, nightAnchorMaxK: options.nightAnchorMaxK,
         nightAnchorPeriodMs: options.nightAnchorPeriodMs, nightAnchorStrict: options.nightAnchorStrict,
-        nightAnchorAuthorizeOnLatch: options.nightAnchorAuthorizeOnLatch });
+        nightAnchorAuthorizeOnLatch: options.nightAnchorAuthorizeOnLatch,
+        teachOverlay: options.teachOverlay });
     }
     const ports = composition?.ports ?? composition;
     // Once a live composition exists, an operator interrupt must release the

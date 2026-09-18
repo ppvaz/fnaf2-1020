@@ -232,6 +232,13 @@
     {
       "id": "contract.cue-helper-control-v1",
       "kind": "CONTRACT",
+      "path": "apps/device/src/cycle-lesson.js",
+      "line": 8,
+      "relation": "REFERENCES"
+    },
+    {
+      "id": "contract.cue-helper-control-v1",
+      "kind": "CONTRACT",
       "path": "apps/device/src/physical-ports.js",
       "line": 9,
       "relation": "REFERENCES"

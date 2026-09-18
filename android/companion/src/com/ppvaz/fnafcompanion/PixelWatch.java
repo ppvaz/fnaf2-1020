@@ -85,6 +85,67 @@ public final class PixelWatch {
     /** Settled-state bands measured by the native-stroke gate. */
     public static final int CONTROL_STROKE_VISIBLE_MIN = 100;
     public static final int CONTROL_STROKE_ABSENT_MAX = 40;
+    // The CAM 05 feed region, as a block of the 20x9 grid. The screen model's
+    // ROI is (600,180)-(1120,500) of 2400x1080, and at 120 px per cell that
+    // is x 5..9, y 1..4 (inclusive cells).
+    public static final int CAM05_CELL_X0 = 5;
+    public static final int CAM05_CELL_X1 = 9;
+    public static final int CAM05_CELL_Y0 = 1;
+    public static final int CAM05_CELL_Y1 = 4;
+
+    /**
+     * The native x the capture service samples for grid column {@code gx}: the
+     * cell centre, (2gx+1) * width / 40. Shared so the teach panel's clearance
+     * test reads the same points the service does.
+     */
+    public static int gridSampleX(int gx, int width) {
+        return Math.min(width - 1, (int) (((long) gx * 2 + 1) * width / (GRID_WIDTH * 2L)));
+    }
+
+    /** The native y sampled for grid row {@code gy}; see {@link #gridSampleX}. */
+    public static int gridSampleY(int gy, int height) {
+        return Math.min(height - 1, (int) (((long) gy * 2 + 1) * height / (GRID_HEIGHT * 2L)));
+    }
+
+    /** Native x of grid column boundary {@code logical}, clamped to the frame. */
+    public static int gridEdgeX(int logical, int width) {
+        return Math.min(width - 1, (int) ((long) logical * width / GRID_WIDTH));
+    }
+
+    /** Native y of grid row boundary {@code logical}, clamped to the frame. */
+    public static int gridEdgeY(int logical, int height) {
+        return Math.min(height - 1, (int) ((long) logical * height / GRID_HEIGHT));
+    }
+
+    /** Mean luma over a half-open native rectangle with a sampling step, or -1. */
+    public static int blockLuma(Frame frame, int x0, int y0, int x1, int y1, int step) {
+        if (step < 1) return -1;
+        long total = 0;
+        int count = 0;
+        for (int y = y0; y < y1; y += step) {
+            for (int x = x0; x < x1; x += step) {
+                int rgb = frame.rgb(x, y);
+                if (rgb == UNKNOWN) {
+                    return -1;
+                }
+                int r = (rgb >> 16) & 0xff;
+                int g = (rgb >> 8) & 0xff;
+                int b = rgb & 0xff;
+                total += (77 * r + 150 * g + 29 * b) >> 8;
+                count++;
+            }
+        }
+        return count == 0 ? -1 : (int) (total / count);
+    }
+
+    /** CaptureService's CAM 05 block mean over the capture frame. */
+    public static int cam05BlockLuma(Frame frame) {
+        int width = frame.width();
+        int height = frame.height();
+        return blockLuma(frame,
+                gridEdgeX(CAM05_CELL_X0, width), gridEdgeY(CAM05_CELL_Y0, height),
+                gridEdgeX(CAM05_CELL_X1 + 1, width), gridEdgeY(CAM05_CELL_Y1 + 1, height), 1);
+    }
 
     public enum Kind { PIXEL, ROI }
     public enum Reducer {

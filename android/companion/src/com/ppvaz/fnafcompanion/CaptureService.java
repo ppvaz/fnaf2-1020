@@ -112,16 +112,11 @@ public final class CaptureService extends Service {
     private static final int VISUAL_HEIGHT = 9;
     private static final int VISUAL_X = 3;
     private static final int VISUAL_Y = 6;
-    // The CAM 05 feed region, as a block of the same 20x9 frame. The screen
-    // model's ROI is (600,180)-(1120,500) of 2400x1080, and at 120 px per cell
-    // that is x 5..9, y 1..4. Reading it costs twenty pixels of an image the
+    // The CAM 05 feed region is a block of the same 20x9 frame
+    // (PixelWatch.CAM05_CELL_*). Reading it costs pixels of an image the
     // service already has -- the reason CAM 05 needed a 206 ms screencap was
     // that this service sampled exactly one hardcoded point, not any limit of
     // the capture.
-    private static final int CAM05_X0 = 5;
-    private static final int CAM05_X1 = 9;
-    private static final int CAM05_Y0 = 1;
-    private static final int CAM05_Y1 = 4;
     private static final long MAX_VISUAL_FRAME_AGE_US = 250_000L;
     private static final long VISUAL_REPORT_INTERVAL_NS = 1_000_000_000L;
     private static final int CONTROL_PORT = 49_707;
@@ -253,6 +248,8 @@ public final class CaptureService extends Service {
     // GET/FRAME so the host can place the schedule release against the game's
     // own one-second grid instead of a ~1 Hz screenshot classifier.
     private final NightOnsetLatch nightOnsetLatch = new NightOnsetLatch();
+    private final Object lessonLock = new Object();
+    private CycleLesson.Builder pendingLesson;
     private int snapshotScreenScore;
     private long snapshotDetectorLatencyMs;
     // Native bottom-control means from the same image as the snapshot/grid.
@@ -1115,12 +1112,8 @@ public final class CaptureService extends Service {
             // watchlist. It is an observation only: ROI transformation still
             // requires a separately calibrated camera-position mapping.
             PanAnchor.measure(watchFrame, panAnchorWorkspace, framePanAnchor);
-            int logicalX = Math.min(captureWidth - 1,
-                    (int) (((long) VISUAL_X * 2 + 1) * captureWidth
-                            / (VISUAL_WIDTH * 2L)));
-            int logicalY = Math.min(captureHeight - 1,
-                    (int) (((long) VISUAL_Y * 2 + 1) * captureHeight
-                            / (VISUAL_HEIGHT * 2L)));
+            int logicalX = PixelWatch.gridSampleX(VISUAL_X, captureWidth);
+            int logicalY = PixelWatch.gridSampleY(VISUAL_Y, captureHeight);
             int rgb = watchFrame.rgb(logicalX, logicalY);
             if (rgb == PixelWatch.UNKNOWN) {
                 lastVisual = "visual=UNAVAILABLE(bounds)";
@@ -1130,9 +1123,7 @@ public final class CaptureService extends Service {
             int green = (rgb >> 8) & 0xff;
             int blue = rgb & 0xff;
             int luma = (77 * red + 150 * green + 29 * blue) >> 8;
-            int cam05MeanLuma = blockLuma(watchFrame,
-                    scaleX(CAM05_X0, VISUAL_WIDTH), scaleY(CAM05_Y0, VISUAL_HEIGHT),
-                    scaleX(CAM05_X1 + 1, VISUAL_WIDTH), scaleY(CAM05_Y1 + 1, VISUAL_HEIGHT));
+            int cam05MeanLuma = PixelWatch.cam05BlockLuma(watchFrame);
             long callbackNs = System.nanoTime();
             long timestampNs = image.getTimestamp();
             long ageUs = timestampNs > 0 ? (callbackNs - timestampNs) / 1_000L : -1;
@@ -1147,6 +1138,11 @@ public final class CaptureService extends Service {
             int gridMeanLuma;
             int screenIdentity;
             int screenScore;
+            PixelWatch.ControlState teachControl;
+            // While the teach panel may be on screen, the two readers that
+            // cannot avoid its rectangle are withheld (TeachPanelTest).
+            boolean teachShown = overlayController != null
+                    && overlayController.teachMayBeVisible(timestampNs);
             if (!sessionActive(generation)) return;
             synchronized (snapshotLock) {
                 snapshotVisualSequence = visualSequence;
@@ -1165,12 +1161,8 @@ public final class CaptureService extends Service {
                 boolean complete = true;
                 for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
                     for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
-                        int x = Math.min(captureWidth - 1,
-                                (int) (((long) gx * 2 + 1) * captureWidth
-                                        / (VISUAL_WIDTH * 2L)));
-                        int y = Math.min(captureHeight - 1,
-                                (int) (((long) gy * 2 + 1) * captureHeight
-                                        / (VISUAL_HEIGHT * 2L)));
+                        int x = PixelWatch.gridSampleX(gx, captureWidth);
+                        int y = PixelWatch.gridSampleY(gy, captureHeight);
                         int cell = watchFrame.rgb(x, y);
                         if (cell == PixelWatch.UNKNOWN) {
                             complete = false;
@@ -1189,9 +1181,9 @@ public final class CaptureService extends Service {
                 snapshotGridMeanLuma = complete
                         ? ScreenStats.meanLuma(snapshotGrid, snapshotGrid.length)
                         : -1;
-                snapshotScreenIdentity = complete
-                        ? ScreenIdentity.classify(watchFrame, snapshotGrid)
-                        : ScreenIdentity.UNKNOWN;
+                snapshotScreenIdentity = !complete ? ScreenIdentity.UNKNOWN
+                        : teachShown ? ScreenIdentity.classify(snapshotGrid)
+                        : ScreenIdentity.classify(watchFrame, snapshotGrid);
                 snapshotScreenScore = complete
                         ? ScreenIdentity.score(snapshotGrid) : 0;
                 if (captureWidth == PixelWatch.NATIVE_WIDTH
@@ -1231,6 +1223,9 @@ public final class CaptureService extends Service {
                                     == PixelWatch.ControlState.OFFICE_UNMASKED;
                     PixelWatch.readInto(watchSpec, watchFrame,
                             snapshotWatchValues, readBattery);
+                    int withheld = teachShown
+                            ? watchSpec.indexOfName(TeachPanel.WITHHELD_WATCH_ENTRY) : -1;
+                    if (withheld >= 0) snapshotWatchValues[withheld] = PixelWatch.UNKNOWN;
                 } else {
                     for (int i = 0; i < watchSpec.size(); i++) {
                         snapshotWatchValues[i] = PixelWatch.UNKNOWN;
@@ -1247,6 +1242,8 @@ public final class CaptureService extends Service {
                             snapshotScreenIdentity, maskLuma, monitorLuma);
                 }
                 screenIdentity = snapshotScreenIdentity;
+                teachControl = PixelWatch.controlState(snapshotMaskButtonDownstroke,
+                        snapshotMonitorButtonDownstroke);
                 nightOnsetLatch.onFrame(timestampNs, screenIdentity);
                 snapshotDetectorLatencyMs = Math.max(0L,
                         (System.nanoTime() - detectorStartNs) / 1_000_000L);
@@ -1265,6 +1262,9 @@ public final class CaptureService extends Service {
 
             if (overlayController != null && overlayController.needsCapturedIdentity()) {
                 overlayController.onCapturedScreenIdentity(screenIdentity);
+            }
+            if (overlayController != null && overlayController.teachRunning()) {
+                overlayController.onTeachFrame(screenIdentity, teachControl);
             }
 
             if (overlayController != null && overlayController.visible()
@@ -1349,23 +1349,15 @@ public final class CaptureService extends Service {
         boolean gridComplete = true;
         for (int gy = 0; gy < VISUAL_HEIGHT; gy++) {
             for (int gx = 0; gx < VISUAL_WIDTH; gx++) {
-                int x = Math.min(captureWidth - 1,
-                        (int) (((long) gx * 2 + 1) * captureWidth
-                                / (VISUAL_WIDTH * 2L)));
-                int y = Math.min(captureHeight - 1,
-                        (int) (((long) gy * 2 + 1) * captureHeight
-                                / (VISUAL_HEIGHT * 2L)));
+                int x = PixelWatch.gridSampleX(gx, captureWidth);
+                int y = PixelWatch.gridSampleY(gy, captureHeight);
                 int cell = watchFrame.rgb(x, y);
                 if (cell == PixelWatch.UNKNOWN) gridComplete = false;
                 frameTraceGrid[gy * VISUAL_WIDTH + gx] = cell;
             }
         }
-        int logicalX = Math.min(captureWidth - 1,
-                (int) (((long) VISUAL_X * 2 + 1) * captureWidth
-                        / (VISUAL_WIDTH * 2L)));
-        int logicalY = Math.min(captureHeight - 1,
-                (int) (((long) VISUAL_Y * 2 + 1) * captureHeight
-                        / (VISUAL_HEIGHT * 2L)));
+        int logicalX = PixelWatch.gridSampleX(VISUAL_X, captureWidth);
+        int logicalY = PixelWatch.gridSampleY(VISUAL_Y, captureHeight);
         int rgb = watchFrame.rgb(logicalX, logicalY);
         int red = rgb == PixelWatch.UNKNOWN ? PixelWatch.UNKNOWN : (rgb >> 16) & 0xff;
         int green = rgb == PixelWatch.UNKNOWN ? PixelWatch.UNKNOWN : (rgb >> 8) & 0xff;
@@ -1465,6 +1457,12 @@ public final class CaptureService extends Service {
                 callbackNs, sequence, maskLuma, monitorLuma,
                 maskDownstroke, monitorDownstroke,
                 screenIdentity, gridMeanLuma);
+        // Trace mode reads only the grid and the fixed controls, all clear of
+        // the teach panel, so a traced night can still narrate.
+        if (overlayController != null && overlayController.teachRunning()) {
+            overlayController.onTeachFrame(screenIdentity,
+                    PixelWatch.controlState(maskDownstroke, monitorDownstroke));
+        }
     }
 
     /**
@@ -1568,42 +1566,10 @@ public final class CaptureService extends Service {
 
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
-    /** Mean luma over a half-open native rectangle, or -1 if it does not fit. */
-    private static int blockLuma(PixelWatch.Frame frame,
-            int x0, int y0, int x1, int y1) {
-        return blockLuma(frame, x0, y0, x1, y1, 1);
-    }
-
     /** Mean luma over a rectangle with a bounded sampling step. */
     private static int blockLuma(PixelWatch.Frame frame,
             int x0, int y0, int x1, int y1, int step) {
-        if (step < 1) return -1;
-        long total = 0;
-        int count = 0;
-        for (int y = y0; y < y1; y += step) {
-            for (int x = x0; x < x1; x += step) {
-                int rgb = frame.rgb(x, y);
-                if (rgb == PixelWatch.UNKNOWN) {
-                    return -1;
-                }
-                int r = (rgb >> 16) & 0xff;
-                int g = (rgb >> 8) & 0xff;
-                int b = rgb & 0xff;
-                total += (77 * r + 150 * g + 29 * b) >> 8;
-                count++;
-            }
-        }
-        return count == 0 ? -1 : (int) (total / count);
-    }
-
-    private int scaleX(int logical, int logicalWidth) {
-        return Math.min(captureWidth - 1,
-                (int) ((long) logical * captureWidth / logicalWidth));
-    }
-
-    private int scaleY(int logical, int logicalHeight) {
-        return Math.min(captureHeight - 1,
-                (int) ((long) logical * captureHeight / logicalHeight));
+        return PixelWatch.blockLuma(frame, x0, y0, x1, y1, step);
     }
 
     private static boolean validCaptureSize(int width, int height) {
@@ -2837,6 +2803,8 @@ public final class CaptureService extends Service {
                 }
                 return "OK " + (overlayController == null
                         ? "overlay=UNAVAILABLE" : overlayController.status());
+            case "LESSON":
+                return dispatchLesson(field);
             case "CAL":
             case "LOG":
             case "REC":
@@ -2846,6 +2814,80 @@ public final class CaptureService extends Service {
                 return "ERROR audio-authority-external";
             default:
                 return "ERROR unknown-verb";
+        }
+    }
+
+    /**
+     * The teach panel's lesson channel. A host uploads the schedule it is about
+     * to run (begin, rows, commit), then names its origin against this
+     * service's own latched onset. It writes nothing but the panel's lesson:
+     * no detector, watch, latch, or capture state is touched here.
+     */
+    private String dispatchLesson(String[] field) {
+        if (overlayController == null) return "ERROR overlay-unavailable";
+        if (field.length < 3) return "ERROR lesson-usage";
+        try {
+            switch (field[2]) {
+                case "begin":
+                    synchronized (lessonLock) {
+                        pendingLesson = null;
+                        pendingLesson = CycleLesson.Builder.begin(field, 3);
+                    }
+                    return "OK lesson=BEGUN";
+                case "row":
+                    synchronized (lessonLock) {
+                        if (pendingLesson == null) return "ERROR lesson-not-begun";
+                        pendingLesson.row(field, 3);
+                    }
+                    return "OK lesson=ROW";
+                case "commit": {
+                    if (field.length != 3) return "ERROR lesson-usage";
+                    CycleLesson lesson;
+                    synchronized (lessonLock) {
+                        CycleLesson.Builder builder = pendingLesson;
+                        pendingLesson = null;
+                        if (builder == null) return "ERROR lesson-not-begun";
+                        lesson = builder.build();
+                    }
+                    return overlayController.armTeach(lesson);
+                }
+                case "origin": {
+                    if (field.length != 5 || !field[3].matches("[0-9]{1,19}")
+                            || !field[4].matches("[0-9]{1,10}")) {
+                        return "ERROR lesson-origin-usage";
+                    }
+                    long hostOnsetNs = Long.parseLong(field[3]);
+                    long afterOnsetUs = Long.parseLong(field[4]);
+                    long latchNs = nightOnsetLatch.onsetNs();
+                    if (latchNs == NightOnsetLatch.NOT_LATCHED) {
+                        return "ERROR lesson-onset-not-latched";
+                    }
+                    // The host's onset is this latch read back through ms;
+                    // anything further off is a different night.
+                    if (Math.abs(latchNs - hostOnsetNs) > 1_000_000L) {
+                        return "ERROR lesson-onset-mismatch latchNs=" + latchNs;
+                    }
+                    if (afterOnsetUs > 60_000_000L) return "ERROR lesson-origin-range";
+                    return overlayController.startTeach(latchNs, afterOnsetUs);
+                }
+                case "clear":
+                    if (field.length != 3) return "ERROR lesson-usage";
+                    synchronized (lessonLock) {
+                        pendingLesson = null;
+                    }
+                    return overlayController.clearTeach();
+                case "status":
+                    if (field.length != 3) return "ERROR lesson-usage";
+                    return overlayController.teachStatus();
+                default:
+                    return "ERROR lesson-usage";
+            }
+        } catch (IllegalArgumentException refused) {
+            // A refused row or commit discards the whole upload.
+            synchronized (lessonLock) {
+                pendingLesson = null;
+            }
+            return "ERROR " + refused.getMessage();
         }
     }
 

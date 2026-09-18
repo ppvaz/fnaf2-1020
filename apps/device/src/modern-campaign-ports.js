@@ -21,6 +21,7 @@ import { AdbDeviceLocalArtifactExecutor } from './adb-device-local-executor.js';
 import { makeCampaignExecutionRequest } from './campaign-bundle.js';
 import { AdbCueHelperPort, AdbHidProcess } from './physical-ports.js';
 import { anchorNightRelease } from './night-anchor.js';
+import { LESSON_LINE, lessonForNight, lessonLines, lessonOriginLine } from './cycle-lesson.js';
 import { phoneWallAt, planTimedStart, waitUntilHostMs } from './timed-start.js';
 import { DeviceCampaignRunner } from './campaign-runner.js';
 
@@ -261,7 +262,12 @@ export function timedStartHeld({ plannedPhoneWallMs, seedPhoneWallMs }) {
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, calibrationPath = null, qualification, serial, adb = 'adb',
     machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
-    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false, nightAnchorAuthorizeOnLatch = false } = options;
+    nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false, nightAnchorAuthorizeOnLatch = false,
+    teachOverlay = false } = options;
+  if (typeof teachOverlay !== 'boolean') throw new TypeError('teachOverlay must be boolean');
+  // The teach panel narrates from the anchor's release; an unanchored night
+  // has no origin on the helper's clock to narrate from.
+  if (teachOverlay && nightAnchorAimMs === null) throw new TypeError('teachOverlay requires a night anchor');
   if (typeof serial !== 'string' || serial.length === 0) throw new TypeError('modern campaign ports require an ADB serial');
   if (typeof allowSaveReset !== 'boolean') throw new TypeError('allowSaveReset must be boolean');
   if (typeof captureRestarted !== 'boolean') throw new TypeError('captureRestarted must be boolean');
@@ -326,6 +332,54 @@ export async function createCampaignPorts(options = {}) {
     cueEndpoint = cuePort.discover();
     cueTransport.token = cueEndpoint.token;
     return cueEndpoint;
+  };
+  // The teach panel (--teach-overlay): the helper narrates the schedule this
+  // attempt is about to run, for a person watching. Every step is best-effort
+  // and evented; a refusal leaves the night exactly as it runs without one.
+  // The forward is opened here, at setup, because opening it blocks.
+  let teach = null;
+  if (teachOverlay) {
+    try { teach = { channel: cuePort.openLesson({ lessonLine: LESSON_LINE }), lessonId: null }; }
+    catch (error) { onEvent({ type: 'teach.unavailable', error: String(error?.message ?? error) }); }
+  }
+  const teachArm = async target => {
+    if (!teach) return;
+    teach.lessonId = null;
+    try {
+      const lesson = lessonForNight(bundle, target.night);
+      let reply = '';
+      for (const line of lessonLines(cueEndpoint.token, lesson)) reply = await teach.channel.send(line);
+      teach.lessonId = lesson.id;
+      onEvent({ type: 'teach.lesson', status: 'armed', id: lesson.id, night: target.night,
+        rows: lesson.rows.length, reply });
+    } catch (error) {
+      onEvent({ type: 'teach.lesson', status: 'refused', night: target.night, error: String(error?.message ?? error) });
+    }
+  };
+  const teachOrigin = async release => {
+    if (!teach?.lessonId) return;
+    if (release?.status !== 'released') {
+      onEvent({ type: 'teach.origin', status: 'skipped', reason: release?.status ?? 'unanchored' });
+      return;
+    }
+    try {
+      const reply = await teach.channel.send(lessonOriginLine(cueEndpoint.token, release));
+      onEvent({ type: 'teach.origin', status: 'running', id: teach.lessonId,
+        onsetDeviceMs: release.onsetDeviceMs, afterOnsetMs: release.afterOnsetMs, reply });
+    } catch (error) {
+      onEvent({ type: 'teach.origin', status: 'refused', error: String(error?.message ?? error) });
+    }
+  };
+  const teachClear = async reason => {
+    if (!teach?.lessonId) return;
+    const id = teach.lessonId;
+    teach.lessonId = null;
+    try {
+      await teach.channel.send(`LESSON ${cueEndpoint.token} clear`);
+      onEvent({ type: 'teach.clear', id, reason });
+    } catch (error) {
+      onEvent({ type: 'teach.clear', id, reason, status: 'failed', error: String(error?.message ?? error) });
+    }
   };
   const [cameraRule, monitorRule, maskRule] = await Promise.all([
     readJson(CAMERA_RULE).then(parseCameraRule),
@@ -573,6 +627,8 @@ export async function createCampaignPorts(options = {}) {
       return { target: target.menuTarget, visible: false, selected: true, observed: true,
         rolledThrough: true, state };
     }
+    // Seconds before the night, far from the phase-critical release.
+    await teachArm(target);
     const items = await title(bridge, serial, modelPath);
     const targetName = target.menuTarget;
     if (!items.includes(targetName)) return { target: targetName, visible: false, selected: false, observed: true };
@@ -723,7 +779,10 @@ export async function createCampaignPorts(options = {}) {
       anchoring.catch(() => {});
       try {
         state = await authorized;
-        await anchoring;
+        const release = await anchoring;
+        // Not awaited: the origin is one socket write on an open forward, and
+        // nothing about the night waits for the panel.
+        void teachOrigin(release);
       } finally {
         clock?.close();
         if (executorAuthorized) lifecycleNight.catch(() => {});
@@ -904,6 +963,7 @@ export async function createCampaignPorts(options = {}) {
       // lifecycle poll does. Stopping here is the last gate before retryReady
       // or save() can read the title, so no stale HID stream can reach menu.
       await localExecutor.abort(`campaign-${reason ?? 'terminal'}:${terminal?.outcome ?? 'unknown'}`);
+      await teachClear(`terminal:${terminal?.outcome ?? 'unknown'}`);
       // The shared title process is deliberately reused through a healthy
       // intro, but a terminal ends that ownership. Closing it is what kills
       // the already-buffered report stream; a retry will open a fresh process.
@@ -943,11 +1003,18 @@ export async function createCampaignPorts(options = {}) {
     cleanup: async reason => {
       pendingExecution = null;
       try { await composed.ports.cleanup(reason); }
-      finally { await closeMenuHid(); }
+      finally {
+        await closeMenuHid();
+        await teachClear(`cleanup:${reason ?? 'unknown'}`);
+      }
     },
   };
+  const close = async () => {
+    try { await closeMenuHid(); }
+    finally { teach?.channel.close(); }
+  };
   return Object.freeze({ ports, runner: new DeviceCampaignRunner({ spec, ports }), deviceLocal: true,
-    close: closeMenuHid, qualification, evidenceDirectory });
+    close, qualification, evidenceDirectory });
 }
 
 export default createCampaignPorts;

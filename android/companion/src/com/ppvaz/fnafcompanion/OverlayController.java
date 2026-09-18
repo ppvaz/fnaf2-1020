@@ -113,6 +113,18 @@ public final class OverlayController {
     private int insetBottom;
     private boolean displayListenerRegistered;
     private volatile String state;
+    // The teach panel: its own window, exactly TeachPanel's rectangle, shown
+    // only over a positively identified night while a lesson runs.
+    private volatile CycleLesson teachLesson;
+    private volatile long teachOnsetNs;
+    private volatile long teachOriginNs;
+    private volatile boolean teachRunning;
+    private volatile TeachPanelView teachView;
+    private volatile boolean teachAttached;
+    private volatile long teachDetachedAtNs;
+    private volatile String teachState = "OFF";
+    private final Runnable teachIdentityLoss = this::finishTeachIdentityLoss;
+    private volatile long teachLastNightNs;
 
     public OverlayController(Context context, Listener listener) {
         this.context = context.getApplicationContext();
@@ -137,7 +149,7 @@ public final class OverlayController {
 
     public String status() {
         return "overlay=" + state + " gate=" + captureGate.status()
-                + " " + metrics.status();
+                + " " + metrics.status() + " teach=" + teachState;
     }
 
     public boolean enabled() {
@@ -147,6 +159,245 @@ public final class OverlayController {
     /** Whether the capture thread needs to feed identity into this controller. */
     public boolean needsCapturedIdentity() {
         return enabled() || qualificationProbe;
+    }
+
+    /**
+     * True when a frame captured at {@code frameNs} (image time, the
+     * System.nanoTime() clock) may contain the teach panel: whenever it is
+     * attached, and for frames captured within a compositor margin after it
+     * detached. The capture service then withholds the two readers that
+     * cannot avoid the panel's rectangle.
+     */
+    public boolean teachMayBeVisible(long frameNs) {
+        if (teachAttached) return true;
+        long detached = teachDetachedAtNs;
+        if (detached == 0L) return false;
+        long at = frameNs > 0L ? frameNs : System.nanoTime();
+        return at < detached + TeachPanel.WITHHOLD_AFTER_DETACH_NS;
+    }
+
+    /**
+     * Hold a committed lesson until the schedule's origin arrives. Debug builds
+     * only, like the qualification probe: the panel is a demonstration aid
+     * whose clearance is proved by host tests, not a qualified run HUD.
+     */
+    public String armTeach(CycleLesson lesson) {
+        if (lesson == null) return "ERROR lesson-null";
+        if ((context.getApplicationInfo().flags
+                & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
+            return "ERROR teach-release-build";
+        }
+        if (!permissionGranted()) return "ERROR teach-permission";
+        // Synchronous, so an origin that follows the commit finds the lesson.
+        stopTeachNow("ARMED:" + lesson.id);
+        teachLesson = lesson;
+        mainHandler.post(() -> emit(state));
+        return "OK teach=ARMED " + lesson.status();
+    }
+
+    /** Start narrating from the helper's own latched onset plus the release interval. */
+    public String startTeach(long onsetNs, long afterOnsetUs) {
+        CycleLesson lesson = teachLesson;
+        if (lesson == null) return "ERROR lesson-not-armed";
+        if (!captureActive) return "ERROR teach-capture-inactive";
+        long originNs = onsetNs + afterOnsetUs * 1_000L;
+        teachOnsetNs = onsetNs;
+        teachOriginNs = originNs;
+        teachState = "RUNNING:" + lesson.id;
+        // Written last: the capture thread reads the origin once this is true.
+        teachRunning = true;
+        mainHandler.post(() -> emit(state));
+        return "OK teach=RUNNING lesson=" + lesson.id + " originNs=" + originNs;
+    }
+
+    public String clearTeach() {
+        stopTeachNow("OFF");
+        mainHandler.post(() -> emit(state));
+        return "OK teach=OFF";
+    }
+
+    public String teachStatus() {
+        CycleLesson lesson = teachLesson;
+        return "OK teach=" + teachState + " window=" + (teachAttached ? "ATTACHED" : "NONE")
+                + (lesson == null ? "" : " " + lesson.status())
+                + (teachRunning ? " originNs=" + teachOriginNs + " onsetNs=" + teachOnsetNs : "");
+    }
+
+    /** Capture thread: whether a lesson is running and wants frames. */
+    public boolean teachRunning() {
+        return teachRunning;
+    }
+
+    /**
+     * Capture thread: the newest frame's identity and the helper's own reading
+     * of the bottom controls, coalesced to one main-thread update.
+     */
+    public void onTeachFrame(int identity, PixelWatch.ControlState control) {
+        teachIdentity = identity;
+        teachControl = control == null ? PixelWatch.ControlState.UNKNOWN : control;
+        if (teachFrameQueued.compareAndSet(false, true)) mainHandler.post(teachFrameDispatch);
+    }
+
+    private volatile int teachIdentity = ScreenIdentity.UNKNOWN;
+    private volatile PixelWatch.ControlState teachControl = PixelWatch.ControlState.UNKNOWN;
+    private final java.util.concurrent.atomic.AtomicBoolean teachFrameQueued =
+            new java.util.concurrent.atomic.AtomicBoolean();
+    private final Runnable teachFrameDispatch = this::drainTeachFrame;
+
+    private void drainTeachFrame() {
+        teachFrameQueued.set(false);
+        updateTeach(teachIdentity, teachControl);
+    }
+
+    /** Main thread: show the running lesson over a night, hide it on anything else. */
+    private void updateTeach(int identity, PixelWatch.ControlState control) {
+        if (!teachRunning) return;
+        CycleLesson lesson = teachLesson;
+        long now = System.nanoTime();
+        if (lesson == null || !captureActive
+                || now - teachOriginNs >= (long) lesson.observeUntilMs * 1_000_000L) {
+            stopTeachNow(lesson == null ? "OFF" : "EXPIRED:" + lesson.id);
+            emit(state);
+            return;
+        }
+        TeachPanelView current = teachView;
+        if (current != null) current.setSeen(control);
+        // A night by its grid, or a dark frame whose bottom controls the helper
+        // still reads, keeps the panel. Any other positive screen hides it at
+        // once; an unreadable frame gets the HUD's short grace, counted from
+        // the last night frame so a run of them cannot hold it up.
+        boolean night = identity == ScreenIdentity.FNAF2_NIGHT
+                || identity == ScreenIdentity.UNKNOWN
+                        && control != PixelWatch.ControlState.UNKNOWN;
+        if (night) {
+            teachLastNightNs = now;
+            mainHandler.removeCallbacks(teachIdentityLoss);
+            attachTeach(lesson);
+        } else if (identity == ScreenIdentity.UNKNOWN) {
+            if (teachAttached && !mainHandler.hasCallbacks(teachIdentityLoss)) {
+                mainHandler.postDelayed(teachIdentityLoss, IDENTITY_LOSS_GRACE_NS / 1_000_000L);
+            }
+        } else {
+            detachTeach();
+        }
+    }
+
+    private void finishTeachIdentityLoss() {
+        if (!teachAttached) return;
+        long quiet = System.nanoTime() - teachLastNightNs;
+        if (quiet < IDENTITY_LOSS_GRACE_NS) {
+            mainHandler.postDelayed(teachIdentityLoss,
+                    Math.max(1L, (IDENTITY_LOSS_GRACE_NS - quiet) / 1_000_000L));
+            return;
+        }
+        detachTeach();
+    }
+
+    private void attachTeach(CycleLesson lesson) {
+        if (teachAttached) return;
+        if (windowAttached) {
+            // The debug/probe HUD holds the one overlay window.
+            setTeachState("BLOCKED(overlay-busy):" + lesson.id);
+            return;
+        }
+        if (!permissionGranted()) {
+            setTeachState("BLOCKED(permission):" + lesson.id);
+            return;
+        }
+        if (targetVisibility == 0 || windowManager == null) return;
+        // The clearance proof is in native content pixels: refuse a capture or
+        // display that would scale, rotate, or shift the rectangle.
+        OverlayGeometry.Transform transform = currentTransform();
+        OverlayGeometry.PixelRect rect = transform.display.resolve(new NormalizedRect(
+                TeachPanel.LEFT / (float) PixelWatch.NATIVE_WIDTH,
+                TeachPanel.TOP / (float) PixelWatch.NATIVE_HEIGHT,
+                TeachPanel.RIGHT / (float) PixelWatch.NATIVE_WIDTH,
+                TeachPanel.BOTTOM / (float) PixelWatch.NATIVE_HEIGHT));
+        int left = Math.round(rect.left);
+        int top = Math.round(rect.top);
+        int width = Math.round(rect.width());
+        int height = Math.round(rect.height());
+        if (captureWidth != PixelWatch.NATIVE_WIDTH || captureHeight != PixelWatch.NATIVE_HEIGHT
+                || transform.display.rotation != OverlayGeometry.Rotation.ROTATION_0
+                || left != TeachPanel.LEFT || top != TeachPanel.TOP
+                || width != TeachPanel.WIDTH || height != TeachPanel.HEIGHT) {
+            Log.w("FnafCueHelper", "teach panel refused: display rect " + rect
+                    + " capture " + captureWidth + "x" + captureHeight);
+            setTeachState("BLOCKED(teach-geometry):" + lesson.id);
+            return;
+        }
+        TeachPanelView panel = new TeachPanelView(context);
+        panel.start(lesson, teachOnsetNs, teachOriginNs);
+        panel.setSeen(teachControl);
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                width, height,
+                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.OPAQUE);
+        params.gravity = Gravity.TOP | Gravity.START;
+        params.x = left;
+        params.y = top;
+        if (Build.VERSION.SDK_INT >= 30) params.setFitInsetsTypes(0);
+        if (Build.VERSION.SDK_INT >= 28) {
+            params.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        }
+        // The platform composites an untrusted, non-touchable overlay at no more
+        // than the maximum obscuring opacity whatever is asked (measured
+        // 2026-09-18: 1.0 asked, dumpsys alpha=0.8), so a fifth of the game
+        // shows through. Ask for that cap rather than pretend. The panel covers
+        // no profile control point, so the cap is not what keeps taps working.
+        params.alpha = maximumObscuringOpacity();
+        params.packageName = context.getPackageName();
+        params.setTitle("FNaF 2 Companion teach panel");
+        // Readers are withheld from the moment the panel can be composited.
+        teachDetachedAtNs = 0L;
+        teachAttached = true;
+        try {
+            windowManager.addView(panel, params);
+            teachView = panel;
+            setTeachState("RUNNING:" + lesson.id);
+        } catch (RuntimeException error) {
+            Log.e("FnafCueHelper", "teach panel attach failed", error);
+            teachDetachedAtNs = System.nanoTime();
+            teachAttached = false;
+            setTeachState("ERROR(" + error.getClass().getSimpleName() + "):" + lesson.id);
+        }
+    }
+
+    private void detachTeach() {
+        if (!isMainThread()) {
+            mainHandler.post(this::detachTeach);
+            return;
+        }
+        mainHandler.removeCallbacks(teachIdentityLoss);
+        TeachPanelView current = teachView;
+        teachView = null;
+        if (teachAttached) teachDetachedAtNs = System.nanoTime();
+        teachAttached = false;
+        if (current != null && windowManager != null) {
+            try {
+                windowManager.removeViewImmediate(current);
+            } catch (RuntimeException ignored) {
+                // Teardown is idempotent if WindowManager already detached it.
+            }
+        }
+    }
+
+    /** Publish a teach state change once, not once per captured frame. */
+    private void setTeachState(String next) {
+        if (next.equals(teachState)) return;
+        teachState = next;
+        emit(state);
+    }
+
+    private void stopTeachNow(String next) {
+        teachRunning = false;
+        teachLesson = null;
+        teachState = next;
+        detachTeach();
     }
 
     /**
@@ -263,6 +514,7 @@ public final class OverlayController {
         preferences.edit().putBoolean(PREF_ENABLED, false).apply();
         qualificationProbe = false;
         latestDecisionSnapshot = null;
+        stopTeachNow("OFF");
         detach(null);
         emit(permissionGranted() ? "READY" : "DISABLED(permission)");
     }
@@ -408,6 +660,8 @@ public final class OverlayController {
         qualificationProbe = false;
         latestDecisionSnapshot = null;
         targetVisibility = -1;
+        // A new capture generation re-latches the onset; the origin is void.
+        stopTeachNow("OFF");
         detach(null);
         emit(enabled() && permissionGranted() ? "READY"
                 : permissionGranted() ? "READY" : "DISABLED(permission)");
@@ -420,6 +674,7 @@ public final class OverlayController {
         mainHandler.removeCallbacks(identityLossRunnable);
         clearPendingMainWork();
         qualificationProbe = false;
+        stopTeachNow("OFF");
         detach(null);
         emit(permissionGranted() ? "READY" : "DISABLED(permission)");
     }
@@ -465,6 +720,11 @@ public final class OverlayController {
         if (!captureActive) {
             detach(null);
             emit(permissionGranted() ? "READY" : "DISABLED(permission)");
+            return;
+        }
+        if (teachAttached) {
+            // The teach panel holds the one overlay window for this night.
+            detach("teach-active");
             return;
         }
         if ((!enabled() && !qualificationProbe) || !permissionGranted()) {
@@ -791,6 +1051,18 @@ public final class OverlayController {
         lastRecognizedIdentityNs = 0L;
         detach(null);
         emit("UNAVAILABLE(target-not-game) state=HIDDEN");
+    }
+
+    private float maximumObscuringOpacity() {
+        if (Build.VERSION.SDK_INT >= 31) {
+            try {
+                InputManager input = context.getSystemService(InputManager.class);
+                if (input != null) return input.getMaximumObscuringOpacityForTouch();
+            } catch (RuntimeException ignored) {
+                // Keep the known platform maximum.
+            }
+        }
+        return .8f;
     }
 
     private float touchThroughAlpha() {

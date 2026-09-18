@@ -95,6 +95,39 @@ function timedExchange(hostPort, line, timeoutMs) {
   });
 }
 
+/**
+ * One request line and its one reply line over a host-local forwarded port.
+ * @param {number} hostPort @param {string} line @param {number} timeoutMs
+ * @returns {Promise<string>}
+ */
+function lineExchange(hostPort, line, timeoutMs) {
+  return new Promise((resolvePromise, rejectPromise) => {
+    const socket = connect({ host: '127.0.0.1', port: hostPort });
+    let text = '';
+    let settled = false;
+    const settle = (error, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      socket.destroy();
+      if (error) rejectPromise(error); else resolvePromise(value);
+    };
+    // Same deferral as timedExchange: bytes that arrived in time win over a
+    // timer that expired while the event loop was blocked.
+    const timer = setTimeout(() => setImmediate(() => settle(new Error('cue-helper exchange timed out'))), timeoutMs);
+    socket.setNoDelay(true);
+    socket.on('connect', () => socket.write(`${line}\n`));
+    socket.on('data', chunk => {
+      text += chunk.toString('utf8');
+      const newline = text.indexOf('\n');
+      if (newline >= 0) settle(null, text.slice(0, newline).trim());
+      else if (text.length > 4096) settle(new Error('cue-helper reply is oversized'));
+    });
+    socket.on('error', error => settle(error));
+    socket.on('end', () => settle(text ? null : new Error('cue-helper closed the exchange without a reply'), text.trim()));
+  });
+}
+
 export class AdbCueHelperPort {
   /** @param {{serial: string, adb?: string}} options */
   constructor(options) {
@@ -158,6 +191,37 @@ export class AdbCueHelperPort {
         }
         return { offsetMs: best.offsetMs, uncertaintyMs: best.uncertaintyMs, rttMs: best.rttMs,
           samples, hostClock: 'performance-now-ms', fields: latest.fields };
+      },
+      close: () => {
+        if (closed) return;
+        closed = true;
+        try { runSync(this.adb, ['-s', this.serial, 'forward', '--remove', `tcp:${forwarded}`]); } catch { /* the forward dies with adb */ }
+      },
+    };
+  }
+
+  /**
+   * The teach panel's lesson channel: one forward, and only LESSON lines
+   * (cycle-lesson.js LESSON_LINE). Each line is one exchange; the reply is
+   * returned as text and an `ERROR` reply rejects. Opening the forward is the
+   * only blocking step, so call this before any phase-critical moment.
+   * @param {{timeoutMs?: number, lessonLine: RegExp}} options
+   */
+  openLesson({ timeoutMs = 1000, lessonLine } = /** @type {any} */ ({})) {
+    if (!(lessonLine instanceof RegExp)) throw new TypeError('lesson channel needs the LESSON line grammar');
+    const endpoint = this.endpoint ?? this.discover();
+    const forwarded = runSync(this.adb, ['-s', this.serial, 'forward', 'tcp:0', `tcp:${endpoint.port}`]).trim().split(/\s+/).at(-1);
+    if (!/^\d+$/.test(forwarded ?? '')) throw new Error('cue-helper lesson: adb forward returned no host port');
+    let closed = false;
+    return {
+      /** @param {string} line */
+      send: async line => {
+        if (closed) throw new Error('cue-helper lesson channel is closed');
+        if (typeof line !== 'string' || !lessonLine.test(line))
+          throw new TypeError('Cue Helper lesson line is outside the LESSON vocabulary');
+        const reply = await lineExchange(Number(forwarded), line, timeoutMs);
+        if (!reply.startsWith('OK')) throw new Error(`cue-helper lesson: ${reply}`);
+        return reply;
       },
       close: () => {
         if (closed) return;

@@ -19,7 +19,7 @@
 # Usage:
 #   tools/device/night-run.sh --label baseline [--bundle DIR] [--night N]
 #                              [--serial ID] [--calibration FILE] [--no-video] [--no-grade]
-#                              [--bt-audio] [--dry-run]
+#                              [--bt-audio] [--teach-overlay] [--dry-run]
 set -Eeuo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -48,6 +48,7 @@ FRAME_TRACE=0
 INPUT_TRACE=1
 FORCE_TRACE=0
 DRY=0
+TEACH=0               # --teach-overlay: the helper narrates the cycle on its teach panel (a demonstration run)
 EXTRA=()
 
 while [ $# -gt 0 ]; do
@@ -75,6 +76,7 @@ while [ $# -gt 0 ]; do
     --no-video) VIDEO=0; shift ;;
     --no-grade) GRADE=0; shift ;;
     --bt-audio) BT_AUDIO=1; shift ;;
+    --teach-overlay) TEACH=1; shift ;;
     --dry-run) DRY=1; shift ;;
     --) shift; EXTRA+=("$@"); break ;;
     *) EXTRA+=("$1"); shift ;;
@@ -143,6 +145,17 @@ if [ "$FRAME_TRACE" = 1 ] && [ "${#RUNID}" -gt 48 ]; then
 fi
 OUTDIR="artifacts/runs/$RUNID"
 mkdir -p "$OUTDIR" captures
+# A teach run carries the helper's panel in its video. The marker names the
+# panel's rectangle so every later reading of this run knows it is there; the
+# video instruments are not panel-aware, so grading is left to
+# `run-timeline.py --exclude-rect` over that rectangle.
+if [ "$TEACH" = 1 ]; then
+  cp tools/device/models/teach-panel-v1.json "$OUTDIR/teach-panel.json"
+  if [ "$GRADE" = 1 ]; then
+    printf 'teach    the panel is in the video: grade-run.sh skipped; TERMINAL via run-timeline.py --exclude-rect 10,310,590,410\n'
+    GRADE=0
+  fi
+fi
 DEVICE_VIDEO="/sdcard/${RUNID}.mp4"
 HOST_VIDEO="captures/${RUNID}.mp4"
 
@@ -620,6 +633,7 @@ fi
 # Night 7 dial vector (JSON). The Custom Night menu opens with the 4/20 preset
 # by default; passing the vector here only fixes the readback expectation.
 [ -n "${DIALS:-}" ] && CAMPAIGN+=(--night7-dials "$DIALS")
+[ "$TEACH" = 1 ] && CAMPAIGN+=(--teach-overlay)
 if [ "$DRY" = 1 ]; then
   printf 'DRY RUN, the phone is not actuated:\n  %s\n' "${CAMPAIGN[*]} ${EXTRA[*]:-}"
   VIDEO=0

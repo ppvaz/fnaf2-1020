@@ -325,7 +325,11 @@ no sensor data.
 | `FRAME <token>` | `OK ...snapshot... grid=20x9 cells=<180x6 hex>` | The snapshot fields AND the sensor from ONE locked read, so both describe the same frame and share one `seq`. GET followed by GRID cannot: they are two round trips against a 60 fps capture, and on the moto g56 their sequences agreed 0 times in 12, always 1-2 frames apart, so any detector needing freshness AND cells refused every observation. Use this verb for live detection. |
 | `WATCH <token> status\|<hash>` | `OK watch=...` | Inspect or activate the native visual watchlist (25 entries: 4 existing anchors + 4 flashlight-meter bars + 12 measured monitor-map camera buttons + 3 provisional Foxy hall channels + 2 paired bottom-control ROIs). |
 | `READ <token>` | `OK read=...` | Read the active visual watchlist: every entry's value (or UNKNOWN) with its own sequence and age stamp. The response also carries the observation-only bulb anchor (`pan_anchor_x`, `pan_anchor_y`, sampled component area/margin, confidence, and refusal reason). |
-| `OVERLAY <token>` | `OK overlay=...` | Read-only HUD lifecycle, qualification gate, and bounded update/draw/drop/latency counters for retained device evidence. |
+| `OVERLAY <token>` | `OK overlay=...` | Read-only HUD lifecycle, qualification gate, and bounded update/draw/drop/latency counters for retained device evidence. The line ends with `teach=<state>` for the teach panel. |
+| `LESSON <token> begin\|row\|commit\|origin\|clear\|status ...` | `OK ...` or `ERROR <reason>` | The teach panel's lesson (debug builds): the host uploads the schedule it is about to run, then names its origin against this service's own latched onset. It writes only the panel's lesson; see "Teach panel" below. |
+
+The socket still has no input or actuator operation: `LESSON` changes what the
+teach panel narrates and nothing that is sensed, latched, or sent to the game.
 
 `CAL`, `LOG`, `ARM`, and `RESULT` are no longer APK commands. Model import and
 PCM recording are APK UI operations; cue observation is shadow-only until
@@ -368,6 +372,38 @@ values on every row; these are evidence inputs, not an automatic qualification.
 Projection stop tears down the visual display and both control workers, so a
 new consent session can start in the same app process. The service remains
 `START_NOT_STICKY` and never tries to reuse consent after process death.
+
+## Teach panel
+
+A demonstration aid for someone watching the bot play: a 580x100 panel at the
+left of the office that narrates the cycle the executor is running. Its ring is
+the cycle (outer band: the surface the schedule intends, office, cams, or mask;
+inner band: the hall and camera flashes and the wind; the hand is now). The text
+names the current step, why it is in the schedule, the time left in it, the next
+step, the game hour, and `seen`, the helper's own reading of the bottom
+controls. `seen` is the only observation on the panel; everything else is the
+schedule.
+
+`night-run.sh --teach-overlay` drives it. At the attempt's menu the host sends
+the compiled artifact's semantic actions (`apps/device/src/cycle-lesson.js`),
+which `CycleLesson.java` re-expands with the executor's own repeat rule and
+refuses unless the rows hash to the id the host sent. After the anchored
+release the host sends `origin <onsetNs> <afterOnsetUs>`, and the helper
+narrates from its own latched onset plus that interval, so no host clock enters
+the panel. The words are a fixed vocabulary in the APK, keyed by verb.
+
+The panel is one window of exactly `tools/device/models/teach-panel-v1.json`'s
+rectangle (its buffer is opaque; the platform composites it at the 0.8 cap for
+untrusted overlays, so a fifth of the game shows through), shown only over a night (or a dark frame whose bottom controls are
+still read) and removed at once on any other positive screen. It never paints a
+pixel a reader samples: `TeachPanelTest.java` drives every native reader over a
+recording frame and `tools/device/test-teach-panel-clearance.py` checks the host
+night authority, the lifecycle boxes, the video grader's bands, and the control
+points. Two helper readers cannot avoid any panel -- the `screen_grey_cells`
+lattice and the native lifecycle labels -- and are withheld (UNKNOWN, grid-only
+identity) for every frame captured while the panel may be on screen. A teach
+run's video carries the panel, so it is graded with
+`run-timeline.py --exclude-rect 10,310,590,410`, not `grade-run.sh`.
 
 ## Consent without a tap
 

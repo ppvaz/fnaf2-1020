@@ -57,8 +57,8 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     --auto-add-overlay \
     --min-sdk-version 29 \
     --target-sdk-version 36 \
-    --version-code 14 \
-    --version-name 0.1.13 \
+    --version-code 15 \
+    --version-name 0.1.14 \
     -o "$BUILD_DIR/base-unsigned.apk"
 
 "$JAVAC" \
@@ -95,6 +95,9 @@ mkdir -p "$CLASSES_DIR" "$DEX_DIR"
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayMetrics.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayCueArbiter.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlaySnapshotRetention.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/CycleLesson.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/TeachPanel.java" \
+    "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/TeachPanelView.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayView.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/OverlayController.java" \
     "$SCRIPT_DIR/src/com/ppvaz/fnafcompanion/CaptureFileProvider.java" \

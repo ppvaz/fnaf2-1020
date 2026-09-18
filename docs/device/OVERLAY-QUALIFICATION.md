@@ -13,6 +13,20 @@ sensing. The target configuration is unsupported until this document's paired
 HUD-off/HUD-on capture and input matrix are retained for the exact FNaF 2 APK
 and Moto g56 build.
 
+### The teach panel is a separate, narrower claim
+
+The teach panel (`night-run.sh --teach-overlay`; android/companion README,
+"Teach panel") attaches beside authoritative sensing without this record,
+debug builds only, because it makes the `OUTSIDE_PROTECTED_REGIONS` argument by
+construction rather than by measurement: its window is exactly the rectangle in
+`tools/device/models/teach-panel-v1.json`, which host tests prove is at least
+10 px from every pixel any helper or host reader samples during a night, and the
+two helper readers that cannot avoid any rectangle are withheld while it may be
+on screen. What that does not cover is the compositor: the device evidence for a
+teach run is its own video and helper log, showing the window where the model
+says it is. It is not a run HUD, never renders a cue, and qualifies nothing on
+this page.
+
 ## Required retained record
 
 One JSON record must accompany each qualified profile. Values below are

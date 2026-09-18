@@ -1,0 +1,18 @@
+LESSON 0123456789abcdef0123456789abcdef begin dca6427d63595573 7 10000 0 0 420000 425000 16 11 9
+LESSON 0123456789abcdef0123456789abcdef row 0 opening 0 cams-up 33
+LESSON 0123456789abcdef0123456789abcdef row 1 opening 300 cam-11 33
+LESSON 0123456789abcdef0123456789abcdef row 2 opening 833 cam-9 33
+LESSON 0123456789abcdef0123456789abcdef row 3 opening 883 cams-down 33
+LESSON 0123456789abcdef0123456789abcdef row 4 opening 1616 cams-up 33
+LESSON 0123456789abcdef0123456789abcdef row 5 opening 1916 feed-light 100
+LESSON 0123456789abcdef0123456789abcdef row 6 opening 2083 wind 50
+LESSON 0123456789abcdef0123456789abcdef row 7 opening 2133 camdrop 200 200 200
+LESSON 0123456789abcdef0123456789abcdef row 8 opening 2915 mask-on 33
+LESSON 0123456789abcdef0123456789abcdef row 9 steady 7000 mask-off 200
+LESSON 0123456789abcdef0123456789abcdef row 10 steady 7400 hall-light 33
+LESSON 0123456789abcdef0123456789abcdef row 11 steady 7600 cams-up 200
+LESSON 0123456789abcdef0123456789abcdef row 12 steady 7900 feed-light 100
+LESSON 0123456789abcdef0123456789abcdef row 13 steady 8070 wind 3030
+LESSON 0123456789abcdef0123456789abcdef row 14 steady 11150 camdrop 200 150 200
+LESSON 0123456789abcdef0123456789abcdef row 15 steady 11749 mask-on 200
+LESSON 0123456789abcdef0123456789abcdef commit

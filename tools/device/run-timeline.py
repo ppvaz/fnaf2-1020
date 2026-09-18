@@ -81,6 +81,42 @@ def decode(path, fps):
     yield from framesource.frames(path, f"fps={fps},scale={W}:{H}", "rgb24", W * H * 3)
 
 
+NATIVE_W, NATIVE_H = 2400, 1080
+
+
+def parse_rect(text):
+    """`X0,Y0,X1,Y1` in native 2400x1080 pixels, half-open."""
+    parts = text.split(",")
+    if len(parts) != 4 or not all(p.strip().isdigit() for p in parts):
+        raise argparse.ArgumentTypeError("--exclude-rect takes X0,Y0,X1,Y1 in native pixels")
+    x0, y0, x1, y1 = (int(p) for p in parts)
+    if not (0 <= x0 < x1 <= NATIVE_W and 0 <= y0 < y1 <= NATIVE_H):
+        raise argparse.ArgumentTypeError("--exclude-rect must lie inside 2400x1080")
+    return x0, y0, x1, y1
+
+
+def exclude(frame, rect):
+    """Black out a declared native rectangle before anything reads the frame.
+
+    A teach run (night-run.sh --teach-overlay) carries the Cue Helper's panel in
+    its video, in the rectangle its run directory's teach-panel.json names.
+    Every decoded pixel the rectangle touches, even partly, reads black, so no
+    phase rule sees the panel. Under the mask that region of the game is black
+    already, which is what keeps a teach run's dark frames comparable.
+    """
+    if rect is None:
+        return frame
+    x0, y0, x1, y1 = rect
+    cx0, cy0 = x0 * W // NATIVE_W, y0 * H // NATIVE_H
+    cx1, cy1 = -(-x1 * W // NATIVE_W), -(-y1 * H // NATIVE_H)
+    out = bytearray(frame)
+    blank = bytes((cx1 - cx0) * 3)
+    for y in range(cy0, cy1):
+        i = (y * W + cx0) * 3
+        out[i:i + len(blank)] = blank
+    return bytes(out)
+
+
 def sampler(frame):
     """nightpredicate's fractional-box interface over a raw rgb24 buffer."""
     def sample(fx0, fy0, fx1, fy1):
@@ -124,7 +160,7 @@ def _collapse_cause_hits(hits, fps):
     return episodes
 
 
-def scan_cause_frames(video, fps, cause_models):
+def scan_cause_frames(video, fps, cause_models, exclude_rect=None):
     """Scan cause models independently of the lifecycle decode cadence.
 
     ``cause_models`` contains ``(module, model)`` pairs.  The return value is
@@ -137,6 +173,7 @@ def scan_cause_frames(video, fps, cause_models):
         raise ValueError("cause sampling fps must be positive")
     hits = []
     for index, frame in enumerate(decode(video, fps)):
+        frame = exclude(frame, exclude_rect)
         at_s = round(index / fps, 4)
         for module, model in cause_models:
             result = module.classify_bytes(frame, W, H, model)
@@ -394,6 +431,8 @@ def main():
                    help="independent sampling rate for transient cause models")
     p.add_argument("--cause-model", action="append", metavar="MODEL",
                    help="shadow-only visual death-cause model; repeat for labels")
+    p.add_argument("--exclude-rect", type=parse_rect, metavar="X0,Y0,X1,Y1",
+                   help="black out a native 2400x1080 rectangle (a teach run's panel) first")
     p.add_argument("--json", action="store_true")
     a = p.parse_args()
 
@@ -428,13 +467,15 @@ def main():
 
     phases, roughnesses = [], []
     for frame in decode(a.video, a.fps):
+        frame = exclude(frame, a.exclude_rect)
         phases.append(phase_of(frame, lo, th))
         roughnesses.append(roughness(frame))
     if not phases:
         print(f"{a.video}: no frames", file=sys.stderr)
         raise SystemExit(2)
     runs = collapse(phases, a.fps, a.min_dwell)
-    cause_events = (scan_cause_frames(a.video, a.cause_fps, cause_models)
+    cause_events = (scan_cause_frames(a.video, a.cause_fps, cause_models,
+                                      a.exclude_rect)
                     if cause_models else None)
     res = terminal_outcome(runs, phases, roughnesses, a.fps, th,
                            cause_events=cause_events)
@@ -442,6 +483,7 @@ def main():
     if a.json:
         print(json.dumps({
             "video": a.video, "fps": a.fps, "frames": len(phases),
+            **({"excludedRect": list(a.exclude_rect)} if a.exclude_rect else {}),
             "segments": [{"phase": p, "from_s": round(x / a.fps, 2),
                           "to_s": round(y / a.fps, 2),
                           "seconds": round((y - x) / a.fps, 2)}

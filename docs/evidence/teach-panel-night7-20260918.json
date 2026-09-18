@@ -1,0 +1,49 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "teach-panel-night7-20260918",
+ "claimLevel": "DEVICE_MEASURED for the window, the helper's own status and the night's outcome; the panel's words are the executor's schedule, not an observation",
+ "date": "2026-09-18",
+ "question": "Can the in-game overlay teach a passive observer the cycle -- name each step of the running schedule, why it is there, and what comes next, in step with the night -- without touching anything the helper, the executor or the graders read?",
+ "verdict": "YES on one night. night7-k3-teach-02 ran binding k3 on Night 7 (all ten dials at 20) with the Cue Helper's teach panel narrating from 2.4 s after the onset to the 6 AM screen, and won: executor sixam, video TERMINAL clear at 456.0 s (graded with the panel's rectangle blanked), 42 of 42 cycle gates agreed, the anchor 0.17 ms late. Nothing the executor reads moved outside the cohort's own range.",
+ "whatThePanelIs": "One 580x100 window at the left of the office (tools/device/models/teach-panel-v1.json). A ring for the 10 s cycle -- outer band the surface the schedule intends (mask, cams, office), inner band the hall and camera flashes and the wind, a hand for now -- and the current step's name, why it is in the schedule, time left, the next step, the game hour, and 'seen', the helper's own reading of the bottom controls. The words are a fixed vocabulary in the APK keyed by verb; the host sends only the compiled artifact's semantic actions and the anchor's release interval.",
+ "device": {
+  "helper": "com.ppvaz.fnafcompanion 0.1.14 (versionCode 15), debug build",
+  "lesson": "teach.lesson armed dca6427d63595573, 16 rows (9 opening, 7 per cycle), 42 cycles before stopAt; the id is the helper's own SHA-256 of the rows and matches the host's",
+  "origin": "teach.origin: onset 989888093.965 ms on the helper's image clock + 2433.174 ms = originNs 989890527139314; the helper refused nothing",
+  "window": "dumpsys window: 'FNaF 2 Companion teach panel' frame=[10,310][590,410] (580x100), ty=APPLICATION_OVERLAY, fl=NOT_FOCUSABLE NOT_TOUCHABLE LAYOUT_IN_SCREEN, alpha=0.8 -- 1.0 was requested and the platform capped it at the maximum obscuring opacity for untrusted overlays, so a fifth of the game shows through",
+  "helperStatus": "mid-night OVERLAY: overlay=DISABLED(teach-active) gate=UNQUALIFIED(self-capture-unqualified) teach=RUNNING:dca6427d63595573",
+  "teardown": "teach.clear at terminal:sixam; the panel had already hidden on the 6 AM screen (the video's strip is empty from the win screen on)"
+ },
+ "run": {
+  "label": "night7-k3-teach-02",
+  "runDirectory": "artifacts/runs/night7-night7-k3-teach-02-20260918T043627Z",
+  "video": "captures/night7-night7-k3-teach-02-20260918T043627Z.mp4 sha256 b335c89fab5e7ce86f28e0badb1f4023bc5bbd6c48bbab83b140eaba571654ff",
+  "executorTerminal": "campaign.terminal.from-executor state=sixam",
+  "videoTerminal": "run-timeline.py --exclude-rect 10,310,590,410: clear -- sixam at 456.0 s",
+  "cycleGates": "42 (42 agreed, 0 corrected, 0 aborted)",
+  "anchor": "aim 2433, k 0, released 2433.174 ms after the onset, lateMs 0.174",
+  "arm": "observe-once UNRESOLVED (ambiguous-threshold), non-fatal -- the same on all ten k3 cohort runs, which ran without the panel",
+  "pressAcceptance": "3 graded, 3 UNKNOWN -- within the cohort's own range (cohort r05 without the panel: 3 UNKNOWN)"
+ },
+ "firstAttempt": "night7-k3-teach-01 ran without a panel: the host looked the lesson up under bundle.artifact, which carries only hashes, and refused ('Cannot read properties of undefined'). The night won anyway (executor sixam). The lookup now uses the bundle's own bound plans, the same ones the executor's request is built from, and a test pins it.",
+ "whatAnObserverSees": "Native 2400x1080 screenshots from the phone: WIND with 'seen CAMS' on Prize Corner with the marker split onto CAM 09; CAMS UP with 'seen OFFICE' while the tablet is still rising; MASK OFF with 'seen MASK' while the mask is still lowering. The panel names the press; the game answers a beat later, and 'seen' shows that lag as it happens.",
+ "clearance": {
+  "helper": "TeachPanelTest.java drives every native reader the capture service runs over a recording frame: the 20x9 grid, CAM 05 block, both control blocks and strokes, the pan anchor and every watch entry stay at least 10 px from the panel; the two that cannot (the screen_grey_cells lattice and the native lifecycle labels) are withheld for every frame captured while the panel may be on screen, and the test proves both DO reach it so the list cannot go stale",
+  "host": "tools/device/test-teach-panel-clearance.py: the live night predicate's boxes and rows, the lifecycle boxes, the video grader's mask-bar and clock-band rows, and every profile control point are at least 10 px clear; run-timeline.py --exclude-rect blanks every decoded pixel the panel touches",
+  "notCovered": "The compositor beyond placement and alpha: the device evidence is dumpsys's frame and alpha and the video. Because of the 0.8 cap a teach video is graded with the rectangle blanked, never as is."
+ },
+ "notClaimed": [
+  "This is not the Plan 23 run HUD and qualifies nothing on docs/device/OVERLAY-QUALIFICATION.md: it renders no cue and is a debug-build demonstration aid",
+  "One night is one night: no rate, and the run is outside the predeclared k3 cohort",
+  "The panel narrates the schedule's press times; the lag from a named press to its visible effect was not measured here (the title-colour reader read the title on only 813 of 14,574 frames)"
+ ],
+ "shareable": "artifacts/forensics/teach-panel-20260918/fnaf2-night7-teach-panel.mp4 (68 s, 1280x696, 9.1 MB: the opening through three cycles, then the last cycle and 6 AM, the panel enlarged underneath); docs/img/night7-teach-panel-3am.png (native screenshot) and docs/img/night7-teach-panel-cycle22.gif (cycle 22 from the video) in the README",
+ "artifacts": "artifacts/forensics/teach-panel-20260918/ (teach-run.sh, per-run .out and helper logcat, make-share.sh, panel-sheet.py, panel-timeline.py, teach-02.timeline.json)",
+ "sources": [
+  "android/companion/src/com/ppvaz/fnafcompanion/CycleLesson.java",
+  "android/companion/src/com/ppvaz/fnafcompanion/TeachPanel.java",
+  "android/companion/src/com/ppvaz/fnafcompanion/TeachPanelView.java",
+  "apps/device/src/cycle-lesson.js",
+  "tools/device/models/teach-panel-v1.json"
+ ]
+}

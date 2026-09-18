@@ -59,6 +59,8 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/src/com/ppvaz/fnafcompanion/OverlayMetrics.java" \
   "$HERE/src/com/ppvaz/fnafcompanion/OverlayCueArbiter.java" \
   "$HERE/src/com/ppvaz/fnafcompanion/OverlaySnapshotRetention.java" \
+  "$HERE/src/com/ppvaz/fnafcompanion/CycleLesson.java" \
+  "$HERE/src/com/ppvaz/fnafcompanion/TeachPanel.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/CueDetectorTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/AudioAnalyzerTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/PhaseClockTest.java" \
@@ -70,7 +72,9 @@ JAVA="$JDK_ROOT/bin/java"
   "$HERE/test/com/ppvaz/fnafcompanion/ScreenStatsTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/OverlayContractTest.java" \
   "$HERE/test/com/ppvaz/fnafcompanion/OverlayMetricsTest.java" \
-  "$HERE/test/com/ppvaz/fnafcompanion/OverlaySnapshotRetentionTest.java"
+  "$HERE/test/com/ppvaz/fnafcompanion/OverlaySnapshotRetentionTest.java" \
+  "$HERE/test/com/ppvaz/fnafcompanion/CycleLessonTest.java" \
+  "$HERE/test/com/ppvaz/fnafcompanion/TeachPanelTest.java"
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.CueDetectorTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.AudioAnalyzerTest
 $JAVA -cp "$TEST_TMP" com.ppvaz.fnafcompanion.PhaseClockTest
@@ -82,6 +86,10 @@ $JAVA -cp "$TEST_TMP" com.ppvaz.fnafcompanion.ScreenIdentityTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.OverlayContractTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.OverlayMetricsTest
 "$JAVA" -cp "$TEST_TMP" com.ppvaz.fnafcompanion.OverlaySnapshotRetentionTest
+"$JAVA" -Dteach.vector="$HERE/../../tools/device/testdata/teach-lesson-night7-k3.txt" \
+  -cp "$TEST_TMP" com.ppvaz.fnafcompanion.CycleLessonTest
+"$JAVA" -Dteach.model="$HERE/../../tools/device/models/teach-panel-v1.json" \
+  -cp "$TEST_TMP" com.ppvaz.fnafcompanion.TeachPanelTest
 
 # Video capture is independent of the optional audio receiver. Keep this
 # source-level guard beside the host tests because MainActivity itself needs

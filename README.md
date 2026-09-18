@@ -10,7 +10,26 @@ The canonical target is Android. PC equivalence, device-general calibration, and
 a live controller result above its evidence rung are not claimed. Game assets
 and decompiled content are never distributed.
 
-## Where this stands — 2026-09-17
+![Night 7 at 3 AM on the phone: the cams up on Prize Corner with the marker split onto CAM 09, the music box winding, and the teach panel at left naming the step](docs/img/night7-teach-panel-3am.png)
+
+*Night 7, all ten dials at 20, 3 AM, as the phone drew it (2400x1080 screenshot,
+2026-09-18). The bot has the cameras up on Prize Corner with the marker parked
+on CAM 09, so both buttons are lit, and is winding the music box. The panel at
+the left is the Cue Helper's teach panel (`night-run.sh --teach-overlay`) for
+someone watching: the ring is the 10-second cycle (outer band: mask, cams or
+office; inner band: the flashes and the wind; the hand is now), the title is the
+step the schedule is on, and `seen` is what the helper reads off the screen.*
+
+![One full 10-second cycle of Night 7 at 3 AM, with the teach panel enlarged underneath](docs/img/night7-teach-panel-cycle22.gif)
+
+*The same night, one whole cycle (cycle 22, 3 AM, 10 s, from the run's video; the
+strip underneath is the panel enlarged 2x). Mask off, a hall flash for Foxy,
+cams up onto the split, a camera flash that freezes CAM 09 for 6.7 s, three
+seconds of winding for the Puppet, the cams dropped with the light held so it
+flashes the hall, and the mask worn for the remaining 5.25 s. `seen` trails each
+press by the game's own animation.*
+
+## Where this stands — 2026-09-18
 
 Every story night and Custom Night 10/20 have reached 6 AM on the phone. The
 handset is a Moto g56 `ZF525F5BH5` running `com.scottgames.fnaf2:2.0.7+26` under
@@ -26,8 +45,10 @@ profile `hid-mediaprojection`.
 
 Read those numbers precisely. Each run is retained at `DEVICE_MEASURED` for its
 own terminal, and **no Plan 12 promotion edge has been recorded for any of
-them**, so nothing above is a promoted claim. Night 7's reliability is one
-predeclared ten-run cohort: [**3 wins, 7 deaths**](docs/evidence/night7-cohort-k2-result-20260914.json).
+them**, so nothing above is a promoted claim. Night 7's reliability is two
+predeclared ten-run cohorts: binding k2 at [**3 wins, 7 deaths**](docs/evidence/night7-cohort-k2-result-20260914.json)
+on 2026-09-14, and binding k3 at [**8 wins, 2 deaths**](docs/evidence/night7-cohort-k3-result-20260918.json)
+on 2026-09-18, both k3 losses to Foxy on the first office frame after a mask-off press.
 A single clear and a reliability claim are different claims, and
 [Plan 12](plans/12-end-to-end-evidence-campaign.md) owns the ladder between them.
 
@@ -59,10 +80,14 @@ the host's wall clock against the phone's, 1374.8 ms apart, and placed the whole
 schedule 1.37 s late. Corrected to one clock, the same route reaches 6 AM on all
 65,536 seeds. That record explicitly does *not* claim the model now predicts the
 phone ([`night6-model-gap-two-clocks`](docs/evidence/night6-model-gap-two-clocks-20260917.json)).
-Still load-bearing: the census assumes a constant 16.667 ms frame. Two physical
-tests are outstanding — one binding re-run with `--frame-trace`, so the phone's
-own frame deltas replace that constant, and one graded Night 7 run on a preset
-other than 10/20 at `hallOffsetMs` 9613.
+The frame-trace test is done: driven by the phone's own frame intervals, the
+model predicts survival on two traced Night 6 nights
+([`night6-model-traced-clock`](docs/evidence/night6-model-traced-clock-20260918.json)),
+but on a traced 6 AM it matches only 2 of the phone's 11 occupied mask windows,
+no seed offset does better than chance, and on Night 7 it kills nights the phone
+wins ([`model-encounter-fidelity`](docs/evidence/model-encounter-fidelity-20260918.json)).
+One physical test is outstanding: a graded Night 7 run on a preset other than
+10/20 at `hallOffsetMs` 9613.
 
 Current state is maintained in [`plans/PROGRESS.md`](plans/PROGRESS.md); the
 rung-by-rung reading of what "solved" would even mean is in

@@ -62,6 +62,10 @@ const released = state => state.events.find(event => event.status === 'released'
   const scheduled = state.events.find(event => event.status === 'scheduled');
   assert.deepEqual(scheduled.candidates.map(candidate => candidate.k), [1, 2]);
   assert.equal(released(state).authorizedAfterOnsetMs, 1953, 'the fired k must say when authorization resolved');
+  // The teach panel's origin: the helper's latch on its own clock, plus the
+  // whole release interval (k seconds included, not the mod-period aim).
+  assert.equal(result.onsetDeviceMs, ONSET_HOST_MS - OFFSET_MS);
+  assert.equal(result.afterOnsetMs, 2233);
 }
 
 // A quick authorization takes the earliest clean second.

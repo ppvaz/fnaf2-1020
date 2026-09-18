@@ -6021,3 +6021,21 @@ one binding; the model predicted no rate for it. The deaths point at the hall fl
 400 ms after mask-off against a 314 ms median press-to-effect plus the mask animation: a later
 flash is a new binding and its own cohort. Evidence:
 [night7-cohort-k3-result-20260918](../docs/evidence/night7-cohort-k3-result-20260918.json).
+
+**2026-09-18: the in-game overlay teaches the cycle.** The Cue Helper now has a teach panel for
+someone watching the bot: a 580x100 window at the left of the office with a ring for the 10 s
+cycle (the surface the schedule intends, the flashes and the wind, a hand for now), the step it
+is on, why that step is there, the time left, the next step, the hour, and `seen`, which is the
+helper's own reading of the bottom controls. `night-run.sh --teach-overlay` uploads the compiled
+artifact's semantic actions at the menu and the anchor's release interval after it, so the panel
+narrates from the helper's own latched onset with no host clock involved. The words are a fixed
+vocabulary in the APK. The panel is drawn only where nothing reads the frame. A Java test drives
+every native reader over a recording frame, and a host test checks the night predicate, the
+lifecycle boxes, the grader's bands and every control point. The two helper readers that cannot
+avoid any rectangle are withheld while the panel may be on screen. On the phone `night7-k3-teach-02`
+won with the panel narrating all night: 42/42 gates agreed, the anchor 0.17 ms late, video
+TERMINAL clear with the rectangle blanked. The window sat exactly at [10,310][590,410], but at
+alpha 0.8, not 1.0: the platform caps untrusted overlays, so a teach video is always graded with
+the rectangle blanked. The first attempt ran without a panel because of a lookup bug, now fixed
+and pinned by a test; that night won anyway. Evidence:
+[teach-panel-night7-20260918](../docs/evidence/teach-panel-night7-20260918.json).

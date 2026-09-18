@@ -213,7 +213,10 @@ export async function anchorNightRelease({ clock, authorization, release, onEven
     onEvent({ type: 'origin.anchor', status: 'released', aimMs, k, releaseHostMs, firedHostMs, firedWallMs,
       lateMs: firedHostMs - releaseHostMs, releasedAimMs, uncertaintyMs: measured.uncertaintyMs,
       authorizedAtHostMs: authorizedAtHostMs(), authorizedAfterOnsetMs: (authorizedAtHostMs() ?? NaN) - onsetHostMs });
-    return { status: 'released', k, releaseHostMs, firedHostMs, releasedAimMs };
+    // onsetDeviceMs and afterOnsetMs place the schedule's origin on the
+    // helper's own image clock (the teach panel narrates from there).
+    return { status: 'released', k, releaseHostMs, firedHostMs, releasedAimMs,
+      onsetDeviceMs, afterOnsetMs: firedHostMs - onsetHostMs };
   }
   return fallback('authorization-late', { ...detail, onsetHostMs, maxK,
     lastCandidateHostMs: candidates.at(-1).releaseHostMs });

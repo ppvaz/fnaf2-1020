@@ -1,0 +1,33 @@
+{
+  "schema": "teach-panel-v1",
+  "version": 1,
+  "build": "com.scottgames.fnaf2:2.0.7+26",
+  "geometry": {
+    "width": 2400,
+    "height": 1080
+  },
+  "rect": {
+    "left": 10,
+    "top": 310,
+    "right": 590,
+    "bottom": 410
+  },
+  "guardPx": 10,
+  "window": "one TYPE_APPLICATION_OVERLAY window of exactly this rect, FLAG_NOT_FOCUSABLE | FLAG_NOT_TOUCHABLE, opaque buffer composited at the platform's 0.8 cap for untrusted overlays (dumpsys alpha=0.8 with 1.0 asked, moto g56, 2026-09-18); no profile control point lies inside it",
+  "palette": {
+    "fill": "#080A08",
+    "text": "#F2F2EE",
+    "dim": "#969EAA",
+    "idle": "#3C443A",
+    "track": "#1C201C",
+    "mask": "#FF5449",
+    "monitor": "#C9D2C3",
+    "cam": "#4FD2EE",
+    "light": "#FFD2A8",
+    "wind": "#C983F5"
+  },
+  "readers": {
+    "helper": "android/companion/test/com/ppvaz/fnafcompanion/TeachPanelTest.java drives every native reader over a recording frame",
+    "host": "tools/device/test-teach-panel-clearance.py checks the night predicate, lifecycle boxes, video grader rows and the profile control points"
+  }
+}
