@@ -5964,3 +5964,16 @@ the session). It does not touch the model gap measured earlier today on a Night 
 The physical test it implies is one graded Night 7 run on a preset other than 10/20 at
 `hallOffsetMs` 9613. Evidence:
 [night7-preset-sweep-20260917](../docs/evidence/night7-preset-sweep-20260917.json).
+
+**2026-09-18: Night 5 reached 6 AM again, from a bundle re-emitted against the current engine.**
+`night5-n5-carry-aim172-20260918T012153Z` won Night 5 on the phone: 42 of 42 gates AGREED, 0
+corrected, `state=sixam` observed. The 2026-09-12 `night5-contact-final` bundle is now refused at
+preflight for a stale engine source hash, so its winner was re-emitted; `night-5.plan` and
+`profile.json` are byte-identical and the manifests' replay, gate, plans, policy and nights sections
+match (replay `fnv1a-afa3aafd`). The binding hash moved from `fnv1a-81b5e51c` to `fnv1a-f430f190`
+only because the current emitter writes the default `observeUntilMs`, the same cause that moved
+binding h on 2026-09-14. The qualification was carried forward on that equivalence at Pedro's
+request, the anchor was passed explicitly at the register's aim of 172 ms, and the release still
+came out unanchored (`authorization-late`), as both earlier Night 5 wins did. The winning binding is
+tracked as `tools/device/campaign-night5-contact-final-winner.json`. Not yet graded; one night is
+not a rate. Evidence: [night5-sixam-carry-20260918](../docs/evidence/night5-sixam-carry-20260918.json).
