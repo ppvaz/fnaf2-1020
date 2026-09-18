@@ -1,0 +1,40 @@
+{
+ "schema": "cohort-predeclaration-v1",
+ "declaredAt": "2026-09-18T03:01:51Z",
+ "declaredBy": "Pedro asked for the project's final push on 2026-09-18 ('let's do the project's last final roar'); written by Claude before run 1, on the target the contract names: Night 7 reliability",
+ "ladder": "Plan 12 level 7 (10/20 attempt/clear) under the Gate F cohort protocol: predeclared size and rules, no tuning inside the cohort, every outcome reported",
+ "night": 7,
+ "configuration": {
+  "dials": "all ten at 20 via the measured Golden Freddy preset, puppet 15",
+  "dialReadback": "tools/device/models/custom-night-calibration-v1.json (custom-night-calibration-v1)"
+ },
+ "binding": {
+  "name": "k3",
+  "bundle": "artifacts/night7-anchored-k3/bundle",
+  "winnerHash": "fnv1a-5c8dcb5f",
+  "trackedAs": "tools/device/campaign-night7-k3-winner.json",
+  "planSha256": "66b0abb4f65d65584d102e8c2a443e622df8f69ea9d4ac42c20e0aaa77867aff",
+  "replayHash": "fnv1a-1c9c6847",
+  "engineSourceSha256": "beeb5d5a6152b7bca60bb5102dff0c9615567532fde0e4979f0701018c913ebe",
+  "profile": {
+   "id": "hid-mediaprojection",
+   "sha256": "c929d673a056b4d7ef1839bccc4666986e2a1991b39232c0869046b0d68ae6e0"
+  },
+  "anchor": "aim 2433 ms, period 5000, maxK 0, from the fact register entry for fnv1a-5c8dcb5f"
+ },
+ "commit": "the commit that adds this file; runs use the tree at that commit",
+ "command": "tools/device/night-run.sh --label night7-k3-cohort-rNN --bundle artifacts/night7-anchored-k3/bundle --night 7 --qualification artifacts/night7-anchored-k3/qualification-test.json --calibration tools/device/models/custom-night-calibration-v1.json --no-trace --no-grade",
+ "commandNote": "The winning runs' configuration: no frame trace (a traced run is a measurement run), video on. Two environment controls added for the whole cohort and restored after it: airplane mode and do-not-disturb (no notification may interrupt a night) and USB stay-on. Each run is graded after the cohort with tools/device/grade-run.sh, so the grader's CPU load is never on the host during a night.",
+ "size": 10,
+ "rules": {
+  "counted": "a run counts once the campaign observes state=night; its outcome is the executor terminal (sixam or gameover) cross-checked by the video terminal grade",
+  "win": "executor terminal sixam and video TERMINAL clear",
+  "death": "gameover; cause taken from the per-cycle ledger and the video, survival time from the video",
+  "excluded": "a run refused or aborted before state=night is not counted and is re-run in its slot as rNNb, rNNc; the reason is reported",
+  "invalid": "a counted run whose night was interrupted by something outside the game (a notification, the operator touching the phone, a USB drop) is reported as invalid with the evidence, and re-run in its slot",
+  "noTuning": "no knob, anchor, bundle or harness change inside the cohort; a harness fault stops the cohort rather than being patched mid-way"
+ },
+ "prior": "k3 on the phone before this cohort: 6 wins and 1 loss by PROGRESS's count (2026-09-15), none of them predeclared. The model is NOT a predictor here: on the phone's own frame clock at the delivered phase it kills both traced k3 nights, including full-06, which won on the phone (2026-09-18 check: inside-office at 295 s). So no model rate is predicted; the cohort is the measurement.",
+ "report": "wins, deaths by cause, excluded and invalid runs with reasons, survival-time list, released aim and lateness per run, run directory per slot, and the exact commit",
+ "labels": "night7-k3-cohort-r01 .. night7-k3-cohort-r10 (excluded or invalid slots re-run as rNNb, rNNc, ...)"
+}

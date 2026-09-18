@@ -366,8 +366,6 @@ export const UNTRACKED_WINNER_DEBT = Object.freeze({
     '(artifacts/night6-cohort-h/qualification-seedlock.json)',
   'fnv1a-651ed623': 'night 7 i: winner path not named by its evidence',
   'fnv1a-f337717a': 'night 7 j: artifacts/night7-anchored-j/winner.json (peer machine)',
-  'fnv1a-7e4bf3e8': 'night 7 k2 (WON 2026-09-14): artifacts/night7-anchored-k2/bundle/winner.json (peer machine)',
-  'fnv1a-5c8dcb5f': 'night 7 k3 (WON 2026-09-15): artifacts/night7-anchored-k3/winner.json (peer machine)',
 });
 
 /** Minimum distance, in ms, the EFFECTIVE interval [aim + Lmin, aim + Lmax] must keep from both edges of its band. */
