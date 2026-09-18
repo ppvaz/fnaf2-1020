@@ -1,0 +1,16 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-model-traced-clock-20260918",
+ "claimLevel": "DEVICE_MEASURED for the frame traces, seeds and phases; MODEL_ONLY for the scored bands",
+ "date": "2026-09-18",
+ "closes": "the frame-clock item left open in night6-model-gap-two-clocks-20260917",
+ "question": "Driven by the phone's own frame intervals instead of a constant 16.667 ms, does the model predict what binding h did on the phone?",
+ "verdict": "YES on both frame-traced nights. At each night's own seed, frame trace and clock-derived phase the model survives, and the phone did: night6-ft-01 (seed 24926, one candidate) survived all 335 s before the executor stopped on an ambiguous gate read, and night6-tw-04 (seed 24883 or 24884) reached 6 AM with 41 of 42 gates agreed. On both, the survival band runs from 175 ms early to 50 ms late of the clock-derived phase at 25 ms resolution, and the game's own phase sits about 30-37 ms late of it: inside the band, with thin margin on the late side.",
+ "nights": {
+  "night6-ft-01-20260918T010857Z": "origin 4963.7 ms; frame intervals p50 16.63 ms, mean 16.84, 210 over 25 ms; 38 cameras-up statics",
+  "night6-tw-04-20260918T014915Z": "origin 4968.7 ms; p50 16.63, mean 16.84, 295 over 25 ms; 44 statics; both candidate seeds survive from -150 to +25 ms, one of the two at -175 and +50"
+ },
+ "phase": "Two routes to the same number. From the clocks: the anchor's release converted to phone wall (today's host/phone skew was -11.7 ms). From the pictures: the white cameras-up statics arrive a median 80.1 and 86.7 ms after the model opens the camera view. About 50 ms of that is capture delay (the first office frame is captured 82-94 ms after the seed while the log shows the first loop ~15 ms after it), leaving ~30-37 ms of actuation latency.",
+ "pinnedNights": "On a pinned night the seed's stamp is the pinned clock value, not real time, so the model origin must be measured from the first office frame on the monotonic trace clock. Measured that way the three traced nights released 4881.6, 4874.8 and 4875.6 ms after their first office frame. The alignment script's clock route put the pinned night 186 ms late until corrected.",
+ "notClaimed": "Outcomes only; per-window encounter agreement is not checked. Two nights are not a rate."
+}

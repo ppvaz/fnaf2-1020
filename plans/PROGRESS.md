@@ -5977,3 +5977,23 @@ request, the anchor was passed explicitly at the register's aim of 172 ms, and t
 came out unanchored (`authorization-late`), as both earlier Night 5 wins did. The winning binding is
 tracked as `tools/device/campaign-night5-contact-final-winner.json`. Not yet graded; one night is
 not a rate. Evidence: [night5-sixam-carry-20260918](../docs/evidence/night5-sixam-carry-20260918.json).
+
+**2026-09-18: proven twin nights, a writable seed, and the model on the phone's own frame clock.**
+Twins by the predeclared rule: `night6-tw-12-20260918T022134Z` and `night6-twin-01-20260917T014037Z`
+both bracket their office seed to one millisecond at low16 **24850**. The second was forced by a
+device-side clock pin (`tools/device/seedpin/`): when the phone's log shows the office loading, a Java
+pinner run through `app_process` holds the wall clock at a value congruent to the target until the
+first post-seed line, then restores real time. It is needed because the tap-to-seed delay spreads
+over 150 ms across 13 attempts, and 137 ms of that is the office load itself. Its floor is the
+platform's: each set is `settimeofday()` plus a hardware RTC write under a lock, ~6.5 ms and
+serialised, so the seed lands in a seven-value window and a chosen value about one time in five.
+The twins did **not** replay the same night: at about 1 AM Balloon Boy got into the older night's
+office (then Foxy), while the pinned night had Mangle. Their input phases differed by 86 ms, the
+model at each night's own phase reproduces that split, and with seed and presses fixed the frame
+clock alone reshuffles the windows from about cycle 8. Separately, on two frame-traced nights the
+model driven by the phone's own frame intervals predicts survival at each night's seed and phase,
+closing the frame-clock item left open on 09-17. Also fixed on the way: the timed start's
+focus-versus-activation race (`b63ead9`), and loop aborts that never landed (SIGINT to a background
+job is ignored). Next: a same-phase twin with both eyeholes read. Evidence:
+[night6-twin-nights-proven-20260918](../docs/evidence/night6-twin-nights-proven-20260918.json),
+[night6-model-traced-clock-20260918](../docs/evidence/night6-model-traced-clock-20260918.json).

@@ -1933,6 +1933,13 @@
       ]
     },
     {
+      "file": "tools/device/test-seedpin.mjs",
+      "imports": [
+        "node:child_process",
+        "node:fs"
+      ]
+    },
+    {
       "file": "tools/device/test-tap-stall-audit.mjs",
       "imports": [
         "./tap-stall-audit.mjs",

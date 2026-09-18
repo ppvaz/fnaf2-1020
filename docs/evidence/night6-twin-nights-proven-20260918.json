@@ -1,0 +1,40 @@
+{
+ "schema": "evidence-record-v1",
+ "id": "night6-twin-nights-proven-20260918",
+ "claimLevel": "DEVICE_MEASURED",
+ "date": "2026-09-18",
+ "predeclaration": "docs/evidence/night6-twin-nights-predeclaration-20260916.json",
+ "question": "Can two Night 6 runs be made to share an office seed, and does a shared seed replay the night?",
+ "verdict": "PROVEN TWINS, by the predeclared rule: night6-tw-12-20260918T022134Z and night6-twin-01-20260917T014037Z both bracket their office seed to a single millisecond, and both read low16 24850. The second was forced by a device-side clock pin. They did NOT replay the same night: at the first real encounter, about 1 AM, Balloon Boy entered the office in the 2026-09-17 night and it ended in a game over six seconds later, while the pinned night had Mangle in the office at the same point and Withered Chica in the next mask window. A shared seed fixes where the random sequence starts, not how far along it each event reads it.",
+ "twins": {
+  "night6-twin-01-20260917T014037Z": "seed stamp 1789609271570, one candidate, low16 24850; unpinned, timed start at residue 20000; death (game over at 01:43:10Z)",
+  "night6-tw-12-20260918T022134Z": "seed stamp 1789698138386, one candidate, low16 24850; pinned at 24850; played 11 cycle gates (about 115 s of night) and was then aborted at Pedro's instruction; frame trace pulled"
+ },
+ "thePin": {
+  "why": "Across 13 timed attempts the delay from the activating tap to the seed read spread from 4788.8 to 4939.4 ms. Split on 7 of them: tap to office load 3555.5-3577.8 ms (22 ms), office load to seed 1213-1350 ms (137 ms), matching the game's own logged load times 1197-1344 ms. The load is the noise, and no tap timing reaches it.",
+  "how": "tools/device/seedpin/seedpin.sh on the phone watches the game's log; when the office frame starts loading it has the Java pinner (tools/device/seedpin/Pinner.java, run through app_process as the shell user) hold the wall clock at a value congruent to the target from 1050 ms later until the first line the runtime logs after the seed read, then restore real time.",
+  "floor": "Each set is settimeofday() plus a hardware RTC write (RTC_SET_TIME) under the time service's lock, per AOSP's com_android_server_SystemClockTime.cpp. Measured: 58, 60 and 62 sets in about 415 ms at 1, 2 and 4 threads, so about 6.5-7 ms per set, serialised. The clock therefore runs free for up to ~7 ms between sets and the seed lands in [value, value + ~7). The shell-loop variant (one cmd process per set) plateaued at 10-22 % on its most likely millisecond across 1-12 loops.",
+  "onThePhone": "Two pinned attempts: 24855 (value + 5) and 24850 (value + 0, the post-seed line stamped exactly at the pinned value). The pinner restored the clock to within about 2 ms of its prior offset from the host.",
+  "costToTheGame": "One 35 ms frame about 250 ms after the office appeared on the pinned night, against a 23 ms worst frame on an unpinned night; no catch-up burst."
+ },
+ "theComparison": {
+  "reader": "twin-compare.py counts two unknown windows as agreeing, so its 40/42 for the pair is an artefact of both nights ending early. Over the windows both nights read (2-12) the twins agree on 10 of 11 and non-twin pairs on 8-10 of 11: almost every night is empty that early, so this span cannot discriminate. The reader also crops only the right eyehole and cannot see Balloon Boy, who sits in the left one.",
+  "frames": "Contact sheets of both videos at the same point in the night: the 2026-09-17 night shows Balloon Boy through the left eyehole at video 134.5-139.0 s and standing in the office at 139.75 s, then death static from 145 s; the pinned night shows no Balloon Boy, Mangle hanging in the office with the mask off, and Withered Chica in the mask window after."
+ },
+ "whyTheyDiverged": {
+  "inputPhase": "The 2026-09-17 night's schedule was released 5050.0 ms after its seed (its anchor record's host-minus-phone skew, 1368.0 ms, corrected). Today's three frame-traced nights released 4881.6, 4874.8 and 4875.6 ms after their first office frame, i.e. about 4964-4969 ms after the seed. The pair differed in input phase by about 86 ms.",
+  "model": "Seed 24850 at each night's own phase: the 2026-09-17 night (5050.0 ms, constant 60 fps) dies to Foxy at 165 s; the pinned night (4963.6 ms, its own frame trace) reaches 6 AM. Balloon Boy in the office disables the flashlight that holds Foxy, which is the sequence the older night's video shows.",
+  "frameTiming": "With seed and presses fixed, changing only the frame clock (the night's own trace, another night's trace, constant 16.667 ms) changes the mask-window occupants from about cycle 7-8. Some draws are per frame and many are tied to the frame an input lands on, so run-to-run frame jitter moves the random sequence even at an identical seed and schedule."
+ },
+ "alsoFixed": {
+  "timedStart": "b63ead9: the timed story start put its first press off the residue and returned on a read that could not tell focus from activation; tw-01 played 47 s of a night with no executor. Every press is now on the residue and its effect is read only once it can show.",
+  "abort": "The loop's aborts were SIGINT to a background job, which bash starts with SIGINT ignored, inherited by the campaign: three 'aborted' attempts played their nights out. The loop now runs with job control and interrupts the runner's whole process group, as an operator's Ctrl-C does; a sandbox test showed SIGTERM to the runner alone orphans the campaign."
+ },
+ "notClaimed": "The twins do not show that a seed reproduces a night; they show it does not, beyond the first encounters, when phase and frame timing differ. No per-window agreement between model and phone is claimed. No win rate.",
+ "next": "A same-phase twin: pin 24850 again at today's anchor phase against the frame-traced night6-tw-12, both nights traced, read with a reader that sees both eyeholes.",
+ "artifacts": "artifacts/forensics/frametrace-night6-20260918/ (twin-loop.sh, twin-ledger.tsv, per-attempt logs, pin logs, contact sheets' sources) and captures/ (videos, frame traces).",
+ "sources": [
+  "https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/jni/com_android_server_SystemClockTime.cpp",
+  "https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/services/core/java/com/android/server/SystemClockTime.java"
+ ]
+}

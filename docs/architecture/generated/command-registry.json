@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-seedpin.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -976,6 +976,30 @@
     {
       "id": "tools/device/test-phase-reconstruct.mjs",
       "invocation": "tools/device/test-phase-reconstruct.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/seedpin/seedpin.sh",
+      "invocation": "tools/device/seedpin/seedpin.sh game TARGET [LEAD_MS] [EXPECT_MS] [OFFSET_MS] [WAIT_S] [MAXPIN_MS]",
+      "kind": "**device action** (runs on the phone)",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/seedpin/Pinner.java",
+      "invocation": "tools/device/seedpin/Pinner.java",
+      "kind": "module (device)",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/seedpin/build.sh",
+      "invocation": "tools/device/seedpin/build.sh [--push SERIAL]",
+      "kind": "build",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-seedpin.mjs",
+      "invocation": "tools/device/test-seedpin.mjs",
       "kind": "check",
       "lifecycle": "supported"
     },
