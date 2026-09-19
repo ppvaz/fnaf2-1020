@@ -210,9 +210,27 @@ not state: **14 and 15 first, then 11 and 12, then 13.** It also means the two
 lethal vents are entered from cam 10 and cam 02 — the two cameras worth watching
 hardest, and a cheap belief-gate signal.
 
-`UNKNOWN(unattributed)`: 19 further movement edges carry no source test in their
-group and are most likely the audio-lure teleports. Attribute them before the
-movement model is trusted end to end.
+**The remaining 19 edges are traced too (2026-09-19), and they are four
+mechanisms, not the single audio-lure family an earlier draft guessed:**
+
+- **Spawn.** At frame start Springtrap draws `Random(5)+1` and lands on cam 10,
+  09, 08, 07 or 06. Uniform over five cameras, and it is the **first RNG draw of
+  the night** — so with the RNG model transferring and only 65,536 streams, his
+  starting camera is *predictable per seed* by the same machinery `seedpin`
+  already uses. That is the cheapest possible foothold for a seeded FNaF 3 route.
+- **Audio lure.** The lure is consumed when he is adjacent to it, the target
+  camera is stored on him, a per-lure delay is drawn as `Random(100)`, and on
+  relocation his **`move counter` resets to 0**. A lure therefore buys a full
+  movement-timer reset, not just a reposition — which is why the public
+  "let him roam, lures are expensive" advice understates what a well-timed lure
+  is worth.
+- **Scripted forced move** on a `force move` / `force to` pair, to three fixed
+  cameras.
+- **Attack escalation** to attack stage 2 while a screen is being viewed.
+
+With this the FNaF 3 movement model is closed: spawn, per-step rule, branch
+selector, full location graph, vent topology and danger ordering, lure effect,
+and the aggression term with its six triggers and 15 s decay.
 
 ### FNaF 4 — no cameras, audio-dominant, and the mobile port helps
 

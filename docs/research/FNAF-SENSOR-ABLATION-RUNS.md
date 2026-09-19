@@ -145,7 +145,13 @@ player is viewing**, not Springtrap's position — an earlier draft of this note
 had that backwards. Springtrap's own location is the `dhfgh` object's position.
 Sealing writes the chosen vent through `going to seal` (which holds 11–15 and
 has **no decrement anywhere** — a selector register, not a timer) into
-`what vent is closed`. `UNKNOWN(not-traced)`: what `mon in` holds.
+`what vent is closed`.
+
+`SOURCE` **`mon in` is Springtrap's location**, mirrored into a counter by one
+group per camera ("if he overlaps cam N, set it to N"). So `you in = mon in` is
+the test for *the player is watching the camera he is in*, and `you in <> mon in`
+its negation. An earlier draft of this note had the right test with the wrong
+entity on one side; both are now measured.
 
 `SOURCE` **The vent topology, traced from Springtrap's 73 movement edges.**
 Each vent is entered from exactly one camera, on branch `action selected = 4`,
@@ -165,9 +171,24 @@ equally dangerous**: 14 and 15 bypass the chain entirely and kill outright,
 A sealing priority follows directly — 14 and 15 first, then 11 and 12, then 13.
 No public account of this game states that asymmetry.
 
-`[C]` 19 further movement edges have a source this pass could not attribute
-(their group carries no `IsOverlapping` test); they are most likely the
-audio-lure teleports. Attribute them before trusting a full movement model.
+`SOURCE` **The 19 edges left unattributed above are now traced, and they are
+four mechanisms rather than one** — an earlier draft guessed "most likely the
+audio-lure teleports", which was too hasty:
+
+- **Night-start spawn.** At frame start Springtrap draws `Random(5)+1`, which
+  places him at cam 10, 09, 08, 07 or 06 respectively, then marks himself
+  placed. Uniform over five starting cameras, and it is the **first RNG draw of
+  the night**. Because the RNG model transfers (see Plan 26), his starting
+  camera is therefore predictable per seed.
+- **Audio lure.** A lure object is placed at a camera; when Springtrap is in an
+  adjacent room it is consumed, the target camera is stored on him, and a
+  per-lure delay is drawn as `Random(100)`. On relocation his **`move counter`
+  is reset to 0**. So a lure does not merely reposition him — it buys a full
+  movement-timer reset. No public account of this game states that; they
+  describe lures purely as repositioning.
+- **Scripted forced move**, keyed on a `force move` / `force to` pair, to three
+  fixed cameras.
+- **Attack escalation** to attack stage 2 while a screen is being viewed.
 
 ## What this changes for Plan 26
 
