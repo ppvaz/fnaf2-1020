@@ -218,6 +218,17 @@ mechanisms, not the single audio-lure family an earlier draft guessed:**
   the night** — so with the RNG model transferring and only 65,536 streams, his
   starting camera is *predictable per seed* by the same machinery `seedpin`
   already uses. That is the cheapest possible foothold for a seeded FNaF 3 route.
+
+  *Substantiated 2026-09-19, after an earlier draft asserted it without
+  checking.* Three draws sit in earlier groups (a cosmetic static effect on
+  500 / 360 / 1000 ms timers), so "first" is not free. But `passEvery` in
+  `plant-model.js` records, from the runtime decompile of `CND_EVERY2.eva2`,
+  that an `Every N` condition **loads its delay on the first reach and returns
+  false**. It does not fire, its actions never run, and the `Random` inside them
+  is never evaluated. The `StartOfFrame` spawn fires on that same loop, so it
+  really is draw #1. Because all four games share runtime 770.0 / build 296,
+  this semantics — and therefore this way of identifying a game's first draw —
+  transfers to all of them.
 - **Audio lure.** The lure is consumed when he is adjacent to it, the target
   camera is stored on him, a per-lure delay is drawn as `Random(100)`, and on
   relocation his **`move counter` resets to 0**. A lure therefore buys a full
@@ -322,6 +333,52 @@ mechanism:
 emitter is shown to respect that game's lockout in both directions.** The FNaF 2
 defect survived because only one direction was gated and the gate looked
 complete.
+
+### What a second game buys the seed machinery
+
+**Pedro's observation, 2026-09-19, measured the same day.** The expansion is not
+only a test of whether the architecture transfers — a second target is a better
+*laboratory* for seed reading and writing than FNaF 2 is.
+
+The burden on seed prediction is not the total number of `Random` calls. It is
+the **timer-driven** ones: draws consumed on wall-clock schedules that a model
+must reproduce exactly whether or not anything happens. Conditional draws fire
+only on events the simulator already tracks. Counted over each game's night
+frame:
+
+| Game | total draws | **timer-driven** | distinct timers |
+|---|---|---|---|
+| **FNaF 3** | 115 | **21** | 8 |
+| FNaF 1 | 49 | 30 | **11** |
+| FNaF 4 | 107 | 34 | 8 |
+| FNaF 2 | 123 | **53** | 6 |
+
+FNaF 3 carries the lightest continuous load of the four — **21 against FNaF 2's
+53**. Its seed-to-outcome mapping is the least polluted by background
+consumption, which is exactly the property that makes prediction tractable.
+
+Note that FNaF 1 inverts on this metric: fewest total draws, but the **most
+distinct timers** to keep a ledger synchronised against. Fewest draws is not the
+same as the easiest seed problem, and the 2026-09-15 note that skipped draws
+scramble seed predictions is about precisely this.
+
+Three concrete gains, in order of value:
+
+1. **A seconds-long falsification loop.** Validating a seed prediction today
+   costs a full night plus grading. FNaF 3's spawn is readable from one camera
+   within seconds of a night starting, turning a ten-minute experiment into a
+   near-instant one. That is the largest throughput change available to this
+   machinery.
+2. **An oracle near the seeding instant.** Spawn is the first draw and is
+   directly observed, so it probes *when the seed is taken* far more directly
+   than inferring backwards from a death 200 s in — the open question that is
+   currently pinned only to a 12 ms logcat bracket.
+3. **Cheap twin verification.** Proven twins at 24850 did not replay the night.
+   Two FNaF 3 runs on one seed must show the same spawn camera, checkable
+   immediately rather than by comparing whole nights.
+
+**The honest limit:** one-in-five is about 2.3 bits. Spawn narrows the seed
+space quickly; it does not pin a seed on its own.
 
 ## Community strategies, by game
 

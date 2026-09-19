@@ -180,6 +180,16 @@ audio-lure teleports", which was too hasty:
   placed. Uniform over five starting cameras, and it is the **first RNG draw of
   the night**. Because the RNG model transfers (see Plan 26), his starting
   camera is therefore predictable per seed.
+
+  `SOURCE` *"First" was asserted before it was checked, so it was checked.*
+  Three draws do sit in earlier groups, feeding a cosmetic static effect on
+  500 / 360 / 1000 ms timers. But `passEvery` in `plant-model.js` records, from
+  the runtime decompile of `CND_EVERY2.eva2`, that an `Every N` condition loads
+  its delay on its **first reach and returns false** — it does not fire, so its
+  actions never run and the draw inside them is never taken. The `StartOfFrame`
+  spawn fires on that same loop and is genuinely draw #1. All four games share
+  runtime 770.0 / build 296, so this rule — and this way of identifying any
+  game's first draw — applies to all of them.
 - **Audio lure.** A lure object is placed at a camera; when Springtrap is in an
   adjacent room it is consumed, the target camera is stored on him, and a
   per-lure delay is drawn as `Random(100)`. On relocation his **`move counter`
