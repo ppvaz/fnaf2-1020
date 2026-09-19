@@ -190,6 +190,30 @@ Public clears exist with the cameras dropped *and* with the maintenance panel
 never opened, so neither is load-bearing — the minimum control surface is
 smaller than the UI implies.
 
+**The movement graph is now extracted (2026-09-19), including the vent map.**
+Springtrap's movement is 73 edges, each shaped as "if he is at X and
+`action selected` is N, move to Y" — so `action selected` is the branch selector
+that the move formula's `total turns` term feeds. Locations 1–10 are cameras and
+11–15 are the vents. Each vent has exactly one entrance, always on branch 4:
+
+| Vent | Entered from | Returns to | Or advances to | Steps from death |
+|---|---|---|---|---|
+| 13 | cam 05 | cam 05 | attack stage 1 | 4 |
+| 11 | cam 09 | cam 09 | attack stage 3 | 2 |
+| 12 | cam 07 | cam 07 | attack stage 3 | 2 |
+| **14** | cam 10 | cam 10 | **GOT YOU 2** | **0** |
+| **15** | cam 02 | cam 02 | **GOT YOU 2** | **0** |
+
+The attack chain is stage 1 → 2 → 3 → 4 → GOT YOU, so **vents 14 and 15 bypass
+it and kill outright**. That gives a sealing priority the public strategies do
+not state: **14 and 15 first, then 11 and 12, then 13.** It also means the two
+lethal vents are entered from cam 10 and cam 02 — the two cameras worth watching
+hardest, and a cheap belief-gate signal.
+
+`UNKNOWN(unattributed)`: 19 further movement edges carry no source test in their
+group and are most likely the audio-lure teleports. Attribute them before the
+movement model is trusted end to end.
+
 ### FNaF 4 — no cameras, audio-dominant, and the mobile port helps
 
 FNaF 4 has no camera system. Its control surface is named explicitly in the
@@ -253,9 +277,28 @@ mechanism:
   is actionable at all depends on the `follow` player-position value. The risk
   is not a timer but acting while `follow` is in transition or while a second
   hitzone is live. This is another reason the `follow` map is a blocker.
-- **FNaF 3 — `UNKNOWN(not-traced)`.** A `cooldown` object exists and is written
-  with the same value 10, but what it gates was not established. Trace it before
-  emitting any FNaF 3 plan.
+- **FNaF 3 — traced 2026-09-19: no time-based input lockout on the night
+  controls.** The `cooldown` object that prompted the question is used only in
+  the Extras frame, never in the Office frame, so it has nothing to do with a
+  route. `scare cooldown` *is* in the Office frame and is set to 10, but group
+  797 decrements it once per **1000 ms** and the states it guards are phantom
+  events (Phantom Freddy's walk, the Balloon Boy peek that spawns a scare) — it
+  is a **10-second rate limiter on phantom scares, not on player input**. Since
+  a phantom scare is one of the six ways to raise `aggresive?` (and only when
+  `Random(5) < AI`), this also bounds how often phantoms can drive aggression.
+
+  FNaF 3's controls are gated by **state, not time**, which is the FNaF 4 shape
+  rather than the FNaF 1 one: the audio lure needs `play counter = 7` with the
+  vent-map toggle off, and the seal button requires `viewing >= 2`, the toggle
+  on, and `going to seal = 0`. Two counters that look like timers are not:
+  `going to seal` has no decrement anywhere — it holds 11-15, is copied into
+  `what vent is closed` on commit and reset, so it is a **vent selector
+  register**; and `you in` / `mon in` hold 1-15 and are compared to each other,
+  so they are **location registers** over the ten cameras plus five vents.
+
+  Consequence for the emitter: there is no hidden drop window to respect here,
+  but a press is silently ignored when its *state* precondition is unmet, which
+  needs the same care for a different reason.
 
 **Rule for Plan 26: no model score for a new game is trustworthy until the
 emitter is shown to respect that game's lockout in both directions.** The FNaF 2

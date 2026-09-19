@@ -136,9 +136,38 @@ across all three systems rather than needing three bespoke rules.
 while Balloon Boy, Chica, Foxy and Freddy cause *ventilation* errors. Not yet
 traced.
 
-`[C]` A FNaF 3 night is 348 s. `[C]` Five vent paths (`vent 11`–`vent 15`)
-connect specific camera pairs; the objects exist in our dump but **the
-connection map has not been traced**, and a route needs it.
+`[C]` A FNaF 3 night is 348 s.
+
+`SOURCE` **The vent and camera namespace is one numbering, traced 2026-09-19.**
+Locations 1–10 are the cameras and 11–15 are `vent 11`–`vent 15`. `you in` holds
+1–15 and is set by the camera-selection handlers, so it is **the camera the
+player is viewing**, not Springtrap's position — an earlier draft of this note
+had that backwards. Springtrap's own location is the `dhfgh` object's position.
+Sealing writes the chosen vent through `going to seal` (which holds 11–15 and
+has **no decrement anywhere** — a selector register, not a timer) into
+`what vent is closed`. `UNKNOWN(not-traced)`: what `mon in` holds.
+
+`SOURCE` **The vent topology, traced from Springtrap's 73 movement edges.**
+Each vent is entered from exactly one camera, on branch `action selected = 4`,
+and exits either back to that camera or onward:
+
+| Vent | Entered from | Returns to | Or advances to |
+|---|---|---|---|
+| 11 | cam 09 | cam 09 | attack stage 3 |
+| 12 | cam 07 | cam 07 | attack stage 3 |
+| 13 | cam 05 | cam 05 | attack stage 1 |
+| 14 | cam 10 | cam 10 | **GOT YOU 2** |
+| 15 | cam 02 | cam 02 | **GOT YOU 2** |
+
+The attack chain runs stage 1 → 2 → 3 → 4 → GOT YOU, so **the vents are not
+equally dangerous**: 14 and 15 bypass the chain entirely and kill outright,
+11 and 12 enter two steps from the end, and 13 enters with the full chain left.
+A sealing priority follows directly — 14 and 15 first, then 11 and 12, then 13.
+No public account of this game states that asymmetry.
+
+`[C]` 19 further movement edges have a source this pass could not attribute
+(their group carries no `IsOverlapping` test); they are most likely the
+audio-lure teleports. Attribute them before trusting a full movement model.
 
 ## What this changes for Plan 26
 
