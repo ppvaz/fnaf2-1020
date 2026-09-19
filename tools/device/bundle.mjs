@@ -17,6 +17,7 @@ import { build as buildMinus7, devicePlan as emitMinus7Plan,
 import { compileArtifactPlans, persistArtifactPlans } from './artifact-commands.mjs';
 import { canonicalJson, stableHash, validateProfile } from '@fnaf2-1020/core/contracts';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 export const WINNER_SCHEMA = 'winner-v1';
 export const BUNDLE_SCHEMA = 'device-bundle-v1';
@@ -78,9 +79,20 @@ export function validateDeathPrediction(prediction, nights) {
   if (!nights.includes(prediction.night)) fail('death prediction night is not a winner night');
   if (!Number.isInteger(prediction.replays) || prediction.replays < MIN_PREDICTION_REPLAYS)
     fail(`death prediction needs at least ${MIN_PREDICTION_REPLAYS} replays`);
-  if (!Array.isArray(prediction.phasesMs) || prediction.phasesMs.length < 2 ||
+  // A phase-blind strategy (minus3, minus7: replay accepts no epoch) cannot
+  // span phases, and twenty identical replays reported as a span would be a
+  // tautology -- the same refusal this file already makes when it will not
+  // certify "a phase no census has seen". Such a prediction must SAY it is
+  // phase-blind and carry the single phase it really saw; it may not quietly
+  // present one phase as many, nor claim blindness while listing several.
+  if (!Array.isArray(prediction.phasesMs) ||
       prediction.phasesMs.some(ms => !Number.isInteger(ms) || ms < 0 || ms >= 1000))
-    fail('death prediction must span several epoch phases in [0, 1000)');
+    fail('death prediction phases must be integers in [0, 1000)');
+  if (prediction.phaseBlind === true) {
+    if (prediction.phasesMs.length !== 1)
+      fail('a phaseBlind death prediction must carry exactly the one phase it scored');
+  } else if (prediction.phasesMs.length < 2)
+    fail('death prediction must span several epoch phases in [0, 1000), or declare phaseBlind');
   if (!Number.isInteger(prediction.wins) || prediction.wins < 0 || prediction.wins > prediction.replays)
     fail('death prediction wins is invalid');
   if (!Array.isArray(prediction.killers) || prediction.killers.length === 0) fail('death prediction names no killer');
@@ -375,8 +387,35 @@ function minus3Knobs(input) {
   return { ...MINUS3_KNOBS, ...input };
 }
 
+// The three Toys are what the CAM 09 marker freezes. Everything else that the
+// night arms is still moving while the stall holds.
+const TOY_STALL_FREEZES = Object.freeze(['toyfreddy', 'toybonnie', 'toychica']);
+const ROSTER = Object.freeze(['withfreddy', 'withbonnie', 'withchica', 'foxy', 'toyfreddy',
+  'toybonnie', 'toychica', 'mangle', 'bb', 'golden']);
+
+// `minimal` is not a size setting. It parks the monitor up and drops the mask,
+// the camdrop and the hall pulse entirely -- its whole steady cycle is a 100 ms
+// flash and a 4400 ms wind -- which is only sound when every armed threat is one
+// the stall actually freezes, leaving the box as the single live problem.
+//
+// Measured 2026-09-19: Night 1 is the ONLY night where that holds. It arms
+// exactly the three Toys, and the CAM 09 marker freezes all three. From Night 2
+// up the stall leaves 4 to 7 characters moving (N2 foxy/mangle/bb/golden, N3 the
+// three Withereds plus foxy and bb), and a maskless cadence answers none of them.
+// Until now `minimal` was a boolean any winner could set on any night with
+// nothing checking it against the roster.
+function assertMinimalFitsNight(night) {
+  const armed = ROSTER.filter(id => C.peakAi(night, id) > 0);
+  const loose = armed.filter(id => !TOY_STALL_FREEZES.includes(id));
+  if (loose.length)
+    fail(`minus-toys minimal on night ${night} parks the monitor and drops the mask, but the ` +
+      `CAM 09 toy stall does not freeze ${loose.join(', ')}; minimal fits only a night whose ` +
+      'armed roster the stall covers entirely');
+}
+
 function minusToysEmitter(winner, night) {
   const knobs = toysKnobs(winner.knobs);
+  if (knobs.minimal) assertMinimalFitsNight(night);
   const period = knobs.minimal ? knobs.minPeriodMs : knobs.loopPeriodMs;
   const raw = emitToysPlan(night, knobs);
   // Story-night pacing from the sourced rule (recipe.idleUntilMs): Night 1's
@@ -438,14 +477,71 @@ function minus7Emitter(winner, night) {
   const recipe = buildMinus7({ night, ...recipeKnobs, knobs: searchKnobs ?? search ?? {} });
   const plan = emitMinus7Plan(recipe, { ...device, knobs: searchKnobs ?? search ?? {} });
   const lengths = Object.fromEntries(Object.entries(recipe.cycles).map(([name, cycle]) => [name, cycle.lengthMs]));
-  const lines = [`#policy minus7`, `#night ${night}`, `#period 5000`, `#loop-start 0`,
-    `#stop-at 420000`, `#observe-until 420000`, `#idle-until ${idleUntilMs(night)}`];
-  for (const [name, rows] of Object.entries(plan)) {
+  // Three facts have to agree before a minus7 plan means the same thing to the
+  // phone that it meant to the census that gated it.  Until 2026-09-19 none of
+  // them did, which is why the catalog bundle existed and had never run: the
+  // campaign refuses it outright (`nights[0].timing bounds are invalid`).
+  //
+  // 1. The idle is a SHIFT, not a header.  recipe.mjs's replay starts the whole
+  //    schedule at `f(idleUntilMs)` (`const start = pilotOffset + f(idleUntilMs)`),
+  //    but device-local-executor.js deliberately does NOT offset opening rows --
+  //    "Opening rows are authored on the night timeline" -- because offsetting
+  //    them once moved Night 1's arm to its 140 s idle boundary and left the
+  //    monitor in the wrong parity.  So the shift belongs in the authored row
+  //    times, not in `#idle-until`.
+  // 2. The steady loop starts AFTER the opening.  The replay sets
+  //    `base = start + f(7000)`; the executor expands steady rows from
+  //    `max(loopStartMs, idleUntilMs)`.  `#loop-start 0` made the phone begin
+  //    the 5 s loop on top of the 7 s opening.
+  // 3. The executor cannot branch.  `expandNightBlocks` sends every cycle that
+  //    is not opening/toys/finish at every period, so a plan carrying both of
+  //    minus7's steady cycles would actuate `clear` AND `attack` on one beat --
+  //    never the alternative the left-opening read chooses in the model.
+  const idle = idleUntilMs(night);
+  const openingMs = lengths.opening;
+  if (!Number.isInteger(openingMs) || openingMs <= 0) fail('minus7 recipe has no opening length');
+  const shift = row => {
+    const space = row.indexOf(' ');
+    if (space < 0) fail(`minus7 plan row is malformed: ${JSON.stringify(row)}`);
+    return `${Number(row.slice(0, space)) + idle}${row.slice(space)}`;
+  };
+  // Fact 3 is a refusal, not a silent drop: the steady schedule is `clear`, and
+  // a night whose model can reach `attack` has no single-cycle device form.
+  // The winner must carry the census that shows the branch is unreachable.
+  const steadyNames = Object.keys(plan).filter(name => name !== 'opening');
+  const emitted = { ...plan };
+  if (steadyNames.length > 1) {
+    if (typeof winner.attackFreeEvidence !== 'string' || winner.attackFreeEvidence.length === 0)
+      fail(`minus7 night ${night} emits ${steadyNames.join('+')}; the device executor cannot ` +
+        'branch, so the winner must carry attackFreeEvidence showing the attack branch is unreachable');
+    for (const name of steadyNames) if (name !== 'clear') delete emitted[name];
+  }
+  const lines = [`#policy minus7`, `#night ${night}`, `#period 5000`,
+    `#loop-start ${idle + openingMs}`,
+    `#stop-at 420000`, `#observe-until 420000`, `#idle-until ${idle}`];
+  for (const [name, rows] of Object.entries(emitted)) {
     lines.push(`#cycle ${name} ${lengths[name]}`);
-    lines.push(...rows);
+    lines.push(...(name === 'opening' ? rows.map(shift) : rows));
   }
   const text = lines.join('\n') + '\n';
-  return { text, knobs, recipe, plan, replay: seed => replayMinus7(plan, { night, seed }) };
+  // The gate replays the reduced plan, not the authored one: what the census
+  // scores is then exactly the cycle set the phone will actuate.  If the
+  // dropped branch were in fact reachable, the replay says so -- in those
+  // words -- instead of the bundle certifying a schedule the device cannot
+  // run.  Reaching a dropped cycle surfaced as `Cannot read properties of
+  // undefined (reading 'slice')` until 2026-09-19, which names neither the
+  // branch nor the claim it falsifies.
+  const dropped = Object.keys(plan).filter(name => !Object.hasOwn(emitted, name));
+  return { text, knobs, recipe, plan: emitted,
+    replay: seed => {
+      try { return replayMinus7(emitted, { night, seed }); }
+      catch (error) {
+        if (dropped.length && /Cannot read propert/.test(error.message))
+          fail(`minus7 night ${night} seed ${seed} reached the ${dropped.join('/')} branch that ` +
+            'winner.attackFreeEvidence says is unreachable; that evidence is wrong for this night');
+        throw error;
+      }
+    } };
 }
 
 // This registry is the extension seam: a new strategy owns only its winner

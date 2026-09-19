@@ -19,7 +19,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { replay, KNOBS0 } from './minus-toys-plan.mjs';
-import { DEATH_PREDICTION_SCHEMA, DEATH_TARGETED_STATUS } from './bundle.mjs';
+import { DEATH_PREDICTION_SCHEMA, DEATH_TARGETED_STATUS, STRATEGY_REGISTRY } from './bundle.mjs';
 
 const argValue = (name, fallback) => {
   const index = process.argv.indexOf(name);
@@ -33,23 +33,57 @@ const quantile = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p 
  * @param {{night: number, replays?: number, stepMs?: number}} options
  */
 export function predictDeaths(winner, { night, replays = 3000, stepMs = 50 }) {
-  if (winner.strategy !== 'minus-toys') throw new Error(`death prediction covers minus-toys only, got ${winner.strategy}`);
+  // A death prediction is the only honest gate for a route that is not
+  // zero-RNG, and every community strategy except Minus Toys and Minus 7 is in
+  // that class -- Minus 3 scores 2980/3000, Right Vent Camp about 99%. While
+  // this generator accepted minus-toys alone, none of them could be gated at
+  // all: bundle.mjs takes PASS or DEATH_TARGETED, a 2980/3000 route is not
+  // PASS, and the prediction it would need could not be produced. The bundle
+  // validator was always strategy-independent; only this was not.
+  const strategy = winner.strategy === 'minus7' || winner.strategy === 'minus-7'
+    ? 'minus7' : winner.strategy;
+  const entry = STRATEGY_REGISTRY[strategy];
+  if (!entry) throw new Error(`no device emitter is registered for strategy ${JSON.stringify(winner.strategy)}`);
   if (!Number.isInteger(night) || night < 1 || night > 7) throw new Error('night must be 1..7');
   if (!Number.isInteger(replays) || replays < 3000) throw new Error('death prediction needs at least 3000 replays');
-  const knobs = typeof winner.knobs === 'string' ? KNOBS0 : winner.knobs;
-  const phasesMs = [];
-  for (let ms = 0; ms < 1000; ms += stepMs) phasesMs.push(ms);
   const times = new Map();
   let wins = 0;
-  // Seeds and phases are interleaved so every phase sees the same seed cohort.
-  for (let i = 0; i < replays; i += 1) {
-    const seed = 1 + Math.floor(i / phasesMs.length);
-    const epochMs = phasesMs[i % phasesMs.length];
-    const { sim } = replay({ night, seed, epochMs, knobs });
-    if (sim.won) { wins += 1; continue; }
-    const killer = sim.death?.reason ?? 'unknown';
-    if (!times.has(killer)) times.set(killer, []);
-    times.get(killer).push(sim.death?.t ?? NaN);
+
+  // minus3 and minus7 replay at epoch 0 only. Sweeping `phasesMs` for them
+  // would score the same schedule twenty times and report it as a span of
+  // phases -- a tautology dressed as coverage, which is what bundle.mjs's own
+  // registry note refuses when it will not certify "a phase no census has
+  // seen". A phase-blind strategy therefore records the single phase it can
+  // actually see and says so, and the validator requires the marker instead of
+  // a fabricated span.
+  const phaseAware = entry.phaseAware === true;
+  const phasesMs = [];
+  if (phaseAware) for (let ms = 0; ms < 1000; ms += stepMs) phasesMs.push(ms);
+  else phasesMs.push(0);
+
+  if (phaseAware) {
+    const knobs = typeof winner.knobs === 'string' ? KNOBS0 : winner.knobs;
+    // Seeds and phases are interleaved so every phase sees the same seed cohort.
+    for (let i = 0; i < replays; i += 1) {
+      const seed = 1 + Math.floor(i / phasesMs.length);
+      const epochMs = phasesMs[i % phasesMs.length];
+      const { sim } = replay({ night, seed, epochMs, knobs });
+      if (sim.won) { wins += 1; continue; }
+      const killer = sim.death?.reason ?? 'unknown';
+      if (!times.has(killer)) times.set(killer, []);
+      times.get(killer).push(sim.death?.t ?? NaN);
+    }
+  } else {
+    // The emitted plan's own replay, so the prediction describes the bytes the
+    // phone will execute rather than a parallel model of them.
+    const emitted = entry.emit(winner, night);
+    for (let seed = 1; seed <= replays; seed += 1) {
+      const { sim } = emitted.replay(seed);
+      if (sim.won) { wins += 1; continue; }
+      const killer = sim.death?.reason ?? 'unknown';
+      if (!times.has(killer)) times.set(killer, []);
+      times.get(killer).push(sim.death?.t ?? NaN);
+    }
   }
   const killers = [...times.entries()]
     .map(([killer, ts]) => {
@@ -60,6 +94,7 @@ export function predictDeaths(winner, { night, replays = 3000, stepMs = 50 }) {
     })
     .sort((a, b) => b.count - a.count);
   return { schema: DEATH_PREDICTION_SCHEMA, night, replays, phasesMs, wins, winRate: wins / replays, killers,
+    strategy, ...(phaseAware ? {} : { phaseBlind: true }),
     generatedBy: 'tools/device/death-prediction.mjs', generatedAt: new Date().toISOString() };
 }
 

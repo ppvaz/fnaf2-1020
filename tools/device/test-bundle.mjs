@@ -134,14 +134,45 @@ try {
   expectFailure(() => parsePlan(malformed, { strategy: 'minus-toys', night: 2 }),
     'plan parser accepted an unsupported interpreter control');
 
-  const minus7 = compileBundle({
+  // minus7 authors two steady cycles (`clear` and `attack`) and lets the
+  // left-opening read choose between them.  The device executor cannot
+  // branch -- expandNightBlocks() sends every cycle that is not
+  // opening/toys/finish at every period -- so a night whose model can reach
+  // `attack` has no faithful single-cycle device form and must be refused
+  // rather than compiled into a plan that actuates both on one beat.
+  const branchyMinus7 = {
     schema: 'winner-v1', strategy: 'minus7',
     knobs: { night: 6, sweepSlotMs: 120, maskMarginMs: 900, readLatencyMs: 550, hallPulseMs: 130, pilotOffset: 10 },
     planOptions: { deviceSpacingMs: 100, sweepContactMs: 33 }, nights: [6],
     engineHash: 'minus7-engine-fixture-v1', seeds: [1], profile: 'fixture-hid-screencap',
     gate: { status: 'PASS', claimLevel: 'MODEL_ONLY' },
+  };
+  expectFailure(() => compileBundle(branchyMinus7, join(root, 'minus7-branchy')),
+    'minus7 compiled a night whose attack branch the device executor cannot honor');
+
+  // Night 1 is the attack-free night: recipe.mjs's idleUntilMs() records that
+  // Foxy, BB, Mangle, the Withereds and Golden Freddy never act on it, and the
+  // emitted plan's own replay reports detections=0 over seeds 1..3000
+  // (2026-09-19), so `clear` is the whole steady schedule.
+  const minus7 = compileBundle({
+    schema: 'winner-v1', strategy: 'minus7', knobs: {},
+    planOptions: { deviceSpacingMs: 100, sweepContactMs: 33 }, nights: [1],
+    engineHash: 'minus7-engine-fixture-v1', seeds: [1], profile: 'fixture-hid-screencap',
+    attackFreeEvidence: 'night 1 replays detections=0 over seeds 1..3000 (2026-09-19)',
+    gate: { status: 'PASS', claimLevel: 'MODEL_ONLY' },
   }, join(root, 'minus7'));
   check(minus7.manifest.plans[0].policy === 'minus7', 'minus7 emitter was not registered');
+  const minus7Plan = readFileSync(join(root, 'minus7', 'night-1.plan'), 'utf8');
+  check(!minus7Plan.includes('#cycle attack'),
+    'the emitted minus7 device plan must carry a single steady cycle');
+  // The idle is a shift of the authored opening, and the steady loop starts
+  // after it: #loop-start 0 made the phone run the 5 s loop over the 7 s
+  // opening, and #idle-until 140000 above #loop-start 0 is the exact shape the
+  // campaign refuses as "timing bounds are invalid".
+  check(minus7Plan.includes('#idle-until 140000') && minus7Plan.includes('#loop-start 147000'),
+    'minus7 night 1 must idle to 2 AM and start its loop after the opening');
+  check(minus7Plan.includes('\n140183 tap monitor 33'),
+    'minus7 opening rows must be authored on the night timeline, shifted by the idle');
 
   const minus3 = compileBundle({
     schema: 'winner-v1', strategy: 'minus3', knobs: 'KNOBS0', nights: [3],

@@ -58,8 +58,16 @@ check(deviceEdges({ knobs: { ...WIN_KNOBS, windMs: WIN_KNOBS.windMs + 250 } }).l
   // KNOBS0's wind timing was corrected to the device-proven raise+500 ms on
   // 2026-09-09, so the recipe no longer has to override it: the delta shrank
   // from five fields to three.
+  //
+  // It grew back to five on 2026-09-19, in the other direction. KNOBS0's
+  // OPENING wind sat at 2050 ms -- raise+434, exactly the wind-ready floor,
+  // zero slack -- so the default moved to raise+434+33 = 2083. The device-proven
+  // recipe must not follow it: 2050/1800 is what actuated the 774 edges that
+  // cleared Nights 3 and 4, and check 1 above failed the moment the default
+  // dragged it. The recipe pins both fields by value now, so the winning
+  // schedule is immune to future KNOBS0 corrections.
   check(JSON.stringify(changed) ===
-    JSON.stringify(['maskOnMs', 'openMaskAtMs', 'secondHallVent']),
+    JSON.stringify(['maskOnMs', 'openMaskAtMs', 'openWindAtMs', 'openWindMs', 'secondHallVent']),
     `the recipe now differs from KNOBS0 in ${JSON.stringify(changed)}; update this gate and the evidence record`);
   check(KNOBS0.secondHallVent === true,
     'the shipped default lost its right-vent second contact -- that is what the story gate measured');

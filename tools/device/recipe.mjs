@@ -390,7 +390,25 @@ export const MASK_GAP_MS = 40;
 // vary in visual presentation, but the schedule never intentionally places a
 // later control in the masked animation window.
 export const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
-export const MASK_RAISE_GAP_MS = Math.round(MASK_OFF_INPUT_FRAMES * 1000 / C.FPS);
+// The engine drops input during the mask-ON animation exactly as it does during
+// the mask-off one. Exported here (artifact-commands.mjs imports its floors
+// from this module) so the emitter can respect the same window the compiler
+// enforces, instead of authoring a plan the compiler will refuse.
+export const MASK_ANIM_ON_MS = Math.round(C.MASK_ANIM_ON * 1000 / C.FPS);
+// "One released Fusion poll after completion" was ONE RENDER FRAME, not one
+// poll: MASK_OFF_INPUT_FRAMES is MASK_ANIM_OFF + 1, so the gap stood 16.7 ms
+// above the 250 ms animation while every floor the seam gate audits must stand
+// 33 ms above its measurement. The first minus7 device run graded this
+// compound's own mask-off MISSING on 48 of 55 cycles and its monitor raise on
+// 54 of 55 (night1-minus7-n1-first-20260919T215533Z); the rule read both states
+// hundreds of times elsewhere in the same run, so those are lost presses, not a
+// blind detector.
+//
+// Three frames, not the two that would make the gap exactly 283 ms: a constant
+// set precisely to its own floor is the tautology mistake-register item 7 was
+// written about (`400 < 400` is false, so the check passed in silence). 18
+// frames is 300 ms, clearing the animation by 50 ms.
+export const MASK_RAISE_GAP_MS = Math.round((C.MASK_ANIM_OFF + 3) * 1000 / C.FPS);
 export const MASK_RAISE_SHIFT_MS = 60;
 
 // The sweep is the one instruction whose numbers are the *actuator's*, not the
@@ -478,6 +496,20 @@ export const RAISE_MARGIN_MS = 33;
 // drain needs.
 export const RAISE_JITTER_MARGIN_MS = 120;
 
+// The lowest observed WORKING gap between a monitor raise and a wind contact.
+// raise+100 ms and raise+200 ms both MISSED on the phone; +434 ms (the
+// minus-toys opening that armed all four story-night wins), +450 ms and
+// +500 ms worked. It is a refusal of the failing region, not a measurement --
+// the true readiness lies somewhere in (200, 434].
+//
+// It lives here, beside the other device floors, because artifact-commands.mjs
+// already imports its floors from this module; the reverse direction would be
+// a cycle. `clearTheRaise` needs it to place the wind park, and until
+// 2026-09-19 only the compiled-plan gate knew the number, so the emitter could
+// author a wind the gate would later refuse -- which is exactly what minus7
+// did, at raise+414 ms.
+export const MONITOR_READY_WIND_MS = 434;
+
 function clearTheRaise(name, lines) {
   const ins = lines.map(line => {
     const [at, kind, ...rest] = line.split(' ');
@@ -536,6 +568,27 @@ function clearTheRaise(name, lines) {
         }
       }
     }
+    // The wind has a LATER floor than the camera select, and the emitter did
+    // not know it. A camera select works from raise+300 ms; a wind contact is
+    // only observed to land from raise+434 ms, and raise+100/+200 both missed
+    // outright. Until 2026-09-19 that number lived only in the compiled-plan
+    // gate, so this pass could author -- and did author -- a wind the gate
+    // would later refuse: minus7's clear cycle wound at raise+414 ms, and the
+    // phone graded that raise MISSING on 54 of 55 cycles and the mask-off on
+    // 48 of 55 (night1-minus7-n1-first-20260919T215533Z). The park above pays
+    // for its own shift out of the hold; so does this one.
+    const windFloor = raise.at + MONITOR_READY_WIND_MS + RAISE_MARGIN_MS;
+    const wind = ins.slice(i + 1).find(e => e.kind === 'hold' && e.rest[0] === 'wind');
+    if (wind && wind.at < windFloor) {
+      const oldDuration = +wind.rest[1];
+      const consumed = windFloor - wind.at;
+      if (oldDuration <= consumed)
+        throw new Error(`${name}: the wind at +${wind.at} ms must start at +${windFloor} ms to ` +
+          `clear the monitor raise at +${raise.at} ms, which leaves no wind contact`);
+      wind.at = windFloor;
+      wind.rest[1] = String(oldDuration - consumed);
+    }
+
     const want = select.at - (MONITOR_ANIM_UP_MS + RAISE_MARGIN_MS);
     if (raise.at <= want) continue;
     // Slide the raise and, if it runs into what precedes it, that too.
@@ -665,6 +718,60 @@ function foldMaskRaise(name, lines, knobs = DEFAULT_SEARCH_KNOBS) {
 // read. Every other night needs hour 0, because its box drains from the start.
 //
 // Returned in ms of night time, which is what the runner's `base` counts.
+// The first hour a NON-PUPPET threat can act. This is deliberately not
+// `idleUntilMs`: that one returns the EARLIER of "the box drains" and "a threat
+// can act", which is the right answer to "when must the pilot be awake at all"
+// and the wrong answer to "when must the full cycle start". The two coincide on
+// Night 1 and diverge everywhere else, and the divergence is invisible because
+// the box drains from hour 0 on every night from 2 up -- so `idleUntilMs`
+// collapses to 0 and the schedule opens its full cycle against an empty
+// building.
+//
+// Measured 2026-09-19 on the shipped Night 2 minus-toys plan: 53 contacts fall
+// inside the first in-game hour, 7 of them wind, and `aiUpdates(2, 0)` arms
+// nobody at all -- 46 contacts answering no one, including 14 mask presses, 7
+// held camera-light flashes charged to a 3000-frame flashlight budget, and 7
+// hall pulses for a Foxy who arms an hour later. Every one of them is also a
+// press the phone can lose.
+//
+// A night's prefix is therefore `[0, threatIdleUntilMs)`, where the box still
+// needs winding and nothing else needs answering.
+export function threatIdleUntilMs(night) {
+  for (let hour = 0; hour < 6; hour++) {
+    const armed = new Set();
+    for (let h = 0; h <= hour; h++)
+      for (const row of C.aiUpdates(night, h))
+        for (const [id, value] of Object.entries(row.set)) if (value > 0) armed.add(id);
+    if ([...armed].some(id => id !== 'puppet'))
+      return hour * (C.HOUR_FRAMES / C.FPS) * 1000;
+  }
+  return 0;
+}
+
+// How long a FULL box takes to empty, from the sourced drain table:
+// BOX_UNITS units at BOX_DRAIN_PER_TICK[night] per BOX_DRAIN_TICK_MS.
+export function boxEmptyFromFullMs(night) {
+  const perTick = C.BOX_DRAIN_PER_TICK[String(night)];
+  if (!perTick) throw new Error(`no box drain rate for night ${night}`);
+  return (C.BOX_UNITS / perTick) * C.BOX_DRAIN_TICK_MS;
+}
+
+// The latest a schedule may stop winding on a full box and still not hand the
+// Puppet an empty box before 6 AM.
+//
+// This is a BOX bound only, and it is strictly weaker than the real question.
+// After the box empties the Puppet still has PUPPET_ESCAPE_STAGES stages and a
+// five-position route to walk, so the true safe stop is LATER than this; and it
+// says nothing about Foxy, Balloon Boy or the Withereds, whose own last-moment
+// is UNKNOWN(not-derived) here. It exists because `minStopAtMs = 360000` has
+// only ever been justified in a comment -- "~5:08 AM: no route can reach the
+// office before 6" -- and a measurement in a comment is not a gate
+// (mistake-register item 9). This turns the box half of that claim into
+// something a check can read.
+export function boxSafeStopMs(night) {
+  return NIGHT_MS - boxEmptyFromFullMs(night);
+}
+
 export function idleUntilMs(night) {
   for (let hour = 0; hour < 6; hour++) {
     if (C.boxDrainsAtHour(night, hour)) return hour * (C.HOUR_FRAMES / C.FPS) * 1000;
@@ -676,6 +783,64 @@ export function idleUntilMs(night) {
       return hour * (C.HOUR_FRAMES / C.FPS) * 1000;
   }
   return 0;
+}
+
+// Push a mask-off press out of the read's mask-ON animation.
+//
+// `read` owns a prophylactic mask-on press that lands at at+duration+gap, and
+// the maskraise that follows takes the mask off again. The engine drops input
+// during the mask-on animation exactly as it does during the mask-off one, but
+// only the mask-off window was ever enforced -- so this emitter authored a
+// clear cycle whose mask-on press landed at +1007 ms and whose maskraise took
+// it off at +1140 ms, 133 ms inside a 200 ms animation. The press was dropped,
+// the mask stayed up, and every later contact in the cycle hit the mask instead
+// of the office: the first minus7 device run graded maskOn->false MISSING on 48
+// of 55 cycles and the raise on 54 of 55, then reached 6 AM anyway because
+// nothing on Night 1 can punish a blind pilot.
+function clearTheMaskOn(name, lines) {
+  const ins = lines.map(line => {
+    const [at, kind, ...rest] = line.split(' ');
+    return { at: +at, kind, rest };
+  });
+  let maskOnAt = -Infinity;
+  for (const e of ins) {
+    if (e.kind === 'read') { maskOnAt = e.at + (+e.rest[0]) + (+e.rest[1]); continue; }
+    if (e.kind !== 'maskraise') continue;
+    const earliest = maskOnAt + MASK_ANIM_ON_MS + RAISE_MARGIN_MS;
+    if (e.at >= earliest) continue;
+    const next = ins[ins.indexOf(e) + 1];
+    if (next && next.at < earliest + MIN_CONTACT_MS + FUSION_POLL_MS)
+      throw new Error(`${name}: the maskraise at +${e.at} ms must wait until +${earliest} ms to ` +
+        `clear the read's mask-on animation, which collides with the next row at +${next.at} ms`);
+    e.at = earliest;
+
+    // Moving the maskraise moves the raise inside it, which invalidates the
+    // wind that clearTheRaise() already placed against the OLD raise. That
+    // pass cannot be re-run here -- after folding, the raise lives inside a
+    // maskraise compound and its `tap monitor` row no longer exists -- so this
+    // one re-pays the same floor, out of the hold, exactly as clearTheRaise
+    // does for the park it moves.
+    const raiseAt = e.at + (+e.rest[0]);
+    // The camera park first, on the same floor clearTheRaise() uses, then the
+    // wind on its own later one. Both are paid for out of the wind hold.
+    const park = ins.slice(ins.indexOf(e) + 1)
+      .find(row => row.kind === 'tap' && /^cam\d+$/.test(row.rest[0]));
+    if (park) park.at = Math.max(park.at, raiseAt + MONITOR_ANIM_UP_MS + RAISE_JITTER_MARGIN_MS);
+    const windFloor = Math.max(raiseAt + MONITOR_READY_WIND_MS + RAISE_MARGIN_MS,
+      park ? park.at + MIN_CONTACT_MS + FUSION_POLL_MS : 0);
+    const wind = ins.slice(ins.indexOf(e) + 1)
+      .find(row => row.kind === 'hold' && row.rest[0] === 'wind');
+    if (wind && wind.at < windFloor) {
+      const oldDuration = +wind.rest[1];
+      const consumed = windFloor - wind.at;
+      if (oldDuration <= consumed)
+        throw new Error(`${name}: moving the maskraise to +${e.at} ms pushes the wind to ` +
+          `+${windFloor} ms, which leaves no wind contact`);
+      wind.at = windFloor;
+      wind.rest[1] = String(oldDuration - consumed);
+    }
+  }
+  return ins.map(e => `${e.at} ${e.kind} ${e.rest.join(' ')}`);
 }
 
 export function devicePlan(recipe, {
@@ -798,7 +963,8 @@ export function devicePlan(recipe, {
       if (e.act === 'wind') { lines.push(`${e.at} hold wind ${e.dur}`); continue; }
       lines.push(`${e.at} tap ${e.act} ${tapContactMs}`);
     }
-    out[name] = foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)), resolvedKnobs);
+    out[name] = clearTheMaskOn(name,
+      foldMaskRaise(name, makeRoom(name, clearTheRaise(name, lines)), resolvedKnobs));
   }
   return out;
 }

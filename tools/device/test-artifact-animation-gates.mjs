@@ -121,6 +121,31 @@ const down = { monitorUp: false, maskOn: false };
     'the reviewed maskraise compound did not close in monitor-up/mask-off state');
   check(refuses([maskraise], down, 'maskraise requires the mask to be up'),
     'maskraise without a mask-up start state was compiled');
+
+  // The mask-ON animation is a drop window exactly as the mask-off one is, and
+  // until 2026-09-19 nothing checked it. minus7's clear cycle pressed the mask
+  // on inside its `read` at +1007 ms and took it off in the maskraise at
+  // +1140 ms -- 133 ms into a 200 ms animation -- so the engine dropped the
+  // mask-off press, the mask stayed up, and every later contact in the cycle
+  // hit the mask instead of the office. The phone graded that compound's
+  // maskOn->false MISSING on 48 of 55 cycles and its raise on 54 of 55
+  // (night1-minus7-n1-first-20260919T215533Z), while the rules read both
+  // states hundreds of times elsewhere in the same run -- lost presses, not a
+  // blind detector. The run still reached 6 AM, because nothing on Night 1 can
+  // punish a blind pilot; that is precisely why this needs a gate and not an
+  // outcome.
+  const read = { at: 0, kind: 'read', duration: 600, gap: 40 };   // mask on at +640
+  check(refuses([read, { at: 700, kind: 'maskraise', gap: 300, mode: 'hall', duration: 133 }],
+    { monitorUp: false, maskOn: false }, 'mask-on animation'),
+    'a maskraise inside the read\'s mask-on animation was compiled');
+  check(!refuses([read, { at: 900, kind: 'maskraise', gap: 300, mode: 'hall', duration: 133 }],
+    { monitorUp: false, maskOn: false }, 'mask-on animation'),
+    'a maskraise clear of the mask-on animation was refused');
+  // The same window applies to a plain mask toggle, not just the compound.
+  check(refuses([{ at: 0, kind: 'tap', control: 'mask', duration: 33 },
+    { at: 100, kind: 'tap', control: 'mask', duration: 33 }],
+  { monitorUp: false, maskOn: false }, 'mask-on animation'),
+  'a mask toggle inside the mask-on animation was compiled');
 }
 
 console.log(

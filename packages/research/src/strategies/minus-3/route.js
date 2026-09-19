@@ -14,8 +14,16 @@ export const KNOBS0 = Object.freeze({
   openArmMs: 833,
   armingGapMs: 50,
   openRaiseGapMs: 733,
-  openWindMs: 1800,
-  openWindAtMs: 2050,
+  // The opening raise lands at openArmMs + openRaiseGapMs = 1616 ms, and a wind
+  // contact is only observed to land from raise+434 ms. 2050 was raise+434
+  // EXACTLY -- zero slack against a floor that is itself only the lowest
+  // observed working gap, so a single frame of jitter puts the contact in the
+  // region where raise+200 measurably missed and the box went unwound. Moved to
+  // raise + 434 + RAISE_MARGIN_MS (33) = 2083, the same margin every shipped
+  // minus-toys winner clears this floor by. The hold gives up those 33 ms
+  // rather than the camdrop at 4000 ms moving: the wind still ends at 3850.
+  openWindMs: 1767,
+  openWindAtMs: 2083,
   openCamdropAtMs: 4000,
   openCamdropLeadMs: 150,
   openCamdropMonitorMs: 33,

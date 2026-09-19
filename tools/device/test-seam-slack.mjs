@@ -64,13 +64,45 @@ if (!winners.length) fail('no shipped winner was found to audit');
 const profile = JSON.parse(readFileSync(
   join(HERE, '../../apps/device/profiles/hid-mediaprojection.json'), 'utf8'));
 
-for (const file of winners) {
-  const winner = validateWinner(JSON.parse(readFileSync(join(HERE, file), 'utf8')));
+// --- 2b. every REGISTERED strategy, not only the ones with a shipped winner --
+// Auditing `campaign-*-winner.json` alone audits whatever already won. Every
+// committed winner is minus-toys, so this gate had never evaluated a minus7 or
+// minus3 plan -- and minus7's maskraise gap stood 16.7 ms above the mask-off
+// animation for as long as the gate existed. A strategy is unshipped precisely
+// while its timing is least examined, which is when a floor check is worth
+// most. Each registered strategy is emitted here on a minimal winner so its
+// floors are audited whether or not anyone has shipped it.
+const probeWinners = Object.keys(STRATEGY_REGISTRY).map(strategy => ({
+  label: `registry:${strategy}`,
+  winner: {
+    schema: 'winner-v1', strategy,
+    knobs: strategy === 'minus7' ? {} : 'KNOBS0',
+    // Night 1 is the only night every registered emitter can render without a
+    // Custom Night dial vector or a reachable reactive branch.
+    nights: [strategy === 'minus3' ? 3 : 1], seeds: [1],
+    engineHash: `${strategy}-seam-probe-v1`, profile: 'hid-mediaprojection',
+    attackFreeEvidence: 'seam probe: night 1 minus7 replays detections=0 over seeds 1..3000',
+    gate: { status: 'PASS', claimLevel: 'MODEL_ONLY' },
+  },
+}));
+
+const audits = [
+  ...winners.map(file => ({ label: file, winner: JSON.parse(readFileSync(join(HERE, file), 'utf8')) })),
+  ...probeWinners,
+];
+
+for (const { label: file, winner: rawWinner } of audits) {
+  let winner;
+  try { winner = validateWinner(rawWinner); }
+  catch (error) { fail(`${file}: ${error.message}`); continue; }
   const emit = STRATEGY_REGISTRY[winner.strategy]?.emit;
   if (typeof emit !== 'function') { fail(`${file}: no emitter for ${winner.strategy}`); continue; }
-  const plans = winner.nights.map(night => ({
-    night, policy: winner.strategy, text: emit(winner, night).text,
-  }));
+  let plans;
+  try {
+    plans = winner.nights.map(night => ({
+      night, policy: winner.strategy, text: emit(winner, night).text,
+    }));
+  } catch (error) { fail(`${file}: ${error.message}`); continue; }
   let compiled;
   try { compiled = compileArtifactPlans(plans, parsePlan, profile); }
   catch (error) { fail(`${file}: ${error.message}`); continue; }

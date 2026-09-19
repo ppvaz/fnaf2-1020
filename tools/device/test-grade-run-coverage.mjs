@@ -26,6 +26,8 @@ const EXCLUDED = new Map([
   ['fact-register.mjs', 'a generated register of which producer answers each semantic fact and on what evidence; it reads source, not a run, and test-fact-register.mjs is the gate over it'],
   ['capabilities.mjs', 'a read-only capability query about the PHONE, not a grader of a run: it sends no input and reads no pixels, and it answers which instruments this handset can feed before one is proposed'],
   ['test-seam-slack.mjs', 'a gate, not an instrument: it audits compiled plans and the timing floors themselves, and is registered in npm run test:unit'],
+  ['test-schedule-economy.mjs', 'a gate, not an instrument: it derives a night prefix from aiUpdates and a box safe-stop from the drain table, then audits emitted plans against them. It reads source and the model, never a run; registered in npm run test:unit'],
+  ['strategy-night-matrix.mjs', 'a coverage report over the emitters, not a grader of a run: it asks which (strategy, night) cells the registered emitters can compile against the resolved profile and what the emitted plan scores in its own replay. It reads source and the model, never a recording, and it sends no input -- the nearest analogue here is capabilities.mjs, which asks the same shape of question about the phone'],
   ['night-run.sh', 'the attempt driver that CALLS grade-run.sh from its exit trap -- wiring it in would recurse; it produces the run this pipeline grades'],
   ['night5-modal-observer.mjs', 'passive on-device collector -- it records FRAME/READ rows during a run and sends no input; the artifacts it writes are graded by the steps above rather than by itself'],
   ['hid-intersection-probe.mjs', 'device probe generator -- emits an intersection stream to a phone rather than grading a night run'],

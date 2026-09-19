@@ -5,7 +5,7 @@
 
 import * as C from '@fnaf2-1020/core/mechanics';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
-import { FUSION_POLL_MS, MIN_CONTACT_MS, RAISE_MARGIN_MS } from './recipe.mjs';
+import { FUSION_POLL_MS, MASK_ANIM_ON_MS, MIN_CONTACT_MS, MONITOR_READY_WIND_MS, RAISE_MARGIN_MS } from './recipe.mjs';
 
 // [SOURCED] The engine animates the monitor and the mask, and drops input that
 // lands inside those windows: a camera select or wind press during the raise
@@ -14,6 +14,15 @@ import { FUSION_POLL_MS, MIN_CONTACT_MS, RAISE_MARGIN_MS } from './recipe.mjs';
 // enforced here rather than watched for on the phone.
 const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 const MASK_ANIM_OFF_MS = Math.round(C.MASK_ANIM_OFF * 1000 / C.FPS);
+// The mask-ON animation had no gate at all until 2026-09-19, only the mask-OFF
+// one below. The engine drops input during BOTH. minus7's clear cycle presses
+// the mask on inside its `read` and takes it off 133 ms later in the maskraise
+// -- inside this 200 ms window -- so the mask-off press was dropped, the mask
+// stayed up, and every later contact in the cycle landed on the mask instead of
+// the office. On the phone that graded maskOn->false MISSING on 48 of 55 cycles
+// and the raise on 54 of 55, with the rule reading both states hundreds of times
+// elsewhere in the same run (night1-minus7-n1-first-20260919T215533Z).
+
 const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
 // The native trace showed the mask button absent throughout the first 322 ms
 // after monitor-down, only faint at ~337 ms, and fully visible at ~382.5 ms.
@@ -46,7 +55,6 @@ const MONITOR_MASK_READY_MS =
 //                  the failing region without refusing anything proven. The
 //                  true readiness lies somewhere in (200, 434].
 const MONITOR_READY_CAMERA_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS) + RAISE_MARGIN_MS;
-const MONITOR_READY_WIND_MS = 434;
 
 // Contact length is only the actuator floor.  It is deliberately checked
 // separately from the state/animation gates below: a 33 ms contact can still
@@ -174,6 +182,7 @@ export function compileCycle(cycle, rows, initial = initialState(cycle), seams =
   let monitorTransitionAt = -Infinity;
   let monitorTransitionMs = 0;
   let maskOffAt = -Infinity;
+  let maskOnAt = -Infinity;
   const blocks = [];
   for (const [rowIndex, row] of rows.entries()) {
     const id = rowIndex + 1;
@@ -253,8 +262,14 @@ export function compileCycle(cycle, rows, initial = initialState(cycle), seams =
           targetMonitorUp: state.monitorUp, durationMs: row.duration }));
       } else if (control === V.mask) {
         if (state.monitorUp) throw new TypeError(`${cycle}: mask toggle requires monitor down`);
+        if (state.maskOn) {
+          seam('after-mask-on-animation', row, row.at - maskOnAt, MASK_ANIM_ON_MS);
+          if (row.at - maskOnAt < MASK_ANIM_ON_MS)
+            throw new TypeError(`${cycle}: mask toggle at +${row.at} ms lands inside the ` +
+              `${MASK_ANIM_ON_MS} ms mask-on animation from +${maskOnAt} ms, where the engine drops it`);
+        }
         state.maskOn = !state.maskOn;
-        if (!state.maskOn) maskOffAt = row.at;
+        if (!state.maskOn) maskOffAt = row.at; else maskOnAt = row.at;
         actions.push(action(cycle, row, id, { kind: 'press', control,
           requiresMonitorUp: false, targetMaskOn: state.maskOn, durationMs: row.duration }));
       } else {
@@ -280,6 +295,17 @@ export function compileCycle(cycle, rows, initial = initialState(cycle), seams =
         durationMs: row.duration }));
     } else if (row.kind === 'maskraise') {
       if (state.monitorUp) throw new TypeError(`${cycle}: maskraise starts with monitor up`);
+      // The compound's internal gap is deliberately NOT checked against
+      // MASK_ANIM_OFF_MS. That was tried on 2026-09-19 and was wrong: the
+      // reviewed gap is 180 ms, and 180 ms is a DEVICE measurement of this
+      // exact transition (actuator.mjs: a monitor press after a mask press,
+      // 0 of 17 lost at or above 180 ms). Refusing it would contradict a
+      // measurement with a model constant -- mistake-register item 10 in the
+      // other direction.
+      seam('after-mask-on-animation', row, row.at - maskOnAt, MASK_ANIM_ON_MS);
+      if (row.at - maskOnAt < MASK_ANIM_ON_MS)
+        throw new TypeError(`${cycle}: maskraise at +${row.at} ms takes the mask off inside the ` +
+          `${MASK_ANIM_ON_MS} ms mask-on animation from +${maskOnAt} ms, where the engine drops it`);
       state.maskOn = false; state.monitorUp = true;
       maskOffAt = row.at;
       monitorTransitionAt = row.at + row.gap;
@@ -302,6 +328,9 @@ export function compileCycle(cycle, rows, initial = initialState(cycle), seams =
     } else if (row.kind === 'read') {
       if (state.monitorUp) throw new TypeError(`${cycle}: vent read requires monitor down`);
       state.maskOn = true;
+      // "The read owns the prophylactic mask-on press" (recipe.mjs): it lands
+      // after the held vent window plus the released-input gap, not at row.at.
+      maskOnAt = row.at + row.duration + row.gap;
       actions.push(action(cycle, row, id, { kind: 'observe-left', control: V.leftVentLight,
         requiresMonitorUp: false, durationMs: row.duration, maskGapMs: row.gap,
         targetMaskOn: true }));

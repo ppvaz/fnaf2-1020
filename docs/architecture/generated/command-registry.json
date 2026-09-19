@@ -37,7 +37,7 @@
     },
     {
       "id": "test:unit",
-      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
+      "command": "node tools/architecture-test.js && node tools/validate-references.js && node tools/device/test-grade-run-coverage.mjs && node tools/device/test-seam-slack.mjs && node tools/device/test-schedule-economy.mjs && node tools/device/test-seedpin.mjs && node tools/test-evidence-campaign.mjs && node tools/device/test-night7-presets.mjs && node tools/device/test-fact-register.mjs && python3 tools/dump/test-instances.py && npm run test:chronicle",
       "lifecycle": "supported"
     },
     {
@@ -2003,6 +2003,18 @@
       "id": "tools/device/test-fact-register.mjs",
       "invocation": "tools/device/test-fact-register.mjs",
       "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/test-schedule-economy.mjs",
+      "invocation": "tools/device/test-schedule-economy.mjs",
+      "kind": "check",
+      "lifecycle": "supported"
+    },
+    {
+      "id": "tools/device/strategy-night-matrix.mjs",
+      "invocation": "tools/device/strategy-night-matrix.mjs [--runs 3000] [--structural] [--json]",
+      "kind": "report",
       "lifecycle": "supported"
     },
     {

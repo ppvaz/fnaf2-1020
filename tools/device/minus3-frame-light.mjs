@@ -39,6 +39,16 @@ export const WIN_KNOBS = Object.freeze({
   maskOnMs: 9217,
   windAtMs: 5800,
   windMs: 3200,
+  // Pinned 2026-09-19, and deliberately NOT the shipped default any more.
+  // These two inherited from KNOBS0, so when the default opening wind moved to
+  // 2083 ms (it sat at exactly raise+434, zero slack against the wind-ready
+  // floor) it silently rewrote the schedule that actually cleared Nights 3 and
+  // 4 on the phone -- the 774-edge hash below caught it. What the device ran is
+  // a record, not a target: it stays at 2050/1800 even though a plan emitted
+  // today would not be allowed to. This is exactly the separation this file's
+  // own point 2 asks for, now enforced by value instead of by hope.
+  openWindAtMs: 2050,
+  openWindMs: 1800,
 });
 
 /** The winning opening/clear rows, in the checked-in row vocabulary. */

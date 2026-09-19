@@ -1346,6 +1346,7 @@
         "./recipe.mjs",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/control",
+        "@fnaf2-1020/core/mechanics",
         "node:crypto",
         "node:fs",
         "node:path",
@@ -1655,6 +1656,16 @@
       ]
     },
     {
+      "file": "tools/device/strategy-night-matrix.mjs",
+      "imports": [
+        "./artifact-commands.mjs",
+        "./bundle.mjs",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/tap-stall-audit.mjs",
       "imports": [
         "@fnaf2-1020/adapters",
@@ -1923,6 +1934,17 @@
         "./recipe.mjs",
         "@fnaf2-1020/core/mechanics",
         "node:child_process",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
+      "file": "tools/device/test-schedule-economy.mjs",
+      "imports": [
+        "./bundle.mjs",
+        "./minus-toys-plan.mjs",
+        "./recipe.mjs",
         "node:fs",
         "node:path",
         "node:url"

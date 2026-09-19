@@ -1,0 +1,49 @@
+{
+ "schema": "campaign-victory-v1",
+ "verdict": "PARTIAL",
+ "claimLevel": "DEVICE_MEASURED",
+ "evidenceId": "first-minus7-and-minus3-device-execution-20260919",
+ "recordedAt": "2026-09-19",
+ "qualifiedBy": "Pedro (operator, observing)",
+ "claim": "First device execution of Minus 7 and of Minus 3 on the Moto g56. Until today every committed winner was minus-toys and the device lane had executed exactly one of the eight community strategies. Minus 7 reached 6 AM on Night 1 and Minus Toys on Night 2, advancing the story save from Night 1 to Night 3; Minus 3 was executed twice on Night 3, its canonical night, and died both times. All four runs were --machine-only: an explicit MODEL_ONLY machine-input experiment with claim promotion suppressed, because no qualification is bound to these winners.",
+ "device": {
+  "serial": "ZF525F5BH5",
+  "build": "com.scottgames.fnaf2:2.0.7+26"
+ },
+ "runs": [
+  {
+   "label": "minus7-night1",
+   "runDirectory": "artifacts/runs/night1-minus7-n1-first-20260919T215533Z",
+   "campaignLogSha256": "114690ff112422bd42f29bca4895fefc067101164662efa3691f48a0640da322",
+   "campaignExit": "campaign exit 0"
+  },
+  {
+   "label": "toys-night2",
+   "runDirectory": "artifacts/runs/night2-toys-n2-ladder-20260919T223654Z",
+   "campaignLogSha256": "20aeac943a3333b46c335e1a23ccd6878779607c8838fcf1b1d47b8c062d398a",
+   "campaignExit": "campaign exit 0"
+  },
+  {
+   "label": "minus3-night3-first",
+   "runDirectory": "artifacts/runs/night3-minus3-n3-first-20260919T224721Z",
+   "campaignLogSha256": "b0bd51262c071c8d593ae27f7136c0341c97e2241b2abbaabf39689d0fad2de7",
+   "campaignExit": "campaign exit 2"
+  },
+  {
+   "label": "minus3-night3-second",
+   "runDirectory": "artifacts/runs/night3-minus3-n3-second-20260919T225620Z",
+   "campaignLogSha256": "7e8c5eb7dde8cbd05fcb2ed032d1e96f3fbc088f1880258a42af9dbb114fe3dd",
+   "campaignExit": "campaign exit 2"
+  }
+ ],
+ "findings": [
+  "Minus 7's Night 1 6 AM is not evidence for the route. recipe.mjs's own idleUntilMs() records that Foxy, BB, Mangle, the Withereds and Golden Freddy never act on Night 1, and the plan idles to 2 AM for that reason. The run graded 119 of 326 presses MISSING with two SYSTEMATIC misses on the maskraise (maskOn->false on 48 of 55 cycles, monitorUp->true on 54 of 55), while the rules read both states hundreds of times elsewhere in the same run. It reached 6 AM because nothing on Night 1 can punish a blind pilot.",
+  "Cause of those misses: the engine drops input during the mask-ON animation (MASK_ANIM_ON, 200 ms) exactly as during mask-off, and artifact-commands.mjs gated only mask-off. minus7's read presses the mask on at +1007 ms and its maskraise took it off at +1140 ms, 133 ms inside that window.",
+  "Minus 3 died twice in two Night 3 runs at 199.5 s and 399.6 s, the second to Balloon Boy plus Foxy. The pre-declared death prediction for that winner is 2974/3000 (99.1%) with inside-office as its ONLY killer; the model never produces a Foxy or BB death on this route. Two deaths at p=0.0087 is about 1 in 13,000, so the residual is systematic, not variance.",
+  "Leading mechanism for the Minus 3 deaths, not yet proven: Minus 3 is the only strategy that holds the right vent light (hallvent 400, about 40 times a night). pan-right-light-calibration-20260908 measured that held contacts near {2200,400} pan the office and that the vent light buttons move with the view, while the profile taps a fixed {2050,615} and no executor models pan state. The displaced buttons are exactly the Foxy reset and the vent check. Pedro observed heavy office panning during the run."
+ ],
+ "unknown": {
+  "panOnsetMs": "UNKNOWN(not-measured): the 2026-09-08 probe used 800 ms holds, the plan uses 400 ms, and the only evidence that 400 ms suffices is an unaided observation of the running phone.",
+  "minus3DeviceCause": "UNKNOWN(not-isolated): the pan hypothesis is consistent with both deaths and with the killer the model cannot produce, but no run has yet measured pan displacement against a lost hall or vent contact."
+ }
+}

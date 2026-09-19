@@ -261,7 +261,14 @@ export function timedStartHeld({ plannedPhoneWallMs, seedPhoneWallMs }) {
 
 export async function createCampaignPorts(options = {}) {
   const { spec, bundle, profile, calibration, calibrationPath = null, qualification, serial, adb = 'adb',
-    machineOnly = false, allowSaveReset = false, armMode = 'blocking', captureRestarted = false,
+    // `armMode` is undefined for a plan that declares no #arm-verify.  It must
+    // NOT default to 'blocking' here: cli.js already maps `--arm-none` to
+    // undefined, and a default parameter turns that back into 'blocking',
+    // which campaign-bundle.js then refuses as "armMode requires an
+    // arm-verified plan".  Only the double-camera-glitch strategies (minus-toys,
+    // minus3) carry that header, so the default locked every glitchless
+    // strategy -- Minus 7 among them -- out of the device lane entirely.
+    machineOnly = false, allowSaveReset = false, armMode = undefined, captureRestarted = false,
     nightAnchorAimMs = null, nightAnchorMaxK = null, nightAnchorPeriodMs = 1000, nightAnchorStrict = false, nightAnchorAuthorizeOnLatch = false,
     teachOverlay = false } = options;
   if (typeof teachOverlay !== 'boolean') throw new TypeError('teachOverlay must be boolean');
@@ -282,7 +289,9 @@ export async function createCampaignPorts(options = {}) {
   // without its register bound would anchor at an unscored k.
   if (nightAnchorAimMs !== null && !(Number.isInteger(nightAnchorMaxK) && nightAnchorMaxK >= 0))
     throw new TypeError('nightAnchorAimMs requires nightAnchorMaxK, a non-negative integer');
-  if (!['blocking', 'observe-once'].includes(armMode))
+  // An arm-verified plan still has to name a mode; a glitchless plan must be
+  // able to say "no arm verification" rather than being forced to pick one.
+  if (armMode !== undefined && !['blocking', 'observe-once'].includes(armMode))
     throw new TypeError('armMode must be blocking or observe-once');
   if (profile?.actuator !== 'hid-multi' || profile?.visualSensor !== 'mediaprojection')
     throw new TypeError('modern campaign ports require a HID + MediaProjection profile');
