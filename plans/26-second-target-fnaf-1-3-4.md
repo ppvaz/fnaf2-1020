@@ -334,6 +334,78 @@ emitter is shown to respect that game's lockout in both directions.** The FNaF 2
 defect survived because only one direction was gated and the gate looked
 complete.
 
+### Every night frame scrolls, and by different amounts
+
+**Measured from the frame headers of all four CCNs, 2026-09-19.** The peer
+session's Minus 3 diagnosis — a held contact pans the office, the vent buttons
+move with the view, and the profile taps a fixed coordinate with no pan state
+modelled anywhere — is not specific to FNaF 2. Every night frame in the series
+is wider than its window:
+
+| Game | night frame | virtual | window | horizontal pan |
+|---|---|---|---|---|
+| FNaF 1 | `06-Main Room` | 1600x720 | **1280x720** | +320 px |
+| FNaF 2 | `04-Office` | 1600x768 | 1024x768 | +576 px |
+| FNaF 3 | `04-Office` | 2000x768 | 1024x768 | **+976 px** |
+| FNaF 4 | `04-level` | 1300x768 | 1024x768 | +276 px |
+
+Pan is horizontal only on every night frame; vertical scrolling appears just in
+minigames and cutscenes.
+
+Three consequences:
+
+- **It quantifies the FNaF 2 hazard.** 576 px of 1600 — 36% of the world width
+  — can slide under a fixed screen coordinate, which is more than enough to
+  move a vent button off a tap point.
+- **FNaF 3 is the worst case**, at 976 px of 2000. Its office controls sit at
+  x 1640-1940 in world space (the monitor map, extracted from the frame's
+  placed instances), so they are the objects *most* exposed to pan. A FNaF 3
+  control map that ignores pan state will be wrong much of the time.
+- **FNaF 1 does not share the others' window.** It is 1280x720 and 16:9, where
+  FNaF 2, 3 and 4 are all 1024x768 and 4:3. So FNaF 1 needs its own
+  virtual-to-screen mapping; the existing geometry calibration does not carry
+  over to it even on the same handset.
+
+**Therefore pan state is part of a control map by construction, not something
+to discover on hardware.** A control point is a world coordinate plus the view
+offset it assumes, or it is not a control point.
+
+#### And the view chases an object, per camera
+
+`CenterDisplayX` in each night frame centres the display on a **marker object
+selected by `viewing`** (the camera id), not on a player-dragged offset. FNaF 1
+follows `screen follow 1` on a camera and `control room follow` in the office;
+FNaF 2 follows `camera follow` on some cameras, `camera follow 2` at
+`viewing = 0`, and hard-zeroes on cams 1-4, 5 and 6; FNaF 3 follows `scroll` and
+`scroll 2`. So the office and every camera view share one wide frame, and a
+fixed screen coordinate maps to a **different world position per camera**. If a
+route needs pan state, that marker's x *is* the state variable.
+
+#### Which controls actually move: layer scroll coefficients
+
+Read from each night frame's Layers chunk as **16.16 fixed point** — a float
+read returns 0.000 for every layer of every game, which is a parse artifact and
+not a measurement. FNaF 2's Office:
+
+| layer | xCoef | holds |
+|---|---|---|
+| 0 | **1.00** | `lightLeftHitbox`, `lightRightHitbox`, `left/right light`, both `camera follow` markers |
+| 3 | **1.00** | every `hud*` object, and `monitorFrame` |
+| 4 | **0.00** | `flip mask button` |
+| 5, 6 | 0.00 | — |
+
+**The light hitboxes scroll 1:1 with the view; the mask button does not move at
+all.** That predicts the exact asymmetry the peer session is seeing on Night 3 —
+mask presses landing while light presses fail — without another device run. The
+`hud` prefix is a red herring: those objects are on layer 3, which also scrolls.
+
+Across the series: FNaF 1 has two pinned layers, FNaF 2 has three, and
+**FNaF 3 and FNaF 4 have none — every layer in both night frames is 1.00.** So
+for the two most attractive expansion targets, *no* control can be tapped at a
+fixed screen coordinate without knowing the view offset. A flat `controlMap` of
+screen coordinates, which is what `device-profile-v1` carries today, cannot
+express that; it needs world x plus layer.
+
 ### What a second game buys the seed machinery
 
 **Pedro's observation, 2026-09-19, measured the same day.** The expansion is not

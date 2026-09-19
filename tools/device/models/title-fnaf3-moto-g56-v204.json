@@ -1,0 +1,51 @@
+{
+  "schema": "title-model-v1",
+  "build": "com.scottgames.fnaf3 v2.0.4 versionCode 18",
+  "device": "Moto g56 5G, 2400x1080 landscape",
+  "captured": "2026-09-19",
+  "frames": 13,
+  "band": [
+    640,
+    76
+  ],
+  "bright_min": 150,
+  "present_min": 0.1,
+  "absent_max": 0.03,
+  "items": {
+    "newGame": [
+      480,
+      528
+    ],
+    "continue": [
+      480,
+      641
+    ]
+  },
+  "measurement_note": "13 input-free frames at 3 s intervals, t01 excluded as the pre-render black frame. Band fractions over those frames: newGame 0.2567-0.3241, continue (the LOAD GAME row) 0.2773-0.3197. Two absent controls -- a band below the menu at y 790 and one in the right half at x 1700 -- read 0.0000 on every frame, so absent is exactly zero here as it is on the FNaF 2 build, despite the heavy green static. The static never reaches brightness 150. present_min sits at 0.10 against a measured minimum present of 0.2567, so the floor stands a factor of 2.5 below the dimmest thing it must accept, and is not anchored to the value it protects.",
+  "row_geometry_note": "Row spans measured from an averaged brightness profile over the 13 frames: newGame 504-554, loadGame 616-666, OPTIONS 954-1004 (its two sub-bands are the top and bottom strokes of the block letters, not two items). The menu is left-aligned; text spans roughly x 200-800, so a 640-wide band centred at x 480 covers all three rows.",
+  "options_note": "OPTIONS is deliberately not an item. It serves as menu_gate below, matching the FNaF 2 model, which also keeps its Options row as a gate rather than a target. Nothing here is calibrated for tapping Options; a flow that wants it must add and measure its own target.",
+  "title_gate": {
+    "box": [
+      250,
+      85,
+      306,
+      398
+    ],
+    "min": 0.2,
+    "max_absent": 0.08,
+    "note": "the vertical FNAF3 logo at the left edge. Column extent measured at x 256-300 and row extent at y 92-392; the box is those bounds with a small margin. Reads 0.4629-0.5130 on every title frame and 0.0000 on the pre-render black frame."
+  },
+  "menu_gate": {
+    "box": [
+      160,
+      937,
+      800,
+      1013
+    ],
+    "min": 0.1,
+    "max_absent": 0.03,
+    "note": "the OPTIONS row. Reads 0.2158-0.2411 on every title frame and 0.0000 on the pre-render black frame."
+  },
+  "UNVALIDATED": "BOTH GATES ARE HALF-MEASURED AND THIS MODEL MUST NOT GATE A TAP YET. The present side is 13 frames; the absent side is only the pre-render black frame, which is a trivial negative. The FNaF 2 model earned its gates against the states that actually matter -- its title_gate was checked on the Options screen (0.007-0.012) and its menu_gate on the New Game confirmation dialog (0.0000) -- and its own note records why: without a valid menu_gate the dialog reads as a menu and the tap lands on Yes. Reaching those two states needs the handset AND sending taps, neither of which this capture did. Capture an Options screen and a New Game dialog, measure both boxes there, and replace this key with the numbers before anything is tapped on a FNaF 3 title read.",
+  "vocabulary_note": "FNaF 3 renders this entry as LOAD GAME, not Continue. The model names it `continue` because this project's MenuTarget vocabulary is SEMANTIC rather than label-based -- `continue` means resume the saved night, which is exactly what LOAD GAME does -- and title-observe.py rightly refuses any name outside that set, on the grounds that a model naming something else is a model for a different game build. That refusal is correct and was hit here on the first run. It is also concrete evidence for Plan 26's per-game vocabulary work: FNaF 3 has no sixthNight and no customNight, and FNaF 1's title carries an Unlocks entry with no MenuTarget at all. Until the vocabulary is per-game, a FNaF 1 model cannot be expressed here without the same kind of aliasing, and Unlocks has no honest alias."
+}
