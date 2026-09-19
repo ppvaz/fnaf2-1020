@@ -205,6 +205,14 @@ Fusion build 296, August 2025.
 - [`research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md`](research/FNAF-BOT-IMPLEMENTATION-COMPARISON.md)
   — source-level comparison with every substantive scope in this repository,
   including its simulator, trainer, Android sensing/actuation, and evidence gaps.
+- [`research/FNAF-SENSOR-ABLATION-RUNS.md`](research/FNAF-SENSOR-ABLATION-RUNS.md)
+  — public challenge runs read as ablation experiments: which observation
+  channels and controls are actually load-bearing in FNaF 1 and 3, checked
+  against our own event dumps rather than left at the public record.
+- [`research/FNAF4-AUDIO-INDEPENDENCE.md`](research/FNAF4-AUDIO-INDEPENDENCE.md)
+  — FNaF 4 opens by saying it relies on sound cues; this asks whether audio is
+  actually required, and finds an anti-cheat that forces the state a schedule
+  cannot hear.
 - [`research/ANDROID-BOT-LANDSCAPE.md`](research/ANDROID-BOT-LANDSCAPE.md) and
   [`research/ANDROID-INPUT-AND-OBSERVATION.md`](research/ANDROID-INPUT-AND-OBSERVATION.md)
   — the two integral survey reports, retained in full. **No number in either is

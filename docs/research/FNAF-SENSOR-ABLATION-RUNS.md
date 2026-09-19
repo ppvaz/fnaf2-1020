@@ -1,0 +1,166 @@
+# Ablation runs: which observations and controls are actually load-bearing
+
+*Research note: 2026-09-19. Public challenge runs, checked against our own
+source dumps. Nothing here was run on this project's handset.*
+
+Companion to [`FNAF4-AUDIO-INDEPENDENCE.md`](FNAF4-AUDIO-INDEPENDENCE.md),
+which covers the same author's FNaF 4 no-audio clear.
+
+## Why this matters here
+
+Every expansion target in [Plan 26](../../plans/26-second-target-fnaf-1-3-4.md)
+carries a device-layer cost proportional to **how many observation channels the
+route needs**. A route that must read a door light, a camera feed and an audio
+cue needs three calibrated detectors; a route that needs one needs one.
+
+These runs are natural ablation experiments: a competent player removes one
+designed channel and reports whether the game is still winnable. Each success
+is evidence that a channel is *not* load-bearing, and therefore that our
+control map and belief gate for that game can be smaller than its UI suggests.
+
+## The runs
+
+All by Chickeninja42, the same author as the FNaF 4 no-audio clear.
+
+| Run | Removed | Video | Date | Length |
+|---|---|---|---|---|
+| FNaF 1, no lights | the door-light observation | [link](https://www.youtube.com/watch?v=ewEFDl1jpfI) | 2023-03-05 | 27 min |
+| FNaF 3, no maintenance | *all* error recovery (audio, camera, ventilation) | [link](https://www.youtube.com/watch?v=iQjzXft6L0k) | 2023-04-09 | 28 min |
+| FNaF 3, no cameras | the camera system | [link](https://www.youtube.com/watch?v=W6qGaxY_p9s) | 2024-11-10 | 63 min |
+
+**All three succeed.** Together with the FNaF 4 result, every FNaF night game
+this project might target has been cleared with one of its designed channels
+removed.
+
+## FNaF 1 — the door light is not required
+
+`[C]` The lights are the only way to see an animatronic at your door: the two
+office-adjacent cameras have a blind spot. The no-lights run substitutes
+**continuous camera tracking** — knowing where everyone is at all times — and
+pays for it in power.
+
+### Verified against our dump
+
+`SOURCE` The power model checks out arithmetically, which is a strong
+independent confirmation of the reading in Plan 26. `power left` starts at 999
+and drains `usage meter` per second, where `usage = 1 + Σ(control room follow
+0..4)` (groups 313–315). A FNaF 1 night is 8:55 = 535 s over 6 hours, i.e.
+~89 s per in-game hour. So:
+
+| Controls active | `usage` | Units/hour | % of 999 | Author's figure |
+|---|---|---|---|---|
+| camera only | 2 | 178 | 17.8% | 18/hour |
+| camera + 1 door | 3 | 267 | 26.7% | 27/hour |
+| camera + 2 doors | 4 | 356 | 35.6% | 36/hour |
+
+The community's per-hour percentages fall directly out of the dumped constants.
+
+`SOURCE` The power-outage sequence is confirmed. **Group 406** — `Every 5000 ms`
++ `Random(5)+1 = 1` (a 20% roll) while `power down = 1` — matches the described
+"every five seconds, 20% chance" first stage exactly.
+
+`SOURCE` A door-camper really does drain power indefinitely: the door position
+is an ordinary position in the movement pipeline, so repeated failed rolls
+simply leave the animatronic there. The author reports a 3-minute camp
+(~36 consecutive failed rolls), which is consistent with the 4970/4980 ms roll
+cadence already extracted.
+
+### Claimed, not yet verified
+
+- `[C]` Foxy freezes while his camera is being viewed, and after the camera
+  closes has a random cooldown of **0.83–16.67 s** (which would be 50–1000
+  frames at 60 fps — a suspiciously clean `Random(950)+50` shape).
+  `UNKNOWN(not-located)`: no such constant was found in the office frame.
+- `[C]` At stage 4 Foxy attacks either on a West Hall camera check or after
+  25 s; a door-blocked attack costs 1, then 6, then 11 power.
+- `[C]` Bonnie can jump from the Supply Closet **directly** to the door,
+  skipping the corner; a blocked Bonnie always returns to the dining area,
+  while a blocked Chica may return to the hallway instead.
+
+These four would materially shape a FNaF 1 route and should be traced before
+any of them is encoded.
+
+## FNaF 3 — both the cameras and the whole repair panel are droppable
+
+`[C]` The no-maintenance run never opens the maintenance panel, so any audio,
+camera or ventilation error persists for the rest of the night. The no-cameras
+run drops the camera system entirely. Both clear the game.
+
+### The aggression term, explained and then corrected
+
+Plan 26 extracted Springtrap's rule from the dump but could not interpret one
+term:
+
+```
+move counter > ((10 - AI - aggresive?) + Random(15) - total turns)
+```
+
+`[C]` The author explains `aggresive?` as an "aggressive factor" that flips
+from 0 to 1 on a phantom jumpscare, a ventilation error, sitting inactive in
+the office for 10 s, or the clock passing 4 AM.
+
+`SOURCE` Our dump confirms all four **and adds two more**:
+
+| Group | Condition | Sets `aggresive?` |
+|---|---|---|
+| 391 | `ventilation text AV0 <= -10` (ventilation error) | 1 |
+| 662 | phantom jumpscare **and** `Random(5) < AI` | 1 |
+| 753 | `frozen = 1` | 1 |
+| 754 | `scroll AV15 > 0` | 1 |
+| 904 | `time of night >= 4` (4 AM) | 1 |
+| 909 | `ventilation text AV6 > 10` (office inactivity) | 1 |
+| **220** | **`Every 15000 ms`** | **0** |
+
+Two corrections follow, and both matter for a route:
+
+1. **The aggression flag decays.** Group 220 resets it to 0 on a 15 s timer.
+   The public description treats it as a latch. It is not one — it is a flag
+   that must be *continuously* re-triggered to stay set.
+2. **The phantom path is AI-gated.** A phantom jumpscare only raises aggression
+   when `Random(5) < AI`, so on low-AI nights phantoms often cost nothing.
+
+`SOURCE` Also note `Random(15)` in Clickteam yields **0–14**, not the 1–15 the
+video assumes. The dump is authoritative.
+
+### One error model, three systems
+
+`SOURCE` Audio, camera and ventilation are not three mechanics but one, three
+times over: each has a `* text` object whose AV0 decays, and each raises its
+error at the **same `<= -10` threshold** (groups ~2592–2619). Ventilation
+additionally drives `ventilation error 2` and the aggression flag.
+
+That is convenient for us: a single scalar-threshold detector generalises
+across all three systems rather than needing three bespoke rules.
+
+`[C]` Phantom effects map to specific errors — Mangle causes the *audio* error
+while Balloon Boy, Chica, Foxy and Freddy cause *ventilation* errors. Not yet
+traced.
+
+`[C]` A FNaF 3 night is 348 s. `[C]` Five vent paths (`vent 11`–`vent 15`)
+connect specific camera pairs; the objects exist in our dump but **the
+connection map has not been traced**, and a route needs it.
+
+## What this changes for Plan 26
+
+1. **The per-game sensing requirement is smaller than each game's UI implies.**
+   FNaF 1 without door lights, FNaF 3 without cameras *or* repairs, FNaF 4
+   without audio. No target needs its full designed observation set.
+2. **FNaF 1's cost moves from sensing to power.** Dropping the light
+   observation is free for us — we would rather read cameras anyway — but it
+   raises `usage` to 2 continuously. A FNaF 1 route is a power-budget problem,
+   which is a *scheduling* problem, and scheduling is this project's strength.
+3. **FNaF 3 gets cheaper again.** If the maintenance panel is droppable, the
+   control surface shrinks to audio lure, vent seal and camera flip — and the
+   aggression decay at 15 s gives a route an exploitable rhythm rather than a
+   one-way ratchet.
+4. **Ablation is a cheap experiment design we should borrow.** Removing one
+   channel and re-running is exactly how to find the minimal observation set
+   for a machine route, and it costs nothing but device time.
+
+## Provenance
+
+Transcripts were retrieved with `yt-dlp` auto-captions and read for claims
+only; nothing from them is reproduced here. Every `SOURCE` line was read out of
+our own event dumps (`~/fnaf-apks/fnaf1/events/`, `~/fnaf-apks/fnaf3/events/`,
+dumped 2026-09-19 at the handle constants recorded in Plan 26). Where the two
+disagree — the aggression latch, the `Random(15)` range — the dump wins.

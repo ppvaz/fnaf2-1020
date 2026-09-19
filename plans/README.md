@@ -182,3 +182,19 @@ Ownership and dependencies (2026-09-17):
     Custom Night vectors, a clean-room recompile verified against the phone by
     trace equivalence, a self-running experiment loop, machine-found routes a
     human can hold, and the method moved to a second Clickteam game.
+26. [26-second-target-fnaf-1-3-4.md](26-second-target-fnaf-1-3-4.md) —
+    expansion to the other three night games, all four now installed on the
+    campaign handset. Supersedes Plan 25's ordering for horizon 5: the CCN
+    headers are identical (runtime 770.0, build 296), the seed chunk is absent
+    in all four so the RNG model transfers, and the handle-scramble constant
+    was recovered for FNaF 3/4 (`K=29`, empirically, pending jadx). Names the
+    community strategy for each game, the prior-art gap (FNaF 3 and 4 have no
+    source-available autonomous player), and the decoupling cost
+    (`CONTROL_VOCABULARY`, 113 sites). Gated on the Night 7 custody debt.
+27. [27-pivot-and-rebrand.md](27-pivot-and-rebrand.md) — the rename to
+    `fnaf-solver` (repo) and `@sixam/*` (scope, 719 specifiers), split into
+    four mechanical commits plus one structural pivot. Establishes that
+    `com.scottgames.fnaf2` inside `docs/evidence/` is a *measurement* and must
+    be frozen, that the companion APK's application ID is device state rather
+    than branding and must not change, and that the rebrand should follow
+    custody recovery but precede any new-game code.

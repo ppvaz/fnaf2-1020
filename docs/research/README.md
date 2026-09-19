@@ -11,8 +11,14 @@ measurement of this phone.** Where a report's finding was applied to the
 repository, the topic page carries the applied version and this directory keeps
 the evidence and the method.
 
-All four were researched on 2026-08-26. The first two ask *"who else has played
-this game"*; the second two ask *"what does the platform allow anyone to do"*.
+The first four were researched on 2026-08-26. The first two ask *"who else has
+played this game"*; the next two ask *"what does the platform allow anyone to
+do"*. The last two (2026-09-19) both ask *"is a game's stated sensing
+requirement actually binding"*, and are the first reports here whose claims were
+checked against our own source dumps rather than left at the public record.
+They read public challenge runs as ablation experiments: each removes one
+designed observation channel, so each success bounds the minimal sensing set a
+machine route would actually need.
 
 | Report | Question it answers | Distilled into |
 |---|---|---|
@@ -20,6 +26,8 @@ this game"*; the second two ask *"what does the platform allow anyone to do"*.
 | [FNAF-BOT-IMPLEMENTATION-COMPARISON.md](FNAF-BOT-IMPLEMENTATION-COMPARISON.md) | How does this project compare to them, and where is it actually strongest? | — (stands alone) |
 | [ANDROID-BOT-LANDSCAPE.md](ANDROID-BOT-LANDSCAPE.md) | Has anyone else driven a real-time bot on a physical Android handset, and how? Is this architecture normal? | [`HID-MULTITOUCH.md`](../device/HID-MULTITOUCH.md) §"Prior art" |
 | [ANDROID-INPUT-AND-OBSERVATION.md](ANDROID-INPUT-AND-OBSERVATION.md) | What does the platform actually impose on touch injection, sequential input rate, and screen reads — and which of our numbers are physics vs. local artifacts? | [`HID-MULTITOUCH.md`](../device/HID-MULTITOUCH.md) §"Input injection and sequential budgets" + addendum; [`ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md) §"What an observation costs elsewhere" |
+| [FNAF4-AUDIO-INDEPENDENCE.md](FNAF4-AUDIO-INDEPENDENCE.md) *(2026-09-19)* | FNaF 4 says it relies on sound cues — is audio actually required, or can a schedule force the state it cannot hear? | [`plans/26-second-target-fnaf-1-3-4.md`](../../plans/26-second-target-fnaf-1-3-4.md) §"FNaF 4" |
+| [FNAF-SENSOR-ABLATION-RUNS.md](FNAF-SENSOR-ABLATION-RUNS.md) *(2026-09-19)* | Which observation channels and controls are actually load-bearing in FNaF 1 and 3 — and what does the minimal sensing set cost? | [`plans/26-second-target-fnaf-1-3-4.md`](../../plans/26-second-target-fnaf-1-3-4.md) §"FNaF 1", §"FNaF 3" |
 
 Read them together and the position is specific rather than flattering. The
 comparison finds **this repository has no recorded full-night stock-device clear
