@@ -287,6 +287,51 @@ With this the FNaF 3 movement model is closed: spawn, per-step rule, branch
 selector, full location graph, vent topology and danger ordering, lure effect,
 and the aggression term with its six triggers and 15 s decay.
 
+### FNaF 3 on the handset: first night, first actuation (2026-09-20)
+
+Horizon 5's first milestone — capability preflight, a title observer, and a
+graded night on the same handset — is **done for FNaF 3**. Frames and provenance
+are untracked under `captures/`.
+
+**Night 1 reached 6 AM with zero input.** One tap on LOAD GAME, gated on the
+validated title model (refuse unless `rc=0` and `continue` present), and nothing
+after it. The office held ~240 s, matching the dump-measured 40 s/hour x 6 for
+Night 1 *specifically*; no jumpscare or game-over frame appeared in 34 captures;
+a post-night minigame played, which in FNaF 3 follows a completed night. The
+decisive evidence is independent of any frame reading: **the title afterwards
+reads LOAD GAME 2.** The game banked the night itself.
+
+This milestone needed **no control map**, which is exactly why it was reachable
+while the control map is still blocked on schema. Night 1 has no Springtrap, no
+phantoms and no system errors, so it is the cheapest possible proof that the
+launch, gate, entry, observation and restore path works end to end on a second
+game.
+
+**First control actuation, and a correction.** One tap at screen (880,1020) —
+measured from the night's own office frames — opened the **maintenance panel**,
+sustained across three frames and verified visually. It is *not* the monitor
+flip, which is what the bottom-centre tab with a downward chevron and "TAP" was
+predicted to be. The monitor flip is a different control and remains unmeasured.
+
+The panel pays for the mistake: it lists exactly four reboot options — audio
+devices, camera system, ventilation, reboot all — which independently confirms
+the dump extraction where `rebooting` is set to 1/2/3/4 by four separate click
+handlers each gated on `rebooting = 0`. Source and screen agree without anyone
+having arranged it.
+
+Two things worth carrying:
+
+- **The title model gated two real actions and passed both.** That is the first
+  time it authorised rather than merely reported, which is what a gate is for.
+- **The office HUD renders the night number and the in-game hour** at the top
+  right, so a future 6 AM can be *read* rather than inferred from elapsed time.
+  Every claim above about Night 1's outcome would have been cheaper with it.
+
+`UNKNOWN(design-flaw)`: the capture loop force-stopped FNaF 3 *during* the
+post-night minigame. Had the game banked the night after that sequence rather
+than before, the run would have destroyed the evidence it was creating. Let the
+sequence finish next time.
+
 ### FNaF 4 — no cameras, audio-dominant, and the mobile port helps
 
 FNaF 4 has no camera system. Its control surface is named explicitly in the
