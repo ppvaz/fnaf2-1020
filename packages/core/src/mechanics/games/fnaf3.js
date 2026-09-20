@@ -219,7 +219,7 @@ export const VENTILATION = {
   // While in error, AV1 accumulates per frame [g462]; while out of it, AV1 is
   // held at 0 [g461]. So AV1 is "how long this system has been broken".
   dwell: { group: 462, perFrame: 1, clearedBy: 461 },
-  // First escalation: the hallucination window [g463], drained per frame [g464].
+  // First escalation: the hallucination band [g463], drained per frame [g464].
   hallucinationAt: (ai) => 1000 - ai * 100,
   hallucinationFrames: (ai) => ({ min: ai * 200, bound: 200 }),
   // Second escalation, and the one that reaches the attack chain [g473]. Note

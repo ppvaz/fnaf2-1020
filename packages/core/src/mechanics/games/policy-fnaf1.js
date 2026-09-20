@@ -238,7 +238,12 @@ export const POLICIES = {
  *
  *   for the first **53 cycles -- 263 s of a 535 s night** -- the two door
  *   instants are closer together than one pan round trip, inside a 333 ms
- *   window.
+ *   band.
+ *
+ * (That word is "band" and not the obvious one because `architecture-test.js`
+ * forbids the DOM globals by name anywhere in core, comments included, and it
+ * is right to: a reader grepping for who touches the DOM should not have to
+ * sort prose from code.)
  *
  * For half of every night a single actuator cannot serve both doors. The
  * 65,536/65,536 below is a true statement about the model and a false one
