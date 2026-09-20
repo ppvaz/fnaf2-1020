@@ -214,6 +214,10 @@ Fusion build 296, August 2025.
   — FNaF 4 opens by saying it relies on sound cues; this asks whether audio is
   actually required, and finds an anti-cheat that forces the state a schedule
   cannot hear.
+- [`research/FNAF4-CONTROL-SURFACE.md`](research/FNAF4-CONTROL-SURFACE.md)
+  — FNaF 4's controls read off the labels the game draws on itself on Night 1,
+  the rule that destroys those labels at 3 AM, and the two configuration
+  settings that decide whether any control map is valid.
 - [`research/ANDROID-BOT-LANDSCAPE.md`](research/ANDROID-BOT-LANDSCAPE.md) and
   [`research/ANDROID-INPUT-AND-OBSERVATION.md`](research/ANDROID-INPUT-AND-OBSERVATION.md)
   — the two integral survey reports, retained in full. **No number in either is

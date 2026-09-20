@@ -79,6 +79,29 @@ export const FNAF3_CONTROL_VOCABULARY = Object.freeze({
   rebootAll: 'rebootAll',
 });
 
+/**
+ * FNaF 4's semantic control roles, measured 2026-09-20 on the handset from the
+ * labels the game itself draws on Night 1 (`03-04-level` groups 722-729).
+ *
+ * Two facts are encoded in the names rather than in a control map. The three
+ * `run*` roles are reached by a DOUBLE contact, not a single one; and
+ * `flashlight` and `closeDoor` are HOLDS with no latched state -- the door is
+ * shut only while contact persists. A schedule for FNaF 4 therefore carries
+ * contact durations where a FNaF 1/2 schedule carries toggles.
+ *
+ * FNaF 4 has no cameras, so it registers no `cameraRange`. That absence is the
+ * point: the field was FNaF 2's, generalised for FNaF 3, and a third game shows
+ * it is not universal.
+ */
+export const FNAF4_CONTROL_VOCABULARY = Object.freeze({
+  runLeftDoor: 'runLeftDoor',
+  runRightDoor: 'runRightDoor',
+  runCloset: 'runCloset',
+  goBack: 'goBack',
+  flashlight: 'flashlight',
+  closeDoor: 'closeDoor',
+});
+
 export const GAME_CONTROLS = Object.freeze({
   'com.scottgames.fnaf2': Object.freeze({
     controls: DEVICE_CONTROL_NAMES,
@@ -90,6 +113,12 @@ export const GAME_CONTROLS = Object.freeze({
     /** 1-10 are cameras and 11-15 are vents, in one measured numbering. */
     cameraRange: Object.freeze([1, 15]),
   }),
+  'com.scottgames.fnaf4': Object.freeze({
+    controls: Object.freeze(Object.values(FNAF4_CONTROL_VOCABULARY)),
+    /** No cameras exist in FNaF 4.  Null rather than absent, so the field is
+     *  present on every member of the union and a reader must handle it. */
+    cameraRange: null,
+  }),
 });
 
 /** Every control name any registered game accepts. */
@@ -97,6 +126,11 @@ export const ALL_GAME_CONTROL_NAMES = Object.freeze([
   ...new Set(Object.values(GAME_CONTROLS).flatMap(game => game.controls)),
 ]);
 
-/** The widest camera index any registered game addresses. */
+/**
+ * The widest camera index any registered game addresses.  Games without
+ * cameras register no range and are skipped rather than counted as zero.
+ */
 export const MAX_GAME_CAMERA_INDEX = Math.max(
-  ...Object.values(GAME_CONTROLS).map(game => game.cameraRange[1]));
+  ...Object.values(GAME_CONTROLS)
+    .filter(game => game.cameraRange)
+    .map(game => game.cameraRange[1]));

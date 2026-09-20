@@ -740,6 +740,384 @@ in one mechanical commit, to a neutral scope.
    FNaF 1 or FNaF 3 stalls on hardware, FNaF 4 is a legitimate substitute
    rather than a fallback.
 
+### The FNaF 3 vent seal, actuated — and it is a timed, cancellable commit
+
+**Measured on the handset 2026-09-20**, closing the three items the previous
+commit left open.
+
+**Camera selection** is a single 130 ms held press on a CAM label in the vent
+map, and it is self-reporting: the label turns from grey (102,102,102) to green
+(153,173,61). **Sealing** is a second press on the same target. The bar beside
+the selected vent goes from green (66,106,82) to red (112,65,80). So the map is
+a **two-stage button** — select, then commit — not a double-tap gesture.
+
+This corrects, by extension, the claim above that `going to seal` "has no
+decrement anywhere". That is true of `going to seal` itself, and it made the
+seal look instantaneous. The decrementing counter is a *different* one:
+
+- Group 572 arms the seal and sets `seal vent button` AV19 to
+  **`50 + Random(50)`**.
+- Group 582 decrements AV19 by `1 * GlobalValue[0]` each tick.
+- Group 583 commits only at AV19 = 0, copying `going to seal` into
+  `what vent is closed`.
+- Group 578/586 show and hide a `sealing progress` object across exactly that
+  window, and group 583's neighbour sets its animation speed to
+  `2 + Random(10)`.
+
+So the seal takes **50-100 frames (~0.83-1.67 s at 60 Hz)**, it is visible on
+screen throughout, and the operator independently reported seeing "sealing"
+frames before the bar changed — an observation that matches the window and was
+made without reference to the source.
+
+**It cancels.** Group 584 (vent-map toggle off) and group 585 (`viewing <= 1`,
+monitor down) each zero *both* `going to seal` and AV19. A route must hold the
+vent map open for the whole charge; a press followed by an early flip is not a
+slow seal, it is no seal. And `what vent is closed` is a **single counter**, so
+**only one vent is sealed at a time** and a second seal replaces the first —
+which every public account flattens into an accumulating defence.
+
+This is the accumulate-vs-set question from the FNaF 2 mask defect, asked of a
+different mechanic and answered the other way: the seal **sets**, so it cannot
+be short by a tick, but it **can be interrupted**, which is a failure mode the
+mask never had.
+
+### Reboot timings, and FNaF 3 as an RNG instrument
+
+`cursor` AV1 is the reboot progress counter, zeroed when `rebooting = 0`.
+Group 425 (`rebooting > 0 AND < 4`, `Every 1000 ms`) adds `1 + Random(2)`;
+group 426 (`rebooting = 4`, the reboot-all case, `Every 2000 ms`) adds the same.
+All complete at `cursor AV1 >= 10`. Therefore:
+
+| reboot | ticks | duration | mean |
+|---|---|---|---|
+| single system (audio, camera, ventilation) | 5-10 x 1000 ms | **5-10 s** | ~6.7 s |
+| reboot all | 5-10 x 2000 ms | **10-20 s** | ~13.3 s |
+
+Durations are **stochastic, not fixed** — a schedule that budgets a constant
+reboot time is wrong for half the draws.
+
+More useful than the timing: FNaF 3's draws are **accountable**, which is what
+makes it a better seed laboratory than FNaF 2 rather than merely a noisier one.
+
+| draw | when | observable | player-triggered |
+|---|---|---|---|
+| `Random(5)+1` spawn | once, frame start | yes — which camera | no |
+| `Random(15)` move test | every 1000 ms, unconditional | indirectly | no |
+| `Random(3)` action | on each move | yes — where he went | no |
+| `1 + Random(2)` reboot tick | per tick while rebooting | yes — the duration | **yes** |
+| `50 + Random(50)` seal charge | per seal | yes — the charge length | **yes** |
+| `2 + Random(10)` sealing anim | per seal | yes — the animation rate | **yes** |
+| `Random(100)` lure delay | per lure | indirectly | **yes** |
+| `Random(5) < AI` phantom | per phantom scare | partly | no |
+
+Two properties follow. First, the reboot and the seal are **pollable oracles**:
+the player chooses when to draw, and the result is legible on screen. A seal
+alone exposes a value in [50,100] plus one in [2,12]. Second — and this is the
+harder-won property — **stream position is knowable**. Each second consumes one
+move-test draw unconditionally, plus one per active reboot tick, plus one
+`Random(3)` if the attacker moved; and whether he moved is visible on the camera
+map. That is exactly what fails in FNaF 2, where skipped Foxy draws scramble
+seed predictions (`handoff_20260915_foxy_chain`).
+
+UNKNOWN(not-measured): whether a reboot's observed duration actually narrows the
+seed set in practice. The arithmetic above says it should; no census has been
+run. That is the next cheap experiment, and it needs no device time.
+
+### FNaF 1 on the handset, and the honk in all four games
+
+**Measured 2026-09-20.** FNaF 1 v2.0.7 (`com.scottgames.fivenightsatfreddys`),
+same handset. Night 1 entered, abandoned deliberately without a death.
+
+**The title is laid out unlike the other three.** The menu is left-aligned and
+`Options` / `Unlocks` are right-aligned, where FNaF 2/3/4 centre everything.
+`Continue` carries a *"Night 1"* subtitle rather than a trailing digit, so a
+save-slot reader written against the FNaF 3 model will not transfer.
+
+| item | screen centre |
+|---|---|
+| New Game | (519, 606) |
+| Continue | (520, 725) |
+| Options | (2113, 852) |
+| Unlocks | (2114, 965) |
+
+`Unlocks` remains the vocabulary problem already flagged in the FNaF 3 title
+model: it is a real menu target with **no honest alias** in this project's
+semantic `MenuTarget` set, unlike LOAD GAME which maps cleanly to `continue`.
+
+**Options carries a different subset again.** Display Mode (Full), Perspective
+Effect (On), Vibrations (On), and the three subtitle settings — but **no
+Controller Size and no Show Tips**. Across the three games now read on device,
+only **Display Mode** is universal. A "render settings" preflight cannot assume
+a fixed list.
+
+#### The scale was wrong, and a null pan result is why
+
+FNaF 1's window is **1280x720**, not the 1024x768 the other three use. The first
+reading assumed the 20:9 screen would reveal the full 1600 px frame at 1080/720
+= 1.5x, implying no pan at all — and a 2500 ms hold at the **left** edge moved
+the view **0 px**, which appeared to confirm it.
+
+It confirmed nothing. The view was already at the left limit, so the null result
+measured saturation, not absence. A hold at the **right** edge then moved the
+view **601 px**, and 320 design px x (2400/1280) = **600**. So:
+
+```
+screen_x = (design_x - pan) * 1.875      pan in design px, range 0..320
+screen_y = design_y * 1.875 - (crop)     width is filled, height is cropped
+```
+
+Display Mode FULL **fills the width and crops the height** here (720 x 1.875 =
+1350 against 1080), which is the opposite of the assumed letterbox. This is
+mistake register #12 in a new costume — an absent observation became evidence
+before the detector had ever read the positive — and the operator caught it
+before it was written down.
+
+**Every game starts the night panned fully left.** Stated by the operator and
+consistent with every measurement here: FNaF 1's left hold moved nothing,
+FNaF 3's single right hold saturates at 968 px, and FNaF 4's room view opens
+facing the left door. It makes pan state at t=0 a known constant rather than
+something to observe, which is worth more to a route than any single coordinate
+below.
+
+#### Office controls, and a constraint the flat schema cannot express
+
+| control | screen centre | pan required | scrolls? |
+|---|---|---|---|
+| left DOOR | (106, 495) | 0 | yes |
+| left LIGHT | (106, 687) | 0 | yes |
+| right DOOR | (2286, 520) | +600 (full right) | yes |
+| right LIGHT | (2286, 707) | +600 (full right) | yes |
+| camera tab | (1040, 1002) | any | **no — pinned** |
+
+The left door sits at world x 106 and the right door at world x 2885
+(2285 + 600). They are **2779 px apart on a 2400 px screen, so the two doors can
+never be visible at the same time.** Every door press in FNaF 1 is therefore
+*pan, then press* — a two-step actuation with a hold of its own, on a game whose
+public strategies describe door control as instantaneous. A `controlMap` of flat
+screen coordinates cannot express this at all; it is the same hole
+[WHY-FACTS-HIDE.md](../docs/operations/WHY-FACTS-HIDE.md) pattern 1 names.
+
+**The control surface is mixed, and the split is a port convention.** The
+camera tab's bar occupies x 475-1605 **identically at both pan extremes**, while
+every wall button moves with the view. That is the same division FNaF 2 shows --
+scrolling light hitboxes, pinned mask button -- so it is not a per-game quirk:
+diegetic wall controls are world-anchored, HUD overlays are screen-pinned. A
+profile that stores one flat coordinate per control is right for exactly half of
+them.
+
+#### The pan floor: 270 ms, and how the first two answers were wrong
+
+A full pan was being driven with a **2500 ms** hold, ported from the FNaF 3 work
+without re-derivation -- mistake register #4. Measuring it:
+
+| hold | outcome |
+|---|---|
+| 150 ms | ~390 px of 601 |
+| 215-235 ms | 507-586 px, never saturating |
+| 240 ms | **saturated 2 of 5** |
+| 250 ms | 4 of 5 |
+| 260 ms | 4 of 5 |
+| **270 ms** | **5 of 5** |
+| 280 / 300 / 340 / 400 ms | 5 of 5 |
+
+The first answer was "240 ms", taken from a single run that happened to reach
+601. Repeating it five times saturated twice. That is mistake register #7 in its
+purest form -- a floor anchored to one measurement rather than to a measurement
+plus a margin -- and it would have shipped a pan that silently fails about
+three times in five.
+
+**The floor is 270 ms** (5/5, with 260 ms at 4/5 immediately beneath it). With
+the project's 33 ms seam-slack requirement a route should hold **~310 ms**, which
+is still an 8x saving on the 2500 ms it replaces.
+
+Run-to-run scatter below the floor is about +/-30 px, consistent with 60 Hz
+quantisation over the ~14 frames a full pan takes, plus jitter in `input swipe`
+duration. Any single-shot timing measurement on this device needs repeats.
+
+#### The FNaF 3 pan floor: 1025 ms, and why it took four attempts
+
+The first attempt produced six duration sweeps of pure noise. The night had
+ended and every frame was the post-night **minigame**, not the office; nothing
+had been looked at. Discarded entirely. Three instrument faults had to be fixed
+before a number appeared, and each is reusable:
+
+1. **Look at a frame before trusting numbers computed from it**, and put the
+   state guard *inside* the measurement loop rather than after it.
+2. **A dim frame is a retry, not an abort.** Night 2+ dims the office
+   periodically; the first guard treated that as "night over" and quit on the
+   opening frame. Distinguish transient (retry) from persistent (stop).
+3. **Do the thinking before the clock starts.** FNaF 3's Night 1 runs ~4 minutes
+   (40 s/hour against 60 s on later nights). Composing commands during the night
+   burned three nights on its own. The working method is a pre-written script
+   that enters the night itself and measures without pause.
+
+Cross-correlation also had to be abandoned: the office's **tiled green walls**
+alias, and it reported 1144 px of travel against a known range of 968. The
+instrument that works is exact frame equality against a saturated reference,
+with the reference proven stable (`|SAT-SAT2| = 0.00`) and the left reset proven
+complete (`reset drift 0.00`).
+
+| hold | saturated |
+|---|---|
+| 800 ms | 0 of 1 (\|f-SAT\| 16.3) |
+| 975 ms | **0 of 5** |
+| 1000 ms | **2 of 5** |
+| **1025 ms** | **5 of 5** |
+| 1050 / 1100 / 1150 / 1200 ms | 5 of 5 |
+| 1300 - 2500 ms | 5 of 5 |
+
+**The floor is 1025 ms**, bracketed by 1000 ms at 2/5 and 975 ms at 0/5 -- a
+clean transition inside 50 ms. With the 33 ms seam-slack requirement a route
+should hold **~1060 ms**, against the 2500 ms previously used.
+
+Note that 1000 ms saturating 2 of 5 is the **same failure mode** as FNaF 1's
+240 ms saturating 2 of 5. Both were single lucky samples that would have shipped
+as floors. Any timing floor on this device needs five repeats on *both* sides of
+the boundary, not one measurement at the value that worked.
+
+#### Pan rate is a per-game constant, and port reuse is invalid
+
+| game | travel | floor | rate |
+|---|---|---|---|
+| FNaF 1 | 601 px | 270 ms | **2.23 px/ms** |
+| FNaF 3 | 968 px | 1025 ms | **0.94 px/ms** |
+
+FNaF 3 is not merely panning further -- it pans **2.4x slower per pixel**, and
+3.8x longer in wall time. The 2500 ms hold in use was a single number applied to
+both games. It is wasteful on FNaF 1 by 9x and on FNaF 3 by 2.4x, and had either
+game been faster instead it would have been silently short. This is mistake
+register #4 with two data points instead of an argument: **a deadline measured
+on one game is not a deadline on another.**
+
+#### The nose honk exists in all four games
+
+Worth mapping because it is the one control that is pure output — it changes no
+game state, so it is free to actuate and it is the cheapest possible proof that
+an emitter reached the right pixel.
+
+| game | object | placed position | layer |
+|---|---|---|---|
+| FNaF 1 | `honk.Active` | two instances: (0,0) and (60, 288) | 0 / 3, moved to 2 |
+| FNaF 2 | `honk` | (153, 167), runtime `SetPosition (142, 203)` | 8 |
+| FNaF 3 | `nose honk` | (939, 476) | 1 |
+| FNaF 4 | `honk` | **(-52, 242)** | 5 |
+
+FNaF 4's negative x is independent corroboration that its FULL display mode
+reveals a margin outside the 1024-wide design area — a second route to the same
+conclusion the control positions gave.
+
+**FNaF 1's is verified on the phone**: it is Freddy's nose on the CELEBRATE!
+poster, at screen **(1267, 361)** at pan 0, and three 160 ms taps produced three
+audible honks. The dump agrees on the shape — group 483 fires on a click with
+`viewing = 0` (monitor down) and does nothing but `PlayChannelSample`, so there
+is no game consequence and no cooldown in the event path.
+
+Note that the placed instance at design (60, 288) does **not** map to the
+measured nose position under the 1.875 scale, and FNaF 1 declares two `honk`
+instances. Whichever is live is repositioned or differently scrolled at runtime.
+The measured coordinate is the trustworthy one; the placed pair is not yet
+resolved. UNKNOWN(not-measured): the honk position on device for FNaF 2, 3 and
+4 — only FNaF 1's has been pressed.
+
+### The pan question has three different shapes, not one
+
+Asked across all four games, "what is the pan floor?" turns out to be the wrong
+question for half of them. Measured 2026-09-20:
+
+| game | pan is... | the measurement that matters |
+|---|---|---|
+| FNaF 1 | a deliberate edge hold, 601 px | **minimum** hold to complete it -- 270 ms |
+| FNaF 3 | a deliberate edge hold, 968 px | **minimum** hold to complete it -- 1025 ms |
+| FNaF 2 | an **unwanted side effect** of holding a control | **maximum** hold that does NOT pan |
+| FNaF 4 | absent -- discrete rotation only | hold durations, and the double-tap gap |
+
+FNaF 2 is the inverted case and the highest-stakes one, because it is the only
+game with a live route. Holding `rightVentLight` pans the office and carries the
+hall and vent buttons with it, while the profile taps fixed coordinates with no
+pan state modelled anywhere. A route there does not *want* to pan; the pan is
+damage. So the useful number is not "how long to pan" but **"how long can the
+vent light be held before the view starts to move"** -- a safety ceiling, not a
+floor, and it bounds every hold in the FNaF 2 plan rather than enabling one.
+
+That measurement is not taken. It belongs to whoever owns the FNaF 2 route and
+should be coordinated rather than duplicated, since both sessions share this
+handset.
+
+FNaF 4 needs no pan number at all: its frame (1300 design px) is narrower than
+the window that Display Mode FULL reveals (~1706 design px), so nothing can be
+off-screen. Its facings are also **pixel-exact on return**, which means facing
+state is verifiable by frame equality with no feature detection.
+
+## What actually blocks actuation on a second game
+
+**Written 2026-09-20.** By this point the control surfaces of FNaF 1, 3 and 4
+are measured on the handset. None of them can be actuated, and the reason is
+not missing mechanics knowledge. It is that the device stack is FNaF 2-shaped
+in three specific ways. Each was previously recorded only as a scattered
+observation; this section states them as blockers so they can be closed.
+
+### Blocker 1 — the profile cannot say *where* a control lives
+
+`device-profile-v1` carries a flat `controlMap` of screen coordinates. Every
+game measured has **two kinds of control** and the schema cannot distinguish
+them:
+
+| kind | behaviour | examples |
+|---|---|---|
+| world-anchored | moves with the pan | FNaF 1 door/light buttons, FNaF 2 light hitboxes, FNaF 3 office controls |
+| screen-pinned | fixed regardless of pan | FNaF 1 camera tab (x 475-1605 at both extremes), FNaF 2 mask button |
+
+A single coordinate is correct for the pinned half and silently wrong for the
+rest. FNaF 1 makes the consequence unavoidable rather than subtle: its two door
+buttons sit 2779 px apart on a 2400 px screen, so **they can never both be on
+screen**, and every door press is *pan, then press*.
+
+Two things must change together: the profile needs an anchor kind and a view
+offset per control, and **the evidence record needs the pan state at press
+time**. Without the latter, the press coordinates in every historical bundle
+are uninterpretable after the fact -- not wrong, unreadable.
+
+### Blocker 2 — the schedule cannot express a hold
+
+The plan format carries toggles, because FNaF 2's controls are toggles. They
+are not elsewhere:
+
+- **FNaF 4's doors and flashlight are dead-man holds** with no latched state.
+  There is no "door closed" to schedule, only a contact duration. Source agrees:
+  group 342 pushes an attacker back on a **3000 ms** hold.
+- **FNaF 3's vent seal needs a *sustained state*, not a press.** Arming it
+  starts a `50 + Random(50)` frame charge, and groups 584/585 cancel it if the
+  vent map closes or the monitor drops. A plan must express "hold this view
+  until committed", which no current primitive does.
+- **Panning is itself a timed hold**, now measured for FNaF 1 at a **270 ms**
+  floor (5/5, with 260 ms at 4/5 beneath it) against the 2500 ms that was being
+  used. Every pan is a scheduled contact with its own duration.
+
+### Blocker 3 — the contract vocabulary was FNaF 2's (CLOSED 2026-09-20)
+
+`validateControl` accepted seven control names and `cam:0-12`, both FNaF 2
+facts, and refused `cam:13` with a message about coordinates and transport that
+named the wrong cause entirely. Now data-driven via a per-game registry in
+`packages/core/src/control/vocabulary.js`, with FNaF 3 and FNaF 4 registered.
+FNaF 4 proved the generalisation was still too narrow: it has **no cameras at
+all**, so `cameraRange` is not universal and is now explicitly `null`.
+
+### Order of attack, and why
+
+1. **FNaF 1 as the port vehicle.** Not the interesting target -- the cheapest
+   complete loop. Four controls plus a camera tab, two pan positions that
+   matter, a measured pan floor, and a fully deterministic power model in the
+   dump. It is the smallest thing that *forces* blocker 1 to be closed, and
+   FNaF 3 and 4 then inherit the fix.
+2. **FNaF 3 as the real target.** Most groundwork done: control surface reached,
+   title model validated against both negatives. No public precedent.
+3. **FNaF 4 last.** Best-understood mechanics, but it needs blocker 2 closed
+   first, and its HUD layout depends on globals that nothing in the dump sets.
+
+The first milestone for each is unchanged and is **not** a win: one graded
+death, under a resolved hashed profile, with the controls actually actuated.
+Nothing between here and there requires new mechanics knowledge.
+
 ## First milestones and what would refute them
 
 | Step | First physical milestone | Refuted by |

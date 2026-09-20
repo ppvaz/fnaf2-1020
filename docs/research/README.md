@@ -28,6 +28,7 @@ machine route would actually need.
 | [ANDROID-INPUT-AND-OBSERVATION.md](ANDROID-INPUT-AND-OBSERVATION.md) | What does the platform actually impose on touch injection, sequential input rate, and screen reads — and which of our numbers are physics vs. local artifacts? | [`HID-MULTITOUCH.md`](../device/HID-MULTITOUCH.md) §"Input injection and sequential budgets" + addendum; [`ON-DEVICE-VALIDATION.md`](../device/ON-DEVICE-VALIDATION.md) §"What an observation costs elsewhere" |
 | [FNAF4-AUDIO-INDEPENDENCE.md](FNAF4-AUDIO-INDEPENDENCE.md) *(2026-09-19)* | FNaF 4 says it relies on sound cues — is audio actually required, or can a schedule force the state it cannot hear? | [`plans/26-second-target-fnaf-1-3-4.md`](../../plans/26-second-target-fnaf-1-3-4.md) §"FNaF 4" |
 | [FNAF-SENSOR-ABLATION-RUNS.md](FNAF-SENSOR-ABLATION-RUNS.md) *(2026-09-19)* | Which observation channels and controls are actually load-bearing in FNaF 1 and 3 — and what does the minimal sensing set cost? | [`plans/26-second-target-fnaf-1-3-4.md`](../../plans/26-second-target-fnaf-1-3-4.md) §"FNaF 1", §"FNaF 3" |
+| [FNAF4-CONTROL-SURFACE.md](FNAF4-CONTROL-SURFACE.md) *(2026-09-20)* | What are FNaF 4's controls on a real handset, and what makes a control map valid or void? | [`plans/26-second-target-fnaf-1-3-4.md`](../../plans/26-second-target-fnaf-1-3-4.md) §"FNaF 4" |
 
 Read them together and the position is specific rather than flattering. The
 comparison finds **this repository has no recorded full-night stock-device clear
