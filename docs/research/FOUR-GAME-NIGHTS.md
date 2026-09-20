@@ -267,12 +267,21 @@ Every figure is a **model** result at the project's 3000-seed floor. Controls
 are reported beside each, because a sweep with no failing control cannot tell
 a working route from a dead code path.
 
-### FNaF 3 — 3000/3000 on all six nights, community line
+### FNaF 3 — 65,536/65,536 on all six nights, community line
+
+Run **exhaustively**: 65,536 seeds is every night the 16-bit RNG can deal, so
+this is the population, not a sample, and there is no held-out block to worry
+about.
 
 | Night | `community-line` | night length |
 |---|---|---|
-| 1 | **3000/3000** | 240 s |
-| 2–6 | **3000/3000** each | 360 s |
+| 1 | **65,536/65,536** | 240 s |
+| 2–6 | **65,536/65,536** each | 360 s |
+
+It is also the only one of the four where a **published community strategy**
+takes every seed. FNaF 1's clean sweep belongs to `roll-grid`, which is not a
+community line and not actuatable; its published loop stops at 99.950% on
+Night 5.
 
 The night lengths are the clock groups' own (6 x 40 s and 6 x 60 s) and the
 240 s matches what the handset measured on 2026-09-20.
