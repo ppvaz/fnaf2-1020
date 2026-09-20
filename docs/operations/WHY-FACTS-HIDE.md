@@ -167,6 +167,81 @@ into FNaF 2, where the pan finding explained a live Night 3 failure.
 now testable against three other builds, and disagreement is as informative as
 agreement.
 
+### 8. The query encodes a guess about naming
+
+Searching FNaF 2's office for its night clock with the patterns `time of night`,
+`hour`, `night time` and `clock` returned **nothing**, which nearly became the
+finding "FNaF 2 has no wall-clock hour timer, unlike FNaF 3 and 4". The object
+is called **`time of the night`**. One word — "the" — stood between a correct
+result and a confident wrong one.
+
+A grep is not a neutral instrument. It encodes a hypothesis about what the thing
+is called, and a miss looks exactly like an absence. This is mistake register
+#12 wearing different clothes: an absent observation is only evidence once the
+detector has read the positive.
+
+**Predicts:** any conclusion of the form "X does not appear in this game" is
+suspect unless the same query found X somewhere it was known to exist. Before
+believing an absence, run the query against a game or frame where the answer is
+already known.
+
+## Worked example: applying habit 2 to `config.js`
+
+Run on 2026-09-19, immediately after writing this page, as the first test of
+whether these habits pay.
+
+`packages/core/src/mechanics/config.js` exports 110 constants, 39 carrying a
+`[SOURCED]` label. Asking of each "is this the game, or the runtime?" and then
+**testing the answer against the other three dumps**:
+
+**Runtime — one fact, not four:**
+
+- **The 60 Hz basis.** `Mvt Timer Base` reads **60 in all 94 frames of all four
+  games**. `FPS = 60` is a property of the Clickteam build, not of FNaF 2.
+- The RNG's LCG and its wall-clock seeding (established earlier the same day).
+- `Every N` loading on its first reach and returning false, which is what makes
+  a `StartOfFrame` draw genuinely first.
+- `Frame iPhone Options` = `0x04000000`, identical in all 94 frames.
+  `UNKNOWN(meaning)` — uniform, but nobody has decoded what the flag selects.
+
+**Game — confirmed different, not assumed different:**
+
+| | hour mechanism | hour length |
+|---|---|---|
+| FNaF 2 | accumulator `AM` reaches 70 | 70 s |
+| FNaF 3 | wall-clock timer, **gated on night number** | **40 s on Night 1, 60 s on Nights 2+** |
+| FNaF 4 | wall-clock timer | 60 s |
+
+So `NIGHT_FRAMES` and `HOUR_FRAMES` are game facts — and in FNaF 3 not even a
+single game fact, since the hour is shorter on Night 1 than on every later
+night. More interesting than the numbers is the **mechanism difference**:
+FNaF 2 counts an accumulator to a threshold while FNaF 3 and 4 advance on
+wall-clock timers. In a project whose hardest open problem is the frame clock,
+that is not a detail — a wall-clock night is a different prediction problem from
+an accumulated one.
+
+**Every game also ships a "fast nights" mode that halves the hour**, and finding
+it is pattern 8 all over again. A sweep for `btnCheat[0-9]+_` returned hits in
+FNaF 4 only, which nearly became "only FNaF 4 has cheats". Searching for the
+*concept* instead of the *naming convention* found it in all four, under four
+different names: `fastNights` / `fastNightsSwitch` in FNaF 1 and 2,
+`fast nights on?` in FNaF 3, `FastNights` in FNaF 4. One sweep, one convention,
+three false negatives.
+
+The scope then matters and had to be checked rather than assumed: FNaF 2's
+`fastNights` appears **zero** times in the Office frame — it lives only in
+Initialize and the Unlocks screen — so the FNaF 2 night clock is not exposed to
+it. FNaF 3 and FNaF 4 gate their office-frame hour advance on it directly.
+
+FNaF 4 carries a second clock confound with no counterpart elsewhere: winning
+the Plushtrap minigame sets the starting **hour to 2 instead of 12**, gated on
+`Night < 6`. A route timed from the start of the night is simply wrong by two
+in-game hours when that reward is set, and nothing on the night screen says so.
+
+**The habit paid on its first run** — and it produced three corrections to its
+own first draft within the hour, which is the more useful half. Each correction
+came from checking a claim rather than from new information being available.
+
 ## The cheap habits that would have caught most of this
 
 1. **Inventory before you parse.** List every chunk, field or section in a
