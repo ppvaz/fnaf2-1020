@@ -1,0 +1,81 @@
+{
+ "schema": "campaign-victory-v1",
+ "verdict": "PARTIAL",
+ "claimLevel": "DEVICE_MEASURED",
+ "evidenceId": "story-ladder-and-bb-mask-window-20260920",
+ "recordedAt": "2026-09-20",
+ "qualifiedBy": "Pedro (operator, observing)",
+ "claim": "Story nights 3, 4 and 5 cleared on the Moto g56, unlocking 6th Night after an app-data wipe had reset the save to Night 1. Night 6 remains open. All runs --machine-only (explicit MODEL_ONLY machine-input experiment, claim promotion suppressed).",
+ "device": {
+  "serial": "ZF525F5BH5",
+  "build": "com.scottgames.fnaf2:2.0.7+26"
+ },
+ "runs": [
+  {
+   "label": "minus3-n3-first",
+   "runDirectory": "artifacts/runs/night3-minus3-n3-first-20260919T224721Z",
+   "strategy": "Minus 3",
+   "night": 3,
+   "outcome": "died 199.5 s",
+   "campaignLogSha256": "b0bd51262c071c8d593ae27f7136c0341c97e2241b2abbaabf39689d0fad2de7",
+   "campaignExit": "campaign exit 2"
+  },
+  {
+   "label": "minus3-n3-second",
+   "runDirectory": "artifacts/runs/night3-minus3-n3-second-20260919T225620Z",
+   "strategy": "Minus 3",
+   "night": 3,
+   "outcome": "died 399.6 s, Balloon Boy + Foxy",
+   "campaignLogSha256": "7e8c5eb7dde8cbd05fcb2ed032d1e96f3fbc088f1880258a42af9dbb114fe3dd",
+   "campaignExit": "campaign exit 2"
+  },
+  {
+   "label": "toys-n3-ladder",
+   "runDirectory": "artifacts/runs/night3-toys-n3-ladder-20260919T231745Z",
+   "strategy": "Minus Toys",
+   "night": 3,
+   "outcome": "died 339.7 s, Balloon Boy; 0 visible hall flashes in 43 intervals, 34 latched-mask intervals",
+   "campaignLogSha256": "4bab5bf57ed42ac7a56d62f1d40a16923d5b7302c1eb9aafc3d1cd158a93f208",
+   "campaignExit": "campaign exit 2"
+  },
+  {
+   "label": "n3-bbfix-run",
+   "runDirectory": "artifacts/runs/night3-n3-bbfix-run-20260920T001903Z",
+   "strategy": "Minus Toys + BB fix",
+   "night": 3,
+   "outcome": "6 AM; arm VERIFIED",
+   "campaignLogSha256": "809034cd3b732304f088a6d57030bd189337430d080c8c6c6bb67a8e53fbc706",
+   "campaignExit": "campaign exit 0"
+  },
+  {
+   "label": "n4-bbfix",
+   "runDirectory": "artifacts/runs/night4-n4-bbfix-20260920T002911Z",
+   "strategy": "Minus Toys + BB fix",
+   "night": 4,
+   "outcome": "6 AM; arm VERIFIED",
+   "campaignLogSha256": "5dd29b0e0e09f68c412a472ae227c313a40b1b9dd1b3ecb6be0dc11bb7b8be35",
+   "campaignExit": "campaign exit 0"
+  },
+  {
+   "label": "n6-unlock3",
+   "runDirectory": "artifacts/runs/night6-n6-unlock3-20260920T010216Z",
+   "strategy": "Minus Toys unanchored",
+   "night": 6,
+   "outcome": "died 69.6 s, Balloon Boy",
+   "campaignLogSha256": "d25562684138ad67fec0e2a6bd73f1780a96de3da052b32776a603c221448e1c",
+   "campaignExit": "campaign exit 2"
+  }
+ ],
+ "findings": [
+  "Balloon Boy is cleared only by VENT_MASK_TICKS = 5 ticks on one-second boundaries while maskFullyOn (g292/g293/g294/g907, e237), and maskFullyOn excludes the 200 ms put-on. The shipped Minus Toys cycle holds the mask 14449->19200 = 4751 ms, 4551 fully on, spanning 4 OR 5 boundaries against a required 5. Zero margin, phase-dependent. The model does not see it: 3000/3000 on Night 3 with sim.bb.inside false in 300/300.",
+  "Nights 3 and 4 tolerate widening the window (maskOffMs 9700, hallOffsetMs 10016: 5051 ms fully on, 3000/3000). NIGHT 6 DOES NOT: mask-off later with hall at 10016 scores 0/3000 all Foxy, and widening from the mask-on side scores 28/1000 inside-office. The shipped 4551 ms is optimal there, and it wins in the model because the PHASE is aligned -- which is what anchorEpochMs controls.",
+  "The unanchored Night 6 winner released at a drawn phase and died at 69.6 s to Balloon Boy. The anchored binding fnv1a-3d5b2167 (anchorEpochMs 4850) has no ANCHOR_AIMS entry, so night-run.sh refuses it. Night 6 needs an anchor aim, not a knob.",
+  "Arm verification tracked the outcome on every run: VERIFIED -> 6 AM, UNRESOLVED -> death. observe-once samples once and proceeds blind; the Night 5 run that died at 48.4 s was unresolved, and 48 s matches that night's 20 s box-empty time rather than any animatronic.",
+  "The device compiler did not gate wind on the viewed camera. plant-model.js credits winding only while viewing === BOX_CAM (11); artifact-commands.mjs required monitor-up alone, so a plan could schedule a wind with another camera viewed, compile clean, and be a silent no-op. Now refused against the plan's declared #arm-verify-viewing."
+ ],
+ "unknown": {
+  "night6Anchor": "UNKNOWN(not-measured): no ANCHOR_AIMS entry exists for fnv1a-3d5b2167.",
+  "bbFixAttribution": "UNKNOWN(confounded): the Night 3 clear differed from the loss in BOTH maskOffMs and arm verification; two runs cannot separate them, and the model scores 9200 and 9700 identically at 3000 seeds.",
+  "hallFlashCause": "UNKNOWN(not-separated): 0 visible hall flashes in 43 intervals has two live explanations -- the 33 ms hall contact (the 100 ms floor was only ever applied to the minus7 recipe) and view pan (the hall light is layer 3 at xCoef 1.00 and scrolls). Same coordinate with a longer contact separates them."
+ }
+}

@@ -1660,6 +1660,7 @@
       "imports": [
         "./artifact-commands.mjs",
         "./bundle.mjs",
+        "@fnaf2-1020/core/mechanics",
         "node:fs",
         "node:path",
         "node:url"
@@ -1965,6 +1966,7 @@
       "imports": [
         "./artifact-commands.mjs",
         "./bundle.mjs",
+        "./recipe.mjs",
         "node:fs",
         "node:path",
         "node:url"

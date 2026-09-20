@@ -5,7 +5,7 @@
 
 import * as C from '@fnaf2-1020/core/mechanics';
 import { CONTROL_VOCABULARY as V } from '@fnaf2-1020/core/control';
-import { FUSION_POLL_MS, MASK_ANIM_ON_MS, MIN_CONTACT_MS, MONITOR_READY_WIND_MS, RAISE_MARGIN_MS } from './recipe.mjs';
+import { FUSION_POLL_MS, MASK_ANIM_ON_MS, MIN_CONTACT_MS, MONITOR_READY_WIND_MS, RAISE_MARGIN_MS, SEAM_MARGIN_MS } from './recipe.mjs';
 
 // [SOURCED] The engine animates the monitor and the mask, and drops input that
 // lands inside those windows: a camera select or wind press during the raise
@@ -35,8 +35,18 @@ const MONITOR_ANIM_DOWN_MS = Math.round(C.MONITOR_ANIM_DOWN * 1000 / C.FPS);
 // in eight (docs/evidence/night5-mask-tick-budget-20260911.json). A floor set
 // to what a route already does can never refuse that route.
 const MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS = 382.5;
-const MONITOR_MASK_READY_MS =
-  Math.ceil(MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS + MIN_CONTACT_MS);
+// The floor is the MEASUREMENT, and nothing else. A press before the mask
+// button is fully visible is illegal; how much room a schedule leaves beyond
+// that is a margin question, and margin belongs to test-seam-slack.mjs.
+//
+// Folding a margin in here double-counted it. The floor was
+// measurement + MIN_CONTACT_MS = 416, the gate then demanded the allowance on
+// top, and a plan at 449 was reported as "clears by 33" when it in fact stood
+// 66.5 ms above the measured full-visibility point. Chasing that phantom 33 by
+// moving the Minus Toys loop mask took the 10/20 measured band from 120/120 to
+// 0/120 (bisected 2026-09-19); moving the camdrop to widen the same seam from
+// the other side broke it too. One margin, applied once, from the physical fact.
+const MONITOR_MASK_READY_MS = Math.ceil(MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS);
 // MONITOR_ANIM_UP alone is not the moment a control is usable, and the delay
 // is not the same for every control. The model constant is 12 engine frames and
 // the profile still carries no measured raise readiness
@@ -167,7 +177,7 @@ export const SEAM_FLOORS = Object.freeze({
   maskButtonFullyVisibleAfterMonitorDownMs: MASK_BUTTON_VISIBLE_AFTER_MONITOR_DOWN_MS,
 });
 
-export function compileCycle(cycle, rows, initial = initialState(cycle), seams = []) {
+export function compileCycle(cycle, rows, initial = initialState(cycle), seams = [], declaredViewing = null) {
   const seam = (relation, row, gapMs, floorMs) => {
     if (!Number.isFinite(gapMs)) return;   // no prior transition to measure against
     seams.push(Object.freeze({ cycle, relation, atMs: row.at, kind: row.kind,
@@ -212,6 +222,23 @@ export function compileCycle(cycle, rows, initial = initialState(cycle), seams =
       rawControl === V.cameraFeedLight || rawControl === V.wind;
     if (needsMonitorDown && state.monitorUp)
       throw new TypeError(`${cycle}: ${row.kind} ${rawControl ?? ''} requires monitor down`);
+    // The box is on CAM 11 and the engine only credits a wind while that camera
+    // is the VIEWED feed: plant-model.js `winding && monitor === MON_UP &&
+    // viewing === C.BOX_CAM`. The compiler required only monitor-up, so a plan
+    // could schedule a wind with another camera viewed, compile clean, and be a
+    // silent no-op on the phone -- the box drains and the Puppet arrives. On
+    // 2026-09-20 a Night 5 run died at 48.4 s that way, with the arm unresolved
+    // so nothing had confirmed CAM 11 was up; the box empties in 20 s at that
+    // night's drain rate.
+    //
+    // The double-camera glitch makes "which camera is viewed" something a
+    // last-tapped tracker gets wrong -- the route taps cam11 then cam9 and the
+    // glitch keeps cam11 VIEWED with cam9 as the marker -- so this checks the
+    // plan's own declaration instead of trying to model the glitch. A plan that
+    // winds must declare the box camera as its viewing feed.
+    if (rawControl === V.wind && declaredViewing && declaredViewing !== `cam:${C.BOX_CAM}`)
+      throw new TypeError(`${cycle}: wind at +${row.at} ms needs cam:${C.BOX_CAM} viewed (the box ` +
+        `camera), but the plan declares #arm-verify-viewing ${declaredViewing}`);
     if (needsMonitorUpNow && !state.monitorUp)
       throw new TypeError(`${cycle}: ${row.kind} ${rawControl ?? ''} requires monitor up`);
 
@@ -360,11 +387,12 @@ export function compileArtifactPlans(plans, parsePlan, profile) {
     const parsed = parsePlan(plan.text, { strategy: plan.policy, night: plan.night, profile });
     const compiled = {};
     const seams = [];
-    compiled.opening = compileCycle('opening', parsed.cycles.opening.rows, undefined, seams);
+    const declaredViewing = parsed.armVerification?.viewing ?? null;
+    compiled.opening = compileCycle('opening', parsed.cycles.opening.rows, undefined, seams, declaredViewing);
     for (const [name, value] of Object.entries(parsed.cycles)) {
       if (name === 'opening') continue;
       const prior = name === 'finish' && compiled.toys ? compiled.toys.final : compiled.opening.final;
-      compiled[name] = compileCycle(name, value.rows, prior, seams);
+      compiled[name] = compileCycle(name, value.rows, prior, seams, declaredViewing);
     }
     return Object.freeze({ night: plan.night, policy: plan.policy,
       timing: planTiming(parsed), armVerification: armVerification(parsed),

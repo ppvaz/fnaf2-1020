@@ -27,32 +27,72 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileArtifactPlans, SEAM_FLOORS } from './artifact-commands.mjs';
 import { parsePlan, validateWinner, STRATEGY_REGISTRY } from './bundle.mjs';
+import { FUSION_POLL_MS } from './recipe.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// One Fusion poll, and two engine frames at 60 fps. The monitor-down animation
-// is 22 frames, so two frames of frame-rate wobble is the smallest error that
-// can move a press across a floor -- and it is the error the device showed.
-// This is the same quantum the repository already treats as the contact floor;
-// it is deliberately not a new number.
-export const SEAM_JITTER_ALLOWANCE_MS = 33;
+// The allowance is TWO Fusion polls, not one, and that is the whole point.
+//
+// 33 ms is already MIN_CONTACT_MS, FUSION_POLL_MS and RAISE_MARGIN_MS. When the
+// allowance was also 33, "this plan clears its floor by the allowance" meant
+// "this plan clears its floor by exactly one poll" -- so a single dropped poll,
+// the smallest error the device can make, puts the contact ON the boundary, and
+// the check passed it because it only refused values BELOW 33. A margin equal
+// to the quantum of the error it protects against is not a margin.
+//
+// What that cost, measured 2026-09-19: every shipped minus-toys plan put its
+// once-per-cycle mask press at monitor-down + 449 ms against a 416 ms floor --
+// slack exactly 33 -- roughly 42 times a night. The floor is anchored to a
+// native trace (mask button absent through 322 ms, faint at ~337 ms, fully
+// visible at ~382.5 ms), so that press lands 33 ms after the button finishes
+// appearing. Three Night 3 device runs died across two strategies, at least two
+// to Balloon Boy, who no strategy's stall holds on any night and whom only the
+// mask cadence answers. A lost mask press is a cycle BB walks through.
+//
+// This is mistake-register item 7 one level up: item 7 was a FLOOR calibrated to
+// the route it protected; this is the ALLOWANCE calibrated to the error it
+// protects against. Both look derived and neither can refuse anything.
+// ONE Fusion poll, not two.
+//
+// Two was tried on 2026-09-19 and reverted, and the reason is worth keeping:
+// raising it forced every shipped plan's knobs to move, `validateWinner`
+// normalises a winner by filling in KNOBS0 defaults, so changing the DEFAULTS
+// re-hashes every winner that inherits any of them -- which silently broke the
+// anchor bindings those hashes key (`no anchor aim registered for binding ...`)
+// and the replayHash bindings that pin a winner's emitted plan. A margin change
+// is never local: it re-binds the proven routes.
+//
+// What survived from that attempt is the floor correction below, which was the
+// real defect. The floors used to embed a margin of their own, so this gate's
+// allowance stacked on top: a plan standing 66.5 ms above the measured
+// mask-button visibility was reported as clearing by 33, and chasing that
+// phantom 33 took the 10/20 measured band from 120/120 to 0/120. With floors
+// now equal to their measurement, a reported slack IS the true margin, and the
+// shipped mask press reads 66 ms rather than a misleading 33.
+export const SEAM_JITTER_ALLOWANCE_MS = FUSION_POLL_MS;
 
 let failed = 0;
 const fail = message => { failed += 1; process.stdout.write(`  FAIL ${message}\n`); };
 
-// --- 1. floors must stand above their own measurement ----------------------
+// --- 1. a floor must BE its measurement, not its measurement plus a margin --
+//
+// The inverse of the old check, and the reason it is inverted: when the floor
+// carried a margin of its own, this gate's own allowance stacked on top of it,
+// so a plan standing 66.5 ms above the measured full-visibility point was
+// reported as clearing by 33 -- and the phantom 33 was then "fixed" by moving
+// the press, which took the 10/20 measured band from 120/120 to 0/120. A floor
+// that embeds margin cannot be reasoned about, because no reader can tell which
+// of the two numbers a schedule is actually standing on.
 {
   const measured = SEAM_FLOORS.maskButtonFullyVisibleAfterMonitorDownMs;
   const floor = SEAM_FLOORS.monitorMaskReadyMs;
-  const required = measured + SEAM_JITTER_ALLOWANCE_MS;
   process.stdout.write(
-    `mask-after-monitor-down floor ${floor} ms vs measured full visibility ` +
-    `${measured} ms (needs >= ${required} ms)\n`);
-  if (floor < required)
-    fail(`MONITOR_MASK_READY_MS is ${floor} ms, only ${(floor - measured).toFixed(1)} ms past the ` +
-      `measured ~${measured} ms full-visibility point. A press there is inside the fade-in the ` +
-      `same trace recorded (absent to 322 ms, faint at ~337 ms). Raise the floor to ` +
-      `>= ${required} ms and move any route that no longer compiles.`);
+    `mask-after-monitor-down floor ${floor} ms == measured full visibility ` +
+    `${measured} ms (margin lives in this gate, not in the floor)\n`);
+  if (floor > Math.ceil(measured))
+    fail(`MONITOR_MASK_READY_MS is ${floor} ms but the measurement is ${measured} ms. ` +
+      'A floor must be the physical fact; the margin above it is this gate\'s job, and ' +
+      'embedding one here double-counts it against every plan.');
 }
 
 // --- 2. every shipped plan must clear every floor by the allowance ----------

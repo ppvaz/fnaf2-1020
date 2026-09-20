@@ -79,5 +79,74 @@
     "maxDurationMs": 15000,
     "dryRunOnly": false,
     "qualification": "qualification-hid-mediaprojection-20260906"
+  },
+  "viewScroll": {
+    "schema": "view-scroll-v1",
+    "source": "application.ccn 04-Office. Frame header chunk 13108 (world/window). Layers chunk 13121 read as 16.16 FIXED POINT -- a float read returns 0.000 for every layer and looks like a real answer. Instances chunk 13112: 4-byte count then 20-byte records handle/oi/x/y/parentType/parentHandle/layer/unknown, instance OI is raw ^48 then ^28 for build 26. Several hitboxes are REPOSITIONED at StartOfFrame, so a placed coordinate can lie: grep the frame for SetPosition.",
+    "recordedAt": "2026-09-19",
+    "worldWidth": 1600,
+    "worldHeight": 768,
+    "windowWidth": 1024,
+    "windowHeight": 768,
+    "maxPanPx": 576,
+    "centerDisplayFollows": "04-Office drives CenterDisplayX from an OBJECT selected by `viewing`: `camera follow 2` at viewing=0 (office), `camera follow` on some cameras, hard 0 on viewing 1-4, 5 and 6. The pan is the display centre tracking a marker, not a player-dragged offset, so that marker's x is the state variable.",
+    "panDependent": {
+      "hallLight": true,
+      "leftVentLight": true,
+      "rightVentLight": true,
+      "cameraFeedLight": true,
+      "mask": false,
+      "monitor": "UNKNOWN"
+    },
+    "note": "xCoef 1.00 (layer 0) means the control scrolls 1:1 with the view, so a FIXED screen coordinate for it is only valid at a known pan offset. The light hitboxes are layer 0; the flip mask button is layer 4 at xCoef 0.00 and does not move. monitorFrame is layer 3 at xCoef 1.00 -- but that is the FRAME, and the object list does not name the monitor toggle's own hitbox, so `monitor` is UNKNOWN(not-traced) rather than assumed to scroll with it. This is why a panned office loses light presses while mask presses still land -- the asymmetry measured on Night 3, 2026-09-19. NOTHING in the executor models pan state, so every entry marked true has a coordinate valid only at pan 0.",
+    "panObservation": "UNKNOWN(not-implemented): the Cue Helper reports pan_anchor_state but read UNKNOWN (pan_anchor_reason=bulb-not-found) throughout the 2026-09-19 runs.",
+    "worldObjects": {
+      "left light": {
+        "worldX": 147,
+        "worldY": 429,
+        "layer": 0,
+        "xCoef": 1.0,
+        "note": "lightLeftHitbox is SetPosition-attached to this at StartOfFrame"
+      },
+      "right light": {
+        "worldX": 1444,
+        "worldY": 427,
+        "layer": 0,
+        "xCoef": 1.0,
+        "note": "lightRightHitbox is SetPosition-attached to this at StartOfFrame"
+      },
+      "camera follow 2": {
+        "worldX": 500,
+        "layer": 0,
+        "xCoef": 1.0,
+        "note": "the office display centre tracks this object (viewing=0)"
+      },
+      "cameraHitbox": {
+        "worldX": 1026,
+        "worldY": 852,
+        "layer": 3,
+        "xCoef": 1.0
+      },
+      "hudFlashlightHitbox": {
+        "worldX": 76,
+        "worldY": 844,
+        "layer": 3,
+        "xCoef": 1.0
+      },
+      "musicButtonHitbox": {
+        "layer": 3,
+        "xCoef": 1.0,
+        "note": "SetPosition to an ABSOLUTE (233,610) OR (233,595) chosen by a global value -- two valid positions 15 px apart, so a profile can be calibrated against the wrong one"
+      }
+    },
+    "pinnedLayer4": [
+      "flip mask button",
+      "drop button",
+      "red button",
+      "white button",
+      "muteButtonHitbox"
+    ],
+    "ventLightSeparationPx": 1297,
+    "ventLightNote": "The two vent lights are 1297 px apart in world space inside a 1024 px window, on a layer that scrolls 1:1 across 576 px of pan. They therefore CANNOT both be correct at any single fixed screen coordinate -- the profile maps leftVentLight and rightVentLight to fixed points regardless."
   }
 }

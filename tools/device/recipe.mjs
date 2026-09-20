@@ -478,6 +478,13 @@ export function sweepSpanMs([spacing, contact, cams]) {
 // runs backwards so freeing a raise can free the hall pulse ahead of it.
 export const MONITOR_ANIM_UP_MS = Math.round(C.MONITOR_ANIM_UP * 1000 / C.FPS);
 export const RAISE_MARGIN_MS = 33;
+// The margin an EMITTER must leave above a device floor, as distinct from the
+// floor itself. Two Fusion polls, because one poll is the smallest error the
+// device can make: a schedule that clears a floor by exactly one poll is one
+// dropped poll away from landing on the boundary, which is not a margin at all.
+// Every shipped plan sat at exactly 33 ms on its once-per-cycle mask press
+// until 2026-09-19; see test-seam-slack.mjs for what that cost.
+export const SEAM_MARGIN_MS = 2 * FUSION_POLL_MS;
 
 // The same clearance, sized for the MODEL rather than the phone.
 //
@@ -577,7 +584,7 @@ function clearTheRaise(name, lines) {
     // phone graded that raise MISSING on 54 of 55 cycles and the mask-off on
     // 48 of 55 (night1-minus7-n1-first-20260919T215533Z). The park above pays
     // for its own shift out of the hold; so does this one.
-    const windFloor = raise.at + MONITOR_READY_WIND_MS + RAISE_MARGIN_MS;
+    const windFloor = raise.at + MONITOR_READY_WIND_MS + SEAM_MARGIN_MS;
     const wind = ins.slice(i + 1).find(e => e.kind === 'hold' && e.rest[0] === 'wind');
     if (wind && wind.at < windFloor) {
       const oldDuration = +wind.rest[1];
@@ -806,7 +813,7 @@ function clearTheMaskOn(name, lines) {
   for (const e of ins) {
     if (e.kind === 'read') { maskOnAt = e.at + (+e.rest[0]) + (+e.rest[1]); continue; }
     if (e.kind !== 'maskraise') continue;
-    const earliest = maskOnAt + MASK_ANIM_ON_MS + RAISE_MARGIN_MS;
+    const earliest = maskOnAt + MASK_ANIM_ON_MS + SEAM_MARGIN_MS;
     if (e.at >= earliest) continue;
     const next = ins[ins.indexOf(e) + 1];
     if (next && next.at < earliest + MIN_CONTACT_MS + FUSION_POLL_MS)
@@ -826,7 +833,7 @@ function clearTheMaskOn(name, lines) {
     const park = ins.slice(ins.indexOf(e) + 1)
       .find(row => row.kind === 'tap' && /^cam\d+$/.test(row.rest[0]));
     if (park) park.at = Math.max(park.at, raiseAt + MONITOR_ANIM_UP_MS + RAISE_JITTER_MARGIN_MS);
-    const windFloor = Math.max(raiseAt + MONITOR_READY_WIND_MS + RAISE_MARGIN_MS,
+    const windFloor = Math.max(raiseAt + MONITOR_READY_WIND_MS + SEAM_MARGIN_MS,
       park ? park.at + MIN_CONTACT_MS + FUSION_POLL_MS : 0);
     const wind = ins.slice(ins.indexOf(e) + 1)
       .find(row => row.kind === 'hold' && row.rest[0] === 'wind');

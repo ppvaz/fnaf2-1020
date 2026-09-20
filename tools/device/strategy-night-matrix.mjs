@@ -31,9 +31,40 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { compileArtifactPlans } from './artifact-commands.mjs';
 import { parsePlan, validateWinner, STRATEGY_REGISTRY } from './bundle.mjs';
+import * as C from '@fnaf2-1020/core/mechanics';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const NIGHTS = [1, 2, 3, 4, 5, 6, 7];
+
+// What each strategy's own mechanism actually holds, from STRATEGY-HISTORY.md:
+// Minus 3 "keeps Parts/Service selected all night, so the three stallable
+// Withereds never leave"; Minus Toys is "the glitch aimed at CAM 09 instead,
+// freezing the three Toys"; Minus 7's "three-camera flash sweep holds all seven
+// stallable animatronics forever" -- the roster less Foxy, Balloon Boy and
+// Golden Freddy, who are the three nothing stalls.
+//
+// This column exists because a win rate alone hides whether a strategy is even
+// addressing the night it scores on. Minus Toys scores 3000/3000 on Night 3,
+// but Night 3 arms toybonnie at AI 1 and toychica at AI 1 and does not arm
+// toyfreddy at all, so its CAM 09 stall is holding almost nothing there and the
+// score is coming from the mask cadence instead. On 2026-09-19 that mattered:
+// three Night 3 device runs died across two strategies, at least two to Balloon
+// Boy, who no stall in this table covers on any night.
+const WITHEREDS = Object.freeze(['withfreddy', 'withbonnie', 'withchica']);
+const TOYS = Object.freeze(['toyfreddy', 'toybonnie', 'toychica']);
+const UNSTALLABLE = Object.freeze(['foxy', 'bb', 'golden']);
+const ROSTER = Object.freeze([...WITHEREDS, ...TOYS, 'mangle', ...UNSTALLABLE]);
+const STALLS = Object.freeze({
+  'minus-toys': TOYS,
+  minus3: WITHEREDS,
+  minus7: ROSTER.filter(id => !UNSTALLABLE.includes(id)),
+});
+
+function stallCoverage(strategy, night) {
+  const armed = ROSTER.filter(id => C.peakAi(night, id) > 0);
+  const held = armed.filter(id => (STALLS[strategy] ?? []).includes(id));
+  return { armed, held, loose: armed.filter(id => !held.includes(id)) };
+}
 
 const arg = (name, fallback) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -67,7 +98,8 @@ const profile = JSON.parse(readFileSync(
   join(HERE, '../../apps/device/profiles/hid-mediaprojection.json'), 'utf8'));
 
 export function probeCell(strategy, night, { runs = 0 } = {}) {
-  const cell = { strategy, night, emit: null, emitReason: null, model: null, modelReason: null };
+  const cell = { strategy, night, emit: null, emitReason: null, model: null, modelReason: null,
+    stall: stallCoverage(strategy, night) };
   let emitted;
   try {
     emitted = STRATEGY_REGISTRY[strategy].emit(validateWinner(probeWinner(strategy, night)), night);
@@ -117,6 +149,24 @@ if (process.argv.includes('--json')) {
       label(cells.find(c => c.strategy === strategy && c.night === night)).padStart(12)).join('');
     process.stdout.write(`${strategy.padEnd(14)}${row}\n`);
   }
+  process.stdout.write('\nwhat each strategy\'s own stall holds, of what the night arms:\n');
+  process.stdout.write(`${''.padEnd(14)}${NIGHTS.map(n => `N${n}`.padStart(12)).join('')}\n`);
+  for (const strategy of strategies) {
+    const row = NIGHTS.map(night => {
+      const s = cells.find(c => c.strategy === strategy && c.night === night).stall;
+      return `${s.held.length}/${s.armed.length}`.padStart(12);
+    }).join('');
+    process.stdout.write(`${strategy.padEnd(14)}${row}\n`);
+  }
+  process.stdout.write('\nwho each strategy leaves moving (armed, not held by its stall):\n');
+  for (const strategy of strategies) {
+    for (const night of NIGHTS) {
+      const s = cells.find(c => c.strategy === strategy && c.night === night).stall;
+      if (!s.armed.length) continue;
+      process.stdout.write(`  ${strategy} N${night}: ${s.loose.join(', ') || 'nothing'}\n`);
+    }
+  }
+
   process.stdout.write('\nwhy a cell cannot be emitted:\n');
   const seen = new Set();
   for (const cell of cells) {
