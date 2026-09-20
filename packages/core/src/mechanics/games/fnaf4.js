@@ -210,12 +210,70 @@ export const MODEL = {
 // with travel time between stops -- the same shape as FNaF 1's "pan, then
 // press", arriving from a different mechanism.
 //
-// `UNKNOWN(in-animation-data)`: the **duration** of each walk. The transitions
-// fire on `AnimationFinished` and on X position, so the frame costs live in
-// the animation data and the object's movement speed, neither of which is in
-// the event sheet. `~/fnaf-apks/dump_animations.py` is the route to them, or
-// one device measurement per leg. That is a bounded measurement, not an
-// unmapped mechanism.
+// **The walk durations, caught 2026-09-20** from the animation bank rather
+// than from the phone: `dump_animations.py` over the owned CCN, at build 296
+// and the app's own 60 fps, under the Fusion duration model the tool
+// documents -- the counter advances by `speed` each tick and the frame flips
+// at 100, so a sequence lasts `frames * 100 / (speed * rate)`.
+//
+// That is the same route `config.js:528-535` used for FNaF 2's mask and
+// monitor flips, and a fresh dump reproduces all four of those to the
+// millisecond -- so this is an established method here, not a new one.
+//
+// **These are animation lengths, and an animation length is not readiness.**
+// FNaF 2 is the worked example and the warning: `mmonitorDown` runs 0.367 s,
+// but the native frame trace has the mask button absent through 322 ms, faint
+// at ~337 ms and fully visible only at **382.5 ms**, and
+// `tools/device/artifact-commands.mjs` uses the measured figure because the
+// derived one sat 66.5 ms above the real visibility point. Treat every number
+// below as a **lower bound** on the leg, to be replaced per leg by a device
+// measurement before any FNaF 4 schedule is bound to it.
+export const WALK_MS = {
+  // Hub <-> station. The approach is longer than the return in every case.
+  toLeftDoor: 2366, fromLeftDoor: 1533,
+  toRightDoor: 2366, fromRightDoor: 1566,
+  toCloset: 1733, fromCloset: 1366,
+  toBed: 633, fromBed: 667,
+  // Station actions, which return to the station they started at.
+  closeLeftDoor: 733, closeRightDoor: 600, closeCloset: 334,
+  flashLeft: 300, flashRight: 300,
+  // The two reveal branches cost more than a plain flash.
+  bonnieHide: 533, chicaHide: 667,
+  // `carpet run` is 1033 ms and appears in every long leg -- one animation
+  // carries the travel in all four directions.
+  carpetRun: 1033,
+  source: 'dump_animations.py over build 296 at 60 fps; legs joined to the '
+        + '`follow` transitions by their AnimationFinished conditions',
+  bound: 'LOWER -- animation length, not control readiness',
+};
+
+// What the numbers say about a rotation, which is the reason the map mattered.
+//
+// Left door to right door by way of the hub is 1533 + 2366 = **3899 ms**
+// against a **5000 ms** roll grid [g284, g285, g236] -- 78% of one roll
+// period spent walking. A tour of both doors and back is 7831 ms, **longer
+// than a whole roll cycle**, so a rotation cannot cover both doors within one
+// grid period and a schedule has to choose which door a given roll protects.
+//
+// The bed is the cheap station: 1300 ms round trip, against a meter that
+// drains 20/s while it is viewed and fills at `Freddy AI / 4` per second.
+export const ROTATION_MS = {
+  leftToRight: 3899,
+  rightToLeft: 3899,
+  bothDoorsTour: 7831,
+  bedRoundTrip: 1300,
+  closetRoundTrip: 3099,
+  rollGridMs: 5000,
+};
+
+// `UNKNOWN(not-measured)`: four legs on the two door approaches advance on a
+// test of `follow`'s X position (g30 `CompareX = 512`, g32 `> 530`) rather
+// than on an animation, so they are not in the totals above. Nothing in the
+// event sheet moves `follow` in X, which would make those tests constant --
+// but the movement-block reader used to check that found **no movement block
+// on any of the 485 objects**, so it cannot tell a real absence from its own
+// blindness and the question stays open. The totals are lower bounds for this
+// reason as well as for the readiness one.
 export const FOLLOW = {
   hub: 0,
   stations: { leftDoor: 10, rightDoor: 17, closet: 29, bed: 43 },

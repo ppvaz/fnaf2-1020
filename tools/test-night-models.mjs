@@ -25,6 +25,7 @@ import {
   rollChance, rollsInHour, opportunities, modelFor, fnaf1, fnaf2, fnaf3, fnaf4,
 } from '../packages/core/src/mechanics/games/index.js';
 import { AI_BY_NIGHT, aiCap } from '../packages/core/src/mechanics/config.js';
+import * as FPS_C from '../packages/core/src/mechanics/config.js';
 
 const failures = [];
 let checks = 0;
@@ -270,6 +271,68 @@ for (const game of GAME_IDS) {
     follow.stations.leftDoor !== follow.stations.rightDoor);
   eq('the left door is reached by its own hitzone',
     follow.approaches.leftDoor.hitzone, 'HUDDoorLeftHitzone');
+}
+
+// --- animation durations, and the model that derives them -----------------
+//
+// The Fusion duration model: an animation's counter advances by `speed` each
+// tick and the frame flips at 100, so a sequence lasts
+// `frames * 100 / (speed * rate)`. `dump_animations.py` documents it and
+// `config.js:528-535` used it for FNaF 2's flips.
+//
+// Register entry 9 says a measurement in a comment is not a gate. Those four
+// derivations lived only in a comment, so they are checked here against the
+// frames and speeds that comment quotes: if someone edits a constant without
+// the bank, this fails.
+{
+  const durationMs = (frames, speed, rate = 60) => frames * 100 / (speed * rate) * 1000;
+  const BANK = {                       // as read from build 296's animation bank
+    mmonitorUp: { frames: 11, speed: 90, constant: FPS_C.MONITOR_ANIM_UP },
+    mmonitorDown: { frames: 11, speed: 50, constant: FPS_C.MONITOR_ANIM_DOWN },
+    mmaskOn: { frames: 9, speed: 75, constant: FPS_C.MASK_ANIM_ON },
+    mmaskOff: { frames: 11, speed: 75, constant: FPS_C.MASK_ANIM_OFF },
+  };
+  for (const [name, row] of Object.entries(BANK)) {
+    const fromBank = durationMs(row.frames, row.speed);
+    const fromConstant = row.constant * 1000 / FPS_C.FPS;
+    ok(`${name}: the engine-frame constant matches the animation bank`,
+      Math.abs(fromBank - fromConstant) < 1000 / FPS_C.FPS);
+  }
+  // The flips are asymmetric, which is the fact the route is built on:
+  // lowering the monitor takes ~1.8x raising it.
+  ok('monitor-down is much slower than monitor-up',
+    FPS_C.MONITOR_ANIM_DOWN / FPS_C.MONITOR_ANIM_UP > 1.7);
+}
+
+// FNaF 4's walk costs, and the caveat that they are animation lengths.
+{
+  const walk = fnaf4.WALK_MS;
+  const rot = fnaf4.ROTATION_MS;
+  ok('the walk table says it is a lower bound', walk.bound.startsWith('LOWER'));
+  // Approach is longer than return on every station, in the source's own
+  // numbers -- so a rotation is not symmetric and a schedule cannot average it.
+  eq('left door: out costs more than back', walk.toLeftDoor > walk.fromLeftDoor, true);
+  eq('right door: out costs more than back', walk.toRightDoor > walk.fromRightDoor, true);
+  eq('closet: out costs more than back', walk.toCloset > walk.fromCloset, true);
+  // The two doors are symmetric on the way out and differ by one leg back.
+  eq('the two approaches are symmetric', walk.toLeftDoor, walk.toRightDoor);
+  // The rotation figures must follow from the legs, not float free of them.
+  eq('leftToRight is fromLeftDoor + toRightDoor',
+    rot.leftToRight, walk.fromLeftDoor + walk.toRightDoor);
+  eq('the tour is all four legs',
+    rot.bothDoorsTour,
+    walk.toLeftDoor + walk.fromLeftDoor + walk.toRightDoor + walk.fromRightDoor);
+  eq('the bed round trip', rot.bedRoundTrip, walk.toBed + walk.fromBed);
+  // The result that made the map worth having.
+  ok('a door-to-door rotation eats most of one roll period',
+    rot.leftToRight / rot.rollGridMs > 0.7);
+  ok('and a both-doors tour does not fit inside one at all',
+    rot.bothDoorsTour > rot.rollGridMs);
+  ok('the bed is the cheapest station by a wide margin',
+    rot.bedRoundTrip < rot.closetRoundTrip / 2);
+  eq('the roll grid matches the rolls it is compared against',
+    rot.rollGridMs, fnaf4.ROLLS.bonnie.everyMs);
+  eq('and Chica is on the same grid', rot.rollGridMs, fnaf4.ROLLS.chica.everyMs);
 }
 
 eq('every game is registered', GAME_IDS, ['fnaf1', 'fnaf2', 'fnaf3', 'fnaf4']);

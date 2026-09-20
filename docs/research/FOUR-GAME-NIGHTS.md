@@ -244,11 +244,59 @@ runs a separate walk each way. **The two doors are never both reachable**, and
 every rotation is a tour with travel time between stops — the same shape as
 FNaF 1's "pan, then press", arriving from a different mechanism.
 
-`UNKNOWN(in-animation-data)`: the **duration** of each walk. The transitions
-fire on animation completion and X position, so the frame costs are in the
-animation data and the object's movement speed, neither of which is in the
-event sheet. `~/fnaf-apks/dump_animations.py` is the route, or one device
-measurement per leg. That is a bounded measurement, not an unmapped mechanism.
+### The walk durations, caught from the animation bank (2026-09-20)
+
+`dump_animations.py` over the owned CCN, at build 296 and the app's own 60 fps,
+under the Fusion model the tool documents: the counter advances by `speed` each
+tick and the frame flips at 100, so a sequence lasts `frames × 100 / (speed × rate)`.
+Each `follow` leg was joined to the animation its `AnimationFinished` condition
+names.
+
+| leg | animation time |
+|---|---|
+| hub → left door | 2.366 s |
+| left door → hub | 1.533 s |
+| hub → right door | 2.366 s |
+| right door → hub | 1.566 s |
+| hub → closet / back | 1.733 / 1.366 s |
+| hub → bed / back | 0.633 / 0.667 s |
+| close a door (L / R) | 0.733 / 0.600 s |
+| seal the closet | 0.334 s |
+| flash a light | 0.300 s |
+
+**Left door → right door is 3.899 s against a 5000 ms roll grid — 78% of one
+roll period spent walking.** A tour of both doors and back is 7.831 s, *longer
+than a whole roll cycle*, so a rotation cannot cover both doors within one grid
+period and a schedule has to choose which door a given roll protects. That is
+the quantity the unmapped state machine was hiding.
+
+The approach is longer than the return at every station, so a rotation is not
+symmetric. `carpet run` (1.033 s) is the shared walk in all four directions.
+The bed is the cheap station at 1.300 s round trip, which matters against a
+meter that drains 20/s while it is viewed and fills at `Freddy AI / 4` per
+second.
+
+**This is an established method here, not a new one** — and it comes with its
+own warning. `config.js:528-535` derived FNaF 2's mask and monitor flips from
+the same bank, and a fresh dump reproduces all four to the millisecond
+(`mmaskOn` 9fr@75 = 0.200 s, `mmaskOff` 11fr@75 = 0.244 s, `mmonitorUp`
+11fr@90 = 0.204 s, `mmonitorDown` 11fr@50 = 0.367 s).
+
+But **an animation length is not control readiness**. FNaF 2 is the worked
+example: `mmonitorDown` runs 367 ms, while the native frame trace has the mask
+button absent through 322 ms, faint at ~337 ms and fully visible only at
+**382.5 ms** — about one frame later. `tools/device/artifact-commands.mjs`
+uses the measured figure, because the derived one sat 66.5 ms above the real
+visibility point and chasing it took the Minus Toys loop from 120/120 to
+0/120. So every figure above is a **lower bound**, to be replaced per leg by a
+device measurement before a FNaF 4 schedule is bound to it.
+
+`UNKNOWN(not-measured)`: four legs on the two door approaches advance on a test
+of `follow`'s X position (g30 `CompareX = 512`, g32 `> 530`) rather than on an
+animation, and are not in the totals. Nothing in the event sheet moves `follow`
+in X, which would make those tests constant — but the movement-block reader
+used to check that found **no movement block on any of the 485 objects**, so it
+cannot tell a real absence from its own blindness, and the question stays open.
 
 Neither blocker needed device time; both were readable from the dumps already
 in hand.
