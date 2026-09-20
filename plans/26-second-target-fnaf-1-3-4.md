@@ -6,6 +6,22 @@ behind the self-running lab. This plan supersedes that ordering, because the
 expensive half of a second target — ground truth — was measured on 2026-09-19
 and is already in hand for all three remaining night games.
 
+**This is optionality, not a programme.** A second game was never part of this
+project's thought architecture; scope here grows on a whim, and this document
+grew out of one. Nothing in it is owed. What it records is that a later whim is
+now cheap, because the measurements behind it were taken — and *those* are the
+durable part. The dumps, the handle constants, the RNG transfer, the layer
+coefficients and the movement rules stay true whether or not anyone ever runs
+FNaF 3. The ordering, the milestones and the recommended sequence are the
+perishable part, and should be discarded without ceremony if the whim goes
+elsewhere.
+
+It is also worth being honest about why the port looks cheap: **the architecture
+did not anticipate this.** What transferred was the discipline — evidence
+labels, semantic contracts, dump-before-model — which happened to be general
+even where the code was not. The 113-site `CONTROL_VOCABULARY` coupling below is
+what the architecture actually assumed, and it assumed one game.
+
 Nothing here is a claim or a Plan 12 rung. Every number below was measured this
 session and says how; every gap says `UNKNOWN` and what would close it.
 
@@ -235,6 +251,34 @@ mechanisms, not the single audio-lure family an earlier draft guessed:**
   movement-timer reset, not just a reposition — which is why the public
   "let him roam, lures are expensive" advice understates what a well-timed lure
   is worth.
+
+**The movement core, completed 2026-09-19.** Per second: `move counter += 1`,
+or **`+= 2` while `hyper on?` is set**. When
+`move counter > ((10 − AI − aggresive?) + Random(15) − total turns)`, the
+counter resets to 0 and `turn` is raised; `turn` then draws
+**`action selected = Random(3) + aggresive? + 1`** and clears itself.
+`action selected` 1 means stay, and 2, 3 and 4 select destination branches.
+
+Two consequences that change the model rather than decorate it:
+
+- **Aggression unlocks the vents.** `Random(3)` yields 0–2, so at
+  `aggresive? = 0` the branch is {1,2,3} and at `aggresive? = 1` it is {2,3,4}.
+  **Every vent entrance is on branch 4.** So aggression does not merely make
+  Springtrap arrive sooner — it is the switch that makes the vent routes
+  reachable at all, including vents 14 and 15 which bypass the attack chain to
+  the kill. A route that keeps aggression at 0 cannot be vented on; one that
+  lets it latch can be killed by a path that does not exist otherwise. That
+  makes the 15 s decay a first-class control, not a detail.
+- **`hyper on?` is not `aggresive?`.** The public accounts describe an
+  "aggressive cheat" that doubles the move counter; that is `hyper on?`, a
+  separate modifier from the `aggresive?` term inside the threshold. Conflating
+  them gives a route twice the movement rate it expects. Distinct names,
+  distinct effects, similar words.
+
+**Draw accounting:** `Random(15)` sits *inside* the threshold comparison, so it
+is drawn **every tick** whether or not he moves — one guaranteed draw per
+second — with `Random(3)` drawn only on a move. That is the per-second cost to
+model against the seed.
 - **Scripted forced move** on a `force move` / `force to` pair, to three fixed
   cameras.
 - **Attack escalation** to attack stage 2 while a screen is being viewed.
