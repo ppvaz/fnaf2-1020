@@ -3,7 +3,8 @@
  * This module has no Node, DOM, filesystem, subprocess, network, or wall-clock
  * dependency. CONTRACT:semantic-control-v1 CONTRACT:measurement-v1.
  */
-import { DEVICE_CONTROL_NAMES } from '../control/vocabulary.js';
+import { DEVICE_CONTROL_NAMES, ALL_GAME_CONTROL_NAMES, MAX_GAME_CAMERA_INDEX }
+  from '../control/vocabulary.js';
 
 export const CONTRACTS = Object.freeze([
   'plant-model-v1', 'semantic-control-v1', 'policy-program-v1', 'controller-v1',
@@ -56,12 +57,35 @@ export function validateClockRef(value, label = 'clock') {
   return Object.freeze({ clock: value.clock, value: value.value });
 }
 
+// The accepted set is derived from the per-game registry rather than written
+// out here. Two FNaF 2 facts used to be literals in this function: its seven
+// control names, and a camera range of 0-12. FNaF 3 addresses fifteen
+// locations, so `cam:13` upward failed this check and reported a cause --
+// coordinates or transport text -- that had nothing to do with the refusal.
+//
+// This is a UNION, so it is deliberately a loosening: `cam:13` to `cam:15` now
+// pass in a FNaF 2 context, where they used to fail. No FNaF 2 name is removed
+// and none of the seven changes meaning, but the camera bound is no longer
+// FNaF 2's. That is the honest cost of making one validator serve every game.
+//
+// The strict form would take the game as an argument and check membership in
+// that game's set alone. It is not done here because `validateControlCommand`
+// has no game parameter, and adding one changes a published contract signature
+// and every call site -- the same 113-site change this registry exists to
+// defer. Until then the validator asserts "semantic, not physical", which is
+// what it was always really for, rather than "legal for this game".
+const CONTROL_REFUSAL =
+  'action.control must be semantic and must not contain coordinates or transport text';
+
 function validateControl(control) {
-  if (typeof control !== 'string' ||
-      !([...DEVICE_CONTROL_NAMES, ...MODEL_COMPATIBILITY_CONTROLS].includes(control) ||
-       /^cam:(?:[0-9]|1[0-2])$/.test(control)))
-    fail('action.control must be semantic and must not contain coordinates or transport text');
-  return control;
+  if (typeof control !== 'string') fail(CONTROL_REFUSAL);
+  if ([...DEVICE_CONTROL_NAMES, ...ALL_GAME_CONTROL_NAMES,
+       ...MODEL_COMPATIBILITY_CONTROLS].includes(control)) return control;
+  // `cam:N`, no leading zeros, within the widest range any registered game
+  // addresses. Matches the previous regex exactly for 0-12.
+  const camera = /^cam:(0|[1-9][0-9]*)$/.exec(control);
+  if (camera && Number(camera[1]) <= MAX_GAME_CAMERA_INDEX) return control;
+  fail(CONTROL_REFUSAL);
 }
 
 export function validateControlCommand(input) {
