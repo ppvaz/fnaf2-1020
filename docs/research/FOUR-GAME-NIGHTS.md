@@ -181,68 +181,90 @@ from night start — and it is exactly the shape this project already wins with
 on FNaF 2. It is reported separately from the community line rather than
 blended into it.
 
+## The censuses
+
+Every figure is a **model** result at the project's 3000-seed floor. Controls
+are reported beside each, because a sweep with no failing control cannot tell
+a working route from a dead code path.
+
+### FNaF 3 — 3000/3000 on all six nights, community line
+
+| Night | `community-line` | night length |
+|---|---|---|
+| 1 | **3000/3000** | 240 s |
+| 2–6 | **3000/3000** each | 360 s |
+
+The night lengths are the clock groups' own (6 x 40 s and 6 x 60 s) and the
+240 s matches what the handset measured on 2026-09-20.
+
+The policy is the published line — let him roam, seal the vent adjacent to
+where he was last seen, stay on the monitor, reboot ventilation when the meter
+drops — and it is **belief-limited**: it learns his position only by looking at
+the camera he is on, and sweeps to find him.
+
+Controls: **office camping** loses every night after the first (the office
+drains ventilation and raises aggression off one counter, g908/g909), and
+**doing nothing** loses Night 2 onward but is only a coin flip on Night 1.
+
+Two source facts do the work, and neither is in any public account:
+
+- **The attack chain advances on the ventilation blackout**, not on a move
+  (g486, g487, g256, g262). Springtrap's rule alone cannot end a night. A
+  simulator built from his movement graph and nothing else reports a night
+  that never ends — which is exactly what the `test-fnaf3-census.mjs` negative
+  control demonstrates: disabling the blackout ramp makes the *failing*
+  controls start passing.
+- **The blackout needs twice the error dwell the hallucination does**
+  (`2000 − AI×200` against `1000 − AI×100`), so clearing an error late still
+  avoids the chain entirely.
+
+### FNaF 1 — 3000/3000 on all six nights and 4/20, community loop
+
+See the table below. What made it reachable was measuring where the 999 units
+go rather than sweeping knobs: on Night 5, **713 of the reserve is spent before
+the player touches anything** (base 535 plus the per-night drain 178), leaving
+286 for every control.
+
+Two source-derived levers closed the gap:
+
+- **Foxy's hold is re-set to `50 + Random(1000)` every 100 ms of viewing**, so
+  the worst draw is 50 frames. Flick the camera more often than that and he can
+  never act; the loop uses 42.
+- **A light flash costs 1/60 of a unit against a shut door's 1 per second**, so
+  checking a shut door often is ~60x cheaper than holding it a moment too long.
+
+### FNaF 2 — not re-censused, and deliberately
+
+It already has a simulator, a route and device evidence, so a new one here
+would add nothing. Run through the existing machinery, `minus7` clears nights
+1–4 at 3000/3000 and Night 5 at 2998/3000, and scores **0/3000 on nights 6 and
+7**. That is one mechanic: **Golden Freddy is ~96% of all night-6/7 losses
+across every family**. He does not kill on his own — he kills when the player
+flashes the hall or raises the monitor while he is in the office (g690, g701,
+g727, g1292), and **a fully-on mask is his only dismissal** (g776). The
+families in `policybaselines.mjs` keep to a fixed cycle and never check. The
+routes that actually win those nights are artifact plans
+(`campaign-night6-h2`, `campaign-night7-k3`), scored by other machinery.
+
 ## What is not done
 
-- **FNaF 2**: no new census. It has a simulator and a live route already; this
-  work contributed only its clock groups.
-- **FNaF 3**: night model, Springtrap's full 73-edge graph, the vent topology,
-  the seal's `what vent is closed` test (g604–g613: a sealed vent returns him,
-  an unsealed one advances him) — and, as of 2026-09-20, **the ventilation
-  economy that was the blocker** (see below). **No simulator yet**, but nothing
-  unmapped stands in front of one.
-- **FNaF 4**: night model, rolls, the four movement graphs, Freddy's meter
-  (fill g397/g398/g593, drain g401, floor g399, kill at **≥ 60** at the bed,
-  g427/g428) — and **the `follow` state machine that was the blocker** (see
-  below). **No simulator yet.**
+**FNaF 4's simulator is incomplete and its census is not reported.** The night
+model, roll schedule, Freddy's meter, the `follow` map and its walk durations
+are all traced and stand on their own. The step function built on them does
+not, and its own controls say so: `do-nothing` clears every night, because
+every `gameover = 1` group in the frame is player-triggered and a player who
+never leaves the middle of the room is never in a state that can kill. That is
+wrong about the real game, so a mechanic forcing the player out of the hub is
+missing — `force turn` (g589–g591, g595) is modelled at the bed only. Foxy's
+closet chain is a guess rather than a trace.
 
-### Both blockers are closed (2026-09-20)
+`UNKNOWN(not-traced)`: what sets `Bonnie`/`Chica` AV7, the bedroom flag
+g375/g376 test; and Foxy's real closet progression.
 
-**FNaF 3's attack chain does not advance on movement.** It advances on
-`blackout` AV1 passing 250 (g486 stage 1→2, g487 2→3, g256 3→4, g262 4→kill),
-so Springtrap's rule alone cannot kill. The full path:
-
-```
-drain → error (AV0 ≤ −10) → dwell (AV1 per frame)
-      → hallucination  at AV1 > 1000 − AI×100   [g463]
-      → blackout ramp  at AV1 > 2000 − AI×200   [g473]  +1/frame
-      → attack chain   at blackout AV1 > 250
-```
-
-Two drains, and they are different mechanisms. **g908** takes 1 per second
-while the office-inactivity counter is above 10, on every night but Night 1 —
-the same counter g909 reads to raise `aggresive?`, so sitting still costs
-ventilation *and* aggression from one source. **g448–g452** add a background
-drain indexed by `AI` at 12/10/9/8/6 s for AI 2–6.
-
-That second table is written with `=` comparisons and **stops at AI 6, while
-g654 sets AI 7 on Night 6 and after** — so on Night 6 it matches nothing and
-ventilation degrades only through g908 and through events. Recorded because a
-model that extrapolated the 12/10/9/8/6 series to AI 7 would drain a night the
-game does not. `UNKNOWN(not-decompiled)`: whether the missing row is deliberate.
-
-A reboot of ventilation zeroes AV0 outright (g429), and `white flash` (g704) is
-a scripted catastrophic failure that sets `blackout` AV1 straight to 255 —
-already past the chain threshold, with no dwell required.
-
-**FNaF 4's `follow` is a walk animation, not an abstract state.** Its 46 values
-are driven by `AnimationFinished` and by the object's own X position (g30 tests
-`CompareX = 512`). Four are places the player can act; the rest are frames of
-getting there:
-
-| state | place |
-|---|---|
-| 0 | the middle of the room — the hub, the only state with four exits |
-| 10 | at the left door |
-| 17 | at the right door |
-| 29 | in the closet |
-| 43 | at the bed — the state Freddy's kill is gated on (g427/g428) |
-
-Those five account for 114 of the frame's `follow` comparisons. A station
-action (close, flashlight) runs a sub-cycle that **returns to the same
-station**, so it costs animation time but not position; moving between stations
-runs a separate walk each way. **The two doors are never both reachable**, and
-every rotation is a tour with travel time between stops — the same shape as
-FNaF 1's "pan, then press", arriving from a different mechanism.
+It is labelled `INCOMPLETE` in `sim-fnaf4.js` and in `census.mjs`'s reporter,
+which prints the warning beside every FNaF 4 row. Reporting a rate from a model
+whose controls pass when they should fail is the shape of mistake register #12,
+so it is not reported.
 
 ### The walk durations, caught from the animation bank (2026-09-20)
 

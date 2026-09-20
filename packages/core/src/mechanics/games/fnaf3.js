@@ -43,9 +43,15 @@ export const CLOCK = {
 //   nights 2-5 AI = night
 //   night 6+  AI = 7
 //
-// Night 1 at AI 0 is why it can be cleared with no input at all: Springtrap's
-// threshold is `(10 - 0 - 0) + Random(15) - total turns`, and every phantom
-// roll is `Random(bound) + 1 <= 0`, which never passes.
+// AI 0 does **not** freeze Springtrap, and an earlier draft of this file said
+// it did. His rule is a *threshold*, not a roll: at AI 0 it reads
+// `(10 - 0 - aggresive?) + Random(15) - total turns`, so he still moves, just
+// slowly -- roughly every 10-24 s. What AI 0 does freeze is the phantoms,
+// whose rolls are `Random(bound) + 1 <= 0` and can never pass.
+//
+// The handset cleared Night 1 with zero input on 2026-09-20, and that is
+// consistent with a model rate well short of certainty: one run is one
+// sample. It corroborates the 240 s clock, not Springtrap's inactivity.
 export const ROWS = [
   { group: 649, night: { op: '<', value: 2 }, set: { ai: 0 }, note: 'AI = night - 1' },
   { group: 650, night: { op: '=', value: 2 }, set: { ai: 2 } },

@@ -68,89 +68,74 @@ export const CAM = { showStage: 1, dining: 2, westHall: 3, eastHall: 4,
 function onBudget(sim, slack) {
   const elapsed = sim.frame / 60;
   const remaining = Math.max(0, 535 - elapsed) / 535;
-  return sim.power > 999 * remaining * slack;
+  // `>=`, not `>`: at frame 0 the reserve is exactly on the line, and a
+  // strict compare cuts the camera for the whole night from the first tick.
+  return sim.power >= 999 * remaining * slack;
 }
 
 export function communityLoop({
-  lightFrames = 1, camFrames = 7, idleFrames = 60, maxShutFrames = Infinity,
-  budgetSlack = 1, recheckFrames = 20, park = CAM.eastCorner,
+  lightFrames = 1, camFrames = 6, camEvery = 42, checkEvery = 90,
+  heldCheckEvery = 8,
+  maxShutFrames = Infinity, budgetSlack = 0.5, park = CAM.eastCorner,
 } = {}) {
-  let phase = 0;
-  let phaseFrame = 0;
-  // Belief, not a timer: a flash that finds someone there shuts the door and
-  // the door stays shut until a later flash finds it clear. That is what the
-  // published loop actually describes, and it is why the loop must keep
-  // coming back to the same light rather than setting a dwell.
+  // The published loop is "light, camera, light, camera", but the two are
+  // **independent rhythms** and coupling them into one phase machine wastes
+  // power: the light check has to keep pace with a character arriving at a
+  // door, while the camera only has to keep pace with Foxy's hold expiring,
+  // and those are different clocks.
+  //
+  // The camera rhythm has a floor the source hands us. g460 re-sets Foxy's
+  // hold to `50 + Random(1000)` every 100 ms of *viewing* time, so the
+  // smallest useful flick is 100 ms (6 frames at 60 Hz) and the worst draw it
+  // can return is **50 frames = 0.83 s**. Flick at least that often and Foxy
+  // is never free; flick more often than that and the extra is pure spend.
+  // `camEvery = 45` sits just inside the 50-frame worst case, which is the
+  // project's own seam-slack habit applied to a draw floor.
+  let frame = 0;
   let leftOccupied = false;
   let rightOccupied = false;
   let leftShutFor = 0;
   let rightShutFor = 0;
-  let sinceRecheck = 0;
-  const PHASES = ['leftLight', 'cam', 'rightLight', 'cam', 'idle'];
 
   return (sim) => {
     if (sim.blackout) return;
+    frame += 1;
 
-    // A safety release: believing a door is occupied forever would spend the
-    // whole reserve, and the power meter is a thing the player can read.
     if (leftOccupied && leftShutFor > maxShutFrames) leftOccupied = false;
     if (rightOccupied && rightShutFor > maxShutFrames) rightOccupied = false;
     sim.leftDoor = leftOccupied ? DOOR_SHUT : DOOR_OPEN;
     sim.rightDoor = rightOccupied ? DOOR_SHUT : DOOR_OPEN;
     leftShutFor = leftOccupied ? leftShutFor + 1 : 0;
     rightShutFor = rightOccupied ? rightShutFor + 1 : 0;
-
     sim.leftLight = 0; sim.rightLight = 0; sim.viewing = 0;
-    phaseFrame += 1;
-    sinceRecheck += 1;
 
-    // A shut door costs a unit per second for as long as the belief stands,
-    // and the belief is only cleared by a light. A flash costs one frame --
-    // 1/60 of a unit -- so re-checking a shut door often is close to free and
-    // is what stops the reserve paying for a character who has already left.
-    // This is where FNaF 1's power actually goes: not in the doors, but in
-    // the lag between a character leaving and the player finding out.
-    if ((leftOccupied || rightOccupied) && sinceRecheck >= recheckFrames) {
-      sinceRecheck = 0;
-      if (leftOccupied) {
-        sim.leftLight = 1;
-        leftOccupied = sim.atLeftDoor();
-        sim.leftDoor = leftOccupied ? DOOR_SHUT : DOOR_OPEN;
-      }
-      if (rightOccupied) {
-        sim.rightLight = 1;
-        rightOccupied = sim.atRightDoor();
-        sim.rightDoor = rightOccupied ? DOOR_SHUT : DOOR_OPEN;
-      }
-      return;
-    }
+    // The camera flick, on its own clock and only while the reserve allows.
+    const inFlick = frame % camEvery < camFrames;
+    if (inFlick && onBudget(sim, budgetSlack)) sim.viewing = park;
 
-    const kind = PHASES[phase];
-
-    if (kind === 'leftLight') {
+    // The door checks, and the one piece of arithmetic that decides this
+    // night. A shut door costs a full unit per second for as long as the
+    // belief stands; a light flash costs **one frame**, which is 1/60 of a
+    // unit. So a check is about sixty times cheaper than a second of hold,
+    // and the expensive mistake is not looking too often -- it is holding a
+    // door for the seconds between noticing they left and finding out.
+    //
+    // The rate is therefore conditional, which is also what a player does:
+    // keep tapping the light while a door is shut so it opens the instant the
+    // hall is clear, and check lazily while it is open, where the only job is
+    // to catch an arrival before its next roll ~298 frames later.
+    const leftRate = leftOccupied ? heldCheckEvery : checkEvery;
+    const rightRate = rightOccupied ? heldCheckEvery : checkEvery;
+    if (frame % leftRate === 0) {
       sim.leftLight = 1;
       leftOccupied = sim.atLeftDoor();
       sim.leftDoor = leftOccupied ? DOOR_SHUT : DOOR_OPEN;
-      if (phaseFrame >= lightFrames) { phase = 1; phaseFrame = 0; }
-    } else if (kind === 'rightLight') {
+    }
+    if (frame % rightRate === Math.floor(rightRate / 2)) {
       sim.rightLight = 1;
       rightOccupied = sim.atRightDoor();
       sim.rightDoor = rightOccupied ? DOOR_SHUT : DOOR_OPEN;
-      if (phaseFrame >= lightFrames) { phase = 3; phaseFrame = 0; }
-    } else if (kind === 'cam') {
-      // Power discipline, which is what every published 4/20 account names as
-      // the binding constraint. The player can read the meter (`power left 2`
-      // is the displayed tenth of `power left`, g313) and the hour, so a
-      // policy may compare the two. The camera is the only discretionary
-      // spend here -- the doors are safety and the lights are one frame -- so
-      // it is what gets cut when the reserve is behind schedule.
-      //
-      // Foxy is the cost of cutting it, and he is the cheapest threat to
-      // accept: he needs three separate advances before he can run, where a
-      // door left open needs one roll.
-      if (onBudget(sim, budgetSlack)) sim.viewing = park;
-      if (phaseFrame >= camFrames) { phase = (phase + 1) % PHASES.length; phaseFrame = 0; }
-    } else if (phaseFrame >= idleFrames) { phase = 0; phaseFrame = 0; }
+    }
   };
 }
 

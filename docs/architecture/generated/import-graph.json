@@ -762,10 +762,32 @@
       ]
     },
     {
+      "file": "packages/core/src/mechanics/games/policy-fnaf4.js",
+      "imports": [
+        "./fnaf4.js"
+      ]
+    },
+    {
       "file": "packages/core/src/mechanics/games/sim-fnaf1.js",
       "imports": [
         "../rng.js",
         "./fnaf1.js",
+        "./night-model.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/games/sim-fnaf3.js",
+      "imports": [
+        "../rng.js",
+        "./fnaf3.js",
+        "./night-model.js"
+      ]
+    },
+    {
+      "file": "packages/core/src/mechanics/games/sim-fnaf4.js",
+      "imports": [
+        "../rng.js",
+        "./fnaf4.js",
         "./night-model.js"
       ]
     },
@@ -1306,7 +1328,13 @@
       "file": "tools/census.mjs",
       "imports": [
         "../packages/core/src/mechanics/games/policy-fnaf1.js",
-        "../packages/core/src/mechanics/games/sim-fnaf1.js"
+        "../packages/core/src/mechanics/games/policy-fnaf3.js",
+        "../packages/core/src/mechanics/games/policy-fnaf4.js",
+        "../packages/core/src/mechanics/games/sim-fnaf1.js",
+        "../packages/core/src/mechanics/games/sim-fnaf3.js",
+        "../packages/core/src/mechanics/games/sim-fnaf4.js",
+        "./policy.mjs",
+        "./policybaselines.mjs"
       ]
     },
     {
@@ -2827,6 +2855,14 @@
         "../packages/core/src/mechanics/games/fnaf1.js",
         "../packages/core/src/mechanics/games/policy-fnaf1.js",
         "../packages/core/src/mechanics/games/sim-fnaf1.js"
+      ]
+    },
+    {
+      "file": "tools/test-fnaf3-census.mjs",
+      "imports": [
+        "../packages/core/src/mechanics/games/fnaf3.js",
+        "../packages/core/src/mechanics/games/policy-fnaf3.js",
+        "../packages/core/src/mechanics/games/sim-fnaf3.js"
       ]
     },
     {
