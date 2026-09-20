@@ -85,9 +85,16 @@ export function validateDeathPrediction(prediction, nights) {
   // certify "a phase no census has seen". Such a prediction must SAY it is
   // phase-blind and carry the single phase it really saw; it may not quietly
   // present one phase as many, nor claim blindness while listing several.
+  // The phase space is the binding's release period. A hard 1000 here refused
+  // the only correct sweep for a night that releases on the five-second Foxy
+  // roll grid, which is nights 6 and 7 -- every one of their ANCHOR_AIMS
+  // entries carries periodMs 5000.
+  const predictionPeriodMs = prediction.periodMs ?? 1000;
+  if (!Number.isInteger(predictionPeriodMs) || predictionPeriodMs < 1)
+    fail('death prediction periodMs must be a positive integer');
   if (!Array.isArray(prediction.phasesMs) ||
-      prediction.phasesMs.some(ms => !Number.isInteger(ms) || ms < 0 || ms >= 1000))
-    fail('death prediction phases must be integers in [0, 1000)');
+      prediction.phasesMs.some(ms => !Number.isInteger(ms) || ms < 0 || ms >= predictionPeriodMs))
+    fail(`death prediction phases must be integers in [0, ${predictionPeriodMs})`);
   if (prediction.phaseBlind === true) {
     if (prediction.phasesMs.length !== 1)
       fail('a phaseBlind death prediction must carry exactly the one phase it scored');

@@ -15,7 +15,10 @@
 //
 // Usage:
 //   node tools/device/death-prediction.mjs --winner W.json --night N
-//        [--replays 3000] [--step-ms 50] [--out prediction.json] [--attach]
+//        [--replays 3000] [--step-ms 50] [--period-ms 1000] [--out prediction.json] [--attach]
+//
+// --period-ms is the binding's release period: 1000 for night 5, 5000 for the
+// nights that release on Withered Foxy's roll grid (see ANCHOR_AIMS).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { replay, KNOBS0 } from './minus-toys-plan.mjs';
@@ -32,7 +35,7 @@ const quantile = (sorted, p) => sorted[Math.min(sorted.length - 1, Math.floor(p 
  * @param {{strategy: string, knobs: object|string}} winner
  * @param {{night: number, replays?: number, stepMs?: number}} options
  */
-export function predictDeaths(winner, { night, replays = 3000, stepMs = 50 }) {
+export function predictDeaths(winner, { night, replays = 3000, stepMs = 50, periodMs = 1000 }) {
   // A death prediction is the only honest gate for a route that is not
   // zero-RNG, and every community strategy except Minus Toys and Minus 7 is in
   // that class -- Minus 3 scores 2980/3000, Right Vent Camp about 99%. While
@@ -56,9 +59,15 @@ export function predictDeaths(winner, { night, replays = 3000, stepMs = 50 }) {
   // seen". A phase-blind strategy therefore records the single phase it can
   // actually see and says so, and the validator requires the marker instead of
   // a fabricated span.
+  // The phase space is the BINDING'S period, not a hard-coded second. Nights 6
+  // and 7 release on Withered Foxy's five-second roll grid (g337, and every
+  // night-6/7 ANCHOR_AIMS entry carries periodMs 5000), so a sweep of [0, 1000)
+  // samples one fifth of the phases a drawn release can land on -- and reports
+  // it as all of them. Worse, validateDeathPrediction refused anything at or
+  // above 1000, so the correct sweep could not be expressed at all.
   const phaseAware = entry.phaseAware === true;
   const phasesMs = [];
-  if (phaseAware) for (let ms = 0; ms < 1000; ms += stepMs) phasesMs.push(ms);
+  if (phaseAware) for (let ms = 0; ms < periodMs; ms += stepMs) phasesMs.push(ms);
   else phasesMs.push(0);
 
   if (phaseAware) {
@@ -94,7 +103,7 @@ export function predictDeaths(winner, { night, replays = 3000, stepMs = 50 }) {
     })
     .sort((a, b) => b.count - a.count);
   return { schema: DEATH_PREDICTION_SCHEMA, night, replays, phasesMs, wins, winRate: wins / replays, killers,
-    strategy, ...(phaseAware ? {} : { phaseBlind: true }),
+    strategy, periodMs, ...(phaseAware ? {} : { phaseBlind: true }),
     generatedBy: 'tools/device/death-prediction.mjs', generatedAt: new Date().toISOString() };
 }
 
@@ -116,7 +125,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   }
   const winner = JSON.parse(readFileSync(winnerPath, 'utf8'));
   const prediction = predictDeaths(winner, { night,
-    replays: Number(argValue('--replays', 3000)), stepMs: Number(argValue('--step-ms', 50)) });
+    replays: Number(argValue('--replays', 3000)), stepMs: Number(argValue('--step-ms', 50)),
+    periodMs: Number(argValue('--period-ms', 1000)) });
   console.log(describe(prediction));
   const out = argValue('--out');
   if (out) writeFileSync(out, `${JSON.stringify(prediction, null, 2)}\n`);

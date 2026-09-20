@@ -1686,6 +1686,15 @@
       ]
     },
     {
+      "file": "tools/device/test-anchor-aim-band.mjs",
+      "imports": [
+        "./fact-register.mjs",
+        "node:fs",
+        "node:path",
+        "node:url"
+      ]
+    },
+    {
       "file": "tools/device/test-artifact-animation-gates.mjs",
       "imports": [
         "./artifact-commands.mjs",

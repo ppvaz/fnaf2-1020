@@ -1,0 +1,29 @@
+{
+ "schema": "calibration-observation-v1",
+ "verdict": "PARTIAL",
+ "claimLevel": "DEVICE_MEASURED",
+ "evidenceId": "night6-aim-zero-not-deliverable-20260920",
+ "recordedAt": "2026-09-20",
+ "device": {
+  "serial": "ZF525F5BH5",
+  "build": "com.scottgames.fnaf2:2.0.7+26"
+ },
+ "scope": "Whether the executor can deliver an anchor aim at or near the latched onset, and whether the model's epoch band for campaign-night6-winner.json (fnv1a-be76035f) predicts the phone.",
+ "run": {
+  "runDirectory": "artifacts/runs/night6-n6-aim0-derived-20260920T012539Z",
+  "campaignLogSha256": "d7657b1813cce9952477ed4b0cc6cdc87bad39af1771ea7502e2c14e0e0d25d0",
+  "campaignExit": "campaign exit 1",
+  "override": "NIGHT_ANCHOR_AIM_MS=0 NIGHT_ANCHOR_MAX_K=0"
+ },
+ "observed": [
+  "AIM 0 IS NOT DELIVERABLE. originAt 1789867571597, first releaseAt 1789867582013 -- 10416 ms later, an effective epoch of 416 ms rather than 0. The onset must be detected before a release can be issued, so an aim at the onset slips to a later period boundary.",
+  "The model's band predicted the outcome. tools/device/epoch-scan.mjs scored epochs 400 and 450 at 0/200 for this winner, mostly Foxy; the run died at 167.8 s.",
+  "Band for fnv1a-be76035f, night 6, confirmed at 3000 seeds: epochs 0, 50, 100, 200, 250 and 300 all 3000/3000. Epoch 150 is 0/200 (Puppet) -- the 50 ms split-arming hole g263 -- and 350 and beyond lose to Foxy.",
+  "The effective-epoch relation was recovered from night6-anchor-aim-h-20260913.json: effective = aim + k*period + onsetBiasMs(-70) + input latency(47-82 ms, hall-lit). An aim derived from a winning band alone, without those two terms, is wrong by about 250 ms."
+ ],
+ "unknown": {
+  "deliverableAimFloor": "UNKNOWN(not-measured): aim 0 slipped to 416 ms on one run. The smallest aim the executor CAN deliver, and how repeatable the slip is, needs a sweep -- one run cannot distinguish a fixed detection cost from a drawn one.",
+  "night6TrackedAim": "UNKNOWN(not-tested): the band implies about 255 for fnv1a-be76035f, but whether the executor delivers 255 is exactly what this run puts in doubt.",
+  "night6AnchoredBinding": "UNTRACKED: binding h's aim fnv1a-37278c63 is registered but no tracked winner normalises to that hash; the winner file is part of the untracked-winner debt."
+ }
+}
