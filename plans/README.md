@@ -198,3 +198,14 @@ Ownership and dependencies (2026-09-17):
     be frozen, that the companion APK's application ID is device state rather
     than branding and must not change, and that the rebrand should follow
     custody recovery but precede any new-game code.
+28. [28-solver-interface.md](28-solver-interface.md) — the interface an outside
+    caller (or their agent) uses instead of investigating by hand: one MCP
+    surface over all four games, six namespaces, built on a shared
+    `claim-envelope-v1` that carries the evidence label, the citation, the
+    `standing`/`superseded`/`retracted` status and an explicit `notMeasured`
+    field on every answer. Ships the decoder rather than the decoded data, so
+    the publishing boundary holds and one server serves four titles; refuses
+    the mistake register's known-bad moves with a citation and a remedy; and
+    keeps promotion human-only. Re-measures the custody reading (148 runs,
+    7 `DEVICE_MEASURED`, debt 11 of 13, still zero promotion edges), which
+    supersedes CLAUDE.md's 2026-09-17 numbers. Gated behind Plans 12, 26 and 27.
