@@ -65,6 +65,34 @@ not the ~5 s hold the video recommends. The video's number is conservative by
 about 2 s per door visit — material, because its Nightmare-mode rotation runs
 2–3 s from death.
 
+#### It is a two-close cycle, not a hold (corrected 2026-09-20)
+
+The quotes above carry the interlock and the prose above missed what it does.
+`in closet` AV5 appears as a *condition* in both groups — and **group 341
+also sets it to 1** when it summons. Group 342 requires it **clear**. So the
+close that summons is the close that blocks the push-back, and *"holding it
+then pushes him back"* is wrong: after a summon, holding changes nothing.
+
+`SOURCE` **group 352** — the interlock returns to 0 only while **both doors
+are open**. The cycle is therefore:
+
+> close (summon, latch) → **open both** (re-arm) → close (dismiss within 3 s)
+
+`SOURCE` **groups 631 and 632** — `AV5` is a position *tag*, not a hold
+counter: 1 at the hall's far marker, 2 at near. It persists after they leave,
+which is exactly why group 341 can summon from a stale tag and why the trick
+works "while Bonnie is not yet at the door" at all.
+
+`SOURCE` **groups 343 and 344** — Chica's pair uses the **same object and
+slot** for the interlock. It is one flag for both sides, so **only one
+character can be resolved per arming**, and a rotation cannot push both home
+without re-arming in between. That is a scheduling constraint on any no-audio
+route and no public account states it.
+
+Verified in `sim-fnaf4.js`: a close with a far tag summons and latches, a
+five-second hold changes nothing, opening both doors re-arms, and the second
+close dismisses within 3.6 s.
+
 `SOURCE` **group 502** — the same close teleports Fredbear to the *opposite*
 hallway (`living room right`), matching the claim.
 
