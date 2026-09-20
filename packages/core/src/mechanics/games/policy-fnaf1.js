@@ -74,9 +74,10 @@ function onBudget(sim, slack) {
 }
 
 export function communityLoop({
-  lightFrames = 1, camFrames = 6, camEvery = 42, checkEvery = 90,
-  heldCheckEvery = 8,
-  maxShutFrames = Infinity, budgetSlack = 0.5, park = CAM.eastCorner,
+  lightFrames = 1, camFrames = 6, camEvery = 44, checkEvery = 60,
+  heldCheckEvery = 12,
+  maxShutFrames = Infinity, budgetSlack = 0.5, bothLights = false,
+  park = CAM.eastCorner,
 } = {}) {
   // The published loop is "light, camera, light, camera", but the two are
   // **independent rhythms** and coupling them into one phase machine wastes
@@ -124,6 +125,18 @@ export function communityLoop({
     // keep tapping the light while a door is shut so it opens the instant the
     // hall is clear, and check lazily while it is open, where the only job is
     // to catch an arrival before its next roll ~298 frames later.
+    // Both lights in the same frame, optionally. Each costs a unit per second
+    // while lit, so a simultaneous one-frame flash costs 2/60 of a unit --
+    // and it halves the worst-case gap between a character arriving at a door
+    // and the player finding out, because neither side waits its turn.
+    if (bothLights && frame % checkEvery === 0) {
+      sim.leftLight = 1; sim.rightLight = 1;
+      leftOccupied = sim.atLeftDoor();
+      rightOccupied = sim.atRightDoor();
+      sim.leftDoor = leftOccupied ? DOOR_SHUT : DOOR_OPEN;
+      sim.rightDoor = rightOccupied ? DOOR_SHUT : DOOR_OPEN;
+      return;
+    }
     const leftRate = leftOccupied ? heldCheckEvery : checkEvery;
     const rightRate = rightOccupied ? heldCheckEvery : checkEvery;
     if (frame % leftRate === 0) {

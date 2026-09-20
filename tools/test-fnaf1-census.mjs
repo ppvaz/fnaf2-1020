@@ -94,14 +94,35 @@ eq('roll-grid clears 4/20', run(7, () => rollGrid(), 400, FOUR_TWENTY).wins, 400
 // governor starts cutting camera time to stay solvent, as a Foxy run. Both
 // are the same budget failure wearing different clothes, which is why the
 // assertion is about *where* it never fails rather than about one cause.
+//
+// The claim is a *comparison* on a **held-out** block, not a rate on the block
+// the knobs were chosen against. A third knob sweep produced a setting that
+// scored 3000/3000 on seeds 0-2999 and then 2998/3000 on 3000-5999: at a
+// ~1-in-3000 failure rate, a grid of a few dozen settings contains one that
+// clears any given block by luck. Asserting a small-sample loss would be just
+// as brittle in the other direction -- 400 seeds usually clear.
 {
-  const night5 = run(5, () => communityLoop(), 400);
-  ok('the published loop does not clear night 5', night5.wins < 400);
+  const HELD_OUT = 3000;
+  const rate = (makePolicy) => {
+    let wins = 0;
+    const causes = new Map();
+    for (let seed = HELD_OUT; seed < HELD_OUT + 3000; seed += 1) {
+      const sim = new Fnaf1Sim({ night: 5, seed });
+      const r = sim.run(makePolicy());
+      if (r.outcome === '6AM') wins += 1;
+      else causes.set(r.outcome, (causes.get(r.outcome) ?? 0) + 1);
+    }
+    return { wins, causes: Object.fromEntries(causes) };
+  };
+  const loop = rate(() => communityLoop());
+  const grid = rate(() => rollGrid());
+  ok('roll-grid clears the held-out night 5 block', grid.wins === 3000);
+  ok('the published loop does not', loop.wins < 3000);
   ok('and never loses at a door -- its failure is the budget, not the defence',
-    !night5.causes.bonnie && !night5.causes.chica && !night5.causes.freddy);
+    !loop.causes.bonnie && !loop.causes.chica && !loop.causes.freddy);
   ok('it loses to the reserve or to what cutting the camera buys Foxy',
-    Object.keys(night5.causes).every(
-      (cause) => cause === '6AM' || cause === 'foxy' || cause.startsWith('blackout')));
+    Object.keys(loop.causes).every(
+      (cause) => cause === 'foxy' || cause.startsWith('blackout')));
 }
 
 // --- 3. the mechanics the result rests on ------------------------------------

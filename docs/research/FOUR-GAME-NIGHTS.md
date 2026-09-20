@@ -119,15 +119,50 @@ the HUD's hour and power, and never a position the player is not looking at.
 
 ### Results, 3000 seeds per night
 
-| Night | `community-loop` | `roll-grid` |
+Three independent 3000-seed blocks, because one block is not enough to tell a
+policy from a lucky parameterisation.
+
+| Night | `community-loop` (0–2999 / 3000–5999 / 20000–22999) | `roll-grid` |
 |---|---|---|
-| 1 | 2999/3000 | **3000/3000** |
-| 2 | 2998/3000 | **3000/3000** |
-| 3 | 3000/3000 | **3000/3000** |
-| 4 | 2989/3000 | **3000/3000** |
-| 5 | 2965/3000 | **3000/3000** |
-| 6 | 2987/3000 | **3000/3000** |
-| **7 (4/20)** | 2995/3000 | **3000/3000** |
+| 1–4, 6 | 3000 / 3000 / 3000 (night 4: one loss in the third block) | **3000/3000** |
+| **5** | 3000 / **2999** / **2998** | **3000/3000** |
+| **7 (4/20)** | 3000 / 3000 / 3000 | **3000/3000** |
+
+**The published loop stops about one seed in 3000 short, and it is a real
+ceiling rather than a tuning miss.** Two sweeps — 54 and then 24 configurations
+over camera period, check period, held-door check period, the governor's slack
+and a both-lights variant — found no perfect setting at 3000 seeds.
+
+The cause is arithmetic: 713 of the 999-unit reserve is spent before the player
+touches anything, and what is left has to cover a **stochastic** cost. A
+blocked character leaves only on its next *successful* roll, so an unlucky camp
+draw exceeds the budget however the knobs are set.
+
+**The held-out check is what makes that a finding rather than a guess, and it
+caught a false positive.** A third sweep did find a configuration that scored
+3000/3000 on every night — `camEvery 44, checkEvery 60, heldCheckEvery 16,
+budgetSlack 0.55`. Re-run on seeds 3000–5999 it scored **2998/3000** on Night
+5, and on 20000–22999 **2995/3000**. It had been fitted to the block it was
+selected on.
+
+That is worth stating plainly because the fitted config is what this work
+would have reported if the sweep had been trusted: a clean sweep of the goal,
+on a policy whose real Night 5 rate is about 99.95%. A configuration chosen by
+sweeping against seeds 0–2999 and then reported on those same seeds is a
+selection effect, and at a ~1-in-3000 failure rate a grid of a few dozen
+settings will contain one that clears any given block by luck.
+
+The stable configuration reported above loses 0, 1 and 2 seeds across the
+three blocks. That is the policy's rate.
+
+`roll-grid` clears it because it removes the camp cost rather than paying it —
+each door is shut only across its own roll instants, 20/298 of holding — and it
+holds up under the same test: **3000/3000 on all seven nights across three
+independent seed ranges** (0–2999, 3000–5999, 10000–12999).
+
+That is the one place in this work where the community line and the machine
+line genuinely differ in outcome, and it is reported as a difference rather
+than folded together.
 
 `community-loop` is the published 4/20 line — left light, camera, right light,
 camera — with a power governor. `roll-grid` is not a community strategy and is
