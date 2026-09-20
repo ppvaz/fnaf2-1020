@@ -169,3 +169,69 @@ export const MODEL = {
   initialLevels: { ai: 0, bb: 0, mangle: 0, golden: 0, chica: 0, puppet: 0, timeLimit: 0 },
   rolls: ROLLS,
 };
+
+// ---------------------------------------------------------------------------
+// The ventilation economy, and the path from it to the attack chain.
+//
+// This was Plan 26's blocker for a FNaF 3 simulator: the attack chain does not
+// advance on movement actions, it advances on `blackout` AV1 passing 250
+// [g486 stage 1->2, g487 stage 2->3, g256 stage 3->4, g262 stage 4 -> GOT YOU].
+// So Springtrap's rule alone cannot kill; the systems economy has to be
+// modelled first. Traced 2026-09-20 -- the whole chain is below.
+//
+//   drain    -> error -> dwell -> hallucination -> blackout ramp -> chain
+//   (AV0)       (-10)    (AV1)      (AV2)           (blackout AV1 > 250)
+//
+// **Two independent drains, and they are not the same mechanism.**
+//
+//  - `inactivity` [g908]: while `ventilation text` AV6 (the office-inactivity
+//    counter) is above 10, and the night is **not** Night 1, AV0 loses 1 every
+//    1000 ms. This is the one that runs on every later night, and it is the
+//    same AV6 that g909 reads to raise `aggresive?` -- so sitting still in the
+//    office costs ventilation *and* aggression from one counter.
+//  - `byAi` [g448-g452]: an additional background drain indexed by `AI`,
+//    at 12 s, 10 s, 9 s, 8 s and 6 s for AI 2, 3, 4, 5 and 6.
+//
+// The second table is written with `=` comparisons and stops at AI 6, while
+// g654 sets **AI 7** on Night 6 and after. So on Night 6 the AI-indexed drain
+// matches nothing and ventilation degrades only through g908 and through
+// events. That is the source's behaviour as written; whether the missing
+// AI 7 row is deliberate is UNKNOWN(not-decompiled). It is recorded because a
+// model that extrapolates the 12/10/9/8/6 series to AI 7 would drain a night
+// the game does not.
+export const VENTILATION = {
+  drains: {
+    inactivity: { group: 908, everyMs: 1000, amount: 1,
+                  requires: 'ventilation text AV6 > 10, night <> 1' },
+    byAi: { groups: [448, 449, 450, 451, 452],
+            everyMsByAi: { 2: 12000, 3: 10000, 4: 9000, 5: 8000, 6: 6000 },
+            missingAbove: 6 },
+  },
+  // The error threshold all three systems share, and AV0's floor [g382].
+  errorAt: -10,
+  floor: -10,
+  // While in error, AV1 accumulates per frame [g462]; while out of it, AV1 is
+  // held at 0 [g461]. So AV1 is "how long this system has been broken".
+  dwell: { group: 462, perFrame: 1, clearedBy: 461 },
+  // First escalation: the hallucination window [g463], drained per frame [g464].
+  hallucinationAt: (ai) => 1000 - ai * 100,
+  hallucinationFrames: (ai) => ({ min: ai * 200, bound: 200 }),
+  // Second escalation, and the one that reaches the attack chain [g473]. Note
+  // it needs **twice** the dwell the first one does, so a route that clears an
+  // error late still avoids the chain entirely.
+  blackoutRampAt: (ai) => 2000 - ai * 200,
+  blackoutRamp: { group: 473, perFrame: 1, acceleratedGroup: 474, acceleratedPerFrame: 5 },
+  chainAdvancesAbove: 250,
+  chainGroups: { s1s2: 486, s2s3: 487, s3s4: 256, s4kill: 262 },
+  // Rebooting ventilation zeroes AV0 outright [g429, at `rebooting = 3` once
+  // the reboot's own `cursor` AV1 reaches 10].
+  rebootClears: { group: 429, rebootingValue: 3, completesAt: 10 },
+  // A scripted catastrophic failure: `white flash` sets AV0 to -10, AV1 to
+  // 2000 and `blackout` AV1 straight to **255** -- already past the chain
+  // threshold, with no dwell required [g704].
+  scriptedFailure: { group: 704, blackoutTo: 255 },
+  // Night 1 pre-seeds all three systems slightly negative [g770].
+  night1Seed: { group: 770, audio: { min: -6, max: -3 }, camera: { min: -6, max: -3 },
+                ventilation: { min: -5, max: -2 } },
+  source: 'g382,g429,g448-g452,g461-g464,g473,g474,g486,g487,g256,g262,g704,g770,g908',
+};

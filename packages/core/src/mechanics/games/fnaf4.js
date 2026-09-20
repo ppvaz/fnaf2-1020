@@ -163,3 +163,86 @@ export const MODEL = {
   initialLevels: { freddy: 0, bonnie: 0, chica: 0, foxy: 0, fredbear: 0 },
   rolls: ROLLS,
 };
+
+// ---------------------------------------------------------------------------
+// The `follow` state machine.
+//
+// This was Plan 26's blocker for FNaF 4: "the `follow` player-state map is
+// unmapped, and every control is gated on it." Traced 2026-09-20 from the 46
+// distinct values the Office frame writes to `follow` AV0 and the groups that
+// write them.
+//
+// It is not an abstract state -- it is a **walk animation**. The player object
+// physically slides across the room and the transitions are driven by
+// `AnimationFinished` and by `follow`'s own X position (g30 tests
+// `CompareX = 512`, g32 tests `> 530`). Four of the 46 values are places the
+// player can *be* and act; the rest are frames of getting there.
+//
+// The four stations, and the hub:
+//
+//   0   the middle of the room -- the hub, and the only state with four exits
+//   10  at the left door        [entered 9 -> 10, g60]
+//   17  at the right door       [entered 16 -> 17, g116]
+//   29  in the closet           [entered 28 -> 29, g185]
+//   43  at the bed              [entered 42 -> 43, g373]
+//
+// Those five are exactly the values the sheet compares most: 29, 17, 10, 43
+// and 0 account for 114 of the `follow` comparisons in the frame. And 43 is
+// the one Freddy's kill is gated on (g427/g428 need `follow = 43`), which is
+// why the meter and the walk are the same problem.
+//
+// At a station, each control is a sub-cycle that **returns to the same
+// station**, so an action costs animation time but not position:
+//
+//   left door (10):  close 20 -> 21 -> 22 -> 10   flashlight 35 / 40 -> 10
+//   right door (17): close 23 -> 24 -> 25 -> 17   flashlight 36 / 41 -> 17
+//   closet (29):     close 32 -> 33 -> 34 -> 29
+//
+// Leaving a station runs a separate walk back to the hub: 10 -> 11 -> 12 -> 13
+// -> 0, 17 -> 18 -> 19 -> 13/37 -> 0, 29 -> 30 -> 31 -> 0/39, 43 -> 44 -> 45
+// -> 0. Reaching one runs the outbound walk: 0 -> 1 -> 2 (-> 7 -> 8 -> 9 -> 10
+// via `HUDDoorLeftHitzone`), 0 -> 4 -> 5 (-> 14 -> 15 -> 16 -> 17 via
+// `HUDDoorRightHitzone`), 0 -> 26 -> 27 -> 28 -> 29, 0 -> 41 -> 42 -> 43.
+//
+// **The consequence for a schedule**, which is what made this a blocker: the
+// two doors are never both reachable, and every transition between stations
+// costs a walk. FNaF 4's rotation is not a sequence of presses, it is a tour
+// with travel time between stops -- the same shape as FNaF 1's "pan, then
+// press", arriving from a different mechanism.
+//
+// `UNKNOWN(in-animation-data)`: the **duration** of each walk. The transitions
+// fire on `AnimationFinished` and on X position, so the frame costs live in
+// the animation data and the object's movement speed, neither of which is in
+// the event sheet. `~/fnaf-apks/dump_animations.py` is the route to them, or
+// one device measurement per leg. That is a bounded measurement, not an
+// unmapped mechanism.
+export const FOLLOW = {
+  hub: 0,
+  stations: { leftDoor: 10, rightDoor: 17, closet: 29, bed: 43 },
+  // Entry walks, hub -> station, in the order the states are written.
+  approaches: {
+    leftDoor: { via: [1, 2, 7, 8, 9], hitzone: 'HUDDoorLeftHitzone', groups: [30, 31, 39, 52, 54, 60] },
+    rightDoor: { via: [4, 5, 14, 15, 16], hitzone: 'HUDDoorRightHitzone', groups: [34, 35, 40, 53, 55, 116] },
+    closet: { via: [26, 27, 28], hitzone: 'HUDDoorClosetHitzone', groups: [157, 182, 183, 185] },
+    bed: { via: [41, 42], hitzone: null, groups: [361, 372, 373] },
+  },
+  // Return walks, station -> hub.
+  returns: {
+    leftDoor: { via: [11, 12, 13], hitzone: 'HUDGoBackHitzone', groups: [72, 96, 97, 105] },
+    rightDoor: { via: [18, 19, 13, 37], hitzone: 'HUDGoBackHitzone', groups: [125, 142, 99, 111] },
+    closet: { via: [30, 31, 39], hitzone: 'HUDGoBackHitzone', groups: [197, 222, 104] },
+    bed: { via: [44, 45], hitzone: 'HUDGoBackHitzone', groups: [357, 374, 377] },
+  },
+  // Actions available at a station, each returning to it.
+  actions: {
+    leftDoor: { close: { via: [20, 21, 22], groups: [163, 178, 154] },
+                flashlight: { via: [35, 40], groups: [83, 84] } },
+    rightDoor: { close: { via: [23, 24, 25], groups: [167, 180, 156] },
+                 flashlight: { via: [36, 41], groups: [134, 135] } },
+    closet: { close: { via: [32, 33, 34], groups: [215, 223, 218] } },
+    bed: {},
+  },
+  // Only these states can act; everything else is a frame of travel.
+  actionable: [0, 10, 17, 29, 43],
+  source: 'g30-g37,g39-g60,g72-g116,g125-g185,g197-g224,g251,g280,g316-g318,g347,g354-g377,g438,g589',
+};

@@ -185,20 +185,73 @@ blended into it.
 
 - **FNaF 2**: no new census. It has a simulator and a live route already; this
   work contributed only its clock groups.
-- **FNaF 3**: night model and Springtrap's full 73-edge graph are extracted,
-  including the vent topology and the seal's `what vent is closed` test
-  (g604–g613: a sealed vent returns him, an unsealed one advances him). **No
-  simulator.** The blocker is that the attack chain advances on
-  `blackout AV1 > 250` (g486, g487, g256, g262) — the ventilation blackout —
-  so a faithful sim needs the three-system error economy modelled first.
-- **FNaF 4**: night model, rolls and the four movement graphs are extracted,
-  and Freddy's meter is fully traced (fill g397/g398/g593, drain g401, floor
-  g399, kill at **≥ 60** at the bed, g427/g428). **No simulator.** The blocker
-  named in Plan 26 stands: the `follow` player-state machine is unmapped, and
-  every control is gated on it.
+- **FNaF 3**: night model, Springtrap's full 73-edge graph, the vent topology,
+  the seal's `what vent is closed` test (g604–g613: a sealed vent returns him,
+  an unsealed one advances him) — and, as of 2026-09-20, **the ventilation
+  economy that was the blocker** (see below). **No simulator yet**, but nothing
+  unmapped stands in front of one.
+- **FNaF 4**: night model, rolls, the four movement graphs, Freddy's meter
+  (fill g397/g398/g593, drain g401, floor g399, kill at **≥ 60** at the bed,
+  g427/g428) — and **the `follow` state machine that was the blocker** (see
+  below). **No simulator yet.**
 
-Neither blocker needs device time. Both are readable from the dumps already in
-hand.
+### Both blockers are closed (2026-09-20)
+
+**FNaF 3's attack chain does not advance on movement.** It advances on
+`blackout` AV1 passing 250 (g486 stage 1→2, g487 2→3, g256 3→4, g262 4→kill),
+so Springtrap's rule alone cannot kill. The full path:
+
+```
+drain → error (AV0 ≤ −10) → dwell (AV1 per frame)
+      → hallucination  at AV1 > 1000 − AI×100   [g463]
+      → blackout ramp  at AV1 > 2000 − AI×200   [g473]  +1/frame
+      → attack chain   at blackout AV1 > 250
+```
+
+Two drains, and they are different mechanisms. **g908** takes 1 per second
+while the office-inactivity counter is above 10, on every night but Night 1 —
+the same counter g909 reads to raise `aggresive?`, so sitting still costs
+ventilation *and* aggression from one source. **g448–g452** add a background
+drain indexed by `AI` at 12/10/9/8/6 s for AI 2–6.
+
+That second table is written with `=` comparisons and **stops at AI 6, while
+g654 sets AI 7 on Night 6 and after** — so on Night 6 it matches nothing and
+ventilation degrades only through g908 and through events. Recorded because a
+model that extrapolated the 12/10/9/8/6 series to AI 7 would drain a night the
+game does not. `UNKNOWN(not-decompiled)`: whether the missing row is deliberate.
+
+A reboot of ventilation zeroes AV0 outright (g429), and `white flash` (g704) is
+a scripted catastrophic failure that sets `blackout` AV1 straight to 255 —
+already past the chain threshold, with no dwell required.
+
+**FNaF 4's `follow` is a walk animation, not an abstract state.** Its 46 values
+are driven by `AnimationFinished` and by the object's own X position (g30 tests
+`CompareX = 512`). Four are places the player can act; the rest are frames of
+getting there:
+
+| state | place |
+|---|---|
+| 0 | the middle of the room — the hub, the only state with four exits |
+| 10 | at the left door |
+| 17 | at the right door |
+| 29 | in the closet |
+| 43 | at the bed — the state Freddy's kill is gated on (g427/g428) |
+
+Those five account for 114 of the frame's `follow` comparisons. A station
+action (close, flashlight) runs a sub-cycle that **returns to the same
+station**, so it costs animation time but not position; moving between stations
+runs a separate walk each way. **The two doors are never both reachable**, and
+every rotation is a tour with travel time between stops — the same shape as
+FNaF 1's "pan, then press", arriving from a different mechanism.
+
+`UNKNOWN(in-animation-data)`: the **duration** of each walk. The transitions
+fire on animation completion and X position, so the frame costs are in the
+animation data and the object's movement speed, neither of which is in the
+event sheet. `~/fnaf-apks/dump_animations.py` is the route, or one device
+measurement per leg. That is a bounded measurement, not an unmapped mechanism.
+
+Neither blocker needed device time; both were readable from the dumps already
+in hand.
 
 ## Reproducing
 

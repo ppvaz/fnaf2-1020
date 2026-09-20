@@ -215,6 +215,63 @@ for (const game of GAME_IDS) {
   }
 }
 
+// --- the two blockers Plan 26 named, now closed ---------------------------
+//
+// FNaF 3: the attack chain advances on the ventilation blackout, not on a
+// movement action, so a simulator needs the systems economy first.
+{
+  const vent = fnaf3.VENTILATION;
+  eq('the chain advances above blackout 250', vent.chainAdvancesAbove, 250);
+  eq('all four chain steps are cited',
+    Object.keys(vent.chainGroups).length, 4);
+  eq('the shared error threshold', vent.errorAt, -10);
+  // The blackout ramp needs twice the dwell the hallucination does, so
+  // clearing an error late still avoids the chain.
+  ok('the blackout ramp needs a longer dwell than the hallucination',
+    vent.blackoutRampAt(5) > vent.hallucinationAt(5));
+  eq('at AI 5 the hallucination needs 500 frames of error', vent.hallucinationAt(5), 500);
+  eq('at AI 5 the blackout ramp needs 1000', vent.blackoutRampAt(5), 1000);
+  // The AI-indexed drain table stops at 6 while Night 6 runs AI 7. A model
+  // that extrapolated the 12/10/9/8/6 series would drain a night the game
+  // does not, so the gap is pinned rather than smoothed over.
+  eq('the AI-indexed drain covers AI 2 to 6 only',
+    Object.keys(vent.drains.byAi.everyMsByAi).map(Number), [2, 3, 4, 5, 6]);
+  eq('and says where it stops', vent.drains.byAi.missingAbove, 6);
+  ok('Night 6 runs AI 7, above that table',
+    scheduleFor('fnaf3', 6).hours[0].levels.ai === 7);
+  // Which is why the inactivity drain matters: it is what still runs there.
+  eq('the inactivity drain is 1 per second', vent.drains.inactivity.everyMs, 1000);
+  ok('and it is not AI-indexed', vent.drains.inactivity.amount === 1);
+}
+
+// FNaF 4: `follow` is a walk machine, and only five of its 46 states can act.
+{
+  const follow = fnaf4.FOLLOW;
+  eq('four stations plus the hub are actionable', follow.actionable.length, 5);
+  eq('the bed is state 43, which Freddy kills at', follow.stations.bed, 43);
+  ok('every station is actionable',
+    Object.values(follow.stations).every((state) => follow.actionable.includes(state)));
+  ok('the hub is actionable', follow.actionable.includes(follow.hub));
+  // Every station has an approach and a return, and neither is empty -- that
+  // is the travel cost a schedule has to carry.
+  for (const name of Object.keys(follow.stations)) {
+    ok(`${name} has an approach walk`, follow.approaches[name].via.length > 0);
+    ok(`${name} has a return walk`, follow.returns[name].via.length > 0);
+  }
+  // A station action returns to the same station, so it costs time and not
+  // position. The closet has no flashlight; the bed has no action at all.
+  ok('the left door can be closed and flashed',
+    follow.actions.leftDoor.close && follow.actions.leftDoor.flashlight);
+  ok('the closet can be closed but not flashed',
+    follow.actions.closet.close && !follow.actions.closet.flashlight);
+  eq('the bed has no station action', Object.keys(follow.actions.bed).length, 0);
+  // The doors are reached by different hitzones and are never co-located.
+  ok('the two doors are separate stations',
+    follow.stations.leftDoor !== follow.stations.rightDoor);
+  eq('the left door is reached by its own hitzone',
+    follow.approaches.leftDoor.hitzone, 'HUDDoorLeftHitzone');
+}
+
 eq('every game is registered', GAME_IDS, ['fnaf1', 'fnaf2', 'fnaf3', 'fnaf4']);
 eq('fnaf3 is the only six-night game', GAME_IDS.filter((g) => nightsOf(g) === 6), ['fnaf3']);
 
