@@ -332,17 +332,27 @@ radar flag. A port difference, consistent with the mobile porter's other
 additions here (FNaF 3's whole `olivier_*Hitbox` family). Neither mobile-only
 flag is traced.
 
-**The census.** `community-line`, 3000 seeds:
+**The census, run exhaustively** — all 65,536 seeds, so these are populations:
 
 | | Night 5 | Night 6 |
 |---|---|---|
-| normal | 3000/3000 | 3000/3000 |
-| **Aggressive** | 3000/3000 | **2998/3000** |
+| normal | **65,536/65,536** | **65,536/65,536** |
+| **Aggressive** | **65,536/65,536** | **65,511/65,536** |
 
-Both losses are `springtrap-vent` — he reaches 14 or 15 unsealed. That fits the
-mechanism: at double rate he takes more turns per hour, and every vent entrance
-is on branch 4, which aggression itself unlocks (`Random(3) + aggresive? + 1`
-makes the branch set {2,3,4} instead of {1,2,3}).
+So Aggressive Nightmare is the **only** configuration in this entire study
+where a published community strategy fails, and it fails on **25 seeds in
+65,536 — 1 in 2,621**.
+
+**All 25 are `springtrap-vent`.** Not a mixture: every single loss is him
+reaching vent 14 or 15 unsealed. A single-mechanism failure at exhaustive
+scale is about as sharp as a diagnosis gets, and it fits the mechanism
+directly — at double rate he takes more turns per hour, and every vent
+entrance is on branch 4, which aggression itself unlocks
+(`Random(3) + aggresive? + 1` shifts the branch set from {1,2,3} to {2,3,4}).
+
+It also sharpens the open seal question below: with every failure a vent, the
+choice of which vent to seal is not a detail of this result, it *is* the
+result.
 
 **Why it fails, and it is not the seal.** The published Aggressive Nightmare
 strategy is built on **audio lures**, and this policy never lures:
