@@ -137,13 +137,38 @@ export const FREDDY = {
   source: 'g397,g398,g399,g401,g427,g428,g593',
 };
 
-// The forced-door trick [SOURCED: g341 teleports Bonnie to `left hall near`
-// when a door is closed while he is elsewhere; g342 pushes him back on a
-// 3000 ms hold].
+// The forced-door trick, traced in full [SOURCED: g341, g342, g352, and the
+// position tags g631/g632]. This is what makes a no-audio route possible, and
+// it is a **two-close cycle**, not a single hold.
 //
-// The public strategy recommends holding ~5 s, which over-holds by about 2 s
-// per visit against the source's 3000 ms.
-export const FORCED_DOOR = { teleport: 341, pushBackMs: 3000, pushBackGroup: 342 };
+// `AV5` is a position tag rather than a hold counter: g631 sets it to 1 when
+// the character overlaps the hall's *far* marker and g632 to 2 at *near*. The
+// tag persists after they leave, which is the whole point of the anti-cheat.
+//
+//   g341 SUMMON   tag = far + that door shut + interlock clear
+//                 -> teleport to `<side> hall near`, interlock := 1.
+//                 It never checks they are really at far, so a stale tag
+//                 summons them from anywhere.
+//   g342 DISMISS  every 3000 ms + tag = near + door shut + interlock clear
+//                 + genuinely overlapping near -> back to the living room.
+//   g352 RE-ARM   the interlock returns to 0 only while **both** doors are
+//                 open.
+//
+// So **one close cannot both summon and dismiss**: g341 sets the very
+// interlock g342 requires clear. The cycle is close -> open both -> close.
+//
+// And `in closet` AV5 is **one interlock shared by both sides** (g343/g344
+// are Chica's and use the same object and slot), so only one character can be
+// resolved per arming. A rotation cannot push both home without re-arming in
+// between. No public account of this game states either property.
+export const FORCED_DOOR = {
+  summon: { group: 341, chicaGroup: 343, setsInterlock: 1 },
+  dismiss: { group: 342, chicaGroup: 344, everyMs: 3000, requiresInterlock: 0 },
+  rearm: { group: 352, requires: 'both doors open' },
+  tags: { far: 1, near: 2, groups: '631/632' },
+  interlockIsShared: true,
+  source: 'g341,g342,g343,g344,g352,g631,g632',
+};
 
 // Per-night forced-appearance draws [SOURCED: g626, g627, g628 -- Nights 2, 3
 // and 4 each draw `force Bonnie = 2 + Random(4)` and

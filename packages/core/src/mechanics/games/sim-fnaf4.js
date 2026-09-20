@@ -108,10 +108,11 @@ export class Fnaf4Sim {
 
     this.bonnie = 'center';
     this.chica = 'center';
-    this.bonnieHold = 0;        // AV5 stage: 0 open, 1 shut, 2 pushed back
-    this.chicaHold = 0;
-    this.bonnieFrames = 0;
-    this.chicaFrames = 0;
+    // Position tags [g631/g632]: 1 = hall far, 2 = hall near. They persist
+    // after he leaves, which is what lets g341 summon from a stale tag.
+    this.bonnieTag = 0;
+    this.chicaTag = 0;
+    this.interlock = 0;         // `in closet` AV5, shared by both sides
     this.forcedTurn = false;
     this.bedWatch = 0;
     this.foxyStage = 0;         // 0 absent, 1 in closet, 2 primed
@@ -137,6 +138,8 @@ export class Fnaf4Sim {
       freddyFill: new Every(FREDDY.fill.everyMs),
       freddyDrain: new Every(FREDDY.drain.everyMs),
       forceTurn: new Every(4000),  // g590/g591
+      dismissL: new Every(3000),   // g342
+      dismissR: new Every(3000),   // g344
     };
   }
 
@@ -163,8 +166,8 @@ export class Fnaf4Sim {
     this.pendingStation = station;
     // Leaving the bed with either of them in the room is lethal [g375/g376].
     if (this.follow === FOLLOW.stations.bed) {
-      if (this.bonnie === 'nearL' && this.bonnieHold === 0) this.die('bonnie-bedroom');
-      if (this.chica === 'nearR' && this.chicaHold === 0) this.die('chica-bedroom');
+      if (this.bonnie === 'nearL') this.die('bonnie-bedroom');
+      if (this.chica === 'nearR') this.die('chica-bedroom');
       if (this.foxyGotYou) this.die('foxy-bedroom');
     }
     return true;
@@ -195,27 +198,48 @@ export class Fnaf4Sim {
       if (passed && !gated) this.advance('chica');
     }
 
-    // --- the forced door [g341/g342]
+    // --- the forced door [g341/g342/g352, corrected 2026-09-20]
     //
-    // AV5 is a *stage*, not a repeating counter: 1 while the door has just
-    // been shut (which teleports them to the hall, g341) and 2 once the hold
-    // completes (which pushes them back, g342). Resetting it to 0 at the push
-    // makes g341 fire again on the next frame and pins them at the door for
-    // as long as it is held -- the exact opposite of what the trick does.
+    // `AV5` is a **position tag**, not a hold counter: g631 sets it to 1 when
+    // Bonnie overlaps `left hall far` and g632 to 2 at `left hall near`. And
+    // the pair is governed by a single shared interlock, `in closet` AV5,
+    // which is the piece that makes this a two-step trick rather than one:
+    //
+    //   g341 SUMMON   tag = far + door shut + interlock clear
+    //                 -> teleport to `left hall near`, interlock := 1
+    //                 (it does not check he is really there, so a stale tag
+    //                  summons him from anywhere -- the anti-cheat)
+    //   g342 DISMISS  every 3000 ms + tag = near + door shut + interlock
+    //                 clear + genuinely overlapping near
+    //                 -> `living room left`, interlock := 2
+    //   g352 RE-ARM   interlock := 0 only while **both** doors are open
+    //
+    // So one close cannot both summon and dismiss: g341 sets the interlock
+    // that g342 requires clear. The cycle is close -> open both -> close.
+    //
+    // And the interlock is **shared with Chica** (g343/g344 use the same
+    // object and slot), so only one side can be resolved per arming. An
+    // earlier version of this file modelled a private per-character stage
+    // with a 3000 ms timer, which let one close do both jobs and let both
+    // sides resolve at once -- easier than the game in two separate ways.
+    if (this.leftDoorShut === 0 && this.rightDoorShut === 0) this.interlock = 0;  // g352
+
     if (this.leftDoorShut) {
-      this.bonnieFrames += 1;
-      if (this.bonnieHold === 0) { this.bonnieHold = 1; this.bonnie = 'nearL'; }     // g341
-      if (this.bonnieHold === 1 && this.bonnieFrames * MS_PER_FRAME >= 3000) {
-        this.bonnieHold = 2; this.bonnie = 'left';                                   // g342
+      if (this.bonnieTag === 1 && this.interlock === 0) {
+        this.bonnie = 'nearL'; this.bonnieTag = 2; this.interlock = 1;           // g341
+      } else if (this.bonnieTag === 2 && this.interlock === 0
+                 && this.bonnie === 'nearL' && this.timers.dismissL.tick(ms)) {
+        this.bonnie = 'left'; this.interlock = 2;                                // g342
       }
-    } else { this.bonnieHold = 0; this.bonnieFrames = 0; }
+    }
     if (this.rightDoorShut) {
-      this.chicaFrames += 1;
-      if (this.chicaHold === 0) { this.chicaHold = 1; this.chica = 'nearR'; }
-      if (this.chicaHold === 1 && this.chicaFrames * MS_PER_FRAME >= 3000) {
-        this.chicaHold = 2; this.chica = 'right';
+      if (this.chicaTag === 1 && this.interlock === 0) {
+        this.chica = 'nearR'; this.chicaTag = 2; this.interlock = 1;             // g343
+      } else if (this.chicaTag === 2 && this.interlock === 0
+                 && this.chica === 'nearR' && this.timers.dismissR.tick(ms)) {
+        this.chica = 'right'; this.interlock = 2;                                // g344
       }
-    } else { this.chicaHold = 0; this.chicaFrames = 0; }
+    }
 
     // --- the forced turn [g589-g591, g595]
     //
@@ -289,10 +313,14 @@ export class Fnaf4Sim {
       // g293 only lets him leave the living room while the hall is unlit.
       if (this.bonnie === 'left' && this.flashing === 1) return;
       if (i >= 0 && i < LEFT_CHAIN.length - 1) this.bonnie = LEFT_CHAIN[i + 1];
+      if (this.bonnie === 'farL') this.bonnieTag = 1;                            // g631
+      if (this.bonnie === 'nearL') this.bonnieTag = 2;                           // g632
     } else {
       const i = RIGHT_CHAIN.indexOf(this.chica);
       if (this.chica === 'right' && this.flashing === 2) return;
       if (i >= 0 && i < RIGHT_CHAIN.length - 1) this.chica = RIGHT_CHAIN[i + 1];
+      if (this.chica === 'farR') this.chicaTag = 1;
+      if (this.chica === 'nearR') this.chicaTag = 2;
     }
   }
 

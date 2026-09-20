@@ -26,13 +26,16 @@ import { FOLLOW } from './fnaf4.js';
  * The no-audio rotation: force each door, then pay the bed and the closet.
  *
  * @param {object} [knobs]
- * @param {number} [knobs.holdMs]   how long a door is held once shut -- the
- *                                  source says 3000 ms is enough (g342)
+ * @param {number} [knobs.holdMs]   each of the two closes; g342's dismiss
+ *                                  tick is every 3000 ms
+ * @param {number} [knobs.rearmMs]  both doors open between them, which is the
+ *                                  only thing that clears the interlock (g352)
  * @param {number} [knobs.bedMs]    dwell at the bed, which drains Freddy at
  *                                  20/s against a fill of `AI / 4` per second
  * @param {number} [knobs.closetMs] dwell at the closet, which resets Foxy
  */
-export function noAudioRotation({ holdMs = 3200, bedMs = 700, closetMs = 400 } = {}) {
+export function noAudioRotation({ holdMs = 3200, rearmMs = 200, bedMs = 700,
+                                  closetMs = 400 } = {}) {
   const S = FOLLOW.stations;
   const TOUR = [S.leftDoor, S.rightDoor, S.bed, S.closet];
   let leg = 0;
@@ -55,12 +58,20 @@ export function noAudioRotation({ holdMs = 3200, bedMs = 700, closetMs = 400 } =
 
     dwell += 1;
     const ms = dwell * (1000 / 60);
-    if (want === S.leftDoor) {
-      sim.leftDoorShut = 1; sim.rightDoorShut = 0; sim.viewingBed = 0;
-      if (ms >= holdMs) { sim.leftDoorShut = 0; leg = (leg + 1) % TOUR.length; dwell = 0; }
-    } else if (want === S.rightDoor) {
-      sim.rightDoorShut = 1; sim.leftDoorShut = 0; sim.viewingBed = 0;
-      if (ms >= holdMs) { sim.rightDoorShut = 0; leg = (leg + 1) % TOUR.length; dwell = 0; }
+    if (want === S.leftDoor || want === S.rightDoor) {
+      // The two-close cycle [g341 / g352 / g342]. The first close summons
+      // them to the hall and latches the shared interlock; the interlock only
+      // re-arms while **both** doors are open; the second close is the one
+      // that dismisses. Holding a single close forever does nothing after the
+      // summon, which is what an earlier version of this policy did.
+      const side = want === S.leftDoor ? 'leftDoorShut' : 'rightDoorShut';
+      const other = want === S.leftDoor ? 'rightDoorShut' : 'leftDoorShut';
+      sim.viewingBed = 0;
+      sim[other] = 0;
+      if (ms < holdMs) sim[side] = 1;                       // close 1: summon
+      else if (ms < holdMs + rearmMs) sim[side] = 0;        // open both: re-arm
+      else if (ms < holdMs * 2 + rearmMs) sim[side] = 1;    // close 2: dismiss
+      else { sim[side] = 0; leg = (leg + 1) % TOUR.length; dwell = 0; }
     } else if (want === S.bed) {
       sim.viewingBed = 1; sim.leftDoorShut = 0; sim.rightDoorShut = 0;
       if (ms >= bedMs) { sim.viewingBed = 0; leg = (leg + 1) % TOUR.length; dwell = 0; }
