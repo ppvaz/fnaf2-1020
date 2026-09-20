@@ -332,6 +332,71 @@ post-night minigame. Had the game banked the night after that sequence rather
 than before, the run would have destroyed the evidence it was creating. Let the
 sequence finish next time.
 
+#### The camera button is only reachable in a panned view
+
+**Pedro, 2026-09-20.** The camera control is not on screen at rest: the office
+view must be **panned right** before it exists to tap. That is the pan finding
+arriving as an operational constraint rather than a hazard — the office is
+2000x768 in a 1024 window, the extracted cam objects sit at world x 1640-1940
+(the right quarter), and the control simply is not in the default viewport.
+
+So **the camera monitor has no fixed screen coordinate at all**, and no
+calibration taken at rest can ever produce one. A FNaF 3 control map must carry
+the view offset as a first-class field, exactly as the layer work concluded from
+the other direction. `device-profile-v1`'s flat `controlMap` cannot express this
+control even in principle.
+
+Two things were ruled out along the way and are worth not re-testing:
+
+- The bottom-centre tab with a downward chevron and "TAP" is the **maintenance
+  panel**, and its two chevrons are two ends of one bar: tapping at (880,1020)
+  and at (1219,1021) both open maintenance. It is not the monitor.
+- A slim white vertical bar at the right edge (x ~2368-2378, y ~390-680) is a
+  **glitched Android system marker, not a game control**. Tapping near it risks
+  an edge gesture rather than anything in the game.
+
+#### The control surface, reached and measured (2026-09-20)
+
+**Short synthetic taps are dropped by this engine.** `adb shell input tap` is a
+near-instantaneous contact and whether it registers is phase-dependent: the
+LOAD GAME tap worked three times, then failed three consecutive runs with the
+menu rows provably unmoved. A **160 ms held contact** has landed on every
+attempt since. This is `MIN_CONTACT_MS` — the project's own Night 5 finding —
+transferring intact to FNaF 3, and it should be assumed for every game here.
+
+**Panning is a hold, not a swipe, and one hold is the whole range.** Holding
+near the right edge pans the office; swipes barely move it (two swipes gave
+208 px). A single ~2.5 s hold at (2200, 540) moves the view **968 px** and
+saturates against the world edge — three further holds changed nothing,
+measured as byte-identical frames. That 968 px independently confirms the frame
+header's 2000 − 1024 = **976 px** predicted range, from live device behaviour,
+to within 8 px. `UNKNOWN(not-measured)`: the minimum hold below 2.5 s.
+
+**The access path, end to end:**
+
+| step | control | how |
+|---|---|---|
+| enter night | LOAD GAME (480, 641) | 160 ms held contact |
+| pan right | (2200, 540) | one ~2.5 s hold, saturates |
+| camera monitor | **(2212, 327)**, panel x 2106-2318 y 131-522 | 160 ms held contact |
+| audio lure | Play Audio, centre **(1248, 812)** | camera-map mode only |
+| vent map | Map Toggle, centre **(1250, 927)** | toggles, confirmed both ways |
+
+**Map Toggle swaps the camera map for the vent map**, showing CAM 11-15 joined
+by link lines — the same five vents, in the same numbering, that the event sheet
+gave. Two findings from it that a route must respect:
+
+- **Sealing a vent is a double-tap** on its vent cam button, stated by the
+  game's own on-screen instruction. Not a single contact.
+- **Play Audio is absent in vent-map mode.** The lure and the seal live in
+  mutually exclusive view states, so a route cannot do both without paying a
+  toggle between them. That is a scheduling constraint, not a UI detail, and it
+  interacts directly with the lure's move-counter reset.
+
+So the camera monitor, the lure and the vent seal are all now reachable, and
+every one of them sits behind the pan. None has a fixed screen coordinate at
+rest.
+
 ### FNaF 4 — no cameras, audio-dominant, and the mobile port helps
 
 FNaF 4 has no camera system. Its control surface is named explicitly in the
