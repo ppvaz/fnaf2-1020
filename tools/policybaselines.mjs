@@ -512,6 +512,49 @@ export const windOnlyPolicy = () => {
 // Each entry is `(seed, slackMs) -> policy`. Only the Minus 7 control reads
 // either: it needs the seed for its own error stream and the slack because it
 // shifts plan rows rather than dispatch frames.
+
+/**
+ * A Golden Freddy guard, wrapped around any of the families above.
+ *
+ * Measured 2026-09-20: `minus7` and `couraeel` clear FNaF 2 nights 1-5 and
+ * then score **0/3000 on nights 6 and 7**, and it is one mechanic, not luck.
+ * Golden Freddy accounts for ~96% of every night-6/7 loss across every family.
+ *
+ * He does not kill on his own. He kills when the player **flashes the hall or
+ * raises the monitor while he is in the office** (g690, g701, g727, g1292),
+ * and `maskFullyOn` is his only dismissal (g776: `yellowbear` present AND
+ * `mask` = 2 fades and destroys him). The baseline families keep to a fixed
+ * cycle and never check, so they walk into him on a timer.
+ *
+ * The community rule is exactly "if Golden Freddy appears, put the mask on",
+ * and it is observation-legal: `gfPresent` in belief mode is
+ * `!camsUp && !maskOn && gf.present` -- what a player can actually see, since
+ * he is rendered in the office. This wrapper does nothing else: it defers to
+ * the wrapped family on every frame he is absent.
+ */
+export function goldenGuard(inner, { observation = null } = {}) {
+  let holdUntil = -1e9;
+  return {
+    name: `${inner.name}+gf`,
+    version: 1,
+    observation: observation ?? inner.observation,
+    reset() { if (inner.reset) inner.reset(); holdUntil = -1e9; },
+    step(obs, api) {
+      const f = api.frame;
+      if (obs.gfPresent && !obs.maskFullyOn) {
+        api.clear();
+        if (obs.monUp) api.tap(f, 'monitor');
+        api.tap(f + (obs.monUp ? ms(420) : ms(30)), 'mask');
+        holdUntil = f + ms(900);
+        return;
+      }
+      if (f < holdUntil && !obs.maskFullyOn) return;
+      holdUntil = -1e9;
+      inner.step(obs, api);
+    },
+  };
+}
+
 export const POLICIES = {
   minus7: (seed, slackMs, slackModel) => minus7Policy({ seed, slackMs, slackModel }),
   'minus7-no-stun': (seed, slackMs, slackModel) =>
@@ -529,4 +572,11 @@ export const POLICIES = {
   'couraeel-inverted': () => couraeelPolicy({ inverted: true }),
   null: nullPolicy,
   'wind-only': windOnlyPolicy,
+  // The same families with the Golden Freddy rule added, which is the one
+  // thing standing between them and nights 6 and 7.
+  'minus7+gf': (seed, slackMs, slackModel) =>
+    goldenGuard(minus7Policy({ seed, slackMs, slackModel })),
+  'couraeel+gf': () => goldenGuard(couraeelPolicy()),
+  'couraeel-belief+gf': () => goldenGuard(couraeelPolicy({ observation: 'belief' })),
+  'shooter25+gf': () => goldenGuard(shooter25Policy()),
 };

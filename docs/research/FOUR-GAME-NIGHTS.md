@@ -272,14 +272,34 @@ Two source-derived levers closed the gap:
 
 It already has a simulator, a route and device evidence, so a new one here
 would add nothing. Run through the existing machinery, `minus7` clears nights
-1–4 at 3000/3000 and Night 5 at 2998/3000, and scores **0/3000 on nights 6 and
-7**. That is one mechanic: **Golden Freddy is ~96% of all night-6/7 losses
-across every family**. He does not kill on his own — he kills when the player
-flashes the hall or raises the monitor while he is in the office (g690, g701,
-g727, g1292), and **a fully-on mask is his only dismissal** (g776). The
-families in `policybaselines.mjs` keep to a fixed cycle and never check. The
-routes that actually win those nights are artifact plans
-(`campaign-night6-h2`, `campaign-night7-k3`), scored by other machinery.
+1–4 at **3000/3000** and Night 5 at 2998/3000, and scores **0/3000 on nights 6
+and 7**.
+
+Nights 6 and 7 are not bad luck; they are **two sequential blockers**, and the
+published families handle neither.
+
+**First, Golden Freddy** — ~96% of all night-6/7 losses across every family.
+He does not kill on his own. He kills when the player flashes the hall or
+raises the monitor while he is in the office (g690, g701, g727, g1292), and
+**a fully-on mask is his only dismissal** (g776). The families keep to a fixed
+cycle and never check, so they walk into him on a timer.
+
+That is fixable and observation-legal: `gfPresent` in belief mode is
+`!camsUp && !maskOn && gf.present`, which is what a player can see because he
+is rendered in the office. `goldenGuard` in `policybaselines.mjs` masks on
+sight, and the reaction window is comfortable — measured at **42–46 frames**
+between first sighting and death, against ~37 for a monitor-drop plus a
+fully-on mask.
+
+**Then Foxy.** With the guard on, Night 7's Golden Freddy deaths go **291 → 1**
+in 300 runs, and Foxy's go **4 → 299**. Night 6 moves the same way (GF 137 → 8,
+Foxy 84 → 248). Removing the first blocker simply reveals the second, which is
+the useful shape of the finding: a family that handles both is what the
+routes that actually win those nights do, and those are artifact plans
+(`campaign-night6-h2`, `campaign-night7-k3`) scored by other machinery.
+
+So FNaF 2 meets the target on nights 1–4 and is short on 5, 6 and 7, with the
+remaining gap named rather than guessed at.
 
 ## What is not done
 
