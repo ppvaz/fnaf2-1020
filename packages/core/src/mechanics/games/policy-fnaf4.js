@@ -12,9 +12,23 @@
 //     pushes them back on a 3000 ms hold. The published strategy recommends
 //     ~5 s, which over-holds by about 2 s per visit against the source.
 //
-// The no-audio line is the one implemented, because the audio rule needs an
-// observation this project has never graded a night on, while the door trick
-// needs only a schedule -- which is what already wins here.
+// The no-audio line is the one implemented, and as of 2026-09-20 it is the
+// one that is ready: **the operator confirmed on device that this handset's
+// on-device capture path does not catch the cues the audio rule needs.**
+//
+// That rules out a path, not the channel. BT A2DP carries the game's own
+// output mix -- the same one a player hears -- so a cue that is audible in
+// normal play is in that stream by construction. Transport is not the
+// problem; **detection** is, and FNaF 4 can afford it where FNaF 2 cannot:
+// its tightest gate is 3000 ms against FNaF 2's 41 ms budget, so the 30-900 ms
+// documented capture lateness fits. What is missing is a detector, which this
+// project has never built for audio -- not a way to hear the game.
+//
+// The budget works on measured numbers, even under the two-close cycle the
+// interlock forces: one side fully resolved (walk out, summon, re-arm,
+// dismiss, walk back) is ~7.2 s and both sides ~14.5 s, which is 2.9 roll
+// periods. The unattended side gets one free roll per absence -- half an
+// expected advance at AI 10/20, against the three steps its chain needs.
 //
 // Every control is gated on `follow`, so a rotation is a **tour**: each leg
 // costs the walk in `WALK_MS`, and the two doors are never both reachable.

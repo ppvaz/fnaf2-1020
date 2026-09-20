@@ -42,6 +42,61 @@ Verified against `~/fnaf-apks/fnaf4/events/03-04-level.txt`, dumped 2026-09-19
 from the handset's own APK at `K=29` (see Plan 26 for how `K` was recovered).
 Group numbers are that file's.
 
+## The audio channel is unavailable on this handset (operator, 2026-09-20)
+
+**Pedro confirmed on device that the FNaF 4 capture path does not catch the
+cues this route would need.** That is a measurement, not a preference, and it
+changes what this page is for.
+
+It was written to answer *"is audio required?"* — a question about whether a
+no-audio route is **possible**. That answer stands, and the finding makes it
+the route that is ready now.
+
+**Two things must not be conflated here, and a first draft of this section
+did conflate them** (corrected by the operator the same day):
+
+- **Transport** — does the audio reach us at all? Over BT A2DP this is not in
+  question. That path carries the game's own output mix, the same one a player
+  hears; if a cue is audible during normal play it is in the stream by
+  construction, or the game would be unplayable. `bt-audio-link.sh --ensure`
+  brings it up and `night-run.sh --bt-audio` already uses it.
+- **Detection** — can a detector pull the cue back out reliably? That is the
+  open problem, and it is the only one.
+
+What the operator measured is that the **on-device capture path** does not
+catch these cues. That rules out *that* path, not audio.
+
+And FNaF 4 can afford an audio detector in a way FNaF 2 cannot. Its tightest
+recurring gate is 3000 ms against FNaF 2's 41 ms budget — about 73× the room —
+so the 30–900 ms documented capture lateness is affordable here. What has
+never been done in this project is grading a night on audio at all; that is a
+detector to build, not a channel to find.
+
+So the forced-door trick below is the route that needs no new perception, and
+an A2DP-fed cue detector is a real alternative rather than a blocked one.
+
+### The open-loop budget, on measured numbers
+
+Worth stating because the trick got stricter once the interlock was traced
+(see the correction further down) and the obvious worry is that a two-close
+cycle is too slow. It is not, and none of these figures depends on the FNaF 4
+simulator, which is still incomplete:
+
+| | |
+|---|---|
+| walk hub → door / back | 2.366 s / 1.533 s (animation bank, lower bounds) |
+| g342 dismiss tick | 3000 ms |
+| **one side fully resolved** | **7.2 s** |
+| **both sides** | **14.5 s = 2.9 roll periods** |
+| rolls the other side gets while one is resolved | **1** |
+| expected advances from that at Chica AI 10/20 | **0.5** |
+| steps her chain needs, centre → near | **3** |
+
+Half a step gained against the three she needs, per absence — roughly 6×
+margin. The walk times are animation lengths and therefore **lower bounds**
+(an animation length is not control readiness; see the FNaF 2 monitor-down
+case), so the real margin is smaller, but not by the factor that would matter.
+
 ### The forcing trick is real, and the dump is more precise than the video
 
 `SOURCE` **group 341** — closing the left door while Bonnie is not yet at the
