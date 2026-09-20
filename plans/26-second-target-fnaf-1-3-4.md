@@ -370,6 +370,34 @@ Three consequences:
 to discover on hardware.** A control point is a world coordinate plus the view
 offset it assumes, or it is not a control point.
 
+#### The intersection coordinate has a precondition, and it may not hold
+
+FNaF 2 already solved a version of this. `tools/device/coords.sh` carries
+`TAP_CAM_LIGHT="900 540"` labelled as the cam-flash/hall-flash **intersection
+position**, against `TAP_HALL="1200 540"` for the standalone beam, with
+`hid-intersection-probe.mjs` and `intersection-state-gate.mjs` built around it.
+One engine action, two semantic names, and a coordinate picked to work in both
+states at once — which `vocabulary.js` anticipates by refusing to name `light`
+at all, "because its meaning depends on monitor state".
+
+That works because of a precondition nobody had to write down: **an intersection
+coordinate exists only while the control's hit area still overlaps across every
+state it must cover.** The flashlight displaces about 300 px between FNaF 2's two
+states, inside a 576 px pan range, and an intersection was findable.
+
+FNaF 3's pan range is **976 px in a 1024 px window** — nearly the whole viewport.
+If any FNaF 3 control displaces by more than its own hit width, no intersection
+coordinate exists for it at all, and the FNaF 2 coping strategy does not
+transfer. It fails by *silently having no solution*, not by being hard to
+calibrate.
+
+`UNKNOWN(not-measured)`: this is a statement about the pan **range**, not about
+any specific control's state-to-state displacement, which needs the view offset
+in each state. **Measure per control before designing a control map around
+intersections.** The relevant quantity is displacement against hit width, and on
+FNaF 3 and FNaF 4 — where no layer is pinned at all — every control is a
+candidate.
+
 #### And the view chases an object, per camera
 
 `CenterDisplayX` in each night frame centres the display on a **marker object
