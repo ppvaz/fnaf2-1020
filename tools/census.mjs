@@ -23,7 +23,11 @@ import { Fnaf4Sim } from '../packages/core/src/mechanics/games/sim-fnaf4.js';
 import { POLICIES as FNAF4_POLICIES } from '../packages/core/src/mechanics/games/policy-fnaf4.js';
 
 const SIMS = {
-  fnaf1: { Sim: Fnaf1Sim, policies: FNAF1_POLICIES, nights: [1, 2, 3, 4, 5, 6] },
+  fnaf1: { Sim: Fnaf1Sim, policies: FNAF1_POLICIES, nights: [1, 2, 3, 4, 5, 6],
+           // `roll-grid` scores perfectly and is not a device route: the two
+           // doors are never both on screen, so its 333 ms windows would need
+           // a 540 ms pan round trip for the first half of every night.
+           modelOnlyPolicies: ['roll-grid'] },
   fnaf3: { Sim: Fnaf3Sim, policies: FNAF3_POLICIES, nights: [1, 2, 3, 4, 5, 6] },
   // fnaf4 is reachable by name but carries `incomplete`, which the reporter
   // prints beside every row: its simulator's own controls do not fail where
@@ -113,7 +117,10 @@ function report(row) {
   const line = `${row.game} night ${row.night}${dials} ${row.policy.padEnd(16)} ` +
     `${String(row.wins).padStart(6)}/${row.seeds}  ${pct}%${mean}`;
   const worst = Object.entries(row.causes).filter(([cause]) => cause !== '6AM');
-  const warn = SIMS[row.game]?.incomplete ? `  [INCOMPLETE: ${SIMS[row.game].incomplete}]` : '';
+  const entry = SIMS[row.game];
+  const warn = entry?.incomplete ? `  [INCOMPLETE: ${entry.incomplete}]`
+    : entry?.modelOnlyPolicies?.includes(row.policy)
+      ? '  [MODEL ONLY: the two doors are never both on screen; see policy-fnaf1.js]' : '';
   return (worst.length ? `${line}  | ${worst.map(([c, n]) => `${c} ${n}`).join(', ')}` : line) + warn;
 }
 

@@ -225,6 +225,27 @@ export const POLICIES = {
  *
  * The published loop is the control this is measured against: same simulator,
  * same seeds, same Foxy and Freddy handling, different door discipline.
+ *
+ * **MODEL ONLY -- this is not a device route, and its score must not be read
+ * as one.** The simulator sets `leftDoor` and `rightDoor` independently every
+ * frame, with no pan state. The handset says that is impossible: the two
+ * doors sit 2779 px apart on a 2400 px screen and are **never both on
+ * screen**, so every door press is pan-then-press at the measured 270 ms
+ * floor -- a 540 ms round trip.
+ *
+ * And the two grids start aligned. Both `Every` timers load at t = 0 and the
+ * periods differ by only 10 ms, so the instants separate by 10 ms per cycle:
+ *
+ *   for the first **53 cycles -- 263 s of a 535 s night** -- the two door
+ *   instants are closer together than one pan round trip, inside a 333 ms
+ *   window.
+ *
+ * For half of every night a single actuator cannot serve both doors. The
+ * 65,536/65,536 below is a true statement about the model and a false one
+ * about the phone, which is this repository's oldest failure mode: the
+ * simulator prices nothing. `communityLoop` is the actuatable policy --
+ * its door shuts are belief-driven and last a whole camp (12-20 s), so a
+ * 270 ms pan fits inside its 1 s check cadence with room to spare.
  */
 export function rollGrid({ windowFrames = 20, camFrames = 7, idleFrames = 45,
                            park = CAM.eastCorner } = {}) {

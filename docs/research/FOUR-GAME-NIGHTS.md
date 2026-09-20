@@ -119,14 +119,32 @@ the HUD's hour and power, and never a position the player is not looking at.
 
 ### Results, 3000 seeds per night
 
-Three independent 3000-seed blocks, because one block is not enough to tell a
-policy from a lucky parameterisation.
+Both policies were run **exhaustively** — all 65,536 seeds, which is every
+night the 16-bit RNG can deal, so these are populations and not samples.
 
-| Night | `community-loop` (0–2999 / 3000–5999 / 20000–22999) | `roll-grid` |
+| Night | `community-loop` | `roll-grid` |
 |---|---|---|
-| 1–4, 6 | 3000 / 3000 / 3000 (night 4: one loss in the third block) | **3000/3000** |
-| **5** | 3000 / **2999** / **2998** | **3000/3000** |
-| **7 (4/20)** | 3000 / 3000 / 3000 | **3000/3000** |
+| 1 | **65,536/65,536** | **65,536/65,536** |
+| 2 | 65,530/65,536 (99.99%) | **65,536/65,536** |
+| 3 | 65,535/65,536 | **65,536/65,536** |
+| 4 | 65,519/65,536 (99.97%) | **65,536/65,536** |
+| **5** | 65,503/65,536 (**99.950%**) | **65,536/65,536** |
+| 6 | **65,536/65,536** | **65,536/65,536** |
+| **7 (4/20)** | **65,536/65,536** | **65,536/65,536** |
+
+Two things in that table are worth reading twice.
+
+**Night 6 is perfect and Night 5 is not.** The same inversion the 4/20 result
+showed: at higher AI a blocked character leaves on its *next* roll because
+nearly every roll succeeds, while at Night 5's mid AI it camps the door through
+failed rolls and the door stays shut. Night 5 is the worst night in the game
+for this policy, not Night 6.
+
+**The three-block estimate was right.** Before the exhaustive run, three
+independent 3000-seed blocks gave Night 5 as 3000 / 2999 / 2998, implying about
+99.95%. The population value is 99.950%. That is the held-out method working:
+the estimate from disjoint blocks landed on the true rate, where the single
+fitted block had claimed 100%.
 
 **The published loop stops about one seed in 3000 short, and it is a real
 ceiling rather than a tuning miss.** Two sweeps — 54 and then 24 configurations
@@ -157,13 +175,35 @@ three blocks. That is the policy's rate.
 
 `roll-grid` clears it because it removes the camp cost rather than paying it —
 each door is shut only across its own roll instants, 20/298 of holding — and it
-does not need a held-out block at all, because it was run **exhaustively**:
+was run **exhaustively**: **65,536 / 65,536 on all seven nights**. The RNG
+keeps 16 bits, so that is every night the game can deal, not a sample.
 
-> **65,536 / 65,536 on all seven nights**, including 4/20.
+### `roll-grid` is MODEL ONLY and is not a device route
 
-The RNG keeps 16 bits, so 65,536 seeds is every night the game can deal. That
-is not a sample with a confidence interval; under this model it is the whole
-population, and there is no block left to hold out.
+It scores perfectly and it cannot be actuated, which is worth stating loudly
+next to the number rather than in a footnote.
+
+The simulator sets `leftDoor` and `rightDoor` independently every frame with no
+pan state. The handset says that is impossible: **the two doors are 2779 px
+apart on a 2400 px screen and are never both on screen**, so every door press
+is pan-then-press at the measured 270 ms floor — a 540 ms round trip.
+
+And the two grids start aligned. Both `Every` timers load at t = 0 and the
+periods differ by only 10 ms, so the instants separate by 10 ms per cycle:
+
+> For the first **53 cycles — 263 s of a 535 s night** — the two door instants
+> are closer together than one pan round trip, inside a 333 ms window.
+
+For half of every night one actuator cannot serve both doors. The exhaustive
+score is a true statement about the model and a false one about the phone —
+this project's oldest failure mode, that the simulator prices nothing.
+
+**So the published loop is the actuatable one**, despite scoring lower. Its
+door shuts are belief-driven and last a whole camp (12–20 s), so a 270 ms pan
+fits inside its 1 s check cadence with room to spare, and its detectors are
+cheap: door-light occupancy is a luma read at a known coordinate, which
+`packages/screencheck` and the `*-rule-v1` models already do on this handset.
+`census.mjs` prints `[MODEL ONLY]` beside every `roll-grid` row.
 
 That is the one place in this work where the community line and the machine
 line genuinely differ in outcome, and it is reported as a difference rather

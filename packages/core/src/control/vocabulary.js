@@ -128,11 +128,26 @@ export const FNAF1_CONTROL_VOCABULARY = Object.freeze({
 export const GAME_CONTROLS = Object.freeze({
   'com.scottgames.fivenightsatfreddys': Object.freeze({
     controls: Object.freeze(Object.values(FNAF1_CONTROL_VOCABULARY)),
-    /** FNaF 1 HAS cameras. Their ids are alphanumeric (`1A`, `4B`) and the
-     *  view-id map has not been built, so no range can be stated -- plans/26
-     *  carries it as `UNKNOWN(unmapped-view-ids)`, the open question behind the
-     *  Foxy `viewing <> 99` discrepancy. FNaF 4's `null` means the opposite
-     *  thing (there are none), so this is not null. */
+    /** FNaF 1 HAS cameras, and their `viewing` ids are **sparse**, not a
+     *  range: the Main Room sheet compares `viewing` against exactly
+     *  `{1, 2, 3, 4, 5, 6, 7, 22, 33, 42, 99}` -- eleven values for eleven
+     *  cameras. So this stays a string rather than an array, because a
+     *  `[min, max]` would be read by `MAX_GAME_CAMERA_INDEX` and would make
+     *  `cam:50` valid for every game. FNaF 4's `null` means the opposite
+     *  thing (there are none), so this is still not null.
+     *
+     *  **Five of the eleven are now pinned by the sheet itself** (2026-09-20,
+     *  recorded with their groups in `mechanics/games/fnaf1.js` `VIEWS`):
+     *  1 = CAM 1A, 3 = CAM 2A (West Hall), 4 = CAM 4A, 42 = CAM 4B,
+     *  99 = CAM 1C (Pirate Cove). The remaining six are inferred from the
+     *  camera set, not pinned, so the label stays.
+     *
+     *  The Foxy `viewing <> 99` discrepancy that this note used to call the
+     *  open question **is resolved**: 99 is Pirate Cove (g90-g94 render his
+     *  stage art there), and watching it blocks his advance through a gate
+     *  that is *separate* from the camera-attention hold -- g460 refreshes
+     *  that hold from **any** camera, which is what the community means by
+     *  "check any camera to hold Foxy". */
     cameraRange: 'UNKNOWN(unmapped-view-ids)',
   }),
   'com.scottgames.fnaf2': Object.freeze({
