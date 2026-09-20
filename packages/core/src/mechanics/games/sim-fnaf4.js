@@ -17,8 +17,26 @@
 //   - Foxy kills unconditionally on the nights his dial is high, because his
 //     closet chain here is a guess rather than a trace.
 //
+// **The hub is a facing, and that is now traced (2026-09-20).** `follow`'s X
+// is the player's look direction, written explicitly rather than moved:
+// g107 sets it to 512, g108 to 788, g105/g109/g110 to 750, and g25 to an
+// alterable the drag writes. The auto-advance out of state 0 is selected by
+// it -- g30 walks to the left door at **X = 512**, g34 to the right at
+// **X = 788** -- and **X = 750 matches neither**, so facing centre is a real
+// resting state and the player is not forced to move.
+//
+// That resolves the mechanism but not the puzzle: it means `do-nothing`
+// surviving may be what this frame's logic actually says, since every
+// `gameover = 1` group is player-triggered. It contradicts the game strongly
+// enough that it should not be claimed either way. **That is the specific
+// thing to settle next**, and it is now a narrow question -- what kills a
+// player who faces centre and never acts -- rather than "the state machine is
+// unmapped".
+//
 // `UNKNOWN(not-traced)`: what sets `Bonnie`/`Chica` AV7, the bedroom flag
-// g375/g376 test; and Foxy's real closet progression.
+// g375/g376 test (g480/g486 set it while the bed is watched and their AV6
+// accumulator is high; AV6's own accumulation is not traced); and Foxy's real
+// closet progression.
 //
 // This is recorded rather than tuned because a model whose controls pass when
 // they should fail cannot tell a working route from a dead code path -- the

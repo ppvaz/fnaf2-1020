@@ -313,8 +313,24 @@ wrong about the real game, so a mechanic forcing the player out of the hub is
 missing — `force turn` (g589–g591, g595) is modelled at the bed only. Foxy's
 closet chain is a guess rather than a trace.
 
+**Half of that blocker is now closed.** `follow`'s X is the player's *look
+direction*, written explicitly rather than moved: g107 sets 512, g108 sets
+788, g105/g109/g110 set 750, and g25 takes it from the alterable the drag
+writes. The auto-walk out of the hub is selected by it — **g30 walks to the
+left door at X = 512, g34 to the right at X = 788, and 750 matches neither**,
+so facing centre is a genuine resting state.
+
+Which sharpens the puzzle rather than dissolving it: it means a player who
+faces centre and never acts may really survive under this frame's logic, since
+every `gameover = 1` group in it is player-triggered. That contradicts the game
+strongly enough not to be claimed either way, and it is now a narrow question —
+*what kills a player who faces centre and never acts* — rather than "the state
+machine is unmapped".
+
 `UNKNOWN(not-traced)`: what sets `Bonnie`/`Chica` AV7, the bedroom flag
-g375/g376 test; and Foxy's real closet progression.
+g375/g376 test — g480/g486 set it while the bed is watched and their AV6
+accumulator is high, but AV6's own accumulation is not traced; and Foxy's real
+closet progression.
 
 It is labelled `INCOMPLETE` in `sim-fnaf4.js` and in `census.mjs`'s reporter,
 which prints the warning beside every FNaF 4 row. Reporting a rate from a model

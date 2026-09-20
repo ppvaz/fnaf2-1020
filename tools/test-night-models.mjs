@@ -271,6 +271,13 @@ for (const game of GAME_IDS) {
     follow.stations.leftDoor !== follow.stations.rightDoor);
   eq('the left door is reached by its own hitzone',
     follow.approaches.leftDoor.hitzone, 'HUDDoorLeftHitzone');
+  // The hub is a *facing*: g30 auto-walks left at X = 512 and g34 right at
+  // X = 788, and 750 matches neither, so facing centre rests. Three distinct
+  // values, or the auto-walk would be ambiguous.
+  eq('three distinct facings', new Set(Object.values(follow.facing)).size, 3);
+  ok('centre matches neither auto-walk',
+    follow.facing.centre !== follow.facing.leftDoor
+    && follow.facing.centre !== follow.facing.rightDoor);
 }
 
 // --- animation durations, and the model that derives them -----------------

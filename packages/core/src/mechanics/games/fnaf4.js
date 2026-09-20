@@ -276,6 +276,11 @@ export const ROTATION_MS = {
 // reason as well as for the readiness one.
 export const FOLLOW = {
   hub: 0,
+  // The look direction that selects the auto-walk out of the hub [g30 at
+  // X = 512 to the left door, g34 at X = 788 to the right]. 750 matches
+  // neither, so facing centre rests. X is written explicitly (g105, g107-g110)
+  // and by the drag through g25 -- it is a facing, not a position.
+  facing: { leftDoor: 512, rightDoor: 788, centre: 750 },
   stations: { leftDoor: 10, rightDoor: 17, closet: 29, bed: 43 },
   // Entry walks, hub -> station, in the order the states are written.
   approaches: {
