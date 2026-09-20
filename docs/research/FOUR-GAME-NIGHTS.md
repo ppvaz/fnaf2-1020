@@ -157,8 +157,13 @@ three blocks. That is the policy's rate.
 
 `roll-grid` clears it because it removes the camp cost rather than paying it —
 each door is shut only across its own roll instants, 20/298 of holding — and it
-holds up under the same test: **3000/3000 on all seven nights across three
-independent seed ranges** (0–2999, 3000–5999, 10000–12999).
+does not need a held-out block at all, because it was run **exhaustively**:
+
+> **65,536 / 65,536 on all seven nights**, including 4/20.
+
+The RNG keeps 16 bits, so 65,536 seeds is every night the game can deal. That
+is not a sample with a confidence interval; under this model it is the whole
+population, and there is no block left to hold out.
 
 That is the one place in this work where the community line and the machine
 line genuinely differ in outcome, and it is reported as a difference rather
