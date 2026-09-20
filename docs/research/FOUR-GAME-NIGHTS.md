@@ -307,6 +307,66 @@ Two source facts do the work, and neither is in any public account:
   (`2000 − AI×200` against `1000 − AI×100`), so clearing an error late still
   avoids the chain entirely.
 
+### FNaF 3's hardest mode: Aggressive Nightmare
+
+The six-night census above is the story mode. It is not the hardest thing the
+game offers, and the hardest thing is the one configuration the published line
+does **not** take.
+
+**The Extras cheat row, read from the sheet.** Four flags toggle in
+`25-26-extra.txt` (a `(x + 1) mod 2` flip, persisted to the INI and read back
+at the title screen): `fast nights on?`, `hyper on?`, `no cams on?` and
+`ventproof on?`.
+
+`hyper on?` is the public **Aggressive** cheat, identified by *function* rather
+than by name: g222 advances `move counter` by **2 a second** where g221
+advances it by 1, halving the time to every move test. `AI` itself caps at 7
+(g654 has no setter above it), so this is the only knob above Nightmare — which
+matches the FNaF Wiki calling Aggressive *"the only cheat that makes the game
+more difficult"* and Aggressive + Nightmare *"theoretically simulating the
+highest Custom Night difficulty in FNaF 3"*.
+
+`UNKNOWN(port-difference)`: the published cheat list is Fast Nights, **Radar**,
+Aggressive. This Android build has **`no cams on?` and `ventproof on?`** and no
+radar flag. A port difference, consistent with the mobile porter's other
+additions here (FNaF 3's whole `olivier_*Hitbox` family). Neither mobile-only
+flag is traced.
+
+**The census.** `community-line`, 3000 seeds:
+
+| | Night 5 | Night 6 |
+|---|---|---|
+| normal | 3000/3000 | 3000/3000 |
+| **Aggressive** | 3000/3000 | **2998/3000** |
+
+Both losses are `springtrap-vent` — he reaches 14 or 15 unsealed. That fits the
+mechanism: at double rate he takes more turns per hour, and every vent entrance
+is on branch 4, which aggression itself unlocks (`Random(3) + aggresive? + 1`
+makes the branch set {2,3,4} instead of {1,2,3}).
+
+**Why it fails, and it is not the seal.** The published Aggressive Nightmare
+strategy is built on **audio lures**, and this policy never lures:
+
+| | published line | `community-line` |
+|---|---|---|
+| lures | central — keep him looping cam 9↔10, "play audio in Cam 9 if Springtrap is in Cam 8" | **never** |
+| seal | **vent 11**, while camping 9/10 | the vent reachable from the last sighting |
+| reboots | "Audio (always reboot first before anything), Camera, Ventilation" | ventilation only |
+
+The lure is worth more than the public accounts say, and worth *most* here. A
+lure **resets `move counter` to 0**, not merely repositioning him — and under
+`hyper` the counter advances at 2/s, so a reset buys **twice** what it does at
+normal rate. That is why this policy clears every other configuration without
+lures and loses only on the one where they matter most.
+
+**One open disagreement, recorded rather than resolved.** The published line
+seals **vent 11**. The topology says **14 and 15 bypass the attack chain and
+kill outright** while 11 enters it two steps from the end, so on danger order
+14 should come first. Either the published line is suboptimal there, or camping
+9/10 makes 11 the live threat in a way the topology alone does not show. It
+would be settled by censusing the two seal choices against each other under
+`hyper`, which needs no device time.
+
 ### FNaF 1 — 3000/3000 on all six nights and 4/20, community loop
 
 See the table below. What made it reachable was measuring where the 999 units

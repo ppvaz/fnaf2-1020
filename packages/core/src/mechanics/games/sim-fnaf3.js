@@ -82,8 +82,12 @@ export class Fnaf3Sim {
    * @param {number} [options.night] 1..6
    * @param {number} [options.seed]  16-bit RNG seed
    * @param {boolean} [options.fastNights]
+   * @param {boolean} [options.hyper] the Extras "aggressive" cheat: g222
+   *   advances `move counter` by 2 a second instead of g221's 1, which halves
+   *   the time to every move test. AI itself caps at 7 (g654), so this is the
+   *   only knob above Nightmare and the hardest the game goes.
    */
-  constructor({ night = 1, seed = 0, fastNights = false } = {}) {
+  constructor({ night = 1, seed = 0, fastNights = false, hyper = false } = {}) {
     this.night = night;
     this.rng = new Rng(seed);
     this.fastNights = fastNights;
@@ -108,7 +112,7 @@ export class Fnaf3Sim {
     this.moveCounter = 0;
     this.totalTurns = 0;
     this.aggressive = 0;
-    this.hyper = false;
+    this.hyper = hyper;                         // g222
     this.picRandom = this.rng.int(0, 1);        // g460, StartOfFrame
 
     // Ventilation.
