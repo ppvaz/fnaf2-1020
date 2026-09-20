@@ -28,6 +28,7 @@ controller research, and device evidence form one program.
 | Understand the project's scope and claim discipline | [`../PROJECT-CHARTER.md`](../PROJECT-CHARTER.md) |
 | See what completely solving the game would mean, and where we stand on that ladder | [`research/SOLVING-FNAF2.md`](research/SOLVING-FNAF2.md) |
 | Read what the project has learned | [`chronicle/README.md`](chronicle/README.md) |
+| Understand why facts stay hidden here, and where to look next | [`operations/WHY-FACTS-HIDE.md`](operations/WHY-FACTS-HIDE.md) |
 | Find the right command | [`../tools/TOOLS.md`](../tools/TOOLS.md) |
 | Pick up unfinished work | [`../plans/`](../plans/) |
 | Understand current package ownership | [`architecture/README.md`](architecture/README.md) |
