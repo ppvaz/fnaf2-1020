@@ -574,9 +574,21 @@ if [ -z "${NIGHT_ANCHOR_AIM_MS:-}" ]; then
     printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-aim.err")"
   fi
 fi
+# An EXPLICIT aim must never be silently downgraded to off. The lookups below
+# exist for the register path; when an operator states an aim, a missing maxK or
+# period is a usage error and has to say so. On 2026-09-20 two Night 6 runs were
+# launched with NIGHT_ANCHOR_AIM_MS set, both released unanchored because the
+# period lookup failed on an unregistered binding, and the single "anchor OFF"
+# line was read as a register note rather than as the override being discarded --
+# so a 255 ms change in the request moved the delivered epoch by 10 ms and was
+# briefly written up as a hardware limit.
+ANCHOR_AIM_EXPLICIT=0
+[ -n "${NIGHT_ANCHOR_AIM_MS:-}" ] && [ "${NIGHT_ANCHOR_AIM_MS:-}" != off ] && ANCHOR_AIM_EXPLICIT=1
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ] && [ -z "${NIGHT_ANCHOR_MAX_K:-}" ]; then
   if max_k="$(node tools/device/fact-register.mjs --anchor-max-k "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-max-k.err")"; then
     NIGHT_ANCHOR_MAX_K="$max_k"
+  elif [ "$ANCHOR_AIM_EXPLICIT" = 1 ]; then
+    die "NIGHT_ANCHOR_AIM_MS=$NIGHT_ANCHOR_AIM_MS was given but no maxK is registered for $BUNDLE_WINNER_HASH; state NIGHT_ANCHOR_MAX_K too rather than releasing unanchored"
   else
     NIGHT_ANCHOR_AIM_MS=off
     printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-max-k.err")"
@@ -589,6 +601,8 @@ fi
 if [ "$NIGHT_ANCHOR_AIM_MS" != off ] && [ -z "${NIGHT_ANCHOR_PERIOD_MS:-}" ]; then
   if period="$(node tools/device/fact-register.mjs --anchor-period-ms "$BUNDLE_WINNER_HASH" 2>"$OUTDIR/anchor-period.err")"; then
     NIGHT_ANCHOR_PERIOD_MS="$period"
+  elif [ "$ANCHOR_AIM_EXPLICIT" = 1 ]; then
+    die "NIGHT_ANCHOR_AIM_MS=$NIGHT_ANCHOR_AIM_MS was given but no period is registered for $BUNDLE_WINNER_HASH; state NIGHT_ANCHOR_PERIOD_MS too (Night 5 is 1000, Night 6/7 the 5000 ms Foxy roll) rather than releasing unanchored"
   else
     NIGHT_ANCHOR_AIM_MS=off
     printf 'anchor   OFF -- %s\n' "$(cat "$OUTDIR/anchor-period.err")"

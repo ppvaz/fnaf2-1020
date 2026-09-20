@@ -1,6 +1,6 @@
 {
  "schema": "calibration-observation-v1",
- "verdict": "PARTIAL",
+ "verdict": "RETRACTED",
  "claimLevel": "DEVICE_MEASURED",
  "evidenceId": "night6-aim-zero-not-deliverable-20260920",
  "recordedAt": "2026-09-20",
@@ -16,14 +16,17 @@
   "override": "NIGHT_ANCHOR_AIM_MS=0 NIGHT_ANCHOR_MAX_K=0"
  },
  "observed": [
-  "AIM 0 IS NOT DELIVERABLE. originAt 1789867571597, first releaseAt 1789867582013 -- 10416 ms later, an effective epoch of 416 ms rather than 0. The onset must be detected before a release can be issued, so an aim at the onset slips to a later period boundary.",
+  "An explicit NIGHT_ANCHOR_AIM_MS override is silently discarded when the anchor PERIOD cannot be looked up by winner hash. night-run.sh prints one 'anchor OFF' line and proceeds unanchored. The override is only honoured when NIGHT_ANCHOR_PERIOD_MS is also stated.",
+  "With the period stated, the anchor delivered aimMs 255 at lateMs 0.798 (origin.anchor status=released, k=1). Sub-millisecond delivery.",
   "The model's band predicted the outcome. tools/device/epoch-scan.mjs scored epochs 400 and 450 at 0/200 for this winner, mostly Foxy; the run died at 167.8 s.",
   "Band for fnv1a-be76035f, night 6, confirmed at 3000 seeds: epochs 0, 50, 100, 200, 250 and 300 all 3000/3000. Epoch 150 is 0/200 (Puppet) -- the 50 ms split-arming hole g263 -- and 350 and beyond lose to Foxy.",
   "The effective-epoch relation was recovered from night6-anchor-aim-h-20260913.json: effective = aim + k*period + onsetBiasMs(-70) + input latency(47-82 ms, hall-lit). An aim derived from a winning band alone, without those two terms, is wrong by about 250 ms."
  ],
  "unknown": {
-  "deliverableAimFloor": "UNKNOWN(not-measured): aim 0 slipped to 416 ms on one run. The smallest aim the executor CAN deliver, and how repeatable the slip is, needs a sweep -- one run cannot distinguish a fixed detection cost from a drawn one.",
+  "deliverableAimFloor": "RETRACTED: the aim-0 slip was a disabled anchor, not a delivery floor. No floor has been measured.",
   "night6TrackedAim": "UNKNOWN(not-tested): the band implies about 255 for fnv1a-be76035f, but whether the executor delivers 255 is exactly what this run puts in doubt.",
-  "night6AnchoredBinding": "UNTRACKED: binding h's aim fnv1a-37278c63 is registered but no tracked winner normalises to that hash; the winner file is part of the untracked-winner debt."
- }
+  "night6AnchoredBinding": "UNTRACKED: binding h's aim fnv1a-37278c63 is registered but no tracked winner normalises to that hash; the winner file is part of the untracked-winner debt.",
+  "night6EffectiveEpoch": "UNKNOWN(not-measured): converting a delivered aim into an effective epoch needs THIS binding's onsetBiasMs and input latency. Binding h's values (-70 ms, 47-82 ms) were borrowed for a derivation and the anchored run died at 107.7 s, consistent with landing outside the band. Those constants are priced for another policy and must be measured here."
+ },
+ "retraction": "The headline claim of this record -- that the device cannot deliver an aim at or near the onset -- is WITHDRAWN 2026-09-20, same day. The anchor was never ON in the run it was measured from. night-run.sh looks the anchor PERIOD up by winner hash even when an explicit NIGHT_ANCHOR_AIM_MS override is given, and the tracked Night 6 winner has no register entry, so the lookup failed and the script set NIGHT_ANCHOR_AIM_MS=off. Both the aim-0 run and a subsequent aim-255 run released UNANCHORED at a drawn phase (416 ms and 426 ms), which is why a 255 ms change in the request moved the delivered epoch by 10 ms. With NIGHT_ANCHOR_PERIOD_MS=5000 stated explicitly the anchor released at aimMs 255 with lateMs 0.798 -- sub-millisecond. The executor aims precisely; this record measured a disabled anchor and reported it as a hardware limit."
 }
