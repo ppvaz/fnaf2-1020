@@ -5,15 +5,32 @@
 // be compared to the mocked phone trace before an adb action is allowed.
 import { createHash } from 'node:crypto';
 import { compilePolicy } from './policy-interpreter.mjs';
-import { canonicalPolicy, validatePolicy } from '@fnaf2-1020/core/control';
+import { canonicalPolicy, validatePolicy, DEVICE_CONTROL_NAMES } from '@fnaf2-1020/core/control';
 
-const ACTIONS = new Set(['monitor', 'mask', 'cam9', 'cam11', 'ventl', 'light', 'wind', 'hall']);
+// The plan text's own short forms, plus the canonical control names taken from
+// the vocabulary rather than copied. This set was a hand copy until 2026-09-20
+// and it still read `light`/`ventl` after `e8af711` renamed the vocabulary on
+// 2026-09-09; nothing noticed until `3efc923` put a `cameraFeedLight` row in
+// the opening two days later, and then only this gate saw it -- which is why
+// deriving the names beats restating them.
+const PLAN_SHORTHAND = ['cam9', 'cam11', 'ventl', 'light', 'hall'];
+const ACTIONS = new Set([...DEVICE_CONTROL_NAMES, ...PLAN_SHORTHAND]);
 const finite = value => Number.isFinite(value);
 const frame = ms => Math.round(ms * 60 / 1000);
-const planAction = action => action.startsWith('cam') ? action
-  : action === 'ventl' ? 'ventl' : action;
-const semanticAction = action => action.startsWith('cam') ? `cam:${action.slice(3)}`
-  : action === 'ventl' ? 'light' : action;
+// `cam9`/`cam11` are camera shorthands; `cameraFeedLight` is a control whose
+// name merely starts with the same three letters. A `startsWith('cam')` test
+// turned it into the camera `cam:eraFeedLight`, which is what a prefix match
+// does the moment the vocabulary grows a longer name.
+const CAMERA_SHORTHAND = /^cam(\d+)$/;
+// The simulator's trace calls every flash `light` -- the overloaded
+// model-context action the device vocabulary refuses. Both physical lights the
+// plan text can name fold into it here, which is the comparison this gate makes
+// and not a claim that they are the same control.
+const MODEL_LIGHTS = new Set(['ventl', 'cameraFeedLight']);
+const planAction = action => action;
+const semanticAction = action => CAMERA_SHORTHAND.test(action)
+  ? `cam:${CAMERA_SHORTHAND.exec(action)[1]}`
+  : MODEL_LIGHTS.has(action) ? 'light' : action;
 const cameraName = value => /^cam:(?:[1-9]|1[0-2])$/.test(value ?? '');
 
 function armVerifyCameras(value) {

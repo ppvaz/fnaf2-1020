@@ -1,0 +1,50 @@
+{
+  "schema": "evidence-record-v1",
+  "id": "fnaf3-control-surface-20260920",
+  "claimLevel": "DEVICE_MEASURED",
+  "date": "2026-09-20",
+  "target": {
+    "game": "FNaF 3",
+    "package": "com.scottgames.fnaf3",
+    "version": "2.0.4+18",
+    "night": 2,
+    "device": { "serial": "ZF525F5BH5", "model": "moto g56 5G", "displayGeometry": "1080x2400" }
+  },
+  "question": "Where do FNaF 3's camera monitor, audio lure and vent seal live on the handset, and what does reaching them cost?",
+  "contactRule": "160 ms HELD contact. `adb shell input tap` is a near-instantaneous contact and this engine drops it phase-dependently -- it worked 3 times, then failed 3 consecutive runs with the menu rows provably unmoved. A 160 ms held contact has landed on every attempt since. This is the project's own MIN_CONTACT_MS (Night 5) transferring intact to a second game, and it should be assumed for every game here.",
+  "panRule": {
+    "mechanism": "Panning is a HOLD, not a swipe. Two swipes moved 208 px; one ~2.5 s hold at (2200,540) moves 968 px and saturates at the world edge. Three further holds produced byte-identical frames.",
+    "crossCheck": "968 px measured on device against 976 px predicted by the frame header (2000 px world in a 1024 px window). Two independent methods agree to within 8 px.",
+    "startState": "Every game starts the night panned fully left. FNaF 3's single right hold saturates at 968 px; FNaF 1's left hold moved 0 px. Pan at t=0 is therefore a known constant, not something to observe."
+  },
+  "controls": {
+    "loadGame": { "screen": [480, 641], "anchor": "screen" },
+    "panRight": { "screen": [2200, 540], "holdMs": 2500, "minimumHold": "UNKNOWN(not-measured)" },
+    "cameraMonitor": { "screen": [2212, 327], "panel": [2106, 131, 2318, 522], "anchor": "world", "requires": "panned-right view; DOES NOT EXIST at pan 0" },
+    "playAudio": { "screen": [1248, 812], "anchor": "world", "requires": "camera-map mode" },
+    "mapToggle": { "screen": [1250, 927], "anchor": "world", "verified": "toggles both ways" }
+  },
+  "findings": [
+    "The camera control is not on screen at rest: the office view must be panned right before it exists to tap. The office is 2000x768 in a 1024 window and the extracted cam objects sit at world x 1640-1940, the right quarter. So the camera monitor HAS NO FIXED SCREEN COORDINATE AT ALL, and no calibration taken at rest can ever produce one.",
+    "Map Toggle swaps the camera map for the VENT map, showing CAM 11-15 joined by link lines -- the same five vents, in the same numbering, the event sheet gave.",
+    "Sealing a vent is a DOUBLE-TAP on its vent cam button, stated by the game's own on-screen instruction. Not a single contact.",
+    "Play Audio is ABSENT in vent-map mode. The lure and the seal live in mutually exclusive view states, so a route cannot do both without paying a toggle between them. That is a scheduling constraint, not a UI detail, and it interacts directly with the lure's move-counter reset."
+  ],
+  "ruledOut": [
+    "The bottom-centre tab with a downward chevron and TAP is the MAINTENANCE PANEL, not the monitor: tapping at (880,1020) and at (1219,1021) both open maintenance. Two ends of one bar.",
+    "A slim white vertical bar at the right edge (x ~2368-2378, y ~390-680) is a glitched Android system marker, not a game control. Tapping near it risks an edge gesture rather than anything in the game."
+  ],
+  "consequence": "device-profile-v1's flat controlMap cannot express any of these controls even in principle: it carries one screen coordinate per control and no view offset. Closing that is plans/26 blocker 1.",
+  "notMeasured": [
+    "The minimum pan hold duration below 2500 ms.",
+    "The monitor flip control.",
+    "Whether these coordinates hold at any Controller Size other than the 120% measured in fnaf3-title-gate-negatives-20260920."
+  ],
+  "frames": {
+    "retained": "captures/fnaf3-control-surface-20260920T044759Z",
+    "tracked": false,
+    "note": "Game frames are never committed (docs/evidence/README.md publishing boundary). This record is the derived reading."
+  },
+  "rung": "None. plans/26 states that nothing in it is a claim or a Plan 12 rung.",
+  "plan": "plans/26-second-target-fnaf-1-3-4.md"
+}

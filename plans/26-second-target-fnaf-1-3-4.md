@@ -1056,7 +1056,7 @@ not missing mechanics knowledge. It is that the device stack is FNaF 2-shaped
 in three specific ways. Each was previously recorded only as a scattered
 observation; this section states them as blockers so they can be closed.
 
-### Blocker 1 — the profile cannot say *where* a control lives
+### Blocker 1 — the profile cannot say *where* a control lives (SCHEMA CLOSED 2026-09-20)
 
 `device-profile-v1` carries a flat `controlMap` of screen coordinates. Every
 game measured has **two kinds of control** and the schema cannot distinguish
@@ -1076,6 +1076,43 @@ Two things must change together: the profile needs an anchor kind and a view
 offset per control, and **the evidence record needs the pan state at press
 time**. Without the latter, the press coordinates in every historical bundle
 are uninterpretable after the fact -- not wrong, unreadable.
+
+**Both changed, 2026-09-20.** `packages/adapters/src/control-anchor.js` gives a
+`controlMap` entry an `anchor` (`screen` pinned, `world` scrolls 1:1) and, for a
+world control, the `measuredAtPan` its coordinate was read at -- which is how
+the measurement was actually taken, so the profile keeps the reading and a check
+does the arithmetic. `resolveControlPoint` returns the screen point for a stated
+view, or refuses naming the cause: an **unstated** anchor is not a synonym for
+either kind, so it resolves at rest (where every existing route presses) and
+refuses anywhere else rather than returning a coordinate nobody measured. An
+unknown pan refuses everything that is not pinned. A control that resolves off
+the screen is reported as unreachable-from-this-view, which is the FNaF 3 camera
+monitor's "does not exist at pan 0" arriving as geometry instead of prose. Both
+actuators now resolve through it and **every accepted press records the view
+offset it resolved at**; one that cannot be resolved is `REJECTED` with the
+reason before anything reaches the transport.
+
+`tools/device/models/controls-fnaf1-moto-g56-v207.json` is the first map to use
+it, and `test-control-anchor.mjs` (in `npm run test:unit`) derives the door
+separation from those coordinates rather than trusting this document's 2779 --
+it computes 2780, because the measured table reads x 2286 where the derivation
+above reads 2285. Nothing depends on which: both exceed the 2400 px screen, and
+the file carries the 1 px as `UNKNOWN`. FNaF 1 also had no registered control
+vocabulary until now; it has five roles and **no camera range**, because its
+view ids are alphanumeric and unmapped. That is recorded as
+`UNKNOWN(unmapped-view-ids)`, deliberately not FNaF 4's `null`, which means the
+opposite thing -- and `MAX_GAME_CAMERA_INDEX` had to stop testing that field for
+truthiness, since a string would have indexed to `NaN` for every game.
+
+**What is still open, and it is the interesting half.** Nothing reads the live
+pan: `view-scroll-v1`'s own `panObservation` is `UNKNOWN(not-implemented)` (the
+Cue Helper's `pan_anchor_state` read `bulb-not-found` throughout 2026-09-19), so
+the offset is a value a caller states, not one the phone reports. And the four
+FNaF 2 controls the profile marks pan-dependent still carry unanchored
+coordinates. They are deliberately unmigrated: a profile's bytes are hashed into
+the bundles and qualifications bound to it, so rewriting one would orphan those
+bindings exactly as the `ANCHOR_AIMS` drift did. `test-control-anchor.mjs` pins
+that set of four, so migrating it is a deliberate edit rather than a silent one.
 
 ### Blocker 2 — the schedule cannot express a hold
 

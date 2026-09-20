@@ -3,6 +3,7 @@
  * profiles; controllers never branch on adapter names. CONTRACT:capability-v1.
  */
 import { validateCapability, validateProfile } from '@fnaf2-1020/core/contracts';
+import { validateControlAnchor } from './control-anchor.js';
 import { DEVICE_CONTROL_NAMES } from '@fnaf2-1020/core/control';
 
 const freeze = value => Object.freeze(value);
@@ -65,6 +66,11 @@ export function resolveProfile(profile, { requireCalibration = true } = {}) {
   for (const control of actuator.controls) {
     const point = profile.controlMap[control];
     if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error(`profile ${profile.id} has no coordinate binding for ${control}`);
+    // Anchor kind and measured pan, when the profile states them. Absent stays
+    // legal: every profile here predates the field and its bytes are hashed
+    // into the bundles bound to it. A half-stated anchor is not legal.
+    try { validateControlAnchor(control, point); }
+    catch (error) { throw new Error(`profile ${profile.id}: ${error.message}`); }
   }
   // Resolution owns the immutable result. Do not freeze nested objects in the
   // caller's parsed JSON; qualification code may need to derive a candidate

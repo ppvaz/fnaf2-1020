@@ -23,6 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const EXCLUDED = new Map([
   ['office-seed-bracket.py', 'the office frame seed bracket from a live MMFRuntime logcat; consumed by the seed-lock scorer, not by a run grade yet -- it joins grade-run.sh once runs retain mmfruntime.logcat'],
   ['grade-run.sh', 'the pipeline itself'],
+  ['game-teardown.sh', 'a lifecycle action that runs AFTER a night and before there is anything to grade: it stops a target game only once title-observe.py has confirmed the title, so the post-night sequence finishes and the save is banked. It sends one force-stop and reads no run artifact; gated by test-game-teardown.sh'],
   ['fact-register.mjs', 'a generated register of which producer answers each semantic fact and on what evidence; it reads source, not a run, and test-fact-register.mjs is the gate over it'],
   ['capabilities.mjs', 'a read-only capability query about the PHONE, not a grader of a run: it sends no input and reads no pixels, and it answers which instruments this handset can feed before one is proposed'],
   ['test-seam-slack.mjs', 'a gate, not an instrument: it audits compiled plans and the timing floors themselves, and is registered in npm run test:unit'],

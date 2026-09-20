@@ -10,7 +10,16 @@ const program = minimalPolicy();
 const compiled = compileDevicePlan(program);
 const comparison = comparePolicyToDevice(program, compiled);
 check(comparison.equal, `compiled policy diverged: ${JSON.stringify(comparison.mismatches.slice(0, 3))}`);
-check(comparison.simulatorCount === 183 && comparison.phoneCount === 183,
+// 185 since `3efc923` (2026-09-11), which gave the opening its first safe Toy
+// stun -- `openStunLeadMs`/`openStunHoldMs`, one camera-feed hold in `open` and
+// one in `opening`. That commit updated the emitter's own expected row and not
+// this number, so the gate has read 183 against a 185-event plan ever since.
+// It went unnoticed for nine days because this file was registered only in
+// `tools/test.mjs`'s ENGINE group, which CI does not run and whose reds
+// CLAUDE.md excuses as intentional scientific controls. It is a
+// compiler-equivalence regression gate, not a control, so it is now in
+// `npm run test:unit` as well -- mistake register entry 13.
+check(comparison.simulatorCount === 185 && comparison.phoneCount === 185,
   'equivalence fixture changed event count without a deliberate update');
 
 function rejects(text, message) {

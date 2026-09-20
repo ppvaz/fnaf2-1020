@@ -102,7 +102,39 @@ export const FNAF4_CONTROL_VOCABULARY = Object.freeze({
   closeDoor: 'closeDoor',
 });
 
+/**
+ * FNaF 1's semantic control roles, measured 2026-09-20 on the handset.
+ *
+ * Five controls and one hard geometric fact: the two door buttons sit at world
+ * x 106 and 2885 on a 2400 px screen, so they can NEVER both be on screen and
+ * every door press is pan-then-press. The door LIGHTS are here for
+ * completeness, not because a route needs them -- a public clear exists with
+ * them never used, paying for continuous camera tracking in power instead
+ * (docs/research/FNAF-SENSOR-ABLATION-RUNS.md), which is why FNaF 1's
+ * difficulty is a scheduling problem rather than a sensing one.
+ *
+ * `monitor` is the camera tab and keeps its FNaF 2 name because it is the same
+ * semantic role. Unlike every other control here it is screen-PINNED: it reads
+ * at x 475-1605 at both pan extremes.
+ */
+export const FNAF1_CONTROL_VOCABULARY = Object.freeze({
+  monitor: 'monitor',
+  leftDoor: 'leftDoor',
+  rightDoor: 'rightDoor',
+  leftDoorLight: 'leftDoorLight',
+  rightDoorLight: 'rightDoorLight',
+});
+
 export const GAME_CONTROLS = Object.freeze({
+  'com.scottgames.fivenightsatfreddys': Object.freeze({
+    controls: Object.freeze(Object.values(FNAF1_CONTROL_VOCABULARY)),
+    /** FNaF 1 HAS cameras. Their ids are alphanumeric (`1A`, `4B`) and the
+     *  view-id map has not been built, so no range can be stated -- plans/26
+     *  carries it as `UNKNOWN(unmapped-view-ids)`, the open question behind the
+     *  Foxy `viewing <> 99` discrepancy. FNaF 4's `null` means the opposite
+     *  thing (there are none), so this is not null. */
+    cameraRange: 'UNKNOWN(unmapped-view-ids)',
+  }),
   'com.scottgames.fnaf2': Object.freeze({
     controls: DEVICE_CONTROL_NAMES,
     /** CAM 1-12, plus `cam:0` which the existing validator has always allowed. */
@@ -132,5 +164,8 @@ export const ALL_GAME_CONTROL_NAMES = Object.freeze([
  */
 export const MAX_GAME_CAMERA_INDEX = Math.max(
   ...Object.values(GAME_CONTROLS)
-    .filter(game => game.cameraRange)
+    // A stated range only. FNaF 4 registers `null` (no cameras exist) and
+    // FNaF 1 an `UNKNOWN(...)` string (cameras exist, ids unmapped); a truthy
+    // test would have indexed that string and produced NaN for every game.
+    .filter(game => Array.isArray(game.cameraRange))
     .map(game => game.cameraRange[1]));

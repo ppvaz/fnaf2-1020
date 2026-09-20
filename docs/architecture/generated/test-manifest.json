@@ -1586,6 +1586,26 @@
       }
     },
     {
+      "id": "tools/device/test-control-anchor.mjs",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
       "id": "tools/device/test-cue-helper-device-lock.py",
       "lane": "test:device:dry",
       "owner": "legacy migration",
@@ -1861,6 +1881,26 @@
       "fixedSleeps": [],
       "sharedResources": [],
       "subprocesses": false,
+      "measurement": {
+        "status": "NOT_MEASURED",
+        "runs": 0,
+        "durationMs": null,
+        "flakiness": null
+      }
+    },
+    {
+      "id": "tools/device/test-game-teardown.sh",
+      "lane": "test:device:dry",
+      "owner": "legacy migration",
+      "timeoutMs": 180000,
+      "timeoutSource": "tools/test.mjs per-test watchdog",
+      "deterministic": true,
+      "determinismSignals": [],
+      "fixedSleeps": [],
+      "sharedResources": [
+        "device-transport"
+      ],
+      "subprocesses": true,
       "measurement": {
         "status": "NOT_MEASURED",
         "runs": 0,
@@ -3498,7 +3538,7 @@
       "determinismSignals": [],
       "fixedSleeps": [],
       "sharedResources": [],
-      "subprocesses": false,
+      "subprocesses": true,
       "measurement": {
         "status": "NOT_MEASURED",
         "runs": 0,

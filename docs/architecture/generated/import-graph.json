@@ -527,6 +527,7 @@
     {
       "file": "packages/adapters/src/actuators.js",
       "imports": [
+        "./control-anchor.js",
         "@fnaf2-1020/core/actuation",
         "@fnaf2-1020/core/contracts"
       ]
@@ -558,6 +559,7 @@
         "./calibration-state-rule.js",
         "./camera-rule.js",
         "./clocks.js",
+        "./control-anchor.js",
         "./control-exclusion.js",
         "./monitor-rule.js",
         "./registry.js",
@@ -575,6 +577,7 @@
     {
       "file": "packages/adapters/src/registry.js",
       "imports": [
+        "./control-anchor.js",
         "@fnaf2-1020/core/contracts",
         "@fnaf2-1020/core/control"
       ]
@@ -1720,6 +1723,19 @@
         "node:fs",
         "node:os",
         "node:path"
+      ]
+    },
+    {
+      "file": "tools/device/test-control-anchor.mjs",
+      "imports": [
+        "../../packages/adapters/src/actuators.js",
+        "../../packages/adapters/src/control-anchor.js",
+        "../../packages/core/src/contracts/index.js",
+        "../../packages/core/src/control/vocabulary.js",
+        "node:assert/strict",
+        "node:fs",
+        "node:path",
+        "node:url"
       ]
     },
     {

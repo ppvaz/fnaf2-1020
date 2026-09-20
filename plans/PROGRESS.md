@@ -6072,3 +6072,57 @@ open: h2 is one run, not a cohort; the runs are `--machine-only`, so no Plan 12 
 pre-drift hash, which CLAUDE.md records as living on the peer machine. Evidence:
 [night6-five-tick-mask-window-20260920](../docs/evidence/night6-five-tick-mask-window-20260920.json),
 [night6-anchor-aim-h2-20260920](../docs/evidence/night6-anchor-aim-h2-20260920.json).
+
+**2026-09-20: the second game's results enter custody, and a control map learns where a control
+is.** Three FNaF 3 sessions from this morning -- the title-gate negatives, the zero-input Night 1
+6 AM with the first control actuation, and the control surface -- had been committed as plan prose
+with no evidence file and their frames under gitignored `captures/`, which is the FNaF 2 custody
+hole being dug in a second place. They are now derived records
+([title gates](../docs/evidence/fnaf3-title-gate-negatives-20260920.json),
+[first night](../docs/evidence/fnaf3-first-night-20260920.json),
+[control surface](../docs/evidence/fnaf3-control-surface-20260920.json)); the frames stay local,
+because the publishing boundary is what makes the derived half committable at all. None is a Plan 12
+rung and each says so.
+
+The first record carries a defect that nearly erased the run that found it: the ad-hoc capture loop
+force-stopped FNaF 3 **during the post-night minigame**, and FNaF 3 happens to bank the night before
+that sequence rather than after it. `tools/device/game-teardown.sh` is the rule where a tool reads
+it -- `--after-night` stops a game only once `title-observe.py` has read the title, because that read
+is not a proxy for the save but the save itself (Night 1 was graded by exactly it: `LOAD GAME 2`).
+There is no settle constant in the file for that reason. The deadline is a bound, not a measurement,
+and exceeding it leaves the game **running**: a phone parked on a minigame is recoverable, a
+force-stop through a save write is not. Eight mock-ADB checks, whose load-bearing assertions are
+negative -- on a timeout, an unfocused game, a missing model and every usage error, no force-stop
+reaches the phone.
+
+Then Plan 26 blocker 1, whose schema half is now closed.
+`packages/adapters/src/control-anchor.js` gives each `controlMap` entry an anchor kind and, for a
+world-anchored control, the pan its coordinate was read at; both actuators resolve through it and
+every accepted press now records the view offset it assumed, which is the half that made historical
+press coordinates unreadable rather than wrong. An **unstated** anchor resolves at rest and refuses
+anywhere else, so the Minus 3 pan hazard becomes a refusal instead of a coordinate nobody measured.
+FNaF 1 is the vehicle, as the plan ordered: its map is the first with anchors, its five control roles
+are newly registered, and `test-control-anchor.mjs` derives the 2780 px door separation from the map
+rather than trusting the 2779 in the plan's prose. Still open, and it is the interesting half:
+nothing reads the live pan -- `view-scroll-v1`'s own `panObservation` is `UNKNOWN(not-implemented)`
+-- so the offset is stated by a caller, not reported by the phone; and the four pan-dependent FNaF 2
+controls stay unmigrated on purpose, because a profile's bytes are hashed into the bundles bound to
+it. The test pins those four so migrating them is a deliberate edit.
+
+Touching `packages/core/src/control/` woke a gate that had been red for eleven days.
+`tools/policyequivalencetest.mjs` -- the Plan 21 compiler-equivalence regression -- was registered
+only in `tools/test.mjs`'s ENGINE group, which CI does not run and whose reds CLAUDE.md excuses as
+intentional scientific controls, so two real defects sat behind it. `e8af711` (2026-09-09) renamed
+the control vocabulary and left `policy-equivalence.mjs`'s accepted-action set reading `light` and
+`ventl`; `3efc923` (2026-09-11) then put a `cameraFeedLight` row in the opening (the first safe Toy
+stun) and took the plan from 183 to 185 events without updating this file's count. Both are fixed:
+the action set is now DERIVED from `DEVICE_CONTROL_NAMES` instead of hand-copied, and the count is
+185 with the commit that moved it named beside it. A third defect fell out of the first -- the
+comparator identified a camera by `startsWith('cam')`, so `cameraFeedLight` became the camera
+`cam:eraFeedLight`, which is what a prefix match does the moment a vocabulary grows a longer name.
+The gate is now in `npm run test:unit` as well, which is mistake register entry 13 for the second
+time.
+
+Gates: `typecheck`, `test:unit`, `test:contracts` and `test:affected` green; catalog and docs
+regenerate (386 tool scripts carry an entry). No rung moved and no device was touched -- `adb
+devices` is empty.
