@@ -6039,3 +6039,36 @@ alpha 0.8, not 1.0: the platform caps untrusted overlays, so a teach video is al
 the rectangle blanked. The first attempt ran without a panel because of a lookup bug, now fixed
 and pinned by a test; that night won anyway. Evidence:
 [teach-panel-night7-20260918](../docs/evidence/teach-panel-night7-20260918.json).
+
+**2026-09-20: Night 6 again, and the 189 ms the mask never had.** Binding h — 42/42 and a 6 AM on
+2026-09-13 — died twice tonight, at 213 s and 307 s, and the retained video names both killers.
+At 213 s Balloon Boy was in the office and Withered Foxy took the run: `plant-model.js:677` sets
+`hallLit = false` while `bb.inside`, so the 9960 hall flash had been a no-op for minutes. That also
+answers the open "0 visible hall flashes in 43 intervals" reading — after BB is in, there is nothing
+to see, and raising `hallMs` would have been a fix priced against a symptom. At 307 s it was Mangle.
+BB (g907/g292/g294) and Mangle (g400/g401) are repelled by the same counter: five continuous
+fully-masked one-second ticks. h holds the mask fully on for 9260 - 4249 - 200 = 4811 ms, and five
+whole-second boundaries fit in 4811 ms only at a lucky phase — at the delivered aim the fifth tick
+cleared the mask-off press by 131 ms of *game-frame* time, because the counter advances on
+`frame % 60`. Eight dropped frames in a cycle and the cycle silently delivers four. The floor was
+already in the tree for the other strategy: `test-runner-plan.mjs:165` pins the minus7 driver's
+`MASK_RESPONSE_HOLD_MS` to `MASK_ANIM_ON/FPS + VENT_MASK_TICKS` = 5200 ms, and minus-toys had never
+been measured against it. **h2 is h with `maskOffMs` 9260 -> 9560 and nothing else** — 5111 ms fully
+on, five ticks at every phase — and it reached 6 AM on the first attempt (42 cycle gates, anchor
+delivered at aim 4870 with `lateMs` 0.418), **unlocking Custom Night**. The 300 ms came out of the
+idle gap before the flash, not a wind hold: the variant that bought 200 ms more by shortening
+`windMs` 3030 -> 2830 scores 68/3000, which is where Pedro's "more mask means less winding" stops
+being available on Night 6. Two gates that were not gates were closed alongside it. `ANCHOR_AIMS` is
+keyed on `stableHash(winner)`, which moves when an unrelated KNOBS0 default is added; `observeUntilMs`
+gained one, so the committed h winner — byte-identical plan, `fnv1a-c651e2ff` — resolved to no aim for
+five days while the migration sat in `UNTRACKED_WINNER_DEBT` prose that nothing read, and every Night 6
+attempt since was hand-fed 4870/5000/0 through the environment. Entries now declare `alsoBinds`, and
+`test-fact-register.mjs` re-emits the named winner to prove the plan still hashes to the entry's
+`replayHash`. And `gate.replayHash` hashes the *model's* event traces, not the plan: h and h2 share
+`fnv1a-c651e2ff` despite different plan text, so gates may now declare `planSha256` (optional, because
+adding it to a shipped winner would re-hash that winner and orphan its aim exactly as above). Still
+open: h2 is one run, not a cohort; the runs are `--machine-only`, so no Plan 12 promotion edge — though
+`artifacts/night6-anchored-h/` on this machine holds a DEVICE_MEASURED qualification bound to the
+pre-drift hash, which CLAUDE.md records as living on the peer machine. Evidence:
+[night6-five-tick-mask-window-20260920](../docs/evidence/night6-five-tick-mask-window-20260920.json),
+[night6-anchor-aim-h2-20260920](../docs/evidence/night6-anchor-aim-h2-20260920.json).
