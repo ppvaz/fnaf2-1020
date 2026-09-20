@@ -172,10 +172,16 @@ let LANE_ENV = process.env;
 // --- Running the lanes -----------------------------------------------------
 
 function run(command, cwd, { live = false } = {}) {
+  // A live lane streams its stdout (ShellCheck's findings appear as they are
+  // produced) but its stderr is CAPTURED, because that is where a runner's own
+  // refusal lands -- docker's `mounts denied`, a missing binary -- and a lane
+  // that only streams cannot tell the caller why it failed. The capture is
+  // printed on failure, so nothing that used to be visible is lost.
   const result = spawnSync('sh', ['-c', command], live
-    ? { cwd, stdio: 'inherit', env: LANE_ENV }
+    ? { cwd, stdio: ['inherit', 'inherit', 'pipe'], encoding: 'utf8', env: LANE_ENV }
     : { cwd, encoding: 'utf8', env: LANE_ENV });
-  return { status: result.status, output: live ? '' : `${result.stdout ?? ''}${result.stderr ?? ''}` };
+  return { status: result.status,
+    output: live ? (result.stderr ?? '') : `${result.stdout ?? ''}${result.stderr ?? ''}` };
 }
 
 // The scripts of the CHECKOUT being validated, not of the working tree: a
@@ -235,8 +241,32 @@ function reportLane(command, worktree, result, depth) {
   walk(children, worktree, '      ', depth - 1);
 }
 
+// Where the throwaway worktree goes, and why it is not `TMPDIR`.
+//
+// The ShellCheck lane is `docker run -v "$PWD:/mnt:ro"`, and Docker Desktop
+// bind-mounts only paths in its file-sharing set. `/tmp` is not in it on this
+// machine, so a worktree under `TMPDIR` makes that lane die with `mounts
+// denied` -- a FAIL that looks exactly like a real ShellCheck finding and is
+// one `--no-verify` away from being pushed past. The workaround (export a
+// TMPDIR under $HOME) was known and written down, but it lived in an
+// operator's habit, so it worked when a person ran `npm run push-gate` by hand
+// and not when the pre-push hook ran the same gate with the environment git
+// gives it. That is the whole failure: a fact the tool needed, kept somewhere
+// the tool could not read. It picks its own base now.
+const WORKTREE_BASE = process.env.FNAF2_PUSH_GATE_TMP ?? join(homedir(), '.cache/fnaf2-pushgate-tmp');
+
+/** Docker Desktop's refusal to bind-mount a path outside its sharing set. It
+ *  is a property of the host's configuration, not of the commit being pushed,
+ *  so the lane is unverified rather than failed. */
+const MOUNT_DENIED = /mounts denied|is not shared from the host/i;
+
+function worktreeBase() {
+  try { mkdirSync(WORKTREE_BASE, { recursive: true }); return WORKTREE_BASE; }
+  catch { return tmpdir(); }
+}
+
 function validate(sha, subject) {
-  const worktree = mkdtempSync(join(tmpdir(), 'fnaf2-push-gate-'));
+  const worktree = mkdtempSync(join(worktreeBase(), 'fnaf2-push-gate-'));
   rmSync(worktree, { recursive: true, force: true });
   execFileSync('git', ['worktree', 'add', '--detach', worktree, sha], { cwd: ROOT, stdio: ['ignore', 'ignore', 'pipe'] });
   console.log(`\npush-gate: ${sha.slice(0, 7)} ${subject}`);
@@ -274,9 +304,20 @@ function validate(sha, subject) {
       const started = Date.now();
       const result = run(command, worktree, { live: true });
       const seconds = ((Date.now() - started) / 1000).toFixed(1);
+      if (result.status !== 0 && MOUNT_DENIED.test(result.output)) {
+        // Do not call this a failure of the commit. Name the host fact and the
+        // one setting that changes it.
+        console.log(`  SKIP ${lane.name} (${seconds}s): docker refused to mount ${worktree}.`);
+        console.log(`      This worktree's base is ${WORKTREE_BASE}; add it to Docker's file sharing,`);
+        console.log('      or set FNAF2_PUSH_GATE_TMP to a path Docker already shares. CI still runs this lane.');
+        skipped.push(lane.name);
+        continue;
+      }
       console.log(`  ${result.status === 0 ? 'ok  ' : 'FAIL'} ${lane.name} (${seconds}s)`);
       if (result.status !== 0) {
         failed.push(lane.name);
+        if (lane.multiline && result.output.trim())
+          for (const line of result.output.trimEnd().split('\n')) console.log(`      ${line}`);
         reportLane(command, worktree, result, lane.multiline ? 0 : 4);
       }
     }
