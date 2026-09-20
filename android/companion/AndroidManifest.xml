@@ -38,7 +38,7 @@
         android:allowBackup="false"
         android:debuggable="true"
         android:icon="@mipmap/cue_helper_icon_adaptive"
-        android:label="FNaF 2 Companion"
+        android:label="FNaF Companion"
         android:roundIcon="@mipmap/cue_helper_icon_adaptive"
         android:supportsRtl="true"
         android:theme="@style/CueHelperTheme">

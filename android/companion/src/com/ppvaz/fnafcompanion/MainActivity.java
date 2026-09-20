@@ -96,7 +96,7 @@ public final class MainActivity extends Activity {
                     + "optional phone monitor reproduces PCM returned by the ESP32. "
                     + "The optional HUD is one non-interactive overlay window; it stays "
                     + "disabled beside sensing until its self-capture qualification exists. "
-                    + "Stop and restart for a fresh session, then open FNaF 2.";
+                    + "Stop and restart for a fresh session, then open the game.";
 
     private MediaProjectionManager projectionManager;
     private BluetoothAdapter bluetoothAdapter;
@@ -463,7 +463,7 @@ public final class MainActivity extends Activity {
         actions.setOrientation(LinearLayout.VERTICAL);
         actions.addView(sectionLabel("PHONE SESSION"), matchWrap());
         actions.addView(bodyText("1  Start capture and approve screen sharing.\n"
-                + "2  Open FNaF 2.\n3  Check the observed state."), matchWrap());
+                + "2  Open " + targetGameName() + ".\n3  Check the observed state."), matchWrap());
         actions.addView(captureButton(), matchWrap());
         actions.addView(openGameButton(), matchWrap());
 
@@ -754,7 +754,7 @@ public final class MainActivity extends Activity {
             ClipboardManager clipboard = getSystemService(ClipboardManager.class);
             if (clipboard != null) {
                 clipboard.setPrimaryClip(ClipData.newPlainText(
-                        "FNaF 2 Companion Termux bridge", bridge.command()));
+                        "FNaF Companion Termux bridge", bridge.command()));
             }
             runnerStatusView.setText("Bridge command copied. Paste it in Termux, wait for ADB, then return here.");
             Toast.makeText(this, "Bridge command copied to clipboard", Toast.LENGTH_LONG).show();
@@ -1055,7 +1055,7 @@ public final class MainActivity extends Activity {
 
     private TextView titleHeader() {
         TextView title = new TextView(this);
-        title.setText("FNaF 2 Companion");
+        title.setText("FNaF Companion");
         title.setTextSize(24);
         title.setTextColor(COLOR_AMBER);
         title.setTypeface(hudTypeface);
@@ -1161,7 +1161,7 @@ public final class MainActivity extends Activity {
         controlCard.addView(shareAudioButton(), matchWrap());
 
         Button openGame = themedButton(
-                "Open FNaF 2", COLOR_CHICA, COLOR_CHICA_PRESSED,
+                "Open " + targetGameName(), COLOR_CHICA, COLOR_CHICA_PRESSED,
                 COLOR_CHICA_STROKE, Color.rgb(35, 24, 5));
         openGame.setOnClickListener(view -> openGame());
         controlCard.addView(openGame, matchWrap());
@@ -1208,7 +1208,7 @@ public final class MainActivity extends Activity {
 
     private Button openGameButton() {
         Button openGame = themedButton(
-                "Open FNaF 2", COLOR_CHICA, COLOR_CHICA_PRESSED,
+                "Open " + targetGameName(), COLOR_CHICA, COLOR_CHICA_PRESSED,
                 COLOR_CHICA_STROKE, Color.rgb(35, 24, 5));
         openGame.setOnClickListener(view -> openGame());
         return openGame;
@@ -1831,10 +1831,29 @@ public final class MainActivity extends Activity {
         statusView.setText("STARTING: waiting for visual stream; audio authority is external");
     }
 
+    /**
+     * Display name of the configured target, read from the installed package.
+     *
+     * <p>The helper is calibrated for one game at a time, so the UI names the
+     * game {@link #GAME_PACKAGE} will actually launch instead of a hardcoded
+     * title. When the target is absent there is no label to read, so the
+     * package id is the only honest thing left to show.</p>
+     */
+    private String targetGameName() {
+        PackageManager packages = getPackageManager();
+        try {
+            return packages.getApplicationLabel(
+                    packages.getApplicationInfo(GAME_PACKAGE, 0)).toString();
+        } catch (PackageManager.NameNotFoundException absent) {
+            return GAME_PACKAGE;
+        }
+    }
+
     private void openGame() {
         Intent launch = getPackageManager().getLaunchIntentForPackage(GAME_PACKAGE);
         if (launch == null) {
-            Toast.makeText(this, "FNaF 2 is not installed", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, targetGameName() + " is not installed",
+                    Toast.LENGTH_LONG).show();
             return;
         }
         launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
