@@ -1,0 +1,86 @@
+{
+ "anchorEpochMs": 4850,
+ "engineHash": "minus-toys-engine-current-v1",
+ "gate": {
+  "claimLevel": "MODEL_ONLY",
+  "engineHash": "minus-toys-engine-current-v1",
+  "evidence": "Binding h with the mask coming off 300 ms later (9260 -> 9560), and nothing else moved. h died twice on 2026-09-20 to the same mechanism, both confirmed on the retained video: night6-n6h-m1 at ~213 s (Balloon Boy in the office -- plant-model.js:677 kills hallLit while bb.inside, so the 9960 flash could not light and Withered Foxy took the run at 3 AM) and night6-n6h-m2 at ~307 s (Mangle jumpscare at 4 AM). Both defences are the five-continuous-tick counter: g907/g292/g294 for BB, g400/g401 for Mangle, and VENT_MASK_TICKS is 5. h holds the mask fully on for 9260-4249-200 = 4811 ms, which spans five whole-second boundaries ONLY at a lucky phase: at the delivered aim the fifth tick cleared the mask-off press by 131 ms of GAME-FRAME time, so any cycle that dropped ~8 frames lost it. The minus7 driver already gates the same quantity -- MASK_RESPONSE_HOLD_MS = MASK_ANIM_ON/FPS + VENT_MASK_TICKS = 5200 ms (test-runner-plan.mjs:165) -- and minus-toys was never measured against it. 5560-4249 = 5311 ms press-to-press, 5111 ms fully on, so five ticks now hold at EVERY phase with 111 ms to spare. The 300 ms comes out of the idle gap between mask-off and the hall flash (700 -> 400 ms, still twice the measured 180 ms mask-to-other seam), NOT out of a wind hold: h3, which bought 200 ms more by shortening windMs 3030 -> 2830, scores 68/3000. Model: 3000/3000 at epochs 4816.67, 4850, 4883.33 and 4900, the same band [4766.67, 4916.67) h was scored in (2982/3000 at 4766.67, 0/3000 at 4916.67). The model cannot see the defect this change fixes -- h scores 3000/3000 too, and h and h2 share the replay hash fnv1a-c651e2ff because their event traces are identical -- so gate.planSha256 below is what binds this evidence to this plan.",
+  "nights": [
+   6
+  ],
+  "planSha256": {
+   "6": "103bb20143c616716c3a184c02e89bdbfd49b81d55ca8485082434f8d083d696"
+  },
+  "replayHash": "fnv1a-c651e2ff",
+  "seeds": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6,
+   7,
+   8
+  ],
+  "status": "PASS"
+ },
+ "knobs": {
+  "armingGapMs": 50,
+  "camdropLeadMs": 150,
+  "camdropMonitorMs": 200,
+  "camdropMs": 13650,
+  "camdropTailMs": 200,
+  "contactMs": 33,
+  "hallMs": 33,
+  "hallOffsetMs": 9960,
+  "loopPeriodMs": 10000,
+  "maskOffMs": 9560,
+  "maskOnMs": 4249,
+  "minArmAtMs": 115000,
+  "minFlashAtMs": 150,
+  "minFlashHoldMs": 100,
+  "minLoopStartMs": 140000,
+  "minObserveUntilMs": 420000,
+  "minPeriodMs": 5000,
+  "minProofCam09AtMs": 359700,
+  "minStopAtMs": 360000,
+  "minWindAtMs": 300,
+  "minWindHoldMs": 4400,
+  "minimal": false,
+  "observeUntilMs": 420000,
+  "openArm": true,
+  "openArmMs": 833,
+  "openCamdropLeadMs": 200,
+  "openLastViewedMs": 300,
+  "openMaskLeadMs": 182,
+  "openRaiseGapMs": 733,
+  "openStunHoldMs": 100,
+  "openStunLeadMs": 300,
+  "openViewMs": 0,
+  "openWindLeadMs": 467,
+  "openWindMs": 1750,
+  "preventiveVentLight": true,
+  "raiseMs": 10100,
+  "reactiveBB": false,
+  "stunRefreshHoldMs": 100,
+  "stunRefreshMs": 10400,
+  "windLeadMs": 10570,
+  "windMs": 3030
+ },
+ "nights": [
+  6
+ ],
+ "profile": "hid-mediaprojection",
+ "schema": "winner-v1",
+ "seeds": [
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8
+ ],
+ "strategy": "minus-toys"
+}

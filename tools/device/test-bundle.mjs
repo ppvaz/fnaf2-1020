@@ -49,6 +49,28 @@ try {
   check(validateBundle(targetedPath).plans.length === 1, 'a death-targeted bundle must validate like any other');
   expectFailure(() => compileBundle({ ...winner, gate: { status: 'FAIL' } }, join(root, 'fail-gate')),
     'a plain FAIL gate is still refused');
+
+  // A gate may name the plan it was measured against, because gate.replayHash
+  // cannot: that hash is over the MODEL's event traces, so two plans the model
+  // scores identically share it. On 2026-09-20 binding h and a copy with the
+  // mask coming off 300 ms later -- the exact change the device's five-tick
+  // defect turns on -- both hashed fnv1a-c651e2ff.
+  const planned = compileBundle(winner, join(root, 'plan-sha-probe'));
+  const night2Sha = planned.manifest.plans.find(plan => plan.night === 2).sha256;
+  expectFailure(() => compileBundle({ ...winner, gate: { ...winner.gate, planSha256: { 2: night2Sha } } },
+    join(root, 'plan-sha-missing-night')),
+    'a gate.planSha256 that omits an emitted night must be refused');
+  expectFailure(() => compileBundle({ ...winner,
+    gate: { ...winner.gate, planSha256: { 2: night2Sha.replace(/^./, c => c === 'a' ? 'b' : 'a'),
+      7: planned.manifest.plans.find(plan => plan.night === 7).sha256 } } },
+  join(root, 'plan-sha-wrong')),
+  'a gate.planSha256 that does not match the emitted plan must be refused');
+  const boundPath = join(root, 'plan-sha-bound');
+  check(compileBundle({ ...winner, gate: { ...winner.gate,
+    planSha256: Object.fromEntries(planned.manifest.plans.map(plan => [plan.night, plan.sha256])) } },
+  boundPath).status === 'READY', 'a gate.planSha256 that matches every emitted plan must compile');
+  check(validateBundle(boundPath).plans.length === 2,
+    'a plan-bound bundle must validate from disk, where the check runs against the re-emission');
   const compiled = compileBundle(winner, bundlePath);
   check(compiled.status === 'READY', 'compiler did not return READY');
   check(readFileSync(join(bundlePath, 'manifest.json'), 'utf8').includes('device-bundle-v1'),

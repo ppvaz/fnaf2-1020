@@ -19,10 +19,12 @@
 // to be dead must not be what says you are alive -- are reported and never
 // ranked.
 import { execSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build, FACTS, ANCHOR_AIMS, ANCHOR_AIM_MIN_MARGIN_MS, UNTRACKED_WINNER_DEBT, anchorAimFor } from './fact-register.mjs';
+import { compileBundle } from './bundle.mjs';
 import { stableHash } from '@fnaf2-1020/core/contracts';
 
 const ROOT = resolve(join(fileURLToPath(new URL('.', import.meta.url)), '../..'));
@@ -131,6 +133,53 @@ if (qualifications.length && orderable) {
 }
 if (!ANCHOR_AIMS['fnv1a-81b5e51c'] || anchorAimFor('fnv1a-00000000').ok)
   fail('anchorAimFor must refuse an unknown binding');
+
+// A migrated binding inherits an aim only while it emits the SAME schedule.
+// The aim is a phase of the plan; the register's key is stableHash(winner),
+// which moves when an unrelated KNOBS0 default is added. That happened to
+// Night 6 h (observeUntilMs gained a default) and the migration was recorded
+// only as prose in UNTRACKED_WINNER_DEBT, so every run since had to be
+// hand-fed the aim -- twice, on 2026-09-20, into a release that discarded it.
+// `alsoBinds` makes the inheritance executable, and this re-emits the winner
+// to prove the claim that justifies it rather than trusting the note.
+for (const [hash, entry] of Object.entries(ANCHOR_AIMS)) {
+  for (const [migrated, file] of Object.entries(entry.alsoBinds ?? {})) {
+    if (typeof entry.replayHash !== 'string') {
+      fail(`binding ${hash} declares alsoBinds but no replayHash: without the plan hash nothing can ` +
+        'check that the migrated winner still emits the schedule the aim was measured on');
+      continue;
+    }
+    let stored;
+    try { stored = JSON.parse(readFileSync(join(ROOT, file), 'utf8')); }
+    catch (error) { fail(`alsoBinds ${migrated} -> ${hash}: ${file} unreadable (${error.message})`); continue; }
+    const raw = stableHash(stored);
+    if (raw !== migrated) {
+      fail(`alsoBinds names ${file} for ${migrated}, but that file hashes to ${raw}: re-key the alias`);
+      continue;
+    }
+    if (stored.gate?.replayHash !== entry.replayHash) {
+      fail(`${file} carries gate.replayHash ${stored.gate?.replayHash}, the register ${entry.replayHash}`);
+      continue;
+    }
+    // The winner's own gate can only restate what it was emitted with, so
+    // compile it here: a plan drift that re-hashed the winner AND edited its
+    // gate would pass every string comparison above.
+    const out = mkdtempSync(join(tmpdir(), 'fnaf2-alsobinds-'));
+    try {
+      const built = compileBundle(stored, out);
+      if (built.replay.hash !== entry.replayHash)
+        fail(`alsoBinds ${migrated} -> ${hash}: ${file} now emits plan ${built.replay.hash}, not the ` +
+          `${entry.replayHash} the aim was measured on. The aim belongs to the schedule: re-measure it ` +
+          'or drop the alias -- never let a changed plan inherit a number priced for the old one.');
+      else if (stableHash(built.winner ?? stored) !== migrated)
+        fail(`alsoBinds ${migrated} -> ${hash}: ${file} normalises to ${stableHash(built.winner ?? stored)}; ` +
+          'the alias key must be the hash a bundle manifest carries');
+      else process.stdout.write(`anchor aim ${hash}: also binds ${migrated} (${file}), same plan ${entry.replayHash}\n`);
+    } catch (error) {
+      fail(`alsoBinds ${migrated} -> ${hash}: ${file} no longer emits (${error.message})`);
+    } finally { rmSync(out, { recursive: true, force: true }); }
+  }
+}
 
 if (failed) {
   process.stdout.write(`\nfact register: ${failed} finding(s).\n`);

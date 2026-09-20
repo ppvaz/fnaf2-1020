@@ -29,6 +29,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stableHash } from '@fnaf2-1020/core/contracts';
 
 export const SCHEMA = 'device-fact-register-v1';
 
@@ -269,6 +270,47 @@ export const ANCHOR_AIMS = Object.freeze({
     evidence: 'docs/evidence/night6-anchor-aim-h-20260913.json',
     reason: 'band [4766.67, 4916.67) as e; flash 9960 / mask off 9260 confirmed at 3000 seeds (see evidence)',
     // WON: night6-anchoredh1-20260913T180208Z, 6 AM, 42/42, delivered 4816.
+    //
+    // An aim is a phase of the SCHEDULE, so it belongs to the emitted plan and
+    // not to the hash of a knob set. This key is stableHash(winner), which
+    // moves whenever an unrelated KNOBS0 default is added -- and it did, when
+    // observeUntilMs gained one. The committed winner below emits this exact
+    // plan and still won Night 6 on 2026-09-16, yet `anchorAimFor` refused it
+    // for five days: the migration was written down in UNTRACKED_WINNER_DEBT's
+    // prose and nothing read it (mistake register 9 -- a measurement in a
+    // comment is not a gate). Every Night 6 attempt since has had to be
+    // hand-fed 4870/5000/0 through the environment, and on 2026-09-20 two runs
+    // released UNANCHORED because that hand-feeding was silently discarded.
+    replayHash: 'fnv1a-c651e2ff',
+    alsoBinds: Object.freeze({
+      'fnv1a-3d5b2167': 'tools/device/campaign-night6-h-winner.json',
+    }),
+  }),
+  // h2: h with the mask coming off 300 ms later, and nothing else. Same aim,
+  // same band, same 9960 flash against the same Foxy roll -- so the aim carries
+  // over unchanged and was re-confirmed at 3000 seeds for this plan.
+  //
+  // h itself is NOT retired, but it is no longer the binding to run. Its mask
+  // window is 4811 ms fully on, which spans the five ticks BB (g907/g292/g294)
+  // and Mangle (g400/g401) need only at a lucky phase, and at the delivered aim
+  // the fifth tick cleared the mask-off press by 131 ms of game-frame time. On
+  // 2026-09-20 the same plan that went 42/42 on 2026-09-13 died twice in a row
+  // on that margin: BB inside at 3 AM (which kills hallLit, so the flash cannot
+  // repel Withered Foxy) and Mangle at 4 AM, both read off the retained video.
+  // 5111 ms spans five at every phase. 6 AM first time out.
+  'fnv1a-c27182da': Object.freeze({
+    night: 6,
+    aimMs: 4870,
+    latencyMs: { min: 47, max: 82, provenance: 'hall-lit press-to-effect n=31 min 1 median 47 max 82 ms (night5-hallfix audit, 2026-09-12)' },
+    onsetBiasMs: -70,
+    periodMs: 5000,
+    maxK: 0,
+    qualifiedEpochMs: 4850,
+    evidence: 'docs/evidence/night6-anchor-aim-h2-20260920.json',
+    reason: 'band [4766.67, 4916.67) as h; mask off 9560 (5111 ms fully on, five ticks at every phase) confirmed at 3000 seeds',
+    replayHash: 'fnv1a-c651e2ff',
+    planSha256: Object.freeze({ 6: '103bb20143c616716c3a184c02e89bdbfd49b81d55ca8485082434f8d083d696' }),
+    // WON: night6-n6h2-01-20260920T024030Z, 6 AM, 42 gates, Custom Night unlocked.
   }),
   // Night 7 (10/20): the Night 6 loop shifted 2500 ms earlier with a 50 ms
   // opening wind, so the reachable release 2.45-2.62 s after the first frame
@@ -363,7 +405,9 @@ export const UNTRACKED_WINNER_DEBT = Object.freeze({
     '(6 AM on 2026-09-13 and again on 2026-09-16) is tracked as ' +
     'tools/device/campaign-night6-h-winner.json, fnv1a-3d5b2167; the hash moved when observeUntilMs ' +
     'gained a default, with plan, profile and replay identical ' +
-    '(artifacts/night6-cohort-h/qualification-seedlock.json)',
+    '(artifacts/night6-cohort-h/qualification-seedlock.json). That migration is now EXECUTABLE, not ' +
+    'prose: the entry declares alsoBinds, anchorAimFor resolves the tracked hash to this aim, and ' +
+    'test-fact-register.mjs re-emits the winner to prove it still emits plan fnv1a-c651e2ff',
   'fnv1a-651ed623': 'night 7 i: winner path not named by its evidence',
   'fnv1a-f337717a': 'night 7 j: artifacts/night7-anchored-j/winner.json (peer machine)',
 });
@@ -372,13 +416,53 @@ export const UNTRACKED_WINNER_DEBT = Object.freeze({
 export const ANCHOR_AIM_MIN_MARGIN_MS = 30;
 
 /**
+ * The registered binding an unregistered winner hash inherits an aim from, or
+ * null. A migration is accepted only when the tree still holds the committed
+ * winner the entry names AND that file hashes to the hash being asked about,
+ * so the alias can never outlive the file that justifies it. Plan identity --
+ * that the migrated winner emits the SAME schedule the aim was measured on --
+ * is the property that makes the inheritance sound, and test-fact-register.mjs
+ * re-emits the bundle to check it against `replayHash`.
+ * @param {string} winnerHash
+ */
+function migrationFor(winnerHash) {
+  for (const [registered, entry] of Object.entries(ANCHOR_AIMS)) {
+    const file = entry.alsoBinds?.[winnerHash];
+    if (!file) continue;
+    let stored;
+    try { stored = JSON.parse(readFileSync(join(ROOT, file), 'utf8')); }
+    catch (error) {
+      return { registered, file, reason: `anchor aim migration ${winnerHash} -> ${registered} names ${file}, ` +
+        `which could not be read: ${error.message}` };
+    }
+    if (stableHash(stored) !== winnerHash)
+      return { registered, file, reason: `anchor aim migration ${winnerHash} -> ${registered} names ${file}, ` +
+        `which hashes to ${stableHash(stored)}; the aim stays with the plan, not with a stale alias` };
+    return { registered, file };
+  }
+  return null;
+}
+
+/**
  * The registered aim for a binding, with its evidence read and checked, or a
  * refusal naming why. Never guesses: an unknown binding is `null`.
  * @param {string} winnerHash
  */
 export function anchorAimFor(winnerHash) {
-  const entry = ANCHOR_AIMS[winnerHash];
-  if (!entry) return { ok: false, reason: `no anchor aim registered for binding ${winnerHash}` };
+  const asked = winnerHash;
+  let entry = ANCHOR_AIMS[winnerHash];
+  let migration = null;
+  if (!entry) {
+    // A winner hash moves when an unrelated KNOBS0 default is added, while the
+    // plan it emits does not. An aim measured on that plan still holds, so a
+    // declared migration resolves it rather than sending a proven binding back
+    // to an unanchored release.
+    migration = migrationFor(winnerHash);
+    if (migration?.reason) return { ok: false, reason: migration.reason };
+    if (!migration) return { ok: false, reason: `no anchor aim registered for binding ${winnerHash}` };
+    entry = ANCHOR_AIMS[migration.registered];
+    winnerHash = migration.registered;
+  }
   let evidence;
   try {
     evidence = JSON.parse(readFileSync(join(ROOT, entry.evidence), 'utf8'));
@@ -423,7 +507,8 @@ export function anchorAimFor(winnerHash) {
     if ((evidence.kLimit?.maxK ?? entry.maxK) !== entry.maxK)
       return { ok: false, reason: `${entry.evidence} limits k to ${evidence.kLimit?.maxK}, the register says ${entry.maxK}` };
   }
-  return { ok: true, ...entry, band, winnerHash };
+  return { ok: true, ...entry, band, winnerHash,
+    migratedFrom: migration ? { hash: asked, winner: migration.file } : null };
 }
 
 const SEARCH_DIRS = ['tools/device', 'apps/device/src', 'packages/adapters/src'];

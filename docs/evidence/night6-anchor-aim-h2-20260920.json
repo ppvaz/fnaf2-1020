@@ -1,0 +1,88 @@
+{
+  "schema": "device-night5-anchor-aim-v1",
+  "recordedAt": "2026-09-20",
+  "claimLevel": "DEVICE_MEASURED",
+  "binding": "fnv1a-c27182da",
+  "qualification": "none -- run --machine-only against the MODEL_ONLY gate of tools/device/campaign-night6-h2-winner.json; the DEVICE_MEASURED qualification on this machine (artifacts/night6-anchored-h/qualification-test.json) binds the pre-drift hash fnv1a-37278c63",
+  "night": 6,
+  "aimMs": 4870,
+  "periodMs": 5000,
+  "latencyMs": {
+    "min": 47,
+    "max": 82
+  },
+  "onsetBiasMs": -70,
+  "definition": "epoch 0 = the schedule T0 coincides with the first held FNAF2_NIGHT frame on the helper image clock; the executor delivers T0 = latched onset + aimMs + k*periodMs; the latched onset leads the frame-trace onset by 65-75 ms, so effective epoch = aim + k*period + onsetBiasMs + input latency (hall-lit 47 ms, 1-82). The period is Withered Foxy's five-second roll timer (g337). Delivered on the winning run at aimMs 4870, k 0, lateMs 0.418.",
+  "why": "Binding h's aim, inherited unchanged because h2 moves only the mask-off press (9260 -> 9560) and leaves the 9960 hall flash and the schedule origin where they were, so the relationship between the release and the Foxy roll grid is identical. h2 exists because h's mask window was 189 ms short of the five-tick floor the minus7 driver already gates (MASK_RESPONSE_HOLD_MS = MASK_ANIM_ON/FPS + VENT_MASK_TICKS = 5200 ms): h holds the mask fully on for 4811 ms, which spans five whole-second boundaries only at a lucky phase, and on 2026-09-20 h died twice to exactly that -- Balloon Boy inside at 3 AM (killing hallLit, so Withered Foxy took the run) and Mangle at 4 AM. h2 holds it 5111 ms, which spans five at EVERY phase. The 300 ms came out of the idle gap before the flash, not out of a wind hold: the variant that shortened windMs 3030 -> 2830 scores 68/3000.",
+  "model": {
+    "tool": "tools/device/minus-toys-plan.mjs replay({night:6, seed, epochMs}) with the g778 plant-model correction",
+    "fps": 60,
+    "rowSeeds": 3000,
+    "knobs": {
+      "windMs": 3030,
+      "camdropMs": 13650,
+      "maskOnMs": 4249,
+      "maskOffMs": 9560,
+      "hallOffsetMs": 9960,
+      "camdropTailMs": 200
+    },
+    "rows100ms": [],
+    "rowsFrames": [],
+    "note": "The model cannot arbitrate this binding against h: it scores both 3000/3000 and their event traces are identical, which is why h and h2 share the replay hash fnv1a-c651e2ff. The defect h2 fixes is a game-frame tick count the model never loses, because model presses never slip. gate.planSha256 is what binds this evidence to h2's plan."
+  },
+  "winningBands": [
+    {
+      "fromMs": 4766.67,
+      "toMs": 4916.67
+    }
+  ],
+  "confirmations3000": [
+    {
+      "epochMs": 4850,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 4816.67,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 4883.33,
+      "seeds": 3000,
+      "wins": 3000
+    },
+    {
+      "epochMs": 4900,
+      "seeds": 3000,
+      "wins": 3000
+    }
+  ],
+  "lossRows3000": [
+    {
+      "epochMs": 4766.67,
+      "seeds": 3000,
+      "wins": 2982,
+      "note": "the low band edge, outside it as for h"
+    },
+    {
+      "epochMs": 4916.67,
+      "seeds": 3000,
+      "wins": 0,
+      "note": "the high band edge"
+    }
+  ],
+  "kIsFree": false,
+  "kLimit": {
+    "maxK": 0,
+    "rows3000": []
+  },
+  "openLimits": "k > 0 is unscored for this binding, as for h. The aim is priced for the 9960 flash and the 5000 ms Foxy roll; any change to either re-prices it.",
+  "device": {
+    "run": "night6-n6h2-01-20260920T024030Z",
+    "serial": "ZF525F5BH5",
+    "build": "com.scottgames.fnaf2:2.0.7+26",
+    "outcome": "6 AM (campaign.terminal.actuator-stopped outcome sixam, campaign exit 0), 42 cycle gates, 41 agreed",
+    "unlocked": "Custom Night -- the title menu reads continue, customNight, newGame, sixthNight and carries a second star"
+  }
+}

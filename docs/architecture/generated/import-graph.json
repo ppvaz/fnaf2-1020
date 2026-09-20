@@ -1427,6 +1427,7 @@
     {
       "file": "tools/device/fact-register.mjs",
       "imports": [
+        "@fnaf2-1020/core/contracts",
         "node:fs",
         "node:path",
         "node:url"
@@ -1763,10 +1764,12 @@
     {
       "file": "tools/device/test-fact-register.mjs",
       "imports": [
+        "./bundle.mjs",
         "./fact-register.mjs",
         "@fnaf2-1020/core/contracts",
         "node:child_process",
         "node:fs",
+        "node:os",
         "node:path",
         "node:url"
       ]

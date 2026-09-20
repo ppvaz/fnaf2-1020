@@ -631,6 +631,35 @@ function validateManifestShape(manifest) {
 }
 
 /** Compile a winner into a new bundle. Existing non-empty targets are refused. */
+// `gate.replayHash` hashes the MODEL's traces, so it separates two plans only
+// where the model can tell them apart. On 2026-09-20 binding h's plan and a
+// copy with the mask coming off 300 ms later -- the one change the device's
+// Balloon Boy defect turns on -- emitted different plan text, different winner
+// hashes, and the SAME replay hash fnv1a-c651e2ff, because the model scores
+// both 300/300 with identical event traces. bundle.mjs:444 already names this
+// failure for `#phase-offset` and fixes it for that knob alone.
+//
+// So a gate may declare the plan it was measured against. It is optional,
+// because adding it to a shipped winner would re-hash that winner and orphan
+// its ANCHOR_AIMS entry (the drift that cost Night 6 five days); it is checked
+// wherever it is present, and test-fact-register.mjs requires it of any newly
+// registered binding.
+/** @param {any} gate @param {Map<number, {text: string}>} emitted */
+function checkGatePlans(gate, emitted) {
+  if (gate.planSha256 === undefined) return;
+  if (!isRecord(gate.planSha256)) fail('gate.planSha256 must be an object of night -> sha256');
+  const nights = [...emitted.keys()].sort((a, b) => a - b);
+  const declared = Object.keys(gate.planSha256).map(Number).sort((a, b) => a - b);
+  if (!same(nights, declared))
+    fail(`gate.planSha256 declares nights ${declared.join(',')}, the winner emits ${nights.join(',')}`);
+  for (const night of nights) {
+    const actual = sha256(emitted.get(night).text);
+    if (gate.planSha256[night] !== actual)
+      fail(`gate.planSha256 for night ${night} is ${gate.planSha256[night]}, the winner emits ${actual}: ` +
+        'the gate was measured against a different plan');
+  }
+}
+
 export function compileBundle(input, outDirectory) {
   const winner = validateWinner(input);
   const out = resolve(outDirectory);
@@ -646,6 +675,7 @@ export function compileBundle(input, outDirectory) {
   const replay = replayWinner(winner, emitted, replaySeeds);
   if (winner.gate.replayHash !== undefined && winner.gate.replayHash !== replay.hash)
     fail('winner.gate.replayHash does not match the candidate replay');
+  checkGatePlans(winner.gate, emitted);
   const finalWinner = normalizedWinner(winner, replay);
   const source = strategySourceDigest(winner.strategy);
   const winnerText = canonicalJson(finalWinner);
@@ -722,6 +752,7 @@ export function validateBundle(directory, { night } = {}) {
   if (stableHash(actualReplay.results) !== stableHash(manifest.replay.results) ||
       actualReplay.hash !== manifest.replay.hash || actualReplay.hash !== winner.gate.replayHash)
     fail('candidate replay does not equal the winner replay hash');
+  checkGatePlans(winner.gate, expected);
   const selectedPlans = entries.filter(entry => selected.includes(entry.night));
   let compiled;
   if (manifest.artifact !== undefined) {

@@ -1,0 +1,95 @@
+{
+ "schema": "campaign-victory-v1",
+ "verdict": "CONFIRMED",
+ "claimLevel": "DEVICE_MEASURED",
+ "evidenceId": "night6-five-tick-mask-window-20260920",
+ "recordedAt": "2026-09-20",
+ "qualifiedBy": "Pedro (operator, observing)",
+ "claim": "Two Night 6 runs of binding h -- the binding that reached 6 AM on 2026-09-13 with 42/42 cycles -- died on 2026-09-20 to the SAME mechanism, identified on the retained video in both cases: a defence that needs five continuous fully-masked one-second ticks got in, because h holds the mask fully on for 4811 ms and five whole-second boundaries fit in that span only at a lucky phase. Holding it 300 ms longer (h2, 5111 ms, five ticks at every phase) reached 6 AM on the first attempt and unlocked Custom Night. Runs --machine-only (explicit MODEL_ONLY machine-input experiment, promotion suppressed).",
+ "device": {
+  "serial": "ZF525F5BH5",
+  "build": "com.scottgames.fnaf2:2.0.7+26"
+ },
+ "binding": {
+  "registered": "fnv1a-37278c63",
+  "tracked": "fnv1a-3d5b2167",
+  "winner": "tools/device/campaign-night6-h-winner.json",
+  "plan": "fnv1a-c651e2ff",
+  "note": "The tracked winner emits the 2026-09-13 plan byte for byte (diff against artifacts/night6-anchored-h/bundle/night-6.plan is empty) but hashes differently, because observeUntilMs gained a KNOBS0 default after the bundle was built. ANCHOR_AIMS is keyed on stableHash(winner), so anchorAimFor refused the tracked winner for five days and every Night 6 attempt since had to be hand-fed 4870/5000/0 through the environment."
+ },
+ "runs": [
+  {
+   "label": "n6h-replay",
+   "runDirectory": "artifacts/runs/night6-n6h-replay-20260920T021308Z",
+   "outcome": "refused at preflight: qualification-binding FAIL",
+   "finding": "The DEVICE_MEASURED qualification that binds this winner is artifacts/night6-anchored-h/qualification-test.json, policyHash fnv1a-37278c63 -- the pre-drift hash. It is ON THIS MACHINE, with the original bundle and winner beside it."
+  },
+  {
+   "label": "n6h-m1",
+   "runDirectory": "artifacts/runs/night6-n6h-m1-20260920T021433Z",
+   "bundle": "artifacts/n6h (re-emitted from the committed winner)",
+   "anchor": "aimMs 4870, k 0, period 5000; released lateMs 1.18, releasedAimMs 4871.18, uncertainty 3.33 ms",
+   "outcome": "died ~213 s (3 AM)",
+   "cycleGates": "22 (21 agreed, 1 aborted)",
+   "cause": "Withered Foxy, with Balloon Boy already in the office. The retained capture shows, in order: the office at Night 6 3 AM with Balloon Boy present and his `Balloons!` caption; two masked frames; Withered Foxy's eyes in the dark office; the Withered Foxy jumpscare; static; Game Over.",
+   "chain": "plant-model.js:677 -- `if (this.power <= 0 || this.blackout.active || this.maskFullyOn || this.bb.inside) this.hallLit = false;`. Once Balloon Boy is inside, the flashlight cannot light, so the 9960 hall flash that repels Withered Foxy is a no-op for the rest of the night. This also explains the open `0 visible hall flashes in 43 intervals` reading: after BB is in, there is nothing to see."
+  },
+  {
+   "label": "n6h-m2",
+   "runDirectory": "artifacts/runs/night6-n6h-m2-20260920T022809Z",
+   "bundle": "artifacts/n6h",
+   "outcome": "died ~307 s (4 AM)",
+   "cause": "Mangle. The capture shows the monitor up on CAM 11 (Prize Corner, `Wind Up Music Box` visible) at Night 6 4 AM, then the Mangle jumpscare, then static and Game Over.",
+   "chain": "g400/g401 repel Mangle on the same counter shape as BB: `u.maskExposureTicks >= 5 && mask2`."
+  }
+ ],
+ "mechanism": {
+  "rule": "VENT_MASK_TICKS = 5 (packages/core/src/mechanics/config.js:95). plant-model.js:1551 increments the counter on `this.frame % C.FPS === 0` while `maskFullyOn`, and g293 zeroes it on every entry into the fully-on state, so the five ticks must be five whole-second boundaries inside ONE continuous fully-on span.",
+  "hFullyOnMs": 4811,
+  "hFullyOnDerivation": "maskOffMs 9260 - maskOnMs 4249 - MASK_ANIM_ON 200",
+  "deliveredPhase": "schedule T0 at onset + 4871.18 ms, so the fully-on span is [onset + 9320.18, onset + 14131.18] + n*10000. Boundaries at 10000, 11000, 12000, 13000, 14000: exactly five, clearing the mask-off press by 131.18 ms and the fully-on start by 679.82 ms.",
+  "why131IsThin": "That 131 ms is GAME-FRAME time, not wall time: the counter advances on frame % 60. Roughly eight dropped frames inside a cycle move the fifth tick past the mask-off press and the cycle silently delivers four. Nothing in the model can produce that, which is why the model scores h 3000/3000 with bb.inside false.",
+  "floorAlreadyInTheTree": "tools/device/test-runner-plan.mjs:165 requires the minus7 driver's MASK_RESPONSE_HOLD_MS to equal round(1000 * (MASK_ANIM_ON / FPS + VENT_MASK_TICKS)) = 5200 ms, `the response floor must cover the sourced raise animation and five one-second ticks`. minus-toys holds 5011 ms press-to-press and was never measured against it."
+ },
+ "fix": {
+  "binding": "h2",
+  "winner": "tools/device/campaign-night6-h2-winner.json",
+  "change": "maskOffMs 9260 -> 9560, nothing else",
+  "fullyOnMs": 5111,
+  "phaseIndependent": "A span of 5111 ms contains at least five whole-second boundaries at every phase (5000 ms is the floor), so the fifth tick no longer depends on where the anchor happened to land, with 111 ms of frame-time slack on top.",
+  "costedFrom": "the idle gap between mask-off and the hall flash, 700 ms -> 400 ms. That is still more than twice the measured 180 ms mask-to-other seam (actuator.mjs, 0 of 17 lost at 180 ms or more). No wind hold was touched.",
+  "goldenRuleCheck": "Pedro's rule is that more mask comes out of less winding. Here the mask was bought from idle instead, and the version that DID buy it from the wind is refuted below.",
+  "model3000": [
+   { "epochMs": 4766.67, "seeds": 3000, "wins": 2982, "note": "outside the band, as for h" },
+   { "epochMs": 4816.67, "seeds": 3000, "wins": 3000 },
+   { "epochMs": 4850, "seeds": 3000, "wins": 3000 },
+   { "epochMs": 4883.33, "seeds": 3000, "wins": 3000 },
+   { "epochMs": 4900, "seeds": 3000, "wins": 3000 },
+   { "epochMs": 4916.67, "seeds": 3000, "wins": 0, "note": "outside the band, as for h" }
+  ],
+  "band": "[4766.67, 4916.67) -- the same band h was scored in, so aim 4870 (effective 4870 - 70 + [47, 82] = [4847, 4882]) carries over with 80 ms and 35 ms of margin.",
+  "deviceResult": {
+   "run": "night6-n6h2-01-20260920T024030Z",
+   "runDirectory": "artifacts/runs/night6-n6h2-01-20260920T024030Z",
+   "anchor": "aimMs 4870, k 0; released lateMs 0.418",
+   "outcome": "6 AM on the first attempt -- campaign.terminal.actuator-stopped outcome sixam, campaign exit 0, 42 cycle gates (41 agreed)",
+   "unlocked": "Custom Night. The title menu reads continue, customNight, newGame, sixthNight and shows a second star.",
+   "registered": "fnv1a-c27182da in ANCHOR_AIMS, evidence docs/evidence/night6-anchor-aim-h2-20260920.json, winner committed as tools/device/campaign-night6-h2-winner.json. A Night 6 run of this binding now anchors from the register with no environment override."
+  }
+ },
+ "refuted": {
+  "binding": "h3",
+  "change": "maskOffMs 9560, maskOnMs 4049, windMs 3030 -> 2830, camdropMs 13650 -> 13450 (fully on 5311 ms)",
+  "result": "68/3000 at epoch 4871",
+  "reading": "Night 6's wind has no 200 ms to give. The golden rule says to buy mask from the wind, and this is where that stops being possible -- which is why h2 takes it from idle instead."
+ },
+ "gapsClosed": [
+  "ANCHOR_AIMS entries may now declare `alsoBinds`: a winner hash that emits the same plan inherits the aim, and test-fact-register.mjs re-emits the named winner to prove the plan still hashes to the entry's replayHash. The h migration was recorded in UNTRACKED_WINNER_DEBT prose since 2026-09-14 and nothing read it.",
+  "gate.planSha256 (optional, checked wherever present) binds a gate's evidence to the plan it was measured on. gate.replayHash cannot: it hashes the MODEL's event traces, and h and h2 -- two plans that differ by the one 300 ms the device's defect turns on -- share fnv1a-c651e2ff. bundle.mjs:444 names this failure for `#phase-offset` and fixed it for that knob only."
+ ],
+ "open": [
+  "Whether h2 reaches 6 AM on the phone. The model cannot arbitrate: it scores h and h2 identically.",
+  "The 2026-09-13 bundle at artifacts/night6-anchored-h/bundle can no longer be replayed -- validateBundle refuses it with `manifest engine source hash mismatch` because the strategy source has changed since. Its plan survives only through the committed winner's re-emission.",
+  "Promotion custody for Night 6 is better than CLAUDE.md records: bundle, winner and DEVICE_MEASURED qualification for binding h are all present on this machine under artifacts/night6-anchored-h/."
+ ]
+}
